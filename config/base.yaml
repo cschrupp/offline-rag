@@ -3,12 +3,14 @@ project:
   strict_offline: true
 
 paths:
-  raw_data: /data/raw
-  manifests: /data/manifests
-  processed: /data/processed
-  qdrant_storage: /data/qdrant
-  retrieval_models: /models
-  eval_results: /data/eval/results
+  # Local/dev defaults are repo-relative. Containers should override via
+  # OFFLINE_RAG_DATA_DIR / OFFLINE_RAG_MODELS_DIR (or an overlay YAML).
+  raw_data: data/raw
+  manifests: data/manifests
+  processed: data/processed
+  qdrant_storage: data/qdrant
+  retrieval_models: models
+  eval_results: eval/results
 
 logging:
   level: INFO
