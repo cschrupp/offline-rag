@@ -1,0 +1,85 @@
+project:
+  name: offline-rag
+  strict_offline: true
+
+paths:
+  raw_data: /data/raw
+  manifests: /data/manifests
+  processed: /data/processed
+  qdrant_storage: /data/qdrant
+  retrieval_models: /models
+  eval_results: /data/eval/results
+
+logging:
+  level: INFO
+  structured: true
+
+deployment:
+  profile: standalone_ollama
+  qdrant_mode: local
+
+ingestion:
+  parser: docling
+  chunker: docling_hybrid
+  target_tokens: 384
+  max_tokens: 512
+  preserve_tables: true
+  parent_child: true
+
+dense:
+  enabled: true
+  model: REPLACE_WITH_LOCAL_EMBEDDING_MODEL
+  model_path: /models/embeddings/REPLACE_ME
+  local_files_only: true
+  top_k: 30
+
+sparse:
+  enabled: true
+  method: bm25
+  top_k: 30
+
+fusion:
+  method: rrf
+  rrf_k: 60
+
+reranker:
+  enabled: true
+  model: REPLACE_WITH_LOCAL_RERANKER
+  model_path: /models/reranker/REPLACE_ME
+  local_files_only: true
+  input_k: 30
+  output_k: 6
+
+context:
+  strategy: parent
+  max_context_tokens: 6000
+  neighbor_window: 0
+
+generation:
+  provider: openai_compatible
+  base_url: http://host.docker.internal:11434/v1
+  model: REPLACE_WITH_APPROVED_LOCAL_MODEL
+  temperature: 0.0
+  max_output_tokens: 1200
+  timeout_seconds: 120
+  approved_endpoints:
+    - http://host.docker.internal:11434/v1
+  approved_models: []
+
+retrieval_recovery:
+  enabled: false
+  max_retries: 1
+
+abstention:
+  enabled: true
+  policy: score_threshold
+  threshold: null
+
+security:
+  treat_documents_as_untrusted: true
+  allow_network_tools: false
+  allow_shell_tools: false
+  allow_arbitrary_filesystem_tools: false
+  validate_citations: true
+  reject_unapproved_generation_endpoint: true
+  reject_unapproved_generation_model: true

@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Local data and indexes
+data/raw/*
+data/processed/*
+data/qdrant/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/qdrant/.gitkeep
+
+# Models
+models/*
+!models/.gitkeep
+!models/README.md
+!models/manifest.example.yaml
+
+# Evaluation run outputs
+eval/results/*
+eval/reports/*
+!eval/results/.gitkeep
+!eval/reports/.gitkeep
+
+# Environment
+.env
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

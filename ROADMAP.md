@@ -1,0 +1,110 @@
+# Roadmap
+
+## Milestone 0 — Design complete
+
+- [x] Product definition
+- [x] Architecture decision log
+- [x] Implementation slices
+- [x] Project structure
+- [x] Evaluation strategy
+- [x] Security model
+- [x] Demo strategy
+
+## Milestone 1 — Measurable dense RAG baseline
+
+- [ ] Repository and domain contracts
+- [ ] Docling ingestion
+- [ ] Structure-aware chunks
+- [ ] Local dense embeddings
+- [ ] Qdrant persistence
+- [ ] Dense retrieval benchmark
+- [ ] Minimal local query CLI
+
+**Release criterion:** reproducible Recall@k/MRR baseline on a small gold set.
+
+## Milestone 2 — Modern retrieval stack
+
+- [ ] BM25 baseline
+- [ ] RRF fusion
+- [ ] Cross-encoder reranker
+- [ ] Parent-child context expansion
+- [ ] Ablation report
+
+**Release criterion:** measured comparison of dense, BM25, hybrid, and hybrid+reranker.
+
+## Milestone 3 — Grounded local QA
+
+- [ ] OpenAI-compatible generation client
+- [ ] Ollama-on-host default profile
+- [ ] strict-offline endpoint/model preflight
+- [ ] structured answer schema
+- [ ] citation provenance
+- [ ] citation validator
+- [ ] abstention path
+
+**Release criterion:** grounded answer with resolvable source citations and explicit insufficient-evidence output.
+
+## Milestone 4 — Evaluation platform
+
+- [ ] generation metrics
+- [ ] citation metrics
+- [ ] negative set
+- [ ] synthetic expansion
+- [ ] experiment registry
+- [ ] per-category reports
+- [ ] regression benchmark subset
+
+**Release criterion:** one command generates a comparable experiment artifact and report.
+
+## Milestone 5 — Agentic recovery and security
+
+- [ ] LangGraph state machine
+- [ ] bounded query rewrite/retry
+- [ ] evidence sufficiency policy
+- [ ] indirect prompt-injection suite
+- [ ] optional NeMo Guardrails evaluation
+
+**Release criterion:** agentic recovery demonstrates measured benefit and adversarial test results are documented.
+
+## Milestone 6 — Performance and UI
+
+- [ ] stage latency instrumentation
+- [ ] memory/VRAM metrics
+- [ ] FastAPI service
+- [ ] single-container OfflineRAG application image
+- [ ] Qdrant Local standalone profile
+- [ ] `/data` + `/models` volume contracts
+- [ ] retrieval inspector
+- [ ] citation source viewer
+- [ ] evaluation dashboard
+
+**Release criterion:** a reviewer can interactively compare retrieval modes and inspect evidence flow.
+
+## Milestone 7 — Portfolio release
+
+- [ ] public demo corpus instructions
+- [ ] benchmark methodology page
+- [ ] final ablation table
+- [ ] architecture diagram
+- [ ] demo video/GIF
+- [ ] setup guide
+- [ ] host-Ollama deployment guide
+- [ ] strict-offline verification report
+- [ ] known limitations
+- [ ] CI regression checks
+
+**Release criterion:** repository supports all public quality/security/performance claims with reproducible evidence.
+
+## Post-v1 candidates
+
+Only prioritize these when failures justify them:
+
+- learned sparse retrieval / SPLADE;
+- ColBERT-style late interaction;
+- table-specific retrieval;
+- multimodal page reasoning;
+- query decomposition for true multi-hop tasks;
+- document version diffing;
+- incremental indexing;
+- corpus-level access policies;
+- GraphRAG / knowledge graph if relation-heavy benchmarks warrant it.

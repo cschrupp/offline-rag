@@ -1,0 +1,24 @@
+experiment:
+  name: hybrid_rrf
+
+dense:
+  enabled: true
+  top_k: 30
+
+sparse:
+  enabled: true
+  method: bm25
+  top_k: 30
+
+fusion:
+  method: rrf
+  rrf_k: 60
+
+reranker:
+  enabled: false
+
+retrieval_recovery:
+  enabled: false
+
+generation:
+  enabled: false

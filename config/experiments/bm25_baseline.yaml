@@ -1,0 +1,19 @@
+experiment:
+  name: bm25_baseline
+
+dense:
+  enabled: false
+
+sparse:
+  enabled: true
+  method: bm25
+  top_k: 10
+
+reranker:
+  enabled: false
+
+retrieval_recovery:
+  enabled: false
+
+generation:
+  enabled: false

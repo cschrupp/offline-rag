@@ -1,0 +1,24 @@
+# TEMPLATE — activate during Slice 15 after pyproject.toml and the UI build exist.
+# The generative LLM/runtime is intentionally NOT installed in this image.
+
+FROM python:3.12-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    OFFLINE_RAG_DATA_DIR=/data \
+    OFFLINE_RAG_MODELS_DIR=/models
+
+WORKDIR /app
+
+# Install only application/runtime dependencies here once pyproject.toml exists.
+# COPY pyproject.toml ...
+# RUN pip install --no-cache-dir .
+
+COPY . /app
+
+RUN mkdir -p /data /models
+
+EXPOSE 8080
+
+# Replace with the final CLI/module entry point in Slice 15.
+CMD ["python", "-m", "offline_rag.api.app"]

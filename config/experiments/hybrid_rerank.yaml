@@ -1,0 +1,26 @@
+experiment:
+  name: hybrid_rerank
+
+dense:
+  enabled: true
+  top_k: 30
+
+sparse:
+  enabled: true
+  method: bm25
+  top_k: 30
+
+fusion:
+  method: rrf
+  rrf_k: 60
+
+reranker:
+  enabled: true
+  input_k: 30
+  output_k: 6
+
+retrieval_recovery:
+  enabled: false
+
+generation:
+  enabled: false

@@ -1,0 +1,18 @@
+experiment:
+  name: dense_baseline
+
+dense:
+  enabled: true
+  top_k: 10
+
+sparse:
+  enabled: false
+
+reranker:
+  enabled: false
+
+retrieval_recovery:
+  enabled: false
+
+generation:
+  enabled: false

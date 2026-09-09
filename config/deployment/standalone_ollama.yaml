@@ -1,0 +1,11 @@
+deployment:
+  profile: standalone_ollama
+  qdrant_mode: local
+
+generation:
+  provider: openai_compatible
+  base_url: http://host.docker.internal:11434/v1
+  model: REPLACE_WITH_APPROVED_LOCAL_MODEL
+
+project:
+  strict_offline: true

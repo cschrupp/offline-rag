@@ -1,0 +1,21 @@
+# Example standalone profile. Ollama is intentionally NOT a Compose service:
+# it runs on the host and owns the generator model/runtime.
+services:
+  offline-rag:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.template
+    ports:
+      - "127.0.0.1:8080:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      OFFLINE_RAG_STRICT_OFFLINE: "true"
+      OFFLINE_RAG_LLM_BASE_URL: "http://host.docker.internal:11434/v1"
+      OFFLINE_RAG_LLM_MODEL: "${OFFLINE_RAG_LLM_MODEL}"
+      OFFLINE_RAG_APPROVED_LLM_MODELS: "${OFFLINE_RAG_APPROVED_LLM_MODELS}"
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+    volumes:
+      - ../data:/data
+      - ../models:/models:ro

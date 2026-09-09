@@ -1,0 +1,11 @@
+deployment:
+  profile: external_openai_compatible
+  qdrant_mode: local
+
+generation:
+  provider: openai_compatible
+  base_url: REPLACE_WITH_APPROVED_LOCAL_ENDPOINT
+  model: REPLACE_WITH_APPROVED_LOCAL_MODEL
+
+project:
+  strict_offline: true

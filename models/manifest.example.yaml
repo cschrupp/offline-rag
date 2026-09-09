@@ -1,0 +1,17 @@
+schema_version: 1
+
+retrieval_models:
+  embeddings:
+    - id: replace-with-embedding-model
+      path: /models/embeddings/REPLACE_ME
+      revision: REPLACE_ME
+  rerankers:
+    - id: replace-with-reranker
+      path: /models/reranker/REPLACE_ME
+      revision: REPLACE_ME
+
+approved_generation:
+  endpoints:
+    - http://host.docker.internal:11434/v1
+  models:
+    - REPLACE_WITH_APPROVED_LOCAL_MODEL
