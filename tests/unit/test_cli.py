@@ -1,4 +1,4 @@
-"""CLI shell tests for Slice 0 placeholders and doctor."""
+"""CLI shell tests."""
 
 from __future__ import annotations
 
@@ -36,7 +36,6 @@ def test_subcommand_help(argv: list[str], label: str) -> None:
 @pytest.mark.parametrize(
     "argv",
     [
-        ["ingest"],
         ["query"],
         ["eval", "run"],
         ["eval", "compare"],
@@ -46,11 +45,41 @@ def test_placeholders_terminate_cleanly(argv: list[str], capsys: pytest.CaptureF
     code = main(argv)
     assert code == NOT_IMPLEMENTED_EXIT
     err = capsys.readouterr().err
-    assert "not implemented in this slice" in err
+    assert "not implemented" in err
 
 
-def test_doctor_ok_with_base_config(capsys: pytest.CaptureFixture[str]) -> None:
+def test_doctor_ok_with_base_config(capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(REPO_ROOT)
+    # Doctor may FAIL if Docling artifacts are missing under strict offline.
+    # Ensure a temporary valid artifact bundle for this unit test.
+    artifacts = REPO_ROOT / "models" / "docling"
+    from offline_rag.ingestion.docling_artifacts import write_provisioning_manifest
+
+    if not (artifacts / "offline-rag-artifacts.json").exists():
+        (artifacts / "placeholder.bin").write_bytes(b"unit")
+        write_provisioning_manifest(artifacts, docling_version="test")
     code = main(["doctor", "--config", str(REPO_ROOT / "config" / "base.yaml")])
     captured = capsys.readouterr()
     assert code == 0
     assert "doctor: OK" in captured.out
+
+
+def test_ingest_json_txt(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    monkeypatch.chdir(tmp_path)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "a.txt").write_text("hello\n\nworld\n", encoding="utf-8")
+    # Minimal config via env overrides using default settings and local paths.
+    # Create required sibling dirs used by doctor/ingest defaults when resolving relative paths.
+    for name in ("data/processed", "data/manifests", "data/corpora", "models/docling", "data/raw", "data/qdrant", "eval/results", "models"):
+        (tmp_path / name).mkdir(parents=True, exist_ok=True)
+    from offline_rag.ingestion.docling_artifacts import write_provisioning_manifest
+
+    (tmp_path / "models" / "docling" / "placeholder.bin").write_bytes(b"x")
+    write_provisioning_manifest(tmp_path / "models" / "docling", docling_version="test")
+
+    code = main(["ingest", str(docs), "--json", "--corpus", "default"])
+    out = capsys.readouterr().out
+    assert code == 0
+    assert '"status":' in out
+    assert "corpus_" in out

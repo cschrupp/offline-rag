@@ -27,8 +27,10 @@ class PathSettings(BaseModel):
     raw_data: Path = Path("data/raw")
     manifests: Path = Path("data/manifests")
     processed: Path = Path("data/processed")
+    corpora: Path = Path("data/corpora")
     qdrant_storage: Path = Path("data/qdrant")
     retrieval_models: Path = Path("models")
+    docling_artifacts: Path = Path("models/docling")
     eval_results: Path = Path("eval/results")
 
 
@@ -44,6 +46,20 @@ class DeploymentSettings(BaseModel):
 
     profile: NonEmptyStr = "standalone_ollama"
     qdrant_mode: NonEmptyStr = "local"
+
+
+class PdfParsingSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    ocr_enabled: bool = False
+
+
+class ParsingSettings(BaseModel):
+    """Parse-relevant settings that participate in parse_config_hash."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    pdf: PdfParsingSettings = Field(default_factory=PdfParsingSettings)
 
 
 class IngestionSettings(BaseModel):
@@ -169,6 +185,7 @@ class AppSettings(BaseModel):
     logging: LoggingSettings = Field(default_factory=LoggingSettings)
     deployment: DeploymentSettings = Field(default_factory=DeploymentSettings)
     ingestion: IngestionSettings = Field(default_factory=IngestionSettings)
+    parsing: ParsingSettings = Field(default_factory=ParsingSettings)
     dense: DenseSettings = Field(default_factory=DenseSettings)
     sparse: SparseSettings = Field(default_factory=SparseSettings)
     fusion: FusionSettings = Field(default_factory=FusionSettings)

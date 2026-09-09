@@ -8,8 +8,10 @@ paths:
   raw_data: data/raw
   manifests: data/manifests
   processed: data/processed
+  corpora: data/corpora
   qdrant_storage: data/qdrant
   retrieval_models: models
+  docling_artifacts: models/docling
   eval_results: eval/results
 
 logging:
@@ -27,6 +29,11 @@ ingestion:
   max_tokens: 512
   preserve_tables: true
   parent_child: true
+
+parsing:
+  pdf:
+    # Slice 1 defaults to born-digital/layout extraction. OCR is opt-in.
+    ocr_enabled: false
 
 dense:
   enabled: true

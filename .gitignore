@@ -11,15 +11,23 @@ venv/
 data/raw/*
 data/processed/*
 data/qdrant/*
+data/corpora/*
+data/manifests/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 !data/qdrant/.gitkeep
+!data/corpora/.gitkeep
+!data/manifests/.gitkeep
 
 # Models
 models/*
 !models/.gitkeep
 !models/README.md
 !models/manifest.example.yaml
+!models/docling/
+models/docling/*
+!models/docling/.gitkeep
+!models/docling/README.md
 
 # Evaluation run outputs
 eval/results/*

@@ -1,0 +1,6 @@
+# OfflineRAG TXT Fixture
+
+Paragraph one stays together across wrapped lines
+in the same logical block.
+
+Paragraph two is separate.
