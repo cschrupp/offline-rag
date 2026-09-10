@@ -179,7 +179,7 @@ parallel latency.
 - Hybrid index / state / manifest
 - Parallel branch execution
 - Weighted RRF, score normalization, learned fusion
-- Reranking / cross-encoders (Slice 6)
+- Reranking / cross-encoders (Slice 6; see `docs/slice6_cross_encoder_reranking.md`)
 - Parent/neighbor expansion (Slice 7)
 - Query rewriting, LangGraph, generation
 - Automatic branch fallback
@@ -188,4 +188,4 @@ parallel latency.
 
 ## Ablation ladder
 
-Dense → +BM25 → **+RRF (this slice)** → +reranker → +expansion.
+Dense → +BM25 → **+RRF (this slice)** → +reranker (Slice 6) → +expansion.

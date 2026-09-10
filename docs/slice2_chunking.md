@@ -84,6 +84,6 @@ Not auto-run from ingest. Stale when `ChunkState.source_corpus_id != CorpusState
 ## Deferred
 
 - embeddings / Qdrant / retrieve → Slice 3 (done)
-- BM25 → Slice 4 (done); hybrid/RRF → Slice 5 (done); rerank → Slice 6
+- BM25 → Slice 4 (done); hybrid/RRF → Slice 5 (done); rerank → Slice 6 (done)
 - parent/neighbor expansion at query time → Slice 7
 - generation → Slice 8+

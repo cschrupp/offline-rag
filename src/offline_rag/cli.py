@@ -70,6 +70,21 @@ from offline_rag.lexical.status import (
     lexical_indexing_status_for_corpus,
 )
 from offline_rag.observability import configure_logging, log_event
+from offline_rag.rerank.evaluate import HybridRerankRetrievalEvaluator
+from offline_rag.rerank.provision import (
+    RerankerReadiness,
+    provision_reranker_model,
+    resolve_reranker_model_dir,
+    validate_reranker_artifacts,
+)
+from offline_rag.rerank.retrieve import (
+    HybridRerankRetrievalError,
+    HybridRerankRetriever,
+)
+from offline_rag.rerank.status import (
+    hybrid_rerank_status_for_corpus,
+    reranker_artifact_status,
+)
 
 NOT_IMPLEMENTED_EXIT = 2
 
@@ -117,11 +132,19 @@ def _resolve_settings(settings: AppSettings) -> AppSettings:
                     "docling_artifacts": _resolve(settings.paths.docling_artifacts),
                     "tokenizer_artifacts": _resolve(settings.paths.tokenizer_artifacts),
                     "embedding_artifacts": _resolve(settings.paths.embedding_artifacts),
+                    "reranker_artifacts": _resolve(settings.paths.reranker_artifacts),
                     "eval_results": _resolve(settings.paths.eval_results),
                 }
             ),
             "dense": settings.dense.model_copy(
                 update={"model_path": _resolve(settings.dense.model_path)}
+            ),
+            "reranker": settings.reranker.model_copy(
+                update={
+                    "model": settings.reranker.model.model_copy(
+                        update={"model_path": _resolve(settings.reranker.model.model_path)}
+                    )
+                }
             ),
         }
     )
@@ -380,6 +403,58 @@ def cmd_provision_embedding(args: argparse.Namespace) -> int:
             ProvisioningStatus.READY: "Embedding provisioning completed",
             ProvisioningStatus.ALREADY_PROVISIONED: "Embedding already provisioned",
             ProvisioningStatus.FAILED: "Embedding provisioning failed",
+        }[report.status]
+        print(label)
+        print()
+        print(f"Model:       {report.model_id}")
+        print(f"Revision:    {report.resolved_revision or report.requested_revision}")
+        print(f"Destination: {report.destination}")
+        if report.artifact_id:
+            print(f"Artifact:    {report.artifact_id}")
+        if report.manifest_path:
+            print(f"Manifest:    {report.manifest_path}")
+        print(f"Downloaded:  {report.files_downloaded}")
+        if report.errors:
+            print()
+            print("Errors:")
+            for error in report.errors:
+                print(f"  {error}")
+
+    return 1 if report.status == ProvisioningStatus.FAILED else 0
+
+
+def cmd_provision_reranker(args: argparse.Namespace) -> int:
+    try:
+        settings = _load_settings(args)
+    except ConfigError as exc:
+        print(f"provision reranker: configuration failed: {exc}", file=sys.stderr)
+        return 1
+
+    logger = configure_logging(
+        level=settings.logging.level,
+        structured=settings.logging.structured,
+    )
+    log_event(logger, 20, "provision reranker started", event="provision.reranker.start")
+
+    destination = resolve_reranker_model_dir(
+        reranker_artifacts_root=settings.paths.reranker_artifacts,
+        model_path=settings.reranker.model.model_path,
+    )
+    report = provision_reranker_model(
+        destination,
+        model_id=settings.reranker.model.model_id,
+        revision=settings.reranker.model.revision,
+        expected_adapter_contract=settings.reranker.model.adapter_contract,
+        force=bool(args.force),
+    )
+
+    if args.json:
+        print(report.model_dump_json())
+    else:
+        label = {
+            ProvisioningStatus.READY: "Reranker provisioning completed",
+            ProvisioningStatus.ALREADY_PROVISIONED: "Reranker already provisioned",
+            ProvisioningStatus.FAILED: "Reranker provisioning failed",
         }[report.status]
         print(label)
         print()
@@ -1029,6 +1104,63 @@ def cmd_retrieve_hybrid(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_retrieve_hybrid_rerank(args: argparse.Namespace) -> int:
+    try:
+        settings = _load_settings(args)
+    except ConfigError as exc:
+        print(f"retrieve hybrid-rerank: configuration failed: {exc}", file=sys.stderr)
+        return 1
+
+    logger = configure_logging(
+        level=settings.logging.level,
+        structured=settings.logging.structured,
+    )
+    log_event(logger, 20, "hybrid-rerank retrieve started", event="retrieve.hybrid_rerank.start")
+
+    retriever = HybridRerankRetriever(settings)
+    try:
+        result = retriever.retrieve(
+            query=args.query,
+            corpus_name=args.corpus,
+            top_k=args.top_k,
+        )
+    except HybridRerankRetrievalError as exc:
+        print(f"retrieve hybrid-rerank: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        retriever.close()
+
+    if args.json:
+        print(result.model_dump_json())
+    else:
+        print("Hybrid-Rerank Retrieval")
+        print()
+        print("Query:")
+        print(result.query)
+        print()
+        print(f"Dense index:   {result.dense_index_id}")
+        print(f"Lexical index: {result.lexical_index_id}")
+        print(f"fusion_config: {result.fusion_config_hash}")
+        print(f"reranker_cfg:  {result.reranker_config_hash}")
+        print(
+            f"Reranker:      {settings.reranker.model.model_id} "
+            f"(input_k={settings.reranker.input_k}, output_k={result.top_k})"
+        )
+        print()
+        for candidate in result.candidates:
+            section = " / ".join(candidate.section_path) if candidate.section_path else "-"
+            prov = candidate.hybrid_rerank
+            print(f"{candidate.rank}. logit={candidate.score:.6f}")
+            print(f"   chunk:  {candidate.chunk_id}")
+            print(f"   hybrid: rank {prov.hybrid_rank} RRF {prov.rrf_score:.6f}")
+            print(f"   section: {section}")
+            print()
+            for line in candidate.text.splitlines() or [candidate.text]:
+                print(f"   {line}")
+            print()
+    return 0
+
+
 def cmd_query(_args: argparse.Namespace) -> int:
     print(
         "Full query/generation is not implemented yet. "
@@ -1150,9 +1282,55 @@ def cmd_eval_retrieve(args: argparse.Namespace) -> int:
                 print(f"Report:       {result_path}")
         return 0
 
+    if method == "hybrid-rerank":
+        evaluator = HybridRerankRetrievalEvaluator(settings)
+        try:
+            report = evaluator.evaluate(
+                Path(args.dataset),
+                corpus_name=args.corpus,
+                top_k=int(args.top_k),
+                output_path=Path(args.output) if args.output else None,
+            )
+        except (EvaluationError, HybridRerankRetrievalError) as exc:
+            print(f"eval retrieve: {exc}", file=sys.stderr)
+            return 1
+        finally:
+            evaluator.retriever.close()
+
+        if args.json:
+            print(report.model_dump_json())
+        else:
+            print("Hybrid-rerank retrieval evaluation completed")
+            print()
+            print(f"Run:          {report.run_id}")
+            print(f"Method:       {report.method}")
+            print(f"Dataset:      {report.dataset_id}")
+            print(f"Cases:        {report.case_count}")
+            print(f"Dense index:  {report.dense_index_id}")
+            print(f"Lexical idx:  {report.lexical_index_id}")
+            print(f"Fusion hash:  {report.fusion_config_hash}")
+            print(f"Rerank hash:  {report.reranker_config_hash}")
+            print(f"input_k:      {report.input_k}")
+            print(f"Chunk set:    {report.chunk_set_id}")
+            print(f"top_k:        {report.top_k}")
+            print()
+            print(f"Recall@1:     {report.recall_at_1:.4f}")
+            print(f"Recall@5:     {report.recall_at_5:.4f}")
+            print(f"Recall@10:    {report.recall_at_10:.4f}")
+            print(f"MRR:          {report.mrr:.4f}")
+            print(f"Latency mean: {report.latency_mean_ms:.1f} ms")
+            print(f"Latency p50:  {report.latency_p50_ms:.1f} ms")
+            print(f"Latency p95:  {report.latency_p95_ms:.1f} ms")
+            result_path = report.metadata.get("result_path")
+            if result_path:
+                print()
+                print(f"Report:       {result_path}")
+        return 0
+
     if method != "dense":
         print(
-            f"eval retrieve: unsupported method '{method}' (use dense|lexical|hybrid)",
+            f"eval retrieve: unsupported method '{method}' "
+            "(use dense|lexical|hybrid|hybrid-rerank)",
             file=sys.stderr,
         )
         return 1
@@ -1423,6 +1601,34 @@ def cmd_doctor(args: argparse.Namespace) -> int:
             "Action                           ensure dense+lexical CURRENT on same chunk set"
         )
 
+    artifact_status = reranker_artifact_status(settings)
+    notes.append(f"Reranker artifacts              {artifact_status}")
+    notes.append(f"Reranker model                  {settings.reranker.model.model_id}")
+    notes.append(f"Reranker revision               {settings.reranker.model.revision}")
+    model_dir = resolve_reranker_model_dir(
+        reranker_artifacts_root=settings.paths.reranker_artifacts,
+        model_path=settings.reranker.model.model_path,
+    )
+    notes.append(f"Reranker model path             {model_dir}")
+    if artifact_status != "READY":
+        notes.append("Action                           offline-rag provision reranker")
+        if settings.project.strict_offline and settings.reranker.enabled:
+            art = validate_reranker_artifacts(
+                model_dir,
+                expected_model_id=settings.reranker.model.model_id,
+                expected_revision=settings.reranker.model.revision,
+                expected_adapter_contract=settings.reranker.model.adapter_contract,
+            )
+            if art.readiness != RerankerReadiness.READY:
+                errors.append(f"Reranker artifacts not ready: {art.reason}")
+
+    hybrid_rerank_status = hybrid_rerank_status_for_corpus(settings, corpus_name)
+    notes.append(f"Hybrid-rerank status            {hybrid_rerank_status}")
+    if hybrid_rerank_status != "READY":
+        notes.append(
+            "Action                           ensure Hybrid READY + provisioned enabled reranker"
+        )
+
     for note in notes:
         print(f"doctor: {note}")
 
@@ -1482,6 +1688,23 @@ def build_parser() -> argparse.ArgumentParser:
     )
     provision_embedding.add_argument("--json", action="store_true", help="Emit EmbeddingProvisionReport JSON")
     provision_embedding.set_defaults(func=cmd_provision_embedding)
+
+    provision_reranker = provision_sub.add_parser(
+        "reranker",
+        help="Download/pin the local cross-encoder reranker model",
+    )
+    _add_config_argument(provision_reranker)
+    provision_reranker.add_argument(
+        "--force",
+        action="store_true",
+        help="Re-download even when artifacts already validate as READY",
+    )
+    provision_reranker.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit RerankerProvisionReport JSON",
+    )
+    provision_reranker.set_defaults(func=cmd_provision_reranker)
 
     index = subparsers.add_parser("index", help="Build/publish the dense index for a corpus")
     _add_config_argument(index)
@@ -1555,6 +1778,27 @@ def build_parser() -> argparse.ArgumentParser:
     retrieve_hybrid.add_argument("--json", action="store_true", help="Emit HybridRetrievalResult JSON")
     retrieve_hybrid.set_defaults(func=cmd_retrieve_hybrid)
 
+    retrieve_hybrid_rerank = retrieve_sub.add_parser(
+        "hybrid-rerank",
+        help="Hybrid RRF followed by cross-encoder reranking",
+    )
+    _add_config_argument(retrieve_hybrid_rerank)
+    retrieve_hybrid_rerank.add_argument("--corpus", default="default", help="Logical corpus name")
+    retrieve_hybrid_rerank.add_argument("--query", required=True, help="Query text")
+    retrieve_hybrid_rerank.add_argument(
+        "--top-k",
+        type=int,
+        default=None,
+        dest="top_k",
+        help="Override reranker.output_k (final truncation only)",
+    )
+    retrieve_hybrid_rerank.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit HybridRerankRetrievalResult JSON",
+    )
+    retrieve_hybrid_rerank.set_defaults(func=cmd_retrieve_hybrid_rerank)
+
     query = subparsers.add_parser("query", help="Full RAG query/generation (not implemented yet)")
     _add_config_argument(query)
     query.set_defaults(func=cmd_query)
@@ -1576,7 +1820,7 @@ def build_parser() -> argparse.ArgumentParser:
     eval_retrieve.add_argument("--corpus", default="default", help="Logical corpus name")
     eval_retrieve.add_argument(
         "--method",
-        choices=("dense", "lexical", "hybrid"),
+        choices=("dense", "lexical", "hybrid", "hybrid-rerank"),
         default="dense",
         help="Retriever under test (default: dense)",
     )

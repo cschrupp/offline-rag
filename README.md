@@ -236,7 +236,7 @@ offline-rag/
 └── scripts/
 ```
 
-See `PROJECT_STRUCTURE.md` for the current Slice 0–5 tree and the intended long-term module layout.
+See `PROJECT_STRUCTURE.md` for the current Slice 0–6 tree and the intended long-term module layout.
 
 ## Development sequence
 
@@ -247,7 +247,7 @@ The project is intentionally sliced so each stage produces a working, testable s
 3. **Structure-aware chunking** — parent/child chunks, neighbor links, chunk-set state. *(done)*
 4. **Dense baseline** — local embeddings, Qdrant Local, `retrieve`, dense Recall@k/MRR. *(done)*
 5. **Lexical baseline and hybrid retrieval** — BM25 + RRF. *(done)*
-6. **Reranking** — second-stage cross-encoder.
+6. **Reranking** — second-stage cross-encoder. *(done)*
 7. **Hierarchical context** — child retrieval + parent/neighbor expansion.
 8. **Grounded generation** — generic local inference client, Ollama default, answer schema, page-level citations.
 9. **Evaluation harness** — gold dataset expansion, experiment registry, generation metrics.
@@ -258,9 +258,9 @@ The project is intentionally sliced so each stage produces a working, testable s
 14. **Demo UI** — query inspector, retrieval visualization, benchmark dashboard.
 15. **Portfolio packaging** — reproducible benchmark report, architecture diagram, demo scenario.
 
-Detailed exit criteria are in `detailed_implementation_slices.md`. Slice notes: `docs/slice0_contracts.md` … `docs/slice5_hybrid_retrieval.md`.
+Detailed exit criteria are in `detailed_implementation_slices.md`. Slice notes: `docs/slice0_contracts.md` … `docs/slice6_cross_encoder_reranking.md`.
 
-## Quick start (through hybrid retrieve)
+## Quick start (through hybrid-rerank retrieve)
 
 ```bash
 uv sync
@@ -268,6 +268,8 @@ uv run python scripts/provision_docling.py      # PDF support
 uv run python scripts/provision_tiktoken.py     # chunk budgets
 # For real dense quality (large download):
 # uv run offline-rag provision embedding
+# For real rerank quality (large download):
+# uv run offline-rag provision reranker
 
 offline-rag ingest ./documents --corpus engineering
 offline-rag chunk --corpus engineering
@@ -276,14 +278,15 @@ offline-rag index lexical --corpus engineering
 offline-rag retrieve --corpus engineering --query "maximum operating pressure"
 offline-rag retrieve lexical --corpus engineering --query "API-12"
 offline-rag retrieve hybrid --corpus engineering --query "API-12 pressure"
+offline-rag retrieve hybrid-rerank --corpus engineering --query "API-12 pressure"
 offline-rag doctor --corpus engineering
 ```
 
-Default config expects Qwen weights under `models/embeddings/qwen3-embedding-0.6b/`. CI and unit tests use `FakeEmbedder` / fake tokenizer so they do not require Qwen weights.
+Default config expects Qwen weights under `models/embeddings/qwen3-embedding-0.6b/` and BGE reranker under `models/rerankers/bge-reranker-v2-m3/`. CI and unit tests use `FakeEmbedder` / `FakeReranker` / fake tokenizer so they do not require those weights.
 
 ## Demo experience
 
-**Today (Slice 5):** ingest → chunk → dense + lexical index → retrieve / retrieve lexical / retrieve hybrid / eval retrieve / doctor.
+**Today (Slice 6):** ingest → chunk → dense + lexical index → retrieve / retrieve lexical / retrieve hybrid / retrieve hybrid-rerank / eval retrieve / doctor.
 
 **Target demo** should allow a user to:
 
@@ -331,9 +334,9 @@ Use public, redistributable technical documents rather than proprietary material
 
 ## Project status
 
-**Phase:** Milestone 2 — Slices 0–5 done (dense + lexical BM25 + hybrid RRF).
+**Phase:** Milestone 2 — Slices 0–6 done (dense + lexical BM25 + hybrid RRF + cross-encoder rerank).
 
-Working local path: ingest → chunk → index / index lexical → retrieve / retrieve lexical / retrieve hybrid → eval retrieve.
-Still deferred: reranking (6), parent expansion (7), generation/`query` (8+).
+Working local path: ingest → chunk → index / index lexical → retrieve / retrieve lexical / retrieve hybrid / retrieve hybrid-rerank → eval retrieve.
+Still deferred: parent expansion (7), generation/`query` (8+).
 
-See `ROADMAP.md` and `docs/slice5_hybrid_retrieval.md`.
+See `ROADMAP.md` and `docs/slice6_cross_encoder_reranking.md`.

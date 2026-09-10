@@ -200,6 +200,8 @@ class RetrievalCaseResult(BaseModel):
     recall_at_10: Score = 0.0
     latency_ms: NonNegativeInt = 0
     error: str | None = None
+    gold_in_rerank_pool: bool | None = None
+    input_pool_size: NonNegativeInt | None = None
 
 
 class DenseRetrievalEvaluationResult(BaseModel):
@@ -464,6 +466,119 @@ class HybridRetrievalEvaluationResult(BaseModel):
     fusion_config_hash: NonEmptyStr
     dense_top_k: PositiveInt
     lexical_top_k: PositiveInt
+    top_k: PositiveInt
+    recall_at_1: Score
+    recall_at_5: Score
+    recall_at_10: Score
+    mrr: Score
+    latency_mean_ms: Score
+    latency_p50_ms: Score
+    latency_p95_ms: Score
+    cases: list[RetrievalCaseResult] = Field(default_factory=list)
+    started_at: datetime
+    completed_at: datetime
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class RerankerModelManifest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: int = 1
+    artifact_type: NonEmptyStr = "reranker_model"
+    provider_source: NonEmptyStr = "huggingface"
+    model_id: NonEmptyStr
+    requested_revision: NonEmptyStr
+    resolved_revision: NonEmptyStr
+    runtime: NonEmptyStr = "sentence-transformers"
+    artifact_contract: NonEmptyStr
+    adapter_contract: NonEmptyStr
+    provisioned_at: datetime
+    required_files: list[str] = Field(default_factory=list)
+    file_digests: dict[str, str] = Field(default_factory=dict)
+    artifact_id: NonEmptyStr
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class RerankerProvisionReport(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: ProvisioningStatus
+    model_id: NonEmptyStr
+    requested_revision: NonEmptyStr
+    resolved_revision: NonEmptyStr | None = None
+    destination: NonEmptyStr
+    artifact_id: NonEmptyStr | None = None
+    manifest_path: str | None = None
+    files_downloaded: NonNegativeInt = 0
+    errors: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class HybridRerankProvenance(BaseModel):
+    """Upstream hybrid/RRF provenance plus cross-encoder score."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    reranker_score: Score
+    hybrid_rank: PositiveInt
+    rrf_score: Score
+    dense_rank: PositiveInt | None = None
+    dense_score: Score | None = None
+    lexical_rank: PositiveInt | None = None
+    lexical_score: Score | None = None
+
+
+class HybridRerankCandidate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    rank: PositiveInt
+    score: Score
+    chunk_id: NonEmptyStr
+    document_id: NonEmptyStr
+    parent_chunk_id: NonEmptyStr | None = None
+    previous_chunk_id: NonEmptyStr | None = None
+    next_chunk_id: NonEmptyStr | None = None
+    text: NonEmptyStr
+    section_path: list[str] = Field(default_factory=list)
+    page_start: PositiveInt | None = None
+    page_end: PositiveInt | None = None
+    line_start: PositiveInt | None = None
+    line_end: PositiveInt | None = None
+    token_count: NonNegativeInt = 0
+    chunk_artifact_id: NonEmptyStr | None = None
+    hybrid_rerank: HybridRerankProvenance
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class HybridRerankRetrievalResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    query: NonEmptyStr
+    method: NonEmptyStr = "hybrid-rerank"
+    top_k: PositiveInt
+    candidates: list[HybridRerankCandidate] = Field(default_factory=list)
+    dense_index_id: NonEmptyStr
+    lexical_index_id: NonEmptyStr
+    fusion_config_hash: NonEmptyStr
+    reranker_config_hash: NonEmptyStr
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class HybridRerankRetrievalEvaluationResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    run_id: NonEmptyStr
+    evaluation_type: NonEmptyStr = "hybrid_rerank_retrieval"
+    method: NonEmptyStr = "hybrid-rerank"
+    dataset_id: NonEmptyStr
+    case_count: NonNegativeInt
+    corpus_id: NonEmptyStr | None = None
+    chunk_set_id: NonEmptyStr
+    dense_index_id: NonEmptyStr
+    lexical_index_id: NonEmptyStr
+    fusion_config_hash: NonEmptyStr
+    reranker_config_hash: NonEmptyStr
+    input_k: PositiveInt
     top_k: PositiveInt
     recall_at_1: Score
     recall_at_5: Score

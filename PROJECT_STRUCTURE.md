@@ -2,7 +2,7 @@
 
 The project is organized around explicit domain boundaries. Framework-specific integrations live behind project-owned interfaces so that Docling, Qdrant, LangGraph, Ollama, or other dependencies can be replaced without rewriting the application core.
 
-## Implemented through Slice 5 (current)
+## Implemented through Slice 6 (current)
 
 ```text
 offline-rag/
@@ -22,14 +22,15 @@ offline-rag/
 ├── models/
 │   ├── docling/
 │   ├── tokenizers/tiktoken/
-│   └── embeddings/qwen3-embedding-0.6b/
+│   ├── embeddings/qwen3-embedding-0.6b/
+│   └── rerankers/bge-reranker-v2-m3/
 ├── eval/datasets/dense_smoke/
 ├── scripts/
 │   ├── provision_docling.py
 │   ├── provision_tiktoken.py
 │   └── provision_embedding.py
 ├── docs/
-│   ├── slice0_contracts.md … slice5_hybrid_retrieval.md
+│   ├── slice0_contracts.md … slice6_cross_encoder_reranking.md
 │   └── model_provisioning.md
 ├── src/offline_rag/
 │   ├── cli.py
@@ -41,13 +42,14 @@ offline-rag/
 │   ├── dense/           # embedders, Qdrant Local, index/retrieve/eval
 │   ├── lexical/         # BM25 inverted index, analyze, score, retrieve/eval
 │   ├── hybrid/          # query-time RRF (no hybrid index/state)
+│   ├── rerank/          # hybrid-pool cross-encoder (no HybridRerankState)
 │   └── observability/
 └── tests/
 ```
 
 ## Intended long-term tree
 
-The tree below remains the target shape for later slices (rerank → expansion → generation, API, UI). Prefer evolving existing packages rather than renaming prematurely.
+The tree below remains the target shape for later slices (expansion → generation, API, UI). Prefer evolving existing packages rather than renaming prematurely.
 
 ```text
 offline-rag/
@@ -130,11 +132,12 @@ offline-rag/
 │       ├── dense/                 # Slice 3 (embed + Qdrant Local + retrieve + dense eval)
 │       ├── lexical/               # Slice 4 (BM25 inverted index + retrieve + lexical eval)
 │       ├── hybrid/                # Slice 5 (query-time rrf-v1; no hybrid index)
+│       ├── rerank/                # Slice 6 (hybrid-pool CE; derived READY only)
 │       │
 │       ├── embeddings/            # optional future split; dense/ currently owns adapters
 │       ├── index/                 # optional future split
 │       │
-│       ├── retrieval/             # future: rerank, context (dense/lexical/hybrid stay owned)
+│       ├── retrieval/             # future: context (dense/lexical/hybrid/rerank stay owned)
 │       │
 │       ├── generation/
 │       │   ├── base.py
@@ -241,13 +244,17 @@ Project-owned inverted index, `technical-v1` analyzer, `bm25-okapi-v1` scorer, `
 
 Query-time `HybridRetriever` + `ReciprocalRankFusion` (rrf-v1). Derived READY/NOT_READY only; no HybridState or hybrid index artifacts (Slice 5).
 
+### `rerank/`
+
+`HybridRerankRetriever` over hybrid pools + local `CrossEncoderReranker` / `FakeReranker`. Derived READY/NOT_READY only; no HybridRerankState (Slice 6).
+
 ### `embeddings/` / `index/` (future optional splits)
 
 Slice 3 keeps adapters under `dense/`. Later refactors may split packages if the tree grows; do not duplicate contracts.
 
 ### `retrieval/`
 
-Future: reranking (6), context assembly (7), then generation/confidence (8+). Dense, lexical, and hybrid live in their packages today.
+Future: context assembly (7), then generation/confidence (8+). Dense, lexical, hybrid, and rerank live in their packages today.
 
 ### `generation/`
 

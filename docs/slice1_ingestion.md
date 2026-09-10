@@ -75,6 +75,6 @@ scanned PDFs may require OCR and are outside the default parser profile.
 
 - retrieval `Chunk` creation / parent-child chunking → **Slice 2**
 - embeddings, Qdrant, dense retrieve → **Slice 3**
-- BM25 (Slice 4 — done), hybrid/RRF (Slice 5 — done), reranking (Slice 6), context expansion (Slice 7), generation (Slice 8+)
+- BM25 (Slice 4 — done), hybrid/RRF (Slice 5 — done), reranking (Slice 6 — done), context expansion (Slice 7), generation (Slice 8+)
 - authoritative `--sync` / deletion
 - OCR-focused fixture suite

@@ -2,7 +2,7 @@
 
 This document converts the architecture into incremental, testable implementation slices. Each slice should leave the repository in a working state. Avoid building multiple major layers simultaneously: the evaluation harness depends on being able to attribute improvements and regressions to individual changes.
 
-**Implementation status:** Slices 0–5 are implemented. Planned next: 6 rerank → 7 expansion → 8+ generation. Authoritative notes: `docs/slice0_contracts.md` … `docs/slice5_hybrid_retrieval.md`.
+**Implementation status:** Slices 0–6 are implemented. Planned next: 7 expansion → 8+ generation. Authoritative notes: `docs/slice0_contracts.md` … `docs/slice6_cross_encoder_reranking.md`.
 
 ---
 
@@ -297,32 +297,35 @@ Hybrid retrieval produces measurable results and an ablation table can compare d
 
 # Slice 6 — Cross-encoder reranking
 
-**Reserved after Slice 5.** Intentionally excluded from Slice 3 so dense embedding/index
-quality stays separable from reranker gains. Model not locked until Slice 6 design interview
-(compare local options on multilingual ability, context length, latency, deploy size).
+**Status:** implemented. See `docs/slice6_cross_encoder_reranking.md`.
+
+Intentionally excluded from Slice 3 so dense embedding/index quality stays
+separable from reranker gains. Locked model: `BAAI/bge-reranker-v2-m3` @
+`953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e`; CI uses `FakeReranker`
+(`fake-rerank-digest-v1`).
 
 ## Objective
 
-Improve ranking quality by reranking the fused candidate set with a local cross-encoder
-(candidate pool e.g. top 30–100 → final top 5–10).
+Improve ranking quality by reranking the fused hybrid candidate set with a local
+cross-encoder (`input_k=30` → `output_k=10`).
 
 ## Deliverables
 
 - reranker interface mirroring embedders (`FakeReranker` + provisioned `CrossEncoderReranker`);
-- local-only loading, deterministic config identity, no runtime downloads;
-- batch reranking;
-- configurable candidate and output sizes;
-- timing instrumentation;
-- benchmark delta vs hybrid-only (quality + latency).
+- local-only loading, deterministic `rrkcfg_` identity, no runtime downloads;
+- `plain-pair-v1` / `seq-trunc-1024-passage-right-v1` / `raw-logit-v1` / `chunk-id-asc-v1`;
+- batch reranking; configurable `input_k` / `output_k`;
+- timing instrumentation (`hybrid` / `pair_build` / `rerank_infer` / `sort` / `total`);
+- `gold_in_rerank_pool` eval diagnostic; CLI `provision reranker`, `retrieve hybrid-rerank`,
+  `eval --method hybrid-rerank`, doctor hybrid-rerank lines.
 
 ## Required analysis
 
 Measure both quality and latency. Report whether reranking improves:
 
 - MRR;
-- nDCG@10;
 - Recall at the final evidence cut;
-- downstream answer accuracy once generation exists.
+- (later) nDCG@10 / downstream answer accuracy once generation exists.
 
 ## Exit criteria
 

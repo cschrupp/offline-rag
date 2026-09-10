@@ -54,6 +54,14 @@ models/embeddings/**
 models/embeddings/qwen3-embedding-0.6b/*
 !models/embeddings/qwen3-embedding-0.6b/.gitkeep
 !models/embeddings/qwen3-embedding-0.6b/README.md
+!models/rerankers/
+models/rerankers/**
+!models/rerankers/.gitkeep
+!models/rerankers/README.md
+!models/rerankers/bge-reranker-v2-m3/
+models/rerankers/bge-reranker-v2-m3/*
+!models/rerankers/bge-reranker-v2-m3/.gitkeep
+!models/rerankers/bge-reranker-v2-m3/README.md
 
 # Evaluation run outputs
 eval/results/*

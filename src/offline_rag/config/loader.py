@@ -41,6 +41,7 @@ _ENV_FIELD_MAP: dict[str, tuple[str, ...]] = {
     "DOCLING_ARTIFACTS_PATH": ("paths", "docling_artifacts"),
     "TOKENIZER_ARTIFACTS_PATH": ("paths", "tokenizer_artifacts"),
     "EMBEDDING_ARTIFACTS_PATH": ("paths", "embedding_artifacts"),
+    "RERANKER_ARTIFACTS_PATH": ("paths", "reranker_artifacts"),
     "EVAL_RESULTS": ("paths", "eval_results"),
     "LOG_LEVEL": ("logging", "level"),
     "LOG_STRUCTURED": ("logging", "structured"),

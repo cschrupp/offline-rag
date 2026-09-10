@@ -28,13 +28,13 @@
 
 - [x] BM25 / lexical baseline (Slice 4; project-owned inverted index + bm25-okapi-v1)
 - [x] Hybrid retrieval / RRF fusion (Slice 5; query-time rrf-v1 over dense+lexical)
-- [ ] Cross-encoder reranking over fused pools (Slice 6; model TBD at design time)
+- [x] Cross-encoder reranking over fused pools (Slice 6; BGE bge-reranker-v2-m3 + FakeReranker)
 - [ ] Parent/neighbor context expansion (Slice 7)
 - [ ] Ablation report (Dense → +BM25 → +RRF → +reranker → +expansion)
 
 **Release criterion:** measured comparison of dense, BM25, hybrid, and hybrid+reranker.
 
-**Status:** Slice 5 hybrid/RRF implemented. Next: Slice 6 cross-encoder reranking.
+**Status:** Slice 6 hybrid-rerank implemented. Next: Slice 7 parent/neighbor expansion.
 
 ## Milestone 3 — Grounded local QA
 

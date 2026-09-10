@@ -32,6 +32,15 @@ TECHNICAL_ANALYZER_CONTRACT = "technical-v1"
 BM25_OKAPI_CONTRACT = "bm25-okapi-v1"
 LOCAL_INVERTED_INDEX_CONTRACT = "local-inverted-index-v1"
 RRF_FUSION_CONTRACT = "rrf-v1"
+BGE_RERANKER_MODEL_ID = "BAAI/bge-reranker-v2-m3"
+BGE_RERANKER_PINNED_REVISION = "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e"
+SENTENCE_TRANSFORMERS_CROSS_ENCODER_ADAPTER = "sentence-transformers-cross-encoder-v1"
+PLAIN_PAIR_INPUT_CONTRACT = "plain-pair-v1"
+SEQ_TRUNC_1024_PASSAGE_RIGHT = "seq-trunc-1024-passage-right-v1"
+RAW_LOGIT_SCORE_CONTRACT = "raw-logit-v1"
+CHUNK_ID_ASC_TIE_BREAK = "chunk-id-asc-v1"
+FAKE_RERANK_DIGEST_CONTRACT = "fake-rerank-digest-v1"
+BGE_RERANKER_ARTIFACT_CONTRACT = "offline-rag-reranker-artifact-v1"
 
 
 def _sha256_hex(data: bytes) -> str:
@@ -370,3 +379,8 @@ def lexical_index_id(
 def fusion_config_hash(data: Mapping[str, Any]) -> str:
     """Return ``fuscfg_<sha256>`` for fusion-policy-affecting configuration."""
     return canonical_config_hash(data).replace("cfg_", "fuscfg_", 1)
+
+
+def reranker_config_hash(data: Mapping[str, Any]) -> str:
+    """Return ``rrkcfg_<sha256>`` for reranker ranking-policy configuration."""
+    return canonical_config_hash(data).replace("cfg_", "rrkcfg_", 1)

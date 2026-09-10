@@ -52,5 +52,6 @@ ignore = ["E501"]
 "src/offline_rag/dense/pipeline.py" = ["BLE001"]
 "src/offline_rag/dense/evaluate.py" = ["BLE001"]
 "src/offline_rag/dense/provision.py" = ["BLE001"]
+"src/offline_rag/rerank/provision.py" = ["BLE001"]
 "scripts/*" = ["T20"]
 

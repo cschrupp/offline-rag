@@ -9,8 +9,17 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from offline_rag.core.ids import (
+    BGE_RERANKER_MODEL_ID,
+    BGE_RERANKER_PINNED_REVISION,
+    CHUNK_ID_ASC_TIE_BREAK,
+    PLAIN_PAIR_INPUT_CONTRACT,
+    RAW_LOGIT_SCORE_CONTRACT,
+    SENTENCE_TRANSFORMERS_CROSS_ENCODER_ADAPTER,
+    SEQ_TRUNC_1024_PASSAGE_RIGHT,
+)
 from offline_rag.domain.types import NonEmptyStr, NonNegativeInt, PositiveInt, Score
 
 
@@ -39,6 +48,7 @@ class PathSettings(BaseModel):
     docling_artifacts: Path = Path("models/docling")
     tokenizer_artifacts: Path = Path("models/tokenizers/tiktoken")
     embedding_artifacts: Path = Path("models/embeddings")
+    reranker_artifacts: Path = Path("models/rerankers")
     eval_results: Path = Path("eval/results")
 
 
@@ -218,15 +228,45 @@ class FusionSettings(BaseModel):
     output_top_k: PositiveInt = 10
 
 
+class RerankerModelSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    model_id: NonEmptyStr = BGE_RERANKER_MODEL_ID
+    revision: NonEmptyStr = BGE_RERANKER_PINNED_REVISION
+    model_path: Path = Path("models/rerankers/bge-reranker-v2-m3")
+    adapter_contract: NonEmptyStr = SENTENCE_TRANSFORMERS_CROSS_ENCODER_ADAPTER
+    local_files_only: bool = True
+    trust_remote_code: bool = False
+
+
 class RerankerSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     enabled: bool = True
-    model: NonEmptyStr = "REPLACE_WITH_LOCAL_RERANKER"
-    model_path: Path = Path("models/reranker/REPLACE_ME")
-    local_files_only: bool = True
+    implementation: NonEmptyStr = "sentence_transformers"
+    model: RerankerModelSettings = Field(default_factory=RerankerModelSettings)
     input_k: PositiveInt = 30
-    output_k: PositiveInt = 6
+    output_k: PositiveInt = 10
+    input_construction: NonEmptyStr = PLAIN_PAIR_INPUT_CONTRACT
+    sequence_contract: NonEmptyStr = SEQ_TRUNC_1024_PASSAGE_RIGHT
+    max_length: PositiveInt = 1024
+    score_transform: NonEmptyStr = RAW_LOGIT_SCORE_CONTRACT
+    tie_break: NonEmptyStr = CHUNK_ID_ASC_TIE_BREAK
+    device: NonEmptyStr = "auto"
+    batch_size: PositiveInt = 16
+
+    @model_validator(mode="after")
+    def _validate_sequence_contract(self) -> RerankerSettings:
+        if self.sequence_contract == SEQ_TRUNC_1024_PASSAGE_RIGHT and self.max_length != 1024:
+            raise ValueError(
+                f"{SEQ_TRUNC_1024_PASSAGE_RIGHT} requires max_length=1024 "
+                f"(got {self.max_length})"
+            )
+        if not self.model.local_files_only:
+            raise ValueError("reranker.model.local_files_only must be true")
+        if self.model.trust_remote_code:
+            raise ValueError("reranker.model.trust_remote_code must be false")
+        return self
 
 
 class ContextSettings(BaseModel):

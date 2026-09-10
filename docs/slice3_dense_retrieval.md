@@ -102,16 +102,14 @@ embedding/index gains stay separable from reranker gains.
 Slice 3  Dense indexing/retrieval     (done — this document)
 Slice 4  Lexical/BM25 retrieval       (done — see docs/slice4_lexical_retrieval.md)
 Slice 5  Hybrid retrieval / RRF fusion (done — see docs/slice5_hybrid_retrieval.md)
-Slice 6  Cross-encoder reranking      (over fused candidate pools)
+Slice 6  Cross-encoder reranking      (done — see docs/slice6_cross_encoder_reranking.md)
 Slice 7  Parent/neighbor context expansion
 Slice 8+ Generation / orchestration   (Ollama, citations, recovery, …)
 ```
 
 Ablation path: Dense → +BM25 → +RRF → +reranker → +parent/neighbor expansion.
 
-Slice 6 model choice is **not** locked yet; design interview should compare local
-options. Expected pattern (mirrors embedders): `FakeReranker` + provisioned
-`CrossEncoderReranker`, config identity, no runtime downloads.
+Slice 6 uses provisioned `BAAI/bge-reranker-v2-m3` plus CI `FakeReranker` (mirrors embedders): config identity, no runtime downloads.
 
 Also deferred beyond the ladder above: Qdrant server / Edge, reference-aware index GC,
 full experiment registry / dashboards.
