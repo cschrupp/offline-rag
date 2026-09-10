@@ -31,6 +31,7 @@ PLAIN_LEXICAL_TEXT_CONTRACT = "plain-v1"
 TECHNICAL_ANALYZER_CONTRACT = "technical-v1"
 BM25_OKAPI_CONTRACT = "bm25-okapi-v1"
 LOCAL_INVERTED_INDEX_CONTRACT = "local-inverted-index-v1"
+RRF_FUSION_CONTRACT = "rrf-v1"
 
 
 def _sha256_hex(data: bytes) -> str:
@@ -364,3 +365,8 @@ def lexical_index_id(
     }
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return f"lexical_{_sha256_hex(encoded.encode('utf-8'))}"
+
+
+def fusion_config_hash(data: Mapping[str, Any]) -> str:
+    """Return ``fuscfg_<sha256>`` for fusion-policy-affecting configuration."""
+    return canonical_config_hash(data).replace("cfg_", "fuscfg_", 1)

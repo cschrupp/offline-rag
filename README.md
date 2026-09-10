@@ -236,7 +236,7 @@ offline-rag/
 └── scripts/
 ```
 
-See `PROJECT_STRUCTURE.md` for the current Slice 0–4 tree and the intended long-term module layout.
+See `PROJECT_STRUCTURE.md` for the current Slice 0–5 tree and the intended long-term module layout.
 
 ## Development sequence
 
@@ -246,7 +246,7 @@ The project is intentionally sliced so each stage produces a working, testable s
 2. **Document ingestion** — Docling parsing, metadata normalization, deterministic document/parsed IDs. *(done)*
 3. **Structure-aware chunking** — parent/child chunks, neighbor links, chunk-set state. *(done)*
 4. **Dense baseline** — local embeddings, Qdrant Local, `retrieve`, dense Recall@k/MRR. *(done)*
-5. **Lexical baseline and hybrid retrieval** — BM25 + RRF.
+5. **Lexical baseline and hybrid retrieval** — BM25 + RRF. *(done)*
 6. **Reranking** — second-stage cross-encoder.
 7. **Hierarchical context** — child retrieval + parent/neighbor expansion.
 8. **Grounded generation** — generic local inference client, Ollama default, answer schema, page-level citations.
@@ -258,9 +258,9 @@ The project is intentionally sliced so each stage produces a working, testable s
 14. **Demo UI** — query inspector, retrieval visualization, benchmark dashboard.
 15. **Portfolio packaging** — reproducible benchmark report, architecture diagram, demo scenario.
 
-Detailed exit criteria are in `detailed_implementation_slices.md`. Slice notes: `docs/slice0_contracts.md` … `docs/slice4_lexical_retrieval.md`.
+Detailed exit criteria are in `detailed_implementation_slices.md`. Slice notes: `docs/slice0_contracts.md` … `docs/slice5_hybrid_retrieval.md`.
 
-## Quick start (through dense + lexical retrieve)
+## Quick start (through hybrid retrieve)
 
 ```bash
 uv sync
@@ -275,6 +275,7 @@ offline-rag index --corpus engineering          # requires provisioned Qwen unle
 offline-rag index lexical --corpus engineering
 offline-rag retrieve --corpus engineering --query "maximum operating pressure"
 offline-rag retrieve lexical --corpus engineering --query "API-12"
+offline-rag retrieve hybrid --corpus engineering --query "API-12 pressure"
 offline-rag doctor --corpus engineering
 ```
 
@@ -282,7 +283,7 @@ Default config expects Qwen weights under `models/embeddings/qwen3-embedding-0.6
 
 ## Demo experience
 
-**Today (Slice 4):** ingest → chunk → dense + lexical index → retrieve / retrieve lexical / eval retrieve / doctor.
+**Today (Slice 5):** ingest → chunk → dense + lexical index → retrieve / retrieve lexical / retrieve hybrid / eval retrieve / doctor.
 
 **Target demo** should allow a user to:
 
@@ -330,9 +331,9 @@ Use public, redistributable technical documents rather than proprietary material
 
 ## Project status
 
-**Phase:** Milestone 2 started — Slices 0–4 done (dense + lexical BM25 baselines).
+**Phase:** Milestone 2 — Slices 0–5 done (dense + lexical BM25 + hybrid RRF).
 
-Working local path: ingest → chunk → index / index lexical → retrieve / retrieve lexical → eval retrieve.
-Still deferred: hybrid/RRF (5), reranking (6), parent expansion (7), generation/`query` (8+).
+Working local path: ingest → chunk → index / index lexical → retrieve / retrieve lexical / retrieve hybrid → eval retrieve.
+Still deferred: reranking (6), parent expansion (7), generation/`query` (8+).
 
-See `ROADMAP.md` and `docs/slice4_lexical_retrieval.md`.
+See `ROADMAP.md` and `docs/slice5_hybrid_retrieval.md`.

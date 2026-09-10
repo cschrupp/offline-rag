@@ -398,3 +398,81 @@ class LexicalRetrievalEvaluationResult(BaseModel):
     started_at: datetime
     completed_at: datetime
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class FusionProvenance(BaseModel):
+    """Branch ranks/scores and RRF contribution for one hybrid candidate."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    rrf_score: Score
+    dense_rank: PositiveInt | None = None
+    dense_score: Score | None = None
+    lexical_rank: PositiveInt | None = None
+    lexical_score: Score | None = None
+
+
+class HybridCandidate(BaseModel):
+    """Project-owned hybrid retrieval hit with fusion provenance."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    rank: PositiveInt
+    score: Score
+    chunk_id: NonEmptyStr
+    document_id: NonEmptyStr
+    parent_chunk_id: NonEmptyStr | None = None
+    previous_chunk_id: NonEmptyStr | None = None
+    next_chunk_id: NonEmptyStr | None = None
+    text: NonEmptyStr
+    section_path: list[str] = Field(default_factory=list)
+    page_start: PositiveInt | None = None
+    page_end: PositiveInt | None = None
+    line_start: PositiveInt | None = None
+    line_end: PositiveInt | None = None
+    token_count: NonNegativeInt = 0
+    chunk_artifact_id: NonEmptyStr | None = None
+    fusion: FusionProvenance
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class HybridRetrievalResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    query: NonEmptyStr
+    method: NonEmptyStr = "hybrid"
+    top_k: PositiveInt
+    candidates: list[HybridCandidate] = Field(default_factory=list)
+    dense_index_id: NonEmptyStr
+    lexical_index_id: NonEmptyStr
+    fusion_config_hash: NonEmptyStr
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class HybridRetrievalEvaluationResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    run_id: NonEmptyStr
+    evaluation_type: NonEmptyStr = "hybrid_retrieval"
+    method: NonEmptyStr = "hybrid"
+    dataset_id: NonEmptyStr
+    case_count: NonNegativeInt
+    corpus_id: NonEmptyStr | None = None
+    chunk_set_id: NonEmptyStr
+    dense_index_id: NonEmptyStr
+    lexical_index_id: NonEmptyStr
+    fusion_config_hash: NonEmptyStr
+    dense_top_k: PositiveInt
+    lexical_top_k: PositiveInt
+    top_k: PositiveInt
+    recall_at_1: Score
+    recall_at_5: Score
+    recall_at_10: Score
+    mrr: Score
+    latency_mean_ms: Score
+    latency_p50_ms: Score
+    latency_p95_ms: Score
+    cases: list[RetrievalCaseResult] = Field(default_factory=list)
+    started_at: datetime
+    completed_at: datetime
+    metadata: dict[str, Any] = Field(default_factory=dict)

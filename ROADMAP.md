@@ -27,14 +27,14 @@
 ## Milestone 2 — Modern retrieval stack
 
 - [x] BM25 / lexical baseline (Slice 4; project-owned inverted index + bm25-okapi-v1)
-- [ ] Hybrid retrieval / RRF fusion (Slice 5)
+- [x] Hybrid retrieval / RRF fusion (Slice 5; query-time rrf-v1 over dense+lexical)
 - [ ] Cross-encoder reranking over fused pools (Slice 6; model TBD at design time)
 - [ ] Parent/neighbor context expansion (Slice 7)
 - [ ] Ablation report (Dense → +BM25 → +RRF → +reranker → +expansion)
 
 **Release criterion:** measured comparison of dense, BM25, hybrid, and hybrid+reranker.
 
-**Status:** Slice 4 lexical indexing/retrieve/eval implemented. Next: Slice 5 hybrid/RRF.
+**Status:** Slice 5 hybrid/RRF implemented. Next: Slice 6 cross-encoder reranking.
 
 ## Milestone 3 — Grounded local QA
 

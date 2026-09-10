@@ -2,7 +2,7 @@
 
 The project is organized around explicit domain boundaries. Framework-specific integrations live behind project-owned interfaces so that Docling, Qdrant, LangGraph, Ollama, or other dependencies can be replaced without rewriting the application core.
 
-## Implemented through Slice 4 (current)
+## Implemented through Slice 5 (current)
 
 ```text
 offline-rag/
@@ -29,7 +29,7 @@ offline-rag/
 │   ├── provision_tiktoken.py
 │   └── provision_embedding.py
 ├── docs/
-│   ├── slice0_contracts.md … slice4_lexical_retrieval.md
+│   ├── slice0_contracts.md … slice5_hybrid_retrieval.md
 │   └── model_provisioning.md
 ├── src/offline_rag/
 │   ├── cli.py
@@ -40,13 +40,14 @@ offline-rag/
 │   ├── chunking/        # structure-aware chunker, tiktoken, chunk pipeline
 │   ├── dense/           # embedders, Qdrant Local, index/retrieve/eval
 │   ├── lexical/         # BM25 inverted index, analyze, score, retrieve/eval
+│   ├── hybrid/          # query-time RRF (no hybrid index/state)
 │   └── observability/
 └── tests/
 ```
 
 ## Intended long-term tree
 
-The tree below remains the target shape for later slices (BM25 → RRF → rerank → expansion → generation, API, UI). Prefer evolving existing packages rather than renaming prematurely.
+The tree below remains the target shape for later slices (rerank → expansion → generation, API, UI). Prefer evolving existing packages rather than renaming prematurely.
 
 ```text
 offline-rag/
@@ -128,11 +129,12 @@ offline-rag/
 │       ├── chunking/              # Slice 2 (structure-aware; not Docling chunker)
 │       ├── dense/                 # Slice 3 (embed + Qdrant Local + retrieve + dense eval)
 │       ├── lexical/               # Slice 4 (BM25 inverted index + retrieve + lexical eval)
+│       ├── hybrid/                # Slice 5 (query-time rrf-v1; no hybrid index)
 │       │
 │       ├── embeddings/            # optional future split; dense/ currently owns adapters
 │       ├── index/                 # optional future split
 │       │
-│       ├── retrieval/             # future: BM25, fusion, rerank, context
+│       ├── retrieval/             # future: rerank, context (dense/lexical/hybrid stay owned)
 │       │
 │       ├── generation/
 │       │   ├── base.py
@@ -235,13 +237,17 @@ Embedding adapters, EmbeddingArtifact cache, Qdrant Local backend, dense index p
 
 Project-owned inverted index, `technical-v1` analyzer, `bm25-okapi-v1` scorer, `LexicalRetriever`, and lexical eval (Slice 4). Independent of dense indexes.
 
+### `hybrid/`
+
+Query-time `HybridRetriever` + `ReciprocalRankFusion` (rrf-v1). Derived READY/NOT_READY only; no HybridState or hybrid index artifacts (Slice 5).
+
 ### `embeddings/` / `index/` (future optional splits)
 
 Slice 3 keeps adapters under `dense/`. Later refactors may split packages if the tree grows; do not duplicate contracts.
 
 ### `retrieval/`
 
-Future: fusion (5), reranking (6), context assembly (7), then generation/confidence (8+). Dense and lexical live in their packages today.
+Future: reranking (6), context assembly (7), then generation/confidence (8+). Dense, lexical, and hybrid live in their packages today.
 
 ### `generation/`
 

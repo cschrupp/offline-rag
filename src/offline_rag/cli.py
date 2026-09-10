@@ -19,7 +19,11 @@ from offline_rag.chunking.tokenize import validate_tiktoken_artifacts
 from offline_rag.config import ConfigError, load_settings
 from offline_rag.config.models import AppSettings
 from offline_rag.core.ids import dense_point_uuid
-from offline_rag.dense.evaluate import DenseEvaluationError, DenseRetrievalEvaluator
+from offline_rag.dense.evaluate import (
+    DenseEvaluationError,
+    DenseRetrievalEvaluator,
+    EvaluationError,
+)
 from offline_rag.dense.persistence import (
     index_state_path,
     load_index_manifest,
@@ -40,6 +44,9 @@ from offline_rag.dense.status import indexing_status_for_corpus
 from offline_rag.domain.chunking import ChunkingStatus
 from offline_rag.domain.indexing import IndexingStatus, ProvisioningStatus
 from offline_rag.domain.ingestion import IngestionStatus
+from offline_rag.hybrid.evaluate import HybridRetrievalEvaluator
+from offline_rag.hybrid.retrieve import HybridRetrievalError, HybridRetriever
+from offline_rag.hybrid.status import hybrid_status_for_corpus
 from offline_rag.ingestion.discovery import DiscoveryError, validate_corpus_name
 from offline_rag.ingestion.docling_artifacts import validate_docling_artifacts
 from offline_rag.ingestion.persistence import corpus_state_path, load_corpus_state
@@ -954,6 +961,74 @@ def cmd_retrieve_lexical(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_retrieve_hybrid(args: argparse.Namespace) -> int:
+    try:
+        settings = _load_settings(args)
+    except ConfigError as exc:
+        print(f"retrieve hybrid: configuration failed: {exc}", file=sys.stderr)
+        return 1
+
+    logger = configure_logging(
+        level=settings.logging.level,
+        structured=settings.logging.structured,
+    )
+    log_event(logger, 20, "hybrid retrieve started", event="retrieve.hybrid.start")
+
+    retriever = HybridRetriever(settings)
+    try:
+        result = retriever.retrieve(
+            query=args.query,
+            corpus_name=args.corpus,
+            top_k=args.top_k,
+        )
+    except HybridRetrievalError as exc:
+        print(f"retrieve hybrid: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        retriever.close()
+
+    if args.json:
+        print(result.model_dump_json())
+    else:
+        print("Hybrid Retrieval")
+        print()
+        print("Query:")
+        print(result.query)
+        print()
+        print(f"Dense index:   {result.dense_index_id}")
+        print(f"Lexical index: {result.lexical_index_id}")
+        print(
+            f"Fusion:        {settings.fusion.contract_version} "
+            f"(k={settings.fusion.rrf_k}, "
+            f"dense={settings.fusion.dense_top_k}, "
+            f"lexical={settings.fusion.lexical_top_k})"
+        )
+        print(f"fusion_config: {result.fusion_config_hash}")
+        print()
+        for candidate in result.candidates:
+            section = " / ".join(candidate.section_path) if candidate.section_path else "-"
+            dens = (
+                f"rank {candidate.fusion.dense_rank} score {candidate.fusion.dense_score:.3f}"
+                if candidate.fusion.dense_rank is not None
+                else "-"
+            )
+            lexi = (
+                f"rank {candidate.fusion.lexical_rank} score {candidate.fusion.lexical_score:.3f}"
+                if candidate.fusion.lexical_rank is not None
+                else "-"
+            )
+            print(f"{candidate.rank}. RRF={candidate.score:.6f}")
+            print(f"   chunk: {candidate.chunk_id}")
+            print(f"   dense:   {dens}")
+            print(f"   lexical: {lexi}")
+            print(f"   section: {section}")
+            print()
+            for line in candidate.text.splitlines() or [candidate.text]:
+                print(f"   {line}")
+            print()
+    return 0
+
+
 def cmd_query(_args: argparse.Namespace) -> int:
     print(
         "Full query/generation is not implemented yet. "
@@ -1032,8 +1107,54 @@ def cmd_eval_retrieve(args: argparse.Namespace) -> int:
                 print(f"Report:       {result_path}")
         return 0
 
+    if method == "hybrid":
+        evaluator = HybridRetrievalEvaluator(settings)
+        try:
+            report = evaluator.evaluate(
+                Path(args.dataset),
+                corpus_name=args.corpus,
+                top_k=int(args.top_k),
+                output_path=Path(args.output) if args.output else None,
+            )
+        except (EvaluationError, HybridRetrievalError) as exc:
+            print(f"eval retrieve: {exc}", file=sys.stderr)
+            return 1
+        finally:
+            evaluator.retriever.close()
+
+        if args.json:
+            print(report.model_dump_json())
+        else:
+            print("Hybrid retrieval evaluation completed")
+            print()
+            print(f"Run:          {report.run_id}")
+            print(f"Method:       {report.method}")
+            print(f"Dataset:      {report.dataset_id}")
+            print(f"Cases:        {report.case_count}")
+            print(f"Dense index:  {report.dense_index_id}")
+            print(f"Lexical idx:  {report.lexical_index_id}")
+            print(f"Fusion hash:  {report.fusion_config_hash}")
+            print(f"Chunk set:    {report.chunk_set_id}")
+            print(f"top_k:        {report.top_k}")
+            print()
+            print(f"Recall@1:     {report.recall_at_1:.4f}")
+            print(f"Recall@5:     {report.recall_at_5:.4f}")
+            print(f"Recall@10:    {report.recall_at_10:.4f}")
+            print(f"MRR:          {report.mrr:.4f}")
+            print(f"Latency mean: {report.latency_mean_ms:.1f} ms")
+            print(f"Latency p50:  {report.latency_p50_ms:.1f} ms")
+            print(f"Latency p95:  {report.latency_p95_ms:.1f} ms")
+            result_path = report.metadata.get("result_path")
+            if result_path:
+                print()
+                print(f"Report:       {result_path}")
+        return 0
+
     if method != "dense":
-        print(f"eval retrieve: unsupported method '{method}' (use dense|lexical)", file=sys.stderr)
+        print(
+            f"eval retrieve: unsupported method '{method}' (use dense|lexical|hybrid)",
+            file=sys.stderr,
+        )
         return 1
 
     evaluator = DenseRetrievalEvaluator(settings)
@@ -1295,6 +1416,13 @@ def cmd_doctor(args: argparse.Namespace) -> int:
             f"Action                           offline-rag index lexical --corpus {corpus_name}"
         )
 
+    hybrid_status = hybrid_status_for_corpus(settings, corpus_name)
+    notes.append(f"Hybrid status                   {hybrid_status}")
+    if hybrid_status != "READY":
+        notes.append(
+            "Action                           ensure dense+lexical CURRENT on same chunk set"
+        )
+
     for note in notes:
         print(f"doctor: {note}")
 
@@ -1413,6 +1541,20 @@ def build_parser() -> argparse.ArgumentParser:
     retrieve_lexical.add_argument("--json", action="store_true", help="Emit LexicalRetrievalResult JSON")
     retrieve_lexical.set_defaults(func=cmd_retrieve_lexical)
 
+    retrieve_hybrid = retrieve_sub.add_parser("hybrid", help="Hybrid dense+lexical RRF retrieval")
+    _add_config_argument(retrieve_hybrid)
+    retrieve_hybrid.add_argument("--corpus", default="default", help="Logical corpus name")
+    retrieve_hybrid.add_argument("--query", required=True, help="Query text")
+    retrieve_hybrid.add_argument(
+        "--top-k",
+        type=int,
+        default=None,
+        dest="top_k",
+        help="Override fusion.output_top_k",
+    )
+    retrieve_hybrid.add_argument("--json", action="store_true", help="Emit HybridRetrievalResult JSON")
+    retrieve_hybrid.set_defaults(func=cmd_retrieve_hybrid)
+
     query = subparsers.add_parser("query", help="Full RAG query/generation (not implemented yet)")
     _add_config_argument(query)
     query.set_defaults(func=cmd_query)
@@ -1434,7 +1576,7 @@ def build_parser() -> argparse.ArgumentParser:
     eval_retrieve.add_argument("--corpus", default="default", help="Logical corpus name")
     eval_retrieve.add_argument(
         "--method",
-        choices=("dense", "lexical"),
+        choices=("dense", "lexical", "hybrid"),
         default="dense",
         help="Retriever under test (default: dense)",
     )

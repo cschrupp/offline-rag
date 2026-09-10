@@ -10,7 +10,7 @@ The preferred loop is:
 baseline -> observe failure -> form hypothesis -> implement change -> benchmark -> keep/revert
 ```
 
-## 1b. Current local pipeline (Slices 0–4)
+## 1b. Current local pipeline (Slices 0–5)
 
 ```bash
 uv sync
@@ -25,12 +25,14 @@ offline-rag index --corpus <name>
 offline-rag index lexical --corpus <name>
 offline-rag retrieve --corpus <name> --query "..."
 offline-rag retrieve lexical --corpus <name> --query "..."
+offline-rag retrieve hybrid --corpus <name> --query "..."
 offline-rag eval retrieve --dataset <dir> --corpus <name>
 offline-rag eval retrieve --method lexical --dataset <dir> --corpus <name>
+offline-rag eval retrieve --method hybrid --dataset <dir> --corpus <name>
 offline-rag doctor --corpus <name>
 ```
 
-`offline-rag query` (generation) is not implemented yet. Use `retrieve` / `retrieve lexical` for evidence.
+`offline-rag query` (generation) is not implemented yet. Use `retrieve` / `retrieve lexical` / `retrieve hybrid` for evidence.
 
 For CI-scale dense tests, set `indexing.embedding.implementation: fake` (see unit tests). Do not rely on FakeEmbedder for portfolio quality claims.
 

@@ -27,6 +27,8 @@ def test_root_help() -> None:
         (["index", "--help"], "index"),
         (["index", "inspect", "--help"], "index inspect"),
         (["retrieve", "--help"], "retrieve"),
+        (["retrieve", "lexical", "--help"], "retrieve lexical"),
+        (["retrieve", "hybrid", "--help"], "retrieve hybrid"),
         (["query", "--help"], "query"),
         (["eval", "run", "--help"], "eval run"),
         (["eval", "compare", "--help"], "eval compare"),

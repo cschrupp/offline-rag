@@ -1,6 +1,6 @@
 # Evaluation Harness
 
-**Current readiness:** Slice 3 dense and Slice 4 lexical retrieval eval share the same gold format (`offline-rag eval retrieve [--method dense|lexical]`: Recall@1/5/10, MRR, latency; gold bound to `chunk_set_id`). Layers below describe the full harness target; hybrid/generation/citation layers are not implemented yet.
+**Current readiness:** Slice 3–5 retrieval eval share the same gold format (`offline-rag eval retrieve [--method dense|lexical|hybrid]`: Recall@1/5/10, MRR, latency; gold bound to `chunk_set_id`). Layers below describe the full harness target; generation/citation layers are not implemented yet.
 
 ## Purpose
 

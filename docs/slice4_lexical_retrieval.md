@@ -73,5 +73,6 @@ data/corpora/<corpus>/lexical/state.json
 
 ## Out of scope
 
-Hybrid/RRF, reranking, parent expansion, section-prefix lexical text, third-party
-BM25 engines, learned sparse retrieval, lexical GC.
+Reranking (Slice 6), parent expansion (Slice 7), section-prefix lexical text,
+third-party BM25 engines, learned sparse retrieval, lexical GC.
+Hybrid/RRF is Slice 5 (see `docs/slice5_hybrid_retrieval.md`).

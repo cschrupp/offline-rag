@@ -2,7 +2,7 @@
 
 This document converts the architecture into incremental, testable implementation slices. Each slice should leave the repository in a working state. Avoid building multiple major layers simultaneously: the evaluation harness depends on being able to attribute improvements and regressions to individual changes.
 
-**Implementation status:** Slices 0–4 are implemented. Planned next: 5 RRF → 6 rerank → 7 expansion → 8+ generation. Authoritative notes: `docs/slice0_contracts.md` … `docs/slice4_lexical_retrieval.md`.
+**Implementation status:** Slices 0–5 are implemented. Planned next: 6 rerank → 7 expansion → 8+ generation. Authoritative notes: `docs/slice0_contracts.md` … `docs/slice5_hybrid_retrieval.md`.
 
 ---
 
@@ -256,6 +256,8 @@ Dense and BM25 can be benchmarked on the same gold set and compared by query cat
 ---
 
 # Slice 5 — Hybrid retrieval and rank fusion
+
+**Status:** implemented. Authoritative contract: `docs/slice5_hybrid_retrieval.md`.
 
 ## Objective
 

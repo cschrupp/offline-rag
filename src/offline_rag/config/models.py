@@ -211,7 +211,11 @@ class FusionSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     method: NonEmptyStr = "rrf"
+    contract_version: NonEmptyStr = "rrf-v1"
     rrf_k: PositiveInt = 60
+    dense_top_k: PositiveInt = 30
+    lexical_top_k: PositiveInt = 30
+    output_top_k: PositiveInt = 10
 
 
 class RerankerSettings(BaseModel):

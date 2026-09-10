@@ -12,7 +12,11 @@ lexical:
 
 fusion:
   method: rrf
+  contract_version: rrf-v1
   rrf_k: 60
+  dense_top_k: 30
+  lexical_top_k: 30
+  output_top_k: 10
 
 reranker:
   enabled: true
