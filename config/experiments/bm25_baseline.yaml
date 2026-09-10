@@ -4,7 +4,7 @@ experiment:
 dense:
   enabled: false
 
-sparse:
+lexical:
   enabled: true
   method: bm25
   top_k: 10

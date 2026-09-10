@@ -268,3 +268,133 @@ class EmbeddingProvisionReport(BaseModel):
     files_downloaded: NonNegativeInt = 0
     errors: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class LexicalIndexManifest(BaseModel):
+    """Immutable description of one lexical (BM25) index derivation."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: NonEmptyStr = "offline-rag-lexical-index-manifest-v1"
+    lexical_index_id: NonEmptyStr
+    corpus_id: NonEmptyStr
+    chunk_set_id: NonEmptyStr
+    lexical_config_hash: NonEmptyStr
+    text_strategy: NonEmptyStr
+    text_contract: NonEmptyStr
+    analyzer_strategy: NonEmptyStr
+    analyzer_contract: NonEmptyStr
+    bm25_contract: NonEmptyStr
+    bm25_k1: Score
+    bm25_b: Score
+    bm25_idf: NonEmptyStr
+    bm25_query_tf: NonEmptyStr
+    backend: NonEmptyStr
+    backend_contract: NonEmptyStr
+    expected_child_count: NonNegativeInt
+    indexed_child_count: NonNegativeInt
+    document_count: NonNegativeInt
+    vocabulary_size: NonNegativeInt
+    avgdl: Score
+    physical_index_relpath: NonEmptyStr
+    created_at: datetime
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class LexicalIndexState(BaseModel):
+    """Mutable pointer to the active lexical index for a logical corpus."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: NonEmptyStr = "offline-rag-lexical-index-state-v1"
+    corpus_name: NonEmptyStr
+    source_corpus_id: NonEmptyStr
+    source_chunk_set_id: NonEmptyStr
+    current_lexical_index_id: NonEmptyStr
+    current_lexical_index_manifest: NonEmptyStr
+    lexical_config_hash: NonEmptyStr
+    created_at: datetime
+    updated_at: datetime
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class LexicalIndexingReport(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    run_id: NonEmptyStr
+    corpus_name: NonEmptyStr
+    corpus_id: NonEmptyStr | None = None
+    chunk_set_id: NonEmptyStr | None = None
+    lexical_config_hash: NonEmptyStr | None = None
+    status: IndexingStatus
+    started_at: datetime
+    completed_at: datetime
+    duration_ms: NonNegativeInt
+    children_total: NonNegativeInt = 0
+    indexed_child_count: NonNegativeInt = 0
+    documents_total: NonNegativeInt = 0
+    vocabulary_size: NonNegativeInt = 0
+    lexical_index_id: NonEmptyStr | None = None
+    lexical_index_manifest_path: str | None = None
+    errors: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class LexicalCandidate(BaseModel):
+    """Project-owned lexical retrieval hit with resolved provenance."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    rank: PositiveInt
+    score: Score
+    chunk_id: NonEmptyStr
+    document_id: NonEmptyStr
+    parent_chunk_id: NonEmptyStr | None = None
+    previous_chunk_id: NonEmptyStr | None = None
+    next_chunk_id: NonEmptyStr | None = None
+    text: NonEmptyStr
+    section_path: list[str] = Field(default_factory=list)
+    page_start: PositiveInt | None = None
+    page_end: PositiveInt | None = None
+    line_start: PositiveInt | None = None
+    line_end: PositiveInt | None = None
+    token_count: NonNegativeInt = 0
+    chunk_artifact_id: NonEmptyStr | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class LexicalRetrievalResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    query: NonEmptyStr
+    method: NonEmptyStr = "lexical"
+    index_id: NonEmptyStr
+    top_k: PositiveInt
+    candidates: list[LexicalCandidate] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class LexicalRetrievalEvaluationResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    run_id: NonEmptyStr
+    evaluation_type: NonEmptyStr = "lexical_retrieval"
+    method: NonEmptyStr = "lexical"
+    dataset_id: NonEmptyStr
+    case_count: NonNegativeInt
+    corpus_id: NonEmptyStr | None = None
+    chunk_set_id: NonEmptyStr
+    index_id: NonEmptyStr
+    lexical_config_hash: NonEmptyStr
+    top_k: PositiveInt
+    recall_at_1: Score
+    recall_at_5: Score
+    recall_at_10: Score
+    mrr: Score
+    latency_mean_ms: Score
+    latency_p50_ms: Score
+    latency_p95_ms: Score
+    cases: list[RetrievalCaseResult] = Field(default_factory=list)
+    started_at: datetime
+    completed_at: datetime
+    metadata: dict[str, Any] = Field(default_factory=dict)

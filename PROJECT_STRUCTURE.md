@@ -2,7 +2,7 @@
 
 The project is organized around explicit domain boundaries. Framework-specific integrations live behind project-owned interfaces so that Docling, Qdrant, LangGraph, Ollama, or other dependencies can be replaced without rewriting the application core.
 
-## Implemented through Slice 3 (current)
+## Implemented through Slice 4 (current)
 
 ```text
 offline-rag/
@@ -17,6 +17,7 @@ offline-rag/
 │   ├── raw/, processed/, manifests/, corpora/
 │   ├── chunks/, chunk-manifests/
 │   ├── embeddings/, index-manifests/
+│   ├── lexical-indexes/, lexical-index-manifests/
 │   └── qdrant/
 ├── models/
 │   ├── docling/
@@ -28,7 +29,7 @@ offline-rag/
 │   ├── provision_tiktoken.py
 │   └── provision_embedding.py
 ├── docs/
-│   ├── slice0_contracts.md … slice3_dense_retrieval.md
+│   ├── slice0_contracts.md … slice4_lexical_retrieval.md
 │   └── model_provisioning.md
 ├── src/offline_rag/
 │   ├── cli.py
@@ -38,6 +39,7 @@ offline-rag/
 │   ├── ingestion/       # parsers, Docling artifacts, ingest pipeline
 │   ├── chunking/        # structure-aware chunker, tiktoken, chunk pipeline
 │   ├── dense/           # embedders, Qdrant Local, index/retrieve/eval
+│   ├── lexical/         # BM25 inverted index, analyze, score, retrieve/eval
 │   └── observability/
 └── tests/
 ```
@@ -87,6 +89,8 @@ offline-rag/
 │   ├── chunk-manifests/
 │   ├── embeddings/
 │   ├── index-manifests/
+│   ├── lexical-indexes/
+│   ├── lexical-index-manifests/
 │   └── qdrant/
 │
 ├── models/                        # ignored; embedding/reranker/docling/tokenizer assets
@@ -123,6 +127,7 @@ offline-rag/
 │       ├── ingestion/             # Slice 1
 │       ├── chunking/              # Slice 2 (structure-aware; not Docling chunker)
 │       ├── dense/                 # Slice 3 (embed + Qdrant Local + retrieve + dense eval)
+│       ├── lexical/               # Slice 4 (BM25 inverted index + retrieve + lexical eval)
 │       │
 │       ├── embeddings/            # optional future split; dense/ currently owns adapters
 │       ├── index/                 # optional future split
@@ -226,13 +231,17 @@ Structure-aware parent/child chunking over ParsedDocuments (Slice 2).
 
 Embedding adapters, EmbeddingArtifact cache, Qdrant Local backend, dense index publish, `DenseRetriever`, and minimal dense eval (Slice 3).
 
+### `lexical/`
+
+Project-owned inverted index, `technical-v1` analyzer, `bm25-okapi-v1` scorer, `LexicalRetriever`, and lexical eval (Slice 4). Independent of dense indexes.
+
 ### `embeddings/` / `index/` (future optional splits)
 
 Slice 3 keeps adapters under `dense/`. Later refactors may split packages if the tree grows; do not duplicate contracts.
 
 ### `retrieval/`
 
-Future: BM25 (4), fusion (5), reranking (6), context assembly (7), then generation/confidence (8+).
+Future: fusion (5), reranking (6), context assembly (7), then generation/confidence (8+). Dense and lexical live in their packages today.
 
 ### `generation/`
 

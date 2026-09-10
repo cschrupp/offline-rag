@@ -44,6 +44,24 @@ from offline_rag.ingestion.discovery import DiscoveryError, validate_corpus_name
 from offline_rag.ingestion.docling_artifacts import validate_docling_artifacts
 from offline_rag.ingestion.persistence import corpus_state_path, load_corpus_state
 from offline_rag.ingestion.pipeline import run_ingestion
+from offline_rag.lexical.backend import LocalInvertedIndexBackend
+from offline_rag.lexical.evaluate import (
+    LexicalEvaluationError,
+    LexicalRetrievalEvaluator,
+)
+from offline_rag.lexical.persistence import (
+    lexical_index_state_path,
+    load_lexical_index_manifest,
+    try_load_lexical_index_manifest,
+    try_load_lexical_index_state,
+)
+from offline_rag.lexical.pipeline import make_lexical_analyzer, run_lexical_indexing
+from offline_rag.lexical.retrieve import LexicalRetrievalError, LexicalRetriever
+from offline_rag.lexical.scoring import idf as bm25_idf
+from offline_rag.lexical.status import (
+    describe_lexical_indexing_status,
+    lexical_indexing_status_for_corpus,
+)
 from offline_rag.observability import configure_logging, log_event
 
 NOT_IMPLEMENTED_EXIT = 2
@@ -85,6 +103,8 @@ def _resolve_settings(settings: AppSettings) -> AppSettings:
                     "chunk_manifests": _resolve(settings.paths.chunk_manifests),
                     "embeddings": _resolve(settings.paths.embeddings),
                     "index_manifests": _resolve(settings.paths.index_manifests),
+                    "lexical_indexes": _resolve(settings.paths.lexical_indexes),
+                    "lexical_index_manifests": _resolve(settings.paths.lexical_index_manifests),
                     "qdrant_storage": _resolve(settings.paths.qdrant_storage),
                     "retrieval_models": _resolve(settings.paths.retrieval_models),
                     "docling_artifacts": _resolve(settings.paths.docling_artifacts),
@@ -418,6 +438,180 @@ def cmd_index(args: argparse.Namespace) -> int:
     return 1 if report.status == IndexingStatus.FAILED else 0
 
 
+def cmd_index_lexical(args: argparse.Namespace) -> int:
+    try:
+        settings = _load_settings(args)
+    except ConfigError as exc:
+        print(f"index lexical: configuration failed: {exc}", file=sys.stderr)
+        return 1
+
+    logger = configure_logging(
+        level=settings.logging.level,
+        structured=settings.logging.structured,
+    )
+    log_event(logger, 20, "lexical index started", event="index.lexical.start")
+    report = run_lexical_indexing(settings=settings, corpus_name=args.corpus)
+
+    if args.json:
+        print(report.model_dump_json())
+    else:
+        label = {
+            IndexingStatus.SUCCESS: "Lexical indexing completed",
+            IndexingStatus.NO_OP: "Lexical indexing completed (no changes)",
+            IndexingStatus.FAILED: "Lexical indexing failed",
+        }[report.status]
+        print(label)
+        print()
+        print(f"Documents:            {report.documents_total}")
+        print(f"Children:             {report.children_total}")
+        print(f"Indexed children:     {report.indexed_child_count}")
+        print(f"Vocabulary:           {report.vocabulary_size}")
+        print()
+        if report.lexical_index_id and report.lexical_index_manifest_path:
+            print(f"Lexical index: {report.lexical_index_id}")
+            print(f"Manifest:      {report.lexical_index_manifest_path}")
+        else:
+            print("No complete lexical index was published.")
+        if report.errors:
+            print()
+            print("Errors:")
+            for error in report.errors:
+                print(f"  {error}")
+    return 1 if report.status == IndexingStatus.FAILED else 0
+
+
+def cmd_index_lexical_inspect(args: argparse.Namespace) -> int:
+    try:
+        settings = _load_settings(args)
+    except ConfigError as exc:
+        print(f"index lexical inspect: configuration failed: {exc}", file=sys.stderr)
+        return 1
+
+    try:
+        name = validate_corpus_name(args.corpus)
+    except DiscoveryError as exc:
+        print(f"index lexical inspect: {exc}", file=sys.stderr)
+        return 1
+
+    status = lexical_indexing_status_for_corpus(settings, name)
+    state = try_load_lexical_index_state(lexical_index_state_path(settings.paths.corpora, name))
+    target_id = getattr(args, "index", None) or (state.current_lexical_index_id if state else None)
+    manifest = None
+    if target_id is not None:
+        manifest = try_load_lexical_index_manifest(settings.paths.lexical_index_manifests, target_id)
+        if manifest is None and state is not None and state.current_lexical_index_id == target_id:
+            path = settings.paths.lexical_index_manifests / Path(state.current_lexical_index_manifest).name
+            if path.exists():
+                manifest = load_lexical_index_manifest(path)
+
+    if args.term is not None or args.chunk is not None:
+        if target_id is None or manifest is None:
+            print("index lexical inspect: no published lexical index to inspect", file=sys.stderr)
+            return 1
+        backend = LocalInvertedIndexBackend(settings.paths.lexical_indexes)
+        try:
+            backend.open(target_id)
+            if args.term is not None:
+                analyzer = make_lexical_analyzer(settings)
+                terms = analyzer.analyze_query_terms(args.term)
+                if len(terms) != 1:
+                    print(
+                        "index lexical inspect: --term must analyze to exactly one term "
+                        f"(got {terms!r})",
+                        file=sys.stderr,
+                    )
+                    return 1
+                term = terms[0]
+                info = backend.term_info(term)
+                if info is None:
+                    payload = {"term": term, "found": False}
+                else:
+                    payload = {
+                        "term": term,
+                        "found": True,
+                        "df": info["df"],
+                        "idf": bm25_idf(n=backend.n, df=int(info["df"])),
+                        "posting_count": len(info["postings"]),
+                        "postings": info["postings"],
+                    }
+                if args.json:
+                    print(json.dumps(payload, ensure_ascii=False))
+                else:
+                    print(f"term:           {payload['term']}")
+                    print(f"found:          {payload['found']}")
+                    if payload["found"]:
+                        print(f"df:             {payload['df']}")
+                        print(f"idf:            {payload['idf']:.6f}")
+                        print(f"posting_count:  {payload['posting_count']}")
+                        for chunk_id, tf in payload["postings"]:
+                            print(f"  {chunk_id}  tf={tf}")
+                return 0
+
+            # --chunk
+            doc = backend.document_info(args.chunk)
+            if doc is None:
+                print(f"index lexical inspect: chunk not in lexical index: {args.chunk}", file=sys.stderr)
+                return 1
+            chunk = resolve_child_chunk(
+                settings.paths.chunks,
+                chunk_artifact_id=str(doc.get("chunk_artifact_id") or ""),
+                chunk_id=args.chunk,
+            )
+            payload = {
+                "chunk_id": chunk.chunk_id,
+                "document_id": chunk.document_id,
+                "analyzed_length": doc.get("length"),
+                "text": chunk.text,
+                "lexical_index_id": target_id,
+                "chunk_set_id": manifest.chunk_set_id,
+            }
+            if args.json:
+                print(json.dumps(payload, ensure_ascii=False))
+            else:
+                for key, value in payload.items():
+                    print(f"{key}: {value}")
+            return 0
+        except (ChunkResolutionError, OSError, ValueError, RuntimeError) as exc:
+            print(f"index lexical inspect: {exc}", file=sys.stderr)
+            return 1
+        finally:
+            backend.close()
+
+    summary = {
+        "corpus_name": name,
+        "status": status,
+        "source_corpus_id": state.source_corpus_id if state else None,
+        "source_chunk_set_id": state.source_chunk_set_id if state else None,
+        "lexical_index_id": target_id,
+        "lexical_config_hash": (
+            manifest.lexical_config_hash if manifest else (state.lexical_config_hash if state else None)
+        ),
+        "text_builder": (
+            f"{manifest.text_strategy}/{manifest.text_contract}" if manifest else None
+        ),
+        "analyzer": (
+            f"{manifest.analyzer_strategy}/{manifest.analyzer_contract}" if manifest else None
+        ),
+        "bm25_contract": manifest.bm25_contract if manifest else None,
+        "k1": manifest.bm25_k1 if manifest else None,
+        "b": manifest.bm25_b if manifest else None,
+        "N": manifest.document_count if manifest else None,
+        "avgdl": manifest.avgdl if manifest else None,
+        "vocabulary_size": manifest.vocabulary_size if manifest else None,
+        "indexed_child_count": manifest.indexed_child_count if manifest else None,
+        "physical_index": manifest.physical_index_relpath if manifest else None,
+        "details": describe_lexical_indexing_status(settings, name),
+    }
+    if args.json:
+        print(json.dumps(summary, ensure_ascii=False, default=str))
+    else:
+        for key, value in summary.items():
+            if key == "details":
+                continue
+            print(f"{key}: {value}")
+    return 0
+
+
 def _index_summary_payload(
     *,
     settings: AppSettings,
@@ -653,6 +847,9 @@ def cmd_index_inspect(args: argparse.Namespace) -> int:
 
 
 def cmd_retrieve(args: argparse.Namespace) -> int:
+    if not args.query:
+        print("retrieve: --query is required", file=sys.stderr)
+        return 1
     try:
         settings = _load_settings(args)
     except ConfigError as exc:
@@ -706,6 +903,57 @@ def cmd_retrieve(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_retrieve_lexical(args: argparse.Namespace) -> int:
+    try:
+        settings = _load_settings(args)
+    except ConfigError as exc:
+        print(f"retrieve lexical: configuration failed: {exc}", file=sys.stderr)
+        return 1
+
+    logger = configure_logging(
+        level=settings.logging.level,
+        structured=settings.logging.structured,
+    )
+    log_event(logger, 20, "lexical retrieve started", event="retrieve.lexical.start")
+
+    retriever = LexicalRetriever(settings)
+    try:
+        result = retriever.retrieve(
+            query=args.query,
+            corpus_name=args.corpus,
+            top_k=args.top_k,
+        )
+    except LexicalRetrievalError as exc:
+        print(f"retrieve lexical: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        retriever.close()
+
+    if args.json:
+        print(result.model_dump_json())
+    else:
+        print("Query:")
+        print(result.query)
+        print()
+        print("Method:")
+        print(result.method)
+        print()
+        print("Lexical index:")
+        print(result.index_id)
+        print()
+        for candidate in result.candidates:
+            section = " / ".join(candidate.section_path) if candidate.section_path else "-"
+            print(f"{candidate.rank}. bm25={candidate.score:.6f}")
+            print(f"   document: {candidate.document_id}")
+            print(f"   section: {section}")
+            print(f"   chunk: {candidate.chunk_id}")
+            print()
+            for line in candidate.text.splitlines() or [candidate.text]:
+                print(f"   {line}")
+            print()
+    return 0
+
+
 def cmd_query(_args: argparse.Namespace) -> int:
     print(
         "Full query/generation is not implemented yet. "
@@ -730,11 +978,63 @@ def cmd_eval_retrieve(args: argparse.Namespace) -> int:
         print(f"eval retrieve: configuration failed: {exc}", file=sys.stderr)
         return 1
 
+    method = getattr(args, "method", "dense") or "dense"
     logger = configure_logging(
         level=settings.logging.level,
         structured=settings.logging.structured,
     )
-    log_event(logger, 20, "eval retrieve started", event="eval.retrieve.start")
+    log_event(
+        logger,
+        20,
+        "eval retrieve started",
+        event="eval.retrieve.start",
+        method=method,
+    )
+
+    if method == "lexical":
+        evaluator = LexicalRetrievalEvaluator(settings)
+        try:
+            report = evaluator.evaluate(
+                Path(args.dataset),
+                corpus_name=args.corpus,
+                top_k=int(args.top_k),
+                output_path=Path(args.output) if args.output else None,
+            )
+        except (LexicalEvaluationError, LexicalRetrievalError) as exc:
+            print(f"eval retrieve: {exc}", file=sys.stderr)
+            return 1
+        finally:
+            evaluator.retriever.close()
+
+        if args.json:
+            print(report.model_dump_json())
+        else:
+            print("Lexical retrieval evaluation completed")
+            print()
+            print(f"Run:          {report.run_id}")
+            print(f"Method:       {report.method}")
+            print(f"Dataset:      {report.dataset_id}")
+            print(f"Cases:        {report.case_count}")
+            print(f"Index:        {report.index_id}")
+            print(f"Chunk set:    {report.chunk_set_id}")
+            print(f"top_k:        {report.top_k}")
+            print()
+            print(f"Recall@1:     {report.recall_at_1:.4f}")
+            print(f"Recall@5:     {report.recall_at_5:.4f}")
+            print(f"Recall@10:    {report.recall_at_10:.4f}")
+            print(f"MRR:          {report.mrr:.4f}")
+            print(f"Latency mean: {report.latency_mean_ms:.1f} ms")
+            print(f"Latency p50:  {report.latency_p50_ms:.1f} ms")
+            print(f"Latency p95:  {report.latency_p95_ms:.1f} ms")
+            result_path = report.metadata.get("result_path")
+            if result_path:
+                print()
+                print(f"Report:       {result_path}")
+        return 0
+
+    if method != "dense":
+        print(f"eval retrieve: unsupported method '{method}' (use dense|lexical)", file=sys.stderr)
+        return 1
 
     evaluator = DenseRetrievalEvaluator(settings)
     try:
@@ -813,6 +1113,8 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         ("chunk_manifests", settings.paths.chunk_manifests),
         ("embeddings", settings.paths.embeddings),
         ("index_manifests", settings.paths.index_manifests),
+        ("lexical_indexes", settings.paths.lexical_indexes),
+        ("lexical_index_manifests", settings.paths.lexical_index_manifests),
         ("qdrant_storage", settings.paths.qdrant_storage),
         ("retrieval_models", settings.paths.retrieval_models),
         ("eval_results", settings.paths.eval_results),
@@ -826,6 +1128,8 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         "chunk_manifests",
         "embeddings",
         "index_manifests",
+        "lexical_indexes",
+        "lexical_index_manifests",
     }
 
     for name, path in path_fields:
@@ -970,6 +1274,27 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     if index_status in {"NOT_INDEXED", "INDEX_STALE", "INDEX_CONFIG_STALE", "CHUNKS_STALE"}:
         notes.append(f"Action                           offline-rag index --corpus {corpus_name}")
 
+    lexical_status = lexical_indexing_status_for_corpus(settings, corpus_name)
+    notes.append(f"Lexical indexing status         {lexical_status}")
+    lstate_file = lexical_index_state_path(settings.paths.corpora, corpus_name)
+    notes.append(f"Lexical state path              {lstate_file}")
+    lstate = try_load_lexical_index_state(lstate_file)
+    if lstate is not None:
+        notes.append(f"Lexical corpus                  {lstate.source_corpus_id}")
+        notes.append(f"Lexical chunk set               {lstate.source_chunk_set_id}")
+        notes.append(f"Lexical index                   {lstate.current_lexical_index_id}")
+        notes.append(f"Lexical config hash             {lstate.lexical_config_hash}")
+        notes.append(f"Lexical manifest                {lstate.current_lexical_index_manifest}")
+    if lexical_status in {
+        "NOT_INDEXED",
+        "LEXICAL_INDEX_STALE",
+        "LEXICAL_CONFIG_STALE",
+        "CHUNKS_STALE",
+    }:
+        notes.append(
+            f"Action                           offline-rag index lexical --corpus {corpus_name}"
+        )
+
     for note in notes:
         print(f"doctor: {note}")
 
@@ -1046,13 +1371,47 @@ def build_parser() -> argparse.ArgumentParser:
     index_inspect.add_argument("--json", action="store_true")
     index_inspect.set_defaults(func=cmd_index_inspect)
 
+    index_lexical = index_sub.add_parser("lexical", help="Build/publish the lexical BM25 index")
+    _add_config_argument(index_lexical)
+    index_lexical.add_argument("--corpus", default="default", help="Logical corpus name")
+    index_lexical.add_argument("--json", action="store_true", help="Emit LexicalIndexingReport JSON")
+    index_lexical.set_defaults(func=cmd_index_lexical)
+    index_lexical_sub = index_lexical.add_subparsers(dest="lexical_command", required=False)
+
+    index_lexical_inspect = index_lexical_sub.add_parser(
+        "inspect",
+        help="Inspect lexical index state (read-only)",
+    )
+    _add_config_argument(index_lexical_inspect)
+    index_lexical_inspect.add_argument("--corpus", default="default")
+    index_lexical_inspect.add_argument("--index", default=None, help="Lexical index ID")
+    index_lexical_inspect.add_argument("--chunk", default=None, help="Child chunk ID")
+    index_lexical_inspect.add_argument("--term", default=None, help="Term to inspect")
+    index_lexical_inspect.add_argument("--json", action="store_true")
+    index_lexical_inspect.set_defaults(func=cmd_index_lexical_inspect)
+
     retrieve = subparsers.add_parser("retrieve", help="Dense retrieval over the active current index")
     _add_config_argument(retrieve)
     retrieve.add_argument("--corpus", default="default", help="Logical corpus name")
-    retrieve.add_argument("--query", required=True, help="Query text")
+    retrieve.add_argument("--query", default=None, help="Query text")
     retrieve.add_argument("--top-k", type=int, default=None, dest="top_k", help="Override dense.top_k")
     retrieve.add_argument("--json", action="store_true", help="Emit DenseRetrievalResult JSON")
     retrieve.set_defaults(func=cmd_retrieve)
+    retrieve_sub = retrieve.add_subparsers(dest="retrieve_command", required=False)
+
+    retrieve_lexical = retrieve_sub.add_parser("lexical", help="Lexical BM25 retrieval")
+    _add_config_argument(retrieve_lexical)
+    retrieve_lexical.add_argument("--corpus", default="default", help="Logical corpus name")
+    retrieve_lexical.add_argument("--query", required=True, help="Query text")
+    retrieve_lexical.add_argument(
+        "--top-k",
+        type=int,
+        default=None,
+        dest="top_k",
+        help="Override lexical.top_k",
+    )
+    retrieve_lexical.add_argument("--json", action="store_true", help="Emit LexicalRetrievalResult JSON")
+    retrieve_lexical.set_defaults(func=cmd_retrieve_lexical)
 
     query = subparsers.add_parser("query", help="Full RAG query/generation (not implemented yet)")
     _add_config_argument(query)
@@ -1068,11 +1427,17 @@ def build_parser() -> argparse.ArgumentParser:
     eval_compare.set_defaults(func=cmd_eval_compare)
     eval_retrieve = eval_sub.add_parser(
         "retrieve",
-        help="Run minimal dense retrieval evaluation",
+        help="Run dense or lexical retrieval evaluation",
     )
     _add_config_argument(eval_retrieve)
     eval_retrieve.add_argument("--dataset", required=True, type=Path, help="Dataset dir or cases.jsonl")
     eval_retrieve.add_argument("--corpus", default="default", help="Logical corpus name")
+    eval_retrieve.add_argument(
+        "--method",
+        choices=("dense", "lexical"),
+        default="dense",
+        help="Retriever under test (default: dense)",
+    )
     eval_retrieve.add_argument("--top-k", type=int, default=10, dest="top_k")
     eval_retrieve.add_argument("--output", type=Path, default=None, help="Optional result JSON path")
     eval_retrieve.add_argument("--json", action="store_true", help="Emit evaluation result JSON")

@@ -17,6 +17,8 @@ data/chunks/*
 data/chunk-manifests/*
 data/embeddings/*
 data/index-manifests/*
+data/lexical-indexes/*
+data/lexical-index-manifests/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 !data/qdrant/.gitkeep
@@ -26,6 +28,8 @@ data/index-manifests/*
 !data/chunk-manifests/.gitkeep
 !data/embeddings/.gitkeep
 !data/index-manifests/.gitkeep
+!data/lexical-indexes/.gitkeep
+!data/lexical-index-manifests/.gitkeep
 
 # Models
 models/*

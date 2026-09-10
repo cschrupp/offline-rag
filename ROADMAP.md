@@ -22,17 +22,19 @@
 
 **Release criterion:** reproducible Recall@k/MRR baseline on a small gold set.
 
-**Status:** Slice 0–3 implemented. Use FakeEmbedder for CI; provision Qwen weights for real dense quality runs.
+**Status:** Slice 0–3 dense baseline done. See Milestone 2 for Slice 4+.
 
 ## Milestone 2 — Modern retrieval stack
 
-- [ ] BM25 / sparse baseline (Slice 4)
+- [x] BM25 / lexical baseline (Slice 4; project-owned inverted index + bm25-okapi-v1)
 - [ ] Hybrid retrieval / RRF fusion (Slice 5)
 - [ ] Cross-encoder reranking over fused pools (Slice 6; model TBD at design time)
 - [ ] Parent/neighbor context expansion (Slice 7)
 - [ ] Ablation report (Dense → +BM25 → +RRF → +reranker → +expansion)
 
 **Release criterion:** measured comparison of dense, BM25, hybrid, and hybrid+reranker.
+
+**Status:** Slice 4 lexical indexing/retrieve/eval implemented. Next: Slice 5 hybrid/RRF.
 
 ## Milestone 3 — Grounded local QA
 

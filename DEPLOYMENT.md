@@ -140,12 +140,12 @@ For the strongest verification, run the demo on a machine with internet disconne
 
 ## 7. Health/readiness checks
 
-`offline-rag doctor` currently reports (Slice 3):
+`offline-rag doctor` currently reports (Slice 4):
 
 ```text
 Docling / tokenizer / embedding artifact readiness
-Corpus / Chunking / Dense index status (CURRENT | STALE | …)
-Configured paths writable
+Corpus / Chunking / Dense index / Lexical index status (CURRENT | STALE | …)
+Configured paths writable (including lexical-indexes)
 Strict-offline compatibility checks
 ```
 

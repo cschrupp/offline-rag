@@ -18,8 +18,8 @@ class RetrievalCandidate(BaseModel):
     document_id: NonEmptyStr
     dense_rank: PositiveInt | None = None
     dense_score: Score | None = None
-    sparse_rank: PositiveInt | None = None
-    sparse_score: Score | None = None
+    lexical_rank: PositiveInt | None = None
+    lexical_score: Score | None = None
     fusion_rank: PositiveInt | None = None
     fusion_score: Score | None = None
     rerank_score: Score | None = None

@@ -1,6 +1,6 @@
 # Project Description — OfflineRAG
 
-**Implementation status:** Slices 0–3 (contracts, Docling ingest, structure-aware chunking, dense index/retrieve/eval with Qwen3-Embedding-0.6B + Qdrant Local) are implemented. Later sections describe the full target system; treat hybrid/rerank/generation/UI as planned unless marked done in `ROADMAP.md`.
+**Implementation status:** Slices 0–4 (contracts, Docling ingest, structure-aware chunking, dense + lexical BM25 index/retrieve/eval) are implemented. Later sections describe the full target system; treat hybrid/rerank/generation/UI as planned unless marked done in `ROADMAP.md`.
 
 ## 1. Working title
 
@@ -405,7 +405,7 @@ Suggested fields:
 - `chunk_id`
 - `dense_rank`
 - `dense_score`
-- `sparse_rank`
+- `sparse_rank` / `sparse_score` (legacy name; implementation field is `lexical_rank` / `lexical_score`)
 - `sparse_score`
 - `fusion_rank`
 - `fusion_score`

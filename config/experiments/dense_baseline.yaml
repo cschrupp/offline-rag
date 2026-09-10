@@ -15,7 +15,7 @@ indexing:
     dimension: 1024
     normalize: true
 
-sparse:
+lexical:
   enabled: false
 
 reranker:

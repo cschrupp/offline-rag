@@ -5,7 +5,7 @@ dense:
   enabled: true
   top_k: 30
 
-sparse:
+lexical:
   enabled: true
   method: bm25
   top_k: 30

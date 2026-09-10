@@ -14,7 +14,7 @@ A query trace is the primary debugging artifact for one request.
   },
   "retrieval": {
     "dense": [],
-    "sparse": [],
+    "lexical": [],
     "fused": [],
     "reranked": []
   },
@@ -40,7 +40,7 @@ A query trace is the primary debugging artifact for one request.
   },
   "timing_ms": {
     "dense": 0,
-    "sparse": 0,
+    "lexical": 0,
     "fusion": 0,
     "rerank": 0,
     "context": 0,

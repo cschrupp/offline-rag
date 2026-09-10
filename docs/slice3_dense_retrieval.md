@@ -100,7 +100,7 @@ embedding/index gains stay separable from reranker gains.
 
 ```text
 Slice 3  Dense indexing/retrieval     (done — this document)
-Slice 4  Sparse/BM25 retrieval
+Slice 4  Lexical/BM25 retrieval       (done — see docs/slice4_lexical_retrieval.md)
 Slice 5  Hybrid retrieval / RRF fusion
 Slice 6  Cross-encoder reranking      (over fused candidate pools)
 Slice 7  Parent/neighbor context expansion

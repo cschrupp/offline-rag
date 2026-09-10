@@ -26,6 +26,8 @@ def test_load_base_yaml() -> None:
     assert settings.paths.raw_data == Path("data/raw")
     assert settings.logging.structured is True
     assert settings.dense.top_k == 10
+    assert settings.lexical.top_k == 30
+    assert settings.lexical.bm25.k1 == 1.2
     assert settings.indexing.embedding.model_id == "Qwen/Qwen3-Embedding-0.6B"
     assert settings.indexing.embedding.revision == "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3"
 
@@ -41,7 +43,7 @@ def test_load_experiment_overlay() -> None:
     assert settings.experiment is not None
     assert settings.experiment.name == "dense_baseline"
     assert settings.dense.top_k == 10
-    assert settings.sparse.enabled is False
+    assert settings.lexical.enabled is False
     assert settings.generation.enabled is False
     experiment = experiment_config_from_settings(settings)
     assert experiment is not None

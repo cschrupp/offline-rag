@@ -2,7 +2,7 @@
 
 This file should evolve with measured project results.
 
-## Implemented baseline (Slices 0–3)
+## Implemented baseline (Slices 0–4)
 
 - Dense retrieval quality depends on provisioning real Qwen3-Embedding-0.6B weights; FakeEmbedder is for CI/architecture only.
 - Default PDF profile is born-digital / non-OCR; scanned/image-only PDFs may degrade or warn.
@@ -11,7 +11,9 @@ This file should evolve with measured project results.
 - Dense gold labels are bound to a specific `chunk_set_id`; changing chunk budgets invalidates chunk-level relevance IDs.
 - Published indexes and embedding artifacts are retained indefinitely; disk growth is intentional until GC exists.
 - Qdrant Local assumes one OfflineRAG process owns a given storage directory.
-- Full hybrid/rerank/generation quality claims are not yet available (Slices 4–8+; `query` deferred to Slice 8+).
+- Full hybrid/rerank/generation quality claims are not yet available (Slices 5–8+; `query` deferred to Slice 8+).
+- Lexical BM25 is corpus-global (full rebuild per `lexical_index_id`); no per-child lexical cache.
+- Lexical indexes are retained indefinitely with dense indexes until GC exists.
 
 ## Expected later limitations
 

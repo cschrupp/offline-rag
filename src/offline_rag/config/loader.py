@@ -34,6 +34,8 @@ _ENV_FIELD_MAP: dict[str, tuple[str, ...]] = {
     "CHUNK_MANIFESTS": ("paths", "chunk_manifests"),
     "EMBEDDINGS": ("paths", "embeddings"),
     "INDEX_MANIFESTS": ("paths", "index_manifests"),
+    "LEXICAL_INDEXES": ("paths", "lexical_indexes"),
+    "LEXICAL_INDEX_MANIFESTS": ("paths", "lexical_index_manifests"),
     "QDRANT_DIR": ("paths", "qdrant_storage"),
     "MODELS_DIR": ("paths", "retrieval_models"),
     "DOCLING_ARTIFACTS_PATH": ("paths", "docling_artifacts"),
@@ -116,6 +118,8 @@ def _apply_data_dir(data: MutableMapping[str, Any], data_dir: str) -> None:
     paths["chunk_manifests"] = str(root / "chunk-manifests")
     paths["embeddings"] = str(root / "embeddings")
     paths["index_manifests"] = str(root / "index-manifests")
+    paths["lexical_indexes"] = str(root / "lexical-indexes")
+    paths["lexical_index_manifests"] = str(root / "lexical-index-manifests")
     paths["qdrant_storage"] = str(root / "qdrant")
     paths["eval_results"] = str(root / "eval" / "results")
 
@@ -137,6 +141,24 @@ def env_overrides(environ: Mapping[str, str] | None = None) -> dict[str, Any]:
     return overrides
 
 
+def _reject_legacy_sparse_config(payload: Mapping[str, Any]) -> None:
+    """Fail closed on renamed sparse: config (no silent alias)."""
+    if "sparse" not in payload:
+        return
+    if "lexical" in payload:
+        raise ConfigError(
+            'Configuration keys "sparse" and "lexical" must not both be present. '
+            'Remove "sparse:" and keep only "lexical:".'
+        )
+    raise ConfigError(
+        'Configuration key "sparse" has been renamed to "lexical".\n'
+        "Replace:\n\n"
+        "  sparse:\n\n"
+        "with:\n\n"
+        "  lexical:"
+    )
+
+
 def load_settings(
     *,
     yaml_paths: Sequence[Path | str] | None = None,
@@ -154,11 +176,17 @@ def load_settings(
         paths = list(yaml_paths)
 
     for yaml_path in paths:
-        payload = _deep_merge(payload, _load_yaml_file(Path(yaml_path)))
+        overlay = _load_yaml_file(Path(yaml_path))
+        _reject_legacy_sparse_config(overlay)
+        payload = _deep_merge(payload, overlay)
 
-    payload = _deep_merge(payload, env_overrides(env))
+    env_payload = env_overrides(env)
+    _reject_legacy_sparse_config(env_payload)
+    payload = _deep_merge(payload, env_payload)
     if overrides:
-        payload = _deep_merge(payload, dict(overrides))
+        override_payload = dict(overrides)
+        _reject_legacy_sparse_config(override_payload)
+        payload = _deep_merge(payload, override_payload)
 
     try:
         return AppSettings.model_validate(payload)
@@ -178,7 +206,7 @@ def experiment_config_from_settings(settings: AppSettings) -> ExperimentConfig |
         config_hash=config_hash,
         parameters={
             "dense": canonical["dense"],
-            "sparse": canonical["sparse"],
+            "lexical": canonical["lexical"],
             "fusion": canonical["fusion"],
             "reranker": canonical["reranker"],
             "context": canonical["context"],

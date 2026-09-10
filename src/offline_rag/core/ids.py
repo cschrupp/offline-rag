@@ -27,6 +27,10 @@ QWEN3_EMBEDDING_PINNED_REVISION = "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3"
 QWEN3_EMBEDDING_ARTIFACT_CONTRACT = "qwen3-embedding-local-v1"
 # Fixed namespace for deterministic UUID5 Qdrant point IDs (must never change).
 OFFLINE_RAG_DENSE_POINT_NAMESPACE = uuid.UUID("a01f11e0-7a9d-4c0d-9e51-0ff11e000001")
+PLAIN_LEXICAL_TEXT_CONTRACT = "plain-v1"
+TECHNICAL_ANALYZER_CONTRACT = "technical-v1"
+BM25_OKAPI_CONTRACT = "bm25-okapi-v1"
+LOCAL_INVERTED_INDEX_CONTRACT = "local-inverted-index-v1"
 
 
 def _sha256_hex(data: bytes) -> str:
@@ -335,3 +339,28 @@ def dense_point_uuid(chunk_id: str) -> str:
 
 def dataset_id_from_bytes(content: bytes) -> str:
     return f"evaldataset_{_sha256_hex(content)}"
+
+
+def lexical_config_hash(data: Mapping[str, Any]) -> str:
+    """Return ``lexcfg_<sha256>`` for lexical-output-affecting configuration."""
+    return canonical_config_hash(data).replace("cfg_", "lexcfg_", 1)
+
+
+def lexical_index_id(
+    chunk_set_id: str,
+    lex_cfg_hash: str,
+    *,
+    backend_contract: str = LOCAL_INVERTED_INDEX_CONTRACT,
+) -> str:
+    """Return ``lexical_<sha256>`` for one durable lexical index derivation."""
+    if not chunk_set_id.strip():
+        raise ValueError("chunk_set_id must be a non-empty string")
+    if not lex_cfg_hash.strip():
+        raise ValueError("lexical_config_hash must be a non-empty string")
+    payload = {
+        "chunk_set_id": chunk_set_id,
+        "lexical_config_hash": lex_cfg_hash,
+        "backend_contract": backend_contract,
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return f"lexical_{_sha256_hex(encoded.encode('utf-8'))}"

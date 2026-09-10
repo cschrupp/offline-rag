@@ -35,7 +35,7 @@ class RetrievalStages(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     dense: list[RetrievalCandidate] = Field(default_factory=list)
-    sparse: list[RetrievalCandidate] = Field(default_factory=list)
+    lexical: list[RetrievalCandidate] = Field(default_factory=list)
     fused: list[RetrievalCandidate] = Field(default_factory=list)
     reranked: list[RetrievalCandidate] = Field(default_factory=list)
 
@@ -79,7 +79,7 @@ class TimingInfo(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     dense: NonNegativeInt = 0
-    sparse: NonNegativeInt = 0
+    lexical: NonNegativeInt = 0
     fusion: NonNegativeInt = 0
     rerank: NonNegativeInt = 0
     context: NonNegativeInt = 0

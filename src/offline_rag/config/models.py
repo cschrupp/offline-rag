@@ -32,6 +32,8 @@ class PathSettings(BaseModel):
     chunk_manifests: Path = Path("data/chunk-manifests")
     embeddings: Path = Path("data/embeddings")
     index_manifests: Path = Path("data/index-manifests")
+    lexical_indexes: Path = Path("data/lexical-indexes")
+    lexical_index_manifests: Path = Path("data/lexical-index-manifests")
     qdrant_storage: Path = Path("data/qdrant")
     retrieval_models: Path = Path("models")
     docling_artifacts: Path = Path("models/docling")
@@ -156,12 +158,53 @@ class IndexingSettings(BaseModel):
     embedding: EmbeddingModelSettings = Field(default_factory=EmbeddingModelSettings)
 
 
-class SparseSettings(BaseModel):
+class LexicalTextSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    strategy: NonEmptyStr = "plain"
+    contract_version: NonEmptyStr = "plain-v1"
+
+
+class LexicalAnalyzerSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    strategy: NonEmptyStr = "technical"
+    contract_version: NonEmptyStr = "technical-v1"
+    unicode_normalization: NonEmptyStr = "NFKC"
+    case_normalization: NonEmptyStr = "casefold"
+    stopwords: NonEmptyStr = "none"
+    stemming: NonEmptyStr = "none"
+    lemmatization: NonEmptyStr = "none"
+
+
+class LexicalBm25Settings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    contract_version: NonEmptyStr = "bm25-okapi-v1"
+    k1: Score = 1.2
+    b: Score = 0.75
+    idf: NonEmptyStr = "rsj-positive-smoothed-v1"
+    query_tf: NonEmptyStr = "unique-terms-v1"
+
+    @field_validator("k1", "b")
+    @classmethod
+    def _non_negative(cls, value: float) -> float:
+        if value < 0.0:
+            raise ValueError("BM25 parameters must be >= 0")
+        return value
+
+
+class LexicalSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     enabled: bool = True
     method: NonEmptyStr = "bm25"
     top_k: PositiveInt = 30
+    backend: NonEmptyStr = "local_inverted"
+    backend_contract: NonEmptyStr = "local-inverted-index-v1"
+    text: LexicalTextSettings = Field(default_factory=LexicalTextSettings)
+    analyzer: LexicalAnalyzerSettings = Field(default_factory=LexicalAnalyzerSettings)
+    bm25: LexicalBm25Settings = Field(default_factory=LexicalBm25Settings)
 
 
 class FusionSettings(BaseModel):
@@ -262,7 +305,7 @@ class AppSettings(BaseModel):
     chunking: ChunkingSettings = Field(default_factory=ChunkingSettings)
     indexing: IndexingSettings = Field(default_factory=IndexingSettings)
     dense: DenseSettings = Field(default_factory=DenseSettings)
-    sparse: SparseSettings = Field(default_factory=SparseSettings)
+    lexical: LexicalSettings = Field(default_factory=LexicalSettings)
     fusion: FusionSettings = Field(default_factory=FusionSettings)
     reranker: RerankerSettings = Field(default_factory=RerankerSettings)
     context: ContextSettings = Field(default_factory=ContextSettings)

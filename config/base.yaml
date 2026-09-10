@@ -78,10 +78,27 @@ indexing:
     batch_size: 32
     device: cpu
 
-sparse:
+lexical:
   enabled: true
   method: bm25
   top_k: 30
+  text:
+    strategy: plain
+    contract_version: plain-v1
+  analyzer:
+    strategy: technical
+    contract_version: technical-v1
+    unicode_normalization: NFKC
+    case_normalization: casefold
+    stopwords: none
+    stemming: none
+    lemmatization: none
+  bm25:
+    contract_version: bm25-okapi-v1
+    k1: 1.2
+    b: 0.75
+    idf: rsj-positive-smoothed-v1
+    query_tf: unique-terms-v1
 
 fusion:
   method: rrf

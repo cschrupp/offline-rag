@@ -2,7 +2,7 @@
 
 This document converts the architecture into incremental, testable implementation slices. Each slice should leave the repository in a working state. Avoid building multiple major layers simultaneously: the evaluation harness depends on being able to attribute improvements and regressions to individual changes.
 
-**Implementation status:** Slices 0–3 are implemented. Planned next: 4 BM25 → 5 RRF → 6 rerank → 7 expansion → 8+ generation. Authoritative Slice 0–3 notes live under `docs/slice0_contracts.md` … `docs/slice3_dense_retrieval.md`.
+**Implementation status:** Slices 0–4 are implemented. Planned next: 5 RRF → 6 rerank → 7 expansion → 8+ generation. Authoritative notes: `docs/slice0_contracts.md` … `docs/slice4_lexical_retrieval.md`.
 
 ---
 
@@ -221,6 +221,8 @@ A query returns ranked chunks with stable provenance and a benchmark report can 
 
 # Slice 4 — Lexical retrieval baseline
 
+**Status:** done. See `docs/slice4_lexical_retrieval.md`.
+
 ## Objective
 
 Add a lexical retrieval path independent from dense retrieval.
@@ -273,7 +275,7 @@ Combine dense and lexical results using Reciprocal Rank Fusion.
 ```text
 chunk_123
   dense_rank: 3
-  sparse_rank: 11
+  lexical_rank: 11
   rrf_score: ...
   fused_rank: 2
 ```

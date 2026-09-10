@@ -1,14 +1,20 @@
 # Evaluation Directory
 
-- `datasets/` — gold / fixture datasets. Slice 3 includes `dense_smoke/` (placeholder meta + cases; bind real `chunk_set_id` after indexing a corpus).
+- `datasets/` — gold / fixture datasets. Slice 3 includes `dense_smoke/` (placeholder meta + cases; bind real `chunk_set_id` after indexing a corpus). Same gold format works for Slice 4 lexical eval.
 - `baselines/` — frozen baseline metric artifacts (future).
-- `results/` — machine-readable experiment results (`dense-retrieval/` for Slice 3).
+- `results/` — machine-readable experiment results (`dense-retrieval/` for Slice 3; `lexical-retrieval/` for Slice 4).
 - `reports/` — generated human-readable comparisons (future).
 
 ## Dense retrieval eval (Slice 3)
 
 ```bash
 offline-rag eval retrieve --dataset eval/datasets/<name> --corpus <name> [--json]
+```
+
+## Lexical retrieval eval (Slice 4)
+
+```bash
+offline-rag eval retrieve --method lexical --dataset eval/datasets/<name> --corpus <name> [--json]
 ```
 
 Dataset directory shape:
@@ -18,6 +24,6 @@ Dataset directory shape:
 <cases.jsonl>        # id, query, relevant_chunk_ids, ...
 ```
 
-Primary metrics: chunk Recall@1/5/10, MRR, latency.
+Primary metrics (both methods): chunk Recall@1/5/10, MRR, latency.
 
 Do not commit private/proprietary evaluation data to a public repository.

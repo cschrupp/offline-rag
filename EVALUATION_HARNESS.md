@@ -1,6 +1,6 @@
 # Evaluation Harness
 
-**Current readiness:** Slice 3 ships minimal dense retrieval eval (`offline-rag eval retrieve`: Recall@1/5/10, MRR, latency; gold bound to `chunk_set_id`). Layers below describe the full harness target; BM25/hybrid/generation/citation layers are not implemented yet.
+**Current readiness:** Slice 3 dense and Slice 4 lexical retrieval eval share the same gold format (`offline-rag eval retrieve [--method dense|lexical]`: Recall@1/5/10, MRR, latency; gold bound to `chunk_set_id`). Layers below describe the full harness target; hybrid/generation/citation layers are not implemented yet.
 
 ## Purpose
 
@@ -241,7 +241,7 @@ dense:
   model: qwen3-embedding
   top_k: 30
 
-sparse:
+lexical:
   enabled: true
   method: bm25
   top_k: 30
