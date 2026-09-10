@@ -15,30 +15,60 @@ OfflineRAG stores only:
 
 It does not store generator weights in the application image or `/models`.
 
-## 2. Embedding model
+## 2. Embedding model (Slice 3)
 
-Embedding weights belong under a provisioned local path/cache, for example:
+Canonical command:
 
-```text
-/models/embeddings/<model>/
+```bash
+offline-rag provision embedding
+# or
+uv run python scripts/provision_embedding.py
 ```
 
-Record model name, revision/hash where practical, dimensionality, tokenizer/version, and any normalization settings in experiment metadata.
-
-## 3. Reranker
-
-Reranker weights belong under:
+Default local layout:
 
 ```text
-/models/reranker/<model>/
+models/embeddings/qwen3-embedding-0.6b/
+├── ... Sentence Transformers / model files ...
+└── offline-rag-embedding.json
 ```
 
-Record model/version, max sequence length, batching configuration, device, and precision.
+Pinned upstream:
 
-## 4. Runtime loading
+- model: `Qwen/Qwen3-Embedding-0.6B`
+- revision: `97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3`
+- dimension: 1024
+- runtime: sentence-transformers
 
-Strict-offline runtime must fail clearly when a required retrieval model is missing. It must not silently download it.
+Runtime (`index` / `retrieve` / `eval retrieve` / `doctor`) must never download weights.
+Missing/invalid artifacts → actionable error (ABSENT / INVALID / READY).
 
-## 5. Manifest
+CI uses `FakeEmbedder` (`indexing.embedding.implementation: fake`) without weights.
 
-Use `models/manifest.example.yaml` as the future schema seed. The manifest should identify approved retrieval assets and approved generator identifiers separately.
+## 3. Tokenizer (Slice 2)
+
+```bash
+uv run python scripts/provision_tiktoken.py
+```
+
+Installs under `models/tokenizers/tiktoken/` with `offline-rag-tokenizer.json`.
+
+## 4. Docling (Slice 1)
+
+```bash
+uv run python scripts/provision_docling.py
+```
+
+Installs under `models/docling/` with `offline-rag-artifacts.json`.
+
+## 5. Reranker
+
+Not provisioned yet. Future weights belong under:
+
+```text
+models/reranker/<model>/
+```
+
+## 6. Manifest
+
+Use `models/manifest.example.yaml` as the schema seed for approved retrieval assets and generator identifiers.

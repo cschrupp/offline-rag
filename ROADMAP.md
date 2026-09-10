@@ -12,15 +12,17 @@
 
 ## Milestone 1 — Measurable dense RAG baseline
 
-- [ ] Repository and domain contracts
-- [ ] Docling ingestion
-- [ ] Structure-aware chunks
-- [ ] Local dense embeddings
-- [ ] Qdrant persistence
-- [ ] Dense retrieval benchmark
-- [ ] Minimal local query CLI
+- [x] Repository and domain contracts (Slice 0)
+- [x] Docling ingestion (Slice 1)
+- [x] Structure-aware chunks (Slice 2)
+- [x] Local dense embeddings (Slice 3; Qwen3-Embedding-0.6B + FakeEmbedder for CI)
+- [x] Qdrant persistence (Slice 3; Qdrant Local)
+- [x] Dense retrieval benchmark (`offline-rag eval retrieve`)
+- [x] Minimal local retrieve CLI (`offline-rag retrieve`; full `query`/generation remains deferred)
 
 **Release criterion:** reproducible Recall@k/MRR baseline on a small gold set.
+
+**Status:** Slice 0–3 implemented. Use FakeEmbedder for CI; provision Qwen weights for real dense quality runs.
 
 ## Milestone 2 — Modern retrieval stack
 
@@ -105,6 +107,6 @@ Only prioritize these when failures justify them:
 - multimodal page reasoning;
 - query decomposition for true multi-hop tasks;
 - document version diffing;
-- incremental indexing;
+- incremental indexing GC / lifecycle tooling;
 - corpus-level access policies;
 - GraphRAG / knowledge graph if relation-heavy benchmarks warrant it.

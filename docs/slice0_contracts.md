@@ -1,8 +1,9 @@
 # Slice 0 — Foundation Contracts
 
-Slice 0 establishes repository contracts only. It does **not** implement
-ingestion, parsing, chunking, embeddings, retrieval, reranking, generation, or
-evaluation execution.
+Slice 0 established repository contracts: configuration, domain schemas, deterministic
+IDs, local logging, and the CLI shell.
+
+Later slices implement the pipelines; Slice 0 contracts remain the shared foundation.
 
 ## Configuration precedence
 
@@ -28,8 +29,9 @@ Application runtime settings live under `offline_rag.config`. Domain
 | Identity | Deterministic? | Notes |
 |---|---|---|
 | Document ID (`doc_<sha256>`) | Yes | Derived from canonical source bytes |
-| Chunk ID (`chunk_<sha256>`) | Yes | Derived from document ID, chunk index, text, optional chunker version |
+| Chunk ID (`chunk_<sha256>` / `parent_<sha256>`) | Yes | Content- and config-derived (see Slice 2) |
 | Config / experiment hash (`cfg_<sha256>`) | Yes | Canonical JSON with sorted keys |
+| Chunk / embedding / index config hashes | Yes | Prefixed `chunkcfg_`, `embcfg_`, `idxcfg_` |
 | Query / evaluation execution IDs | No | Runtime event IDs (UUID-style) are allowed |
 
 A random execution ID must never become the identity of retrieved document or
@@ -40,8 +42,20 @@ chunk content.
 Local stdlib logging only: human console mode or structured JSON. No cloud
 telemetry.
 
-## CLI
+## CLI (current)
 
-`offline-rag` exposes `ingest`, `query`, `eval run`, `eval compare`, and
-`doctor`. Except for Slice-0-safe `doctor` checks, commands are intentional
-placeholders until later slices.
+Implemented through Slice 3:
+
+```text
+offline-rag ingest ...
+offline-rag chunk ...
+offline-rag chunk inspect ...
+offline-rag provision embedding
+offline-rag index ...
+offline-rag index inspect ...
+offline-rag retrieve ...
+offline-rag eval retrieve ...
+offline-rag doctor ...
+```
+
+Still deferred: full `query` (generation), generic `eval run` / `eval compare`.

@@ -13,7 +13,8 @@ Document the public demo corpus with:
 - content hashes;
 - page count;
 - ingestion/parser configuration;
-- chunking configuration;
+- chunking configuration (`chunk_set_id` / chunk config hash);
+- dense index identity (`index_id` / embedding + index config hashes) when comparing retrieval runs;
 - corpus manifest hash.
 
 ## Benchmark sets

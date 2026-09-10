@@ -1,0 +1,1 @@
+{"id": "smoke_001", "query": "placeholder dense smoke query", "relevant_chunk_ids": ["chunk_PLACEHOLDER"], "relevant_document_ids": [], "metadata": {"note": "overwrite in tests"}}

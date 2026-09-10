@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "corpus_id": null,
+  "chunk_set_id": "chunkset_PLACEHOLDER",
+  "metadata": {
+    "label": "smoke",
+    "description": "Placeholder dense retrieval smoke dataset. Tests overwrite chunk_set_id and cases as needed."
+  }
+}

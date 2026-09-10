@@ -1,5 +1,7 @@
 # Portfolio Demo Plan
 
+**Current readiness:** Through Slice 3 you can demo ingest → chunk → dense index → `retrieve` / `eval retrieve` with local embeddings and Qdrant Local. Full inspector (BM25/hybrid/rerank), grounded `query` answers, and UI remain later slices — demo narrative below is the target story; adapt live demos to what is implemented.
+
 ## Demo objective
 
 Show, in a few minutes, that OfflineRAG is not merely “chat with PDFs.” The demo should make retrieval engineering, evaluation, grounding, and security visible.

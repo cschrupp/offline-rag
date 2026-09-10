@@ -6,9 +6,13 @@ readme = "README.md"
 requires-python = ">=3.14,<3.15"
 dependencies = [
     "docling>=2.126.0",
+    "huggingface-hub>=1.30.0",
     "pydantic",
     "pyyaml",
+    "qdrant-client>=1.12.0",
+    "sentence-transformers>=2.7.0",
     "tiktoken",
+    "transformers>=4.51.0",
 ]
 
 [project.scripts]
@@ -45,5 +49,8 @@ ignore = ["E501"]
 "src/offline_rag/cli.py" = ["BLE001"]
 "src/offline_rag/ingestion/pipeline.py" = ["BLE001"]
 "src/offline_rag/chunking/pipeline.py" = ["BLE001"]
+"src/offline_rag/dense/pipeline.py" = ["BLE001"]
+"src/offline_rag/dense/evaluate.py" = ["BLE001"]
+"src/offline_rag/dense/provision.py" = ["BLE001"]
 "scripts/*" = ["T20"]
 

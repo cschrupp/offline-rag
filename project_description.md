@@ -1,5 +1,7 @@
 # Project Description — OfflineRAG
 
+**Implementation status:** Slices 0–3 (contracts, Docling ingest, structure-aware chunking, dense index/retrieve/eval with Qwen3-Embedding-0.6B + Qdrant Local) are implemented. Later sections describe the full target system; treat hybrid/rerank/generation/UI as planned unless marked done in `ROADMAP.md`.
+
 ## 1. Working title
 
 **OfflineRAG — Evaluated Local RAG for Private Technical Knowledge**

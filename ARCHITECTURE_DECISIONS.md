@@ -183,3 +183,13 @@ The host/local environment owns generation through Ollama by default.
 **Decision:** The standalone portfolio profile uses Qdrant Local/embedded persistence inside the application container. A server-backed Qdrant adapter remains part of the interface contract for larger deployments.
 
 **Reasoning:** Embedded persistence keeps the flagship demo genuinely single-container while preserving the same project-owned index abstraction for later scale-up.
+
+---
+
+## ADR-020 — Qwen3-Embedding-0.6B as Slice 3 dense baseline
+
+**Decision:** Portfolio dense baseline uses `Qwen/Qwen3-Embedding-0.6B` at a pinned revision, 1024-d, L2-normalized, cosine similarity. CI uses `FakeEmbedder` without weights. Embedding text is plain chunk text (`plain-v1`) with no section/title decoration. Indexing is a separate `offline-rag index` stage over child chunks only; embeddings are content-addressed and reusable when vector semantics are unchanged.
+
+**Reasoning:** A small, local-friendly embedding model keeps provisioning and offline runtime credible while remaining swappable. Separating FakeEmbedder from the portfolio model prevents CI from implying quality. Plain-v1 keeps embedding inputs auditable and avoids silent prompt-style decoration.
+
+**Consequence:** Real quality runs require `offline-rag provision embedding` (or equivalent local directory). Runtime loads with `local_files_only=True` and never downloads.

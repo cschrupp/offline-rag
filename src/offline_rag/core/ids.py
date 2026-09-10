@@ -19,6 +19,14 @@ MARKDOWN_PARSER_VERSION = "offline-rag-markdown-v1"
 DOCLING_PDF_PARSER_VERSION = "offline-rag-docling-pdf-v1"
 STRUCTURE_AWARE_CHUNKER_VERSION = "structure-aware-chunker-v1"
 TIKTOKEN_TOKENIZER_CONTRACT = "tiktoken-cl100k-v1"
+PLAIN_EMBEDDING_TEXT_CONTRACT = "plain-v1"
+SENTENCE_TRANSFORMERS_ADAPTER_CONTRACT = "sentence-transformers-v1"
+DENSE_INDEX_CONTRACT_VERSION = "dense-index-v1"
+QWEN3_EMBEDDING_MODEL_ID = "Qwen/Qwen3-Embedding-0.6B"
+QWEN3_EMBEDDING_PINNED_REVISION = "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3"
+QWEN3_EMBEDDING_ARTIFACT_CONTRACT = "qwen3-embedding-local-v1"
+# Fixed namespace for deterministic UUID5 Qdrant point IDs (must never change).
+OFFLINE_RAG_DENSE_POINT_NAMESPACE = uuid.UUID("a01f11e0-7a9d-4c0d-9e51-0ff11e000001")
 
 
 def _sha256_hex(data: bytes) -> str:
@@ -272,3 +280,58 @@ def new_execution_id(*, prefix: str = "run") -> str:
     if not prefix.strip():
         raise ValueError("prefix must be a non-empty string")
     return f"{prefix}_{uuid.uuid4().hex}"
+
+
+def embedding_config_hash(data: Mapping[str, Any]) -> str:
+    return canonical_config_hash(data).replace("cfg_", "embcfg_", 1)
+
+
+def index_config_hash(data: Mapping[str, Any]) -> str:
+    return canonical_config_hash(data).replace("cfg_", "idxcfg_", 1)
+
+
+def embedding_text_hash(text: str) -> str:
+    return f"embtxt_{_sha256_hex(text.encode('utf-8'))}"
+
+
+def embedding_id_from_parts(
+    chunk_id: str,
+    *,
+    embedding_text_digest: str,
+    emb_cfg_hash: str,
+) -> str:
+    payload = {
+        "chunk_id": chunk_id,
+        "embedding_text_hash": embedding_text_digest,
+        "embedding_config_hash": emb_cfg_hash,
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return f"emb_{_sha256_hex(encoded.encode('utf-8'))}"
+
+
+def dense_index_id(
+    chunk_set_id: str,
+    idx_cfg_hash: str,
+    *,
+    index_contract_version: str = DENSE_INDEX_CONTRACT_VERSION,
+) -> str:
+    payload = {
+        "chunk_set_id": chunk_set_id,
+        "index_config_hash": idx_cfg_hash,
+        "index_contract_version": index_contract_version,
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return f"denseindex_{_sha256_hex(encoded.encode('utf-8'))}"
+
+
+def dense_collection_name(index_id: str) -> str:
+    digest = index_id.removeprefix("denseindex_")
+    return f"dense_{digest[:48]}"
+
+
+def dense_point_uuid(chunk_id: str) -> str:
+    return str(uuid.uuid5(OFFLINE_RAG_DENSE_POINT_NAMESPACE, chunk_id))
+
+
+def dataset_id_from_bytes(content: bytes) -> str:
+    return f"evaldataset_{_sha256_hex(content)}"

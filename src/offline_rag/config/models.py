@@ -30,10 +30,13 @@ class PathSettings(BaseModel):
     corpora: Path = Path("data/corpora")
     chunks: Path = Path("data/chunks")
     chunk_manifests: Path = Path("data/chunk-manifests")
+    embeddings: Path = Path("data/embeddings")
+    index_manifests: Path = Path("data/index-manifests")
     qdrant_storage: Path = Path("data/qdrant")
     retrieval_models: Path = Path("models")
     docling_artifacts: Path = Path("models/docling")
     tokenizer_artifacts: Path = Path("models/tokenizers/tiktoken")
+    embedding_artifacts: Path = Path("models/embeddings")
     eval_results: Path = Path("eval/results")
 
 
@@ -113,10 +116,44 @@ class DenseSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     enabled: bool = True
-    model: NonEmptyStr = "REPLACE_WITH_LOCAL_EMBEDDING_MODEL"
-    model_path: Path = Path("models/embeddings/REPLACE_ME")
+    model: NonEmptyStr = "Qwen/Qwen3-Embedding-0.6B"
+    model_path: Path = Path("models/embeddings/qwen3-embedding-0.6b")
     local_files_only: bool = True
-    top_k: PositiveInt = 30
+    top_k: PositiveInt = 10
+
+
+class EmbeddingTextSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    strategy: NonEmptyStr = "plain"
+    contract_version: NonEmptyStr = "plain-v1"
+
+
+class EmbeddingModelSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    implementation: NonEmptyStr = "sentence_transformers"
+    model_id: NonEmptyStr = "Qwen/Qwen3-Embedding-0.6B"
+    revision: NonEmptyStr = "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3"
+    dimension: PositiveInt = 1024
+    normalize: bool = True
+    adapter_contract: NonEmptyStr = "sentence-transformers-v1"
+    batch_size: PositiveInt = 32
+    device: NonEmptyStr = "cpu"
+    query_instruction: str | None = None
+    document_instruction: str | None = None
+
+
+class IndexingSettings(BaseModel):
+    """Dense indexing settings that participate in embedding/index hashes."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    backend: NonEmptyStr = "qdrant_local"
+    backend_contract: NonEmptyStr = "qdrant-local-v1"
+    metric: NonEmptyStr = "cosine"
+    embedding_text: EmbeddingTextSettings = Field(default_factory=EmbeddingTextSettings)
+    embedding: EmbeddingModelSettings = Field(default_factory=EmbeddingModelSettings)
 
 
 class SparseSettings(BaseModel):
@@ -223,6 +260,7 @@ class AppSettings(BaseModel):
     ingestion: IngestionSettings = Field(default_factory=IngestionSettings)
     parsing: ParsingSettings = Field(default_factory=ParsingSettings)
     chunking: ChunkingSettings = Field(default_factory=ChunkingSettings)
+    indexing: IndexingSettings = Field(default_factory=IndexingSettings)
     dense: DenseSettings = Field(default_factory=DenseSettings)
     sparse: SparseSettings = Field(default_factory=SparseSettings)
     fusion: FusionSettings = Field(default_factory=FusionSettings)

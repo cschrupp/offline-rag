@@ -140,7 +140,18 @@ For the strongest verification, run the demo on a machine with internet disconne
 
 ## 7. Health/readiness checks
 
-`offline-rag doctor` should eventually report:
+`offline-rag doctor` currently reports (Slice 3):
+
+```text
+Docling / tokenizer / embedding artifact readiness
+Corpus / Chunking / Dense index status (CURRENT | STALE | …)
+Configured paths writable
+Strict-offline compatibility checks
+```
+
+Generation endpoint reachability remains future work until Slice 8+.
+
+Eventual fuller report:
 
 ```text
 OfflineRAG readiness

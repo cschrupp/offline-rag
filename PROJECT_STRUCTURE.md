@@ -1,8 +1,50 @@
 # Project Structure
 
-The project is organized around explicit domain boundaries. Framework-specific integrations live behind project-owned interfaces so that Docling, Qdrant, LangGraph, Ollama, or any other dependency can be replaced without rewriting the application core.
+The project is organized around explicit domain boundaries. Framework-specific integrations live behind project-owned interfaces so that Docling, Qdrant, LangGraph, Ollama, or other dependencies can be replaced without rewriting the application core.
 
-## Intended repository tree
+## Implemented through Slice 3 (current)
+
+```text
+offline-rag/
+├── README.md
+├── ROADMAP.md
+├── pyproject.toml
+├── config/
+│   ├── base.yaml
+│   ├── deployment/
+│   └── experiments/
+├── data/                          # gitignored content; .gitkeep placeholders
+│   ├── raw/, processed/, manifests/, corpora/
+│   ├── chunks/, chunk-manifests/
+│   ├── embeddings/, index-manifests/
+│   └── qdrant/
+├── models/
+│   ├── docling/
+│   ├── tokenizers/tiktoken/
+│   └── embeddings/qwen3-embedding-0.6b/
+├── eval/datasets/dense_smoke/
+├── scripts/
+│   ├── provision_docling.py
+│   ├── provision_tiktoken.py
+│   └── provision_embedding.py
+├── docs/
+│   ├── slice0_contracts.md … slice3_dense_retrieval.md
+│   └── model_provisioning.md
+├── src/offline_rag/
+│   ├── cli.py
+│   ├── config/
+│   ├── core/ids.py
+│   ├── domain/          # documents, blocks, corpus, chunking, indexing, retrieval, …
+│   ├── ingestion/       # parsers, Docling artifacts, ingest pipeline
+│   ├── chunking/        # structure-aware chunker, tiktoken, chunk pipeline
+│   ├── dense/           # embedders, Qdrant Local, index/retrieve/eval
+│   └── observability/
+└── tests/
+```
+
+## Intended long-term tree
+
+The tree below remains the target shape for later slices (BM25, fusion, generation, API, UI). Prefer evolving existing packages rather than renaming prematurely.
 
 ```text
 offline-rag/
@@ -18,7 +60,7 @@ offline-rag/
 ├── PORTFOLIO_DEMO.md
 ├── .env.example
 ├── .gitignore
-├── pyproject.toml                 # create during Slice 0
+├── pyproject.toml                 # present (Slice 0+)
 ├── DEPLOYMENT.md
 ├── deploy/
 │   ├── Dockerfile.template
@@ -40,11 +82,20 @@ offline-rag/
 │   ├── raw/
 │   ├── manifests/
 │   ├── processed/
+│   ├── corpora/
+│   ├── chunks/
+│   ├── chunk-manifests/
+│   ├── embeddings/
+│   ├── index-manifests/
 │   └── qdrant/
 │
-├── models/                        # ignored; embedding/reranker assets only
+├── models/                        # ignored; embedding/reranker/docling/tokenizer assets
 │   ├── README.md
-│   └── manifest.example.yaml
+│   ├── manifest.example.yaml
+│   ├── docling/
+│   ├── tokenizers/
+│   ├── embeddings/
+│   └── reranker/
 │
 ├── eval/
 │   ├── README.md
@@ -69,32 +120,14 @@ offline-rag/
 │       │   ├── evaluation.py
 │       │   └── traces.py
 │       │
-│       ├── ingestion/
-│       │   ├── base.py
-│       │   ├── docling_parser.py
-│       │   ├── normalizer.py
-│       │   ├── chunker.py
-│       │   ├── ids.py
-│       │   └── pipeline.py
+│       ├── ingestion/             # Slice 1
+│       ├── chunking/              # Slice 2 (structure-aware; not Docling chunker)
+│       ├── dense/                 # Slice 3 (embed + Qdrant Local + retrieve + dense eval)
 │       │
-│       ├── embeddings/
-│       │   ├── base.py
-│       │   ├── local_dense.py
-│       │   └── registry.py
+│       ├── embeddings/            # optional future split; dense/ currently owns adapters
+│       ├── index/                 # optional future split
 │       │
-│       ├── index/
-│       │   ├── qdrant_store.py
-│       │   ├── corpus_manifest.py
-│       │   └── migrations.py
-│       │
-│       ├── retrieval/
-│       │   ├── dense.py
-│       │   ├── bm25.py
-│       │   ├── fusion.py
-│       │   ├── reranker.py
-│       │   ├── context.py
-│       │   ├── confidence.py
-│       │   └── service.py
+│       ├── retrieval/             # future: BM25, fusion, rerank, context
 │       │
 │       ├── generation/
 │       │   ├── base.py
@@ -163,6 +196,10 @@ offline-rag/
 │   └── benchmark_machine.py
 │
 └── docs/
+    ├── slice0_contracts.md
+    ├── slice1_ingestion.md
+    ├── slice2_chunking.md
+    ├── slice3_dense_retrieval.md
     ├── benchmark_methodology.md
     ├── dataset_guidelines.md
     ├── trace_schema.md
@@ -179,19 +216,23 @@ Contains project-owned schemas and value objects. It should not import Docling, 
 
 ### `ingestion/`
 
-Converts external document formats into normalized project-owned `Document` and `Chunk` objects.
+Converts external document formats into normalized project-owned `ParsedDocument` / `ContentBlock` objects and corpus manifests (Slice 1). Does not create retrieval chunks.
 
-### `embeddings/`
+### `chunking/`
 
-Contains dense model adapters only. The rest of the application should not know whether embeddings come from Sentence Transformers, FastEmbed, or another local backend.
+Structure-aware parent/child chunking over ParsedDocuments (Slice 2).
 
-### `index/`
+### `dense/`
 
-Owns Qdrant persistence and corpus/index lifecycle. Retrieval logic should not directly scatter database calls throughout the project.
+Embedding adapters, EmbeddingArtifact cache, Qdrant Local backend, dense index publish, `DenseRetriever`, and minimal dense eval (Slice 3).
+
+### `embeddings/` / `index/` (future optional splits)
+
+Slice 3 keeps adapters under `dense/`. Later refactors may split packages if the tree grows; do not duplicate contracts.
 
 ### `retrieval/`
 
-Owns candidate generation, fusion, reranking, context assembly, and confidence policy.
+Future: BM25, fusion, reranking, context assembly, and confidence policy beyond dense-only retrieve.
 
 ### `generation/`
 

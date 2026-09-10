@@ -35,9 +35,9 @@ The project therefore treats **evaluation as a first-class subsystem**, not as a
 |---|---|---|
 | Parsing | Docling | Layout-aware PDF/document understanding, OCR when needed, structural metadata |
 | Chunking | Structure-aware / hybrid chunking | Preserve headings, pages, tables, parent-child relationships |
-| Dense embeddings | Qwen3-Embedding or BGE-M3 | Swappable through configuration |
+| Dense embeddings | Qwen3-Embedding-0.6B (default) | Swappable; BGE-M3 reserved for later experiments |
 | Sparse retrieval | BM25 initially | Strong baseline for exact technical terms; SPLADE can be evaluated later |
-| Vector/search database | Qdrant | Local persistence, metadata filtering, dense+sparse retrieval |
+| Vector/search database | Qdrant Local | Persistent local path; server mode deferred |
 | Fusion | Reciprocal Rank Fusion (RRF) | Simple, robust hybrid baseline |
 | Reranker | Qwen3-Reranker or BGE reranker | Second-stage cross-encoder ranking |
 | Orchestration | LangGraph + small LangChain integrations | Explicit retrieval/rewrite/retry/abstain graph |
@@ -236,32 +236,53 @@ offline-rag/
 └── scripts/
 ```
 
-See `PROJECT_STRUCTURE.md` for the intended final module tree.
+See `PROJECT_STRUCTURE.md` for the current Slice 0–3 tree and the intended long-term module layout.
 
 ## Development sequence
 
 The project is intentionally sliced so each stage produces a working, testable system.
 
-1. **Foundation and contracts** — repository, configuration, IDs, logging, typed interfaces.
-2. **Document ingestion** — Docling parsing, metadata normalization, deterministic chunk identities.
-3. **Dense baseline** — Qdrant + local embeddings + measurable retrieval.
-4. **Lexical baseline and hybrid retrieval** — BM25 + RRF.
-5. **Reranking** — second-stage cross-encoder.
-6. **Hierarchical context** — child retrieval + parent/neighbor expansion.
-7. **Grounded generation** — generic local inference client, Ollama default, answer schema, page-level citations.
-8. **Evaluation harness** — gold dataset, deterministic metrics, experiment registry.
-9. **Abstention and confidence policy** — explicitly handle missing evidence.
-10. **Agentic recovery** — conditional LangGraph rewrite/retry.
-11. **Security and guardrails** — document-injection tests and hard controls.
-12. **Performance benchmarking** — latency, throughput, memory, VRAM.
-13. **Demo UI** — query inspector, retrieval visualization, benchmark dashboard.
-14. **Portfolio packaging** — reproducible benchmark report, architecture diagram, demo scenario.
+1. **Foundation and contracts** — repository, configuration, IDs, logging, typed interfaces. *(done)*
+2. **Document ingestion** — Docling parsing, metadata normalization, deterministic document/parsed IDs. *(done)*
+3. **Structure-aware chunking** — parent/child chunks, neighbor links, chunk-set state. *(done)*
+4. **Dense baseline** — local embeddings, Qdrant Local, `retrieve`, dense Recall@k/MRR. *(done)*
+5. **Lexical baseline and hybrid retrieval** — BM25 + RRF.
+6. **Reranking** — second-stage cross-encoder.
+7. **Hierarchical context** — child retrieval + parent/neighbor expansion.
+8. **Grounded generation** — generic local inference client, Ollama default, answer schema, page-level citations.
+9. **Evaluation harness** — gold dataset expansion, experiment registry, generation metrics.
+10. **Abstention and confidence policy** — explicitly handle missing evidence.
+11. **Agentic recovery** — conditional LangGraph rewrite/retry.
+12. **Security and guardrails** — document-injection tests and hard controls.
+13. **Performance benchmarking** — latency, throughput, memory, VRAM.
+14. **Demo UI** — query inspector, retrieval visualization, benchmark dashboard.
+15. **Portfolio packaging** — reproducible benchmark report, architecture diagram, demo scenario.
 
-Detailed exit criteria are in `detailed_implementation_slices.md`.
+Detailed exit criteria are in `detailed_implementation_slices.md`. Slice notes: `docs/slice0_contracts.md` … `docs/slice3_dense_retrieval.md`.
+
+## Quick start (through dense retrieve)
+
+```bash
+uv sync
+uv run python scripts/provision_docling.py      # PDF support
+uv run python scripts/provision_tiktoken.py     # chunk budgets
+# For real dense quality (large download):
+# uv run offline-rag provision embedding
+
+offline-rag ingest ./documents --corpus engineering
+offline-rag chunk --corpus engineering
+offline-rag index --corpus engineering          # requires provisioned Qwen unless embedding.implementation=fake
+offline-rag retrieve --corpus engineering --query "maximum operating pressure"
+offline-rag doctor --corpus engineering
+```
+
+Default config expects Qwen weights under `models/embeddings/qwen3-embedding-0.6b/`. CI and unit tests use `FakeEmbedder` / fake tokenizer so they do not require Qwen weights.
 
 ## Demo experience
 
-A strong demo should allow a user to:
+**Today (Slice 3):** ingest → chunk → dense index → retrieve / eval retrieve / doctor.
+
+**Target demo** should allow a user to:
 
 1. Ingest a small set of public technical documents.
 2. Ask an engineering question.
@@ -307,6 +328,9 @@ Use public, redistributable technical documents rather than proprietary material
 
 ## Project status
 
-**Phase:** design / implementation-ready.
+**Phase:** Milestone 1 dense baseline implemented (Slices 0–3).
 
-The current documentation set defines the product, architecture, deployment boundary, implementation slices, evaluation model, security model, project layout, and demo strategy before production code begins.
+Working local path: ingest → chunk → index → retrieve → dense eval.
+Still deferred: BM25/hybrid, reranking, parent expansion, generation/`query`, and the full evaluation platform.
+
+See `ROADMAP.md` and `docs/slice3_dense_retrieval.md`.

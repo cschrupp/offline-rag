@@ -11,10 +11,13 @@ paths:
   corpora: data/corpora
   chunks: data/chunks
   chunk_manifests: data/chunk-manifests
+  embeddings: data/embeddings
+  index_manifests: data/index-manifests
   qdrant_storage: data/qdrant
   retrieval_models: models
   docling_artifacts: models/docling
   tokenizer_artifacts: models/tokenizers/tiktoken
+  embedding_artifacts: models/embeddings
   eval_results: eval/results
 
 logging:
@@ -53,10 +56,27 @@ chunking:
 
 dense:
   enabled: true
-  model: REPLACE_WITH_LOCAL_EMBEDDING_MODEL
-  model_path: /models/embeddings/REPLACE_ME
+  model: Qwen/Qwen3-Embedding-0.6B
+  model_path: models/embeddings/qwen3-embedding-0.6b
   local_files_only: true
-  top_k: 30
+  top_k: 10
+
+indexing:
+  backend: qdrant_local
+  backend_contract: qdrant-local-v1
+  metric: cosine
+  embedding_text:
+    strategy: plain
+    contract_version: plain-v1
+  embedding:
+    implementation: sentence_transformers
+    model_id: Qwen/Qwen3-Embedding-0.6B
+    revision: 97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3
+    dimension: 1024
+    normalize: true
+    adapter_contract: sentence-transformers-v1
+    batch_size: 32
+    device: cpu
 
 sparse:
   enabled: true

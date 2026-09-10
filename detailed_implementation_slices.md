@@ -2,9 +2,13 @@
 
 This document converts the architecture into incremental, testable implementation slices. Each slice should leave the repository in a working state. Avoid building multiple major layers simultaneously: the evaluation harness depends on being able to attribute improvements and regressions to individual changes.
 
+**Implementation status:** Slices 0–3 are implemented in the repository. Slices 4+ remain planned. Authoritative Slice 0–3 notes live under `docs/slice0_contracts.md` … `docs/slice3_dense_retrieval.md`.
+
 ---
 
 # Slice 0 — Repository foundation and system contracts
+
+**Status:** done.
 
 ## Objective
 
@@ -27,21 +31,23 @@ Establish the project skeleton, configuration system, stable data contracts, loc
 - Stable ID policy.
 - Structured local logging.
 - Unit-test framework.
-- CLI shell with placeholder commands.
+- CLI shell (`offline-rag`); later slices filled real commands beyond doctor.
 
-## Recommended commands
-
-Eventually support a CLI shape such as:
+## Implemented commands (through Slice 3)
 
 ```text
+offline-rag doctor
 offline-rag ingest ...
-offline-rag query ...
-offline-rag eval run ...
-offline-rag eval compare ...
-offline-rag doctor ...
+offline-rag chunk ...
+offline-rag chunk inspect ...
+offline-rag provision embedding
+offline-rag index ...
+offline-rag index inspect ...
+offline-rag retrieve ...
+offline-rag eval retrieve ...
 ```
 
-Exact CLI library is an implementation choice.
+`query` / generation and broader `eval run|compare` remain later slices.
 
 ## Key design decision
 
@@ -74,6 +80,8 @@ Clean architecture starts before model integration. This slice demonstrates that
 ---
 
 # Slice 1 — Document parsing and normalized ingestion
+
+**Status:** done.
 
 ## Objective
 
@@ -128,15 +136,16 @@ Fixture corpus should include:
 
 # Slice 2 — Structure-aware chunking and parent-child model
 
+**Status:** done. Implemented as a project-owned structure-aware chunker over ParsedDocument (not a Docling chunker adapter).
+
 ## Objective
 
 Produce searchable child chunks and context-bearing parent units while preserving document hierarchy.
 
 ## Deliverables
 
-- chunker interface;
-- Docling-aware chunker adapter;
-- configurable target/max token counts;
+- project-owned structure-aware chunker (not Docling HybridChunker);
+- configurable target/max token counts (tiktoken);
 - parent-child relationships;
 - neighbor relationships or ordering metadata;
 - token accounting;
@@ -166,6 +175,8 @@ A document can be parsed, chunked, inspected, and reconstructed into an ordered 
 ---
 
 # Slice 3 — Dense retrieval baseline
+
+**Status:** done. See `docs/slice3_dense_retrieval.md` for the locked contracts (plain-v1 text, Qwen3-Embedding-0.6B, Qdrant Local, IndexState, `retrieve`, `eval retrieve`).
 
 ## Objective
 

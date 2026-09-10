@@ -23,9 +23,14 @@ def test_root_help() -> None:
         (["ingest", "--help"], "ingest"),
         (["chunk", "--help"], "chunk"),
         (["chunk", "inspect", "--help"], "chunk inspect"),
+        (["provision", "embedding", "--help"], "provision embedding"),
+        (["index", "--help"], "index"),
+        (["index", "inspect", "--help"], "index inspect"),
+        (["retrieve", "--help"], "retrieve"),
         (["query", "--help"], "query"),
         (["eval", "run", "--help"], "eval run"),
         (["eval", "compare", "--help"], "eval compare"),
+        (["eval", "retrieve", "--help"], "eval retrieve"),
         (["doctor", "--help"], "doctor"),
     ],
 )
@@ -48,11 +53,13 @@ def test_placeholders_terminate_cleanly(argv: list[str], capsys: pytest.CaptureF
     assert code == NOT_IMPLEMENTED_EXIT
     err = capsys.readouterr().err
     assert "not implemented" in err
+    if argv == ["query"]:
+        assert "retrieve" in err
 
 
 def test_doctor_ok_with_base_config(capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(REPO_ROOT)
-    # Doctor may FAIL if Docling/tokenizer artifacts are missing under strict offline.
+    # Doctor may FAIL if Docling/tokenizer/embedding artifacts are missing under strict offline.
     artifacts = REPO_ROOT / "models" / "docling"
     from offline_rag.ingestion.docling_artifacts import write_provisioning_manifest
 
@@ -62,11 +69,22 @@ def test_doctor_ok_with_base_config(capsys: pytest.CaptureFixture[str], monkeypa
     tok = REPO_ROOT / "models" / "tokenizers" / "tiktoken"
     if not (tok / "offline-rag-tokenizer.json").exists():
         pytest.skip("tiktoken artifacts not provisioned")
+    from offline_rag.dense.provision import (
+        EmbeddingReadiness,
+        validate_embedding_artifacts,
+    )
+
+    emb = REPO_ROOT / "models" / "embeddings" / "qwen3-embedding-0.6b"
+    emb_status = validate_embedding_artifacts(emb)
+    if emb_status.readiness != EmbeddingReadiness.READY:
+        pytest.skip("embedding artifacts not provisioned")
     code = main(["doctor", "--config", str(REPO_ROOT / "config" / "base.yaml")])
     captured = capsys.readouterr()
     assert code == 0
     assert "doctor: OK" in captured.out
     assert "Tokenizer artifacts" in captured.out
+    assert "Embedding model artifacts" in captured.out
+    assert "Indexing status" in captured.out
 
 
 def test_ingest_json_txt(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:

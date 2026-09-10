@@ -5,6 +5,16 @@ dense:
   enabled: true
   top_k: 10
 
+indexing:
+  embedding:
+    # Real portfolio baseline uses Qwen (provisioned locally).
+    # For CI without weights, override implementation: fake
+    implementation: sentence_transformers
+    model_id: Qwen/Qwen3-Embedding-0.6B
+    revision: 97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3
+    dimension: 1024
+    normalize: true
+
 sparse:
   enabled: false
 

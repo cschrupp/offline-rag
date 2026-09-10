@@ -15,6 +15,8 @@ data/corpora/*
 data/manifests/*
 data/chunks/*
 data/chunk-manifests/*
+data/embeddings/*
+data/index-manifests/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 !data/qdrant/.gitkeep
@@ -22,6 +24,8 @@ data/chunk-manifests/*
 !data/manifests/.gitkeep
 !data/chunks/.gitkeep
 !data/chunk-manifests/.gitkeep
+!data/embeddings/.gitkeep
+!data/index-manifests/.gitkeep
 
 # Models
 models/*
@@ -38,6 +42,14 @@ models/tokenizers/**
 models/tokenizers/tiktoken/*
 !models/tokenizers/tiktoken/.gitkeep
 !models/tokenizers/tiktoken/README.md
+!models/embeddings/
+models/embeddings/**
+!models/embeddings/.gitkeep
+!models/embeddings/README.md
+!models/embeddings/qwen3-embedding-0.6b/
+models/embeddings/qwen3-embedding-0.6b/*
+!models/embeddings/qwen3-embedding-0.6b/.gitkeep
+!models/embeddings/qwen3-embedding-0.6b/README.md
 
 # Evaluation run outputs
 eval/results/*

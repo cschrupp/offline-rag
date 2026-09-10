@@ -25,7 +25,9 @@ def test_load_base_yaml() -> None:
     settings = load_settings(yaml_paths=[REPO_ROOT / "config" / "base.yaml"], environ={})
     assert settings.paths.raw_data == Path("data/raw")
     assert settings.logging.structured is True
-    assert settings.dense.top_k == 30
+    assert settings.dense.top_k == 10
+    assert settings.indexing.embedding.model_id == "Qwen/Qwen3-Embedding-0.6B"
+    assert settings.indexing.embedding.revision == "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3"
 
 
 def test_load_experiment_overlay() -> None:

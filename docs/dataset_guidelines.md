@@ -36,6 +36,8 @@ Do not create every gold question by asking the same generator model to turn eac
 
 Store a dataset version and content hash. If chunking changes substantially, preserve page/semantic labels when possible so benchmark maintenance remains manageable.
 
+For Slice 3 dense retrieval gold (`eval retrieve`), bind cases to a specific `chunk_set_id`. Changing child-chunk budgets or chunk config invalidates chunk-level relevance IDs; re-label or rebind before comparing runs.
+
 ## Review checklist
 
 - Is the question understandable without seeing the target passage?

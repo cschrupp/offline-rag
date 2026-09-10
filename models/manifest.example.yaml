@@ -2,12 +2,14 @@ schema_version: 1
 
 retrieval_models:
   embeddings:
-    - id: replace-with-embedding-model
-      path: /models/embeddings/REPLACE_ME
-      revision: REPLACE_ME
+    - id: Qwen/Qwen3-Embedding-0.6B
+      path: models/embeddings/qwen3-embedding-0.6b
+      revision: 97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3
+      dimension: 1024
+      runtime: sentence-transformers
   rerankers:
     - id: replace-with-reranker
-      path: /models/reranker/REPLACE_ME
+      path: models/reranker/REPLACE_ME
       revision: REPLACE_ME
 
 approved_generation:

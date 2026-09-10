@@ -2,6 +2,8 @@
 
 Slice 1 turns source files into durable normalized parser output.
 
+**Status:** implemented.
+
 ## Flow
 
 ```text
@@ -22,6 +24,7 @@ IngestionReport              (one execution)
 
 - `paths.docling_artifacts` (default `models/docling`)
 - `paths.corpora` (default `data/corpora`)
+- `paths.manifests` / `paths.processed`
 - `parsing.pdf.ocr_enabled` (default `false`)
 - env: `OFFLINE_RAG_DOCLING_ARTIFACTS_PATH`, `OFFLINE_RAG_CORPORA`, `OFFLINE_RAG_PDF_OCR_ENABLED`
 
@@ -66,9 +69,12 @@ remain in the active corpus. Authoritative synchronization/removal is deferred.
 Slice 1 targets born-digital PDFs with OCR disabled by default. Image-only /
 scanned PDFs may require OCR and are outside the default parser profile.
 
-## Deferred
+## Deferred beyond Slice 1
 
-- retrieval `Chunk` creation / parent-child chunking
-- embeddings, BM25, Qdrant, retrieval, reranking, generation
+(Now implemented in later slices where noted.)
+
+- retrieval `Chunk` creation / parent-child chunking → **Slice 2**
+- embeddings, Qdrant, dense retrieve → **Slice 3**
+- BM25, hybrid, reranking, generation → later
 - authoritative `--sync` / deletion
 - OCR-focused fixture suite

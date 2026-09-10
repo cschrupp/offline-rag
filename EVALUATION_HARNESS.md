@@ -1,5 +1,7 @@
 # Evaluation Harness
 
+**Current readiness:** Slice 3 ships minimal dense retrieval eval (`offline-rag eval retrieve`: Recall@1/5/10, MRR, latency; gold bound to `chunk_set_id`). Layers below describe the full harness target; BM25/hybrid/generation/citation layers are not implemented yet.
+
 ## Purpose
 
 The evaluation harness is a first-class subsystem. It exists to separate retrieval failures from generation failures, support ablation studies, prevent regressions, and make project claims measurable.

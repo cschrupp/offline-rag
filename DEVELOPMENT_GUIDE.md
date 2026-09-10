@@ -10,6 +10,27 @@ The preferred loop is:
 baseline -> observe failure -> form hypothesis -> implement change -> benchmark -> keep/revert
 ```
 
+## 1b. Current local pipeline (Slices 0–3)
+
+```bash
+uv sync
+uv run python scripts/provision_docling.py
+uv run python scripts/provision_tiktoken.py
+# optional for real dense quality:
+# uv run offline-rag provision embedding
+
+offline-rag ingest <paths> --corpus <name>
+offline-rag chunk --corpus <name>
+offline-rag index --corpus <name>
+offline-rag retrieve --corpus <name> --query "..."
+offline-rag eval retrieve --dataset <dir> --corpus <name>
+offline-rag doctor --corpus <name>
+```
+
+`offline-rag query` (generation) is not implemented yet. Use `retrieve` for evidence.
+
+For CI-scale dense tests, set `indexing.embedding.implementation: fake` (see unit tests). Do not rely on FakeEmbedder for portfolio quality claims.
+
 ## 2. Keep the core path simple
 
 Do not add an agent, judge model, new database, or more advanced retrieval method until the existing benchmark shows a failure that the change is intended to address.
@@ -74,10 +95,14 @@ Fast, no large models.
 
 Examples:
 
-- RRF math;
-- citation validation;
-- ID generation;
+- ID generation and config hashes;
+- structure-aware chunking with FakeTokenCounter;
+- FakeEmbedder + dense index reuse / no-op;
+- Recall@k / MRR math;
+- citation validation (future);
 - config validation;
+
+Real Docling PDF and optional real Qwen embedding loads belong in dedicated integration tests / provisioned environments.
 - metric calculations;
 - chunk mapping.
 
@@ -88,7 +113,7 @@ Small local models/fixtures where possible.
 Examples:
 
 - parse -> chunk;
-- chunk -> embed -> Qdrant -> retrieve;
+- chunk -> index (embed + Qdrant Local) -> retrieve;
 - retrieve -> rerank;
 - query -> citation validation.
 

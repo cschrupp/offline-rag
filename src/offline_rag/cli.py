@@ -6,6 +6,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 from offline_rag.chunking.persistence import (
     chunk_state_path,
@@ -17,7 +18,27 @@ from offline_rag.chunking.pipeline import chunking_status_for_corpus, run_chunki
 from offline_rag.chunking.tokenize import validate_tiktoken_artifacts
 from offline_rag.config import ConfigError, load_settings
 from offline_rag.config.models import AppSettings
+from offline_rag.core.ids import dense_point_uuid
+from offline_rag.dense.evaluate import DenseEvaluationError, DenseRetrievalEvaluator
+from offline_rag.dense.persistence import (
+    index_state_path,
+    load_index_manifest,
+    try_load_index_manifest,
+    try_load_index_state,
+)
+from offline_rag.dense.pipeline import run_indexing
+from offline_rag.dense.provision import (
+    EmbeddingReadiness,
+    provision_embedding_model,
+    resolve_embedding_model_dir,
+    validate_embedding_artifacts,
+)
+from offline_rag.dense.qdrant_local import QdrantLocalBackend
+from offline_rag.dense.resolver import ChunkResolutionError, resolve_child_chunk
+from offline_rag.dense.retrieve import DenseRetrievalError, DenseRetriever
+from offline_rag.dense.status import indexing_status_for_corpus
 from offline_rag.domain.chunking import ChunkingStatus
+from offline_rag.domain.indexing import IndexingStatus, ProvisioningStatus
 from offline_rag.domain.ingestion import IngestionStatus
 from offline_rag.ingestion.discovery import DiscoveryError, validate_corpus_name
 from offline_rag.ingestion.docling_artifacts import validate_docling_artifacts
@@ -62,13 +83,19 @@ def _resolve_settings(settings: AppSettings) -> AppSettings:
                     "corpora": _resolve(settings.paths.corpora),
                     "chunks": _resolve(settings.paths.chunks),
                     "chunk_manifests": _resolve(settings.paths.chunk_manifests),
+                    "embeddings": _resolve(settings.paths.embeddings),
+                    "index_manifests": _resolve(settings.paths.index_manifests),
                     "qdrant_storage": _resolve(settings.paths.qdrant_storage),
                     "retrieval_models": _resolve(settings.paths.retrieval_models),
                     "docling_artifacts": _resolve(settings.paths.docling_artifacts),
                     "tokenizer_artifacts": _resolve(settings.paths.tokenizer_artifacts),
+                    "embedding_artifacts": _resolve(settings.paths.embedding_artifacts),
                     "eval_results": _resolve(settings.paths.eval_results),
                 }
-            )
+            ),
+            "dense": settings.dense.model_copy(
+                update={"model_path": _resolve(settings.dense.model_path)}
+            ),
         }
     )
 
@@ -81,7 +108,7 @@ def _load_settings(args: argparse.Namespace) -> AppSettings:
 def _not_implemented(command: str) -> int:
     print(
         f"offline-rag {command}: not implemented in this slice "
-        "(deferred beyond Slice 2).",
+        "(deferred beyond Slice 3).",
         file=sys.stderr,
     )
     return NOT_IMPLEMENTED_EXIT
@@ -294,8 +321,398 @@ def cmd_chunk_inspect(args: argparse.Namespace) -> int:
     return 1
 
 
+def cmd_provision_embedding(args: argparse.Namespace) -> int:
+    try:
+        settings = _load_settings(args)
+    except ConfigError as exc:
+        print(f"provision embedding: configuration failed: {exc}", file=sys.stderr)
+        return 1
+
+    logger = configure_logging(
+        level=settings.logging.level,
+        structured=settings.logging.structured,
+    )
+    log_event(logger, 20, "provision embedding started", event="provision.embedding.start")
+
+    destination = resolve_embedding_model_dir(
+        embedding_artifacts_root=settings.paths.embedding_artifacts,
+        model_path=settings.dense.model_path,
+    )
+    report = provision_embedding_model(
+        destination,
+        model_id=settings.indexing.embedding.model_id,
+        revision=settings.indexing.embedding.revision,
+        expected_dimension=settings.indexing.embedding.dimension,
+        force=bool(args.force),
+    )
+
+    if args.json:
+        print(report.model_dump_json())
+    else:
+        label = {
+            ProvisioningStatus.READY: "Embedding provisioning completed",
+            ProvisioningStatus.ALREADY_PROVISIONED: "Embedding already provisioned",
+            ProvisioningStatus.FAILED: "Embedding provisioning failed",
+        }[report.status]
+        print(label)
+        print()
+        print(f"Model:       {report.model_id}")
+        print(f"Revision:    {report.resolved_revision or report.requested_revision}")
+        print(f"Destination: {report.destination}")
+        if report.artifact_id:
+            print(f"Artifact:    {report.artifact_id}")
+        if report.manifest_path:
+            print(f"Manifest:    {report.manifest_path}")
+        print(f"Downloaded:  {report.files_downloaded}")
+        if report.errors:
+            print()
+            print("Errors:")
+            for error in report.errors:
+                print(f"  {error}")
+
+    return 1 if report.status == ProvisioningStatus.FAILED else 0
+
+
+def cmd_index(args: argparse.Namespace) -> int:
+    try:
+        settings = _load_settings(args)
+    except ConfigError as exc:
+        print(f"index: configuration failed: {exc}", file=sys.stderr)
+        return 1
+
+    logger = configure_logging(
+        level=settings.logging.level,
+        structured=settings.logging.structured,
+    )
+    log_event(logger, 20, "index started", event="index.start")
+    report = run_indexing(settings=settings, corpus_name=args.corpus)
+
+    if args.json:
+        print(report.model_dump_json())
+    else:
+        label = {
+            IndexingStatus.SUCCESS: "Indexing completed",
+            IndexingStatus.NO_OP: "Indexing completed (no changes)",
+            IndexingStatus.FAILED: "Indexing failed",
+        }[report.status]
+        print(label)
+        print()
+        print(f"Documents:            {report.documents_total}")
+        print(f"Children:             {report.children_total}")
+        print(f"Embeddings generated: {report.embeddings_generated}")
+        print(f"Embeddings reused:    {report.embeddings_reused}")
+        print(f"Embeddings failed:    {report.embeddings_failed}")
+        print(f"Vectors:              {report.vectors_materialized}")
+        print()
+        if report.index_id and report.index_manifest_path:
+            print(f"Index:      {report.index_id}")
+            print(f"Collection: {report.collection_name}")
+            print(f"Manifest:   {report.index_manifest_path}")
+        else:
+            print("No complete dense index was published.")
+        if report.errors:
+            print()
+            print("Errors:")
+            for error in report.errors:
+                print(f"  {error}")
+    return 1 if report.status == IndexingStatus.FAILED else 0
+
+
+def _index_summary_payload(
+    *,
+    settings: AppSettings,
+    corpus_name: str,
+    index_id: str | None,
+    status: str,
+) -> dict[str, Any]:
+    state = try_load_index_state(index_state_path(settings.paths.corpora, corpus_name))
+    target_id = index_id
+    if target_id is None and state is not None:
+        target_id = state.current_index_id
+
+    manifest = None
+    if target_id is not None:
+        manifest = try_load_index_manifest(settings.paths.index_manifests, target_id)
+        # Fall back to state pointer filename when present.
+        if manifest is None and state is not None and state.current_index_id == target_id:
+            path = settings.paths.index_manifests / Path(state.current_index_manifest).name
+            if path.exists():
+                manifest = load_index_manifest(path)
+
+    vector_count: int | None = None
+    if manifest is not None:
+        backend = QdrantLocalBackend(settings.paths.qdrant_storage)
+        try:
+            if backend.collection_exists(manifest.collection_name):
+                vector_count = backend.count(manifest.collection_name)
+        finally:
+            backend.close()
+
+    return {
+        "corpus_name": corpus_name,
+        "status": status,
+        "source_corpus_id": state.source_corpus_id if state else None,
+        "source_chunk_set_id": state.source_chunk_set_id if state else None,
+        "index_id": target_id,
+        "index_config_hash": (
+            manifest.index_config_hash if manifest else (state.index_config_hash if state else None)
+        ),
+        "collection_name": manifest.collection_name if manifest else None,
+        "embedding_model_id": manifest.embedding_model_id if manifest else None,
+        "embedding_model_revision": manifest.embedding_model_revision if manifest else None,
+        "embedding_dimension": manifest.embedding_dimension if manifest else None,
+        "normalize": manifest.normalize if manifest else None,
+        "similarity_metric": manifest.similarity_metric if manifest else None,
+        "expected_child_count": manifest.expected_child_count if manifest else None,
+        "vector_count": vector_count,
+        "index_manifest_path": state.current_index_manifest if state and target_id == state.current_index_id else (
+            f"index-manifests/{target_id}.json" if target_id else None
+        ),
+    }
+
+
+def _print_index_summary(summary: dict[str, Any], *, as_json: bool) -> None:
+    if as_json:
+        print(json.dumps(summary, ensure_ascii=False))
+        return
+    print(f"corpus_name:              {summary['corpus_name']}")
+    print(f"status:                   {summary['status']}")
+    print(f"source_corpus_id:         {summary['source_corpus_id']}")
+    print(f"source_chunk_set_id:      {summary['source_chunk_set_id']}")
+    print(f"index_id:                 {summary['index_id']}")
+    print(f"index_config_hash:        {summary['index_config_hash']}")
+    print(f"collection_name:          {summary['collection_name']}")
+    print(f"embedding_model_id:       {summary['embedding_model_id']}")
+    print(f"embedding_model_revision: {summary['embedding_model_revision']}")
+    print(f"embedding_dimension:      {summary['embedding_dimension']}")
+    print(f"normalize:                {summary['normalize']}")
+    print(f"similarity_metric:        {summary['similarity_metric']}")
+    print(f"expected_child_count:     {summary['expected_child_count']}")
+    print(f"vector_count:             {summary['vector_count']}")
+    print(f"index_manifest_path:      {summary['index_manifest_path']}")
+
+
+def _resolve_index_collection(
+    settings: AppSettings,
+    *,
+    corpus_name: str,
+    index_id: str | None,
+) -> tuple[str, str]:
+    """Return (index_id, collection_name) for inspect lookups."""
+    state = try_load_index_state(index_state_path(settings.paths.corpora, corpus_name))
+    target = index_id
+    if target is None:
+        if state is None:
+            raise LookupError(f"index state not initialized for corpus '{corpus_name}'")
+        target = state.current_index_id
+    manifest = try_load_index_manifest(settings.paths.index_manifests, target)
+    if manifest is None and state is not None and state.current_index_id == target:
+        path = settings.paths.index_manifests / Path(state.current_index_manifest).name
+        if path.exists():
+            manifest = load_index_manifest(path)
+    if manifest is None:
+        raise LookupError(f"dense index manifest not found: {target}")
+    return target, manifest.collection_name
+
+
+def cmd_index_inspect(args: argparse.Namespace) -> int:
+    try:
+        settings = _load_settings(args)
+    except ConfigError as exc:
+        print(f"index inspect: configuration failed: {exc}", file=sys.stderr)
+        return 1
+
+    try:
+        name = validate_corpus_name(args.corpus)
+    except DiscoveryError as exc:
+        print(f"index inspect: {exc}", file=sys.stderr)
+        return 1
+
+    selectors = [flag for flag in (args.index, args.point, args.chunk) if flag]
+    if args.point and args.chunk:
+        print("index inspect: provide only one of --point or --chunk", file=sys.stderr)
+        return 1
+
+    status = indexing_status_for_corpus(settings, name)
+
+    if args.point or args.chunk:
+        try:
+            index_id, collection_name = _resolve_index_collection(
+                settings,
+                corpus_name=name,
+                index_id=args.index,
+            )
+        except LookupError as exc:
+            print(f"index inspect: {exc}", file=sys.stderr)
+            return 1
+
+        point_id = args.point or dense_point_uuid(args.chunk)
+        backend = QdrantLocalBackend(settings.paths.qdrant_storage)
+        try:
+            record = backend.get_point(collection_name, point_id)
+        finally:
+            backend.close()
+
+        if record is None:
+            print(f"index inspect: point not found: {point_id}", file=sys.stderr)
+            return 1
+
+        payload = dict(record.payload)
+        chunk_id = str(payload.get("chunk_id") or args.chunk or "")
+        chunk_artifact_id = str(payload.get("chunk_artifact_id") or "")
+        text: str | None = None
+        resolution_error: str | None = None
+        if chunk_id and chunk_artifact_id:
+            try:
+                chunk = resolve_child_chunk(
+                    settings.paths.chunks,
+                    chunk_artifact_id=chunk_artifact_id,
+                    chunk_id=chunk_id,
+                )
+                text = chunk.text
+            except ChunkResolutionError as exc:
+                resolution_error = str(exc)
+
+        detail = {
+            "index_id": index_id,
+            "collection_name": collection_name,
+            "point_id": record.point_id,
+            "chunk_id": chunk_id or None,
+            "document_id": payload.get("document_id"),
+            "parent_chunk_id": payload.get("parent_chunk_id"),
+            "previous_chunk_id": payload.get("previous_chunk_id"),
+            "next_chunk_id": payload.get("next_chunk_id"),
+            "chunk_artifact_id": chunk_artifact_id or None,
+            "embedding_id": payload.get("embedding_id"),
+            "section_path": payload.get("section_path") or [],
+            "page_start": payload.get("page_start"),
+            "page_end": payload.get("page_end"),
+            "line_start": payload.get("line_start"),
+            "line_end": payload.get("line_end"),
+            "order": payload.get("order"),
+            "token_count": payload.get("token_count"),
+            "vector_dimension": len(record.vector),
+            "text": text,
+            "resolution_error": resolution_error,
+            "payload": payload,
+        }
+        if args.json:
+            print(json.dumps(detail, ensure_ascii=False))
+        else:
+            print(f"index_id:          {detail['index_id']}")
+            print(f"collection_name:   {detail['collection_name']}")
+            print(f"point_id:          {detail['point_id']}")
+            print(f"chunk_id:          {detail['chunk_id']}")
+            print(f"document_id:       {detail['document_id']}")
+            print(f"parent_chunk_id:   {detail['parent_chunk_id']}")
+            print(f"previous_chunk_id: {detail['previous_chunk_id']}")
+            print(f"next_chunk_id:     {detail['next_chunk_id']}")
+            print(f"chunk_artifact_id: {detail['chunk_artifact_id']}")
+            print(f"embedding_id:      {detail['embedding_id']}")
+            print(f"section_path:      {detail['section_path']}")
+            print(f"page_start/end:    {detail['page_start']}/{detail['page_end']}")
+            print(f"line_start/end:    {detail['line_start']}/{detail['line_end']}")
+            print(f"order:             {detail['order']}")
+            print(f"token_count:       {detail['token_count']}")
+            print(f"vector_dimension:  {detail['vector_dimension']}")
+            if resolution_error:
+                print(f"resolution_error:  {resolution_error}")
+            print()
+            if text is not None:
+                print(text)
+        return 0
+
+    if args.index or not selectors:
+        if args.index:
+            manifest = try_load_index_manifest(settings.paths.index_manifests, args.index)
+            if manifest is None:
+                print(f"index inspect: index not found: {args.index}", file=sys.stderr)
+                return 1
+            active = try_load_index_state(index_state_path(settings.paths.corpora, name))
+            summary_status = (
+                status if active is not None and active.current_index_id == args.index else "HISTORICAL"
+            )
+            summary = _index_summary_payload(
+                settings=settings,
+                corpus_name=name,
+                index_id=args.index,
+                status=summary_status,
+            )
+        else:
+            summary = _index_summary_payload(
+                settings=settings,
+                corpus_name=name,
+                index_id=None,
+                status=status,
+            )
+        _print_index_summary(summary, as_json=bool(args.json))
+        return 0
+
+    print("index inspect: invalid selector combination", file=sys.stderr)
+    return 1
+
+
+def cmd_retrieve(args: argparse.Namespace) -> int:
+    try:
+        settings = _load_settings(args)
+    except ConfigError as exc:
+        print(f"retrieve: configuration failed: {exc}", file=sys.stderr)
+        return 1
+
+    logger = configure_logging(
+        level=settings.logging.level,
+        structured=settings.logging.structured,
+    )
+    log_event(logger, 20, "retrieve started", event="retrieve.start")
+
+    retriever = DenseRetriever(settings)
+    try:
+        result = retriever.retrieve(
+            query=args.query,
+            corpus_name=args.corpus,
+            top_k=args.top_k,
+        )
+    except DenseRetrievalError as exc:
+        print(f"retrieve: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        retriever.close()
+
+    if args.json:
+        print(result.model_dump_json())
+    else:
+        print("Query:")
+        print(result.query)
+        print()
+        print("Index:")
+        print(result.index_id)
+        print()
+        for candidate in result.candidates:
+            section = " / ".join(candidate.section_path) if candidate.section_path else "-"
+            page = (
+                f"{candidate.page_start}"
+                if candidate.page_start == candidate.page_end
+                else f"{candidate.page_start}-{candidate.page_end}"
+            )
+            print(f"{candidate.rank}. score={candidate.score:.3f}")
+            print(f"   document: {candidate.document_id}")
+            print(f"   section: {section}")
+            print(f"   page: {page}")
+            print(f"   chunk: {candidate.chunk_id}")
+            print()
+            for line in candidate.text.splitlines() or [candidate.text]:
+                print(f"   {line}")
+            print()
+    return 0
+
+
 def cmd_query(_args: argparse.Namespace) -> int:
-    return _not_implemented("query")
+    print(
+        "Full query/generation is not implemented yet. "
+        "Use offline-rag retrieve for dense retrieval.",
+        file=sys.stderr,
+    )
+    return NOT_IMPLEMENTED_EXIT
 
 
 def cmd_eval_run(_args: argparse.Namespace) -> int:
@@ -304,6 +721,59 @@ def cmd_eval_run(_args: argparse.Namespace) -> int:
 
 def cmd_eval_compare(_args: argparse.Namespace) -> int:
     return _not_implemented("eval compare")
+
+
+def cmd_eval_retrieve(args: argparse.Namespace) -> int:
+    try:
+        settings = _load_settings(args)
+    except ConfigError as exc:
+        print(f"eval retrieve: configuration failed: {exc}", file=sys.stderr)
+        return 1
+
+    logger = configure_logging(
+        level=settings.logging.level,
+        structured=settings.logging.structured,
+    )
+    log_event(logger, 20, "eval retrieve started", event="eval.retrieve.start")
+
+    evaluator = DenseRetrievalEvaluator(settings)
+    try:
+        report = evaluator.evaluate(
+            Path(args.dataset),
+            corpus_name=args.corpus,
+            top_k=int(args.top_k),
+            output_path=Path(args.output) if args.output else None,
+        )
+    except (DenseEvaluationError, DenseRetrievalError) as exc:
+        print(f"eval retrieve: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        evaluator.retriever.close()
+
+    if args.json:
+        print(report.model_dump_json())
+    else:
+        print("Dense retrieval evaluation completed")
+        print()
+        print(f"Run:          {report.run_id}")
+        print(f"Dataset:      {report.dataset_id}")
+        print(f"Cases:        {report.case_count}")
+        print(f"Index:        {report.index_id}")
+        print(f"Chunk set:    {report.chunk_set_id}")
+        print(f"top_k:        {report.top_k}")
+        print()
+        print(f"Recall@1:     {report.recall_at_1:.4f}")
+        print(f"Recall@5:     {report.recall_at_5:.4f}")
+        print(f"Recall@10:    {report.recall_at_10:.4f}")
+        print(f"MRR:          {report.mrr:.4f}")
+        print(f"Latency mean: {report.latency_mean_ms:.1f} ms")
+        print(f"Latency p50:  {report.latency_p50_ms:.1f} ms")
+        print(f"Latency p95:  {report.latency_p95_ms:.1f} ms")
+        result_path = report.metadata.get("result_path")
+        if result_path:
+            print()
+            print(f"Report:       {result_path}")
+    return 0
 
 
 def cmd_doctor(args: argparse.Namespace) -> int:
@@ -341,14 +811,26 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         ("corpora", settings.paths.corpora),
         ("chunks", settings.paths.chunks),
         ("chunk_manifests", settings.paths.chunk_manifests),
+        ("embeddings", settings.paths.embeddings),
+        ("index_manifests", settings.paths.index_manifests),
         ("qdrant_storage", settings.paths.qdrant_storage),
         ("retrieval_models", settings.paths.retrieval_models),
         ("eval_results", settings.paths.eval_results),
     ]
 
+    creatable = {
+        "corpora",
+        "processed",
+        "manifests",
+        "chunks",
+        "chunk_manifests",
+        "embeddings",
+        "index_manifests",
+    }
+
     for name, path in path_fields:
         if not path.exists():
-            if name in {"corpora", "processed", "manifests", "chunks", "chunk_manifests"}:
+            if name in creatable:
                 try:
                     path.mkdir(parents=True, exist_ok=True)
                 except OSError as exc:
@@ -368,6 +850,11 @@ def cmd_doctor(args: argparse.Namespace) -> int:
             probe.unlink(missing_ok=True)
         except OSError as exc:
             errors.append(f"path is not writable: paths.{name}={path} ({exc})")
+
+    notes.append(f"Embeddings path                 {settings.paths.embeddings}")
+    notes.append(f"Index manifests path            {settings.paths.index_manifests}")
+    notes.append(f"Embedding artifacts path        {settings.paths.embedding_artifacts}")
+    notes.append(f"Qdrant storage path             {settings.paths.qdrant_storage}")
 
     try:
         import docling
@@ -404,6 +891,29 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         notes.append("Action: uv run python scripts/provision_tiktoken.py")
         if settings.project.strict_offline:
             errors.append(f"Tokenizer artifacts not ready: {tok_reason}")
+
+    embedding_dir = resolve_embedding_model_dir(
+        embedding_artifacts_root=settings.paths.embedding_artifacts,
+        model_path=settings.dense.model_path,
+    )
+    emb_status = validate_embedding_artifacts(
+        embedding_dir,
+        expected_model_id=settings.indexing.embedding.model_id,
+        expected_revision=settings.indexing.embedding.revision,
+        expected_dimension=settings.indexing.embedding.dimension,
+    )
+    notes.append(f"Embedding model path            {emb_status.path}")
+    if emb_status.readiness == EmbeddingReadiness.READY:
+        notes.append("Embedding model artifacts       PASS")
+        notes.append("Offline dense embedding         PASS")
+        if emb_status.manifest is not None:
+            notes.append(f"Embedding artifact_id           {emb_status.manifest.artifact_id}")
+    else:
+        notes.append(f"Embedding model artifacts       FAIL ({emb_status.readiness.value})")
+        notes.append(f"Reason: {emb_status.reason}")
+        notes.append("Action: offline-rag provision embedding")
+        if settings.project.strict_offline:
+            errors.append(f"Embedding artifacts not ready: {emb_status.reason}")
 
     state_file = corpus_state_path(settings.paths.corpora, corpus_name)
     notes.append(f"Corpus name                     {corpus_name}")
@@ -445,6 +955,20 @@ def cmd_doctor(args: argparse.Namespace) -> int:
             errors.append(f"invalid chunk state: {exc}")
     if chunk_status == "STALE" or chunk_status == "NOT_INITIALIZED" and active_corpus_id:
         notes.append(f"Action                           offline-rag chunk --corpus {corpus_name}")
+
+    index_status = indexing_status_for_corpus(settings, corpus_name)
+    notes.append(f"Indexing status                 {index_status}")
+    istate_file = index_state_path(settings.paths.corpora, corpus_name)
+    notes.append(f"Index state path                {istate_file}")
+    istate = try_load_index_state(istate_file)
+    if istate is not None:
+        notes.append(f"Indexed corpus                  {istate.source_corpus_id}")
+        notes.append(f"Indexed chunk set               {istate.source_chunk_set_id}")
+        notes.append(f"Index                           {istate.current_index_id}")
+        notes.append(f"Index config hash               {istate.index_config_hash}")
+        notes.append(f"Index manifest                  {istate.current_index_manifest}")
+    if index_status in {"NOT_INDEXED", "INDEX_STALE", "INDEX_CONFIG_STALE", "CHUNKS_STALE"}:
+        notes.append(f"Action                           offline-rag index --corpus {corpus_name}")
 
     for note in notes:
         print(f"doctor: {note}")
@@ -491,7 +1015,46 @@ def build_parser() -> argparse.ArgumentParser:
     inspect.add_argument("--json", action="store_true")
     inspect.set_defaults(func=cmd_chunk_inspect)
 
-    query = subparsers.add_parser("query", help="Query the corpus (not implemented yet)")
+    provision = subparsers.add_parser("provision", help="Provision local offline artifacts")
+    provision_sub = provision.add_subparsers(dest="provision_command", required=True)
+    provision_embedding = provision_sub.add_parser(
+        "embedding",
+        help="Download/pin the local dense embedding model",
+    )
+    _add_config_argument(provision_embedding)
+    provision_embedding.add_argument(
+        "--force",
+        action="store_true",
+        help="Re-download even when artifacts already validate as READY",
+    )
+    provision_embedding.add_argument("--json", action="store_true", help="Emit EmbeddingProvisionReport JSON")
+    provision_embedding.set_defaults(func=cmd_provision_embedding)
+
+    index = subparsers.add_parser("index", help="Build/publish the dense index for a corpus")
+    _add_config_argument(index)
+    index.add_argument("--corpus", default="default", help="Logical corpus name")
+    index.add_argument("--json", action="store_true", help="Emit IndexingReport JSON on stdout")
+    index.set_defaults(func=cmd_index)
+    index_sub = index.add_subparsers(dest="index_command", required=False)
+
+    index_inspect = index_sub.add_parser("inspect", help="Inspect dense index state (read-only)")
+    _add_config_argument(index_inspect)
+    index_inspect.add_argument("--corpus", default="default")
+    index_inspect.add_argument("--index", default=None, help="Dense index ID")
+    index_inspect.add_argument("--point", default=None, help="Qdrant point UUID")
+    index_inspect.add_argument("--chunk", default=None, help="Child chunk ID")
+    index_inspect.add_argument("--json", action="store_true")
+    index_inspect.set_defaults(func=cmd_index_inspect)
+
+    retrieve = subparsers.add_parser("retrieve", help="Dense retrieval over the active current index")
+    _add_config_argument(retrieve)
+    retrieve.add_argument("--corpus", default="default", help="Logical corpus name")
+    retrieve.add_argument("--query", required=True, help="Query text")
+    retrieve.add_argument("--top-k", type=int, default=None, dest="top_k", help="Override dense.top_k")
+    retrieve.add_argument("--json", action="store_true", help="Emit DenseRetrievalResult JSON")
+    retrieve.set_defaults(func=cmd_retrieve)
+
+    query = subparsers.add_parser("query", help="Full RAG query/generation (not implemented yet)")
     _add_config_argument(query)
     query.set_defaults(func=cmd_query)
 
@@ -503,6 +1066,17 @@ def build_parser() -> argparse.ArgumentParser:
     eval_compare = eval_sub.add_parser("compare", help="Compare evaluations (not implemented yet)")
     _add_config_argument(eval_compare)
     eval_compare.set_defaults(func=cmd_eval_compare)
+    eval_retrieve = eval_sub.add_parser(
+        "retrieve",
+        help="Run minimal dense retrieval evaluation",
+    )
+    _add_config_argument(eval_retrieve)
+    eval_retrieve.add_argument("--dataset", required=True, type=Path, help="Dataset dir or cases.jsonl")
+    eval_retrieve.add_argument("--corpus", default="default", help="Logical corpus name")
+    eval_retrieve.add_argument("--top-k", type=int, default=10, dest="top_k")
+    eval_retrieve.add_argument("--output", type=Path, default=None, help="Optional result JSON path")
+    eval_retrieve.add_argument("--json", action="store_true", help="Emit evaluation result JSON")
+    eval_retrieve.set_defaults(func=cmd_eval_retrieve)
 
     doctor = subparsers.add_parser("doctor", help="Run local diagnostics")
     _add_config_argument(doctor)

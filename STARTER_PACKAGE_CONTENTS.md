@@ -28,6 +28,10 @@ This file lists the files included in the updated project handoff.
 - `deploy/Dockerfile.template`
 - `deploy/docker-compose.example.yml`
 - `detailed_implementation_slices.md`
+- `docs/slice0_contracts.md`
+- `docs/slice1_ingestion.md`
+- `docs/slice2_chunking.md`
+- `docs/slice3_dense_retrieval.md`
 - `docs/benchmark_methodology.md`
 - `docs/dataset_guidelines.md`
 - `docs/known_limitations.md`
@@ -46,22 +50,10 @@ This file lists the files included in the updated project handoff.
 - `models/manifest.example.yaml`
 - `project_description.md`
 - `scripts/README.md`
-- `src/offline_rag/__init__.py`
-- `src/offline_rag/agents/.gitkeep`
-- `src/offline_rag/api/routes/.gitkeep`
-- `src/offline_rag/domain/.gitkeep`
-- `src/offline_rag/embeddings/.gitkeep`
-- `src/offline_rag/evaluation/judges/.gitkeep`
-- `src/offline_rag/evaluation/metrics/.gitkeep`
-- `src/offline_rag/generation/.gitkeep`
-- `src/offline_rag/guardrails/.gitkeep`
-- `src/offline_rag/index/.gitkeep`
-- `src/offline_rag/ingestion/.gitkeep`
-- `src/offline_rag/observability/.gitkeep`
-- `src/offline_rag/retrieval/.gitkeep`
-- `tests/fixtures/.gitkeep`
-- `tests/integration/.gitkeep`
-- `tests/regression/.gitkeep`
-- `tests/security/.gitkeep`
-- `tests/unit/.gitkeep`
+- `scripts/provision_docling.py`
+- `scripts/provision_tiktoken.py`
+- `scripts/provision_embedding.py`
+- `src/offline_rag/` (core, domain, ingestion, chunking, dense, CLI — through Slice 3)
+- `tests/unit/` (contracts, ingestion, chunking, dense indexing)
+- package placeholders remain for later slices: agents, api, generation, guardrails, hybrid retrieval, UI
 - `ui/.gitkeep`
