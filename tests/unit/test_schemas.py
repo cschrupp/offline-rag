@@ -9,6 +9,7 @@ from pydantic import ValidationError
 
 from offline_rag.domain import (
     Chunk,
+    ChunkKind,
     Citation,
     Document,
     EvaluationResult,
@@ -33,6 +34,22 @@ def _document() -> Document:
     )
 
 
+def _chunk(**overrides: object) -> Chunk:
+    payload = {
+        "chunk_id": "chunk_1",
+        "document_id": "doc_abc",
+        "kind": ChunkKind.CHILD,
+        "text": "hello",
+        "order": 0,
+        "token_count": 1,
+        "content_hash": "hash_chunk",
+        "source_block_ids": ["block_1"],
+        "parent_chunk_id": "parent_1",
+    }
+    payload.update(overrides)
+    return Chunk(**payload)  # type: ignore[arg-type]
+
+
 def test_document_roundtrip() -> None:
     doc = _document()
     restored = Document.model_validate_json(doc.model_dump_json())
@@ -41,28 +58,22 @@ def test_document_roundtrip() -> None:
 
 def test_chunk_rejects_inverted_pages() -> None:
     with pytest.raises(ValidationError):
-        Chunk(
-            chunk_id="chunk_1",
-            document_id="doc_abc",
-            text="hello",
-            page_start=3,
-            page_end=1,
-            chunk_index=0,
-            token_count=1,
-            content_hash="hash_chunk",
-        )
+        _chunk(page_start=3, page_end=1)
 
 
 def test_chunk_rejects_empty_id() -> None:
     with pytest.raises(ValidationError):
-        Chunk(
-            chunk_id=" ",
-            document_id="doc_abc",
-            text="hello",
-            chunk_index=0,
-            token_count=1,
-            content_hash="hash_chunk",
-        )
+        _chunk(chunk_id=" ")
+
+
+def test_chunk_rejects_empty_source_block_ids() -> None:
+    with pytest.raises(ValidationError):
+        _chunk(source_block_ids=[])
+
+
+def test_parent_chunk_rejects_neighbors() -> None:
+    with pytest.raises(ValidationError):
+        _chunk(kind=ChunkKind.PARENT, parent_chunk_id=None, previous_chunk_id="chunk_x")
 
 
 def test_retrieval_candidate_requires_document_and_chunk() -> None:
@@ -125,11 +136,4 @@ def test_experiment_and_evaluation_roundtrip() -> None:
 
 def test_negative_token_count_rejected() -> None:
     with pytest.raises(ValidationError):
-        Chunk(
-            chunk_id="chunk_1",
-            document_id="doc_abc",
-            text="hello",
-            chunk_index=0,
-            token_count=-1,
-            content_hash="hash_chunk",
-        )
+        _chunk(token_count=-1)

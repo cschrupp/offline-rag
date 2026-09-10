@@ -30,9 +30,12 @@ _ENV_FIELD_MAP: dict[str, tuple[str, ...]] = {
     "MANIFESTS": ("paths", "manifests"),
     "PROCESSED": ("paths", "processed"),
     "CORPORA": ("paths", "corpora"),
+    "CHUNKS": ("paths", "chunks"),
+    "CHUNK_MANIFESTS": ("paths", "chunk_manifests"),
     "QDRANT_DIR": ("paths", "qdrant_storage"),
     "MODELS_DIR": ("paths", "retrieval_models"),
     "DOCLING_ARTIFACTS_PATH": ("paths", "docling_artifacts"),
+    "TOKENIZER_ARTIFACTS_PATH": ("paths", "tokenizer_artifacts"),
     "EVAL_RESULTS": ("paths", "eval_results"),
     "LOG_LEVEL": ("logging", "level"),
     "LOG_STRUCTURED": ("logging", "structured"),
@@ -106,6 +109,8 @@ def _apply_data_dir(data: MutableMapping[str, Any], data_dir: str) -> None:
     paths["manifests"] = str(root / "manifests")
     paths["processed"] = str(root / "processed")
     paths["corpora"] = str(root / "corpora")
+    paths["chunks"] = str(root / "chunks")
+    paths["chunk_manifests"] = str(root / "chunk-manifests")
     paths["qdrant_storage"] = str(root / "qdrant")
     paths["eval_results"] = str(root / "eval" / "results")
 

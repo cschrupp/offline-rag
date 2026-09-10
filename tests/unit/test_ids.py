@@ -5,10 +5,15 @@ from __future__ import annotations
 import pytest
 
 from offline_rag.core.ids import (
+    STRUCTURE_AWARE_CHUNKER_VERSION,
     canonical_config_hash,
+    child_chunk_id_from_parts,
+    chunk_artifact_id,
+    chunk_config_hash,
     chunk_id_from_parts,
     document_id_from_bytes,
     new_execution_id,
+    parent_chunk_id_from_parts,
 )
 
 
@@ -51,3 +56,33 @@ def test_execution_id_is_prefixed_and_unique() -> None:
     second = new_execution_id(prefix="trace")
     assert first.startswith("trace_")
     assert first != second
+
+
+def test_chunk_artifact_and_parent_child_ids() -> None:
+    cfg = chunk_config_hash({"strategy": "structure_aware", "child": {"max_tokens": 512}})
+    assert cfg.startswith("chunkcfg_")
+    art = chunk_artifact_id("parsed_1", cfg, chunker_version=STRUCTURE_AWARE_CHUNKER_VERSION)
+    assert art.startswith("chunkartifact_")
+    assert art == chunk_artifact_id("parsed_1", cfg)
+    parent = parent_chunk_id_from_parts(
+        "doc_1",
+        chunk_cfg_hash=cfg,
+        source_block_ids=["b1", "b2"],
+        text="hello",
+    )
+    child = child_chunk_id_from_parts(
+        "doc_1",
+        parent_chunk_id=parent,
+        chunk_cfg_hash=cfg,
+        source_block_ids=["b1"],
+        text="hello",
+    )
+    assert parent.startswith("parent_")
+    assert child.startswith("chunk_")
+    assert child != child_chunk_id_from_parts(
+        "doc_1",
+        parent_chunk_id=parent,
+        chunk_cfg_hash=cfg,
+        source_block_ids=["b1"],
+        text="hello!",
+    )

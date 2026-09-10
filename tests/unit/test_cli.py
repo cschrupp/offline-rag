@@ -21,6 +21,8 @@ def test_root_help() -> None:
     ("argv", "label"),
     [
         (["ingest", "--help"], "ingest"),
+        (["chunk", "--help"], "chunk"),
+        (["chunk", "inspect", "--help"], "chunk inspect"),
         (["query", "--help"], "query"),
         (["eval", "run", "--help"], "eval run"),
         (["eval", "compare", "--help"], "eval compare"),
@@ -50,18 +52,21 @@ def test_placeholders_terminate_cleanly(argv: list[str], capsys: pytest.CaptureF
 
 def test_doctor_ok_with_base_config(capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(REPO_ROOT)
-    # Doctor may FAIL if Docling artifacts are missing under strict offline.
-    # Ensure a temporary valid artifact bundle for this unit test.
+    # Doctor may FAIL if Docling/tokenizer artifacts are missing under strict offline.
     artifacts = REPO_ROOT / "models" / "docling"
     from offline_rag.ingestion.docling_artifacts import write_provisioning_manifest
 
     if not (artifacts / "offline-rag-artifacts.json").exists():
         (artifacts / "placeholder.bin").write_bytes(b"unit")
         write_provisioning_manifest(artifacts, docling_version="test")
+    tok = REPO_ROOT / "models" / "tokenizers" / "tiktoken"
+    if not (tok / "offline-rag-tokenizer.json").exists():
+        pytest.skip("tiktoken artifacts not provisioned")
     code = main(["doctor", "--config", str(REPO_ROOT / "config" / "base.yaml")])
     captured = capsys.readouterr()
     assert code == 0
     assert "doctor: OK" in captured.out
+    assert "Tokenizer artifacts" in captured.out
 
 
 def test_ingest_json_txt(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:

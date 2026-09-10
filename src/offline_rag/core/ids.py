@@ -17,6 +17,8 @@ PARSER_SCHEMA_VERSION = "offline-rag-parsed-v1"
 TEXT_PARSER_VERSION = "offline-rag-text-v1"
 MARKDOWN_PARSER_VERSION = "offline-rag-markdown-v1"
 DOCLING_PDF_PARSER_VERSION = "offline-rag-docling-pdf-v1"
+STRUCTURE_AWARE_CHUNKER_VERSION = "structure-aware-chunker-v1"
+TIKTOKEN_TOKENIZER_CONTRACT = "tiktoken-cl100k-v1"
 
 
 def _sha256_hex(data: bytes) -> str:
@@ -171,6 +173,98 @@ def corpus_id_from_entries(
 
 def artifact_bytes_hash(data: bytes) -> str:
     return f"art_{_sha256_hex(data)}"
+
+
+def chunk_config_hash(data: Mapping[str, Any]) -> str:
+    """Return ``chunkcfg_<sha256>`` for chunk-output-affecting configuration."""
+    return canonical_config_hash(data).replace("cfg_", "chunkcfg_", 1)
+
+
+def chunk_artifact_id(
+    parsed_artifact_id: str,
+    chunk_cfg_hash: str,
+    *,
+    chunker_version: str = STRUCTURE_AWARE_CHUNKER_VERSION,
+) -> str:
+    payload = {
+        "parsed_artifact_id": parsed_artifact_id,
+        "chunk_config_hash": chunk_cfg_hash,
+        "chunker_version": chunker_version,
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return f"chunkartifact_{_sha256_hex(encoded.encode('utf-8'))}"
+
+
+def parent_chunk_id_from_parts(
+    document_id: str,
+    *,
+    chunk_cfg_hash: str,
+    source_block_ids: Sequence[str],
+    text: str,
+    chunker_version: str = STRUCTURE_AWARE_CHUNKER_VERSION,
+) -> str:
+    payload = {
+        "document_id": document_id,
+        "chunk_config_hash": chunk_cfg_hash,
+        "chunker_version": chunker_version,
+        "source_block_ids": list(source_block_ids),
+        "text": text.strip("\n"),
+        "kind": "parent",
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return f"parent_{_sha256_hex(encoded.encode('utf-8'))}"
+
+
+def child_chunk_id_from_parts(
+    document_id: str,
+    *,
+    parent_chunk_id: str | None,
+    chunk_cfg_hash: str,
+    source_block_ids: Sequence[str],
+    text: str,
+    chunker_version: str = STRUCTURE_AWARE_CHUNKER_VERSION,
+) -> str:
+    payload = {
+        "document_id": document_id,
+        "parent_chunk_id": parent_chunk_id or "",
+        "chunk_config_hash": chunk_cfg_hash,
+        "chunker_version": chunker_version,
+        "source_block_ids": list(source_block_ids),
+        "text": text.strip("\n"),
+        "kind": "child",
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return f"chunk_{_sha256_hex(encoded.encode('utf-8'))}"
+
+
+def chunk_set_id_from_entries(
+    *,
+    corpus_id: str,
+    chunk_cfg_hash: str,
+    chunker_version: str,
+    document_entries: Sequence[Mapping[str, str]],
+) -> str:
+    normalized = sorted(
+        (
+            {
+                "document_id": item["document_id"],
+                "parsed_artifact_id": item["parsed_artifact_id"],
+                "chunk_artifact_id": item["chunk_artifact_id"],
+            }
+            for item in document_entries
+        ),
+        key=lambda row: row["document_id"],
+    )
+    payload = {
+        "corpus_id": corpus_id,
+        "chunk_config_hash": chunk_cfg_hash,
+        "chunker_version": chunker_version,
+        "documents": normalized,
+    }
+    digest = _sha256_hex(
+        json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    )
+    return f"chunkset_{digest}"
 
 
 def new_execution_id(*, prefix: str = "run") -> str:

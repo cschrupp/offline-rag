@@ -12,13 +12,23 @@ from offline_rag.domain.blocks import (
     SourceLocator,
     WarningCategory,
 )
+from offline_rag.domain.chunking import (
+    ChunkingReport,
+    ChunkingStatus,
+    ChunkSetDocumentEntry,
+    ChunkSetManifest,
+    ChunkState,
+    DocumentChunkArtifact,
+    DocumentChunkResult,
+    DocumentChunkStatus,
+)
 from offline_rag.domain.corpus import (
     CorpusDocumentEntry,
     CorpusManifest,
     CorpusSourceEntry,
     CorpusState,
 )
-from offline_rag.domain.documents import Chunk, Document
+from offline_rag.domain.documents import Chunk, ChunkKind, Document
 from offline_rag.domain.evaluation import EvaluationResult, ExperimentConfig
 from offline_rag.domain.generation import Citation
 from offline_rag.domain.ingestion import (
@@ -32,6 +42,12 @@ from offline_rag.domain.traces import QueryTrace
 
 __all__ = [
     "Chunk",
+    "ChunkKind",
+    "ChunkSetDocumentEntry",
+    "ChunkSetManifest",
+    "ChunkState",
+    "ChunkingReport",
+    "ChunkingStatus",
     "Citation",
     "ContentBlock",
     "ContentType",
@@ -40,6 +56,9 @@ __all__ = [
     "CorpusSourceEntry",
     "CorpusState",
     "Document",
+    "DocumentChunkArtifact",
+    "DocumentChunkResult",
+    "DocumentChunkStatus",
     "EvaluationResult",
     "ExperimentConfig",
     "FileIngestionResult",

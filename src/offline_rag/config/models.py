@@ -28,9 +28,12 @@ class PathSettings(BaseModel):
     manifests: Path = Path("data/manifests")
     processed: Path = Path("data/processed")
     corpora: Path = Path("data/corpora")
+    chunks: Path = Path("data/chunks")
+    chunk_manifests: Path = Path("data/chunk-manifests")
     qdrant_storage: Path = Path("data/qdrant")
     retrieval_models: Path = Path("models")
     docling_artifacts: Path = Path("models/docling")
+    tokenizer_artifacts: Path = Path("models/tokenizers/tiktoken")
     eval_results: Path = Path("eval/results")
 
 
@@ -60,6 +63,39 @@ class ParsingSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     pdf: PdfParsingSettings = Field(default_factory=PdfParsingSettings)
+
+
+class TokenizerSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    implementation: NonEmptyStr = "tiktoken"
+    encoding: NonEmptyStr = "cl100k_base"
+
+
+class ChildChunkingSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    target_tokens: PositiveInt = 350
+    max_tokens: PositiveInt = 512
+
+
+class ParentChunkingSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    target_tokens: PositiveInt = 1200
+    max_tokens: PositiveInt = 2000
+
+
+class ChunkingSettings(BaseModel):
+    """Parse-independent chunking settings that participate in chunk_config_hash."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    strategy: NonEmptyStr = "structure_aware"
+    parent_child: bool = True
+    tokenizer: TokenizerSettings = Field(default_factory=TokenizerSettings)
+    child: ChildChunkingSettings = Field(default_factory=ChildChunkingSettings)
+    parent: ParentChunkingSettings = Field(default_factory=ParentChunkingSettings)
 
 
 class IngestionSettings(BaseModel):
@@ -186,6 +222,7 @@ class AppSettings(BaseModel):
     deployment: DeploymentSettings = Field(default_factory=DeploymentSettings)
     ingestion: IngestionSettings = Field(default_factory=IngestionSettings)
     parsing: ParsingSettings = Field(default_factory=ParsingSettings)
+    chunking: ChunkingSettings = Field(default_factory=ChunkingSettings)
     dense: DenseSettings = Field(default_factory=DenseSettings)
     sparse: SparseSettings = Field(default_factory=SparseSettings)
     fusion: FusionSettings = Field(default_factory=FusionSettings)

@@ -13,11 +13,15 @@ data/processed/*
 data/qdrant/*
 data/corpora/*
 data/manifests/*
+data/chunks/*
+data/chunk-manifests/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 !data/qdrant/.gitkeep
 !data/corpora/.gitkeep
 !data/manifests/.gitkeep
+!data/chunks/.gitkeep
+!data/chunk-manifests/.gitkeep
 
 # Models
 models/*
@@ -28,6 +32,12 @@ models/*
 models/docling/*
 !models/docling/.gitkeep
 !models/docling/README.md
+!models/tokenizers/
+models/tokenizers/**
+!models/tokenizers/tiktoken/
+models/tokenizers/tiktoken/*
+!models/tokenizers/tiktoken/.gitkeep
+!models/tokenizers/tiktoken/README.md
 
 # Evaluation run outputs
 eval/results/*

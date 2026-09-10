@@ -8,6 +8,7 @@ dependencies = [
     "docling>=2.126.0",
     "pydantic",
     "pyyaml",
+    "tiktoken",
 ]
 
 [project.scripts]
@@ -43,5 +44,6 @@ ignore = ["E501"]
 [tool.ruff.lint.per-file-ignores]
 "src/offline_rag/cli.py" = ["BLE001"]
 "src/offline_rag/ingestion/pipeline.py" = ["BLE001"]
+"src/offline_rag/chunking/pipeline.py" = ["BLE001"]
 "scripts/*" = ["T20"]
 

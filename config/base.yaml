@@ -9,9 +9,12 @@ paths:
   manifests: data/manifests
   processed: data/processed
   corpora: data/corpora
+  chunks: data/chunks
+  chunk_manifests: data/chunk-manifests
   qdrant_storage: data/qdrant
   retrieval_models: models
   docling_artifacts: models/docling
+  tokenizer_artifacts: models/tokenizers/tiktoken
   eval_results: eval/results
 
 logging:
@@ -34,6 +37,19 @@ parsing:
   pdf:
     # Slice 1 defaults to born-digital/layout extraction. OCR is opt-in.
     ocr_enabled: false
+
+chunking:
+  strategy: structure_aware
+  parent_child: true
+  tokenizer:
+    implementation: tiktoken
+    encoding: cl100k_base
+  child:
+    target_tokens: 350
+    max_tokens: 512
+  parent:
+    target_tokens: 1200
+    max_tokens: 2000
 
 dense:
   enabled: true
