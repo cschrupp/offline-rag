@@ -11,7 +11,7 @@ This file should evolve with measured project results.
 - Dense gold labels are bound to a specific `chunk_set_id`; changing chunk budgets invalidates chunk-level relevance IDs.
 - Published indexes and embedding artifacts are retained indefinitely; disk growth is intentional until GC exists.
 - Qdrant Local assumes one OfflineRAG process owns a given storage directory.
-- Full hybrid/rerank/generation quality claims are not yet available (`query` deferred).
+- Full hybrid/rerank/generation quality claims are not yet available (Slices 4–8+; `query` deferred to Slice 8+).
 
 ## Expected later limitations
 

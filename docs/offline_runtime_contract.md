@@ -4,7 +4,7 @@
 
 OfflineRAG's strict-offline profile must be able to execute ingestion, chunking, dense indexing/retrieval, and dense evaluation without using internet/cloud services after provisioning.
 
-Full claim for later slices also includes: reranking, generation, citation validation, and expanded evaluation — once those stages exist.
+Full claim for later slices also includes: BM25/hybrid (4–5), reranking (6), context expansion (7), generation/citation validation (8+), and expanded evaluation — once those stages exist.
 
 **Currently enforceable offline after provisioning:** Docling PDF parse, tiktoken chunk budgets, Qwen (or FakeEmbedder) dense index/retrieve/eval, Qdrant Local.
 

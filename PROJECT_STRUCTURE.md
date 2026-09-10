@@ -44,7 +44,7 @@ offline-rag/
 
 ## Intended long-term tree
 
-The tree below remains the target shape for later slices (BM25, fusion, generation, API, UI). Prefer evolving existing packages rather than renaming prematurely.
+The tree below remains the target shape for later slices (BM25 → RRF → rerank → expansion → generation, API, UI). Prefer evolving existing packages rather than renaming prematurely.
 
 ```text
 offline-rag/
@@ -232,7 +232,7 @@ Slice 3 keeps adapters under `dense/`. Later refactors may split packages if the
 
 ### `retrieval/`
 
-Future: BM25, fusion, reranking, context assembly, and confidence policy beyond dense-only retrieve.
+Future: BM25 (4), fusion (5), reranking (6), context assembly (7), then generation/confidence (8+).
 
 ### `generation/`
 

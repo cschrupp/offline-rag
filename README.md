@@ -331,6 +331,6 @@ Use public, redistributable technical documents rather than proprietary material
 **Phase:** Milestone 1 dense baseline implemented (Slices 0–3).
 
 Working local path: ingest → chunk → index → retrieve → dense eval.
-Still deferred: BM25/hybrid, reranking, parent expansion, generation/`query`, and the full evaluation platform.
+Next: Slice 4 BM25 → Slice 5 RRF → Slice 6 reranker → Slice 7 context expansion → Slice 8+ generation/`query`.
 
 See `ROADMAP.md` and `docs/slice3_dense_retrieval.md`.

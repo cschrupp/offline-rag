@@ -1,6 +1,6 @@
 # Portfolio Demo Plan
 
-**Current readiness:** Through Slice 3 you can demo ingest → chunk → dense index → `retrieve` / `eval retrieve` with local embeddings and Qdrant Local. Full inspector (BM25/hybrid/rerank), grounded `query` answers, and UI remain later slices — demo narrative below is the target story; adapt live demos to what is implemented.
+**Current readiness:** Through Slice 3 you can demo ingest → chunk → dense index → `retrieve` / `eval retrieve` with local embeddings and Qdrant Local. Full inspector arrives with Slices 4–6 (BM25/hybrid/rerank); context expansion Slice 7; grounded `query`/UI Slice 8+ — demo narrative below is the target story; adapt live demos to what is implemented.
 
 ## Demo objective
 

@@ -83,7 +83,7 @@ offline-rag retrieve --corpus <name> --query "..." [--top-k N] [--json]
 offline-rag eval retrieve --dataset <path> --corpus <name> [--json]
 ```
 
-`query` remains deferred (full RAG answer workflow). Use `retrieve` for evidence.
+`query` remains deferred to **Slice 8+** (full RAG answer workflow). Use `retrieve` for evidence.
 
 Stale chunk sets refuse indexing; stale indexes refuse retrieve/eval.
 
@@ -93,12 +93,25 @@ Minimal dense eval: chunk Recall@1/5/10, MRR, latency.
 
 Gold datasets must bind to `chunk_set_id` (see `eval/datasets/dense_smoke/` placeholder).
 
-## Deferred
+## Reserved next slices (ablation ladder)
 
-- BM25 / sparse / hybrid / RRF
-- reranking
-- parent / neighbor expansion
-- generation / citations
-- Qdrant server / Edge
-- reference-aware index GC
-- full experiment registry / dashboards
+Reranking is a first-class planned stage, intentionally **out of Slice 3** so dense
+embedding/index gains stay separable from reranker gains.
+
+```text
+Slice 3  Dense indexing/retrieval     (done — this document)
+Slice 4  Sparse/BM25 retrieval
+Slice 5  Hybrid retrieval / RRF fusion
+Slice 6  Cross-encoder reranking      (over fused candidate pools)
+Slice 7  Parent/neighbor context expansion
+Slice 8+ Generation / orchestration   (Ollama, citations, recovery, …)
+```
+
+Ablation path: Dense → +BM25 → +RRF → +reranker → +parent/neighbor expansion.
+
+Slice 6 model choice is **not** locked yet; design interview should compare local
+options. Expected pattern (mirrors embedders): `FakeReranker` + provisioned
+`CrossEncoderReranker`, config identity, no runtime downloads.
+
+Also deferred beyond the ladder above: Qdrant server / Edge, reference-aware index GC,
+full experiment registry / dashboards.

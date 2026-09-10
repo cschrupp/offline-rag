@@ -26,11 +26,11 @@
 
 ## Milestone 2 — Modern retrieval stack
 
-- [ ] BM25 baseline
-- [ ] RRF fusion
-- [ ] Cross-encoder reranker
-- [ ] Parent-child context expansion
-- [ ] Ablation report
+- [ ] BM25 / sparse baseline (Slice 4)
+- [ ] Hybrid retrieval / RRF fusion (Slice 5)
+- [ ] Cross-encoder reranking over fused pools (Slice 6; model TBD at design time)
+- [ ] Parent/neighbor context expansion (Slice 7)
+- [ ] Ablation report (Dense → +BM25 → +RRF → +reranker → +expansion)
 
 **Release criterion:** measured comparison of dense, BM25, hybrid, and hybrid+reranker.
 

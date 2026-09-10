@@ -58,4 +58,5 @@ offline-rag eval retrieve ...
 offline-rag doctor ...
 ```
 
-Still deferred: full `query` (generation), generic `eval run` / `eval compare`.
+Still deferred: full `query` (generation, Slice 8+), generic `eval run` / `eval compare`.
+Retrieval ablation ladder after dense: Slice 4 BM25 → 5 RRF → 6 rerank → 7 expansion.

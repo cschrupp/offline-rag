@@ -2,7 +2,7 @@
 
 This document converts the architecture into incremental, testable implementation slices. Each slice should leave the repository in a working state. Avoid building multiple major layers simultaneously: the evaluation harness depends on being able to attribute improvements and regressions to individual changes.
 
-**Implementation status:** Slices 0–3 are implemented in the repository. Slices 4+ remain planned. Authoritative Slice 0–3 notes live under `docs/slice0_contracts.md` … `docs/slice3_dense_retrieval.md`.
+**Implementation status:** Slices 0–3 are implemented. Planned next: 4 BM25 → 5 RRF → 6 rerank → 7 expansion → 8+ generation. Authoritative Slice 0–3 notes live under `docs/slice0_contracts.md` … `docs/slice3_dense_retrieval.md`.
 
 ---
 
@@ -293,18 +293,23 @@ Hybrid retrieval produces measurable results and an ablation table can compare d
 
 # Slice 6 — Cross-encoder reranking
 
+**Reserved after Slice 5.** Intentionally excluded from Slice 3 so dense embedding/index
+quality stays separable from reranker gains. Model not locked until Slice 6 design interview
+(compare local options on multilingual ability, context length, latency, deploy size).
+
 ## Objective
 
-Improve ranking quality by reranking the fused candidate set with a local cross-encoder.
+Improve ranking quality by reranking the fused candidate set with a local cross-encoder
+(candidate pool e.g. top 30–100 → final top 5–10).
 
 ## Deliverables
 
-- reranker interface;
-- local reranker backend;
+- reranker interface mirroring embedders (`FakeReranker` + provisioned `CrossEncoderReranker`);
+- local-only loading, deterministic config identity, no runtime downloads;
 - batch reranking;
 - configurable candidate and output sizes;
 - timing instrumentation;
-- benchmark comparison.
+- benchmark delta vs hybrid-only (quality + latency).
 
 ## Required analysis
 
