@@ -1,6 +1,6 @@
 # Project Description — OfflineRAG
 
-**Implementation status:** Slices 0–6 (contracts, Docling ingest, structure-aware chunking, dense + lexical BM25 + hybrid RRF + cross-encoder hybrid-rerank index/retrieve/eval) are implemented. Later sections describe the full target system; treat expansion/generation/UI as planned unless marked done in `ROADMAP.md`.
+**Implementation status:** Slices 0–8 (contracts, Docling ingest, structure-aware chunking, dense + lexical BM25 + hybrid RRF + cross-encoder hybrid-rerank + context expansion + grounded local generation) are implemented. Later sections describe the full target system; treat agentic recovery/UI/semantic answer-quality metrics as planned unless marked done in `ROADMAP.md`.
 
 ## 1. Working title
 

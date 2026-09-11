@@ -1067,6 +1067,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "docling" },
+    { name = "httpx" },
     { name = "huggingface-hub" },
     { name = "pydantic" },
     { name = "pyyaml" },
@@ -1085,6 +1086,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "docling", specifier = ">=2.126.0" },
+    { name = "httpx", specifier = ">=0.28.1" },
     { name = "huggingface-hub", specifier = ">=1.30.0" },
     { name = "pydantic" },
     { name = "pyyaml" },

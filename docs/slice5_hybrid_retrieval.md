@@ -181,11 +181,12 @@ parallel latency.
 - Weighted RRF, score normalization, learned fusion
 - Reranking / cross-encoders (Slice 6; see `docs/slice6_cross_encoder_reranking.md`)
 - Parent/neighbor expansion (Slice 7; see `docs/slice7_context_expansion.md`)
-- Query rewriting, LangGraph, generation
+- Grounded generation (Slice 8; see `docs/slice8_grounded_generation.md`)
+- Query rewriting, LangGraph
 - Automatic branch fallback
 - Retrieval mega-package refactor
 - Artifact/index GC
 
 ## Ablation ladder
 
-Dense → +BM25 → **+RRF (this slice)** → +reranker (Slice 6) → +expansion (Slice 7).
+Dense → +BM25 → **+RRF (this slice)** → +reranker (Slice 6) → +expansion (Slice 7) → generation (Slice 8).

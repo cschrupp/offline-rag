@@ -74,6 +74,7 @@ data/corpora/<corpus>/lexical/state.json
 ## Out of scope
 
 Reranking is Slice 6 (done — see `docs/slice6_cross_encoder_reranking.md`). Parent/neighbor
-context expansion is Slice 7 (done — see `docs/slice7_context_expansion.md`). Still deferred:
+context expansion is Slice 7 (done — see `docs/slice7_context_expansion.md`). Grounded
+generation is Slice 8 (done — see `docs/slice8_grounded_generation.md`). Still deferred:
 section-prefix lexical text, third-party BM25 engines, learned sparse retrieval, lexical GC.
 Hybrid/RRF is Slice 5 (see `docs/slice5_hybrid_retrieval.md`).

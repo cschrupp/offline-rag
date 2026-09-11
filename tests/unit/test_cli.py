@@ -47,7 +47,6 @@ def test_subcommand_help(argv: list[str], label: str) -> None:
 @pytest.mark.parametrize(
     "argv",
     [
-        ["query"],
         ["eval", "run"],
         ["eval", "compare"],
     ],
@@ -57,8 +56,6 @@ def test_placeholders_terminate_cleanly(argv: list[str], capsys: pytest.CaptureF
     assert code == NOT_IMPLEMENTED_EXIT
     err = capsys.readouterr().err
     assert "not implemented" in err
-    if argv == ["query"]:
-        assert "retrieve" in err
 
 
 def test_doctor_ok_with_base_config(capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:

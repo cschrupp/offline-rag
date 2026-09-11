@@ -48,6 +48,12 @@ SUPPRESS_CONTAINED_CHILDREN_V1 = "suppress-contained-children-v1"
 NEIGHBOR_WINDOW_V1 = "neighbor-window-v1"
 PLAIN_EVIDENCE_V1 = "plain-evidence-v1"
 CONTEXT_STRATEGIES = frozenset({"child-only", "parent", "neighbors", "parent+neighbors"})
+OPENAI_COMPATIBLE_GENERATOR_V1 = "openai-compatible-generator-v1"
+PROMPT_GROUNDED_V1 = "prompt-grounded-v1"
+GROUNDED_ANSWER_V1 = "grounded-answer-v1"
+NO_RETRY_V1 = "no-retry-v1"
+FAKE_GENERATOR_CONTRACT = "fake-generator-v1"
+STRICT_LOCAL_ENDPOINT_V1 = "strict-local-endpoint-v1"
 
 
 def _sha256_hex(data: bytes) -> str:
@@ -396,6 +402,11 @@ def reranker_config_hash(data: Mapping[str, Any]) -> str:
 def context_config_hash(data: Mapping[str, Any]) -> str:
     """Return ``ctxcfg_<sha256>`` for effective context-assembly semantics."""
     return canonical_config_hash(data).replace("cfg_", "ctxcfg_", 1)
+
+
+def generation_config_hash(data: Mapping[str, Any]) -> str:
+    """Return ``gencfg_<sha256>`` for effective answer-generation semantics."""
+    return canonical_config_hash(data).replace("cfg_", "gencfg_", 1)
 
 
 def evidence_unit_id_from_payload(payload: Mapping[str, Any]) -> str:

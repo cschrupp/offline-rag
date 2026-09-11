@@ -140,18 +140,21 @@ For the strongest verification, run the demo on a machine with internet disconne
 
 ## 7. Health/readiness checks
 
-`offline-rag doctor` currently reports (Slice 4):
+`offline-rag doctor` currently reports (through Slice 8):
 
 ```text
-Docling / tokenizer / embedding artifact readiness
-Corpus / Chunking / Dense index / Lexical index status (CURRENT | STALE | …)
+Docling / tokenizer / embedding / reranker artifact readiness
+Corpus / Chunking / Dense / Lexical / Hybrid / Hybrid-rerank / Context status
+Generation status (READY | NOT_READY) + approved endpoint/model probe
 Configured paths writable (including lexical-indexes)
 Strict-offline compatibility checks
 ```
 
-Generation endpoint reachability remains future work until Slice 8+.
+Generation readiness requires Context READY, `generation.enabled`, approved endpoint/model
+allowlists, constructible OpenAI-compatible adapter, and a successful non-generative `/models`
+probe that lists the selected model. Doctor never pulls models or sends completions.
 
-Eventual fuller report:
+Example readiness lines:
 
 ```text
 OfflineRAG readiness
@@ -159,6 +162,8 @@ OfflineRAG readiness
 Data directory writable          PASS
 Retrieval model files present    PASS
 Qdrant Local writable            PASS
+Context status                   READY
+Generation status                READY
 Generation endpoint approved     PASS
 Generation endpoint reachable    PASS
 Generation model approved        PASS
@@ -166,7 +171,6 @@ Cloud API keys configured        NONE
 Remote tracing enabled           NO
 Strict offline                   PASS
 ```
-
 `/health` should distinguish application liveness from generation readiness. The UI should still load when Ollama is stopped and show a clear generation-unavailable state.
 
 ## 8. Scale-up profile

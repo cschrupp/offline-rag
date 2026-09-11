@@ -1,6 +1,6 @@
 # Evaluation Harness
 
-**Current readiness:** Slice 3–6 retrieval eval share the same gold format (`offline-rag eval retrieve [--method dense|lexical|hybrid|hybrid-rerank]`: Recall@1/5/10, MRR, latency; gold bound to `chunk_set_id`; hybrid-rerank adds `gold_in_rerank_pool`). Layers below describe the full harness target; generation/citation layers are not implemented yet.
+**Current readiness:** Slice 3–7 retrieval/context eval share the same gold format (`offline-rag eval retrieve [--method dense|lexical|hybrid|hybrid-rerank|hybrid-rerank-context]`: Recall@1/5/10, MRR, latency; gold bound to `chunk_set_id`; hybrid-rerank adds `gold_in_rerank_pool`; context adds assembly diagnostics). Slice 8 adds `offline-rag eval query` for grounded-answer operational outcomes (answered / abstention / generation_failed / citation_invalid) without semantic answer-quality or citation-entailment metrics yet. Layers below describe the fuller harness target.
 
 ## Purpose
 

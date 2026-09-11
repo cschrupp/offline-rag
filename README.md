@@ -249,18 +249,18 @@ The project is intentionally sliced so each stage produces a working, testable s
 5. **Lexical baseline and hybrid retrieval** — BM25 + RRF. *(done)*
 6. **Reranking** — second-stage cross-encoder. *(done)*
 7. **Hierarchical context** — child retrieval + parent/neighbor expansion. *(done)*
-8. **Grounded generation** — generic local inference client, Ollama default, answer schema, page-level citations.
-9. **Evaluation harness** — gold dataset expansion, experiment registry, generation metrics.
-10. **Abstention and confidence policy** — explicitly handle missing evidence.
+8. **Grounded generation** — generic local inference client, Ollama default, answer schema, closed-world `ev_` citations. *(done)*
+9. **Evaluation harness** — gold dataset expansion, experiment registry, generation quality metrics.
+10. **Abstention and confidence policy** — richer evidence-sufficiency policy beyond closed-world abstention.
 11. **Agentic recovery** — conditional LangGraph rewrite/retry.
 12. **Security and guardrails** — document-injection tests and hard controls.
 13. **Performance benchmarking** — latency, throughput, memory, VRAM.
 14. **Demo UI** — query inspector, retrieval visualization, benchmark dashboard.
 15. **Portfolio packaging** — reproducible benchmark report, architecture diagram, demo scenario.
 
-Detailed exit criteria are in `detailed_implementation_slices.md`. Slice notes: `docs/slice0_contracts.md` … `docs/slice7_context_expansion.md`.
+Detailed exit criteria are in `detailed_implementation_slices.md`. Slice notes: `docs/slice0_contracts.md` … `docs/slice8_grounded_generation.md`.
 
-## Quick start (through hybrid-rerank-context)
+## Quick start (through grounded query)
 
 ```bash
 uv sync
@@ -280,14 +280,16 @@ offline-rag retrieve lexical --corpus engineering --query "API-12"
 offline-rag retrieve hybrid --corpus engineering --query "API-12 pressure"
 offline-rag retrieve hybrid-rerank --corpus engineering --query "API-12 pressure"
 offline-rag retrieve hybrid-rerank-context --corpus engineering --query "API-12 pressure"
+# Configure generation.approved_models + a running local OpenAI-compatible server, then:
+offline-rag query --corpus engineering --query "What is the maximum operating pressure?"
 offline-rag doctor --corpus engineering
 ```
 
-Default config expects Qwen weights under `models/embeddings/qwen3-embedding-0.6b/` and BGE reranker under `models/rerankers/bge-reranker-v2-m3/`. CI and unit tests use `FakeEmbedder` / `FakeReranker` / fake tokenizer so they do not require those weights.
+Default config expects Qwen weights under `models/embeddings/qwen3-embedding-0.6b/` and BGE reranker under `models/rerankers/bge-reranker-v2-m3/`. CI and unit tests use `FakeEmbedder` / `FakeReranker` / `FakeGenerator` / fake tokenizer so they do not require those weights.
 
 ## Demo experience
 
-**Today (Slice 7):** ingest → chunk → dense + lexical index → retrieve / retrieve lexical / retrieve hybrid / retrieve hybrid-rerank / retrieve hybrid-rerank-context / eval retrieve / doctor.
+**Today (Slice 8):** ingest → chunk → dense + lexical index → retrieve ladder → `query` / `eval query` / doctor (Context + Generation readiness).
 
 **Target demo** should allow a user to:
 
@@ -335,9 +337,9 @@ Use public, redistributable technical documents rather than proprietary material
 
 ## Project status
 
-**Phase:** Milestone 2 — Slices 0–7 done (dense + lexical BM25 + hybrid RRF + cross-encoder + context expansion).
+**Phase:** Milestone 3 — Slices 0–8 done (retrieval ladder + grounded local generation).
 
-Working local path: ingest → chunk → index / index lexical → retrieve / retrieve lexical / retrieve hybrid / retrieve hybrid-rerank / retrieve hybrid-rerank-context → eval retrieve.
-Still deferred: generation/`query` (8+).
+Working local path: ingest → chunk → index / index lexical → retrieve ladder → `query` → `eval query`.
+Still deferred: semantic answer/citation quality metrics (Milestone 4), agentic recovery (Milestone 5).
 
-See `ROADMAP.md` and `docs/slice7_context_expansion.md`.
+See `ROADMAP.md` and `docs/slice8_grounded_generation.md`.

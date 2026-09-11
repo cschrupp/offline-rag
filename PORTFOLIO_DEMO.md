@@ -1,6 +1,6 @@
 # Portfolio Demo Plan
 
-**Current readiness:** Through Slice 7 you can demo ingest → chunk → dense and lexical index → `retrieve` / `retrieve lexical` / `retrieve hybrid` / `retrieve hybrid-rerank` / `retrieve hybrid-rerank-context` / `eval retrieve` (`dense|lexical|hybrid|hybrid-rerank|hybrid-rerank-context`). Grounded `query`/UI arrives with Slice 8+ — demo narrative below is the target story; adapt live demos to what is implemented.
+**Current readiness:** Through Slice 8 you can demo ingest → chunk → dense and lexical index → retrieval ladder → `hybrid-rerank-context` → grounded `query` / `eval query`. UI/dashboard remains later.
 
 ## Demo objective
 

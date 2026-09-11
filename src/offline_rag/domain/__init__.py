@@ -30,7 +30,13 @@ from offline_rag.domain.corpus import (
 )
 from offline_rag.domain.documents import Chunk, ChunkKind, Document
 from offline_rag.domain.evaluation import EvaluationResult, ExperimentConfig
-from offline_rag.domain.generation import Citation
+from offline_rag.domain.generation import (
+    Citation,
+    GroundedAnswerResult,
+    QueryEvaluationOutcomes,
+    QueryEvaluationResult,
+    ResolvedCitation,
+)
 from offline_rag.domain.indexing import (
     ContextAnchorRankingMetrics,
     ContextAssemblyDiagnostics,
@@ -90,6 +96,10 @@ __all__ = [
     "ChunkingReport",
     "ChunkingStatus",
     "Citation",
+    "GroundedAnswerResult",
+    "QueryEvaluationOutcomes",
+    "QueryEvaluationResult",
+    "ResolvedCitation",
     "ContentBlock",
     "ContentType",
     "CorpusDocumentEntry",

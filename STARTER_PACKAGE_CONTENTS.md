@@ -53,10 +53,10 @@ This file lists the files included in the updated project handoff.
 - `scripts/provision_docling.py`
 - `scripts/provision_tiktoken.py`
 - `scripts/provision_embedding.py`
-- `src/offline_rag/` (core, domain, ingestion, chunking, dense, lexical, hybrid, rerank, context, CLI — through Slice 7)
-- `tests/unit/` (contracts, ingestion, chunking, dense/lexical/hybrid/hybrid-rerank/context retrieval)
-- package placeholders remain for later slices: agents, api, generation, guardrails, UI
-- `docs/slice0_contracts.md` … `docs/slice7_context_expansion.md`
+- `src/offline_rag/` (core, domain, ingestion, chunking, dense, lexical, hybrid, rerank, context, generation, CLI — through Slice 8)
+- `tests/unit/` (contracts, ingestion, chunking, dense/lexical/hybrid/hybrid-rerank/context/grounded-generation)
+- package placeholders remain for later slices: agents, api, guardrails, UI
+- `docs/slice0_contracts.md` … `docs/slice8_grounded_generation.md`
 - `data/lexical-indexes/.gitkeep`
 - `data/lexical-index-manifests/.gitkeep`
 - `ui/.gitkeep`

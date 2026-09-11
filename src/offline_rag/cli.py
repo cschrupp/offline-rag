@@ -53,6 +53,15 @@ from offline_rag.dense.status import indexing_status_for_corpus
 from offline_rag.domain.chunking import ChunkingStatus
 from offline_rag.domain.indexing import IndexingStatus, ProvisioningStatus
 from offline_rag.domain.ingestion import IngestionStatus
+from offline_rag.generation.evaluate import QueryEvaluator
+from offline_rag.generation.orchestrate import (
+    GroundedAnswerError,
+    GroundedAnswerOrchestrator,
+)
+from offline_rag.generation.status import (
+    describe_generation_status,
+    generation_status_for_corpus,
+)
 from offline_rag.hybrid.evaluate import HybridRetrievalEvaluator
 from offline_rag.hybrid.retrieve import HybridRetrievalError, HybridRetriever
 from offline_rag.hybrid.status import hybrid_status_for_corpus
@@ -1239,13 +1248,63 @@ def cmd_retrieve_hybrid_rerank_context(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_query(_args: argparse.Namespace) -> int:
-    print(
-        "Full query/generation is not implemented yet. "
-        "Use offline-rag retrieve for dense retrieval.",
-        file=sys.stderr,
+def cmd_query(args: argparse.Namespace) -> int:
+    try:
+        settings = _load_settings(args)
+    except ConfigError as exc:
+        print(f"query: configuration failed: {exc}", file=sys.stderr)
+        return 1
+
+    logger = configure_logging(
+        level=settings.logging.level,
+        structured=settings.logging.structured,
     )
-    return NOT_IMPLEMENTED_EXIT
+    log_event(logger, 20, "query started", event="query.start")
+
+    orchestrator = GroundedAnswerOrchestrator(settings)
+    try:
+        result = orchestrator.answer(query=args.query, corpus_name=args.corpus)
+    except GroundedAnswerError as exc:
+        print(f"query: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        orchestrator.close()
+
+    if args.json:
+        print(result.model_dump_json())
+        return 0
+
+    print("Grounded Query")
+    print()
+    print("Query:")
+    print(result.query)
+    print()
+    print(f"Status:       {result.status}")
+    if result.abstention_reason:
+        print(f"Abstention:   {result.abstention_reason}")
+    if result.generation_failure_reason:
+        print(f"Failure:      {result.generation_failure_reason}")
+    print(f"Method:       {result.method}")
+    print(f"gen_config:   {result.generation_config_hash}")
+    if result.context_config_hash:
+        print(f"context_cfg:  {result.context_config_hash}")
+    print()
+    if result.status == "answered" and result.answer_text is not None:
+        print("Answer:")
+        print(result.answer_text)
+        print()
+        print("Citations:")
+        for citation in result.citations:
+            clip = " clipped" if citation.clipped else ""
+            print(
+                f"- {citation.evidence_unit_id} [{citation.kind}{clip}] "
+                f"source={citation.source_chunk_id}"
+            )
+    elif result.status == "insufficient_evidence":
+        print("Insufficient evidence to answer groundedly.")
+    else:
+        print("No validated grounded answer was produced.")
+    return 0
 
 
 def cmd_eval_run(_args: argparse.Namespace) -> int:
@@ -1254,6 +1313,78 @@ def cmd_eval_run(_args: argparse.Namespace) -> int:
 
 def cmd_eval_compare(_args: argparse.Namespace) -> int:
     return _not_implemented("eval compare")
+
+
+def cmd_eval_query(args: argparse.Namespace) -> int:
+    try:
+        settings = _load_settings(args)
+    except ConfigError as exc:
+        print(f"eval query: configuration failed: {exc}", file=sys.stderr)
+        return 1
+
+    logger = configure_logging(
+        level=settings.logging.level,
+        structured=settings.logging.structured,
+    )
+    log_event(logger, 20, "eval query started", event="eval.query.start")
+
+    evaluator = QueryEvaluator(settings)
+    try:
+        report = evaluator.evaluate(
+            Path(args.dataset),
+            corpus_name=args.corpus,
+            output_path=Path(args.output) if args.output else None,
+        )
+    except (EvaluationError, GroundedAnswerError) as exc:
+        print(f"eval query: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        evaluator.orchestrator.close()
+
+    if args.json:
+        print(report.model_dump_json())
+        return 0
+
+    print("Query evaluation completed")
+    print()
+    print(f"Run:          {report.run_id}")
+    print(f"Method:       {report.method}")
+    print(f"Dataset:      {report.dataset_id}")
+    print(f"Cases:        {report.case_count}")
+    print(f"Gen hash:     {report.generation_config_hash}")
+    print()
+    print("Outcomes")
+    print(f"  answered:              {report.outcomes.answered} ({report.answered_rate:.4f})")
+    print(
+        f"  insufficient_evidence: {report.outcomes.insufficient_evidence} "
+        f"({report.insufficient_evidence_rate:.4f})"
+    )
+    print(
+        f"    empty_context:       {report.outcomes.empty_context} "
+        f"({report.empty_context_rate:.4f})"
+    )
+    print(
+        f"    model_abstain:       {report.outcomes.model_abstain} "
+        f"({report.model_abstain_rate:.4f})"
+    )
+    print(
+        f"  generation_failed:     {report.outcomes.generation_failed} "
+        f"({report.generation_failed_rate:.4f})"
+    )
+    print(
+        f"  citation_invalid:      {report.outcomes.citation_invalid} "
+        f"({report.citation_invalid_rate:.4f} of invoked)"
+    )
+    print()
+    print(f"Generator invoked: {report.generator_invoked_case_count}")
+    print(f"Attempts total:    {report.total_generator_attempts}")
+    print(f"Latency mean:      {report.latency_mean_ms:.1f} ms")
+    print(f"Gen latency mean:  {report.generation_latency_mean_ms:.1f} ms")
+    result_path = report.metadata.get("result_path")
+    if result_path:
+        print()
+        print(f"Report:       {result_path}")
+    return 0
 
 
 def cmd_eval_retrieve(args: argparse.Namespace) -> int:
@@ -1783,6 +1914,20 @@ def cmd_doctor(args: argparse.Namespace) -> int:
             "+ valid chunk structure + TokenCounter"
         )
 
+    generation_status = generation_status_for_corpus(settings, corpus_name)
+    notes.append(f"Generation status               {generation_status}")
+    notes.append(f"Generation enabled              {settings.generation.enabled}")
+    notes.append(f"Generation provider             {settings.generation.provider}")
+    notes.append(f"Generation model                {settings.generation.model}")
+    if generation_status != "READY":
+        details = describe_generation_status(settings, corpus_name)
+        for reason in details.get("reasons") or []:
+            notes.append(f"Generation reason               {reason}")
+        notes.append(
+            "Action                           ensure Context READY + approved endpoint/model "
+            "+ reachable OpenAI-compatible generator"
+        )
+
     for note in notes:
         print(f"doctor: {note}")
 
@@ -1969,8 +2114,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     retrieve_hybrid_rerank_context.set_defaults(func=cmd_retrieve_hybrid_rerank_context)
 
-    query = subparsers.add_parser("query", help="Full RAG query/generation (not implemented yet)")
+    query = subparsers.add_parser("query", help="Grounded answer generation with citations")
     _add_config_argument(query)
+    query.add_argument("--corpus", default="default", help="Logical corpus name")
+    query.add_argument("--query", required=True, help="Query text")
+    query.add_argument("--json", action="store_true", help="Emit GroundedAnswerResult JSON")
     query.set_defaults(func=cmd_query)
 
     eval_parser = subparsers.add_parser("eval", help="Evaluation commands")
@@ -1981,6 +2129,13 @@ def build_parser() -> argparse.ArgumentParser:
     eval_compare = eval_sub.add_parser("compare", help="Compare evaluations (not implemented yet)")
     _add_config_argument(eval_compare)
     eval_compare.set_defaults(func=cmd_eval_compare)
+    eval_query = eval_sub.add_parser("query", help="Run grounded query evaluation")
+    _add_config_argument(eval_query)
+    eval_query.add_argument("--dataset", required=True, type=Path, help="Dataset dir or cases.jsonl")
+    eval_query.add_argument("--corpus", default="default", help="Logical corpus name")
+    eval_query.add_argument("--output", type=Path, default=None, help="Optional result JSON path")
+    eval_query.add_argument("--json", action="store_true", help="Emit evaluation result JSON")
+    eval_query.set_defaults(func=cmd_eval_query)
     eval_retrieve = eval_sub.add_parser(
         "retrieve",
         help="Run dense or lexical retrieval evaluation",

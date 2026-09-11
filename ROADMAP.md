@@ -18,7 +18,7 @@
 - [x] Local dense embeddings (Slice 3; Qwen3-Embedding-0.6B + FakeEmbedder for CI)
 - [x] Qdrant persistence (Slice 3; Qdrant Local)
 - [x] Dense retrieval benchmark (`offline-rag eval retrieve`)
-- [x] Minimal local retrieve CLI (`offline-rag retrieve`; full `query`/generation remains deferred)
+- [x] Minimal local retrieve CLI (`offline-rag retrieve`; grounded `query` arrives in Milestone 3 / Slice 8)
 
 **Release criterion:** reproducible Recall@k/MRR baseline on a small gold set.
 
@@ -34,19 +34,21 @@
 
 **Release criterion:** measured comparison of dense, BM25, hybrid, hybrid+reranker, and +context assembly.
 
-**Status:** Slice 7 hybrid-rerank-context implemented. Next: Slice 8 generation / grounded QA.
+**Status:** Slice 7 hybrid-rerank-context implemented. Ablation report still open.
 
 ## Milestone 3 — Grounded local QA
 
-- [ ] OpenAI-compatible generation client
-- [ ] Ollama-on-host default profile
-- [ ] strict-offline endpoint/model preflight
-- [ ] structured answer schema
-- [ ] citation provenance
-- [ ] citation validator
-- [ ] abstention path
+- [x] OpenAI-compatible generation client
+- [x] Ollama-on-host default profile
+- [x] strict-offline endpoint/model preflight
+- [x] structured answer schema
+- [x] citation provenance
+- [x] citation validator
+- [x] abstention path
 
 **Release criterion:** grounded answer with resolvable source citations and explicit insufficient-evidence output.
+
+**Status:** Slice 8 grounded generation implemented (`offline-rag query` / `eval query`).
 
 ## Milestone 4 — Evaluation platform
 

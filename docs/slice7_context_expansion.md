@@ -1,7 +1,7 @@
 # Slice 7 — Context expansion / evidence assembly
 
 Slice 7 converts ranked **hybrid-rerank** child anchors into a bounded,
-deterministic evidence context for later generation (Slice 8).
+deterministic evidence context for grounded generation (Slice 8 — done).
 
 **Status:** implemented.
 
@@ -163,12 +163,12 @@ No invented “context Recall@k” / evidence-quality metrics yet.
 ## Ladder
 
 ```text
-dense → lexical → hybrid → hybrid-rerank → hybrid-rerank-context → Slice 8 generation
+dense → lexical → hybrid → hybrid-rerank → hybrid-rerank-context → query (Slice 8)
 ```
 
-## Out of scope
+## Out of scope (Slice 7)
 
-- generation / Ollama / citations
+- generation / Ollama / citations (Slice 8 — done; see `docs/slice8_grounded_generation.md`)
 - generator tokenizer budgeting
 - evidence-quality gold metrics
 - ContextState / context index / caches

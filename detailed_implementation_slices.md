@@ -2,7 +2,7 @@
 
 This document converts the architecture into incremental, testable implementation slices. Each slice should leave the repository in a working state. Avoid building multiple major layers simultaneously: the evaluation harness depends on being able to attribute improvements and regressions to individual changes.
 
-**Implementation status:** Slices 0–6 are implemented. Planned next: 7 expansion → 8+ generation. Authoritative notes: `docs/slice0_contracts.md` … `docs/slice6_cross_encoder_reranking.md`.
+**Implementation status:** Slices 0–8 are implemented. Planned next: Milestone 4 semantic answer/citation quality evaluation and agentic recovery. Authoritative notes: `docs/slice0_contracts.md` … `docs/slice8_grounded_generation.md`.
 
 ---
 
@@ -335,6 +335,8 @@ The project can state quantitatively whether reranking is worth the added latenc
 
 # Slice 7 — Context expansion and evidence assembly
 
+**Status:** implemented. See `docs/slice7_context_expansion.md`.
+
 ## Objective
 
 Use precise child retrieval while providing larger coherent context to the generator.
@@ -363,6 +365,8 @@ The system can show exactly which searchable chunks caused which context blocks 
 ---
 
 # Slice 8 — External local generation boundary and structured citations
+
+**Status:** implemented. See `docs/slice8_grounded_generation.md`.
 
 ## Objective
 

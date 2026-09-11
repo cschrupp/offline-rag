@@ -137,6 +137,7 @@ context:
   neighbor_window: 0
 
 generation:
+  enabled: true
   provider: openai_compatible
   base_url: http://host.docker.internal:11434/v1
   model: REPLACE_WITH_APPROVED_LOCAL_MODEL

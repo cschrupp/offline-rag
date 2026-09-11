@@ -10,7 +10,7 @@ The preferred loop is:
 baseline -> observe failure -> form hypothesis -> implement change -> benchmark -> keep/revert
 ```
 
-## 1b. Current local pipeline (Slices 0–6)
+## 1b. Current local pipeline (Slices 0–8)
 
 ```bash
 uv sync
@@ -28,16 +28,20 @@ offline-rag retrieve --corpus <name> --query "..."
 offline-rag retrieve lexical --corpus <name> --query "..."
 offline-rag retrieve hybrid --corpus <name> --query "..."
 offline-rag retrieve hybrid-rerank --corpus <name> --query "..."
+offline-rag retrieve hybrid-rerank-context --corpus <name> --query "..."
+offline-rag query --corpus <name> --query "..."
 offline-rag eval retrieve --dataset <dir> --corpus <name>
 offline-rag eval retrieve --method lexical --dataset <dir> --corpus <name>
 offline-rag eval retrieve --method hybrid --dataset <dir> --corpus <name>
 offline-rag eval retrieve --method hybrid-rerank --dataset <dir> --corpus <name>
+offline-rag eval retrieve --method hybrid-rerank-context --dataset <dir> --corpus <name>
+offline-rag eval query --dataset <dir> --corpus <name>
 offline-rag doctor --corpus <name>
 ```
 
-`offline-rag query` (generation) is not implemented yet. Use `retrieve` / `retrieve lexical` / `retrieve hybrid` / `retrieve hybrid-rerank` for evidence.
+`offline-rag query` runs grounded generation via Slice 7 context assembly. Retrieval ablation remains under `retrieve` / `eval retrieve`. Generation READY requires approved endpoint/model allowlists and a live OpenAI-compatible `/models` probe.
 
-For CI-scale dense/rerank tests, set `indexing.embedding.implementation: fake` and/or `reranker.implementation: fake` (see unit tests). Do not rely on FakeEmbedder / FakeReranker for portfolio quality claims.
+For CI-scale dense/rerank/generation tests, set `indexing.embedding.implementation: fake` and/or `reranker.implementation: fake`, and inject `FakeGenerator` in unit tests. Do not rely on FakeEmbedder / FakeReranker / FakeGenerator for portfolio quality claims.
 
 ## 2. Keep the core path simple
 

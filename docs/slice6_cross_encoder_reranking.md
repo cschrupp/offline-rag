@@ -194,11 +194,12 @@ Hybrid-rerank status            READY
 - Dense-only / lexical-only / multi-source rerank pools
 - Sigmoid / calibrated scores; learned fusion before rerank
 - Parent/neighbor expansion (Slice 7 — see `docs/slice7_context_expansion.md`)
-- Query rewriting, LangGraph, generation
+- Grounded generation (Slice 8 — see `docs/slice8_grounded_generation.md`)
+- Query rewriting, LangGraph
 - Automatic hybrid-only fallback when reranker disabled/absent
 - HybridRerankState / persisted rerank index
 - Artifact/index GC
 
 ## Ablation ladder
 
-Dense → +BM25 → +RRF → +reranker → **+expansion (Slice 7)**.
+Dense → +BM25 → +RRF → +reranker → +expansion (Slice 7) → **generation (Slice 8)**.

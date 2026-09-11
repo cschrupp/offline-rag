@@ -2,7 +2,7 @@
 
 The project is organized around explicit domain boundaries. Framework-specific integrations live behind project-owned interfaces so that Docling, Qdrant, LangGraph, Ollama, or other dependencies can be replaced without rewriting the application core.
 
-## Implemented through Slice 7 (current)
+## Implemented through Slice 8 (current)
 
 ```text
 offline-rag/
@@ -30,19 +30,21 @@ offline-rag/
 │   ├── provision_tiktoken.py
 │   └── provision_embedding.py
 ├── docs/
-│   ├── slice0_contracts.md … slice6_cross_encoder_reranking.md
+│   ├── slice0_contracts.md … slice8_grounded_generation.md
 │   └── model_provisioning.md
 ├── src/offline_rag/
 │   ├── cli.py
 │   ├── config/
 │   ├── core/ids.py
-│   ├── domain/          # documents, blocks, corpus, chunking, indexing, retrieval, …
+│   ├── domain/          # documents, blocks, corpus, chunking, indexing, generation, …
 │   ├── ingestion/       # parsers, Docling artifacts, ingest pipeline
 │   ├── chunking/        # structure-aware chunker, tiktoken, chunk pipeline
 │   ├── dense/           # embedders, Qdrant Local, index/retrieve/eval
 │   ├── lexical/         # BM25 inverted index, analyze, score, retrieve/eval
 │   ├── hybrid/          # query-time RRF (no hybrid index/state)
 │   ├── rerank/          # hybrid-pool cross-encoder (no HybridRerankState)
+│   ├── context/         # hybrid-rerank-context assembly (no ContextState)
+│   ├── generation/      # grounded query (no GenerationState)
 │   └── observability/
 └── tests/
 ```
@@ -135,19 +137,12 @@ offline-rag/
 │       ├── hybrid/                # Slice 5 (query-time rrf-v1; no hybrid index)
 │       ├── rerank/                # Slice 6 (hybrid-pool CE; derived READY only)
 │       ├── context/               # Slice 7 (structural expansion; derived READY only)
+│       ├── generation/            # Slice 8 (grounded query; derived READY only; no GenerationState)
 │       │
 │       ├── embeddings/            # optional future split; dense/ currently owns adapters
 │       ├── index/                 # optional future split
 │       │
 │       ├── retrieval/             # reserved; dense/lexical/hybrid/rerank/context stay owned
-│       │
-│       ├── generation/
-│       │   ├── base.py
-│       │   ├── openai_compatible.py
-│       │   ├── preflight.py
-│       │   ├── prompts.py
-│       │   ├── answer_schema.py
-│       │   └── citations.py
 │       │
 │       ├── agents/
 │       │   ├── state.py
@@ -260,11 +255,11 @@ Slice 3 keeps adapters under `dense/`. Later refactors may split packages if the
 
 ### `retrieval/`
 
-Reserved mega-package slot; not used. Dense, lexical, hybrid, rerank, and context live in their packages today. Generation/confidence remain Slice 8+.
+Reserved mega-package slot; not used. Dense, lexical, hybrid, rerank, context, and generation live in their packages today.
 
 ### `generation/`
 
-Owns the model-agnostic local generation client, endpoint/model preflight, prompt construction, answer schema, and citation handling. The generative model itself is not part of the application image.
+`GroundedAnswerOrchestrator` + OpenAI-compatible adapter / FakeGenerator. Prompt (`prompt-grounded-v1`), output (`grounded-answer-v1`), closed-world `ev_` citations, `gencfg_` identity, derived Generation READY only; no GenerationState (Slice 8). The generative model itself is not part of the application image.
 
 ### `agents/`
 

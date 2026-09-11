@@ -83,7 +83,7 @@ offline-rag retrieve --corpus <name> --query "..." [--top-k N] [--json]
 offline-rag eval retrieve --dataset <path> --corpus <name> [--json]
 ```
 
-`query` remains deferred to **Slice 8+** (full RAG answer workflow). Use `retrieve` for evidence.
+`query` is implemented in **Slice 8** (grounded generation). Use `retrieve` for retrieval ablation without generation.
 
 Stale chunk sets refuse indexing; stale indexes refuse retrieve/eval.
 
@@ -104,13 +104,14 @@ Slice 4  Lexical/BM25 retrieval       (done — see docs/slice4_lexical_retrieva
 Slice 5  Hybrid retrieval / RRF fusion (done — see docs/slice5_hybrid_retrieval.md)
 Slice 6  Cross-encoder reranking      (done — see docs/slice6_cross_encoder_reranking.md)
 Slice 7  Parent/neighbor context expansion (done — see docs/slice7_context_expansion.md)
-Slice 8+ Generation / orchestration   (Ollama, citations, recovery, …)
+Slice 8  Grounded local generation    (done — see docs/slice8_grounded_generation.md)
 ```
 
 Ablation path: Dense → +BM25 → +RRF → +reranker → +parent/neighbor expansion → generation.
 
 Slice 6 uses provisioned `BAAI/bge-reranker-v2-m3` plus CI `FakeReranker` (mirrors embedders): config identity, no runtime downloads.
 Slice 7 exposes `hybrid-rerank-context` via `HybridRerankContextAssembler` (no ContextState).
+Slice 8 exposes `query` via `GroundedAnswerOrchestrator` (no GenerationState).
 
 Also deferred beyond the ladder above: Qdrant server / Edge, reference-aware index GC,
-full experiment registry / dashboards.
+full experiment registry / dashboards, semantic answer/citation quality metrics.
