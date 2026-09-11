@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -588,6 +588,152 @@ class HybridRerankRetrievalEvaluationResult(BaseModel):
     latency_p50_ms: Score
     latency_p95_ms: Score
     cases: list[RetrievalCaseResult] = Field(default_factory=list)
+    started_at: datetime
+    completed_at: datetime
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class EvidenceClipInfo(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    contract: NonEmptyStr
+    start_char: NonNegativeInt
+    end_char: PositiveInt
+    anchor_start_char: NonNegativeInt
+    anchor_end_char: PositiveInt
+    original_token_count: NonNegativeInt = 0
+    emitted_token_count: NonNegativeInt = 0
+
+
+class EvidenceUnit(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    evidence_unit_id: NonEmptyStr
+    source_chunk_id: NonEmptyStr
+    kind: Literal["parent", "child"]
+    text: NonEmptyStr
+    clipped: bool = False
+    token_count: NonNegativeInt = 0
+    primary_anchor_chunk_id: NonEmptyStr
+    contributing_anchor_chunk_ids: list[NonEmptyStr] = Field(default_factory=list)
+    document_id: NonEmptyStr
+    parent_chunk_id: NonEmptyStr | None = None
+    section_path: list[str] = Field(default_factory=list)
+    page_start: PositiveInt | None = None
+    page_end: PositiveInt | None = None
+    line_start: PositiveInt | None = None
+    line_end: PositiveInt | None = None
+    clip: EvidenceClipInfo | None = None
+    relationship: NonEmptyStr | None = None
+    distance: NonNegativeInt | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ContextAssemblyDiagnostics(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    requested_anchor_k: PositiveInt
+    actual_anchor_count: NonNegativeInt = 0
+    anchors_processed: NonNegativeInt = 0
+    evidence_unit_count: NonNegativeInt = 0
+    context_token_count: NonNegativeInt = 0
+    budget_exhausted: bool = False
+    stop_reason: NonEmptyStr = "completed"
+    clipping_occurred: bool = False
+    dedup_hits: NonNegativeInt = 0
+    containment_suppressions: NonNegativeInt = 0
+
+
+class HybridRerankContextResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    query: NonEmptyStr
+    method: NonEmptyStr = "hybrid-rerank-context"
+    evidence_units: list[EvidenceUnit] = Field(default_factory=list)
+    assembled_text: str = ""
+    context_token_count: NonNegativeInt = 0
+    max_context_tokens: PositiveInt
+    context_config_hash: NonEmptyStr
+    effective_context_semantics: dict[str, Any] = Field(default_factory=dict)
+    anchors: list[HybridRerankCandidate] = Field(default_factory=list)
+    dense_index_id: NonEmptyStr
+    lexical_index_id: NonEmptyStr
+    fusion_config_hash: NonEmptyStr
+    reranker_config_hash: NonEmptyStr
+    diagnostics: ContextAssemblyDiagnostics
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ContextAnchorRankingMetrics(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    recall_at_1: Score
+    recall_at_5: Score
+    mrr: Score
+    evaluation_depth: PositiveInt
+
+
+class ContextAssemblySummary(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    context_tokens_mean: Score = 0.0
+    context_tokens_min: NonNegativeInt = 0
+    context_tokens_max: NonNegativeInt = 0
+    evidence_units_mean: Score = 0.0
+    evidence_units_min: NonNegativeInt = 0
+    evidence_units_max: NonNegativeInt = 0
+    clipped_case_count: NonNegativeInt = 0
+    budget_exhausted_case_count: NonNegativeInt = 0
+    stop_reason_counts: dict[str, int] = Field(default_factory=dict)
+    total_dedup_hits: NonNegativeInt = 0
+    total_containment_suppressions: NonNegativeInt = 0
+
+
+class HybridRerankContextCaseResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    case_id: NonEmptyStr
+    query: NonEmptyStr
+    relevant_chunk_ids: list[NonEmptyStr] = Field(default_factory=list)
+    retrieved_anchor_chunk_ids: list[NonEmptyStr] = Field(default_factory=list)
+    first_relevant_rank: PositiveInt | None = None
+    reciprocal_rank: Score = 0.0
+    recall_at_1: Score = 0.0
+    recall_at_5: Score = 0.0
+    evidence_unit_count: NonNegativeInt = 0
+    context_token_count: NonNegativeInt = 0
+    clipping_occurred: bool = False
+    budget_exhausted: bool = False
+    stop_reason: NonEmptyStr = "completed"
+    gold_in_rerank_pool: bool | None = None
+    input_pool_size: NonNegativeInt | None = None
+    latency_ms: NonNegativeInt = 0
+    error: NonEmptyStr | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class HybridRerankContextEvaluationResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    run_id: NonEmptyStr
+    evaluation_type: NonEmptyStr = "hybrid_rerank_context"
+    method: NonEmptyStr = "hybrid-rerank-context"
+    dataset_id: NonEmptyStr
+    case_count: NonNegativeInt
+    corpus_id: NonEmptyStr | None = None
+    chunk_set_id: NonEmptyStr
+    dense_index_id: NonEmptyStr
+    lexical_index_id: NonEmptyStr
+    fusion_config_hash: NonEmptyStr
+    reranker_config_hash: NonEmptyStr
+    context_config_hash: NonEmptyStr
+    anchor_k: PositiveInt
+    anchor_ranking: ContextAnchorRankingMetrics
+    assembly_summary: ContextAssemblySummary
+    latency_mean_ms: Score
+    latency_p50_ms: Score
+    latency_p95_ms: Score
+    cases: list[HybridRerankContextCaseResult] = Field(default_factory=list)
     started_at: datetime
     completed_at: datetime
     metadata: dict[str, Any] = Field(default_factory=dict)

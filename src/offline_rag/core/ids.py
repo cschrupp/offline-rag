@@ -41,6 +41,13 @@ RAW_LOGIT_SCORE_CONTRACT = "raw-logit-v1"
 CHUNK_ID_ASC_TIE_BREAK = "chunk-id-asc-v1"
 FAKE_RERANK_DIGEST_CONTRACT = "fake-rerank-digest-v1"
 BGE_RERANKER_ARTIFACT_CONTRACT = "offline-rag-reranker-artifact-v1"
+RANK_PRIORITY_HARD_BUDGET_V1 = "rank-priority-hard-budget-v1"
+ANCHOR_PRESERVING_CLIP_V1 = "anchor-preserving-v1"
+FIRST_ANCHOR_OWNS_V1 = "first-anchor-owns-v1"
+SUPPRESS_CONTAINED_CHILDREN_V1 = "suppress-contained-children-v1"
+NEIGHBOR_WINDOW_V1 = "neighbor-window-v1"
+PLAIN_EVIDENCE_V1 = "plain-evidence-v1"
+CONTEXT_STRATEGIES = frozenset({"child-only", "parent", "neighbors", "parent+neighbors"})
 
 
 def _sha256_hex(data: bytes) -> str:
@@ -384,3 +391,19 @@ def fusion_config_hash(data: Mapping[str, Any]) -> str:
 def reranker_config_hash(data: Mapping[str, Any]) -> str:
     """Return ``rrkcfg_<sha256>`` for reranker ranking-policy configuration."""
     return canonical_config_hash(data).replace("cfg_", "rrkcfg_", 1)
+
+
+def context_config_hash(data: Mapping[str, Any]) -> str:
+    """Return ``ctxcfg_<sha256>`` for effective context-assembly semantics."""
+    return canonical_config_hash(data).replace("cfg_", "ctxcfg_", 1)
+
+
+def evidence_unit_id_from_payload(payload: Mapping[str, Any]) -> str:
+    """Return ``ev_<sha256>`` for a deterministic evidence representation identity."""
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return f"ev_{_sha256_hex(encoded.encode('utf-8'))}"
+
+
+def text_content_hash(text: str) -> str:
+    """Return hex SHA-256 of exact UTF-8 text bytes (no prefix)."""
+    return _sha256_hex(text.encode("utf-8"))

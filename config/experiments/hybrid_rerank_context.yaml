@@ -1,0 +1,52 @@
+experiment:
+  name: hybrid_rerank_context
+
+dense:
+  enabled: true
+  top_k: 30
+
+lexical:
+  enabled: true
+  method: bm25
+  top_k: 30
+
+fusion:
+  method: rrf
+  contract_version: rrf-v1
+  rrf_k: 60
+  dense_top_k: 30
+  lexical_top_k: 30
+  output_top_k: 10
+
+reranker:
+  enabled: true
+  implementation: sentence_transformers
+  model:
+    model_id: BAAI/bge-reranker-v2-m3
+    revision: 953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e
+    model_path: models/rerankers/bge-reranker-v2-m3
+    adapter_contract: sentence-transformers-cross-encoder-v1
+    local_files_only: true
+    trust_remote_code: false
+  input_k: 30
+  output_k: 10
+  input_construction: plain-pair-v1
+  sequence_contract: seq-trunc-1024-passage-right-v1
+  max_length: 1024
+  score_transform: raw-logit-v1
+  tie_break: chunk-id-asc-v1
+  device: auto
+  batch_size: 16
+
+context:
+  enabled: true
+  strategy: parent
+  anchor_k: 5
+  max_context_tokens: 6000
+  neighbor_window: 0
+
+retrieval_recovery:
+  enabled: false
+
+generation:
+  enabled: false

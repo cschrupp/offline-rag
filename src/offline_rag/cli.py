@@ -18,6 +18,15 @@ from offline_rag.chunking.pipeline import chunking_status_for_corpus, run_chunki
 from offline_rag.chunking.tokenize import validate_tiktoken_artifacts
 from offline_rag.config import ConfigError, load_settings
 from offline_rag.config.models import AppSettings
+from offline_rag.context.assemble import (
+    HybridRerankContextAssembler,
+    HybridRerankContextError,
+)
+from offline_rag.context.evaluate import HybridRerankContextEvaluator
+from offline_rag.context.status import (
+    context_status_for_corpus,
+    describe_context_status,
+)
 from offline_rag.core.ids import dense_point_uuid
 from offline_rag.dense.evaluate import (
     DenseEvaluationError,
@@ -1161,6 +1170,75 @@ def cmd_retrieve_hybrid_rerank(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_retrieve_hybrid_rerank_context(args: argparse.Namespace) -> int:
+    try:
+        settings = _load_settings(args)
+    except ConfigError as exc:
+        print(f"retrieve hybrid-rerank-context: configuration failed: {exc}", file=sys.stderr)
+        return 1
+
+    logger = configure_logging(
+        level=settings.logging.level,
+        structured=settings.logging.structured,
+    )
+    log_event(
+        logger,
+        20,
+        "hybrid-rerank-context retrieve started",
+        event="retrieve.hybrid_rerank_context.start",
+    )
+
+    assembler = HybridRerankContextAssembler(settings)
+    try:
+        result = assembler.assemble(query=args.query, corpus_name=args.corpus)
+    except HybridRerankContextError as exc:
+        print(f"retrieve hybrid-rerank-context: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        assembler.close()
+
+    if args.json:
+        print(result.model_dump_json())
+    else:
+        print("Hybrid-Rerank-Context Assembly")
+        print()
+        print("Query:")
+        print(result.query)
+        print()
+        print(f"Strategy:      {result.effective_context_semantics.get('strategy')}")
+        print(
+            f"Anchors:       {result.diagnostics.actual_anchor_count} / "
+            f"anchor_k={result.diagnostics.requested_anchor_k}"
+        )
+        print(f"Evidence units:{result.diagnostics.evidence_unit_count}")
+        print(
+            f"Context tokens:{result.context_token_count} / "
+            f"max={result.max_context_tokens}"
+        )
+        print(f"Stop reason:   {result.diagnostics.stop_reason}")
+        print(f"Dense index:   {result.dense_index_id}")
+        print(f"Lexical index: {result.lexical_index_id}")
+        print(f"fusion_config: {result.fusion_config_hash}")
+        print(f"reranker_cfg:  {result.reranker_config_hash}")
+        print(f"context_cfg:   {result.context_config_hash}")
+        print()
+        for index, unit in enumerate(result.evidence_units, start=1):
+            clip_note = " clipped" if unit.clipped else ""
+            print(
+                f"{index}. [{unit.kind}{clip_note}] source={unit.source_chunk_id} "
+                f"tokens={unit.token_count}"
+            )
+            print(f"   primary_anchor: {unit.primary_anchor_chunk_id}")
+            print()
+            for line in unit.text.splitlines() or [unit.text]:
+                print(f"   {line}")
+            print()
+        if result.assembled_text:
+            print("Assembled evidence:")
+            print(result.assembled_text)
+    return 0
+
+
 def cmd_query(_args: argparse.Namespace) -> int:
     print(
         "Full query/generation is not implemented yet. "
@@ -1327,10 +1405,73 @@ def cmd_eval_retrieve(args: argparse.Namespace) -> int:
                 print(f"Report:       {result_path}")
         return 0
 
+    if method == "hybrid-rerank-context":
+        evaluator = HybridRerankContextEvaluator(settings)
+        try:
+            report = evaluator.evaluate(
+                Path(args.dataset),
+                corpus_name=args.corpus,
+                output_path=Path(args.output) if args.output else None,
+            )
+        except (EvaluationError, HybridRerankContextError) as exc:
+            print(f"eval retrieve: {exc}", file=sys.stderr)
+            return 1
+        finally:
+            evaluator.assembler.close()
+
+        if args.json:
+            print(report.model_dump_json())
+        else:
+            print("Hybrid-rerank-context evaluation completed")
+            print()
+            print(f"Run:          {report.run_id}")
+            print(f"Method:       {report.method}")
+            print(f"Dataset:      {report.dataset_id}")
+            print(f"Cases:        {report.case_count}")
+            print(f"Dense index:  {report.dense_index_id}")
+            print(f"Lexical idx:  {report.lexical_index_id}")
+            print(f"Fusion hash:  {report.fusion_config_hash}")
+            print(f"Rerank hash:  {report.reranker_config_hash}")
+            print(f"Context hash: {report.context_config_hash}")
+            print(f"anchor_k:     {report.anchor_k}")
+            print()
+            print("Anchor ranking")
+            print(f"  Recall@1:   {report.anchor_ranking.recall_at_1:.4f}")
+            print(f"  Recall@5:   {report.anchor_ranking.recall_at_5:.4f}")
+            print(f"  MRR:        {report.anchor_ranking.mrr:.4f}")
+            print()
+            print("Assembly summary")
+            print(
+                f"  tokens mean/min/max: "
+                f"{report.assembly_summary.context_tokens_mean:.1f}/"
+                f"{report.assembly_summary.context_tokens_min}/"
+                f"{report.assembly_summary.context_tokens_max}"
+            )
+            print(
+                f"  units mean/min/max:  "
+                f"{report.assembly_summary.evidence_units_mean:.1f}/"
+                f"{report.assembly_summary.evidence_units_min}/"
+                f"{report.assembly_summary.evidence_units_max}"
+            )
+            print(f"  clipped cases:      {report.assembly_summary.clipped_case_count}")
+            print(
+                f"  budget exhausted:   {report.assembly_summary.budget_exhausted_case_count}"
+            )
+            print(f"  stop reasons:       {report.assembly_summary.stop_reason_counts}")
+            print()
+            print(f"Latency mean: {report.latency_mean_ms:.1f} ms")
+            print(f"Latency p50:  {report.latency_p50_ms:.1f} ms")
+            print(f"Latency p95:  {report.latency_p95_ms:.1f} ms")
+            result_path = report.metadata.get("result_path")
+            if result_path:
+                print()
+                print(f"Report:       {result_path}")
+        return 0
+
     if method != "dense":
         print(
             f"eval retrieve: unsupported method '{method}' "
-            "(use dense|lexical|hybrid|hybrid-rerank)",
+            "(use dense|lexical|hybrid|hybrid-rerank|hybrid-rerank-context)",
             file=sys.stderr,
         )
         return 1
@@ -1629,6 +1770,19 @@ def cmd_doctor(args: argparse.Namespace) -> int:
             "Action                           ensure Hybrid READY + provisioned enabled reranker"
         )
 
+    context_status = context_status_for_corpus(settings, corpus_name)
+    notes.append(f"Context status                  {context_status}")
+    notes.append(f"Context strategy                {settings.context.strategy}")
+    notes.append(f"Context enabled                 {settings.context.enabled}")
+    if context_status != "READY":
+        details = describe_context_status(settings, corpus_name)
+        for reason in details.get("reasons") or []:
+            notes.append(f"Context reason                  {reason}")
+        notes.append(
+            "Action                           ensure Hybrid-rerank READY + context.enabled "
+            "+ valid chunk structure + TokenCounter"
+        )
+
     for note in notes:
         print(f"doctor: {note}")
 
@@ -1799,6 +1953,22 @@ def build_parser() -> argparse.ArgumentParser:
     )
     retrieve_hybrid_rerank.set_defaults(func=cmd_retrieve_hybrid_rerank)
 
+    retrieve_hybrid_rerank_context = retrieve_sub.add_parser(
+        "hybrid-rerank-context",
+        help="Hybrid-rerank followed by structural context expansion",
+    )
+    _add_config_argument(retrieve_hybrid_rerank_context)
+    retrieve_hybrid_rerank_context.add_argument(
+        "--corpus", default="default", help="Logical corpus name"
+    )
+    retrieve_hybrid_rerank_context.add_argument("--query", required=True, help="Query text")
+    retrieve_hybrid_rerank_context.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit HybridRerankContextResult JSON",
+    )
+    retrieve_hybrid_rerank_context.set_defaults(func=cmd_retrieve_hybrid_rerank_context)
+
     query = subparsers.add_parser("query", help="Full RAG query/generation (not implemented yet)")
     _add_config_argument(query)
     query.set_defaults(func=cmd_query)
@@ -1820,7 +1990,7 @@ def build_parser() -> argparse.ArgumentParser:
     eval_retrieve.add_argument("--corpus", default="default", help="Logical corpus name")
     eval_retrieve.add_argument(
         "--method",
-        choices=("dense", "lexical", "hybrid", "hybrid-rerank"),
+        choices=("dense", "lexical", "hybrid", "hybrid-rerank", "hybrid-rerank-context"),
         default="dense",
         help="Retriever under test (default: dense)",
     )

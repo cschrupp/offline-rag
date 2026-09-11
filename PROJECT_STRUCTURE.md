@@ -2,7 +2,7 @@
 
 The project is organized around explicit domain boundaries. Framework-specific integrations live behind project-owned interfaces so that Docling, Qdrant, LangGraph, Ollama, or other dependencies can be replaced without rewriting the application core.
 
-## Implemented through Slice 6 (current)
+## Implemented through Slice 7 (current)
 
 ```text
 offline-rag/
@@ -81,6 +81,7 @@ offline-rag/
 │       ├── bm25_baseline.yaml
 │       ├── hybrid_rrf.yaml
 │       ├── hybrid_rerank.yaml
+│       ├── hybrid_rerank_context.yaml
 │       └── agentic_recovery.yaml
 │
 ├── data/                          # ignored except README/placeholders
@@ -133,11 +134,12 @@ offline-rag/
 │       ├── lexical/               # Slice 4 (BM25 inverted index + retrieve + lexical eval)
 │       ├── hybrid/                # Slice 5 (query-time rrf-v1; no hybrid index)
 │       ├── rerank/                # Slice 6 (hybrid-pool CE; derived READY only)
+│       ├── context/               # Slice 7 (structural expansion; derived READY only)
 │       │
 │       ├── embeddings/            # optional future split; dense/ currently owns adapters
 │       ├── index/                 # optional future split
 │       │
-│       ├── retrieval/             # future: context (dense/lexical/hybrid/rerank stay owned)
+│       ├── retrieval/             # reserved; dense/lexical/hybrid/rerank/context stay owned
 │       │
 │       ├── generation/
 │       │   ├── base.py
@@ -248,13 +250,17 @@ Query-time `HybridRetriever` + `ReciprocalRankFusion` (rrf-v1). Derived READY/NO
 
 `HybridRerankRetriever` over hybrid pools + local `CrossEncoderReranker` / `FakeReranker`. Derived READY/NOT_READY only; no HybridRerankState (Slice 6).
 
+### `context/`
+
+`HybridRerankContextAssembler` + source-agnostic `ContextExpander`. Parent/neighbor structural evidence assembly with `ctxcfg_` identity. Derived READY/NOT_READY only; no ContextState (Slice 7).
+
 ### `embeddings/` / `index/` (future optional splits)
 
 Slice 3 keeps adapters under `dense/`. Later refactors may split packages if the tree grows; do not duplicate contracts.
 
 ### `retrieval/`
 
-Future: context assembly (7), then generation/confidence (8+). Dense, lexical, hybrid, and rerank live in their packages today.
+Reserved mega-package slot; not used. Dense, lexical, hybrid, rerank, and context live in their packages today. Generation/confidence remain Slice 8+.
 
 ### `generation/`
 

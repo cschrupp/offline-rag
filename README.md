@@ -248,7 +248,7 @@ The project is intentionally sliced so each stage produces a working, testable s
 4. **Dense baseline** — local embeddings, Qdrant Local, `retrieve`, dense Recall@k/MRR. *(done)*
 5. **Lexical baseline and hybrid retrieval** — BM25 + RRF. *(done)*
 6. **Reranking** — second-stage cross-encoder. *(done)*
-7. **Hierarchical context** — child retrieval + parent/neighbor expansion.
+7. **Hierarchical context** — child retrieval + parent/neighbor expansion. *(done)*
 8. **Grounded generation** — generic local inference client, Ollama default, answer schema, page-level citations.
 9. **Evaluation harness** — gold dataset expansion, experiment registry, generation metrics.
 10. **Abstention and confidence policy** — explicitly handle missing evidence.
@@ -258,9 +258,9 @@ The project is intentionally sliced so each stage produces a working, testable s
 14. **Demo UI** — query inspector, retrieval visualization, benchmark dashboard.
 15. **Portfolio packaging** — reproducible benchmark report, architecture diagram, demo scenario.
 
-Detailed exit criteria are in `detailed_implementation_slices.md`. Slice notes: `docs/slice0_contracts.md` … `docs/slice6_cross_encoder_reranking.md`.
+Detailed exit criteria are in `detailed_implementation_slices.md`. Slice notes: `docs/slice0_contracts.md` … `docs/slice7_context_expansion.md`.
 
-## Quick start (through hybrid-rerank retrieve)
+## Quick start (through hybrid-rerank-context)
 
 ```bash
 uv sync
@@ -279,6 +279,7 @@ offline-rag retrieve --corpus engineering --query "maximum operating pressure"
 offline-rag retrieve lexical --corpus engineering --query "API-12"
 offline-rag retrieve hybrid --corpus engineering --query "API-12 pressure"
 offline-rag retrieve hybrid-rerank --corpus engineering --query "API-12 pressure"
+offline-rag retrieve hybrid-rerank-context --corpus engineering --query "API-12 pressure"
 offline-rag doctor --corpus engineering
 ```
 
@@ -286,7 +287,7 @@ Default config expects Qwen weights under `models/embeddings/qwen3-embedding-0.6
 
 ## Demo experience
 
-**Today (Slice 6):** ingest → chunk → dense + lexical index → retrieve / retrieve lexical / retrieve hybrid / retrieve hybrid-rerank / eval retrieve / doctor.
+**Today (Slice 7):** ingest → chunk → dense + lexical index → retrieve / retrieve lexical / retrieve hybrid / retrieve hybrid-rerank / retrieve hybrid-rerank-context / eval retrieve / doctor.
 
 **Target demo** should allow a user to:
 
@@ -334,9 +335,9 @@ Use public, redistributable technical documents rather than proprietary material
 
 ## Project status
 
-**Phase:** Milestone 2 — Slices 0–6 done (dense + lexical BM25 + hybrid RRF + cross-encoder rerank).
+**Phase:** Milestone 2 — Slices 0–7 done (dense + lexical BM25 + hybrid RRF + cross-encoder + context expansion).
 
-Working local path: ingest → chunk → index / index lexical → retrieve / retrieve lexical / retrieve hybrid / retrieve hybrid-rerank → eval retrieve.
-Still deferred: parent expansion (7), generation/`query` (8+).
+Working local path: ingest → chunk → index / index lexical → retrieve / retrieve lexical / retrieve hybrid / retrieve hybrid-rerank / retrieve hybrid-rerank-context → eval retrieve.
+Still deferred: generation/`query` (8+).
 
-See `ROADMAP.md` and `docs/slice6_cross_encoder_reranking.md`.
+See `ROADMAP.md` and `docs/slice7_context_expansion.md`.

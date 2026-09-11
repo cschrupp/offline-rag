@@ -130,7 +130,9 @@ reranker:
   batch_size: 16
 
 context:
+  enabled: true
   strategy: parent
+  anchor_k: 5
   max_context_tokens: 6000
   neighbor_window: 0
 

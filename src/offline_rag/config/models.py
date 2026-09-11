@@ -15,6 +15,7 @@ from offline_rag.core.ids import (
     BGE_RERANKER_MODEL_ID,
     BGE_RERANKER_PINNED_REVISION,
     CHUNK_ID_ASC_TIE_BREAK,
+    CONTEXT_STRATEGIES,
     PLAIN_PAIR_INPUT_CONTRACT,
     RAW_LOGIT_SCORE_CONTRACT,
     SENTENCE_TRANSFORMERS_CROSS_ENCODER_ADAPTER,
@@ -272,9 +273,28 @@ class RerankerSettings(BaseModel):
 class ContextSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    enabled: bool = True
     strategy: NonEmptyStr = "parent"
+    anchor_k: PositiveInt = 5
     max_context_tokens: PositiveInt = 6000
     neighbor_window: NonNegativeInt = 0
+
+    @model_validator(mode="after")
+    def _validate_context_policy(self) -> ContextSettings:
+        if self.strategy not in CONTEXT_STRATEGIES:
+            allowed = ", ".join(sorted(CONTEXT_STRATEGIES))
+            raise ValueError(f"context.strategy must be one of: {allowed}")
+        if self.strategy in {"child-only", "parent"} and self.neighbor_window != 0:
+            raise ValueError(
+                f"context.strategy={self.strategy} requires neighbor_window=0 "
+                f"(got {self.neighbor_window})"
+            )
+        if self.strategy in {"neighbors", "parent+neighbors"} and self.neighbor_window < 1:
+            raise ValueError(
+                f"context.strategy={self.strategy} requires neighbor_window>=1 "
+                f"(got {self.neighbor_window})"
+            )
+        return self
 
 
 class GenerationSettings(BaseModel):

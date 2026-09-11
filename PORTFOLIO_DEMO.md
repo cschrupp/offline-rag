@@ -1,6 +1,6 @@
 # Portfolio Demo Plan
 
-**Current readiness:** Through Slice 6 you can demo ingest → chunk → dense and lexical index → `retrieve` / `retrieve lexical` / `retrieve hybrid` / `retrieve hybrid-rerank` / `eval retrieve` (`dense|lexical|hybrid|hybrid-rerank`). Context expansion arrives with Slice 7; grounded `query`/UI Slice 8+ — demo narrative below is the target story; adapt live demos to what is implemented.
+**Current readiness:** Through Slice 7 you can demo ingest → chunk → dense and lexical index → `retrieve` / `retrieve lexical` / `retrieve hybrid` / `retrieve hybrid-rerank` / `retrieve hybrid-rerank-context` / `eval retrieve` (`dense|lexical|hybrid|hybrid-rerank|hybrid-rerank-context`). Grounded `query`/UI arrives with Slice 8+ — demo narrative below is the target story; adapt live demos to what is implemented.
 
 ## Demo objective
 
