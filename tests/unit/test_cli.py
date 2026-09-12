@@ -74,11 +74,19 @@ def test_doctor_ok_with_base_config(capsys: pytest.CaptureFixture[str], monkeypa
         EmbeddingReadiness,
         validate_embedding_artifacts,
     )
+    from offline_rag.rerank.provision import (
+        RerankerReadiness,
+        validate_reranker_artifacts,
+    )
 
     emb = REPO_ROOT / "models" / "embeddings" / "qwen3-embedding-0.6b"
     emb_status = validate_embedding_artifacts(emb)
     if emb_status.readiness != EmbeddingReadiness.READY:
         pytest.skip("embedding artifacts not provisioned")
+    rrk = REPO_ROOT / "models" / "rerankers" / "bge-reranker-v2-m3"
+    rrk_status = validate_reranker_artifacts(rrk)
+    if rrk_status.readiness != RerankerReadiness.READY:
+        pytest.skip("reranker artifacts not provisioned")
     code = main(["doctor", "--config", str(REPO_ROOT / "config" / "base.yaml")])
     captured = capsys.readouterr()
     assert code == 0

@@ -25,7 +25,10 @@ _ENV_FIELD_MAP: dict[str, tuple[str, ...]] = {
     "STRICT_OFFLINE": ("project", "strict_offline"),
     "LLM_BASE_URL": ("generation", "base_url"),
     "LLM_MODEL": ("generation", "model"),
+    "LLM_TIMEOUT_SECONDS": ("generation", "timeout_seconds"),
+    "LLM_API_KEY": ("generation", "api_key"),
     "APPROVED_LLM_MODELS": ("generation", "approved_models"),
+    "APPROVED_LLM_ENDPOINTS": ("generation", "approved_endpoints"),
     "RAW_DATA": ("paths", "raw_data"),
     "MANIFESTS": ("paths", "manifests"),
     "PROCESSED": ("paths", "processed"),
@@ -89,6 +92,17 @@ def _parse_env_value(raw: str) -> Any:
         return float(raw)
     except ValueError:
         return raw
+
+
+def _coerce_list_env_fields(overrides: MutableMapping[str, Any]) -> None:
+    """Ensure comma-oriented env list fields remain lists for single values."""
+    generation = overrides.get("generation")
+    if not isinstance(generation, dict):
+        return
+    for key in ("approved_models", "approved_endpoints"):
+        value = generation.get(key)
+        if isinstance(value, str):
+            generation[key] = [value]
 
 
 def _load_yaml_file(path: Path) -> dict[str, Any]:
@@ -182,6 +196,7 @@ def load_settings(
         payload = _deep_merge(payload, overlay)
 
     env_payload = env_overrides(env)
+    _coerce_list_env_fields(env_payload)
     _reject_legacy_sparse_config(env_payload)
     payload = _deep_merge(payload, env_payload)
     if overrides:
@@ -222,9 +237,35 @@ def experiment_config_from_settings(settings: AppSettings) -> ExperimentConfig |
     )
 
 
+def load_dotenv(path: Path | None = None, *, environ: MutableMapping[str, str] | None = None) -> Path | None:
+    """Load KEY=VALUE pairs from a local ``.env`` into the process environment.
+
+    Existing environment variables win (are not overwritten). Returns the path
+    loaded, or ``None`` when the file is absent.
+    """
+    env_path = Path(path) if path is not None else Path.cwd() / ".env"
+    if not env_path.is_file():
+        return None
+    target: MutableMapping[str, str] = environ if environ is not None else os.environ
+    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        if not key or key in target:
+            continue
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+            value = value[1:-1]
+        target[key] = value
+    return env_path
+
+
 __all__ = [
     "ConfigError",
     "env_overrides",
     "experiment_config_from_settings",
+    "load_dotenv",
     "load_settings",
 ]

@@ -16,7 +16,7 @@ from offline_rag.chunking.persistence import (
 )
 from offline_rag.chunking.pipeline import chunking_status_for_corpus, run_chunking
 from offline_rag.chunking.tokenize import validate_tiktoken_artifacts
-from offline_rag.config import ConfigError, load_settings
+from offline_rag.config import ConfigError, load_dotenv, load_settings
 from offline_rag.config.models import AppSettings
 from offline_rag.context.assemble import (
     HybridRerankContextAssembler,
@@ -462,7 +462,7 @@ def cmd_provision_reranker(args: argparse.Namespace) -> int:
         destination,
         model_id=settings.reranker.model.model_id,
         revision=settings.reranker.model.revision,
-        expected_adapter_contract=settings.reranker.model.adapter_contract,
+        adapter_contract=settings.reranker.model.adapter_contract,
         force=bool(args.force),
     )
 
@@ -757,6 +757,11 @@ def _index_summary_payload(
         "embedding_dimension": manifest.embedding_dimension if manifest else None,
         "normalize": manifest.normalize if manifest else None,
         "similarity_metric": manifest.similarity_metric if manifest else None,
+        "embedding_text": (
+            f"{manifest.embedding_text_strategy}/{manifest.embedding_text_contract}"
+            if manifest
+            else None
+        ),
         "expected_child_count": manifest.expected_child_count if manifest else None,
         "vector_count": vector_count,
         "index_manifest_path": state.current_index_manifest if state and target_id == state.current_index_id else (
@@ -781,6 +786,7 @@ def _print_index_summary(summary: dict[str, Any], *, as_json: bool) -> None:
     print(f"embedding_dimension:      {summary['embedding_dimension']}")
     print(f"normalize:                {summary['normalize']}")
     print(f"similarity_metric:        {summary['similarity_metric']}")
+    print(f"embedding_text:           {summary.get('embedding_text')}")
     print(f"expected_child_count:     {summary['expected_child_count']}")
     print(f"vector_count:             {summary['vector_count']}")
     print(f"index_manifest_path:      {summary['index_manifest_path']}")
@@ -1730,6 +1736,19 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     notes.append(f"Index manifests path            {settings.paths.index_manifests}")
     notes.append(f"Embedding artifacts path        {settings.paths.embedding_artifacts}")
     notes.append(f"Qdrant storage path             {settings.paths.qdrant_storage}")
+    notes.append(
+        "Dense ranking text               "
+        f"{settings.indexing.embedding_text.strategy}/"
+        f"{settings.indexing.embedding_text.contract_version}"
+    )
+    notes.append(
+        "Lexical ranking text             "
+        f"{settings.lexical.text.strategy}/{settings.lexical.text.contract_version}"
+    )
+    if settings.indexing.embedding_text.contract_version == "title-section-text-v1":
+        notes.append("Document title contract          document-title-v1")
+    if settings.lexical.text.contract_version == "title-section-text-v1":
+        notes.append("Lexical document title contract  document-title-v1")
 
     try:
         import docling
@@ -1919,6 +1938,10 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     notes.append(f"Generation enabled              {settings.generation.enabled}")
     notes.append(f"Generation provider             {settings.generation.provider}")
     notes.append(f"Generation model                {settings.generation.model}")
+    notes.append(
+        "Generation API key               "
+        f"{'configured' if settings.generation.api_key else 'not set'}"
+    )
     if generation_status != "READY":
         details = describe_generation_status(settings, corpus_name)
         for reason in details.get("reasons") or []:
@@ -2163,6 +2186,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    load_dotenv()
     parser = build_parser()
     args = parser.parse_args(argv)
     return int(args.func(args))

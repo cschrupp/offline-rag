@@ -10,6 +10,7 @@ from offline_rag.generation.contracts import (
     ADAPTER_CONTRACT,
     OUTPUT_CONTRACT,
     PROMPT_CONTRACT,
+    REASONING_CONTRACT,
     RECOVERY_CONTRACT,
 )
 
@@ -27,6 +28,7 @@ def build_generation_semantic_payload(
         "prompt_contract": PROMPT_CONTRACT,
         "output_contract": OUTPUT_CONTRACT,
         "recovery_contract": RECOVERY_CONTRACT,
+        "reasoning_contract": REASONING_CONTRACT,
     }
 
 

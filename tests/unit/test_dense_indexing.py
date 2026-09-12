@@ -124,9 +124,16 @@ def test_plain_embedding_text_builder_is_exact() -> None:
         source_block_ids=["b1"],
         section_path=["Ops", "Limits"],
     )
+    from offline_rag.retrieval.ranking_text import RankingTextInputs
+
     builder = PlainEmbeddingTextBuilder()
-    assert builder.build(chunk) == "Exact text"
-    assert builder.build(chunk) == chunk.text
+    inputs = RankingTextInputs(
+        document_title=None,
+        section_path=tuple(chunk.section_path),
+        chunk_text=chunk.text,
+    )
+    assert builder.build(inputs) == "Exact text"
+    assert builder.build(inputs) == chunk.text
 
 
 def test_fake_embedder_deterministic() -> None:

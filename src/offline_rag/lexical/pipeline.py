@@ -22,7 +22,11 @@ from offline_rag.domain.indexing import (
     LexicalIndexState,
 )
 from offline_rag.ingestion.discovery import validate_corpus_name
-from offline_rag.ingestion.persistence import corpus_state_path, load_corpus_state
+from offline_rag.ingestion.persistence import (
+    corpus_state_path,
+    load_corpus_manifest,
+    load_corpus_state,
+)
 from offline_rag.lexical.analyzer import TechnicalLexicalAnalyzer
 from offline_rag.lexical.backend import (
     LexicalDocumentInput,
@@ -38,7 +42,16 @@ from offline_rag.lexical.persistence import (
     write_lexical_index_manifest,
     write_lexical_index_state,
 )
-from offline_rag.lexical.text import LexicalTextBuilder, PlainLexicalTextBuilder
+from offline_rag.lexical.text import (
+    LexicalTextBuilder,
+    PlainLexicalTextBuilder,
+    TitleSectionLexicalTextBuilder,
+)
+from offline_rag.retrieval.ranking_text import (
+    RankingTextError,
+    ranking_inputs_for_chunk,
+    resolve_document_titles_from_source_names,
+)
 
 
 class LexicalIndexingError(RuntimeError):
@@ -50,8 +63,20 @@ def make_lexical_text_builder(settings: AppSettings) -> LexicalTextBuilder:
     contract = settings.lexical.text.contract_version
     if strategy == "plain" and contract == PlainLexicalTextBuilder.contract_version:
         return PlainLexicalTextBuilder()
+    if (
+        strategy == TitleSectionLexicalTextBuilder.strategy
+        and contract == TitleSectionLexicalTextBuilder.contract_version
+    ):
+        return TitleSectionLexicalTextBuilder()
     raise LexicalIndexingError(
         f"unsupported lexical text strategy/contract: {strategy}/{contract}"
+    )
+
+
+def _requires_document_titles(builder: LexicalTextBuilder) -> bool:
+    return (
+        builder.strategy == TitleSectionLexicalTextBuilder.strategy
+        and builder.contract_version == TitleSectionLexicalTextBuilder.contract_version
     )
 
 
@@ -305,9 +330,37 @@ def run_lexical_indexing(
 
         text_builder = make_lexical_text_builder(settings)
         analyzer = make_lexical_analyzer(settings)
+
+        manifest_path = settings.paths.manifests / Path(corpus_state.current_manifest).name
+        if not manifest_path.exists():
+            raise LexicalIndexingError(
+                f"missing corpus manifest: {corpus_state.current_manifest}"
+            )
+        corpus_manifest = load_corpus_manifest(manifest_path)
+        source_names = {
+            entry.document_id: entry.source_name for entry in corpus_manifest.documents
+        }
+        document_ids = {chunk.document_id for chunk, _ in jobs}
+        try:
+            document_titles = resolve_document_titles_from_source_names(
+                document_ids=document_ids,
+                source_name_by_document_id=source_names,
+                require=_requires_document_titles(text_builder),
+            )
+        except RankingTextError as exc:
+            raise LexicalIndexingError(str(exc)) from exc
+
         analyzed: list[LexicalDocumentInput] = []
         for chunk, chunk_artifact_id in jobs:
-            lexical_text = text_builder.build(chunk)
+            try:
+                inputs = ranking_inputs_for_chunk(
+                    chunk_text=chunk.text,
+                    section_path=list(chunk.section_path or []),
+                    document_title=document_titles.get(chunk.document_id),
+                )
+                lexical_text = text_builder.build(inputs)
+            except RankingTextError as exc:
+                raise LexicalIndexingError(str(exc)) from exc
             terms = analyzer.analyze(lexical_text)
             if not terms:
                 raise LexicalIndexingError(

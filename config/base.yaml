@@ -144,6 +144,7 @@ generation:
   temperature: 0.0
   max_output_tokens: 1200
   timeout_seconds: 120
+  api_key: null
   approved_endpoints:
     - http://host.docker.internal:11434/v1
   approved_models: []

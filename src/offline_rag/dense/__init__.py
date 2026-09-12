@@ -42,7 +42,11 @@ from offline_rag.dense.provision import (
 from offline_rag.dense.qdrant_local import QdrantLocalBackend
 from offline_rag.dense.retrieve import DenseRetrievalError, DenseRetriever
 from offline_rag.dense.status import indexing_status_for_corpus
-from offline_rag.dense.text import EmbeddingTextBuilder, PlainEmbeddingTextBuilder
+from offline_rag.dense.text import (
+    EmbeddingTextBuilder,
+    PlainEmbeddingTextBuilder,
+    TitleSectionEmbeddingTextBuilder,
+)
 
 __all__ = [
     "DENSE_POINT_SCHEMA_VERSION",
@@ -61,6 +65,7 @@ __all__ = [
     "PlainEmbeddingTextBuilder",
     "QdrantLocalBackend",
     "SentenceTransformersEmbedder",
+    "TitleSectionEmbeddingTextBuilder",
     "build_dense_payload",
     "build_dense_point",
     "build_embedding_config_hash",

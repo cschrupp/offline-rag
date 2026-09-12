@@ -6,6 +6,9 @@ generation:
   provider: openai_compatible
   base_url: REPLACE_WITH_APPROVED_LOCAL_ENDPOINT
   model: REPLACE_WITH_APPROVED_LOCAL_MODEL
+  # Optional Bearer for Unsloth Studio / authenticated OpenAI-compatible servers.
+  # Prefer OFFLINE_RAG_LLM_API_KEY in the environment over committing secrets.
+  api_key: null
 
 project:
   strict_offline: true

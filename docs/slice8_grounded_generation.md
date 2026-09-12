@@ -45,9 +45,12 @@ generation:
   temperature: 0.0
   max_output_tokens: 1200
   timeout_seconds: 120
+  api_key: null   # optional Bearer; prefer OFFLINE_RAG_LLM_API_KEY
   approved_endpoints: [...]
   approved_models: [...]
 ```
+
+Any OpenAI-compatible local server works (Ollama, Unsloth Studio, llama.cpp, vLLM). When the server requires auth (Unsloth Studio), set `OFFLINE_RAG_LLM_API_KEY` / `generation.api_key`; the adapter sends `Authorization: Bearer …` on probe and generate. Ollama typically needs no key.
 
 Code-owned contracts (hashed into `gencfg_`):
 
@@ -57,10 +60,11 @@ Code-owned contracts (hashed into `gencfg_`):
 | Prompt | `prompt-grounded-v1` |
 | Output | `grounded-answer-v1` |
 | Recovery | `no-retry-v1` |
+| Reasoning | `direct-output-v1` |
 
-`gencfg_` hashes: provider, adapter, selected model, temperature, max_output_tokens, prompt/output/recovery contracts.
+`gencfg_` hashes: provider, adapter, selected model, temperature, max_output_tokens, prompt/output/recovery/reasoning contracts.
 
-Not hashed: enabled, raw base_url, allowlists, timeout, upstream retrieval hashes.
+Not hashed: enabled, raw base_url, allowlists, timeout, **api_key**, upstream retrieval hashes.
 
 Example semantic payload:
 
@@ -73,11 +77,14 @@ Example semantic payload:
   "max_output_tokens": 1200,
   "prompt_contract": "prompt-grounded-v1",
   "output_contract": "grounded-answer-v1",
-  "recovery_contract": "no-retry-v1"
+  "recovery_contract": "no-retry-v1",
+  "reasoning_contract": "direct-output-v1"
 }
 ```
 
 → `gencfg_<sha256>`
+
+`direct-output-v1` means: for adapters/models that expose reasoning control, request final/direct output with thinking disabled. On the current OpenAI-compatible Qwen3.6 / llama.cpp path the adapter sends `chat_template_kwargs.enable_thinking = false` per request (not via public YAML). The parser still reads only `choices[0].message.content` — never `reasoning_content`.
 
 ## Result statuses
 

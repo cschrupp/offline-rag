@@ -125,7 +125,7 @@ class DoclingPdfParser:
                 metadata = {}
             elif isinstance(item, TableItem) or label == DocItemLabel.TABLE:
                 try:
-                    body = item.export_to_markdown()
+                    body = item.export_to_markdown(doc=docling_doc)
                 except (AttributeError, TypeError, ValueError, RuntimeError):
                     body = getattr(item, "text", None) or " "
                 if not str(body).strip():

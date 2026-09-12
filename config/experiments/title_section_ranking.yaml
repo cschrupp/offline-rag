@@ -1,0 +1,14 @@
+experiment:
+  name: title_section_ranking
+
+# Metadata-aware candidate-generation A/B (Q1–Q5).
+# Dense + lexical both use title-section-text-v1; Slice 6 stays plain-pair-v1.
+indexing:
+  embedding_text:
+    strategy: title_section
+    contract_version: title-section-text-v1
+
+lexical:
+  text:
+    strategy: title_section
+    contract_version: title-section-text-v1

@@ -8,7 +8,12 @@ from urllib.parse import urlparse, urlunparse
 import httpx
 
 from offline_rag.config.models import AppSettings
-from offline_rag.generation.contracts import ADAPTER_CONTRACT, PROBE_TIMEOUT_SECONDS
+from offline_rag.core.ids import DIRECT_OUTPUT_V1
+from offline_rag.generation.contracts import (
+    ADAPTER_CONTRACT,
+    PROBE_TIMEOUT_SECONDS,
+    REASONING_CONTRACT,
+)
 from offline_rag.generation.protocol import (
     GeneratorProbeResult,
     GeneratorRequest,
@@ -76,7 +81,8 @@ class OpenAICompatibleGenerator:
         self.settings = settings
         self._owned_client = client is None
         timeout = float(settings.generation.timeout_seconds)
-        self._client = client or httpx.Client(timeout=timeout)
+        headers = _auth_headers(settings.generation.api_key)
+        self._client = client or httpx.Client(timeout=timeout, headers=headers)
 
     def close(self) -> None:
         if self._owned_client:
@@ -91,6 +97,10 @@ class OpenAICompatibleGenerator:
 
     def _models_url(self) -> str:
         return f"{self.base_url}/models"
+
+    def _request_headers(self) -> dict[str, str]:
+        """Merge auth headers for injected clients that lack default headers."""
+        return _auth_headers(self.settings.generation.api_key)
 
     def _assert_authorized(self) -> None:
         gen = self.settings.generation
@@ -115,7 +125,11 @@ class OpenAICompatibleGenerator:
         except OpenAICompatibleGeneratorError as exc:
             return GeneratorProbeResult(ok=False, reason=str(exc))
         try:
-            response = self._client.get(self._models_url(), timeout=PROBE_TIMEOUT_SECONDS)
+            response = self._client.get(
+                self._models_url(),
+                headers=self._request_headers() or None,
+                timeout=PROBE_TIMEOUT_SECONDS,
+            )
         except httpx.TimeoutException:
             return GeneratorProbeResult(ok=False, reason="endpoint probe timed out")
         except httpx.HTTPError as exc:
@@ -156,8 +170,13 @@ class OpenAICompatibleGenerator:
         }
         if request.response_format is not None:
             body["response_format"] = request.response_format
+        _apply_reasoning_contract(body)
         try:
-            response = self._client.post(self._chat_url(), json=body)
+            response = self._client.post(
+                self._chat_url(),
+                json=body,
+                headers=self._request_headers() or None,
+            )
         except httpx.TimeoutException as exc:
             raise OpenAICompatibleGeneratorError(
                 "generator request timed out",
@@ -187,6 +206,22 @@ class OpenAICompatibleGenerator:
         content = _extract_message_content(payload)
         usage = payload.get("usage") if isinstance(payload.get("usage"), dict) else {}
         return GeneratorResponse(content=content, usage=dict(usage), raw=payload)
+
+
+def _auth_headers(api_key: str | None) -> dict[str, str]:
+    if not api_key:
+        return {}
+    return {"Authorization": f"Bearer {api_key}"}
+
+
+def _apply_reasoning_contract(body: dict[str, Any]) -> None:
+    """Map code-owned reasoning_contract onto provider request fields.
+
+    Baseline ``direct-output-v1`` requests final/direct output with thinking
+    disabled for adapters that expose chat_template_kwargs.enable_thinking.
+    """
+    if REASONING_CONTRACT == DIRECT_OUTPUT_V1:
+        body["chat_template_kwargs"] = {"enable_thinking": False}
 
 
 def _extract_model_ids(payload: Any) -> list[str]:

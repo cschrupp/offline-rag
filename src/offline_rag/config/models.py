@@ -307,6 +307,9 @@ class GenerationSettings(BaseModel):
     temperature: Score = 0.0
     max_output_tokens: PositiveInt = 1200
     timeout_seconds: PositiveInt = 120
+    # Optional Bearer token for OpenAI-compatible servers that require auth
+    # (e.g. Unsloth Studio). Never hashed into gencfg_. Prefer env override.
+    api_key: str | None = None
     approved_endpoints: list[NonEmptyStr] = Field(
         default_factory=lambda: ["http://127.0.0.1:11434/v1"]
     )
@@ -318,6 +321,14 @@ class GenerationSettings(BaseModel):
         if value < 0.0 or value > 2.0:
             raise ValueError("temperature must be between 0.0 and 2.0")
         return value
+
+    @field_validator("api_key")
+    @classmethod
+    def _normalize_api_key(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip()
+        return stripped or None
 
 
 class RetrievalRecoverySettings(BaseModel):

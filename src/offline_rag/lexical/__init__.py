@@ -24,7 +24,11 @@ from offline_rag.lexical.status import (
     describe_lexical_indexing_status,
     lexical_indexing_status_for_corpus,
 )
-from offline_rag.lexical.text import LexicalTextBuilder, PlainLexicalTextBuilder
+from offline_rag.lexical.text import (
+    LexicalTextBuilder,
+    PlainLexicalTextBuilder,
+    TitleSectionLexicalTextBuilder,
+)
 
 __all__ = [
     "BM25OkapiV1Scorer",
@@ -40,6 +44,7 @@ __all__ = [
     "LocalInvertedIndexBackend",
     "PlainLexicalTextBuilder",
     "TechnicalLexicalAnalyzer",
+    "TitleSectionLexicalTextBuilder",
     "build_lexical_config_hash",
     "describe_lexical_indexing_status",
     "idf",

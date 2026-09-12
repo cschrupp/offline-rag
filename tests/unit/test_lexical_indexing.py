@@ -96,6 +96,8 @@ def _prepare_corpus(settings: AppSettings, docs: dict[str, str], *, corpus_name:
 
 
 def test_plain_lexical_text_builder_is_exact() -> None:
+    from offline_rag.retrieval.ranking_text import RankingTextInputs
+
     chunk = Chunk(
         chunk_id="chunk_a",
         document_id="doc_a",
@@ -107,16 +109,16 @@ def test_plain_lexical_text_builder_is_exact() -> None:
         source_block_ids=["block_a"],
     )
     builder = PlainLexicalTextBuilder()
-    assert builder.build(chunk) == chunk.text
-    blank = Chunk.model_construct(
-        chunk_id="chunk_b",
-        document_id="doc_a",
-        kind=ChunkKind.CHILD,
-        text="   \n\t",
-        order=1,
-        token_count=0,
-        content_hash="hash_b",
-        source_block_ids=["block_b"],
+    inputs = RankingTextInputs(
+        document_title=None,
+        section_path=(),
+        chunk_text=chunk.text,
+    )
+    assert builder.build(inputs) == chunk.text
+    blank = RankingTextInputs(
+        document_title=None,
+        section_path=(),
+        chunk_text="   \n\t",
     )
     with pytest.raises(ValueError):
         builder.build(blank)

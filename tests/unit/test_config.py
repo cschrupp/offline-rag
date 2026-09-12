@@ -93,3 +93,34 @@ def test_malformed_yaml_rejected(tmp_path: Path) -> None:
 def test_missing_yaml_rejected(tmp_path: Path) -> None:
     with pytest.raises(ConfigError, match="not found"):
         load_settings(yaml_paths=[tmp_path / "missing.yaml"], environ={})
+
+
+def test_env_overrides_generation_allowlists(tmp_path: Path) -> None:
+    settings = load_settings(
+        yaml_paths=[],
+        environ={
+            "OFFLINE_RAG_LLM_BASE_URL": "http://127.0.0.1:11434/v1",
+            "OFFLINE_RAG_LLM_MODEL": "qwen3.5:9b",
+            "OFFLINE_RAG_APPROVED_LLM_MODELS": "qwen3.5:9b",
+            "OFFLINE_RAG_APPROVED_LLM_ENDPOINTS": "http://127.0.0.1:11434/v1",
+            "OFFLINE_RAG_LLM_API_KEY": "sk-unsloth-test",
+        },
+    )
+    assert settings.generation.base_url == "http://127.0.0.1:11434/v1"
+    assert settings.generation.model == "qwen3.5:9b"
+    assert settings.generation.approved_models == ["qwen3.5:9b"]
+    assert settings.generation.approved_endpoints == ["http://127.0.0.1:11434/v1"]
+    assert settings.generation.api_key == "sk-unsloth-test"
+
+    from offline_rag.config import load_dotenv
+
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "HF_TOKEN=hf_test_token\n# comment\nEXISTING_KEY=from_file\n",
+        encoding="utf-8",
+    )
+    environ = {"EXISTING_KEY": "from_shell"}
+    loaded = load_dotenv(env_file, environ=environ)
+    assert loaded == env_file
+    assert environ["HF_TOKEN"] == "hf_test_token"
+    assert environ["EXISTING_KEY"] == "from_shell"

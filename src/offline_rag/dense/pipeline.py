@@ -42,7 +42,11 @@ from offline_rag.dense.persistence import (
 )
 from offline_rag.dense.points import build_dense_point
 from offline_rag.dense.qdrant_local import QdrantLocalBackend
-from offline_rag.dense.text import EmbeddingTextBuilder, PlainEmbeddingTextBuilder
+from offline_rag.dense.text import (
+    EmbeddingTextBuilder,
+    PlainEmbeddingTextBuilder,
+    TitleSectionEmbeddingTextBuilder,
+)
 from offline_rag.domain.documents import Chunk, ChunkKind
 from offline_rag.domain.indexing import (
     DenseIndexManifest,
@@ -52,7 +56,16 @@ from offline_rag.domain.indexing import (
     IndexState,
 )
 from offline_rag.ingestion.discovery import validate_corpus_name
-from offline_rag.ingestion.persistence import corpus_state_path, load_corpus_state
+from offline_rag.ingestion.persistence import (
+    corpus_state_path,
+    load_corpus_manifest,
+    load_corpus_state,
+)
+from offline_rag.retrieval.ranking_text import (
+    RankingTextError,
+    ranking_inputs_for_chunk,
+    resolve_document_titles_from_source_names,
+)
 
 
 class IndexingError(RuntimeError):
@@ -64,8 +77,20 @@ def make_embedding_text_builder(settings: AppSettings) -> EmbeddingTextBuilder:
     contract = settings.indexing.embedding_text.contract_version
     if strategy == "plain" and contract == PlainEmbeddingTextBuilder.contract_version:
         return PlainEmbeddingTextBuilder()
+    if (
+        strategy == TitleSectionEmbeddingTextBuilder.strategy
+        and contract == TitleSectionEmbeddingTextBuilder.contract_version
+    ):
+        return TitleSectionEmbeddingTextBuilder()
     raise IndexingError(
         f"unsupported embedding text strategy/contract: {strategy}/{contract}"
+    )
+
+
+def _requires_document_titles(builder: EmbeddingTextBuilder) -> bool:
+    return (
+        builder.strategy == TitleSectionEmbeddingTextBuilder.strategy
+        and builder.contract_version == TitleSectionEmbeddingTextBuilder.contract_version
     )
 
 
@@ -127,6 +152,7 @@ def _ensure_embeddings(
     text_builder: EmbeddingTextBuilder,
     embedder: Embedder,
     emb_cfg_hash: str,
+    document_titles: dict[str, str | None],
 ) -> tuple[list[tuple[Chunk, str, EmbeddingArtifact]], int, int, int]:
     """Return materialized (chunk, artifact_id, embedding), generated/reused/failed counts."""
     settings.paths.embeddings.mkdir(parents=True, exist_ok=True)
@@ -135,7 +161,15 @@ def _ensure_embeddings(
     pending_chunks: list[tuple[Chunk, str, str, str]] = []
 
     for chunk, chunk_artifact_id in jobs:
-        emb_text = text_builder.build(chunk)
+        try:
+            inputs = ranking_inputs_for_chunk(
+                chunk_text=chunk.text,
+                section_path=list(chunk.section_path or []),
+                document_title=document_titles.get(chunk.document_id),
+            )
+            emb_text = text_builder.build(inputs)
+        except RankingTextError as exc:
+            raise IndexingError(str(exc)) from exc
         text_digest = embedding_text_hash(emb_text)
         emb_id = embedding_id_from_parts(
             chunk.chunk_id,
@@ -413,12 +447,30 @@ def run_indexing(
         if embedder is None and active_embedder.dimension != settings.indexing.embedding.dimension:
             raise EmbedderError("embedder dimension does not match settings")
 
+        manifest_path = settings.paths.manifests / Path(corpus_state.current_manifest).name
+        if not manifest_path.exists():
+            raise IndexingError(f"missing corpus manifest: {corpus_state.current_manifest}")
+        corpus_manifest = load_corpus_manifest(manifest_path)
+        source_names = {
+            entry.document_id: entry.source_name for entry in corpus_manifest.documents
+        }
+        document_ids = {chunk.document_id for chunk, _ in jobs}
+        try:
+            document_titles = resolve_document_titles_from_source_names(
+                document_ids=document_ids,
+                source_name_by_document_id=source_names,
+                require=_requires_document_titles(text_builder),
+            )
+        except RankingTextError as exc:
+            raise IndexingError(str(exc)) from exc
+
         rows, generated, reused, failed = _ensure_embeddings(
             settings=settings,
             jobs=jobs,
             text_builder=text_builder,
             embedder=active_embedder,
             emb_cfg_hash=emb_cfg_hash,
+            document_titles=document_titles,
         )
         _validate_point_ids(rows)
 

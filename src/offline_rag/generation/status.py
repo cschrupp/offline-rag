@@ -135,6 +135,7 @@ def describe_generation_status(
         "generation_enabled": "true" if gen.enabled else "false",
         "provider": gen.provider,
         "model": gen.model,
+        "api_key_configured": bool(gen.api_key),
         "endpoint_authorized": endpoint_authorized_flag,
         "model_authorized": model_authorized_flag,
         "endpoint_reachable": endpoint_reachable if probed else False,

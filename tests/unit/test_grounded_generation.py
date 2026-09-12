@@ -26,6 +26,7 @@ from offline_rag.generation.contracts import (
     ADAPTER_CONTRACT,
     OUTPUT_CONTRACT,
     PROMPT_CONTRACT,
+    REASONING_CONTRACT,
     RECOVERY_CONTRACT,
 )
 from offline_rag.generation.evaluate import QueryEvaluator
@@ -135,6 +136,7 @@ def test_generation_config_hash_semantics() -> None:
         "prompt_contract": PROMPT_CONTRACT,
         "output_contract": OUTPUT_CONTRACT,
         "recovery_contract": RECOVERY_CONTRACT,
+        "reasoning_contract": REASONING_CONTRACT,
     }
     h1 = build_generation_config_hash(settings)
     assert h1.startswith("gencfg_")
@@ -159,6 +161,7 @@ def test_generation_config_hash_semantics() -> None:
                 update={
                     "approved_endpoints": ["http://127.0.0.1:11434/v1", "http://other/v1"],
                     "timeout_seconds": 999,
+                    "api_key": "sk-test-secret",
                 }
             )
         }
@@ -214,6 +217,68 @@ def test_unauthorized_endpoint_not_probed() -> None:
             )
         )
     client.post.assert_not_called()
+
+
+def test_api_key_sent_as_bearer_header() -> None:
+    settings = _settings().model_copy(
+        update={
+            "generation": _settings().generation.model_copy(
+                update={"api_key": "sk-unsloth-test"}
+            )
+        }
+    )
+    client = MagicMock()
+    client.get.return_value.status_code = 200
+    client.get.return_value.json.return_value = {"data": [{"id": "test-model"}]}
+    client.post.return_value.status_code = 200
+    client.post.return_value.json.return_value = {
+        "choices": [{"message": {"content": '{"abstain":true,"answer":null,"citation_ids":[]}'}}]
+    }
+    generator = OpenAICompatibleGenerator(settings, client=client)
+    assert generator.probe().ok
+    headers = client.get.call_args.kwargs.get("headers") or {}
+    assert headers.get("Authorization") == "Bearer sk-unsloth-test"
+    request = build_prompt_grounded_v1(
+        query="q",
+        evidence_units=[_unit("ev_A", "t")],
+        model="test-model",
+        temperature=0.0,
+        max_output_tokens=10,
+    )
+    generator.generate(request)
+    post_headers = client.post.call_args.kwargs.get("headers") or {}
+    assert post_headers.get("Authorization") == "Bearer sk-unsloth-test"
+
+
+def test_direct_output_v1_disables_thinking_in_request_body() -> None:
+    settings = _settings()
+    client = MagicMock()
+    client.post.return_value.status_code = 200
+    client.post.return_value.json.return_value = {
+        "choices": [
+            {
+                "finish_reason": "stop",
+                "message": {
+                    "role": "assistant",
+                    "content": '{"abstain":true,"answer":null,"citation_ids":[]}',
+                },
+            }
+        ]
+    }
+    generator = OpenAICompatibleGenerator(settings, client=client)
+    request = build_prompt_grounded_v1(
+        query="q",
+        evidence_units=[_unit("ev_A", "t")],
+        model="test-model",
+        temperature=0.0,
+        max_output_tokens=10,
+    )
+    response = generator.generate(request)
+    body = client.post.call_args.kwargs.get("json") or {}
+    assert body.get("chat_template_kwargs") == {"enable_thinking": False}
+    assert REASONING_CONTRACT == "direct-output-v1"
+    # Adapter still extracts only message.content
+    assert response.content == '{"abstain":true,"answer":null,"citation_ids":[]}'
 
 
 def test_parse_grounded_answer_v1_valid_and_failures() -> None:
