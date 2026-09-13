@@ -35,11 +35,12 @@ offline-rag eval retrieve --method lexical --dataset <dir> --corpus <name>
 offline-rag eval retrieve --method hybrid --dataset <dir> --corpus <name>
 offline-rag eval retrieve --method hybrid-rerank --dataset <dir> --corpus <name>
 offline-rag eval retrieve --method hybrid-rerank-context --dataset <dir> --corpus <name>
+offline-rag eval compare --a <result-a.json> --b <result-b.json> [--json]
 offline-rag eval query --dataset <dir> --corpus <name>
 offline-rag doctor --corpus <name>
 ```
 
-`offline-rag query` runs grounded generation via Slice 7 context assembly. Retrieval ablation remains under `retrieve` / `eval retrieve`. Generation READY requires approved endpoint/model allowlists and a live OpenAI-compatible `/models` probe.
+`offline-rag query` runs grounded generation via Slice 7 context assembly. Retrieval ablation remains under `retrieve` / `eval retrieve` / `eval compare`. Prefer GoldDataset v1 datasets (`offline-rag-gold-v1`); legacy `relevant_chunk_ids` gold still loads. Generation READY requires approved endpoint/model allowlists and a live OpenAI-compatible `/models` probe.
 
 For CI-scale dense/rerank/generation tests, set `indexing.embedding.implementation: fake` and/or `reranker.implementation: fake`, and inject `FakeGenerator` in unit tests. Do not rely on FakeEmbedder / FakeReranker / FakeGenerator for portfolio quality claims.
 
@@ -110,7 +111,7 @@ Examples:
 - ID generation and config hashes;
 - structure-aware chunking with FakeTokenCounter;
 - FakeEmbedder + dense index reuse / no-op;
-- Recall@k / MRR math;
+- Recall/Precision/HitRate/nDCG/MRR math and GoldDataset identity;
 - citation validation (future);
 - config validation;
 

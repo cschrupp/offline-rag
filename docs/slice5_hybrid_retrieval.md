@@ -152,8 +152,8 @@ offline-rag retrieve hybrid       = hybrid
 
 ## Evaluation
 
-Same gold dataset, `chunk_set_id` binding, Recall@1/5/10, and MRR helpers as
-dense/lexical. Persisted hybrid reports include fusion hash, both index IDs,
+Same gold dataset and `chunk_set_id` binding as dense/lexical.
+Slice 9 shares graded GoldDataset v1 metrics and the common result envelope — see `eval/README.md`. Persisted hybrid reports include fusion hash, both index IDs,
 branch depths, and per-case outcomes.
 
 ## Doctor

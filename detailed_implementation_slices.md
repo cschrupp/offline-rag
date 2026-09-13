@@ -423,6 +423,8 @@ A user can run the generator outside OfflineRAG (Ollama by default), ask a quest
 
 # Slice 9 — Evaluation harness v1: deterministic retrieval metrics
 
+**Status:** done. Implemented as GoldDataset v1 (`offline-rag-gold-v1`), shared `offline-rag-retrieval-eval-result-v1` artifacts across existing `eval retrieve` methods, and `offline-rag eval compare`. See `eval/README.md` and `EVALUATION_HARNESS.md` readiness banner. Historical schema sketch below is superseded by the locked Slice 9 contracts.
+
 ## Objective
 
 Make evaluation a reusable subsystem with a stable dataset schema and experiment output format.

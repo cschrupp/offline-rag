@@ -155,10 +155,10 @@ offline-rag eval retrieve \
 
 Reports:
 
-1. `anchor_ranking` Recall@1/5 + MRR on `anchors[]` only (depth = `anchor_k`)
-2. assembly diagnostics (tokens, clipping, stop reasons, …)
+1. Anchor-child ranking metrics on `anchors[]` only (depth = `anchor_k`; Slice 9 common envelope)
+2. Assembly diagnostics (tokens, clipping, stop reasons, …) under metadata / per-case diagnostics
 
-No invented “context Recall@k” / evidence-quality metrics yet.
+Quality scores anchor child chunks, not EvidenceUnit IDs. See `eval/README.md`.
 
 ## Ladder
 

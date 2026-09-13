@@ -167,7 +167,7 @@ offline-rag retrieve hybrid-rerank = hybrid pool + cross-encoder
 
 ## Evaluation
 
-Same gold dataset and Recall@1/5/10 / MRR helpers as dense/lexical/hybrid.
+Same gold dataset as dense/lexical/hybrid; Slice 9 adds graded metrics and the shared result envelope (rerank pool diagnostics remain under per-case diagnostics).
 Persisted under `eval_results/hybrid-rerank-retrieval/`.
 
 ### `gold_in_rerank_pool`

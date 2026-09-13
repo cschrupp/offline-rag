@@ -26,7 +26,17 @@ A question may have:
 - multiple interchangeable chunks;
 - multiple jointly necessary chunks.
 
-If relevance is graded, document the scale.
+GoldDataset v1 graded judgments (serialized positives only):
+
+- `relevance = 2` — directly answer-bearing;
+- `relevance = 1` — materially supporting but insufficient alone;
+- `relevance = 0` — implicit / omitted (do not serialize).
+
+Binary relevance for Recall/Precision/HitRate/MRR is `grade >= 1`. Use child `chunk_id` identity bound to `chunk_set_id`; do not gold-label EvidenceUnit IDs.
+
+New datasets must write `judgments[]`. Legacy `relevant_chunk_ids[]` remains read-compatible and normalizes each positive to relevance `1`.
+
+Optional opaque `category` (primary aggregation axis; missing → report bucket `uncategorized`) and `tags[]` (secondary slicing).
 
 ## Avoiding leakage
 
@@ -34,9 +44,11 @@ Do not create every gold question by asking the same generator model to turn eac
 
 ## Versioning
 
-Store a dataset version and content hash. If chunking changes substantially, preserve page/semantic labels when possible so benchmark maintenance remains manageable.
+`dataset_id` is derived from the canonical GoldDataset v1 semantic payload (not raw file bytes / paths / free-form metadata). If `meta.json` persists `dataset_id`, it must match recomputation or load fails closed.
 
-For Slice 3 dense retrieval gold (`eval retrieve`), bind cases to a specific `chunk_set_id`. Changing child-chunk budgets or chunk config invalidates chunk-level relevance IDs; re-label or rebind before comparing runs.
+Bind cases to a specific `chunk_set_id`. Changing child-chunk budgets or chunk config invalidates chunk-level relevance IDs; re-label or rebind before comparing runs.
+
+See `eval/datasets/slice9_validation/` for the small harness fixture shape.
 
 ## Review checklist
 

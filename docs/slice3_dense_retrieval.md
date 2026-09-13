@@ -89,7 +89,8 @@ Stale chunk sets refuse indexing; stale indexes refuse retrieve/eval.
 
 ## Evaluation
 
-Minimal dense eval: chunk Recall@1/5/10, MRR, latency.
+Minimal dense eval (Slice 3 baseline): chunk Recall@1/5/10, MRR, latency.
+Slice 9 extends the same `eval retrieve` path with Precision/HitRate/nDCG, GoldDataset v1, and `eval compare` — see `eval/README.md`.
 
 Gold datasets must bind to `chunk_set_id` (see `eval/datasets/dense_smoke/` placeholder).
 

@@ -76,8 +76,10 @@ Retrieval/context inputs were identical across the generation A/B.
 
 `model-query-prompt-v1`, `exclude-heading-only-v1`, and
 `prompt-grounded-provenance-v2` are validated experimental candidates,
-not defaults. Historical/base contracts remain unchanged pending Slice 9
-evaluation. `prompt-grounded-v1` remains the generation control/default.
+not defaults. Historical/base contracts remain unchanged pending broader
+retrieval/generation evidence under the Slice 9 harness (and Slice 10
+for generation semantics). `prompt-grounded-v1` remains the generation
+control/default.
 
 Reproduce the smoke profile by composing existing orthogonal overlays
 (`base` + `dense_no_heading_peers` + `generation_provenance_prompt`); do
@@ -89,15 +91,19 @@ generation-provenance investigation and A/B results.
 
 ## Milestone 4 — Evaluation platform
 
-- [ ] generation metrics
-- [ ] citation metrics
+- [x] deterministic retrieval metrics / GoldDataset v1 (Slice 9)
+- [x] shared retrieval-eval result artifact + `eval compare` (Slice 9)
+- [x] category aggregates on retrieval-eval results (Slice 9)
+- [ ] generation metrics (Slice 10)
+- [ ] citation metrics (Slice 10)
 - [ ] negative set
 - [ ] synthetic expansion
 - [ ] experiment registry
-- [ ] per-category reports
-- [ ] regression benchmark subset
+- [ ] regression benchmark subset / large corpus gold labeling
 
 **Release criterion:** one command generates a comparable experiment artifact and report.
+
+**Status:** Slice 9 retrieval measurement platform done (`eval retrieve` + `eval compare`). Ablation reports and generation/citation semantic metrics remain open.
 
 ## Milestone 5 — Agentic recovery and security
 

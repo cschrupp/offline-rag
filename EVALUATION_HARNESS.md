@@ -1,6 +1,14 @@
 # Evaluation Harness
 
-**Current readiness:** Slice 3–7 retrieval/context eval share the same gold format (`offline-rag eval retrieve [--method dense|lexical|hybrid|hybrid-rerank|hybrid-rerank-context]`: Recall@1/5/10, MRR, latency; gold bound to `chunk_set_id`; hybrid-rerank adds `gold_in_rerank_pool`; context adds assembly diagnostics). Slice 8 adds `offline-rag eval query` for grounded-answer operational outcomes (answered / abstention / generation_failed / citation_invalid) without semantic answer-quality or citation-entailment metrics yet. Layers below describe the fuller harness target.
+**Current readiness (Slice 9):** Retrieval quality evaluation is implemented end-to-end.
+
+- Gold: native `offline-rag-gold-v1` (`meta.json` + `cases.jsonl`, graded `judgments[]`, optional `category`/`tags`) with legacy `relevant_chunk_ids` read-compat (normalized to relevance `1`).
+- CLI: `offline-rag eval retrieve [--method dense|lexical|hybrid|hybrid-rerank|hybrid-rerank-context]` and `offline-rag eval compare --a … --b … [--json]`.
+- Metrics: Recall/Precision/HitRate/nDCG@{1,5,10}, MRR, conditional HitRate@30; zero-positive cases report quality metrics as null; macro-average over quality-eligible queries only.
+- Artifacts: `offline-rag-retrieval-eval-result-v1` (shared envelope + method diagnostics) and `offline-rag-retrieval-eval-comparison-v1` (exact-float win/loss/tie; no retrieval rerun).
+- Slice 8 `offline-rag eval query` remains operational generation outcomes only (answered / abstention / generation_failed / citation_invalid). Semantic answer/citation metrics are Slice 10.
+
+Sections below retain the broader portfolio target schema; prefer `eval/README.md` and `eval/datasets/slice9_validation/` for the implemented GoldDataset v1 contract.
 
 ## Purpose
 

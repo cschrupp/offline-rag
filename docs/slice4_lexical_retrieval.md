@@ -56,6 +56,7 @@ offline-rag eval retrieve --method lexical --dataset <path> --corpus <name>
 ```
 
 Bare `index` / `retrieve` / `eval retrieve` remain **dense**.
+Slice 9 shares the GoldDataset v1 / retrieval-eval-result-v1 harness across methods — see `eval/README.md`.
 
 ## Config
 
