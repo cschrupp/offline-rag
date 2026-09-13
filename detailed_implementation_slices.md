@@ -2,7 +2,7 @@
 
 This document converts the architecture into incremental, testable implementation slices. Each slice should leave the repository in a working state. Avoid building multiple major layers simultaneously: the evaluation harness depends on being able to attribute improvements and regressions to individual changes.
 
-**Implementation status:** Slices 0–9 and **9A** are implemented (Slice 9 = retrieval evaluation harness v1 at `9073c37`; 9A = authoring contracts + privacy). **Next:** Slice **9B** (source sampling + local question proposal), then 9C–9H, then Milestone 5 / Slice 10 generation-citation semantics. Canonical Milestone 4 plan: `docs/milestone4_offline_gold_authoring.md`. Authoritative notes: `docs/slice0_contracts.md` … `docs/slice8_grounded_generation.md`, `docs/slice9a_gold_authoring.md`, `eval/README.md`.
+**Implementation status:** Slices 0–9 and **9A** are implemented (Slice 9 = retrieval evaluation harness v1 at `9073c37`; 9A = authoring contracts + privacy). **Next:** Slice **9B** (source sampling + local question proposal), then 9C–9H, then Milestone 5 / Slice 10 generation-citation semantics. Canonical Milestone 4 plan: `docs/milestone4_offline_gold_authoring.md`. Authoritative notes: `docs/slice0_contracts.md` … `docs/slice8_grounded_generation.md`, `docs/slice9_retrieval_evaluation.md`, `docs/slice9a_gold_authoring.md`, `eval/README.md`.
 
 ---
 
@@ -423,7 +423,7 @@ A user can run the generator outside OfflineRAG (Ollama by default), ask a quest
 
 # Slice 9 — Evaluation harness v1: deterministic retrieval metrics
 
-**Status:** done. Implemented as GoldDataset v1 (`offline-rag-gold-v1`), shared `offline-rag-retrieval-eval-result-v1` artifacts across existing `eval retrieve` methods, and `offline-rag eval compare`. See `eval/README.md` and `EVALUATION_HARNESS.md` readiness banner. Historical schema sketch below is superseded by the locked Slice 9 contracts.
+**Status:** done. Authoritative notes: [`docs/slice9_retrieval_evaluation.md`](docs/slice9_retrieval_evaluation.md). Also `eval/README.md` and `EVALUATION_HARNESS.md` readiness banner. Historical schema sketch below is superseded by the locked Slice 9 contracts.
 
 ## Objective
 

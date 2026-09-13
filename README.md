@@ -348,4 +348,4 @@ Working local path: ingest → chunk → index / index lexical → retrieve ladd
 
 Still deferred: `offline-rag gold` CLI and remaining authoring slices (9B–9H), semantic answer/citation quality metrics (Milestone 5 / Slice 10), agentic recovery (Milestone 6).
 
-See `ROADMAP.md`, `docs/milestone4_offline_gold_authoring.md`, `docs/slice9a_gold_authoring.md`, and `docs/slice8_grounded_generation.md`.
+See `ROADMAP.md`, `docs/milestone4_offline_gold_authoring.md`, `docs/slice9_retrieval_evaluation.md`, `docs/slice9a_gold_authoring.md`, and `docs/slice8_grounded_generation.md`.

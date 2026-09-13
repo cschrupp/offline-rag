@@ -11,6 +11,8 @@
 
 ## Retrieval eval (Slice 9)
 
+Authoritative notes: [`docs/slice9_retrieval_evaluation.md`](../docs/slice9_retrieval_evaluation.md).
+
 ```bash
 offline-rag eval retrieve --method dense|lexical|hybrid|hybrid-rerank|hybrid-rerank-context \
   --dataset eval/datasets/<name> --corpus <name> [--top-k N] [--json]

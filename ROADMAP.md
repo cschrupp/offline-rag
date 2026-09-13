@@ -97,7 +97,7 @@ generation-provenance investigation and A/B results.
 - [x] `offline-rag eval compare` (`offline-rag-retrieval-eval-comparison-v1`)
 - [x] category aggregates; method diagnostics retained
 
-**Completed at:** commit `9073c37`. See `eval/README.md` and `EVALUATION_HARNESS.md`.
+**Completed at:** commit `9073c37`. See [`docs/slice9_retrieval_evaluation.md`](docs/slice9_retrieval_evaluation.md), `eval/README.md`, and `EVALUATION_HARNESS.md`.
 
 ---
 

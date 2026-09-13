@@ -1,6 +1,6 @@
 # Evaluation Harness
 
-**Current readiness (Slice 9):** Retrieval quality evaluation is implemented end-to-end.
+**Current readiness (Slice 9):** Retrieval quality evaluation is implemented end-to-end. Authoritative notes: [`docs/slice9_retrieval_evaluation.md`](docs/slice9_retrieval_evaluation.md).
 
 - Gold: native `offline-rag-gold-v1` (`meta.json` + `cases.jsonl`, graded `judgments[]`, optional `category`/`tags`) with legacy `relevant_chunk_ids` read-compat (normalized to relevance `1`).
 - CLI: `offline-rag eval retrieve [--method dense|lexical|hybrid|hybrid-rerank|hybrid-rerank-context]` and `offline-rag eval compare --a … --b … [--json]`.

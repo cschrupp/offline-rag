@@ -11,7 +11,7 @@ Slice **9A** (contracts + privacy + doctor) is done — see [`slice9a_gold_autho
 ## Status entering / within milestone
 
 - Slices 0–8 implemented; Slice 8 validated end-to-end.
-- Slice 9 evaluation harness complete at commit `9073c37`.
+- Slice 9 evaluation harness complete at commit `9073c37` ([`slice9_retrieval_evaluation.md`](slice9_retrieval_evaluation.md)).
 - Slice **9A** complete: `authoring:` config, `authorcfg_`, privacy dual-gate, lean silver/run models, doctor readiness (no LLM / no `gold` CLI yet).
 - `GoldDataset v1`, deterministic retrieval metrics, serialized evaluation artifacts, and `offline-rag eval compare` are available.
 - `model-query-prompt-v1`, `exclude-heading-only-v1` / Arm H, and `prompt-grounded-provenance-v2` remain validated experimental candidates.
