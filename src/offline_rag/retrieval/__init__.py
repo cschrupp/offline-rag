@@ -5,8 +5,9 @@ from offline_rag.retrieval.ranking_text import (
     RANKING_TEXT_TITLE_SECTION_CONTRACT,
     RankingTextError,
     RankingTextInputs,
-    resolve_document_title_v1,
+    render_section_path_v1,
     render_title_section_text_v1,
+    resolve_document_title_v1,
 )
 
 __all__ = [
@@ -14,6 +15,7 @@ __all__ = [
     "RANKING_TEXT_TITLE_SECTION_CONTRACT",
     "RankingTextError",
     "RankingTextInputs",
+    "render_section_path_v1",
     "resolve_document_title_v1",
     "render_title_section_text_v1",
 ]

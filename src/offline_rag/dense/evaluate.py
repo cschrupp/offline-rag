@@ -10,6 +10,7 @@ from pathlib import Path
 from offline_rag.config.models import AppSettings
 from offline_rag.core.ids import dataset_id_from_bytes, new_execution_id
 from offline_rag.dense.config_hash import (
+    build_dense_retrieval_config_hash,
     build_embedding_config_hash,
     build_index_config_hash,
 )
@@ -268,7 +269,15 @@ class DenseRetrievalEvaluator:
             cases=case_results,
             started_at=started,
             completed_at=completed,
-            metadata={"corpus_name": corpus_name, "dataset_path": str(dataset_path)},
+            metadata={
+                "corpus_name": corpus_name,
+                "dataset_path": str(dataset_path),
+                "query_text_strategy": self.settings.dense.query_text.strategy,
+                "query_text_contract": self.settings.dense.query_text.contract_version,
+                "dense_retrieval_config_hash": build_dense_retrieval_config_hash(
+                    self.settings
+                ),
+            },
         )
 
         if persist:

@@ -2,21 +2,32 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
-from pathlib import PurePosixPath
 
+from offline_rag.core.document_metadata import (
+    DocumentMetadataError,
+    render_section_path_v1,
+    resolve_document_title_v1,
+)
 from offline_rag.core.ids import DOCUMENT_TITLE_V1, TITLE_SECTION_TEXT_V1
 
 DOCUMENT_TITLE_CONTRACT = DOCUMENT_TITLE_V1
 RANKING_TEXT_TITLE_SECTION_CONTRACT = TITLE_SECTION_TEXT_V1
 
-_RECOGNIZED_EXTENSIONS = frozenset({".pdf", ".txt", ".md"})
-_WHITESPACE_RUN = re.compile(r"\s+", flags=re.UNICODE)
+# Compatibility alias: ranking callers historically catch RankingTextError.
+RankingTextError = DocumentMetadataError
 
-
-class RankingTextError(ValueError):
-    """Fail-closed ranking-text resolution/rendering error."""
+__all__ = [
+    "DOCUMENT_TITLE_CONTRACT",
+    "RANKING_TEXT_TITLE_SECTION_CONTRACT",
+    "RankingTextError",
+    "RankingTextInputs",
+    "ranking_inputs_for_chunk",
+    "render_section_path_v1",
+    "render_title_section_text_v1",
+    "resolve_document_title_v1",
+    "resolve_document_titles_from_source_names",
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,54 +37,6 @@ class RankingTextInputs:
     document_title: str | None
     section_path: tuple[str, ...]
     chunk_text: str
-
-
-def resolve_document_title_v1(source_name: str) -> str:
-    """Normalize authoritative ``source_name`` under document-title-v1.
-
-    Raises ``RankingTextError`` when the result would be empty.
-    """
-    if not isinstance(source_name, str):
-        raise RankingTextError("source_name must be a string")
-    name = source_name.strip()
-    if not name:
-        raise RankingTextError("source_name is blank")
-    # Basename only: normalize separators then take final path segment.
-    name = PurePosixPath(name.replace("\\", "/")).name.strip()
-    if not name:
-        raise RankingTextError("source_name basename is blank")
-
-    lower = name.lower()
-    for ext in sorted(_RECOGNIZED_EXTENSIONS, key=len, reverse=True):
-        if lower.endswith(ext):
-            name = name[: -len(ext)]
-            break
-    name = name.strip()
-    name = _WHITESPACE_RUN.sub(" ", name)
-    if not name:
-        raise RankingTextError("document_title normalized to empty")
-    return name
-
-
-def _normalize_section_component(component: str) -> str | None:
-    text = component.strip()
-    if not text:
-        return None
-    return _WHITESPACE_RUN.sub(" ", text)
-
-
-def render_section_path_v1(section_path: tuple[str, ...] | list[str]) -> str | None:
-    """Render section_path for title-section-text-v1 (None when empty after filter)."""
-    parts: list[str] = []
-    for component in section_path:
-        if not isinstance(component, str):
-            continue
-        normalized = _normalize_section_component(component)
-        if normalized is not None:
-            parts.append(normalized)
-    if not parts:
-        return None
-    return " / ".join(parts)
 
 
 def render_title_section_text_v1(inputs: RankingTextInputs) -> str:

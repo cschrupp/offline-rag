@@ -9,6 +9,7 @@ from offline_rag.config.models import AppSettings
 from offline_rag.core.ids import dense_point_uuid
 from offline_rag.dense.backend import DenseIndexBackend, DenseSearchHit
 from offline_rag.dense.config_hash import (
+    build_dense_retrieval_config_hash,
     build_embedding_config_hash,
     build_index_config_hash,
 )
@@ -130,6 +131,11 @@ class DenseRetriever:
                 "collection_name": collection_name,
                 "embedding_config_hash": build_embedding_config_hash(self.settings),
                 "index_config_hash": build_index_config_hash(self.settings),
+                "query_text_strategy": self.settings.dense.query_text.strategy,
+                "query_text_contract": self.settings.dense.query_text.contract_version,
+                "dense_retrieval_config_hash": build_dense_retrieval_config_hash(
+                    self.settings
+                ),
             },
         )
 

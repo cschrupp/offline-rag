@@ -125,6 +125,30 @@ class IngestionSettings(BaseModel):
     parent_child: bool = True
 
 
+class DenseQueryTextSettings(BaseModel):
+    """Query-side dense representation (independent of passage embedding_text)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    strategy: NonEmptyStr = "raw"
+    contract_version: NonEmptyStr = "raw-query-v1"
+
+    @model_validator(mode="after")
+    def _validate_query_text_pair(self) -> DenseQueryTextSettings:
+        pair = (self.strategy, self.contract_version)
+        allowed = {
+            ("raw", "raw-query-v1"),
+            ("model_query_prompt", "model-query-prompt-v1"),
+        }
+        if pair not in allowed:
+            raise ValueError(
+                "dense.query_text strategy/contract_version must be one of "
+                "raw/raw-query-v1 or model_query_prompt/model-query-prompt-v1; "
+                f"got {self.strategy}/{self.contract_version}"
+            )
+        return self
+
+
 class DenseSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -133,6 +157,7 @@ class DenseSettings(BaseModel):
     model_path: Path = Path("models/embeddings/qwen3-embedding-0.6b")
     local_files_only: bool = True
     top_k: PositiveInt = 10
+    query_text: DenseQueryTextSettings = Field(default_factory=DenseQueryTextSettings)
 
 
 class EmbeddingTextSettings(BaseModel):
@@ -140,6 +165,31 @@ class EmbeddingTextSettings(BaseModel):
 
     strategy: NonEmptyStr = "plain"
     contract_version: NonEmptyStr = "plain-v1"
+
+
+class DenseSearchableUnitsSettings(BaseModel):
+    """Which child chunks are eligible as dense vector candidates."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    strategy: NonEmptyStr = "all_children"
+    contract_version: NonEmptyStr = "all-children-v1"
+
+    @model_validator(mode="after")
+    def _validate_searchable_units_pair(self) -> DenseSearchableUnitsSettings:
+        pair = (self.strategy, self.contract_version)
+        allowed = {
+            ("all_children", "all-children-v1"),
+            ("exclude_heading_only", "exclude-heading-only-v1"),
+        }
+        if pair not in allowed:
+            raise ValueError(
+                "indexing.searchable_units strategy/contract_version must be one of "
+                "all_children/all-children-v1 or "
+                "exclude_heading_only/exclude-heading-only-v1; "
+                f"got {self.strategy}/{self.contract_version}"
+            )
+        return self
 
 
 class EmbeddingModelSettings(BaseModel):
@@ -166,6 +216,9 @@ class IndexingSettings(BaseModel):
     backend_contract: NonEmptyStr = "qdrant-local-v1"
     metric: NonEmptyStr = "cosine"
     embedding_text: EmbeddingTextSettings = Field(default_factory=EmbeddingTextSettings)
+    searchable_units: DenseSearchableUnitsSettings = Field(
+        default_factory=DenseSearchableUnitsSettings
+    )
     embedding: EmbeddingModelSettings = Field(default_factory=EmbeddingModelSettings)
 
 
@@ -297,6 +350,31 @@ class ContextSettings(BaseModel):
         return self
 
 
+class GenerationPromptSettings(BaseModel):
+    """Versioned generation prompt/evidence-presentation contract selection."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    strategy: NonEmptyStr = "grounded"
+    contract_version: NonEmptyStr = "prompt-grounded-v1"
+
+    @model_validator(mode="after")
+    def _validate_prompt_pair(self) -> GenerationPromptSettings:
+        pair = (self.strategy, self.contract_version)
+        allowed = {
+            ("grounded", "prompt-grounded-v1"),
+            ("grounded_provenance", "prompt-grounded-provenance-v2"),
+        }
+        if pair not in allowed:
+            raise ValueError(
+                "generation.prompt strategy/contract_version must be one of "
+                "grounded/prompt-grounded-v1 or "
+                "grounded_provenance/prompt-grounded-provenance-v2; "
+                f"got {self.strategy}/{self.contract_version}"
+            )
+        return self
+
+
 class GenerationSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -314,6 +392,7 @@ class GenerationSettings(BaseModel):
         default_factory=lambda: ["http://127.0.0.1:11434/v1"]
     )
     approved_models: list[str] = Field(default_factory=list)
+    prompt: GenerationPromptSettings = Field(default_factory=GenerationPromptSettings)
 
     @field_validator("temperature")
     @classmethod

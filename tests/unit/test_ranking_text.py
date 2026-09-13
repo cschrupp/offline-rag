@@ -267,6 +267,8 @@ def test_base_config_remains_plain() -> None:
     assert settings.indexing.embedding_text.contract_version == "plain-v1"
     assert settings.lexical.text.strategy == "plain"
     assert settings.lexical.text.contract_version == "plain-v1"
+    assert settings.generation.prompt.strategy == "grounded"
+    assert settings.generation.prompt.contract_version == "prompt-grounded-v1"
 
 
 def test_experiment_config_selects_both_branches() -> None:

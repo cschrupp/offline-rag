@@ -9,10 +9,18 @@ from pathlib import Path
 from typing import Protocol
 
 from offline_rag.config.models import AppSettings
-from offline_rag.core.ids import SENTENCE_TRANSFORMERS_ADAPTER_CONTRACT
+from offline_rag.core.ids import (
+    MODEL_QUERY_PROMPT_V1,
+    RAW_QUERY_V1,
+    SENTENCE_TRANSFORMERS_ADAPTER_CONTRACT,
+)
 from offline_rag.dense.provision import (
     require_embedding_artifacts,
     resolve_embedding_model_dir,
+)
+from offline_rag.dense.query_text import (
+    MODEL_QUERY_PROMPT_NAME,
+    resolve_query_text_contract,
 )
 
 
@@ -24,6 +32,7 @@ class Embedder(Protocol):
     dimension: int
     normalize: bool
     adapter_contract: str
+    query_text_contract: str
 
     def embed_documents(self, texts: Sequence[str]) -> list[list[float]]:
         """Embed document/passage texts."""
@@ -63,12 +72,24 @@ class FakeEmbedder:
     model_id = "fake"
     model_revision = "fake-v1"
     adapter_contract = "fake-embedder-v1"
+    query_text_contract = RAW_QUERY_V1
 
-    def __init__(self, *, dimension: int = 8, normalize: bool = True) -> None:
+    def __init__(
+        self,
+        *,
+        dimension: int = 8,
+        normalize: bool = True,
+        query_text_contract: str = RAW_QUERY_V1,
+    ) -> None:
         if dimension <= 0:
             raise ValueError("dimension must be positive")
+        if query_text_contract != RAW_QUERY_V1:
+            raise EmbedderError(
+                f"FakeEmbedder only supports {RAW_QUERY_V1}; got {query_text_contract}"
+            )
         self.dimension = dimension
         self.normalize = normalize
+        self.query_text_contract = query_text_contract
 
     def embed_documents(self, texts: Sequence[str]) -> list[list[float]]:
         return [self._embed_one(text) for text in texts]
@@ -101,6 +122,7 @@ class SentenceTransformersEmbedder:
         query_instruction: str | None = None,
         document_instruction: str | None = None,
         expected_dimension: int | None = None,
+        query_text_contract: str = RAW_QUERY_V1,
     ) -> None:
         self.model_path = Path(model_path).expanduser().resolve()
         self.model_id = model_id
@@ -111,7 +133,17 @@ class SentenceTransformersEmbedder:
         self.batch_size = batch_size
         self.query_instruction = query_instruction
         self.document_instruction = document_instruction
+        self.query_text_contract = query_text_contract
         self._model = None
+        if (
+            query_text_contract == MODEL_QUERY_PROMPT_V1
+            and query_instruction is not None
+        ):
+            raise EmbedderError(
+                f"{MODEL_QUERY_PROMPT_V1} cannot be combined with "
+                "indexing.embedding.query_instruction; use the model registered "
+                f"{MODEL_QUERY_PROMPT_NAME!r} prompt only"
+            )
         require_embedding_artifacts(
             self.model_path,
             expected_model_id=model_id,
@@ -132,6 +164,21 @@ class SentenceTransformersEmbedder:
         )
         return self._model
 
+    def _require_model_query_prompt(self, model) -> None:
+        prompts = getattr(model, "prompts", None)
+        if not isinstance(prompts, dict) or MODEL_QUERY_PROMPT_NAME not in prompts:
+            raise EmbedderError(
+                f"{MODEL_QUERY_PROMPT_V1} requires the provisioned embedding model "
+                f"to expose prompts[{MODEL_QUERY_PROMPT_NAME!r}]; none found "
+                f"(model_id={self.model_id})"
+            )
+        value = prompts[MODEL_QUERY_PROMPT_NAME]
+        if not isinstance(value, str):
+            raise EmbedderError(
+                f"{MODEL_QUERY_PROMPT_V1}: prompts[{MODEL_QUERY_PROMPT_NAME!r}] "
+                f"must be a string (got {type(value).__name__})"
+            )
+
     def embed_documents(self, texts: Sequence[str]) -> list[list[float]]:
         if not texts:
             return []
@@ -150,8 +197,20 @@ class SentenceTransformersEmbedder:
         return [self._coerce_vector(row.tolist()) for row in vectors]
 
     def embed_query(self, text: str) -> list[float]:
-        payload = f"{self.query_instruction}{text}" if self.query_instruction else text
         model = self._load()
+        if self.query_text_contract == MODEL_QUERY_PROMPT_V1:
+            self._require_model_query_prompt(model)
+            vector = model.encode(
+                text,
+                prompt_name=MODEL_QUERY_PROMPT_NAME,
+                normalize_embeddings=self.normalize,
+                convert_to_numpy=True,
+                show_progress_bar=False,
+            )
+            return self._coerce_vector(vector.tolist())
+
+        # raw-query-v1: optional legacy string prefix, then bare encode.
+        payload = f"{self.query_instruction}{text}" if self.query_instruction else text
         vector = model.encode(
             payload,
             normalize_embeddings=self.normalize,
@@ -177,8 +236,22 @@ class EmbedderError(RuntimeError):
 def make_embedder(settings: AppSettings) -> Embedder:
     """Construct the configured embedder (fake never silently substitutes)."""
     emb = settings.indexing.embedding
+    query = settings.dense.query_text
+    query_contract = resolve_query_text_contract(
+        strategy=query.strategy,
+        contract_version=query.contract_version,
+    )
     if emb.implementation == "fake":
-        return FakeEmbedder(dimension=emb.dimension, normalize=emb.normalize)
+        if query_contract != RAW_QUERY_V1:
+            raise EmbedderError(
+                f"{query_contract} requires sentence_transformers with a registered "
+                f"{MODEL_QUERY_PROMPT_NAME!r} prompt; fake embedder cannot satisfy it"
+            )
+        return FakeEmbedder(
+            dimension=emb.dimension,
+            normalize=emb.normalize,
+            query_text_contract=query_contract,
+        )
     if emb.implementation != "sentence_transformers":
         raise EmbedderError(f"unsupported embedding implementation: {emb.implementation}")
 
@@ -197,4 +270,5 @@ def make_embedder(settings: AppSettings) -> Embedder:
         query_instruction=emb.query_instruction,
         document_instruction=emb.document_instruction,
         expected_dimension=emb.dimension,
+        query_text_contract=query_contract,
     )

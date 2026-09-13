@@ -1,0 +1,9 @@
+# Generation prompt A/B: expose trusted DOCUMENT/SECTION provenance in Slice 8.
+# Compose with retrieval experiments via multi-config deep merge; does not change
+# dense/lexical/RRF/reranker/context/sampling settings.
+# Intentionally omits experiment.name so composition with overlays such as
+# dense_no_heading_peers does not overwrite their scalar experiment name.
+generation:
+  prompt:
+    strategy: grounded_provenance
+    contract_version: prompt-grounded-provenance-v2

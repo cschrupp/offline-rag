@@ -42,6 +42,10 @@ from offline_rag.dense.persistence import (
 )
 from offline_rag.dense.points import build_dense_point
 from offline_rag.dense.qdrant_local import QdrantLocalBackend
+from offline_rag.dense.searchable_units import (
+    DenseSearchableUnitsError,
+    filter_dense_searchable_children,
+)
 from offline_rag.dense.text import (
     EmbeddingTextBuilder,
     PlainEmbeddingTextBuilder,
@@ -350,7 +354,41 @@ def run_indexing(
             chunk_set_id=chunk_state.current_chunk_set_id,
             chunk_manifest_name=chunk_state.current_chunk_manifest,
         )
+        chunk_set_child_count = len(jobs)
+        try:
+            eligible_jobs, excluded_jobs = filter_dense_searchable_children(jobs, settings)
+        except DenseSearchableUnitsError as exc:
+            completed = datetime.now(tz=UTC)
+            return IndexingReport(
+                run_id=run_id,
+                corpus_name=name,
+                corpus_id=corpus_state.current_corpus_id,
+                chunk_set_id=chunk_state.current_chunk_set_id,
+                status=IndexingStatus.FAILED,
+                started_at=started,
+                completed_at=completed,
+                duration_ms=int((completed - started).total_seconds() * 1000),
+                errors=[str(exc)],
+            )
+        jobs = eligible_jobs
         children_total = len(jobs)
+        excluded_heading_only_count = len(excluded_jobs)
+        if children_total < 1:
+            completed = datetime.now(tz=UTC)
+            return IndexingReport(
+                run_id=run_id,
+                corpus_name=name,
+                corpus_id=corpus_state.current_corpus_id,
+                chunk_set_id=chunk_state.current_chunk_set_id,
+                status=IndexingStatus.FAILED,
+                started_at=started,
+                completed_at=completed,
+                duration_ms=int((completed - started).total_seconds() * 1000),
+                errors=[
+                    "dense searchable-unit policy excluded all children; "
+                    "refusing empty dense index"
+                ],
+            )
 
         backend_impl = backend or QdrantLocalBackend(settings.paths.qdrant_storage)
         settings.paths.index_manifests.mkdir(parents=True, exist_ok=True)
@@ -528,6 +566,14 @@ def run_indexing(
             expected_child_count=children_total,
             indexed_child_count=actual_count,
             created_at=completed,
+            metadata={
+                "searchable_units_strategy": settings.indexing.searchable_units.strategy,
+                "searchable_units_contract": (
+                    settings.indexing.searchable_units.contract_version
+                ),
+                "excluded_heading_only_count": excluded_heading_only_count,
+                "chunk_set_child_count": chunk_set_child_count,
+            },
         )
         write_index_manifest(settings.paths.index_manifests, manifest)
         state = _publish_index_state(

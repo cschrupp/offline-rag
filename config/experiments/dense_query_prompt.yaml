@@ -1,0 +1,9 @@
+experiment:
+  name: dense_query_prompt
+
+# Query-side retrieval instruction A/B (model-query-prompt-v1).
+# Passage indexes remain plain-v1; only query encoding changes.
+dense:
+  query_text:
+    strategy: model_query_prompt
+    contract_version: model-query-prompt-v1

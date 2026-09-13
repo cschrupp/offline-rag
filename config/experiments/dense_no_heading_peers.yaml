@@ -1,0 +1,22 @@
+experiment:
+  name: dense_no_heading_peers
+
+# Dense searchable-unit policy A/B: exclude heading-only children from dense peers.
+# Query uses model-query-prompt-v1; passages remain plain-v1; lexical remains plain-v1.
+dense:
+  query_text:
+    strategy: model_query_prompt
+    contract_version: model-query-prompt-v1
+
+indexing:
+  embedding_text:
+    strategy: plain
+    contract_version: plain-v1
+  searchable_units:
+    strategy: exclude_heading_only
+    contract_version: exclude-heading-only-v1
+
+lexical:
+  text:
+    strategy: plain
+    contract_version: plain-v1

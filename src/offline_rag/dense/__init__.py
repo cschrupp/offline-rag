@@ -12,6 +12,7 @@ from offline_rag.dense.cache import (
     write_embedding_artifact,
 )
 from offline_rag.dense.config_hash import (
+    build_dense_retrieval_config_hash,
     build_embedding_config_hash,
     build_index_config_hash,
 )
@@ -66,6 +67,7 @@ __all__ = [
     "QdrantLocalBackend",
     "SentenceTransformersEmbedder",
     "TitleSectionEmbeddingTextBuilder",
+    "build_dense_retrieval_config_hash",
     "build_dense_payload",
     "build_dense_point",
     "build_embedding_config_hash",

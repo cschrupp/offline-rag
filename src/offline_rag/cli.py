@@ -1742,6 +1742,16 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         f"{settings.indexing.embedding_text.contract_version}"
     )
     notes.append(
+        "Dense query text                 "
+        f"{settings.dense.query_text.strategy}/"
+        f"{settings.dense.query_text.contract_version}"
+    )
+    notes.append(
+        "Dense searchable units           "
+        f"{settings.indexing.searchable_units.strategy}/"
+        f"{settings.indexing.searchable_units.contract_version}"
+    )
+    notes.append(
         "Lexical ranking text             "
         f"{settings.lexical.text.strategy}/{settings.lexical.text.contract_version}"
     )
@@ -1938,6 +1948,9 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     notes.append(f"Generation enabled              {settings.generation.enabled}")
     notes.append(f"Generation provider             {settings.generation.provider}")
     notes.append(f"Generation model                {settings.generation.model}")
+    notes.append(
+        f"Generation prompt                {settings.generation.prompt.contract_version}"
+    )
     notes.append(
         "Generation API key               "
         f"{'configured' if settings.generation.api_key else 'not set'}"

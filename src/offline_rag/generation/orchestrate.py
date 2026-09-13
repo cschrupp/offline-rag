@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from pathlib import Path
 from typing import Any
 
 from offline_rag.config.models import AppSettings
@@ -10,8 +11,13 @@ from offline_rag.context.assemble import (
     HybridRerankContextAssembler,
     HybridRerankContextError,
 )
+from offline_rag.core.document_metadata import (
+    DocumentMetadataError,
+    resolve_document_title_v1,
+)
+from offline_rag.core.ids import PROMPT_GROUNDED_PROVENANCE_V2, PROMPT_GROUNDED_V1
 from offline_rag.domain.generation import GroundedAnswerResult
-from offline_rag.domain.indexing import HybridRerankContextResult
+from offline_rag.domain.indexing import EvidenceUnit, HybridRerankContextResult
 from offline_rag.generation.citations import (
     resolve_citations,
     validate_citation_membership,
@@ -24,18 +30,42 @@ from offline_rag.generation.openai_compatible import (
     OpenAICompatibleGenerator,
     OpenAICompatibleGeneratorError,
 )
-from offline_rag.generation.prompt import build_prompt_grounded_v1
-from offline_rag.generation.protocol import Generator
+from offline_rag.generation.prompt import (
+    build_prompt_grounded_provenance_v2,
+    build_prompt_grounded_v1,
+)
+from offline_rag.generation.prompt_evidence import PromptEvidence
+from offline_rag.generation.protocol import Generator, GeneratorRequest
 from offline_rag.generation.schema import parse_grounded_answer_v1
 from offline_rag.generation.status import (
     describe_generation_status,
     generation_status_for_corpus,
 )
 from offline_rag.ingestion.discovery import validate_corpus_name
+from offline_rag.ingestion.persistence import (
+    corpus_state_path,
+    load_corpus_manifest,
+    load_corpus_state,
+)
 
 
 class GroundedAnswerError(RuntimeError):
     pass
+
+
+class PromptProvenanceUnavailable(Exception):
+    """Trusted document provenance could not be resolved for provenance-v2."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        failed_evidence_unit_id: str | None = None,
+        failed_document_id: str | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.failed_evidence_unit_id = failed_evidence_unit_id
+        self.failed_document_id = failed_document_id
 
 
 class GroundedAnswerOrchestrator:
@@ -77,6 +107,132 @@ class GroundedAnswerOrchestrator:
             f"Context status:    {details.get('context_status')}\n"
             f"Reasons:           {reason_text}"
         )
+
+    def _prompt_contract(self) -> str:
+        return self.settings.generation.prompt.contract_version
+
+    def _load_source_name_by_document_id(self, corpus_name: str) -> dict[str, str]:
+        """Load authoritative document_id → source_name for the selected corpus."""
+        corpus_path = corpus_state_path(self.settings.paths.corpora, corpus_name)
+        if not corpus_path.exists():
+            raise PromptProvenanceUnavailable(
+                f"corpus state missing for provenance resolution: {corpus_name}"
+            )
+        try:
+            corpus_state = load_corpus_state(corpus_path)
+        except Exception as exc:  # noqa: BLE001 - map to provenance failure
+            raise PromptProvenanceUnavailable(
+                f"failed to load corpus state for provenance resolution: {exc}"
+            ) from exc
+        manifest_path = (
+            self.settings.paths.manifests / Path(corpus_state.current_manifest).name
+        )
+        if not manifest_path.exists():
+            raise PromptProvenanceUnavailable(
+                f"missing corpus manifest for provenance resolution: "
+                f"{corpus_state.current_manifest}"
+            )
+        try:
+            corpus_manifest = load_corpus_manifest(manifest_path)
+        except Exception as exc:  # noqa: BLE001 - map to provenance failure
+            raise PromptProvenanceUnavailable(
+                f"failed to load corpus manifest for provenance resolution: {exc}"
+            ) from exc
+        return {
+            entry.document_id: entry.source_name
+            for entry in corpus_manifest.documents
+        }
+
+    def _resolve_document_titles(
+        self,
+        *,
+        evidence_units: list[EvidenceUnit],
+        source_name_by_document_id: dict[str, str],
+    ) -> dict[str, str]:
+        """Resolve document_id → document_title once per distinct document."""
+        titles: dict[str, str] = {}
+        for unit in evidence_units:
+            document_id = unit.document_id
+            if document_id in titles:
+                continue
+            if document_id not in source_name_by_document_id:
+                raise PromptProvenanceUnavailable(
+                    f"document_id not found in authoritative corpus metadata: "
+                    f"{document_id}",
+                    failed_evidence_unit_id=unit.evidence_unit_id,
+                    failed_document_id=document_id,
+                )
+            source_name = source_name_by_document_id[document_id]
+            if source_name is None or not str(source_name).strip():
+                raise PromptProvenanceUnavailable(
+                    f"authoritative source_name missing/blank for "
+                    f"document_id={document_id}",
+                    failed_evidence_unit_id=unit.evidence_unit_id,
+                    failed_document_id=document_id,
+                )
+            try:
+                titles[document_id] = resolve_document_title_v1(str(source_name))
+            except DocumentMetadataError as exc:
+                raise PromptProvenanceUnavailable(
+                    str(exc),
+                    failed_evidence_unit_id=unit.evidence_unit_id,
+                    failed_document_id=document_id,
+                ) from exc
+        return titles
+
+    def _adapt_prompt_evidence(
+        self,
+        *,
+        corpus_name: str,
+        evidence_units: list[EvidenceUnit],
+    ) -> list[PromptEvidence]:
+        source_names = self._load_source_name_by_document_id(corpus_name)
+        titles = self._resolve_document_titles(
+            evidence_units=evidence_units,
+            source_name_by_document_id=source_names,
+        )
+        adapted: list[PromptEvidence] = []
+        for unit in evidence_units:
+            adapted.append(
+                PromptEvidence(
+                    evidence_unit_id=unit.evidence_unit_id,
+                    document_title=titles[unit.document_id],
+                    section_path=tuple(unit.section_path),
+                    text=unit.text,
+                )
+            )
+        return adapted
+
+    def _build_generator_request(
+        self,
+        *,
+        query: str,
+        corpus_name: str,
+        evidence_units: list[EvidenceUnit],
+    ) -> GeneratorRequest:
+        gen = self.settings.generation
+        contract = self._prompt_contract()
+        if contract == PROMPT_GROUNDED_V1:
+            return build_prompt_grounded_v1(
+                query=query,
+                evidence_units=evidence_units,
+                model=gen.model,
+                temperature=float(gen.temperature),
+                max_output_tokens=int(gen.max_output_tokens),
+            )
+        if contract == PROMPT_GROUNDED_PROVENANCE_V2:
+            prompt_evidence = self._adapt_prompt_evidence(
+                corpus_name=corpus_name,
+                evidence_units=evidence_units,
+            )
+            return build_prompt_grounded_provenance_v2(
+                query=query,
+                evidence=prompt_evidence,
+                model=gen.model,
+                temperature=float(gen.temperature),
+                max_output_tokens=int(gen.max_output_tokens),
+            )
+        raise GroundedAnswerError(f"unsupported prompt_contract: {contract}")
 
     def answer(self, *, query: str, corpus_name: str = "default") -> GroundedAnswerResult:
         if not query or not query.strip():
@@ -140,13 +296,36 @@ class GroundedAnswerOrchestrator:
             )
 
         prompt_t0 = time.perf_counter()
-        request = build_prompt_grounded_v1(
-            query=query.strip(),
-            evidence_units=list(context.evidence_units),
-            model=gen.model,
-            temperature=float(gen.temperature),
-            max_output_tokens=int(gen.max_output_tokens),
-        )
+        try:
+            request = self._build_generator_request(
+                query=query.strip(),
+                corpus_name=name,
+                evidence_units=list(context.evidence_units),
+            )
+        except PromptProvenanceUnavailable as exc:
+            prompt_ms = int((time.perf_counter() - prompt_t0) * 1000)
+            total_ms = int((time.perf_counter() - total_t0) * 1000)
+            return self._failed(
+                query=query.strip(),
+                status="generation_failed",
+                failure_reason="prompt_provenance_unavailable",
+                context=context,
+                gencfg=gencfg,
+                semantics=semantics,
+                attempt_count=0,
+                latency={
+                    "context": context_ms,
+                    "prompt_assembly": prompt_ms,
+                    "validation": 0,
+                    "total": total_ms,
+                },
+                extra_diagnostics={
+                    "failure_stage": "prompt_provenance_resolution",
+                    "failed_evidence_unit_id": exc.failed_evidence_unit_id,
+                    "failed_document_id": exc.failed_document_id,
+                    "error": str(exc),
+                },
+            )
         prompt_ms = int((time.perf_counter() - prompt_t0) * 1000)
 
         gen_t0 = time.perf_counter()
