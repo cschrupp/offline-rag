@@ -50,6 +50,43 @@
 
 **Status:** Slice 8 grounded generation implemented (`offline-rag query` / `eval query`).
 
+### Validated end-to-end smoke profile
+
+Slice 8 was validated end-to-end on the `ics_modules` corpus using the
+following composed profile:
+
+- Dense passage: `plain-v1`
+- Dense query: `model-query-prompt-v1`
+- Dense searchable units: `exclude-heading-only-v1`
+- Lexical: `plain-v1`
+- Fusion: `rrf-v1`
+- Reranker: `plain-pair-v1`
+- Context: Slice 7 baseline contract
+- Generation prompt: `prompt-grounded-provenance-v2`
+- Output: `grounded-answer-v1`
+- Reasoning: `direct-output-v1`
+- Recovery: `no-retry-v1`
+
+Result: `PROVENANCE-PROMPT-MATERIAL`.
+
+Identity-dependent Module 1 and Module 2 queries became grounded answers
+when trusted document/section provenance was exposed to generation, while
+self-contained answerability and genuine abstention behavior were preserved.
+Retrieval/context inputs were identical across the generation A/B.
+
+`model-query-prompt-v1`, `exclude-heading-only-v1`, and
+`prompt-grounded-provenance-v2` are validated experimental candidates,
+not defaults. Historical/base contracts remain unchanged pending Slice 9
+evaluation. `prompt-grounded-v1` remains the generation control/default.
+
+Reproduce the smoke profile by composing existing orthogonal overlays
+(`base` + `dense_no_heading_peers` + `generation_provenance_prompt`); do
+not treat that composition as a promoted default.
+
+See [`docs/memory_query_heading_provenance.md`](docs/memory_query_heading_provenance.md)
+for the detailed retrieval-heading, query-contract, and
+generation-provenance investigation and A/B results.
+
 ## Milestone 4 — Evaluation platform
 
 - [ ] generation metrics

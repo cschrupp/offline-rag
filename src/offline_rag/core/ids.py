@@ -373,6 +373,12 @@ def dataset_id_from_bytes(content: bytes) -> str:
     return f"evaldataset_{_sha256_hex(content)}"
 
 
+def gold_dataset_id_from_payload(payload: Mapping[str, Any]) -> str:
+    """Return ``gold_<sha256>`` for a GoldDataset v1 canonical semantic payload."""
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return f"gold_{_sha256_hex(encoded.encode('utf-8'))}"
+
+
 def lexical_config_hash(data: Mapping[str, Any]) -> str:
     """Return ``lexcfg_<sha256>`` for lexical-output-affecting configuration."""
     return canonical_config_hash(data).replace("cfg_", "lexcfg_", 1)

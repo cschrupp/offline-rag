@@ -472,11 +472,11 @@ def test_hybrid_eval_reuses_metrics(tmp_path: Path) -> None:
     finally:
         hybrid.close()
     assert report.method == "hybrid"
-    assert report.fusion_config_hash.startswith("fuscfg_")
-    assert report.dense_index_id
-    assert report.lexical_index_id
-    assert report.recall_at_1 == 1.0
-    assert report.mrr == 1.0
+    assert str(report.semantic_provenance["fusion_config_hash"]).startswith("fuscfg_")
+    assert report.semantic_provenance["dense_index_id"]
+    assert report.semantic_provenance["lexical_index_id"]
+    assert report.aggregates.recall_at_1.value == 1.0
+    assert report.aggregates.mrr.value == 1.0
     assert (settings.paths.eval_results / "hybrid-retrieval").exists()
 
 

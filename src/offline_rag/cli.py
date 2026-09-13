@@ -1317,8 +1317,27 @@ def cmd_eval_run(_args: argparse.Namespace) -> int:
     return _not_implemented("eval run")
 
 
-def cmd_eval_compare(_args: argparse.Namespace) -> int:
-    return _not_implemented("eval compare")
+def cmd_eval_compare(args: argparse.Namespace) -> int:
+    from offline_rag.evaluation.compare import (
+        CompareError,
+        compare_retrieval_results,
+        format_comparison_human,
+        load_retrieval_eval_result,
+    )
+
+    try:
+        result_a = load_retrieval_eval_result(Path(args.a))
+        result_b = load_retrieval_eval_result(Path(args.b))
+        comparison = compare_retrieval_results(result_a, result_b)
+    except CompareError as exc:
+        print(f"eval compare: {exc}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(comparison.model_dump_json())
+        return 0
+    print(format_comparison_human(comparison))
+    return 0
 
 
 def cmd_eval_query(args: argparse.Namespace) -> int:
@@ -1394,6 +1413,8 @@ def cmd_eval_query(args: argparse.Namespace) -> int:
 
 
 def cmd_eval_retrieve(args: argparse.Namespace) -> int:
+    from offline_rag.evaluation.format import format_retrieval_result_human
+
     try:
         settings = _load_settings(args)
     except ConfigError as exc:
@@ -1413,243 +1434,81 @@ def cmd_eval_retrieve(args: argparse.Namespace) -> int:
         method=method,
     )
 
-    if method == "lexical":
-        evaluator = LexicalRetrievalEvaluator(settings)
-        try:
-            report = evaluator.evaluate(
-                Path(args.dataset),
-                corpus_name=args.corpus,
-                top_k=int(args.top_k),
-                output_path=Path(args.output) if args.output else None,
-            )
-        except (LexicalEvaluationError, LexicalRetrievalError) as exc:
-            print(f"eval retrieve: {exc}", file=sys.stderr)
-            return 1
-        finally:
-            evaluator.retriever.close()
-
-        if args.json:
-            print(report.model_dump_json())
-        else:
-            print("Lexical retrieval evaluation completed")
-            print()
-            print(f"Run:          {report.run_id}")
-            print(f"Method:       {report.method}")
-            print(f"Dataset:      {report.dataset_id}")
-            print(f"Cases:        {report.case_count}")
-            print(f"Index:        {report.index_id}")
-            print(f"Chunk set:    {report.chunk_set_id}")
-            print(f"top_k:        {report.top_k}")
-            print()
-            print(f"Recall@1:     {report.recall_at_1:.4f}")
-            print(f"Recall@5:     {report.recall_at_5:.4f}")
-            print(f"Recall@10:    {report.recall_at_10:.4f}")
-            print(f"MRR:          {report.mrr:.4f}")
-            print(f"Latency mean: {report.latency_mean_ms:.1f} ms")
-            print(f"Latency p50:  {report.latency_p50_ms:.1f} ms")
-            print(f"Latency p95:  {report.latency_p95_ms:.1f} ms")
-            result_path = report.metadata.get("result_path")
-            if result_path:
-                print()
-                print(f"Report:       {result_path}")
-        return 0
-
-    if method == "hybrid":
-        evaluator = HybridRetrievalEvaluator(settings)
-        try:
-            report = evaluator.evaluate(
-                Path(args.dataset),
-                corpus_name=args.corpus,
-                top_k=int(args.top_k),
-                output_path=Path(args.output) if args.output else None,
-            )
-        except (EvaluationError, HybridRetrievalError) as exc:
-            print(f"eval retrieve: {exc}", file=sys.stderr)
-            return 1
-        finally:
-            evaluator.retriever.close()
-
-        if args.json:
-            print(report.model_dump_json())
-        else:
-            print("Hybrid retrieval evaluation completed")
-            print()
-            print(f"Run:          {report.run_id}")
-            print(f"Method:       {report.method}")
-            print(f"Dataset:      {report.dataset_id}")
-            print(f"Cases:        {report.case_count}")
-            print(f"Dense index:  {report.dense_index_id}")
-            print(f"Lexical idx:  {report.lexical_index_id}")
-            print(f"Fusion hash:  {report.fusion_config_hash}")
-            print(f"Chunk set:    {report.chunk_set_id}")
-            print(f"top_k:        {report.top_k}")
-            print()
-            print(f"Recall@1:     {report.recall_at_1:.4f}")
-            print(f"Recall@5:     {report.recall_at_5:.4f}")
-            print(f"Recall@10:    {report.recall_at_10:.4f}")
-            print(f"MRR:          {report.mrr:.4f}")
-            print(f"Latency mean: {report.latency_mean_ms:.1f} ms")
-            print(f"Latency p50:  {report.latency_p50_ms:.1f} ms")
-            print(f"Latency p95:  {report.latency_p95_ms:.1f} ms")
-            result_path = report.metadata.get("result_path")
-            if result_path:
-                print()
-                print(f"Report:       {result_path}")
-        return 0
-
-    if method == "hybrid-rerank":
-        evaluator = HybridRerankRetrievalEvaluator(settings)
-        try:
-            report = evaluator.evaluate(
-                Path(args.dataset),
-                corpus_name=args.corpus,
-                top_k=int(args.top_k),
-                output_path=Path(args.output) if args.output else None,
-            )
-        except (EvaluationError, HybridRerankRetrievalError) as exc:
-            print(f"eval retrieve: {exc}", file=sys.stderr)
-            return 1
-        finally:
-            evaluator.retriever.close()
-
-        if args.json:
-            print(report.model_dump_json())
-        else:
-            print("Hybrid-rerank retrieval evaluation completed")
-            print()
-            print(f"Run:          {report.run_id}")
-            print(f"Method:       {report.method}")
-            print(f"Dataset:      {report.dataset_id}")
-            print(f"Cases:        {report.case_count}")
-            print(f"Dense index:  {report.dense_index_id}")
-            print(f"Lexical idx:  {report.lexical_index_id}")
-            print(f"Fusion hash:  {report.fusion_config_hash}")
-            print(f"Rerank hash:  {report.reranker_config_hash}")
-            print(f"input_k:      {report.input_k}")
-            print(f"Chunk set:    {report.chunk_set_id}")
-            print(f"top_k:        {report.top_k}")
-            print()
-            print(f"Recall@1:     {report.recall_at_1:.4f}")
-            print(f"Recall@5:     {report.recall_at_5:.4f}")
-            print(f"Recall@10:    {report.recall_at_10:.4f}")
-            print(f"MRR:          {report.mrr:.4f}")
-            print(f"Latency mean: {report.latency_mean_ms:.1f} ms")
-            print(f"Latency p50:  {report.latency_p50_ms:.1f} ms")
-            print(f"Latency p95:  {report.latency_p95_ms:.1f} ms")
-            result_path = report.metadata.get("result_path")
-            if result_path:
-                print()
-                print(f"Report:       {result_path}")
-        return 0
-
-    if method == "hybrid-rerank-context":
-        evaluator = HybridRerankContextEvaluator(settings)
-        try:
-            report = evaluator.evaluate(
-                Path(args.dataset),
-                corpus_name=args.corpus,
-                output_path=Path(args.output) if args.output else None,
-            )
-        except (EvaluationError, HybridRerankContextError) as exc:
-            print(f"eval retrieve: {exc}", file=sys.stderr)
-            return 1
-        finally:
-            evaluator.assembler.close()
-
-        if args.json:
-            print(report.model_dump_json())
-        else:
-            print("Hybrid-rerank-context evaluation completed")
-            print()
-            print(f"Run:          {report.run_id}")
-            print(f"Method:       {report.method}")
-            print(f"Dataset:      {report.dataset_id}")
-            print(f"Cases:        {report.case_count}")
-            print(f"Dense index:  {report.dense_index_id}")
-            print(f"Lexical idx:  {report.lexical_index_id}")
-            print(f"Fusion hash:  {report.fusion_config_hash}")
-            print(f"Rerank hash:  {report.reranker_config_hash}")
-            print(f"Context hash: {report.context_config_hash}")
-            print(f"anchor_k:     {report.anchor_k}")
-            print()
-            print("Anchor ranking")
-            print(f"  Recall@1:   {report.anchor_ranking.recall_at_1:.4f}")
-            print(f"  Recall@5:   {report.anchor_ranking.recall_at_5:.4f}")
-            print(f"  MRR:        {report.anchor_ranking.mrr:.4f}")
-            print()
-            print("Assembly summary")
-            print(
-                f"  tokens mean/min/max: "
-                f"{report.assembly_summary.context_tokens_mean:.1f}/"
-                f"{report.assembly_summary.context_tokens_min}/"
-                f"{report.assembly_summary.context_tokens_max}"
-            )
-            print(
-                f"  units mean/min/max:  "
-                f"{report.assembly_summary.evidence_units_mean:.1f}/"
-                f"{report.assembly_summary.evidence_units_min}/"
-                f"{report.assembly_summary.evidence_units_max}"
-            )
-            print(f"  clipped cases:      {report.assembly_summary.clipped_case_count}")
-            print(
-                f"  budget exhausted:   {report.assembly_summary.budget_exhausted_case_count}"
-            )
-            print(f"  stop reasons:       {report.assembly_summary.stop_reason_counts}")
-            print()
-            print(f"Latency mean: {report.latency_mean_ms:.1f} ms")
-            print(f"Latency p50:  {report.latency_p50_ms:.1f} ms")
-            print(f"Latency p95:  {report.latency_p95_ms:.1f} ms")
-            result_path = report.metadata.get("result_path")
-            if result_path:
-                print()
-                print(f"Report:       {result_path}")
-        return 0
-
-    if method != "dense":
-        print(
-            f"eval retrieve: unsupported method '{method}' "
-            "(use dense|lexical|hybrid|hybrid-rerank|hybrid-rerank-context)",
-            file=sys.stderr,
-        )
-        return 1
-
-    evaluator = DenseRetrievalEvaluator(settings)
+    report = None
+    closer = None
     try:
-        report = evaluator.evaluate(
-            Path(args.dataset),
-            corpus_name=args.corpus,
-            top_k=int(args.top_k),
-            output_path=Path(args.output) if args.output else None,
-        )
-    except (DenseEvaluationError, DenseRetrievalError) as exc:
+        if method == "lexical":
+            evaluator = LexicalRetrievalEvaluator(settings)
+            closer = evaluator.retriever.close
+            report = evaluator.evaluate(
+                Path(args.dataset),
+                corpus_name=args.corpus,
+                top_k=int(args.top_k),
+                output_path=Path(args.output) if args.output else None,
+            )
+        elif method == "hybrid":
+            evaluator = HybridRetrievalEvaluator(settings)
+            closer = evaluator.retriever.close
+            report = evaluator.evaluate(
+                Path(args.dataset),
+                corpus_name=args.corpus,
+                top_k=int(args.top_k),
+                output_path=Path(args.output) if args.output else None,
+            )
+        elif method == "hybrid-rerank":
+            evaluator = HybridRerankRetrievalEvaluator(settings)
+            closer = evaluator.retriever.close
+            report = evaluator.evaluate(
+                Path(args.dataset),
+                corpus_name=args.corpus,
+                top_k=int(args.top_k),
+                output_path=Path(args.output) if args.output else None,
+            )
+        elif method == "hybrid-rerank-context":
+            evaluator = HybridRerankContextEvaluator(settings)
+            closer = evaluator.assembler.close
+            report = evaluator.evaluate(
+                Path(args.dataset),
+                corpus_name=args.corpus,
+                output_path=Path(args.output) if args.output else None,
+            )
+        elif method == "dense":
+            evaluator = DenseRetrievalEvaluator(settings)
+            closer = evaluator.retriever.close
+            report = evaluator.evaluate(
+                Path(args.dataset),
+                corpus_name=args.corpus,
+                top_k=int(args.top_k),
+                output_path=Path(args.output) if args.output else None,
+            )
+        else:
+            print(
+                f"eval retrieve: unsupported method '{method}' "
+                "(use dense|lexical|hybrid|hybrid-rerank|hybrid-rerank-context)",
+                file=sys.stderr,
+            )
+            return 1
+    except (
+        EvaluationError,
+        DenseEvaluationError,
+        LexicalEvaluationError,
+        DenseRetrievalError,
+        LexicalRetrievalError,
+        HybridRetrievalError,
+        HybridRerankRetrievalError,
+        HybridRerankContextError,
+    ) as exc:
         print(f"eval retrieve: {exc}", file=sys.stderr)
         return 1
     finally:
-        evaluator.retriever.close()
+        if closer is not None:
+            closer()
 
+    assert report is not None
     if args.json:
         print(report.model_dump_json())
     else:
-        print("Dense retrieval evaluation completed")
-        print()
-        print(f"Run:          {report.run_id}")
-        print(f"Dataset:      {report.dataset_id}")
-        print(f"Cases:        {report.case_count}")
-        print(f"Index:        {report.index_id}")
-        print(f"Chunk set:    {report.chunk_set_id}")
-        print(f"top_k:        {report.top_k}")
-        print()
-        print(f"Recall@1:     {report.recall_at_1:.4f}")
-        print(f"Recall@5:     {report.recall_at_5:.4f}")
-        print(f"Recall@10:    {report.recall_at_10:.4f}")
-        print(f"MRR:          {report.mrr:.4f}")
-        print(f"Latency mean: {report.latency_mean_ms:.1f} ms")
-        print(f"Latency p50:  {report.latency_p50_ms:.1f} ms")
-        print(f"Latency p95:  {report.latency_p95_ms:.1f} ms")
-        result_path = report.metadata.get("result_path")
-        if result_path:
-            print()
-            print(f"Report:       {result_path}")
+        print(format_retrieval_result_human(report))
     return 0
 
 
@@ -2162,8 +2021,17 @@ def build_parser() -> argparse.ArgumentParser:
     eval_run = eval_sub.add_parser("run", help="Run evaluation (not implemented yet)")
     _add_config_argument(eval_run)
     eval_run.set_defaults(func=cmd_eval_run)
-    eval_compare = eval_sub.add_parser("compare", help="Compare evaluations (not implemented yet)")
-    _add_config_argument(eval_compare)
+    eval_compare = eval_sub.add_parser(
+        "compare",
+        help="Compare two offline-rag-retrieval-eval-result-v1 artifacts",
+    )
+    eval_compare.add_argument("--a", required=True, help="Baseline result JSON path")
+    eval_compare.add_argument("--b", required=True, help="Candidate result JSON path")
+    eval_compare.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit offline-rag-retrieval-eval-comparison-v1 JSON",
+    )
     eval_compare.set_defaults(func=cmd_eval_compare)
     eval_query = eval_sub.add_parser("query", help="Run grounded query evaluation")
     _add_config_argument(eval_query)

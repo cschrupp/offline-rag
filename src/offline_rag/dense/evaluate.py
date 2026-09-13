@@ -1,14 +1,11 @@
-"""Dense retrieval evaluation metrics and runner."""
+"""Dense retrieval evaluation — Slice 9 common result envelope."""
 
 from __future__ import annotations
 
-import math
-import time
-from datetime import UTC, datetime
 from pathlib import Path
 
 from offline_rag.config.models import AppSettings
-from offline_rag.core.ids import dataset_id_from_bytes, new_execution_id
+from offline_rag.core.ids import dataset_id_from_bytes
 from offline_rag.dense.config_hash import (
     build_dense_retrieval_config_hash,
     build_embedding_config_hash,
@@ -16,67 +13,61 @@ from offline_rag.dense.config_hash import (
 )
 from offline_rag.dense.embedder import Embedder
 from offline_rag.dense.persistence import index_state_path, load_index_state
-from offline_rag.dense.retrieve import DenseRetrievalError, DenseRetriever
-from offline_rag.domain.indexing import (
-    DenseRetrievalEvaluationResult,
-    RetrievalCaseResult,
-    RetrievalEvalCase,
-    RetrievalEvalDatasetMeta,
+from offline_rag.dense.retrieve import DenseRetriever
+from offline_rag.domain.indexing import RetrievalEvalCase, RetrievalEvalDatasetMeta
+from offline_rag.evaluation.metrics import (
+    first_relevant_rank as _first_relevant_rank_strict,
 )
-from offline_rag.ingestion.io import atomic_write_text
+from offline_rag.evaluation.metrics import (
+    mean_reciprocal_rank as _mean_reciprocal_rank_strict,
+)
+from offline_rag.evaluation.metrics import (
+    recall_at_k as _recall_at_k_strict,
+)
+from offline_rag.evaluation.result import RetrievalEvaluationResultV1
+from offline_rag.evaluation.runner import (
+    EvaluationError,
+    load_gold_or_raise,
+    persist_result,
+    run_retrieval_evaluation,
+)
 
+# Re-export for generation eval and historical call sites.
+__all__ = [
+    "DenseEvaluationError",
+    "DenseRetrievalEvaluator",
+    "EvaluationError",
+    "first_relevant_rank",
+    "load_retrieval_dataset",
+    "load_retrieval_eval_dataset",
+    "mean_reciprocal_rank",
+    "recall_at_k",
+]
 
-class EvaluationError(RuntimeError):
-    pass
-
-
-# Backward-compatible alias used by some call sites.
 DenseEvaluationError = EvaluationError
 
 
 def recall_at_k(relevant_ids: list[str] | set[str], retrieved_ids: list[str], k: int) -> float:
-    """Return classic multi-relevant Recall@k in ``[0, 1]``."""
-    if k < 1:
-        raise ValueError("k must be >= 1")
+    """Classic multi-relevant Recall@k; empty relevant set → 0.0 (legacy helper)."""
     relevant = set(relevant_ids)
     if not relevant:
         return 0.0
-    top = set(retrieved_ids[:k])
-    return len(relevant & top) / len(relevant)
+    return _recall_at_k_strict(relevant, retrieved_ids, k)
 
 
-def mean_reciprocal_rank(relevant_ids: list[str] | set[str], retrieved_ids: list[str]) -> float:
+def mean_reciprocal_rank(
+    relevant_ids: list[str] | set[str], retrieved_ids: list[str]
+) -> float:
     relevant = set(relevant_ids)
     if not relevant:
         return 0.0
-    for rank, chunk_id in enumerate(retrieved_ids, start=1):
-        if chunk_id in relevant:
-            return 1.0 / float(rank)
-    return 0.0
+    return _mean_reciprocal_rank_strict(relevant, retrieved_ids)
 
 
-def first_relevant_rank(relevant_ids: list[str] | set[str], retrieved_ids: list[str]) -> int | None:
-    relevant = set(relevant_ids)
-    for rank, chunk_id in enumerate(retrieved_ids, start=1):
-        if chunk_id in relevant:
-            return rank
-    return None
-
-
-def _percentile(values: list[float], pct: float) -> float:
-    """``pct`` is in ``[0, 1]`` (e.g. 0.95 for p95)."""
-    if not values:
-        return 0.0
-    ordered = sorted(values)
-    if len(ordered) == 1:
-        return ordered[0]
-    rank = (len(ordered) - 1) * pct
-    low = math.floor(rank)
-    high = math.ceil(rank)
-    if low == high:
-        return ordered[low]
-    weight = rank - low
-    return ordered[low] * (1.0 - weight) + ordered[high] * weight
+def first_relevant_rank(
+    relevant_ids: list[str] | set[str], retrieved_ids: list[str]
+) -> int | None:
+    return _first_relevant_rank_strict(set(relevant_ids), retrieved_ids)
 
 
 def load_retrieval_eval_dataset(
@@ -90,6 +81,7 @@ def load_retrieval_eval_dataset(
 def load_retrieval_dataset(
     path: Path,
 ) -> tuple[RetrievalEvalDatasetMeta, list[RetrievalEvalCase], bytes]:
+    """Legacy dataset loader retained for ``eval query`` and historical fixtures."""
     dataset_path = Path(path)
     if not dataset_path.exists():
         raise EvaluationError(f"dataset not found: {dataset_path}")
@@ -127,16 +119,8 @@ def load_retrieval_dataset(
     return meta, cases, canonical
 
 
-def write_evaluation_result(eval_results_root: Path, result: DenseRetrievalEvaluationResult) -> Path:
-    root = Path(eval_results_root)
-    root.mkdir(parents=True, exist_ok=True)
-    path = root / f"{result.run_id}.json"
-    atomic_write_text(path, result.model_dump_json())
-    return path
-
-
 class DenseRetrievalEvaluator:
-    """Run dense Recall@1/5/10 and MRR against a gold JSONL dataset."""
+    """Run dense retrieval metrics against a GoldDataset (native or legacy)."""
 
     def __init__(
         self,
@@ -156,139 +140,70 @@ class DenseRetrievalEvaluator:
         top_k: int = 10,
         output_path: Path | None = None,
         persist: bool = True,
-    ) -> DenseRetrievalEvaluationResult:
-        started = datetime.now(tz=UTC)
-        run_id = new_execution_id(prefix="evalretrieve")
-        meta, cases, canonical = load_retrieval_dataset(Path(dataset_path))
-        dataset_id = dataset_id_from_bytes(canonical)
-
+    ) -> RetrievalEvaluationResultV1:
+        dataset = load_gold_or_raise(Path(dataset_path))
         index_path = index_state_path(self.settings.paths.corpora, corpus_name)
         if not index_path.exists():
             raise EvaluationError("index state missing; run offline-rag index first")
         index_state = load_index_state(index_path)
-        if meta.chunk_set_id != index_state.source_chunk_set_id:
+        if dataset.meta.chunk_set_id != index_state.source_chunk_set_id:
             raise EvaluationError(
                 "dataset chunk_set_id does not match active IndexState source_chunk_set_id: "
-                f"{meta.chunk_set_id} != {index_state.source_chunk_set_id}"
+                f"{dataset.meta.chunk_set_id} != {index_state.source_chunk_set_id}"
             )
-        if meta.corpus_id and meta.corpus_id != index_state.source_corpus_id:
+        if (
+            dataset.meta.corpus_id
+            and dataset.meta.corpus_id != index_state.source_corpus_id
+        ):
             raise EvaluationError(
-                f"dataset corpus_id {meta.corpus_id} does not match indexed corpus "
+                f"dataset corpus_id {dataset.meta.corpus_id} does not match indexed corpus "
                 f"{index_state.source_corpus_id}"
             )
 
         depth = max(10, int(top_k))
 
-        # Warmup excluded from steady-state latency.
-        if cases:
-            try:
-                self.retriever.retrieve(query=cases[0].query, corpus_name=corpus_name, top_k=depth)
-            except DenseRetrievalError:
-                pass
+        def _retrieve(case) -> tuple[list[str], dict]:
+            result = self.retriever.retrieve(
+                query=case.query, corpus_name=corpus_name, top_k=depth
+            )
+            return [c.chunk_id for c in result.candidates], {
+                "index_id": result.index_id,
+                "returned_count": len(result.candidates),
+            }
 
-        case_results: list[RetrievalCaseResult] = []
-        latencies: list[float] = []
-        recalls1: list[float] = []
-        recalls5: list[float] = []
-        recalls10: list[float] = []
-        rrs: list[float] = []
-
-        for case in cases:
-            if not case.relevant_chunk_ids:
-                raise EvaluationError(
-                    f"case {case.id} lacks relevant_chunk_ids; chunk-level metrics are required"
-                )
-            t0 = time.perf_counter()
-            try:
-                result = self.retriever.retrieve(
-                    query=case.query,
-                    corpus_name=corpus_name,
-                    top_k=depth,
-                )
-                retrieved = [candidate.chunk_id for candidate in result.candidates]
-                latency_ms = int((time.perf_counter() - t0) * 1000)
-                rr = mean_reciprocal_rank(case.relevant_chunk_ids, retrieved)
-                first_rank = first_relevant_rank(case.relevant_chunk_ids, retrieved)
-                r1 = recall_at_k(case.relevant_chunk_ids, retrieved, 1)
-                r5 = recall_at_k(case.relevant_chunk_ids, retrieved, 5)
-                r10 = recall_at_k(case.relevant_chunk_ids, retrieved, 10)
-                case_results.append(
-                    RetrievalCaseResult(
-                        case_id=case.id,
-                        query=case.query,
-                        relevant_chunk_ids=list(case.relevant_chunk_ids),
-                        retrieved_chunk_ids=retrieved,
-                        first_relevant_rank=first_rank,
-                        reciprocal_rank=rr,
-                        recall_at_1=r1,
-                        recall_at_5=r5,
-                        recall_at_10=r10,
-                        latency_ms=latency_ms,
-                    )
-                )
-            except Exception as exc:
-                latency_ms = int((time.perf_counter() - t0) * 1000)
-                case_results.append(
-                    RetrievalCaseResult(
-                        case_id=case.id,
-                        query=case.query,
-                        relevant_chunk_ids=list(case.relevant_chunk_ids),
-                        latency_ms=latency_ms,
-                        error=str(exc),
-                    )
-                )
-                raise EvaluationError(str(exc)) from exc
-
-            latencies.append(float(latency_ms))
-            recalls1.append(r1)
-            recalls5.append(r5)
-            recalls10.append(r10)
-            rrs.append(rr)
-
-        completed = datetime.now(tz=UTC)
-        n = len(case_results)
-        report = DenseRetrievalEvaluationResult(
-            run_id=run_id,
-            dataset_id=dataset_id,
-            case_count=n,
-            corpus_id=index_state.source_corpus_id,
-            chunk_set_id=index_state.source_chunk_set_id,
-            index_id=index_state.current_index_id,
-            embedding_config_hash=build_embedding_config_hash(self.settings),
-            index_config_hash=build_index_config_hash(self.settings),
-            model_id=self.settings.indexing.embedding.model_id,
-            model_revision=self.settings.indexing.embedding.revision,
-            top_k=depth,
-            recall_at_1=sum(recalls1) / n,
-            recall_at_5=sum(recalls5) / n,
-            recall_at_10=sum(recalls10) / n,
-            mrr=sum(rrs) / n,
-            latency_mean_ms=sum(latencies) / n,
-            latency_p50_ms=_percentile(latencies, 0.50),
-            latency_p95_ms=_percentile(latencies, 0.95),
-            cases=case_results,
-            started_at=started,
-            completed_at=completed,
-            metadata={
-                "corpus_name": corpus_name,
-                "dataset_path": str(dataset_path),
+        report = run_retrieval_evaluation(
+            dataset=dataset,
+            method="dense",
+            run_prefix="evalretrieve",
+            requested_depth=depth,
+            retrieve_fn=_retrieve,
+            warmup_query=dataset.cases[0].query if dataset.cases else None,
+            semantic_provenance={
+                "index_id": index_state.current_index_id,
+                "embedding_config_hash": build_embedding_config_hash(self.settings),
+                "index_config_hash": build_index_config_hash(self.settings),
+                "model_id": self.settings.indexing.embedding.model_id,
+                "model_revision": self.settings.indexing.embedding.revision,
+                "top_k": depth,
                 "query_text_strategy": self.settings.dense.query_text.strategy,
                 "query_text_contract": self.settings.dense.query_text.contract_version,
                 "dense_retrieval_config_hash": build_dense_retrieval_config_hash(
                     self.settings
                 ),
             },
+            corpus_id=index_state.source_corpus_id,
+            corpus_name=corpus_name,
+            metadata={
+                "corpus_name": corpus_name,
+                "dataset_path": str(dataset_path),
+            },
         )
 
         if persist:
-            out = output_path
-            if out is None:
-                out_dir = self.settings.paths.eval_results / "dense-retrieval"
-                out_dir.mkdir(parents=True, exist_ok=True)
-                out = out_dir / f"{run_id}.json"
-            else:
-                out = Path(out)
-                out.parent.mkdir(parents=True, exist_ok=True)
-            report = report.model_copy(update={"metadata": {**report.metadata, "result_path": str(out)}})
-            atomic_write_text(out, report.model_dump_json())
+            report = persist_result(
+                report,
+                eval_results_root=self.settings.paths.eval_results,
+                subdirectory="dense-retrieval",
+                output_path=Path(output_path) if output_path else None,
+            )
         return report

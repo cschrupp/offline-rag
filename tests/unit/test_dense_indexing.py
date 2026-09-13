@@ -278,9 +278,11 @@ def test_eval_retrieve_smoke(tmp_path: Path) -> None:
 
     evaluator = DenseRetrievalEvaluator(settings, embedder=embedder)
     report = evaluator.evaluate(dataset_dir, corpus_name="eng", top_k=5)
-    assert report.case_count == 1
-    assert 0.0 <= report.recall_at_5 <= 1.0
-    assert report.index_id == index_report.index_id
+    assert report.population.total_cases == 1
+    assert report.aggregates.recall_at_5.value is not None
+    assert 0.0 <= report.aggregates.recall_at_5.value <= 1.0
+    assert report.semantic_provenance["index_id"] == index_report.index_id
+    assert report.schema_version == "offline-rag-retrieval-eval-result-v1"
 
 
 def test_config_hash_metric_change_reuses_embeddings(tmp_path: Path) -> None:

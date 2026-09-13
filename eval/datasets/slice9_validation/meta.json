@@ -1,0 +1,10 @@
+{
+  "schema_version": "offline-rag-gold-v1",
+  "chunk_set_id": "chunkset_slice9_validation",
+  "corpus_id": "corpus_slice9_validation",
+  "corpus_name": "slice9_validation",
+  "metadata": {
+    "label": "slice9_validation",
+    "description": "Small GoldDataset v1 fixture for Slice 9 harness proof only. Not an ics_modules gold set."
+  }
+}

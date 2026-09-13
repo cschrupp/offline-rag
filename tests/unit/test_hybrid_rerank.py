@@ -405,9 +405,9 @@ def test_gold_in_rerank_pool_diagnostics(tmp_path) -> None:
     evaluator = HybridRerankRetrievalEvaluator(settings, retriever=retriever)
     report = evaluator.evaluate(single, corpus_name="default", top_k=2, persist=True)
     assert report.method == "hybrid-rerank"
-    assert report.cases[0].gold_in_rerank_pool is True
-    assert report.cases[0].input_pool_size == 3
-    assert report.reranker_config_hash.startswith("rrkcfg_")
+    assert report.cases[0].diagnostics["gold_in_rerank_pool"] is True
+    assert report.cases[0].diagnostics["input_pool_size"] == 3
+    assert str(report.semantic_provenance["reranker_config_hash"]).startswith("rrkcfg_")
     assert (settings.paths.eval_results / "hybrid-rerank-retrieval").exists()
 
     # Generation miss: gold not in hybrid prefix.
@@ -437,5 +437,5 @@ def test_gold_in_rerank_pool_diagnostics(tmp_path) -> None:
         encoding="utf-8",
     )
     report2 = evaluator.evaluate(miss, corpus_name="default", top_k=2, persist=False)
-    assert report2.cases[0].gold_in_rerank_pool is False
-    assert report2.cases[0].input_pool_size == 2
+    assert report2.cases[0].diagnostics["gold_in_rerank_pool"] is False
+    assert report2.cases[0].diagnostics["input_pool_size"] == 2

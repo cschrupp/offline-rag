@@ -1,0 +1,2 @@
+{"id": "legacy_one", "query": "legacy binary query", "relevant_chunk_ids": ["chunk_a", "chunk_b"], "relevant_document_ids": ["doc_1"], "metadata": {"ignored": true}}
+{"id": "legacy_empty_chunks", "query": "document only legacy", "relevant_chunk_ids": [], "relevant_document_ids": ["doc_2"]}

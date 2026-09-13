@@ -1,0 +1,5 @@
+{"id": "graded_answer", "query": "What is the purpose of Module 1?", "category": "purpose", "tags": ["module-1", "identity"], "judgments": [{"chunk_id": "chunk_intro_m1", "relevance": 2}, {"chunk_id": "chunk_support_m1", "relevance": 1}]}
+{"id": "multi_positive", "query": "Which chunks support API-12 pressure limits?", "category": "limits", "tags": ["api-12"], "judgments": [{"chunk_id": "chunk_api12_a", "relevance": 1}, {"chunk_id": "chunk_api12_b", "relevance": 1}]}
+{"id": "grade2_focus", "query": "What does the INTRODUCTION say about this unit?", "category": "purpose", "tags": ["intro"], "judgments": [{"chunk_id": "chunk_intro_m1", "relevance": 2}]}
+{"id": "uncategorized_support", "query": "Name a supporting detail for Module 2.", "category": null, "tags": ["module-2"], "judgments": [{"chunk_id": "chunk_support_m2", "relevance": 1}]}
+{"id": "zero_positive", "query": "What is the coffee preference of the author?", "category": "noise", "tags": ["zero-positive"], "judgments": []}

@@ -289,8 +289,8 @@ def test_lexical_eval_smoke(tmp_path: Path) -> None:
     finally:
         evaluator.retriever.close()
     assert eval_report.method == "lexical"
-    assert eval_report.recall_at_1 == pytest.approx(1.0)
-    assert eval_report.mrr == pytest.approx(1.0)
+    assert eval_report.aggregates.recall_at_1.value == pytest.approx(1.0)
+    assert eval_report.aggregates.mrr.value == pytest.approx(1.0)
     assert recall_at_k([relevant], [relevant], 1) == 1.0
     assert mean_reciprocal_rank([relevant], [relevant]) == 1.0
 

@@ -1,50 +1,24 @@
-"""Hybrid-rerank retrieval evaluation using shared Recall@k / MRR helpers."""
+"""Hybrid-rerank retrieval evaluation — Slice 9 common result envelope."""
 
 from __future__ import annotations
 
-import time
-from datetime import UTC, datetime
 from pathlib import Path
 
 from offline_rag.config.models import AppSettings
-from offline_rag.core.ids import dataset_id_from_bytes, new_execution_id
-from offline_rag.dense.evaluate import (
+from offline_rag.evaluation.result import RetrievalEvaluationResultV1
+from offline_rag.evaluation.runner import (
     EvaluationError,
-    first_relevant_rank,
-    load_retrieval_dataset,
-    mean_reciprocal_rank,
-    recall_at_k,
-)
-from offline_rag.domain.indexing import (
-    HybridRerankRetrievalEvaluationResult,
-    RetrievalCaseResult,
+    load_gold_or_raise,
+    persist_result,
+    run_retrieval_evaluation,
 )
 from offline_rag.hybrid.config_hash import build_fusion_config_hash
-from offline_rag.ingestion.io import atomic_write_text
 from offline_rag.rerank.config_hash import build_reranker_config_hash
-from offline_rag.rerank.retrieve import (
-    HybridRerankRetrievalError,
-    HybridRerankRetriever,
-)
-
-
-def _percentile(values: list[float], pct: float) -> float:
-    if not values:
-        return 0.0
-    ordered = sorted(values)
-    if len(ordered) == 1:
-        return ordered[0]
-    rank = (len(ordered) - 1) * pct
-    low = int(rank)
-    high = low if low == len(ordered) - 1 else low + 1
-    if low == high:
-        return ordered[low]
-    weight = rank - low
-    return ordered[low] * (1.0 - weight) + ordered[high] * weight
+from offline_rag.rerank.retrieve import HybridRerankRetriever
 
 
 class HybridRerankRetrievalEvaluator:
-    """Run hybrid-rerank Recall@1/5/10 and MRR against a gold JSONL dataset."""
+    """Run hybrid-rerank metrics against a GoldDataset (native or legacy)."""
 
     def __init__(
         self,
@@ -63,139 +37,67 @@ class HybridRerankRetrievalEvaluator:
         top_k: int = 10,
         output_path: Path | None = None,
         persist: bool = True,
-    ) -> HybridRerankRetrievalEvaluationResult:
-        started = datetime.now(tz=UTC)
-        run_id = new_execution_id(prefix="evalhybrerank")
-        meta, cases, canonical = load_retrieval_dataset(Path(dataset_path))
-        dataset_id = dataset_id_from_bytes(canonical)
-
-        # Warmup excluded from latency.
+    ) -> RetrievalEvaluationResultV1:
+        dataset = load_gold_or_raise(Path(dataset_path))
         input_k = int(self.settings.reranker.input_k)
         depth = min(input_k, max(10, int(top_k)))
-        if cases:
-            try:
-                self.retriever.retrieve(
-                    query=cases[0].query,
-                    corpus_name=corpus_name,
-                    top_k=depth,
-                )
-            except HybridRerankRetrievalError:
-                pass
-
-        case_results: list[RetrievalCaseResult] = []
-        latencies: list[float] = []
-        recalls1: list[float] = []
-        recalls5: list[float] = []
-        recalls10: list[float] = []
-        rrs: list[float] = []
-        dense_index_id = ""
-        lexical_index_id = ""
-        chunk_set_id = meta.chunk_set_id
-        corpus_id = meta.corpus_id
         fus_hash = build_fusion_config_hash(self.settings)
         rrk_hash = build_reranker_config_hash(self.settings)
+        provenance: dict = {
+            "fusion_config_hash": fus_hash,
+            "reranker_config_hash": rrk_hash,
+            "input_k": input_k,
+            "top_k": depth,
+            "dense_index_id": "",
+            "lexical_index_id": "",
+        }
 
-        for case in cases:
-            if not case.relevant_chunk_ids:
-                raise EvaluationError(
-                    f"case {case.id} lacks relevant_chunk_ids; chunk-level metrics are required"
-                )
-            t0 = time.perf_counter()
-            try:
-                result = self.retriever.retrieve(
-                    query=case.query,
-                    corpus_name=corpus_name,
-                    top_k=depth,
-                )
-                if meta.chunk_set_id != str(result.metadata.get("chunk_set_id") or ""):
-                    raise EvaluationError(
-                        "dataset chunk_set_id does not match hybrid-rerank chunk_set_id: "
-                        f"{meta.chunk_set_id} != {result.metadata.get('chunk_set_id')}"
-                    )
-                dense_index_id = result.dense_index_id
-                lexical_index_id = result.lexical_index_id
-                chunk_set_id = str(result.metadata.get("chunk_set_id") or chunk_set_id)
-                retrieved = [candidate.chunk_id for candidate in result.candidates]
-                latency_ms = int((time.perf_counter() - t0) * 1000)
-                pool_ids = result.metadata.get("input_pool_chunk_ids") or []
-                if not isinstance(pool_ids, list):
-                    pool_ids = []
-                pool_id_set = {str(item) for item in pool_ids}
-                gold_in_pool = bool(set(case.relevant_chunk_ids) & pool_id_set)
-                input_pool_size = int(result.metadata.get("input_pool_size") or len(pool_ids))
-                rr = mean_reciprocal_rank(case.relevant_chunk_ids, retrieved)
-                first_rank = first_relevant_rank(case.relevant_chunk_ids, retrieved)
-                r1 = recall_at_k(case.relevant_chunk_ids, retrieved, 1)
-                r5 = recall_at_k(case.relevant_chunk_ids, retrieved, 5)
-                r10 = recall_at_k(case.relevant_chunk_ids, retrieved, 10)
-                case_results.append(
-                    RetrievalCaseResult(
-                        case_id=case.id,
-                        query=case.query,
-                        relevant_chunk_ids=list(case.relevant_chunk_ids),
-                        retrieved_chunk_ids=retrieved,
-                        first_relevant_rank=first_rank,
-                        reciprocal_rank=rr,
-                        recall_at_1=r1,
-                        recall_at_5=r5,
-                        recall_at_10=r10,
-                        latency_ms=latency_ms,
-                        gold_in_rerank_pool=gold_in_pool,
-                        input_pool_size=input_pool_size,
-                    )
-                )
-            except Exception as exc:
-                latency_ms = int((time.perf_counter() - t0) * 1000)
-                case_results.append(
-                    RetrievalCaseResult(
-                        case_id=case.id,
-                        query=case.query,
-                        relevant_chunk_ids=list(case.relevant_chunk_ids),
-                        latency_ms=latency_ms,
-                        error=str(exc),
-                    )
-                )
-                raise EvaluationError(str(exc)) from exc
-
-            latencies.append(float(latency_ms))
-            recalls1.append(r1)
-            recalls5.append(r5)
-            recalls10.append(r10)
-            rrs.append(rr)
-
-        completed = datetime.now(tz=UTC)
-        report = HybridRerankRetrievalEvaluationResult(
-            run_id=run_id,
-            dataset_id=dataset_id,
-            case_count=len(cases),
-            corpus_id=corpus_id,
-            chunk_set_id=chunk_set_id,
-            dense_index_id=dense_index_id,
-            lexical_index_id=lexical_index_id,
-            fusion_config_hash=fus_hash,
-            reranker_config_hash=rrk_hash,
-            input_k=input_k,
-            top_k=depth,
-            recall_at_1=sum(recalls1) / len(recalls1) if recalls1 else 0.0,
-            recall_at_5=sum(recalls5) / len(recalls5) if recalls5 else 0.0,
-            recall_at_10=sum(recalls10) / len(recalls10) if recalls10 else 0.0,
-            mrr=sum(rrs) / len(rrs) if rrs else 0.0,
-            latency_mean_ms=sum(latencies) / len(latencies) if latencies else 0.0,
-            latency_p50_ms=_percentile(latencies, 0.50),
-            latency_p95_ms=_percentile(latencies, 0.95),
-            cases=case_results,
-            started_at=started,
-            completed_at=completed,
-            metadata={},
-        )
-
-        if persist:
-            out = Path(output_path) if output_path else (
-                Path(self.settings.paths.eval_results)
-                / "hybrid-rerank-retrieval"
-                / f"{run_id}.json"
+        def _retrieve(case) -> tuple[list[str], dict]:
+            result = self.retriever.retrieve(
+                query=case.query, corpus_name=corpus_name, top_k=depth
             )
-            out.parent.mkdir(parents=True, exist_ok=True)
-            atomic_write_text(out, report.model_dump_json())
-            report.metadata["result_path"] = str(out)
+            if dataset.meta.chunk_set_id != str(result.metadata.get("chunk_set_id") or ""):
+                raise EvaluationError(
+                    "dataset chunk_set_id does not match hybrid-rerank chunk_set_id: "
+                    f"{dataset.meta.chunk_set_id} != {result.metadata.get('chunk_set_id')}"
+                )
+            provenance["dense_index_id"] = result.dense_index_id
+            provenance["lexical_index_id"] = result.lexical_index_id
+            pool_ids = result.metadata.get("input_pool_chunk_ids") or []
+            if not isinstance(pool_ids, list):
+                pool_ids = []
+            pool_id_set = {str(item) for item in pool_ids}
+            gold_in_pool = bool(case.positive_chunk_ids() & pool_id_set)
+            input_pool_size = int(result.metadata.get("input_pool_size") or len(pool_ids))
+            return [c.chunk_id for c in result.candidates], {
+                "dense_index_id": result.dense_index_id,
+                "lexical_index_id": result.lexical_index_id,
+                "gold_in_rerank_pool": gold_in_pool,
+                "input_pool_size": input_pool_size,
+                "input_pool_chunk_ids": [str(item) for item in pool_ids],
+                "returned_count": len(result.candidates),
+            }
+
+        report = run_retrieval_evaluation(
+            dataset=dataset,
+            method="hybrid-rerank",
+            run_prefix="evalhybrerank",
+            requested_depth=depth,
+            retrieve_fn=_retrieve,
+            warmup_query=dataset.cases[0].query if dataset.cases else None,
+            semantic_provenance=provenance,
+            corpus_id=dataset.meta.corpus_id,
+            corpus_name=corpus_name,
+            metadata={
+                "corpus_name": corpus_name,
+                "dataset_path": str(dataset_path),
+            },
+        )
+        if persist:
+            report = persist_result(
+                report,
+                eval_results_root=self.settings.paths.eval_results,
+                subdirectory="hybrid-rerank-retrieval",
+                output_path=Path(output_path) if output_path else None,
+            )
         return report

@@ -48,7 +48,6 @@ def test_subcommand_help(argv: list[str], label: str) -> None:
     "argv",
     [
         ["eval", "run"],
-        ["eval", "compare"],
     ],
 )
 def test_placeholders_terminate_cleanly(argv: list[str], capsys: pytest.CaptureFixture[str]) -> None:
@@ -57,6 +56,26 @@ def test_placeholders_terminate_cleanly(argv: list[str], capsys: pytest.CaptureF
     err = capsys.readouterr().err
     assert "not implemented" in err
 
+
+def test_eval_compare_requires_result_paths() -> None:
+    with pytest.raises(SystemExit) as exc:
+        main(["eval", "compare"])
+    assert exc.value.code == 2
+
+
+def test_eval_compare_rejects_missing_files(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    code = main(
+        [
+            "eval",
+            "compare",
+            "--a",
+            str(tmp_path / "missing_a.json"),
+            "--b",
+            str(tmp_path / "missing_b.json"),
+        ]
+    )
+    assert code == 1
+    assert "eval compare:" in capsys.readouterr().err
 
 def test_doctor_ok_with_base_config(capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(REPO_ROOT)
