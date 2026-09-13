@@ -1,6 +1,6 @@
 # Project Description — OfflineRAG
 
-**Implementation status:** Slices 0–8 (contracts, Docling ingest, structure-aware chunking, dense + lexical BM25 + hybrid RRF + cross-encoder hybrid-rerank + context expansion + grounded local generation) are implemented. Later sections describe the full target system; treat agentic recovery/UI/semantic answer-quality metrics as planned unless marked done in `ROADMAP.md`.
+**Implementation status:** Slices 0–9 are implemented (Slice 9 = retrieval evaluation harness). Milestone 4 offline gold authoring starts at Slice **9A**; Slice 10 generation/citation semantics and agentic recovery remain planned. See `ROADMAP.md` and `docs/milestone4_offline_gold_authoring.md`.
 
 ## 1. Working title
 
@@ -243,7 +243,7 @@ If evidence quality is below a configured threshold, the system may rewrite/deco
 
 ### FR-13 Evaluation
 
-The system shall provide a reusable evaluation runner for retrieval, generation, citation, abstention, security, and performance metrics.
+The system shall provide a reusable evaluation runner for retrieval, generation, citation, abstention, security, and performance metrics. Retrieval quality evaluation (Slice 9) consumes human-adjudicated GoldDataset v1 artifacts. Private-corpus gold construction (Milestone 4) shall use a local/privacy-bounded authoring workflow in which a local model may assist but humans adjudicate final labels; cloud annotation services are not required.
 
 ### FR-14 Experiment registry
 

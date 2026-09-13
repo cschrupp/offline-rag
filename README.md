@@ -44,7 +44,7 @@ The project therefore treats **evaluation as a first-class subsystem**, not as a
 | Generation runtime | External local OpenAI-compatible endpoint | Ollama on the host is the default; llama.cpp/vLLM remain swappable alternatives |
 | API | FastAPI | Local API boundary between UI and RAG engine |
 | Guardrails | Deterministic controls + optional NeMo Guardrails | Retrieval security, citation validation, prompt-injection resistance |
-| Evaluation | Custom harness + optional Ragas/DeepEval adapters | IR metrics, answer metrics, citation metrics, abstention, security, performance |
+| Evaluation | Custom harness (Slice 9) + planned local gold authoring (Milestone 4) | IR metrics, serialized experiments, `eval compare`; optional public IR adapters later. DeepEval/Ragas are not required architecture. |
 
 ## High-level architecture
 
@@ -153,6 +153,10 @@ The goal is to be able to make evidence-backed statements such as:
 
 ## Evaluation dimensions
 
+### Offline gold authoring (Milestone 4)
+
+Private corpora are labeled through a planned fully local workflow: source-seeded question proposal, multi-retriever pooling, blind local pre-labeling, and human review before GoldDataset v1 finalization. See [`docs/milestone4_offline_gold_authoring.md`](docs/milestone4_offline_gold_authoring.md). Next implementation decision: Slice **9A**.
+
 ### Retrieval
 
 - Recall@1 / @5 / @10
@@ -161,6 +165,7 @@ The goal is to be able to make evidence-backed statements such as:
 - nDCG@k
 - Hit rate
 - Per-query-category performance
+- `offline-rag eval compare` on serialized retrieval-eval artifacts
 
 ### Generation
 
@@ -337,9 +342,10 @@ Use public, redistributable technical documents rather than proprietary material
 
 ## Project status
 
-**Phase:** Milestone 3 — Slices 0–8 done (retrieval ladder + grounded local generation).
+**Phase:** Milestone 4 planning — Slices 0–9 done; next decision track is **Slice 9A** (gold authoring contracts + privacy boundary).
 
-Working local path: ingest → chunk → index / index lexical → retrieve ladder → `query` → `eval query`.
-Still deferred: semantic answer/citation quality metrics (Milestone 4), agentic recovery (Milestone 5).
+Working local path: ingest → chunk → index / index lexical → retrieve ladder → `query` → `eval retrieve` / `eval compare` → `eval query`.
 
-See `ROADMAP.md` and `docs/slice8_grounded_generation.md`.
+Still deferred: offline gold authoring CLI (Milestone 4 / 9A–9H), semantic answer/citation quality metrics (Milestone 5 / Slice 10), agentic recovery (Milestone 6).
+
+See `ROADMAP.md`, `docs/milestone4_offline_gold_authoring.md`, and `docs/slice8_grounded_generation.md`.

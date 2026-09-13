@@ -158,20 +158,21 @@ offline-rag/
 │       │   └── offline_policy.py
 │       │
 │       ├── evaluation/
-│       │   ├── dataset.py
+│       │   ├── gold.py
+│       │   ├── metrics.py
+│       │   ├── result.py
 │       │   ├── runner.py
-│       │   ├── experiment.py
 │       │   ├── compare.py
-│       │   ├── metrics/
-│       │   │   ├── retrieval.py
-│       │   │   ├── generation.py
-│       │   │   ├── citation.py
-│       │   │   ├── abstention.py
-│       │   │   ├── security.py
-│       │   │   └── performance.py
-│       │   └── judges/
-│       │       ├── base.py
-│       │       └── local_llm.py
+│       │   └── ...                    # Slice 9 retrieval-eval harness
+│       │
+│       ├── gold_authoring/            # Milestone 4 (planned; starts Slice 9A)
+│       │   ├── models.py
+│       │   ├── contracts.py
+│       │   ├── propose.py
+│       │   ├── pooling.py
+│       │   ├── prelabel.py
+│       │   ├── review.py
+│       │   └── finalize.py
 │       │
 │       ├── observability/
 │       │   ├── logging.py
@@ -271,7 +272,11 @@ Owns security policies that should remain independent from the generator prompt 
 
 ### `evaluation/`
 
-Owns benchmark datasets, metrics, experiment tracking, comparison, and judge adapters. It may call production services, but production services must not depend on evaluator-specific logic.
+Owns finished GoldDataset loading/validation, retrieval metrics, experiment serialization, and comparison (`eval retrieve` / `eval compare`). It may call production retrieval services, but production services must not depend on evaluator-specific logic. Silver/authoring drafts are not gold.
+
+### `gold_authoring/` (Milestone 4 — planned)
+
+Owns the privacy-bounded local gold construction workflow (propose → pool → prelabel → review → finalize). Separate from `evaluation/` and from production generation prompt contracts. Canonical plan: `docs/milestone4_offline_gold_authoring.md`.
 
 ### `observability/`
 

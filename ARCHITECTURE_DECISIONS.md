@@ -193,3 +193,13 @@ The host/local environment owns generation through Ollama by default.
 **Reasoning:** A small, local-friendly embedding model keeps provisioning and offline runtime credible while remaining swappable. Separating FakeEmbedder from the portfolio model prevents CI from implying quality. Plain-v1 keeps embedding inputs auditable and avoids silent prompt-style decoration.
 
 **Consequence:** Real quality runs require `offline-rag provision embedding` (or equivalent local directory). Runtime loads with `local_files_only=True` and never downloads.
+
+---
+
+## ADR-021 — Offline gold authoring is human-adjudicated and privacy-bounded
+
+**Decision:** After Slice 9's retrieval evaluation harness, Milestone 4 adds a separate `gold_authoring` subsystem that builds private-corpus GoldDataset v1 artifacts using an approved local LLM as an annotation assistant. Final relevance labels require explicit human approval. Silver/authoring drafts are never accepted by `eval retrieve` as gold. Authoring does not reuse Slice 8 production generation prompt contracts or change `gencfg_` / grounded-answer defaults. Authoring endpoints fail closed unless explicitly allowlisted; default network policy is `localhost_only`, with optional later `private_network` wording that must not claim single-machine isolation when LAN inference is used.
+
+**Reasoning:** Private technical corpora cannot be uploaded to cloud annotation or evaluation services without breaking the product's privacy identity. Automating proposal/pooling/pre-labeling makes gold construction practical, but model grades must not become ground truth. Keeping authoring separate from evaluation and from production generation prevents contract contamination and silent promotion of experimental retrieval/generation settings.
+
+**Consequence:** Implementation proceeds strictly 9A→9H, starting with contracts and privacy boundary (9A) before question generation. DeepEval/Ragas/Giskard/NotebookLM are not required architecture. Promotion of Arm H / query-prompt / provenance-v2 remains an explicit later decision (9H for retrieval contracts; Slice 10 for provenance-v2). Canonical plan: `docs/milestone4_offline_gold_authoring.md`.

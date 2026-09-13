@@ -3,9 +3,11 @@
 - `datasets/` — gold / fixture datasets
   - `dense_smoke/` — legacy-compatible smoke placeholder (`schema_version: 1` + `relevant_chunk_ids`)
   - `slice9_validation/` — small native GoldDataset v1 harness fixture (not an `ics_modules` gold set)
+  - future production gold (e.g. `ics_modules_v1/`) — created via Milestone 4 `offline-rag gold …` finalization; do not commit private proprietary labels to a public remote
 - `baselines/` — frozen baseline metric artifacts (future)
 - `results/` — machine-readable retrieval-eval results by method subdirectory
 - `reports/` — generated human-readable comparisons (optional / future)
+- authoring drafts / silver runs — live under local data paths once Slice 9A+ exists; **not** gold and not loadable by `eval retrieve`
 
 ## Retrieval eval (Slice 9)
 
@@ -38,5 +40,19 @@ Canonical cutoffs `k ∈ {1,5,10}` for Recall / Precision / HitRate / nDCG, plus
 Results use `offline-rag-retrieval-eval-result-v1` (shared envelope + method diagnostics). Comparisons use `offline-rag-retrieval-eval-comparison-v1`.
 
 `offline-rag eval query` remains Slice 8 operational generation evaluation and is separate from Slice 9 retrieval-quality metrics.
+
+## Offline gold authoring (Milestone 4 — planned)
+
+Canonical plan: [`docs/milestone4_offline_gold_authoring.md`](../docs/milestone4_offline_gold_authoring.md).
+
+Next decision track: **Slice 9A** (authoring contracts + `localhost_only` privacy boundary) before question generation.
+
+Intended CLI (exact surface locked in 9A+):
+
+```bash
+offline-rag gold propose|pool|prelabel|review|finalize|status
+```
+
+Silver/authoring artifacts (`offline-rag-gold-authoring-v1`) are distinct from GoldDataset v1. Only human-finalized cases are exported to gold. Local LLM labels never become gold automatically. Authoring must not reuse Slice 8 production generation prompt contracts.
 
 Do not commit private/proprietary evaluation data to a public repository.

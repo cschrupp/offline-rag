@@ -1,6 +1,6 @@
 # Portfolio Demo Plan
 
-**Current readiness:** Through Slice 8 you can demo ingest → chunk → dense and lexical index → retrieval ladder → `hybrid-rerank-context` → grounded `query` / `eval query`. UI/dashboard remains later.
+**Current readiness:** Through Slice 9 you can demo ingest → chunk → dense and lexical index → retrieval ladder → `hybrid-rerank-context` → grounded `query` / `eval query`, plus `eval retrieve` / `eval compare` on GoldDataset v1 fixtures. Offline gold authoring (Milestone 4) and UI/dashboard remain later; next implementation decision is Slice **9A**.
 
 ## Demo objective
 
@@ -13,6 +13,10 @@ Show, in a few minutes, that OfflineRAG is not merely “chat with PDFs.” The 
 Open with one sentence:
 
 > The complete RAG path runs locally. OfflineRAG is one container for document intelligence, retrieval, evaluation, and UI; generation is served separately by a local Ollama model, with no cloud API required.
+
+When Milestone 4 lands, add:
+
+> Private-corpus gold can also be authored locally: the model assists; humans adjudicate; documents need not be uploaded to an external evaluation service.
 
 Do not spend the demo on installation details.
 

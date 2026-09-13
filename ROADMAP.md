@@ -34,7 +34,7 @@
 
 **Release criterion:** measured comparison of dense, BM25, hybrid, hybrid+reranker, and +context assembly.
 
-**Status:** Slice 7 hybrid-rerank-context implemented. Ablation report still open.
+**Status:** Slice 7 hybrid-rerank-context implemented. Ablation report deferred until Milestone 4 gold + Slice 9H comparisons.
 
 ## Milestone 3 — Grounded local QA
 
@@ -77,9 +77,9 @@ Retrieval/context inputs were identical across the generation A/B.
 `model-query-prompt-v1`, `exclude-heading-only-v1`, and
 `prompt-grounded-provenance-v2` are validated experimental candidates,
 not defaults. Historical/base contracts remain unchanged pending broader
-retrieval/generation evidence under the Slice 9 harness (and Slice 10
-for generation semantics). `prompt-grounded-v1` remains the generation
-control/default.
+retrieval evidence under Milestone 4 gold (Slice 9H) and generation
+semantics under Milestone 5 / Slice 10. `prompt-grounded-v1` remains the
+generation control/default.
 
 Reproduce the smoke profile by composing existing orthogonal overlays
 (`base` + `dense_no_heading_peers` + `generation_provenance_prompt`); do
@@ -89,23 +89,80 @@ See [`docs/memory_query_heading_provenance.md`](docs/memory_query_heading_proven
 for the detailed retrieval-heading, query-contract, and
 generation-provenance investigation and A/B results.
 
-## Milestone 4 — Evaluation platform
+### Slice 9 — Retrieval evaluation harness v1 (complete)
 
-- [x] deterministic retrieval metrics / GoldDataset v1 (Slice 9)
-- [x] shared retrieval-eval result artifact + `eval compare` (Slice 9)
-- [x] category aggregates on retrieval-eval results (Slice 9)
+- [x] GoldDataset v1 (`offline-rag-gold-v1`)
+- [x] deterministic retrieval metrics + eligibility rules
+- [x] shared `offline-rag-retrieval-eval-result-v1` artifacts
+- [x] `offline-rag eval compare` (`offline-rag-retrieval-eval-comparison-v1`)
+- [x] category aggregates; method diagnostics retained
+
+**Completed at:** commit `9073c37`. See `eval/README.md` and `EVALUATION_HARNESS.md`.
+
+---
+
+## Milestone 4 — Offline Gold Authoring & Retrieval Benchmarking
+
+**Next decision track:** Slice **9A** (contracts + privacy boundary) before any question-generation implementation.
+
+**Canonical plan:** [`docs/milestone4_offline_gold_authoring.md`](docs/milestone4_offline_gold_authoring.md)
+
+### Objective
+
+Build a practical, fully local workflow for constructing human-adjudicated
+retrieval gold from private corpora, then use that gold with the Slice 9
+harness for evidence-based retrieval comparisons and promotion decisions.
+
+Privacy: private source text must not require cloud models or external
+annotation services. The local LLM is an annotation assistant, not ground truth.
+
+### Slices
+
+- [ ] **9A** Gold authoring contracts & privacy boundary (`localhost_only`, silver artifact, authoring generator config)
+- [ ] **9B** Deterministic source sampling & local question proposal
+- [ ] **9C** Multi-retriever candidate pooling
+- [ ] **9D** Local blind double-pass relevance pre-labeling
+- [ ] **9E** Local human review UI + GoldDataset v1 finalization
+- [ ] **9F** ~20-case `ics_modules` authoring pilot + workflow freeze
+- [ ] **9G** ~100–150 case production gold + development/held-out freeze
+- [ ] **9H** Retrieval A/B (`eval retrieve` / `eval compare`) + promotion decision
+
+### Target CLI (surface locked during 9A+)
+
+```text
+offline-rag gold propose | pool | prelabel | review | finalize | status
+```
+
+### Release criterion
+
+A reviewer can refresh a private-corpus retrieval benchmark without sending
+source text outside an approved local/private environment, then run
+comparable retrieval evaluations and make an explicit promotion decision.
+
+**Status:** planning complete; implementation starts at Slice 9A. Slice 9
+measurement platform is already available. Do not promote Arm H,
+`model-query-prompt-v1`, or `prompt-grounded-provenance-v2` during
+authoring-pipeline work; do not start Slice 10 inside this milestone.
+
+---
+
+## Milestone 5 — Generation and citation semantic evaluation
+
 - [ ] generation metrics (Slice 10)
-- [ ] citation metrics (Slice 10)
-- [ ] negative set
-- [ ] synthetic expansion
-- [ ] experiment registry
-- [ ] regression benchmark subset / large corpus gold labeling
+- [ ] citation semantic metrics (Slice 10)
+- [ ] evidence for or against promoting `prompt-grounded-provenance-v2`
+- [ ] negative / abstention set expansion (as needed)
+- [ ] optional local judge adapters (secondary; not required architecture)
 
-**Release criterion:** one command generates a comparable experiment artifact and report.
+**Release criterion:** generation and citation quality are measured separately
+from retrieval, with deterministic checks preferred where applicable.
 
-**Status:** Slice 9 retrieval measurement platform done (`eval retrieve` + `eval compare`). Ablation reports and generation/citation semantic metrics remain open.
+**Status:** blocked on Milestone 4 gold where generation evaluation needs
+stable retrieval evidence; Slice 10 contracts not started.
 
-## Milestone 5 — Agentic recovery and security
+---
+
+## Milestone 6 — Agentic recovery and security
 
 - [ ] LangGraph state machine
 - [ ] bounded query rewrite/retry
@@ -115,7 +172,7 @@ generation-provenance investigation and A/B results.
 
 **Release criterion:** agentic recovery demonstrates measured benefit and adversarial test results are documented.
 
-## Milestone 6 — Performance and UI
+## Milestone 7 — Performance and UI
 
 - [ ] stage latency instrumentation
 - [ ] memory/VRAM metrics
@@ -129,7 +186,7 @@ generation-provenance investigation and A/B results.
 
 **Release criterion:** a reviewer can interactively compare retrieval modes and inspect evidence flow.
 
-## Milestone 7 — Portfolio release
+## Milestone 8 — Portfolio release
 
 - [ ] public demo corpus instructions
 - [ ] benchmark methodology page
@@ -141,6 +198,7 @@ generation-provenance investigation and A/B results.
 - [ ] strict-offline verification report
 - [ ] known limitations
 - [ ] CI regression checks
+- [ ] optional public IR benchmark adapters (BEIR / `ir_datasets`) after private gold workflow works
 
 **Release criterion:** repository supports all public quality/security/performance claims with reproducible evidence.
 
@@ -156,4 +214,6 @@ Only prioritize these when failures justify them:
 - document version diffing;
 - incremental indexing GC / lifecycle tooling;
 - corpus-level access policies;
-- GraphRAG / knowledge graph if relation-heavy benchmarks warrant it.
+- GraphRAG / knowledge graph if relation-heavy benchmarks warrant it;
+- synthetic gold expansion beyond the local authoring workflow;
+- experiment registry UI beyond serialized eval artifacts.

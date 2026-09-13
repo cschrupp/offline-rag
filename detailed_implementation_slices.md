@@ -2,7 +2,7 @@
 
 This document converts the architecture into incremental, testable implementation slices. Each slice should leave the repository in a working state. Avoid building multiple major layers simultaneously: the evaluation harness depends on being able to attribute improvements and regressions to individual changes.
 
-**Implementation status:** Slices 0–8 are implemented. Planned next: Milestone 4 semantic answer/citation quality evaluation and agentic recovery. Authoritative notes: `docs/slice0_contracts.md` … `docs/slice8_grounded_generation.md`.
+**Implementation status:** Slices 0–9 are implemented (Slice 9 = retrieval evaluation harness v1 at `9073c37`). **Next:** Milestone 4 Offline Gold Authoring, starting with **Slice 9A** (contracts + privacy boundary). Then Slices 9B–9H, then Milestone 5 / Slice 10 generation-citation semantics. Canonical Milestone 4 plan: `docs/milestone4_offline_gold_authoring.md`. Authoritative notes: `docs/slice0_contracts.md` … `docs/slice8_grounded_generation.md`, `eval/README.md`.
 
 ---
 
@@ -478,7 +478,30 @@ Running two experiment configs yields directly comparable machine-readable and h
 
 ---
 
+# Slices 9A–9H — Offline gold authoring & retrieval benchmarking (Milestone 4)
+
+**Status:** planned. Next decision track: **9A**.
+
+Full plan: [`docs/milestone4_offline_gold_authoring.md`](docs/milestone4_offline_gold_authoring.md).
+
+| Slice | Focus |
+|---|---|
+| 9A | Authoring contracts, silver artifact, localhost-only privacy boundary |
+| 9B | Deterministic sampling + local question proposal |
+| 9C | Multi-retriever candidate pooling |
+| 9D | Blind double-pass local pre-labeling |
+| 9E | Human review + GoldDataset v1 finalization |
+| 9F | ~20-case `ics_modules` pilot |
+| 9G | ~100–150 case production gold + dev/test freeze |
+| 9H | Retrieval A/B + explicit promotion decision |
+
+Do not place authoring into `evaluation/gold.py` beyond final gold validation/export. Do not start Slice 10 inside Milestone 4. Do not promote experimental retrieval/generation contracts during authoring-pipeline implementation.
+
+---
+
 # Slice 10 — Evaluation harness v2: generation and citation evaluation
+
+**Status:** planned (Milestone 5). Depends on Milestone 4 private gold where stable retrieval evidence is required; provenance-v2 promotion evidence is in scope here, not in Slice 9H.
 
 ## Objective
 

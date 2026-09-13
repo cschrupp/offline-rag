@@ -1,0 +1,334 @@
+# Milestone 4 — Offline Gold Authoring & Retrieval Benchmarking
+
+**Position:** after Slice 9 (Evaluation Harness v1), before Slice 10 (Generation/Citation Semantic Evaluation).
+
+**Next implementation decision track:** Slice 9A — Gold Authoring Contracts & Privacy Boundary.
+
+Do not jump to question generation until silver-authoring contracts and the local-only network policy are locked.
+
+---
+
+## Status entering milestone
+
+- Slices 0–8 implemented.
+- Slice 8 validated end-to-end.
+- Slice 9 evaluation harness complete at commit `9073c37`.
+- `GoldDataset v1`, deterministic retrieval metrics, serialized evaluation artifacts, and `offline-rag eval compare` are available.
+- `model-query-prompt-v1`, `exclude-heading-only-v1` / Arm H, and `prompt-grounded-provenance-v2` remain validated experimental candidates.
+- No experimental contracts are promoted to `base.yaml`.
+
+---
+
+## Objective
+
+Build a practical, repeatable, fully local workflow for constructing high-quality retrieval gold datasets from private technical corpora.
+
+Privacy guarantee:
+
+> **Private source documents and their derived text must not require transmission to a cloud model or external annotation service in order to build, update, or evaluate a gold dataset.**
+
+Gold construction should be substantially automated by a local LLM, while final relevance judgments remain human-adjudicated.
+
+Target workflow shift:
+
+```text
+manual invent questions → manual corpus search → manual JSONL editing
+```
+
+into:
+
+```text
+sample source material
+  → locally propose questions
+  → automatically pool candidate evidence
+  → locally pre-grade candidates
+  → human review
+  → finalize GoldDataset v1
+```
+
+The local model is an **annotation assistant**, not the source of ground truth.
+
+---
+
+## Design principles
+
+### 1. Gold is human-adjudicated
+
+The local LLM may propose questions, categories/tags, candidate chunks, pre-grades `0/1/2`, duplicates, ambiguity flags, and missed-positive searches.
+
+It must never automatically convert its own judgments into final gold labels. Export to GoldDataset v1 requires explicit human approval.
+
+### 2. Source-seeded question generation
+
+Questions are generated from authoritative corpus content, not from retrieval failures alone:
+
+```text
+ChunkSet → representative sampling → source chunk + DOCUMENT/SECTION context
+  → local LLM → candidate user questions
+```
+
+### 3. Multi-retriever pooling
+
+For every proposed query, build a high-recall candidate pool across materially different existing retrieval paths (lexical, dense baseline, dense model-query-prompt, Arm H dense, hybrid, hybrid-rerank), plus the source seed and neighborhood chunks. Union/deduplicate by `chunk_id`. Do not modify retrieval algorithms; use existing indexes/overlays.
+
+### 4. Blind pre-labeling
+
+When the local model judges candidates, hide retrieval method, score, rank, and source-seed identity. Present DOCUMENT / SECTION / chunk text only. Shuffle candidate order deterministically.
+
+### 5. Two-pass local judging
+
+Grade each pool at least twice with different deterministic orders using the GoldDataset v1 scale (`2` / `1` / `0`). Record agreement/disagreement. Neither pass becomes gold automatically.
+
+### 6. Silver and gold are different artifacts
+
+`SilverCase` / authoring drafts hold proposals, pools, model passes, and human status. Only reviewed cases export to `GoldDataset v1`. Silver artifacts must not be accepted by `offline-rag eval retrieve` as gold.
+
+### 7. Gold remains retrieval-model independent
+
+Final GoldDataset v1 retains only Slice 9 semantics (`query`, `category`, `tags`, chunk judgments). No model rationale, retrieval scores, ranks, methods, or LLM confidence in gold semantic identity.
+
+### 8. Gold authoring ≠ production generation
+
+Do not reuse Slice 8 grounded-answer prompt contracts for authoring. Separate authoring contracts/config. Do not alter `gencfg_`, `grounded-answer-v1`, `prompt-grounded-v1`, or `prompt-grounded-provenance-v2` via authoring work.
+
+---
+
+## Privacy contract
+
+### Default security rule
+
+Authoring LLM endpoints must be explicitly approved local/private endpoints.
+
+No automatic fallback to OpenAI, Google, Anthropic, Hugging Face hosted inference, DeepEval/Ragas cloud defaults, or external annotation APIs.
+
+Missing or unauthorized endpoint: **fail closed**.
+
+### Privacy terminology
+
+| Mode | Meaning | Portfolio wording |
+|---|---|---|
+| Strict single-machine | `localhost` / `127.0.0.1` only | Documents never leave the machine. |
+| Private-LAN | Approved model server on another privately controlled host | Documents never leave the local/private environment. |
+
+Do not claim literal single-machine isolation when inference occurs over LAN.
+
+Conceptual config:
+
+```text
+authoring.network_policy = localhost_only   # Slice 9A
+# private_network optional later if useful
+```
+
+---
+
+## Dependency policy
+
+Do **not** make DeepEval, Ragas, Giskard, NotebookLM, or another evaluation framework a required architectural dependency.
+
+OfflineRAG already owns parsing through comparison. Useful ideas may be adopted internally.
+
+Optional later: export/import to a **locally hosted** Label Studio (or similar). Must remain optional; the canonical workflow works without external hosted services.
+
+Optional later (after private gold works): public benchmark adapters (BEIR / `ir_datasets`) as a secondary track — never a replacement for private-corpus gold authoring.
+
+---
+
+## Package and CLI boundary
+
+```text
+src/offline_rag/gold_authoring/   # authoring subsystem (create silver → export gold)
+src/offline_rag/evaluation/       # Slice 9 consume finished GoldDataset v1
+```
+
+Do not place authoring behavior into `evaluation/gold.py` beyond final GoldDataset-v1 validation/export.
+
+Proposed CLI namespace:
+
+```text
+offline-rag gold propose
+offline-rag gold pool
+offline-rag gold prelabel
+offline-rag gold review
+offline-rag gold finalize
+offline-rag gold status
+```
+
+Exact command surface is locked during Slice 9A+ design. Intended end-user flow:
+
+```bash
+offline-rag gold propose --corpus ics_modules --count 20
+offline-rag gold pool --draft <authoring-run>
+offline-rag gold prelabel --draft <authoring-run>
+offline-rag gold review --draft <authoring-run>
+offline-rag gold finalize --draft <authoring-run> --output eval/datasets/ics_modules_v1
+```
+
+---
+
+## Authoring artifact
+
+Versioned local artifact (not GoldDataset v1):
+
+```text
+offline-rag-gold-authoring-v1
+```
+
+Preserves enough state to resume human review without regenerating: run identity, corpus/`chunk_set_id`, authoring contracts, generator identity, sampling config, draft cases (seed, proposals, pool, model passes A/B, disagreement, human status, human final judgments).
+
+Authoring-only metadata does not enter GoldDataset semantic identity.
+
+---
+
+## Implementation order (strict)
+
+```text
+9A contracts + privacy boundary
+  → 9B source sampling + local query proposals
+  → 9C multi-retriever pooling
+  → 9D blind double-pass pre-labeling
+  → 9E human review + GoldDataset finalization
+  → 9F 20-case ics_modules pilot + workflow assessment / freeze
+  → 9G ~100–150 case production gold + dev/test freeze
+  → 9H retrieval A/B + promotion decision
+  → Slice 10 generation/citation semantic evaluation
+```
+
+---
+
+## Slice 9A — Gold Authoring Contracts & Privacy Boundary
+
+**Goal:** Create the authoring subsystem boundary without generating a real dataset yet.
+
+**Implement:** `GoldAuthoringConfig`, silver/draft case models, candidate/model/human review states, `GoldAuthoringRun`; contracts `question-proposal-v1`, `relevance-prelabel-v1`, `offline-rag-gold-authoring-v1`; authoring-specific local generator configuration (not production generation semantics); explicit allowed endpoints + `localhost_only` network policy.
+
+**Acceptance:** Authoring package instantiates independently of retrieval evaluation; unauthorized endpoint fails before text transmission; production generation contracts/hashes unchanged; GoldDataset v1 unchanged; `base.yaml` retrieval/generation defaults unchanged.
+
+---
+
+## Slice 9B — Deterministic Source Sampling & Local Question Proposal
+
+**Goal:** Automatically create useful candidate questions from the authoritative ChunkSet.
+
+Seedable sampling across documents/sections/content types/lengths; prefer eligible prose/mixed children (avoid heading-only-dominated sources). Local model returns structured question + proposed category/tags + authoring-only rationale. Reject empty/duplicate/quote-heavy/"the passage above"/unanswerable-from-source proposals.
+
+**Acceptance:** Fixed `chunk_set_id` + sampling seed + authoring contract + local model records reproducible proposal provenance. No proposal enters GoldDataset automatically.
+
+---
+
+## Slice 9C — Multi-Retriever Candidate Pooling
+
+**Goal:** High-recall candidate pools before adjudication.
+
+Initial recommended pool sources: lexical plain-v1; dense baseline; dense `model-query-prompt-v1`; Arm H dense; hybrid; hybrid-rerank; plus source seed and neighborhoods. Union by `chunk_id`; keep method/rank diagnostics hidden from judges where possible.
+
+**Acceptance:** Each draft query yields a deterministic pool with `chunk_id`, DOCUMENT/SECTION provenance, and exact chunk text. No candidate is relevant merely because many retrievers found it.
+
+---
+
+## Slice 9D — Local Blind Relevance Pre-Labeling
+
+**Goal:** Reduce human workload without delegating gold truth.
+
+Blind shuffled candidates; structured `0|1|2` + short rationale; double pass with different orders; disagreement/source-chunk-as-0/competing-grade-2 cases become review priorities. All final positives still require human acceptance.
+
+---
+
+## Slice 9E — Local Human Review & Finalization
+
+**Goal:** Make adjudication realistic without hand-editing JSONL.
+
+Preferred: `offline-rag gold review --draft <run>` → localhost-only browser UI for accept/edit/reject query, category/tags, 0/1/2 labels, disagreement inspection, add missed chunks, mark complete. Finalize only reviewed cases to GoldDataset v1 via Slice 9 writer/hash semantics. Optional Label Studio adapter only after native workflow works.
+
+---
+
+## Slice 9F — 20-Case Authoring Pilot
+
+**Goal:** Validate the workflow on `ics_modules` (~20 accepted cases after generating more proposals).
+
+Coverage spread: definition, purpose, procedure, identity-dependent, navigation/terminology, multi-chunk, cross-document/disambiguation. Module 1 smoke may be one regression case — must not dominate.
+
+Record authoring-process diagnostics (proposal rejection, pool size, A/B agreement, human edits, missed positives, review time, category/module coverage). Do **not** tune production retrieval from pilot cases alone.
+
+Proceed to scale only if question quality, pooling, rubric consistency, and model assistance prove usable.
+
+---
+
+## Slice 9G — Production Retrieval Gold Set
+
+**Goal:** First serious private retrieval benchmark (~120 accepted; practical range 100–150).
+
+Before retrieval optimization, split ≈80 development / ≈40 held-out (for a 120-case set), stratified by documents/modules, categories, and difficulty. Held-out is frozen; do not use held-out failures for iterative tuning. If held-out inspection becomes necessary, treat the test set as consumed and create a future replacement rather than pretending it remains untouched.
+
+Semantic changes produce a new GoldDataset identity under Slice 9 rules.
+
+---
+
+## Slice 9H — Retrieval Candidate Evaluation & Promotion Decision
+
+**Goal:** Use the Slice 9 harness on real gold.
+
+Candidates include baseline dense, `model-query-prompt-v1`, Arm H / `exclude-heading-only-v1`, and combinations; keep lexical/hybrid/rerank in stage analysis. Persist `offline-rag-retrieval-eval-result-v1` and compare with `eval compare`.
+
+Promotion requires meaningful metric gains, acceptable category regressions, acceptable latency/cost, and generalization beyond the Module 1 smoke case. Explicit architectural decision — no automatic composite winner.
+
+This slice may justify promoting retrieval contracts (`model-query-prompt-v1`, `exclude-heading-only-v1`). It does **not** justify promoting `prompt-grounded-provenance-v2` (generation-semantic → Slice 10).
+
+---
+
+## Explicitly out of scope for Milestone 4
+
+Do not:
+
+- upload documents to NotebookLM or cloud LLMs for private gold;
+- make DeepEval/Ragas/Giskard required;
+- let local-model labels become gold automatically;
+- create gold only from retrieval failures;
+- promote Arm H / provenance-v2 / change `base.yaml` during authoring-pipeline implementation;
+- change retrieval algorithms during authoring-pipeline implementation;
+- start Slice 10 or build an LLM-as-judge answer evaluator in this milestone.
+
+---
+
+## Definition of success
+
+A user can add/update private technical documents and create or refresh a retrieval benchmark without sending source text outside the approved local environment:
+
+```text
+ingest → chunk/index
+  → gold propose → pool → prelabel → review → finalize
+  → GoldDataset v1
+  → eval retrieve → eval compare
+```
+
+Human effort concentrates on **review and adjudication**, not manual search or JSON authoring.
+
+---
+
+## Portfolio description
+
+### Offline Gold Authoring
+
+OfflineRAG includes a privacy-preserving benchmark-authoring workflow for proprietary technical corpora.
+
+Rather than requiring documents to be uploaded to an external evaluation service, the system can use an approved local language model to propose evaluation questions, build high-recall candidate pools from multiple retrievers, and pre-label passage relevance.
+
+Human adjudication remains authoritative. Reviewed cases are finalized into immutable, versioned GoldDataset artifacts with graded passage-level relevance and deterministic identity.
+
+This enables repeatable retrieval evaluation and configuration A/B testing while keeping private document content inside the user's local environment.
+
+---
+
+## Architectural principle
+
+```text
+PRIVATE DOCUMENTS
+  → local ingestion/chunking
+  → local gold authoring
+  → human-adjudicated GoldDataset
+  → deterministic retrieval evaluation
+  → serialized experiments
+  → A/B comparison
+  → evidence-based promotion decisions
+```
+
+The project therefore does not merely claim that retrieval is offline. It aims to demonstrate that **the complete private-document evaluation lifecycle—from ingestion through benchmark construction and retrieval measurement—can operate without requiring document content to be sent to a cloud service.**

@@ -4,7 +4,7 @@
 
 OfflineRAG's strict-offline profile must be able to execute ingestion, chunking, dense indexing/retrieval, lexical BM25 indexing/retrieval, hybrid RRF, hybrid-rerank, context assembly, grounded local generation (via an approved external OpenAI-compatible endpoint), and corresponding evaluation without using internet/cloud services after provisioning.
 
-Context expansion (7) and grounded generation/citation membership validation (8) are implemented. Expanded semantic answer/citation quality evaluation remains later.
+Context expansion (7), grounded generation/citation membership validation (8), and retrieval-eval harness (9) are implemented. Milestone 4 offline gold authoring starts at Slice 9A; semantic answer/citation quality evaluation is Milestone 5 / Slice 10.
 
 **Currently enforceable offline after provisioning:** Docling PDF parse, tiktoken chunk budgets, Qwen (or FakeEmbedder) dense index/retrieve/eval, project-owned BM25 lexical index/retrieve/eval, hybrid RRF / hybrid-rerank / hybrid-rerank-context, grounded `query` against an approved local generator, Qdrant Local.
 

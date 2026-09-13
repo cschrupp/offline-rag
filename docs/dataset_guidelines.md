@@ -50,6 +50,12 @@ Bind cases to a specific `chunk_set_id`. Changing child-chunk budgets or chunk c
 
 See `eval/datasets/slice9_validation/` for the small harness fixture shape.
 
+## Offline gold authoring (Milestone 4)
+
+Private corpora should be labeled through the planned local authoring workflow (`offline-rag gold …`), not by uploading documents to cloud annotation or evaluation services. The local model may propose questions and pre-grades; **humans adjudicate** final GoldDataset v1 labels. Silver/authoring drafts are not evaluation gold.
+
+Canonical plan and Slice 9A–9H order: [`milestone4_offline_gold_authoring.md`](milestone4_offline_gold_authoring.md). Next decision track: Slice 9A contracts + privacy boundary.
+
 ## Review checklist
 
 - Is the question understandable without seeing the target passage?
