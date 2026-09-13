@@ -2,17 +2,17 @@
 
 **Position:** after Slice 9 (Evaluation Harness v1), before Slice 10 (Generation/Citation Semantic Evaluation).
 
-**Next implementation decision track:** Slice 9A — Gold Authoring Contracts & Privacy Boundary.
+**Next implementation decision track:** Slice 9B — Deterministic Source Sampling & Local Question Proposal.
 
-Do not jump to question generation until silver-authoring contracts and the local-only network policy are locked.
+Slice **9A** (contracts + privacy + doctor) is done — see [`slice9a_gold_authoring.md`](slice9a_gold_authoring.md).
 
 ---
 
-## Status entering milestone
+## Status entering / within milestone
 
-- Slices 0–8 implemented.
-- Slice 8 validated end-to-end.
+- Slices 0–8 implemented; Slice 8 validated end-to-end.
 - Slice 9 evaluation harness complete at commit `9073c37`.
+- Slice **9A** complete: `authoring:` config, `authorcfg_`, privacy dual-gate, lean silver/run models, doctor readiness (no LLM / no `gold` CLI yet).
 - `GoldDataset v1`, deterministic retrieval metrics, serialized evaluation artifacts, and `offline-rag eval compare` are available.
 - `model-query-prompt-v1`, `exclude-heading-only-v1` / Arm H, and `prompt-grounded-provenance-v2` remain validated experimental candidates.
 - No experimental contracts are promoted to `base.yaml`.
@@ -153,7 +153,7 @@ offline-rag gold finalize
 offline-rag gold status
 ```
 
-Exact command surface is locked during Slice 9A+ design. Intended end-user flow:
+Exact command surface continues to be refined in Slice 9B+. Intended end-user flow:
 
 ```bash
 offline-rag gold propose --corpus ics_modules --count 20
@@ -197,11 +197,13 @@ Authoring-only metadata does not enter GoldDataset semantic identity.
 
 ## Slice 9A — Gold Authoring Contracts & Privacy Boundary
 
+**Status:** done. Authoritative notes: [`slice9a_gold_authoring.md`](slice9a_gold_authoring.md).
+
 **Goal:** Create the authoring subsystem boundary without generating a real dataset yet.
 
-**Implement:** `GoldAuthoringConfig`, silver/draft case models, candidate/model/human review states, `GoldAuthoringRun`; contracts `question-proposal-v1`, `relevance-prelabel-v1`, `offline-rag-gold-authoring-v1`; authoring-specific local generator configuration (not production generation semantics); explicit allowed endpoints + `localhost_only` network policy.
+**Implemented:** `AuthoringSettings` / `authoring:` block; lean `GoldAuthoringRun` / `SilverCase`; contracts `openai-compatible-authoring-v1`, `question-proposal-v1`, `relevance-prelabel-v1`, `offline-rag-gold-authoring-v1`; `authorcfg_` hash; dual-gate privacy (`allowlist` AND `network_policy`); doctor Authoring section; gold-loader rejection of authoring schema.
 
-**Acceptance:** Authoring package instantiates independently of retrieval evaluation; unauthorized endpoint fails before text transmission; production generation contracts/hashes unchanged; GoldDataset v1 unchanged; `base.yaml` retrieval/generation defaults unchanged.
+**Acceptance (met):** Authoring package instantiates independently of retrieval evaluation; unauthorized endpoint fails before text transmission; production generation contracts/hashes unchanged; GoldDataset v1 unchanged; `base.yaml` retrieval/generation defaults unchanged.
 
 ---
 

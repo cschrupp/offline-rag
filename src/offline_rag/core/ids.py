@@ -424,6 +424,11 @@ def generation_config_hash(data: Mapping[str, Any]) -> str:
     return canonical_config_hash(data).replace("cfg_", "gencfg_", 1)
 
 
+def authoring_config_hash(data: Mapping[str, Any]) -> str:
+    """Return ``authorcfg_<sha256>`` for gold-authoring semantics."""
+    return canonical_config_hash(data).replace("cfg_", "authorcfg_", 1)
+
+
 def evidence_unit_id_from_payload(payload: Mapping[str, Any]) -> str:
     """Return ``ev_<sha256>`` for a deterministic evidence representation identity."""
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)

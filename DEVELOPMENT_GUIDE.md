@@ -37,14 +37,14 @@ offline-rag eval retrieve --method hybrid-rerank --dataset <dir> --corpus <name>
 offline-rag eval retrieve --method hybrid-rerank-context --dataset <dir> --corpus <name>
 offline-rag eval compare --a <result-a.json> --b <result-b.json> [--json]
 offline-rag eval query --dataset <dir> --corpus <name>
-# Milestone 4 (planned; surface locked in Slice 9A+):
+# Milestone 4 (9A boundary done; gold CLI arrives in later slices):
 # offline-rag gold propose|pool|prelabel|review|finalize|status
 offline-rag doctor --corpus <name>
 ```
 
-`offline-rag query` runs grounded generation via Slice 7 context assembly. Retrieval ablation remains under `retrieve` / `eval retrieve` / `eval compare`. Prefer GoldDataset v1 datasets (`offline-rag-gold-v1`); legacy `relevant_chunk_ids` gold still loads. Generation READY requires approved endpoint/model allowlists and a live OpenAI-compatible `/models` probe.
+`offline-rag query` runs grounded generation via Slice 7 context assembly. Retrieval ablation remains under `retrieve` / `eval retrieve` / `eval compare`. Prefer GoldDataset v1 datasets (`offline-rag-gold-v1`); legacy `relevant_chunk_ids` gold still loads. Generation READY requires approved endpoint/model allowlists and a live OpenAI-compatible `/models` probe. Authoring READY (Slice 9A) is config + privacy only — no live probe; `doctor` reports the Authoring section.
 
-Milestone 4 offline gold authoring (next: Slice **9A**) builds private-corpus gold locally; see `docs/milestone4_offline_gold_authoring.md`. Do not treat silver/authoring drafts as gold.
+Milestone 4 offline gold authoring (next: Slice **9B**) builds private-corpus gold locally; see `docs/slice9a_gold_authoring.md` and `docs/milestone4_offline_gold_authoring.md`. Do not treat silver/authoring drafts as gold.
 
 For CI-scale dense/rerank/generation tests, set `indexing.embedding.implementation: fake` and/or `reranker.implementation: fake`, and inject `FakeGenerator` in unit tests. Do not rely on FakeEmbedder / FakeReranker / FakeGenerator for portfolio quality claims.
 

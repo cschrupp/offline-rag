@@ -165,14 +165,18 @@ offline-rag/
 │       │   ├── compare.py
 │       │   └── ...                    # Slice 9 retrieval-eval harness
 │       │
-│       ├── gold_authoring/            # Milestone 4 (planned; starts Slice 9A)
-│       │   ├── models.py
+│       ├── gold_authoring/            # Milestone 4 (Slice 9A boundary done)
 │       │   ├── contracts.py
-│       │   ├── propose.py
-│       │   ├── pooling.py
-│       │   ├── prelabel.py
-│       │   ├── review.py
-│       │   └── finalize.py
+│       │   ├── config_hash.py
+│       │   ├── privacy.py
+│       │   ├── models.py
+│       │   ├── readiness.py
+│       │   ├── transport.py
+│       │   ├── propose.py             # Slice 9B+
+│       │   ├── pooling.py             # Slice 9C+
+│       │   ├── prelabel.py            # Slice 9D+
+│       │   ├── review.py              # Slice 9E+
+│       │   └── finalize.py            # Slice 9E+
 │       │
 │       ├── observability/
 │       │   ├── logging.py
@@ -274,9 +278,9 @@ Owns security policies that should remain independent from the generator prompt 
 
 Owns finished GoldDataset loading/validation, retrieval metrics, experiment serialization, and comparison (`eval retrieve` / `eval compare`). It may call production retrieval services, but production services must not depend on evaluator-specific logic. Silver/authoring drafts are not gold.
 
-### `gold_authoring/` (Milestone 4 — planned)
+### `gold_authoring/` (Milestone 4 — Slice 9A boundary done)
 
-Owns the privacy-bounded local gold construction workflow (propose → pool → prelabel → review → finalize). Separate from `evaluation/` and from production generation prompt contracts. Canonical plan: `docs/milestone4_offline_gold_authoring.md`.
+Owns the privacy-bounded local gold construction workflow (propose → pool → prelabel → review → finalize). Slice 9A shipped contracts, privacy, `authorcfg_`, lean silver/run models, and doctor readiness. Separate from `evaluation/` and from production generation prompt contracts. Notes: `docs/slice9a_gold_authoring.md`; plan: `docs/milestone4_offline_gold_authoring.md`.
 
 ### `observability/`
 

@@ -103,9 +103,9 @@ generation-provenance investigation and A/B results.
 
 ## Milestone 4 — Offline Gold Authoring & Retrieval Benchmarking
 
-**Next decision track:** Slice **9A** (contracts + privacy boundary) before any question-generation implementation.
+**Next decision track:** Slice **9B** (source sampling + local question proposal).
 
-**Canonical plan:** [`docs/milestone4_offline_gold_authoring.md`](docs/milestone4_offline_gold_authoring.md)
+**Canonical plan:** [`docs/milestone4_offline_gold_authoring.md`](docs/milestone4_offline_gold_authoring.md). Slice 9A notes: [`docs/slice9a_gold_authoring.md`](docs/slice9a_gold_authoring.md).
 
 ### Objective
 
@@ -118,7 +118,7 @@ annotation services. The local LLM is an annotation assistant, not ground truth.
 
 ### Slices
 
-- [ ] **9A** Gold authoring contracts & privacy boundary (`localhost_only`, silver artifact, authoring generator config)
+- [x] **9A** Gold authoring contracts & privacy boundary (`localhost_only`, silver artifact, authoring generator config)
 - [ ] **9B** Deterministic source sampling & local question proposal
 - [ ] **9C** Multi-retriever candidate pooling
 - [ ] **9D** Local blind double-pass relevance pre-labeling
@@ -139,8 +139,7 @@ A reviewer can refresh a private-corpus retrieval benchmark without sending
 source text outside an approved local/private environment, then run
 comparable retrieval evaluations and make an explicit promotion decision.
 
-**Status:** planning complete; implementation starts at Slice 9A. Slice 9
-measurement platform is already available. Do not promote Arm H,
+**Status:** Slice **9A** complete (contracts + privacy + doctor readiness). Next decision track: **9B** (source sampling + local question proposal). Do not promote Arm H,
 `model-query-prompt-v1`, or `prompt-grounded-provenance-v2` during
 authoring-pipeline work; do not start Slice 10 inside this milestone.
 

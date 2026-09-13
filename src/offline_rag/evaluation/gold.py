@@ -287,6 +287,11 @@ def load_gold_dataset(path: Path) -> LoadedGoldDataset:
         raise GoldDatasetError("meta.json must be an object")
 
     schema_version = raw_meta.get("schema_version")
+    if schema_version == "offline-rag-gold-authoring-v1":
+        raise GoldDatasetError(
+            "expected GoldDataset schema offline-rag-gold-v1 (or legacy schema_version=1); "
+            "received offline-rag-gold-authoring-v1 (silver authoring artifact is not gold)"
+        )
     native = schema_version == GOLD_SCHEMA_V1
     legacy = schema_version in (None, 1, "1") and not native
 

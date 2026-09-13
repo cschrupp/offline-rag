@@ -29,6 +29,18 @@ _ENV_FIELD_MAP: dict[str, tuple[str, ...]] = {
     "LLM_API_KEY": ("generation", "api_key"),
     "APPROVED_LLM_MODELS": ("generation", "approved_models"),
     "APPROVED_LLM_ENDPOINTS": ("generation", "approved_endpoints"),
+    "AUTHORING_ENABLED": ("authoring", "enabled"),
+    "AUTHORING_PROVIDER": ("authoring", "provider"),
+    "AUTHORING_ADAPTER_CONTRACT": ("authoring", "adapter_contract"),
+    "AUTHORING_BASE_URL": ("authoring", "base_url"),
+    "AUTHORING_MODEL": ("authoring", "model"),
+    "AUTHORING_API_KEY": ("authoring", "api_key"),
+    "AUTHORING_NETWORK_POLICY": ("authoring", "network_policy"),
+    "AUTHORING_TEMPERATURE": ("authoring", "temperature"),
+    "AUTHORING_MAX_OUTPUT_TOKENS": ("authoring", "max_output_tokens"),
+    "AUTHORING_TIMEOUT_SECONDS": ("authoring", "timeout_seconds"),
+    "AUTHORING_APPROVED_ENDPOINTS": ("authoring", "approved_endpoints"),
+    "AUTHORING_APPROVED_MODELS": ("authoring", "approved_models"),
     "RAW_DATA": ("paths", "raw_data"),
     "MANIFESTS": ("paths", "manifests"),
     "PROCESSED": ("paths", "processed"),
@@ -96,13 +108,14 @@ def _parse_env_value(raw: str) -> Any:
 
 def _coerce_list_env_fields(overrides: MutableMapping[str, Any]) -> None:
     """Ensure comma-oriented env list fields remain lists for single values."""
-    generation = overrides.get("generation")
-    if not isinstance(generation, dict):
-        return
-    for key in ("approved_models", "approved_endpoints"):
-        value = generation.get(key)
-        if isinstance(value, str):
-            generation[key] = [value]
+    for section_name in ("generation", "authoring"):
+        section = overrides.get(section_name)
+        if not isinstance(section, dict):
+            continue
+        for key in ("approved_models", "approved_endpoints"):
+            value = section.get(key)
+            if isinstance(value, str):
+                section[key] = [value]
 
 
 def _load_yaml_file(path: Path) -> dict[str, Any]:

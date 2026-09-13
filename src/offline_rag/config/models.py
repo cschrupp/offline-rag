@@ -410,6 +410,78 @@ class GenerationSettings(BaseModel):
         return stripped or None
 
 
+class AuthoringContractSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    question_proposal: NonEmptyStr = "question-proposal-v1"
+    relevance_prelabel: NonEmptyStr = "relevance-prelabel-v1"
+    artifact: NonEmptyStr = "offline-rag-gold-authoring-v1"
+
+
+class AuthoringSettings(BaseModel):
+    """Offline gold-authoring configuration (independent of generation)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = False
+    provider: NonEmptyStr = "openai_compatible"
+    adapter_contract: NonEmptyStr = "openai-compatible-authoring-v1"
+    base_url: NonEmptyStr = "http://127.0.0.1:11434/v1"
+    model: str | None = None
+    api_key: str | None = None
+    network_policy: Literal["localhost_only", "private_network"] = "localhost_only"
+    approved_endpoints: list[NonEmptyStr] = Field(default_factory=list)
+    approved_models: list[str] = Field(default_factory=list)
+    temperature: Score = 0.0
+    max_output_tokens: PositiveInt = 1200
+    timeout_seconds: PositiveInt = 120
+    contracts: AuthoringContractSettings = Field(default_factory=AuthoringContractSettings)
+
+    @field_validator("temperature")
+    @classmethod
+    def _temperature_range(cls, value: float) -> float:
+        if value < 0.0 or value > 2.0:
+            raise ValueError("temperature must be between 0.0 and 2.0")
+        return value
+
+    @field_validator("model", mode="before")
+    @classmethod
+    def _normalize_model(cls, value: Any) -> str | None:
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise ValueError("authoring.model must be a string or null")
+        text = value.strip()
+        return text or None
+
+    @field_validator("api_key")
+    @classmethod
+    def _normalize_api_key(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip()
+        return stripped or None
+
+    def __repr__(self) -> str:
+        key = "********" if self.api_key else None
+        return (
+            "AuthoringSettings("
+            f"enabled={self.enabled!r}, "
+            f"provider={self.provider!r}, "
+            f"adapter_contract={self.adapter_contract!r}, "
+            f"base_url={self.base_url!r}, "
+            f"model={self.model!r}, "
+            f"api_key={key!r}, "
+            f"network_policy={self.network_policy!r}, "
+            f"approved_endpoints={list(self.approved_endpoints)!r}, "
+            f"approved_models={list(self.approved_models)!r}, "
+            f"temperature={self.temperature!r}, "
+            f"max_output_tokens={self.max_output_tokens!r}, "
+            f"timeout_seconds={self.timeout_seconds!r}, "
+            f"contracts={self.contracts!r})"
+        )
+
+
 class RetrievalRecoverySettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -464,6 +536,7 @@ class AppSettings(BaseModel):
     reranker: RerankerSettings = Field(default_factory=RerankerSettings)
     context: ContextSettings = Field(default_factory=ContextSettings)
     generation: GenerationSettings = Field(default_factory=GenerationSettings)
+    authoring: AuthoringSettings = Field(default_factory=AuthoringSettings)
     retrieval_recovery: RetrievalRecoverySettings = Field(default_factory=RetrievalRecoverySettings)
     abstention: AbstentionSettings = Field(default_factory=AbstentionSettings)
     security: SecuritySettings = Field(default_factory=SecuritySettings)

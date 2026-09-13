@@ -7,7 +7,7 @@
 - `baselines/` — frozen baseline metric artifacts (future)
 - `results/` — machine-readable retrieval-eval results by method subdirectory
 - `reports/` — generated human-readable comparisons (optional / future)
-- authoring drafts / silver runs — live under local data paths once Slice 9A+ exists; **not** gold and not loadable by `eval retrieve`
+- authoring drafts / silver runs — local data paths once `offline-rag gold` exists (Slice 9B+); schema `offline-rag-gold-authoring-v1` is **not** gold and is rejected by `eval retrieve`
 
 ## Retrieval eval (Slice 9)
 
@@ -41,13 +41,13 @@ Results use `offline-rag-retrieval-eval-result-v1` (shared envelope + method dia
 
 `offline-rag eval query` remains Slice 8 operational generation evaluation and is separate from Slice 9 retrieval-quality metrics.
 
-## Offline gold authoring (Milestone 4 — planned)
+## Offline gold authoring (Milestone 4)
 
-Canonical plan: [`docs/milestone4_offline_gold_authoring.md`](../docs/milestone4_offline_gold_authoring.md).
+Canonical plan: [`docs/milestone4_offline_gold_authoring.md`](../docs/milestone4_offline_gold_authoring.md). Slice **9A** notes: [`docs/slice9a_gold_authoring.md`](../docs/slice9a_gold_authoring.md).
 
-Next decision track: **Slice 9A** (authoring contracts + `localhost_only` privacy boundary) before question generation.
+Next decision track: **Slice 9B** (source sampling + local question proposal).
 
-Intended CLI (exact surface locked in 9A+):
+Target CLI (surface continues through 9B+):
 
 ```bash
 offline-rag gold propose|pool|prelabel|review|finalize|status

@@ -149,6 +149,24 @@ generation:
     - http://host.docker.internal:11434/v1
   approved_models: []
 
+authoring:
+  enabled: false
+  provider: openai_compatible
+  adapter_contract: openai-compatible-authoring-v1
+  base_url: http://127.0.0.1:11434/v1
+  model: null
+  api_key: null
+  network_policy: localhost_only
+  approved_endpoints: []
+  approved_models: []
+  temperature: 0.0
+  max_output_tokens: 1200
+  timeout_seconds: 120
+  contracts:
+    question_proposal: question-proposal-v1
+    relevance_prelabel: relevance-prelabel-v1
+    artifact: offline-rag-gold-authoring-v1
+
 retrieval_recovery:
   enabled: false
   max_retries: 1

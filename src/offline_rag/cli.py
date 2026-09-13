@@ -1823,6 +1823,42 @@ def cmd_doctor(args: argparse.Namespace) -> int:
             "+ reachable OpenAI-compatible generator"
         )
 
+    from offline_rag.gold_authoring.readiness import (
+        authoring_status_label,
+        evaluate_authoring_readiness,
+    )
+
+    authoring = evaluate_authoring_readiness(settings)
+    authoring_label = authoring_status_label(authoring)
+    notes.append(f"Authoring status                {authoring_label}")
+    notes.append(f"Authoring enabled               {settings.authoring.enabled}")
+    notes.append(f"Authoring provider              {authoring.provider}")
+    notes.append(f"Authoring adapter               {authoring.adapter_contract}")
+    notes.append(
+        f"Authoring model                 {authoring.model if authoring.model else 'unset'}"
+    )
+    notes.append(f"Authoring network policy        {authoring.network_policy}")
+    notes.append(
+        f"Authoring endpoint authorized   {'yes' if authoring.endpoint_approved else 'no'}"
+    )
+    notes.append(
+        f"Authoring model authorized      {'yes' if authoring.model_approved else 'no'}"
+    )
+    notes.append(
+        "Authoring API key               "
+        f"{'configured' if authoring.api_key_configured else 'not configured'}"
+    )
+    notes.append("Authoring connectivity checked  no")
+    for reason in authoring.reason_codes:
+        notes.append(f"Authoring reason                {reason}")
+    if settings.authoring.enabled and not authoring.ready:
+        for reason in authoring.reason_codes:
+            errors.append(f"Authoring NOT READY: {reason}")
+        notes.append(
+            "Action                           configure authoring.model + "
+            "authoring.approved_endpoints/models under an allowed network_policy"
+        )
+
     for note in notes:
         print(f"doctor: {note}")
 

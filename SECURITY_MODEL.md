@@ -139,7 +139,7 @@ A local endpoint is necessary but not sufficient: a host inference daemon may su
 
 ### Gold authoring (Milestone 4)
 
-Private-corpus gold construction must use the same fail-closed endpoint discipline. Authoring endpoints are explicitly allowlisted; there is no cloud fallback for document text, candidate pools, or pre-labels. Prefer `localhost_only` for claims that documents never leave the machine; if a privately controlled LAN model server is used, portfolio wording must say documents never leave the local/private environment. See `docs/milestone4_offline_gold_authoring.md` and ADR-021.
+Private-corpus gold construction must use the same fail-closed endpoint discipline. Authoring endpoints are explicitly allowlisted; there is no cloud fallback for document text, candidate pools, or pre-labels. Prefer `localhost_only` for claims that documents never leave the machine; if a privately controlled LAN model server is used, portfolio wording must say documents never leave the local/private environment. Slice 9A implements the dual-gate privacy boundary — see `docs/slice9a_gold_authoring.md`, `docs/milestone4_offline_gold_authoring.md`, and ADR-021.
 
 For the strongest portfolio claim, run the complete stack on a host with internet access disabled or outbound egress restricted, while preserving host-container communication to the local inference service. Record that test profile and result.
 

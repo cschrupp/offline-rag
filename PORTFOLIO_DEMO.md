@@ -1,6 +1,6 @@
 # Portfolio Demo Plan
 
-**Current readiness:** Through Slice 9 you can demo ingest → chunk → dense and lexical index → retrieval ladder → `hybrid-rerank-context` → grounded `query` / `eval query`, plus `eval retrieve` / `eval compare` on GoldDataset v1 fixtures. Offline gold authoring (Milestone 4) and UI/dashboard remain later; next implementation decision is Slice **9A**.
+**Current readiness:** Through Slice 9 you can demo ingest → chunk → dense and lexical index → retrieval ladder → `hybrid-rerank-context` → grounded `query` / `eval query`, plus `eval retrieve` / `eval compare` on GoldDataset v1 fixtures. Slice **9A** authoring boundary is in tree (`doctor` Authoring section); `offline-rag gold` CLI and UI/dashboard remain later. Next implementation decision: Slice **9B**.
 
 ## Demo objective
 
