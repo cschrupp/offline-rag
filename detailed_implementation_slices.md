@@ -2,7 +2,7 @@
 
 This document converts the architecture into incremental, testable implementation slices. Each slice should leave the repository in a working state. Avoid building multiple major layers simultaneously: the evaluation harness depends on being able to attribute improvements and regressions to individual changes.
 
-**Implementation status:** Slices 0–9 and **9A** are implemented (Slice 9 = retrieval evaluation harness v1 at `9073c37`; 9A = authoring contracts + privacy). **Next:** Slice **9B** (source sampling + local question proposal), then 9C–9H, then Milestone 5 / Slice 10 generation-citation semantics. Canonical Milestone 4 plan: `docs/milestone4_offline_gold_authoring.md`. Authoritative notes: `docs/slice0_contracts.md` … `docs/slice8_grounded_generation.md`, `docs/slice9_retrieval_evaluation.md`, `docs/slice9a_gold_authoring.md`, `eval/README.md`.
+**Implementation status:** Slices 0–9, **9A**, and **9B** are implemented. **Next:** Slice **9C** (multi-retriever candidate pooling), then 9D–9H, then Milestone 5 / Slice 10. Canonical Milestone 4 plan: `docs/milestone4_offline_gold_authoring.md`. Authoritative notes: `docs/slice0_contracts.md` … `docs/slice9_retrieval_evaluation.md`, `docs/slice9a_gold_authoring.md`, `docs/slice9b_gold_propose.md`, `eval/README.md`.
 
 ---
 
@@ -480,14 +480,14 @@ Running two experiment configs yields directly comparable machine-readable and h
 
 # Slices 9A–9H — Offline gold authoring & retrieval benchmarking (Milestone 4)
 
-**Status:** Slice **9A** done (contracts + privacy + doctor). Next: **9B**.
+**Status:** Slice **9B** done (`gold propose`). Next: **9C**.
 
-Full plan: [`docs/milestone4_offline_gold_authoring.md`](docs/milestone4_offline_gold_authoring.md). Slice 9A notes: [`docs/slice9a_gold_authoring.md`](docs/slice9a_gold_authoring.md).
+Full plan: [`docs/milestone4_offline_gold_authoring.md`](docs/milestone4_offline_gold_authoring.md). Slice 9A notes: [`docs/slice9a_gold_authoring.md`](docs/slice9a_gold_authoring.md). Slice 9B notes: [`docs/slice9b_gold_propose.md`](docs/slice9b_gold_propose.md).
 
 | Slice | Focus |
 |---|---|
 | 9A | Authoring contracts, silver artifact, localhost-only privacy boundary — **done** |
-| 9B | Deterministic sampling + local question proposal |
+| 9B | Deterministic sampling + local question proposal — **done** |
 | 9C | Multi-retriever candidate pooling |
 | 9D | Blind double-pass local pre-labeling |
 | 9E | Human review + GoldDataset v1 finalization |

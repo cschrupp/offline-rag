@@ -165,14 +165,22 @@ offline-rag/
 │       │   ├── compare.py
 │       │   └── ...                    # Slice 9 retrieval-eval harness
 │       │
-│       ├── gold_authoring/            # Milestone 4 (Slice 9A boundary done)
+│       ├── gold_authoring/            # Milestone 4 (Slices 9A–9B done)
 │       │   ├── contracts.py
 │       │   ├── config_hash.py
 │       │   ├── privacy.py
 │       │   ├── models.py
 │       │   ├── readiness.py
 │       │   ├── transport.py
-│       │   ├── propose.py             # Slice 9B+
+│       │   ├── propose.py             # Slice 9B
+│       │   ├── sampling.py
+│       │   ├── context.py
+│       │   ├── prompt.py
+│       │   ├── schema.py
+│       │   ├── quality.py
+│       │   ├── adapter.py
+│       │   ├── chunk_access.py
+│       │   ├── persist.py
 │       │   ├── pooling.py             # Slice 9C+
 │       │   ├── prelabel.py            # Slice 9D+
 │       │   ├── review.py              # Slice 9E+
@@ -278,9 +286,9 @@ Owns security policies that should remain independent from the generator prompt 
 
 Owns finished GoldDataset loading/validation, retrieval metrics, experiment serialization, and comparison (`eval retrieve` / `eval compare`). It may call production retrieval services, but production services must not depend on evaluator-specific logic. Silver/authoring drafts are not gold.
 
-### `gold_authoring/` (Milestone 4 — Slice 9A boundary done)
+### `gold_authoring/` (Milestone 4 — Slices 9A–9B done)
 
-Owns the privacy-bounded local gold construction workflow (propose → pool → prelabel → review → finalize). Slice 9A shipped contracts, privacy, `authorcfg_`, lean silver/run models, and doctor readiness. Separate from `evaluation/` and from production generation prompt contracts. Notes: `docs/slice9a_gold_authoring.md`; plan: `docs/milestone4_offline_gold_authoring.md`.
+Owns the privacy-bounded local gold construction workflow (propose → pool → prelabel → review → finalize). Slice 9A shipped contracts/privacy/doctor; Slice 9B shipped sampling + `gold propose`. Separate from `evaluation/` and from production generation prompt contracts. Notes: `docs/slice9a_gold_authoring.md`, `docs/slice9b_gold_propose.md`; plan: `docs/milestone4_offline_gold_authoring.md`.
 
 ### `observability/`
 

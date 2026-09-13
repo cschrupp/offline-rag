@@ -155,7 +155,7 @@ The goal is to be able to make evidence-backed statements such as:
 
 ### Offline gold authoring (Milestone 4)
 
-Private corpora are labeled through a fully local workflow: source-seeded question proposal, multi-retriever pooling, blind local pre-labeling, and human review before GoldDataset v1 finalization. Slice **9A** (contracts + privacy) is done; see [`docs/slice9a_gold_authoring.md`](docs/slice9a_gold_authoring.md) and [`docs/milestone4_offline_gold_authoring.md`](docs/milestone4_offline_gold_authoring.md). Next implementation decision: Slice **9B**.
+Private corpora are labeled through a fully local workflow: source-seeded question proposal, multi-retriever pooling, blind local pre-labeling, and human review before GoldDataset v1 finalization. Slices **9A**/**9B** are done (`doctor` Authoring + `offline-rag gold propose`); see [`docs/slice9b_gold_propose.md`](docs/slice9b_gold_propose.md), [`docs/slice9a_gold_authoring.md`](docs/slice9a_gold_authoring.md), and [`docs/milestone4_offline_gold_authoring.md`](docs/milestone4_offline_gold_authoring.md). Next implementation decision: Slice **9C**.
 
 ### Retrieval
 
@@ -342,10 +342,10 @@ Use public, redistributable technical documents rather than proprietary material
 
 ## Project status
 
-**Phase:** Milestone 4 in progress — Slices 0–9 and **9A** done; next decision track is **Slice 9B** (source sampling + local question proposal).
+**Phase:** Milestone 4 in progress — Slices 0–9, **9A**, and **9B** done; next decision track is **Slice 9C** (candidate pooling).
 
-Working local path: ingest → chunk → index / index lexical → retrieve ladder → `query` → `eval retrieve` / `eval compare` → `eval query` → `doctor` (Authoring section).
+Working local path: ingest → chunk → index / index lexical → retrieve ladder → `query` → `eval retrieve` / `eval compare` → `eval query` → `doctor` → `gold propose`.
 
-Still deferred: `offline-rag gold` CLI and remaining authoring slices (9B–9H), semantic answer/citation quality metrics (Milestone 5 / Slice 10), agentic recovery (Milestone 6).
+Still deferred: remaining authoring slices (9C–9H), semantic answer/citation quality metrics (Milestone 5 / Slice 10), agentic recovery (Milestone 6).
 
-See `ROADMAP.md`, `docs/milestone4_offline_gold_authoring.md`, `docs/slice9_retrieval_evaluation.md`, `docs/slice9a_gold_authoring.md`, and `docs/slice8_grounded_generation.md`.
+See `ROADMAP.md`, `docs/milestone4_offline_gold_authoring.md`, `docs/slice9b_gold_propose.md`, `docs/slice9a_gold_authoring.md`, `docs/slice9_retrieval_evaluation.md`, and `docs/slice8_grounded_generation.md`.

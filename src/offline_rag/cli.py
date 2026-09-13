@@ -1873,6 +1873,65 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_gold_propose(args: argparse.Namespace) -> int:
+    from offline_rag.gold_authoring.propose import ProposePreRunError, run_gold_propose
+
+    try:
+        settings = _load_settings(args)
+    except ConfigError as exc:
+        print(f"gold propose: configuration failed: {exc}", file=sys.stderr)
+        return 2
+
+    try:
+        result = run_gold_propose(
+            settings,
+            corpus_name=str(args.corpus),
+            count=int(args.count),
+            seed=int(args.seed),
+            output=Path(args.output) if args.output else None,
+            force=bool(args.force),
+        )
+    except ProposePreRunError as exc:
+        print(f"gold propose: {exc}", file=sys.stderr)
+        return 2
+
+    run = result.run
+    if run is None:
+        print(f"gold propose: {result.message or 'failed'}", file=sys.stderr)
+        return result.exit_code
+
+    print(result.message or "Gold proposal run completed.")
+    print()
+    print(f"Gold proposal run: {run.authoring_run_id}")
+    print(f"Corpus:               {run.corpus_name or args.corpus}")
+    print(f"Chunk set:            {run.chunk_set_id}")
+    pipeline = run.proposal_pipeline
+    print(
+        "Sampling contract:    "
+        f"{pipeline.sampling_contract if pipeline is not None else ''}"
+    )
+    print(f"Sampling seed:        {run.sampling_seed}")
+    print()
+    print(f"Requested seeds:      {run.requested_count}")
+    print(f"Selected seeds:       {len(run.selected_chunk_ids)}")
+    print(f"Successful proposals: {run.successful_count}")
+    print(f"Failed proposals:     {run.failed_count}")
+    print(f"Pending SilverCases:  {len(run.cases)}")
+    if result.failure_reason_counts:
+        print()
+        print("Failures:")
+        for reason, count in sorted(result.failure_reason_counts.items()):
+            print(f"  {reason}: {count}")
+    if result.output_path is not None:
+        print()
+        print("Output:")
+        print(f"  {result.output_path}")
+    elif result.message:
+        print()
+        print(result.message, file=sys.stderr)
+    return result.exit_code
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="offline-rag", description="OfflineRAG CLI")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -2093,6 +2152,52 @@ def build_parser() -> argparse.ArgumentParser:
     eval_retrieve.add_argument("--output", type=Path, default=None, help="Optional result JSON path")
     eval_retrieve.add_argument("--json", action="store_true", help="Emit evaluation result JSON")
     eval_retrieve.set_defaults(func=cmd_eval_retrieve)
+
+    gold_parser = subparsers.add_parser("gold", help="Offline gold-authoring commands")
+    gold_sub = gold_parser.add_subparsers(dest="gold_command", required=True)
+    gold_propose = gold_sub.add_parser(
+        "propose",
+        help=(
+            "Sample source seeds and propose pending SilverCases via the local "
+            "authoring model (Slice 9B)"
+        ),
+    )
+    _add_config_argument(gold_propose)
+    gold_propose.add_argument(
+        "--corpus",
+        required=True,
+        help="Logical corpus name whose CURRENT ChunkSet will be sampled",
+    )
+    gold_propose.add_argument(
+        "--count",
+        type=int,
+        default=20,
+        help=(
+            "Number of source seeds to sample and proposal attempts to make "
+            "(default: 20)"
+        ),
+    )
+    gold_propose.add_argument(
+        "--seed",
+        type=int,
+        default=0,
+        help="Deterministic source-sampling seed (default: 0)",
+    )
+    gold_propose.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help=(
+            "Optional authoring-run JSON path "
+            "(default: <corpus>/gold_authoring/runs/<run_id>.json)"
+        ),
+    )
+    gold_propose.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite the exact output path if it already exists",
+    )
+    gold_propose.set_defaults(func=cmd_gold_propose)
 
     doctor = subparsers.add_parser("doctor", help="Run local diagnostics")
     _add_config_argument(doctor)

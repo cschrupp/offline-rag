@@ -8,7 +8,7 @@
 - Artifacts: `offline-rag-retrieval-eval-result-v1` (shared envelope + method diagnostics) and `offline-rag-retrieval-eval-comparison-v1` (exact-float win/loss/tie; no retrieval rerun).
 - Slice 8 `offline-rag eval query` remains operational generation outcomes only (answered / abstention / generation_failed / citation_invalid).
 
-**Next (Milestone 4):** Offline gold authoring (Slices 9A–9H) builds human-adjudicated private-corpus gold via a local LLM assistant + review workflow, then uses this harness for retrieval A/B and promotion decisions. Canonical plan: [`docs/milestone4_offline_gold_authoring.md`](docs/milestone4_offline_gold_authoring.md). Slice **9A** done ([`docs/slice9a_gold_authoring.md`](docs/slice9a_gold_authoring.md)); next decision track: **Slice 9B**. Silver/authoring drafts must never be accepted as gold by `eval retrieve`.
+**Next (Milestone 4):** Offline gold authoring (Slices 9A–9H) builds human-adjudicated private-corpus gold via a local LLM assistant + review workflow, then uses this harness for retrieval A/B and promotion decisions. Canonical plan: [`docs/milestone4_offline_gold_authoring.md`](docs/milestone4_offline_gold_authoring.md). Slices **9A**/**9B** done ([`docs/slice9a_gold_authoring.md`](docs/slice9a_gold_authoring.md), [`docs/slice9b_gold_propose.md`](docs/slice9b_gold_propose.md)); next decision track: **Slice 9C**. Silver/authoring drafts must never be accepted as gold by `eval retrieve`.
 
 **Later (Milestone 5 / Slice 10):** Semantic answer/citation quality metrics.
 

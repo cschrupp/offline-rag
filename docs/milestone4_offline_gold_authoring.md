@@ -2,8 +2,9 @@
 
 **Position:** after Slice 9 (Evaluation Harness v1), before Slice 10 (Generation/Citation Semantic Evaluation).
 
-**Next implementation decision track:** Slice 9B — Deterministic Source Sampling & Local Question Proposal.
+**Next implementation decision track:** Slice 9C — Multi-Retriever Candidate Pooling.
 
+Slice **9B** (`offline-rag gold propose`) is done — see [`slice9b_gold_propose.md`](slice9b_gold_propose.md).
 Slice **9A** (contracts + privacy + doctor) is done — see [`slice9a_gold_authoring.md`](slice9a_gold_authoring.md).
 
 ---
@@ -12,7 +13,8 @@ Slice **9A** (contracts + privacy + doctor) is done — see [`slice9a_gold_autho
 
 - Slices 0–8 implemented; Slice 8 validated end-to-end.
 - Slice 9 evaluation harness complete at commit `9073c37` ([`slice9_retrieval_evaluation.md`](slice9_retrieval_evaluation.md)).
-- Slice **9A** complete: `authoring:` config, `authorcfg_`, privacy dual-gate, lean silver/run models, doctor readiness (no LLM / no `gold` CLI yet).
+- Slice **9A** complete: `authoring:` config, `authorcfg_`, privacy dual-gate, lean silver/run models, doctor readiness.
+- Slice **9B** complete: `source-sampling-random-v1`, `question-proposal-v1`, local authoring Chat Completions path, quality gates, `offline-rag gold propose`, silver-run persistence (no seed-body/raw-response copies).
 - `GoldDataset v1`, deterministic retrieval metrics, serialized evaluation artifacts, and `offline-rag eval compare` are available.
 - `model-query-prompt-v1`, `exclude-heading-only-v1` / Arm H, and `prompt-grounded-provenance-v2` remain validated experimental candidates.
 - No experimental contracts are promoted to `base.yaml`.
@@ -153,7 +155,7 @@ offline-rag gold finalize
 offline-rag gold status
 ```
 
-Exact command surface continues to be refined in Slice 9B+. Intended end-user flow:
+Exact command surface continues to be refined in Slice 9C+. Intended end-user flow:
 
 ```bash
 offline-rag gold propose --corpus ics_modules --count 20
@@ -209,11 +211,13 @@ Authoring-only metadata does not enter GoldDataset semantic identity.
 
 ## Slice 9B — Deterministic Source Sampling & Local Question Proposal
 
+**Status:** done. Authoritative notes: [`slice9b_gold_propose.md`](slice9b_gold_propose.md).
+
 **Goal:** Automatically create useful candidate questions from the authoritative ChunkSet.
 
-Seedable sampling across documents/sections/content types/lengths; prefer eligible prose/mixed children (avoid heading-only-dominated sources). Local model returns structured question + proposed category/tags + authoring-only rationale. Reject empty/duplicate/quote-heavy/"the passage above"/unanswerable-from-source proposals.
+**Implemented:** `source-sampling-random-v1`; `proposal-context-seed-provenance-v1`; `question-proposal-v1`; `openai-compatible-authoring-v1` Chat Completions path; `proposal-quality-gates-v1`; `proposal-attempt-once-v1`; `offline-rag gold propose`; silver persistence without seed-body/raw-response copies.
 
-**Acceptance:** Fixed `chunk_set_id` + sampling seed + authoring contract + local model records reproducible proposal provenance. No proposal enters GoldDataset automatically.
+**Acceptance (met):** Fixed `chunk_set_id` + sampling seed + authoring contract + local model records reproducible proposal provenance. No proposal enters GoldDataset automatically.
 
 ---
 

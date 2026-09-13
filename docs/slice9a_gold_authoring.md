@@ -135,4 +135,4 @@ and no completions in 9A. Surface: `offline-rag doctor` Authoring section.
 
 ## Next
 
-Slice **9B** — deterministic source sampling + local question proposal.
+Slice **9C** — multi-retriever candidate pooling.

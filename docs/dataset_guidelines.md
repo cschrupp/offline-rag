@@ -54,7 +54,7 @@ See `eval/datasets/slice9_validation/` for the small harness fixture shape.
 
 Private corpora should be labeled through the local authoring workflow (`offline-rag gold …`, arriving in later Milestone 4 slices), not by uploading documents to cloud annotation or evaluation services. The local model may propose questions and pre-grades; **humans adjudicate** final GoldDataset v1 labels. Silver/authoring drafts are not evaluation gold.
 
-Canonical plan and Slice 9A–9H order: [`milestone4_offline_gold_authoring.md`](milestone4_offline_gold_authoring.md). Slice **9A** (contracts + privacy) is done — [`slice9a_gold_authoring.md`](slice9a_gold_authoring.md). Next: Slice **9B**.
+Canonical plan and Slice 9A–9H order: [`milestone4_offline_gold_authoring.md`](milestone4_offline_gold_authoring.md). Slices **9A**/**9B** are done — [`slice9a_gold_authoring.md`](slice9a_gold_authoring.md), [`slice9b_gold_propose.md`](slice9b_gold_propose.md). Next: Slice **9C**.
 
 ## Review checklist
 

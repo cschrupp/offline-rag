@@ -7,7 +7,7 @@
 - `baselines/` — frozen baseline metric artifacts (future)
 - `results/` — machine-readable retrieval-eval results by method subdirectory
 - `reports/` — generated human-readable comparisons (optional / future)
-- authoring drafts / silver runs — local data paths once `offline-rag gold` exists (Slice 9B+); schema `offline-rag-gold-authoring-v1` is **not** gold and is rejected by `eval retrieve`
+- authoring drafts / silver runs — local data under `<corpus>/gold_authoring/runs/` from `offline-rag gold propose` (Slice 9B+); schema `offline-rag-gold-authoring-v1` is **not** gold and is rejected by `eval retrieve`
 
 ## Retrieval eval (Slice 9)
 
@@ -47,14 +47,15 @@ Results use `offline-rag-retrieval-eval-result-v1` (shared envelope + method dia
 
 Canonical plan: [`docs/milestone4_offline_gold_authoring.md`](../docs/milestone4_offline_gold_authoring.md). Slice **9A** notes: [`docs/slice9a_gold_authoring.md`](../docs/slice9a_gold_authoring.md).
 
-Next decision track: **Slice 9B** (source sampling + local question proposal).
+Next decision track: **Slice 9C** (multi-retriever candidate pooling).
 
-Target CLI (surface continues through 9B+):
+Target CLI (surface continues through 9C+):
 
 ```bash
 offline-rag gold propose|pool|prelabel|review|finalize|status
 ```
 
+`gold propose` is implemented (Slice 9B). See [`docs/slice9b_gold_propose.md`](../docs/slice9b_gold_propose.md).
 Silver/authoring artifacts (`offline-rag-gold-authoring-v1`) are distinct from GoldDataset v1. Only human-finalized cases are exported to gold. Local LLM labels never become gold automatically. Authoring must not reuse Slice 8 production generation prompt contracts.
 
 Do not commit private/proprietary evaluation data to a public repository.

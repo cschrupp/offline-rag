@@ -68,8 +68,8 @@ offline-rag eval query ...
 offline-rag doctor ...
 ```
 
-Still deferred: generic `eval run`, Milestone 4 `offline-rag gold …` (9B+; Slice **9A** boundary done), and Milestone 5 / Slice 10 semantic answer/citation quality metrics.
+Still deferred: generic `eval run`, Milestone 4 `offline-rag gold pool|prelabel|review|finalize` (9C+; **9A**/**9B** done including `gold propose`), and Milestone 5 / Slice 10 semantic answer/citation quality metrics.
 Retrieval ablation ladder through expansion is complete; grounded generation is baseline.
 Slice 9 provides GoldDataset v1 + comparable retrieval-eval-result-v1 artifacts.
 Slice 9 notes: `docs/slice9_retrieval_evaluation.md`.
-Gold authoring: `docs/slice9a_gold_authoring.md`, plan `docs/milestone4_offline_gold_authoring.md`.
+Gold authoring: `docs/slice9a_gold_authoring.md`, `docs/slice9b_gold_propose.md`, plan `docs/milestone4_offline_gold_authoring.md`.
