@@ -33,6 +33,7 @@ from offline_rag.gold_authoring.review_ops import (
     set_reviewed_tags,
 )
 from offline_rag.gold_authoring.review_server import (
+    ReviewSession,
     create_review_server,
     normalize_review_host,
 )
@@ -808,6 +809,199 @@ def test_ipv6_loopback_bind_when_available(tmp_path: Path) -> None:
         assert res.status == 200
         assert b"Gold Review" in body
         conn.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+def test_mutate_with_result_skips_write_when_builder_fails(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    run_path = tmp_path / "run.json"
+    write_authoring_run(
+        run_path,
+        _run([_case("d1", "What is X?", [_candidate("c1"), _candidate("c2", rank=2)])]),
+    )
+    session = ReviewSession(
+        settings=settings, run_path=run_path, host="127.0.0.1", port=8765
+    )
+    before = run_path.read_text(encoding="utf-8")
+
+    def mutate(run: GoldAuthoringRun) -> GoldAuthoringRun:
+        return set_human_grade(
+            run, draft_case_id="d1", chunk_id="c1", relevance=2
+        )
+
+    def boom(_run: GoldAuthoringRun) -> dict:
+        raise ReviewError(
+            "historical evidence unavailable", code="evidence_unavailable"
+        )
+
+    with pytest.raises(ReviewError) as exc:
+        session.mutate_with_result(mutate, boom)
+    assert exc.value.code == "evidence_unavailable"
+    assert run_path.read_text(encoding="utf-8") == before
+    loaded = load_authoring_run(run_path)
+    assert loaded.cases[0].human_judgment_map() == {}
+
+
+def test_http_grade_evidence_failure_does_not_persist(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from offline_rag.gold_authoring.chunk_access import ChunkAccessError
+
+    settings = _settings(tmp_path)
+    run_path = tmp_path / "run.json"
+    write_authoring_run(
+        run_path,
+        _run([_case("d1", "What is X?", [_candidate("c1"), _candidate("c2", rank=2)])]),
+    )
+    before = run_path.read_text(encoding="utf-8")
+
+    def missing(settings, *, chunk_set_id, chunk_id):
+        raise ChunkAccessError(f"chunk_id {chunk_id} not found")
+
+    monkeypatch.setattr(
+        "offline_rag.gold_authoring.review_view.resolve_seed_text_from_chunk_set",
+        missing,
+    )
+    server, _session, _url = create_review_server(
+        settings=settings, run_path=run_path, host="127.0.0.1", port=0
+    )
+    port = int(server.server_address[1])
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        payload = json.dumps({"chunk_id": "c1", "relevance": 2}).encode()
+        headers = {
+            "Host": f"127.0.0.1:{port}",
+            "Content-Type": "application/json",
+            "Origin": f"http://127.0.0.1:{port}",
+            "Content-Length": str(len(payload)),
+        }
+        conn = HTTPConnection("127.0.0.1", port, timeout=5)
+        conn.request("POST", "/api/cases/d1/grade", body=payload, headers=headers)
+        res = conn.getresponse()
+        data = json.loads(res.read().decode())
+        conn.close()
+        assert res.status == 400
+        assert data["ok"] is False
+        assert data["error"]["code"] == "evidence_unavailable"
+        assert run_path.read_text(encoding="utf-8") == before
+        loaded = load_authoring_run(run_path)
+        assert loaded.cases[0].human_judgment_map() == {}
+        assert loaded.cases[0].human_review is None or (
+            loaded.cases[0].human_review.judgments == []
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+def test_http_category_evidence_failure_does_not_persist(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from offline_rag.gold_authoring.chunk_access import ChunkAccessError
+
+    settings = _settings(tmp_path)
+    run_path = tmp_path / "run.json"
+    write_authoring_run(
+        run_path,
+        _run([_case("d1", "What is X?", [_candidate("c1")])]),
+    )
+    before = run_path.read_text(encoding="utf-8")
+
+    def missing(settings, *, chunk_set_id, chunk_id):
+        raise ChunkAccessError(f"chunk_id {chunk_id} not found")
+
+    monkeypatch.setattr(
+        "offline_rag.gold_authoring.review_view.resolve_seed_text_from_chunk_set",
+        missing,
+    )
+    server, _session, _url = create_review_server(
+        settings=settings, run_path=run_path, host="127.0.0.1", port=0
+    )
+    port = int(server.server_address[1])
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        payload = json.dumps({"category": "safety"}).encode()
+        headers = {
+            "Host": f"127.0.0.1:{port}",
+            "Content-Type": "application/json",
+            "Origin": f"http://127.0.0.1:{port}",
+            "Content-Length": str(len(payload)),
+        }
+        conn = HTTPConnection("127.0.0.1", port, timeout=5)
+        conn.request("POST", "/api/cases/d1/category", body=payload, headers=headers)
+        res = conn.getresponse()
+        data = json.loads(res.read().decode())
+        conn.close()
+        assert res.status == 400
+        assert data["error"]["code"] == "evidence_unavailable"
+        assert run_path.read_text(encoding="utf-8") == before
+        loaded = load_authoring_run(run_path)
+        assert loaded.cases[0].human_review is None
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+def test_http_grade_success_writes_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    writes = {"count": 0}
+    real_write = write_authoring_run
+
+    def counting_write(path: Path, run: GoldAuthoringRun) -> None:
+        writes["count"] += 1
+        return real_write(path, run)
+
+    monkeypatch.setattr(
+        "offline_rag.gold_authoring.review_server.write_authoring_run",
+        counting_write,
+    )
+    monkeypatch.setattr(
+        "offline_rag.gold_authoring.review_view.resolve_seed_text_from_chunk_set",
+        lambda settings, *, chunk_set_id, chunk_id: f"text:{chunk_id}",
+    )
+
+    settings = _settings(tmp_path)
+    run_path = tmp_path / "run.json"
+    write_authoring_run(
+        run_path,
+        _run([_case("d1", "What is X?", [_candidate("c1"), _candidate("c2", rank=2)])]),
+    )
+    # create_review_server only loads; counting starts after server is up.
+    writes["count"] = 0
+    server, _session, _url = create_review_server(
+        settings=settings, run_path=run_path, host="127.0.0.1", port=0
+    )
+    port = int(server.server_address[1])
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        payload = json.dumps({"chunk_id": "c1", "relevance": 2}).encode()
+        headers = {
+            "Host": f"127.0.0.1:{port}",
+            "Content-Type": "application/json",
+            "Origin": f"http://127.0.0.1:{port}",
+            "Content-Length": str(len(payload)),
+        }
+        conn = HTTPConnection("127.0.0.1", port, timeout=5)
+        conn.request("POST", "/api/cases/d1/grade", body=payload, headers=headers)
+        res = conn.getresponse()
+        data = json.loads(res.read().decode())
+        conn.close()
+        assert res.status == 200
+        assert data["ok"] is True
+        assert data["case"]["judged_count"] == 1
+        assert data["case"]["candidates"][0]["human_relevance"] == 2
+        assert writes["count"] == 1
+        loaded = load_authoring_run(run_path)
+        assert loaded.cases[0].human_judgment_map()["c1"] == 2
     finally:
         server.shutdown()
         server.server_close()

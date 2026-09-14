@@ -27,6 +27,7 @@ offline-rag gold finalize \
 - `query_override` equal to canonical `proposed_query` canonicalizes to `null` on load (no second “unchanged override” state)
 - Historical evidence is exact child text from `run.chunk_set_id`; unresolved evidence fails closed (`evidence_unavailable`) — no placeholder text, CURRENT substitution, parent/neighbor fill, or silent candidate omission
 - Mutation JSON is strict: `clear` / `clear_override` must be JSON booleans when present; empty `{}` does not mutate category/tags
+- HTTP mutations are transactional with their evidence-backed success response: response/view construction (including historical evidence) runs on the prospective run before any durable write; if that step fails, `--run` is unchanged
 
 ## Finalize
 

@@ -10,7 +10,7 @@ from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib import resources
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
 from urllib.parse import urlparse
 
 from offline_rag.config.models import AppSettings
@@ -35,6 +35,8 @@ from offline_rag.gold_authoring.review_view import (
 
 DEFAULT_REVIEW_HOST = "127.0.0.1"
 DEFAULT_REVIEW_PORT = 8765
+
+_T = TypeVar("_T")
 
 
 class ReviewServerError(RuntimeError):
@@ -98,14 +100,35 @@ class ReviewSession:
     def mutate(
         self, mutator: Callable[[GoldAuthoringRun], GoldAuthoringRun]
     ) -> GoldAuthoringRun:
+        updated, _ = self.mutate_with_result(mutator, lambda _run: None)
+        return updated
+
+    def mutate_with_result(
+        self,
+        mutator: Callable[[GoldAuthoringRun], GoldAuthoringRun],
+        result_builder: Callable[[GoldAuthoringRun], _T],
+    ) -> tuple[GoldAuthoringRun, _T]:
+        """Apply a mutation only if the success-response builder also succeeds.
+
+        Order under the session lock:
+
+        1. load current ``--run``
+        2. apply ``mutator`` → prospective run
+        3. validate prospective run
+        4. build response/view from the prospective run (may raise)
+        5. only then atomically write and update session state
+
+        If step 4 fails, the durable artifact is unchanged.
+        """
         with self._lock:
             current = load_authoring_run(self.run_path)
             updated = mutator(current)
             # Validate by round-tripping through model dump/load semantics.
             GoldAuthoringRun.model_validate_json(updated.model_dump_json())
+            result = result_builder(updated)
             write_authoring_run(self.run_path, updated)
             self.run = updated
-            return updated
+            return updated, result
 
 
 def _json_response(
@@ -347,9 +370,16 @@ def make_handler(session: ReviewSession) -> type[BaseHTTPRequestHandler]:
                 raise ReviewError("unknown route", code="not_found")
             draft_case_id, action = parts
 
-            def after(run: GoldAuthoringRun) -> dict[str, Any]:
+            def build_detail(run: GoldAuthoringRun) -> dict[str, Any]:
                 case = get_case(run, draft_case_id)
                 return build_case_detail_payload(session.settings, run, case)
+
+            def commit(
+                mutator: Callable[[GoldAuthoringRun], GoldAuthoringRun],
+            ) -> dict[str, Any]:
+                # Response/evidence validation is part of the pre-write transaction.
+                _updated, detail = session.mutate_with_result(mutator, build_detail)
+                return detail
 
             if action == "grade":
                 if set(body.keys()) - {"chunk_id", "relevance"}:
@@ -370,7 +400,7 @@ def make_handler(session: ReviewSession) -> type[BaseHTTPRequestHandler]:
                         relevance=relevance,
                     )
 
-                return after(session.mutate(mutate))
+                return commit(mutate)
 
             if action == "query":
                 if set(body.keys()) - {"query"}:
@@ -384,7 +414,7 @@ def make_handler(session: ReviewSession) -> type[BaseHTTPRequestHandler]:
                         run, draft_case_id=draft_case_id, query=query
                     )
 
-                return after(session.mutate(mutate))
+                return commit(mutate)
 
             if action == "category":
                 if set(body.keys()) - {"category", "clear"}:
@@ -423,7 +453,7 @@ def make_handler(session: ReviewSession) -> type[BaseHTTPRequestHandler]:
                         clear=clear,
                     )
 
-                return after(session.mutate(mutate))
+                return commit(mutate)
 
             if action == "tags":
                 if set(body.keys()) - {"tags", "clear_override"}:
@@ -461,7 +491,7 @@ def make_handler(session: ReviewSession) -> type[BaseHTTPRequestHandler]:
                         clear_override=clear_override,
                     )
 
-                return after(session.mutate(mutate))
+                return commit(mutate)
 
             if action in {"accept", "approve-edited", "reject", "reopen"}:
                 if body:
@@ -479,7 +509,7 @@ def make_handler(session: ReviewSession) -> type[BaseHTTPRequestHandler]:
                 def mutate(run: GoldAuthoringRun) -> GoldAuthoringRun:
                     return op(run, draft_case_id=draft_case_id)
 
-                return after(session.mutate(mutate))
+                return commit(mutate)
 
             raise ReviewError("unknown route", code="not_found")
 

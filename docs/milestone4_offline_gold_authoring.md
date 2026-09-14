@@ -254,7 +254,7 @@ See [`slice9d_relevance_prelabel.md`](slice9d_relevance_prelabel.md).
 
 `offline-rag gold review --run <authoring-run>` serves a loopback-only native UI; human decisions persist on silver. `offline-rag gold finalize --run … [--output] [--force]` publishes qualifying `accepted`/`edited` cases to `offline-rag-gold-v1`. No Label Studio.
 
-Corrective invariants (post-implementation): validate GoldDataset in the temporary publish directory before promotion; historical evidence fails closed (no placeholder/CURRENT); strict JSON mutation booleans/intent; real `::1` bind when IPv6 is available.
+Corrective invariants (post-implementation): validate GoldDataset in the temporary publish directory before promotion; historical evidence fails closed (no placeholder/CURRENT); strict JSON mutation booleans/intent; real `::1` bind when IPv6 is available; HTTP review mutations are transactional with their evidence-backed success response (no durable write if response construction fails).
 
 ---
 
