@@ -2,7 +2,7 @@
 
 This document converts the architecture into incremental, testable implementation slices. Each slice should leave the repository in a working state. Avoid building multiple major layers simultaneously: the evaluation harness depends on being able to attribute improvements and regressions to individual changes.
 
-**Implementation status:** Slices 0–9, **9A**, **9B**, **9C**, **9D**, and **9E** are implemented. **Next:** Slice **9F** (20-case authoring pilot), then 9G–9H, then Milestone 5 / Slice 10. Canonical Milestone 4 plan: `docs/milestone4_offline_gold_authoring.md`. Authoritative notes: `docs/slice0_contracts.md` … `docs/slice9_retrieval_evaluation.md`, `docs/slice9a_gold_authoring.md`, `docs/slice9b_gold_propose.md`, `docs/slice9c_candidate_pooling.md`, `docs/slice9d_relevance_prelabel.md`, `docs/slice9e_human_review.md`, `eval/README.md`.
+**Implementation status:** Slices 0–9, **9A**–**9E** implemented (**9E CLOSED / VERIFIED**). Slice **9F** **IN PROGRESS** — operational contract/runbook ready; pilot execution pending ([`docs/slice9f_pilot_runbook.md`](docs/slice9f_pilot_runbook.md)). Then 9G–9H, then Milestone 5 / Slice 10. Canonical Milestone 4 plan: `docs/milestone4_offline_gold_authoring.md`. Authoritative notes: `docs/slice0_contracts.md` … `docs/slice9_retrieval_evaluation.md`, `docs/slice9a_gold_authoring.md`, `docs/slice9b_gold_propose.md`, `docs/slice9c_candidate_pooling.md`, `docs/slice9d_relevance_prelabel.md`, `docs/slice9e_human_review.md`, `docs/slice9f_pilot_runbook.md`, `eval/README.md`.
 
 ---
 
@@ -480,9 +480,9 @@ Running two experiment configs yields directly comparable machine-readable and h
 
 # Slices 9A–9H — Offline gold authoring & retrieval benchmarking (Milestone 4)
 
-**Status:** Slice **9E** done (`gold review` / `gold finalize`). Next: **9F**.
+**Status:** Slice **9E** **CLOSED / VERIFIED** (`gold review` / `gold finalize`). Slice **9F** **IN PROGRESS** (runbook/template ready; execution pending).
 
-Full plan: [`docs/milestone4_offline_gold_authoring.md`](docs/milestone4_offline_gold_authoring.md). Slice 9A notes: [`docs/slice9a_gold_authoring.md`](docs/slice9a_gold_authoring.md). Slice 9B notes: [`docs/slice9b_gold_propose.md`](docs/slice9b_gold_propose.md). Slice 9C notes: [`docs/slice9c_candidate_pooling.md`](docs/slice9c_candidate_pooling.md). Slice 9D notes: [`docs/slice9d_relevance_prelabel.md`](docs/slice9d_relevance_prelabel.md). Slice 9E notes: [`docs/slice9e_human_review.md`](docs/slice9e_human_review.md).
+Full plan: [`docs/milestone4_offline_gold_authoring.md`](docs/milestone4_offline_gold_authoring.md). Slice 9A notes: [`docs/slice9a_gold_authoring.md`](docs/slice9a_gold_authoring.md). Slice 9B notes: [`docs/slice9b_gold_propose.md`](docs/slice9b_gold_propose.md). Slice 9C notes: [`docs/slice9c_candidate_pooling.md`](docs/slice9c_candidate_pooling.md). Slice 9D notes: [`docs/slice9d_relevance_prelabel.md`](docs/slice9d_relevance_prelabel.md). Slice 9E notes: [`docs/slice9e_human_review.md`](docs/slice9e_human_review.md). Slice 9F ops: [`docs/slice9f_pilot_runbook.md`](docs/slice9f_pilot_runbook.md), [`docs/slice9f_pilot_report_template.md`](docs/slice9f_pilot_report_template.md).
 
 | Slice | Focus |
 |---|---|
@@ -490,8 +490,8 @@ Full plan: [`docs/milestone4_offline_gold_authoring.md`](docs/milestone4_offline
 | 9B | Deterministic sampling + local question proposal — **done** |
 | 9C | Multi-retriever candidate pooling — **done** |
 | 9D | Blind double-pass local pre-labeling — **done** |
-| 9E | Human review + GoldDataset v1 finalization — **done** |
-| 9F | ~20-case `ics_modules` pilot |
+| 9E | Human review + GoldDataset v1 finalization — **CLOSED / VERIFIED** |
+| 9F | ~20-case `ics_modules` operational pilot — **IN PROGRESS** (execution pending) |
 | 9G | ~100–150 case production gold + dev/test freeze |
 | 9H | Retrieval A/B + explicit promotion decision |
 

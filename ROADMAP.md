@@ -139,7 +139,7 @@ A reviewer can refresh a private-corpus retrieval benchmark without sending
 source text outside an approved local/private environment, then run
 comparable retrieval evaluations and make an explicit promotion decision.
 
-**Status:** Slice **9E** complete (`offline-rag gold review` / `gold finalize`). Next decision track: **9F** (20-case authoring pilot). Do not promote Arm H,
+**Status:** Slice **9E** **CLOSED / VERIFIED** (`offline-rag gold review` / `gold finalize`). Slice **9F** **IN PROGRESS** — operational contract/runbook ready; pilot execution pending. Do not promote Arm H,
 `model-query-prompt-v1`, or `prompt-grounded-provenance-v2` during
 authoring-pipeline work; do not start Slice 10 inside this milestone.
 

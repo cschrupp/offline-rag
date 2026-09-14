@@ -155,7 +155,7 @@ The goal is to be able to make evidence-backed statements such as:
 
 ### Offline gold authoring (Milestone 4)
 
-Private corpora are labeled through a fully local workflow: source-seeded question proposal, multi-retriever pooling, blind local pre-labeling, human review, and GoldDataset finalization. Slices **9A**/**9B**/**9C**/**9D**/**9E** are done (`doctor` Authoring, `gold propose`, `gold pool`, `gold prelabel`, `gold review`, `gold finalize`); see [`docs/slice9e_human_review.md`](docs/slice9e_human_review.md), [`docs/slice9d_relevance_prelabel.md`](docs/slice9d_relevance_prelabel.md), and [`docs/milestone4_offline_gold_authoring.md`](docs/milestone4_offline_gold_authoring.md). Next implementation decision: Slice **9F**.
+Private corpora are labeled through a fully local workflow: source-seeded question proposal, multi-retriever pooling, blind local pre-labeling, human review, and GoldDataset finalization. Slices **9A**–**9E** are done (`doctor` Authoring, `gold propose`, `gold pool`, `gold prelabel`, `gold review`, `gold finalize`); see [`docs/slice9e_human_review.md`](docs/slice9e_human_review.md) and [`docs/milestone4_offline_gold_authoring.md`](docs/milestone4_offline_gold_authoring.md). Slice **9F** is **IN PROGRESS** (operational pilot runbook ready; execution pending) — [`docs/slice9f_pilot_runbook.md`](docs/slice9f_pilot_runbook.md).
 
 ### Retrieval
 
@@ -342,10 +342,10 @@ Use public, redistributable technical documents rather than proprietary material
 
 ## Project status
 
-**Phase:** Milestone 4 in progress — Slices 0–9, **9A**, **9B**, **9C**, **9D**, and **9E** done; next decision track is **Slice 9F** (20-case pilot).
+**Phase:** Milestone 4 in progress — Slices 0–9, **9A**–**9E** done (**9E CLOSED / VERIFIED**); Slice **9F** **IN PROGRESS** (runbook ready; execution pending).
 
-Working local path: ingest → chunk → index / index lexical → retrieve ladder → `query` → `eval retrieve` / `eval compare` → `eval query` → `doctor` → `gold propose` → `gold pool` → `gold prelabel`.
+Working local path: ingest → chunk → index / index lexical → retrieve ladder → `query` → `eval retrieve` / `eval compare` → `eval query` → `doctor` → `gold propose` → `gold pool` → `gold prelabel` → `gold review` → `gold finalize`.
 
-Still deferred: remaining authoring slices (9F–9H), semantic answer/citation quality metrics (Milestone 5 / Slice 10), agentic recovery (Milestone 6).
+Still deferred: completing the 9F pilot execution, then 9G–9H; semantic answer/citation quality metrics (Milestone 5 / Slice 10); agentic recovery (Milestone 6).
 
-See `ROADMAP.md`, `docs/milestone4_offline_gold_authoring.md`, `docs/slice9b_gold_propose.md`, `docs/slice9a_gold_authoring.md`, `docs/slice9_retrieval_evaluation.md`, and `docs/slice8_grounded_generation.md`.
+See `ROADMAP.md`, `docs/milestone4_offline_gold_authoring.md`, `docs/slice9f_pilot_runbook.md`, `docs/slice9e_human_review.md`, and `docs/slice8_grounded_generation.md`.

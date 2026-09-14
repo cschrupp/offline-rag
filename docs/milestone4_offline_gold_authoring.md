@@ -2,9 +2,9 @@
 
 **Position:** after Slice 9 (Evaluation Harness v1), before Slice 10 (Generation/Citation Semantic Evaluation).
 
-**Next implementation decision track:** Slice 9F — 20-Case Authoring Pilot.
+**Next operational track:** Slice **9F** — 20-Case Authoring Pilot (**IN PROGRESS**: operational contract/runbook ready; execution pending).
 
-Slice **9E** (`offline-rag gold review` / `gold finalize`) is done — see [`slice9e_human_review.md`](slice9e_human_review.md).
+Slice **9E** (`offline-rag gold review` / `gold finalize`) is **CLOSED / VERIFIED** — see [`slice9e_human_review.md`](slice9e_human_review.md).
 Slice **9D** (`offline-rag gold prelabel`) is done — see [`slice9d_relevance_prelabel.md`](slice9d_relevance_prelabel.md).
 Slice **9C** (`offline-rag gold pool`) is done — see [`slice9c_candidate_pooling.md`](slice9c_candidate_pooling.md).
 Slice **9B** (`offline-rag gold propose`) is done — see [`slice9b_gold_propose.md`](slice9b_gold_propose.md).
@@ -260,13 +260,27 @@ Corrective invariants (post-implementation): validate GoldDataset in the tempora
 
 ## Slice 9F — 20-Case Authoring Pilot
 
-**Goal:** Validate the workflow on `ics_modules` (~20 accepted cases after generating more proposals).
+**Status:** **IN PROGRESS** — operational contract and runbook locked; **pilot execution pending**. Not complete.
 
-Coverage spread: definition, purpose, procedure, identity-dependent, navigation/terminology, multi-chunk, cross-document/disambiguation. Module 1 smoke may be one regression case — must not dominate.
+**Ops docs:**
 
-Record authoring-process diagnostics (proposal rejection, pool size, A/B agreement, human edits, missed positives, review time, category/module coverage). Do **not** tune production retrieval from pilot cases alone.
+- Runbook: [`slice9f_pilot_runbook.md`](slice9f_pilot_runbook.md)
+- Report template: [`slice9f_pilot_report_template.md`](slice9f_pilot_report_template.md)
+- Filled report (after execution only): `docs/pilots/slice9f_ics_modules.md`
 
-Proceed to scale only if question quality, pooling, rubric consistency, and model assistance prove usable.
+**Nature:** Operational validation of the locked 9B→9E workflow on `ics_modules`. No new runtime architecture, schemas, freeze enforcement, append-propose, coverage quotas, or pilot CLI.
+
+**Authoritative start (after fail-closed preflight):**
+
+```text
+offline-rag gold propose --corpus ics_modules --count 40 --seed 0
+```
+
+**Lineage:** one historical `chunk_set_id`, one `authoring_run_id`; prepare pool + prelabels before review; freeze upstream state at the first durable human mutation; finalize with ordinary `gold finalize` only (default paths; no cross-run stitching).
+
+**Success gate (written GO / ADJUST / NO-GO):** ≥20 finalized `accepted`/`edited` cases; meaningful query-type coverage recorded; four process judgments (proposal / pool / rubric / model-assistance); no unresolved contract-breaking defect; no pilot-only retrieval/model promotion. Module 1 ≤1 finalized case via source-seed `document_id` (canonical title fallback only). Pending may remain at finalize.
+
+Do **not** mark 9F complete until the executed GoldDataset and filled pilot report exist with an explicit 9F-1 outcome.
 
 ---
 
