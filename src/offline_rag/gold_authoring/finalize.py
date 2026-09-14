@@ -140,7 +140,7 @@ def build_gold_cases(run: GoldAuthoringRun) -> list[GoldCase]:
             gold_case = _silver_to_gold_case(case)
         except FinalizePreRunError:
             raise
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             raise FinalizePreRunError(
                 f"approved case {case.draft_case_id} failed validation: {exc}"
             ) from exc
@@ -184,7 +184,7 @@ def run_gold_finalize(
 
     try:
         run = load_authoring_run(path)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise FinalizePreRunError(f"failed to load authoring run: {exc}") from exc
 
     status_counts = _status_counts(run)
@@ -231,27 +231,26 @@ def run_gold_finalize(
     cases_text = "\n".join(cases_lines) + ("\n" if cases_lines else "")
     meta_text = meta.model_dump_json(indent=2) + "\n"
 
-    # Validate constructed dataset via temp publish + load round-trip semantics
-    # by constructing in memory then publishing atomically.
+    def _validate_temp_dataset(temp_dir: Path) -> None:
+        try:
+            loaded = load_gold_dataset(temp_dir)
+        except Exception as exc:
+            raise FinalizePreRunError(
+                f"GoldDataset failed validation before publication: {exc}"
+            ) from exc
+        if loaded.dataset_id != dataset_id:
+            raise FinalizePreRunError(
+                "GoldDataset dataset_id mismatch before publication"
+            )
+
     atomic_publish_directory(
         destination,
         {
             "meta.json": meta_text,
             "cases.jsonl": cases_text,
         },
+        validate=_validate_temp_dataset,
     )
-
-    # Fail closed if published artifact does not load.
-    try:
-        loaded = load_gold_dataset(destination)
-    except Exception as exc:  # noqa: BLE001
-        raise FinalizePreRunError(
-            f"published GoldDataset failed validation: {exc}"
-        ) from exc
-    if loaded.dataset_id != dataset_id:
-        raise FinalizePreRunError(
-            "published dataset_id mismatch after finalization"
-        )
 
     return FinalizeResult(
         exit_code=0,

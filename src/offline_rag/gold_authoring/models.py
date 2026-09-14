@@ -24,11 +24,12 @@ from offline_rag.gold_authoring.pooling_models import (
 from offline_rag.gold_authoring.prelabel_models import (
     CasePrelabelProvenance,
     ModelJudgment,
-    PrelabelSummary,
     PrelabelingStage,
+    PrelabelSummary,
     has_complete_prelabel,
 )
 from offline_rag.gold_authoring.review_models import (
+    CategoryOverride,
     HumanReview,
     HumanReviewStatus,
     canonicalize_category,
@@ -133,7 +134,7 @@ class SilverCase(BaseModel):
         if value is None:
             return None
         if not isinstance(value, str):
-            raise ValueError("proposed_query must be a string or null")
+            raise TypeError("proposed_query must be a string or null")
         text = value.strip()
         return text or None
 
@@ -149,16 +150,15 @@ class SilverCase(BaseModel):
                 summary=self.prelabel_summary,
                 provenance=self.prelabel_provenance,
                 candidate_ids=candidate_ids,
+            ) and not (
+                not self.model_judgments
+                and self.prelabel_summary is None
+                and self.prelabel_provenance is None
             ):
-                if not (
-                    not self.model_judgments
-                    and self.prelabel_summary is None
-                    and self.prelabel_provenance is None
-                ):
-                    raise ValueError(
-                        f"incomplete or inconsistent 9D prelabel for case "
-                        f"{self.draft_case_id}"
-                    )
+                raise ValueError(
+                    f"incomplete or inconsistent 9D prelabel for case "
+                    f"{self.draft_case_id}"
+                )
             if self.model_judgments:
                 assert self.prelabel_provenance is not None
                 order_by_pass = {
@@ -175,6 +175,31 @@ class SilverCase(BaseModel):
                             "blind_position does not match candidate_order for "
                             f"{judgment.pass_id}/{judgment.chunk_id}"
                         )
+
+        # Canonicalize unnecessary overrides on load (9E-7).
+        if self.human_review is not None:
+            review = self.human_review
+            updates: dict[str, Any] = {}
+            if (
+                review.query_override is not None
+                and self.proposed_query is not None
+                and review.query_override == canonicalize_query(self.proposed_query)
+            ):
+                updates["query_override"] = None
+            if review.category_override.is_overridden:
+                proposed_cat = canonicalize_category(self.proposed_category)
+                if review.category_override.value == proposed_cat:
+                    updates["category_override"] = CategoryOverride(
+                        is_overridden=False, value=None
+                    )
+            if review.tags_override is not None and tags_equal(
+                review.tags_override, self.proposed_tags
+            ):
+                updates["tags_override"] = None
+            if updates:
+                object.__setattr__(
+                    self, "human_review", review.model_copy(update=updates)
+                )
 
         _validate_human_review_against_case(self)
         return self
@@ -215,9 +240,7 @@ class SilverCase(BaseModel):
             return True
         if canonicalize_category(self.proposed_category) != self.effective_category():
             return True
-        if not tags_equal(self.proposed_tags, self.effective_tags()):
-            return True
-        return False
+        return not tags_equal(self.proposed_tags, self.effective_tags())
 
     def human_judgment_map(self) -> dict[str, int]:
         if self.human_review is None:

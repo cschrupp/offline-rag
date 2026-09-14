@@ -4,16 +4,19 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import socket
 import threading
+from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib import resources
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 from urllib.parse import urlparse
 
 from offline_rag.config.models import AppSettings
 from offline_rag.gold_authoring.models import GoldAuthoringRun
 from offline_rag.gold_authoring.persist import load_authoring_run, write_authoring_run
+from offline_rag.gold_authoring.review_models import ReviewError
 from offline_rag.gold_authoring.review_ops import (
     accept_case,
     approve_edited_case,
@@ -25,7 +28,6 @@ from offline_rag.gold_authoring.review_ops import (
     set_reviewed_query,
     set_reviewed_tags,
 )
-from offline_rag.gold_authoring.review_models import ReviewError
 from offline_rag.gold_authoring.review_view import (
     build_case_detail_payload,
     build_case_list_payload,
@@ -34,11 +36,13 @@ from offline_rag.gold_authoring.review_view import (
 DEFAULT_REVIEW_HOST = "127.0.0.1"
 DEFAULT_REVIEW_PORT = 8765
 
-_ALLOWED_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
-
 
 class ReviewServerError(RuntimeError):
     """Review server configuration / bind error."""
+
+
+class _ThreadingHTTPServerV6(ThreadingHTTPServer):
+    address_family = socket.AF_INET6
 
 
 def normalize_review_host(host: str) -> str:
@@ -137,7 +141,7 @@ def make_handler(session: ReviewSession) -> type[BaseHTTPRequestHandler]:
     class ReviewHandler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
 
-        def log_message(self, format: str, *args: Any) -> None:  # noqa: A003
+        def log_message(self, format: str, *args: Any) -> None:
             # Keep logs concise; avoid dumping private document bodies.
             return
 
@@ -202,7 +206,7 @@ def make_handler(session: ReviewSession) -> type[BaseHTTPRequestHandler]:
                 return False
             return True
 
-        def do_GET(self) -> None:  # noqa: N802
+        def do_GET(self) -> None:
             if not self._validate_host():
                 return
             parsed = urlparse(self.path)
@@ -253,9 +257,10 @@ def make_handler(session: ReviewSession) -> type[BaseHTTPRequestHandler]:
                     case = get_case(run, draft_case_id)
                     detail = build_case_detail_payload(session.settings, run, case)
                 except ReviewError as exc:
+                    status = 404 if exc.code == "unknown_case" else 400
                     _json_response(
                         self,
-                        status=404,
+                        status=status,
                         payload={
                             "ok": False,
                             "error": {"code": exc.code, "message": exc.message},
@@ -287,7 +292,7 @@ def make_handler(session: ReviewSession) -> type[BaseHTTPRequestHandler]:
                 },
             )
 
-        def do_POST(self) -> None:  # noqa: N802
+        def do_POST(self) -> None:
             if not self._validate_mutation_headers():
                 return
             parsed = urlparse(self.path)
@@ -386,9 +391,26 @@ def make_handler(session: ReviewSession) -> type[BaseHTTPRequestHandler]:
                     raise ReviewError(
                         "unknown fields in category payload", code="invalid_json"
                     )
-                clear = bool(body.get("clear", False))
+                if not body:
+                    raise ReviewError(
+                        "category mutation requires explicit clear and/or category",
+                        code="invalid_json",
+                    )
+                if "clear" in body and type(body["clear"]) is not bool:
+                    raise ReviewError(
+                        "clear must be a JSON boolean when present",
+                        code="invalid_json",
+                    )
+                clear = bool(body["clear"]) if "clear" in body else False
+                if "category" not in body and not clear:
+                    raise ReviewError(
+                        "category mutation requires category or clear=true",
+                        code="invalid_json",
+                    )
                 category = body.get("category")
-                if not clear and category is not None and not isinstance(category, str):
+                if "category" in body and category is not None and not isinstance(
+                    category, str
+                ):
                     raise ReviewError(
                         "category must be string or null", code="invalid_json"
                     )
@@ -408,10 +430,28 @@ def make_handler(session: ReviewSession) -> type[BaseHTTPRequestHandler]:
                     raise ReviewError(
                         "unknown fields in tags payload", code="invalid_json"
                     )
-                clear_override = bool(body.get("clear_override", False))
+                if not body:
+                    raise ReviewError(
+                        "tags mutation requires tags and/or clear_override",
+                        code="invalid_json",
+                    )
+                if "clear_override" in body and type(body["clear_override"]) is not bool:
+                    raise ReviewError(
+                        "clear_override must be a JSON boolean when present",
+                        code="invalid_json",
+                    )
+                clear_override = (
+                    bool(body["clear_override"]) if "clear_override" in body else False
+                )
                 tags = body.get("tags")
-                if not clear_override and not isinstance(tags, list):
-                    raise ReviewError("tags must be a list", code="invalid_json")
+                if not clear_override:
+                    if "tags" not in body:
+                        raise ReviewError(
+                            "tags must be present when clear_override is false",
+                            code="invalid_json",
+                        )
+                    if not isinstance(tags, list):
+                        raise ReviewError("tags must be a list", code="invalid_json")
 
                 def mutate(run: GoldAuthoringRun) -> GoldAuthoringRun:
                     return set_reviewed_tags(
@@ -485,15 +525,22 @@ def create_review_server(
         port=port,
     )
     handler = make_handler(session)
+    server_cls: type[ThreadingHTTPServer]
+    if bind_host == "::1":
+        server_cls = _ThreadingHTTPServerV6
+    else:
+        server_cls = ThreadingHTTPServer
     try:
-        server = ThreadingHTTPServer((bind_host, port), handler)
+        server = server_cls((bind_host, port), handler)
     except OSError as exc:
-        raise ReviewServerError(f"failed to bind review server: {exc}") from exc
+        raise ReviewServerError(
+            f"failed to bind review server on {bind_host!r}: {exc}"
+        ) from exc
     # Reflect ephemeral port assignment (port=0) into session origin checks.
-    bound_host, bound_port = server.server_address[:2]
+    bound_port = int(server.server_address[1])
     session.host = bind_host
-    session.port = int(bound_port)
-    session.origin = canonical_origin(bind_host, int(bound_port))
+    session.port = bound_port
+    session.origin = canonical_origin(bind_host, bound_port)
     url = f"{session.origin}/"
     return server, session, url
 

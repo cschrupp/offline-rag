@@ -253,12 +253,19 @@ def test_normalize_review_host() -> None:
         normalize_review_host("192.168.1.20")
 
 
-def test_review_server_grade_and_security(tmp_path: Path) -> None:
+def test_review_server_grade_and_security(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     settings = _settings(tmp_path)
     run_path = tmp_path / "run.json"
     write_authoring_run(
         run_path,
         _run([_case("d1", "What is X?", [_candidate("c1"), _candidate("c2", rank=2)])]),
+    )
+
+    monkeypatch.setattr(
+        "offline_rag.gold_authoring.review_view.resolve_seed_text_from_chunk_set",
+        lambda settings, *, chunk_set_id, chunk_id: f"text:{chunk_id}",
     )
 
     server, _session, url = create_review_server(
@@ -376,7 +383,9 @@ def test_finalize_fail_closed_and_positive_only(tmp_path: Path) -> None:
             },
         }
     )
-    with pytest.raises(Exception):
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
         GoldAuthoringRun.model_validate(bad_payload)
 
     only_pending = _run([pending], corpus_name=corpus_name).model_copy(
@@ -437,17 +446,17 @@ def test_cli_help_surfaces() -> None:
     parser = build_parser()
     review = None
     finalize = None
-    for action in parser._subparsers._group_actions:  # noqa: SLF001
+    for action in parser._subparsers._group_actions:
         for name, sub in action.choices.items():
             if name != "gold":
                 continue
-            for gold_action in sub._subparsers._group_actions:  # noqa: SLF001
+            for gold_action in sub._subparsers._group_actions:
                 review = gold_action.choices.get("review")
                 finalize = gold_action.choices.get("finalize")
     assert review is not None
     assert finalize is not None
-    review_opts = {a.dest for a in review._actions}  # noqa: SLF001
-    finalize_opts = {a.dest for a in finalize._actions}  # noqa: SLF001
+    review_opts = {a.dest for a in review._actions}
+    finalize_opts = {a.dest for a in finalize._actions}
     assert "run" in review_opts
     assert "host" in review_opts
     assert "port" in review_opts
@@ -463,3 +472,343 @@ def test_cli_help_surfaces() -> None:
 def test_cli_finalize_missing_run_fails() -> None:
     with pytest.raises(SystemExit):
         main(["gold", "finalize"])
+
+
+def test_query_override_equal_proposed_canonicalizes_on_load() -> None:
+    case = SilverCase.model_validate(
+        {
+            "draft_case_id": "d1",
+            "proposed_query": "What is X?",
+            "human_review": {
+                "status": "pending",
+                "judgments": [],
+                "query_override": "What is X?",
+                "category_override": {"is_overridden": False, "value": None},
+                "tags_override": None,
+                "grade_basis_query": None,
+            },
+        }
+    )
+    assert case.human_review is not None
+    assert case.human_review.query_override is None
+    assert case.effective_query() == "What is X?"
+    assert case.proposal_content_changed() is False
+
+
+def test_finalize_temp_validation_failure_leaves_new_destination_absent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from offline_rag.evaluation.gold import GoldDatasetError
+
+    settings = _settings(tmp_path)
+    corpus_name = "manuals"
+    (settings.paths.corpora / corpus_name).mkdir(parents=True, exist_ok=True)
+    case = _case("d1", "What is X?", [_candidate("c1"), _candidate("c2", rank=2)])
+    run = accept_case(
+        _grade_all(_run([case], corpus_name=corpus_name), "d1", [2, 0]),
+        draft_case_id="d1",
+    )
+    run_path = tmp_path / "run.json"
+    write_authoring_run(run_path, run)
+    out = tmp_path / "gold_new"
+    assert not out.exists()
+
+    def boom(_path: Path) -> None:
+        raise GoldDatasetError("injected pre-publish failure")
+
+    monkeypatch.setattr(
+        "offline_rag.gold_authoring.finalize.load_gold_dataset", boom
+    )
+    with pytest.raises(FinalizePreRunError, match="before publication"):
+        run_gold_finalize(settings, run_path=run_path, output=out)
+    assert not out.exists()
+
+
+def test_finalize_force_temp_validation_failure_preserves_old(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from offline_rag.evaluation.gold import GoldDatasetError
+
+    settings = _settings(tmp_path)
+    corpus_name = "manuals"
+    (settings.paths.corpora / corpus_name).mkdir(parents=True, exist_ok=True)
+    case = _case("d1", "What is X?", [_candidate("c1"), _candidate("c2", rank=2)])
+    run = accept_case(
+        _grade_all(_run([case], corpus_name=corpus_name), "d1", [2, 0]),
+        draft_case_id="d1",
+    )
+    run_path = tmp_path / "run.json"
+    write_authoring_run(run_path, run)
+    out = tmp_path / "gold"
+    first = run_gold_finalize(settings, run_path=run_path, output=out)
+    old_id = first.dataset_id
+    old_meta = (out / "meta.json").read_text(encoding="utf-8")
+
+    observed: dict[str, object] = {}
+
+    def boom(path: Path):
+        observed["validated_path"] = Path(path)
+        observed["destination_exists_during_validate"] = out.exists()
+        if out.exists():
+            observed["old_id_during_validate"] = load_gold_dataset(out).dataset_id
+        raise GoldDatasetError("injected pre-publish failure")
+
+    monkeypatch.setattr(
+        "offline_rag.gold_authoring.finalize.load_gold_dataset", boom
+    )
+    # Edit silver so a new dataset would differ, then fail validation.
+    run2 = reopen_case(run, draft_case_id="d1")
+    run2 = set_human_grade(run2, draft_case_id="d1", chunk_id="c1", relevance=1)
+    run2 = set_human_grade(run2, draft_case_id="d1", chunk_id="c2", relevance=0)
+    run2 = accept_case(run2, draft_case_id="d1")
+    write_authoring_run(run_path, run2)
+
+    with pytest.raises(FinalizePreRunError, match="before publication"):
+        run_gold_finalize(settings, run_path=run_path, output=out, force=True)
+
+    assert observed["destination_exists_during_validate"] is True
+    assert observed["old_id_during_validate"] == old_id
+    validated = Path(str(observed["validated_path"]))
+    assert validated != out
+    assert out.exists()
+    still = load_gold_dataset(out)
+    assert still.dataset_id == old_id
+    assert (out / "meta.json").read_text(encoding="utf-8") == old_meta
+
+
+def test_finalize_force_successful_replacement(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    corpus_name = "manuals"
+    (settings.paths.corpora / corpus_name).mkdir(parents=True, exist_ok=True)
+    case = _case("d1", "What is X?", [_candidate("c1"), _candidate("c2", rank=2)])
+    run = accept_case(
+        _grade_all(_run([case], corpus_name=corpus_name), "d1", [2, 0]),
+        draft_case_id="d1",
+    )
+    run_path = tmp_path / "run.json"
+    write_authoring_run(run_path, run)
+    out = tmp_path / "gold"
+    first = run_gold_finalize(settings, run_path=run_path, output=out)
+    old_id = first.dataset_id
+
+    run2 = reopen_case(run, draft_case_id="d1")
+    run2 = set_human_grade(run2, draft_case_id="d1", chunk_id="c1", relevance=1)
+    run2 = set_human_grade(run2, draft_case_id="d1", chunk_id="c2", relevance=2)
+    run2 = accept_case(run2, draft_case_id="d1")
+    write_authoring_run(run_path, run2)
+    second = run_gold_finalize(settings, run_path=run_path, output=out, force=True)
+    assert second.dataset_id != old_id
+    loaded = load_gold_dataset(out)
+    assert loaded.dataset_id == second.dataset_id
+    assert {j.relevance for j in loaded.cases[0].judgments} == {1, 2}
+
+
+def test_historical_evidence_missing_chunk_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from offline_rag.gold_authoring.chunk_access import ChunkAccessError
+    from offline_rag.gold_authoring.review_view import build_case_detail_payload
+
+    settings = AppSettings()
+    case = _case("d1", "What is X?", [_candidate("c1"), _candidate("c2", rank=2)])
+    run = _run([case])
+
+    def missing(settings, *, chunk_set_id, chunk_id):
+        raise ChunkAccessError(f"chunk_id {chunk_id} not found")
+
+    monkeypatch.setattr(
+        "offline_rag.gold_authoring.review_view.resolve_seed_text_from_chunk_set",
+        missing,
+    )
+    with pytest.raises(ReviewError, match="historical evidence unavailable") as exc:
+        build_case_detail_payload(settings, run, case)
+    assert exc.value.code == "evidence_unavailable"
+
+
+def test_historical_evidence_missing_chunk_set_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from offline_rag.gold_authoring.chunk_access import ChunkAccessError
+    from offline_rag.gold_authoring.review_view import build_case_detail_payload
+
+    settings = AppSettings()
+    case = _case("d1", "What is X?", [_candidate("c1")])
+    run = _run([case])
+
+    def missing_set(settings, *, chunk_set_id, chunk_id):
+        raise ChunkAccessError(f"historical chunk-set unavailable: {chunk_set_id}")
+
+    monkeypatch.setattr(
+        "offline_rag.gold_authoring.review_view.resolve_seed_text_from_chunk_set",
+        missing_set,
+    )
+    with pytest.raises(ReviewError) as exc:
+        build_case_detail_payload(settings, run, case)
+    assert exc.value.code == "evidence_unavailable"
+
+
+def test_historical_evidence_never_uses_current(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from offline_rag.gold_authoring.review_view import build_case_detail_payload
+
+    settings = AppSettings()
+    case = _case("d1", "What is X?", [_candidate("c1")])
+    run = _run([case])
+    seen: list[str] = []
+
+    def capture(settings, *, chunk_set_id, chunk_id):
+        seen.append(chunk_set_id)
+        return "exact historical text"
+
+    monkeypatch.setattr(
+        "offline_rag.gold_authoring.review_view.resolve_seed_text_from_chunk_set",
+        capture,
+    )
+    detail = build_case_detail_payload(settings, run, case)
+    assert seen == ["chunkset_A"]
+    assert detail["candidates"][0]["text"] == "exact historical text"
+    assert "[evidence unavailable" not in detail["candidates"][0]["text"]
+
+
+def test_case_detail_http_fails_closed_on_missing_evidence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from offline_rag.gold_authoring.chunk_access import ChunkAccessError
+
+    settings = _settings(tmp_path)
+    run_path = tmp_path / "run.json"
+    write_authoring_run(
+        run_path,
+        _run([_case("d1", "What is X?", [_candidate("c1")])]),
+    )
+
+    def missing(settings, *, chunk_set_id, chunk_id):
+        raise ChunkAccessError(f"chunk_id {chunk_id} not found")
+
+    monkeypatch.setattr(
+        "offline_rag.gold_authoring.review_view.resolve_seed_text_from_chunk_set",
+        missing,
+    )
+    server, _session, _url = create_review_server(
+        settings=settings, run_path=run_path, host="127.0.0.1", port=0
+    )
+    port = int(server.server_address[1])
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        conn = HTTPConnection("127.0.0.1", port, timeout=5)
+        conn.request("GET", "/api/cases/d1", headers={"Host": f"127.0.0.1:{port}"})
+        res = conn.getresponse()
+        data = json.loads(res.read().decode())
+        conn.close()
+        assert res.status == 400
+        assert data["ok"] is False
+        assert data["error"]["code"] == "evidence_unavailable"
+        assert "case" not in data
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+def test_strict_json_category_and_tags_mutations(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    run_path = tmp_path / "run.json"
+    write_authoring_run(
+        run_path,
+        _run([_case("d1", "What is X?", [_candidate("c1"), _candidate("c2", rank=2)])]),
+    )
+    server, _session, _url = create_review_server(
+        settings=settings, run_path=run_path, host="127.0.0.1", port=0
+    )
+    port = int(server.server_address[1])
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        origin = f"http://127.0.0.1:{port}"
+        headers_base = {
+            "Host": f"127.0.0.1:{port}",
+            "Content-Type": "application/json",
+            "Origin": origin,
+        }
+
+        def post(path: str, payload: dict) -> tuple[int, dict]:
+            body = json.dumps(payload).encode()
+            conn = HTTPConnection("127.0.0.1", port, timeout=5)
+            conn.request(
+                "POST",
+                path,
+                body=body,
+                headers={**headers_base, "Content-Length": str(len(body))},
+            )
+            res = conn.getresponse()
+            data = json.loads(res.read().decode())
+            conn.close()
+            return res.status, data
+
+        for payload in (
+            {"clear": "false"},
+            {"clear": 1},
+            {},
+        ):
+            status, data = post("/api/cases/d1/category", payload)
+            assert status == 400
+            assert data["ok"] is False
+
+        for payload in (
+            {"clear_override": "false"},
+            {"clear_override": 0},
+            {},
+            {"clear_override": False},  # false without tags list
+        ):
+            status, data = post("/api/cases/d1/tags", payload)
+            assert status == 400
+            assert data["ok"] is False
+
+        before = load_authoring_run(run_path)
+        assert before.cases[0].human_review is None or (
+            before.cases[0].human_review.category_override.is_overridden is False
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+def test_ipv6_loopback_bind_when_available(tmp_path: Path) -> None:
+    import socket
+
+    try:
+        probe = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        probe.bind(("::1", 0))
+        probe.close()
+    except OSError:
+        pytest.skip("IPv6 loopback unavailable on this platform")
+
+    settings = _settings(tmp_path)
+    run_path = tmp_path / "run.json"
+    write_authoring_run(
+        run_path,
+        _run([_case("d1", "What is X?", [_candidate("c1")])]),
+    )
+    server, session, url = create_review_server(
+        settings=settings, run_path=run_path, host="::1", port=0
+    )
+    assert session.host == "::1"
+    assert url.startswith("http://[::1]:")
+    port = int(server.server_address[1])
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        conn = HTTPConnection("::1", port, timeout=5)
+        conn.request("GET", "/", headers={"Host": f"[::1]:{port}"})
+        res = conn.getresponse()
+        body = res.read()
+        assert res.status == 200
+        assert b"Gold Review" in body
+        conn.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)

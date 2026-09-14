@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import os
 import tempfile
+import uuid
+from collections.abc import Callable
 from pathlib import Path
 
 
@@ -27,12 +29,18 @@ def atomic_write_text(path: Path, text: str, *, encoding: str = "utf-8") -> None
     atomic_write_bytes(path, text.encode(encoding))
 
 
-def atomic_publish_directory(destination: Path, files: dict[str, str]) -> None:
+def atomic_publish_directory(
+    destination: Path,
+    files: dict[str, str],
+    *,
+    validate: Callable[[Path], None] | None = None,
+) -> None:
     """Publish a directory of text files as one logical artifact.
 
-    Writes into a temporary sibling directory, then replaces ``destination``
-    via ``os.replace``. On failure the previous destination (if any) is left
-    intact.
+    Writes into a temporary sibling directory, optionally validates that
+    temporary directory **before** any existing destination is moved aside,
+    then promotes via ``os.replace``. On validation/promotion failure the
+    previous destination (if any) is left intact.
     """
     destination = destination.resolve()
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -51,15 +59,20 @@ def atomic_publish_directory(destination: Path, files: dict[str, str]) -> None:
             target.write_text(text, encoding="utf-8")
             with target.open("rb") as handle:
                 os.fsync(handle.fileno())
+
+        if validate is not None:
+            validate(tmp_dir)
+
         if destination.exists():
-            backup = Path(
-                tempfile.mkdtemp(
-                    prefix=f".{destination.name}.bak.",
-                    suffix=".tmp",
-                    dir=destination.parent,
-                )
+            # Unique non-existing sibling pathname (more portable than
+            # os.replace onto an occupied mkdtemp directory).
+            backup = destination.parent / (
+                f".{destination.name}.bak.{uuid.uuid4().hex}"
             )
-            # Move existing aside, then promote tmp, then remove backup.
+            while backup.exists():
+                backup = destination.parent / (
+                    f".{destination.name}.bak.{uuid.uuid4().hex}"
+                )
             os.replace(destination, backup)
             try:
                 os.replace(tmp_dir, destination)

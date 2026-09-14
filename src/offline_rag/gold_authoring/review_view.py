@@ -11,7 +11,7 @@ from offline_rag.gold_authoring.chunk_access import (
     resolve_seed_text_from_chunk_set,
 )
 from offline_rag.gold_authoring.models import GoldAuthoringRun, SilverCase
-from offline_rag.gold_authoring.review_models import HumanReviewStatus
+from offline_rag.gold_authoring.review_models import HumanReviewStatus, ReviewError
 
 
 def _model_judgments_by_chunk(case: SilverCase) -> dict[str, dict[str, Any]]:
@@ -77,7 +77,10 @@ def build_case_detail_payload(
     case: SilverCase,
 ) -> dict[str, Any]:
     if not run.chunk_set_id:
-        raise ChunkAccessError("run.chunk_set_id is required for historical evidence")
+        raise ReviewError(
+            "historical evidence unavailable: run.chunk_set_id is required",
+            code="evidence_unavailable",
+        )
 
     model_by_chunk = _model_judgments_by_chunk(case)
     agreement_by_chunk = _agreement_by_chunk(case)
@@ -107,6 +110,7 @@ def build_case_detail_payload(
 
     candidates: list[dict[str, Any]] = []
     for ordinal, candidate in enumerate(case.candidates, start=1):
+        # Fail closed: never present placeholder text as gradable evidence.
         try:
             text = resolve_seed_text_from_chunk_set(
                 settings,
@@ -114,7 +118,11 @@ def build_case_detail_payload(
                 chunk_id=candidate.chunk_id,
             )
         except ChunkAccessError as exc:
-            text = f"[evidence unavailable: {exc}]"
+            raise ReviewError(
+                f"historical evidence unavailable for "
+                f"chunk_set_id={run.chunk_set_id} chunk_id={candidate.chunk_id}: {exc}",
+                code="evidence_unavailable",
+            ) from exc
 
         section = render_section_path_v1(candidate.section_path) or ""
         human_grade = human_map.get(candidate.chunk_id)
