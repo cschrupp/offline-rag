@@ -1,4 +1,4 @@
-"""Lean silver/run models for offline-rag-gold-authoring-v1 (Slices 9A–9C)."""
+"""Lean silver/run models for offline-rag-gold-authoring-v1 (Slices 9A–9D)."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from offline_rag.domain.types import NonEmptyStr, NonNegativeInt
 from offline_rag.gold_authoring.contracts import (
@@ -21,9 +21,17 @@ from offline_rag.gold_authoring.pooling_models import (
     PoolCaseOutcome,
     PoolingProvenance,
 )
+from offline_rag.gold_authoring.prelabel_models import (
+    CasePrelabelProvenance,
+    ModelJudgment,
+    PrelabelSummary,
+    PrelabelingStage,
+    has_complete_prelabel,
+)
 
 # Backward-compatible name for imports expecting CandidateRef.
 CandidateRef = PoolCandidate
+ModelJudgmentPlaceholder = ModelJudgment
 
 
 class HumanReviewStatus(StrEnum):
@@ -69,17 +77,6 @@ class SourceSeed(BaseModel):
     section_path: list[str] = Field(default_factory=list)
 
 
-class ModelJudgmentPlaceholder(BaseModel):
-    """Minimal judgment placeholder; prelabel semantics arrive in 9D."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    chunk_id: NonEmptyStr | None = None
-    relevance: Literal[0, 1, 2] | None = None
-    pass_id: NonEmptyStr | None = None
-    rationale: str | None = None
-
-
 class ProposedQueryFields(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -100,7 +97,9 @@ class SilverCase(BaseModel):
     proposal_rationale: str | None = None
     source_seed: SourceSeed | None = None
     candidates: list[PoolCandidate] = Field(default_factory=list)
-    model_judgments: list[ModelJudgmentPlaceholder] = Field(default_factory=list)
+    model_judgments: list[ModelJudgment] = Field(default_factory=list)
+    prelabel_provenance: CasePrelabelProvenance | None = None
+    prelabel_summary: PrelabelSummary | None = None
 
     @field_validator("proposed_query", mode="before")
     @classmethod
@@ -111,6 +110,56 @@ class SilverCase(BaseModel):
             raise ValueError("proposed_query must be a string or null")
         text = value.strip()
         return text or None
+
+    @model_validator(mode="after")
+    def _prelabel_coherence(self) -> SilverCase:
+        has_any = bool(self.model_judgments) or (
+            self.prelabel_summary is not None
+        ) or (self.prelabel_provenance is not None)
+        if not has_any:
+            return self
+        candidate_ids = [c.chunk_id for c in self.candidates]
+        if not has_complete_prelabel(
+            judgments=self.model_judgments,
+            summary=self.prelabel_summary,
+            provenance=self.prelabel_provenance,
+            candidate_ids=candidate_ids,
+        ):
+            # Allow empty judgments with null summary/provenance only.
+            if (
+                not self.model_judgments
+                and self.prelabel_summary is None
+                and self.prelabel_provenance is None
+            ):
+                return self
+            raise ValueError(
+                f"incomplete or inconsistent 9D prelabel for case "
+                f"{self.draft_case_id}"
+            )
+        # Validate blind positions against pass orders.
+        assert self.prelabel_provenance is not None
+        order_by_pass = {
+            p.pass_id: list(p.candidate_order) for p in self.prelabel_provenance.passes
+        }
+        for judgment in self.model_judgments:
+            order = order_by_pass.get(judgment.pass_id)
+            if order is None:
+                raise ValueError("missing pass order in prelabel_provenance")
+            idx = judgment.blind_position - 1
+            if idx < 0 or idx >= len(order) or order[idx] != judgment.chunk_id:
+                raise ValueError(
+                    "blind_position does not match candidate_order for "
+                    f"{judgment.pass_id}/{judgment.chunk_id}"
+                )
+        return self
+
+    def has_complete_durable_prelabel(self) -> bool:
+        return has_complete_prelabel(
+            judgments=self.model_judgments,
+            summary=self.prelabel_summary,
+            provenance=self.prelabel_provenance,
+            candidate_ids=[c.chunk_id for c in self.candidates],
+        )
 
 
 class ProposalPipelineProvenance(BaseModel):
@@ -156,6 +205,7 @@ class GoldAuthoringRun(BaseModel):
     pool_targeted_case_count: NonNegativeInt | None = None
     pool_successful_case_count: NonNegativeInt | None = None
     pool_failed_case_count: NonNegativeInt | None = None
+    prelabeling: PrelabelingStage | None = None
 
     @field_validator("schema_version")
     @classmethod

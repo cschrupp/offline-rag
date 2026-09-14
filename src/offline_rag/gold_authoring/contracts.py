@@ -1,4 +1,4 @@
-"""Code-owned gold-authoring contract identifiers (Slices 9A–9C)."""
+"""Code-owned gold-authoring contract identifiers (Slices 9A–9D)."""
 
 from __future__ import annotations
 
@@ -38,6 +38,14 @@ POOLING_DEPTHS: dict[str, int] = {
     RETRIEVER_HYBRID_RRF_V1: 50,
     RETRIEVER_HYBRID_RERANK_V1: 20,
 }
+
+JUDGE_CONTEXT_CONTRACT = "relevance-judge-context-v1"
+BLIND_ORDER_CONTRACT = "blind-order-v1"
+PRELABEL_AGREEMENT_CONTRACT = "prelabel-agreement-v1"
+PASS_1 = "pass_1"
+PASS_2 = "pass_2"
+PRELABEL_PASS_IDS: tuple[str, ...] = (PASS_1, PASS_2)
+RATIONALE_MAX_CHARS = 500
 
 SUPPORTED_NETWORK_POLICIES: frozenset[str] = frozenset(
     {"localhost_only", "private_network"}

@@ -81,4 +81,7 @@ offline-rag gold pool \
 
 ## Next
 
-Slice **9D** — relevance prelabel / blind judge presentation (not started).
+Slice **9D** — relevance prelabel / blind judge presentation — done:
+[`slice9d_relevance_prelabel.md`](slice9d_relevance_prelabel.md).
+
+Slice **9E** — human review / GoldDataset finalization.

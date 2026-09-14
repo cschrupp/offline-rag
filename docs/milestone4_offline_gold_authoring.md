@@ -2,8 +2,9 @@
 
 **Position:** after Slice 9 (Evaluation Harness v1), before Slice 10 (Generation/Citation Semantic Evaluation).
 
-**Next implementation decision track:** Slice 9D — Relevance Prelabel / Blind Judging Prep.
+**Next implementation decision track:** Slice 9E — Local Human Review & Finalization.
 
+Slice **9D** (`offline-rag gold prelabel`) is done — see [`slice9d_relevance_prelabel.md`](slice9d_relevance_prelabel.md).
 Slice **9C** (`offline-rag gold pool`) is done — see [`slice9c_candidate_pooling.md`](slice9c_candidate_pooling.md).
 Slice **9B** (`offline-rag gold propose`) is done — see [`slice9b_gold_propose.md`](slice9b_gold_propose.md).
 Slice **9A** (contracts + privacy + doctor) is done — see [`slice9a_gold_authoring.md`](slice9a_gold_authoring.md).
@@ -17,6 +18,7 @@ Slice **9A** (contracts + privacy + doctor) is done — see [`slice9a_gold_autho
 - Slice **9A** complete: `authoring:` config, `authorcfg_`, privacy dual-gate, lean silver/run models, doctor readiness.
 - Slice **9B** complete: `source-sampling-random-v1`, `question-proposal-v1`, local authoring Chat Completions path, quality gates, `offline-rag gold propose`, silver-run persistence (no seed-body/raw-response copies).
 - Slice **9C** complete: `candidate-pooling-v1` six-arm historical pooling, `offline-rag gold pool`, union/dedupe/`chunk_id` identity, pool inspection order, privacy-preserving candidate provenance (no body text / no grades).
+- Slice **9D** complete: `relevance-prelabel-v1` candidate-at-a-time blind double-pass judging, `blind-order-v1`, `relevance-judge-context-v1`, `prelabel-agreement-v1`, `offline-rag gold prelabel`, silver-only model judgments + review-priority aids.
 - `GoldDataset v1`, deterministic retrieval metrics, serialized evaluation artifacts, and `offline-rag eval compare` are available.
 - `model-query-prompt-v1`, `exclude-heading-only-v1` / Arm H, and `prompt-grounded-provenance-v2` remain validated experimental candidates.
 - No experimental contracts are promoted to `base.yaml`.
@@ -157,12 +159,12 @@ offline-rag gold finalize
 offline-rag gold status
 ```
 
-Exact command surface continues to be refined in Slice 9D+. Intended end-user flow:
+Exact command surface continues to be refined in Slice 9E+. Intended end-user flow:
 
 ```bash
 offline-rag gold propose --corpus ics_modules --count 20
 offline-rag gold pool --run <authoring-run.json>
-offline-rag gold prelabel --run <authoring-run>
+offline-rag gold prelabel --run <authoring-run.json>
 offline-rag gold review --run <authoring-run>
 offline-rag gold finalize --run <authoring-run> --output eval/datasets/ics_modules_v1
 ```
@@ -239,7 +241,9 @@ See [`slice9c_candidate_pooling.md`](slice9c_candidate_pooling.md).
 
 **Goal:** Reduce human workload without delegating gold truth.
 
-Blind shuffled candidates; structured `0|1|2` + short rationale; double pass with different orders; disagreement/source-chunk-as-0/competing-grade-2 cases become review priorities. All final positives still require human acceptance.
+**Implemented:** `relevance-prelabel-v1` (strict `{grade:0|1|2, rationale}`); candidate-at-a-time 2N judging; `relevance-judge-context-v1` QUERY/DOCUMENT/SECTION/CANDIDATE envelope; `blind-order-v1` dual deterministic execution orders; `prelabel-agreement-v1` (agree/adjacent/polar + case review flags + `high|medium|low` priority); case-atomic complete-pair or no durable prelabel; `offline-rag gold prelabel --run [--output] [--force]`. Model grades remain silver-only; no human_status mutation; no GoldDataset finalize.
+
+See [`slice9d_relevance_prelabel.md`](slice9d_relevance_prelabel.md).
 
 ---
 
@@ -247,7 +251,7 @@ Blind shuffled candidates; structured `0|1|2` + short rationale; double pass wit
 
 **Goal:** Make adjudication realistic without hand-editing JSONL.
 
-Preferred: `offline-rag gold review --draft <run>` → localhost-only browser UI for accept/edit/reject query, category/tags, 0/1/2 labels, disagreement inspection, add missed chunks, mark complete. Finalize only reviewed cases to GoldDataset v1 via Slice 9 writer/hash semantics. Optional Label Studio adapter only after native workflow works.
+Preferred: `offline-rag gold review --run <authoring-run>` → localhost-only browser UI for accept/edit/reject query, category/tags, 0/1/2 labels, disagreement inspection, add missed chunks, mark complete. Finalize only reviewed cases to GoldDataset v1 via Slice 9 writer/hash semantics. Optional Label Studio adapter only after native workflow works.
 
 ---
 

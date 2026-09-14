@@ -15,7 +15,7 @@ This file should evolve with measured project results.
 - Hybrid-rerank is hybrid-pool-only; disabled/missing reranker fails hard (no silent hybrid-only labeled as hybrid-rerank). FakeReranker is CI-only.
 - Context expansion (`hybrid-rerank-context`) is query-time structural assembly only (no ContextState); Slice 7 eval reports anchor ranking + assembly diagnostics, not evidence-quality metrics.
 - Grounded `query` validates closed-world `ev_` citation membership only; it does not score answer correctness, faithfulness, or citation entailment (Milestone 5 / Slice 10).
-- No production `ics_modules` retrieval gold set yet; only the small Slice 9 harness fixture exists. Milestone 4 (9A–9C done; 9D–9H remaining) is the private gold-authoring path.
+- No production `ics_modules` retrieval gold set yet; only the small Slice 9 harness fixture exists. Milestone 4 (9A–9D done; 9E–9H remaining) is the private gold-authoring path.
 - Generation READY requires a live approved OpenAI-compatible endpoint + approved model listing; empty `approved_models` keeps Generation NOT_READY by design.
 - Lexical BM25 is corpus-global (full rebuild per `lexical_index_id`); no per-child lexical cache.
 - Lexical indexes are retained indefinitely with dense indexes until GC exists.

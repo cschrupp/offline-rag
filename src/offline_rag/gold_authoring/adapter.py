@@ -68,6 +68,29 @@ class OpenAICompatibleAuthoringAdapter:
         system_prompt: str,
         user_content: str,
     ) -> str:
+        return self._chat_completion(
+            system_prompt=system_prompt,
+            user_content=user_content,
+        )
+
+    def prelabel(
+        self,
+        *,
+        system_prompt: str,
+        user_content: str,
+    ) -> str:
+        """One candidate relevance-prelabel Chat Completions call."""
+        return self._chat_completion(
+            system_prompt=system_prompt,
+            user_content=user_content,
+        )
+
+    def _chat_completion(
+        self,
+        *,
+        system_prompt: str,
+        user_content: str,
+    ) -> str:
         readiness = evaluate_authoring_readiness(self.settings)
         if not readiness.ready:
             raise AuthoringAdapterError(

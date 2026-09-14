@@ -1,4 +1,4 @@
-"""Offline gold-authoring subsystem (Slices 9A–9C)."""
+"""Offline gold-authoring subsystem (Slices 9A–9D)."""
 
 from offline_rag.gold_authoring.config_hash import (
     build_authoring_config_hash,
@@ -8,8 +8,11 @@ from offline_rag.gold_authoring.contracts import (
     ADAPTER_CONTRACT,
     ATTEMPT_CONTRACT,
     AUTHORING_ARTIFACT_CONTRACT,
+    BLIND_ORDER_CONTRACT,
     CONTEXT_CONTRACT,
+    JUDGE_CONTEXT_CONTRACT,
     POOLING_CONTRACT,
+    PRELABEL_AGREEMENT_CONTRACT,
     QUALITY_GATE_CONTRACT,
     QUESTION_PROPOSAL_CONTRACT,
     RELEVANCE_PRELABEL_CONTRACT,
@@ -23,6 +26,7 @@ from offline_rag.gold_authoring.models import (
     SilverCase,
 )
 from offline_rag.gold_authoring.pool import PoolPreRunError, run_gold_pool
+from offline_rag.gold_authoring.prelabel import PrelabelPreRunError, run_gold_prelabel
 from offline_rag.gold_authoring.privacy import (
     AuthoringAuthReason,
     AuthoringPrivacyError,
@@ -39,14 +43,18 @@ __all__ = [
     "ADAPTER_CONTRACT",
     "ATTEMPT_CONTRACT",
     "AUTHORING_ARTIFACT_CONTRACT",
+    "BLIND_ORDER_CONTRACT",
     "CONTEXT_CONTRACT",
     "AuthoringAuthReason",
     "AuthoringPrivacyError",
     "AuthoringReadiness",
     "GoldAuthoringRun",
     "HumanReviewStatus",
+    "JUDGE_CONTEXT_CONTRACT",
     "POOLING_CONTRACT",
+    "PRELABEL_AGREEMENT_CONTRACT",
     "PoolPreRunError",
+    "PrelabelPreRunError",
     "ProposalAttempt",
     "ProposalAttemptStatus",
     "ProposePreRunError",
@@ -61,5 +69,6 @@ __all__ = [
     "build_authoring_semantic_payload",
     "evaluate_authoring_readiness",
     "run_gold_pool",
+    "run_gold_prelabel",
     "run_gold_propose",
 ]

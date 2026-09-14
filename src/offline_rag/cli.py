@@ -1981,6 +1981,56 @@ def cmd_gold_pool(args: argparse.Namespace) -> int:
     return result.exit_code
 
 
+def cmd_gold_prelabel(args: argparse.Namespace) -> int:
+    from offline_rag.gold_authoring.prelabel import PrelabelPreRunError, run_gold_prelabel
+
+    try:
+        settings = _load_settings(args)
+    except ConfigError as exc:
+        print(f"gold prelabel: configuration failed: {exc}", file=sys.stderr)
+        return 2
+
+    try:
+        result = run_gold_prelabel(
+            settings,
+            run_path=Path(args.run),
+            output=Path(args.output) if args.output else None,
+            force=bool(args.force),
+        )
+    except PrelabelPreRunError as exc:
+        print(f"gold prelabel: {exc}", file=sys.stderr)
+        return 2
+
+    run = result.run
+    if run is None:
+        print(f"gold prelabel: {result.message or 'failed'}", file=sys.stderr)
+        return result.exit_code
+
+    print(result.message or "Relevance prelabeling completed.")
+    print()
+    print(f"Gold authoring run:   {run.authoring_run_id}")
+    print(f"Chunk set:            {run.chunk_set_id}")
+    stage = run.prelabeling
+    if stage is not None:
+        print(f"Prelabel contract:    {stage.provenance.relevance_contract}")
+        print(f"Authorcfg:            {stage.provenance.authorcfg_id}")
+        print()
+        print(f"Targeted cases:       {stage.targeted_case_count}")
+        print(f"Successful:           {stage.successful_case_count}")
+        print(f"Failed:               {stage.failed_case_count}")
+        print(f"Model requests:       {result.model_request_count}")
+    if result.failure_reason_counts:
+        print()
+        print("Failures:")
+        for reason, count in sorted(result.failure_reason_counts.items()):
+            print(f"  {reason}: {count}")
+    if result.output_path is not None:
+        print()
+        print("Output:")
+        print(f"  {result.output_path}")
+    return result.exit_code
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="offline-rag", description="OfflineRAG CLI")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -2280,6 +2330,39 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     gold_pool.set_defaults(func=cmd_gold_pool)
+
+    gold_prelabel = gold_sub.add_parser(
+        "prelabel",
+        help=(
+            "Blind double-pass local relevance prelabeling for pooled "
+            "SilverCases (Slice 9D)"
+        ),
+    )
+    _add_config_argument(gold_prelabel)
+    gold_prelabel.add_argument(
+        "--run",
+        required=True,
+        type=Path,
+        help="Path to an existing pooled offline-rag-gold-authoring-v1 run JSON",
+    )
+    gold_prelabel.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help=(
+            "Optional destination path for the enriched run "
+            "(default: enrich --run in place)"
+        ),
+    )
+    gold_prelabel.add_argument(
+        "--force",
+        action="store_true",
+        help=(
+            "Re-prelabel cases that already have complete durable prelabels "
+            "and/or overwrite an existing --output file"
+        ),
+    )
+    gold_prelabel.set_defaults(func=cmd_gold_prelabel)
 
     doctor = subparsers.add_parser("doctor", help="Run local diagnostics")
     _add_config_argument(doctor)

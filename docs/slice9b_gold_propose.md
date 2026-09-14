@@ -100,4 +100,7 @@ run provenance only (no `proposecfg_`).
 Slice **9C** — multi-retriever candidate pooling — done:
 [`slice9c_candidate_pooling.md`](slice9c_candidate_pooling.md).
 
-Slice **9D** — relevance prelabel / blind judging prep.
+Slice **9D** — relevance prelabel — done:
+[`slice9d_relevance_prelabel.md`](slice9d_relevance_prelabel.md).
+
+Slice **9E** — human review / GoldDataset finalization.

@@ -114,4 +114,5 @@ Milestone 4 uses this harness on human-adjudicated private gold.
 Slice **9A** (authoring boundary) done — [`slice9a_gold_authoring.md`](slice9a_gold_authoring.md).
 Slice **9B** (`gold propose`) done — [`slice9b_gold_propose.md`](slice9b_gold_propose.md).
 Slice **9C** (`gold pool`) done — [`slice9c_candidate_pooling.md`](slice9c_candidate_pooling.md).
-Next decision track: **9D**.
+Slice **9D** (`gold prelabel`) done — [`slice9d_relevance_prelabel.md`](slice9d_relevance_prelabel.md).
+Next decision track: **9E**.

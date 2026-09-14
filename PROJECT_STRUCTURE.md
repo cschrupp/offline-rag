@@ -186,7 +186,12 @@ offline-rag/
 │       │   ├── pool_preflight.py
 │       │   ├── pool_union.py
 │       │   ├── pooling_models.py
-│       │   ├── prelabel.py            # Slice 9D+
+│       │   ├── prelabel.py            # Slice 9D
+│       │   ├── prelabel_models.py
+│       │   ├── prelabel_schema.py
+│       │   ├── blind_order.py
+│       │   ├── judge_context.py
+│       │   ├── agreement.py
 │       │   ├── review.py              # Slice 9E+
 │       │   └── finalize.py            # Slice 9E+
 │       │
@@ -292,7 +297,7 @@ Owns finished GoldDataset loading/validation, retrieval metrics, experiment seri
 
 ### `gold_authoring/` (Milestone 4 — Slices 9A–9B done)
 
-Owns the privacy-bounded local gold construction workflow (propose → pool → prelabel → review → finalize). Slice 9A shipped contracts/privacy/doctor; Slice 9B shipped sampling + `gold propose`. Separate from `evaluation/` and from production generation prompt contracts. Notes: `docs/slice9a_gold_authoring.md`, `docs/slice9b_gold_propose.md`; plan: `docs/milestone4_offline_gold_authoring.md`.
+Owns the privacy-bounded local gold construction workflow (propose → pool → prelabel → review → finalize). Slices 9A–9D shipped contracts/privacy/doctor, sampling + `gold propose`, `gold pool`, and `gold prelabel`. Separate from `evaluation/` and from production generation prompt contracts. Notes: `docs/slice9a_gold_authoring.md`, `docs/slice9b_gold_propose.md`, `docs/slice9c_candidate_pooling.md`, `docs/slice9d_relevance_prelabel.md`; plan: `docs/milestone4_offline_gold_authoring.md`.
 
 ### `observability/`
 

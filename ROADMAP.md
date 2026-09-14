@@ -103,9 +103,9 @@ generation-provenance investigation and A/B results.
 
 ## Milestone 4 — Offline Gold Authoring & Retrieval Benchmarking
 
-**Next decision track:** Slice **9D** (relevance prelabel / blind judging prep).
+**Next decision track:** Slice **9E** (local human review & GoldDataset finalization).
 
-**Canonical plan:** [`docs/milestone4_offline_gold_authoring.md`](docs/milestone4_offline_gold_authoring.md). Slice 9A notes: [`docs/slice9a_gold_authoring.md`](docs/slice9a_gold_authoring.md). Slice 9B notes: [`docs/slice9b_gold_propose.md`](docs/slice9b_gold_propose.md). Slice 9C notes: [`docs/slice9c_candidate_pooling.md`](docs/slice9c_candidate_pooling.md).
+**Canonical plan:** [`docs/milestone4_offline_gold_authoring.md`](docs/milestone4_offline_gold_authoring.md). Slice 9A notes: [`docs/slice9a_gold_authoring.md`](docs/slice9a_gold_authoring.md). Slice 9B notes: [`docs/slice9b_gold_propose.md`](docs/slice9b_gold_propose.md). Slice 9C notes: [`docs/slice9c_candidate_pooling.md`](docs/slice9c_candidate_pooling.md). Slice 9D notes: [`docs/slice9d_relevance_prelabel.md`](docs/slice9d_relevance_prelabel.md).
 
 ### Objective
 
@@ -121,7 +121,7 @@ annotation services. The local LLM is an annotation assistant, not ground truth.
 - [x] **9A** Gold authoring contracts & privacy boundary (`localhost_only`, silver artifact, authoring generator config)
 - [x] **9B** Deterministic source sampling & local question proposal (`offline-rag gold propose`)
 - [x] **9C** Multi-retriever candidate pooling (`offline-rag gold pool`, `candidate-pooling-v1`)
-- [ ] **9D** Local blind double-pass relevance pre-labeling
+- [x] **9D** Local blind double-pass relevance pre-labeling (`offline-rag gold prelabel`)
 - [ ] **9E** Local human review UI + GoldDataset v1 finalization
 - [ ] **9F** ~20-case `ics_modules` authoring pilot + workflow freeze
 - [ ] **9G** ~100–150 case production gold + development/held-out freeze
@@ -139,7 +139,7 @@ A reviewer can refresh a private-corpus retrieval benchmark without sending
 source text outside an approved local/private environment, then run
 comparable retrieval evaluations and make an explicit promotion decision.
 
-**Status:** Slice **9C** complete (`offline-rag gold pool`). Next decision track: **9D** (relevance prelabel / blind judging prep). Do not promote Arm H,
+**Status:** Slice **9D** complete (`offline-rag gold prelabel`). Next decision track: **9E** (human review & GoldDataset finalization). Do not promote Arm H,
 `model-query-prompt-v1`, or `prompt-grounded-provenance-v2` during
 authoring-pipeline work; do not start Slice 10 inside this milestone.
 
