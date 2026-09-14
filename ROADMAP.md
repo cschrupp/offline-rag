@@ -103,9 +103,9 @@ generation-provenance investigation and A/B results.
 
 ## Milestone 4 — Offline Gold Authoring & Retrieval Benchmarking
 
-**Next decision track:** Slice **9F** (20-case authoring pilot).
+**Next operational track:** Slice **9F** (**IN PROGRESS** — runbook ready; execution pending). See [`docs/slice9f_pilot_runbook.md`](docs/slice9f_pilot_runbook.md).
 
-**Canonical plan:** [`docs/milestone4_offline_gold_authoring.md`](docs/milestone4_offline_gold_authoring.md). Slice 9A notes: [`docs/slice9a_gold_authoring.md`](docs/slice9a_gold_authoring.md). Slice 9B notes: [`docs/slice9b_gold_propose.md`](docs/slice9b_gold_propose.md). Slice 9C notes: [`docs/slice9c_candidate_pooling.md`](docs/slice9c_candidate_pooling.md). Slice 9D notes: [`docs/slice9d_relevance_prelabel.md`](docs/slice9d_relevance_prelabel.md).
+**Canonical plan:** [`docs/milestone4_offline_gold_authoring.md`](docs/milestone4_offline_gold_authoring.md). Slice 9A notes: [`docs/slice9a_gold_authoring.md`](docs/slice9a_gold_authoring.md). Slice 9B notes: [`docs/slice9b_gold_propose.md`](docs/slice9b_gold_propose.md). Slice 9C notes: [`docs/slice9c_candidate_pooling.md`](docs/slice9c_candidate_pooling.md). Slice 9D notes: [`docs/slice9d_relevance_prelabel.md`](docs/slice9d_relevance_prelabel.md). Slice 9E notes: [`docs/slice9e_human_review.md`](docs/slice9e_human_review.md). Slice 9F ops: [`docs/slice9f_pilot_runbook.md`](docs/slice9f_pilot_runbook.md).
 
 ### Objective
 
@@ -122,8 +122,8 @@ annotation services. The local LLM is an annotation assistant, not ground truth.
 - [x] **9B** Deterministic source sampling & local question proposal (`offline-rag gold propose`)
 - [x] **9C** Multi-retriever candidate pooling (`offline-rag gold pool`, `candidate-pooling-v1`)
 - [x] **9D** Local blind double-pass relevance pre-labeling (`offline-rag gold prelabel`)
-- [ ] **9E** Local human review UI + GoldDataset v1 finalization
-- [ ] **9F** ~20-case `ics_modules` authoring pilot + workflow freeze
+- [x] **9E** Local human review UI + GoldDataset v1 finalization (`gold review` / `gold finalize`) — **CLOSED / VERIFIED**
+- [ ] **9F** ~20-case `ics_modules` operational pilot — **IN PROGRESS** (runbook/template ready; execution pending)
 - [ ] **9G** ~100–150 case production gold + development/held-out freeze
 - [ ] **9H** Retrieval A/B (`eval retrieve` / `eval compare`) + promotion decision
 

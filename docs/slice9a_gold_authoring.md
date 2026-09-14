@@ -135,4 +135,4 @@ and no completions in 9A. Surface: `offline-rag doctor` Authoring section.
 
 ## Next
 
-Slices **9B** / **9C** / **9D** / **9E** done. Next: Slice **9F** — 20-case authoring pilot.
+Slices **9B** / **9C** / **9D** / **9E** done (**9E CLOSED / VERIFIED**). Slice **9F** **IN PROGRESS** (execution pending) — [`slice9f_pilot_runbook.md`](slice9f_pilot_runbook.md).

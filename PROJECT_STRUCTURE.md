@@ -299,9 +299,9 @@ Owns security policies that should remain independent from the generator prompt 
 
 Owns finished GoldDataset loading/validation, retrieval metrics, experiment serialization, and comparison (`eval retrieve` / `eval compare`). It may call production retrieval services, but production services must not depend on evaluator-specific logic. Silver/authoring drafts are not gold.
 
-### `gold_authoring/` (Milestone 4 — Slices 9A–9B done)
+### `gold_authoring/` (Milestone 4 — 9A–9E shipped; 9F pilot IN PROGRESS)
 
-Owns the privacy-bounded local gold construction workflow (propose → pool → prelabel → review → finalize). Slices 9A–9E shipped contracts/privacy/doctor, sampling + `gold propose`, `gold pool`, `gold prelabel`, `gold review`, and `gold finalize`. Separate from `evaluation/` and from production generation prompt contracts. Notes: `docs/slice9a_gold_authoring.md`, `docs/slice9b_gold_propose.md`, `docs/slice9c_candidate_pooling.md`, `docs/slice9d_relevance_prelabel.md`, `docs/slice9e_human_review.md`; plan: `docs/milestone4_offline_gold_authoring.md`.
+Owns the privacy-bounded local gold construction workflow (propose → pool → prelabel → review → finalize). Slices 9A–9E shipped contracts/privacy/doctor, sampling + `gold propose`, `gold pool`, `gold prelabel`, `gold review`, and `gold finalize` (**9E CLOSED / VERIFIED**). Slice **9F** is the operational 20-case pilot (runbook ready; execution pending). Separate from `evaluation/` and from production generation prompt contracts. Notes: `docs/slice9a_gold_authoring.md`, `docs/slice9b_gold_propose.md`, `docs/slice9c_candidate_pooling.md`, `docs/slice9d_relevance_prelabel.md`, `docs/slice9e_human_review.md`, `docs/slice9f_pilot_runbook.md`; plan: `docs/milestone4_offline_gold_authoring.md`.
 
 ### `observability/`
 

@@ -37,14 +37,14 @@ offline-rag eval retrieve --method hybrid-rerank --dataset <dir> --corpus <name>
 offline-rag eval retrieve --method hybrid-rerank-context --dataset <dir> --corpus <name>
 offline-rag eval compare --a <result-a.json> --b <result-b.json> [--json]
 offline-rag eval query --dataset <dir> --corpus <name>
-# Milestone 4 (9A–9E done; 9F pilot next):
+# Milestone 4 (9A–9E done; 9F IN PROGRESS — execution pending):
 # offline-rag gold propose|pool|prelabel|review|finalize|status
 offline-rag doctor --corpus <name>
 ```
 
 `offline-rag query` runs grounded generation via Slice 7 context assembly. Retrieval ablation remains under `retrieve` / `eval retrieve` / `eval compare`. Prefer GoldDataset v1 datasets (`offline-rag-gold-v1`); legacy `relevant_chunk_ids` gold still loads. Generation READY requires approved endpoint/model allowlists and a live OpenAI-compatible `/models` probe. Authoring READY (Slice 9A) is config + privacy only — no live probe; `doctor` reports the Authoring section. `offline-rag gold propose` (Slice 9B) performs one authorized proposal attempt per sampled seed. `offline-rag gold pool` (Slice 9C) builds `candidate-pooling-v1` pools from pending SilverCases (retrieval-only; no LLM). `offline-rag gold prelabel` (Slice 9D) runs blind double-pass local relevance judging (silver-only). `offline-rag gold review` / `gold finalize` (Slice 9E) provide localhost human adjudication and fail-closed GoldDataset publication.
 
-Milestone 4 offline gold authoring (next: Slice **9F**) builds private-corpus gold locally; see `docs/slice9e_human_review.md`, `docs/slice9d_relevance_prelabel.md`, `docs/slice9c_candidate_pooling.md`, `docs/slice9b_gold_propose.md`, `docs/slice9a_gold_authoring.md`, and `docs/milestone4_offline_gold_authoring.md`. Do not treat silver/authoring drafts as gold.
+Milestone 4 offline gold authoring (Slice **9F** **IN PROGRESS** — runbook ready; execution pending) builds private-corpus gold locally; see `docs/slice9f_pilot_runbook.md`, `docs/slice9e_human_review.md`, `docs/slice9d_relevance_prelabel.md`, `docs/slice9c_candidate_pooling.md`, `docs/slice9b_gold_propose.md`, `docs/slice9a_gold_authoring.md`, and `docs/milestone4_offline_gold_authoring.md`. Do not treat silver/authoring drafts as gold.
 
 For CI-scale dense/rerank/generation tests, set `indexing.embedding.implementation: fake` and/or `reranker.implementation: fake`, and inject `FakeGenerator` in unit tests. Do not rely on FakeEmbedder / FakeReranker / FakeGenerator for portfolio quality claims.
 

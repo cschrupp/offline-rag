@@ -45,11 +45,11 @@ Results use `offline-rag-retrieval-eval-result-v1` (shared envelope + method dia
 
 ## Offline gold authoring (Milestone 4)
 
-Canonical plan: [`docs/milestone4_offline_gold_authoring.md`](../docs/milestone4_offline_gold_authoring.md). Slice **9A** notes: [`docs/slice9a_gold_authoring.md`](../docs/slice9a_gold_authoring.md).
+Canonical plan: [`docs/milestone4_offline_gold_authoring.md`](../docs/milestone4_offline_gold_authoring.md).
 
-Next decision track: **Slice 9F** (20-case authoring pilot).
+Slice **9E** **CLOSED / VERIFIED**; Slice **9F** **IN PROGRESS** (runbook ready; execution pending) — [`docs/slice9f_pilot_runbook.md`](../docs/slice9f_pilot_runbook.md).
 
-`gold review` / `gold finalize` are implemented (Slice 9E). Remaining CLI surface through 9F+:
+Implemented CLI surface through 9E (`status` remains later):
 
 ```bash
 offline-rag gold propose|pool|prelabel|review|finalize|status

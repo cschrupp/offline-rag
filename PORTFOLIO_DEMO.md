@@ -1,6 +1,6 @@
 # Portfolio Demo Plan
 
-**Current readiness:** Through Slice 9 you can demo ingest → chunk → dense and lexical index → retrieval ladder → `hybrid-rerank-context` → grounded `query` / `eval query`, plus `eval retrieve` / `eval compare` on GoldDataset v1 fixtures. Milestone 4 authoring through Slice **9E** is in tree (`doctor` Authoring, `gold propose` / `pool` / `prelabel` / `review` / `finalize`). Next implementation decision: Slice **9F** (20-case pilot).
+**Current readiness:** Through Slice 9 you can demo ingest → chunk → dense and lexical index → retrieval ladder → `hybrid-rerank-context` → grounded `query` / `eval query`, plus `eval retrieve` / `eval compare` on GoldDataset v1 fixtures. Milestone 4 authoring through Slice **9E** is in tree (**CLOSED / VERIFIED**). Slice **9F** is **IN PROGRESS** (20-case `ics_modules` operational pilot runbook ready; execution pending) — [`docs/slice9f_pilot_runbook.md`](docs/slice9f_pilot_runbook.md).
 
 ## Demo objective
 

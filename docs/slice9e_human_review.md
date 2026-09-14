@@ -46,4 +46,4 @@ paths.corpora/<corpus>/gold_authoring/gold/<authoring_run_id>/
 
 ## Hard stop
 
-Next: Slice **9F** (20-case authoring pilot). Do not start 9F / Label Studio / LAN review / Slice 10 here.
+Slice **9F** is the next operational track (runbook ready; execution pending) — [`slice9f_pilot_runbook.md`](slice9f_pilot_runbook.md). Do not reopen locked 9E design here; do not start Label Studio / LAN review / Slice 10 from this document.

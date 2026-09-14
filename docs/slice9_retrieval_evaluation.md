@@ -115,5 +115,5 @@ Slice **9A** (authoring boundary) done — [`slice9a_gold_authoring.md`](slice9a
 Slice **9B** (`gold propose`) done — [`slice9b_gold_propose.md`](slice9b_gold_propose.md).
 Slice **9C** (`gold pool`) done — [`slice9c_candidate_pooling.md`](slice9c_candidate_pooling.md).
 Slice **9D** (`gold prelabel`) done — [`slice9d_relevance_prelabel.md`](slice9d_relevance_prelabel.md).
-Slice **9E** (`gold review` / `gold finalize`) done — [`slice9e_human_review.md`](slice9e_human_review.md).
-Next decision track: **9F**.
+Slice **9E** (`gold review` / `gold finalize`) **CLOSED / VERIFIED** — [`slice9e_human_review.md`](slice9e_human_review.md).
+Slice **9F** **IN PROGRESS** (runbook ready; execution pending) — [`slice9f_pilot_runbook.md`](slice9f_pilot_runbook.md).
