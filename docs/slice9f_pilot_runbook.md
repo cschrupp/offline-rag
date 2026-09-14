@@ -124,6 +124,14 @@ Confirm corpus ↔ ChunkState ↔ `source_corpus_id` consistency. Abort if stale
 
 Also record Module 1 accounting authority (`document_id` + canonical title) from this historical corpus.
 
+If readily available from existing CURRENT ChunkSet / sampling-eligible population information, also estimate:
+
+```text
+eligible_population N
+```
+
+Prefer starting propose with `--count 40` when `N >= 40`. If `N < 40` is already known, use `--count N --seed 0` as the authoritative first invocation (see Propose below). Do not change 9B sampling behavior.
+
 ### 3. Stop corpus/chunk mutation
 
 After recording `chunk_set_id`, do not ingest/rechunk `ics_modules` before propose. If rebuild is required: abort, rebuild, obtain new CURRENT, **rerun complete preflight**.
@@ -157,6 +165,15 @@ Use ordinary defaults. One run path for all later stages.
 
 ### Propose
 
+Requested operational budget (9F-6):
+
+```text
+requested_proposal_count = 40
+sampling_seed = 0
+```
+
+Normal authoritative invocation when the eligible population can support it:
+
 ```text
 offline-rag gold propose \
   --corpus ics_modules \
@@ -164,10 +181,48 @@ offline-rag gold propose \
   --seed 0
 ```
 
-- `40` = proposal-**attempt** budget (not a SilverCase or gold-size target)  
+- `40` = requested proposal-**attempt** budget (not a SilverCase or gold-size target)  
 - `seed = 0` = ordinary deterministic sampler; no seed shopping  
-- If eligible seeds `< 40`, existing 9B uses maximum eligible; record shortfall in the report  
-- Default artifact:
+- Omit `--output` (default run path)
+
+**Eligible population smaller than 40 (fail-closed 9B — do not change code):**
+
+Existing `source-sampling-random-v1` / `sample_source_seeds()` raises when:
+
+```text
+requested count > eligible_population_count
+```
+
+`gold propose` then exits as a **pre-run failure** and does **not** create or persist an `authoring_run_id`. It does **not** clamp to `N`.
+
+Therefore:
+
+1. Prefer determining eligible population `N` during preflight from existing CURRENT ChunkSet information when readily available.  
+2. If `N < 40` is known before propose, the authoritative invocation is:
+
+```text
+offline-rag gold propose \
+  --corpus ics_modules \
+  --count N \
+  --seed 0
+```
+
+3. If a `--count 40` attempt is what reveals `requested count 40 exceeds eligible population N`, that failed invocation is **not** a pilot lineage. Rerun **once** with `--count N --seed 0`.  
+
+This one recovery is **not** adaptive top-up, seed shopping, resampling, or append-propose: no authoring run was created by the rejected `--count 40` call, and the seed remains `0`.
+
+Record in the filled report:
+
+```text
+requested_proposal_count = 40
+eligible_population = N
+actual_selected = N
+shortfall = 40 - N
+```
+
+The 9F-1 gate remains `>= 20` finalized cases; a shortfall does not redefine success.
+
+Default artifact when propose succeeds:
 
 ```text
 paths.corpora/ics_modules/gold_authoring/runs/<authoring_run_id>.json
@@ -272,7 +327,7 @@ Correct only genuine workflow/correctness defects if discovered; usability ideas
 | 9F-3 | Ops + docs only |
 | 9F-4 | Runbook/template under `docs/`; filled report under `docs/pilots/` after execution |
 | 9F-5 | Module 1 via source-seed `document_id` (title fallback only) |
-| 9F-6 | `--count 40` |
+| 9F-6 | `--count 40` requested budget; if `N < 40`, authoritative `--count N` (9B fail-closed, no clamp) |
 | 9F-7 | `--seed 0` |
 | 9F-8 | Fail-closed existing-tool preflight |
 | 9F-9 | Default artifact paths; in-place pool/prelabel |
