@@ -1,4 +1,4 @@
-"""Lean silver/run models for offline-rag-gold-authoring-v1 (Slices 9A–9D)."""
+"""Lean silver/run models for offline-rag-gold-authoring-v1 (Slices 9A–9E)."""
 
 from __future__ import annotations
 
@@ -28,17 +28,18 @@ from offline_rag.gold_authoring.prelabel_models import (
     PrelabelingStage,
     has_complete_prelabel,
 )
+from offline_rag.gold_authoring.review_models import (
+    HumanReview,
+    HumanReviewStatus,
+    canonicalize_category,
+    canonicalize_query,
+    canonicalize_tags,
+    tags_equal,
+)
 
 # Backward-compatible name for imports expecting CandidateRef.
 CandidateRef = PoolCandidate
 ModelJudgmentPlaceholder = ModelJudgment
-
-
-class HumanReviewStatus(StrEnum):
-    PENDING = "pending"
-    ACCEPTED = "accepted"
-    EDITED = "edited"
-    REJECTED = "rejected"
 
 
 class ProposalAttemptStatus(StrEnum):
@@ -90,7 +91,6 @@ class SilverCase(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     draft_case_id: NonEmptyStr
-    human_status: HumanReviewStatus = HumanReviewStatus.PENDING
     proposed_query: str | None = None
     proposed_category: str | None = None
     proposed_tags: list[str] = Field(default_factory=list)
@@ -100,6 +100,32 @@ class SilverCase(BaseModel):
     model_judgments: list[ModelJudgment] = Field(default_factory=list)
     prelabel_provenance: CasePrelabelProvenance | None = None
     prelabel_summary: PrelabelSummary | None = None
+    human_review: HumanReview | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_top_level_human_status(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        payload = dict(data)
+        legacy = payload.pop("human_status", None)
+        if legacy is None:
+            return payload
+        if payload.get("human_review") is not None:
+            raise ValueError(
+                "cannot provide both top-level human_status and human_review"
+            )
+        if legacy == HumanReviewStatus.PENDING.value or legacy == HumanReviewStatus.PENDING:
+            return payload
+        payload["human_review"] = {
+            "status": legacy,
+            "judgments": [],
+            "query_override": None,
+            "category_override": {"is_overridden": False, "value": None},
+            "tags_override": None,
+            "grade_basis_query": None,
+        }
+        return payload
 
     @field_validator("proposed_query", mode="before")
     @classmethod
@@ -112,46 +138,102 @@ class SilverCase(BaseModel):
         return text or None
 
     @model_validator(mode="after")
-    def _prelabel_coherence(self) -> SilverCase:
+    def _prelabel_and_review_coherence(self) -> SilverCase:
         has_any = bool(self.model_judgments) or (
             self.prelabel_summary is not None
         ) or (self.prelabel_provenance is not None)
-        if not has_any:
-            return self
-        candidate_ids = [c.chunk_id for c in self.candidates]
-        if not has_complete_prelabel(
-            judgments=self.model_judgments,
-            summary=self.prelabel_summary,
-            provenance=self.prelabel_provenance,
-            candidate_ids=candidate_ids,
-        ):
-            # Allow empty judgments with null summary/provenance only.
-            if (
-                not self.model_judgments
-                and self.prelabel_summary is None
-                and self.prelabel_provenance is None
+        if has_any:
+            candidate_ids = [c.chunk_id for c in self.candidates]
+            if not has_complete_prelabel(
+                judgments=self.model_judgments,
+                summary=self.prelabel_summary,
+                provenance=self.prelabel_provenance,
+                candidate_ids=candidate_ids,
             ):
-                return self
-            raise ValueError(
-                f"incomplete or inconsistent 9D prelabel for case "
-                f"{self.draft_case_id}"
-            )
-        # Validate blind positions against pass orders.
-        assert self.prelabel_provenance is not None
-        order_by_pass = {
-            p.pass_id: list(p.candidate_order) for p in self.prelabel_provenance.passes
-        }
-        for judgment in self.model_judgments:
-            order = order_by_pass.get(judgment.pass_id)
-            if order is None:
-                raise ValueError("missing pass order in prelabel_provenance")
-            idx = judgment.blind_position - 1
-            if idx < 0 or idx >= len(order) or order[idx] != judgment.chunk_id:
-                raise ValueError(
-                    "blind_position does not match candidate_order for "
-                    f"{judgment.pass_id}/{judgment.chunk_id}"
-                )
+                if not (
+                    not self.model_judgments
+                    and self.prelabel_summary is None
+                    and self.prelabel_provenance is None
+                ):
+                    raise ValueError(
+                        f"incomplete or inconsistent 9D prelabel for case "
+                        f"{self.draft_case_id}"
+                    )
+            if self.model_judgments:
+                assert self.prelabel_provenance is not None
+                order_by_pass = {
+                    p.pass_id: list(p.candidate_order)
+                    for p in self.prelabel_provenance.passes
+                }
+                for judgment in self.model_judgments:
+                    order = order_by_pass.get(judgment.pass_id)
+                    if order is None:
+                        raise ValueError("missing pass order in prelabel_provenance")
+                    idx = judgment.blind_position - 1
+                    if idx < 0 or idx >= len(order) or order[idx] != judgment.chunk_id:
+                        raise ValueError(
+                            "blind_position does not match candidate_order for "
+                            f"{judgment.pass_id}/{judgment.chunk_id}"
+                        )
+
+        _validate_human_review_against_case(self)
         return self
+
+    @property
+    def human_status(self) -> HumanReviewStatus:
+        if self.human_review is None:
+            return HumanReviewStatus.PENDING
+        return self.human_review.status
+
+    def effective_query(self) -> str | None:
+        review = self.human_review
+        if review is not None and review.query_override is not None:
+            return review.query_override
+        if self.proposed_query is None:
+            return None
+        return canonicalize_query(self.proposed_query)
+
+    def effective_category(self) -> str | None:
+        review = self.human_review
+        if review is not None and review.category_override.is_overridden:
+            return review.category_override.value
+        return canonicalize_category(self.proposed_category)
+
+    def effective_tags(self) -> tuple[str, ...]:
+        review = self.human_review
+        if review is not None and review.tags_override is not None:
+            return canonicalize_tags(review.tags_override)
+        return canonicalize_tags(self.proposed_tags)
+
+    def proposal_content_changed(self) -> bool:
+        proposed_query = (
+            canonicalize_query(self.proposed_query)
+            if self.proposed_query is not None
+            else None
+        )
+        if proposed_query != self.effective_query():
+            return True
+        if canonicalize_category(self.proposed_category) != self.effective_category():
+            return True
+        if not tags_equal(self.proposed_tags, self.effective_tags()):
+            return True
+        return False
+
+    def human_judgment_map(self) -> dict[str, int]:
+        if self.human_review is None:
+            return {}
+        return {j.chunk_id: int(j.relevance) for j in self.human_review.judgments}
+
+    def review_complete(self) -> bool:
+        candidate_ids = {c.chunk_id for c in self.candidates}
+        judged = set(self.human_judgment_map())
+        return bool(candidate_ids) and judged == candidate_ids
+
+    def human_positive_count(self) -> int:
+        return sum(1 for grade in self.human_judgment_map().values() if grade >= 1)
+
+    def quality_eligible_for_gold(self) -> bool:
+        return self.review_complete() and self.human_positive_count() >= 1
 
     def has_complete_durable_prelabel(self) -> bool:
         return has_complete_prelabel(
@@ -160,6 +242,57 @@ class SilverCase(BaseModel):
             provenance=self.prelabel_provenance,
             candidate_ids=[c.chunk_id for c in self.candidates],
         )
+
+
+def _validate_human_review_against_case(case: SilverCase) -> None:
+    review = case.human_review
+    if review is None:
+        return
+
+    candidate_ids = {c.chunk_id for c in case.candidates}
+    judged_ids = {j.chunk_id for j in review.judgments}
+    unknown = judged_ids - candidate_ids
+    if unknown:
+        raise ValueError(
+            f"human judgment for unknown candidate chunk_id(s): "
+            f"{sorted(unknown)}"
+        )
+
+    effective_query = case.effective_query()
+    if review.judgments:
+        if effective_query is None:
+            raise ValueError(
+                "nonempty human judgments require a non-null effective query"
+            )
+        if review.grade_basis_query != effective_query:
+            raise ValueError(
+                "grade_basis_query must equal canonical effective_query "
+                "when human judgments are nonempty"
+            )
+
+    status = review.status
+    if status in (HumanReviewStatus.ACCEPTED, HumanReviewStatus.EDITED):
+        if not case.review_complete():
+            raise ValueError(
+                f"{status.value} case requires a complete human grade map"
+            )
+        if case.human_positive_count() < 1:
+            raise ValueError(
+                f"{status.value} case requires at least one human grade 1 or 2"
+            )
+        if review.grade_basis_query != effective_query:
+            raise ValueError(
+                f"{status.value} case has stale query-grade binding"
+            )
+        changed = case.proposal_content_changed()
+        if status == HumanReviewStatus.ACCEPTED and changed:
+            raise ValueError(
+                "accepted case must not change proposed query/category/tags"
+            )
+        if status == HumanReviewStatus.EDITED and not changed:
+            raise ValueError(
+                "edited case requires a semantic change to query/category/tags"
+            )
 
 
 class ProposalPipelineProvenance(BaseModel):
@@ -227,8 +360,12 @@ class GoldAuthoringRun(BaseModel):
 
     @property
     def successful_count(self) -> int:
-        return len(self.cases)
+        return sum(
+            1
+            for attempt in self.attempts
+            if attempt.status == ProposalAttemptStatus.SUCCEEDED
+        )
 
     @property
     def failed_count(self) -> int:
-        return sum(1 for a in self.attempts if a.status != ProposalAttemptStatus.SUCCEEDED)
+        return len(self.attempts) - self.successful_count

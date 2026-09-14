@@ -24,7 +24,6 @@ from offline_rag.gold_authoring.context import (
 )
 from offline_rag.gold_authoring.models import (
     GoldAuthoringRun,
-    HumanReviewStatus,
     ProposalAttempt,
     ProposalAttemptStatus,
     ProposalFailureReason,
@@ -246,7 +245,6 @@ def run_gold_propose(
             draft_case_id = new_execution_id(prefix="draft")
             case = SilverCase(
                 draft_case_id=draft_case_id,
-                human_status=HumanReviewStatus.PENDING,
                 proposed_query=proposal.query,
                 proposed_category=proposal.category,
                 proposed_tags=list(proposal.tags),

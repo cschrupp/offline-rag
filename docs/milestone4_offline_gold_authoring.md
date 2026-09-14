@@ -2,8 +2,9 @@
 
 **Position:** after Slice 9 (Evaluation Harness v1), before Slice 10 (Generation/Citation Semantic Evaluation).
 
-**Next implementation decision track:** Slice 9E — Local Human Review & Finalization.
+**Next implementation decision track:** Slice 9F — 20-Case Authoring Pilot.
 
+Slice **9E** (`offline-rag gold review` / `gold finalize`) is done — see [`slice9e_human_review.md`](slice9e_human_review.md).
 Slice **9D** (`offline-rag gold prelabel`) is done — see [`slice9d_relevance_prelabel.md`](slice9d_relevance_prelabel.md).
 Slice **9C** (`offline-rag gold pool`) is done — see [`slice9c_candidate_pooling.md`](slice9c_candidate_pooling.md).
 Slice **9B** (`offline-rag gold propose`) is done — see [`slice9b_gold_propose.md`](slice9b_gold_propose.md).
@@ -159,14 +160,14 @@ offline-rag gold finalize
 offline-rag gold status
 ```
 
-Exact command surface continues to be refined in Slice 9E+. Intended end-user flow:
+`gold review` / `gold finalize` are implemented (Slice 9E). Optional `gold status` and pilot tooling continue in later slices. Intended end-user flow:
 
 ```bash
 offline-rag gold propose --corpus ics_modules --count 20
 offline-rag gold pool --run <authoring-run.json>
 offline-rag gold prelabel --run <authoring-run.json>
-offline-rag gold review --run <authoring-run>
-offline-rag gold finalize --run <authoring-run> --output eval/datasets/ics_modules_v1
+offline-rag gold review --run <authoring-run.json>
+offline-rag gold finalize --run <authoring-run.json>
 ```
 
 ---
@@ -249,9 +250,9 @@ See [`slice9d_relevance_prelabel.md`](slice9d_relevance_prelabel.md).
 
 ## Slice 9E — Local Human Review & Finalization
 
-**Goal:** Make adjudication realistic without hand-editing JSONL.
+**Status:** done — see [`slice9e_human_review.md`](slice9e_human_review.md).
 
-Preferred: `offline-rag gold review --run <authoring-run>` → localhost-only browser UI for accept/edit/reject query, category/tags, 0/1/2 labels, disagreement inspection, add missed chunks, mark complete. Finalize only reviewed cases to GoldDataset v1 via Slice 9 writer/hash semantics. Optional Label Studio adapter only after native workflow works.
+`offline-rag gold review --run <authoring-run>` serves a loopback-only native UI; human decisions persist on silver. `offline-rag gold finalize --run … [--output] [--force]` publishes qualifying `accepted`/`edited` cases to `offline-rag-gold-v1`. No Label Studio.
 
 ---
 

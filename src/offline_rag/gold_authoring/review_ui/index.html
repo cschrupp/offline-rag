@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OfflineRAG Gold Review</title>
+  <link rel="stylesheet" href="/review.css" />
+</head>
+<body>
+  <header class="top">
+    <div>
+      <h1>Gold Review</h1>
+      <p id="run-meta" class="muted">Loading…</p>
+    </div>
+    <div class="nav-row">
+      <button type="button" id="btn-prev-case">Previous case</button>
+      <button type="button" id="btn-next-case">Next case</button>
+      <button type="button" id="btn-next-pending">Next pending</button>
+      <button type="button" id="btn-next-high">Next high-priority pending</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="case-list" id="case-list" aria-label="Cases"></aside>
+    <section class="case-panel" id="case-panel">
+      <p class="muted">Select a case to begin review.</p>
+    </section>
+  </main>
+
+  <script src="/review.js"></script>
+</body>
+</html>

@@ -24,6 +24,21 @@ def default_authoring_run_path(
     )
 
 
+def default_authoring_gold_dir(
+    settings: AppSettings,
+    *,
+    corpus_name: str,
+    authoring_run_id: str,
+) -> Path:
+    return (
+        settings.paths.corpora
+        / corpus_name
+        / "gold_authoring"
+        / "gold"
+        / authoring_run_id
+    )
+
+
 def write_authoring_run(path: Path, run: GoldAuthoringRun) -> None:
     atomic_write_text(path, run.model_dump_json())
 

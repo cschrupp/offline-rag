@@ -103,4 +103,7 @@ Slice **9C** — multi-retriever candidate pooling — done:
 Slice **9D** — relevance prelabel — done:
 [`slice9d_relevance_prelabel.md`](slice9d_relevance_prelabel.md).
 
-Slice **9E** — human review / GoldDataset finalization.
+Slice **9E** — human review / GoldDataset finalization — done:
+[`slice9e_human_review.md`](slice9e_human_review.md).
+
+Next: Slice **9F** — 20-case authoring pilot.

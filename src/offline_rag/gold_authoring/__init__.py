@@ -1,4 +1,4 @@
-"""Offline gold-authoring subsystem (Slices 9A–9D)."""
+"""Offline gold-authoring subsystem (Slices 9A–9E)."""
 
 from offline_rag.gold_authoring.config_hash import (
     build_authoring_config_hash,
@@ -18,9 +18,9 @@ from offline_rag.gold_authoring.contracts import (
     RELEVANCE_PRELABEL_CONTRACT,
     SAMPLING_CONTRACT,
 )
+from offline_rag.gold_authoring.finalize import FinalizePreRunError, run_gold_finalize
 from offline_rag.gold_authoring.models import (
     GoldAuthoringRun,
-    HumanReviewStatus,
     ProposalAttempt,
     ProposalAttemptStatus,
     SilverCase,
@@ -38,6 +38,7 @@ from offline_rag.gold_authoring.readiness import (
     authoring_status_label,
     evaluate_authoring_readiness,
 )
+from offline_rag.gold_authoring.review_models import HumanReview, HumanReviewStatus
 
 __all__ = [
     "ADAPTER_CONTRACT",
@@ -48,7 +49,9 @@ __all__ = [
     "AuthoringAuthReason",
     "AuthoringPrivacyError",
     "AuthoringReadiness",
+    "FinalizePreRunError",
     "GoldAuthoringRun",
+    "HumanReview",
     "HumanReviewStatus",
     "JUDGE_CONTEXT_CONTRACT",
     "POOLING_CONTRACT",
@@ -68,6 +71,7 @@ __all__ = [
     "build_authoring_config_hash",
     "build_authoring_semantic_payload",
     "evaluate_authoring_readiness",
+    "run_gold_finalize",
     "run_gold_pool",
     "run_gold_prelabel",
     "run_gold_propose",

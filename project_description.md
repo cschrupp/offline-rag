@@ -1,6 +1,6 @@
 # Project Description — OfflineRAG
 
-**Implementation status:** Slices 0–9, **9A**, **9B**, **9C**, and **9D** are implemented (Slice 9 = retrieval evaluation harness; 9D = `offline-rag gold prelabel`). Next: Slice **9E**. Slice 10 generation/citation semantics and agentic recovery remain planned. See `ROADMAP.md`, `docs/milestone4_offline_gold_authoring.md`, and `docs/slice9d_relevance_prelabel.md`.
+**Implementation status:** Slices 0–9, **9A**, **9B**, **9C**, **9D**, and **9E** are implemented (Slice 9 = retrieval evaluation harness; 9E = `gold review` / `gold finalize`). Next: Slice **9F**. Slice 10 generation/citation semantics and agentic recovery remain planned. See `ROADMAP.md`, `docs/milestone4_offline_gold_authoring.md`, and `docs/slice9e_human_review.md`.
 
 ## 1. Working title
 

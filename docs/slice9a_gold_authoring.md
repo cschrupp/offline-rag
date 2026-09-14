@@ -135,4 +135,4 @@ and no completions in 9A. Surface: `offline-rag doctor` Authoring section.
 
 ## Next
 
-Slices **9B** / **9C** / **9D** done. Next: Slice **9E** — human review / GoldDataset finalization.
+Slices **9B** / **9C** / **9D** / **9E** done. Next: Slice **9F** — 20-case authoring pilot.

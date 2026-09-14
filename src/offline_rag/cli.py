@@ -2031,6 +2031,87 @@ def cmd_gold_prelabel(args: argparse.Namespace) -> int:
     return result.exit_code
 
 
+def cmd_gold_review(args: argparse.Namespace) -> int:
+    from offline_rag.gold_authoring.review_server import (
+        DEFAULT_REVIEW_HOST,
+        DEFAULT_REVIEW_PORT,
+        ReviewServerError,
+        create_review_server,
+    )
+
+    try:
+        settings = _load_settings(args)
+    except ConfigError as exc:
+        print(f"gold review: configuration failed: {exc}", file=sys.stderr)
+        return 2
+
+    host = args.host if args.host is not None else DEFAULT_REVIEW_HOST
+    port = int(args.port) if args.port is not None else DEFAULT_REVIEW_PORT
+    try:
+        server, _session, url = create_review_server(
+            settings=settings,
+            run_path=Path(args.run),
+            host=host,
+            port=port,
+        )
+    except ReviewServerError as exc:
+        print(f"gold review: {exc}", file=sys.stderr)
+        return 2
+    except Exception as exc:  # noqa: BLE001
+        print(f"gold review: {exc}", file=sys.stderr)
+        return 2
+
+    print("Gold review server started (loopback-only).")
+    print(f"Review UI: {url}")
+    print(f"Authoring run: {Path(args.run).resolve()}")
+    print("Press Ctrl+C to stop. Review mutations persist as you save.")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print()
+        print("Review server stopped.")
+    finally:
+        server.server_close()
+    return 0
+
+
+def cmd_gold_finalize(args: argparse.Namespace) -> int:
+    from offline_rag.gold_authoring.finalize import FinalizePreRunError, run_gold_finalize
+
+    try:
+        settings = _load_settings(args)
+    except ConfigError as exc:
+        print(f"gold finalize: configuration failed: {exc}", file=sys.stderr)
+        return 2
+
+    try:
+        result = run_gold_finalize(
+            settings,
+            run_path=Path(args.run),
+            output=Path(args.output) if args.output else None,
+            force=bool(args.force),
+        )
+    except FinalizePreRunError as exc:
+        print(f"gold finalize: {exc}", file=sys.stderr)
+        return 2
+
+    print(result.message or "GoldDataset finalization completed.")
+    print()
+    if result.status_counts:
+        print("Run status counts:")
+        for key in ("pending", "accepted", "edited", "rejected"):
+            print(f"  {key}: {result.status_counts.get(key, 0)}")
+    print()
+    print(f"Exported cases: {len(result.exported_case_ids)}")
+    if result.dataset_id:
+        print(f"Gold dataset ID: {result.dataset_id}")
+    if result.output_path is not None:
+        print()
+        print("Output:")
+        print(f"  {result.output_path}")
+    return result.exit_code
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="offline-rag", description="OfflineRAG CLI")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -2363,6 +2444,63 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     gold_prelabel.set_defaults(func=cmd_gold_prelabel)
+
+    gold_review = gold_sub.add_parser(
+        "review",
+        help=(
+            "Serve the localhost human-review UI for an authoring run "
+            "(Slice 9E; in-place silver mutations)"
+        ),
+    )
+    _add_config_argument(gold_review)
+    gold_review.add_argument(
+        "--run",
+        required=True,
+        type=Path,
+        help="Human-review an existing gold-authoring run (in place)",
+    )
+    gold_review.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="Review server bind host (loopback only; default: 127.0.0.1)",
+    )
+    gold_review.add_argument(
+        "--port",
+        type=int,
+        default=8765,
+        help="Review server port (default: 8765)",
+    )
+    gold_review.set_defaults(func=cmd_gold_review)
+
+    gold_finalize = gold_sub.add_parser(
+        "finalize",
+        help=(
+            "Publish qualifying accepted/edited cases to offline-rag-gold-v1 "
+            "(Slice 9E)"
+        ),
+    )
+    _add_config_argument(gold_finalize)
+    gold_finalize.add_argument(
+        "--run",
+        required=True,
+        type=Path,
+        help="Existing human-reviewed gold-authoring run",
+    )
+    gold_finalize.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help=(
+            "Destination directory for the finalized offline-rag-gold-v1 dataset "
+            "(default: <corpus>/gold_authoring/gold/<authoring_run_id>/)"
+        ),
+    )
+    gold_finalize.add_argument(
+        "--force",
+        action="store_true",
+        help="Replace an existing destination GoldDataset artifact",
+    )
+    gold_finalize.set_defaults(func=cmd_gold_finalize)
 
     doctor = subparsers.add_parser("doctor", help="Run local diagnostics")
     _add_config_argument(doctor)

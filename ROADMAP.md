@@ -103,7 +103,7 @@ generation-provenance investigation and A/B results.
 
 ## Milestone 4 — Offline Gold Authoring & Retrieval Benchmarking
 
-**Next decision track:** Slice **9E** (local human review & GoldDataset finalization).
+**Next decision track:** Slice **9F** (20-case authoring pilot).
 
 **Canonical plan:** [`docs/milestone4_offline_gold_authoring.md`](docs/milestone4_offline_gold_authoring.md). Slice 9A notes: [`docs/slice9a_gold_authoring.md`](docs/slice9a_gold_authoring.md). Slice 9B notes: [`docs/slice9b_gold_propose.md`](docs/slice9b_gold_propose.md). Slice 9C notes: [`docs/slice9c_candidate_pooling.md`](docs/slice9c_candidate_pooling.md). Slice 9D notes: [`docs/slice9d_relevance_prelabel.md`](docs/slice9d_relevance_prelabel.md).
 
@@ -139,7 +139,7 @@ A reviewer can refresh a private-corpus retrieval benchmark without sending
 source text outside an approved local/private environment, then run
 comparable retrieval evaluations and make an explicit promotion decision.
 
-**Status:** Slice **9D** complete (`offline-rag gold prelabel`). Next decision track: **9E** (human review & GoldDataset finalization). Do not promote Arm H,
+**Status:** Slice **9E** complete (`offline-rag gold review` / `gold finalize`). Next decision track: **9F** (20-case authoring pilot). Do not promote Arm H,
 `model-query-prompt-v1`, or `prompt-grounded-provenance-v2` during
 authoring-pipeline work; do not start Slice 10 inside this milestone.
 

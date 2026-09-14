@@ -53,4 +53,8 @@ offline-rag gold prelabel \
 
 ## Next
 
-Slice **9E** — human review UI / adjudication / GoldDataset finalization (not started).
+Slice **9E** — human review / GoldDataset finalization — done:
+
+See [`slice9e_human_review.md`](slice9e_human_review.md).
+
+Next: Slice **9F** — 20-case authoring pilot.

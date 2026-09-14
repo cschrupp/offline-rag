@@ -48,6 +48,7 @@ from offline_rag.gold_authoring.pooling_models import (
     PoolingProvenance,
     RetrievalHit,
 )
+from offline_rag.gold_authoring.review_models import HumanReview
 from offline_rag.rerank.fake import FakeReranker
 
 BODY_MARKER = "UNIQUE_PRIVATE_CANDIDATE_BODY_9C_ZXCVBN"
@@ -137,7 +138,6 @@ def _case(
 ) -> SilverCase:
     return SilverCase(
         draft_case_id=draft_id,
-        human_status=HumanReviewStatus.PENDING,
         proposed_query=query,
         source_seed=SourceSeed(chunk_id="seed_1", document_id="doc_a"),
         candidates=list(candidates or []),
@@ -509,7 +509,11 @@ def test_zero_targeted_exit_2(tmp_path: Path) -> None:
     settings = AppSettings()
     run_path = tmp_path / "run.json"
     case = _case("d1", "q")
-    case.human_status = HumanReviewStatus.ACCEPTED
+    case = case.model_copy(
+        update={
+            "human_review": HumanReview(status=HumanReviewStatus.REJECTED),
+        }
+    )
     write_authoring_run(run_path, _run([case]))
     executor = RecordingExecutor()
     with pytest.raises(PoolPreRunError, match="no poolable"):

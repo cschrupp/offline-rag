@@ -155,7 +155,7 @@ The goal is to be able to make evidence-backed statements such as:
 
 ### Offline gold authoring (Milestone 4)
 
-Private corpora are labeled through a fully local workflow: source-seeded question proposal, multi-retriever pooling, blind local pre-labeling, and human review before GoldDataset v1 finalization. Slices **9A**/**9B**/**9C**/**9D** are done (`doctor` Authoring, `gold propose`, `gold pool`, `gold prelabel`); see [`docs/slice9d_relevance_prelabel.md`](docs/slice9d_relevance_prelabel.md), [`docs/slice9c_candidate_pooling.md`](docs/slice9c_candidate_pooling.md), [`docs/slice9b_gold_propose.md`](docs/slice9b_gold_propose.md), [`docs/slice9a_gold_authoring.md`](docs/slice9a_gold_authoring.md), and [`docs/milestone4_offline_gold_authoring.md`](docs/milestone4_offline_gold_authoring.md). Next implementation decision: Slice **9E**.
+Private corpora are labeled through a fully local workflow: source-seeded question proposal, multi-retriever pooling, blind local pre-labeling, human review, and GoldDataset finalization. Slices **9A**/**9B**/**9C**/**9D**/**9E** are done (`doctor` Authoring, `gold propose`, `gold pool`, `gold prelabel`, `gold review`, `gold finalize`); see [`docs/slice9e_human_review.md`](docs/slice9e_human_review.md), [`docs/slice9d_relevance_prelabel.md`](docs/slice9d_relevance_prelabel.md), and [`docs/milestone4_offline_gold_authoring.md`](docs/milestone4_offline_gold_authoring.md). Next implementation decision: Slice **9F**.
 
 ### Retrieval
 
@@ -342,10 +342,10 @@ Use public, redistributable technical documents rather than proprietary material
 
 ## Project status
 
-**Phase:** Milestone 4 in progress — Slices 0–9, **9A**, **9B**, **9C**, and **9D** done; next decision track is **Slice 9E** (human review).
+**Phase:** Milestone 4 in progress — Slices 0–9, **9A**, **9B**, **9C**, **9D**, and **9E** done; next decision track is **Slice 9F** (20-case pilot).
 
 Working local path: ingest → chunk → index / index lexical → retrieve ladder → `query` → `eval retrieve` / `eval compare` → `eval query` → `doctor` → `gold propose` → `gold pool` → `gold prelabel`.
 
-Still deferred: remaining authoring slices (9E–9H), semantic answer/citation quality metrics (Milestone 5 / Slice 10), agentic recovery (Milestone 6).
+Still deferred: remaining authoring slices (9F–9H), semantic answer/citation quality metrics (Milestone 5 / Slice 10), agentic recovery (Milestone 6).
 
 See `ROADMAP.md`, `docs/milestone4_offline_gold_authoring.md`, `docs/slice9b_gold_propose.md`, `docs/slice9a_gold_authoring.md`, `docs/slice9_retrieval_evaluation.md`, and `docs/slice8_grounded_generation.md`.

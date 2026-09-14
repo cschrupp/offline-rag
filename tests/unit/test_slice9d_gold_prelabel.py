@@ -103,7 +103,6 @@ def _case(
 ) -> SilverCase:
     return SilverCase(
         draft_case_id=draft_id,
-        human_status=HumanReviewStatus.PENDING,
         proposed_query=query,
         source_seed=SourceSeed(chunk_id=seed_id, document_id="doc_a"),
         candidates=candidates,

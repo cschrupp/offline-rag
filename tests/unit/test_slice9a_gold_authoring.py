@@ -318,12 +318,13 @@ def test_gold_authoring_run_roundtrip() -> None:
         chunk_set_id=None,
         created_at=datetime(2026, 9, 13, tzinfo=UTC),
         cases=[
-            SilverCase(draft_case_id="draft_001", human_status=HumanReviewStatus.PENDING)
+            SilverCase(draft_case_id="draft_001")
         ],
     )
     restored = GoldAuthoringRun.model_validate_json(run.model_dump_json())
     assert restored.schema_version == AUTHORING_ARTIFACT_CONTRACT
     assert restored.cases[0].human_status == HumanReviewStatus.PENDING
+    assert restored.cases[0].human_review is None
     assert restored.cases[0].candidates == []
     assert "api_key" not in run.model_dump()
 
