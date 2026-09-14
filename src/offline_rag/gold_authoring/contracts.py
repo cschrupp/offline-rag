@@ -1,4 +1,4 @@
-"""Code-owned gold-authoring contract identifiers (Slices 9A–9B)."""
+"""Code-owned gold-authoring contract identifiers (Slices 9A–9C)."""
 
 from __future__ import annotations
 
@@ -12,6 +12,32 @@ SAMPLING_CONTRACT = "source-sampling-random-v1"
 CONTEXT_CONTRACT = "proposal-context-seed-provenance-v1"
 QUALITY_GATE_CONTRACT = "proposal-quality-gates-v1"
 ATTEMPT_CONTRACT = "proposal-attempt-once-v1"
+
+POOLING_CONTRACT = "candidate-pooling-v1"
+RETRIEVER_LEXICAL_PLAIN_V1 = "lexical-plain-v1"
+RETRIEVER_DENSE_PLAIN_V1 = "dense-plain-v1"
+RETRIEVER_DENSE_MODEL_QUERY_PROMPT_V1 = "dense-model-query-prompt-v1"
+RETRIEVER_DENSE_ARM_H_V1 = "dense-arm-h-v1"
+RETRIEVER_HYBRID_RRF_V1 = "hybrid-rrf-v1"
+RETRIEVER_HYBRID_RERANK_V1 = "hybrid-rerank-v1"
+
+POOLING_RETRIEVER_IDS: tuple[str, ...] = (
+    RETRIEVER_LEXICAL_PLAIN_V1,
+    RETRIEVER_DENSE_PLAIN_V1,
+    RETRIEVER_DENSE_MODEL_QUERY_PROMPT_V1,
+    RETRIEVER_DENSE_ARM_H_V1,
+    RETRIEVER_HYBRID_RRF_V1,
+    RETRIEVER_HYBRID_RERANK_V1,
+)
+
+POOLING_DEPTHS: dict[str, int] = {
+    RETRIEVER_LEXICAL_PLAIN_V1: 50,
+    RETRIEVER_DENSE_PLAIN_V1: 50,
+    RETRIEVER_DENSE_MODEL_QUERY_PROMPT_V1: 50,
+    RETRIEVER_DENSE_ARM_H_V1: 50,
+    RETRIEVER_HYBRID_RRF_V1: 50,
+    RETRIEVER_HYBRID_RERANK_V1: 20,
+}
 
 SUPPORTED_NETWORK_POLICIES: frozenset[str] = frozenset(
     {"localhost_only", "private_network"}

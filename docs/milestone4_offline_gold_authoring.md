@@ -2,8 +2,9 @@
 
 **Position:** after Slice 9 (Evaluation Harness v1), before Slice 10 (Generation/Citation Semantic Evaluation).
 
-**Next implementation decision track:** Slice 9C — Multi-Retriever Candidate Pooling.
+**Next implementation decision track:** Slice 9D — Relevance Prelabel / Blind Judging Prep.
 
+Slice **9C** (`offline-rag gold pool`) is done — see [`slice9c_candidate_pooling.md`](slice9c_candidate_pooling.md).
 Slice **9B** (`offline-rag gold propose`) is done — see [`slice9b_gold_propose.md`](slice9b_gold_propose.md).
 Slice **9A** (contracts + privacy + doctor) is done — see [`slice9a_gold_authoring.md`](slice9a_gold_authoring.md).
 
@@ -15,6 +16,7 @@ Slice **9A** (contracts + privacy + doctor) is done — see [`slice9a_gold_autho
 - Slice 9 evaluation harness complete at commit `9073c37` ([`slice9_retrieval_evaluation.md`](slice9_retrieval_evaluation.md)).
 - Slice **9A** complete: `authoring:` config, `authorcfg_`, privacy dual-gate, lean silver/run models, doctor readiness.
 - Slice **9B** complete: `source-sampling-random-v1`, `question-proposal-v1`, local authoring Chat Completions path, quality gates, `offline-rag gold propose`, silver-run persistence (no seed-body/raw-response copies).
+- Slice **9C** complete: `candidate-pooling-v1` six-arm historical pooling, `offline-rag gold pool`, union/dedupe/`chunk_id` identity, pool inspection order, privacy-preserving candidate provenance (no body text / no grades).
 - `GoldDataset v1`, deterministic retrieval metrics, serialized evaluation artifacts, and `offline-rag eval compare` are available.
 - `model-query-prompt-v1`, `exclude-heading-only-v1` / Arm H, and `prompt-grounded-provenance-v2` remain validated experimental candidates.
 - No experimental contracts are promoted to `base.yaml`.
@@ -71,7 +73,7 @@ ChunkSet → representative sampling → source chunk + DOCUMENT/SECTION context
 
 ### 3. Multi-retriever pooling
 
-For every proposed query, build a high-recall candidate pool across materially different existing retrieval paths (lexical, dense baseline, dense model-query-prompt, Arm H dense, hybrid, hybrid-rerank), plus the source seed and neighborhood chunks. Union/deduplicate by `chunk_id`. Do not modify retrieval algorithms; use existing indexes/overlays.
+For every proposed query, build a high-recall candidate pool across six existing retrieval paths (lexical plain-v1, dense baseline/raw-query-v1, dense `model-query-prompt-v1`, Arm H dense, hybrid RRF, hybrid-rerank). Union/deduplicate by `chunk_id`. Do not modify production retrieval algorithms or defaults; use historically bound indexes. Do not auto-inject the source seed or expand neighborhoods into the pool (9C).
 
 ### 4. Blind pre-labeling
 
@@ -155,14 +157,14 @@ offline-rag gold finalize
 offline-rag gold status
 ```
 
-Exact command surface continues to be refined in Slice 9C+. Intended end-user flow:
+Exact command surface continues to be refined in Slice 9D+. Intended end-user flow:
 
 ```bash
 offline-rag gold propose --corpus ics_modules --count 20
-offline-rag gold pool --draft <authoring-run>
-offline-rag gold prelabel --draft <authoring-run>
-offline-rag gold review --draft <authoring-run>
-offline-rag gold finalize --draft <authoring-run> --output eval/datasets/ics_modules_v1
+offline-rag gold pool --run <authoring-run.json>
+offline-rag gold prelabel --run <authoring-run>
+offline-rag gold review --run <authoring-run>
+offline-rag gold finalize --run <authoring-run> --output eval/datasets/ics_modules_v1
 ```
 
 ---
@@ -225,9 +227,11 @@ Authoring-only metadata does not enter GoldDataset semantic identity.
 
 **Goal:** High-recall candidate pools before adjudication.
 
-Initial recommended pool sources: lexical plain-v1; dense baseline; dense `model-query-prompt-v1`; Arm H dense; hybrid; hybrid-rerank; plus source seed and neighborhoods. Union by `chunk_id`; keep method/rank diagnostics hidden from judges where possible.
+**Implemented:** `candidate-pooling-v1` six-arm ensemble (lexical plain-v1, dense baseline/raw-query-v1, dense `model-query-prompt-v1`, Arm H / `exclude-heading-only-v1`, hybrid RRF, hybrid-rerank); depths 50/50/50/50/50/20; historical `chunk_set_id` preflight; union/dedupe by `chunk_id`; pool inspection order (min rank ↑, arm count ↓, `chunk_id` ↑); `offline-rag gold pool`; privacy-preserving candidate provenance (IDs/metadata/hits only — no body text); case-local complete-six-arm-or-fail semantics. Experimental arms remain unpromoted. No seed injection, neighborhood expansion, grades, or LLM calls.
 
-**Acceptance:** Each draft query yields a deterministic pool with `chunk_id`, DOCUMENT/SECTION provenance, and exact chunk text. No candidate is relevant merely because many retrievers found it.
+**Acceptance (met):** Each successfully pooled draft query yields a deterministic pool with `chunk_id`, DOCUMENT/SECTION provenance, and reconstructable text via historical `chunk_set_id` + `chunk_id`. Candidate membership is not a relevance claim.
+
+See [`slice9c_candidate_pooling.md`](slice9c_candidate_pooling.md).
 
 ---
 

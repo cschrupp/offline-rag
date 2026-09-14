@@ -97,4 +97,7 @@ run provenance only (no `proposecfg_`).
 
 ## Next
 
-Slice **9C** — multi-retriever candidate pooling.
+Slice **9C** — multi-retriever candidate pooling — done:
+[`slice9c_candidate_pooling.md`](slice9c_candidate_pooling.md).
+
+Slice **9D** — relevance prelabel / blind judging prep.

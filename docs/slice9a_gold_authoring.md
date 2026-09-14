@@ -135,4 +135,4 @@ and no completions in 9A. Surface: `offline-rag doctor` Authoring section.
 
 ## Next
 
-Slice **9C** — multi-retriever candidate pooling.
+Slices **9B** / **9C** done. Next: Slice **9D** — relevance prelabel / blind judging prep.

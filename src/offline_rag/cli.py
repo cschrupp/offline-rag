@@ -1932,6 +1932,55 @@ def cmd_gold_propose(args: argparse.Namespace) -> int:
     return result.exit_code
 
 
+def cmd_gold_pool(args: argparse.Namespace) -> int:
+    from offline_rag.gold_authoring.pool import PoolPreRunError, run_gold_pool
+
+    try:
+        settings = _load_settings(args)
+    except ConfigError as exc:
+        print(f"gold pool: configuration failed: {exc}", file=sys.stderr)
+        return 2
+
+    try:
+        result = run_gold_pool(
+            settings,
+            run_path=Path(args.run),
+            output=Path(args.output) if args.output else None,
+            force=bool(args.force),
+        )
+    except PoolPreRunError as exc:
+        print(f"gold pool: {exc}", file=sys.stderr)
+        return 2
+
+    run = result.run
+    if run is None:
+        print(f"gold pool: {result.message or 'failed'}", file=sys.stderr)
+        return result.exit_code
+
+    print(result.message or "Candidate pooling completed.")
+    print()
+    print(f"Gold authoring run:   {run.authoring_run_id}")
+    print(f"Chunk set:            {run.chunk_set_id}")
+    pooling = run.pooling
+    if pooling is not None:
+        print(f"Pooling contract:     {pooling.pooling_contract}")
+        print(f"Retrievers:           {', '.join(pooling.retrievers)}")
+    print()
+    print(f"Targeted cases:       {run.pool_targeted_case_count}")
+    print(f"Successful pools:     {run.pool_successful_case_count}")
+    print(f"Failed pools:         {run.pool_failed_case_count}")
+    if result.failure_reason_counts:
+        print()
+        print("Failures:")
+        for reason, count in sorted(result.failure_reason_counts.items()):
+            print(f"  {reason}: {count}")
+    if result.output_path is not None:
+        print()
+        print("Output:")
+        print(f"  {result.output_path}")
+    return result.exit_code
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="offline-rag", description="OfflineRAG CLI")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -2198,6 +2247,39 @@ def build_parser() -> argparse.ArgumentParser:
         help="Overwrite the exact output path if it already exists",
     )
     gold_propose.set_defaults(func=cmd_gold_propose)
+
+    gold_pool = gold_sub.add_parser(
+        "pool",
+        help=(
+            "Build candidate-pooling-v1 retrieval pools for pending SilverCases "
+            "(Slice 9C)"
+        ),
+    )
+    _add_config_argument(gold_pool)
+    gold_pool.add_argument(
+        "--run",
+        required=True,
+        type=Path,
+        help="Path to an existing offline-rag-gold-authoring-v1 run JSON",
+    )
+    gold_pool.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help=(
+            "Optional destination path for the enriched run "
+            "(default: enrich --run in place)"
+        ),
+    )
+    gold_pool.add_argument(
+        "--force",
+        action="store_true",
+        help=(
+            "Re-pool cases that already have candidates and/or overwrite an "
+            "existing --output file"
+        ),
+    )
+    gold_pool.set_defaults(func=cmd_gold_pool)
 
     doctor = subparsers.add_parser("doctor", help="Run local diagnostics")
     _add_config_argument(doctor)

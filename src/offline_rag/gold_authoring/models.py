@@ -1,4 +1,4 @@
-"""Lean silver/run models for offline-rag-gold-authoring-v1 (Slices 9A–9B)."""
+"""Lean silver/run models for offline-rag-gold-authoring-v1 (Slices 9A–9C)."""
 
 from __future__ import annotations
 
@@ -16,6 +16,14 @@ from offline_rag.gold_authoring.contracts import (
     QUALITY_GATE_CONTRACT,
     SAMPLING_CONTRACT,
 )
+from offline_rag.gold_authoring.pooling_models import (
+    PoolCandidate,
+    PoolCaseOutcome,
+    PoolingProvenance,
+)
+
+# Backward-compatible name for imports expecting CandidateRef.
+CandidateRef = PoolCandidate
 
 
 class HumanReviewStatus(StrEnum):
@@ -61,14 +69,6 @@ class SourceSeed(BaseModel):
     section_path: list[str] = Field(default_factory=list)
 
 
-class CandidateRef(BaseModel):
-    """Minimal candidate placeholder; pooling diagnostics arrive in 9C."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    chunk_id: NonEmptyStr
-
-
 class ModelJudgmentPlaceholder(BaseModel):
     """Minimal judgment placeholder; prelabel semantics arrive in 9D."""
 
@@ -99,7 +99,7 @@ class SilverCase(BaseModel):
     proposed_tags: list[str] = Field(default_factory=list)
     proposal_rationale: str | None = None
     source_seed: SourceSeed | None = None
-    candidates: list[CandidateRef] = Field(default_factory=list)
+    candidates: list[PoolCandidate] = Field(default_factory=list)
     model_judgments: list[ModelJudgmentPlaceholder] = Field(default_factory=list)
 
     @field_validator("proposed_query", mode="before")
@@ -151,6 +151,11 @@ class GoldAuthoringRun(BaseModel):
     eligible_population_count: NonNegativeInt | None = None
     attempts: list[ProposalAttempt] = Field(default_factory=list)
     cases: list[SilverCase] = Field(default_factory=list)
+    pooling: PoolingProvenance | None = None
+    pool_outcomes: list[PoolCaseOutcome] = Field(default_factory=list)
+    pool_targeted_case_count: NonNegativeInt | None = None
+    pool_successful_case_count: NonNegativeInt | None = None
+    pool_failed_case_count: NonNegativeInt | None = None
 
     @field_validator("schema_version")
     @classmethod

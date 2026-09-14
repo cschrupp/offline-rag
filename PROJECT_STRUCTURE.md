@@ -181,7 +181,11 @@ offline-rag/
 │       │   ├── adapter.py
 │       │   ├── chunk_access.py
 │       │   ├── persist.py
-│       │   ├── pooling.py             # Slice 9C+
+│       │   ├── pool.py                # Slice 9C
+│       │   ├── pool_arms.py
+│       │   ├── pool_preflight.py
+│       │   ├── pool_union.py
+│       │   ├── pooling_models.py
 │       │   ├── prelabel.py            # Slice 9D+
 │       │   ├── review.py              # Slice 9E+
 │       │   └── finalize.py            # Slice 9E+
