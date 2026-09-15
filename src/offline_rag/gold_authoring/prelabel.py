@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -34,9 +35,9 @@ from offline_rag.gold_authoring.prelabel_models import (
     PrelabelCaseOutcome,
     PrelabelCaseStatus,
     PrelabelFailureReason,
-    PrelabelPassOrder,
     PrelabelingProvenance,
     PrelabelingStage,
+    PrelabelPassOrder,
 )
 from offline_rag.gold_authoring.prelabel_schema import (
     RelevancePrelabelParseError,
@@ -67,11 +68,18 @@ class PrelabelCaseError(RuntimeError):
         reason: PrelabelFailureReason,
         pass_id: str | None = None,
         chunk_id: str | None = None,
+        model_calls: int = 0,
     ) -> None:
         super().__init__(message)
         self.reason = reason
         self.pass_id = pass_id
         self.chunk_id = chunk_id
+        self.model_calls = int(model_calls)
+
+
+def _progress(message: str) -> None:
+    """Emit mid-run progress for long prelabel jobs (stdout, unbuffered)."""
+    print(f"gold prelabel: {message}", file=sys.stdout, flush=True)
 
 
 @dataclass
@@ -110,7 +118,7 @@ def _resolve_corpus_manifest_name(
     for path in sorted(manifests_root.glob("*.json")):
         try:
             manifest = load_corpus_manifest(path)
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001, S112
             continue
         if manifest.corpus_id == corpus_id:
             return path.name
@@ -247,6 +255,7 @@ def _judge_case(
 
     judgments: list[ModelJudgment] = []
     calls = 0
+    n_cand = len(candidate_ids)
     for pass_id, order in ((PASS_1, order1), (PASS_2, order2)):
         for position, chunk_id in enumerate(order, start=1):
             user_content = rendered[chunk_id]
@@ -261,6 +270,7 @@ def _judge_case(
                     reason=_map_adapter_reason(exc.failure_reason),
                     pass_id=pass_id,
                     chunk_id=chunk_id,
+                    model_calls=calls,
                 ) from exc
             calls += 1
             try:
@@ -271,6 +281,7 @@ def _judge_case(
                     reason=PrelabelFailureReason.MODEL_RESPONSE_INVALID,
                     pass_id=pass_id,
                     chunk_id=chunk_id,
+                    model_calls=calls,
                 ) from exc
             judgments.append(
                 ModelJudgment(
@@ -281,6 +292,16 @@ def _judge_case(
                     rationale=parsed.rationale,
                 )
             )
+            if position == n_cand or position % 25 == 0:
+                _progress(
+                    f"{case.draft_case_id} {pass_id} "
+                    f"candidate {position}/{n_cand} "
+                    f"case_calls={calls}"
+                )
+        _progress(
+            f"{case.draft_case_id} {pass_id} complete "
+            f"({n_cand}/{n_cand} candidates) case_calls={calls}"
+        )
 
     seed_id = case.source_seed.chunk_id if case.source_seed is not None else None
     try:
@@ -293,6 +314,7 @@ def _judge_case(
         raise PrelabelCaseError(
             str(exc),
             reason=PrelabelFailureReason.AGREEMENT_DERIVATION_FAILED,
+            model_calls=calls,
         ) from exc
 
     provenance = CasePrelabelProvenance(
@@ -330,7 +352,7 @@ def run_gold_prelabel(
 
     try:
         run = load_authoring_run(path)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise PrelabelPreRunError(f"invalid authoring run: {exc}") from exc
 
     destination = Path(output) if output is not None else path
@@ -380,10 +402,24 @@ def run_gold_prelabel(
     reason_counts: Counter[str] = Counter()
     success_count = 0
     model_calls = 0
+    total_candidates = sum(len(c.candidates) for c in targets)
+    expected_calls = total_candidates * 2
+    _progress(
+        f"starting {len(targets)} cases / {total_candidates} candidates "
+        f"(~{expected_calls} expected model calls); "
+        f"authorcfg={authorcfg_id}"
+    )
 
     try:
-        for target in targets:
+        for case_index, target in enumerate(targets, start=1):
             case = case_by_id[target.draft_case_id]
+            n_cand = len(case.candidates)
+            _progress(
+                f"case {case_index}/{len(targets)} "
+                f"{case.draft_case_id} candidates={n_cand} "
+                f"expected_case_calls={n_cand * 2} "
+                f"cumulative_model_calls={model_calls}"
+            )
             prior_judgments = list(case.model_judgments)
             prior_summary = (
                 case.prelabel_summary.model_copy(deep=True)
@@ -395,6 +431,7 @@ def run_gold_prelabel(
                 if case.prelabel_provenance is not None
                 else None
             )
+            prior_complete = case.has_complete_durable_prelabel()
             try:
                 judgments, provenance, summary, calls = _judge_case(
                     case,
@@ -418,7 +455,15 @@ def run_gold_prelabel(
                         status=PrelabelCaseStatus.SUCCEEDED,
                     )
                 )
+                _progress(
+                    f"case {case_index}/{len(targets)} "
+                    f"{case.draft_case_id} succeeded "
+                    f"case_calls={calls} "
+                    f"cumulative_model_calls={model_calls} "
+                    f"successes={success_count}"
+                )
             except PrelabelCaseError as exc:
+                model_calls += int(exc.model_calls)
                 case.model_judgments = prior_judgments
                 case.prelabel_summary = prior_summary
                 case.prelabel_provenance = prior_provenance
@@ -432,6 +477,20 @@ def run_gold_prelabel(
                         chunk_id=exc.chunk_id,
                     )
                 )
+                restored = (
+                    "prior_durable_prelabel_restored"
+                    if prior_complete
+                    else "no_prior_durable_prelabel"
+                )
+                _progress(
+                    f"case {case_index}/{len(targets)} "
+                    f"{case.draft_case_id} failed "
+                    f"reason={exc.reason} pass={exc.pass_id} "
+                    f"chunk={exc.chunk_id} "
+                    f"case_calls_before_fail={exc.model_calls} "
+                    f"cumulative_model_calls={model_calls} "
+                    f"{restored}"
+                )
             except Exception as exc:  # noqa: BLE001
                 case.model_judgments = prior_judgments
                 case.prelabel_summary = prior_summary
@@ -443,6 +502,12 @@ def run_gold_prelabel(
                         status=PrelabelCaseStatus.FAILED,
                         failure_reason=PrelabelFailureReason.INTERNAL_PRELABEL_FAILURE,
                     )
+                )
+                _progress(
+                    f"case {case_index}/{len(targets)} "
+                    f"{case.draft_case_id} failed "
+                    f"reason=internal_prelabel_failure "
+                    f"cumulative_model_calls={model_calls}"
                 )
                 _ = exc
     finally:
@@ -473,6 +538,11 @@ def run_gold_prelabel(
             model_request_count=model_calls,
         )
 
+    _progress(
+        f"finished successes={success_count}/{len(targets)} "
+        f"failures={len(targets) - success_count} "
+        f"model_calls={model_calls}"
+    )
     exit_code = 0 if success_count >= 1 else 1
     return PrelabelJobResult(
         exit_code=exit_code,

@@ -368,9 +368,31 @@ def test_fail_fast_and_continue(tmp_path: Path) -> None:
     assert by_id["bad"].model_judgments == []
     assert by_id["bad"].prelabel_summary is None
     assert len(client.calls) < 8
+    # Include calls made before the failed case aborted (observability fix).
+    assert result.model_request_count == len(client.calls)
     assert enriched.prelabeling is not None
     assert enriched.prelabeling.successful_case_count == 2
     assert enriched.prelabeling.failed_case_count == 1
+
+
+def test_prelabel_emits_progress(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    settings = _ready_settings()
+    run_path = tmp_path / "run.json"
+    case = _case("d1", "What is NDM?", [_candidate("c_a")], seed_id="c_a")
+    write_authoring_run(run_path, _run([case]))
+    client = ScriptedClient(grade_by_body={BODY_A: 2})
+    snap = _snapshot([_chunk("c_a", text=BODY_A)])
+    with _patch_ready(snap):
+        result = run_gold_prelabel(
+            settings, run_path=run_path, adapter=client  # type: ignore[arg-type]
+        )
+    assert result.exit_code == 0
+    out = capsys.readouterr().out
+    assert "gold prelabel: starting 1 cases" in out
+    assert "gold prelabel: case 1/1" in out
+    assert "succeeded" in out
+    assert "cumulative_model_calls=" in out
+    assert "gold prelabel: finished" in out
 
 
 def test_force_preserve_and_replace(tmp_path: Path) -> None:
