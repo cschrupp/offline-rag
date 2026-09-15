@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from offline_rag.gold_authoring.contracts import (
     QUESTION_PROPOSAL_CONTRACT,
+    RATIONALE_MAX_CHARS,
     RELEVANCE_PRELABEL_CONTRACT,
 )
 
@@ -63,7 +64,13 @@ def question_proposal_contract_id() -> str:
     return QUESTION_PROPOSAL_CONTRACT
 
 
-RELEVANCE_PRELABEL_SYSTEM_PROMPT_V1 = """\
+def relevance_prelabel_system_prompt() -> str:
+    """Build the relevance-prelabel-v1 system prompt.
+
+    The hard rationale length bound is taken from ``RATIONALE_MAX_CHARS`` so the
+    prompt stays aligned with ``parse_relevance_prelabel_v1`` validation.
+    """
+    return f"""\
 You are OfflineRAG's local gold-authoring relevance judge under contract \
 relevance-prelabel-v1.
 
@@ -96,20 +103,18 @@ answer-bearing evidence
 
 Output requirements:
 - Return ONLY one JSON object with exactly these keys:
-  {"grade": 0|1|2, "rationale": string}
+  {{"grade": 0|1|2, "rationale": string}}
 - grade must be a JSON integer exactly equal to 0, 1, or 2 \
 (not a string, float, or boolean).
-- rationale must be a brief nonempty explanation (after trimming) of why \
-the selected grade fits; keep it short and externally useful for human \
-review; do not write long chain-of-thought.
+- rationale must be a nonempty explanation (after trimming) of why the \
+selected grade fits; prefer one concise sentence when possible; aim for \
+roughly 200–300 characters; it MUST NOT exceed {RATIONALE_MAX_CHARS} \
+characters; keep it externally useful for human review; do not write long \
+chain-of-thought.
 - No Markdown fences, no prose before or after the JSON, no extra keys.
 - Do not return confidence, labels, chunk_id, pass_id, reference answers, \
 or agreement/review fields.
 """.strip()
-
-
-def relevance_prelabel_system_prompt() -> str:
-    return RELEVANCE_PRELABEL_SYSTEM_PROMPT_V1
 
 
 def relevance_prelabel_contract_id() -> str:

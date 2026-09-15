@@ -390,11 +390,10 @@ def test_force_preserve_and_replace(tmp_path: Path) -> None:
     old_cfg = first.cases[0].prelabel_provenance.authorcfg_id  # type: ignore[union-attr]
     assert first.cases[0].model_judgments[0].grade == 2
 
-    with _patch_ready(snap):
-        with pytest.raises(PrelabelPreRunError, match="--force"):
-            run_gold_prelabel(
-                settings, run_path=run_path, adapter=client  # type: ignore[arg-type]
-            )
+    with _patch_ready(snap), pytest.raises(PrelabelPreRunError, match="--force"):
+        run_gold_prelabel(
+            settings, run_path=run_path, adapter=client  # type: ignore[arg-type]
+        )
 
     fail_client = ScriptedClient(fail_on_call=1, grade_by_body={BODY_A: 0})
     with _patch_ready(snap):
@@ -469,11 +468,11 @@ def test_all_runtime_failures_exit_1(tmp_path: Path) -> None:
 def test_cli_help_and_prohibited_knobs() -> None:
     parser = build_parser()
     gold = None
-    for action in parser._subparsers._group_actions:  # noqa: SLF001
+    for action in parser._subparsers._group_actions:
         if action.dest == "command":
             gold = action.choices["gold"]
     assert gold is not None
-    prelabel = gold._subparsers._group_actions[0].choices["prelabel"]  # noqa: SLF001
+    prelabel = gold._subparsers._group_actions[0].choices["prelabel"]
     text = prelabel.format_help()
     assert "--run" in text
     assert "--force" in text
@@ -501,6 +500,32 @@ def test_prompt_mentions_contracts() -> None:
     prompt = relevance_prelabel_system_prompt()
     assert "relevance-prelabel-v1" in prompt
     assert "0" in prompt and "2" in prompt
+
+
+def test_relevance_prelabel_prompt_states_rationale_max_chars() -> None:
+    prompt = relevance_prelabel_system_prompt()
+    # Hard bound must be derived from the shared contract constant.
+    assert f"MUST NOT exceed {RATIONALE_MAX_CHARS} characters" in prompt
+    assert "200–300" in prompt
+    assert "one concise sentence" in prompt
+
+
+def test_prelabel_schema_still_rejects_overlong_rationale() -> None:
+    """Guard: prompt tightening must not relax the existing rationale contract."""
+    with pytest.raises(RelevancePrelabelParseError) as exc:
+        parse_relevance_prelabel_v1(
+            json.dumps({"grade": 1, "rationale": "a" * (RATIONALE_MAX_CHARS + 1)})
+        )
+    assert exc.value.reason == "schema_invalid"
+    ok = parse_relevance_prelabel_v1(
+        json.dumps({"grade": 1, "rationale": "a" * RATIONALE_MAX_CHARS})
+    )
+    assert len(ok.rationale) == RATIONALE_MAX_CHARS
+    with pytest.raises(RelevancePrelabelParseError) as exc2:
+        parse_relevance_prelabel_v1(
+            json.dumps({"grade": 1, "rationale": "x", "confidence": 0.9})
+        )
+    assert exc2.value.reason == "schema_invalid"
 
 
 def test_zero_eligible_exit_2(tmp_path: Path) -> None:
