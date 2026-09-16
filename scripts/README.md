@@ -11,6 +11,7 @@ Operational helpers for OfflineRAG.
 ## Fixtures / maintenance
 
 - `generate_pdf_fixture.py` — regenerate the committed born-digital PDF test fixture (not used by pytest)
+- `export_pages_review_bundle.py` — export a **private** Pages expert-review bundle (`offline-rag-pages-review-bundle-v1`) from a silver run for branch `pages/9f-expert-review`. Output contains corpus text — keep outside git.
 
 ## Later (not implemented)
 
