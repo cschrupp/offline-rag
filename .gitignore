@@ -1,0 +1,5 @@
+bundle.json
+**/bundle.json
+result*.json
+*.local.json
+.DS_Store

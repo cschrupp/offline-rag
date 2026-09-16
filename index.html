@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OfflineRAG Expert Review (Pages)</title>
+  <link rel="stylesheet" href="./app.css" />
+</head>
+<body>
+  <header class="top">
+    <div>
+      <h1>Expert Gold Review</h1>
+      <p id="run-meta" class="muted">Load a private review bundle to begin.</p>
+      <p class="muted">Side-path static app. Does not mutate the authoritative Silver run. Download result JSON for later import.</p>
+    </div>
+    <div class="nav-row">
+      <label class="file-label">
+        Load bundle
+        <input id="bundle-file" type="file" accept="application/json,.json" hidden />
+      </label>
+      <button type="button" id="btn-download-result" class="primary" disabled>Download result JSON</button>
+      <button type="button" id="btn-clear-progress" disabled>Clear local progress</button>
+      <button type="button" id="btn-prev-case" disabled>Previous case</button>
+      <button type="button" id="btn-next-case" disabled>Next case</button>
+      <button type="button" id="btn-next-pending" disabled>Next pending</button>
+      <button type="button" id="btn-next-high" disabled>Next high-priority pending</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="case-list" id="case-list" aria-label="Cases"></aside>
+    <section class="case-panel" id="case-panel">
+      <p class="muted">Select a case to begin review.</p>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>

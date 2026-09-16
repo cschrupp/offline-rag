@@ -1,0 +1,160 @@
+:root {
+  --bg: #f6f4ef;
+  --panel: #fffdf8;
+  --ink: #1c1b19;
+  --muted: #5c574f;
+  --line: #d9d2c5;
+  --accent: #245b4a;
+  --warn: #8a4b12;
+  --danger: #8b2e2e;
+  --ok: #245b4a;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at top left, #efe7d8 0%, transparent 40%),
+    linear-gradient(180deg, #f8f5ee, var(--bg));
+  min-height: 100vh;
+}
+
+.top {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-end;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 253, 248, 0.9);
+}
+.top h1 { margin: 0 0 0.25rem; font-size: 1.4rem; letter-spacing: 0.02em; }
+.muted { color: var(--muted); margin: 0; font-size: 0.92rem; }
+.nav-row { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+button {
+  font: inherit;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  padding: 0.35rem 0.7rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+button.danger { border-color: var(--danger); color: var(--danger); }
+button.active { outline: 2px solid var(--accent); }
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) 1fr;
+  gap: 0;
+  min-height: calc(100vh - 88px);
+}
+.case-list {
+  border-right: 1px solid var(--line);
+  background: rgba(255, 253, 248, 0.7);
+  overflow: auto;
+  max-height: calc(100vh - 88px);
+}
+.case-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  padding: 0.75rem 0.9rem;
+  background: transparent;
+}
+.case-item.selected { background: #ebe4d5; }
+.case-item .title { font-weight: 600; margin-bottom: 0.2rem; }
+.badges { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.35rem; }
+.badge {
+  font-size: 0.72rem;
+  border: 1px solid var(--line);
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  color: var(--muted);
+}
+.badge.high { border-color: var(--warn); color: var(--warn); }
+.badge.accepted, .badge.edited { border-color: var(--ok); color: var(--ok); }
+.badge.rejected { border-color: var(--danger); color: var(--danger); }
+
+.case-panel { padding: 1rem 1.25rem 2rem; overflow: auto; max-height: calc(100vh - 88px); }
+.panel-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+.panel-card h2 { margin: 0 0 0.6rem; font-size: 1.1rem; }
+.warn {
+  border-left: 3px solid var(--warn);
+  padding: 0.5rem 0.75rem;
+  background: #fff6ea;
+  margin: 0.75rem 0;
+}
+.label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+.query-box, .meta-box, textarea, input[type="text"] {
+  width: 100%;
+  font: inherit;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0.5rem 0.6rem;
+  background: #fff;
+}
+.actions { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.75rem; }
+.candidate {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.9rem;
+  margin-bottom: 0.85rem;
+  background: #fff;
+}
+.candidate h3 { margin: 0 0 0.5rem; font-size: 1rem; }
+.source-text {
+  white-space: pre-wrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  background: #f3efe6;
+  border-radius: 4px;
+  padding: 0.7rem;
+  max-height: 16rem;
+  overflow: auto;
+}
+.grade-row { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.65rem 0; }
+.model-aid {
+  border-top: 1px dashed var(--line);
+  margin-top: 0.7rem;
+  padding-top: 0.6rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+details.retrieval { margin-top: 0.5rem; color: var(--muted); font-size: 0.85rem; }
+.error { color: var(--danger); margin: 0.5rem 0; }
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  .case-list { max-height: 220px; border-right: 0; border-bottom: 1px solid var(--line); }
+}
+
+.file-label {
+  font: inherit;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  padding: 0.35rem 0.7rem;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-block;
+}
+.file-label:hover { border-color: var(--accent); }
+button:disabled, .file-label:has(input:disabled) {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

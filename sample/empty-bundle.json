@@ -1,0 +1,54 @@
+{
+  "schema_version": "offline-rag-pages-review-bundle-v1",
+  "authoring_run_id": "authorrun_example_do_not_use",
+  "chunk_set_id": "chunkset_example_do_not_use",
+  "corpus_name": "example_corpus",
+  "cases": [
+    {
+      "ordinal": 1,
+      "draft_case_id": "draft_example_1",
+      "status": "pending",
+      "proposed_query": "Example query for schema only?",
+      "effective_query": "Example query for schema only?",
+      "proposed_category": null,
+      "effective_category": null,
+      "proposed_tags": [],
+      "effective_tags": [],
+      "query_edited": false,
+      "model_prelabels_for_proposed_query": false,
+      "judged_count": 0,
+      "candidate_count": 1,
+      "human_positive_count": 0,
+      "review_complete": false,
+      "review_priority": "low",
+      "review_priority_reasons": [],
+      "can_accept": false,
+      "can_approve_edited": false,
+      "can_reject": true,
+      "can_reopen": false,
+      "candidates": [
+        {
+          "ordinal": 1,
+          "chunk_id": "chunk_example_1",
+          "document_title": "Example Document",
+          "section_path": ["Example"],
+          "section": "Example",
+          "text": "Placeholder candidate text only. Replace with a privately generated bundle; never commit real corpus text to this branch.",
+          "is_source_seed": true,
+          "human_relevance": null,
+          "model": {
+            "pass_1": { "grade": 1, "rationale": "Example advisory rationale." },
+            "pass_2": { "grade": 1, "rationale": "Example advisory rationale." }
+          },
+          "agreement": {
+            "agreement": "agree",
+            "disagreement_severity": "none"
+          },
+          "retrieval_provenance": [
+            { "retriever": "lexical-plain-v1", "rank": 1, "score": 1.0 }
+          ]
+        }
+      ]
+    }
+  ]
+}
