@@ -17,9 +17,8 @@ from pathlib import Path
 from offline_rag.cli import _resolve_settings
 from offline_rag.config.loader import load_dotenv, load_settings
 from offline_rag.gold_authoring.persist import load_authoring_run
-from offline_rag.gold_authoring.review_view import build_case_detail_payload
 from offline_rag.gold_authoring.review_models import ReviewError
-
+from offline_rag.gold_authoring.review_view import build_case_detail_payload
 
 BUNDLE_SCHEMA = "offline-rag-pages-review-bundle-v1"
 
