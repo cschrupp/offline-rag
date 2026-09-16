@@ -28,8 +28,8 @@ Send `/tmp/bundle.json` to the expert out-of-band (secure share). Do not commit 
 
 ## Expert workflow
 
-1. Open the Pages site
-2. **Load bundle** → select `bundle.json`
+1. Open the Pages site and read the **landing instructions** (task, grades, interface map, pitfalls)
+2. **Load bundle** → select `bundle.json` (landing hides; review workspace appears)
 3. Review cases (grades 0/1/2, optional query/category/tags, accept / approve edited / reject / reopen)
 4. Progress is stored in browser `localStorage` keyed by `authoring_run_id`
 5. **Download result JSON** → `offline-rag-pages-review-result-v1`

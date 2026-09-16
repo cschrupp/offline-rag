@@ -12,6 +12,8 @@
 
   const el = {
     runMeta: document.getElementById("run-meta"),
+    landing: document.getElementById("landing"),
+    workspace: document.getElementById("workspace"),
     caseList: document.getElementById("case-list"),
     casePanel: document.getElementById("case-panel"),
     bundleFile: document.getElementById("bundle-file"),
@@ -22,6 +24,11 @@
     btnNextPending: document.getElementById("btn-next-pending"),
     btnNextHigh: document.getElementById("btn-next-high"),
   };
+
+  function showWorkspace(on) {
+    if (el.landing) el.landing.hidden = !!on;
+    if (el.workspace) el.workspace.hidden = !on;
+  }
 
   function escapeHtml(value) {
     return String(value ?? "")
@@ -545,6 +552,7 @@
     state.bundle = bundle;
     state.reviews = restoreProgress(bundle.authoring_run_id);
     for (const c of bundle.cases) ensureReview(c.draft_case_id);
+    showWorkspace(true);
     setNavEnabled(true);
     refreshAll();
     const firstPending = state.cases.find((c) => c.status === "pending");

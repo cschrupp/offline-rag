@@ -158,3 +158,49 @@ button:disabled, .file-label:has(input:disabled) {
   opacity: 0.55;
   cursor: not-allowed;
 }
+
+.landing {
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 1.25rem 1.25rem 2.5rem;
+  display: grid;
+  gap: 1rem;
+}
+.landing-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 1rem 1.15rem 1.15rem;
+}
+.landing-card h2 {
+  margin: 0 0 0.6rem;
+  font-size: 1.15rem;
+}
+.landing-card p,
+.landing-card li {
+  color: var(--ink);
+  line-height: 1.45;
+}
+.landing-card ul,
+.landing-steps {
+  margin: 0.4rem 0 0.6rem 1.2rem;
+  padding: 0;
+}
+.landing-card li + li,
+.landing-steps li + li {
+  margin-top: 0.35rem;
+}
+.landing-note {
+  border-left: 3px solid var(--warn);
+  background: #fff6ea;
+  padding: 0.55rem 0.75rem;
+  margin: 0.85rem 0 0;
+}
+.landing-cta {
+  margin: 0.9rem 0 0;
+  font-weight: 600;
+}
+.landing-card code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9em;
+}

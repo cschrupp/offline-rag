@@ -11,7 +11,6 @@
     <div>
       <h1>Expert Gold Review</h1>
       <p id="run-meta" class="muted">Load a private review bundle to begin.</p>
-      <p class="muted">Side-path static app. Does not mutate the authoritative Silver run. Download result JSON for later import.</p>
     </div>
     <div class="nav-row">
       <label class="file-label">
@@ -27,7 +26,78 @@
     </div>
   </header>
 
-  <main class="layout">
+  <section id="landing" class="landing" aria-label="Reviewer instructions">
+    <article class="landing-card">
+      <h2>Your task</h2>
+      <p>
+        You are reviewing retrieval gold candidates for OfflineRAG. For each
+        <strong>case</strong> (a question / query), you will see a pool of
+        <strong>candidate passages</strong>. Your job is to judge how relevant
+        each candidate is to the <em>effective query</em> shown for that case.
+      </p>
+      <p>
+        Human judgments are authoritative. Model prelabels shown under each
+        candidate are <strong>advisory only</strong> — use them as hints, not as
+        the answer.
+      </p>
+      <ol class="landing-steps">
+        <li>Obtain the private <code>bundle.json</code> file from the project owner (secure share). Do not upload it to public sites.</li>
+        <li>Click <strong>Load bundle</strong> and select that file.</li>
+        <li>Work through cases: grade every candidate, optionally edit query/metadata, then Accept / Approve edited / Reject.</li>
+        <li>When finished (or at checkpoints), click <strong>Download result JSON</strong> and send that file back to the project owner.</li>
+      </ol>
+      <p class="landing-note">
+        This site does <strong>not</strong> write to the authoritative project database.
+        Progress is stored only in this browser (<code>localStorage</code>). Always
+        download result JSON before clearing progress or switching browsers.
+      </p>
+    </article>
+
+    <article class="landing-card">
+      <h2>Relevance grades (0 / 1 / 2)</h2>
+      <ul>
+        <li><strong>0 — Not relevant</strong>: not materially useful for answering the query.</li>
+        <li><strong>1 — Supporting</strong>: useful context, but not sufficient alone as direct answer-bearing evidence.</li>
+        <li><strong>2 — Direct answer</strong>: directly answer-bearing evidence for the query.</li>
+      </ul>
+      <p>
+        Grade against the <strong>Effective query</strong> box for the case
+        (not against other candidates). If you change the query text, grades for
+        that case are cleared and must be redone — that is intentional.
+      </p>
+    </article>
+
+    <article class="landing-card">
+      <h2>Interface map</h2>
+      <ul>
+        <li><strong>Left sidebar</strong>: case list with status, review priority, and how many candidates you have graded.</li>
+        <li><strong>Case panel</strong>: effective query, original proposal, category/tags, and action buttons.</li>
+        <li><strong>Save query / metadata</strong>: applies query/category/tag edits for the current case. Save before Accept / Approve edited if you changed them.</li>
+        <li><strong>Accept</strong>: case is ready as gold <em>without</em> changing the proposed query/category/tags. Requires every candidate graded and at least one grade ≥ 1.</li>
+        <li><strong>Approve edited</strong>: same completeness rules, but only when you <em>did</em> change query/category/tags.</li>
+        <li><strong>Reject</strong>: case will not be used as gold (you may reopen later).</li>
+        <li><strong>Reopen</strong>: move an accepted/edited/rejected case back to pending so you can change grades or metadata.</li>
+        <li><strong>Next unreviewed</strong>: scrolls to the next candidate in the current case that still lacks a human grade.</li>
+        <li><strong>Nav buttons</strong> (header): move across cases; “Next high-priority pending” jumps to pending cases marked high priority.</li>
+        <li><strong>Download result JSON</strong>: exports your judgments for handoff. Do this often.</li>
+        <li><strong>Clear local progress</strong>: wipes browser-saved progress for this run id. Does not delete your downloaded JSON files.</li>
+      </ul>
+    </article>
+
+    <article class="landing-card">
+      <h2>Common pitfalls</h2>
+      <ul>
+        <li>Do not Accept until <strong>every</strong> candidate has a human grade (0, 1, or 2).</li>
+        <li>Accept stays disabled if you edited the query/metadata — use <strong>Approve edited</strong> instead (or revert the edit).</li>
+        <li>Model Pass 1 / Pass 2 grades are not your grades; click 0/1/2 yourself for each candidate.</li>
+        <li>If the page reloads mid-review, progress usually restores automatically for the same bundle run id; still re-download result JSON after important work.</li>
+        <li>Do not commit or email the <code>bundle.json</code> to public channels — it contains private source text.</li>
+      </ul>
+      <p class="landing-cta">When you are ready, use <strong>Load bundle</strong> above.</p>
+    </article>
+  </section>
+
+  <main id="workspace" class="layout" hidden>
     <aside class="case-list" id="case-list" aria-label="Cases"></aside>
     <section class="case-panel" id="case-panel">
       <p class="muted">Select a case to begin review.</p>
