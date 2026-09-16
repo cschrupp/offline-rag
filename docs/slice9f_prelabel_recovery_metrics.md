@@ -1,8 +1,8 @@
-# Slice 9F — Prelabel attempt 1 metrics (outside Silver run)
+# Slice 9F — Prelabel recovery metrics (outside Silver run)
 
-**Purpose:** Preserve first-attempt `gold prelabel` measurements before the
-authorized `--force` recovery overwrites `run.prelabeling` on the
-authoritative lineage. Do **not** copy these notes into the Silver artifact.
+**Purpose:** Operational record of prelabel attempt 1 and the authorized
+`--force` recovery attempt 2 for the authoritative 9F lineage. Kept outside
+the Silver artifact. Not the final 9F pilot report; does not declare 9F complete.
 
 **Authoritative run:** `authorrun_b28d88f64054491a837cb4a144cbe056`  
 **chunk_set_id:** `chunkset_6d4925ea8d66e7dc599a884e96bc5f6b094e4288d565372d15e6002086c41da2`
@@ -33,4 +33,23 @@ authoritative lineage. Do **not** copy these notes into the Silver artifact.
 
 ## Prelabel forced recovery attempt 2
 
-Fill after the authorized `--force` run completes (do not collapse into attempt 1).
+| Field | Value |
+|---|---|
+| Exit | 0 |
+| Duration | ~35145 s (~9.8 h) |
+| Targeted / successful / failed | 34 / 34 / 0 |
+| `model_response_invalid` | 0 |
+| Model requests | 6318 (full 3159×2) |
+| Complete durable prelabels | 34 |
+| Cases with no durable prelabel | 0 |
+| Candidates | 3159 (unchanged) |
+| Agreement | exact 3147; adjacent 11; polar 1 |
+| Review priority | low 13; medium 20; high 1 |
+| Two passes on all complete cases | yes |
+| `human_review` | unset for all 34 |
+| Pool | 34/34 unchanged |
+| `authoring_run_id` / `chunk_set_id` | unchanged |
+| Prelabel `authorcfg_id` | `authorcfg_07c540e81c287d209ee54fc780fc6dbe62f58d6210a2c4272a6d4752aaa163b5` (unchanged) |
+| Recovery commits | prompt fix `950eb7a`; progress/metrics `d746a66` |
+
+Do not collapse attempt 1 and attempt 2 into one apparent run in the pilot report.
