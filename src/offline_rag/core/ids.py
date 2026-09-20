@@ -435,6 +435,12 @@ def evidence_unit_id_from_payload(payload: Mapping[str, Any]) -> str:
     return f"ev_{_sha256_hex(encoded.encode('utf-8'))}"
 
 
+def generation_evidence_set_id_from_payload(payload: Mapping[str, Any]) -> str:
+    """Return ``genevidence_<sha256>`` for a generation evidence-set semantic payload."""
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return f"genevidence_{_sha256_hex(encoded.encode('utf-8'))}"
+
+
 def text_content_hash(text: str) -> str:
     """Return hex SHA-256 of exact UTF-8 text bytes (no prefix)."""
     return _sha256_hex(text.encode("utf-8"))

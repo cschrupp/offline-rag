@@ -1,7 +1,8 @@
 # Slice 10 — Generation & Citation Semantic Evaluation
 
-**Status:** design / contract drafted — **implementation not started**  
-**Baseline checkpoint:** `4bd2fbb4285ee937ac8448ccf63d8169999887f3`  
+**Status:** **10A IMPLEMENTED / VERIFIED** — design + 10A contracts/executor/evidence builder.
+**10B–10E:** not started.
+**Baseline checkpoint (design):** `4bd2fbb4285ee937ac8448ccf63d8169999887f3`
 **Authoritative for:** Milestone 5 / Slice 10 (sub-slices 10A–10E)
 
 This document is the Slice 10 design/contract pass only. It does **not**
@@ -635,8 +636,8 @@ CLI is **not** added in this design-only task.
 
 | Sub-slice | Deliver later | Explicitly out |
 |---|---|---|
-| **10A** | Evidence-set schema; `gold-evidence-v1` builder; content-addressed identity; fixed-evidence execution boundary; result contracts; tests | Judge, CLI optional |
-| **10B** | Operational carry-through; gold citation overlap diagnostics; positive answer/abstention behavior; artifact persistence; CLI | Judge |
+| **10A** | Evidence-set schema; `gold-evidence-v1` builder; content-addressed identity; fixed-evidence execution boundary (`GroundedGenerationExecutor`); result/comparison contracts; tests | **IMPLEMENTED / VERIFIED** |
+| **10B** | Operational carry-through; gold citation overlap diagnostics; positive answer/abstention behavior; artifact persistence; CLI | Judge — **NEXT** |
 | **10C** | `generation-semantic-judge-v1`; structured output; offline/private preflight; dimensions; persistence; failure semantics | Promotion |
 | **10D** | `human-grade0-hard-negative-v1`; deterministic selection; abstention metrics; human-16 only initially | Assistant-only negatives as primary |
 | **10E** | Controlled v1 vs provenance-v2 A/B; full-22 + human-16 sensitivity; artifact-only compare; Slice 10 development report; **hard-stop** | Auto-promote provenance-v2 |
@@ -885,7 +886,8 @@ Never promote defaults solely from this fixture.
 
 | Item | Notes |
 |---|---|
-| Orchestrator API | No public `answer_from_evidence` today — **must be added in 10A** without changing `answer()` semantics |
+| Orchestrator API | `GroundedAnswerOrchestrator.answer()` assembles via Slice 7 then delegates to `GroundedGenerationExecutor.execute()` |
+| Neutral ChunkSet access | Generic read-only access lives in `src/offline_rag/chunking/access.py`; `gold_authoring/chunk_access.py` is a compatibility re-export |
 | `EVALUATION_HARNESS.md` | Status footer aligned with Milestone 5 / Slice 10 design; retrieval harness remains Slice 9 |
 | Gold schema | Cases use `id` + `judgments[].relevance`; cohort labels live outside gold files |
 | Silver hits | Field is `retriever`, not `retriever_id`; hard-neg design uses `hybrid-rerank-v1` |
@@ -898,8 +900,8 @@ Never promote defaults solely from this fixture.
 
 | ID | Topic | Status |
 |---|---|---|
-| OD-10-1 | Exact Python class/module name for shared fixed-evidence executor | **OPEN** — recommend `GroundedGenerationExecutor` or private `answer_from_evidence`; do not block 10A on naming |
-| OD-10-2 | Exact on-disk layout under `evaluation/` vs `generation/` for Slice 10 modules | **OPEN** — recommend evaluation-owned metrics + generation-owned executor; finalize in 10A PR |
+| OD-10-1 | Exact Python class/module name for shared fixed-evidence executor | **RESOLVED** — `GroundedGenerationExecutor` in `src/offline_rag/generation/executor.py` |
+| OD-10-2 | Exact on-disk layout under `evaluation/` vs `generation/` for Slice 10 modules | **RESOLVED** — runtime executor under `generation/`; Slice 10 contracts/builders under `evaluation/generation_semantic/` |
 | OD-10-3 | Whether `pipeline-context` snapshot schema is a new artifact or reuse of durable `HybridRerankContextResult` serialization | **OPEN** — deferred until secondary mode is scheduled; not needed for 10A |
 | OD-10-4 | Judge allowlist: share `generation.approved_*` vs separate `eval_judge.*` config block | **OPEN** — resolve in 10C; must preserve offline/private policy either way |
 
@@ -916,4 +918,4 @@ Layer 1/2/3 hierarchy; non-promotion of provenance-v2 from this fixture.
 - No new private artifacts beyond documentation
 - No marking Slice 10 complete or implemented
 
-**HARD STOP before 10A implementation.**
+**HARD STOP before 10B implementation.**

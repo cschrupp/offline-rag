@@ -2,7 +2,7 @@
 
 This document converts the architecture into incremental, testable implementation slices. Each slice should leave the repository in a working state. Avoid building multiple major layers simultaneously: the evaluation harness depends on being able to attribute improvements and regressions to individual changes.
 
-**Implementation status:** Slices 0–9 and Milestone 4 through **9F GO** / **9H-P** complete for near-term engineering (**9G** deferred; formal **9H** frozen). Slice **10** design drafted / implementation not started — [`docs/slice10_generation_semantic_evaluation.md`](docs/slice10_generation_semantic_evaluation.md). Canonical Milestone 4 plan: `docs/milestone4_offline_gold_authoring.md`. Authoritative notes: `docs/slice0_contracts.md` … `docs/slice9e_human_review.md`, `docs/pilots/slice9f_ics_modules.md`, `eval/README.md`.
+**Implementation status:** Slices 0–9 and Milestone 4 through **9F GO** / **9H-P** complete for near-term engineering (**9G** deferred; formal **9H** frozen). Slice **10A IMPLEMENTED / VERIFIED**; 10B–10E not started — [`docs/slice10_generation_semantic_evaluation.md`](docs/slice10_generation_semantic_evaluation.md). Canonical Milestone 4 plan: `docs/milestone4_offline_gold_authoring.md`. Authoritative notes: `docs/slice0_contracts.md` … `docs/slice9e_human_review.md`, `docs/pilots/slice9f_ics_modules.md`, `eval/README.md`.
 
 ---
 

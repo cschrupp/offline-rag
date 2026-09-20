@@ -185,9 +185,14 @@ candidate-by-candidate workflow for production gold.
 **Release criterion:** generation and citation quality are measured separately
 from retrieval, with deterministic checks preferred where applicable.
 
-**Status:** Slice **10 design contract drafted / implementation not started.**
+**Status:** Slice **10A IMPLEMENTED / VERIFIED**. Next: Slice **10B**.
 Authoritative contract: [`docs/slice10_generation_semantic_evaluation.md`](docs/slice10_generation_semantic_evaluation.md).
-Next operational track: implement Slice **10A** only after explicit authorization.
+
+- [x] 10A — semantic evaluation contracts & fixed evidence (`GroundedGenerationExecutor`, `gold-evidence-v1`)
+- [ ] 10B — deterministic generation/citation metrics + CLI
+- [ ] 10C — local semantic judge
+- [ ] 10D — human hard-negative abstention fixture
+- [ ] 10E — controlled prompt A/B + development report
 
 Slice 10 may use the frozen 9F pilot GoldDataset
 (`gold_d3fc157c7b3206f6983abee766e7ce7b939244a7dea04f0be256f3a533a46172`)

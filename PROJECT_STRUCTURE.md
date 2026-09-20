@@ -137,7 +137,8 @@ offline-rag/
 │       ├── hybrid/                # Slice 5 (query-time rrf-v1; no hybrid index)
 │       ├── rerank/                # Slice 6 (hybrid-pool CE; derived READY only)
 │       ├── context/               # Slice 7 (structural expansion; derived READY only)
-│       ├── generation/            # Slice 8 (grounded query; derived READY only; no GenerationState)
+│       ├── generation/            # Slice 8 (+ GroundedGenerationExecutor shared with Slice 10)
+│       │   └── executor.py
 │       │
 │       ├── embeddings/            # optional future split; dense/ currently owns adapters
 │       ├── index/                 # optional future split
@@ -162,6 +163,7 @@ offline-rag/
 │       │   ├── metrics.py
 │       │   ├── result.py
 │       │   ├── runner.py
+│       │   ├── generation_semantic/  # Slice 10A+ (evidence-set / semantic-eval contracts)
 │       │   ├── compare.py
 │       │   └── ...                    # Slice 9 retrieval-eval harness
 │       │
@@ -285,7 +287,10 @@ Reserved mega-package slot; not used. Dense, lexical, hybrid, rerank, context, a
 
 ### `generation/`
 
-`GroundedAnswerOrchestrator` + OpenAI-compatible adapter / FakeGenerator. Prompt (`prompt-grounded-v1`), output (`grounded-answer-v1`), closed-world `ev_` citations, `gencfg_` identity, derived Generation READY only; no GenerationState (Slice 8). The generative model itself is not part of the application image.
+`GroundedAnswerOrchestrator` (Slice 8 public path) + `GroundedGenerationExecutor`
+(shared post-evidence path) + OpenAI-compatible adapter / FakeGenerator. Prompt
+(`prompt-grounded-v1` / provenance-v2), output (`grounded-answer-v1`), closed-world
+`ev_` citations, `gencfg_` identity, derived Generation READY only; no GenerationState.
 
 ### `agents/`
 
@@ -297,11 +302,11 @@ Owns security policies that should remain independent from the generator prompt 
 
 ### `evaluation/`
 
-Owns finished GoldDataset loading/validation, retrieval metrics, experiment serialization, and comparison (`eval retrieve` / `eval compare`). It may call production retrieval services, but production services must not depend on evaluator-specific logic. Silver/authoring drafts are not gold.
+Owns finished GoldDataset loading/validation, retrieval metrics, experiment serialization, and comparison (`eval retrieve` / `eval compare`). Slice 10A+ `generation_semantic/` owns generation evidence-set / semantic-eval contracts and builders (not runtime generation). It may call production retrieval services, but production services must not depend on evaluator-specific logic. Silver/authoring drafts are not gold.
 
 ### `gold_authoring/` (Milestone 4 — 9A–9E shipped; 9F GO; 9H-P complete)
 
-Owns the privacy-bounded local gold construction workflow (propose → pool → prelabel → review → finalize). Slices 9A–9E shipped; **9F GO** (frozen 22-case / human-16 development fixture); **9H-P COMPLETE / NON-PROMOTIONAL**. **9G** deferred; formal **9H** frozen. Separate from `evaluation/` and from production generation prompt contracts. Notes: `docs/slice9a_gold_authoring.md` … `docs/slice9e_human_review.md`, `docs/pilots/slice9f_ics_modules.md`; plan: `docs/milestone4_offline_gold_authoring.md`. Slice 10 design: `docs/slice10_generation_semantic_evaluation.md`.
+Owns the privacy-bounded local gold construction workflow (propose → pool → prelabel → review → finalize). Slices 9A–9E shipped; **9F GO** (frozen 22-case / human-16 development fixture); **9H-P COMPLETE / NON-PROMOTIONAL**. **9G** deferred; formal **9H** frozen. Separate from `evaluation/` and from production generation prompt contracts. Historical ChunkSet reads re-export `chunking.access`. Notes: `docs/slice9a_gold_authoring.md` … `docs/slice9e_human_review.md`, `docs/pilots/slice9f_ics_modules.md`; plan: `docs/milestone4_offline_gold_authoring.md`. Slice 10: `docs/slice10_generation_semantic_evaluation.md`.
 
 ### `observability/`
 

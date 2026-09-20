@@ -333,18 +333,18 @@ def test_v1_prompt_unchanged_shape() -> None:
 
 def test_v1_skips_provenance_lookup() -> None:
     orch, fake = _orchestrator(_settings(provenance=False))
-    orch._load_source_name_by_document_id = MagicMock(  # type: ignore[method-assign]
+    orch._executor._load_source_name_by_document_id = MagicMock(  # type: ignore[method-assign]
         side_effect=AssertionError("v1 must not load corpus metadata")
     )
     result = orch.answer(query="pressure?", corpus_name="default")
     assert result.status == "answered"
     assert fake.generate_calls == 1
-    orch._load_source_name_by_document_id.assert_not_called()
+    orch._executor._load_source_name_by_document_id.assert_not_called()
 
 
 def test_empty_context_skips_provenance_lookup_under_v2() -> None:
     orch, fake = _orchestrator(_settings(provenance=True), units=[])
-    orch._load_source_name_by_document_id = MagicMock(  # type: ignore[method-assign]
+    orch._executor._load_source_name_by_document_id = MagicMock(  # type: ignore[method-assign]
         side_effect=AssertionError("empty context must not load provenance")
     )
     result = orch.answer(query="pressure?", corpus_name="default")
@@ -352,12 +352,12 @@ def test_empty_context_skips_provenance_lookup_under_v2() -> None:
     assert result.abstention_reason == "empty_context"
     assert result.generator_invoked is False
     assert fake.generate_calls == 0
-    orch._load_source_name_by_document_id.assert_not_called()
+    orch._executor._load_source_name_by_document_id.assert_not_called()
 
 
 def test_provenance_unavailable_before_generator() -> None:
     orch, fake = _orchestrator(_settings(provenance=True))
-    orch._load_source_name_by_document_id = (  # type: ignore[method-assign]
+    orch._executor._load_source_name_by_document_id = (  # type: ignore[method-assign]
         lambda _name: {}
     )
     result = orch.answer(query="pressure?", corpus_name="default")
@@ -386,7 +386,7 @@ def test_one_bad_unit_fails_entire_request() -> None:
             )
         ),
     )
-    orch._load_source_name_by_document_id = (  # type: ignore[method-assign]
+    orch._executor._load_source_name_by_document_id = (  # type: ignore[method-assign]
         lambda _name: {"doc_ok": "Module Ok.pdf"}
     )
     result = orch.answer(query="q", corpus_name="default")
@@ -403,22 +403,22 @@ def test_resolve_titles_once_per_document() -> None:
         _unit("ev_C", "c", document_id="doc_2"),
     ]
     orch, _ = _orchestrator(_settings(provenance=True), context=_context(units))
-    orch._load_source_name_by_document_id = (  # type: ignore[method-assign]
+    orch._executor._load_source_name_by_document_id = (  # type: ignore[method-assign]
         lambda _name: {
             "doc_1": "Module 1 Incident Scene Decision Making SM.pdf",
             "doc_2": "Module 2 Safety Management.pdf",
         }
     )
     calls: list[str] = []
-    real_resolve = orch._resolve_document_titles
+    real_resolve = orch._executor._resolve_document_titles
 
     def _wrap(**kwargs):  # type: ignore[no-untyped-def]
         titles = real_resolve(**kwargs)
         calls.extend(sorted(titles.keys()))
         return titles
 
-    orch._resolve_document_titles = _wrap  # type: ignore[method-assign]
-    adapted = orch._adapt_prompt_evidence(
+    orch._executor._resolve_document_titles = _wrap  # type: ignore[method-assign]
+    adapted = orch._executor._adapt_prompt_evidence(
         corpus_name="default", evidence_units=units
     )
     assert [u.evidence_unit_id for u in adapted] == ["ev_A", "ev_B", "ev_C"]
@@ -442,7 +442,7 @@ def test_v2_answered_path_uses_provenance_prompt() -> None:
         _settings(provenance=True),
         fake=FakeGenerator(response_fn=_capture),
     )
-    orch._load_source_name_by_document_id = (  # type: ignore[method-assign]
+    orch._executor._load_source_name_by_document_id = (  # type: ignore[method-assign]
         lambda _name: {"doc1": "Module 1 Incident Scene Decision Making SM.pdf"}
     )
     result = orch.answer(query="pressure?", corpus_name="default")
@@ -469,7 +469,7 @@ def test_prompt_evidence_rejects_empty_title() -> None:
 
 def test_blank_source_name_maps_to_provenance_unavailable() -> None:
     orch, fake = _orchestrator(_settings(provenance=True))
-    orch._load_source_name_by_document_id = (  # type: ignore[method-assign]
+    orch._executor._load_source_name_by_document_id = (  # type: ignore[method-assign]
         lambda _name: {"doc1": "   "}
     )
     result = orch.answer(query="q", corpus_name="default")
