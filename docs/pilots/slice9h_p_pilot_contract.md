@@ -1,6 +1,9 @@
 # Slice 9H-P — Pilot Retrieval A/B Contract
 
-**Status:** `CONTRACT LOCKED / EXECUTION NOT YET AUTHORIZED`
+**Status:** `COMPLETE / NON-PROMOTIONAL`
+
+Executed measure-once pilot. Results: [`slice9h_p_results.md`](slice9h_p_results.md).
+Does **not** authorize retrieval promotion or completion of 9G / formal 9H.
 
 ---
 
@@ -8,7 +11,7 @@
 
 9H-P is a pilot evaluation detour after 9F GO.
 
-9G remains capacity-blocked, not completed.
+9G remains deferred to publication readiness (not completed).
 
 Formal 9H remains downstream of 9G and retains responsibility for any
 production retrieval-contract promotion decision.

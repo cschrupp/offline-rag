@@ -103,14 +103,25 @@ generation-provenance investigation and A/B results.
 
 ## Milestone 4 — Offline Gold Authoring & Retrieval Benchmarking
 
-**Next operational track:** Slice **9H-P** — Pilot Retrieval A/B, an evaluation-only
-detour on the authoritative 9F gold while 9G expansion is capacity-blocked.
-9H-P does not complete 9G and cannot authorize retrieval promotion.
-Canonical production order remains **9G → 9H**.
-Slice **9F** **GO** — see [`docs/pilots/slice9f_ics_modules.md`](docs/pilots/slice9f_ics_modules.md).
-9H-P contract: [`docs/pilots/slice9h_p_pilot_contract.md`](docs/pilots/slice9h_p_pilot_contract.md).
+**Milestone 4 engineering checkpoint reached.**
 
-**Canonical plan:** [`docs/milestone4_offline_gold_authoring.md`](docs/milestone4_offline_gold_authoring.md). Slice 9A notes: [`docs/slice9a_gold_authoring.md`](docs/slice9a_gold_authoring.md). Slice 9B notes: [`docs/slice9b_gold_propose.md`](docs/slice9b_gold_propose.md). Slice 9C notes: [`docs/slice9c_candidate_pooling.md`](docs/slice9c_candidate_pooling.md). Slice 9D notes: [`docs/slice9d_relevance_prelabel.md`](docs/slice9d_relevance_prelabel.md). Slice 9E notes: [`docs/slice9e_human_review.md`](docs/slice9e_human_review.md). Slice 9F ops: [`docs/slice9f_pilot_runbook.md`](docs/slice9f_pilot_runbook.md).
+Slice **9F** is **GO** and the non-promotional **9H-P** retrieval pilot is **COMPLETE**.
+Slice **9G** production-gold expansion is **DEFERRED — PUBLICATION READINESS**,
+when the target corpus is substantially complete and a redesigned
+quiz/puzzle-style adjudication workflow is available.
+
+Formal **9H** remains **FROZEN** behind future 9G.
+
+The 22-case / human-16 9F benchmark remains a **development/regression fixture
+only** (`gold_d3fc157c7b3206f6983abee766e7ce7b939244a7dea04f0be256f3a533a46172`).
+
+**Next operational track:** Milestone **5** / Slice **10** — Generation & Citation
+Semantic Evaluation.
+
+Canonical **publication** order remains **9G → formal 9H** (not a near-term
+engineering dependency).
+
+**Canonical plan:** [`docs/milestone4_offline_gold_authoring.md`](docs/milestone4_offline_gold_authoring.md). Slice 9A notes: [`docs/slice9a_gold_authoring.md`](docs/slice9a_gold_authoring.md). Slice 9B notes: [`docs/slice9b_gold_propose.md`](docs/slice9b_gold_propose.md). Slice 9C notes: [`docs/slice9c_candidate_pooling.md`](docs/slice9c_candidate_pooling.md). Slice 9D notes: [`docs/slice9d_relevance_prelabel.md`](docs/slice9d_relevance_prelabel.md). Slice 9E notes: [`docs/slice9e_human_review.md`](docs/slice9e_human_review.md). Slice 9F ops: [`docs/slice9f_pilot_runbook.md`](docs/slice9f_pilot_runbook.md). 9H-P: [`docs/pilots/slice9h_p_pilot_contract.md`](docs/pilots/slice9h_p_pilot_contract.md) / [`docs/pilots/slice9h_p_results.md`](docs/pilots/slice9h_p_results.md).
 
 ### Objective
 
@@ -129,9 +140,9 @@ annotation services. The local LLM is an annotation assistant, not ground truth.
 - [x] **9D** Local blind double-pass relevance pre-labeling (`offline-rag gold prelabel`)
 - [x] **9E** Local human review UI + GoldDataset v1 finalization (`gold review` / `gold finalize`) — **CLOSED / VERIFIED**
 - [x] **9F** ~20-case `ics_modules` operational pilot — **GO** (22-case authoritative gold; report [`docs/pilots/slice9f_ics_modules.md`](docs/pilots/slice9f_ics_modules.md))
-- [ ] **9H-P** Pilot Retrieval A/B — eval-only detour; non-promotional; contract locked / execution not yet authorized ([`docs/pilots/slice9h_p_pilot_contract.md`](docs/pilots/slice9h_p_pilot_contract.md))
-- [ ] **9G** ~100–150 case production gold + development/held-out freeze — **capacity-blocked**
-- [ ] **9H** Formal retrieval A/B + promotion decision — requires later authorization (after 9G or another explicit decision process)
+- [x] **9H-P** Pilot Retrieval A/B — **COMPLETE / NON-PROMOTIONAL** ([`docs/pilots/slice9h_p_results.md`](docs/pilots/slice9h_p_results.md))
+- [ ] **9G** ~100–150 case production gold + development/held-out freeze — **DEFERRED / PUBLICATION READINESS**
+- [ ] **9H** Formal retrieval A/B + promotion decision — **FROZEN** behind future 9G
 
 ### Target CLI (surface locked during 9A+)
 
@@ -145,8 +156,21 @@ A reviewer can refresh a private-corpus retrieval benchmark without sending
 source text outside an approved local/private environment, then run
 comparable retrieval evaluations and make an explicit promotion decision.
 
-**Status:** Slice **9E** **CLOSED / VERIFIED**. Slice **9F** **GO** (22-case `ics_modules` gold). Next operational track is **9H-P** (eval-only; contract locked; execution separately authorized). **9G** remains incomplete/capacity-blocked; formal **9H** remains incomplete and promotional. Do not promote Arm H,
-`model-query-prompt-v1`, or `prompt-grounded-provenance-v2` from pilot smoke or 9H-P alone; do not start Slice 10 inside this milestone.
+**Status:** Engineering checkpoint reached (9A–9F + 9H-P). Publication-quality
+9G→9H remains deferred. Do not promote Arm H, `model-query-prompt-v1`, or
+`prompt-grounded-provenance-v2` from pilot fixtures alone.
+
+**9G deferral rationale:** Resume production-gold expansion only once the target
+corpus is substantially complete and stable and publication-quality benchmarking
+is approaching. Current corpus coverage is too partial to justify expert effort
+for a 100–150 case production benchmark now. The candidate-by-candidate review
+UI was operationally validated but is not the scale path.
+
+**Future 9G requirement (not authorized now):** Redesign human adjudication
+around quiz/puzzle-style evidence validation (e.g. best-passage, multi-select
+support, none-of-the-above, direct vs supporting) while preserving explicit
+human ground truth and provenance behind the scenes. Do not scale the current
+candidate-by-candidate workflow for production gold.
 
 ---
 
@@ -161,8 +185,17 @@ comparable retrieval evaluations and make an explicit promotion decision.
 **Release criterion:** generation and citation quality are measured separately
 from retrieval, with deterministic checks preferred where applicable.
 
-**Status:** blocked on Milestone 4 gold where generation evaluation needs
-stable retrieval evidence; Slice 10 contracts not started.
+**Status:** **READY FOR DEVELOPMENT.** Next operational track is Slice **10**.
+
+Slice 10 may use the frozen 9F pilot GoldDataset
+(`gold_d3fc157c7b3206f6983abee766e7ce7b939244a7dea04f0be256f3a533a46172`)
+as a **non-promotional development/regression fixture** for generation and
+citation semantic evaluation (contracts, deterministic checks, citation support,
+abstention, machinery validation). Publication-grade claims and final promotion
+decisions remain deferred until future **9G → formal 9H**. Results involving
+`prompt-grounded-provenance-v2` on the 22-case fixture are development evidence
+only — not sole grounds for promoting defaults.
+
 
 ---
 

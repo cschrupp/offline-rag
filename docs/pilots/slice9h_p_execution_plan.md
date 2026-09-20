@@ -1,11 +1,8 @@
 # Slice 9H-P — Execution Plan
 
-**Status:** `PLAN LOCKED / EXECUTION NOT YET AUTHORIZED`
+**Status:** `EXECUTED / CLOSED — see slice9h_p_results.md`
 
 Companion contract: [`slice9h_p_pilot_contract.md`](slice9h_p_pilot_contract.md).
-
-This document freezes **how** 9H-P will be executed when separately authorized.
-It does **not** authorize running retrieval now.
 
 ```text
 PILOT / NON-PROMOTIONAL
