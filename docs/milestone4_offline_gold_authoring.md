@@ -11,8 +11,10 @@ The frozen 22-case / human-16 9F GoldDataset
 (`gold_d3fc157c7b3206f6983abee766e7ce7b939244a7dea04f0be256f3a533a46172`)
 is a **development/regression fixture only**.
 
-**Next operational track (project):** Milestone **5** / Slice **10** — see
-[`ROADMAP.md`](../ROADMAP.md).
+**Next operational track (project):** Milestone **5** / Slice **10** — design
+contract drafted / implementation not started:
+[`slice10_generation_semantic_evaluation.md`](slice10_generation_semantic_evaluation.md).
+See also [`ROADMAP.md`](../ROADMAP.md).
 
 Slice **9F** report: [`pilots/slice9f_ics_modules.md`](pilots/slice9f_ics_modules.md).  
 9H-P: [`pilots/slice9h_p_pilot_contract.md`](pilots/slice9h_p_pilot_contract.md) /

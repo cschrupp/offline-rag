@@ -54,7 +54,7 @@ See `eval/datasets/slice9_validation/` for the small harness fixture shape.
 
 Private corpora should be labeled through the local authoring workflow (`offline-rag gold …`; Slices **9A**–**9E** implemented), not by uploading documents to cloud annotation or evaluation services. The local model may propose questions and pre-grades; **humans adjudicate** final GoldDataset v1 labels. Silver/authoring drafts are not evaluation gold.
 
-Canonical plan and Slice 9A–9H order: [`milestone4_offline_gold_authoring.md`](milestone4_offline_gold_authoring.md). Slices **9A**–**9E** are done (**9E CLOSED / VERIFIED**) — [`slice9a_gold_authoring.md`](slice9a_gold_authoring.md), [`slice9b_gold_propose.md`](slice9b_gold_propose.md), [`slice9c_candidate_pooling.md`](slice9c_candidate_pooling.md), [`slice9d_relevance_prelabel.md`](slice9d_relevance_prelabel.md), [`slice9e_human_review.md`](slice9e_human_review.md). Slice **9F** **IN PROGRESS** (execution pending) — [`slice9f_pilot_runbook.md`](slice9f_pilot_runbook.md).
+Canonical plan: [`milestone4_offline_gold_authoring.md`](milestone4_offline_gold_authoring.md). Slices **9A**–**9E** done; **9F GO**; **9H-P COMPLETE / NON-PROMOTIONAL**; **9G** deferred; formal **9H** frozen — [`pilots/slice9f_ics_modules.md`](pilots/slice9f_ics_modules.md). Slice **10** design: [`slice10_generation_semantic_evaluation.md`](slice10_generation_semantic_evaluation.md).
 
 ## Review checklist
 

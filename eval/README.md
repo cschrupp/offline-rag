@@ -47,7 +47,9 @@ Results use `offline-rag-retrieval-eval-result-v1` (shared envelope + method dia
 
 Canonical plan: [`docs/milestone4_offline_gold_authoring.md`](../docs/milestone4_offline_gold_authoring.md).
 
-Slice **9E** **CLOSED / VERIFIED**; Slice **9F** **IN PROGRESS** (runbook ready; execution pending) — [`docs/slice9f_pilot_runbook.md`](../docs/slice9f_pilot_runbook.md).
+Slice **9E** **CLOSED / VERIFIED**; **9F GO**; **9H-P COMPLETE / NON-PROMOTIONAL**; **9G** deferred; formal **9H** frozen — [`docs/milestone4_offline_gold_authoring.md`](../docs/milestone4_offline_gold_authoring.md), [`docs/pilots/slice9f_ics_modules.md`](../docs/pilots/slice9f_ics_modules.md).
+
+Slice **10** design drafted / not started — [`docs/slice10_generation_semantic_evaluation.md`](../docs/slice10_generation_semantic_evaluation.md).
 
 Implemented CLI surface through 9E (`status` remains later):
 

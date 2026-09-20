@@ -1,6 +1,6 @@
 # Project Description — OfflineRAG
 
-**Implementation status:** Slices 0–9, **9A**–**9E** are implemented (**9E CLOSED / VERIFIED**: `gold review` / `gold finalize`). Slice **9F** is **IN PROGRESS** (runbook ready; execution pending). Slice 10 generation/citation semantics and agentic recovery remain planned. See `ROADMAP.md`, `docs/milestone4_offline_gold_authoring.md`, `docs/slice9f_pilot_runbook.md`, and `docs/slice9e_human_review.md`.
+**Implementation status:** Slices 0–9 and Milestone 4 through **9F GO** / **9H-P** are done for near-term engineering (**9G** deferred; formal **9H** frozen). Slice **10** design contract drafted / implementation not started. Agentic recovery remains planned (Milestone 6). See `ROADMAP.md`, `docs/milestone4_offline_gold_authoring.md`, and `docs/slice10_generation_semantic_evaluation.md`.
 
 ## 1. Working title
 

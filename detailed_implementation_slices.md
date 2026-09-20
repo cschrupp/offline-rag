@@ -2,7 +2,7 @@
 
 This document converts the architecture into incremental, testable implementation slices. Each slice should leave the repository in a working state. Avoid building multiple major layers simultaneously: the evaluation harness depends on being able to attribute improvements and regressions to individual changes.
 
-**Implementation status:** Slices 0–9, **9A**–**9E** implemented (**9E CLOSED / VERIFIED**). Slice **9F** **IN PROGRESS** — operational contract/runbook ready; pilot execution pending ([`docs/slice9f_pilot_runbook.md`](docs/slice9f_pilot_runbook.md)). Then 9G–9H, then Milestone 5 / Slice 10. Canonical Milestone 4 plan: `docs/milestone4_offline_gold_authoring.md`. Authoritative notes: `docs/slice0_contracts.md` … `docs/slice9_retrieval_evaluation.md`, `docs/slice9a_gold_authoring.md`, `docs/slice9b_gold_propose.md`, `docs/slice9c_candidate_pooling.md`, `docs/slice9d_relevance_prelabel.md`, `docs/slice9e_human_review.md`, `docs/slice9f_pilot_runbook.md`, `eval/README.md`.
+**Implementation status:** Slices 0–9 and Milestone 4 through **9F GO** / **9H-P** complete for near-term engineering (**9G** deferred; formal **9H** frozen). Slice **10** design drafted / implementation not started — [`docs/slice10_generation_semantic_evaluation.md`](docs/slice10_generation_semantic_evaluation.md). Canonical Milestone 4 plan: `docs/milestone4_offline_gold_authoring.md`. Authoritative notes: `docs/slice0_contracts.md` … `docs/slice9e_human_review.md`, `docs/pilots/slice9f_ics_modules.md`, `eval/README.md`.
 
 ---
 
@@ -480,9 +480,9 @@ Running two experiment configs yields directly comparable machine-readable and h
 
 # Slices 9A–9H — Offline gold authoring & retrieval benchmarking (Milestone 4)
 
-**Status:** Slice **9E** **CLOSED / VERIFIED** (`gold review` / `gold finalize`). Slice **9F** **IN PROGRESS** (runbook/template ready; execution pending).
+**Status:** **9A**–**9E** done; **9F GO**; **9H-P COMPLETE / NON-PROMOTIONAL**; **9G** deferred (publication readiness); formal **9H** frozen.
 
-Full plan: [`docs/milestone4_offline_gold_authoring.md`](docs/milestone4_offline_gold_authoring.md). Slice 9A notes: [`docs/slice9a_gold_authoring.md`](docs/slice9a_gold_authoring.md). Slice 9B notes: [`docs/slice9b_gold_propose.md`](docs/slice9b_gold_propose.md). Slice 9C notes: [`docs/slice9c_candidate_pooling.md`](docs/slice9c_candidate_pooling.md). Slice 9D notes: [`docs/slice9d_relevance_prelabel.md`](docs/slice9d_relevance_prelabel.md). Slice 9E notes: [`docs/slice9e_human_review.md`](docs/slice9e_human_review.md). Slice 9F ops: [`docs/slice9f_pilot_runbook.md`](docs/slice9f_pilot_runbook.md), [`docs/slice9f_pilot_report_template.md`](docs/slice9f_pilot_report_template.md).
+Full plan: [`docs/milestone4_offline_gold_authoring.md`](docs/milestone4_offline_gold_authoring.md). Slice notes: `docs/slice9a_gold_authoring.md` … `docs/slice9e_human_review.md`. Pilot: [`docs/pilots/slice9f_ics_modules.md`](docs/pilots/slice9f_ics_modules.md). 9H-P: [`docs/pilots/slice9h_p_results.md`](docs/pilots/slice9h_p_results.md).
 
 | Slice | Focus |
 |---|---|
@@ -491,17 +491,17 @@ Full plan: [`docs/milestone4_offline_gold_authoring.md`](docs/milestone4_offline
 | 9C | Multi-retriever candidate pooling — **done** |
 | 9D | Blind double-pass local pre-labeling — **done** |
 | 9E | Human review + GoldDataset v1 finalization — **CLOSED / VERIFIED** |
-| 9F | ~20-case `ics_modules` operational pilot — **IN PROGRESS** (execution pending) |
-| 9G | ~100–150 case production gold + dev/test freeze |
-| 9H | Retrieval A/B + explicit promotion decision |
+| 9F | 22-case `ics_modules` operational pilot — **GO** (development fixture) |
+| 9G | ~100–150 case production gold + dev/test freeze — **DEFERRED** |
+| 9H | Formal retrieval A/B + promotion — **FROZEN** behind future 9G (9H-P was a non-promotional detour) |
 
-Do not place authoring into `evaluation/gold.py` beyond final gold validation/export. Do not start Slice 10 inside Milestone 4. Do not promote experimental retrieval/generation contracts during authoring-pipeline implementation.
+Do not place authoring into `evaluation/gold.py` beyond final gold validation/export. Do not promote experimental retrieval/generation contracts from the 22-case fixture alone.
 
 ---
 
 # Slice 10 — Evaluation harness v2: generation and citation evaluation
 
-**Status:** planned (Milestone 5). Depends on Milestone 4 private gold where stable retrieval evidence is required; provenance-v2 promotion evidence is in scope here, not in Slice 9H.
+**Status:** design contract drafted / implementation not started (Milestone 5). Authoritative contract: [`docs/slice10_generation_semantic_evaluation.md`](docs/slice10_generation_semantic_evaluation.md). Uses the frozen 9F development GoldDataset for non-promotional machinery; provenance-v2 promotion evidence is in scope here, not in formal 9H.
 
 ## Objective
 

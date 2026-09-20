@@ -104,16 +104,15 @@ offline-rag eval compare --a <result-a.json> --b <result-b.json> [--json]
 - Slice 8 `offline-rag eval query` stays operational generation outcomes only
   (answered / abstention / generation_failed / citation_invalid) — not answer
   correctness or faithfulness
-- No semantic answer/citation quality metrics (Milestone 5 / Slice 10)
-- No production `ics_modules` gold yet (Milestone 4 / 9A–9H)
+- Semantic answer/citation quality metrics are Milestone 5 / Slice 10
+  (design drafted / not started — [`slice10_generation_semantic_evaluation.md`](slice10_generation_semantic_evaluation.md))
+- No publication-grade `ics_modules` production gold yet (**9G** deferred);
+  frozen 9F 22-case set is a development/regression fixture only
 - No promotion of experimental retrieval/generation contracts via this harness alone
 
 ## Next
 
-Milestone 4 uses this harness on human-adjudicated private gold.
-Slice **9A** (authoring boundary) done — [`slice9a_gold_authoring.md`](slice9a_gold_authoring.md).
-Slice **9B** (`gold propose`) done — [`slice9b_gold_propose.md`](slice9b_gold_propose.md).
-Slice **9C** (`gold pool`) done — [`slice9c_candidate_pooling.md`](slice9c_candidate_pooling.md).
-Slice **9D** (`gold prelabel`) done — [`slice9d_relevance_prelabel.md`](slice9d_relevance_prelabel.md).
-Slice **9E** (`gold review` / `gold finalize`) **CLOSED / VERIFIED** — [`slice9e_human_review.md`](slice9e_human_review.md).
-Slice **9F** **IN PROGRESS** (runbook ready; execution pending) — [`slice9f_pilot_runbook.md`](slice9f_pilot_runbook.md).
+Milestone 4 used this harness on human-adjudicated private gold:
+**9A**–**9E** done; **9F GO**; **9H-P COMPLETE / NON-PROMOTIONAL**; **9G** deferred; formal **9H** frozen — [`milestone4_offline_gold_authoring.md`](milestone4_offline_gold_authoring.md), [`pilots/slice9f_ics_modules.md`](pilots/slice9f_ics_modules.md).
+
+Project next: Slice **10** — [`slice10_generation_semantic_evaluation.md`](slice10_generation_semantic_evaluation.md).

@@ -68,7 +68,7 @@ offline-rag eval query ...
 offline-rag doctor ...
 ```
 
-Still deferred: completing the Slice **9F** pilot execution (then **9G**–**9H**); Milestone 5 / Slice 10 semantic answer/citation quality metrics. Slices **9A**–**9E** are done (**9E CLOSED / VERIFIED** including `gold propose` / `gold pool` / `gold prelabel` / `gold review` / `gold finalize`); 9F runbook: [`slice9f_pilot_runbook.md`](slice9f_pilot_runbook.md).
+Still deferred: **9G**–formal **9H** (publication readiness); Slice **10** implementation (design drafted — [`slice10_generation_semantic_evaluation.md`](slice10_generation_semantic_evaluation.md)). Slices **9A**–**9E** done; **9F GO**; **9H-P COMPLETE / NON-PROMOTIONAL**.
 Retrieval ablation ladder through expansion is complete; grounded generation is baseline.
 Slice 9 provides GoldDataset v1 + comparable retrieval-eval-result-v1 artifacts.
 Slice 9 notes: `docs/slice9_retrieval_evaluation.md`.

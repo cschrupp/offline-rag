@@ -886,7 +886,7 @@ Never promote defaults solely from this fixture.
 | Item | Notes |
 |---|---|
 | Orchestrator API | No public `answer_from_evidence` today — **must be added in 10A** without changing `answer()` semantics |
-| `EVALUATION_HARNESS.md` | Still describes Milestone 4 / 9F as in-progress; ROADMAP already points at Slice 10. Harness doc is **stale**; update when Slice 10 implementation lands or in a docs hygiene pass — **not required** for this design commit |
+| `EVALUATION_HARNESS.md` | Status footer aligned with Milestone 5 / Slice 10 design; retrieval harness remains Slice 9 |
 | Gold schema | Cases use `id` + `judgments[].relevance`; cohort labels live outside gold files |
 | Silver hits | Field is `retriever`, not `retriever_id`; hard-neg design uses `hybrid-rerank-v1` |
 | Provenance-v2 | Experimental overlay only; Slice 8 smoke used it; base default remains `prompt-grounded-v1` pending future evidence |

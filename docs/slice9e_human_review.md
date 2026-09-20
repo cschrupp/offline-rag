@@ -46,4 +46,4 @@ paths.corpora/<corpus>/gold_authoring/gold/<authoring_run_id>/
 
 ## Hard stop
 
-Slice **9F** is the next operational track (runbook ready; execution pending) — [`slice9f_pilot_runbook.md`](slice9f_pilot_runbook.md). Do not reopen locked 9E design here; do not start Label Studio / LAN review / Slice 10 from this document.
+Slice **9E** design remains locked. Milestone 4 near-term engineering closed: **9F GO**; **9H-P COMPLETE / NON-PROMOTIONAL**; **9G** deferred; formal **9H** frozen — [`pilots/slice9f_ics_modules.md`](pilots/slice9f_ics_modules.md). Do not reopen Label Studio / LAN review from this document. Project next: Slice **10** — [`slice10_generation_semantic_evaluation.md`](slice10_generation_semantic_evaluation.md).

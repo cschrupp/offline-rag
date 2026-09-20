@@ -87,5 +87,8 @@ Slice **9D** — relevance prelabel / blind judge presentation — done:
 Slice **9E** — human review / GoldDataset finalization — **CLOSED / VERIFIED**:
 [`slice9e_human_review.md`](slice9e_human_review.md).
 
-Slice **9F** — 20-case operational pilot — **IN PROGRESS** (execution pending):
-[`slice9f_pilot_runbook.md`](slice9f_pilot_runbook.md).
+Slice **9F** — 22-case operational pilot — **GO** (development fixture):
+[`pilots/slice9f_ics_modules.md`](pilots/slice9f_ics_modules.md).
+
+**9H-P** COMPLETE / NON-PROMOTIONAL; **9G** deferred; formal **9H** frozen.
+Slice **10** design: [`slice10_generation_semantic_evaluation.md`](slice10_generation_semantic_evaluation.md).

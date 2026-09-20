@@ -8,9 +8,9 @@
 - Artifacts: `offline-rag-retrieval-eval-result-v1` (shared envelope + method diagnostics) and `offline-rag-retrieval-eval-comparison-v1` (exact-float win/loss/tie; no retrieval rerun).
 - Slice 8 `offline-rag eval query` remains operational generation outcomes only (answered / abstention / generation_failed / citation_invalid).
 
-**Next (Milestone 4):** Offline gold authoring (Slices 9A–9H) builds human-adjudicated private-corpus gold via a local LLM assistant + review workflow, then uses this harness for retrieval A/B and promotion decisions. Canonical plan: [`docs/milestone4_offline_gold_authoring.md`](docs/milestone4_offline_gold_authoring.md). Slices **9A**–**9E** done (**9E CLOSED / VERIFIED**); Slice **9F** **IN PROGRESS** (execution pending) — [`docs/slice9f_pilot_runbook.md`](docs/slice9f_pilot_runbook.md), [`docs/slice9e_human_review.md`](docs/slice9e_human_review.md). Silver/authoring drafts must never be accepted as gold by `eval retrieve`.
+**Milestone 4 (closed for near-term engineering):** Offline gold authoring **9A**–**9E** done; **9F GO**; **9H-P COMPLETE / NON-PROMOTIONAL**. **9G** deferred (publication readiness); formal **9H** frozen. Canonical plan: [`docs/milestone4_offline_gold_authoring.md`](docs/milestone4_offline_gold_authoring.md). Frozen 22-case / human-16 GoldDataset is a development/regression fixture only. Silver/authoring drafts must never be accepted as gold by `eval retrieve`.
 
-**Later (Milestone 5 / Slice 10):** Semantic answer/citation quality metrics.
+**Next (Milestone 5 / Slice 10):** Generation & citation semantic evaluation — design contract drafted / implementation not started: [`docs/slice10_generation_semantic_evaluation.md`](docs/slice10_generation_semantic_evaluation.md). `offline-rag eval query` remains operational-only until Slice 10 CLI lands.
 
 Sections below retain the broader portfolio target schema; prefer `eval/README.md` and `eval/datasets/slice9_validation/` for the implemented GoldDataset v1 contract.
 

@@ -135,4 +135,6 @@ and no completions in 9A. Surface: `offline-rag doctor` Authoring section.
 
 ## Next
 
-Slices **9B** / **9C** / **9D** / **9E** done (**9E CLOSED / VERIFIED**). Slice **9F** **IN PROGRESS** (execution pending) — [`slice9f_pilot_runbook.md`](slice9f_pilot_runbook.md).
+Slices **9B**–**9E** done; **9F GO**; **9H-P COMPLETE / NON-PROMOTIONAL**; **9G** deferred; formal **9H** frozen — [`milestone4_offline_gold_authoring.md`](milestone4_offline_gold_authoring.md), [`pilots/slice9f_ics_modules.md`](pilots/slice9f_ics_modules.md).
+
+Project next: Slice **10** design drafted / not started — [`slice10_generation_semantic_evaluation.md`](slice10_generation_semantic_evaluation.md).
