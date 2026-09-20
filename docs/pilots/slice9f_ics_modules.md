@@ -104,18 +104,42 @@ pending: 3
 finalized GoldCases: 22
 ```
 
-### Accepted-case provenance (audit; not separate gold classes)
+### Accepted-case provenance (hybrid; audit layers retained)
 
-Once imported through the human-review domain, Silver `human_review` is the
-authoritative truth. Audit provenance is retained for analysis only:
+The authoritative 22-case GoldDataset is **hybrid-adjudicated**.
 
 ```text
-source file: eval/reports/RAG.preannotation_package/RAG.final.consolidated.audit.json
-of the 22 finalized cases:
-  expert_review: 13
-  assistant_completion: 9
+16 finalized cases have direct human review/confirmation.
+6 finalized cases retain assistant-completed relevance maps without subsequent
+human confirmation.
+
+For cases 31, 33, and 34, assistant-produced candidate maps were subsequently
+inspected and explicitly confirmed by Carlos without relevance changes.
+
+The original annotation provenance remains retained in the audit trail.
+```
+
+Do **not** call assistant-only cases human-reviewed merely because their grades
+reside in Silver `human_review` after import. Durable grades are operationally
+authoritative for eval; provenance accounting is separate.
+
+```text
+tracked audit: docs/pilots/slice9f_gold_provenance_audit.json
+local package audit (gitignored mirror):
+  eval/reports/RAG.preannotation_package/RAG.final.consolidated.audit.json
+
+total finalized GoldCases: 22
+human-reviewed finalized: 16
+  original expert-reviewed finalized: 13
+    (1, 3, 8, 9, 11, 13, 15, 17, 19, 20, 21, 23, 29)
+  subsequent human confirmation of assistant maps: 3
+    (31, 33, 34) — Carlos; original_annotation_source=assistant_completion;
+    subsequent_validation=human_confirmed; no relevance changes
+assistant-completed only: 6
+  (2, 22, 26, 27, 30, 32)
+
 expert-rejected (not exported): 9
-Module 1 pending deferrals (not exported): 3
+Module 1 pending deferrals (not exported): 3 (12, 16, 24)
 case 16 repair: missing NDM-introduction candidate retained as relevance 0
 ```
 
@@ -247,9 +271,10 @@ Rationale / examples:
 Judgment: GO
 Rationale / examples:
   Consolidation used explicit 0/1/2 rubric; gold exports positive-only 1|2.
-  Expert and assistant completions followed the same grade meanings. Audit
-  preserves who graded which case without creating dual gold truths after
-  import into human_review.
+  Expert review, assistant completion, and later human confirmation of selected
+  assistant maps (31/33/34) followed the same grade meanings. Audit retains
+  layered provenance; assistant-only maps are not relabeled as independent
+  expert authorship.
 ```
 
 ### 4. Model-assistance value (9D)
@@ -322,10 +347,27 @@ observations / hypotheses for 9G–9H:
 [x] no pilot-only retrieval/model promotion
 ```
 
+### Dataset-gate amendment (transparent; historical criterion retained)
+
+```text
+Original locked 9F-1 dataset gate (unchanged in history):
+  >=20 accepted/edited finalized cases from one authoring-run lineage
+  (satisfied: 22 finalized GoldCases)
+
+Amended pilot acceptance criterion (post-pilot scope decision):
+  >=16 human-reviewed finalized cases
+  (satisfied: 16 = 13 expert-reviewed finalized + Carlos confirmations of 31/33/34)
+
+Rationale:
+  Deliberate post-pilot scope decision based on available reviewer capacity —
+  not a silent rewrite of the original locked case-count gate.
+  Six finalized cases (2, 22, 26, 27, 30, 32) remain assistant-completed only.
+```
+
 Notes for any unchecked item:
 
 ```text
-(none — all five satisfied)
+(none — all five original gates satisfied; human-review amendment also satisfied)
 Process judgment #4 is ADJUST (model-assistance value) which is allowed under
 9F-1; it does not alone force NO-GO when the five gates hold and no
 contract-breaking defect remains unresolved.
@@ -341,9 +383,12 @@ contract-breaking defect remains unresolved.
 summary:
   Authoritative GoldDataset
   gold_d3fc157c7b3206f6983abee766e7ce7b939244a7dea04f0be256f3a533a46172
-  publishes 22 human-approved cases from one frozen lineage with Module 1
-  accounting satisfied (1 finalized / 3 deferred pending). Hybrid review
-  provenance is audited; Silver human_review is authoritative after import.
+  publishes 22 hybrid-adjudicated cases from one frozen lineage with Module 1
+  accounting satisfied (1 finalized / 3 deferred pending).
+  Of those 22: 16 have direct human review/confirmation; 6 retain
+  assistant-completed maps without subsequent human confirmation.
+  Cases 31/33/34 keep original assistant provenance with subsequent
+  Carlos confirmation (no relevance changes).
   Provisional 2-case publication and its smoke metrics are superseded and are
   not a promotion basis.
 
@@ -351,5 +396,6 @@ next actions:
   Authorize Slice 9H retrieval A/B (eval retrieve / eval compare) against this
   22-case dataset only after explicit go-ahead. Do not start 9H in the same
   operation as this report. Optional later: resume pending Module 1 cases 12/16/24
-  under a future accounting policy; harden Pages import path.
+  under a future accounting policy; harden Pages import path; optionally
+  human-confirm remaining assistant-only cases 2/22/26/27/30/32.
 ```

@@ -1,0 +1,497 @@
+{
+  "schema_version": "offline-rag-gold-consolidation-audit-v1",
+  "created_at": "2026-09-20T02:54:05.928377+00:00",
+  "authoring_run_id": "authorrun_b28d88f64054491a837cb4a144cbe056",
+  "chunk_set_id": "chunkset_6d4925ea8d66e7dc599a884e96bc5f6b094e4288d565372d15e6002086c41da2",
+  "corpus_name": "ics_modules",
+  "summary": {
+    "total_cases": 34,
+    "accepted_cases": 25,
+    "rejected_cases": 9,
+    "pending_cases": 0,
+    "expert_accepted_cases": 15,
+    "expert_rejected_cases": 9,
+    "ai_completed_accepted_cases": 10,
+    "consolidation_time_note": "Counts below reflect the pre-cap consolidation package (25 accepted / 9 rejected). Authoritative finalize exported 22 after Module 1 deferrals of cases 12, 16, 24."
+  },
+  "case_provenance": {
+    "1": {
+      "source": "expert_review",
+      "status": "accepted"
+    },
+    "3": {
+      "source": "expert_review",
+      "status": "accepted"
+    },
+    "8": {
+      "source": "expert_review",
+      "status": "accepted"
+    },
+    "9": {
+      "source": "expert_review",
+      "status": "accepted"
+    },
+    "11": {
+      "source": "expert_review",
+      "status": "accepted"
+    },
+    "12": {
+      "source": "expert_review",
+      "status": "accepted"
+    },
+    "13": {
+      "source": "expert_review",
+      "status": "accepted"
+    },
+    "15": {
+      "source": "expert_review",
+      "status": "accepted"
+    },
+    "16": {
+      "source": "expert_review",
+      "status": "accepted"
+    },
+    "17": {
+      "source": "expert_review",
+      "status": "accepted"
+    },
+    "19": {
+      "source": "expert_review",
+      "status": "accepted"
+    },
+    "20": {
+      "source": "expert_review",
+      "status": "accepted"
+    },
+    "21": {
+      "source": "expert_review",
+      "status": "accepted"
+    },
+    "23": {
+      "source": "expert_review",
+      "status": "accepted"
+    },
+    "29": {
+      "source": "expert_review",
+      "status": "accepted"
+    },
+    "4": {
+      "source": "expert_comment",
+      "status": "rejected"
+    },
+    "5": {
+      "source": "expert_comment",
+      "status": "rejected"
+    },
+    "6": {
+      "source": "expert_comment",
+      "status": "rejected"
+    },
+    "7": {
+      "source": "expert_comment",
+      "status": "rejected"
+    },
+    "10": {
+      "source": "expert_comment",
+      "status": "rejected"
+    },
+    "14": {
+      "source": "expert_comment",
+      "status": "rejected"
+    },
+    "18": {
+      "source": "expert_comment",
+      "status": "rejected"
+    },
+    "25": {
+      "source": "expert_comment",
+      "status": "rejected"
+    },
+    "28": {
+      "source": "expert_comment",
+      "status": "rejected"
+    },
+    "2": {
+      "source": "assistant_completion",
+      "status": "accepted",
+      "query": "How does the Fair Labor Standards Act influence an Incident Commander's decisions regarding crew rotation and activity scheduling during an emergency?",
+      "positive_judgments": [
+        {
+          "ordinal": 1,
+          "chunk_id": "chunk_18811a9d90799ca6e1c5901c16ebf00fec80fce723d2d111618ce1ea8a39f652",
+          "relevance": 2,
+          "document_title": "Module 4 Resource Allocation SM",
+          "section": "RESOURCE ALLOCATION / Consider Overtime Costs",
+          "text_excerpt": "Consider Overtime Costs Another factor that must be addressed is overtime pay for crews who remain after their normal working hours. The Fair Labor Standards Act affects the limited budgets of the fire service. An IC will consider workers that might have to be paid overtime. This could require holding activities while waiting to exchange personnel. However, the efficiency or safety of the emergency scene should never be comprised."
+        }
+      ]
+    },
+    "22": {
+      "source": "assistant_completion",
+      "status": "accepted",
+      "query": "What is the primary purpose of a postincident analysis (PIA) in the context of Module 7?",
+      "positive_judgments": [
+        {
+          "ordinal": 1,
+          "chunk_id": "chunk_73a23fddb578189222d91dbb65e77cba302ad6d08ade6e72f936ff5324632759",
+          "relevance": 1,
+          "document_title": "Module 7 Post Incident Analysis SM",
+          "section": "POSTINCIDENT ANALYSIS / INTRODUCTION / Definition",
+          "text_excerpt": "Definition The postincident analysis (PIA) is a reconstruction of an operation to determine the events that occurred, the strategy and tactics identified, the tasks chosen, and the results of the operation."
+        },
+        {
+          "ordinal": 3,
+          "chunk_id": "chunk_4cda5921ebfbedd21de4edebbca32326d2e6b23ca65cf3ea6a8d739e23f4d551",
+          "relevance": 2,
+          "document_title": "Module 7 Post Incident Analysis SM",
+          "section": "POSTINCIDENT ANALYSIS / Purpose",
+          "text_excerpt": "Purpose The main purpose of the PIA is to reinforce departmental procedures and successful actions taken, and to identify ways to improve the effectiveness of operations. Simply, it catalogs what worked and the areas that need to be improved."
+        },
+        {
+          "ordinal": 4,
+          "chunk_id": "chunk_b890c25d50feb4a39a010033493841bc500e2afac1719bcbe56bb8b7d6201af3",
+          "relevance": 1,
+          "document_title": "Module 7 Post Incident Analysis SM",
+          "section": "POSTINCIDENT ANALYSIS / POSTINCIDENT ANALYSIS MEETING",
+          "text_excerpt": "POSTINCIDENT ANALYSIS MEETING The PIA meeting should be held in a room large enough to accommodate the attendees comfortably. Small rooms and cramped conditions are not conducive to having people \"open up.\" All supporting materials from the incident should be part of the presentation, e.g., actual incident resource status sheets, dispatch audiotapes, dispatch run cards, chronology of resources dispatched and arrival times, any videotapes, slides, or prints of the incident scene, and an easel pad"
+        },
+        {
+          "ordinal": 7,
+          "chunk_id": "chunk_bd9896bf42cafea118ceb8a213d58cd66b1b3b13c95d028aeea29c08852bc12e",
+          "relevance": 1,
+          "document_title": "Module 7 Post Incident Analysis SM",
+          "section": "POSTINCIDENT ANALYSIS / Purpose / Attitude",
+          "text_excerpt": "Attitude Management needs to understand that improvement develops from analysis of what went wrong, more than from analysis of what was right. A review of an incident is a search for the opportunity to become more effective. A PIA is not a search for guilt. It is not a punishment tool. It is not intended to embarrass personnel. A PIA is an opportunity for everyone to tell what happened from his/her own perspective."
+        },
+        {
+          "ordinal": 11,
+          "chunk_id": "chunk_d22e8e5b1f0845b146e78bb0f38328cf919fc4ac7f3f13690a678d581116aa00",
+          "relevance": 2,
+          "document_title": "Module 7 Post Incident Analysis SM",
+          "section": "POSTINCIDENT ANALYSIS / DESIRED OUTCOMES OF THE POSTINCIDENT ANALYSIS / Improve Performance",
+          "text_excerpt": "Improve Performance This is the goal of the PIA meeting. This is the one opportunity after an incident to identify those areas that need improvement. Do not take this lightly. Trivializing the recommendations given during the PIA meeting may compromise the effectiveness of the PIA."
+        }
+      ]
+    },
+    "24": {
+      "source": "assistant_completion",
+      "status": "accepted",
+      "query": "In what situations is the Classical Method primarily recommended for incident scene decision making?",
+      "positive_judgments": [
+        {
+          "ordinal": 1,
+          "chunk_id": "chunk_2934403a4254340cee4732e0558bdfaf5fb77e9f8c84c5d5f61109ed76e0bb7a",
+          "relevance": 1,
+          "document_title": "Module 1 Incident Scene Decision Making SM",
+          "section": "INCIDENT SCENE DECISION MAKING / Progress Reports / OVERVIEW OF INCIDENT SCENE DECISION MAKING",
+          "text_excerpt": "OVERVIEW OF INCIDENT SCENE DECISION MAKING There are two primary methods used by incident scene decision makers to reach conclusions, determine results, and institute actions. They are the classical method and the Naturalistic Decision Making (NDM) method . The classical method is a time-consuming process where the decision maker: - gathers information; - analyzes the information; - determines the problems that are present and selects and prioritizes those problems in order of importance; - dete"
+        },
+        {
+          "ordinal": 2,
+          "chunk_id": "chunk_2caf84c41d9aa09aa6fe7ab594f0caaac7a6c84d115c7c4645f27f3dd2c99c7e",
+          "relevance": 2,
+          "document_title": "Module 1 Incident Scene Decision Making SM",
+          "section": "INCIDENT SCENE DECISION MAKING / Time-Pressure Nature of Decision making",
+          "text_excerpt": "Time-Pressure Nature of Decision making Because of the time-pressure nature of emergency-scene decision making, the choice between Naturalistic Decision Making and classical will not be conscious. The decision maker's brain will attempt the Naturalistic Decision Making method first. This is the way the brain operates, even though it is not cognitive to the person. The decision maker must recognize when he/she possesses insufficient information to use this method. Some cues for this recognition a"
+        },
+        {
+          "ordinal": 3,
+          "chunk_id": "chunk_fe5b0c8641e0d84f311bca1fbf3c16f60e4d4ca17eb0b6c0996816aa82c164a9",
+          "relevance": 2,
+          "document_title": "Module 1 Incident Scene Decision Making SM",
+          "section": "INCIDENT SCENE DECISION MAKING / Time-Pressure Nature of Decision making",
+          "text_excerpt": "Remember that the Classical Method is primarily for situations where you have little or no experience with the incident-type or are in the training mode."
+        },
+        {
+          "ordinal": 4,
+          "chunk_id": "chunk_791b7f7932018bb22d461bb5d69b14df6445db5bf34db56bc55ef8572cc6185e",
+          "relevance": 2,
+          "document_title": "Module 1 Incident Scene Decision Making SM",
+          "section": "INCIDENT SCENE DECISION MAKING / Progress Reports / OVERVIEW OF INCIDENT SCENE DECISION MAKING",
+          "text_excerpt": "The classical process is used for evaluating and planning when time is not a factor. The decision makers need the classical methods when they are evaluating and comparing the critical cues used, conclusions and results determined, and actions taken by other decision makers. This form of training typically involves case studies. Here the student uses a case study to examine the obvious and subtle cue differences. The examination provides optional conclusions, results, and action sets based on tho"
+        }
+      ]
+    },
+    "26": {
+      "source": "assistant_completion",
+      "status": "accepted",
+      "query": "How does the hazard profile of the structure described in Module 3 compare to that of a bridge truss roof?",
+      "positive_judgments": [
+        {
+          "ordinal": 1,
+          "chunk_id": "chunk_a897f190548ce4caa87aa58b031d532eeafaa2107d58fe08638d38362ea0a21d",
+          "relevance": 2,
+          "document_title": "Module 3 Preincident Preparation SM",
+          "section": "PREINCIDENT PREPARATION / Strengths / Hazard",
+          "text_excerpt": "Hazard Similar to bridge truss roof."
+        },
+        {
+          "ordinal": 4,
+          "chunk_id": "chunk_22b6a54a18111f1c45884da14c3d43e001816d6054ceccec75fa82ad7d1cf92a",
+          "relevance": 1,
+          "document_title": "Module 3 Preincident Preparation SM",
+          "section": "PREINCIDENT PREPARATION / Strengths",
+          "text_excerpt": "Strengths - Well constructed. - Similar to bridge truss roof. - Do not use plywood for decking coverings."
+        },
+        {
+          "ordinal": 5,
+          "chunk_id": "chunk_2dc5d92e66d41591dac20ba1ec16891e352388de4e9eda8ede776c8444719435",
+          "relevance": 1,
+          "document_title": "Module 3 Preincident Preparation SM",
+          "section": "PREINCIDENT PREPARATION / Ribbed (Trussed) Arch / Description",
+          "text_excerpt": "Description - Similar to the bridge truss roof. - Constructed during the 30's, 40's, and 50's on both small and large commercial structures."
+        }
+      ]
+    },
+    "27": {
+      "source": "assistant_completion",
+      "status": "accepted",
+      "query": "What specific physical indicators should firefighters look for to determine if a fire has extended into concealed vertical channels?",
+      "positive_judgments": [
+        {
+          "ordinal": 1,
+          "chunk_id": "chunk_709ec9e10280df997df5132143858848f8a4a3714939dfbcf0eeaa2d8aedbe31",
+          "relevance": 2,
+          "document_title": "Module 3 Preincident Preparation SM",
+          "section": "PREINCIDENT PREPARATION / Fire, Heat, and Smoke Travel",
+          "text_excerpt": "Fire, Heat, and Smoke Travel Effectively stopping fire extension requires knowledge of how fire spreads, along with knowledge of building construction features and the effects of concealed vertical and horizontal spaces. Whenever and wherever openings are made, hoselines should be ready. While every effort should be made to minimize damage to the building and its contents, openings have to be large enough for inspection, hose manipulation, and ventilation. Until otherwise determined, it should b"
+        },
+        {
+          "ordinal": 7,
+          "chunk_id": "chunk_43e25e7cfd9fea26f05a45875b89a2d7f36a96e477a46ff4c1293018a5ac6285",
+          "relevance": 1,
+          "document_title": "Module 3 Preincident Preparation SM",
+          "section": "PREINCIDENT PREPARATION / Fire, Heat, and Smoke Travel",
+          "text_excerpt": "Fires generally spread from room to room via open doorways or through doors that are lightweight and do not last more than a few minutes under fire conditions. Fires generally spread from floor to floor via open stairways or open shafts and voids. Fire travel predictions can be made by asking a few basic questions: - Where is the fire now? - Where is the smoke showing? - What is in place to stop the spread of the fire and smoke to other areas of the structure, such as firewalls or other fire-res"
+        }
+      ]
+    },
+    "30": {
+      "source": "assistant_completion",
+      "status": "accepted",
+      "query": "At what temperature do steel structural members weaken, and how quickly can wood-truss assemblies fail during a fire?",
+      "positive_judgments": [
+        {
+          "ordinal": 1,
+          "chunk_id": "chunk_daa19ce2905fce3df8f7aec51a7631549f786208015c08a8725bca8e57ce5d5e",
+          "relevance": 1,
+          "document_title": "Module 3 Preincident Preparation SM",
+          "section": "PREINCIDENT PREPARATION / Lightweight",
+          "text_excerpt": "Lightweight Lightweight construction has become increasingly common because it is quick to assemble and reduces labor costs. Connectors can fail. Generally in older construction the connectors are individually nailed; in newer constructed structures \"gang-nails\" are used. Many times wooden trusses are made of smaller dimension lumber, and held together with metal gusset plate fasteners. Under fire conditions, the plates may loosen, and the structural integrity of the entire component may be lost"
+        },
+        {
+          "ordinal": 2,
+          "chunk_id": "chunk_e190b35bc181870906b7cbee0e1945d9e7322b374e43c53f0e000c3244142d9d",
+          "relevance": 2,
+          "document_title": "Module 2 Safety Management SM",
+          "section": "SAFETY MANAGEMENT / Authority of the Incident Safety Officer / Incident Safety Officer Qualifications",
+          "text_excerpt": "Incident Safety Officer Qualifications The ISO must be knowledgeable of fire behavior, including fire's effect on structures, facilities, and the environment. The ISO must understand building construction, including how and when fire or heat affects the bearing members. As an example, steel members weaken at about 1,100°F (593°C) and wood-truss assemblies can fail in less than 5 minutes. ISO's also must understand how fire spreads through a given construction type. Balloon-frame construction is "
+        },
+        {
+          "ordinal": 3,
+          "chunk_id": "chunk_9f3bf93cd44445b876a125e8535caf0fc247ad6a0b57dcb0740f78f06095baa2",
+          "relevance": 1,
+          "document_title": "Module 3 Preincident Preparation SM",
+          "section": "PREINCIDENT PREPARATION / Noncombustible",
+          "text_excerpt": "Noncombustible In this type of construction, the structural components will not burn, but are unprotected and susceptible to early collapse under fire conditions. The floor and roof support systems often will be lightweight steel construction and subject to early failure. This method of construction is very common in commercial or industrial structures. While the structural elements will not contribute to the fuel load, unprotected steel will expand as it warms and eventually will not be able to"
+        }
+      ]
+    },
+    "31": {
+      "source": "assistant_completion",
+      "status": "accepted",
+      "query": "What is the stated risk policy regarding the protection of property versus human life?",
+      "positive_judgments": [
+        {
+          "ordinal": 1,
+          "chunk_id": "chunk_b686785d43ef2dd58c3ff1ed37c813f7103a51ce7d5e08c2b88ccc6544b6e9fa",
+          "relevance": 2,
+          "document_title": "Module 2 Safety Management SM",
+          "section": "SAFETY MANAGEMENT / Risk Policy: A risk policy example:",
+          "text_excerpt": "Risk Policy: A risk policy example: We will take great risk to save your life. We will take minimal risk to save your property. We will take no risk for lives or property that are already lost. Another suggested approach to on-scene risk analysis is to use the following risk matrix:"
+        },
+        {
+          "ordinal": 8,
+          "chunk_id": "chunk_a7f141be37dff82e8c317588c185912697129b0a3e1e186b4dab1339ea428391",
+          "relevance": 2,
+          "document_title": "Module 2 Safety Management SM",
+          "section": "SAFETY MANAGEMENT / SUMMARY / Remember:",
+          "text_excerpt": "Remember: - We will take great risk to save your life. - We will take minimum risk to save your property. - We will not risk our lives at all to save lost lives or property. It is recommended that an ISO responds to and operates at every working fire. All response personnel are obliged to operate as safely as possible and to be their \"brother's/sister's keeper.\" Every department must have a set of safety SOGs that address firefighter protective clothing and general operations. All operations on "
+        }
+      ],
+      "original_annotation_source": "assistant_completion",
+      "subsequent_validation": "human_confirmed",
+      "human_confirmation": {
+        "confirmed_by": "Carlos",
+        "confirmed_at": "2026-09-20",
+        "relevance_changes": false,
+        "note": "Separately human-confirmed complete relevance map; no relevance changes recorded in this amendment."
+      }
+    },
+    "32": {
+      "source": "assistant_completion",
+      "status": "accepted",
+      "query": "How is the required fire flow calculated for a structure with 100-percent involvement on a single floor?",
+      "positive_judgments": [
+        {
+          "ordinal": 1,
+          "chunk_id": "chunk_8caf2bd4127330379dc575755fa154f879b464aa4d815a1694d05f065602ba24",
+          "relevance": 2,
+          "document_title": "Module 3 Preincident Preparation SM",
+          "section": "PREINCIDENT PREPARATION / FIRE FLOW FORMULA / Basic Formula",
+          "text_excerpt": "Estimate the length and width of the structure; round estimate to the nearest 10. Multiply the length by the width and divide by 3. This is the fire flow required for 100-percent involvement on one floor. If there is less than 100-percent involvement on one floor, reduce the fire flow proportionally."
+        },
+        {
+          "ordinal": 3,
+          "chunk_id": "chunk_afcf384cedd0135927e4d3232ae21c6a13b9a6df0706ef4346e89fec567e4dbb",
+          "relevance": 1,
+          "document_title": "Module 3 Preincident Preparation SM",
+          "section": "PREINCIDENT PREPARATION / ACTUAL APPLICATION OF THE FIRE FLOW FORMULA",
+          "text_excerpt": "When we know the building construction of the structure, especially, how the roof construction relates to the rest of the structure, each of us will then determine whether compartmentation within the structure is appropriate for the fire flow formula. Another example is a center-corridor boarding house. Top View In this case, the Lobby area and the common corridor make up the largest floor area compartment. The fire flow would be calculated on this square foot area. This quantity of water would "
+        },
+        {
+          "ordinal": 8,
+          "chunk_id": "chunk_d651f28f4e6df1bf301e838466f60551e50f8c353cb84697c50cd5323f8b3581",
+          "relevance": 1,
+          "document_title": "Module 3 Preincident Preparation SM",
+          "section": "PREINCIDENT PREPARATION / FIRE FLOW FORMULA / Basic Formula",
+          "text_excerpt": "Basic Formula Occasionally, fire incidents are encountered where preplanned fire flow information has not been developed or is not readily available. Under these circumstances, experienced fire officers are often able to determine needed fire flow based on their experience and knowledge of what has worked in similar situations. Sometimes newly appointed or relatively inexperienced officers, who lack this \"trial and error\" background, must make a judgment quickly regarding the amount of water req"
+        },
+        {
+          "ordinal": 18,
+          "chunk_id": "chunk_41d2873dc040678378d97ea05aa28ec742237e82a26bb5e1b48d9146e3bf0c76",
+          "relevance": 1,
+          "document_title": "Module 3 Preincident Preparation SM",
+          "section": "PREINCIDENT PREPARATION / How many of you fight structure fires this way? / NFA's Field Formula",
+          "text_excerpt": "NFA's Field Formula In early courses, circa 1979-84, the National Fire Academy used both the ISO Fire Flow Formula and a modification of the Iowa Formula. When the Preparing for Incident Command (PIC) course was rewritten, the new NFA Formula was developed. ExposureCharge) x % Involvemen t ) 3 ( LxW The full, or prefire planning, formula is NFF + = The course developers, all experienced incident scene commanders, discussed the practicality of the Iowa formula for normal operations. Normal operat"
+        }
+      ]
+    },
+    "33": {
+      "source": "assistant_completion",
+      "status": "accepted",
+      "query": "Which organizations are responsible for issuing annual reports on firefighter deaths and injuries?",
+      "positive_judgments": [
+        {
+          "ordinal": 1,
+          "chunk_id": "chunk_fef9534c616fbc4b3bff0e6306763f9580e67ad81c445ea5c86ef3221b76e802",
+          "relevance": 2,
+          "document_title": "Module 2 Safety Management SM",
+          "section": "SAFETY MANAGEMENT / STANDARDS AND LEGAL ISSUES / DEATH AND INJURY STATISTICS",
+          "text_excerpt": "DEATH AND INJURY STATISTICS Annually the U.S. Fire Administration (USFA), the NFPA, and the International Association of Fire Fighters (IAFF) each issue reports of firefighter death and injuries. Fire officers must be aware of these statistical reports and look for tendencies in the causative factors involved in firefighter deaths and injuries. It is also important that fire departments gather similar data to determine how, when and where their firefighters are injured, and develop strategies, p"
+        }
+      ],
+      "original_annotation_source": "assistant_completion",
+      "subsequent_validation": "human_confirmed",
+      "human_confirmation": {
+        "confirmed_by": "Carlos",
+        "confirmed_at": "2026-09-20",
+        "relevance_changes": false,
+        "note": "Human confirmation without relevance changes."
+      }
+    },
+    "34": {
+      "source": "assistant_completion",
+      "status": "accepted",
+      "query": "What components are used in a bowstring arch to provide lateral support for walls?",
+      "positive_judgments": [
+        {
+          "ordinal": 1,
+          "chunk_id": "chunk_60dd1184d5ec469832ad6fc16b17d8ece5d9e957a91ae4f033a6fb95536c789d",
+          "relevance": 2,
+          "document_title": "Module 3 Preincident Preparation SM",
+          "section": "PREINCIDENT PREPARATION / Bowstring Arch / Description",
+          "text_excerpt": "Description - Uses metal tie rods and turnbuckles to offer lateral support for the walls. - Tie rods may pass through the exterior wall to outside plates."
+        },
+        {
+          "ordinal": 12,
+          "chunk_id": "chunk_b39c6f95d6534bd6567c95e229266f51311f076606264e25f2303b6afe08a6ed",
+          "relevance": 1,
+          "document_title": "Module 3 Preincident Preparation SM",
+          "section": "PREINCIDENT PREPARATION / Description",
+          "text_excerpt": "Description - Found on various types and sizes of commercial buildings. - Constructed primarily during 1930s and 1940s. - Wooden truss members (2 x 12-inch), metal tie rods used vertically, rafters, sheathing (1 x 6), and composition roofing material, easily identified by its characteristic sloping ends."
+        },
+        {
+          "ordinal": 39,
+          "chunk_id": "chunk_8e52e5a638ce90e86a2bc74dd84e423a29245d113c24a977de103d58e1dad526",
+          "relevance": 1,
+          "document_title": "Module 3 Preincident Preparation SM",
+          "section": "PREINCIDENT PREPARATION / Strength / Hazard",
+          "text_excerpt": "Hazard Early failure of the metal tie rods and turnbuckles."
+        }
+      ],
+      "original_annotation_source": "assistant_completion",
+      "subsequent_validation": "human_confirmed",
+      "human_confirmation": {
+        "confirmed_by": "Carlos",
+        "confirmed_at": "2026-09-20",
+        "relevance_changes": false,
+        "note": "Human confirmation without relevance changes."
+      }
+    }
+  },
+  "repairs": [
+    {
+      "case_number": 16,
+      "detail": "The cumulative expert exports contain 95 judgments for 96 candidates. The previously identified missing INTRODUCTION / Naturalistic Decision Making candidate was retained as relevance 0, yielding complete coverage."
+    }
+  ],
+  "finalized_benchmark_provenance": {
+    "amended_at": "2026-09-20T03:53:50.794696+00:00",
+    "gold_dataset_id": "gold_d3fc157c7b3206f6983abee766e7ce7b939244a7dea04f0be256f3a533a46172",
+    "authoring_run_id": "authorrun_b28d88f64054491a837cb4a144cbe056",
+    "chunk_set_id": "chunkset_6d4925ea8d66e7dc599a884e96bc5f6b094e4288d565372d15e6002086c41da2",
+    "total_finalized_gold_cases": 22,
+    "human_reviewed_finalized": 16,
+    "assistant_completed_only_finalized": 6,
+    "accounting_note": "human_reviewed_finalized = original expert-reviewed finalized cases plus Carlos confirmations of assistant maps for cases 31, 33, 34. Presence in Silver human_review alone does not count as human-reviewed.",
+    "human_reviewed_finalized_cases": [
+      1,
+      3,
+      8,
+      9,
+      11,
+      13,
+      15,
+      17,
+      19,
+      20,
+      21,
+      23,
+      29,
+      31,
+      33,
+      34
+    ],
+    "assistant_completed_only_finalized_cases": [
+      2,
+      22,
+      26,
+      27,
+      30,
+      32
+    ],
+    "module1_pending_not_exported": [
+      12,
+      16,
+      24
+    ],
+    "expert_rejected_not_exported": [
+      4,
+      5,
+      6,
+      7,
+      10,
+      14,
+      18,
+      25,
+      28
+    ],
+    "acceptance_criterion_amendment": {
+      "original_locked_criterion": ">=20 accepted/edited finalized cases from one lineage (9F-1 dataset gate)",
+      "amended_human_review_criterion": ">=16 human-reviewed finalized cases",
+      "rationale": "Deliberate post-pilot scope decision based on available reviewer capacity; not a rewrite of the historical original case-count gate.",
+      "9F_outcome": "GO"
+    }
+  }
+}
