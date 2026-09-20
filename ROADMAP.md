@@ -103,7 +103,7 @@ generation-provenance investigation and A/B results.
 
 ## Milestone 4 — Offline Gold Authoring & Retrieval Benchmarking
 
-**Next operational track:** Slice **9F** (**IN PROGRESS** — runbook ready; execution pending). See [`docs/slice9f_pilot_runbook.md`](docs/slice9f_pilot_runbook.md).
+**Next operational track:** Slice **9H** (retrieval A/B on authoritative 9F gold). Slice **9F** **GO** — see [`docs/pilots/slice9f_ics_modules.md`](docs/pilots/slice9f_ics_modules.md).
 
 **Canonical plan:** [`docs/milestone4_offline_gold_authoring.md`](docs/milestone4_offline_gold_authoring.md). Slice 9A notes: [`docs/slice9a_gold_authoring.md`](docs/slice9a_gold_authoring.md). Slice 9B notes: [`docs/slice9b_gold_propose.md`](docs/slice9b_gold_propose.md). Slice 9C notes: [`docs/slice9c_candidate_pooling.md`](docs/slice9c_candidate_pooling.md). Slice 9D notes: [`docs/slice9d_relevance_prelabel.md`](docs/slice9d_relevance_prelabel.md). Slice 9E notes: [`docs/slice9e_human_review.md`](docs/slice9e_human_review.md). Slice 9F ops: [`docs/slice9f_pilot_runbook.md`](docs/slice9f_pilot_runbook.md).
 
@@ -123,7 +123,7 @@ annotation services. The local LLM is an annotation assistant, not ground truth.
 - [x] **9C** Multi-retriever candidate pooling (`offline-rag gold pool`, `candidate-pooling-v1`)
 - [x] **9D** Local blind double-pass relevance pre-labeling (`offline-rag gold prelabel`)
 - [x] **9E** Local human review UI + GoldDataset v1 finalization (`gold review` / `gold finalize`) — **CLOSED / VERIFIED**
-- [ ] **9F** ~20-case `ics_modules` operational pilot — **IN PROGRESS** (runbook/template ready; execution pending)
+- [x] **9F** ~20-case `ics_modules` operational pilot — **GO** (22-case authoritative gold; report [`docs/pilots/slice9f_ics_modules.md`](docs/pilots/slice9f_ics_modules.md))
 - [ ] **9G** ~100–150 case production gold + development/held-out freeze
 - [ ] **9H** Retrieval A/B (`eval retrieve` / `eval compare`) + promotion decision
 
@@ -139,9 +139,8 @@ A reviewer can refresh a private-corpus retrieval benchmark without sending
 source text outside an approved local/private environment, then run
 comparable retrieval evaluations and make an explicit promotion decision.
 
-**Status:** Slice **9E** **CLOSED / VERIFIED** (`offline-rag gold review` / `gold finalize`). Slice **9F** **IN PROGRESS** — operational contract/runbook ready; pilot execution pending. Do not promote Arm H,
-`model-query-prompt-v1`, or `prompt-grounded-provenance-v2` during
-authoring-pipeline work; do not start Slice 10 inside this milestone.
+**Status:** Slice **9E** **CLOSED / VERIFIED**. Slice **9F** **GO** (22-case `ics_modules` gold). Next: **9H** eval on that gold (explicit authorize). Do not promote Arm H,
+`model-query-prompt-v1`, or `prompt-grounded-provenance-v2` from pilot smoke alone; do not start Slice 10 inside this milestone.
 
 ---
 
