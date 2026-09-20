@@ -185,16 +185,20 @@ candidate-by-candidate workflow for production gold.
 **Release criterion:** generation and citation quality are measured separately
 from retrieval, with deterministic checks preferred where applicable.
 
-**Status:** **READY FOR DEVELOPMENT.** Next operational track is Slice **10**.
+**Status:** Slice **10 design contract drafted / implementation not started.**
+Authoritative contract: [`docs/slice10_generation_semantic_evaluation.md`](docs/slice10_generation_semantic_evaluation.md).
+Next operational track: implement Slice **10A** only after explicit authorization.
 
 Slice 10 may use the frozen 9F pilot GoldDataset
 (`gold_d3fc157c7b3206f6983abee766e7ce7b939244a7dea04f0be256f3a533a46172`)
 as a **non-promotional development/regression fixture** for generation and
 citation semantic evaluation (contracts, deterministic checks, citation support,
-abstention, machinery validation). Publication-grade claims and final promotion
-decisions remain deferred until future **9G → formal 9H**. Results involving
-`prompt-grounded-provenance-v2` on the 22-case fixture are development evidence
-only — not sole grounds for promoting defaults.
+abstention, machinery validation). Primary mode is fixed `gold-evidence-v1`
+(generation quality given supplied evidence), separated from retrieval quality.
+Publication-grade claims and final promotion decisions remain deferred until
+future **9G → formal 9H**. Results involving `prompt-grounded-provenance-v2`
+on the 22-case fixture are development evidence only — not sole grounds for
+promoting defaults.
 
 
 ---
