@@ -2,7 +2,12 @@
 
 **Position:** after Slice 9 (Evaluation Harness v1), before Slice 10 (Generation/Citation Semantic Evaluation).
 
-**Next operational track:** Slice **9F** — 20-Case Authoring Pilot (**IN PROGRESS**: operational contract/runbook ready; execution pending).
+**Next operational track:** Slice **9H-P** — Pilot Retrieval A/B (eval-only detour; contract locked / execution not yet authorized). Slice **9F** is **GO**. Canonical production order remains **9G → 9H**; 9G is capacity-blocked.
+
+Slice **9F** **GO** — 22-case authoritative gold
+`gold_d3fc157c7b3206f6983abee766e7ce7b939244a7dea04f0be256f3a533a46172`;
+report [`pilots/slice9f_ics_modules.md`](pilots/slice9f_ics_modules.md).
+9H-P contract: [`pilots/slice9h_p_pilot_contract.md`](pilots/slice9h_p_pilot_contract.md).
 
 Slice **9E** (`offline-rag gold review` / `gold finalize`) is **CLOSED / VERIFIED** — see [`slice9e_human_review.md`](slice9e_human_review.md).
 Slice **9D** (`offline-rag gold prelabel`) is done — see [`slice9d_relevance_prelabel.md`](slice9d_relevance_prelabel.md).
@@ -20,6 +25,11 @@ Slice **9A** (contracts + privacy + doctor) is done — see [`slice9a_gold_autho
 - Slice **9B** complete: `source-sampling-random-v1`, `question-proposal-v1`, local authoring Chat Completions path, quality gates, `offline-rag gold propose`, silver-run persistence (no seed-body/raw-response copies).
 - Slice **9C** complete: `candidate-pooling-v1` six-arm historical pooling, `offline-rag gold pool`, union/dedupe/`chunk_id` identity, pool inspection order, privacy-preserving candidate provenance (no body text / no grades).
 - Slice **9D** complete: `relevance-prelabel-v1` candidate-at-a-time blind double-pass judging, `blind-order-v1`, `relevance-judge-context-v1`, `prelabel-agreement-v1`, `offline-rag gold prelabel`, silver-only model judgments + review-priority aids.
+- Slice **9E** complete / CLOSED / VERIFIED.
+- Slice **9F** **GO** (22-case `ics_modules` GoldDataset + filled pilot report).
+- Slice **9G** incomplete / capacity-blocked (reviewer availability).
+- Formal Slice **9H** incomplete (promotion decision reserved).
+- **9H-P** contract locked as a non-promotional evaluation detour; execution not yet authorized.
 - `GoldDataset v1`, deterministic retrieval metrics, serialized evaluation artifacts, and `offline-rag eval compare` are available.
 - `model-query-prompt-v1`, `exclude-heading-only-v1` / Arm H, and `prompt-grounded-provenance-v2` remain validated experimental candidates.
 - No experimental contracts are promoted to `base.yaml`.
@@ -200,6 +210,23 @@ Authoring-only metadata does not enter GoldDataset semantic identity.
   → Slice 10 generation/citation semantic evaluation
 ```
 
+### Authorized evaluation detour — 9H-P
+
+After 9F GO, 9G expansion became capacity-blocked by reviewer availability.
+
+A bounded evaluation-only detour, 9H-P, may benchmark the frozen 22-case
+9F GoldDataset before 9G.
+
+This does not satisfy 9G, does not consume the formal 9H promotion decision,
+and cannot change retrieval defaults.
+
+Its purpose is to exercise the existing Slice 9 evaluation harness,
+quantify candidate behavior on the pilot gold, and test whether conclusions
+are sensitive to the hybrid-adjudicated subset.
+
+Authoritative contract:
+[`pilots/slice9h_p_pilot_contract.md`](pilots/slice9h_p_pilot_contract.md)
+
 ---
 
 ## Slice 9A — Gold Authoring Contracts & Privacy Boundary
@@ -260,13 +287,19 @@ Corrective invariants (post-implementation): validate GoldDataset in the tempora
 
 ## Slice 9F — 20-Case Authoring Pilot
 
-**Status:** **IN PROGRESS** — operational contract and runbook locked; **pilot execution pending**. Not complete.
+**Status:** **GO**.
+
+**Authoritative GoldDataset:**
+`gold_d3fc157c7b3206f6983abee766e7ce7b939244a7dea04f0be256f3a533a46172`
+(22 cases; lineage `authorrun_b28d88f64054491a837cb4a144cbe056` /
+`chunkset_6d4925ea8d66e7dc599a884e96bc5f6b094e4288d565372d15e6002086c41da2`).
 
 **Ops docs:**
 
 - Runbook: [`slice9f_pilot_runbook.md`](slice9f_pilot_runbook.md)
 - Report template: [`slice9f_pilot_report_template.md`](slice9f_pilot_report_template.md)
-- Filled report (after execution only): `docs/pilots/slice9f_ics_modules.md`
+- Filled report: [`pilots/slice9f_ics_modules.md`](pilots/slice9f_ics_modules.md)
+- Provenance audit: [`pilots/slice9f_gold_provenance_audit.json`](pilots/slice9f_gold_provenance_audit.json)
 
 **Nature:** Operational validation of the locked 9B→9E workflow on `ics_modules`. No new runtime architecture, schemas, freeze enforcement, append-propose, coverage quotas, or pilot CLI.
 
@@ -278,13 +311,13 @@ offline-rag gold propose --corpus ics_modules --count 40 --seed 0
 
 **Lineage:** one historical `chunk_set_id`, one `authoring_run_id`; prepare pool + prelabels before review; freeze upstream state at the first durable human mutation; finalize with ordinary `gold finalize` only (default paths; no cross-run stitching).
 
-**Success gate (written GO / ADJUST / NO-GO):** ≥20 finalized `accepted`/`edited` cases; meaningful query-type coverage recorded; four process judgments (proposal / pool / rubric / model-assistance); no unresolved contract-breaking defect; no pilot-only retrieval/model promotion. Module 1 ≤1 finalized case via source-seed `document_id` (canonical title fallback only). Pending may remain at finalize.
-
-Do **not** mark 9F complete until the executed GoldDataset and filled pilot report exist with an explicit 9F-1 outcome.
+**Success gate (written GO / ADJUST / NO-GO):** ≥20 finalized `accepted`/`edited` cases; meaningful query-type coverage recorded; four process judgments (proposal / pool / rubric / model-assistance); no unresolved contract-breaking defect; no pilot-only retrieval/model promotion. Module 1 ≤1 finalized case via source-seed `document_id` (canonical title fallback only). Pending may remain at finalize. Post-pilot human-review accounting amendment (≥16 human-reviewed finalized) is recorded in the filled report / provenance audit and does not rewrite this historical case-count gate.
 
 ---
 
 ## Slice 9G — Production Retrieval Gold Set
+
+**Status:** incomplete / **capacity-blocked** (reviewer availability).
 
 **Goal:** First serious private retrieval benchmark (~120 accepted; practical range 100–150).
 
@@ -292,9 +325,13 @@ Before retrieval optimization, split ≈80 development / ≈40 held-out (for a 1
 
 Semantic changes produce a new GoldDataset identity under Slice 9 rules.
 
+While 9G is blocked, the bounded **9H-P** evaluation detour may run on the frozen 9F gold (see Implementation order detour note). That does not satisfy 9G.
+
 ---
 
 ## Slice 9H — Retrieval Candidate Evaluation & Promotion Decision
+
+**Status:** incomplete. Formal promotional decision remains reserved; see also the non-promotional **9H-P** detour ([`pilots/slice9h_p_pilot_contract.md`](pilots/slice9h_p_pilot_contract.md)).
 
 **Goal:** Use the Slice 9 harness on real gold.
 
@@ -303,6 +340,8 @@ Candidates include baseline dense, `model-query-prompt-v1`, Arm H / `exclude-hea
 Promotion requires meaningful metric gains, acceptable category regressions, acceptable latency/cost, and generalization beyond the Module 1 smoke case. Explicit architectural decision — no automatic composite winner.
 
 This slice may justify promoting retrieval contracts (`model-query-prompt-v1`, `exclude-heading-only-v1`). It does **not** justify promoting `prompt-grounded-provenance-v2` (generation-semantic → Slice 10).
+
+**9H-P** may produce pilot evidence/hypotheses only and **cannot** authorize those promotions.
 
 ---
 

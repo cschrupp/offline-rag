@@ -103,7 +103,12 @@ generation-provenance investigation and A/B results.
 
 ## Milestone 4 — Offline Gold Authoring & Retrieval Benchmarking
 
-**Next operational track:** Slice **9H** (retrieval A/B on authoritative 9F gold). Slice **9F** **GO** — see [`docs/pilots/slice9f_ics_modules.md`](docs/pilots/slice9f_ics_modules.md).
+**Next operational track:** Slice **9H-P** — Pilot Retrieval A/B, an evaluation-only
+detour on the authoritative 9F gold while 9G expansion is capacity-blocked.
+9H-P does not complete 9G and cannot authorize retrieval promotion.
+Canonical production order remains **9G → 9H**.
+Slice **9F** **GO** — see [`docs/pilots/slice9f_ics_modules.md`](docs/pilots/slice9f_ics_modules.md).
+9H-P contract: [`docs/pilots/slice9h_p_pilot_contract.md`](docs/pilots/slice9h_p_pilot_contract.md).
 
 **Canonical plan:** [`docs/milestone4_offline_gold_authoring.md`](docs/milestone4_offline_gold_authoring.md). Slice 9A notes: [`docs/slice9a_gold_authoring.md`](docs/slice9a_gold_authoring.md). Slice 9B notes: [`docs/slice9b_gold_propose.md`](docs/slice9b_gold_propose.md). Slice 9C notes: [`docs/slice9c_candidate_pooling.md`](docs/slice9c_candidate_pooling.md). Slice 9D notes: [`docs/slice9d_relevance_prelabel.md`](docs/slice9d_relevance_prelabel.md). Slice 9E notes: [`docs/slice9e_human_review.md`](docs/slice9e_human_review.md). Slice 9F ops: [`docs/slice9f_pilot_runbook.md`](docs/slice9f_pilot_runbook.md).
 
@@ -124,8 +129,9 @@ annotation services. The local LLM is an annotation assistant, not ground truth.
 - [x] **9D** Local blind double-pass relevance pre-labeling (`offline-rag gold prelabel`)
 - [x] **9E** Local human review UI + GoldDataset v1 finalization (`gold review` / `gold finalize`) — **CLOSED / VERIFIED**
 - [x] **9F** ~20-case `ics_modules` operational pilot — **GO** (22-case authoritative gold; report [`docs/pilots/slice9f_ics_modules.md`](docs/pilots/slice9f_ics_modules.md))
-- [ ] **9G** ~100–150 case production gold + development/held-out freeze
-- [ ] **9H** Retrieval A/B (`eval retrieve` / `eval compare`) + promotion decision
+- [ ] **9H-P** Pilot Retrieval A/B — eval-only detour; non-promotional; contract locked / execution not yet authorized ([`docs/pilots/slice9h_p_pilot_contract.md`](docs/pilots/slice9h_p_pilot_contract.md))
+- [ ] **9G** ~100–150 case production gold + development/held-out freeze — **capacity-blocked**
+- [ ] **9H** Formal retrieval A/B + promotion decision — requires later authorization (after 9G or another explicit decision process)
 
 ### Target CLI (surface locked during 9A+)
 
@@ -139,8 +145,8 @@ A reviewer can refresh a private-corpus retrieval benchmark without sending
 source text outside an approved local/private environment, then run
 comparable retrieval evaluations and make an explicit promotion decision.
 
-**Status:** Slice **9E** **CLOSED / VERIFIED**. Slice **9F** **GO** (22-case `ics_modules` gold). Next: **9H** eval on that gold (explicit authorize). Do not promote Arm H,
-`model-query-prompt-v1`, or `prompt-grounded-provenance-v2` from pilot smoke alone; do not start Slice 10 inside this milestone.
+**Status:** Slice **9E** **CLOSED / VERIFIED**. Slice **9F** **GO** (22-case `ics_modules` gold). Next operational track is **9H-P** (eval-only; contract locked; execution separately authorized). **9G** remains incomplete/capacity-blocked; formal **9H** remains incomplete and promotional. Do not promote Arm H,
+`model-query-prompt-v1`, or `prompt-grounded-provenance-v2` from pilot smoke or 9H-P alone; do not start Slice 10 inside this milestone.
 
 ---
 
