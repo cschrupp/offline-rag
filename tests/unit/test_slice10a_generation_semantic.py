@@ -360,6 +360,7 @@ def test_evidence_set_id_stable_and_sensitive() -> None:
             corpus_id=a.corpus_id,
             corpus_name=a.corpus_name,
             cases=a.cases,
+            source_name_by_document_id=a.source_name_by_document_id,
         )
         == a.evidence_set_id
     )

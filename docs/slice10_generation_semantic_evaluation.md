@@ -1,12 +1,12 @@
 # Slice 10 — Generation & Citation Semantic Evaluation
 
-**Status:** **10A IMPLEMENTED / VERIFIED** — design + 10A contracts/executor/evidence builder.
-**10B–10E:** not started.
-**Baseline checkpoint (design):** `4bd2fbb4285ee937ac8448ccf63d8169999887f3`
+**Status:** **10A IMPLEMENTED / VERIFIED**; **10B IMPLEMENTED / VERIFIED**.
+**10C NEXT.** **10D–10E:** not started.
+**Baseline checkpoint (10A):** `7ab91a61b92ee00ef81d5a01ef54915ab7a83c49`
 **Authoritative for:** Milestone 5 / Slice 10 (sub-slices 10A–10E)
 
-This document is the Slice 10 design/contract pass only. It does **not**
-authorize runtime implementation, model calls, evaluation runs, or promotion.
+This document is the Slice 10 design/contract authority. Runtime implementation
+for 10A–10B is in-tree; 10C+ remain deferred.
 
 ---
 
@@ -617,18 +617,18 @@ in `cli.py`):
 
 ```text
 offline-rag eval generation \
+    --config config/base.yaml \
     --dataset <GoldDataset path> \
     --corpus <name> \
-    --evidence-mode gold \
-    [--judge] \
-    [--output ...]
-
-offline-rag eval generation compare \
-    --a result-a.json \
-    --b result-b.json
+    --cohort-map <cohort-map.json> \
+    [--evidence-mode gold] \
+    [--evidence-output ...] \
+    [--output ...] \
+    [--json]
 ```
 
-CLI is **not** added in this design-only task.
+**10B status:** CLI surface implemented. Compare / `--judge` / negatives remain
+deferred to 10C–10E.
 
 ---
 
@@ -637,8 +637,8 @@ CLI is **not** added in this design-only task.
 | Sub-slice | Deliver later | Explicitly out |
 |---|---|---|
 | **10A** | Evidence-set schema; `gold-evidence-v1` builder; content-addressed identity; fixed-evidence execution boundary (`GroundedGenerationExecutor`); result/comparison contracts; tests | **IMPLEMENTED / VERIFIED** |
-| **10B** | Operational carry-through; gold citation overlap diagnostics; positive answer/abstention behavior; artifact persistence; CLI | Judge — **NEXT** |
-| **10C** | `generation-semantic-judge-v1`; structured output; offline/private preflight; dimensions; persistence; failure semantics | Promotion |
+| **10B** | Frozen provenance metadata in `genevidence_` identity; generator-only readiness; `generation-semantic-deterministic-v1`; typed aggregates; evidence/result persistence; cohort map; `offline-rag eval generation` | **IMPLEMENTED / VERIFIED** |
+| **10C** | `generation-semantic-judge-v1`; structured output; offline/private preflight; dimensions; persistence; failure semantics | **NEXT** |
 | **10D** | `human-grade0-hard-negative-v1`; deterministic selection; abstention metrics; human-16 only initially | Assistant-only negatives as primary |
 | **10E** | Controlled v1 vs provenance-v2 A/B; full-22 + human-16 sensitivity; artifact-only compare; Slice 10 development report; **hard-stop** | Auto-promote provenance-v2 |
 
@@ -911,11 +911,12 @@ Layer 1/2/3 hierarchy; non-promotion of provenance-v2 from this fixture.
 
 ---
 
-## 27. Explicit non-goals for this design pass
+## 27. Implementation status notes
 
-- No `src/`, `tests/`, `config/`, `eval/`, or `data/` changes
-- No model / generation / retrieval / judge runs
-- No new private artifacts beyond documentation
-- No marking Slice 10 complete or implemented
+- **10A / 10B:** implemented and verified in-tree (contracts, fixed evidence,
+  frozen provenance metadata, generator-only readiness, Layer-1 deterministic
+  metrics, persistence, `offline-rag eval generation`).
+- **10C–10E:** not started.
+- No live ICS fixture evaluation is authorized by 10B.
 
-**HARD STOP before 10B implementation.**
+**HARD STOP before 10C implementation.**

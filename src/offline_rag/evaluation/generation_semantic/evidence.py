@@ -126,6 +126,10 @@ def build_gold_evidence_set_v1(
     if stamp.tzinfo is None:
         stamp = stamp.replace(tzinfo=UTC)
 
+    source_name_by_document_id = _frozen_source_names(
+        built_cases, chunk_snapshot.source_name_by_document_id
+    )
+
     evidence_set_id = compute_generation_evidence_set_id(
         evidence_contract=GOLD_EVIDENCE_V1,
         source_gold_dataset_id=gold.dataset_id,
@@ -133,6 +137,7 @@ def build_gold_evidence_set_v1(
         corpus_id=corpus_id,
         corpus_name=corpus_name,
         cases=built_cases,
+        source_name_by_document_id=source_name_by_document_id,
     )
     return GenerationEvidenceSetV1(
         schema_version=GENERATION_EVIDENCE_SET_V1,
@@ -142,6 +147,7 @@ def build_gold_evidence_set_v1(
         chunk_set_id=chunk_snapshot.chunk_set_id,
         corpus_id=corpus_id,
         corpus_name=corpus_name,
+        source_name_by_document_id=source_name_by_document_id,
         cases=built_cases,
         created_at=stamp,
         metadata=dict(metadata or {}),
@@ -156,6 +162,7 @@ def compute_generation_evidence_set_id(
     corpus_id: str,
     corpus_name: str,
     cases: list[GenerationEvidenceCaseV1],
+    source_name_by_document_id: Mapping[str, str],
 ) -> str:
     return generation_evidence_set_id_from_payload(
         generation_evidence_semantic_payload(
@@ -165,6 +172,7 @@ def compute_generation_evidence_set_id(
             corpus_id=corpus_id,
             corpus_name=corpus_name,
             cases=cases,
+            source_name_by_document_id=source_name_by_document_id,
         )
     )
 
@@ -177,6 +185,7 @@ def generation_evidence_semantic_payload(
     corpus_id: str,
     corpus_name: str,
     cases: list[GenerationEvidenceCaseV1],
+    source_name_by_document_id: Mapping[str, str],
 ) -> dict[str, object]:
     """Canonical semantic payload for ``genevidence_`` identity (no created_at)."""
     case_payloads: list[dict[str, object]] = []
@@ -197,6 +206,10 @@ def generation_evidence_semantic_payload(
                 ],
             }
         )
+    source_rows = [
+        {"document_id": doc_id, "source_name": source_name_by_document_id[doc_id]}
+        for doc_id in sorted(source_name_by_document_id)
+    ]
     return {
         "schema_version": GENERATION_EVIDENCE_SET_V1,
         "evidence_contract": evidence_contract,
@@ -204,8 +217,31 @@ def generation_evidence_semantic_payload(
         "chunk_set_id": chunk_set_id,
         "corpus_id": corpus_id,
         "corpus_name": corpus_name,
+        "source_name_by_document_id": source_rows,
         "cases": case_payloads,
     }
+
+
+def _frozen_source_names(
+    cases: list[GenerationEvidenceCaseV1],
+    snapshot_sources: Mapping[str, str],
+) -> dict[str, str]:
+    doc_ids = sorted(
+        {unit.document_id for case in cases for unit in case.evidence_units}
+    )
+    frozen: dict[str, str] = {}
+    for doc_id in doc_ids:
+        if doc_id not in snapshot_sources:
+            raise GoldEvidenceBuildError(
+                f"authoritative source_name missing for document_id={doc_id}"
+            )
+        source_name = snapshot_sources[doc_id]
+        if source_name is None or not str(source_name).strip():
+            raise GoldEvidenceBuildError(
+                f"authoritative source_name blank for document_id={doc_id}"
+            )
+        frozen[doc_id] = str(source_name)
+    return frozen
 
 
 def _evidence_unit_semantic(unit: EvidenceUnit) -> dict[str, object]:

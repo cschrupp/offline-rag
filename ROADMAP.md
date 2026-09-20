@@ -185,11 +185,11 @@ candidate-by-candidate workflow for production gold.
 **Release criterion:** generation and citation quality are measured separately
 from retrieval, with deterministic checks preferred where applicable.
 
-**Status:** Slice **10A IMPLEMENTED / VERIFIED**. Next: Slice **10B**.
+**Status:** Slice **10A IMPLEMENTED / VERIFIED**. Slice **10B IMPLEMENTED / VERIFIED**. Next: Slice **10C**.
 Authoritative contract: [`docs/slice10_generation_semantic_evaluation.md`](docs/slice10_generation_semantic_evaluation.md).
 
 - [x] 10A — semantic evaluation contracts & fixed evidence (`GroundedGenerationExecutor`, `gold-evidence-v1`)
-- [ ] 10B — deterministic generation/citation metrics + CLI
+- [x] 10B — deterministic generation/citation metrics + CLI (`offline-rag eval generation`)
 - [ ] 10C — local semantic judge
 - [ ] 10D — human hard-negative abstention fixture
 - [ ] 10E — controlled prompt A/B + development report

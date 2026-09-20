@@ -1412,6 +1412,47 @@ def cmd_eval_query(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_eval_generation(args: argparse.Namespace) -> int:
+    from offline_rag.evaluation.generation_semantic import (
+        GenerationSemanticEvaluationError,
+        format_generation_semantic_result_human,
+        run_generation_semantic_evaluation,
+    )
+
+    try:
+        settings = _load_settings(args)
+    except ConfigError as exc:
+        print(f"eval generation: configuration failed: {exc}", file=sys.stderr)
+        return 1
+
+    logger = configure_logging(
+        level=settings.logging.level,
+        structured=settings.logging.structured,
+    )
+    log_event(logger, 20, "eval generation started", event="eval.generation.start")
+
+    evidence_mode = getattr(args, "evidence_mode", "gold") or "gold"
+    try:
+        report = run_generation_semantic_evaluation(
+            settings,
+            dataset_path=Path(args.dataset),
+            cohort_map_path=Path(args.cohort_map),
+            corpus_name=args.corpus,
+            evidence_mode=evidence_mode,
+            evidence_output=Path(args.evidence_output) if args.evidence_output else None,
+            output=Path(args.output) if args.output else None,
+        )
+    except GenerationSemanticEvaluationError as exc:
+        print(f"eval generation: {exc}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(report.model_dump_json())
+        return 0
+    print(format_generation_semantic_result_human(report))
+    return 0
+
+
 def cmd_eval_retrieve(args: argparse.Namespace) -> int:
     from offline_rag.evaluation.format import format_retrieval_result_human
 
@@ -2315,6 +2356,52 @@ def build_parser() -> argparse.ArgumentParser:
     eval_query.add_argument("--output", type=Path, default=None, help="Optional result JSON path")
     eval_query.add_argument("--json", action="store_true", help="Emit evaluation result JSON")
     eval_query.set_defaults(func=cmd_eval_query)
+    eval_generation = eval_sub.add_parser(
+        "generation",
+        help="Run fixed-evidence generation semantic evaluation (Layer-1 deterministic)",
+    )
+    _add_config_argument(eval_generation)
+    eval_generation.add_argument(
+        "--dataset",
+        required=True,
+        type=Path,
+        help="GoldDataset directory",
+    )
+    eval_generation.add_argument(
+        "--corpus",
+        default="default",
+        help="Logical corpus name (must match GoldDataset when set)",
+    )
+    eval_generation.add_argument(
+        "--cohort-map",
+        required=True,
+        type=Path,
+        help="offline-rag-generation-cohort-map-v1 JSON path",
+    )
+    eval_generation.add_argument(
+        "--evidence-mode",
+        choices=("gold",),
+        default="gold",
+        help="Evidence construction mode (Slice 10B: gold only)",
+    )
+    eval_generation.add_argument(
+        "--evidence-output",
+        type=Path,
+        default=None,
+        help="Optional GenerationEvidenceSetV1 JSON path",
+    )
+    eval_generation.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Optional GenerationSemanticEvalResultV1 JSON path",
+    )
+    eval_generation.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit offline-rag-generation-semantic-eval-result-v1 JSON",
+    )
+    eval_generation.set_defaults(func=cmd_eval_generation)
     eval_retrieve = eval_sub.add_parser(
         "retrieve",
         help="Run dense or lexical retrieval evaluation",

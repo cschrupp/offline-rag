@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -36,6 +37,7 @@ from offline_rag.generation.protocol import Generator, GeneratorRequest
 from offline_rag.generation.schema import parse_grounded_answer_v1
 from offline_rag.generation.status import (
     describe_generation_status,
+    generation_provider_status,
     generation_status_for_corpus,
 )
 from offline_rag.ingestion.discovery import validate_corpus_name
@@ -103,7 +105,27 @@ class GroundedGenerationExecutor:
         if self._owned_generator and hasattr(self._generator, "close"):
             self._generator.close()  # type: ignore[union-attr]
 
-    def require_ready(self, corpus_name: str) -> None:
+    def require_ready(self, corpus_name: str, *, provider_only: bool = False) -> None:
+        if provider_only:
+            status = generation_provider_status(self.settings)
+            if status == "READY":
+                return
+            details = describe_generation_status(self.settings, corpus_name)
+            # Prefer provider-focused reasons when context is irrelevant.
+            from offline_rag.generation.status import (
+                describe_generation_provider_status,
+            )
+
+            provider = describe_generation_provider_status(self.settings)
+            reasons = provider.get("reasons") or details.get("reasons") or []
+            reason_text = (
+                "; ".join(str(item) for item in reasons) if reasons else "unknown"
+            )
+            raise GroundedGenerationError(
+                "Generation provider unavailable.\n"
+                f"Provider status: {provider.get('status')}\n"
+                f"Reasons:         {reason_text}"
+            )
         status = generation_status_for_corpus(self.settings, corpus_name)
         if status == "READY":
             return
@@ -125,12 +147,14 @@ class GroundedGenerationExecutor:
         evidence_units: list[EvidenceUnit],
         context_provenance: GenerationContextProvenance | None = None,
         check_ready: bool = True,
+        provider_only_ready: bool = False,
+        source_name_by_document_id: Mapping[str, str] | None = None,
     ) -> GroundedAnswerResult:
         if not query or not query.strip():
             raise GroundedGenerationError("query must be non-empty")
         name = validate_corpus_name(corpus_name)
         if check_ready:
-            self.require_ready(name)
+            self.require_ready(name, provider_only=provider_only_ready)
 
         gen = self.settings.generation
         if not gen.enabled:
@@ -142,6 +166,11 @@ class GroundedGenerationExecutor:
         total_t0 = time.perf_counter()
         query_text = query.strip()
         units = list(evidence_units)
+        frozen_sources = (
+            dict(source_name_by_document_id)
+            if source_name_by_document_id is not None
+            else None
+        )
 
         context_ms = int(provenance.context_latency_ms)
 
@@ -161,6 +190,7 @@ class GroundedGenerationExecutor:
                 query=query_text,
                 corpus_name=name,
                 evidence_units=units,
+                source_name_by_document_id=frozen_sources,
             )
         except PromptProvenanceUnavailable as exc:
             prompt_ms = int((time.perf_counter() - prompt_t0) * 1000)
@@ -428,8 +458,12 @@ class GroundedGenerationExecutor:
         *,
         corpus_name: str,
         evidence_units: list[EvidenceUnit],
+        source_name_by_document_id: Mapping[str, str] | None = None,
     ) -> list[PromptEvidence]:
-        source_names = self._load_source_name_by_document_id(corpus_name)
+        if source_name_by_document_id is not None:
+            source_names = dict(source_name_by_document_id)
+        else:
+            source_names = self._load_source_name_by_document_id(corpus_name)
         titles = self._resolve_document_titles(
             evidence_units=evidence_units,
             source_name_by_document_id=source_names,
@@ -452,6 +486,7 @@ class GroundedGenerationExecutor:
         query: str,
         corpus_name: str,
         evidence_units: list[EvidenceUnit],
+        source_name_by_document_id: Mapping[str, str] | None = None,
     ) -> GeneratorRequest:
         gen = self.settings.generation
         contract = self._prompt_contract()
@@ -467,6 +502,7 @@ class GroundedGenerationExecutor:
             prompt_evidence = self._adapt_prompt_evidence(
                 corpus_name=corpus_name,
                 evidence_units=evidence_units,
+                source_name_by_document_id=source_name_by_document_id,
             )
             return build_prompt_grounded_provenance_v2(
                 query=query,
