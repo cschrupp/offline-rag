@@ -17,9 +17,34 @@ GENERATION_SEMANTIC_EVAL_COMPARISON_V1 = (
 )
 GENERATION_SEMANTIC_DETERMINISTIC_V1 = "generation-semantic-deterministic-v1"
 GENERATION_COHORT_MAP_V1 = "offline-rag-generation-cohort-map-v1"
+GENERATION_SEMANTIC_METRICS_V1 = "generation-semantic-metrics-v1"
 
 LabelCohort = Literal["human_reviewed", "assistant_only"]
 CohortKey = Literal["full", "human_reviewed", "assistant_only"]
+JudgeStatus = Literal[
+    "disabled",
+    "not_applicable",
+    "succeeded",
+    "judge_unavailable",
+    "judge_failed",
+]
+JudgeFailureReason = Literal[
+    "timeout",
+    "transport_error",
+    "http_error",
+    "empty_response",
+    "invalid_json",
+    "schema_invalid",
+    "redirect_not_allowed",
+    "authentication_error",
+    "prompt_build_error",
+    "provider_error",
+]
+AnswerCorrectness = Literal["fully_correct", "partially_correct", "incorrect"]
+Faithfulness = Literal["fully_supported", "partially_supported", "unsupported"]
+Completeness = Literal["complete", "partial", "incomplete"]
+CitationCoverage = Literal["complete", "partial", "unsupported"]
+CitationUsefulness = Literal["all_useful", "some_irrelevant", "mostly_irrelevant"]
 
 
 class GoldEvidenceJudgmentV1(BaseModel):
@@ -165,6 +190,182 @@ class GenerationDeterministicAggregatesV1(BaseModel):
     cohorts: dict[str, GenerationCohortAggregateV1] = Field(default_factory=dict)
 
 
+class GenerationSemanticJudgeCaseResultV1(BaseModel):
+    """Per-case Layer-2 judge outcome (null fields unless succeeded)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    judge_status: JudgeStatus
+    judge_failure_reason: JudgeFailureReason | None = None
+    answer_correctness: AnswerCorrectness | None = None
+    faithfulness: Faithfulness | None = None
+    completeness: Completeness | None = None
+    citation_coverage: CitationCoverage | None = None
+    citation_usefulness: CitationUsefulness | None = None
+    unsupported_claims: list[str] = Field(default_factory=list)
+    missing_key_points: list[str] = Field(default_factory=list)
+    irrelevant_citation_ids: list[str] = Field(default_factory=list)
+    rationale: str | None = None
+    judge_latency_ms: NonNegativeInt | None = None
+
+    @model_validator(mode="after")
+    def _semantic_only_when_succeeded(
+        self,
+    ) -> GenerationSemanticJudgeCaseResultV1:
+        semantic_set = any(
+            value is not None
+            for value in (
+                self.answer_correctness,
+                self.faithfulness,
+                self.completeness,
+                self.citation_coverage,
+                self.citation_usefulness,
+                self.rationale,
+            )
+        ) or bool(
+            self.unsupported_claims
+            or self.missing_key_points
+            or self.irrelevant_citation_ids
+        )
+        if self.judge_status == "succeeded":
+            if self.judge_failure_reason is not None:
+                raise ValueError("succeeded judge_result cannot have failure_reason")
+            required = (
+                self.answer_correctness,
+                self.faithfulness,
+                self.completeness,
+                self.citation_coverage,
+                self.citation_usefulness,
+                self.rationale,
+            )
+            if any(item is None for item in required):
+                raise ValueError("succeeded judge_result requires all rubric fields")
+            return self
+        if semantic_set:
+            raise ValueError(
+                "semantic judge fields must be null/empty unless judge_status=succeeded"
+            )
+        if self.judge_status == "judge_failed" and self.judge_failure_reason is None:
+            raise ValueError("judge_failed requires judge_failure_reason")
+        return self
+
+
+class GenerationSemanticJudgeProvenanceV1(BaseModel):
+    """Typed judge provenance for offline-rag-generation-semantic-eval-result-v1."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    judge_requested: bool = False
+    judge_available: bool = False
+    judge_config_hash: NonEmptyStr | None = None
+    provider: NonEmptyStr | None = None
+    normalized_endpoint: NonEmptyStr | None = None
+    model: str | None = None
+    adapter_contract: NonEmptyStr | None = None
+    prompt_contract: NonEmptyStr | None = None
+    output_contract: NonEmptyStr | None = None
+    reasoning_contract: NonEmptyStr | None = None
+    network_policy: NonEmptyStr | None = None
+    same_model_self_judge: bool | None = None
+    same_endpoint_as_generator: bool | None = None
+    preflight_status: NonEmptyStr | None = None
+    preflight_reason: str | None = None
+    preflight_kind: str | None = None
+
+
+class GenerationSemanticDimensionCountsV1(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    counts: dict[str, NonNegativeInt] = Field(default_factory=dict)
+
+
+class GenerationSemanticCohortAggregateV1(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    cohort: CohortKey
+    case_count: NonNegativeInt = 0
+    answered_count: NonNegativeInt = 0
+    eligible_answered_cases: NonNegativeInt = 0
+    judge_succeeded: NonNegativeInt = 0
+    judge_failed: NonNegativeInt = 0
+    judge_unavailable: NonNegativeInt = 0
+    answer_correctness: GenerationSemanticDimensionCountsV1 = Field(
+        default_factory=GenerationSemanticDimensionCountsV1
+    )
+    faithfulness: GenerationSemanticDimensionCountsV1 = Field(
+        default_factory=GenerationSemanticDimensionCountsV1
+    )
+    completeness: GenerationSemanticDimensionCountsV1 = Field(
+        default_factory=GenerationSemanticDimensionCountsV1
+    )
+    citation_coverage: GenerationSemanticDimensionCountsV1 = Field(
+        default_factory=GenerationSemanticDimensionCountsV1
+    )
+    citation_usefulness: GenerationSemanticDimensionCountsV1 = Field(
+        default_factory=GenerationSemanticDimensionCountsV1
+    )
+    fully_correct_rate: GenerationMetricValueV1 = Field(
+        default_factory=GenerationMetricValueV1
+    )
+    fully_supported_rate: GenerationMetricValueV1 = Field(
+        default_factory=GenerationMetricValueV1
+    )
+    complete_answer_rate: GenerationMetricValueV1 = Field(
+        default_factory=GenerationMetricValueV1
+    )
+    complete_citation_coverage_rate: GenerationMetricValueV1 = Field(
+        default_factory=GenerationMetricValueV1
+    )
+    all_citations_useful_rate: GenerationMetricValueV1 = Field(
+        default_factory=GenerationMetricValueV1
+    )
+
+
+class GenerationSemanticAggregatesV1(BaseModel):
+    """Layer-2 semantic aggregates over answered + successful judgments."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    metric_contract: NonEmptyStr = GENERATION_SEMANTIC_METRICS_V1
+    eligible_answered_cases: NonNegativeInt = 0
+    judge_succeeded: NonNegativeInt = 0
+    judge_failed: NonNegativeInt = 0
+    judge_unavailable: NonNegativeInt = 0
+    answer_correctness: GenerationSemanticDimensionCountsV1 = Field(
+        default_factory=GenerationSemanticDimensionCountsV1
+    )
+    faithfulness: GenerationSemanticDimensionCountsV1 = Field(
+        default_factory=GenerationSemanticDimensionCountsV1
+    )
+    completeness: GenerationSemanticDimensionCountsV1 = Field(
+        default_factory=GenerationSemanticDimensionCountsV1
+    )
+    citation_coverage: GenerationSemanticDimensionCountsV1 = Field(
+        default_factory=GenerationSemanticDimensionCountsV1
+    )
+    citation_usefulness: GenerationSemanticDimensionCountsV1 = Field(
+        default_factory=GenerationSemanticDimensionCountsV1
+    )
+    fully_correct_rate: GenerationMetricValueV1 = Field(
+        default_factory=GenerationMetricValueV1
+    )
+    fully_supported_rate: GenerationMetricValueV1 = Field(
+        default_factory=GenerationMetricValueV1
+    )
+    complete_answer_rate: GenerationMetricValueV1 = Field(
+        default_factory=GenerationMetricValueV1
+    )
+    complete_citation_coverage_rate: GenerationMetricValueV1 = Field(
+        default_factory=GenerationMetricValueV1
+    )
+    all_citations_useful_rate: GenerationMetricValueV1 = Field(
+        default_factory=GenerationMetricValueV1
+    )
+    cohorts: dict[str, GenerationSemanticCohortAggregateV1] = Field(
+        default_factory=dict
+    )
+
+
 class GenerationSemanticEvalCaseResultV1(BaseModel):
     """Per-case semantic-eval row with Layer-1 deterministic diagnostics."""
 
@@ -191,7 +392,7 @@ class GenerationSemanticEvalCaseResultV1(BaseModel):
     deterministic_metrics: GenerationDeterministicCaseMetricsV1 = Field(
         default_factory=GenerationDeterministicCaseMetricsV1
     )
-    judge_result: dict[str, Any] | None = None
+    judge_result: GenerationSemanticJudgeCaseResultV1 | None = None
 
     latency_ms: NonNegativeInt | None = None
     generation_latency_ms: NonNegativeInt | None = None
@@ -219,7 +420,7 @@ class GenerationSemanticEvalResultV1(BaseModel):
     generation_semantic_provenance: dict[str, Any] = Field(default_factory=dict)
 
     judge_enabled: bool = False
-    judge_provenance: dict[str, Any] | None = None
+    judge_provenance: GenerationSemanticJudgeProvenanceV1 | None = None
 
     population: GenerationSemanticPopulationV1 = Field(
         default_factory=GenerationSemanticPopulationV1
@@ -227,7 +428,7 @@ class GenerationSemanticEvalResultV1(BaseModel):
     deterministic_aggregates: GenerationDeterministicAggregatesV1 = Field(
         default_factory=GenerationDeterministicAggregatesV1
     )
-    semantic_aggregates: dict[str, Any] | None = None
+    semantic_aggregates: GenerationSemanticAggregatesV1 | None = None
     abstention_aggregates: dict[str, Any] | None = None
 
     cases: list[GenerationSemanticEvalCaseResultV1] = Field(default_factory=list)

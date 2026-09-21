@@ -54,7 +54,9 @@ FIRST_ANCHOR_OWNS_V1 = "first-anchor-owns-v1"
 SUPPRESS_CONTAINED_CHILDREN_V1 = "suppress-contained-children-v1"
 NEIGHBOR_WINDOW_V1 = "neighbor-window-v1"
 PLAIN_EVIDENCE_V1 = "plain-evidence-v1"
-CONTEXT_STRATEGIES = frozenset({"child-only", "parent", "neighbors", "parent+neighbors"})
+CONTEXT_STRATEGIES = frozenset(
+    {"child-only", "parent", "neighbors", "parent+neighbors"}
+)
 OPENAI_COMPATIBLE_GENERATOR_V1 = "openai-compatible-generator-v1"
 PROMPT_GROUNDED_V1 = "prompt-grounded-v1"
 PROMPT_GROUNDED_PROVENANCE_V2 = "prompt-grounded-provenance-v2"
@@ -106,7 +108,9 @@ def chunk_id_from_parts(
         "text": normalized_text,
         "chunker_version": chunker_version or "",
     }
-    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    encoded = json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    )
     return f"chunk_{_sha256_hex(encoded.encode('utf-8'))}"
 
 
@@ -127,7 +131,9 @@ def block_id_from_parts(
         "content_type": content_type,
         "text": text.strip("\n"),
     }
-    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    encoded = json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    )
     return f"block_{_sha256_hex(encoded.encode('utf-8'))}"
 
 
@@ -137,7 +143,9 @@ def canonical_config_hash(data: Mapping[str, Any]) -> str:
     Key ordering is canonicalized so semantically identical mappings hash the
     same regardless of insertion order.
     """
-    encoded = json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=str)
+    encoded = json.dumps(
+        data, sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=str
+    )
     return f"cfg_{_sha256_hex(encoded.encode('utf-8'))}"
 
 
@@ -176,7 +184,9 @@ def parsed_artifact_id(
         "parse_config_hash": parse_cfg_hash,
         "parser_contract_version": parser_contract_version,
     }
-    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    encoded = json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    )
     return f"parsed_{_sha256_hex(encoded.encode('utf-8'))}"
 
 
@@ -202,7 +212,11 @@ def corpus_id_from_entries(
             }
             for item in document_identities
         ),
-        key=lambda row: (row["document_id"], row["source_content_hash"], row["parsed_artifact_id"]),
+        key=lambda row: (
+            row["document_id"],
+            row["source_content_hash"],
+            row["parsed_artifact_id"],
+        ),
     )
     payload = {
         "schema_version": schema_version,
@@ -210,7 +224,9 @@ def corpus_id_from_entries(
         "documents": normalized,
     }
     digest = _sha256_hex(
-        json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        json.dumps(
+            payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        ).encode("utf-8")
     )
     return f"corpus_{digest}"
 
@@ -235,7 +251,9 @@ def chunk_artifact_id(
         "chunk_config_hash": chunk_cfg_hash,
         "chunker_version": chunker_version,
     }
-    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    encoded = json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    )
     return f"chunkartifact_{_sha256_hex(encoded.encode('utf-8'))}"
 
 
@@ -255,7 +273,9 @@ def parent_chunk_id_from_parts(
         "text": text.strip("\n"),
         "kind": "parent",
     }
-    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    encoded = json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    )
     return f"parent_{_sha256_hex(encoded.encode('utf-8'))}"
 
 
@@ -277,7 +297,9 @@ def child_chunk_id_from_parts(
         "text": text.strip("\n"),
         "kind": "child",
     }
-    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    encoded = json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    )
     return f"chunk_{_sha256_hex(encoded.encode('utf-8'))}"
 
 
@@ -306,7 +328,9 @@ def chunk_set_id_from_entries(
         "documents": normalized,
     }
     digest = _sha256_hex(
-        json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        json.dumps(
+            payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        ).encode("utf-8")
     )
     return f"chunkset_{digest}"
 
@@ -341,7 +365,9 @@ def embedding_id_from_parts(
         "embedding_text_hash": embedding_text_digest,
         "embedding_config_hash": emb_cfg_hash,
     }
-    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    encoded = json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    )
     return f"emb_{_sha256_hex(encoded.encode('utf-8'))}"
 
 
@@ -356,7 +382,9 @@ def dense_index_id(
         "index_config_hash": idx_cfg_hash,
         "index_contract_version": index_contract_version,
     }
-    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    encoded = json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    )
     return f"denseindex_{_sha256_hex(encoded.encode('utf-8'))}"
 
 
@@ -375,7 +403,9 @@ def dataset_id_from_bytes(content: bytes) -> str:
 
 def gold_dataset_id_from_payload(payload: Mapping[str, Any]) -> str:
     """Return ``gold_<sha256>`` for a GoldDataset v1 canonical semantic payload."""
-    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    encoded = json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    )
     return f"gold_{_sha256_hex(encoded.encode('utf-8'))}"
 
 
@@ -400,7 +430,9 @@ def lexical_index_id(
         "lexical_config_hash": lex_cfg_hash,
         "backend_contract": backend_contract,
     }
-    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    encoded = json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    )
     return f"lexical_{_sha256_hex(encoded.encode('utf-8'))}"
 
 
@@ -429,15 +461,24 @@ def authoring_config_hash(data: Mapping[str, Any]) -> str:
     return canonical_config_hash(data).replace("cfg_", "authorcfg_", 1)
 
 
+def judge_config_hash(data: Mapping[str, Any]) -> str:
+    """Return ``judgecfg_<sha256>`` for generation-semantic judge semantics."""
+    return canonical_config_hash(data).replace("cfg_", "judgecfg_", 1)
+
+
 def evidence_unit_id_from_payload(payload: Mapping[str, Any]) -> str:
     """Return ``ev_<sha256>`` for a deterministic evidence representation identity."""
-    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    encoded = json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    )
     return f"ev_{_sha256_hex(encoded.encode('utf-8'))}"
 
 
 def generation_evidence_set_id_from_payload(payload: Mapping[str, Any]) -> str:
     """Return ``genevidence_<sha256>`` for a generation evidence-set semantic payload."""
-    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    encoded = json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    )
     return f"genevidence_{_sha256_hex(encoded.encode('utf-8'))}"
 
 

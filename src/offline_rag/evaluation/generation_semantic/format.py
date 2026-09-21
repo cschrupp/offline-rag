@@ -60,6 +60,51 @@ def format_generation_semantic_result_human(
             f"  {key}: cases={cohort.case_count} "
             f"answer_rate={_fmt_rate(cohort.answer_rate)}"
         )
+
+    if result.judge_enabled:
+        lines.append("")
+        lines.append("Semantic judge (Layer 2)")
+        prov = result.judge_provenance
+        if prov is not None:
+            lines.append(
+                f"  requested:            {prov.judge_requested} "
+                f"available={prov.judge_available}"
+            )
+            if prov.same_model_self_judge:
+                lines.append(
+                    "  limitation:           same_model_self_judge=true "
+                    "(not independent evaluation)"
+                )
+            if not prov.judge_available:
+                lines.append(
+                    "  coverage:             INCOMPLETE — judge unavailable; "
+                    "no semantic scores"
+                )
+                if prov.preflight_reason:
+                    lines.append(f"  preflight:            {prov.preflight_reason}")
+        sem = result.semantic_aggregates
+        if sem is not None:
+            lines.append(f"  eligible answered:    {sem.eligible_answered_cases}")
+            lines.append(f"  judge succeeded:      {sem.judge_succeeded}")
+            lines.append(f"  judge failed:         {sem.judge_failed}")
+            lines.append(f"  judge unavailable:    {sem.judge_unavailable}")
+            lines.append(
+                f"  fully correct rate:   {_fmt_metric(sem.fully_correct_rate)}"
+            )
+            lines.append(
+                f"  fully supported rate: {_fmt_metric(sem.fully_supported_rate)}"
+            )
+            lines.append(
+                f"  complete answer rate: {_fmt_metric(sem.complete_answer_rate)}"
+            )
+            lines.append(
+                "  citation coverage:    "
+                f"{_fmt_metric(sem.complete_citation_coverage_rate)}"
+            )
+            lines.append(
+                f"  all citations useful: {_fmt_metric(sem.all_citations_useful_rate)}"
+            )
+
     lines.append("")
     lines.append(f"Latency mean: {det.latency.mean_ms:.1f} ms")
 

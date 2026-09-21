@@ -1,27 +1,37 @@
 """Authoring endpoint privacy authorization (Slice 9A).
 
 Fail closed before any transport. Dual gate: allowlist AND network_policy.
+Network destination checks delegate to ``offline_rag.core.network_policy``.
 """
 
 from __future__ import annotations
 
-import ipaddress
-import socket
 from dataclasses import dataclass
 from enum import StrEnum
-from urllib.parse import urlparse, urlunparse
 
 from offline_rag.config.models import AppSettings, AuthoringSettings
+from offline_rag.core.network_policy import (
+    NetworkPolicyError,
+    NetworkPolicyReason,
+    http_follow_redirects_allowed,
+    normalize_openai_compatible_endpoint,
+)
+from offline_rag.core.network_policy import (
+    destination_satisfies_policy as _destination_satisfies_policy,
+)
+from offline_rag.core.network_policy import (
+    endpoint_in_allowlist as _endpoint_in_allowlist,
+)
 
 
 class AuthoringAuthReason(StrEnum):
     AUTHORIZED = "authorized"
     ENDPOINT_NOT_APPROVED = "endpoint_not_approved"
-    NETWORK_POLICY_VIOLATION = "network_policy_violation"
-    UNSUPPORTED_ENDPOINT_SCHEME = "unsupported_endpoint_scheme"
-    HOSTNAME_RESOLUTION_FAILED = "hostname_resolution_failed"
-    PUBLIC_ADDRESS_NOT_ALLOWED = "public_address_not_allowed"
-    INVALID_ENDPOINT = "invalid_endpoint"
+    NETWORK_POLICY_VIOLATION = NetworkPolicyReason.NETWORK_POLICY_VIOLATION.value
+    UNSUPPORTED_ENDPOINT_SCHEME = NetworkPolicyReason.UNSUPPORTED_ENDPOINT_SCHEME.value
+    HOSTNAME_RESOLUTION_FAILED = NetworkPolicyReason.HOSTNAME_RESOLUTION_FAILED.value
+    PUBLIC_ADDRESS_NOT_ALLOWED = NetworkPolicyReason.PUBLIC_ADDRESS_NOT_ALLOWED.value
+    INVALID_ENDPOINT = NetworkPolicyReason.INVALID_ENDPOINT.value
     REDIRECT_NOT_ALLOWED = "redirect_not_allowed"
 
 
@@ -40,101 +50,17 @@ class AuthorizedEndpoint:
 
 def normalize_authoring_endpoint(base_url: str) -> str:
     """Normalize OpenAI-compatible base URL for allowlist comparison."""
-    parsed = urlparse(base_url.strip())
-    if parsed.scheme not in {"http", "https"}:
+    try:
+        return normalize_openai_compatible_endpoint(base_url)
+    except NetworkPolicyError as exc:
         raise AuthoringPrivacyError(
-            f"unsupported endpoint scheme: {parsed.scheme}",
-            reason=AuthoringAuthReason.UNSUPPORTED_ENDPOINT_SCHEME,
-        )
-    if not parsed.netloc:
-        raise AuthoringPrivacyError(
-            "endpoint missing host",
-            reason=AuthoringAuthReason.INVALID_ENDPOINT,
-        )
-    path = parsed.path.rstrip("/")
-    if path in {"", "/"}:
-        path = "/v1"
-    elif path.endswith("/v1/"):
-        path = path.rstrip("/")
-    elif not path.endswith("/v1"):
-        path = f"{path}/v1" if path else "/v1"
-    return urlunparse((parsed.scheme, parsed.netloc.lower(), path, "", "", ""))
+            str(exc),
+            reason=AuthoringAuthReason(exc.reason.value),
+        ) from exc
 
 
 def endpoint_in_allowlist(base_url: str, approved: list[str]) -> bool:
-    try:
-        selected = normalize_authoring_endpoint(base_url)
-    except AuthoringPrivacyError:
-        return False
-    approved_norm: list[str] = []
-    for item in approved:
-        try:
-            approved_norm.append(normalize_authoring_endpoint(item))
-        except AuthoringPrivacyError:
-            continue
-    return selected in approved_norm
-
-
-def _host_from_netloc(netloc: str) -> str:
-    if netloc.startswith("["):
-        end = netloc.find("]")
-        if end == -1:
-            raise AuthoringPrivacyError(
-                "invalid IPv6 endpoint host",
-                reason=AuthoringAuthReason.INVALID_ENDPOINT,
-            )
-        return netloc[1:end]
-    if ":" in netloc:
-        return netloc.rsplit(":", 1)[0]
-    return netloc
-
-
-def _parse_ip(host: str) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
-    try:
-        return ipaddress.ip_address(host)
-    except ValueError:
-        return None
-
-
-def _is_loopback_ip(addr: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
-    return bool(addr.is_loopback)
-
-
-def _is_private_network_ip(addr: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
-    if addr.is_loopback:
-        return True
-    if addr.version == 4:
-        return bool(addr.is_private)
-    # IPv6 unique-local fc00::/7; exclude link-local unless explicitly required.
-    return bool(addr.is_private)
-
-
-def _resolve_host_addresses(host: str) -> list[ipaddress.IPv4Address | ipaddress.IPv6Address]:
-    try:
-        infos = socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
-    except socket.gaierror as exc:
-        raise AuthoringPrivacyError(
-            f"hostname resolution failed: {host}",
-            reason=AuthoringAuthReason.HOSTNAME_RESOLUTION_FAILED,
-        ) from exc
-    addresses: list[ipaddress.IPv4Address | ipaddress.IPv6Address] = []
-    seen: set[str] = set()
-    for info in infos:
-        sockaddr = info[4]
-        ip_text = sockaddr[0]
-        if ip_text in seen:
-            continue
-        seen.add(ip_text)
-        parsed = _parse_ip(ip_text)
-        if parsed is None:
-            continue
-        addresses.append(parsed)
-    if not addresses:
-        raise AuthoringPrivacyError(
-            f"hostname resolution failed: {host}",
-            reason=AuthoringAuthReason.HOSTNAME_RESOLUTION_FAILED,
-        )
-    return addresses
+    return _endpoint_in_allowlist(base_url, approved)
 
 
 def destination_satisfies_policy(
@@ -143,41 +69,10 @@ def destination_satisfies_policy(
     network_policy: str,
 ) -> AuthoringAuthReason | None:
     """Return None when OK, otherwise a rejection reason."""
-    try:
-        normalized = normalize_authoring_endpoint(base_url)
-    except AuthoringPrivacyError as exc:
-        return exc.reason
-
-    parsed = urlparse(normalized)
-    host = _host_from_netloc(parsed.netloc)
-    host_lower = host.lower()
-
-    if network_policy == "localhost_only":
-        if host_lower == "localhost":
-            return None
-        addr = _parse_ip(host)
-        if addr is not None and _is_loopback_ip(addr):
-            return None
-        # Do not accept arbitrary hostnames that happen to resolve to loopback.
-        return AuthoringAuthReason.NETWORK_POLICY_VIOLATION
-
-    if network_policy == "private_network":
-        addr = _parse_ip(host)
-        if addr is not None:
-            if _is_private_network_ip(addr):
-                return None
-            return AuthoringAuthReason.PUBLIC_ADDRESS_NOT_ALLOWED
-        if host_lower == "localhost":
-            return None
-        try:
-            resolved = _resolve_host_addresses(host)
-        except AuthoringPrivacyError as exc:
-            return exc.reason
-        if any(not _is_private_network_ip(item) for item in resolved):
-            return AuthoringAuthReason.PUBLIC_ADDRESS_NOT_ALLOWED
+    reason = _destination_satisfies_policy(base_url, network_policy=network_policy)
+    if reason is None:
         return None
-
-    return AuthoringAuthReason.NETWORK_POLICY_VIOLATION
+    return AuthoringAuthReason(reason.value)
 
 
 def authorize_authoring_endpoint(
@@ -185,10 +80,7 @@ def authorize_authoring_endpoint(
 ) -> AuthorizedEndpoint:
     """Authorize the configured authoring endpoint under allowlist ∧ policy."""
     auth = settings.authoring if isinstance(settings, AppSettings) else settings
-    try:
-        normalized = normalize_authoring_endpoint(auth.base_url)
-    except AuthoringPrivacyError:
-        raise
+    normalized = normalize_authoring_endpoint(auth.base_url)
 
     if not endpoint_in_allowlist(auth.base_url, list(auth.approved_endpoints)):
         raise AuthoringPrivacyError(
@@ -213,4 +105,4 @@ def authorize_authoring_endpoint(
 
 def authoring_follow_redirects() -> bool:
     """Authoring HTTP clients must not follow redirects (Slice 9A)."""
-    return False
+    return http_follow_redirects_allowed()

@@ -1432,6 +1432,7 @@ def cmd_eval_generation(args: argparse.Namespace) -> int:
     log_event(logger, 20, "eval generation started", event="eval.generation.start")
 
     evidence_mode = getattr(args, "evidence_mode", "gold") or "gold"
+    judge_requested = bool(getattr(args, "judge", False))
     try:
         report = run_generation_semantic_evaluation(
             settings,
@@ -1441,6 +1442,7 @@ def cmd_eval_generation(args: argparse.Namespace) -> int:
             evidence_mode=evidence_mode,
             evidence_output=Path(args.evidence_output) if args.evidence_output else None,
             output=Path(args.output) if args.output else None,
+            judge_requested=judge_requested,
         )
     except GenerationSemanticEvaluationError as exc:
         print(f"eval generation: {exc}", file=sys.stderr)
@@ -2400,6 +2402,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--json",
         action="store_true",
         help="Emit offline-rag-generation-semantic-eval-result-v1 JSON",
+    )
+    eval_generation.add_argument(
+        "--judge",
+        action="store_true",
+        help=(
+            "Enable Layer-2 local semantic judge "
+            "(requires evaluation.generation_semantic_judge.enabled)"
+        ),
     )
     eval_generation.set_defaults(func=cmd_eval_generation)
     eval_retrieve = eval_sub.add_parser(

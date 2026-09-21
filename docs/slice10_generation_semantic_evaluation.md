@@ -1,8 +1,8 @@
 # Slice 10 — Generation & Citation Semantic Evaluation
 
-**Status:** **10A IMPLEMENTED / VERIFIED**; **10B IMPLEMENTED / VERIFIED**.
-**10C NEXT.** **10D–10E:** not started.
-**Baseline checkpoint (10A):** `7ab91a61b92ee00ef81d5a01ef54915ab7a83c49`
+**Status:** **10A–10C IMPLEMENTED / VERIFIED**.
+**10D NEXT.** **10E:** not started.
+**Baseline checkpoint (10B):** `5a68c05901c79d63232a70f36d598e42b13dd5d9`
 **Authoritative for:** Milestone 5 / Slice 10 (sub-slices 10A–10E)
 
 This document is the Slice 10 design/contract authority. Runtime implementation
@@ -627,8 +627,10 @@ offline-rag eval generation \
     [--json]
 ```
 
-**10B status:** CLI surface implemented. Compare / `--judge` / negatives remain
-deferred to 10C–10E.
+**10B status:** CLI surface implemented.
+**10C status:** `--judge` Layer-2 local semantic judge implemented
+(`evaluation.generation_semantic_judge`, arm-blind `generation-semantic-judge-v1`).
+Compare / negatives remain deferred to 10D–10E.
 
 ---
 
@@ -638,8 +640,8 @@ deferred to 10C–10E.
 |---|---|---|
 | **10A** | Evidence-set schema; `gold-evidence-v1` builder; content-addressed identity; fixed-evidence execution boundary (`GroundedGenerationExecutor`); result/comparison contracts; tests | **IMPLEMENTED / VERIFIED** |
 | **10B** | Frozen provenance metadata in `genevidence_` identity; generator-only readiness; `generation-semantic-deterministic-v1`; typed aggregates; evidence/result persistence; cohort map; `offline-rag eval generation` | **IMPLEMENTED / VERIFIED** |
-| **10C** | `generation-semantic-judge-v1`; structured output; offline/private preflight; dimensions; persistence; failure semantics | **NEXT** |
-| **10D** | `human-grade0-hard-negative-v1`; deterministic selection; abstention metrics; human-16 only initially | Assistant-only negatives as primary |
+| **10C** | Independent `evaluation.generation_semantic_judge` (OD-10-4); `judgecfg_`; `generation-semantic-judge-v1` / output-v1; arm-blind judging; typed semantic aggregates; `--judge` | **IMPLEMENTED / VERIFIED** |
+| **10D** | `human-grade0-hard-negative-v1`; deterministic selection; abstention metrics; human-16 only initially | **NEXT** |
 | **10E** | Controlled v1 vs provenance-v2 A/B; full-22 + human-16 sensitivity; artifact-only compare; Slice 10 development report; **hard-stop** | Auto-promote provenance-v2 |
 
 Hard-stop after 10E report. Do not automatically promote
@@ -903,7 +905,7 @@ Never promote defaults solely from this fixture.
 | OD-10-1 | Exact Python class/module name for shared fixed-evidence executor | **RESOLVED** — `GroundedGenerationExecutor` in `src/offline_rag/generation/executor.py` |
 | OD-10-2 | Exact on-disk layout under `evaluation/` vs `generation/` for Slice 10 modules | **RESOLVED** — runtime executor under `generation/`; Slice 10 contracts/builders under `evaluation/generation_semantic/` |
 | OD-10-3 | Whether `pipeline-context` snapshot schema is a new artifact or reuse of durable `HybridRerankContextResult` serialization | **OPEN** — deferred until secondary mode is scheduled; not needed for 10A |
-| OD-10-4 | Judge allowlist: share `generation.approved_*` vs separate `eval_judge.*` config block | **OPEN** — resolve in 10C; must preserve offline/private policy either way |
+| OD-10-4 | Judge allowlist: share `generation.approved_*` vs separate `eval_judge.*` config block | **RESOLVED** — independent `evaluation.generation_semantic_judge` with its own approved endpoints/models, network_policy, and `judgecfg_` identity; no generation/authoring inheritance |
 
 No OPEN DECISION on: evidence-grounded definition; gold-evidence primary mode;
 fixed-evidence A/B isolation; N=5 hard-neg rule feasibility on frozen fixture;
@@ -913,10 +915,10 @@ Layer 1/2/3 hierarchy; non-promotion of provenance-v2 from this fixture.
 
 ## 27. Implementation status notes
 
-- **10A / 10B:** implemented and verified in-tree (contracts, fixed evidence,
-  frozen provenance metadata, generator-only readiness, Layer-1 deterministic
-  metrics, persistence, `offline-rag eval generation`).
-- **10C–10E:** not started.
-- No live ICS fixture evaluation is authorized by 10B.
+- **10A / 10B / 10C:** implemented and verified in-tree (fixed evidence, Layer-1
+  deterministic metrics, independent Layer-2 judge with arm-blind prompt,
+  `judgecfg_`, `--judge`).
+- **10D–10E:** not started.
+- No live ICS fixture evaluation is authorized by 10C.
 
-**HARD STOP before 10C implementation.**
+**HARD STOP before 10D implementation.**

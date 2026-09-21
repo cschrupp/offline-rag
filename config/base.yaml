@@ -167,6 +167,23 @@ authoring:
     relevance_prelabel: relevance-prelabel-v1
     artifact: offline-rag-gold-authoring-v1
 
+evaluation:
+  generation_semantic_judge:
+    enabled: false
+    provider: openai_compatible
+    adapter_contract: openai-compatible-generation-semantic-judge-v1
+    base_url: http://127.0.0.1:11434/v1
+    model: null
+    api_key: null
+    network_policy: localhost_only
+    approved_endpoints: []
+    approved_models: []
+    temperature: 0.0
+    max_output_tokens: 1200
+    timeout_seconds: 120
+    prompt_contract: generation-semantic-judge-v1
+    output_contract: generation-semantic-judge-output-v1
+
 retrieval_recovery:
   enabled: false
   max_retries: 1
