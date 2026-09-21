@@ -1,12 +1,12 @@
 # Slice 10 — Generation & Citation Semantic Evaluation
 
-**Status:** **10A–10D IMPLEMENTED / VERIFIED**.
-**10E NEXT.**
-**Baseline checkpoint (10C):** `3e423f2e82e792d1e592fe266532010c4fd8d198`
+**Status:** **10A–10E IMPLEMENTED / VERIFIED**. Milestone 5 development
+checkpoint complete. **No prompt promotion.** Publication validation not claimed.
 **Authoritative for:** Milestone 5 / Slice 10 (sub-slices 10A–10E)
 
 This document is the Slice 10 design/contract authority. Runtime implementation
-for 10A–10D is in-tree; 10E remains deferred.
+for 10A–10E is in-tree. Development A/B report:
+[`docs/pilots/slice10e_generation_prompt_ab.md`](pilots/slice10e_generation_prompt_ab.md).
 
 ---
 
@@ -665,8 +665,13 @@ offline-rag eval generation \
 **10C status:** `--judge` Layer-2 local semantic judge implemented
 (`evaluation.generation_semantic_judge`, arm-blind `generation-semantic-judge-v1`).
 **10D status:** `--evidence-mode human-hard-negative` + required `--authoring-run`
-builds `human-grade0-hard-negative-v1` (no live ICS run). `--authoring-run` is
-rejected with `--evidence-mode gold`. Compare / prompt A/B remain deferred to 10E.
+builds `human-grade0-hard-negative-v1`. `--authoring-run` is rejected with
+`--evidence-mode gold`.
+**10E status:** artifact-only `offline-rag eval generation-compare`
+(`offline-rag-generation-semantic-eval-comparison-v1`, `gencompare_` identity);
+controlled v1 vs provenance-v2 measure-once A/B executed; development report at
+[`docs/pilots/slice10e_generation_prompt_ab.md`](pilots/slice10e_generation_prompt_ab.md).
+No prompt promotion.
 
 ---
 
@@ -678,7 +683,7 @@ rejected with `--evidence-mode gold`. Compare / prompt A/B remain deferred to 10
 | **10B** | Frozen provenance metadata in `genevidence_` identity; generator-only readiness; `generation-semantic-deterministic-v1`; typed aggregates; evidence/result persistence; cohort map; `offline-rag eval generation` | **IMPLEMENTED / VERIFIED** |
 | **10C** | Independent `evaluation.generation_semantic_judge` (OD-10-4); `judgecfg_`; `generation-semantic-judge-v1` / output-v1; arm-blind judging; typed semantic aggregates; `--judge` | **IMPLEMENTED / VERIFIED** |
 | **10D** | `human-grade0-hard-negative-v1`; N=5 hybrid-rerank stored-rank selection; Gold↔Silver reconciliation; selection vs presentation order; typed abstention aggregates; human_reviewed-only | **IMPLEMENTED / VERIFIED** |
-| **10E** | Controlled v1 vs provenance-v2 A/B; full-22 + human-16 sensitivity; artifact-only compare; Slice 10 development report; **hard-stop** | Auto-promote provenance-v2 |
+| **10E** | Controlled v1 vs provenance-v2 A/B; full-22 + human-16 sensitivity; artifact-only compare; Slice 10 development report; **hard-stop** | **IMPLEMENTED / VERIFIED** (no auto-promote) |
 
 Hard-stop after 10E report. Do not automatically promote
 `prompt-grounded-provenance-v2`.
@@ -951,12 +956,15 @@ Layer 1/2/3 hierarchy; non-promotion of provenance-v2 from this fixture.
 
 ## 27. Implementation status notes
 
-- **10A / 10B / 10C / 10D:** implemented and verified in-tree (fixed positive
-  evidence, Layer-1 deterministic metrics, independent Layer-2 judge, label-defined
-  hard-negative abstention fixture with typed abstention aggregates).
-- **10E:** not started.
-- No live ICS fixture evaluation is authorized by 10D.
-- The 10D negative fixture is development/regression machinery only — not
-  publication-grade.
+- **10A / 10B / 10C / 10D / 10E:** implemented and verified in-tree (fixed
+  positive evidence, Layer-1 deterministic metrics, independent Layer-2 judge,
+  label-defined hard-negative abstention fixture, artifact-only
+  `generation-compare`, controlled prompt A/B development experiment + report).
+- Development A/B report: [`docs/pilots/slice10e_generation_prompt_ab.md`](pilots/slice10e_generation_prompt_ab.md).
+- `prompt-grounded-provenance-v2` remains an experimental overlay candidate —
+  **not** promoted; `prompt-grounded-v1` remains the control/default.
+- The frozen 22-case / human-16 pilot and hard-negative fixture remain
+  development/regression machinery only — not publication-grade.
+- 9G / formal 9H remain deferred/frozen. Milestone 6 is **not** started by 10E.
 
-**HARD STOP before 10E implementation.**
+**HARD STOP after Slice 10E.** Do not begin Milestone 6 under this slice.

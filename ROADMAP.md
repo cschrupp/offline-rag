@@ -115,8 +115,8 @@ Formal **9H** remains **FROZEN** behind future 9G.
 The 22-case / human-16 9F benchmark remains a **development/regression fixture
 only** (`gold_d3fc157c7b3206f6983abee766e7ce7b939244a7dea04f0be256f3a533a46172`).
 
-**Next operational track:** Milestone **5** / Slice **10** — Generation & Citation
-Semantic Evaluation.
+**Milestone 5 development checkpoint reached** (Slice 10A–10E). Next major
+track: Milestone **6** — Agentic recovery and security (not started).
 
 Canonical **publication** order remains **9G → formal 9H** (not a near-term
 engineering dependency).
@@ -176,23 +176,27 @@ candidate-by-candidate workflow for production gold.
 
 ## Milestone 5 — Generation and citation semantic evaluation
 
-- [ ] generation metrics (Slice 10)
-- [ ] citation semantic metrics (Slice 10)
-- [ ] evidence for or against promoting `prompt-grounded-provenance-v2`
+- [x] generation metrics (Slice 10)
+- [x] citation semantic metrics (Slice 10)
+- [x] evidence for or against promoting `prompt-grounded-provenance-v2`
 - [ ] negative / abstention set expansion (as needed)
 - [ ] optional local judge adapters (secondary; not required architecture)
 
 **Release criterion:** generation and citation quality are measured separately
 from retrieval, with deterministic checks preferred where applicable.
 
-**Status:** Slice **10A–10D IMPLEMENTED / VERIFIED**. Next: Slice **10E**.
+**Status:** Slice **10A–10E IMPLEMENTED / VERIFIED**. Milestone 5 **development
+checkpoint complete**. Publication validation is **not** claimed; 9G / formal
+9H remain deferred/frozen. `prompt-grounded-v1` remains the generation
+control/default — provenance-v2 was **not** promoted.
 Authoritative contract: [`docs/slice10_generation_semantic_evaluation.md`](docs/slice10_generation_semantic_evaluation.md).
+Development A/B report: [`docs/pilots/slice10e_generation_prompt_ab.md`](docs/pilots/slice10e_generation_prompt_ab.md).
 
 - [x] 10A — semantic evaluation contracts & fixed evidence (`GroundedGenerationExecutor`, `gold-evidence-v1`)
 - [x] 10B — deterministic generation/citation metrics + CLI (`offline-rag eval generation`)
 - [x] 10C — local semantic judge (`--judge`, independent `evaluation.generation_semantic_judge`)
 - [x] 10D — human hard-negative abstention fixture (`human-grade0-hard-negative-v1`)
-- [ ] 10E — controlled prompt A/B + development report
+- [x] 10E — controlled prompt A/B + development report (`offline-rag eval generation-compare`)
 
 Slice 10 may use the frozen 9F pilot GoldDataset
 (`gold_d3fc157c7b3206f6983abee766e7ce7b939244a7dea04f0be256f3a533a46172`)
@@ -204,6 +208,9 @@ Publication-grade claims and final promotion decisions remain deferred until
 future **9G → formal 9H**. Results involving `prompt-grounded-provenance-v2`
 on the 22-case fixture are development evidence only — not sole grounds for
 promoting defaults.
+
+**Next operational track:** Milestone **6** — Agentic recovery and security
+(not started by Slice 10E).
 
 
 ---
