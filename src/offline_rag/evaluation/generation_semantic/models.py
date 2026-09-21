@@ -662,23 +662,220 @@ class GenerationSemanticEvalComparisonV1(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     schema_version: NonEmptyStr = GENERATION_SEMANTIC_EVAL_COMPARISON_V1
-    comparison_id: NonEmptyStr | None = None
+    comparison_id: NonEmptyStr
 
     gold_dataset_id: NonEmptyStr
     evidence_set_id: NonEmptyStr
+    evidence_contract: NonEmptyStr
+    expected_behavior: ExpectedBehavior
     semantic_metric_contract: NonEmptyStr
+
+    corpus_id: NonEmptyStr | None = None
+    chunk_set_id: NonEmptyStr | None = None
 
     a_run_id: NonEmptyStr
     b_run_id: NonEmptyStr
-    a_generation_config_hash: NonEmptyStr | None = None
-    b_generation_config_hash: NonEmptyStr | None = None
-    a_prompt_contract: NonEmptyStr | None = None
-    b_prompt_contract: NonEmptyStr | None = None
+    a_generation_config_hash: NonEmptyStr
+    b_generation_config_hash: NonEmptyStr
+    a_prompt_contract: NonEmptyStr
+    b_prompt_contract: NonEmptyStr
+    a_judge_config_hash: NonEmptyStr | None = None
+    b_judge_config_hash: NonEmptyStr | None = None
 
-    compatibility: dict[str, Any] = Field(default_factory=dict)
-    aggregates: dict[str, Any] = Field(default_factory=dict)
-    cases: list[dict[str, Any]] = Field(default_factory=list)
+    compatibility: GenerationCompareCompatibilityV1
+    positive_aggregates: GenerationPositiveCompareAggregatesV1 | None = None
+    negative_aggregates: GenerationNegativeCompareAggregatesV1 | None = None
+    semantic_transitions: GenerationSemanticTransitionSummaryV1 | None = None
+    cases: list[GenerationCompareCaseV1] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class GenerationCompareCompatibilityV1(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    same_gold_dataset_id: bool
+    same_evidence_set_id: bool
+    same_evidence_contract: bool
+    same_expected_behavior: bool
+    same_corpus_id: bool
+    same_chunk_set_id: bool
+    same_case_set: bool
+    same_queries: bool
+    same_cohort_labels: bool
+    same_semantic_metric_contract: bool
+    same_generation_semantics_except_prompt: bool
+    same_judge_contract: bool
+    prompt_pair_accepted: bool
+    a_prompt_contract: NonEmptyStr
+    b_prompt_contract: NonEmptyStr
+
+
+class MetricDeltaV1(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    a: float | None = None
+    b: float | None = None
+    delta: float | None = None
+    a_applicable_count: NonNegativeInt | None = None
+    b_applicable_count: NonNegativeInt | None = None
+
+
+class CountDeltaV1(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    a: NonNegativeInt | None = None
+    b: NonNegativeInt | None = None
+    delta: int | None = None
+
+
+class GenerationPositiveCohortCompareV1(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    cohort: CohortKey
+    case_count: NonNegativeInt = 0
+    answer_rate: MetricDeltaV1 = Field(default_factory=MetricDeltaV1)
+    false_abstention_rate: MetricDeltaV1 = Field(default_factory=MetricDeltaV1)
+    generation_failed_rate: MetricDeltaV1 = Field(default_factory=MetricDeltaV1)
+    citation_invalid_rate: MetricDeltaV1 = Field(default_factory=MetricDeltaV1)
+    mean_gold_citation_recall: MetricDeltaV1 = Field(default_factory=MetricDeltaV1)
+    grade2_citation_hit_rate: MetricDeltaV1 = Field(default_factory=MetricDeltaV1)
+    fully_correct_rate: MetricDeltaV1 = Field(default_factory=MetricDeltaV1)
+    fully_supported_rate: MetricDeltaV1 = Field(default_factory=MetricDeltaV1)
+    complete_answer_rate: MetricDeltaV1 = Field(default_factory=MetricDeltaV1)
+    complete_citation_coverage_rate: MetricDeltaV1 = Field(
+        default_factory=MetricDeltaV1
+    )
+    all_citations_useful_rate: MetricDeltaV1 = Field(default_factory=MetricDeltaV1)
+    latency_mean_ms: MetricDeltaV1 = Field(default_factory=MetricDeltaV1)
+    eligible_answered_cases: CountDeltaV1 = Field(default_factory=CountDeltaV1)
+    judge_succeeded: CountDeltaV1 = Field(default_factory=CountDeltaV1)
+    judge_failed: CountDeltaV1 = Field(default_factory=CountDeltaV1)
+    judge_unavailable: CountDeltaV1 = Field(default_factory=CountDeltaV1)
+
+
+class GenerationPositiveCompareAggregatesV1(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    cohorts: dict[str, GenerationPositiveCohortCompareV1] = Field(default_factory=dict)
+
+
+class GenerationNegativeCompareAggregatesV1(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    total_cases: NonNegativeInt = 0
+    correct_abstention_rate: MetricDeltaV1 = Field(default_factory=MetricDeltaV1)
+    false_answer_rate: MetricDeltaV1 = Field(default_factory=MetricDeltaV1)
+    generation_failed_rate: MetricDeltaV1 = Field(default_factory=MetricDeltaV1)
+    citation_invalid_rate: MetricDeltaV1 = Field(default_factory=MetricDeltaV1)
+    empty_context_rate: MetricDeltaV1 = Field(default_factory=MetricDeltaV1)
+    latency_mean_ms: MetricDeltaV1 = Field(default_factory=MetricDeltaV1)
+    false_answers_judged: CountDeltaV1 = Field(default_factory=CountDeltaV1)
+    false_answers_fully_supported: CountDeltaV1 = Field(default_factory=CountDeltaV1)
+    false_answers_fully_correct: CountDeltaV1 = Field(default_factory=CountDeltaV1)
+    abstention_outcome_transitions: dict[str, NonNegativeInt] = Field(
+        default_factory=dict
+    )
+
+
+SemanticTransitionKind = Literal["improved", "unchanged", "regressed", "not_comparable"]
+NegativeLayer1Outcome = Literal[
+    "correct_abstention",
+    "false_answer",
+    "generation_failed",
+    "citation_invalid",
+    "empty_context",
+    "other",
+]
+
+
+class DimensionTransitionCountsV1(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    improved: NonNegativeInt = 0
+    unchanged: NonNegativeInt = 0
+    regressed: NonNegativeInt = 0
+    not_comparable: NonNegativeInt = 0
+
+
+class GenerationSemanticTransitionSummaryV1(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    answer_correctness: DimensionTransitionCountsV1 = Field(
+        default_factory=DimensionTransitionCountsV1
+    )
+    faithfulness: DimensionTransitionCountsV1 = Field(
+        default_factory=DimensionTransitionCountsV1
+    )
+    completeness: DimensionTransitionCountsV1 = Field(
+        default_factory=DimensionTransitionCountsV1
+    )
+    citation_coverage: DimensionTransitionCountsV1 = Field(
+        default_factory=DimensionTransitionCountsV1
+    )
+    citation_usefulness: DimensionTransitionCountsV1 = Field(
+        default_factory=DimensionTransitionCountsV1
+    )
+
+
+class GenerationCompareCaseV1(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    case_id: NonEmptyStr
+    label_cohort: LabelCohort | None = None
+    query: NonEmptyStr | None = None
+
+    a_status: str | None = None
+    b_status: str | None = None
+    status_transition: str | None = None
+
+    a_layer1_outcome: str | None = None
+    b_layer1_outcome: str | None = None
+    layer1_outcome_transition: str | None = None
+
+    a_citation_ids: list[str] = Field(default_factory=list)
+    b_citation_ids: list[str] = Field(default_factory=list)
+    a_citation_count: NonNegativeInt = 0
+    b_citation_count: NonNegativeInt = 0
+
+    a_gold_citation_recall: float | None = None
+    b_gold_citation_recall: float | None = None
+    gold_citation_recall_delta: float | None = None
+
+    a_grade2_citation_hit: bool | None = None
+    b_grade2_citation_hit: bool | None = None
+
+    a_judge_status: str | None = None
+    b_judge_status: str | None = None
+
+    a_answer_correctness: str | None = None
+    b_answer_correctness: str | None = None
+    answer_correctness_transition: SemanticTransitionKind | None = None
+
+    a_faithfulness: str | None = None
+    b_faithfulness: str | None = None
+    faithfulness_transition: SemanticTransitionKind | None = None
+
+    a_completeness: str | None = None
+    b_completeness: str | None = None
+    completeness_transition: SemanticTransitionKind | None = None
+
+    a_citation_coverage: str | None = None
+    b_citation_coverage: str | None = None
+    citation_coverage_transition: SemanticTransitionKind | None = None
+
+    a_citation_usefulness: str | None = None
+    b_citation_usefulness: str | None = None
+    citation_usefulness_transition: SemanticTransitionKind | None = None
+
+    a_latency_ms: NonNegativeInt | None = None
+    b_latency_ms: NonNegativeInt | None = None
+    latency_delta_ms: int | None = None
+
+    negative_fixture_review_signal: bool = False
+
+
+# Forward-reference resolution for comparison model field types defined above.
+GenerationSemanticEvalComparisonV1.model_rebuild()
 
 
 class GenerationCohortMapCaseV1(BaseModel):

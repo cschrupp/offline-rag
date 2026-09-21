@@ -1340,6 +1340,49 @@ def cmd_eval_compare(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_eval_generation_compare(args: argparse.Namespace) -> int:
+    from offline_rag.evaluation.generation_semantic import (
+        GenerationCompareError,
+        compare_generation_semantic_results,
+        format_generation_comparison_human,
+        load_generation_semantic_eval_result,
+        persist_generation_comparison,
+    )
+    from offline_rag.evaluation.generation_semantic.compare import (
+        default_comparison_artifact_path,
+    )
+
+    try:
+        settings = _load_settings(args)
+    except ConfigError as exc:
+        print(f"eval generation-compare: configuration failed: {exc}", file=sys.stderr)
+        return 1
+
+    try:
+        result_a = load_generation_semantic_eval_result(Path(args.a))
+        result_b = load_generation_semantic_eval_result(Path(args.b))
+        comparison = compare_generation_semantic_results(result_a, result_b)
+        output = (
+            Path(args.output)
+            if args.output is not None
+            else default_comparison_artifact_path(
+                Path(settings.paths.eval_results), comparison.comparison_id
+            )
+        )
+        persist_generation_comparison(comparison, path=output)
+    except GenerationCompareError as exc:
+        print(f"eval generation-compare: {exc}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(comparison.model_dump_json())
+        return 0
+    print(format_generation_comparison_human(comparison))
+    print()
+    print(f"Comparison artifact: {output}")
+    return 0
+
+
 def cmd_eval_query(args: argparse.Namespace) -> int:
     try:
         settings = _load_settings(args)
@@ -2353,6 +2396,41 @@ def build_parser() -> argparse.ArgumentParser:
         help="Emit offline-rag-retrieval-eval-comparison-v1 JSON",
     )
     eval_compare.set_defaults(func=cmd_eval_compare)
+    eval_generation_compare = eval_sub.add_parser(
+        "generation-compare",
+        help=(
+            "Compare two generation-semantic-eval-result-v1 artifacts "
+            "(artifact-only; Slice 10E)"
+        ),
+    )
+    _add_config_argument(eval_generation_compare)
+    eval_generation_compare.add_argument(
+        "--a",
+        required=True,
+        type=Path,
+        help="Baseline generation-semantic result JSON (prompt-grounded-v1)",
+    )
+    eval_generation_compare.add_argument(
+        "--b",
+        required=True,
+        type=Path,
+        help=(
+            "Candidate generation-semantic result JSON "
+            "(prompt-grounded-provenance-v2)"
+        ),
+    )
+    eval_generation_compare.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Optional comparison JSON path",
+    )
+    eval_generation_compare.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit offline-rag-generation-semantic-eval-comparison-v1 JSON",
+    )
+    eval_generation_compare.set_defaults(func=cmd_eval_generation_compare)
     eval_query = eval_sub.add_parser("query", help="Run grounded query evaluation")
     _add_config_argument(eval_query)
     eval_query.add_argument("--dataset", required=True, type=Path, help="Dataset dir or cases.jsonl")

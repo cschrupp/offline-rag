@@ -5,6 +5,13 @@ from offline_rag.evaluation.generation_semantic.cohort import (
     load_cohort_map,
     validate_cohort_map_for_gold,
 )
+from offline_rag.evaluation.generation_semantic.compare import (
+    GenerationCompareError,
+    compare_generation_semantic_results,
+    format_generation_comparison_human,
+    load_generation_semantic_eval_result,
+    persist_generation_comparison,
+)
 from offline_rag.evaluation.generation_semantic.evidence import (
     EVIDENCE_BUDGET_EXCEEDED,
     GOLD_EVIDENCE_V1,
@@ -70,6 +77,7 @@ __all__ = [
     "ExpectedBehavior",
     "GenerationAbstentionAggregatesV1",
     "GenerationCohortMapV1",
+    "GenerationCompareError",
     "GenerationEvidenceCaseV1",
     "GenerationEvidenceSetV1",
     "GenerationHardNegativeSelectionV1",
@@ -87,9 +95,13 @@ __all__ = [
     "LabelCohort",
     "build_gold_evidence_set_v1",
     "build_human_grade0_hard_negative_set_v1",
+    "compare_generation_semantic_results",
     "compute_generation_evidence_set_id",
+    "format_generation_comparison_human",
     "format_generation_semantic_result_human",
     "load_cohort_map",
+    "load_generation_semantic_eval_result",
+    "persist_generation_comparison",
     "run_generation_semantic_evaluation",
     "validate_cohort_map_for_gold",
 ]

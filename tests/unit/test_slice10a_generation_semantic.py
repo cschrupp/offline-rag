@@ -36,6 +36,9 @@ from offline_rag.evaluation.generation_semantic import (
 from offline_rag.evaluation.generation_semantic.evidence import (
     compute_generation_evidence_set_id,
 )
+from offline_rag.evaluation.generation_semantic.models import (
+    GenerationCompareCompatibilityV1,
+)
 from offline_rag.evaluation.gold import (
     ChunkJudgment,
     GoldCase,
@@ -417,17 +420,35 @@ def test_result_and_comparison_contracts_validate() -> None:
     assert result.semantic_aggregates is None
 
     comparison = GenerationSemanticEvalComparisonV1(
+        comparison_id="gencompare_test",
         gold_dataset_id="gold_x",
         evidence_set_id="genevidence_x",
+        evidence_contract=GOLD_EVIDENCE_V1,
+        expected_behavior="answer",
         semantic_metric_contract="generation-semantic-metrics-v1",
         a_run_id="run_a",
         b_run_id="run_b",
-        compatibility={
-            "same_gold_dataset_id": True,
-            "same_evidence_set_id": True,
-            "same_case_set": True,
-            "same_semantic_metric_contract": True,
-        },
+        a_generation_config_hash="gencfg_a",
+        b_generation_config_hash="gencfg_b",
+        a_prompt_contract="prompt-grounded-v1",
+        b_prompt_contract="prompt-grounded-provenance-v2",
+        compatibility=GenerationCompareCompatibilityV1(
+            same_gold_dataset_id=True,
+            same_evidence_set_id=True,
+            same_evidence_contract=True,
+            same_expected_behavior=True,
+            same_corpus_id=True,
+            same_chunk_set_id=True,
+            same_case_set=True,
+            same_queries=True,
+            same_cohort_labels=True,
+            same_semantic_metric_contract=True,
+            same_generation_semantics_except_prompt=True,
+            same_judge_contract=True,
+            prompt_pair_accepted=True,
+            a_prompt_contract="prompt-grounded-v1",
+            b_prompt_contract="prompt-grounded-provenance-v2",
+        ),
     )
     assert comparison.schema_version == GENERATION_SEMANTIC_EVAL_COMPARISON_V1
 
