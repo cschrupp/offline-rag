@@ -8,7 +8,8 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from offline_rag.domain.indexing import EvidenceUnit
-from offline_rag.domain.types import NonEmptyStr, NonNegativeInt, Score
+from offline_rag.domain.types import NonEmptyStr, NonNegativeInt, PositiveInt, Score
+from offline_rag.gold_authoring.contracts import RETRIEVER_HYBRID_RERANK_V1
 
 GENERATION_EVIDENCE_SET_V1 = "offline-rag-generation-evidence-set-v1"
 GENERATION_SEMANTIC_EVAL_RESULT_V1 = "offline-rag-generation-semantic-eval-result-v1"
@@ -16,11 +17,18 @@ GENERATION_SEMANTIC_EVAL_COMPARISON_V1 = (
     "offline-rag-generation-semantic-eval-comparison-v1"
 )
 GENERATION_SEMANTIC_DETERMINISTIC_V1 = "generation-semantic-deterministic-v1"
+GENERATION_ABSTENTION_DETERMINISTIC_V1 = "generation-abstention-deterministic-v1"
 GENERATION_COHORT_MAP_V1 = "offline-rag-generation-cohort-map-v1"
 GENERATION_SEMANTIC_METRICS_V1 = "generation-semantic-metrics-v1"
 
+GOLD_EVIDENCE_V1 = "gold-evidence-v1"
+HUMAN_GRADE0_HARD_NEGATIVE_V1 = "human-grade0-hard-negative-v1"
+HARD_NEGATIVE_N_V1 = 5
+HARD_NEGATIVE_RETRIEVER_V1 = RETRIEVER_HYBRID_RERANK_V1
+
 LabelCohort = Literal["human_reviewed", "assistant_only"]
 CohortKey = Literal["full", "human_reviewed", "assistant_only"]
+ExpectedBehavior = Literal["answer", "abstain"]
 JudgeStatus = Literal[
     "disabled",
     "not_applicable",
@@ -56,6 +64,80 @@ class GoldEvidenceJudgmentV1(BaseModel):
     relevance: Literal[1, 2]
 
 
+class GenerationHardNegativeSelectedCandidateV1(BaseModel):
+    """One selected human grade-0 hard-negative candidate (provenance only)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    chunk_id: NonEmptyStr
+    human_relevance: Literal[0] = 0
+    retriever: NonEmptyStr = HARD_NEGATIVE_RETRIEVER_V1
+    rank: PositiveInt
+
+    @model_validator(mode="after")
+    def _selection_hit_invariants(
+        self,
+    ) -> GenerationHardNegativeSelectedCandidateV1:
+        if self.human_relevance != 0:
+            raise ValueError("selected hard-negative human_relevance must be 0")
+        if self.retriever != HARD_NEGATIVE_RETRIEVER_V1:
+            raise ValueError(
+                f"selected hard-negative retriever must be "
+                f"{HARD_NEGATIVE_RETRIEVER_V1!r}"
+            )
+        if self.rank < 1:
+            raise ValueError("selected hard-negative rank must be >= 1")
+        return self
+
+
+class GenerationHardNegativeSelectionV1(BaseModel):
+    """Case-level hard-negative selection provenance (Slice 10D)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    selection_contract: NonEmptyStr = HUMAN_GRADE0_HARD_NEGATIVE_V1
+    authoring_run_id: NonEmptyStr
+    source_silver_case_id: NonEmptyStr
+    grade_basis_query: NonEmptyStr
+    retriever: NonEmptyStr = HARD_NEGATIVE_RETRIEVER_V1
+    requested_count: PositiveInt = HARD_NEGATIVE_N_V1
+    selected_candidates: list[GenerationHardNegativeSelectedCandidateV1] = Field(
+        default_factory=list
+    )
+    candidate_pool_size: NonNegativeInt | None = None
+    eligible_grade0_hard_candidate_count: NonNegativeInt | None = None
+
+    @model_validator(mode="after")
+    def _selection_contract_invariants(
+        self,
+    ) -> GenerationHardNegativeSelectionV1:
+        if self.selection_contract != HUMAN_GRADE0_HARD_NEGATIVE_V1:
+            raise ValueError(
+                f"selection_contract must be {HUMAN_GRADE0_HARD_NEGATIVE_V1!r}"
+            )
+        if self.retriever != HARD_NEGATIVE_RETRIEVER_V1:
+            raise ValueError(
+                f"hard-negative retriever must be {HARD_NEGATIVE_RETRIEVER_V1!r}"
+            )
+        if self.requested_count != HARD_NEGATIVE_N_V1:
+            raise ValueError(
+                f"hard-negative requested_count must be {HARD_NEGATIVE_N_V1}"
+            )
+        if len(self.selected_candidates) != HARD_NEGATIVE_N_V1:
+            raise ValueError(
+                f"hard-negative selection requires exactly {HARD_NEGATIVE_N_V1} "
+                f"candidates; got {len(self.selected_candidates)}"
+            )
+        seen: set[str] = set()
+        for candidate in self.selected_candidates:
+            if candidate.chunk_id in seen:
+                raise ValueError(
+                    f"duplicate selected hard-negative chunk_id: {candidate.chunk_id}"
+                )
+            seen.add(candidate.chunk_id)
+        return self
+
+
 class GenerationEvidenceCaseV1(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -64,8 +146,10 @@ class GenerationEvidenceCaseV1(BaseModel):
     category: str | None = None
     tags: list[str] = Field(default_factory=list)
     label_cohort: LabelCohort
+    expected_behavior: ExpectedBehavior = "answer"
     evidence_units: list[EvidenceUnit] = Field(default_factory=list)
     gold_judgments: list[GoldEvidenceJudgmentV1] = Field(default_factory=list)
+    hard_negative_selection: GenerationHardNegativeSelectionV1 | None = None
 
     @field_validator("query")
     @classmethod
@@ -74,6 +158,19 @@ class GenerationEvidenceCaseV1(BaseModel):
             raise ValueError("query must be non-empty")
         return value
 
+    @model_validator(mode="after")
+    def _expected_behavior_coherence(self) -> GenerationEvidenceCaseV1:
+        if self.expected_behavior == "abstain":
+            if self.hard_negative_selection is None:
+                raise ValueError(
+                    "expected_behavior=abstain requires hard_negative_selection"
+                )
+        elif self.hard_negative_selection is not None:
+            raise ValueError(
+                "hard_negative_selection is only valid when expected_behavior=abstain"
+            )
+        return self
+
 
 class GenerationEvidenceSetV1(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -81,6 +178,7 @@ class GenerationEvidenceSetV1(BaseModel):
     schema_version: NonEmptyStr = GENERATION_EVIDENCE_SET_V1
     evidence_set_id: NonEmptyStr
     evidence_contract: NonEmptyStr
+    expected_behavior: ExpectedBehavior = "answer"
     source_gold_dataset_id: NonEmptyStr
     chunk_set_id: NonEmptyStr
     corpus_id: NonEmptyStr
@@ -91,12 +189,70 @@ class GenerationEvidenceSetV1(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="after")
-    def _unique_case_ids(self) -> GenerationEvidenceSetV1:
+    def _unique_case_ids_and_contract(self) -> GenerationEvidenceSetV1:
         seen: set[str] = set()
         for case in self.cases:
             if case.case_id in seen:
                 raise ValueError(f"duplicate case_id in evidence set: {case.case_id}")
             seen.add(case.case_id)
+            if case.expected_behavior != self.expected_behavior:
+                raise ValueError(
+                    f"case {case.case_id} expected_behavior="
+                    f"{case.expected_behavior!r} mismatches set "
+                    f"{self.expected_behavior!r}"
+                )
+
+        if self.evidence_contract == GOLD_EVIDENCE_V1:
+            if self.expected_behavior != "answer":
+                raise ValueError(
+                    f"{GOLD_EVIDENCE_V1} requires expected_behavior='answer'"
+                )
+            for case in self.cases:
+                if case.hard_negative_selection is not None:
+                    raise ValueError(
+                        f"{GOLD_EVIDENCE_V1} case {case.case_id} must not carry "
+                        "hard_negative_selection"
+                    )
+        elif self.evidence_contract == HUMAN_GRADE0_HARD_NEGATIVE_V1:
+            if self.expected_behavior != "abstain":
+                raise ValueError(
+                    f"{HUMAN_GRADE0_HARD_NEGATIVE_V1} requires "
+                    "expected_behavior='abstain'"
+                )
+            for case in self.cases:
+                if case.label_cohort != "human_reviewed":
+                    raise ValueError(
+                        f"{HUMAN_GRADE0_HARD_NEGATIVE_V1} requires "
+                        f"human_reviewed cohort; case {case.case_id} is "
+                        f"{case.label_cohort}"
+                    )
+                if case.hard_negative_selection is None:
+                    raise ValueError(
+                        f"{HUMAN_GRADE0_HARD_NEGATIVE_V1} case {case.case_id} "
+                        "requires hard_negative_selection"
+                    )
+                selected_ids = {
+                    item.chunk_id
+                    for item in case.hard_negative_selection.selected_candidates
+                }
+                evidence_ids = {unit.source_chunk_id for unit in case.evidence_units}
+                if evidence_ids != selected_ids:
+                    raise ValueError(
+                        f"case {case.case_id}: evidence_units source_chunk_ids "
+                        "must equal hard_negative_selection selected chunk_ids"
+                    )
+                if len(case.evidence_units) != HARD_NEGATIVE_N_V1:
+                    raise ValueError(
+                        f"case {case.case_id}: hard-negative evidence must have "
+                        f"exactly {HARD_NEGATIVE_N_V1} units"
+                    )
+                gold_positive_ids = {j.chunk_id for j in case.gold_judgments}
+                leaked = evidence_ids & gold_positive_ids
+                if leaked:
+                    raise ValueError(
+                        f"case {case.case_id}: positive gold chunk(s) leaked into "
+                        f"hard-negative evidence: {sorted(leaked)}"
+                    )
         return self
 
 
@@ -188,6 +344,43 @@ class GenerationDeterministicAggregatesV1(BaseModel):
         default_factory=GenerationLatencySummaryV1
     )
     cohorts: dict[str, GenerationCohortAggregateV1] = Field(default_factory=dict)
+
+
+class GenerationAbstentionCohortAggregateV1(BaseModel):
+    """Cohort slice of label-defined hard-negative abstention metrics."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    cohort: CohortKey
+    case_count: NonNegativeInt = 0
+    correct_abstention_rate: float | None = None
+    false_answer_rate: float | None = None
+    generation_failed_rate: float | None = None
+    citation_invalid_rate: float | None = None
+    empty_context_rate: float | None = None
+    latency: GenerationLatencySummaryV1 = Field(
+        default_factory=GenerationLatencySummaryV1
+    )
+
+
+class GenerationAbstentionAggregatesV1(BaseModel):
+    """Typed Layer-1 abstention aggregates for human-grade0-hard-negative-v1."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    metric_contract: NonEmptyStr = GENERATION_ABSTENTION_DETERMINISTIC_V1
+    total_cases: NonNegativeInt = 0
+    correct_abstention_rate: float | None = None
+    false_answer_rate: float | None = None
+    generation_failed_rate: float | None = None
+    citation_invalid_rate: float | None = None
+    empty_context_rate: float | None = None
+    latency: GenerationLatencySummaryV1 = Field(
+        default_factory=GenerationLatencySummaryV1
+    )
+    cohorts: dict[str, GenerationAbstentionCohortAggregateV1] = Field(
+        default_factory=dict
+    )
 
 
 class GenerationSemanticJudgeCaseResultV1(BaseModel):
@@ -411,6 +604,7 @@ class GenerationSemanticEvalResultV1(BaseModel):
     gold_dataset_id: NonEmptyStr
     evidence_set_id: NonEmptyStr
     evidence_contract: NonEmptyStr
+    expected_behavior: ExpectedBehavior = "answer"
     semantic_metric_contract: NonEmptyStr = GENERATION_SEMANTIC_DETERMINISTIC_V1
 
     corpus_id: NonEmptyStr | None = None
@@ -429,13 +623,37 @@ class GenerationSemanticEvalResultV1(BaseModel):
         default_factory=GenerationDeterministicAggregatesV1
     )
     semantic_aggregates: GenerationSemanticAggregatesV1 | None = None
-    abstention_aggregates: dict[str, Any] | None = None
+    abstention_aggregates: GenerationAbstentionAggregatesV1 | None = None
 
     cases: list[GenerationSemanticEvalCaseResultV1] = Field(default_factory=list)
 
     started_at: datetime
     completed_at: datetime
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _behavior_contract_coherence(self) -> GenerationSemanticEvalResultV1:
+        if self.evidence_contract == GOLD_EVIDENCE_V1:
+            if self.expected_behavior != "answer":
+                raise ValueError(
+                    f"{GOLD_EVIDENCE_V1} result requires expected_behavior='answer'"
+                )
+            if self.abstention_aggregates is not None:
+                raise ValueError(
+                    f"{GOLD_EVIDENCE_V1} result must have abstention_aggregates=null"
+                )
+        elif self.evidence_contract == HUMAN_GRADE0_HARD_NEGATIVE_V1:
+            if self.expected_behavior != "abstain":
+                raise ValueError(
+                    f"{HUMAN_GRADE0_HARD_NEGATIVE_V1} result requires "
+                    "expected_behavior='abstain'"
+                )
+            if self.abstention_aggregates is None:
+                raise ValueError(
+                    f"{HUMAN_GRADE0_HARD_NEGATIVE_V1} result requires "
+                    "abstention_aggregates"
+                )
+        return self
 
 
 class GenerationSemanticEvalComparisonV1(BaseModel):

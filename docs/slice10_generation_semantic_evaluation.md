@@ -1,12 +1,12 @@
 # Slice 10 — Generation & Citation Semantic Evaluation
 
-**Status:** **10A–10C IMPLEMENTED / VERIFIED**.
-**10D NEXT.** **10E:** not started.
-**Baseline checkpoint (10B):** `5a68c05901c79d63232a70f36d598e42b13dd5d9`
+**Status:** **10A–10D IMPLEMENTED / VERIFIED**.
+**10E NEXT.**
+**Baseline checkpoint (10C):** `3e423f2e82e792d1e592fe266532010c4fd8d198`
 **Authoritative for:** Milestone 5 / Slice 10 (sub-slices 10A–10E)
 
 This document is the Slice 10 design/contract authority. Runtime implementation
-for 10A–10B is in-tree; 10C+ remain deferred.
+for 10A–10D is in-tree; 10E remains deferred.
 
 ---
 
@@ -467,48 +467,75 @@ results** (do not rerun generation merely to create human-16) — same pattern a
 Positive gold alone cannot evaluate abstention. Slice 10 needs an explicit
 negative-evidence fixture.
 
-**Contract id (proposed):** `human-grade0-hard-negative-v1`
+**Contract id:** `human-grade0-hard-negative-v1` (**IMPLEMENTED / VERIFIED** in 10D)
+
+**Scientific interpretation (locked):** a human relevance grade of `0` means the
+candidate was adjudicated non-relevant under the complete human relevance map.
+The fixture defines **expected behavior = abstain** (label-defined hard-negative
+fixture / expected abstention under the fixture contract). Five individually
+grade-0 chunks are **not** a mathematical proof that their combined text can
+never support some answer by composition. Do not describe the fixture as
+provably impossible to answer or information-free.
 
 ### Selection rules (locked)
 
-Eligible cases: **human-16 only** (not assistant-only).
+Eligible cases: **`label_cohort == human_reviewed` only** (cohort map is
+authoritative; durable `SilverCase.human_review` presence alone is insufficient).
 
 For each eligible case:
 
-1. Start from the frozen 9C candidate pool on
-   `authorrun_b28d88f64054491a837cb4a144cbe056`.
-2. Keep candidates with **human** relevance = `0` (complete human maps on
-   accepted/edited silver cases).
-3. Prefer hard negatives that ranked highly under retriever id
-   `hybrid-rerank-v1` (`RetrievalHit.retriever` field in silver candidates).
-4. Deterministic sort key:
+1. Load the explicit frozen `GoldAuthoringRun` (`--authoring-run`); verify
+   Gold ↔ Silver lineage (authoring_run_id when recorded, chunk_set_id, corpus
+   identity) against the historical ChunkSet.
+2. Require accepted/edited Silver with `review_complete()`,
+   `grade_basis_query == effective_query() == GoldCase.query`, and matching
+   category/tags.
+3. Reconcile Silver human positives (relevance 1/2) exactly with
+   `GoldCase.judgments` (chunk_id + relevance). Stale maps fail closed.
+4. Keep candidates with **human** relevance = `0` that also have a stored
+   `hybrid-rerank-v1` hit (at most one hit per candidate; duplicates fail).
+5. Deterministic **selection** sort:
 
    ```text
    hybrid-rerank-v1 rank ascending
    → chunk_id ascending
    ```
 
-5. Select only candidates that **have** a `hybrid-rerank-v1` hit (top-20 rerank
-   depth in 9C). Do not invent ranks.
-6. Take **N = 5** chunks.
-7. Resolve exact `Chunk.text` from the same frozen ChunkSet.
-8. Present as evidence for the **original** query.
-9. Expected semantic behavior: **model abstention**
-   (`insufficient_evidence` / `model_abstain`).
+6. Take **N = 5** (contract constant; not CLI-tunable). `<5` eligible → fail
+   closed. No backfill from other retrievers / model grades / retrieval rerun.
+7. Resolve exact `Chunk.text` from the same frozen ChunkSet (child only).
+8. **Presentation** order for `EvidenceUnit[]` is independent of selection:
+
+   ```text
+   document_id ASC → Chunk.order ASC → chunk_id ASC
+   ```
+
+   Stored ranks live only in `hard_negative_selection.selected_candidates[]`
+   and must not appear in generator prompts.
+9. Expected behavior: **abstain**
+   (`insufficient_evidence` / `model_abstain` = correct abstention under the
+   fixture contract). `status == answered` = false answer. Do not merge
+   `citation_invalid` / `generation_failed` / `empty_context` into those labels.
 
 Do **not**:
 
 - invent unrelated web questions;
 - use assistant-only grade-0 maps as authoritative negatives for the primary
   abstention set;
-- expose grades to the generator.
+- expose grades, ranks, or “expected abstain” labels to the generator or judge;
+- mix positive gold chunks into negative `evidence_units`.
+
+`expected_behavior` (`answer` | `abstain`) is part of `genevidence_` identity.
+Typed abstention aggregates use contract
+`generation-abstention-deterministic-v1` (rates over total negative-fixture
+cases; empty `assistant_only` cohort keeps rates null).
 
 ### Feasibility (repo-verified at design time)
 
 For all 22 gold-linked silver cases (including human-16): human grade-0 count
 ≥ 56; count of grade-0 candidates with `hybrid-rerank-v1` ranks ≥ 8. Therefore
 **N = 5 is deterministically feasible** on this fixture. No OPEN DECISION on N
-for the frozen 9F set.
+for the frozen 9F set. 10D does not authorize a live ICS run.
 
 ### Abstention metrics
 
@@ -519,12 +546,17 @@ correct_abstention_rate
 false_answer_rate
 generation_failed_rate
 citation_invalid_rate
+empty_context_rate
 ```
 
 If the model answers instead of abstaining, optional judge may classify whether
-the answer is unsupported (Layer 2 diagnostic only).
+the answer is unsupported (Layer 2 diagnostic only; never rewrites Layer-1
+false-answer labels). A false answer that the judge marks fully_supported /
+fully_correct is a potential fixture-review signal — preserve both facts.
 
 Keep negative and positive populations separate in aggregates and comparisons.
+Positive-mode gold citation diagnostics remain null / non-applicable in
+negative mode.
 
 ---
 
@@ -621,7 +653,9 @@ offline-rag eval generation \
     --dataset <GoldDataset path> \
     --corpus <name> \
     --cohort-map <cohort-map.json> \
-    [--evidence-mode gold] \
+    [--evidence-mode gold|human-hard-negative] \
+    [--authoring-run <GoldAuthoringRun.json>] \
+    [--judge] \
     [--evidence-output ...] \
     [--output ...] \
     [--json]
@@ -630,7 +664,9 @@ offline-rag eval generation \
 **10B status:** CLI surface implemented.
 **10C status:** `--judge` Layer-2 local semantic judge implemented
 (`evaluation.generation_semantic_judge`, arm-blind `generation-semantic-judge-v1`).
-Compare / negatives remain deferred to 10D–10E.
+**10D status:** `--evidence-mode human-hard-negative` + required `--authoring-run`
+builds `human-grade0-hard-negative-v1` (no live ICS run). `--authoring-run` is
+rejected with `--evidence-mode gold`. Compare / prompt A/B remain deferred to 10E.
 
 ---
 
@@ -641,7 +677,7 @@ Compare / negatives remain deferred to 10D–10E.
 | **10A** | Evidence-set schema; `gold-evidence-v1` builder; content-addressed identity; fixed-evidence execution boundary (`GroundedGenerationExecutor`); result/comparison contracts; tests | **IMPLEMENTED / VERIFIED** |
 | **10B** | Frozen provenance metadata in `genevidence_` identity; generator-only readiness; `generation-semantic-deterministic-v1`; typed aggregates; evidence/result persistence; cohort map; `offline-rag eval generation` | **IMPLEMENTED / VERIFIED** |
 | **10C** | Independent `evaluation.generation_semantic_judge` (OD-10-4); `judgecfg_`; `generation-semantic-judge-v1` / output-v1; arm-blind judging; typed semantic aggregates; `--judge` | **IMPLEMENTED / VERIFIED** |
-| **10D** | `human-grade0-hard-negative-v1`; deterministic selection; abstention metrics; human-16 only initially | **NEXT** |
+| **10D** | `human-grade0-hard-negative-v1`; N=5 hybrid-rerank stored-rank selection; Gold↔Silver reconciliation; selection vs presentation order; typed abstention aggregates; human_reviewed-only | **IMPLEMENTED / VERIFIED** |
 | **10E** | Controlled v1 vs provenance-v2 A/B; full-22 + human-16 sensitivity; artifact-only compare; Slice 10 development report; **hard-stop** | Auto-promote provenance-v2 |
 
 Hard-stop after 10E report. Do not automatically promote
@@ -915,10 +951,12 @@ Layer 1/2/3 hierarchy; non-promotion of provenance-v2 from this fixture.
 
 ## 27. Implementation status notes
 
-- **10A / 10B / 10C:** implemented and verified in-tree (fixed evidence, Layer-1
-  deterministic metrics, independent Layer-2 judge with arm-blind prompt,
-  `judgecfg_`, `--judge`).
-- **10D–10E:** not started.
-- No live ICS fixture evaluation is authorized by 10C.
+- **10A / 10B / 10C / 10D:** implemented and verified in-tree (fixed positive
+  evidence, Layer-1 deterministic metrics, independent Layer-2 judge, label-defined
+  hard-negative abstention fixture with typed abstention aggregates).
+- **10E:** not started.
+- No live ICS fixture evaluation is authorized by 10D.
+- The 10D negative fixture is development/regression machinery only — not
+  publication-grade.
 
-**HARD STOP before 10D implementation.**
+**HARD STOP before 10E implementation.**

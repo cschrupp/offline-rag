@@ -23,6 +23,10 @@ from offline_rag.evaluation.generation_semantic.evidence import (
     GoldEvidenceBuildError,
     build_gold_evidence_set_v1,
 )
+from offline_rag.evaluation.generation_semantic.hard_negative import (
+    HardNegativeBuildError,
+    build_human_grade0_hard_negative_set_v1,
+)
 from offline_rag.evaluation.generation_semantic.historical import (
     HistoricalChunkSetError,
     load_gold_historical_chunk_snapshot,
@@ -50,12 +54,14 @@ from offline_rag.evaluation.generation_semantic.judge_readiness import (
     evaluate_judge_preflight,
 )
 from offline_rag.evaluation.generation_semantic.metrics import (
+    build_abstention_aggregates,
     build_deterministic_aggregates,
     build_population,
     compute_case_deterministic_metrics,
 )
 from offline_rag.evaluation.generation_semantic.models import (
     GENERATION_SEMANTIC_DETERMINISTIC_V1,
+    HUMAN_GRADE0_HARD_NEGATIVE_V1,
     GenerationEvidenceSetV1,
     GenerationSemanticEvalCaseResultV1,
     GenerationSemanticEvalResultV1,
@@ -83,6 +89,7 @@ from offline_rag.generation.status import (
     describe_generation_provider_status,
     generation_provider_status,
 )
+from offline_rag.gold_authoring.persist import load_authoring_run
 
 
 class GenerationSemanticEvaluationError(RuntimeError):
@@ -240,11 +247,18 @@ class GenerationSemanticEvaluator:
         semantic_aggregates = (
             build_semantic_aggregates(case_rows) if judge_requested else None
         )
+        expected_behavior = evidence_set.expected_behavior
+        abstention_aggregates = (
+            build_abstention_aggregates(case_rows)
+            if expected_behavior == "abstain"
+            else None
+        )
         return GenerationSemanticEvalResultV1(
             run_id=run_id,
             gold_dataset_id=evidence_set.source_gold_dataset_id,
             evidence_set_id=evidence_set.evidence_set_id,
             evidence_contract=evidence_set.evidence_contract,
+            expected_behavior=expected_behavior,
             semantic_metric_contract=GENERATION_SEMANTIC_DETERMINISTIC_V1,
             corpus_id=evidence_set.corpus_id,
             chunk_set_id=evidence_set.chunk_set_id,
@@ -255,7 +269,7 @@ class GenerationSemanticEvaluator:
             population=build_population(case_rows),
             deterministic_aggregates=build_deterministic_aggregates(case_rows),
             semantic_aggregates=semantic_aggregates,
-            abstention_aggregates=None,
+            abstention_aggregates=abstention_aggregates,
             cases=case_rows,
             started_at=started,
             completed_at=completed,
@@ -362,6 +376,7 @@ def run_generation_semantic_evaluation(
     cohort_map_path: Path,
     corpus_name: str = "default",
     evidence_mode: str = "gold",
+    authoring_run_path: Path | None = None,
     evidence_output: Path | None = None,
     output: Path | None = None,
     executor: GroundedGenerationExecutor | None = None,
@@ -371,9 +386,17 @@ def run_generation_semantic_evaluation(
     token_counter: TokenCounter | None = None,
 ) -> GenerationSemanticEvalResultV1:
     """Full offline-rag eval generation pipeline (fail-closed; no partial publish)."""
-    if evidence_mode != "gold":
+    if evidence_mode not in ("gold", "human-hard-negative"):
         raise GenerationSemanticEvaluationError(
-            f"unsupported evidence mode for Slice 10B: {evidence_mode}"
+            f"unsupported evidence mode: {evidence_mode}"
+        )
+    if evidence_mode == "gold" and authoring_run_path is not None:
+        raise GenerationSemanticEvaluationError(
+            "--authoring-run is incompatible with --evidence-mode gold"
+        )
+    if evidence_mode == "human-hard-negative" and authoring_run_path is None:
+        raise GenerationSemanticEvaluationError(
+            "--authoring-run is required for --evidence-mode human-hard-negative"
         )
     if judge_requested and not settings.evaluation.generation_semantic_judge.enabled:
         raise GenerationSemanticEvaluationError(
@@ -404,20 +427,40 @@ def run_generation_semantic_evaluation(
 
     max_tokens = int(settings.context.max_context_tokens)
     try:
-        evidence_set = build_gold_evidence_set_v1(
-            gold,
-            chunk_snapshot=snapshot,
-            label_cohort_by_case_id=cohorts,
-            max_evidence_tokens=max_tokens,
-            token_counter=token_counter or FakeTokenCounter(),
-        )
-    except GoldEvidenceBuildError as exc:
+        if evidence_mode == "gold":
+            evidence_set = build_gold_evidence_set_v1(
+                gold,
+                chunk_snapshot=snapshot,
+                label_cohort_by_case_id=cohorts,
+                max_evidence_tokens=max_tokens,
+                token_counter=token_counter or FakeTokenCounter(),
+            )
+            if evidence_set.evidence_contract != GOLD_EVIDENCE_V1:
+                raise GenerationSemanticEvaluationError(
+                    f"unexpected evidence_contract: {evidence_set.evidence_contract}"
+                )
+        else:
+            assert authoring_run_path is not None
+            try:
+                authoring_run = load_authoring_run(Path(authoring_run_path))
+            except Exception as exc:
+                raise GenerationSemanticEvaluationError(
+                    f"failed to load authoring run: {exc}"
+                ) from exc
+            evidence_set = build_human_grade0_hard_negative_set_v1(
+                gold,
+                authoring_run=authoring_run,
+                chunk_snapshot=snapshot,
+                label_cohort_by_case_id=cohorts,
+                max_evidence_tokens=max_tokens,
+                token_counter=token_counter or FakeTokenCounter(),
+            )
+            if evidence_set.evidence_contract != HUMAN_GRADE0_HARD_NEGATIVE_V1:
+                raise GenerationSemanticEvaluationError(
+                    f"unexpected evidence_contract: {evidence_set.evidence_contract}"
+                )
+    except (GoldEvidenceBuildError, HardNegativeBuildError) as exc:
         raise GenerationSemanticEvaluationError(str(exc)) from exc
-
-    if evidence_set.evidence_contract != GOLD_EVIDENCE_V1:
-        raise GenerationSemanticEvaluationError(
-            f"unexpected evidence_contract: {evidence_set.evidence_contract}"
-        )
 
     evidence_path = (
         Path(evidence_output)
@@ -455,6 +498,8 @@ def run_generation_semantic_evaluation(
         "evidence_mode": evidence_mode,
         "judge_requested": judge_requested,
     }
+    if authoring_run_path is not None:
+        result.metadata["authoring_run_path"] = str(authoring_run_path)
     try:
         persist_eval_result(result, path=result_path)
     except GenerationSemanticPersistenceError as exc:

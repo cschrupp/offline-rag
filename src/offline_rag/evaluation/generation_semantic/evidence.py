@@ -14,14 +14,15 @@ from offline_rag.domain.documents import Chunk, ChunkKind
 from offline_rag.domain.indexing import EvidenceUnit
 from offline_rag.evaluation.generation_semantic.models import (
     GENERATION_EVIDENCE_SET_V1,
+    GOLD_EVIDENCE_V1,
     GenerationEvidenceCaseV1,
     GenerationEvidenceSetV1,
+    GenerationHardNegativeSelectionV1,
     GoldEvidenceJudgmentV1,
     LabelCohort,
 )
 from offline_rag.evaluation.gold import GoldCase, LoadedGoldDataset
 
-GOLD_EVIDENCE_V1 = "gold-evidence-v1"
 EVIDENCE_BUDGET_EXCEEDED = "evidence_budget_exceeded"
 
 
@@ -138,11 +139,13 @@ def build_gold_evidence_set_v1(
         corpus_name=corpus_name,
         cases=built_cases,
         source_name_by_document_id=source_name_by_document_id,
+        expected_behavior="answer",
     )
     return GenerationEvidenceSetV1(
         schema_version=GENERATION_EVIDENCE_SET_V1,
         evidence_set_id=evidence_set_id,
         evidence_contract=GOLD_EVIDENCE_V1,
+        expected_behavior="answer",
         source_gold_dataset_id=gold.dataset_id,
         chunk_set_id=chunk_snapshot.chunk_set_id,
         corpus_id=corpus_id,
@@ -163,6 +166,7 @@ def compute_generation_evidence_set_id(
     corpus_name: str,
     cases: list[GenerationEvidenceCaseV1],
     source_name_by_document_id: Mapping[str, str],
+    expected_behavior: str | None = None,
 ) -> str:
     return generation_evidence_set_id_from_payload(
         generation_evidence_semantic_payload(
@@ -173,6 +177,7 @@ def compute_generation_evidence_set_id(
             corpus_name=corpus_name,
             cases=cases,
             source_name_by_document_id=source_name_by_document_id,
+            expected_behavior=expected_behavior,
         )
     )
 
@@ -186,10 +191,20 @@ def generation_evidence_semantic_payload(
     corpus_name: str,
     cases: list[GenerationEvidenceCaseV1],
     source_name_by_document_id: Mapping[str, str],
+    expected_behavior: str | None = None,
 ) -> dict[str, object]:
     """Canonical semantic payload for ``genevidence_`` identity (no created_at)."""
+    behavior = expected_behavior
+    if behavior is None:
+        if cases:
+            behavior = cases[0].expected_behavior
+        elif evidence_contract == GOLD_EVIDENCE_V1:
+            behavior = "answer"
+        else:
+            behavior = "abstain"
     case_payloads: list[dict[str, object]] = []
     for case in cases:
+        selection = case.hard_negative_selection
         case_payloads.append(
             {
                 "case_id": case.case_id,
@@ -197,6 +212,7 @@ def generation_evidence_semantic_payload(
                 "category": case.category,
                 "tags": list(case.tags),
                 "label_cohort": case.label_cohort,
+                "expected_behavior": case.expected_behavior,
                 "evidence_units": [
                     _evidence_unit_semantic(unit) for unit in case.evidence_units
                 ],
@@ -204,6 +220,11 @@ def generation_evidence_semantic_payload(
                     {"chunk_id": j.chunk_id, "relevance": int(j.relevance)}
                     for j in case.gold_judgments
                 ],
+                "hard_negative_selection": (
+                    None
+                    if selection is None
+                    else _hard_negative_selection_semantic(selection)
+                ),
             }
         )
     source_rows = [
@@ -213,12 +234,39 @@ def generation_evidence_semantic_payload(
     return {
         "schema_version": GENERATION_EVIDENCE_SET_V1,
         "evidence_contract": evidence_contract,
+        "expected_behavior": behavior,
         "source_gold_dataset_id": source_gold_dataset_id,
         "chunk_set_id": chunk_set_id,
         "corpus_id": corpus_id,
         "corpus_name": corpus_name,
         "source_name_by_document_id": source_rows,
         "cases": case_payloads,
+    }
+
+
+def _hard_negative_selection_semantic(
+    selection: GenerationHardNegativeSelectionV1,
+) -> dict[str, object]:
+    return {
+        "selection_contract": selection.selection_contract,
+        "authoring_run_id": selection.authoring_run_id,
+        "source_silver_case_id": selection.source_silver_case_id,
+        "grade_basis_query": selection.grade_basis_query,
+        "retriever": selection.retriever,
+        "requested_count": int(selection.requested_count),
+        "selected_candidates": [
+            {
+                "chunk_id": item.chunk_id,
+                "human_relevance": int(item.human_relevance),
+                "retriever": item.retriever,
+                "rank": int(item.rank),
+            }
+            for item in selection.selected_candidates
+        ],
+        "candidate_pool_size": selection.candidate_pool_size,
+        "eligible_grade0_hard_candidate_count": (
+            selection.eligible_grade0_hard_candidate_count
+        ),
     }
 
 
@@ -348,9 +396,16 @@ def _build_case(
         category=case.category,
         tags=list(case.tags),
         label_cohort=label_cohort,
+        expected_behavior="answer",
         evidence_units=units,
         gold_judgments=judgments_meta,
+        hard_negative_selection=None,
     )
+
+
+def child_chunk_to_evidence_unit(chunk: Chunk) -> EvidenceUnit:
+    """Convert an immutable child Chunk to a full (unclipped) EvidenceUnit."""
+    return _chunk_to_evidence_unit(chunk)
 
 
 def _chunk_to_evidence_unit(chunk: Chunk) -> EvidenceUnit:

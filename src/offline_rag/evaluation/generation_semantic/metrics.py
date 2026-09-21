@@ -4,8 +4,11 @@ from __future__ import annotations
 
 from offline_rag.domain.generation import GroundedAnswerResult, ResolvedCitation
 from offline_rag.evaluation.generation_semantic.models import (
+    GENERATION_ABSTENTION_DETERMINISTIC_V1,
     GENERATION_SEMANTIC_DETERMINISTIC_V1,
     CohortKey,
+    GenerationAbstentionAggregatesV1,
+    GenerationAbstentionCohortAggregateV1,
     GenerationCohortAggregateV1,
     GenerationDeterministicAggregatesV1,
     GenerationDeterministicCaseMetricsV1,
@@ -18,7 +21,9 @@ from offline_rag.evaluation.generation_semantic.models import (
 )
 
 __all__ = [
+    "GENERATION_ABSTENTION_DETERMINISTIC_V1",
     "GENERATION_SEMANTIC_DETERMINISTIC_V1",
+    "build_abstention_aggregates",
     "build_deterministic_aggregates",
     "build_population",
     "compute_case_deterministic_metrics",
@@ -55,9 +60,11 @@ def compute_case_deterministic_metrics(
     cited_g2 = sum(1 for cid in cited_gold if cid in gold_grade2)
     cited_g1 = sum(1 for cid in cited_gold if cid in gold_grade1)
 
+    # Hard-negative fixture: positive gold was intentionally NOT supplied as
+    # evidence. Citation-quality diagnostics vs gold positives are non-applicable.
     recall: float | None = None
     grade2_hit: bool | None = None
-    if result.status == "answered":
+    if case.expected_behavior != "abstain" and result.status == "answered":
         if gold_ids:
             recall = len(set(cited_gold)) / float(len(gold_ids))
         else:
@@ -252,3 +259,73 @@ def cohort_mapping_from_cases(
         for case in cases
         if case.label_cohort is not None
     }
+
+
+def build_abstention_aggregates(
+    cases: list[GenerationSemanticEvalCaseResultV1],
+) -> GenerationAbstentionAggregatesV1:
+    """Layer-1 abstention aggregates for label-defined hard-negative fixtures.
+
+    Denominator for top-level rates is ``total_cases`` (all cases in the
+    negative fixture). Cohort rates use that cohort's ``case_count`` when
+    non-zero; empty cohorts keep rates as null (do not invent zeros).
+    """
+    full = _abstention_cohort("full", cases)
+    human = _abstention_cohort(
+        "human_reviewed",
+        [c for c in cases if c.label_cohort == "human_reviewed"],
+    )
+    assistant = _abstention_cohort(
+        "assistant_only",
+        [c for c in cases if c.label_cohort == "assistant_only"],
+    )
+    return GenerationAbstentionAggregatesV1(
+        metric_contract=GENERATION_ABSTENTION_DETERMINISTIC_V1,
+        total_cases=len(cases),
+        correct_abstention_rate=full.correct_abstention_rate,
+        false_answer_rate=full.false_answer_rate,
+        generation_failed_rate=full.generation_failed_rate,
+        citation_invalid_rate=full.citation_invalid_rate,
+        empty_context_rate=full.empty_context_rate,
+        latency=full.latency,
+        cohorts={
+            "full": full,
+            "human_reviewed": human,
+            "assistant_only": assistant,
+        },
+    )
+
+
+def _abstention_cohort(
+    key: CohortKey,
+    cases: list[GenerationSemanticEvalCaseResultV1],
+) -> GenerationAbstentionCohortAggregateV1:
+    n = len(cases)
+    if n == 0:
+        return GenerationAbstentionCohortAggregateV1(cohort=key, case_count=0)
+
+    correct_abstain = sum(
+        1
+        for c in cases
+        if c.status == "insufficient_evidence"
+        and c.abstention_reason == "model_abstain"
+    )
+    false_answer = sum(1 for c in cases if c.status == "answered")
+    gen_failed = sum(1 for c in cases if c.status == "generation_failed")
+    citation_invalid = sum(1 for c in cases if c.status == "citation_invalid")
+    empty_context = sum(
+        1
+        for c in cases
+        if c.status == "insufficient_evidence"
+        and c.abstention_reason == "empty_context"
+    )
+    return GenerationAbstentionCohortAggregateV1(
+        cohort=key,
+        case_count=n,
+        correct_abstention_rate=correct_abstain / n,
+        false_answer_rate=false_answer / n,
+        generation_failed_rate=gen_failed / n,
+        citation_invalid_rate=citation_invalid / n,
+        empty_context_rate=empty_context / n,
+        latency=_latency_summary(cases),
+    )

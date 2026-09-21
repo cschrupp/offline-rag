@@ -1433,6 +1433,7 @@ def cmd_eval_generation(args: argparse.Namespace) -> int:
 
     evidence_mode = getattr(args, "evidence_mode", "gold") or "gold"
     judge_requested = bool(getattr(args, "judge", False))
+    authoring_run = getattr(args, "authoring_run", None)
     try:
         report = run_generation_semantic_evaluation(
             settings,
@@ -1440,6 +1441,7 @@ def cmd_eval_generation(args: argparse.Namespace) -> int:
             cohort_map_path=Path(args.cohort_map),
             corpus_name=args.corpus,
             evidence_mode=evidence_mode,
+            authoring_run_path=Path(authoring_run) if authoring_run else None,
             evidence_output=Path(args.evidence_output) if args.evidence_output else None,
             output=Path(args.output) if args.output else None,
             judge_requested=judge_requested,
@@ -2382,9 +2384,21 @@ def build_parser() -> argparse.ArgumentParser:
     )
     eval_generation.add_argument(
         "--evidence-mode",
-        choices=("gold",),
+        choices=("gold", "human-hard-negative"),
         default="gold",
-        help="Evidence construction mode (Slice 10B: gold only)",
+        help=(
+            "Evidence construction mode: gold (positive gold-evidence-v1) or "
+            "human-hard-negative (human-grade0-hard-negative-v1)"
+        ),
+    )
+    eval_generation.add_argument(
+        "--authoring-run",
+        type=Path,
+        default=None,
+        help=(
+            "Frozen GoldAuthoringRun JSON path "
+            "(required for --evidence-mode human-hard-negative)"
+        ),
     )
     eval_generation.add_argument(
         "--evidence-output",
