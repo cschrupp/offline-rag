@@ -532,9 +532,17 @@ A failed answer can be classified at least as retrieval failure, evidence-assemb
 
 # Slice 11 — Abstention and evidence sufficiency
 
+```text
+STATUS: DESIGN CONTRACT DRAFTED / IMPLEMENTATION NOT STARTED
+Order: Slice 11 → 12 → 13 (do not start LangGraph before sufficiency gate)
+Authority: docs/milestone6_agentic_recovery_security.md
+```
+
 ## Objective
 
 Prevent unsupported answers and quantify the cost of refusal thresholds.
+Introduce a **pre-generation** evidence-sufficiency decision before any
+conditional recovery (Slice 12) is authorized.
 
 ## Deliverables
 
@@ -564,9 +572,15 @@ The system has a measured operating point balancing useful answers against unsup
 
 # Slice 12 — Conditional LangGraph retrieval recovery
 
+```text
+STATUS: BLOCKED ON SLICE 11 / IMPLEMENTATION NOT STARTED
+Authority: docs/milestone6_agentic_recovery_security.md
+```
+
 ## Objective
 
-Introduce agentic behavior only where the baseline retrieval pipeline demonstrably fails.
+Introduce agentic behavior only where the baseline retrieval pipeline demonstrably fails
+**and** a formal sufficiency gate has returned insufficient.
 
 ## Initial graph
 
@@ -616,6 +630,12 @@ The agentic path must show measurable benefit on at least one failure category b
 ---
 
 # Slice 13 — Prompt-injection and security harness
+
+```text
+STATUS: DESIGN CONTRACT DRAFTED / IMPLEMENTATION NOT STARTED
+Authority: docs/milestone6_agentic_recovery_security.md
+NeMo: optional after deterministic controls (13D)
+```
 
 ## Objective
 
@@ -863,9 +883,9 @@ Foundation
   -> local generation/citations
   -> deterministic eval harness
   -> generation/citation eval
-  -> abstention
-  -> LangGraph recovery
-  -> security tests
+  -> abstention / evidence sufficiency   (Slice 11; BEFORE recovery)
+  -> LangGraph recovery                  (Slice 12; conditional only)
+  -> security tests                      (Slice 13)
   -> performance benchmarks
   -> API
   -> UI
@@ -873,4 +893,4 @@ Foundation
   -> portfolio release
 ```
 
-The project should resist the temptation to jump directly to LangGraph, multiple agents, or a polished UI. The strongest development narrative is an evidence-based progression from a measurable baseline to increasingly capable retrieval.
+The project should resist the temptation to jump directly to LangGraph, multiple agents, or a polished UI. The strongest development narrative is an evidence-based progression from a measurable baseline to increasingly capable retrieval. Milestone 6 design authority: `docs/milestone6_agentic_recovery_security.md`.

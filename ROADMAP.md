@@ -210,20 +210,43 @@ on the 22-case fixture are development evidence only — not sole grounds for
 promoting defaults.
 
 **Next operational track:** Milestone **6** — Agentic recovery and security
-(not started by Slice 10E).
+(**design contract drafted**; implementation not started — see
+[`docs/milestone6_agentic_recovery_security.md`](docs/milestone6_agentic_recovery_security.md)).
+Order: Slice **11** → **12** → **13**.
 
 
 ---
 
 ## Milestone 6 — Agentic recovery and security
 
-- [ ] LangGraph state machine
-- [ ] bounded query rewrite/retry
-- [ ] evidence sufficiency policy
-- [ ] indirect prompt-injection suite
-- [ ] optional NeMo Guardrails evaluation
+**Status:** DESIGN CONTRACT DRAFTED / IMPLEMENTATION NOT STARTED  
+**Baseline:** `1983ff1376ea27fc1e8774b35136dc8c8ec93f40`  
+**Design authority:** [`docs/milestone6_agentic_recovery_security.md`](docs/milestone6_agentic_recovery_security.md)
+
+**Implementation order (locked):** Slice **11** → Slice **12** → Slice **13**
+
+Do **not** interpret the checklist below as authorization to build LangGraph
+before a formal evidence-sufficiency gate exists (ADR-008).
+
+- [ ] Slice 11 — Evidence sufficiency & abstention policy (11A→11B→11C)
+- [ ] Slice 12 — Conditional LangGraph retrieval recovery (12A→12B→12C)
+- [ ] Slice 13 — Prompt-injection & security harness (13A→13C; optional 13D NeMo)
+
+Checklist detail (same order; not startable out of sequence):
+
+- [ ] evidence sufficiency policy (Slice 11; deterministic first)
+- [ ] bounded query rewrite/retry (Slice 12; only after sufficiency gate)
+- [ ] LangGraph state machine / orchestration (Slice 12; conditional recovery only)
+- [ ] indirect prompt-injection suite (Slice 13)
+- [ ] optional NeMo Guardrails evaluation (Slice 13D; after deterministic controls)
+
+**Next:** Slice 11 design interview — **OD-11-2** (which deterministic signals
+belong in sufficiency-v1). Do not pick a production threshold first.
 
 **Release criterion:** agentic recovery demonstrates measured benefit and adversarial test results are documented.
+
+No Milestone 6 implementation checkbox is complete. LangGraph is not started.
+No LangGraph dependency has been added.
 
 ## Milestone 7 — Performance and UI
 
