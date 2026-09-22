@@ -360,9 +360,10 @@ label A/B by offline set overlap with GoldDataset human-positive chunk IDs.
 
 1. **Complete observation vector** derivable from persisted data — not by
    partially reconstructing missing semantics from current indexes/stores.
-2. **Exact lineage match:** same `gold_dataset_id`, `corpus_id`,
-   `chunk_set_id`, retrieval/fusion/reranker/context config identities, and
-   exact case/query set.
+2. **Exact lineage match:** same `corpus_id`, `chunk_set_id`,
+   retrieval/fusion/reranker/context config identities, and exact case/query
+   set. (`gold_dataset_id` is required for the **evaluation join**, not as a
+   field of the gold-free snapshot identity — see OD-11-9.)
 3. Every OD-11-2 decision feature reconstructible:
    `empty_context`, `top_reranker_score`, `top1_top2_margin`,
    `top_anchor_cross_retriever_support`, `anchor_count`,
@@ -411,8 +412,7 @@ seven-feature observation vector for convenience.
 ```text
 case_id / query
 corpus / chunk_set / index / config lineage IDs
-  (gold_dataset_id may appear only as lineage reference for the eval run
-   when joining later — not as gold judgments or A/B class labels)
+  (no gold_dataset_id on the snapshot — gold joins only at evaluation layer)
 
 ordered reranked anchors:
   chunk_id
@@ -596,12 +596,66 @@ audit-only (OD-11-7).
 The **same semantic result** produced twice at different latencies **must**
 yield the **same** `suffctx_` and `suffctxrun_` IDs.
 
-### 8.8 Next design decision (OD-11-9)
+### 8.8 OD-11-9 — LOCKED authoritative lineage binding
 
-**OPEN — next:** authoritative lineage for a case snapshot — bind dense index
-ID, lexical index ID, fusion/reranker/context config hashes, and chunk set
-**individually and explicitly**, vs relying on a higher-level
-experiment/config hash (recommended: bind individually).
+**Status:** **LOCKED** — bind stage identities **individually and explicitly**.
+Do **not** collapse them into one app/experiment hash.
+
+| Option | Status |
+|---|---|
+| **A (individual stage IDs)** | **LOCKED** (with gold-free refinement below) |
+| B (higher-level experiment/config hash primary) | Rejected — opaque; weak for mixed-stack fail-closed checks |
+| C (chunk_set + one collapsed stack hash) | Rejected — loses fusion/rerank/context inspectability |
+
+#### Per-`suffctx_` required lineage (identity-bearing)
+
+```text
+corpus_id
+chunk_set_id
+dense_index_id
+lexical_index_id
+fusion_config_hash
+reranker_config_hash
+context_config_hash
+exact query (see OD-11-10 for original vs active retrieval query)
+case identifier used to bind the snapshot to the frozen case set
+semantic retrieval/context payload defined by OD-11-6 / OD-11-8
+```
+
+A higher-level experiment / app-config hash may be retained as **audit
+metadata only**. It **cannot** replace the stage identities above.
+
+#### Gold-free refinement (locked)
+
+`gold_dataset_id` does **not** participate in `suffctx_` or `suffctxrun_`
+semantic identity.
+
+```text
+suffctx_
+  corpus / query / retrieval / context lineage only
+  no gold lineage
+
+suffctxrun_
+  canonical set of suffctx_ snapshots
+  shared retrieval / context lineage
+  still gold-free
+
+11B evaluation artifact
+  suffctxrun_id
+  + gold_dataset_id
+  + A/B labels
+  + metrics / threshold analysis
+```
+
+The same retrieval/context state yields the same `suffctx_` ID regardless of
+which GoldDataset later evaluates it. Slice 12 can compare baseline vs recovery
+snapshots without carrying evaluation truth into runtime-shaped artifacts.
+
+### 8.9 Next design decision (OD-11-10)
+
+**OPEN — next:** whether a case snapshot binds `original_query` only, or both
+`original_query` and `active_retrieval_query` from the start (recommended:
+both; equal during Slice 11; diverges under Slice 12 rewrite).
 
 ---
 
@@ -992,7 +1046,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-9 next; OD-11-2…11-8 LOCKED)
+  → Slice 11 design interview (OD-11-10 next; OD-11-2…11-9 LOCKED)
   → 11A contracts + observation builder + tests
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -1037,7 +1091,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-6** | `sufficiency-eval-context-v1` contents | **LOCKED** | §8.5 — provenance + frozen OD-11-2 vector; no full evidence text; anti-drift recompute check; gold A/B in separate `sufficiency-eval-label-v1` |
 | **OD-11-7** | Snapshot identity / packaging | **LOCKED** | §8.6 — per-case `suffctx_` + `suffctxrun_` manifest; case_id order default; shared-lineage invariant; labels remain separate |
 | **OD-11-8** | Identity-bearing vs observational fields | **LOCKED** | §8.7 — clipping/budget/stop identity-bearing; latency/paths/timing not; same semantics ⇒ same IDs |
-| **OD-11-9** | Authoritative lineage binding | **OPEN — next** | Prefer individual dense/lexical/fusion/reranker/context/chunk-set IDs over opaque experiment hash |
+| **OD-11-9** | Authoritative lineage binding | **LOCKED** | §8.8 — individual stage IDs; no gold in `suffctx_`/`suffctxrun_` identity; gold only at eval layer |
+| **OD-11-10** | Query fields on case snapshot | **OPEN — next** | Prefer both `original_query` and `active_retrieval_query` (equal in Slice 11) |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -1088,5 +1143,5 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-9** / lineage binding)
+interview resolves remaining ODs (next: **OD-11-10** / query fields)
 under separate authorization.
