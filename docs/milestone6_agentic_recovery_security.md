@@ -916,12 +916,91 @@ Works with OD-11-14: historical artifacts declare which derivation must be used
 for recomputation; unsupported derivation identities **fail closed** rather than
 being silently interpreted by newer code.
 
-### 8.15 Next design decision (OD-11-16)
+### 8.15 OD-11-16 — LOCKED canonical `observation_config_hash` contents
 
-**OPEN — next:** canonical contents of `observation_config_hash` — hash an
-explicit normalized semantic config object (per-feature definition/version /
-normalization rules) vs hashing source code or an opaque whole-app config
-(recommended: former).
+**Status:** **LOCKED** — `observation_config_hash` is computed from an explicit
+**canonical semantic configuration object** that enumerates each OD-11-2 feature
+definition and every normalization / canonicalization rule that can affect its
+value. It must **not** depend on source-code bytes, ASTs, package versions, or
+the whole application configuration.
+
+| Option | Status |
+|---|---|
+| **A (explicit normalized semantic config object)** | **LOCKED** |
+| B (source-file bytes / AST) | Rejected — refactors churn identity |
+| C (opaque whole-app / experiment config) | Rejected — over-coupled / opaque |
+
+#### Conceptual shape
+
+```text
+contract: sufficiency-observation-v1
+
+features:
+  empty_context:
+    definition: ...
+    version: ...
+
+  top_reranker_score:
+    source: reranker_raw_logit
+    anchor_selection: rank_1
+    version: ...
+
+  top1_top2_margin:
+    definition: top1_score - top2_score
+    fewer_than_two: null
+    version: ...
+
+  top_anchor_cross_retriever_support:
+    definition: top anchor has both dense_rank and lexical_rank
+    version: ...
+
+  anchor_count:
+    definition: count of ordered anchors
+    version: ...
+
+  distinct_document_count:
+    identity_field: document_id
+    normalization: exact
+    version: ...
+
+  distinct_section_count:
+    identity_field: section_path
+    normalization: <explicit rule>
+    version: ...
+
+canonicalization:
+  field_order: canonical
+  null_handling: explicit
+  numeric_serialization: canonical
+```
+
+The hash changes **only** when semantic derivation changes. Refactoring
+implementation code without changing these definitions must leave
+`observation_config_hash` unchanged.
+
+#### Guardrails (locked)
+
+1. The canonical config object itself must be **persisted or reconstructible**
+   from the artifact — not merely its hash.
+2. Unknown feature-definition versions or normalization modes must **fail
+   closed** under OD-11-14 rather than being interpreted heuristically.
+
+```text
+sufficiency-observation-v1
+        +
+canonical semantic derivation config
+        ↓
+observation_config_hash
+        ↓
+suffctx_ identity
+```
+
+### 8.16 Next design decision (OD-11-17)
+
+**OPEN — next:** authoritative serialization / canonicalization for
+`observation_config_hash` and `suffctx_` IDs — reuse existing deterministic
+ID / canonical JSON machinery vs a new sufficiency-only serializer
+(recommended: reuse existing).
 
 ---
 
@@ -1312,7 +1391,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-16 next; OD-11-2…11-15 LOCKED)
+  → Slice 11 design interview (OD-11-17 next; OD-11-2…11-16 LOCKED)
   → 11A contracts + observation builder + tests
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -1364,7 +1443,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-13** | Manifest multi-attempt capability in v1 | **LOCKED** | §8.12 — multi-attempt-capable wire format; Slice 11 = exactly one initial attempt; identity includes full membership |
 | **OD-11-14** | Stored vs recomputed observations | **LOCKED** | §8.13 — store + versioned recompute-validate; stored authoritative for 11B; exact numeric equality; no silent re-derivation |
 | **OD-11-15** | Observation derivation versioning / identity | **LOCKED** | §8.14 — `sufficiency-observation-v1` + `obsconfig_` in `suffctx_` identity; code/git audit-only |
-| **OD-11-16** | Canonical `observation_config_hash` contents | **OPEN — next** | Prefer explicit normalized semantic config object over source/app-config hashing |
+| **OD-11-16** | Canonical `observation_config_hash` contents | **LOCKED** | §8.15 — explicit semantic derivation config object; persist/reconstructible; unknown versions fail closed |
+| **OD-11-17** | Serialization / canonicalization scheme | **OPEN — next** | Prefer reuse of existing deterministic ID / canonical JSON machinery |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -1415,5 +1495,5 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-16** /
-`observation_config_hash` contents) under separate authorization.
+interview resolves remaining ODs (next: **OD-11-17** / serialization scheme)
+under separate authorization.
