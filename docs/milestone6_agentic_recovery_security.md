@@ -1260,12 +1260,50 @@ Exact `normalized_section_path` rules are deferred to **OD-11-23**.
 Safer for later Slice 12 analysis: recovery may broaden the evidence surface
 across documents while preserving similar headings.
 
-### 8.22 Next design decision (OD-11-23)
+### 8.22 OD-11-23 — LOCKED `section_path` normalization
 
-**OPEN — next:** exact `section_path` normalization — structural-only
-(`None` → `[]`, preserve segment strings exactly) vs whitespace/case/text
-normalization (recommended: structural-only unless upstream chunking already
-guarantees text normalization).
+**Status:** **LOCKED** — `section_path` normalization is **structural-only**.
+Missing/`None` normalizes to `[]`; otherwise segment strings are preserved
+**exactly** as stored. No lowercasing, trimming, Unicode rewriting,
+tokenization, or free-text normalization is introduced by the sufficiency
+layer.
+
+| Option | Status |
+|---|---|
+| **A (structural-only)** | **LOCKED** |
+| B (also lowercase/trim segments) | Rejected — invents text equivalence |
+| C (join + free-text normalize) | Rejected — lossy / non-auditable |
+
+#### Canonical rule
+
+```text
+normalized_section_path =
+    []                    if section_path is missing or None
+    section_path          otherwise, preserving segment order and strings exactly
+```
+
+#### Consequences (locked)
+
+1. `["Introduction"]` and `[" introduction "]` are **distinct** unless upstream
+   already normalized them.
+2. `["A", "B"]` and `["A/B"]` are **distinct**.
+3. Case differences remain **distinct**.
+4. Empty list `[]` is the **one** canonical empty-path identity.
+5. The sufficiency layer must **not** attempt to repair or reinterpret upstream
+   metadata.
+6. Any future text normalization would require a **new** observation semantic
+   contract/hash, because it can change `distinct_section_count`.
+
+Fits OD-11-14: recomputation from stored provenance remains exact and auditable.
+
+With OD-11-18…23, the seven OD-11-2 observations are fully specified pending
+document-identity confirmation (**OD-11-24**).
+
+### 8.23 Next design decision (OD-11-24)
+
+**OPEN — next:** whether document identity is the stored `document_id`
+byte-for-byte with no path/title fallback — missing `document_id` is a
+provenance/validation failure (recommended: yes).
 
 ---
 
@@ -1715,7 +1753,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-20** | `top_anchor_cross_retriever_support` definition | **LOCKED** | §8.19 — top anchor dense∩lexical non-null ranks; independent of hybrid/RRF; null only if no top anchor |
 | **OD-11-21** | Count / diversity feature semantics | **LOCKED** | §8.20 — `anchor_count` from pre-expansion anchors; diversity from final EvidenceUnits; empty path = one identity |
 | **OD-11-22** | Document / section identity for diversity | **LOCKED** | §8.21 — `(document_id, normalized_section_path)` pairs; same path in different docs = distinct |
-| **OD-11-23** | `section_path` normalization rules | **OPEN — next** | Prefer structural-only (`None`→`[]`); no case/trim rewrite unless chunking already guarantees it |
+| **OD-11-23** | `section_path` normalization rules | **LOCKED** | §8.22 — structural-only (`None`→`[]`); exact segment strings; no case/trim rewrite |
+| **OD-11-24** | Document identity for diversity | **OPEN — next** | Prefer exact stored `document_id`; missing = validation failure, no synthesis |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
