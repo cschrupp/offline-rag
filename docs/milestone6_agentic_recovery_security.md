@@ -736,12 +736,58 @@ recovery contract.
 recovery/run policy lineage later. A snapshot describes what actually happened
 in that attempt.
 
-### 8.11 Next design decision (OD-11-12)
+### 8.11 OD-11-12 — LOCKED baseline/recovery pairing
 
-**OPEN — next:** how baseline and recovery snapshots are paired across attempts
-— random `query_trace_id` / `request_id` inside `suffctx_` semantic identity vs
-content-addressed snapshots paired via an explicit higher-level attempt group in
-the manifest (recommended: latter).
+**Status:** **LOCKED** — `suffctx_` stays **content-addressed**; baseline/recovery
+relationships are declared in a higher-level **manifest attempt group**.
+Runtime `query_trace_id` / `request_id` are **audit metadata only** and never
+semantic identity.
+
+| Option | Status |
+|---|---|
+| A (random/runtime ID in `suffctx_` identity) | Rejected — contaminates content identity |
+| **B (manifest attempt groups)** | **LOCKED** |
+| C (ad hoc joins, no manifest structure) | Rejected — loses authoritative pairing |
+
+#### Rules (locked)
+
+1. Per-case snapshots remain independent immutable artifacts.
+2. Pairing occurs in the manifest via a stable **attempt-group** keyed by
+   `case_id` + `original_query`.
+3. Each group contains one or more **ordered** attempt references, each with
+   `attempt_number`, `attempt_role`, and `suffctx_id`.
+4. `attempt_number` must be **unique** within the group.
+5. Attempt `0` must be `initial`.
+6. Recovery attempts (when present later) must be **strictly increasing**.
+7. All attempts in a group must share `original_query`, corpus/chunk lineage
+   compatibility, and the same higher-level policy lineage required for
+   comparison.
+8. `query_trace_id` / `request_id` may be retained as **non-identity-bearing**
+   audit fields.
+9. **Fail closed** if two snapshots claim the same `(case_id, attempt_number)`
+   but have different `suffctx_id`s.
+
+#### Illustrative structure (Slice 12-ready)
+
+```text
+attempt_group:
+  case_id: ...
+  original_query: ...
+  attempts:
+    - attempt_number: 0
+      attempt_role: initial
+      suffctx_id: ...
+    - attempt_number: 1
+      attempt_role: recovery
+      suffctx_id: ...
+```
+
+### 8.12 Next design decision (OD-11-13)
+
+**OPEN — next:** whether the run manifest schema-v1 is already
+**multi-attempt-capable** (Slice 11 validates exactly one attempt per case) or
+stays initial-only until Slice 12 (recommended: multi-attempt-capable now;
+Slice 11 = exactly one attempt per case).
 
 ---
 
@@ -1132,7 +1178,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-12 next; OD-11-2…11-11 LOCKED)
+  → Slice 11 design interview (OD-11-13 next; OD-11-2…11-12 LOCKED)
   → 11A contracts + observation builder + tests
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -1180,7 +1226,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-9** | Authoritative lineage binding | **LOCKED** | §8.8 — individual stage IDs; no gold in `suffctx_`/`suffctxrun_` identity; gold only at eval layer |
 | **OD-11-10** | Query fields on case snapshot | **LOCKED** | §8.9 — both `original_query` and `active_retrieval_query`; equal in Slice 11; both identity-bearing |
 | **OD-11-11** | Attempt number / role on snapshot | **LOCKED** | §8.10 — `attempt_number`/`attempt_role` identity-bearing; Slice 11 = `0`/`initial`; max_retries not in snapshot identity |
-| **OD-11-12** | Baseline/recovery pairing across attempts | **OPEN — next** | Prefer content-addressed snapshots + manifest attempt groups; no random request ID in semantic identity |
+| **OD-11-12** | Baseline/recovery pairing across attempts | **LOCKED** | §8.11 — content-addressed `suffctx_`; manifest attempt groups; trace IDs audit-only; fail-closed on ID conflicts |
+| **OD-11-13** | Manifest multi-attempt capability in v1 | **OPEN — next** | Prefer multi-attempt-capable schema now; Slice 11 validates exactly one attempt per case |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -1231,5 +1278,5 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-12** / attempt pairing)
+interview resolves remaining ODs (next: **OD-11-13** / multi-attempt manifest)
 under separate authorization.
