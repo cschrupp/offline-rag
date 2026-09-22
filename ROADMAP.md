@@ -240,8 +240,11 @@ Checklist detail (same order; not startable out of sequence):
 - [ ] indirect prompt-injection suite (Slice 13)
 - [ ] optional NeMo Guardrails evaluation (Slice 13D; after deterministic controls)
 
-**Next:** Slice 11 design interview — **OD-11-2** (which deterministic signals
-belong in sufficiency-v1). Do not pick a production threshold first.
+**Next:** Slice 11 design interview — **OD-11-4** (insufficient-evidence
+evaluation population). **OD-11-2** and **OD-11-3 LOCKED** (observation schema
++ deterministic named gate shape; see
+[`docs/milestone6_agentic_recovery_security.md`](docs/milestone6_agentic_recovery_security.md) §7).
+Do not pick production thresholds before 11B measurement.
 
 **Release criterion:** agentic recovery demonstrates measured benefit and adversarial test results are documented.
 

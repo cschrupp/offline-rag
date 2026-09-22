@@ -136,8 +136,10 @@ retrieval/context result provides enough retrieval-grounded support to justify
 attempting generation. The decision occurs before generation and uses only
 query-time retrieval/context evidence and deterministic provenance/features.
 
-This locks the **boundary**, not the formula. The concrete sufficiency-v1 rule
-is deferred to the Slice 11 feature interview (**OD-11-2 / OD-11-3**).
+This locks the **boundary**, not the formula. The concrete sufficiency-v1 **observation schema** is **LOCKED** in §7
+(**OD-11-2**). The decision **rule shape** is **LOCKED** in §7.4
+(**OD-11-3**): ordered deterministic named gates — not a weighted score.
+Concrete non-empty gate conditions/thresholds remain deferred to 11B.
 
 ---
 
@@ -173,38 +175,65 @@ EvidenceSufficiencyDecision
 
 ## 7. Candidate deterministic features
 
-### 7.1 Available without recomputing retrieval
+### 7.1 OD-11-2 — LOCKED sufficiency-v1 observation schema
+
+**Status:** **LOCKED** (observation schema only — not the sufficiency rule).
+
+OD-11-2 freezes what sufficiency-v1 **observes**. It does **not** assign
+thresholds, Boolean interpretations (except `empty_context`), or a decision
+formula. Those belong to **OD-11-3** / 11B measurement.
+
+#### Decision-feature set (recorded on every observation)
+
+| Feature | Type / definition | Decision semantics now |
+|---|---|---|
+| `empty_context` | boolean — no assembled evidence units | **Hard insufficiency:** if true, sufficiency is false |
+| `top_reranker_score` | raw reranker logit of highest-ranked anchor (`raw-logit-v1`) | Uncalibrated observable only |
+| `top1_top2_margin` | `top1_score - top2_score`; **null** when fewer than two reranked anchors | Uncalibrated; **do not** substitute `0` when undefined |
+| `top_anchor_cross_retriever_support` | boolean — highest-ranked anchor has **both** `dense_rank` and `lexical_rank` non-null | Uncalibrated observable; precise top-anchor definition (not vague co-presence) |
+| `anchor_count` | number of reranked anchors contributing to assembled context | Uncalibrated observable |
+| `distinct_document_count` | unique `document_id` among those anchors / assembled evidence | **Measured diversity only** — not “more is better” |
+| `distinct_section_count` | unique `section_path` among those anchors / assembled evidence | **Measured diversity only** — not “more is better” |
+
+**Diversity refinement:** `distinct_document_count` and `distinct_section_count`
+are locked as **measured observables**. A perfectly answerable factual query may
+require one section from one document. Diversity must **not** become an implicit
+quality assumption or sufficiency bonus.
+
+#### Outside initial decision-feature set (diagnostics for 11B)
+
+Record when available; may justify later policy promotion; **not** in
+sufficiency-v1 decision features now:
+
+- evidence-unit count / context token count
+- clipping / budget-exhaustion / stop_reason
+- hybrid rank / RRF score (and related fusion ranks)
+- broader dense/lexical overlap statistics (e.g. total overlap counts) —
+  useful diagnostics alongside the locked top-anchor Boolean
+
+#### Explicitly excluded from sufficiency-v1
+
+- full evidence / document body text
+- LLM relevance / sufficiency judgment
+- generation behavior or outcomes
+- gold labels / judge results (runtime)
+- any weighted aggregate or “confidence score”
+
+### 7.2 Inventory: available without recomputing retrieval
 
 From `HybridRerankContextResult` / `HybridRerankCandidate` /
-`HybridRerankProvenance` / `ContextAssemblyDiagnostics` (current contracts):
+`HybridRerankProvenance` / `ContextAssemblyDiagnostics` (supports §7.1):
 
-| Feature | Source | Notes |
+| Signal | Source | Role under OD-11-2 |
 |---|---|---|
-| `top_reranker_score` | `anchors[0].score` / `.hybrid_rerank.reranker_score` | **raw-logit-v1** — not a probability |
-| `top1_top2_margin` | `anchors[0].score - anchors[1].score` | undefined if `<2` anchors |
-| `reranked_candidate_count` / `actual_anchor_count` | `len(anchors)` / diagnostics | |
-| `requested_anchor_k` | diagnostics | |
-| Cross-retriever presence | per-anchor `dense_rank` / `lexical_rank` nullable | agreement = both non-null (and optionally both ranks strong) |
-| Dense/lexical ranks & scores | provenance | scores are method-native, not calibrated |
-| `rrf_score` / `hybrid_rank` | provenance | fusion identity, not confidence |
-| Distinct supporting documents | unique `document_id` over anchors or evidence units | |
-| Distinct sections | unique `section_path` tuples | empty paths possible |
-| Anchor count | diagnostics `actual_anchor_count` | |
-| Evidence-unit count | diagnostics / `len(evidence_units)` | |
-| Context token count | `context_token_count` / diagnostics | |
-| Budget / clipping flags | `budget_exhausted`, `clipping_occurred`, `stop_reason` | structural, not semantic sufficiency alone |
-| Empty evidence | `evidence_units == []` | already maps to `empty_context` today |
-
-### 7.2 Explicit non-features for sufficiency-v1
-
-| Candidate | Status |
-|---|---|
-| Calibrated “80% confidence” from reranker score | **Forbidden** under `raw-logit-v1` |
-| Learned classifier | Deferred; not first policy |
-| Arbitrary weighted composite before measurement | Forbidden |
-| Gold labels / judge results at **runtime** | Forbidden |
-| LLM self-rating of sufficiency | Not for sufficiency-v1 |
-| Slice 10D hard-negative as guaranteed unanswerable | Forbidden as threshold truth |
+| empty evidence | `evidence_units == []` | → `empty_context` |
+| top score | `anchors[0].score` / `.hybrid_rerank.reranker_score` | → `top_reranker_score` |
+| margin | score[0]−score[1] or null | → `top1_top2_margin` |
+| top-anchor dense+lexical | both ranks non-null on `anchors[0]` | → `top_anchor_cross_retriever_support` |
+| anchor count | `len(anchors)` / diagnostics | → `anchor_count` |
+| distinct docs / sections | unique ids / section_path | → diversity observables |
+| evidence-unit / token counts; budget/clip | diagnostics | diagnostic only |
+| RRF / hybrid ranks; non-top overlap stats | provenance | diagnostic only |
 
 ### 7.3 Raw logits are not probabilities
 
@@ -221,9 +250,37 @@ Any future threshold is an **empirical operating point** tied to a frozen
 reranker/model/input contract + retrieval stack. Changing those contracts
 invalidates calibration.
 
----
+### 7.4 OD-11-3 — LOCKED sufficiency-v1 rule shape
 
-## 8. Evaluation populations / label limitations
+**Status:** **LOCKED** — sufficiency-v1 is an **ordered deterministic gate/rule set**.
+
+| Lock | Detail |
+|---|---|
+| Shape | Explicit named gates — not a weighted/composite confidence score |
+| Pre-11B authorized gate | **`empty_context` ⇒ insufficient** only |
+| Other OD-11-2 observables | May become additional **named gates** only when **11B** supplies empirical justification for condition + operating point |
+| Weighted / composite score | **Forbidden** in v1 (**option C out**) |
+| Single-threshold simplification | Option **B** remains a possible *future* simplification if 11B shows one feature dominates — not authorized now |
+
+**Gate mechanics (locked with OD-11-3):**
+
+1. Gates are **individually named and versioned**.
+2. Each decision reports **which gate(s) fired**.
+3. **Multiple gates may fire**; preserve **all** triggered reasons — not only the first.
+4. Evaluation order is **deterministic for implementation** but does **not** imply importance ranking.
+5. Leaving a feature **diagnostic-only** (no gate) is acceptable and expected until 11B justifies promotion.
+
+Illustrative (not yet authorized beyond `empty_context`):
+
+```text
+gates (ordered for evaluation only):
+  empty_context_v1        → if empty_context: INSUFFICIENT (reason=empty_context)
+  # further named gates only after 11B justification
+decision.reasons = all fired gate reason ids
+```
+
+Observation (§7.1) and policy (§7.4) remain separate: 11B can rescore
+alternate gate sets from frozen observations without re-retrieval.
 
 ### 8.1 Do not treat Slice 10D as authoritative unanswerable gold
 
@@ -641,7 +698,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-2…)
+  → Slice 11 design interview (OD-11-4 next; OD-11-2/11-3 LOCKED)
   → 11A contracts + observation builder + tests
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -676,12 +733,12 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 
 ## 28. OPEN DECISIONS
 
-| ID | Question | Status | Recommendation |
+| ID | Question | Status | Recommendation / resolution |
 |---|---|---|---|
 | **OD-11-1** | Exact runtime evidence-sufficiency **boundary** | **Recommend lock** | §5 — pre-generation; query-time retrieval/context features only; no formula yet |
-| **OD-11-2** | Which deterministic features form sufficiency-v1 | **OPEN** | Interview after inspecting available features (§7); start from top score, margin, cross-retriever agreement, diversity/counts; exclude calibrated probability language |
-| **OD-11-3** | Rule shape: one threshold vs multi-gate vs other | **OPEN** | Prefer explicit multi-gate or documented rule over opaque weighted score; measure in 11B before locking |
-| **OD-11-4** | Insufficient-evidence eval population | **OPEN** | Prefer A+B (+ optional C); keep 10D as stress only |
+| **OD-11-2** | Which deterministic features form sufficiency-v1 **observation** | **LOCKED** | §7.1 — seven decision-feature fields; only `empty_context` has intrinsic decision semantics; diversity is measured, not “more is better”; diagnostics listed separately; no text/LLM/gold/weighted score |
+| **OD-11-3** | Rule shape: gates/rules vs weighted score | **LOCKED** | §7.4 — ordered deterministic named gate set; only `empty_context` authorized pre-11B; multi-fire reasons preserved; no weighted score (C out); B deferred as possible future simplification |
+| **OD-11-4** | Insufficient-evidence eval population | **OPEN — next** | Prefer A+B (+ optional C); keep 10D as stress only |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -732,5 +789,5 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves **OD-11-2** (and related ODs as needed) under separate
+interview resolves remaining ODs (next: **OD-11-4**) under separate
 authorization.
