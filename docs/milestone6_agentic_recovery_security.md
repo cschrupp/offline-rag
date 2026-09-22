@@ -1336,12 +1336,64 @@ document_identity = unit.document_id
 Keeps OD-11-14 fully fail-closed and prevents the sufficiency layer from
 inventing provenance.
 
-### 8.24 Next design decision (OD-11-25)
+### 8.24 OD-11-25 — LOCKED multi-unit / shared-anchor counting
 
-**OPEN — next:** EvidenceUnit counting when multiple units reference the same
-anchor/source chunk — whether diversity counts unique identity keys over all
-final units while a literal `evidence_unit_count` remains list length
-(recommended: yes).
+**Status:** **LOCKED** — diversity features are computed over **all** final
+EvidenceUnits using only their declared diversity identity keys.
+`evidence_unit_count` is the **literal length** of the final EvidenceUnit list.
+No additional deduplication by source chunk, contributing chunk, or primary
+anchor is introduced by the sufficiency layer.
+
+| Option | Status |
+|---|---|
+| **A (identity-key diversity; literal list length)** | **LOCKED** |
+| B (dedupe by source_chunk_id first) | Rejected — second hidden collapse |
+| C (dedupe by primary anchor first) | Rejected — second hidden collapse |
+
+#### Canonical semantics
+
+```text
+evidence_unit_count =
+    len(final_evidence_units)
+
+distinct_document_count =
+    len({
+        unit.document_id
+        for unit in final_evidence_units
+    })
+
+distinct_section_count =
+    len({
+        (unit.document_id, normalized_section_path(unit.section_path))
+        for unit in final_evidence_units
+    })
+```
+
+Whatever deduplication, containment suppression, clipping, or expansion logic
+the context assembler already applied defines the final evidence surface.
+Sufficiency **observes** that surface; it does **not** perform a second hidden
+collapse.
+
+#### Explicit consequences (locked)
+
+1. Two EvidenceUnits from the same chunk can still contribute `2` to
+   `evidence_unit_count`.
+2. If they belong to the same document/section, they contribute only `1` to the
+   corresponding diversity counts.
+3. Sharing a primary anchor does **not** merge units.
+4. Sharing `source_chunk_id` does **not** merge units.
+5. Any future alternative collapse rule would require a **new** observation
+   derivation contract/hash.
+
+Keeps OD-11-21 through OD-11-25 internally consistent.
+
+### 8.25 Next design decision (OD-11-26)
+
+**OPEN — next:** which diagnostics are persisted as recomputable provenance vs
+audit-only metadata — especially `evidence_unit_count`, `context_token_count`,
+clipping/budget/stop, dedup hits, containment suppressions (recommended: persist
+all deterministic context-assembly diagnostics; surface-altering /
+identity-bearing ones remain semantic; performance/runtime stay audit-only).
 
 ---
 
@@ -1732,7 +1784,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-25 next; OD-11-2…11-24 LOCKED)
+  → Slice 11 design interview (OD-11-26 next; OD-11-2…11-25 LOCKED)
   → 11A contracts + observation builder + tests
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -1793,7 +1845,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-22** | Document / section identity for diversity | **LOCKED** | §8.21 — `(document_id, normalized_section_path)` pairs; same path in different docs = distinct |
 | **OD-11-23** | `section_path` normalization rules | **LOCKED** | §8.22 — structural-only (`None`→`[]`); exact segment strings; no case/trim rewrite |
 | **OD-11-24** | Document identity for diversity | **LOCKED** | §8.23 — exact stored `document_id`; missing = validation failure; no path/title synthesis |
-| **OD-11-25** | Multi-unit / shared-anchor counting | **OPEN — next** | Prefer diversity by unique identity keys; literal evidence_unit_count = list length |
+| **OD-11-25** | Multi-unit / shared-anchor counting | **LOCKED** | §8.24 — diversity by identity keys only; `evidence_unit_count` = literal list length; no second collapse |
+| **OD-11-26** | Diagnostics: semantic vs audit-only | **OPEN — next** | Prefer persist all deterministic assembly diagnostics; surface-altering stay semantic; latency audit-only |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -1844,5 +1897,5 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-25** / multi-unit counting)
-under separate authorization.
+interview resolves remaining ODs (next: **OD-11-26** / diagnostics
+persistence) under separate authorization.
