@@ -1216,12 +1216,56 @@ Exact section-identity tuple shape (`section_path` alone vs
 This completes exact semantics for all seven OD-11-2 observations (pending
 OD-11-22 section-identity refinement).
 
-### 8.21 Next design decision (OD-11-22)
+### 8.21 OD-11-22 — LOCKED document / section identity for diversity
 
-**OPEN — next:** document vs section identity for diversity — count
-`section_path` globally vs `(document_id, normalized_section_path)` pairs
-(recommended: pairs, because identical headings in different documents are
-different evidence sections).
+**Status:** **LOCKED** — `distinct_section_count` counts unique
+`(document_id, normalized_section_path)` pairs over the final EvidenceUnits.
+Identical section paths in different documents are **distinct** section
+identities.
+
+| Option | Status |
+|---|---|
+| **A ((document_id, normalized_section_path) pairs)** | **LOCKED** |
+| B (global section_path across documents) | Rejected — collapses same headings in different docs |
+| C (leaf title only) | Rejected — loses path/document structure |
+
+#### Canonical form
+
+```text
+section_identity =
+    (
+        unit.document_id,
+        normalized_section_path(unit.section_path),
+    )
+
+distinct_section_count =
+    len(set(section_identity for unit in final_evidence_units))
+```
+
+Exact `normalized_section_path` rules are deferred to **OD-11-23**.
+
+#### Invariants (locked)
+
+1. `document_id` participates **explicitly** in section identity.
+2. `normalized_section_path` preserves the **full path structure**, not only the
+   leaf title.
+3. Missing and empty paths normalize to the same explicit empty-path
+   representation defined under OD-11-21.
+4. Two EvidenceUnits from the same document and same normalized path count as
+   **one** section.
+5. Same path in different documents counts as **two** sections.
+6. Section identity remains **observational only**; higher diversity is not
+   intrinsically “better.”
+
+Safer for later Slice 12 analysis: recovery may broaden the evidence surface
+across documents while preserving similar headings.
+
+### 8.22 Next design decision (OD-11-23)
+
+**OPEN — next:** exact `section_path` normalization — structural-only
+(`None` → `[]`, preserve segment strings exactly) vs whitespace/case/text
+normalization (recommended: structural-only unless upstream chunking already
+guarantees text normalization).
 
 ---
 
@@ -1612,7 +1656,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-22 next; OD-11-2…11-21 LOCKED)
+  → Slice 11 design interview (OD-11-23 next; OD-11-2…11-22 LOCKED)
   → 11A contracts + observation builder + tests
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -1670,7 +1714,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-19** | `top_reranker_score` / `top1_top2_margin` semantics | **LOCKED** | §8.18 — pre-expansion ordered anchors; raw-logit-v1 unchanged; null when missing; no calibration |
 | **OD-11-20** | `top_anchor_cross_retriever_support` definition | **LOCKED** | §8.19 — top anchor dense∩lexical non-null ranks; independent of hybrid/RRF; null only if no top anchor |
 | **OD-11-21** | Count / diversity feature semantics | **LOCKED** | §8.20 — `anchor_count` from pre-expansion anchors; diversity from final EvidenceUnits; empty path = one identity |
-| **OD-11-22** | Document / section identity for diversity | **OPEN — next** | Prefer `(document_id, normalized_section_path)` pairs for section count |
+| **OD-11-22** | Document / section identity for diversity | **LOCKED** | §8.21 — `(document_id, normalized_section_path)` pairs; same path in different docs = distinct |
+| **OD-11-23** | `section_path` normalization rules | **OPEN — next** | Prefer structural-only (`None`→`[]`); no case/trim rewrite unless chunking already guarantees it |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -1721,5 +1766,5 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-22** / section identity)
-under separate authorization.
+interview resolves remaining ODs (next: **OD-11-23** / section_path
+normalization) under separate authorization.
