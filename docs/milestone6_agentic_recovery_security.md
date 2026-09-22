@@ -191,9 +191,9 @@ formula. Those belong to **OD-11-3** / 11B measurement.
 | `top_reranker_score` | raw reranker logit of highest-ranked pre-expansion anchor (`raw-logit-v1`; OD-11-19); null if no anchors | Uncalibrated observable only |
 | `top1_top2_margin` | `top1 - top2` on that list; **null** when fewer than two anchors (OD-11-19); never substitute `0` for null | Uncalibrated; **do not** substitute `0` when undefined |
 | `top_anchor_cross_retriever_support` | boolean/null — top pre-expansion anchor has both `dense_rank` and `lexical_rank` non-null (OD-11-20); null if no top anchor | Uncalibrated observable; precise top-anchor definition (not vague co-presence) |
-| `anchor_count` | number of reranked anchors contributing to assembled context | Uncalibrated observable |
-| `distinct_document_count` | unique `document_id` among those anchors / assembled evidence | **Measured diversity only** — not “more is better” |
-| `distinct_section_count` | unique `section_path` among those anchors / assembled evidence | **Measured diversity only** — not “more is better” |
+| `anchor_count` | `len(final_reranked_anchors)` pre-expansion (OD-11-21) | Uncalibrated observable |
+| `distinct_document_count` | unique `document_id` over **final EvidenceUnits** (OD-11-21) | **Measured diversity only** — not “more is better” |
+| `distinct_section_count` | unique normalized section identities over **final EvidenceUnits** (OD-11-21; exact identity tuple OD-11-22) | **Measured diversity only** — not “more is better” |
 
 **Diversity refinement:** `distinct_document_count` and `distinct_section_count`
 are locked as **measured observables**. A perfectly answerable factual query may
@@ -1164,12 +1164,64 @@ else:
 Keeps the feature narrowly interpretable: independent branch corroboration of
 the strongest reranked anchor — nothing more.
 
-### 8.20 Next design decision (OD-11-21)
+### 8.20 OD-11-21 — LOCKED count / diversity feature semantics
 
-**OPEN — next:** exact semantics for `anchor_count`, `distinct_document_count`,
-and `distinct_section_count` — especially whether document/section diversity is
-computed from final EvidenceUnits rather than anchors, and how null/empty
-section paths are normalized.
+**Status:** **LOCKED** — `anchor_count` is the length of the final ordered
+pre-expansion reranked anchor list. `distinct_document_count` and
+`distinct_section_count` are computed over the **final assembled EvidenceUnits**.
+Empty/missing section paths participate as **one** explicit empty-path identity
+and are **not** dropped.
+
+| Option | Status |
+|---|---|
+| **A (anchors for count; EvidenceUnits for diversity; empty path kept)** | **LOCKED** |
+| B (all three from anchors only) | Rejected — diversity would not track generation surface |
+| C (drop empty/missing section_path) | Rejected — breaks reconstructibility / invents drops |
+
+#### Canonical semantics
+
+```text
+anchor_count = len(final_reranked_anchors)
+
+distinct_document_count =
+    count(unique(unit.document_id for unit in final_evidence_units))
+
+distinct_section_count =
+    count(unique(normalized_section_path(unit.section_path)
+                 for unit in final_evidence_units))
+```
+
+For `section_path`, canonical empty representation is e.g. `[]` after
+normalization. **Missing and empty normalize to the same empty-path identity**;
+otherwise historical reconstruction can produce artificial count differences.
+
+Exact section-identity tuple shape (`section_path` alone vs
+`(document_id, section_path)`) is deferred to **OD-11-22**.
+
+#### Consequences (locked)
+
+1. `anchor_count` measures the **rerank stage**.
+2. Document/section diversity measures the **actual generation evidence surface**.
+3. `empty_context=true` therefore implies both diversity counts are `0`.
+4. Non-empty context with only empty section paths yields
+   `distinct_section_count=1` (under the empty-path identity rule).
+5. Diversity remains **purely observational**; higher counts do not imply better
+   sufficiency.
+6. Expansion can increase or decrease diversity relative to the anchor set —
+   intentional.
+7. Deduplication, containment suppression, clipping, and budget enforcement
+   happen **before** diversity is counted (final EvidenceUnits only).
+8. No gold information participates.
+
+This completes exact semantics for all seven OD-11-2 observations (pending
+OD-11-22 section-identity refinement).
+
+### 8.21 Next design decision (OD-11-22)
+
+**OPEN — next:** document vs section identity for diversity — count
+`section_path` globally vs `(document_id, normalized_section_path)` pairs
+(recommended: pairs, because identical headings in different documents are
+different evidence sections).
 
 ---
 
@@ -1560,7 +1612,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-21 next; OD-11-2…11-20 LOCKED)
+  → Slice 11 design interview (OD-11-22 next; OD-11-2…11-21 LOCKED)
   → 11A contracts + observation builder + tests
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -1617,7 +1669,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-18** | Exact `empty_context` definition | **LOCKED** | §8.17 — `len(final_context.evidence_units) == 0` after full assembly; not anchors/tokens |
 | **OD-11-19** | `top_reranker_score` / `top1_top2_margin` semantics | **LOCKED** | §8.18 — pre-expansion ordered anchors; raw-logit-v1 unchanged; null when missing; no calibration |
 | **OD-11-20** | `top_anchor_cross_retriever_support` definition | **LOCKED** | §8.19 — top anchor dense∩lexical non-null ranks; independent of hybrid/RRF; null only if no top anchor |
-| **OD-11-21** | Count / diversity feature semantics | **OPEN — next** | Prefer EvidenceUnits for document/section diversity; clarify empty section_path normalization |
+| **OD-11-21** | Count / diversity feature semantics | **LOCKED** | §8.20 — `anchor_count` from pre-expansion anchors; diversity from final EvidenceUnits; empty path = one identity |
+| **OD-11-22** | Document / section identity for diversity | **OPEN — next** | Prefer `(document_id, normalized_section_path)` pairs for section count |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -1668,5 +1721,5 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-21** / count & diversity
-semantics) under separate authorization.
+interview resolves remaining ODs (next: **OD-11-22** / section identity)
+under separate authorization.
