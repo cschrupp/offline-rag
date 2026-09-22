@@ -995,12 +995,59 @@ observation_config_hash
 suffctx_ identity
 ```
 
-### 8.16 Next design decision (OD-11-17)
+### 8.16 OD-11-17 — LOCKED serialization / canonicalization scheme
 
-**OPEN — next:** authoritative serialization / canonicalization for
-`observation_config_hash` and `suffctx_` IDs — reuse existing deterministic
-ID / canonical JSON machinery vs a new sufficiency-only serializer
-(recommended: reuse existing).
+**Status:** **LOCKED** — `observation_config_hash`, `suffctx_`, and
+`suffctxrun_` use the repository’s existing deterministic **canonical-JSON
+hashing** machinery. Sufficiency must **not** introduce an independent
+serialization algorithm. Dedicated builders may wrap the shared primitive to
+define semantic payloads, prefixes, and validation.
+
+| Option | Status |
+|---|---|
+| **A (reuse existing canonical hashing; thin builders OK)** | **LOCKED** |
+| B (new sufficiency-only serializer) | Rejected — risk of silent divergence |
+| C (ad hoc per-module `json.dumps`) | Rejected — non-shared semantics |
+
+#### Conceptual hierarchy
+
+```text
+shared canonical serialization + hash primitive
+        │
+        ├─ build_observation_config_hash(...) → obsconfig_...
+        ├─ build_suffctx_id(...)              → suffctx_...
+        └─ build_suffctxrun_id(...)           → suffctxrun_...
+```
+
+Builders need not literally call a function named `canonical_config_hash` if the
+repo distinguishes configuration hashes from content IDs. The lock is to reuse
+the **same underlying canonicalization/hashing semantics**, via the appropriate
+existing helper or a very thin wrapper around that primitive.
+
+#### Locked details
+
+1. **Domain separation:** Identical canonical JSON for two artifact classes must
+   not share an identifier namespace; prefixes / contracts (or equivalent domain
+   fields) distinguish them.
+2. Builders receive an **explicit semantic payload**, not an entire Pydantic
+   object dumped indiscriminately. Non-semantic timestamps, paths, latency,
+   trace IDs, etc. are excluded before hashing.
+3. Lists whose order has semantics (anchors, attempts, canonical case
+   membership) remain ordered. Sets whose order does not have semantics are
+   normalized deterministically before hashing.
+4. **`null` vs missing** remains contract-defined; builders must not silently
+   collapse them (especially `top1_top2_margin = null`).
+5. Numeric values such as raw reranker logits pass through the repository’s
+   established JSON numeric representation — do **not** stringify/round them
+   independently for sufficiency IDs.
+6. Hashing Python `repr()`, model reprs, source bytes, or ad hoc `json.dumps()`
+   is **prohibited**.
+
+### 8.17 Next design decision (OD-11-18)
+
+**OPEN — next:** exact definition of `empty_context` — zero usable
+`EvidenceUnit`s (final assembled evidence surface) vs zero reranked anchors vs
+zero rendered context tokens (recommended: zero usable EvidenceUnits).
 
 ---
 
@@ -1391,7 +1438,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-17 next; OD-11-2…11-16 LOCKED)
+  → Slice 11 design interview (OD-11-18 next; OD-11-2…11-17 LOCKED)
   → 11A contracts + observation builder + tests
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -1444,7 +1491,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-14** | Stored vs recomputed observations | **LOCKED** | §8.13 — store + versioned recompute-validate; stored authoritative for 11B; exact numeric equality; no silent re-derivation |
 | **OD-11-15** | Observation derivation versioning / identity | **LOCKED** | §8.14 — `sufficiency-observation-v1` + `obsconfig_` in `suffctx_` identity; code/git audit-only |
 | **OD-11-16** | Canonical `observation_config_hash` contents | **LOCKED** | §8.15 — explicit semantic derivation config object; persist/reconstructible; unknown versions fail closed |
-| **OD-11-17** | Serialization / canonicalization scheme | **OPEN — next** | Prefer reuse of existing deterministic ID / canonical JSON machinery |
+| **OD-11-17** | Serialization / canonicalization scheme | **LOCKED** | §8.16 — reuse shared canonical JSON/hash primitive; thin `obsconfig_`/`suffctx_`/`suffctxrun_` builders; no ad hoc serializers |
+| **OD-11-18** | Exact `empty_context` definition | **OPEN — next** | Prefer zero usable EvidenceUnits (assembled surface), not merely zero anchors |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -1495,5 +1543,5 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-17** / serialization scheme)
-under separate authorization.
+interview resolves remaining ODs (next: **OD-11-18** / `empty_context`
+definition) under separate authorization.
