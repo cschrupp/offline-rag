@@ -394,12 +394,86 @@ observation authority for that analysis.
 Once the observation authority exists (A-qualified artifacts or B snapshot),
 threshold exploration must **never** invoke retrieval opportunistically.
 
-### 8.5 Next design decision (OD-11-6)
+### 8.5 OD-11-6 — LOCKED `sufficiency-eval-context-v1` contents
 
-**OPEN — next:** contents of `sufficiency-eval-context-v1` — seven frozen
-observations + gold-overlap labels only, vs provenance sufficient to
-audit/recompute observations later (recommended: latter; keep gold-derived A/B
-labels in the evaluation layer, not in the runtime observation object).
+**Status:** **LOCKED** — gold-free, runtime-shaped snapshot with provenance
+sufficient to **audit/recompute** OD-11-2 observations, plus the materialized
+seven-feature observation vector for convenience.
+
+| Option | Status |
+|---|---|
+| A (seven features only) | Rejected — too lossy; future feature-semantic changes would force reliance on transient artifacts or re-retrieval |
+| **B (provenance + frozen observations)** | **LOCKED** |
+| C (B + embedded gold A/B labels) | Rejected — crosses evaluation boundary |
+
+#### Required snapshot contents
+
+```text
+case_id / query
+corpus / chunk_set / index / config lineage IDs
+  (gold_dataset_id may appear only as lineage reference for the eval run
+   when joining later — not as gold judgments or A/B class labels)
+
+ordered reranked anchors:
+  chunk_id
+  reranker raw logit
+  rank
+  hybrid rank / RRF
+  dense rank / presence
+  lexical rank / presence
+  (enough for top_anchor_cross_retriever_support)
+
+assembled evidence-unit identities:
+  document_id
+  section_path
+  (enough to recompute distinct_document_count / distinct_section_count)
+
+context diagnostics for:
+  empty_context
+  anchor_count
+  evidence-unit count
+  token count
+  clipping / budget flags
+
+frozen OD-11-2 observation object (materialized seven features)
+```
+
+**Full evidence / document body text:** not required in this artifact unless a
+future OD-11-2 feature needs it (current set does not). Keeps the snapshot
+compact and avoids unnecessary duplication of private corpus content while
+preserving recomputability.
+
+#### Anti-drift invariant (locked)
+
+At load/test time, the stored observation **must validate against recomputation
+from the stored provenance**. Examples:
+
+- `top_reranker_score` agrees with rank-1 anchor raw logit
+- `top1_top2_margin` equals the stored top-two score difference (or both null)
+- `distinct_document_count` / `distinct_section_count` match evidence-unit
+  provenance
+- `top_anchor_cross_retriever_support` matches top-anchor dense∩lexical presence
+- `empty_context` / `anchor_count` agree with stored diagnostics / units
+
+Disagreement ⇒ fail closed (corrupt or drifted snapshot).
+
+#### Gold-derived evaluation (separate artifact)
+
+```text
+sufficiency-eval-context-v1   # gold-free observation authority
+        +
+GoldDataset
+        ↓
+sufficiency-eval-label-v1     # A/B population classification (eval layer only)
+```
+
+Runtime observation objects remain free of gold-derived A/B membership.
+
+### 8.6 Next design decision (OD-11-7)
+
+**OPEN — next:** identity / content-addressing for the sufficiency snapshot —
+whole-run artifact vs per-case immutable snapshots + run manifest
+(recommended: per-case + manifest).
 
 ---
 
@@ -790,7 +864,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-6 next; OD-11-2/3/4/5 LOCKED)
+  → Slice 11 design interview (OD-11-7 next; OD-11-2…11-6 LOCKED)
   → 11A contracts + observation builder + tests
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -832,7 +906,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-3** | Rule shape: gates/rules vs weighted score | **LOCKED** | §7.4 — ordered deterministic named gate set; only `empty_context` authorized pre-11B; multi-fire reasons preserved; no weighted score (C out); B deferred as possible future simplification |
 | **OD-11-4** | Insufficient-evidence eval population | **LOCKED** | §8.2–8.3 — 11B primary A+B; B is retrieval-failure proxy not unanswerable truth; C regression-only; 10D stress excluded; reporting rules for false-refusal vs unsupported_attempt |
 | **OD-11-5** | Frozen A/B observation methodology (11B) | **LOCKED** | §8.4 — A-with-B-fallback, all-or-nothing; complete OD-11-2 vector + exact lineage required for A; reject opportunistic re-retrieval (C) |
-| **OD-11-6** | `sufficiency-eval-context-v1` contents | **OPEN — next** | Prefer provenance sufficient to audit/recompute observations; gold A/B labels evaluation-layer only |
+| **OD-11-6** | `sufficiency-eval-context-v1` contents | **LOCKED** | §8.5 — provenance + frozen OD-11-2 vector; no full evidence text; anti-drift recompute check; gold A/B in separate `sufficiency-eval-label-v1` |
+| **OD-11-7** | Snapshot identity / packaging | **OPEN — next** | Prefer per-case immutable snapshots + one run manifest |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -883,5 +958,5 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-6** /
-`sufficiency-eval-context-v1` contents) under separate authorization.
+interview resolves remaining ODs (next: **OD-11-7** / snapshot identity)
+under separate authorization.
