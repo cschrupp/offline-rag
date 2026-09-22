@@ -1510,12 +1510,51 @@ missing / inconsistent required semantic data
 Example: `top_reranker_score = null` because there are zero anchors is **valid
 data**, not a missing-field failure.
 
-### 8.27 Next design decision (OD-11-28)
+### 8.27 OD-11-28 — LOCKED incomplete-manifest authority for 11B
 
-**OPEN — next:** whether a measure-once 11B manifest with even one failed case
-may become the authoritative frozen snapshot set (recommended: no —
-incomplete manifests are diagnostic only; authoritative set requires 100%
-successful coverage).
+**Status:** **LOCKED** — a measure-once 11B manifest with **even one** failed
+case is **not** eligible to become the authoritative frozen snapshot set.
+Execution may persist the incomplete manifest for diagnosis, but the
+authoritative 11B snapshot set requires **100% successful coverage** of the
+intended frozen case population.
+
+| Option | Status |
+|---|---|
+| **A (100% coverage required for authoritative set)** | **LOCKED** |
+| B (use successful subset as authoritative) | Rejected — silent population shrinkage |
+| C (soft-warn; incomplete authoritative by default) | Rejected — weakens freeze discipline |
+
+#### Locked details
+
+1. Incomplete manifests remain valid **execution / diagnostic records**.
+2. They must be labeled / treated as **incomplete** — not as the frozen 11B
+   observation authority.
+3. Authoritative `suffctxrun_` for 11B analysis requires:
+   - exact intended case population
+   - zero failed snapshot constructions
+   - every case present as a successful attempt-group member with a valid
+     `suffctx_`
+4. Threshold / gate analysis that claims the frozen population must **reject**
+   incomplete manifests.
+5. A new authorized measure-once run is required to obtain an authoritative set
+   after failures (consistent with OD-11-5 all-or-nothing).
+6. Contract-defined nulls (OD-11-27) do **not** make a case “failed”; only
+   missing/inconsistent required data does.
+
+```text
+incomplete execution manifest
+    → diagnostic only
+
+100% successful coverage
+    → eligible authoritative 11B snapshot set
+```
+
+### 8.28 Next design decision
+
+With OD-11-2…28 largely specifying observation/snapshot contracts, the next
+open item should address **where Slice 11A implementation starts** (package
+boundary / observation builder vs full snapshot persistence) — or another
+explicit OD if preferred. See OPEN DECISIONS table.
 
 ---
 
@@ -1906,7 +1945,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-28 next; OD-11-2…11-27 LOCKED)
+  → Slice 11 design interview (OD-11-29 next; OD-11-2…11-28 LOCKED)
   → 11A contracts + observation builder + tests
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -1970,7 +2009,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-25** | Multi-unit / shared-anchor counting | **LOCKED** | §8.24 — diversity by identity keys only; `evidence_unit_count` = literal list length; no second collapse |
 | **OD-11-26** | Diagnostics: semantic vs audit-only | **LOCKED** | §8.25 — tiered diagnostics; identity allowlist; assembly counters persisted but not auto-gates; latency audit-only |
 | **OD-11-27** | Snapshot creation failure semantics | **LOCKED** | §8.26 — fail-closed; no partial `suffctx_`; structured failure records; contract-null ≠ missing |
-| **OD-11-28** | Incomplete manifest as authoritative 11B set | **OPEN — next** | Prefer reject: authoritative set requires 100% successful case coverage |
+| **OD-11-28** | Incomplete manifest as authoritative 11B set | **LOCKED** | §8.27 — incomplete = diagnostic only; authoritative set requires 100% successful coverage |
+| **OD-11-29** | Slice 11A first implementation boundary | **OPEN — next** | Prefer observation contracts + builder + ID helpers before full persistence CLI |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -2021,5 +2061,5 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-28** / incomplete-manifest
-authority) under separate authorization.
+interview resolves remaining ODs (next: **OD-11-29** / 11A implementation
+boundary) under separate authorization.
