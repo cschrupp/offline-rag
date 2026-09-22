@@ -865,12 +865,63 @@ stored provenance
                                      └── authority used by 11B
 ```
 
-### 8.14 Next design decision (OD-11-15)
+### 8.14 OD-11-15 — LOCKED observation derivation versioning / identity
 
-**OPEN — next:** how observation derivation is versioned/identified —
-explicit contract (e.g. `sufficiency-observation-v1`) plus semantic
-`observation_config_hash` / derivation id in `suffctx_` identity, vs code /
-package version as authority (recommended: former).
+**Status:** **LOCKED** — observation derivation is identified by both an
+**explicit versioned contract** and a **semantic derivation hash**. Both
+participate in `suffctx_` identity. Code / package / git versions are **audit
+metadata only**.
+
+| Option | Status |
+|---|---|
+| **A (contract + semantic derivation hash)** | **LOCKED** |
+| B (package/git/code version as sole identity) | Rejected — environment ≠ semantics |
+| C (contract name string only) | Rejected — no bind on exact derivation |
+
+#### Example fields
+
+```text
+observation_contract     = "sufficiency-observation-v1"
+observation_config_hash  = "obsconfig_<...>"
+```
+
+| Field | Role |
+|---|---|
+| `observation_contract` | Wire / semantic contract family |
+| `observation_config_hash` | Exact derivation semantics used within that contract |
+
+#### What must change `observation_config_hash`
+
+Anything capable of changing one of the seven OD-11-2 observations, e.g.:
+
+- definition of `empty_context`
+- which ranked item is the “top anchor”
+- raw-logit field / source used
+- exact `top1_top2_margin` arithmetic and `<2 anchors → null` rule
+- definition of dense+lexical co-presence
+- how `anchor_count` is computed
+- document identity semantics
+- section-path normalization / counting semantics
+- ordering / canonicalization rules relevant to derivation
+
+#### What must not change `observation_config_hash`
+
+- timestamps
+- output paths
+- logging verbosity
+- host / runtime metadata
+- code refactors that preserve identical derivation semantics
+
+Works with OD-11-14: historical artifacts declare which derivation must be used
+for recomputation; unsupported derivation identities **fail closed** rather than
+being silently interpreted by newer code.
+
+### 8.15 Next design decision (OD-11-16)
+
+**OPEN — next:** canonical contents of `observation_config_hash` — hash an
+explicit normalized semantic config object (per-feature definition/version /
+normalization rules) vs hashing source code or an opaque whole-app config
+(recommended: former).
 
 ---
 
@@ -1261,7 +1312,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-15 next; OD-11-2…11-14 LOCKED)
+  → Slice 11 design interview (OD-11-16 next; OD-11-2…11-15 LOCKED)
   → 11A contracts + observation builder + tests
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -1312,7 +1363,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-12** | Baseline/recovery pairing across attempts | **LOCKED** | §8.11 — content-addressed `suffctx_`; manifest attempt groups; trace IDs audit-only; fail-closed on ID conflicts |
 | **OD-11-13** | Manifest multi-attempt capability in v1 | **LOCKED** | §8.12 — multi-attempt-capable wire format; Slice 11 = exactly one initial attempt; identity includes full membership |
 | **OD-11-14** | Stored vs recomputed observations | **LOCKED** | §8.13 — store + versioned recompute-validate; stored authoritative for 11B; exact numeric equality; no silent re-derivation |
-| **OD-11-15** | Observation derivation versioning / identity | **OPEN — next** | Prefer explicit `sufficiency-observation-v1` + semantic derivation hash in `suffctx_` identity |
+| **OD-11-15** | Observation derivation versioning / identity | **LOCKED** | §8.14 — `sufficiency-observation-v1` + `obsconfig_` in `suffctx_` identity; code/git audit-only |
+| **OD-11-16** | Canonical `observation_config_hash` contents | **OPEN — next** | Prefer explicit normalized semantic config object over source/app-config hashing |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
