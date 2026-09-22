@@ -2021,5 +2021,5 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-27** / snapshot failure
-semantics) under separate authorization.
+interview resolves remaining ODs (next: **OD-11-28** / incomplete-manifest
+authority) under separate authorization.
