@@ -240,8 +240,9 @@ Checklist detail (same order; not startable out of sequence):
 - [ ] indirect prompt-injection suite (Slice 13)
 - [ ] optional NeMo Guardrails evaluation (Slice 13D; after deterministic controls)
 
-**Next:** Slice 11 design interview — **OD-11-19** (`top_reranker_score` /
-`top1_top2_margin` semantics). **OD-11-2 … OD-11-18 LOCKED** (see
+**Next:** Slice 11 design interview — **OD-11-20**
+(`top_anchor_cross_retriever_support` definition). **OD-11-2 … OD-11-19 LOCKED**
+(see
 [`docs/milestone6_agentic_recovery_security.md`](docs/milestone6_agentic_recovery_security.md) §7–§8).
 Do not pick production thresholds before 11B measurement.
 

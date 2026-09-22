@@ -188,8 +188,8 @@ formula. Those belong to **OD-11-3** / 11B measurement.
 | Feature | Type / definition | Decision semantics now |
 |---|---|---|
 | `empty_context` | boolean — `len(final_context.evidence_units) == 0` after full assembly (OD-11-18) | **Hard insufficiency:** if true, sufficiency is false |
-| `top_reranker_score` | raw reranker logit of highest-ranked anchor (`raw-logit-v1`) | Uncalibrated observable only |
-| `top1_top2_margin` | `top1_score - top2_score`; **null** when fewer than two reranked anchors | Uncalibrated; **do not** substitute `0` when undefined |
+| `top_reranker_score` | raw reranker logit of highest-ranked pre-expansion anchor (`raw-logit-v1`; OD-11-19); null if no anchors | Uncalibrated observable only |
+| `top1_top2_margin` | `top1 - top2` on that list; **null** when fewer than two anchors (OD-11-19); never substitute `0` for null | Uncalibrated; **do not** substitute `0` when undefined |
 | `top_anchor_cross_retriever_support` | boolean — highest-ranked anchor has **both** `dense_rank` and `lexical_rank` non-null | Uncalibrated observable; precise top-anchor definition (not vague co-presence) |
 | `anchor_count` | number of reranked anchors contributing to assembled context | Uncalibrated observable |
 | `distinct_document_count` | unique `document_id` among those anchors / assembled evidence | **Measured diversity only** — not “more is better” |
@@ -1079,12 +1079,56 @@ This is the **authoritative** definition, not an inferred proxy.
 Aligns Slice 11 with the surface actually presented to generation, not an
 intermediate retrieval stage.
 
-### 8.18 Next design decision (OD-11-19)
+### 8.18 OD-11-19 — LOCKED `top_reranker_score` / `top1_top2_margin`
 
-**OPEN — next:** exact source and semantics of `top_reranker_score` and
-`top1_top2_margin` — from final ordered reranked anchors before context
-expansion, stored raw logits unchanged, null when required anchors do not exist
-(recommended).
+**Status:** **LOCKED** — both features are derived from the **final ordered
+reranked anchor list before context expansion**. Scores are the stored
+`raw-logit-v1` values exactly as emitted by the reranker, with **no** sigmoid,
+normalization, calibration, absolute-value transform, or rescaling.
+
+| Option | Status |
+|---|---|
+| **A (pre-expansion reranked anchors; raw logits; null when missing)** | **LOCKED** |
+| B (post-expansion / evidence-unit surfaces) | Rejected — wrong stage |
+| C (sigmoid / calibration / abs transforms) | Rejected — falsifies raw-logit semantics |
+
+#### Exact semantics
+
+```text
+top_reranker_score =
+    anchors[0].reranker_score
+    if len(anchors) >= 1
+    else null
+
+top1_top2_margin =
+    anchors[0].reranker_score - anchors[1].reranker_score
+    if len(anchors) >= 2
+    else null
+```
+
+#### Invariants (locked)
+
+1. Anchor ordering is the authoritative final reranker ordering.
+2. Ties are preserved as observed; a tie may legitimately produce margin `0.0`.
+3. `null` means “not observable because the required anchor does not exist,”
+   not “zero confidence.”
+4. Negative raw logits remain negative.
+5. Margin may also be negative only if stored anchor ordering and scores are
+   internally inconsistent — treat as **artifact-validation failure**, not
+   normalize away.
+6. Evidence-unit expansion must **never** alter these two observations.
+7. Any future calibrated score requires a **new** observation semantic
+   definition/version — not a silent reinterpretation of these fields.
+
+Keeps the feature scientifically honest: a property of the **reranker output**,
+not a pseudo-probability.
+
+### 8.19 Next design decision (OD-11-20)
+
+**OPEN — next:** exact definition of `top_anchor_cross_retriever_support` —
+whether support means the top reranked anchor has non-null membership/rank in
+both original dense and lexical candidate branches, independent of later
+hybrid/RRF rank (recommended: yes).
 
 ---
 
@@ -1475,7 +1519,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-19 next; OD-11-2…11-18 LOCKED)
+  → Slice 11 design interview (OD-11-20 next; OD-11-2…11-19 LOCKED)
   → 11A contracts + observation builder + tests
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -1530,7 +1574,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-16** | Canonical `observation_config_hash` contents | **LOCKED** | §8.15 — explicit semantic derivation config object; persist/reconstructible; unknown versions fail closed |
 | **OD-11-17** | Serialization / canonicalization scheme | **LOCKED** | §8.16 — reuse shared canonical JSON/hash primitive; thin `obsconfig_`/`suffctx_`/`suffctxrun_` builders; no ad hoc serializers |
 | **OD-11-18** | Exact `empty_context` definition | **LOCKED** | §8.17 — `len(final_context.evidence_units) == 0` after full assembly; not anchors/tokens |
-| **OD-11-19** | `top_reranker_score` / `top1_top2_margin` semantics | **OPEN — next** | Prefer final ordered reranked anchors, raw logits unchanged, null when missing |
+| **OD-11-19** | `top_reranker_score` / `top1_top2_margin` semantics | **LOCKED** | §8.18 — pre-expansion ordered anchors; raw-logit-v1 unchanged; null when missing; no calibration |
+| **OD-11-20** | `top_anchor_cross_retriever_support` definition | **OPEN — next** | Prefer top anchor has non-null dense and lexical ranks, independent of hybrid/RRF |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -1581,5 +1626,5 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-19** / score & margin
-semantics) under separate authorization.
+interview resolves remaining ODs (next: **OD-11-20** / cross-retriever
+support) under separate authorization.
