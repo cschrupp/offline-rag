@@ -187,7 +187,7 @@ formula. Those belong to **OD-11-3** / 11B measurement.
 
 | Feature | Type / definition | Decision semantics now |
 |---|---|---|
-| `empty_context` | boolean — no assembled evidence units | **Hard insufficiency:** if true, sufficiency is false |
+| `empty_context` | boolean — `len(final_context.evidence_units) == 0` after full assembly (OD-11-18) | **Hard insufficiency:** if true, sufficiency is false |
 | `top_reranker_score` | raw reranker logit of highest-ranked anchor (`raw-logit-v1`) | Uncalibrated observable only |
 | `top1_top2_margin` | `top1_score - top2_score`; **null** when fewer than two reranked anchors | Uncalibrated; **do not** substitute `0` when undefined |
 | `top_anchor_cross_retriever_support` | boolean — highest-ranked anchor has **both** `dense_rank` and `lexical_rank` non-null | Uncalibrated observable; precise top-anchor definition (not vague co-presence) |
@@ -1043,11 +1043,48 @@ existing helper or a very thin wrapper around that primitive.
 6. Hashing Python `repr()`, model reprs, source bytes, or ad hoc `json.dumps()`
    is **prohibited**.
 
-### 8.17 Next design decision (OD-11-18)
+### 8.17 OD-11-18 — LOCKED `empty_context` definition
 
-**OPEN — next:** exact definition of `empty_context` — zero usable
-`EvidenceUnit`s (final assembled evidence surface) vs zero reranked anchors vs
-zero rendered context tokens (recommended: zero usable EvidenceUnits).
+**Status:** **LOCKED** — `empty_context = true` iff the final assembled
+`evidence_units` collection is **empty** after all deterministic assembly,
+expansion, deduplication, containment suppression, clipping, and budget
+enforcement.
+
+```text
+empty_context := len(final_context.evidence_units) == 0
+```
+
+This is the **authoritative** definition, not an inferred proxy.
+
+| Option | Status |
+|---|---|
+| **A (zero final EvidenceUnits)** | **LOCKED** |
+| B (zero reranked anchors) | Rejected — intermediate stage, not generation surface |
+| C (zero rendered context tokens) | Rejected — not the authoritative empty surface |
+
+#### Consequences (locked)
+
+1. `anchor_count == 0` is **not** the definition — it remains an observable.
+2. `context_token_count == 0` is **not** the definition.
+3. Anchors may exist while assembly yields zero EvidenceUnits →
+   `empty_context = true`.
+4. A non-empty EvidenceUnit surface means `empty_context = false`, even if some
+   unusual token-count diagnostic is zero.
+5. The value must be derivable entirely from stored OD-11-6 provenance and
+   validated under OD-11-14.
+6. No gold information participates.
+7. This remains the **only** currently authorized intrinsic sufficiency gate:
+   `empty_context == true` ⇒ `INSUFFICIENT_EVIDENCE`.
+
+Aligns Slice 11 with the surface actually presented to generation, not an
+intermediate retrieval stage.
+
+### 8.18 Next design decision (OD-11-19)
+
+**OPEN — next:** exact source and semantics of `top_reranker_score` and
+`top1_top2_margin` — from final ordered reranked anchors before context
+expansion, stored raw logits unchanged, null when required anchors do not exist
+(recommended).
 
 ---
 
@@ -1438,7 +1475,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-18 next; OD-11-2…11-17 LOCKED)
+  → Slice 11 design interview (OD-11-19 next; OD-11-2…11-18 LOCKED)
   → 11A contracts + observation builder + tests
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -1492,7 +1529,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-15** | Observation derivation versioning / identity | **LOCKED** | §8.14 — `sufficiency-observation-v1` + `obsconfig_` in `suffctx_` identity; code/git audit-only |
 | **OD-11-16** | Canonical `observation_config_hash` contents | **LOCKED** | §8.15 — explicit semantic derivation config object; persist/reconstructible; unknown versions fail closed |
 | **OD-11-17** | Serialization / canonicalization scheme | **LOCKED** | §8.16 — reuse shared canonical JSON/hash primitive; thin `obsconfig_`/`suffctx_`/`suffctxrun_` builders; no ad hoc serializers |
-| **OD-11-18** | Exact `empty_context` definition | **OPEN — next** | Prefer zero usable EvidenceUnits (assembled surface), not merely zero anchors |
+| **OD-11-18** | Exact `empty_context` definition | **LOCKED** | §8.17 — `len(final_context.evidence_units) == 0` after full assembly; not anchors/tokens |
+| **OD-11-19** | `top_reranker_score` / `top1_top2_margin` semantics | **OPEN — next** | Prefer final ordered reranked anchors, raw logits unchanged, null when missing |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -1543,5 +1581,5 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-18** / `empty_context`
-definition) under separate authorization.
+interview resolves remaining ODs (next: **OD-11-19** / score & margin
+semantics) under separate authorization.
