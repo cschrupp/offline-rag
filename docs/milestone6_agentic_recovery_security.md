@@ -1694,7 +1694,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-23 next; OD-11-2…11-22 LOCKED)
+  → Slice 11 design interview (OD-11-24 next; OD-11-2…11-23 LOCKED)
   → 11A contracts + observation builder + tests
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -1805,5 +1805,5 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-23** / section_path
-normalization) under separate authorization.
+interview resolves remaining ODs (next: **OD-11-24** / document identity)
+under separate authorization.
