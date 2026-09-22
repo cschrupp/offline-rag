@@ -333,11 +333,73 @@ All populations remain **NON-PROMOTIONAL DEVELOPMENT EVIDENCE**. Future **9G**
 deferred; formal **9H** frozen. The 22-case gold is not exhaustive at the
 semantic-answerability level.
 
-### 8.4 Next design decision (11B methodology)
+### 8.4 OD-11-5 — LOCKED frozen A/B observation methodology
 
-**OPEN — next interview:** how to obtain frozen **A/B** sufficiency
-observations without rerunning or contaminating retrieval (artifact lineage,
-join keys, and immutability). Not locked in this pass.
+**Status:** **LOCKED** — **artifact reuse first**, dedicated measure-once
+snapshot **if and only if** existing immutable artifacts cannot reconstruct the
+**complete** sufficiency-v1 observation schema with unambiguous frozen lineage.
+
+```text
+Attempt artifact-only qualification (A)
+        |
+        ├─ complete OD-11-2 vector + lineage exact → use A
+        |
+        └─ any required field missing
+           or lineage ambiguous
+              → one authorized measure-once B snapshot
+              → all 11B analysis reads only that snapshot
+```
+
+#### Path A — artifact-only join (preferred when qualified)
+
+For each frozen case: load existing serialized retrieval/context results,
+compute the full OD-11-2 observation vector from **persisted** fields only,
+label A/B by offline set overlap with GoldDataset human-positive chunk IDs.
+
+**A qualification requires all of:**
+
+1. **Complete observation vector** derivable from persisted data — not by
+   partially reconstructing missing semantics from current indexes/stores.
+2. **Exact lineage match:** same `gold_dataset_id`, `corpus_id`,
+   `chunk_set_id`, retrieval/fusion/reranker/context config identities, and
+   exact case/query set.
+3. Every OD-11-2 decision feature reconstructible:
+   `empty_context`, `top_reranker_score`, `top1_top2_margin`,
+   `top_anchor_cross_retriever_support`, `anchor_count`,
+   `distinct_document_count`, `distinct_section_count`.
+
+**Current-schema note (preflight expectation, not a substitute for formal A):**
+Existing `HybridRerankContextCaseResult` / context-eval aggregates preserve useful
+per-case fields (anchor IDs, evidence-unit/token counts, clipping/budget flags,
+stop reason, input-pool diagnostics) but typically **lack** the full OD-11-2
+vector—especially top raw logit, top1–top2 margin, top-anchor dense∩lexical
+co-presence, and reliable document/section diversity. Formal **A-preflight**
+must decide; do not assume B without that check.
+
+#### Path B — dedicated measure-once snapshot (all-or-nothing fallback)
+
+If A fails for **any** required field or lineage is ambiguous:
+
+- Authorize **one** measure-once retrieval/context pass for the entire 11B
+  population.
+- Persist a single immutable `sufficiency-eval-context-v1` snapshot set.
+- **All** 11B analysis reads **only** that snapshot.
+
+**All-or-nothing:** Do **not** mix old persisted values for some cases/features
+with newly recomputed values for others. One snapshot becomes the sole
+observation authority for that analysis.
+
+#### Explicitly rejected — Path C
+
+Once the observation authority exists (A-qualified artifacts or B snapshot),
+threshold exploration must **never** invoke retrieval opportunistically.
+
+### 8.5 Next design decision (OD-11-6)
+
+**OPEN — next:** contents of `sufficiency-eval-context-v1` — seven frozen
+observations + gold-overlap labels only, vs provenance sufficient to
+audit/recompute observations later (recommended: latter; keep gold-derived A/B
+labels in the evaluation layer, not in the runtime observation object).
 
 ---
 
@@ -728,7 +790,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-5 next; OD-11-2/3/4 LOCKED)
+  → Slice 11 design interview (OD-11-6 next; OD-11-2/3/4/5 LOCKED)
   → 11A contracts + observation builder + tests
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -769,7 +831,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-2** | Which deterministic features form sufficiency-v1 **observation** | **LOCKED** | §7.1 — seven decision-feature fields; only `empty_context` has intrinsic decision semantics; diversity is measured, not “more is better”; diagnostics listed separately; no text/LLM/gold/weighted score |
 | **OD-11-3** | Rule shape: gates/rules vs weighted score | **LOCKED** | §7.4 — ordered deterministic named gate set; only `empty_context` authorized pre-11B; multi-fire reasons preserved; no weighted score (C out); B deferred as possible future simplification |
 | **OD-11-4** | Insufficient-evidence eval population | **LOCKED** | §8.2–8.3 — 11B primary A+B; B is retrieval-failure proxy not unanswerable truth; C regression-only; 10D stress excluded; reporting rules for false-refusal vs unsupported_attempt |
-| **OD-11-5** | Frozen A/B observation methodology (11B) | **OPEN — next** | How to derive/join observations from frozen retrieval/context artifacts without re-retrieval or gold leakage at runtime |
+| **OD-11-5** | Frozen A/B observation methodology (11B) | **LOCKED** | §8.4 — A-with-B-fallback, all-or-nothing; complete OD-11-2 vector + exact lineage required for A; reject opportunistic re-retrieval (C) |
+| **OD-11-6** | `sufficiency-eval-context-v1` contents | **OPEN — next** | Prefer provenance sufficient to audit/recompute observations; gold A/B labels evaluation-layer only |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -820,5 +883,5 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-5** / 11B frozen observations)
-under separate authorization.
+interview resolves remaining ODs (next: **OD-11-6** /
+`sufficiency-eval-context-v1` contents) under separate authorization.
