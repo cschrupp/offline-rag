@@ -469,11 +469,90 @@ sufficiency-eval-label-v1     # A/B population classification (eval layer only)
 
 Runtime observation objects remain free of gold-derived A/B membership.
 
-### 8.6 Next design decision (OD-11-7)
+### 8.6 OD-11-7 — LOCKED snapshot identity / packaging
 
-**OPEN — next:** identity / content-addressing for the sufficiency snapshot —
-whole-run artifact vs per-case immutable snapshots + run manifest
-(recommended: per-case + manifest).
+**Status:** **LOCKED** — **per-case immutable snapshots** + one **run
+manifest**.
+
+| Option | Status |
+|---|---|
+| A (monolithic whole-run artifact) | Rejected — coarse for reuse and later Slice 12 paired comparison |
+| **B (per-case + run manifest)** | **LOCKED** |
+| C (per-case only, no manifest) | Rejected — loses authoritative frozen run boundary |
+
+#### Per-case snapshot
+
+```text
+schema / contract:  sufficiency-eval-context-v1
+identity prefix:    suffctx_
+scope:              one case / query only
+payload:            full OD-11-6 provenance + materialized OD-11-2 observation
+```
+
+**Content-addressed** from the **gold-free semantic payload**.
+
+**Exclude from identity:** `created_at`, filesystem paths, output paths,
+host/runtime noise.
+
+**Any change** to query, lineage, anchors, scores/ranks, evidence-unit
+provenance, diagnostics, or derived observations **must** change the case
+snapshot ID.
+
+#### Run manifest
+
+```text
+schema / contract:  offline-rag-sufficiency-eval-context-manifest-v1
+identity prefix:    suffctxrun_
+```
+
+Manifest binds:
+
+- corpus / chunk-set lineage
+- dense / lexical / fusion / reranker / context config identities
+- snapshot contract/version
+- ordered case IDs
+- ordered case snapshot IDs (`suffctx_*`)
+- total expected / executed / failed cases
+- measure-once provenance
+- creation timestamp **for audit only** (not identity-bearing)
+
+Manifest identity depends on the **ordered semantic case set** and **shared
+lineage**, not on timestamps or paths.
+
+#### Canonical case order (locked)
+
+Case ordering is **canonical**, not execution-timing dependent.
+
+**Default:** deterministic ascending order by `case_id`, unless a later
+implementation decision explicitly preserves an authoritative GoldDataset case
+order documented in the manifest. The contract must **name** which rule was
+used; prefer `case_id` ascending when no stronger frozen order is declared.
+
+#### Shared-lineage invariant (locked)
+
+A manifest is valid only if **every** referenced case snapshot carries the
+**same** shared retrieval/context lineage declared by the manifest.
+
+No mixed reranker / config / `chunk_set_id` snapshots inside one 11B run.
+
+#### Evaluation join (unchanged)
+
+```text
+suffctx_* snapshots
+        ↓
+suffctxrun_* manifest
+        +
+GoldDataset
+        ↓
+11B evaluation labels / metrics  (sufficiency-eval-label-v1)
+```
+
+### 8.7 Next design decision (OD-11-8)
+
+**OPEN — next:** exact fields in `suffctx_` / `suffctxrun_` semantic identity —
+especially whether clipping/budget/stop-state are identity-bearing vs whether
+raw wall-clock latency is observational metadata only (recommended: former
+yes, latter no).
 
 ---
 
@@ -864,7 +943,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-7 next; OD-11-2…11-6 LOCKED)
+  → Slice 11 design interview (OD-11-8 next; OD-11-2…11-7 LOCKED)
   → 11A contracts + observation builder + tests
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -907,7 +986,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-4** | Insufficient-evidence eval population | **LOCKED** | §8.2–8.3 — 11B primary A+B; B is retrieval-failure proxy not unanswerable truth; C regression-only; 10D stress excluded; reporting rules for false-refusal vs unsupported_attempt |
 | **OD-11-5** | Frozen A/B observation methodology (11B) | **LOCKED** | §8.4 — A-with-B-fallback, all-or-nothing; complete OD-11-2 vector + exact lineage required for A; reject opportunistic re-retrieval (C) |
 | **OD-11-6** | `sufficiency-eval-context-v1` contents | **LOCKED** | §8.5 — provenance + frozen OD-11-2 vector; no full evidence text; anti-drift recompute check; gold A/B in separate `sufficiency-eval-label-v1` |
-| **OD-11-7** | Snapshot identity / packaging | **OPEN — next** | Prefer per-case immutable snapshots + one run manifest |
+| **OD-11-7** | Snapshot identity / packaging | **LOCKED** | §8.6 — per-case `suffctx_` + `suffctxrun_` manifest; case_id order default; shared-lineage invariant; labels remain separate |
+| **OD-11-8** | Identity-bearing vs observational fields | **OPEN — next** | Prefer clipping/budget/stop identity-bearing; raw wall-clock latency not |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -958,5 +1038,5 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-7** / snapshot identity)
+interview resolves remaining ODs (next: **OD-11-8** / identity-bearing fields)
 under separate authorization.
