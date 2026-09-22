@@ -1387,13 +1387,79 @@ collapse.
 
 Keeps OD-11-21 through OD-11-25 internally consistent.
 
-### 8.25 Next design decision (OD-11-26)
+### 8.25 OD-11-26 — LOCKED diagnostics: semantic vs audit-only
 
-**OPEN — next:** which diagnostics are persisted as recomputable provenance vs
-audit-only metadata — especially `evidence_unit_count`, `context_token_count`,
-clipping/budget/stop, dedup hits, containment suppressions (recommended: persist
-all deterministic context-assembly diagnostics; surface-altering /
-identity-bearing ones remain semantic; performance/runtime stay audit-only).
+**Status:** **LOCKED** — persist all deterministic context-assembly diagnostics,
+but distinguish **final-surface semantics** from **assembly-process
+diagnostics**. Runtime timing remains audit-only.
+
+| Option | Status |
+|---|---|
+| **A (persist all; tiered identity vs audit)** | **LOCKED** (with allowlist refinement below) |
+| B (seven features only; drop diagnostics) | Rejected — loses assembly audit trail |
+| C (latency identity-bearing) | Rejected — contradicts OD-11-8 |
+
+#### Identity-bearing semantic provenance
+
+```text
+evidence_unit_count
+context_token_count
+clipping_occurred
+budget_exhausted
+stop_reason
+```
+
+These describe the assembled evidence surface or the deterministic condition
+that terminated its construction and therefore belong in `suffctx_` semantic
+identity.
+
+#### Persisted deterministic assembly provenance (not auto-gates)
+
+```text
+dedup_hits
+containment_suppressions
+similar deterministic assembler counters already exposed by the context contract
+```
+
+Stored so the snapshot explains how the final surface was produced and remains
+auditable/recomputable. They are **not** additional sufficiency features or
+gates unless a later contract explicitly promotes them.
+
+#### Audit-only, non-identity-bearing
+
+```text
+wall-clock latency
+timestamps
+hostname / process / runtime timing
+output paths
+similar execution noise
+```
+
+#### Allowlist invariant (locked)
+
+Future incidental diagnostic counters must **not** silently become ID-bearing
+merely because they are added to a diagnostics dictionary. The semantic payload
+used for `suffctx_` hashing remains an **explicit allowlist** defined by
+contract. Otherwise adding telemetry could unexpectedly churn every snapshot ID.
+
+```text
+deterministic evidence semantics
+        → persisted + explicitly identity-bearing
+
+deterministic assembly diagnostics
+        → persisted for audit/reconstruction
+        → not automatically policy inputs
+
+runtime/performance noise
+        → audit metadata only
+        → excluded from semantic identity
+```
+
+### 8.26 Next design decision (OD-11-27)
+
+**OPEN — next:** failure semantics for snapshot creation — strict fail-closed
+(no partial `suffctx_`; failures only in run-manifest accounting) vs allowing
+partial snapshots (recommended: fail-closed).
 
 ---
 
@@ -1784,7 +1850,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-26 next; OD-11-2…11-25 LOCKED)
+  → Slice 11 design interview (OD-11-27 next; OD-11-2…11-26 LOCKED)
   → 11A contracts + observation builder + tests
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -1846,7 +1912,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-23** | `section_path` normalization rules | **LOCKED** | §8.22 — structural-only (`None`→`[]`); exact segment strings; no case/trim rewrite |
 | **OD-11-24** | Document identity for diversity | **LOCKED** | §8.23 — exact stored `document_id`; missing = validation failure; no path/title synthesis |
 | **OD-11-25** | Multi-unit / shared-anchor counting | **LOCKED** | §8.24 — diversity by identity keys only; `evidence_unit_count` = literal list length; no second collapse |
-| **OD-11-26** | Diagnostics: semantic vs audit-only | **OPEN — next** | Prefer persist all deterministic assembly diagnostics; surface-altering stay semantic; latency audit-only |
+| **OD-11-26** | Diagnostics: semantic vs audit-only | **LOCKED** | §8.25 — tiered diagnostics; identity allowlist; assembly counters persisted but not auto-gates; latency audit-only |
+| **OD-11-27** | Snapshot creation failure semantics | **OPEN — next** | Prefer fail-closed: no partial `suffctx_`; failures only in run-manifest accounting |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -1897,5 +1964,5 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-26** / diagnostics
-persistence) under separate authorization.
+interview resolves remaining ODs (next: **OD-11-27** / snapshot failure
+semantics) under separate authorization.
