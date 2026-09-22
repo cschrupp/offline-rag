@@ -782,12 +782,41 @@ attempt_group:
       suffctx_id: ...
 ```
 
-### 8.12 Next design decision (OD-11-13)
+### 8.12 OD-11-13 — LOCKED multi-attempt-capable manifest schema-v1
 
-**OPEN — next:** whether the run manifest schema-v1 is already
-**multi-attempt-capable** (Slice 11 validates exactly one attempt per case) or
-stays initial-only until Slice 12 (recommended: multi-attempt-capable now;
-Slice 11 = exactly one attempt per case).
+**Status:** **LOCKED** — `suffctxrun_` schema-v1 is **multi-attempt-capable**.
+Slice 11 manifests must contain **exactly one** attempt-group member per case:
+`attempt_number=0`, `attempt_role="initial"`. Slice 12 may populate additional
+recovery attempts **without** changing the manifest schema.
+
+| Option | Status |
+|---|---|
+| **A (multi-attempt-capable now; Slice 11 validates one)** | **LOCKED** |
+| B (initial-only schema; version later for recovery) | Rejected — avoids Slice 12 wire-format fork |
+| C (two parallel manifest contracts) | Rejected — unnecessary dual surface |
+
+#### Invariants (locked)
+
+1. Each case has **exactly one** attempt group.
+2. Within a group, attempts are ordered by `attempt_number`, not execution time.
+3. Attempt numbers are **unique** and **contiguous from 0**.
+4. Attempt `0` must be `initial`.
+5. Any attempt `>0` must be `recovery`.
+6. Slice 11 validation **rejects** any manifest with more than one attempt per
+   case.
+7. Schema capability does **not** authorize recovery execution before Slice 12.
+8. Manifest identity includes the **full ordered attempt-group membership** —
+   adding a recovery snapshot necessarily changes `suffctxrun_`.
+
+**Future-slice leakage guard:** the schema can represent recovery now, but a
+Slice 11 run containing a recovery attempt must still **fail validation**.
+
+### 8.13 Next design decision (OD-11-14)
+
+**OPEN — next:** whether sufficiency observations are authoritative as stored at
+snapshot creation, recomputed on every load, or stored + recompute-validated on
+load/test with the stored observation authoritative for analysis (recommended:
+last).
 
 ---
 
@@ -1178,7 +1207,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-13 next; OD-11-2…11-12 LOCKED)
+  → Slice 11 design interview (OD-11-14 next; OD-11-2…11-13 LOCKED)
   → 11A contracts + observation builder + tests
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -1227,7 +1256,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-10** | Query fields on case snapshot | **LOCKED** | §8.9 — both `original_query` and `active_retrieval_query`; equal in Slice 11; both identity-bearing |
 | **OD-11-11** | Attempt number / role on snapshot | **LOCKED** | §8.10 — `attempt_number`/`attempt_role` identity-bearing; Slice 11 = `0`/`initial`; max_retries not in snapshot identity |
 | **OD-11-12** | Baseline/recovery pairing across attempts | **LOCKED** | §8.11 — content-addressed `suffctx_`; manifest attempt groups; trace IDs audit-only; fail-closed on ID conflicts |
-| **OD-11-13** | Manifest multi-attempt capability in v1 | **OPEN — next** | Prefer multi-attempt-capable schema now; Slice 11 validates exactly one attempt per case |
+| **OD-11-13** | Manifest multi-attempt capability in v1 | **LOCKED** | §8.12 — multi-attempt-capable wire format; Slice 11 = exactly one initial attempt; identity includes full membership |
+| **OD-11-14** | Stored vs recomputed observations | **OPEN — next** | Prefer store + recompute-validate on load/test; stored observation authoritative for analysis |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -1278,5 +1308,5 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-13** / multi-attempt manifest)
+interview resolves remaining ODs (next: **OD-11-14** / observation authority)
 under separate authorization.
