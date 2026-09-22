@@ -651,11 +651,60 @@ The same retrieval/context state yields the same `suffctx_` ID regardless of
 which GoldDataset later evaluates it. Slice 12 can compare baseline vs recovery
 snapshots without carrying evaluation truth into runtime-shaped artifacts.
 
-### 8.9 Next design decision (OD-11-10)
+### 8.9 OD-11-10 — LOCKED query fields on case snapshots
 
-**OPEN — next:** whether a case snapshot binds `original_query` only, or both
-`original_query` and `active_retrieval_query` from the start (recommended:
-both; equal during Slice 11; diverges under Slice 12 rewrite).
+**Status:** **LOCKED** — every case snapshot binds both `original_query` and
+`active_retrieval_query`.
+
+| Option | Status |
+|---|---|
+| A (`original_query` only) | Rejected — forces a later schema break for recovery |
+| **B (both fields from the start)** | **LOCKED** |
+| C (defer `active_retrieval_query` to Slice 12) | Rejected — avoid contract churn |
+
+#### Semantics
+
+| Field | Meaning |
+|---|---|
+| `original_query` | Query the **generator** ultimately answers; immutable for a case |
+| `active_retrieval_query` | String actually sent into retrieval for **this** snapshot |
+
+| Slice | Rule |
+|---|---|
+| **11** | `original_query == active_retrieval_query` (validation **fails** if they differ) |
+| **12** | `original_query` unchanged; `active_retrieval_query` may change only via the bounded, validated rewrite path |
+
+Both fields are **identity-bearing** for `suffctx_`: changing the retrieval
+query can change the entire retrieval/context state even when user intent is
+unchanged.
+
+#### Invariants (locked)
+
+1. `original_query` is what the generator answers.
+2. `active_retrieval_query` is what retrieval used for that snapshot.
+3. A recovery snapshot must **never** overwrite or mutate `original_query`.
+4. Rewritten queries are persisted **exactly as used**.
+5. Slice 11 snapshots fail validation if the two fields differ.
+
+#### Paired recovery comparison (future Slice 12)
+
+```text
+baseline suffctx_
+  original_query = Q
+  active_retrieval_query = Q
+
+recovery suffctx_
+  original_query = Q
+  active_retrieval_query = Q'
+
+Same user intent, different retrieval attempt, different snapshot identity.
+```
+
+### 8.10 Next design decision (OD-11-11)
+
+**OPEN — next:** whether each `suffctx_` also binds `attempt_number` /
+`attempt_role` now (recommended: yes — `0` / `"initial"` in Slice 11; Slice 12
+adds `1` / `"recovery"` without contract change).
 
 ---
 
@@ -1046,7 +1095,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-10 next; OD-11-2…11-9 LOCKED)
+  → Slice 11 design interview (OD-11-11 next; OD-11-2…11-10 LOCKED)
   → 11A contracts + observation builder + tests
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -1092,7 +1141,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-7** | Snapshot identity / packaging | **LOCKED** | §8.6 — per-case `suffctx_` + `suffctxrun_` manifest; case_id order default; shared-lineage invariant; labels remain separate |
 | **OD-11-8** | Identity-bearing vs observational fields | **LOCKED** | §8.7 — clipping/budget/stop identity-bearing; latency/paths/timing not; same semantics ⇒ same IDs |
 | **OD-11-9** | Authoritative lineage binding | **LOCKED** | §8.8 — individual stage IDs; no gold in `suffctx_`/`suffctxrun_` identity; gold only at eval layer |
-| **OD-11-10** | Query fields on case snapshot | **OPEN — next** | Prefer both `original_query` and `active_retrieval_query` (equal in Slice 11) |
+| **OD-11-10** | Query fields on case snapshot | **LOCKED** | §8.9 — both `original_query` and `active_retrieval_query`; equal in Slice 11; both identity-bearing |
+| **OD-11-11** | Attempt number / role on snapshot | **OPEN — next** | Prefer `attempt_number=0`, `attempt_role="initial"` in Slice 11 |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -1143,5 +1193,5 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-10** / query fields)
+interview resolves remaining ODs (next: **OD-11-11** / attempt fields)
 under separate authorization.
