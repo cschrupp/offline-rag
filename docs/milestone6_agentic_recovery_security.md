@@ -282,6 +282,10 @@ decision.reasons = all fired gate reason ids
 Observation (§7.1) and policy (§7.4) remain separate: 11B can rescore
 alternate gate sets from frozen observations without re-retrieval.
 
+---
+
+## 8. Evaluation populations / label limitations
+
 ### 8.1 Do not treat Slice 10D as authoritative unanswerable gold
 
 Slice 10E measured `human-grade0-hard-negative-v1` (n=16): **11** abstained,
@@ -293,21 +297,47 @@ corpus-unanswerable truth. Slice 11 must **not** calibrate production
 thresholds assuming those five evidence sets are guaranteed unanswerable.
 Retain as a separate diagnostic stress set.
 
-### 8.2 Development classes for 11B (design; not implemented here)
+### 8.2 OD-11-4 — LOCKED 11B primary development populations
 
-| Class | Definition | Use |
-|---|---|---|
-| **A. Positive-supported retrieval** | Frozen retrieval/context contains ≥1 human-positive gold chunk | Development signal: `known-positive-evidence-present` — **not** automatic complete answerability |
-| **B. Positive-missing / retrieval failure** | Gold has positives, but current context/anchors do not contain them | Natural “insufficient due to retrieval” class |
-| **C. Counterfactual insufficient** | Remove known gold-positive evidence from a frozen artifact; preserve remaining scores/provenance | Explicitly **synthetic/counterfactual** — never human gold |
-| **D. 10D stress** | Hard-negative stress fixture | Diagnostic only — not threshold truth |
+**Status:** **LOCKED** — Slice **11B** primary development populations are
+**A + B** only (on frozen 9F / 9H-P retrieval/context where applicable).
 
-**11B recommendation:** Prioritize **A + B** on the frozen 9F / 9H-P retrieval
-fixture for first threshold analysis; optionally add **C** for deterministic
-unit/regression tests; keep **D** separate. Exact mix is **OD-11-4**.
+| Class | Label (preferred) | Definition | 11B use |
+|---|---|---|---|
+| **A** | `known_positive_present` | Current retrieval/context contains ≥1 human-positive GoldDataset chunk | Measure **false-refusal** risk when a gate fires |
+| **B** | `gold_positive_missing` / `retrieval_failure_proxy` / `insufficiency_proxy` | GoldDataset has human-positive evidence, but current retrieval/context contains **none** of those positive chunks | Primary **retrieval-failure proxy** population — **not** absolute semantic insufficiency |
 
-All remain **NON-PROMOTIONAL DEVELOPMENT EVIDENCE**. Future 9G deferred;
-formal 9H frozen.
+**Semantic refinement (Class B):** Gold-positive absence is a strong,
+deterministic signal that the pipeline failed to recover human-marked relevant
+evidence. It does **not** prove that no other retrieved chunk can independently
+support an answer (Slice 10D / 10E illustrate why). Do **not** call every B case
+“truly unanswerable.”
+
+| Population | Role in 11B |
+|---|---|
+| **C** counterfactual stripped-evidence | Optional **synthetic/regression** fixtures only — not primary threshold truth |
+| **D** Slice 10D hard negatives | **Stress-only** — excluded from threshold-selection truth |
+
+### 8.3 11B reporting rules (locked with OD-11-4)
+
+- On **A**: a gate firing is a defensible **false-refusal candidate** (given
+  known-positive-present).
+- On **B**: a gate **not** firing is a **missed retrieval-failure proxy** — not
+  yet an authoritative “unsupported attempt.”
+- **`unsupported_attempt_rate`**: reserve until a stronger insufficient-evidence
+  truth set exists; do not infer from B alone at semantic-answerability level.
+- Language: prefer `gold_positive_missing`, `retrieval_failure_proxy`, or
+  `insufficiency_proxy` over “unanswerable.”
+
+All populations remain **NON-PROMOTIONAL DEVELOPMENT EVIDENCE**. Future **9G**
+deferred; formal **9H** frozen. The 22-case gold is not exhaustive at the
+semantic-answerability level.
+
+### 8.4 Next design decision (11B methodology)
+
+**OPEN — next interview:** how to obtain frozen **A/B** sufficiency
+observations without rerunning or contaminating retrieval (artifact lineage,
+join keys, and immutability). Not locked in this pass.
 
 ---
 
@@ -698,7 +728,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-4 next; OD-11-2/11-3 LOCKED)
+  → Slice 11 design interview (OD-11-5 next; OD-11-2/3/4 LOCKED)
   → 11A contracts + observation builder + tests
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -738,7 +768,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-1** | Exact runtime evidence-sufficiency **boundary** | **Recommend lock** | §5 — pre-generation; query-time retrieval/context features only; no formula yet |
 | **OD-11-2** | Which deterministic features form sufficiency-v1 **observation** | **LOCKED** | §7.1 — seven decision-feature fields; only `empty_context` has intrinsic decision semantics; diversity is measured, not “more is better”; diagnostics listed separately; no text/LLM/gold/weighted score |
 | **OD-11-3** | Rule shape: gates/rules vs weighted score | **LOCKED** | §7.4 — ordered deterministic named gate set; only `empty_context` authorized pre-11B; multi-fire reasons preserved; no weighted score (C out); B deferred as possible future simplification |
-| **OD-11-4** | Insufficient-evidence eval population | **OPEN — next** | Prefer A+B (+ optional C); keep 10D as stress only |
+| **OD-11-4** | Insufficient-evidence eval population | **LOCKED** | §8.2–8.3 — 11B primary A+B; B is retrieval-failure proxy not unanswerable truth; C regression-only; 10D stress excluded; reporting rules for false-refusal vs unsupported_attempt |
+| **OD-11-5** | Frozen A/B observation methodology (11B) | **OPEN — next** | How to derive/join observations from frozen retrieval/context artifacts without re-retrieval or gold leakage at runtime |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -789,5 +820,5 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-4**) under separate
-authorization.
+interview resolves remaining ODs (next: **OD-11-5** / 11B frozen observations)
+under separate authorization.
