@@ -1455,11 +1455,67 @@ runtime/performance noise
         → excluded from semantic identity
 ```
 
-### 8.26 Next design decision (OD-11-27)
+### 8.26 OD-11-27 — LOCKED snapshot creation failure semantics
 
-**OPEN — next:** failure semantics for snapshot creation — strict fail-closed
-(no partial `suffctx_`; failures only in run-manifest accounting) vs allowing
-partial snapshots (recommended: fail-closed).
+**Status:** **LOCKED** — `suffctx_` creation is **strict fail-closed**. If any
+required semantic lineage, provenance, observation field, or internal validation
+required by the contract is missing or inconsistent, that case does **not**
+produce a `suffctx_` artifact.
+
+The manifest represents that outcome explicitly rather than fabricating a
+partial snapshot.
+
+| Option | Status |
+|---|---|
+| **A (fail-closed; no partial suffctx_)** | **LOCKED** |
+| B (partial snapshots with nullable holes) | Rejected — weakens content identity |
+| C (degenerate placeholders) | Rejected — invents semantics |
+
+#### Locked details
+
+1. No nullable holes for fields the contract defines as **required**.
+2. No placeholder IDs, zero scores, synthetic `"unknown"` provenance, or empty
+   substitutes.
+3. A failed case gets a structured **manifest failure record** containing at
+   least:
+   - `case_id`
+   - `original_query`
+   - failure stage / reason code
+   - human-readable diagnostic
+   - audit metadata as appropriate
+4. Failed cases are **not** included in successful attempt-group membership as
+   if they had a snapshot.
+5. Run-level accounting must distinguish:
+   - expected cases
+   - successful snapshots
+   - failed snapshot constructions
+6. A manifest with failures may still exist as an **execution record**, but it
+   must not masquerade as a complete frozen 11B observation set.
+7. Any analysis requiring the full frozen population must **reject** an
+   incomplete manifest unless that analysis explicitly supports incomplete
+   populations.
+8. OD-11-14 recomputation mismatch is one such hard failure condition.
+
+#### Contract-defined null vs missing (locked)
+
+```text
+contract-defined null
+    → valid suffctx_
+
+missing / inconsistent required semantic data
+    → no suffctx_
+    → manifest failure record
+```
+
+Example: `top_reranker_score = null` because there are zero anchors is **valid
+data**, not a missing-field failure.
+
+### 8.27 Next design decision (OD-11-28)
+
+**OPEN — next:** whether a measure-once 11B manifest with even one failed case
+may become the authoritative frozen snapshot set (recommended: no —
+incomplete manifests are diagnostic only; authoritative set requires 100%
+successful coverage).
 
 ---
 
@@ -1850,7 +1906,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-27 next; OD-11-2…11-26 LOCKED)
+  → Slice 11 design interview (OD-11-28 next; OD-11-2…11-27 LOCKED)
   → 11A contracts + observation builder + tests
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -1913,7 +1969,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-24** | Document identity for diversity | **LOCKED** | §8.23 — exact stored `document_id`; missing = validation failure; no path/title synthesis |
 | **OD-11-25** | Multi-unit / shared-anchor counting | **LOCKED** | §8.24 — diversity by identity keys only; `evidence_unit_count` = literal list length; no second collapse |
 | **OD-11-26** | Diagnostics: semantic vs audit-only | **LOCKED** | §8.25 — tiered diagnostics; identity allowlist; assembly counters persisted but not auto-gates; latency audit-only |
-| **OD-11-27** | Snapshot creation failure semantics | **OPEN — next** | Prefer fail-closed: no partial `suffctx_`; failures only in run-manifest accounting |
+| **OD-11-27** | Snapshot creation failure semantics | **LOCKED** | §8.26 — fail-closed; no partial `suffctx_`; structured failure records; contract-null ≠ missing |
+| **OD-11-28** | Incomplete manifest as authoritative 11B set | **OPEN — next** | Prefer reject: authoritative set requires 100% successful case coverage |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
