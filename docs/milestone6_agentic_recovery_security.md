@@ -1363,5 +1363,5 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-14** / observation authority)
-under separate authorization.
+interview resolves remaining ODs (next: **OD-11-15** / observation derivation
+identity) under separate authorization.
