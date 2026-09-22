@@ -1299,11 +1299,49 @@ Fits OD-11-14: recomputation from stored provenance remains exact and auditable.
 With OD-11-18…23, the seven OD-11-2 observations are fully specified pending
 document-identity confirmation (**OD-11-24**).
 
-### 8.23 Next design decision (OD-11-24)
+### 8.23 OD-11-24 — LOCKED document identity for diversity
 
-**OPEN — next:** whether document identity is the stored `document_id`
-byte-for-byte with no path/title fallback — missing `document_id` is a
-provenance/validation failure (recommended: yes).
+**Status:** **LOCKED** — document identity for sufficiency diversity is the
+**exact stored `document_id`**. No path/title fallback, normalization, or
+synthesized placeholder is permitted. A final EvidenceUnit missing
+`document_id` is **invalid provenance** and must **fail validation**.
+
+| Option | Status |
+|---|---|
+| **A (exact document_id; missing = fail closed)** | **LOCKED** |
+| B (fallback to path/title) | Rejected — invents identity |
+| C (synthesize `"unknown"` placeholder) | Rejected — invents provenance |
+
+#### Canonical rule
+
+```text
+document_identity = unit.document_id
+```
+
+#### Invariants (locked)
+
+1. Comparison is **exact**; no lowercasing, trimming, path normalization, or
+   alias resolution.
+2. `distinct_document_count` is the count of unique exact `document_id` values
+   over final EvidenceUnits.
+3. Missing/empty `document_id` is a **validation failure**, not `"unknown"`.
+4. `distinct_section_count` continues to use
+   `(document_id, normalized_section_path)`, so invalid document identity also
+   invalidates section-diversity reconstruction.
+5. No attempt is made to infer document identity from source filename, title,
+   URI, or metadata.
+6. Any future identity-resolution scheme would require a **new** observation
+   semantic contract/hash.
+
+Keeps OD-11-14 fully fail-closed and prevents the sufficiency layer from
+inventing provenance.
+
+### 8.24 Next design decision (OD-11-25)
+
+**OPEN — next:** EvidenceUnit counting when multiple units reference the same
+anchor/source chunk — whether diversity counts unique identity keys over all
+final units while a literal `evidence_unit_count` remains list length
+(recommended: yes).
 
 ---
 
@@ -1694,7 +1732,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-24 next; OD-11-2…11-23 LOCKED)
+  → Slice 11 design interview (OD-11-25 next; OD-11-2…11-24 LOCKED)
   → 11A contracts + observation builder + tests
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -1754,7 +1792,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-21** | Count / diversity feature semantics | **LOCKED** | §8.20 — `anchor_count` from pre-expansion anchors; diversity from final EvidenceUnits; empty path = one identity |
 | **OD-11-22** | Document / section identity for diversity | **LOCKED** | §8.21 — `(document_id, normalized_section_path)` pairs; same path in different docs = distinct |
 | **OD-11-23** | `section_path` normalization rules | **LOCKED** | §8.22 — structural-only (`None`→`[]`); exact segment strings; no case/trim rewrite |
-| **OD-11-24** | Document identity for diversity | **OPEN — next** | Prefer exact stored `document_id`; missing = validation failure, no synthesis |
+| **OD-11-24** | Document identity for diversity | **LOCKED** | §8.23 — exact stored `document_id`; missing = validation failure; no path/title synthesis |
+| **OD-11-25** | Multi-unit / shared-anchor counting | **OPEN — next** | Prefer diversity by unique identity keys; literal evidence_unit_count = list length |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -1805,5 +1844,5 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-24** / document identity)
+interview resolves remaining ODs (next: **OD-11-25** / multi-unit counting)
 under separate authorization.
