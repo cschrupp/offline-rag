@@ -617,7 +617,8 @@ lexical_index_id
 fusion_config_hash
 reranker_config_hash
 context_config_hash
-exact query (see OD-11-10 for original vs active retrieval query)
+original_query / active_retrieval_query (OD-11-10)
+attempt_number / attempt_role (OD-11-11)
 case identifier used to bind the snapshot to the frozen case set
 semantic retrieval/context payload defined by OD-11-6 / OD-11-8
 ```
@@ -700,11 +701,47 @@ recovery suffctx_
 Same user intent, different retrieval attempt, different snapshot identity.
 ```
 
-### 8.10 Next design decision (OD-11-11)
+### 8.10 OD-11-11 — LOCKED attempt number / role on snapshots
 
-**OPEN — next:** whether each `suffctx_` also binds `attempt_number` /
-`attempt_role` now (recommended: yes — `0` / `"initial"` in Slice 11; Slice 12
-adds `1` / `"recovery"` without contract change).
+**Status:** **LOCKED** — every `suffctx_` binds `attempt_number` and
+`attempt_role`; both are **identity-bearing**.
+
+| Option | Status |
+|---|---|
+| **A (bind now)** | **LOCKED** |
+| B (defer to Slice 12) | Rejected — avoid schema break |
+| C (derive only from rewrite history) | Rejected — pairing must not rely on inference |
+
+#### Slice values
+
+| Slice | `attempt_number` | `attempt_role` |
+|---|---|---|
+| **11** | `0` | `"initial"` — validation **fails** otherwise |
+| **12** (first recovery) | `1` | `"recovery"` |
+
+With intended `max_retries = 1`, no higher attempt number is valid in the first
+recovery contract.
+
+#### Invariants (locked)
+
+1. `attempt_number` is **zero-based** and refers to the **retrieval/context
+   attempt**, not generator calls.
+2. `attempt_role="initial"` requires `attempt_number == 0`.
+3. `attempt_role="recovery"` requires `attempt_number >= 1`.
+4. `original_query` stays constant across attempts for the same user request.
+5. `active_retrieval_query` may differ on recovery attempts.
+6. `attempt_role` is a **small controlled enum**, not arbitrary text.
+
+`max_retries` is **not** part of individual snapshot identity — it belongs to
+recovery/run policy lineage later. A snapshot describes what actually happened
+in that attempt.
+
+### 8.11 Next design decision (OD-11-12)
+
+**OPEN — next:** how baseline and recovery snapshots are paired across attempts
+— random `query_trace_id` / `request_id` inside `suffctx_` semantic identity vs
+content-addressed snapshots paired via an explicit higher-level attempt group in
+the manifest (recommended: latter).
 
 ---
 
@@ -1095,7 +1132,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-11 next; OD-11-2…11-10 LOCKED)
+  → Slice 11 design interview (OD-11-12 next; OD-11-2…11-11 LOCKED)
   → 11A contracts + observation builder + tests
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -1142,7 +1179,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-8** | Identity-bearing vs observational fields | **LOCKED** | §8.7 — clipping/budget/stop identity-bearing; latency/paths/timing not; same semantics ⇒ same IDs |
 | **OD-11-9** | Authoritative lineage binding | **LOCKED** | §8.8 — individual stage IDs; no gold in `suffctx_`/`suffctxrun_` identity; gold only at eval layer |
 | **OD-11-10** | Query fields on case snapshot | **LOCKED** | §8.9 — both `original_query` and `active_retrieval_query`; equal in Slice 11; both identity-bearing |
-| **OD-11-11** | Attempt number / role on snapshot | **OPEN — next** | Prefer `attempt_number=0`, `attempt_role="initial"` in Slice 11 |
+| **OD-11-11** | Attempt number / role on snapshot | **LOCKED** | §8.10 — `attempt_number`/`attempt_role` identity-bearing; Slice 11 = `0`/`initial`; max_retries not in snapshot identity |
+| **OD-11-12** | Baseline/recovery pairing across attempts | **OPEN — next** | Prefer content-addressed snapshots + manifest attempt groups; no random request ID in semantic identity |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -1193,5 +1231,5 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-11** / attempt fields)
+interview resolves remaining ODs (next: **OD-11-12** / attempt pairing)
 under separate authorization.
