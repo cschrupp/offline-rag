@@ -547,12 +547,61 @@ GoldDataset
 11B evaluation labels / metrics  (sufficiency-eval-label-v1)
 ```
 
-### 8.7 Next design decision (OD-11-8)
+### 8.7 OD-11-8 — LOCKED identity-bearing vs observational fields
 
-**OPEN — next:** exact fields in `suffctx_` / `suffctxrun_` semantic identity —
-especially whether clipping/budget/stop-state are identity-bearing vs whether
-raw wall-clock latency is observational metadata only (recommended: former
-yes, latter no).
+**Status:** **LOCKED** — `suffctx_` identity represents the retrieval/context
+state the sufficiency policy observed, **not** incidental performance
+characteristics of producing that state.
+
+| Option | Status |
+|---|---|
+| **A** | **LOCKED** — clipping/budget/stop identity-bearing; wall-clock latency not |
+| B (latency also identity-bearing) | Rejected — would churn IDs across identical evidence surfaces |
+| C (clipping/budget/stop observational only) | Rejected — those fields change the assembled evidence surface |
+
+**Test:** Could changing this field change the evidence surface or a
+sufficiency observation? If yes → identity-bearing.
+
+#### `suffctx_` — identity-bearing
+
+- clipping state, budget exhaustion, stop reason
+- ordered anchors, scores/ranks, dense/lexical provenance
+- evidence-unit provenance, document/section identities
+- token / unit counts
+- derived OD-11-2 observation
+- case/query and shared retrieval/context lineage IDs required by OD-11-6/7
+
+#### `suffctx_` — not identity-bearing (audit / diagnostic metadata only)
+
+- wall-clock latency
+- timestamps
+- filesystem / output paths
+- hostname
+- process / runtime timing noise
+
+Per-case latency may still be **retained** as audit/diagnostic metadata.
+
+#### `suffctxrun_` — parallel rule
+
+Manifest identity includes:
+
+- shared semantic lineage
+- canonical ordered `(case_id, suffctx_id)` membership
+
+Manifest identity **excludes** run timing and paths. Creation timestamp remains
+audit-only (OD-11-7).
+
+#### Determinism invariant (locked)
+
+The **same semantic result** produced twice at different latencies **must**
+yield the **same** `suffctx_` and `suffctxrun_` IDs.
+
+### 8.8 Next design decision (OD-11-9)
+
+**OPEN — next:** authoritative lineage for a case snapshot — bind dense index
+ID, lexical index ID, fusion/reranker/context config hashes, and chunk set
+**individually and explicitly**, vs relying on a higher-level
+experiment/config hash (recommended: bind individually).
 
 ---
 
@@ -943,7 +992,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-8 next; OD-11-2…11-7 LOCKED)
+  → Slice 11 design interview (OD-11-9 next; OD-11-2…11-8 LOCKED)
   → 11A contracts + observation builder + tests
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -987,7 +1036,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-5** | Frozen A/B observation methodology (11B) | **LOCKED** | §8.4 — A-with-B-fallback, all-or-nothing; complete OD-11-2 vector + exact lineage required for A; reject opportunistic re-retrieval (C) |
 | **OD-11-6** | `sufficiency-eval-context-v1` contents | **LOCKED** | §8.5 — provenance + frozen OD-11-2 vector; no full evidence text; anti-drift recompute check; gold A/B in separate `sufficiency-eval-label-v1` |
 | **OD-11-7** | Snapshot identity / packaging | **LOCKED** | §8.6 — per-case `suffctx_` + `suffctxrun_` manifest; case_id order default; shared-lineage invariant; labels remain separate |
-| **OD-11-8** | Identity-bearing vs observational fields | **OPEN — next** | Prefer clipping/budget/stop identity-bearing; raw wall-clock latency not |
+| **OD-11-8** | Identity-bearing vs observational fields | **LOCKED** | §8.7 — clipping/budget/stop identity-bearing; latency/paths/timing not; same semantics ⇒ same IDs |
+| **OD-11-9** | Authoritative lineage binding | **OPEN — next** | Prefer individual dense/lexical/fusion/reranker/context/chunk-set IDs over opaque experiment hash |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -1038,5 +1088,5 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-8** / identity-bearing fields)
+interview resolves remaining ODs (next: **OD-11-9** / lineage binding)
 under separate authorization.
