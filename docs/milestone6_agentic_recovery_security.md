@@ -811,12 +811,66 @@ recovery attempts **without** changing the manifest schema.
 **Future-slice leakage guard:** the schema can represent recovery now, but a
 Slice 11 run containing a recovery attempt must still **fail validation**.
 
-### 8.13 Next design decision (OD-11-14)
+### 8.13 OD-11-14 — LOCKED stored observation authority + versioned recompute
 
-**OPEN — next:** whether sufficiency observations are authoritative as stored at
-snapshot creation, recomputed on every load, or stored + recompute-validated on
-load/test with the stored observation authoritative for analysis (recommended:
-last).
+**Status:** **LOCKED** — `suffctx_` stores both provenance and the materialized
+OD-11-2 observation vector. At artifact validation / load-test boundaries, the
+vector is recomputed using its **declared versioned derivation contract** and
+must **exactly** match the stored values. During 11B analysis, the **stored**
+observation is the immutable authority.
+
+| Option | Status |
+|---|---|
+| A (store only; no recompute check) | Rejected — weak anti-drift |
+| B (recompute on every load as authority) | Rejected — later code can rewrite history |
+| **C (store + versioned recompute-validate; stored authoritative)** | **LOCKED** |
+
+#### Versioning rule (locked with OD-11-14)
+
+Recomputation must use the snapshot’s **declared observation-contract version**,
+**not** whatever the latest feature implementation happens to be.
+
+#### Invariants (locked)
+
+1. **Creation:** compute provenance → derive observation → persist both
+   atomically.
+2. **Validation:** recompute from stored provenance and compare field-by-field.
+3. Any mismatch is artifact corruption / contract failure — **fail closed**.
+4. Analysis must **not** silently substitute freshly recomputed values for the
+   stored vector.
+5. Later changes to feature semantics require a **new** observation
+   contract/version; they do **not** reinterpret historical `suffctx_`
+   artifacts.
+6. If software no longer supports the artifact’s declared derivation contract,
+   report **unsupported** rather than evaluating with newer semantics.
+7. No “migration” may overwrite an existing content-addressed snapshot. A
+   changed semantic derivation produces a **new** snapshot / contract identity.
+
+#### Floating-point equality (locked)
+
+For raw logits and margin: **no fuzzy / tolerance-based comparison**. Validate
+the canonical serialized numeric representation or exact parsed value. Both
+sides originate from the same serialized provenance; tolerance would weaken the
+content-addressed contract.
+
+```text
+stored provenance
+      │
+      ├── versioned derivation ──> recomputed observation
+      │                              │
+      │                              └── must equal stored observation
+      │
+      └──────────────────────────> stored observation
+                                     │
+                                     └── authority used by 11B
+```
+
+### 8.14 Next design decision (OD-11-15)
+
+**OPEN — next:** how observation derivation is versioned/identified —
+explicit contract (e.g. `sufficiency-observation-v1`) plus semantic
+`observation_config_hash` / derivation id in `suffctx_` identity, vs code /
+package version as authority (recommended: former).
 
 ---
 
@@ -1207,7 +1261,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-14 next; OD-11-2…11-13 LOCKED)
+  → Slice 11 design interview (OD-11-15 next; OD-11-2…11-14 LOCKED)
   → 11A contracts + observation builder + tests
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -1257,7 +1311,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-11** | Attempt number / role on snapshot | **LOCKED** | §8.10 — `attempt_number`/`attempt_role` identity-bearing; Slice 11 = `0`/`initial`; max_retries not in snapshot identity |
 | **OD-11-12** | Baseline/recovery pairing across attempts | **LOCKED** | §8.11 — content-addressed `suffctx_`; manifest attempt groups; trace IDs audit-only; fail-closed on ID conflicts |
 | **OD-11-13** | Manifest multi-attempt capability in v1 | **LOCKED** | §8.12 — multi-attempt-capable wire format; Slice 11 = exactly one initial attempt; identity includes full membership |
-| **OD-11-14** | Stored vs recomputed observations | **OPEN — next** | Prefer store + recompute-validate on load/test; stored observation authoritative for analysis |
+| **OD-11-14** | Stored vs recomputed observations | **LOCKED** | §8.13 — store + versioned recompute-validate; stored authoritative for 11B; exact numeric equality; no silent re-derivation |
+| **OD-11-15** | Observation derivation versioning / identity | **OPEN — next** | Prefer explicit `sufficiency-observation-v1` + semantic derivation hash in `suffctx_` identity |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
