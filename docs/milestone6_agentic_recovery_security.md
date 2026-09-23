@@ -1803,12 +1803,62 @@ context/
 Keeps the first implementation pass proving the observation contract and
 derivation semantics in isolation.
 
-### 8.33 Next design decision (OD-11-34)
+### 8.33 OD-11-34 — LOCKED 11A-1 public API exports
 
-**OPEN — next:** exact public API of 11A-1 — which symbols are exported from
-`sufficiency/__init__.py` versus kept internal (recommended: small surface —
-provenance/observation models, derivation, validation, and the three semantic
-ID/hash builders).
+**Status:** **LOCKED** — `sufficiency/__init__.py` exposes only the stable
+11A-1 public contract: typed provenance/observation models, derivation and
+recomputation validation entry points, semantic hash/ID builders, and required
+version constants. Internal helpers remain module-private and are **not**
+re-exported.
+
+| Option | Status |
+|---|---|
+| **A (small stable public surface)** | **LOCKED** |
+| B (re-export everything) | Rejected — freezes internals |
+| C (empty `__init__`; deep imports only) | Rejected — unstable caller surface |
+
+#### Recommended public surface
+
+```text
+SufficiencyProvenanceV1
+SufficiencyObservationV1
+
+derive_sufficiency_observation(...)
+validate_observation_against_provenance(...)
+
+build_observation_config_hash(...)
+build_suffctx_id(...)
+build_suffctxrun_id(...)
+
+SUFFICIENCY_OBSERVATION_V1
+SUFFICIENCY_PROVENANCE_V1
+```
+
+**Naming refinement (locked):** the validation API means
+**recompute-from-provenance and exact-match** (OD-11-14), not generic Pydantic
+validation. Prefer
+`validate_observation_against_provenance(...)` over a vague
+`validate_sufficiency_observation(...)`.
+
+#### Keep out of `__init__.py` unless later needed publicly
+
+- canonicalization helpers
+- low-level feature functions
+- section-path normalization helper
+- semantic-payload construction helpers
+- private validators
+- raw hash utilities
+- fixture/test helpers
+
+Keeps the public boundary small and stable without forcing callers into deep
+imports.
+
+### 8.34 Next design decision (OD-11-35)
+
+**OPEN — next:** exact exception/failure contract for derivation and validation
+— small typed sufficiency error family with deterministic reason codes vs raw
+`ValueError` / Pydantic errors (recommended: typed domain errors with reason
+codes for later manifest failure accounting).
 
 ---
 
@@ -2199,8 +2249,8 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-34 next; OD-11-2…11-33 LOCKED)
-  → 11A-1 observation core (after OD-11-34 + separate implementation auth)
+  → Slice 11 design interview (OD-11-35 next; OD-11-2…11-34 LOCKED)
+  → 11A-1 observation core (after OD-11-35 + separate implementation auth)
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
   → 12A state/protocol (+ LangGraph adapter decision OD-12-3)
@@ -2269,7 +2319,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-31** | Internal modules for 11A-1 | **LOCKED** | §8.30 — contracts/derive/config_hash/ids; no premature subpackages |
 | **OD-11-32** | Typed provenance input for derive.py | **LOCKED** | §8.31 — `SufficiencyProvenanceV1`; no HybridRerankContextResult / gold / dict; adapters outside core |
 | **OD-11-33** | Adapter location for context → provenance | **LOCKED** | §8.32 — outside `sufficiency/`; not in 11A-1; fixtures only; no stub module |
-| **OD-11-34** | 11A-1 public API exports | **OPEN — next** | Prefer small `__init__` surface: models, derive, validate, ID/hash builders |
+| **OD-11-34** | 11A-1 public API exports | **LOCKED** | §8.33 — small `__init__` surface; `validate_observation_against_provenance`; helpers private |
+| **OD-11-35** | Derivation/validation exception contract | **OPEN — next** | Prefer typed sufficiency errors with deterministic reason codes |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
