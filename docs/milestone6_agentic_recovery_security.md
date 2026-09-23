@@ -2600,11 +2600,76 @@ recomputation.
 8. A stable error code like `invalid_reranker_score` fits the error contract
    already locked.
 
-### 8.54 Next design decision (OD-11-55)
+### 8.54 OD-11-DESIGN-CLOSURE — LOCKED remaining 11A-1 details delegated
 
-**OPEN — next:** whether reranker score order must be monotonic non-increasing
-with rerank rank (recommended: yes **only if** the existing reranker contract
-guarantees that property; otherwise do not invent a stronger invariant).
+**Status:** **LOCKED** — all remaining implementation details for 11A-1 that
+are mechanically implied by OD-11-2 through OD-11-54 are delegated to
+implementation under the established invariants. New human decisions are
+required only for ambiguities affecting scientific semantics, public
+contracts, artifact identity, security boundaries, evaluation validity, or
+authorized scope. **No additional micro-ODs are required before
+implementation.**
+
+| Option | Status |
+|---|---|
+| **A (design-closure bundle; stop micro-ODs)** | **LOCKED** |
+| B (continue one-at-a-time through OD-11-80+) | Rejected — diminishing returns / over-specification |
+
+#### Default rules (locked)
+
+1. **Respect upstream contracts; do not strengthen them without evidence.**
+   Example: do not independently require monotonic reranker scores unless the
+   existing reranker contract explicitly guarantees that property
+   (covers former OD-11-55).
+2. **Fail closed on malformed required provenance.** Missing IDs, duplicate
+   identities, invalid ranks, non-finite scores, inconsistent rank/score
+   pairing → typed failure.
+3. **Never repair upstream data inside `sufficiency/`.** No sorting,
+   deduplication, normalization beyond what was explicitly frozen, rank
+   reconstruction, score transformation, or placeholder synthesis.
+4. **Preserve deterministic semantic state exactly.** Ordered anchors, ordered
+   EvidenceUnits, scores, ranks, lineage, and deterministic context diagnostics
+   are preserved as defined.
+5. **Do not enlarge the seven-feature observation vector.** Extra provenance
+   remains diagnostic until a future explicit design revision.
+6. **Do not add future-slice functionality.** No persistence CLI, live
+   retrieval adapter, thresholds beyond `empty_context`, runtime gating,
+   recovery, LangGraph, or security harness in 11A-1.
+7. **Prefer existing repository contracts/helpers.** If an upstream field
+   already has a validated type/semantic contract, mirror/project that
+   contract rather than inventing another one.
+8. **Implementation-detail choices do not require a new OD** unless they change
+   scientific meaning, public API, artifact identity, persistence
+   compatibility, security boundary, evaluation validity, or runtime behavior.
+
+#### Gate for new ODs during implementation
+
+Stop and ask only if implementation exposes an ambiguity that:
+
+- changes `suffctx_` identity;
+- could change one of the seven observations;
+- conflicts between two frozen decisions;
+- cannot be supplied by an upstream contract declared required;
+- is a public API/schema compatibility choice;
+- is a scientific/evaluation choice affecting 11B;
+- is a security or trust-boundary issue.
+
+Helper placement, private names, loop vs comprehension, and redundant
+re-statement of already-required invariants are left to implementation and
+review.
+
+#### Implementation authorization
+
+**11A-1 — Sufficiency Observation Core** is authorized under OD-11-29 through
+OD-11-54 plus these closure rules:
+
+**In scope:** contracts/models; versioned derivation semantics; deterministic
+config/hash/ID helpers; typed error family; recomputation validation; unit
+tests using hand-built provenance fixtures.
+
+**Still excluded:** snapshot/manifest persistence; CLI; live context adapter;
+measure-once retrieval runs; threshold selection; runtime sufficiency gating;
+recovery/LangGraph; security harness.
 
 ---
 
@@ -2995,8 +3060,8 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-55 next; OD-11-2…11-54 LOCKED)
-  → 11A-1 observation core (after remaining ODs + separate implementation auth)
+  → Slice 11 design interview complete (OD-11-2…11-54 + DESIGN-CLOSURE LOCKED)
+  → 11A-1 observation core (authorized under design closure)
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
   → 12A state/protocol (+ LangGraph adapter decision OD-12-3)
@@ -3086,7 +3151,7 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-52** | Branch rank/score nullability pairing? | **LOCKED** | §8.51 — `(rank=None) ⇔ (score=None)` for dense and lexical |
 | **OD-11-53** | hybrid_rank / rrf_score required & validated? | **LOCKED** | §8.52 — both required; unique positive hybrid_rank; finite rrf_score; diagnostic |
 | **OD-11-54** | Raw reranker score required & finite on anchors? | **LOCKED** | §8.53 — finite `raw-logit-v1` on every anchor; no coercion |
-| **OD-11-55** | Reranker scores monotonic with rerank rank? | **OPEN — next** | Prefer validate only if upstream contract guarantees it |
+| **OD-11-DESIGN-CLOSURE** | Remaining 11A-1 details delegated | **LOCKED** | §8.54 — stop micro-ODs; implement under frozen invariants |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -3133,10 +3198,12 @@ runtime meaning. **Do not change config in the design pass.**
 
 ## HARD STOP
 
-This design pass ends here.
+This design pass ends here for Slice 11 interview work.
 
-**Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
-experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-55** / reranker score monotonicity)
-under separate authorization. Do **not** begin 11A-1 code until implementation
-is separately authorized.
+**11A-1 implementation is authorized** under OD-11-29…54 + OD-11-DESIGN-CLOSURE.
+Implement only the Sufficiency Observation Core (contracts, derivation,
+hashes/IDs, typed errors, recomputation validation, fixture unit tests).
+
+**Do not** add snapshot/manifest persistence, CLI, live context adapter,
+measure-once retrieval, threshold selection, runtime sufficiency gating,
+LangGraph/recovery, or the security harness unless separately re-authorized.
