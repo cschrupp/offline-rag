@@ -2334,11 +2334,40 @@ on order.
 9. Equal reranker scores do **not** authorize re-sorting; whatever deterministic
    ordering the upstream reranker contract produced is authoritative.
 
-### 8.46 Next design decision (OD-11-47)
+### 8.46 OD-11-47 — LOCKED unique authoritative chunk_id for anchors
 
-**OPEN — next:** whether `chunk_id` is the authoritative anchor identity and must
-be unique within the reranked anchor list (recommended: yes — exact `chunk_id`,
-no duplicates; duplicates fail validation).
+**Status:** **LOCKED** — exact `chunk_id` is the authoritative identity for each
+reranked anchor. Within a single final reranked-anchor list, every `chunk_id`
+must be unique. Duplicate `chunk_id` values indicate malformed upstream
+provenance and cause validation failure.
+
+| Option | Status |
+|---|---|
+| **A (exact unique chunk_id; fail on duplicates)** | **LOCKED** |
+| B (allow duplicates; keep first/last) | Rejected — silent repair |
+| C (composite uniqueness e.g. chunk_id+score) | Rejected — not authoritative identity |
+
+#### Implications (locked)
+
+1. No deduplication inside `sufficiency/`.
+2. No “keep first” or “keep last” repair behavior.
+3. No composite identity such as `(chunk_id, score)`.
+4. Two anchors with the same `chunk_id` but different scores/ranks are still
+   invalid.
+5. `chunk_id` comparison is **exact**; no normalization or alias resolution.
+6. Duplicate detection should happen **before** deriving order-dependent
+   observations.
+7. A duplicate-anchor failure should map to a stable sufficiency reason code,
+   likely something like `duplicate_anchor_chunk_id`.
+
+Keeps the sufficiency layer observational and fail-closed rather than
+corrective.
+
+### 8.47 Next design decision (OD-11-48)
+
+**OPEN — next:** whether `full_evidence_unit_id` must also be unique within the
+final EvidenceUnit list (recommended: yes — exact ID, unique per final list;
+duplicates fail validation).
 
 ---
 
@@ -2729,7 +2758,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-47 next; OD-11-2…11-46 LOCKED)
+  → Slice 11 design interview (OD-11-48 next; OD-11-2…11-47 LOCKED)
   → 11A-1 observation core (after remaining ODs + separate implementation auth)
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -2812,7 +2841,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-44** | Include EvidenceUnit IDs in provenance? | **LOCKED** | §8.43 — required `ev_…`; no synthesis; complements other provenance |
 | **OD-11-45** | Final EvidenceUnit order identity-bearing? | **LOCKED** | §8.44 — exact assembler order; reordering → new `suffctx_` |
 | **OD-11-46** | Reranked anchor order identity-bearing? | **LOCKED** | §8.45 — exact reranker order; top-* features use indices 0/1 |
-| **OD-11-47** | chunk_id unique authoritative anchor identity? | **OPEN — next** | Prefer exact unique `chunk_id`; duplicates fail validation |
+| **OD-11-47** | chunk_id unique authoritative anchor identity? | **LOCKED** | §8.46 — exact unique `chunk_id`; no repair; fail closed |
+| **OD-11-48** | EvidenceUnit ID unique in final list? | **OPEN — next** | Prefer exact unique `ev_…`; duplicates fail validation |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -2863,6 +2893,6 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-47** / chunk_id anchor uniqueness)
+interview resolves remaining ODs (next: **OD-11-48** / EvidenceUnit ID uniqueness)
 under separate authorization. Do **not** begin 11A-1 code until implementation
 is separately authorized.
