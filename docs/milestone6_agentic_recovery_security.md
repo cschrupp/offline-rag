@@ -2570,11 +2570,41 @@ provenance, not OD-11-2 observation features, and both participate in
 Keeps the snapshot faithful to the full hybrid→rerank lineage while preserving
 the frozen seven-feature observation boundary.
 
-### 8.53 Next design decision (OD-11-54)
+### 8.53 OD-11-54 — LOCKED finite raw-logit-v1 on every stored anchor
 
-**OPEN — next:** whether the raw reranker score is required and finite on every
-stored anchor (recommended: yes — finite raw-logit-v1; missing/non-finite =
-invalid provenance).
+**Status:** **LOCKED** — every stored reranked anchor must carry a finite
+`raw-logit-v1` reranker score. Missing, `NaN`, `+inf`, or `-inf` values are
+invalid provenance and fail validation.
+
+| Option | Status |
+|---|---|
+| **A (finite raw-logit-v1 required on every anchor)** | **LOCKED** |
+| B (only anchors[0] must be finite) | Rejected — breaks OD-11-19 margin/recomputation |
+| C (coerce missing/non-finite to null/zero) | Rejected — silent repair |
+
+Required for internal consistency with OD-11-19 and for deterministic
+recomputation.
+
+#### Implications (locked)
+
+1. Every anchor, not just rank 1, must have a valid reranker score.
+2. `top_reranker_score` is always defined whenever `anchor_count >= 1`.
+3. `top1_top2_margin` is always computable whenever `anchor_count >= 2`.
+4. Non-finite values must be rejected **before** semantic hashing/canonical
+   JSON.
+5. No coercion to null, zero, or any fallback.
+6. Scores remain raw and untransformed.
+7. If stored anchor order contradicts the upstream score ordering contract,
+   that is a separate provenance-consistency issue; sufficiency must **not**
+   reorder anchors to “fix” it.
+8. A stable error code like `invalid_reranker_score` fits the error contract
+   already locked.
+
+### 8.54 Next design decision (OD-11-55)
+
+**OPEN — next:** whether reranker score order must be monotonic non-increasing
+with rerank rank (recommended: yes **only if** the existing reranker contract
+guarantees that property; otherwise do not invent a stronger invariant).
 
 ---
 
@@ -2965,7 +2995,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-54 next; OD-11-2…11-53 LOCKED)
+  → Slice 11 design interview (OD-11-55 next; OD-11-2…11-54 LOCKED)
   → 11A-1 observation core (after remaining ODs + separate implementation auth)
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -3055,7 +3085,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-51** | Dense/lexical scores in provenance / identity? | **LOCKED** | §8.50 — retain if deterministic; diagnostic-only; in `suffctx_` identity |
 | **OD-11-52** | Branch rank/score nullability pairing? | **LOCKED** | §8.51 — `(rank=None) ⇔ (score=None)` for dense and lexical |
 | **OD-11-53** | hybrid_rank / rrf_score required & validated? | **LOCKED** | §8.52 — both required; unique positive hybrid_rank; finite rrf_score; diagnostic |
-| **OD-11-54** | Raw reranker score required & finite on anchors? | **OPEN — next** | Prefer yes; finite raw-logit-v1; missing/non-finite invalid |
+| **OD-11-54** | Raw reranker score required & finite on anchors? | **LOCKED** | §8.53 — finite `raw-logit-v1` on every anchor; no coercion |
+| **OD-11-55** | Reranker scores monotonic with rerank rank? | **OPEN — next** | Prefer validate only if upstream contract guarantees it |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -3106,6 +3137,6 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-54** / raw reranker score required)
+interview resolves remaining ODs (next: **OD-11-55** / reranker score monotonicity)
 under separate authorization. Do **not** begin 11A-1 code until implementation
 is separately authorized.
