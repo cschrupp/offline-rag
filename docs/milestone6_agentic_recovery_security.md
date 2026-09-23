@@ -3061,7 +3061,8 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 ```text
 Design contract (this document)          ← current
   → Slice 11 design interview complete (OD-11-2…11-54 + DESIGN-CLOSURE LOCKED)
-  → 11A-1 observation core (authorized under design closure)
+  → 11A-1 observation core                          ← implemented
+  → 11A later: snapshot/manifest persistence (separate auth)
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
   → 12A state/protocol (+ LangGraph adapter decision OD-12-3)
@@ -3198,11 +3199,8 @@ runtime meaning. **Do not change config in the design pass.**
 
 ## HARD STOP
 
-This design pass ends here for Slice 11 interview work.
-
-**11A-1 implementation is authorized** under OD-11-29…54 + OD-11-DESIGN-CLOSURE.
-Implement only the Sufficiency Observation Core (contracts, derivation,
-hashes/IDs, typed errors, recomputation validation, fixture unit tests).
+**11A-1 (Sufficiency Observation Core) is implemented** under OD-11-29…54 +
+OD-11-DESIGN-CLOSURE.
 
 **Do not** add snapshot/manifest persistence, CLI, live context adapter,
 measure-once retrieval, threshold selection, runtime sufficiency gating,
