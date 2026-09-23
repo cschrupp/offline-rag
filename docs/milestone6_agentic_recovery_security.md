@@ -2496,12 +2496,53 @@ participate in `suffctx_` semantic identity.
    contract (pairedness locked in OD-11-52 rather than inferred during
    implementation).
 
-### 8.51 Next design decision (OD-11-52)
+### 8.51 OD-11-52 — LOCKED dense/lexical rank-score paired nullability
 
-**OPEN — next:** exact nullability consistency between branch rank and branch
-score — whether `(rank=null, score!=null)` or `(rank!=null, score=null)` is
-valid (recommended: paired presence for both dense and lexical if the fusion
-contract guarantees that pairing).
+**Status:** **LOCKED** — dense and lexical branch provenance use paired
+nullability. For each branch, rank presence and score presence must match
+exactly: `(rank is None) ⇔ (score is None)`. Any mixed pair is malformed
+provenance and fails validation.
+
+| Option | Status |
+|---|---|
+| **A (paired presence for dense and lexical)** | **LOCKED** |
+| B (allow rank without score) | Rejected — unpaired under fusion contract |
+| C (any combination; score always optional) | Rejected — not fail-closed |
+
+#### Canonical rule (locked)
+
+```text
+dense:
+  rank = null  ↔ score = null
+  rank != null ↔ score != null
+
+lexical:
+  rank = null  ↔ score = null
+  rank != null ↔ score != null
+```
+
+#### Additional implications (locked)
+
+1. `(rank=null, score!=null)` is invalid.
+2. `(rank!=null, score=null)` is invalid.
+3. Paired non-null values still obey OD-11-50 positivity/uniqueness for ranks.
+4. Scores remain untransformed diagnostic provenance under OD-11-51.
+5. Cross-retriever support continues to depend on paired branch membership,
+   effectively the non-null rank/score state.
+6. Sufficiency must **not** repair malformed pairs by dropping one side or
+   synthesizing the other.
+7. A dedicated stable error code such as `invalid_branch_rank_score_pair` would
+   be appropriate.
+
+Current fusion produces rank and score from the same branch hit; an unpaired
+state indicates corrupted or incompletely projected upstream provenance.
+
+### 8.52 Next design decision (OD-11-53)
+
+**OPEN — next:** whether `hybrid_rank` / `rrf_score` are required on every stored
+reranked anchor and how they are validated (recommended: require both if every
+reranked anchor comes from the hybrid/RRF pool; positive unique non-contiguous
+`hybrid_rank`; finite `rrf_score`; diagnostic-only but identity-bearing).
 
 ---
 
@@ -2892,7 +2933,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-52 next; OD-11-2…11-51 LOCKED)
+  → Slice 11 design interview (OD-11-53 next; OD-11-2…11-52 LOCKED)
   → 11A-1 observation core (after remaining ODs + separate implementation auth)
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -2980,7 +3021,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-49** | Anchor ranks contiguous / match list position? | **LOCKED** | §8.48 — 1-based `rerank_rank == index+1`; no rewrite |
 | **OD-11-50** | dense_rank / lexical_rank positivity & uniqueness? | **LOCKED** | §8.49 — positive + per-branch unique; null = absent; no contiguity |
 | **OD-11-51** | Dense/lexical scores in provenance / identity? | **LOCKED** | §8.50 — retain if deterministic; diagnostic-only; in `suffctx_` identity |
-| **OD-11-52** | Branch rank/score nullability pairing? | **OPEN — next** | Prefer paired presence under fusion contract |
+| **OD-11-52** | Branch rank/score nullability pairing? | **LOCKED** | §8.51 — `(rank=None) ⇔ (score=None)` for dense and lexical |
+| **OD-11-53** | hybrid_rank / rrf_score required & validated? | **OPEN — next** | Prefer require both; unique positive rank; finite score; diagnostic |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -3031,6 +3073,6 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-52** / branch rank-score pairing)
+interview resolves remaining ODs (next: **OD-11-53** / hybrid_rank rrf_score rules)
 under separate authorization. Do **not** begin 11A-1 code until implementation
 is separately authorized.
