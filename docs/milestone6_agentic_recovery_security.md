@@ -1651,11 +1651,51 @@ evaluation/   generation/orchestration   agents/
 6. **No** provider/model/network dependencies enter the observation core.
 7. **No** runtime query orchestration enters 11A-1.
 
-### 8.30 Next design decision (OD-11-31)
+### 8.30 OD-11-31 — LOCKED internal modules for 11A-1
 
-**OPEN — next:** exact internal modules inside `sufficiency/` for 11A-1 —
-small split such as `contracts.py`, `derive.py`, `config_hash.py`, and `ids.py`
-(recommended), avoiding premature extra layers.
+**Status:** **LOCKED** — Slice 11A-1 uses a small `sufficiency/` module split:
+`contracts.py`, `derive.py`, `config_hash.py`, `ids.py`, and `__init__.py`. No
+deeper hierarchy or separate validation subpackage is introduced unless
+implementation pressure demonstrates a real need.
+
+| Option | Status |
+|---|---|
+| **A (small four-module split)** | **LOCKED** |
+| B (one monolithic observation.py) | Rejected — harder to audit / review |
+| C (deeper hierarchy now) | Rejected — premature structure |
+
+#### Responsibilities (locked)
+
+| Module | Owns |
+|---|---|
+| `contracts.py` | typed provenance/observation contracts and version constants |
+| `derive.py` | deterministic OD-11-18…25 feature derivation plus recomputation validation |
+| `config_hash.py` | canonical semantic derivation config and `observation_config_hash` |
+| `ids.py` | `suffctx_` / `suffctxrun_` semantic ID builders using shared canonical hashing |
+| `__init__.py` | deliberate public exports only |
+
+Keep validation close to the model/derivation logic for now rather than creating
+`validation.py` prematurely.
+
+#### Explicitly not introduced in 11A-1
+
+- `features/`
+- `validators/`
+- `schemas/`
+- `services/`
+- `repository/`
+- persistence/store modules
+- CLI modules
+- agent/recovery abstractions
+
+Keeps the first implementation slice small enough to audit line-by-line.
+
+### 8.31 Next design decision (OD-11-32)
+
+**OPEN — next:** exact typed provenance input contract for `derive.py` —
+dedicated neutral provenance model with only fields needed for the seven
+observations vs passing `HybridRerankContextResult` directly (recommended:
+dedicated neutral model).
 
 ---
 
@@ -2046,8 +2086,8 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-31 next; OD-11-2…11-30 LOCKED)
-  → 11A-1 observation core (after OD-11-31 + separate implementation auth)
+  → Slice 11 design interview (OD-11-32 next; OD-11-2…11-31 LOCKED)
+  → 11A-1 observation core (after OD-11-32 + separate implementation auth)
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
   → 12A state/protocol (+ LangGraph adapter decision OD-12-3)
@@ -2113,7 +2153,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-28** | Incomplete manifest as authoritative 11B set | **LOCKED** | §8.27 — incomplete = diagnostic only; authoritative set requires 100% successful coverage |
 | **OD-11-29** | Slice 11A first implementation boundary | **LOCKED** | §8.28 — 11A-1 observation core only; no persistence CLI / measure-once / runtime gate |
 | **OD-11-30** | Observation-core package boundary | **LOCKED** | §8.29 — `src/offline_rag/sufficiency/`; no agents/generation/gold; dependency direction locked |
-| **OD-11-31** | Internal modules for 11A-1 | **OPEN — next** | Prefer small split: contracts / derive / config_hash / ids |
+| **OD-11-31** | Internal modules for 11A-1 | **LOCKED** | §8.30 — contracts/derive/config_hash/ids; no premature subpackages |
+| **OD-11-32** | Typed provenance input for derive.py | **OPEN — next** | Prefer dedicated neutral provenance model; do not pass HybridRerankContextResult |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -2164,6 +2205,6 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-31** / internal modules)
-under separate authorization. Do **not** begin 11A-1 code until implementation
-is separately authorized.
+interview resolves remaining ODs (next: **OD-11-32** / provenance input
+contract) under separate authorization. Do **not** begin 11A-1 code until
+implementation is separately authorized.
