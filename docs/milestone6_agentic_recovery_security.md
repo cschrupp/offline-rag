@@ -2169,12 +2169,48 @@ Types like `SufficiencyAnchorProvenance` or `SufficiencyEvidenceUnitProvenance`
 may exist internally without being part of the top-level
 `sufficiency/__init__.py` public API unless later consumers genuinely need them.
 
-### 8.41 Next design decision (OD-11-42)
+### 8.41 OD-11-42 — LOCKED nested provenance field scope
 
-**OPEN — next:** whether nested provenance models preserve only the exact fields
-needed by sufficiency, or also mirror extra context-stage metadata for audit
-convenience (recommended: only OD-11-32/26-authorized fields; no wholesale
-`HybridRerankContextResult` mirroring).
+**Status:** **LOCKED** — nested sufficiency provenance models contain only the
+semantic and audit fields explicitly required by the sufficiency contract and
+already authorized by OD-11-32 / OD-11-26. They are a deliberate projection of
+the context result, not a mirrored copy of `HybridRerankContextResult`.
+
+| Option | Status |
+|---|---|
+| **A (OD-11-32/26 projection only)** | **LOCKED** |
+| B (mirror extra context metadata for audit convenience) | Rejected — becomes a second context schema |
+| C (identity-only; drop OD-11-26 audit counters) | Rejected — undercuts authorized diagnostics |
+
+#### Include (locked)
+
+1. Fields needed to derive the seven OD-11-2 observations.
+2. Deterministic assembly diagnostics already approved for audit/reconstruction.
+3. Explicit lineage fields required by OD-11-9.
+
+#### Exclude (locked)
+
+1. Unrelated context metadata merely because it exists upstream.
+2. Generator-facing rendered text unless a future sufficiency feature
+   explicitly requires it.
+3. Runtime-only telemetry, framework objects, provider state, or miscellaneous
+   metadata bags.
+4. Any new field later requires an **explicit contract reason**, not “for
+   completeness.”
+
+Otherwise the neutral provenance object would slowly become a second
+context-result schema, defeating OD-11-32.
+
+#### Field-membership test (locked)
+
+If removing a field would not affect observation derivation, semantic identity,
+recomputation validation, or an already-authorized deterministic audit
+diagnostic, it probably does not belong in `SufficiencyProvenanceV1`.
+
+### 8.42 Next design decision (OD-11-43)
+
+**OPEN — next:** whether the neutral provenance model stores full EvidenceUnit
+text (recommended: no for 11A-1 — identities/provenance/diagnostics only).
 
 ---
 
@@ -2565,7 +2601,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-42 next; OD-11-2…11-41 LOCKED)
+  → Slice 11 design interview (OD-11-43 next; OD-11-2…11-42 LOCKED)
   → 11A-1 observation core (after remaining ODs + separate implementation auth)
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -2643,7 +2679,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-39** | Serializable error envelope now vs defer | **LOCKED** | §8.38 — defer wire envelope; 11A-1 = exceptions + code + details only |
 | **OD-11-40** | Explicit schema_version on provenance/observation | **LOCKED** | §8.39 — both models; `extra="forbid"`; distinct from config hash |
 | **OD-11-41** | Nested provenance models independently versioned? | **LOCKED** | §8.40 — typed + forbid; parent-versioned; not in public `__init__` by default |
-| **OD-11-42** | Nested provenance field scope vs context mirror | **OPEN — next** | Prefer OD-11-32/26 fields only; no HybridRerank mirror |
+| **OD-11-42** | Nested provenance field scope vs context mirror | **LOCKED** | §8.41 — OD-11-32/26 projection only; field-membership test |
+| **OD-11-43** | Store full EvidenceUnit text in provenance? | **OPEN — next** | Prefer no for 11A-1; identities/diagnostics only |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -2694,6 +2731,6 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-42** / nested provenance field scope)
+interview resolves remaining ODs (next: **OD-11-43** / EvidenceUnit text in provenance)
 under separate authorization. Do **not** begin 11A-1 code until implementation
 is separately authorized.
