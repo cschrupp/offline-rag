@@ -1611,11 +1611,51 @@ authorized in this first implementation step.
 This decision freezes **11A-1 scope** only. Actual code changes still require
 separate implementation authorization after the package-boundary OD as needed.
 
-### 8.29 Next design decision (OD-11-30)
+### 8.29 OD-11-30 — LOCKED observation-core package boundary
 
-**OPEN — next:** package/module boundary for the observation core — neutral
-`offline_rag/sufficiency/` with no dependency on `agents/`, `generation/`, or
-evaluation/gold code (recommended).
+**Status:** **LOCKED** — the sufficiency observation core lives in
+`src/offline_rag/sufficiency/`. It is a neutral deterministic package with **no**
+dependency on `agents/`, `generation/`, or evaluation/gold. It may depend only
+on shared `core/`, `domain/`, and other lower-level deterministic primitives
+already appropriate for cross-cutting infrastructure.
+
+| Option | Status |
+|---|---|
+| **A (neutral sufficiency/ package)** | **LOCKED** |
+| B (under evaluation/generation_semantic/) | Rejected — couples observation to eval |
+| C (under agents/) | Rejected — recovery must not own sufficiency semantics |
+
+#### Dependency direction (locked)
+
+```text
+core/ + domain/
+      ↓
+sufficiency/
+      ↓
+evaluation/   generation/orchestration   agents/
+```
+
+**Never the reverse.**
+
+#### Ownership / boundary rules (locked)
+
+1. `sufficiency/` owns the observation contracts, derivation config, derivation
+   logic, validation, and semantic ID helpers.
+2. `evaluation/` may join sufficiency snapshots with GoldDataset labels, but
+   `sufficiency/` must **never** import gold/eval types.
+3. `agents/` may consume sufficiency decisions later in Slice 12, but must
+   **not** own or redefine sufficiency semantics.
+4. `generation/` may eventually consume the decision outcome in Slice 11C, but
+   the observation package remains **generator-independent**.
+5. **No** LangGraph dependency enters `sufficiency/`.
+6. **No** provider/model/network dependencies enter the observation core.
+7. **No** runtime query orchestration enters 11A-1.
+
+### 8.30 Next design decision (OD-11-31)
+
+**OPEN — next:** exact internal modules inside `sufficiency/` for 11A-1 —
+small split such as `contracts.py`, `derive.py`, `config_hash.py`, and `ids.py`
+(recommended), avoiding premature extra layers.
 
 ---
 
@@ -2006,8 +2046,8 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-30 next; OD-11-2…11-29 LOCKED)
-  → 11A-1 observation core (after OD-11-30 + separate implementation auth)
+  → Slice 11 design interview (OD-11-31 next; OD-11-2…11-30 LOCKED)
+  → 11A-1 observation core (after OD-11-31 + separate implementation auth)
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
   → 12A state/protocol (+ LangGraph adapter decision OD-12-3)
@@ -2072,7 +2112,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-27** | Snapshot creation failure semantics | **LOCKED** | §8.26 — fail-closed; no partial `suffctx_`; structured failure records; contract-null ≠ missing |
 | **OD-11-28** | Incomplete manifest as authoritative 11B set | **LOCKED** | §8.27 — incomplete = diagnostic only; authoritative set requires 100% successful coverage |
 | **OD-11-29** | Slice 11A first implementation boundary | **LOCKED** | §8.28 — 11A-1 observation core only; no persistence CLI / measure-once / runtime gate |
-| **OD-11-30** | Observation-core package boundary | **OPEN — next** | Prefer neutral `offline_rag/sufficiency/`; no agents/generation/gold deps |
+| **OD-11-30** | Observation-core package boundary | **LOCKED** | §8.29 — `src/offline_rag/sufficiency/`; no agents/generation/gold; dependency direction locked |
+| **OD-11-31** | Internal modules for 11A-1 | **OPEN — next** | Prefer small split: contracts / derive / config_hash / ids |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -2123,6 +2164,6 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-30** / package boundary)
+interview resolves remaining ODs (next: **OD-11-31** / internal modules)
 under separate authorization. Do **not** begin 11A-1 code until implementation
 is separately authorized.
