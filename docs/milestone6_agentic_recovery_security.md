@@ -1923,12 +1923,53 @@ diagnostic
 
 with `reason_code` coming directly from this contract.
 
-### 8.35 Next design decision (OD-11-36)
+### 8.35 OD-11-36 — LOCKED structured details on domain errors
 
-**OPEN — next:** whether one domain error may carry structured field/context
-details in addition to the stable code and message (recommended: yes, narrowly —
-optional typed details such as `field_name`, `expected`, `actual`,
-`attempt_number`; no arbitrary nested payloads or evidence text).
+**Status:** **LOCKED** — sufficiency domain errors may carry a **narrow, typed**
+set of structured diagnostic fields in addition to the stable reason code and
+human-readable message. Arbitrary payload bags and evidence text are
+**prohibited**.
+
+| Option | Status |
+|---|---|
+| **A (narrow typed details)** | **LOCKED** |
+| B (code + message only) | Rejected — weaker for precise tests / accounting |
+| C (free-form dict bag) | Rejected — dump channel |
+
+#### Illustrative detail fields
+
+```text
+field_name: str | None
+expected: str | int | float | bool | None
+actual: str | int | float | bool | None
+attempt_number: int | None
+```
+
+`case_id` may be attached later at the orchestration/manifest layer rather than
+inside the core error itself — the derivation core should not need
+evaluation/runtime case bookkeeping.
+
+#### Constraints (locked)
+
+1. No `dict[str, Any]`.
+2. No nested provenance blobs.
+3. No EvidenceUnit text.
+4. No full query/context dumps.
+5. No secrets or endpoint credentials.
+6. Structured details are **diagnostic aids**, not semantic identity.
+7. Stable reason code remains the primary machine contract; detail fields refine
+   the failure but do not replace the code.
+8. Tests may assert both reason code and specific structured detail when that
+   detail is contractually meaningful.
+
+Enables later manifest records like:
+`missing_document_id, field=document_id, attempt=0` without parsing prose.
+
+### 8.36 Next design decision (OD-11-37)
+
+**OPEN — next:** whether structured error details need a versioned contract /
+model now — one small typed `SufficiencyErrorDetailsV1` reused by error classes
+vs ad hoc attributes per exception (recommended: yes, minimal shared model).
 
 ---
 
@@ -2319,8 +2360,8 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-36 next; OD-11-2…11-35 LOCKED)
-  → 11A-1 observation core (after OD-11-36 + separate implementation auth)
+  → Slice 11 design interview (OD-11-37 next; OD-11-2…11-36 LOCKED)
+  → 11A-1 observation core (after OD-11-37 + separate implementation auth)
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
   → 12A state/protocol (+ LangGraph adapter decision OD-12-3)
@@ -2391,7 +2432,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-33** | Adapter location for context → provenance | **LOCKED** | §8.32 — outside `sufficiency/`; not in 11A-1; fixtures only; no stub module |
 | **OD-11-34** | 11A-1 public API exports | **LOCKED** | §8.33 — small `__init__` surface; `validate_observation_against_provenance`; helpers private |
 | **OD-11-35** | Derivation/validation exception contract | **LOCKED** | §8.34 — typed `SufficiencyError` + stable reason codes; diagnostics not parseable API |
-| **OD-11-36** | Structured details on domain errors | **OPEN — next** | Prefer optional narrow typed details; no evidence text / arbitrary payloads |
+| **OD-11-36** | Structured details on domain errors | **LOCKED** | §8.35 — narrow typed details; no dict bags / evidence text; reason code remains primary |
+| **OD-11-37** | Versioned error-details model | **OPEN — next** | Prefer one small `SufficiencyErrorDetailsV1` reused by error classes |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -2442,6 +2484,6 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-36** / error detail fields)
+interview resolves remaining ODs (next: **OD-11-37** / error-details model)
 under separate authorization. Do **not** begin 11A-1 code until implementation
 is separately authorized.
