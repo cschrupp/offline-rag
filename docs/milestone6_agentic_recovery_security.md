@@ -2363,11 +2363,38 @@ provenance and cause validation failure.
 Keeps the sufficiency layer observational and fail-closed rather than
 corrective.
 
-### 8.47 Next design decision (OD-11-48)
+### 8.47 OD-11-48 — LOCKED unique full_evidence_unit_id in final list
 
-**OPEN — next:** whether `full_evidence_unit_id` must also be unique within the
-final EvidenceUnit list (recommended: yes — exact ID, unique per final list;
-duplicates fail validation).
+**Status:** **LOCKED** — `full_evidence_unit_id` is the authoritative EvidenceUnit
+identity and must be unique within a final EvidenceUnit list. Duplicate IDs
+indicate malformed assembled provenance and cause validation failure.
+
+| Option | Status |
+|---|---|
+| **A (exact unique ev_…; fail on duplicates)** | **LOCKED** |
+| B (allow duplicates; keep first/last) | Rejected — silent repair |
+| C (uniqueness only with distinct document/section) | Rejected — composite identity |
+
+#### Implications (locked)
+
+1. No deduplication or repair inside `sufficiency/`.
+2. No “first wins” / “last wins”.
+3. No composite uniqueness key using document/section.
+4. Exact ID comparison only.
+5. Duplicate detection should occur **before** deriving counts/diversity.
+6. Two units with the same `ev_…` ID but different provenance fields are still
+   invalid.
+7. This failure should get a stable reason code, e.g.
+   `duplicate_evidence_unit_id`.
+
+Keeps OD-11-44/45/48 internally consistent: EvidenceUnit IDs are first-class,
+ordered, and unique.
+
+### 8.48 Next design decision (OD-11-49)
+
+**OPEN — next:** whether stored anchor rank fields must be contiguous and
+consistent with list position (recommended: yes — 1-based ranks matching list
+position exactly; mismatch fails validation, not repaired).
 
 ---
 
@@ -2758,7 +2785,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-48 next; OD-11-2…11-47 LOCKED)
+  → Slice 11 design interview (OD-11-49 next; OD-11-2…11-48 LOCKED)
   → 11A-1 observation core (after remaining ODs + separate implementation auth)
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -2842,7 +2869,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-45** | Final EvidenceUnit order identity-bearing? | **LOCKED** | §8.44 — exact assembler order; reordering → new `suffctx_` |
 | **OD-11-46** | Reranked anchor order identity-bearing? | **LOCKED** | §8.45 — exact reranker order; top-* features use indices 0/1 |
 | **OD-11-47** | chunk_id unique authoritative anchor identity? | **LOCKED** | §8.46 — exact unique `chunk_id`; no repair; fail closed |
-| **OD-11-48** | EvidenceUnit ID unique in final list? | **OPEN — next** | Prefer exact unique `ev_…`; duplicates fail validation |
+| **OD-11-48** | EvidenceUnit ID unique in final list? | **LOCKED** | §8.47 — exact unique `ev_…`; no repair; fail closed |
+| **OD-11-49** | Anchor ranks contiguous / match list position? | **OPEN — next** | Prefer 1-based ranks matching position; mismatch fails |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -2893,6 +2921,6 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-48** / EvidenceUnit ID uniqueness)
+interview resolves remaining ODs (next: **OD-11-49** / anchor rank consistency)
 under separate authorization. Do **not** begin 11A-1 code until implementation
 is separately authorized.
