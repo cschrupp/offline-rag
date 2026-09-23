@@ -2207,10 +2207,40 @@ If removing a field would not affect observation derivation, semantic identity,
 recomputation validation, or an already-authorized deterministic audit
 diagnostic, it probably does not belong in `SufficiencyProvenanceV1`.
 
-### 8.42 Next design decision (OD-11-43)
+### 8.42 OD-11-43 — LOCKED no EvidenceUnit body text in provenance
 
-**OPEN — next:** whether the neutral provenance model stores full EvidenceUnit
-text (recommended: no for 11A-1 — identities/provenance/diagnostics only).
+**Status:** **LOCKED** — `SufficiencyProvenanceV1` does not store EvidenceUnit
+body text in Slice 11A-1. It stores only the identities, provenance, lineage,
+and deterministic diagnostics required by the sufficiency contract. Evidence
+text remains owned by the context/evidence layer.
+
+| Option | Status |
+|---|---|
+| **A (no body text in 11A-1)** | **LOCKED** |
+| B (store full evidence text) | Rejected — duplication + untrusted-content exposure |
+| C (truncated / hash / fingerprint only) | Rejected — no v1 requirement for content integrity here |
+
+#### Consequences (locked)
+
+1. The seven OD-11-2 observations must remain fully derivable **without**
+   evidence text.
+2. `suffctx_` identity must **not** depend on EvidenceUnit body text in v1.
+3. No text truncation, text hashes, or fingerprints are needed unless a later
+   requirement explicitly depends on content integrity at this layer.
+4. Context/evidence artifacts remain the authority for full text.
+5. If future sufficiency semantics ever require textual analysis, that should
+   be a **new** contract/version rather than silently widening
+   `SufficiencyProvenanceV1`.
+6. Excluding text also helps preserve the security boundary from
+   `SECURITY_MODEL.md`: retrieved document text remains untrusted data and is
+   not propagated into layers that do not need it.
+
+### 8.43 Next design decision (OD-11-44)
+
+**OPEN — next:** whether `SufficiencyProvenanceV1` includes EvidenceUnit IDs
+themselves, or only document/section/source-chunk provenance sufficient for the
+seven features (recommended: include EvidenceUnit ID when it exists
+deterministically in the context contract).
 
 ---
 
@@ -2601,7 +2631,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-43 next; OD-11-2…11-42 LOCKED)
+  → Slice 11 design interview (OD-11-44 next; OD-11-2…11-43 LOCKED)
   → 11A-1 observation core (after remaining ODs + separate implementation auth)
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -2680,7 +2710,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-40** | Explicit schema_version on provenance/observation | **LOCKED** | §8.39 — both models; `extra="forbid"`; distinct from config hash |
 | **OD-11-41** | Nested provenance models independently versioned? | **LOCKED** | §8.40 — typed + forbid; parent-versioned; not in public `__init__` by default |
 | **OD-11-42** | Nested provenance field scope vs context mirror | **LOCKED** | §8.41 — OD-11-32/26 projection only; field-membership test |
-| **OD-11-43** | Store full EvidenceUnit text in provenance? | **OPEN — next** | Prefer no for 11A-1; identities/diagnostics only |
+| **OD-11-43** | Store full EvidenceUnit text in provenance? | **LOCKED** | §8.42 — no body text; context/evidence owns full text |
+| **OD-11-44** | Include EvidenceUnit IDs in provenance? | **OPEN — next** | Prefer yes when deterministic in context contract |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -2731,6 +2762,6 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-43** / EvidenceUnit text in provenance)
+interview resolves remaining ODs (next: **OD-11-44** / EvidenceUnit IDs in provenance)
 under separate authorization. Do **not** begin 11A-1 code until implementation
 is separately authorized.
