@@ -2058,11 +2058,47 @@ class SufficiencyErrorCodeV1(str, Enum):
 Do **not** overfill the enum now. Only codes needed by 11A-1 should ship
 initially; additive expansion later is allowed.
 
-### 8.38 Next design decision (OD-11-39)
+### 8.38 OD-11-39 — LOCKED defer serialized failure envelope
 
-**OPEN — next:** whether domain errors themselves need a serializable/versioned
-envelope model now, or whether exception classes plus `SufficiencyErrorDetailsV1`
-are sufficient until manifest persistence (recommended: defer envelope).
+**Status:** **LOCKED** — Slice 11A-1 does not define a serialized/versioned
+failure-envelope wire format. The public error contract consists only of the
+typed exception family, `SufficiencyErrorCodeV1`, and optional
+`SufficiencyErrorDetailsV1`. A persistence-oriented failure record is deferred
+until `suffctxrun_` manifest persistence is implemented.
+
+| Option | Status |
+|---|---|
+| **A (defer envelope until suffctxrun_)** | **LOCKED** |
+| B (define versioned envelope now) | Rejected — wire format before consumer |
+| C (defer past Slice 11; invent ad hoc in 11B) | Rejected — risk of informal wire shapes |
+
+#### Boundary (locked)
+
+1. **11A-1** owns domain failure semantics.
+2. Later snapshot/manifest persistence owns **serialization** of those failures.
+3. No ad hoc wire shape should be invented in **11B**; when persistence arrives,
+   it should consume the existing code/details contract and define a deliberate
+   versioned failure record then.
+
+#### Constraints (locked)
+
+1. Exception objects themselves are **not** serialized as artifacts.
+2. Stack traces are **never** part of semantic identity or persistence contracts.
+3. Human-readable messages remain diagnostics only.
+4. Future manifest failure records should persist stable reason codes and
+   selected typed details, **not** Python class names or exception reprs.
+5. Deferring the envelope must **not** weaken OD-11-27/28: failures still remain
+   structured conceptually and must be represented explicitly once manifest
+   persistence lands.
+
+Completes a sensible error-contract boundary for 11A-1.
+
+### 8.39 Next design decision (OD-11-40)
+
+**OPEN — next:** whether `SufficiencyProvenanceV1` and `SufficiencyObservationV1`
+carry explicit `schema_version` fields inside the model, or whether versioning
+lives only in class/contract constants (recommended: explicit fields +
+`extra="forbid"`).
 
 ---
 
@@ -2453,7 +2489,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-39 next; OD-11-2…11-38 LOCKED)
+  → Slice 11 design interview (OD-11-40 next; OD-11-2…11-39 LOCKED)
   → 11A-1 observation core (after remaining ODs + separate implementation auth)
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -2528,7 +2564,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-36** | Structured details on domain errors | **LOCKED** | §8.35 — narrow typed details; no dict bags / evidence text; reason code remains primary |
 | **OD-11-37** | Versioned error-details model | **LOCKED** | §8.36 — shared `SufficiencyErrorDetailsV1`; extra=forbid; case_id outside core |
 | **OD-11-38** | Versioned error reason-code enum | **LOCKED** | §8.37 — `SufficiencyErrorCodeV1`; additive-only; string values are contract |
-| **OD-11-39** | Serializable error envelope now vs defer | **OPEN — next** | Prefer defer until `suffctxrun_` manifest persistence |
+| **OD-11-39** | Serializable error envelope now vs defer | **LOCKED** | §8.38 — defer wire envelope; 11A-1 = exceptions + code + details only |
+| **OD-11-40** | Explicit schema_version on provenance/observation | **OPEN — next** | Prefer explicit fields + `extra="forbid"` |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -2579,6 +2616,6 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-39** / error envelope deferral)
+interview resolves remaining ODs (next: **OD-11-40** / schema_version fields)
 under separate authorization. Do **not** begin 11A-1 code until implementation
 is separately authorized.
