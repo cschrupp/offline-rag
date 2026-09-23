@@ -2093,12 +2093,57 @@ until `suffctxrun_` manifest persistence is implemented.
 
 Completes a sensible error-contract boundary for 11A-1.
 
-### 8.39 Next design decision (OD-11-40)
+### 8.39 OD-11-40 — LOCKED explicit schema_version on provenance/observation
 
-**OPEN — next:** whether `SufficiencyProvenanceV1` and `SufficiencyObservationV1`
-carry explicit `schema_version` fields inside the model, or whether versioning
-lives only in class/contract constants (recommended: explicit fields +
-`extra="forbid"`).
+**Status:** **LOCKED** — both `SufficiencyProvenanceV1` and
+`SufficiencyObservationV1` carry explicit `schema_version` fields and use
+`extra="forbid"`. Payloads must remain self-describing and reject unknown fields
+rather than silently accepting schema drift.
+
+| Option | Status |
+|---|---|
+| **A (explicit schema_version + extra=forbid on both)** | **LOCKED** |
+| B (class/contract constants only) | Rejected — not self-describing without Python type |
+| C (observation only; provenance constant-only) | Rejected — asymmetric; provenance also persists |
+
+#### Recommended shape
+
+```text
+class SufficiencyProvenanceV1(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    schema_version: Literal["sufficiency-provenance-v1"] = (
+        "sufficiency-provenance-v1"
+    )
+    ...
+
+class SufficiencyObservationV1(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    schema_version: Literal["sufficiency-observation-v1"] = (
+        "sufficiency-observation-v1"
+    )
+    ...
+```
+
+#### Implications (locked)
+
+1. Class name alone is **not** enough to establish version.
+2. Persisted/reconstructed payloads can be validated without relying on Python
+   import context.
+3. Unknown future fields **fail closed** under v1 rather than being ignored.
+4. A future incompatible schema becomes `...V2` with a new serialized
+   `schema_version`.
+5. The `schema_version` values themselves should participate in semantic payload
+   identity where the model content is hashed.
+6. This remains **distinct** from `observation_config_hash`: schema version says
+   what structure/contract family this is; config hash says which exact
+   derivation semantics produced it.
+
+### 8.40 Next design decision (OD-11-41)
+
+**OPEN — next:** whether nested provenance models (anchor / EvidenceUnit
+provenance) get independent schema/version contracts now, or remain typed
+internal components of `SufficiencyProvenanceV1` (recommended: typed +
+`extra="forbid"`, not independently versioned unless persisted outside parent).
 
 ---
 
@@ -2489,7 +2534,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-40 next; OD-11-2…11-39 LOCKED)
+  → Slice 11 design interview (OD-11-41 next; OD-11-2…11-40 LOCKED)
   → 11A-1 observation core (after remaining ODs + separate implementation auth)
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -2565,7 +2610,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-37** | Versioned error-details model | **LOCKED** | §8.36 — shared `SufficiencyErrorDetailsV1`; extra=forbid; case_id outside core |
 | **OD-11-38** | Versioned error reason-code enum | **LOCKED** | §8.37 — `SufficiencyErrorCodeV1`; additive-only; string values are contract |
 | **OD-11-39** | Serializable error envelope now vs defer | **LOCKED** | §8.38 — defer wire envelope; 11A-1 = exceptions + code + details only |
-| **OD-11-40** | Explicit schema_version on provenance/observation | **OPEN — next** | Prefer explicit fields + `extra="forbid"` |
+| **OD-11-40** | Explicit schema_version on provenance/observation | **LOCKED** | §8.39 — both models; `extra="forbid"`; distinct from config hash |
+| **OD-11-41** | Nested provenance models independently versioned? | **OPEN — next** | Prefer typed + forbid; not independently versioned yet |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -2616,6 +2662,6 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-40** / schema_version fields)
+interview resolves remaining ODs (next: **OD-11-41** / nested provenance versioning)
 under separate authorization. Do **not** begin 11A-1 code until implementation
 is separately authorized.
