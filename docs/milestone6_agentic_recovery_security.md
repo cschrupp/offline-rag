@@ -2305,11 +2305,40 @@ set of evidence identities.
    therefore a real semantic change to the snapshot, which is appropriate
    because generation sees that changed order.
 
-### 8.45 Next design decision (OD-11-46)
+### 8.45 OD-11-46 — LOCKED reranked anchor order identity-bearing
 
-**OPEN — next:** whether reranked anchor order is likewise identity-bearing and
-must be preserved exactly (recommended: yes — order-dependent features include
-`top_reranker_score`, margin, and top-anchor cross-retriever support).
+**Status:** **LOCKED** — reranked anchor order is preserved exactly as emitted by
+the reranker and is semantic, identity-bearing provenance for `suffctx_`.
+
+| Option | Status |
+|---|---|
+| **A (exact order; identity-bearing)** | **LOCKED** |
+| B (canonicalize / sort anchors) | Rejected — breaks order-dependent observations |
+| C (preserve order but exclude from identity hash) | Rejected — claims distinct surfaces are identical |
+
+This is even stricter than OD-11-45 because several observations directly depend
+on order.
+
+#### Implications (locked)
+
+1. `anchors` stays an **ordered list**.
+2. `suffctx_` hashing preserves that order exactly.
+3. Sorting by `chunk_id`, score, or any other field before hashing is
+   **prohibited**.
+4. Reordering identical anchors changes snapshot identity.
+5. `top_reranker_score` always comes from element `0`.
+6. `top1_top2_margin` always uses elements `0` and `1`.
+7. `top_anchor_cross_retriever_support` always refers to element `0`.
+8. Anchor rank/order inconsistencies remain **validation failures** rather than
+   being silently repaired.
+9. Equal reranker scores do **not** authorize re-sorting; whatever deterministic
+   ordering the upstream reranker contract produced is authoritative.
+
+### 8.46 Next design decision (OD-11-47)
+
+**OPEN — next:** whether `chunk_id` is the authoritative anchor identity and must
+be unique within the reranked anchor list (recommended: yes — exact `chunk_id`,
+no duplicates; duplicates fail validation).
 
 ---
 
@@ -2700,7 +2729,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-46 next; OD-11-2…11-45 LOCKED)
+  → Slice 11 design interview (OD-11-47 next; OD-11-2…11-46 LOCKED)
   → 11A-1 observation core (after remaining ODs + separate implementation auth)
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -2782,7 +2811,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-43** | Store full EvidenceUnit text in provenance? | **LOCKED** | §8.42 — no body text; context/evidence owns full text |
 | **OD-11-44** | Include EvidenceUnit IDs in provenance? | **LOCKED** | §8.43 — required `ev_…`; no synthesis; complements other provenance |
 | **OD-11-45** | Final EvidenceUnit order identity-bearing? | **LOCKED** | §8.44 — exact assembler order; reordering → new `suffctx_` |
-| **OD-11-46** | Reranked anchor order identity-bearing? | **OPEN — next** | Prefer yes; order-dependent observation features |
+| **OD-11-46** | Reranked anchor order identity-bearing? | **LOCKED** | §8.45 — exact reranker order; top-* features use indices 0/1 |
+| **OD-11-47** | chunk_id unique authoritative anchor identity? | **OPEN — next** | Prefer exact unique `chunk_id`; duplicates fail validation |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -2833,6 +2863,6 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-46** / reranked anchor order identity)
+interview resolves remaining ODs (next: **OD-11-47** / chunk_id anchor uniqueness)
 under separate authorization. Do **not** begin 11A-1 code until implementation
 is separately authorized.
