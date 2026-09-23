@@ -19,7 +19,10 @@ from offline_rag.sufficiency import (
     derive_sufficiency_observation,
     validate_observation_against_provenance,
 )
-from offline_rag.sufficiency.config_hash import build_observation_derivation_config_v1
+from offline_rag.sufficiency.config_hash import (
+    authoritative_observation_config_hash,
+    build_observation_derivation_config_v1,
+)
 from offline_rag.sufficiency.contracts import (
     SufficiencyAnchorProvenance,
     SufficiencyAssemblyDiagnosticsV1,
@@ -418,19 +421,32 @@ def test_recompute_validation_match_and_mismatch() -> None:
     assert exc.value.details.field_name == "distinct_document_count"
 
 
-def test_observation_config_hash_stable_and_sensitive() -> None:
-    left = build_observation_config_hash()
-    right = build_observation_config_hash(build_observation_derivation_config_v1())
-    assert left == right
-    assert left.startswith("obsconfig_")
+def test_observation_config_hash_representations_and_returned_copy_isolation() -> None:
+    authoritative = authoritative_observation_config_hash()
+    from_builder = build_observation_config_hash(
+        build_observation_derivation_config_v1()
+    )
+    defaulted = build_observation_config_hash()
+    assert defaulted == authoritative == from_builder
+    assert authoritative.startswith("obsconfig_")
+
+    returned = build_observation_derivation_config_v1()
+    returned["features"]["empty_context"]["version"] = "mutated-v9"
+    returned["canonicalization"]["anchor_order"] = "mutated"
+    returned["features"]["distinct_section_count"]["empty_path"].append("x")
+    assert build_observation_config_hash() == authoritative
+    assert authoritative_observation_config_hash() == authoritative
+    assert (
+        build_observation_config_hash(build_observation_derivation_config_v1())
+        == authoritative
+    )
 
     altered = build_observation_derivation_config_v1()
-    altered["features"] = dict(altered["features"])
     altered["features"]["empty_context"] = {
         **altered["features"]["empty_context"],
         "version": "empty-context-v2",
     }
-    assert build_observation_config_hash(altered) != left
+    assert build_observation_config_hash(altered) != authoritative
 
 
 def test_suffctx_id_ignores_non_semantic_timing_and_tracks_semantic_change() -> None:
@@ -555,20 +571,13 @@ def test_initial_query_mismatch_fails_closed() -> None:
 
 
 def test_returned_derivation_config_mutation_cannot_alter_authoritative_hash() -> None:
-    from offline_rag.sufficiency.config_hash import (
-        OBSERVATION_DERIVATION_CONFIG_V1,
-        authoritative_observation_config_hash,
-    )
-
     before = authoritative_observation_config_hash()
     returned = build_observation_derivation_config_v1()
     returned["features"]["empty_context"]["version"] = "mutated-v9"
     returned["canonicalization"]["anchor_order"] = "mutated"
     assert build_observation_config_hash() == before
     assert authoritative_observation_config_hash() == before
-    # Public frozen view must reject nested mutation.
-    with pytest.raises(TypeError):
-        OBSERVATION_DERIVATION_CONFIG_V1["features"]["empty_context"]["version"] = "x"  # type: ignore[index]
+    assert build_observation_config_hash(returned) != before
 
 
 def test_explicit_none_section_path_canonicalizes_to_empty_list() -> None:

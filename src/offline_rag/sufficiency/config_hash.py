@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import copy
 from collections.abc import Mapping
-from types import MappingProxyType
 from typing import Any
 
 from offline_rag.core.ids import canonical_config_hash
 from offline_rag.sufficiency.contracts import SUFFICIENCY_OBSERVATION_V1
 
 # Private mutable template used only as the deepcopy source. Do not mutate.
+# Authoritative semantic representation remains ordinary JSON-compatible
+# dict/list form so shared canonical_config_hash stays stable (OD-11-17).
 _OBSERVATION_DERIVATION_CONFIG_V1_TEMPLATE: dict[str, Any] = {
     "contract": SUFFICIENCY_OBSERVATION_V1,
     "features": {
@@ -58,29 +59,13 @@ _OBSERVATION_DERIVATION_CONFIG_V1_TEMPLATE: dict[str, Any] = {
     },
 }
 
-
-def _freeze_mapping(value: Any) -> Any:
-    if isinstance(value, dict):
-        return MappingProxyType(
-            {key: _freeze_mapping(item) for key, item in value.items()}
-        )
-    if isinstance(value, list):
-        return tuple(_freeze_mapping(item) for item in value)
-    return value
-
-
-# Read-only public view; nested mappings/lists are also immutable.
-OBSERVATION_DERIVATION_CONFIG_V1 = _freeze_mapping(
-    copy.deepcopy(_OBSERVATION_DERIVATION_CONFIG_V1_TEMPLATE)
-)
-
 _AUTHORITATIVE_OBSERVATION_CONFIG_HASH = canonical_config_hash(
     copy.deepcopy(_OBSERVATION_DERIVATION_CONFIG_V1_TEMPLATE)
 ).replace("cfg_", "obsconfig_", 1)
 
 
 def build_observation_derivation_config_v1() -> dict[str, Any]:
-    """Return an independent deep copy of the frozen derivation config object."""
+    """Return an independent deep copy of the authoritative derivation config."""
     return copy.deepcopy(_OBSERVATION_DERIVATION_CONFIG_V1_TEMPLATE)
 
 
@@ -92,7 +77,14 @@ def authoritative_observation_config_hash() -> str:
 def build_observation_config_hash(
     config: Mapping[str, Any] | None = None,
 ) -> str:
-    """Return ``obsconfig_<sha256>`` via shared ``canonical_config_hash``."""
+    """Return ``obsconfig_<sha256>`` via shared ``canonical_config_hash``.
+
+    Always hashes ordinary JSON-compatible dict/list structure. The no-arg form
+    and ``build_observation_derivation_config_v1()`` share one semantic identity.
+    """
     if config is None:
         return _AUTHORITATIVE_OBSERVATION_CONFIG_HASH
-    return canonical_config_hash(dict(config)).replace("cfg_", "obsconfig_", 1)
+    payload = copy.deepcopy(config)
+    if not isinstance(payload, dict):
+        payload = dict(payload)
+    return canonical_config_hash(payload).replace("cfg_", "obsconfig_", 1)
