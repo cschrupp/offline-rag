@@ -1965,11 +1965,56 @@ evaluation/runtime case bookkeeping.
 Enables later manifest records like:
 `missing_document_id, field=document_id, attempt=0` without parsing prose.
 
-### 8.36 Next design decision (OD-11-37)
+### 8.36 OD-11-37 — LOCKED versioned error-details model
 
-**OPEN — next:** whether structured error details need a versioned contract /
-model now — one small typed `SufficiencyErrorDetailsV1` reused by error classes
-vs ad hoc attributes per exception (recommended: yes, minimal shared model).
+**Status:** **LOCKED** — structured sufficiency error details use one small
+versioned typed model, `SufficiencyErrorDetailsV1`, shared across the
+sufficiency domain-error family.
+
+| Option | Status |
+|---|---|
+| **A (shared SufficiencyErrorDetailsV1)** | **LOCKED** |
+| B (ad hoc attributes per subclass) | Rejected — incompatible fields |
+| C (defer until manifest persistence) | Rejected — tests need the contract now |
+
+#### Illustrative model
+
+```text
+class SufficiencyErrorDetailsV1(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: Literal["sufficiency-error-details-v1"] = (
+        "sufficiency-error-details-v1"
+    )
+    field_name: str | None = None
+    expected: str | int | float | bool | None = None
+    actual: str | int | float | bool | None = None
+    attempt_number: int | None = None
+```
+
+#### Rules (locked)
+
+1. `extra="forbid"` so it cannot become an arbitrary dump bag.
+2. The model is **optional** on an error; many failures may need only code +
+   message.
+3. `expected` / `actual` remain **scalar only**.
+4. No query text, evidence text, provenance objects, nested dicts, secrets, or
+   large payloads.
+5. `case_id` remains **outside** this core details model and is attached later
+   by orchestration/manifest accounting.
+6. Error subclasses reuse the **same** details type rather than inventing
+   incompatible fields.
+7. A future need for materially different structured diagnostics should produce
+   a **new** details contract/version rather than silently widening v1.
+
+Keeps the error API small while giving stable machine-readable diagnostics for
+tests and later `suffctxrun_` failure records.
+
+### 8.37 Next design decision (OD-11-38)
+
+**OPEN — next:** whether the error reason-code enum itself is versioned/frozen
+as part of the public contract — e.g. `SufficiencyErrorCodeV1` with additive-only
+evolution within v1 (recommended: yes).
 
 ---
 
@@ -2360,8 +2405,8 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-37 next; OD-11-2…11-36 LOCKED)
-  → 11A-1 observation core (after OD-11-37 + separate implementation auth)
+  → Slice 11 design interview (OD-11-38 next; OD-11-2…11-37 LOCKED)
+  → 11A-1 observation core (after OD-11-38 + separate implementation auth)
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
   → 12A state/protocol (+ LangGraph adapter decision OD-12-3)
@@ -2433,7 +2478,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-34** | 11A-1 public API exports | **LOCKED** | §8.33 — small `__init__` surface; `validate_observation_against_provenance`; helpers private |
 | **OD-11-35** | Derivation/validation exception contract | **LOCKED** | §8.34 — typed `SufficiencyError` + stable reason codes; diagnostics not parseable API |
 | **OD-11-36** | Structured details on domain errors | **LOCKED** | §8.35 — narrow typed details; no dict bags / evidence text; reason code remains primary |
-| **OD-11-37** | Versioned error-details model | **OPEN — next** | Prefer one small `SufficiencyErrorDetailsV1` reused by error classes |
+| **OD-11-37** | Versioned error-details model | **LOCKED** | §8.36 — shared `SufficiencyErrorDetailsV1`; extra=forbid; case_id outside core |
+| **OD-11-38** | Versioned error reason-code enum | **OPEN — next** | Prefer `SufficiencyErrorCodeV1`; additive-only within v1 |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -2484,6 +2530,6 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-37** / error-details model)
+interview resolves remaining ODs (next: **OD-11-38** / reason-code enum)
 under separate authorization. Do **not** begin 11A-1 code until implementation
 is separately authorized.
