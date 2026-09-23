@@ -2010,11 +2010,59 @@ class SufficiencyErrorDetailsV1(BaseModel):
 Keeps the error API small while giving stable machine-readable diagnostics for
 tests and later `suffctxrun_` failure records.
 
-### 8.37 Next design decision (OD-11-38)
+### 8.37 OD-11-38 — LOCKED versioned error reason-code enum
 
-**OPEN — next:** whether the error reason-code enum itself is versioned/frozen
-as part of the public contract — e.g. `SufficiencyErrorCodeV1` with additive-only
-evolution within v1 (recommended: yes).
+**Status:** **LOCKED** — sufficiency domain failures use a versioned public enum
+`SufficiencyErrorCodeV1` with explicit stable string values. Evolution within v1
+is additive-only. Renaming, reinterpreting, or removing an existing code requires
+a new error-code contract version.
+
+| Option | Status |
+|---|---|
+| **A (SufficiencyErrorCodeV1, additive-only)** | **LOCKED** |
+| B (informal string constants; no versioning) | Rejected — unstable for tests/manifests |
+| C (free-form reason strings at raise sites) | Rejected — not a contract |
+
+#### Rules (locked)
+
+1. Enum **member names** are implementation details; the **serialized string
+   values** are the stable external contract.
+2. Existing string values must **never** change meaning within v1.
+3. New codes may be added when a genuinely new failure class appears.
+4. Deprecated codes may remain accepted for historical artifact compatibility,
+   but must **not** be repurposed.
+5. Manifest failure records should persist the **serialized code value**, not
+   Python enum names.
+6. Tests should assert **exact code values** where behavior is contractually
+   significant.
+7. Human-readable messages can change freely and must **never** be parsed.
+8. `SufficiencyErrorDetailsV1` remains **orthogonal** to the code version.
+
+#### Illustrative shape (initial 11A-1 set; not exhaustive)
+
+```text
+class SufficiencyErrorCodeV1(str, Enum):
+    MISSING_REQUIRED_LINEAGE = "missing_required_lineage"
+    MISSING_REQUIRED_PROVENANCE = "missing_required_provenance"
+    INVALID_ATTEMPT_FIELDS = "invalid_attempt_fields"
+    INVALID_ANCHOR_ORDER = "invalid_anchor_order"
+    MISSING_DOCUMENT_ID = "missing_document_id"
+    INVALID_SECTION_PATH = "invalid_section_path"
+    INVALID_RERANKER_SCORE = "invalid_reranker_score"
+    OBSERVATION_RECOMPUTE_MISMATCH = "observation_recompute_mismatch"
+    UNSUPPORTED_OBSERVATION_CONTRACT = "unsupported_observation_contract"
+    UNSUPPORTED_OBSERVATION_CONFIG = "unsupported_observation_config"
+    INVALID_SEMANTIC_PAYLOAD = "invalid_semantic_payload"
+```
+
+Do **not** overfill the enum now. Only codes needed by 11A-1 should ship
+initially; additive expansion later is allowed.
+
+### 8.38 Next design decision (OD-11-39)
+
+**OPEN — next:** whether domain errors themselves need a serializable/versioned
+envelope model now, or whether exception classes plus `SufficiencyErrorDetailsV1`
+are sufficient until manifest persistence (recommended: defer envelope).
 
 ---
 
@@ -2405,8 +2453,8 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-38 next; OD-11-2…11-37 LOCKED)
-  → 11A-1 observation core (after OD-11-38 + separate implementation auth)
+  → Slice 11 design interview (OD-11-39 next; OD-11-2…11-38 LOCKED)
+  → 11A-1 observation core (after remaining ODs + separate implementation auth)
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
   → 12A state/protocol (+ LangGraph adapter decision OD-12-3)
@@ -2479,7 +2527,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-35** | Derivation/validation exception contract | **LOCKED** | §8.34 — typed `SufficiencyError` + stable reason codes; diagnostics not parseable API |
 | **OD-11-36** | Structured details on domain errors | **LOCKED** | §8.35 — narrow typed details; no dict bags / evidence text; reason code remains primary |
 | **OD-11-37** | Versioned error-details model | **LOCKED** | §8.36 — shared `SufficiencyErrorDetailsV1`; extra=forbid; case_id outside core |
-| **OD-11-38** | Versioned error reason-code enum | **OPEN — next** | Prefer `SufficiencyErrorCodeV1`; additive-only within v1 |
+| **OD-11-38** | Versioned error reason-code enum | **LOCKED** | §8.37 — `SufficiencyErrorCodeV1`; additive-only; string values are contract |
+| **OD-11-39** | Serializable error envelope now vs defer | **OPEN — next** | Prefer defer until `suffctxrun_` manifest persistence |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -2530,6 +2579,6 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-38** / reason-code enum)
+interview resolves remaining ODs (next: **OD-11-39** / error envelope deferral)
 under separate authorization. Do **not** begin 11A-1 code until implementation
 is separately authorized.
