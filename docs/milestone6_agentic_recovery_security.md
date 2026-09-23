@@ -2537,12 +2537,44 @@ lexical:
 Current fusion produces rank and score from the same branch hit; an unpaired
 state indicates corrupted or incompletely projected upstream provenance.
 
-### 8.52 Next design decision (OD-11-53)
+### 8.52 OD-11-53 — LOCKED hybrid_rank / rrf_score required on anchors
 
-**OPEN — next:** whether `hybrid_rank` / `rrf_score` are required on every stored
-reranked anchor and how they are validated (recommended: require both if every
-reranked anchor comes from the hybrid/RRF pool; positive unique non-contiguous
-`hybrid_rank`; finite `rrf_score`; diagnostic-only but identity-bearing).
+**Status:** **LOCKED** — every stored reranked anchor in
+`SufficiencyProvenanceV1` must carry both `hybrid_rank` and `rrf_score`.
+`hybrid_rank` must be a positive integer and unique among stored anchors, but
+need not be contiguous. `rrf_score` must be finite. Both are diagnostic/audit
+provenance, not OD-11-2 observation features, and both participate in
+`suffctx_` semantic identity.
+
+| Option | Status |
+|---|---|
+| **A (require both; unique positive hybrid_rank; finite rrf_score)** | **LOCKED** |
+| B (optional; omit when missing) | Rejected — breaks hybrid→rerank lineage fidelity |
+| C (require and promote into OD-11-2 features/gates) | Rejected — enlarges frozen observation vector |
+
+#### Additional invariants (locked)
+
+1. `hybrid_rank <= 0` is invalid.
+2. Duplicate `hybrid_rank` values are invalid.
+3. Gaps are allowed because the final reranked list may be a subset of the
+   hybrid candidate pool.
+4. `rrf_score` must reject `NaN`, `+inf`, and `-inf`.
+5. Neither value is transformed, normalized, or recalculated by
+   `sufficiency/`.
+6. Neither becomes a v1 gate.
+7. `rerank_rank`, `hybrid_rank`, `dense_rank`, and `lexical_rank` are distinct
+   provenance dimensions and must not be conflated.
+8. Any mismatch with the upstream `HybridRerankProvenance` contract is a
+   validation failure, not something the sufficiency layer repairs.
+
+Keeps the snapshot faithful to the full hybrid→rerank lineage while preserving
+the frozen seven-feature observation boundary.
+
+### 8.53 Next design decision (OD-11-54)
+
+**OPEN — next:** whether the raw reranker score is required and finite on every
+stored anchor (recommended: yes — finite raw-logit-v1; missing/non-finite =
+invalid provenance).
 
 ---
 
@@ -2933,7 +2965,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-53 next; OD-11-2…11-52 LOCKED)
+  → Slice 11 design interview (OD-11-54 next; OD-11-2…11-53 LOCKED)
   → 11A-1 observation core (after remaining ODs + separate implementation auth)
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -3022,7 +3054,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-50** | dense_rank / lexical_rank positivity & uniqueness? | **LOCKED** | §8.49 — positive + per-branch unique; null = absent; no contiguity |
 | **OD-11-51** | Dense/lexical scores in provenance / identity? | **LOCKED** | §8.50 — retain if deterministic; diagnostic-only; in `suffctx_` identity |
 | **OD-11-52** | Branch rank/score nullability pairing? | **LOCKED** | §8.51 — `(rank=None) ⇔ (score=None)` for dense and lexical |
-| **OD-11-53** | hybrid_rank / rrf_score required & validated? | **OPEN — next** | Prefer require both; unique positive rank; finite score; diagnostic |
+| **OD-11-53** | hybrid_rank / rrf_score required & validated? | **LOCKED** | §8.52 — both required; unique positive hybrid_rank; finite rrf_score; diagnostic |
+| **OD-11-54** | Raw reranker score required & finite on anchors? | **OPEN — next** | Prefer yes; finite raw-logit-v1; missing/non-finite invalid |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -3073,6 +3106,6 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-53** / hybrid_rank rrf_score rules)
+interview resolves remaining ODs (next: **OD-11-54** / raw reranker score required)
 under separate authorization. Do **not** begin 11A-1 code until implementation
 is separately authorized.
