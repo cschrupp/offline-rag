@@ -1767,12 +1767,48 @@ SufficiencyProvenanceV1
 SufficiencyObservationV1
 ```
 
-### 8.32 Next design decision (OD-11-33)
+### 8.32 OD-11-33 — LOCKED adapter location and 11A-1 timing
 
-**OPEN — next:** where the adapter from `HybridRerankContextResult` to
-`SufficiencyProvenanceV1` lives — outside `sufficiency/` (e.g. `context/` or a
-thin orchestration/evaluation adapter) so the neutral core stays
-dependency-clean (recommended).
+**Status:** **LOCKED** — the `HybridRerankContextResult` →
+`SufficiencyProvenanceV1` adapter lives **outside** `sufficiency/`. Slice
+**11A-1 does not implement** that adapter; it uses hand-built typed provenance
+fixtures only. The adapter lands later, when snapshot capture or runtime wiring
+first needs it.
+
+| Option | Status |
+|---|---|
+| **A1 (outside core; no adapter in 11A-1)** | **LOCKED** |
+| A2 (outside core; include minimal adapter now) | Rejected — widens 11A-1 |
+| B (adapter inside sufficiency/) | Rejected — reverse dependency |
+
+#### Boundaries (locked)
+
+1. `sufficiency/` must **not** import `context/`.
+2. The future adapter may depend on both packages.
+3. 11A-1 tests should instantiate `SufficiencyProvenanceV1` directly.
+4. No stub adapter or placeholder module is needed now — avoid dead code.
+5. When the adapter lands, it should be **deterministic and lossless** with
+   respect to all fields required by OD-11-32.
+6. The adapter itself should **not** compute gold labels, thresholds, or policy
+   decisions.
+
+```text
+context/
+   \
+    \ future adapter
+     \
+      -> SufficiencyProvenanceV1 -> sufficiency/
+```
+
+Keeps the first implementation pass proving the observation contract and
+derivation semantics in isolation.
+
+### 8.33 Next design decision (OD-11-34)
+
+**OPEN — next:** exact public API of 11A-1 — which symbols are exported from
+`sufficiency/__init__.py` versus kept internal (recommended: small surface —
+provenance/observation models, derivation, validation, and the three semantic
+ID/hash builders).
 
 ---
 
@@ -2163,8 +2199,8 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-33 next; OD-11-2…11-32 LOCKED)
-  → 11A-1 observation core (after OD-11-33 + separate implementation auth)
+  → Slice 11 design interview (OD-11-34 next; OD-11-2…11-33 LOCKED)
+  → 11A-1 observation core (after OD-11-34 + separate implementation auth)
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
   → 12A state/protocol (+ LangGraph adapter decision OD-12-3)
@@ -2232,7 +2268,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-30** | Observation-core package boundary | **LOCKED** | §8.29 — `src/offline_rag/sufficiency/`; no agents/generation/gold; dependency direction locked |
 | **OD-11-31** | Internal modules for 11A-1 | **LOCKED** | §8.30 — contracts/derive/config_hash/ids; no premature subpackages |
 | **OD-11-32** | Typed provenance input for derive.py | **LOCKED** | §8.31 — `SufficiencyProvenanceV1`; no HybridRerankContextResult / gold / dict; adapters outside core |
-| **OD-11-33** | Adapter location for context → provenance | **OPEN — next** | Prefer outside `sufficiency/` (context or thin orchestration/eval adapter) |
+| **OD-11-33** | Adapter location for context → provenance | **LOCKED** | §8.32 — outside `sufficiency/`; not in 11A-1; fixtures only; no stub module |
+| **OD-11-34** | 11A-1 public API exports | **OPEN — next** | Prefer small `__init__` surface: models, derive, validate, ID/hash builders |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -2283,6 +2320,6 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-33** / adapter location)
+interview resolves remaining ODs (next: **OD-11-34** / public API surface)
 under separate authorization. Do **not** begin 11A-1 code until implementation
 is separately authorized.
