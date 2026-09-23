@@ -2442,6 +2442,6 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-35** / exception contract)
+interview resolves remaining ODs (next: **OD-11-36** / error detail fields)
 under separate authorization. Do **not** begin 11A-1 code until implementation
 is separately authorized.
