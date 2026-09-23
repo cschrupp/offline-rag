@@ -5,10 +5,7 @@ from __future__ import annotations
 import math
 from typing import Any
 
-from offline_rag.sufficiency.config_hash import (
-    OBSERVATION_DERIVATION_CONFIG_V1,
-    build_observation_config_hash,
-)
+from offline_rag.sufficiency.config_hash import authoritative_observation_config_hash
 from offline_rag.sufficiency.contracts import (
     SUFFICIENCY_ATTEMPT_ROLE_INITIAL,
     SUFFICIENCY_ATTEMPT_ROLE_RECOVERY,
@@ -28,8 +25,8 @@ def _fail(
     message: str,
     *,
     field_name: str | None = None,
-    expected: str | int | float | bool | None = None,
-    actual: str | int | float | bool | None = None,
+    expected: str | float | bool | None = None,
+    actual: str | float | bool | None = None,
     attempt_number: int | None = None,
 ) -> None:
     details = None
@@ -43,10 +40,15 @@ def _fail(
     raise SufficiencyDerivationError(code, message, details=details)
 
 
-def _require_finite(value: float, *, field_name: str) -> float:
+def _require_finite(
+    value: float,
+    *,
+    field_name: str,
+    code: SufficiencyErrorCodeV1,
+) -> float:
     if not isinstance(value, (int, float)) or isinstance(value, bool):
         _fail(
-            SufficiencyErrorCodeV1.INVALID_RERANKER_SCORE,
+            code,
             f"{field_name} must be a finite number",
             field_name=field_name,
             actual=str(type(value)),
@@ -54,7 +56,7 @@ def _require_finite(value: float, *, field_name: str) -> float:
     number = float(value)
     if not math.isfinite(number):
         _fail(
-            SufficiencyErrorCodeV1.INVALID_RERANKER_SCORE,
+            code,
             f"{field_name} must be finite",
             field_name=field_name,
             actual=str(number),
@@ -105,6 +107,22 @@ def _validate_attempt_fields(provenance: SufficiencyProvenanceV1) -> None:
         )
 
 
+def _validate_query_fields(provenance: SufficiencyProvenanceV1) -> None:
+    # OD-11-10: Slice 11 / initial attempt requires exact query equality.
+    if (
+        provenance.attempt_role == SUFFICIENCY_ATTEMPT_ROLE_INITIAL
+        or provenance.attempt_number == 0
+    ) and provenance.active_retrieval_query != provenance.original_query:
+        _fail(
+            SufficiencyErrorCodeV1.INVALID_QUERY_FIELDS,
+            "initial/attempt 0 requires active_retrieval_query == original_query",
+            field_name="active_retrieval_query",
+            expected=provenance.original_query,
+            actual=provenance.active_retrieval_query,
+            attempt_number=provenance.attempt_number,
+        )
+
+
 def _validate_lineage(provenance: SufficiencyProvenanceV1) -> None:
     required = {
         "case_id": provenance.case_id,
@@ -119,7 +137,7 @@ def _validate_lineage(provenance: SufficiencyProvenanceV1) -> None:
         "active_retrieval_query": provenance.active_retrieval_query,
     }
     for field_name, value in required.items():
-        if not isinstance(value, str) or not value.strip():
+        if not isinstance(value, str) or value.strip() == "":
             _fail(
                 SufficiencyErrorCodeV1.MISSING_REQUIRED_LINEAGE,
                 f"missing required lineage field: {field_name}",
@@ -151,7 +169,11 @@ def _validate_branch_pair(
             actual=rank,
         )
     if score is not None:
-        _require_finite(score, field_name=f"{branch}_score")
+        _require_finite(
+            score,
+            field_name=f"{branch}_score",
+            code=SufficiencyErrorCodeV1.INVALID_BRANCH_SCORE,
+        )
 
 
 def _validate_anchors(anchors: list[SufficiencyAnchorProvenance]) -> None:
@@ -195,9 +217,17 @@ def _validate_anchors(anchors: list[SufficiencyAnchorProvenance]) -> None:
                 actual=anchor.hybrid_rank,
             )
         seen_hybrid_ranks.add(anchor.hybrid_rank)
-        _require_finite(anchor.rrf_score, field_name="rrf_score")
+        _require_finite(
+            anchor.rrf_score,
+            field_name="rrf_score",
+            code=SufficiencyErrorCodeV1.INVALID_RRF_SCORE,
+        )
 
-        score = _require_finite(anchor.reranker_score, field_name="reranker_score")
+        score = _require_finite(
+            anchor.reranker_score,
+            field_name="reranker_score",
+            code=SufficiencyErrorCodeV1.INVALID_RERANKER_SCORE,
+        )
         # Upstream reranker contract sorts raw-logit DESC (OD-11 design closure).
         if previous_score is not None and score > previous_score:
             _fail(
@@ -242,7 +272,7 @@ def _validate_anchors(anchors: list[SufficiencyAnchorProvenance]) -> None:
 def _validate_evidence_units(provenance: SufficiencyProvenanceV1) -> None:
     seen_ids: set[str] = set()
     for unit in provenance.final_evidence_units:
-        if not unit.document_id.strip():
+        if unit.document_id.strip() == "":
             _fail(
                 SufficiencyErrorCodeV1.MISSING_DOCUMENT_ID,
                 "final EvidenceUnit missing document_id",
@@ -334,7 +364,7 @@ def derive_sufficiency_observation(
             actual=provenance.schema_version,
         )
 
-    expected_hash = build_observation_config_hash(OBSERVATION_DERIVATION_CONFIG_V1)
+    expected_hash = authoritative_observation_config_hash()
     resolved_hash = observation_config_hash or expected_hash
     if resolved_hash != expected_hash:
         _fail(
@@ -347,6 +377,7 @@ def derive_sufficiency_observation(
 
     _validate_lineage(provenance)
     _validate_attempt_fields(provenance)
+    _validate_query_fields(provenance)
     _validate_anchors(provenance.anchors)
     _validate_evidence_units(provenance)
     return _derive_features(provenance, observation_config_hash=resolved_hash)
@@ -408,7 +439,8 @@ def validate_observation_against_provenance(
                     field_name=field_name,
                     expected=(
                         expected
-                        if isinstance(expected, (str, int, float, bool)) or expected is None
+                        if isinstance(expected, (str, int, float, bool))
+                        or expected is None
                         else str(expected)
                     ),
                     actual=(

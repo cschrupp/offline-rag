@@ -148,7 +148,9 @@ def test_margin_nullability_for_0_1_2_plus_anchors() -> None:
     one = derive_sufficiency_observation(
         _provenance(
             anchors=[
-                _anchor(chunk_id="c1", rerank_rank=1, reranker_score=-0.2, hybrid_rank=3)
+                _anchor(
+                    chunk_id="c1", rerank_rank=1, reranker_score=-0.2, hybrid_rank=3
+                )
             ]
         )
     )
@@ -158,8 +160,12 @@ def test_margin_nullability_for_0_1_2_plus_anchors() -> None:
     two = derive_sufficiency_observation(
         _provenance(
             anchors=[
-                _anchor(chunk_id="c1", rerank_rank=1, reranker_score=2.0, hybrid_rank=1),
-                _anchor(chunk_id="c2", rerank_rank=2, reranker_score=1.0, hybrid_rank=2),
+                _anchor(
+                    chunk_id="c1", rerank_rank=1, reranker_score=2.0, hybrid_rank=1
+                ),
+                _anchor(
+                    chunk_id="c2", rerank_rank=2, reranker_score=1.0, hybrid_rank=2
+                ),
             ]
         )
     )
@@ -170,8 +176,12 @@ def test_tied_scores_produce_zero_margin() -> None:
     obs = derive_sufficiency_observation(
         _provenance(
             anchors=[
-                _anchor(chunk_id="c1", rerank_rank=1, reranker_score=0.5, hybrid_rank=1),
-                _anchor(chunk_id="c2", rerank_rank=2, reranker_score=0.5, hybrid_rank=2),
+                _anchor(
+                    chunk_id="c1", rerank_rank=1, reranker_score=0.5, hybrid_rank=1
+                ),
+                _anchor(
+                    chunk_id="c2", rerank_rank=2, reranker_score=0.5, hybrid_rank=2
+                ),
             ]
         )
     )
@@ -290,8 +300,12 @@ def test_duplicate_anchor_chunk_id_fails() -> None:
         derive_sufficiency_observation(
             _provenance(
                 anchors=[
-                    _anchor(chunk_id="c1", rerank_rank=1, reranker_score=2.0, hybrid_rank=1),
-                    _anchor(chunk_id="c1", rerank_rank=2, reranker_score=1.0, hybrid_rank=2),
+                    _anchor(
+                        chunk_id="c1", rerank_rank=1, reranker_score=2.0, hybrid_rank=1
+                    ),
+                    _anchor(
+                        chunk_id="c1", rerank_rank=2, reranker_score=1.0, hybrid_rank=2
+                    ),
                 ]
             )
         )
@@ -303,8 +317,12 @@ def test_duplicate_evidence_unit_id_fails() -> None:
         derive_sufficiency_observation(
             _provenance(
                 units=[
-                    _unit(evidence_unit_id="ev_1", document_id="doc_a", section_path=[]),
-                    _unit(evidence_unit_id="ev_1", document_id="doc_b", section_path=[]),
+                    _unit(
+                        evidence_unit_id="ev_1", document_id="doc_a", section_path=[]
+                    ),
+                    _unit(
+                        evidence_unit_id="ev_1", document_id="doc_b", section_path=[]
+                    ),
                 ]
             )
         )
@@ -316,7 +334,9 @@ def test_invalid_rerank_rank_fails() -> None:
         derive_sufficiency_observation(
             _provenance(
                 anchors=[
-                    _anchor(chunk_id="c1", rerank_rank=2, reranker_score=1.0, hybrid_rank=1)
+                    _anchor(
+                        chunk_id="c1", rerank_rank=2, reranker_score=1.0, hybrid_rank=1
+                    )
                 ]
             )
         )
@@ -347,8 +367,12 @@ def test_increasing_scores_fail_closed() -> None:
         derive_sufficiency_observation(
             _provenance(
                 anchors=[
-                    _anchor(chunk_id="c1", rerank_rank=1, reranker_score=1.0, hybrid_rank=1),
-                    _anchor(chunk_id="c2", rerank_rank=2, reranker_score=2.0, hybrid_rank=2),
+                    _anchor(
+                        chunk_id="c1", rerank_rank=1, reranker_score=1.0, hybrid_rank=1
+                    ),
+                    _anchor(
+                        chunk_id="c2", rerank_rank=2, reranker_score=2.0, hybrid_rank=2
+                    ),
                 ]
             )
         )
@@ -357,7 +381,9 @@ def test_increasing_scores_fail_closed() -> None:
 
 def test_invalid_attempt_fields_fail() -> None:
     with pytest.raises(SufficiencyDerivationError) as exc:
-        derive_sufficiency_observation(_provenance(attempt_number=1, attempt_role="initial"))
+        derive_sufficiency_observation(
+            _provenance(attempt_number=1, attempt_role="initial")
+        )
     assert exc.value.code == SufficiencyErrorCodeV1.INVALID_ATTEMPT_FIELDS
 
 
@@ -460,4 +486,171 @@ def test_evidence_order_is_identity_bearing_for_suffctx() -> None:
     id_b = build_suffctx_id(
         build_suffctx_semantic_payload(_provenance(units=units_b), obs_b)
     )
+    assert id_a != id_b
+
+
+def test_suffctx_ids_use_shared_canonical_config_hash() -> None:
+    from offline_rag.core.ids import canonical_config_hash
+
+    payload = {
+        "contract": "sufficiency-eval-context-v1",
+        "b": 2,
+        "a": {"y": 1, "x": 0},
+    }
+    expected = canonical_config_hash(payload).replace("cfg_", "suffctx_", 1)
+    assert build_suffctx_id(payload) == expected
+    run_payload = {"cases": ["case_1"], "lineage": {"chunk_set_id": "cs_1"}}
+    assert build_suffctxrun_id(run_payload) == canonical_config_hash(
+        run_payload
+    ).replace("cfg_", "suffctxrun_", 1)
+
+
+def test_exact_identity_and_query_strings_are_preserved() -> None:
+    query = "  keep leading and trailing spaces  "
+    doc_id = " doc_exact "
+    chunk_id = " chunk_exact "
+    evidence_id = " ev_exact "
+    provenance = _provenance(
+        original_query=query,
+        active_retrieval_query=query,
+        anchors=[
+            _anchor(
+                chunk_id=chunk_id,
+                rerank_rank=1,
+                reranker_score=1.0,
+                hybrid_rank=1,
+            )
+        ],
+        units=[
+            _unit(
+                evidence_unit_id=evidence_id,
+                document_id=doc_id,
+                section_path=[" Intro "],
+                source_chunk_id=chunk_id,
+                primary_anchor_chunk_id=chunk_id,
+            )
+        ],
+    )
+    assert provenance.original_query == query
+    assert provenance.active_retrieval_query == query
+    assert provenance.anchors[0].chunk_id == chunk_id
+    assert provenance.final_evidence_units[0].document_id == doc_id
+    assert provenance.final_evidence_units[0].evidence_unit_id == evidence_id
+    assert provenance.final_evidence_units[0].section_path == [" Intro "]
+    obs = derive_sufficiency_observation(provenance)
+    assert obs.distinct_document_count == 1
+
+
+def test_initial_query_mismatch_fails_closed() -> None:
+    with pytest.raises(SufficiencyDerivationError) as exc:
+        derive_sufficiency_observation(
+            _provenance(
+                original_query="what is X?",
+                active_retrieval_query="what is Y?",
+                attempt_number=0,
+                attempt_role="initial",
+            )
+        )
+    assert exc.value.code == SufficiencyErrorCodeV1.INVALID_QUERY_FIELDS
+
+
+def test_returned_derivation_config_mutation_cannot_alter_authoritative_hash() -> None:
+    from offline_rag.sufficiency.config_hash import (
+        OBSERVATION_DERIVATION_CONFIG_V1,
+        authoritative_observation_config_hash,
+    )
+
+    before = authoritative_observation_config_hash()
+    returned = build_observation_derivation_config_v1()
+    returned["features"]["empty_context"]["version"] = "mutated-v9"
+    returned["canonicalization"]["anchor_order"] = "mutated"
+    assert build_observation_config_hash() == before
+    assert authoritative_observation_config_hash() == before
+    # Public frozen view must reject nested mutation.
+    with pytest.raises(TypeError):
+        OBSERVATION_DERIVATION_CONFIG_V1["features"]["empty_context"]["version"] = "x"  # type: ignore[index]
+
+
+def test_explicit_none_section_path_canonicalizes_to_empty_list() -> None:
+    unit = SufficiencyEvidenceUnitProvenance(
+        evidence_unit_id="ev_1",
+        document_id="doc_a",
+        section_path=None,  # type: ignore[arg-type]
+        source_chunk_id="chunk_a",
+        primary_anchor_chunk_id="chunk_a",
+    )
+    assert unit.section_path == []
+    obs = derive_sufficiency_observation(_provenance(units=[unit]))
+    assert obs.distinct_section_count == 1
+
+
+def test_nonfinite_rrf_and_branch_scores_use_accurate_codes() -> None:
+    with pytest.raises(SufficiencyDerivationError) as rrf_exc:
+        derive_sufficiency_observation(
+            _provenance(
+                anchors=[
+                    _anchor(
+                        chunk_id="c1",
+                        rerank_rank=1,
+                        reranker_score=1.0,
+                        hybrid_rank=1,
+                        rrf_score=float("nan"),
+                    )
+                ]
+            )
+        )
+    assert rrf_exc.value.code == SufficiencyErrorCodeV1.INVALID_RRF_SCORE
+
+    with pytest.raises(SufficiencyDerivationError) as branch_exc:
+        derive_sufficiency_observation(
+            _provenance(
+                anchors=[
+                    _anchor(
+                        chunk_id="c1",
+                        rerank_rank=1,
+                        reranker_score=1.0,
+                        hybrid_rank=1,
+                        dense_rank=1,
+                        dense_score=float("inf"),
+                    )
+                ]
+            )
+        )
+    assert branch_exc.value.code == SufficiencyErrorCodeV1.INVALID_BRANCH_SCORE
+
+    with pytest.raises(SufficiencyDerivationError) as rerank_exc:
+        derive_sufficiency_observation(
+            _provenance(
+                anchors=[
+                    _anchor(
+                        chunk_id="c1",
+                        rerank_rank=1,
+                        reranker_score=float("-inf"),
+                        hybrid_rank=1,
+                    )
+                ]
+            )
+        )
+    assert rerank_exc.value.code == SufficiencyErrorCodeV1.INVALID_RERANKER_SCORE
+
+
+def test_reranked_anchor_order_is_identity_bearing_for_suffctx() -> None:
+    anchors_a = [
+        _anchor(chunk_id="c1", rerank_rank=1, reranker_score=2.0, hybrid_rank=1),
+        _anchor(chunk_id="c2", rerank_rank=2, reranker_score=1.0, hybrid_rank=2),
+    ]
+    # Same scores/ranks positions but swapped chunk identities require rebuilding
+    # ranks for the alternate ordered surface with equal scores (legal ties).
+    anchors_b = [
+        _anchor(chunk_id="c2", rerank_rank=1, reranker_score=2.0, hybrid_rank=2),
+        _anchor(chunk_id="c1", rerank_rank=2, reranker_score=1.0, hybrid_rank=1),
+    ]
+    prov_a = _provenance(anchors=anchors_a)
+    prov_b = _provenance(anchors=anchors_b)
+    obs_a = derive_sufficiency_observation(prov_a)
+    obs_b = derive_sufficiency_observation(prov_b)
+    # Observations can match while ordered provenance differs.
+    assert obs_a.top_reranker_score == obs_b.top_reranker_score
+    id_a = build_suffctx_id(build_suffctx_semantic_payload(prov_a, obs_a))
+    id_b = build_suffctx_id(build_suffctx_semantic_payload(prov_b, obs_b))
     assert id_a != id_b

@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
+import copy
 from collections.abc import Mapping
+from types import MappingProxyType
 from typing import Any
 
 from offline_rag.core.ids import canonical_config_hash
 from offline_rag.sufficiency.contracts import SUFFICIENCY_OBSERVATION_V1
 
-# Frozen semantic derivation definitions for sufficiency-observation-v1 (OD-11-16).
-# Changing any entry that affects an OD-11-2 feature must change observation_config_hash.
-OBSERVATION_DERIVATION_CONFIG_V1: dict[str, Any] = {
+# Private mutable template used only as the deepcopy source. Do not mutate.
+_OBSERVATION_DERIVATION_CONFIG_V1_TEMPLATE: dict[str, Any] = {
     "contract": SUFFICIENCY_OBSERVATION_V1,
     "features": {
         "empty_context": {
@@ -58,19 +59,40 @@ OBSERVATION_DERIVATION_CONFIG_V1: dict[str, Any] = {
 }
 
 
+def _freeze_mapping(value: Any) -> Any:
+    if isinstance(value, dict):
+        return MappingProxyType(
+            {key: _freeze_mapping(item) for key, item in value.items()}
+        )
+    if isinstance(value, list):
+        return tuple(_freeze_mapping(item) for item in value)
+    return value
+
+
+# Read-only public view; nested mappings/lists are also immutable.
+OBSERVATION_DERIVATION_CONFIG_V1 = _freeze_mapping(
+    copy.deepcopy(_OBSERVATION_DERIVATION_CONFIG_V1_TEMPLATE)
+)
+
+_AUTHORITATIVE_OBSERVATION_CONFIG_HASH = canonical_config_hash(
+    copy.deepcopy(_OBSERVATION_DERIVATION_CONFIG_V1_TEMPLATE)
+).replace("cfg_", "obsconfig_", 1)
+
+
 def build_observation_derivation_config_v1() -> dict[str, Any]:
-    """Return a deep-enough copy of the frozen derivation config object."""
-    # Structural copy sufficient for hashing/tests; nested dicts are literals.
-    return {
-        "contract": OBSERVATION_DERIVATION_CONFIG_V1["contract"],
-        "features": dict(OBSERVATION_DERIVATION_CONFIG_V1["features"]),
-        "canonicalization": dict(OBSERVATION_DERIVATION_CONFIG_V1["canonicalization"]),
-    }
+    """Return an independent deep copy of the frozen derivation config object."""
+    return copy.deepcopy(_OBSERVATION_DERIVATION_CONFIG_V1_TEMPLATE)
+
+
+def authoritative_observation_config_hash() -> str:
+    """Return the frozen ``obsconfig_`` hash for sufficiency-observation-v1."""
+    return _AUTHORITATIVE_OBSERVATION_CONFIG_HASH
 
 
 def build_observation_config_hash(
     config: Mapping[str, Any] | None = None,
 ) -> str:
-    """Return ``obsconfig_<sha256>`` for a canonical semantic derivation config."""
-    payload = dict(config) if config is not None else build_observation_derivation_config_v1()
-    return canonical_config_hash(payload).replace("cfg_", "obsconfig_", 1)
+    """Return ``obsconfig_<sha256>`` via shared ``canonical_config_hash``."""
+    if config is None:
+        return _AUTHORITATIVE_OBSERVATION_CONFIG_HASH
+    return canonical_config_hash(dict(config)).replace("cfg_", "obsconfig_", 1)

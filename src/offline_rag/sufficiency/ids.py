@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import hashlib
-import json
 from collections.abc import Mapping
 from typing import Any
 
+from offline_rag.core.ids import canonical_config_hash
 from offline_rag.sufficiency.contracts import (
     SUFFICIENCY_OBSERVATION_V1,
     SUFFICIENCY_PROVENANCE_V1,
@@ -16,24 +15,6 @@ from offline_rag.sufficiency.contracts import (
     SufficiencyProvenanceV1,
     SufficiencyValidationError,
 )
-
-
-def _sha256_hex(data: bytes) -> str:
-    return hashlib.sha256(data).hexdigest()
-
-
-def _canonical_json_bytes(payload: Mapping[str, Any]) -> bytes:
-    return json.dumps(
-        payload,
-        sort_keys=True,
-        separators=(",", ":"),
-        ensure_ascii=False,
-        allow_nan=False,
-    ).encode("utf-8")
-
-
-def _content_id(prefix: str, payload: Mapping[str, Any]) -> str:
-    return f"{prefix}_{_sha256_hex(_canonical_json_bytes(payload))}"
 
 
 def build_suffctx_semantic_payload(
@@ -68,15 +49,19 @@ def build_suffctx_semantic_payload(
     }
 
 
-def build_suffctx_id(payload: Mapping[str, Any]) -> str:
-    """Return ``suffctx_<sha256>`` for an explicit semantic case payload."""
+def _require_mapping_payload(payload: Mapping[str, Any], *, kind: str) -> None:
     if not isinstance(payload, Mapping) or not payload:
         raise SufficiencyValidationError(
             SufficiencyErrorCodeV1.INVALID_SEMANTIC_PAYLOAD,
-            "suffctx payload must be a non-empty mapping",
+            f"{kind} payload must be a non-empty mapping",
         )
+
+
+def build_suffctx_id(payload: Mapping[str, Any]) -> str:
+    """Return ``suffctx_<sha256>`` using shared canonical hashing (OD-11-17)."""
+    _require_mapping_payload(payload, kind="suffctx")
     try:
-        return _content_id("suffctx", payload)
+        return canonical_config_hash(payload).replace("cfg_", "suffctx_", 1)
     except (TypeError, ValueError) as exc:
         raise SufficiencyValidationError(
             SufficiencyErrorCodeV1.INVALID_SEMANTIC_PAYLOAD,
@@ -86,14 +71,10 @@ def build_suffctx_id(payload: Mapping[str, Any]) -> str:
 
 
 def build_suffctxrun_id(payload: Mapping[str, Any]) -> str:
-    """Return ``suffctxrun_<sha256>`` for an explicit semantic run-manifest payload."""
-    if not isinstance(payload, Mapping) or not payload:
-        raise SufficiencyValidationError(
-            SufficiencyErrorCodeV1.INVALID_SEMANTIC_PAYLOAD,
-            "suffctxrun payload must be a non-empty mapping",
-        )
+    """Return ``suffctxrun_<sha256>`` using shared canonical hashing (OD-11-17)."""
+    _require_mapping_payload(payload, kind="suffctxrun")
     try:
-        return _content_id("suffctxrun", payload)
+        return canonical_config_hash(payload).replace("cfg_", "suffctxrun_", 1)
     except (TypeError, ValueError) as exc:
         raise SufficiencyValidationError(
             SufficiencyErrorCodeV1.INVALID_SEMANTIC_PAYLOAD,

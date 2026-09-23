@@ -3,17 +3,29 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator
 
-from offline_rag.domain.types import NonEmptyStr, NonNegativeInt, PositiveInt, Score
+from offline_rag.domain.types import NonNegativeInt, PositiveInt
 
 SUFFICIENCY_OBSERVATION_V1 = "sufficiency-observation-v1"
 SUFFICIENCY_PROVENANCE_V1 = "sufficiency-provenance-v1"
 SUFFICIENCY_ERROR_DETAILS_V1 = "sufficiency-error-details-v1"
 SUFFICIENCY_ATTEMPT_ROLE_INITIAL = "initial"
 SUFFICIENCY_ATTEMPT_ROLE_RECOVERY = "recovery"
+
+
+def _exact_nonblank_str(value: Any) -> str:
+    """Require a nonblank string without stripping or rewriting it."""
+    if not isinstance(value, str):
+        raise TypeError("must be a string")
+    if value == "" or value.strip() == "":
+        raise ValueError("must be a nonblank string")
+    return value
+
+
+ExactNonBlankStr = Annotated[str, AfterValidator(_exact_nonblank_str)]
 
 
 class SufficiencyErrorCodeV1(str, Enum):
@@ -26,6 +38,8 @@ class SufficiencyErrorCodeV1(str, Enum):
     MISSING_DOCUMENT_ID = "missing_document_id"
     INVALID_SECTION_PATH = "invalid_section_path"
     INVALID_RERANKER_SCORE = "invalid_reranker_score"
+    INVALID_RRF_SCORE = "invalid_rrf_score"
+    INVALID_BRANCH_SCORE = "invalid_branch_score"
     OBSERVATION_RECOMPUTE_MISMATCH = "observation_recompute_mismatch"
     UNSUPPORTED_OBSERVATION_CONTRACT = "unsupported_observation_contract"
     UNSUPPORTED_OBSERVATION_CONFIG = "unsupported_observation_config"
@@ -45,7 +59,9 @@ class SufficiencyErrorDetailsV1(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["sufficiency-error-details-v1"] = SUFFICIENCY_ERROR_DETAILS_V1
+    schema_version: Literal["sufficiency-error-details-v1"] = (
+        SUFFICIENCY_ERROR_DETAILS_V1
+    )
     field_name: str | None = None
     expected: str | int | float | bool | None = None
     actual: str | int | float | bool | None = None
@@ -83,15 +99,15 @@ class SufficiencyAnchorProvenance(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    chunk_id: NonEmptyStr
+    chunk_id: ExactNonBlankStr
     rerank_rank: PositiveInt
-    reranker_score: Score
+    reranker_score: float
     hybrid_rank: PositiveInt
-    rrf_score: Score
+    rrf_score: float
     dense_rank: PositiveInt | None = None
-    dense_score: Score | None = None
+    dense_score: float | None = None
     lexical_rank: PositiveInt | None = None
-    lexical_score: Score | None = None
+    lexical_score: float | None = None
 
 
 class SufficiencyEvidenceUnitProvenance(BaseModel):
@@ -99,11 +115,24 @@ class SufficiencyEvidenceUnitProvenance(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    evidence_unit_id: NonEmptyStr
-    document_id: NonEmptyStr
+    evidence_unit_id: ExactNonBlankStr
+    document_id: ExactNonBlankStr
     section_path: list[str] = Field(default_factory=list)
-    source_chunk_id: NonEmptyStr
-    primary_anchor_chunk_id: NonEmptyStr
+    source_chunk_id: ExactNonBlankStr
+    primary_anchor_chunk_id: ExactNonBlankStr
+
+    @field_validator("section_path", mode="before")
+    @classmethod
+    def _canonicalize_section_path(cls, value: Any) -> list[str]:
+        # OD-11-23: missing/None -> []; otherwise preserve segment strings exactly.
+        if value is None:
+            return []
+        if not isinstance(value, list):
+            raise TypeError("section_path must be a list of strings or null")
+        for segment in value:
+            if not isinstance(segment, str):
+                raise TypeError("section_path segments must be strings")
+        return list(value)
 
 
 class SufficiencyAssemblyDiagnosticsV1(BaseModel):
@@ -115,7 +144,7 @@ class SufficiencyAssemblyDiagnosticsV1(BaseModel):
     context_token_count: NonNegativeInt = 0
     clipping_occurred: bool = False
     budget_exhausted: bool = False
-    stop_reason: NonEmptyStr = "completed"
+    stop_reason: ExactNonBlankStr = "completed"
     dedup_hits: NonNegativeInt = 0
     containment_suppressions: NonNegativeInt = 0
 
@@ -126,16 +155,16 @@ class SufficiencyProvenanceV1(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     schema_version: Literal["sufficiency-provenance-v1"] = SUFFICIENCY_PROVENANCE_V1
-    case_id: NonEmptyStr
-    corpus_id: NonEmptyStr
-    chunk_set_id: NonEmptyStr
-    dense_index_id: NonEmptyStr
-    lexical_index_id: NonEmptyStr
-    fusion_config_hash: NonEmptyStr
-    reranker_config_hash: NonEmptyStr
-    context_config_hash: NonEmptyStr
-    original_query: NonEmptyStr
-    active_retrieval_query: NonEmptyStr
+    case_id: ExactNonBlankStr
+    corpus_id: ExactNonBlankStr
+    chunk_set_id: ExactNonBlankStr
+    dense_index_id: ExactNonBlankStr
+    lexical_index_id: ExactNonBlankStr
+    fusion_config_hash: ExactNonBlankStr
+    reranker_config_hash: ExactNonBlankStr
+    context_config_hash: ExactNonBlankStr
+    original_query: ExactNonBlankStr
+    active_retrieval_query: ExactNonBlankStr
     attempt_number: NonNegativeInt
     attempt_role: Literal["initial", "recovery"]
     anchors: list[SufficiencyAnchorProvenance] = Field(default_factory=list)
@@ -154,7 +183,7 @@ class SufficiencyObservationV1(BaseModel):
     observation_contract: Literal["sufficiency-observation-v1"] = (
         SUFFICIENCY_OBSERVATION_V1
     )
-    observation_config_hash: NonEmptyStr
+    observation_config_hash: ExactNonBlankStr
     empty_context: bool
     top_reranker_score: float | None = None
     top1_top2_margin: float | None = None
