@@ -2390,11 +2390,48 @@ indicate malformed assembled provenance and cause validation failure.
 Keeps OD-11-44/45/48 internally consistent: EvidenceUnit IDs are first-class,
 ordered, and unique.
 
-### 8.48 Next design decision (OD-11-49)
+### 8.48 OD-11-49 — LOCKED contiguous 1-based ranks match list position
 
-**OPEN — next:** whether stored anchor rank fields must be contiguous and
-consistent with list position (recommended: yes — 1-based ranks matching list
-position exactly; mismatch fails validation, not repaired).
+**Status:** **LOCKED** — each final reranked anchor carries an explicit 1-based
+rerank rank, and that stored rank must exactly match its position in the ordered
+anchor list. Any gap, duplicate rank, zero-based value, or position mismatch is
+malformed provenance and causes validation failure.
+
+| Option | Status |
+|---|---|
+| **A (1-based ranks match list position exactly)** | **LOCKED** |
+| B (ignore stored ranks; derive from list index only) | Rejected — drops consistency check |
+| C (allow gaps / mismatch if scores look ordered) | Rejected — softens fail-closed provenance |
+
+#### Canonical invariant (locked)
+
+```text
+for index, anchor in enumerate(anchors):
+    expected_rank = index + 1
+    require anchor.rerank_rank == expected_rank
+```
+
+#### Additional implications (locked)
+
+1. List order remains authoritative and identity-bearing.
+2. Stored rank is **not** ignored; it is a consistency check.
+3. `sufficiency/` must never rewrite or “fix” ranks.
+4. Score monotonicity can be validated separately if the upstream reranker
+   contract guarantees it, but rank correctness does **not** depend on
+   re-sorting by score.
+5. Duplicate rerank ranks are invalid.
+6. Missing rerank rank is invalid if the provenance contract requires it.
+7. A dedicated reason code such as `invalid_rerank_rank` is appropriate.
+
+Keeps OD-11-46 and OD-11-49 aligned: order and explicit rank must agree exactly.
+
+### 8.49 Next design decision (OD-11-50)
+
+**OPEN — next:** whether `dense_rank` and `lexical_rank`, when present, must be
+positive unique ranks within their respective branch memberships (recommended:
+yes for positivity and per-branch uniqueness among stored anchors; do **not**
+require contiguity, because the final list may be a subset of branch
+candidates).
 
 ---
 
@@ -2785,7 +2822,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-49 next; OD-11-2…11-48 LOCKED)
+  → Slice 11 design interview (OD-11-50 next; OD-11-2…11-49 LOCKED)
   → 11A-1 observation core (after remaining ODs + separate implementation auth)
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -2870,7 +2907,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-46** | Reranked anchor order identity-bearing? | **LOCKED** | §8.45 — exact reranker order; top-* features use indices 0/1 |
 | **OD-11-47** | chunk_id unique authoritative anchor identity? | **LOCKED** | §8.46 — exact unique `chunk_id`; no repair; fail closed |
 | **OD-11-48** | EvidenceUnit ID unique in final list? | **LOCKED** | §8.47 — exact unique `ev_…`; no repair; fail closed |
-| **OD-11-49** | Anchor ranks contiguous / match list position? | **OPEN — next** | Prefer 1-based ranks matching position; mismatch fails |
+| **OD-11-49** | Anchor ranks contiguous / match list position? | **LOCKED** | §8.48 — 1-based `rerank_rank == index+1`; no rewrite |
+| **OD-11-50** | dense_rank / lexical_rank positivity & uniqueness? | **OPEN — next** | Prefer positive + per-branch unique; no contiguity |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -2921,6 +2959,6 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-49** / anchor rank consistency)
+interview resolves remaining ODs (next: **OD-11-50** / dense_rank lexical_rank rules)
 under separate authorization. Do **not** begin 11A-1 code until implementation
 is separately authorized.
