@@ -12,7 +12,6 @@ from offline_rag.sufficiency import (
     SufficiencyDerivationError,
     SufficiencyErrorCodeV1,
     SufficiencyErrorDetailsV1,
-    SufficiencyPersistenceError,
     SufficiencyProvenanceV1,
     SufficiencySnapshotAuditV1,
     build_failure_record,
@@ -413,8 +412,10 @@ def test_conflicting_same_id_write_fails_closed(tmp_path: Path) -> None:
     )
     path.write_text(corrupted.model_dump_json(), encoding="utf-8")
 
-    with pytest.raises(SufficiencyPersistenceError, match="collision"):
+    # Existing artifact fails OD-11-14 recomputation during idempotent check.
+    with pytest.raises(SufficiencyArtifactError) as exc:
         persist_sufficiency_snapshot(snap, path=path)
+    assert exc.value.code == SufficiencyErrorCodeV1.OBSERVATION_RECOMPUTE_MISMATCH
 
 
 def test_derive_then_persist_pipeline(tmp_path: Path) -> None:
@@ -427,3 +428,183 @@ def test_derive_then_persist_pipeline(tmp_path: Path) -> None:
     persist_sufficiency_snapshot(snapshot, path=path)
     loaded = load_sufficiency_snapshot(path)
     validate_observation_against_provenance(loaded.observation, loaded.provenance)
+
+
+def test_tampered_observation_with_recomputed_id_rejected_on_persist_and_load(
+    tmp_path: Path,
+) -> None:
+    from offline_rag.sufficiency.ids import (
+        build_suffctx_id,
+        build_suffctx_semantic_payload,
+    )
+
+    snap = build_sufficiency_snapshot(
+        _provenance(
+            units=[
+                _unit(evidence_unit_id="ev_1", document_id="doc_a", section_path=["A"])
+            ]
+        )
+    )
+    tampered_obs = snap.observation.model_copy(update={"distinct_document_count": 99})
+    fake_id = build_suffctx_id(
+        build_suffctx_semantic_payload(snap.provenance, tampered_obs)
+    )
+    inconsistent = snap.model_copy(
+        update={"observation": tampered_obs, "suffctx_id": fake_id}
+    )
+    assert inconsistent.suffctx_id == fake_id
+
+    path = tmp_path / f"{fake_id}.json"
+    with pytest.raises(SufficiencyArtifactError) as persist_exc:
+        persist_sufficiency_snapshot(inconsistent, path=path)
+    assert (
+        persist_exc.value.code == SufficiencyErrorCodeV1.OBSERVATION_RECOMPUTE_MISMATCH
+    )
+    assert not path.exists()
+
+    # Even if written outside the API, load must reject.
+    path.write_text(inconsistent.model_dump_json(), encoding="utf-8")
+    with pytest.raises(SufficiencyArtifactError) as load_exc:
+        load_sufficiency_snapshot(path)
+    assert load_exc.value.code == SufficiencyErrorCodeV1.OBSERVATION_RECOMPUTE_MISMATCH
+
+
+def test_tampered_authoritative_flag_rejected(tmp_path: Path) -> None:
+    snap = build_sufficiency_snapshot(
+        _provenance(
+            units=[
+                _unit(evidence_unit_id="ev_1", document_id="doc_a", section_path=["A"])
+            ]
+        )
+    )
+    failure = build_failure_record(
+        case_id="case_2",
+        failure_stage="derive",
+        error=SufficiencyDerivationError(
+            SufficiencyErrorCodeV1.INVALID_QUERY_FIELDS,
+            "mismatch",
+        ),
+        original_query="q",
+    )
+    manifest = build_sufficiency_manifest(
+        snapshots=[snap],
+        failures=[failure],
+        expected_case_ids=["case_1", "case_2"],
+    )
+    assert manifest.authoritative_for_11b is False
+    original_id = manifest.suffctxrun_id
+    tampered = manifest.model_copy(update={"authoritative_for_11b": True})
+    assert tampered.suffctxrun_id == original_id
+
+    with pytest.raises(SufficiencyArtifactError) as exc:
+        require_authoritative_manifest(tampered)
+    assert exc.value.code == SufficiencyErrorCodeV1.INVALID_SEMANTIC_PAYLOAD
+
+    path = default_manifest_artifact_path(tmp_path, original_id)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(tampered.model_dump_json(), encoding="utf-8")
+    with pytest.raises(SufficiencyArtifactError):
+        load_sufficiency_manifest(path)
+    with pytest.raises(SufficiencyArtifactError):
+        persist_sufficiency_manifest(tampered, path=path)
+
+
+def test_incorrect_stored_counts_rejected(tmp_path: Path) -> None:
+    snap = build_sufficiency_snapshot(
+        _provenance(
+            units=[
+                _unit(evidence_unit_id="ev_1", document_id="doc_a", section_path=["A"])
+            ]
+        )
+    )
+    manifest = build_sufficiency_manifest(
+        snapshots=[snap],
+        failures=[],
+        expected_case_ids=["case_1"],
+    )
+    bad_counts = manifest.model_copy(update={"successful_case_count": 99})
+    path = tmp_path / "bad_counts.json"
+    path.write_text(bad_counts.model_dump_json(), encoding="utf-8")
+    with pytest.raises(SufficiencyArtifactError) as exc:
+        load_sufficiency_manifest(path)
+    assert "successful_case_count" in str(exc.value)
+
+
+def test_noncanonical_manifest_order_rejected(tmp_path: Path) -> None:
+    snap_a = build_sufficiency_snapshot(
+        _provenance(
+            case_id="case_a",
+            units=[
+                _unit(evidence_unit_id="ev_a", document_id="doc_a", section_path=["A"])
+            ],
+        )
+    )
+    snap_b = build_sufficiency_snapshot(
+        _provenance(
+            case_id="case_b",
+            units=[
+                _unit(evidence_unit_id="ev_b", document_id="doc_a", section_path=["A"])
+            ],
+        )
+    )
+    manifest = build_sufficiency_manifest(
+        snapshots=[snap_a, snap_b],
+        failures=[],
+        expected_case_ids=["case_a", "case_b"],
+    )
+    reordered = manifest.model_copy(
+        update={
+            "expected_case_ids": ["case_b", "case_a"],
+            "attempt_groups": list(reversed(manifest.attempt_groups)),
+        }
+    )
+    path = tmp_path / "reordered.json"
+    path.write_text(reordered.model_dump_json(), encoding="utf-8")
+    with pytest.raises(SufficiencyArtifactError) as exc:
+        load_sufficiency_manifest(path)
+    assert "canonical" in str(exc.value)
+
+
+def test_duplicate_failure_records_rejected() -> None:
+    snap = build_sufficiency_snapshot(
+        _provenance(
+            case_id="case_ok",
+            units=[
+                _unit(evidence_unit_id="ev_1", document_id="doc_a", section_path=["A"])
+            ],
+        )
+    )
+    failure = build_failure_record(
+        case_id="case_bad",
+        failure_stage="derive",
+        error=SufficiencyDerivationError(
+            SufficiencyErrorCodeV1.INVALID_QUERY_FIELDS,
+            "mismatch",
+        ),
+        original_query="q",
+    )
+    duplicate = build_failure_record(
+        case_id="case_bad",
+        failure_stage="persist",
+        error=SufficiencyDerivationError(
+            SufficiencyErrorCodeV1.MISSING_DOCUMENT_ID,
+            "also missing",
+        ),
+        original_query="q",
+    )
+    with pytest.raises(SufficiencyArtifactError) as exc:
+        build_sufficiency_manifest(
+            snapshots=[snap],
+            failures=[failure, duplicate],
+            expected_case_ids=["case_ok", "case_bad"],
+        )
+    assert "one terminal failure" in str(exc.value)
+
+
+def test_slice11_builder_has_no_multi_attempt_bypass() -> None:
+    import inspect
+
+    from offline_rag.sufficiency.artifacts import build_sufficiency_manifest as builder
+
+    params = inspect.signature(builder).parameters
+    assert "enforce_slice11_initial_only" not in params

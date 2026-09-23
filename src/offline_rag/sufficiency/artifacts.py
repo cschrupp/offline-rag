@@ -10,12 +10,14 @@ from pydantic import BaseModel, ConfigDict, Field
 from offline_rag.domain.types import NonNegativeInt
 from offline_rag.sufficiency.config_hash import authoritative_observation_config_hash
 from offline_rag.sufficiency.contracts import (
+    SUFFICIENCY_OBSERVATION_V1,
     ExactNonBlankStr,
     SufficiencyError,
     SufficiencyErrorCodeV1,
     SufficiencyErrorDetailsV1,
     SufficiencyObservationV1,
     SufficiencyProvenanceV1,
+    SufficiencyValidationError,
 )
 from offline_rag.sufficiency.derive import (
     derive_sufficiency_observation,
@@ -224,15 +226,77 @@ def build_sufficiency_snapshot(
                 actual=observation.observation_config_hash,
             ),
         )
-
     payload = build_suffctx_semantic_payload(provenance, observation)
-    suffctx_id = build_suffctx_id(payload)
-    return SufficiencyEvalContextSnapshotV1(
-        suffctx_id=suffctx_id,
+    snapshot = SufficiencyEvalContextSnapshotV1(
+        suffctx_id=build_suffctx_id(payload),
         provenance=provenance,
         observation=observation,
         audit=audit or SufficiencySnapshotAuditV1(),
     )
+    validate_sufficiency_snapshot(snapshot)
+    return snapshot
+
+
+def validate_sufficiency_snapshot(
+    snapshot: SufficiencyEvalContextSnapshotV1,
+) -> None:
+    """Fail-closed OD-11-14 / identity validation for a case snapshot."""
+    if snapshot.contract != SUFFICIENCY_EVAL_CONTEXT_V1:
+        raise SufficiencyArtifactError(
+            SufficiencyErrorCodeV1.UNSUPPORTED_OBSERVATION_CONTRACT,
+            "unsupported snapshot contract",
+            details=SufficiencyErrorDetailsV1(
+                field_name="contract",
+                expected=SUFFICIENCY_EVAL_CONTEXT_V1,
+                actual=snapshot.contract,
+            ),
+        )
+    if snapshot.observation.observation_contract != SUFFICIENCY_OBSERVATION_V1:
+        raise SufficiencyArtifactError(
+            SufficiencyErrorCodeV1.UNSUPPORTED_OBSERVATION_CONTRACT,
+            "unsupported observation_contract on snapshot",
+            details=SufficiencyErrorDetailsV1(
+                field_name="observation_contract",
+                expected=SUFFICIENCY_OBSERVATION_V1,
+                actual=snapshot.observation.observation_contract,
+            ),
+        )
+    expected_hash = authoritative_observation_config_hash()
+    if snapshot.observation.observation_config_hash != expected_hash:
+        raise SufficiencyArtifactError(
+            SufficiencyErrorCodeV1.UNSUPPORTED_OBSERVATION_CONFIG,
+            "unsupported observation_config_hash on snapshot",
+            details=SufficiencyErrorDetailsV1(
+                field_name="observation_config_hash",
+                expected=expected_hash,
+                actual=snapshot.observation.observation_config_hash,
+            ),
+        )
+    try:
+        validate_observation_against_provenance(
+            snapshot.observation, snapshot.provenance
+        )
+    except SufficiencyValidationError as exc:
+        raise SufficiencyArtifactError(
+            exc.code,
+            exc.message,
+            details=exc.details,
+            cause=exc,
+        ) from exc
+
+    expected_id = build_suffctx_id(
+        build_suffctx_semantic_payload(snapshot.provenance, snapshot.observation)
+    )
+    if snapshot.suffctx_id != expected_id:
+        raise SufficiencyArtifactError(
+            SufficiencyErrorCodeV1.INVALID_SEMANTIC_PAYLOAD,
+            "snapshot suffctx_id does not match semantic payload",
+            details=SufficiencyErrorDetailsV1(
+                field_name="suffctx_id",
+                expected=expected_id,
+                actual=snapshot.suffctx_id,
+            ),
+        )
 
 
 def _lineage_tuple(lineage: SufficiencySharedLineageV1) -> tuple[str, ...]:
@@ -304,6 +368,226 @@ def _validate_slice11_attempt_group(group: SufficiencyAttemptGroupV1) -> None:
         )
 
 
+def _canonical_expected_case_ids(case_ids: list[str]) -> list[str]:
+    return sorted(case_ids)
+
+
+def _canonical_attempt_groups(
+    groups: list[SufficiencyAttemptGroupV1],
+) -> list[SufficiencyAttemptGroupV1]:
+    return sorted(groups, key=lambda item: item.case_id)
+
+
+def _canonical_failures(
+    failures: list[SufficiencyFailureRecordV1],
+) -> list[SufficiencyFailureRecordV1]:
+    return sorted(failures, key=lambda item: (item.case_id, item.failure_stage))
+
+
+def derive_manifest_accounting(
+    *,
+    expected_case_ids: list[str],
+    attempt_groups: list[SufficiencyAttemptGroupV1],
+    failures: list[SufficiencyFailureRecordV1],
+) -> dict[str, Any]:
+    """Recompute derived manifesto accounting from semantic contents."""
+    ordered_expected = _canonical_expected_case_ids(expected_case_ids)
+    successful_ids = {group.case_id for group in attempt_groups}
+    failed_ids = {failure.case_id for failure in failures}
+    expected_count = len(ordered_expected)
+    successful_count = len(successful_ids)
+    failed_count = len(failed_ids)
+    coverage_complete = (successful_ids | failed_ids) == set(ordered_expected)
+    authoritative = (
+        successful_count == expected_count
+        and failed_count == 0
+        and successful_ids == set(ordered_expected)
+        and coverage_complete
+    )
+    return {
+        "expected_case_ids": ordered_expected,
+        "successful_case_ids": sorted(successful_ids),
+        "failed_case_ids": sorted(failed_ids),
+        "expected_case_count": expected_count,
+        "successful_case_count": successful_count,
+        "failed_case_count": failed_count,
+        "coverage_complete": coverage_complete,
+        "authoritative_for_11b": authoritative,
+    }
+
+
+def validate_sufficiency_manifest(
+    manifest: SufficiencyEvalContextManifestV1,
+) -> None:
+    """Fail-closed validation of manifesto identity, order, and derived state."""
+    if manifest.contract != SUFFICIENCY_EVAL_CONTEXT_MANIFEST_V1:
+        raise SufficiencyArtifactError(
+            SufficiencyErrorCodeV1.UNSUPPORTED_OBSERVATION_CONTRACT,
+            "unsupported manifesto contract",
+            details=SufficiencyErrorDetailsV1(
+                field_name="contract",
+                expected=SUFFICIENCY_EVAL_CONTEXT_MANIFEST_V1,
+                actual=manifest.contract,
+            ),
+        )
+    if not manifest.expected_case_ids:
+        raise SufficiencyArtifactError(
+            SufficiencyErrorCodeV1.INVALID_SEMANTIC_PAYLOAD,
+            "manifest expected_case_ids must be non-empty",
+            details=SufficiencyErrorDetailsV1(field_name="expected_case_ids"),
+        )
+    if len(set(manifest.expected_case_ids)) != len(manifest.expected_case_ids):
+        raise SufficiencyArtifactError(
+            SufficiencyErrorCodeV1.INVALID_SEMANTIC_PAYLOAD,
+            "manifest expected_case_ids must be unique",
+            details=SufficiencyErrorDetailsV1(field_name="expected_case_ids"),
+        )
+
+    canonical_expected = _canonical_expected_case_ids(list(manifest.expected_case_ids))
+    if list(manifest.expected_case_ids) != canonical_expected:
+        raise SufficiencyArtifactError(
+            SufficiencyErrorCodeV1.INVALID_SEMANTIC_PAYLOAD,
+            "manifest expected_case_ids must be in canonical ascending order",
+            details=SufficiencyErrorDetailsV1(field_name="expected_case_ids"),
+        )
+
+    canonical_groups = _canonical_attempt_groups(list(manifest.attempt_groups))
+    if [g.model_dump(mode="json") for g in manifest.attempt_groups] != [
+        g.model_dump(mode="json") for g in canonical_groups
+    ]:
+        raise SufficiencyArtifactError(
+            SufficiencyErrorCodeV1.INVALID_SEMANTIC_PAYLOAD,
+            "manifest attempt_groups must be in canonical case_id order",
+            details=SufficiencyErrorDetailsV1(field_name="attempt_groups"),
+        )
+
+    canonical_failures = _canonical_failures(list(manifest.failures))
+    if [f.model_dump(mode="json") for f in manifest.failures] != [
+        f.model_dump(mode="json") for f in canonical_failures
+    ]:
+        raise SufficiencyArtifactError(
+            SufficiencyErrorCodeV1.INVALID_SEMANTIC_PAYLOAD,
+            "manifest failures must be in canonical order",
+            details=SufficiencyErrorDetailsV1(field_name="failures"),
+        )
+
+    seen_cases: set[str] = set()
+    for group in manifest.attempt_groups:
+        _validate_slice11_attempt_group(group)
+        if group.case_id in seen_cases:
+            raise SufficiencyArtifactError(
+                SufficiencyErrorCodeV1.INVALID_ATTEMPT_FIELDS,
+                "duplicate case_id among attempt groups",
+                details=SufficiencyErrorDetailsV1(
+                    field_name="case_id", actual=group.case_id
+                ),
+            )
+        seen_cases.add(group.case_id)
+        if group.case_id not in canonical_expected:
+            raise SufficiencyArtifactError(
+                SufficiencyErrorCodeV1.INVALID_SEMANTIC_PAYLOAD,
+                "snapshot case_id is outside expected population",
+                details=SufficiencyErrorDetailsV1(
+                    field_name="case_id", actual=group.case_id
+                ),
+            )
+
+    seen_failure_cases: set[str] = set()
+    for failure in manifest.failures:
+        if failure.case_id in seen_failure_cases:
+            raise SufficiencyArtifactError(
+                SufficiencyErrorCodeV1.INVALID_SEMANTIC_PAYLOAD,
+                "at most one terminal failure record per case is allowed",
+                details=SufficiencyErrorDetailsV1(
+                    field_name="case_id", actual=failure.case_id
+                ),
+            )
+        seen_failure_cases.add(failure.case_id)
+        if failure.case_id not in canonical_expected:
+            raise SufficiencyArtifactError(
+                SufficiencyErrorCodeV1.INVALID_SEMANTIC_PAYLOAD,
+                "failure case_id is outside expected population",
+                details=SufficiencyErrorDetailsV1(
+                    field_name="case_id", actual=failure.case_id
+                ),
+            )
+
+    successful_ids = {group.case_id for group in manifest.attempt_groups}
+    failed_ids = {failure.case_id for failure in manifest.failures}
+    if successful_ids & failed_ids:
+        overlap = min(successful_ids & failed_ids)
+        raise SufficiencyArtifactError(
+            SufficiencyErrorCodeV1.INVALID_SEMANTIC_PAYLOAD,
+            "case cannot be both successful snapshot and failure record",
+            details=SufficiencyErrorDetailsV1(field_name="case_id", actual=overlap),
+        )
+
+    accounting = derive_manifest_accounting(
+        expected_case_ids=list(manifest.expected_case_ids),
+        attempt_groups=list(manifest.attempt_groups),
+        failures=list(manifest.failures),
+    )
+    if manifest.expected_case_count != accounting["expected_case_count"]:
+        raise SufficiencyArtifactError(
+            SufficiencyErrorCodeV1.INVALID_SEMANTIC_PAYLOAD,
+            "manifest expected_case_count does not match recomputation",
+            details=SufficiencyErrorDetailsV1(
+                field_name="expected_case_count",
+                expected=accounting["expected_case_count"],
+                actual=manifest.expected_case_count,
+            ),
+        )
+    if manifest.successful_case_count != accounting["successful_case_count"]:
+        raise SufficiencyArtifactError(
+            SufficiencyErrorCodeV1.INVALID_SEMANTIC_PAYLOAD,
+            "manifest successful_case_count does not match recomputation",
+            details=SufficiencyErrorDetailsV1(
+                field_name="successful_case_count",
+                expected=accounting["successful_case_count"],
+                actual=manifest.successful_case_count,
+            ),
+        )
+    if manifest.failed_case_count != accounting["failed_case_count"]:
+        raise SufficiencyArtifactError(
+            SufficiencyErrorCodeV1.INVALID_SEMANTIC_PAYLOAD,
+            "manifest failed_case_count does not match unique failed cases",
+            details=SufficiencyErrorDetailsV1(
+                field_name="failed_case_count",
+                expected=accounting["failed_case_count"],
+                actual=manifest.failed_case_count,
+            ),
+        )
+    if manifest.authoritative_for_11b != accounting["authoritative_for_11b"]:
+        raise SufficiencyArtifactError(
+            SufficiencyErrorCodeV1.INVALID_SEMANTIC_PAYLOAD,
+            "manifest authoritative_for_11b does not match recomputation",
+            details=SufficiencyErrorDetailsV1(
+                field_name="authoritative_for_11b",
+                expected=accounting["authoritative_for_11b"],
+                actual=manifest.authoritative_for_11b,
+            ),
+        )
+
+    expected_id = build_suffctxrun_id(
+        build_suffctxrun_semantic_payload(
+            shared_lineage=manifest.shared_lineage,
+            attempt_groups=list(manifest.attempt_groups),
+            failures=list(manifest.failures),
+            expected_case_ids=list(manifest.expected_case_ids),
+        )
+    )
+    if manifest.suffctxrun_id != expected_id:
+        raise SufficiencyArtifactError(
+            SufficiencyErrorCodeV1.INVALID_SEMANTIC_PAYLOAD,
+            "manifesto suffctxrun_id does not match semantic payload",
+            details=SufficiencyErrorDetailsV1(
+                field_name="suffctxrun_id",
+                expected=expected_id,
+                actual=manifest.suffctxrun_id,
+            ),
+        )
+
+
 def build_sufficiency_manifest(
     *,
     snapshots: list[SufficiencyEvalContextSnapshotV1],
@@ -311,9 +595,8 @@ def build_sufficiency_manifest(
     expected_case_ids: list[str],
     shared_lineage: SufficiencySharedLineageV1 | None = None,
     audit: SufficiencyManifestAuditV1 | None = None,
-    enforce_slice11_initial_only: bool = True,
 ) -> SufficiencyEvalContextManifestV1:
-    """Build a validated run manifesto; compute content-addressed suffctxrun_id."""
+    """Build a Slice-11-only validated manifesto with content-addressed ID."""
     if not expected_case_ids:
         raise SufficiencyArtifactError(
             SufficiencyErrorCodeV1.INVALID_SEMANTIC_PAYLOAD,
@@ -327,12 +610,13 @@ def build_sufficiency_manifest(
             details=SufficiencyErrorDetailsV1(field_name="expected_case_ids"),
         )
 
-    ordered_expected = sorted(expected_case_ids)
+    ordered_expected = _canonical_expected_case_ids(expected_case_ids)
     groups: list[SufficiencyAttemptGroupV1] = []
     seen_case_attempts: set[tuple[str, int]] = set()
     lineage: SufficiencySharedLineageV1 | None = shared_lineage
 
     for snapshot in snapshots:
+        validate_sufficiency_snapshot(snapshot)
         provenance = snapshot.provenance
         snap_lineage = shared_lineage_from_provenance(
             provenance,
@@ -348,20 +632,6 @@ def build_sufficiency_manifest(
                 details=SufficiencyErrorDetailsV1(
                     field_name="shared_lineage",
                     actual=provenance.case_id,
-                ),
-            )
-
-        expected_id = build_suffctx_id(
-            build_suffctx_semantic_payload(snapshot.provenance, snapshot.observation)
-        )
-        if snapshot.suffctx_id != expected_id:
-            raise SufficiencyArtifactError(
-                SufficiencyErrorCodeV1.INVALID_SEMANTIC_PAYLOAD,
-                "snapshot suffctx_id does not match semantic payload",
-                details=SufficiencyErrorDetailsV1(
-                    field_name="suffctx_id",
-                    expected=expected_id,
-                    actual=snapshot.suffctx_id,
                 ),
             )
 
@@ -389,8 +659,7 @@ def build_sufficiency_manifest(
                 )
             ],
         )
-        if enforce_slice11_initial_only:
-            _validate_slice11_attempt_group(group)
+        _validate_slice11_attempt_group(group)
         groups.append(group)
 
     if lineage is None:
@@ -400,14 +669,28 @@ def build_sufficiency_manifest(
             details=SufficiencyErrorDetailsV1(field_name="shared_lineage"),
         )
 
-    # Canonical case_id ascending order for attempt groups (OD-11-7).
-    groups.sort(key=lambda item: item.case_id)
-    ordered_failures = sorted(
-        failures, key=lambda item: (item.case_id, item.failure_stage)
-    )
+    groups = _canonical_attempt_groups(groups)
+    ordered_failures = _canonical_failures(failures)
 
-    successful_ids = {group.case_id for group in groups}
-    failed_ids = {failure.case_id for failure in ordered_failures}
+    seen_failure_cases: set[str] = set()
+    for failure in ordered_failures:
+        if failure.case_id in seen_failure_cases:
+            raise SufficiencyArtifactError(
+                SufficiencyErrorCodeV1.INVALID_SEMANTIC_PAYLOAD,
+                "at most one terminal failure record per case is allowed",
+                details=SufficiencyErrorDetailsV1(
+                    field_name="case_id", actual=failure.case_id
+                ),
+            )
+        seen_failure_cases.add(failure.case_id)
+
+    accounting = derive_manifest_accounting(
+        expected_case_ids=ordered_expected,
+        attempt_groups=groups,
+        failures=ordered_failures,
+    )
+    successful_ids = set(accounting["successful_case_ids"])
+    failed_ids = set(accounting["failed_case_ids"])
     if successful_ids & failed_ids:
         overlap = min(successful_ids & failed_ids)
         raise SufficiencyArtifactError(
@@ -415,39 +698,13 @@ def build_sufficiency_manifest(
             "case cannot be both successful snapshot and failure record",
             details=SufficiencyErrorDetailsV1(field_name="case_id", actual=overlap),
         )
-
-    for group in groups:
-        if group.case_id not in ordered_expected:
+    for case_id in successful_ids | failed_ids:
+        if case_id not in ordered_expected:
             raise SufficiencyArtifactError(
                 SufficiencyErrorCodeV1.INVALID_SEMANTIC_PAYLOAD,
-                "snapshot case_id is outside expected population",
-                details=SufficiencyErrorDetailsV1(
-                    field_name="case_id", actual=group.case_id
-                ),
+                "case_id is outside expected population",
+                details=SufficiencyErrorDetailsV1(field_name="case_id", actual=case_id),
             )
-    for failure in ordered_failures:
-        if failure.case_id not in ordered_expected:
-            raise SufficiencyArtifactError(
-                SufficiencyErrorCodeV1.INVALID_SEMANTIC_PAYLOAD,
-                "failure case_id is outside expected population",
-                details=SufficiencyErrorDetailsV1(
-                    field_name="case_id", actual=failure.case_id
-                ),
-            )
-
-    expected_count = len(ordered_expected)
-    successful_count = len(groups)
-    failed_count = len(ordered_failures)
-    covered = successful_ids | failed_ids
-    if covered != set(ordered_expected):
-        # Incomplete coverage is allowed as an execution record, but not authoritative.
-        pass
-
-    authoritative = (
-        successful_count == expected_count
-        and failed_count == 0
-        and successful_ids == set(ordered_expected)
-    )
 
     payload = build_suffctxrun_semantic_payload(
         shared_lineage=lineage,
@@ -455,26 +712,33 @@ def build_sufficiency_manifest(
         failures=ordered_failures,
         expected_case_ids=ordered_expected,
     )
-    suffctxrun_id = build_suffctxrun_id(payload)
-    return SufficiencyEvalContextManifestV1(
-        suffctxrun_id=suffctxrun_id,
+    manifest = SufficiencyEvalContextManifestV1(
+        suffctxrun_id=build_suffctxrun_id(payload),
         shared_lineage=lineage,
         attempt_groups=groups,
         failures=ordered_failures,
         expected_case_ids=ordered_expected,
-        expected_case_count=expected_count,
-        successful_case_count=successful_count,
-        failed_case_count=failed_count,
-        authoritative_for_11b=authoritative,
+        expected_case_count=accounting["expected_case_count"],
+        successful_case_count=accounting["successful_case_count"],
+        failed_case_count=accounting["failed_case_count"],
+        authoritative_for_11b=accounting["authoritative_for_11b"],
         audit=audit or SufficiencyManifestAuditV1(),
     )
+    validate_sufficiency_manifest(manifest)
+    return manifest
 
 
 def require_authoritative_manifest(
     manifest: SufficiencyEvalContextManifestV1,
 ) -> None:
     """Reject incomplete manifests for frozen 11B analysis (OD-11-28)."""
-    if not manifest.authoritative_for_11b:
+    validate_sufficiency_manifest(manifest)
+    accounting = derive_manifest_accounting(
+        expected_case_ids=list(manifest.expected_case_ids),
+        attempt_groups=list(manifest.attempt_groups),
+        failures=list(manifest.failures),
+    )
+    if not accounting["authoritative_for_11b"]:
         raise SufficiencyArtifactError(
             SufficiencyErrorCodeV1.INVALID_SEMANTIC_PAYLOAD,
             "incomplete manifesto is not authoritative for 11B",

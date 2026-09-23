@@ -8,19 +8,10 @@ from pydantic import ValidationError
 
 from offline_rag.ingestion.io import atomic_write_text
 from offline_rag.sufficiency.artifacts import (
-    SufficiencyArtifactError,
     SufficiencyEvalContextManifestV1,
     SufficiencyEvalContextSnapshotV1,
-    build_suffctxrun_semantic_payload,
-)
-from offline_rag.sufficiency.contracts import (
-    SufficiencyErrorCodeV1,
-    SufficiencyErrorDetailsV1,
-)
-from offline_rag.sufficiency.ids import (
-    build_suffctx_id,
-    build_suffctx_semantic_payload,
-    build_suffctxrun_id,
+    validate_sufficiency_manifest,
+    validate_sufficiency_snapshot,
 )
 
 
@@ -54,23 +45,9 @@ def _manifest_semantic_equal(
     left: SufficiencyEvalContextManifestV1,
     right: SufficiencyEvalContextManifestV1,
 ) -> bool:
-    left_payload = build_suffctxrun_semantic_payload(
-        shared_lineage=left.shared_lineage,
-        attempt_groups=left.attempt_groups,
-        failures=left.failures,
-        expected_case_ids=list(left.expected_case_ids),
-    )
-    right_payload = build_suffctxrun_semantic_payload(
-        shared_lineage=right.shared_lineage,
-        attempt_groups=right.attempt_groups,
-        failures=right.failures,
-        expected_case_ids=list(right.expected_case_ids),
-    )
-    return (
-        left.suffctxrun_id == right.suffctxrun_id
-        and left.authoritative_for_11b == right.authoritative_for_11b
-        and left_payload == right_payload
-    )
+    left_dump = left.model_dump(mode="json", exclude={"audit"})
+    right_dump = right.model_dump(mode="json", exclude={"audit"})
+    return left_dump == right_dump
 
 
 def persist_sufficiency_snapshot(
@@ -79,19 +56,7 @@ def persist_sufficiency_snapshot(
     path: Path,
 ) -> Path:
     """Atomically persist a snapshot; identical rewrite is idempotent."""
-    expected_id = build_suffctx_id(
-        build_suffctx_semantic_payload(snapshot.provenance, snapshot.observation)
-    )
-    if snapshot.suffctx_id != expected_id:
-        raise SufficiencyArtifactError(
-            SufficiencyErrorCodeV1.INVALID_SEMANTIC_PAYLOAD,
-            "refusing to persist snapshot with mismatched suffctx_id",
-            details=SufficiencyErrorDetailsV1(
-                field_name="suffctx_id",
-                expected=expected_id,
-                actual=snapshot.suffctx_id,
-            ),
-        )
+    validate_sufficiency_snapshot(snapshot)
 
     out = Path(path)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -104,6 +69,7 @@ def persist_sufficiency_snapshot(
             raise SufficiencyPersistenceError(
                 f"failed to load existing snapshot artifact: {exc}"
             ) from exc
+        validate_sufficiency_snapshot(existing)
         if existing.suffctx_id != snapshot.suffctx_id:
             raise SufficiencyPersistenceError(
                 "existing snapshot artifact ID mismatch at path"
@@ -115,13 +81,12 @@ def persist_sufficiency_snapshot(
             f"{snapshot.suffctx_id}"
         )
 
-    # Persist without rewriting content-addressed semantic fields through audit noise.
     atomic_write_text(out, snapshot.model_dump_json())
     return out
 
 
 def load_sufficiency_snapshot(path: Path) -> SufficiencyEvalContextSnapshotV1:
-    """Load a snapshot and verify content-addressed identity."""
+    """Load a snapshot and enforce OD-11-14 recomputation before returning."""
     try:
         snapshot = SufficiencyEvalContextSnapshotV1.model_validate_json(
             Path(path).read_text(encoding="utf-8")
@@ -130,13 +95,7 @@ def load_sufficiency_snapshot(path: Path) -> SufficiencyEvalContextSnapshotV1:
         raise SufficiencyPersistenceError(
             f"failed to load snapshot artifact: {exc}"
         ) from exc
-    expected_id = build_suffctx_id(
-        build_suffctx_semantic_payload(snapshot.provenance, snapshot.observation)
-    )
-    if snapshot.suffctx_id != expected_id:
-        raise SufficiencyPersistenceError(
-            "loaded snapshot suffctx_id does not match semantic payload"
-        )
+    validate_sufficiency_snapshot(snapshot)
     return snapshot
 
 
@@ -146,24 +105,7 @@ def persist_sufficiency_manifest(
     path: Path,
 ) -> Path:
     """Atomically persist a manifesto; identical rewrite is idempotent."""
-    expected_id = build_suffctxrun_id(
-        build_suffctxrun_semantic_payload(
-            shared_lineage=manifest.shared_lineage,
-            attempt_groups=manifest.attempt_groups,
-            failures=manifest.failures,
-            expected_case_ids=list(manifest.expected_case_ids),
-        )
-    )
-    if manifest.suffctxrun_id != expected_id:
-        raise SufficiencyArtifactError(
-            SufficiencyErrorCodeV1.INVALID_SEMANTIC_PAYLOAD,
-            "refusing to persist manifesto with mismatched suffctxrun_id",
-            details=SufficiencyErrorDetailsV1(
-                field_name="suffctxrun_id",
-                expected=expected_id,
-                actual=manifest.suffctxrun_id,
-            ),
-        )
+    validate_sufficiency_manifest(manifest)
 
     out = Path(path)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -176,6 +118,7 @@ def persist_sufficiency_manifest(
             raise SufficiencyPersistenceError(
                 f"failed to load existing manifesto artifact: {exc}"
             ) from exc
+        validate_sufficiency_manifest(existing)
         if existing.suffctxrun_id != manifest.suffctxrun_id:
             raise SufficiencyPersistenceError(
                 "existing manifesto artifact ID mismatch at path"
@@ -192,7 +135,7 @@ def persist_sufficiency_manifest(
 
 
 def load_sufficiency_manifest(path: Path) -> SufficiencyEvalContextManifestV1:
-    """Load a manifesto and verify content-addressed identity."""
+    """Load a manifesto and recompute/validate derived accounting before return."""
     try:
         manifest = SufficiencyEvalContextManifestV1.model_validate_json(
             Path(path).read_text(encoding="utf-8")
@@ -201,16 +144,5 @@ def load_sufficiency_manifest(path: Path) -> SufficiencyEvalContextManifestV1:
         raise SufficiencyPersistenceError(
             f"failed to load manifesto artifact: {exc}"
         ) from exc
-    expected_id = build_suffctxrun_id(
-        build_suffctxrun_semantic_payload(
-            shared_lineage=manifest.shared_lineage,
-            attempt_groups=manifest.attempt_groups,
-            failures=manifest.failures,
-            expected_case_ids=list(manifest.expected_case_ids),
-        )
-    )
-    if manifest.suffctxrun_id != expected_id:
-        raise SufficiencyPersistenceError(
-            "loaded manifesto suffctxrun_id does not match semantic payload"
-        )
+    validate_sufficiency_manifest(manifest)
     return manifest

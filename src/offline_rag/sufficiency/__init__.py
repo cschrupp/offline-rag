@@ -18,6 +18,8 @@ from offline_rag.sufficiency.artifacts import (
     build_sufficiency_snapshot,
     require_authoritative_manifest,
     shared_lineage_from_provenance,
+    validate_sufficiency_manifest,
+    validate_sufficiency_snapshot,
 )
 from offline_rag.sufficiency.config_hash import build_observation_config_hash
 from offline_rag.sufficiency.contracts import (
@@ -85,4 +87,6 @@ __all__ = [
     "require_authoritative_manifest",
     "shared_lineage_from_provenance",
     "validate_observation_against_provenance",
+    "validate_sufficiency_manifest",
+    "validate_sufficiency_snapshot",
 ]
