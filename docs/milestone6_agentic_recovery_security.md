@@ -2463,12 +2463,45 @@ Within one snapshot:
 Preserves OD-11-20 cleanly: cross-retriever support is just non-null membership
 in both branches, independent of rank strength.
 
-### 8.50 Next design decision (OD-11-51)
+### 8.50 OD-11-51 — LOCKED dense/lexical scores as diagnostic provenance
 
-**OPEN — next:** whether dense/lexical branch scores belong in
-`SufficiencyProvenanceV1` and semantic identity, or whether ranks/membership are
-sufficient for v1 (recommended: retain if deterministic upstream for
-auditability; diagnostic-only; out of the seven observation features).
+**Status:** **LOCKED** — `SufficiencyProvenanceV1` retains deterministic upstream
+`dense_score` and `lexical_score` values for reranked anchors when available
+under the frozen retrieval contract. They are diagnostic/audit provenance only,
+are not part of the seven OD-11-2 observations, and do not become sufficiency
+gates in v1. Because they describe the exact retrieval state, stored values
+participate in `suffctx_` semantic identity.
+
+| Option | Status |
+|---|---|
+| **A (retain if deterministic; diagnostic-only; in identity)** | **LOCKED** |
+| B (omit scores; ranks/membership only) | Rejected — discards useful deterministic provenance |
+| C (promote scores into observation features/gates) | Rejected — enlarges v1 observation vector |
+
+#### Constraints (locked)
+
+1. Preserve the upstream numeric values unchanged; no normalization,
+   calibration, sigmoid, rounding, or cross-branch comparison.
+2. Dense and lexical scores remain branch-specific quantities. A BM25 score and
+   a dense similarity score are not treated as being on a common confidence
+   scale.
+3. Scores do **not** affect `top_anchor_cross_retriever_support`; that remains
+   based solely on non-null branch membership/rank.
+4. If a score is stored, changing that score changes `suffctx_`, even if the
+   seven derived observations remain unchanged.
+5. Non-finite values (`NaN`, `±inf`) should fail provenance validation rather
+   than entering canonical JSON identity.
+6. The sufficiency layer must **not** recompute branch scores.
+7. Rank/score presence should be internally coherent under the frozen upstream
+   contract (pairedness locked in OD-11-52 rather than inferred during
+   implementation).
+
+### 8.51 Next design decision (OD-11-52)
+
+**OPEN — next:** exact nullability consistency between branch rank and branch
+score — whether `(rank=null, score!=null)` or `(rank!=null, score=null)` is
+valid (recommended: paired presence for both dense and lexical if the fusion
+contract guarantees that pairing).
 
 ---
 
@@ -2859,7 +2892,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-51 next; OD-11-2…11-50 LOCKED)
+  → Slice 11 design interview (OD-11-52 next; OD-11-2…11-51 LOCKED)
   → 11A-1 observation core (after remaining ODs + separate implementation auth)
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -2946,7 +2979,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-48** | EvidenceUnit ID unique in final list? | **LOCKED** | §8.47 — exact unique `ev_…`; no repair; fail closed |
 | **OD-11-49** | Anchor ranks contiguous / match list position? | **LOCKED** | §8.48 — 1-based `rerank_rank == index+1`; no rewrite |
 | **OD-11-50** | dense_rank / lexical_rank positivity & uniqueness? | **LOCKED** | §8.49 — positive + per-branch unique; null = absent; no contiguity |
-| **OD-11-51** | Dense/lexical scores in provenance / identity? | **OPEN — next** | Prefer retain if deterministic; diagnostic-only; not in 7 features |
+| **OD-11-51** | Dense/lexical scores in provenance / identity? | **LOCKED** | §8.50 — retain if deterministic; diagnostic-only; in `suffctx_` identity |
+| **OD-11-52** | Branch rank/score nullability pairing? | **OPEN — next** | Prefer paired presence under fusion contract |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -2997,6 +3031,6 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-51** / dense lexical scores in provenance)
+interview resolves remaining ODs (next: **OD-11-52** / branch rank-score pairing)
 under separate authorization. Do **not** begin 11A-1 code until implementation
 is separately authorized.
