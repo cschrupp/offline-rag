@@ -1853,12 +1853,82 @@ validation. Prefer
 Keeps the public boundary small and stable without forcing callers into deep
 imports.
 
-### 8.34 Next design decision (OD-11-35)
+### 8.34 OD-11-35 — LOCKED derivation/validation exception contract
 
-**OPEN — next:** exact exception/failure contract for derivation and validation
-— small typed sufficiency error family with deterministic reason codes vs raw
-`ValueError` / Pydantic errors (recommended: typed domain errors with reason
-codes for later manifest failure accounting).
+**Status:** **LOCKED** — sufficiency derivation/validation uses a small typed
+domain-error family with stable machine-readable **reason codes** and
+human-readable diagnostics. Raw `ValueError` / `ValidationError` may still
+exist at parse/model boundaries, but domain failures must be translated into the
+sufficiency error contract before they reach snapshot/manifest accounting.
+
+| Option | Status |
+|---|---|
+| **A (typed SufficiencyError + reason codes)** | **LOCKED** |
+| B (raw ValueError / ValidationError only) | Rejected — unstable for manifest accounting |
+| C (Ok/Err result wrappers) | Rejected — exceptions fit current fail-closed style |
+
+#### Illustrative hierarchy
+
+```text
+class SufficiencyError(Exception):
+    code: SufficiencyErrorCode
+    message: str
+
+class SufficiencyDerivationError(SufficiencyError): ...
+class SufficiencyValidationError(SufficiencyError): ...
+```
+
+#### Example reason codes (stable API)
+
+```text
+missing_required_lineage
+missing_required_provenance
+invalid_attempt_fields
+invalid_anchor_order
+missing_document_id
+invalid_section_path
+invalid_reranker_score
+observation_recompute_mismatch
+unsupported_observation_contract
+unsupported_observation_config
+invalid_semantic_payload
+```
+
+Exact enum membership may be refined during 11A-1 implementation without
+widening to free-text reasons.
+
+#### Rules (locked)
+
+1. Reason codes are **stable API**. Tests and later manifest failure accounting
+   may depend on them.
+2. Human diagnostic strings are **not** stable API and must never be parsed.
+3. One primary reason code per raised domain error is enough for 11A-1;
+   structured detail fields can be added only where useful (see OD-11-36).
+4. Preserve causal chaining from underlying exceptions where appropriate.
+5. Do not expose raw secrets, full document text, or large payload dumps in
+   diagnostics.
+6. Pydantic `ValidationError` remains acceptable when constructing typed models
+   directly, but orchestration that turns a failed derivation into a manifest
+   failure record should convert it to the sufficiency domain-error form.
+7. No Ok/Err result wrapper is needed in v1.
+
+#### Future manifest accounting fields
+
+```text
+case_id
+failure_stage
+reason_code
+diagnostic
+```
+
+with `reason_code` coming directly from this contract.
+
+### 8.35 Next design decision (OD-11-36)
+
+**OPEN — next:** whether one domain error may carry structured field/context
+details in addition to the stable code and message (recommended: yes, narrowly —
+optional typed details such as `field_name`, `expected`, `actual`,
+`attempt_number`; no arbitrary nested payloads or evidence text).
 
 ---
 
@@ -2249,8 +2319,8 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-35 next; OD-11-2…11-34 LOCKED)
-  → 11A-1 observation core (after OD-11-35 + separate implementation auth)
+  → Slice 11 design interview (OD-11-36 next; OD-11-2…11-35 LOCKED)
+  → 11A-1 observation core (after OD-11-36 + separate implementation auth)
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
   → 12A state/protocol (+ LangGraph adapter decision OD-12-3)
@@ -2320,7 +2390,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-32** | Typed provenance input for derive.py | **LOCKED** | §8.31 — `SufficiencyProvenanceV1`; no HybridRerankContextResult / gold / dict; adapters outside core |
 | **OD-11-33** | Adapter location for context → provenance | **LOCKED** | §8.32 — outside `sufficiency/`; not in 11A-1; fixtures only; no stub module |
 | **OD-11-34** | 11A-1 public API exports | **LOCKED** | §8.33 — small `__init__` surface; `validate_observation_against_provenance`; helpers private |
-| **OD-11-35** | Derivation/validation exception contract | **OPEN — next** | Prefer typed sufficiency errors with deterministic reason codes |
+| **OD-11-35** | Derivation/validation exception contract | **LOCKED** | §8.34 — typed `SufficiencyError` + stable reason codes; diagnostics not parseable API |
+| **OD-11-36** | Structured details on domain errors | **OPEN — next** | Prefer optional narrow typed details; no evidence text / arbitrary payloads |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
