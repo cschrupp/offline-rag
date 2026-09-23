@@ -10,6 +10,7 @@ from offline_rag.ingestion.io import atomic_write_text
 from offline_rag.sufficiency.artifacts import (
     SufficiencyEvalContextManifestV1,
     SufficiencyEvalContextSnapshotV1,
+    build_suffctxrun_semantic_payload,
     validate_sufficiency_manifest,
     validate_sufficiency_snapshot,
 )
@@ -45,9 +46,26 @@ def _manifest_semantic_equal(
     left: SufficiencyEvalContextManifestV1,
     right: SufficiencyEvalContextManifestV1,
 ) -> bool:
-    left_dump = left.model_dump(mode="json", exclude={"audit"})
-    right_dump = right.model_dump(mode="json", exclude={"audit"})
-    return left_dump == right_dump
+    """Compare allowlisted ``suffctxrun_`` semantic surface only (OD identity).
+
+    Human-readable ``failure.diagnostic`` and audit metadata are excluded, matching
+    ``build_suffctxrun_semantic_payload``. Callers must validate both manifests first.
+    """
+    if left.suffctxrun_id != right.suffctxrun_id:
+        return False
+    left_payload = build_suffctxrun_semantic_payload(
+        shared_lineage=left.shared_lineage,
+        attempt_groups=list(left.attempt_groups),
+        failures=list(left.failures),
+        expected_case_ids=list(left.expected_case_ids),
+    )
+    right_payload = build_suffctxrun_semantic_payload(
+        shared_lineage=right.shared_lineage,
+        attempt_groups=list(right.attempt_groups),
+        failures=list(right.failures),
+        expected_case_ids=list(right.expected_case_ids),
+    )
+    return left_payload == right_payload
 
 
 def persist_sufficiency_snapshot(

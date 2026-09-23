@@ -366,6 +366,54 @@ def test_incomplete_manifest_cannot_be_marked_authoritative() -> None:
         require_authoritative_manifest(manifest)
 
 
+def test_manifest_diagnostic_only_change_is_idempotent(tmp_path: Path) -> None:
+    snap = build_sufficiency_snapshot(
+        _provenance(
+            case_id="case_ok",
+            units=[
+                _unit(evidence_unit_id="ev_1", document_id="doc_a", section_path=["A"])
+            ],
+        )
+    )
+    failure = build_failure_record(
+        case_id="case_bad",
+        failure_stage="derive",
+        error=SufficiencyDerivationError(
+            SufficiencyErrorCodeV1.MISSING_DOCUMENT_ID,
+            "first human diagnostic",
+            details=SufficiencyErrorDetailsV1(field_name="document_id"),
+        ),
+        original_query="what failed?",
+    )
+    first = build_sufficiency_manifest(
+        snapshots=[snap],
+        failures=[failure],
+        expected_case_ids=["case_ok", "case_bad"],
+    )
+    path = default_manifest_artifact_path(tmp_path, first.suffctxrun_id)
+    assert persist_sufficiency_manifest(first, path=path) == path
+
+    rewritten_failure = failure.model_copy(
+        update={"diagnostic": "rewritten human diagnostic"}
+    )
+    second = build_sufficiency_manifest(
+        snapshots=[snap],
+        failures=[rewritten_failure],
+        expected_case_ids=["case_ok", "case_bad"],
+    )
+    assert second.suffctxrun_id == first.suffctxrun_id
+    assert persist_sufficiency_manifest(second, path=path) == path
+
+    # Machine-stable failure field change must not share the same semantic ID.
+    different_stage = failure.model_copy(update={"failure_stage": "persist"})
+    third = build_sufficiency_manifest(
+        snapshots=[snap],
+        failures=[different_stage],
+        expected_case_ids=["case_ok", "case_bad"],
+    )
+    assert third.suffctxrun_id != first.suffctxrun_id
+
+
 def test_identical_persisted_write_is_idempotent(tmp_path: Path) -> None:
     snap = build_sufficiency_snapshot(
         _provenance(
