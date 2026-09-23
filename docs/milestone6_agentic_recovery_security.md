@@ -1690,12 +1690,89 @@ Keep validation close to the model/derivation logic for now rather than creating
 
 Keeps the first implementation slice small enough to audit line-by-line.
 
-### 8.31 Next design decision (OD-11-32)
+### 8.31 OD-11-32 — LOCKED typed provenance input for derive.py
 
-**OPEN — next:** exact typed provenance input contract for `derive.py` —
-dedicated neutral provenance model with only fields needed for the seven
-observations vs passing `HybridRerankContextResult` directly (recommended:
-dedicated neutral model).
+**Status:** **LOCKED** — `derive.py` accepts a dedicated neutral typed
+provenance model containing **exactly** the semantic inputs required to
+reconstruct the OD-11-2 observation vector and its required lineage.
+`HybridRerankContextResult` is **not** part of the `sufficiency/` public
+contract; adapters **outside** the core translate runtime/context results into
+the neutral provenance model.
+
+| Option | Status |
+|---|---|
+| **A (dedicated SufficiencyProvenanceV1)** | **LOCKED** |
+| B (pass HybridRerankContextResult directly) | Rejected — couples core to context impl |
+| C (loose dict) | Rejected — weak contract / fail-closed gap |
+
+#### Preferred name
+
+`SufficiencyProvenanceV1` — not named after the current context implementation,
+so Slice 12 can produce the same contract from recovery attempts.
+
+#### Minimum contents
+
+```text
+required lineage IDs / hashes
+original_query
+active_retrieval_query
+attempt_number
+attempt_role
+
+ordered reranked anchors with:
+  chunk_id
+  raw reranker score
+  dense rank / presence
+  lexical rank / presence
+  hybrid / RRF rank / provenance needed for audit
+
+final EvidenceUnits with:
+  evidence-unit identity
+  document_id
+  section_path
+  only additional chunk/anchor references needed for provenance
+
+deterministic context diagnostics:
+  context_token_count
+  clipping flag
+  budget-exhausted flag
+  stop reason
+  dedup / containment counters
+  any other already-authorized deterministic assembly diagnostics
+```
+
+#### Constraints (locked)
+
+1. No gold labels or evaluation fields.
+2. No generator output or generation metadata.
+3. No LangGraph / recovery framework objects.
+4. No loose `dict[str, Any]` at the derivation boundary.
+5. No dependency from `sufficiency/` back into `context/`.
+6. Adapter code may depend on both `context/` and `sufficiency/`, but the core
+   must remain **one-way**.
+
+```text
+HybridRerankContextResult
+          |
+          v
+   adapter layer
+          |
+          v
+SufficiencyProvenanceV1
+          |
+          v
+      derive.py
+          |
+          v
+SufficiencyObservationV1
+```
+
+### 8.32 Next design decision (OD-11-33)
+
+**OPEN — next:** where the adapter from `HybridRerankContextResult` to
+`SufficiencyProvenanceV1` lives — outside `sufficiency/` (e.g. `context/` or a
+thin orchestration/evaluation adapter) so the neutral core stays
+dependency-clean (recommended).
 
 ---
 
@@ -2086,8 +2163,8 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-32 next; OD-11-2…11-31 LOCKED)
-  → 11A-1 observation core (after OD-11-32 + separate implementation auth)
+  → Slice 11 design interview (OD-11-33 next; OD-11-2…11-32 LOCKED)
+  → 11A-1 observation core (after OD-11-33 + separate implementation auth)
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
   → 12A state/protocol (+ LangGraph adapter decision OD-12-3)
@@ -2154,7 +2231,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-29** | Slice 11A first implementation boundary | **LOCKED** | §8.28 — 11A-1 observation core only; no persistence CLI / measure-once / runtime gate |
 | **OD-11-30** | Observation-core package boundary | **LOCKED** | §8.29 — `src/offline_rag/sufficiency/`; no agents/generation/gold; dependency direction locked |
 | **OD-11-31** | Internal modules for 11A-1 | **LOCKED** | §8.30 — contracts/derive/config_hash/ids; no premature subpackages |
-| **OD-11-32** | Typed provenance input for derive.py | **OPEN — next** | Prefer dedicated neutral provenance model; do not pass HybridRerankContextResult |
+| **OD-11-32** | Typed provenance input for derive.py | **LOCKED** | §8.31 — `SufficiencyProvenanceV1`; no HybridRerankContextResult / gold / dict; adapters outside core |
+| **OD-11-33** | Adapter location for context → provenance | **OPEN — next** | Prefer outside `sufficiency/` (context or thin orchestration/eval adapter) |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -2205,6 +2283,6 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-32** / provenance input
-contract) under separate authorization. Do **not** begin 11A-1 code until
-implementation is separately authorized.
+interview resolves remaining ODs (next: **OD-11-33** / adapter location)
+under separate authorization. Do **not** begin 11A-1 code until implementation
+is separately authorized.
