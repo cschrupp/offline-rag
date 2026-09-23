@@ -240,9 +240,10 @@ Checklist detail (same order; not startable out of sequence):
 - [ ] indirect prompt-injection suite (Slice 13)
 - [ ] optional NeMo Guardrails evaluation (Slice 13D; after deterministic controls)
 
-**Next:** Review **11A-2 — Snapshot & Manifest Persistence**.
-**11A-1 ACCEPTED** at `4f0cebc`. Next after 11A-2 review/auth: context
-adapter + A-preflight / B measure-once (still no thresholds/runtime gate).
+**Next:** Review **11A-3 — Context Adapter + A-Preflight**.
+**11A-1 ACCEPTED** at `4f0cebc`. **11A-2 ACCEPTED** at `cd0dd91`.
+Next after 11A-3 review: Path-B measure-once only if A is not qualified
+(still no thresholds/runtime gate).
 **OD-11-2 … OD-11-54 + OD-11-DESIGN-CLOSURE LOCKED** (see
 [`docs/milestone6_agentic_recovery_security.md`](docs/milestone6_agentic_recovery_security.md) §7–§8).
 Do not pick production thresholds before 11B measurement.

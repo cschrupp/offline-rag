@@ -16,6 +16,10 @@ from offline_rag.context.status import (
     context_status_for_corpus,
     describe_context_status,
 )
+from offline_rag.context.sufficiency_adapter import (
+    SufficiencyAdapterError,
+    adapt_hybrid_rerank_context_to_provenance,
+)
 
 __all__ = [
     "ContextExpander",
@@ -23,6 +27,8 @@ __all__ = [
     "HybridRerankContextAssembler",
     "HybridRerankContextError",
     "HybridRerankContextEvaluator",
+    "SufficiencyAdapterError",
+    "adapt_hybrid_rerank_context_to_provenance",
     "build_context_config_hash",
     "build_context_semantic_payload",
     "context_status_for_corpus",
