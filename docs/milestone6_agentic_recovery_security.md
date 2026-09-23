@@ -2273,12 +2273,43 @@ it and participates in semantic snapshot identity.
    keys, `evidence_unit_count` sees two units while diversity may still count
    one document/section.
 
-### 8.44 Next design decision (OD-11-45)
+### 8.44 OD-11-45 — LOCKED final EvidenceUnit order identity-bearing
 
-**OPEN — next:** whether final EvidenceUnit order is semantic and
-identity-bearing in `SufficiencyProvenanceV1`, or whether the provenance list
-may be canonicalized as a set (recommended: preserve exact final order;
-identity-bearing).
+**Status:** **LOCKED** — final EvidenceUnit order is preserved exactly as emitted
+by the context assembler and is semantic, identity-bearing provenance for
+`suffctx_`. Reordering the same EvidenceUnits produces a different semantic
+snapshot.
+
+| Option | Status |
+|---|---|
+| **A (exact order; identity-bearing)** | **LOCKED** |
+| B (canonicalize as set / sort by ID) | Rejected — erases generation-surface order |
+| C (preserve order but exclude from identity hash) | Rejected — claims distinct surfaces are identical |
+
+The snapshot represents the actual assembled generation surface, not merely the
+set of evidence identities.
+
+#### Implications (locked)
+
+1. `final_evidence_units` remains an **ordered list**, never a set.
+2. `suffctx_` hashing must preserve that list order.
+3. Sorting by EvidenceUnit ID before hashing is **prohibited**.
+4. Two snapshots containing the same `ev_` IDs in different orders must have
+   different `suffctx_` IDs.
+5. Diversity features may still use set semantics internally for their counts;
+   that does not make the underlying evidence surface unordered.
+6. `evidence_unit_count` remains `len(final_evidence_units)`.
+7. OD-11-14 recomputation must validate against the stored **ordered**
+   provenance.
+8. Any future context assembler change that only changes evidence order is
+   therefore a real semantic change to the snapshot, which is appropriate
+   because generation sees that changed order.
+
+### 8.45 Next design decision (OD-11-46)
+
+**OPEN — next:** whether reranked anchor order is likewise identity-bearing and
+must be preserved exactly (recommended: yes — order-dependent features include
+`top_reranker_score`, margin, and top-anchor cross-retriever support).
 
 ---
 
@@ -2669,7 +2700,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-45 next; OD-11-2…11-44 LOCKED)
+  → Slice 11 design interview (OD-11-46 next; OD-11-2…11-45 LOCKED)
   → 11A-1 observation core (after remaining ODs + separate implementation auth)
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -2750,7 +2781,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-42** | Nested provenance field scope vs context mirror | **LOCKED** | §8.41 — OD-11-32/26 projection only; field-membership test |
 | **OD-11-43** | Store full EvidenceUnit text in provenance? | **LOCKED** | §8.42 — no body text; context/evidence owns full text |
 | **OD-11-44** | Include EvidenceUnit IDs in provenance? | **LOCKED** | §8.43 — required `ev_…`; no synthesis; complements other provenance |
-| **OD-11-45** | Final EvidenceUnit order identity-bearing? | **OPEN — next** | Prefer preserve exact order; identity-bearing |
+| **OD-11-45** | Final EvidenceUnit order identity-bearing? | **LOCKED** | §8.44 — exact assembler order; reordering → new `suffctx_` |
+| **OD-11-46** | Reranked anchor order identity-bearing? | **OPEN — next** | Prefer yes; order-dependent observation features |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -2801,6 +2833,6 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-45** / EvidenceUnit order identity)
+interview resolves remaining ODs (next: **OD-11-46** / reranked anchor order identity)
 under separate authorization. Do **not** begin 11A-1 code until implementation
 is separately authorized.
