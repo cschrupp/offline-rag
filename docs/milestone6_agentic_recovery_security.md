@@ -2235,12 +2235,50 @@ text remains owned by the context/evidence layer.
    `SECURITY_MODEL.md`: retrieved document text remains untrusted data and is
    not propagated into layers that do not need it.
 
-### 8.43 Next design decision (OD-11-44)
+### 8.43 OD-11-44 — LOCKED EvidenceUnit IDs in provenance
 
-**OPEN — next:** whether `SufficiencyProvenanceV1` includes EvidenceUnit IDs
-themselves, or only document/section/source-chunk provenance sufficient for the
-seven features (recommended: include EvidenceUnit ID when it exists
-deterministically in the context contract).
+**Status:** **LOCKED** — `SufficiencyProvenanceV1` includes the deterministic
+EvidenceUnit identifier (`ev_…` / `full_evidence_unit_id`) for every final
+EvidenceUnit. The ID is required provenance when the context contract defines
+it and participates in semantic snapshot identity.
+
+| Option | Status |
+|---|---|
+| **A (include deterministic EvidenceUnit ID)** | **LOCKED** |
+| B (document/section/chunk only; no EvidenceUnit ID) | Rejected — weaker audit linkage |
+| C (optional ID; omit rather than fail if absent) | Rejected — softens fail-closed provenance |
+
+#### Why A (locked rationale)
+
+1. Strengthens audit linkage without copying evidence text.
+2. Lets a sufficiency snapshot trace back to the exact final EvidenceUnits that
+   formed the assembled surface.
+3. Helps distinguish two EvidenceUnits that may share the same document/section
+   identity but are still distinct units.
+4. Fits OD-11-25: `evidence_unit_count` remains the literal final list length,
+   while diversity counts deduplicate only by their declared keys.
+5. Remains neutral with respect to gold/evaluation.
+
+#### Invariants (locked)
+
+1. Missing EvidenceUnit ID is a provenance/validation failure if the upstream
+   context contract requires one.
+2. Do **not** synthesize IDs inside `sufficiency/`.
+3. ID comparison is **exact**.
+4. EvidenceUnit IDs do **not** replace `document_id`, `section_path`, or
+   chunk/anchor provenance; they complement them.
+5. The sufficiency layer does **not** re-derive or reinterpret
+   `full_evidence_unit_id`; it records the authoritative upstream value.
+6. If two final units have different `ev_` IDs but identical document/section
+   keys, `evidence_unit_count` sees two units while diversity may still count
+   one document/section.
+
+### 8.44 Next design decision (OD-11-45)
+
+**OPEN — next:** whether final EvidenceUnit order is semantic and
+identity-bearing in `SufficiencyProvenanceV1`, or whether the provenance list
+may be canonicalized as a set (recommended: preserve exact final order;
+identity-bearing).
 
 ---
 
@@ -2631,7 +2669,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-44 next; OD-11-2…11-43 LOCKED)
+  → Slice 11 design interview (OD-11-45 next; OD-11-2…11-44 LOCKED)
   → 11A-1 observation core (after remaining ODs + separate implementation auth)
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -2711,7 +2749,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-41** | Nested provenance models independently versioned? | **LOCKED** | §8.40 — typed + forbid; parent-versioned; not in public `__init__` by default |
 | **OD-11-42** | Nested provenance field scope vs context mirror | **LOCKED** | §8.41 — OD-11-32/26 projection only; field-membership test |
 | **OD-11-43** | Store full EvidenceUnit text in provenance? | **LOCKED** | §8.42 — no body text; context/evidence owns full text |
-| **OD-11-44** | Include EvidenceUnit IDs in provenance? | **OPEN — next** | Prefer yes when deterministic in context contract |
+| **OD-11-44** | Include EvidenceUnit IDs in provenance? | **LOCKED** | §8.43 — required `ev_…`; no synthesis; complements other provenance |
+| **OD-11-45** | Final EvidenceUnit order identity-bearing? | **OPEN — next** | Prefer preserve exact order; identity-bearing |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -2762,6 +2801,6 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-44** / EvidenceUnit IDs in provenance)
+interview resolves remaining ODs (next: **OD-11-45** / EvidenceUnit order identity)
 under separate authorization. Do **not** begin 11A-1 code until implementation
 is separately authorized.
