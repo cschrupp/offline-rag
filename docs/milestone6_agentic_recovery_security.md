@@ -2138,12 +2138,43 @@ class SufficiencyObservationV1(BaseModel):
    what structure/contract family this is; config hash says which exact
    derivation semantics produced it.
 
-### 8.40 Next design decision (OD-11-41)
+### 8.40 OD-11-41 — LOCKED nested provenance not independently versioned
 
-**OPEN — next:** whether nested provenance models (anchor / EvidenceUnit
-provenance) get independent schema/version contracts now, or remain typed
-internal components of `SufficiencyProvenanceV1` (recommended: typed +
-`extra="forbid"`, not independently versioned unless persisted outside parent).
+**Status:** **LOCKED** — nested anchor and EvidenceUnit provenance components are
+strongly typed and use `extra="forbid"`, but they are not independently
+versioned in 11A-1. Their schema evolution is governed by the parent
+`SufficiencyProvenanceV1` contract unless and until they become independently
+persisted or reused outside that parent.
+
+| Option | Status |
+|---|---|
+| **A (typed + forbid; parent-versioned only)** | **LOCKED** |
+| B (independent schema_version on each nested model now) | Rejected — premature sub-contracts |
+| C (untyped dicts / loose structures) | Rejected — not fail-closed |
+
+#### Balance (locked)
+
+1. Nested structures are fail-closed.
+2. No untyped dict payloads.
+3. No unnecessary proliferation of version strings.
+4. Incompatible changes to nested fields require a **new parent** provenance
+   version.
+5. If a nested model later becomes a standalone artifact or public cross-package
+   contract, it can then receive its own versioned schema.
+
+#### Export rule (locked)
+
+Nested model names remain **implementation-level** unless exported deliberately.
+Types like `SufficiencyAnchorProvenance` or `SufficiencyEvidenceUnitProvenance`
+may exist internally without being part of the top-level
+`sufficiency/__init__.py` public API unless later consumers genuinely need them.
+
+### 8.41 Next design decision (OD-11-42)
+
+**OPEN — next:** whether nested provenance models preserve only the exact fields
+needed by sufficiency, or also mirror extra context-stage metadata for audit
+convenience (recommended: only OD-11-32/26-authorized fields; no wholesale
+`HybridRerankContextResult` mirroring).
 
 ---
 
@@ -2534,7 +2565,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-41 next; OD-11-2…11-40 LOCKED)
+  → Slice 11 design interview (OD-11-42 next; OD-11-2…11-41 LOCKED)
   → 11A-1 observation core (after remaining ODs + separate implementation auth)
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -2611,7 +2642,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-38** | Versioned error reason-code enum | **LOCKED** | §8.37 — `SufficiencyErrorCodeV1`; additive-only; string values are contract |
 | **OD-11-39** | Serializable error envelope now vs defer | **LOCKED** | §8.38 — defer wire envelope; 11A-1 = exceptions + code + details only |
 | **OD-11-40** | Explicit schema_version on provenance/observation | **LOCKED** | §8.39 — both models; `extra="forbid"`; distinct from config hash |
-| **OD-11-41** | Nested provenance models independently versioned? | **OPEN — next** | Prefer typed + forbid; not independently versioned yet |
+| **OD-11-41** | Nested provenance models independently versioned? | **LOCKED** | §8.40 — typed + forbid; parent-versioned; not in public `__init__` by default |
+| **OD-11-42** | Nested provenance field scope vs context mirror | **OPEN — next** | Prefer OD-11-32/26 fields only; no HybridRerank mirror |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -2662,6 +2694,6 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-41** / nested provenance versioning)
+interview resolves remaining ODs (next: **OD-11-42** / nested provenance field scope)
 under separate authorization. Do **not** begin 11A-1 code until implementation
 is separately authorized.
