@@ -240,10 +240,10 @@ Checklist detail (same order; not startable out of sequence):
 - [ ] indirect prompt-injection suite (Slice 13)
 - [ ] optional NeMo Guardrails evaluation (Slice 13D; after deterministic controls)
 
-**Next:** Review **11A-1 — Sufficiency Observation Core** (`src/offline_rag/sufficiency/`).
-Next implementation after review/auth: later 11A snapshot/manifest persistence
-(still no CLI/runtime gate/recovery). **OD-11-2 … OD-11-54 +
-OD-11-DESIGN-CLOSURE LOCKED** (see
+**Next:** Review **11A-2 — Snapshot & Manifest Persistence**.
+**11A-1 ACCEPTED** at `4f0cebc`. Next after 11A-2 review/auth: context
+adapter + A-preflight / B measure-once (still no thresholds/runtime gate).
+**OD-11-2 … OD-11-54 + OD-11-DESIGN-CLOSURE LOCKED** (see
 [`docs/milestone6_agentic_recovery_security.md`](docs/milestone6_agentic_recovery_security.md) §7–§8).
 Do not pick production thresholds before 11B measurement.
 

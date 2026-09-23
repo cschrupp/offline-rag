@@ -1,5 +1,24 @@
-"""Sufficiency observation core — public contract surface (OD-11-34)."""
+"""Sufficiency observation core — public contract surface."""
 
+from offline_rag.sufficiency.artifacts import (
+    SUFFICIENCY_EVAL_CONTEXT_MANIFEST_V1,
+    SUFFICIENCY_EVAL_CONTEXT_V1,
+    SUFFICIENCY_FAILURE_RECORD_V1,
+    SufficiencyArtifactError,
+    SufficiencyAttemptGroupV1,
+    SufficiencyAttemptRefV1,
+    SufficiencyEvalContextManifestV1,
+    SufficiencyEvalContextSnapshotV1,
+    SufficiencyFailureRecordV1,
+    SufficiencyManifestAuditV1,
+    SufficiencySharedLineageV1,
+    SufficiencySnapshotAuditV1,
+    build_failure_record,
+    build_sufficiency_manifest,
+    build_sufficiency_snapshot,
+    require_authoritative_manifest,
+    shared_lineage_from_provenance,
+)
 from offline_rag.sufficiency.config_hash import build_observation_config_hash
 from offline_rag.sufficiency.contracts import (
     SUFFICIENCY_OBSERVATION_V1,
@@ -17,20 +36,53 @@ from offline_rag.sufficiency.derive import (
     validate_observation_against_provenance,
 )
 from offline_rag.sufficiency.ids import build_suffctx_id, build_suffctxrun_id
+from offline_rag.sufficiency.persist import (
+    SufficiencyPersistenceError,
+    default_manifest_artifact_path,
+    default_snapshot_artifact_path,
+    load_sufficiency_manifest,
+    load_sufficiency_snapshot,
+    persist_sufficiency_manifest,
+    persist_sufficiency_snapshot,
+)
 
 __all__ = [
+    "SUFFICIENCY_EVAL_CONTEXT_MANIFEST_V1",
+    "SUFFICIENCY_EVAL_CONTEXT_V1",
+    "SUFFICIENCY_FAILURE_RECORD_V1",
     "SUFFICIENCY_OBSERVATION_V1",
     "SUFFICIENCY_PROVENANCE_V1",
+    "SufficiencyArtifactError",
+    "SufficiencyAttemptGroupV1",
+    "SufficiencyAttemptRefV1",
     "SufficiencyDerivationError",
     "SufficiencyError",
     "SufficiencyErrorCodeV1",
     "SufficiencyErrorDetailsV1",
+    "SufficiencyEvalContextManifestV1",
+    "SufficiencyEvalContextSnapshotV1",
+    "SufficiencyFailureRecordV1",
+    "SufficiencyManifestAuditV1",
     "SufficiencyObservationV1",
+    "SufficiencyPersistenceError",
     "SufficiencyProvenanceV1",
+    "SufficiencySharedLineageV1",
+    "SufficiencySnapshotAuditV1",
     "SufficiencyValidationError",
+    "build_failure_record",
     "build_observation_config_hash",
     "build_suffctx_id",
     "build_suffctxrun_id",
+    "build_sufficiency_manifest",
+    "build_sufficiency_snapshot",
+    "default_manifest_artifact_path",
+    "default_snapshot_artifact_path",
     "derive_sufficiency_observation",
+    "load_sufficiency_manifest",
+    "load_sufficiency_snapshot",
+    "persist_sufficiency_manifest",
+    "persist_sufficiency_snapshot",
+    "require_authoritative_manifest",
+    "shared_lineage_from_provenance",
     "validate_observation_against_provenance",
 ]

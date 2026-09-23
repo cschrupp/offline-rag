@@ -3061,8 +3061,9 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 ```text
 Design contract (this document)          ← current
   → Slice 11 design interview complete (OD-11-2…11-54 + DESIGN-CLOSURE LOCKED)
-  → 11A-1 observation core                          ← implemented
-  → 11A later: snapshot/manifest persistence (separate auth)
+  → 11A-1 observation core                          ← accepted
+  → 11A-2 snapshot/manifest persistence             ← implemented
+  → 11A later: context adapter + measure-once (separate auth)
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
   → 12A state/protocol (+ LangGraph adapter decision OD-12-3)
@@ -3199,9 +3200,9 @@ runtime meaning. **Do not change config in the design pass.**
 
 ## HARD STOP
 
-**11A-1 (Sufficiency Observation Core) is implemented** under OD-11-29…54 +
-OD-11-DESIGN-CLOSURE.
+**11A-1 accepted.** **11A-2 (snapshot/manifest persistence) is implemented**
+under OD-11-5…28 + design closure.
 
-**Do not** add snapshot/manifest persistence, CLI, live context adapter,
-measure-once retrieval, threshold selection, runtime sufficiency gating,
-LangGraph/recovery, or the security harness unless separately re-authorized.
+**Do not** add live context adapter, measure-once retrieval, threshold
+selection, runtime sufficiency gating, LangGraph/recovery, CLI beyond what was
+authorized, or the security harness unless separately re-authorized.
