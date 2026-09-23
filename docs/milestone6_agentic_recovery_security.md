@@ -1549,12 +1549,73 @@ incomplete execution manifest
     → eligible authoritative 11B snapshot set
 ```
 
-### 8.28 Next design decision
+### 8.28 OD-11-29 — LOCKED Slice 11A-1 implementation boundary
 
-With OD-11-2…28 largely specifying observation/snapshot contracts, the next
-open item should address **where Slice 11A implementation starts** (package
-boundary / observation builder vs full snapshot persistence) — or another
-explicit OD if preferred. See OPEN DECISIONS table.
+**Status:** **LOCKED** — first Slice 11A implementation delivers only the
+**sufficiency observation core**: contracts, versioned derivation semantics,
+deterministic ID/config-hash helpers, validation, and unit tests against
+in-memory/provenance fixtures. **No** snapshot persistence CLI, **no**
+measure-once retrieval execution, and **no** runtime sufficiency gating are
+authorized in this first implementation step.
+
+**Substep name:** **11A-1 — Sufficiency Observation Core**
+
+| Option | Status |
+|---|---|
+| **A (observation core first)** | **LOCKED** |
+| B (full snapshot persistence + CLI first) | Rejected — mixes science with orchestration |
+| C (runtime gating before contracts) | Rejected — wrong order vs 11A→11B→11C |
+
+#### In scope for 11A-1
+
+- `sufficiency-observation-v1` typed observation model with the seven locked
+  fields
+- canonical derivation-config object and `observation_config_hash`
+- deterministic derivation from a typed provenance input
+- exact OD-11-18 through OD-11-25 semantics
+- recomputation/validation support from OD-11-14
+- `suffctx_` semantic-ID helper operating on an in-memory semantic payload
+- `suffctxrun_` ID helper if useful to lock canonicalization behavior, but
+  **not** manifest persistence yet
+- strict validation for lineage/provenance requirements already frozen
+- **no** gold dependencies in the observation package
+
+#### Required tests (at least)
+
+- zero EvidenceUnits → `empty_context=true`
+- anchors present but zero EvidenceUnits
+- 0 / 1 / 2+ anchors and margin nullability
+- negative raw logits and tied scores
+- dense-only, lexical-only, both, neither top-anchor provenance
+- exact document identity
+- structural-only section normalization
+- cross-document identical section paths
+- multiple EvidenceUnits sharing chunk/anchor
+- malformed/missing required provenance fails closed
+- stored observation vs recomputed observation mismatch fails
+- semantic-equivalent payloads produce identical IDs despite different
+  timestamps/latency
+- semantic changes produce different IDs
+
+#### Explicitly not yet
+
+- filesystem artifact stores
+- `suffctxrun_` manifest writing
+- CLI commands
+- actual 22-case 11B snapshot generation
+- threshold analysis
+- policy gates beyond the already-authorized `empty_context`
+- changes to the live query/generation path
+- LangGraph/recovery work
+
+This decision freezes **11A-1 scope** only. Actual code changes still require
+separate implementation authorization after the package-boundary OD as needed.
+
+### 8.29 Next design decision (OD-11-30)
+
+**OPEN — next:** package/module boundary for the observation core — neutral
+`offline_rag/sufficiency/` with no dependency on `agents/`, `generation/`, or
+evaluation/gold code (recommended).
 
 ---
 
@@ -1945,8 +2006,8 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-29 next; OD-11-2…11-28 LOCKED)
-  → 11A contracts + observation builder + tests
+  → Slice 11 design interview (OD-11-30 next; OD-11-2…11-29 LOCKED)
+  → 11A-1 observation core (after OD-11-30 + separate implementation auth)
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
   → 12A state/protocol (+ LangGraph adapter decision OD-12-3)
@@ -2010,7 +2071,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-26** | Diagnostics: semantic vs audit-only | **LOCKED** | §8.25 — tiered diagnostics; identity allowlist; assembly counters persisted but not auto-gates; latency audit-only |
 | **OD-11-27** | Snapshot creation failure semantics | **LOCKED** | §8.26 — fail-closed; no partial `suffctx_`; structured failure records; contract-null ≠ missing |
 | **OD-11-28** | Incomplete manifest as authoritative 11B set | **LOCKED** | §8.27 — incomplete = diagnostic only; authoritative set requires 100% successful coverage |
-| **OD-11-29** | Slice 11A first implementation boundary | **OPEN — next** | Prefer observation contracts + builder + ID helpers before full persistence CLI |
+| **OD-11-29** | Slice 11A first implementation boundary | **LOCKED** | §8.28 — 11A-1 observation core only; no persistence CLI / measure-once / runtime gate |
+| **OD-11-30** | Observation-core package boundary | **OPEN — next** | Prefer neutral `offline_rag/sufficiency/`; no agents/generation/gold deps |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -2061,5 +2123,6 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-29** / 11A implementation
-boundary) under separate authorization.
+interview resolves remaining ODs (next: **OD-11-30** / package boundary)
+under separate authorization. Do **not** begin 11A-1 code until implementation
+is separately authorized.

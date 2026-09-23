@@ -240,10 +240,11 @@ Checklist detail (same order; not startable out of sequence):
 - [ ] indirect prompt-injection suite (Slice 13)
 - [ ] optional NeMo Guardrails evaluation (Slice 13D; after deterministic controls)
 
-**Next:** Slice 11 design interview — **OD-11-29** (Slice 11A first
-implementation boundary). **OD-11-2 … OD-11-28 LOCKED** (see
+**Next:** Slice 11 design interview — **OD-11-30** (observation-core package
+boundary). **OD-11-2 … OD-11-29 LOCKED** (11A-1 scope frozen; see
 [`docs/milestone6_agentic_recovery_security.md`](docs/milestone6_agentic_recovery_security.md) §7–§8).
-Do not pick production thresholds before 11B measurement.
+Do not implement 11A-1 until separately authorized. Do not pick production
+thresholds before 11B measurement.
 
 **Release criterion:** agentic recovery demonstrates measured benefit and adversarial test results are documented.
 
