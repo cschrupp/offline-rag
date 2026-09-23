@@ -2425,13 +2425,50 @@ for index, anchor in enumerate(anchors):
 
 Keeps OD-11-46 and OD-11-49 aligned: order and explicit rank must agree exactly.
 
-### 8.49 Next design decision (OD-11-50)
+### 8.49 OD-11-50 — LOCKED dense_rank / lexical_rank positivity & uniqueness
 
-**OPEN — next:** whether `dense_rank` and `lexical_rank`, when present, must be
-positive unique ranks within their respective branch memberships (recommended:
-yes for positivity and per-branch uniqueness among stored anchors; do **not**
-require contiguity, because the final list may be a subset of branch
-candidates).
+**Status:** **LOCKED** — when `dense_rank` or `lexical_rank` is present on a
+stored reranked anchor, that rank must be a positive integer and must be unique
+within its corresponding branch among the anchors represented in the snapshot.
+Contiguity is not required.
+
+| Option | Status |
+|---|---|
+| **A (positive + per-branch unique; no contiguity)** | **LOCKED** |
+| B (also require contiguous 1..N in stored subset) | Rejected — false rejects on legitimate subsets |
+| C (opaque optional ints; no validation) | Rejected — not fail-closed |
+
+#### Canonical rules (locked)
+
+```text
+dense_rank:
+  null  → anchor absent from dense branch
+  int>0 → anchor present in dense branch
+
+lexical_rank:
+  null  → anchor absent from lexical branch
+  int>0 → anchor present in lexical branch
+```
+
+Within one snapshot:
+
+1. No two stored anchors may share the same non-null `dense_rank`.
+2. No two stored anchors may share the same non-null `lexical_rank`.
+3. Ranks like `1, 4, 11` are valid because the reranked surface may only retain
+   a subset of original branch candidates.
+4. `0` or negative ranks are invalid.
+5. `sufficiency` must not renumber or compact them.
+6. `null` remains meaningful absence, not an error.
+
+Preserves OD-11-20 cleanly: cross-retriever support is just non-null membership
+in both branches, independent of rank strength.
+
+### 8.50 Next design decision (OD-11-51)
+
+**OPEN — next:** whether dense/lexical branch scores belong in
+`SufficiencyProvenanceV1` and semantic identity, or whether ranks/membership are
+sufficient for v1 (recommended: retain if deterministic upstream for
+auditability; diagnostic-only; out of the seven observation features).
 
 ---
 
@@ -2822,7 +2859,7 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 
 ```text
 Design contract (this document)          ← current
-  → Slice 11 design interview (OD-11-50 next; OD-11-2…11-49 LOCKED)
+  → Slice 11 design interview (OD-11-51 next; OD-11-2…11-50 LOCKED)
   → 11A-1 observation core (after remaining ODs + separate implementation auth)
   → 11B offline eval / threshold sweeps (no base.yaml auto-write)
   → 11C runtime gate + taxonomy
@@ -2908,7 +2945,8 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-47** | chunk_id unique authoritative anchor identity? | **LOCKED** | §8.46 — exact unique `chunk_id`; no repair; fail closed |
 | **OD-11-48** | EvidenceUnit ID unique in final list? | **LOCKED** | §8.47 — exact unique `ev_…`; no repair; fail closed |
 | **OD-11-49** | Anchor ranks contiguous / match list position? | **LOCKED** | §8.48 — 1-based `rerank_rank == index+1`; no rewrite |
-| **OD-11-50** | dense_rank / lexical_rank positivity & uniqueness? | **OPEN — next** | Prefer positive + per-branch unique; no contiguity |
+| **OD-11-50** | dense_rank / lexical_rank positivity & uniqueness? | **LOCKED** | §8.49 — positive + per-branch unique; null = absent; no contiguity |
+| **OD-11-51** | Dense/lexical scores in provenance / identity? | **OPEN — next** | Prefer retain if deterministic; diagnostic-only; not in 7 features |
 | **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
@@ -2959,6 +2997,6 @@ This design pass ends here.
 
 **Do not** implement Slice 11 runtime code, add LangGraph, run sufficiency
 experiments, or begin Milestone 6 implementation until the Slice 11 design
-interview resolves remaining ODs (next: **OD-11-50** / dense_rank lexical_rank rules)
+interview resolves remaining ODs (next: **OD-11-51** / dense lexical scores in provenance)
 under separate authorization. Do **not** begin 11A-1 code until implementation
 is separately authorized.
