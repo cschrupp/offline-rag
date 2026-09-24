@@ -594,6 +594,70 @@ def test_historical_hybrid_rerank_artifact_is_path_a_not_qualified() -> None:
         assert required in sample.missing_or_ambiguous
 
 
+def test_path_a_historical_query_conflict_is_irreversible(tmp_path: Path) -> None:
+    """A→B conflict must not be erased by a later qualified A sighting."""
+    intended = {"case_1": "query-A"}
+    path_a1 = tmp_path / "a1.json"
+    path_b = tmp_path / "b.json"
+    path_a2 = tmp_path / "a2.json"
+    path_a1.write_text(
+        _context_result(query="query-A").model_dump_json(), encoding="utf-8"
+    )
+    path_b.write_text(
+        _context_result(query="query-B").model_dump_json(), encoding="utf-8"
+    )
+    path_a2.write_text(
+        _context_result(query="query-A").model_dump_json(), encoding="utf-8"
+    )
+    report = run_path_a_preflight(
+        intended_case_queries=intended,
+        artifact_paths=[path_a1, path_b, path_a2],
+        context_result_case_id_by_path={
+            str(path_a1): "case_1",
+            str(path_b): "case_1",
+            str(path_a2): "case_1",
+        },
+    )
+    assert report.overall == PathAOverallResult.PATH_A_NOT_QUALIFIED
+    case = report.case_assessments[0]
+    assert case.status == PathACaseStatus.NOT_QUALIFIED
+    assert PathAMissingRequirement.QUERY_CASE_BINDING in case.missing_or_ambiguous
+    assert "conflicting historical query bindings for case" in case.notes
+
+
+def test_path_a_historical_query_conflict_is_irreversible_reverse_order(
+    tmp_path: Path,
+) -> None:
+    """B first, then qualified A twice: conflict must remain latched."""
+    intended = {"case_1": "query-A"}
+    path_b = tmp_path / "b.json"
+    path_a1 = tmp_path / "a1.json"
+    path_a2 = tmp_path / "a2.json"
+    path_b.write_text(
+        _context_result(query="query-B").model_dump_json(), encoding="utf-8"
+    )
+    path_a1.write_text(
+        _context_result(query="query-A").model_dump_json(), encoding="utf-8"
+    )
+    path_a2.write_text(
+        _context_result(query="query-A").model_dump_json(), encoding="utf-8"
+    )
+    report = run_path_a_preflight(
+        intended_case_queries=intended,
+        artifact_paths=[path_b, path_a1, path_a2],
+        context_result_case_id_by_path={
+            str(path_b): "case_1",
+            str(path_a1): "case_1",
+            str(path_a2): "case_1",
+        },
+    )
+    assert report.overall == PathAOverallResult.PATH_A_NOT_QUALIFIED
+    case = report.case_assessments[0]
+    assert case.status == PathACaseStatus.NOT_QUALIFIED
+    assert PathAMissingRequirement.QUERY_CASE_BINDING in case.missing_or_ambiguous
+    assert "conflicting historical query bindings for case" in case.notes
+
+
 def test_assess_complete_context_result_qualifies() -> None:
     assessment = assess_hybrid_rerank_context_result_for_path_a(
         _context_result(query="exact frozen"),

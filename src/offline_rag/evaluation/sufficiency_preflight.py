@@ -511,17 +511,38 @@ def _inspect_context_result_dump(
     return inspected, [assessment], lineage
 
 
+_HISTORICAL_QUERY_CONFLICT_NOTE = "conflicting historical query bindings for case"
+
+
+def _has_historical_query_conflict(assessment: PathACaseAssessment) -> bool:
+    return _HISTORICAL_QUERY_CONFLICT_NOTE in assessment.notes
+
+
 def _merge_case_assessment(
     prior: PathACaseAssessment,
     incoming: PathACaseAssessment,
 ) -> PathACaseAssessment:
-    """Merge historical sightings; conflicting query bindings fail closed."""
-    if (
+    """Merge historical sightings; conflicting query bindings fail closed.
+
+    Once conflicting historical query bindings are observed for a case, that
+    conflict is irreversible for the remainder of the preflight run. A later
+    qualified sighting must not clear ``QUERY_CASE_BINDING``.
+    """
+    queries_conflict = (
         prior.query is not None
         and incoming.query is not None
         and prior.query != incoming.query
-    ):
+    )
+    conflict_latched = (
+        _has_historical_query_conflict(prior)
+        or _has_historical_query_conflict(incoming)
+        or queries_conflict
+    )
+    if conflict_latched:
         missing = list(prior.missing_or_ambiguous)
+        for item in incoming.missing_or_ambiguous:
+            if item not in missing:
+                missing.append(item)
         if PathAMissingRequirement.QUERY_CASE_BINDING not in missing:
             missing.insert(0, PathAMissingRequirement.QUERY_CASE_BINDING)
         return prior.model_copy(
@@ -533,10 +554,12 @@ def _merge_case_assessment(
                         [
                             *prior.notes,
                             *incoming.notes,
-                            "conflicting historical query bindings for case",
+                            _HISTORICAL_QUERY_CONFLICT_NOTE,
                         ]
                     )
                 ),
+                # Keep first observed query; conflict latch is in notes/missing.
+                "query": prior.query if prior.query is not None else incoming.query,
             }
         )
 
