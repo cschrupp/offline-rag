@@ -52,6 +52,7 @@ class SufficiencyErrorCodeV1(str, Enum):
     INVALID_HYBRID_RANK = "invalid_hybrid_rank"
     INVALID_DIAGNOSTICS = "invalid_diagnostics"
     INVALID_QUERY_FIELDS = "invalid_query_fields"
+    CONTRADICTORY_UPSTREAM_STATE = "contradictory_upstream_state"
 
 
 class SufficiencyErrorDetailsV1(BaseModel):

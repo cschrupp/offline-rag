@@ -24,6 +24,8 @@ from offline_rag.sufficiency.contracts import (
     SufficiencyProvenanceV1,
 )
 
+EXPECTED_HYBRID_RERANK_CONTEXT_METHOD = "hybrid-rerank-context"
+
 
 class SufficiencyAdapterError(SufficiencyDerivationError):
     """Fail-closed adapter projection error (missing/ambiguous upstream fields)."""
@@ -44,6 +46,85 @@ def _require_nonblank(value: Any, *, field_name: str) -> str:
 
 def _metadata_str(metadata: dict[str, Any], key: str) -> str:
     return _require_nonblank(metadata.get(key), field_name=key)
+
+
+def _raise_contradiction(
+    *,
+    field_name: str,
+    expected: str | float | bool | None,
+    actual: str | float | bool | None,
+    message: str,
+) -> None:
+    raise SufficiencyAdapterError(
+        SufficiencyErrorCodeV1.CONTRADICTORY_UPSTREAM_STATE,
+        message,
+        details=SufficiencyErrorDetailsV1(
+            field_name=field_name,
+            expected=expected,
+            actual=actual,
+        ),
+    )
+
+
+def validate_hybrid_rerank_context_consistency(
+    result: HybridRerankContextResult,
+) -> None:
+    """Fail closed when duplicated upstream semantic representations disagree."""
+    if result.method != EXPECTED_HYBRID_RERANK_CONTEXT_METHOD:
+        _raise_contradiction(
+            field_name="method",
+            expected=EXPECTED_HYBRID_RERANK_CONTEXT_METHOD,
+            actual=result.method,
+            message=(
+                "context result method must be hybrid-rerank-context; "
+                "refusing to project contradictory/unsupported source method"
+            ),
+        )
+
+    if result.context_token_count != result.diagnostics.context_token_count:
+        _raise_contradiction(
+            field_name="context_token_count",
+            expected=result.diagnostics.context_token_count,
+            actual=result.context_token_count,
+            message=(
+                "result.context_token_count disagrees with "
+                "diagnostics.context_token_count"
+            ),
+        )
+
+    evidence_count = len(result.evidence_units)
+    if result.diagnostics.evidence_unit_count != evidence_count:
+        _raise_contradiction(
+            field_name="evidence_unit_count",
+            expected=evidence_count,
+            actual=result.diagnostics.evidence_unit_count,
+            message=(
+                "diagnostics.evidence_unit_count disagrees with len(evidence_units)"
+            ),
+        )
+
+    anchor_count = len(result.anchors)
+    if result.diagnostics.actual_anchor_count != anchor_count:
+        _raise_contradiction(
+            field_name="actual_anchor_count",
+            expected=anchor_count,
+            actual=result.diagnostics.actual_anchor_count,
+            message=("diagnostics.actual_anchor_count disagrees with len(anchors)"),
+        )
+
+    for candidate in result.anchors:
+        top_score = float(candidate.score)
+        nested_score = float(candidate.hybrid_rerank.reranker_score)
+        if top_score != nested_score:
+            _raise_contradiction(
+                field_name="reranker_score",
+                expected=nested_score,
+                actual=top_score,
+                message=(
+                    "candidate.score disagrees with "
+                    "candidate.hybrid_rerank.reranker_score"
+                ),
+            )
 
 
 def _map_anchor(candidate: HybridRerankCandidate) -> SufficiencyAnchorProvenance:
@@ -96,7 +177,10 @@ def adapt_hybrid_rerank_context_to_provenance(
 
     Does not sort, renumber, synthesize, or repair retrieval provenance.
     Latency/host/path/timestamps in ``result.metadata`` are ignored.
+    Contradictory duplicated upstream fields fail closed.
     """
+    validate_hybrid_rerank_context_consistency(result)
+
     case = _require_nonblank(case_id, field_name="case_id")
     query = _require_nonblank(result.query, field_name="query")
     metadata = dict(result.metadata or {})

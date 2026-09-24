@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from enum import Enum
 from pathlib import Path
 from typing import Any, Literal
@@ -91,6 +92,7 @@ class PathAPreflightReport(BaseModel):
         "sufficiency-path-a-preflight-v1"
     )
     intended_case_ids: list[ExactNonBlankStr]
+    intended_case_queries: dict[str, str]
     inspected_artifacts: list[PathAInspectedArtifact] = Field(default_factory=list)
     case_assessments: list[PathACaseAssessment] = Field(default_factory=list)
     lineage_consistency: PathALineageConsistency
@@ -100,6 +102,31 @@ class PathAPreflightReport(BaseModel):
 
 def _blank(value: Any) -> bool:
     return not isinstance(value, str) or value == "" or value.strip() == ""
+
+
+def _normalize_intended_case_queries(
+    intended_case_queries: Mapping[str, str],
+) -> dict[str, str]:
+    if not intended_case_queries:
+        raise ValueError("intended_case_queries must be non-empty")
+    ordered: dict[str, str] = {}
+    for case_id, query in intended_case_queries.items():
+        if _blank(case_id):
+            raise ValueError("intended case_id must be a nonblank string")
+        if case_id in ordered:
+            raise ValueError(f"duplicate intended case_id: {case_id}")
+        if not isinstance(query, str) or query == "":
+            # Exact binding: blank/non-string queries are invalid; do not strip.
+            raise ValueError(
+                f"intended original_query for case_id={case_id!r} must be a "
+                "non-empty string (no trimming/normalization)"
+            )
+        if query.strip() == "":
+            raise ValueError(
+                f"intended original_query for case_id={case_id!r} is whitespace-only"
+            )
+        ordered[case_id] = query
+    return ordered
 
 
 def _lineage_tuple(view: PathASharedLineageView) -> tuple[str | None, ...]:
@@ -124,11 +151,9 @@ def _merge_lineage_views(
     if not views:
         return PathALineageConsistency.INSUFFICIENT, None
     if any(not _lineage_complete(view) for view in views):
-        # Incomplete lineage cannot establish a coherent shared authority.
         complete = [view for view in views if _lineage_complete(view)]
         if not complete:
             return PathALineageConsistency.INSUFFICIENT, views[0]
-        # Mixing complete with incomplete / differing values is inconsistent.
         base = _lineage_tuple(complete[0])
         for view in views:
             if _lineage_complete(view) and _lineage_tuple(view) != base:
@@ -179,20 +204,44 @@ def _lineage_from_retrieval_eval(
     )
 
 
+def _dedupe_missing(
+    missing: list[PathAMissingRequirement],
+) -> list[PathAMissingRequirement]:
+    seen: set[PathAMissingRequirement] = set()
+    ordered: list[PathAMissingRequirement] = []
+    for item in missing:
+        if item not in seen:
+            seen.add(item)
+            ordered.append(item)
+    return ordered
+
+
+def _binding_matches(*, historical_query: str | None, intended_query: str) -> bool:
+    """Exact string equality; no trim/normalize/fuzzy compare."""
+    return isinstance(historical_query, str) and historical_query == intended_query
+
+
 def _missing_for_retrieval_eval_case(
     case: CaseEvaluationResult,
     *,
     lineage: PathASharedLineageView,
+    intended_query: str | None,
 ) -> list[PathAMissingRequirement]:
     """Classify gaps for common retrieval-eval envelopes (no full context dump)."""
     missing: list[PathAMissingRequirement] = []
-    if _blank(case.case_id) or _blank(case.query):
+    if (
+        _blank(case.case_id)
+        or _blank(case.query)
+        or intended_query is None
+        or not _binding_matches(
+            historical_query=case.query, intended_query=intended_query
+        )
+    ):
         missing.append(PathAMissingRequirement.QUERY_CASE_BINDING)
 
     if not _lineage_complete(lineage):
         missing.append(PathAMissingRequirement.SHARED_LINEAGE)
 
-    # Retrieved IDs alone never supply score/rank/branch/EU/diagnostics vector.
     missing.extend(
         [
             PathAMissingRequirement.RERANKER_RAW_SCORES,
@@ -204,37 +253,14 @@ def _missing_for_retrieval_eval_case(
             PathAMissingRequirement.ASSEMBLY_DIAGNOSTICS,
         ]
     )
-
-    # Context-eval case diagnostics may partially exist in `diagnostics`, but
-    # never substitute for full EvidenceUnit / anchor score provenance.
-    diag = dict(case.diagnostics or {})
-    assembly_keys = {
-        "evidence_unit_count",
-        "context_token_count",
-        "clipping_occurred",
-        "budget_exhausted",
-        "stop_reason",
-        "dedup_hits",
-        "containment_suppressions",
-    }
-    if assembly_keys.issubset(diag.keys()):
-        # Still missing: assembly fields alone do not qualify Path A.
-        pass
-
-    # Deduplicate while preserving order.
-    seen: set[PathAMissingRequirement] = set()
-    ordered: list[PathAMissingRequirement] = []
-    for item in missing:
-        if item not in seen:
-            seen.add(item)
-            ordered.append(item)
-    return ordered
+    return _dedupe_missing(missing)
 
 
 def assess_hybrid_rerank_context_result_for_path_a(
     result: HybridRerankContextResult,
     *,
     case_id: str,
+    intended_query: str,
 ) -> PathACaseAssessment:
     """Assess whether a full context result can reconstruct SufficiencyProvenanceV1."""
     from offline_rag.context.sufficiency_adapter import (
@@ -247,10 +273,15 @@ def assess_hybrid_rerank_context_result_for_path_a(
 
     notes: list[str] = []
     missing: list[PathAMissingRequirement] = []
-    if _blank(case_id):
+    if _blank(case_id) or _blank(result.query):
         missing.append(PathAMissingRequirement.QUERY_CASE_BINDING)
-    if _blank(result.query):
+    elif not _binding_matches(
+        historical_query=result.query, intended_query=intended_query
+    ):
         missing.append(PathAMissingRequirement.QUERY_CASE_BINDING)
+        notes.append(
+            "historical query does not exactly equal frozen intended original_query"
+        )
 
     metadata = dict(result.metadata or {})
     lineage = PathASharedLineageView(
@@ -282,8 +313,6 @@ def assess_hybrid_rerank_context_result_for_path_a(
         missing.append(PathAMissingRequirement.SHARED_LINEAGE)
 
     if not result.anchors:
-        # Empty anchors can still be a valid empty_context observation, but only
-        # when other required fields are present; treat as present ranks/scores.
         notes.append("anchors list is empty (empty_context-capable)")
     else:
         for anchor in result.anchors:
@@ -322,14 +351,7 @@ def assess_hybrid_rerank_context_result_for_path_a(
     ):
         missing.append(PathAMissingRequirement.ASSEMBLY_DIAGNOSTICS)
 
-    # Deduplicate.
-    seen: set[PathAMissingRequirement] = set()
-    ordered_missing: list[PathAMissingRequirement] = []
-    for item in missing:
-        if item not in seen:
-            seen.add(item)
-            ordered_missing.append(item)
-
+    ordered_missing = _dedupe_missing(missing)
     if ordered_missing:
         return PathACaseAssessment(
             case_id=case_id if not _blank(case_id) else "unknown",
@@ -349,11 +371,7 @@ def assess_hybrid_rerank_context_result_for_path_a(
             case_id=case_id,
             status=PathACaseStatus.NOT_QUALIFIED,
             query=result.query,
-            missing_or_ambiguous=[
-                PathAMissingRequirement.SHARED_LINEAGE
-                if PathAMissingRequirement.SHARED_LINEAGE not in ordered_missing
-                else PathAMissingRequirement.QUERY_CASE_BINDING
-            ],
+            missing_or_ambiguous=[PathAMissingRequirement.SHARED_LINEAGE],
             notes=notes,
         )
 
@@ -376,6 +394,8 @@ def _load_json(path: Path) -> dict[str, Any]:
 def _inspect_retrieval_eval(
     path: Path,
     payload: dict[str, Any],
+    *,
+    intended_case_queries: Mapping[str, str],
 ) -> tuple[PathAInspectedArtifact, list[PathACaseAssessment], PathASharedLineageView]:
     report = RetrievalEvaluationResultV1.model_validate(payload)
     lineage = _lineage_from_retrieval_eval(report)
@@ -388,21 +408,28 @@ def _inspect_retrieval_eval(
         lineage=lineage,
         case_ids_present=[case.case_id for case in report.cases],
     )
-    assessments = [
-        PathACaseAssessment(
-            case_id=case.case_id,
-            status=PathACaseStatus.NOT_QUALIFIED,
-            query=case.query,
-            missing_or_ambiguous=_missing_for_retrieval_eval_case(
-                case, lineage=lineage
-            ),
-            notes=[
-                "historical retrieval-eval envelope lacks full sufficiency provenance"
-            ],
-            source_artifact_id=report.run_id,
+    assessments: list[PathACaseAssessment] = []
+    for case in report.cases:
+        intended_query = intended_case_queries.get(case.case_id)
+        assessments.append(
+            PathACaseAssessment(
+                case_id=case.case_id,
+                status=PathACaseStatus.NOT_QUALIFIED,
+                query=case.query,
+                missing_or_ambiguous=_missing_for_retrieval_eval_case(
+                    case,
+                    lineage=lineage,
+                    intended_query=intended_query,
+                ),
+                notes=[
+                    (
+                        "historical retrieval-eval envelope lacks full "
+                        "sufficiency provenance"
+                    )
+                ],
+                source_artifact_id=report.run_id,
+            )
         )
-        for case in report.cases
-    ]
     return inspected, assessments, lineage
 
 
@@ -411,6 +438,7 @@ def _inspect_context_result_dump(
     payload: dict[str, Any],
     *,
     case_id: str | None,
+    intended_case_queries: Mapping[str, str],
 ) -> tuple[PathAInspectedArtifact, list[PathACaseAssessment], PathASharedLineageView]:
     result = HybridRerankContextResult.model_validate(payload)
     metadata = dict(result.metadata or {})
@@ -464,30 +492,87 @@ def _inspect_context_result_dump(
             notes=["context result dump missing case_id binding"],
             source_artifact_id=str(path),
         )
+    elif resolved_case not in intended_case_queries:
+        assessment = PathACaseAssessment(
+            case_id=resolved_case,
+            status=PathACaseStatus.NOT_QUALIFIED,
+            query=result.query,
+            missing_or_ambiguous=[PathAMissingRequirement.QUERY_CASE_BINDING],
+            notes=["case_id is outside the intended frozen population"],
+            source_artifact_id=str(path),
+        )
     else:
         assessment = assess_hybrid_rerank_context_result_for_path_a(
-            result, case_id=resolved_case
+            result,
+            case_id=resolved_case,
+            intended_query=intended_case_queries[resolved_case],
         )
         assessment = assessment.model_copy(update={"source_artifact_id": str(path)})
     return inspected, [assessment], lineage
 
 
+def _merge_case_assessment(
+    prior: PathACaseAssessment,
+    incoming: PathACaseAssessment,
+) -> PathACaseAssessment:
+    """Merge historical sightings; conflicting query bindings fail closed."""
+    if (
+        prior.query is not None
+        and incoming.query is not None
+        and prior.query != incoming.query
+    ):
+        missing = list(prior.missing_or_ambiguous)
+        if PathAMissingRequirement.QUERY_CASE_BINDING not in missing:
+            missing.insert(0, PathAMissingRequirement.QUERY_CASE_BINDING)
+        return prior.model_copy(
+            update={
+                "status": PathACaseStatus.NOT_QUALIFIED,
+                "missing_or_ambiguous": missing,
+                "notes": list(
+                    dict.fromkeys(
+                        [
+                            *prior.notes,
+                            *incoming.notes,
+                            "conflicting historical query bindings for case",
+                        ]
+                    )
+                ),
+            }
+        )
+
+    if incoming.status == PathACaseStatus.QUALIFIED:
+        return incoming
+    if prior.status == PathACaseStatus.QUALIFIED:
+        return prior
+
+    merged_missing = list(prior.missing_or_ambiguous)
+    for item in incoming.missing_or_ambiguous:
+        if item not in merged_missing:
+            merged_missing.append(item)
+    return prior.model_copy(
+        update={
+            "missing_or_ambiguous": merged_missing,
+            "notes": list(dict.fromkeys([*prior.notes, *incoming.notes])),
+            "query": prior.query if prior.query is not None else incoming.query,
+        }
+    )
+
+
 def run_path_a_preflight(
     *,
-    intended_case_ids: list[str],
+    intended_case_queries: Mapping[str, str],
     artifact_paths: list[Path],
     context_result_case_id_by_path: dict[str, str] | None = None,
 ) -> PathAPreflightReport:
     """Read-only Path-A qualification over immutable historical artifacts.
 
-    Path A succeeds only when **every** intended case is reconstructible from one
-    coherent historical lineage with complete sufficiency provenance. This
-    function never invokes retrieval or synthesizes missing ranks/scores.
+    ``intended_case_queries`` is the frozen ``case_id -> original_query`` mapping.
+    Path A succeeds only when every intended binding matches exactly and each case
+    is reconstructible from one coherent historical lineage. Never invokes
+    retrieval or synthesizes missing ranks/scores.
     """
-    if not intended_case_ids:
-        raise ValueError("intended_case_ids must be non-empty")
-    if len(set(intended_case_ids)) != len(intended_case_ids):
-        raise ValueError("intended_case_ids must be unique")
+    frozen = _normalize_intended_case_queries(intended_case_queries)
+    ordered_intended = list(frozen.keys())
     if not artifact_paths:
         raise ValueError("artifact_paths must be non-empty")
 
@@ -498,6 +583,7 @@ def run_path_a_preflight(
     notes: list[str] = [
         "preflight is read-only; no retrieval or live index access is performed",
         "no partial historical/live mixing is authorized",
+        "case/query binding uses exact string equality against intended_case_queries",
     ]
 
     for path in artifact_paths:
@@ -506,7 +592,11 @@ def run_path_a_preflight(
         method = payload.get("method")
         try:
             if schema.startswith("offline-rag-retrieval-eval-result"):
-                art, case_assessments, lineage = _inspect_retrieval_eval(path, payload)
+                art, case_assessments, lineage = _inspect_retrieval_eval(
+                    path,
+                    payload,
+                    intended_case_queries=frozen,
+                )
             elif method == "hybrid-rerank-context" or (
                 "evidence_units" in payload and "anchors" in payload
             ):
@@ -514,9 +604,9 @@ def run_path_a_preflight(
                     path,
                     payload,
                     case_id=case_id_by_path.get(str(path)),
+                    intended_case_queries=frozen,
                 )
             else:
-                # Unknown historical shape: record and fail closed for coverage.
                 lineage = PathASharedLineageView()
                 art = PathAInspectedArtifact(
                     path=str(path),
@@ -544,30 +634,23 @@ def run_path_a_preflight(
         inspected.append(art)
         lineage_views.append(lineage)
         for assessment in case_assessments:
+            # Historical cases outside the intended population are ignored for
+            # coverage, but still inspected for lineage consistency above.
+            if assessment.case_id not in frozen:
+                continue
             prior = assessments_by_case.get(assessment.case_id)
             if prior is None:
                 assessments_by_case[assessment.case_id] = assessment
-                continue
-            # Prefer any qualified assessment; otherwise keep richest missing set.
-            if assessment.status == PathACaseStatus.QUALIFIED:
-                assessments_by_case[assessment.case_id] = assessment
-            elif prior.status != PathACaseStatus.QUALIFIED:
-                merged_missing = list(prior.missing_or_ambiguous)
-                for item in assessment.missing_or_ambiguous:
-                    if item not in merged_missing:
-                        merged_missing.append(item)
-                assessments_by_case[assessment.case_id] = prior.model_copy(
-                    update={
-                        "missing_or_ambiguous": merged_missing,
-                        "notes": list(dict.fromkeys([*prior.notes, *assessment.notes])),
-                    }
+            else:
+                assessments_by_case[assessment.case_id] = _merge_case_assessment(
+                    prior, assessment
                 )
 
     lineage_consistency, _ = _merge_lineage_views(lineage_views)
 
-    ordered_intended = list(intended_case_ids)
     final_assessments: list[PathACaseAssessment] = []
     for case_id in ordered_intended:
+        intended_query = frozen[case_id]
         found = assessments_by_case.get(case_id)
         if found is None:
             final_assessments.append(
@@ -589,25 +672,41 @@ def run_path_a_preflight(
                 )
             )
             continue
+
+        missing = list(found.missing_or_ambiguous)
+        notes_out = list(found.notes)
+        if not _binding_matches(
+            historical_query=found.query, intended_query=intended_query
+        ):
+            if PathAMissingRequirement.QUERY_CASE_BINDING not in missing:
+                missing.insert(0, PathAMissingRequirement.QUERY_CASE_BINDING)
+            notes_out.append(
+                "historical query does not exactly equal frozen intended original_query"
+            )
+
         if lineage_consistency != PathALineageConsistency.CONSISTENT:
-            # Even a locally complete case cannot qualify under mixed/incomplete lineage.
-            missing = list(found.missing_or_ambiguous)
             if PathAMissingRequirement.SHARED_LINEAGE not in missing:
                 missing.insert(0, PathAMissingRequirement.SHARED_LINEAGE)
-            final_assessments.append(
-                found.model_copy(
-                    update={
-                        "status": PathACaseStatus.NOT_QUALIFIED,
-                        "missing_or_ambiguous": missing,
-                        "notes": [
-                            *found.notes,
-                            f"lineage_consistency={lineage_consistency.value}",
-                        ],
-                    }
-                )
+            notes_out.append(f"lineage_consistency={lineage_consistency.value}")
+
+        status = (
+            PathACaseStatus.QUALIFIED
+            if (
+                found.status == PathACaseStatus.QUALIFIED
+                and not missing
+                and lineage_consistency == PathALineageConsistency.CONSISTENT
             )
-        else:
-            final_assessments.append(found)
+            else PathACaseStatus.NOT_QUALIFIED
+        )
+        final_assessments.append(
+            found.model_copy(
+                update={
+                    "status": status,
+                    "missing_or_ambiguous": _dedupe_missing(missing),
+                    "notes": list(dict.fromkeys(notes_out)),
+                }
+            )
+        )
 
     all_qualified = bool(final_assessments) and all(
         item.status == PathACaseStatus.QUALIFIED for item in final_assessments
@@ -625,6 +724,7 @@ def run_path_a_preflight(
 
     return PathAPreflightReport(
         intended_case_ids=ordered_intended,
+        intended_case_queries=dict(frozen),
         inspected_artifacts=inspected,
         case_assessments=final_assessments,
         lineage_consistency=lineage_consistency,

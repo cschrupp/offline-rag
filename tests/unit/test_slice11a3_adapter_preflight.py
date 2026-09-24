@@ -39,6 +39,7 @@ from offline_rag.evaluation.sufficiency_preflight import (
     run_path_a_preflight,
 )
 from offline_rag.sufficiency import (
+    SufficiencyErrorCodeV1,
     build_sufficiency_snapshot,
     derive_sufficiency_observation,
     validate_observation_against_provenance,
@@ -56,7 +57,9 @@ def _anchor(
     dense_score: float | None = 0.9,
     lexical_rank: int | None = 2,
     lexical_score: float | None = 0.4,
+    nested_score: float | None = None,
 ) -> HybridRerankCandidate:
+    reranker_score = score if nested_score is None else nested_score
     return HybridRerankCandidate(
         rank=rank,
         score=score,
@@ -66,7 +69,7 @@ def _anchor(
         section_path=["S"],
         token_count=3,
         hybrid_rerank=HybridRerankProvenance(
-            reranker_score=score,
+            reranker_score=reranker_score,
             hybrid_rank=hybrid_rank,
             rrf_score=rrf_score,
             dense_rank=dense_rank,
@@ -104,6 +107,11 @@ def _context_result(
     anchors: list[HybridRerankCandidate] | None = None,
     units: list[EvidenceUnit] | None = None,
     metadata: dict | None = None,
+    context_token_count: int | None = None,
+    diagnostics_token_count: int | None = None,
+    evidence_unit_count: int | None = None,
+    actual_anchor_count: int | None = None,
+    method: str = "hybrid-rerank-context",
 ) -> HybridRerankContextResult:
     final_anchors = (
         anchors
@@ -135,11 +143,16 @@ def _context_result(
             )
         ]
     )
+    token_count = 12 if context_token_count is None else context_token_count
+    diag_tokens = (
+        token_count if diagnostics_token_count is None else diagnostics_token_count
+    )
     return HybridRerankContextResult(
         query=query,
+        method=method,
         evidence_units=final_units,
         assembled_text="assembled",
-        context_token_count=12,
+        context_token_count=token_count,
         max_context_tokens=100,
         context_config_hash="ctxcfg_test",
         anchors=final_anchors,
@@ -149,10 +162,16 @@ def _context_result(
         reranker_config_hash="rrk_1",
         diagnostics=ContextAssemblyDiagnostics(
             requested_anchor_k=5,
-            actual_anchor_count=len(final_anchors),
+            actual_anchor_count=(
+                len(final_anchors)
+                if actual_anchor_count is None
+                else actual_anchor_count
+            ),
             anchors_processed=len(final_anchors),
-            evidence_unit_count=len(final_units),
-            context_token_count=12,
+            evidence_unit_count=(
+                len(final_units) if evidence_unit_count is None else evidence_unit_count
+            ),
+            context_token_count=diag_tokens,
             budget_exhausted=False,
             stop_reason="completed",
             clipping_occurred=True,
@@ -212,7 +231,6 @@ def _retrieval_eval(
             "lexical_index_id": lineage["lexical_index_id"],
             "fusion_config_hash": lineage["fusion_config_hash"],
             "reranker_config_hash": lineage["reranker_config_hash"],
-            # intentionally omit context_config_hash for historical hybrid-rerank
         },
         metric_config=MetricConfig(),
         population=PopulationCounts(
@@ -270,7 +288,7 @@ def test_adapter_preserves_anchor_and_evidence_order_and_paired_branches() -> No
     assert unit.section_path == ["A", "B"]
     assert unit.source_chunk_id == "chunk_src"
     assert unit.primary_anchor_chunk_id == "chunk_a"
-    assert not hasattr(unit, "text") or "text" not in unit.model_dump()
+    assert "text" not in unit.model_dump()
 
 
 def test_adapter_output_passes_derive_and_snapshot_validation() -> None:
@@ -290,14 +308,67 @@ def test_adapter_fails_closed_when_lineage_missing() -> None:
     assert exc.value.details.field_name == "corpus_id"
 
 
+def test_adapter_fails_on_mismatched_candidate_score() -> None:
+    result = _context_result(
+        anchors=[
+            _anchor(
+                chunk_id="chunk_a",
+                rank=1,
+                score=1.5,
+                hybrid_rank=1,
+                nested_score=9.9,
+            )
+        ]
+    )
+    with pytest.raises(SufficiencyAdapterError) as exc:
+        adapt_hybrid_rerank_context_to_provenance(result, case_id="case_1")
+    assert exc.value.code == SufficiencyErrorCodeV1.CONTRADICTORY_UPSTREAM_STATE
+    assert exc.value.details is not None
+    assert exc.value.details.field_name == "reranker_score"
+
+
+def test_adapter_fails_on_mismatched_context_token_counts() -> None:
+    result = _context_result(context_token_count=12, diagnostics_token_count=99)
+    with pytest.raises(SufficiencyAdapterError) as exc:
+        adapt_hybrid_rerank_context_to_provenance(result, case_id="case_1")
+    assert exc.value.code == SufficiencyErrorCodeV1.CONTRADICTORY_UPSTREAM_STATE
+    assert exc.value.details is not None
+    assert exc.value.details.field_name == "context_token_count"
+
+
+def test_adapter_fails_on_mismatched_evidence_unit_count() -> None:
+    result = _context_result(evidence_unit_count=99)
+    with pytest.raises(SufficiencyAdapterError) as exc:
+        adapt_hybrid_rerank_context_to_provenance(result, case_id="case_1")
+    assert exc.value.code == SufficiencyErrorCodeV1.CONTRADICTORY_UPSTREAM_STATE
+    assert exc.value.details is not None
+    assert exc.value.details.field_name == "evidence_unit_count"
+
+
+def test_adapter_fails_on_mismatched_actual_anchor_count() -> None:
+    result = _context_result(actual_anchor_count=99)
+    with pytest.raises(SufficiencyAdapterError) as exc:
+        adapt_hybrid_rerank_context_to_provenance(result, case_id="case_1")
+    assert exc.value.code == SufficiencyErrorCodeV1.CONTRADICTORY_UPSTREAM_STATE
+    assert exc.value.details is not None
+    assert exc.value.details.field_name == "actual_anchor_count"
+
+
+def test_adapter_fails_on_wrong_source_method() -> None:
+    result = _context_result(method="hybrid-rerank")
+    with pytest.raises(SufficiencyAdapterError) as exc:
+        adapt_hybrid_rerank_context_to_provenance(result, case_id="case_1")
+    assert exc.value.code == SufficiencyErrorCodeV1.CONTRADICTORY_UPSTREAM_STATE
+    assert exc.value.details is not None
+    assert exc.value.details.field_name == "method"
+
+
 def test_path_a_qualifies_complete_context_dump(tmp_path: Path) -> None:
-    result = _context_result()
+    result = _context_result(query="frozen query")
     path = tmp_path / "ctx_case1.json"
-    payload = result.model_dump(mode="json")
-    payload["metadata"] = {**payload["metadata"], "case_id": "case_1"}
-    path.write_text(json.dumps(payload), encoding="utf-8")
+    path.write_text(result.model_dump_json(), encoding="utf-8")
     report = run_path_a_preflight(
-        intended_case_ids=["case_1"],
+        intended_case_queries={"case_1": "frozen query"},
         artifact_paths=[path],
         context_result_case_id_by_path={str(path): "case_1"},
     )
@@ -306,14 +377,95 @@ def test_path_a_qualifies_complete_context_dump(tmp_path: Path) -> None:
     assert report.lineage_consistency == PathALineageConsistency.CONSISTENT
 
 
+def test_path_a_wrong_query_does_not_qualify(tmp_path: Path) -> None:
+    result = _context_result(query="query belonging to case_19")
+    path = tmp_path / "ctx.json"
+    path.write_text(result.model_dump_json(), encoding="utf-8")
+    report = run_path_a_preflight(
+        intended_case_queries={"case_17": "query belonging to case_17"},
+        artifact_paths=[path],
+        context_result_case_id_by_path={str(path): "case_17"},
+    )
+    assert report.overall == PathAOverallResult.PATH_A_NOT_QUALIFIED
+    assert report.case_assessments[0].status == PathACaseStatus.NOT_QUALIFIED
+    assert (
+        PathAMissingRequirement.QUERY_CASE_BINDING
+        in report.case_assessments[0].missing_or_ambiguous
+    )
+
+
+def test_path_a_swapped_queries_do_not_qualify(tmp_path: Path) -> None:
+    a = _context_result(query="query-B")
+    b = _context_result(query="query-A")
+    path_a = tmp_path / "a.json"
+    path_b = tmp_path / "b.json"
+    path_a.write_text(a.model_dump_json(), encoding="utf-8")
+    path_b.write_text(b.model_dump_json(), encoding="utf-8")
+    report = run_path_a_preflight(
+        intended_case_queries={"case_A": "query-A", "case_B": "query-B"},
+        artifact_paths=[path_a, path_b],
+        context_result_case_id_by_path={
+            str(path_a): "case_A",
+            str(path_b): "case_B",
+        },
+    )
+    assert report.overall == PathAOverallResult.PATH_A_NOT_QUALIFIED
+    by_id = {item.case_id: item for item in report.case_assessments}
+    assert by_id["case_A"].status == PathACaseStatus.NOT_QUALIFIED
+    assert by_id["case_B"].status == PathACaseStatus.NOT_QUALIFIED
+    assert (
+        PathAMissingRequirement.QUERY_CASE_BINDING
+        in by_id["case_A"].missing_or_ambiguous
+    )
+    assert (
+        PathAMissingRequirement.QUERY_CASE_BINDING
+        in by_id["case_B"].missing_or_ambiguous
+    )
+
+
+def test_path_a_retrieval_eval_query_mismatch_reports_binding(
+    tmp_path: Path,
+) -> None:
+    lineage = {
+        "corpus_id": "corpus_1",
+        "chunk_set_id": "chunkset_1",
+        "dense_index_id": "dense_1",
+        "lexical_index_id": "lex_1",
+        "fusion_config_hash": "fus_1",
+        "reranker_config_hash": "rrk_1",
+    }
+    bad = _retrieval_eval(
+        run_id="eval_bad",
+        cases=[
+            CaseEvaluationResult(
+                case_id="case_1",
+                query="wrong historical query",
+                quality_eligible=True,
+                retrieved_chunk_ids=["chunk_a"],
+                metrics=CaseMetrics(),
+            )
+        ],
+        lineage=lineage,
+    )
+    path = tmp_path / "bad.json"
+    path.write_text(bad.model_dump_json(), encoding="utf-8")
+    report = run_path_a_preflight(
+        intended_case_queries={"case_1": "frozen intended query"},
+        artifact_paths=[path],
+    )
+    assert report.overall == PathAOverallResult.PATH_A_NOT_QUALIFIED
+    assert (
+        PathAMissingRequirement.QUERY_CASE_BINDING
+        in report.case_assessments[0].missing_or_ambiguous
+    )
+
+
 def test_path_a_one_incomplete_case_fails_whole_population(tmp_path: Path) -> None:
     good = _context_result(query="q1")
     good_path = tmp_path / "good.json"
     good_path.write_text(good.model_dump_json(), encoding="utf-8")
-
-    # Second intended case is absent from artifacts → not reconstructible.
     report = run_path_a_preflight(
-        intended_case_ids=["case_1", "case_2"],
+        intended_case_queries={"case_1": "q1", "case_2": "q2"},
         artifact_paths=[good_path],
         context_result_case_id_by_path={str(good_path): "case_1"},
     )
@@ -352,7 +504,7 @@ def test_path_a_historical_retrieval_eval_case_not_qualified(tmp_path: Path) -> 
     bad_path = tmp_path / "bad.json"
     bad_path.write_text(bad.model_dump_json(), encoding="utf-8")
     report = run_path_a_preflight(
-        intended_case_ids=["case_1"],
+        intended_case_queries={"case_1": "q1"},
         artifact_paths=[bad_path],
     )
     assert report.overall == PathAOverallResult.PATH_A_NOT_QUALIFIED
@@ -364,24 +516,19 @@ def test_path_a_historical_retrieval_eval_case_not_qualified(tmp_path: Path) -> 
 
 def test_path_a_mixed_lineage_fails(tmp_path: Path) -> None:
     a = _context_result(
-        metadata={
-            "corpus_id": "corpus_1",
-            "chunk_set_id": "chunkset_1",
-        }
+        query="q1",
+        metadata={"corpus_id": "corpus_1", "chunk_set_id": "chunkset_1"},
     )
     b = _context_result(
-        query="other",
-        metadata={
-            "corpus_id": "corpus_OTHER",
-            "chunk_set_id": "chunkset_1",
-        },
+        query="q2",
+        metadata={"corpus_id": "corpus_OTHER", "chunk_set_id": "chunkset_1"},
     )
     path_a = tmp_path / "a.json"
     path_b = tmp_path / "b.json"
     path_a.write_text(a.model_dump_json(), encoding="utf-8")
     path_b.write_text(b.model_dump_json(), encoding="utf-8")
     report = run_path_a_preflight(
-        intended_case_ids=["case_1", "case_2"],
+        intended_case_queries={"case_1": "q1", "case_2": "q2"},
         artifact_paths=[path_a, path_b],
         context_result_case_id_by_path={
             str(path_a): "case_1",
@@ -403,11 +550,11 @@ def test_path_a_preflight_performs_no_retrieval(
         "offline_rag.context.assemble.HybridRerankContextAssembler.assemble",
         assemble,
     )
-    result = _context_result()
+    result = _context_result(query="q1")
     path = tmp_path / "ctx.json"
     path.write_text(result.model_dump_json(), encoding="utf-8")
     run_path_a_preflight(
-        intended_case_ids=["case_1"],
+        intended_case_queries={"case_1": "q1"},
         artifact_paths=[path],
         context_result_case_id_by_path={str(path): "case_1"},
     )
@@ -419,9 +566,9 @@ def test_historical_hybrid_rerank_artifact_is_path_a_not_qualified() -> None:
     if not artifact.exists():
         pytest.skip("historical 9H-P hybrid-rerank artifact not present")
     payload = json.loads(artifact.read_text(encoding="utf-8"))
-    intended = [case["case_id"] for case in payload["cases"]]
+    intended = {case["case_id"]: case["query"] for case in payload["cases"]}
     report = run_path_a_preflight(
-        intended_case_ids=intended,
+        intended_case_queries=intended,
         artifact_paths=[artifact],
     )
     assert report.overall == PathAOverallResult.PATH_A_NOT_QUALIFIED
@@ -429,7 +576,10 @@ def test_historical_hybrid_rerank_artifact_is_path_a_not_qualified() -> None:
         PathALineageConsistency.INSUFFICIENT,
         PathALineageConsistency.INCONSISTENT,
     }
-    # Representative gaps expected from retrieval-eval envelopes.
+    assert (
+        sum(1 for c in report.case_assessments if c.status == PathACaseStatus.QUALIFIED)
+        == 0
+    )
     sample = report.case_assessments[0]
     assert sample.status == PathACaseStatus.NOT_QUALIFIED
     for required in (
@@ -446,7 +596,19 @@ def test_historical_hybrid_rerank_artifact_is_path_a_not_qualified() -> None:
 
 def test_assess_complete_context_result_qualifies() -> None:
     assessment = assess_hybrid_rerank_context_result_for_path_a(
-        _context_result(), case_id="case_1"
+        _context_result(query="exact frozen"),
+        case_id="case_1",
+        intended_query="exact frozen",
     )
     assert assessment.status == PathACaseStatus.QUALIFIED
     assert assessment.missing_or_ambiguous == []
+
+
+def test_assess_mismatched_query_does_not_qualify() -> None:
+    assessment = assess_hybrid_rerank_context_result_for_path_a(
+        _context_result(query="wrong"),
+        case_id="case_1",
+        intended_query="right",
+    )
+    assert assessment.status == PathACaseStatus.NOT_QUALIFIED
+    assert PathAMissingRequirement.QUERY_CASE_BINDING in assessment.missing_or_ambiguous
