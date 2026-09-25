@@ -23,6 +23,7 @@ from offline_rag.evaluation.sufficiency_path_b import (
 )
 from offline_rag.sufficiency import (
     SufficiencyArtifactError,
+    SufficiencyErrorCodeV1,
     build_sufficiency_manifest,
     build_sufficiency_snapshot,
 )
@@ -231,21 +232,98 @@ def test_exact_case_query_binding_enforced(tmp_path: Path) -> None:
     assert result.report.authoritative_for_11b is False
 
 
-def test_mixed_lineage_fails_authoritative_construction(tmp_path: Path) -> None:
-    bindings = _bindings(2)
+def test_mixed_lineage_records_failure_and_continues(tmp_path: Path) -> None:
+    bindings = _bindings(3)
+    calls: list[str] = []
 
     def _assemble(
         *, query: str, corpus_name: str = "default"
     ) -> HybridRerankContextResult:
-        if query == "query-1":
-            return _context(query=query, corpus_id="corpus_A")
-        return _context(query=query, corpus_id="corpus_B")
+        calls.append(query)
+        if query == "query-2":
+            return _context(query=query, corpus_id="corpus_B")
+        return _context(query=query, corpus_id="corpus_A")
 
     assembler = MagicMock()
     assembler.assemble.side_effect = _assemble
     assembler.close = MagicMock()
 
-    with pytest.raises(PathBMeasureOnceError, match="mixed shared lineage"):
+    result = run_path_b_measure_once(
+        settings=AppSettings(),
+        bindings=bindings,
+        corpus_name="ics_modules",
+        artifacts_root=tmp_path,
+        assembler=assembler,
+    )
+    assert calls == ["query-1", "query-2", "query-3"]
+    assert assembler.assemble.call_count == 3
+    assert result.report.successful_case_count == 2
+    assert result.report.failed_case_count == 1
+    assert result.report.authoritative_for_11b is False
+    assert result.report.failure_case_ids == ["case_2"]
+    assert "case_2" not in result.report.case_to_suffctx_id
+    assert "case_2" not in result.report.snapshot_paths
+    assert result.failures[0].failure_stage == "validate_context"
+    assert result.report.shared_lineage is not None
+    assert result.report.shared_lineage["corpus_id"] == "corpus_A"
+
+
+def test_missing_lineage_records_failure_and_continues(tmp_path: Path) -> None:
+    bindings = _bindings(3)
+    calls: list[str] = []
+
+    def _assemble(
+        *, query: str, corpus_name: str = "default"
+    ) -> HybridRerankContextResult:
+        calls.append(query)
+        if query == "query-1":
+            # Assemble succeeds, but required lineage metadata is absent.
+            result = _context(query=query, corpus_id="corpus_A")
+            return result.model_copy(
+                update={"metadata": {"chunk_set_id": "chunkset_1"}}
+            )
+        return _context(query=query, corpus_id="corpus_A")
+
+    assembler = MagicMock()
+    assembler.assemble.side_effect = _assemble
+    assembler.close = MagicMock()
+
+    result = run_path_b_measure_once(
+        settings=AppSettings(),
+        bindings=bindings,
+        corpus_name="ics_modules",
+        artifacts_root=tmp_path,
+        assembler=assembler,
+    )
+    assert calls == ["query-1", "query-2", "query-3"]
+    assert assembler.assemble.call_count == 3
+    assert result.report.successful_case_count == 2
+    assert result.report.failed_case_count == 1
+    assert result.report.authoritative_for_11b is False
+    assert result.report.failure_case_ids == ["case_1"]
+    assert result.failures[0].failure_stage == "validate_context"
+    assert (
+        result.failures[0].reason_code
+        == SufficiencyErrorCodeV1.MISSING_REQUIRED_LINEAGE
+    )
+    assert result.report.shared_lineage is not None
+    assert result.report.shared_lineage["corpus_id"] == "corpus_A"
+
+
+def test_zero_success_without_lineage_fails_closed(tmp_path: Path) -> None:
+    bindings = _bindings(2)
+
+    def _assemble(
+        *, query: str, corpus_name: str = "default"
+    ) -> HybridRerankContextResult:
+        result = _context(query=query)
+        return result.model_copy(update={"metadata": {}})
+
+    assembler = MagicMock()
+    assembler.assemble.side_effect = _assemble
+    assembler.close = MagicMock()
+
+    with pytest.raises(PathBMeasureOnceError, match="no trustworthy shared lineage"):
         run_path_b_measure_once(
             settings=AppSettings(),
             bindings=bindings,

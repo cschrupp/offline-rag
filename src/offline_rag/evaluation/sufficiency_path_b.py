@@ -34,6 +34,7 @@ from offline_rag.sufficiency import (
     SufficiencyDerivationError,
     SufficiencyError,
     SufficiencyErrorCodeV1,
+    SufficiencyErrorDetailsV1,
     SufficiencyEvalContextManifestV1,
     SufficiencyEvalContextSnapshotV1,
     SufficiencyFailureRecordV1,
@@ -183,12 +184,16 @@ def _lineage_from_context_result(
     corpus_id = metadata.get("corpus_id")
     chunk_set_id = metadata.get("chunk_set_id")
     if not isinstance(corpus_id, str) or corpus_id == "":
-        raise PathBMeasureOnceError(
-            "assembled context result missing metadata.corpus_id for shared lineage"
+        raise SufficiencyDerivationError(
+            SufficiencyErrorCodeV1.MISSING_REQUIRED_LINEAGE,
+            "assembled context result missing metadata.corpus_id for shared lineage",
+            details=SufficiencyErrorDetailsV1(field_name="corpus_id"),
         )
     if not isinstance(chunk_set_id, str) or chunk_set_id == "":
-        raise PathBMeasureOnceError(
-            "assembled context result missing metadata.chunk_set_id for shared lineage"
+        raise SufficiencyDerivationError(
+            SufficiencyErrorCodeV1.MISSING_REQUIRED_LINEAGE,
+            "assembled context result missing metadata.chunk_set_id for shared lineage",
+            details=SufficiencyErrorDetailsV1(field_name="chunk_set_id"),
         )
     return SufficiencySharedLineageV1(
         corpus_id=corpus_id,
@@ -328,14 +333,20 @@ def run_path_b_measure_once(
             stage = "assemble"
             try:
                 context_result = active.assemble(query=query, corpus_name=corpus_name)
+                stage = "validate_context"
                 lineage_sample = _lineage_from_context_result(context_result)
                 if observed_lineage is None:
+                    # Admit only after required lineage fields are present.
                     observed_lineage = lineage_sample
                 elif observed_lineage.model_dump(
                     mode="json"
                 ) != lineage_sample.model_dump(mode="json"):
-                    raise PathBMeasureOnceError(
-                        "mixed shared lineage across path-b measure-once cases"
+                    # Do not admit the inconsistent result into observed_lineage.
+                    raise SufficiencyDerivationError(
+                        SufficiencyErrorCodeV1.INVALID_SEMANTIC_PAYLOAD,
+                        "assembled context result lineage differs from the "
+                        "coherent shared lineage already established by this run",
+                        details=SufficiencyErrorDetailsV1(field_name="shared_lineage"),
                     )
                 if context_result.query != query:
                     raise SufficiencyAdapterError(
@@ -370,8 +381,6 @@ def run_path_b_measure_once(
                 snapshots.append(snapshot)
                 snapshot_paths[case_id] = str(snap_path)
                 case_to_suffctx[case_id] = snapshot.suffctx_id
-            except PathBMeasureOnceError:
-                raise
             except Exception as exc:  # noqa: BLE001 - per-case fail-closed, no retry
                 error = _wrap_case_error(exc)
                 failures.append(
@@ -388,6 +397,12 @@ def run_path_b_measure_once(
     finally:
         if owned_assembler:
             active.close()
+
+    if not snapshots and observed_lineage is None:
+        raise PathBMeasureOnceError(
+            "path-b measure-once produced no successful snapshots and no "
+            "trustworthy shared lineage; refusing to fabricate a manifest"
+        )
 
     try:
         manifest = build_sufficiency_manifest(
