@@ -511,12 +511,9 @@ def _validate_failure_terminal(state: RecoveryStateV1) -> None:
                 RecoveryErrorCodeV1.INCONSISTENT_TERMINAL,
                 "recovery_execution_failed requires current attempt 1/recovery",
             )
-        if state.active_retrieval_query == state.original_query:
-            _fail(
-                RecoveryErrorCodeV1.INCONSISTENT_TERMINAL,
-                "recovery_execution_failed requires prepared recovery active query",
-                field_name="active_retrieval_query",
-            )
+        # Preparation is evidenced by the authorized transition (current attempt
+        # 1/recovery), not by string inequality vs original_query. A no-op rewrite
+        # may leave active_retrieval_query equal to original_query.
         return
 
     _fail(

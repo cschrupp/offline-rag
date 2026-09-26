@@ -235,6 +235,33 @@ def test_recovery_failure_terminal_after_prepare() -> None:
     assert terminal.active_retrieval_query == "prepared q"
 
 
+def test_recovery_execution_failed_allows_noop_prepared_query() -> None:
+    """Preparation is evidenced by the transition, not by query string change."""
+    original = "same query"
+    pending = _to_pending(original, prepared=original)
+    assert pending.active_retrieval_query == original
+    assert pending.current_attempt_number == 1
+    assert pending.current_attempt_role == RECOVERY_ATTEMPT_ROLE_RECOVERY
+
+    terminal = apply_recovery_event(
+        pending,
+        RecoveryEventV1(
+            kind=RecoveryEventKindV1.FAIL_RECOVERY,
+            failure_reason=RecoveryFailureReasonV1.RECOVERY_EXECUTION_FAILED,
+        ),
+    )
+    assert terminal.phase == RecoveryPhaseV1.TERMINAL
+    assert (
+        terminal.terminal_outcome
+        == RecoveryTerminalOutcomeV1.RECOVERY_PREPARATION_OR_EXECUTION_FAILED
+    )
+    assert terminal.failure_reason == RecoveryFailureReasonV1.RECOVERY_EXECUTION_FAILED
+    assert terminal.current_attempt_number == 1
+    assert terminal.current_attempt_role == RECOVERY_ATTEMPT_ROLE_RECOVERY
+    assert terminal.active_retrieval_query == original
+    assert terminal.original_query == original
+
+
 def test_original_query_immutability() -> None:
     state = _to_pending("immutable", prepared="other")
     assert state.original_query == "immutable"
