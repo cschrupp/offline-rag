@@ -1,0 +1,94 @@
+{
+  "schema_version": "offline-rag-generation-cohort-map-v1",
+  "gold_dataset_id": "gold_d3fc157c7b3206f6983abee766e7ce7b939244a7dea04f0be256f3a533a46172",
+  "cases": [
+    {
+      "case_id": "draft_08f83eaef198495d92ff557eda974bf4",
+      "label_cohort": "human_reviewed"
+    },
+    {
+      "case_id": "draft_127ac342012d47fc9720a0c13a577550",
+      "label_cohort": "human_reviewed"
+    },
+    {
+      "case_id": "draft_2083433ad52e4e00ad4214d3fec27464",
+      "label_cohort": "assistant_only"
+    },
+    {
+      "case_id": "draft_29389bdab2f84345b596e45fcf2e2bcc",
+      "label_cohort": "human_reviewed"
+    },
+    {
+      "case_id": "draft_296be0251d6f4ad2baadedfb506eba4b",
+      "label_cohort": "human_reviewed"
+    },
+    {
+      "case_id": "draft_4c185aa9607b42688627ef26323f3367",
+      "label_cohort": "human_reviewed"
+    },
+    {
+      "case_id": "draft_53be6e34cbb745c18d11ed233897fcb3",
+      "label_cohort": "human_reviewed"
+    },
+    {
+      "case_id": "draft_54115e36a58442e0a1574bc8017248c9",
+      "label_cohort": "human_reviewed"
+    },
+    {
+      "case_id": "draft_559331559a1a4a3eaf6f667db0727850",
+      "label_cohort": "assistant_only"
+    },
+    {
+      "case_id": "draft_5cc85e4fade84aab9369d0a129f913c4",
+      "label_cohort": "human_reviewed"
+    },
+    {
+      "case_id": "draft_7cb38254d8ab4c2084bb9e328da73b1e",
+      "label_cohort": "human_reviewed"
+    },
+    {
+      "case_id": "draft_7df2ca731edf4daaa794ee20507205ca",
+      "label_cohort": "human_reviewed"
+    },
+    {
+      "case_id": "draft_85741ff7269e40bb8ce8992f24a6f3c7",
+      "label_cohort": "human_reviewed"
+    },
+    {
+      "case_id": "draft_94722ca912bd46ada6b9689f388d1b17",
+      "label_cohort": "human_reviewed"
+    },
+    {
+      "case_id": "draft_959387c7d1fc48f0a7ac4b38166d1fb1",
+      "label_cohort": "assistant_only"
+    },
+    {
+      "case_id": "draft_a597e472c3e141c3bf4a5539d2bcb5dd",
+      "label_cohort": "human_reviewed"
+    },
+    {
+      "case_id": "draft_aad45b4a4bd940459793788e716aa580",
+      "label_cohort": "human_reviewed"
+    },
+    {
+      "case_id": "draft_ac3bfbaa86b4458ea1137742dc3829de",
+      "label_cohort": "assistant_only"
+    },
+    {
+      "case_id": "draft_b88e163517ec47e29240171af181566d",
+      "label_cohort": "assistant_only"
+    },
+    {
+      "case_id": "draft_bc0aa8c3e7e44e20bae3af071f3eab68",
+      "label_cohort": "human_reviewed"
+    },
+    {
+      "case_id": "draft_cc9a054620e040a5adee66a1f4dc3540",
+      "label_cohort": "human_reviewed"
+    },
+    {
+      "case_id": "draft_e8bd3467bc52419e95d19a19dde839e2",
+      "label_cohort": "assistant_only"
+    }
+  ]
+}

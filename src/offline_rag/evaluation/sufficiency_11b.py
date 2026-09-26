@@ -4,6 +4,10 @@ Joins authoritative gold-free ``suffctx_`` / ``suffctxrun_`` artifacts to a
 frozen GoldDataset solely for cohort labeling and one-dimensional threshold
 tradeoff reporting. Does not mutate snapshots, call retrieval/generation, or
 wire runtime gates.
+
+Threshold A/B populations are restricted to cases with authoritative
+human-reviewed adjudication provenance. Assistant-only cases remain
+descriptive diagnostics only.
 """
 
 from __future__ import annotations
@@ -18,6 +22,15 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from offline_rag.evaluation.generation_semantic.cohort import (
+    CohortMapError,
+    load_cohort_map,
+    validate_cohort_map_for_gold,
+)
+from offline_rag.evaluation.generation_semantic.models import (
+    GENERATION_COHORT_MAP_V1,
+    LabelCohort,
+)
 from offline_rag.evaluation.gold import GoldCase, LoadedGoldDataset, load_gold_dataset
 from offline_rag.ingestion.io import atomic_write_text
 from offline_rag.sufficiency import (
@@ -36,6 +49,7 @@ EVAL_LABEL_CONTRACT = "sufficiency-eval-label-v1"
 COHORT_DEFINITION_CONTRACT = "sufficiency-11b-cohort-definition-v1"
 PRESENCE_MATCHING_RULE_ID = "evidence-surface-chunk-id-overlap-v1"
 PRESENCE_MATCHING_RULE_VERSION = "v1"
+ADJUDICATION_PROVENANCE_CONTRACT = "sufficiency-11b-adjudication-provenance-binding-v1"
 
 FEATURE_NAMES: tuple[str, ...] = (
     "empty_context",
@@ -86,7 +100,8 @@ class PositivePresenceMatchingRuleV1(BaseModel):
         "provenance.anchors[].chunk_id, "
         "provenance.final_evidence_units[].source_chunk_id, and "
         "provenance.final_evidence_units[].primary_anchor_chunk_id. "
-        "Presence is exact chunk_id set overlap only."
+        "Presence is exact chunk_id set overlap only. Threshold A/B uses this "
+        "rule only on human-reviewed cases."
     )
     evidence_surface_fields: tuple[str, ...] = (
         "provenance.anchors[].chunk_id",
@@ -106,14 +121,24 @@ class CohortDefinitionContractV1(BaseModel):
     version: Literal["v1"] = "v1"
     population_a: Literal["known_positive_present"] = "known_positive_present"
     population_b: Literal["known_positive_missing"] = "known_positive_missing"
+    threshold_truth_adjudication: Literal["human_reviewed_only"] = (
+        "human_reviewed_only"
+    )
     population_a_definition: str = (
-        "Gold has ≥1 positive chunk and at least one human-positive Gold chunk_id "
-        "is represented in the current retrieval/context evidence surface."
+        "Human-reviewed case: Gold has ≥1 positive chunk and at least one of "
+        "those chunk_ids is represented in the current retrieval/context evidence "
+        "surface."
     )
     population_b_definition: str = (
-        "Gold has ≥1 positive chunk, but no human-positive Gold chunk_id is "
-        "represented in the current retrieval/context evidence surface "
-        "(retrieval-failure / insufficiency proxy; not proof of unanswerability)."
+        "Human-reviewed case: Gold has ≥1 positive chunk, but none of those "
+        "chunk_ids are represented in the current retrieval/context evidence "
+        "surface (retrieval-failure / insufficiency proxy; not proof of "
+        "unanswerability)."
+    )
+    assistant_only_role: str = (
+        "Assistant-only cases are descriptive diagnostics only; they do not "
+        "enter OD-11-4 Population A/B threshold rates, false-refusal counts, "
+        "retrieval-failure-proxy capture, or candidate-gate eligibility."
     )
     exclusions: tuple[str, ...] = (
         "slice_10d_hard_negatives_as_threshold_truth",
@@ -122,7 +147,38 @@ class CohortDefinitionContractV1(BaseModel):
         "rejected_gold_cases",
         "unreviewed_or_non_exported_cases_outside_frozen_population",
         "synthetic_stripped_evidence_as_threshold_truth",
+        "assistant_only_judgments_as_human_threshold_truth",
     )
+
+
+class GoldLineageBindingV1(BaseModel):
+    """Matched Gold ↔ Path-B corpus/chunk lineage recorded in the analysis."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    gold_dataset_id: ExactNonBlankStr
+    gold_chunk_set_id: ExactNonBlankStr
+    gold_corpus_id: ExactNonBlankStr | None = None
+    manifest_chunk_set_id: ExactNonBlankStr
+    manifest_corpus_id: ExactNonBlankStr
+
+
+class AdjudicationProvenanceBindingV1(BaseModel):
+    """Explicit binding to the immutable adjudication cohort map."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    contract: Literal["sufficiency-11b-adjudication-provenance-binding-v1"] = (
+        ADJUDICATION_PROVENANCE_CONTRACT
+    )
+    source_schema_version: ExactNonBlankStr
+    source_path: ExactNonBlankStr
+    gold_dataset_id: ExactNonBlankStr
+    human_reviewed_case_count: int
+    assistant_only_case_count: int
+    human_reviewed_case_ids: list[ExactNonBlankStr]
+    assistant_only_case_ids: list[ExactNonBlankStr]
+    notes: list[str] = Field(default_factory=list)
 
 
 class ObservedFeatureVectorV1(BaseModel):
@@ -148,7 +204,9 @@ class SufficiencyEvalLabelV1(BaseModel):
     case_id: ExactNonBlankStr
     suffctx_id: ExactNonBlankStr
     gold_dataset_id: ExactNonBlankStr
-    cohort: Literal["A", "B"]
+    adjudication_cohort: LabelCohort
+    threshold_eligible: bool
+    threshold_cohort: Literal["A", "B"] | None = None
     gold_positive_chunk_ids: list[ExactNonBlankStr]
     present_positive_chunk_ids: list[ExactNonBlankStr]
     evidence_surface_chunk_ids: list[ExactNonBlankStr]
@@ -157,13 +215,14 @@ class SufficiencyEvalLabelV1(BaseModel):
 
 
 class FeatureDistributionV1(BaseModel):
-    """Descriptive per-feature separation across cohorts."""
+    """Descriptive per-feature separation on human-reviewed threshold cohorts."""
 
     model_config = ConfigDict(extra="forbid")
 
     feature: ExactNonBlankStr
     value_kind: Literal["boolean", "numeric", "nullable_boolean", "nullable_numeric"]
-    non_discriminative: bool
+    varies_on_fixture: bool
+    cohort_separation_assessable: bool
     distinct_values: list[bool | int | float | None]
     population_a_values: list[bool | int | float | None]
     population_b_values: list[bool | int | float | None]
@@ -178,7 +237,7 @@ class FeatureDistributionV1(BaseModel):
 
 
 class ThresholdCandidateEvalV1(BaseModel):
-    """One deterministic 1-D gate rule evaluated on the labeled population."""
+    """One deterministic 1-D gate rule evaluated on human-reviewed A/B only."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -209,9 +268,15 @@ class Sufficiency11BAnalysisV1(BaseModel):
     analysis_version: Literal["v1"] = "v1"
     suffctxrun_id: ExactNonBlankStr
     gold_dataset_id: ExactNonBlankStr
+    gold_lineage_binding: GoldLineageBindingV1
+    adjudication_provenance: AdjudicationProvenanceBindingV1
     cohort_definition: CohortDefinitionContractV1
     positive_presence_matching_rule: PositivePresenceMatchingRuleV1
-    expected_case_count: int
+    path_b_case_count: int
+    human_reviewed_case_count: int
+    assistant_only_case_count: int
+    human_reviewed_case_ids: list[ExactNonBlankStr]
+    assistant_only_case_ids: list[ExactNonBlankStr]
     population_a_count: int
     population_b_count: int
     population_a_case_ids: list[ExactNonBlankStr]
@@ -252,12 +317,12 @@ def evidence_surface_chunk_ids(
     return surface
 
 
-def assign_cohort(
+def assign_threshold_cohort(
     *,
     gold_positive_chunk_ids: set[str],
     evidence_surface: set[str],
 ) -> tuple[Literal["A", "B"], set[str]]:
-    """Return (cohort, present_positive_ids). Fail closed on empty Gold positives."""
+    """Return (A/B, present_positive_ids). Fail closed on empty Gold positives."""
     if not gold_positive_chunk_ids:
         raise Sufficiency11BError(
             "case has no Gold positive chunks; cannot assign OD-11-4 cohort A/B"
@@ -266,6 +331,10 @@ def assign_cohort(
     if present:
         return "A", present
     return "B", present
+
+
+# Back-compat alias for tests/imports that used the prior name.
+assign_cohort = assign_threshold_cohort
 
 
 def observation_feature_vector(
@@ -282,6 +351,84 @@ def observation_feature_vector(
         distinct_document_count=observation.distinct_document_count,
         distinct_section_count=observation.distinct_section_count,
     )
+
+
+def require_gold_manifest_lineage(
+    *,
+    gold: LoadedGoldDataset,
+    manifest: SufficiencyEvalContextManifestV1,
+) -> GoldLineageBindingV1:
+    """Fail closed unless Gold and Path-B share corpus/chunk-set identity."""
+    gold_chunk = gold.meta.chunk_set_id
+    manifest_chunk = manifest.shared_lineage.chunk_set_id
+    if gold_chunk != manifest_chunk:
+        raise Sufficiency11BError(
+            "Gold/manifest chunk_set_id mismatch: "
+            f"gold={gold_chunk!r} manifest={manifest_chunk!r}"
+        )
+    gold_corpus = gold.meta.corpus_id
+    manifest_corpus = manifest.shared_lineage.corpus_id
+    if gold_corpus is not None and gold_corpus != manifest_corpus:
+        raise Sufficiency11BError(
+            "Gold/manifest corpus_id mismatch: "
+            f"gold={gold_corpus!r} manifest={manifest_corpus!r}"
+        )
+    return GoldLineageBindingV1(
+        gold_dataset_id=gold.dataset_id,
+        gold_chunk_set_id=gold_chunk,
+        gold_corpus_id=gold_corpus,
+        manifest_chunk_set_id=manifest_chunk,
+        manifest_corpus_id=manifest_corpus,
+    )
+
+
+def bind_adjudication_provenance(
+    *,
+    adjudication_map_path: Path,
+    gold: LoadedGoldDataset,
+) -> tuple[AdjudicationProvenanceBindingV1, dict[str, LabelCohort]]:
+    """Load/validate the immutable adjudication cohort map for this GoldDataset."""
+    path = Path(adjudication_map_path)
+    try:
+        cohort_map = load_cohort_map(path)
+        mapping = validate_cohort_map_for_gold(cohort_map, gold)
+    except CohortMapError as exc:
+        raise Sufficiency11BError(f"adjudication provenance invalid: {exc}") from exc
+    if cohort_map.schema_version != GENERATION_COHORT_MAP_V1:
+        raise Sufficiency11BError(
+            "unsupported adjudication provenance schema_version: "
+            f"{cohort_map.schema_version}"
+        )
+    human_ids = sorted(
+        case_id
+        for case_id, cohort in mapping.items()
+        if cohort == "human_reviewed"
+    )
+    assistant_ids = sorted(
+        case_id
+        for case_id, cohort in mapping.items()
+        if cohort == "assistant_only"
+    )
+    binding = AdjudicationProvenanceBindingV1(
+        source_schema_version=cohort_map.schema_version,
+        source_path=str(path),
+        gold_dataset_id=cohort_map.gold_dataset_id,
+        human_reviewed_case_count=len(human_ids),
+        assistant_only_case_count=len(assistant_ids),
+        human_reviewed_case_ids=human_ids,
+        assistant_only_case_ids=assistant_ids,
+        notes=[
+            (
+                "Reuses offline-rag-generation-cohort-map-v1 as the immutable "
+                "9F human/assistant adjudication provenance map (eval-layer only)."
+            ),
+            (
+                "Assistant-only judgments are not treated as human-positive "
+                "threshold truth."
+            ),
+        ],
+    )
+    return binding, mapping
 
 
 def _feature_value(
@@ -309,30 +456,54 @@ def _sorted_unique_values(
 def _numeric_stats(
     values: Sequence[bool | int | float | None],
 ) -> tuple[float | None, float | None, float | None]:
-    nums = [float(v) for v in values if isinstance(v, (int, float)) and not isinstance(v, bool)]
+    nums = [
+        float(v)
+        for v in values
+        if isinstance(v, (int, float)) and not isinstance(v, bool)
+    ]
     if not nums:
         return None, None, None
     return min(nums), float(statistics.median(nums)), max(nums)
 
 
+def _threshold_labels(
+    labels: Sequence[SufficiencyEvalLabelV1],
+) -> list[SufficiencyEvalLabelV1]:
+    return [item for item in labels if item.threshold_eligible]
+
+
 def _build_feature_distributions(
     labels: Sequence[SufficiencyEvalLabelV1],
 ) -> list[FeatureDistributionV1]:
-    a_labels = [item for item in labels if item.cohort == "A"]
-    b_labels = [item for item in labels if item.cohort == "B"]
+    """Distributions and A/B separation use human-reviewed threshold labels only."""
+    human = _threshold_labels(labels)
+    a_labels = [item for item in human if item.threshold_cohort == "A"]
+    b_labels = [item for item in human if item.threshold_cohort == "B"]
+    separation_assessable = bool(a_labels) and bool(b_labels)
     out: list[FeatureDistributionV1] = []
     for feature in FEATURE_NAMES:
-        all_vals = [_feature_value(item.features, feature) for item in labels]
+        all_vals = [_feature_value(item.features, feature) for item in human]
         a_vals = [_feature_value(item.features, feature) for item in a_labels]
         b_vals = [_feature_value(item.features, feature) for item in b_labels]
         distinct = _sorted_unique_values(all_vals)
         non_null_distinct = [v for v in distinct if v is not None]
-        non_discriminative = len(non_null_distinct) <= 1
+        varies_on_fixture = len(non_null_distinct) > 1
         notes: list[str] = []
-        if non_discriminative:
+        if not separation_assessable:
             notes.append(
-                "constant (or single non-null value) across the labeled population; "
-                "no discriminative threshold value on this fixture"
+                "cohort_separation_assessable=false: at least one of Population A "
+                "or Population B is empty among human-reviewed cases; variation "
+                "within a single cohort is not A/B discriminative evidence"
+            )
+        if not varies_on_fixture:
+            notes.append(
+                "varies_on_fixture=false: constant (or single non-null value) "
+                "across human-reviewed threshold cases"
+            )
+        elif not separation_assessable:
+            notes.append(
+                "varies_on_fixture=true among human-reviewed cases, but this is "
+                "within-cohort variation only"
             )
         if feature in BOOLEAN_FEATURES:
             value_kind: Literal[
@@ -358,7 +529,8 @@ def _build_feature_distributions(
             FeatureDistributionV1(
                 feature=feature,
                 value_kind=value_kind,
-                non_discriminative=non_discriminative,
+                varies_on_fixture=varies_on_fixture,
+                cohort_separation_assessable=separation_assessable,
                 distinct_values=distinct,
                 population_a_values=_sorted_unique_values(a_vals),
                 population_b_values=_sorted_unique_values(b_vals),
@@ -400,23 +572,33 @@ def _eligibility(
     *,
     false_refusal_candidate_count: int,
     retrieval_failure_proxy_capture_count: int,
-    non_discriminative: bool,
+    cohort_separation_assessable: bool,
+    varies_on_fixture: bool,
     trivial_all_or_none: bool,
 ) -> tuple[bool, list[str]]:
     notes: list[str] = []
-    if non_discriminative:
-        notes.append("feature is non-discriminative on this fixture")
+    if not cohort_separation_assessable:
+        notes.append(
+            "cohort separation not assessable (empty Population A and/or B among "
+            "human-reviewed cases)"
+        )
+    if not varies_on_fixture:
+        notes.append("feature does not vary on the human-reviewed fixture")
     if trivial_all_or_none:
-        notes.append("rule gates all cases or no cases")
+        notes.append("rule gates all eligible cases or no eligible cases")
     if false_refusal_candidate_count > 0:
         notes.append(
-            "false-refusal candidates > 0 on Population A; not eligible under "
-            "conservative n=22 discipline"
+            "false-refusal candidates > 0 on human-reviewed Population A; "
+            "not eligible under conservative n=22 discipline"
         )
     if retrieval_failure_proxy_capture_count == 0:
-        notes.append("retrieval-failure-proxy capture count is 0 on Population B")
+        notes.append(
+            "retrieval-failure-proxy capture count is 0 on human-reviewed "
+            "Population B"
+        )
     eligible = (
-        not non_discriminative
+        cohort_separation_assessable
+        and varies_on_fixture
         and not trivial_all_or_none
         and false_refusal_candidate_count == 0
         and retrieval_failure_proxy_capture_count > 0
@@ -424,7 +606,8 @@ def _eligibility(
     if eligible:
         notes.append(
             "eligible as review candidate only: zero Population A gates and "
-            "non-zero Population B capture on this fixture (not production calibration)"
+            "non-zero Population B capture on human-reviewed cases "
+            "(not production calibration)"
         )
     return eligible, notes
 
@@ -434,10 +617,11 @@ def enumerate_threshold_evaluations(
     *,
     feature_distributions: Sequence[FeatureDistributionV1],
 ) -> list[ThresholdCandidateEvalV1]:
-    """Enumerate deterministic 1-D rules from observed feature values only."""
+    """Enumerate 1-D rules from human-reviewed threshold labels only."""
+    human = _threshold_labels(labels)
     by_feature = {item.feature: item for item in feature_distributions}
-    a_total = sum(1 for item in labels if item.cohort == "A")
-    b_total = sum(1 for item in labels if item.cohort == "B")
+    a_total = sum(1 for item in human if item.threshold_cohort == "A")
+    b_total = sum(1 for item in human if item.threshold_cohort == "B")
     evaluations: list[ThresholdCandidateEvalV1] = []
 
     for feature in FEATURE_NAMES:
@@ -447,7 +631,7 @@ def enumerate_threshold_evaluations(
             for state in sorted(states, key=lambda v: (0 if v is False else 1)):
                 gated = [
                     item
-                    for item in labels
+                    for item in human
                     if _feature_value(item.features, feature) is state
                 ]
                 evaluations.append(
@@ -460,8 +644,9 @@ def enumerate_threshold_evaluations(
                         gated=gated,
                         a_total=a_total,
                         b_total=b_total,
-                        non_discriminative=dist.non_discriminative,
-                        labels_total=len(labels),
+                        cohort_separation_assessable=dist.cohort_separation_assessable,
+                        varies_on_fixture=dist.varies_on_fixture,
+                        labels_total=len(human),
                     )
                 )
             continue
@@ -475,7 +660,7 @@ def enumerate_threshold_evaluations(
             for operator in ("<", "<=", ">", ">="):
                 gated = [
                     item
-                    for item in labels
+                    for item in human
                     if _apply_numeric_rule(
                         _feature_value(item.features, feature),
                         operator=operator,  # type: ignore[arg-type]
@@ -492,8 +677,9 @@ def enumerate_threshold_evaluations(
                         gated=gated,
                         a_total=a_total,
                         b_total=b_total,
-                        non_discriminative=dist.non_discriminative,
-                        labels_total=len(labels),
+                        cohort_separation_assessable=dist.cohort_separation_assessable,
+                        varies_on_fixture=dist.varies_on_fixture,
+                        labels_total=len(human),
                     )
                 )
 
@@ -511,11 +697,16 @@ def _finalize_threshold_eval(
     gated: Sequence[SufficiencyEvalLabelV1],
     a_total: int,
     b_total: int,
-    non_discriminative: bool,
+    cohort_separation_assessable: bool,
+    varies_on_fixture: bool,
     labels_total: int,
 ) -> ThresholdCandidateEvalV1:
-    gated_a = [item.case_id for item in gated if item.cohort == "A"]
-    gated_b = [item.case_id for item in gated if item.cohort == "B"]
+    if any(not item.threshold_eligible for item in gated):
+        raise Sufficiency11BError(
+            "internal error: assistant-only case entered threshold gated set"
+        )
+    gated_a = [item.case_id for item in gated if item.threshold_cohort == "A"]
+    gated_b = [item.case_id for item in gated if item.threshold_cohort == "B"]
     gated_ids = sorted(item.case_id for item in gated)
     a_count = len(gated_a)
     b_count = len(gated_b)
@@ -523,7 +714,8 @@ def _finalize_threshold_eval(
     eligible, notes = _eligibility(
         false_refusal_candidate_count=a_count,
         retrieval_failure_proxy_capture_count=b_count,
-        non_discriminative=non_discriminative,
+        cohort_separation_assessable=cohort_separation_assessable,
+        varies_on_fixture=varies_on_fixture,
         trivial_all_or_none=trivial,
     )
     return ThresholdCandidateEvalV1(
@@ -554,6 +746,7 @@ def _load_and_bind_case(
     artifacts_root: Path,
     gold_by_id: Mapping[str, GoldCase],
     gold_dataset_id: str,
+    adjudication_cohort: LabelCohort,
 ) -> SufficiencyEvalLabelV1:
     if group_case_id not in gold_by_id:
         raise Sufficiency11BError(
@@ -593,15 +786,26 @@ def _load_and_bind_case(
 
     positives = set(gold_case.positive_chunk_ids())
     surface = evidence_surface_chunk_ids(snapshot)
-    cohort, present = assign_cohort(
-        gold_positive_chunk_ids=positives,
-        evidence_surface=surface,
-    )
+    present = positives & surface
+    threshold_eligible = adjudication_cohort == "human_reviewed"
+    threshold_cohort: Literal["A", "B"] | None = None
+    if threshold_eligible:
+        threshold_cohort, present = assign_threshold_cohort(
+            gold_positive_chunk_ids=positives,
+            evidence_surface=surface,
+        )
+    elif not positives:
+        raise Sufficiency11BError(
+            f"assistant-only case {group_case_id} has no Gold positive chunks"
+        )
+
     return SufficiencyEvalLabelV1(
         case_id=group_case_id,
         suffctx_id=suffctx_id,
         gold_dataset_id=gold_dataset_id,
-        cohort=cohort,
+        adjudication_cohort=adjudication_cohort,
+        threshold_eligible=threshold_eligible,
+        threshold_cohort=threshold_cohort,
         gold_positive_chunk_ids=sorted(positives),
         present_positive_chunk_ids=sorted(present),
         evidence_surface_chunk_ids=sorted(surface),
@@ -615,7 +819,12 @@ def join_authoritative_labels(
     manifest: SufficiencyEvalContextManifestV1,
     gold: LoadedGoldDataset,
     artifacts_root: Path,
-) -> list[SufficiencyEvalLabelV1]:
+    adjudication_map_path: Path,
+) -> tuple[
+    list[SufficiencyEvalLabelV1],
+    GoldLineageBindingV1,
+    AdjudicationProvenanceBindingV1,
+]:
     """Fail-closed Gold join over an authoritative Path-B manifest."""
     require_authoritative_manifest(manifest)
     if not manifest.authoritative_for_11b:
@@ -626,6 +835,12 @@ def join_authoritative_labels(
         raise Sufficiency11BError(
             "authoritative manifest unexpectedly contains failures"
         )
+
+    lineage = require_gold_manifest_lineage(gold=gold, manifest=manifest)
+    adjudication, adjudication_by_case = bind_adjudication_provenance(
+        adjudication_map_path=adjudication_map_path,
+        gold=gold,
+    )
 
     gold_by_id = {case.id: case for case in gold.cases}
     gold_ids = sorted(gold_by_id)
@@ -670,6 +885,7 @@ def join_authoritative_labels(
                 artifacts_root=artifacts_root,
                 gold_by_id=gold_by_id,
                 gold_dataset_id=gold.dataset_id,
+                adjudication_cohort=adjudication_by_case[group.case_id],
             )
         )
 
@@ -678,7 +894,7 @@ def join_authoritative_labels(
             "attempt_groups case set does not match expected_case_ids"
         )
     labels.sort(key=lambda item: item.case_id)
-    return labels
+    return labels, lineage, adjudication
 
 
 def build_11b_analysis(
@@ -686,13 +902,15 @@ def build_11b_analysis(
     manifest: SufficiencyEvalContextManifestV1,
     gold: LoadedGoldDataset,
     artifacts_root: Path,
+    adjudication_map_path: Path,
     created_at: datetime | None = None,
 ) -> Sufficiency11BAnalysisV1:
     """Build the deterministic 11B analysis object (no I/O beyond snapshot loads)."""
-    labels = join_authoritative_labels(
+    labels, lineage, adjudication = join_authoritative_labels(
         manifest=manifest,
         gold=gold,
         artifacts_root=artifacts_root,
+        adjudication_map_path=adjudication_map_path,
     )
     distributions = _build_feature_distributions(labels)
     thresholds = enumerate_threshold_evaluations(
@@ -701,19 +919,29 @@ def build_11b_analysis(
     recommended = [
         item.rule_id for item in thresholds if item.eligible_for_recommendation
     ]
-    a_ids = [item.case_id for item in labels if item.cohort == "A"]
-    b_ids = [item.case_id for item in labels if item.cohort == "B"]
+    human = _threshold_labels(labels)
+    a_ids = [item.case_id for item in human if item.threshold_cohort == "A"]
+    b_ids = [item.case_id for item in human if item.threshold_cohort == "B"]
+    human_ids = [item.case_id for item in human]
+    assistant_ids = [
+        item.case_id for item in labels if item.adjudication_cohort == "assistant_only"
+    ]
 
     notes = [
         "Development/regression experiment only; n is small and non-promotional.",
         "No weighted composite, ML learner, cross-validation, or multi-feature search.",
         "No runtime sufficiency gating is authorized by this artifact.",
+        (
+            "Threshold A/B rates use human-reviewed cases only; assistant-only "
+            "cases are reported descriptively and never affect eligibility."
+        ),
     ]
     if not b_ids:
         notes.append(
-            "Population B is empty under the documented presence rule: every "
-            "frozen case has ≥1 Gold positive chunk_id on the evidence surface. "
-            "Retrieval-failure-proxy capture cannot be demonstrated on this fixture."
+            "Human-reviewed Population B is empty under the documented presence "
+            "rule: every human-reviewed case has ≥1 Gold positive chunk_id on the "
+            "evidence surface. Retrieval-failure-proxy capture cannot be "
+            "demonstrated on this fixture."
         )
 
     conclusion_notes: list[str] = []
@@ -723,24 +951,30 @@ def build_11b_analysis(
             "candidate_gate_reported_for_review",
         ] = "candidate_gate_reported_for_review"
         conclusion_notes.append(
-            "One or more 1-D rules show zero Population A gates and non-zero "
-            "Population B capture on this fixture; report for independent review "
+            "One or more 1-D rules show zero human-reviewed Population A gates "
+            "and non-zero Population B capture; report for independent review "
             "only — do not wire into runtime yet."
         )
     else:
         conclusion = "no_additional_gate_promoted"
         conclusion_notes.append(
-            "No additional gate promoted: the 22-case evidence does not show a "
-            "clear useful separation with acceptably low false-refusal behavior "
-            "beyond the intrinsic empty_context => insufficient gate."
+            "No additional gate promoted: human-reviewed evidence does not show "
+            "clear useful A/B separation with acceptably low false-refusal "
+            "behavior beyond the intrinsic empty_context => insufficient gate."
         )
 
     return Sufficiency11BAnalysisV1(
         suffctxrun_id=manifest.suffctxrun_id,
         gold_dataset_id=gold.dataset_id,
+        gold_lineage_binding=lineage,
+        adjudication_provenance=adjudication,
         cohort_definition=CohortDefinitionContractV1(),
         positive_presence_matching_rule=PositivePresenceMatchingRuleV1(),
-        expected_case_count=len(labels),
+        path_b_case_count=len(labels),
+        human_reviewed_case_count=len(human_ids),
+        assistant_only_case_count=len(assistant_ids),
+        human_reviewed_case_ids=human_ids,
+        assistant_only_case_ids=assistant_ids,
         population_a_count=len(a_ids),
         population_b_count=len(b_ids),
         population_a_case_ids=a_ids,
@@ -772,6 +1006,14 @@ def render_11b_markdown_report(analysis: Sufficiency11BAnalysisV1) -> str:
         f"- suffctxrun_id: `{analysis.suffctxrun_id}`",
         f"- gold_dataset_id: `{analysis.gold_dataset_id}`",
         (
+            f"- gold_lineage: chunk_set_id=`{analysis.gold_lineage_binding.gold_chunk_set_id}` "
+            f"corpus_id=`{analysis.gold_lineage_binding.gold_corpus_id}`"
+        ),
+        (
+            f"- adjudication_provenance: schema=`{analysis.adjudication_provenance.source_schema_version}` "
+            f"path=`{analysis.adjudication_provenance.source_path}`"
+        ),
+        (
             f"- cohort_definition: `{analysis.cohort_definition.contract}` "
             f"{analysis.cohort_definition.version}"
         ),
@@ -779,9 +1021,11 @@ def render_11b_markdown_report(analysis: Sufficiency11BAnalysisV1) -> str:
             f"- presence_rule: `{analysis.positive_presence_matching_rule.rule_id}` "
             f"{analysis.positive_presence_matching_rule.version}"
         ),
-        f"- expected_case_count: {analysis.expected_case_count}",
-        f"- population_A (known_positive_present): {analysis.population_a_count}",
-        f"- population_B (known_positive_missing): {analysis.population_b_count}",
+        f"- path_b_case_count: {analysis.path_b_case_count}",
+        f"- human_reviewed_case_count: {analysis.human_reviewed_case_count}",
+        f"- assistant_only_case_count: {analysis.assistant_only_case_count}",
+        f"- population_A (human known_positive_present): {analysis.population_a_count}",
+        f"- population_B (human known_positive_missing): {analysis.population_b_count}",
         f"- conclusion: `{analysis.conclusion}`",
         f"- intrinsic_gate_remains: `{analysis.intrinsic_gate_remains}`",
         "",
@@ -789,11 +1033,23 @@ def render_11b_markdown_report(analysis: Sufficiency11BAnalysisV1) -> str:
         "",
         analysis.positive_presence_matching_rule.description,
         "",
-        "## Cohort case IDs",
+        "## Adjudication cohorts",
         "",
-        "### Population A",
+        "### Human-reviewed (threshold truth)",
         "",
     ]
+    if analysis.human_reviewed_case_ids:
+        lines.extend(f"- `{case_id}`" for case_id in analysis.human_reviewed_case_ids)
+    else:
+        lines.append("- (none)")
+    lines.extend(["", "### Assistant-only (diagnostic only)", ""])
+    if analysis.assistant_only_case_ids:
+        lines.extend(f"- `{case_id}`" for case_id in analysis.assistant_only_case_ids)
+    else:
+        lines.append("- (none)")
+
+    lines.extend(["", "## Human-reviewed OD-11-4 cohorts", ""])
+    lines.extend(["### Population A", ""])
     if analysis.population_a_case_ids:
         lines.extend(f"- `{case_id}`" for case_id in analysis.population_a_case_ids)
     else:
@@ -804,29 +1060,28 @@ def render_11b_markdown_report(analysis: Sufficiency11BAnalysisV1) -> str:
     else:
         lines.append("- (none)")
 
-    lines.extend(["", "## Per-feature descriptive separation", ""])
+    lines.extend(["", "## Per-feature descriptive separation (human-reviewed)", ""])
     for dist in analysis.feature_distributions:
         lines.append(f"### `{dist.feature}`")
         lines.append("")
         lines.append(f"- value_kind: `{dist.value_kind}`")
-        lines.append(f"- non_discriminative: `{dist.non_discriminative}`")
+        lines.append(f"- varies_on_fixture: `{dist.varies_on_fixture}`")
+        lines.append(
+            f"- cohort_separation_assessable: `{dist.cohort_separation_assessable}`"
+        )
         lines.append(f"- distinct_values: `{dist.distinct_values}`")
         lines.append(f"- A values: `{dist.population_a_values}`")
         lines.append(f"- B values: `{dist.population_b_values}`")
         lines.append(f"- overlap: `{dist.overlap_values}`")
         if dist.population_a_min is not None:
             lines.append(
-                
-                    f"- A min/median/max: {dist.population_a_min} / "
-                    f"{dist.population_a_median} / {dist.population_a_max}"
-                
+                f"- A min/median/max: {dist.population_a_min} / "
+                f"{dist.population_a_median} / {dist.population_a_max}"
             )
         if dist.population_b_min is not None:
             lines.append(
-                
-                    f"- B min/median/max: {dist.population_b_min} / "
-                    f"{dist.population_b_median} / {dist.population_b_max}"
-                
+                f"- B min/median/max: {dist.population_b_min} / "
+                f"{dist.population_b_median} / {dist.population_b_max}"
             )
         for note in dist.notes:
             lines.append(f"- note: {note}")
@@ -837,27 +1092,26 @@ def render_11b_markdown_report(analysis: Sufficiency11BAnalysisV1) -> str:
             "## Per-case review table",
             "",
             (
-                "| case_id | cohort | empty_context | top_reranker_score | "
-                "top1_top2_margin | cross_support | anchor_count | "
-                "distinct_document_count | distinct_section_count | "
+                "| case_id | adjudication | threshold_cohort | empty_context | "
+                "top_reranker_score | top1_top2_margin | cross_support | "
+                "anchor_count | distinct_document_count | distinct_section_count | "
                 "present_positive_count |"
             ),
-            "|---|---|---|---|---|---|---|---|---|---|",
+            "|---|---|---|---|---|---|---|---|---|---|---|",
         ]
     )
     for item in analysis.case_labels:
         f = item.features
+        cohort = item.threshold_cohort if item.threshold_cohort is not None else "n/a"
         lines.append(
-            
-                f"| `{item.case_id}` | {item.cohort} | {f.empty_context} | "
-                f"{f.top_reranker_score} | {f.top1_top2_margin} | "
-                f"{f.top_anchor_cross_retriever_support} | {f.anchor_count} | "
-                f"{f.distinct_document_count} | {f.distinct_section_count} | "
-                f"{len(item.present_positive_chunk_ids)} |"
-            
+            f"| `{item.case_id}` | {item.adjudication_cohort} | {cohort} | "
+            f"{f.empty_context} | {f.top_reranker_score} | {f.top1_top2_margin} | "
+            f"{f.top_anchor_cross_retriever_support} | {f.anchor_count} | "
+            f"{f.distinct_document_count} | {f.distinct_section_count} | "
+            f"{len(item.present_positive_chunk_ids)} |"
         )
 
-    lines.extend(["", "## Threshold / boolean rule evaluations", ""])
+    lines.extend(["", "## Threshold / boolean rule evaluations (human-reviewed)", ""])
     if not analysis.threshold_evaluations:
         lines.append("(none)")
     else:
@@ -939,6 +1193,7 @@ def run_11b_analysis(
     gold_dataset_path: Path,
     artifacts_root: Path,
     output_dir: Path,
+    adjudication_map_path: Path,
 ) -> Sufficiency11BAnalysisResult:
     """Load authoritative artifacts + Gold, analyze, and persist review outputs."""
     manifest = load_sufficiency_manifest(Path(manifest_path))
@@ -947,6 +1202,7 @@ def run_11b_analysis(
         manifest=manifest,
         gold=gold,
         artifacts_root=Path(artifacts_root),
+        adjudication_map_path=Path(adjudication_map_path),
     )
     json_path, md_path = persist_11b_analysis(analysis, output_dir=Path(output_dir))
     return Sufficiency11BAnalysisResult(
@@ -959,6 +1215,11 @@ def run_11b_analysis(
 DEFAULT_FROZEN_DATASET = Path(
     "data/corpora/ics_modules/gold_authoring/gold/"
     "authorrun_b28d88f64054491a837cb4a144cbe056"
+)
+DEFAULT_ADJUDICATION_MAP = Path(
+    "eval/fixtures/sufficiency/"
+    "gold_d3fc157c7b3206f6983abee766e7ce7b939244a7dea04f0be256f3a533a46172"
+    "_adjudication_cohort_map_v1.json"
 )
 DEFAULT_ACCEPTED_SUFFCTXRUN_ID = (
     "suffctxrun_9c15bf6eee2e7b18317df7daa95328827be62bfa2d369b20272d7820c7fb32d4"
@@ -979,6 +1240,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     )
     parser.add_argument("--dataset", type=Path, default=DEFAULT_FROZEN_DATASET)
+    parser.add_argument(
+        "--adjudication-map",
+        type=Path,
+        default=DEFAULT_ADJUDICATION_MAP,
+        help="Immutable human/assistant adjudication cohort map (eval-layer)",
+    )
     parser.add_argument(
         "--artifacts-root",
         type=Path,
@@ -1012,15 +1279,25 @@ def main(argv: Sequence[str] | None = None) -> int:
         gold_dataset_path=Path(args.dataset),
         artifacts_root=artifacts_root,
         output_dir=Path(output_dir),
+        adjudication_map_path=Path(args.adjudication_map),
     )
     summary = {
         "suffctxrun_id": result.analysis.suffctxrun_id,
         "gold_dataset_id": result.analysis.gold_dataset_id,
+        "path_b_case_count": result.analysis.path_b_case_count,
+        "human_reviewed_case_count": result.analysis.human_reviewed_case_count,
+        "assistant_only_case_count": result.analysis.assistant_only_case_count,
         "population_a_count": result.analysis.population_a_count,
         "population_b_count": result.analysis.population_b_count,
         "conclusion": result.analysis.conclusion,
         "recommended_candidate_rule_ids": (
             result.analysis.recommended_candidate_rule_ids
+        ),
+        "adjudication_provenance_schema": (
+            result.analysis.adjudication_provenance.source_schema_version
+        ),
+        "adjudication_provenance_path": (
+            result.analysis.adjudication_provenance.source_path
         ),
         "analysis_json_path": str(result.analysis_json_path),
         "analysis_md_path": str(result.analysis_md_path),
