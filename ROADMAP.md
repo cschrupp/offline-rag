@@ -219,7 +219,7 @@ Order: Slice **11** → **12** → **13**.
 
 ## Milestone 6 — Agentic recovery and security
 
-**Status:** Slice **11 COMPLETE / ACCEPTED**; Slice **12A** complete (contracts only); **12B** not started  
+**Status:** Slice **11 COMPLETE / ACCEPTED**; Slice **12A COMPLETE / ACCEPTED**; **12B** not started  
 **Baseline:** `1983ff1376ea27fc1e8774b35136dc8c8ec93f40`  
 **Design authority:** [`docs/milestone6_agentic_recovery_security.md`](docs/milestone6_agentic_recovery_security.md)  
 **OD-12 design-lock baseline:** `4194d525211d994b97aa8abba93237cd8a23cbb9`
@@ -230,19 +230,19 @@ Do **not** interpret the checklist below as authorization to build LangGraph
 before a formal evidence-sufficiency gate exists (ADR-008).
 
 - [x] Slice 11 — Evidence sufficiency & abstention policy (11A→11B→11C) — **COMPLETE / ACCEPTED**
-- [ ] Slice 12 — Conditional LangGraph retrieval recovery (**12A** contracts done → **12B** → **12C**)
+- [ ] Slice 12 — Conditional LangGraph retrieval recovery (**12A ACCEPTED** → **12B** → **12C**)
 - [ ] Slice 13 — Prompt-injection & security harness (13A→13C; optional 13D NeMo)
 
 Checklist detail (same order; not startable out of sequence):
 
 - [x] evidence sufficiency policy (Slice 11; deterministic first) — **ACCEPTED**
-- [x] **12A** project-owned recovery state/protocol contracts, invariants, deterministic replay
-- [ ] bounded query rewrite/retry (**12B**; only after 12A review)
+- [x] **12A** project-owned recovery state/protocol contracts, invariants, deterministic replay — **COMPLETE / ACCEPTED**
+- [ ] bounded query rewrite/retry (**12B**; only after authorization)
 - [ ] LangGraph adapter / conditional recovery orchestration (**12B+**; adapter-only per OD-12-3)
 - [ ] indirect prompt-injection suite (Slice 13)
 - [ ] optional NeMo Guardrails evaluation (Slice 13D; after deterministic controls)
 
-**Next:** Independent review of **12A**. Do **not** start **12B** (rewriter, retrieval retry, LangGraph adapter, runtime orchestration) until authorized.
+**Next:** Authorize **12B** (bounded rewriter + exactly one recovery retrieval attempt on the accepted 12A contracts) when ready. Do **not** start **12B** until authorized. LangGraph remains adapter-only (OD-12-3).
 
 **Slice 11 accepted chain**
 - **11A-1** `4f0cebc` · **11A-2** `cd0dd91` · **11A-3** `24b2179`
@@ -251,6 +251,11 @@ Checklist detail (same order; not startable out of sequence):
 - **11C** `07b9b32` — runtime `sufficiency-v1` / gate `empty_context_v1` (user-facing `abstention_reason=empty_context`)
 - Development fixture had **no human Population-B cases**; no extra threshold is a conservative evidence decision, not a claim that score-based sufficiency can never help.
 - **OD-11-2 … OD-11-54 + OD-11-DESIGN-CLOSURE LOCKED**
+
+**Slice 12A accepted chain**
+- **OD-12 design lock** `4194d52` — OD-12-1 / OD-12-2 / OD-12-3 **LOCKED**
+- **12A contracts** `941fdb3` → integrity corrections `60d0d48` → no-op prepare fix `1be7fc8` — **COMPLETE / ACCEPTED**
+- Package: `src/offline_rag/recovery/` — project-owned RecoveryProtocol; no LangGraph dependency; no rewriter/retrieval/generation runtime
 
 **Frozen runtime policy:** `sufficiency-v1` — `empty_context_v1` iff final EvidenceUnit[] is empty; non-empty proceeds to generation; `model_abstain` remains post-generation and distinct. That is the deterministic trigger ADR-008 requires for Slice 12.
 

@@ -573,14 +573,24 @@ The system has a measured operating point balancing useful answers against unsup
 # Slice 12 — Conditional LangGraph retrieval recovery
 
 ```text
-STATUS: BLOCKED ON SLICE 11 / IMPLEMENTATION NOT STARTED
+STATUS: 12A COMPLETE / ACCEPTED (1be7fc8); 12B NOT STARTED
 Authority: docs/milestone6_agentic_recovery_security.md
+Contracts: src/offline_rag/recovery/ (project-owned RecoveryProtocol)
+OD-12-1 / OD-12-2 / OD-12-3: LOCKED
+LangGraph: adapter-only when authorized; not the semantic authority
 ```
 
 ## Objective
 
 Introduce agentic behavior only where the baseline retrieval pipeline demonstrably fails
 **and** a formal sufficiency gate has returned insufficient.
+
+## Sub-slices
+
+- **12A (ACCEPTED):** project-owned recovery state/protocol contracts, invariants,
+  terminal outcomes, deterministic replay — no LangGraph, rewriter, or recovery retrieval
+- **12B (not started):** bounded rewriter + exactly one recovery retrieval attempt on 12A contracts
+- **12C:** recovery vs baseline evaluation
 
 ## Initial graph
 
@@ -616,12 +626,13 @@ evidence sufficient?
 
 ## Deliverables
 
-- LangGraph state model;
+- project-owned RecoveryProtocol / state contracts (**12A done**);
 - bounded retry count;
-- query rewriter;
+- query rewriter (**12B**);
+- optional LangGraph adapter (adapter-only; **12B+**);
 - loop termination conditions;
 - retry traces;
-- evaluation comparing agentic vs non-agentic pipeline.
+- evaluation comparing agentic vs non-agentic pipeline (**12C**).
 
 ## Exit criteria
 

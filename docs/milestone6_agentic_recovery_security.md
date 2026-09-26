@@ -94,7 +94,7 @@ Recommended sub-slices:
 | Slice | Sub-slices |
 |---|---|
 | **11** | **11A** observation contracts → **11B** offline eval/threshold analysis → **11C** runtime policy integration |
-| **12** | **12A** recovery state/graph contracts → **12B** bounded rewriter + one retry → **12C** recovery vs baseline eval |
+| **12** | **12A** recovery state/protocol contracts (**COMPLETE / ACCEPTED**) → **12B** bounded rewriter + one retry → **12C** recovery vs baseline eval |
 | **13** | **13A** fixture contracts + deterministic invariants → **13B** adversarial harness → **13C** recovery-path attacks → **13D** optional NeMo experiment |
 
 NeMo is **not** required to complete the deterministic security architecture.
@@ -2808,11 +2808,12 @@ normal retrieve → context → sufficiency
          → at most one recovery attempt
 ```
 
-**12A implication:** Do **not** add LangGraph in 12A. Define the state model,
-transition protocol, terminal outcomes, invariants, and deterministic replay
-first. Once those contracts are accepted, **12B** may decide whether the first
-concrete adapter is LangGraph while implementing the bounded rewrite + one
-retry.
+**12A status:** **COMPLETE / ACCEPTED** at `1be7fc8103b0e847ef2177bcf8051300ab2de794`
+(`941fdb3` → `60d0d48` → `1be7fc8`). Project-owned contracts live in
+`src/offline_rag/recovery/`. Do **not** add LangGraph in 12A (already closed).
+**12B** may implement the bounded rewrite + one retry on these contracts and may
+decide whether the first concrete adapter is LangGraph; LangGraph remains
+adapter-only and is not the authority for recovery semantics (OD-12-3).
 
 **Rationale:** Unit tests can validate the entire state machine with no
 LangGraph dependency; deterministic replay stays straightforward; replacing
@@ -2965,7 +2966,12 @@ independent of which generator answered afterward.
 
 ## 14. Graph state model (Slice 12)
 
-Project-owned typed state (conceptual):
+**12A implementation:** The authoritative project-owned contracts are in
+`src/offline_rag/recovery/` (**COMPLETE / ACCEPTED** at `1be7fc8`). LangGraph
+must adapt to that protocol; it must not redefine recovery semantics.
+
+Project-owned typed state (conceptual / design sketch; see recovery package for
+the accepted wire surface):
 
 ```text
 trace_id
@@ -3190,21 +3196,21 @@ Prefer durable project artifacts over framework-only debug dumps (ADR-016).
 ## 26. Implementation / test sequence
 
 ```text
-Design contract (this document)          ← current
+Design contract (this document)
   → Slice 11 design interview complete (OD-11-2…11-54 + DESIGN-CLOSURE LOCKED)
   → 11A-1 observation core                          ← accepted
-  → 11A-2 snapshot/manifest persistence             ← implemented
-  → 11A later: context adapter + measure-once (separate auth)
-  → 11B offline eval / threshold sweeps (no base.yaml auto-write)
-  → 11C runtime gate + taxonomy
-  → 12A state/protocol (+ LangGraph adapter decision OD-12-3)
-  → 12B rewriter + one retry
+  → 11A-2 snapshot/manifest persistence             ← accepted
+  → 11A-3 context adapter + measure-once            ← accepted
+  → 11B offline eval / threshold sweeps             ← accepted
+  → 11C runtime gate + taxonomy                     ← accepted
+  → 12A state/protocol (OD-12-1/2/3 locked)         ← COMPLETE / ACCEPTED (1be7fc8)
+  → 12B rewriter + one retry                        ← not started
   → 12C recovery vs baseline eval
   → 13A–13C security harness
   → 13D optional NeMo (if authorized)
 ```
 
-No LangGraph, no model calls, no eval runs in the design pass.
+No LangGraph dependency yet. 12B remains unauthorized until explicitly started.
 
 ---
 
