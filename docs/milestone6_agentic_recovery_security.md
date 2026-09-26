@@ -94,7 +94,7 @@ Recommended sub-slices:
 | Slice | Sub-slices |
 |---|---|
 | **11** | **11A** observation contracts → **11B** offline eval/threshold analysis → **11C** runtime policy integration |
-| **12** | **12A** recovery state/protocol contracts (**COMPLETE / ACCEPTED**) → **12B** bounded rewriter + one retry → **12C** recovery vs baseline eval |
+| **12** | **12A** recovery state/protocol contracts (**COMPLETE / ACCEPTED**) → **12B** bounded rewriter + one retry (**COMPLETE / ACCEPTED**) → **12C** recovery vs baseline eval |
 | **13** | **13A** fixture contracts + deterministic invariants → **13B** adversarial harness → **13C** recovery-path attacks → **13D** optional NeMo experiment |
 
 NeMo is **not** required to complete the deterministic security architecture.
@@ -2811,9 +2811,12 @@ normal retrieve → context → sufficiency
 **12A status:** **COMPLETE / ACCEPTED** at `1be7fc8103b0e847ef2177bcf8051300ab2de794`
 (`941fdb3` → `60d0d48` → `1be7fc8`). Project-owned contracts live in
 `src/offline_rag/recovery/`. Do **not** add LangGraph in 12A (already closed).
-**12B** may implement the bounded rewrite + one retry on these contracts and may
-decide whether the first concrete adapter is LangGraph; LangGraph remains
-adapter-only and is not the authority for recovery semantics (OD-12-3).
+
+**12B status:** **COMPLETE / ACCEPTED** at `f1f9c5f95e6b3e3f0c295ff962a135eb2148e9a6`
+(`22a5fa2` → `554f742` → `f1f9c5f`). Executable bounded rewrite + one recovery
+retrieval on the project-owned protocol; `retrieval_recovery.enabled=false` by
+default until **12C** evidence. LangGraph was **not** added in 12B and remains
+adapter-only / separately authorized later (OD-12-3).
 
 **Rationale:** Unit tests can validate the entire state machine with no
 LangGraph dependency; deterministic replay stays straightforward; replacing
@@ -2969,6 +2972,10 @@ independent of which generator answered afterward.
 **12A implementation:** The authoritative project-owned contracts are in
 `src/offline_rag/recovery/` (**COMPLETE / ACCEPTED** at `1be7fc8`). LangGraph
 must adapt to that protocol; it must not redefine recovery semantics.
+
+**12B implementation:** Executable bounded rewrite + one recovery retrieval on
+those contracts (**COMPLETE / ACCEPTED** at `f1f9c5f`); default
+`retrieval_recovery.enabled=false` until 12C.
 
 Project-owned typed state (conceptual / design sketch; see recovery package for
 the accepted wire surface):
@@ -3204,13 +3211,15 @@ Design contract (this document)
   → 11B offline eval / threshold sweeps             ← accepted
   → 11C runtime gate + taxonomy                     ← accepted
   → 12A state/protocol (OD-12-1/2/3 locked)         ← COMPLETE / ACCEPTED (1be7fc8)
-  → 12B rewriter + one retry                        ← not started
-  → 12C recovery vs baseline eval
+  → 12B rewriter + one retry                        ← COMPLETE / ACCEPTED (f1f9c5f)
+  → 12C recovery vs baseline eval                   ← not started
   → 13A–13C security harness
   → 13D optional NeMo (if authorized)
 ```
 
-No LangGraph dependency yet. 12B remains unauthorized until explicitly started.
+No LangGraph dependency yet. Keep `retrieval_recovery.enabled=false` until 12C
+evidence. Authorize **12C** when ready; do not promote recovery by default before
+that measurement.
 
 ---
 

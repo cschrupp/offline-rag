@@ -219,7 +219,7 @@ Order: Slice **11** → **12** → **13**.
 
 ## Milestone 6 — Agentic recovery and security
 
-**Status:** Slice **11 COMPLETE / ACCEPTED**; Slice **12A COMPLETE / ACCEPTED**; Slice **12B** implemented (review pending); **12C** not started  
+**Status:** Slice **11 COMPLETE / ACCEPTED**; Slice **12A COMPLETE / ACCEPTED**; Slice **12B COMPLETE / ACCEPTED**; **12C** not started  
 **Baseline:** `1983ff1376ea27fc1e8774b35136dc8c8ec93f40`  
 **Design authority:** [`docs/milestone6_agentic_recovery_security.md`](docs/milestone6_agentic_recovery_security.md)  
 **OD-12 design-lock baseline:** `4194d525211d994b97aa8abba93237cd8a23cbb9`
@@ -230,20 +230,20 @@ Do **not** interpret the checklist below as authorization to build LangGraph
 before a formal evidence-sufficiency gate exists (ADR-008).
 
 - [x] Slice 11 — Evidence sufficiency & abstention policy (11A→11B→11C) — **COMPLETE / ACCEPTED**
-- [ ] Slice 12 — Conditional LangGraph retrieval recovery (**12A ACCEPTED** → **12B** → **12C**)
+- [ ] Slice 12 — Conditional LangGraph retrieval recovery (**12A/12B ACCEPTED** → **12C**)
 - [ ] Slice 13 — Prompt-injection & security harness (13A→13C; optional 13D NeMo)
 
 Checklist detail (same order; not startable out of sequence):
 
 - [x] evidence sufficiency policy (Slice 11; deterministic first) — **ACCEPTED**
 - [x] **12A** project-owned recovery state/protocol contracts, invariants, deterministic replay — **COMPLETE / ACCEPTED**
-- [x] bounded query rewrite/retry (**12B**; explicit rewriter + one recovery retrieval; review pending)
-- [ ] LangGraph adapter / conditional recovery orchestration (**post-12B**; adapter-only per OD-12-3)
+- [x] bounded query rewrite/retry (**12B**; explicit rewriter + one recovery retrieval) — **COMPLETE / ACCEPTED**
 - [ ] recovery vs baseline evaluation (**12C**; not started)
+- [ ] LangGraph adapter / conditional recovery orchestration (**post-12B**; adapter-only per OD-12-3; separately authorized)
 - [ ] indirect prompt-injection suite (Slice 13)
 - [ ] optional NeMo Guardrails evaluation (Slice 13D; after deterministic controls)
 
-**Next:** Independent review of **12B**. Do **not** start **12C** until authorized. Recovery remains **disabled** by default (`retrieval_recovery.enabled=false`). LangGraph remains out of 12B.
+**Next:** Authorize **12C** (recovery-vs-baseline evaluation contract and measurement) when ready. Do **not** start **12C** until authorized. Keep `retrieval_recovery.enabled=false` until 12C evidence supports promotion. LangGraph remains out / adapter-only if separately authorized later.
 
 **Slice 11 accepted chain**
 - **11A-1** `4f0cebc` · **11A-2** `cd0dd91` · **11A-3** `24b2179`
@@ -256,13 +256,18 @@ Checklist detail (same order; not startable out of sequence):
 **Slice 12A accepted chain**
 - **OD-12 design lock** `4194d52` — OD-12-1 / OD-12-2 / OD-12-3 **LOCKED**
 - **12A contracts** `941fdb3` → integrity corrections `60d0d48` → no-op prepare fix `1be7fc8` — **COMPLETE / ACCEPTED**
-- Package: `src/offline_rag/recovery/` — project-owned RecoveryProtocol; no LangGraph dependency; no rewriter/retrieval/generation runtime
+- Package: `src/offline_rag/recovery/` — project-owned RecoveryProtocol; no LangGraph dependency
+
+**Slice 12B accepted chain**
+- **12A docs closeout** `22a5fa2` — authority baseline for 12B
+- **12B implementation** `554f742` → security/provenance hardening `f1f9c5f` — **COMPLETE / ACCEPTED**
+- Explicit `retrieval_recovery.rewriter`; bounded rewrite + one recovery retrieval; default `enabled=false`; no LangGraph
 
 **Frozen runtime policy:** `sufficiency-v1` — `empty_context_v1` iff final EvidenceUnit[] is empty; non-empty proceeds to generation; `model_abstain` remains post-generation and distinct. That is the deterministic trigger ADR-008 requires for Slice 12.
 
 **Release criterion:** agentic recovery demonstrates measured benefit and adversarial test results are documented.
 
-LangGraph is not started. No LangGraph dependency has been added.
+LangGraph is not started. No LangGraph dependency has been added. Recovery remains disabled by default until 12C evidence.
 
 ## Milestone 7 — Performance and UI
 

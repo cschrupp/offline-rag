@@ -573,12 +573,13 @@ The system has a measured operating point balancing useful answers against unsup
 # Slice 12 — Conditional LangGraph retrieval recovery
 
 ```text
-STATUS: 12A COMPLETE / ACCEPTED (1be7fc8); 12B IMPLEMENTED (review pending); 12C NOT STARTED
+STATUS: 12A COMPLETE / ACCEPTED (1be7fc8); 12B COMPLETE / ACCEPTED (f1f9c5f); 12C NOT STARTED
 Authority: docs/milestone6_agentic_recovery_security.md
 Contracts: src/offline_rag/recovery/ (project-owned RecoveryProtocol + coordinator)
 OD-12-1 / OD-12-2 / OD-12-3: LOCKED
-Default: retrieval_recovery.enabled=false until 12C
-LangGraph: not added in 12B; adapter-only if later authorized
+12B accepted chain: 22a5fa2 → 554f742 → f1f9c5f
+Default: retrieval_recovery.enabled=false until 12C evidence
+LangGraph: not added; adapter-only if separately authorized later
 ```
 
 ## Objective
@@ -590,8 +591,10 @@ Introduce agentic behavior only where the baseline retrieval pipeline demonstrab
 
 - **12A (ACCEPTED):** project-owned recovery state/protocol contracts, invariants,
   terminal outcomes, deterministic replay — no LangGraph, rewriter, or recovery retrieval
-- **12B (not started):** bounded rewriter + exactly one recovery retrieval attempt on 12A contracts
-- **12C:** recovery vs baseline evaluation
+- **12B (ACCEPTED):** bounded rewriter + exactly one recovery retrieval attempt on 12A contracts;
+  default disabled; no LangGraph
+- **12C (not started):** recovery vs baseline evaluation; only that evidence should decide
+  whether to promote recovery into normal runtime behavior
 
 ## Initial graph
 
@@ -629,8 +632,8 @@ evidence sufficient?
 
 - project-owned RecoveryProtocol / state contracts (**12A done**);
 - bounded retry count;
-- query rewriter (**12B**);
-- optional LangGraph adapter (adapter-only; **12B+**);
+- query rewriter + one recovery retrieval (**12B done**);
+- optional LangGraph adapter (adapter-only; separately authorized);
 - loop termination conditions;
 - retry traces;
 - evaluation comparing agentic vs non-agentic pipeline (**12C**).
