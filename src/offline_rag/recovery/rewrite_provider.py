@@ -10,11 +10,11 @@ from pydantic import ValidationError
 
 from offline_rag.config.models import AppSettings
 from offline_rag.core.ids import DIRECT_OUTPUT_V1
+from offline_rag.core.network_policy import destination_satisfies_policy_no_dns
 from offline_rag.generation.openai_compatible import (
     endpoint_authorized,
     normalize_endpoint,
 )
-from offline_rag.recovery.rewrite_config_hash import build_recovery_rewriter_config_hash
 from offline_rag.recovery.rewrite_contracts import (
     RECOVERY_REWRITE_OUTPUT_V1,
     RECOVERY_REWRITE_PROMPT_V1,
@@ -25,6 +25,9 @@ from offline_rag.recovery.rewrite_contracts import (
     RecoveryRewriteProvenanceV1,
 )
 from offline_rag.recovery.rewrite_prompt import build_recovery_rewrite_messages
+from offline_rag.recovery.rewrite_provenance import (
+    build_recovery_rewrite_attempt_provenance,
+)
 
 
 def _auth_headers(api_key: str | None) -> dict[str, str]:
@@ -76,6 +79,19 @@ def _extract_message_content(payload: dict[str, Any]) -> str:
             failure_reason="provider_error",
         )
     return content
+
+
+def _with_provenance(
+    exc: RecoveryRewriteError,
+    provenance: RecoveryRewriteProvenanceV1,
+) -> RecoveryRewriteError:
+    if exc.provenance is not None:
+        return exc
+    return RecoveryRewriteError(
+        str(exc),
+        failure_reason=exc.failure_reason,
+        provenance=provenance,
+    )
 
 
 class OpenAICompatibleRecoveryRewriter:
@@ -130,7 +146,17 @@ class OpenAICompatibleRecoveryRewriter:
 
     def _assert_authorized(self) -> None:
         rewriter = self.settings.retrieval_recovery.rewriter
-        # Always enforce allowlists for recovery rewriter (OD-12-1).
+        # Dual gate: network_policy AND approved_endpoints (allowlist cannot
+        # override the network boundary).
+        policy_failure = destination_satisfies_policy_no_dns(
+            rewriter.base_url, network_policy=rewriter.network_policy
+        )
+        if policy_failure is not None:
+            raise RecoveryRewriteError(
+                f"configured recovery rewriter endpoint rejected by "
+                f"network_policy={rewriter.network_policy}",
+                failure_reason="authorization_error",
+            )
         if not endpoint_authorized(
             rewriter.base_url, list(rewriter.approved_endpoints)
         ):
@@ -147,63 +173,64 @@ class OpenAICompatibleRecoveryRewriter:
     def rewrite(
         self, rewrite_input: RecoveryRewriteInputV1
     ) -> tuple[RecoveryRewriteOutputV1, RecoveryRewriteProvenanceV1]:
-        self._assert_authorized()
-        self.rewrite_calls += 1
-        rewriter = self.settings.retrieval_recovery.rewriter
-        messages = build_recovery_rewrite_messages(rewrite_input)
-        body: dict[str, Any] = {
-            "model": rewriter.model,
-            "temperature": float(rewriter.temperature),
-            "max_tokens": int(rewriter.max_output_tokens),
-            "messages": messages,
-            "response_format": {"type": "json_object"},
-            "chat_template_kwargs": {"enable_thinking": False},
-        }
-        # Reasoning contract name kept for audit alignment with generation stack.
-        _ = DIRECT_OUTPUT_V1
-        url = f"{self.base_url}/chat/completions"
-        try:
-            response = self._client.post(
-                url, json=body, headers=_auth_headers(rewriter.api_key)
-            )
-        except httpx.TimeoutException as exc:
-            raise RecoveryRewriteError(
-                "recovery rewriter timed out",
-                failure_reason="timeout",
-            ) from exc
-        except httpx.HTTPError as exc:
-            raise RecoveryRewriteError(
-                f"recovery rewriter transport error: {exc}",
-                failure_reason="transport_error",
-            ) from exc
-        if response.status_code >= 400:
-            raise RecoveryRewriteError(
-                f"recovery rewriter provider error: HTTP {response.status_code}",
-                failure_reason="provider_error",
-            )
-        try:
-            payload = response.json()
-        except json.JSONDecodeError as exc:
-            raise RecoveryRewriteError(
-                "recovery rewriter returned non-JSON HTTP body",
-                failure_reason="provider_error",
-            ) from exc
-        if not isinstance(payload, dict):
-            raise RecoveryRewriteError(
-                "recovery rewriter HTTP JSON must be an object",
-                failure_reason="provider_error",
-            )
-        raw = _extract_message_content(payload)
-        parsed = parse_recovery_rewrite_output(raw)
-        provenance = RecoveryRewriteProvenanceV1(
-            prompt_contract=RECOVERY_REWRITE_PROMPT_V1,
-            output_contract=RECOVERY_REWRITE_OUTPUT_V1,
-            adapter_contract=rewriter.adapter_contract,
-            rewriter_config_hash=build_recovery_rewriter_config_hash(self.settings),
-            provider=rewriter.provider,
-            normalized_endpoint=self.base_url,
-            model=rewriter.model,
-            rewrite_call_count=1,
-            rewritten_query=parsed.rewritten_query,
+        attempt = build_recovery_rewrite_attempt_provenance(
+            self.settings, rewrite_call_count=1
         )
-        return parsed, provenance
+        try:
+            self._assert_authorized()
+            self.rewrite_calls += 1
+            rewriter = self.settings.retrieval_recovery.rewriter
+            messages = build_recovery_rewrite_messages(rewrite_input)
+            body: dict[str, Any] = {
+                "model": rewriter.model,
+                "temperature": float(rewriter.temperature),
+                "max_tokens": int(rewriter.max_output_tokens),
+                "messages": messages,
+                "response_format": {"type": "json_object"},
+                "chat_template_kwargs": {"enable_thinking": False},
+            }
+            _ = DIRECT_OUTPUT_V1
+            url = f"{self.base_url}/chat/completions"
+            try:
+                response = self._client.post(
+                    url, json=body, headers=_auth_headers(rewriter.api_key)
+                )
+            except httpx.TimeoutException as exc:
+                raise RecoveryRewriteError(
+                    "recovery rewriter timed out",
+                    failure_reason="timeout",
+                    provenance=attempt,
+                ) from exc
+            except httpx.HTTPError as exc:
+                raise RecoveryRewriteError(
+                    f"recovery rewriter transport error: {exc}",
+                    failure_reason="transport_error",
+                    provenance=attempt,
+                ) from exc
+            if response.status_code >= 400:
+                raise RecoveryRewriteError(
+                    f"recovery rewriter provider error: HTTP {response.status_code}",
+                    failure_reason="provider_error",
+                    provenance=attempt,
+                )
+            try:
+                payload = response.json()
+            except json.JSONDecodeError as exc:
+                raise RecoveryRewriteError(
+                    "recovery rewriter returned non-JSON HTTP body",
+                    failure_reason="provider_error",
+                    provenance=attempt,
+                ) from exc
+            if not isinstance(payload, dict):
+                raise RecoveryRewriteError(
+                    "recovery rewriter HTTP JSON must be an object",
+                    failure_reason="provider_error",
+                    provenance=attempt,
+                )
+            raw = _extract_message_content(payload)
+            parsed = parse_recovery_rewrite_output(raw)
+        except RecoveryRewriteError as exc:
+            raise _with_provenance(exc, attempt) from exc
+
+        success = attempt.model_copy(update={"rewritten_query": parsed.rewritten_query})
+        return parsed, success

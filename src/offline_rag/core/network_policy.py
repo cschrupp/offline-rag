@@ -30,6 +30,14 @@ SUPPORTED_NETWORK_POLICIES: frozenset[str] = frozenset(
     {"localhost_only", "private_network"}
 )
 
+# Explicit local hostnames permitted under localhost_only without DNS discovery.
+LOCALHOST_POLICY_HOSTNAMES: frozenset[str] = frozenset(
+    {
+        "localhost",
+        "host.docker.internal",
+    }
+)
+
 
 def normalize_openai_compatible_endpoint(base_url: str) -> str:
     """Normalize OpenAI-compatible base URL for allowlist comparison."""
@@ -147,7 +155,7 @@ def destination_satisfies_policy(
     host_lower = host.lower()
 
     if network_policy == "localhost_only":
-        if host_lower == "localhost":
+        if host_lower in LOCALHOST_POLICY_HOSTNAMES:
             return None
         addr = _parse_ip(host)
         if addr is not None and _is_loopback_ip(addr):
@@ -161,7 +169,7 @@ def destination_satisfies_policy(
             if _is_private_network_ip(addr):
                 return None
             return NetworkPolicyReason.PUBLIC_ADDRESS_NOT_ALLOWED
-        if host_lower == "localhost":
+        if host_lower in LOCALHOST_POLICY_HOSTNAMES:
             return None
         try:
             resolved = _resolve_host_addresses(host)
@@ -170,6 +178,46 @@ def destination_satisfies_policy(
         if any(not _is_private_network_ip(item) for item in resolved):
             return NetworkPolicyReason.PUBLIC_ADDRESS_NOT_ALLOWED
         return None
+
+    return NetworkPolicyReason.NETWORK_POLICY_VIOLATION
+
+
+def destination_satisfies_policy_no_dns(
+    base_url: str,
+    *,
+    network_policy: str,
+) -> NetworkPolicyReason | None:
+    """Deterministic host/IP classification only (no DNS discovery).
+
+    Used by recovery rewriter authorization so allowlists cannot expand the
+    network boundary via public DNS names.
+    """
+    try:
+        normalized = normalize_openai_compatible_endpoint(base_url)
+    except NetworkPolicyError as exc:
+        return exc.reason
+
+    parsed = urlparse(normalized)
+    host = _host_from_netloc(parsed.netloc)
+    host_lower = host.lower()
+    addr = _parse_ip(host)
+
+    if network_policy == "localhost_only":
+        if host_lower in LOCALHOST_POLICY_HOSTNAMES:
+            return None
+        if addr is not None and _is_loopback_ip(addr):
+            return None
+        return NetworkPolicyReason.NETWORK_POLICY_VIOLATION
+
+    if network_policy == "private_network":
+        if host_lower in LOCALHOST_POLICY_HOSTNAMES:
+            return None
+        if addr is not None:
+            if _is_private_network_ip(addr) or bool(addr.is_link_local):
+                return None
+            return NetworkPolicyReason.PUBLIC_ADDRESS_NOT_ALLOWED
+        # Non-literal hostnames are not authorized without DNS discovery.
+        return NetworkPolicyReason.NETWORK_POLICY_VIOLATION
 
     return NetworkPolicyReason.NETWORK_POLICY_VIOLATION
 

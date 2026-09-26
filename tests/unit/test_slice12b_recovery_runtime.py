@@ -63,8 +63,18 @@ def _context(
     *,
     query: str = "pressure?",
     stop_reason: str = "completed",
+    latency_total: int = 1,
+    corpus_id: str | None = "corpus_test",
+    chunk_set_id: str | None = "chunkset_test",
 ) -> HybridRerankContextResult:
     assembled = "\n\n".join(unit.text for unit in units)
+    metadata: dict = {
+        "latency_ms": {"total": latency_total},
+    }
+    if corpus_id is not None:
+        metadata["corpus_id"] = corpus_id
+    if chunk_set_id is not None:
+        metadata["chunk_set_id"] = chunk_set_id
     return HybridRerankContextResult(
         query=query,
         evidence_units=units,
@@ -86,11 +96,7 @@ def _context(
             budget_exhausted=False,
             clipping_occurred=False,
         ),
-        metadata={
-            "corpus_id": "corpus_test",
-            "chunk_set_id": "chunkset_test",
-            "latency_ms": {"total": 1},
-        },
+        metadata=metadata,
     )
 
 
@@ -145,6 +151,8 @@ def _orchestrator(
     rewritten_query: str | None = None,
     raise_on_rewrite: Exception | None = None,
     raise_on_recovery_assemble: Exception | None = None,
+    initial_latency_total: int = 11,
+    recovery_latency_total: int = 77,
     fake: FakeGenerator | None = None,
 ) -> tuple[GroundedAnswerOrchestrator, FakeGenerator, FakeRecoveryRewriter, MagicMock]:
     generator = fake or FakeGenerator(
@@ -163,11 +171,13 @@ def _orchestrator(
     def _assemble(*, query: str, corpus_name: str = "default"):
         calls.append(query)
         if len(calls) == 1:
-            return _context(initial_units, query=query)
+            return _context(
+                initial_units, query=query, latency_total=initial_latency_total
+            )
         if raise_on_recovery_assemble is not None:
             raise raise_on_recovery_assemble
         units = recovery_units if recovery_units is not None else initial_units
-        return _context(units, query=query)
+        return _context(units, query=query, latency_total=recovery_latency_total)
 
     assembler.assemble.side_effect = _assemble
     orch = GroundedAnswerOrchestrator(
@@ -235,6 +245,8 @@ def test_unapproved_endpoint_and_model_fail_closed() -> None:
             )
         )
     assert exc.value.failure_reason == "authorization_error"
+    assert exc.value.provenance is not None
+    assert exc.value.provenance.rewriter_config_hash.startswith("rrwcfg_")
 
     bad_model = _settings(
         recovery_enabled=True,
@@ -251,6 +263,52 @@ def test_unapproved_endpoint_and_model_fail_closed() -> None:
             )
         )
     assert exc2.value.failure_reason == "authorization_error"
+
+
+def test_network_policy_enforced_independently_of_allowlist() -> None:
+    from offline_rag.recovery.rewrite_provider import OpenAICompatibleRecoveryRewriter
+
+    # Public host present in allowlist must still fail localhost_only.
+    settings = _settings(
+        recovery_enabled=True,
+        base_url="https://api.openai.com/v1",
+        approved_endpoints=["https://api.openai.com/v1"],
+        network_policy="localhost_only",
+    )
+    rewriter = OpenAICompatibleRecoveryRewriter(settings)
+    with pytest.raises(RecoveryRewriteError) as exc:
+        rewriter.rewrite(
+            RecoveryRewriteInputV1(
+                original_query="q",
+                sufficiency=sufficiency_ref_from_decision(sufficient=False),
+                diagnostics=RecoveryDiagnosticsV1(evidence_unit_count=0),
+            )
+        )
+    assert exc.value.failure_reason == "authorization_error"
+    assert "network_policy" in str(exc.value)
+
+    local = _settings(
+        recovery_enabled=True,
+        base_url="http://127.0.0.1:11434/v1",
+        approved_endpoints=["http://127.0.0.1:11434/v1"],
+        network_policy="localhost_only",
+    )
+    # Authorization passes; transport may fail — only assert authorization itself.
+    OpenAICompatibleRecoveryRewriter(local)._assert_authorized()
+
+    docker_host = _settings(
+        recovery_enabled=True,
+        base_url="http://host.docker.internal:11434/v1",
+        approved_endpoints=["http://host.docker.internal:11434/v1"],
+        network_policy="localhost_only",
+    )
+    OpenAICompatibleRecoveryRewriter(docker_host)._assert_authorized()
+
+    left = _rewriter_settings(network_policy="localhost_only")
+    right = _rewriter_settings(network_policy="private_network")
+    assert build_recovery_rewriter_config_hash(
+        left
+    ) != build_recovery_rewriter_config_hash(right)
 
 
 def test_rewrite_output_contract_fail_closed() -> None:
@@ -393,12 +451,72 @@ def test_rewrite_failure_no_recovery_retrieval() -> None:
         orch.answer(query="pressure?", corpus_name="default")
     assert "retrieval recovery failed" in str(exc.value)
     assert exc.value.recovery_trace is not None
-    assert exc.value.recovery_trace["failure_reason"] == (
+    trace = exc.value.recovery_trace
+    assert trace["terminal_outcome"] == (
+        RecoveryTerminalOutcomeV1.RECOVERY_PREPARATION_OR_EXECUTION_FAILED.value
+    )
+    assert trace["failure_reason"] == (
         RecoveryFailureReasonV1.REWRITE_PREPARATION_FAILED.value
     )
+    assert trace["rewriter_config_hash"]
+    assert trace["provider"]
+    assert trace["model"]
+    assert trace["normalized_endpoint"]
+    assert trace["recovery_retrieval_attempt_count"] == 0
+    assert "api_key" not in json.dumps(trace)
     assert rewriter.rewrite_calls == 1
     assert assembler.assemble.call_count == 1
     assert fake.generate_calls == 0
+
+
+def test_missing_initial_lineage_terminals_as_rewrite_preparation_failed() -> None:
+    settings = _settings(recovery_enabled=True)
+    generator = FakeGenerator(
+        default_response=json.dumps(
+            {"abstain": False, "answer": "ok", "citation_ids": ["ev_A"]}
+        )
+    )
+    rewriter = FakeRecoveryRewriter(settings, rewritten_query="r1")
+    assembler = MagicMock()
+    assembler.assemble.return_value = _context([], corpus_id=None)
+    orch = GroundedAnswerOrchestrator(
+        settings,
+        context_assembler=assembler,
+        generator=generator,
+        recovery_rewriter=rewriter,
+    )
+    orch._require_ready = lambda _name: None  # type: ignore[method-assign]
+    with pytest.raises(GroundedAnswerError) as exc:
+        orch.answer(query="pressure?", corpus_name="default")
+    assert exc.value.recovery_trace is not None
+    trace = exc.value.recovery_trace
+    assert trace["terminal_outcome"] == (
+        RecoveryTerminalOutcomeV1.RECOVERY_PREPARATION_OR_EXECUTION_FAILED.value
+    )
+    assert trace["failure_reason"] == (
+        RecoveryFailureReasonV1.REWRITE_PREPARATION_FAILED.value
+    )
+    assert rewriter.rewrite_calls == 0
+    assert generator.generate_calls == 0
+
+
+def test_recovered_context_latency_used_in_generation_provenance() -> None:
+    settings = _settings(recovery_enabled=True)
+    orch, fake, rewriter, assembler = _orchestrator(
+        settings,
+        initial_units=[],
+        recovery_units=[_unit()],
+        rewritten_query="r1",
+        initial_latency_total=11,
+        recovery_latency_total=77,
+    )
+    result = orch.answer(query="pressure?", corpus_name="default")
+    assert result.status == "answered"
+    assert result.diagnostics["latency_ms"]["context"] == 77
+    assert result.diagnostics["latency_ms"]["context_breakdown"]["total"] == 77
+    assert fake.generate_calls == 1
+    assert rewriter.rewrite_calls == 1
+    assert assembler.assemble.call_count == 2
 
 
 def test_recovery_execution_failure_no_retry() -> None:

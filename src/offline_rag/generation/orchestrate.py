@@ -23,7 +23,6 @@ from offline_rag.generation.status import (
     generation_status_for_corpus,
 )
 from offline_rag.ingestion.discovery import validate_corpus_name
-from offline_rag.recovery.contracts import RecoveryTerminalOutcomeV1
 from offline_rag.recovery.coordinator import RecoveryCoordinator, RecoveryRuntimeError
 from offline_rag.recovery.rewrite_contracts import RecoveryRewriter
 from offline_rag.sufficiency.policy import (
@@ -37,6 +36,17 @@ __all__ = [
     "GroundedAnswerOrchestrator",
     "PromptProvenanceUnavailable",
 ]
+
+
+def _context_latency_ms(context: HybridRerankContextResult) -> int:
+    """Use the active context's deterministic latency metadata when present."""
+    breakdown = (context.metadata or {}).get("latency_ms")
+    if isinstance(breakdown, dict) and "total" in breakdown:
+        try:
+            return int(breakdown["total"])
+        except TypeError, ValueError:
+            return 0
+    return 0
 
 
 class GroundedAnswerError(RuntimeError):
@@ -159,19 +169,8 @@ class GroundedAnswerOrchestrator:
                 recovery_block = recovery.trace.to_diagnostics_block()
                 active_context = recovery.context
                 self._assert_context_invariants(active_context)
-                if (
-                    recovery.state is not None
-                    and recovery.state.terminal_outcome
-                    == RecoveryTerminalOutcomeV1.RECOVERED_EVIDENCE_SUFFICIENT
-                ):
-                    # Recovered evidence replaces initial empty context for generation.
-                    active_context_ms = context_ms
-                elif (
-                    recovery.state is not None
-                    and recovery.state.terminal_outcome
-                    == RecoveryTerminalOutcomeV1.INSUFFICIENT_AFTER_BOUNDED_RECOVERY
-                ):
-                    active_context_ms = context_ms
+                # Provenance latency must match the active (recovered) context.
+                active_context_ms = _context_latency_ms(active_context)
 
         provenance = GenerationContextProvenance(
             context_config_hash=active_context.context_config_hash,

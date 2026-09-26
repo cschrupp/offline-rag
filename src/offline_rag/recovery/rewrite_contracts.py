@@ -22,9 +22,16 @@ RECOVERY_REWRITER_ADAPTER_V1 = "openai-compatible-recovery-rewriter-v1"
 class RecoveryRewriteError(RuntimeError):
     """Fail-closed recovery rewriter / provider error (no repair, no retry)."""
 
-    def __init__(self, message: str, *, failure_reason: str = "provider_error") -> None:
+    def __init__(
+        self,
+        message: str,
+        *,
+        failure_reason: str = "provider_error",
+        provenance: RecoveryRewriteProvenanceV1 | None = None,
+    ) -> None:
         super().__init__(message)
         self.failure_reason = failure_reason
+        self.provenance = provenance
 
 
 class RecoveryRewriteInputV1(BaseModel):
