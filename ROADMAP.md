@@ -219,10 +219,11 @@ Order: Slice **11** → **12** → **13**.
 
 ## Milestone 6 — Agentic recovery and security
 
-**Status:** Slice **11 COMPLETE / ACCEPTED**; Slice **12A COMPLETE / ACCEPTED**; Slice **12B COMPLETE / ACCEPTED**; **12C** not started  
+**Status:** Slice **11 COMPLETE / ACCEPTED**; Slice **12A COMPLETE / ACCEPTED**; Slice **12B COMPLETE / ACCEPTED**; **12C design contract LOCKED** (OD-12C-1…8); **12C implementation not accepted**; **12C measurement not started**  
 **Baseline:** `1983ff1376ea27fc1e8774b35136dc8c8ec93f40`  
 **Design authority:** [`docs/milestone6_agentic_recovery_security.md`](docs/milestone6_agentic_recovery_security.md)  
-**OD-12 design-lock baseline:** `4194d525211d994b97aa8abba93237cd8a23cbb9`
+**OD-12 design-lock baseline:** `4194d525211d994b97aa8abba93237cd8a23cbb9`  
+**12B docs closeout / 12C authority baseline:** `692da961904e16a2a1bfa1ee1c2ece82a097df60`
 
 **Implementation order (locked):** Slice **11** → Slice **12** → Slice **13**
 
@@ -230,7 +231,7 @@ Do **not** interpret the checklist below as authorization to build LangGraph
 before a formal evidence-sufficiency gate exists (ADR-008).
 
 - [x] Slice 11 — Evidence sufficiency & abstention policy (11A→11B→11C) — **COMPLETE / ACCEPTED**
-- [ ] Slice 12 — Conditional LangGraph retrieval recovery (**12A/12B ACCEPTED** → **12C**)
+- [ ] Slice 12 — Conditional LangGraph retrieval recovery (**12A/12B ACCEPTED**; **12C design LOCKED** → harness → measure-once)
 - [ ] Slice 13 — Prompt-injection & security harness (13A→13C; optional 13D NeMo)
 
 Checklist detail (same order; not startable out of sequence):
@@ -238,12 +239,12 @@ Checklist detail (same order; not startable out of sequence):
 - [x] evidence sufficiency policy (Slice 11; deterministic first) — **ACCEPTED**
 - [x] **12A** project-owned recovery state/protocol contracts, invariants, deterministic replay — **COMPLETE / ACCEPTED**
 - [x] bounded query rewrite/retry (**12B**; explicit rewriter + one recovery retrieval) — **COMPLETE / ACCEPTED**
-- [ ] recovery vs baseline evaluation (**12C**; not started)
+- [ ] recovery vs baseline evaluation (**12C**; design LOCKED; harness/measurement not started)
 - [ ] LangGraph adapter / conditional recovery orchestration (**post-12B**; adapter-only per OD-12-3; separately authorized)
 - [ ] indirect prompt-injection suite (Slice 13)
 - [ ] optional NeMo Guardrails evaluation (Slice 13D; after deterministic controls)
 
-**Next:** Authorize **12C** (recovery-vs-baseline evaluation contract and measurement) when ready. Do **not** start **12C** until authorized. Keep `retrieval_recovery.enabled=false` until 12C evidence supports promotion. LangGraph remains out / adapter-only if separately authorized later.
+**Next:** Authorize **12C-1** (evaluation harness only) against this design lock. Do **not** run measure-once (**12C-2**) until the harness itself is independently reviewed. Keep `retrieval_recovery.enabled=false` until 12C evidence supports a later human promotion decision. LangGraph remains out / adapter-only if separately authorized later.
 
 **Slice 11 accepted chain**
 - **11A-1** `4f0cebc` · **11A-2** `cd0dd91` · **11A-3** `24b2179`
@@ -262,6 +263,12 @@ Checklist detail (same order; not startable out of sequence):
 - **12A docs closeout** `22a5fa2` — authority baseline for 12B
 - **12B implementation** `554f742` → security/provenance hardening `f1f9c5f` — **COMPLETE / ACCEPTED**
 - Explicit `retrieval_recovery.rewriter`; bounded rewrite + one recovery retrieval; default `enabled=false`; no LangGraph
+
+**Slice 12C design lock**
+- **12B docs closeout** `692da96` — authority baseline for 12C
+- **OD-12C-1 … OD-12C-8 LOCKED** — paired shared-initial evaluation; frozen Gold + cohort map; trigger census before recovery; Gold-positive recovery efficacy; retrieval-only (no generation/judge); predeclared conclusion states; happy-path no-harm; one measure-once rewrite+retrieval
+- **12C-1 harness** / **12C-2 measure-once** — not started
+- `retrieval_recovery.enabled=false` remains the default until 12C evidence; LangGraph remains out
 
 **Frozen runtime policy:** `sufficiency-v1` — `empty_context_v1` iff final EvidenceUnit[] is empty; non-empty proceeds to generation; `model_abstain` remains post-generation and distinct. That is the deterministic trigger ADR-008 requires for Slice 12.
 

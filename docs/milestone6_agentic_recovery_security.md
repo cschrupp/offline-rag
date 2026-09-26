@@ -94,7 +94,7 @@ Recommended sub-slices:
 | Slice | Sub-slices |
 |---|---|
 | **11** | **11A** observation contracts → **11B** offline eval/threshold analysis → **11C** runtime policy integration |
-| **12** | **12A** recovery state/protocol contracts (**COMPLETE / ACCEPTED**) → **12B** bounded rewriter + one retry (**COMPLETE / ACCEPTED**) → **12C** recovery vs baseline eval |
+| **12** | **12A** recovery state/protocol (**COMPLETE / ACCEPTED**) → **12B** bounded rewriter + one retry (**COMPLETE / ACCEPTED**) → **12C** design **LOCKED** (OD-12C-1…8); harness/measurement not started |
 | **13** | **13A** fixture contracts + deterministic invariants → **13B** adversarial harness → **13C** recovery-path attacks → **13D** optional NeMo experiment |
 
 NeMo is **not** required to complete the deterministic security architecture.
@@ -2818,6 +2818,13 @@ retrieval on the project-owned protocol; `retrieval_recovery.enabled=false` by
 default until **12C** evidence. LangGraph was **not** added in 12B and remains
 adapter-only / separately authorized later (OD-12-3).
 
+**12C status:** **Design contract LOCKED** (OD-12C-1…OD-12C-8) against authority
+baseline `692da961904e16a2a1bfa1ee1c2ece82a097df60`. Implementation **not**
+accepted; measurement **not** started. Sequence: design lock → **12C-1** harness
+(independent review) → **12C-2** measure-once. LangGraph remains out.
+`retrieval_recovery.enabled=false` remains the default until 12C evidence
+supports a later human promotion decision. See §16.
+
 **Rationale:** Unit tests can validate the entire state machine with no
 LangGraph dependency; deterministic replay stays straightforward; replacing
 LangGraph later must not alter artifact or trace semantics.
@@ -3027,26 +3034,216 @@ framework-internal logs.
 
 ## 16. Recovery evaluation (Slice 12C)
 
-Compare **deterministic baseline** vs **conditional recovery** on the **same**
-query population.
+**Status:** OD-12C-1 … OD-12C-8 **LOCKED**. Implementation not accepted.
+Measurement not started. Authority baseline:
+`692da961904e16a2a1bfa1ee1c2ece82a097df60`.
+
+Recovery is justified only if it improves a **measurable** failure category.
+No default enablement from anecdotes. `promotion_candidate` does **not** modify
+`config/base.yaml` — it is evidence for a later human promotion decision only.
+
+Clean sequence (mandatory):
+
+```text
+692da96 → 12C design-lock commit → 12C-1 harness → independent review → 12C-2 measure-once
+```
+
+No authoritative measurement before the harness itself is reviewed.
+
+### OD-12C-1 — Paired shared-initial evaluation
+
+**Status:** **LOCKED**
+
+12C compares baseline vs recovery using the **same exact** initial
+retrieval/context attempt.
+
+For every case:
+
+```text
+one initial retrieve → fuse → rerank → context → sufficiency
+                         │
+                         ├─ Arm A: baseline stops
+                         │
+                         └─ Arm B: if insufficient only
+                                  → rewrite once
+                                  → recover once
+```
+
+Do **not** independently rerun the initial retrieval for Arm B. The only
+semantic difference between A and B is whether the accepted bounded recovery
+mechanism is allowed after `sufficiency-v1` declares the initial context
+insufficient.
+
+### OD-12C-2 — Authoritative evaluation population
+
+**Status:** **LOCKED**
+
+Freeze Gold:
+
+```text
+gold_d3fc157c7b3206f6983abee766e7ce7b939244a7dea04f0be256f3a533a46172
+```
+
+Use the tracked adjudication cohort map.
+
+- **human-reviewed** cases = authoritative promotion evidence
+- **assistant-only** cases = descriptive diagnostics only
+
+Do **not** include as authoritative recovery truth: rejected cases, non-exported
+cases, Slice-10D hard negatives, synthetic stripped-evidence fixtures, or
+model-generated labels.
+
+### OD-12C-3 — Trigger population frozen before recovery
+
+**Status:** **LOCKED**
+
+A case is recovery-triggered iff its shared initial attempt is insufficient
+under the accepted runtime policy:
+
+```text
+sufficiency-v1 → empty_context_v1 → final EvidenceUnit[] empty
+```
+
+Define:
+
+- `T_H` = triggered human-reviewed cases
+- `T_A` = triggered assistant-only cases
+
+Trigger membership is determined **before** any rewrite/recovery result is
+visible.
+
+If `|T_H| == 0`, the authoritative conclusion is
+`not_evaluable_no_human_recovery_opportunities`. Recovery remains disabled.
+This is an evidence limitation, not a claim that recovery is ineffective.
+
+### OD-12C-4 — Relevant-evidence recovery is the efficacy target
+
+**Status:** **LOCKED**
+
+Do **not** count merely obtaining nonempty context as successful recovery.
+Use exact Gold-positive chunk presence based on the existing 11B
+evidence-surface rule (`evidence-surface-chunk-id-overlap-v1`). Recovered
+evidence surface includes the accepted chunk-ID projections already used by
+11B.
+
+```text
+gold_positive_recovery
+  = recovered evidence surface overlaps ≥1 Gold-positive chunk_id
+
+unsupported_recovery
+  = recovered context is nonempty / sufficient
+    AND recovered evidence surface overlaps zero Gold-positive chunk_ids
+```
+
+`unsupported_recovery` is a **harm** signal.
+
+Report retrieval metrics using existing repository metric semantics where
+applicable (do **not** invent alternate ranking formulas):
+
+- Recall@1/5/10
+- Precision@1/5/10
+- HitRate@1/5/10
+- MRR
+- nDCG@1/5/10
+
+### OD-12C-5 — Retrieval evidence is authoritative
+
+**Status:** **LOCKED**
+
+The current Gold provides chunk relevance judgments, not authoritative
+reference answers. Therefore the primary 12C evaluation does **not** invoke
+generation and does **not** use an LLM judge as promotion truth.
+
+12C answers: **Did bounded recovery recover human-adjudicated relevant
+evidence?** It does **not** claim to establish generated-answer semantic
+correctness.
+
+### OD-12C-6 — Predeclared conclusion contract
+
+**Status:** **LOCKED**
+
+Use deterministic conclusion states. No subjective scoring, weighted
+composite, or post-hoc threshold.
+
+| Condition | Conclusion |
+|---|---|
+| `human_trigger_count == 0` | `insufficient_evidence_for_recovery_efficacy` |
+| `human_trigger_count > 0` AND `gold_positive_recovery_count == 0` | `retain_disabled_no_measured_benefit` |
+| `unsupported_recovery_count > 0` OR `recovery_failure_count > 0` OR `happy_path_divergence_count > 0` | `retain_disabled_recovery_regression` |
+| `human_trigger_count > 0` AND `gold_positive_recovery_count > 0` AND zero harm counts above | `promotion_candidate` |
+
+Regression precedence dominates promotion (e.g. positive recovery **and**
+unsupported recovery → `retain_disabled_recovery_regression`).
+
+`promotion_candidate` must **not** modify `base.yaml`. Latency is reported but
+is **not** a promotion gate in 12C (no accepted product latency SLO).
+
+Alias used by trigger census when `|T_H| == 0` before measurement:
+`not_evaluable_no_human_recovery_opportunities` (maps to the insufficient-
+evidence conclusion family; recovery stays disabled).
+
+### OD-12C-7 — Happy-path no-harm invariant
+
+**Status:** **LOCKED**
+
+For every initially sufficient case:
+
+```text
+rewrite_call_count = 0
+recovery_retrieval_attempt_count = 0
+```
+
+Arm A and Arm B share the exact same initial attempt. Therefore
+`happy_path_divergence_count == 0` is **mandatory**. Any nonzero value is an
+experiment/harness defect or runtime regression.
+
+### OD-12C-8 — One measure-once recovery execution
+
+**Status:** **LOCKED**
+
+For every triggered case: exactly one rewrite; exactly one recovery
+retrieval/context attempt; no retry; no alternate rewrite; no prompt/model
+selection after observing results; no cherry-picking.
+
+Effective rewriter configuration must be concrete **before** execution:
+
+- explicit local endpoint
+- explicit approved model
+- model must appear in `approved_models`
+- endpoint must satisfy network policy and `approved_endpoints`
+- deterministic settings
+- `rrwcfg_` recorded
+
+No placeholder model is allowed in an authoritative run. If preflight is
+incomplete, **stop before measurement**.
+
+Do **not** treat `config/experiments/agentic_recovery.yaml` as an authoritative
+A/B overlay while it changes unrelated retrieval parameters. Arm B must differ
+from Arm A **only** in the recovery block (`enabled` + explicit rewriter
+settings). Dense/lexical/fusion/reranker/context parameters must match.
+
+### 12C experimental limitation
+
+The current Gold fixture does **not** provide authoritative
+unanswerable/negative truth. Therefore 12C **cannot** establish the
+false-recovery rate on genuinely unanswerable questions. Do **not** substitute
+Slice-10D hard negatives or model judgments for that missing human truth. That
+question requires a future dedicated human-adjudicated negative fixture.
+
+### Reporting surface (implements the locked contract)
 
 Report at least:
 
-- queries never entering recovery
-- queries entering recovery
-- rewrite validation success/failure
-- retrieval improvement (IR metrics on gold where applicable)
-- sufficiency transition:
-  - insufficient → sufficient
-  - insufficient → insufficient
-  - sufficient baseline unchanged (must remain stable)
-- final answerability / abstention outcomes
-- latency cost
-- additional model calls
-
-Recovery is justified only if it improves a **measurable** failure category.
-No default enablement from anecdotes. No promotion from the 22-case fixture
-alone.
+- trigger census (`T_H`, `T_A`, case IDs)
+- queries never entering recovery / entering recovery
+- rewrite validation success/failure / no-op rewrite counts
+- Gold-positive recovery / unsupported recovery / still insufficient /
+  recovery operational failure
+- IR metrics on Gold-positive populations (existing helpers)
+- sufficiency transitions (insufficient → sufficient / still insufficient;
+  initially sufficient unchanged)
+- latency summaries (rewrite, recovery context, incremental) — diagnostic only
+- deterministic conclusion state
 
 ---
 
@@ -3212,14 +3409,16 @@ Design contract (this document)
   → 11C runtime gate + taxonomy                     ← accepted
   → 12A state/protocol (OD-12-1/2/3 locked)         ← COMPLETE / ACCEPTED (1be7fc8)
   → 12B rewriter + one retry                        ← COMPLETE / ACCEPTED (f1f9c5f)
-  → 12C recovery vs baseline eval                   ← not started
+  → 12C design lock (OD-12C-1…8)                    ← LOCKED (this document)
+  → 12C-1 evaluation harness                        ← not started (review before measure)
+  → 12C-2 measure-once                              ← not started
   → 13A–13C security harness
   → 13D optional NeMo (if authorized)
 ```
 
 No LangGraph dependency yet. Keep `retrieval_recovery.enabled=false` until 12C
-evidence. Authorize **12C** when ready; do not promote recovery by default before
-that measurement.
+evidence. Do **not** run 12C-2 measurement before 12C-1 harness review. Do not
+promote recovery by default before that measurement and a later human decision.
 
 ---
 
@@ -3303,6 +3502,14 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-12-1** | Separate recovery-rewriter model config | **LOCKED** | §13 — explicit `retrieval_recovery.rewriter`; no silent generation inherit; aliases only if resolved+hashed before execution |
 | **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **LOCKED** | §13 — original query + typed allowlisted diagnostics only; no corpus-derived free text |
 | **OD-12-3** | LangGraph direct vs project state-machine protocol first | **LOCKED** | §11/§14 — project-owned RecoveryProtocol/state authoritative; LangGraph adapter-only; happy path graph-free |
+| **OD-12C-1** | Paired shared-initial baseline vs recovery | **LOCKED** | §16 — one initial attempt shared by Arm A/B; Arm B recovers only if insufficient |
+| **OD-12C-2** | Authoritative Gold + cohort population | **LOCKED** | §16 — freeze `gold_d3fc157c…`; human-reviewed authoritative; assistant-only descriptive |
+| **OD-12C-3** | Trigger census before recovery | **LOCKED** | §16 — `T_H`/`T_A` from `empty_context_v1`; empty `T_H` → not evaluable; stay disabled |
+| **OD-12C-4** | Gold-positive recovery efficacy target | **LOCKED** | §16 — 11B evidence-surface overlap; unsupported nonempty = harm; reuse IR metrics |
+| **OD-12C-5** | Retrieval evidence authoritative (no gen/judge) | **LOCKED** | §16 — no generation; no LLM judge as promotion truth |
+| **OD-12C-6** | Predeclared conclusion contract | **LOCKED** | §16 — four deterministic conclusions; regression ≻ promotion; no base.yaml flip |
+| **OD-12C-7** | Happy-path no-harm invariant | **LOCKED** | §16 — sufficient ⇒ zero rewrite/recovery calls; divergence count must be 0 |
+| **OD-12C-8** | One measure-once rewrite + recovery | **LOCKED** | §16 — concrete rewriter preflight; no placeholder; stop if incomplete |
 | **OD-13-1** | Pass/fail semantics for injection fixtures | **OPEN** | Prefer deterministic control-plane invariants over “model refused” alone |
 | **OD-13-2** | NeMo work inside M6 vs post-deterministic optional | **OPEN** | Keep NeMo post-deterministic optional; no implementation in early M6 unless separately authorized |
 
@@ -3342,9 +3549,10 @@ do not invent score gates 11B did not support.
 
 ## HARD STOP
 
-**11A-1 accepted.** **11A-2 (snapshot/manifest persistence) is implemented**
-under OD-11-5…28 + design closure.
+**11 COMPLETE / ACCEPTED.** **12A COMPLETE / ACCEPTED.** **12B COMPLETE / ACCEPTED.**
+**12C design (OD-12C-1…8) LOCKED.**
 
-**Do not** add live context adapter, measure-once retrieval, threshold
-selection, runtime sufficiency gating, LangGraph/recovery, CLI beyond what was
-authorized, or the security harness unless separately re-authorized.
+**Do not** run 12C-2 measure-once before 12C-1 harness independent review.
+**Do not** enable `retrieval_recovery` in `base.yaml` from a 12C conclusion alone.
+**Do not** add LangGraph, generation/judge promotion paths, or Slice 13 work
+unless separately re-authorized.

@@ -573,13 +573,18 @@ The system has a measured operating point balancing useful answers against unsup
 # Slice 12 — Conditional LangGraph retrieval recovery
 
 ```text
-STATUS: 12A COMPLETE / ACCEPTED (1be7fc8); 12B COMPLETE / ACCEPTED (f1f9c5f); 12C NOT STARTED
-Authority: docs/milestone6_agentic_recovery_security.md
-Contracts: src/offline_rag/recovery/ (project-owned RecoveryProtocol + coordinator)
+STATUS: 12A COMPLETE / ACCEPTED (1be7fc8); 12B COMPLETE / ACCEPTED (f1f9c5f);
+        12C DESIGN LOCKED (OD-12C-1…8); 12C implementation NOT ACCEPTED;
+        12C measurement NOT STARTED
+Authority: docs/milestone6_agentic_recovery_security.md §16
+Contracts: src/offline_rag/recovery/ (runtime); 12C eval harness TBD under evaluation/
 OD-12-1 / OD-12-2 / OD-12-3: LOCKED
+OD-12C-1 … OD-12C-8: LOCKED
 12B accepted chain: 22a5fa2 → 554f742 → f1f9c5f
+12C authority baseline: 692da96 (12B docs closeout)
 Default: retrieval_recovery.enabled=false until 12C evidence
 LangGraph: not added; adapter-only if separately authorized later
+Sequence: design lock → 12C-1 harness (review) → 12C-2 measure-once
 ```
 
 ## Objective
@@ -593,8 +598,31 @@ Introduce agentic behavior only where the baseline retrieval pipeline demonstrab
   terminal outcomes, deterministic replay — no LangGraph, rewriter, or recovery retrieval
 - **12B (ACCEPTED):** bounded rewriter + exactly one recovery retrieval attempt on 12A contracts;
   default disabled; no LangGraph
-- **12C (not started):** recovery vs baseline evaluation; only that evidence should decide
-  whether to promote recovery into normal runtime behavior
+- **12C (design LOCKED; harness/measurement not started):** paired shared-initial
+  baseline-vs-recovery evaluation on frozen Gold + cohort map; retrieval-only;
+  predeclared conclusion states; no default enablement from anecdotes
+
+### 12C locked evaluation contract (summary)
+
+- **OD-12C-1** paired shared-initial: one initial retrieve→fuse→rerank→context→sufficiency;
+  Arm A stops; Arm B recovers only if insufficient (no independent initial re-run)
+- **OD-12C-2** freeze Gold `gold_d3fc157c…46172` + tracked adjudication cohort map;
+  human-reviewed = authoritative; assistant-only = descriptive only
+- **OD-12C-3** trigger census before recovery (`T_H` / `T_A`); empty `T_H` →
+  `not_evaluable_no_human_recovery_opportunities`; recovery stays disabled
+- **OD-12C-4** efficacy = Gold-positive chunk overlap (11B evidence-surface rule);
+  nonempty-but-unsupported is a harm signal; reuse existing IR metrics
+- **OD-12C-5** retrieval evidence authoritative; no generation / no LLM judge as promotion truth
+- **OD-12C-6** predeclared conclusions only (`insufficient_evidence…` /
+  `retain_disabled_no_measured_benefit` / `retain_disabled_recovery_regression` /
+  `promotion_candidate`); `promotion_candidate` does not modify `base.yaml`
+- **OD-12C-7** happy-path no-harm: initially sufficient ⇒ zero rewrite / zero recovery retrieval;
+  `happy_path_divergence_count == 0` mandatory
+- **OD-12C-8** one measure-once rewrite + one recovery retrieval; concrete rewriter
+  preflight required; no placeholder model; no cherry-picking
+
+**Experimental limitation:** current Gold has no authoritative unanswerable/negative
+truth; 12C cannot establish false-recovery rate on genuinely unanswerable questions.
 
 ## Initial graph
 
@@ -636,11 +664,14 @@ evidence sufficient?
 - optional LangGraph adapter (adapter-only; separately authorized);
 - loop termination conditions;
 - retry traces;
-- evaluation comparing agentic vs non-agentic pipeline (**12C**).
+- evaluation comparing agentic vs non-agentic pipeline (**12C**; design locked;
+  12C-1 harness then 12C-2 measure-once — neither started).
 
 ## Exit criteria
 
 The agentic path must show measurable benefit on at least one failure category before being enabled by default.
+`promotion_candidate` is evidence for a later human promotion decision only — it must
+not modify `config/base.yaml`.
 
 ---
 
