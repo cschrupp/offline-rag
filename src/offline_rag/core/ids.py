@@ -466,6 +466,11 @@ def recovery_rewriter_config_hash(data: Mapping[str, Any]) -> str:
     return canonical_config_hash(data).replace("cfg_", "rrwcfg_", 1)
 
 
+def recovery_eval_config_hash(data: Mapping[str, Any]) -> str:
+    """Return ``receval_<sha256>`` for Slice 12C evaluation identity."""
+    return canonical_config_hash(data).replace("cfg_", "receval_", 1)
+
+
 def judge_config_hash(data: Mapping[str, Any]) -> str:
     """Return ``judgecfg_<sha256>`` for generation-semantic judge semantics."""
     return canonical_config_hash(data).replace("cfg_", "judgecfg_", 1)
