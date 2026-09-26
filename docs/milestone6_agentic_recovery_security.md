@@ -41,7 +41,7 @@ As of the Milestone 5 checkpoint (`1983ff1`):
 | Generation abstention today | `empty_context` (no evidence units) or `model_abstain` (generator chooses abstain) |
 | User-facing status | Often `insufficient_evidence` with diagnostic `abstention_reason` |
 | `retrieval_recovery` | Skeletal: `enabled: false`, `max_retries: 1` |
-| `abstention` | Skeletal: `enabled: true`, `policy: score_threshold`, `threshold: null` — **not** wired as a measured pre-generation gate |
+| `abstention` | Runtime policy: `enabled: true`, `policy: sufficiency-v1`, `threshold: null` — Slice **11C** formal gate (`empty_context => insufficient` only); unsupported policies fail closed |
 | `agents/`, `guardrails/` | Empty placeholders (`.gitkeep` only) |
 | LangGraph | **Not** a dependency (`pyproject.toml` / lock) |
 | Trace skeleton | `QueryTrace.decision.evidence_sufficient` exists as a nullable placeholder |
@@ -2715,14 +2715,28 @@ decision explicitly (extends today’s nullable `evidence_sufficient`).
 
 ### 11C — Runtime sufficiency policy integration
 
-- Query-time gate on the deterministic happy path (before generation)
-- Wire `evidence_insufficient` into generation/query outcome taxonomy
-- Respect `enabled` config; fail closed on misconfiguration when enabled
-- Still **no** LangGraph dependency
+**Status:** **IMPLEMENTED** (pending independent acceptance) — freezes runtime
+policy contract **`sufficiency-v1`** after 11B found no additional gate
+supported on the human-reviewed development population (A=16, B=0).
 
-Exit idea (measured operating point): a documented development operating
-point balancing answer attempts vs unsupported generation — **promotion
-requires separate authorization**.
+Authorized runtime rule set:
+
+```text
+empty_context => insufficient
+```
+
+No score / margin / cross-retriever / diversity / weighted-confidence gates.
+`abstention.policy` defaults to `sufficiency-v1`; unsupported policies and
+numeric thresholds fail closed. Query path evaluates the policy after context
+assembly and before generation; empty final EvidenceUnits preserve Slice 8
+`insufficient_evidence` / `empty_context` / `generator_invoked=false` /
+`attempt_count=0`. Non-empty context proceeds to generation; `model_abstain`
+remains a distinct post-generator outcome.
+
+The empty Population-B finding is a **conservative evidence decision**, not
+proof that score-based sufficiency can never be useful on a richer fixture.
+
+Still **no** LangGraph dependency / recovery orchestration.
 
 ---
 
@@ -3160,25 +3174,21 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-13-1** | Pass/fail semantics for injection fixtures | **OPEN** | Prefer deterministic control-plane invariants over “model refused” alone |
 | **OD-13-2** | NeMo work inside M6 vs post-deterministic optional | **OPEN** | Keep NeMo post-deterministic optional; no implementation in early M6 unless separately authorized |
 
-### Config migration (document only — no config edits in this pass)
+### Config migration (Slice 11C)
 
-Intended future shape:
+Runtime evidence sufficiency is now explicit:
 
 ```text
-evidence_sufficiency:
-  enabled
-  policy / contract
-  thresholds / feature gates...
-
-retrieval_recovery:
-  enabled
-  max_retries   # semantics: one recovery attempt when = 1
-  rewriter: ...
+abstention:
+  enabled: true
+  policy: sufficiency-v1
+  threshold: null
 ```
 
-Ambiguous `abstention.policy: score_threshold` with `threshold: null` should be
-retired or redefined when Slice 11C lands — it currently lacks a precise
-runtime meaning. **Do not change config in the design pass.**
+`score_threshold` is **not** an authorized runtime policy and fails closed.
+Numeric thresholds are forbidden under `sufficiency-v1`. A future
+`evidence_sufficiency:` config rename remains optional documentation only;
+do not invent score gates 11B did not support.
 
 ---
 

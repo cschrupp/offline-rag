@@ -46,6 +46,12 @@ from offline_rag.ingestion.persistence import (
     load_corpus_manifest,
     load_corpus_state,
 )
+from offline_rag.sufficiency.policy import (
+    SufficiencyPolicyDecisionV1,
+    SufficiencyPolicyError,
+    decision_diagnostics,
+    evaluate_runtime_sufficiency,
+)
 
 
 class GroundedGenerationError(RuntimeError):
@@ -174,7 +180,14 @@ class GroundedGenerationExecutor:
 
         context_ms = int(provenance.context_latency_ms)
 
-        if not units:
+        try:
+            sufficiency = evaluate_runtime_sufficiency(
+                self.settings, evidence_units=units
+            )
+        except SufficiencyPolicyError as exc:
+            raise GroundedGenerationError(str(exc)) from exc
+
+        if not sufficiency.sufficient:
             exec_ms = int((time.perf_counter() - total_t0) * 1000)
             return self._empty_context_result(
                 query=query_text,
@@ -182,6 +195,7 @@ class GroundedGenerationExecutor:
                 semantics=semantics,
                 provenance=provenance,
                 total_ms=context_ms + exec_ms,
+                sufficiency=sufficiency,
             )
 
         prompt_t0 = time.perf_counter()
@@ -201,6 +215,7 @@ class GroundedGenerationExecutor:
                 gencfg=gencfg,
                 semantics=semantics,
                 provenance=provenance,
+                sufficiency=sufficiency,
                 attempt_count=0,
                 latency={
                     "context": context_ms,
@@ -230,6 +245,7 @@ class GroundedGenerationExecutor:
                 gencfg=gencfg,
                 semantics=semantics,
                 provenance=provenance,
+                sufficiency=sufficiency,
                 attempt_count=1,
                 latency={
                     "context": context_ms,
@@ -248,6 +264,7 @@ class GroundedGenerationExecutor:
                 gencfg=gencfg,
                 semantics=semantics,
                 provenance=provenance,
+                sufficiency=sufficiency,
                 attempt_count=1,
                 latency={
                     "context": context_ms,
@@ -271,6 +288,7 @@ class GroundedGenerationExecutor:
                 gencfg=gencfg,
                 semantics=semantics,
                 provenance=provenance,
+                sufficiency=sufficiency,
                 attempt_count=1,
                 latency={
                     "context": context_ms,
@@ -307,6 +325,7 @@ class GroundedGenerationExecutor:
                     "abstention_reason": "model_abstain",
                     "generator_invoked": True,
                     "attempt_count": 1,
+                    **decision_diagnostics(sufficiency),
                     "usage": response.usage,
                     "latency_ms": {
                         "context": int(provenance.context_latency_ms),
@@ -335,6 +354,7 @@ class GroundedGenerationExecutor:
                 gencfg=gencfg,
                 semantics=semantics,
                 provenance=provenance,
+                sufficiency=sufficiency,
                 attempt_count=1,
                 latency={
                     "context": context_ms,
@@ -367,6 +387,7 @@ class GroundedGenerationExecutor:
             diagnostics={
                 "generator_invoked": True,
                 "attempt_count": 1,
+                **decision_diagnostics(sufficiency),
                 "usage": response.usage,
                 "latency_ms": {
                     "context": int(provenance.context_latency_ms),
@@ -521,6 +542,7 @@ class GroundedGenerationExecutor:
         semantics: dict[str, Any],
         provenance: GenerationContextProvenance,
         total_ms: int,
+        sufficiency: SufficiencyPolicyDecisionV1,
     ) -> GroundedAnswerResult:
         gen = self.settings.generation
         return GroundedAnswerResult(
@@ -543,6 +565,7 @@ class GroundedGenerationExecutor:
                 "abstention_reason": "empty_context",
                 "generator_invoked": False,
                 "attempt_count": 0,
+                **decision_diagnostics(sufficiency),
                 "latency_ms": {
                     "context": int(provenance.context_latency_ms),
                     "prompt_assembly": 0,
@@ -573,6 +596,7 @@ class GroundedGenerationExecutor:
         raw_model_output: str | None = None,
         usage: dict[str, Any] | None = None,
         extra_diagnostics: dict[str, Any] | None = None,
+        sufficiency: SufficiencyPolicyDecisionV1 | None = None,
     ) -> GroundedAnswerResult:
         diagnostics: dict[str, Any] = {
             "generator_invoked": attempt_count > 0,
@@ -582,6 +606,8 @@ class GroundedGenerationExecutor:
                 "context_breakdown": provenance.context_breakdown,
             },
         }
+        if sufficiency is not None:
+            diagnostics.update(decision_diagnostics(sufficiency))
         if failure_reason:
             diagnostics["generation_failure_reason"] = failure_reason
         if usage:

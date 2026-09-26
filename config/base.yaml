@@ -190,7 +190,7 @@ retrieval_recovery:
 
 abstention:
   enabled: true
-  policy: score_threshold
+  policy: sufficiency-v1
   threshold: null
 
 security:

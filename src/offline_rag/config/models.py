@@ -498,11 +498,37 @@ class RetrievalRecoverySettings(BaseModel):
 
 
 class AbstentionSettings(BaseModel):
+    """Runtime evidence-sufficiency policy selection (Slice 11C).
+
+    Authorized contract after 11B: ``sufficiency-v1`` with the single gate
+    ``empty_context => insufficient``. Numeric score thresholds are not
+    authorized and fail closed.
+    """
+
     model_config = ConfigDict(extra="forbid")
 
     enabled: bool = True
-    policy: NonEmptyStr = "score_threshold"
+    policy: NonEmptyStr = "sufficiency-v1"
     threshold: Score | None = None
+
+    @model_validator(mode="after")
+    def _authorize_policy(self) -> AbstentionSettings:
+        if self.policy != "sufficiency-v1":
+            raise ValueError(
+                "abstention.policy must be 'sufficiency-v1' "
+                f"(unsupported: {self.policy!r}; score_threshold is not authorized)"
+            )
+        if self.threshold is not None:
+            raise ValueError(
+                "abstention.threshold must be null for sufficiency-v1 "
+                f"(got {self.threshold!r})"
+            )
+        if not self.enabled:
+            raise ValueError(
+                "abstention.enabled must be true for sufficiency-v1 "
+                "(empty_context hard gate cannot be disabled)"
+            )
+        return self
 
 
 class GenerationSemanticJudgeSettings(BaseModel):

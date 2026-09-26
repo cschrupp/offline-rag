@@ -23,6 +23,10 @@ from offline_rag.generation.status import (
     generation_status_for_corpus,
 )
 from offline_rag.ingestion.discovery import validate_corpus_name
+from offline_rag.sufficiency.policy import (
+    SufficiencyPolicyError,
+    evaluate_runtime_sufficiency,
+)
 
 # Re-export for existing imports / tests.
 __all__ = [
@@ -102,6 +106,15 @@ class GroundedAnswerOrchestrator:
         context_ms = int((time.perf_counter() - context_t0) * 1000)
 
         self._assert_context_invariants(context)
+
+        # Slice 11C: formal sufficiency-v1 gate after assembly, before generation.
+        # Authorized rule set: empty_context => insufficient only.
+        try:
+            evaluate_runtime_sufficiency(
+                self.settings, evidence_units=context.evidence_units
+            )
+        except SufficiencyPolicyError as exc:
+            raise GroundedAnswerError(str(exc)) from exc
 
         provenance = GenerationContextProvenance(
             context_config_hash=context.context_config_hash,

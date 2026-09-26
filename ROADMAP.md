@@ -219,7 +219,7 @@ Order: Slice **11** → **12** → **13**.
 
 ## Milestone 6 — Agentic recovery and security
 
-**Status:** DESIGN CONTRACT DRAFTED / IMPLEMENTATION NOT STARTED  
+**Status:** Slice **11** implementation complete pending 11C acceptance review  
 **Baseline:** `1983ff1376ea27fc1e8774b35136dc8c8ec93f40`  
 **Design authority:** [`docs/milestone6_agentic_recovery_security.md`](docs/milestone6_agentic_recovery_security.md)
 
@@ -228,29 +228,32 @@ Order: Slice **11** → **12** → **13**.
 Do **not** interpret the checklist below as authorization to build LangGraph
 before a formal evidence-sufficiency gate exists (ADR-008).
 
-- [ ] Slice 11 — Evidence sufficiency & abstention policy (11A→11B→11C)
+- [x] Slice 11 — Evidence sufficiency & abstention policy (11A→11B→11C) — **pending independent 11C acceptance**
 - [ ] Slice 12 — Conditional LangGraph retrieval recovery (12A→12B→12C)
 - [ ] Slice 13 — Prompt-injection & security harness (13A→13C; optional 13D NeMo)
 
 Checklist detail (same order; not startable out of sequence):
 
-- [ ] evidence sufficiency policy (Slice 11; deterministic first)
+- [x] evidence sufficiency policy (Slice 11; deterministic first) — **11C submitted**
 - [ ] bounded query rewrite/retry (Slice 12; only after sufficiency gate)
 - [ ] LangGraph state machine / orchestration (Slice 12; conditional recovery only)
 - [ ] indirect prompt-injection suite (Slice 13)
 - [ ] optional NeMo Guardrails evaluation (Slice 13D; after deterministic controls)
 
-**Next:** Review **Path-B measure-once** capture (then 11B labeling/thresholds).
-**11A-1 ACCEPTED** at `4f0cebc`. **11A-2 ACCEPTED** at `cd0dd91`.
-**11A-3 ACCEPTED** at `24b2179` (Path A not qualified → Path B authorized).
-**OD-11-2 … OD-11-54 + OD-11-DESIGN-CLOSURE LOCKED** (see
-[`docs/milestone6_agentic_recovery_security.md`](docs/milestone6_agentic_recovery_security.md) §7–§8).
-Do not pick production thresholds before 11B measurement.
+**Next:** Independent review of **11C** (`sufficiency-v1` runtime gate). After acceptance, Slice 11 is complete and Slice 12 may begin from the formal deterministic insufficiency signal.
+
+**Slice 11 status**
+- **11A ACCEPTED** (11A-1 `4f0cebc`, 11A-2 `cd0dd91`, 11A-3 `24b2179`)
+- **Path-B ACCEPTED** at `7ce47c5` — authoritative capture `suffctxrun_9c15bf6eee2e7b18317df7daa95328827be62bfa2d369b20272d7820c7fb32d4`
+- **11B ACCEPTED** at `e18110f` — human-reviewed A=16 / B=0; **no additional gate promoted**
+- **11C** freezes runtime policy `sufficiency-v1` with the single authorized gate `empty_context => insufficient`
+- The development fixture provided **no human Population-B cases**, so the absence of an additional threshold is a **conservative evidence decision**, not proof that score-based sufficiency can never be useful.
+- **OD-11-2 … OD-11-54 + OD-11-DESIGN-CLOSURE LOCKED** (see
+  [`docs/milestone6_agentic_recovery_security.md`](docs/milestone6_agentic_recovery_security.md) §7–§8).
 
 **Release criterion:** agentic recovery demonstrates measured benefit and adversarial test results are documented.
 
-No Milestone 6 implementation checkbox is complete. LangGraph is not started.
-No LangGraph dependency has been added.
+LangGraph is not started. No LangGraph dependency has been added.
 
 ## Milestone 7 — Performance and UI
 
