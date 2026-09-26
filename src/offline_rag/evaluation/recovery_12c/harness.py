@@ -1,12 +1,17 @@
 """Paired shared-initial Slice 12C evaluation harness (no measure-once runner).
 
-Consumes accepted RecoveryCoordinator / sufficiency-v1 contracts. Ensures one
-initial assemble per case; Arm A observes that attempt; Arm B may recover only
-when initially insufficient.
+Prepare-once protocol (OD-12C-1):
+1. ``prepare_initial_cases`` — assemble each case exactly once, freeze T_H/T_A,
+   retain exact initial context objects in memory.
+2. ``evaluate_prepared_case`` — recover from those exact contexts; never
+   re-assembles the initial attempt.
+
+Consumes accepted RecoveryCoordinator / sufficiency-v1 contracts.
 """
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from statistics import mean, median
@@ -15,8 +20,9 @@ from typing import Protocol
 from offline_rag.config.models import AppSettings
 from offline_rag.domain.indexing import HybridRerankContextResult
 from offline_rag.evaluation.generation_semantic.models import LabelCohort
-from offline_rag.evaluation.gold import GoldCase
+from offline_rag.evaluation.gold import GoldCase, LoadedGoldDataset
 from offline_rag.evaluation.metrics import RankingScore, macro_average, score_ranking
+from offline_rag.evaluation.recovery_12c.binding import require_gold_lineage_compatible
 from offline_rag.evaluation.recovery_12c.conclusion import conclude_recovery_eval
 from offline_rag.evaluation.recovery_12c.contracts import (
     NOT_EVALUABLE_NO_HUMAN_RECOVERY_OPPORTUNITIES,
@@ -47,11 +53,18 @@ from offline_rag.recovery.lineage import (
     extract_recovery_lineage,
     lineage_stack_equal,
 )
-from offline_rag.recovery.rewrite_contracts import RecoveryRewriter
+from offline_rag.recovery.rewrite_contracts import (
+    RecoveryRewriteInputV1,
+    RecoveryRewriteOutputV1,
+    RecoveryRewriteProvenanceV1,
+    RecoveryRewriter,
+)
 from offline_rag.sufficiency.policy import (
     SufficiencyPolicyDecisionV1,
     evaluate_sufficiency_policy_v1,
 )
+
+Clock = Callable[[], float]
 
 
 class InitialContextAssembler(Protocol):
@@ -79,9 +92,69 @@ class CountingInitialAssembler:
         return self._assemble(query)
 
 
+@dataclass
+class TimingRewriter:
+    """Evaluation-layer rewriter wrapper that records rewrite wall time."""
+
+    inner: RecoveryRewriter
+    clock: Clock = time.perf_counter
+    last_rewrite_latency_ms: float | None = None
+    rewrite_calls: int = 0
+
+    def rewrite(
+        self, rewrite_input: RecoveryRewriteInputV1
+    ) -> tuple[RecoveryRewriteOutputV1, RecoveryRewriteProvenanceV1]:
+        started = self.clock()
+        try:
+            return self.inner.rewrite(rewrite_input)
+        finally:
+            self.rewrite_calls += 1
+            self.last_rewrite_latency_ms = (self.clock() - started) * 1000.0
+
+
+@dataclass(frozen=True, slots=True)
+class PreparedRecoveryEvalCase:
+    """Runtime-only prepared shared-initial case (context retained in memory)."""
+
+    case: GoldCase
+    adjudication_cohort: LabelCohort
+    original_query: str
+    initial_context: HybridRerankContextResult
+    initial_sufficiency: SufficiencyPolicyDecisionV1
+    initial_observation: AttemptObservationV1
+    triggered: bool
+
+
+@dataclass(frozen=True, slots=True)
+class PreparedRecoveryEvalBatch:
+    """Frozen prepared population + census before any recovery call."""
+
+    cases: tuple[PreparedRecoveryEvalCase, ...]
+    census: TriggerCensusV1
+
+    @property
+    def not_evaluable(self) -> bool:
+        return self.census.not_evaluable
+
+
 def is_recovery_triggered(sufficiency: SufficiencyPolicyDecisionV1) -> bool:
     """OD-12C-3: trigger iff sufficiency-v1 / empty_context_v1 (insufficient)."""
     return not sufficiency.sufficient
+
+
+def observe_attempt_diagnostic(
+    context: HybridRerankContextResult,
+    *,
+    gold_positive_chunk_ids: Sequence[str],
+    sufficiency: SufficiencyPolicyDecisionV1 | None = None,
+) -> AttemptObservationV1:
+    """Permissive observation helper (lineage may be null). Not authoritative."""
+    return _observe_attempt(
+        context,
+        gold_positive_chunk_ids=gold_positive_chunk_ids,
+        sufficiency=sufficiency,
+        require_lineage=False,
+    )
 
 
 def observe_attempt(
@@ -89,6 +162,23 @@ def observe_attempt(
     *,
     gold_positive_chunk_ids: Sequence[str],
     sufficiency: SufficiencyPolicyDecisionV1 | None = None,
+    require_lineage: bool = True,
+) -> AttemptObservationV1:
+    """Authoritative observation (lineage required by default)."""
+    return _observe_attempt(
+        context,
+        gold_positive_chunk_ids=gold_positive_chunk_ids,
+        sufficiency=sufficiency,
+        require_lineage=require_lineage,
+    )
+
+
+def _observe_attempt(
+    context: HybridRerankContextResult,
+    *,
+    gold_positive_chunk_ids: Sequence[str],
+    sufficiency: SufficiencyPolicyDecisionV1 | None,
+    require_lineage: bool,
 ) -> AttemptObservationV1:
     decision = sufficiency or evaluate_sufficiency_policy_v1(
         evidence_units=context.evidence_units
@@ -101,8 +191,14 @@ def observe_attempt(
     lineage: RecoveryLineageV1 | None
     try:
         lineage = extract_recovery_lineage(context)
-    except ValueError:
+    except ValueError as exc:
+        if require_lineage:
+            raise RecoveryEvalError(
+                f"required recovery lineage missing/invalid: {exc}"
+            ) from exc
         lineage = None
+    if require_lineage and lineage is None:
+        raise RecoveryEvalError("required recovery lineage is null")
     stop_reason = None
     if context.diagnostics is not None:
         stop_reason = context.diagnostics.stop_reason
@@ -155,34 +251,111 @@ def _ranking_for_case(
     return ranking_score_to_dict(score)
 
 
-def evaluate_paired_case(
+def build_trigger_census_from_prepared(
+    prepared_cases: Sequence[PreparedRecoveryEvalCase],
+) -> TriggerCensusV1:
+    """Freeze T_H / T_A from prepared shared-initial observations (no assembly)."""
+    human_ids = [
+        p.case.id
+        for p in prepared_cases
+        if p.triggered and p.adjudication_cohort == "human_reviewed"
+    ]
+    assistant_ids = [
+        p.case.id
+        for p in prepared_cases
+        if p.triggered and p.adjudication_cohort == "assistant_only"
+    ]
+    not_evaluable = len(human_ids) == 0
+    return TriggerCensusV1(
+        human_trigger_case_ids=sorted(human_ids),
+        assistant_trigger_case_ids=sorted(assistant_ids),
+        human_trigger_count=len(human_ids),
+        assistant_trigger_count=len(assistant_ids),
+        not_evaluable=not_evaluable,
+        stop_reason=(
+            NOT_EVALUABLE_NO_HUMAN_RECOVERY_OPPORTUNITIES if not_evaluable else None
+        ),
+    )
+
+
+def prepare_initial_cases(
     *,
-    case: GoldCase,
-    adjudication_cohort: LabelCohort,
+    cases: Sequence[GoldCase],
+    cohort_by_case: Mapping[str, LabelCohort],
     initial_assembler: InitialContextAssembler,
+    gold: LoadedGoldDataset | None = None,
+) -> PreparedRecoveryEvalBatch:
+    """Stage A: assemble each case once, validate lineage, freeze census.
+
+    Retains exact ``HybridRerankContextResult`` objects for Stage B. Does not
+    invoke rewrite/provider/recovery.
+    """
+    prepared: list[PreparedRecoveryEvalCase] = []
+    for case in cases:
+        cohort = cohort_by_case.get(case.id)
+        if cohort is None:
+            raise RecoveryEvalError(f"missing cohort for case_id={case.id!r}")
+        if case.query.strip() == "":
+            raise RecoveryEvalError(f"case {case.id!r} has empty query")
+        context = initial_assembler.assemble_initial(case.query)
+        if context.query != case.query:
+            raise RecoveryEvalError(
+                f"initial context query must equal original query for case {case.id!r}"
+            )
+        sufficiency = evaluate_sufficiency_policy_v1(
+            evidence_units=context.evidence_units
+        )
+        gold_ids = sorted(case.positive_chunk_ids())
+        observation = observe_attempt(
+            context,
+            gold_positive_chunk_ids=gold_ids,
+            sufficiency=sufficiency,
+            require_lineage=True,
+        )
+        assert observation.lineage is not None
+        if gold is not None:
+            require_gold_lineage_compatible(gold=gold, lineage=observation.lineage)
+        prepared.append(
+            PreparedRecoveryEvalCase(
+                case=case,
+                adjudication_cohort=cohort,
+                original_query=case.query,
+                initial_context=context,
+                initial_sufficiency=sufficiency,
+                initial_observation=observation,
+                triggered=is_recovery_triggered(sufficiency),
+            )
+        )
+    census = build_trigger_census_from_prepared(prepared)
+    return PreparedRecoveryEvalBatch(cases=tuple(prepared), census=census)
+
+
+def evaluate_prepared_case(
+    prepared: PreparedRecoveryEvalCase,
+    *,
     recovery_settings: AppSettings,
     recovery_assembler: object,
     rewriter: RecoveryRewriter,
     corpus_name: str = "default",
     enable_recovery_arm: bool = True,
+    clock: Clock | None = None,
 ) -> RecoveryEvalCaseRecordV1:
-    """Run Arm A + Arm B from one shared initial assemble.
+    """Stage B: observe Arm A/B from a prepared shared-initial context.
 
-    ``enable_recovery_arm`` should be True for experiment Arm B settings
-    (recovery.enabled). When False, records baseline-only observation (still
-    shares the single initial attempt).
+    Never calls initial retrieval. Triggered recovery passes the exact prepared
+    ``initial_context`` into ``RecoveryCoordinator``.
     """
-    initial_context = initial_assembler.assemble_initial(case.query)
-    initial_sufficiency = evaluate_sufficiency_policy_v1(
-        evidence_units=initial_context.evidence_units
-    )
+    clock_fn = clock or time.perf_counter
+    case = prepared.case
     gold_ids = sorted(case.positive_chunk_ids())
-    initial_obs = observe_attempt(
-        initial_context,
-        gold_positive_chunk_ids=gold_ids,
-        sufficiency=initial_sufficiency,
-    )
-    triggered = is_recovery_triggered(initial_sufficiency)
+    initial_context = prepared.initial_context
+    initial_sufficiency = prepared.initial_sufficiency
+    initial_obs = prepared.initial_observation
+    if initial_obs.lineage is None:
+        raise RecoveryEvalError("prepared case missing initial lineage")
+    triggered = prepared.triggered
+    if triggered != is_recovery_triggered(initial_sufficiency):
+        raise RecoveryEvalError("prepared triggered flag inconsistent with sufficiency")
 
     rewrite_calls = 0
     recovery_retrievals = 0
@@ -191,16 +364,16 @@ def evaluate_paired_case(
     happy_path_diverged = False
 
     if not triggered:
-        # Happy path: Arm B must not rewrite / re-retrieve.
         if enable_recovery_arm and recovery_settings.retrieval_recovery.enabled:
+            timing_rewriter = TimingRewriter(rewriter, clock=clock_fn)
             coordinator = RecoveryCoordinator(
                 recovery_settings,
                 context_assembler=recovery_assembler,  # type: ignore[arg-type]
-                rewriter=rewriter,
+                rewriter=timing_rewriter,
             )
             try:
                 result = coordinator.run(
-                    original_query=case.query,
+                    original_query=prepared.original_query,
                     corpus_name=corpus_name,
                     initial_context=initial_context,
                     initial_sufficiency=initial_sufficiency,
@@ -222,87 +395,70 @@ def evaluate_paired_case(
         )
     else:
         if not enable_recovery_arm or not recovery_settings.retrieval_recovery.enabled:
-            # Triggered but recovery arm not active: still_insufficient baseline.
-            classification = RecoveryEvalCaseClassV1.STILL_INSUFFICIENT
-            recovery_record = None
-        else:
-            coordinator = RecoveryCoordinator(
-                recovery_settings,
-                context_assembler=recovery_assembler,  # type: ignore[arg-type]
-                rewriter=rewriter,
+            raise RecoveryEvalError(
+                "triggered authoritative evaluation requires recovery arm enabled"
             )
+        timing_rewriter = TimingRewriter(rewriter, clock=clock_fn)
+        coordinator = RecoveryCoordinator(
+            recovery_settings,
+            context_assembler=recovery_assembler,  # type: ignore[arg-type]
+            rewriter=timing_rewriter,
+        )
+        arm_started = clock_fn()
+        result: RecoveryCoordinatorResult | None
+        try:
             try:
-                try:
-                    result = coordinator.run(
-                        original_query=case.query,
-                        corpus_name=corpus_name,
-                        initial_context=initial_context,
-                        initial_sufficiency=initial_sufficiency,
-                    )
-                except RecoveryRuntimeError as exc:
-                    recovery_failed = True
-                    rewrite_calls = (
-                        exc.trace.rewrite_call_count if exc.trace is not None else 0
-                    )
-                    recovery_retrievals = (
-                        exc.trace.recovery_retrieval_attempt_count
-                        if exc.trace is not None
-                        else 0
-                    )
-                    recovery_record = RecoveryAttemptRecordV1(
-                        rewritten_query=(
-                            exc.trace.rewrite_provenance.rewritten_query
-                            if exc.trace is not None
-                            and exc.trace.rewrite_provenance is not None
-                            else None
-                        ),
-                        rewriter_config_hash=(
-                            exc.trace.rewrite_provenance.rewriter_config_hash
-                            if exc.trace is not None
-                            and exc.trace.rewrite_provenance is not None
-                            else None
-                        ),
-                        rewrite_contract=(
-                            exc.trace.rewrite_provenance.output_contract
-                            if exc.trace is not None
-                            and exc.trace.rewrite_provenance is not None
-                            else None
-                        ),
-                        rewrite_call_count=rewrite_calls,
-                        recovery_retrieval_attempt_count=recovery_retrievals,
-                        terminal_outcome=(
-                            exc.state.terminal_outcome
-                            if exc.state is not None
-                            else None
-                        ),
-                        failure_reason=exc.failure_reason,
-                        observation=None,
-                    )
-                    result = None
-            finally:
-                coordinator.close()
-
-            if not recovery_failed and result is not None:
+                result = coordinator.run(
+                    original_query=prepared.original_query,
+                    corpus_name=corpus_name,
+                    initial_context=initial_context,
+                    initial_sufficiency=initial_sufficiency,
+                )
+            except RecoveryRuntimeError as exc:
+                recovery_failed = True
+                incremental_ms = (clock_fn() - arm_started) * 1000.0
+                rewrite_calls = (
+                    exc.trace.rewrite_call_count if exc.trace is not None else 0
+                )
+                recovery_retrievals = (
+                    exc.trace.recovery_retrieval_attempt_count
+                    if exc.trace is not None
+                    else 0
+                )
+                recovery_record = _record_failed_recovery_arm(
+                    exc=exc,
+                    rewrite_call_count=rewrite_calls,
+                    recovery_retrieval_attempt_count=recovery_retrievals,
+                    rewrite_latency_ms=timing_rewriter.last_rewrite_latency_ms,
+                    incremental_recovery_latency_ms=incremental_ms,
+                )
+                result = None
+            else:
+                incremental_ms = (clock_fn() - arm_started) * 1000.0
                 recovery_record = _record_successful_recovery_arm(
                     result=result,
                     gold_ids=gold_ids,
                     initial_lineage=initial_obs.lineage,
+                    rewrite_latency_ms=timing_rewriter.last_rewrite_latency_ms,
+                    incremental_recovery_latency_ms=incremental_ms,
                 )
                 rewrite_calls = result.rewrite_call_count
                 recovery_retrievals = result.recovery_retrieval_attempt_count
+        finally:
+            coordinator.close()
 
-            classification = classify_case(
-                triggered=True,
-                recovery_failed=recovery_failed,
-                recovery_observation=(
-                    recovery_record.observation if recovery_record is not None else None
-                ),
-            )
+        classification = classify_case(
+            triggered=True,
+            recovery_failed=recovery_failed,
+            recovery_observation=(
+                recovery_record.observation if recovery_record is not None else None
+            ),
+        )
 
     return RecoveryEvalCaseRecordV1(
         case_id=case.id,
-        adjudication_cohort=adjudication_cohort,
-        original_query=case.query,
+        adjudication_cohort=prepared.adjudication_cohort,
+        original_query=prepared.original_query,
         quality_eligible=case.quality_eligible,
         gold_positive_chunk_ids=gold_ids,
         initial=initial_obs,
@@ -321,121 +477,162 @@ def evaluate_paired_case(
     )
 
 
+def evaluate_prepared_batch(
+    batch: PreparedRecoveryEvalBatch,
+    *,
+    recovery_settings: AppSettings,
+    recovery_assembler: object,
+    rewriter: RecoveryRewriter,
+    corpus_name: str = "default",
+    clock: Clock | None = None,
+    stop_if_not_evaluable: bool = True,
+) -> list[RecoveryEvalCaseRecordV1]:
+    """Evaluate all prepared cases without any additional initial assembly.
+
+    When ``stop_if_not_evaluable`` and ``T_H == 0``, returns empty records and
+    performs zero rewrite/recovery calls.
+    """
+    if stop_if_not_evaluable and batch.not_evaluable:
+        return []
+    return [
+        evaluate_prepared_case(
+            prepared,
+            recovery_settings=recovery_settings,
+            recovery_assembler=recovery_assembler,
+            rewriter=rewriter,
+            corpus_name=corpus_name,
+            clock=clock,
+        )
+        for prepared in batch.cases
+    ]
+
+
+def evaluate_paired_case(
+    *,
+    case: GoldCase,
+    adjudication_cohort: LabelCohort,
+    initial_assembler: InitialContextAssembler,
+    recovery_settings: AppSettings,
+    recovery_assembler: object,
+    rewriter: RecoveryRewriter,
+    corpus_name: str = "default",
+    enable_recovery_arm: bool = True,
+    gold: LoadedGoldDataset | None = None,
+    clock: Clock | None = None,
+) -> RecoveryEvalCaseRecordV1:
+    """Single-case convenience: prepare once, then evaluate (one initial assemble).
+
+    Authoritative multi-case measure-once flows must use ``prepare_initial_cases``
+    followed by ``evaluate_prepared_case`` / ``evaluate_prepared_batch`` so census
+    can freeze before recovery without a second initial retrieval.
+    """
+    batch = prepare_initial_cases(
+        cases=[case],
+        cohort_by_case={case.id: adjudication_cohort},
+        initial_assembler=initial_assembler,
+        gold=gold,
+    )
+    return evaluate_prepared_case(
+        batch.cases[0],
+        recovery_settings=recovery_settings,
+        recovery_assembler=recovery_assembler,
+        rewriter=rewriter,
+        corpus_name=corpus_name,
+        enable_recovery_arm=enable_recovery_arm,
+        clock=clock,
+    )
+
+
+def _provenance_fields(
+    provenance: RecoveryRewriteProvenanceV1 | None,
+) -> dict[str, str | None]:
+    if provenance is None:
+        return {
+            "rewritten_query": None,
+            "rewriter_config_hash": None,
+            "adapter_contract": None,
+            "prompt_contract": None,
+            "output_contract": None,
+        }
+    return {
+        "rewritten_query": provenance.rewritten_query,
+        "rewriter_config_hash": provenance.rewriter_config_hash,
+        "adapter_contract": provenance.adapter_contract,
+        "prompt_contract": provenance.prompt_contract,
+        "output_contract": provenance.output_contract,
+    }
+
+
+def _record_failed_recovery_arm(
+    *,
+    exc: RecoveryRuntimeError,
+    rewrite_call_count: int,
+    recovery_retrieval_attempt_count: int,
+    rewrite_latency_ms: float | None,
+    incremental_recovery_latency_ms: float | None,
+) -> RecoveryAttemptRecordV1:
+    provenance = exc.trace.rewrite_provenance if exc.trace is not None else None
+    fields = _provenance_fields(provenance)
+    return RecoveryAttemptRecordV1(
+        rewritten_query=fields["rewritten_query"],
+        rewriter_config_hash=fields["rewriter_config_hash"],
+        adapter_contract=fields["adapter_contract"],
+        prompt_contract=fields["prompt_contract"],
+        output_contract=fields["output_contract"],
+        rewrite_call_count=rewrite_call_count,
+        recovery_retrieval_attempt_count=recovery_retrieval_attempt_count,
+        terminal_outcome=(
+            exc.state.terminal_outcome if exc.state is not None else None
+        ),
+        failure_reason=exc.failure_reason,
+        observation=None,
+        rewrite_latency_ms=rewrite_latency_ms,
+        recovery_context_latency_ms=None,
+        incremental_recovery_latency_ms=incremental_recovery_latency_ms,
+    )
+
+
 def _record_successful_recovery_arm(
     *,
     result: RecoveryCoordinatorResult,
     gold_ids: Sequence[str],
-    initial_lineage: RecoveryLineageV1 | None,
+    initial_lineage: RecoveryLineageV1,
+    rewrite_latency_ms: float | None,
+    incremental_recovery_latency_ms: float | None,
 ) -> RecoveryAttemptRecordV1:
     recovery_obs = observe_attempt(
         result.context,
         gold_positive_chunk_ids=gold_ids,
         sufficiency=result.sufficiency,
+        require_lineage=True,
     )
-    if (
-        initial_lineage is not None
-        and recovery_obs.lineage is not None
-        and not lineage_stack_equal(initial_lineage, recovery_obs.lineage)
-    ):
+    if recovery_obs.lineage is None:
+        raise RecoveryEvalError("successful recovery missing recovery lineage")
+    if not lineage_stack_equal(initial_lineage, recovery_obs.lineage):
         raise RecoveryEvalError(
             "recovery attempt retrieval stack differs from shared initial attempt "
             "(only active_retrieval_query may differ)"
         )
-    rewrite_latency = None
-    rewriter_hash = None
-    rewrite_contract = None
-    rewritten_query = None
-    terminal = None
-    failure = None
-    if result.trace is not None and result.trace.rewrite_provenance is not None:
-        prov = result.trace.rewrite_provenance
-        rewriter_hash = prov.rewriter_config_hash
-        rewrite_contract = prov.output_contract
-        rewritten_query = prov.rewritten_query
-    if result.state is not None:
-        terminal = result.state.terminal_outcome
-        failure = result.state.failure_reason
+    provenance = result.trace.rewrite_provenance if result.trace is not None else None
+    fields = _provenance_fields(provenance)
+    terminal = result.state.terminal_outcome if result.state is not None else None
+    failure = result.state.failure_reason if result.state is not None else None
     recovery_latency = recovery_obs.latency_ms
-    incremental = float(recovery_latency) if recovery_latency is not None else None
     return RecoveryAttemptRecordV1(
-        rewritten_query=rewritten_query,
-        rewriter_config_hash=rewriter_hash,
-        rewrite_contract=rewrite_contract,
+        rewritten_query=fields["rewritten_query"],
+        rewriter_config_hash=fields["rewriter_config_hash"],
+        adapter_contract=fields["adapter_contract"],
+        prompt_contract=fields["prompt_contract"],
+        output_contract=fields["output_contract"],
         rewrite_call_count=result.rewrite_call_count,
         recovery_retrieval_attempt_count=result.recovery_retrieval_attempt_count,
         terminal_outcome=terminal,
         failure_reason=failure,
         observation=recovery_obs,
-        rewrite_latency_ms=rewrite_latency,
+        rewrite_latency_ms=rewrite_latency_ms,
         recovery_context_latency_ms=recovery_latency,
-        incremental_recovery_latency_ms=incremental,
+        incremental_recovery_latency_ms=incremental_recovery_latency_ms,
     )
-
-
-def build_trigger_census(
-    records: Sequence[RecoveryEvalCaseRecordV1],
-) -> TriggerCensusV1:
-    """Freeze T_H / T_A from shared-initial observations (before recovery results)."""
-    human_ids = [
-        r.case_id
-        for r in records
-        if r.triggered and r.adjudication_cohort == "human_reviewed"
-    ]
-    assistant_ids = [
-        r.case_id
-        for r in records
-        if r.triggered and r.adjudication_cohort == "assistant_only"
-    ]
-    not_evaluable = len(human_ids) == 0
-    return TriggerCensusV1(
-        human_trigger_case_ids=sorted(human_ids),
-        assistant_trigger_case_ids=sorted(assistant_ids),
-        human_trigger_count=len(human_ids),
-        assistant_trigger_count=len(assistant_ids),
-        not_evaluable=not_evaluable,
-        stop_reason=(
-            NOT_EVALUABLE_NO_HUMAN_RECOVERY_OPPORTUNITIES if not_evaluable else None
-        ),
-    )
-
-
-def census_from_initial_attempts(
-    *,
-    cases: Sequence[GoldCase],
-    cohort_by_case: Mapping[str, LabelCohort],
-    initial_assembler: InitialContextAssembler,
-) -> TriggerCensusV1:
-    """Run shared-initial attempts only and freeze trigger membership."""
-    records: list[RecoveryEvalCaseRecordV1] = []
-    for case in cases:
-        cohort = cohort_by_case.get(case.id)
-        if cohort is None:
-            raise RecoveryEvalError(f"missing cohort for case_id={case.id!r}")
-        ctx = initial_assembler.assemble_initial(case.query)
-        suff = evaluate_sufficiency_policy_v1(evidence_units=ctx.evidence_units)
-        obs = observe_attempt(
-            ctx,
-            gold_positive_chunk_ids=sorted(case.positive_chunk_ids()),
-            sufficiency=suff,
-        )
-        triggered = is_recovery_triggered(suff)
-        records.append(
-            RecoveryEvalCaseRecordV1(
-                case_id=case.id,
-                adjudication_cohort=cohort,
-                original_query=case.query,
-                quality_eligible=case.quality_eligible,
-                gold_positive_chunk_ids=sorted(case.positive_chunk_ids()),
-                initial=obs,
-                triggered=triggered,
-                classification=(
-                    RecoveryEvalCaseClassV1.INITIAL_SUFFICIENT_NO_RECOVERY
-                    if not triggered
-                    else RecoveryEvalCaseClassV1.STILL_INSUFFICIENT
-                ),
-            )
-        )
-    return build_trigger_census(records)
 
 
 def _latency_summary(values: Sequence[float | None]) -> LatencySummaryV1:
