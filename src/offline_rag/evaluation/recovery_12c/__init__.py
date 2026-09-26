@@ -20,6 +20,7 @@ from offline_rag.evaluation.recovery_12c.contracts import (
     RECOVERY_EVAL_V1,
     AttemptObservationV1,
     CohortAggregateV1,
+    GoldJudgmentRefV1,
     PresenceMatchingRuleV1,
     RecoveryAttemptRecordV1,
     RecoveryEvalAggregateV1,
@@ -40,6 +41,7 @@ from offline_rag.evaluation.recovery_12c.harness import (
     PreparedRecoveryEvalBatch,
     PreparedRecoveryEvalCase,
     TimingRewriter,
+    aggregate_authoritative_recovery_eval,
     aggregate_recovery_eval,
     assert_single_initial_assemble,
     build_trigger_census_from_prepared,
@@ -50,7 +52,9 @@ from offline_rag.evaluation.recovery_12c.harness import (
     is_recovery_triggered,
     observe_attempt,
     observe_attempt_diagnostic,
+    prepare_authoritative_recovery_eval,
     prepare_initial_cases,
+    prepare_synthetic_initial_cases,
 )
 from offline_rag.evaluation.recovery_12c.identity import (
     build_recovery_eval_identity_hash,
@@ -60,6 +64,13 @@ from offline_rag.evaluation.recovery_12c.preflight import (
     RecoveryEvalPreflightResult,
     preflight_authoritative_recovery_eval,
     require_authoritative_recovery_preflight,
+)
+from offline_rag.evaluation.recovery_12c.recompute import (
+    assert_ranking_matches_recompute,
+    expected_gold_overlap_ids,
+    gold_judgments_from_case,
+    recompute_ranking_metrics,
+    validate_observation_gold_overlap,
 )
 
 __all__ = [
@@ -71,6 +82,7 @@ __all__ = [
     "AttemptObservationV1",
     "CohortAggregateV1",
     "CountingInitialAssembler",
+    "GoldJudgmentRefV1",
     "PreparedRecoveryEvalBatch",
     "PreparedRecoveryEvalCase",
     "PresenceMatchingRuleV1",
@@ -83,7 +95,9 @@ __all__ = [
     "RecoveryEvalPreflightResult",
     "TimingRewriter",
     "TriggerCensusV1",
+    "aggregate_authoritative_recovery_eval",
     "aggregate_recovery_eval",
+    "assert_ranking_matches_recompute",
     "assert_single_initial_assemble",
     "bind_cohort_map_for_gold",
     "build_recovery_eval_identity_hash",
@@ -95,6 +109,8 @@ __all__ = [
     "evaluate_prepared_batch",
     "evaluate_prepared_case",
     "evidence_surface_chunk_ids_from_context",
+    "expected_gold_overlap_ids",
+    "gold_judgments_from_case",
     "gold_positive_overlap",
     "is_recovery_triggered",
     "load_and_bind_cohort_map",
@@ -102,9 +118,13 @@ __all__ = [
     "observe_attempt",
     "observe_attempt_diagnostic",
     "preflight_authoritative_recovery_eval",
+    "prepare_authoritative_recovery_eval",
     "prepare_initial_cases",
+    "prepare_synthetic_initial_cases",
     "ranked_anchor_chunk_ids",
     "ranking_score_to_dict",
+    "recompute_ranking_metrics",
     "require_authoritative_recovery_preflight",
     "require_gold_lineage_compatible",
+    "validate_observation_gold_overlap",
 ]

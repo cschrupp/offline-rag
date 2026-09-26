@@ -18,13 +18,22 @@ from statistics import mean, median
 from typing import Protocol
 
 from offline_rag.config.models import AppSettings
+from offline_rag.core.ids import recovery_eval_config_hash
 from offline_rag.domain.indexing import HybridRerankContextResult
-from offline_rag.evaluation.generation_semantic.models import LabelCohort
+from offline_rag.evaluation.generation_semantic.models import (
+    GenerationCohortMapV1,
+    LabelCohort,
+)
 from offline_rag.evaluation.gold import GoldCase, LoadedGoldDataset
-from offline_rag.evaluation.metrics import RankingScore, macro_average, score_ranking
-from offline_rag.evaluation.recovery_12c.binding import require_gold_lineage_compatible
+from offline_rag.evaluation.metrics import macro_average
+from offline_rag.evaluation.recovery_12c.binding import (
+    bind_cohort_map_for_gold,
+    cohort_map_identity_payload,
+    require_gold_lineage_compatible,
+)
 from offline_rag.evaluation.recovery_12c.conclusion import conclude_recovery_eval
 from offline_rag.evaluation.recovery_12c.contracts import (
+    FROZEN_GOLD_DATASET_ID_12C,
     NOT_EVALUABLE_NO_HUMAN_RECOVERY_OPPORTUNITIES,
     AttemptObservationV1,
     CohortAggregateV1,
@@ -35,7 +44,6 @@ from offline_rag.evaluation.recovery_12c.contracts import (
     RecoveryEvalCaseRecordV1,
     RecoveryEvalError,
     TriggerCensusV1,
-    ranking_score_to_dict,
 )
 from offline_rag.evaluation.recovery_12c.evidence import (
     context_latency_ms,
@@ -43,6 +51,12 @@ from offline_rag.evaluation.recovery_12c.evidence import (
     gold_positive_overlap,
     ranked_anchor_chunk_ids,
 )
+from offline_rag.evaluation.recovery_12c.recompute import (
+    gold_judgments_from_case,
+    prepared_case_set_identity_payload,
+    recompute_ranking_metrics,
+)
+from offline_rag.recovery.contracts import RecoveryFailureReasonV1
 from offline_rag.recovery.coordinator import (
     RecoveryCoordinator,
     RecoveryCoordinatorResult,
@@ -131,6 +145,11 @@ class PreparedRecoveryEvalBatch:
 
     cases: tuple[PreparedRecoveryEvalCase, ...]
     census: TriggerCensusV1
+    authoritative: bool = False
+    gold_dataset_id: str | None = None
+    cohort_map_identity_hash: str | None = None
+    prepared_case_set_hash: str | None = None
+    cohort_map: GenerationCohortMapV1 | None = None
 
     @property
     def not_evaluable(self) -> bool:
@@ -240,15 +259,13 @@ def _ranking_for_case(
     case: GoldCase,
     ranked_ids: Sequence[str],
 ) -> dict[str, float | None] | None:
-    if not case.quality_eligible:
-        return None
-    score: RankingScore = score_ranking(
-        case,
-        list(ranked_ids),
-        requested_depth=max(len(ranked_ids), 10),
-        hit_rate_30_applicable=False,
+    judgments = gold_judgments_from_case(case)
+    return recompute_ranking_metrics(
+        case_id=case.id,
+        query=case.query,
+        judgments=judgments,
+        ranked_chunk_ids=ranked_ids,
     )
-    return ranking_score_to_dict(score)
 
 
 def build_trigger_census_from_prepared(
@@ -278,17 +295,18 @@ def build_trigger_census_from_prepared(
     )
 
 
-def prepare_initial_cases(
+def prepare_synthetic_initial_cases(
     *,
     cases: Sequence[GoldCase],
     cohort_by_case: Mapping[str, LabelCohort],
     initial_assembler: InitialContextAssembler,
     gold: LoadedGoldDataset | None = None,
 ) -> PreparedRecoveryEvalBatch:
-    """Stage A: assemble each case once, validate lineage, freeze census.
+    """Non-authoritative Stage A helper for unit tests / diagnostics.
 
-    Retains exact ``HybridRerankContextResult`` objects for Stage B. Does not
-    invoke rewrite/provider/recovery.
+    Accepts caller-selected cases and cohort labels. Must **not** be used for
+    OD-12C-2 measure-once promotion artifacts. Prefer
+    ``prepare_authoritative_recovery_eval``.
     """
     prepared: list[PreparedRecoveryEvalCase] = []
     for case in cases:
@@ -327,7 +345,88 @@ def prepare_initial_cases(
             )
         )
     census = build_trigger_census_from_prepared(prepared)
-    return PreparedRecoveryEvalBatch(cases=tuple(prepared), census=census)
+    return PreparedRecoveryEvalBatch(
+        cases=tuple(prepared),
+        census=census,
+        authoritative=False,
+    )
+
+
+# Backward-compatible alias; non-authoritative.
+prepare_initial_cases = prepare_synthetic_initial_cases
+
+
+def prepare_authoritative_recovery_eval(
+    *,
+    gold: LoadedGoldDataset,
+    cohort_map: GenerationCohortMapV1,
+    initial_assembler: InitialContextAssembler,
+) -> PreparedRecoveryEvalBatch:
+    """Authoritative Stage A: exact frozen Gold + validated tracked cohort map.
+
+    Derives the population and labels from Gold/cohort map themselves. Callers
+    cannot supply subsets or alternate cohort mappings.
+    """
+    if gold.dataset_id != FROZEN_GOLD_DATASET_ID_12C:
+        raise RecoveryEvalError(
+            "authoritative 12C prepare requires exact frozen Gold dataset ID "
+            f"{FROZEN_GOLD_DATASET_ID_12C}; got {gold.dataset_id}"
+        )
+    mapping = bind_cohort_map_for_gold(
+        gold=gold,
+        cohort_map=cohort_map,
+        require_frozen_gold_id=True,
+    )
+    # Population is exactly gold.cases; labels exactly from validated map.
+    prepared_batch = prepare_synthetic_initial_cases(
+        cases=list(gold.cases),
+        cohort_by_case=mapping,
+        initial_assembler=initial_assembler,
+        gold=gold,
+    )
+    if len(prepared_batch.cases) != len(gold.cases):
+        raise RecoveryEvalError(
+            "authoritative prepare must retain every Gold case exactly once"
+        )
+    prepared_ids = [p.case.id for p in prepared_batch.cases]
+    gold_ids = [c.id for c in gold.cases]
+    if sorted(prepared_ids) != sorted(gold_ids):
+        raise RecoveryEvalError(
+            "authoritative prepare case IDs must equal frozen Gold case IDs"
+        )
+    for prepared in prepared_batch.cases:
+        if prepared.adjudication_cohort != mapping[prepared.case.id]:
+            raise RecoveryEvalError(
+                f"authoritative cohort mismatch for case {prepared.case.id!r}"
+            )
+        if prepared.original_query != prepared.case.query:
+            raise RecoveryEvalError(
+                f"authoritative query mismatch for case {prepared.case.id!r}"
+            )
+
+    cohort_hash = recovery_eval_config_hash(cohort_map_identity_payload(cohort_map))
+    case_set_payload = prepared_case_set_identity_payload(
+        gold_dataset_id=gold.dataset_id,
+        cases=[
+            (
+                p.case.id,
+                p.original_query,
+                p.adjudication_cohort,
+                gold_judgments_from_case(p.case),
+            )
+            for p in prepared_batch.cases
+        ],
+    )
+    case_set_hash = recovery_eval_config_hash(case_set_payload)
+    return PreparedRecoveryEvalBatch(
+        cases=prepared_batch.cases,
+        census=prepared_batch.census,
+        authoritative=True,
+        gold_dataset_id=gold.dataset_id,
+        cohort_map_identity_hash=cohort_hash,
+        prepared_case_set_hash=case_set_hash,
+        cohort_map=cohort_map,
+    )
 
 
 def evaluate_prepared_case(
@@ -460,6 +559,7 @@ def evaluate_prepared_case(
         adjudication_cohort=prepared.adjudication_cohort,
         original_query=prepared.original_query,
         quality_eligible=case.quality_eligible,
+        gold_judgments=gold_judgments_from_case(case),
         gold_positive_chunk_ids=gold_ids,
         initial=initial_obs,
         triggered=triggered,
@@ -522,11 +622,12 @@ def evaluate_paired_case(
 ) -> RecoveryEvalCaseRecordV1:
     """Single-case convenience: prepare once, then evaluate (one initial assemble).
 
-    Authoritative multi-case measure-once flows must use ``prepare_initial_cases``
-    followed by ``evaluate_prepared_case`` / ``evaluate_prepared_batch`` so census
-    can freeze before recovery without a second initial retrieval.
+    Authoritative multi-case measure-once flows must use
+    ``prepare_authoritative_recovery_eval`` followed by
+    ``evaluate_prepared_case`` / ``evaluate_prepared_batch`` and
+    ``aggregate_authoritative_recovery_eval``.
     """
-    batch = prepare_initial_cases(
+    batch = prepare_synthetic_initial_cases(
         cases=[case],
         cohort_by_case={case.id: adjudication_cohort},
         initial_assembler=initial_assembler,
@@ -571,6 +672,11 @@ def _record_failed_recovery_arm(
     rewrite_latency_ms: float | None,
     incremental_recovery_latency_ms: float | None,
 ) -> RecoveryAttemptRecordV1:
+    if exc.failure_reason == RecoveryFailureReasonV1.PROTOCOL_VIOLATION:
+        raise RecoveryEvalError(
+            "protocol_violation is not a legal ordinary 12C recovery failure; "
+            "fail the evaluation harness instead of counting it as measured recovery"
+        ) from exc
     provenance = exc.trace.rewrite_provenance if exc.trace is not None else None
     fields = _provenance_fields(provenance)
     return RecoveryAttemptRecordV1(
@@ -751,7 +857,11 @@ def aggregate_recovery_eval(
     evaluation_identity_hash: str | None = None,
     rewriter_config_hash: str | None = None,
 ) -> RecoveryEvalAggregateV1:
-    """Separate human-reviewed (authoritative) from assistant-only aggregates."""
+    """Non-authoritative aggregate helper (tests/diagnostics).
+
+    Does **not** bind records to a frozen prepared population. Use
+    ``aggregate_authoritative_recovery_eval`` for promotion artifacts.
+    """
     human = _aggregate_cohort(records, cohort="human_reviewed")
     assistant = _aggregate_cohort(records, cohort="assistant_only")
     conclusion = conclude_recovery_eval(
@@ -762,12 +872,100 @@ def aggregate_recovery_eval(
         happy_path_divergence_count=human.happy_path_divergence_count,
     )
     return RecoveryEvalAggregateV1(
+        authoritative=False,
         total_case_count=len(records),
         human_reviewed_count=human.total_case_count,
         assistant_only_count=assistant.total_case_count,
         human=human,
         assistant=assistant,
         conclusion=conclusion,
+        evaluation_identity_hash=evaluation_identity_hash,
+        rewriter_config_hash=rewriter_config_hash,
+    )
+
+
+def aggregate_authoritative_recovery_eval(
+    batch: PreparedRecoveryEvalBatch,
+    records: Sequence[RecoveryEvalCaseRecordV1],
+    *,
+    evaluation_identity_hash: str,
+    rewriter_config_hash: str,
+) -> RecoveryEvalAggregateV1:
+    """Authoritative aggregate bound to a prepared frozen population."""
+    if not batch.authoritative:
+        raise RecoveryEvalError(
+            "aggregate_authoritative_recovery_eval requires an authoritative "
+            "PreparedRecoveryEvalBatch"
+        )
+    if batch.gold_dataset_id != FROZEN_GOLD_DATASET_ID_12C:
+        raise RecoveryEvalError(
+            "authoritative aggregate requires frozen Gold dataset ID "
+            f"{FROZEN_GOLD_DATASET_ID_12C}"
+        )
+    if batch.cohort_map_identity_hash is None or batch.prepared_case_set_hash is None:
+        raise RecoveryEvalError(
+            "authoritative batch missing cohort_map_identity_hash / "
+            "prepared_case_set_hash"
+        )
+    if not evaluation_identity_hash or not rewriter_config_hash:
+        raise RecoveryEvalError(
+            "authoritative aggregate requires non-null evaluation_identity_hash "
+            "and rewriter_config_hash"
+        )
+
+    prepared_by_id = {p.case.id: p for p in batch.cases}
+    if len(prepared_by_id) != len(batch.cases):
+        raise RecoveryEvalError("prepared batch contains duplicate case IDs")
+
+    record_ids = [r.case_id for r in records]
+    if len(record_ids) != len(set(record_ids)):
+        raise RecoveryEvalError("duplicate recovery-eval case records")
+    prepared_ids = set(prepared_by_id)
+    record_id_set = set(record_ids)
+    if record_id_set != prepared_ids:
+        missing = sorted(prepared_ids - record_id_set)
+        extra = sorted(record_id_set - prepared_ids)
+        raise RecoveryEvalError(
+            "authoritative records must exactly equal prepared case set; "
+            f"missing={missing} extra={extra}"
+        )
+
+    for record in records:
+        prepared = prepared_by_id[record.case_id]
+        if record.adjudication_cohort != prepared.adjudication_cohort:
+            raise RecoveryEvalError(
+                f"record cohort mismatch for case {record.case_id!r}"
+            )
+        if record.original_query != prepared.original_query:
+            raise RecoveryEvalError(
+                f"record query mismatch for case {record.case_id!r}"
+            )
+        expected_judgments = gold_judgments_from_case(prepared.case)
+        if list(record.gold_judgments) != expected_judgments:
+            raise RecoveryEvalError(
+                f"record gold_judgments mismatch for case {record.case_id!r}"
+            )
+
+    human = _aggregate_cohort(records, cohort="human_reviewed")
+    assistant = _aggregate_cohort(records, cohort="assistant_only")
+    conclusion = conclude_recovery_eval(
+        human_trigger_count=human.trigger_count,
+        gold_positive_recovery_count=human.gold_positive_recovery_count,
+        unsupported_recovery_count=human.unsupported_recovery_count,
+        recovery_failure_count=human.recovery_failure_count,
+        happy_path_divergence_count=human.happy_path_divergence_count,
+    )
+    return RecoveryEvalAggregateV1(
+        authoritative=True,
+        total_case_count=len(records),
+        human_reviewed_count=human.total_case_count,
+        assistant_only_count=assistant.total_case_count,
+        human=human,
+        assistant=assistant,
+        conclusion=conclusion,
+        gold_dataset_id=batch.gold_dataset_id,
+        cohort_map_identity_hash=batch.cohort_map_identity_hash,
+        prepared_case_set_hash=batch.prepared_case_set_hash,
         evaluation_identity_hash=evaluation_identity_hash,
         rewriter_config_hash=rewriter_config_hash,
     )

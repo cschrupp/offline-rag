@@ -95,6 +95,15 @@ class PresenceMatchingRuleV1(BaseModel):
     )
 
 
+class GoldJudgmentRefV1(BaseModel):
+    """Sanitized Gold judgment (chunk_id + grade) for recomputable IR metrics."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    chunk_id: ExactNonBlankStr
+    relevance: Literal[1, 2]
+
+
 class AttemptObservationV1(BaseModel):
     """Shared-initial or recovery attempt observation (IDs only; no body text)."""
 
@@ -132,7 +141,12 @@ class AttemptObservationV1(BaseModel):
 
     @model_validator(mode="after")
     def _sufficiency_v1_consistency(self) -> AttemptObservationV1:
+        surface = list(self.evidence_surface_chunk_ids)
+        if len(surface) != len(set(surface)):
+            raise ValueError("evidence_surface_chunk_ids must be unique")
         overlap_ids = list(self.gold_positive_overlap_chunk_ids)
+        if len(overlap_ids) != len(set(overlap_ids)):
+            raise ValueError("gold_positive_overlap_chunk_ids must be unique")
         if bool(overlap_ids) != bool(self.gold_positive_overlap):
             raise ValueError(
                 "gold_positive_overlap must equal "
@@ -246,6 +260,11 @@ class RecoveryAttemptRecordV1(BaseModel):
         if terminal == _FAILURE_RECOVERY_TERMINAL:
             if self.failure_reason is None:
                 raise ValueError("failure terminal requires failure_reason")
+            if self.failure_reason == RecoveryFailureReasonV1.PROTOCOL_VIOLATION:
+                raise ValueError(
+                    "protocol_violation is audit-compatibility only and is not a "
+                    "legal ordinary recovery-eval-v1 failure reason"
+                )
             if (
                 self.failure_reason
                 == RecoveryFailureReasonV1.REWRITE_PREPARATION_FAILED
@@ -269,6 +288,10 @@ class RecoveryAttemptRecordV1(BaseModel):
                     raise ValueError(
                         "execution failure requires recovery_retrieval_attempt_count == 1"
                     )
+            else:
+                raise ValueError(
+                    f"unsupported recovery failure_reason: {self.failure_reason}"
+                )
             return self
 
         raise ValueError(f"unsupported recovery terminal_outcome: {terminal}")
@@ -284,6 +307,7 @@ class RecoveryEvalCaseRecordV1(BaseModel):
     adjudication_cohort: LabelCohort
     original_query: ExactNonBlankStr
     quality_eligible: bool
+    gold_judgments: list[GoldJudgmentRefV1] = Field(default_factory=list)
     gold_positive_chunk_ids: list[ExactNonBlankStr] = Field(default_factory=list)
     initial: AttemptObservationV1
     triggered: bool
@@ -304,6 +328,38 @@ class RecoveryEvalCaseRecordV1(BaseModel):
 
     @model_validator(mode="after")
     def _case_invariants(self) -> RecoveryEvalCaseRecordV1:
+        from offline_rag.evaluation.recovery_12c.recompute import (
+            assert_ranking_matches_recompute,
+            validate_observation_gold_overlap,
+        )
+
+        judgment_ids = [j.chunk_id for j in self.gold_judgments]
+        if len(judgment_ids) != len(set(judgment_ids)):
+            raise ValueError("gold_judgments chunk_id values must be unique")
+        expected_positives = sorted(judgment_ids)
+        if list(self.gold_positive_chunk_ids) != expected_positives:
+            raise ValueError(
+                "gold_positive_chunk_ids must equal sorted unique gold_judgments "
+                "chunk_ids"
+            )
+        expected_eligible = len(self.gold_judgments) > 0
+        if self.quality_eligible != expected_eligible:
+            raise ValueError(
+                "quality_eligible must equal (len(gold_judgments) > 0) for frozen Gold"
+            )
+
+        validate_observation_gold_overlap(
+            self.initial, gold_positive_chunk_ids=self.gold_positive_chunk_ids
+        )
+        assert_ranking_matches_recompute(
+            self.initial_ranking,
+            case_id=self.case_id,
+            query=self.original_query,
+            judgments=self.gold_judgments,
+            ranked_chunk_ids=self.initial.ranked_anchor_chunk_ids,
+            field_name="initial_ranking",
+        )
+
         expected_triggered = not self.initial.sufficient
         if self.triggered != expected_triggered:
             raise ValueError("triggered must equal (not initial.sufficient)")
@@ -328,6 +384,8 @@ class RecoveryEvalCaseRecordV1(BaseModel):
                 )
             if self.recovery is not None:
                 raise ValueError("non-trigger case must not carry a recovery record")
+            if self.recovery_ranking is not None:
+                raise ValueError("non-trigger case must not carry recovery_ranking")
             return self
 
         # Triggered.
@@ -348,6 +406,8 @@ class RecoveryEvalCaseRecordV1(BaseModel):
         if self.classification == RecoveryEvalCaseClassV1.RECOVERY_FAILED:
             if terminal != _FAILURE_RECOVERY_TERMINAL:
                 raise ValueError("recovery_failed requires failure terminal")
+            if self.recovery_ranking is not None:
+                raise ValueError("recovery_failed must not carry recovery_ranking")
             return self
 
         if terminal == _FAILURE_RECOVERY_TERMINAL:
@@ -358,6 +418,19 @@ class RecoveryEvalCaseRecordV1(BaseModel):
         if obs.lineage is None:
             raise ValueError("successful recovery requires non-null recovery lineage")
 
+        validate_observation_gold_overlap(
+            obs, gold_positive_chunk_ids=self.gold_positive_chunk_ids
+        )
+        assert_ranking_matches_recompute(
+            self.recovery_ranking,
+            case_id=self.case_id,
+            query=self.original_query,
+            judgments=self.gold_judgments,
+            ranked_chunk_ids=obs.ranked_anchor_chunk_ids,
+            field_name="recovery_ranking",
+        )
+
+        # Classification depends on recomputed overlap (validated above).
         if self.classification == RecoveryEvalCaseClassV1.GOLD_POSITIVE_RECOVERED:
             if not (obs.sufficient and obs.gold_positive_overlap):
                 raise ValueError(
@@ -522,6 +595,7 @@ class RecoveryEvalAggregateV1(BaseModel):
     conclusion_contract: Literal["recovery-eval-conclusion-v1"] = (
         RECOVERY_EVAL_CONCLUSION_V1
     )
+    authoritative: bool = False
     total_case_count: int = 0
     human_reviewed_count: int = 0
     assistant_only_count: int = 0
@@ -531,6 +605,9 @@ class RecoveryEvalAggregateV1(BaseModel):
     presence_rule: PresenceMatchingRuleV1 = Field(
         default_factory=PresenceMatchingRuleV1
     )
+    gold_dataset_id: ExactNonBlankStr | None = None
+    cohort_map_identity_hash: ExactNonBlankStr | None = None
+    prepared_case_set_hash: ExactNonBlankStr | None = None
     evaluation_identity_hash: ExactNonBlankStr | None = None
     rewriter_config_hash: ExactNonBlankStr | None = None
     experimental_limitation: str = (
@@ -560,6 +637,22 @@ class RecoveryEvalAggregateV1(BaseModel):
             raise ValueError(
                 "human + assistant totals must equal aggregate total_case_count"
             )
+        if self.authoritative:
+            for name in (
+                "gold_dataset_id",
+                "cohort_map_identity_hash",
+                "prepared_case_set_hash",
+                "evaluation_identity_hash",
+                "rewriter_config_hash",
+            ):
+                if getattr(self, name) is None:
+                    raise ValueError(
+                        f"authoritative aggregate requires non-null {name}"
+                    )
+            if self.gold_dataset_id != FROZEN_GOLD_DATASET_ID_12C:
+                raise ValueError(
+                    "authoritative aggregate gold_dataset_id must equal frozen 12C Gold"
+                )
         # Local import avoids circular import with conclusion module.
         from offline_rag.evaluation.recovery_12c.conclusion import (
             conclude_recovery_eval,

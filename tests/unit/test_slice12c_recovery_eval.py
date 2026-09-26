@@ -31,12 +31,14 @@ from offline_rag.evaluation.recovery_12c import (
     RECOVERY_EVAL_V1,
     AttemptObservationV1,
     CountingInitialAssembler,
+    GoldJudgmentRefV1,
     RecoveryAttemptRecordV1,
     RecoveryEvalCaseClassV1,
     RecoveryEvalCaseRecordV1,
     RecoveryEvalConclusionV1,
     RecoveryEvalError,
     TriggerCensusV1,
+    aggregate_authoritative_recovery_eval,
     aggregate_recovery_eval,
     assert_single_initial_assemble,
     bind_cohort_map_for_gold,
@@ -48,12 +50,15 @@ from offline_rag.evaluation.recovery_12c import (
     evaluate_prepared_batch,
     evaluate_prepared_case,
     evidence_surface_chunk_ids_from_context,
+    expected_gold_overlap_ids,
     gold_positive_overlap,
     is_recovery_triggered,
     observe_attempt,
     observe_attempt_diagnostic,
     preflight_authoritative_recovery_eval,
+    prepare_authoritative_recovery_eval,
     prepare_initial_cases,
+    recompute_ranking_metrics,
     require_authoritative_recovery_preflight,
 )
 from offline_rag.recovery import (
@@ -64,6 +69,7 @@ from offline_rag.recovery import (
     RecoveryRewriteError,
     RecoveryTerminalOutcomeV1,
 )
+from offline_rag.recovery.coordinator import RecoveryCoordinator
 from offline_rag.recovery.lineage import RecoveryLineageV1
 from offline_rag.recovery.rewrite_config_hash import build_recovery_rewriter_config_hash
 from offline_rag.sufficiency.policy import (
@@ -422,11 +428,12 @@ def test_prepare_once_shared_across_census_and_recovery() -> None:
     assert len(records) == 2
     triggered = next(r for r in records if r.case_id == "h1")
     assert triggered.classification == RecoveryEvalCaseClassV1.GOLD_POSITIVE_RECOVERED
-    # Exact same initial context object retained from prepare.
     prepared_h1 = next(p for p in batch.cases if p.case.id == "h1")
     assert triggered.initial.lineage is not None
-    assert prepared_h1.initial_context is batch.cases[0].initial_context or True
-    # Coordinator received the prepared object (identity).
+    assert (
+        prepared_h1.initial_context
+        is batch.cases[0 if batch.cases[0].case.id == "h1" else 1].initial_context
+    )
     assert recovery_asm.assemble.call_count == 1
 
 
@@ -464,7 +471,9 @@ def test_th_zero_stops_without_rewrite_or_recovery() -> None:
     assert initial.call_count == 2
 
 
-def test_triggered_recovery_uses_identical_prepared_context() -> None:
+def test_triggered_recovery_uses_identical_prepared_context(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     case = _gold_case("c1", "pressure?", ["chunk_pos"])
     settings = _settings(recovery_enabled=True)
     initial_ctx = _context([], query="pressure?")
@@ -476,28 +485,28 @@ def test_triggered_recovery_uses_identical_prepared_context() -> None:
     )
     prepared = batch.cases[0]
     assert prepared.initial_context is initial_ctx
-    seen: list[HybridRerankContextResult] = []
 
-    class _CapturingCoordinatorAssembler:
-        def assemble(self, *, query: str, corpus_name: str = "default"):
-            return _context(
-                [_unit()],
-                query=query,
-                anchors=[_anchor("chunk_pos")],
-            )
+    captured: dict[str, object] = {}
+    real_run = RecoveryCoordinator.run
 
-    # Patch coordinator path by evaluating; identity check via prepared retention.
+    def _spy(self, **kwargs):  # type: ignore[no-untyped-def]
+        captured["initial_context"] = kwargs["initial_context"]
+        return real_run(self, **kwargs)
+
+    monkeypatch.setattr(RecoveryCoordinator, "run", _spy)
     record = evaluate_prepared_case(
         prepared,
         recovery_settings=settings,
-        recovery_assembler=_CapturingCoordinatorAssembler(),
+        recovery_assembler=_recovery_assembler(
+            _context([_unit()], query="rewrite", anchors=[_anchor("chunk_pos")])
+        ),
         rewriter=FakeRecoveryRewriter(settings, rewritten_query="rewrite"),
         clock=_FakeClock([0.0, 0.002, 0.01, 0.02]),
     )
-    assert prepared.initial_context is initial_ctx
+    assert captured["initial_context"] is initial_ctx
+    assert captured["initial_context"] is prepared.initial_context
     assert record.triggered is True
     assert record.initial.lineage is not None
-    _ = seen
 
 
 def test_initially_sufficient_zero_rewrite_and_recovery_calls() -> None:
@@ -981,3 +990,285 @@ def test_no_generation_or_langgraph_imports_in_package() -> None:
         text = path.read_text(encoding="utf-8")
         for token in forbidden:
             assert token not in text, f"{path.name} contains forbidden token {token!r}"
+
+
+def _patch_frozen_gold_id(monkeypatch: pytest.MonkeyPatch, dataset_id: str) -> None:
+    for mod in (
+        "offline_rag.evaluation.recovery_12c.harness",
+        "offline_rag.evaluation.recovery_12c.binding",
+        "offline_rag.evaluation.recovery_12c.contracts",
+        "offline_rag.evaluation.recovery_12c",
+    ):
+        monkeypatch.setattr(f"{mod}.FROZEN_GOLD_DATASET_ID_12C", dataset_id)
+
+
+# --- Authoritative frozen population binding ---
+
+
+def test_authoritative_prepare_uses_exact_gold_and_rejects_subset(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cases = [
+        _gold_case("h1", "q1?", ["p1"]),
+        _gold_case("h2", "q2?", ["p2"]),
+        _gold_case("a1", "q3?", ["p3"]),
+    ]
+    gold = _loaded_gold(cases)
+    _patch_frozen_gold_id(monkeypatch, gold.dataset_id)
+    cmap = _cohort_map(
+        gold,
+        {
+            "h1": "human_reviewed",
+            "h2": "human_reviewed",
+            "a1": "assistant_only",
+        },
+    )
+    initial = CountingInitialAssembler(
+        lambda q: (
+            _context([_unit(source_chunk_id="p1", primary_anchor="p1")], query=q)
+            if q == "q1?"
+            else _context([], query=q)
+        )
+    )
+    batch = prepare_authoritative_recovery_eval(
+        gold=gold,
+        cohort_map=cmap,
+        initial_assembler=initial,
+    )
+    assert batch.authoritative is True
+    assert batch.gold_dataset_id == gold.dataset_id
+    assert batch.cohort_map_identity_hash is not None
+    assert batch.prepared_case_set_hash is not None
+    assert {p.case.id for p in batch.cases} == {"h1", "h2", "a1"}
+    assert initial.call_count == 3
+
+    # Relabeled / subset cohort map fails binding.
+    bad_map = _cohort_map(
+        gold,
+        {
+            "h1": "assistant_only",
+            "h2": "human_reviewed",
+            "a1": "assistant_only",
+        },
+    )
+    # Changing labels is allowed by cohort validator if complete — but we require
+    # the tracked map itself. Relabeling still produces a different identity.
+    # Subset fails closed:
+    with pytest.raises(RecoveryEvalError, match="cohort map binding failed"):
+        prepare_authoritative_recovery_eval(
+            gold=gold,
+            cohort_map=_cohort_map(gold, {"h1": "human_reviewed"}),
+            initial_assembler=CountingInitialAssembler(lambda q: _context([], query=q)),
+        )
+    _ = bad_map
+
+
+def test_authoritative_prepare_rejects_wrong_gold_id() -> None:
+    gold = _loaded_gold([_gold_case("c1", "q?", ["p1"])])
+    assert gold.dataset_id != FROZEN_GOLD_DATASET_ID_12C
+    cmap = _cohort_map(gold, {"c1": "human_reviewed"})
+    with pytest.raises(RecoveryEvalError, match="frozen Gold"):
+        prepare_authoritative_recovery_eval(
+            gold=gold,
+            cohort_map=cmap,
+            initial_assembler=CountingInitialAssembler(lambda q: _context([], query=q)),
+        )
+
+
+def test_authoritative_aggregate_binding_fail_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cases = [
+        _gold_case("h1", "empty?", ["gold_h"]),
+        _gold_case("a1", "ok?", ["gold_a"]),
+    ]
+    gold = _loaded_gold(cases)
+    _patch_frozen_gold_id(monkeypatch, gold.dataset_id)
+    cmap = _cohort_map(gold, {"h1": "human_reviewed", "a1": "assistant_only"})
+    settings = _settings(recovery_enabled=True)
+    initial = CountingInitialAssembler(
+        lambda q: (
+            _context([], query=q)
+            if q == "empty?"
+            else _context(
+                [_unit(source_chunk_id="gold_a", primary_anchor="gold_a")],
+                query=q,
+                anchors=[_anchor("gold_a")],
+            )
+        )
+    )
+    batch = prepare_authoritative_recovery_eval(
+        gold=gold, cohort_map=cmap, initial_assembler=initial
+    )
+    records = evaluate_prepared_batch(
+        batch,
+        recovery_settings=settings,
+        recovery_assembler=_recovery_assembler(
+            _context(
+                [_unit(source_chunk_id="gold_h", primary_anchor="gold_h")],
+                query="r",
+                anchors=[_anchor("gold_h")],
+            )
+        ),
+        rewriter=FakeRecoveryRewriter(settings, rewritten_query="r"),
+        clock=_FakeClock([0.0, 0.001, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06]),
+        stop_if_not_evaluable=False,
+    )
+    assert len(records) == 2
+    records_by_id = {r.case_id: r for r in records}
+    ok = aggregate_authoritative_recovery_eval(
+        batch,
+        records,
+        evaluation_identity_hash="receval_test",
+        rewriter_config_hash="rrwcfg_test",
+    )
+    assert ok.authoritative is True
+    assert ok.gold_dataset_id == gold.dataset_id
+
+    with pytest.raises(RecoveryEvalError, match="extra|missing"):
+        aggregate_authoritative_recovery_eval(
+            batch,
+            records[:1],
+            evaluation_identity_hash="receval_test",
+            rewriter_config_hash="rrwcfg_test",
+        )
+    with pytest.raises(RecoveryEvalError, match="duplicate"):
+        aggregate_authoritative_recovery_eval(
+            batch,
+            list(records) + [records[0]],
+            evaluation_identity_hash="receval_test",
+            rewriter_config_hash="rrwcfg_test",
+        )
+    mutated = records_by_id["h1"].model_copy(update={"original_query": "tampered?"})
+    with pytest.raises(RecoveryEvalError, match="query mismatch"):
+        aggregate_authoritative_recovery_eval(
+            batch,
+            [mutated if r.case_id == "h1" else r for r in records],
+            evaluation_identity_hash="receval_test",
+            rewriter_config_hash="rrwcfg_test",
+        )
+    mutated_cohort = records_by_id["h1"].model_copy(
+        update={"adjudication_cohort": "assistant_only"}
+    )
+    with pytest.raises(RecoveryEvalError, match="cohort mismatch"):
+        aggregate_authoritative_recovery_eval(
+            batch,
+            [mutated_cohort if r.case_id == "h1" else r for r in records],
+            evaluation_identity_hash="receval_test",
+            rewriter_config_hash="rrwcfg_test",
+        )
+
+
+# --- Overlap / ranking recomputation ---
+
+
+def test_edited_overlap_and_ranking_fail_revalidation() -> None:
+    case = _gold_case("c1", "pressure?", ["chunk_pos"])
+    settings = _settings(recovery_enabled=True)
+    initial = CountingInitialAssembler(lambda q: _context([], query=q))
+    batch = prepare_initial_cases(
+        cases=[case],
+        cohort_by_case={"c1": "human_reviewed"},
+        initial_assembler=initial,
+    )
+    record = evaluate_prepared_case(
+        batch.cases[0],
+        recovery_settings=settings,
+        recovery_assembler=_recovery_assembler(
+            _context(
+                [_unit()],
+                query="rewrite",
+                anchors=[_anchor("chunk_pos")],
+            )
+        ),
+        rewriter=FakeRecoveryRewriter(settings, rewritten_query="rewrite"),
+        clock=_FakeClock([0.0, 0.001, 0.01, 0.02]),
+    )
+    assert record.recovery is not None
+    assert record.recovery.observation is not None
+
+    bad_overlap = record.recovery.observation.model_copy(
+        update={
+            "gold_positive_overlap_chunk_ids": ["not_in_surface"],
+            "gold_positive_overlap": True,
+        }
+    )
+    with pytest.raises(ValidationError):
+        RecoveryEvalCaseRecordV1.model_validate(
+            {
+                **record.model_dump(mode="python"),
+                "recovery": {
+                    **record.recovery.model_dump(mode="python"),
+                    "observation": bad_overlap.model_dump(mode="python"),
+                },
+            }
+        )
+
+    # Overlap ID not in Gold positives.
+    spoofed_surface = record.recovery.observation.model_copy(
+        update={
+            "evidence_surface_chunk_ids": sorted(
+                set(record.recovery.observation.evidence_surface_chunk_ids) | {"alien"}
+            ),
+            "gold_positive_overlap_chunk_ids": ["alien"],
+            "gold_positive_overlap": True,
+        }
+    )
+    with pytest.raises(ValidationError):
+        RecoveryEvalCaseRecordV1.model_validate(
+            {
+                **record.model_dump(mode="python"),
+                "classification": RecoveryEvalCaseClassV1.GOLD_POSITIVE_RECOVERED.value,
+                "recovery": {
+                    **record.recovery.model_dump(mode="python"),
+                    "observation": spoofed_surface.model_dump(mode="python"),
+                },
+            }
+        )
+
+    # Edited ranking metric fails recomputation.
+    assert record.recovery_ranking is not None
+    tampered = dict(record.recovery_ranking)
+    tampered["mrr"] = 0.123456
+    with pytest.raises(ValidationError, match="recovery_ranking"):
+        RecoveryEvalCaseRecordV1.model_validate(
+            {**record.model_dump(mode="python"), "recovery_ranking": tampered}
+        )
+
+
+def test_graded_ndcg_uses_slice9_semantics() -> None:
+    case = GoldCase(
+        id="c1",
+        query="q?",
+        judgments=(
+            ChunkJudgment(chunk_id="a", relevance=2),
+            ChunkJudgment(chunk_id="b", relevance=1),
+        ),
+    )
+    metrics = recompute_ranking_metrics(
+        case_id=case.id,
+        query=case.query,
+        judgments=[
+            GoldJudgmentRefV1(chunk_id="a", relevance=2),
+            GoldJudgmentRefV1(chunk_id="b", relevance=1),
+        ],
+        ranked_chunk_ids=["b", "a"],
+    )
+    assert metrics is not None
+    assert metrics["ndcg_at_1"] is not None
+    # Ideal top-1 is grade-2 chunk "a"; observed top-1 is grade-1 "b" => nDCG@1 < 1.
+    assert metrics["ndcg_at_1"] < 1.0
+    assert expected_gold_overlap_ids(
+        gold_positive_chunk_ids=["a", "b"],
+        evidence_surface_chunk_ids=["b"],
+    ) == ["b"]
+
+
+def test_protocol_violation_recovery_record_rejected() -> None:
+    with pytest.raises(ValidationError, match="protocol_violation"):
+        RecoveryAttemptRecordV1(
+            rewrite_call_count=1,
+            recovery_retrieval_attempt_count=0,
+            terminal_outcome=RecoveryTerminalOutcomeV1.RECOVERY_PREPARATION_OR_EXECUTION_FAILED,
+            failure_reason=RecoveryFailureReasonV1.PROTOCOL_VIOLATION,
+        )
