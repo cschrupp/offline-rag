@@ -41,7 +41,7 @@ As of the Milestone 5 checkpoint (`1983ff1`):
 | Generation abstention today | `empty_context` (no evidence units) or `model_abstain` (generator chooses abstain) |
 | User-facing status | Often `insufficient_evidence` with diagnostic `abstention_reason` |
 | `retrieval_recovery` | Skeletal: `enabled: false`, `max_retries: 1` |
-| `abstention` | Runtime policy: `enabled: true`, `policy: sufficiency-v1`, `threshold: null` — Slice **11C** formal gate (`empty_context => insufficient` only); unsupported policies fail closed |
+| `abstention` | Runtime policy: `enabled: true`, `policy: sufficiency-v1`, `threshold: null` — Slice **11C** formal gate `empty_context_v1` (`empty_context => insufficient`); unsupported policies fail closed |
 | `agents/`, `guardrails/` | Empty placeholders (`.gitkeep` only) |
 | LangGraph | **Not** a dependency (`pyproject.toml` / lock) |
 | Trace skeleton | `QueryTrace.decision.evidence_sufficient` exists as a nullable placeholder |
@@ -2722,8 +2722,13 @@ supported on the human-reviewed development population (A=16, B=0).
 Authorized runtime rule set:
 
 ```text
-empty_context => insufficient
+empty_context_v1 → if empty_context: INSUFFICIENT (reason=empty_context)
 ```
+
+Machine-readable relationship:
+- policy contract: `sufficiency-v1`
+- triggered gate ID: `empty_context_v1`
+- user-facing abstention reason: `empty_context`
 
 No score / margin / cross-retriever / diversity / weighted-confidence gates.
 `abstention.policy` defaults to `sufficiency-v1`; unsupported policies and

@@ -48,7 +48,7 @@ from offline_rag.sufficiency.persist import (
     persist_sufficiency_snapshot,
 )
 from offline_rag.sufficiency.policy import (
-    EMPTY_CONTEXT_GATE,
+    EMPTY_CONTEXT_GATE_V1,
     SUFFICIENCY_POLICY_V1,
     SufficiencyPolicyDecisionV1,
     SufficiencyPolicyError,
@@ -59,7 +59,7 @@ from offline_rag.sufficiency.policy import (
 )
 
 __all__ = [
-    "EMPTY_CONTEXT_GATE",
+    "EMPTY_CONTEXT_GATE_V1",
     "SUFFICIENCY_EVAL_CONTEXT_MANIFEST_V1",
     "SUFFICIENCY_EVAL_CONTEXT_V1",
     "SUFFICIENCY_FAILURE_RECORD_V1",

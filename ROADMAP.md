@@ -246,7 +246,7 @@ Checklist detail (same order; not startable out of sequence):
 - **11A ACCEPTED** (11A-1 `4f0cebc`, 11A-2 `cd0dd91`, 11A-3 `24b2179`)
 - **Path-B ACCEPTED** at `7ce47c5` — authoritative capture `suffctxrun_9c15bf6eee2e7b18317df7daa95328827be62bfa2d369b20272d7820c7fb32d4`
 - **11B ACCEPTED** at `e18110f` — human-reviewed A=16 / B=0; **no additional gate promoted**
-- **11C** freezes runtime policy `sufficiency-v1` with the single authorized gate `empty_context => insufficient`
+- **11C** freezes runtime policy `sufficiency-v1` with the single authorized gate `empty_context_v1` (`empty_context => insufficient`; user-facing `abstention_reason` remains `empty_context`)
 - The development fixture provided **no human Population-B cases**, so the absence of an additional threshold is a **conservative evidence decision**, not proof that score-based sufficiency can never be useful.
 - **OD-11-2 … OD-11-54 + OD-11-DESIGN-CLOSURE LOCKED** (see
   [`docs/milestone6_agentic_recovery_security.md`](docs/milestone6_agentic_recovery_security.md) §7–§8).

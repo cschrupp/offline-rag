@@ -20,7 +20,7 @@ from offline_rag.generation.orchestrate import (
     GroundedAnswerOrchestrator,
 )
 from offline_rag.sufficiency.policy import (
-    EMPTY_CONTEXT_GATE,
+    EMPTY_CONTEXT_GATE_V1,
     SUFFICIENCY_POLICY_V1,
     evaluate_runtime_sufficiency,
     evaluate_sufficiency_policy_v1,
@@ -112,7 +112,8 @@ def test_empty_units_trigger_empty_context_gate() -> None:
     decision = evaluate_sufficiency_policy_v1(evidence_units=[])
     assert decision.sufficient is False
     assert decision.empty_context is True
-    assert decision.triggered_gates == [EMPTY_CONTEXT_GATE]
+    assert decision.triggered_gates == [EMPTY_CONTEXT_GATE_V1]
+    assert decision.triggered_gates == ["empty_context_v1"]
     assert decision.policy_contract == SUFFICIENCY_POLICY_V1
 
 
@@ -128,8 +129,11 @@ def test_empty_context_deterministic_insufficient_result() -> None:
     assert fake.generate_calls == 0
     assert result.diagnostics["sufficiency_policy_contract"] == SUFFICIENCY_POLICY_V1
     assert result.diagnostics["sufficient"] is False
-    assert result.diagnostics["triggered_gates"] == [EMPTY_CONTEXT_GATE]
+    assert result.diagnostics["triggered_gates"] == [EMPTY_CONTEXT_GATE_V1]
+    assert result.diagnostics["triggered_gates"] == ["empty_context_v1"]
     assert result.diagnostics["empty_context"] is True
+    # User-facing reason stays unversioned; formal gate ID is versioned.
+    assert result.abstention_reason != result.diagnostics["triggered_gates"][0]
 
 
 def test_policy_decision_is_deterministic() -> None:

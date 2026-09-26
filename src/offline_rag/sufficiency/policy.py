@@ -16,7 +16,7 @@ from offline_rag.domain.indexing import EvidenceUnit
 from offline_rag.sufficiency.contracts import ExactNonBlankStr
 
 SUFFICIENCY_POLICY_V1 = "sufficiency-v1"
-EMPTY_CONTEXT_GATE = "empty_context"
+EMPTY_CONTEXT_GATE_V1 = "empty_context_v1"
 
 
 class SufficiencyPolicyError(RuntimeError):
@@ -59,12 +59,12 @@ def evaluate_sufficiency_policy_v1(
     if empty:
         return SufficiencyPolicyDecisionV1(
             sufficient=False,
-            triggered_gates=[EMPTY_CONTEXT_GATE],
+            triggered_gates=[EMPTY_CONTEXT_GATE_V1],
             evidence_unit_count=0,
             empty_context=True,
             diagnostics={
                 "rule": "empty_context => insufficient",
-                "authorized_gates": [EMPTY_CONTEXT_GATE],
+                "authorized_gates": [EMPTY_CONTEXT_GATE_V1],
             },
         )
     return SufficiencyPolicyDecisionV1(
@@ -74,7 +74,7 @@ def evaluate_sufficiency_policy_v1(
         empty_context=False,
         diagnostics={
             "rule": "non-empty final EvidenceUnits => sufficient",
-            "authorized_gates": [EMPTY_CONTEXT_GATE],
+            "authorized_gates": [EMPTY_CONTEXT_GATE_V1],
         },
     )
 
