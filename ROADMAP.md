@@ -219,9 +219,10 @@ Order: Slice **11** → **12** → **13**.
 
 ## Milestone 6 — Agentic recovery and security
 
-**Status:** Slice **11 COMPLETE / ACCEPTED**; Slice **12** design decisions open  
+**Status:** Slice **11 COMPLETE / ACCEPTED**; Slice **12A** complete (contracts only); **12B** not started  
 **Baseline:** `1983ff1376ea27fc1e8774b35136dc8c8ec93f40`  
-**Design authority:** [`docs/milestone6_agentic_recovery_security.md`](docs/milestone6_agentic_recovery_security.md)
+**Design authority:** [`docs/milestone6_agentic_recovery_security.md`](docs/milestone6_agentic_recovery_security.md)  
+**OD-12 design-lock baseline:** `4194d525211d994b97aa8abba93237cd8a23cbb9`
 
 **Implementation order (locked):** Slice **11** → Slice **12** → Slice **13**
 
@@ -229,18 +230,19 @@ Do **not** interpret the checklist below as authorization to build LangGraph
 before a formal evidence-sufficiency gate exists (ADR-008).
 
 - [x] Slice 11 — Evidence sufficiency & abstention policy (11A→11B→11C) — **COMPLETE / ACCEPTED**
-- [ ] Slice 12 — Conditional LangGraph retrieval recovery (12A→12B→12C)
+- [ ] Slice 12 — Conditional LangGraph retrieval recovery (**12A** contracts done → **12B** → **12C**)
 - [ ] Slice 13 — Prompt-injection & security harness (13A→13C; optional 13D NeMo)
 
 Checklist detail (same order; not startable out of sequence):
 
 - [x] evidence sufficiency policy (Slice 11; deterministic first) — **ACCEPTED**
-- [ ] bounded query rewrite/retry (Slice 12; only after sufficiency gate)
-- [ ] LangGraph state machine / orchestration (Slice 12; conditional recovery only)
+- [x] **12A** project-owned recovery state/protocol contracts, invariants, deterministic replay
+- [ ] bounded query rewrite/retry (**12B**; only after 12A review)
+- [ ] LangGraph adapter / conditional recovery orchestration (**12B+**; adapter-only per OD-12-3)
 - [ ] indirect prompt-injection suite (Slice 13)
 - [ ] optional NeMo Guardrails evaluation (Slice 13D; after deterministic controls)
 
-**Next:** OD-12-1 / OD-12-2 / OD-12-3 are **LOCKED**. Authorize **12A** (project-owned recovery state/protocol contracts, invariants, deterministic replay) when ready. Do **not** add LangGraph or a rewriter in 12A.
+**Next:** Independent review of **12A**. Do **not** start **12B** (rewriter, retrieval retry, LangGraph adapter, runtime orchestration) until authorized.
 
 **Slice 11 accepted chain**
 - **11A-1** `4f0cebc` · **11A-2** `cd0dd91` · **11A-3** `24b2179`
