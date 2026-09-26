@@ -2765,10 +2765,58 @@ query
                          └── insufficient → abstain → END
 ```
 
-LangGraph **orchestrates** existing project-owned stages. It must **not** own
-or reimplement dense/lexical/fusion/rerank/context.
+LangGraph **may later adapt** existing project-owned stages. It must **not** own
+or reimplement dense/lexical/fusion/rerank/context, and it is **not** the source
+of truth for recovery semantics (OD-12-3).
 
 Normal path remains graph-free / deterministic.
+
+### OD-12-3 — Recovery orchestration ownership
+
+**Status:** **LOCKED** — ACCEPT recommendation. Project-owned protocol/state is
+authoritative; LangGraph is an implementation adapter only; the normal
+sufficient path remains graph-free.
+
+Recovery orchestration is defined first as a **project-owned** state/protocol
+(`RecoveryProtocol`). LangGraph may later implement that protocol as an adapter,
+but it does not define recovery semantics.
+
+The project owns at least:
+- recovery state
+- allowed transitions
+- attempt numbering
+- original vs active retrieval query
+- sufficiency decisions before/after recovery
+- rewrite result
+- terminal outcomes
+- failure reasons
+- trace/provenance
+
+**Boundary (ADR-008):** The deterministic happy path stays **outside** any graph
+entirely. The protocol/adapter is entered **only after** `sufficiency-v1`
+returns insufficient.
+
+Conceptual runtime shape:
+
+```text
+normal retrieve → context → sufficiency
+  If sufficient:
+    → generation directly (graph-free)
+  If insufficient:
+    → project RecoveryProtocol
+         → optional LangGraph adapter
+         → at most one recovery attempt
+```
+
+**12A implication:** Do **not** add LangGraph in 12A. Define the state model,
+transition protocol, terminal outcomes, invariants, and deterministic replay
+first. Once those contracts are accepted, **12B** may decide whether the first
+concrete adapter is LangGraph while implementing the bounded rewrite + one
+retry.
+
+**Rationale:** Unit tests can validate the entire state machine with no
+LangGraph dependency; deterministic replay stays straightforward; replacing
+LangGraph later must not alter artifact or trace semantics.
 
 ---
 
@@ -2830,24 +2878,88 @@ Rewriter must not request shell, filesystem, network, or permission changes.
 
 ### Rewriter input (OD-12-2)
 
-**Recommendation:** Prefer
+**Status:** **LOCKED** — ACCEPT recommendation with a strict typed allowlist and
+explicit prohibition on corpus-derived free text.
+
+Recovery rewriter **v1** receives **only**:
+- the original user query
+- an explicitly allowlisted, typed set of deterministic
+  retrieval/context/sufficiency diagnostics from the failed initial attempt
+
+It receives **no** retrieved evidence text or other corpus-derived free text.
+
+**Allowed v1 inputs (allowlist; not exhaustive of future additions outside v1):**
+- original user query
+- attempt number / role
+- sufficiency decision and triggered gate IDs
+- `empty_context`
+- anchor / evidence-unit counts
+- raw reranker scores / margins when defined
+- dense/lexical support or disagreement indicators
+- document / section diversity counts
+- clipping / budget / stop-state enums
+- deterministic branch/rank/count diagnostics useful for diagnosing retrieval
+  failure
+
+**Explicitly excluded:**
+- chunk text, parent text, document bodies, OCR text
+- headings, section titles, document titles, filenames if corpus-derived text can
+  appear in them
+- generated summaries of retrieved evidence
+- model outputs from generation
+- free-form exception/error strings that might embed source text
+- arbitrary metadata dictionaries
+- anything interpreted as instructions from retrieved documents
+
+**Nuance:** Diagnostics remain **facts**, not control instructions. Example:
+`top_reranker_score=-2.1` may be supplied; a free-form string such as “the
+evidence says you should search for X” may not.
+
+**Slice 12 single-attempt shape:**
 
 ```text
-original user query
-+ structured retrieval diagnostics
+original_query + attempt-0 deterministic diagnostics
+  → one rewritten retrieval query
 ```
 
-**Not** full retrieved document bodies, unless later evidence shows text is
-required. Diagnostics may include safe structured facts (weak top score,
-dense/lexical disagreement, low diversity, empty/insufficient flags) without
-shipping raw malicious source text into the rewriter.
+No conversational history and no evidence body. This is a strong security
+property before Slice 13: retrieved corpus content cannot directly enter the
+recovery rewriter prompt path at all.
 
 ### Rewriter model config (OD-12-1)
 
-**Recommendation:** Explicit `retrieval_recovery` rewriter settings (provider /
-endpoint / model / allowlists), even if they point at the same local model as
-generation — so identity/provenance are visible. Do **not** silently inherit
-generation credentials/config without recording that choice.
+**Status:** **LOCKED** — ACCEPT recommendation with explicit-resolution
+requirement.
+
+The recovery rewriter has an **explicit, independently validated** configuration
+under `retrieval_recovery.rewriter`. It may use the same local endpoint/model as
+generation, but it must **never silently inherit** generation settings. The
+effective rewriter configuration is explicit, auditable, and identity-bearing.
+
+**Required identity surface (at least):**
+- provider / adapter contract
+- endpoint
+- model
+- approved endpoints
+- approved models
+- relevant deterministic generation parameters
+- timeout / local-files or offline constraints as applicable
+
+**Alias refinement:** An explicit alias (e.g. conceptual
+`model_profile: generation-local`) is allowed **only if** it is resolved before
+execution and the **resolved effective** endpoint/model/allowlist values are
+materialized in recovery provenance and hashed. A live pointer meaning “whatever
+generation currently uses” is **not** allowed.
+
+**Secrets:** Credentials / API keys remain runtime secrets and do **not** enter
+semantic hashes (consistent with the rest of the project).
+
+**Rationale:** Recovery is a separate operation with different semantics,
+security exposure, and evaluation identity. Silent inheritance would let a
+generation-model change alter recovery behavior while the recovery config
+appeared unchanged. Explicit effective rewriter identity also gives Slice **12C**
+clean experimental provenance: which rewriter produced each recovery query is
+independent of which generator answered afterward.
 
 ---
 
@@ -3173,9 +3285,9 @@ it looks good on the 22-case fixture. Promotion requires separate authorization.
 | **OD-11-53** | hybrid_rank / rrf_score required & validated? | **LOCKED** | §8.52 — both required; unique positive hybrid_rank; finite rrf_score; diagnostic |
 | **OD-11-54** | Raw reranker score required & finite on anchors? | **LOCKED** | §8.53 — finite `raw-logit-v1` on every anchor; no coercion |
 | **OD-11-DESIGN-CLOSURE** | Remaining 11A-1 details delegated | **LOCKED** | §8.54 — stop micro-ODs; implement under frozen invariants |
-| **OD-12-1** | Separate recovery-rewriter model config | **OPEN** | Explicit recovery rewriter config (may point at same local model) |
-| **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **OPEN** | Diagnostics (+ original query) only for v1 |
-| **OD-12-3** | LangGraph direct vs project state-machine protocol first | **OPEN** | Prefer project-owned protocol/state first; LangGraph as one adapter — reduces framework lock-in and eases testing |
+| **OD-12-1** | Separate recovery-rewriter model config | **LOCKED** | §13 — explicit `retrieval_recovery.rewriter`; no silent generation inherit; aliases only if resolved+hashed before execution |
+| **OD-12-2** | Rewriter input: diagnostics vs + evidence text | **LOCKED** | §13 — original query + typed allowlisted diagnostics only; no corpus-derived free text |
+| **OD-12-3** | LangGraph direct vs project state-machine protocol first | **LOCKED** | §11/§14 — project-owned RecoveryProtocol/state authoritative; LangGraph adapter-only; happy path graph-free |
 | **OD-13-1** | Pass/fail semantics for injection fixtures | **OPEN** | Prefer deterministic control-plane invariants over “model refused” alone |
 | **OD-13-2** | NeMo work inside M6 vs post-deterministic optional | **OPEN** | Keep NeMo post-deterministic optional; no implementation in early M6 unless separately authorized |
 
