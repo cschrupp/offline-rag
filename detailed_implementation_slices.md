@@ -573,11 +573,12 @@ The system has a measured operating point balancing useful answers against unsup
 # Slice 12 — Conditional LangGraph retrieval recovery
 
 ```text
-STATUS: 12A COMPLETE / ACCEPTED (1be7fc8); 12B NOT STARTED
+STATUS: 12A COMPLETE / ACCEPTED (1be7fc8); 12B IMPLEMENTED (review pending); 12C NOT STARTED
 Authority: docs/milestone6_agentic_recovery_security.md
-Contracts: src/offline_rag/recovery/ (project-owned RecoveryProtocol)
+Contracts: src/offline_rag/recovery/ (project-owned RecoveryProtocol + coordinator)
 OD-12-1 / OD-12-2 / OD-12-3: LOCKED
-LangGraph: adapter-only when authorized; not the semantic authority
+Default: retrieval_recovery.enabled=false until 12C
+LangGraph: not added in 12B; adapter-only if later authorized
 ```
 
 ## Objective

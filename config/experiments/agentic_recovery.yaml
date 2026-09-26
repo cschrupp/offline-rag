@@ -21,6 +21,21 @@ reranker:
 retrieval_recovery:
   enabled: true
   max_retries: 1
+  rewriter:
+    provider: openai_compatible
+    adapter_contract: openai-compatible-recovery-rewriter-v1
+    base_url: http://host.docker.internal:11434/v1
+    model: REPLACE_WITH_APPROVED_LOCAL_MODEL
+    temperature: 0.0
+    max_output_tokens: 256
+    timeout_seconds: 60
+    api_key: null
+    approved_endpoints:
+      - http://host.docker.internal:11434/v1
+    approved_models: []
+    prompt_contract: recovery-query-rewrite-v1
+    output_contract: recovery-rewrite-output-v1
+    network_policy: localhost_only
 
 generation:
   enabled: true

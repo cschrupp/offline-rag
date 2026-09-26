@@ -461,6 +461,11 @@ def authoring_config_hash(data: Mapping[str, Any]) -> str:
     return canonical_config_hash(data).replace("cfg_", "authorcfg_", 1)
 
 
+def recovery_rewriter_config_hash(data: Mapping[str, Any]) -> str:
+    """Return ``rrwcfg_<sha256>`` for recovery-rewriter semantics."""
+    return canonical_config_hash(data).replace("cfg_", "rrwcfg_", 1)
+
+
 def judge_config_hash(data: Mapping[str, Any]) -> str:
     """Return ``judgecfg_<sha256>`` for generation-semantic judge semantics."""
     return canonical_config_hash(data).replace("cfg_", "judgecfg_", 1)

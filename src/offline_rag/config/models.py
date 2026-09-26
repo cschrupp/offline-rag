@@ -490,11 +490,80 @@ class AuthoringSettings(BaseModel):
         )
 
 
+class RecoveryRewriterSettings(BaseModel):
+    """Explicit recovery-rewriter identity (OD-12-1). No generation inheritance."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    provider: NonEmptyStr = "openai_compatible"
+    adapter_contract: NonEmptyStr = "openai-compatible-recovery-rewriter-v1"
+    base_url: NonEmptyStr = "http://127.0.0.1:11434/v1"
+    model: NonEmptyStr = "REPLACE_WITH_APPROVED_LOCAL_MODEL"
+    temperature: Score = 0.0
+    max_output_tokens: PositiveInt = 256
+    timeout_seconds: PositiveInt = 60
+    # Runtime secret only — never hashed into rrwcfg_.
+    api_key: str | None = None
+    approved_endpoints: list[NonEmptyStr] = Field(
+        default_factory=lambda: ["http://127.0.0.1:11434/v1"]
+    )
+    approved_models: list[str] = Field(default_factory=list)
+    prompt_contract: Literal["recovery-query-rewrite-v1"] = "recovery-query-rewrite-v1"
+    output_contract: Literal["recovery-rewrite-output-v1"] = (
+        "recovery-rewrite-output-v1"
+    )
+    network_policy: Literal["localhost_only", "private_network"] = "localhost_only"
+
+    @field_validator("temperature")
+    @classmethod
+    def _temperature_range(cls, value: float) -> float:
+        if value < 0.0 or value > 2.0:
+            raise ValueError("temperature must be between 0.0 and 2.0")
+        return value
+
+    @field_validator("api_key")
+    @classmethod
+    def _normalize_api_key(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip()
+        return stripped or None
+
+    def __repr__(self) -> str:
+        key = "********" if self.api_key else None
+        return (
+            "RecoveryRewriterSettings("
+            f"provider={self.provider!r}, "
+            f"adapter_contract={self.adapter_contract!r}, "
+            f"base_url={self.base_url!r}, "
+            f"model={self.model!r}, "
+            f"api_key={key!r}, "
+            f"temperature={self.temperature!r}, "
+            f"max_output_tokens={self.max_output_tokens!r}, "
+            f"timeout_seconds={self.timeout_seconds!r}, "
+            f"approved_endpoints={list(self.approved_endpoints)!r}, "
+            f"approved_models={list(self.approved_models)!r}, "
+            f"prompt_contract={self.prompt_contract!r}, "
+            f"output_contract={self.output_contract!r}, "
+            f"network_policy={self.network_policy!r})"
+        )
+
+
 class RetrievalRecoverySettings(BaseModel):
+    """Bounded retrieval recovery (Slice 12). Disabled by default until 12C."""
+
     model_config = ConfigDict(extra="forbid")
 
     enabled: bool = False
-    max_retries: NonNegativeInt = 1
+    max_retries: Literal[1] = 1
+    rewriter: RecoveryRewriterSettings = Field(default_factory=RecoveryRewriterSettings)
+
+    @field_validator("max_retries")
+    @classmethod
+    def _one_retry_only(cls, value: int) -> int:
+        if value != 1:
+            raise ValueError("retrieval_recovery.max_retries must be exactly 1")
+        return value
 
 
 class AbstentionSettings(BaseModel):

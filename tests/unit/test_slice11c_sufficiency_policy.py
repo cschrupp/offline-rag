@@ -232,21 +232,17 @@ def test_model_abstain_distinct_from_empty_context() -> None:
     assert result.diagnostics["triggered_gates"] == []
 
 
-def test_no_recovery_rewrite_or_retry_on_empty_context() -> None:
-    settings = _settings().model_copy(
-        update={
-            "retrieval_recovery": _settings().retrieval_recovery.model_copy(
-                update={"enabled": True, "max_retries": 1}
-            )
-        }
-    )
+def test_no_recovery_when_disabled_on_empty_context() -> None:
+    """Recovery remains off by default / when disabled (12B does not promote)."""
+    settings = _settings()
+    assert settings.retrieval_recovery.enabled is False
     orch, fake = _orchestrator(settings, units=[])
     result = orch.answer(query="pressure?", corpus_name="default")
     assert result.attempt_count == 0
     assert fake.generate_calls == 0
     assert result.abstention_reason == "empty_context"
-    # Assembler called once; no rewrite loop.
     assert orch._assembler.assemble.call_count == 1
+    assert "retrieval_recovery" not in (result.diagnostics or {})
 
 
 def test_default_settings_resolve_to_sufficiency_v1() -> None:
