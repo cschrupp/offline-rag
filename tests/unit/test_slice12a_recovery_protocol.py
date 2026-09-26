@@ -9,7 +9,16 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
+from offline_rag.context.contracts import (
+    STOP_ANCHOR_WOULD_NOT_FIT,
+    STOP_BUDGET_EXHAUSTED,
+    STOP_CHILD_WOULD_NOT_FIT,
+    STOP_COMPLETED,
+    STOP_NO_ANCHORS,
+    STOP_PARENT_CLIPPED_TO_BUDGET,
+)
 from offline_rag.recovery import (
+    CONTEXT_STOP_REASONS_V1,
     RECOVERY_ATTEMPT_ROLE_INITIAL,
     RECOVERY_ATTEMPT_ROLE_RECOVERY,
     AssemblyStopReasonV1,
@@ -22,6 +31,7 @@ from offline_rag.recovery import (
     RecoveryPhaseV1,
     RecoveryProtocolError,
     RecoveryStateV1,
+    RecoverySufficiencyDecisionRefV1,
     RecoveryTerminalOutcomeV1,
     apply_recovery_event,
     build_initial_recovery_state,
@@ -31,41 +41,50 @@ from offline_rag.recovery import (
     sufficiency_ref_from_decision,
     validate_recovery_state,
 )
+from offline_rag.sufficiency.policy import EMPTY_CONTEXT_GATE_V1, SUFFICIENCY_POLICY_V1
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
-def _sufficient(*, empty: bool = False, units: int = 1):
-    return sufficiency_ref_from_decision(
-        policy_contract="sufficiency-v1",
-        policy_version="1",
-        sufficient=True,
-        triggered_gates=[],
-        empty_context=empty,
-        evidence_unit_count=units,
-    )
+def _sufficient(*, units: int = 1) -> RecoverySufficiencyDecisionRefV1:
+    return sufficiency_ref_from_decision(sufficient=True, evidence_unit_count=units)
 
 
-def _insufficient(*, gate: str = "empty_context_v1"):
-    return sufficiency_ref_from_decision(
-        policy_contract="sufficiency-v1",
-        policy_version="1",
-        sufficient=False,
-        triggered_gates=[gate],
-        empty_context=True,
-        evidence_unit_count=0,
-    )
+def _insufficient() -> RecoverySufficiencyDecisionRefV1:
+    return sufficiency_ref_from_decision(sufficient=False)
 
 
 def _diag(**kwargs) -> RecoveryDiagnosticsV1:
     return RecoveryDiagnosticsV1(
         evidence_unit_count=kwargs.get("evidence_unit_count", 0),
-        stop_reason=kwargs.get("stop_reason", AssemblyStopReasonV1.EMPTY_CONTEXT),
+        stop_reason=kwargs.get("stop_reason", AssemblyStopReasonV1.NO_ANCHORS),
         **{
             key: value
             for key, value in kwargs.items()
             if key not in {"evidence_unit_count", "stop_reason"}
         },
+    )
+
+
+def _to_eligible(query: str = "q") -> RecoveryStateV1:
+    return apply_recovery_event(
+        build_initial_recovery_state(original_query=query),
+        RecoveryEventV1(
+            kind=RecoveryEventKindV1.RECORD_INITIAL_SUFFICIENCY,
+            sufficiency=_insufficient(),
+        ),
+    )
+
+
+def _to_pending(
+    query: str = "q", *, prepared: str = "recovery query"
+) -> RecoveryStateV1:
+    return apply_recovery_event(
+        _to_eligible(query),
+        RecoveryEventV1(
+            kind=RecoveryEventKindV1.PREPARE_RECOVERY_QUERY,
+            prepared_retrieval_query=prepared,
+        ),
     )
 
 
@@ -87,9 +106,8 @@ def test_initial_state_construction() -> None:
 
 
 def test_initial_sufficient_terminal_path() -> None:
-    initial = build_initial_recovery_state(original_query="q")
     terminal = apply_recovery_event(
-        initial,
+        build_initial_recovery_state(original_query="q"),
         RecoveryEventV1(
             kind=RecoveryEventKindV1.RECORD_INITIAL_SUFFICIENCY,
             sufficiency=_sufficient(units=2),
@@ -107,47 +125,26 @@ def test_initial_sufficient_terminal_path() -> None:
     assert terminal.current_attempt_role == RECOVERY_ATTEMPT_ROLE_INITIAL
     assert terminal.active_retrieval_query == "q"
     assert len(terminal.attempts) == 1
+    assert terminal.attempts[0].sufficiency.policy_version == "v1"
 
 
 def test_initial_insufficient_recovery_eligible_path() -> None:
-    initial = build_initial_recovery_state(original_query="q")
-    eligible = apply_recovery_event(
-        initial,
-        RecoveryEventV1(
-            kind=RecoveryEventKindV1.RECORD_INITIAL_SUFFICIENCY,
-            sufficiency=_insufficient(),
-            diagnostics=_diag(),
-        ),
-    )
+    eligible = _to_eligible()
     assert eligible.phase == RecoveryPhaseV1.RECOVERY_ELIGIBLE
     assert eligible.terminal_outcome is None
     assert eligible.attempts[0].sufficiency.sufficient is False
     assert eligible.attempts[0].attempt_role == RECOVERY_ATTEMPT_ROLE_INITIAL
+    assert eligible.attempts[0].sufficiency.triggered_gates == [EMPTY_CONTEXT_GATE_V1]
 
 
 def test_legal_recovery_attempt_representation() -> None:
-    """12A may represent attempt 1 in fixtures without invoking a rewriter."""
-    state = build_initial_recovery_state(original_query="original")
-    state = apply_recovery_event(
-        state,
-        RecoveryEventV1(
-            kind=RecoveryEventKindV1.RECORD_INITIAL_SUFFICIENCY,
-            sufficiency=_insufficient(),
-        ),
-    )
-    state = apply_recovery_event(
-        state,
-        RecoveryEventV1(
-            kind=RecoveryEventKindV1.PREPARE_RECOVERY_QUERY,
-            prepared_retrieval_query="rewritten for recovery",
-        ),
-    )
+    state = _to_pending("original", prepared="rewritten for recovery")
     assert state.phase == RecoveryPhaseV1.RECOVERY_ATTEMPT_PENDING
     assert state.current_attempt_number == 1
     assert state.current_attempt_role == RECOVERY_ATTEMPT_ROLE_RECOVERY
     assert state.original_query == "original"
     assert state.active_retrieval_query == "rewritten for recovery"
-    assert len(state.attempts) == 1  # attempt 1 not yet recorded until sufficiency
+    assert len(state.attempts) == 1
 
 
 def test_recovered_sufficient_terminal() -> None:
@@ -204,17 +201,9 @@ def test_recovered_insufficient_terminal() -> None:
     )
 
 
-def test_recovery_failure_terminal() -> None:
-    state = build_initial_recovery_state(original_query="q")
-    state = apply_recovery_event(
-        state,
-        RecoveryEventV1(
-            kind=RecoveryEventKindV1.RECORD_INITIAL_SUFFICIENCY,
-            sufficiency=_insufficient(),
-        ),
-    )
+def test_recovery_failure_terminal_before_prepare() -> None:
     terminal = apply_recovery_event(
-        state,
+        _to_eligible(),
         RecoveryEventV1(
             kind=RecoveryEventKindV1.FAIL_RECOVERY,
             failure_reason=RecoveryFailureReasonV1.REWRITE_PREPARATION_FAILED,
@@ -225,24 +214,29 @@ def test_recovery_failure_terminal() -> None:
         == RecoveryTerminalOutcomeV1.RECOVERY_PREPARATION_OR_EXECUTION_FAILED
     )
     assert terminal.failure_reason == RecoveryFailureReasonV1.REWRITE_PREPARATION_FAILED
+    assert terminal.current_attempt_number == 0
+    assert terminal.active_retrieval_query == "q"
+
+
+def test_recovery_failure_terminal_after_prepare() -> None:
+    terminal = apply_recovery_event(
+        _to_pending(prepared="prepared q"),
+        RecoveryEventV1(
+            kind=RecoveryEventKindV1.FAIL_RECOVERY,
+            failure_reason=RecoveryFailureReasonV1.RECOVERY_EXECUTION_FAILED,
+        ),
+    )
+    assert (
+        terminal.terminal_outcome
+        == RecoveryTerminalOutcomeV1.RECOVERY_PREPARATION_OR_EXECUTION_FAILED
+    )
+    assert terminal.failure_reason == RecoveryFailureReasonV1.RECOVERY_EXECUTION_FAILED
+    assert terminal.current_attempt_number == 1
+    assert terminal.active_retrieval_query == "prepared q"
 
 
 def test_original_query_immutability() -> None:
-    state = build_initial_recovery_state(original_query="immutable")
-    state = apply_recovery_event(
-        state,
-        RecoveryEventV1(
-            kind=RecoveryEventKindV1.RECORD_INITIAL_SUFFICIENCY,
-            sufficiency=_insufficient(),
-        ),
-    )
-    state = apply_recovery_event(
-        state,
-        RecoveryEventV1(
-            kind=RecoveryEventKindV1.PREPARE_RECOVERY_QUERY,
-            prepared_retrieval_query="other",
-        ),
-    )
+    state = _to_pending("immutable", prepared="other")
     assert state.original_query == "immutable"
     mutated = state.model_copy(update={"original_query": "changed"})
     with pytest.raises(RecoveryProtocolError) as exc:
@@ -331,15 +325,7 @@ def test_no_attempt_2() -> None:
 
 
 def test_contiguous_unique_attempts() -> None:
-    state = build_initial_recovery_state(original_query="o")
-    state = apply_recovery_event(
-        state,
-        RecoveryEventV1(
-            kind=RecoveryEventKindV1.RECORD_INITIAL_SUFFICIENCY,
-            sufficiency=_insufficient(),
-        ),
-    )
-    gap = state.model_copy(
+    gap = _to_eligible("o").model_copy(
         update={
             "attempts": [
                 RecoveryAttemptRecordV1(
@@ -363,6 +349,7 @@ def test_contiguous_unique_attempts() -> None:
             "current_attempt_role": RECOVERY_ATTEMPT_ROLE_RECOVERY,
             "current_sufficiency": _insufficient(),
             "active_retrieval_query": "x",
+            "failure_reason": None,
         }
     )
     with pytest.raises(RecoveryProtocolError) as exc:
@@ -386,7 +373,7 @@ def test_no_recovery_after_terminal() -> None:
             terminal,
             RecoveryEventV1(
                 kind=RecoveryEventKindV1.FAIL_RECOVERY,
-                failure_reason=RecoveryFailureReasonV1.PROTOCOL_VIOLATION,
+                failure_reason=RecoveryFailureReasonV1.REWRITE_PREPARATION_FAILED,
             ),
         )
     assert exc.value.code == RecoveryErrorCodeV1.TERMINAL_STATE_TRANSITION
@@ -448,13 +435,7 @@ def test_malformed_transition_sequence_fails_closed() -> None:
         )
     assert exc.value.code == RecoveryErrorCodeV1.INVALID_TRANSITION
 
-    eligible = apply_recovery_event(
-        initial,
-        RecoveryEventV1(
-            kind=RecoveryEventKindV1.RECORD_INITIAL_SUFFICIENCY,
-            sufficiency=_insufficient(),
-        ),
-    )
+    eligible = _to_eligible()
     with pytest.raises(RecoveryProtocolError) as exc2:
         apply_recovery_event(
             eligible,
@@ -485,17 +466,244 @@ def test_diagnostics_forbid_corpus_free_text() -> None:
 
 
 def test_active_query_mutation_outside_prepare_fails() -> None:
-    eligible = apply_recovery_event(
-        build_initial_recovery_state(original_query="orig"),
-        RecoveryEventV1(
-            kind=RecoveryEventKindV1.RECORD_INITIAL_SUFFICIENCY,
-            sufficiency=_insufficient(),
-        ),
+    mutated = _to_eligible("orig").model_copy(
+        update={"active_retrieval_query": "sneaky"}
     )
-    mutated = eligible.model_copy(update={"active_retrieval_query": "sneaky"})
     with pytest.raises(RecoveryProtocolError) as exc:
         validate_recovery_state(mutated)
     assert exc.value.code == RecoveryErrorCodeV1.ACTIVE_QUERY_MUTATION
+
+
+def test_foreign_sufficiency_policy_contract_rejected() -> None:
+    with pytest.raises(ValidationError):
+        RecoverySufficiencyDecisionRefV1(
+            policy_contract="other-policy",  # type: ignore[arg-type]
+            policy_version="v1",
+            sufficient=True,
+            triggered_gates=[],
+            empty_context=False,
+            evidence_unit_count=1,
+        )
+
+
+def test_wrong_policy_version_rejected() -> None:
+    with pytest.raises(ValidationError):
+        RecoverySufficiencyDecisionRefV1(
+            policy_contract=SUFFICIENCY_POLICY_V1,
+            policy_version="1",  # type: ignore[arg-type]
+            sufficient=True,
+            triggered_gates=[],
+            empty_context=False,
+            evidence_unit_count=1,
+        )
+
+
+def test_sufficient_plus_empty_context_rejected() -> None:
+    with pytest.raises(ValidationError):
+        RecoverySufficiencyDecisionRefV1(
+            sufficient=True,
+            triggered_gates=[],
+            empty_context=True,
+            evidence_unit_count=1,
+        )
+
+
+def test_insufficient_plus_nonzero_evidence_rejected() -> None:
+    with pytest.raises(ValidationError):
+        RecoverySufficiencyDecisionRefV1(
+            sufficient=False,
+            triggered_gates=[EMPTY_CONTEXT_GATE_V1],
+            empty_context=True,
+            evidence_unit_count=2,
+        )
+
+
+def test_wrong_or_missing_triggered_gate_rejected() -> None:
+    with pytest.raises(ValidationError):
+        RecoverySufficiencyDecisionRefV1(
+            sufficient=False,
+            triggered_gates=[],
+            empty_context=True,
+            evidence_unit_count=0,
+        )
+    with pytest.raises(ValidationError):
+        RecoverySufficiencyDecisionRefV1(
+            sufficient=False,
+            triggered_gates=["score_gate_v1"],
+            empty_context=True,
+            evidence_unit_count=0,
+        )
+    with pytest.raises(ValidationError):
+        RecoverySufficiencyDecisionRefV1(
+            sufficient=True,
+            triggered_gates=[EMPTY_CONTEXT_GATE_V1],
+            empty_context=False,
+            evidence_unit_count=1,
+        )
+
+
+def test_success_terminal_carrying_failure_reason_rejected() -> None:
+    terminal = apply_recovery_event(
+        build_initial_recovery_state(original_query="q"),
+        RecoveryEventV1(
+            kind=RecoveryEventKindV1.RECORD_INITIAL_SUFFICIENCY,
+            sufficiency=_sufficient(),
+        ),
+    )
+    bad = terminal.model_copy(
+        update={"failure_reason": RecoveryFailureReasonV1.REWRITE_PREPARATION_FAILED}
+    )
+    with pytest.raises(RecoveryProtocolError) as exc:
+        validate_recovery_state(bad)
+    assert exc.value.code == RecoveryErrorCodeV1.INCONSISTENT_TERMINAL
+
+
+def test_initial_sufficient_terminal_with_insufficient_attempt_rejected() -> None:
+    eligible = _to_eligible()
+    bad = eligible.model_copy(
+        update={
+            "phase": RecoveryPhaseV1.TERMINAL,
+            "terminal_outcome": RecoveryTerminalOutcomeV1.INITIAL_EVIDENCE_SUFFICIENT,
+            "failure_reason": None,
+        }
+    )
+    with pytest.raises(RecoveryProtocolError) as exc:
+        validate_recovery_state(bad)
+    assert exc.value.code == RecoveryErrorCodeV1.INCONSISTENT_TERMINAL
+
+
+def test_recovered_sufficient_terminal_with_insufficient_attempt1_rejected() -> None:
+    terminal = apply_recovery_event(
+        _to_pending(prepared="r1"),
+        RecoveryEventV1(
+            kind=RecoveryEventKindV1.RECORD_RECOVERY_SUFFICIENCY,
+            sufficiency=_insufficient(),
+        ),
+    )
+    bad = terminal.model_copy(
+        update={
+            "terminal_outcome": RecoveryTerminalOutcomeV1.RECOVERED_EVIDENCE_SUFFICIENT
+        }
+    )
+    with pytest.raises(RecoveryProtocolError) as exc:
+        validate_recovery_state(bad)
+    assert exc.value.code == RecoveryErrorCodeV1.INCONSISTENT_TERMINAL
+
+
+def test_bounded_insufficient_terminal_with_sufficient_attempt1_rejected() -> None:
+    terminal = apply_recovery_event(
+        _to_pending(prepared="r1"),
+        RecoveryEventV1(
+            kind=RecoveryEventKindV1.RECORD_RECOVERY_SUFFICIENCY,
+            sufficiency=_sufficient(),
+        ),
+    )
+    bad = terminal.model_copy(
+        update={
+            "terminal_outcome": (
+                RecoveryTerminalOutcomeV1.INSUFFICIENT_AFTER_BOUNDED_RECOVERY
+            )
+        }
+    )
+    with pytest.raises(RecoveryProtocolError) as exc:
+        validate_recovery_state(bad)
+    assert exc.value.code == RecoveryErrorCodeV1.INCONSISTENT_TERMINAL
+
+
+def test_current_attempt_metadata_inconsistent_with_terminal_rejected() -> None:
+    terminal = apply_recovery_event(
+        _to_pending(prepared="r1"),
+        RecoveryEventV1(
+            kind=RecoveryEventKindV1.RECORD_RECOVERY_SUFFICIENCY,
+            sufficiency=_sufficient(),
+        ),
+    )
+    bad = terminal.model_copy(
+        update={
+            "current_attempt_number": 0,
+            "current_attempt_role": RECOVERY_ATTEMPT_ROLE_INITIAL,
+        }
+    )
+    with pytest.raises(RecoveryProtocolError) as exc:
+        validate_recovery_state(bad)
+    assert exc.value.code == RecoveryErrorCodeV1.INCONSISTENT_TERMINAL
+
+
+def test_all_authoritative_context_stop_reasons_accepted() -> None:
+    expected = {
+        STOP_COMPLETED,
+        STOP_BUDGET_EXHAUSTED,
+        STOP_CHILD_WOULD_NOT_FIT,
+        STOP_PARENT_CLIPPED_TO_BUDGET,
+        STOP_NO_ANCHORS,
+        STOP_ANCHOR_WOULD_NOT_FIT,
+    }
+    assert CONTEXT_STOP_REASONS_V1 == expected
+    assert {member.value for member in AssemblyStopReasonV1} == expected
+    for reason in AssemblyStopReasonV1:
+        diag = RecoveryDiagnosticsV1(stop_reason=reason)
+        assert diag.stop_reason == reason
+    with pytest.raises(ValidationError):
+        RecoveryDiagnosticsV1.model_validate({"stop_reason": "empty_context"})
+
+
+def test_irrelevant_event_diagnostics_rejected() -> None:
+    eligible = _to_eligible()
+    with pytest.raises(RecoveryProtocolError) as exc:
+        apply_recovery_event(
+            eligible,
+            RecoveryEventV1(
+                kind=RecoveryEventKindV1.PREPARE_RECOVERY_QUERY,
+                prepared_retrieval_query="r1",
+                diagnostics=_diag(),
+            ),
+        )
+    assert exc.value.code == RecoveryErrorCodeV1.INVALID_EVENT
+
+    with pytest.raises(RecoveryProtocolError) as exc2:
+        apply_recovery_event(
+            eligible,
+            RecoveryEventV1(
+                kind=RecoveryEventKindV1.FAIL_RECOVERY,
+                failure_reason=RecoveryFailureReasonV1.REWRITE_PREPARATION_FAILED,
+                diagnostics=_diag(),
+            ),
+        )
+    assert exc2.value.code == RecoveryErrorCodeV1.INVALID_EVENT
+
+
+def test_protocol_violation_not_accepted_as_fail_recovery() -> None:
+    with pytest.raises(RecoveryProtocolError) as exc:
+        apply_recovery_event(
+            _to_eligible(),
+            RecoveryEventV1(
+                kind=RecoveryEventKindV1.FAIL_RECOVERY,
+                failure_reason=RecoveryFailureReasonV1.PROTOCOL_VIOLATION,
+            ),
+        )
+    assert exc.value.code == RecoveryErrorCodeV1.INVALID_EVENT
+
+
+def test_fail_recovery_reason_must_match_phase() -> None:
+    with pytest.raises(RecoveryProtocolError) as exc:
+        apply_recovery_event(
+            _to_eligible(),
+            RecoveryEventV1(
+                kind=RecoveryEventKindV1.FAIL_RECOVERY,
+                failure_reason=RecoveryFailureReasonV1.RECOVERY_EXECUTION_FAILED,
+            ),
+        )
+    assert exc.value.code == RecoveryErrorCodeV1.INVALID_EVENT
+
+    with pytest.raises(RecoveryProtocolError) as exc2:
+        apply_recovery_event(
+            _to_pending(),
+            RecoveryEventV1(
+                kind=RecoveryEventKindV1.FAIL_RECOVERY,
+                failure_reason=RecoveryFailureReasonV1.REWRITE_PREPARATION_FAILED,
+            ),
+        )
+    assert exc2.value.code == RecoveryErrorCodeV1.INVALID_EVENT
 
 
 def test_no_langgraph_retrieval_generation_rewriter_invocation() -> None:
@@ -541,7 +749,6 @@ def test_no_langgraph_retrieval_generation_rewriter_invocation() -> None:
         for pattern in import_patterns:
             assert pattern not in text, f"{path.name} must not import {pattern}"
 
-    # Package import surface must not pull graph/runtime orchestration.
     mod = importlib.import_module("offline_rag.recovery")
     assert not hasattr(mod, "LangGraph")
     assert "rewriter" not in dir(mod)
