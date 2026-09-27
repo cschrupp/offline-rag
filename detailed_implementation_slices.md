@@ -574,17 +574,21 @@ The system has a measured operating point balancing useful answers against unsup
 
 ```text
 STATUS: 12A COMPLETE / ACCEPTED (1be7fc8); 12B COMPLETE / ACCEPTED (f1f9c5f);
-        12C DESIGN LOCKED (OD-12C-1…8); 12C implementation NOT ACCEPTED;
-        12C measurement NOT STARTED
+        12C DESIGN LOCKED / ACCEPTED (OD-12C-1…8);
+        12C-1 harness COMPLETE / ACCEPTED (c4f8734);
+        12C-2 measurement NOT YET EXECUTED
 Authority: docs/milestone6_agentic_recovery_security.md §16
-Contracts: src/offline_rag/recovery/ (runtime); 12C eval harness TBD under evaluation/
+Contracts: src/offline_rag/recovery/ (runtime);
+           src/offline_rag/evaluation/recovery_12c/ (12C-1 harness)
 OD-12-1 / OD-12-2 / OD-12-3: LOCKED
-OD-12C-1 … OD-12C-8: LOCKED
+OD-12C-1 … OD-12C-8: LOCKED / ACCEPTED
 12B accepted chain: 22a5fa2 → 554f742 → f1f9c5f
-12C authority baseline: 692da96 (12B docs closeout)
+12C-1 accepted chain: 7a7bc0f → 7a65529 → cd3e302 → 3c466da → 0b4064e → c4f8734
+12C-1 accepted SHA: c4f8734d57f45d3aa111997abf2bc8890322ff33
 Default: retrieval_recovery.enabled=false until 12C evidence
 LangGraph: not added; adapter-only if separately authorized later
-Sequence: design lock → 12C-1 harness (review) → 12C-2 measure-once
+No generation / LLM judge in 12C
+Sequence: design lock → 12C-1 harness (ACCEPTED) → 12C-2 measure-once (next)
 ```
 
 ## Objective
@@ -598,9 +602,11 @@ Introduce agentic behavior only where the baseline retrieval pipeline demonstrab
   terminal outcomes, deterministic replay — no LangGraph, rewriter, or recovery retrieval
 - **12B (ACCEPTED):** bounded rewriter + exactly one recovery retrieval attempt on 12A contracts;
   default disabled; no LangGraph
-- **12C (design LOCKED; harness/measurement not started):** paired shared-initial
-  baseline-vs-recovery evaluation on frozen Gold + cohort map; retrieval-only;
-  predeclared conclusion states; no default enablement from anecdotes
+- **12C design (LOCKED / ACCEPTED):** OD-12C-1…8 evaluation contract
+- **12C-1 (ACCEPTED at c4f8734):** paired shared-initial evaluation harness with frozen
+  Gold/cohort identity, prepared-initial binding, preflighted `rrwcfg_`, recomputed
+  `receval_`; no measure-once yet
+- **12C-2 (NOT YET EXECUTED):** authoritative measure-once on the frozen experiment
 
 ### 12C locked evaluation contract (summary)
 
@@ -664,8 +670,9 @@ evidence sufficient?
 - optional LangGraph adapter (adapter-only; separately authorized);
 - loop termination conditions;
 - retry traces;
-- evaluation comparing agentic vs non-agentic pipeline (**12C**; design locked;
-  12C-1 harness then 12C-2 measure-once — neither started).
+- evaluation comparing agentic vs non-agentic pipeline (**12C**; design locked /
+  ACCEPTED; **12C-1** harness ACCEPTED at `c4f8734`; **12C-2** measure-once
+  NOT YET EXECUTED).
 
 ## Exit criteria
 

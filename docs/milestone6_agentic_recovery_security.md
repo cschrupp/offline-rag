@@ -94,7 +94,7 @@ Recommended sub-slices:
 | Slice | Sub-slices |
 |---|---|
 | **11** | **11A** observation contracts → **11B** offline eval/threshold analysis → **11C** runtime policy integration |
-| **12** | **12A** recovery state/protocol (**COMPLETE / ACCEPTED**) → **12B** bounded rewriter + one retry (**COMPLETE / ACCEPTED**) → **12C** design **LOCKED** (OD-12C-1…8); harness/measurement not started |
+| **12** | **12A** recovery state/protocol (**COMPLETE / ACCEPTED**) → **12B** bounded rewriter + one retry (**COMPLETE / ACCEPTED**) → **12C** design **LOCKED / ACCEPTED**; **12C-1** harness **COMPLETE / ACCEPTED**; **12C-2** measurement **NOT YET EXECUTED** |
 | **13** | **13A** fixture contracts + deterministic invariants → **13B** adversarial harness → **13C** recovery-path attacks → **13D** optional NeMo experiment |
 
 NeMo is **not** required to complete the deterministic security architecture.
@@ -2818,12 +2818,14 @@ retrieval on the project-owned protocol; `retrieval_recovery.enabled=false` by
 default until **12C** evidence. LangGraph was **not** added in 12B and remains
 adapter-only / separately authorized later (OD-12-3).
 
-**12C status:** **Design contract LOCKED** (OD-12C-1…OD-12C-8) against authority
-baseline `692da961904e16a2a1bfa1ee1c2ece82a097df60`. Implementation **not**
-accepted; measurement **not** started. Sequence: design lock → **12C-1** harness
-(independent review) → **12C-2** measure-once. LangGraph remains out.
+**12C status:** **Design contract LOCKED / ACCEPTED** (OD-12C-1…OD-12C-8).
+**12C-1 evaluation harness COMPLETE / ACCEPTED** at
+`c4f8734d57f45d3aa111997abf2bc8890322ff33`
+(`7a7bc0f` → `7a65529` → `cd3e302` → `3c466da` → `0b4064e` → `c4f8734`).
+**12C-2** authoritative measurement **NOT YET EXECUTED**. LangGraph remains out.
 `retrieval_recovery.enabled=false` remains the default until 12C evidence
-supports a later human promotion decision. See §16.
+supports a later human promotion decision. No generation / LLM judge in 12C.
+See §16.
 
 **Rationale:** Unit tests can validate the entire state machine with no
 LangGraph dependency; deterministic replay stays straightforward; replacing
@@ -3034,9 +3036,12 @@ framework-internal logs.
 
 ## 16. Recovery evaluation (Slice 12C)
 
-**Status:** OD-12C-1 … OD-12C-8 **LOCKED**. Implementation not accepted.
-Measurement not started. Authority baseline:
-`692da961904e16a2a1bfa1ee1c2ece82a097df60`.
+**Status:** OD-12C-1 … OD-12C-8 **LOCKED / ACCEPTED**.
+**12C-1 evaluation harness COMPLETE / ACCEPTED** at
+`c4f8734d57f45d3aa111997abf2bc8890322ff33`.
+**12C-2** authoritative measurement **NOT YET EXECUTED**.
+Accepted implementation chain:
+`7a7bc0f` → `7a65529` → `cd3e302` → `3c466da` → `0b4064e` → `c4f8734`.
 
 Recovery is justified only if it improves a **measurable** failure category.
 No default enablement from anecdotes. `promotion_candidate` does **not** modify
@@ -3045,10 +3050,12 @@ No default enablement from anecdotes. `promotion_candidate` does **not** modify
 Clean sequence (mandatory):
 
 ```text
-692da96 → 12C design-lock commit → 12C-1 harness → independent review → 12C-2 measure-once
+692da96 → 7a7bc0f design lock → 12C-1 harness (ACCEPTED c4f8734)
+  → 12C-1 docs closeout (this commit) → 12C-2 measure-once (not yet executed)
 ```
 
-No authoritative measurement before the harness itself is reviewed.
+Do **not** redesign the accepted harness during measurement. Do not enable
+recovery in `config/base.yaml` from a 12C conclusion alone.
 
 ### OD-12C-1 — Paired shared-initial evaluation
 
@@ -3409,16 +3416,17 @@ Design contract (this document)
   → 11C runtime gate + taxonomy                     ← accepted
   → 12A state/protocol (OD-12-1/2/3 locked)         ← COMPLETE / ACCEPTED (1be7fc8)
   → 12B rewriter + one retry                        ← COMPLETE / ACCEPTED (f1f9c5f)
-  → 12C design lock (OD-12C-1…8)                    ← LOCKED (this document)
-  → 12C-1 evaluation harness                        ← not started (review before measure)
-  → 12C-2 measure-once                              ← not started
+  → 12C design lock (OD-12C-1…8)                    ← LOCKED / ACCEPTED (7a7bc0f)
+  → 12C-1 evaluation harness                        ← COMPLETE / ACCEPTED (c4f8734)
+  → 12C-2 measure-once                              ← NOT YET EXECUTED
   → 13A–13C security harness
   → 13D optional NeMo (if authorized)
 ```
 
 No LangGraph dependency yet. Keep `retrieval_recovery.enabled=false` until 12C
-evidence. Do **not** run 12C-2 measurement before 12C-1 harness review. Do not
-promote recovery by default before that measurement and a later human decision.
+evidence and a later human promotion decision. Next = execute the frozen
+**12C-2** measure-once experiment against the 12C-1 docs-closeout authority
+baseline. Do not promote recovery by default before that measurement.
 
 ---
 
@@ -3550,9 +3558,12 @@ do not invent score gates 11B did not support.
 ## HARD STOP
 
 **11 COMPLETE / ACCEPTED.** **12A COMPLETE / ACCEPTED.** **12B COMPLETE / ACCEPTED.**
-**12C design (OD-12C-1…8) LOCKED.**
+**12C design (OD-12C-1…8) LOCKED / ACCEPTED.**
+**12C-1 evaluation harness COMPLETE / ACCEPTED** at
+`c4f8734d57f45d3aa111997abf2bc8890322ff33`.
+**12C-2** authoritative measurement **NOT YET EXECUTED.**
 
-**Do not** run 12C-2 measure-once before 12C-1 harness independent review.
-**Do not** enable `retrieval_recovery` in `base.yaml` from a 12C conclusion alone.
-**Do not** add LangGraph, generation/judge promotion paths, or Slice 13 work
-unless separately re-authorized.
+**Next:** execute the frozen 12C-2 measure-once experiment against the 12C-1
+docs-closeout authority baseline. Keep `retrieval_recovery.enabled=false` in
+`config/base.yaml`. Do **not** add LangGraph, generation/judge promotion paths,
+or Slice 13 work unless separately re-authorized.
