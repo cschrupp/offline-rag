@@ -1,0 +1,9 @@
+{
+  "contract": "recovery-eval-v1",
+  "human_trigger_case_ids": [],
+  "assistant_trigger_case_ids": [],
+  "human_trigger_count": 0,
+  "assistant_trigger_count": 0,
+  "not_evaluable": true,
+  "stop_reason": "not_evaluable_no_human_recovery_opportunities"
+}

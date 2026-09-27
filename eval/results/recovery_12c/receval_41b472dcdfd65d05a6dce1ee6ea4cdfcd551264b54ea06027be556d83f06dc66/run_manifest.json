@@ -1,0 +1,36 @@
+{
+  "contract": "recovery-eval-run-manifest-v1",
+  "authority_baseline_sha": "47656d17b1e907f5965a60b0fe988a83942855ca",
+  "accepted_harness_sha": "c4f8734d57f45d3aa111997abf2bc8890322ff33",
+  "run_status": "stopped_not_evaluable",
+  "gold_dataset_id": "gold_d3fc157c7b3206f6983abee766e7ce7b939244a7dea04f0be256f3a533a46172",
+  "cohort_map_identity_hash": "receval_e4e25402b92db2243bec2d361e96976f805efceda02844f2a70e49c44e384ca4",
+  "prepared_case_set_hash": "receval_5e783d42ffed6d986e9f579f0c9751d84208a5352a20010bf29c97b8becf46e6",
+  "recovery_rewriter_config_hash": "rrwcfg_7ffb94fc3db815124596c5d4910378d2bc09be23d3cf4c916cfd88794ee9ac1d",
+  "recovery_eval_identity_hash": "receval_41b472dcdfd65d05a6dce1ee6ea4cdfcd551264b54ea06027be556d83f06dc66",
+  "retrieval_lineage": {
+    "corpus_id": "corpus_040e49a1d261dba4e853939b36348dc40109551d6fdb49b38c7a9d896409eadb",
+    "chunk_set_id": "chunkset_6d4925ea8d66e7dc599a884e96bc5f6b094e4288d565372d15e6002086c41da2",
+    "dense_index_id": "denseindex_80f7da5c50c6de0a00502e169c75198af3f7f2f48d56dcae8ca961d3e42710e9",
+    "lexical_index_id": "lexical_9c43385ecf20cacbbe31e1243d37afca3ce88520e30be39f1aa2017a2bb1c337",
+    "fusion_config_hash": "fuscfg_fa8a567966bfa7676166b2689fec631d8a9cee0fd0739cdb1688854df92755a9",
+    "reranker_config_hash": "rrkcfg_68c77803ed7dc09ef0b5df50b3c09b6ee1c388bdccd0b8c29ca4c2161d57bb3e",
+    "context_config_hash": "ctxcfg_b1742f41ecc03defbcf7c4e270fe22b4aa72db4a1af2c02a70d5560cd2ac8876"
+  },
+  "rewriter": {
+    "provider": "openai_compatible",
+    "adapter_contract": "openai-compatible-recovery-rewriter-v1",
+    "base_url": "http://192.168.2.142:8888/v1",
+    "model": "qwen3.6-35b-a3b",
+    "network_policy": "private_network",
+    "prompt_contract": "recovery-query-rewrite-v1",
+    "output_contract": "recovery-rewrite-output-v1"
+  },
+  "stage_b_executed": false,
+  "case_record_status": "not_applicable_stage_b_not_executed",
+  "case_record_artifact": null,
+  "prepared_case_artifact": "prepared_cases.jsonl",
+  "started_at": "2026-09-27T20:02:28Z",
+  "completed_at": "2026-09-27T20:23:10Z",
+  "failure_message": null
+}
