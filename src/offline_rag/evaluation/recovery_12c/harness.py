@@ -56,6 +56,9 @@ from offline_rag.evaluation.recovery_12c.evidence import (
 from offline_rag.evaluation.recovery_12c.identity import (
     build_recovery_eval_identity_hash,
 )
+from offline_rag.evaluation.recovery_12c.preflight import (
+    require_authoritative_recovery_preflight,
+)
 from offline_rag.evaluation.recovery_12c.recompute import (
     gold_judgments_from_case,
     prepared_case_set_identity_payload,
@@ -464,7 +467,14 @@ def recompute_authoritative_receval_identity(
     *,
     rewriter_config_hash: str,
 ) -> str:
-    """Recompute ``receval_`` from the authoritative prepared batch + ``rrwcfg_``."""
+    """Recompute ``receval_`` from a prepared batch + an explicit ``rrwcfg_``.
+
+    **Internal / non-authoritative helper.** Callers that need a promotion-grade
+    identity must obtain ``rewriter_config_hash`` from
+    ``require_authoritative_recovery_preflight(settings)`` (as
+    ``aggregate_authoritative_recovery_eval`` does). Passing an arbitrary
+    nonblank string here does **not** make the result authoritative.
+    """
     if not rewriter_config_hash or not str(rewriter_config_hash).strip():
         raise RecoveryEvalError(
             "authoritative receval_ requires a non-blank rewriter_config_hash"
@@ -497,6 +507,42 @@ def recompute_authoritative_receval_identity(
         reranker_config_hash=stack.reranker_config_hash,
         context_config_hash=stack.context_config_hash,
         rewriter_config_hash=rewriter_config_hash,
+    )
+
+
+def _require_triggered_rewriter_config_bound(
+    record: RecoveryEvalCaseRecordV1,
+    *,
+    expected_rrwcfg: str,
+) -> None:
+    """Bind triggered rewrite provenance to the preflight-derived ``rrwcfg_``.
+
+    Non-trigger cases have no recovery rewrite provenance. A non-null
+    ``rewriter_config_hash`` on a triggered record must equal the authoritative
+    hash (including preparation failures that carry static 12B provenance).
+    Null is allowed only for ``rewrite_preparation_failed`` when failure
+    occurred before provenance could be built.
+    """
+    if not record.triggered:
+        return
+    recovery = record.recovery
+    if recovery is None:
+        raise RecoveryEvalError(
+            f"triggered record {record.case_id!r} missing recovery attempt"
+        )
+    observed = recovery.rewriter_config_hash
+    if observed is not None:
+        if observed != expected_rrwcfg:
+            raise RecoveryEvalError(
+                f"record recovery rewriter_config_hash mismatch for case "
+                f"{record.case_id!r}: expected {expected_rrwcfg}, got {observed}"
+            )
+        return
+    if recovery.failure_reason == RecoveryFailureReasonV1.REWRITE_PREPARATION_FAILED:
+        return
+    raise RecoveryEvalError(
+        f"triggered record {record.case_id!r} missing rewriter_config_hash "
+        "(null only allowed for rewrite_preparation_failed before provenance)"
     )
 
 
@@ -959,14 +1005,17 @@ def aggregate_authoritative_recovery_eval(
     batch: PreparedRecoveryEvalBatch,
     records: Sequence[RecoveryEvalCaseRecordV1],
     *,
-    rewriter_config_hash: str,
+    recovery_settings: AppSettings,
     evaluation_identity_hash: str | None = None,
 ) -> RecoveryEvalAggregateV1:
     """Authoritative aggregate bound to a prepared frozen population.
 
-    Recomputes ``receval_`` from the prepared shared retrieval stack + frozen
-    Gold/cohort/protocol contracts. A caller-supplied identity is optional and
-    must equal the recomputation when provided.
+    Derives ``rrwcfg_`` exclusively from
+    ``require_authoritative_recovery_preflight(recovery_settings)``. Callers
+    cannot supply an independent rewriter identity. Recomputes ``receval_``
+    from that preflight hash + the prepared shared retrieval stack + frozen
+    Gold/cohort/protocol contracts. A caller-supplied evaluation identity is
+    optional and must equal the recomputation when provided.
     """
     if not batch.authoritative:
         raise RecoveryEvalError(
@@ -983,10 +1032,8 @@ def aggregate_authoritative_recovery_eval(
             "authoritative batch missing cohort_map_identity_hash / "
             "prepared_case_set_hash"
         )
-    if not rewriter_config_hash or not str(rewriter_config_hash).strip():
-        raise RecoveryEvalError(
-            "authoritative aggregate requires non-blank rewriter_config_hash"
-        )
+
+    rewriter_config_hash = require_authoritative_recovery_preflight(recovery_settings)
 
     prepared_by_id = {p.case.id: p for p in batch.cases}
     if len(prepared_by_id) != len(batch.cases):
@@ -1028,6 +1075,10 @@ def aggregate_authoritative_recovery_eval(
             raise RecoveryEvalError(
                 f"record initial observation mismatch for case {record.case_id!r}"
             )
+        _require_triggered_rewriter_config_bound(
+            record,
+            expected_rrwcfg=rewriter_config_hash,
+        )
 
     computed_identity = recompute_authoritative_receval_identity(
         batch,

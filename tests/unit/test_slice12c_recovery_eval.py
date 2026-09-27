@@ -35,6 +35,7 @@ from offline_rag.evaluation.recovery_12c import (
     AttemptObservationV1,
     CountingInitialAssembler,
     GoldJudgmentRefV1,
+    PreparedRecoveryEvalBatch,
     RecoveryAttemptRecordV1,
     RecoveryEvalCaseClassV1,
     RecoveryEvalCaseRecordV1,
@@ -1182,9 +1183,16 @@ def test_authoritative_prepare_rejects_wrong_gold_id() -> None:
         )
 
 
-def test_authoritative_aggregate_binding_fail_closed(
+def _authoritative_batch_and_records(
     monkeypatch: pytest.MonkeyPatch,
-) -> None:
+    *,
+    settings: AppSettings | None = None,
+) -> tuple[
+    PreparedRecoveryEvalBatch,
+    list[RecoveryEvalCaseRecordV1],
+    AppSettings,
+    LoadedGoldDataset,
+]:
     cases = [
         _gold_case("h1", "empty?", ["gold_h"]),
         _gold_case("a1", "ok?", ["gold_a"]),
@@ -1192,7 +1200,7 @@ def test_authoritative_aggregate_binding_fail_closed(
     gold = _loaded_gold(cases)
     cmap = _cohort_map(gold, {"h1": "human_reviewed", "a1": "assistant_only"})
     _patch_frozen_authority(monkeypatch, gold, cmap)
-    settings = _settings(recovery_enabled=True)
+    recovery_settings = settings or _settings(recovery_enabled=True)
     initial = CountingInitialAssembler(
         lambda q: (
             _context([], query=q)
@@ -1209,7 +1217,7 @@ def test_authoritative_aggregate_binding_fail_closed(
     )
     records = evaluate_prepared_batch(
         batch,
-        recovery_settings=settings,
+        recovery_settings=recovery_settings,
         recovery_assembler=_recovery_assembler(
             _context(
                 [_unit(source_chunk_id="gold_h", primary_anchor="gold_h")],
@@ -1217,45 +1225,51 @@ def test_authoritative_aggregate_binding_fail_closed(
                 anchors=[_anchor("gold_h")],
             )
         ),
-        rewriter=FakeRecoveryRewriter(settings, rewritten_query="r"),
+        rewriter=FakeRecoveryRewriter(recovery_settings, rewritten_query="r"),
         clock=_FakeClock([0.0, 0.001, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06]),
         stop_if_not_evaluable=False,
     )
-    assert len(records) == 2
+    return batch, list(records), recovery_settings, gold
+
+
+def test_authoritative_aggregate_binding_fail_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    batch, records, settings, gold = _authoritative_batch_and_records(monkeypatch)
     records_by_id = {r.case_id: r for r in records}
-    rrw = "rrwcfg_test"
+    rrw = build_recovery_rewriter_config_hash(settings)
     ok = aggregate_authoritative_recovery_eval(
         batch,
         records,
-        rewriter_config_hash=rrw,
+        recovery_settings=settings,
     )
     assert ok.authoritative is True
     assert ok.gold_dataset_id == gold.dataset_id
+    assert ok.rewriter_config_hash == rrw
     expected_identity = recompute_authoritative_receval_identity(
         batch, rewriter_config_hash=rrw
     )
     assert ok.evaluation_identity_hash == expected_identity
     assert ok.evaluation_identity_hash.startswith("receval_")
-    assert ok.evaluation_identity_hash != "receval_test"
 
     with pytest.raises(RecoveryEvalError, match="extra|missing"):
         aggregate_authoritative_recovery_eval(
             batch,
             records[:1],
-            rewriter_config_hash=rrw,
+            recovery_settings=settings,
         )
     with pytest.raises(RecoveryEvalError, match="duplicate"):
         aggregate_authoritative_recovery_eval(
             batch,
             list(records) + [records[0]],
-            rewriter_config_hash=rrw,
+            recovery_settings=settings,
         )
     mutated = records_by_id["h1"].model_copy(update={"original_query": "tampered?"})
     with pytest.raises(RecoveryEvalError, match="query mismatch"):
         aggregate_authoritative_recovery_eval(
             batch,
             [mutated if r.case_id == "h1" else r for r in records],
-            rewriter_config_hash=rrw,
+            recovery_settings=settings,
         )
     mutated_cohort = records_by_id["h1"].model_copy(
         update={"adjudication_cohort": "assistant_only"}
@@ -1264,50 +1278,14 @@ def test_authoritative_aggregate_binding_fail_closed(
         aggregate_authoritative_recovery_eval(
             batch,
             [mutated_cohort if r.case_id == "h1" else r for r in records],
-            rewriter_config_hash=rrw,
+            recovery_settings=settings,
         )
 
 
 def test_authoritative_aggregate_binds_prepared_initial_and_trigger(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    cases = [
-        _gold_case("h1", "empty?", ["gold_h"]),
-        _gold_case("a1", "ok?", ["gold_a"]),
-    ]
-    gold = _loaded_gold(cases)
-    cmap = _cohort_map(gold, {"h1": "human_reviewed", "a1": "assistant_only"})
-    _patch_frozen_authority(monkeypatch, gold, cmap)
-    settings = _settings(recovery_enabled=True)
-    initial = CountingInitialAssembler(
-        lambda q: (
-            _context([], query=q)
-            if q == "empty?"
-            else _context(
-                [_unit(source_chunk_id="gold_a", primary_anchor="gold_a")],
-                query=q,
-                anchors=[_anchor("gold_a")],
-            )
-        )
-    )
-    batch = prepare_authoritative_recovery_eval(
-        gold=gold, cohort_map=cmap, initial_assembler=initial
-    )
-    records = evaluate_prepared_batch(
-        batch,
-        recovery_settings=settings,
-        recovery_assembler=_recovery_assembler(
-            _context(
-                [_unit(source_chunk_id="gold_h", primary_anchor="gold_h")],
-                query="r",
-                anchors=[_anchor("gold_h")],
-            )
-        ),
-        rewriter=FakeRecoveryRewriter(settings, rewritten_query="r"),
-        clock=_FakeClock([0.0, 0.001, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06]),
-        stop_if_not_evaluable=False,
-    )
-    rrw = "rrwcfg_test"
+    batch, records, settings, _gold = _authoritative_batch_and_records(monkeypatch)
     records_by_id = {r.case_id: r for r in records}
     a1 = records_by_id["a1"]
 
@@ -1326,7 +1304,7 @@ def test_authoritative_aggregate_binds_prepared_initial_and_trigger(
         aggregate_authoritative_recovery_eval(
             batch,
             [surface_tampered if r.case_id == "a1" else r for r in records],
-            rewriter_config_hash=rrw,
+            recovery_settings=settings,
         )
 
     ranked_tampered = a1.model_copy(
@@ -1340,7 +1318,7 @@ def test_authoritative_aggregate_binds_prepared_initial_and_trigger(
         aggregate_authoritative_recovery_eval(
             batch,
             [ranked_tampered if r.case_id == "a1" else r for r in records],
-            rewriter_config_hash=rrw,
+            recovery_settings=settings,
         )
 
     assert a1.initial.lineage is not None
@@ -1359,7 +1337,7 @@ def test_authoritative_aggregate_binds_prepared_initial_and_trigger(
         aggregate_authoritative_recovery_eval(
             batch,
             [lineage_tampered if r.case_id == "a1" else r for r in records],
-            rewriter_config_hash=rrw,
+            recovery_settings=settings,
         )
 
     # Bypass case-record self-check so aggregate trigger binding is isolated.
@@ -1370,50 +1348,171 @@ def test_authoritative_aggregate_binds_prepared_initial_and_trigger(
         aggregate_authoritative_recovery_eval(
             batch,
             [trigger_tampered if r.case_id == "a1" else r for r in records],
-            rewriter_config_hash=rrw,
+            recovery_settings=settings,
+        )
+
+
+def test_authoritative_aggregate_binds_rrwcfg_from_preflighted_settings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    batch, records, settings, _gold = _authoritative_batch_and_records(monkeypatch)
+    expected_rrw = build_recovery_rewriter_config_hash(settings)
+    assert expected_rrw == require_authoritative_recovery_preflight(settings)
+
+    ok = aggregate_authoritative_recovery_eval(
+        batch,
+        records,
+        recovery_settings=settings,
+    )
+    assert ok.rewriter_config_hash == expected_rrw
+    assert ok.rewriter_config_hash.startswith("rrwcfg_")
+    assert ok.evaluation_identity_hash == recompute_authoritative_receval_identity(
+        batch, rewriter_config_hash=expected_rrw
+    )
+
+    # Caller cannot supply an independent authoritative rewriter identity.
+    with pytest.raises(TypeError):
+        aggregate_authoritative_recovery_eval(
+            batch,
+            records,
+            rewriter_config_hash="rrwcfg_test",  # type: ignore[call-arg]
+        )
+
+    with pytest.raises(RecoveryEvalError, match="must equal recomputed"):
+        aggregate_authoritative_recovery_eval(
+            batch,
+            records,
+            recovery_settings=settings,
+            evaluation_identity_hash="receval_test",
+        )
+
+    # Same settings twice → same receval_; API-key-only change is identity-neutral.
+    again = aggregate_authoritative_recovery_eval(
+        batch,
+        records,
+        recovery_settings=settings,
+    )
+    assert again.evaluation_identity_hash == ok.evaluation_identity_hash
+    keyed = _settings(recovery_enabled=True, api_key="secret-different")
+    assert build_recovery_rewriter_config_hash(keyed) == expected_rrw
+    keyed_ok = aggregate_authoritative_recovery_eval(
+        batch,
+        records,
+        recovery_settings=keyed,
+    )
+    assert keyed_ok.rewriter_config_hash == expected_rrw
+    assert keyed_ok.evaluation_identity_hash == ok.evaluation_identity_hash
+
+
+def test_authoritative_receval_tracks_rewriter_settings_changes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    batch, records, settings, _gold = _authoritative_batch_and_records(monkeypatch)
+    base = aggregate_authoritative_recovery_eval(
+        batch, records, recovery_settings=settings
+    )
+    base_rrw = base.rewriter_config_hash
+    assert base_rrw is not None
+
+    # Changed model → different rrwcfg_ and receval_.
+    other_model = _settings(
+        recovery_enabled=True,
+        model="rewrite-model-b",
+        approved_models=["rewrite-model-b"],
+    )
+    other_rrw = build_recovery_rewriter_config_hash(other_model)
+    assert other_rrw != base_rrw
+    other_identity = recompute_authoritative_receval_identity(
+        batch, rewriter_config_hash=other_rrw
+    )
+    assert other_identity != base.evaluation_identity_hash
+    # Aggregate under the alternate settings requires matching record provenance.
+    _batch_b, other_records, other_settings, _ = _authoritative_batch_and_records(
+        monkeypatch, settings=other_model
+    )
+    other_agg = aggregate_authoritative_recovery_eval(
+        _batch_b,
+        other_records,
+        recovery_settings=other_settings,
+    )
+    assert other_agg.rewriter_config_hash == other_rrw
+    assert other_agg.evaluation_identity_hash == other_identity
+
+    # network_policy change alters rrwcfg_/receval_ while remaining preflight-ready.
+    policy = _settings(recovery_enabled=True, network_policy="private_network")
+    policy_rrw = build_recovery_rewriter_config_hash(policy)
+    assert policy_rrw != base_rrw
+    assert require_authoritative_recovery_preflight(policy) == policy_rrw
+    policy_identity = recompute_authoritative_receval_identity(
+        batch, rewriter_config_hash=policy_rrw
+    )
+    assert policy_identity != base.evaluation_identity_hash
+
+    # prompt/output/network_policy are identity-bearing in the rewriter payload.
+    from offline_rag.core.ids import recovery_rewriter_config_hash
+    from offline_rag.recovery.rewrite_config_hash import (
+        build_recovery_rewriter_semantic_payload,
+    )
+
+    payload = build_recovery_rewriter_semantic_payload(settings)
+    for field, value in (
+        ("prompt_contract", "other-prompt-contract"),
+        ("output_contract", "other-output-contract"),
+        ("network_policy", "private_network"),
+    ):
+        altered = {**payload, field: value}
+        altered_rrw = recovery_rewriter_config_hash(altered)
+        assert altered_rrw != base_rrw
+        assert (
+            recompute_authoritative_receval_identity(
+                batch, rewriter_config_hash=altered_rrw
+            )
+            != base.evaluation_identity_hash
+        )
+
+
+def test_authoritative_aggregate_rejects_mismatched_record_rrwcfg(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    batch, records, settings, _gold = _authoritative_batch_and_records(monkeypatch)
+    records_by_id = {r.case_id: r for r in records}
+    h1 = records_by_id["h1"]
+    assert h1.triggered is True
+    assert h1.recovery is not None
+    assert h1.recovery.rewriter_config_hash is not None
+
+    tampered_recovery = h1.recovery.model_copy(
+        update={"rewriter_config_hash": "rrwcfg_forged_other"}
+    )
+    tampered = h1.model_copy(update={"recovery": tampered_recovery})
+    with pytest.raises(RecoveryEvalError, match="rewriter_config_hash mismatch"):
+        aggregate_authoritative_recovery_eval(
+            batch,
+            [tampered if r.case_id == "h1" else r for r in records],
+            recovery_settings=settings,
+        )
+
+
+def test_authoritative_aggregate_rejects_preflight_not_ready(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    batch, records, _settings_ready, _gold = _authoritative_batch_and_records(
+        monkeypatch
+    )
+    disabled = _settings(recovery_enabled=False)
+    with pytest.raises(RecoveryEvalError, match="preflight failed"):
+        aggregate_authoritative_recovery_eval(
+            batch,
+            records,
+            recovery_settings=disabled,
         )
 
 
 def test_authoritative_receval_recomputed_not_forgeable(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    cases = [
-        _gold_case("h1", "empty?", ["gold_h"]),
-        _gold_case("a1", "ok?", ["gold_a"]),
-    ]
-    gold = _loaded_gold(cases)
-    cmap = _cohort_map(gold, {"h1": "human_reviewed", "a1": "assistant_only"})
-    _patch_frozen_authority(monkeypatch, gold, cmap)
-    settings = _settings(recovery_enabled=True)
-    initial = CountingInitialAssembler(
-        lambda q: (
-            _context([], query=q)
-            if q == "empty?"
-            else _context(
-                [_unit(source_chunk_id="gold_a", primary_anchor="gold_a")],
-                query=q,
-                anchors=[_anchor("gold_a")],
-            )
-        )
-    )
-    batch = prepare_authoritative_recovery_eval(
-        gold=gold, cohort_map=cmap, initial_assembler=initial
-    )
-    records = evaluate_prepared_batch(
-        batch,
-        recovery_settings=settings,
-        recovery_assembler=_recovery_assembler(
-            _context(
-                [_unit(source_chunk_id="gold_h", primary_anchor="gold_h")],
-                query="r",
-                anchors=[_anchor("gold_h")],
-            )
-        ),
-        rewriter=FakeRecoveryRewriter(settings, rewritten_query="r"),
-        clock=_FakeClock([0.0, 0.001, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06]),
-        stop_if_not_evaluable=False,
-    )
-    rrw = "rrwcfg_test"
+    batch, records, settings, _gold = _authoritative_batch_and_records(monkeypatch)
+    rrw = require_authoritative_recovery_preflight(settings)
     expected = recompute_authoritative_receval_identity(batch, rewriter_config_hash=rrw)
     again = recompute_authoritative_receval_identity(batch, rewriter_config_hash=rrw)
     assert expected == again
@@ -1422,16 +1521,17 @@ def test_authoritative_receval_recomputed_not_forgeable(
     ok = aggregate_authoritative_recovery_eval(
         batch,
         records,
-        rewriter_config_hash=rrw,
+        recovery_settings=settings,
         evaluation_identity_hash=expected,
     )
     assert ok.evaluation_identity_hash == expected
+    assert ok.rewriter_config_hash == rrw
 
     with pytest.raises(RecoveryEvalError, match="must equal recomputed"):
         aggregate_authoritative_recovery_eval(
             batch,
             records,
-            rewriter_config_hash=rrw,
+            recovery_settings=settings,
             evaluation_identity_hash="receval_test",
         )
 
