@@ -1459,8 +1459,8 @@ def cmd_eval_recovery_12c(args: argparse.Namespace) -> int:
     """Thin CLI for Slice 12C-2 authoritative measure-once."""
     from offline_rag.evaluation.recovery_12c.contracts import RecoveryEvalError
     from offline_rag.evaluation.recovery_12c.measure_once import (
-        FROZEN_CORPUS_NAME_12C,
         FROZEN_COHORT_MAP_PATH_12C,
+        FROZEN_CORPUS_NAME_12C,
         FROZEN_GOLD_PATH_12C,
         inject_recovery_rewriter_api_key_from_environ,
         run_authoritative_recovery_eval,
