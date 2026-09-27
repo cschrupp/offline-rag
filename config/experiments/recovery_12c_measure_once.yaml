@@ -1,0 +1,23 @@
+# Slice 12C-2 — evaluation-only recovery overlay.
+# Load AFTER config/base.yaml. Do not alter dense/lexical/fusion/reranker/context.
+# api_key remains null; inject OFFLINE_RAG_LLM_API_KEY at runtime only.
+
+retrieval_recovery:
+  enabled: true
+  max_retries: 1
+  rewriter:
+    provider: openai_compatible
+    adapter_contract: openai-compatible-recovery-rewriter-v1
+    base_url: http://192.168.2.142:8888/v1
+    model: qwen3.6-35b-a3b
+    temperature: 0.0
+    max_output_tokens: 256
+    timeout_seconds: 60
+    api_key: null
+    approved_endpoints:
+      - http://192.168.2.142:8888/v1
+    approved_models:
+      - qwen3.6-35b-a3b
+    prompt_contract: recovery-query-rewrite-v1
+    output_contract: recovery-rewrite-output-v1
+    network_policy: private_network

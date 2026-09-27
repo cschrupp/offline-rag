@@ -1455,6 +1455,59 @@ def cmd_eval_query(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_eval_recovery_12c(args: argparse.Namespace) -> int:
+    """Thin CLI for Slice 12C-2 authoritative measure-once."""
+    from offline_rag.evaluation.recovery_12c.contracts import RecoveryEvalError
+    from offline_rag.evaluation.recovery_12c.measure_once import (
+        FROZEN_CORPUS_NAME_12C,
+        FROZEN_COHORT_MAP_PATH_12C,
+        FROZEN_GOLD_PATH_12C,
+        inject_recovery_rewriter_api_key_from_environ,
+        run_authoritative_recovery_eval,
+    )
+
+    repo = _repo_root()
+    default_base = repo / "config" / "base.yaml"
+    default_overlay = repo / "config" / "experiments" / "recovery_12c_measure_once.yaml"
+    yaml_paths = args.config or [default_base, default_overlay]
+    try:
+        settings = _resolve_settings(load_settings(yaml_paths=yaml_paths))
+        settings = inject_recovery_rewriter_api_key_from_environ(settings)
+    except (ConfigError, RecoveryEvalError) as exc:
+        print(f"eval recovery-12c: {exc}", file=sys.stderr)
+        return 1
+
+    gold_path = Path(args.gold) if args.gold else repo / FROZEN_GOLD_PATH_12C
+    cohort_path = (
+        Path(args.cohort_map) if args.cohort_map else repo / FROZEN_COHORT_MAP_PATH_12C
+    )
+    results_parent = (
+        Path(args.results_parent)
+        if args.results_parent
+        else Path(settings.paths.eval_results) / "recovery_12c"
+    )
+    corpus_name = args.corpus or FROZEN_CORPUS_NAME_12C
+
+    result = run_authoritative_recovery_eval(
+        settings,
+        gold_path=gold_path,
+        cohort_map_path=cohort_path,
+        corpus_name=corpus_name,
+        results_parent=results_parent,
+    )
+    print(f"run_status:     {result.run_status}")
+    print(f"stage_b:        {result.stage_b_executed}")
+    print(f"rrwcfg_:        {result.rewriter_config_hash}")
+    print(f"receval_:       {result.recovery_eval_identity_hash}")
+    print(f"conclusion:     {result.conclusion}")
+    print(f"result_root:    {result.result_root}")
+    if result.failure_message:
+        print(f"failure:        {result.failure_message}", file=sys.stderr)
+    if result.run_status in {"completed", "stopped_not_evaluable"}:
+        return 0
+    return 1
+
+
 def cmd_eval_generation(args: argparse.Namespace) -> int:
     from offline_rag.evaluation.generation_semantic import (
         GenerationSemanticEvaluationError,
@@ -2504,6 +2557,38 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     eval_generation.set_defaults(func=cmd_eval_generation)
+
+    eval_recovery_12c = eval_sub.add_parser(
+        "recovery-12c",
+        help="Authoritative Slice 12C-2 recovery measure-once evaluation",
+    )
+    _add_config_argument(eval_recovery_12c)
+    eval_recovery_12c.add_argument(
+        "--gold",
+        type=Path,
+        default=None,
+        help="Frozen Gold dataset directory (default: locked 12C path)",
+    )
+    eval_recovery_12c.add_argument(
+        "--cohort-map",
+        type=Path,
+        default=None,
+        help="Frozen adjudication cohort map JSON (default: locked 12C fixture)",
+    )
+    eval_recovery_12c.add_argument(
+        "--corpus",
+        default=None,
+        help="Retrieval corpus name (default: ics_modules)",
+    )
+    eval_recovery_12c.add_argument(
+        "--results-parent",
+        type=Path,
+        default=None,
+        help="Parent directory for receval_ result roots "
+        "(default: <eval_results>/recovery_12c)",
+    )
+    eval_recovery_12c.set_defaults(func=cmd_eval_recovery_12c)
+
     eval_retrieve = eval_sub.add_parser(
         "retrieve",
         help="Run dense or lexical retrieval evaluation",

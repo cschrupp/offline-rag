@@ -66,6 +66,17 @@ from offline_rag.evaluation.recovery_12c.identity import (
     build_recovery_eval_identity_hash,
     build_recovery_eval_semantic_payload,
 )
+from offline_rag.evaluation.recovery_12c.measure_once import (
+    inject_recovery_rewriter_api_key_from_environ,
+    run_authoritative_recovery_eval,
+)
+from offline_rag.evaluation.recovery_12c.measure_once_contracts import (
+    ACCEPTED_HARNESS_SHA_12C,
+    AUTHORITY_BASELINE_SHA_12C,
+    RecoveryEvalCensusStopAggregateV1,
+    RecoveryEvalPreparedCaseV1,
+    RecoveryEvalRunManifestV1,
+)
 from offline_rag.evaluation.recovery_12c.preflight import (
     RecoveryEvalPreflightResult,
     preflight_authoritative_recovery_eval,
@@ -80,6 +91,8 @@ from offline_rag.evaluation.recovery_12c.recompute import (
 )
 
 __all__ = [
+    "ACCEPTED_HARNESS_SHA_12C",
+    "AUTHORITY_BASELINE_SHA_12C",
     "FROZEN_ADJUDICATION_COHORT_MAP_HASH_12C",
     "FROZEN_ADJUDICATION_COHORT_MAP_PATH_12C",
     "FROZEN_GOLD_DATASET_ID_12C",
@@ -98,9 +111,12 @@ __all__ = [
     "RecoveryEvalAggregateV1",
     "RecoveryEvalCaseClassV1",
     "RecoveryEvalCaseRecordV1",
+    "RecoveryEvalCensusStopAggregateV1",
     "RecoveryEvalConclusionV1",
     "RecoveryEvalError",
     "RecoveryEvalPreflightResult",
+    "RecoveryEvalPreparedCaseV1",
+    "RecoveryEvalRunManifestV1",
     "TimingRewriter",
     "TriggerCensusV1",
     "aggregate_authoritative_recovery_eval",
@@ -122,6 +138,7 @@ __all__ = [
     "expected_gold_overlap_ids",
     "gold_judgments_from_case",
     "gold_positive_overlap",
+    "inject_recovery_rewriter_api_key_from_environ",
     "is_recovery_triggered",
     "load_and_bind_cohort_map",
     "load_frozen_gold_dataset",
@@ -138,5 +155,6 @@ __all__ = [
     "require_authoritative_recovery_preflight",
     "require_frozen_adjudication_cohort_map",
     "require_gold_lineage_compatible",
+    "run_authoritative_recovery_eval",
     "validate_observation_gold_overlap",
 ]
