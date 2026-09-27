@@ -28,11 +28,13 @@ from offline_rag.evaluation.gold import GoldCase, LoadedGoldDataset
 from offline_rag.evaluation.metrics import macro_average
 from offline_rag.evaluation.recovery_12c.binding import (
     bind_cohort_map_for_gold,
-    cohort_map_identity_payload,
+    cohort_map_semantic_hash,
+    require_frozen_adjudication_cohort_map,
     require_gold_lineage_compatible,
 )
 from offline_rag.evaluation.recovery_12c.conclusion import conclude_recovery_eval
 from offline_rag.evaluation.recovery_12c.contracts import (
+    FROZEN_ADJUDICATION_COHORT_MAP_HASH_12C,
     FROZEN_GOLD_DATASET_ID_12C,
     NOT_EVALUABLE_NO_HUMAN_RECOVERY_OPPORTUNITIES,
     AttemptObservationV1,
@@ -50,6 +52,9 @@ from offline_rag.evaluation.recovery_12c.evidence import (
     evidence_surface_chunk_ids_from_context,
     gold_positive_overlap,
     ranked_anchor_chunk_ids,
+)
+from offline_rag.evaluation.recovery_12c.identity import (
+    build_recovery_eval_identity_hash,
 )
 from offline_rag.evaluation.recovery_12c.recompute import (
     gold_judgments_from_case,
@@ -362,10 +367,10 @@ def prepare_authoritative_recovery_eval(
     cohort_map: GenerationCohortMapV1,
     initial_assembler: InitialContextAssembler,
 ) -> PreparedRecoveryEvalBatch:
-    """Authoritative Stage A: exact frozen Gold + validated tracked cohort map.
+    """Authoritative Stage A: exact frozen Gold + exact frozen cohort labels.
 
     Derives the population and labels from Gold/cohort map themselves. Callers
-    cannot supply subsets or alternate cohort mappings.
+    cannot supply subsets or relabeled cohort mappings.
     """
     if gold.dataset_id != FROZEN_GOLD_DATASET_ID_12C:
         raise RecoveryEvalError(
@@ -377,7 +382,9 @@ def prepare_authoritative_recovery_eval(
         cohort_map=cohort_map,
         require_frozen_gold_id=True,
     )
-    # Population is exactly gold.cases; labels exactly from validated map.
+    # Shape/membership alone is not authority — freeze exact case→label map.
+    cohort_hash = require_frozen_adjudication_cohort_map(cohort_map)
+    # Population is exactly gold.cases; labels exactly from frozen map.
     prepared_batch = prepare_synthetic_initial_cases(
         cases=list(gold.cases),
         cohort_by_case=mapping,
@@ -404,7 +411,6 @@ def prepare_authoritative_recovery_eval(
                 f"authoritative query mismatch for case {prepared.case.id!r}"
             )
 
-    cohort_hash = recovery_eval_config_hash(cohort_map_identity_payload(cohort_map))
     case_set_payload = prepared_case_set_identity_payload(
         gold_dataset_id=gold.dataset_id,
         cases=[
@@ -426,6 +432,71 @@ def prepare_authoritative_recovery_eval(
         cohort_map_identity_hash=cohort_hash,
         prepared_case_set_hash=case_set_hash,
         cohort_map=cohort_map,
+    )
+
+
+def _require_shared_prepared_retrieval_stack(
+    batch: PreparedRecoveryEvalBatch,
+) -> RecoveryLineageV1:
+    """Fail closed unless every prepared initial shares one retrieval stack."""
+    if not batch.cases:
+        raise RecoveryEvalError("authoritative batch has no prepared cases")
+    lineages: list[RecoveryLineageV1] = []
+    for prepared in batch.cases:
+        lineage = prepared.initial_observation.lineage
+        if lineage is None:
+            raise RecoveryEvalError(
+                f"prepared case {prepared.case.id!r} missing initial lineage"
+            )
+        lineages.append(lineage)
+    reference = lineages[0]
+    for prepared, lineage in zip(batch.cases, lineages, strict=True):
+        if not lineage_stack_equal(reference, lineage):
+            raise RecoveryEvalError(
+                "authoritative prepared initials must share one retrieval stack; "
+                f"case {prepared.case.id!r} diverges"
+            )
+    return reference
+
+
+def recompute_authoritative_receval_identity(
+    batch: PreparedRecoveryEvalBatch,
+    *,
+    rewriter_config_hash: str,
+) -> str:
+    """Recompute ``receval_`` from the authoritative prepared batch + ``rrwcfg_``."""
+    if not rewriter_config_hash or not str(rewriter_config_hash).strip():
+        raise RecoveryEvalError(
+            "authoritative receval_ requires a non-blank rewriter_config_hash"
+        )
+    if batch.gold_dataset_id is None or batch.cohort_map is None:
+        raise RecoveryEvalError(
+            "authoritative receval_ requires gold_dataset_id and cohort_map on batch"
+        )
+    if batch.cohort_map_identity_hash != FROZEN_ADJUDICATION_COHORT_MAP_HASH_12C:
+        raise RecoveryEvalError(
+            "authoritative receval_ requires frozen cohort-map identity "
+            f"{FROZEN_ADJUDICATION_COHORT_MAP_HASH_12C}; "
+            f"got {batch.cohort_map_identity_hash}"
+        )
+    recomputed_map_hash = cohort_map_semantic_hash(batch.cohort_map)
+    if recomputed_map_hash != batch.cohort_map_identity_hash:
+        raise RecoveryEvalError(
+            "authoritative batch cohort_map_identity_hash does not match "
+            "cohort_map payload"
+        )
+    stack = _require_shared_prepared_retrieval_stack(batch)
+    return build_recovery_eval_identity_hash(
+        gold_dataset_id=batch.gold_dataset_id,
+        cohort_map=batch.cohort_map,
+        corpus_id=stack.corpus_id,
+        chunk_set_id=stack.chunk_set_id,
+        dense_index_id=stack.dense_index_id,
+        lexical_index_id=stack.lexical_index_id,
+        fusion_config_hash=stack.fusion_config_hash,
+        reranker_config_hash=stack.reranker_config_hash,
+        context_config_hash=stack.context_config_hash,
+        rewriter_config_hash=rewriter_config_hash,
     )
 
 
@@ -888,10 +959,15 @@ def aggregate_authoritative_recovery_eval(
     batch: PreparedRecoveryEvalBatch,
     records: Sequence[RecoveryEvalCaseRecordV1],
     *,
-    evaluation_identity_hash: str,
     rewriter_config_hash: str,
+    evaluation_identity_hash: str | None = None,
 ) -> RecoveryEvalAggregateV1:
-    """Authoritative aggregate bound to a prepared frozen population."""
+    """Authoritative aggregate bound to a prepared frozen population.
+
+    Recomputes ``receval_`` from the prepared shared retrieval stack + frozen
+    Gold/cohort/protocol contracts. A caller-supplied identity is optional and
+    must equal the recomputation when provided.
+    """
     if not batch.authoritative:
         raise RecoveryEvalError(
             "aggregate_authoritative_recovery_eval requires an authoritative "
@@ -907,10 +983,9 @@ def aggregate_authoritative_recovery_eval(
             "authoritative batch missing cohort_map_identity_hash / "
             "prepared_case_set_hash"
         )
-    if not evaluation_identity_hash or not rewriter_config_hash:
+    if not rewriter_config_hash or not str(rewriter_config_hash).strip():
         raise RecoveryEvalError(
-            "authoritative aggregate requires non-null evaluation_identity_hash "
-            "and rewriter_config_hash"
+            "authoritative aggregate requires non-blank rewriter_config_hash"
         )
 
     prepared_by_id = {p.case.id: p for p in batch.cases}
@@ -945,6 +1020,27 @@ def aggregate_authoritative_recovery_eval(
             raise RecoveryEvalError(
                 f"record gold_judgments mismatch for case {record.case_id!r}"
             )
+        if record.triggered != prepared.triggered:
+            raise RecoveryEvalError(
+                f"record triggered mismatch for case {record.case_id!r}"
+            )
+        if record.initial != prepared.initial_observation:
+            raise RecoveryEvalError(
+                f"record initial observation mismatch for case {record.case_id!r}"
+            )
+
+    computed_identity = recompute_authoritative_receval_identity(
+        batch,
+        rewriter_config_hash=rewriter_config_hash,
+    )
+    if (
+        evaluation_identity_hash is not None
+        and evaluation_identity_hash != computed_identity
+    ):
+        raise RecoveryEvalError(
+            "authoritative evaluation_identity_hash must equal recomputed "
+            f"receval_ {computed_identity}; got {evaluation_identity_hash}"
+        )
 
     human = _aggregate_cohort(records, cohort="human_reviewed")
     assistant = _aggregate_cohort(records, cohort="assistant_only")
@@ -966,7 +1062,7 @@ def aggregate_authoritative_recovery_eval(
         gold_dataset_id=batch.gold_dataset_id,
         cohort_map_identity_hash=batch.cohort_map_identity_hash,
         prepared_case_set_hash=batch.prepared_case_set_hash,
-        evaluation_identity_hash=evaluation_identity_hash,
+        evaluation_identity_hash=computed_identity,
         rewriter_config_hash=rewriter_config_hash,
     )
 

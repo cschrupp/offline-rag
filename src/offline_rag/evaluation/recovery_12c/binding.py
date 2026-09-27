@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from offline_rag.core.ids import recovery_eval_config_hash
 from offline_rag.evaluation.generation_semantic.cohort import (
     CohortMapError,
     load_cohort_map,
@@ -15,10 +16,45 @@ from offline_rag.evaluation.generation_semantic.models import (
 )
 from offline_rag.evaluation.gold import LoadedGoldDataset, load_gold_dataset
 from offline_rag.evaluation.recovery_12c.contracts import (
+    FROZEN_ADJUDICATION_COHORT_MAP_HASH_12C,
     FROZEN_GOLD_DATASET_ID_12C,
     RecoveryEvalError,
 )
 from offline_rag.recovery.lineage import RecoveryLineageV1
+
+
+def cohort_map_identity_payload(cohort_map: GenerationCohortMapV1) -> dict[str, object]:
+    """Semantic cohort-map identity (no paths/timestamps)."""
+    cases = sorted(
+        (
+            {"case_id": entry.case_id, "label_cohort": entry.label_cohort}
+            for entry in cohort_map.cases
+        ),
+        key=lambda item: str(item["case_id"]),
+    )
+    return {
+        "schema_version": cohort_map.schema_version,
+        "gold_dataset_id": cohort_map.gold_dataset_id,
+        "cases": cases,
+    }
+
+
+def cohort_map_semantic_hash(cohort_map: GenerationCohortMapV1) -> str:
+    """Deterministic ``receval_`` identity for a cohort map's case→label payload."""
+    return recovery_eval_config_hash(cohort_map_identity_payload(cohort_map))
+
+
+def require_frozen_adjudication_cohort_map(
+    cohort_map: GenerationCohortMapV1,
+) -> str:
+    """Fail closed unless the map equals the tracked authoritative 12C fixture."""
+    digest = cohort_map_semantic_hash(cohort_map)
+    if digest != FROZEN_ADJUDICATION_COHORT_MAP_HASH_12C:
+        raise RecoveryEvalError(
+            "authoritative 12C requires exact frozen adjudication cohort-map "
+            f"identity {FROZEN_ADJUDICATION_COHORT_MAP_HASH_12C}; got {digest}"
+        )
+    return digest
 
 
 def bind_cohort_map_for_gold(
@@ -88,19 +124,3 @@ def require_gold_lineage_compatible(
             "Gold/lineage corpus_id mismatch: "
             f"gold={gold_corpus!r} lineage={lineage.corpus_id!r}"
         )
-
-
-def cohort_map_identity_payload(cohort_map: GenerationCohortMapV1) -> dict[str, object]:
-    """Semantic cohort-map identity (no paths/timestamps)."""
-    cases = sorted(
-        (
-            {"case_id": entry.case_id, "label_cohort": entry.label_cohort}
-            for entry in cohort_map.cases
-        ),
-        key=lambda item: str(item["case_id"]),
-    )
-    return {
-        "schema_version": cohort_map.schema_version,
-        "gold_dataset_id": cohort_map.gold_dataset_id,
-        "cases": cases,
-    }

@@ -34,7 +34,18 @@ RECOVERY_EVAL_PRESENCE_RULE_VERSION = "v1"
 FROZEN_GOLD_DATASET_ID_12C = (
     "gold_d3fc157c7b3206f6983abee766e7ce7b939244a7dea04f0be256f3a533a46172"
 )
+# Semantic identity of eval/fixtures/sufficiency/
+# gold_d3fc157c…_adjudication_cohort_map_v1.json (exact 16 human / 6 assistant labels).
+# Derived via cohort_map_identity_payload + recovery_eval_config_hash (receval_).
+FROZEN_ADJUDICATION_COHORT_MAP_HASH_12C = (
+    "receval_e4e25402b92db2243bec2d361e96976f805efceda02844f2a70e49c44e384ca4"
+)
 PLACEHOLDER_REWRITER_MODEL = "REPLACE_WITH_APPROVED_LOCAL_MODEL"
+FROZEN_ADJUDICATION_COHORT_MAP_PATH_12C = (
+    "eval/fixtures/sufficiency/"
+    "gold_d3fc157c7b3206f6983abee766e7ce7b939244a7dea04f0be256f3a533a46172"
+    "_adjudication_cohort_map_v1.json"
+)
 
 _SUCCESS_RECOVERY_TERMINALS = frozenset(
     {

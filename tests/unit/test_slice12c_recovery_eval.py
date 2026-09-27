@@ -16,6 +16,7 @@ from offline_rag.domain.indexing import (
     HybridRerankContextResult,
     HybridRerankProvenance,
 )
+from offline_rag.evaluation.generation_semantic.cohort import load_cohort_map
 from offline_rag.evaluation.generation_semantic.models import GenerationCohortMapV1
 from offline_rag.evaluation.gold import (
     ChunkJudgment,
@@ -25,6 +26,8 @@ from offline_rag.evaluation.gold import (
     compute_gold_dataset_id,
 )
 from offline_rag.evaluation.recovery_12c import (
+    FROZEN_ADJUDICATION_COHORT_MAP_HASH_12C,
+    FROZEN_ADJUDICATION_COHORT_MAP_PATH_12C,
     FROZEN_GOLD_DATASET_ID_12C,
     NOT_EVALUABLE_NO_HUMAN_RECOVERY_OPPORTUNITIES,
     PLACEHOLDER_REWRITER_MODEL,
@@ -45,6 +48,7 @@ from offline_rag.evaluation.recovery_12c import (
     build_recovery_eval_identity_hash,
     build_trigger_census_from_prepared,
     classify_case,
+    cohort_map_semantic_hash,
     conclude_recovery_eval,
     evaluate_paired_case,
     evaluate_prepared_batch,
@@ -58,6 +62,7 @@ from offline_rag.evaluation.recovery_12c import (
     preflight_authoritative_recovery_eval,
     prepare_authoritative_recovery_eval,
     prepare_initial_cases,
+    recompute_authoritative_receval_identity,
     recompute_ranking_metrics,
     require_authoritative_recovery_preflight,
 )
@@ -1002,7 +1007,41 @@ def _patch_frozen_gold_id(monkeypatch: pytest.MonkeyPatch, dataset_id: str) -> N
         monkeypatch.setattr(f"{mod}.FROZEN_GOLD_DATASET_ID_12C", dataset_id)
 
 
+def _patch_frozen_cohort_map_hash(
+    monkeypatch: pytest.MonkeyPatch, cohort_map: GenerationCohortMapV1
+) -> str:
+    digest = cohort_map_semantic_hash(cohort_map)
+    for mod in (
+        "offline_rag.evaluation.recovery_12c.harness",
+        "offline_rag.evaluation.recovery_12c.binding",
+        "offline_rag.evaluation.recovery_12c.contracts",
+        "offline_rag.evaluation.recovery_12c",
+    ):
+        monkeypatch.setattr(f"{mod}.FROZEN_ADJUDICATION_COHORT_MAP_HASH_12C", digest)
+    return digest
+
+
+def _patch_frozen_authority(
+    monkeypatch: pytest.MonkeyPatch,
+    gold: LoadedGoldDataset,
+    cohort_map: GenerationCohortMapV1,
+) -> str:
+    _patch_frozen_gold_id(monkeypatch, gold.dataset_id)
+    return _patch_frozen_cohort_map_hash(monkeypatch, cohort_map)
+
+
 # --- Authoritative frozen population binding ---
+
+
+def test_frozen_adjudication_cohort_map_hash_matches_tracked_fixture() -> None:
+    path = REPO_ROOT / FROZEN_ADJUDICATION_COHORT_MAP_PATH_12C
+    cmap = load_cohort_map(path)
+    digest = cohort_map_semantic_hash(cmap)
+    assert digest == FROZEN_ADJUDICATION_COHORT_MAP_HASH_12C
+    assert digest.startswith("receval_")
+    # Exact assignments matter — not merely 16/6 counts.
+    assert cmap.gold_dataset_id == FROZEN_GOLD_DATASET_ID_12C
+    assert len(cmap.cases) == 22
 
 
 def test_authoritative_prepare_uses_exact_gold_and_rejects_subset(
@@ -1014,7 +1053,6 @@ def test_authoritative_prepare_uses_exact_gold_and_rejects_subset(
         _gold_case("a1", "q3?", ["p3"]),
     ]
     gold = _loaded_gold(cases)
-    _patch_frozen_gold_id(monkeypatch, gold.dataset_id)
     cmap = _cohort_map(
         gold,
         {
@@ -1023,6 +1061,7 @@ def test_authoritative_prepare_uses_exact_gold_and_rejects_subset(
             "a1": "assistant_only",
         },
     )
+    frozen_hash = _patch_frozen_authority(monkeypatch, gold, cmap)
     initial = CountingInitialAssembler(
         lambda q: (
             _context([_unit(source_chunk_id="p1", primary_anchor="p1")], query=q)
@@ -1037,12 +1076,40 @@ def test_authoritative_prepare_uses_exact_gold_and_rejects_subset(
     )
     assert batch.authoritative is True
     assert batch.gold_dataset_id == gold.dataset_id
-    assert batch.cohort_map_identity_hash is not None
+    assert batch.cohort_map_identity_hash == frozen_hash
     assert batch.prepared_case_set_hash is not None
     assert {p.case.id for p in batch.cases} == {"h1", "h2", "a1"}
     assert initial.call_count == 3
 
-    # Relabeled / subset cohort map fails binding.
+    # Subset fails closed:
+    with pytest.raises(RecoveryEvalError, match="cohort map binding failed"):
+        prepare_authoritative_recovery_eval(
+            gold=gold,
+            cohort_map=_cohort_map(gold, {"h1": "human_reviewed"}),
+            initial_assembler=CountingInitialAssembler(lambda q: _context([], query=q)),
+        )
+
+
+def test_authoritative_prepare_rejects_relabeled_cohort_map(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cases = [
+        _gold_case("h1", "q1?", ["p1"]),
+        _gold_case("h2", "q2?", ["p2"]),
+        _gold_case("a1", "q3?", ["p3"]),
+    ]
+    gold = _loaded_gold(cases)
+    good_map = _cohort_map(
+        gold,
+        {
+            "h1": "human_reviewed",
+            "h2": "human_reviewed",
+            "a1": "assistant_only",
+        },
+    )
+    _patch_frozen_authority(monkeypatch, gold, good_map)
+
+    # Same Gold ID + same 22/N case IDs, one human/assistant label flipped.
     bad_map = _cohort_map(
         gold,
         {
@@ -1051,16 +1118,56 @@ def test_authoritative_prepare_uses_exact_gold_and_rejects_subset(
             "a1": "assistant_only",
         },
     )
-    # Changing labels is allowed by cohort validator if complete — but we require
-    # the tracked map itself. Relabeling still produces a different identity.
-    # Subset fails closed:
-    with pytest.raises(RecoveryEvalError, match="cohort map binding failed"):
+    assert {e.case_id for e in bad_map.cases} == {e.case_id for e in good_map.cases}
+    assert bad_map.gold_dataset_id == good_map.gold_dataset_id
+    assert cohort_map_semantic_hash(bad_map) != FROZEN_ADJUDICATION_COHORT_MAP_HASH_12C
+    with pytest.raises(RecoveryEvalError, match="frozen adjudication cohort-map"):
         prepare_authoritative_recovery_eval(
             gold=gold,
-            cohort_map=_cohort_map(gold, {"h1": "human_reviewed"}),
+            cohort_map=bad_map,
             initial_assembler=CountingInitialAssembler(lambda q: _context([], query=q)),
         )
-    _ = bad_map
+
+
+def test_authoritative_prepare_rejects_tracked_fixture_relabel() -> None:
+    path = REPO_ROOT / FROZEN_ADJUDICATION_COHORT_MAP_PATH_12C
+    cmap = load_cohort_map(path)
+    assert cohort_map_semantic_hash(cmap) == FROZEN_ADJUDICATION_COHORT_MAP_HASH_12C
+    flipped = list(cmap.cases)
+    first = flipped[0]
+    new_label = (
+        "assistant_only" if first.label_cohort == "human_reviewed" else "human_reviewed"
+    )
+    flipped[0] = first.model_copy(update={"label_cohort": new_label})
+    bad_map = cmap.model_copy(update={"cases": flipped})
+    assert bad_map.gold_dataset_id == FROZEN_GOLD_DATASET_ID_12C
+    assert {e.case_id for e in bad_map.cases} == {e.case_id for e in cmap.cases}
+    assert cohort_map_semantic_hash(bad_map) != FROZEN_ADJUDICATION_COHORT_MAP_HASH_12C
+
+    # Fake gold with frozen ID + fixture case IDs so binding reaches hash check.
+    cases = [
+        _gold_case(entry.case_id, f"q-{entry.case_id}", [f"p-{entry.case_id}"])
+        for entry in cmap.cases
+    ]
+    gold = LoadedGoldDataset(
+        meta=GoldDatasetMeta(
+            schema_version="offline-rag-gold-v1",
+            chunk_set_id="chunkset_test",
+            corpus_id="corpus_test",
+            dataset_id=FROZEN_GOLD_DATASET_ID_12C,
+        ),
+        cases=tuple(sorted(cases, key=lambda c: c.id)),
+        dataset_id=FROZEN_GOLD_DATASET_ID_12C,
+        source_schema="offline-rag-gold-v1",
+        compatibility_mode=None,
+        path=Path("unused"),
+    )
+    with pytest.raises(RecoveryEvalError, match="frozen adjudication cohort-map"):
+        prepare_authoritative_recovery_eval(
+            gold=gold,
+            cohort_map=bad_map,
+            initial_assembler=CountingInitialAssembler(lambda q: _context([], query=q)),
+        )
 
 
 def test_authoritative_prepare_rejects_wrong_gold_id() -> None:
@@ -1083,8 +1190,8 @@ def test_authoritative_aggregate_binding_fail_closed(
         _gold_case("a1", "ok?", ["gold_a"]),
     ]
     gold = _loaded_gold(cases)
-    _patch_frozen_gold_id(monkeypatch, gold.dataset_id)
     cmap = _cohort_map(gold, {"h1": "human_reviewed", "a1": "assistant_only"})
+    _patch_frozen_authority(monkeypatch, gold, cmap)
     settings = _settings(recovery_enabled=True)
     initial = CountingInitialAssembler(
         lambda q: (
@@ -1116,36 +1223,39 @@ def test_authoritative_aggregate_binding_fail_closed(
     )
     assert len(records) == 2
     records_by_id = {r.case_id: r for r in records}
+    rrw = "rrwcfg_test"
     ok = aggregate_authoritative_recovery_eval(
         batch,
         records,
-        evaluation_identity_hash="receval_test",
-        rewriter_config_hash="rrwcfg_test",
+        rewriter_config_hash=rrw,
     )
     assert ok.authoritative is True
     assert ok.gold_dataset_id == gold.dataset_id
+    expected_identity = recompute_authoritative_receval_identity(
+        batch, rewriter_config_hash=rrw
+    )
+    assert ok.evaluation_identity_hash == expected_identity
+    assert ok.evaluation_identity_hash.startswith("receval_")
+    assert ok.evaluation_identity_hash != "receval_test"
 
     with pytest.raises(RecoveryEvalError, match="extra|missing"):
         aggregate_authoritative_recovery_eval(
             batch,
             records[:1],
-            evaluation_identity_hash="receval_test",
-            rewriter_config_hash="rrwcfg_test",
+            rewriter_config_hash=rrw,
         )
     with pytest.raises(RecoveryEvalError, match="duplicate"):
         aggregate_authoritative_recovery_eval(
             batch,
             list(records) + [records[0]],
-            evaluation_identity_hash="receval_test",
-            rewriter_config_hash="rrwcfg_test",
+            rewriter_config_hash=rrw,
         )
     mutated = records_by_id["h1"].model_copy(update={"original_query": "tampered?"})
     with pytest.raises(RecoveryEvalError, match="query mismatch"):
         aggregate_authoritative_recovery_eval(
             batch,
             [mutated if r.case_id == "h1" else r for r in records],
-            evaluation_identity_hash="receval_test",
-            rewriter_config_hash="rrwcfg_test",
+            rewriter_config_hash=rrw,
         )
     mutated_cohort = records_by_id["h1"].model_copy(
         update={"adjudication_cohort": "assistant_only"}
@@ -1154,8 +1264,195 @@ def test_authoritative_aggregate_binding_fail_closed(
         aggregate_authoritative_recovery_eval(
             batch,
             [mutated_cohort if r.case_id == "h1" else r for r in records],
+            rewriter_config_hash=rrw,
+        )
+
+
+def test_authoritative_aggregate_binds_prepared_initial_and_trigger(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cases = [
+        _gold_case("h1", "empty?", ["gold_h"]),
+        _gold_case("a1", "ok?", ["gold_a"]),
+    ]
+    gold = _loaded_gold(cases)
+    cmap = _cohort_map(gold, {"h1": "human_reviewed", "a1": "assistant_only"})
+    _patch_frozen_authority(monkeypatch, gold, cmap)
+    settings = _settings(recovery_enabled=True)
+    initial = CountingInitialAssembler(
+        lambda q: (
+            _context([], query=q)
+            if q == "empty?"
+            else _context(
+                [_unit(source_chunk_id="gold_a", primary_anchor="gold_a")],
+                query=q,
+                anchors=[_anchor("gold_a")],
+            )
+        )
+    )
+    batch = prepare_authoritative_recovery_eval(
+        gold=gold, cohort_map=cmap, initial_assembler=initial
+    )
+    records = evaluate_prepared_batch(
+        batch,
+        recovery_settings=settings,
+        recovery_assembler=_recovery_assembler(
+            _context(
+                [_unit(source_chunk_id="gold_h", primary_anchor="gold_h")],
+                query="r",
+                anchors=[_anchor("gold_h")],
+            )
+        ),
+        rewriter=FakeRecoveryRewriter(settings, rewritten_query="r"),
+        clock=_FakeClock([0.0, 0.001, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06]),
+        stop_if_not_evaluable=False,
+    )
+    rrw = "rrwcfg_test"
+    records_by_id = {r.case_id: r for r in records}
+    a1 = records_by_id["a1"]
+
+    surface_tampered = a1.model_copy(
+        update={
+            "initial": a1.initial.model_copy(
+                update={
+                    "evidence_surface_chunk_ids": sorted(
+                        set(a1.initial.evidence_surface_chunk_ids) | {"alien_surface"}
+                    )
+                }
+            )
+        }
+    )
+    with pytest.raises(RecoveryEvalError, match="initial observation mismatch"):
+        aggregate_authoritative_recovery_eval(
+            batch,
+            [surface_tampered if r.case_id == "a1" else r for r in records],
+            rewriter_config_hash=rrw,
+        )
+
+    ranked_tampered = a1.model_copy(
+        update={
+            "initial": a1.initial.model_copy(
+                update={"ranked_anchor_chunk_ids": ["alien_rank"]}
+            )
+        }
+    )
+    with pytest.raises(RecoveryEvalError, match="initial observation mismatch"):
+        aggregate_authoritative_recovery_eval(
+            batch,
+            [ranked_tampered if r.case_id == "a1" else r for r in records],
+            rewriter_config_hash=rrw,
+        )
+
+    assert a1.initial.lineage is not None
+    lineage_tampered = a1.model_copy(
+        update={
+            "initial": a1.initial.model_copy(
+                update={
+                    "lineage": a1.initial.lineage.model_copy(
+                        update={"corpus_id": "tampered_corpus"}
+                    )
+                }
+            )
+        }
+    )
+    with pytest.raises(RecoveryEvalError, match="initial observation mismatch"):
+        aggregate_authoritative_recovery_eval(
+            batch,
+            [lineage_tampered if r.case_id == "a1" else r for r in records],
+            rewriter_config_hash=rrw,
+        )
+
+    # Bypass case-record self-check so aggregate trigger binding is isolated.
+    fields = {name: getattr(a1, name) for name in RecoveryEvalCaseRecordV1.model_fields}
+    fields["triggered"] = not a1.triggered
+    trigger_tampered = RecoveryEvalCaseRecordV1.model_construct(**fields)
+    with pytest.raises(RecoveryEvalError, match="triggered mismatch"):
+        aggregate_authoritative_recovery_eval(
+            batch,
+            [trigger_tampered if r.case_id == "a1" else r for r in records],
+            rewriter_config_hash=rrw,
+        )
+
+
+def test_authoritative_receval_recomputed_not_forgeable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cases = [
+        _gold_case("h1", "empty?", ["gold_h"]),
+        _gold_case("a1", "ok?", ["gold_a"]),
+    ]
+    gold = _loaded_gold(cases)
+    cmap = _cohort_map(gold, {"h1": "human_reviewed", "a1": "assistant_only"})
+    _patch_frozen_authority(monkeypatch, gold, cmap)
+    settings = _settings(recovery_enabled=True)
+    initial = CountingInitialAssembler(
+        lambda q: (
+            _context([], query=q)
+            if q == "empty?"
+            else _context(
+                [_unit(source_chunk_id="gold_a", primary_anchor="gold_a")],
+                query=q,
+                anchors=[_anchor("gold_a")],
+            )
+        )
+    )
+    batch = prepare_authoritative_recovery_eval(
+        gold=gold, cohort_map=cmap, initial_assembler=initial
+    )
+    records = evaluate_prepared_batch(
+        batch,
+        recovery_settings=settings,
+        recovery_assembler=_recovery_assembler(
+            _context(
+                [_unit(source_chunk_id="gold_h", primary_anchor="gold_h")],
+                query="r",
+                anchors=[_anchor("gold_h")],
+            )
+        ),
+        rewriter=FakeRecoveryRewriter(settings, rewritten_query="r"),
+        clock=_FakeClock([0.0, 0.001, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06]),
+        stop_if_not_evaluable=False,
+    )
+    rrw = "rrwcfg_test"
+    expected = recompute_authoritative_receval_identity(batch, rewriter_config_hash=rrw)
+    again = recompute_authoritative_receval_identity(batch, rewriter_config_hash=rrw)
+    assert expected == again
+    assert expected.startswith("receval_")
+
+    ok = aggregate_authoritative_recovery_eval(
+        batch,
+        records,
+        rewriter_config_hash=rrw,
+        evaluation_identity_hash=expected,
+    )
+    assert ok.evaluation_identity_hash == expected
+
+    with pytest.raises(RecoveryEvalError, match="must equal recomputed"):
+        aggregate_authoritative_recovery_eval(
+            batch,
+            records,
+            rewriter_config_hash=rrw,
             evaluation_identity_hash="receval_test",
-            rewriter_config_hash="rrwcfg_test",
+        )
+
+    # Divergent prepared stack fails closed before identity is accepted.
+    cases_mut = list(batch.cases)
+    first = cases_mut[0]
+    assert first.initial_observation.lineage is not None
+    diverged_obs = first.initial_observation.model_copy(
+        update={
+            "lineage": first.initial_observation.lineage.model_copy(
+                update={"fusion_config_hash": "fuscfg_other"}
+            )
+        }
+    )
+    from dataclasses import replace
+
+    cases_mut[0] = replace(first, initial_observation=diverged_obs)
+    diverged_batch = replace(batch, cases=tuple(cases_mut))
+    with pytest.raises(RecoveryEvalError, match="retrieval stack"):
+        recompute_authoritative_receval_identity(
+            diverged_batch, rewriter_config_hash=rrw
         )
 
 

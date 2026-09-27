@@ -7,12 +7,17 @@ Does not enable ``retrieval_recovery`` in base config and does not run measure-o
 
 from offline_rag.evaluation.recovery_12c.binding import (
     bind_cohort_map_for_gold,
+    cohort_map_identity_payload,
+    cohort_map_semantic_hash,
     load_and_bind_cohort_map,
     load_frozen_gold_dataset,
+    require_frozen_adjudication_cohort_map,
     require_gold_lineage_compatible,
 )
 from offline_rag.evaluation.recovery_12c.conclusion import conclude_recovery_eval
 from offline_rag.evaluation.recovery_12c.contracts import (
+    FROZEN_ADJUDICATION_COHORT_MAP_HASH_12C,
+    FROZEN_ADJUDICATION_COHORT_MAP_PATH_12C,
     FROZEN_GOLD_DATASET_ID_12C,
     NOT_EVALUABLE_NO_HUMAN_RECOVERY_OPPORTUNITIES,
     PLACEHOLDER_REWRITER_MODEL,
@@ -55,6 +60,7 @@ from offline_rag.evaluation.recovery_12c.harness import (
     prepare_authoritative_recovery_eval,
     prepare_initial_cases,
     prepare_synthetic_initial_cases,
+    recompute_authoritative_receval_identity,
 )
 from offline_rag.evaluation.recovery_12c.identity import (
     build_recovery_eval_identity_hash,
@@ -74,6 +80,8 @@ from offline_rag.evaluation.recovery_12c.recompute import (
 )
 
 __all__ = [
+    "FROZEN_ADJUDICATION_COHORT_MAP_HASH_12C",
+    "FROZEN_ADJUDICATION_COHORT_MAP_PATH_12C",
     "FROZEN_GOLD_DATASET_ID_12C",
     "NOT_EVALUABLE_NO_HUMAN_RECOVERY_OPPORTUNITIES",
     "PLACEHOLDER_REWRITER_MODEL",
@@ -104,6 +112,8 @@ __all__ = [
     "build_recovery_eval_semantic_payload",
     "build_trigger_census_from_prepared",
     "classify_case",
+    "cohort_map_identity_payload",
+    "cohort_map_semantic_hash",
     "conclude_recovery_eval",
     "evaluate_paired_case",
     "evaluate_prepared_batch",
@@ -123,8 +133,10 @@ __all__ = [
     "prepare_synthetic_initial_cases",
     "ranked_anchor_chunk_ids",
     "ranking_score_to_dict",
+    "recompute_authoritative_receval_identity",
     "recompute_ranking_metrics",
     "require_authoritative_recovery_preflight",
+    "require_frozen_adjudication_cohort_map",
     "require_gold_lineage_compatible",
     "validate_observation_gold_overlap",
 ]
