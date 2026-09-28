@@ -219,7 +219,7 @@ Order: Slice **11** → **12** → **13**.
 
 ## Milestone 6 — Agentic recovery and security
 
-**Status:** Slice **11 COMPLETE / ACCEPTED**; Slice **12 COMPLETE / ACCEPTED**; Slice **13 NOT STARTED**; Milestone **6 INCOMPLETE**  
+**Status:** Slice **11 COMPLETE / ACCEPTED**; Slice **12 COMPLETE / ACCEPTED**; Slice **13 DESIGN LOCKED / PENDING INDEPENDENT ACCEPTANCE**; Milestone **6 INCOMPLETE**  
 **Baseline:** `1983ff1376ea27fc1e8774b35136dc8c8ec93f40`  
 **Design authority:** [`docs/milestone6_agentic_recovery_security.md`](docs/milestone6_agentic_recovery_security.md)  
 **OD-12 design-lock baseline:** `4194d525211d994b97aa8abba93237cd8a23cbb9`  
@@ -227,7 +227,8 @@ Order: Slice **11** → **12** → **13**.
 **12C-1 accepted harness:** `c4f8734d57f45d3aa111997abf2bc8890322ff33`  
 **12C-2 authority baseline:** `47656d17b1e907f5965a60b0fe988a83942855ca`  
 **12C-2 accepted implementation:** `f213960bc494cd2180233345abf798f74313e8bd`  
-**12C-2 authoritative result:** `dc82432b7060c6adba189e96f8a053f76a6b2721`
+**12C-2 authoritative result:** `dc82432b7060c6adba189e96f8a053f76a6b2721`  
+**Slice 13 design-open / authority baseline:** `6a3806bdc89a17bcdf992dba068e843f8535de6a`
 
 **Implementation order (locked):** Slice **11** → Slice **12** → Slice **13**
 
@@ -238,7 +239,7 @@ authorization.
 
 - [x] Slice 11 — Evidence sufficiency & abstention policy (11A→11B→11C) — **COMPLETE / ACCEPTED**
 - [x] Slice 12 — Bounded conditional retrieval recovery — **COMPLETE / ACCEPTED**
-- [ ] Slice 13 — Prompt-injection & security harness (13A→13C; optional 13D NeMo)
+- [ ] Slice 13 — Prompt-injection & security harness — **DESIGN LOCKED / PENDING INDEPENDENT ACCEPTANCE** (implementation not started)
 
 Checklist detail (same order; not startable out of sequence):
 
@@ -248,12 +249,25 @@ Checklist detail (same order; not startable out of sequence):
 - [x] recovery vs baseline evaluation harness (**12C-1**) — **COMPLETE / ACCEPTED**
 - [x] recovery vs baseline authoritative measurement (**12C-2**) — **COMPLETE / ACCEPTED**
 - [ ] **Post-Slice-12 / Future Recovery Orchestration (LangGraph adapter)** — **NOT AUTHORIZED**
-- [ ] indirect prompt-injection suite (Slice 13)
-- [ ] optional NeMo Guardrails evaluation (Slice 13D; after deterministic controls)
+- [ ] **13A** security fixture contracts + deterministic invariants — **NOT AUTHORIZED** (await design-lock acceptance)
+- [ ] **13B** query-path adversarial harness — **NOT AUTHORIZED**
+- [ ] **13C** recovery-path adversarial harness — **NOT AUTHORIZED**
+- [ ] optional NeMo Guardrails evaluation (**13D**; OD-13-2 OPEN/deferred) — **NOT AUTHORIZED**
 
-**Next:** Slice **13 — Prompt-Injection / Security Harness**.
-Open Slice 13 design/start gates only. This Slice 12 closeout does **not**
-authorize Slice 13 implementation.
+**Next:** Independent acceptance of the Slice 13 design-lock SHA; then **13A
+only** under OD-13-6 (`harness_fake` / offline; package
+`src/offline_rag/evaluation/security_13/`). This design-lock docs state does
+**not** authorize 13A–13D implementation until that acceptance.
+
+**Slice 13 design lock (pending independent acceptance)**
+- Authority baseline: `6a3806b`
+- **OD-13-1 LOCKED** — deterministic PASS/FAIL + nine-invariant `secinv_` registry
+- **OD-13-2 OPEN / DEFERRED** — NeMo / 13D not authorized
+- **OD-13-3 LOCKED** — `adversarial-fixture-v1`
+- **OD-13-4 LOCKED** — phased 13A/13B/13C matrix (full 7×2 by end of 13C)
+- **OD-13-5 LOCKED** — harness-only recovery; 13A=`harness_fake`; product recovery disabled
+- **OD-13-6 LOCKED** — exact 13A boundary; no CLI/campaign/live/NeMo/LangGraph/`base.yaml`
+- Product recovery remains disabled; LangGraph **NOT AUTHORIZED**; no 12C rerun
 
 **Slice 11 accepted chain**
 - **11A-1** `4f0cebc` · **11A-2** `cd0dd91` · **11A-3** `24b2179`

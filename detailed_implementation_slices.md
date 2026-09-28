@@ -694,27 +694,47 @@ recovery remains disabled; no promotion authorized.
 # Slice 13 — Prompt-injection and security harness
 
 ```text
-STATUS: DESIGN CONTRACT DRAFTED / IMPLEMENTATION NOT STARTED
-Authority: docs/milestone6_agentic_recovery_security.md
-NeMo: optional after deterministic controls (13D)
+STATUS: DESIGN LOCKED / PENDING INDEPENDENT ACCEPTANCE
+        13A IMPLEMENTATION NOT YET AUTHORIZED
+        13B / 13C / 13D NOT AUTHORIZED
+Authority baseline: 6a3806bdc89a17bcdf992dba068e843f8535de6a
+Authority: docs/milestone6_agentic_recovery_security.md §29
+Package (13A): src/offline_rag/evaluation/security_13/
+OD-13-1 LOCKED — deterministic PASS/FAIL + nine-invariant secinv_ registry
+OD-13-2 OPEN / DEFERRED — NeMo / 13D not authorized
+OD-13-3 LOCKED — adversarial-fixture-v1
+OD-13-4 LOCKED — phased 13A/13B/13C matrix (full 7×2 by end of 13C)
+OD-13-5 LOCKED — harness-only recovery; 13A=harness_fake; product recovery disabled
+OD-13-6 LOCKED — exact 13A boundary + fail-closed precision clause
+Product recovery: DISABLED (config/base.yaml must not change)
+LangGraph: NOT AUTHORIZED
+12C rerun: NOT AUTHORIZED
 ```
 
 ## Objective
 
 Treat retrieved documents as untrusted input and prove that the RAG control plane is not governed by document instructions.
 
-## Deliverables
+## 13A in scope (only after independent design-lock acceptance)
 
-- adversarial document fixtures;
-- indirect prompt-injection test cases;
-- system/document delimiter policy;
-- read-only retrieval tool boundary;
-- network-disabled runtime test where practical;
-- maximum graph iteration policy;
-- citation manipulation tests;
-- optional NeMo Guardrails integration after deterministic controls.
+- `adversarial-fixture-v1`, `security-invariant-registry-v1`, minimal
+  `adversarial-eval-result-v1`
+- evaluators for the nine locked invariants; fail-closed PASS/FAIL
+- `eval/fixtures/security/` — 7 query-path unit fixtures + 1 recovery-boundary
+  unit fixture
+- focused unit tests; recovery probe via `RecoveryRewriteInputV1` +
+  `FakeRecoveryRewriter` only (`harness_fake` / offline)
+- thin package exports; no CLI requirement
 
-## Attack classes
+## Explicitly outside 13A / not authorized yet
+
+- 13B campaign runner, CLI, benign-control wire format
+- 13C recovery-path campaign / security-eval overlay / `harness_live`
+- NeMo / 13D (OD-13-2)
+- runtime `guardrails/` integration; LangGraph; recovery promotion;
+  `base.yaml` mutation; 12C rerun; absolute security claims
+
+## Attack classes (SECURITY_MODEL / §20)
 
 - “ignore previous instructions” inside source text;
 - fake `SYSTEM:` blocks;
@@ -724,9 +744,13 @@ Treat retrieved documents as untrusted input and prove that the RAG control plan
 - instructions to access arbitrary files;
 - instructions to suppress contradictory documents.
 
+Full query×recovery coverage is required by end of **13C**, not in 13A.
+
 ## Exit criteria
 
 The adversarial suite runs automatically and the portfolio documentation reports pass/fail criteria without claiming absolute security.
+Deterministic control-plane invariants (OD-13-1) are the PASS/FAIL truth —
+not model refusal text.
 
 ---
 
