@@ -1,16 +1,21 @@
 # Milestone 6 — Agentic Recovery & Security
 
 ```text
-DESIGN CONTRACT DRAFTED / IMPLEMENTATION NOT STARTED
+MILESTONE 6 IN PROGRESS
+Slice 11 COMPLETE / ACCEPTED
+Slice 12 COMPLETE / ACCEPTED
+Slice 13 NOT STARTED
 Baseline: 1983ff1376ea27fc1e8774b35136dc8c8ec93f40
 ```
 
-**Authoritative for:** Milestone 6 design/contract (Slices 11 → 12 → 13).  
-**Not authoritative for:** runtime implementation, LangGraph adoption, threshold
-promotion, NeMo dependency, or publication-grade sufficiency/security claims.
+**Authoritative for:** Milestone 6 design/contract status (Slices 11 → 12 → 13)
+and the accepted Slice 12 decision/disposition record.  
+**Not authoritative for:** LangGraph adoption, recovery promotion, NeMo
+dependency, Slice 13 implementation authorization, or publication-grade
+sufficiency/security claims.
 
-This document freezes architecture boundaries before any Slice 11 code lands.
-It does **not** authorize implementation.
+Slice 11 and Slice 12 are closed. This document remains the design authority
+for Milestone 6; it does **not** authorize Slice 13 implementation by itself.
 
 ---
 
@@ -78,7 +83,7 @@ HybridRerankContextResult
 
 ```text
 Slice 11 — Evidence sufficiency & abstention policy
-    → Slice 12 — Conditional LangGraph retrieval recovery
+    → Slice 12 — Bounded conditional retrieval recovery
         → Slice 13 — Prompt-injection & security harness
 ```
 
@@ -88,13 +93,15 @@ graph first. ADR-008 and `detailed_implementation_slices.md` require a
 defensible “insufficient” gate before recovery orchestration.
 
 Without Slice 11, Slice 12 has no scientifically defensible trigger.
+Slice 12 completed its decision objective without adding LangGraph; LangGraph
+remains **Post-Slice-12 / NOT AUTHORIZED**.
 
 Recommended sub-slices:
 
 | Slice | Sub-slices |
 |---|---|
 | **11** | **11A** observation contracts → **11B** offline eval/threshold analysis → **11C** runtime policy integration |
-| **12** | **12A** recovery state/protocol (**COMPLETE / ACCEPTED**) → **12B** bounded rewriter + one retry (**COMPLETE / ACCEPTED**) → **12C** design **LOCKED / ACCEPTED**; **12C-1** harness **COMPLETE / ACCEPTED**; **12C-2** measurement **NOT YET EXECUTED** |
+| **12** | **12A** recovery state/protocol (**COMPLETE / ACCEPTED**) → **12B** bounded rewriter + one retry (**COMPLETE / ACCEPTED**) → **12C** design **LOCKED / ACCEPTED**; **12C-1** harness **COMPLETE / ACCEPTED**; **12C-2** measurement **COMPLETE / ACCEPTED** — Slice **12 COMPLETE / ACCEPTED** |
 | **13** | **13A** fixture contracts + deterministic invariants → **13B** adversarial harness → **13C** recovery-path attacks → **13D** optional NeMo experiment |
 
 NeMo is **not** required to complete the deterministic security architecture.
@@ -2818,14 +2825,17 @@ retrieval on the project-owned protocol; `retrieval_recovery.enabled=false` by
 default until **12C** evidence. LangGraph was **not** added in 12B and remains
 adapter-only / separately authorized later (OD-12-3).
 
-**12C status:** **Design contract LOCKED / ACCEPTED** (OD-12C-1…OD-12C-8).
-**12C-1 evaluation harness COMPLETE / ACCEPTED** at
-`c4f8734d57f45d3aa111997abf2bc8890322ff33`
-(`7a7bc0f` → `7a65529` → `cd3e302` → `3c466da` → `0b4064e` → `c4f8734`).
-**12C-2** authoritative measurement **NOT YET EXECUTED**. LangGraph remains out.
-`retrieval_recovery.enabled=false` remains the default until 12C evidence
-supports a later human promotion decision. No generation / LLM judge in 12C.
-See §16.
+**12C status:** **COMPLETE / ACCEPTED** (design OD-12C-1…OD-12C-8 **LOCKED**;
+**12C-1** harness **COMPLETE / ACCEPTED** at
+`c4f8734d57f45d3aa111997abf2bc8890322ff33`;
+**12C-2** authoritative measurement **COMPLETE / ACCEPTED** at
+`dc82432b7060c6adba189e96f8a053f76a6b2721`).
+**Slice 12 status:** **COMPLETE / ACCEPTED** on the executed chain
+12A → 12B → 12C-1 → 12C-2. Accepted scientific outcome:
+`insufficient_evidence_for_recovery_efficacy` (`stopped_not_evaluable`;
+`T_H=0`, `T_A=0`). Recovery remains **DISABLED** by default; no promotion is
+authorized. LangGraph was **NOT ADDED** and is **Post-Slice-12 / NOT
+AUTHORIZED**. No generation / LLM judge in 12C. See §16.
 
 **Rationale:** Unit tests can validate the entire state machine with no
 LangGraph dependency; deterministic replay stays straightforward; replacing
@@ -3037,25 +3047,45 @@ framework-internal logs.
 ## 16. Recovery evaluation (Slice 12C)
 
 **Status:** OD-12C-1 … OD-12C-8 **LOCKED / ACCEPTED**.
-**12C-1 evaluation harness COMPLETE / ACCEPTED** at
-`c4f8734d57f45d3aa111997abf2bc8890322ff33`.
-**12C-2** authoritative measurement **NOT YET EXECUTED**.
-Accepted implementation chain:
+**12C COMPLETE / ACCEPTED** — harness at
+`c4f8734d57f45d3aa111997abf2bc8890322ff33`; authoritative result at
+`dc82432b7060c6adba189e96f8a053f76a6b2721`.
+Accepted 12C-1 harness chain:
 `7a7bc0f` → `7a65529` → `cd3e302` → `3c466da` → `0b4064e` → `c4f8734`.
+Accepted 12C-2 chain:
+Authority `47656d17b1e907f5965a60b0fe988a83942855ca` →
+implementation `3d58ff31ff2d733dfd8bb46766b75ecfd4b88521` →
+`f213960bc494cd2180233345abf798f74313e8bd` →
+result `dc82432b7060c6adba189e96f8a053f76a6b2721`.
 
 Recovery is justified only if it improves a **measurable** failure category.
 No default enablement from anecdotes. `promotion_candidate` does **not** modify
 `config/base.yaml` — it is evidence for a later human promotion decision only.
 
-Clean sequence (mandatory):
+Clean sequence (executed):
 
 ```text
 692da96 → 7a7bc0f design lock → 12C-1 harness (ACCEPTED c4f8734)
-  → 12C-1 docs closeout (this commit) → 12C-2 measure-once (not yet executed)
+  → 12C-1 docs closeout (47656d1) → 12C-2 measure-once
+  → implementation f213960 → authoritative result dc82432
+  → Slice 12 docs closeout (this commit)
 ```
 
-Do **not** redesign the accepted harness during measurement. Do not enable
-recovery in `config/base.yaml` from a 12C conclusion alone.
+**Accepted 12C-2 result / disposition:** Gold
+`gold_d3fc157c7b3206f6983abee766e7ce7b939244a7dea04f0be256f3a533a46172`;
+population 22 total / 16 human_reviewed / 6 assistant_only; frozen cohort-map
+identity `receval_e4e25402b92db2243bec2d361e96976f805efceda02844f2a70e49c44e384ca4`;
+`rrwcfg_7ffb94fc3db815124596c5d4910378d2bc09be23d3cf4c916cfd88794ee9ac1d`;
+`receval_41b472dcdfd65d05a6dce1ee6ea4cdfcd551264b54ea06027be556d83f06dc66`;
+`T_H=0`, `T_A=0`; Stage B not executed; rewrite/recovery calls 0/0;
+`run_status=stopped_not_evaluable`;
+conclusion=`insufficient_evidence_for_recovery_efficacy`; result root
+`eval/results/recovery_12c/receval_41b472dcdfd65d05a6dce1ee6ea4cdfcd551264b54ea06027be556d83f06dc66/`.
+This is an accepted not-evaluable scientific outcome (no human-reviewed recovery
+opportunities under `sufficiency-v1`), not an implementation failure. Recovery
+remains **DISABLED**; LangGraph was **NOT JUSTIFIED** and was **NOT ADDED**;
+no 12C-2 rerun is authorized. Do not enable recovery in `config/base.yaml`
+from this conclusion alone.
 
 ### OD-12C-1 — Paired shared-initial evaluation
 
@@ -3418,15 +3448,15 @@ Design contract (this document)
   → 12B rewriter + one retry                        ← COMPLETE / ACCEPTED (f1f9c5f)
   → 12C design lock (OD-12C-1…8)                    ← LOCKED / ACCEPTED (7a7bc0f)
   → 12C-1 evaluation harness                        ← COMPLETE / ACCEPTED (c4f8734)
-  → 12C-2 measure-once                              ← NOT YET EXECUTED
-  → 13A–13C security harness
+  → 12C-2 measure-once                              ← COMPLETE / ACCEPTED (dc82432)
+  → 13A–13C security harness                        ← NOT STARTED
   → 13D optional NeMo (if authorized)
 ```
 
-No LangGraph dependency yet. Keep `retrieval_recovery.enabled=false` until 12C
-evidence and a later human promotion decision. Next = execute the frozen
-**12C-2** measure-once experiment against the 12C-1 docs-closeout authority
-baseline. Do not promote recovery by default before that measurement.
+**Slice 12 COMPLETE / ACCEPTED.** Recovery remains `enabled=false` by default.
+LangGraph is **Post-Slice-12 / NOT AUTHORIZED**. **Next** = Slice 13
+design/start gates only; this closeout does not authorize Slice 13
+implementation.
 
 ---
 
@@ -3557,13 +3587,16 @@ do not invent score gates 11B did not support.
 
 ## HARD STOP
 
-**11 COMPLETE / ACCEPTED.** **12A COMPLETE / ACCEPTED.** **12B COMPLETE / ACCEPTED.**
-**12C design (OD-12C-1…8) LOCKED / ACCEPTED.**
-**12C-1 evaluation harness COMPLETE / ACCEPTED** at
-`c4f8734d57f45d3aa111997abf2bc8890322ff33`.
-**12C-2** authoritative measurement **NOT YET EXECUTED.**
+**11 COMPLETE / ACCEPTED.** **12 COMPLETE / ACCEPTED**
+(12A → 12B → 12C-1 → 12C-2).
+**12C-2** authoritative result **ACCEPTED** at
+`dc82432b7060c6adba189e96f8a053f76a6b2721`:
+`stopped_not_evaluable` / `T_H=0` / `T_A=0` /
+`insufficient_evidence_for_recovery_efficacy`.
+Recovery remains **DISABLED**. LangGraph was **NOT ADDED** and is
+**Post-Slice-12 / NOT AUTHORIZED**. Milestone **6 remains INCOMPLETE** because
+Slice **13** remains.
 
-**Next:** execute the frozen 12C-2 measure-once experiment against the 12C-1
-docs-closeout authority baseline. Keep `retrieval_recovery.enabled=false` in
-`config/base.yaml`. Do **not** add LangGraph, generation/judge promotion paths,
-or Slice 13 work unless separately re-authorized.
+**Next:** Slice **13 — Prompt-Injection / Security Harness** —
+design/start gates only. This Slice 12 closeout does **not** authorize Slice 13
+implementation.

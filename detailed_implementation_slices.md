@@ -570,25 +570,29 @@ The system has a measured operating point balancing useful answers against unsup
 
 ---
 
-# Slice 12 — Conditional LangGraph retrieval recovery
+# Slice 12 — Bounded conditional retrieval recovery
 
 ```text
-STATUS: 12A COMPLETE / ACCEPTED (1be7fc8); 12B COMPLETE / ACCEPTED (f1f9c5f);
-        12C DESIGN LOCKED / ACCEPTED (OD-12C-1…8);
-        12C-1 harness COMPLETE / ACCEPTED (c4f8734);
-        12C-2 measurement NOT YET EXECUTED
+STATUS: COMPLETE / ACCEPTED
+        12A COMPLETE / ACCEPTED (1be7fc8)
+        12B COMPLETE / ACCEPTED (f1f9c5f)
+        12C DESIGN LOCKED / ACCEPTED (OD-12C-1…8)
+        12C-1 harness COMPLETE / ACCEPTED (c4f8734)
+        12C-2 measure-once COMPLETE / ACCEPTED (dc82432)
 Authority: docs/milestone6_agentic_recovery_security.md §16
 Contracts: src/offline_rag/recovery/ (runtime);
-           src/offline_rag/evaluation/recovery_12c/ (12C-1 harness)
+           src/offline_rag/evaluation/recovery_12c/ (12C harness + measure-once)
 OD-12-1 / OD-12-2 / OD-12-3: LOCKED
 OD-12C-1 … OD-12C-8: LOCKED / ACCEPTED
-12B accepted chain: 22a5fa2 → 554f742 → f1f9c5f
-12C-1 accepted chain: 7a7bc0f → 7a65529 → cd3e302 → 3c466da → 0b4064e → c4f8734
-12C-1 accepted SHA: c4f8734d57f45d3aa111997abf2bc8890322ff33
-Default: retrieval_recovery.enabled=false until 12C evidence
-LangGraph: not added; adapter-only if separately authorized later
-No generation / LLM judge in 12C
-Sequence: design lock → 12C-1 harness (ACCEPTED) → 12C-2 measure-once (next)
+Authority: 47656d1
+Harness: c4f8734
+12C-2: 3d58ff3 → f213960 → dc82432
+12C-2 scientific outcome: insufficient_evidence_for_recovery_efficacy
+  (stopped_not_evaluable; T_H=0; T_A=0)
+Default: retrieval_recovery.enabled=false (unchanged; no promotion authorized)
+LangGraph: Post-Slice-12 / NOT AUTHORIZED (not added; not justified by 12C)
+No generation / LLM judge in 12C; no 12C-2 rerun authorized
+Next: Slice 13 design/start gates only (no implementation authorization)
 ```
 
 ## Objective
@@ -605,9 +609,12 @@ Introduce agentic behavior only where the baseline retrieval pipeline demonstrab
 - **12C design (LOCKED / ACCEPTED):** OD-12C-1…8 evaluation contract
 - **12C-1 (ACCEPTED at c4f8734):** paired shared-initial evaluation harness with frozen
   Gold/cohort identity, prepared-initial binding, preflighted `rrwcfg_`, recomputed
-  `receval_`; no measure-once yet
-- **12C-2 (NOT YET EXECUTED):** authoritative measure-once on the frozen experiment
-
+  `receval_`
+- **12C-2 (COMPLETE / ACCEPTED at dc82432):** authoritative measure-once on the frozen
+  experiment; accepted as `stopped_not_evaluable` /
+  `insufficient_evidence_for_recovery_efficacy` because `T_H=0` (and `T_A=0`) under
+  `sufficiency-v1`. This is an accepted not-evaluable scientific outcome, not proof
+  that recovery is effective or ineffective.
 ### 12C locked evaluation contract (summary)
 
 - **OD-12C-1** paired shared-initial: one initial retrieve→fuse→rerank→context→sufficiency;
@@ -667,19 +674,21 @@ evidence sufficient?
 - project-owned RecoveryProtocol / state contracts (**12A done**);
 - bounded retry count;
 - query rewriter + one recovery retrieval (**12B done**);
-- optional LangGraph adapter (adapter-only; separately authorized);
+- evaluation comparing agentic vs non-agentic pipeline (**12C COMPLETE / ACCEPTED**;
+  harness `c4f8734`; result `dc82432`);
+- optional LangGraph adapter — **Post-Slice-12 / NOT AUTHORIZED** (not part of
+  the accepted Slice 12 deliverable);
 - loop termination conditions;
-- retry traces;
-- evaluation comparing agentic vs non-agentic pipeline (**12C**; design locked /
-  ACCEPTED; **12C-1** harness ACCEPTED at `c4f8734`; **12C-2** measure-once
-  NOT YET EXECUTED).
+- retry traces.
 
 ## Exit criteria
 
 The agentic path must show measurable benefit on at least one failure category before being enabled by default.
 `promotion_candidate` is evidence for a later human promotion decision only — it must
 not modify `config/base.yaml`.
-
+**12C-2 disposition:** `insufficient_evidence_for_recovery_efficacy` with
+`T_H=0` / `T_A=0` / `stopped_not_evaluable` — accepted not-evaluable outcome;
+recovery remains disabled; no promotion authorized.
 ---
 
 # Slice 13 — Prompt-injection and security harness

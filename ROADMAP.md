@@ -219,20 +219,25 @@ Order: Slice **11** → **12** → **13**.
 
 ## Milestone 6 — Agentic recovery and security
 
-**Status:** Slice **11 COMPLETE / ACCEPTED**; Slice **12A COMPLETE / ACCEPTED**; Slice **12B COMPLETE / ACCEPTED**; **12C design LOCKED / ACCEPTED** (OD-12C-1…8); **12C-1 evaluation harness COMPLETE / ACCEPTED**; **12C-2 measurement NOT YET EXECUTED**  
+**Status:** Slice **11 COMPLETE / ACCEPTED**; Slice **12 COMPLETE / ACCEPTED**; Slice **13 NOT STARTED**; Milestone **6 INCOMPLETE**  
 **Baseline:** `1983ff1376ea27fc1e8774b35136dc8c8ec93f40`  
 **Design authority:** [`docs/milestone6_agentic_recovery_security.md`](docs/milestone6_agentic_recovery_security.md)  
 **OD-12 design-lock baseline:** `4194d525211d994b97aa8abba93237cd8a23cbb9`  
 **12B docs closeout / 12C design authority baseline:** `692da961904e16a2a1bfa1ee1c2ece82a097df60`  
-**12C-1 accepted harness:** `c4f8734d57f45d3aa111997abf2bc8890322ff33`
+**12C-1 accepted harness:** `c4f8734d57f45d3aa111997abf2bc8890322ff33`  
+**12C-2 authority baseline:** `47656d17b1e907f5965a60b0fe988a83942855ca`  
+**12C-2 accepted implementation:** `f213960bc494cd2180233345abf798f74313e8bd`  
+**12C-2 authoritative result:** `dc82432b7060c6adba189e96f8a053f76a6b2721`
 
 **Implementation order (locked):** Slice **11** → Slice **12** → Slice **13**
 
 Do **not** interpret the checklist below as authorization to build LangGraph
-before a formal evidence-sufficiency gate exists (ADR-008).
+before a formal evidence-sufficiency gate exists (ADR-008). Slice 12 closed
+without justifying LangGraph; any future orchestration requires separate
+authorization.
 
 - [x] Slice 11 — Evidence sufficiency & abstention policy (11A→11B→11C) — **COMPLETE / ACCEPTED**
-- [ ] Slice 12 — Conditional LangGraph retrieval recovery (**12A/12B/12C-1 ACCEPTED**; **12C-2** measure-once next)
+- [x] Slice 12 — Bounded conditional retrieval recovery — **COMPLETE / ACCEPTED**
 - [ ] Slice 13 — Prompt-injection & security harness (13A→13C; optional 13D NeMo)
 
 Checklist detail (same order; not startable out of sequence):
@@ -241,15 +246,14 @@ Checklist detail (same order; not startable out of sequence):
 - [x] **12A** project-owned recovery state/protocol contracts, invariants, deterministic replay — **COMPLETE / ACCEPTED**
 - [x] bounded query rewrite/retry (**12B**; explicit rewriter + one recovery retrieval) — **COMPLETE / ACCEPTED**
 - [x] recovery vs baseline evaluation harness (**12C-1**) — **COMPLETE / ACCEPTED**
-- [ ] recovery vs baseline authoritative measurement (**12C-2**) — **NOT YET EXECUTED**
-- [ ] LangGraph adapter / conditional recovery orchestration (**post-12B**; adapter-only per OD-12-3; separately authorized)
+- [x] recovery vs baseline authoritative measurement (**12C-2**) — **COMPLETE / ACCEPTED**
+- [ ] **Post-Slice-12 / Future Recovery Orchestration (LangGraph adapter)** — **NOT AUTHORIZED**
 - [ ] indirect prompt-injection suite (Slice 13)
 - [ ] optional NeMo Guardrails evaluation (Slice 13D; after deterministic controls)
 
-**Next:** Execute the frozen **12C-2** measure-once experiment against the 12C-1
-docs-closeout authority baseline. Keep `retrieval_recovery.enabled=false` until
-12C evidence supports a later human promotion decision. LangGraph remains out /
-adapter-only if separately authorized later. No generation / LLM judge in 12C.
+**Next:** Slice **13 — Prompt-Injection / Security Harness**.
+Open Slice 13 design/start gates only. This Slice 12 closeout does **not**
+authorize Slice 13 implementation.
 
 **Slice 11 accepted chain**
 - **11A-1** `4f0cebc` · **11A-2** `cd0dd91` · **11A-3** `24b2179`
@@ -269,19 +273,27 @@ adapter-only if separately authorized later. No generation / LLM judge in 12C.
 - **12B implementation** `554f742` → security/provenance hardening `f1f9c5f` — **COMPLETE / ACCEPTED**
 - Explicit `retrieval_recovery.rewriter`; bounded rewrite + one recovery retrieval; default `enabled=false`; no LangGraph
 
-**Slice 12C design lock + 12C-1 harness**
-- **12B docs closeout** `692da96` — authority baseline for 12C design
-- **OD-12C-1 … OD-12C-8 LOCKED / ACCEPTED** — paired shared-initial evaluation; frozen Gold + cohort map; trigger census before recovery; Gold-positive recovery efficacy; retrieval-only (no generation/judge); predeclared conclusion states; happy-path no-harm; one measure-once rewrite+retrieval
-- **12C-1 harness COMPLETE / ACCEPTED** at `c4f8734` — chain `7a7bc0f` → `7a65529` → `cd3e302` → `3c466da` → `0b4064e` → `c4f8734`
-- Package: `src/offline_rag/evaluation/recovery_12c/` — authoritative prepare/evaluate/aggregate; preflighted `rrwcfg_`; recomputed `receval_`
-- **12C-2** measure-once — **NOT YET EXECUTED**
-- `retrieval_recovery.enabled=false` remains the default until 12C evidence; LangGraph remains out; no generation / LLM judge in 12C
+**Slice 12 COMPLETE / ACCEPTED** (12A → 12B → 12C-1 → 12C-2)
+- Authority: `47656d1`
+- Harness: `c4f8734`
+- 12C-2: `3d58ff3` → `f213960` → `dc82432`
+- **12C-2 accepted scientific outcome:** `insufficient_evidence_for_recovery_efficacy`
+  (`T_H=0`, `T_A=0`, `stopped_not_evaluable`).
+- Recovery remains disabled by default. The result does not establish that recovery
+  works or fails; the frozen population provided no recovery opportunities under
+  `sufficiency-v1`. LangGraph was not required for, and was not part of, the
+  accepted Slice 12 deliverable.
+- Package: `src/offline_rag/evaluation/recovery_12c/` — prepare/evaluate/aggregate + measure-once
+- Result root: `eval/results/recovery_12c/receval_41b472dcdfd65d05a6dce1ee6ea4cdfcd551264b54ea06027be556d83f06dc66/`
+- No generation / LLM judge; no 12C-2 rerun authorized
 
 **Frozen runtime policy:** `sufficiency-v1` — `empty_context_v1` iff final EvidenceUnit[] is empty; non-empty proceeds to generation; `model_abstain` remains post-generation and distinct. That is the deterministic trigger ADR-008 requires for Slice 12.
 
 **Release criterion:** agentic recovery demonstrates measured benefit and adversarial test results are documented.
 
-LangGraph is not started. No LangGraph dependency has been added. Recovery remains disabled by default until 12C evidence.
+Recovery remains disabled by default. LangGraph was not added and is
+**Post-Slice-12 / NOT AUTHORIZED** unless a future evaluation separately
+justifies conditional orchestration.
 
 ## Milestone 7 — Performance and UI
 
