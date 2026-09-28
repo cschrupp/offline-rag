@@ -4,21 +4,24 @@
 MILESTONE 6 IN PROGRESS
 Slice 11 COMPLETE / ACCEPTED
 Slice 12 COMPLETE / ACCEPTED
-Slice 13 DESIGN LOCKED / PENDING INDEPENDENT ACCEPTANCE
+Slice 13 INCOMPLETE (13A COMPLETE / ACCEPTED; 13B–13D NOT AUTHORIZED)
 Baseline: 1983ff1376ea27fc1e8774b35136dc8c8ec93f40
-Slice 13 authority baseline: 6a3806bdc89a17bcdf992dba068e843f8535de6a
+Slice 13 design-open baseline: 6a3806bdc89a17bcdf992dba068e843f8535de6a
+Slice 13 design lock (accepted): 571882e062359e258f5843b4289b2f556d22d7f7
+13A accepted technical result: c2c1ff85c5383e224fc8767be1abbd5c435dd789
 ```
 
 **Authoritative for:** Milestone 6 design/contract status (Slices 11 → 12 → 13),
-the accepted Slice 12 decision/disposition record, and the Slice 13
-deterministic security-harness design lock (OD-13-1, OD-13-3…6).  
+the accepted Slice 12 decision/disposition record, the Slice 13
+deterministic security-harness design lock (OD-13-1, OD-13-3…6), and the
+accepted Slice **13A** technical result.  
 **Not authoritative for:** LangGraph adoption, recovery promotion, NeMo
-dependency, Slice 13 **implementation** (pending independent acceptance of
-this design-lock SHA), or publication-grade sufficiency/security claims.
+dependency, **13B–13D implementation**, or publication-grade
+sufficiency/security claims.
 
-Slice 11 and Slice 12 are closed. Slice 13 design is **LOCKED / PENDING
-INDEPENDENT ACCEPTANCE**. This commit does **not** authorize 13A–13D
-implementation.
+Slice 11 and Slice 12 are closed. **13A is COMPLETE / ACCEPTED.** Slice 13
+remains incomplete. This 13A docs closeout becomes the authority baseline for
+**13B design/start gates only**; it does **not** authorize 13B implementation.
 
 ---
 
@@ -105,7 +108,7 @@ Recommended sub-slices:
 |---|---|
 | **11** | **11A** observation contracts → **11B** offline eval/threshold analysis → **11C** runtime policy integration |
 | **12** | **12A** recovery state/protocol (**COMPLETE / ACCEPTED**) → **12B** bounded rewriter + one retry (**COMPLETE / ACCEPTED**) → **12C** design **LOCKED / ACCEPTED**; **12C-1** harness **COMPLETE / ACCEPTED**; **12C-2** measurement **COMPLETE / ACCEPTED** — Slice **12 COMPLETE / ACCEPTED** |
-| **13** | **13A** fixture contracts + deterministic invariants → **13B** adversarial harness → **13C** recovery-path attacks → **13D** optional NeMo experiment — Slice 13 **DESIGN LOCKED / PENDING INDEPENDENT ACCEPTANCE**; OD-13-1 + OD-13-3…6 **LOCKED**; OD-13-2 **OPEN/deferred**; **no** implementation authorized by the design-lock docs commit alone |
+| **13** | **13A** fixture contracts + deterministic invariants (**COMPLETE / ACCEPTED** at `c2c1ff8`) → **13B** adversarial harness (**NOT AUTHORIZED**) → **13C** recovery-path attacks (**NOT AUTHORIZED**) → **13D** optional NeMo (OD-13-2 **OPEN/deferred**); Slice 13 **INCOMPLETE** |
 
 NeMo is **not** required to complete the deterministic security architecture.
 
@@ -3452,19 +3455,20 @@ Design contract (this document)
   → 12C design lock (OD-12C-1…8)                    ← LOCKED / ACCEPTED (7a7bc0f)
   → 12C-1 evaluation harness                        ← COMPLETE / ACCEPTED (c4f8734)
   → 12C-2 measure-once                              ← COMPLETE / ACCEPTED (dc82432)
-  → Slice 13 design lock (OD-13-1, OD-13-3…6)       ← DESIGN LOCKED / PENDING INDEPENDENT ACCEPTANCE
-  → 13A security contracts + unit fixtures          ← NOT AUTHORIZED (await design-lock acceptance)
-  → 13B query-path adversarial harness              ← NOT AUTHORIZED
+  → Slice 13 design lock (OD-13-1, OD-13-3…6)       ← ACCEPTED (571882e)
+  → 13A security contracts + unit fixtures          ← COMPLETE / ACCEPTED (c2c1ff8)
+  → 13B query-path adversarial harness              ← NOT AUTHORIZED (design/start gates may open)
   → 13C recovery-path adversarial harness           ← NOT AUTHORIZED
   → 13D optional NeMo (OD-13-2)                     ← OPEN / DEFERRED / NOT AUTHORIZED
 ```
 
 **Slice 12 COMPLETE / ACCEPTED.** Recovery remains `enabled=false` by default.
 LangGraph is **Post-Slice-12 / NOT AUTHORIZED**.
-**Slice 13 DESIGN LOCKED / PENDING INDEPENDENT ACCEPTANCE** (authority baseline
-`6a3806b`). **Next** = independent acceptance of this design-lock SHA; then
-**13A only** under OD-13-6 (`harness_fake` / offline). 13B / 13C / 13D remain
-**NOT AUTHORIZED**.
+**13A COMPLETE / ACCEPTED** at `c2c1ff85c5383e224fc8767be1abbd5c435dd789`
+(chain `571882e` → `7fe978a` → `c2c1ff8`). Slice 13 remains incomplete.
+**Next** = **13B design/start gates only.** This closeout SHA is the authority
+baseline for opening 13B design; it does **not** authorize 13B implementation.
+13C / 13D remain **NOT AUTHORIZED**. OD-13-2 remains **OPEN / DEFERRED**.
 
 ---
 
@@ -3601,19 +3605,22 @@ do not invent score gates 11B did not support.
 
 ## 29. Slice 13 design lock (OD-13-1 … OD-13-6)
 
-**Status:** **DESIGN LOCKED / PENDING INDEPENDENT ACCEPTANCE**
+**Status:** Design lock **ACCEPTED** at `571882e062359e258f5843b4289b2f556d22d7f7`.
+**13A technical result COMPLETE / ACCEPTED** at
+`c2c1ff85c5383e224fc8767be1abbd5c435dd789`
+(`571882e` → `7fe978a` → `c2c1ff8`).
 
-**Authority baseline:** `6a3806bdc89a17bcdf992dba068e843f8535de6a`
-(Slice 12 closeout / Slice 13 design-open baseline).
+**Authority baseline (design open):** `6a3806bdc89a17bcdf992dba068e843f8535de6a`
+(Slice 12 closeout).
 
 This section records the Slice 13 deterministic security-harness design
-interview. Threat/trust-boundary language in §§17–21 and
-`SECURITY_MODEL.md` is **inherited architecture**, not a new OD.
+interview and the accepted 13A delivery. Threat/trust-boundary language in
+§§17–21 and `SECURITY_MODEL.md` is **inherited architecture**, not a new OD.
 
 ```text
-SLICE 13 DESIGN: LOCKED / PENDING INDEPENDENT ACCEPTANCE
-13A: IMPLEMENTATION AUTHORIZED ONLY AFTER INDEPENDENT DESIGN-LOCK ACCEPTANCE
-13B: NOT AUTHORIZED
+SLICE 13 DESIGN: ACCEPTED (571882e)
+13A: COMPLETE / ACCEPTED (c2c1ff8)
+13B: DESIGN/START GATES MAY OPEN; IMPLEMENTATION NOT AUTHORIZED
 13C: NOT AUTHORIZED
 13D: NOT AUTHORIZED
 
@@ -3810,9 +3817,10 @@ runtime guardrail integration; LangGraph; recovery promotion; `base.yaml`
 mutation; 12C rerun; changes to accepted 12A/12B/12C semantics;
 portfolio/public security-rate claims; absolute security claims.
 
-**13A exit:** contracts + registry + eight fixtures + green focused tests
+**13A exit (met):** contracts + registry + eight fixtures + green focused tests
 proving fail-closed invariants and rewriter-input isolation under
-`harness_fake` / offline — then **stop** for acceptance before 13B.
+`harness_fake` / offline — accepted at `c2c1ff8`. **Stop** before 13B
+implementation.
 
 ---
 
@@ -3827,14 +3835,13 @@ proving fail-closed invariants and rewriter-input isolation under
 Recovery remains **DISABLED**. LangGraph was **NOT ADDED** and is
 **Post-Slice-12 / NOT AUTHORIZED**.
 
-**Slice 13 DESIGN LOCKED / PENDING INDEPENDENT ACCEPTANCE**
-(authority baseline `6a3806bdc89a17bcdf992dba068e843f8535de6a`;
-OD-13-1 + OD-13-3…6 **LOCKED**; OD-13-2 **OPEN / DEFERRED**).
-**13A IMPLEMENTATION NOT AUTHORIZED** until independent acceptance of this
-design-lock SHA. **13B / 13C / 13D NOT AUTHORIZED.**
-13A mode if later authorized: `harness_fake` / offline only.
+**13A COMPLETE / ACCEPTED** at `c2c1ff85c5383e224fc8767be1abbd5c435dd789`
+(design `571882e` → implementation `7fe978a` → rework `c2c1ff8`).
+OD-13-1 + OD-13-3…6 satisfied for 13A; OD-13-2 **OPEN / DEFERRED**.
+Slice **13 remains INCOMPLETE**. **13B / 13C / 13D NOT AUTHORIZED**
+(13B design/start gates may open; implementation not authorized).
 Product recovery remains disabled; no `config/base.yaml` mutation; no 12C
-rerun; no LangGraph. Milestone **6 remains INCOMPLETE**.
+rerun; no LangGraph; no NeMo. Milestone **6 remains INCOMPLETE**.
 
-**Next:** Independent acceptance of this Slice 13 design-lock SHA; then **13A
-only** under OD-13-6.
+**Next:** **13B design/start gates only.** This closeout SHA is the authority
+baseline for opening 13B design and does **not** authorize 13B implementation.

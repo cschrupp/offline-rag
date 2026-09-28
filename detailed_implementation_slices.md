@@ -694,41 +694,48 @@ recovery remains disabled; no promotion authorized.
 # Slice 13 — Prompt-injection and security harness
 
 ```text
-STATUS: DESIGN LOCKED / PENDING INDEPENDENT ACCEPTANCE
-        13A IMPLEMENTATION NOT YET AUTHORIZED
-        13B / 13C / 13D NOT AUTHORIZED
-Authority baseline: 6a3806bdc89a17bcdf992dba068e843f8535de6a
+STATUS: INCOMPLETE
+        13A COMPLETE / ACCEPTED (c2c1ff8)
+        13B DESIGN/START GATES MAY OPEN; IMPLEMENTATION NOT AUTHORIZED
+        13C / 13D NOT AUTHORIZED
+Design authority: 571882e062359e258f5843b4289b2f556d22d7f7
+13A chain: 571882e → 7fe978a → c2c1ff8
 Authority: docs/milestone6_agentic_recovery_security.md §29
 Package (13A): src/offline_rag/evaluation/security_13/
-OD-13-1 LOCKED — deterministic PASS/FAIL + nine-invariant secinv_ registry
+Fixtures (13A unit matrix only): eval/fixtures/security/
+  - 7 query-path unit fixtures
+  - 1 recovery-boundary unit fixture
+OD-13-1 LOCKED / ACCEPTED (13A)
 OD-13-2 OPEN / DEFERRED — NeMo / 13D not authorized
-OD-13-3 LOCKED — adversarial-fixture-v1
-OD-13-4 LOCKED — phased 13A/13B/13C matrix (full 7×2 by end of 13C)
-OD-13-5 LOCKED — harness-only recovery; 13A=harness_fake; product recovery disabled
-OD-13-6 LOCKED — exact 13A boundary + fail-closed precision clause
+OD-13-3 LOCKED / ACCEPTED (13A)
+OD-13-4 LOCKED — 13A phase satisfied; full 7×2 by end of 13C
+OD-13-5 LOCKED — 13A harness_fake boundary satisfied
+OD-13-6 COMPLETE / ACCEPTED
 Product recovery: DISABLED (config/base.yaml must not change)
 LangGraph: NOT AUTHORIZED
 12C rerun: NOT AUTHORIZED
+Next: 13B design/start gates only (no 13B implementation authorization)
 ```
 
 ## Objective
 
 Treat retrieved documents as untrusted input and prove that the RAG control plane is not governed by document instructions.
 
-## 13A in scope (only after independent design-lock acceptance)
+## 13A COMPLETE / ACCEPTED
 
 - `adversarial-fixture-v1`, `security-invariant-registry-v1`, minimal
   `adversarial-eval-result-v1`
 - evaluators for the nine locked invariants; fail-closed PASS/FAIL
 - `eval/fixtures/security/` — 7 query-path unit fixtures + 1 recovery-boundary
-  unit fixture
+  unit fixture (13A scope only; not an authoritative campaign)
 - focused unit tests; recovery probe via `RecoveryRewriteInputV1` +
   `FakeRecoveryRewriter` only (`harness_fake` / offline)
-- thin package exports; no CLI requirement
+- thin package exports; no CLI
 
 ## Explicitly outside 13A / not authorized yet
 
-- 13B campaign runner, CLI, benign-control wire format
+- 13B campaign runner, CLI, benign-control wire format — **design/start gates
+  may open; implementation NOT AUTHORIZED**
 - 13C recovery-path campaign / security-eval overlay / `harness_live`
 - NeMo / 13D (OD-13-2)
 - runtime `guardrails/` integration; LangGraph; recovery promotion;
@@ -751,6 +758,7 @@ Full query×recovery coverage is required by end of **13C**, not in 13A.
 The adversarial suite runs automatically and the portfolio documentation reports pass/fail criteria without claiming absolute security.
 Deterministic control-plane invariants (OD-13-1) are the PASS/FAIL truth —
 not model refusal text.
+**13A exit met** at `c2c1ff8`. Stop before 13B implementation.
 
 ---
 
