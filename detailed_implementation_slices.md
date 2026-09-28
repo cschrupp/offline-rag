@@ -696,25 +696,22 @@ recovery remains disabled; no promotion authorized.
 ```text
 STATUS: INCOMPLETE
         13A COMPLETE / ACCEPTED (c2c1ff8)
-        13B DESIGN/START GATES MAY OPEN; IMPLEMENTATION NOT AUTHORIZED
+        13B DESIGN LOCKED / PENDING INDEPENDENT ACCEPTANCE
+        13B HARNESS IMPLEMENTATION: NOT AUTHORIZED
+        13B AUTHORITATIVE MEASURE-ONCE: NOT AUTHORIZED
         13C / 13D NOT AUTHORIZED
-Design authority: 571882e062359e258f5843b4289b2f556d22d7f7
+13A design authority: 571882e
 13A chain: 571882e → 7fe978a → c2c1ff8
-Authority: docs/milestone6_agentic_recovery_security.md §29
-Package (13A): src/offline_rag/evaluation/security_13/
-Fixtures (13A unit matrix only): eval/fixtures/security/
-  - 7 query-path unit fixtures
-  - 1 recovery-boundary unit fixture
-OD-13-1 LOCKED / ACCEPTED (13A)
-OD-13-2 OPEN / DEFERRED — NeMo / 13D not authorized
-OD-13-3 LOCKED / ACCEPTED (13A)
-OD-13-4 LOCKED — 13A phase satisfied; full 7×2 by end of 13C
-OD-13-5 LOCKED — 13A harness_fake boundary satisfied
-OD-13-6 COMPLETE / ACCEPTED
-Product recovery: DISABLED (config/base.yaml must not change)
-LangGraph: NOT AUTHORIZED
-12C rerun: NOT AUTHORIZED
-Next: 13B design/start gates only (no 13B implementation authorization)
+13B design authority baseline: 1b87b90cad610ba40513d4ac0ca5e3239c2d7c3d
+Authority: docs/milestone6_agentic_recovery_security.md §29–§30
+Package: src/offline_rag/evaluation/security_13/
+OD-13-1…6: 13A accepted (OD-13-2 OPEN / DEFERRED)
+OD-13-7…13: LOCKED (13B design; pending independent acceptance)
+Product recovery: DISABLED
+LangGraph / NeMo / 12C rerun: NOT AUTHORIZED
+Next: independent acceptance of this design-lock SHA;
+      then harness implementation only (OD-13-12);
+      measure-once requires a separate later authorization
 ```
 
 ## Objective
@@ -732,14 +729,27 @@ Treat retrieved documents as untrusted input and prove that the RAG control plan
   `FakeRecoveryRewriter` only (`harness_fake` / offline)
 - thin package exports; no CLI
 
-## Explicitly outside 13A / not authorized yet
+## 13B DESIGN LOCKED / PENDING INDEPENDENT ACCEPTANCE
 
-- 13B campaign runner, CLI, benign-control wire format — **design/start gates
-  may open; implementation NOT AUTHORIZED**
-- 13C recovery-path campaign / security-eval overlay / `harness_live`
+Locked ODs: **OD-13-7 … OD-13-13** (§30). Summary:
+
+- query-path campaign scope; companion `benign-security-control-v1` / `benc_`
+- `security-campaign-v1` / `seccamp_`; ≥7 attack classes + ≥5 benign controls
+- real query-path injection at generation-bound evidence/citation/prompt assembly
+  with deterministic fake/spy edges; OD-13-1 evaluators only
+- `run_status` × `campaign_outcome`; narrow false-positive definition
+- two-stage exit: harness acceptance → separately authorized measure-once
+
+**Not authorized by design-lock acceptance alone:** harness implementation,
+measure-once execution, 13C/13D, LangGraph, NeMo, product recovery,
+`base.yaml` mutation, 12C rerun.
+
+## Explicitly outside 13B
+
+- 13C recovery-path / `harness_live` / recovery overlay
 - NeMo / 13D (OD-13-2)
-- runtime `guardrails/` integration; LangGraph; recovery promotion;
-  `base.yaml` mutation; 12C rerun; absolute security claims
+- runtime `guardrails/` product integration; LangGraph; recovery promotion;
+  absolute security claims; full ICS retrieve→rerank campaign
 
 ## Attack classes (SECURITY_MODEL / §20)
 
@@ -751,14 +761,16 @@ Treat retrieved documents as untrusted input and prove that the RAG control plan
 - instructions to access arbitrary files;
 - instructions to suppress contradictory documents.
 
-Full query×recovery coverage is required by end of **13C**, not in 13A.
+Full query×recovery coverage is required by end of **13C**, not in 13A/13B.
 
 ## Exit criteria
 
 The adversarial suite runs automatically and the portfolio documentation reports pass/fail criteria without claiming absolute security.
 Deterministic control-plane invariants (OD-13-1) are the PASS/FAIL truth —
 not model refusal text.
-**13A exit met** at `c2c1ff8`. Stop before 13B implementation.
+**13A exit met** at `c2c1ff8`.
+**13B** awaits design-lock acceptance, then harness implementation/acceptance,
+then a separately authorized measure-once.
 
 ---
 
