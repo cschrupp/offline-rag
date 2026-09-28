@@ -1455,6 +1455,51 @@ def cmd_eval_query(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_eval_security_13b(args: argparse.Namespace) -> int:
+    """Thin CLI for Slice 13B dry-run only (no authoritative measure-once)."""
+    from offline_rag.evaluation.security_13.contracts import SecurityEvalError
+    from offline_rag.evaluation.security_13.harness import run_security_13b_dryrun
+
+    repo = _repo_root()
+    campaign = (
+        Path(args.campaign)
+        if args.campaign is not None
+        else repo
+        / "eval"
+        / "fixtures"
+        / "security"
+        / "campaigns"
+        / "13b_query_path_adversarial_v1.json"
+    )
+    fixtures = (
+        Path(args.fixtures)
+        if args.fixtures is not None
+        else repo / "eval" / "fixtures" / "security"
+    )
+    try:
+        result = run_security_13b_dryrun(
+            campaign_path=campaign,
+            security_fixture_dir=fixtures,
+            output_dir=Path(args.output_dir) if args.output_dir else None,
+            run_id=args.run_id,
+            repo_root=repo,
+        )
+    except SecurityEvalError as exc:
+        print(f"eval security-13b: {exc}", file=sys.stderr)
+        return 1
+
+    print(f"run_id:            {result.run_id}")
+    print(f"run_status:        {result.run_status}")
+    print(f"campaign_outcome:  {result.aggregate.campaign_outcome}")
+    if result.campaign is not None:
+        print(f"seccamp_:          {result.campaign.campaign_identity_hash}")
+    print(f"output:            {result.output_dir}")
+    if result.error:
+        print(f"error:             {result.error}", file=sys.stderr)
+        return 1
+    return 0
+
+
 def cmd_eval_recovery_12c(args: argparse.Namespace) -> int:
     """Thin CLI for Slice 12C-2 authoritative measure-once."""
     from offline_rag.evaluation.recovery_12c.contracts import RecoveryEvalError
@@ -2588,6 +2633,45 @@ def build_parser() -> argparse.ArgumentParser:
         "(default: <eval_results>/recovery_12c)",
     )
     eval_recovery_12c.set_defaults(func=cmd_eval_recovery_12c)
+
+    eval_security_13b = eval_sub.add_parser(
+        "security-13b",
+        help=(
+            "Slice 13B query-path security campaign dry-run "
+            "(authoritative measure-once NOT implemented)"
+        ),
+    )
+    eval_security_13b.add_argument(
+        "--campaign",
+        type=Path,
+        default=None,
+        help=(
+            "Frozen security-campaign-v1 JSON "
+            "(default: eval/fixtures/security/campaigns/13b_query_path_adversarial_v1.json)"
+        ),
+    )
+    eval_security_13b.add_argument(
+        "--fixtures",
+        type=Path,
+        default=None,
+        help="Security fixture directory (default: eval/fixtures/security)",
+    )
+    eval_security_13b.add_argument(
+        "--output-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Dry-run output directory (default: "
+            "eval/results/security_13b_dryrun/<run_id>/). "
+            "Must resolve outside eval/results/security_13b/"
+        ),
+    )
+    eval_security_13b.add_argument(
+        "--run-id",
+        default=None,
+        help="Optional dry-run id (default: generated)",
+    )
+    eval_security_13b.set_defaults(func=cmd_eval_security_13b)
 
     eval_retrieve = eval_sub.add_parser(
         "retrieve",

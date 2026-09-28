@@ -513,3 +513,13 @@ def security_invariant_registry_hash(data: Mapping[str, Any]) -> str:
 def adversarial_fixture_hash(data: Mapping[str, Any]) -> str:
     """Return ``advfx_<sha256>`` for Slice 13 adversarial-fixture identity."""
     return canonical_config_hash(data).replace("cfg_", "advfx_", 1)
+
+
+def benign_security_control_hash(data: Mapping[str, Any]) -> str:
+    """Return ``benc_<sha256>`` for Slice 13B benign-control identity."""
+    return canonical_config_hash(data).replace("cfg_", "benc_", 1)
+
+
+def security_campaign_hash(data: Mapping[str, Any]) -> str:
+    """Return ``seccamp_<sha256>`` for Slice 13B campaign identity."""
+    return canonical_config_hash(data).replace("cfg_", "seccamp_", 1)

@@ -1,0 +1,80 @@
+{
+  "adversarial_cases": [
+    {
+      "advfx_hash": "advfx_4a6dd9b1324c170c2c936d484c5ee23481bf2c7a769be0b055ff8286c91966a4",
+      "fixture_id": "secfx_citation_001_query"
+    },
+    {
+      "advfx_hash": "advfx_c77756892c597e32188ed9bebafa25d0111f682ad8f5179ae188f4d58d178278",
+      "fixture_id": "secfx_fake_system_001_query"
+    },
+    {
+      "advfx_hash": "advfx_ef48797d8e55b65b4e6b261277730ef60d28b5ccbea3ce7ed680dd322178434a",
+      "fixture_id": "secfx_file_001_query"
+    },
+    {
+      "advfx_hash": "advfx_9ea7551c1082230ea8226b9d1b2c71dfae4b167fef0b884890b688e35231dbdd",
+      "fixture_id": "secfx_ignore_001_query"
+    },
+    {
+      "advfx_hash": "advfx_e5a2a9e217daedefca05f1ccbea4ecd52871e6042a3f737fdf5e287c545bdedb",
+      "fixture_id": "secfx_prompt_extract_001_query"
+    },
+    {
+      "advfx_hash": "advfx_ce363f9e37652b707e775ccffc3933478e31a8837524f493b7a5e52d68118f6d",
+      "fixture_id": "secfx_shell_001_query"
+    },
+    {
+      "advfx_hash": "advfx_d289bbe985db7ad2e8b239a552119933cff1497e15a3a1eba43ffe35484dfe62",
+      "fixture_id": "secfx_suppress_001_query"
+    }
+  ],
+  "benign_controls": [
+    {
+      "benc_hash": "benc_e8e1af3ce978d8c1a75fd5e0566485f853daccd6051f38f901c5f9a93aaf90e7",
+      "control_id": "benign_citation_dense_001"
+    },
+    {
+      "benc_hash": "benc_79f17987890f87c416e6d34557e1debe0ad2b964679e99f83f9b075f038693ad",
+      "control_id": "benign_metadata_noise_001"
+    },
+    {
+      "benc_hash": "benc_49066fc65a2a860d73ec903c5ee99ec278dccbf16dd06aab2e143d1a3ae18585",
+      "control_id": "benign_procedural_document_001"
+    },
+    {
+      "benc_hash": "benc_f8bc95c4b6fd836ef42510d2f86963d51e299b13eba449348211785dbd286512",
+      "control_id": "benign_quoted_imperative_001"
+    },
+    {
+      "benc_hash": "benc_38676878dfc132e9e7cb13dafb3dffc2af358e200920c62826080923260529b0",
+      "control_id": "benign_system_word_literal_001"
+    }
+  ],
+  "campaign_identity_hash": "seccamp_8034446afeef2cc3b417666bda1059f0fa530d3b458e05645418cc8742816351",
+  "campaign_kind": "query_path_adversarial_v1",
+  "contract": "security-campaign-v1",
+  "contracts": {
+    "adversarial_fixture": "adversarial-fixture-v1",
+    "benign_control": "benign-security-control-v1",
+    "campaign": "security-campaign-v1",
+    "eval_result": "adversarial-eval-result-v1"
+  },
+  "design_authority_sha": "d3fc8616e5dfe474a53659bc3e276594d8eaa9c7",
+  "path_scope": "query_path",
+  "population_policy": {
+    "minimum_benign_controls": 5,
+    "minimum_per_attack_class": 1,
+    "required_attack_classes": [
+      "ignore_instructions",
+      "fake_system_message",
+      "citation_manipulation",
+      "prompt_extraction",
+      "shell_tool_abuse",
+      "arbitrary_file_access",
+      "evidence_suppression"
+    ]
+  },
+  "registry_hash": "secinv_454ef5d54e0e3ac0cd1f3e347f1172e5d2763d66514c0b13810467897767363a",
+  "slice13b_baseline_sha": "1b87b90cad610ba40513d4ac0ca5e3239c2d7c3d"
+}

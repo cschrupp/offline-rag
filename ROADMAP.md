@@ -253,16 +253,14 @@ Checklist detail (same order; not startable out of sequence):
 - [x] recovery vs baseline authoritative measurement (**12C-2**) — **COMPLETE / ACCEPTED**
 - [ ] **Post-Slice-12 / Future Recovery Orchestration (LangGraph adapter)** — **NOT AUTHORIZED**
 - [x] **13A** security fixture contracts + deterministic invariants — **COMPLETE / ACCEPTED** (`c2c1ff8`)
-- [ ] **13B** query-path adversarial harness — **DESIGN LOCKED / PENDING INDEPENDENT ACCEPTANCE** (harness implementation **NOT AUTHORIZED**; measure-once **NOT AUTHORIZED**)
+- [ ] **13B** query-path adversarial harness — **DESIGN LOCKED / ACCEPTED** (`d3fc861`); harness **IMPLEMENTED / PENDING INDEPENDENT ACCEPTANCE**; measure-once **NOT AUTHORIZED**; 13B **NOT COMPLETE / NOT ACCEPTED**
 - [ ] **13C** recovery-path adversarial harness — **NOT AUTHORIZED**
 - [ ] optional NeMo Guardrails evaluation (**13D**; OD-13-2 OPEN/deferred) — **NOT AUTHORIZED**
 
-**Next:** Independent acceptance of the Slice **13B design-lock SHA**. After that
-acceptance, only the OD-13-12 **harness implementation** boundary may be
-authorized. The authoritative measure-once campaign requires a **separate**
-authorization after independent harness acceptance and a frozen `seccamp_`.
-13C / 13D remain **NOT AUTHORIZED**. This docs commit does **not** authorize
-13B implementation.
+**Next:** Independent acceptance of the Slice **13B harness** candidate SHA.
+Authoritative measure-once remains **NOT AUTHORIZED** until after harness
+acceptance. 13C / 13D remain **NOT AUTHORIZED**. Normative §30 design authority
+remains `d3fc861` (unchanged by this implementation commit).
 
 **Slice 13A COMPLETE / ACCEPTED**
 - Design authority: `571882e`
@@ -284,12 +282,13 @@ authorization after independent harness acceptance and a frozen `seccamp_`.
 - **OD-13-5 LOCKED** — harness-only recovery; 13A=`harness_fake` satisfied
 - **OD-13-6 COMPLETE / ACCEPTED** — exact 13A boundary delivered at `c2c1ff8`
 
-**Slice 13B design lock (PENDING INDEPENDENT ACCEPTANCE)**
+**Slice 13B design lock ACCEPTED; harness PENDING INDEPENDENT ACCEPTANCE**
+- Design authority: `d3fc861` (corrected lock; supersedes `4fd327b`)
 - Authority baseline: `1b87b90` (13A docs closeout)
-- **OD-13-7 … OD-13-13 LOCKED** — query-path campaign scope, `benc_` / `seccamp_`,
-  execution/observation model, aggregates, packaging two-stage gate, injection surface
-- After design-lock acceptance: only OD-13-12 **harness implementation** may be authorized
-- Authoritative measure-once: **separate** authorization after harness acceptance + frozen `seccamp_`
+- **OD-13-7 … OD-13-13 LOCKED / ACCEPTED**
+- Harness: **IMPLEMENTED / PENDING INDEPENDENT ACCEPTANCE** (dry-run only;
+  `offline-rag eval security-13b`; frozen `seccamp_` campaign definition)
+- Authoritative measure-once / `eval/results/security_13b/`: **NOT AUTHORIZED**
 - 13C / 13D / LangGraph / NeMo / product recovery / `base.yaml` / 12C rerun: **NOT AUTHORIZED**
 
 **Slice 11 accepted chain**

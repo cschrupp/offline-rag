@@ -696,22 +696,24 @@ recovery remains disabled; no promotion authorized.
 ```text
 STATUS: INCOMPLETE
         13A COMPLETE / ACCEPTED (c2c1ff8)
-        13B DESIGN LOCKED / PENDING INDEPENDENT ACCEPTANCE
-        13B HARNESS IMPLEMENTATION: NOT AUTHORIZED
+        13B DESIGN: LOCKED / ACCEPTED (d3fc861)
+        13B HARNESS: IMPLEMENTED / PENDING INDEPENDENT ACCEPTANCE
         13B AUTHORITATIVE MEASURE-ONCE: NOT AUTHORIZED
+        13B: NOT COMPLETE / NOT ACCEPTED
         13C / 13D NOT AUTHORIZED
 13A design authority: 571882e
 13A chain: 571882e → 7fe978a → c2c1ff8
-13B design authority baseline: 1b87b90cad610ba40513d4ac0ca5e3239c2d7c3d
-Authority: docs/milestone6_agentic_recovery_security.md §29–§30
+13B design authority: d3fc8616e5dfe474a53659bc3e276594d8eaa9c7
+13B design baseline: 1b87b90cad610ba40513d4ac0ca5e3239c2d7c3d
+Authority: docs/milestone6_agentic_recovery_security.md §29–§30 (normative §30 unchanged)
 Package: src/offline_rag/evaluation/security_13/
+CLI dry-run: offline-rag eval security-13b
+Frozen campaign: eval/fixtures/security/campaigns/13b_query_path_adversarial_v1.json
 OD-13-1…6: 13A accepted (OD-13-2 OPEN / DEFERRED)
-OD-13-7…13: LOCKED (13B design; pending independent acceptance)
+OD-13-7…13: LOCKED / ACCEPTED
 Product recovery: DISABLED
 LangGraph / NeMo / 12C rerun: NOT AUTHORIZED
-Next: independent acceptance of this design-lock SHA;
-      then harness implementation only (OD-13-12);
-      measure-once requires a separate later authorization
+Next: independent harness acceptance; measure-once requires separate later authorization
 ```
 
 ## Objective
@@ -729,20 +731,19 @@ Treat retrieved documents as untrusted input and prove that the RAG control plan
   `FakeRecoveryRewriter` only (`harness_fake` / offline)
 - thin package exports; no CLI
 
-## 13B DESIGN LOCKED / PENDING INDEPENDENT ACCEPTANCE
+## 13B DESIGN LOCKED / ACCEPTED; HARNESS PENDING INDEPENDENT ACCEPTANCE
 
-Locked ODs: **OD-13-7 … OD-13-13** (§30). Summary:
+Locked ODs: **OD-13-7 … OD-13-13** (§30) at `d3fc861`. Harness candidate implements:
 
 - query-path campaign scope; companion `benign-security-control-v1` / `benc_`
-- `security-campaign-v1` / `seccamp_`; ≥7 attack classes + ≥5 benign controls
-- real query-path injection at generation-bound evidence/citation/prompt assembly
-  with deterministic fake/spy edges; OD-13-1 evaluators only
+- `security-campaign-v1` / `seccamp_`; 7 attack classes + 5 benign controls
+- real query-path injection via `GroundedGenerationExecutor` + `FakeGenerator`
+  (`security13b-fake-v1`); OD-13-1 evaluators only
+- dry-run CLI only; hard reject of `eval/results/security_13b/`
 - `run_status` × `campaign_outcome`; narrow false-positive definition
-- two-stage exit: harness acceptance → separately authorized measure-once
 
-**Not authorized by design-lock acceptance alone:** harness implementation,
-measure-once execution, 13C/13D, LangGraph, NeMo, product recovery,
-`base.yaml` mutation, 12C rerun.
+**Still NOT AUTHORIZED:** authoritative measure-once, `eval/results/security_13b/`,
+13C/13D, LangGraph, NeMo, product recovery, `base.yaml` mutation, 12C rerun.
 
 ## Explicitly outside 13B
 
@@ -769,8 +770,8 @@ The adversarial suite runs automatically and the portfolio documentation reports
 Deterministic control-plane invariants (OD-13-1) are the PASS/FAIL truth —
 not model refusal text.
 **13A exit met** at `c2c1ff8`.
-**13B** awaits design-lock acceptance, then harness implementation/acceptance,
-then a separately authorized measure-once.
+**13B** harness is **IMPLEMENTED / PENDING INDEPENDENT ACCEPTANCE**; measure-once
+remains separately gated after harness acceptance.
 
 ---
 
