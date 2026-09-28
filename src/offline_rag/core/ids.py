@@ -503,3 +503,13 @@ def generation_comparison_id_from_payload(payload: Mapping[str, Any]) -> str:
 def text_content_hash(text: str) -> str:
     """Return hex SHA-256 of exact UTF-8 text bytes (no prefix)."""
     return _sha256_hex(text.encode("utf-8"))
+
+
+def security_invariant_registry_hash(data: Mapping[str, Any]) -> str:
+    """Return ``secinv_<sha256>`` for Slice 13 invariant-registry identity."""
+    return canonical_config_hash(data).replace("cfg_", "secinv_", 1)
+
+
+def adversarial_fixture_hash(data: Mapping[str, Any]) -> str:
+    """Return ``advfx_<sha256>`` for Slice 13 adversarial-fixture identity."""
+    return canonical_config_hash(data).replace("cfg_", "advfx_", 1)

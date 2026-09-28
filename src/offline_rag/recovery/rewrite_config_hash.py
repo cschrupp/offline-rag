@@ -6,7 +6,6 @@ from typing import Any
 
 from offline_rag.config.models import AppSettings, RecoveryRewriterSettings
 from offline_rag.core.ids import recovery_rewriter_config_hash
-from offline_rag.generation.openai_compatible import normalize_endpoint
 from offline_rag.recovery.rewrite_contracts import (
     RECOVERY_REWRITE_OUTPUT_V1,
     RECOVERY_REWRITE_PROMPT_V1,
@@ -17,6 +16,9 @@ def build_recovery_rewriter_semantic_payload(
     settings: AppSettings | RecoveryRewriterSettings,
 ) -> dict[str, Any]:
     """Identity-bearing rewriter surface. Excludes api_key / credentials."""
+    # Lazy import avoids recovery↔generation package __init__ circular import.
+    from offline_rag.generation.openai_compatible import normalize_endpoint
+
     rewriter = (
         settings.retrieval_recovery.rewriter
         if isinstance(settings, AppSettings)

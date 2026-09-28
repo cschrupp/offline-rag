@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from offline_rag.config.models import AppSettings, RecoveryRewriterSettings
-from offline_rag.generation.openai_compatible import normalize_endpoint
 from offline_rag.recovery.rewrite_config_hash import build_recovery_rewriter_config_hash
 from offline_rag.recovery.rewrite_contracts import RecoveryRewriteProvenanceV1
 
@@ -19,6 +18,9 @@ def build_recovery_rewrite_attempt_provenance(
     Safe for failure traces: never includes API keys or auth headers.
     ``rewritten_query`` remains null until a valid structured output exists.
     """
+    # Lazy import avoids recovery↔generation package __init__ circular import.
+    from offline_rag.generation.openai_compatible import normalize_endpoint
+
     rewriter = (
         settings.retrieval_recovery.rewriter
         if isinstance(settings, AppSettings)
