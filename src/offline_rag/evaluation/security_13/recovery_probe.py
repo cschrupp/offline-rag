@@ -81,14 +81,17 @@ def build_recovery_boundary_observation(
         raise SecurityEvalError(
             "build_recovery_boundary_observation requires path_under_test=recovery_path"
         )
-    adversarial_units = [
-        unit for unit in fixture.evidence if unit.role == "adversarial"
+    probe_units = [
+        unit
+        for unit in fixture.evidence
+        if unit.placement == "recovery_rewriter_forbidden_input_probe"
     ]
-    if not adversarial_units:
+    if not probe_units:
         raise SecurityEvalError(
-            "recovery-boundary fixture requires adversarial evidence"
+            "recovery-boundary fixture requires evidence with placement="
+            "recovery_rewriter_forbidden_input_probe"
         )
-    illicit_text = adversarial_units[0].text
+    illicit_text = probe_units[0].text
 
     assert_corpus_text_rejected_from_rewrite_input(
         original_query=fixture.user_query,

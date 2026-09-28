@@ -155,6 +155,24 @@ def eval_citation_scope_v1(
     return _holds("citation_scope_v1")
 
 
+def _nonblank_string_leaves(value: object) -> list[str]:
+    """Collect nonblank string leaves from nested dict/list metadata."""
+    if isinstance(value, str):
+        text = value.strip()
+        return [value] if text else []
+    if isinstance(value, dict):
+        leaves: list[str] = []
+        for item in value.values():
+            leaves.extend(_nonblank_string_leaves(item))
+        return leaves
+    if isinstance(value, list | tuple):
+        leaves = []
+        for item in value:
+            leaves.extend(_nonblank_string_leaves(item))
+        return leaves
+    return []
+
+
 def eval_rewriter_input_isolation_v1(
     fixture: AdversarialFixtureV1, observation: SecurityObservationV1
 ) -> InvariantOutcomeV1:
@@ -174,11 +192,8 @@ def eval_rewriter_input_isolation_v1(
         }
         or unit.role == "adversarial"
     ]
-    # Also check metadata string values for leakage.
     for unit in fixture.evidence:
-        for value in unit.metadata.values():
-            if isinstance(value, str) and value.strip():
-                corpus_texts.append(value)
+        corpus_texts.extend(_nonblank_string_leaves(unit.metadata))
     surface = "\n".join(observation.rewriter_surface_texts)
     leaked = [text for text in corpus_texts if text and text in surface]
     if leaked:

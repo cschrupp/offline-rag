@@ -203,6 +203,85 @@ def test_fixture_provenance_matches_locked_authority() -> None:
     assert fixture.design_authority_sha == DESIGN_AUTHORITY_SHA_13
 
 
+def test_recovery_probe_binds_to_forbidden_input_placement_not_first_adversarial() -> None:
+    fixture = load_adversarial_fixture(
+        FIXTURE_DIR / "secfx_rewrite_isolation_001_recovery.json"
+    )
+    decoy = fixture.evidence[0].model_copy(
+        update={
+            "evidence_id": "ev_decoy_adv_not_probe",
+            "role": "adversarial",
+            "text": "DECOY_ADVERSARIAL_TEXT_SHOULD_NOT_BE_SELECTED",
+            "placement": "retrieved_evidence_body",
+            "metadata": {},
+        }
+    )
+    probe = next(
+        unit
+        for unit in fixture.evidence
+        if unit.placement == "recovery_rewriter_forbidden_input_probe"
+    )
+    benign = next(unit for unit in fixture.evidence if unit.role == "benign")
+    mutated = fixture.model_copy(update={"evidence": [decoy, benign, probe]})
+    # allowed_citation still points at benign id
+    mutated = mutated.model_copy(
+        update={"fixture_identity_hash": compute_fixture_identity_hash(mutated)}
+    )
+    observation = build_recovery_boundary_observation(mutated)
+    surface = "\n".join(observation.rewriter_surface_texts or [])
+    assert "DECOY_ADVERSARIAL_TEXT_SHOULD_NOT_BE_SELECTED" not in surface
+    assert "CORPUS_LEAK_MARKER_13A" not in surface
+    result = evaluate_adversarial_fixture(mutated, observation)
+    assert result.outcome == FixtureOutcomeV1.PASS
+
+
+def test_nested_metadata_leak_on_rewriter_surface_fails() -> None:
+    fixture = load_adversarial_fixture(
+        FIXTURE_DIR / "secfx_rewrite_isolation_001_recovery.json"
+    )
+    nested_marker = "NESTED_CORPUS_LEAK_MARKER_13A"
+    evidence = []
+    for unit in fixture.evidence:
+        if unit.placement == "recovery_rewriter_forbidden_input_probe":
+            evidence.append(
+                unit.model_copy(
+                    update={
+                        "metadata": {
+                            "nested": {"instruction": nested_marker},
+                            "tags": ["benign", nested_marker],
+                        }
+                    }
+                )
+            )
+        else:
+            evidence.append(unit)
+    mutated = fixture.model_copy(update={"evidence": evidence})
+    mutated = mutated.model_copy(
+        update={"fixture_identity_hash": compute_fixture_identity_hash(mutated)}
+    )
+    observation = _holding_observation(mutated).model_copy(
+        update={
+            "configured_retry_budget": 1,
+            "observed_retry_budget": 1,
+            "rewriter_surface_texts": [
+                mutated.user_query,
+                f"provider saw {nested_marker} from nested metadata",
+            ],
+            "recovery_execution_mode": "harness_fake",
+            "recovery_components_entered": ["rewriter_input", "recovery_rewriter"],
+        }
+    )
+    result = evaluate_adversarial_fixture(mutated, observation)
+    assert result.outcome == FixtureOutcomeV1.FAIL
+    assert result.failure_kind == "invariant_violation"
+    isolation = next(
+        row
+        for row in result.invariant_outcomes
+        if row.invariant_id == "rewriter_input_isolation_v1"
+    )
+    assert isolation.status == InvariantStatusV1.VIOLATED
+
+
 def test_prompt_canary_leak_fails() -> None:
     fixture = load_adversarial_fixture(
         FIXTURE_DIR / "secfx_prompt_extract_001_query.json"
