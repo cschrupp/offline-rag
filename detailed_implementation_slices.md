@@ -697,15 +697,19 @@ recovery remains disabled; no promotion authorized.
 STATUS: INCOMPLETE
         13A COMPLETE / ACCEPTED (c2c1ff8)
         13B DESIGN: LOCKED / ACCEPTED (d3fc861)
-        13B HARNESS: IMPLEMENTED / PENDING INDEPENDENT ACCEPTANCE
+        13B HARNESS: COMPLETE / ACCEPTED (87b9367)
         13B AUTHORITATIVE MEASURE-ONCE: NOT AUTHORIZED
-        13B: NOT COMPLETE / NOT ACCEPTED
+        13B OVERALL: NOT COMPLETE
         13C / 13D NOT AUTHORIZED
 13A design authority: 571882e
 13A chain: 571882e → 7fe978a → c2c1ff8
 13B design authority: d3fc8616e5dfe474a53659bc3e276594d8eaa9c7
-13B design baseline: 1b87b90cad610ba40513d4ac0ca5e3239c2d7c3d
-Authority: docs/milestone6_agentic_recovery_security.md §29–§30 (normative §30 unchanged)
+13B accepted harness: 87b936789b2cf91e202be5ff4b818e3909460fd8
+13B chain: d3fc861 → 0d7b7f3 → 8111c68 → 1977e3f → 87b9367
+Frozen seccamp_: seccamp_8034446afeef2cc3b417666bda1059f0fa530d3b458e05645418cc8742816351
+Frozen secinv_: secinv_454ef5d54e0e3ac0cd1f3e347f1172e5d2763d66514c0b13810467897767363a
+Authority: docs/milestone6_agentic_recovery_security.md §29–§30
+  (normative OD-13-7…13 contract text unchanged; status/provenance only)
 Package: src/offline_rag/evaluation/security_13/
 CLI dry-run: offline-rag eval security-13b
 Frozen campaign: eval/fixtures/security/campaigns/13b_query_path_adversarial_v1.json
@@ -713,7 +717,8 @@ OD-13-1…6: 13A accepted (OD-13-2 OPEN / DEFERRED)
 OD-13-7…13: LOCKED / ACCEPTED
 Product recovery: DISABLED
 LangGraph / NeMo / 12C rerun: NOT AUTHORIZED
-Next: independent harness acceptance; measure-once requires separate later authorization
+Next: separate independent measure-once authorization against frozen
+      seccamp_ / secinv_ from this docs-closeout authority baseline
 ```
 
 ## Objective
@@ -731,9 +736,10 @@ Treat retrieved documents as untrusted input and prove that the RAG control plan
   `FakeRecoveryRewriter` only (`harness_fake` / offline)
 - thin package exports; no CLI
 
-## 13B DESIGN LOCKED / ACCEPTED; HARNESS PENDING INDEPENDENT ACCEPTANCE
+## 13B DESIGN LOCKED / ACCEPTED; HARNESS COMPLETE / ACCEPTED
 
-Locked ODs: **OD-13-7 … OD-13-13** (§30) at `d3fc861`. Harness candidate implements:
+Locked ODs: **OD-13-7 … OD-13-13** (§30) at `d3fc861`. Accepted harness at
+`87b9367` (chain `d3fc861` → `0d7b7f3` → `8111c68` → `1977e3f` → `87b9367`):
 
 - query-path campaign scope; companion `benign-security-control-v1` / `benc_`
 - `security-campaign-v1` / `seccamp_`; 7 attack classes + 5 benign controls
@@ -741,6 +747,10 @@ Locked ODs: **OD-13-7 … OD-13-13** (§30) at `d3fc861`. Harness candidate impl
   (`security13b-fake-v1`); OD-13-1 evaluators only
 - dry-run CLI only; hard reject of `eval/results/security_13b/`
 - `run_status` × `campaign_outcome`; narrow false-positive definition
+
+**Accepted harness dry-run note:** expected `campaign_outcome=fail` because
+`security_policy_immutable_v1` is UNEVALUABLE on the query-path generation
+surface (intentional fail-closed instrumentation; not harness rejection).
 
 **Still NOT AUTHORIZED:** authoritative measure-once, `eval/results/security_13b/`,
 13C/13D, LangGraph, NeMo, product recovery, `base.yaml` mutation, 12C rerun.
@@ -770,8 +780,9 @@ The adversarial suite runs automatically and the portfolio documentation reports
 Deterministic control-plane invariants (OD-13-1) are the PASS/FAIL truth —
 not model refusal text.
 **13A exit met** at `c2c1ff8`.
-**13B** harness is **IMPLEMENTED / PENDING INDEPENDENT ACCEPTANCE**; measure-once
-remains separately gated after harness acceptance.
+**13B harness exit met** at `87b9367`.
+**13B overall remains incomplete** until separately authorized measure-once
+acceptance against the frozen `seccamp_` / `secinv_`.
 
 ---
 

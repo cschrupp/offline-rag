@@ -253,14 +253,15 @@ Checklist detail (same order; not startable out of sequence):
 - [x] recovery vs baseline authoritative measurement (**12C-2**) — **COMPLETE / ACCEPTED**
 - [ ] **Post-Slice-12 / Future Recovery Orchestration (LangGraph adapter)** — **NOT AUTHORIZED**
 - [x] **13A** security fixture contracts + deterministic invariants — **COMPLETE / ACCEPTED** (`c2c1ff8`)
-- [ ] **13B** query-path adversarial harness — **DESIGN LOCKED / ACCEPTED** (`d3fc861`); harness **IMPLEMENTED / PENDING INDEPENDENT ACCEPTANCE**; measure-once **NOT AUTHORIZED**; 13B **NOT COMPLETE / NOT ACCEPTED**
+- [ ] **13B** query-path adversarial campaign — design **LOCKED / ACCEPTED** (`d3fc861`); harness **COMPLETE / ACCEPTED** (`87b9367`); measure-once **NOT AUTHORIZED**; 13B **NOT COMPLETE**
 - [ ] **13C** recovery-path adversarial harness — **NOT AUTHORIZED**
 - [ ] optional NeMo Guardrails evaluation (**13D**; OD-13-2 OPEN/deferred) — **NOT AUTHORIZED**
 
-**Next:** Independent acceptance of the Slice **13B harness** candidate SHA.
-Authoritative measure-once remains **NOT AUTHORIZED** until after harness
-acceptance. 13C / 13D remain **NOT AUTHORIZED**. Normative §30 design authority
-remains `d3fc861` (unchanged by this implementation commit).
+**Next:** Separate independent authorization of the Slice **13B authoritative
+measure-once** campaign against frozen `seccamp_8034446…` / `secinv_454ef5…`
+from this docs/provenance closeout authority baseline. This closeout does
+**not** authorize measure-once execution, `eval/results/security_13b/` writes,
+13C/13D, recovery, LangGraph, NeMo, `base.yaml` mutation, or a 12C rerun.
 
 **Slice 13A COMPLETE / ACCEPTED**
 - Design authority: `571882e`
@@ -282,12 +283,18 @@ remains `d3fc861` (unchanged by this implementation commit).
 - **OD-13-5 LOCKED** — harness-only recovery; 13A=`harness_fake` satisfied
 - **OD-13-6 COMPLETE / ACCEPTED** — exact 13A boundary delivered at `c2c1ff8`
 
-**Slice 13B design lock ACCEPTED; harness PENDING INDEPENDENT ACCEPTANCE**
+**Slice 13B design ACCEPTED; harness COMPLETE / ACCEPTED; measure-once NOT AUTHORIZED**
 - Design authority: `d3fc861` (corrected lock; supersedes `4fd327b`)
-- Authority baseline: `1b87b90` (13A docs closeout)
+- Accepted harness technical result: `87b9367`
+- Chain: `d3fc861` → `0d7b7f3` → `8111c68` → `1977e3f` → `87b9367`
+- Frozen:
+  `seccamp_8034446afeef2cc3b417666bda1059f0fa530d3b458e05645418cc8742816351`
+  /
+  `secinv_454ef5d54e0e3ac0cd1f3e347f1172e5d2763d66514c0b13810467897767363a`
 - **OD-13-7 … OD-13-13 LOCKED / ACCEPTED**
-- Harness: **IMPLEMENTED / PENDING INDEPENDENT ACCEPTANCE** (dry-run only;
-  `offline-rag eval security-13b`; frozen `seccamp_` campaign definition)
+- Dry-run note: expected `campaign_outcome=fail` because
+  `security_policy_immutable_v1` is UNEVALUABLE on the query-path surface
+  (honest fail-closed instrumentation; not harness rejection)
 - Authoritative measure-once / `eval/results/security_13b/`: **NOT AUTHORIZED**
 - 13C / 13D / LangGraph / NeMo / product recovery / `base.yaml` / 12C rerun: **NOT AUTHORIZED**
 
