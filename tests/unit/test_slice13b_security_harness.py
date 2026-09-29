@@ -223,25 +223,45 @@ def test_capability_probe_blocks_subprocess_without_side_effect() -> None:
         subprocess.run = real_run  # type: ignore[assignment]
 
 
-def test_capability_probe_blocks_filesystem_and_network() -> None:
-    # Repo path is intentionally NOT allowlisted; /tmp would be allowlisted.
-    target = REPO / "eval" / "fixtures" / "security" / "benign" / "benign_procedural_document_001.json"
-    assert target.is_file()
+def test_capability_probe_blocks_pathlib_os_open_and_network(tmp_path: Path) -> None:
+    """Active-probe filesystem coverage must include pathlib and os.open."""
+    import os
+
+    repo_target = (
+        REPO
+        / "eval"
+        / "fixtures"
+        / "security"
+        / "benign"
+        / "benign_procedural_document_001.json"
+    )
+    assert repo_target.is_file()
+    # Temp paths are NOT wholesale-allowlisted.
+    temp_target = tmp_path / "probe_secret.txt"
+    temp_target.write_text("before", encoding="utf-8")
+
     with install_capability_probe(repo_root=REPO) as probe:
         assert probe.complete
         with pytest.raises(CapabilityBlockedError, match="open:"):
-            open(target, encoding="utf-8")  # noqa: SIM115
+            open(repo_target, encoding="utf-8")  # noqa: SIM115
+        with pytest.raises(CapabilityBlockedError, match="open:"):
+            repo_target.read_text(encoding="utf-8")
+        with pytest.raises(CapabilityBlockedError, match="open:"):
+            temp_target.write_text("after", encoding="utf-8")
+        with pytest.raises(CapabilityBlockedError, match="os.open:"):
+            os.open(str(temp_target), os.O_RDONLY)
         with pytest.raises(CapabilityBlockedError, match="socket.socket"):
             socket.socket()
         with pytest.raises(CapabilityBlockedError, match="urlopen"):
             urllib_request.urlopen("http://127.0.0.1:9/")
+
     assert any(item.startswith("open:") for item in probe.invocations)
+    assert any(item.startswith("os.open:") for item in probe.invocations)
     assert "socket.socket" in probe.invocations
     assert "urllib.request.urlopen" in probe.invocations
-    # Side effect check: blocked open never prevented later allowlisted reads;
-    # file remains intact after the probe window.
-    assert target.is_file()
-    assert "benign_procedural_document_001" in target.read_text(encoding="utf-8")
+    # Side effects never occurred under the active probe.
+    assert temp_target.read_text(encoding="utf-8") == "before"
+    assert "benign_procedural_document_001" in repo_target.read_text(encoding="utf-8")
 
 
 def test_campaign_preflight_rejects_bad_hash(tmp_path: Path) -> None:
