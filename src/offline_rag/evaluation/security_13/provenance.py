@@ -52,8 +52,8 @@ SECURITY_13B_EXECUTION_AFFECTING_PATHS: tuple[str, ...] = (
 LOCKED_SECURITY_FIXTURE_DIR_REL = Path("eval/fixtures/security")
 # Durable one-shot authz ledger; outside Q3 and never a substitute for Q3 artifacts.
 AUTHZ_CONSUMED_REL = Path("eval/results/security_13b_authz")
-# Immutable post-acceptance Q1 pin; outside executable tree and outside Q3.
-Q1_EXECUTABLE_PIN_REL = Path("eval/authority/security_13b/q1_executable_pin")
+# Immutable post-acceptance Q1 pin as an external Git ref (outside checked-out tree).
+Q1_EXECUTABLE_PIN_REF = "refs/offline-rag/authority/security_13b/q1"
 
 AUTHORITATIVE_NOT_AUTHORIZED_MSG = (
     "authoritative measure-once execution is not authorized"
@@ -255,27 +255,25 @@ def assert_lexical_path_chain_not_symlinked(
             )
 
 
-def q1_executable_pin_path(repo_root: Path) -> Path:
-    """Lexical path of the sealed post-acceptance Q1 executable pin."""
-    root = Path(repo_root).resolve()
-    return root.joinpath(*Q1_EXECUTABLE_PIN_REL.parts)
-
-
 def read_sealed_q1_executable_pin(repo_root: Path) -> str:
-    """Read the immutable sealed Q1 pin; fail closed if absent or aliased."""
-    root = Path(repo_root).resolve()
-    pin = q1_executable_pin_path(root)
-    assert_lexical_path_chain_not_symlinked(root, pin, kind="Q1 executable pin")
-    if not pin.is_file():
-        raise SecurityEvalError(
-            f"Q1 executable pin is not sealed at {pin}"
+    """Read the sealed Q1 pin from the external Git ref; fail closed if absent."""
+    root = resolve_git_repo_root(repo_root)
+    try:
+        sha = _run_git(
+            root,
+            "rev-parse",
+            "--verify",
+            f"{Q1_EXECUTABLE_PIN_REF}^{{commit}}",
         )
-    text = pin.read_text(encoding="utf-8").strip()
-    if not _SHA1_40_RE.fullmatch(text):
+    except SecurityEvalError as exc:
         raise SecurityEvalError(
-            f"Q1 executable pin must be 40 lowercase hex characters; got {text!r}"
+            f"Q1 executable pin is not sealed at {Q1_EXECUTABLE_PIN_REF}"
+        ) from exc
+    if not _SHA1_40_RE.fullmatch(sha):
+        raise SecurityEvalError(
+            f"Q1 executable pin must be 40 lowercase hex characters; got {sha!r}"
         )
-    return text
+    return sha
 
 
 def assert_executable_harness_pin(
@@ -291,31 +289,48 @@ def assert_executable_harness_pin(
 
 
 def seal_q1_executable_pin_from_verified_head(repo_root: Path) -> str:
-    """Atomically seal Q1 pin from verified HEAD (post-acceptance gate only).
+    """Create-only seal of Q1 pin Git ref from verified HEAD (post-acceptance).
 
-    Not invoked by authoritative execution. No caller-supplied SHA.
+    Not invoked by authoritative execution. No caller-supplied SHA, force, or
+    reseal path. Uses ``git update-ref --stdin`` ``create`` (fails if ref exists).
     """
     root = resolve_git_repo_root(repo_root)
     head = resolve_verified_head_sha(root)
-    pin = q1_executable_pin_path(root)
-    assert_lexical_path_chain_not_symlinked(root, pin, kind="Q1 executable pin")
-    if pin.exists() or pin.is_symlink():
+    # Fail closed if already present (also covers races before create).
+    probe = subprocess.run(
+        ["git", "rev-parse", "--verify", f"{Q1_EXECUTABLE_PIN_REF}^{{commit}}"],
+        cwd=root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if probe.returncode == 0:
         raise SecurityEvalError(
-            f"Q1 executable pin already sealed (immutable): {pin}"
+            f"Q1 executable pin already sealed (immutable): {Q1_EXECUTABLE_PIN_REF}"
         )
-    pin.parent.mkdir(parents=True, exist_ok=True)
-    import os
-
-    flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY
     try:
-        fd = os.open(str(pin), flags, 0o644)
-    except FileExistsError as exc:
+        completed = subprocess.run(
+            ["git", "update-ref", "--stdin"],
+            cwd=root,
+            check=False,
+            capture_output=True,
+            text=True,
+            input=f"create {Q1_EXECUTABLE_PIN_REF} {head}\n",
+        )
+    except OSError as exc:
+        raise SecurityEvalError(f"git update-ref failed: {exc}") from exc
+    if completed.returncode != 0:
+        err = (completed.stderr or completed.stdout or "").strip()
         raise SecurityEvalError(
-            f"Q1 executable pin already sealed (immutable): {pin}"
-        ) from exc
-    with os.fdopen(fd, "w", encoding="utf-8") as handle:
-        handle.write(head + "\n")
-    return head
+            f"Q1 executable pin seal failed for {Q1_EXECUTABLE_PIN_REF}: {err}"
+        )
+    sealed = read_sealed_q1_executable_pin(root)
+    if sealed != head:
+        raise SecurityEvalError(
+            "Q1 executable pin seal mismatch after create: "
+            f"expected {head}, got {sealed}"
+        )
+    return sealed
 
 
 def authorization_consumed_marker(repo_root: Path) -> Path:

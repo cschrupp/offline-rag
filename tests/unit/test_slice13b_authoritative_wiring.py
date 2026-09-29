@@ -158,9 +158,6 @@ def test_alternate_security_fixture_dir_fails_preflight(
     head = resolve_verified_head_sha(REPO)
     q3 = tmp_path / "q3" / FROZEN_SECCAMP_13B
     authz = tmp_path / "authz" / "authorization_consumed"
-    pin = tmp_path / "eval" / "authority" / "security_13b" / "q1_executable_pin"
-    pin.parent.mkdir(parents=True, exist_ok=True)
-    pin.write_text(head + "\n", encoding="utf-8")
 
     def _lexical(_repo: Path) -> Path:
         return q3
@@ -178,8 +175,8 @@ def test_alternate_security_fixture_dir_fails_preflight(
         lambda _repo: authz,
     )
     monkeypatch.setattr(
-        "offline_rag.evaluation.security_13.provenance.q1_executable_pin_path",
-        lambda _repo: pin,
+        "offline_rag.evaluation.security_13.provenance.read_sealed_q1_executable_pin",
+        lambda _repo: head,
     )
 
     alt = tmp_path / "alt_fixtures"
@@ -214,9 +211,6 @@ def test_authoritative_pin_mismatch_fails_preflight_without_q3_writes(
         lambda _repo: None,
     )
     q3 = tmp_path / "q3" / FROZEN_SECCAMP_13B
-    pin = tmp_path / "eval" / "authority" / "security_13b" / "q1_executable_pin"
-    pin.parent.mkdir(parents=True, exist_ok=True)
-    pin.write_text("0" * 40 + "\n", encoding="utf-8")
     monkeypatch.setattr(
         "offline_rag.evaluation.security_13.provenance.authoritative_campaign_result_root_lexical",
         lambda _repo: q3,
@@ -226,8 +220,8 @@ def test_authoritative_pin_mismatch_fails_preflight_without_q3_writes(
         lambda _repo: q3,
     )
     monkeypatch.setattr(
-        "offline_rag.evaluation.security_13.provenance.q1_executable_pin_path",
-        lambda _repo: pin,
+        "offline_rag.evaluation.security_13.provenance.read_sealed_q1_executable_pin",
+        lambda _repo: "0" * 40,
     )
     result = run_security_13b_authoritative(
         campaign_path=CAMPAIGN,
