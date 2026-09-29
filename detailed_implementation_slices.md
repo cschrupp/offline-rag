@@ -698,16 +698,29 @@ STATUS: INCOMPLETE
         13A COMPLETE / ACCEPTED (c2c1ff8)
         13B DESIGN: LOCKED / ACCEPTED (d3fc861)
         13B HARNESS: COMPLETE / ACCEPTED (87b9367)
-        13B AUTHORITATIVE MEASURE-ONCE: NOT AUTHORIZED
-        13B OVERALL: NOT COMPLETE
+        13B AUTHORITATIVE MEASURE-ONCE: COMPLETE / ACCEPTED (executed at 7baca2d)
+        13B OVERALL: COMPLETE / ACCEPTED
+        AUTHORITATIVE RESULT: completed / fail
+        AUTHORIZATION: CONSUMED / TERMINAL
+        RETRY / RESUME / SECOND ATTEMPT: FORBIDDEN
         13C / 13D NOT AUTHORIZED
 13A design authority: 571882e
 13A chain: 571882e → 7fe978a → c2c1ff8
 13B design authority: d3fc8616e5dfe474a53659bc3e276594d8eaa9c7
 13B accepted harness: 87b936789b2cf91e202be5ff4b818e3909460fd8
 13B chain: d3fc861 → 0d7b7f3 → 8111c68 → 1977e3f → 87b9367
+13B docs/provenance authority baseline: 4efcda174d27f92f75cd3e04b96137d92a5c0ab5
+13B sealed/executed executable SHA: 7baca2d0fd0d89b6358d04bd943c8c14ea6e742c
+13B Q1 seal: refs/offline-rag/authority/security_13b/q1 → 7baca2d0fd0d89b6358d04bd943c8c14ea6e742c
 Frozen seccamp_: seccamp_8034446afeef2cc3b417666bda1059f0fa530d3b458e05645418cc8742816351
 Frozen secinv_: secinv_454ef5d54e0e3ac0cd1f3e347f1172e5d2763d66514c0b13810467897767363a
+Frozen campaign Git blob: 7951ad964e7a91d5e89589acb4544fb99ca3079c
+Q3 result root (local/acceptance evidence; not committed to main):
+  eval/results/security_13b/seccamp_8034446afeef2cc3b417666bda1059f0fa530d3b458e05645418cc8742816351/
+Authz marker (local/acceptance evidence; not committed to main):
+  eval/results/security_13b_authz/seccamp_8034446afeef2cc3b417666bda1059f0fa530d3b458e05645418cc8742816351/authorization_consumed
+Evidence archive SHA-256:
+  ba454ca226d4ea3d85babd6a4d4f9fa0f21759d7bc01f36d5da891194f169004
 Authority: docs/milestone6_agentic_recovery_security.md §29–§30
   (normative OD-13-7…13 contract text unchanged; status/provenance only)
 Package: src/offline_rag/evaluation/security_13/
@@ -717,8 +730,8 @@ OD-13-1…6: 13A accepted (OD-13-2 OPEN / DEFERRED)
 OD-13-7…13: LOCKED / ACCEPTED
 Product recovery: DISABLED
 LangGraph / NeMo / 12C rerun: NOT AUTHORIZED
-Next: separate independent measure-once authorization against frozen
-      seccamp_ / secinv_ from this docs-closeout authority baseline
+Next: post-13B Milestone 6 status review → decide whether 13C remains the
+      correct next slice → open 13C design gate only if separately authorized
 ```
 
 ## Objective
@@ -736,24 +749,41 @@ Treat retrieved documents as untrusted input and prove that the RAG control plan
   `FakeRecoveryRewriter` only (`harness_fake` / offline)
 - thin package exports; no CLI
 
-## 13B DESIGN LOCKED / ACCEPTED; HARNESS COMPLETE / ACCEPTED
+## 13B COMPLETE / ACCEPTED
 
 Locked ODs: **OD-13-7 … OD-13-13** (§30) at `d3fc861`. Accepted harness at
-`87b9367` (chain `d3fc861` → `0d7b7f3` → `8111c68` → `1977e3f` → `87b9367`):
+`87b9367` (chain `d3fc861` → `0d7b7f3` → `8111c68` → `1977e3f` → `87b9367`).
+Sealed/executed authoritative executable: `7baca2d` (Q1 Git-ref seal → same
+SHA). Docs/provenance authority baseline: `4efcda1`.
 
 - query-path campaign scope; companion `benign-security-control-v1` / `benc_`
 - `security-campaign-v1` / `seccamp_`; 7 attack classes + 5 benign controls
 - real query-path injection via `GroundedGenerationExecutor` + `FakeGenerator`
   (`security13b-fake-v1`); OD-13-1 evaluators only
-- dry-run CLI only; hard reject of `eval/results/security_13b/`
+- dry-run CLI + one authorized authoritative measure-once (consumed / terminal)
 - `run_status` × `campaign_outcome`; narrow false-positive definition
 
-**Accepted harness dry-run note:** expected `campaign_outcome=fail` because
-`security_policy_immutable_v1` is UNEVALUABLE on the query-path generation
-surface (intentional fail-closed instrumentation; not harness rejection).
+**Accepted harness dry-run note (historical):** expected `campaign_outcome=fail`
+because `security_policy_immutable_v1` is UNEVALUABLE on the query-path
+generation surface (intentional fail-closed instrumentation; not harness
+rejection).
 
-**Still NOT AUTHORIZED:** authoritative measure-once, `eval/results/security_13b/`,
-13C/13D, LangGraph, NeMo, product recovery, `base.yaml` mutation, 12C rerun.
+**Authoritative measure-once (ACCEPTED):**
+- `run_status=completed`, `campaign_outcome=fail`
+- adversarial: pass=0 fail=7 (all 7 classes once;
+  `security_policy_immutable_v1` UNEVALUABLE×7)
+- benign: pass=0 fail=5 violations=0 unevaluable=5 false_positives=0
+- decisive invariant: `security_policy_immutable_v1`
+  (UNEVALUABLE → campaign fail under OD-13-1)
+- other expected invariants: HOLDS where applicable
+- recovery: disabled
+- expected fail-closed OD-13-1 outcome; not an execution defect; not grounds
+  for repair, retry, resume, or rerun
+- authorization **CONSUMED / TERMINAL**
+- Q3 / evidence archive: local/acceptance evidence (not committed to `main`)
+
+**Still NOT AUTHORIZED:** 13C/13D, LangGraph, NeMo, product recovery,
+`base.yaml` mutation, 12C rerun, any measure-once retry/resume/second attempt.
 
 ## Explicitly outside 13B
 
@@ -781,10 +811,14 @@ Deterministic control-plane invariants (OD-13-1) are the PASS/FAIL truth —
 not model refusal text.
 **13A exit met** at `c2c1ff8`.
 **13B harness exit met** at `87b9367`.
-**13B overall remains incomplete** until separately authorized measure-once
-acceptance against the frozen `seccamp_` / `secinv_`.
+**13B overall COMPLETE / ACCEPTED** — authoritative measure-once accepted
+(`completed` / `fail` at sealed executable `7baca2d`); authorization
+consumed / terminal; retry forbidden.
+**Slice 13 remains INCOMPLETE** until a separately authorized post-13B
+decision opens and completes later 13C/13D work (if any).
 
----
+**Next:** post-13B Milestone 6 status review → decide whether 13C remains the
+correct next slice → open 13C design gate only if separately authorized.
 
 # Slice 14 — Performance and resource benchmark harness
 

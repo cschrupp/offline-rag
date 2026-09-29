@@ -8,8 +8,11 @@ Slice 13 INCOMPLETE
   13A COMPLETE / ACCEPTED (c2c1ff8)
   13B DESIGN: LOCKED / ACCEPTED (d3fc861)
   13B HARNESS: COMPLETE / ACCEPTED (87b9367)
-  13B AUTHORITATIVE MEASURE-ONCE: NOT AUTHORIZED
-  13B OVERALL: NOT COMPLETE
+  13B AUTHORITATIVE MEASURE-ONCE: COMPLETE / ACCEPTED
+  13B OVERALL: COMPLETE / ACCEPTED
+  AUTHORITATIVE RESULT: completed / fail
+  AUTHORIZATION: CONSUMED / TERMINAL
+  RETRY / RESUME / SECOND ATTEMPT: FORBIDDEN
   13C–13D NOT AUTHORIZED
 Baseline: 1983ff1376ea27fc1e8774b35136dc8c8ec93f40
 Slice 13 design-open baseline: 6a3806bdc89a17bcdf992dba068e843f8535de6a
@@ -17,24 +20,44 @@ Slice 13 design lock (accepted): 571882e062359e258f5843b4289b2f556d22d7f7
 13A accepted technical result: c2c1ff85c5383e224fc8767be1abbd5c435dd789
 13B design authority: d3fc8616e5dfe474a53659bc3e276594d8eaa9c7
 13B accepted harness technical result: 87b936789b2cf91e202be5ff4b818e3909460fd8
+13B docs/provenance authority baseline: 4efcda174d27f92f75cd3e04b96137d92a5c0ab5
+13B design-open / slice baseline: 1b87b90cad610ba40513d4ac0ca5e3239c2d7c3d
+13B sealed/executed executable SHA: 7baca2d0fd0d89b6358d04bd943c8c14ea6e742c
+13B Q1 seal: refs/offline-rag/authority/security_13b/q1 → 7baca2d0fd0d89b6358d04bd943c8c14ea6e742c
 13B frozen seccamp_: seccamp_8034446afeef2cc3b417666bda1059f0fa530d3b458e05645418cc8742816351
 13B frozen secinv_: secinv_454ef5d54e0e3ac0cd1f3e347f1172e5d2763d66514c0b13810467897767363a
+13B frozen campaign Git blob: 7951ad964e7a91d5e89589acb4544fb99ca3079c
+13B Q3 result root (local/acceptance evidence; not committed to main):
+  eval/results/security_13b/seccamp_8034446afeef2cc3b417666bda1059f0fa530d3b458e05645418cc8742816351/
+13B authz marker (local/acceptance evidence; not committed to main):
+  eval/results/security_13b_authz/seccamp_8034446afeef2cc3b417666bda1059f0fa530d3b458e05645418cc8742816351/authorization_consumed
+13B independent acceptance evidence archive SHA-256:
+  ba454ca226d4ea3d85babd6a4d4f9fa0f21759d7bc01f36d5da891194f169004
 ```
 
 **Authoritative for:** Milestone 6 design/contract status (Slices 11 → 12 → 13),
 the accepted Slice 12 decision/disposition record, the Slice 13A accepted
-result, the Slice **13B** design lock (OD-13-7…13) at `d3fc861`, and the
-accepted Slice **13B harness** technical result at `87b9367`.
+result, the Slice **13B** design lock (OD-13-7…13) at `d3fc861`, the
+accepted Slice **13B harness** technical result at `87b9367`, the sealed/
+executed authoritative executable SHA `7baca2d`, and the accepted Slice
+**13B** authoritative measure-once terminal result (`completed` / `fail`).
 **Not authoritative for:** LangGraph adoption, recovery promotion, NeMo
-dependency, **13B authoritative measure-once**, 13C/13D, or
-publication-grade sufficiency/security claims.
+dependency, 13C/13D, measure-once retry/resume, or publication-grade
+sufficiency/security claims.
 
-Slice 11 and Slice 12 are closed. **13A is COMPLETE / ACCEPTED.** **13B design
-is LOCKED / ACCEPTED.** **13B harness is COMPLETE / ACCEPTED** at `87b9367`.
-**13B overall remains NOT COMPLETE** because authoritative measure-once is
-still **NOT AUTHORIZED**. This docs/provenance closeout does **not** authorize
-measure-once execution. The resulting closeout SHA becomes the authority
-baseline for any later independent measure-once authorization.
+Slice 11 and Slice 12 are closed. **13A is COMPLETE / ACCEPTED.** **13B is
+COMPLETE / ACCEPTED** (design `d3fc861`; harness `87b9367`; authoritative
+measure-once executed at sealed executable `7baca2d`; authorization
+**CONSUMED / TERMINAL**). Authoritative result: `run_status=completed`,
+`campaign_outcome=fail` — expected fail-closed OD-13-1 outcome
+(`security_policy_immutable_v1` UNEVALUABLE → campaign fail); not an
+execution defect; not grounds for repair or rerun. Benign false positives
+= 0. Recovery remains disabled. Q3 artifacts and the evidence archive are
+local/acceptance evidence and were **not** committed to `main`. This
+docs/status closeout becomes the accepted Slice **13B COMPLETE / ACCEPTED**
+documentation closeout SHA and the authority baseline for the **post-13B
+Milestone 6 status review only**. It does **not** re-seal Q1, alter
+`7baca2d`, change the measure-once result, or authorize 13C.
 ---
 
 ## 1. Objective
@@ -120,7 +143,7 @@ Recommended sub-slices:
 |---|---|
 | **11** | **11A** observation contracts → **11B** offline eval/threshold analysis → **11C** runtime policy integration |
 | **12** | **12A** recovery state/protocol (**COMPLETE / ACCEPTED**) → **12B** bounded rewriter + one retry (**COMPLETE / ACCEPTED**) → **12C** design **LOCKED / ACCEPTED**; **12C-1** harness **COMPLETE / ACCEPTED**; **12C-2** measurement **COMPLETE / ACCEPTED** — Slice **12 COMPLETE / ACCEPTED** |
-| **13** | **13A** COMPLETE / ACCEPTED (`c2c1ff8`) → **13B** design **LOCKED / ACCEPTED** (`d3fc861`) → harness **COMPLETE / ACCEPTED** (`87b9367`) → measure-once **NOT AUTHORIZED** → **13C** recovery-path (**NOT AUTHORIZED**) → **13D** NeMo (OD-13-2 **OPEN/deferred**); Slice 13 **INCOMPLETE** |
+| **13** | **13A** COMPLETE / ACCEPTED (`c2c1ff8`) → **13B** COMPLETE / ACCEPTED (design `d3fc861`; harness `87b9367`; measure-once executed at `7baca2d`; result `completed` / `fail`) → **13C** recovery-path (**NOT AUTHORIZED**) → **13D** NeMo (OD-13-2 **OPEN/deferred**); Slice 13 **INCOMPLETE** |
 
 NeMo is **not** required to complete the deterministic security architecture.
 
@@ -3472,8 +3495,9 @@ Design contract (this document)
   → 13A docs closeout / 13B design baseline         ← ACCEPTED (1b87b90)
   → 13B design lock (OD-13-7…13)                    ← LOCKED / ACCEPTED (d3fc861)
   → 13B harness implementation                      ← COMPLETE / ACCEPTED (87b9367)
-  → 13B docs/provenance closeout                    ← this commit (next measure-once baseline)
-  → 13B authoritative measure-once                  ← NOT AUTHORIZED
+  → 13B docs/provenance authority baseline          ← ACCEPTED (4efcda1)
+  → 13B authoritative measure-once                  ← COMPLETE / ACCEPTED (executed at 7baca2d; completed / fail)
+  → 13B docs/status closeout                        ← this commit (post-13B M6 review baseline)
   → 13C recovery-path adversarial harness           ← NOT AUTHORIZED
   → 13D optional NeMo (OD-13-2)                     ← OPEN / DEFERRED / NOT AUTHORIZED
 ```
@@ -3481,18 +3505,27 @@ Design contract (this document)
 **Slice 12 COMPLETE / ACCEPTED.** Recovery remains `enabled=false` by default.
 LangGraph is **Post-Slice-12 / NOT AUTHORIZED**.
 **13A COMPLETE / ACCEPTED** at `c2c1ff8`.
-**13B DESIGN LOCKED / ACCEPTED** at `d3fc861`.
-**13B HARNESS COMPLETE / ACCEPTED** at `87b9367`
-(chain `d3fc861` → `0d7b7f3` → `8111c68` → `1977e3f` → `87b9367`).
+**13B COMPLETE / ACCEPTED** — design `d3fc861`; harness `87b9367`
+(chain `d3fc861` → `0d7b7f3` → `8111c68` → `1977e3f` → `87b9367`);
+sealed/executed executable `7baca2d`; Q1 ref
+`refs/offline-rag/authority/security_13b/q1` → `7baca2d`; authorization
+**CONSUMED / TERMINAL**; retry **FORBIDDEN**.
 Frozen campaign:
 `seccamp_8034446afeef2cc3b417666bda1059f0fa530d3b458e05645418cc8742816351`
 / registry
-`secinv_454ef5d54e0e3ac0cd1f3e347f1172e5d2763d66514c0b13810467897767363a`.
-**13B overall NOT COMPLETE** — authoritative measure-once remains **NOT AUTHORIZED**.
-**Next** = separate independent authorization of the authoritative measure-once
-campaign against that frozen `seccamp_` / `secinv_` from **this** docs-closeout
-authority baseline. 13C / 13D remain **NOT AUTHORIZED**. OD-13-2 remains
-**OPEN / DEFERRED**.
+`secinv_454ef5d54e0e3ac0cd1f3e347f1172e5d2763d66514c0b13810467897767363a`
+/ campaign Git blob `7951ad964e7a91d5e89589acb4544fb99ca3079c`.
+Authoritative result: `run_status=completed`, `campaign_outcome=fail`
+(adversarial fail=7 / pass=0; benign fail=5 / pass=0 / FP=0 /
+`security_policy_immutable_v1` UNEVALUABLE×7 adversarial + ×5 benign).
+Expected fail-closed OD-13-1 outcome; not an execution defect; not grounds
+for repair or rerun. Q3 / evidence archive are local/acceptance evidence
+(not committed to `main`); evidence archive SHA-256
+`ba454ca226d4ea3d85babd6a4d4f9fa0f21759d7bc01f36d5da891194f169004`.
+Slice 13 remains **INCOMPLETE** (13C / 13D **NOT AUTHORIZED**; OD-13-2
+**OPEN / DEFERRED**).
+**Next** = post-13B Milestone 6 status review → decide whether 13C remains
+the correct next slice → open 13C design gate only if separately authorized.
 
 ---
 
@@ -3653,8 +3686,11 @@ SLICE 13 DESIGN: ACCEPTED (571882e)
 13A: COMPLETE / ACCEPTED (c2c1ff8)
 13B DESIGN: LOCKED / ACCEPTED (d3fc861)
 13B HARNESS: COMPLETE / ACCEPTED (87b9367)
-13B AUTHORITATIVE MEASURE-ONCE: NOT AUTHORIZED
-13B OVERALL: NOT COMPLETE
+13B AUTHORITATIVE MEASURE-ONCE: COMPLETE / ACCEPTED (executed at 7baca2d)
+13B OVERALL: COMPLETE / ACCEPTED
+AUTHORITATIVE RESULT: completed / fail
+AUTHORIZATION: CONSUMED / TERMINAL
+RETRY / RESUME / SECOND ATTEMPT: FORBIDDEN
 13C: NOT AUTHORIZED
 13D: NOT AUTHORIZED
 
@@ -3879,8 +3915,11 @@ implementation.
 ```text
 13B DESIGN: LOCKED / ACCEPTED (d3fc861)
 13B HARNESS: COMPLETE / ACCEPTED (87b9367)
-13B AUTHORITATIVE MEASURE-ONCE: NOT AUTHORIZED
-13B OVERALL: NOT COMPLETE
+13B AUTHORITATIVE MEASURE-ONCE: COMPLETE / ACCEPTED (executed at 7baca2d)
+13B OVERALL: COMPLETE / ACCEPTED
+AUTHORITATIVE RESULT: completed / fail
+AUTHORIZATION: CONSUMED / TERMINAL
+RETRY / RESUME / SECOND ATTEMPT: FORBIDDEN
 13C / 13D: NOT AUTHORIZED
 OD-13-2: OPEN / DEFERRED
 
@@ -3891,16 +3930,21 @@ NEMO: NOT AUTHORIZED
 base.yaml: MUST NOT CHANGE
 ```
 
-**Accepted harness dry-run note:** The current 13B dry-run is expected to
+**Accepted harness dry-run note (historical):** The 13B dry-run was expected to
 complete with `campaign_outcome=fail` because `security_policy_immutable_v1`
-is **UNEVALUABLE** on the accepted query-path generation surface. This is
-intentional fail-closed instrumentation behavior and does **not** constitute
+is **UNEVALUABLE** on the accepted query-path generation surface. That was
+intentional fail-closed instrumentation behavior and did **not** constitute
 rejection of the 13B harness implementation.
 
-Independent acceptance of the harness SHA does **not** authorize the
-authoritative measure-once campaign. Measure-once requires a further separate
-authorization against the frozen `seccamp_` / `secinv_` from this
-docs/provenance closeout authority baseline.
+**Authoritative measure-once (ACCEPTED):** executed once at sealed executable
+`7baca2d0fd0d89b6358d04bd943c8c14ea6e742c` (Q1 Git-ref seal
+`refs/offline-rag/authority/security_13b/q1` → same SHA). Result:
+`run_status=completed`, `campaign_outcome=fail` — expected fail-closed
+OD-13-1 outcome (`security_policy_immutable_v1` UNEVALUABLE → campaign fail);
+not an execution defect; not grounds for repair or rerun. Benign FP = 0.
+Authorization **CONSUMED / TERMINAL**; retry **FORBIDDEN**. Q3 artifacts and
+the independent-acceptance evidence archive are local/acceptance evidence and
+were **not** committed to `main`.
 
 ### OD-13-7 — 13B authoritative scope boundary (**LOCKED**)
 
@@ -4124,21 +4168,29 @@ orchestration contract: **ARCHITECTURE STOP**.
 Recovery remains **DISABLED**. LangGraph **Post-Slice-12 / NOT AUTHORIZED**.
 
 **13A COMPLETE / ACCEPTED** at `c2c1ff85c5383e224fc8767be1abbd5c435dd789`.
-**13B DESIGN LOCKED / ACCEPTED** at
-`d3fc8616e5dfe474a53659bc3e276594d8eaa9c7`.
-**13B HARNESS COMPLETE / ACCEPTED** at
+**13B COMPLETE / ACCEPTED** — design
+`d3fc8616e5dfe474a53659bc3e276594d8eaa9c7`; harness
 `87b936789b2cf91e202be5ff4b818e3909460fd8`
-(chain `d3fc861` → `0d7b7f3` → `8111c68` → `1977e3f` → `87b9367`).
+(chain `d3fc861` → `0d7b7f3` → `8111c68` → `1977e3f` → `87b9367`);
+sealed/executed executable `7baca2d0fd0d89b6358d04bd943c8c14ea6e742c`;
+Q1 seal `refs/offline-rag/authority/security_13b/q1` → `7baca2d`;
+docs/provenance authority baseline
+`4efcda174d27f92f75cd3e04b96137d92a5c0ab5`.
 Frozen:
 `seccamp_8034446afeef2cc3b417666bda1059f0fa530d3b458e05645418cc8742816351`
 /
-`secinv_454ef5d54e0e3ac0cd1f3e347f1172e5d2763d66514c0b13810467897767363a`.
+`secinv_454ef5d54e0e3ac0cd1f3e347f1172e5d2763d66514c0b13810467897767363a`
+/ campaign Git blob `7951ad964e7a91d5e89589acb4544fb99ca3079c`.
+Authoritative result: `completed` / `fail` (expected fail-closed OD-13-1:
+`security_policy_immutable_v1` UNEVALUABLE → fail; benign FP = 0).
+Authorization **CONSUMED / TERMINAL**; retry **FORBIDDEN**.
 OD-13-7…13 **LOCKED / ACCEPTED**; OD-13-2 **OPEN / DEFERRED**.
-**13B overall NOT COMPLETE.**
+Slice 13 remains **INCOMPLETE** (13C / 13D **NOT AUTHORIZED**).
 
 ```text
-authoritative measure-once execution     NOT AUTHORIZED
-eval/results/security_13b/ writes        NOT AUTHORIZED
+13B authoritative measure-once           COMPLETE / ACCEPTED (executed at 7baca2d)
+13B authorization                        CONSUMED / TERMINAL
+measure-once retry / resume              FORBIDDEN
 13C                                      NOT AUTHORIZED
 13D / NeMo                               NOT AUTHORIZED
 product recovery                         DISABLED / NOT AUTHORIZED
@@ -4147,19 +4199,12 @@ config/base.yaml mutation                NOT AUTHORIZED
 12C rerun                                NOT AUTHORIZED
 ```
 
-Milestone **6 remains INCOMPLETE**.
+Milestone **6 remains IN PROGRESS** (Slice 13 incomplete).
 
-**Next:** separate independent authorization of the Slice 13B authoritative
-measure-once campaign against the frozen
+**Next:** post-13B Milestone 6 status review → decide whether 13C remains
+the correct next slice → open 13C design gate only if separately authorized.
 
-`seccamp_8034446afeef2cc3b417666bda1059f0fa530d3b458e05645418cc8742816351`
-
-and
-
-`secinv_454ef5d54e0e3ac0cd1f3e347f1172e5d2763d66514c0b13810467897767363a`
-
-from **this** docs/provenance closeout authority baseline.
-
-This closeout **DOES NOT** authorize: authoritative measure-once execution;
-creation or mutation of `eval/results/security_13b/`; 13C; 13D / NeMo;
-product recovery; LangGraph; `config/base.yaml` changes; or a 12C rerun.
+This docs/status closeout **DOES NOT** authorize: 13C implementation; 13D /
+NeMo; product recovery; LangGraph; `config/base.yaml` changes; a 12C rerun;
+or any measure-once retry / resume / second attempt. It does **not** re-seal
+Q1 or alter the executed executable `7baca2d`.
