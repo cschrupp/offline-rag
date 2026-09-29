@@ -29,6 +29,7 @@ from offline_rag.evaluation.security_13.contracts import (
     BenignSecurityControlV1,
     PerInvariantAggregateBlockV1,
     PopulationCountsV1,
+    RunModeV1,
     SecurityCampaignAggregateV1,
     SecurityCampaignRunManifestV1,
     SecurityCampaignV1,
@@ -48,6 +49,15 @@ from offline_rag.evaluation.security_13.loader import (
     load_security_campaign,
 )
 from offline_rag.evaluation.security_13.paths import allocate_dryrun_run_dir
+from offline_rag.evaluation.security_13.provenance import (
+    AUTHORITATIVE_NOT_AUTHORIZED_MSG,
+    ProvenanceContext,
+    assert_authoritative_root_absent,
+    assert_authority_baseline,
+    assert_frozen_campaign_identities,
+    authoritative_campaign_result_root,
+    collect_git_and_campaign_provenance,
+)
 from offline_rag.generation.contracts import EVIDENCE_BEGIN
 from offline_rag.generation.executor import GroundedGenerationExecutor
 from offline_rag.generation.fake import FakeGenerator
@@ -396,11 +406,18 @@ def run_security_13b_dryrun(
     """
     root = Path(repo_root) if repo_root is not None else Path.cwd()
     rid = run_id or f"dryrun_{uuid.uuid4().hex[:12]}"
+    provenance = collect_git_and_campaign_provenance(
+        repo_root=root, campaign_path=campaign_path
+    )
+    assert_authority_baseline(provenance.authority_baseline_sha)
+
+    root = provenance.repo_root
     out = allocate_dryrun_run_dir(run_id=rid, output_dir=output_dir, repo_root=root)
     out.mkdir(parents=True, exist_ok=False)
 
     try:
-        campaign = load_security_campaign(campaign_path)
+        campaign = load_security_campaign(provenance.campaign_path)
+        assert_frozen_campaign_identities(campaign)
         adversarial_fixtures, benign_controls = resolve_campaign_population(
             campaign, security_fixture_dir=security_fixture_dir
         )
@@ -410,8 +427,10 @@ def run_security_13b_dryrun(
             seccamp_=empty_agg.seccamp_,
             secinv_=empty_agg.secinv_,
             run_id=rid,
+            run_mode="dry_run",
             output_root=out,
-            campaign_path=campaign_path,
+            campaign_path=provenance.campaign_path,
+            provenance=provenance,
         )
         _write_dryrun_artifacts(
             out,
@@ -479,8 +498,10 @@ def run_security_13b_dryrun(
         seccamp_=campaign.campaign_identity_hash,
         secinv_=campaign.registry_hash,
         run_id=rid,
+        run_mode="dry_run",
         output_root=out,
-        campaign_path=campaign_path,
+        campaign_path=provenance.campaign_path,
+        provenance=provenance,
     )
     report_lines = [
         f"# Slice 13B dry-run report ({rid})",
@@ -516,6 +537,46 @@ def run_security_13b_dryrun(
     )
 
 
+def run_security_13b_authoritative(
+    *,
+    campaign_path: Path,
+    security_fixture_dir: Path,
+    repo_root: Path | None = None,
+    run_id: str | None = None,
+) -> None:
+    """Preflight-only authoritative gate stub (WQ5).
+
+    Verifies provenance and builds an in-memory authoritative manifest, then
+    hard-rejects before any case execution or Q3 write.
+    """
+    root = Path(repo_root) if repo_root is not None else Path.cwd()
+    provenance = collect_git_and_campaign_provenance(
+        repo_root=root, campaign_path=campaign_path
+    )
+    assert_authority_baseline(provenance.authority_baseline_sha)
+    campaign = load_security_campaign(provenance.campaign_path)
+    assert_frozen_campaign_identities(campaign)
+    resolve_campaign_population(
+        campaign, security_fixture_dir=security_fixture_dir
+    )
+    assert_authoritative_root_absent(provenance.repo_root)
+    q3 = authoritative_campaign_result_root(provenance.repo_root)
+    rid = run_id or "authoritative_gate"
+    manifest = _manifest(
+        seccamp_=campaign.campaign_identity_hash,
+        secinv_=campaign.registry_hash,
+        run_id=rid,
+        run_mode="authoritative",
+        output_root=q3,
+        campaign_path=provenance.campaign_path,
+        provenance=provenance,
+    )
+    if manifest.run_mode != "authoritative":
+        raise SecurityEvalError("authoritative manifest run_mode must be authoritative")
+    # Intentional hard-stop after successful preflight (not missing functionality).
+    raise SecurityEvalError(AUTHORITATIVE_NOT_AUTHORIZED_MSG)
+
+
 def _preflight_failed_aggregate() -> SecurityCampaignAggregateV1:
     return SecurityCampaignAggregateV1(
         seccamp_="seccamp_preflight_failed",
@@ -543,19 +604,26 @@ def _manifest(
     seccamp_: str,
     secinv_: str,
     run_id: str,
+    run_mode: RunModeV1,
     output_root: Path,
     campaign_path: Path,
+    provenance: ProvenanceContext,
 ) -> SecurityCampaignRunManifestV1:
+    assert_authority_baseline(provenance.authority_baseline_sha)
     return SecurityCampaignRunManifestV1(
         seccamp_=seccamp_,
         secinv_=secinv_,
         run_id=run_id,
+        run_mode=run_mode,
         prompt_contract=PROMPT_GROUNDED_V1,
         generator_probe_policy=GENERATOR_PROBE_POLICY_13B_V1,
         output_root=str(output_root),
         campaign_path=str(campaign_path),
         design_authority_sha=DESIGN_AUTHORITY_SHA_13B,
         slice13b_baseline_sha=SLICE13B_BASELINE_SHA,
+        authority_baseline_sha=provenance.authority_baseline_sha,
+        executable_harness_sha=provenance.executable_harness_sha,
+        campaign_blob_sha=provenance.campaign_blob_sha,
     )
 
 

@@ -1456,9 +1456,12 @@ def cmd_eval_query(args: argparse.Namespace) -> int:
 
 
 def cmd_eval_security_13b(args: argparse.Namespace) -> int:
-    """Thin CLI for Slice 13B dry-run only (no authoritative measure-once)."""
+    """Thin CLI for Slice 13B dry-run / authoritative gate stub."""
     from offline_rag.evaluation.security_13.contracts import SecurityEvalError
-    from offline_rag.evaluation.security_13.harness import run_security_13b_dryrun
+    from offline_rag.evaluation.security_13.harness import (
+        run_security_13b_authoritative,
+        run_security_13b_dryrun,
+    )
 
     repo = _repo_root()
     campaign = (
@@ -1476,7 +1479,20 @@ def cmd_eval_security_13b(args: argparse.Namespace) -> int:
         if args.fixtures is not None
         else repo / "eval" / "fixtures" / "security"
     )
+    mode = getattr(args, "mode", "dry_run")
     try:
+        if mode == "authoritative":
+            run_security_13b_authoritative(
+                campaign_path=campaign,
+                security_fixture_dir=fixtures,
+                repo_root=repo,
+                run_id=args.run_id,
+            )
+            print(
+                "eval security-13b: authoritative entry returned without rejection",
+                file=sys.stderr,
+            )
+            return 1
         result = run_security_13b_dryrun(
             campaign_path=campaign,
             security_fixture_dir=fixtures,
@@ -2637,8 +2653,17 @@ def build_parser() -> argparse.ArgumentParser:
     eval_security_13b = eval_sub.add_parser(
         "security-13b",
         help=(
-            "Slice 13B query-path security campaign dry-run "
-            "(authoritative measure-once NOT implemented)"
+            "Slice 13B query-path security campaign "
+            "(dry-run end-to-end; authoritative mode is gate-stub only)"
+        ),
+    )
+    eval_security_13b.add_argument(
+        "--mode",
+        choices=("dry_run", "authoritative"),
+        default="dry_run",
+        help=(
+            "dry_run: provenance-complete campaign execution to dry-run root; "
+            "authoritative: preflight-only gate stub (NOT AUTHORIZED)"
         ),
     )
     eval_security_13b.add_argument(
@@ -2663,13 +2688,14 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "Dry-run output directory (default: "
             "eval/results/security_13b_dryrun/<run_id>/). "
-            "Must resolve outside eval/results/security_13b/"
+            "Must resolve outside eval/results/security_13b/. "
+            "Ignored for --mode authoritative."
         ),
     )
     eval_security_13b.add_argument(
         "--run-id",
         default=None,
-        help="Optional dry-run id (default: generated)",
+        help="Optional run id (default: generated)",
     )
     eval_security_13b.set_defaults(func=cmd_eval_security_13b)
 

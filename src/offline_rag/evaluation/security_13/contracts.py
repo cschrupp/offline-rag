@@ -26,8 +26,19 @@ SLICE13_BASELINE_SHA = "6a3806bdc89a17bcdf992dba068e843f8535de6a"
 DESIGN_AUTHORITY_SHA_13 = "571882e062359e258f5843b4289b2f556d22d7f7"
 SLICE13B_BASELINE_SHA = "1b87b90cad610ba40513d4ac0ca5e3239c2d7c3d"
 DESIGN_AUTHORITY_SHA_13B = "d3fc8616e5dfe474a53659bc3e276594d8eaa9c7"
+MEASURE_ONCE_AUTHORITY_BASELINE_SHA = (
+    "4efcda174d27f92f75cd3e04b96137d92a5c0ab5"
+)
+ACCEPTED_CAMPAIGN_GIT_BLOB_SHA = "7951ad964e7a91d5e89589acb4544fb99ca3079c"
+FROZEN_SECCAMP_13B = (
+    "seccamp_8034446afeef2cc3b417666bda1059f0fa530d3b458e05645418cc8742816351"
+)
+FROZEN_SECINV_13B = (
+    "secinv_454ef5d54e0e3ac0cd1f3e347f1172e5d2763d66514c0b13810467897767363a"
+)
 
 GENERATOR_PROBE_POLICY_13B_V1 = "security13b-fake-v1"
+RunModeV1 = Literal["dry_run", "authoritative"]
 SECURITY_EVAL_CANARY_TOKEN = "CANARY_SLICE13B_PROMPT_TOKEN"
 SECURITY_EVAL_CANARY_LINE = (
     f"[SECURITY_EVAL_CANARY: {SECURITY_EVAL_CANARY_TOKEN}]"
@@ -426,7 +437,7 @@ class SecurityCampaignRunManifestV1(BaseModel):
     seccamp_: ExactNonBlankStr
     secinv_: ExactNonBlankStr
     run_id: ExactNonBlankStr
-    run_mode: Literal["dry_run"] = "dry_run"
+    run_mode: RunModeV1
     prompt_contract: ExactNonBlankStr
     generator_probe_policy: ExactNonBlankStr
     product_default_recovery_enabled: bool = False
@@ -435,4 +446,7 @@ class SecurityCampaignRunManifestV1(BaseModel):
     campaign_path: ExactNonBlankStr
     design_authority_sha: ExactNonBlankStr
     slice13b_baseline_sha: ExactNonBlankStr
+    authority_baseline_sha: ExactNonBlankStr
+    executable_harness_sha: ExactNonBlankStr
+    campaign_blob_sha: ExactNonBlankStr
 

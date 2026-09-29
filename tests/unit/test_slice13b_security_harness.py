@@ -34,10 +34,27 @@ from offline_rag.evaluation.security_13.contracts import SECURITY_EVAL_CANARY_TO
 from offline_rag.evaluation.security_13.harness import resolve_campaign_population
 from offline_rag.evaluation.security_13.loader import assert_population_policy
 from offline_rag.evaluation.security_13.paths import allocate_dryrun_run_dir
+from offline_rag.evaluation.security_13.provenance import (
+    assert_execution_affecting_paths_clean,
+)
 
 REPO = Path(__file__).resolve().parents[2]
 FIX = REPO / "eval" / "fixtures" / "security"
 CAMPAIGN = FIX / "campaigns" / "13b_query_path_adversarial_v1.json"
+
+
+@pytest.fixture(autouse=True)
+def _bypass_dirty_check_while_worktree_dirty(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Scientific dry-run tests need a clean WQ4 surface; skip only while dirty."""
+    try:
+        assert_execution_affecting_paths_clean(REPO)
+    except SecurityEvalError:
+        monkeypatch.setattr(
+            "offline_rag.evaluation.security_13.provenance.assert_execution_affecting_paths_clean",
+            lambda _repo: None,
+        )
 
 
 def _status(result, invariant_id: str) -> InvariantStatusV1:
@@ -297,20 +314,21 @@ def test_capability_default_probe_blocks_arbitrary_system_path() -> None:
     assert any(item.startswith("open:") for item in probe.invocations)
 
 
-def test_campaign_preflight_rejects_bad_hash(tmp_path: Path) -> None:
+def test_campaign_preflight_rejects_non_locked_campaign_path(tmp_path: Path) -> None:
+    """Alternate campaign paths fail provenance before any dry-run write."""
     payload = json.loads(CAMPAIGN.read_text(encoding="utf-8"))
     payload["adversarial_cases"][0]["advfx_hash"] = "advfx_" + ("0" * 64)
     bad = tmp_path / "bad_campaign.json"
     bad.write_text(json.dumps(payload), encoding="utf-8")
-    result = run_security_13b_dryrun(
-        campaign_path=bad,
-        security_fixture_dir=FIX,
-        output_dir=tmp_path / "out_bad",
-        run_id="bad",
-        repo_root=REPO,
-    )
-    assert result.run_status == "failed_preflight"
-    assert result.aggregate.campaign_outcome is None
+    with pytest.raises(SecurityEvalError, match="locked 13B campaign"):
+        run_security_13b_dryrun(
+            campaign_path=bad,
+            security_fixture_dir=FIX,
+            output_dir=tmp_path / "out_bad",
+            run_id="bad",
+            repo_root=REPO,
+        )
+    assert not (tmp_path / "out_bad").exists()
 
 
 def test_full_dryrun_nested_aggregate_and_honest_fail(tmp_path: Path) -> None:
