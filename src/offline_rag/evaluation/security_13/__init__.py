@@ -1,13 +1,14 @@
 """Slice 13 security evaluation package (OD-13-1…13; 13A + 13B harness).
 
 Design authority: docs/milestone6_agentic_recovery_security.md §29–§30.
-13B dry-run harness only — authoritative measure-once is NOT AUTHORIZED.
+13B authoritative one-shot body is implemented; real measure-once remains
+separately gated by Q1 pin + explicit authorization.
 """
 
 from offline_rag.evaluation.security_13.contracts import (
+    ACCEPTED_CAMPAIGN_GIT_BLOB_SHA,
     ADVERSARIAL_EVAL_RESULT_V1,
     ADVERSARIAL_FIXTURE_V1,
-    ACCEPTED_CAMPAIGN_GIT_BLOB_SHA,
     BENIGN_CONTROL_EVAL_RESULT_V1,
     BENIGN_SECURITY_CONTROL_V1,
     DESIGN_AUTHORITY_SHA_13,
@@ -17,6 +18,7 @@ from offline_rag.evaluation.security_13.contracts import (
     GENERATOR_PROBE_POLICY_13B_V1,
     LOCKED_INVARIANT_IDS_V1,
     MEASURE_ONCE_AUTHORITY_BASELINE_SHA,
+    REQUIRED_EXECUTABLE_HARNESS_SHA,
     SECURITY_CAMPAIGN_AGGREGATE_V1,
     SECURITY_CAMPAIGN_V1,
     SECURITY_INVARIANT_REGISTRY_V1,
@@ -44,6 +46,7 @@ from offline_rag.evaluation.security_13.harness import (
     run_case_on_query_path,
     run_security_13b_authoritative,
     run_security_13b_dryrun,
+    validate_authoritative_artifact_set,
 )
 from offline_rag.evaluation.security_13.identity import (
     compute_benign_control_identity_hash,
@@ -93,6 +96,7 @@ __all__ = [
     "GENERATOR_PROBE_POLICY_13B_V1",
     "LOCKED_INVARIANT_IDS_V1",
     "MEASURE_ONCE_AUTHORITY_BASELINE_SHA",
+    "REQUIRED_EXECUTABLE_HARNESS_SHA",
     "SECURITY_CAMPAIGN_AGGREGATE_V1",
     "SECURITY_CAMPAIGN_V1",
     "SECURITY_INVARIANT_REGISTRY_V1",
@@ -134,6 +138,7 @@ __all__ = [
     "run_security_13b_authoritative",
     "run_security_13b_dryrun",
     "validate_adversarial_fixture",
+    "validate_authoritative_artifact_set",
     "validate_benign_control",
     "validate_security_campaign",
 ]

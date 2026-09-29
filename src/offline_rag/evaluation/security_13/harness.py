@@ -50,14 +50,17 @@ from offline_rag.evaluation.security_13.loader import (
 )
 from offline_rag.evaluation.security_13.paths import allocate_dryrun_run_dir
 from offline_rag.evaluation.security_13.provenance import (
-    AUTHORITATIVE_NOT_AUTHORIZED_MSG,
     ProvenanceContext,
     assert_authoritative_root_absent,
     assert_authority_baseline,
+    assert_authorization_not_consumed,
+    assert_executable_harness_pin,
     assert_frozen_campaign_identities,
     assert_locked_security_fixture_dir,
     authoritative_campaign_result_root,
+    authoritative_campaign_result_root_lexical,
     collect_git_and_campaign_provenance,
+    mark_authorization_consumed,
 )
 from offline_rag.generation.contracts import EVIDENCE_BEGIN
 from offline_rag.generation.executor import GroundedGenerationExecutor
@@ -436,7 +439,7 @@ def run_security_13b_dryrun(
             campaign_path=provenance.campaign_path,
             provenance=provenance,
         )
-        _write_dryrun_artifacts(
+        _write_campaign_artifacts(
             out,
             manifest=manifest,
             aggregate=empty_agg,
@@ -520,7 +523,7 @@ def run_security_13b_dryrun(
     ]
     if error:
         report_lines.append(f"- error: `{error}`")
-    _write_dryrun_artifacts(
+    _write_campaign_artifacts(
         out,
         manifest=manifest,
         aggregate=aggregate,
@@ -541,45 +544,269 @@ def run_security_13b_dryrun(
     )
 
 
+@dataclass
+class CampaignAuthoritativeResult:
+    run_id: str
+    output_dir: Path | None
+    run_status: str
+    aggregate: SecurityCampaignAggregateV1
+    manifest: SecurityCampaignRunManifestV1 | None
+    campaign: SecurityCampaignV1 | None = None
+    adversarial_results: list[AdversarialEvalResultV1] = field(default_factory=list)
+    benign_results: list[BenignControlEvalResultV1] = field(default_factory=list)
+    authorization_consumed: bool = False
+    error: str | None = None
+
+
 def run_security_13b_authoritative(
     *,
     campaign_path: Path,
     security_fixture_dir: Path,
     repo_root: Path | None = None,
     run_id: str | None = None,
-) -> None:
-    """Preflight-only authoritative gate stub (WQ5).
+    response_override_for_case: Callable[[str], str | None] | None = None,
+) -> CampaignAuthoritativeResult:
+    """One-shot authoritative campaign body (staging outside Q3, atomic publish).
 
-    Verifies provenance and builds an in-memory authoritative manifest, then
-    hard-rejects before any case execution or Q3 write.
+    Preflight failures do not consume authorization and write nothing under Q3.
+    Authorization is consumed immediately before the first case executes.
     """
     root = Path(repo_root) if repo_root is not None else Path.cwd()
-    provenance = collect_git_and_campaign_provenance(
-        repo_root=root, campaign_path=campaign_path
-    )
-    assert_authority_baseline(provenance.authority_baseline_sha)
-    fixture_dir = assert_locked_security_fixture_dir(
-        provenance.repo_root, security_fixture_dir
-    )
-    campaign = load_security_campaign(provenance.campaign_path)
-    assert_frozen_campaign_identities(campaign)
-    resolve_campaign_population(campaign, security_fixture_dir=fixture_dir)
-    assert_authoritative_root_absent(provenance.repo_root)
-    q3 = authoritative_campaign_result_root(provenance.repo_root)
-    rid = run_id or "authoritative_gate"
+    rid = run_id or f"authoritative_{uuid.uuid4().hex[:12]}"
+    consumed = False
+    staging: Path | None = None
+
+    try:
+        provenance = collect_git_and_campaign_provenance(
+            repo_root=root, campaign_path=campaign_path
+        )
+        assert_authority_baseline(provenance.authority_baseline_sha)
+        assert_executable_harness_pin(provenance.executable_harness_sha)
+        fixture_dir = assert_locked_security_fixture_dir(
+            provenance.repo_root, security_fixture_dir
+        )
+        campaign = load_security_campaign(provenance.campaign_path)
+        assert_frozen_campaign_identities(campaign)
+        adversarial_fixtures, benign_controls = resolve_campaign_population(
+            campaign, security_fixture_dir=fixture_dir
+        )
+        assert_authoritative_root_absent(provenance.repo_root)
+        assert_authorization_not_consumed(provenance.repo_root)
+    except SecurityEvalError as exc:
+        empty = _preflight_failed_aggregate()
+        return CampaignAuthoritativeResult(
+            run_id=rid,
+            output_dir=None,
+            run_status="failed_preflight",
+            aggregate=empty,
+            manifest=None,
+            authorization_consumed=False,
+            error=str(exc),
+        )
+
+    root = provenance.repo_root
+    q3_lexical = authoritative_campaign_result_root_lexical(root)
+    q3_resolved = authoritative_campaign_result_root(root)
     manifest = _manifest(
         seccamp_=campaign.campaign_identity_hash,
         secinv_=campaign.registry_hash,
         run_id=rid,
         run_mode="authoritative",
-        output_root=q3,
+        output_root=q3_resolved,
         campaign_path=provenance.campaign_path,
         provenance=provenance,
     )
     if manifest.run_mode != "authoritative":
-        raise SecurityEvalError("authoritative manifest run_mode must be authoritative")
-    # Intentional hard-stop after successful preflight (not missing functionality).
-    raise SecurityEvalError(AUTHORITATIVE_NOT_AUTHORIZED_MSG)
+        empty = _preflight_failed_aggregate()
+        return CampaignAuthoritativeResult(
+            run_id=rid,
+            output_dir=None,
+            run_status="failed_preflight",
+            aggregate=empty,
+            manifest=manifest,
+            campaign=campaign,
+            authorization_consumed=False,
+            error="authoritative manifest run_mode must be authoritative",
+        )
+
+    # Consume immediately before first case; durable; no retry under this authz.
+    mark_authorization_consumed(root)
+    consumed = True
+
+    settings = build_harness_settings()
+    adv_pairs: list[tuple[AdversarialFixtureV1, AdversarialEvalResultV1]] = []
+    benign_results: list[BenignControlEvalResultV1] = []
+    run_status = "completed"
+    error: str | None = None
+
+    try:
+        staging = _allocate_authoritative_staging(root)
+        for fixture in adversarial_fixtures:
+            override = (
+                response_override_for_case(fixture.fixture_id)
+                if response_override_for_case is not None
+                else None
+            )
+            observation, _trace = run_case_on_query_path(
+                fixture,
+                settings=settings,
+                response_override=override,
+                repo_root=root,
+            )
+            adv_pairs.append(
+                (fixture, evaluate_adversarial_fixture(fixture, observation))
+            )
+        for control in benign_controls:
+            override = (
+                response_override_for_case(control.control_id)
+                if response_override_for_case is not None
+                else None
+            )
+            observation, _trace = run_case_on_query_path(
+                control,
+                settings=settings,
+                response_override=override,
+                repo_root=root,
+            )
+            benign_results.append(evaluate_benign_control(control, observation))
+
+        aggregate = build_campaign_aggregate(
+            campaign=campaign,
+            run_status="completed",
+            adversarial_results=adv_pairs,
+            benign_results=benign_results,
+        )
+        report_lines = [
+            f"# Slice 13B authoritative report ({rid})",
+            "",
+            f"- seccamp_: `{campaign.campaign_identity_hash}`",
+            f"- run_status: `completed`",
+            f"- campaign_outcome: `{aggregate.campaign_outcome}`",
+            f"- generator_probe_policy: `{GENERATOR_PROBE_POLICY_13B_V1}`",
+            f"- prompt_contract: `{PROMPT_GROUNDED_V1}`",
+            f"- executable_harness_sha: `{provenance.executable_harness_sha}`",
+        ]
+        _write_campaign_artifacts(
+            staging,
+            manifest=manifest,
+            aggregate=aggregate,
+            adversarial_results=[r for _, r in adv_pairs],
+            benign_results=benign_results,
+            report_lines=report_lines,
+        )
+        validate_authoritative_artifact_set(
+            staging,
+            adversarial_ids=[f.fixture_id for f in adversarial_fixtures],
+            benign_ids=[c.control_id for c in benign_controls],
+        )
+        assert_authoritative_root_absent(root)
+        _publish_authoritative_root(staging, q3_lexical)
+        staging = None  # published; ownership transferred
+        return CampaignAuthoritativeResult(
+            campaign=campaign,
+            run_id=rid,
+            output_dir=q3_lexical,
+            run_status="completed",
+            aggregate=aggregate,
+            manifest=manifest,
+            adversarial_results=[r for _, r in adv_pairs],
+            benign_results=benign_results,
+            authorization_consumed=True,
+            error=None,
+        )
+    except Exception as exc:  # noqa: BLE001 — fail-closed after consumption
+        run_status = "failed_during_execution"
+        error = str(exc)
+        fail_agg = build_campaign_aggregate(
+            campaign=campaign,
+            run_status=run_status,
+            adversarial_results=adv_pairs,
+            benign_results=benign_results,
+        )
+        # Do not publish incomplete sets to Q3. Staging may remain for diagnostics.
+        return CampaignAuthoritativeResult(
+            campaign=campaign,
+            run_id=rid,
+            output_dir=staging,
+            run_status=run_status,
+            aggregate=fail_agg,
+            manifest=manifest,
+            adversarial_results=[r for _, r in adv_pairs],
+            benign_results=benign_results,
+            authorization_consumed=consumed,
+            error=error,
+        )
+
+
+def _allocate_authoritative_staging(repo_root: Path) -> Path:
+    """Allocate a unique staging directory outside the Q3 authoritative root."""
+    import tempfile
+
+    from offline_rag.evaluation.security_13.paths import AUTHORITATIVE_RESULTS_REL
+
+    root = Path(repo_root).resolve()
+    parent = root / "eval" / "results" / "security_13b_staging"
+    parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(prefix="sec13b_auth_", dir=str(parent)))
+    auth = (root / AUTHORITATIVE_RESULTS_REL).resolve()
+    resolved = staging.resolve()
+    if resolved == auth or auth in resolved.parents:
+        raise SecurityEvalError(
+            f"refusing to stage under authoritative root {auth}; got {resolved}"
+        )
+    return staging
+
+
+def validate_authoritative_artifact_set(
+    root: Path,
+    *,
+    adversarial_ids: Sequence[str],
+    benign_ids: Sequence[str],
+) -> None:
+    """Require the complete OD-13-11 artifact set before Q3 publish."""
+    for name in ("run_manifest.json", "aggregate.json", "report.md"):
+        path = root / name
+        if not path.is_file() or path.stat().st_size <= 0:
+            raise SecurityEvalError(
+                f"authoritative artifact missing or empty before publish: {name}"
+            )
+    for fixture_id in adversarial_ids:
+        path = root / "cases" / "adversarial" / f"{fixture_id}.json"
+        if not path.is_file() or path.stat().st_size <= 0:
+            raise SecurityEvalError(
+                "authoritative adversarial case artifact missing or empty: "
+                f"{fixture_id}"
+            )
+    for control_id in benign_ids:
+        path = root / "cases" / "benign" / f"{control_id}.json"
+        if not path.is_file() or path.stat().st_size <= 0:
+            raise SecurityEvalError(
+                "authoritative benign case artifact missing or empty: "
+                f"{control_id}"
+            )
+    manifest = SecurityCampaignRunManifestV1.model_validate_json(
+        (root / "run_manifest.json").read_text(encoding="utf-8")
+    )
+    if manifest.run_mode != "authoritative":
+        raise SecurityEvalError(
+            "staged run_manifest run_mode must be authoritative before publish"
+        )
+
+
+def _publish_authoritative_root(staging: Path, q3_lexical: Path) -> None:
+    """Atomically publish staging to the lexical Q3 campaign root."""
+    if q3_lexical.is_symlink() or q3_lexical.exists():
+        raise SecurityEvalError(
+            "authoritative result root already exists at publish "
+            f"(no overwrite): {q3_lexical}"
+        )
+    q3_lexical.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        staging.rename(q3_lexical)
+    except OSError as exc:
+        raise SecurityEvalError(
+            f"authoritative publish failed (authorization consumed): {exc}"
+        ) from exc
 
 
 def _preflight_failed_aggregate() -> SecurityCampaignAggregateV1:
@@ -632,7 +859,7 @@ def _manifest(
     )
 
 
-def _write_dryrun_artifacts(
+def _write_campaign_artifacts(
     out: Path,
     *,
     manifest: SecurityCampaignRunManifestV1,

@@ -12,7 +12,6 @@ from pydantic import ValidationError
 from offline_rag.core.ids import PROMPT_GROUNDED_V1
 from offline_rag.evaluation.security_13 import (
     ACCEPTED_CAMPAIGN_GIT_BLOB_SHA,
-    AUTHORITATIVE_NOT_AUTHORIZED_MSG,
     DESIGN_AUTHORITY_SHA_13B,
     FROZEN_SECCAMP_13B,
     FROZEN_SECINV_13B,
@@ -156,14 +155,41 @@ def test_alternate_security_fixture_dir_fails_preflight(
         "offline_rag.evaluation.security_13.provenance.assert_execution_affecting_paths_clean",
         lambda _repo: None,
     )
+    # Force pin match so we reach fixture-root check, but redirect Q3/authz away.
+    head = resolve_verified_head_sha(REPO)
+    monkeypatch.setattr(
+        "offline_rag.evaluation.security_13.provenance.REQUIRED_EXECUTABLE_HARNESS_SHA",
+        head,
+    )
+    q3 = tmp_path / "q3" / FROZEN_SECCAMP_13B
+    authz = tmp_path / "authz" / "authorization_consumed"
+
+    def _lexical(_repo: Path) -> Path:
+        return q3
+
+    monkeypatch.setattr(
+        "offline_rag.evaluation.security_13.provenance.authoritative_campaign_result_root_lexical",
+        _lexical,
+    )
+    monkeypatch.setattr(
+        "offline_rag.evaluation.security_13.harness.authoritative_campaign_result_root_lexical",
+        _lexical,
+    )
+    monkeypatch.setattr(
+        "offline_rag.evaluation.security_13.provenance.authorization_consumed_marker",
+        lambda _repo: authz,
+    )
+
     alt = tmp_path / "alt_fixtures"
     alt.mkdir()
-    with pytest.raises(SecurityEvalError, match="locked 13B fixture root"):
-        run_security_13b_authoritative(
-            campaign_path=CAMPAIGN,
-            security_fixture_dir=alt,
-            repo_root=REPO,
-        )
+    auth_result = run_security_13b_authoritative(
+        campaign_path=CAMPAIGN,
+        security_fixture_dir=alt,
+        repo_root=REPO,
+    )
+    assert auth_result.run_status == "failed_preflight"
+    assert auth_result.authorization_consumed is False
+    assert "locked 13B fixture root" in (auth_result.error or "")
     with pytest.raises(SecurityEvalError, match="locked 13B fixture root"):
         run_security_13b_dryrun(
             campaign_path=CAMPAIGN,
@@ -173,6 +199,45 @@ def test_alternate_security_fixture_dir_fails_preflight(
             repo_root=REPO,
         )
     assert not (tmp_path / "dry_alt").exists()
+    assert not q3.exists()
+    assert not authz.exists()
+
+
+def test_authoritative_pin_mismatch_fails_preflight_without_q3_writes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Pin mismatch fails closed; never touches the real repository Q3 root."""
+    monkeypatch.setattr(
+        "offline_rag.evaluation.security_13.provenance.assert_execution_affecting_paths_clean",
+        lambda _repo: None,
+    )
+    monkeypatch.setattr(
+        "offline_rag.evaluation.security_13.provenance.REQUIRED_EXECUTABLE_HARNESS_SHA",
+        "0" * 40,
+    )
+    q3 = tmp_path / "q3" / FROZEN_SECCAMP_13B
+    monkeypatch.setattr(
+        "offline_rag.evaluation.security_13.provenance.authoritative_campaign_result_root_lexical",
+        lambda _repo: q3,
+    )
+    monkeypatch.setattr(
+        "offline_rag.evaluation.security_13.harness.authoritative_campaign_result_root_lexical",
+        lambda _repo: q3,
+    )
+    result = run_security_13b_authoritative(
+        campaign_path=CAMPAIGN,
+        security_fixture_dir=FIX,
+        repo_root=REPO,
+        run_id="gate",
+    )
+    assert result.run_status == "failed_preflight"
+    assert result.authorization_consumed is False
+    assert result.aggregate.campaign_outcome is None
+    assert "executable_harness_sha" in (result.error or "")
+    assert not q3.exists()
+    auth_parent = authoritative_results_root(REPO)
+    if auth_parent.exists():
+        assert FROZEN_SECCAMP_13B not in {p.name for p in auth_parent.iterdir()}
 
 
 def test_q3_broken_symlink_fails_preflight(tmp_path: Path) -> None:
@@ -287,31 +352,6 @@ def test_dryrun_provenance_complete_and_excludes_q3(
     after = list(auth_root.rglob("*")) if auth_root.exists() else []
     assert after == before
     assert not str(result.output_dir.resolve()).startswith(str(auth_root.resolve()))
-
-
-def test_authoritative_gate_stub_rejects_after_preflight(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(
-        "offline_rag.evaluation.security_13.provenance.assert_execution_affecting_paths_clean",
-        lambda _repo: None,
-    )
-    q3 = authoritative_campaign_result_root(REPO)
-    assert not q3.exists()
-    with pytest.raises(SecurityEvalError, match=AUTHORITATIVE_NOT_AUTHORIZED_MSG):
-        run_security_13b_authoritative(
-            campaign_path=CAMPAIGN,
-            security_fixture_dir=FIX,
-            repo_root=REPO,
-            run_id="gate",
-        )
-    assert not q3.exists()
-    # No staging under tmp or auth parent keyed by this run.
-    auth_parent = authoritative_results_root(REPO)
-    if auth_parent.exists():
-        assert FROZEN_SECCAMP_13B not in {
-            p.name for p in auth_parent.iterdir()
-        }
 
 
 def test_authoritative_fails_if_q3_root_exists(tmp_path: Path) -> None:

@@ -13,6 +13,7 @@ from offline_rag.evaluation.security_13.contracts import (
     FROZEN_SECCAMP_13B,
     FROZEN_SECINV_13B,
     MEASURE_ONCE_AUTHORITY_BASELINE_SHA,
+    REQUIRED_EXECUTABLE_HARNESS_SHA,
     SecurityCampaignV1,
     SecurityEvalError,
 )
@@ -50,6 +51,8 @@ SECURITY_13B_EXECUTION_AFFECTING_PATHS: tuple[str, ...] = (
 )
 
 LOCKED_SECURITY_FIXTURE_DIR_REL = Path("eval/fixtures/security")
+# Durable one-shot authz ledger; outside Q3 and never a substitute for Q3 artifacts.
+AUTHZ_CONSUMED_REL = Path("eval/results/security_13b_authz")
 
 AUTHORITATIVE_NOT_AUTHORIZED_MSG = (
     "authoritative measure-once execution is not authorized"
@@ -211,6 +214,52 @@ def assert_locked_security_fixture_dir(
     return actual
 
 
+def assert_executable_harness_pin(executable_harness_sha: str) -> None:
+    """Require verified HEAD equals the locked Q1 executable pin."""
+    if executable_harness_sha != REQUIRED_EXECUTABLE_HARNESS_SHA:
+        raise SecurityEvalError(
+            "executable_harness_sha / verified HEAD mismatch: "
+            f"expected {REQUIRED_EXECUTABLE_HARNESS_SHA}, "
+            f"got {executable_harness_sha}"
+        )
+
+
+def authorization_consumed_marker(repo_root: Path) -> Path:
+    """Lexical path of the durable one-shot authorization-consumed marker."""
+    root = Path(repo_root).resolve()
+    return root.joinpath(
+        *AUTHZ_CONSUMED_REL.parts, FROZEN_SECCAMP_13B, "authorization_consumed"
+    )
+
+
+def assert_authorization_not_consumed(repo_root: Path) -> None:
+    """Fail closed if this authorization was already consumed."""
+    marker = authorization_consumed_marker(repo_root)
+    parent = marker.parent
+    if parent.is_symlink():
+        raise SecurityEvalError(
+            "authorization ledger parent is a symlink/alias "
+            f"(no overwrite): {parent}"
+        )
+    if marker.is_symlink() or marker.exists():
+        raise SecurityEvalError(
+            "authoritative authorization already consumed for "
+            f"{FROZEN_SECCAMP_13B}: {marker}"
+        )
+
+
+def mark_authorization_consumed(repo_root: Path) -> Path:
+    """Persist one-shot consumption immediately before first case execution."""
+    assert_authorization_not_consumed(repo_root)
+    marker = authorization_consumed_marker(repo_root)
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.write_text(
+        "consumed\n",
+        encoding="utf-8",
+    )
+    return marker
+
+
 def assert_authority_baseline(value: str) -> None:
     if value != MEASURE_ONCE_AUTHORITY_BASELINE_SHA:
         raise SecurityEvalError(
@@ -238,24 +287,34 @@ def assert_authoritative_root_absent(repo_root: Path) -> None:
     Inspects the lexical path before trusting ``resolve()``, so broken symlinks
     and symlinked authoritative parents cannot be resolved away.
     """
-    from offline_rag.evaluation.security_13.paths import AUTHORITATIVE_RESULTS_REL
-
     root = Path(repo_root).resolve()
-    cursor = root
-    for part in AUTHORITATIVE_RESULTS_REL.parts:
-        cursor = cursor / part
-        if cursor.is_symlink():
+    lexical = authoritative_campaign_result_root_lexical(root)
+    chain: list[Path] = []
+    cursor = lexical
+    while True:
+        chain.append(cursor)
+        if cursor == root:
+            break
+        parent = cursor.parent
+        if parent == cursor:
+            break
+        cursor = parent
+        if root not in cursor.parents and cursor != root:
+            # Walked above repo root; stop.
+            break
+    for path in reversed(chain):
+        if path == root:
+            continue
+        if path.is_symlink():
+            if path == lexical:
+                raise SecurityEvalError(
+                    "authoritative result root is a symlink "
+                    f"(no overwrite): {path}"
+                )
             raise SecurityEvalError(
                 "authoritative parent path is a symlink/alias "
-                f"(no overwrite): {cursor}"
+                f"(no overwrite): {path}"
             )
-
-    lexical = cursor / FROZEN_SECCAMP_13B
-    if lexical.is_symlink():
-        raise SecurityEvalError(
-            "authoritative result root is a symlink "
-            f"(no overwrite): {lexical}"
-        )
     if lexical.exists():
         raise SecurityEvalError(
             "authoritative result root already exists "

@@ -1456,7 +1456,7 @@ def cmd_eval_query(args: argparse.Namespace) -> int:
 
 
 def cmd_eval_security_13b(args: argparse.Namespace) -> int:
-    """Thin CLI for Slice 13B dry-run / authoritative gate stub."""
+    """Thin CLI for Slice 13B dry-run / authoritative one-shot body."""
     from offline_rag.evaluation.security_13.contracts import SecurityEvalError
     from offline_rag.evaluation.security_13.harness import (
         run_security_13b_authoritative,
@@ -1482,17 +1482,23 @@ def cmd_eval_security_13b(args: argparse.Namespace) -> int:
     mode = getattr(args, "mode", "dry_run")
     try:
         if mode == "authoritative":
-            run_security_13b_authoritative(
+            result = run_security_13b_authoritative(
                 campaign_path=campaign,
                 security_fixture_dir=fixtures,
                 repo_root=repo,
                 run_id=args.run_id,
             )
-            print(
-                "eval security-13b: authoritative entry returned without rejection",
-                file=sys.stderr,
-            )
-            return 1
+            print(f"run_id:                 {result.run_id}")
+            print(f"run_status:             {result.run_status}")
+            print(f"campaign_outcome:       {result.aggregate.campaign_outcome}")
+            print(f"authorization_consumed: {result.authorization_consumed}")
+            if result.campaign is not None:
+                print(f"seccamp_:               {result.campaign.campaign_identity_hash}")
+            if result.output_dir is not None:
+                print(f"output:                 {result.output_dir}")
+            if result.error:
+                print(f"error:                  {result.error}", file=sys.stderr)
+            return 0 if result.run_status == "completed" else 1
         result = run_security_13b_dryrun(
             campaign_path=campaign,
             security_fixture_dir=fixtures,

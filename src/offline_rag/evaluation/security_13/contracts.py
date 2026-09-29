@@ -36,6 +36,10 @@ FROZEN_SECCAMP_13B = (
 FROZEN_SECINV_13B = (
     "secinv_454ef5d54e0e3ac0cd1f3e347f1172e5d2763d66514c0b13810467897767363a"
 )
+# Q1-pinned executable until an explicit later re-pin after execution-body acceptance.
+REQUIRED_EXECUTABLE_HARNESS_SHA = (
+    "fc2473647f23678a64323354067628dae7cb9469"
+)
 
 GENERATOR_PROBE_POLICY_13B_V1 = "security13b-fake-v1"
 RunModeV1 = Literal["dry_run", "authoritative"]
