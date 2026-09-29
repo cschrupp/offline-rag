@@ -6,7 +6,9 @@ delegate to the underlying operation. Incomplete instrumentation yields
 
 Filesystem coverage intentionally includes ``builtins.open``, ``io.open``, and
 ``os.open`` so ``pathlib.Path.read_text`` / ``write_text`` cannot bypass the
-probe. The system temp tree is **not** wholesale-allowlisted.
+probe. The default case-execution allowlist is empty: modules/fixtures are
+loaded before the probe window, and fixed-evidence + FakeGenerator needs no
+filesystem I/O.
 """
 
 from __future__ import annotations
@@ -16,7 +18,6 @@ import io
 import os
 import socket
 import subprocess
-import sys
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -43,14 +44,40 @@ class CapabilityProbe:
 
 
 def _default_allowlisted_open_prefixes() -> tuple[str, ...]:
-    """Narrow allowlist: interpreter/runtime only.
+    """Empty by default: 13B case execution must not need filesystem I/O."""
+    return ()
 
-    Explicitly excludes the repository, cwd, and the wholesale system temp tree.
+
+def _path_is_allowlisted(path_obj: object, prefixes: tuple[str, ...]) -> bool:
+    """Boundary-safe allowlist check: equality or true path containment only.
+
+    Never uses raw ``str.startswith`` (which would allow ``/usr_evil`` under
+    an allowlist entry of ``/usr``).
     """
-    prefixes = [str(Path(sys.prefix).resolve())]
-    # Read-only OS paths used by interpreters / SSL.
-    prefixes.extend(["/usr", "/lib", "/lib64", "/etc/ssl", "/etc/pki", "/proc", "/dev"])
-    return tuple(prefixes)
+    if not prefixes:
+        return False
+    try:
+        text = os.fspath(path_obj)  # type: ignore[arg-type]
+    except TypeError:
+        return False
+    try:
+        resolved = Path(str(text)).expanduser().resolve(strict=False)
+    except OSError:
+        return False
+    for prefix in prefixes:
+        try:
+            allowed = Path(prefix).expanduser().resolve(strict=False)
+        except OSError:
+            continue
+        if resolved == allowed:
+            return True
+        try:
+            if resolved.is_relative_to(allowed):
+                return True
+        except (AttributeError, TypeError, ValueError):
+            # is_relative_to is 3.9+; ValueError on unrelated drives (Windows).
+            continue
+    return False
 
 
 @contextmanager
@@ -75,22 +102,6 @@ def install_capability_probe(
     probe = CapabilityProbe(_allowlisted_open_prefixes=prefixes)
     originals: dict[str, Any] = {}
 
-    def _is_allowlisted_path(path_obj: object) -> bool:
-        try:
-            text = os.fspath(path_obj)  # type: ignore[arg-type]
-        except TypeError:
-            return False
-        try:
-            resolved = str(Path(str(text)).expanduser().resolve(strict=False))
-        except OSError:
-            resolved = str(text)
-        return any(
-            resolved == prefix
-            or resolved.startswith(prefix.rstrip("/") + "/")
-            or str(text).startswith(prefix)
-            for prefix in prefixes
-        )
-
     def _blocked(label: str) -> None:
         probe.record(label)
         raise CapabilityBlockedError(
@@ -114,7 +125,7 @@ def install_capability_probe(
         _blocked("os.system")
 
     def _guarded_open(file: Any, *args: Any, **kwargs: Any) -> Any:
-        if _is_allowlisted_path(file):
+        if _path_is_allowlisted(file, prefixes):
             return originals["io.open"](file, *args, **kwargs)
         probe.record(f"open:{file!s}")
         raise CapabilityBlockedError(
@@ -122,7 +133,7 @@ def install_capability_probe(
         )
 
     def _os_open(path: Any, flags: int, mode: int = 0o777, *args: Any, **kwargs: Any) -> int:
-        if _is_allowlisted_path(path):
+        if _path_is_allowlisted(path, prefixes):
             return originals["os.open"](path, flags, mode, *args, **kwargs)
         probe.record(f"os.open:{path!s}")
         raise CapabilityBlockedError(

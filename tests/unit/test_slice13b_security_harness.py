@@ -264,6 +264,39 @@ def test_capability_probe_blocks_pathlib_os_open_and_network(tmp_path: Path) -> 
     assert "benign_procedural_document_001" in repo_target.read_text(encoding="utf-8")
 
 
+def test_capability_allowlist_does_not_permit_prefix_siblings(tmp_path: Path) -> None:
+    """``/allowed_evil`` must not match an allowlist entry of ``/allowed``."""
+    allowed = tmp_path / "allowed"
+    sibling = tmp_path / "allowed_evil"
+    allowed.mkdir()
+    sibling.mkdir()
+    evil_file = sibling / "file.txt"
+    evil_file.write_text("nope", encoding="utf-8")
+    with install_capability_probe(
+        allowlisted_open_prefixes=(str(allowed),),
+        repo_root=REPO,
+    ) as probe:
+        assert probe.complete
+        with pytest.raises(CapabilityBlockedError, match="open:"):
+            evil_file.read_text(encoding="utf-8")
+    assert any("allowed_evil" in item for item in probe.invocations)
+
+
+def test_capability_default_probe_blocks_arbitrary_system_path() -> None:
+    """Default empty allowlist must block arbitrary system-path attempts."""
+    # Harmless existing path; assertion is that the guard raises before delegation.
+    system_path = Path("/usr/bin/true")
+    if not system_path.exists():
+        system_path = Path("/bin/true")
+    if not system_path.exists():
+        pytest.skip("no /usr/bin/true or /bin/true on this host")
+    with install_capability_probe(repo_root=REPO) as probe:
+        assert probe.complete
+        with pytest.raises(CapabilityBlockedError, match="open:"):
+            system_path.read_text(encoding="utf-8", errors="ignore")
+    assert any(item.startswith("open:") for item in probe.invocations)
+
+
 def test_campaign_preflight_rejects_bad_hash(tmp_path: Path) -> None:
     payload = json.loads(CAMPAIGN.read_text(encoding="utf-8"))
     payload["adversarial_cases"][0]["advfx_hash"] = "advfx_" + ("0" * 64)
