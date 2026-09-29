@@ -36,9 +36,21 @@ FROZEN_SECCAMP_13B = (
 FROZEN_SECINV_13B = (
     "secinv_454ef5d54e0e3ac0cd1f3e347f1172e5d2763d66514c0b13810467897767363a"
 )
-# Q1-pinned executable until an explicit later re-pin after execution-body acceptance.
-REQUIRED_EXECUTABLE_HARNESS_SHA = (
-    "fc2473647f23678a64323354067628dae7cb9469"
+FROZEN_ADVERSARIAL_FIXTURE_IDS_13B: tuple[str, ...] = (
+    "secfx_citation_001_query",
+    "secfx_fake_system_001_query",
+    "secfx_file_001_query",
+    "secfx_ignore_001_query",
+    "secfx_prompt_extract_001_query",
+    "secfx_shell_001_query",
+    "secfx_suppress_001_query",
+)
+FROZEN_BENIGN_CONTROL_IDS_13B: tuple[str, ...] = (
+    "benign_citation_dense_001",
+    "benign_metadata_noise_001",
+    "benign_procedural_document_001",
+    "benign_quoted_imperative_001",
+    "benign_system_word_literal_001",
 )
 
 GENERATOR_PROBE_POLICY_13B_V1 = "security13b-fake-v1"

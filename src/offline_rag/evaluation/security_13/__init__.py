@@ -2,7 +2,7 @@
 
 Design authority: docs/milestone6_agentic_recovery_security.md §29–§30.
 13B authoritative one-shot body is implemented; real measure-once remains
-separately gated by Q1 pin + explicit authorization.
+separately gated by sealed Q1 pin + explicit authorization.
 """
 
 from offline_rag.evaluation.security_13.contracts import (
@@ -13,12 +13,13 @@ from offline_rag.evaluation.security_13.contracts import (
     BENIGN_SECURITY_CONTROL_V1,
     DESIGN_AUTHORITY_SHA_13,
     DESIGN_AUTHORITY_SHA_13B,
+    FROZEN_ADVERSARIAL_FIXTURE_IDS_13B,
+    FROZEN_BENIGN_CONTROL_IDS_13B,
     FROZEN_SECCAMP_13B,
     FROZEN_SECINV_13B,
     GENERATOR_PROBE_POLICY_13B_V1,
     LOCKED_INVARIANT_IDS_V1,
     MEASURE_ONCE_AUTHORITY_BASELINE_SHA,
-    REQUIRED_EXECUTABLE_HARNESS_SHA,
     SECURITY_CAMPAIGN_AGGREGATE_V1,
     SECURITY_CAMPAIGN_V1,
     SECURITY_INVARIANT_REGISTRY_V1,
@@ -72,6 +73,8 @@ from offline_rag.evaluation.security_13.provenance import (
     AUTHORITATIVE_NOT_AUTHORIZED_MSG,
     collect_git_and_campaign_provenance,
     git_blob_sha1,
+    read_sealed_q1_executable_pin,
+    seal_q1_executable_pin_from_verified_head,
 )
 from offline_rag.evaluation.security_13.recovery_probe import (
     assert_corpus_text_rejected_from_rewrite_input,
@@ -91,12 +94,13 @@ __all__ = [
     "BENIGN_SECURITY_CONTROL_V1",
     "DESIGN_AUTHORITY_SHA_13",
     "DESIGN_AUTHORITY_SHA_13B",
+    "FROZEN_ADVERSARIAL_FIXTURE_IDS_13B",
+    "FROZEN_BENIGN_CONTROL_IDS_13B",
     "FROZEN_SECCAMP_13B",
     "FROZEN_SECINV_13B",
     "GENERATOR_PROBE_POLICY_13B_V1",
     "LOCKED_INVARIANT_IDS_V1",
     "MEASURE_ONCE_AUTHORITY_BASELINE_SHA",
-    "REQUIRED_EXECUTABLE_HARNESS_SHA",
     "SECURITY_CAMPAIGN_AGGREGATE_V1",
     "SECURITY_CAMPAIGN_V1",
     "SECURITY_INVARIANT_REGISTRY_V1",
@@ -132,11 +136,13 @@ __all__ = [
     "load_adversarial_fixture",
     "load_benign_control",
     "load_security_campaign",
+    "read_sealed_q1_executable_pin",
     "registry_semantic_payload",
     "require_known_invariant_ids",
     "run_case_on_query_path",
     "run_security_13b_authoritative",
     "run_security_13b_dryrun",
+    "seal_q1_executable_pin_from_verified_head",
     "validate_adversarial_fixture",
     "validate_authoritative_artifact_set",
     "validate_benign_control",

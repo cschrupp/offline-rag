@@ -16,8 +16,14 @@ from offline_rag.domain.generation import GroundedAnswerResult
 from offline_rag.evaluation.security_13.aggregate import build_campaign_aggregate
 from offline_rag.evaluation.security_13.capability_probe import install_capability_probe
 from offline_rag.evaluation.security_13.contracts import (
+    ACCEPTED_CAMPAIGN_GIT_BLOB_SHA,
     DESIGN_AUTHORITY_SHA_13B,
+    FROZEN_ADVERSARIAL_FIXTURE_IDS_13B,
+    FROZEN_BENIGN_CONTROL_IDS_13B,
+    FROZEN_SECCAMP_13B,
+    FROZEN_SECINV_13B,
     GENERATOR_PROBE_POLICY_13B_V1,
+    MEASURE_ONCE_AUTHORITY_BASELINE_SHA,
     SECURITY_EVAL_CANARY_LINE,
     SECURITY_EVAL_CANARY_TOKEN,
     SLICE13B_BASELINE_SHA,
@@ -581,7 +587,9 @@ def run_security_13b_authoritative(
             repo_root=root, campaign_path=campaign_path
         )
         assert_authority_baseline(provenance.authority_baseline_sha)
-        assert_executable_harness_pin(provenance.executable_harness_sha)
+        assert_executable_harness_pin(
+            provenance.repo_root, provenance.executable_harness_sha
+        )
         fixture_dir = assert_locked_security_fixture_dir(
             provenance.repo_root, security_fixture_dir
         )
@@ -629,18 +637,46 @@ def run_security_13b_authoritative(
             error="authoritative manifest run_mode must be authoritative",
         )
 
-    # Consume immediately before first case; durable; no retry under this authz.
-    mark_authorization_consumed(root)
-    consumed = True
-
     settings = build_harness_settings()
     adv_pairs: list[tuple[AdversarialFixtureV1, AdversarialEvalResultV1]] = []
     benign_results: list[BenignControlEvalResultV1] = []
-    run_status = "completed"
     error: str | None = None
 
     try:
         staging = _allocate_authoritative_staging(root)
+        (staging / "cases" / "adversarial").mkdir(parents=True, exist_ok=True)
+        (staging / "cases" / "benign").mkdir(parents=True, exist_ok=True)
+    except SecurityEvalError as exc:
+        empty = _preflight_failed_aggregate()
+        return CampaignAuthoritativeResult(
+            run_id=rid,
+            output_dir=None,
+            run_status="failed_preflight",
+            aggregate=empty,
+            manifest=manifest,
+            campaign=campaign,
+            authorization_consumed=False,
+            error=str(exc),
+        )
+
+    # Atomic claim only after staging/setup; immediately before first case.
+    try:
+        mark_authorization_consumed(root)
+    except SecurityEvalError as exc:
+        empty = _preflight_failed_aggregate()
+        return CampaignAuthoritativeResult(
+            run_id=rid,
+            output_dir=staging,
+            run_status="failed_preflight",
+            aggregate=empty,
+            manifest=manifest,
+            campaign=campaign,
+            authorization_consumed=False,
+            error=str(exc),
+        )
+    consumed = True
+
+    try:
         for fixture in adversarial_fixtures:
             override = (
                 response_override_for_case(fixture.fixture_id)
@@ -696,8 +732,17 @@ def run_security_13b_authoritative(
         )
         validate_authoritative_artifact_set(
             staging,
-            adversarial_ids=[f.fixture_id for f in adversarial_fixtures],
-            benign_ids=[c.control_id for c in benign_controls],
+            expected_adversarial_ids=list(FROZEN_ADVERSARIAL_FIXTURE_IDS_13B),
+            expected_benign_ids=list(FROZEN_BENIGN_CONTROL_IDS_13B),
+            expected_seccamp=FROZEN_SECCAMP_13B,
+            expected_secinv=FROZEN_SECINV_13B,
+            expected_authority_baseline=MEASURE_ONCE_AUTHORITY_BASELINE_SHA,
+            expected_executable_sha=provenance.executable_harness_sha,
+            expected_campaign_blob=ACCEPTED_CAMPAIGN_GIT_BLOB_SHA,
+            expected_design_authority=DESIGN_AUTHORITY_SHA_13B,
+            expected_slice13b_baseline=SLICE13B_BASELINE_SHA,
+            expected_output_root=str(q3_resolved),
+            expected_campaign_path=str(provenance.campaign_path),
         )
         assert_authoritative_root_absent(root)
         _publish_authoritative_root(staging, q3_lexical)
@@ -760,37 +805,151 @@ def _allocate_authoritative_staging(repo_root: Path) -> Path:
 def validate_authoritative_artifact_set(
     root: Path,
     *,
-    adversarial_ids: Sequence[str],
-    benign_ids: Sequence[str],
+    expected_adversarial_ids: Sequence[str],
+    expected_benign_ids: Sequence[str],
+    expected_seccamp: str,
+    expected_secinv: str,
+    expected_authority_baseline: str,
+    expected_executable_sha: str,
+    expected_campaign_blob: str,
+    expected_design_authority: str,
+    expected_slice13b_baseline: str,
+    expected_output_root: str,
+    expected_campaign_path: str,
 ) -> None:
-    """Require the complete OD-13-11 artifact set before Q3 publish."""
+    """Independently validate the persisted OD-13-11 set before Q3 publish."""
+    allowed_top = {
+        "run_manifest.json",
+        "aggregate.json",
+        "report.md",
+        "cases",
+    }
+    if not root.is_dir():
+        raise SecurityEvalError("authoritative staging root is not a directory")
+    top = {p.name for p in root.iterdir()}
+    if top != allowed_top:
+        raise SecurityEvalError(
+            "authoritative staging layout must be exactly OD-13-11 top-level "
+            f"entries; got {sorted(top)}"
+        )
     for name in ("run_manifest.json", "aggregate.json", "report.md"):
         path = root / name
         if not path.is_file() or path.stat().st_size <= 0:
             raise SecurityEvalError(
                 f"authoritative artifact missing or empty before publish: {name}"
             )
-    for fixture_id in adversarial_ids:
-        path = root / "cases" / "adversarial" / f"{fixture_id}.json"
-        if not path.is_file() or path.stat().st_size <= 0:
-            raise SecurityEvalError(
-                "authoritative adversarial case artifact missing or empty: "
-                f"{fixture_id}"
-            )
-    for control_id in benign_ids:
-        path = root / "cases" / "benign" / f"{control_id}.json"
-        if not path.is_file() or path.stat().st_size <= 0:
-            raise SecurityEvalError(
-                "authoritative benign case artifact missing or empty: "
-                f"{control_id}"
-            )
+
+    cases_dir = root / "cases"
+    case_children = {p.name for p in cases_dir.iterdir()}
+    if case_children != {"adversarial", "benign"}:
+        raise SecurityEvalError(
+            "authoritative cases/ must contain exactly adversarial/ and benign/; "
+            f"got {sorted(case_children)}"
+        )
+
+    adv_dir = cases_dir / "adversarial"
+    ben_dir = cases_dir / "benign"
+    expected_adv = set(expected_adversarial_ids)
+    expected_ben = set(expected_benign_ids)
+    if len(expected_adv) != 7 or len(expected_ben) != 5:
+        raise SecurityEvalError(
+            "expected membership must be exactly 7 adversarial + 5 benign"
+        )
+    adv_files = {p.name for p in adv_dir.iterdir() if p.is_file()}
+    ben_files = {p.name for p in ben_dir.iterdir() if p.is_file()}
+    expected_adv_files = {f"{fid}.json" for fid in expected_adv}
+    expected_ben_files = {f"{cid}.json" for cid in expected_ben}
+    if adv_files != expected_adv_files:
+        raise SecurityEvalError(
+            "adversarial case artifacts must match frozen membership exactly; "
+            f"expected {sorted(expected_adv_files)}, got {sorted(adv_files)}"
+        )
+    if ben_files != expected_ben_files:
+        raise SecurityEvalError(
+            "benign case artifacts must match frozen membership exactly; "
+            f"expected {sorted(expected_ben_files)}, got {sorted(ben_files)}"
+        )
+    # No unexpected non-file entries under case dirs.
+    if any(not p.is_file() for p in adv_dir.iterdir()) or any(
+        not p.is_file() for p in ben_dir.iterdir()
+    ):
+        raise SecurityEvalError(
+            "authoritative case directories must contain only case JSON files"
+        )
+
     manifest = SecurityCampaignRunManifestV1.model_validate_json(
         (root / "run_manifest.json").read_text(encoding="utf-8")
+    )
+    aggregate = SecurityCampaignAggregateV1.model_validate_json(
+        (root / "aggregate.json").read_text(encoding="utf-8")
     )
     if manifest.run_mode != "authoritative":
         raise SecurityEvalError(
             "staged run_manifest run_mode must be authoritative before publish"
         )
+    if manifest.seccamp_ != expected_seccamp or aggregate.seccamp_ != expected_seccamp:
+        raise SecurityEvalError("staged seccamp_ mismatch vs frozen identity")
+    if manifest.secinv_ != expected_secinv or aggregate.secinv_ != expected_secinv:
+        raise SecurityEvalError("staged secinv_ mismatch vs frozen identity")
+    if manifest.authority_baseline_sha != expected_authority_baseline:
+        raise SecurityEvalError("staged authority_baseline_sha mismatch")
+    if manifest.executable_harness_sha != expected_executable_sha:
+        raise SecurityEvalError("staged executable_harness_sha mismatch")
+    if manifest.campaign_blob_sha != expected_campaign_blob:
+        raise SecurityEvalError("staged campaign_blob_sha mismatch")
+    if manifest.design_authority_sha != expected_design_authority:
+        raise SecurityEvalError("staged design_authority_sha mismatch")
+    if manifest.slice13b_baseline_sha != expected_slice13b_baseline:
+        raise SecurityEvalError("staged slice13b_baseline_sha mismatch")
+    if manifest.output_root != expected_output_root:
+        raise SecurityEvalError(
+            "staged output_root must equal exact Q3 root: "
+            f"expected {expected_output_root!r}, got {manifest.output_root!r}"
+        )
+    if Path(manifest.campaign_path).resolve() != Path(expected_campaign_path).resolve():
+        raise SecurityEvalError("staged campaign_path mismatch")
+    if (
+        manifest.product_default_recovery_enabled is not False
+        or manifest.recovery_execution_mode != "disabled"
+        or aggregate.product_default_recovery_enabled is not False
+        or aggregate.recovery_execution_mode != "disabled"
+    ):
+        raise SecurityEvalError("staged recovery provenance must remain disabled")
+    if aggregate.run_status != "completed":
+        raise SecurityEvalError(
+            f"staged aggregate run_status must be completed; got {aggregate.run_status}"
+        )
+    if aggregate.campaign_outcome not in ("pass", "fail"):
+        raise SecurityEvalError(
+            "staged campaign_outcome must be pass|fail for completed publish; "
+            f"got {aggregate.campaign_outcome!r}"
+        )
+    if (
+        aggregate.population.adversarial_total != 7
+        or aggregate.population.benign_total != 5
+    ):
+        raise SecurityEvalError(
+            "staged population must be exactly 7 adversarial + 5 benign"
+        )
+
+    for fixture_id in expected_adversarial_ids:
+        path = adv_dir / f"{fixture_id}.json"
+        result = AdversarialEvalResultV1.model_validate_json(
+            path.read_text(encoding="utf-8")
+        )
+        if result.fixture_id != fixture_id:
+            raise SecurityEvalError(
+                f"adversarial case id mismatch in {path.name}: {result.fixture_id}"
+            )
+    for control_id in expected_benign_ids:
+        path = ben_dir / f"{control_id}.json"
+        result = BenignControlEvalResultV1.model_validate_json(
+            path.read_text(encoding="utf-8")
+        )
+        if result.control_id != control_id:
+            raise SecurityEvalError(
+                f"benign case id mismatch in {path.name}: {result.control_id}"
+            )
 
 
 def _publish_authoritative_root(staging: Path, q3_lexical: Path) -> None:

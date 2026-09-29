@@ -13,7 +13,6 @@ from offline_rag.evaluation.security_13.contracts import (
     FROZEN_SECCAMP_13B,
     FROZEN_SECINV_13B,
     MEASURE_ONCE_AUTHORITY_BASELINE_SHA,
-    REQUIRED_EXECUTABLE_HARNESS_SHA,
     SecurityCampaignV1,
     SecurityEvalError,
 )
@@ -53,6 +52,8 @@ SECURITY_13B_EXECUTION_AFFECTING_PATHS: tuple[str, ...] = (
 LOCKED_SECURITY_FIXTURE_DIR_REL = Path("eval/fixtures/security")
 # Durable one-shot authz ledger; outside Q3 and never a substitute for Q3 artifacts.
 AUTHZ_CONSUMED_REL = Path("eval/results/security_13b_authz")
+# Immutable post-acceptance Q1 pin; outside executable tree and outside Q3.
+Q1_EXECUTABLE_PIN_REL = Path("eval/authority/security_13b/q1_executable_pin")
 
 AUTHORITATIVE_NOT_AUTHORIZED_MSG = (
     "authoritative measure-once execution is not authorized"
@@ -214,14 +215,107 @@ def assert_locked_security_fixture_dir(
     return actual
 
 
-def assert_executable_harness_pin(executable_harness_sha: str) -> None:
-    """Require verified HEAD equals the locked Q1 executable pin."""
-    if executable_harness_sha != REQUIRED_EXECUTABLE_HARNESS_SHA:
+def _lexical_path_chain(repo_root: Path, lexical_target: Path) -> list[Path]:
+    """Return paths from ``lexical_target`` up to ``repo_root`` (inclusive)."""
+    root = Path(repo_root).resolve()
+    target = Path(lexical_target)
+    chain: list[Path] = []
+    cursor = target
+    while True:
+        chain.append(cursor)
+        if cursor == root:
+            break
+        parent = cursor.parent
+        if parent == cursor:
+            break
+        cursor = parent
+        if root not in cursor.parents and cursor != root:
+            break
+    return chain
+
+
+def assert_lexical_path_chain_not_symlinked(
+    repo_root: Path,
+    lexical_target: Path,
+    *,
+    kind: str,
+) -> None:
+    """Reject symlinked final path or ancestor under ``repo_root`` (lexical)."""
+    root = Path(repo_root).resolve()
+    for path in reversed(_lexical_path_chain(root, lexical_target)):
+        if path == root:
+            continue
+        if path.is_symlink():
+            if path == lexical_target:
+                raise SecurityEvalError(
+                    f"{kind} path is a symlink (no overwrite): {path}"
+                )
+            raise SecurityEvalError(
+                f"{kind} ancestor path is a symlink/alias (no overwrite): {path}"
+            )
+
+
+def q1_executable_pin_path(repo_root: Path) -> Path:
+    """Lexical path of the sealed post-acceptance Q1 executable pin."""
+    root = Path(repo_root).resolve()
+    return root.joinpath(*Q1_EXECUTABLE_PIN_REL.parts)
+
+
+def read_sealed_q1_executable_pin(repo_root: Path) -> str:
+    """Read the immutable sealed Q1 pin; fail closed if absent or aliased."""
+    root = Path(repo_root).resolve()
+    pin = q1_executable_pin_path(root)
+    assert_lexical_path_chain_not_symlinked(root, pin, kind="Q1 executable pin")
+    if not pin.is_file():
         raise SecurityEvalError(
-            "executable_harness_sha / verified HEAD mismatch: "
-            f"expected {REQUIRED_EXECUTABLE_HARNESS_SHA}, "
-            f"got {executable_harness_sha}"
+            f"Q1 executable pin is not sealed at {pin}"
         )
+    text = pin.read_text(encoding="utf-8").strip()
+    if not _SHA1_40_RE.fullmatch(text):
+        raise SecurityEvalError(
+            f"Q1 executable pin must be 40 lowercase hex characters; got {text!r}"
+        )
+    return text
+
+
+def assert_executable_harness_pin(
+    repo_root: Path, executable_harness_sha: str
+) -> None:
+    """Require verified HEAD equals the sealed external Q1 executable pin."""
+    sealed = read_sealed_q1_executable_pin(repo_root)
+    if executable_harness_sha != sealed:
+        raise SecurityEvalError(
+            "executable_harness_sha / verified HEAD mismatch vs sealed Q1 pin: "
+            f"expected {sealed}, got {executable_harness_sha}"
+        )
+
+
+def seal_q1_executable_pin_from_verified_head(repo_root: Path) -> str:
+    """Atomically seal Q1 pin from verified HEAD (post-acceptance gate only).
+
+    Not invoked by authoritative execution. No caller-supplied SHA.
+    """
+    root = resolve_git_repo_root(repo_root)
+    head = resolve_verified_head_sha(root)
+    pin = q1_executable_pin_path(root)
+    assert_lexical_path_chain_not_symlinked(root, pin, kind="Q1 executable pin")
+    if pin.exists() or pin.is_symlink():
+        raise SecurityEvalError(
+            f"Q1 executable pin already sealed (immutable): {pin}"
+        )
+    pin.parent.mkdir(parents=True, exist_ok=True)
+    import os
+
+    flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY
+    try:
+        fd = os.open(str(pin), flags, 0o644)
+    except FileExistsError as exc:
+        raise SecurityEvalError(
+            f"Q1 executable pin already sealed (immutable): {pin}"
+        ) from exc
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        handle.write(head + "\n")
+    return head
 
 
 def authorization_consumed_marker(repo_root: Path) -> Path:
@@ -234,14 +328,12 @@ def authorization_consumed_marker(repo_root: Path) -> Path:
 
 def assert_authorization_not_consumed(repo_root: Path) -> None:
     """Fail closed if this authorization was already consumed."""
-    marker = authorization_consumed_marker(repo_root)
-    parent = marker.parent
-    if parent.is_symlink():
-        raise SecurityEvalError(
-            "authorization ledger parent is a symlink/alias "
-            f"(no overwrite): {parent}"
-        )
-    if marker.is_symlink() or marker.exists():
+    root = Path(repo_root).resolve()
+    marker = authorization_consumed_marker(root)
+    assert_lexical_path_chain_not_symlinked(
+        root, marker, kind="authorization ledger"
+    )
+    if marker.exists():
         raise SecurityEvalError(
             "authoritative authorization already consumed for "
             f"{FROZEN_SECCAMP_13B}: {marker}"
@@ -249,14 +341,25 @@ def assert_authorization_not_consumed(repo_root: Path) -> None:
 
 
 def mark_authorization_consumed(repo_root: Path) -> Path:
-    """Persist one-shot consumption immediately before first case execution."""
-    assert_authorization_not_consumed(repo_root)
-    marker = authorization_consumed_marker(repo_root)
-    marker.parent.mkdir(parents=True, exist_ok=True)
-    marker.write_text(
-        "consumed\n",
-        encoding="utf-8",
+    """Atomically claim one-shot consumption (create-if-absent) before first case."""
+    import os
+
+    root = Path(repo_root).resolve()
+    marker = authorization_consumed_marker(root)
+    assert_lexical_path_chain_not_symlinked(
+        root, marker, kind="authorization ledger"
     )
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY
+    try:
+        fd = os.open(str(marker), flags, 0o644)
+    except FileExistsError as exc:
+        raise SecurityEvalError(
+            "authoritative authorization already consumed for "
+            f"{FROZEN_SECCAMP_13B}: {marker}"
+        ) from exc
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        handle.write("consumed\n")
     return marker
 
 
@@ -289,32 +392,9 @@ def assert_authoritative_root_absent(repo_root: Path) -> None:
     """
     root = Path(repo_root).resolve()
     lexical = authoritative_campaign_result_root_lexical(root)
-    chain: list[Path] = []
-    cursor = lexical
-    while True:
-        chain.append(cursor)
-        if cursor == root:
-            break
-        parent = cursor.parent
-        if parent == cursor:
-            break
-        cursor = parent
-        if root not in cursor.parents and cursor != root:
-            # Walked above repo root; stop.
-            break
-    for path in reversed(chain):
-        if path == root:
-            continue
-        if path.is_symlink():
-            if path == lexical:
-                raise SecurityEvalError(
-                    "authoritative result root is a symlink "
-                    f"(no overwrite): {path}"
-                )
-            raise SecurityEvalError(
-                "authoritative parent path is a symlink/alias "
-                f"(no overwrite): {path}"
-            )
+    assert_lexical_path_chain_not_symlinked(
+        root, lexical, kind="authoritative result root"
+    )
     if lexical.exists():
         raise SecurityEvalError(
             "authoritative result root already exists "

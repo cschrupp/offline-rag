@@ -155,14 +155,12 @@ def test_alternate_security_fixture_dir_fails_preflight(
         "offline_rag.evaluation.security_13.provenance.assert_execution_affecting_paths_clean",
         lambda _repo: None,
     )
-    # Force pin match so we reach fixture-root check, but redirect Q3/authz away.
     head = resolve_verified_head_sha(REPO)
-    monkeypatch.setattr(
-        "offline_rag.evaluation.security_13.provenance.REQUIRED_EXECUTABLE_HARNESS_SHA",
-        head,
-    )
     q3 = tmp_path / "q3" / FROZEN_SECCAMP_13B
     authz = tmp_path / "authz" / "authorization_consumed"
+    pin = tmp_path / "eval" / "authority" / "security_13b" / "q1_executable_pin"
+    pin.parent.mkdir(parents=True, exist_ok=True)
+    pin.write_text(head + "\n", encoding="utf-8")
 
     def _lexical(_repo: Path) -> Path:
         return q3
@@ -178,6 +176,10 @@ def test_alternate_security_fixture_dir_fails_preflight(
     monkeypatch.setattr(
         "offline_rag.evaluation.security_13.provenance.authorization_consumed_marker",
         lambda _repo: authz,
+    )
+    monkeypatch.setattr(
+        "offline_rag.evaluation.security_13.provenance.q1_executable_pin_path",
+        lambda _repo: pin,
     )
 
     alt = tmp_path / "alt_fixtures"
@@ -206,16 +208,15 @@ def test_alternate_security_fixture_dir_fails_preflight(
 def test_authoritative_pin_mismatch_fails_preflight_without_q3_writes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Pin mismatch fails closed; never touches the real repository Q3 root."""
+    """Sealed Q1 pin mismatch fails closed; never touches the real repository Q3 root."""
     monkeypatch.setattr(
         "offline_rag.evaluation.security_13.provenance.assert_execution_affecting_paths_clean",
         lambda _repo: None,
     )
-    monkeypatch.setattr(
-        "offline_rag.evaluation.security_13.provenance.REQUIRED_EXECUTABLE_HARNESS_SHA",
-        "0" * 40,
-    )
     q3 = tmp_path / "q3" / FROZEN_SECCAMP_13B
+    pin = tmp_path / "eval" / "authority" / "security_13b" / "q1_executable_pin"
+    pin.parent.mkdir(parents=True, exist_ok=True)
+    pin.write_text("0" * 40 + "\n", encoding="utf-8")
     monkeypatch.setattr(
         "offline_rag.evaluation.security_13.provenance.authoritative_campaign_result_root_lexical",
         lambda _repo: q3,
@@ -223,6 +224,10 @@ def test_authoritative_pin_mismatch_fails_preflight_without_q3_writes(
     monkeypatch.setattr(
         "offline_rag.evaluation.security_13.harness.authoritative_campaign_result_root_lexical",
         lambda _repo: q3,
+    )
+    monkeypatch.setattr(
+        "offline_rag.evaluation.security_13.provenance.q1_executable_pin_path",
+        lambda _repo: pin,
     )
     result = run_security_13b_authoritative(
         campaign_path=CAMPAIGN,
@@ -233,7 +238,9 @@ def test_authoritative_pin_mismatch_fails_preflight_without_q3_writes(
     assert result.run_status == "failed_preflight"
     assert result.authorization_consumed is False
     assert result.aggregate.campaign_outcome is None
-    assert "executable_harness_sha" in (result.error or "")
+    assert "sealed Q1 pin" in (result.error or "") or "executable_harness_sha" in (
+        result.error or ""
+    )
     assert not q3.exists()
     auth_parent = authoritative_results_root(REPO)
     if auth_parent.exists():
