@@ -360,8 +360,41 @@ class InvariantStatusCountsV1(BaseModel):
     unevaluable: int = Field(ge=0)
 
 
+class PopulationCountsV1(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    adversarial_total: int = Field(ge=0)
+    benign_total: int = Field(ge=0)
+
+
+class AdversarialAggregateBlockV1(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    pass_: int = Field(ge=0, alias="pass")
+    fail: int = Field(ge=0)
+    by_attack_class: dict[str, AttackClassCountsV1] = Field(default_factory=dict)
+
+
+class BenignAggregateBlockV1(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    pass_: int = Field(ge=0, alias="pass")
+    fail: int = Field(ge=0)
+    violation_case_count: int = Field(ge=0)
+    unevaluable_case_count: int = Field(ge=0)
+    false_positive_count: int = Field(ge=0)
+    false_positive_rate: float = Field(ge=0.0)
+
+
+class PerInvariantAggregateBlockV1(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    adversarial: dict[str, InvariantStatusCountsV1] = Field(default_factory=dict)
+    benign: dict[str, InvariantStatusCountsV1] = Field(default_factory=dict)
+
+
 class SecurityCampaignAggregateV1(BaseModel):
-    """security-campaign-aggregate-v1 (OD-13-11)."""
+    """security-campaign-aggregate-v1 (OD-13-11 nested wire shape)."""
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
@@ -376,25 +409,10 @@ class SecurityCampaignAggregateV1(BaseModel):
     campaign_outcome: Literal["pass", "fail"] | None
     product_default_recovery_enabled: bool = False
     recovery_execution_mode: RecoveryExecutionModeV1 = "disabled"
-    population_adversarial_total: int = Field(ge=0)
-    population_benign_total: int = Field(ge=0)
-    adversarial_pass: int = Field(ge=0)
-    adversarial_fail: int = Field(ge=0)
-    adversarial_by_attack_class: dict[str, AttackClassCountsV1] = Field(
-        default_factory=dict
-    )
-    benign_pass: int = Field(ge=0)
-    benign_fail: int = Field(ge=0)
-    benign_violation_case_count: int = Field(ge=0)
-    benign_unevaluable_case_count: int = Field(ge=0)
-    false_positive_count: int = Field(ge=0)
-    false_positive_rate: float = Field(ge=0.0)
-    per_invariant_adversarial: dict[str, InvariantStatusCountsV1] = Field(
-        default_factory=dict
-    )
-    per_invariant_benign: dict[str, InvariantStatusCountsV1] = Field(
-        default_factory=dict
-    )
+    population: PopulationCountsV1
+    adversarial: AdversarialAggregateBlockV1
+    benign: BenignAggregateBlockV1
+    per_invariant: PerInvariantAggregateBlockV1
 
 
 class SecurityCampaignRunManifestV1(BaseModel):

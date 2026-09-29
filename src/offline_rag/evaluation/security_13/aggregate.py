@@ -6,13 +6,17 @@ from collections import defaultdict
 
 from offline_rag.evaluation.security_13.contracts import (
     SECURITY_CAMPAIGN_AGGREGATE_V1,
+    AdversarialAggregateBlockV1,
     AdversarialEvalResultV1,
     AdversarialFixtureV1,
     AttackClassCountsV1,
+    BenignAggregateBlockV1,
     BenignControlEvalResultV1,
     FixtureOutcomeV1,
     InvariantStatusCountsV1,
     InvariantStatusV1,
+    PerInvariantAggregateBlockV1,
+    PopulationCountsV1,
     SecurityCampaignAggregateV1,
     SecurityCampaignV1,
 )
@@ -25,7 +29,7 @@ def build_campaign_aggregate(
     adversarial_results: list[tuple[AdversarialFixtureV1, AdversarialEvalResultV1]],
     benign_results: list[BenignControlEvalResultV1],
 ) -> SecurityCampaignAggregateV1:
-    """Build the locked aggregate surface from per-case results."""
+    """Build the locked nested aggregate surface from per-case results."""
     if run_status in {"failed_preflight", "failed_during_execution"}:
         campaign_outcome = None
     elif run_status == "completed":
@@ -77,9 +81,6 @@ def build_campaign_aggregate(
         float(false_positive_count) / float(benign_total) if benign_total else 0.0
     )
 
-    per_adv = _per_invariant_counts([r for _, r in adversarial_results])
-    per_benign = _per_invariant_counts(benign_results)
-
     return SecurityCampaignAggregateV1(
         contract=SECURITY_CAMPAIGN_AGGREGATE_V1,
         seccamp_=campaign.campaign_identity_hash,
@@ -90,24 +91,32 @@ def build_campaign_aggregate(
         campaign_outcome=campaign_outcome,  # type: ignore[arg-type]
         product_default_recovery_enabled=False,
         recovery_execution_mode="disabled",
-        population_adversarial_total=len(adversarial_results),
-        population_benign_total=len(benign_results),
-        adversarial_pass=adv_pass,
-        adversarial_fail=adv_fail,
-        adversarial_by_attack_class={
-            key: AttackClassCountsV1(
-                total=val["total"], pass_=val["pass"], fail=val["fail"]
-            )
-            for key, val in sorted(by_class.items())
-        },
-        benign_pass=benign_pass,
-        benign_fail=benign_fail,
-        benign_violation_case_count=violation_case_count,
-        benign_unevaluable_case_count=unevaluable_case_count,
-        false_positive_count=false_positive_count,
-        false_positive_rate=false_positive_rate,
-        per_invariant_adversarial=per_adv,
-        per_invariant_benign=per_benign,
+        population=PopulationCountsV1(
+            adversarial_total=len(adversarial_results),
+            benign_total=len(benign_results),
+        ),
+        adversarial=AdversarialAggregateBlockV1(
+            pass_=adv_pass,
+            fail=adv_fail,
+            by_attack_class={
+                key: AttackClassCountsV1(
+                    total=val["total"], pass_=val["pass"], fail=val["fail"]
+                )
+                for key, val in sorted(by_class.items())
+            },
+        ),
+        benign=BenignAggregateBlockV1(
+            pass_=benign_pass,
+            fail=benign_fail,
+            violation_case_count=violation_case_count,
+            unevaluable_case_count=unevaluable_case_count,
+            false_positive_count=false_positive_count,
+            false_positive_rate=false_positive_rate,
+        ),
+        per_invariant=PerInvariantAggregateBlockV1(
+            adversarial=_per_invariant_counts([r for _, r in adversarial_results]),
+            benign=_per_invariant_counts(benign_results),
+        ),
     )
 
 

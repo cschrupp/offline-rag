@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
@@ -11,6 +12,7 @@ from typing import Any
 
 from offline_rag.config.models import AppSettings
 from offline_rag.core.ids import PROMPT_GROUNDED_V1
+from offline_rag.domain.generation import GroundedAnswerResult
 from offline_rag.evaluation.security_13.aggregate import build_campaign_aggregate
 from offline_rag.evaluation.security_13.capability_probe import install_capability_probe
 from offline_rag.evaluation.security_13.contracts import (
@@ -19,10 +21,14 @@ from offline_rag.evaluation.security_13.contracts import (
     SECURITY_EVAL_CANARY_LINE,
     SECURITY_EVAL_CANARY_TOKEN,
     SLICE13B_BASELINE_SHA,
+    AdversarialAggregateBlockV1,
     AdversarialEvalResultV1,
     AdversarialFixtureV1,
+    BenignAggregateBlockV1,
     BenignControlEvalResultV1,
     BenignSecurityControlV1,
+    PerInvariantAggregateBlockV1,
+    PopulationCountsV1,
     SecurityCampaignAggregateV1,
     SecurityCampaignRunManifestV1,
     SecurityCampaignV1,
@@ -42,18 +48,19 @@ from offline_rag.evaluation.security_13.loader import (
     load_security_campaign,
 )
 from offline_rag.evaluation.security_13.paths import allocate_dryrun_run_dir
+from offline_rag.generation.contracts import EVIDENCE_BEGIN
 from offline_rag.generation.executor import GroundedGenerationExecutor
 from offline_rag.generation.fake import FakeGenerator
 from offline_rag.generation.protocol import ChatMessage, GeneratorRequest
 
 CANARY_INVARIANT = "protected_prompt_canary_non_disclosure_v1"
 DEFAULT_CORPUS_SCOPE = "ics_modules"
-DEFAULT_SECURITY_POLICY: dict[str, Any] = {
-    "allow_shell_tools": False,
-    "allow_filesystem_tools": False,
-    "allow_network_tools": False,
-    "approved_models": ["local-only"],
-}
+_EVIDENCE_ID_RE = re.compile(
+    rf"^{re.escape(EVIDENCE_BEGIN)} (\S+)\s*$", re.MULTILINE
+)
+_QUERY_BLOCK_RE = re.compile(
+    r"^QUERY:\n(?P<query>.*?)\n\nEVIDENCE:", re.DOTALL | re.MULTILINE
+)
 
 
 @dataclass
@@ -91,6 +98,8 @@ class CanaryAwareExecutor(GroundedGenerationExecutor):
         super().__init__(settings, generator=generator)
         self._install_canary = install_canary
         self.last_request: GeneratorRequest | None = None
+        self.last_corpus_name: str | None = None
+        self.last_query_arg: str | None = None
 
     def _build_generator_request(
         self,
@@ -100,6 +109,9 @@ class CanaryAwareExecutor(GroundedGenerationExecutor):
         evidence_units: list[Any],
         source_name_by_document_id: Any = None,
     ) -> GeneratorRequest:
+        # Instrument the real prompt-build boundary parameters.
+        self.last_corpus_name = corpus_name
+        self.last_query_arg = query
         request = super()._build_generator_request(
             query=query,
             corpus_name=corpus_name,
@@ -167,6 +179,25 @@ def _case_binds_canary(case: SecurityCaseView) -> bool:
     return CANARY_INVARIANT in list(expected)
 
 
+def _query_from_captured_request(request: GeneratorRequest) -> str | None:
+    for message in request.messages:
+        if message.role != "user":
+            continue
+        match = _QUERY_BLOCK_RE.search(message.content)
+        if match is not None:
+            return match.group("query")
+    return None
+
+
+def _evidence_ids_from_captured_request(request: GeneratorRequest) -> list[str] | None:
+    for message in request.messages:
+        if message.role != "user":
+            continue
+        found = _EVIDENCE_ID_RE.findall(message.content)
+        return list(found) if found else []
+    return None
+
+
 def run_case_on_query_path(
     case: SecurityCaseView,
     *,
@@ -174,7 +205,11 @@ def run_case_on_query_path(
     response_override: str | None = None,
     repo_root: Path | None = None,
 ) -> tuple[SecurityObservationV1, CaseExecutionTrace]:
-    """Execute one adversarial or benign case on the real generation path."""
+    """Execute one adversarial or benign case on the real generation path.
+
+    Observations are derived only from instrumented executed surfaces. Fields
+    that cannot be instrumented honestly remain ``None`` (UNEVALUABLE).
+    """
     harness_settings = settings or build_harness_settings()
     install_canary = _case_binds_canary(case)
     allowed = list(case.allowed_citation_evidence_ids)
@@ -194,15 +229,18 @@ def run_case_on_query_path(
         harness_settings, generator=fake, install_canary=install_canary
     )
     units = evidence_units_from_case(case)
+    configured_corpus = DEFAULT_CORPUS_SCOPE
 
+    exec_result: GroundedAnswerResult | None = None
     with install_capability_probe(repo_root=repo_root) as probe:
+        capability: list[str] | None
         if not probe.complete:
-            capability: list[str] | None = None
+            capability = None
         else:
-            capability = None  # set after execute
-        executor.execute(
+            capability = None
+        exec_result = executor.execute(
             query=case.user_query,
-            corpus_name=DEFAULT_CORPUS_SCOPE,
+            corpus_name=configured_corpus,
             evidence_units=units,
             check_ready=False,
         )
@@ -212,6 +250,8 @@ def run_case_on_query_path(
     request = executor.last_request or trace.captured_request
     if request is None:
         raise SecurityEvalError("harness failed to capture GeneratorRequest")
+    if exec_result is None:
+        raise SecurityEvalError("harness failed to capture GroundedAnswerResult")
 
     prompt_contract = str((request.metadata or {}).get("prompt_contract") or "")
     if prompt_contract != PROMPT_GROUNDED_V1:
@@ -229,44 +269,45 @@ def run_case_on_query_path(
     else:
         protected_canary = None
 
-    generated = trace.generated_text
-    emitted: list[str] | None
-    if generated is None:
-        emitted = None
-    else:
-        try:
-            parsed = json.loads(generated)
-            emitted = list(parsed.get("citation_ids") or [])
-        except (json.JSONDecodeError, TypeError, AttributeError):
-            emitted = None
+    # Post-validation application citations only (not raw fake JSON).
+    emitted = list(exec_result.evidence_unit_ids_used)
+
+    # Query from executor result (executed surface), fallback to request parse.
+    observed_query = exec_result.query or _query_from_captured_request(request)
+
+    # Corpus name as it entered the real prompt-build boundary.
+    observed_corpus = executor.last_corpus_name
+
+    # No security-policy control surface exists on GroundedGenerationExecutor;
+    # do not synthesize configured==observed dictionaries.
+    observed_policy = None
+    configured_policy = None
+
+    expected = list(getattr(case, "expected_invariant_ids", []))
+    required_surface: list[str] | None = None
+    observed_surface: list[str] | None = None
+    if "evidence_surface_preserved_v1" in expected:
+        required_surface = [
+            unit.evidence_id for unit in case.evidence if unit.role == "benign"
+        ]
+        observed_surface = _evidence_ids_from_captured_request(request)
 
     observation = SecurityObservationV1(
-        configured_corpus_scope=DEFAULT_CORPUS_SCOPE,
-        observed_corpus_scope=DEFAULT_CORPUS_SCOPE,
-        observed_original_query=case.user_query,
-        configured_security_policy=dict(DEFAULT_SECURITY_POLICY),
-        observed_security_policy=dict(DEFAULT_SECURITY_POLICY),
+        configured_corpus_scope=configured_corpus,
+        observed_corpus_scope=observed_corpus,
+        observed_original_query=observed_query,
+        configured_security_policy=configured_policy,
+        observed_security_policy=observed_policy,
         capability_invocations=capability,
         emitted_citation_ids=emitted,
+        required_evidence_surface_ids=required_surface,
+        observed_evidence_surface_ids=observed_surface,
         protected_prompt_canary=protected_canary,
-        generated_output_text=generated,
+        generated_output_text=trace.generated_text,
         product_default_recovery_enabled=False,
         recovery_execution_mode="disabled",
         recovery_components_entered=[],
     )
-    expected = list(getattr(case, "expected_invariant_ids", []))
-    if "evidence_surface_preserved_v1" in expected:
-        benign_ids = [
-            unit.evidence_id for unit in case.evidence if unit.role == "benign"
-        ]
-        observation = observation.model_copy(
-            update={
-                "required_evidence_surface_ids": list(benign_ids),
-                "observed_evidence_surface_ids": [
-                    unit.evidence_unit_id for unit in units
-                ],
-            }
-        )
 
     trace.capability_invocations = capability
     return observation, trace
@@ -449,8 +490,8 @@ def run_security_13b_dryrun(
         f"- campaign_outcome: `{aggregate.campaign_outcome}`",
         f"- generator_probe_policy: `{GENERATOR_PROBE_POLICY_13B_V1}`",
         f"- prompt_contract: `{PROMPT_GROUNDED_V1}`",
-        f"- false_positive_count: `{aggregate.false_positive_count}`",
-        f"- false_positive_rate: `{aggregate.false_positive_rate}`",
+        f"- false_positive_count: `{aggregate.benign.false_positive_count}`",
+        f"- false_positive_rate: `{aggregate.benign.false_positive_rate}`",
     ]
     if error:
         report_lines.append(f"- error: `{error}`")
@@ -483,16 +524,17 @@ def _preflight_failed_aggregate() -> SecurityCampaignAggregateV1:
         path_scope="query_path",
         run_status="failed_preflight",
         campaign_outcome=None,
-        population_adversarial_total=0,
-        population_benign_total=0,
-        adversarial_pass=0,
-        adversarial_fail=0,
-        benign_pass=0,
-        benign_fail=0,
-        benign_violation_case_count=0,
-        benign_unevaluable_case_count=0,
-        false_positive_count=0,
-        false_positive_rate=0.0,
+        population=PopulationCountsV1(adversarial_total=0, benign_total=0),
+        adversarial=AdversarialAggregateBlockV1(pass_=0, fail=0),
+        benign=BenignAggregateBlockV1(
+            pass_=0,
+            fail=0,
+            violation_case_count=0,
+            unevaluable_case_count=0,
+            false_positive_count=0,
+            false_positive_rate=0.0,
+        ),
+        per_invariant=PerInvariantAggregateBlockV1(),
     )
 
 

@@ -181,7 +181,11 @@ def assert_population_policy(
     *,
     attack_class_counts: dict[str, int],
 ) -> None:
-    """Fail-closed population_policy checks (OD-13-9)."""
+    """Fail-closed population_policy checks (OD-13-9).
+
+    Declared minima must match the frozen 13B policy (1 per class, 5 benign),
+    not merely act as caller-selected thresholds.
+    """
     policy = campaign.population_policy
     required = set(policy.required_attack_classes)
     expected_required = set(REQUIRED_ATTACK_CLASSES_V1)
@@ -189,6 +193,16 @@ def assert_population_policy(
         raise SecurityEvalError(
             "population_policy.required_attack_classes must equal the locked seven "
             f"classes; got {sorted(required)!r}"
+        )
+    if policy.minimum_per_attack_class != 1:
+        raise SecurityEvalError(
+            "population_policy.minimum_per_attack_class must be 1 for 13B; "
+            f"got {policy.minimum_per_attack_class}"
+        )
+    if policy.minimum_benign_controls != 5:
+        raise SecurityEvalError(
+            "population_policy.minimum_benign_controls must be 5 for 13B; "
+            f"got {policy.minimum_benign_controls}"
         )
     for attack_class in expected_required:
         count = int(attack_class_counts.get(attack_class, 0))
