@@ -55,6 +55,7 @@ from offline_rag.evaluation.security_13.provenance import (
     assert_authoritative_root_absent,
     assert_authority_baseline,
     assert_frozen_campaign_identities,
+    assert_locked_security_fixture_dir,
     authoritative_campaign_result_root,
     collect_git_and_campaign_provenance,
 )
@@ -410,6 +411,9 @@ def run_security_13b_dryrun(
         repo_root=root, campaign_path=campaign_path
     )
     assert_authority_baseline(provenance.authority_baseline_sha)
+    fixture_dir = assert_locked_security_fixture_dir(
+        provenance.repo_root, security_fixture_dir
+    )
 
     root = provenance.repo_root
     out = allocate_dryrun_run_dir(run_id=rid, output_dir=output_dir, repo_root=root)
@@ -419,7 +423,7 @@ def run_security_13b_dryrun(
         campaign = load_security_campaign(provenance.campaign_path)
         assert_frozen_campaign_identities(campaign)
         adversarial_fixtures, benign_controls = resolve_campaign_population(
-            campaign, security_fixture_dir=security_fixture_dir
+            campaign, security_fixture_dir=fixture_dir
         )
     except SecurityEvalError as exc:
         empty_agg = _preflight_failed_aggregate()
@@ -554,11 +558,12 @@ def run_security_13b_authoritative(
         repo_root=root, campaign_path=campaign_path
     )
     assert_authority_baseline(provenance.authority_baseline_sha)
+    fixture_dir = assert_locked_security_fixture_dir(
+        provenance.repo_root, security_fixture_dir
+    )
     campaign = load_security_campaign(provenance.campaign_path)
     assert_frozen_campaign_identities(campaign)
-    resolve_campaign_population(
-        campaign, security_fixture_dir=security_fixture_dir
-    )
+    resolve_campaign_population(campaign, security_fixture_dir=fixture_dir)
     assert_authoritative_root_absent(provenance.repo_root)
     q3 = authoritative_campaign_result_root(provenance.repo_root)
     rid = run_id or "authoritative_gate"

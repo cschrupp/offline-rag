@@ -49,6 +49,8 @@ SECURITY_13B_EXECUTION_AFFECTING_PATHS: tuple[str, ...] = (
     *(str(path) for path in LOCKED_BENIGN_CONTROL_RELS),
 )
 
+LOCKED_SECURITY_FIXTURE_DIR_REL = Path("eval/fixtures/security")
+
 AUTHORITATIVE_NOT_AUTHORIZED_MSG = (
     "authoritative measure-once execution is not authorized"
 )
@@ -190,6 +192,25 @@ def collect_git_and_campaign_provenance(
     )
 
 
+def locked_security_fixture_dir(repo_root: Path) -> Path:
+    """Return the locked 13B security fixture root under ``repo_root``."""
+    return (Path(repo_root).resolve() / LOCKED_SECURITY_FIXTURE_DIR_REL).resolve()
+
+
+def assert_locked_security_fixture_dir(
+    repo_root: Path, security_fixture_dir: Path
+) -> Path:
+    """Require the caller fixture root is exactly the frozen repository path."""
+    expected = locked_security_fixture_dir(repo_root)
+    actual = Path(security_fixture_dir).expanduser().resolve()
+    if actual != expected:
+        raise SecurityEvalError(
+            "security_fixture_dir must be the locked 13B fixture root "
+            f"{expected}; got {actual}"
+        )
+    return actual
+
+
 def assert_authority_baseline(value: str) -> None:
     if value != MEASURE_ONCE_AUTHORITY_BASELINE_SHA:
         raise SecurityEvalError(
@@ -198,18 +219,45 @@ def assert_authority_baseline(value: str) -> None:
         )
 
 
-def authoritative_campaign_result_root(repo_root: Path) -> Path:
-    """Exact Q3 authoritative root for the frozen seccamp_."""
-    from offline_rag.evaluation.security_13.paths import authoritative_results_root
+def authoritative_campaign_result_root_lexical(repo_root: Path) -> Path:
+    """Lexical (unresolved final path) Q3 root under the resolved repo root."""
+    from offline_rag.evaluation.security_13.paths import AUTHORITATIVE_RESULTS_REL
 
-    return (authoritative_results_root(repo_root) / FROZEN_SECCAMP_13B).resolve()
+    root = Path(repo_root).resolve()
+    return root.joinpath(*AUTHORITATIVE_RESULTS_REL.parts, FROZEN_SECCAMP_13B)
+
+
+def authoritative_campaign_result_root(repo_root: Path) -> Path:
+    """Exact Q3 authoritative root for the frozen seccamp_ (resolved)."""
+    return authoritative_campaign_result_root_lexical(repo_root).resolve(strict=False)
 
 
 def assert_authoritative_root_absent(repo_root: Path) -> None:
-    """Fail closed if the Q3 root exists as file, directory, or symlink."""
-    target = authoritative_campaign_result_root(repo_root)
-    if target.exists() or target.is_symlink():
+    """Fail closed if the Q3 root exists as file, directory, symlink, or alias.
+
+    Inspects the lexical path before trusting ``resolve()``, so broken symlinks
+    and symlinked authoritative parents cannot be resolved away.
+    """
+    from offline_rag.evaluation.security_13.paths import AUTHORITATIVE_RESULTS_REL
+
+    root = Path(repo_root).resolve()
+    cursor = root
+    for part in AUTHORITATIVE_RESULTS_REL.parts:
+        cursor = cursor / part
+        if cursor.is_symlink():
+            raise SecurityEvalError(
+                "authoritative parent path is a symlink/alias "
+                f"(no overwrite): {cursor}"
+            )
+
+    lexical = cursor / FROZEN_SECCAMP_13B
+    if lexical.is_symlink():
+        raise SecurityEvalError(
+            "authoritative result root is a symlink "
+            f"(no overwrite): {lexical}"
+        )
+    if lexical.exists():
         raise SecurityEvalError(
             "authoritative result root already exists "
-            f"(no overwrite): {target}"
+            f"(no overwrite): {lexical}"
         )

@@ -134,17 +134,82 @@ def test_authority_baseline_mismatch_fails_closed(
     assert not (tmp_path / "should_not_allocate").exists()
 
 
-def test_campaign_byte_drift_fails_preflight(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_campaign_byte_drift_fails_preflight(tmp_path: Path) -> None:
+    """Mutate real campaign bytes; do not monkeypatch the expected blob SHA."""
+    from offline_rag.evaluation.security_13.provenance import LOCKED_CAMPAIGN_REL
+
+    target = tmp_path / LOCKED_CAMPAIGN_REL
+    target.parent.mkdir(parents=True, exist_ok=True)
+    original = CAMPAIGN.read_bytes()
+    mutated = original + b"\n"
+    assert mutated != original
+    assert git_blob_sha1(mutated) != ACCEPTED_CAMPAIGN_GIT_BLOB_SHA
+    target.write_bytes(mutated)
+    with pytest.raises(SecurityEvalError, match="campaign Git blob SHA mismatch"):
+        verify_locked_campaign_blob(tmp_path, target)
+
+
+def test_alternate_security_fixture_dir_fails_preflight(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(
         "offline_rag.evaluation.security_13.provenance.assert_execution_affecting_paths_clean",
         lambda _repo: None,
     )
-    monkeypatch.setattr(
-        "offline_rag.evaluation.security_13.provenance.ACCEPTED_CAMPAIGN_GIT_BLOB_SHA",
-        "0" * 40,
+    alt = tmp_path / "alt_fixtures"
+    alt.mkdir()
+    with pytest.raises(SecurityEvalError, match="locked 13B fixture root"):
+        run_security_13b_authoritative(
+            campaign_path=CAMPAIGN,
+            security_fixture_dir=alt,
+            repo_root=REPO,
+        )
+    with pytest.raises(SecurityEvalError, match="locked 13B fixture root"):
+        run_security_13b_dryrun(
+            campaign_path=CAMPAIGN,
+            security_fixture_dir=alt,
+            output_dir=tmp_path / "dry_alt",
+            run_id="alt",
+            repo_root=REPO,
+        )
+    assert not (tmp_path / "dry_alt").exists()
+
+
+def test_q3_broken_symlink_fails_preflight(tmp_path: Path) -> None:
+    from offline_rag.evaluation.security_13.provenance import (
+        assert_authoritative_root_absent,
     )
-    with pytest.raises(SecurityEvalError, match="campaign Git blob SHA mismatch"):
-        collect_git_and_campaign_provenance(repo_root=REPO, campaign_path=CAMPAIGN)
+
+    parent = tmp_path / "eval" / "results" / "security_13b"
+    parent.mkdir(parents=True, exist_ok=True)
+    q3 = parent / FROZEN_SECCAMP_13B
+    try:
+        q3.symlink_to(tmp_path / "missing_q3_target")
+    except OSError:
+        pytest.skip("symlink unavailable")
+    assert q3.is_symlink()
+    assert not q3.exists()
+    with pytest.raises(SecurityEvalError, match="symlink"):
+        assert_authoritative_root_absent(tmp_path)
+
+
+def test_q3_parent_symlink_alias_fails_preflight(tmp_path: Path) -> None:
+    from offline_rag.evaluation.security_13.provenance import (
+        assert_authoritative_root_absent,
+    )
+
+    elsewhere = tmp_path / "alias_elsewhere"
+    elsewhere.mkdir()
+    parent = tmp_path / "eval" / "results"
+    parent.mkdir(parents=True, exist_ok=True)
+    auth_parent = parent / "security_13b"
+    try:
+        auth_parent.symlink_to(elsewhere)
+    except OSError:
+        pytest.skip("symlink unavailable")
+    assert auth_parent.is_symlink()
+    with pytest.raises(SecurityEvalError, match="symlink/alias"):
+        assert_authoritative_root_absent(tmp_path)
 
 
 @pytest.mark.parametrize("drift_kind", ["unstaged", "staged", "untracked"])
@@ -249,26 +314,13 @@ def test_authoritative_gate_stub_rejects_after_preflight(
         }
 
 
-def test_authoritative_fails_if_q3_root_exists(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(
-        "offline_rag.evaluation.security_13.provenance.assert_execution_affecting_paths_clean",
-        lambda _repo: None,
+def test_authoritative_fails_if_q3_root_exists(tmp_path: Path) -> None:
+    from offline_rag.evaluation.security_13.provenance import (
+        assert_authoritative_root_absent,
     )
-    fake_q3 = tmp_path / "seccamp_already"
-    fake_q3.mkdir()
-    monkeypatch.setattr(
-        "offline_rag.evaluation.security_13.provenance.authoritative_campaign_result_root",
-        lambda _repo: fake_q3,
-    )
-    monkeypatch.setattr(
-        "offline_rag.evaluation.security_13.harness.authoritative_campaign_result_root",
-        lambda _repo: fake_q3,
-    )
+
+    parent = tmp_path / "eval" / "results" / "security_13b"
+    parent.mkdir(parents=True, exist_ok=True)
+    (parent / FROZEN_SECCAMP_13B).mkdir()
     with pytest.raises(SecurityEvalError, match="already exists"):
-        run_security_13b_authoritative(
-            campaign_path=CAMPAIGN,
-            security_fixture_dir=FIX,
-            repo_root=REPO,
-        )
+        assert_authoritative_root_absent(tmp_path)
