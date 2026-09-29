@@ -115,8 +115,9 @@ Formal **9H** remains **FROZEN** behind future 9G.
 The 22-case / human-16 9F benchmark remains a **development/regression fixture
 only** (`gold_d3fc157c7b3206f6983abee766e7ce7b939244a7dea04f0be256f3a533a46172`).
 
-**Milestone 5 development checkpoint reached** (Slice 10A–10E). Next major
-track: Milestone **6** — Agentic recovery and security (not started).
+**Milestone 5 development checkpoint reached** (Slice 10A–10E). Milestone **6**
+is **IN PROGRESS**; next gate is separate Slice **13B** authoritative
+measure-once authorization (not authorized here).
 
 Canonical **publication** order remains **9G → formal 9H** (not a near-term
 engineering dependency).
@@ -210,16 +211,17 @@ on the 22-case fixture are development evidence only — not sole grounds for
 promoting defaults.
 
 **Next operational track:** Milestone **6** — Agentic recovery and security
-(**design contract drafted**; implementation not started — see
+(**IN PROGRESS**; see
 [`docs/milestone6_agentic_recovery_security.md`](docs/milestone6_agentic_recovery_security.md)).
-Order: Slice **11** → **12** → **13**.
+Next gate: separate Slice **13B** authoritative measure-once authorization
+(not authorized here). Order: Slice **11** → **12** → **13**.
 
 
 ---
 
 ## Milestone 6 — Agentic recovery and security
 
-**Status:** Slice **11 COMPLETE / ACCEPTED**; Slice **12 COMPLETE / ACCEPTED**; Slice **13 INCOMPLETE** (**13A COMPLETE / ACCEPTED**; **13B DESIGN LOCKED / PENDING INDEPENDENT ACCEPTANCE**; **13C–13D NOT AUTHORIZED**); Milestone **6 INCOMPLETE**  
+**Status:** Milestone **6 IN PROGRESS** — Slice **11 COMPLETE / ACCEPTED**; Slice **12 COMPLETE / ACCEPTED**; Slice **13 INCOMPLETE** (**13A COMPLETE / ACCEPTED**; **13B DESIGN LOCKED / ACCEPTED**; **13B HARNESS COMPLETE / ACCEPTED** (`87b9367`); **13B AUTHORITATIVE MEASURE-ONCE NOT AUTHORIZED**; **13C–13D NOT AUTHORIZED**)  
 **Baseline:** `1983ff1376ea27fc1e8774b35136dc8c8ec93f40`  
 **Design authority:** [`docs/milestone6_agentic_recovery_security.md`](docs/milestone6_agentic_recovery_security.md)  
 **OD-12 design-lock baseline:** `4194d525211d994b97aa8abba93237cd8a23cbb9`  
@@ -231,7 +233,9 @@ Order: Slice **11** → **12** → **13**.
 **Slice 13 design-open / authority baseline:** `6a3806bdc89a17bcdf992dba068e843f8535de6a`  
 **Slice 13 design lock (accepted):** `571882e062359e258f5843b4289b2f556d22d7f7`  
 **13A accepted technical result:** `c2c1ff85c5383e224fc8767be1abbd5c435dd789`  
-**13B design authority baseline:** `1b87b90cad610ba40513d4ac0ca5e3239c2d7c3d`
+**13B design-open baseline:** `1b87b90cad610ba40513d4ac0ca5e3239c2d7c3d`  
+**13B design authority:** `d3fc8616e5dfe474a53659bc3e276594d8eaa9c7`  
+**13B accepted harness:** `87b936789b2cf91e202be5ff4b818e3909460fd8`
 
 **Implementation order (locked):** Slice **11** → Slice **12** → Slice **13**
 
@@ -242,7 +246,7 @@ authorization.
 
 - [x] Slice 11 — Evidence sufficiency & abstention policy (11A→11B→11C) — **COMPLETE / ACCEPTED**
 - [x] Slice 12 — Bounded conditional retrieval recovery — **COMPLETE / ACCEPTED**
-- [ ] Slice 13 — Prompt-injection & security harness — **INCOMPLETE** (**13A COMPLETE / ACCEPTED**; **13B DESIGN LOCKED / PENDING INDEPENDENT ACCEPTANCE**)
+- [ ] Slice 13 — Prompt-injection & security harness — **INCOMPLETE** (**13A COMPLETE / ACCEPTED**; **13B DESIGN LOCKED / ACCEPTED**; **13B HARNESS COMPLETE / ACCEPTED** (`87b9367`); **13B AUTHORITATIVE MEASURE-ONCE NOT AUTHORIZED**; **13C–13D NOT AUTHORIZED**)
 
 Checklist detail (same order; not startable out of sequence):
 
