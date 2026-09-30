@@ -383,8 +383,24 @@ justifies conditional orchestration.
 
 ## Milestone 7 — Performance and UI
 
-- [ ] stage latency instrumentation
-- [ ] memory/VRAM metrics
+**Status:** Milestone **7 IN PROGRESS**  
+**M7 entry authority / Slice 14 design baseline:** `dcc6b07c20f97472cf506c4665af1f88f00a886b`  
+**Design authority:** [`docs/milestone7_performance_ui.md`](docs/milestone7_performance_ui.md)
+
+**Slice 14 — Performance and resource benchmark harness**
+- Design: **CANDIDATE PENDING AUDIT** (this docs-only design-lock commit)
+- Design baseline: `dcc6b07c20f97472cf506c4665af1f88f00a886b`
+- Intended post-audit label: LOCKED / ACCEPTED (not claimed until independent audit)
+- **14A** contracts + instrumentation: **NOT AUTHORIZED**
+- **14B** runner + dry-run validation: **NOT AUTHORIZED**
+- **14C** frozen hybrid vs hybrid+reranker quality-vs-cost suite: **NOT AUTHORIZED**
+- Observational measurement only; no optimization / no pipeline semantic change in-slice
+- First quality-vs-cost design: baseline **hybrid** vs treatment **hybrid + reranker** (generation excluded)
+
+Later M7 checklist (not Slice 14; not authorized by this design lock):
+
+- [ ] stage latency instrumentation (Slice 14A — **NOT AUTHORIZED**)
+- [ ] memory/VRAM metrics (Slice 14A — **NOT AUTHORIZED**)
 - [ ] FastAPI service
 - [ ] single-container OfflineRAG application image
 - [ ] Qdrant Local standalone profile
@@ -394,6 +410,10 @@ justifies conditional orchestration.
 - [ ] evaluation dashboard
 
 **Release criterion:** a reviewer can interactively compare retrieval modes and inspect evidence flow.
+
+Milestone **6** remains **COMPLETE / ACCEPTED** at `dcc6b07…`. This M7 design
+lock does **not** reopen M6 science, authorize 13C/13D, enable recovery, or
+authorize 14A/14B/14C implementation.
 
 ## Milestone 8 — Portfolio release
 

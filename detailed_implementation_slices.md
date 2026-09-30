@@ -841,39 +841,54 @@ as above; not an M6 delivery obligation.
 
 # Slice 14 — Performance and resource benchmark harness
 
-## Objective
-
-Measure the local execution cost of each pipeline stage.
-
-## Deliverables
-
-- stage timers;
-- p50/p95 aggregation;
-- parsing throughput;
-- embedding throughput;
-- index build time;
-- Qdrant retrieval timing;
-- reranking timing;
-- generation TTFT and tokens/sec;
-- RAM/VRAM capture where feasible;
-- benchmark machine profile.
-
-## Required comparison
-
-Every quality-improving feature should eventually have a quality-vs-cost view.
-
-Example:
-
 ```text
-reranker ON:
-  MRR +8.1%
-  p50 +145 ms
-  VRAM +1.2 GB
+STATUS: DESIGN LOCK CANDIDATE
+SLICE 14 DESIGN BASELINE: dcc6b07c20f97472cf506c4665af1f88f00a886b
+MILESTONE 7: IN PROGRESS
+M7 ENTRY AUTHORITY: dcc6b07c20f97472cf506c4665af1f88f00a886b
+Authority: docs/milestone7_performance_ui.md
+14A: contracts + instrumentation — NOT AUTHORIZED
+14B: runner + dry-run validation — NOT AUTHORIZED
+14C: frozen hybrid vs hybrid+reranker campaign — NOT AUTHORIZED
 ```
 
-## Exit criteria
+## Objective
 
-The README can present at least one defensible quality/latency trade-off.
+Non-invasive, reproducible measurement harness for the accepted OfflineRAG
+pipeline. Observe and serialize timing/resource data; combine with already
+accepted quality metrics. Do **not** change pipeline semantics or optimize
+the system in response to measured results within this slice.
+
+## Locked design (summary)
+
+- Three levels: **A** micro/stage; **B** pipeline variants; **C** end-to-end
+  user path — separately labeled.
+- Provenance before measurement; warm-up separate from measured samples;
+  ≥10 micro/pipeline observations; ≥5 expensive generation observations;
+  monotonic `perf_counter`-style timing; report n/min/p50/p95/max + failures.
+- Machine/resource profile required; missing RAM/VRAM = unavailable/
+  unevaluable (never infer zero); does not invalidate timing.
+- Artifacts under `eval/results/performance_14/<suite_id>/<run_id>/`
+  (`run_manifest.json`, `aggregate.json`, `cases/`, `report.md`).
+- Completed runs immutable; reruns get new IDs; **not** measure-once.
+- Fail-closed preflight; descriptive results only — **no** performance SLO /
+  winner / promotion decision.
+- First quality-vs-cost: **hybrid** vs **hybrid + reranker** (generation
+  excluded); reuse existing IR metrics.
+- Phasing: 14A → 14B → harness audit → 14C → separate run authorization →
+  Slice 14 closeout.
+- Contracts: `performance-benchmark-*-v1`; identities `perfsuite_` /
+  `perfrun_` / `perfcase_` / `perfhost_` / `perfcfg_`.
+
+## Exit criteria (eventual; not this commit)
+
+Harness accepted; frozen hybrid vs hybrid+reranker suite accepted; ≥1 valid
+terminal run; one defensible quality-vs-cost report; Level C generation
+metrics where evaluable; machine/resource provenance; README-facing evidence
+without arbitrary winner/SLO claims.
+
+**This design-lock commit does not authorize 14A/14B/14C or any benchmark
+execution.** Milestone 6 remains COMPLETE / ACCEPTED unchanged.
 
 ---
 
