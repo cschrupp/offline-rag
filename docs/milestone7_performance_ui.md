@@ -167,8 +167,44 @@ case definitions; fixed population/query-set identity; pipeline variant
 definitions; measurement protocol version). It **excludes** machine identity,
 executing SHA, timestamp, measurements, observed timings/resources.
 
-Run manifests contain concrete execution provenance. Case artifacts preserve
-raw observations, failures, resource observations, and derived statistics.
+### 5.1 `run_manifest.json` — minimum normative fields
+
+Every run manifest MUST include at least:
+
+| Field | Role |
+|---|---|
+| `suite_id` | Frozen suite identity (`perfsuite_…`) |
+| `executing_sha` | Exact OfflineRAG commit that executed the run |
+| `machine_profile` / `machine_profile_id` | Captured machine profile or its `perfhost_` identity |
+| `config_id` | Effective configuration identity (`perfcfg_…`) |
+| `corpus_id` | Corpus identity used for the run |
+| `model_ids` | Embedding / reranker / generator identities as applicable |
+| `warmup_policy` | Declared warm-up policy |
+| `repetition_counts` | Declared measured-repetition counts |
+| `start_timestamp` | Run start timestamp (provenance; not used as duration clock) |
+| `environment` / `runtime_versions` | Environment and runtime version provenance |
+| `execution_mode` | Declared execution mode (e.g. cold/warm protocol context) |
+
+Additional provenance fields are permitted; these minima are mandatory.
+
+### 5.2 Case artifact — minimum normative fields
+
+Every case artifact under `cases/<case_id>.json` MUST include at least:
+
+| Field | Role |
+|---|---|
+| `case_id` | Case identity (`perfcase_…` or stable case id bound to suite) |
+| `variant` | Pipeline / treatment variant under test |
+| query / document / fixture identity | Subject identity for the case |
+| warm-up observations or count | Separated warm-up record |
+| measured observations | Raw measured timing/resource observations |
+| failures | Preserved failure records |
+| resource observations / samples | RAM/VRAM (or unavailable/unevaluable) samples |
+| derived | Deterministic statistics: `n`, `min`, `p50`, `p95`, `max` |
+
+Raw observations remain authoritative. Derived statistics are recomputable
+from raw observations under the locked statistics semantics. `report.md` is
+presentation only and is not an acceptance authority.
 
 ---
 
@@ -223,19 +259,43 @@ concept for ordinary benchmark reruns.
 ## 8. Semantic timing boundaries
 
 Timing uses semantic project-owned boundaries, not arbitrary function
-boundaries.
+boundaries. The stage **names and start→end envelopes below are normative**.
+14A implementations that time different envelopes while claiming these stage
+ids are non-conforming.
 
-**Ingest/index path:** `document_load`, `parse`, `chunk`, `embed`,
-`dense_index_write`, `lexical_index_write`.
+### 8.1 Ingest / index path
 
-**Query path:** `dense_retrieve`, `lexical_retrieve`, `fusion`, `rerank`,
-`context_assembly`, `generation`, `citation_validation`.
+| Stage | Start → end |
+|---|---|
+| `document_load` | source accepted → content available to parser |
+| `parse` | parser invocation → normalized parsed content blocks returned |
+| `chunk` | parsed content → final chunks ready |
+| `embed` | embedding batch submitted → vectors returned |
+| `dense_index_write` | vectors/payload ready → persistent dense write complete |
+| `lexical_index_write` | chunks ready → lexical write complete |
 
-**End-to-end:** CLI/service query entry → terminal query result (answered,
-insufficient_evidence, model_abstain, generation failure, or other accepted
-terminal status).
+### 8.2 Query path
 
-**Generation timing:**
+| Stage | Start → end |
+|---|---|
+| `dense_retrieve` | dense request issued → dense candidate set available |
+| `lexical_retrieve` | lexical request issued → lexical candidate set available |
+| `fusion` | dense + lexical candidate sets available → fused ranking complete |
+| `rerank` | finalized reranker input → reranked candidates returned |
+| `context_assembly` | final ranked candidates → GeneratorRequest evidence/context finalized |
+| `generation` | generator request submitted → complete response |
+| `citation_validation` | raw generation response → validated answer/citations |
+
+### 8.3 End-to-end
+
+| Stage | Start → end |
+|---|---|
+| `end_to_end` | CLI/service query entry → accepted terminal result |
+
+Terminal result may include: answered; insufficient_evidence; model_abstain;
+generation failure; or other accepted terminal status.
+
+### 8.4 Generation sub-boundaries
 
 | Metric | Definition |
 |---|---|

@@ -869,7 +869,14 @@ the system in response to measured results within this slice.
 - Machine/resource profile required; missing RAM/VRAM = unavailable/
   unevaluable (never infer zero); does not invalidate timing.
 - Artifacts under `eval/results/performance_14/<suite_id>/<run_id>/`
-  (`run_manifest.json`, `aggregate.json`, `cases/`, `report.md`).
+  (`run_manifest.json`, `aggregate.json`, `cases/`, `report.md`);
+  raw observations authoritative; aggregates derived; `report.md` presentation
+  only. Manifest minima include suite/executing SHA/machine/config/corpus/
+  models/warmup/repetitions/start/env/mode; case minima include identity,
+  warm-up, measured observations, failures, resources, derived n/min/p50/p95/max.
+- Semantic stage envelopes are normative (e.g. `embed`: batch submitted →
+  vectors returned; `end_to_end`: CLI/service entry → accepted terminal result);
+  see authority doc §8.
 - Completed runs immutable; reruns get new IDs; **not** measure-once.
 - Fail-closed preflight; descriptive results only — **no** performance SLO /
   winner / promotion decision.
