@@ -705,9 +705,9 @@ STATUS: COMPLETE / ACCEPTED UNDER REVISED DISPOSITION
         RETRY / RESUME / SECOND ATTEMPT: FORBIDDEN
         13C: DEFERRED / OPEN / NOT REQUIRED FOR M6 / NOT AUTHORIZED
         13D: DEFERRED / OPTIONAL / NOT REQUIRED FOR M6 / NOT AUTHORIZED
-        OD-13-4: LOCKED / AMENDED / ACCEPTED
-MILESTONE 6: IN PROGRESS / ELIGIBLE TO CLOSE
-             COMPLETE / ACCEPTED: NOT YET (separate closeout required)
+        OD-13-4: LOCKED / AMENDED / ACCEPTED (efe7e12)
+MILESTONE 6: COMPLETE / ACCEPTED
+             Closeout: this commit (0f14388 → efe7e12 → this SHA)
 13A design authority: 571882e
 13A chain: 571882e → 7fe978a → c2c1ff8
 13B design authority: d3fc8616e5dfe474a53659bc3e276594d8eaa9c7
@@ -735,7 +735,14 @@ OD-13-1…6: 13A accepted (OD-13-2 OPEN / DEFERRED; OD-13-4 LOCKED / AMENDED / A
 OD-13-7…13: LOCKED / ACCEPTED
 Product recovery: DISABLED
 LangGraph / NeMo / 12C rerun: NOT AUTHORIZED
-Next: separate Milestone 6 docs/status closeout (not authorized here)
+M6 HUMAN SMOKE: LOCAL / NON-AUTHORITATIVE (supplementary only)
+  Part A: Q1–Q4 Status answered; Q5 Status insufficient_evidence /
+          Abstention model_abstain (local /tmp/m6-human-demo/part_a.log)
+  Part B: dry_run m6-human-demo completed / fail;
+          security_policy_immutable_v1 UNEVALUABLE (expected);
+          adversarial 0/7 pass/fail; benign FP rate 0.0
+          (local eval/results/security_13b_dryrun/m6-human-demo/; not Q3)
+Next: Milestone 7 — Performance and UI (named only / NOT AUTHORIZED)
 ```
 
 ## Objective
@@ -826,10 +833,9 @@ not model refusal text.
 consumed / terminal; retry forbidden.
 **Slice 13 COMPLETE / ACCEPTED UNDER REVISED DISPOSITION** — 13C/13D deferred
 as above; not an M6 delivery obligation.
-Milestone **6** remains **IN PROGRESS** / **eligible to close**;
-**COMPLETE / ACCEPTED** requires a separate M6 docs/status closeout.
+**Milestone 6 COMPLETE / ACCEPTED** under the revised disposition.
 
-**Next:** separate Milestone 6 docs/status closeout (not authorized here).
+**Next:** Milestone 7 — Performance and UI (**named only / NOT AUTHORIZED**).
 
 ---
 

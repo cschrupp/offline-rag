@@ -1,11 +1,12 @@
 # Milestone 6 — Agentic Recovery & Security
 
 ```text
-MILESTONE 6 IN PROGRESS
-  ELIGIBLE TO CLOSE UNDER REVISED DISPOSITION
-  COMPLETE / ACCEPTED: NOT YET (separate M6 closeout required)
+MILESTONE 6 COMPLETE / ACCEPTED
+Closeout authority: this docs-only commit
+Authority chain: 0f14388 → efe7e12 → this commit
 Slice 11 COMPLETE / ACCEPTED
 Slice 12 COMPLETE / ACCEPTED
+  recovery DISABLED; disposition insufficient_evidence_for_recovery_efficacy
 Slice 13 COMPLETE / ACCEPTED UNDER REVISED DISPOSITION
   13A COMPLETE / ACCEPTED (c2c1ff8)
   13B DESIGN: LOCKED / ACCEPTED (d3fc861)
@@ -17,7 +18,7 @@ Slice 13 COMPLETE / ACCEPTED UNDER REVISED DISPOSITION
   RETRY / RESUME / SECOND ATTEMPT: FORBIDDEN
   13C: DEFERRED / OPEN / NOT REQUIRED FOR M6 / NOT AUTHORIZED
   13D: DEFERRED / OPTIONAL / NOT REQUIRED FOR M6 / NOT AUTHORIZED
-OD-13-4: LOCKED / AMENDED / ACCEPTED (this commit; prior baseline 0f14388)
+OD-13-4: LOCKED / AMENDED / ACCEPTED (efe7e1240974af27a1b8448215346abd094181a4)
 Baseline: 1983ff1376ea27fc1e8774b35136dc8c8ec93f40
 Slice 13 design-open baseline: 6a3806bdc89a17bcdf992dba068e843f8535de6a
 Slice 13 design lock (accepted): 571882e062359e258f5843b4289b2f556d22d7f7
@@ -46,12 +47,11 @@ result, the Slice **13B** design lock (OD-13-7…13) at `d3fc861`, the
 accepted Slice **13B harness** technical result at `87b9367`, the sealed/
 executed authoritative executable SHA `7baca2d`, the accepted Slice **13B**
 authoritative measure-once terminal result (`completed` / `fail`), the
-post-13B Milestone 6 status review at `0f14388`, and the bounded OD-13-4
-phase-exit amendment in **this** commit.
+post-13B Milestone 6 status review at `0f14388`, the bounded OD-13-4
+phase-exit amendment at `efe7e12`, and this Milestone 6 docs/status closeout.
 **Not authoritative for:** LangGraph adoption, recovery promotion, NeMo
-dependency, 13C/13D execution, measure-once retry/resume, Milestone 6
-COMPLETE (separate closeout required), or publication-grade
-sufficiency/security claims.
+dependency, 13C/13D execution, measure-once retry/resume, Milestone 7
+implementation, or publication-grade sufficiency/security claims.
 
 Slice 11 and Slice 12 are closed. **Slice 13 is COMPLETE / ACCEPTED UNDER
 REVISED DISPOSITION** (**13A** / **13B** COMPLETE / ACCEPTED; **13C**
@@ -62,11 +62,60 @@ fail-closed OD-13-1 outcome (`security_policy_immutable_v1` UNEVALUABLE →
 campaign fail); not an execution defect; not grounds for repair or rerun.
 Benign false positives = 0. Recovery remains disabled. Authoritative
 **query-path** coverage (13B) is the Milestone 6 deterministic security
-campaign exit; full 7×2 remains future **13C** scope only. Milestone **6**
-remains **IN PROGRESS** and is **eligible to close** under this revised
-disposition; **COMPLETE / ACCEPTED** requires a separate M6 docs/status
-closeout. This amendment does **not** re-seal Q1, alter `7baca2d`, change
-the measure-once result, authorize 13C/13D, or declare M6 complete.
+campaign exit; full 7×2 remains future **13C** scope only.
+
+**Milestone 6 is COMPLETE / ACCEPTED** under the revised disposition. This
+closeout does **not** re-seal Q1, alter `7baca2d`, change the measure-once
+result, authorize 13C/13D, enable recovery, or authorize Milestone 7 work.
+
+```text
+M6 HUMAN SMOKE — LOCAL / NON-AUTHORITATIVE (supplementary only)
+
+Does not prove Milestone 6 scientifically; M6 closure rests on accepted
+Slice 11/12/13 evidence and OD-13-4 amendment efe7e12.
+
+Part A — ICS grounded-path demo
+Local log: /tmp/m6-human-demo/part_a.log
+
+Q1–Q4:
+  Status: answered
+  grounded citations observed
+
+Q5:
+  Status: insufficient_evidence
+  Abstention: model_abstain
+  "Insufficient evidence to answer groundedly."
+
+Retrieve assembled context for all five queries; Q5 still retrieved evidence
+and then abstained.
+
+Part B — security-13b dry_run
+run_id: m6-human-demo
+
+Local evidence:
+  eval/results/security_13b_dryrun/m6-human-demo/
+  /tmp/m6-human-demo/part_b.log
+
+run_mode: dry_run
+NOT authoritative / NOT Q3
+
+run_status: completed
+campaign_outcome: fail
+
+Decisive condition:
+  security_policy_immutable_v1 = UNEVALUABLE
+
+Expected under accepted 13B fail-closed OD-13-1 semantics;
+not a product defect.
+
+Adversarial:
+  0 pass / 7 fail
+
+Benign:
+  false_positive_rate = 0.0
+
+Paths are referenced textually only and are not committed.
+```
 ---
 
 ## 1. Objective
@@ -3508,8 +3557,8 @@ Design contract (this document)
   → 13B authoritative measure-once                  ← COMPLETE / ACCEPTED (executed at 7baca2d; completed / fail)
   → 13B docs/status closeout                        ← ACCEPTED (0f14388; post-13B M6 review baseline)
   → post-13B Milestone 6 status review              ← COMPLETE / ACCEPTED (0f14388)
-  → OD-13-4 M6 phase-exit amendment                 ← this commit (LOCKED / AMENDED / ACCEPTED)
-  → Milestone 6 docs/status closeout                ← NOT YET (separate gate)
+  → OD-13-4 M6 phase-exit amendment                 ← LOCKED / AMENDED / ACCEPTED (efe7e12)
+  → Milestone 6 docs/status closeout                ← this commit (COMPLETE / ACCEPTED)
   → 13C recovery-path adversarial harness           ← DEFERRED / OPEN / NOT REQUIRED FOR M6 / NOT AUTHORIZED
   → 13D optional NeMo (OD-13-2)                     ← DEFERRED / OPTIONAL / NOT REQUIRED FOR M6 / NOT AUTHORIZED
 ```
@@ -3538,10 +3587,11 @@ for repair or rerun. Q3 / evidence archive are local/acceptance evidence
 **13C** DEFERRED / OPEN / NOT REQUIRED FOR M6 / **NOT AUTHORIZED** (Q1
 scientific question retained). **13D** DEFERRED / OPTIONAL / NOT REQUIRED
 FOR M6 / **NOT AUTHORIZED**. OD-13-2 remains **OPEN / DEFERRED**.
-Milestone **6** remains **IN PROGRESS** and is **eligible to close** under
-this revised disposition; **COMPLETE / ACCEPTED** requires a separate M6
-docs/status closeout.
-**Next** = separate Milestone 6 docs/status closeout (not authorized here).
+**Milestone 6 COMPLETE / ACCEPTED** under the revised disposition (authority
+chain `0f14388` → `efe7e12` → this closeout). Local human smoke is
+**LOCAL / NON-AUTHORITATIVE** supplementary evidence only.
+**Next** = Milestone 7 — Performance and UI (**named only / NOT AUTHORIZED**
+by this closeout).
 
 ---
 
@@ -4225,17 +4275,17 @@ product recovery                         DISABLED / NOT AUTHORIZED
 LangGraph                                NOT AUTHORIZED
 config/base.yaml mutation                NOT AUTHORIZED
 12C rerun                                NOT AUTHORIZED
+Milestone 7                              NAMED ONLY / NOT AUTHORIZED
 ```
 
-Milestone **6 remains IN PROGRESS** and is **eligible to close** under the
-revised disposition. **COMPLETE / ACCEPTED** requires a separate M6
-docs/status closeout.
+**Milestone 6 COMPLETE / ACCEPTED** under the revised disposition
+(authority chain `0f14388` → `efe7e12` → this docs/status closeout).
 
-**Next:** separate Milestone 6 docs/status closeout (not authorized by this
-OD-13-4 phase-exit amendment).
+**Next:** Milestone 7 — Performance and UI (**named only / NOT AUTHORIZED**
+by this closeout).
 
-This amendment **DOES NOT** authorize: 13C implementation; 13D / NeMo;
+This closeout **DOES NOT** authorize: 13C implementation; 13D / NeMo;
 product recovery; LangGraph; `config/base.yaml` changes; a 12C rerun; any
-measure-once retry / resume / second attempt; or claiming Milestone 6
-COMPLETE. It does **not** re-seal Q1 or alter the executed executable
-`7baca2d`.
+measure-once retry / resume / second attempt; or Milestone 7
+implementation/design work. It does **not** re-seal Q1 or alter the
+executed executable `7baca2d`.

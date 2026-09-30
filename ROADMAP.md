@@ -221,7 +221,7 @@ Next gate: separate Slice **13B** authoritative measure-once authorization
 
 ## Milestone 6 — Agentic recovery and security
 
-**Status:** Milestone **6 IN PROGRESS** — **ELIGIBLE TO CLOSE** under revised disposition (**COMPLETE / ACCEPTED** requires separate M6 closeout) — Slice **11 COMPLETE / ACCEPTED**; Slice **12 COMPLETE / ACCEPTED**; Slice **13 COMPLETE / ACCEPTED UNDER REVISED DISPOSITION** (**13A** / **13B** COMPLETE / ACCEPTED at `7baca2d` `completed` / `fail`; **13C** DEFERRED / OPEN / NOT REQUIRED FOR M6 / **NOT AUTHORIZED**; **13D** DEFERRED / OPTIONAL / NOT REQUIRED FOR M6 / **NOT AUTHORIZED**)  
+**Status:** Milestone **6 COMPLETE / ACCEPTED** under revised disposition — Slice **11 COMPLETE / ACCEPTED**; Slice **12 COMPLETE / ACCEPTED** (recovery disabled; `insufficient_evidence_for_recovery_efficacy` retained); Slice **13 COMPLETE / ACCEPTED UNDER REVISED DISPOSITION** (**13A** / **13B** COMPLETE / ACCEPTED at `7baca2d` `completed` / `fail`; **13C** DEFERRED / OPEN / NOT REQUIRED FOR M6 / **NOT AUTHORIZED**; **13D** DEFERRED / OPTIONAL / NOT REQUIRED FOR M6 / **NOT AUTHORIZED**)  
 **Baseline:** `1983ff1376ea27fc1e8774b35136dc8c8ec93f40`  
 **Design authority:** [`docs/milestone6_agentic_recovery_security.md`](docs/milestone6_agentic_recovery_security.md)  
 **OD-12 design-lock baseline:** `4194d525211d994b97aa8abba93237cd8a23cbb9`  
@@ -241,7 +241,8 @@ Next gate: separate Slice **13B** authoritative measure-once authorization
 **13B sealed/executed executable SHA:** `7baca2d0fd0d89b6358d04bd943c8c14ea6e742c`  
 **13B Q1 seal:** `refs/offline-rag/authority/security_13b/q1` → `7baca2d0fd0d89b6358d04bd943c8c14ea6e742c`  
 **13B frozen campaign Git blob:** `7951ad964e7a91d5e89589acb4544fb99ca3079c`  
-**OD-13-4 amendment:** **LOCKED / AMENDED / ACCEPTED** (this commit; prior baseline `0f14388`)
+**OD-13-4 amendment:** **LOCKED / AMENDED / ACCEPTED** (`efe7e1240974af27a1b8448215346abd094181a4`)  
+**M6 docs/status closeout:** this commit (`0f14388` → `efe7e12` → this SHA)
 
 **Implementation order (locked):** Slice **11** → Slice **12** → Slice **13**
 
@@ -267,11 +268,17 @@ Checklist detail (same order; not startable out of sequence):
 - [ ] **13C** recovery-path adversarial harness — **DEFERRED / OPEN / NOT REQUIRED FOR M6 / NOT AUTHORIZED**
 - [ ] optional NeMo Guardrails evaluation (**13D**; OD-13-2 OPEN/deferred) — **DEFERRED / OPTIONAL / NOT REQUIRED FOR M6 / NOT AUTHORIZED**
 
-**Next:** Separate Milestone 6 docs/status closeout to declare M6
-**COMPLETE / ACCEPTED** (not authorized by this OD-13-4 amendment). This
-amendment does **not** authorize 13C implementation, 13D, recovery,
-LangGraph, NeMo, `base.yaml` mutation, a 12C rerun, any measure-once retry,
-or claiming M6 complete.
+**M6 HUMAN SMOKE — LOCAL / NON-AUTHORITATIVE (supplementary only):**
+ICS Part A Q1–Q4 `answered`, Q5 `insufficient_evidence` / `model_abstain`;
+security-13b dry_run `m6-human-demo` `completed` / `fail` via
+`security_policy_immutable_v1` UNEVALUABLE (expected). Paths
+`/tmp/m6-human-demo/…` and `eval/results/security_13b_dryrun/m6-human-demo/`
+are local demo evidence only — not authoritative science and not committed.
+
+**Next:** Milestone **7** — Performance and UI (**named only / NOT AUTHORIZED**
+by this M6 closeout). This closeout does **not** authorize 13C, 13D,
+recovery, LangGraph, NeMo, `base.yaml` mutation, a 12C rerun, or any
+measure-once retry.
 
 **Slice 13A COMPLETE / ACCEPTED**
 - Design authority: `571882e`
@@ -361,7 +368,14 @@ or claiming M6 complete.
 
 **Frozen runtime policy:** `sufficiency-v1` — `empty_context_v1` iff final EvidenceUnit[] is empty; non-empty proceeds to generation; `model_abstain` remains post-generation and distinct. That is the deterministic trigger ADR-008 requires for Slice 12.
 
-**Release criterion:** agentic recovery demonstrates measured benefit and adversarial test results are documented.
+**Release / closeout criterion (satisfied under revised disposition):**
+Slice 11 COMPLETE / ACCEPTED; Slice 12 COMPLETE / ACCEPTED with recovery
+disabled and the not-evaluable efficacy disposition retained; Slice 13
+COMPLETE / ACCEPTED UNDER REVISED DISPOSITION (authoritative query-path 13B
+accepted; 13C/13D deferred and not required for M6).
+
+This does not claim measured recovery benefit, full 7×2 coverage, or absolute
+security.
 
 Recovery remains disabled by default. LangGraph was not added and is
 **Post-Slice-12 / NOT AUTHORIZED** unless a future evaluation separately
