@@ -1,0 +1,270 @@
+"""Slice 14A performance benchmark contracts (design authority 89a395ae).
+
+Evaluation-layer only. No runner, CLI, preflight execution, or result writes.
+Observational measurement substrate — does not optimize the measured system.
+"""
+
+from __future__ import annotations
+
+from typing import Any, Literal
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from offline_rag.sufficiency.contracts import ExactNonBlankStr
+
+PERFORMANCE_BENCHMARK_SUITE_V1 = "performance-benchmark-suite-v1"
+PERFORMANCE_BENCHMARK_RUN_MANIFEST_V1 = "performance-benchmark-run-manifest-v1"
+PERFORMANCE_BENCHMARK_CASE_V1 = "performance-benchmark-case-v1"
+PERFORMANCE_BENCHMARK_OBSERVATION_V1 = "performance-benchmark-observation-v1"
+PERFORMANCE_MACHINE_PROFILE_V1 = "performance-machine-profile-v1"
+PERFORMANCE_RESOURCE_OBSERVATION_V1 = "performance-resource-observation-v1"
+PERFORMANCE_BENCHMARK_AGGREGATE_V1 = "performance-benchmark-aggregate-v1"
+
+DESIGN_AUTHORITY_SHA_14 = "89a395ae4df7aff23c2da2c8c44fd6fe405459a6"
+SLICE14_DESIGN_BASELINE_SHA = "dcc6b07c20f97472cf506c4665af1f88f00a886b"
+
+MEASUREMENT_PROTOCOL_VERSION_V1 = "perf-measurement-protocol-v1"
+TIMING_BOUNDARY_VERSION_V1 = "perf-timing-boundaries-v1"
+STATISTICS_SEMANTICS_VERSION_V1 = "perf-stats-linear-interp-v1"
+
+BenchmarkLevelV1 = Literal["A", "B", "C"]
+ColdWarmV1 = Literal["cold", "warm"]
+RunStatusV1 = Literal["completed", "failed_preflight", "failed_during_execution"]
+CaseStatusV1 = Literal["completed", "failed"]
+ObservationStatusV1 = Literal["valid", "failed", "excluded_instrumentation_error"]
+TelemetryAvailabilityV1 = Literal["available", "unavailable", "unevaluable"]
+
+SEMANTIC_STAGE_IDS_V1: tuple[str, ...] = (
+    "document_load",
+    "parse",
+    "chunk",
+    "embed",
+    "dense_index_write",
+    "lexical_index_write",
+    "dense_retrieve",
+    "lexical_retrieve",
+    "fusion",
+    "rerank",
+    "context_assembly",
+    "generation",
+    "citation_validation",
+    "end_to_end",
+)
+
+# Normative start→end envelopes (design §8). Implementations that time a
+# different envelope under the same stage id are non-conforming.
+SEMANTIC_STAGE_ENVELOPES_V1: dict[str, str] = {
+    "document_load": "source accepted → content available to parser",
+    "parse": "parser invocation → normalized parsed content blocks returned",
+    "chunk": "parsed content → final chunks ready",
+    "embed": "embedding batch submitted → vectors returned",
+    "dense_index_write": "vectors/payload ready → persistent dense write complete",
+    "lexical_index_write": "chunks ready → lexical write complete",
+    "dense_retrieve": "dense request issued → dense candidate set available",
+    "lexical_retrieve": "lexical request issued → lexical candidate set available",
+    "fusion": "dense + lexical candidate sets available → fused ranking complete",
+    "rerank": "finalized reranker input → reranked candidates returned",
+    "context_assembly": (
+        "final ranked candidates → GeneratorRequest evidence/context finalized"
+    ),
+    "generation": "generator request submitted → complete response",
+    "citation_validation": "raw generation response → validated answer/citations",
+    "end_to_end": "CLI/service query entry → accepted terminal result",
+}
+
+GenerationSubBoundaryV1 = Literal[
+    "generation_total",
+    "generation_ttft",
+    "generation_decode",
+    "tokens_per_second",
+]
+
+
+class Performance14Error(RuntimeError):
+    """Fail-closed Slice 14 performance evaluation error."""
+
+
+class StrictModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+class DerivedLatencyStatsV1(StrictModel):
+    """Deterministic latency summary over valid observation durations (seconds)."""
+
+    contract: ExactNonBlankStr = PERFORMANCE_BENCHMARK_AGGREGATE_V1
+    statistics_semantics_version: ExactNonBlankStr = STATISTICS_SEMANTICS_VERSION_V1
+    n: int = Field(ge=0)
+    min: float | None = None
+    p50: float | None = None
+    p95: float | None = None
+    max: float | None = None
+    failure_count: int = Field(ge=0, default=0)
+    warmup_count: int = Field(ge=0, default=0)
+    instrumentation_exclusion_count: int = Field(ge=0, default=0)
+
+    @model_validator(mode="after")
+    def _stats_consistency(self) -> DerivedLatencyStatsV1:
+        if self.n == 0:
+            if any(v is not None for v in (self.min, self.p50, self.p95, self.max)):
+                raise ValueError("empty sample must not report latency percentiles")
+            return self
+        if None in (self.min, self.p50, self.p95, self.max):
+            raise ValueError("n>0 requires min/p50/p95/max")
+        assert self.min is not None and self.max is not None
+        if self.min > self.max:
+            raise ValueError("min must be <= max")
+        return self
+
+
+class PerformanceResourceObservationV1(StrictModel):
+    """One RAM/VRAM sample. Missing telemetry is unavailable/unevaluable — never 0."""
+
+    contract: ExactNonBlankStr = PERFORMANCE_RESOURCE_OBSERVATION_V1
+    stage_id: ExactNonBlankStr
+    ram_availability: TelemetryAvailabilityV1
+    ram_rss_bytes_before: int | None = Field(default=None, ge=0)
+    ram_rss_bytes_peak: int | None = Field(default=None, ge=0)
+    vram_availability: TelemetryAvailabilityV1
+    vram_used_bytes_before: int | None = Field(default=None, ge=0)
+    vram_used_bytes_peak: int | None = Field(default=None, ge=0)
+    device_id: ExactNonBlankStr | None = None
+    note: ExactNonBlankStr | None = None
+
+    @model_validator(mode="after")
+    def _no_inferred_zero(self) -> PerformanceResourceObservationV1:
+        if self.ram_availability != "available":
+            if self.ram_rss_bytes_before is not None or self.ram_rss_bytes_peak is not None:
+                raise ValueError("RAM bytes require ram_availability=available")
+        if self.vram_availability != "available":
+            if (
+                self.vram_used_bytes_before is not None
+                or self.vram_used_bytes_peak is not None
+            ):
+                raise ValueError("VRAM bytes require vram_availability=available")
+        return self
+
+
+class PerformanceBenchmarkObservationV1(StrictModel):
+    """One raw timing observation (authoritative)."""
+
+    contract: ExactNonBlankStr = PERFORMANCE_BENCHMARK_OBSERVATION_V1
+    observation_status: ObservationStatusV1
+    stage_id: ExactNonBlankStr
+    duration_seconds: float | None = Field(default=None, ge=0.0)
+    is_warmup: bool = False
+    exclusion_reason: ExactNonBlankStr | None = None
+    failure_reason: ExactNonBlankStr | None = None
+    resource: PerformanceResourceObservationV1 | None = None
+
+    @model_validator(mode="after")
+    def _status_fields(self) -> PerformanceBenchmarkObservationV1:
+        if self.observation_status == "valid":
+            if self.duration_seconds is None:
+                raise ValueError("valid observation requires duration_seconds")
+            if self.exclusion_reason is not None:
+                raise ValueError("valid observation must not set exclusion_reason")
+        if self.observation_status == "excluded_instrumentation_error":
+            if not self.exclusion_reason:
+                raise ValueError("excluded_instrumentation_error requires exclusion_reason")
+        if self.observation_status == "failed":
+            if not self.failure_reason:
+                raise ValueError("failed observation requires failure_reason")
+        return self
+
+
+class PerformanceMachineProfileV1(StrictModel):
+    """Identity-bearing machine/environment profile for a RUN (not a CASE)."""
+
+    contract: ExactNonBlankStr = PERFORMANCE_MACHINE_PROFILE_V1
+    os_name: ExactNonBlankStr
+    os_version: ExactNonBlankStr
+    architecture: ExactNonBlankStr
+    cpu_model: ExactNonBlankStr
+    physical_cores: int | None = Field(default=None, ge=1)
+    logical_cores: int | None = Field(default=None, ge=1)
+    system_ram_bytes: int | None = Field(default=None, ge=0)
+    python_version: ExactNonBlankStr
+    offline_rag_commit_sha: ExactNonBlankStr
+    gpu_model: ExactNonBlankStr | None = None
+    gpu_vram_bytes: int | None = Field(default=None, ge=0)
+    gpu_driver_version: ExactNonBlankStr | None = None
+    cuda_runtime_version: ExactNonBlankStr | None = None
+    extra: dict[str, Any] = Field(default_factory=dict)
+
+
+class PerformanceBenchmarkCaseV1(StrictModel):
+    """Case definition / artifact body (observations excluded from identity)."""
+
+    contract: ExactNonBlankStr = PERFORMANCE_BENCHMARK_CASE_V1
+    case_id: ExactNonBlankStr
+    case_kind: ExactNonBlankStr
+    benchmark_level: BenchmarkLevelV1
+    stage_or_path: ExactNonBlankStr
+    subject_identity: ExactNonBlankStr
+    variant: ExactNonBlankStr
+    cold_warm: ColdWarmV1
+    case_status: CaseStatusV1 = "completed"
+    warmup_count: int = Field(ge=0, default=0)
+    warmup_observations: list[PerformanceBenchmarkObservationV1] = Field(
+        default_factory=list
+    )
+    measured_observations: list[PerformanceBenchmarkObservationV1] = Field(
+        default_factory=list
+    )
+    failures: list[ExactNonBlankStr] = Field(default_factory=list)
+    resource_samples: list[PerformanceResourceObservationV1] = Field(
+        default_factory=list
+    )
+    derived: DerivedLatencyStatsV1 | None = None
+    case_identity_hash: ExactNonBlankStr | None = None
+
+
+class PerformanceBenchmarkSuiteV1(StrictModel):
+    """Suite definition — WHAT is measured (excludes machine/SHA/results)."""
+
+    contract: ExactNonBlankStr = PERFORMANCE_BENCHMARK_SUITE_V1
+    benchmark_level: BenchmarkLevelV1
+    population_identity: ExactNonBlankStr
+    variants: list[ExactNonBlankStr] = Field(min_length=1)
+    case_ids: list[ExactNonBlankStr] = Field(min_length=1)
+    measurement_protocol_version: ExactNonBlankStr = MEASUREMENT_PROTOCOL_VERSION_V1
+    timing_boundary_version: ExactNonBlankStr = TIMING_BOUNDARY_VERSION_V1
+    statistics_semantics_version: ExactNonBlankStr = STATISTICS_SEMANTICS_VERSION_V1
+    suite_identity_hash: ExactNonBlankStr | None = None
+
+    @field_validator("case_ids", "variants")
+    @classmethod
+    def _no_dupes(cls, value: list[str]) -> list[str]:
+        if len(value) != len(set(value)):
+            raise ValueError("duplicate membership ids are forbidden")
+        return value
+
+
+class PerformanceBenchmarkRunManifestV1(StrictModel):
+    """Concrete execution provenance (minimum normative fields)."""
+
+    contract: ExactNonBlankStr = PERFORMANCE_BENCHMARK_RUN_MANIFEST_V1
+    suite_id: ExactNonBlankStr
+    executing_sha: ExactNonBlankStr
+    machine_profile_id: ExactNonBlankStr
+    machine_profile: PerformanceMachineProfileV1 | None = None
+    config_id: ExactNonBlankStr
+    corpus_id: ExactNonBlankStr
+    model_ids: dict[str, ExactNonBlankStr] = Field(default_factory=dict)
+    warmup_policy: ExactNonBlankStr
+    repetition_counts: dict[str, int] = Field(default_factory=dict)
+    start_timestamp: ExactNonBlankStr
+    environment: dict[str, ExactNonBlankStr] = Field(default_factory=dict)
+    runtime_versions: dict[str, ExactNonBlankStr] = Field(default_factory=dict)
+    execution_mode: ExactNonBlankStr
+    run_status: RunStatusV1 | None = None
+    run_nonce: ExactNonBlankStr | None = None
+    run_identity_hash: ExactNonBlankStr | None = None
+
+    @field_validator("repetition_counts")
+    @classmethod
+    def _nonneg_reps(cls, value: dict[str, int]) -> dict[str, int]:
+        for key, count in value.items():
+            if count < 0:
+                raise ValueError(f"repetition_counts[{key}] must be >= 0")
+        return value
