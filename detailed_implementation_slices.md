@@ -694,7 +694,7 @@ recovery remains disabled; no promotion authorized.
 # Slice 13 — Prompt-injection and security harness
 
 ```text
-STATUS: INCOMPLETE
+STATUS: COMPLETE / ACCEPTED UNDER REVISED DISPOSITION
         13A COMPLETE / ACCEPTED (c2c1ff8)
         13B DESIGN: LOCKED / ACCEPTED (d3fc861)
         13B HARNESS: COMPLETE / ACCEPTED (87b9367)
@@ -703,7 +703,11 @@ STATUS: INCOMPLETE
         AUTHORITATIVE RESULT: completed / fail
         AUTHORIZATION: CONSUMED / TERMINAL
         RETRY / RESUME / SECOND ATTEMPT: FORBIDDEN
-        13C / 13D NOT AUTHORIZED
+        13C: DEFERRED / OPEN / NOT REQUIRED FOR M6 / NOT AUTHORIZED
+        13D: DEFERRED / OPTIONAL / NOT REQUIRED FOR M6 / NOT AUTHORIZED
+        OD-13-4: LOCKED / AMENDED / ACCEPTED
+MILESTONE 6: IN PROGRESS / ELIGIBLE TO CLOSE
+             COMPLETE / ACCEPTED: NOT YET (separate closeout required)
 13A design authority: 571882e
 13A chain: 571882e → 7fe978a → c2c1ff8
 13B design authority: d3fc8616e5dfe474a53659bc3e276594d8eaa9c7
@@ -712,6 +716,7 @@ STATUS: INCOMPLETE
 13B docs/provenance authority baseline: 4efcda174d27f92f75cd3e04b96137d92a5c0ab5
 13B sealed/executed executable SHA: 7baca2d0fd0d89b6358d04bd943c8c14ea6e742c
 13B Q1 seal: refs/offline-rag/authority/security_13b/q1 → 7baca2d0fd0d89b6358d04bd943c8c14ea6e742c
+Post-13B M6 review baseline: 0f14388e71cd0010d64d41c592c6df0aa308fd9c
 Frozen seccamp_: seccamp_8034446afeef2cc3b417666bda1059f0fa530d3b458e05645418cc8742816351
 Frozen secinv_: secinv_454ef5d54e0e3ac0cd1f3e347f1172e5d2763d66514c0b13810467897767363a
 Frozen campaign Git blob: 7951ad964e7a91d5e89589acb4544fb99ca3079c
@@ -722,16 +727,15 @@ Authz marker (local/acceptance evidence; not committed to main):
 Evidence archive SHA-256:
   ba454ca226d4ea3d85babd6a4d4f9fa0f21759d7bc01f36d5da891194f169004
 Authority: docs/milestone6_agentic_recovery_security.md §29–§30
-  (normative OD-13-7…13 contract text unchanged; status/provenance only)
+  (OD-13-4 phase-exit amended; OD-13-7…13 normative contracts unchanged)
 Package: src/offline_rag/evaluation/security_13/
 CLI dry-run: offline-rag eval security-13b
 Frozen campaign: eval/fixtures/security/campaigns/13b_query_path_adversarial_v1.json
-OD-13-1…6: 13A accepted (OD-13-2 OPEN / DEFERRED)
+OD-13-1…6: 13A accepted (OD-13-2 OPEN / DEFERRED; OD-13-4 LOCKED / AMENDED / ACCEPTED)
 OD-13-7…13: LOCKED / ACCEPTED
 Product recovery: DISABLED
 LangGraph / NeMo / 12C rerun: NOT AUTHORIZED
-Next: post-13B Milestone 6 status review → decide whether 13C remains the
-      correct next slice → open 13C design gate only if separately authorized
+Next: separate Milestone 6 docs/status closeout (not authorized here)
 ```
 
 ## Objective
@@ -782,8 +786,10 @@ rejection).
 - authorization **CONSUMED / TERMINAL**
 - Q3 / evidence archive: local/acceptance evidence (not committed to `main`)
 
-**Still NOT AUTHORIZED:** 13C/13D, LangGraph, NeMo, product recovery,
+**Still NOT AUTHORIZED:** 13C/13D execution, LangGraph, NeMo, product recovery,
 `base.yaml` mutation, 12C rerun, any measure-once retry/resume/second attempt.
+**13C** remains DEFERRED / OPEN / NOT REQUIRED FOR M6. **13D** remains
+DEFERRED / OPTIONAL / NOT REQUIRED FOR M6.
 
 ## Explicitly outside 13B
 
@@ -802,7 +808,11 @@ rejection).
 - instructions to access arbitrary files;
 - instructions to suppress contradictory documents.
 
-Full query×recovery coverage is required by end of **13C**, not in 13A/13B.
+Authoritative **query-path** coverage (13B) is the Milestone 6 deterministic
+security campaign exit. Full query×recovery (7×2) coverage remains the scope
+of a future **13C**, which is **DEFERRED / OPEN / NOT REQUIRED FOR Milestone 6**.
+This does **not** mean 13C was executed, recovery-path evidence exists, or
+full 7×2 was achieved in Milestone 6.
 
 ## Exit criteria
 
@@ -814,11 +824,14 @@ not model refusal text.
 **13B overall COMPLETE / ACCEPTED** — authoritative measure-once accepted
 (`completed` / `fail` at sealed executable `7baca2d`); authorization
 consumed / terminal; retry forbidden.
-**Slice 13 remains INCOMPLETE** until a separately authorized post-13B
-decision opens and completes later 13C/13D work (if any).
+**Slice 13 COMPLETE / ACCEPTED UNDER REVISED DISPOSITION** — 13C/13D deferred
+as above; not an M6 delivery obligation.
+Milestone **6** remains **IN PROGRESS** / **eligible to close**;
+**COMPLETE / ACCEPTED** requires a separate M6 docs/status closeout.
 
-**Next:** post-13B Milestone 6 status review → decide whether 13C remains the
-correct next slice → open 13C design gate only if separately authorized.
+**Next:** separate Milestone 6 docs/status closeout (not authorized here).
+
+---
 
 # Slice 14 — Performance and resource benchmark harness
 

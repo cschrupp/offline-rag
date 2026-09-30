@@ -221,7 +221,7 @@ Next gate: separate Slice **13B** authoritative measure-once authorization
 
 ## Milestone 6 — Agentic recovery and security
 
-**Status:** Milestone **6 IN PROGRESS** — Slice **11 COMPLETE / ACCEPTED**; Slice **12 COMPLETE / ACCEPTED**; Slice **13 INCOMPLETE** (**13A COMPLETE / ACCEPTED**; **13B COMPLETE / ACCEPTED** — design `d3fc861`; harness `87b9367`; measure-once executed at `7baca2d`; result `completed` / `fail`; authorization **CONSUMED / TERMINAL**; **13C–13D NOT AUTHORIZED**)  
+**Status:** Milestone **6 IN PROGRESS** — **ELIGIBLE TO CLOSE** under revised disposition (**COMPLETE / ACCEPTED** requires separate M6 closeout) — Slice **11 COMPLETE / ACCEPTED**; Slice **12 COMPLETE / ACCEPTED**; Slice **13 COMPLETE / ACCEPTED UNDER REVISED DISPOSITION** (**13A** / **13B** COMPLETE / ACCEPTED at `7baca2d` `completed` / `fail`; **13C** DEFERRED / OPEN / NOT REQUIRED FOR M6 / **NOT AUTHORIZED**; **13D** DEFERRED / OPTIONAL / NOT REQUIRED FOR M6 / **NOT AUTHORIZED**)  
 **Baseline:** `1983ff1376ea27fc1e8774b35136dc8c8ec93f40`  
 **Design authority:** [`docs/milestone6_agentic_recovery_security.md`](docs/milestone6_agentic_recovery_security.md)  
 **OD-12 design-lock baseline:** `4194d525211d994b97aa8abba93237cd8a23cbb9`  
@@ -232,6 +232,7 @@ Next gate: separate Slice **13B** authoritative measure-once authorization
 **12C-2 authoritative result:** `dc82432b7060c6adba189e96f8a053f76a6b2721`  
 **Slice 13 design-open / authority baseline:** `6a3806bdc89a17bcdf992dba068e843f8535de6a`  
 **Slice 13 design lock (accepted):** `571882e062359e258f5843b4289b2f556d22d7f7`  
+**Post-13B M6 status review authority baseline:** `0f14388e71cd0010d64d41c592c6df0aa308fd9c`  
 **13A accepted technical result:** `c2c1ff85c5383e224fc8767be1abbd5c435dd789`  
 **13B design-open baseline:** `1b87b90cad610ba40513d4ac0ca5e3239c2d7c3d`  
 **13B design authority:** `d3fc8616e5dfe474a53659bc3e276594d8eaa9c7`  
@@ -239,7 +240,8 @@ Next gate: separate Slice **13B** authoritative measure-once authorization
 **13B docs/provenance authority baseline:** `4efcda174d27f92f75cd3e04b96137d92a5c0ab5`  
 **13B sealed/executed executable SHA:** `7baca2d0fd0d89b6358d04bd943c8c14ea6e742c`  
 **13B Q1 seal:** `refs/offline-rag/authority/security_13b/q1` → `7baca2d0fd0d89b6358d04bd943c8c14ea6e742c`  
-**13B frozen campaign Git blob:** `7951ad964e7a91d5e89589acb4544fb99ca3079c`
+**13B frozen campaign Git blob:** `7951ad964e7a91d5e89589acb4544fb99ca3079c`  
+**OD-13-4 amendment:** **LOCKED / AMENDED / ACCEPTED** (this commit; prior baseline `0f14388`)
 
 **Implementation order (locked):** Slice **11** → Slice **12** → Slice **13**
 
@@ -250,7 +252,7 @@ authorization.
 
 - [x] Slice 11 — Evidence sufficiency & abstention policy (11A→11B→11C) — **COMPLETE / ACCEPTED**
 - [x] Slice 12 — Bounded conditional retrieval recovery — **COMPLETE / ACCEPTED**
-- [ ] Slice 13 — Prompt-injection & security harness — **INCOMPLETE** (**13A COMPLETE / ACCEPTED**; **13B COMPLETE / ACCEPTED**; **13C–13D NOT AUTHORIZED**)
+- [x] Slice 13 — Prompt-injection & security harness — **COMPLETE / ACCEPTED UNDER REVISED DISPOSITION** (**13A** / **13B** COMPLETE / ACCEPTED; **13C** DEFERRED / OPEN / NOT REQUIRED FOR M6 / **NOT AUTHORIZED**; **13D** DEFERRED / OPTIONAL / NOT REQUIRED FOR M6 / **NOT AUTHORIZED**)
 
 Checklist detail (same order; not startable out of sequence):
 
@@ -262,13 +264,14 @@ Checklist detail (same order; not startable out of sequence):
 - [ ] **Post-Slice-12 / Future Recovery Orchestration (LangGraph adapter)** — **NOT AUTHORIZED**
 - [x] **13A** security fixture contracts + deterministic invariants — **COMPLETE / ACCEPTED** (`c2c1ff8`)
 - [x] **13B** query-path adversarial campaign — design **LOCKED / ACCEPTED** (`d3fc861`); harness **COMPLETE / ACCEPTED** (`87b9367`); measure-once **COMPLETE / ACCEPTED** (executed at `7baca2d`; `completed` / `fail`); 13B **COMPLETE / ACCEPTED**
-- [ ] **13C** recovery-path adversarial harness — **NOT AUTHORIZED**
-- [ ] optional NeMo Guardrails evaluation (**13D**; OD-13-2 OPEN/deferred) — **NOT AUTHORIZED**
+- [ ] **13C** recovery-path adversarial harness — **DEFERRED / OPEN / NOT REQUIRED FOR M6 / NOT AUTHORIZED**
+- [ ] optional NeMo Guardrails evaluation (**13D**; OD-13-2 OPEN/deferred) — **DEFERRED / OPTIONAL / NOT REQUIRED FOR M6 / NOT AUTHORIZED**
 
-**Next:** Post-13B Milestone 6 status review → decide whether 13C remains the
-correct next slice → open 13C design gate only if separately authorized. This
-docs/status closeout does **not** authorize 13C implementation, 13D, recovery,
-LangGraph, NeMo, `base.yaml` mutation, a 12C rerun, or any measure-once retry.
+**Next:** Separate Milestone 6 docs/status closeout to declare M6
+**COMPLETE / ACCEPTED** (not authorized by this OD-13-4 amendment). This
+amendment does **not** authorize 13C implementation, 13D, recovery,
+LangGraph, NeMo, `base.yaml` mutation, a 12C rerun, any measure-once retry,
+or claiming M6 complete.
 
 **Slice 13A COMPLETE / ACCEPTED**
 - Design authority: `571882e`
@@ -286,7 +289,10 @@ LangGraph, NeMo, `base.yaml` mutation, a 12C rerun, or any measure-once retry.
 - **OD-13-1 LOCKED / ACCEPTED** — deterministic PASS/FAIL + nine-invariant `secinv_` registry
 - **OD-13-2 OPEN / DEFERRED** — NeMo / 13D not authorized
 - **OD-13-3 LOCKED / ACCEPTED** — `adversarial-fixture-v1`
-- **OD-13-4 LOCKED** — phased 13A/13B/13C matrix (13A phase satisfied; full 7×2 by end of 13C)
+- **OD-13-4 LOCKED / AMENDED / ACCEPTED** — phased 13A/13B/13C matrix retained;
+  M6 deterministic security exit = 13B query-path; full 7×2 remains future
+  13C scope only (**DEFERRED / OPEN / NOT REQUIRED FOR M6**); 13D
+  **DEFERRED / OPTIONAL / NOT REQUIRED FOR M6**
 - **OD-13-5 LOCKED** — harness-only recovery; 13A=`harness_fake` satisfied
 - **OD-13-6 COMPLETE / ACCEPTED** — exact 13A boundary delivered at `c2c1ff8`
 
