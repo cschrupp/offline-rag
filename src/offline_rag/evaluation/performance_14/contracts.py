@@ -149,6 +149,9 @@ class PerformanceResourceObservationV1(StrictModel):
     vram_used_bytes_peak: int | None = Field(default=None, ge=0)
     device_id: ExactNonBlankStr | None = None
     note: ExactNonBlankStr | None = None
+    # Warm-up samples may be retained for provenance but are excluded from
+    # authoritative measured RAM summaries.
+    is_warmup: bool = False
 
     @model_validator(mode="after")
     def _no_inferred_zero(self) -> PerformanceResourceObservationV1:
@@ -162,6 +165,15 @@ class PerformanceResourceObservationV1(StrictModel):
         ):
             raise ValueError("VRAM bytes require vram_availability=available")
         return self
+
+
+class PerformancePathSampleV1(StrictModel):
+    """One retrieval-path latency sample (not a locked semantic stage_id)."""
+
+    path: ExactNonBlankStr
+    duration_seconds: float = Field(gt=0)
+    is_warmup: bool = False
+    observation_status: ObservationStatusV1 = "valid"
 
 
 class PerformanceBenchmarkObservationV1(StrictModel):
@@ -241,7 +253,10 @@ class PerformanceBenchmarkCaseV1(StrictModel):
     # Quality-vs-cost evidence (excluded from perfcase_/perfsuite_/perfcfg_).
     ranked_chunk_ids: list[ExactNonBlankStr] | None = None
     quality: PerformanceCaseQualityV1 | None = None
-    # Measured hybrid-path component durations (seconds); used for path rollups.
+    # Retrieval-path latency samples (not semantic stage_ids). Warm-up identity
+    # is preserved; measured rollups must exclude is_warmup=True.
+    path_samples: list[PerformancePathSampleV1] = Field(default_factory=list)
+    # Legacy float-only hybrid durations (unused by corrected 14C harness).
     hybrid_path_durations_seconds: list[float] = Field(default_factory=list)
 
 

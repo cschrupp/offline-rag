@@ -32,12 +32,16 @@ from offline_rag.evaluation.performance_14.contracts import (
     PerformanceBenchmarkObservationV1,
     PerformanceBenchmarkRunManifestV1,
     PerformanceMachineProfileV1,
+    PerformancePathSampleV1,
     PerformancePreflightRecordV1,
     PerformanceResourceObservationV1,
     PerformanceRunAggregateV1,
     RunStatusV1,
 )
 from offline_rag.evaluation.performance_14.evidence_14c import (
+    RESOURCE_NOTE_PRE_PATH,
+    RESOURCE_SCOPE_RETRIEVAL_PATH,
+    assert_not_end_to_end_stage,
     assert_paired_quality_coverage,
     macro_quality_by_variant,
     path_latency_rollups,
@@ -207,37 +211,46 @@ def _observe_14c_once(
     is_warmup: bool,
 ) -> tuple[
     list[PerformanceBenchmarkObservationV1],
-    float,
+    list[PerformancePathSampleV1],
     list[str] | None,
     PerformanceResourceObservationV1 | None,
     str | None,
 ]:
-    """One retrieve: semantic + total path obs; never full-path wrap as fusion/rerank."""
+    """One retrieve: semantic stage obs + path samples (never end_to_end)."""
+    assert_not_end_to_end_stage(spec.stage_or_path)
     resource: PerformanceResourceObservationV1 | None = None
     try:
-        resource = capture_resource_observation(spec.stage_or_path)
+        resource = capture_resource_observation(
+            RESOURCE_SCOPE_RETRIEVAL_PATH,
+            note=RESOURCE_NOTE_PRE_PATH,
+            is_warmup=is_warmup,
+        )
     except Exception:  # noqa: BLE001 — telemetry must not fail the observation
         resource = None
 
     try:
         outcome = engine.retrieve(spec)
         if outcome.variant == VARIANT_HYBRID:
-            observations, hybrid_path_s = semantic_observations_from_hybrid_metadata(
+            observations, path_samples = semantic_observations_from_hybrid_metadata(
                 outcome.metadata,
                 is_warmup=is_warmup,
                 resource=resource,
             )
         else:
-            observations, hybrid_path_s = (
+            observations, path_samples = (
                 semantic_observations_from_hybrid_rerank_metadata(
                     outcome.metadata,
                     is_warmup=is_warmup,
                     resource=resource,
                 )
             )
+        for obs in observations:
+            assert_not_end_to_end_stage(obs.stage_id)
+        for sample in path_samples:
+            assert_not_end_to_end_stage(sample.path)
         return (
             observations,
-            hybrid_path_s,
+            path_samples,
             list(outcome.ranked_chunk_ids),
             resource,
             None,
@@ -250,7 +263,7 @@ def _observe_14c_once(
             failure_reason=f"{type(exc).__name__}: {exc}",
             resource=resource,
         )
-        return [failed], 0.0, None, resource, f"{type(exc).__name__}: {exc}"
+        return [failed], [], None, resource, f"{type(exc).__name__}: {exc}"
 
 
 def _execute_14c_case(
@@ -265,33 +278,31 @@ def _execute_14c_case(
     case_id = stable_case_id(spec)
     warmups: list[PerformanceBenchmarkObservationV1] = []
     measured: list[PerformanceBenchmarkObservationV1] = []
-    hybrid_path_durations: list[float] = []
+    path_samples: list[PerformancePathSampleV1] = []
     resources: list[PerformanceResourceObservationV1] = []
     ranked_chunk_ids: list[str] | None = None
     failure_reasons: list[str] = []
 
     for _ in range(warmup_count):
-        obs_list, hybrid_s, _ranked, resource, failure = _observe_14c_once(
+        obs_list, paths, _ranked, resource, failure = _observe_14c_once(
             engine, spec, is_warmup=True
         )
         warmups.extend(obs_list)
+        path_samples.extend(paths)
         if resource is not None:
             resources.append(resource)
-        if failure is None and hybrid_s > 0:
-            hybrid_path_durations.append(hybrid_s)
 
     for _ in range(measured_repetitions):
-        obs_list, hybrid_s, ranked, resource, failure = _observe_14c_once(
+        obs_list, paths, ranked, resource, failure = _observe_14c_once(
             engine, spec, is_warmup=False
         )
         measured.extend(obs_list)
+        path_samples.extend(paths)
         if resource is not None:
             resources.append(resource)
         if failure is not None:
             failure_reasons.append(failure)
             continue
-        if hybrid_s > 0:
-            hybrid_path_durations.append(hybrid_s)
         if ranked is not None:
             ranked_chunk_ids = ranked
 
@@ -305,7 +316,7 @@ def _execute_14c_case(
         )
 
     case_status = "failed" if failure_reasons else "completed"
-    # Case-level derived stats use the frozen semantic stage only (not full path).
+    # Case-level derived stats use the frozen semantic stage only (not path totals).
     semantic_for_derived = [
         obs
         for obs in [*warmups, *measured]
@@ -327,7 +338,7 @@ def _execute_14c_case(
         resource_samples=resources,
         ranked_chunk_ids=ranked_chunk_ids,
         quality=quality,
-        hybrid_path_durations_seconds=hybrid_path_durations,
+        path_samples=path_samples,
     )
     derived = derive_latency_stats(
         semantic_for_derived,

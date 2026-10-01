@@ -20,6 +20,10 @@ from offline_rag.evaluation.performance_14.contracts import (
     RunStatusV1,
     TelemetryAvailabilityV1,
 )
+from offline_rag.evaluation.performance_14.evidence_14c import (
+    VARIANT_TOTAL_PATH,
+    path_samples_to_observations,
+)
 from offline_rag.evaluation.performance_14.statistics import derive_latency_stats
 
 
@@ -87,10 +91,19 @@ def build_run_aggregate(
         combined = warmups + measured
         for obs in combined:
             by_stage_obs[obs.stage_id].append(obs)
-        # Prefer total-path observations for variant cost comparison when present;
-        # otherwise fall back to the case's labeled stage (diagnostic/single-stage).
-        totals = [obs for obs in combined if obs.stage_id == "end_to_end"]
-        chosen = totals if totals else combined
+
+        # Prefer retrieval-path total samples for variant cost comparison.
+        total_path = VARIANT_TOTAL_PATH.get(case.variant)
+        path_samples = [
+            sample
+            for sample in (case.path_samples or [])
+            if total_path is not None and sample.path == total_path
+        ]
+        if path_samples:
+            chosen = path_samples_to_observations(path_samples)
+        else:
+            # Diagnostic / single-stage cases: use labeled stage observations.
+            chosen = combined
         by_variant_obs[case.variant].extend(chosen)
         variant_rollup_obs.extend(chosen)
 

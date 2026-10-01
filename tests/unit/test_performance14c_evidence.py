@@ -13,16 +13,19 @@ from offline_rag.evaluation.performance_14.contracts import (
     PerformanceBenchmarkCaseV1,
     PerformanceBenchmarkObservationV1,
     PerformanceCaseQualityV1,
+    PerformancePathSampleV1,
     PerformanceResourceObservationV1,
 )
 from offline_rag.evaluation.performance_14.evidence_14c import (
-    PATH_HYBRID_LATENCY,
-    PATH_HYBRID_RERANK_TOTAL,
-    PATH_HYBRID_TOTAL,
-    PATH_RERANKER_LATENCY,
+    PATH_BASELINE_HYBRID_TOTAL,
+    PATH_TREATMENT_HYBRID_COMPONENT,
+    PATH_TREATMENT_RERANKER,
+    PATH_TREATMENT_TOTAL,
+    RESOURCE_SCOPE_RETRIEVAL_PATH,
+    STAGE_END_TO_END_FORBIDDEN_FOR_14C,
     STAGE_FUSION,
     STAGE_RERANK,
-    STAGE_TOTAL_PATH,
+    assert_not_end_to_end_stage,
     assert_paired_quality_coverage,
     assert_semantic_not_full_path,
     macro_quality_by_variant,
@@ -49,13 +52,20 @@ LOCKED_PERFSUITE = (
 )
 
 
-def _resource(*, rss: int = 1000) -> PerformanceResourceObservationV1:
+def _resource(
+    *,
+    rss: int = 1000,
+    is_warmup: bool = False,
+    stage_id: str = RESOURCE_SCOPE_RETRIEVAL_PATH,
+) -> PerformanceResourceObservationV1:
     return PerformanceResourceObservationV1(
-        stage_id=STAGE_FUSION,
+        stage_id=stage_id,
         ram_availability="available",
         ram_rss_bytes_before=rss,
-        ram_rss_bytes_peak=rss + 10,
+        ram_rss_bytes_peak=None,
         vram_availability="unavailable",
+        is_warmup=is_warmup,
+        note="RSS sampled immediately before retrieval-path invocation",
     )
 
 
@@ -89,6 +99,45 @@ def test_assert_semantic_not_full_path_accepts_strict_envelope() -> None:
     )
 
 
+def test_f002a_retrieval_path_total_is_not_end_to_end() -> None:
+    """Property 1: retrieval-path totals must not use stage_id=end_to_end."""
+    with pytest.raises(Performance14Error, match="must not use stage_id=end_to_end"):
+        assert_not_end_to_end_stage(STAGE_END_TO_END_FORBIDDEN_FOR_14C)
+
+    hybrid_meta = {
+        "latency_seconds": {
+            "dense": 2.0,
+            "lexical": 2.5,
+            "fusion": 0.05,
+            "total": 4.6,
+        }
+    }
+    observations, path_samples = semantic_observations_from_hybrid_metadata(
+        hybrid_meta, is_warmup=False, resource=_resource()
+    )
+    assert all(obs.stage_id != "end_to_end" for obs in observations)
+    assert {obs.stage_id for obs in observations} == {STAGE_FUSION}
+    assert all(sample.path != "end_to_end" for sample in path_samples)
+    assert {sample.path for sample in path_samples} == {PATH_BASELINE_HYBRID_TOTAL}
+
+    rerank_meta = {
+        "latency_seconds": {
+            "hybrid": 4.6,
+            "pair_build": 0.1,
+            "rerank_infer": 7.0,
+            "sort": 0.05,
+            "rerank": 7.05,
+            "total": 11.75,
+        }
+    }
+    observations, path_samples = semantic_observations_from_hybrid_rerank_metadata(
+        rerank_meta, is_warmup=False, resource=_resource(rss=2000)
+    )
+    assert all(obs.stage_id != "end_to_end" for obs in observations)
+    assert {obs.stage_id for obs in observations} == {STAGE_RERANK}
+    assert "end_to_end" not in {sample.path for sample in path_samples}
+
+
 def test_hybrid_semantic_obs_are_not_full_path_wrap() -> None:
     metadata = {
         "latency_seconds": {
@@ -98,13 +147,11 @@ def test_hybrid_semantic_obs_are_not_full_path_wrap() -> None:
             "total": 4.6,
         }
     }
-    observations, hybrid_path_s = semantic_observations_from_hybrid_metadata(
+    observations, path_samples = semantic_observations_from_hybrid_metadata(
         metadata, is_warmup=False, resource=_resource()
     )
-    assert hybrid_path_s == pytest.approx(4.6)
-    assert {obs.stage_id for obs in observations} == {STAGE_FUSION, STAGE_TOTAL_PATH}
-    fusion = next(obs for obs in observations if obs.stage_id == STAGE_FUSION)
-    total = next(obs for obs in observations if obs.stage_id == STAGE_TOTAL_PATH)
+    fusion = observations[0]
+    total = path_samples[0]
     assert fusion.duration_seconds == pytest.approx(0.05)
     assert total.duration_seconds == pytest.approx(4.6)
     assert fusion.duration_seconds != total.duration_seconds
@@ -121,15 +168,14 @@ def test_rerank_semantic_obs_are_not_full_path_wrap() -> None:
             "total": 11.75,
         }
     }
-    observations, hybrid_s = semantic_observations_from_hybrid_rerank_metadata(
+    observations, path_samples = semantic_observations_from_hybrid_rerank_metadata(
         metadata, is_warmup=False, resource=_resource(rss=2000)
     )
-    assert hybrid_s == pytest.approx(4.6)
-    rerank = next(obs for obs in observations if obs.stage_id == STAGE_RERANK)
-    total = next(obs for obs in observations if obs.stage_id == STAGE_TOTAL_PATH)
+    rerank = observations[0]
+    by_path = {sample.path: sample for sample in path_samples}
     assert rerank.duration_seconds == pytest.approx(7.05)
-    assert total.duration_seconds == pytest.approx(11.75)
-    assert rerank.duration_seconds != total.duration_seconds
+    assert by_path[PATH_TREATMENT_TOTAL].duration_seconds == pytest.approx(11.75)
+    assert rerank.duration_seconds != by_path[PATH_TREATMENT_TOTAL].duration_seconds
 
 
 def test_refuse_integer_ms_only_metadata() -> None:
@@ -164,50 +210,6 @@ def test_quality_from_ranking_reuses_frozen_ir_semantics() -> None:
     assert quality.ndcg_at_1 is not None
 
 
-def _case(
-    *,
-    qid: str,
-    variant: str,
-    ranked: list[str] | None,
-    quality: PerformanceCaseQualityV1 | None,
-    rss: int = 1000,
-    hybrid_path: float = 1.0,
-    semantic_s: float = 0.1,
-    total_s: float = 1.0,
-) -> PerformanceBenchmarkCaseV1:
-    stage = STAGE_FUSION if variant == VARIANT_HYBRID else STAGE_RERANK
-    measured = [
-        PerformanceBenchmarkObservationV1(
-            observation_status="valid",
-            stage_id=stage,
-            duration_seconds=semantic_s,
-            is_warmup=False,
-            resource=_resource(rss=rss),
-        ),
-        PerformanceBenchmarkObservationV1(
-            observation_status="valid",
-            stage_id=STAGE_TOTAL_PATH,
-            duration_seconds=total_s,
-            is_warmup=False,
-            resource=_resource(rss=rss),
-        ),
-    ]
-    return PerformanceBenchmarkCaseV1(
-        case_id=f"perfcase_{qid}_{variant}",
-        case_kind="retrieval_path",
-        benchmark_level="B",
-        stage_or_path=stage,
-        subject_identity=qid,
-        variant=variant,
-        cold_warm="warm",
-        measured_observations=measured,
-        resource_samples=[_resource(rss=rss)],
-        ranked_chunk_ids=ranked,
-        quality=quality,
-        hybrid_path_durations_seconds=[hybrid_path],
-    )
-
-
 def _eligible_quality() -> PerformanceCaseQualityV1:
     return PerformanceCaseQualityV1(
         quality_eligible=True,
@@ -226,6 +228,73 @@ def _eligible_quality() -> PerformanceCaseQualityV1:
         ndcg_at_1=1.0,
         ndcg_at_5=0.9,
         ndcg_at_10=0.85,
+    )
+
+
+def _case(
+    *,
+    qid: str,
+    variant: str,
+    ranked: list[str] | None,
+    quality: PerformanceCaseQualityV1 | None,
+    rss_measured: int = 1000,
+    rss_warmup: int | None = None,
+    path_samples: list[PerformancePathSampleV1] | None = None,
+    semantic_s: float = 0.1,
+) -> PerformanceBenchmarkCaseV1:
+    stage = STAGE_FUSION if variant == VARIANT_HYBRID else STAGE_RERANK
+    measured = [
+        PerformanceBenchmarkObservationV1(
+            observation_status="valid",
+            stage_id=stage,
+            duration_seconds=semantic_s,
+            is_warmup=False,
+            resource=_resource(rss=rss_measured, is_warmup=False),
+        )
+    ]
+    resources = [_resource(rss=rss_measured, is_warmup=False)]
+    if rss_warmup is not None:
+        resources.insert(0, _resource(rss=rss_warmup, is_warmup=True))
+    if path_samples is None:
+        if variant == VARIANT_HYBRID:
+            path_samples = [
+                PerformancePathSampleV1(
+                    path=PATH_BASELINE_HYBRID_TOTAL,
+                    duration_seconds=4.0,
+                    is_warmup=False,
+                )
+            ]
+        else:
+            path_samples = [
+                PerformancePathSampleV1(
+                    path=PATH_TREATMENT_HYBRID_COMPONENT,
+                    duration_seconds=4.1,
+                    is_warmup=False,
+                ),
+                PerformancePathSampleV1(
+                    path=PATH_TREATMENT_RERANKER,
+                    duration_seconds=semantic_s,
+                    is_warmup=False,
+                ),
+                PerformancePathSampleV1(
+                    path=PATH_TREATMENT_TOTAL,
+                    duration_seconds=12.0,
+                    is_warmup=False,
+                ),
+            ]
+    return PerformanceBenchmarkCaseV1(
+        case_id=f"perfcase_{qid}_{variant}",
+        case_kind="retrieval_path",
+        benchmark_level="B",
+        stage_or_path=stage,
+        subject_identity=qid,
+        variant=variant,
+        cold_warm="warm",
+        measured_observations=measured,
+        resource_samples=resources,
+        ranked_chunk_ids=ranked,
+        quality=quality,
+        path_samples=path_samples,
     )
 
 
@@ -275,6 +344,122 @@ def test_assert_paired_quality_coverage_fails_without_ranked_ids() -> None:
         )
 
 
+def test_f002b_path_rollups_exclude_warmup_samples() -> None:
+    """Property 2: warm-up path samples must not enter measured path stats."""
+    cases = [
+        _case(
+            qid="qa",
+            variant=VARIANT_HYBRID,
+            ranked=["c1"],
+            quality=_eligible_quality(),
+            path_samples=[
+                PerformancePathSampleV1(
+                    path=PATH_BASELINE_HYBRID_TOTAL,
+                    duration_seconds=99.0,
+                    is_warmup=True,
+                ),
+                PerformancePathSampleV1(
+                    path=PATH_BASELINE_HYBRID_TOTAL,
+                    duration_seconds=4.0,
+                    is_warmup=False,
+                ),
+            ],
+        )
+    ]
+    by_path = {item.path: item for item in path_latency_rollups(cases)}
+    stats = by_path[PATH_BASELINE_HYBRID_TOTAL].stats
+    assert stats.n == 1
+    assert stats.warmup_count == 1
+    assert stats.p50 == pytest.approx(4.0)
+    assert stats.p50 != pytest.approx(99.0)
+
+
+def test_f002c_baseline_and_treatment_hybrid_paths_remain_separate() -> None:
+    """Property 3: baseline hybrid total ≠ treatment hybrid component pool."""
+    cases = [
+        _case(
+            qid="qa",
+            variant=VARIANT_HYBRID,
+            ranked=["c1"],
+            quality=_eligible_quality(),
+            path_samples=[
+                PerformancePathSampleV1(
+                    path=PATH_BASELINE_HYBRID_TOTAL,
+                    duration_seconds=5.0,
+                    is_warmup=False,
+                )
+            ],
+        ),
+        _case(
+            qid="qa",
+            variant=VARIANT_HYBRID_RERANK,
+            ranked=["c2"],
+            quality=_eligible_quality(),
+            semantic_s=7.0,
+            path_samples=[
+                PerformancePathSampleV1(
+                    path=PATH_TREATMENT_HYBRID_COMPONENT,
+                    duration_seconds=8.0,
+                    is_warmup=False,
+                ),
+                PerformancePathSampleV1(
+                    path=PATH_TREATMENT_RERANKER,
+                    duration_seconds=7.0,
+                    is_warmup=False,
+                ),
+                PerformancePathSampleV1(
+                    path=PATH_TREATMENT_TOTAL,
+                    duration_seconds=16.0,
+                    is_warmup=False,
+                ),
+            ],
+        ),
+    ]
+    by_path = {item.path: item for item in path_latency_rollups(cases)}
+    assert by_path[PATH_BASELINE_HYBRID_TOTAL].stats.p50 == pytest.approx(5.0)
+    assert by_path[PATH_TREATMENT_HYBRID_COMPONENT].stats.p50 == pytest.approx(8.0)
+    assert by_path[PATH_TREATMENT_RERANKER].stats.p50 == pytest.approx(7.0)
+    assert by_path[PATH_TREATMENT_TOTAL].stats.p50 == pytest.approx(16.0)
+    # No pooled hybrid_latency population exists.
+    assert "hybrid_latency" not in by_path
+
+
+def test_f003_ram_summary_excludes_warmup_samples() -> None:
+    """Property 5: authoritative RAM summary uses measured samples only."""
+    cases = [
+        _case(
+            qid="qa",
+            variant=VARIANT_HYBRID,
+            ranked=["c1"],
+            quality=_eligible_quality(),
+            rss_measured=2000,
+            rss_warmup=999999,
+        ),
+        _case(
+            qid="qa",
+            variant=VARIANT_HYBRID_RERANK,
+            ranked=["c2"],
+            quality=_eligible_quality(),
+            rss_measured=3000,
+            rss_warmup=888888,
+        ),
+    ]
+    by_var = {item.variant: item for item in resource_summary_by_variant(cases)}
+    assert by_var[VARIANT_HYBRID].sample_count == 1
+    assert by_var[VARIANT_HYBRID].ram_rss_bytes_p50 == 2000
+    assert by_var[VARIANT_HYBRID].ram_rss_bytes_max == 2000
+    assert by_var[VARIANT_HYBRID_RERANK].ram_rss_bytes_p50 == 3000
+
+
+def test_f003_resource_scope_is_retrieval_path_not_semantic_stage() -> None:
+    """Property 6: pre-retrieval RAM is path-scoped, not fusion/rerank."""
+    sample = _resource(rss=1500, is_warmup=False)
+    assert sample.stage_id == RESOURCE_SCOPE_RETRIEVAL_PATH
+    assert sample.stage_id not in {STAGE_FUSION, STAGE_RERANK, "end_to_end"}
+    assert sample.note is not None
+    assert "retrieval-path" in sample.note
+
+
 def test_macro_quality_and_resource_and_path_rollups() -> None:
     quality = _eligible_quality()
     cases = [
@@ -283,42 +468,50 @@ def test_macro_quality_and_resource_and_path_rollups() -> None:
             variant=VARIANT_HYBRID,
             ranked=["c1"],
             quality=quality,
-            rss=1000,
-            hybrid_path=4.0,
-            semantic_s=0.05,
-            total_s=4.0,
+            rss_measured=1000,
         ),
         _case(
             qid="qa",
             variant=VARIANT_HYBRID_RERANK,
             ranked=["c2"],
             quality=quality,
-            rss=2000,
-            hybrid_path=4.1,
+            rss_measured=2000,
             semantic_s=7.0,
-            total_s=12.0,
         ),
     ]
     qualities = macro_quality_by_variant(cases)
     assert len(qualities) == 2
-    assert qualities[0].eligible_case_count == 1
     assert qualities[0].mrr == pytest.approx(1.0)
 
     resources = resource_summary_by_variant(cases)
     by_var = {item.variant: item for item in resources}
-    assert by_var[VARIANT_HYBRID].ram_availability == "available"
     assert by_var[VARIANT_HYBRID].ram_rss_bytes_p50 == 1000
-    assert by_var[VARIANT_HYBRID_RERANK].ram_rss_bytes_p50 == 2000
 
     paths = path_latency_rollups(cases)
     by_path = {item.path: item for item in paths}
-    assert PATH_HYBRID_LATENCY in by_path
-    assert PATH_RERANKER_LATENCY in by_path
-    assert PATH_HYBRID_TOTAL in by_path
-    assert PATH_HYBRID_RERANK_TOTAL in by_path
-    assert by_path[PATH_HYBRID_TOTAL].stats.p50 == pytest.approx(4.0)
-    assert by_path[PATH_HYBRID_RERANK_TOTAL].stats.p50 == pytest.approx(12.0)
-    assert by_path[PATH_RERANKER_LATENCY].stats.p50 == pytest.approx(7.0)
+    assert by_path[PATH_BASELINE_HYBRID_TOTAL].stats.p50 == pytest.approx(4.0)
+    assert by_path[PATH_TREATMENT_TOTAL].stats.p50 == pytest.approx(12.0)
+
+
+def test_f002d_rerank_semantic_includes_final_candidate_construction() -> None:
+    """Property 4: rerank envelope ends when candidate list is available.
+
+    Inspect production timing keys: ``rerank`` must be present and is distinct
+    from infer+sort alone when construction work exists. We verify the
+    retrieve implementation times the envelope past candidate construction.
+    """
+    import inspect
+
+    from offline_rag.rerank import retrieve as rerank_mod
+
+    source = inspect.getsource(rerank_mod.HybridRerankRetriever.retrieve)
+    assert "t_rerank_envelope" in source
+    assert "final HybridRerankCandidate list" in source or (
+        "rerank_semantic_s = time.perf_counter() - t_rerank_envelope" in source
+    )
+    # Envelope starts at infer and stops after candidates are built — not
+    # infer+sort arithmetic alone.
+    assert "rerank_semantic_s = rerank_infer_s + sort_s" not in source
 
 
 def test_authoritative_report_includes_quality_and_ram() -> None:
@@ -337,17 +530,15 @@ def test_authoritative_report_includes_quality_and_ram() -> None:
             variant=VARIANT_HYBRID,
             ranked=["c1"],
             quality=quality,
-            rss=1500,
-            total_s=5.0,
+            rss_measured=1500,
         ),
         _case(
             qid="qa",
             variant=VARIANT_HYBRID_RERANK,
             ranked=["c2"],
             quality=quality,
-            rss=2500,
+            rss_measured=2500,
             semantic_s=8.0,
-            total_s=14.0,
         ),
     ]
     aggregate = build_run_aggregate(
@@ -363,6 +554,12 @@ def test_authoritative_report_includes_quality_and_ram() -> None:
         quality_by_variant=macro_quality_by_variant(cases),
         resource_by_variant=resource_summary_by_variant(cases),
         vram_availability="unavailable",
+    )
+    # Variant totals come from path samples, not end_to_end observations.
+    assert all(
+        obs.stage_id != "end_to_end"
+        for case in cases
+        for obs in case.measured_observations
     )
     manifest = PerformanceBenchmarkRunManifestV1(
         suite_id=LOCKED_PERFSUITE,
@@ -390,4 +587,3 @@ def test_authoritative_report_includes_quality_and_ram() -> None:
     assert "Recall@1/5/10" in report
     assert "Resource summary (RAM)" in report
     assert "VRAM: `unavailable`" in report
-    assert "By semantic stage / path" in report

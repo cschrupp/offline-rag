@@ -60,6 +60,7 @@ def capture_resource_observation(
     *,
     vram_probe: Any | None = None,
     note: str | None = None,
+    is_warmup: bool = False,
 ) -> PerformanceResourceObservationV1:
     """Capture a single resource sample for ``stage_id``.
 
@@ -80,6 +81,7 @@ def capture_resource_observation(
         vram_used_bytes_peak=vram_peak if vram_av == "available" else None,
         device_id=device_id,
         note=note,
+        is_warmup=is_warmup,
     )
 
 

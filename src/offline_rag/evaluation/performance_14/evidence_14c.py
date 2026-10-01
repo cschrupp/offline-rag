@@ -1,6 +1,9 @@
 """Quality evidence, semantic timing decomposition, and resource rollups for 14C.
 
 Preserves frozen ``perfsuite_`` / ``perfcfg_``. Does not execute campaigns.
+
+Retrieval-path totals are ``PerformancePathSampleV1`` records — never the locked
+Level-C ``end_to_end`` semantic stage.
 """
 
 from __future__ import annotations
@@ -16,6 +19,7 @@ from offline_rag.evaluation.performance_14.contracts import (
     PerformanceBenchmarkObservationV1,
     PerformanceCaseQualityV1,
     PerformancePathLatencyV1,
+    PerformancePathSampleV1,
     PerformanceResourceObservationV1,
     PerformanceVariantQualityV1,
     PerformanceVariantResourceV1,
@@ -33,12 +37,25 @@ from offline_rag.evaluation.performance_14.timing import validate_stage_id
 # Locked semantic envelopes (docs/milestone7_performance_ui.md §8.2).
 STAGE_FUSION = "fusion"
 STAGE_RERANK = "rerank"
-STAGE_TOTAL_PATH = "end_to_end"
+# Locked Level-C stage — must never be used for Level-B retrieval-path totals.
+STAGE_END_TO_END_FORBIDDEN_FOR_14C = "end_to_end"
 
-PATH_HYBRID_LATENCY = "hybrid_latency"
-PATH_RERANKER_LATENCY = "reranker_latency"
-PATH_HYBRID_TOTAL = "hybrid_total_retrieval_path"
-PATH_HYBRID_RERANK_TOTAL = "hybrid_rerank_total_retrieval_path"
+# Retrieval-path sample identities (not semantic stage_ids).
+PATH_BASELINE_HYBRID_TOTAL = "baseline_hybrid_total_retrieval_path"
+PATH_TREATMENT_HYBRID_COMPONENT = "treatment_hybrid_component"
+PATH_TREATMENT_RERANKER = "treatment_reranker_latency"
+PATH_TREATMENT_TOTAL = "treatment_total_retrieval_path"
+
+RESOURCE_SCOPE_RETRIEVAL_PATH = "retrieval_path"
+RESOURCE_NOTE_PRE_PATH = (
+    "RSS sampled immediately before retrieval-path invocation; "
+    "not a semantic fusion/rerank stage boundary"
+)
+
+VARIANT_TOTAL_PATH = {
+    VARIANT_HYBRID: PATH_BASELINE_HYBRID_TOTAL,
+    VARIANT_HYBRID_RERANK: PATH_TREATMENT_TOTAL,
+}
 
 
 def quality_from_ranking(
@@ -83,6 +100,15 @@ def _require_latency_seconds(metadata: Mapping[str, Any]) -> dict[str, Any]:
     return raw
 
 
+def assert_not_end_to_end_stage(stage_id: str) -> None:
+    """Fail closed if Level-B retrieval evidence uses the Level-C end_to_end id."""
+    if stage_id == STAGE_END_TO_END_FORBIDDEN_FOR_14C:
+        raise Performance14Error(
+            "14C retrieval-path evidence must not use stage_id=end_to_end; "
+            "end_to_end is reserved for Level-C CLI/service→terminal envelopes"
+        )
+
+
 def assert_semantic_not_full_path(
     *,
     semantic_stage_id: str,
@@ -91,6 +117,7 @@ def assert_semantic_not_full_path(
 ) -> None:
     """Fail closed if a semantic stage duration equals the full-path duration."""
     validate_stage_id(semantic_stage_id)
+    assert_not_end_to_end_stage(semantic_stage_id)
     if semantic_stage_id not in {STAGE_FUSION, STAGE_RERANK}:
         raise Performance14Error(
             f"assert_semantic_not_full_path only applies to fusion/rerank; "
@@ -113,13 +140,28 @@ def assert_semantic_not_full_path(
         )
 
 
+def _path_sample(
+    path: str,
+    duration_seconds: float,
+    *,
+    is_warmup: bool,
+) -> PerformancePathSampleV1:
+    assert_not_end_to_end_stage(path)
+    return PerformancePathSampleV1(
+        path=path,
+        duration_seconds=float(duration_seconds),
+        is_warmup=is_warmup,
+        observation_status="valid",
+    )
+
+
 def semantic_observations_from_hybrid_metadata(
     metadata: Mapping[str, Any],
     *,
     is_warmup: bool,
     resource: PerformanceResourceObservationV1 | None,
-) -> tuple[list[PerformanceBenchmarkObservationV1], float]:
-    """Emit fusion (semantic) + total path; return hybrid-path duration."""
+) -> tuple[list[PerformanceBenchmarkObservationV1], list[PerformancePathSampleV1]]:
+    """Emit fusion semantic obs + baseline hybrid total path sample."""
     latency = _require_latency_seconds(metadata)
     fusion_s = float(latency["fusion"])
     total_s = float(latency["total"])
@@ -128,7 +170,6 @@ def semantic_observations_from_hybrid_metadata(
         semantic_duration=fusion_s,
         total_duration=total_s,
     )
-    validate_stage_id(STAGE_TOTAL_PATH)
     observations = [
         PerformanceBenchmarkObservationV1(
             observation_status="valid",
@@ -136,16 +177,12 @@ def semantic_observations_from_hybrid_metadata(
             duration_seconds=fusion_s,
             is_warmup=is_warmup,
             resource=resource,
-        ),
-        PerformanceBenchmarkObservationV1(
-            observation_status="valid",
-            stage_id=STAGE_TOTAL_PATH,
-            duration_seconds=total_s,
-            is_warmup=is_warmup,
-            resource=resource,
-        ),
+        )
     ]
-    return observations, total_s
+    path_samples = [
+        _path_sample(PATH_BASELINE_HYBRID_TOTAL, total_s, is_warmup=is_warmup)
+    ]
+    return observations, path_samples
 
 
 def semantic_observations_from_hybrid_rerank_metadata(
@@ -153,10 +190,11 @@ def semantic_observations_from_hybrid_rerank_metadata(
     *,
     is_warmup: bool,
     resource: PerformanceResourceObservationV1 | None,
-) -> tuple[list[PerformanceBenchmarkObservationV1], float]:
-    """Emit rerank (semantic) + total path; return hybrid-component duration.
+) -> tuple[list[PerformanceBenchmarkObservationV1], list[PerformancePathSampleV1]]:
+    """Emit rerank semantic obs + separate treatment path samples.
 
-    Semantic ``rerank`` uses finalized-input → ranked-output (= infer + sort).
+    Path samples keep warm-up identity. Hybrid component (input_k pool) is
+    never pooled with baseline hybrid total.
     """
     latency = _require_latency_seconds(metadata)
     rerank_s = float(latency["rerank"])
@@ -167,7 +205,6 @@ def semantic_observations_from_hybrid_rerank_metadata(
         semantic_duration=rerank_s,
         total_duration=total_s,
     )
-    validate_stage_id(STAGE_TOTAL_PATH)
     observations = [
         PerformanceBenchmarkObservationV1(
             observation_status="valid",
@@ -175,16 +212,16 @@ def semantic_observations_from_hybrid_rerank_metadata(
             duration_seconds=rerank_s,
             is_warmup=is_warmup,
             resource=resource,
-        ),
-        PerformanceBenchmarkObservationV1(
-            observation_status="valid",
-            stage_id=STAGE_TOTAL_PATH,
-            duration_seconds=total_s,
-            is_warmup=is_warmup,
-            resource=resource,
-        ),
+        )
     ]
-    return observations, hybrid_s
+    path_samples = [
+        _path_sample(
+            PATH_TREATMENT_HYBRID_COMPONENT, hybrid_s, is_warmup=is_warmup
+        ),
+        _path_sample(PATH_TREATMENT_RERANKER, rerank_s, is_warmup=is_warmup),
+        _path_sample(PATH_TREATMENT_TOTAL, total_s, is_warmup=is_warmup),
+    ]
+    return observations, path_samples
 
 
 def macro_quality_by_variant(
@@ -246,11 +283,13 @@ def macro_quality_by_variant(
 def resource_summary_by_variant(
     cases: Sequence[Any],
 ) -> list[PerformanceVariantResourceV1]:
-    """Deterministic RSS summary from available resource samples per variant."""
+    """Deterministic RSS summary from measured (non-warm-up) resource samples."""
     by_variant: dict[str, list[int]] = defaultdict(list)
     for case in cases:
         for sample in getattr(case, "resource_samples", []) or []:
             if sample is None:
+                continue
+            if getattr(sample, "is_warmup", False):
                 continue
             if sample.ram_availability != "available":
                 continue
@@ -288,52 +327,47 @@ def resource_summary_by_variant(
     return out
 
 
-def path_latency_rollups(cases: Sequence[Any]) -> list[PerformancePathLatencyV1]:
-    """Roll hybrid / reranker / per-variant total retrieval-path latencies."""
-    hybrid_durations: list[float] = []
-    rerank_obs: list[Any] = []
-    hybrid_total_obs: list[Any] = []
-    treatment_total_obs: list[Any] = []
-    for case in cases:
-        for duration in getattr(case, "hybrid_path_durations_seconds", []) or []:
-            hybrid_durations.append(float(duration))
-        variant = str(getattr(case, "variant", ""))
-        for obs in list(getattr(case, "warmup_observations", [])) + list(
-            getattr(case, "measured_observations", [])
-        ):
-            if obs.observation_status != "valid" or obs.is_warmup:
-                continue
-            if obs.stage_id == STAGE_RERANK:
-                rerank_obs.append(obs)
-            elif obs.stage_id == STAGE_TOTAL_PATH:
-                if variant == VARIANT_HYBRID:
-                    hybrid_total_obs.append(obs)
-                elif variant == VARIANT_HYBRID_RERANK:
-                    treatment_total_obs.append(obs)
-
-    hybrid_obs = [
-        PerformanceBenchmarkObservationV1(
-            observation_status="valid",
-            stage_id=STAGE_TOTAL_PATH,
-            duration_seconds=duration,
-            is_warmup=False,
+def path_samples_to_observations(
+    samples: Sequence[PerformancePathSampleV1],
+) -> list[PerformanceBenchmarkObservationV1]:
+    """Adapt path samples for ``derive_latency_stats`` (preserves is_warmup)."""
+    out: list[PerformanceBenchmarkObservationV1] = []
+    for sample in samples:
+        assert_not_end_to_end_stage(sample.path)
+        out.append(
+            PerformanceBenchmarkObservationV1(
+                observation_status=sample.observation_status,
+                # Carrier field for derive_latency_stats only; authoritative path
+                # identity is PerformancePathSampleV1.path / PathLatencyV1.path.
+                stage_id=sample.path,
+                duration_seconds=float(sample.duration_seconds),
+                is_warmup=bool(sample.is_warmup),
+            )
         )
-        for duration in hybrid_durations
-    ]
+    return out
+
+
+def path_latency_rollups(cases: Sequence[Any]) -> list[PerformancePathLatencyV1]:
+    """Roll separate baseline/treatment path populations (warm-ups excluded)."""
+    by_path: dict[str, list[PerformancePathSampleV1]] = defaultdict(list)
+    for case in cases:
+        for sample in getattr(case, "path_samples", []) or []:
+            by_path[str(sample.path)].append(sample)
+
+    ordered_paths = (
+        PATH_BASELINE_HYBRID_TOTAL,
+        PATH_TREATMENT_HYBRID_COMPONENT,
+        PATH_TREATMENT_RERANKER,
+        PATH_TREATMENT_TOTAL,
+    )
     return [
         PerformancePathLatencyV1(
-            path=PATH_HYBRID_LATENCY, stats=derive_latency_stats(hybrid_obs)
-        ),
-        PerformancePathLatencyV1(
-            path=PATH_RERANKER_LATENCY, stats=derive_latency_stats(rerank_obs)
-        ),
-        PerformancePathLatencyV1(
-            path=PATH_HYBRID_TOTAL, stats=derive_latency_stats(hybrid_total_obs)
-        ),
-        PerformancePathLatencyV1(
-            path=PATH_HYBRID_RERANK_TOTAL,
-            stats=derive_latency_stats(treatment_total_obs),
-        ),
+            path=path,
+            stats=derive_latency_stats(
+                path_samples_to_observations(by_path.get(path, []))
+            ),
+        )
+        for path in ordered_paths
     ]
 
 
@@ -356,7 +390,9 @@ def assert_paired_quality_coverage(
                 f"ranked_chunk_ids empty for subject×variant {key}"
             )
         seen.add(key)
-    expected = {(qid, variant) for qid in expected_query_ids for variant in expected_variants}
+    expected = {
+        (qid, variant) for qid in expected_query_ids for variant in expected_variants
+    }
     missing = sorted(expected - seen)
     if missing:
         raise Performance14Error(

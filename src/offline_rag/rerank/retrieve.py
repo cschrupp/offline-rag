@@ -213,6 +213,8 @@ class HybridRerankRetriever:
         rerank_infer_s = time.perf_counter() - t_infer
         rerank_infer_ms = int(rerank_infer_s * 1000)
 
+        # Locked semantic envelope: finalized reranker input → final candidate list.
+        t_rerank_envelope = t_infer
         t_sort = time.perf_counter()
         ordered = _sort_scored(pool, scores)
         truncated = ordered[:final_k]
@@ -248,10 +250,10 @@ class HybridRerankRetriever:
             )
         sort_s = time.perf_counter() - t_sort
         sort_ms = int(sort_s * 1000)
+        # Stop only once the final HybridRerankCandidate list is available.
+        rerank_semantic_s = time.perf_counter() - t_rerank_envelope
         total_s = time.perf_counter() - wall_t0
         total_ms = int(total_s * 1000)
-        # Locked semantic envelope: finalized reranker input → ranked candidates.
-        rerank_semantic_s = rerank_infer_s + sort_s
 
         metadata: dict[str, Any] = {
             "corpus_id": hybrid_result.metadata.get("corpus_id"),
