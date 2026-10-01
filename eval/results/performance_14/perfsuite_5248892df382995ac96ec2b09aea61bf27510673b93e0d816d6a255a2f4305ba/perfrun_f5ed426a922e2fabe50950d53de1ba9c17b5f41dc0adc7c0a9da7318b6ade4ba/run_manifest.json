@@ -1,0 +1,54 @@
+{
+  "config_id": "perfcfg_aae1ea9b048e414338f0a38b13cb31132505920c406293e1e9f8e35595faa42d",
+  "contract": "performance-benchmark-run-manifest-v1",
+  "corpus_id": "corpus_040e49a1d261dba4e853939b36348dc40109551d6fdb49b38c7a9d896409eadb",
+  "environment": {
+    "dry_run": "false",
+    "evidence_class": "AUTHORITATIVE",
+    "execution_authorization": "Q25_SLICE_14C_AUTHORITATIVE_BENCHMARK_EXECUTION",
+    "generation_excluded": "true",
+    "os": "Linux",
+    "preflight_status": "passed",
+    "substrate_pin_14b": "97d38031b99029c2e9b3fd028eadc3a60efef6c0",
+    "suite_freeze_authority": "a662efc50d712bd6a986da05809dc864342139df",
+    "working_tree_state": "clean"
+  },
+  "executing_sha": "6e1d71015e6da9b91171a686180af67947a78d24",
+  "execution_mode": "authoritative_14c_quality_vs_cost",
+  "machine_profile": {
+    "architecture": "x86_64",
+    "contract": "performance-machine-profile-v1",
+    "cpu_model": "Intel(R) Core(TM) i9-10885H CPU @ 2.40GHz",
+    "cuda_runtime_version": null,
+    "extra": {},
+    "gpu_driver_version": null,
+    "gpu_model": null,
+    "gpu_vram_bytes": null,
+    "logical_cores": 16,
+    "offline_rag_commit_sha": "6e1d71015e6da9b91171a686180af67947a78d24",
+    "os_name": "Linux",
+    "os_version": "6.18.33.2-microsoft-standard-WSL2",
+    "physical_cores": 8,
+    "python_version": "3.14.5",
+    "system_ram_bytes": 33507913728
+  },
+  "machine_profile_id": "perfhost_f2d39a4c127d7072a78573638a19093312904d6d53ba11fce030549eca055d8f",
+  "model_ids": {
+    "embedding": "Qwen/Qwen3-Embedding-0.6B",
+    "reranker": "BAAI/bge-reranker-v2-m3"
+  },
+  "repetition_counts": {
+    "measured": 10,
+    "warmup": 2
+  },
+  "run_identity_hash": "perfrun_f5ed426a922e2fabe50950d53de1ba9c17b5f41dc0adc7c0a9da7318b6ade4ba",
+  "run_label": null,
+  "run_nonce": "067619029ba940368041357247e85d6e",
+  "run_status": "completed",
+  "runtime_versions": {
+    "python": "3.14.5"
+  },
+  "start_timestamp": "2026-10-01T16:19:00Z",
+  "suite_id": "perfsuite_5248892df382995ac96ec2b09aea61bf27510673b93e0d816d6a255a2f4305ba",
+  "warmup_policy": "warmup=2"
+}

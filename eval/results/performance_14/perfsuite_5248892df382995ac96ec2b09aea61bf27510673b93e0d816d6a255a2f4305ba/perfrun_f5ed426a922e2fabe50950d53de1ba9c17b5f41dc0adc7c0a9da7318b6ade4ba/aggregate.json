@@ -1,0 +1,143 @@
+{
+  "authoritative": true,
+  "benchmark_level": "B",
+  "by_stage_or_path": [
+    {
+      "stage_or_path": "fusion",
+      "stats": {
+        "attempted_count": 220,
+        "contract": "performance-benchmark-aggregate-v1",
+        "failure_count": 0,
+        "instrumentation_exclusion_count": 0,
+        "max": 8.971773712954018,
+        "min": 3.920607350009959,
+        "n": 220,
+        "p50": 5.176538325496949,
+        "p95": 7.718490203059627,
+        "statistics_semantics_version": "perf-stats-linear-interp-v1",
+        "valid_count": 220,
+        "warmup_count": 44
+      }
+    },
+    {
+      "stage_or_path": "rerank",
+      "stats": {
+        "attempted_count": 220,
+        "contract": "performance-benchmark-aggregate-v1",
+        "failure_count": 0,
+        "instrumentation_exclusion_count": 0,
+        "max": 20.606142528995406,
+        "min": 10.62283677101368,
+        "n": 220,
+        "p50": 13.055963636492379,
+        "p95": 18.161467594801795,
+        "statistics_semantics_version": "perf-stats-linear-interp-v1",
+        "valid_count": 220,
+        "warmup_count": 44
+      }
+    }
+  ],
+  "by_variant": [
+    {
+      "stats": {
+        "attempted_count": 220,
+        "contract": "performance-benchmark-aggregate-v1",
+        "failure_count": 0,
+        "instrumentation_exclusion_count": 0,
+        "max": 8.971773712954018,
+        "min": 3.920607350009959,
+        "n": 220,
+        "p50": 5.176538325496949,
+        "p95": 7.718490203059627,
+        "statistics_semantics_version": "perf-stats-linear-interp-v1",
+        "valid_count": 220,
+        "warmup_count": 44
+      },
+      "variant": "hybrid"
+    },
+    {
+      "stats": {
+        "attempted_count": 220,
+        "contract": "performance-benchmark-aggregate-v1",
+        "failure_count": 0,
+        "instrumentation_exclusion_count": 0,
+        "max": 20.606142528995406,
+        "min": 10.62283677101368,
+        "n": 220,
+        "p50": 13.055963636492379,
+        "p95": 18.161467594801795,
+        "statistics_semantics_version": "perf-stats-linear-interp-v1",
+        "valid_count": 220,
+        "warmup_count": 44
+      },
+      "variant": "hybrid_rerank"
+    }
+  ],
+  "case_ids": [
+    "b_draft_08f83eaef198495d92ff557eda974bf4_hybrid_rerank_warm",
+    "b_draft_08f83eaef198495d92ff557eda974bf4_hybrid_warm",
+    "b_draft_127ac342012d47fc9720a0c13a577550_hybrid_rerank_warm",
+    "b_draft_127ac342012d47fc9720a0c13a577550_hybrid_warm",
+    "b_draft_2083433ad52e4e00ad4214d3fec27464_hybrid_rerank_warm",
+    "b_draft_2083433ad52e4e00ad4214d3fec27464_hybrid_warm",
+    "b_draft_29389bdab2f84345b596e45fcf2e2bcc_hybrid_rerank_warm",
+    "b_draft_29389bdab2f84345b596e45fcf2e2bcc_hybrid_warm",
+    "b_draft_296be0251d6f4ad2baadedfb506eba4b_hybrid_rerank_warm",
+    "b_draft_296be0251d6f4ad2baadedfb506eba4b_hybrid_warm",
+    "b_draft_4c185aa9607b42688627ef26323f3367_hybrid_rerank_warm",
+    "b_draft_4c185aa9607b42688627ef26323f3367_hybrid_warm",
+    "b_draft_53be6e34cbb745c18d11ed233897fcb3_hybrid_rerank_warm",
+    "b_draft_53be6e34cbb745c18d11ed233897fcb3_hybrid_warm",
+    "b_draft_54115e36a58442e0a1574bc8017248c9_hybrid_rerank_warm",
+    "b_draft_54115e36a58442e0a1574bc8017248c9_hybrid_warm",
+    "b_draft_559331559a1a4a3eaf6f667db0727850_hybrid_rerank_warm",
+    "b_draft_559331559a1a4a3eaf6f667db0727850_hybrid_warm",
+    "b_draft_5cc85e4fade84aab9369d0a129f913c4_hybrid_rerank_warm",
+    "b_draft_5cc85e4fade84aab9369d0a129f913c4_hybrid_warm",
+    "b_draft_7cb38254d8ab4c2084bb9e328da73b1e_hybrid_rerank_warm",
+    "b_draft_7cb38254d8ab4c2084bb9e328da73b1e_hybrid_warm",
+    "b_draft_7df2ca731edf4daaa794ee20507205ca_hybrid_rerank_warm",
+    "b_draft_7df2ca731edf4daaa794ee20507205ca_hybrid_warm",
+    "b_draft_85741ff7269e40bb8ce8992f24a6f3c7_hybrid_rerank_warm",
+    "b_draft_85741ff7269e40bb8ce8992f24a6f3c7_hybrid_warm",
+    "b_draft_94722ca912bd46ada6b9689f388d1b17_hybrid_rerank_warm",
+    "b_draft_94722ca912bd46ada6b9689f388d1b17_hybrid_warm",
+    "b_draft_959387c7d1fc48f0a7ac4b38166d1fb1_hybrid_rerank_warm",
+    "b_draft_959387c7d1fc48f0a7ac4b38166d1fb1_hybrid_warm",
+    "b_draft_a597e472c3e141c3bf4a5539d2bcb5dd_hybrid_rerank_warm",
+    "b_draft_a597e472c3e141c3bf4a5539d2bcb5dd_hybrid_warm",
+    "b_draft_aad45b4a4bd940459793788e716aa580_hybrid_rerank_warm",
+    "b_draft_aad45b4a4bd940459793788e716aa580_hybrid_warm",
+    "b_draft_ac3bfbaa86b4458ea1137742dc3829de_hybrid_rerank_warm",
+    "b_draft_ac3bfbaa86b4458ea1137742dc3829de_hybrid_warm",
+    "b_draft_b88e163517ec47e29240171af181566d_hybrid_rerank_warm",
+    "b_draft_b88e163517ec47e29240171af181566d_hybrid_warm",
+    "b_draft_bc0aa8c3e7e44e20bae3af071f3eab68_hybrid_rerank_warm",
+    "b_draft_bc0aa8c3e7e44e20bae3af071f3eab68_hybrid_warm",
+    "b_draft_cc9a054620e040a5adee66a1f4dc3540_hybrid_rerank_warm",
+    "b_draft_cc9a054620e040a5adee66a1f4dc3540_hybrid_warm",
+    "b_draft_e8bd3467bc52419e95d19a19dde839e2_hybrid_rerank_warm",
+    "b_draft_e8bd3467bc52419e95d19a19dde839e2_hybrid_warm"
+  ],
+  "contract": "performance-benchmark-aggregate-v1",
+  "diagnostic_only": false,
+  "evidence_class": "AUTHORITATIVE",
+  "overall": {
+    "attempted_count": 440,
+    "contract": "performance-benchmark-aggregate-v1",
+    "failure_count": 0,
+    "instrumentation_exclusion_count": 0,
+    "max": 20.606142528995406,
+    "min": 3.920607350009959,
+    "n": 440,
+    "p50": 9.79730524198385,
+    "p95": 16.915304169885342,
+    "statistics_semantics_version": "perf-stats-linear-interp-v1",
+    "valid_count": 440,
+    "warmup_count": 88
+  },
+  "run_id": "perfrun_f5ed426a922e2fabe50950d53de1ba9c17b5f41dc0adc7c0a9da7318b6ade4ba",
+  "run_status": "completed",
+  "statistics_semantics_version": "perf-stats-linear-interp-v1",
+  "suite_id": "perfsuite_5248892df382995ac96ec2b09aea61bf27510673b93e0d816d6a255a2f4305ba"
+}
