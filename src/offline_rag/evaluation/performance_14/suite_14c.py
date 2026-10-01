@@ -25,6 +25,7 @@ from offline_rag.core.ids import (
     QWEN3_EMBEDDING_MODEL_ID,
     QWEN3_EMBEDDING_PINNED_REVISION,
 )
+from offline_rag.evaluation.gold import GoldDatasetError, load_gold_dataset
 from offline_rag.evaluation.performance_14.contracts import (
     DESIGN_AUTHORITY_SHA_14,
     MEASUREMENT_PROTOCOL_VERSION_V1,
@@ -251,10 +252,17 @@ def build_suite_plan_14c() -> PerformanceSuitePlan:
     )
 
 
-def effective_config_id_14c() -> str:
-    """Return ``perfcfg_`` over the frozen effective variant configuration."""
-    plan = build_suite_plan_14c()
-    payload = {
+def scientific_config_payload_14c(
+    plan: PerformanceSuitePlan | None = None,
+) -> dict[str, object]:
+    """Scientific effective-config payload for ``perfcfg_`` (no authority flags).
+
+    Authorization / evidence-class state (``diagnostic_only``, ``authoritative``,
+    ``execution_authorized``) is intentionally excluded so a later separately
+    authorized authoritative run can reuse this frozen scientific identity.
+    """
+    plan = plan if plan is not None else build_suite_plan_14c()
+    return {
         "benchmark_level": plan.suite.benchmark_level,
         "population_identity": plan.suite.population_identity,
         "variants": sorted(plan.suite.variants),
@@ -264,12 +272,14 @@ def effective_config_id_14c() -> str:
         "treatment_variant": plan.treatment_variant,
         "treatment_delta": list(plan.treatment_delta),
         "variant_configs": plan.variant_configs,
-        "diagnostic_only": True,
-        "authoritative": False,
         "substrate_pin_14b": SUBSTRATE_PIN_14B,
         "suite_kind": "quality_vs_cost_14c",
     }
-    return compute_config_identity_hash(payload)
+
+
+def effective_config_id_14c() -> str:
+    """Return ``perfcfg_`` over the frozen scientific variant configuration."""
+    return compute_config_identity_hash(scientific_config_payload_14c())
 
 
 class PerformanceFrozenSuite14CV1(StrictModel):
@@ -363,39 +373,47 @@ def build_frozen_suite_artifact_14c() -> PerformanceFrozenSuite14CV1:
     )
 
 
+def assert_gold_semantic_identity_14c(gold_dir: Path) -> None:
+    """Fail closed unless local Gold recomputes to the locked semantic identity.
+
+    Uses the canonical Gold loader so query text, judgments, tags/category, and
+    chunk_set/corpus pins are content-addressed. Persisted ``meta.dataset_id``
+    alone is not trusted.
+    """
+    if not gold_dir.is_dir():
+        raise Performance14Error(f"locked Gold directory missing: {gold_dir}")
+    try:
+        loaded = load_gold_dataset(gold_dir)
+    except GoldDatasetError as exc:
+        raise Performance14Error(
+            f"canonical Gold semantic load failed for {gold_dir}: {exc}"
+        ) from exc
+    if loaded.dataset_id != GOLD_DATASET_ID_14C:
+        raise Performance14Error(
+            "recomputed Gold dataset_id diverges from locked gold_dataset_id: "
+            f"{loaded.dataset_id} != {GOLD_DATASET_ID_14C}"
+        )
+    if loaded.source_schema != GOLD_SCHEMA_VERSION_14C:
+        raise Performance14Error(
+            "Gold source_schema diverges from locked gold_schema_version"
+        )
+    if loaded.meta.corpus_id != CORPUS_ID_14C:
+        raise Performance14Error("Gold corpus_id diverges from lock")
+    if loaded.meta.chunk_set_id != CHUNK_SET_ID_14C:
+        raise Performance14Error("Gold chunk_set_id diverges from lock")
+    on_disk_ids = [case.id for case in loaded.cases]
+    if sorted(on_disk_ids) != sorted(QUERY_IDS_14C):
+        raise Performance14Error(
+            "Gold case membership diverges from locked QUERY_IDS_14C"
+        )
+    if len(on_disk_ids) != len(QUERY_IDS_14C):
+        raise Performance14Error("Gold case count diverges from locked QUERY_IDS_14C")
+
+
 def _assert_gold_membership_on_disk(repo_root: Path) -> None:
-    """Fail closed if locked Gold path / membership is not available on disk."""
+    """Fail closed if locked Gold path is absent or semantically drifted."""
     gold_dir = (repo_root / GOLD_RELATIVE_PATH_14C).resolve()
-    meta_path = gold_dir / "meta.json"
-    cases_path = gold_dir / "cases.jsonl"
-    if not meta_path.is_file() or not cases_path.is_file():
-        raise Performance14Error(
-            f"locked Gold path missing meta.json/cases.jsonl: {gold_dir}"
-        )
-    meta = json.loads(meta_path.read_text(encoding="utf-8"))
-    if meta.get("dataset_id") != GOLD_DATASET_ID_14C:
-        raise Performance14Error(
-            "Gold meta dataset_id diverges from locked gold_dataset_id"
-        )
-    if meta.get("schema_version") != GOLD_SCHEMA_VERSION_14C:
-        raise Performance14Error("Gold meta schema_version diverges from lock")
-    if meta.get("corpus_id") != CORPUS_ID_14C:
-        raise Performance14Error("Gold meta corpus_id diverges from lock")
-    if meta.get("chunk_set_id") != CHUNK_SET_ID_14C:
-        raise Performance14Error("Gold meta chunk_set_id diverges from lock")
-    on_disk: list[str] = []
-    for line in cases_path.read_text(encoding="utf-8").splitlines():
-        if not line.strip():
-            continue
-        row = json.loads(line)
-        case_id = row.get("id")
-        if not isinstance(case_id, str) or not case_id:
-            raise Performance14Error("Gold cases.jsonl row missing id")
-        on_disk.append(case_id)
-    if sorted(on_disk) != sorted(QUERY_IDS_14C):
-        raise Performance14Error(
-            "Gold cases.jsonl membership diverges from locked QUERY_IDS_14C"
-        )
+    assert_gold_semantic_identity_14c(gold_dir)
 
 
 def validate_frozen_suite_14c(
@@ -452,22 +470,10 @@ def validate_frozen_suite_14c(
         ),
     }
     reordered_plan = replace(plan, variant_configs=reordered)
-    payload = {
-        "benchmark_level": reordered_plan.suite.benchmark_level,
-        "population_identity": reordered_plan.suite.population_identity,
-        "variants": sorted(reordered_plan.suite.variants),
-        "warmup_count": reordered_plan.warmup_count,
-        "measured_repetitions": reordered_plan.measured_repetitions,
-        "baseline_variant": reordered_plan.baseline_variant,
-        "treatment_variant": reordered_plan.treatment_variant,
-        "treatment_delta": list(reordered_plan.treatment_delta),
-        "variant_configs": reordered_plan.variant_configs,
-        "diagnostic_only": True,
-        "authoritative": False,
-        "substrate_pin_14b": SUBSTRATE_PIN_14B,
-        "suite_kind": "quality_vs_cost_14c",
-    }
-    if compute_config_identity_hash(payload) != art.effective_config_id:
+    if (
+        compute_config_identity_hash(scientific_config_payload_14c(reordered_plan))
+        != art.effective_config_id
+    ):
         raise Performance14Error(
             "effective_config_id is not stable under variant_configs key reordering"
         )

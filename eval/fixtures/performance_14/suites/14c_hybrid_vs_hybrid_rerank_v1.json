@@ -54,7 +54,7 @@
   "corpus_id": "corpus_040e49a1d261dba4e853939b36348dc40109551d6fdb49b38c7a9d896409eadb",
   "dense_index_id": "denseindex_80f7da5c50c6de0a00502e169c75198af3f7f2f48d56dcae8ca961d3e42710e9",
   "design_authority_sha": "89a395ae4df7aff23c2da2c8c44fd6fe405459a6",
-  "effective_config_id": "perfcfg_62b39058443c152c0ae7edfe5bee0288e00c857f8e8c9d27b0bc1aaba7c9a7f6",
+  "effective_config_id": "perfcfg_aae1ea9b048e414338f0a38b13cb31132505920c406293e1e9f8e35595faa42d",
   "embedding_config_hash": "embcfg_e7861b5986785eba0fb6725a3d1e40f2d461f33e2dcd66d2c75ad3875f9a5d3f",
   "embedding_model_id": "Qwen/Qwen3-Embedding-0.6B",
   "embedding_model_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",

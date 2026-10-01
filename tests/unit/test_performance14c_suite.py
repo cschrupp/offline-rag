@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from dataclasses import replace
 from pathlib import Path
 
@@ -26,6 +27,7 @@ from offline_rag.evaluation.performance_14.suite_14c import (
     CORPUS_ID_14C,
     FROZEN_SUITE_REL,
     GOLD_DATASET_ID_14C,
+    GOLD_RELATIVE_PATH_14C,
     MEASURED_REPETITIONS_14C,
     POPULATION_IDENTITY_14C,
     QUERY_IDS_14C,
@@ -34,10 +36,12 @@ from offline_rag.evaluation.performance_14.suite_14c import (
     WARMUP_COUNT_14C,
     Performance14Error,
     PerformanceFrozenSuite14CV1,
+    assert_gold_semantic_identity_14c,
     build_frozen_suite_artifact_14c,
     build_suite_plan_14c,
     effective_config_id_14c,
     load_frozen_suite_artifact,
+    scientific_config_payload_14c,
     validate_frozen_suite_14c,
     write_frozen_suite_artifact,
 )
@@ -49,6 +53,10 @@ LOCKED_PERFSUITE = (
     "perfsuite_5248892df382995ac96ec2b09aea61bf27510673b93e0d816d6a255a2f4305ba"
 )
 LOCKED_PERFCFG = (
+    "perfcfg_aae1ea9b048e414338f0a38b13cb31132505920c406293e1e9f8e35595faa42d"
+)
+# Pre-rework diagnostic-authority perfcfg_ must not reappear.
+LEGACY_DIAGNOSTIC_PERFCFG = (
     "perfcfg_62b39058443c152c0ae7edfe5bee0288e00c857f8e8c9d27b0bc1aaba7c9a7f6"
 )
 
@@ -74,6 +82,7 @@ def test_frozen_identities_are_stable() -> None:
     art = validate_frozen_suite_14c(repo_root=REPO_ROOT)
     assert art.suite_identity_hash == LOCKED_PERFSUITE
     assert art.effective_config_id == LOCKED_PERFCFG
+    assert art.effective_config_id != LEGACY_DIAGNOSTIC_PERFCFG
     assert art.execution_authorized is False
     assert art.authoritative_results_authorized is False
     assert art.generation_excluded is True
@@ -99,6 +108,7 @@ def test_write_is_create_exclusive_and_deterministic(tmp_path: Path) -> None:
     assert first == second == target
     payload = json.loads(target.read_text(encoding="utf-8"))
     assert payload["suite_identity_hash"] == LOCKED_PERFSUITE
+    assert payload["effective_config_id"] == LOCKED_PERFCFG
     # Divergent content must fail closed.
     target.write_text('{"contract":"tampered"}\n', encoding="utf-8")
     with pytest.raises(Performance14Error, match="different content"):
@@ -130,23 +140,26 @@ def test_perfcfg_stable_under_variant_config_key_reordering() -> None:
             reversed(list(plan.variant_configs[VARIANT_HYBRID].items()))
         ),
     }
-    payload = {
-        "benchmark_level": plan.suite.benchmark_level,
-        "population_identity": plan.suite.population_identity,
-        "variants": sorted(plan.suite.variants),
-        "warmup_count": plan.warmup_count,
-        "measured_repetitions": plan.measured_repetitions,
-        "baseline_variant": plan.baseline_variant,
-        "treatment_variant": plan.treatment_variant,
-        "treatment_delta": list(plan.treatment_delta),
-        "variant_configs": reordered,
-        "diagnostic_only": True,
-        "authoritative": False,
-        "substrate_pin_14b": SUBSTRATE_PIN_14B,
-        "suite_kind": "quality_vs_cost_14c",
-    }
-    assert compute_config_identity_hash(payload) == effective_config_id_14c()
-    assert effective_config_id_14c() == LOCKED_PERFCFG
+    reordered_plan = replace(plan, variant_configs=reordered)
+    assert (
+        compute_config_identity_hash(scientific_config_payload_14c(reordered_plan))
+        == effective_config_id_14c()
+        == LOCKED_PERFCFG
+    )
+
+
+def test_perfcfg_excludes_authorization_and_evidence_class_flags() -> None:
+    payload = scientific_config_payload_14c()
+    assert "diagnostic_only" not in payload
+    assert "authoritative" not in payload
+    assert "execution_authorized" not in payload
+    assert "authoritative_results_authorized" not in payload
+    # Injecting those flags into a payload must not be how the frozen id is built.
+    polluted = dict(payload)
+    polluted["diagnostic_only"] = True
+    polluted["authoritative"] = False
+    assert compute_config_identity_hash(polluted) != LOCKED_PERFCFG
+    assert compute_config_identity_hash(polluted) == LEGACY_DIAGNOSTIC_PERFCFG
 
 
 def test_membership_change_flips_perfsuite() -> None:
@@ -167,22 +180,11 @@ def test_treatment_config_change_flips_perfcfg() -> None:
         VARIANT_HYBRID_RERANK: dict(plan.variant_configs[VARIANT_HYBRID_RERANK]),
     }
     configs[VARIANT_HYBRID_RERANK]["dense_top_k"] = 99
-    payload = {
-        "benchmark_level": plan.suite.benchmark_level,
-        "population_identity": plan.suite.population_identity,
-        "variants": sorted(plan.suite.variants),
-        "warmup_count": plan.warmup_count,
-        "measured_repetitions": plan.measured_repetitions,
-        "baseline_variant": plan.baseline_variant,
-        "treatment_variant": plan.treatment_variant,
-        "treatment_delta": list(plan.treatment_delta),
-        "variant_configs": configs,
-        "diagnostic_only": True,
-        "authoritative": False,
-        "substrate_pin_14b": SUBSTRATE_PIN_14B,
-        "suite_kind": "quality_vs_cost_14c",
-    }
-    assert compute_config_identity_hash(payload) != LOCKED_PERFCFG
+    mutated_plan = replace(plan, variant_configs=configs)
+    assert (
+        compute_config_identity_hash(scientific_config_payload_14c(mutated_plan))
+        != LOCKED_PERFCFG
+    )
 
 
 def test_undeclared_shared_config_delta_fails_closed() -> None:
@@ -250,6 +252,52 @@ def test_tampered_query_membership_fails_closed(tmp_path: Path) -> None:
     )
     with pytest.raises(Performance14Error):
         load_frozen_suite_artifact(path=target, repo_root=REPO_ROOT)
+
+
+def test_gold_semantic_identity_accepts_locked_materialization() -> None:
+    gold_dir = REPO_ROOT / GOLD_RELATIVE_PATH_14C
+    assert_gold_semantic_identity_14c(gold_dir)
+
+
+def test_gold_query_text_drift_fails_closed_despite_stale_meta_id(
+    tmp_path: Path,
+) -> None:
+    """Mutating query text while retaining meta.dataset_id must fail closed."""
+    src = REPO_ROOT / GOLD_RELATIVE_PATH_14C
+    dst = tmp_path / "spoofed_gold"
+    shutil.copytree(src, dst)
+    cases_path = dst / "cases.jsonl"
+    meta = json.loads((dst / "meta.json").read_text(encoding="utf-8"))
+    assert meta["dataset_id"] == GOLD_DATASET_ID_14C
+
+    lines = cases_path.read_text(encoding="utf-8").splitlines()
+    first = json.loads(lines[0])
+    first["query"] = first["query"] + " [SEMANTIC DRIFT]"
+    lines[0] = json.dumps(first, ensure_ascii=False, separators=(",", ":"))
+    cases_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    # meta.dataset_id left unchanged — metadata-only trust would falsely accept.
+    with pytest.raises(Performance14Error, match="canonical Gold semantic load failed"):
+        assert_gold_semantic_identity_14c(dst)
+
+
+def test_gold_judgment_drift_fails_closed_despite_stale_meta_id(
+    tmp_path: Path,
+) -> None:
+    """Mutating a relevance judgment while retaining meta.dataset_id must fail."""
+    src = REPO_ROOT / GOLD_RELATIVE_PATH_14C
+    dst = tmp_path / "spoofed_gold_judgments"
+    shutil.copytree(src, dst)
+    cases_path = dst / "cases.jsonl"
+    lines = cases_path.read_text(encoding="utf-8").splitlines()
+    first = json.loads(lines[0])
+    assert first["judgments"], "expected at least one judgment to mutate"
+    first["judgments"][0]["relevance"] = (
+        0 if int(first["judgments"][0]["relevance"]) != 0 else 1
+    )
+    lines[0] = json.dumps(first, ensure_ascii=False, separators=(",", ":"))
+    cases_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    with pytest.raises(Performance14Error, match="canonical Gold semantic load failed"):
+        assert_gold_semantic_identity_14c(dst)
 
 
 def test_frozen_artifact_model_contract() -> None:
