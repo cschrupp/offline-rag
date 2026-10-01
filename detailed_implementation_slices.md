@@ -742,7 +742,7 @@ M6 HUMAN SMOKE: LOCAL / NON-AUTHORITATIVE (supplementary only)
           security_policy_immutable_v1 UNEVALUABLE (expected);
           adversarial 0/7 pass/fail; benign FP rate 0.0
           (local eval/results/security_13b_dryrun/m6-human-demo/; not Q3)
-Next: Milestone 7 — Performance and UI (named only / NOT AUTHORIZED)
+Next (historical M6 closeout): Milestone 7 — Performance and UI (now IN PROGRESS; see Slice 14)
 ```
 
 ## Objective
@@ -835,21 +835,36 @@ consumed / terminal; retry forbidden.
 as above; not an M6 delivery obligation.
 **Milestone 6 COMPLETE / ACCEPTED** under the revised disposition.
 
-**Next:** Milestone 7 — Performance and UI (**named only / NOT AUTHORIZED**).
+**Next (historical):** Milestone 7 — Performance and UI (now **IN PROGRESS**; see Slice 14).
 
 ---
 
 # Slice 14 — Performance and resource benchmark harness
 
 ```text
-STATUS: DESIGN LOCK CANDIDATE
-SLICE 14 DESIGN BASELINE: dcc6b07c20f97472cf506c4665af1f88f00a886b
+STATUS: IN PROGRESS (closeout not yet eligible)
 MILESTONE 7: IN PROGRESS
 M7 ENTRY AUTHORITY: dcc6b07c20f97472cf506c4665af1f88f00a886b
 Authority: docs/milestone7_performance_ui.md
-14A: contracts + instrumentation — NOT AUTHORIZED
-14B: runner + dry-run validation — NOT AUTHORIZED
-14C: frozen hybrid vs hybrid+reranker campaign — NOT AUTHORIZED
+
+SLICE 14 DESIGN: LOCKED / ACCEPTED
+  89a395ae4df7aff23c2da2c8c44fd6fe405459a6
+14A: COMPLETE / ACCEPTED
+  c087b8c1f038bd049809db2bf7e761ee0db93b58
+14B: COMPLETE / ACCEPTED
+  97d38031b99029c2e9b3fd028eadc3a60efef6c0
+14C SUITE FREEZE: LOCKED / ACCEPTED
+  a662efc50d712bd6a986da05809dc864342139df
+  perfsuite_5248892df382995ac96ec2b09aea61bf27510673b93e0d816d6a255a2f4305ba
+  perfcfg_aae1ea9b048e414338f0a38b13cb31132505920c406293e1e9f8e35595faa42d
+14C AUTHORITATIVE HARNESS REWORK: COMPLETE / ACCEPTED
+  ec7383f1612c2ddf86ca595cb3f9f0d8b4fb432c
+  F001 / F002 / F003: CLOSED
+
+CORRECTED 14C AUTHORITATIVE EXECUTION:
+  ELIGIBLE FOR SEPARATE AUTHORIZATION / NOT AUTHORIZED
+SLICE 14 CLOSEOUT: NOT YET ELIGIBLE
+README / PORTFOLIO CLAIMS: NOT AUTHORIZED
 ```
 
 ## Objective
@@ -874,28 +889,42 @@ the system in response to measured results within this slice.
   only. Manifest minima include suite/executing SHA/machine/config/corpus/
   models/warmup/repetitions/start/env/mode; case minima include identity,
   warm-up, measured observations, failures, resources, derived n/min/p50/p95/max.
-- Semantic stage envelopes are normative (e.g. `embed`: batch submitted →
-  vectors returned; `end_to_end`: CLI/service entry → accepted terminal result);
-  see authority doc §8.
+- Semantic stage envelopes are normative (e.g. `fusion`: dense+lexical available
+  → fused ranking complete; `rerank`: finalized input → reranked candidates
+  returned; `end_to_end` is Level-C only — not used for Level-B retrieval-path
+  totals); see authority doc §8.
+- Retrieval-path totals use dedicated path samples (`PerformancePathSampleV1`),
+  not semantic `end_to_end` stage IDs.
 - Completed runs immutable; reruns get new IDs; **not** measure-once.
 - Fail-closed preflight; descriptive results only — **no** performance SLO /
   winner / promotion decision.
 - First quality-vs-cost: **hybrid** vs **hybrid + reranker** (generation
   excluded); reuse existing IR metrics.
-- Phasing: 14A → 14B → harness audit → 14C → separate run authorization →
-  Slice 14 closeout.
+- Phasing: 14A → 14B → harness audit → 14C suite freeze → authoritative
+  harness → separate corrected-run authorization → Slice 14 closeout.
 - Contracts: `performance-benchmark-*-v1`; identities `perfsuite_` /
   `perfrun_` / `perfcase_` / `perfhost_` / `perfcfg_`.
 
-## Exit criteria (eventual; not this commit)
+## Accepted progress
 
-Harness accepted; frozen hybrid vs hybrid+reranker suite accepted; ≥1 valid
-terminal run; one defensible quality-vs-cost report; Level C generation
-metrics where evaluable; machine/resource provenance; README-facing evidence
-without arbitrary winner/SLO claims.
+- **14A / 14B:** complete substrate and diagnostic dry-run harness.
+- **14C suite freeze:** frozen scientific identities accepted; suite not
+  reopened.
+- **14C harness rework:** quality evidence (ranked IDs + frozen IR metrics),
+  semantic fusion/rerank envelopes, separate path latency populations, and
+  measured-only RAM summaries accepted at `ec7383f…`.
+- **Prior terminal runs preserved:** `perfrun_87771f72…` (failed) and
+  `perfrun_f5ed426a…` (completed / audit not accepted) remain immutable.
 
-**This design-lock commit does not authorize 14A/14B/14C or any benchmark
-execution.** Milestone 6 remains COMPLETE / ACCEPTED unchanged.
+## Exit criteria (remaining)
+
+Corrected authoritative quality-vs-cost run on the frozen suite (separate
+authorization); one defensible quality-vs-cost report from that run; Level C
+generation metrics where evaluable; README-facing evidence without arbitrary
+winner/SLO claims; Slice 14 closeout.
+
+**Corrected 14C authoritative execution is NOT authorized by this docs
+update.** Milestone 6 remains COMPLETE / ACCEPTED unchanged.
 
 ---
 

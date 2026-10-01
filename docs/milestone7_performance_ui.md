@@ -4,25 +4,34 @@
 MILESTONE 7: IN PROGRESS
 M7 ENTRY AUTHORITY: dcc6b07c20f97472cf506c4665af1f88f00a886b
 
-SLICE 14: DESIGN LOCK CANDIDATE
-SLICE 14 DESIGN BASELINE: dcc6b07c20f97472cf506c4665af1f88f00a886b
+SLICE 14 DESIGN: LOCKED / ACCEPTED
+DESIGN AUTHORITY: 89a395ae4df7aff23c2da2c8c44fd6fe405459a6
 
-Intended post-audit state (not claimed by this commit):
-  SLICE 14 DESIGN: LOCKED / ACCEPTED
+14A: COMPLETE / ACCEPTED
+  Authority: c087b8c1f038bd049809db2bf7e761ee0db93b58
+14B: COMPLETE / ACCEPTED
+  Authority: 97d38031b99029c2e9b3fd028eadc3a60efef6c0
+14C SUITE FREEZE: LOCKED / ACCEPTED
+  Authority: a662efc50d712bd6a986da05809dc864342139df
+  perfsuite_5248892df382995ac96ec2b09aea61bf27510673b93e0d816d6a255a2f4305ba
+  perfcfg_aae1ea9b048e414338f0a38b13cb31132505920c406293e1e9f8e35595faa42d
+14C AUTHORITATIVE HARNESS REWORK: COMPLETE / ACCEPTED
+  Authority: ec7383f1612c2ddf86ca595cb3f9f0d8b4fb432c
+  F001 / F002 / F003: CLOSED
 
-Gate convention until independent audit:
-  SLICE 14 DESIGN: CANDIDATE PENDING AUDIT
-
-14A IMPLEMENTATION: NOT AUTHORIZED
-14B: NOT AUTHORIZED
-14C: NOT AUTHORIZED
+CORRECTED 14C AUTHORITATIVE EXECUTION:
+  ELIGIBLE FOR SEPARATE AUTHORIZATION / NOT AUTHORIZED
+SLICE 14 CLOSEOUT: NOT YET ELIGIBLE
+README / PORTFOLIO CLAIMS: NOT AUTHORIZED
 ```
 
 **Authoritative for:** Milestone 7 / Slice 14 performance & resource benchmark
-**design** (contracts, phasing, provenance, quality-vs-cost first comparison).
-**Not authoritative for:** 14A/14B/14C implementation or execution; benchmark
-results; Milestone 6 science; 13C/13D; recovery enablement; LangGraph; NeMo;
-`config/base.yaml` mutation; FastAPI/UI packaging (later M7 slices).
+**design** (contracts, phasing, provenance, quality-vs-cost first comparison)
+and the accepted implementation status recorded above.
+**Not authoritative for:** corrected 14C authoritative execution results;
+README/portfolio claims; Milestone 6 science; 13C/13D; recovery enablement;
+LangGraph; NeMo; `config/base.yaml` mutation; FastAPI/UI packaging (later M7
+slices).
 
 **Milestone 6 remains COMPLETE / ACCEPTED** at closeout
 `dcc6b07c20f97472cf506c4665af1f88f00a886b`. Sealed 13B executable / Q1
@@ -432,7 +441,7 @@ ordering; failure/exclusion handling; diagnostic dry runs.
 **14C:** freeze exact query IDs; Gold identity; corpus/index identities;
 models; configs; top-k; warm-up count; repetition count; suite identity.
 
-**No 14B or 14C work is authorized by this design-lock commit.**
+**Historical note:** the original design-lock commit did not authorize 14B/14C. Those phases are now separately accepted (see status banner).
 
 ---
 
@@ -452,7 +461,7 @@ This docs-only design-lock task does **not** perform these steps.
 
 ---
 
-## 15. Future 14A implementation boundary (NOT AUTHORIZED here)
+## 15. 14A implementation boundary (COMPLETE / ACCEPTED)
 
 Future ownership (when separately authorized):
 
@@ -471,7 +480,7 @@ inputs/outputs; preserve ordering; preserve exceptions; preserve
 ranking/batching/retries; avoid benchmark-runner imports; avoid
 persistence/network side effects.
 
-**14A implementation is NOT authorized by this commit.**
+**Historical note:** 14A was not authorized by the design-lock commit; 14A is now **COMPLETE / ACCEPTED** at `c087b8c1f038bd049809db2bf7e761ee0db93b58`.
 
 ---
 
@@ -511,18 +520,22 @@ reruns do not collide.
 
 ---
 
-## HARD STOP
+## Current gate
 
 ```text
-14A IMPLEMENTATION: NOT AUTHORIZED
-14B: NOT AUTHORIZED
-14C: NOT AUTHORIZED
-benchmark execution: NOT AUTHORIZED
+14A: COMPLETE / ACCEPTED
+14B: COMPLETE / ACCEPTED
+14C SUITE FREEZE: LOCKED / ACCEPTED
+14C AUTHORITATIVE HARNESS REWORK: COMPLETE / ACCEPTED
+CORRECTED 14C AUTHORITATIVE EXECUTION:
+  ELIGIBLE FOR SEPARATE AUTHORIZATION / NOT AUTHORIZED
+SLICE 14 CLOSEOUT: NOT YET ELIGIBLE
+README / PORTFOLIO CLAIMS: NOT AUTHORIZED
 M6 science: UNCHANGED
 13C / 13D / recovery / LangGraph / NeMo / base.yaml / 12C / 13B retry:
   NOT AUTHORIZED / UNCHANGED
 ```
 
-**Next (not opened by this design-lock candidate):** independent Slice 14
-design audit → only if accepted, separate authorization of **14A**
-implementation.
+**Next:** separate authorization of the **corrected 14C authoritative
+execution** on the frozen suite/config (new `perfrun_`). Prior terminal runs
+remain immutable and are not the accepted quality-vs-cost result.

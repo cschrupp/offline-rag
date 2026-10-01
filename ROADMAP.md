@@ -275,10 +275,10 @@ security-13b dry_run `m6-human-demo` `completed` / `fail` via
 `/tmp/m6-human-demo/…` and `eval/results/security_13b_dryrun/m6-human-demo/`
 are local demo evidence only — not authoritative science and not committed.
 
-**Next:** Milestone **7** — Performance and UI (**named only / NOT AUTHORIZED**
-by this M6 closeout). This closeout does **not** authorize 13C, 13D,
-recovery, LangGraph, NeMo, `base.yaml` mutation, a 12C rerun, or any
-measure-once retry.
+**Next (historical M6 closeout):** Milestone **7** — Performance and UI.
+M7 is now **IN PROGRESS** (see Milestone 7 section). This M6 closeout did
+**not** authorize 13C, 13D, recovery, LangGraph, NeMo, `base.yaml` mutation,
+a 12C rerun, or any measure-once retry.
 
 **Slice 13A COMPLETE / ACCEPTED**
 - Design authority: `571882e`
@@ -384,23 +384,40 @@ justifies conditional orchestration.
 ## Milestone 7 — Performance and UI
 
 **Status:** Milestone **7 IN PROGRESS**  
-**M7 entry authority / Slice 14 design baseline:** `dcc6b07c20f97472cf506c4665af1f88f00a886b`  
-**Design authority:** [`docs/milestone7_performance_ui.md`](docs/milestone7_performance_ui.md)
+**M7 entry authority:** `dcc6b07c20f97472cf506c4665af1f88f00a886b`  
+**Slice 14 design authority:** [`docs/milestone7_performance_ui.md`](docs/milestone7_performance_ui.md)  
+**Slice 14 design (LOCKED / ACCEPTED):** `89a395ae4df7aff23c2da2c8c44fd6fe405459a6`
 
 **Slice 14 — Performance and resource benchmark harness**
-- Design: **CANDIDATE PENDING AUDIT** (this docs-only design-lock commit)
-- Design baseline: `dcc6b07c20f97472cf506c4665af1f88f00a886b`
-- Intended post-audit label: LOCKED / ACCEPTED (not claimed until independent audit)
-- **14A** contracts + instrumentation: **NOT AUTHORIZED**
-- **14B** runner + dry-run validation: **NOT AUTHORIZED**
-- **14C** frozen hybrid vs hybrid+reranker quality-vs-cost suite: **NOT AUTHORIZED**
+- Design: **LOCKED / ACCEPTED** (`89a395ae4df7aff23c2da2c8c44fd6fe405459a6`)
+- **14A** contracts + instrumentation: **COMPLETE / ACCEPTED** (`c087b8c1f038bd049809db2bf7e761ee0db93b58`)
+- **14B** runner + dry-run validation: **COMPLETE / ACCEPTED** (`97d38031b99029c2e9b3fd028eadc3a60efef6c0`)
+- **14C** suite freeze: **LOCKED / ACCEPTED** (`a662efc50d712bd6a986da05809dc864342139df`)
+  - Frozen `perfsuite_5248892df382995ac96ec2b09aea61bf27510673b93e0d816d6a255a2f4305ba`
+  - Frozen `perfcfg_aae1ea9b048e414338f0a38b13cb31132505920c406293e1e9f8e35595faa42d`
+- **14C** authoritative harness rework: **COMPLETE / ACCEPTED** (`ec7383f1612c2ddf86ca595cb3f9f0d8b4fb432c`)
+  - F001 / F002 / F003: **CLOSED**
+- Prior terminal runs (immutable; not accepted as the corrected quality-vs-cost result):
+  - `perfrun_87771f72…` — failed_during_execution / PRESERVED
+  - `perfrun_f5ed426a…` — completed / AUDIT NOT ACCEPTED / PRESERVED
+- **Corrected 14C authoritative execution:** **ELIGIBLE FOR SEPARATE AUTHORIZATION** / **NOT AUTHORIZED**
+- Slice 14 closeout: **NOT YET ELIGIBLE**
+- README / portfolio claims: **NOT AUTHORIZED**
 - Observational measurement only; no optimization / no pipeline semantic change in-slice
 - First quality-vs-cost design: baseline **hybrid** vs treatment **hybrid + reranker** (generation excluded)
 
-Later M7 checklist (not Slice 14; not authorized by this design lock):
+Slice 14 checklist:
 
-- [ ] stage latency instrumentation (Slice 14A — **NOT AUTHORIZED**)
-- [ ] memory/VRAM metrics (Slice 14A — **NOT AUTHORIZED**)
+- [x] stage latency instrumentation (14A — **COMPLETE / ACCEPTED**)
+- [x] memory/VRAM metrics where evaluable (14A — **COMPLETE / ACCEPTED**; VRAM may remain unavailable)
+- [x] diagnostic dry-run runner (14B — **COMPLETE / ACCEPTED**)
+- [x] frozen hybrid vs hybrid+reranker suite (14C freeze — **LOCKED / ACCEPTED**)
+- [x] authoritative harness rework (quality + semantic path timing + measured RAM — **COMPLETE / ACCEPTED**)
+- [ ] corrected authoritative quality-vs-cost run (**NOT AUTHORIZED**)
+- [ ] Slice 14 closeout (**NOT YET ELIGIBLE**)
+
+Later M7 checklist (not Slice 14; not authorized here):
+
 - [ ] FastAPI service
 - [ ] single-container OfflineRAG application image
 - [ ] Qdrant Local standalone profile
@@ -411,9 +428,9 @@ Later M7 checklist (not Slice 14; not authorized by this design lock):
 
 **Release criterion:** a reviewer can interactively compare retrieval modes and inspect evidence flow.
 
-Milestone **6** remains **COMPLETE / ACCEPTED** at `dcc6b07…`. This M7 design
-lock does **not** reopen M6 science, authorize 13C/13D, enable recovery, or
-authorize 14A/14B/14C implementation.
+Milestone **6** remains **COMPLETE / ACCEPTED** at `dcc6b07…`. Corrected 14C
+authoritative execution, README/portfolio claims, 13C/13D, recovery enablement,
+LangGraph, NeMo, and `base.yaml` mutation remain **NOT AUTHORIZED**.
 
 ## Milestone 8 — Portfolio release
 

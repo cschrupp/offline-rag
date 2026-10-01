@@ -3590,8 +3590,7 @@ FOR M6 / **NOT AUTHORIZED**. OD-13-2 remains **OPEN / DEFERRED**.
 **Milestone 6 COMPLETE / ACCEPTED** under the revised disposition (authority
 chain `0f14388` → `efe7e12` → this closeout). Local human smoke is
 **LOCAL / NON-AUTHORITATIVE** supplementary evidence only.
-**Next** = Milestone 7 — Performance and UI (**named only / NOT AUTHORIZED**
-by this closeout).
+**Next** (historical M6 closeout) = Milestone 7 — Performance and UI (now IN PROGRESS; see ROADMAP / Slice 14). This M6 closeout did not authorize later M7 work by itself.
 
 ---
 
@@ -4281,8 +4280,7 @@ Milestone 7                              NAMED ONLY / NOT AUTHORIZED
 **Milestone 6 COMPLETE / ACCEPTED** under the revised disposition
 (authority chain `0f14388` → `efe7e12` → this docs/status closeout).
 
-**Next:** Milestone 7 — Performance and UI (**named only / NOT AUTHORIZED**
-by this closeout).
+**Next (historical M6 closeout):** Milestone 7 — Performance and UI (now IN PROGRESS; see ROADMAP / Slice 14). This M6 closeout did not authorize later M7 work by itself.
 
 This closeout **DOES NOT** authorize: 13C implementation; 13D / NeMo;
 product recovery; LangGraph; `config/base.yaml` changes; a 12C rerun; any
