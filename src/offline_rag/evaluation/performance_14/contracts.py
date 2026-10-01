@@ -22,6 +22,8 @@ PERFORMANCE_BENCHMARK_AGGREGATE_V1 = "performance-benchmark-aggregate-v1"
 
 DESIGN_AUTHORITY_SHA_14 = "89a395ae4df7aff23c2da2c8c44fd6fe405459a6"
 SLICE14_DESIGN_BASELINE_SHA = "dcc6b07c20f97472cf506c4665af1f88f00a886b"
+# Accepted Slice 14A technical result (contracts + instrumentation substrate).
+SUBSTRATE_PIN_14A = "c087b8c1f038bd049809db2bf7e761ee0db93b58"
 
 MEASUREMENT_PROTOCOL_VERSION_V1 = "perf-measurement-protocol-v1"
 TIMING_BOUNDARY_VERSION_V1 = "perf-timing-boundaries-v1"
@@ -283,3 +285,43 @@ class PerformanceBenchmarkRunManifestV1(StrictModel):
             if count < 0:
                 raise ValueError(f"repetition_counts[{key}] must be >= 0")
         return value
+
+
+class PerformanceVariantStatsV1(StrictModel):
+    """Per-variant rollup of derived latency statistics."""
+
+    variant: ExactNonBlankStr
+    stats: DerivedLatencyStatsV1
+
+
+class PerformanceStageStatsV1(StrictModel):
+    """Per-stage / path rollup of derived latency statistics."""
+
+    stage_or_path: ExactNonBlankStr
+    stats: DerivedLatencyStatsV1
+
+
+class PerformanceRunAggregateV1(StrictModel):
+    """Run-level aggregate.json body (deterministic derivation; not authoritative)."""
+
+    contract: ExactNonBlankStr = PERFORMANCE_BENCHMARK_AGGREGATE_V1
+    suite_id: ExactNonBlankStr
+    run_id: ExactNonBlankStr
+    run_status: RunStatusV1
+    benchmark_level: BenchmarkLevelV1
+    statistics_semantics_version: ExactNonBlankStr = STATISTICS_SEMANTICS_VERSION_V1
+    case_ids: list[ExactNonBlankStr] = Field(default_factory=list)
+    by_variant: list[PerformanceVariantStatsV1] = Field(default_factory=list)
+    by_stage_or_path: list[PerformanceStageStatsV1] = Field(default_factory=list)
+    overall: DerivedLatencyStatsV1 | None = None
+    diagnostic_only: bool = True
+    authoritative: bool = False
+    evidence_class: ExactNonBlankStr = "DIAGNOSTIC_ONLY_NON_AUTHORITATIVE"
+
+    @model_validator(mode="after")
+    def _diagnostic_flags(self) -> PerformanceRunAggregateV1:
+        if self.authoritative:
+            raise ValueError("14B aggregates must set authoritative=False")
+        if not self.diagnostic_only:
+            raise ValueError("14B aggregates must set diagnostic_only=True")
+        return self
