@@ -316,6 +316,63 @@ def test_treatment_config_delta_requires_declared_fields_to_differ() -> None:
         assert_treatment_only_config_delta(broken)
 
 
+def test_differing_config_paths_distinguishes_missing_from_null() -> None:
+    from offline_rag.evaluation.performance_14.preflight import differing_config_paths
+
+    baseline = {"retrieval_mode": "hybrid"}
+    treatment = {"retrieval_mode": "hybrid", "optional_field": None}
+    assert "optional_field" in differing_config_paths(baseline, treatment)
+
+
+def test_perfcfg_includes_variant_configs_and_is_order_stable() -> None:
+    from offline_rag.evaluation.performance_14.fixtures import (
+        VARIANT_HYBRID,
+        VARIANT_HYBRID_RERANK,
+    )
+    from offline_rag.evaluation.performance_14.harness import _config_payload
+    from offline_rag.evaluation.performance_14.identity import (
+        compute_config_identity_hash,
+    )
+
+    plan = build_level_b_suite_plan()
+    baseline_cfg = plan.variant_configs[VARIANT_HYBRID]
+    treatment_cfg = plan.variant_configs[VARIANT_HYBRID_RERANK]
+    # Different insertion order of variants and of nested keys.
+    reordered = {
+        VARIANT_HYBRID_RERANK: {
+            key: treatment_cfg[key] for key in reversed(list(treatment_cfg))
+        },
+        VARIANT_HYBRID: {
+            key: baseline_cfg[key] for key in reversed(list(baseline_cfg))
+        },
+    }
+    same_order_plan = replace(plan, variant_configs=reordered)
+    h1 = compute_config_identity_hash(_config_payload(plan))
+    h2 = compute_config_identity_hash(_config_payload(same_order_plan))
+    assert h1 == h2
+    assert h1.startswith("perfcfg_")
+
+    changed_topk = {
+        VARIANT_HYBRID: {**baseline_cfg, "top_k": 50},
+        VARIANT_HYBRID_RERANK: {**treatment_cfg, "top_k": 50},
+    }
+    topk_plan = replace(plan, variant_configs=changed_topk)
+    assert compute_config_identity_hash(_config_payload(topk_plan)) != h1
+
+    changed_rerank = {
+        VARIANT_HYBRID: dict(baseline_cfg),
+        VARIANT_HYBRID_RERANK: {
+            **treatment_cfg,
+            "reranker_configuration": {"model": "fixture_rerank_v2", "top_n": 5},
+        },
+    }
+    rerank_plan = replace(plan, variant_configs=changed_rerank)
+    assert compute_config_identity_hash(_config_payload(rerank_plan)) != h1
+    assert compute_config_identity_hash(_config_payload(rerank_plan)) != (
+        compute_config_identity_hash(_config_payload(topk_plan))
+    )
+
+
 def test_resource_sample_taken_before_stage(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

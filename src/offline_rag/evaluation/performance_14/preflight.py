@@ -229,13 +229,23 @@ def assert_paired_comparison_invariant(plan: PerformanceSuitePlan) -> None:
                 )
 
 
+_MISSING = object()
+
+
 def differing_config_paths(
     baseline: dict[str, object],
     treatment: dict[str, object],
 ) -> set[str]:
-    """Return top-level config keys whose values differ between variants."""
+    """Return top-level config keys whose values differ between variants.
+
+    Absence and explicit ``None`` are distinct (fail closed on missing-vs-null).
+    """
     keys = set(baseline) | set(treatment)
-    return {key for key in keys if baseline.get(key) != treatment.get(key)}
+    return {
+        key
+        for key in keys
+        if baseline.get(key, _MISSING) != treatment.get(key, _MISSING)
+    }
 
 
 def assert_treatment_only_config_delta(plan: PerformanceSuitePlan) -> None:

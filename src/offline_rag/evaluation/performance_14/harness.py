@@ -243,6 +243,8 @@ def _config_payload(plan: PerformanceSuitePlan) -> dict[str, Any]:
         "baseline_variant": plan.baseline_variant,
         "treatment_variant": plan.treatment_variant,
         "treatment_delta": list(plan.treatment_delta),
+        # Effective per-variant configuration is identity-bearing for perfcfg_.
+        "variant_configs": plan.variant_configs,
         "diagnostic_only": True,
         "authoritative": False,
         "substrate_pin_14a": SUBSTRATE_PIN_14A,
