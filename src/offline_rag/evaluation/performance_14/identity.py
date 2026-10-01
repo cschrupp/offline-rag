@@ -123,14 +123,16 @@ def compute_config_identity_hash(config_payload: Mapping[str, Any]) -> str:
 def run_semantic_payload(manifest: PerformanceBenchmarkRunManifestV1) -> dict[str, Any]:
     """Pre-measurement run identity payload (includes nonce for legitimate reruns).
 
-    Excludes terminalization fields that must not flip identity after execution:
-    ``run_identity_hash``, embedded ``machine_profile`` body, and ``run_status``.
+    Excludes terminalization / presentation fields that must not flip identity:
+    ``run_identity_hash``, embedded ``machine_profile`` body, ``run_status``,
+    and optional ``run_label``.
     ``machine_profile_id`` remains identity-bearing.
     """
     raw = manifest.model_dump(mode="json")
     raw.pop("run_identity_hash", None)
     raw.pop("machine_profile", None)
     raw.pop("run_status", None)
+    raw.pop("run_label", None)
     raw["contract"] = PERFORMANCE_BENCHMARK_RUN_MANIFEST_V1
     return raw
 

@@ -19,6 +19,7 @@ PERFORMANCE_BENCHMARK_OBSERVATION_V1 = "performance-benchmark-observation-v1"
 PERFORMANCE_MACHINE_PROFILE_V1 = "performance-machine-profile-v1"
 PERFORMANCE_RESOURCE_OBSERVATION_V1 = "performance-resource-observation-v1"
 PERFORMANCE_BENCHMARK_AGGREGATE_V1 = "performance-benchmark-aggregate-v1"
+PERFORMANCE_PREFLIGHT_RECORD_V1 = "performance-preflight-record-v1"
 
 DESIGN_AUTHORITY_SHA_14 = "89a395ae4df7aff23c2da2c8c44fd6fe405459a6"
 SLICE14_DESIGN_BASELINE_SHA = "dcc6b07c20f97472cf506c4665af1f88f00a886b"
@@ -35,6 +36,11 @@ RunStatusV1 = Literal["completed", "failed_preflight", "failed_during_execution"
 CaseStatusV1 = Literal["completed", "failed"]
 ObservationStatusV1 = Literal["valid", "failed", "excluded_instrumentation_error"]
 TelemetryAvailabilityV1 = Literal["available", "unavailable", "unevaluable"]
+PreflightStatusV1 = Literal["passed", "failed"]
+PreflightCheckStatusV1 = Literal[
+    "passed", "failed", "not_applicable", "fixture_internal"
+]
+WorkingTreeStateV1 = Literal["clean", "dirty", "unavailable"]
 
 SEMANTIC_STAGE_IDS_V1: tuple[str, ...] = (
     "document_load",
@@ -277,6 +283,8 @@ class PerformanceBenchmarkRunManifestV1(StrictModel):
     run_status: RunStatusV1 | None = None
     run_nonce: ExactNonBlankStr | None = None
     run_identity_hash: ExactNonBlankStr | None = None
+    # Optional human-readable label; excluded from perfrun_ identity.
+    run_label: ExactNonBlankStr | None = None
 
     @field_validator("repetition_counts")
     @classmethod
@@ -285,6 +293,32 @@ class PerformanceBenchmarkRunManifestV1(StrictModel):
             if count < 0:
                 raise ValueError(f"repetition_counts[{key}] must be >= 0")
         return value
+
+
+class PreflightCheckV1(StrictModel):
+    """One machine-readable preflight check outcome."""
+
+    name: ExactNonBlankStr
+    status: PreflightCheckStatusV1
+    reason: ExactNonBlankStr | None = None
+
+
+class PerformancePreflightRecordV1(StrictModel):
+    """Structured fail-closed preflight provenance for a dry-run."""
+
+    contract: ExactNonBlankStr = PERFORMANCE_PREFLIGHT_RECORD_V1
+    preflight_status: PreflightStatusV1
+    working_tree_state: WorkingTreeStateV1
+    working_tree_detail: ExactNonBlankStr | None = None
+    disk_capacity_sufficient: bool | None = None
+    disk_free_bytes: int | None = Field(default=None, ge=0)
+    telemetry_ram: TelemetryAvailabilityV1 | None = None
+    telemetry_vram: TelemetryAvailabilityV1 | None = None
+    checks: list[PreflightCheckV1] = Field(default_factory=list)
+    failing_check: ExactNonBlankStr | None = None
+    executing_sha: ExactNonBlankStr | None = None
+    machine_profile_id: ExactNonBlankStr | None = None
+    suite_id: ExactNonBlankStr | None = None
 
 
 class PerformanceVariantStatsV1(StrictModel):

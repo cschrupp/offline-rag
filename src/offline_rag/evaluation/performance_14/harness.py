@@ -13,6 +13,7 @@ import hashlib
 import platform
 import sys
 import uuid
+from collections import defaultdict
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
@@ -29,6 +30,7 @@ from offline_rag.evaluation.performance_14.contracts import (
     PerformanceBenchmarkObservationV1,
     PerformanceBenchmarkRunManifestV1,
     PerformanceMachineProfileV1,
+    PerformancePreflightRecordV1,
     PerformanceRunAggregateV1,
     RunStatusV1,
 )
@@ -44,8 +46,12 @@ from offline_rag.evaluation.performance_14.identity import (
     compute_run_identity_hash,
     compute_suite_identity_hash,
 )
-from offline_rag.evaluation.performance_14.paths import allocate_dryrun_run_dir
+from offline_rag.evaluation.performance_14.paths import (
+    allocate_dryrun_run_dir,
+    default_dryrun_parent,
+)
 from offline_rag.evaluation.performance_14.preflight import (
+    PreflightAccumulator,
     PreflightContext,
     run_preflight,
 )
@@ -53,7 +59,10 @@ from offline_rag.evaluation.performance_14.report import render_report_markdown
 from offline_rag.evaluation.performance_14.resources import capture_resource_observation
 from offline_rag.evaluation.performance_14.scheduling import paired_alternating_schedule
 from offline_rag.evaluation.performance_14.statistics import derive_latency_stats
-from offline_rag.evaluation.performance_14.timing import timed_call, validate_stage_id
+from offline_rag.evaluation.performance_14.timing import (
+    measure_stage,
+    validate_stage_id,
+)
 
 StageCallable = Callable[[PerformanceCaseSpec], None]
 
@@ -67,22 +76,18 @@ def _default_stage_work(spec: PerformanceCaseSpec) -> None:
     digest = hashlib.sha256(
         f"{spec.subject_identity}:{spec.variant}:{spec.stage_or_path}".encode()
     ).digest()
-    # Tiny CPU burn keyed by fixture identity — keeps dry-run fast and local.
     acc = 0
     for _ in range(200 + digest[0]):
         acc = (acc + digest[acc % len(digest)]) % 997
-    if acc < 0:  # pragma: no cover — unreachable guard for side-effect retention
+    if acc < 0:  # pragma: no cover
         raise RuntimeError("unreachable")
 
 
 def _ordered_case_specs(plan: PerformanceSuitePlan) -> list[PerformanceCaseSpec]:
     """Order cases by paired/alternating subject×variant schedule.
 
-    Multiple stage cases sharing the same (subject, variant) are preserved in
-    their plan declaration order under each scheduled pair.
+    Proves every subject×variant cell is present before ordering.
     """
-    from collections import defaultdict
-
     buckets: dict[tuple[str, str], list[PerformanceCaseSpec]] = defaultdict(list)
     for spec in plan.cases:
         buckets[(spec.subject_identity, spec.variant)].append(spec)
@@ -91,9 +96,16 @@ def _ordered_case_specs(plan: PerformanceSuitePlan) -> list[PerformanceCaseSpec]
         if spec.subject_identity not in subjects:
             subjects.append(spec.subject_identity)
     variants = list(plan.suite.variants)
+    for subject in subjects:
+        for variant in variants:
+            if not buckets.get((subject, variant)):
+                raise Performance14Error(
+                    f"paired schedule missing subject×variant cell "
+                    f"({subject!r}, {variant!r})"
+                )
     ordered: list[PerformanceCaseSpec] = []
     for subject, variant in paired_alternating_schedule(subjects, variants):
-        ordered.extend(buckets.get((subject, variant), []))
+        ordered.extend(buckets[(subject, variant)])
     if len(ordered) != len(plan.cases):
         raise Performance14Error(
             "paired schedule did not cover the full suite membership"
@@ -124,13 +136,22 @@ def _observe_once(
             is_warmup=is_warmup,
             failure_reason="injected_execution_failure",
         )
+
+    # Pre-stage resource sample (peak remains None unless genuinely measured).
+    # Resource telemetry failure must not invalidate an otherwise valid timing.
+    resource = None
     try:
-        _value, sample = timed_call(stage_id, lambda: stage_runner(spec))
         resource = capture_resource_observation(stage_id)
+    except Exception:  # noqa: BLE001 — telemetry must not fail the observation
+        resource = None
+
+    try:
+        with measure_stage(stage_id) as timing:
+            stage_runner(spec)
         return PerformanceBenchmarkObservationV1(
             observation_status="valid",
             stage_id=stage_id,
-            duration_seconds=sample.duration_seconds,
+            duration_seconds=float(timing["duration_seconds"]),
             is_warmup=is_warmup,
             resource=resource,
         )
@@ -140,6 +161,7 @@ def _observe_once(
             stage_id=stage_id,
             is_warmup=is_warmup,
             failure_reason=f"{type(exc).__name__}: {exc}",
+            resource=resource,
         )
 
 
@@ -168,8 +190,6 @@ def _execute_case(
             )
         )
     for index in range(measured_repetitions):
-        # Inject failure/exclusion only on the first measured attempt so
-        # accounting remains visible without collapsing the whole case sample.
         measured.append(
             _observe_once(
                 spec,
@@ -235,10 +255,19 @@ def _build_manifest(
     preflight: PreflightContext,
     run_nonce: str,
     execution_mode: str,
+    run_label: str | None,
 ) -> PerformanceBenchmarkRunManifestV1:
     assert isinstance(preflight.machine_profile, PerformanceMachineProfileV1)
     config_id = compute_config_identity_hash(_config_payload(plan))
     corpus_id = f"corpus_fixture_{plan.suite.population_identity}"
+    env = {
+        "os": platform.system() or "unknown",
+        "dry_run": "true",
+        "evidence_class": "DIAGNOSTIC_ONLY_NON_AUTHORITATIVE",
+        "substrate_pin_14a": SUBSTRATE_PIN_14A,
+        "preflight_status": preflight.record.preflight_status,
+        "working_tree_state": preflight.working_tree_state,
+    }
     manifest = PerformanceBenchmarkRunManifestV1(
         suite_id=preflight.suite_id,
         executing_sha=preflight.executing_sha,
@@ -253,19 +282,78 @@ def _build_manifest(
             "warmup": plan.warmup_count,
         },
         start_timestamp=_utc_now_iso(),
-        environment={
-            "os": platform.system() or "unknown",
-            "dry_run": "true",
-            "evidence_class": "DIAGNOSTIC_ONLY_NON_AUTHORITATIVE",
-            "substrate_pin_14a": SUBSTRATE_PIN_14A,
-        },
+        environment=env,
         runtime_versions={"python": sys.version.split()[0]},
         execution_mode=execution_mode,
         run_status=None,
         run_nonce=run_nonce,
+        run_label=run_label,
     )
     run_hash = compute_run_identity_hash(manifest)
     return manifest.model_copy(update={"run_identity_hash": run_hash})
+
+
+def _failed_preflight_manifest(
+    *,
+    plan: PerformanceSuitePlan,
+    suite_id: str,
+    run_nonce: str,
+    run_label: str | None,
+    record: PerformancePreflightRecordV1,
+    partial: PreflightAccumulator | None,
+) -> PerformanceBenchmarkRunManifestV1:
+    executing_sha = (
+        (partial.executing_sha if partial is not None else None)
+        or record.executing_sha
+        or "unresolved"
+    )
+    machine_profile_id = (
+        (partial.machine_profile_id if partial is not None else None)
+        or record.machine_profile_id
+        or "perfhost_unresolved"
+    )
+    machine_profile = partial.machine_profile if partial is not None else None
+    config_id = compute_config_identity_hash(
+        {
+            "preflight": "failed",
+            "level": plan.suite.benchmark_level,
+            "substrate_pin_14a": SUBSTRATE_PIN_14A,
+            "failing_check": record.failing_check or "unknown",
+        }
+    )
+    env = {
+        "dry_run": "true",
+        "evidence_class": "DIAGNOSTIC_ONLY_NON_AUTHORITATIVE",
+        "preflight_status": "failed",
+        "working_tree_state": record.working_tree_state,
+        "substrate_pin_14a": SUBSTRATE_PIN_14A,
+    }
+    if record.failing_check:
+        env["failing_check"] = record.failing_check
+    manifest = PerformanceBenchmarkRunManifestV1(
+        suite_id=suite_id,
+        executing_sha=executing_sha,
+        machine_profile_id=machine_profile_id,
+        machine_profile=machine_profile,
+        config_id=config_id,
+        corpus_id=f"corpus_fixture_{plan.suite.population_identity}",
+        model_ids={"fixture_runner": "synthetic_stage_work_v1"},
+        warmup_policy=f"warmup={plan.warmup_count}",
+        repetition_counts={
+            "measured": plan.measured_repetitions,
+            "warmup": plan.warmup_count,
+        },
+        start_timestamp=_utc_now_iso(),
+        environment=env,
+        runtime_versions={"python": sys.version.split()[0]},
+        execution_mode="dry_run_diagnostic",
+        run_status="failed_preflight",
+        run_nonce=run_nonce,
+        run_label=run_label,
+    )
+    return manifest.model_copy(
+        update={"run_identity_hash": compute_run_identity_hash(manifest)}
+    )
 
 
 @dataclass
@@ -280,6 +368,8 @@ class PerformanceDryRunResult:
     manifest: PerformanceBenchmarkRunManifestV1
     aggregate: PerformanceRunAggregateV1
     cases: list[PerformanceBenchmarkCaseV1] = field(default_factory=list)
+    preflight: PerformancePreflightRecordV1 | None = None
+    run_label: str | None = None
     error: str | None = None
     diagnostic_only: bool = True
     authoritative: bool = False
@@ -288,18 +378,19 @@ class PerformanceDryRunResult:
 def run_performance_14b_dryrun(
     *,
     level: BenchmarkLevelV1,
-    run_id: str | None = None,
-    output_dir: Path | None = None,
+    run_label: str | None = None,
     repo_root: Path | None = None,
+    dryrun_parent: Path | None = None,
     plan: PerformanceSuitePlan | None = None,
     stage_runner: StageCallable | None = None,
     failure_subjects: Sequence[str] | None = None,
     exclusion_subjects: Sequence[str] | None = None,
-    skip_mkdir: bool = False,
 ) -> PerformanceDryRunResult:
     """Execute a Level A/B/C diagnostic dry-run and persist artifacts.
 
-    Never writes under ``eval/results/performance_14/``.
+    ``run_id`` is always the sealed ``perfrun_<sha256>`` identity.
+    Optional ``run_label`` is presentation-only and excluded from identity.
+    Artifacts are confined under ``performance_14_dryrun/``.
     """
     suite_plan = plan if plan is not None else suite_plan_for_level(level)
     if suite_plan.suite.benchmark_level != level:
@@ -311,10 +402,10 @@ def run_performance_14b_dryrun(
             "14B dry-run requires diagnostic_only=True and authoritative=False"
         )
 
-    rid = run_id or f"dryrun_{uuid.uuid4().hex[:12]}"
     runner = stage_runner or _default_stage_work
     fail_set = set(failure_subjects or ())
     excl_set = set(exclusion_subjects or ())
+    run_nonce = uuid.uuid4().hex
 
     if suite_plan.suite.suite_identity_hash is None:
         suite_plan = replace(
@@ -330,57 +421,57 @@ def run_performance_14b_dryrun(
     suite_id = suite_plan.suite.suite_identity_hash
     assert suite_id is not None
 
-    out = allocate_dryrun_run_dir(
-        suite_id=suite_id,
-        run_id=rid,
-        output_dir=output_dir,
-        repo_root=repo_root,
-    )
-    if not skip_mkdir:
-        out.mkdir(parents=True, exist_ok=False)
-
     try:
-        preflight = run_preflight(suite_plan, output_dir=out, repo_root=repo_root)
+        preflight = run_preflight(
+            suite_plan,
+            repo_root=repo_root,
+            dryrun_parent=dryrun_parent,
+        )
     except Performance14Error as exc:
+        record = getattr(exc, "preflight_record", None)
+        partial = getattr(exc, "preflight_partial", None)
+        if record is None:
+            record = PerformancePreflightRecordV1(
+                preflight_status="failed",
+                working_tree_state="unavailable",
+                checks=[],
+                failing_check="preflight",
+            )
+        manifest = _failed_preflight_manifest(
+            plan=suite_plan,
+            suite_id=suite_id,
+            run_nonce=run_nonce,
+            run_label=run_label,
+            record=record,
+            partial=partial,
+        )
+        perfrun_id = manifest.run_identity_hash
+        assert perfrun_id is not None
+        parent = (
+            Path(dryrun_parent).resolve(strict=False)
+            if dryrun_parent is not None
+            else (
+                partial.dryrun_parent
+                if partial is not None and partial.dryrun_parent is not None
+                else default_dryrun_parent(repo_root)
+            )
+        )
+        out = allocate_dryrun_run_dir(
+            suite_id=suite_id,
+            run_id=perfrun_id,
+            repo_root=repo_root,
+            dryrun_parent=parent,
+        )
+        out.mkdir(parents=True, exist_ok=False)
         empty = build_run_aggregate(
             suite_id=suite_id,
-            run_id=rid,
+            run_id=perfrun_id,
             run_status="failed_preflight",
             benchmark_level=level,
             cases=[],
         )
-        machine_profile_id = "perfhost_preflight_unavailable"
-        config_id = compute_config_identity_hash(
-            {
-                "preflight": "failed",
-                "level": level,
-                "substrate_pin_14a": SUBSTRATE_PIN_14A,
-            }
-        )
-        manifest = PerformanceBenchmarkRunManifestV1(
-            suite_id=suite_id,
-            executing_sha="unknown",
-            machine_profile_id=machine_profile_id,
-            config_id=config_id,
-            corpus_id="corpus_preflight_failed",
-            model_ids={},
-            warmup_policy="unvalidated",
-            repetition_counts={},
-            start_timestamp=_utc_now_iso(),
-            environment={
-                "dry_run": "true",
-                "evidence_class": "DIAGNOSTIC_ONLY_NON_AUTHORITATIVE",
-            },
-            runtime_versions={"python": sys.version.split()[0]},
-            execution_mode="dry_run_diagnostic",
-            run_status="failed_preflight",
-            run_nonce=uuid.uuid4().hex,
-        )
-        manifest = manifest.model_copy(
-            update={"run_identity_hash": compute_run_identity_hash(manifest)}
-        )
         report = render_report_markdown(
-            run_id=rid,
+            run_id=perfrun_id,
             manifest=manifest,
             aggregate=empty,
             cases=[],
@@ -392,9 +483,10 @@ def run_performance_14b_dryrun(
             aggregate=empty,
             cases=[],
             report_markdown=report,
+            preflight=record,
         )
         return PerformanceDryRunResult(
-            run_id=rid,
+            run_id=perfrun_id,
             output_dir=out,
             run_status="failed_preflight",
             level=level,
@@ -402,19 +494,28 @@ def run_performance_14b_dryrun(
             manifest=manifest,
             aggregate=empty,
             cases=[],
+            preflight=record,
+            run_label=run_label,
             error=str(exc),
         )
 
-    run_nonce = uuid.uuid4().hex
     manifest = _build_manifest(
         plan=suite_plan,
         preflight=preflight,
         run_nonce=run_nonce,
         execution_mode="dry_run_diagnostic",
+        run_label=run_label,
     )
-    # Identity is sealed pre-measurement (run_status still None).
     sealed_identity = manifest.run_identity_hash
     assert sealed_identity is not None
+
+    out = allocate_dryrun_run_dir(
+        suite_id=suite_id,
+        run_id=sealed_identity,
+        repo_root=preflight.repo_root,
+        dryrun_parent=preflight.dryrun_parent,
+    )
+    out.mkdir(parents=True, exist_ok=False)
 
     cases: list[PerformanceBenchmarkCaseV1] = []
     run_status: RunStatusV1 = "completed"
@@ -436,23 +537,22 @@ def run_performance_14b_dryrun(
         error = str(exc)
 
     terminal_manifest = manifest.model_copy(update={"run_status": run_status})
-    # Provenance check: terminalization must not flip perfrun_ identity.
     if compute_run_identity_hash(terminal_manifest) != sealed_identity:
         raise Performance14Error(
             "run_identity_hash changed after terminalization; "
-            "run_status must remain excluded from perfrun_ identity"
+            "run_status/run_label must remain excluded from perfrun_ identity"
         )
     manifest = terminal_manifest
 
     aggregate = build_run_aggregate(
         suite_id=suite_id,
-        run_id=rid,
+        run_id=sealed_identity,
         run_status=run_status,
         benchmark_level=level,
         cases=cases,
     )
     report = render_report_markdown(
-        run_id=rid,
+        run_id=sealed_identity,
         manifest=manifest,
         aggregate=aggregate,
         cases=cases,
@@ -464,9 +564,10 @@ def run_performance_14b_dryrun(
         aggregate=aggregate,
         cases=cases,
         report_markdown=report,
+        preflight=preflight.record,
     )
     return PerformanceDryRunResult(
-        run_id=rid,
+        run_id=sealed_identity,
         output_dir=out,
         run_status=run_status,
         level=level,
@@ -474,6 +575,8 @@ def run_performance_14b_dryrun(
         manifest=manifest,
         aggregate=aggregate,
         cases=cases,
+        preflight=preflight.record,
+        run_label=run_label,
         error=error,
     )
 
@@ -481,6 +584,7 @@ def run_performance_14b_dryrun(
 def run_all_level_dryruns(
     *,
     repo_root: Path | None = None,
+    dryrun_parent: Path | None = None,
     stage_runner: StageCallable | None = None,
 ) -> Mapping[BenchmarkLevelV1, PerformanceDryRunResult]:
     """Convenience: execute Level A, B, and C diagnostic dry-runs."""
@@ -488,6 +592,7 @@ def run_all_level_dryruns(
         level: run_performance_14b_dryrun(
             level=level,
             repo_root=repo_root,
+            dryrun_parent=dryrun_parent,
             stage_runner=stage_runner,
         )
         for level in ("A", "B", "C")

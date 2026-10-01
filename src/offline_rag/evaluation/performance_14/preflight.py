@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
-from dataclasses import dataclass
+from collections import defaultdict
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from offline_rag.evaluation.performance_14.contracts import (
@@ -14,16 +16,27 @@ from offline_rag.evaluation.performance_14.contracts import (
     Performance14Error,
     PerformanceBenchmarkSuiteV1,
     PerformanceMachineProfileV1,
+    PerformancePreflightRecordV1,
+    PreflightCheckV1,
+    TelemetryAvailabilityV1,
+    WorkingTreeStateV1,
 )
-from offline_rag.evaluation.performance_14.fixtures import PerformanceSuitePlan
+from offline_rag.evaluation.performance_14.fixtures import (
+    PerformanceSuitePlan,
+    stable_case_id,
+)
 from offline_rag.evaluation.performance_14.identity import compute_suite_identity_hash
 from offline_rag.evaluation.performance_14.machine import (
     capture_machine_profile_with_id,
 )
-from offline_rag.evaluation.performance_14.paths import (
-    assert_outside_reserved_root,
-    default_dryrun_parent,
+from offline_rag.evaluation.performance_14.paths import default_dryrun_parent
+from offline_rag.evaluation.performance_14.resources import (
+    observe_ram_rss_bytes,
+    observe_vram,
 )
+
+# Minimum free bytes under the dry-run root before measurement (256 MiB).
+_MIN_DISK_FREE_BYTES = 256 * 1024 * 1024
 
 
 def _run_git(repo_root: Path, *args: str) -> str:
@@ -64,6 +77,18 @@ def resolve_executing_sha(repo_root: Path) -> str:
             f"HEAD commit SHA must be 40 lowercase hex characters; got {sha!r}"
         )
     return sha
+
+
+def capture_working_tree_state(repo_root: Path) -> tuple[WorkingTreeStateV1, str | None]:
+    try:
+        porcelain = _run_git(repo_root, "status", "--porcelain")
+    except Performance14Error as exc:
+        return "unavailable", str(exc)
+    if not porcelain.strip():
+        return "clean", None
+    lines = porcelain.strip().splitlines()
+    detail = f"{len(lines)} dirty path(s); first={lines[0][:120]}"
+    return "dirty", detail
 
 
 def assert_substrate_pin_reachable(repo_root: Path) -> None:
@@ -111,8 +136,6 @@ def assert_protocol_counts(
 
 
 def assert_case_membership(plan: PerformanceSuitePlan) -> None:
-    from offline_rag.evaluation.performance_14.fixtures import stable_case_id
-
     expected = [stable_case_id(spec) for spec in plan.cases]
     if len(expected) != len(set(expected)):
         raise Performance14Error("duplicate case ids in suite plan")
@@ -136,7 +159,7 @@ def assert_case_membership(plan: PerformanceSuitePlan) -> None:
 
 
 def assert_paired_comparison_invariant(plan: PerformanceSuitePlan) -> None:
-    """For multi-variant suites, require an explicit treatment delta declaration."""
+    """Prove complete subject×variant pairing and treatment-only delta."""
     if len(plan.suite.variants) < 2:
         return
     if plan.baseline_variant is None or plan.treatment_variant is None:
@@ -154,24 +177,172 @@ def assert_paired_comparison_invariant(plan: PerformanceSuitePlan) -> None:
             "paired comparison requires an explicit treatment_delta declaration"
         )
 
+    by_subject_variant: dict[str, dict[str, list]] = defaultdict(
+        lambda: defaultdict(list)
+    )
+    for spec in plan.cases:
+        by_subject_variant[spec.subject_identity][spec.variant].append(spec)
 
-def assert_output_destination_writable(
-    output_dir: Path,
-    *,
-    repo_root: Path,
-) -> Path:
-    resolved = assert_outside_reserved_root(output_dir, repo_root=repo_root)
-    parent = resolved.parent
+    baseline = plan.baseline_variant
+    treatment = plan.treatment_variant
+    for subject, variant_map in sorted(by_subject_variant.items()):
+        baseline_cases = variant_map.get(baseline, [])
+        treatment_cases = variant_map.get(treatment, [])
+        if not baseline_cases:
+            raise Performance14Error(
+                f"paired coverage missing baseline variant {baseline!r} "
+                f"for subject {subject!r}"
+            )
+        if not treatment_cases:
+            raise Performance14Error(
+                f"paired coverage missing treatment variant {treatment!r} "
+                f"for subject {subject!r}"
+            )
+        if len(baseline_cases) != len(treatment_cases):
+            raise Performance14Error(
+                f"paired coverage multiplicity mismatch for subject {subject!r}: "
+                f"baseline={len(baseline_cases)} treatment={len(treatment_cases)}"
+            )
+        for left, right in zip(baseline_cases, treatment_cases, strict=True):
+            if left.case_kind != right.case_kind:
+                raise Performance14Error(
+                    f"paired cases for {subject!r} differ in case_kind outside "
+                    "declared treatment_delta"
+                )
+            if left.benchmark_level != right.benchmark_level:
+                raise Performance14Error(
+                    f"paired cases for {subject!r} differ in benchmark_level "
+                    "outside declared treatment_delta"
+                )
+            if left.cold_warm != right.cold_warm:
+                raise Performance14Error(
+                    f"paired cases for {subject!r} differ in cold_warm outside "
+                    "declared treatment_delta"
+                )
+            if (
+                left.stage_or_path != right.stage_or_path
+                and "stage_or_path" not in plan.treatment_delta
+            ):
+                raise Performance14Error(
+                    f"paired cases for {subject!r} differ in stage_or_path "
+                    "but treatment_delta does not declare stage_or_path"
+                )
+
+
+def assert_disk_capacity(dryrun_parent: Path) -> tuple[bool, int]:
+    dryrun_parent.mkdir(parents=True, exist_ok=True)
+    usage = shutil.disk_usage(dryrun_parent)
+    sufficient = usage.free >= _MIN_DISK_FREE_BYTES
+    if not sufficient:
+        raise Performance14Error(
+            f"insufficient disk capacity under {dryrun_parent}: "
+            f"free={usage.free} required>={_MIN_DISK_FREE_BYTES}"
+        )
+    return True, int(usage.free)
+
+
+def assert_output_destination_writable(dryrun_parent: Path) -> Path:
     try:
-        parent.mkdir(parents=True, exist_ok=True)
-        probe = parent / f".perf14_write_probe_{os.getpid()}"
+        dryrun_parent.mkdir(parents=True, exist_ok=True)
+        probe = dryrun_parent / f".perf14_write_probe_{os.getpid()}"
         probe.write_text("ok", encoding="utf-8")
         probe.unlink(missing_ok=True)
     except OSError as exc:
         raise Performance14Error(
-            f"output destination not writable: {parent}: {exc}"
+            f"output destination not writable: {dryrun_parent}: {exc}"
         ) from exc
-    return resolved
+    return dryrun_parent.resolve(strict=False)
+
+
+def _fixture_input_checks(plan: PerformanceSuitePlan) -> list[PreflightCheckV1]:
+    """Synthetic fixture runs explicitly mark corpus/index/model checks N/A."""
+    if plan.population_kind != "performance_fixture":
+        return [
+            PreflightCheckV1(
+                name="population_kind",
+                status="failed",
+                reason="14B dry-run currently authorizes performance_fixture only",
+            )
+        ]
+    return [
+        PreflightCheckV1(
+            name="corpus_check",
+            status="fixture_internal",
+            reason="synthetic performance fixture population",
+        ),
+        PreflightCheckV1(
+            name="index_check",
+            status="not_applicable",
+            reason="synthetic fixture — no corpus index required",
+        ),
+        PreflightCheckV1(
+            name="embedding_model_check",
+            status="not_applicable",
+            reason="synthetic fixture — no embedding model required",
+        ),
+        PreflightCheckV1(
+            name="reranker_check",
+            status="not_applicable",
+            reason="synthetic fixture — no reranker model required",
+        ),
+        PreflightCheckV1(
+            name="generator_check",
+            status="not_applicable",
+            reason="synthetic fixture — no generator model required",
+        ),
+    ]
+
+
+@dataclass
+class PreflightAccumulator:
+    """Accumulates known provenance across ordered preflight checks."""
+
+    checks: list[PreflightCheckV1] = field(default_factory=list)
+    executing_sha: str | None = None
+    suite_id: str | None = None
+    machine_profile_id: str | None = None
+    machine_profile: PerformanceMachineProfileV1 | None = None
+    working_tree_state: WorkingTreeStateV1 = "unavailable"
+    working_tree_detail: str | None = None
+    disk_capacity_sufficient: bool | None = None
+    disk_free_bytes: int | None = None
+    telemetry_ram: TelemetryAvailabilityV1 | None = None
+    telemetry_vram: TelemetryAvailabilityV1 | None = None
+    dryrun_parent: Path | None = None
+    repo_root: Path | None = None
+    failing_check: str | None = None
+    error: str | None = None
+
+    def add(
+        self,
+        name: str,
+        status: str,
+        reason: str | None = None,
+    ) -> None:
+        self.checks.append(
+            PreflightCheckV1(name=name, status=status, reason=reason)  # type: ignore[arg-type]
+        )
+
+    def fail(self, name: str, reason: str) -> None:
+        self.failing_check = name
+        self.error = reason
+        self.add(name, "failed", reason)
+
+    def to_record(self, *, status: str) -> PerformancePreflightRecordV1:
+        return PerformancePreflightRecordV1(
+            preflight_status=status,  # type: ignore[arg-type]
+            working_tree_state=self.working_tree_state,
+            working_tree_detail=self.working_tree_detail,
+            disk_capacity_sufficient=self.disk_capacity_sufficient,
+            disk_free_bytes=self.disk_free_bytes,
+            telemetry_ram=self.telemetry_ram,
+            telemetry_vram=self.telemetry_vram,
+            checks=list(self.checks),
+            failing_check=self.failing_check,
+            executing_sha=self.executing_sha,
+            machine_profile_id=self.machine_profile_id,
+            suite_id=self.suite_id,
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -184,37 +355,116 @@ class PreflightContext:
     design_authority_sha: str
     substrate_pin_14a: str
     dryrun_parent: Path
+    record: PerformancePreflightRecordV1
+    working_tree_state: WorkingTreeStateV1
 
 
 def run_preflight(
     plan: PerformanceSuitePlan,
     *,
-    output_dir: Path,
     repo_root: Path | None = None,
+    dryrun_parent: Path | None = None,
 ) -> PreflightContext:
-    """Fail-closed preflight before any measurement observations are taken."""
-    root = resolve_repo_root(repo_root)
-    executing_sha = resolve_executing_sha(root)
-    assert_substrate_pin_reachable(root)
-    suite_id = assert_suite_identity(plan.suite)
-    assert_case_membership(plan)
-    assert_protocol_counts(
-        level=plan.suite.benchmark_level,
-        warmup_count=plan.warmup_count,
-        measured_repetitions=plan.measured_repetitions,
-    )
-    assert_paired_comparison_invariant(plan)
-    assert_output_destination_writable(output_dir, repo_root=root)
-    machine_profile, machine_profile_id = capture_machine_profile_with_id(
-        offline_rag_commit_sha=executing_sha
-    )
-    return PreflightContext(
-        repo_root=root,
-        executing_sha=executing_sha,
-        suite_id=suite_id,
-        machine_profile_id=machine_profile_id,
-        machine_profile=machine_profile,
-        design_authority_sha=DESIGN_AUTHORITY_SHA_14,
-        substrate_pin_14a=SUBSTRATE_PIN_14A,
-        dryrun_parent=default_dryrun_parent(root),
-    )
+    """Fail-closed preflight before any measurement observations are taken.
+
+    On failure, raises ``Performance14Error`` with ``.preflight_record`` and
+    ``.preflight_partial`` attached so callers can persist known provenance.
+    """
+    acc = PreflightAccumulator()
+    try:
+        root = resolve_repo_root(repo_root)
+        acc.repo_root = root
+        acc.add("repository_root", "passed")
+
+        executing_sha = resolve_executing_sha(root)
+        acc.executing_sha = executing_sha
+        acc.add("executing_sha", "passed", executing_sha)
+
+        working_state, working_detail = capture_working_tree_state(root)
+        acc.working_tree_state = working_state
+        acc.working_tree_detail = working_detail
+        acc.add(
+            "working_tree_state",
+            "passed",
+            working_detail or working_state,
+        )
+
+        assert_substrate_pin_reachable(root)
+        acc.add("substrate_pin", "passed", SUBSTRATE_PIN_14A)
+
+        suite_id = assert_suite_identity(plan.suite)
+        acc.suite_id = suite_id
+        acc.add("suite_identity", "passed", suite_id)
+
+        assert_case_membership(plan)
+        acc.add("case_membership", "passed")
+
+        assert_protocol_counts(
+            level=plan.suite.benchmark_level,
+            warmup_count=plan.warmup_count,
+            measured_repetitions=plan.measured_repetitions,
+        )
+        acc.add(
+            "protocol_counts",
+            "passed",
+            f"warmup={plan.warmup_count}; measured={plan.measured_repetitions}",
+        )
+
+        assert_paired_comparison_invariant(plan)
+        acc.add("paired_comparison_invariant", "passed")
+
+        for check in _fixture_input_checks(plan):
+            acc.checks.append(check)
+            if check.status == "failed":
+                raise Performance14Error(
+                    check.reason or f"preflight check failed: {check.name}"
+                )
+
+        parent = (
+            Path(dryrun_parent).expanduser().resolve(strict=False)
+            if dryrun_parent is not None
+            else default_dryrun_parent(root)
+        )
+        assert_output_destination_writable(parent)
+        acc.dryrun_parent = parent
+        acc.add("output_writable", "passed", str(parent))
+
+        disk_ok, free_bytes = assert_disk_capacity(parent)
+        acc.disk_capacity_sufficient = disk_ok
+        acc.disk_free_bytes = free_bytes
+        acc.add("disk_capacity", "passed", f"free_bytes={free_bytes}")
+
+        machine_profile, machine_profile_id = capture_machine_profile_with_id(
+            offline_rag_commit_sha=executing_sha
+        )
+        acc.machine_profile = machine_profile
+        acc.machine_profile_id = machine_profile_id
+        acc.add("machine_profile", "passed", machine_profile_id)
+
+        ram_av, _rss = observe_ram_rss_bytes()
+        vram_av, _, _, _ = observe_vram()
+        acc.telemetry_ram = ram_av
+        acc.telemetry_vram = vram_av
+        acc.add("telemetry_ram", "passed", ram_av)
+        acc.add("telemetry_vram", "passed", vram_av)
+
+        record = acc.to_record(status="passed")
+        return PreflightContext(
+            repo_root=root,
+            executing_sha=executing_sha,
+            suite_id=suite_id,
+            machine_profile_id=machine_profile_id,
+            machine_profile=machine_profile,
+            design_authority_sha=DESIGN_AUTHORITY_SHA_14,
+            substrate_pin_14a=SUBSTRATE_PIN_14A,
+            dryrun_parent=parent,
+            record=record,
+            working_tree_state=working_state,
+        )
+    except Performance14Error as exc:
+        if acc.failing_check is None:
+            acc.fail(exc.__class__.__name__, str(exc))
+        record = acc.to_record(status="failed")
+        exc.preflight_record = record  # type: ignore[attr-defined]
+        exc.preflight_partial = acc  # type: ignore[attr-defined]
+        raise

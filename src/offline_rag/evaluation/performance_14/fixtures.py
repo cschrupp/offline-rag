@@ -149,7 +149,7 @@ def build_level_b_suite_plan(
         measured_repetitions=measured_repetitions,
         baseline_variant=VARIANT_HYBRID,
         treatment_variant=VARIANT_HYBRID_RERANK,
-        treatment_delta=("reranker_enablement", "reranker_configuration"),
+        treatment_delta=("reranker_enablement", "reranker_configuration", "stage_or_path"),
     )
 
 
