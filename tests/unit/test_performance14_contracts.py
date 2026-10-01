@@ -262,22 +262,81 @@ def test_machine_profile_capture() -> None:
     assert host_id.startswith("perfhost_")
 
 
-def test_physical_core_probe_success_and_fallback(
+def test_physical_cores_from_topology_pairs() -> None:
+    from offline_rag.evaluation.performance_14.machine import (
+        _physical_cores_from_cpuinfo,
+    )
+
+    # Two sockets × two cores; SMT duplicates share (physical id, core id).
+    cpuinfo = """\
+processor	: 0
+physical id	: 0
+core id		: 0
+
+processor	: 1
+physical id	: 0
+core id		: 0
+
+processor	: 2
+physical id	: 0
+core id		: 1
+
+processor	: 3
+physical id	: 0
+core id		: 1
+
+processor	: 4
+physical id	: 1
+core id		: 0
+
+processor	: 5
+physical id	: 1
+core id		: 0
+
+processor	: 6
+physical id	: 1
+core id		: 1
+
+processor	: 7
+physical id	: 1
+core id		: 1
+"""
+    assert _physical_cores_from_cpuinfo(cpuinfo) == 4
+
+
+def test_physical_cores_cpu_cores_without_package_identity_is_unavailable() -> None:
+    from offline_rag.evaluation.performance_14.machine import (
+        _physical_cores_from_cpuinfo,
+    )
+
+    # "cpu cores" alone is cores-per-package; without package identity → None.
+    cpuinfo = """\
+processor	: 0
+cpu cores	: 8
+model name	: Example CPU
+
+processor	: 1
+cpu cores	: 8
+model name	: Example CPU
+"""
+    assert _physical_cores_from_cpuinfo(cpuinfo) is None
+
+
+def test_physical_cores_unreadable_topology_is_unavailable(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from offline_rag.evaluation.performance_14 import machine as machine_mod
 
-    monkeypatch.setattr(machine_mod, "_physical_cores", lambda: 4)
-    observed = machine_mod.capture_machine_profile(
-        offline_rag_commit_sha="89a395ae4df7aff23c2da2c8c44fd6fe405459a6"
-    )
-    assert observed.physical_cores == 4
+    monkeypatch.setattr(machine_mod.platform, "system", lambda: "Linux")
+    real_open = open
 
-    monkeypatch.setattr(machine_mod, "_physical_cores", lambda: None)
-    unavailable = machine_mod.capture_machine_profile(
-        offline_rag_commit_sha="89a395ae4df7aff23c2da2c8c44fd6fe405459a6"
-    )
-    assert unavailable.physical_cores is None
+    def _open_cpuinfo(path: object, *args: object, **kwargs: object) -> object:
+        if str(path) == "/proc/cpuinfo":
+            raise OSError("cpuinfo unavailable")
+        return real_open(path, *args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr("builtins.open", _open_cpuinfo)
+    assert machine_mod._physical_cores() is None
 
 
 def test_measure_stage_uses_monotonic_duration() -> None:

@@ -32,42 +32,42 @@ def _system_ram_bytes() -> int | None:
         return None
 
 
-def _physical_cores() -> int | None:
-    """Best-effort physical core count; ``None`` when topology is unavailable."""
-    if platform.system() == "Linux":
-        try:
-            cores: set[tuple[str, str]] = set()
-            physical_id: str | None = None
-            core_id: str | None = None
-            with open("/proc/cpuinfo", encoding="utf-8") as handle:
-                for line in handle:
-                    if line.startswith("physical id"):
-                        physical_id = line.split(":", 1)[1].strip()
-                    elif line.startswith("core id"):
-                        core_id = line.split(":", 1)[1].strip()
-                    elif not line.strip():
-                        if physical_id is not None and core_id is not None:
-                            cores.add((physical_id, core_id))
-                        physical_id = None
-                        core_id = None
+def _physical_cores_from_cpuinfo(cpuinfo_text: str) -> int | None:
+    """Count physical cores only from unique ``(physical id, core id)`` pairs.
+
+    Returns ``None`` when package/core topology cannot establish a total.
+    A bare ``cpu cores`` field is cores-per-package and must not be treated as
+    machine-wide physical_cores without an independently known package count.
+    """
+    cores: set[tuple[str, str]] = set()
+    physical_id: str | None = None
+    core_id: str | None = None
+    for line in cpuinfo_text.splitlines():
+        if line.startswith("physical id"):
+            physical_id = line.split(":", 1)[1].strip()
+        elif line.startswith("core id"):
+            core_id = line.split(":", 1)[1].strip()
+        elif not line.strip():
             if physical_id is not None and core_id is not None:
                 cores.add((physical_id, core_id))
-            if cores:
-                return len(cores)
-            # Some containers expose cpuinfo without topology ids.
-            cpu_cores: list[str] = []
-            with open("/proc/cpuinfo", encoding="utf-8") as handle:
-                for line in handle:
-                    if line.startswith("cpu cores"):
-                        cpu_cores.append(line.split(":", 1)[1].strip())
-            if cpu_cores:
-                # Prefer first reported package "cpu cores" value when unique.
-                values = {int(v) for v in cpu_cores if v.isdigit()}
-                if len(values) == 1:
-                    return values.pop()
-        except (OSError, ValueError):
-            return None
+            physical_id = None
+            core_id = None
+    if physical_id is not None and core_id is not None:
+        cores.add((physical_id, core_id))
+    if cores:
+        return len(cores)
     return None
+
+
+def _physical_cores() -> int | None:
+    """Best-effort physical core count; ``None`` when topology is unavailable."""
+    if platform.system() != "Linux":
+        return None
+    try:
+        with open("/proc/cpuinfo", encoding="utf-8") as handle:
+            return _physical_cores_from_cpuinfo(handle.read())
+    except OSError:
+        return None
 
 
 def capture_machine_profile(
