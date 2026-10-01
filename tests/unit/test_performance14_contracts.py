@@ -5,17 +5,18 @@ from __future__ import annotations
 import time
 
 import pytest
+from pydantic import ValidationError
 
 from offline_rag.evaluation.performance_14 import (
     DEFAULT_INSTRUMENTER,
     DESIGN_AUTHORITY_SHA_14,
     SEMANTIC_STAGE_ENVELOPES_V1,
     PassiveStageInstrumenter,
+    Performance14Error,
     PerformanceBenchmarkCaseV1,
     PerformanceBenchmarkObservationV1,
     PerformanceBenchmarkRunManifestV1,
     PerformanceBenchmarkSuiteV1,
-    Performance14Error,
     PerformanceResourceObservationV1,
     capture_machine_profile_with_id,
     capture_resource_observation,
@@ -111,20 +112,20 @@ def test_case_identity_excludes_observations() -> None:
 
 
 def test_run_identity_requires_nonce_and_differs_on_nonce() -> None:
-    shared = dict(
-        suite_id="perfsuite_abc",
-        executing_sha="deadbeef",
-        machine_profile_id="perfhost_abc",
-        config_id="perfcfg_abc",
-        corpus_id="corpus_abc",
-        model_ids={"embedding": "emb_v1"},
-        warmup_policy="warmup=2",
-        repetition_counts={"measured": 10},
-        start_timestamp="2026-09-30T00:00:00Z",
-        environment={"os": "linux"},
-        runtime_versions={"python": "3.12"},
-        execution_mode="warm",
-    )
+    shared = {
+        "suite_id": "perfsuite_abc",
+        "executing_sha": "deadbeef",
+        "machine_profile_id": "perfhost_abc",
+        "config_id": "perfcfg_abc",
+        "corpus_id": "corpus_abc",
+        "model_ids": {"embedding": "emb_v1"},
+        "warmup_policy": "warmup=2",
+        "repetition_counts": {"measured": 10},
+        "start_timestamp": "2026-09-30T00:00:00Z",
+        "environment": {"os": "linux"},
+        "runtime_versions": {"python": "3.12"},
+        "execution_mode": "warm",
+    }
     m1 = PerformanceBenchmarkRunManifestV1(**shared, run_nonce="n1")
     m2 = PerformanceBenchmarkRunManifestV1(**shared, run_nonce="n2")
     with pytest.raises(ValueError, match="run_nonce"):
@@ -137,11 +138,49 @@ def test_run_identity_requires_nonce_and_differs_on_nonce() -> None:
     assert h1 != h2
 
 
+def test_run_identity_excludes_terminal_run_status() -> None:
+    shared = {
+        "suite_id": "perfsuite_abc",
+        "executing_sha": "deadbeef",
+        "machine_profile_id": "perfhost_abc",
+        "config_id": "perfcfg_abc",
+        "corpus_id": "corpus_abc",
+        "model_ids": {"embedding": "emb_v1"},
+        "warmup_policy": "warmup=2",
+        "repetition_counts": {"measured": 10},
+        "start_timestamp": "2026-09-30T00:00:00Z",
+        "environment": {"os": "linux"},
+        "runtime_versions": {"python": "3.12"},
+        "execution_mode": "warm",
+        "run_nonce": "stable-nonce",
+    }
+    base = PerformanceBenchmarkRunManifestV1(**shared, run_status=None)
+    completed = PerformanceBenchmarkRunManifestV1(**shared, run_status="completed")
+    failed = PerformanceBenchmarkRunManifestV1(
+        **shared, run_status="failed_during_execution"
+    )
+    h0 = compute_run_identity_hash(base)
+    assert h0 == compute_run_identity_hash(completed)
+    assert h0 == compute_run_identity_hash(failed)
+
+
 def test_config_identity_prefix() -> None:
     assert compute_config_identity_hash({"a": 1, "b": 2}).startswith("perfcfg_")
     assert compute_config_identity_hash({"b": 2, "a": 1}) == compute_config_identity_hash(
         {"a": 1, "b": 2}
     )
+
+
+def test_canonical_json_fails_closed_on_unsupported_values() -> None:
+    with pytest.raises(Performance14Error, match="unsupported identity value"):
+        compute_config_identity_hash({"bad": {1, 2, 3}})
+
+    class Weird:
+        def __str__(self) -> str:
+            return "nope"
+
+    with pytest.raises(Performance14Error, match="unsupported identity value"):
+        compute_config_identity_hash({"bad": Weird()})
 
 
 def test_linear_percentile_semantics() -> None:
@@ -183,7 +222,9 @@ def test_derive_latency_stats_separates_warmup_failures_exclusions() -> None:
         ),
     ]
     stats = derive_latency_stats(obs)
+    assert stats.valid_count == 2
     assert stats.n == 2
+    assert stats.attempted_count == 4  # 2 valid + 1 fail + 1 exclusion
     assert stats.min == 2.0
     assert stats.max == 4.0
     assert stats.p50 == 3.0
@@ -193,7 +234,7 @@ def test_derive_latency_stats_separates_warmup_failures_exclusions() -> None:
 
 
 def test_resource_observation_never_infers_zero_when_unavailable() -> None:
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         PerformanceResourceObservationV1(
             stage_id="embed",
             ram_availability="unavailable",
@@ -204,6 +245,9 @@ def test_resource_observation_never_infers_zero_when_unavailable() -> None:
     assert sample.vram_availability in {"unavailable", "unevaluable", "available"}
     if sample.vram_availability != "available":
         assert sample.vram_used_bytes_before is None
+    if sample.ram_availability == "available":
+        assert sample.ram_rss_bytes_before is not None
+        assert sample.ram_rss_bytes_peak is None
 
 
 def test_machine_profile_capture() -> None:
@@ -212,7 +256,28 @@ def test_machine_profile_capture() -> None:
     )
     assert profile.python_version
     assert profile.os_name
+    assert profile.logical_cores is None or profile.logical_cores >= 1
+    # Physical cores may be observed or unavailable; never invent a fake value.
+    assert profile.physical_cores is None or profile.physical_cores >= 1
     assert host_id.startswith("perfhost_")
+
+
+def test_physical_core_probe_success_and_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from offline_rag.evaluation.performance_14 import machine as machine_mod
+
+    monkeypatch.setattr(machine_mod, "_physical_cores", lambda: 4)
+    observed = machine_mod.capture_machine_profile(
+        offline_rag_commit_sha="89a395ae4df7aff23c2da2c8c44fd6fe405459a6"
+    )
+    assert observed.physical_cores == 4
+
+    monkeypatch.setattr(machine_mod, "_physical_cores", lambda: None)
+    unavailable = machine_mod.capture_machine_profile(
+        offline_rag_commit_sha="89a395ae4df7aff23c2da2c8c44fd6fe405459a6"
+    )
+    assert unavailable.physical_cores is None
 
 
 def test_measure_stage_uses_monotonic_duration() -> None:

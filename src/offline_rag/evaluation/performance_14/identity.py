@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from collections.abc import Mapping
 from typing import Any
 
@@ -12,21 +13,55 @@ from offline_rag.evaluation.performance_14.contracts import (
     PERFORMANCE_BENCHMARK_RUN_MANIFEST_V1,
     PERFORMANCE_BENCHMARK_SUITE_V1,
     PERFORMANCE_MACHINE_PROFILE_V1,
+    Performance14Error,
     PerformanceBenchmarkCaseV1,
     PerformanceBenchmarkRunManifestV1,
     PerformanceBenchmarkSuiteV1,
     PerformanceMachineProfileV1,
 )
 
+_JSON_PRIMITIVES = (str, int, float, bool, type(None))
+
+
+def _assert_json_canonical(value: Any, *, path: str = "$") -> None:
+    """Fail closed unless ``value`` is JSON-canonical (no silent stringification)."""
+    if isinstance(value, _JSON_PRIMITIVES):
+        if isinstance(value, float) and not math.isfinite(value):
+            raise Performance14Error(
+                f"non-finite float is not JSON-canonical at {path}"
+            )
+        return
+    if isinstance(value, Mapping):
+        for key, item in value.items():
+            if not isinstance(key, str):
+                raise Performance14Error(
+                    f"mapping keys must be strings at {path} (got {type(key)!r})"
+                )
+            _assert_json_canonical(item, path=f"{path}.{key}")
+        return
+    if isinstance(value, list):
+        for index, item in enumerate(value):
+            _assert_json_canonical(item, path=f"{path}[{index}]")
+        return
+    raise Performance14Error(
+        f"unsupported identity value type {type(value)!r} at {path}; "
+        "canonical JSON accepts only object/array/string/number/bool/null"
+    )
+
 
 def canonical_json_bytes(payload: Mapping[str, Any]) -> bytes:
-    """UTF-8 JSON with sorted keys and stable separators (no pretty-print)."""
+    """UTF-8 JSON with sorted keys and stable separators (no pretty-print).
+
+    Rejects sets, custom objects, and other non-JSON values instead of using
+    ``default=str`` (which would invent implementation-dependent serialization).
+    """
+    _assert_json_canonical(payload)
     encoded = json.dumps(
         payload,
         sort_keys=True,
         separators=(",", ":"),
         ensure_ascii=False,
-        default=str,
+        allow_nan=False,
     )
     return encoded.encode("utf-8")
 
@@ -86,11 +121,16 @@ def compute_config_identity_hash(config_payload: Mapping[str, Any]) -> str:
 
 
 def run_semantic_payload(manifest: PerformanceBenchmarkRunManifestV1) -> dict[str, Any]:
-    """Pre-measurement run identity payload (includes nonce for legitimate reruns)."""
+    """Pre-measurement run identity payload (includes nonce for legitimate reruns).
+
+    Excludes terminalization fields that must not flip identity after execution:
+    ``run_identity_hash``, embedded ``machine_profile`` body, and ``run_status``.
+    ``machine_profile_id`` remains identity-bearing.
+    """
     raw = manifest.model_dump(mode="json")
     raw.pop("run_identity_hash", None)
-    # Embedded profile body is optional; identity uses machine_profile_id.
     raw.pop("machine_profile", None)
+    raw.pop("run_status", None)
     raw["contract"] = PERFORMANCE_BENCHMARK_RUN_MANIFEST_V1
     return raw
 

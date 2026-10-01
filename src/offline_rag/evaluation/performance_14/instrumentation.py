@@ -10,12 +10,13 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import TypeVar
 
 from offline_rag.evaluation.performance_14.contracts import SEMANTIC_STAGE_IDS_V1
-from offline_rag.evaluation.performance_14.timing import TimingSample, timed_call, validate_stage_id
-
-T = TypeVar("T")
+from offline_rag.evaluation.performance_14.timing import (
+    TimingSample,
+    timed_call,
+    validate_stage_id,
+)
 
 
 @dataclass
@@ -25,7 +26,7 @@ class PassiveStageInstrumenter:
     enabled: bool = False
     samples: list[TimingSample] = field(default_factory=list)
 
-    def observe(self, stage_id: str, fn: Callable[[], T]) -> T:
+    def observe[T](self, stage_id: str, fn: Callable[[], T]) -> T:
         """Run ``fn``; when enabled, record a TimingSample.
 
         Preserves return value and exception behavior either way.
@@ -48,7 +49,7 @@ class PassiveStageInstrumenter:
 DEFAULT_INSTRUMENTER = PassiveStageInstrumenter(enabled=False)
 
 
-def observe_stage(stage_id: str, fn: Callable[[], T]) -> T:
+def observe_stage[T](stage_id: str, fn: Callable[[], T]) -> T:
     """Module-level convenience around :data:`DEFAULT_INSTRUMENTER`."""
     return DEFAULT_INSTRUMENTER.observe(stage_id, fn)
 

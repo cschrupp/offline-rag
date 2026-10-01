@@ -93,6 +93,8 @@ class DerivedLatencyStatsV1(StrictModel):
 
     contract: ExactNonBlankStr = PERFORMANCE_BENCHMARK_AGGREGATE_V1
     statistics_semantics_version: ExactNonBlankStr = STATISTICS_SEMANTICS_VERSION_V1
+    attempted_count: int = Field(ge=0)
+    valid_count: int = Field(ge=0)
     n: int = Field(ge=0)
     min: float | None = None
     p50: float | None = None
@@ -104,6 +106,18 @@ class DerivedLatencyStatsV1(StrictModel):
 
     @model_validator(mode="after")
     def _stats_consistency(self) -> DerivedLatencyStatsV1:
+        if self.n != self.valid_count:
+            raise ValueError("n must equal valid_count")
+        expected_attempted = (
+            self.valid_count
+            + self.failure_count
+            + self.instrumentation_exclusion_count
+        )
+        if self.attempted_count != expected_attempted:
+            raise ValueError(
+                "attempted_count must equal "
+                "valid_count + failure_count + instrumentation_exclusion_count"
+            )
         if self.n == 0:
             if any(v is not None for v in (self.min, self.p50, self.p95, self.max)):
                 raise ValueError("empty sample must not report latency percentiles")
@@ -132,15 +146,15 @@ class PerformanceResourceObservationV1(StrictModel):
 
     @model_validator(mode="after")
     def _no_inferred_zero(self) -> PerformanceResourceObservationV1:
-        if self.ram_availability != "available":
-            if self.ram_rss_bytes_before is not None or self.ram_rss_bytes_peak is not None:
-                raise ValueError("RAM bytes require ram_availability=available")
-        if self.vram_availability != "available":
-            if (
-                self.vram_used_bytes_before is not None
-                or self.vram_used_bytes_peak is not None
-            ):
-                raise ValueError("VRAM bytes require vram_availability=available")
+        if self.ram_availability != "available" and (
+            self.ram_rss_bytes_before is not None or self.ram_rss_bytes_peak is not None
+        ):
+            raise ValueError("RAM bytes require ram_availability=available")
+        if self.vram_availability != "available" and (
+            self.vram_used_bytes_before is not None
+            or self.vram_used_bytes_peak is not None
+        ):
+            raise ValueError("VRAM bytes require vram_availability=available")
         return self
 
 
@@ -163,12 +177,13 @@ class PerformanceBenchmarkObservationV1(StrictModel):
                 raise ValueError("valid observation requires duration_seconds")
             if self.exclusion_reason is not None:
                 raise ValueError("valid observation must not set exclusion_reason")
-        if self.observation_status == "excluded_instrumentation_error":
-            if not self.exclusion_reason:
-                raise ValueError("excluded_instrumentation_error requires exclusion_reason")
-        if self.observation_status == "failed":
-            if not self.failure_reason:
-                raise ValueError("failed observation requires failure_reason")
+        if (
+            self.observation_status == "excluded_instrumentation_error"
+            and not self.exclusion_reason
+        ):
+            raise ValueError("excluded_instrumentation_error requires exclusion_reason")
+        if self.observation_status == "failed" and not self.failure_reason:
+            raise ValueError("failed observation requires failure_reason")
         return self
 
 

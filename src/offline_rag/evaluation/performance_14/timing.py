@@ -10,15 +10,12 @@ import time
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import TypeVar
 
 from offline_rag.evaluation.performance_14.contracts import (
     SEMANTIC_STAGE_ENVELOPES_V1,
     SEMANTIC_STAGE_IDS_V1,
     Performance14Error,
 )
-
-T = TypeVar("T")
 
 
 def validate_stage_id(stage_id: str) -> str:
@@ -61,7 +58,7 @@ def measure_stage(stage_id: str) -> Iterator[dict[str, float]]:
         result["duration_seconds"] = time.perf_counter() - start
 
 
-def timed_call(stage_id: str, fn: Callable[[], T]) -> tuple[T, TimingSample]:
+def timed_call[T](stage_id: str, fn: Callable[[], T]) -> tuple[T, TimingSample]:
     """Run ``fn`` under a semantic stage timer; preserve return value.
 
     Exceptions propagate unchanged after the duration is measured. Callers that

@@ -51,7 +51,7 @@ def observe_vram(
     try:
         used, peak, device_id = probe()
         return "available", int(used), int(peak), str(device_id)
-    except Exception:
+    except (TypeError, ValueError, RuntimeError, OSError):
         return "unevaluable", None, None, None
 
 
@@ -61,16 +61,22 @@ def capture_resource_observation(
     vram_probe: Any | None = None,
     note: str | None = None,
 ) -> PerformanceResourceObservationV1:
-    """Capture a single resource sample for ``stage_id``."""
+    """Capture a single resource sample for ``stage_id``.
+
+    Instantaneous RSS is recorded as ``ram_rss_bytes_before`` only.
+    ``ram_rss_bytes_peak`` remains ``None`` until a genuine peak sampler exists
+    (do not synthesize peak = before).
+    """
     ram_av, ram_rss = observe_ram_rss_bytes()
     vram_av, vram_used, vram_peak, device_id = observe_vram(probe=vram_probe)
     return PerformanceResourceObservationV1(
         stage_id=stage_id,
         ram_availability=ram_av,
         ram_rss_bytes_before=ram_rss if ram_av == "available" else None,
-        ram_rss_bytes_peak=ram_rss if ram_av == "available" else None,
+        ram_rss_bytes_peak=None,
         vram_availability=vram_av,
         vram_used_bytes_before=vram_used if vram_av == "available" else None,
+        # Peak only when the optional probe actually supplies a peak reading.
         vram_used_bytes_peak=vram_peak if vram_av == "available" else None,
         device_id=device_id,
         note=note,

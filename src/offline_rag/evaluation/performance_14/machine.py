@@ -32,6 +32,44 @@ def _system_ram_bytes() -> int | None:
         return None
 
 
+def _physical_cores() -> int | None:
+    """Best-effort physical core count; ``None`` when topology is unavailable."""
+    if platform.system() == "Linux":
+        try:
+            cores: set[tuple[str, str]] = set()
+            physical_id: str | None = None
+            core_id: str | None = None
+            with open("/proc/cpuinfo", encoding="utf-8") as handle:
+                for line in handle:
+                    if line.startswith("physical id"):
+                        physical_id = line.split(":", 1)[1].strip()
+                    elif line.startswith("core id"):
+                        core_id = line.split(":", 1)[1].strip()
+                    elif not line.strip():
+                        if physical_id is not None and core_id is not None:
+                            cores.add((physical_id, core_id))
+                        physical_id = None
+                        core_id = None
+            if physical_id is not None and core_id is not None:
+                cores.add((physical_id, core_id))
+            if cores:
+                return len(cores)
+            # Some containers expose cpuinfo without topology ids.
+            cpu_cores: list[str] = []
+            with open("/proc/cpuinfo", encoding="utf-8") as handle:
+                for line in handle:
+                    if line.startswith("cpu cores"):
+                        cpu_cores.append(line.split(":", 1)[1].strip())
+            if cpu_cores:
+                # Prefer first reported package "cpu cores" value when unique.
+                values = {int(v) for v in cpu_cores if v.isdigit()}
+                if len(values) == 1:
+                    return values.pop()
+        except (OSError, ValueError):
+            return None
+    return None
+
+
 def capture_machine_profile(
     *,
     offline_rag_commit_sha: str,
@@ -47,7 +85,7 @@ def capture_machine_profile(
         os_version=uname.release or "unknown",
         architecture=uname.machine or platform.machine() or "unknown",
         cpu_model=_cpu_model(),
-        physical_cores=None,  # optional; avoid guessing when unavailable
+        physical_cores=_physical_cores(),
         logical_cores=logical,
         system_ram_bytes=_system_ram_bytes(),
         python_version=sys.version.split()[0],
