@@ -117,9 +117,7 @@ class DerivedLatencyStatsV1(StrictModel):
         if self.n != self.valid_count:
             raise ValueError("n must equal valid_count")
         expected_attempted = (
-            self.valid_count
-            + self.failure_count
-            + self.instrumentation_exclusion_count
+            self.valid_count + self.failure_count + self.instrumentation_exclusion_count
         )
         if self.attempted_count != expected_attempted:
             raise ValueError(
@@ -336,7 +334,12 @@ class PerformanceStageStatsV1(StrictModel):
 
 
 class PerformanceRunAggregateV1(StrictModel):
-    """Run-level aggregate.json body (deterministic derivation; not authoritative)."""
+    """Run-level aggregate.json body (deterministic derivation).
+
+    Raw observations remain authoritative. Aggregates are recomputable.
+    Diagnostic dry-runs and authoritative campaign runs share this contract;
+    evidence-class flags must be mutually consistent.
+    """
 
     contract: ExactNonBlankStr = PERFORMANCE_BENCHMARK_AGGREGATE_V1
     suite_id: ExactNonBlankStr
@@ -353,9 +356,24 @@ class PerformanceRunAggregateV1(StrictModel):
     evidence_class: ExactNonBlankStr = "DIAGNOSTIC_ONLY_NON_AUTHORITATIVE"
 
     @model_validator(mode="after")
-    def _diagnostic_flags(self) -> PerformanceRunAggregateV1:
+    def _evidence_class_consistency(self) -> PerformanceRunAggregateV1:
+        if self.authoritative and self.diagnostic_only:
+            raise ValueError(
+                "authoritative aggregates cannot also set diagnostic_only=True"
+            )
         if self.authoritative:
-            raise ValueError("14B aggregates must set authoritative=False")
+            if self.evidence_class != "AUTHORITATIVE":
+                raise ValueError(
+                    "authoritative aggregates require evidence_class=AUTHORITATIVE"
+                )
+            return self
         if not self.diagnostic_only:
-            raise ValueError("14B aggregates must set diagnostic_only=True")
+            raise ValueError(
+                "non-authoritative aggregates must set diagnostic_only=True"
+            )
+        if self.evidence_class != "DIAGNOSTIC_ONLY_NON_AUTHORITATIVE":
+            raise ValueError(
+                "diagnostic aggregates require "
+                "evidence_class=DIAGNOSTIC_ONLY_NON_AUTHORITATIVE"
+            )
         return self

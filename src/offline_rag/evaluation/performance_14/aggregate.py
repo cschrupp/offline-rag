@@ -42,6 +42,9 @@ def build_run_aggregate(
     run_status: RunStatusV1,
     benchmark_level: BenchmarkLevelV1,
     cases: Sequence[PerformanceBenchmarkCaseV1],
+    diagnostic_only: bool = True,
+    authoritative: bool = False,
+    evidence_class: str = "DIAGNOSTIC_ONLY_NON_AUTHORITATIVE",
 ) -> PerformanceRunAggregateV1:
     """Roll case-level raw observations into deterministic suite aggregates."""
     if run_status == "failed_preflight":
@@ -54,6 +57,9 @@ def build_run_aggregate(
             by_variant=[],
             by_stage_or_path=[],
             overall=_empty_stats(),
+            diagnostic_only=diagnostic_only,
+            authoritative=authoritative,
+            evidence_class=evidence_class,
         )
 
     by_variant_obs: dict[str, list[PerformanceBenchmarkObservationV1]] = defaultdict(
@@ -95,4 +101,7 @@ def build_run_aggregate(
         by_variant=by_variant,
         by_stage_or_path=by_stage,
         overall=overall,
+        diagnostic_only=diagnostic_only,
+        authoritative=authoritative,
+        evidence_class=evidence_class,
     )

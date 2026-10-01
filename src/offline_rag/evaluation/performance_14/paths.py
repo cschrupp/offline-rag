@@ -1,8 +1,8 @@
-"""Immutable dry-run result paths for Slice 14B.
+"""Immutable result paths for Slice 14 performance runs.
 
-14B writes only under ``eval/results/performance_14_dryrun/``.
-``eval/results/performance_14/`` is reserved and not writable by this harness
-(authoritative / frozen-campaign evidence production remains NOT AUTHORIZED).
+14B dry-run writes only under ``eval/results/performance_14_dryrun/``.
+Authoritative frozen-campaign evidence writes under
+``eval/results/performance_14/`` and must never share a dry-run root.
 """
 
 from __future__ import annotations
@@ -41,8 +41,7 @@ def validate_path_segment(segment: str, *, field_name: str) -> str:
         )
     if not _SAFE_SEGMENT_RE.fullmatch(cleaned):
         raise Performance14Error(
-            f"{field_name} has unsafe characters for a result-path segment: "
-            f"{segment!r}"
+            f"{field_name} has unsafe characters for a result-path segment: {segment!r}"
         )
     return cleaned
 
@@ -87,6 +86,33 @@ def assert_outside_reserved_root(
     return assert_under_dryrun_root(candidate, repo_root=repo_root)
 
 
+def assert_under_authoritative_root(
+    candidate: Path,
+    *,
+    repo_root: Path | None = None,
+) -> Path:
+    """Require ``candidate`` to resolve strictly under ``performance_14/``."""
+    parent = reserved_results_root(repo_root)
+    dryrun = default_dryrun_parent(repo_root)
+    try:
+        resolved = candidate.expanduser().resolve(strict=False)
+    except OSError as exc:
+        raise Performance14Error(
+            f"failed to resolve authoritative output path {candidate}: {exc}"
+        ) from exc
+    if resolved == dryrun or dryrun in resolved.parents:
+        raise Performance14Error(
+            "refusing to write authoritative evidence under dry-run root "
+            f"{dryrun}; authoritative output must stay under {parent}"
+        )
+    if resolved != parent and parent not in resolved.parents:
+        raise Performance14Error(
+            f"authoritative output path {resolved} is not under "
+            f"performance_14 root {parent}"
+        )
+    return resolved
+
+
 def allocate_dryrun_run_dir(
     *,
     suite_id: str,
@@ -123,5 +149,28 @@ def allocate_dryrun_run_dir(
     if resolved.exists():
         raise Performance14Error(
             f"run result directory already exists (immutable): {resolved}"
+        )
+    return resolved
+
+
+def allocate_authoritative_run_dir(
+    *,
+    suite_id: str,
+    run_id: str,
+    repo_root: Path | None = None,
+) -> Path:
+    """Allocate ``.../performance_14/<suite_id>/<run_id>/`` (create-exclusive)."""
+    suite_seg = validate_path_segment(suite_id, field_name="suite_id")
+    run_seg = validate_path_segment(run_id, field_name="run_id")
+    if not run_seg.startswith("perfrun_"):
+        raise Performance14Error(
+            f"run_id must be the canonical perfrun_ identity; got {run_id!r}"
+        )
+    parent = reserved_results_root(repo_root)
+    target = parent / suite_seg / run_seg
+    resolved = assert_under_authoritative_root(target, repo_root=repo_root)
+    if resolved.exists():
+        raise Performance14Error(
+            f"authoritative run directory already exists (immutable): {resolved}"
         )
     return resolved
