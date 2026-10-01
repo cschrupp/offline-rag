@@ -1,8 +1,9 @@
-"""Slice 14A/14B performance measurement package.
+"""Slice 14A/14B/14C performance measurement package.
 
 Design authority: docs/milestone7_performance_ui.md
 Accepted design SHA: 89a395ae4df7aff23c2da2c8c44fd6fe405459a6
 Accepted 14A substrate: c087b8c1f038bd049809db2bf7e761ee0db93b58
+Accepted 14B substrate: 97d38031b99029c2e9b3fd028eadc3a60efef6c0
 
 14A: contracts, identities, statistics, timing, resources, machine profile,
 passive instrumentation.
@@ -11,8 +12,8 @@ passive instrumentation.
 paired scheduling, aggregate/report derivation. Dry-run outputs are
 DIAGNOSTIC ONLY / NON-AUTHORITATIVE.
 
-14C frozen campaigns and authoritative evidence production remain NOT
-AUTHORIZED by this package alone.
+14C: frozen hybrid vs hybrid+reranker suite definition only.
+Authoritative benchmark execution remains NOT AUTHORIZED by this package alone.
 """
 
 from offline_rag.evaluation.performance_14.contracts import (
