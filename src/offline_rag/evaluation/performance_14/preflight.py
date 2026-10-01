@@ -159,7 +159,7 @@ def assert_case_membership(plan: PerformanceSuitePlan) -> None:
 
 
 def assert_paired_comparison_invariant(plan: PerformanceSuitePlan) -> None:
-    """Prove complete subject×variant pairing and treatment-only delta."""
+    """Prove complete subject×variant pairing (coverage + multiplicity)."""
     if len(plan.suite.variants) < 2:
         return
     if plan.baseline_variant is None or plan.treatment_variant is None:
@@ -227,6 +227,55 @@ def assert_paired_comparison_invariant(plan: PerformanceSuitePlan) -> None:
                     f"paired cases for {subject!r} differ in stage_or_path "
                     "but treatment_delta does not declare stage_or_path"
                 )
+
+
+def differing_config_paths(
+    baseline: dict[str, object],
+    treatment: dict[str, object],
+) -> set[str]:
+    """Return top-level config keys whose values differ between variants."""
+    keys = set(baseline) | set(treatment)
+    return {key for key in keys if baseline.get(key) != treatment.get(key)}
+
+
+def assert_treatment_only_config_delta(plan: PerformanceSuitePlan) -> None:
+    """Require actual per-variant config diffs to equal declared treatment_delta.
+
+    Comparison is over top-level effective-configuration fields. Nested values
+    under a declared treatment field may differ freely once that field is
+    declared. Undeclared top-level differences fail closed.
+    """
+    if plan.baseline_variant is None or plan.treatment_variant is None:
+        return
+    if plan.baseline_variant not in plan.variant_configs:
+        raise Performance14Error(
+            f"variant_configs missing baseline variant {plan.baseline_variant!r}"
+        )
+    if plan.treatment_variant not in plan.variant_configs:
+        raise Performance14Error(
+            f"variant_configs missing treatment variant {plan.treatment_variant!r}"
+        )
+    declared = set(plan.treatment_delta)
+    if not declared:
+        raise Performance14Error(
+            "paired comparison requires a non-empty treatment_delta"
+        )
+    actual = differing_config_paths(
+        plan.variant_configs[plan.baseline_variant],
+        plan.variant_configs[plan.treatment_variant],
+    )
+    undeclared = sorted(actual - declared)
+    if undeclared:
+        raise Performance14Error(
+            "undeclared treatment configuration differences: "
+            + ", ".join(undeclared)
+        )
+    missing = sorted(declared - actual)
+    if missing:
+        raise Performance14Error(
+            "declared treatment_delta fields do not actually differ: "
+            + ", ".join(missing)
+        )
 
 
 def assert_disk_capacity(dryrun_parent: Path) -> tuple[bool, int]:
@@ -328,6 +377,14 @@ class PreflightAccumulator:
         self.error = reason
         self.add(name, "failed", reason)
 
+    def run_check(self, name: str, fn):  # type: ignore[no-untyped-def]
+        """Execute ``fn`` and record ``name`` as the exact failing_check on error."""
+        try:
+            return fn()
+        except Performance14Error as exc:
+            self.fail(name, str(exc))
+            raise
+
     def to_record(self, *, status: str) -> PerformancePreflightRecordV1:
         return PerformancePreflightRecordV1(
             preflight_status=status,  # type: ignore[arg-type]
@@ -369,14 +426,17 @@ def run_preflight(
 
     On failure, raises ``Performance14Error`` with ``.preflight_record`` and
     ``.preflight_partial`` attached so callers can persist known provenance.
+    ``failing_check`` is the exact machine-readable check name.
     """
     acc = PreflightAccumulator()
     try:
-        root = resolve_repo_root(repo_root)
+        root = acc.run_check("repository_root", lambda: resolve_repo_root(repo_root))
         acc.repo_root = root
         acc.add("repository_root", "passed")
 
-        executing_sha = resolve_executing_sha(root)
+        executing_sha = acc.run_check(
+            "executing_sha", lambda: resolve_executing_sha(root)
+        )
         acc.executing_sha = executing_sha
         acc.add("executing_sha", "passed", executing_sha)
 
@@ -389,20 +449,25 @@ def run_preflight(
             working_detail or working_state,
         )
 
-        assert_substrate_pin_reachable(root)
+        acc.run_check("substrate_pin", lambda: assert_substrate_pin_reachable(root))
         acc.add("substrate_pin", "passed", SUBSTRATE_PIN_14A)
 
-        suite_id = assert_suite_identity(plan.suite)
+        suite_id = acc.run_check(
+            "suite_identity", lambda: assert_suite_identity(plan.suite)
+        )
         acc.suite_id = suite_id
         acc.add("suite_identity", "passed", suite_id)
 
-        assert_case_membership(plan)
+        acc.run_check("case_membership", lambda: assert_case_membership(plan))
         acc.add("case_membership", "passed")
 
-        assert_protocol_counts(
-            level=plan.suite.benchmark_level,
-            warmup_count=plan.warmup_count,
-            measured_repetitions=plan.measured_repetitions,
+        acc.run_check(
+            "protocol_counts",
+            lambda: assert_protocol_counts(
+                level=plan.suite.benchmark_level,
+                warmup_count=plan.warmup_count,
+                measured_repetitions=plan.measured_repetitions,
+            ),
         )
         acc.add(
             "protocol_counts",
@@ -410,32 +475,54 @@ def run_preflight(
             f"warmup={plan.warmup_count}; measured={plan.measured_repetitions}",
         )
 
-        assert_paired_comparison_invariant(plan)
+        acc.run_check(
+            "paired_comparison_invariant",
+            lambda: assert_paired_comparison_invariant(plan),
+        )
         acc.add("paired_comparison_invariant", "passed")
 
+        if len(plan.suite.variants) >= 2:
+            acc.run_check(
+                "treatment_config_delta",
+                lambda: assert_treatment_only_config_delta(plan),
+            )
+            acc.add("treatment_config_delta", "passed")
+
         for check in _fixture_input_checks(plan):
-            acc.checks.append(check)
             if check.status == "failed":
+                acc.fail(
+                    check.name,
+                    check.reason or f"preflight check failed: {check.name}",
+                )
                 raise Performance14Error(
                     check.reason or f"preflight check failed: {check.name}"
                 )
+            acc.checks.append(check)
 
-        parent = (
-            Path(dryrun_parent).expanduser().resolve(strict=False)
-            if dryrun_parent is not None
-            else default_dryrun_parent(root)
-        )
-        assert_output_destination_writable(parent)
+        def _prepare_output() -> Path:
+            parent = (
+                Path(dryrun_parent).expanduser().resolve(strict=False)
+                if dryrun_parent is not None
+                else default_dryrun_parent(root)
+            )
+            return assert_output_destination_writable(parent)
+
+        parent = acc.run_check("output_writable", _prepare_output)
         acc.dryrun_parent = parent
         acc.add("output_writable", "passed", str(parent))
 
-        disk_ok, free_bytes = assert_disk_capacity(parent)
+        disk_ok, free_bytes = acc.run_check(
+            "disk_capacity", lambda: assert_disk_capacity(parent)
+        )
         acc.disk_capacity_sufficient = disk_ok
         acc.disk_free_bytes = free_bytes
         acc.add("disk_capacity", "passed", f"free_bytes={free_bytes}")
 
-        machine_profile, machine_profile_id = capture_machine_profile_with_id(
-            offline_rag_commit_sha=executing_sha
+        machine_profile, machine_profile_id = acc.run_check(
+            "machine_profile",
+            lambda: capture_machine_profile_with_id(
+                offline_rag_commit_sha=executing_sha
+            ),
         )
         acc.machine_profile = machine_profile
         acc.machine_profile_id = machine_profile_id
@@ -463,7 +550,8 @@ def run_preflight(
         )
     except Performance14Error as exc:
         if acc.failing_check is None:
-            acc.fail(exc.__class__.__name__, str(exc))
+            # Last-resort only for unexpected paths that bypassed run_check.
+            acc.fail("preflight", str(exc))
         record = acc.to_record(status="failed")
         exc.preflight_record = record  # type: ignore[attr-defined]
         exc.preflight_partial = acc  # type: ignore[attr-defined]

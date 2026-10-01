@@ -257,11 +257,63 @@ def test_preflight_rejects_insufficient_reps(tmp_path: Path) -> None:
     assert ">= 5" in result.error
     assert result.preflight is not None
     assert result.preflight.preflight_status == "failed"
+    assert result.preflight.failing_check == "protocol_counts"
     # Known facts preserved when resolved before the failing check.
     assert result.manifest.executing_sha != "unknown"
     assert result.manifest.executing_sha != "unresolved"
     assert (result.output_dir / "preflight.json").is_file()
     assert (result.output_dir / "run_manifest.json").is_file()
+
+
+def test_preflight_persists_suite_identity_failing_check(tmp_path: Path) -> None:
+    dryrun = _dryrun_parent(tmp_path)
+    plan = build_level_a_suite_plan()
+    broken_suite = plan.suite.model_copy(
+        update={"suite_identity_hash": "perfsuite_" + ("0" * 64)}
+    )
+    broken = replace(plan, suite=broken_suite)
+    result = run_performance_14b_dryrun(
+        level="A",
+        run_label="unit_suite_identity_fail",
+        repo_root=Path.cwd(),
+        dryrun_parent=dryrun,
+        plan=broken,
+        stage_runner=_noop_stage,
+    )
+    assert result.run_status == "failed_preflight"
+    assert result.preflight is not None
+    assert result.preflight.failing_check == "suite_identity"
+    assert result.preflight.failing_check != "Performance14Error"
+
+
+def test_treatment_config_delta_rejects_undeclared_difference() -> None:
+    from offline_rag.evaluation.performance_14.preflight import (
+        assert_treatment_only_config_delta,
+    )
+
+    plan = build_level_b_suite_plan()
+    polluted = {
+        key: dict(value) for key, value in plan.variant_configs.items()
+    }
+    polluted[plan.treatment_variant]["top_k"] = 99  # type: ignore[index]
+    broken = replace(plan, variant_configs=polluted)
+    with pytest.raises(Performance14Error, match="undeclared treatment"):
+        assert_treatment_only_config_delta(broken)
+
+
+def test_treatment_config_delta_requires_declared_fields_to_differ() -> None:
+    from offline_rag.evaluation.performance_14.preflight import (
+        assert_treatment_only_config_delta,
+    )
+
+    plan = build_level_b_suite_plan()
+    # Declare an extra field that does not actually differ.
+    broken = replace(
+        plan,
+        treatment_delta=(*plan.treatment_delta, "top_k"),
+    )
+    with pytest.raises(Performance14Error, match="do not actually differ"):
+        assert_treatment_only_config_delta(broken)
 
 
 def test_resource_sample_taken_before_stage(

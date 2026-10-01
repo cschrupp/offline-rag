@@ -6,7 +6,7 @@ They do **not** establish retrieval quality and are not a frozen 14C suite.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal
 
 from offline_rag.evaluation.performance_14.contracts import (
@@ -54,6 +54,7 @@ class PerformanceSuitePlan:
     baseline_variant: str | None
     treatment_variant: str | None
     treatment_delta: tuple[str, ...]
+    variant_configs: dict[str, dict[str, object]] = field(default_factory=dict)
     population_kind: PopulationKindV1 = "performance_fixture"
     diagnostic_only: bool = True
     authoritative: bool = False
@@ -107,6 +108,13 @@ def build_level_a_suite_plan(
         baseline_variant=None,
         treatment_variant=None,
         treatment_delta=(),
+        variant_configs={
+            variant: {
+                "benchmark_level": "A",
+                "execution_mode": "stage_isolated",
+                "reranker_enabled": False,
+            }
+        },
     )
 
 
@@ -142,6 +150,13 @@ def build_level_b_suite_plan(
     suite = suite.model_copy(
         update={"suite_identity_hash": compute_suite_identity_hash(suite)}
     )
+    shared = {
+        "retrieval_mode": "hybrid",
+        "corpus_binding": "fixture_internal",
+        "top_k": 10,
+        "fusion_method": "rrf",
+        "embedding_identity": "fixture_embed_v1",
+    }
     return PerformanceSuitePlan(
         suite=suite,
         cases=tuple(cases),
@@ -149,7 +164,25 @@ def build_level_b_suite_plan(
         measured_repetitions=measured_repetitions,
         baseline_variant=VARIANT_HYBRID,
         treatment_variant=VARIANT_HYBRID_RERANK,
-        treatment_delta=("reranker_enablement", "reranker_configuration", "stage_or_path"),
+        treatment_delta=(
+            "reranker_enabled",
+            "reranker_configuration",
+            "stage_or_path",
+        ),
+        variant_configs={
+            VARIANT_HYBRID: {
+                **shared,
+                "reranker_enabled": False,
+                "reranker_configuration": None,
+                "stage_or_path": "fusion",
+            },
+            VARIANT_HYBRID_RERANK: {
+                **shared,
+                "reranker_enabled": True,
+                "reranker_configuration": {"model": "fixture_rerank_v1", "top_n": 5},
+                "stage_or_path": "rerank",
+            },
+        },
     )
 
 
@@ -191,6 +224,14 @@ def build_level_c_suite_plan(
         baseline_variant=None,
         treatment_variant=None,
         treatment_delta=(),
+        variant_configs={
+            variant: {
+                "benchmark_level": "C",
+                "stage_or_path": "end_to_end",
+                "generation_enabled": True,
+                "reranker_enabled": False,
+            }
+        },
     )
 
 
