@@ -1,0 +1,111 @@
+{
+  "checks": [
+    {
+      "name": "repository_root",
+      "reason": null,
+      "status": "passed"
+    },
+    {
+      "name": "executing_sha",
+      "reason": "11feabe6330ef25fb97510b7446f281253036008",
+      "status": "passed"
+    },
+    {
+      "name": "working_tree_clean",
+      "reason": "clean",
+      "status": "passed"
+    },
+    {
+      "name": "suite_freeze_authority",
+      "reason": "a662efc50d712bd6a986da05809dc864342139df",
+      "status": "passed"
+    },
+    {
+      "name": "suite_identity",
+      "reason": "perfsuite_5248892df382995ac96ec2b09aea61bf27510673b93e0d816d6a255a2f4305ba",
+      "status": "passed"
+    },
+    {
+      "name": "frozen_suite_identities",
+      "reason": "perfcfg_aae1ea9b048e414338f0a38b13cb31132505920c406293e1e9f8e35595faa42d",
+      "status": "passed"
+    },
+    {
+      "name": "case_membership",
+      "reason": null,
+      "status": "passed"
+    },
+    {
+      "name": "protocol_counts",
+      "reason": "warmup=2; measured=10",
+      "status": "passed"
+    },
+    {
+      "name": "paired_comparison_invariant",
+      "reason": null,
+      "status": "passed"
+    },
+    {
+      "name": "treatment_config_delta",
+      "reason": null,
+      "status": "passed"
+    },
+    {
+      "name": "gold_semantic_identity",
+      "reason": "gold_d3fc157c7b3206f6983abee766e7ce7b939244a7dea04f0be256f3a533a46172",
+      "status": "passed"
+    },
+    {
+      "name": "hybrid_settings",
+      "reason": "hybrid_rrf",
+      "status": "passed"
+    },
+    {
+      "name": "hybrid_rerank_settings",
+      "reason": "hybrid_rerank",
+      "status": "passed"
+    },
+    {
+      "name": "index_and_config_pins",
+      "reason": "dense=denseindex_80f7da5c50c6de0a00502e169c75198af3f7f2f48d56dcae8ca961d3e42710e9; lexical=lexical_9c43385ecf20cacbbe31e1243d37afca3ce88520e30be39f1aa2017a2bb1c337",
+      "status": "passed"
+    },
+    {
+      "name": "output_writable",
+      "reason": "/home/user/projects/technical_rag/eval/results/performance_14",
+      "status": "passed"
+    },
+    {
+      "name": "disk_capacity",
+      "reason": "free_bytes=749351837696",
+      "status": "passed"
+    },
+    {
+      "name": "machine_profile",
+      "reason": "perfhost_44056bd458f2c5bc180da75742e47bfdbcedea2b1b89dba8fadcba058456217c",
+      "status": "passed"
+    },
+    {
+      "name": "telemetry_ram",
+      "reason": "available",
+      "status": "passed"
+    },
+    {
+      "name": "telemetry_vram",
+      "reason": "unavailable",
+      "status": "passed"
+    }
+  ],
+  "contract": "performance-preflight-record-v1",
+  "disk_capacity_sufficient": true,
+  "disk_free_bytes": 749351837696,
+  "executing_sha": "11feabe6330ef25fb97510b7446f281253036008",
+  "failing_check": null,
+  "machine_profile_id": "perfhost_44056bd458f2c5bc180da75742e47bfdbcedea2b1b89dba8fadcba058456217c",
+  "preflight_status": "passed",
+  "suite_id": "perfsuite_5248892df382995ac96ec2b09aea61bf27510673b93e0d816d6a255a2f4305ba",
+  "telemetry_ram": "available",
+  "telemetry_vram": "unavailable",
+  "working_tree_detail": null,
+  "working_tree_state": "clean"
+}

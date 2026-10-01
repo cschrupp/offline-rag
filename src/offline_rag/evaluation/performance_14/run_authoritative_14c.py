@@ -86,7 +86,10 @@ class Authoritative14CResult:
 
 
 class _14CStageEngine:
-    """Shared hybrid / hybrid-rerank engines for the full campaign."""
+    """Shared hybrid / hybrid-rerank engines for the full campaign.
+
+    A single HybridRetriever is shared so local Qdrant storage is opened once.
+    """
 
     def __init__(
         self,
@@ -104,6 +107,7 @@ class _14CStageEngine:
         self._rerank_output_top_k = rerank_output_top_k
 
     def close(self) -> None:
+        # hybrid_rerank may borrow hybrid; close wrapper first, then owned hybrid.
         self._hybrid_rerank.close()
         self._hybrid.close()
 
@@ -436,9 +440,11 @@ def run_authoritative_14c(
     rerank_configuration = rerank_cfg["reranker_configuration"]
     if not isinstance(rerank_configuration, dict):
         raise Performance14Error("treatment reranker_configuration must be a mapping")
+    hybrid = HybridRetriever(preflight.hybrid_settings)
+    hybrid_rerank = HybridRerankRetriever(preflight.rerank_settings, hybrid=hybrid)
     engine = _14CStageEngine(
-        hybrid=HybridRetriever(preflight.hybrid_settings),
-        hybrid_rerank=HybridRerankRetriever(preflight.rerank_settings),
+        hybrid=hybrid,
+        hybrid_rerank=hybrid_rerank,
         query_by_id=query_by_id,
         fusion_output_top_k=int(hybrid_cfg["fusion_output_top_k"]),
         rerank_output_top_k=int(rerank_configuration["output_k"]),

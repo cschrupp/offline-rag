@@ -1,0 +1,28 @@
+{
+  "authoritative": true,
+  "benchmark_level": "B",
+  "by_stage_or_path": [],
+  "by_variant": [],
+  "case_ids": [],
+  "contract": "performance-benchmark-aggregate-v1",
+  "diagnostic_only": false,
+  "evidence_class": "AUTHORITATIVE",
+  "overall": {
+    "attempted_count": 0,
+    "contract": "performance-benchmark-aggregate-v1",
+    "failure_count": 0,
+    "instrumentation_exclusion_count": 0,
+    "max": null,
+    "min": null,
+    "n": 0,
+    "p50": null,
+    "p95": null,
+    "statistics_semantics_version": "perf-stats-linear-interp-v1",
+    "valid_count": 0,
+    "warmup_count": 0
+  },
+  "run_id": "perfrun_87771f7230111f28dfde9532de7337ec83f1665242c94c55c97929289bbe254f",
+  "run_status": "failed_during_execution",
+  "statistics_semantics_version": "perf-stats-linear-interp-v1",
+  "suite_id": "perfsuite_5248892df382995ac96ec2b09aea61bf27510673b93e0d816d6a255a2f4305ba"
+}
