@@ -4,6 +4,9 @@ Requires explicit Q25-style human authorization via
 ``confirm_execution_authorization=True``. Does not mutate the frozen suite
 artifact's ``execution_authorized`` gate; scientific ``perfsuite_`` /
 ``perfcfg_`` identities remain unchanged.
+
+Harness rework (post-audit): quality evidence + semantic stage envelopes.
+Does not overwrite prior terminal ``perfrun_`` artifacts.
 """
 
 from __future__ import annotations
@@ -14,33 +17,46 @@ import uuid
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from offline_rag.core.ids import (
     BGE_RERANKER_MODEL_ID,
     QWEN3_EMBEDDING_MODEL_ID,
 )
-from offline_rag.evaluation.gold import load_gold_dataset
+from offline_rag.evaluation.gold import GoldCase, load_gold_dataset
 from offline_rag.evaluation.performance_14.aggregate import build_run_aggregate
 from offline_rag.evaluation.performance_14.artifacts import write_run_artifacts
 from offline_rag.evaluation.performance_14.contracts import (
     Performance14Error,
     PerformanceBenchmarkCaseV1,
+    PerformanceBenchmarkObservationV1,
     PerformanceBenchmarkRunManifestV1,
     PerformanceMachineProfileV1,
     PerformancePreflightRecordV1,
+    PerformanceResourceObservationV1,
     PerformanceRunAggregateV1,
     RunStatusV1,
+)
+from offline_rag.evaluation.performance_14.evidence_14c import (
+    assert_paired_quality_coverage,
+    macro_quality_by_variant,
+    path_latency_rollups,
+    quality_from_ranking,
+    resource_summary_by_variant,
+    semantic_observations_from_hybrid_metadata,
+    semantic_observations_from_hybrid_rerank_metadata,
 )
 from offline_rag.evaluation.performance_14.fixtures import (
     VARIANT_HYBRID,
     VARIANT_HYBRID_RERANK,
     PerformanceCaseSpec,
+    stable_case_id,
 )
-from offline_rag.evaluation.performance_14.harness import (
-    _execute_case,
-    _ordered_case_specs,
+from offline_rag.evaluation.performance_14.harness import _ordered_case_specs
+from offline_rag.evaluation.performance_14.identity import (
+    compute_case_identity_hash,
+    compute_run_identity_hash,
 )
-from offline_rag.evaluation.performance_14.identity import compute_run_identity_hash
 from offline_rag.evaluation.performance_14.paths import allocate_authoritative_run_dir
 from offline_rag.evaluation.performance_14.preflight import PreflightAccumulator
 from offline_rag.evaluation.performance_14.preflight_14c import (
@@ -49,6 +65,8 @@ from offline_rag.evaluation.performance_14.preflight_14c import (
     Authoritative14CPreflightContext,
     run_authoritative_14c_preflight,
 )
+from offline_rag.evaluation.performance_14.resources import capture_resource_observation
+from offline_rag.evaluation.performance_14.statistics import derive_latency_stats
 from offline_rag.evaluation.performance_14.suite_14c import (
     CORPUS_ID_14C,
     GOLD_RELATIVE_PATH_14C,
@@ -83,6 +101,13 @@ class Authoritative14CResult:
     error: str | None = None
     diagnostic_only: bool = False
     authoritative: bool = True
+
+
+@dataclass
+class _RetrieveOutcome:
+    ranked_chunk_ids: list[str]
+    metadata: dict[str, Any]
+    variant: str
 
 
 class _14CStageEngine:
@@ -126,32 +151,190 @@ class _14CStageEngine:
             top_k=self._rerank_output_top_k,
         )
 
-    def __call__(self, spec: PerformanceCaseSpec) -> None:
+    def retrieve(self, spec: PerformanceCaseSpec) -> _RetrieveOutcome:
+        """Execute the variant retrieve path and return ranked evidence + metadata."""
         query = self._query_by_id.get(spec.subject_identity)
         if query is None:
             raise Performance14Error(
                 f"frozen subject {spec.subject_identity!r} missing from Gold queries"
             )
         if spec.variant == VARIANT_HYBRID:
-            self._hybrid.retrieve(
+            result = self._hybrid.retrieve(
                 query=query,
                 corpus_name=CORPUS_NAME_14C,
                 top_k=self._fusion_output_top_k,
             )
-            return
+            return _RetrieveOutcome(
+                ranked_chunk_ids=[c.chunk_id for c in result.candidates],
+                metadata=dict(result.metadata),
+                variant=VARIANT_HYBRID,
+            )
         if spec.variant == VARIANT_HYBRID_RERANK:
-            self._hybrid_rerank.retrieve(
+            result = self._hybrid_rerank.retrieve(
                 query=query,
                 corpus_name=CORPUS_NAME_14C,
                 top_k=self._rerank_output_top_k,
             )
-            return
+            return _RetrieveOutcome(
+                ranked_chunk_ids=[c.chunk_id for c in result.candidates],
+                metadata=dict(result.metadata),
+                variant=VARIANT_HYBRID_RERANK,
+            )
         raise Performance14Error(f"unsupported 14C variant: {spec.variant!r}")
+
+    @property
+    def requested_depth(self) -> dict[str, int]:
+        return {
+            VARIANT_HYBRID: self._fusion_output_top_k,
+            VARIANT_HYBRID_RERANK: self._rerank_output_top_k,
+        }
 
 
 def _build_query_map(repo_root: Path) -> dict[str, str]:
     loaded = load_gold_dataset(repo_root / GOLD_RELATIVE_PATH_14C)
     return {case.id: case.query for case in loaded.cases}
+
+
+def _build_gold_map(repo_root: Path) -> dict[str, GoldCase]:
+    loaded = load_gold_dataset(repo_root / GOLD_RELATIVE_PATH_14C)
+    return {case.id: case for case in loaded.cases}
+
+
+def _observe_14c_once(
+    engine: _14CStageEngine,
+    spec: PerformanceCaseSpec,
+    *,
+    is_warmup: bool,
+) -> tuple[
+    list[PerformanceBenchmarkObservationV1],
+    float,
+    list[str] | None,
+    PerformanceResourceObservationV1 | None,
+    str | None,
+]:
+    """One retrieve: semantic + total path obs; never full-path wrap as fusion/rerank."""
+    resource: PerformanceResourceObservationV1 | None = None
+    try:
+        resource = capture_resource_observation(spec.stage_or_path)
+    except Exception:  # noqa: BLE001 — telemetry must not fail the observation
+        resource = None
+
+    try:
+        outcome = engine.retrieve(spec)
+        if outcome.variant == VARIANT_HYBRID:
+            observations, hybrid_path_s = semantic_observations_from_hybrid_metadata(
+                outcome.metadata,
+                is_warmup=is_warmup,
+                resource=resource,
+            )
+        else:
+            observations, hybrid_path_s = (
+                semantic_observations_from_hybrid_rerank_metadata(
+                    outcome.metadata,
+                    is_warmup=is_warmup,
+                    resource=resource,
+                )
+            )
+        return (
+            observations,
+            hybrid_path_s,
+            list(outcome.ranked_chunk_ids),
+            resource,
+            None,
+        )
+    except Exception as exc:  # noqa: BLE001 — observation fail-closed
+        failed = PerformanceBenchmarkObservationV1(
+            observation_status="failed",
+            stage_id=spec.stage_or_path,
+            is_warmup=is_warmup,
+            failure_reason=f"{type(exc).__name__}: {exc}",
+            resource=resource,
+        )
+        return [failed], 0.0, None, resource, f"{type(exc).__name__}: {exc}"
+
+
+def _execute_14c_case(
+    spec: PerformanceCaseSpec,
+    *,
+    engine: _14CStageEngine,
+    gold_by_id: dict[str, GoldCase],
+    warmup_count: int,
+    measured_repetitions: int,
+) -> PerformanceBenchmarkCaseV1:
+    """Execute one frozen case with quality evidence and semantic timing envelopes."""
+    case_id = stable_case_id(spec)
+    warmups: list[PerformanceBenchmarkObservationV1] = []
+    measured: list[PerformanceBenchmarkObservationV1] = []
+    hybrid_path_durations: list[float] = []
+    resources: list[PerformanceResourceObservationV1] = []
+    ranked_chunk_ids: list[str] | None = None
+    failure_reasons: list[str] = []
+
+    for _ in range(warmup_count):
+        obs_list, hybrid_s, _ranked, resource, failure = _observe_14c_once(
+            engine, spec, is_warmup=True
+        )
+        warmups.extend(obs_list)
+        if resource is not None:
+            resources.append(resource)
+        if failure is None and hybrid_s > 0:
+            hybrid_path_durations.append(hybrid_s)
+
+    for _ in range(measured_repetitions):
+        obs_list, hybrid_s, ranked, resource, failure = _observe_14c_once(
+            engine, spec, is_warmup=False
+        )
+        measured.extend(obs_list)
+        if resource is not None:
+            resources.append(resource)
+        if failure is not None:
+            failure_reasons.append(failure)
+            continue
+        if hybrid_s > 0:
+            hybrid_path_durations.append(hybrid_s)
+        if ranked is not None:
+            ranked_chunk_ids = ranked
+
+    quality = None
+    gold = gold_by_id.get(spec.subject_identity)
+    if ranked_chunk_ids is not None and gold is not None:
+        quality = quality_from_ranking(
+            gold,
+            ranked_chunk_ids,
+            requested_depth=engine.requested_depth[spec.variant],
+        )
+
+    case_status = "failed" if failure_reasons else "completed"
+    # Case-level derived stats use the frozen semantic stage only (not full path).
+    semantic_for_derived = [
+        obs
+        for obs in [*warmups, *measured]
+        if obs.stage_id == spec.stage_or_path
+    ]
+    case = PerformanceBenchmarkCaseV1(
+        case_id=case_id,
+        case_kind=spec.case_kind,
+        benchmark_level=spec.benchmark_level,
+        stage_or_path=spec.stage_or_path,
+        subject_identity=spec.subject_identity,
+        variant=spec.variant,
+        cold_warm=spec.cold_warm,
+        case_status=case_status,
+        warmup_count=len([o for o in warmups if o.stage_id == spec.stage_or_path]),
+        warmup_observations=warmups,
+        measured_observations=measured,
+        failures=failure_reasons,
+        resource_samples=resources,
+        ranked_chunk_ids=ranked_chunk_ids,
+        quality=quality,
+        hybrid_path_durations_seconds=hybrid_path_durations,
+    )
+    derived = derive_latency_stats(
+        semantic_for_derived,
+        warmup_count=len([o for o in warmups if o.stage_id == spec.stage_or_path]),
+    )
+    case_hash = compute_case_identity_hash(case)
+    return case.model_copy(update={"derived": derived, "case_identity_hash": case_hash})
 
 
 def _build_manifest(
@@ -172,6 +355,7 @@ def _build_manifest(
         "preflight_status": preflight.record.preflight_status,
         "working_tree_state": "clean",
         "generation_excluded": "true",
+        "harness_evidence": "quality_and_semantic_timing_v1",
     }
     plan = build_suite_plan_14c()
     manifest = PerformanceBenchmarkRunManifestV1(
@@ -231,6 +415,7 @@ def _failed_preflight_manifest(
         "substrate_pin_14b": SUBSTRATE_PIN_14B,
         "execution_authorization": EXECUTION_AUTHORIZATION_STATEMENT_14C,
         "working_tree_state": record.working_tree_state,
+        "harness_evidence": "quality_and_semantic_timing_v1",
     }
     if record.failing_check:
         env["failing_check"] = record.failing_check
@@ -264,6 +449,12 @@ def _failed_preflight_manifest(
     )
 
 
+def _fmt_metric(value: float | None) -> str:
+    if value is None:
+        return "n/a"
+    return f"{value:.6g}"
+
+
 def _render_authoritative_report(
     *,
     run_id: str,
@@ -294,13 +485,14 @@ def _render_authoritative_report(
         f"- diagnostic_only: `{aggregate.diagnostic_only}`",
         f"- authoritative: `{aggregate.authoritative}`",
         f"- suite_freeze_authority: `{SUITE_FREEZE_AUTHORITY_14C}`",
+        f"- vram_availability: `{aggregate.vram_availability}`",
     ]
     if aggregate.overall is not None:
         overall = aggregate.overall
         lines.extend(
             [
                 "",
-                "## Overall measured accounting",
+                "## Overall measured accounting (total retrieval path)",
                 "",
                 f"- attempted_count: `{overall.attempted_count}`",
                 f"- valid_count: `{overall.valid_count}`",
@@ -318,13 +510,67 @@ def _render_authoritative_report(
             ]
         )
     if aggregate.by_variant:
-        lines.extend(["", "## By variant", ""])
+        lines.extend(["", "## By variant (total retrieval path)", ""])
         for item in aggregate.by_variant:
             lines.append(
                 f"- `{item.variant}`: n={item.stats.n} "
                 f"p50={item.stats.p50} p95={item.stats.p95} "
                 f"failures={item.stats.failure_count}"
             )
+    if aggregate.by_stage_or_path:
+        lines.extend(["", "## By semantic stage / path", ""])
+        for item in aggregate.by_stage_or_path:
+            lines.append(
+                f"- `{item.stage_or_path}`: n={item.stats.n} "
+                f"p50={item.stats.p50} p95={item.stats.p95}"
+            )
+    if aggregate.path_latency:
+        lines.extend(["", "## Path latency rollups", ""])
+        for item in aggregate.path_latency:
+            lines.append(
+                f"- `{item.path}`: n={item.stats.n} "
+                f"p50={item.stats.p50} p95={item.stats.p95}"
+            )
+    if aggregate.quality_by_variant:
+        lines.extend(["", "## Quality by variant (macro; frozen IR semantics)", ""])
+        for item in aggregate.quality_by_variant:
+            lines.append(f"- `{item.variant}` (eligible={item.eligible_case_count}):")
+            lines.append(
+                f"  - Recall@1/5/10: {_fmt_metric(item.recall_at_1)} / "
+                f"{_fmt_metric(item.recall_at_5)} / {_fmt_metric(item.recall_at_10)}"
+            )
+            lines.append(
+                f"  - Precision@1/5/10: {_fmt_metric(item.precision_at_1)} / "
+                f"{_fmt_metric(item.precision_at_5)} / "
+                f"{_fmt_metric(item.precision_at_10)}"
+            )
+            lines.append(
+                f"  - HitRate@1/5/10: {_fmt_metric(item.hit_rate_at_1)} / "
+                f"{_fmt_metric(item.hit_rate_at_5)} / "
+                f"{_fmt_metric(item.hit_rate_at_10)}"
+            )
+            lines.append(f"  - MRR: {_fmt_metric(item.mrr)}")
+            lines.append(
+                f"  - nDCG@1/5/10: {_fmt_metric(item.ndcg_at_1)} / "
+                f"{_fmt_metric(item.ndcg_at_5)} / {_fmt_metric(item.ndcg_at_10)}"
+            )
+    if aggregate.resource_by_variant:
+        lines.extend(["", "## Resource summary (RAM)", ""])
+        for item in aggregate.resource_by_variant:
+            if item.ram_availability != "available":
+                lines.append(
+                    f"- `{item.variant}`: RAM `{item.ram_availability}` "
+                    f"(samples={item.sample_count})"
+                )
+                continue
+            lines.append(
+                f"- `{item.variant}`: RAM available samples={item.sample_count} "
+                f"rss_min={item.ram_rss_bytes_min} "
+                f"rss_p50={item.ram_rss_bytes_p50} "
+                f"rss_p95={item.ram_rss_bytes_p95} "
+                f"rss_max={item.ram_rss_bytes_max}"
+            )
+        lines.append(f"- VRAM: `{aggregate.vram_availability}`")
     if error:
         lines.extend(["", f"- error: `{error}`"])
     lines.append("")
@@ -386,6 +632,7 @@ def run_authoritative_14c(
             diagnostic_only=False,
             authoritative=True,
             evidence_class="AUTHORITATIVE",
+            vram_availability="unavailable",
         )
         report = _render_authoritative_report(
             run_id=run_id,
@@ -435,6 +682,7 @@ def run_authoritative_14c(
     output_dir.mkdir(parents=True, exist_ok=False)
 
     query_by_id = _build_query_map(preflight.repo_root)
+    gold_by_id = _build_gold_map(preflight.repo_root)
     hybrid_cfg = plan.variant_configs[VARIANT_HYBRID]
     rerank_cfg = plan.variant_configs[VARIANT_HYBRID_RERANK]
     rerank_configuration = rerank_cfg["reranker_configuration"]
@@ -457,18 +705,22 @@ def run_authoritative_14c(
         ordered = _ordered_case_specs(plan)
         for spec in ordered:
             cases.append(
-                _execute_case(
+                _execute_14c_case(
                     spec,
+                    engine=engine,
+                    gold_by_id=gold_by_id,
                     warmup_count=plan.warmup_count,
                     measured_repetitions=plan.measured_repetitions,
-                    stage_runner=engine,
-                    failure_subjects=set(),
-                    exclusion_subjects=set(),
                 )
             )
         if any(case.case_status == "failed" for case in cases):
             run_status = "failed_during_execution"
             error = "one or more cases recorded failed measured observations"
+        else:
+            assert_paired_quality_coverage(
+                cases,
+                expected_query_ids=sorted(gold_by_id),
+            )
     except Exception as exc:  # noqa: BLE001 — preserve partial run
         run_status = "failed_during_execution"
         error = f"{type(exc).__name__}: {exc}"
@@ -477,6 +729,9 @@ def run_authoritative_14c(
 
     sealed_manifest = manifest.model_copy(update={"run_status": run_status})
     # run_status is excluded from perfrun_ identity; hash stays stable.
+    quality_by_variant = macro_quality_by_variant(cases)
+    resource_by_variant = resource_summary_by_variant(cases)
+    path_latency = path_latency_rollups(cases)
     aggregate = build_run_aggregate(
         suite_id=suite_id,
         run_id=run_id,
@@ -486,6 +741,10 @@ def run_authoritative_14c(
         diagnostic_only=False,
         authoritative=True,
         evidence_class="AUTHORITATIVE",
+        path_latency=path_latency,
+        quality_by_variant=quality_by_variant,
+        resource_by_variant=resource_by_variant,
+        vram_availability="unavailable",
     )
     report = _render_authoritative_report(
         run_id=run_id,

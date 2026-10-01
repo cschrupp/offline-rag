@@ -145,16 +145,21 @@ class HybridRerankRetriever:
             )
         except HybridRetrievalError as exc:
             raise HybridRerankRetrievalError(str(exc)) from exc
-        hybrid_ms = int((time.perf_counter() - t_hybrid) * 1000)
+        hybrid_s = time.perf_counter() - t_hybrid
+        hybrid_ms = int(hybrid_s * 1000)
 
         pool = list(hybrid_result.candidates)
         pool_ids = [candidate.chunk_id for candidate in pool]
         hybrid_breakdown = hybrid_result.metadata.get("latency_ms")
         if not isinstance(hybrid_breakdown, dict):
             hybrid_breakdown = {}
+        hybrid_breakdown_s = hybrid_result.metadata.get("latency_seconds")
+        if not isinstance(hybrid_breakdown_s, dict):
+            hybrid_breakdown_s = {}
 
         if not pool:
-            total_ms = int((time.perf_counter() - wall_t0) * 1000)
+            total_s = time.perf_counter() - wall_t0
+            total_ms = int(total_s * 1000)
             return HybridRerankRetrievalResult(
                 query=query.strip(),
                 method="hybrid-rerank",
@@ -179,6 +184,16 @@ class HybridRerankRetriever:
                         "total": total_ms,
                         "hybrid_breakdown": hybrid_breakdown,
                     },
+                    "latency_seconds": {
+                        "hybrid": hybrid_s,
+                        "pair_build": 0.0,
+                        "rerank_infer": 0.0,
+                        "sort": 0.0,
+                        # Semantic rerank envelope: finalized input → ranked output.
+                        "rerank": 0.0,
+                        "total": total_s,
+                        "hybrid_breakdown": hybrid_breakdown_s,
+                    },
                 },
             )
 
@@ -187,14 +202,16 @@ class HybridRerankRetriever:
             pairs = self._input_builder.build(query=query, candidates=pool)
         except Exception as exc:
             raise HybridRerankRetrievalError(f"pair construction failed: {exc}") from exc
-        pair_build_ms = int((time.perf_counter() - t_pairs) * 1000)
+        pair_build_s = time.perf_counter() - t_pairs
+        pair_build_ms = int(pair_build_s * 1000)
 
         t_infer = time.perf_counter()
         try:
             scores = self._reranker.score_pairs(pairs)
         except Exception as exc:
             raise HybridRerankRetrievalError(f"reranker scoring failed: {exc}") from exc
-        rerank_infer_ms = int((time.perf_counter() - t_infer) * 1000)
+        rerank_infer_s = time.perf_counter() - t_infer
+        rerank_infer_ms = int(rerank_infer_s * 1000)
 
         t_sort = time.perf_counter()
         ordered = _sort_scored(pool, scores)
@@ -229,8 +246,12 @@ class HybridRerankRetriever:
                     ),
                 )
             )
-        sort_ms = int((time.perf_counter() - t_sort) * 1000)
-        total_ms = int((time.perf_counter() - wall_t0) * 1000)
+        sort_s = time.perf_counter() - t_sort
+        sort_ms = int(sort_s * 1000)
+        total_s = time.perf_counter() - wall_t0
+        total_ms = int(total_s * 1000)
+        # Locked semantic envelope: finalized reranker input → ranked candidates.
+        rerank_semantic_s = rerank_infer_s + sort_s
 
         metadata: dict[str, Any] = {
             "corpus_id": hybrid_result.metadata.get("corpus_id"),
@@ -246,6 +267,15 @@ class HybridRerankRetriever:
                 "sort": sort_ms,
                 "total": total_ms,
                 "hybrid_breakdown": hybrid_breakdown,
+            },
+            "latency_seconds": {
+                "hybrid": hybrid_s,
+                "pair_build": pair_build_s,
+                "rerank_infer": rerank_infer_s,
+                "sort": sort_s,
+                "rerank": rerank_semantic_s,
+                "total": total_s,
+                "hybrid_breakdown": hybrid_breakdown_s,
             },
         }
         return HybridRerankRetrievalResult(

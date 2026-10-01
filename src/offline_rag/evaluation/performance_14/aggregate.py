@@ -1,4 +1,4 @@
-"""Deterministic run-level aggregate derivation for Slice 14B."""
+"""Deterministic run-level aggregate derivation for Slice 14."""
 
 from __future__ import annotations
 
@@ -11,10 +11,14 @@ from offline_rag.evaluation.performance_14.contracts import (
     DerivedLatencyStatsV1,
     PerformanceBenchmarkCaseV1,
     PerformanceBenchmarkObservationV1,
+    PerformancePathLatencyV1,
     PerformanceRunAggregateV1,
     PerformanceStageStatsV1,
+    PerformanceVariantQualityV1,
+    PerformanceVariantResourceV1,
     PerformanceVariantStatsV1,
     RunStatusV1,
+    TelemetryAvailabilityV1,
 )
 from offline_rag.evaluation.performance_14.statistics import derive_latency_stats
 
@@ -45,6 +49,10 @@ def build_run_aggregate(
     diagnostic_only: bool = True,
     authoritative: bool = False,
     evidence_class: str = "DIAGNOSTIC_ONLY_NON_AUTHORITATIVE",
+    path_latency: Sequence[PerformancePathLatencyV1] | None = None,
+    quality_by_variant: Sequence[PerformanceVariantQualityV1] | None = None,
+    resource_by_variant: Sequence[PerformanceVariantResourceV1] | None = None,
+    vram_availability: TelemetryAvailabilityV1 = "unavailable",
 ) -> PerformanceRunAggregateV1:
     """Roll case-level raw observations into deterministic suite aggregates."""
     if run_status == "failed_preflight":
@@ -57,6 +65,10 @@ def build_run_aggregate(
             by_variant=[],
             by_stage_or_path=[],
             overall=_empty_stats(),
+            path_latency=list(path_latency or ()),
+            quality_by_variant=list(quality_by_variant or ()),
+            resource_by_variant=list(resource_by_variant or ()),
+            vram_availability=vram_availability,
             diagnostic_only=diagnostic_only,
             authoritative=authoritative,
             evidence_class=evidence_class,
@@ -66,16 +78,21 @@ def build_run_aggregate(
         list
     )
     by_stage_obs: dict[str, list[PerformanceBenchmarkObservationV1]] = defaultdict(list)
-    all_obs: list[PerformanceBenchmarkObservationV1] = []
+    variant_rollup_obs: list[PerformanceBenchmarkObservationV1] = []
     case_ids: list[str] = []
     for case in cases:
         case_ids.append(case.case_id)
         measured = list(case.measured_observations)
         warmups = list(case.warmup_observations)
         combined = warmups + measured
-        by_variant_obs[case.variant].extend(combined)
-        by_stage_obs[case.stage_or_path].extend(combined)
-        all_obs.extend(combined)
+        for obs in combined:
+            by_stage_obs[obs.stage_id].append(obs)
+        # Prefer total-path observations for variant cost comparison when present;
+        # otherwise fall back to the case's labeled stage (diagnostic/single-stage).
+        totals = [obs for obs in combined if obs.stage_id == "end_to_end"]
+        chosen = totals if totals else combined
+        by_variant_obs[case.variant].extend(chosen)
+        variant_rollup_obs.extend(chosen)
 
     by_variant = [
         PerformanceVariantStatsV1(
@@ -91,7 +108,9 @@ def build_run_aggregate(
         )
         for stage, observations in sorted(by_stage_obs.items())
     ]
-    overall = derive_latency_stats(all_obs) if all_obs else _empty_stats()
+    overall = (
+        derive_latency_stats(variant_rollup_obs) if variant_rollup_obs else _empty_stats()
+    )
     return PerformanceRunAggregateV1(
         suite_id=suite_id,
         run_id=run_id,
@@ -101,6 +120,10 @@ def build_run_aggregate(
         by_variant=by_variant,
         by_stage_or_path=by_stage,
         overall=overall,
+        path_latency=list(path_latency or ()),
+        quality_by_variant=list(quality_by_variant or ()),
+        resource_by_variant=list(resource_by_variant or ()),
+        vram_availability=vram_availability,
         diagnostic_only=diagnostic_only,
         authoritative=authoritative,
         evidence_class=evidence_class,

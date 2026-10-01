@@ -103,7 +103,8 @@ class HybridRetriever:
             corpus_name=name,
             top_k=dense_depth,
         )
-        dense_ms = int((time.perf_counter() - t0) * 1000)
+        dense_s = time.perf_counter() - t0
+        dense_ms = int(dense_s * 1000)
 
         t1 = time.perf_counter()
         try:
@@ -112,7 +113,8 @@ class HybridRetriever:
                 corpus_name=name,
                 top_k=lexical_depth,
             )
-            lexical_ms = int((time.perf_counter() - t1) * 1000)
+            lexical_s = time.perf_counter() - t1
+            lexical_ms = int(lexical_s * 1000)
             lexical_branch_hits = [
                 RankedBranchHit(
                     chunk_id=candidate.chunk_id,
@@ -128,7 +130,8 @@ class HybridRetriever:
             # Distinguish analyzer zero-term (valid empty) from hard failure.
             message = str(exc)
             if "zero analyzed terms" in message:
-                lexical_ms = int((time.perf_counter() - t1) * 1000)
+                lexical_s = time.perf_counter() - t1
+                lexical_ms = int(lexical_s * 1000)
                 lexical_branch_hits = []
                 lexical_by_id = {}
                 lexical_index_id = details["lexical_index_id"] or ""
@@ -157,7 +160,8 @@ class HybridRetriever:
 
         t2 = time.perf_counter()
         fused = self._fusion.fuse(dense=dense_branch_hits, lexical=lexical_branch_hits)
-        fusion_ms = int((time.perf_counter() - t2) * 1000)
+        fusion_s = time.perf_counter() - t2
+        fusion_ms = int(fusion_s * 1000)
         truncated = fused[:final_k]
 
         candidates: list[HybridCandidate] = []
@@ -194,7 +198,8 @@ class HybridRetriever:
                 )
             )
 
-        total_ms = int((time.perf_counter() - wall_t0) * 1000)
+        total_s = time.perf_counter() - wall_t0
+        total_ms = int(total_s * 1000)
         return HybridRetrievalResult(
             query=query.strip(),
             method="hybrid",
@@ -215,6 +220,13 @@ class HybridRetriever:
                     "lexical": lexical_ms,
                     "fusion": fusion_ms,
                     "total": total_ms,
+                },
+                # High-resolution float seconds for Slice 14 semantic envelopes.
+                "latency_seconds": {
+                    "dense": dense_s,
+                    "lexical": lexical_s,
+                    "fusion": fusion_s,
+                    "total": total_s,
                 },
             },
         )

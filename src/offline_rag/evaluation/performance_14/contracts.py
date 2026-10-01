@@ -238,6 +238,11 @@ class PerformanceBenchmarkCaseV1(StrictModel):
     )
     derived: DerivedLatencyStatsV1 | None = None
     case_identity_hash: ExactNonBlankStr | None = None
+    # Quality-vs-cost evidence (excluded from perfcase_/perfsuite_/perfcfg_).
+    ranked_chunk_ids: list[ExactNonBlankStr] | None = None
+    quality: PerformanceCaseQualityV1 | None = None
+    # Measured hybrid-path component durations (seconds); used for path rollups.
+    hybrid_path_durations_seconds: list[float] = Field(default_factory=list)
 
 
 class PerformanceBenchmarkSuiteV1(StrictModel):
@@ -333,6 +338,66 @@ class PerformanceStageStatsV1(StrictModel):
     stats: DerivedLatencyStatsV1
 
 
+class PerformanceCaseQualityV1(StrictModel):
+    """Accepted Slice-9 IR metrics for one case (Gold semantics reused)."""
+
+    quality_eligible: bool
+    requested_depth: int = Field(ge=1)
+    returned_count: int = Field(ge=0)
+    recall_at_1: float | None = None
+    recall_at_5: float | None = None
+    recall_at_10: float | None = None
+    precision_at_1: float | None = None
+    precision_at_5: float | None = None
+    precision_at_10: float | None = None
+    hit_rate_at_1: float | None = None
+    hit_rate_at_5: float | None = None
+    hit_rate_at_10: float | None = None
+    mrr: float | None = None
+    ndcg_at_1: float | None = None
+    ndcg_at_5: float | None = None
+    ndcg_at_10: float | None = None
+
+
+class PerformanceVariantQualityV1(StrictModel):
+    """Macro-averaged IR metrics for one variant over eligible cases."""
+
+    variant: ExactNonBlankStr
+    eligible_case_count: int = Field(ge=0)
+    recall_at_1: float | None = None
+    recall_at_5: float | None = None
+    recall_at_10: float | None = None
+    precision_at_1: float | None = None
+    precision_at_5: float | None = None
+    precision_at_10: float | None = None
+    hit_rate_at_1: float | None = None
+    hit_rate_at_5: float | None = None
+    hit_rate_at_10: float | None = None
+    mrr: float | None = None
+    ndcg_at_1: float | None = None
+    ndcg_at_5: float | None = None
+    ndcg_at_10: float | None = None
+
+
+class PerformanceVariantResourceV1(StrictModel):
+    """Deterministic RAM summary for one variant (VRAM reported separately)."""
+
+    variant: ExactNonBlankStr
+    ram_availability: TelemetryAvailabilityV1
+    sample_count: int = Field(ge=0)
+    ram_rss_bytes_min: int | None = Field(default=None, ge=0)
+    ram_rss_bytes_p50: int | None = Field(default=None, ge=0)
+    ram_rss_bytes_p95: int | None = Field(default=None, ge=0)
+    ram_rss_bytes_max: int | None = Field(default=None, ge=0)
+
+
+class PerformancePathLatencyV1(StrictModel):
+    """Named retrieval-path latency rollup (hybrid / reranker / total)."""
+
+    path: ExactNonBlankStr
+    stats: DerivedLatencyStatsV1
+
+
 class PerformanceRunAggregateV1(StrictModel):
     """Run-level aggregate.json body (deterministic derivation).
 
@@ -351,6 +416,12 @@ class PerformanceRunAggregateV1(StrictModel):
     by_variant: list[PerformanceVariantStatsV1] = Field(default_factory=list)
     by_stage_or_path: list[PerformanceStageStatsV1] = Field(default_factory=list)
     overall: DerivedLatencyStatsV1 | None = None
+    path_latency: list[PerformancePathLatencyV1] = Field(default_factory=list)
+    quality_by_variant: list[PerformanceVariantQualityV1] = Field(default_factory=list)
+    resource_by_variant: list[PerformanceVariantResourceV1] = Field(
+        default_factory=list
+    )
+    vram_availability: TelemetryAvailabilityV1 = "unavailable"
     diagnostic_only: bool = True
     authoritative: bool = False
     evidence_class: ExactNonBlankStr = "DIAGNOSTIC_ONLY_NON_AUTHORITATIVE"
