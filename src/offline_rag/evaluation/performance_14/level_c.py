@@ -696,11 +696,11 @@ def execute_level_c_attempt(
         except Exception:  # noqa: BLE001 - resource failure must not alter query path
             e2e_resource = None
 
-    # Locked Level-C E2E boundary begins here.
-    timeline.mark_t0()
-
     result: GroundedAnswerResult | None = None
     error: BaseException | None = None
+
+    # Locked Level-C E2E boundary begins immediately before query invocation.
+    timeline.mark_t0()
     try:
         result = orchestrator.answer(query=query, corpus_name=corpus_name)
     except Exception as exc:  # noqa: BLE001 - classify orchestration_failed
