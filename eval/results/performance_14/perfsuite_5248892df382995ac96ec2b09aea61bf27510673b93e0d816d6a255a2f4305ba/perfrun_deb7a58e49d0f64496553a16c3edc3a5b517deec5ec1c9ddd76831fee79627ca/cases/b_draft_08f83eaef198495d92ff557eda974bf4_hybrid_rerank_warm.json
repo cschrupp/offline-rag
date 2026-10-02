@@ -1,0 +1,703 @@
+{
+  "benchmark_level": "B",
+  "case_id": "b_draft_08f83eaef198495d92ff557eda974bf4_hybrid_rerank_warm",
+  "case_identity_hash": "perfcase_60d88f8260e7f996375f0a4a9dd0cae9ddf07c9ffef1f1b6cd2273c798fee42e",
+  "case_kind": "pipeline_query",
+  "case_status": "completed",
+  "cold_warm": "warm",
+  "contract": "performance-benchmark-case-v1",
+  "derived": {
+    "attempted_count": 10,
+    "contract": "performance-benchmark-aggregate-v1",
+    "failure_count": 0,
+    "instrumentation_exclusion_count": 0,
+    "max": 4.7932813270017505,
+    "min": 3.5115659419680014,
+    "n": 10,
+    "p50": 3.9410139895044267,
+    "p95": 4.721784324839245,
+    "statistics_semantics_version": "perf-stats-linear-interp-v1",
+    "valid_count": 10,
+    "warmup_count": 2
+  },
+  "failures": [],
+  "hybrid_path_durations_seconds": [],
+  "measured_observations": [
+    {
+      "contract": "performance-benchmark-observation-v1",
+      "duration_seconds": 4.164840209065005,
+      "exclusion_reason": null,
+      "failure_reason": null,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "resource": {
+        "contract": "performance-resource-observation-v1",
+        "device_id": null,
+        "is_warmup": false,
+        "note": "RSS sampled immediately before retrieval-path invocation; not a semantic fusion/rerank stage boundary",
+        "ram_availability": "available",
+        "ram_rss_bytes_before": 2864418816,
+        "ram_rss_bytes_peak": null,
+        "stage_id": "retrieval_path",
+        "vram_availability": "unavailable",
+        "vram_used_bytes_before": null,
+        "vram_used_bytes_peak": null
+      },
+      "stage_id": "rerank"
+    },
+    {
+      "contract": "performance-benchmark-observation-v1",
+      "duration_seconds": 4.476175231975503,
+      "exclusion_reason": null,
+      "failure_reason": null,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "resource": {
+        "contract": "performance-resource-observation-v1",
+        "device_id": null,
+        "is_warmup": false,
+        "note": "RSS sampled immediately before retrieval-path invocation; not a semantic fusion/rerank stage boundary",
+        "ram_availability": "available",
+        "ram_rss_bytes_before": 3776118784,
+        "ram_rss_bytes_peak": null,
+        "stage_id": "retrieval_path",
+        "vram_availability": "unavailable",
+        "vram_used_bytes_before": null,
+        "vram_used_bytes_peak": null
+      },
+      "stage_id": "rerank"
+    },
+    {
+      "contract": "performance-benchmark-observation-v1",
+      "duration_seconds": 3.91680518805515,
+      "exclusion_reason": null,
+      "failure_reason": null,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "resource": {
+        "contract": "performance-resource-observation-v1",
+        "device_id": null,
+        "is_warmup": false,
+        "note": "RSS sampled immediately before retrieval-path invocation; not a semantic fusion/rerank stage boundary",
+        "ram_availability": "available",
+        "ram_rss_bytes_before": 2877120512,
+        "ram_rss_bytes_peak": null,
+        "stage_id": "retrieval_path",
+        "vram_availability": "unavailable",
+        "vram_used_bytes_before": null,
+        "vram_used_bytes_peak": null
+      },
+      "stage_id": "rerank"
+    },
+    {
+      "contract": "performance-benchmark-observation-v1",
+      "duration_seconds": 4.7932813270017505,
+      "exclusion_reason": null,
+      "failure_reason": null,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "resource": {
+        "contract": "performance-resource-observation-v1",
+        "device_id": null,
+        "is_warmup": false,
+        "note": "RSS sampled immediately before retrieval-path invocation; not a semantic fusion/rerank stage boundary",
+        "ram_availability": "available",
+        "ram_rss_bytes_before": 3768524800,
+        "ram_rss_bytes_peak": null,
+        "stage_id": "retrieval_path",
+        "vram_availability": "unavailable",
+        "vram_used_bytes_before": null,
+        "vram_used_bytes_peak": null
+      },
+      "stage_id": "rerank"
+    },
+    {
+      "contract": "performance-benchmark-observation-v1",
+      "duration_seconds": 3.806068583042361,
+      "exclusion_reason": null,
+      "failure_reason": null,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "resource": {
+        "contract": "performance-resource-observation-v1",
+        "device_id": null,
+        "is_warmup": false,
+        "note": "RSS sampled immediately before retrieval-path invocation; not a semantic fusion/rerank stage boundary",
+        "ram_availability": "available",
+        "ram_rss_bytes_before": 2873950208,
+        "ram_rss_bytes_peak": null,
+        "stage_id": "retrieval_path",
+        "vram_availability": "unavailable",
+        "vram_used_bytes_before": null,
+        "vram_used_bytes_peak": null
+      },
+      "stage_id": "rerank"
+    },
+    {
+      "contract": "performance-benchmark-observation-v1",
+      "duration_seconds": 4.634399099973962,
+      "exclusion_reason": null,
+      "failure_reason": null,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "resource": {
+        "contract": "performance-resource-observation-v1",
+        "device_id": null,
+        "is_warmup": false,
+        "note": "RSS sampled immediately before retrieval-path invocation; not a semantic fusion/rerank stage boundary",
+        "ram_availability": "available",
+        "ram_rss_bytes_before": 3760259072,
+        "ram_rss_bytes_peak": null,
+        "stage_id": "retrieval_path",
+        "vram_availability": "unavailable",
+        "vram_used_bytes_before": null,
+        "vram_used_bytes_peak": null
+      },
+      "stage_id": "rerank"
+    },
+    {
+      "contract": "performance-benchmark-observation-v1",
+      "duration_seconds": 3.9652227909537032,
+      "exclusion_reason": null,
+      "failure_reason": null,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "resource": {
+        "contract": "performance-resource-observation-v1",
+        "device_id": null,
+        "is_warmup": false,
+        "note": "RSS sampled immediately before retrieval-path invocation; not a semantic fusion/rerank stage boundary",
+        "ram_availability": "available",
+        "ram_rss_bytes_before": 2876497920,
+        "ram_rss_bytes_peak": null,
+        "stage_id": "retrieval_path",
+        "vram_availability": "unavailable",
+        "vram_used_bytes_before": null,
+        "vram_used_bytes_peak": null
+      },
+      "stage_id": "rerank"
+    },
+    {
+      "contract": "performance-benchmark-observation-v1",
+      "duration_seconds": 3.7430360070429742,
+      "exclusion_reason": null,
+      "failure_reason": null,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "resource": {
+        "contract": "performance-resource-observation-v1",
+        "device_id": null,
+        "is_warmup": false,
+        "note": "RSS sampled immediately before retrieval-path invocation; not a semantic fusion/rerank stage boundary",
+        "ram_availability": "available",
+        "ram_rss_bytes_before": 3766861824,
+        "ram_rss_bytes_peak": null,
+        "stage_id": "retrieval_path",
+        "vram_availability": "unavailable",
+        "vram_used_bytes_before": null,
+        "vram_used_bytes_peak": null
+      },
+      "stage_id": "rerank"
+    },
+    {
+      "contract": "performance-benchmark-observation-v1",
+      "duration_seconds": 3.5115659419680014,
+      "exclusion_reason": null,
+      "failure_reason": null,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "resource": {
+        "contract": "performance-resource-observation-v1",
+        "device_id": null,
+        "is_warmup": false,
+        "note": "RSS sampled immediately before retrieval-path invocation; not a semantic fusion/rerank stage boundary",
+        "ram_availability": "available",
+        "ram_rss_bytes_before": 2875891712,
+        "ram_rss_bytes_peak": null,
+        "stage_id": "retrieval_path",
+        "vram_availability": "unavailable",
+        "vram_used_bytes_before": null,
+        "vram_used_bytes_peak": null
+      },
+      "stage_id": "rerank"
+    },
+    {
+      "contract": "performance-benchmark-observation-v1",
+      "duration_seconds": 3.5314390880521387,
+      "exclusion_reason": null,
+      "failure_reason": null,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "resource": {
+        "contract": "performance-resource-observation-v1",
+        "device_id": null,
+        "is_warmup": false,
+        "note": "RSS sampled immediately before retrieval-path invocation; not a semantic fusion/rerank stage boundary",
+        "ram_availability": "available",
+        "ram_rss_bytes_before": 3769094144,
+        "ram_rss_bytes_peak": null,
+        "stage_id": "retrieval_path",
+        "vram_availability": "unavailable",
+        "vram_used_bytes_before": null,
+        "vram_used_bytes_peak": null
+      },
+      "stage_id": "rerank"
+    }
+  ],
+  "path_samples": [
+    {
+      "duration_seconds": 5.818570944946259,
+      "is_warmup": true,
+      "observation_status": "valid",
+      "path": "treatment_hybrid_component"
+    },
+    {
+      "duration_seconds": 6.548314718995243,
+      "is_warmup": true,
+      "observation_status": "valid",
+      "path": "treatment_reranker_latency"
+    },
+    {
+      "duration_seconds": 12.366943771019578,
+      "is_warmup": true,
+      "observation_status": "valid",
+      "path": "treatment_total_retrieval_path"
+    },
+    {
+      "duration_seconds": 6.863905146950856,
+      "is_warmup": true,
+      "observation_status": "valid",
+      "path": "treatment_hybrid_component"
+    },
+    {
+      "duration_seconds": 4.753058547968976,
+      "is_warmup": true,
+      "observation_status": "valid",
+      "path": "treatment_reranker_latency"
+    },
+    {
+      "duration_seconds": 11.61702253203839,
+      "is_warmup": true,
+      "observation_status": "valid",
+      "path": "treatment_total_retrieval_path"
+    },
+    {
+      "duration_seconds": 6.19160091993399,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "path": "treatment_hybrid_component"
+    },
+    {
+      "duration_seconds": 4.164840209065005,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "path": "treatment_reranker_latency"
+    },
+    {
+      "duration_seconds": 10.356568968039937,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "path": "treatment_total_retrieval_path"
+    },
+    {
+      "duration_seconds": 8.490022485028021,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "path": "treatment_hybrid_component"
+    },
+    {
+      "duration_seconds": 4.476175231975503,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "path": "treatment_reranker_latency"
+    },
+    {
+      "duration_seconds": 12.966285364003852,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "path": "treatment_total_retrieval_path"
+    },
+    {
+      "duration_seconds": 6.137935439939611,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "path": "treatment_hybrid_component"
+    },
+    {
+      "duration_seconds": 3.91680518805515,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "path": "treatment_reranker_latency"
+    },
+    {
+      "duration_seconds": 10.054781390936114,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "path": "treatment_total_retrieval_path"
+    },
+    {
+      "duration_seconds": 8.182768358034082,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "path": "treatment_hybrid_component"
+    },
+    {
+      "duration_seconds": 4.7932813270017505,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "path": "treatment_reranker_latency"
+    },
+    {
+      "duration_seconds": 12.976177950040437,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "path": "treatment_total_retrieval_path"
+    },
+    {
+      "duration_seconds": 6.646464437013492,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "path": "treatment_hybrid_component"
+    },
+    {
+      "duration_seconds": 3.806068583042361,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "path": "treatment_reranker_latency"
+    },
+    {
+      "duration_seconds": 10.452570040943101,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "path": "treatment_total_retrieval_path"
+    },
+    {
+      "duration_seconds": 9.577469401061535,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "path": "treatment_hybrid_component"
+    },
+    {
+      "duration_seconds": 4.634399099973962,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "path": "treatment_reranker_latency"
+    },
+    {
+      "duration_seconds": 14.211951832985505,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "path": "treatment_total_retrieval_path"
+    },
+    {
+      "duration_seconds": 5.886357969022356,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "path": "treatment_hybrid_component"
+    },
+    {
+      "duration_seconds": 3.9652227909537032,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "path": "treatment_reranker_latency"
+    },
+    {
+      "duration_seconds": 9.851654706988484,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "path": "treatment_total_retrieval_path"
+    },
+    {
+      "duration_seconds": 9.032831048010848,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "path": "treatment_hybrid_component"
+    },
+    {
+      "duration_seconds": 3.7430360070429742,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "path": "treatment_reranker_latency"
+    },
+    {
+      "duration_seconds": 12.775961135979742,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "path": "treatment_total_retrieval_path"
+    },
+    {
+      "duration_seconds": 5.878029488027096,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "path": "treatment_hybrid_component"
+    },
+    {
+      "duration_seconds": 3.5115659419680014,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "path": "treatment_reranker_latency"
+    },
+    {
+      "duration_seconds": 9.389636846957728,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "path": "treatment_total_retrieval_path"
+    },
+    {
+      "duration_seconds": 6.262233259039931,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "path": "treatment_hybrid_component"
+    },
+    {
+      "duration_seconds": 3.5314390880521387,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "path": "treatment_reranker_latency"
+    },
+    {
+      "duration_seconds": 9.793705968069844,
+      "is_warmup": false,
+      "observation_status": "valid",
+      "path": "treatment_total_retrieval_path"
+    }
+  ],
+  "quality": {
+    "hit_rate_at_1": 0.0,
+    "hit_rate_at_10": 1.0,
+    "hit_rate_at_5": 1.0,
+    "mrr": 0.5,
+    "ndcg_at_1": 0.0,
+    "ndcg_at_10": 0.40771103702904055,
+    "ndcg_at_5": 0.38250073714724464,
+    "precision_at_1": 0.0,
+    "precision_at_10": 0.3,
+    "precision_at_5": 0.2,
+    "quality_eligible": true,
+    "recall_at_1": 0.0,
+    "recall_at_10": 0.3333333333333333,
+    "recall_at_5": 0.1111111111111111,
+    "requested_depth": 10,
+    "returned_count": 10
+  },
+  "ranked_chunk_ids": [
+    "chunk_8bd1eb529c2d5f118eff412e5dbd849cf909c7f43ac58c02eb0a36f6eaae5a5f",
+    "chunk_7f4e3401796bbf8780bcddb7cecc8fff4307bee65d7d4bbc95cf20a22619857c",
+    "chunk_5704f3770a0454dceae71c595db5fa41a15f75e965253d276e29eb64132008b6",
+    "chunk_17af6f6d25f488a24df2a17035c36f6286955ad64c59c1bea18601d7b1ee8ea0",
+    "chunk_b890c25d50feb4a39a010033493841bc500e2afac1719bcbe56bb8b7d6201af3",
+    "chunk_709ec9e10280df997df5132143858848f8a4a3714939dfbcf0eeaa2d8aedbe31",
+    "chunk_32991bd3aa67b92739e1945cc6c376d3159dc1daa5fed9d5a0425a78ddf3bd23",
+    "chunk_a1637b1d5846a059a1620798aab6d0624ea7943e5c8a16ea2084342f43ecbbb5",
+    "chunk_470f9046bacb59bc57d96bf0e8073a0ef6d9c7552c1e7b062291ac0b2d49c212",
+    "chunk_c95708a3713052752800fbdef195c939a221f9cb6a822b5e91a8c2549cfe6d03"
+  ],
+  "resource_samples": [
+    {
+      "contract": "performance-resource-observation-v1",
+      "device_id": null,
+      "is_warmup": true,
+      "note": "RSS sampled immediately before retrieval-path invocation; not a semantic fusion/rerank stage boundary",
+      "ram_availability": "available",
+      "ram_rss_bytes_before": 2867916800,
+      "ram_rss_bytes_peak": null,
+      "stage_id": "retrieval_path",
+      "vram_availability": "unavailable",
+      "vram_used_bytes_before": null,
+      "vram_used_bytes_peak": null
+    },
+    {
+      "contract": "performance-resource-observation-v1",
+      "device_id": null,
+      "is_warmup": true,
+      "note": "RSS sampled immediately before retrieval-path invocation; not a semantic fusion/rerank stage boundary",
+      "ram_availability": "available",
+      "ram_rss_bytes_before": 3759566848,
+      "ram_rss_bytes_peak": null,
+      "stage_id": "retrieval_path",
+      "vram_availability": "unavailable",
+      "vram_used_bytes_before": null,
+      "vram_used_bytes_peak": null
+    },
+    {
+      "contract": "performance-resource-observation-v1",
+      "device_id": null,
+      "is_warmup": false,
+      "note": "RSS sampled immediately before retrieval-path invocation; not a semantic fusion/rerank stage boundary",
+      "ram_availability": "available",
+      "ram_rss_bytes_before": 2864418816,
+      "ram_rss_bytes_peak": null,
+      "stage_id": "retrieval_path",
+      "vram_availability": "unavailable",
+      "vram_used_bytes_before": null,
+      "vram_used_bytes_peak": null
+    },
+    {
+      "contract": "performance-resource-observation-v1",
+      "device_id": null,
+      "is_warmup": false,
+      "note": "RSS sampled immediately before retrieval-path invocation; not a semantic fusion/rerank stage boundary",
+      "ram_availability": "available",
+      "ram_rss_bytes_before": 3776118784,
+      "ram_rss_bytes_peak": null,
+      "stage_id": "retrieval_path",
+      "vram_availability": "unavailable",
+      "vram_used_bytes_before": null,
+      "vram_used_bytes_peak": null
+    },
+    {
+      "contract": "performance-resource-observation-v1",
+      "device_id": null,
+      "is_warmup": false,
+      "note": "RSS sampled immediately before retrieval-path invocation; not a semantic fusion/rerank stage boundary",
+      "ram_availability": "available",
+      "ram_rss_bytes_before": 2877120512,
+      "ram_rss_bytes_peak": null,
+      "stage_id": "retrieval_path",
+      "vram_availability": "unavailable",
+      "vram_used_bytes_before": null,
+      "vram_used_bytes_peak": null
+    },
+    {
+      "contract": "performance-resource-observation-v1",
+      "device_id": null,
+      "is_warmup": false,
+      "note": "RSS sampled immediately before retrieval-path invocation; not a semantic fusion/rerank stage boundary",
+      "ram_availability": "available",
+      "ram_rss_bytes_before": 3768524800,
+      "ram_rss_bytes_peak": null,
+      "stage_id": "retrieval_path",
+      "vram_availability": "unavailable",
+      "vram_used_bytes_before": null,
+      "vram_used_bytes_peak": null
+    },
+    {
+      "contract": "performance-resource-observation-v1",
+      "device_id": null,
+      "is_warmup": false,
+      "note": "RSS sampled immediately before retrieval-path invocation; not a semantic fusion/rerank stage boundary",
+      "ram_availability": "available",
+      "ram_rss_bytes_before": 2873950208,
+      "ram_rss_bytes_peak": null,
+      "stage_id": "retrieval_path",
+      "vram_availability": "unavailable",
+      "vram_used_bytes_before": null,
+      "vram_used_bytes_peak": null
+    },
+    {
+      "contract": "performance-resource-observation-v1",
+      "device_id": null,
+      "is_warmup": false,
+      "note": "RSS sampled immediately before retrieval-path invocation; not a semantic fusion/rerank stage boundary",
+      "ram_availability": "available",
+      "ram_rss_bytes_before": 3760259072,
+      "ram_rss_bytes_peak": null,
+      "stage_id": "retrieval_path",
+      "vram_availability": "unavailable",
+      "vram_used_bytes_before": null,
+      "vram_used_bytes_peak": null
+    },
+    {
+      "contract": "performance-resource-observation-v1",
+      "device_id": null,
+      "is_warmup": false,
+      "note": "RSS sampled immediately before retrieval-path invocation; not a semantic fusion/rerank stage boundary",
+      "ram_availability": "available",
+      "ram_rss_bytes_before": 2876497920,
+      "ram_rss_bytes_peak": null,
+      "stage_id": "retrieval_path",
+      "vram_availability": "unavailable",
+      "vram_used_bytes_before": null,
+      "vram_used_bytes_peak": null
+    },
+    {
+      "contract": "performance-resource-observation-v1",
+      "device_id": null,
+      "is_warmup": false,
+      "note": "RSS sampled immediately before retrieval-path invocation; not a semantic fusion/rerank stage boundary",
+      "ram_availability": "available",
+      "ram_rss_bytes_before": 3766861824,
+      "ram_rss_bytes_peak": null,
+      "stage_id": "retrieval_path",
+      "vram_availability": "unavailable",
+      "vram_used_bytes_before": null,
+      "vram_used_bytes_peak": null
+    },
+    {
+      "contract": "performance-resource-observation-v1",
+      "device_id": null,
+      "is_warmup": false,
+      "note": "RSS sampled immediately before retrieval-path invocation; not a semantic fusion/rerank stage boundary",
+      "ram_availability": "available",
+      "ram_rss_bytes_before": 2875891712,
+      "ram_rss_bytes_peak": null,
+      "stage_id": "retrieval_path",
+      "vram_availability": "unavailable",
+      "vram_used_bytes_before": null,
+      "vram_used_bytes_peak": null
+    },
+    {
+      "contract": "performance-resource-observation-v1",
+      "device_id": null,
+      "is_warmup": false,
+      "note": "RSS sampled immediately before retrieval-path invocation; not a semantic fusion/rerank stage boundary",
+      "ram_availability": "available",
+      "ram_rss_bytes_before": 3769094144,
+      "ram_rss_bytes_peak": null,
+      "stage_id": "retrieval_path",
+      "vram_availability": "unavailable",
+      "vram_used_bytes_before": null,
+      "vram_used_bytes_peak": null
+    }
+  ],
+  "stage_or_path": "rerank",
+  "subject_identity": "draft_08f83eaef198495d92ff557eda974bf4",
+  "variant": "hybrid_rerank",
+  "warmup_count": 2,
+  "warmup_observations": [
+    {
+      "contract": "performance-benchmark-observation-v1",
+      "duration_seconds": 6.548314718995243,
+      "exclusion_reason": null,
+      "failure_reason": null,
+      "is_warmup": true,
+      "observation_status": "valid",
+      "resource": {
+        "contract": "performance-resource-observation-v1",
+        "device_id": null,
+        "is_warmup": true,
+        "note": "RSS sampled immediately before retrieval-path invocation; not a semantic fusion/rerank stage boundary",
+        "ram_availability": "available",
+        "ram_rss_bytes_before": 2867916800,
+        "ram_rss_bytes_peak": null,
+        "stage_id": "retrieval_path",
+        "vram_availability": "unavailable",
+        "vram_used_bytes_before": null,
+        "vram_used_bytes_peak": null
+      },
+      "stage_id": "rerank"
+    },
+    {
+      "contract": "performance-benchmark-observation-v1",
+      "duration_seconds": 4.753058547968976,
+      "exclusion_reason": null,
+      "failure_reason": null,
+      "is_warmup": true,
+      "observation_status": "valid",
+      "resource": {
+        "contract": "performance-resource-observation-v1",
+        "device_id": null,
+        "is_warmup": true,
+        "note": "RSS sampled immediately before retrieval-path invocation; not a semantic fusion/rerank stage boundary",
+        "ram_availability": "available",
+        "ram_rss_bytes_before": 3759566848,
+        "ram_rss_bytes_peak": null,
+        "stage_id": "retrieval_path",
+        "vram_availability": "unavailable",
+        "vram_used_bytes_before": null,
+        "vram_used_bytes_peak": null
+      },
+      "stage_id": "rerank"
+    }
+  ]
+}
