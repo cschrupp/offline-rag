@@ -29,6 +29,7 @@ from offline_rag.evaluation.performance_14.contracts import (
     PerformanceGenerationTelemetryV1,
     PerformanceLevelCAttemptV1,
     PerformanceLevelCStageDispositionV1,
+    PerformanceResourceObservationV1,
     PerformanceStageStatsV1,
 )
 from offline_rag.evaluation.performance_14.resources import capture_resource_observation
@@ -149,6 +150,8 @@ class PassiveLevelCGenerator:
 
     def generate(self, request: GeneratorRequest) -> GeneratorResponse:
         self.call_count += 1
+        # Clear prior-attempt state so failed calls cannot inherit stale usage.
+        self.last_response = None
         self.last_request = request
         self.generation_error = None
         self.time_to_error_seconds = None
@@ -312,7 +315,7 @@ def build_level_c_attempt(
     usage: Mapping[str, Any] | None = None,
     generation_time_to_error: float | None = None,
     e2e_exclusion_reason: str | None = None,
-    capture_ram: bool = False,
+    e2e_resource_observation: PerformanceResourceObservationV1 | None = None,
 ) -> PerformanceLevelCAttemptV1:
     """Build a validated attempt from timeline marks and terminal outcome."""
     terminal, abstention, gen_failure, invoked = classify_level_c_terminal(
@@ -594,23 +597,25 @@ def build_level_c_attempt(
             else e2e_dur,
             is_warmup=is_warmup,
             failure_reason=gen_failure or "orchestration_failed",
+            resource=e2e_resource_observation,
         )
     elif e2e_dur is None:
         e2e_disp, e2e_obs = _excluded(
             "end_to_end", "missing_t0_or_t6", is_warmup=is_warmup
         )
+        if e2e_resource_observation is not None and e2e_obs is not None:
+            e2e_obs = e2e_obs.model_copy(
+                update={"resource": e2e_resource_observation}
+            )
     else:
-        resource = None
-        if capture_ram:
-            resource = capture_resource_observation(stage_id="end_to_end")
-            # Force peak unavailable semantics already in capture helper.
         e2e_disp = _disp("valid")
         e2e_obs = _obs(
             stage_id="end_to_end",
             status="valid",
             duration=e2e_dur,
             is_warmup=is_warmup,
-            resource=resource,
+            # Pre-query RSS captured at E2E start (before answer), never post-T6.
+            resource=e2e_resource_observation,
         )
 
     telemetry = build_generation_telemetry(
@@ -680,7 +685,18 @@ def execute_level_c_attempt(
 ) -> PerformanceLevelCAttemptV1:
     """Run one Level-C attempt against a persistent instrumented orchestrator."""
     timeline.clear()
+    # E2E start: mark T0, then capture pre-query RSS before answer().
     timeline.mark_t0()
+    e2e_resource = None
+    if capture_ram:
+        try:
+            e2e_resource = capture_resource_observation(
+                stage_id="end_to_end",
+                is_warmup=is_warmup,
+            )
+        except Exception:  # noqa: BLE001 - resource failure must not alter query path
+            e2e_resource = None
+
     result: GroundedAnswerResult | None = None
     error: BaseException | None = None
     try:
@@ -712,7 +728,7 @@ def execute_level_c_attempt(
         exception=error,
         usage=usage,
         generation_time_to_error=time_to_error,
-        capture_ram=capture_ram,
+        e2e_resource_observation=e2e_resource,
     )
 
 

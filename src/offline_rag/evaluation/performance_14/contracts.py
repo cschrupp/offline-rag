@@ -430,6 +430,28 @@ class PerformanceBenchmarkCaseV1(StrictModel):
     # Level-C attempt traces (result evidence; excluded from perfcase_ identity).
     level_c_attempts: list[PerformanceLevelCAttemptV1] = Field(default_factory=list)
 
+    @model_validator(mode="after")
+    def _level_c_attempt_provenance(self) -> PerformanceBenchmarkCaseV1:
+        if not self.level_c_attempts:
+            return self
+        seen: set[tuple[bool, int]] = set()
+        for attempt in self.level_c_attempts:
+            if attempt.subject_identity != self.subject_identity:
+                raise ValueError(
+                    "level_c_attempts subject_identity must match case "
+                    f"subject_identity ({self.subject_identity!r}); "
+                    f"got {attempt.subject_identity!r}"
+                )
+            key = (attempt.is_warmup, attempt.attempt_index)
+            if key in seen:
+                raise ValueError(
+                    "duplicate Level-C attempt key "
+                    f"(is_warmup={attempt.is_warmup}, "
+                    f"attempt_index={attempt.attempt_index})"
+                )
+            seen.add(key)
+        return self
+
 
 class PerformanceBenchmarkSuiteV1(StrictModel):
     """Suite definition — WHAT is measured (excludes machine/SHA/results)."""

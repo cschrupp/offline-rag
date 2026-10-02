@@ -26,6 +26,7 @@ from offline_rag.evaluation.performance_14.contracts import (
     PerformanceGenerationTelemetryV1,
     PerformanceLevelCAttemptV1,
     PerformanceLevelCStageDispositionV1,
+    PerformanceResourceObservationV1,
 )
 from offline_rag.evaluation.performance_14.identity import (
     case_semantic_payload,
@@ -894,3 +895,270 @@ def test_14c_aggregate_path_unchanged_without_level_c_attempts() -> None:
     assert aggregate.by_stage_or_path[0].stage_or_path == "fusion"
     assert aggregate.by_stage_or_path[0].stats.n == 2
     assert aggregate.by_stage_or_path[0].stats.not_applicable_count == 0
+
+
+def test_flc_i1_failed_attempt_does_not_inherit_prior_usage() -> None:
+    """Success then failure on the same proxy must not leak completion_tokens."""
+    timeline = LevelCTimeline(clock=_FakeClock())
+    responses = [
+        GeneratorResponse(
+            content='{"abstain":true,"answer":null,"citation_ids":[]}',
+            usage={"completion_tokens": 17},
+        ),
+        RuntimeError("transport boom"),
+    ]
+
+    class _Sequenced:
+        def __init__(self) -> None:
+            self.i = 0
+
+        def generate(self, request: GeneratorRequest) -> GeneratorResponse:
+            item = responses[self.i]
+            self.i += 1
+            if isinstance(item, Exception):
+                raise item
+            return item
+
+        def probe(self):  # pragma: no cover
+            raise AssertionError("probe not used")
+
+    proxy = PassiveLevelCGenerator(_Sequenced(), timeline)
+    req = build_prompt_grounded_v1(
+        query="q",
+        evidence_units=[_unit()],
+        model="test-model",
+        temperature=0.0,
+        max_output_tokens=10,
+    )
+    first = proxy.generate(req)
+    assert first.usage["completion_tokens"] == 17
+    assert proxy.last_response is first
+
+    with pytest.raises(RuntimeError, match="transport boom"):
+        proxy.generate(req)
+    assert proxy.last_response is None
+    assert proxy.generation_error is not None
+
+    # Build the failed attempt with marks reflecting this invocation only.
+    fail_timeline = LevelCTimeline(clock=_FakeClock(start=50.0, step=1.0))
+    fail_timeline.mark_t0()
+    fail_timeline.mark_t1()
+    fail_timeline.mark_t2()
+    fail_timeline.mark_t3()
+    # T4 absent (generator raised)
+    fail_timeline.mark_generation_error()
+    fail_timeline.t5 = fail_timeline.clock()
+    fail_timeline.mark_t6()
+    usage = proxy.last_response.usage if proxy.last_response is not None else None
+    attempt = build_level_c_attempt(
+        timeline=fail_timeline,
+        subject_identity="q1",
+        attempt_index=1,
+        is_warmup=False,
+        result=_result(
+            status="generation_failed",
+            answer_text=None,
+            generation_failure_reason="transport_error",
+            generator_invoked=True,
+        ),
+        usage=usage,
+        generation_time_to_error=proxy.time_to_error_seconds,
+    )
+    assert attempt.generation_telemetry is not None
+    assert attempt.generation_telemetry.output_token_count_availability == "unavailable"
+    assert attempt.generation_telemetry.output_token_count is None
+    assert attempt.generation_telemetry.output_token_count_source == "unavailable"
+    assert attempt.stage_dispositions["generation"].status == "failed"
+
+
+def test_flc_i2_rss_before_captured_before_answer(monkeypatch: pytest.MonkeyPatch) -> None:
+    """ram_rss_bytes_before must be sampled before orchestrator.answer, not after."""
+    settings = _settings()
+    timeline = LevelCTimeline(clock=_FakeClock())
+    events: list[str] = []
+
+    def _fake_capture(stage_id: str, **kwargs: Any):
+        events.append(f"capture:{stage_id}")
+        return PerformanceResourceObservationV1(
+            stage_id=stage_id,
+            ram_availability="available",
+            ram_rss_bytes_before=424242,
+            ram_rss_bytes_peak=None,
+            vram_availability="unavailable",
+            vram_used_bytes_before=None,
+            vram_used_bytes_peak=None,
+            is_warmup=bool(kwargs.get("is_warmup", False)),
+        )
+
+    monkeypatch.setattr(
+        "offline_rag.evaluation.performance_14.level_c.capture_resource_observation",
+        _fake_capture,
+    )
+
+    fake = FakeGenerator(
+        default_response=json.dumps(
+            {"abstain": False, "answer": "100 psi", "citation_ids": ["ev_A"]}
+        )
+    )
+    proxy = PassiveLevelCGenerator(fake, timeline)
+    executor = PassiveLevelCExecutor(settings, generator=proxy, timeline=timeline)
+    assembler = MagicMock()
+
+    def _assemble(**_kwargs: Any):
+        events.append("answer_body")
+        return _context()
+
+    assembler.assemble.side_effect = _assemble
+    orch = GroundedAnswerOrchestrator(
+        settings, context_assembler=assembler, executor=executor
+    )
+    orch._require_ready = lambda _name: None  # type: ignore[method-assign]
+
+    original_answer = orch.answer
+
+    def _tracked_answer(**kwargs: Any):
+        events.append("answer_enter")
+        return original_answer(**kwargs)
+
+    orch.answer = _tracked_answer  # type: ignore[method-assign]
+
+    attempt = execute_level_c_attempt(
+        orch,
+        timeline,
+        query="pressure?",
+        corpus_name="default",
+        subject_identity="q1",
+        attempt_index=0,
+        is_warmup=False,
+        generator_proxy=proxy,
+        capture_ram=True,
+    )
+    assert events.index("capture:end_to_end") < events.index("answer_enter")
+    # Ensure no post-answer capture.
+    assert events.count("capture:end_to_end") == 1
+    resource = attempt.end_to_end_observation.resource
+    assert resource is not None
+    assert resource.ram_rss_bytes_before == 424242
+    assert resource.ram_rss_bytes_peak is None
+
+
+def test_flc_i2_post_query_rss_not_used_as_before() -> None:
+    """Explicit pre-query observation is attached; builder does not re-sample."""
+    timeline = LevelCTimeline(clock=_FakeClock())
+    for mark in (
+        timeline.mark_t0,
+        timeline.mark_t1,
+        timeline.mark_t2,
+        timeline.mark_t3,
+        timeline.mark_t4,
+        timeline.mark_t5,
+        timeline.mark_t6,
+    ):
+        mark()
+    pre = PerformanceResourceObservationV1(
+        stage_id="end_to_end",
+        ram_availability="available",
+        ram_rss_bytes_before=111,
+        ram_rss_bytes_peak=None,
+        vram_availability="unavailable",
+    )
+    attempt = build_level_c_attempt(
+        timeline=timeline,
+        subject_identity="q1",
+        attempt_index=0,
+        is_warmup=False,
+        result=_result(),
+        usage={"completion_tokens": 1},
+        e2e_resource_observation=pre,
+    )
+    assert attempt.end_to_end_observation.resource is pre
+    assert attempt.end_to_end_observation.resource.ram_rss_bytes_before == 111
+
+
+def test_flc_i3_duplicate_measured_attempt_index_rejected() -> None:
+    with pytest.raises(ValidationError, match="duplicate Level-C attempt key"):
+        PerformanceBenchmarkCaseV1(
+            case_id="c1",
+            case_kind="end_to_end_query",
+            benchmark_level="C",
+            stage_or_path="end_to_end",
+            subject_identity="q1",
+            variant="end_to_end_warm",
+            cold_warm="warm",
+            level_c_attempts=[
+                _answered_attempt(attempt_index=2, is_warmup=False),
+                _answered_attempt(attempt_index=2, is_warmup=False),
+            ],
+        )
+
+
+def test_flc_i3_duplicate_warmup_attempt_index_rejected() -> None:
+    with pytest.raises(ValidationError, match="duplicate Level-C attempt key"):
+        PerformanceBenchmarkCaseV1(
+            case_id="c1",
+            case_kind="end_to_end_query",
+            benchmark_level="C",
+            stage_or_path="end_to_end",
+            subject_identity="q1",
+            variant="end_to_end_warm",
+            cold_warm="warm",
+            level_c_attempts=[
+                _answered_attempt(attempt_index=0, is_warmup=True),
+                _answered_attempt(attempt_index=0, is_warmup=True),
+            ],
+        )
+
+
+def test_flc_i3_warmup_and_measured_index_zero_allowed() -> None:
+    case = PerformanceBenchmarkCaseV1(
+        case_id="c1",
+        case_kind="end_to_end_query",
+        benchmark_level="C",
+        stage_or_path="end_to_end",
+        subject_identity="q1",
+        variant="end_to_end_warm",
+        cold_warm="warm",
+        level_c_attempts=[
+            _answered_attempt(attempt_index=0, is_warmup=True),
+            _answered_attempt(attempt_index=0, is_warmup=False),
+        ],
+    )
+    assert len(case.level_c_attempts) == 2
+
+
+def test_flc_i3_subject_mismatch_rejected() -> None:
+    bad = _answered_attempt()
+    bad = bad.model_copy(update={"subject_identity": "other_query"})
+    with pytest.raises(ValidationError, match="subject_identity must match"):
+        PerformanceBenchmarkCaseV1(
+            case_id="c1",
+            case_kind="end_to_end_query",
+            benchmark_level="C",
+            stage_or_path="end_to_end",
+            subject_identity="q1",
+            variant="end_to_end_warm",
+            cold_warm="warm",
+            level_c_attempts=[bad],
+        )
+
+
+def test_flc_i3_attempts_still_excluded_from_perfcase_identity() -> None:
+    base = PerformanceBenchmarkCaseV1(
+        case_id="c1",
+        case_kind="end_to_end_query",
+        benchmark_level="C",
+        stage_or_path="end_to_end",
+        subject_identity="q1",
+        variant="end_to_end_warm",
+        cold_warm="warm",
+    )
+    with_attempts = base.model_copy(
+        update={
+            "level_c_attempts": [
+                _answered_attempt(attempt_index=0, is_warmup=True),
+                _answered_attempt(attempt_index=0, is_warmup=False),
+            ]
+        }
+    )
+    assert compute_case_identity_hash(base) == compute_case_identity_hash(with_attempts)
+    assert "level_c_attempts" not in case_semantic_payload(with_attempts)
