@@ -24,6 +24,9 @@ from offline_rag.evaluation.performance_14.evidence_14c import (
     VARIANT_TOTAL_PATH,
     path_samples_to_observations,
 )
+from offline_rag.evaluation.performance_14.level_c import (
+    build_level_c_stage_aggregates,
+)
 from offline_rag.evaluation.performance_14.statistics import derive_latency_stats
 
 
@@ -40,6 +43,7 @@ def _empty_stats() -> DerivedLatencyStatsV1:
         failure_count=0,
         warmup_count=0,
         instrumentation_exclusion_count=0,
+        not_applicable_count=0,
     )
 
 
@@ -78,6 +82,11 @@ def build_run_aggregate(
             evidence_class=evidence_class,
         )
 
+    level_c_attempts = [
+        attempt for case in cases for attempt in (case.level_c_attempts or [])
+    ]
+    use_level_c_stages = benchmark_level == "C" or bool(level_c_attempts)
+
     by_variant_obs: dict[str, list[PerformanceBenchmarkObservationV1]] = defaultdict(
         list
     )
@@ -114,16 +123,27 @@ def build_run_aggregate(
         )
         for variant, observations in sorted(by_variant_obs.items())
     ]
-    by_stage = [
-        PerformanceStageStatsV1(
-            stage_or_path=stage,
-            stats=derive_latency_stats(observations),
+
+    if use_level_c_stages and level_c_attempts:
+        by_stage = build_level_c_stage_aggregates(level_c_attempts)
+        overall = next(
+            (item.stats for item in by_stage if item.stage_or_path == "end_to_end"),
+            _empty_stats(),
         )
-        for stage, observations in sorted(by_stage_obs.items())
-    ]
-    overall = (
-        derive_latency_stats(variant_rollup_obs) if variant_rollup_obs else _empty_stats()
-    )
+    else:
+        by_stage = [
+            PerformanceStageStatsV1(
+                stage_or_path=stage,
+                stats=derive_latency_stats(observations),
+            )
+            for stage, observations in sorted(by_stage_obs.items())
+        ]
+        overall = (
+            derive_latency_stats(variant_rollup_obs)
+            if variant_rollup_obs
+            else _empty_stats()
+        )
+
     return PerformanceRunAggregateV1(
         suite_id=suite_id,
         run_id=run_id,

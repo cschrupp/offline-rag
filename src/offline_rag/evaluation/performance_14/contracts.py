@@ -87,6 +87,39 @@ GenerationSubBoundaryV1 = Literal[
     "tokens_per_second",
 ]
 
+PERFORMANCE_LEVEL_C_ATTEMPT_V1 = "performance-level-c-attempt-v1"
+PERFORMANCE_GENERATION_TELEMETRY_V1 = "performance-generation-telemetry-v1"
+PERFORMANCE_LEVEL_C_STAGE_DISPOSITION_V1 = "performance-level-c-stage-disposition-v1"
+
+LevelCStageIdV1 = Literal[
+    "context_assembly",
+    "generation",
+    "citation_validation",
+    "end_to_end",
+]
+LEVEL_C_STAGE_IDS_V1: tuple[LevelCStageIdV1, ...] = (
+    "context_assembly",
+    "generation",
+    "citation_validation",
+    "end_to_end",
+)
+
+LevelCStageDispositionStatusV1 = Literal[
+    "valid",
+    "failed",
+    "excluded_instrumentation_error",
+    "not_applicable",
+]
+
+LevelCTerminalStatusV1 = Literal[
+    "answered",
+    "insufficient_evidence",
+    "model_abstain",
+    "generation_failed",
+    "citation_invalid",
+    "orchestration_failed",
+]
+
 
 class Performance14Error(RuntimeError):
     """Fail-closed Slice 14 performance evaluation error."""
@@ -111,6 +144,8 @@ class DerivedLatencyStatsV1(StrictModel):
     failure_count: int = Field(ge=0, default=0)
     warmup_count: int = Field(ge=0, default=0)
     instrumentation_exclusion_count: int = Field(ge=0, default=0)
+    # Level-C: stages correctly skipped. NOT part of attempted_count.
+    not_applicable_count: int = Field(ge=0, default=0)
 
     @model_validator(mode="after")
     def _stats_consistency(self) -> DerivedLatencyStatsV1:
@@ -133,6 +168,71 @@ class DerivedLatencyStatsV1(StrictModel):
         assert self.min is not None and self.max is not None
         if self.min > self.max:
             raise ValueError("min must be <= max")
+        return self
+
+
+class PerformanceLevelCStageDispositionV1(StrictModel):
+    """Per-stage applicability / outcome for one Level-C attempt."""
+
+    contract: ExactNonBlankStr = PERFORMANCE_LEVEL_C_STAGE_DISPOSITION_V1
+    status: LevelCStageDispositionStatusV1
+    reason: ExactNonBlankStr | None = None
+
+    @model_validator(mode="after")
+    def _reason_rules(self) -> PerformanceLevelCStageDispositionV1:
+        if self.status == "valid":
+            if self.reason is not None:
+                raise ValueError("valid disposition must not set reason")
+        elif not self.reason:
+            raise ValueError(f"{self.status} disposition requires reason")
+        return self
+
+
+class PerformanceGenerationTelemetryV1(StrictModel):
+    """Provider-passthrough generation telemetry (no duplicated generation duration)."""
+
+    contract: ExactNonBlankStr = PERFORMANCE_GENERATION_TELEMETRY_V1
+    generator_invoked: bool
+    ttft_availability: Literal["unevaluable"] = "unevaluable"
+    ttft_seconds: float | None = None
+    decode_availability: Literal["unevaluable"] = "unevaluable"
+    decode_seconds: float | None = None
+    output_token_count_availability: Literal["available", "unavailable"]
+    output_token_count: int | None = None
+    output_token_count_source: Literal[
+        "provider_usage_completion_tokens",
+        "unavailable",
+    ]
+    tokens_per_second_availability: Literal["unevaluable"] = "unevaluable"
+    tokens_per_second: float | None = None
+
+    @model_validator(mode="after")
+    def _telemetry_rules(self) -> PerformanceGenerationTelemetryV1:
+        if self.ttft_availability == "unevaluable" and self.ttft_seconds is not None:
+            raise ValueError("unevaluable TTFT requires ttft_seconds=None")
+        if self.decode_availability == "unevaluable" and self.decode_seconds is not None:
+            raise ValueError("unevaluable decode requires decode_seconds=None")
+        if (
+            self.tokens_per_second_availability == "unevaluable"
+            and self.tokens_per_second is not None
+        ):
+            raise ValueError("unevaluable tokens/sec requires tokens_per_second=None")
+        if self.output_token_count_availability == "available":
+            if self.output_token_count is None:
+                raise ValueError("available output tokens require output_token_count")
+            if isinstance(self.output_token_count, bool):
+                raise ValueError("output_token_count must not be bool")
+            if self.output_token_count < 0:
+                raise ValueError("output_token_count must be >= 0")
+            if self.output_token_count_source != "provider_usage_completion_tokens":
+                raise ValueError(
+                    "available tokens require source=provider_usage_completion_tokens"
+                )
+        else:
+            if self.output_token_count is not None:
+                raise ValueError("unavailable tokens require output_token_count=None")
+            if self.output_token_count_source != "unavailable":
+                raise ValueError("unavailable tokens require source=unavailable")
         return self
 
 
@@ -205,6 +305,75 @@ class PerformanceBenchmarkObservationV1(StrictModel):
         return self
 
 
+class PerformanceLevelCAttemptV1(StrictModel):
+    """One warm-up or measured Level-C query invocation (structural provenance)."""
+
+    contract: ExactNonBlankStr = PERFORMANCE_LEVEL_C_ATTEMPT_V1
+    attempt_index: int = Field(ge=0)
+    is_warmup: bool
+    subject_identity: ExactNonBlankStr
+    terminal_status: LevelCTerminalStatusV1
+    abstention_reason: Literal["empty_context", "model_abstain"] | None = None
+    generation_failure_reason: ExactNonBlankStr | None = None
+    generator_invoked: bool
+    stage_dispositions: dict[str, PerformanceLevelCStageDispositionV1]
+    context_assembly_observation: PerformanceBenchmarkObservationV1 | None = None
+    generation_observation: PerformanceBenchmarkObservationV1 | None = None
+    citation_validation_observation: PerformanceBenchmarkObservationV1 | None = None
+    end_to_end_observation: PerformanceBenchmarkObservationV1 | None = None
+    generation_telemetry: PerformanceGenerationTelemetryV1 | None = None
+
+    @model_validator(mode="after")
+    def _attempt_invariants(self) -> PerformanceLevelCAttemptV1:
+        expected = set(LEVEL_C_STAGE_IDS_V1)
+        keys = set(self.stage_dispositions.keys())
+        if keys != expected:
+            raise ValueError(
+                "stage_dispositions must contain exactly "
+                f"{list(LEVEL_C_STAGE_IDS_V1)}; got {sorted(keys)}"
+            )
+        obs_by_stage = {
+            "context_assembly": self.context_assembly_observation,
+            "generation": self.generation_observation,
+            "citation_validation": self.citation_validation_observation,
+            "end_to_end": self.end_to_end_observation,
+        }
+        for stage_id, disposition in self.stage_dispositions.items():
+            observation = obs_by_stage[stage_id]
+            status = disposition.status
+            if status == "not_applicable":
+                if observation is not None:
+                    raise ValueError(
+                        f"{stage_id}: not_applicable requires observation=None"
+                    )
+                continue
+            if observation is None:
+                raise ValueError(f"{stage_id}: {status} requires observation")
+            if observation.stage_id != stage_id:
+                raise ValueError(
+                    f"{stage_id}: observation.stage_id mismatch "
+                    f"({observation.stage_id!r})"
+                )
+            if observation.observation_status != status:
+                raise ValueError(
+                    f"{stage_id}: disposition {status!r} disagrees with "
+                    f"observation_status {observation.observation_status!r}"
+                )
+            if status == "valid" and observation.duration_seconds is None:
+                raise ValueError(f"{stage_id}: valid observation requires duration")
+            if status == "failed" and not observation.failure_reason:
+                raise ValueError(
+                    f"{stage_id}: failed observation requires failure_reason"
+                )
+            if status == "excluded_instrumentation_error" and (
+                not observation.exclusion_reason
+            ):
+                raise ValueError(
+                    f"{stage_id}: excluded observation requires exclusion_reason"
+                )
+        return self
+
+
 class PerformanceMachineProfileV1(StrictModel):
     """Identity-bearing machine/environment profile for a RUN (not a CASE)."""
 
@@ -258,6 +427,8 @@ class PerformanceBenchmarkCaseV1(StrictModel):
     path_samples: list[PerformancePathSampleV1] = Field(default_factory=list)
     # Legacy float-only hybrid durations (unused by corrected 14C harness).
     hybrid_path_durations_seconds: list[float] = Field(default_factory=list)
+    # Level-C attempt traces (result evidence; excluded from perfcase_ identity).
+    level_c_attempts: list[PerformanceLevelCAttemptV1] = Field(default_factory=list)
 
 
 class PerformanceBenchmarkSuiteV1(StrictModel):
