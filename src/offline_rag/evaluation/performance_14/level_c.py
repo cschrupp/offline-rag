@@ -685,8 +685,7 @@ def execute_level_c_attempt(
 ) -> PerformanceLevelCAttemptV1:
     """Run one Level-C attempt against a persistent instrumented orchestrator."""
     timeline.clear()
-    # E2E start: mark T0, then capture pre-query RSS before answer().
-    timeline.mark_t0()
+    # Pre-query RSS is harness evidence and must NOT sit inside T0→T6.
     e2e_resource = None
     if capture_ram:
         try:
@@ -696,6 +695,9 @@ def execute_level_c_attempt(
             )
         except Exception:  # noqa: BLE001 - resource failure must not alter query path
             e2e_resource = None
+
+    # Locked Level-C E2E boundary begins here.
+    timeline.mark_t0()
 
     result: GroundedAnswerResult | None = None
     error: BaseException | None = None

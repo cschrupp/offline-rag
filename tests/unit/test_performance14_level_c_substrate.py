@@ -972,13 +972,13 @@ def test_flc_i1_failed_attempt_does_not_inherit_prior_usage() -> None:
 
 
 def test_flc_i2_rss_before_captured_before_answer(monkeypatch: pytest.MonkeyPatch) -> None:
-    """ram_rss_bytes_before must be sampled before orchestrator.answer, not after."""
+    """RSS sample must precede T0; T0 must precede orchestrator.answer."""
     settings = _settings()
     timeline = LevelCTimeline(clock=_FakeClock())
     events: list[str] = []
 
     def _fake_capture(stage_id: str, **kwargs: Any):
-        events.append(f"capture:{stage_id}")
+        events.append("rss")
         return PerformanceResourceObservationV1(
             stage_id=stage_id,
             ram_availability="available",
@@ -995,6 +995,14 @@ def test_flc_i2_rss_before_captured_before_answer(monkeypatch: pytest.MonkeyPatc
         _fake_capture,
     )
 
+    original_mark_t0 = timeline.mark_t0
+
+    def _tracked_mark_t0() -> float:
+        events.append("t0")
+        return original_mark_t0()
+
+    timeline.mark_t0 = _tracked_mark_t0  # type: ignore[method-assign]
+
     fake = FakeGenerator(
         default_response=json.dumps(
             {"abstain": False, "answer": "100 psi", "citation_ids": ["ev_A"]}
@@ -1003,12 +1011,7 @@ def test_flc_i2_rss_before_captured_before_answer(monkeypatch: pytest.MonkeyPatc
     proxy = PassiveLevelCGenerator(fake, timeline)
     executor = PassiveLevelCExecutor(settings, generator=proxy, timeline=timeline)
     assembler = MagicMock()
-
-    def _assemble(**_kwargs: Any):
-        events.append("answer_body")
-        return _context()
-
-    assembler.assemble.side_effect = _assemble
+    assembler.assemble.return_value = _context()
     orch = GroundedAnswerOrchestrator(
         settings, context_assembler=assembler, executor=executor
     )
@@ -1017,7 +1020,7 @@ def test_flc_i2_rss_before_captured_before_answer(monkeypatch: pytest.MonkeyPatc
     original_answer = orch.answer
 
     def _tracked_answer(**kwargs: Any):
-        events.append("answer_enter")
+        events.append("answer")
         return original_answer(**kwargs)
 
     orch.answer = _tracked_answer  # type: ignore[method-assign]
@@ -1033,9 +1036,8 @@ def test_flc_i2_rss_before_captured_before_answer(monkeypatch: pytest.MonkeyPatc
         generator_proxy=proxy,
         capture_ram=True,
     )
-    assert events.index("capture:end_to_end") < events.index("answer_enter")
-    # Ensure no post-answer capture.
-    assert events.count("capture:end_to_end") == 1
+    assert events.index("rss") < events.index("t0") < events.index("answer")
+    assert events.count("rss") == 1
     resource = attempt.end_to_end_observation.resource
     assert resource is not None
     assert resource.ram_rss_bytes_before == 424242
