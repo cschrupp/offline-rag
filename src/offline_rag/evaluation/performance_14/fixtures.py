@@ -15,7 +15,11 @@ from offline_rag.evaluation.performance_14.contracts import (
 )
 from offline_rag.evaluation.performance_14.identity import compute_suite_identity_hash
 
-PopulationKindV1 = Literal["performance_fixture", "quality_vs_cost_frozen"]
+PopulationKindV1 = Literal[
+    "performance_fixture",
+    "quality_vs_cost_frozen",
+    "level_c_e2e_frozen",
+]
 
 # Diagnostic dry-run defaults meet locked minima without long wall time.
 DEFAULT_WARMUP_COUNT = 1
