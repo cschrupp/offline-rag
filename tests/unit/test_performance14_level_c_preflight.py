@@ -676,10 +676,13 @@ def test_api_key_does_not_leak(
         dotenv_path=tmp_path / "no.env",
         provider_probe="skip",
     )
-    assert ctx.runtime_settings.generation.api_key == SECRET_API_KEY
+    assert ctx.runtime_settings.generation.api_key is None
+    assert ctx.api_key_configured is True
     dumped = str(ctx.preflight_record.model_dump(mode="json"))
     assert SECRET_API_KEY not in dumped
     assert SECRET_API_KEY not in str(ctx.preflight_record)
+    assert SECRET_API_KEY not in str(ctx.runtime_settings.model_dump(mode="json"))
+    assert SECRET_API_KEY not in repr(ctx)
 
     def _probe(_settings: AppSettings) -> GeneratorProbeResult:
         return GeneratorProbeResult(
@@ -698,6 +701,130 @@ def test_api_key_does_not_leak(
     assert SECRET_API_KEY not in str(excinfo.value)
     record = excinfo.value.preflight_record  # type: ignore[attr-defined]
     assert SECRET_API_KEY not in str(record.model_dump(mode="json"))
+
+
+def test_secret_bearing_probe_receives_transient_api_key(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _patch_local_checks_ok(monkeypatch)
+    parent = tmp_path / "results"
+    parent.mkdir()
+    monkeypatch.setattr(
+        "offline_rag.evaluation.performance_14.preflight_14_level_c.reserved_results_root",
+        lambda _root: parent,
+    )
+    seen: dict[str, str | None] = {}
+
+    def _probe(settings: AppSettings) -> GeneratorProbeResult:
+        seen["api_key"] = settings.generation.api_key
+        return GeneratorProbeResult(ok=True, reason="ok")
+
+    ctx = run_level_c_execution_preflight(
+        repo_root=REPO_ROOT,
+        environ=_llm_env(OFFLINE_RAG_LLM_API_KEY=SECRET_API_KEY),
+        dotenv_path=tmp_path / "no.env",
+        provider_probe="require",
+        provider_probe_fn=_probe,
+    )
+    assert seen["api_key"] == SECRET_API_KEY
+    assert ctx.runtime_settings.generation.api_key is None
+    assert ctx.api_key_configured is True
+    assert SECRET_API_KEY not in str(ctx.runtime_settings.model_dump(mode="json"))
+
+
+def test_runtime_data_dir_override_reaches_substrate_checks(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _patch_local_checks_ok(monkeypatch)
+    parent = tmp_path / "results"
+    parent.mkdir()
+    alt_data = tmp_path / "alt_data"
+    monkeypatch.setattr(
+        "offline_rag.evaluation.performance_14.preflight_14_level_c.reserved_results_root",
+        lambda _root: parent,
+    )
+    captured: dict[str, Path] = {}
+
+    def _capture(*, hybrid_settings: AppSettings, rerank_settings: AppSettings) -> None:
+        captured["hybrid_corpora"] = Path(hybrid_settings.paths.corpora)
+        captured["hybrid_qdrant"] = Path(hybrid_settings.paths.qdrant_storage)
+        captured["rerank_corpora"] = Path(rerank_settings.paths.corpora)
+        raise Performance14Error("stop-after-capture")
+
+    monkeypatch.setattr(
+        "offline_rag.evaluation.performance_14.preflight_14_level_c.assert_index_and_config_pins",
+        _capture,
+    )
+    with pytest.raises(Performance14Error, match="stop-after-capture"):
+        run_level_c_execution_preflight(
+            repo_root=REPO_ROOT,
+            environ=_llm_env(OFFLINE_RAG_DATA_DIR=str(alt_data)),
+            dotenv_path=tmp_path / "no.env",
+            provider_probe="skip",
+        )
+    expected_corpora = (alt_data / "corpora").resolve()
+    expected_qdrant = (alt_data / "qdrant").resolve()
+    assert captured["hybrid_corpora"].resolve() == expected_corpora
+    assert captured["rerank_corpora"].resolve() == expected_corpora
+    assert captured["hybrid_qdrant"].resolve() == expected_qdrant
+    default_corpora = (REPO_ROOT / "data" / "corpora").resolve()
+    assert captured["hybrid_corpora"].resolve() != default_corpora
+
+
+def test_malformed_runtime_env_becomes_performance14_error(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(
+        "offline_rag.evaluation.performance_14.preflight_14_level_c.assert_working_tree_clean_for_level_c",
+        lambda _root: None,
+    )
+    with pytest.raises(Performance14Error) as excinfo:
+        run_level_c_execution_preflight(
+            repo_root=REPO_ROOT,
+            environ=_llm_env(
+                OFFLINE_RAG_LLM_TIMEOUT_SECONDS="not-an-integer",
+                OFFLINE_RAG_LLM_API_KEY=SECRET_API_KEY,
+            ),
+            dotenv_path=tmp_path / "no.env",
+            provider_probe="skip",
+        )
+    assert SECRET_API_KEY not in str(excinfo.value)
+    partial = excinfo.value.preflight_partial  # type: ignore[attr-defined]
+    record = excinfo.value.preflight_record  # type: ignore[attr-defined]
+    assert partial.failing_check == "runtime_settings"
+    assert record is not None
+    assert SECRET_API_KEY not in str(record.model_dump(mode="json"))
+
+
+def test_provider_probe_unexpected_exception_normalized(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _patch_local_checks_ok(monkeypatch)
+    parent = tmp_path / "results"
+    parent.mkdir()
+    monkeypatch.setattr(
+        "offline_rag.evaluation.performance_14.preflight_14_level_c.reserved_results_root",
+        lambda _root: parent,
+    )
+
+    def _probe(_settings: AppSettings) -> GeneratorProbeResult:
+        raise RuntimeError(f"unexpected probe failure {SECRET_API_KEY}")
+
+    with pytest.raises(Performance14Error) as excinfo:
+        run_level_c_execution_preflight(
+            repo_root=REPO_ROOT,
+            environ=_llm_env(OFFLINE_RAG_LLM_API_KEY=SECRET_API_KEY),
+            dotenv_path=tmp_path / "no.env",
+            provider_probe="require",
+            provider_probe_fn=_probe,
+        )
+    assert SECRET_API_KEY not in str(excinfo.value)
+    partial = excinfo.value.preflight_partial  # type: ignore[attr-defined]
+    record = excinfo.value.preflight_record  # type: ignore[attr-defined]
+    assert partial.failing_check == "provider_probe"
+    assert record is not None
+    assert SECRET_API_KEY not in str(record.model_dump(mode="json"))
+    assert "RuntimeError" in str(excinfo.value)
 
 
 def test_level_c_population_is_first_five_of_14c() -> None:

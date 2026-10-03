@@ -7,6 +7,10 @@ inference.
 Provider ``/v1/models`` contact occurs only when ``provider_probe="require"``.
 Default ``provider_probe="skip"`` performs zero network calls and never claims
 ``execution_ready=True``.
+
+Returned ``LevelCPreflightContext.runtime_settings`` is sanitized
+(``generation.api_key is None``). Secret-bearing settings exist only transiently
+for the provider probe.
 """
 
 from __future__ import annotations
@@ -20,7 +24,7 @@ from pathlib import Path
 from typing import Literal
 
 from offline_rag.chunking.pipeline import make_token_counter
-from offline_rag.config.loader import load_dotenv, load_settings
+from offline_rag.config.loader import ConfigError, load_dotenv, load_settings
 from offline_rag.config.models import AppSettings
 from offline_rag.context.config_hash import (
     build_context_config_hash,
@@ -52,9 +56,9 @@ from offline_rag.evaluation.performance_14.preflight import (
     resolve_repo_root,
 )
 from offline_rag.evaluation.performance_14.preflight_14c import (
+    HYBRID_RERANK_SETTINGS_YAMLS,
+    HYBRID_SETTINGS_YAMLS,
     assert_index_and_config_pins,
-    load_hybrid_rerank_settings,
-    load_hybrid_settings,
 )
 from offline_rag.evaluation.performance_14.resources import (
     observe_ram_rss_bytes,
@@ -144,16 +148,16 @@ def assert_working_tree_clean_for_level_c(repo_root: Path) -> None:
         )
 
 
-def load_level_c_runtime_settings(
+def build_level_c_runtime_environment(
     repo_root: Path,
     *,
     environ: Mapping[str, str] | None = None,
     dotenv_path: Path | None = None,
-) -> AppSettings:
-    """Load effective runtime settings without mutating the caller's environment.
+) -> dict[str, str]:
+    """Build one copied effective environment for all Level-C readiness loads.
 
-    Precedence: process/supplied env wins over ``.env``; YAML under env overlays
-    via ``load_settings``.
+    Precedence: supplied/process env wins; ``.env`` fills only missing keys.
+    Never mutates the caller's ``os.environ``.
     """
     runtime_env: MutableMapping[str, str] = dict(
         environ if environ is not None else os.environ
@@ -161,18 +165,99 @@ def load_level_c_runtime_settings(
     env_file = (
         Path(dotenv_path) if dotenv_path is not None else (repo_root / ".env")
     )
-    load_dotenv(env_file, environ=runtime_env)
-    return load_settings(
-        yaml_paths=[repo_root / "config" / "base.yaml"],
-        environ=runtime_env,
+    try:
+        load_dotenv(env_file, environ=runtime_env)
+    except OSError as exc:
+        raise Performance14Error(
+            f"failed to load runtime .env from {env_file}: {exc}"
+        ) from exc
+    return dict(runtime_env)
+
+
+def _sanitize_config_load_error(
+    exc: BaseException,
+    *,
+    api_key: str | None = None,
+) -> str:
+    detail = str(exc)
+    if api_key and api_key in detail:
+        detail = detail.replace(api_key, "<redacted>")
+    return f"runtime configuration invalid: {type(exc).__name__}: {detail}"
+
+
+def load_level_c_runtime_settings(
+    repo_root: Path,
+    *,
+    environ: Mapping[str, str] | None = None,
+    dotenv_path: Path | None = None,
+    runtime_env: Mapping[str, str] | None = None,
+) -> AppSettings:
+    """Load effective Level-C base runtime settings (may include secrets)."""
+    env = (
+        dict(runtime_env)
+        if runtime_env is not None
+        else build_level_c_runtime_environment(
+            repo_root, environ=environ, dotenv_path=dotenv_path
+        )
+    )
+    try:
+        return load_settings(
+            yaml_paths=[repo_root / "config" / "base.yaml"],
+            environ=env,
+        )
+    except (ConfigError, OSError) as exc:
+        raise Performance14Error(
+            _sanitize_config_load_error(exc, api_key=env.get("OFFLINE_RAG_LLM_API_KEY"))
+        ) from exc
+
+
+def load_level_c_hybrid_settings(
+    repo_root: Path,
+    *,
+    runtime_env: Mapping[str, str],
+) -> AppSettings:
+    """Load hybrid retrieval settings using the same runtime environment."""
+    paths = [repo_root / rel for rel in HYBRID_SETTINGS_YAMLS]
+    try:
+        return load_settings(yaml_paths=paths, environ=runtime_env)
+    except (ConfigError, OSError) as exc:
+        raise Performance14Error(
+            _sanitize_config_load_error(
+                exc, api_key=runtime_env.get("OFFLINE_RAG_LLM_API_KEY")
+            )
+        ) from exc
+
+
+def load_level_c_hybrid_rerank_settings(
+    repo_root: Path,
+    *,
+    runtime_env: Mapping[str, str],
+) -> AppSettings:
+    """Load hybrid+rerank settings using the same runtime environment."""
+    paths = [repo_root / rel for rel in HYBRID_RERANK_SETTINGS_YAMLS]
+    try:
+        return load_settings(yaml_paths=paths, environ=runtime_env)
+    except (ConfigError, OSError) as exc:
+        raise Performance14Error(
+            _sanitize_config_load_error(
+                exc, api_key=runtime_env.get("OFFLINE_RAG_LLM_API_KEY")
+            )
+        ) from exc
+
+
+def sanitize_runtime_settings_for_context(settings: AppSettings) -> AppSettings:
+    """Return a copy safe for persistence: generation.api_key cleared."""
+    return settings.model_copy(
+        update={
+            "generation": settings.generation.model_copy(update={"api_key": None})
+        }
     )
 
 
-def _redact_secrets(text: str, settings: AppSettings) -> str:
+def _redact_secrets(text: str, *, api_key: str | None) -> str:
     """Ensure API-key material never appears in preflight reasons/errors."""
-    key = settings.generation.api_key
-    if key and key in text:
-        return text.replace(key, "<redacted>")
+    if api_key and api_key in text:
+        return text.replace(api_key, "<redacted>")
     return text
 
 
@@ -393,6 +478,7 @@ class LevelCPreflightContext:
     machine_profile_id: str
     results_parent: Path
     runtime_settings: AppSettings
+    api_key_configured: bool
     provider_probe_performed: bool
     provider_probe_ok: bool | None
     execution_ready: bool
@@ -412,6 +498,8 @@ def run_level_c_execution_preflight(
     ``execution_ready`` is observational only and never means execution is
     authorized. With ``provider_probe="skip"``, ``execution_ready`` is always
     ``False`` even when all local checks pass.
+
+    Returned ``runtime_settings`` is sanitized (``generation.api_key is None``).
     """
     if provider_probe not in {"skip", "require"}:
         raise Performance14Error(
@@ -419,7 +507,7 @@ def run_level_c_execution_preflight(
         )
 
     acc = PreflightAccumulator()
-    runtime_settings: AppSettings | None = None
+    secret_api_key: str | None = None
     try:
         root = acc.run_check("repository_root", lambda: resolve_repo_root(repo_root))
         acc.repo_root = root
@@ -491,18 +579,29 @@ def run_level_c_execution_preflight(
 
         frozen = load_frozen_suite_artifact_level_c(repo_root=root)
 
-        runtime_settings = acc.run_check(
-            "runtime_settings",
-            lambda: load_level_c_runtime_settings(
+        runtime_env = acc.run_check(
+            "runtime_environment",
+            lambda: build_level_c_runtime_environment(
                 root, environ=environ, dotenv_path=dotenv_path
             ),
         )
+        acc.add("runtime_environment", "passed", "copied_env+dotenv")
+
+        # Secret-bearing settings: local only; never returned on the context.
+        secret_runtime_settings = acc.run_check(
+            "runtime_settings",
+            lambda: load_level_c_runtime_settings(
+                root, runtime_env=runtime_env
+            ),
+        )
+        secret_api_key = secret_runtime_settings.generation.api_key
+        api_key_configured = bool(secret_api_key)
         acc.add("runtime_settings", "passed", "base.yaml+dotenv_copy")
 
         generation_config_id = acc.run_check(
             "generation_runtime_pin",
             lambda: assert_runtime_generation_matches_freeze(
-                runtime_settings,
+                secret_runtime_settings,
                 frozen_generation_semantic_payload=frozen.generation_semantic_payload,
             ),
         )
@@ -511,7 +610,7 @@ def run_level_c_execution_preflight(
         context_config_id = acc.run_check(
             "context_runtime_pin",
             lambda: assert_runtime_context_matches_freeze(
-                runtime_settings,
+                secret_runtime_settings,
                 frozen_context_semantic_payload=frozen.context_semantic_payload,
             ),
         )
@@ -519,11 +618,10 @@ def run_level_c_execution_preflight(
 
         acc.run_check(
             "recovery_disabled",
-            lambda: assert_recovery_disabled(runtime_settings),
+            lambda: assert_recovery_disabled(secret_runtime_settings),
         )
         acc.add("recovery_disabled", "passed", "false")
 
-        # Streaming is freeze/adapter contract invariant (no runtime field).
         if frozen.generation_streaming:
             raise Performance14Error("Level-C freeze forbids streaming generation")
         acc.add(
@@ -532,14 +630,19 @@ def run_level_c_execution_preflight(
             "false/non-streaming-adapter",
         )
 
+        # Substrate checks must honor the same path overrides as execution.
         hybrid_settings = acc.run_check(
-            "hybrid_settings", lambda: load_hybrid_settings(root)
+            "hybrid_settings",
+            lambda: load_level_c_hybrid_settings(root, runtime_env=runtime_env),
         )
         rerank_settings = acc.run_check(
-            "hybrid_rerank_settings", lambda: load_hybrid_rerank_settings(root)
+            "hybrid_rerank_settings",
+            lambda: load_level_c_hybrid_rerank_settings(
+                root, runtime_env=runtime_env
+            ),
         )
-        acc.add("hybrid_settings", "passed", "hybrid_rrf")
-        acc.add("hybrid_rerank_settings", "passed", "hybrid_rerank")
+        acc.add("hybrid_settings", "passed", "hybrid_rrf+runtime_env")
+        acc.add("hybrid_rerank_settings", "passed", "hybrid_rerank+runtime_env")
 
         acc.run_check(
             "index_and_config_pins",
@@ -552,7 +655,7 @@ def run_level_c_execution_preflight(
 
         emb_path = acc.run_check(
             "embedding_artifacts",
-            lambda: assert_embedding_artifacts_ready(runtime_settings),
+            lambda: assert_embedding_artifacts_ready(secret_runtime_settings),
         )
         acc.add("embedding_artifacts", "passed", str(emb_path))
 
@@ -615,12 +718,25 @@ def run_level_c_execution_preflight(
             probe_fn = provider_probe_fn or default_provider_probe
 
             def _require_provider_probe() -> GeneratorProbeResult:
-                result = probe_fn(runtime_settings)
+                try:
+                    result = probe_fn(secret_runtime_settings)
+                except Performance14Error as exc:
+                    raise Performance14Error(
+                        _redact_secrets(str(exc), api_key=secret_api_key)
+                    ) from exc
+                except Exception as exc:
+                    raise Performance14Error(
+                        _redact_secrets(
+                            f"provider readiness probe raised: "
+                            f"{type(exc).__name__}: {exc}",
+                            api_key=secret_api_key,
+                        )
+                    ) from exc
                 if not result.ok:
                     raise Performance14Error(
                         _redact_secrets(
                             f"provider readiness probe failed: {result.reason}",
-                            runtime_settings,
+                            api_key=secret_api_key,
                         )
                     )
                 return result
@@ -631,10 +747,18 @@ def run_level_c_execution_preflight(
             acc.add("provider_probe", "passed", result.reason or "ok")
             execution_ready = True
 
-        record = acc.to_record(status="passed")
-        _assert_record_secret_hygiene(record, runtime_settings)
+        sanitized_settings = sanitize_runtime_settings_for_context(
+            secret_runtime_settings
+        )
+        if sanitized_settings.generation.api_key is not None:
+            raise Performance14Error(
+                "sanitized runtime_settings still contains generation.api_key"
+            )
 
-        return LevelCPreflightContext(
+        record = acc.to_record(status="passed")
+        _assert_record_secret_hygiene(record, api_key=secret_api_key)
+
+        ctx = LevelCPreflightContext(
             repo_root=root,
             executing_sha=executing_sha,
             suite_id=suite_id,
@@ -646,23 +770,23 @@ def run_level_c_execution_preflight(
             machine_profile=machine_profile,
             machine_profile_id=machine_profile_id,
             results_parent=parent,
-            runtime_settings=runtime_settings,
+            runtime_settings=sanitized_settings,
+            api_key_configured=api_key_configured,
             provider_probe_performed=provider_probe_performed,
             provider_probe_ok=provider_probe_ok,
             execution_ready=execution_ready,
             preflight_record=record,
         )
+        _assert_context_secret_hygiene(ctx, api_key=secret_api_key)
+        return ctx
     except Performance14Error as exc:
-        message = str(exc)
-        if runtime_settings is not None:
-            message = _redact_secrets(message, runtime_settings)
-            if acc.error is not None:
-                acc.error = _redact_secrets(acc.error, runtime_settings)
+        message = _redact_secrets(str(exc), api_key=secret_api_key)
+        if acc.error is not None:
+            acc.error = _redact_secrets(acc.error, api_key=secret_api_key)
         if acc.failing_check is None:
             acc.fail("preflight", message)
         record = acc.to_record(status="failed")
-        if runtime_settings is not None:
-            _assert_record_secret_hygiene(record, runtime_settings)
+        _assert_record_secret_hygiene(record, api_key=secret_api_key)
         redacted = Performance14Error(message)
         redacted.preflight_record = record  # type: ignore[attr-defined]
         redacted.preflight_partial = acc  # type: ignore[attr-defined]
@@ -671,14 +795,38 @@ def run_level_c_execution_preflight(
 
 def _assert_record_secret_hygiene(
     record: PerformancePreflightRecordV1,
-    settings: AppSettings,
+    *,
+    api_key: str | None,
 ) -> None:
-    key = settings.generation.api_key
-    if not key:
+    if not api_key:
         return
-    dumped = record.model_dump(mode="json")
-    encoded = str(dumped)
-    if key in encoded:
+    encoded = str(record.model_dump(mode="json"))
+    if api_key in encoded:
         raise Performance14Error(
             "preflight record leaked generation API key material"
         )
+
+
+def _assert_context_secret_hygiene(
+    ctx: LevelCPreflightContext,
+    *,
+    api_key: str | None,
+) -> None:
+    if ctx.runtime_settings.generation.api_key is not None:
+        raise Performance14Error(
+            "returned LevelCPreflightContext retains generation.api_key"
+        )
+    if not api_key:
+        return
+    # Serializable / printable evidence must not retain the raw secret.
+    evidence = (
+        str(ctx.runtime_settings.model_dump(mode="json")),
+        str(ctx.preflight_record.model_dump(mode="json")),
+        repr(ctx.runtime_settings),
+        repr(ctx),
+    )
+    for blob in evidence:
+        if api_key in blob:
+            raise Performance14Error(
+                "returned LevelCPreflightContext leaked generation API key material"
+            )
