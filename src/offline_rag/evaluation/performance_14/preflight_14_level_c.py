@@ -245,20 +245,80 @@ def load_level_c_hybrid_rerank_settings(
         ) from exc
 
 
+# Explicit AppSettings credential fields cleared from returned preflight context.
+# Enumerated from offline_rag.config.models.AppSettings (api_key fields only).
+RETURNED_CONTEXT_API_KEY_FIELDS: tuple[str, ...] = (
+    "generation.api_key",
+    "authoring.api_key",
+    "retrieval_recovery.rewriter.api_key",
+    "evaluation.generation_semantic_judge.api_key",
+)
+
+
+def collect_runtime_api_key_secrets(settings: AppSettings) -> tuple[str, ...]:
+    """Return distinct non-empty API-key secrets present in runtime settings."""
+    values = (
+        settings.generation.api_key,
+        settings.authoring.api_key,
+        settings.retrieval_recovery.rewriter.api_key,
+        settings.evaluation.generation_semantic_judge.api_key,
+    )
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for value in values:
+        if value and value not in seen:
+            seen.add(value)
+            ordered.append(value)
+    return tuple(ordered)
+
+
 def sanitize_runtime_settings_for_context(settings: AppSettings) -> AppSettings:
-    """Return a copy safe for persistence: generation.api_key cleared."""
+    """Return a copy safe for persistence/logging: all API-key fields cleared.
+
+    Does not mutate ``settings``. Transient secret-bearing settings remain
+    available for an authorized provider probe until this copy is made.
+    """
     return settings.model_copy(
         update={
-            "generation": settings.generation.model_copy(update={"api_key": None})
+            "generation": settings.generation.model_copy(update={"api_key": None}),
+            "authoring": settings.authoring.model_copy(update={"api_key": None}),
+            "retrieval_recovery": settings.retrieval_recovery.model_copy(
+                update={
+                    "rewriter": settings.retrieval_recovery.rewriter.model_copy(
+                        update={"api_key": None}
+                    )
+                }
+            ),
+            "evaluation": settings.evaluation.model_copy(
+                update={
+                    "generation_semantic_judge": (
+                        settings.evaluation.generation_semantic_judge.model_copy(
+                            update={"api_key": None}
+                        )
+                    )
+                }
+            ),
         }
     )
 
 
-def _redact_secrets(text: str, *, api_key: str | None) -> str:
+def _redact_secrets(
+    text: str,
+    *,
+    api_key: str | None = None,
+    secrets: tuple[str, ...] | list[str] | None = None,
+) -> str:
     """Ensure API-key material never appears in preflight reasons/errors."""
-    if api_key and api_key in text:
-        return text.replace(api_key, "<redacted>")
-    return text
+    candidates: list[str] = []
+    if api_key:
+        candidates.append(api_key)
+    if secrets:
+        candidates.extend(secrets)
+    redacted = text
+    for secret in candidates:
+        if secret and secret in redacted:
+            redacted = redacted.replace(secret, "<redacted>")
+    return redacted
 
 
 def assert_runtime_generation_matches_freeze(
@@ -508,6 +568,7 @@ def run_level_c_execution_preflight(
 
     acc = PreflightAccumulator()
     secret_api_key: str | None = None
+    runtime_secrets: tuple[str, ...] = ()
     try:
         root = acc.run_check("repository_root", lambda: resolve_repo_root(repo_root))
         acc.repo_root = root
@@ -595,6 +656,7 @@ def run_level_c_execution_preflight(
             ),
         )
         secret_api_key = secret_runtime_settings.generation.api_key
+        runtime_secrets = collect_runtime_api_key_secrets(secret_runtime_settings)
         api_key_configured = bool(secret_api_key)
         acc.add("runtime_settings", "passed", "base.yaml+dotenv_copy")
 
@@ -722,7 +784,11 @@ def run_level_c_execution_preflight(
                     result = probe_fn(secret_runtime_settings)
                 except Performance14Error as exc:
                     raise Performance14Error(
-                        _redact_secrets(str(exc), api_key=secret_api_key)
+                        _redact_secrets(
+                            str(exc),
+                            api_key=secret_api_key,
+                            secrets=runtime_secrets,
+                        )
                     ) from exc
                 except Exception as exc:
                     raise Performance14Error(
@@ -730,6 +796,7 @@ def run_level_c_execution_preflight(
                             f"provider readiness probe raised: "
                             f"{type(exc).__name__}: {exc}",
                             api_key=secret_api_key,
+                            secrets=runtime_secrets,
                         )
                     ) from exc
                 if not result.ok:
@@ -737,6 +804,7 @@ def run_level_c_execution_preflight(
                         _redact_secrets(
                             f"provider readiness probe failed: {result.reason}",
                             api_key=secret_api_key,
+                            secrets=runtime_secrets,
                         )
                     )
                 return result
@@ -747,16 +815,23 @@ def run_level_c_execution_preflight(
             acc.add("provider_probe", "passed", result.reason or "ok")
             execution_ready = True
 
+        # Probe (if any) already ran against secret-bearing settings.
         sanitized_settings = sanitize_runtime_settings_for_context(
             secret_runtime_settings
         )
-        if sanitized_settings.generation.api_key is not None:
+        residual = collect_runtime_api_key_secrets(sanitized_settings)
+        if residual:
             raise Performance14Error(
-                "sanitized runtime_settings still contains generation.api_key"
+                "sanitized runtime_settings still contains api_key material"
+            )
+        # Prove transient source was not mutated by sanitization.
+        if collect_runtime_api_key_secrets(secret_runtime_settings) != runtime_secrets:
+            raise Performance14Error(
+                "sanitize_runtime_settings_for_context mutated transient settings"
             )
 
         record = acc.to_record(status="passed")
-        _assert_record_secret_hygiene(record, api_key=secret_api_key)
+        _assert_record_secret_hygiene(record, secrets=runtime_secrets)
 
         ctx = LevelCPreflightContext(
             repo_root=root,
@@ -777,16 +852,20 @@ def run_level_c_execution_preflight(
             execution_ready=execution_ready,
             preflight_record=record,
         )
-        _assert_context_secret_hygiene(ctx, api_key=secret_api_key)
+        _assert_context_secret_hygiene(ctx, secrets=runtime_secrets)
         return ctx
     except Performance14Error as exc:
-        message = _redact_secrets(str(exc), api_key=secret_api_key)
+        message = _redact_secrets(
+            str(exc), api_key=secret_api_key, secrets=runtime_secrets
+        )
         if acc.error is not None:
-            acc.error = _redact_secrets(acc.error, api_key=secret_api_key)
+            acc.error = _redact_secrets(
+                acc.error, api_key=secret_api_key, secrets=runtime_secrets
+            )
         if acc.failing_check is None:
             acc.fail("preflight", message)
         record = acc.to_record(status="failed")
-        _assert_record_secret_hygiene(record, api_key=secret_api_key)
+        _assert_record_secret_hygiene(record, secrets=runtime_secrets)
         redacted = Performance14Error(message)
         redacted.preflight_record = record  # type: ignore[attr-defined]
         redacted.preflight_partial = acc  # type: ignore[attr-defined]
@@ -796,29 +875,39 @@ def run_level_c_execution_preflight(
 def _assert_record_secret_hygiene(
     record: PerformancePreflightRecordV1,
     *,
-    api_key: str | None,
+    secrets: tuple[str, ...] | list[str] | None = None,
+    api_key: str | None = None,
 ) -> None:
-    if not api_key:
+    candidates = list(secrets or ())
+    if api_key:
+        candidates.append(api_key)
+    if not candidates:
         return
     encoded = str(record.model_dump(mode="json"))
-    if api_key in encoded:
-        raise Performance14Error(
-            "preflight record leaked generation API key material"
-        )
+    for secret in candidates:
+        if secret and secret in encoded:
+            raise Performance14Error(
+                "preflight record leaked API key material"
+            )
 
 
 def _assert_context_secret_hygiene(
     ctx: LevelCPreflightContext,
     *,
-    api_key: str | None,
+    secrets: tuple[str, ...] | list[str] | None = None,
+    api_key: str | None = None,
 ) -> None:
-    if ctx.runtime_settings.generation.api_key is not None:
+    residual = collect_runtime_api_key_secrets(ctx.runtime_settings)
+    if residual:
         raise Performance14Error(
-            "returned LevelCPreflightContext retains generation.api_key"
+            "returned LevelCPreflightContext retains api_key material"
         )
-    if not api_key:
+    candidates = list(secrets or ())
+    if api_key:
+        candidates.append(api_key)
+    if not candidates:
         return
-    # Serializable / printable evidence must not retain the raw secret.
+    # Serializable / printable evidence must not retain any raw secret.
     evidence = (
         str(ctx.runtime_settings.model_dump(mode="json")),
         str(ctx.preflight_record.model_dump(mode="json")),
@@ -826,7 +915,8 @@ def _assert_context_secret_hygiene(
         repr(ctx),
     )
     for blob in evidence:
-        if api_key in blob:
-            raise Performance14Error(
-                "returned LevelCPreflightContext leaked generation API key material"
-            )
+        for secret in candidates:
+            if secret and secret in blob:
+                raise Performance14Error(
+                    "returned LevelCPreflightContext leaked API key material"
+                )

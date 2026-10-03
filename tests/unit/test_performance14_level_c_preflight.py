@@ -17,6 +17,7 @@ from offline_rag.evaluation.performance_14.preflight_14_level_c import (
     LOCKED_GENCFG_LEVEL_C,
     LOCKED_PERFCFG_LEVEL_C,
     LOCKED_PERFSUITE_LEVEL_C,
+    RETURNED_CONTEXT_API_KEY_FIELDS,
     assert_embedding_artifacts_ready,
     assert_freeze_authority_reachable,
     assert_frozen_suite_protocol_and_identities,
@@ -24,8 +25,10 @@ from offline_rag.evaluation.performance_14.preflight_14_level_c import (
     assert_runtime_context_matches_freeze,
     assert_runtime_generation_matches_freeze,
     assert_working_tree_clean_for_level_c,
+    collect_runtime_api_key_secrets,
     load_level_c_runtime_settings,
     run_level_c_execution_preflight,
+    sanitize_runtime_settings_for_context,
 )
 from offline_rag.evaluation.performance_14.suite_14_level_c import (
     EXPECTED_GENERATION_ENDPOINT_LEVEL_C,
@@ -40,6 +43,9 @@ from offline_rag.generation.protocol import GeneratorProbeResult
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SECRET_API_KEY = "test-secret-api-key-do-not-leak-9f3c2a1b"
+SECRET_AUTHORING = "test-authoring-secret-api-key-aaaa1111"
+SECRET_RECOVERY = "test-recovery-secret-api-key-bbbb2222"
+SECRET_JUDGE = "test-judge-secret-api-key-cccc3333"
 
 
 def _llm_env(**overrides: str) -> dict[str, str]:
@@ -831,3 +837,157 @@ def test_level_c_population_is_first_five_of_14c() -> None:
     from offline_rag.evaluation.performance_14.suite_14_level_c import QUERY_IDS_LEVEL_C
 
     assert QUERY_IDS_LEVEL_C == tuple(sorted(QUERY_IDS_14C)[:5])
+
+
+# ---------------------------------------------------------------------------
+# F-LC-P4 — complete returned-context secret sanitization
+# ---------------------------------------------------------------------------
+
+
+def _settings_with_all_api_keys(
+    tmp_path: Path,
+    *,
+    generation_key: str,
+    authoring_key: str,
+    recovery_key: str,
+    judge_key: str,
+) -> AppSettings:
+    settings = _load_runtime(
+        tmp_path,
+        environ=_llm_env(OFFLINE_RAG_LLM_API_KEY=generation_key),
+    )
+    return settings.model_copy(
+        update={
+            "generation": settings.generation.model_copy(
+                update={"api_key": generation_key}
+            ),
+            "authoring": settings.authoring.model_copy(
+                update={"api_key": authoring_key}
+            ),
+            "retrieval_recovery": settings.retrieval_recovery.model_copy(
+                update={
+                    "rewriter": settings.retrieval_recovery.rewriter.model_copy(
+                        update={"api_key": recovery_key}
+                    )
+                }
+            ),
+            "evaluation": settings.evaluation.model_copy(
+                update={
+                    "generation_semantic_judge": (
+                        settings.evaluation.generation_semantic_judge.model_copy(
+                            update={"api_key": judge_key}
+                        )
+                    )
+                }
+            ),
+        }
+    )
+
+
+def test_sanitize_clears_all_appsettings_api_key_fields(tmp_path: Path) -> None:
+    assert RETURNED_CONTEXT_API_KEY_FIELDS == (
+        "generation.api_key",
+        "authoring.api_key",
+        "retrieval_recovery.rewriter.api_key",
+        "evaluation.generation_semantic_judge.api_key",
+    )
+    source = _settings_with_all_api_keys(
+        tmp_path,
+        generation_key=SECRET_API_KEY,
+        authoring_key=SECRET_AUTHORING,
+        recovery_key=SECRET_RECOVERY,
+        judge_key=SECRET_JUDGE,
+    )
+    assert collect_runtime_api_key_secrets(source) == (
+        SECRET_API_KEY,
+        SECRET_AUTHORING,
+        SECRET_RECOVERY,
+        SECRET_JUDGE,
+    )
+    sanitized = sanitize_runtime_settings_for_context(source)
+    assert sanitized.generation.api_key is None
+    assert sanitized.authoring.api_key is None
+    assert sanitized.retrieval_recovery.rewriter.api_key is None
+    assert sanitized.evaluation.generation_semantic_judge.api_key is None
+    assert collect_runtime_api_key_secrets(sanitized) == ()
+    # Source must remain secret-bearing (no in-place mutation).
+    assert source.generation.api_key == SECRET_API_KEY
+    assert source.authoring.api_key == SECRET_AUTHORING
+    assert source.retrieval_recovery.rewriter.api_key == SECRET_RECOVERY
+    assert source.evaluation.generation_semantic_judge.api_key == SECRET_JUDGE
+
+
+def test_returned_context_clears_shared_and_distinct_secrets(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _patch_local_checks_ok(monkeypatch)
+    parent = tmp_path / "results"
+    parent.mkdir()
+    monkeypatch.setattr(
+        "offline_rag.evaluation.performance_14.preflight_14_level_c.reserved_results_root",
+        lambda _root: parent,
+    )
+
+    # Inject multi-subsystem secrets after load, before generation pin.
+    original_load = load_level_c_runtime_settings
+
+    def _load_with_secrets(*args: Any, **kwargs: Any) -> AppSettings:
+        loaded = original_load(*args, **kwargs)
+        return loaded.model_copy(
+            update={
+                "generation": loaded.generation.model_copy(
+                    update={"api_key": SECRET_API_KEY}
+                ),
+                "authoring": loaded.authoring.model_copy(
+                    update={"api_key": SECRET_API_KEY}  # deliberately same
+                ),
+                "retrieval_recovery": loaded.retrieval_recovery.model_copy(
+                    update={
+                        "rewriter": loaded.retrieval_recovery.rewriter.model_copy(
+                            update={"api_key": SECRET_RECOVERY}
+                        )
+                    }
+                ),
+                "evaluation": loaded.evaluation.model_copy(
+                    update={
+                        "generation_semantic_judge": (
+                            loaded.evaluation.generation_semantic_judge.model_copy(
+                                update={"api_key": SECRET_JUDGE}
+                            )
+                        )
+                    }
+                ),
+            }
+        )
+
+    monkeypatch.setattr(
+        "offline_rag.evaluation.performance_14.preflight_14_level_c.load_level_c_runtime_settings",
+        _load_with_secrets,
+    )
+    seen: dict[str, str | None] = {}
+
+    def _probe(settings: AppSettings) -> GeneratorProbeResult:
+        seen["generation"] = settings.generation.api_key
+        seen["authoring"] = settings.authoring.api_key
+        return GeneratorProbeResult(ok=True, reason="ok")
+
+    ctx = run_level_c_execution_preflight(
+        repo_root=REPO_ROOT,
+        environ=_llm_env(),
+        dotenv_path=tmp_path / "no.env",
+        provider_probe="require",
+        provider_probe_fn=_probe,
+    )
+    assert seen["generation"] == SECRET_API_KEY
+    assert seen["authoring"] == SECRET_API_KEY
+    assert ctx.runtime_settings.generation.api_key is None
+    assert ctx.runtime_settings.authoring.api_key is None
+    assert ctx.runtime_settings.retrieval_recovery.rewriter.api_key is None
+    assert ctx.runtime_settings.evaluation.generation_semantic_judge.api_key is None
+    dump = str(ctx.runtime_settings.model_dump(mode="json"))
+    record_dump = str(ctx.preflight_record.model_dump(mode="json"))
+    for secret in (SECRET_API_KEY, SECRET_RECOVERY, SECRET_JUDGE):
+        assert secret not in dump
+        assert secret not in record_dump
+        assert secret not in repr(ctx)
+        assert secret not in repr(ctx.runtime_settings)
