@@ -733,6 +733,16 @@ output truncation at the configured token ceiling; stronger causation is not
 claimed. No max-token or configuration change is authorized by Slice 14
 closeout.
 
+**Deferred follow-up — generation output ceiling:** One frozen Level-C query
+hit the configured `max_output_tokens=1200` on all six attempts and
+subsequently produced `response_parse_error`. The pattern is strongly
+consistent with response truncation before the structured output completed,
+although the current benchmark does not retain sufficient raw provider
+termination metadata to prove causation. Revisit in a separate post-Slice-14
+investigation: inspect/persist `finish_reason` or equivalent provider metadata
+and run a controlled comparison with a higher output-token ceiling. No
+configuration change or rerun is authorized as part of Slice 14.
+
 ### 18.3 Generation telemetry limitations
 
 ```text
