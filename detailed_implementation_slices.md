@@ -930,21 +930,26 @@ update.** Milestone 6 remains COMPLETE / ACCEPTED unchanged.
 
 # Slice 15 — Developer API and single-container application packaging
 
+**Architecture:** **COMPLETE / LOCKED** (S15-D01 … S15-D22)  
+**Design authority:** [`docs/slice15_developer_api_packaging.md`](docs/slice15_developer_api_packaging.md)  
+**Residual A:** **LOCKED / ACCEPTED**  
+**Implementation plan:** [`docs/slice15_implementation_plan.md`](docs/slice15_implementation_plan.md) — **DERIVED / REVIEW PENDING**  
+**Code implementation:** **NOT AUTHORIZED**
+
+Roadmap path names such as unversioned `/ingest` and optional `/eval/run` are
+superseded by the locked design: product HTTP under `/v1/*`, CLI-first evaluation
+(D12), and unversioned `/health*` only.
+
 ## Objective
 
 Expose the RAG engine through a stable local API and package the application as one Docker container while leaving generative inference external.
 
 ## Deliverables
 
-- FastAPI app;
-- `/health`;
-- `/ingest`;
-- `/query`;
-- `/documents`;
-- `/trace/{id}`;
-- `/eval/run` or CLI-first evaluation boundary;
-- API schemas;
-- static UI serving strategy;
+- FastAPI app (`/health*`, `/v1/ingest`, `/v1/query`, `/v1/documents`, `/v1/trace/{id}`);
+- CLI-first evaluation boundary (no HTTP `/eval/*` in Slice 15);
+- API schemas / OpenAPI;
+- optional same-origin static-serving substrate (Slice 16 UI not required);
 - standalone Qdrant Local persistence under `/data/qdrant`;
 - `/data` persistent volume contract;
 - `/models` read-only retrieval-model volume/cache contract;

@@ -432,12 +432,19 @@ Slice 14 checklist:
 - [x] Level-C instrumentation / freeze / preflight / runner / authoritative run (**COMPLETE / ACCEPTED**)
 - [x] Slice 14 closeout (**COMPLETE / ACCEPTED**)
 
-Later M7 checklist (not Slice 14; not authorized here):
+**Slice 15 — Developer API and single-container packaging**
+- Architecture (S15-D01 … S15-D22): **COMPLETE / LOCKED**
+- Design authority: [`docs/slice15_developer_api_packaging.md`](docs/slice15_developer_api_packaging.md)
+- Residual A (pre-implementation contract): **LOCKED / ACCEPTED**
+- Implementation plan: [`docs/slice15_implementation_plan.md`](docs/slice15_implementation_plan.md) — **DERIVED / REVIEW PENDING**
+- Code implementation: **NOT AUTHORIZED**
 
-- [ ] FastAPI service
-- [ ] single-container OfflineRAG application image
-- [ ] Qdrant Local standalone profile
-- [ ] `/data` + `/models` volume contracts
+Later M7 checklist (not Slice 14; Slice 15 implementation not authorized here):
+
+- [ ] FastAPI service (Slice 15)
+- [ ] single-container OfflineRAG application image (Slice 15)
+- [ ] Qdrant Local standalone profile (Slice 15)
+- [ ] `/data` + `/models` volume contracts (Slice 15)
 - [ ] retrieval inspector
 - [ ] citation source viewer
 - [ ] evaluation dashboard
