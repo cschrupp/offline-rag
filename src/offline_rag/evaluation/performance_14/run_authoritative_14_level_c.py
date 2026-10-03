@@ -14,6 +14,8 @@ authorized by human process.
 
 from __future__ import annotations
 
+import json
+import os
 import platform
 import sys
 import uuid
@@ -39,6 +41,7 @@ from offline_rag.evaluation.performance_14.contracts import (
     PerformancePreflightRecordV1,
     PerformanceRunAggregateV1,
     RunStatusV1,
+    TelemetryAvailabilityV1,
 )
 from offline_rag.evaluation.performance_14.fixtures import stable_case_id
 from offline_rag.evaluation.performance_14.identity import (
@@ -65,6 +68,7 @@ from offline_rag.evaluation.performance_14.preflight_14_level_c import (
     LOCKED_PERFSUITE_LEVEL_C,
     LevelCPreflightContext,
     build_level_c_runtime_environment,
+    collect_runtime_api_key_secrets,
     load_level_c_hybrid_rerank_settings,
     load_level_c_runtime_settings,
     run_level_c_execution_preflight,
@@ -109,6 +113,9 @@ PREFLIGHT_AUTHORITY_LEVEL_C = (
     "6327a9d018c252f339c342ddbc9e0c01fc998457"
 )
 
+# Empty dotenv source so preflight cannot re-interpret the real .env file.
+_CAPTURED_ENV_DOTENV = Path(os.devnull)
+
 LevelCPreflightFn = Callable[..., LevelCPreflightContext]
 LevelCAttemptFn = Callable[..., PerformanceLevelCAttemptV1]
 
@@ -148,6 +155,113 @@ LevelCRuntimeFactory = Callable[..., LevelCRuntimeBundle]
 
 def _utc_now_iso() -> str:
     return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _redact_runtime_secrets(
+    text: str,
+    *,
+    secrets: Sequence[str],
+) -> str:
+    """Replace configured runtime API-key values with a redaction token."""
+    redacted = text
+    for secret in secrets:
+        if secret and secret in redacted:
+            redacted = redacted.replace(secret, "<redacted>")
+    return redacted
+
+
+def _format_exception(
+    exc: BaseException,
+    *,
+    secrets: Sequence[str],
+) -> str:
+    return _redact_runtime_secrets(
+        f"{type(exc).__name__}: {exc}",
+        secrets=secrets,
+    )
+
+
+def _blob_contains_secret(blob: str, *, secrets: Sequence[str]) -> bool:
+    return any(secret and secret in blob for secret in secrets)
+
+
+def _assert_text_secret_free(
+    text: str,
+    *,
+    secrets: Sequence[str],
+    label: str,
+) -> None:
+    if _blob_contains_secret(text, secrets=secrets):
+        raise Performance14Error(
+            f"refusing to persist {label}: runtime API key material detected"
+        )
+
+
+def _assert_attempt_secret_free(
+    attempt: PerformanceLevelCAttemptV1,
+    *,
+    secrets: Sequence[str],
+) -> None:
+    encoded = json.dumps(attempt.model_dump(mode="json"), sort_keys=True)
+    if _blob_contains_secret(encoded, secrets=secrets):
+        raise Performance14Error(
+            "Level-C attempt evidence contained runtime API key material; "
+            "refusing to persist unsafe attempt"
+        )
+
+
+def _assert_terminal_artifacts_secret_free(
+    *,
+    manifest: PerformanceBenchmarkRunManifestV1,
+    aggregate: PerformanceRunAggregateV1,
+    cases: Sequence[PerformanceBenchmarkCaseV1],
+    report_markdown: str,
+    preflight: PerformancePreflightRecordV1 | None,
+    error: str | None,
+    secrets: Sequence[str],
+) -> None:
+    if not secrets:
+        return
+    blobs = [
+        ("manifest", json.dumps(manifest.model_dump(mode="json"), sort_keys=True)),
+        ("aggregate", json.dumps(aggregate.model_dump(mode="json"), sort_keys=True)),
+        ("report", report_markdown),
+        ("error", error or ""),
+    ]
+    if preflight is not None:
+        blobs.append(
+            (
+                "preflight",
+                json.dumps(preflight.model_dump(mode="json"), sort_keys=True),
+            )
+        )
+    for case in cases:
+        blobs.append(
+            (
+                f"case:{case.case_id}",
+                json.dumps(case.model_dump(mode="json"), sort_keys=True),
+            )
+        )
+    for label, blob in blobs:
+        _assert_text_secret_free(blob, secrets=secrets, label=label)
+
+
+def _vram_availability_from_record(
+    record: PerformancePreflightRecordV1 | None,
+) -> TelemetryAvailabilityV1:
+    if record is None or record.telemetry_vram is None:
+        return "unavailable"
+    return record.telemetry_vram
+
+
+def _collect_runtime_secrets(
+    repo_root: Path,
+    *,
+    runtime_env: Mapping[str, str],
+) -> tuple[str, ...]:
+    """Load settings transiently solely to collect API-key strings for redaction."""
+    transient = load_level_c_runtime_settings(repo_root, runtime_env=runtime_env)
+    return collect_runtime_api_key_secrets(transient)
 
 
 def _build_query_map(repo_root: Path) -> dict[str, str]:
@@ -222,16 +336,32 @@ def _default_runtime_factory(
     )
 
 
-def _close_runtime(bundle: LevelCRuntimeBundle | None) -> None:
+def _close_runtime(
+    bundle: LevelCRuntimeBundle | None,
+    *,
+    secrets: Sequence[str],
+) -> list[str]:
+    """Best-effort close of owned resources; never raises."""
     if bundle is None:
-        return
-    # Close owned generator client, then retriever (and its owned hybrid).
-    close_gen = getattr(bundle.generator, "close", None)
-    if callable(close_gen):
-        close_gen()
-    close_ret = getattr(bundle.retriever, "close", None)
-    if callable(close_ret):
-        close_ret()
+        return []
+    close_errors: list[str] = []
+    for label, owner in (
+        ("generator", bundle.generator),
+        ("retriever", bundle.retriever),
+    ):
+        close_fn = getattr(owner, "close", None)
+        if not callable(close_fn):
+            continue
+        try:
+            close_fn()
+        except Exception as exc:  # noqa: BLE001 — close must not abort persistence
+            close_errors.append(
+                _redact_runtime_secrets(
+                    f"{label}.close failed: {type(exc).__name__}: {exc}",
+                    secrets=secrets,
+                )
+            )
+    return close_errors
 
 
 def _manifest_environment(
@@ -407,7 +537,10 @@ def _build_case_from_attempts(
     case_id = stable_case_id(spec)
     warmups = [a for a in attempts if a.is_warmup]
     measured = [a for a in attempts if not a.is_warmup]
-    if len(warmups) != WARMUP_COUNT_LEVEL_C or len(measured) != MEASURED_REPETITIONS_LEVEL_C:
+    if (
+        len(warmups) != WARMUP_COUNT_LEVEL_C
+        or len(measured) != MEASURED_REPETITIONS_LEVEL_C
+    ):
         case_status: str = "failed"
     else:
         case_status = "completed"
@@ -478,6 +611,7 @@ def _record_scheduled_attempt(
     query_id: str,
     is_warmup: bool,
     attempt_index: int,
+    secrets: Sequence[str],
 ) -> None:
     query = bundle.query_by_id.get(query_id)
     if query is None:
@@ -500,12 +634,17 @@ def _record_scheduled_attempt(
             attempt_index=attempt_index,
             is_warmup=is_warmup,
         )
-    except Performance14Error:
-        raise
+    except Performance14Error as exc:
+        raise Performance14Error(
+            _redact_runtime_secrets(str(exc), secrets=secrets)
+        ) from exc
     except Exception as exc:
         raise Performance14Error(
-            "cannot construct validated PerformanceLevelCAttemptV1: "
-            f"{type(exc).__name__}: {exc}"
+            _redact_runtime_secrets(
+                "cannot construct validated PerformanceLevelCAttemptV1: "
+                f"{type(exc).__name__}: {exc}",
+                secrets=secrets,
+            )
         ) from exc
     if not isinstance(attempt, PerformanceLevelCAttemptV1):
         raise Performance14Error(
@@ -525,6 +664,8 @@ def _record_scheduled_attempt(
             f"scheduled (is_warmup={is_warmup}, "
             f"attempt_index={attempt_index})"
         )
+    # Refuse secret-bearing attempt evidence before it enters schedule state.
+    _assert_attempt_secret_free(attempt, secrets=secrets)
     state.seen_keys[query_id].add(key)
     state.attempts_by_query[query_id].append(attempt)
 
@@ -550,6 +691,7 @@ def _run_frozen_schedule(
     *,
     bundle: LevelCRuntimeBundle,
     attempt_fn: LevelCAttemptFn,
+    secrets: Sequence[str],
     state: _ScheduleState | None = None,
 ) -> list[PerformanceBenchmarkCaseV1]:
     """Execute warm-ups then measured round-robin; return five completed cases."""
@@ -564,6 +706,7 @@ def _run_frozen_schedule(
             query_id=query_id,
             is_warmup=True,
             attempt_index=0,
+            secrets=secrets,
         )
 
     # Measured phase: five round-robin rounds q1→q5.
@@ -576,9 +719,89 @@ def _run_frozen_schedule(
                 query_id=query_id,
                 is_warmup=False,
                 attempt_index=round_idx,
+                secrets=secrets,
             )
 
     return _cases_from_schedule_state(schedule)
+
+
+def _persist_failed_preflight(
+    *,
+    suite_id: str,
+    run_nonce: str,
+    run_label: str | None,
+    scientific_config_id: str,
+    root: Path,
+    record: PerformancePreflightRecordV1,
+    partial: PreflightAccumulator | None,
+    error: str,
+    secrets: Sequence[str],
+) -> AuthoritativeLevelCResult:
+    sanitized_error = _redact_runtime_secrets(error, secrets=secrets)
+    manifest = _failed_preflight_manifest(
+        suite_id=suite_id,
+        run_nonce=run_nonce,
+        run_label=run_label,
+        record=record,
+        partial=partial,
+        scientific_config_id=scientific_config_id,
+    )
+    run_id = manifest.run_identity_hash
+    assert run_id is not None
+    output_dir = allocate_authoritative_run_dir(
+        suite_id=suite_id,
+        run_id=run_id,
+        repo_root=root,
+    )
+    output_dir.mkdir(parents=True, exist_ok=False)
+    aggregate = build_run_aggregate(
+        suite_id=suite_id,
+        run_id=run_id,
+        run_status="failed_preflight",
+        benchmark_level="C",
+        cases=[],
+        diagnostic_only=False,
+        authoritative=True,
+        evidence_class="AUTHORITATIVE",
+        vram_availability=_vram_availability_from_record(record),
+    )
+    report = render_report_markdown(
+        run_id=run_id,
+        manifest=manifest,
+        aggregate=aggregate,
+        cases=[],
+        error=sanitized_error,
+    )
+    _assert_terminal_artifacts_secret_free(
+        manifest=manifest,
+        aggregate=aggregate,
+        cases=[],
+        report_markdown=report,
+        preflight=record,
+        error=sanitized_error,
+        secrets=secrets,
+    )
+    write_run_artifacts(
+        output_dir,
+        manifest=manifest,
+        aggregate=aggregate,
+        cases=[],
+        report_markdown=report,
+        preflight=record,
+    )
+    return AuthoritativeLevelCResult(
+        run_id=run_id,
+        output_dir=output_dir,
+        run_status="failed_preflight",
+        suite_id=suite_id,
+        scientific_config_id=scientific_config_id,
+        manifest=manifest,
+        aggregate=aggregate,
+        cases=[],
+        preflight=record,
+        run_label=run_label,
+        error=sanitized_error,
+    )
 
 
 def run_authoritative_14_level_c(
@@ -610,139 +833,53 @@ def run_authoritative_14_level_c(
     run_nonce = uuid.uuid4().hex
     root = resolve_repo_root(repo_root)
 
-    # Single captured runtime environment for preflight + campaign loads.
+    # Interpret .env exactly once; reuse the frozen mapping for preflight + runtime.
     runtime_env = build_level_c_runtime_environment(
         root, environ=environ, dotenv_path=dotenv_path
     )
+    runtime_secrets = _collect_runtime_secrets(root, runtime_env=runtime_env)
 
     preflight_runner = preflight_fn or run_level_c_execution_preflight
     try:
         preflight = preflight_runner(
             repo_root=root,
             environ=runtime_env,
-            dotenv_path=dotenv_path,
+            # Prevent preflight from re-reading the real .env after capture.
+            dotenv_path=_CAPTURED_ENV_DOTENV,
             provider_probe="require",
         )
     except Performance14Error as exc:
         record = getattr(exc, "preflight_record", None)
         partial = getattr(exc, "preflight_partial", None)
         if record is None:
-            raise
-        manifest = _failed_preflight_manifest(
+            raise Performance14Error(
+                _redact_runtime_secrets(str(exc), secrets=runtime_secrets)
+            ) from exc
+        return _persist_failed_preflight(
             suite_id=suite_id,
             run_nonce=run_nonce,
             run_label=run_label,
+            scientific_config_id=scientific_config_id,
+            root=root,
             record=record,
             partial=partial,
-            scientific_config_id=scientific_config_id,
-        )
-        run_id = manifest.run_identity_hash
-        assert run_id is not None
-        output_dir = allocate_authoritative_run_dir(
-            suite_id=suite_id,
-            run_id=run_id,
-            repo_root=root,
-        )
-        output_dir.mkdir(parents=True, exist_ok=False)
-        aggregate = build_run_aggregate(
-            suite_id=suite_id,
-            run_id=run_id,
-            run_status="failed_preflight",
-            benchmark_level="C",
-            cases=[],
-            diagnostic_only=False,
-            authoritative=True,
-            evidence_class="AUTHORITATIVE",
-            vram_availability="unavailable",
-        )
-        report = render_report_markdown(
-            run_id=run_id,
-            manifest=manifest,
-            aggregate=aggregate,
-            cases=[],
             error=str(exc),
-        )
-        write_run_artifacts(
-            output_dir,
-            manifest=manifest,
-            aggregate=aggregate,
-            cases=[],
-            report_markdown=report,
-            preflight=record,
-        )
-        return AuthoritativeLevelCResult(
-            run_id=run_id,
-            output_dir=output_dir,
-            run_status="failed_preflight",
-            suite_id=suite_id,
-            scientific_config_id=scientific_config_id,
-            manifest=manifest,
-            aggregate=aggregate,
-            cases=[],
-            preflight=record,
-            run_label=run_label,
-            error=str(exc),
+            secrets=runtime_secrets,
         )
 
     try:
         _assert_execution_ready(preflight)
     except Performance14Error as exc:
-        # Authorized but not execution-ready: persist failed_preflight, no attempts.
-        record = preflight.preflight_record
-        manifest = _failed_preflight_manifest(
+        return _persist_failed_preflight(
             suite_id=suite_id,
             run_nonce=run_nonce,
             run_label=run_label,
-            record=record,
+            scientific_config_id=scientific_config_id,
+            root=root,
+            record=preflight.preflight_record,
             partial=None,
-            scientific_config_id=scientific_config_id,
-        )
-        run_id = manifest.run_identity_hash
-        assert run_id is not None
-        output_dir = allocate_authoritative_run_dir(
-            suite_id=suite_id,
-            run_id=run_id,
-            repo_root=root,
-        )
-        output_dir.mkdir(parents=True, exist_ok=False)
-        aggregate = build_run_aggregate(
-            suite_id=suite_id,
-            run_id=run_id,
-            run_status="failed_preflight",
-            benchmark_level="C",
-            cases=[],
-            diagnostic_only=False,
-            authoritative=True,
-            evidence_class="AUTHORITATIVE",
-            vram_availability="unavailable",
-        )
-        report = render_report_markdown(
-            run_id=run_id,
-            manifest=manifest,
-            aggregate=aggregate,
-            cases=[],
             error=str(exc),
-        )
-        write_run_artifacts(
-            output_dir,
-            manifest=manifest,
-            aggregate=aggregate,
-            cases=[],
-            report_markdown=report,
-            preflight=record,
-        )
-        return AuthoritativeLevelCResult(
-            run_id=run_id,
-            output_dir=output_dir,
-            run_status="failed_preflight",
-            suite_id=suite_id,
-            scientific_config_id=scientific_config_id,
-            manifest=manifest,
-            aggregate=aggregate,
-            cases=[],
-            preflight=record,
-            run_label=run_label,
-            error=str(exc),
+            secrets=runtime_secrets,
         )
 
     if preflight.scientific_config_id != scientific_config_id:
@@ -773,11 +910,20 @@ def run_authoritative_14_level_c(
     run_status: RunStatusV1 = "completed"
     error: str | None = None
     try:
-        bundle = factory(repo_root=root, runtime_env=runtime_env)
+        try:
+            bundle = factory(repo_root=root, runtime_env=runtime_env)
+        except Exception as exc:
+            raise Performance14Error(
+                _redact_runtime_secrets(
+                    f"runtime_factory failed: {type(exc).__name__}: {exc}",
+                    secrets=runtime_secrets,
+                )
+            ) from exc
         # No generation preparation request — lazy first-load belongs in warm-ups.
         cases = _run_frozen_schedule(
             bundle=bundle,
             attempt_fn=execute,
+            secrets=runtime_secrets,
             state=schedule_state,
         )
         total_attempts = sum(len(case.level_c_attempts) for case in cases)
@@ -793,10 +939,17 @@ def run_authoritative_14_level_c(
                 )
     except Exception as exc:  # noqa: BLE001 — preserve partial run
         run_status = "failed_during_execution"
-        error = f"{type(exc).__name__}: {exc}"
+        error = _format_exception(exc, secrets=runtime_secrets)
         cases = _cases_from_schedule_state(schedule_state)
     finally:
-        _close_runtime(bundle)
+        close_errors = _close_runtime(bundle, secrets=runtime_secrets)
+        if close_errors:
+            run_status = "failed_during_execution"
+            close_msg = "; ".join(close_errors)
+            if error:
+                error = f"{error}; resource_close_failure: {close_msg}"
+            else:
+                error = f"resource_close_failure: {close_msg}"
 
     sealed_manifest = manifest.model_copy(update={"run_status": run_status})
     aggregate = build_run_aggregate(
@@ -808,7 +961,7 @@ def run_authoritative_14_level_c(
         diagnostic_only=False,
         authoritative=True,
         evidence_class="AUTHORITATIVE",
-        vram_availability="unavailable",
+        vram_availability=_vram_availability_from_record(preflight.preflight_record),
     )
     report = render_report_markdown(
         run_id=run_id,
@@ -816,6 +969,15 @@ def run_authoritative_14_level_c(
         aggregate=aggregate,
         cases=cases,
         error=error,
+    )
+    _assert_terminal_artifacts_secret_free(
+        manifest=sealed_manifest,
+        aggregate=aggregate,
+        cases=cases,
+        report_markdown=report,
+        preflight=preflight.preflight_record,
+        error=error,
+        secrets=runtime_secrets,
     )
     write_run_artifacts(
         output_dir,

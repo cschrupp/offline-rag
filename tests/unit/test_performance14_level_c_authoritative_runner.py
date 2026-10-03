@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
@@ -31,6 +32,8 @@ from offline_rag.evaluation.performance_14.preflight_14_level_c import (
     LOCKED_PERFCFG_LEVEL_C,
     LOCKED_PERFSUITE_LEVEL_C,
     LevelCPreflightContext,
+    collect_runtime_api_key_secrets,
+    load_level_c_runtime_settings,
 )
 from offline_rag.evaluation.performance_14.run_authoritative_14_level_c import (
     EXECUTION_AUTHORIZATION_STATEMENT_LEVEL_C,
@@ -52,6 +55,10 @@ from offline_rag.generation.orchestrate import GroundedAnswerOrchestrator
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SECRET_API_KEY = "test-level-c-runner-secret-key-do-not-leak-zzzz9999"
+SECRET_AUTHORING = "test-authoring-secret-api-key-aaaa1111"
+SECRET_RECOVERY = "test-recovery-secret-api-key-bbbb2222"
+SECRET_JUDGE = "test-judge-secret-api-key-cccc3333"
+ALL_SECRETS = (SECRET_API_KEY, SECRET_AUTHORING, SECRET_RECOVERY, SECRET_JUDGE)
 
 Q1, Q2, Q3, Q4, Q5 = QUERY_IDS_LEVEL_C
 
@@ -295,14 +302,18 @@ def _machine_profile() -> PerformanceMachineProfileV1:
     )
 
 
-def _preflight_record(*, status: str = "passed") -> PerformancePreflightRecordV1:
+def _preflight_record(
+    *,
+    status: str = "passed",
+    telemetry_vram: str = "unavailable",
+) -> PerformancePreflightRecordV1:
     return PerformancePreflightRecordV1(
         preflight_status=status,  # type: ignore[arg-type]
         working_tree_state="clean",
         disk_capacity_sufficient=True,
         disk_free_bytes=10**12,
         telemetry_ram="available",
-        telemetry_vram="unavailable",
+        telemetry_vram=telemetry_vram,  # type: ignore[arg-type]
         checks=[],
         failing_check=None if status == "passed" else "provider_probe",
         executing_sha="b" * 40,
@@ -319,6 +330,7 @@ def _fake_preflight(
     provider_probe_ok: bool | None = True,
     preflight_status: str = "passed",
     api_key_in_settings: bool = False,
+    telemetry_vram: str = "unavailable",
 ) -> LevelCPreflightContext:
     settings = AppSettings().model_copy(
         update={
@@ -353,24 +365,31 @@ def _fake_preflight(
         provider_probe_performed=provider_probe_performed,
         provider_probe_ok=provider_probe_ok,
         execution_ready=execution_ready,
-        preflight_record=_preflight_record(status=preflight_status),
+        preflight_record=_preflight_record(
+            status=preflight_status, telemetry_vram=telemetry_vram
+        ),
     )
 
 
 class _Closeable:
-    def __init__(self) -> None:
+    def __init__(self, *, raise_on_close: Exception | None = None) -> None:
         self.close_calls = 0
+        self.raise_on_close = raise_on_close
 
     def close(self) -> None:
         self.close_calls += 1
+        if self.raise_on_close is not None:
+            raise self.raise_on_close
 
 
 def _fake_runtime(
     *,
     query_by_id: dict[str, str] | None = None,
+    generator_close_error: Exception | None = None,
+    retriever_close_error: Exception | None = None,
 ) -> tuple[LevelCRuntimeBundle, _Closeable, _Closeable]:
-    retriever = _Closeable()
-    generator = _Closeable()
+    retriever = _Closeable(raise_on_close=retriever_close_error)
+    generator = _Closeable(raise_on_close=generator_close_error)
     timeline = LevelCTimeline()
     orch = MagicMock(spec=GroundedAnswerOrchestrator)
     gen_proxy = MagicMock(spec=PassiveLevelCGenerator)
@@ -389,11 +408,50 @@ def _fake_runtime(
     return bundle, retriever, generator
 
 
+def _inject_all_runtime_secrets(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Ensure collect_runtime_api_key_secrets sees all four API-key fields."""
+    original = load_level_c_runtime_settings
+
+    def _load(*args: Any, **kwargs: Any) -> AppSettings:
+        loaded = original(*args, **kwargs)
+        return loaded.model_copy(
+            update={
+                "generation": loaded.generation.model_copy(
+                    update={"api_key": SECRET_API_KEY}
+                ),
+                "authoring": loaded.authoring.model_copy(
+                    update={"api_key": SECRET_AUTHORING}
+                ),
+                "retrieval_recovery": loaded.retrieval_recovery.model_copy(
+                    update={
+                        "rewriter": loaded.retrieval_recovery.rewriter.model_copy(
+                            update={"api_key": SECRET_RECOVERY}
+                        )
+                    }
+                ),
+                "evaluation": loaded.evaluation.model_copy(
+                    update={
+                        "generation_semantic_judge": (
+                            loaded.evaluation.generation_semantic_judge.model_copy(
+                                update={"api_key": SECRET_JUDGE}
+                            )
+                        )
+                    }
+                ),
+            }
+        )
+
+    monkeypatch.setattr(runner_mod, "load_level_c_runtime_settings", _load)
+
+
 def _tracking_attempt_fn(
     *,
     log: list[tuple[str, bool, int]],
+    orchestrator_ids: list[int] | None = None,
     terminals: dict[tuple[str, bool, int], str] | None = None,
     fail_structural_at: int | None = None,
+    structural_message: str | None = None,
+    unsafe_secret_attempt_at: int | None = None,
     generator_invocations: list[int] | None = None,
 ):
     call_count = {"n": 0}
@@ -404,12 +462,48 @@ def _tracking_attempt_fn(
         is_warmup = kwargs["is_warmup"]
         attempt_index = kwargs["attempt_index"]
         log.append((subject, is_warmup, attempt_index))
+        if orchestrator_ids is not None:
+            orchestrator_ids.append(id(kwargs["orchestrator"]))
         if generator_invocations is not None:
             # Count every scheduled attempt as one generator-facing invocation slot
             # for the max-30 invariant (fake path; no real HTTP).
             generator_invocations.append(1)
         if fail_structural_at is not None and call_count["n"] == fail_structural_at:
-            raise RuntimeError("injected structural harness failure")
+            raise RuntimeError(
+                structural_message or "injected structural harness failure"
+            )
+        if (
+            unsafe_secret_attempt_at is not None
+            and call_count["n"] == unsafe_secret_attempt_at
+        ):
+            attempt = _answered_attempt(
+                subject_identity=subject,
+                attempt_index=attempt_index,
+                is_warmup=is_warmup,
+            )
+            return attempt.model_copy(
+                update={
+                    "terminal_status": "generation_failed",
+                    "generation_failure_reason": (
+                        f"provider leaked {SECRET_API_KEY} in diagnostics"
+                    ),
+                    "generator_invoked": True,
+                    "stage_dispositions": _full_dispositions(
+                        generation=_disp("failed", "timeout"),
+                        citation_validation=_disp(
+                            "not_applicable", "no_raw_generation_response"
+                        ),
+                    ),
+                    "generation_observation": _obs(
+                        "generation",
+                        "failed",
+                        duration=0.2,
+                        is_warmup=is_warmup,
+                        failure_reason="timeout",
+                    ),
+                    "citation_validation_observation": None,
+                }
+            )
         terminal = "answered"
         if terminals is not None:
             terminal = terminals.get((subject, is_warmup, attempt_index), "answered")
@@ -453,20 +547,39 @@ def _run_fake_campaign(
     monkeypatch: pytest.MonkeyPatch,
     *,
     attempt_log: list[tuple[str, bool, int]] | None = None,
+    orchestrator_ids: list[int] | None = None,
     terminals: dict[tuple[str, bool, int], str] | None = None,
     fail_structural_at: int | None = None,
+    structural_message: str | None = None,
+    unsafe_secret_attempt_at: int | None = None,
     generator_invocations: list[int] | None = None,
     preflight_fn=None,
     raise_on_preflight: Exception | None = None,
+    telemetry_vram: str = "unavailable",
+    environ: dict[str, str] | None = None,
+    dotenv_path: Path | None = None,
+    inject_secrets: bool = False,
+    generator_close_error: Exception | None = None,
+    retriever_close_error: Exception | None = None,
+    factory_envs: list[dict[str, str]] | None = None,
 ):
     _patch_allocate_to_tmp(monkeypatch, tmp_path)
-    bundle, retriever, generator = _fake_runtime()
+    if inject_secrets:
+        _inject_all_runtime_secrets(monkeypatch)
+    bundle, retriever, generator = _fake_runtime(
+        generator_close_error=generator_close_error,
+        retriever_close_error=retriever_close_error,
+    )
     orch_id = id(bundle.orchestrator)
     log = attempt_log if attempt_log is not None else []
+    orch_ids = orchestrator_ids if orchestrator_ids is not None else []
     attempt_fn = _tracking_attempt_fn(
         log=log,
+        orchestrator_ids=orch_ids,
         terminals=terminals,
         fail_structural_at=fail_structural_at,
+        structural_message=structural_message,
+        unsafe_secret_attempt_at=unsafe_secret_attempt_at,
         generator_invocations=generator_invocations,
     )
     preflight_calls: list[dict[str, Any]] = []
@@ -477,24 +590,36 @@ def _run_fake_campaign(
             raise raise_on_preflight
         if preflight_fn is not None:
             return preflight_fn(**kwargs)
-        return _fake_preflight(repo_root=REPO_ROOT)
+        return _fake_preflight(repo_root=REPO_ROOT, telemetry_vram=telemetry_vram)
 
     runtime_builds: list[int] = []
+    factory_env_log = factory_envs if factory_envs is not None else []
 
     def _factory(**kwargs: Any) -> LevelCRuntimeBundle:
         runtime_builds.append(1)
+        factory_env_log.append(dict(kwargs["runtime_env"]))
         return bundle
 
     result = run_authoritative_14_level_c(
         confirm_execution_authorization=True,
         repo_root=REPO_ROOT,
-        environ={},
-        dotenv_path=tmp_path / "missing.env",
+        environ=environ if environ is not None else {},
+        dotenv_path=dotenv_path if dotenv_path is not None else (tmp_path / "missing.env"),
         preflight_fn=_pf,
         runtime_factory=_factory,
         attempt_fn=attempt_fn,
     )
-    return result, log, preflight_calls, runtime_builds, retriever, generator, orch_id
+    return (
+        result,
+        log,
+        preflight_calls,
+        runtime_builds,
+        retriever,
+        generator,
+        orch_id,
+        orch_ids,
+        factory_env_log,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -648,9 +773,14 @@ def test_one_persistent_orchestrator_and_frozen_schedule(
 ) -> None:
     log: list[tuple[str, bool, int]] = []
     gens: list[int] = []
-    result, log, _pf, runtime_builds, _retriever, _generator, orch_id = (
+    orch_ids: list[int] = []
+    result, log, _pf, runtime_builds, _retriever, _generator, orch_id, orch_ids, _ = (
         _run_fake_campaign(
-            tmp_path, monkeypatch, attempt_log=log, generator_invocations=gens
+            tmp_path,
+            monkeypatch,
+            attempt_log=log,
+            orchestrator_ids=orch_ids,
+            generator_invocations=gens,
         )
     )
     assert result.run_status == "completed"
@@ -684,8 +814,9 @@ def test_one_persistent_orchestrator_and_frozen_schedule(
     assert sum(len(c.level_c_attempts) for c in result.cases) == 30
     assert len(gens) <= 30
     assert len(gens) == 30  # no hidden 31st preparation generation
-    # Same orchestrator object for the whole campaign (one runtime build).
-    assert orch_id == id(result.cases) or runtime_builds == [1]
+    assert len(orch_ids) == 30
+    assert len(set(orch_ids)) == 1
+    assert orch_ids[0] == orch_id
 
 
 # ---------------------------------------------------------------------------
@@ -730,7 +861,7 @@ def test_representable_terminal_recorded_and_schedule_continues(
 def test_harness_structural_failure_produces_failed_run_and_closes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    result, log, _pf, _rb, retriever, generator, _orch = _run_fake_campaign(
+    result, log, _pf, _rb, retriever, generator, *_rest = _run_fake_campaign(
         tmp_path, monkeypatch, fail_structural_at=8
     )
     assert result.run_status == "failed_during_execution"
@@ -747,7 +878,7 @@ def test_harness_structural_failure_produces_failed_run_and_closes(
 def test_resources_close_exactly_once_on_success(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    result, _log, _pf, _rb, retriever, generator, _ = _run_fake_campaign(
+    result, _log, _pf, _rb, retriever, generator, *_rest = _run_fake_campaign(
         tmp_path, monkeypatch
     )
     assert result.run_status == "completed"
@@ -919,3 +1050,202 @@ def test_no_real_network_hooks_only(
     assert len(log) == 30
     assert result.authoritative is True
     assert result.diagnostic_only is False
+
+
+# ---------------------------------------------------------------------------
+# F-LC-R1 — runner-level secret hygiene
+# ---------------------------------------------------------------------------
+
+
+def _assert_no_secrets_in_result(result) -> None:
+    blobs = [
+        json.dumps(result.manifest.model_dump(mode="json")),
+        json.dumps(result.aggregate.model_dump(mode="json")),
+        (result.output_dir / "report.md").read_text(encoding="utf-8"),
+        result.error or "",
+        repr(result),
+    ]
+    if result.preflight is not None:
+        blobs.append(json.dumps(result.preflight.model_dump(mode="json")))
+    for case in result.cases:
+        blobs.append(json.dumps(case.model_dump(mode="json")))
+    for blob in blobs:
+        for secret in ALL_SECRETS:
+            assert secret not in blob
+
+
+def test_structural_exception_with_generation_api_key_is_redacted(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    result, *_ = _run_fake_campaign(
+        tmp_path,
+        monkeypatch,
+        inject_secrets=True,
+        fail_structural_at=3,
+        structural_message=f"provider exploded with {SECRET_API_KEY}",
+    )
+    assert result.run_status == "failed_during_execution"
+    assert result.error is not None
+    assert SECRET_API_KEY not in result.error
+    assert "<redacted>" in result.error
+    report = (result.output_dir / "report.md").read_text(encoding="utf-8")
+    assert SECRET_API_KEY not in report
+    _assert_no_secrets_in_result(result)
+
+
+def test_unsafe_secret_bearing_attempt_rejected_before_persistence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    result, *_ = _run_fake_campaign(
+        tmp_path,
+        monkeypatch,
+        inject_secrets=True,
+        unsafe_secret_attempt_at=4,
+    )
+    assert result.run_status == "failed_during_execution"
+    assert result.error is not None
+    assert "refusing to persist unsafe attempt" in result.error
+    preserved = sum(len(c.level_c_attempts) for c in result.cases)
+    assert preserved == 3
+    _assert_no_secrets_in_result(result)
+
+
+def test_authoring_recovery_judge_api_keys_are_redacted(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Prove collector sees all four secrets under the runner load path.
+    _inject_all_runtime_secrets(monkeypatch)
+    settings = runner_mod.load_level_c_runtime_settings(
+        REPO_ROOT, runtime_env={}, dotenv_path=tmp_path / "missing.env"
+    )
+    assert collect_runtime_api_key_secrets(settings) == ALL_SECRETS
+
+    result, *_ = _run_fake_campaign(
+        tmp_path,
+        monkeypatch,
+        inject_secrets=True,
+        fail_structural_at=2,
+        structural_message=(
+            f"multi-secret boom {SECRET_AUTHORING} {SECRET_RECOVERY} {SECRET_JUDGE}"
+        ),
+    )
+    assert result.error is not None
+    for secret in (SECRET_AUTHORING, SECRET_RECOVERY, SECRET_JUDGE):
+        assert secret not in result.error
+    report = (result.output_dir / "report.md").read_text(encoding="utf-8")
+    for secret in ALL_SECRETS:
+        assert secret not in report
+    _assert_no_secrets_in_result(result)
+
+
+# ---------------------------------------------------------------------------
+# F-LC-R2 — single captured runtime environment
+# ---------------------------------------------------------------------------
+
+
+def test_preflight_uses_captured_env_without_rereading_dotenv(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    dotenv = tmp_path / ".env"
+    dotenv.write_text("# initially no timeout pin\n", encoding="utf-8")
+    factory_envs: list[dict[str, str]] = []
+
+    def _pf(**kwargs: Any) -> LevelCPreflightContext:
+        # Mutate .env after runner capture; re-read would pick this up.
+        dotenv.write_text("OFFLINE_RAG_LLM_TIMEOUT_SECONDS=300\n", encoding="utf-8")
+        assert kwargs["dotenv_path"] == Path(os.devnull)
+        assert "OFFLINE_RAG_LLM_TIMEOUT_SECONDS" not in kwargs["environ"]
+        return _fake_preflight(repo_root=REPO_ROOT)
+
+    result, _log, preflight_calls, _rb, *_rest = _run_fake_campaign(
+        tmp_path,
+        monkeypatch,
+        preflight_fn=_pf,
+        dotenv_path=dotenv,
+        environ={},
+        factory_envs=factory_envs,
+    )
+    assert result.run_status == "completed"
+    assert len(preflight_calls) == 1
+    assert preflight_calls[0]["dotenv_path"] == Path(os.devnull)
+    assert "OFFLINE_RAG_LLM_TIMEOUT_SECONDS" not in preflight_calls[0]["environ"]
+    assert len(factory_envs) == 1
+    assert factory_envs[0] == preflight_calls[0]["environ"]
+    assert "OFFLINE_RAG_LLM_TIMEOUT_SECONDS=300" in dotenv.read_text(encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# F-LC-R3 — VRAM availability propagation
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("vram", ["unavailable", "available"])
+def test_vram_availability_propagates_from_preflight(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, vram: str
+) -> None:
+    result, *_ = _run_fake_campaign(tmp_path, monkeypatch, telemetry_vram=vram)
+    assert result.aggregate.vram_availability == vram
+    assert result.preflight is not None
+    assert result.preflight.telemetry_vram == vram
+
+
+# ---------------------------------------------------------------------------
+# F-LC-R4 — close failures must not destroy terminal evidence
+# ---------------------------------------------------------------------------
+
+
+def test_generator_close_failure_still_closes_retriever_and_persists(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    result, _log, _pf, _rb, retriever, generator, *_rest = _run_fake_campaign(
+        tmp_path,
+        monkeypatch,
+        generator_close_error=RuntimeError(f"close leaked {SECRET_API_KEY}"),
+        inject_secrets=True,
+    )
+    assert result.run_status == "failed_during_execution"
+    assert generator.close_calls == 1
+    assert retriever.close_calls == 1
+    assert len(result.cases) == 5
+    assert sum(len(c.level_c_attempts) for c in result.cases) == 30
+    assert (result.output_dir / "aggregate.json").is_file()
+    assert (result.output_dir / "report.md").is_file()
+    assert result.error is not None
+    assert "resource_close_failure" in result.error
+    assert SECRET_API_KEY not in result.error
+    assert "<redacted>" in result.error
+
+
+def test_retriever_close_failure_seals_failed_during_execution(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    result, _log, _pf, _rb, retriever, generator, *_rest = _run_fake_campaign(
+        tmp_path,
+        monkeypatch,
+        retriever_close_error=RuntimeError("retriever close boom"),
+    )
+    assert result.run_status == "failed_during_execution"
+    assert generator.close_calls == 1
+    assert retriever.close_calls == 1
+    assert sum(len(c.level_c_attempts) for c in result.cases) == 30
+    assert result.error is not None
+    assert "resource_close_failure" in result.error
+    assert (result.output_dir / "cases").is_dir()
+
+
+def test_close_error_does_not_replace_campaign_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    result, *_ = _run_fake_campaign(
+        tmp_path,
+        monkeypatch,
+        fail_structural_at=5,
+        structural_message="original campaign structural failure",
+        generator_close_error=RuntimeError("close secondary failure"),
+    )
+    assert result.run_status == "failed_during_execution"
+    assert result.error is not None
+    assert "original campaign structural failure" in result.error
+    assert "resource_close_failure" in result.error
+    assert "close secondary failure" in result.error
+    assert sum(len(c.level_c_attempts) for c in result.cases) == 4
