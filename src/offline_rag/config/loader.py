@@ -52,7 +52,10 @@ _ENV_FIELD_MAP: dict[str, tuple[str, ...]] = {
     "LEXICAL_INDEXES": ("paths", "lexical_indexes"),
     "LEXICAL_INDEX_MANIFESTS": ("paths", "lexical_index_manifests"),
     "QDRANT_DIR": ("paths", "qdrant_storage"),
-    "MODELS_DIR": ("paths", "retrieval_models"),
+    "TRACES": ("paths", "traces"),
+    "STAGING": ("paths", "staging"),
+    "LOCKS": ("paths", "locks"),
+    "LOGS": ("paths", "logs"),
     "DOCLING_ARTIFACTS_PATH": ("paths", "docling_artifacts"),
     "TOKENIZER_ARTIFACTS_PATH": ("paths", "tokenizer_artifacts"),
     "EMBEDDING_ARTIFACTS_PATH": ("paths", "embedding_artifacts"),
@@ -61,6 +64,20 @@ _ENV_FIELD_MAP: dict[str, tuple[str, ...]] = {
     "LOG_LEVEL": ("logging", "level"),
     "LOG_STRUCTURED": ("logging", "structured"),
     "PDF_OCR_ENABLED": ("parsing", "pdf", "ocr_enabled"),
+    "HTTP_HOST": ("api", "http_host"),
+    "HTTP_PORT": ("api", "http_port"),
+    "ALLOW_NON_LOOPBACK": ("api", "allow_non_loopback"),
+    "MAX_QUESTION_CHARS": ("api", "max_question_chars"),
+    "MAX_FILES_PER_INGEST": ("api", "max_files_per_ingest"),
+    "MAX_BYTES_PER_DOCUMENT": ("api", "max_bytes_per_document"),
+    "MAX_TOTAL_UPLOAD_BYTES": ("api", "max_total_upload_bytes"),
+    "QUERY_DEADLINE_SECONDS": ("api", "query_deadline_seconds"),
+    "INGEST_DEADLINE_SECONDS": ("api", "ingest_deadline_seconds"),
+    "MAX_CONCURRENT_QUERY": ("api", "max_concurrent_query"),
+    "MAX_CONCURRENT_INGEST": ("api", "max_concurrent_ingest"),
+    "SHUTDOWN_GRACE_SECONDS": ("api", "shutdown_grace_seconds"),
+    "TRACE_RETENTION_DAYS": ("api", "trace_retention_days"),
+    "TRACE_RETENTION_MAX_COUNT": ("api", "trace_retention_max_count"),
 }
 
 
@@ -149,7 +166,24 @@ def _apply_data_dir(data: MutableMapping[str, Any], data_dir: str) -> None:
     paths["lexical_indexes"] = str(root / "lexical-indexes")
     paths["lexical_index_manifests"] = str(root / "lexical-index-manifests")
     paths["qdrant_storage"] = str(root / "qdrant")
+    paths["traces"] = str(root / "traces")
+    paths["staging"] = str(root / "staging")
+    paths["locks"] = str(root / "locks")
+    paths["logs"] = str(root / "logs")
     paths["eval_results"] = str(root / "eval" / "results")
+
+
+def _apply_models_dir(data: MutableMapping[str, Any], models_dir: str) -> None:
+    """Rebase provisioned non-generator asset roots under OFFLINE_RAG_MODELS_DIR."""
+    root = Path(models_dir)
+    paths = data.setdefault("paths", {})
+    if not isinstance(paths, dict):
+        raise ConfigError("paths must be a mapping when applying OFFLINE_RAG_MODELS_DIR")
+    paths["retrieval_models"] = str(root)
+    paths["docling_artifacts"] = str(root / "docling")
+    paths["tokenizer_artifacts"] = str(root / "tokenizers" / "tiktoken")
+    paths["embedding_artifacts"] = str(root / "embeddings")
+    paths["reranker_artifacts"] = str(root / "rerankers")
 
 
 def env_overrides(environ: Mapping[str, str] | None = None) -> dict[str, Any]:
@@ -160,6 +194,10 @@ def env_overrides(environ: Mapping[str, str] | None = None) -> dict[str, Any]:
     data_dir = env.get(f"{ENV_PREFIX}DATA_DIR")
     if data_dir:
         _apply_data_dir(overrides, data_dir)
+
+    models_dir = env.get(f"{ENV_PREFIX}MODELS_DIR")
+    if models_dir:
+        _apply_models_dir(overrides, models_dir)
 
     for suffix, path in _ENV_FIELD_MAP.items():
         key = f"{ENV_PREFIX}{suffix}"

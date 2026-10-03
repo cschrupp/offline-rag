@@ -45,12 +45,42 @@ class PathSettings(BaseModel):
     lexical_indexes: Path = Path("data/lexical-indexes")
     lexical_index_manifests: Path = Path("data/lexical-index-manifests")
     qdrant_storage: Path = Path("data/qdrant")
+    traces: Path = Path("data/traces")
+    staging: Path = Path("data/staging")
+    locks: Path = Path("data/locks")
+    logs: Path = Path("data/logs")
     retrieval_models: Path = Path("models")
     docling_artifacts: Path = Path("models/docling")
     tokenizer_artifacts: Path = Path("models/tokenizers/tiktoken")
     embedding_artifacts: Path = Path("models/embeddings")
     reranker_artifacts: Path = Path("models/rerankers")
     eval_results: Path = Path("eval/results")
+
+
+class ApiSettings(BaseModel):
+    """Slice 15 product HTTP / packaging knobs (Residual A).
+
+    Not identity-bearing for scientific config hashes.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    product_mode_id: NonEmptyStr = "grounded_v1"
+    max_files_per_ingest: PositiveInt = 32
+    max_bytes_per_document: PositiveInt = 26_214_400
+    max_total_upload_bytes: PositiveInt = 104_857_600
+    max_question_chars: PositiveInt = 8_000
+    query_deadline_seconds: PositiveInt = 180
+    ingest_deadline_seconds: PositiveInt = 1_800
+    max_concurrent_query: PositiveInt = 1
+    max_concurrent_ingest: PositiveInt = 1
+    admission_wait_seconds: NonNegativeInt = 0
+    shutdown_grace_seconds: PositiveInt = 30
+    http_host: NonEmptyStr = "127.0.0.1"
+    http_port: PositiveInt = 8080
+    allow_non_loopback: bool = False
+    trace_retention_days: PositiveInt = 7
+    trace_retention_max_count: PositiveInt = 1_000
 
 
 class LoggingSettings(BaseModel):
@@ -726,8 +756,15 @@ class AppSettings(BaseModel):
     )
     abstention: AbstentionSettings = Field(default_factory=AbstentionSettings)
     security: SecuritySettings = Field(default_factory=SecuritySettings)
+    api: ApiSettings = Field(default_factory=ApiSettings)
     experiment: ExperimentSection | None = None
 
     def to_canonical_dict(self) -> dict[str, Any]:
-        """JSON-ready mapping suitable for deterministic config hashing."""
-        return self.model_dump(mode="json")
+        """JSON-ready mapping suitable for deterministic config hashing.
+
+        Product/packaging ``api`` knobs are excluded — they are not scientific
+        identity (Slice 15 Residual A).
+        """
+        data = self.model_dump(mode="json")
+        data.pop("api", None)
+        return data
