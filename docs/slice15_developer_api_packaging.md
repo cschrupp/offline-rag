@@ -172,7 +172,9 @@ Owner: `offline_rag.app`. FastAPI/CLI translate only.
 | `internal_error` | 500 | false | Unexpected orchestration failure |
 
 \* Retrying immediately is not something clients should assume helps.  
-† No normative HTTP mapping required when the peer already disconnected (D18).
+† `request_cancelled` is application/trace-terminal only under D18: it has **no
+normative HTTP status**. Implementations must not invent `499`, `408`, or another
+HTTP mapping for the already-disconnected-peer case.
 
 - `mode_not_ready`: **not** in Slice 15 catalog
 - Framework-native validation bodies: **forbidden**; normalize to envelope
@@ -560,8 +562,9 @@ Normative container root: `/data`. Frozen mapping (host/dev may use repo-relativ
 
 ```text
 /data/
+  raw/                    # paths.raw_data
   qdrant/                 # paths.qdrant_storage
-  corpora/                # paths.corpora (+ corpus state, candidates, leases)
+  corpora/                # paths.corpora (+ corpus state, candidates)
   manifests/              # paths.manifests (as applicable)
   processed/              # paths.processed
   chunks/                 # paths.chunks
@@ -576,6 +579,8 @@ Normative container root: `/data`. Frozen mapping (host/dev may use repo-relativ
   eval/                   # OPTIONAL operator convenience; not product-required
   logs/                   # OPTIONAL
 ```
+
+Active mutation-lease coordination lives only under `locks/` (not under `corpora/`).
 
 `/models/` remains the provisioned non-generator root (`paths.retrieval_models` and
 related artifact roots under `models/…` in current config).

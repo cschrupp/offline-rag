@@ -84,7 +84,9 @@ names) are free **within** each phase if D01–D22 + Residual A remain satisfied
 ### Acceptance tests
 
 - Unit: corpus name accept/reject matrix matches D20 regex
-- Unit: every D08 code has HTTP + retryable mapping including additives
+- Unit: every D08 code has retryable mapping; every code except
+  `request_cancelled` has a normative HTTP mapping. `request_cancelled` is
+  application/trace-only (optional/absent HTTP status) — do not invent 499/408
 - Unit: Residual A defaults resolve without overlay
 - Unit: secret-bearing fields never appear in error `details`
 - Unit: FastAPI/Pydantic validation translator → `request_invalid` envelope shape
@@ -169,8 +171,8 @@ busy; CLI and API share coordination namespace.
 - Map bound/type/identity failures to `request_invalid` / `document_invalid`
 - Success `{corpus, snapshot_id, document_count}`
 - Offload blocking stages off the ASGI event loop (D18)
-- CLI path ingest may call the same app use case (optional in-phase if cheap;
-  otherwise thin follow-up still before Slice 15 closeout)
+- CLI path ingest may call the same app use case in-phase if cheap; otherwise a
+  thin follow-up is required before Slice 15 closeout (see §11)
 
 ### Depends on
 
@@ -337,8 +339,12 @@ unavailable).
 ## 11. CLI adapter policy
 
 - Product HTTP never calls `cli.py` (D01)
-- CLI may gradually call `offline_rag.app` use cases for ingest/query/doctor
-  packaging consistency
+- By **Slice 15 closeout**, product CLI **ingest** and **query** MUST invoke
+  `offline_rag.app` (same use-case boundary as FastAPI). Migration may land in
+  15D/15E or a thin follow-up before closeout; it must not remain deferred past
+  Slice 15 acceptance.
+- Doctor packaging consistency via `offline_rag.app` is preferred when cheap;
+  evaluation CLI remains under D12 and does **not** require speculative migration
 - Evaluation CLI remains authoritative; no HTTP wrap (D12)
 - Concurrent CLI + API opening same Qdrant Local store remains **unsupported**
   unless a phase explicitly verifies Local-mode safety and documents it (D17)
