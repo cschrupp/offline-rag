@@ -387,6 +387,7 @@ justifies conditional orchestration.
 **M7 entry authority:** `dcc6b07c20f97472cf506c4665af1f88f00a886b`  
 **Slice 14 design authority:** [`docs/milestone7_performance_ui.md`](docs/milestone7_performance_ui.md)  
 **Slice 14 design (LOCKED / ACCEPTED):** `89a395ae4df7aff23c2da2c8c44fd6fe405459a6`
+**Slice 14:** **COMPLETE / ACCEPTED**
 
 **Slice 14 — Performance and resource benchmark harness**
 - Design: **LOCKED / ACCEPTED** (`89a395ae4df7aff23c2da2c8c44fd6fe405459a6`)
@@ -400,11 +401,25 @@ justifies conditional orchestration.
 - Prior terminal runs (immutable; not accepted as the corrected quality-vs-cost result):
   - `perfrun_87771f72…` — failed_during_execution / PRESERVED
   - `perfrun_f5ed426a…` — completed / AUDIT NOT ACCEPTED / PRESERVED
-- **Corrected 14C authoritative execution:** **ELIGIBLE FOR SEPARATE AUTHORIZATION** / **NOT AUTHORIZED**
-- Slice 14 closeout: **NOT YET ELIGIBLE**
-- README / portfolio claims: **NOT AUTHORIZED**
+- **Corrected 14C authoritative run:** **COMPLETE / ACCEPTED**
+  - `perfrun_deb7a58e49d0f64496553a16c3edc3a5b517deec5ec1c9ddd76831fee79627ca`
+  - Evidence commit `153376b28545017c6134f9858d330548a7d8c6c7`
+  - Executing SHA `affbd1127b1afc677e31c132da1c000c6cf246b5`
+- **Level-C** instrumentation: **COMPLETE / ACCEPTED** (`d25f5f85bd20aff18873dfd26fc8926da9a6dade`)
+- **Level-C** suite/config freeze: **LOCKED / ACCEPTED** (`f3ff6de00d90ebae24639d1569ef0f91b25b3c65`)
+  - `perfsuite_d9241ed2cad9473e399ae30d875729c8d2b1faf65580457fe2a872d75ca924b0`
+  - `perfcfg_a26a0fb336905dfa681c6cfe96721cf1fd446da64004336156f0336420025a25`
+  - `gencfg_d6b98a84f20887142dbb56a20e1b7533f6006304442efc017bb80a8fa2feb4d3`
+  - `ctxcfg_b1742f41ecc03defbcf7c4e270fe22b4aa72db4a1af2c02a70d5560cd2ac8876`
+- **Level-C** preflight: **COMPLETE / ACCEPTED** (`6327a9d018c252f339c342ddbc9e0c01fc998457`)
+- **Level-C** authoritative runner: **COMPLETE / ACCEPTED** (`30b5abb627e16e50b2b848b44676b89b2372c3d6`)
+- **Level-C** authoritative run: **COMPLETE / ACCEPTED**
+  - `perfrun_211ebf1f9bcdef93d1f14421b754ef5ff387e2e091dc7f603f455dd083fdbf39`
+  - Executing SHA `30b5abb627e16e50b2b848b44676b89b2372c3d6`
+- Slice 14 closeout: **COMPLETE / ACCEPTED**
 - Observational measurement only; no optimization / no pipeline semantic change in-slice
 - First quality-vs-cost design: baseline **hybrid** vs treatment **hybrid + reranker** (generation excluded)
+- Level-C is a separate end-to-end generation-path benchmark (do not merge latency populations with 14C)
 
 Slice 14 checklist:
 
@@ -413,8 +428,9 @@ Slice 14 checklist:
 - [x] diagnostic dry-run runner (14B — **COMPLETE / ACCEPTED**)
 - [x] frozen hybrid vs hybrid+reranker suite (14C freeze — **LOCKED / ACCEPTED**)
 - [x] authoritative harness rework (quality + semantic path timing + measured RAM — **COMPLETE / ACCEPTED**)
-- [ ] corrected authoritative quality-vs-cost run (**NOT AUTHORIZED**)
-- [ ] Slice 14 closeout (**NOT YET ELIGIBLE**)
+- [x] corrected authoritative quality-vs-cost run (**COMPLETE / ACCEPTED**)
+- [x] Level-C instrumentation / freeze / preflight / runner / authoritative run (**COMPLETE / ACCEPTED**)
+- [x] Slice 14 closeout (**COMPLETE / ACCEPTED**)
 
 Later M7 checklist (not Slice 14; not authorized here):
 
@@ -428,9 +444,10 @@ Later M7 checklist (not Slice 14; not authorized here):
 
 **Release criterion:** a reviewer can interactively compare retrieval modes and inspect evidence flow.
 
-Milestone **6** remains **COMPLETE / ACCEPTED** at `dcc6b07…`. Corrected 14C
-authoritative execution, README/portfolio claims, 13C/13D, recovery enablement,
-LangGraph, NeMo, and `base.yaml` mutation remain **NOT AUTHORIZED**.
+Milestone **6** remains **COMPLETE / ACCEPTED** at `dcc6b07…`. Milestone **7**
+remains **IN PROGRESS**. Performance optimization, generator max-token change,
+reranker config change, `base.yaml` promotion, `PORTFOLIO_DEMO.md` update,
+13C/13D, recovery enablement, LangGraph, and NeMo remain **NOT AUTHORIZED**.
 
 ## Milestone 8 — Portfolio release
 

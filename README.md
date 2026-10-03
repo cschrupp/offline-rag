@@ -151,6 +151,41 @@ The goal is to be able to make evidence-backed statements such as:
 
 > Adding the reranker improved MRR by X% while increasing median retrieval latency by Y ms. Query rewriting improved difficult semantic queries but produced little gain on exact-keyword questions.
 
+### Measured performance evidence (Slice 14)
+
+Slice 14 is **COMPLETE / ACCEPTED**. Evidence is descriptive under frozen
+protocols; it does not define a latency SLO, declare a winner, or authorize
+configuration promotion. Full provenance:
+[`docs/milestone7_performance_ui.md`](docs/milestone7_performance_ui.md).
+
+**Retrieval quality-vs-cost benchmark (14C; generation excluded)**
+
+- Terminal run: `perfrun_deb7a58e49d0f64496553a16c3edc3a5b517deec5ec1c9ddd76831fee79627ca`
+- Suite / config: `perfsuite_5248892…` / `perfcfg_aae1ea9b…`
+- Population: 44 cases; 440 measured observations; 88 warm-ups; 0 failures
+- Observed warm totals (measured): hybrid p50 ≈ 5.62 s / p95 ≈ 8.31 s;
+  hybrid + reranker p50 ≈ 7.41 s / p95 ≈ 13.53 s
+- On the frozen development fixture, hybrid + reranker had higher accepted
+  retrieval-quality metrics while also adding latency. That is not a
+  promotion decision. The 22-case Gold population remains a
+  development/regression fixture, not publication-grade evidence.
+
+**End-to-end generation-path benchmark (Level-C; separate population)**
+
+- Terminal run: `perfrun_211ebf1f9bcdef93d1f14421b754ef5ff387e2e091dc7f603f455dd083fdbf39`
+- Runner authority: `30b5abb627e16e50b2b848b44676b89b2372c3d6`
+- Population: 5 queries; 5 warm-ups + 25 measured = 30 attempts
+- Observed warm end-to-end (measured): p50 ≈ 50.83 s / p95 ≈ 144.59 s
+- Observed warm generation (measured): p50 ≈ 13.71 s / p95 ≈ 64.06 s
+- TTFT / decode / tokens-sec remain UNEVALUABLE on the accepted non-streaming
+  generator path; output tokens use provider `completion_tokens` when present
+- One frozen query produced `response_parse_error` after reaching the
+  configured 1,200-token ceiling on all six attempts; generation stage timing
+  remained valid. Pattern consistent with truncation at the token ceiling;
+  stronger causation and any max-token change are not authorized here.
+
+Do **not** merge 14C retrieval-path latency with Level-C end-to-end latency.
+
 ## Evaluation dimensions
 
 ### Offline gold authoring (Milestone 4)
@@ -342,10 +377,22 @@ Use public, redistributable technical documents rather than proprietary material
 
 ## Project status
 
-**Phase:** Milestone 5 / Slice 10 — design contract drafted / implementation not started. Milestone 4 near-term engineering closed (**9F GO**; **9H-P COMPLETE / NON-PROMOTIONAL**; **9G** deferred; formal **9H** frozen).
+**Phase:** Milestone **7 IN PROGRESS**. Milestone **6 COMPLETE / ACCEPTED**.
+Slice **14 COMPLETE / ACCEPTED** (performance benchmark harness + accepted
+terminal runs). FastAPI/service packaging, standalone Qdrant profile, volumes,
+retrieval inspector, citation viewer, and evaluation dashboard remain later
+Milestone 7 work.
 
-Working local path: ingest → chunk → index / index lexical → retrieve ladder → `query` → `eval retrieve` / `eval compare` → `eval query` → `doctor` → `gold propose` → `gold pool` → `gold prelabel` → `gold review` → `gold finalize`.
+Working local path: ingest → chunk → index / index lexical → retrieve ladder →
+`query` → grounded generation → `eval retrieve` / `eval compare` →
+`eval query` → `doctor` → gold authoring workflow → Slice 14 performance
+benchmarks.
 
-Still deferred: **9G**–formal **9H** (publication readiness); Slice 10 implementation (10A+); agentic recovery (Milestone 6).
+Still deferred / not authorized from Slice 14 closeout: publication-grade
+portfolio claims (`PORTFOLIO_DEMO.md`); performance optimization; generator
+max-token change; `base.yaml` promotion; Milestone 7 closeout.
 
-See `ROADMAP.md`, `docs/milestone4_offline_gold_authoring.md`, `docs/slice10_generation_semantic_evaluation.md`, and `docs/slice8_grounded_generation.md`.
+See `ROADMAP.md`, `docs/milestone7_performance_ui.md`,
+`docs/milestone4_offline_gold_authoring.md`,
+`docs/slice10_generation_semantic_evaluation.md`, and
+`docs/slice8_grounded_generation.md`.

@@ -4,7 +4,7 @@
 MILESTONE 7: IN PROGRESS
 M7 ENTRY AUTHORITY: dcc6b07c20f97472cf506c4665af1f88f00a886b
 
-SLICE 14 DESIGN: LOCKED / ACCEPTED
+SLICE 14: COMPLETE / ACCEPTED
 DESIGN AUTHORITY: 89a395ae4df7aff23c2da2c8c44fd6fe405459a6
 
 14A: COMPLETE / ACCEPTED
@@ -18,27 +18,46 @@ DESIGN AUTHORITY: 89a395ae4df7aff23c2da2c8c44fd6fe405459a6
 14C AUTHORITATIVE HARNESS REWORK: COMPLETE / ACCEPTED
   Authority: ec7383f1612c2ddf86ca595cb3f9f0d8b4fb432c
   F001 / F002 / F003: CLOSED
+CORRECTED 14C AUTHORITATIVE RUN: COMPLETE / ACCEPTED
+  perfrun_deb7a58e49d0f64496553a16c3edc3a5b517deec5ec1c9ddd76831fee79627ca
+  Evidence commit: 153376b28545017c6134f9858d330548a7d8c6c7
+  Executing SHA: affbd1127b1afc677e31c132da1c000c6cf246b5
 
-CORRECTED 14C AUTHORITATIVE EXECUTION:
-  ELIGIBLE FOR SEPARATE AUTHORIZATION / NOT AUTHORIZED
-SLICE 14 CLOSEOUT: NOT YET ELIGIBLE
-README / PORTFOLIO CLAIMS: NOT AUTHORIZED
+LEVEL-C INSTRUMENTATION: COMPLETE / ACCEPTED
+  Authority: d25f5f85bd20aff18873dfd26fc8926da9a6dade
+LEVEL-C SUITE/CONFIG FREEZE: LOCKED / ACCEPTED
+  Authority: f3ff6de00d90ebae24639d1569ef0f91b25b3c65
+  perfsuite_d9241ed2cad9473e399ae30d875729c8d2b1faf65580457fe2a872d75ca924b0
+  perfcfg_a26a0fb336905dfa681c6cfe96721cf1fd446da64004336156f0336420025a25
+  gencfg_d6b98a84f20887142dbb56a20e1b7533f6006304442efc017bb80a8fa2feb4d3
+  ctxcfg_b1742f41ecc03defbcf7c4e270fe22b4aa72db4a1af2c02a70d5560cd2ac8876
+LEVEL-C PREFLIGHT: COMPLETE / ACCEPTED
+  Authority: 6327a9d018c252f339c342ddbc9e0c01fc998457
+LEVEL-C AUTHORITATIVE RUNNER: COMPLETE / ACCEPTED
+  Authority: 30b5abb627e16e50b2b848b44676b89b2372c3d6
+LEVEL-C AUTHORITATIVE RUN: COMPLETE / ACCEPTED
+  perfrun_211ebf1f9bcdef93d1f14421b754ef5ff387e2e091dc7f603f455dd083fdbf39
+  Executing SHA: 30b5abb627e16e50b2b848b44676b89b2372c3d6
+
+SLICE 14 CLOSEOUT: COMPLETE / ACCEPTED
+PORTFOLIO_DEMO.md UPDATE: NOT AUTHORIZED
+MILESTONE 7 CLOSEOUT: NOT AUTHORIZED
 ```
 
 **Authoritative for:** Milestone 7 / Slice 14 performance & resource benchmark
-**design** (contracts, phasing, provenance, quality-vs-cost first comparison)
-and the accepted implementation status recorded above.
-**Not authoritative for:** corrected 14C authoritative execution results;
-README/portfolio claims; Milestone 6 science; 13C/13D; recovery enablement;
-LangGraph; NeMo; `config/base.yaml` mutation; FastAPI/UI packaging (later M7
-slices).
+design, accepted implementation authorities, corrected 14C quality-vs-cost
+evidence, and accepted Level-C authoritative evidence recorded in this document.
+**Not authoritative for:** publication-grade validation; portfolio demo
+claims; Milestone 6 science; 13C/13D; recovery enablement; LangGraph; NeMo;
+`config/base.yaml` mutation; FastAPI/UI packaging (later M7 slices);
+performance optimization or configuration promotion from these results.
 
 **Milestone 6 remains COMPLETE / ACCEPTED** at closeout
 `dcc6b07c20f97472cf506c4665af1f88f00a886b`. Sealed 13B executable / Q1
 `7baca2d0fd0d89b6358d04bd943c8c14ea6e742c` **UNCHANGED**. 13C remains
 DEFERRED / OPEN / NOT REQUIRED FOR M6 / NOT AUTHORIZED. 13D remains
-DEFERRED / OPTIONAL / NOT REQUIRED FOR M6 / NOT AUTHORIZED. This design lock
-does **not** reopen M6 science.
+DEFERRED / OPTIONAL / NOT REQUIRED FOR M6 / NOT AUTHORIZED. Slice 14 closeout
+does **not** reopen M6 science and does **not** complete Milestone 7.
 
 ---
 
@@ -447,17 +466,21 @@ models; configs; top-k; warm-up count; repetition count; suite identity.
 
 ## 14. Slice 14 exit conditions
 
-Slice 14 may eventually close only after:
+Slice 14 closeout required:
 
 1. benchmark harness accepted;
 2. frozen hybrid vs hybrid+reranker suite accepted;
 3. at least one valid terminal benchmark run;
 4. one defensible quality-vs-cost report;
-5. Level C generation metrics including TTFT/total/tokens-sec where evaluable;
+5. Level C generation metrics including TTFT/total/tokens-sec where evaluable
+   (TTFT / decode / tokens-sec remain UNEVALUABLE on the accepted non-streaming
+   generator path; total generation latency and provider completion_tokens are
+   recorded);
 6. machine/resource provenance;
 7. README-facing evidence prepared without arbitrary winner/SLO claims.
 
-This docs-only design-lock task does **not** perform these steps.
+These conditions are now met. See §17–§19 for accepted terminal run IDs and
+descriptive findings.
 
 ---
 
@@ -520,22 +543,256 @@ reruns do not collide.
 
 ---
 
+## 17. Corrected 14C authoritative quality-vs-cost evidence
+
+Historical prior terminal runs remain immutable and are **not** the accepted
+corrected quality-vs-cost result:
+
+```text
+perfrun_87771f72… — failed_during_execution / PRESERVED
+perfrun_f5ed426a… — completed / AUDIT NOT ACCEPTED / PRESERVED
+```
+
+Accepted corrected 14C run:
+
+```text
+RUN: perfrun_deb7a58e49d0f64496553a16c3edc3a5b517deec5ec1c9ddd76831fee79627ca
+EVIDENCE COMMIT: 153376b28545017c6134f9858d330548a7d8c6c7
+EXECUTING SHA: affbd1127b1afc677e31c132da1c000c6cf246b5
+SUITE: perfsuite_5248892df382995ac96ec2b09aea61bf27510673b93e0d816d6a255a2f4305ba
+CONFIG: perfcfg_aae1ea9b048e414338f0a38b13cb31132505920c406293e1e9f8e35595faa42d
+```
+
+Accepted population:
+
+```text
+44 cases
+440 measured observations
+88 warm-ups
+0 failures
+0 exclusions
+```
+
+Accepted descriptive latency (measured):
+
+```text
+overall:
+  p50 = 6.4741 s
+  p95 = 11.4928 s
+
+hybrid total:
+  p50 = 5.6171 s
+  p95 = 8.3118 s
+
+hybrid + reranker total:
+  p50 = 7.4129 s
+  p95 = 13.5332 s
+
+rerank stage:
+  p50 = 1.9140 s
+  p95 = 4.4787 s
+
+observed rerank maximum:
+  62.455 s
+  retained in evidence
+```
+
+Descriptive finding only: on the frozen development fixture, the hybrid +
+reranker treatment had higher accepted retrieval-quality metrics than hybrid
+alone while also adding latency. This does **not** declare the treatment
+superior, does **not** say the latency is “worth it,” and does **not**
+authorize promotion. The 22-case Gold population remains a
+development/regression fixture, not publication-grade evidence.
+
+---
+
+## 18. Level-C authoritative end-to-end evidence
+
+Authority chain:
+
+```text
+INSTRUMENTATION: d25f5f85bd20aff18873dfd26fc8926da9a6dade
+SUITE/CONFIG FREEZE: f3ff6de00d90ebae24639d1569ef0f91b25b3c65
+PREFLIGHT: 6327a9d018c252f339c342ddbc9e0c01fc998457
+RUNNER: 30b5abb627e16e50b2b848b44676b89b2372c3d6
+
+LOCKED:
+  perfsuite_d9241ed2cad9473e399ae30d875729c8d2b1faf65580457fe2a872d75ca924b0
+  perfcfg_a26a0fb336905dfa681c6cfe96721cf1fd446da64004336156f0336420025a25
+  gencfg_d6b98a84f20887142dbb56a20e1b7533f6006304442efc017bb80a8fa2feb4d3
+  ctxcfg_b1742f41ecc03defbcf7c4e270fe22b4aa72db4a1af2c02a70d5560cd2ac8876
+```
+
+Accepted Level-C run:
+
+```text
+RUN: perfrun_211ebf1f9bcdef93d1f14421b754ef5ff387e2e091dc7f603f455dd083fdbf39
+EXECUTING SHA: 30b5abb627e16e50b2b848b44676b89b2372c3d6
+STATUS: completed
+EVIDENCE CLASS: AUTHORITATIVE
+CASES: 5
+WARM-UPS: 5
+MEASURED: 25
+TOTAL ATTEMPTS: 30
+MACHINE: perfhost_9e010ef916cc1f6dd5211c069316abca938ec26bd11693f9402a88d805e71a65
+GENERATOR: qwen3.6-35b-a3b
+PIN CLASS: runtime_model_id
+ENDPOINT (provenance only): http://192.168.2.140:8888/v1
+```
+
+No exact generator-weight digest is claimed. Endpoint is run provenance, not
+scientific identity.
+
+### 18.1 Measured stage timing
+
+```text
+END TO END
+  n = 25
+  valid = 25
+  failure = 0
+  excluded = 0
+  not applicable = 0
+  p50 = 50.829869060078636 s
+  p95 = 144.58895409759128 s
+  min = 26.95193731796462 s
+  max = 319.35493657097686 s
+
+GENERATION
+  n = 25
+  valid = 25
+  failure = 0
+  excluded = 0
+  not applicable = 0
+  p50 = 13.71354714804329 s
+  p95 = 64.0607417835854 s
+  min = 7.102435945998877 s
+  max = 64.43286684306804 s
+
+CONTEXT ASSEMBLY
+  n = 25
+  valid = 25
+  failure = 0
+  excluded = 0
+  not applicable = 0
+  p50 = 0.013580686994828284 s
+  p95 = 0.024858880578540264 s
+
+POST-GENERATION / CITATION-VALIDATION STAGE
+  attempted = 25
+  valid = 20
+  failed = 5
+  excluded = 0
+  not applicable = 0
+  p50 over valid samples = 0.00015273148892447352 s
+  p95 over valid samples = 0.000679892918560654 s
+```
+
+Readable summary (exact values retained above): warm Level-C end-to-end
+p50 ≈ 50.83 s and p95 ≈ 144.59 s; generation p95 ≈ 64.06 s. Observed
+end-to-end variability is therefore not explained by the timed generation
+stage alone. No root cause for the remaining latency is asserted here. The
+benchmark does not define a latency SLO.
+
+### 18.2 Terminal outcomes
+
+Across all 30 attempts:
+
+```text
+answered = 24
+generation_failed = 6
+insufficient_evidence = 0
+model_abstain = 0
+citation_invalid = 0
+orchestration_failed = 0
+```
+
+Measured only:
+
+```text
+answered = 20
+generation_failed = 5
+```
+
+All six `generation_failed` attempts (including the warm-up) belong to
+`draft_08f83eaef198495d92ff557eda974bf4`. Every one has:
+
+```text
+terminal_status = generation_failed
+generation_failure_reason = response_parse_error
+generator_invoked = true
+generation stage = valid
+citation/post-generation validation stage = failed
+completion_tokens = 1200
+```
+
+These are **not** generator transport failures and are **not** failed
+generation timing. Evidence-supported observation: one frozen query
+consistently reached the configured 1,200-token output limit and then produced
+a response parse failure in all six attempts. The pattern is consistent with
+output truncation at the configured token ceiling; stronger causation is not
+claimed. No max-token or configuration change is authorized by Slice 14
+closeout.
+
+### 18.3 Generation telemetry limitations
+
+```text
+TTFT: UNEVALUABLE
+decode duration: UNEVALUABLE
+tokens/sec: UNEVALUABLE
+reason: accepted generator path is non-streaming
+
+output-token count: AVAILABLE on 30 / 30 attempts
+source: provider usage.completion_tokens
+```
+
+Do not calculate tokens/sec from total generation latency. Do not retokenize
+output.
+
+### 18.4 Resource evidence
+
+```text
+RAM: available
+RSS-before: 30 / 30 attempts
+RAM peak: unavailable
+observed RSS-before range: 583,819,264 bytes to 3,821,662,208 bytes
+VRAM: unavailable
+```
+
+Do not infer zero VRAM usage. The measured process ran under Linux / WSL2,
+Intel Core i9-10885H, 8 physical / 16 logical cores, ~33.5 GB reported system
+RAM, Python 3.14.5.
+
+---
+
+## 19. Slice 14 closeout interpretation boundary
+
+Slice 14 evidence is descriptive.
+
+- The corrected 14C and Level-C runs completed under their frozen protocols.
+- No latency SLO is defined.
+- No winner, best configuration, or promotion candidate is declared.
+- No performance optimization, generator max-token change, reranker config
+  change, or `base.yaml` promotion is authorized by this closeout.
+- Retrieval quality-vs-cost (14C) and end-to-end generation-path (Level-C)
+  latency populations remain separate and must not be merged.
+
+---
+
 ## Current gate
 
 ```text
-14A: COMPLETE / ACCEPTED
-14B: COMPLETE / ACCEPTED
-14C SUITE FREEZE: LOCKED / ACCEPTED
-14C AUTHORITATIVE HARNESS REWORK: COMPLETE / ACCEPTED
-CORRECTED 14C AUTHORITATIVE EXECUTION:
-  ELIGIBLE FOR SEPARATE AUTHORIZATION / NOT AUTHORIZED
-SLICE 14 CLOSEOUT: NOT YET ELIGIBLE
-README / PORTFOLIO CLAIMS: NOT AUTHORIZED
+SLICE 14: COMPLETE / ACCEPTED
+14A / 14B / 14C freeze / 14C harness / corrected 14C run: ACCEPTED
+LEVEL-C instrumentation / freeze / preflight / runner / run: ACCEPTED
+MILESTONE 7: IN PROGRESS
+PORTFOLIO_DEMO.md UPDATE: NOT AUTHORIZED
+MILESTONE 7 CLOSEOUT: NOT AUTHORIZED
+PERFORMANCE OPTIMIZATION: NOT AUTHORIZED
 M6 science: UNCHANGED
-13C / 13D / recovery / LangGraph / NeMo / base.yaml / 12C / 13B retry:
+13C / 13D / recovery / LangGraph / NeMo / base.yaml:
   NOT AUTHORIZED / UNCHANGED
 ```
 
-**Next:** separate authorization of the **corrected 14C authoritative
-execution** on the frozen suite/config (new `perfrun_`). Prior terminal runs
-remain immutable and are not the accepted quality-vs-cost result.
+**Next:** later Milestone 7 service/UI packaging work under separate
+authorization. Slice 14 performance benchmark harness and accepted terminal
+runs are closed.
