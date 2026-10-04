@@ -916,8 +916,11 @@ def test_grace_expiry_does_not_fabricate_request_timeout(
     traces_before = {p.name for p in _trace_files(settings)}
     runtime.begin_drain()
     assert runtime.wait_for_drain(0.05) is False
-    runtime.finalize_shutdown()
-    assert runtime.state is RuntimeState.STOPPED
+    # Grace expired ≠ safe to close: live worker still holds shared resources.
+    assert runtime.finalize_shutdown() is False
+    assert runtime.state is RuntimeState.DRAINING
+    assert runtime.operations.grace_exhausted is True
+    assert runtime.resources is not None
     # No request_timeout traces invented by grace alone.
     timeout_traces = []
     for path in _trace_files(settings):
@@ -930,6 +933,9 @@ def test_grace_expiry_does_not_fabricate_request_timeout(
     release.set()
     assert done.wait(timeout=5)
     thread.join(timeout=5)
+    assert runtime.wait_for_drain(1.0) is True
+    assert runtime.finalize_shutdown() is True
+    assert runtime.state is RuntimeState.STOPPED
 
 
 # ---------------------------------------------------------------------------
@@ -1050,3 +1056,343 @@ def test_operation_kind_and_enter_publication_guards(tmp_path: Path) -> None:
         ing.checkpoint("in_publication")
     finally:
         runtime.operations.release(ing)
+
+
+# ---------------------------------------------------------------------------
+# Rework race: admit vs drain snapshot
+# ---------------------------------------------------------------------------
+
+
+def test_admit_after_require_ready_loses_to_drain_race(tmp_path: Path) -> None:
+    """Deterministic require_ready → drain → admit interleaving (blocker 1)."""
+    settings = _settings(tmp_path)
+    runtime = _query_runtime(settings)
+    runtime.start()
+    passed_ready = threading.Event()
+    proceed_admit = threading.Event()
+    outcome: dict[str, object] = {}
+
+    def racer() -> None:
+        runtime.require_ready()
+        passed_ready.set()
+        assert proceed_admit.wait(timeout=5)
+        try:
+            op = runtime.operations.admit_query()
+            outcome["op"] = op
+            runtime.operations.release(op)
+        except AppError as exc:
+            outcome["error"] = exc
+
+    thread = threading.Thread(target=racer)
+    thread.start()
+    assert passed_ready.wait(timeout=5)
+    runtime.begin_drain()
+    proceed_admit.set()
+    thread.join(timeout=5)
+    assert not thread.is_alive()
+    assert "op" not in outcome
+    err = outcome["error"]
+    assert isinstance(err, AppError)
+    assert err.code is ErrorCode.RUNTIME_NOT_READY
+    assert runtime.operations.active_count() == 0
+    runtime.finalize_shutdown()
+
+
+# ---------------------------------------------------------------------------
+# Rework race: disconnect between lease.acquire and POST_LEASE
+# ---------------------------------------------------------------------------
+
+
+def test_disconnect_between_lease_acquire_and_post_lease_aborts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """CLIENT_DISCONNECT after acquire, before POST_LEASE → no candidate (blocker 2)."""
+    import offline_rag.app.ingest as ingest_mod
+    from offline_rag.app.leases import CorpusMutationLease
+
+    settings = _settings(tmp_path)
+    runtime = _ingest_runtime(settings)
+    runtime.start()
+    establish_calls = {"n": 0}
+    real_establish = ingest_mod._establish_candidate
+
+    def tracking_establish(*args: Any, **kwargs: Any) -> Any:
+        establish_calls["n"] += 1
+        return real_establish(*args, **kwargs)
+
+    monkeypatch.setattr(ingest_mod, "_establish_candidate", tracking_establish)
+
+    body, ct = _multipart(
+        [
+            ("corpus", b"eng", None),
+            ("files", b"Should not mutate after pre-lease disconnect.\n", "a.txt"),
+        ]
+    )
+    upload = _spool_upload(settings, body, ct)
+    op = runtime.operations.admit_ingest()
+    real_acquire = CorpusMutationLease.acquire
+    disconnect_once = {"done": False}
+
+    def acquire_then_disconnect(self: CorpusMutationLease) -> None:
+        real_acquire(self)
+        if not disconnect_once["done"]:
+            disconnect_once["done"] = True
+            op.signal_cancel(CancelReason.CLIENT_DISCONNECT)
+
+    monkeypatch.setattr(CorpusMutationLease, "acquire", acquire_then_disconnect)
+    try:
+        with pytest.raises(AppError) as exc:
+            run_product_replace_ingest(runtime, upload, control=op)
+        assert exc.value.code is ErrorCode.REQUEST_CANCELLED
+        assert exc.value.details is not None
+        assert exc.value.details.get("reason") == "client_disconnect"
+    finally:
+        runtime.operations.release(op)
+    assert establish_calls["n"] == 0
+    assert not current_pointer_path(settings.paths.corpora, "eng").exists()
+    # Lease must not leak for a subsequent ingest.
+    monkeypatch.setattr(CorpusMutationLease, "acquire", real_acquire)
+    op2 = runtime.operations.admit_ingest()
+    try:
+        body2, ct2 = _multipart(
+            [
+                ("corpus", b"eng", None),
+                ("files", b"Second attempt after cancel.\n", "b.txt"),
+            ]
+        )
+        upload2 = _spool_upload(settings, body2, ct2)
+        result = run_product_replace_ingest(runtime, upload2, control=op2)
+        assert result.snapshot_id.startswith("snap_")
+    finally:
+        runtime.operations.release(op2)
+    runtime.shutdown()
+
+
+# ---------------------------------------------------------------------------
+# Rework race: shutdown/deadline between pre_publish and publication entry
+# ---------------------------------------------------------------------------
+
+
+def test_shutdown_between_pre_publish_and_enter_publication_aborts(
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path, shutdown_grace_seconds=5)
+    runtime = _ingest_runtime(settings)
+    runtime.start()
+
+    body_n, ct_n = _multipart(
+        [
+            ("corpus", b"eng", None),
+            ("files", b"Stable published N.\n", "n.txt"),
+        ]
+    )
+    upload_n = _spool_upload(settings, body_n, ct_n)
+    op_n = runtime.operations.admit_ingest()
+    try:
+        first = run_product_replace_ingest(runtime, upload_n, control=op_n)
+    finally:
+        runtime.operations.release(op_n)
+    snap_n = first.snapshot_id
+
+    def before_stage(stage: str) -> None:
+        if stage == "publish":
+            runtime.begin_drain()
+
+    runtime.product_ingest_hooks = ProductIngestHooks(before_stage=before_stage)
+    body, ct = _multipart(
+        [
+            ("corpus", b"eng", None),
+            ("files", b"Must abort before publication CS.\n", "n1.txt"),
+        ]
+    )
+    upload = _spool_upload(settings, body, ct)
+    op = runtime.operations.admit_ingest()
+    try:
+        with pytest.raises(AppError) as exc:
+            run_product_replace_ingest(
+                runtime, upload, hooks=runtime.product_ingest_hooks, control=op
+            )
+        assert exc.value.code is ErrorCode.INGEST_FAILED
+        assert exc.value.details is not None
+        assert exc.value.details.get("reason") == "shutdown_abort"
+        assert exc.value.details.get("stage") == "publish"
+        assert not op.in_publication
+    finally:
+        runtime.operations.release(op)
+    pointer = current_pointer_path(settings.paths.corpora, "eng")
+    assert json.loads(pointer.read_text(encoding="utf-8"))["snapshot_id"] == snap_n
+    runtime.finalize_shutdown()
+
+
+def test_deadline_between_pre_publish_and_enter_publication_aborts(
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path)
+    runtime = _ingest_runtime(settings)
+    runtime.start()
+
+    def before_stage(stage: str) -> None:
+        if stage == "publish":
+            op.deadline_mono = time.monotonic() - 1.0
+
+    runtime.product_ingest_hooks = ProductIngestHooks(before_stage=before_stage)
+    body, ct = _multipart(
+        [
+            ("corpus", b"eng", None),
+            ("files", b"Deadline before publication gate.\n", "a.txt"),
+        ]
+    )
+    upload = _spool_upload(settings, body, ct)
+    op = runtime.operations.admit_ingest(deadline_seconds=30.0)
+    try:
+        with pytest.raises(AppError) as exc:
+            run_product_replace_ingest(
+                runtime, upload, hooks=runtime.product_ingest_hooks, control=op
+            )
+        assert exc.value.code is ErrorCode.REQUEST_TIMEOUT
+        assert exc.value.details is not None
+        assert exc.value.details.get("stage") == "publish"
+        assert not op.in_publication
+    finally:
+        runtime.operations.release(op)
+    assert not current_pointer_path(settings.paths.corpora, "eng").exists()
+    runtime.shutdown()
+
+
+# ---------------------------------------------------------------------------
+# Orchestrator phase checkpoints (narrow; no scientific behavior change)
+# ---------------------------------------------------------------------------
+
+
+def test_orchestrator_checkpoints_abort_before_generation() -> None:
+    from unittest.mock import MagicMock
+
+    from offline_rag.app.errors import SafeErrorDetails
+    from offline_rag.domain.indexing import (
+        ContextAssemblyDiagnostics,
+        EvidenceUnit,
+        HybridRerankContextResult,
+    )
+    from offline_rag.generation.orchestrate import GroundedAnswerOrchestrator
+    from offline_rag.generation.protocol import Generator
+
+    settings = AppSettings().model_copy(
+        update={
+            "generation": AppSettings().generation.model_copy(
+                update={
+                    "enabled": True,
+                    "model": APPROVED_MODEL,
+                    "approved_models": [APPROVED_MODEL],
+                    "approved_endpoints": [APPROVED_ENDPOINT],
+                    "base_url": APPROVED_ENDPOINT,
+                }
+            ),
+            "retrieval_recovery": AppSettings().retrieval_recovery.model_copy(
+                update={"enabled": False}
+            ),
+        }
+    )
+    unit = EvidenceUnit(
+        evidence_unit_id="ev_1",
+        source_chunk_id="chk_1",
+        kind="child",
+        text="pressure is 100 psi",
+        clipped=False,
+        token_count=4,
+        primary_anchor_chunk_id="anchor_1",
+        contributing_anchor_chunk_ids=["anchor_1"],
+        document_id="doc_1",
+        section_path=["Limits"],
+        page_start=1,
+        page_end=1,
+    )
+    assembled = unit.text
+    context = HybridRerankContextResult(
+        query="pressure?",
+        evidence_units=[unit],
+        assembled_text=assembled,
+        context_token_count=4,
+        max_context_tokens=6000,
+        context_config_hash="ctxcfg_test",
+        anchors=[],
+        dense_index_id="dense_x",
+        lexical_index_id="lex_x",
+        fusion_config_hash="fuscfg_x",
+        reranker_config_hash="rrkcfg_x",
+        diagnostics=ContextAssemblyDiagnostics(
+            requested_anchor_k=5,
+            actual_anchor_count=1,
+            evidence_unit_count=1,
+            context_token_count=4,
+            stop_reason="completed",
+        ),
+        metadata={"chunk_set_id": "chunkset_test", "latency_ms": {"total": 1}},
+    )
+    assembler = MagicMock()
+    assembler.assemble.return_value = context
+    generator = MagicMock(spec=Generator)
+    orch = GroundedAnswerOrchestrator(
+        settings, context_assembler=assembler, generator=generator
+    )
+    orch._require_ready = lambda _name: None  # type: ignore[method-assign]
+    phases: list[str] = []
+    execute = MagicMock(side_effect=AssertionError("generation must not run"))
+    orch._executor.execute = execute  # type: ignore[method-assign]
+
+    def checkpoint(where: str) -> None:
+        phases.append(where)
+        if where == "after_context":
+            raise AppError(
+                ErrorCode.REQUEST_CANCELLED,
+                details=SafeErrorDetails(reason="client_disconnect", stage=where),
+            )
+
+    with pytest.raises(AppError) as exc:
+        orch.answer(query="pressure?", corpus_name="engineering", checkpoint=checkpoint)
+    assert exc.value.code is ErrorCode.REQUEST_CANCELLED
+    assert phases == ["before_context", "after_context"]
+    assert execute.call_count == 0
+    orch.close()
+
+
+def test_product_query_passes_control_checkpoint_into_orchestrator(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Real _execute_snapshot_query path sees mid-orchestration checkpoints."""
+    settings = _settings(tmp_path)
+    runtime = _query_runtime(settings)
+    runtime.start()
+    _publish_ready(runtime)
+    phases: list[str] = []
+
+    op = runtime.operations.admit_query()
+
+    def answering(
+        self: SnapshotQueryRuntimeHandle,
+        question: str,
+        *,
+        checkpoint: Any = None,
+    ) -> GroundedAnswerResult:
+        assert checkpoint is not None
+        checkpoint("before_context")
+        phases.append("before_context")
+        checkpoint("after_context")
+        phases.append("after_context")
+        op.signal_cancel(CancelReason.CLIENT_DISCONNECT)
+        checkpoint("before_generation")
+        raise AssertionError("before_generation should have raised")
+
+    monkeypatch.setattr(SnapshotQueryRuntimeHandle, "answer", answering)
+    try:
+        with pytest.raises(AppError) as exc:
+            run_product_query(
+                runtime,
+                corpus="engineering",
+                question="mid orchestration cancel",
+                control=op,
+            )
+        assert exc.value.code is ErrorCode.REQUEST_CANCELLED
+    finally:
+        runtime.operations.release(op)
+    assert phases == ["before_context", "after_context"]
+    runtime.shutdown()

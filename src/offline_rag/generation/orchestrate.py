@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 
 from offline_rag.config.models import AppSettings
 from offline_rag.context.assemble import (
@@ -130,6 +130,7 @@ class GroundedAnswerOrchestrator:
         lexical_index_id: str | None = None,
         chunk_set_id: str | None = None,
         corpus_id: str | None = None,
+        checkpoint: Callable[[str], None] | None = None,
     ) -> GroundedAnswerResult:
         if not query or not query.strip():
             raise GroundedAnswerError("query must be non-empty")
@@ -141,7 +142,12 @@ class GroundedAnswerOrchestrator:
         if not gen.enabled:
             raise GroundedAnswerError("generation.enabled is false")
 
+        def _cp(where: str) -> None:
+            if checkpoint is not None:
+                checkpoint(where)
+
         original_query = query.strip()
+        _cp("before_context")
         context_t0 = time.perf_counter()
         try:
             context = self._assembler.assemble(
@@ -198,6 +204,7 @@ class GroundedAnswerOrchestrator:
                 # Provenance latency must match the active (recovered) context.
                 active_context_ms = _context_latency_ms(active_context)
 
+        _cp("after_context")
         provenance = GenerationContextProvenance(
             context_config_hash=active_context.context_config_hash,
             dense_index_id=active_context.dense_index_id,
@@ -208,6 +215,7 @@ class GroundedAnswerOrchestrator:
             context_latency_ms=active_context_ms,
             context_breakdown=(active_context.metadata or {}).get("latency_ms"),
         )
+        _cp("before_generation")
         try:
             # Generation always answers the original user query.
             result = self._executor.execute(
@@ -220,6 +228,7 @@ class GroundedAnswerOrchestrator:
             )
         except GroundedGenerationError as exc:
             raise GroundedAnswerError(str(exc)) from exc
+        _cp("after_generation")
 
         if recovery_block is not None:
             diagnostics = dict(result.diagnostics or {})

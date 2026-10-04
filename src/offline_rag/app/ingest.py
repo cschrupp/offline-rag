@@ -201,18 +201,17 @@ def run_product_replace_ingest(
 
     lease = CorpusMutationLease(runtime.settings, upload.corpus_name)
     candidate: _CandidateContext | None = None
+    leased = False
     try:
         if control is not None:
             control.checkpoint("pre_lease")
         lease.acquire()
-    except AppError:
-        cleanup_staging(upload.staging_root)
-        raise
+        leased = True
+        # Cancellation-aware PRE_LEASE → POST_LEASE: disconnect/shutdown/deadline
+        # discovered before this transition aborts without candidate mutation.
+        if control is not None:
+            control.complete_lease_acquire()
 
-    if control is not None:
-        control.mark_post_lease()
-
-    try:
         candidate = _establish_candidate(runtime.settings, upload)
         if hooks is not None and hooks.after_lease_acquired is not None:
             hooks.after_lease_acquired(upload.corpus_name, candidate.candidate_root)
@@ -340,4 +339,5 @@ def run_product_replace_ingest(
             details=SafeErrorDetails(reason="internal_ingest_failure"),
         ) from exc
     finally:
-        lease.release()
+        if leased:
+            lease.release()

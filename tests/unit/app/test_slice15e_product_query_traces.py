@@ -421,8 +421,12 @@ def _patch_execute(
     captured: dict[str, Any] = {}
 
     def _fake(
-        handle: SnapshotQueryRuntimeHandle, question: str
+        handle: SnapshotQueryRuntimeHandle,
+        question: str,
+        *,
+        control: object | None = None,
     ) -> GroundedAnswerResult:
+        del control
         captured["question"] = question
         captured["binding"] = handle.binding
         captured["handle"] = handle
@@ -680,8 +684,12 @@ def test_snapshot_pin_mid_flight_and_resolve_once(
     product_seen: dict[str, Any] = {}
 
     def product_execute(
-        handle: SnapshotQueryRuntimeHandle, question: str
+        handle: SnapshotQueryRuntimeHandle,
+        question: str,
+        *,
+        control: object | None = None,
     ) -> GroundedAnswerResult:
+        del control
         binding = handle.binding
         product_seen["dense_index_id"] = binding.dense_index_id
         product_seen["lexical_index_id"] = binding.lexical_index_id
@@ -1254,8 +1262,12 @@ def test_health_responsive_during_blocking_query(
     entered = threading.Event()
 
     def blocking_execute(
-        handle: SnapshotQueryRuntimeHandle, question: str
+        handle: SnapshotQueryRuntimeHandle,
+        question: str,
+        *,
+        control: object | None = None,
     ) -> GroundedAnswerResult:
+        del control
         entered.set()
         assert block.wait(timeout=10)
         return _canned(
@@ -1368,7 +1380,13 @@ def test_same_snapshot_query_runtime_cache_reuse(
     key = ("engineering", sid)
     lexical_ids: list[int] = []
 
-    def capture(handle: SnapshotQueryRuntimeHandle, question: str) -> GroundedAnswerResult:
+    def capture(
+        handle: SnapshotQueryRuntimeHandle,
+        question: str,
+        *,
+        control: object | None = None,
+    ) -> GroundedAnswerResult:
+        del control
         lexical_ids.append(id(handle.lexical))
         return _canned(
             citations=[_citation()],
@@ -1408,8 +1426,12 @@ def test_cache_n_to_n1_keeps_inflight_n_and_binds_new_entry(
     seen: dict[str, Any] = {}
 
     def execute(
-        handle: SnapshotQueryRuntimeHandle, question: str
+        handle: SnapshotQueryRuntimeHandle,
+        question: str,
+        *,
+        control: object | None = None,
     ) -> GroundedAnswerResult:
+        del control
         if question == "inflight-n":
             seen["n_lexical"] = handle.lexical
             seen["n_snapshot"] = handle.binding.snapshot_id
@@ -1497,8 +1519,12 @@ def test_query_runtime_cache_closes_owned_resources_on_shutdown(
     closed = {"lexical": False}
 
     def execute(
-        handle: SnapshotQueryRuntimeHandle, question: str
+        handle: SnapshotQueryRuntimeHandle,
+        question: str,
+        *,
+        control: object | None = None,
     ) -> GroundedAnswerResult:
+        del control
         lexical = handle.lexical
         orig_close = lexical.close
 

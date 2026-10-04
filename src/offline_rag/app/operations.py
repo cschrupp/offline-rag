@@ -71,20 +71,72 @@ class OperationHandle:
                 self.cancel_reason = reason
             self.cancel_event.set()
 
-    def mark_post_lease(self) -> None:
+    def complete_lease_acquire(self) -> None:
+        """Atomic PRE_LEASE → POST_LEASE after lease.acquire().
+
+        If disconnect/shutdown/deadline arrived before the transition completes,
+        raise and leave lifecycle at PRE_LEASE so the caller can release the lease
+        without establishing candidate mutation.
+        """
         with self._lock:
             if self.kind is not OperationKind.INGEST:
-                raise RuntimeError("mark_post_lease only valid for ingest")
+                raise RuntimeError("complete_lease_acquire only valid for ingest")
             if self.ingest_lifecycle is IngestLifecycle.TERMINAL:
                 return
+            if self.ingest_lifecycle is not IngestLifecycle.PRE_LEASE:
+                return
+            if self.cancel_event.is_set():
+                reason = self.cancel_reason
+                if reason is CancelReason.CLIENT_DISCONNECT:
+                    raise AppError(
+                        ErrorCode.REQUEST_CANCELLED,
+                        details=SafeErrorDetails(reason="client_disconnect", stage="lease"),
+                    )
+                if reason is CancelReason.SHUTDOWN:
+                    raise AppError(
+                        ErrorCode.INGEST_FAILED,
+                        details=SafeErrorDetails(reason="shutdown_abort", stage="lease"),
+                    )
+            if time.monotonic() >= self.deadline_mono:
+                raise AppError(
+                    ErrorCode.REQUEST_TIMEOUT,
+                    details=SafeErrorDetails(
+                        reason="ingest_deadline_exceeded", stage="lease"
+                    ),
+                )
             self.ingest_lifecycle = IngestLifecycle.POST_LEASE
 
+    def mark_post_lease(self) -> None:
+        """Backward-compatible alias for complete_lease_acquire()."""
+        self.complete_lease_acquire()
+
     def enter_publication(self) -> None:
+        """Atomic gate into the publication critical section.
+
+        Under synchronization: reject pending pre-publication shutdown cancel and
+        expired application deadline; only then transition to PUBLICATION. After
+        success, shutdown/deadline must not roll publication back.
+        """
         with self._lock:
             if self.kind is not OperationKind.INGEST:
                 raise RuntimeError("enter_publication only valid for ingest")
             if self.ingest_lifecycle is IngestLifecycle.TERMINAL:
                 return
+            if self.ingest_lifecycle is IngestLifecycle.PUBLICATION:
+                return
+            if self.cancel_event.is_set() and self.cancel_reason is CancelReason.SHUTDOWN:
+                raise AppError(
+                    ErrorCode.INGEST_FAILED,
+                    details=SafeErrorDetails(reason="shutdown_abort", stage="publish"),
+                )
+            if time.monotonic() >= self.deadline_mono:
+                raise AppError(
+                    ErrorCode.REQUEST_TIMEOUT,
+                    details=SafeErrorDetails(
+                        reason="ingest_deadline_exceeded", stage="publish"
+                    ),
+                )
+            # Post-lease client disconnect remains ignored (D18).
             self.ingest_lifecycle = IngestLifecycle.PUBLICATION
 
     def mark_terminal(self) -> None:
@@ -98,10 +150,7 @@ class OperationHandle:
     def checkpoint(self, where: str = "") -> None:
         """Raise AppError when cancel/deadline forbids continuing work.
 
-        Grace-period shutdown waiting is never converted into request_timeout.
-        Queries cancelled by disconnect/shutdown raise request_cancelled.
-        Ingest shutdown abort (pre-publication) raises request_cancelled as an
-        application abort signal; transports map as needed. Deadline → request_timeout.
+        Grace-period waiting is never converted into request_timeout.
         """
         with self._lock:
             reason = self.cancel_reason
@@ -118,7 +167,6 @@ class OperationHandle:
                     details=SafeErrorDetails(reason=str(reason), stage=where or None),
                 )
             if self.deadline_expired():
-                # Prefer explicit cancel classification when already signalled.
                 if cancelled and reason is CancelReason.SHUTDOWN:
                     raise AppError(
                         ErrorCode.REQUEST_CANCELLED,
@@ -126,27 +174,38 @@ class OperationHandle:
                     )
                 raise AppError(
                     ErrorCode.REQUEST_TIMEOUT,
-                    details=SafeErrorDetails(reason="query_deadline_exceeded", stage=where or None),
+                    details=SafeErrorDetails(
+                        reason="query_deadline_exceeded", stage=where or None
+                    ),
                 )
             return
 
         # INGEST
+        if cancelled and reason is CancelReason.CLIENT_DISCONNECT:
+            if lifecycle is IngestLifecycle.PRE_LEASE:
+                raise AppError(
+                    ErrorCode.REQUEST_CANCELLED,
+                    details=SafeErrorDetails(
+                        reason="client_disconnect", stage=where or None
+                    ),
+                )
+            # Post-lease / publication: ignore disconnect.
+            return
         if cancelled and reason is CancelReason.SHUTDOWN:
             if lifecycle is IngestLifecycle.PUBLICATION:
                 return
-            # Application abort — not request_timeout / not a query cancel mapping.
             raise AppError(
                 ErrorCode.INGEST_FAILED,
                 details=SafeErrorDetails(reason="shutdown_abort", stage=where or None),
             )
-        # Client disconnect never cancels post-lease ingest via checkpoint.
         if self.deadline_expired():
             if lifecycle is IngestLifecycle.PUBLICATION:
-                # Finish publication; do not convert to request_timeout.
                 return
             raise AppError(
                 ErrorCode.REQUEST_TIMEOUT,
-                details=SafeErrorDetails(reason="ingest_deadline_exceeded", stage=where or None),
+                details=SafeErrorDetails(
+                    reason="ingest_deadline_exceeded", stage=where or None
+                ),
             )
 
 
@@ -161,6 +220,7 @@ class OperationRegistry:
     _active: dict[str, OperationHandle] = field(default_factory=dict, init=False)
     _idle: threading.Condition = field(init=False)
     _draining: bool = field(default=False, init=False)
+    grace_exhausted: bool = field(default=False, init=False)
 
     def __post_init__(self) -> None:
         self._idle = threading.Condition(self._lock)
@@ -174,46 +234,61 @@ class OperationRegistry:
         with self._lock:
             return len(self._active)
 
-    def admit_query(self, *, deadline_seconds: float | None = None) -> OperationHandle:
-        if not self.query_capacity.try_acquire():
-            raise AppError(
-                ErrorCode.SERVICE_OVERLOADED,
-                details=SafeErrorDetails(reason="query_capacity_exhausted"),
-            )
-        seconds = (
-            float(self.settings.api.query_deadline_seconds)
-            if deadline_seconds is None
-            else float(deadline_seconds)
-        )
-        handle = OperationHandle(
-            op_id=f"opq_{uuid.uuid4().hex}",
-            kind=OperationKind.QUERY,
-            deadline_mono=time.monotonic() + seconds,
-        )
+    def _admit(
+        self,
+        *,
+        kind: OperationKind,
+        capacity: CapacityGate,
+        deadline_seconds: float | None,
+        default_deadline: float,
+        exhausted_reason: str,
+    ) -> OperationHandle:
+        """Admit under the drain lock so drain/admission exclusion is atomic."""
         with self._idle:
+            if self._draining:
+                raise AppError(ErrorCode.RUNTIME_NOT_READY)
+            if not capacity.try_acquire():
+                raise AppError(
+                    ErrorCode.SERVICE_OVERLOADED,
+                    details=SafeErrorDetails(reason=exhausted_reason),
+                )
+            seconds = (
+                float(default_deadline)
+                if deadline_seconds is None
+                else float(deadline_seconds)
+            )
+            # Re-check drain after capacity acquire; return slot if drain won the race.
+            if self._draining:
+                capacity.release()
+                raise AppError(ErrorCode.RUNTIME_NOT_READY)
+            handle = OperationHandle(
+                op_id=f"op{'q' if kind is OperationKind.QUERY else 'i'}_{uuid.uuid4().hex}",
+                kind=kind,
+                deadline_mono=time.monotonic() + seconds,
+                ingest_lifecycle=(
+                    IngestLifecycle.PRE_LEASE if kind is OperationKind.INGEST else None
+                ),
+            )
             self._active[handle.op_id] = handle
-        return handle
+            return handle
+
+    def admit_query(self, *, deadline_seconds: float | None = None) -> OperationHandle:
+        return self._admit(
+            kind=OperationKind.QUERY,
+            capacity=self.query_capacity,
+            deadline_seconds=deadline_seconds,
+            default_deadline=float(self.settings.api.query_deadline_seconds),
+            exhausted_reason="query_capacity_exhausted",
+        )
 
     def admit_ingest(self, *, deadline_seconds: float | None = None) -> OperationHandle:
-        if not self.ingest_capacity.try_acquire():
-            raise AppError(
-                ErrorCode.SERVICE_OVERLOADED,
-                details=SafeErrorDetails(reason="ingest_capacity_exhausted"),
-            )
-        seconds = (
-            float(self.settings.api.ingest_deadline_seconds)
-            if deadline_seconds is None
-            else float(deadline_seconds)
-        )
-        handle = OperationHandle(
-            op_id=f"opi_{uuid.uuid4().hex}",
+        return self._admit(
             kind=OperationKind.INGEST,
-            deadline_mono=time.monotonic() + seconds,
-            ingest_lifecycle=IngestLifecycle.PRE_LEASE,
+            capacity=self.ingest_capacity,
+            deadline_seconds=deadline_seconds,
+            default_deadline=float(self.settings.api.ingest_deadline_seconds),
+            exhausted_reason="ingest_capacity_exhausted",
         )
-        with self._idle:
-            self._active[handle.op_id] = handle
-        return handle
 
     def release(self, handle: OperationHandle) -> None:
         with self._idle:
@@ -228,15 +303,29 @@ class OperationRegistry:
                 self.ingest_capacity.release()
             self._idle.notify_all()
 
+    def prepare_for_start(self) -> None:
+        """Clear drain flags so a restarted runtime can admit again."""
+        with self._idle:
+            if self._active:
+                raise RuntimeError("cannot prepare registry while operations are active")
+            self._draining = False
+            self.grace_exhausted = False
+
     def signal_shutdown(self) -> None:
+        """Mark draining and cancel active ops. New admits fail closed."""
         with self._idle:
             self._draining = True
             handles = list(self._active.values())
         for handle in handles:
             handle.signal_cancel(CancelReason.SHUTDOWN)
 
-    def wait_until_idle(self, timeout_seconds: float) -> bool:
-        """Block until no active ops or timeout. Uses monotonic deadline."""
+    def wait_until_idle(self, timeout_seconds: float | None) -> bool:
+        """Block until no active ops, or timeout. ``None`` waits indefinitely."""
+        if timeout_seconds is None:
+            with self._idle:
+                while self._active:
+                    self._idle.wait(timeout=0.05)
+                return True
         deadline = time.monotonic() + max(0.0, float(timeout_seconds))
         with self._idle:
             while self._active:

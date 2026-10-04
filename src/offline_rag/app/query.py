@@ -185,9 +185,11 @@ def _project_success(
 def _execute_snapshot_query(
     handle: SnapshotQueryRuntimeHandle,
     question: str,
+    control: OperationHandle | None = None,
 ) -> GroundedAnswerResult:
     """Execute grounded query against an already-bound snapshot runtime."""
-    return handle.answer(question)
+    checkpoint = None if control is None else control.checkpoint
+    return handle.answer(question, checkpoint=checkpoint)
 
 
 def _execution_summary(
@@ -283,7 +285,7 @@ def run_product_query(
         try:
             if control is not None:
                 control.checkpoint("pre_execute")
-            result = _execute_snapshot_query(handle, normalized)
+            result = _execute_snapshot_query(handle, normalized, control=control)
             if control is not None:
                 control.checkpoint("post_execute")
             if control is not None:

@@ -26,6 +26,7 @@ from offline_rag.lexical.retrieve import LexicalRetriever
 from offline_rag.rerank.retrieve import HybridRerankRetriever
 
 ResourcesProvider = Callable[[], Any]
+CheckpointFn = Callable[[str], None]
 
 
 @dataclass
@@ -47,7 +48,12 @@ class _SnapshotQueryRuntimeEntry:
     def key(self) -> tuple[str, str]:
         return (self.binding.corpus_name, self.binding.snapshot_id)
 
-    def answer(self, question: str) -> GroundedAnswerResult:
+    def answer(
+        self,
+        question: str,
+        *,
+        checkpoint: CheckpointFn | None = None,
+    ) -> GroundedAnswerResult:
         if self.closed:
             raise AppError(ErrorCode.RUNTIME_NOT_READY)
         binding = self.binding
@@ -62,6 +68,7 @@ class _SnapshotQueryRuntimeEntry:
             lexical_index_id=binding.lexical_index_id,
             chunk_set_id=binding.chunk_set_id,
             corpus_id=binding.corpus_id,
+            checkpoint=checkpoint,
         )
 
     def close(self) -> None:
@@ -99,8 +106,13 @@ class SnapshotQueryRuntimeHandle:
     def orchestrator(self) -> GroundedAnswerOrchestrator:
         return self._entry.orchestrator
 
-    def answer(self, question: str) -> GroundedAnswerResult:
-        return self._entry.answer(question)
+    def answer(
+        self,
+        question: str,
+        *,
+        checkpoint: CheckpointFn | None = None,
+    ) -> GroundedAnswerResult:
+        return self._entry.answer(question, checkpoint=checkpoint)
 
 
 @dataclass

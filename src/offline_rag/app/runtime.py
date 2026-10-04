@@ -185,6 +185,9 @@ class ApplicationRuntime:
         if self.state is RuntimeState.STARTING:
             return
 
+        # Lifespan/TestClient may stop then start the same runtime instance.
+        # Drain marks the registry closed; clear that before admitting again.
+        self.operations.prepare_for_start()
         self.state = RuntimeState.STARTING
         self.failure_reason = None
         embedder: Any = None
@@ -244,15 +247,16 @@ class ApplicationRuntime:
             raise AppError(ErrorCode.RUNTIME_NOT_READY)
 
     def begin_drain(self) -> None:
-        """Enter DRAINING: readiness false; signal cooperative cancellation."""
+        """Enter DRAINING: block admits first, then flip readiness, then cancel."""
         if self.state is RuntimeState.STOPPED:
             return
+        # Mark registry draining under its lock before READY→DRAINING so a
+        # require_ready()/admit race cannot admit after the cancel snapshot.
+        self.operations.signal_shutdown()
         if self.state is RuntimeState.DRAINING:
-            self.operations.signal_shutdown()
             return
         self.state = RuntimeState.DRAINING
         self._shutdown_count += 1
-        self.operations.signal_shutdown()
 
     def wait_for_drain(self, timeout_seconds: float | None = None) -> bool:
         """Wait for active operations to finish (sync). Grace expiry ≠ timeout."""
@@ -263,13 +267,20 @@ class ApplicationRuntime:
         )
         return self.operations.wait_until_idle(grace)
 
-    def finalize_shutdown(self) -> None:
-        """Close corpus-scoped then process-scoped resources; enter STOPPED."""
+    def finalize_shutdown(self) -> bool:
+        """Close resources only when no operations remain active.
+
+        Returns True when STOPPED. If live workers remain (grace exhausted),
+        stays DRAINING and does not close borrowed process resources.
+        """
         with self._finalize_lock:
             if self.state is RuntimeState.STOPPED:
-                return
+                return True
             if self.state is not RuntimeState.DRAINING:
                 self.state = RuntimeState.DRAINING
+            if self.operations.active_count() > 0:
+                self.operations.grace_exhausted = True
+                return False
             if self._query_runtimes is not None:
                 self._query_runtimes.close()
                 self._query_runtimes = None
@@ -278,13 +289,17 @@ class ApplicationRuntime:
                 self.resources = None
             self._publication = None
             self.state = RuntimeState.STOPPED
+            return True
 
     def shutdown(self) -> None:
         """Idempotent sync drain (tests / non-ASGI). Does not invent timeouts."""
         if self.state is RuntimeState.STOPPED:
             return
         self.begin_drain()
-        self.wait_for_drain()
+        if not self.wait_for_drain():
+            self.operations.grace_exhausted = True
+            # Grace ended; keep waiting until workers are actually terminal.
+            self.operations.wait_until_idle(None)
         self.finalize_shutdown()
 
     async def drain_async(self) -> None:
@@ -293,7 +308,11 @@ class ApplicationRuntime:
             return
         self.begin_drain()
         grace = float(self.settings.api.shutdown_grace_seconds)
-        await asyncio.to_thread(self.wait_for_drain, grace)
+        idle = await asyncio.to_thread(self.wait_for_drain, grace)
+        if not idle:
+            self.operations.grace_exhausted = True
+            # Do not close shared resources under live workers.
+            await asyncio.to_thread(self.operations.wait_until_idle, None)
         self.finalize_shutdown()
 
     @property
