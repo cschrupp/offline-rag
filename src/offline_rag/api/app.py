@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from offline_rag.api.documents import router as documents_router
 from offline_rag.api.errors import register_app_error_handler
 from offline_rag.api.health import router as health_router
 from offline_rag.app.runtime import (
@@ -36,7 +37,7 @@ def create_app(
 ) -> FastAPI:
     """Build the OfflineRAG HTTP application.
 
-    Only /health* routes are registered in Slice 15B.
+    Slice 15C routes: /health* and /v1/documents*.
     """
     if runtime is not None and factories is not None:
         raise ValueError("pass runtime or factories, not both")
@@ -61,4 +62,5 @@ def create_app(
     app.state.runtime = runtime
     register_app_error_handler(app)
     app.include_router(health_router)
+    app.include_router(documents_router)
     return app

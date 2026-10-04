@@ -1,4 +1,4 @@
-"""Process application runtime lifecycle (D02 / D09) — Slice 15B."""
+"""Process application runtime lifecycle (D02 / D09 / D15) — Slice 15B/15C."""
 
 from __future__ import annotations
 
@@ -8,8 +8,10 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
+from offline_rag.app.candidate_recovery import recover_abandoned_candidates
 from offline_rag.app.errors import AppError, ErrorCode
 from offline_rag.app.paths import ensure_data_directories, required_data_directories
+from offline_rag.app.publication import ProductPublicationRegistry
 from offline_rag.app.startup_validation import validate_global_startup_requirements
 from offline_rag.config.models import AppSettings
 
@@ -32,6 +34,7 @@ class ResourceFactories:
     embedder: ResourceFactory
     reranker: ResourceFactory
     generator_client: ResourceFactory
+    qdrant: ResourceFactory | None = None
 
 
 @dataclass
@@ -39,9 +42,10 @@ class ProcessResources:
     embedder: Any = None
     reranker: Any = None
     generator_client: Any = None
+    qdrant: Any = None
 
     def close(self) -> None:
-        for name in ("generator_client", "reranker", "embedder"):
+        for name in ("generator_client", "reranker", "embedder", "qdrant"):
             obj = getattr(self, name)
             if obj is None:
                 continue
@@ -56,6 +60,7 @@ class ConstructionCounters:
     embedder: int = 0
     reranker: int = 0
     generator_client: int = 0
+    qdrant: int = 0
 
 
 def default_resource_factories() -> ResourceFactories:
@@ -79,10 +84,16 @@ def default_resource_factories() -> ResourceFactories:
 
         return OpenAICompatibleGenerator(settings)
 
+    def qdrant(settings: AppSettings) -> Any:
+        from offline_rag.dense.qdrant_local import QdrantLocalBackend
+
+        return QdrantLocalBackend(settings.paths.qdrant_storage)
+
     return ResourceFactories(
         embedder=embedder,
         reranker=reranker,
         generator_client=generator_client,
+        qdrant=qdrant,
     )
 
 
@@ -107,6 +118,7 @@ class ApplicationRuntime:
         default_factory=ConstructionCounters, init=False
     )
     _shutdown_count: int = field(default=0, init=False)
+    _publication: ProductPublicationRegistry | None = field(default=None, init=False)
 
     @property
     def is_ready(self) -> bool:
@@ -115,6 +127,15 @@ class ApplicationRuntime:
     @property
     def is_live(self) -> bool:
         return self.state is not RuntimeState.STOPPED
+
+    @property
+    def publication(self) -> ProductPublicationRegistry:
+        if self._publication is None:
+            qdrant = None if self.resources is None else self.resources.qdrant
+            self._publication = ProductPublicationRegistry(
+                self.settings, qdrant=qdrant
+            )
+        return self._publication
 
     def start(self) -> None:
         """Initialize process resources at most once per startup attempt.
@@ -132,11 +153,14 @@ class ApplicationRuntime:
         embedder: Any = None
         reranker: Any = None
         generator_client: Any = None
+        qdrant: Any = None
         try:
             ensure_data_directories(self.settings)
             _assert_required_paths_usable(self.settings)
             # Static global asset/config gates — never download or probe (D09/D16).
             validate_global_startup_requirements(self.settings)
+            # D15: quarantine unpublished candidates; never auto-publish.
+            recover_abandoned_candidates(self.settings)
 
             self.construction_counts.embedder += 1
             embedder = self.factories.embedder(self.settings)
@@ -147,18 +171,27 @@ class ApplicationRuntime:
             self.construction_counts.generator_client += 1
             generator_client = self.factories.generator_client(self.settings)
 
+            if self.factories.qdrant is not None:
+                self.construction_counts.qdrant += 1
+                qdrant = self.factories.qdrant(self.settings)
+
             self.resources = ProcessResources(
                 embedder=embedder,
                 reranker=reranker,
                 generator_client=generator_client,
+                qdrant=qdrant,
+            )
+            self._publication = ProductPublicationRegistry(
+                self.settings, qdrant=qdrant
             )
             self.state = RuntimeState.READY
         except Exception:  # noqa: BLE001 — fail closed on any startup fault
-            for obj in (generator_client, reranker, embedder):
+            for obj in (generator_client, reranker, embedder, qdrant):
                 close = getattr(obj, "close", None) if obj is not None else None
                 if callable(close):
                     close()
             self.resources = None
+            self._publication = None
             self.state = RuntimeState.NOT_READY
             self.failure_reason = "startup_failed"
 
@@ -175,6 +208,7 @@ class ApplicationRuntime:
         if self.resources is not None:
             self.resources.close()
             self.resources = None
+        self._publication = None
         self.state = RuntimeState.STOPPED
 
     @property
