@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import shutil
 import uuid
 from collections.abc import AsyncIterator
@@ -13,19 +14,21 @@ from python_multipart.multipart import MultipartParser, parse_options_header
 from offline_rag.app.corpus import validate_product_corpus_name
 from offline_rag.app.errors import AppError, ErrorCode, SafeErrorDetails
 from offline_rag.config.models import AppSettings
-from offline_rag.ingestion.base import SUPPORTED_EXTENSIONS, media_type_for_path
+from offline_rag.ingestion.base import SUPPORTED_EXTENSIONS
 
 _ALLOWED_FIELDS = frozenset({"corpus", "files"})
-_MULTIPART_OVERHEAD_BUDGET = 2_097_152  # 2 MiB framing allowance for Content-Length
+_CORPUS_FIELD_MAX_BYTES = 512
 
 
 @dataclass(frozen=True)
 class SpooledUploadFile:
-    """One bounded-spooled file part under server-generated storage."""
+    """One bounded-spooled file under a server-generated storage name."""
 
     absolute_path: Path
+    storage_name: str
     client_filename: str
     source_name: str
+    document_id: str
     size_bytes: int
     media_type: str
 
@@ -44,6 +47,9 @@ class SpooledIngestUpload:
     def total_file_bytes(self) -> int:
         return sum(item.size_bytes for item in self.files)
 
+    def source_name_by_storage_name(self) -> dict[str, str]:
+        return {item.storage_name: item.source_name for item in self.files}
+
 
 def validate_ingest_http_envelope(
     *,
@@ -53,8 +59,12 @@ def validate_ingest_http_envelope(
 ) -> bytes:
     """Validate request-level envelope before capacity / body consumption.
 
-    Returns the multipart boundary bytes.
+    Content-Length is syntactic only when present. Actual streamed file-byte
+    counters remain authoritative for per-document and aggregate limits.
+    ``settings`` is accepted for call-site uniformity; envelope checks do not
+    treat Content-Length as a file-byte bound.
     """
+    _ = settings
     if not content_type:
         raise AppError(
             ErrorCode.REQUEST_INVALID,
@@ -87,22 +97,14 @@ def validate_ingest_http_envelope(
                 ErrorCode.REQUEST_INVALID,
                 details=SafeErrorDetails(reason="invalid_content_length"),
             )
-        # Cheap rejection only — never treat Content-Length as the file-byte limit.
-        hard_cap = settings.api.max_total_upload_bytes + _MULTIPART_OVERHEAD_BUDGET
-        if length > hard_cap:
-            raise AppError(
-                ErrorCode.REQUEST_INVALID,
-                details=SafeErrorDetails(reason="content_length_too_large"),
-            )
     return boundary
 
 
 def client_basename(filename: str | None) -> str:
-    """Extract a non-traversing basename; path components never reach the FS."""
+    """Extract a non-traversing basename for provenance metadata only."""
     if filename is None:
         return ""
     text = str(filename).replace("\\", "/")
-    # Drop drive-like prefixes (C:/..., //server/...).
     if len(text) >= 2 and text[1] == ":":
         text = text[2:]
     text = text.replace("\\", "/")
@@ -126,6 +128,17 @@ def cleanup_staging(staging_root: Path) -> None:
         shutil.rmtree(staging_root, ignore_errors=True)
 
 
+def _decode_and_validate_corpus(chunks: list[bytes]) -> str:
+    try:
+        corpus_raw = b"".join(chunks).decode("utf-8").strip()
+    except UnicodeDecodeError as exc:
+        raise AppError(
+            ErrorCode.REQUEST_INVALID,
+            details=SafeErrorDetails(reason="invalid_corpus_field"),
+        ) from exc
+    return validate_product_corpus_name(corpus_raw)
+
+
 async def spool_multipart_upload(
     *,
     settings: AppSettings,
@@ -140,11 +153,12 @@ async def spool_multipart_upload(
 
     corpus_chunks: list[bytes] = []
     corpus_seen = 0
+    validated_corpus: str | None = None
     files: list[SpooledUploadFile] = []
     total_file_bytes = 0
+    seen_document_ids: set[str] = set()
 
     current_field: str | None = None
-    current_filename: str | None = None
     current_headers: dict[bytes, bytes] = {}
     header_field = bytearray()
     header_value = bytearray()
@@ -152,21 +166,17 @@ async def spool_multipart_upload(
     parse_error: AppError | None = None
 
     class _ActiveFile:
-        def __init__(self, client_name: str, seq: int) -> None:
+        def __init__(self, client_name: str, extension: str) -> None:
             self.client_filename = client_name
             self.source_name = client_name
-            ext = _safe_extension(client_name)
-            if not ext:
-                raise AppError(
-                    ErrorCode.DOCUMENT_INVALID,
-                    details=SafeErrorDetails(reason="unsupported_source_type"),
-                )
-            part_dir = files_root / f"{seq:04d}"
-            part_dir.mkdir(parents=True, exist_ok=True)
-            self.path = part_dir / client_name
+            self.extension = extension
+            # Physical path is always server-generated; client basename is metadata.
+            self.temp_name = f"{uuid.uuid4().hex}{extension}"
+            self.path = files_root / self.temp_name
             self.handle = self.path.open("wb")
             self.size = 0
-            self.media_type = media_type_for_path(self.path) or "application/octet-stream"
+            self.digest = hashlib.sha256()
+            self.media_type = SUPPORTED_EXTENSIONS[extension]
 
         def write(self, data: bytes) -> None:
             nonlocal total_file_bytes
@@ -183,20 +193,41 @@ async def spool_multipart_upload(
                     details=SafeErrorDetails(reason="upload_too_large"),
                 )
             self.handle.write(data)
+            self.digest.update(data)
             self.size += len(data)
             total_file_bytes += len(data)
 
         def finish(self) -> SpooledUploadFile:
             self.handle.close()
             if self.size == 0:
+                self.path.unlink(missing_ok=True)
                 raise AppError(
                     ErrorCode.DOCUMENT_INVALID,
                     details=SafeErrorDetails(reason="empty_document"),
                 )
+            document_id = f"doc_{self.digest.hexdigest()}"
+            if document_id in seen_document_ids:
+                self.path.unlink(missing_ok=True)
+                raise AppError(
+                    ErrorCode.DOCUMENT_INVALID,
+                    details=SafeErrorDetails(reason="document_identity_conflict"),
+                )
+            storage_name = f"{document_id}{self.extension}"
+            final_path = files_root / storage_name
+            if final_path.exists():
+                self.path.unlink(missing_ok=True)
+                raise AppError(
+                    ErrorCode.DOCUMENT_INVALID,
+                    details=SafeErrorDetails(reason="document_identity_conflict"),
+                )
+            self.path.rename(final_path)
+            seen_document_ids.add(document_id)
             return SpooledUploadFile(
-                absolute_path=self.path,
+                absolute_path=final_path,
+                storage_name=storage_name,
                 client_filename=self.client_filename,
                 source_name=self.source_name,
+                document_id=document_id,
                 size_bytes=self.size,
                 media_type=self.media_type,
             )
@@ -206,6 +237,10 @@ async def spool_multipart_upload(
                 self.handle.close()
             except OSError:
                 pass
+            try:
+                self.path.unlink(missing_ok=True)
+            except OSError:
+                pass
 
     def _fail(exc: AppError) -> None:
         nonlocal parse_error
@@ -213,9 +248,8 @@ async def spool_multipart_upload(
             parse_error = exc
 
     def on_part_begin() -> None:
-        nonlocal current_field, current_filename, active_file
+        nonlocal current_field, active_file
         current_field = None
-        current_filename = None
         current_headers.clear()
         header_field.clear()
         header_value.clear()
@@ -235,7 +269,9 @@ async def spool_multipart_upload(
         header_value.clear()
 
     def on_headers_finished() -> None:
-        nonlocal current_field, current_filename, active_file, corpus_seen
+        nonlocal current_field, active_file, corpus_seen
+        if parse_error is not None:
+            return
         disposition = current_headers.get(b"content-disposition", b"")
         _disp_type, options = parse_options_header(disposition)
         name = options.get(b"name", b"").decode("latin-1", errors="replace")
@@ -246,7 +282,6 @@ async def spool_multipart_upload(
             else ""
         )
         current_field = name
-        current_filename = filename or None
 
         if name not in _ALLOWED_FIELDS:
             _fail(
@@ -276,12 +311,20 @@ async def spool_multipart_upload(
                 )
             return
 
-        # files part
         if not filename:
             _fail(
                 AppError(
                     ErrorCode.DOCUMENT_INVALID,
                     details=SafeErrorDetails(reason="missing_filename"),
+                )
+            )
+            return
+        extension = _safe_extension(filename)
+        if not extension:
+            _fail(
+                AppError(
+                    ErrorCode.DOCUMENT_INVALID,
+                    details=SafeErrorDetails(reason="unsupported_source_type"),
                 )
             )
             return
@@ -294,7 +337,7 @@ async def spool_multipart_upload(
             )
             return
         try:
-            active_file = _ActiveFile(filename, seq=len(files) + 1)
+            active_file = _ActiveFile(filename, extension)
         except AppError as exc:
             _fail(exc)
 
@@ -305,8 +348,7 @@ async def spool_multipart_upload(
         chunk = data[start:end]
         if current_field == "corpus":
             corpus_chunks.append(chunk)
-            # Bound corpus field memory (name grammar is tiny).
-            if sum(len(c) for c in corpus_chunks) > 512:
+            if sum(len(c) for c in corpus_chunks) > _CORPUS_FIELD_MAX_BYTES:
                 _fail(
                     AppError(
                         ErrorCode.REQUEST_INVALID,
@@ -323,12 +365,22 @@ async def spool_multipart_upload(
                 active_file = None
 
     def on_part_end() -> None:
-        nonlocal active_file
+        nonlocal active_file, validated_corpus
         if parse_error is not None:
             if active_file is not None:
                 active_file.abort()
                 active_file = None
             return
+
+        if current_field == "corpus":
+            # D20: validate corpus as soon as the corpus part completes.
+            try:
+                validated_corpus = _decode_and_validate_corpus(corpus_chunks)
+            except AppError as exc:
+                _fail(exc)
+            corpus_chunks.clear()
+            return
+
         if current_field == "files" and active_file is not None:
             try:
                 files.append(active_file.finish())
@@ -351,8 +403,11 @@ async def spool_multipart_upload(
     )
 
     try:
-        async for chunk in body_chunks:
-            if parse_error is not None:
+        stream = body_chunks.__aiter__()
+        while parse_error is None:
+            try:
+                chunk = await anext(stream)
+            except StopAsyncIteration:
                 break
             if not chunk:
                 continue
@@ -361,7 +416,7 @@ async def spool_multipart_upload(
             except AppError as exc:
                 parse_error = exc
                 break
-            except Exception as exc:  # noqa: BLE001 — malformed multipart
+            except Exception as exc:
                 parse_error = AppError(
                     ErrorCode.REQUEST_INVALID,
                     details=SafeErrorDetails(reason="malformed_multipart"),
@@ -371,7 +426,7 @@ async def spool_multipart_upload(
         if parse_error is None:
             try:
                 parser.finalize()
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 parse_error = AppError(
                     ErrorCode.REQUEST_INVALID,
                     details=SafeErrorDetails(reason="malformed_multipart"),
@@ -393,26 +448,14 @@ async def spool_multipart_upload(
         cleanup_staging(staging_root)
         raise parse_error
 
-    if corpus_seen != 1:
+    if validated_corpus is None:
         cleanup_staging(staging_root)
         raise AppError(
             ErrorCode.REQUEST_INVALID,
             details=SafeErrorDetails(
-                reason="missing_corpus_field" if corpus_seen == 0 else "multiple_corpus_fields"
+                reason="missing_corpus_field" if corpus_seen == 0 else "invalid_corpus_field"
             ),
         )
-    try:
-        corpus_raw = b"".join(corpus_chunks).decode("utf-8").strip()
-        corpus_name = validate_product_corpus_name(corpus_raw)
-    except AppError:
-        cleanup_staging(staging_root)
-        raise
-    except UnicodeDecodeError as exc:
-        cleanup_staging(staging_root)
-        raise AppError(
-            ErrorCode.REQUEST_INVALID,
-            details=SafeErrorDetails(reason="invalid_corpus_field"),
-        ) from exc
 
     if not files:
         cleanup_staging(staging_root)
@@ -423,7 +466,7 @@ async def spool_multipart_upload(
 
     return SpooledIngestUpload(
         upload_id=upload_id,
-        corpus_name=corpus_name,
+        corpus_name=validated_corpus,
         staging_root=staging_root,
         files_root=files_root,
         files=files,

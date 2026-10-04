@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -53,6 +53,14 @@ ParserFactory = Callable[[], object]
 
 class IngestionError(RuntimeError):
     pass
+
+
+class DocumentIngestionError(IngestionError):
+    """Supplied document cannot be accepted (client/document fault)."""
+
+
+class InternalIngestionError(IngestionError):
+    """Internal persistence/runtime failure during ingestion."""
 
 
 def _parser_for_media(
@@ -140,6 +148,7 @@ def run_ingestion(
     corpus_name: str = "default",
     recursive: bool = False,
     root: Path | None = None,
+    source_name_by_path: Mapping[str, str] | None = None,
 ) -> IngestionReport:
     started = datetime.now(tz=UTC)
     run_id = new_execution_id(prefix="ingest")
@@ -157,7 +166,19 @@ def run_ingestion(
             completed_at=completed,
             duration_ms=int((completed - started).total_seconds() * 1000),
             errors=[str(exc)],
+            metadata={"failure_class": "document"},
         )
+
+    if source_name_by_path:
+        discovered = [
+            DiscoveredSource(
+                absolute_path=item.absolute_path,
+                source_path=item.source_path,
+                source_name=source_name_by_path.get(item.source_path, item.source_name),
+                media_type=item.media_type,
+            )
+            for item in discovered
+        ]
 
     previous = load_active_state(settings, name)
     previous_sources = dict(previous.sources) if previous else {}
@@ -168,6 +189,8 @@ def run_ingestion(
     file_results: list[FileIngestionResult] = []
     candidate_sources = dict(previous_sources)
     failed = False
+    document_failed = False
+    internal_failed = False
     added = updated = unchanged = parsed_count = reused_count = warned = 0
     blocks_total = 0
 
@@ -177,14 +200,20 @@ def run_ingestion(
     for source in discovered:
         file_started = datetime.now(tz=UTC)
         try:
-            source_bytes = source.absolute_path.read_bytes()
+            try:
+                source_bytes = source.absolute_path.read_bytes()
+            except OSError as exc:
+                raise InternalIngestionError("source read failed") from exc
             if not source_bytes:
-                raise IngestionError("source file is empty")
+                raise DocumentIngestionError("source file is empty")
             doc_id = document_id_from_bytes(source_bytes)
             content_hash = content_hash_from_bytes(source_bytes)
-            parser_name, parser_version, parser, ocr_enabled = _parser_for_media(
-                source.media_type, settings
-            )
+            try:
+                parser_name, parser_version, parser, ocr_enabled = _parser_for_media(
+                    source.media_type, settings
+                )
+            except IngestionError as exc:
+                raise DocumentIngestionError(str(exc)) from exc
             if isinstance(parser, DoclingPdfParser):
                 if pdf_parser is None:
                     pdf_parser = parser
@@ -208,11 +237,16 @@ def run_ingestion(
                 status = FileIngestionStatus.REUSED
                 reused_count += 1
             else:
-                parsed = parser.parse(
-                    source.absolute_path,
-                    source_bytes=source_bytes,
-                    document_id=doc_id,
-                )
+                try:
+                    parsed = parser.parse(
+                        source.absolute_path,
+                        source_bytes=source_bytes,
+                        document_id=doc_id,
+                    )
+                except DocumentIngestionError:
+                    raise
+                except Exception as exc:
+                    raise DocumentIngestionError("document parse failed") from exc
                 # Ensure identity fields are set for native parsers too.
                 parsed = parsed.model_copy(
                     update={
@@ -220,7 +254,12 @@ def run_ingestion(
                         "parse_config_hash": cfg_hash,
                     }
                 )
-                _, artifact_hash = write_parsed_document(settings.paths.processed, parsed)
+                try:
+                    _, artifact_hash = write_parsed_document(
+                        settings.paths.processed, parsed
+                    )
+                except Exception as exc:
+                    raise InternalIngestionError("artifact persistence failed") from exc
                 status = FileIngestionStatus.PARSED
                 parsed_count += 1
 
@@ -271,8 +310,9 @@ def run_ingestion(
                     processed_artifact=entry.processed_artifact,
                 )
             )
-        except Exception as exc:
+        except DocumentIngestionError as exc:
             failed = True
+            document_failed = True
             duration = int((datetime.now(tz=UTC) - file_started).total_seconds() * 1000)
             file_results.append(
                 FileIngestionResult(
@@ -282,6 +322,38 @@ def run_ingestion(
                     status=FileIngestionStatus.FAILED,
                     duration_ms=duration,
                     error=str(exc),
+                    metadata={"failure_class": "document"},
+                )
+            )
+        except InternalIngestionError as exc:
+            failed = True
+            internal_failed = True
+            duration = int((datetime.now(tz=UTC) - file_started).total_seconds() * 1000)
+            file_results.append(
+                FileIngestionResult(
+                    source_path=source.source_path,
+                    source_name=source.source_name,
+                    absolute_path=str(source.absolute_path),
+                    status=FileIngestionStatus.FAILED,
+                    duration_ms=duration,
+                    error=str(exc),
+                    metadata={"failure_class": "internal"},
+                )
+            )
+        except Exception as exc:
+            # Unknown faults are internal — never present as client document errors.
+            failed = True
+            internal_failed = True
+            duration = int((datetime.now(tz=UTC) - file_started).total_seconds() * 1000)
+            file_results.append(
+                FileIngestionResult(
+                    source_path=source.source_path,
+                    source_name=source.source_name,
+                    absolute_path=str(source.absolute_path),
+                    status=FileIngestionStatus.FAILED,
+                    duration_ms=duration,
+                    error=str(exc),
+                    metadata={"failure_class": "internal"},
                 )
             )
 
@@ -289,6 +361,12 @@ def run_ingestion(
     duration_ms = int((completed - started).total_seconds() * 1000)
 
     if failed:
+        if internal_failed:
+            failure_class = "internal"
+        elif document_failed:
+            failure_class = "document"
+        else:
+            failure_class = "internal"
         return IngestionReport(
             run_id=run_id,
             corpus_name=name,
@@ -308,6 +386,7 @@ def run_ingestion(
             unsupported_files_skipped=skipped,
             files=file_results,
             errors=["one or more sources failed; active corpus state was not updated"],
+            metadata={"failure_class": failure_class},
         )
 
     # Build full-corpus snapshot from candidate_sources.

@@ -115,9 +115,8 @@ def _establish_candidate(
 
 
 def _source_inputs(candidate: _CandidateContext) -> list[Path]:
-    # Each file lives under sources/<seq>/<basename> so duplicate client
-    # filenames remain distinct paths while preserving basename as source_name.
-    return sorted(path for path in candidate.sources_root.rglob("*") if path.is_file())
+    # Physical names are server-generated document identities (order-independent).
+    return sorted(path for path in candidate.sources_root.iterdir() if path.is_file())
 
 
 def _run_stage(hooks: ProductIngestHooks | None, name: str, fn: Callable[[], object]) -> object:
@@ -129,12 +128,12 @@ def _run_stage(hooks: ProductIngestHooks | None, name: str, fn: Callable[[], obj
     return result
 
 
-def _map_ingestion_failure(report_errors: list[str]) -> AppError:
-    joined = " ".join(report_errors).lower()
-    if "unsupported" in joined or "empty" in joined or "parse" in joined:
+def _map_ingestion_failure(report: IngestionReport) -> AppError:
+    failure_class = str(report.metadata.get("failure_class", "")).lower()
+    if failure_class == "internal":
         return AppError(
-            ErrorCode.DOCUMENT_INVALID,
-            details=SafeErrorDetails(reason="document_unparseable"),
+            ErrorCode.INGEST_FAILED,
+            details=SafeErrorDetails(reason="internal_ingest_failure"),
         )
     return AppError(
         ErrorCode.DOCUMENT_INVALID,
@@ -219,6 +218,7 @@ def run_product_replace_ingest(
         embedder = runtime.resources.embedder
         qdrant = runtime.resources.qdrant
 
+        source_names = upload.source_name_by_storage_name()
         ingest_report = _run_stage(
             hooks,
             "ingest",
@@ -228,11 +228,12 @@ def run_product_replace_ingest(
                 corpus_name=upload.corpus_name,
                 recursive=False,
                 root=candidate.sources_root,
+                source_name_by_path=source_names,
             ),
         )
         assert isinstance(ingest_report, IngestionReport)
         if ingest_report.status not in {IngestionStatus.SUCCESS, IngestionStatus.NO_OP}:
-            raise _map_ingestion_failure(list(ingest_report.errors))
+            raise _map_ingestion_failure(ingest_report)
 
         # Full-replace guard: candidate stage must equal uploaded set exactly.
         corpus_state = load_corpus_state(

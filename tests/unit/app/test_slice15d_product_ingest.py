@@ -293,11 +293,15 @@ def test_filename_traversal_cannot_escape_storage(tmp_path: Path) -> None:
         assert resp.status_code == 200
         docs = client.get("/v1/documents", params={"corpus": "eng"}).json()
         assert docs["documents"][0]["source_name"] == "passwd.txt"
-    # No escape outside the configured data root.
+    # No escape outside the configured data root, and client basename is never
+    # a physical path component.
     assert not (tmp_path / "etc").exists()
-    data_root = runtime.settings.paths.staging.parent.resolve()
-    for path in runtime.settings.paths.corpora.rglob("passwd.txt"):
-        assert data_root in path.resolve().parents
+    physical = [
+        p for p in runtime.settings.paths.corpora.rglob("*") if p.is_file()
+    ]
+    assert physical
+    assert not any(p.name == "passwd.txt" for p in physical)
+    assert all(p.name.startswith("doc_") for p in physical if p.suffix == ".txt")
 
 
 def test_duplicate_filename_alone_is_allowed(tmp_path: Path) -> None:
@@ -623,21 +627,27 @@ def test_dense_indexing_reuses_runtime_embedder_and_qdrant(tmp_path: Path, monke
     monkeypatch.setattr(ingest_mod, "run_indexing", wrapped_run_indexing)
 
     from offline_rag.app.ingest_upload import SpooledIngestUpload, SpooledUploadFile
+    from offline_rag.core.ids import document_id_from_bytes
 
-    files_root = settings.paths.staging / "manual" / "files" / "0001"
+    files_root = settings.paths.staging / "manual" / "files"
     files_root.mkdir(parents=True)
-    path = files_root / "a.txt"
-    path.write_text("Reuse runtime resources document.\n", encoding="utf-8")
+    payload = b"Reuse runtime resources document.\n"
+    doc_id = document_id_from_bytes(payload)
+    storage_name = f"{doc_id}.txt"
+    path = files_root / storage_name
+    path.write_bytes(payload)
     upload = SpooledIngestUpload(
         upload_id="manual",
         corpus_name="eng",
         staging_root=settings.paths.staging / "manual",
-        files_root=settings.paths.staging / "manual" / "files",
+        files_root=files_root,
         files=[
             SpooledUploadFile(
                 absolute_path=path,
+                storage_name=storage_name,
                 client_filename="a.txt",
                 source_name="a.txt",
+                document_id=doc_id,
                 size_bytes=path.stat().st_size,
                 media_type="text/plain",
             )
@@ -765,3 +775,218 @@ def test_corpus_busy_when_lease_held(tmp_path: Path) -> None:
         assert resp.json()["error"]["code"] == "corpus_busy"
     finally:
         holder.release()
+
+
+def test_client_filename_is_metadata_not_storage_name(tmp_path: Path) -> None:
+    """Changing client filename must not change physical storage derivation."""
+    settings = _settings(tmp_path)
+    content = b"Identical bytes; only client filename differs.\n"
+
+    async def spool(filename: str):
+        body, _ct = _multipart(
+            [("corpus", b"eng", None), ("files", content, filename)]
+        )
+
+        async def chunks() -> AsyncIterator[bytes]:
+            yield body
+
+        return await spool_multipart_upload(
+            settings=settings,
+            boundary=b"----15d",
+            body_chunks=chunks(),
+        )
+
+    first = asyncio.run(spool("alpha-name.txt"))
+    # Distinct staging roots per upload_id — clean between spools.
+    cleanup = first.staging_root
+    storage_a = first.files[0].storage_name
+    source_a = first.files[0].source_name
+    assert storage_a.startswith("doc_")
+    assert storage_a.endswith(".txt")
+    assert "alpha-name" not in storage_a
+    assert source_a == "alpha-name.txt"
+    assert first.files[0].absolute_path.name == storage_a
+
+    import shutil
+
+    shutil.rmtree(cleanup)
+
+    second = asyncio.run(spool("beta-name.txt"))
+    assert second.files[0].storage_name == storage_a
+    assert second.files[0].document_id == first.files[0].document_id
+    assert second.files[0].source_name == "beta-name.txt"
+    assert "beta-name" not in second.files[0].storage_name
+    shutil.rmtree(second.staging_root)
+
+
+def test_invalid_corpus_first_aborts_before_file_spool(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    pulled: list[int] = []
+
+    async def run() -> AppError:
+        async def chunks() -> AsyncIterator[bytes]:
+            # Include the terminating boundary so the corpus part completes in
+            # this chunk; subsequent file bytes must never be pulled/spooled.
+            corpus_part = (
+                b"------15d\r\n"
+                b'Content-Disposition: form-data; name="corpus"\r\n\r\n'
+                b"bad/name\r\n"
+                b"------15d\r\n"
+            )
+            pulled.append(1)
+            yield corpus_part
+            pulled.append(2)
+            yield (
+                b'Content-Disposition: form-data; name="files"; '
+                b'filename="huge.txt"\r\n'
+                b"Content-Type: application/octet-stream\r\n\r\n"
+                + (b"x" * 1024)
+                + b"\r\n------15d--\r\n"
+            )
+
+        with pytest.raises(AppError) as exc:
+            await spool_multipart_upload(
+                settings=settings,
+                boundary=b"----15d",
+                body_chunks=chunks(),
+            )
+        return exc.value
+
+    err = asyncio.run(run())
+    assert err.code is ErrorCode.REQUEST_INVALID
+    assert pulled == [1]
+    assert list(settings.paths.staging.glob("*")) == []
+
+
+def test_files_first_then_valid_corpus_still_succeeds(tmp_path: Path) -> None:
+    runtime = _runtime(_settings(tmp_path))
+    app = create_app(runtime=runtime)
+    with TestClient(app, raise_server_exceptions=False) as client:
+        body, ct = _multipart(
+            [
+                ("files", b"File before corpus still valid.\n", "a.txt"),
+                ("files", b"Second file before corpus.\n", "b.txt"),
+                ("corpus", b"manuals", None),
+            ]
+        )
+        resp = _post_raw(client, body, ct)
+    assert resp.status_code == 200
+    assert resp.json()["corpus"] == "manuals"
+    assert resp.json()["document_count"] == 2
+
+
+def test_content_length_not_file_byte_bound(tmp_path: Path) -> None:
+    """Content-Length is syntactic only; streamed file bytes remain authoritative."""
+    from offline_rag.app.ingest_upload import validate_ingest_http_envelope
+
+    settings = _settings(tmp_path)
+    # Previously rejected by the unsafe 100MiB+2MiB framing assumption.
+    boundary = validate_ingest_http_envelope(
+        content_type="multipart/form-data; boundary=abc",
+        content_length="200000000",
+        settings=settings,
+    )
+    assert boundary == b"abc"
+    with pytest.raises(AppError) as exc:
+        validate_ingest_http_envelope(
+            content_type="multipart/form-data; boundary=abc",
+            content_length="-1",
+            settings=settings,
+        )
+    assert exc.value.code is ErrorCode.REQUEST_INVALID
+
+    runtime = _runtime(settings)
+    app = create_app(runtime=runtime)
+    with TestClient(app, raise_server_exceptions=False) as client:
+        body, ct = _multipart(
+            [
+                ("corpus", b"eng", None),
+                ("files", b"Small authoritative body.\n", "a.txt"),
+            ]
+        )
+        resp = _post_raw(client, body, ct)
+    assert resp.status_code == 200
+
+
+def test_multipart_reorder_same_snapshot_id(tmp_path: Path) -> None:
+    runtime = _runtime(_settings(tmp_path))
+    app = create_app(runtime=runtime)
+    a = b"Document A unique payload for reorder.\n"
+    b = b"Document B unique payload for reorder.\n"
+    with TestClient(app, raise_server_exceptions=False) as client:
+        body_ab, ct = _multipart(
+            [
+                ("corpus", b"eng", None),
+                ("files", a, "a.txt"),
+                ("files", b, "b.txt"),
+            ]
+        )
+        first = _post_raw(client, body_ab, ct)
+        assert first.status_code == 200
+        body_ba, ct = _multipart(
+            [
+                ("corpus", b"eng", None),
+                ("files", b, "b.txt"),
+                ("files", a, "a.txt"),
+            ]
+        )
+        second = _post_raw(client, body_ba, ct)
+        assert second.status_code == 200
+        assert first.json()["snapshot_id"] == second.json()["snapshot_id"]
+        docs = client.get("/v1/documents", params={"corpus": "eng"}).json()["documents"]
+        assert sorted(d["source_name"] for d in docs) == ["a.txt", "b.txt"]
+
+
+def test_unparseable_document_is_document_invalid(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runtime = _runtime(_settings(tmp_path))
+
+    def boom(*_args, **_kwargs):  # type: ignore[no-untyped-def]
+        raise ValueError("synthetic parse failure")
+
+    monkeypatch.setattr(
+        "offline_rag.ingestion.text_parser.TextParser.parse",
+        boom,
+    )
+    app = create_app(runtime=runtime)
+    with TestClient(app, raise_server_exceptions=False) as client:
+        body, ct = _multipart(
+            [
+                ("corpus", b"eng", None),
+                ("files", b"Looks like text but parse will fail.\n", "a.txt"),
+            ]
+        )
+        resp = _post_raw(client, body, ct)
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "document_invalid"
+    assert "synthetic parse failure" not in resp.text
+    assert "ValueError" not in resp.text
+
+
+def test_internal_ingestion_failure_is_ingest_failed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runtime = _runtime(_settings(tmp_path))
+
+    def boom(*_args, **_kwargs):  # type: ignore[no-untyped-def]
+        raise OSError("disk full synthetic")
+
+    monkeypatch.setattr(
+        "offline_rag.ingestion.pipeline.write_parsed_document",
+        boom,
+    )
+    app = create_app(runtime=runtime)
+    with TestClient(app, raise_server_exceptions=False) as client:
+        body, ct = _multipart(
+            [
+                ("corpus", b"eng", None),
+                ("files", b"Valid text that fails on persistence.\n", "a.txt"),
+            ]
+        )
+        resp = _post_raw(client, body, ct)
+    assert resp.status_code == 500
+    assert resp.json()["error"]["code"] == "ingest_failed"
+    assert "disk full" not in resp.text
+    assert "OSError" not in resp.text
+
