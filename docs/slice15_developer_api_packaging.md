@@ -3,15 +3,16 @@
 **Status:** Architecture **COMPLETE / LOCKED** (S15-D01 … S15-D22)  
 **Pre-implementation contract (Residual A):** **LOCKED / ACCEPTED**  
 **Implementation plan:** [`docs/slice15_implementation_plan.md`](slice15_implementation_plan.md) — **ACCEPTED**  
-**Code implementation:** phased — **15A/15B/15C/15D COMPLETE / ACCEPTED**; **15E–15H NOT AUTHORIZED**
+**Code implementation:** phased — **15A/15B/15C/15D/15E COMPLETE / ACCEPTED**; **15F–15H NOT AUTHORIZED**
 
 **Architecture + Residual A authority:** this document.  
 **Authority SHA (design + Residual A):** `6583fb3be64f2c66e8655b8b99166c358f8f0844`  
 **Drafting baseline HEAD (pre-artifact):** `3ed9212c777798338d5b2229eff7d7aabe3d5adb`  
 **Milestone:** Milestone 7 **IN PROGRESS**; Slice 14 **COMPLETE / ACCEPTED**.  
-**Landed implementation head (15D):** `2ef21d26b9513fa7bc98ab1ad8de3645d17cebd7`  
+**Landed implementation head (15E):** `63f5965adae3c2a1c5a5b338bcc1243f9423bb5a`  
 **15C merge commit:** `47a11f1968be75cf772fc7a9e4447ee26e283c52`  
-**15D fast-forward onto main:** `2ef21d26b9513fa7bc98ab1ad8de3645d17cebd7`
+**15D fast-forward onto main:** `2ef21d26b9513fa7bc98ab1ad8de3645d17cebd7`  
+**15E fast-forward onto main:** `63f5965adae3c2a1c5a5b338bcc1243f9423bb5a`
 
 This document remains the reviewable architecture authority. Conversation history
 is not an authority once this artifact is accepted at a committed SHA. Later
@@ -32,7 +33,7 @@ PHASE 15A:                            COMPLETE / ACCEPTED
 PHASE 15B:                            COMPLETE / ACCEPTED
 PHASE 15C:                            COMPLETE / ACCEPTED
 PHASE 15D:                            COMPLETE / ACCEPTED
-PHASE 15E:                            NOT AUTHORIZED
+PHASE 15E:                            COMPLETE / ACCEPTED
 PHASES 15F–15H:                       NOT AUTHORIZED
 S15-D20 TRANSPORT-ORDER CLARIFICATION: LOCKED / ACCEPTED
 ```
@@ -762,11 +763,12 @@ and must remain absent. Startup—not doctor—owns required `/data` creation.
 4. ~~Authorize and land 15A / 15B~~ **DONE** (`00282d67…` on main)  
 5. ~~Authorize and land 15C~~ **DONE** (`5d70be09…` / merge `47a11f19…`)  
 6. ~~Authorize and land 15D~~ **DONE** (`2ef21d26…` FF onto main)  
-7. Issue explicit **15E** implementation authorization citing design authority
-   `6583fb3…` and the post-15D main baseline before any product query/trace work  
+7. ~~Authorize and land 15E~~ **DONE** (`63f5965…` FF onto main)  
+8. Issue explicit **15F** implementation authorization citing design authority
+   `6583fb3…` and the post-15E main baseline before admission/deadline/drain work  
 
 ```text
-PHASES 15E–15H: NOT AUTHORIZED BY THIS DOCUMENT ALONE
+PHASES 15F–15H: NOT AUTHORIZED BY THIS DOCUMENT ALONE
 ```
 
 ---
