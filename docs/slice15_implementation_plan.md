@@ -7,8 +7,9 @@
 - **15A:** **COMPLETE / ACCEPTED** (baseline `4a1c8dbcddc8408dd8b8b46dc0f18df56561d2f8`)
 - **15B:** **COMPLETE / ACCEPTED** (head `00282d67f43edad7cb4094228c482bf8f361d578`)
 - **15C:** **COMPLETE / ACCEPTED** (implementation head `5d70be09a3534a093bad9754f4051840ed1fde92`; merge `47a11f1968be75cf772fc7a9e4447ee26e283c52`)
-- **15D:** **NOT AUTHORIZED**
-- **15E–15H:** **NOT AUTHORIZED**
+- **15D:** **COMPLETE / ACCEPTED** (FF head `2ef21d26b9513fa7bc98ab1ad8de3645d17cebd7`; commits `39ac270b…`, `88908acd…`, `2ef21d26…`)
+- **15E:** **NOT AUTHORIZED**
+- **15F–15H:** **NOT AUTHORIZED**
 
 This plan decomposes Slice 15 into bounded phases with scope, dependencies,
 acceptance tests, and explicit non-scope. Coding still requires explicit
@@ -177,6 +178,11 @@ busy; CLI and API share coordination namespace.
 ---
 
 ## 5. Phase 15D — Product ingest
+
+**Status:** **COMPLETE / ACCEPTED** on main (FF head `2ef21d26b9513fa7bc98ab1ad8de3645d17cebd7`)  
+**Implementation commits:** `39ac270b19be2e87a2dc0bb48668a1c249709042`,
+`88908acd09e644e0107050d5a5fec28ffe2db7bf`,
+`2ef21d26b9513fa7bc98ab1ad8de3645d17cebd7`
 
 ### Scope
 

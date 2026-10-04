@@ -379,17 +379,18 @@ Use public, redistributable technical documents rather than proprietary material
 
 **Phase:** Milestone **7 IN PROGRESS**. Milestone **6 COMPLETE / ACCEPTED**.
 Slice **14 COMPLETE / ACCEPTED**. Slice **15** architecture locked; phases
-**15A/15B/15C COMPLETE / ACCEPTED** on main (15C merge `47a11f19…`) — app
-foundation, process lifecycle, `/health*`, non-mutating `doctor`, product
-publication registry/leases, and `/v1/documents*`. Product ingest/query/trace
-(**15D–15E**), admission (**15F**), container packaging (**15G**), retrieval
-inspector, citation viewer, and evaluation dashboard remain later Milestone 7
-work (**15D+ not authorized**).
+**15A/15B/15C/15D COMPLETE / ACCEPTED** on main (15D FF head `2ef21d26…`) —
+app foundation, process lifecycle, `/health*`, non-mutating `doctor`, product
+publication registry/leases, `/v1/documents*`, and `POST /v1/ingest`. Product
+query/trace (**15E**), admission (**15F**), container packaging (**15G**),
+retrieval inspector, citation viewer, and evaluation dashboard remain later
+Milestone 7 work (**15E+ not authorized**).
 
 Working local path: ingest → chunk → index / index lexical → retrieve ladder →
 `query` → grounded generation → `eval retrieve` / `eval compare` →
 `eval query` → `doctor` → gold authoring workflow → Slice 14 performance
-benchmarks → Slice 15B `/health*` → Slice 15C `/v1/documents*`.
+benchmarks → Slice 15B `/health*` → Slice 15C `/v1/documents*` →
+Slice 15D `/v1/ingest`.
 
 Still deferred / not authorized from Slice 14 closeout: publication-grade
 portfolio claims (`PORTFOLIO_DEMO.md`); performance optimization; generator

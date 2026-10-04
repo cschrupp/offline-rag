@@ -82,9 +82,10 @@ Generator weights belong to the external inference runtime and are not mounted i
 ## 5. Target quick start
 
 These commands describe the intended release interface. Activate them once
-Phase **15G** container packaging lands. Phases **15A/15B/15C** already provide
-the in-process FastAPI substrate, `/health*` probes, and `/v1/documents*`;
-product ingest/query/trace and the application image remain later Slice 15 work.
+Phase **15G** container packaging lands. Phases **15A/15B/15C/15D** already
+provide the in-process FastAPI substrate, `/health*` probes, `/v1/documents*`,
+and `POST /v1/ingest`; product query/trace and the application image remain
+later Slice 15 work.
 
 ### Host provisioning
 
