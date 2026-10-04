@@ -2,11 +2,41 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict
+
+# Top-level allowlisted detail keys for product envelopes (D08).
+_ALLOWED_DETAIL_KEYS = frozenset(
+    {
+        "corpus",
+        "snapshot_id",
+        "document_id",
+        "stage",
+        "provider_failure_class",
+        "field",
+        "reason",
+        "fields",
+    }
+)
+
+# Nested keys permitted inside details["fields"] validation projections.
+_ALLOWED_FIELD_ENTRY_KEYS = frozenset({"loc", "msg", "type"})
+
+_SECRET_KEY_TOKENS = frozenset(
+    {
+        "api_key",
+        "authorization",
+        "password",
+        "secret",
+        "token",
+        "credential",
+        "private_key",
+    }
+)
 
 
 class ErrorCode(StrEnum):
@@ -80,6 +110,67 @@ def retryable_for(code: ErrorCode | str) -> bool:
     return ERROR_CATALOG[ErrorCode(code)].retryable
 
 
+def _normalize_key(key: object) -> str:
+    return str(key).strip().lower().replace("-", "_")
+
+
+def _is_secret_key(key: object) -> bool:
+    token = _normalize_key(key)
+    if token in _SECRET_KEY_TOKENS:
+        return True
+    return any(secret in token for secret in _SECRET_KEY_TOKENS)
+
+
+def _sanitize_field_entry(entry: Mapping[str, Any]) -> dict[str, Any] | None:
+    cleaned: dict[str, Any] = {}
+    for key, value in entry.items():
+        norm = _normalize_key(key)
+        if norm not in _ALLOWED_FIELD_ENTRY_KEYS or _is_secret_key(key):
+            continue
+        if norm == "loc":
+            if isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
+                cleaned["loc"] = [str(part) for part in value]
+            else:
+                cleaned["loc"] = []
+        else:
+            cleaned[norm] = str(value)
+    return cleaned or None
+
+
+def sanitize_error_details(details: Mapping[str, Any] | None) -> dict[str, Any] | None:
+    """Fail-closed projection for ErrorResponse.details.
+
+    Only allowlisted keys survive. Secret-bearing keys are dropped even if a
+    caller attempts to inject them into AppError.details.
+    """
+    if details is None:
+        return None
+    if not isinstance(details, Mapping):
+        return None
+
+    cleaned: dict[str, Any] = {}
+    for key, value in details.items():
+        norm = _normalize_key(key)
+        if _is_secret_key(key) or norm not in _ALLOWED_DETAIL_KEYS:
+            continue
+        if norm == "fields":
+            if not isinstance(value, Sequence) or isinstance(value, (str, bytes)):
+                continue
+            fields: list[dict[str, Any]] = []
+            for item in value:
+                if not isinstance(item, Mapping):
+                    continue
+                projected = _sanitize_field_entry(item)
+                if projected is not None:
+                    fields.append(projected)
+            cleaned["fields"] = fields
+            continue
+        # Scalar allowlisted values only — no nested free-form objects.
+        if isinstance(value, (str, int, float, bool)) or value is None:
+            cleaned[norm] = value
+    return cleaned or None
+
+
 class ErrorBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -112,7 +203,7 @@ class AppError(Exception):
         spec = ERROR_CATALOG[code]
         self.code = code
         self.message = message if message is not None else spec.default_message
-        self.details = details
+        self.details = sanitize_error_details(details)
         self.trace_id = trace_id
         self.retryable = spec.retryable
         self.http_status = spec.http_status
@@ -123,7 +214,7 @@ class AppError(Exception):
             error=ErrorBody(code=self.code, message=self.message),
             retryable=self.retryable,
             trace_id=self.trace_id,
-            details=self.details,
+            details=sanitize_error_details(self.details),
         )
 
 

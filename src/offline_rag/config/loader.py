@@ -186,6 +186,48 @@ def _apply_models_dir(data: MutableMapping[str, Any], models_dir: str) -> None:
     paths["reranker_artifacts"] = str(root / "rerankers")
 
 
+def _rebase_models_prefixed_path(value: Any, models_root: Path) -> str | None:
+    """Rebase relative ``models/...`` paths onto ``OFFLINE_RAG_MODELS_DIR``.
+
+    Absolute paths and non-``models/`` relative paths are left unchanged.
+    """
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    path = Path(text)
+    if path.is_absolute():
+        return None
+    parts = path.parts
+    if not parts or parts[0] != "models":
+        return None
+    return str(models_root.joinpath(*parts[1:]))
+
+
+def _rebase_runtime_model_paths(payload: MutableMapping[str, Any], models_dir: str) -> None:
+    """Ensure runtime model_path values follow OFFLINE_RAG_MODELS_DIR.
+
+    ``dense.model_path`` / ``reranker.model.model_path`` often come from YAML as
+    relative ``models/...`` paths. Those must not keep resolving against the
+    process CWD after MODELS_DIR rebases ``paths.*_artifacts``.
+    """
+    root = Path(models_dir)
+    dense = payload.get("dense")
+    if isinstance(dense, dict):
+        rebased = _rebase_models_prefixed_path(dense.get("model_path"), root)
+        if rebased is not None:
+            dense["model_path"] = rebased
+
+    reranker = payload.get("reranker")
+    if isinstance(reranker, dict):
+        model = reranker.get("model")
+        if isinstance(model, dict):
+            rebased = _rebase_models_prefixed_path(model.get("model_path"), root)
+            if rebased is not None:
+                model["model_path"] = rebased
+
+
 def env_overrides(environ: Mapping[str, str] | None = None) -> dict[str, Any]:
     """Translate OFFLINE_RAG_* environment variables into nested overrides."""
     env = environ if environ is not None else os.environ
@@ -250,6 +292,11 @@ def load_settings(
     _coerce_list_env_fields(env_payload)
     _reject_legacy_sparse_config(env_payload)
     payload = _deep_merge(payload, env_payload)
+    models_dir = env.get(f"{ENV_PREFIX}MODELS_DIR")
+    if models_dir:
+        # After YAML+env path roots merge: rebase conventional models/... model_path
+        # values so runtime resolvers honor MODELS_DIR. Explicit overrides still win.
+        _rebase_runtime_model_paths(payload, models_dir)
     if overrides:
         override_payload = dict(overrides)
         _reject_legacy_sparse_config(override_payload)

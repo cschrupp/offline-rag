@@ -18,9 +18,14 @@ from offline_rag.app import (
     project_validation_errors,
     required_data_directories,
     retryable_for,
+    sanitize_error_details,
     validate_product_corpus_name,
 )
 from offline_rag.config import load_settings
+from offline_rag.dense.provision import resolve_embedding_model_dir
+from offline_rag.rerank.provision import resolve_reranker_model_dir
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
 
 # Locked D08 HTTP mappings (request_cancelled has none).
 _EXPECTED_HTTP: dict[ErrorCode, int | None] = {
@@ -124,6 +129,38 @@ def test_error_response_envelope_safe() -> None:
     }
 
 
+@pytest.mark.parametrize(
+    "secret_key",
+    [
+        "api_key",
+        "authorization",
+        "password",
+        "secret",
+        "token",
+        "credential",
+        "private_key",
+        "API_KEY",
+        "Authorization",
+    ],
+)
+def test_app_error_details_drop_secret_bearing_keys(secret_key: str) -> None:
+    err = AppError(
+        ErrorCode.INTERNAL_ERROR,
+        details={
+            secret_key: "super-secret-value",
+            "corpus": "manuals",
+            "traceback": "should-also-drop",
+        },
+    )
+    assert err.details == {"corpus": "manuals"}
+    payload = error_response_from_app_error(err).model_dump(mode="json")
+    text = str(payload)
+    assert "super-secret-value" not in text
+    assert secret_key.lower().replace("-", "_") not in str(payload.get("details"))
+    assert payload["details"] == {"corpus": "manuals"}
+    assert sanitize_error_details({secret_key: "x", "reason": "ok"}) == {"reason": "ok"}
+
+
 def test_residual_a_defaults_without_env() -> None:
     settings = load_settings(yaml_paths=[], environ={})
     api = settings.api
@@ -207,6 +244,42 @@ def test_models_dir_rebases_provisioned_assets() -> None:
     assert settings.paths.tokenizer_artifacts == root / "tokenizers" / "tiktoken"
     assert settings.paths.embedding_artifacts == root / "embeddings"
     assert settings.paths.reranker_artifacts == root / "rerankers"
+
+
+def test_models_dir_rebases_effective_runtime_model_paths() -> None:
+    """MODELS_DIR must control paths used by embedder/reranker resolvers."""
+    settings = load_settings(
+        yaml_paths=[REPO_ROOT / "config" / "base.yaml"],
+        environ={"OFFLINE_RAG_MODELS_DIR": "/models"},
+    )
+    root = Path("/models")
+    assert settings.paths.embedding_artifacts == root / "embeddings"
+    assert settings.paths.reranker_artifacts == root / "rerankers"
+    assert settings.dense.model_path == root / "embeddings" / "qwen3-embedding-0.6b"
+    assert settings.reranker.model.model_path == root / "rerankers" / "bge-reranker-v2-m3"
+
+    embedding_dir = resolve_embedding_model_dir(
+        embedding_artifacts_root=settings.paths.embedding_artifacts,
+        model_path=settings.dense.model_path,
+    )
+    reranker_dir = resolve_reranker_model_dir(
+        reranker_artifacts_root=settings.paths.reranker_artifacts,
+        model_path=settings.reranker.model.model_path,
+    )
+    assert embedding_dir == (root / "embeddings" / "qwen3-embedding-0.6b").resolve()
+    assert reranker_dir == (root / "rerankers" / "bge-reranker-v2-m3").resolve()
+    assert embedding_dir.is_relative_to(root.resolve())
+    assert reranker_dir.is_relative_to(root.resolve())
+
+
+def test_models_dir_runtime_path_respects_explicit_overrides() -> None:
+    settings = load_settings(
+        yaml_paths=[REPO_ROOT / "config" / "base.yaml"],
+        environ={"OFFLINE_RAG_MODELS_DIR": "/models"},
+        overrides={"dense": {"model_path": "/custom/embed"}},
+    )
+    assert settings.dense.model_path == Path("/custom/embed")
+    assert settings.reranker.model.model_path == Path("/models/rerankers/bge-reranker-v2-m3")
 
 
 def test_api_excluded_from_canonical_dict() -> None:

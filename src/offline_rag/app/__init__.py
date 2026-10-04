@@ -14,6 +14,7 @@ from offline_rag.app.errors import (
     error_response_from_app_error,
     http_status_for,
     retryable_for,
+    sanitize_error_details,
 )
 from offline_rag.app.paths import ensure_data_directories, required_data_directories
 from offline_rag.app.validation import (
@@ -33,5 +34,6 @@ __all__ = [
     "project_validation_errors",
     "required_data_directories",
     "retryable_for",
+    "sanitize_error_details",
     "validate_product_corpus_name",
 ]
