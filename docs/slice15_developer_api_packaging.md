@@ -32,11 +32,13 @@ PHASE 15B:                            COMPLETE / ACCEPTED
 PHASE 15C:                            COMPLETE / ACCEPTED
 PHASE 15D:                            NOT AUTHORIZED
 PHASES 15E–15H:                       NOT AUTHORIZED
+S15-D20 TRANSPORT-ORDER CLARIFICATION: LOCKED / ACCEPTED
 ```
 
 Architecture may reopen only for a concrete contradiction, missing required
 semantic contract, or demonstrated implementation impossibility under D01–D22.
-Silent amendment of locked decisions is forbidden.
+Silent amendment of locked decisions is forbidden. Narrow D22 reopen amendments
+must be committed as explicit locked clarifications (see S15-D20 transport order).
 
 ---
 
@@ -333,7 +335,11 @@ GET /health/ready
 
 - Expensive: `/v1/query`, `/v1/ingest`; cheap: health, documents, trace
 - Bounded configurable admission; small safe defaults; fail-fast; no unbounded queue
-- Ingest order: validate → capacity → **fully spool upload** → validate docs → **lease** → mutate → publish (**D20** refines upload-before-lease)
+- Ingest order (normative; see **S15-D20 transport-order clarification**):
+  request-level HTTP envelope checks → **ingest-class capacity** →
+  streaming multipart parse/spool (corpus validated when encountered; part order
+  unconstrained) → validate complete document set → **corpus lease** → mutate →
+  publish. Upload-before-lease remains mandatory.
 - Overload → `service_overloaded` 503
 - App deadline → `request_timeout` 504; generator → `generation_timeout` 504
 - Expensive blocking work must not monopolize the sole ASGI event loop
@@ -342,6 +348,10 @@ GET /health/ready
 - Ingest disconnect after lease: **not** a cancel signal; managed continuation to commit or abort
 - Deadline before publish: abort; after publish: no rollback
 - Automatic retries: not authorized
+- Phase ownership of admission: **15D** owns ingest-class fail-fast capacity only
+  (`max_concurrent_ingest = 1`, wait=`0`); **15F** owns query admission, deadlines,
+  disconnect behavior, and shutdown/drain semantics (shared admission abstraction
+  refactor allowed in 15F)
 
 ### S15-D19 — Graceful shutdown and crash recovery
 
@@ -362,7 +372,7 @@ GET /health/ready
 
 ### S15-D20 — `/v1/ingest` request boundary
 
-**LOCKED / ACCEPTED**
+**LOCKED / ACCEPTED** (including transport-order clarification below)
 
 - `multipart/form-data` only: `corpus` + one-or-more `files`
 - No HTTP filesystem paths, `file://`, or remote URL fetch
@@ -377,6 +387,59 @@ GET /health/ready
 - Identical canonical snapshot ⇒ **same** `snapshot_id` (D04)
 - Success 200: `{corpus, snapshot_id, document_count}`
 - No ingest `trace_id`
+
+#### S15-D20 transport-order clarification (D22 reopen — LOCKED / ACCEPTED)
+
+A literal reading that required validating the multipart `corpus` field before
+acquiring ingest capacity and before any body consumption is **not implementable**:
+multipart part order is not guaranteed, so corpus may arrive after file parts.
+Requiring “corpus first” would invent an unauthorized public ordering constraint.
+This narrow clarification replaces that impossible prefix only.
+
+Normative ingest transport sequence:
+
+```text
+validate request-level HTTP envelope
+(Content-Type/boundary + cheap Content-Length rejection when available)
+        ↓
+acquire ingest-class capacity
+(max_concurrent_ingest = 1, wait = 0 → service_overloaded)
+        ↓
+streaming-parse multipart in arbitrary legal part order
+  - extract + validate corpus as soon as encountered
+  - bounded-spool file parts
+  - enforce actual streamed bytes (not Content-Length alone)
+  - enforce file count
+  - no whole-request RAM buffering
+        ↓
+require exactly one valid corpus + one-or-more files
+        ↓
+validate complete uploaded document set
+        ↓
+acquire per-corpus mutation lease
+        ↓
+move/establish correctness-critical candidate under /data/corpora
+        ↓
+parse / chunk / index candidate
+        ↓
+validate grounded readiness
+        ↓
+atomic publish
+```
+
+Frozen transport invariants:
+
+```text
+MULTIPART PART ORDER:     UNCONSTRAINED
+                          (no "corpus must come first" requirement)
+
+UPLOAD BEFORE CORPUS LEASE: STILL MANDATORY
+```
+
+Consequence (accepted): a saturated service may return `service_overloaded`
+before parsing a body-level invalid corpus, because capacity is acquired before
+consuming an expensive request body. That is conventional fail-fast behavior and
+does not authorize unbounded body buffering before capacity.
 
 ### S15-D21 — `/v1/query` request/response contract
 
@@ -728,7 +791,7 @@ PHASES 15D–15H: NOT AUTHORIZED BY THIS DOCUMENT ALONE
 | S15-D17 | Container runtime topology | LOCKED / ACCEPTED |
 | S15-D18 | Request execution / resource control | LOCKED / ACCEPTED |
 | S15-D19 | Graceful shutdown & crash recovery | LOCKED / ACCEPTED |
-| S15-D20 | `/v1/ingest` request boundary | LOCKED / ACCEPTED |
+| S15-D20 | `/v1/ingest` request boundary | LOCKED / ACCEPTED (+ transport-order clarification) |
 | S15-D21 | `/v1/query` request/response contract | LOCKED / ACCEPTED |
 | S15-D22 | Design residual / consolidation boundary | LOCKED / ACCEPTED |
 | Residual A | Pre-implementation contract values | **LOCKED / ACCEPTED** |

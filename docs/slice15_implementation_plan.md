@@ -181,8 +181,20 @@ busy; CLI and API share coordination namespace.
 ### Scope
 
 - `POST /v1/ingest` multipart replace transaction (D05/D20)
-- Order: validate → ingest capacity → spool upload → validate docs → lease →
-  build candidate → validate grounded readiness → atomic publish
+- Normative transport order (D20 transport-order clarification):
+  request-level HTTP envelope checks → **ingest-class capacity** →
+  streaming multipart parse/spool (part order unconstrained; validate `corpus`
+  when encountered; enforce actual streamed bytes + file count) → validate
+  complete document set → **corpus lease** → candidate under `/data/corpora` →
+  parse/chunk/index → grounded readiness → atomic publish
+- **15D owns ingest-class fail-fast capacity only:**
+  `max_concurrent_ingest = 1`, wait=`0` → `service_overloaded`
+- Upload-before-corpus-lease remains mandatory
+- Full-replace semantics: must not reuse incremental `run_ingestion()` against
+  existing mutable stage state (that overlays prior sources). Use a
+  candidate-isolated stage context (or equivalent) so the uploaded set is the
+  complete candidate corpus while still reusing existing parse/chunk/index
+  algorithms — no second pipeline
 - Map bound/type/identity failures to `request_invalid` / `document_invalid`
 - Success `{corpus, snapshot_id, document_count}`
 - Offload blocking stages off the ASGI event loop (D18)
@@ -192,22 +204,28 @@ busy; CLI and API share coordination namespace.
 ### Depends on
 
 - 15C registry/leases; 15A bounds; existing ingest/chunk/index domain pipelines
+- Locked D20 transport-order clarification
 
 ### Acceptance tests
 
 - Missing/zero files → 422 `request_invalid`
 - Oversized file / unsupported type / identity conflict → 422 `document_invalid`
 - Path/`file://`/URL fields rejected (no filesystem read API)
-- Successful ingest makes `/v1/documents` match uploaded set (replace semantics)
+- Successful ingest makes `/v1/documents` match uploaded set (replace semantics);
+  omitted prior documents must not remain product-visible
+- Corpus-after-files multipart order succeeds when otherwise valid
 - Disconnect during upload (before lease): no publish, no lease held
 - Second concurrent ingest same corpus → `corpus_busy` or `service_overloaded`
   as appropriate to order
+- Saturated ingest capacity may return `service_overloaded` before body-level
+  corpus validation
 - Health live remains responsive during a long fake/blocked ingest stage
   (event-loop non-monopoly)
 
 ### Non-scope
 
 - Query; traces; append mode; empty-corpus delete
+- Query admission; operation deadlines; disconnect/shutdown/drain (15F)
 
 ---
 
@@ -249,13 +267,15 @@ busy; CLI and API share coordination namespace.
 
 ### Scope
 
-- Class admission: query slots=1, ingest slots=1, wait=0 → `service_overloaded`
+- **Query admission:** query slots=`1`, wait=`0` → `service_overloaded`
+- Optional shared admission abstraction / refactor that still leaves
+  ingest-class capacity owned by the 15D surface (already landed)
 - Query/ingest deadlines → `request_timeout`; generator → `generation_timeout`
 - Query disconnect/shutdown cancellation → cooperative cancel +
   `request_cancelled` trace when terminally recorded
 - Ingest post-lease disconnect: continue to commit/abort (D18)
-- Graceful shutdown: ready false; reject new `/v1/*`; abort unfinished post-lease
-  ingest unless publish critical section entered; grace 30s (D19)
+- Graceful shutdown / drain: ready false; reject new `/v1/*`; abort unfinished
+  post-lease ingest unless publish critical section entered; grace 30s (D19)
 
 ### Depends on
 
@@ -264,7 +284,7 @@ busy; CLI and API share coordination namespace.
 ### Acceptance tests
 
 - Second concurrent query while one held → 503 `service_overloaded` (no queue)
-- Query + ingest may both be admitted (class capacities)
+- Query + ingest may both be admitted (class capacities; ingest capacity from 15D)
 - Forced short query deadline → 504 `request_timeout` (deterministic test double)
 - SIGTERM/lifespan shutdown: ready 503; new query rejected `runtime_not_ready`
 - Post-lease ingest abort on shutdown when publish not entered
@@ -272,6 +292,7 @@ busy; CLI and API share coordination namespace.
 
 ### Non-scope
 
+- First introduction of ingest-class capacity (owned by 15D)
 - Global expensive cap of 1; distributed admission; job API
 
 ---
@@ -403,8 +424,8 @@ Unauthorized phase work, speculative refactors, and eval HTTP remain forbidden.
 | 15A | D01, D08, D13, D20 validator, Residual A |
 | 15B | D02, D09, D16, D19 ready flip, Residual A doctor |
 | 15C | D03, D04, D10, D15 |
-| 15D | D05, D18 upload-before-lease, D20 |
+| 15D | D05, D18 upload-before-lease, D20 (+ transport-order clarification); ingest capacity only |
 | 15E | D06, D07, D11, D21 |
-| 15F | D18, D19 |
+| 15F | D18 query admission/deadlines/disconnect; D19 drain/shutdown |
 | 15G | D14, D17, Residual A packaging |
 | 15H | full Slice 15 exit evidence |
