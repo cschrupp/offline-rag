@@ -19,11 +19,11 @@ from offline_rag.api.app import create_app
 from offline_rag.app.errors import AppError, ErrorCode
 from offline_rag.app.query import (
     MAX_QUESTION_CHARS,
-    _build_orchestrator,
     get_product_trace,
     run_product_query,
 )
 from offline_rag.app.query_binding import build_snapshot_query_binding
+from offline_rag.app.query_runtime import SnapshotQueryRuntimeHandle
 from offline_rag.app.runtime import ApplicationRuntime, ResourceFactories
 from offline_rag.app.traces import (
     ProductQueryTrace,
@@ -37,14 +37,13 @@ from offline_rag.chunking import TiktokenTokenCounter
 from offline_rag.config import load_settings
 from offline_rag.config.models import AppSettings
 from offline_rag.context.config_hash import build_context_config_hash
-from offline_rag.context.store import ChunkStructureStore
 from offline_rag.dense.config_hash import (
     build_embedding_config_hash,
     build_index_config_hash,
 )
 from offline_rag.dense.embedder import FakeEmbedder
 from offline_rag.dense.retrieve import DenseRetriever
-from offline_rag.domain.chunking import ChunkSetManifest
+from offline_rag.domain.chunking import ChunkSetDocumentEntry, ChunkSetManifest
 from offline_rag.domain.corpus import CorpusDocumentEntry, CorpusManifest
 from offline_rag.domain.generation import GroundedAnswerResult, ResolvedCitation
 from offline_rag.domain.indexing import (
@@ -422,16 +421,16 @@ def _patch_execute(
     captured: dict[str, Any] = {}
 
     def _fake(
-        runtime: ApplicationRuntime, binding: Any, question: str
+        handle: SnapshotQueryRuntimeHandle, question: str
     ) -> GroundedAnswerResult:
         captured["question"] = question
-        captured["binding"] = binding
-        captured["runtime"] = runtime
+        captured["binding"] = handle.binding
+        captured["handle"] = handle
         if isinstance(result, Exception):
             raise result
         return result
 
-    monkeypatch.setattr("offline_rag.app.query._execute_bound", _fake)
+    monkeypatch.setattr("offline_rag.app.query._execute_snapshot_query", _fake)
     return captured
 
 
@@ -680,7 +679,10 @@ def test_snapshot_pin_mid_flight_and_resolve_once(
 
     product_seen: dict[str, Any] = {}
 
-    def product_execute(rt, binding, question: str) -> GroundedAnswerResult:
+    def product_execute(
+        handle: SnapshotQueryRuntimeHandle, question: str
+    ) -> GroundedAnswerResult:
+        binding = handle.binding
         product_seen["dense_index_id"] = binding.dense_index_id
         product_seen["lexical_index_id"] = binding.lexical_index_id
         product_seen["chunk_manifest"] = binding.chunk_manifest_name
@@ -697,11 +699,11 @@ def test_snapshot_pin_mid_flight_and_resolve_once(
             document_id="doc_003",
             source_name="third.pdf",
         )
-        assert rt.resources is not None
-        q = rt.resources.qdrant
+        assert runtime.resources is not None
+        q = runtime.resources.qdrant
         assert isinstance(q, _FakeQdrant)
         q.counts["col_n2"] = 1
-        product_seen["sid_n2"] = rt.publication.publish("engineering", n2)
+        product_seen["sid_n2"] = runtime.publication.publish("engineering", n2)
         return _canned(
             citations=[_citation(document_id="doc_002")],
             dense_index_id=binding.dense_index_id,
@@ -710,7 +712,9 @@ def test_snapshot_pin_mid_flight_and_resolve_once(
             query=question,
         )
 
-    monkeypatch.setattr("offline_rag.app.query._execute_bound", product_execute)
+    monkeypatch.setattr(
+        "offline_rag.app.query._execute_snapshot_query", product_execute
+    )
     # Current pointer is N+1 after hybrid test.
     current = orig_resolve("engineering")
     resp = run_product_query(
@@ -746,16 +750,6 @@ def test_query_reuses_process_scoped_resources(
 
     seen: dict[str, Any] = {}
 
-    monkeypatch.setattr(
-        "offline_rag.app.query.load_structure_store_for_chunk_manifest",
-        lambda _s, _name: ChunkStructureStore(
-            children={},
-            parents={},
-            chunk_set_id="chunkset_bbb",
-            corpus_id="corpus_aaa",
-        ),
-    )
-
     orig_dense = DenseRetriever.__init__
 
     def dense_init(self, settings_arg, *, embedder=None, backend=None):
@@ -786,28 +780,21 @@ def test_query_reuses_process_scoped_resources(
     monkeypatch.setattr(GroundedAnswerOrchestrator, "__init__", orch_init)
 
     def fake_answer(self, **_kwargs):
+        snap = runtime.publication.resolve("engineering")
         return _canned(
             citations=[_citation()],
-            context_config_hash=runtime.publication.resolve(
-                "engineering"
-            ).identity.context_config_hash,
+            context_config_hash=snap.identity.context_config_hash,
+            dense_index_id=snap.identity.dense_index_id,
+            lexical_index_id=snap.identity.lexical_index_id,
         )
 
     monkeypatch.setattr(GroundedAnswerOrchestrator, "answer", fake_answer)
 
-    # Drive via _build_orchestrator / product query.
     snap = runtime.publication.resolve("engineering")
-    binding = build_snapshot_query_binding(settings, snap)
-    orch = _build_orchestrator(runtime, binding)
-    try:
-        assert seen["embedder"] is runtime.resources.embedder
-        assert seen["qdrant"] is runtime.resources.qdrant
-        assert seen["reranker"] is runtime.resources.reranker
-        assert seen["generator"] is runtime.resources.generator_client
-    finally:
-        orch.close()
-
-    run_product_query(runtime, corpus="engineering", question="reuse check")
+    key = (snap.corpus_name, snap.snapshot_id)
+    run_product_query(runtime, corpus="engineering", question="reuse check 1")
+    run_product_query(runtime, corpus="engineering", question="reuse check 2")
+    assert runtime.query_runtimes.build_counts.get(key) == 1
     assert seen["embedder"] is runtime.resources.embedder
     assert seen["qdrant"] is runtime.resources.qdrant
     assert seen["reranker"] is runtime.resources.reranker
@@ -1266,7 +1253,9 @@ def test_health_responsive_during_blocking_query(
     block = threading.Event()
     entered = threading.Event()
 
-    def blocking_execute(rt, binding, question: str) -> GroundedAnswerResult:
+    def blocking_execute(
+        handle: SnapshotQueryRuntimeHandle, question: str
+    ) -> GroundedAnswerResult:
         entered.set()
         assert block.wait(timeout=10)
         return _canned(
@@ -1277,7 +1266,9 @@ def test_health_responsive_during_blocking_query(
             query=question,
         )
 
-    monkeypatch.setattr("offline_rag.app.query._execute_bound", blocking_execute)
+    monkeypatch.setattr(
+        "offline_rag.app.query._execute_snapshot_query", blocking_execute
+    )
     app = create_app(runtime=runtime)
 
     async def run() -> None:
@@ -1360,3 +1351,285 @@ def test_get_product_trace_app_layer_unknown(tmp_path: Path) -> None:
         get_product_trace(runtime, "trace_nothex")
     assert exc.value.code is ErrorCode.TRACE_UNKNOWN
     runtime.shutdown()
+
+
+# ---------------------------------------------------------------------------
+# Rework evidence: cache reuse, N→N+1, shutdown, zero-citation, damaged backing
+# ---------------------------------------------------------------------------
+
+
+def test_same_snapshot_query_runtime_cache_reuse(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    settings = _settings(tmp_path)
+    runtime = _runtime(settings)
+    runtime.start()
+    sid, identity = _publish_ready(runtime)
+    key = ("engineering", sid)
+    lexical_ids: list[int] = []
+
+    def capture(handle: SnapshotQueryRuntimeHandle, question: str) -> GroundedAnswerResult:
+        lexical_ids.append(id(handle.lexical))
+        return _canned(
+            citations=[_citation()],
+            dense_index_id=identity.dense_index_id,
+            lexical_index_id=identity.lexical_index_id,
+            context_config_hash=identity.context_config_hash,
+            query=question,
+        )
+
+    monkeypatch.setattr("offline_rag.app.query._execute_snapshot_query", capture)
+    run_product_query(runtime, corpus="engineering", question="one")
+    run_product_query(runtime, corpus="engineering", question="two")
+    assert runtime.query_runtimes.build_counts[key] == 1
+    assert len(lexical_ids) == 2
+    assert lexical_ids[0] == lexical_ids[1]
+    runtime.shutdown()
+
+
+def test_cache_n_to_n1_keeps_inflight_n_and_binds_new_entry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    settings = _settings(tmp_path)
+    runtime = _runtime(settings)
+    runtime.start()
+    sid_n, _identity_n = _publish_ready(
+        runtime,
+        dense_index_id="denseindex_cache_n",
+        lexical_index_id="lexical_cache_n",
+        collection_name="col_cache_n",
+        corpus_id="corpus_cache_n",
+        chunk_set_id="chunkset_cache_n",
+    )
+    key_n = ("engineering", sid_n)
+    hold = threading.Event()
+    entered = threading.Event()
+    released = threading.Event()
+    seen: dict[str, Any] = {}
+
+    def execute(
+        handle: SnapshotQueryRuntimeHandle, question: str
+    ) -> GroundedAnswerResult:
+        if question == "inflight-n":
+            seen["n_lexical"] = handle.lexical
+            seen["n_snapshot"] = handle.binding.snapshot_id
+            entered.set()
+            assert hold.wait(timeout=10)
+            released.set()
+            return _canned(
+                citations=[_citation()],
+                dense_index_id=handle.binding.dense_index_id,
+                lexical_index_id=handle.binding.lexical_index_id,
+                context_config_hash=handle.binding.context_config_hash,
+                query=question,
+            )
+        seen["n1_lexical"] = handle.lexical
+        seen["n1_snapshot"] = handle.binding.snapshot_id
+        return _canned(
+            citations=[_citation(document_id="doc_n1")],
+            dense_index_id=handle.binding.dense_index_id,
+            lexical_index_id=handle.binding.lexical_index_id,
+            context_config_hash=handle.binding.context_config_hash,
+            query=question,
+        )
+
+    monkeypatch.setattr("offline_rag.app.query._execute_snapshot_query", execute)
+
+    errors: list[BaseException] = []
+
+    def run_n() -> None:
+        try:
+            run_product_query(runtime, corpus="engineering", question="inflight-n")
+        except BaseException as exc:  # noqa: BLE001
+            errors.append(exc)
+
+    thread = threading.Thread(target=run_n)
+    thread.start()
+    assert entered.wait(timeout=5)
+
+    n1 = _write_scientific_stack(
+        settings,
+        corpus_id="corpus_cache_n1",
+        chunk_set_id="chunkset_cache_n1",
+        dense_index_id="denseindex_cache_n1",
+        lexical_index_id="lexical_cache_n1",
+        collection_name="col_cache_n1",
+        document_id="doc_n1",
+        source_name="n1.pdf",
+    )
+    assert runtime.resources is not None
+    qdrant = runtime.resources.qdrant
+    assert isinstance(qdrant, _FakeQdrant)
+    qdrant.counts["col_cache_n1"] = 1
+    sid_n1 = runtime.publication.publish("engineering", n1)
+    key_n1 = ("engineering", sid_n1)
+
+    resp = run_product_query(runtime, corpus="engineering", question="follow-n1")
+    assert resp.snapshot_id == sid_n1
+    assert runtime.query_runtimes.build_counts[key_n] == 1
+    assert runtime.query_runtimes.build_counts[key_n1] == 1
+    assert seen["n_snapshot"] == sid_n
+    assert seen["n1_snapshot"] == sid_n1
+    assert seen["n_lexical"] is not seen["n1_lexical"]
+    # In-flight N remains valid while N+1 is cached.
+    assert key_n in runtime.query_runtimes._entries
+    assert runtime.query_runtimes._entries[key_n].ref_count >= 1
+
+    hold.set()
+    thread.join(timeout=5)
+    assert not thread.is_alive()
+    assert not errors
+    assert released.is_set()
+    # After N releases, superseded entry may be pruned; current N+1 remains.
+    assert key_n not in runtime.query_runtimes._entries
+    assert key_n1 in runtime.query_runtimes._entries
+    runtime.shutdown()
+    assert runtime._query_runtimes is None
+
+
+def test_query_runtime_cache_closes_owned_resources_on_shutdown(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    settings = _settings(tmp_path)
+    runtime = _runtime(settings)
+    runtime.start()
+    sid, identity = _publish_ready(runtime)
+    closed = {"lexical": False}
+
+    def execute(
+        handle: SnapshotQueryRuntimeHandle, question: str
+    ) -> GroundedAnswerResult:
+        lexical = handle.lexical
+        orig_close = lexical.close
+
+        def tracking_close() -> None:
+            closed["lexical"] = True
+            orig_close()
+
+        lexical.close = tracking_close  # type: ignore[method-assign]
+        return _canned(
+            citations=[_citation()],
+            dense_index_id=identity.dense_index_id,
+            lexical_index_id=identity.lexical_index_id,
+            context_config_hash=identity.context_config_hash,
+            query=question,
+        )
+
+    monkeypatch.setattr("offline_rag.app.query._execute_snapshot_query", execute)
+    run_product_query(runtime, corpus="engineering", question="close me")
+    assert ("engineering", sid) in runtime.query_runtimes._entries
+    runtime.shutdown()
+    assert closed["lexical"] is True
+    assert runtime._query_runtimes is None
+
+
+def test_answered_with_zero_citations_is_citation_invalid(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    settings = _settings(tmp_path)
+    runtime = _runtime(settings)
+    runtime.start()
+    sid, identity = _publish_ready(runtime)
+    _patch_execute(
+        monkeypatch,
+        _canned(
+            status="answered",
+            answer_text="Answer without citations must fail closed.",
+            citations=[],
+            dense_index_id=identity.dense_index_id,
+            lexical_index_id=identity.lexical_index_id,
+            context_config_hash=identity.context_config_hash,
+        ),
+    )
+    app = create_app(runtime=runtime)
+    with TestClient(app, raise_server_exceptions=False) as client:
+        resp = client.post(
+            "/v1/query",
+            json={"corpus": "engineering", "question": "zero citations"},
+        )
+        assert resp.status_code == 502
+        body = resp.json()
+        assert body["error"]["code"] == "citation_invalid"
+        tid = body["trace_id"]
+        assert tid
+        stored = json.loads(_trace_path(settings, tid).read_text(encoding="utf-8"))
+        assert stored["error_code"] == "citation_invalid"
+        assert stored["status"] is None
+        assert stored["snapshot_id"] == sid
+        assert "evidence_unit_ids" not in stored["execution"]
+        assert "evidence_count" not in stored["execution"]
+        assert stored["execution"]["citation_count"] == 0
+    runtime.shutdown()
+
+
+def test_damaged_chunk_backing_is_snapshot_unavailable_without_trace(
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path)
+    runtime = _runtime(settings)
+    runtime.start()
+    sid, identity = _publish_ready(runtime)
+
+    # Mutate published chunk manifest to reference a missing immutable artifact.
+    manifest_path = settings.paths.chunk_manifests / Path(identity.chunk_manifest).name
+    manifest = ChunkSetManifest.model_validate_json(
+        manifest_path.read_text(encoding="utf-8")
+    )
+    damaged = manifest.model_copy(
+        update={
+            "documents": [
+                ChunkSetDocumentEntry(
+                    document_id="doc_001",
+                    parsed_artifact_id="parsed_missing",
+                    chunk_artifact_id="chunkart_missing",
+                    chunk_artifact="chunks/chunkart_missing.json",
+                    chunk_artifact_hash="hash_missing",
+                    parent_count=0,
+                    child_count=1,
+                )
+            ],
+            "total_child_count": 1,
+        }
+    )
+    manifest_path.write_text(damaged.model_dump_json(), encoding="utf-8")
+    assert not (settings.paths.chunks / "chunkart_missing.json").exists()
+
+    before = (
+        set(settings.paths.traces.glob("trace_*.json"))
+        if settings.paths.traces.exists()
+        else set()
+    )
+    app = create_app(runtime=runtime)
+    with TestClient(app, raise_server_exceptions=False) as client:
+        resp = client.post(
+            "/v1/query",
+            json={"corpus": "engineering", "question": "damaged backing"},
+        )
+        assert resp.status_code == 409
+        body = resp.json()
+        assert body["error"]["code"] == "snapshot_unavailable"
+        assert body.get("trace_id") is None
+    after = (
+        set(settings.paths.traces.glob("trace_*.json"))
+        if settings.paths.traces.exists()
+        else set()
+    )
+    assert after == before
+    # Binding failure must not leave a poisoned cache entry.
+    assert ("engineering", sid) not in runtime.query_runtimes._entries
+    runtime.shutdown()
+
+
+def test_trace_execution_summary_omits_untruthful_evidence_fields(
+    tmp_path: Path,
+) -> None:
+    summary = ProductTraceExecutionSummary(
+        citation_evidence_unit_ids=["eu_1"],
+        citation_document_ids=["doc_001"],
+        citation_chunk_ids=["chunk_1"],
+        citation_count=1,
+    )
+    payload = summary.model_dump()
+    assert "evidence_unit_ids" not in payload
+    assert "evidence_count" not in payload
+    assert payload["citation_count"] == 1

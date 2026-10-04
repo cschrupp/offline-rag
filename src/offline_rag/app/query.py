@@ -13,6 +13,7 @@ from offline_rag.app.query_binding import (
     SnapshotQueryBinding,
     build_snapshot_query_binding,
 )
+from offline_rag.app.query_runtime import SnapshotQueryRuntimeHandle
 from offline_rag.app.runtime import ApplicationRuntime
 from offline_rag.app.snapshot import PRODUCT_MODE_GROUNDED_V1, CorpusReadSnapshot
 from offline_rag.app.traces import (
@@ -23,18 +24,9 @@ from offline_rag.app.traces import (
     ProductTraceStore,
     allocate_trace_id,
 )
-from offline_rag.context.assemble import HybridRerankContextAssembler
-from offline_rag.context.store import load_structure_store_for_chunk_manifest
-from offline_rag.dense.retrieve import DenseRetriever
 from offline_rag.domain.generation import GroundedAnswerResult, ResolvedCitation
 from offline_rag.generation.config_hash import build_generation_config_hash
-from offline_rag.generation.orchestrate import (
-    GroundedAnswerError,
-    GroundedAnswerOrchestrator,
-)
-from offline_rag.hybrid.retrieve import HybridRetriever
-from offline_rag.lexical.retrieve import LexicalRetriever
-from offline_rag.rerank.retrieve import HybridRerankRetriever
+from offline_rag.generation.orchestrate import GroundedAnswerError
 
 MAX_QUESTION_CHARS = 8000
 
@@ -163,12 +155,17 @@ def _project_success(
         answer = result.answer_text
         if not answer or not str(answer).strip():
             raise AppError(ErrorCode.INTERNAL_ERROR)
+        # D21: answered requires non-empty validated citations.
+        if not result.citations:
+            raise AppError(ErrorCode.CITATION_INVALID)
         citations = _project_citations(
             list(result.citations),
             snapshot=snapshot,
             binding=binding,
             result=result,
         )
+        if not citations:
+            raise AppError(ErrorCode.CITATION_INVALID)
         return "answered", str(answer), citations
 
     if result.status == "insufficient_evidence":
@@ -184,62 +181,11 @@ def _project_success(
     raise AppError(ErrorCode.INTERNAL_ERROR)
 
 
-def _build_orchestrator(
-    runtime: ApplicationRuntime, binding: SnapshotQueryBinding
-) -> GroundedAnswerOrchestrator:
-    resources = runtime.resources
-    if resources is None:
-        raise AppError(ErrorCode.RUNTIME_NOT_READY)
-    settings = runtime.settings
-
-    dense = DenseRetriever(
-        settings,
-        embedder=resources.embedder,
-        backend=resources.qdrant,
-    )
-    lexical = LexicalRetriever(settings)
-    hybrid = HybridRetriever(settings, dense=dense, lexical=lexical)
-    rerank = HybridRerankRetriever(
-        settings,
-        hybrid=hybrid,
-        reranker=resources.reranker,
-    )
-    store = load_structure_store_for_chunk_manifest(
-        settings, binding.chunk_manifest_name
-    )
-    assembler = HybridRerankContextAssembler(
-        settings,
-        retriever=rerank,
-        store=store,
-    )
-    return GroundedAnswerOrchestrator(
-        settings,
-        context_assembler=assembler,
-        generator=resources.generator_client,
-    )
-
-
-def _execute_bound(
-    runtime: ApplicationRuntime,
-    binding: SnapshotQueryBinding,
-    question: str,
+def _execute_snapshot_query(
+    handle: SnapshotQueryRuntimeHandle, question: str
 ) -> GroundedAnswerResult:
-    orchestrator = _build_orchestrator(runtime, binding)
-    try:
-        return orchestrator.answer(
-            query=question,
-            corpus_name=binding.corpus_name,
-            check_ready=False,
-            allow_recovery=False,
-            source_name_by_document_id=binding.source_name_by_document_id(),
-            dense_index_id=binding.dense_index_id,
-            dense_collection_name=binding.dense_collection_name,
-            lexical_index_id=binding.lexical_index_id,
-            chunk_set_id=binding.chunk_set_id,
-            corpus_id=binding.corpus_id,
-        )
-    finally:
-        orchestrator.close()
+    """Execute grounded query against an already-bound snapshot runtime."""
+    return handle.answer(question)
 
 
 def _execution_summary(
@@ -248,14 +194,11 @@ def _execution_summary(
     if result is None:
         return ProductTraceExecutionSummary()
     citations = list(result.citations)
-    units = [c.evidence_unit_id for c in citations]
     diagnostics = result.diagnostics if isinstance(result.diagnostics, dict) else {}
     return ProductTraceExecutionSummary(
-        evidence_unit_ids=list(units),
         citation_evidence_unit_ids=[c.evidence_unit_id for c in citations],
         citation_document_ids=[c.document_id for c in citations],
         citation_chunk_ids=[c.source_chunk_id for c in citations],
-        evidence_count=len(units),
         citation_count=len(citations),
         generator_invoked=bool(result.generator_invoked),
         attempt_count=int(result.attempt_count),
@@ -301,7 +244,8 @@ def run_product_query(
     name = validate_product_corpus_name(corpus)
     normalized = normalize_product_question(question)
 
-    # Pre-execution validation / snapshot resolution — no trace yet (D11).
+    # Pre-execution: resolve snapshot + bind/validate cached query runtime.
+    # No trace yet — backing failures are snapshot_unavailable (D08/D11).
     snapshot = runtime.publication.resolve(name)
     binding = build_snapshot_query_binding(runtime.settings, snapshot)
     if binding.product_mode_id != PRODUCT_MODE_GROUNDED_V1:
@@ -310,45 +254,67 @@ def run_product_query(
             details=SafeErrorDetails(reason="unsupported_product_mode"),
         )
 
-    trace_id = allocate_trace_id()
-    store = ProductTraceStore(runtime.settings)
-    created_at = datetime.now(tz=UTC)
-    gencfg = build_generation_config_hash(runtime.settings)
-    request_summary = ProductTraceRequestSummary(
-        question_sha256=_question_sha256(normalized),
-        question_char_count=len(normalized),
-    )
-    identity = _identity_summary(binding, generation_config_hash=gencfg)
-
-    result: GroundedAnswerResult | None = None
-    mapped_error: AppError | None = None
+    handle = runtime.query_runtimes.acquire(binding)
     try:
-        result = _execute_bound(runtime, binding, normalized)
-        status, answer, citations = _project_success(
-            result, snapshot=snapshot, binding=binding
+        trace_id = allocate_trace_id()
+        store = ProductTraceStore(runtime.settings)
+        created_at = datetime.now(tz=UTC)
+        gencfg = build_generation_config_hash(runtime.settings)
+        request_summary = ProductTraceRequestSummary(
+            question_sha256=_question_sha256(normalized),
+            question_char_count=len(normalized),
         )
-    except AppError as exc:
-        mapped_error = exc
-        status = None
-        answer = None
-        citations = []
-    except GroundedAnswerError as exc:
-        mapped_error = AppError(
-            ErrorCode.INTERNAL_ERROR,
-            details=SafeErrorDetails(reason="orchestration_fault"),
-        )
-        mapped_error.__cause__ = exc
-        status = None
-        answer = None
-        citations = []
-    except Exception as exc:  # noqa: BLE001 — unexpected defect
-        mapped_error = AppError(ErrorCode.INTERNAL_ERROR)
-        mapped_error.__cause__ = exc
-        status = None
-        answer = None
-        citations = []
+        identity = _identity_summary(binding, generation_config_hash=gencfg)
 
-    if mapped_error is not None:
+        result: GroundedAnswerResult | None = None
+        mapped_error: AppError | None = None
+        try:
+            result = _execute_snapshot_query(handle, normalized)
+            status, answer, citations = _project_success(
+                result, snapshot=snapshot, binding=binding
+            )
+        except AppError as exc:
+            mapped_error = exc
+            status = None
+            answer = None
+            citations = []
+        except GroundedAnswerError as exc:
+            mapped_error = AppError(
+                ErrorCode.INTERNAL_ERROR,
+                details=SafeErrorDetails(reason="orchestration_fault"),
+            )
+            mapped_error.__cause__ = exc
+            status = None
+            answer = None
+            citations = []
+        except Exception as exc:  # noqa: BLE001 - map unexpected defects to D08
+            mapped_error = AppError(ErrorCode.INTERNAL_ERROR)
+            mapped_error.__cause__ = exc
+            status = None
+            answer = None
+            citations = []
+
+        if mapped_error is not None:
+            record = ProductQueryTrace(
+                trace_id=trace_id,
+                created_at=created_at,
+                corpus=binding.corpus_name,
+                snapshot_id=binding.snapshot_id,
+                product_mode_id=binding.product_mode_id,
+                request=request_summary,
+                identity=identity,
+                status=None,
+                error_code=str(mapped_error.code),
+                execution=_execution_summary(result),
+            )
+            _commit_terminal_trace(store, record)
+            raise AppError(
+                mapped_error.code,
+                message=mapped_error.message,
+                trace_id=trace_id,
+            ) from mapped_error
+
+        assert status is not None
         record = ProductQueryTrace(
             trace_id=trace_id,
             created_at=created_at,
@@ -357,40 +323,22 @@ def run_product_query(
             product_mode_id=binding.product_mode_id,
             request=request_summary,
             identity=identity,
-            status=None,
-            error_code=str(mapped_error.code),
+            status=status,
+            error_code=None,
             execution=_execution_summary(result),
         )
         _commit_terminal_trace(store, record)
-        raise AppError(
-            mapped_error.code,
-            message=mapped_error.message,
+        return ProductQueryResponse(
+            corpus=binding.corpus_name,
+            snapshot_id=binding.snapshot_id,
+            product_mode_id=binding.product_mode_id,
             trace_id=trace_id,
-        ) from mapped_error
-
-    assert status is not None
-    record = ProductQueryTrace(
-        trace_id=trace_id,
-        created_at=created_at,
-        corpus=binding.corpus_name,
-        snapshot_id=binding.snapshot_id,
-        product_mode_id=binding.product_mode_id,
-        request=request_summary,
-        identity=identity,
-        status=status,
-        error_code=None,
-        execution=_execution_summary(result),
-    )
-    _commit_terminal_trace(store, record)
-    return ProductQueryResponse(
-        corpus=binding.corpus_name,
-        snapshot_id=binding.snapshot_id,
-        product_mode_id=binding.product_mode_id,
-        trace_id=trace_id,
-        status=status,
-        answer=answer,
-        citations=citations,
-    )
+            status=status,
+            answer=answer,
+            citations=citations,
+        )
+    finally:
+        runtime.query_runtimes.release(handle)
 
 
 def get_product_trace(

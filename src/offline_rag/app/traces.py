@@ -55,11 +55,9 @@ class ProductTraceIdentitySummary(BaseModel):
 class ProductTraceExecutionSummary(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    evidence_unit_ids: list[str] = Field(default_factory=list)
     citation_evidence_unit_ids: list[str] = Field(default_factory=list)
     citation_document_ids: list[str] = Field(default_factory=list)
     citation_chunk_ids: list[str] = Field(default_factory=list)
-    evidence_count: int = Field(ge=0, default=0)
     citation_count: int = Field(ge=0, default=0)
     generator_invoked: bool = False
     attempt_count: int = Field(ge=0, default=0)

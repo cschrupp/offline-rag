@@ -14,6 +14,7 @@ from offline_rag.app.ingest_capacity import IngestCapacityGate
 from offline_rag.app.ingest_hooks import ProductIngestHooks
 from offline_rag.app.paths import ensure_data_directories, required_data_directories
 from offline_rag.app.publication import ProductPublicationRegistry
+from offline_rag.app.query_runtime import QueryRuntimeCache
 from offline_rag.app.startup_validation import validate_global_startup_requirements
 from offline_rag.config.models import AppSettings
 
@@ -123,6 +124,7 @@ class ApplicationRuntime:
     ingest_capacity: IngestCapacityGate = field(init=False)
     _shutdown_count: int = field(default=0, init=False)
     _publication: ProductPublicationRegistry | None = field(default=None, init=False)
+    _query_runtimes: QueryRuntimeCache | None = field(default=None, init=False)
 
     def __post_init__(self) -> None:
         self.ingest_capacity = IngestCapacityGate(
@@ -145,6 +147,16 @@ class ApplicationRuntime:
                 self.settings, qdrant=qdrant
             )
         return self._publication
+
+    @property
+    def query_runtimes(self) -> QueryRuntimeCache:
+        """Corpus/snapshot-scoped product query wiring cache (D02)."""
+        if self._query_runtimes is None:
+            self._query_runtimes = QueryRuntimeCache(
+                settings=self.settings,
+                resources_provider=lambda: self.resources,
+            )
+        return self._query_runtimes
 
     def start(self) -> None:
         """Initialize process resources at most once per startup attempt.
@@ -193,6 +205,10 @@ class ApplicationRuntime:
             self._publication = ProductPublicationRegistry(
                 self.settings, qdrant=qdrant
             )
+            self._query_runtimes = QueryRuntimeCache(
+                settings=self.settings,
+                resources_provider=lambda: self.resources,
+            )
             self.state = RuntimeState.READY
         except Exception:  # noqa: BLE001 — fail closed on any startup fault
             for obj in (generator_client, reranker, embedder, qdrant):
@@ -201,6 +217,9 @@ class ApplicationRuntime:
                     close()
             self.resources = None
             self._publication = None
+            if self._query_runtimes is not None:
+                self._query_runtimes.close()
+            self._query_runtimes = None
             self.state = RuntimeState.NOT_READY
             self.failure_reason = "startup_failed"
 
@@ -214,6 +233,10 @@ class ApplicationRuntime:
             return
         self.state = RuntimeState.DRAINING
         self._shutdown_count += 1
+        # Close corpus-scoped query wiring before process resources they borrow.
+        if self._query_runtimes is not None:
+            self._query_runtimes.close()
+            self._query_runtimes = None
         if self.resources is not None:
             self.resources.close()
             self.resources = None
