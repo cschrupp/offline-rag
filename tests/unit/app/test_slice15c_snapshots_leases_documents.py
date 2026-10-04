@@ -582,11 +582,11 @@ def test_documents_http_surface(tmp_path: Path) -> None:
         assert "/v1/documents" in paths
         assert "/v1/documents/{document_id}" in paths
         assert "/health/ready" in paths
-        # /v1/ingest is owned by Phase 15D; still forbid later product surfaces.
+        # Later phases own /v1/ingest|/v1/query|/v1/trace; still forbid eval/list surfaces.
         for forbidden in (
-            "/v1/query",
-            "/v1/trace/{trace_id}",
             "/eval/run",
+            "/v1/eval/run",
+            "/v1/traces",
         ):
             assert forbidden not in paths
     runtime.shutdown()

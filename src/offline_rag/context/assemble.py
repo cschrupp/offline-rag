@@ -84,11 +84,18 @@ class HybridRerankContextAssembler:
         *,
         query: str,
         corpus_name: str = "default",
+        check_ready: bool = True,
+        dense_index_id: str | None = None,
+        dense_collection_name: str | None = None,
+        lexical_index_id: str | None = None,
+        chunk_set_id: str | None = None,
+        corpus_id: str | None = None,
     ) -> HybridRerankContextResult:
         if not query or not query.strip():
             raise HybridRerankContextError("query must be non-empty")
         name = validate_corpus_name(corpus_name)
-        self._require_ready(name)
+        if check_ready:
+            self._require_ready(name)
 
         ctx = self.settings.context
         if not ctx.enabled:
@@ -103,6 +110,12 @@ class HybridRerankContextAssembler:
                 query=query,
                 corpus_name=name,
                 top_k=int(ctx.anchor_k),
+                check_ready=check_ready,
+                dense_index_id=dense_index_id,
+                dense_collection_name=dense_collection_name,
+                lexical_index_id=lexical_index_id,
+                chunk_set_id=chunk_set_id,
+                corpus_id=corpus_id,
             )
         except HybridRerankRetrievalError as exc:
             raise HybridRerankContextError(str(exc)) from exc

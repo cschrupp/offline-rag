@@ -11,6 +11,8 @@ from offline_rag.api.documents import router as documents_router
 from offline_rag.api.errors import register_app_error_handler
 from offline_rag.api.health import router as health_router
 from offline_rag.api.ingest import router as ingest_router
+from offline_rag.api.query import router as query_router
+from offline_rag.api.traces import router as traces_router
 from offline_rag.app.runtime import (
     ApplicationRuntime,
     ResourceFactories,
@@ -38,7 +40,7 @@ def create_app(
 ) -> FastAPI:
     """Build the OfflineRAG HTTP application.
 
-    Slice 15D routes: /health*, /v1/documents*, /v1/ingest.
+    Slice 15E routes: /health*, /v1/documents*, /v1/ingest, /v1/query, /v1/trace/{id}.
     """
     if runtime is not None and factories is not None:
         raise ValueError("pass runtime or factories, not both")
@@ -65,4 +67,6 @@ def create_app(
     app.include_router(health_router)
     app.include_router(documents_router)
     app.include_router(ingest_router)
+    app.include_router(query_router)
+    app.include_router(traces_router)
     return app

@@ -71,6 +71,11 @@ class HybridRetriever:
         query: str,
         corpus_name: str = "default",
         top_k: int | None = None,
+        dense_index_id: str | None = None,
+        dense_collection_name: str | None = None,
+        lexical_index_id: str | None = None,
+        chunk_set_id: str | None = None,
+        corpus_id: str | None = None,
     ) -> HybridRetrievalResult:
         if not query or not query.strip():
             raise HybridRetrievalError("query must be non-empty")
@@ -86,33 +91,73 @@ class HybridRetriever:
         if final_k > 1000:
             raise HybridRetrievalError("top_k exceeds safety limit (1000)")
 
-        self._require_ready(name)
+        bound_kwargs = (
+            dense_index_id,
+            dense_collection_name,
+            lexical_index_id,
+            chunk_set_id,
+            corpus_id,
+        )
+        if all(value is not None for value in bound_kwargs):
+            bound = True
+            resolved_corpus_id = corpus_id
+            details = None
+        elif all(value is None for value in bound_kwargs):
+            bound = False
+            self._require_ready(name)
+            details = describe_hybrid_status(self.settings, name)
+            resolved_corpus_id = None
+            dense_state = try_load_index_state(
+                index_state_path(self.settings.paths.corpora, name)
+            )
+            if dense_state is not None:
+                resolved_corpus_id = dense_state.source_corpus_id
+        else:
+            raise HybridRetrievalError(
+                "dense_index_id, dense_collection_name, lexical_index_id, "
+                "chunk_set_id, and corpus_id must all be provided together or all omitted"
+            )
+
         fus_hash = build_fusion_config_hash(self.settings)
         dense_depth = int(fusion_cfg.dense_top_k)
         lexical_depth = int(fusion_cfg.lexical_top_k)
-        details = describe_hybrid_status(self.settings, name)
-        corpus_id = None
-        dense_state = try_load_index_state(index_state_path(self.settings.paths.corpora, name))
-        if dense_state is not None:
-            corpus_id = dense_state.source_corpus_id
 
         wall_t0 = time.perf_counter()
         t0 = time.perf_counter()
-        dense_result = self._dense.retrieve(
-            query=query.strip(),
-            corpus_name=name,
-            top_k=dense_depth,
-        )
+        if bound:
+            dense_result = self._dense.retrieve(
+                query=query.strip(),
+                corpus_name=name,
+                top_k=dense_depth,
+                index_id=dense_index_id,
+                collection_name=dense_collection_name,
+                chunk_set_id=chunk_set_id,
+            )
+        else:
+            dense_result = self._dense.retrieve(
+                query=query.strip(),
+                corpus_name=name,
+                top_k=dense_depth,
+            )
         dense_s = time.perf_counter() - t0
         dense_ms = int(dense_s * 1000)
 
         t1 = time.perf_counter()
         try:
-            lexical_result = self._lexical.retrieve(
-                query=query.strip(),
-                corpus_name=name,
-                top_k=lexical_depth,
-            )
+            if bound:
+                lexical_result = self._lexical.retrieve(
+                    query=query.strip(),
+                    corpus_name=name,
+                    top_k=lexical_depth,
+                    index_id=lexical_index_id,
+                    chunk_set_id=chunk_set_id,
+                )
+            else:
+                lexical_result = self._lexical.retrieve(
+                    query=query.strip(),
+                    corpus_name=name,
+                    top_k=lexical_depth,
+                )
             lexical_s = time.perf_counter() - t1
             lexical_ms = int(lexical_s * 1000)
             lexical_branch_hits = [
@@ -124,7 +169,7 @@ class HybridRetriever:
                 for candidate in lexical_result.candidates
             ]
             lexical_by_id = {c.chunk_id: c for c in lexical_result.candidates}
-            lexical_index_id = lexical_result.index_id
+            resolved_lexical_index_id = lexical_result.index_id
             lexical_chunk_set = str(lexical_result.metadata.get("chunk_set_id") or "")
         except Exception as exc:
             # Distinguish analyzer zero-term (valid empty) from hard failure.
@@ -134,9 +179,18 @@ class HybridRetriever:
                 lexical_ms = int(lexical_s * 1000)
                 lexical_branch_hits = []
                 lexical_by_id = {}
-                lexical_index_id = details["lexical_index_id"] or ""
-                lexical_chunk_set = details["lexical_chunk_set_id"] or ""
-                if not lexical_index_id:
+                if bound:
+                    resolved_lexical_index_id = str(lexical_index_id or "")
+                    lexical_chunk_set = str(chunk_set_id or "")
+                else:
+                    status_details = details or {}
+                    resolved_lexical_index_id = str(
+                        status_details.get("lexical_index_id") or ""
+                    )
+                    lexical_chunk_set = str(
+                        status_details.get("lexical_chunk_set_id") or ""
+                    )
+                if not resolved_lexical_index_id:
                     raise HybridRetrievalError(message) from exc
             else:
                 raise HybridRetrievalError(f"lexical branch failed: {exc}") from exc
@@ -206,10 +260,10 @@ class HybridRetriever:
             top_k=final_k,
             candidates=candidates,
             dense_index_id=dense_result.index_id,
-            lexical_index_id=lexical_index_id,
+            lexical_index_id=resolved_lexical_index_id,
             fusion_config_hash=fus_hash,
             metadata={
-                "corpus_id": corpus_id,
+                "corpus_id": resolved_corpus_id,
                 "chunk_set_id": dense_chunk_set or lexical_chunk_set,
                 "dense_top_k": dense_depth,
                 "lexical_top_k": lexical_depth,

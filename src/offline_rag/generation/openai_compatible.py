@@ -188,10 +188,15 @@ class OpenAICompatibleGenerator:
                 failure_reason="transport_error",
             ) from exc
         if response.status_code >= 400:
-            reason = "provider_error"
-            text = response.text.lower()
-            if "context" in text and ("length" in text or "window" in text or "too long" in text):
-                reason = "context_window_exceeded"
+            if response.status_code in {401, 403}:
+                reason = "unavailable"
+            else:
+                reason = "provider_error"
+                text = response.text.lower()
+                if "context" in text and (
+                    "length" in text or "window" in text or "too long" in text
+                ):
+                    reason = "context_window_exceeded"
             raise OpenAICompatibleGeneratorError(
                 f"generator HTTP {response.status_code}: {response.text[:300]}",
                 failure_reason=reason,

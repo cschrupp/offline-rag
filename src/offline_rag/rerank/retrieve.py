@@ -103,6 +103,12 @@ class HybridRerankRetriever:
         query: str,
         corpus_name: str = "default",
         top_k: int | None = None,
+        check_ready: bool = True,
+        dense_index_id: str | None = None,
+        dense_collection_name: str | None = None,
+        lexical_index_id: str | None = None,
+        chunk_set_id: str | None = None,
+        corpus_id: str | None = None,
     ) -> HybridRerankRetrievalResult:
         if not query or not query.strip():
             raise HybridRerankRetrievalError("query must be non-empty")
@@ -132,7 +138,8 @@ class HybridRerankRetriever:
                 f"top_k ({final_k}) cannot exceed reranker.input_k ({input_k})"
             )
 
-        self._require_ready(name)
+        if check_ready:
+            self._require_ready(name)
         rrk_hash = build_reranker_config_hash(self.settings)
 
         wall_t0 = time.perf_counter()
@@ -142,6 +149,11 @@ class HybridRerankRetriever:
                 query=query.strip(),
                 corpus_name=name,
                 top_k=input_k,
+                dense_index_id=dense_index_id,
+                dense_collection_name=dense_collection_name,
+                lexical_index_id=lexical_index_id,
+                chunk_set_id=chunk_set_id,
+                corpus_id=corpus_id,
             )
         except HybridRetrievalError as exc:
             raise HybridRerankRetrievalError(str(exc)) from exc

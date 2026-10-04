@@ -91,17 +91,17 @@ def _index_artifact(
         children[child.chunk_id] = child
 
 
-def load_structure_store_for_corpus(
+def load_structure_store_for_chunk_manifest(
     settings: AppSettings,
-    corpus_name: str,
+    chunk_manifest_name: str,
 ) -> ChunkStructureStore:
-    name = validate_corpus_name(corpus_name)
-    state = load_chunk_state(chunk_state_path(settings.paths.corpora, name))
-    manifest_path = settings.paths.chunk_manifests / Path(state.current_chunk_manifest).name
+    """Load structure store for an explicit chunk-set manifest filename.
+
+    Does not read chunk ``state.json``; callers supply the immutable manifest name.
+    """
+    manifest_path = settings.paths.chunk_manifests / Path(chunk_manifest_name).name
     if not manifest_path.exists():
-        raise ContextStructureError(
-            f"missing chunk-set manifest: {state.current_chunk_manifest}"
-        )
+        raise ContextStructureError(f"missing chunk-set manifest: {chunk_manifest_name}")
     manifest = load_chunk_set_manifest(manifest_path)
     children: dict[str, Chunk] = {}
     parents: dict[str, Chunk] = {}
@@ -116,6 +116,17 @@ def load_structure_store_for_corpus(
         parents=parents,
         chunk_set_id=manifest.chunk_set_id,
         corpus_id=manifest.corpus_id,
+    )
+
+
+def load_structure_store_for_corpus(
+    settings: AppSettings,
+    corpus_name: str,
+) -> ChunkStructureStore:
+    name = validate_corpus_name(corpus_name)
+    state = load_chunk_state(chunk_state_path(settings.paths.corpora, name))
+    return load_structure_store_for_chunk_manifest(
+        settings, Path(state.current_chunk_manifest).name
     )
 
 

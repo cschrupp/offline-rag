@@ -94,6 +94,9 @@ class DenseRetriever:
         query: str,
         corpus_name: str = "default",
         top_k: int | None = None,
+        index_id: str | None = None,
+        collection_name: str | None = None,
+        chunk_set_id: str | None = None,
     ) -> DenseRetrievalResult:
         if not query or not query.strip():
             raise DenseRetrievalError("query must be non-empty")
@@ -104,18 +107,36 @@ class DenseRetriever:
         if k > 1000:
             raise DenseRetrievalError("top_k exceeds safety limit (1000)")
 
-        corpus_path = corpus_state_path(self.settings.paths.corpora, name)
-        if not corpus_path.exists():
-            raise DenseRetrievalError(f"corpus '{name}' is not initialized")
-        load_corpus_state(corpus_path)
+        if (
+            index_id is not None
+            and collection_name is not None
+            and chunk_set_id is not None
+        ):
+            resolved_index_id = index_id
+            resolved_collection_name = collection_name
+            resolved_chunk_set_id = chunk_set_id
+        elif index_id is None and collection_name is None and chunk_set_id is None:
+            corpus_path = corpus_state_path(self.settings.paths.corpora, name)
+            if not corpus_path.exists():
+                raise DenseRetrievalError(f"corpus '{name}' is not initialized")
+            load_corpus_state(corpus_path)
+            resolved_index_id, resolved_collection_name, resolved_chunk_set_id = (
+                self._require_current(name)
+            )
+        else:
+            raise DenseRetrievalError(
+                "index_id, collection_name, and chunk_set_id must all be provided "
+                "together or all omitted"
+            )
 
-        index_id, collection_name, chunk_set_id = self._require_current(name)
         embedder = self._embedder or make_embedder(self.settings)
         if self._backend is None:
             self._backend = QdrantLocalBackend(self.settings.paths.qdrant_storage)
 
         query_vector = embedder.embed_query(query.strip())
-        hits = self._backend.search(collection_name, query_vector=query_vector, top_k=k)
+        hits = self._backend.search(
+            resolved_collection_name, query_vector=query_vector, top_k=k
+        )
         hits = sorted(
             hits,
             key=lambda hit: (-hit.score, str(hit.payload.get("chunk_id") or "")),
@@ -123,12 +144,12 @@ class DenseRetriever:
         candidates = [self._hit_to_candidate(hit, rank=rank) for rank, hit in enumerate(hits, start=1)]
         return DenseRetrievalResult(
             query=query.strip(),
-            index_id=index_id,
+            index_id=resolved_index_id,
             top_k=k,
             candidates=candidates,
             metadata={
-                "chunk_set_id": chunk_set_id,
-                "collection_name": collection_name,
+                "chunk_set_id": resolved_chunk_set_id,
+                "collection_name": resolved_collection_name,
                 "embedding_config_hash": build_embedding_config_hash(self.settings),
                 "index_config_hash": build_index_config_hash(self.settings),
                 "query_text_strategy": self.settings.dense.query_text.strategy,

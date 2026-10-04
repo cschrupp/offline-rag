@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Mapping
 
 from offline_rag.config.models import AppSettings
 from offline_rag.context.assemble import (
@@ -117,12 +118,24 @@ class GroundedAnswerOrchestrator:
         )
 
     def answer(
-        self, *, query: str, corpus_name: str = "default"
+        self,
+        *,
+        query: str,
+        corpus_name: str = "default",
+        check_ready: bool = True,
+        source_name_by_document_id: Mapping[str, str] | None = None,
+        allow_recovery: bool = True,
+        dense_index_id: str | None = None,
+        dense_collection_name: str | None = None,
+        lexical_index_id: str | None = None,
+        chunk_set_id: str | None = None,
+        corpus_id: str | None = None,
     ) -> GroundedAnswerResult:
         if not query or not query.strip():
             raise GroundedAnswerError("query must be non-empty")
         name = validate_corpus_name(corpus_name)
-        self._require_ready(name)
+        if check_ready:
+            self._require_ready(name)
 
         gen = self.settings.generation
         if not gen.enabled:
@@ -131,7 +144,16 @@ class GroundedAnswerOrchestrator:
         original_query = query.strip()
         context_t0 = time.perf_counter()
         try:
-            context = self._assembler.assemble(query=original_query, corpus_name=name)
+            context = self._assembler.assemble(
+                query=original_query,
+                corpus_name=name,
+                check_ready=check_ready,
+                dense_index_id=dense_index_id,
+                dense_collection_name=dense_collection_name,
+                lexical_index_id=lexical_index_id,
+                chunk_set_id=chunk_set_id,
+                corpus_id=corpus_id,
+            )
         except HybridRerankContextError as exc:
             raise GroundedAnswerError(str(exc)) from exc
         context_ms = int((time.perf_counter() - context_t0) * 1000)
@@ -150,7 +172,11 @@ class GroundedAnswerOrchestrator:
         active_context = context
         active_context_ms = context_ms
 
-        if not initial_decision.sufficient and self.settings.retrieval_recovery.enabled:
+        if (
+            allow_recovery
+            and not initial_decision.sufficient
+            and self.settings.retrieval_recovery.enabled
+        ):
             try:
                 recovery = self._coordinator.run(
                     original_query=original_query,
@@ -190,6 +216,7 @@ class GroundedAnswerOrchestrator:
                 evidence_units=list(active_context.evidence_units),
                 context_provenance=provenance,
                 check_ready=False,
+                source_name_by_document_id=source_name_by_document_id,
             )
         except GroundedGenerationError as exc:
             raise GroundedAnswerError(str(exc)) from exc

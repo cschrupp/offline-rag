@@ -93,6 +93,8 @@ class LexicalRetriever:
         query: str,
         corpus_name: str = "default",
         top_k: int | None = None,
+        index_id: str | None = None,
+        chunk_set_id: str | None = None,
     ) -> LexicalRetrievalResult:
         if not query or not query.strip():
             raise LexicalRetrievalError("query must be non-empty")
@@ -103,12 +105,20 @@ class LexicalRetriever:
         if k > 1000:
             raise LexicalRetrievalError("top_k exceeds safety limit (1000)")
 
-        corpus_path = corpus_state_path(self.settings.paths.corpora, name)
-        if not corpus_path.exists():
-            raise LexicalRetrievalError(f"corpus '{name}' is not initialized")
-        load_corpus_state(corpus_path)
+        if index_id is not None and chunk_set_id is not None:
+            resolved_index_id = index_id
+            resolved_chunk_set_id = chunk_set_id
+        elif index_id is None and chunk_set_id is None:
+            corpus_path = corpus_state_path(self.settings.paths.corpora, name)
+            if not corpus_path.exists():
+                raise LexicalRetrievalError(f"corpus '{name}' is not initialized")
+            load_corpus_state(corpus_path)
+            resolved_index_id, resolved_chunk_set_id = self._require_current(name)
+        else:
+            raise LexicalRetrievalError(
+                "index_id and chunk_set_id must both be provided together or both omitted"
+            )
 
-        index_id, chunk_set_id = self._require_current(name)
         analyzer = self._analyzer or make_lexical_analyzer(self.settings)
         query_terms = analyzer.analyze_query_terms(query.strip())
         if not query_terms:
@@ -116,9 +126,9 @@ class LexicalRetriever:
 
         if self._backend is None:
             self._backend = LocalInvertedIndexBackend(self.settings.paths.lexical_indexes)
-        if self._open_index_id != index_id:
-            self._backend.open(index_id)
-            self._open_index_id = index_id
+        if self._open_index_id != resolved_index_id:
+            self._backend.open(resolved_index_id)
+            self._open_index_id = resolved_index_id
 
         hits = self._backend.search(query_terms, top_k=k)
         candidates = [
@@ -127,11 +137,11 @@ class LexicalRetriever:
         return LexicalRetrievalResult(
             query=query.strip(),
             method="lexical",
-            index_id=index_id,
+            index_id=resolved_index_id,
             top_k=k,
             candidates=candidates,
             metadata={
-                "chunk_set_id": chunk_set_id,
+                "chunk_set_id": resolved_chunk_set_id,
                 "lexical_config_hash": build_lexical_config_hash(self.settings),
                 "query_terms": query_terms,
             },

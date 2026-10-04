@@ -729,12 +729,13 @@ def test_success_body_normative_contract_and_openapi(tmp_path: Path) -> None:
 
         paths = set(client.get("/openapi.json").json().get("paths", {}))
         assert "/v1/ingest" in paths
+        # 15E owns /v1/query and /v1/trace/{trace_id}; still forbid non-product surfaces.
         for forbidden in (
-            "/v1/query",
-            "/v1/trace/{trace_id}",
             "/eval/run",
+            "/v1/eval/run",
             "/ingest",
             "/query",
+            "/v1/traces",
         ):
             assert forbidden not in paths
 
