@@ -81,7 +81,10 @@ Generator weights belong to the external inference runtime and are not mounted i
 
 ## 5. Target quick start
 
-These commands describe the intended release interface; activate them once Slice 15 is implemented.
+These commands describe the intended release interface. Activate them once
+Phase **15G** container packaging lands. Phases **15A/15B** already provide the
+in-process FastAPI substrate and `/health*` probes; product `/v1/*` and the
+application image remain later Slice 15 work.
 
 ### Host provisioning
 
@@ -140,38 +143,46 @@ For the strongest verification, run the demo on a machine with internet disconne
 
 ## 7. Health/readiness checks
 
-`offline-rag doctor` currently reports (through Slice 8):
+### HTTP probes (landed in Slice 15B)
+
+Process health is served by the FastAPI app:
+
+| Endpoint | Meaning | Success | Failure |
+|---|---|---|---|
+| `GET /health` | Liveness alias | `200 {"status":"live"}` | process down |
+| `GET /health/live` | Cheap process liveness | `200 {"status":"live"}` | process down |
+| `GET /health/ready` | Cached runtime readiness | `200 {"status":"ready"}` | `503 runtime_not_ready` |
+
+`/health/ready` reads startup-established process state only. It must not load
+models, probe the generator, hash artifacts, rebuild Qdrant, or scan corpus
+readiness. An approved but unreachable generator does **not** by itself make
+`/health/ready` fail.
+
+### Doctor (diagnostic / non-mutating)
+
+`offline-rag doctor` remains the deep offline diagnostic. As of Slice **15B** it
+is strictly read-only: no `mkdir`, write probes, downloads, provisioning,
+repair, rebuild, or publish. Missing required directories are reported `ABSENT`;
+writability uses permission inspection only. Startup—not doctor—creates required
+`/data` trees.
+
+Doctor currently reports:
 
 ```text
 Docling / tokenizer / embedding / reranker artifact readiness
 Corpus / Chunking / Dense / Lexical / Hybrid / Hybrid-rerank / Context status
 Generation status (READY | NOT_READY) + approved endpoint/model probe
-Configured paths writable (including lexical-indexes)
+Configured paths present / inspection-only writability (incl. traces/staging/locks)
 Strict-offline compatibility checks
 ```
 
-Generation readiness requires Context READY, `generation.enabled`, approved endpoint/model
-allowlists, constructible OpenAI-compatible adapter, and a successful non-generative `/models`
-probe that lists the selected model. Doctor never pulls models or sends completions.
+Generation readiness (doctor/query path) requires Context READY,
+`generation.enabled`, approved endpoint/model allowlists, a constructible
+OpenAI-compatible adapter, and a successful non-generative `/models` probe that
+lists the selected model. Doctor never pulls models or sends completions.
 
-Example readiness lines:
-
-```text
-OfflineRAG readiness
---------------------
-Data directory writable          PASS
-Retrieval model files present    PASS
-Qdrant Local writable            PASS
-Context status                   READY
-Generation status                READY
-Generation endpoint approved     PASS
-Generation endpoint reachable    PASS
-Generation model approved        PASS
-Cloud API keys configured        NONE
-Remote tracing enabled           NO
-Strict offline                   PASS
-```
-`/health` should distinguish application liveness from generation readiness. The UI should still load when Ollama is stopped and show a clear generation-unavailable state.
+Later UI work should still load when Ollama is stopped and show a clear
+generation-unavailable state; that is separate from process `/health/ready`.
 
 ## 8. Scale-up profile
 

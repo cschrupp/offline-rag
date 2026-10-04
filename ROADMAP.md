@@ -435,16 +435,26 @@ Slice 14 checklist:
 **Slice 15 — Developer API and single-container packaging**
 - Architecture (S15-D01 … S15-D22): **COMPLETE / LOCKED**
 - Design authority: [`docs/slice15_developer_api_packaging.md`](docs/slice15_developer_api_packaging.md)
+  - Authority SHA: `6583fb3be64f2c66e8655b8b99166c358f8f0844`
 - Residual A (pre-implementation contract): **LOCKED / ACCEPTED**
-- Implementation plan: [`docs/slice15_implementation_plan.md`](docs/slice15_implementation_plan.md) — **DERIVED / REVIEW PENDING**
-- Code implementation: **NOT AUTHORIZED**
+- Implementation plan: [`docs/slice15_implementation_plan.md`](docs/slice15_implementation_plan.md) — **ACCEPTED**
+- **15A** app foundation + errors + Residual A settings: **COMPLETE / ACCEPTED**
+  - Landed on main via FF through `4a1c8dbcddc8408dd8b8b46dc0f18df56561d2f8`
+- **15B** runtime lifecycle + `/health*` + doctor non-mutation: **COMPLETE / ACCEPTED**
+  - Implementation commits `a009bd7d975b090d03d0b9b6b8d580dbfee6f796`, `00282d67f43edad7cb4094228c482bf8f361d578`
+  - Main HEAD / 15C candidate baseline: `00282d67f43edad7cb4094228c482bf8f361d578`
+- **15C–15H:** **NOT AUTHORIZED**
 
-Later M7 checklist (not Slice 14; Slice 15 implementation not authorized here):
+Later M7 checklist (not Slice 14):
 
-- [ ] FastAPI service (Slice 15)
-- [ ] single-container OfflineRAG application image (Slice 15)
-- [ ] Qdrant Local standalone profile (Slice 15)
-- [ ] `/data` + `/models` volume contracts (Slice 15)
+- [x] FastAPI substrate + process lifecycle + `/health*` (15A/15B — **COMPLETE / ACCEPTED**)
+- [x] doctor non-mutation / startup-owned `/data` creation (15B — **COMPLETE / ACCEPTED**)
+- [ ] product `/v1/{ingest,query,documents,trace}` (15C–15E)
+- [ ] admission / deadlines / drain (15F)
+- [ ] single-container OfflineRAG application image (15G)
+- [ ] Qdrant Local standalone profile (15G)
+- [ ] `/data` + `/models` volume packaging contract (15G)
+- [ ] Slice 15 integration closeout (15H)
 - [ ] retrieval inspector
 - [ ] citation source viewer
 - [ ] evaluation dashboard
@@ -452,9 +462,10 @@ Later M7 checklist (not Slice 14; Slice 15 implementation not authorized here):
 **Release criterion:** a reviewer can interactively compare retrieval modes and inspect evidence flow.
 
 Milestone **6** remains **COMPLETE / ACCEPTED** at `dcc6b07…`. Milestone **7**
-remains **IN PROGRESS**. Performance optimization, generator max-token change,
-reranker config change, `base.yaml` promotion, `PORTFOLIO_DEMO.md` update,
-13C/13D, recovery enablement, LangGraph, and NeMo remain **NOT AUTHORIZED**.
+remains **IN PROGRESS** (Slice 15 through **15B** landed; **15C+** not
+authorized). Performance optimization, generator max-token change, reranker
+config change, `base.yaml` promotion, `PORTFOLIO_DEMO.md` update, 13C/13D,
+recovery enablement, LangGraph, and NeMo remain **NOT AUTHORIZED**.
 
 ## Milestone 8 — Portfolio release
 

@@ -1,11 +1,16 @@
 # Slice 15 — Implementation plan
 
-**Status:** DERIVED — pending independent review  
+**Status:** **ACCEPTED**  
 **Architecture + Residual A authority:** [`docs/slice15_developer_api_packaging.md`](slice15_developer_api_packaging.md)  
-**Code implementation:** **NOT AUTHORIZED**
+(`6583fb3be64f2c66e8655b8b99166c358f8f0844`)  
+**Phase progress:**
+- **15A:** **COMPLETE / ACCEPTED** (baseline `4a1c8dbcddc8408dd8b8b46dc0f18df56561d2f8`)
+- **15B:** **COMPLETE / ACCEPTED** (head `00282d67f43edad7cb4094228c482bf8f361d578`)
+- **15C–15H:** **NOT AUTHORIZED**
 
 This plan decomposes Slice 15 into bounded phases with scope, dependencies,
-acceptance tests, and explicit non-scope. It does not authorize coding.
+acceptance tests, and explicit non-scope. Coding still requires explicit
+per-phase authorization.
 
 ---
 
@@ -68,6 +73,8 @@ names) are free **within** each phase if D01–D22 + Residual A remain satisfied
 
 ## 2. Phase 15A — App foundation, errors, Residual A settings
 
+**Status:** **COMPLETE / ACCEPTED** on main (`4a1c8dbcddc8408dd8b8b46dc0f18df56561d2f8`)
+
 ### Scope
 
 - Create `src/offline_rag/app/` product boundary packages/modules
@@ -101,6 +108,9 @@ names) are free **within** each phase if D01–D22 + Residual A remain satisfied
 
 ## 3. Phase 15B — Process lifecycle, health, doctor debt
 
+**Status:** **COMPLETE / ACCEPTED** on main (`00282d67f43edad7cb4094228c482bf8f361d578`)  
+**Implementation commits:** `a009bd7d975b090d03d0b9b6b8d580dbfee6f796`, `00282d67f43edad7cb4094228c482bf8f361d578`
+
 ### Scope
 
 - Application runtime lifecycle: construct process-scoped resources once (D02)
@@ -128,6 +138,8 @@ names) are free **within** each phase if D01–D22 + Residual A remain satisfied
 ---
 
 ## 4. Phase 15C — Snapshot registry, leases, documents
+
+**Status:** **NOT AUTHORIZED** (candidate baseline: `00282d67f43edad7cb4094228c482bf8f361d578`)
 
 ### Scope
 
@@ -377,7 +389,7 @@ Unauthorized phase work, speculative refactors, and eval HTTP remain forbidden.
 - [ ] Acceptance tests listed above added and green for the phase  
 - [ ] Secrets/tracebacks absent from new HTTP surfaces  
 - [ ] OpenAPI still free of `/eval/*` and unversioned product paths  
-- [ ] Doctor remains non-mutating after 15B  
+- [x] Doctor remains non-mutating after 15B (landed in 15B)  
 
 ---
 

@@ -378,21 +378,23 @@ Use public, redistributable technical documents rather than proprietary material
 ## Project status
 
 **Phase:** Milestone **7 IN PROGRESS**. Milestone **6 COMPLETE / ACCEPTED**.
-Slice **14 COMPLETE / ACCEPTED** (performance benchmark harness + accepted
-terminal runs). FastAPI/service packaging, standalone Qdrant profile, volumes,
-retrieval inspector, citation viewer, and evaluation dashboard remain later
-Milestone 7 work.
+Slice **14 COMPLETE / ACCEPTED**. Slice **15** architecture locked; phases
+**15A/15B COMPLETE / ACCEPTED** on main (`00282d67…`) — app foundation, process
+lifecycle, `/health*`, and non-mutating `doctor`. Product `/v1/*`, admission,
+container packaging (**15C–15G**), retrieval inspector, citation viewer, and
+evaluation dashboard remain later Milestone 7 work (**15C+ not authorized**).
 
 Working local path: ingest → chunk → index / index lexical → retrieve ladder →
 `query` → grounded generation → `eval retrieve` / `eval compare` →
 `eval query` → `doctor` → gold authoring workflow → Slice 14 performance
-benchmarks.
+benchmarks → Slice 15B `/health*` runtime probes.
 
 Still deferred / not authorized from Slice 14 closeout: publication-grade
 portfolio claims (`PORTFOLIO_DEMO.md`); performance optimization; generator
 max-token change; `base.yaml` promotion; Milestone 7 closeout.
 
-See `ROADMAP.md`, `docs/milestone7_performance_ui.md`,
+See `ROADMAP.md`, `docs/slice15_developer_api_packaging.md`,
+`docs/slice15_implementation_plan.md`, `docs/milestone7_performance_ui.md`,
 `docs/milestone4_offline_gold_authoring.md`,
 `docs/slice10_generation_semantic_evaluation.md`, and
 `docs/slice8_grounded_generation.md`.

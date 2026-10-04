@@ -2,16 +2,18 @@
 
 **Status:** Architecture **COMPLETE / LOCKED** (S15-D01 … S15-D22)  
 **Pre-implementation contract (Residual A):** **LOCKED / ACCEPTED**  
-**Implementation plan:** [`docs/slice15_implementation_plan.md`](slice15_implementation_plan.md)  
-**Code implementation:** **NOT AUTHORIZED**
+**Implementation plan:** [`docs/slice15_implementation_plan.md`](slice15_implementation_plan.md) — **ACCEPTED**  
+**Code implementation:** phased — **15A/15B COMPLETE / ACCEPTED**; **15C–15H NOT AUTHORIZED**
 
 **Architecture + Residual A authority:** this document.  
+**Authority SHA (design + Residual A):** `6583fb3be64f2c66e8655b8b99166c358f8f0844`  
 **Drafting baseline HEAD (pre-artifact):** `3ed9212c777798338d5b2229eff7d7aabe3d5adb`  
-**Milestone:** Milestone 7 **IN PROGRESS**; Slice 14 **COMPLETE / ACCEPTED**.
+**Milestone:** Milestone 7 **IN PROGRESS**; Slice 14 **COMPLETE / ACCEPTED**.  
+**Landed implementation head (15B):** `00282d67f43edad7cb4094228c482bf8f361d578`
 
-This document is the reviewable basis for later Codex implementation authorization.
-Conversation history is not an authority once this artifact is accepted at a
-committed SHA.
+This document remains the reviewable architecture authority. Conversation history
+is not an authority once this artifact is accepted at a committed SHA. Later
+phases still require explicit per-phase implementation authorization.
 
 ---
 
@@ -23,8 +25,10 @@ SLICE 14:                             COMPLETE / ACCEPTED
 SLICE 15 ARCHITECTURE (D01–D21):      COMPLETE / LOCKED
 S15-D22 CONSOLIDATION BOUNDARY:       LOCKED / ACCEPTED
 SLICE 15 RESIDUAL A:                  LOCKED / ACCEPTED
-SLICE 15 IMPLEMENTATION PLAN:         DERIVED (review pending)
-SLICE 15 CODE IMPLEMENTATION:         NOT AUTHORIZED
+SLICE 15 IMPLEMENTATION PLAN:         ACCEPTED
+PHASE 15A:                            COMPLETE / ACCEPTED
+PHASE 15B:                            COMPLETE / ACCEPTED
+PHASES 15C–15H:                       NOT AUTHORIZED
 ```
 
 Architecture may reopen only for a concrete contradiction, missing required
@@ -662,8 +666,8 @@ Required check groups: `/data` usability; `/models` configured identities;
 strict-offline coherence; approved generator config; optional generator probe;
 optional corpus snapshot↔embedding compatibility when `--corpus` is supplied.
 
-Existing doctor behavior that creates missing paths is **implementation debt** to
-remove in Slice 15, not behavior to preserve.
+Doctor mutation debt (mkdir / write-probe / repair) was **removed in Phase 15B**
+and must remain absent. Startup—not doctor—owns required `/data` creation.
 
 ---
 
@@ -684,13 +688,15 @@ remove in Slice 15, not behavior to preserve.
 
 ## 7. Next governance steps
 
-1. Commit this consolidation artifact (+ Residual A freeze text) for remote audit  
-2. Independently review [`docs/slice15_implementation_plan.md`](slice15_implementation_plan.md)  
-3. Confirm §5 matches the accepted Residual A freeze at the authority SHA  
-4. Only then issue explicit **code implementation** authorization citing that SHA  
+1. ~~Commit this consolidation artifact (+ Residual A freeze text) for remote audit~~ **DONE**  
+2. ~~Independently review [`docs/slice15_implementation_plan.md`](slice15_implementation_plan.md)~~ **DONE / ACCEPTED**  
+3. ~~Confirm §5 matches the accepted Residual A freeze at the authority SHA~~ **DONE**  
+4. ~~Authorize and land 15A / 15B~~ **DONE** (`00282d67…` on main)  
+5. Issue explicit **15C** implementation authorization citing design authority
+   `6583fb3…` and implementation baseline `00282d67…` before any snapshot/lease work  
 
 ```text
-SLICE 15 CODE IMPLEMENTATION: NOT AUTHORIZED BY THIS DOCUMENT ALONE
+PHASES 15C–15H: NOT AUTHORIZED BY THIS DOCUMENT ALONE
 ```
 
 ---
