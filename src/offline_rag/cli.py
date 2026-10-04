@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -146,6 +147,10 @@ def _resolve_settings(settings: AppSettings) -> AppSettings:
                     "lexical_indexes": _resolve(settings.paths.lexical_indexes),
                     "lexical_index_manifests": _resolve(settings.paths.lexical_index_manifests),
                     "qdrant_storage": _resolve(settings.paths.qdrant_storage),
+                    "traces": _resolve(settings.paths.traces),
+                    "staging": _resolve(settings.paths.staging),
+                    "locks": _resolve(settings.paths.locks),
+                    "logs": _resolve(settings.paths.logs),
                     "retrieval_models": _resolve(settings.paths.retrieval_models),
                     "docling_artifacts": _resolve(settings.paths.docling_artifacts),
                     "tokenizer_artifacts": _resolve(settings.paths.tokenizer_artifacts),
@@ -1748,7 +1753,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         if settings.security.allow_network_tools:
             errors.append("strict_offline is incompatible with security.allow_network_tools=true")
 
-    path_fields = [
+    required_path_fields = [
         ("raw_data", settings.paths.raw_data),
         ("manifests", settings.paths.manifests),
         ("processed", settings.paths.processed),
@@ -1760,44 +1765,46 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         ("lexical_indexes", settings.paths.lexical_indexes),
         ("lexical_index_manifests", settings.paths.lexical_index_manifests),
         ("qdrant_storage", settings.paths.qdrant_storage),
+        ("traces", settings.paths.traces),
+        ("staging", settings.paths.staging),
+        ("locks", settings.paths.locks),
         ("retrieval_models", settings.paths.retrieval_models),
+    ]
+    optional_path_fields = [
+        ("logs", settings.paths.logs),
         ("eval_results", settings.paths.eval_results),
     ]
 
-    creatable = {
-        "corpora",
-        "processed",
-        "manifests",
-        "chunks",
-        "chunk_manifests",
-        "embeddings",
-        "index_manifests",
-        "lexical_indexes",
-        "lexical_index_manifests",
-    }
-
-    for name, path in path_fields:
+    for name, path in required_path_fields:
         if not path.exists():
-            if name in creatable:
-                try:
-                    path.mkdir(parents=True, exist_ok=True)
-                except OSError as exc:
-                    errors.append(f"cannot create paths.{name}={path} ({exc})")
-                    continue
-            else:
-                errors.append(f"configured path does not exist: paths.{name}={path}")
-                continue
+            errors.append(f"ABSENT: paths.{name}={path}")
+            notes.append(f"paths.{name:<28} ABSENT")
+            continue
         if not path.is_dir():
             errors.append(f"path must be a directory: paths.{name}={path}")
             continue
         if name == "retrieval_models":
+            notes.append(f"paths.{name:<28} PRESENT (read-only mount expected)")
             continue
-        probe = path / ".offline_rag_write_probe"
-        try:
-            probe.write_text("ok", encoding="utf-8")
-            probe.unlink(missing_ok=True)
-        except OSError as exc:
-            errors.append(f"path is not writable: paths.{name}={path} ({exc})")
+        # Non-mutating permission inspection only — never mkdir/write/probe.
+        if os.access(path, os.W_OK):
+            notes.append(f"paths.{name:<28} PRESENT writable(inspection-only)")
+        else:
+            errors.append(
+                f"path is not writable (permission inspection): paths.{name}={path}"
+            )
+
+    for name, path in optional_path_fields:
+        if not path.exists():
+            notes.append(f"paths.{name:<28} ABSENT (optional)")
+            continue
+        if not path.is_dir():
+            errors.append(f"path must be a directory: paths.{name}={path}")
+            continue
+        if os.access(path, os.W_OK):
+            notes.append(f"paths.{name:<28} PRESENT writable(inspection-only)")
+        else:
+            notes.append(f"paths.{name:<28} PRESENT not-writable(inspection-only)")
 
     notes.append(f"Embeddings path                 {settings.paths.embeddings}")
     notes.append(f"Index manifests path            {settings.paths.index_manifests}")

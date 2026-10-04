@@ -106,6 +106,13 @@ def test_doctor_ok_with_base_config(capsys: pytest.CaptureFixture[str], monkeypa
     rrk_status = validate_reranker_artifacts(rrk)
     if rrk_status.readiness != RerankerReadiness.READY:
         pytest.skip("reranker artifacts not provisioned")
+    # Startup owns directory creation; doctor must not mkdir. Ensure required roots exist.
+    from offline_rag.app.paths import ensure_data_directories
+    from offline_rag.config import load_settings
+
+    ensure_data_directories(
+        load_settings(yaml_paths=[REPO_ROOT / "config" / "base.yaml"], environ={})
+    )
     code = main(["doctor", "--config", str(REPO_ROOT / "config" / "base.yaml")])
     captured = capsys.readouterr()
     assert code == 0

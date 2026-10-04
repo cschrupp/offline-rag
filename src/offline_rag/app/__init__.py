@@ -19,6 +19,14 @@ from offline_rag.app.errors import (
     sanitize_error_details,
 )
 from offline_rag.app.paths import ensure_data_directories, required_data_directories
+from offline_rag.app.runtime import (
+    ApplicationRuntime,
+    ConstructionCounters,
+    ProcessResources,
+    ResourceFactories,
+    RuntimeState,
+    default_resource_factories,
+)
 from offline_rag.app.validation import (
     app_error_from_validation_errors,
     project_validation_errors,
@@ -27,11 +35,17 @@ from offline_rag.app.validation import (
 __all__ = [
     "ERROR_CATALOG",
     "AppError",
+    "ApplicationRuntime",
+    "ConstructionCounters",
     "ErrorCode",
     "ErrorResponse",
+    "ProcessResources",
+    "ResourceFactories",
+    "RuntimeState",
     "SafeErrorDetails",
     "ValidationFieldDetail",
     "app_error_from_validation_errors",
+    "default_resource_factories",
     "ensure_data_directories",
     "error_response_from_app_error",
     "http_status_for",

@@ -1,0 +1,179 @@
+"""Process application runtime lifecycle (D02 / D09) — Slice 15B."""
+
+from __future__ import annotations
+
+import os
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from enum import StrEnum
+from typing import Any
+
+from offline_rag.app.errors import AppError, ErrorCode
+from offline_rag.app.paths import ensure_data_directories, required_data_directories
+from offline_rag.config.models import AppSettings
+
+ResourceFactory = Callable[[AppSettings], Any]
+
+
+class RuntimeState(StrEnum):
+    NOT_STARTED = "not_started"
+    STARTING = "starting"
+    READY = "ready"
+    NOT_READY = "not_ready"
+    DRAINING = "draining"
+    STOPPED = "stopped"
+
+
+@dataclass
+class ResourceFactories:
+    """Injectable constructors for process-scoped resources."""
+
+    embedder: ResourceFactory
+    reranker: ResourceFactory
+    generator_client: ResourceFactory
+
+
+@dataclass
+class ProcessResources:
+    embedder: Any = None
+    reranker: Any = None
+    generator_client: Any = None
+
+    def close(self) -> None:
+        for name in ("generator_client", "reranker", "embedder"):
+            obj = getattr(self, name)
+            if obj is None:
+                continue
+            close = getattr(obj, "close", None)
+            if callable(close):
+                close()
+            setattr(self, name, None)
+
+
+@dataclass
+class ConstructionCounters:
+    embedder: int = 0
+    reranker: int = 0
+    generator_client: int = 0
+
+
+def default_resource_factories() -> ResourceFactories:
+    """Production factories — construct once at startup, never from health."""
+
+    def embedder(settings: AppSettings) -> Any:
+        from offline_rag.dense.embedder import make_embedder
+
+        return make_embedder(settings)
+
+    def reranker(settings: AppSettings) -> Any:
+        if not settings.reranker.enabled:
+            return None
+        from offline_rag.rerank.cross_encoder import CrossEncoderReranker
+
+        return CrossEncoderReranker.from_settings(settings)
+
+    def generator_client(settings: AppSettings) -> Any:
+        # Construct client only — no /models or chat probe (D09/D16).
+        from offline_rag.generation.openai_compatible import OpenAICompatibleGenerator
+
+        return OpenAICompatibleGenerator(settings)
+
+    return ResourceFactories(
+        embedder=embedder,
+        reranker=reranker,
+        generator_client=generator_client,
+    )
+
+
+def _assert_required_paths_usable(settings: AppSettings) -> None:
+    for path in required_data_directories(settings):
+        if not path.exists() or not path.is_dir():
+            raise RuntimeError(f"required data directory missing: {path}")
+        if not os.access(path, os.W_OK):
+            raise RuntimeError(f"required data directory not writable: {path}")
+
+
+@dataclass
+class ApplicationRuntime:
+    """Owns process settings, readiness, and process-scoped resources."""
+
+    settings: AppSettings
+    factories: ResourceFactories = field(default_factory=default_resource_factories)
+    state: RuntimeState = field(default=RuntimeState.NOT_STARTED, init=False)
+    resources: ProcessResources | None = field(default=None, init=False)
+    failure_reason: str | None = field(default=None, init=False)
+    construction_counts: ConstructionCounters = field(
+        default_factory=ConstructionCounters, init=False
+    )
+    _shutdown_count: int = field(default=0, init=False)
+
+    @property
+    def is_ready(self) -> bool:
+        return self.state is RuntimeState.READY
+
+    @property
+    def is_live(self) -> bool:
+        return self.state is not RuntimeState.STOPPED
+
+    def start(self) -> None:
+        """Initialize process resources at most once per startup attempt.
+
+        Failures leave the runtime NOT_READY (fail closed). Does not download
+        models or probe the generator.
+        """
+        if self.state is RuntimeState.READY:
+            return
+        if self.state is RuntimeState.STARTING:
+            return
+
+        self.state = RuntimeState.STARTING
+        self.failure_reason = None
+        embedder: Any = None
+        reranker: Any = None
+        generator_client: Any = None
+        try:
+            ensure_data_directories(self.settings)
+            _assert_required_paths_usable(self.settings)
+
+            self.construction_counts.embedder += 1
+            embedder = self.factories.embedder(self.settings)
+
+            self.construction_counts.reranker += 1
+            reranker = self.factories.reranker(self.settings)
+
+            self.construction_counts.generator_client += 1
+            generator_client = self.factories.generator_client(self.settings)
+
+            self.resources = ProcessResources(
+                embedder=embedder,
+                reranker=reranker,
+                generator_client=generator_client,
+            )
+            self.state = RuntimeState.READY
+        except Exception:  # noqa: BLE001 — fail closed on any startup fault
+            for obj in (generator_client, reranker, embedder):
+                close = getattr(obj, "close", None) if obj is not None else None
+                if callable(close):
+                    close()
+            self.resources = None
+            self.state = RuntimeState.NOT_READY
+            self.failure_reason = "startup_failed"
+
+    def require_ready(self) -> None:
+        if not self.is_ready:
+            raise AppError(ErrorCode.RUNTIME_NOT_READY)
+
+    def shutdown(self) -> None:
+        """Close process resources once and leave the runtime stopped."""
+        if self.state is RuntimeState.STOPPED:
+            return
+        self.state = RuntimeState.DRAINING
+        self._shutdown_count += 1
+        if self.resources is not None:
+            self.resources.close()
+            self.resources = None
+        self.state = RuntimeState.STOPPED
+
+    @property
+    def shutdown_count(self) -> int:
+        return self._shutdown_count
