@@ -21,6 +21,7 @@ from offline_rag.domain.blocks import (
     WarningCategory,
 )
 from offline_rag.domain.documents import Document
+from offline_rag.ingestion.base import DocumentParseError
 from offline_rag.ingestion.docling_artifacts import require_docling_artifacts
 
 
@@ -67,8 +68,21 @@ class DoclingPdfParser:
     def parse(self, path: Path, *, source_bytes: bytes, document_id: str) -> ParsedDocument:
         # Ensure bytes identity matches on-disk path by writing is not required;
         # Docling reads the path. Callers must ensure path content matches bytes.
+        # Converter construction / artifact faults propagate as unexpected runtime
+        # errors (internal). Only typed conversion/input failures become
+        # DocumentParseError (document_invalid).
         converter = self._converter_instance()
-        result = converter.convert(path)
+        from docling.datamodel.base_models import ConversionStatus
+        from docling.exceptions import ConversionError
+
+        try:
+            result = converter.convert(path)
+        except ConversionError as exc:
+            raise DocumentParseError("pdf document conversion failed") from exc
+
+        status = getattr(result, "status", None)
+        if status is ConversionStatus.FAILURE:
+            raise DocumentParseError("pdf document conversion failed")
         docling_doc = result.document
 
         blocks: list[ContentBlock] = []

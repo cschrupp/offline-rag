@@ -8,6 +8,15 @@ from typing import Protocol
 from offline_rag.domain.blocks import ParsedDocument
 
 
+class DocumentParseError(ValueError):
+    """Typed parser-boundary fault attributable to the supplied document.
+
+    Parser adapters must raise this only for failures known to be caused by
+    invalid/unparseable source content. Unexpected runtime/infrastructure
+    exceptions must propagate unchanged for internal classification.
+    """
+
+
 class DocumentParser(Protocol):
     """Project-owned parser boundary."""
 

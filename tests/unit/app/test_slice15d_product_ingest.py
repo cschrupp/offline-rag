@@ -937,13 +937,15 @@ def test_multipart_reorder_same_snapshot_id(tmp_path: Path) -> None:
         assert sorted(d["source_name"] for d in docs) == ["a.txt", "b.txt"]
 
 
-def test_unparseable_document_is_document_invalid(
+def test_typed_document_parse_error_is_document_invalid(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    from offline_rag.ingestion.base import DocumentParseError
+
     runtime = _runtime(_settings(tmp_path))
 
     def boom(*_args, **_kwargs):  # type: ignore[no-untyped-def]
-        raise ValueError("synthetic parse failure")
+        raise DocumentParseError("typed unparseable document")
 
     monkeypatch.setattr(
         "offline_rag.ingestion.text_parser.TextParser.parse",
@@ -960,8 +962,45 @@ def test_unparseable_document_is_document_invalid(
         resp = _post_raw(client, body, ct)
     assert resp.status_code == 422
     assert resp.json()["error"]["code"] == "document_invalid"
-    assert "synthetic parse failure" not in resp.text
-    assert "ValueError" not in resp.text
+    assert "typed unparseable document" not in resp.text
+    assert "DocumentParseError" not in resp.text
+
+
+@pytest.mark.parametrize(
+    "exc_factory",
+    [
+        lambda: RuntimeError("synthetic parser runtime fault"),
+        lambda: ValueError("synthetic parser value fault"),
+    ],
+)
+def test_unexpected_parser_exception_is_ingest_failed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    exc_factory,
+) -> None:
+    runtime = _runtime(_settings(tmp_path))
+    raised = exc_factory()
+
+    def boom(*_args, **_kwargs):  # type: ignore[no-untyped-def]
+        raise raised
+
+    monkeypatch.setattr(
+        "offline_rag.ingestion.text_parser.TextParser.parse",
+        boom,
+    )
+    app = create_app(runtime=runtime)
+    with TestClient(app, raise_server_exceptions=False) as client:
+        body, ct = _multipart(
+            [
+                ("corpus", b"eng", None),
+                ("files", b"Looks like text but runtime will fail.\n", "a.txt"),
+            ]
+        )
+        resp = _post_raw(client, body, ct)
+    assert resp.status_code == 500
+    assert resp.json()["error"]["code"] == "ingest_failed"
+    assert str(raised) not in resp.text
+    assert type(raised).__name__ not in resp.text
 
 
 def test_internal_ingestion_failure_is_ingest_failed(

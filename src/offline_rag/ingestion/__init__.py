@@ -1,5 +1,6 @@
 """Ingestion package."""
 
+from offline_rag.ingestion.base import DocumentParseError
 from offline_rag.ingestion.discovery import (
     DiscoveryError,
     discover_sources,
@@ -20,6 +21,7 @@ __all__ = [
     "DiscoveryError",
     "DoclingArtifactsUnavailableError",
     "DocumentIngestionError",
+    "DocumentParseError",
     "IngestionError",
     "InternalIngestionError",
     "discover_sources",

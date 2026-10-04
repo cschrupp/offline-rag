@@ -29,6 +29,7 @@ from offline_rag.domain.ingestion import (
     IngestionReport,
     IngestionStatus,
 )
+from offline_rag.ingestion.base import DocumentParseError
 from offline_rag.ingestion.discovery import (
     DiscoveredSource,
     DiscoveryError,
@@ -243,10 +244,14 @@ def run_ingestion(
                         source_bytes=source_bytes,
                         document_id=doc_id,
                     )
+                except DocumentParseError as exc:
+                    raise DocumentIngestionError("document parse failed") from exc
                 except DocumentIngestionError:
                     raise
                 except Exception as exc:
-                    raise DocumentIngestionError("document parse failed") from exc
+                    # Unexpected parser/runtime faults are internal, not client
+                    # document faults, unless the adapter raised DocumentParseError.
+                    raise InternalIngestionError("parser runtime failure") from exc
                 # Ensure identity fields are set for native parsers too.
                 parsed = parsed.model_copy(
                     update={
