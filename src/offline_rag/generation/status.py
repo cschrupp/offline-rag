@@ -64,6 +64,22 @@ def _authorization_flags(
     return endpoint_ok, model_ok, reasons
 
 
+def validate_generation_static_config(settings: AppSettings) -> None:
+    """Validate generation config + approval policy without network I/O.
+
+    Used by application startup readiness (D09/D16). Connectivity probes remain
+    doctor/query territory only.
+    """
+    ok, reason = _generation_config_ok(settings)
+    if not ok:
+        raise RuntimeError(reason or "generation configuration invalid")
+    endpoint_ok, model_ok, auth_reasons = _authorization_flags(settings)
+    if not endpoint_ok or not model_ok:
+        raise RuntimeError(
+            "; ".join(auth_reasons) or "generation endpoint/model is not approved"
+        )
+
+
 def _probe_provider(
     settings: AppSettings,
 ) -> tuple[bool, bool, bool, str | None]:

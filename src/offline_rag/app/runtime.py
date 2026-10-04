@@ -10,6 +10,7 @@ from typing import Any
 
 from offline_rag.app.errors import AppError, ErrorCode
 from offline_rag.app.paths import ensure_data_directories, required_data_directories
+from offline_rag.app.startup_validation import validate_global_startup_requirements
 from offline_rag.config.models import AppSettings
 
 ResourceFactory = Callable[[AppSettings], Any]
@@ -134,6 +135,8 @@ class ApplicationRuntime:
         try:
             ensure_data_directories(self.settings)
             _assert_required_paths_usable(self.settings)
+            # Static global asset/config gates — never download or probe (D09/D16).
+            validate_global_startup_requirements(self.settings)
 
             self.construction_counts.embedder += 1
             embedder = self.factories.embedder(self.settings)

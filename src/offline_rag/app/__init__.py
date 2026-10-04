@@ -27,6 +27,7 @@ from offline_rag.app.runtime import (
     RuntimeState,
     default_resource_factories,
 )
+from offline_rag.app.startup_validation import validate_global_startup_requirements
 from offline_rag.app.validation import (
     app_error_from_validation_errors,
     project_validation_errors,
@@ -53,5 +54,6 @@ __all__ = [
     "required_data_directories",
     "retryable_for",
     "sanitize_error_details",
+    "validate_global_startup_requirements",
     "validate_product_corpus_name",
 ]

@@ -2,24 +2,31 @@
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
 from offline_rag.api.app import create_app
-from offline_rag.app.errors import ErrorCode
+from offline_rag.app.errors import AppError, ErrorCode
 from offline_rag.app.paths import ensure_data_directories, required_data_directories
 from offline_rag.app.runtime import (
     ApplicationRuntime,
     ResourceFactories,
     RuntimeState,
+    default_resource_factories,
 )
 from offline_rag.cli import main
 from offline_rag.config import load_settings
 from offline_rag.config.models import AppSettings
+from offline_rag.ingestion.docling_artifacts import write_provisioning_manifest
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+TIKTOKEN_SRC = REPO_ROOT / "models" / "tokenizers" / "tiktoken"
+APPROVED_MODEL = "local-test-model"
+APPROVED_ENDPOINT = "http://127.0.0.1:11434/v1"
 
 
 class _FakeCloseable:
@@ -37,17 +44,41 @@ class _FakeCloseable:
         self._counter["close"] = self._counter.get("close", 0) + 1
 
 
-def _settings(tmp_path: Path, **api_overrides: object) -> AppSettings:
+def _provision_docling(settings: AppSettings) -> None:
+    settings.paths.docling_artifacts.mkdir(parents=True, exist_ok=True)
+    (settings.paths.docling_artifacts / "placeholder.bin").write_bytes(b"unit")
+    write_provisioning_manifest(settings.paths.docling_artifacts, docling_version="test")
+
+
+def _provision_tokenizer(settings: AppSettings) -> None:
+    if not (TIKTOKEN_SRC / "offline-rag-tokenizer.json").exists():
+        pytest.skip("tiktoken artifacts not provisioned in repository models/")
+    dest = settings.paths.tokenizer_artifacts
+    if dest.exists():
+        shutil.rmtree(dest)
+    shutil.copytree(TIKTOKEN_SRC, dest)
+
+
+def _settings(tmp_path: Path, *, provision_assets: bool = True, **gen_overrides: object) -> AppSettings:
     environ = {
         "OFFLINE_RAG_DATA_DIR": str(tmp_path / "data"),
         "OFFLINE_RAG_MODELS_DIR": str(tmp_path / "models"),
         "OFFLINE_RAG_STRICT_OFFLINE": "false",
     }
     settings = load_settings(yaml_paths=[], environ=environ)
-    if api_overrides:
-        settings = settings.model_copy(
-            update={"api": settings.api.model_copy(update=api_overrides)}
-        )
+    generation = settings.generation.model_copy(
+        update={
+            "base_url": APPROVED_ENDPOINT,
+            "model": APPROVED_MODEL,
+            "approved_endpoints": [APPROVED_ENDPOINT],
+            "approved_models": [APPROVED_MODEL],
+            **gen_overrides,
+        }
+    )
+    settings = settings.model_copy(update={"generation": generation})
+    if provision_assets:
+        _provision_docling(settings)
+        _provision_tokenizer(settings)
     return settings
 
 
@@ -122,6 +153,79 @@ def test_runtime_failed_init_stays_not_ready(tmp_path: Path) -> None:
     assert runtime.failure_reason == "startup_failed"
     assert counts["embedder"] == 1
     assert counts["reranker"] == 0
+
+
+def test_missing_docling_assets_leave_runtime_not_ready(tmp_path: Path) -> None:
+    settings = _settings(tmp_path, provision_assets=False)
+    _provision_tokenizer(settings)
+    factories, counts, _objs = _counting_factories()
+    runtime = ApplicationRuntime(settings=settings, factories=factories)
+    runtime.start()
+    assert runtime.state is RuntimeState.NOT_READY
+    assert runtime.failure_reason == "startup_failed"
+    assert counts["embedder"] == 0
+
+
+def test_missing_tokenizer_assets_leave_runtime_not_ready(tmp_path: Path) -> None:
+    settings = _settings(tmp_path, provision_assets=False)
+    _provision_docling(settings)
+    factories, counts, _objs = _counting_factories()
+    runtime = ApplicationRuntime(settings=settings, factories=factories)
+    runtime.start()
+    assert runtime.state is RuntimeState.NOT_READY
+    assert runtime.failure_reason == "startup_failed"
+    assert counts["embedder"] == 0
+
+
+def test_unapproved_generation_endpoint_model_leave_runtime_not_ready(
+    tmp_path: Path,
+) -> None:
+    settings = _settings(
+        tmp_path,
+        base_url="http://127.0.0.1:9999/v1",
+        model="not-approved-model",
+        approved_endpoints=[APPROVED_ENDPOINT],
+        approved_models=[APPROVED_MODEL],
+    )
+    factories, counts, _objs = _counting_factories()
+    runtime = ApplicationRuntime(settings=settings, factories=factories)
+    runtime.start()
+    assert runtime.state is RuntimeState.NOT_READY
+    assert runtime.failure_reason == "startup_failed"
+    assert counts["embedder"] == 0
+
+
+def test_approved_unreachable_generator_performs_no_network_probe(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    unreachable = "http://127.0.0.1:9/v1"
+    settings = _settings(
+        tmp_path,
+        base_url=unreachable,
+        approved_endpoints=[unreachable],
+    )
+    factories, counts, _objs = _counting_factories()
+    # Use production generator factory so construction builds a real client.
+    prod = default_resource_factories()
+    factories = ResourceFactories(
+        embedder=factories.embedder,
+        reranker=factories.reranker,
+        generator_client=prod.generator_client,
+    )
+
+    def forbid_network(self: httpx.Client, *args: object, **kwargs: object) -> object:
+        raise AssertionError("startup must not probe generator network")
+
+    monkeypatch.setattr(httpx.Client, "get", forbid_network)
+    monkeypatch.setattr(httpx.Client, "post", forbid_network)
+    monkeypatch.setattr(httpx.Client, "request", forbid_network)
+
+    runtime = ApplicationRuntime(settings=settings, factories=factories)
+    runtime.start()
+    assert runtime.state is RuntimeState.READY
+    assert counts["embedder"] == 1
+    assert runtime.resources is not None
+    runtime.shutdown()
 
 
 def test_startup_creates_required_data_directories(tmp_path: Path) -> None:
@@ -219,6 +323,26 @@ def test_readiness_independent_of_corpus_existence(tmp_path: Path) -> None:
         assert client.get("/health/ready").status_code == 200
 
 
+def test_http_adapter_never_emits_request_cancelled(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    factories, _counts, _objs = _counting_factories()
+    app = create_app(
+        runtime=ApplicationRuntime(settings=settings, factories=factories)
+    )
+
+    @app.get("/_test/cancel")
+    def _cancel() -> None:
+        raise AppError(ErrorCode.REQUEST_CANCELLED)
+
+    with TestClient(app, raise_server_exceptions=False) as client:
+        response = client.get("/_test/cancel")
+    assert response.status_code == 500
+    body = response.json()
+    assert body["error"]["code"] == "internal_error"
+    assert body["error"]["code"] != "request_cancelled"
+    assert "request_cancelled" not in response.text
+
+
 def _snapshot_tree(root: Path) -> dict[str, tuple[int, int]]:
     """Map relative path -> (mode, size) for files/dirs under root."""
     snapshot: dict[str, tuple[int, int]] = {}
@@ -285,7 +409,7 @@ def test_doctor_reports_missing_model_assets_without_repair(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     monkeypatch.chdir(tmp_path)
-    settings = _settings(tmp_path)
+    settings = _settings(tmp_path, provision_assets=False)
     ensure_data_directories(settings)
     # Create empty required path tree + models root, but no provisioned weights.
     (tmp_path / "models").mkdir(exist_ok=True)
