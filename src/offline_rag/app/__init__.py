@@ -19,6 +19,9 @@ from offline_rag.app.errors import (
     retryable_for,
     sanitize_error_details,
 )
+from offline_rag.app.ingest import ProductIngestResult, run_product_replace_ingest
+from offline_rag.app.ingest_capacity import IngestCapacityGate
+from offline_rag.app.ingest_hooks import ProductIngestHooks
 from offline_rag.app.leases import CorpusMutationLease, corpus_lease_path
 from offline_rag.app.paths import ensure_data_directories, required_data_directories
 from offline_rag.app.publication import ProductPublicationRegistry
@@ -53,7 +56,10 @@ __all__ = [
     "CorpusReadSnapshot",
     "ErrorCode",
     "ErrorResponse",
+    "IngestCapacityGate",
     "ProcessResources",
+    "ProductIngestHooks",
+    "ProductIngestResult",
     "ProductPublicationRegistry",
     "ResourceFactories",
     "RuntimeState",
@@ -70,6 +76,7 @@ __all__ = [
     "recover_abandoned_candidates",
     "required_data_directories",
     "retryable_for",
+    "run_product_replace_ingest",
     "sanitize_error_details",
     "validate_global_startup_requirements",
     "validate_product_corpus_name",

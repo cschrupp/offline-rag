@@ -10,6 +10,8 @@ from typing import Any
 
 from offline_rag.app.candidate_recovery import recover_abandoned_candidates
 from offline_rag.app.errors import AppError, ErrorCode
+from offline_rag.app.ingest_capacity import IngestCapacityGate
+from offline_rag.app.ingest_hooks import ProductIngestHooks
 from offline_rag.app.paths import ensure_data_directories, required_data_directories
 from offline_rag.app.publication import ProductPublicationRegistry
 from offline_rag.app.startup_validation import validate_global_startup_requirements
@@ -111,14 +113,21 @@ class ApplicationRuntime:
 
     settings: AppSettings
     factories: ResourceFactories = field(default_factory=default_resource_factories)
+    product_ingest_hooks: ProductIngestHooks | None = None
     state: RuntimeState = field(default=RuntimeState.NOT_STARTED, init=False)
     resources: ProcessResources | None = field(default=None, init=False)
     failure_reason: str | None = field(default=None, init=False)
     construction_counts: ConstructionCounters = field(
         default_factory=ConstructionCounters, init=False
     )
+    ingest_capacity: IngestCapacityGate = field(init=False)
     _shutdown_count: int = field(default=0, init=False)
     _publication: ProductPublicationRegistry | None = field(default=None, init=False)
+
+    def __post_init__(self) -> None:
+        self.ingest_capacity = IngestCapacityGate(
+            max_concurrent=int(self.settings.api.max_concurrent_ingest)
+        )
 
     @property
     def is_ready(self) -> bool:
