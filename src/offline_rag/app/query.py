@@ -9,6 +9,7 @@ from typing import Any, Literal
 
 from offline_rag.app.corpus import validate_product_corpus_name
 from offline_rag.app.errors import AppError, ErrorCode, SafeErrorDetails
+from offline_rag.app.operations import OperationHandle
 from offline_rag.app.query_binding import (
     SnapshotQueryBinding,
     build_snapshot_query_binding,
@@ -182,7 +183,8 @@ def _project_success(
 
 
 def _execute_snapshot_query(
-    handle: SnapshotQueryRuntimeHandle, question: str
+    handle: SnapshotQueryRuntimeHandle,
+    question: str,
 ) -> GroundedAnswerResult:
     """Execute grounded query against an already-bound snapshot runtime."""
     return handle.answer(question)
@@ -238,14 +240,19 @@ def run_product_query(
     *,
     corpus: str,
     question: str,
+    control: OperationHandle | None = None,
 ) -> ProductQueryResponse:
     """Canonical app-layer product query (snapshot-bound, traced)."""
     runtime.require_ready()
+    if control is not None:
+        control.checkpoint("pre_validate")
     name = validate_product_corpus_name(corpus)
     normalized = normalize_product_question(question)
 
     # Pre-execution: resolve snapshot + bind/validate cached query runtime.
     # No trace yet — backing failures are snapshot_unavailable (D08/D11).
+    if control is not None:
+        control.checkpoint("pre_resolve")
     snapshot = runtime.publication.resolve(name)
     binding = build_snapshot_query_binding(runtime.settings, snapshot)
     if binding.product_mode_id != PRODUCT_MODE_GROUNDED_V1:
@@ -254,8 +261,13 @@ def run_product_query(
             details=SafeErrorDetails(reason="unsupported_product_mode"),
         )
 
+    if control is not None:
+        control.checkpoint("pre_bind")
     handle = runtime.query_runtimes.acquire(binding)
     try:
+        if control is not None:
+            control.checkpoint("pre_trace")
+        # Execution begins — allocate durable trace identity (D11).
         trace_id = allocate_trace_id()
         store = ProductTraceStore(runtime.settings)
         created_at = datetime.now(tz=UTC)
@@ -269,7 +281,13 @@ def run_product_query(
         result: GroundedAnswerResult | None = None
         mapped_error: AppError | None = None
         try:
+            if control is not None:
+                control.checkpoint("pre_execute")
             result = _execute_snapshot_query(handle, normalized)
+            if control is not None:
+                control.checkpoint("post_execute")
+            if control is not None:
+                control.checkpoint("pre_project")
             status, answer, citations = _project_success(
                 result, snapshot=snapshot, binding=binding
             )

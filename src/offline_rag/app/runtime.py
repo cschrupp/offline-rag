@@ -1,7 +1,8 @@
-"""Process application runtime lifecycle (D02 / D09 / D15) — Slice 15B/15C."""
+"""Process application runtime lifecycle (D02 / D09 / D15 / D19) — Slice 15B–15F."""
 
 from __future__ import annotations
 
+import asyncio
 import os
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -9,9 +10,10 @@ from enum import StrEnum
 from typing import Any
 
 from offline_rag.app.candidate_recovery import recover_abandoned_candidates
+from offline_rag.app.capacity import CapacityGate
 from offline_rag.app.errors import AppError, ErrorCode
-from offline_rag.app.ingest_capacity import IngestCapacityGate
 from offline_rag.app.ingest_hooks import ProductIngestHooks
+from offline_rag.app.operations import OperationRegistry
 from offline_rag.app.paths import ensure_data_directories, required_data_directories
 from offline_rag.app.publication import ProductPublicationRegistry
 from offline_rag.app.query_runtime import QueryRuntimeCache
@@ -110,7 +112,7 @@ def _assert_required_paths_usable(settings: AppSettings) -> None:
 
 @dataclass
 class ApplicationRuntime:
-    """Owns process settings, readiness, and process-scoped resources."""
+    """Owns process settings, readiness, resources, and operation control."""
 
     settings: AppSettings
     factories: ResourceFactories = field(default_factory=default_resource_factories)
@@ -121,15 +123,29 @@ class ApplicationRuntime:
     construction_counts: ConstructionCounters = field(
         default_factory=ConstructionCounters, init=False
     )
-    ingest_capacity: IngestCapacityGate = field(init=False)
+    query_capacity: CapacityGate = field(init=False)
+    ingest_capacity: CapacityGate = field(init=False)
+    operations: OperationRegistry = field(init=False)
     _shutdown_count: int = field(default=0, init=False)
     _publication: ProductPublicationRegistry | None = field(default=None, init=False)
     _query_runtimes: QueryRuntimeCache | None = field(default=None, init=False)
+    _finalize_lock: Any = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
-        self.ingest_capacity = IngestCapacityGate(
+        import threading
+
+        self.query_capacity = CapacityGate(
+            max_concurrent=int(self.settings.api.max_concurrent_query)
+        )
+        self.ingest_capacity = CapacityGate(
             max_concurrent=int(self.settings.api.max_concurrent_ingest)
         )
+        self.operations = OperationRegistry(
+            settings=self.settings,
+            query_capacity=self.query_capacity,
+            ingest_capacity=self.ingest_capacity,
+        )
+        self._finalize_lock = threading.Lock()
 
     @property
     def is_ready(self) -> bool:
@@ -227,21 +243,58 @@ class ApplicationRuntime:
         if not self.is_ready:
             raise AppError(ErrorCode.RUNTIME_NOT_READY)
 
-    def shutdown(self) -> None:
-        """Close process resources once and leave the runtime stopped."""
+    def begin_drain(self) -> None:
+        """Enter DRAINING: readiness false; signal cooperative cancellation."""
         if self.state is RuntimeState.STOPPED:
+            return
+        if self.state is RuntimeState.DRAINING:
+            self.operations.signal_shutdown()
             return
         self.state = RuntimeState.DRAINING
         self._shutdown_count += 1
-        # Close corpus-scoped query wiring before process resources they borrow.
-        if self._query_runtimes is not None:
-            self._query_runtimes.close()
-            self._query_runtimes = None
-        if self.resources is not None:
-            self.resources.close()
-            self.resources = None
-        self._publication = None
-        self.state = RuntimeState.STOPPED
+        self.operations.signal_shutdown()
+
+    def wait_for_drain(self, timeout_seconds: float | None = None) -> bool:
+        """Wait for active operations to finish (sync). Grace expiry ≠ timeout."""
+        grace = (
+            float(self.settings.api.shutdown_grace_seconds)
+            if timeout_seconds is None
+            else float(timeout_seconds)
+        )
+        return self.operations.wait_until_idle(grace)
+
+    def finalize_shutdown(self) -> None:
+        """Close corpus-scoped then process-scoped resources; enter STOPPED."""
+        with self._finalize_lock:
+            if self.state is RuntimeState.STOPPED:
+                return
+            if self.state is not RuntimeState.DRAINING:
+                self.state = RuntimeState.DRAINING
+            if self._query_runtimes is not None:
+                self._query_runtimes.close()
+                self._query_runtimes = None
+            if self.resources is not None:
+                self.resources.close()
+                self.resources = None
+            self._publication = None
+            self.state = RuntimeState.STOPPED
+
+    def shutdown(self) -> None:
+        """Idempotent sync drain (tests / non-ASGI). Does not invent timeouts."""
+        if self.state is RuntimeState.STOPPED:
+            return
+        self.begin_drain()
+        self.wait_for_drain()
+        self.finalize_shutdown()
+
+    async def drain_async(self) -> None:
+        """ASGI lifespan drain: keep the event loop responsive while waiting."""
+        if self.state is RuntimeState.STOPPED:
+            return
+        self.begin_drain()
+        grace = float(self.settings.api.shutdown_grace_seconds)
+        await asyncio.to_thread(self.wait_for_drain, grace)
+        self.finalize_shutdown()
 
     @property
     def shutdown_count(self) -> int:

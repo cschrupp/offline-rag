@@ -14,6 +14,7 @@ from offline_rag.app.errors import AppError, ErrorCode, SafeErrorDetails
 from offline_rag.app.ingest_hooks import ProductIngestHooks
 from offline_rag.app.ingest_upload import SpooledIngestUpload, cleanup_staging
 from offline_rag.app.leases import CorpusMutationLease
+from offline_rag.app.operations import OperationHandle
 from offline_rag.app.snapshot import (
     PRODUCT_MODE_GROUNDED_V1,
     CanonicalSnapshotManifest,
@@ -182,6 +183,7 @@ def run_product_replace_ingest(
     upload: SpooledIngestUpload,
     *,
     hooks: ProductIngestHooks | None = None,
+    control: OperationHandle | None = None,
 ) -> ProductIngestResult:
     """Execute the post-spool full-replace ingest transaction.
 
@@ -192,16 +194,23 @@ def run_product_replace_ingest(
     runtime.require_ready()
     if runtime.resources is None:
         raise AppError(ErrorCode.RUNTIME_NOT_READY)
+    if control is not None:
+        control.checkpoint("pre_validate")
 
     _validate_document_identities(upload)
 
     lease = CorpusMutationLease(runtime.settings, upload.corpus_name)
     candidate: _CandidateContext | None = None
     try:
+        if control is not None:
+            control.checkpoint("pre_lease")
         lease.acquire()
     except AppError:
         cleanup_staging(upload.staging_root)
         raise
+
+    if control is not None:
+        control.mark_post_lease()
 
     try:
         candidate = _establish_candidate(runtime.settings, upload)
@@ -218,9 +227,13 @@ def run_product_replace_ingest(
         embedder = runtime.resources.embedder
         qdrant = runtime.resources.qdrant
 
+        def _gated(stage: str, fn: Callable[[], object]) -> object:
+            if control is not None:
+                control.checkpoint(f"pre_{stage}")
+            return _run_stage(hooks, stage, fn)
+
         source_names = upload.source_name_by_storage_name()
-        ingest_report = _run_stage(
-            hooks,
+        ingest_report = _gated(
             "ingest",
             lambda: run_ingestion(
                 settings=candidate.settings,
@@ -253,8 +266,7 @@ def run_product_replace_ingest(
                 details=SafeErrorDetails(reason="document_identity_conflict"),
             )
 
-        chunk_report = _run_stage(
-            hooks,
+        chunk_report = _gated(
             "chunk",
             lambda: run_chunking(
                 settings=candidate.settings,
@@ -268,8 +280,7 @@ def run_product_replace_ingest(
                 details=SafeErrorDetails(stage="chunk", reason="stage_failed"),
             )
 
-        index_report = _run_stage(
-            hooks,
+        index_report = _gated(
             "dense",
             lambda: run_indexing(
                 settings=candidate.settings,
@@ -285,8 +296,7 @@ def run_product_replace_ingest(
                 details=SafeErrorDetails(stage="dense", reason="stage_failed"),
             )
 
-        lexical_report = _run_stage(
-            hooks,
+        lexical_report = _gated(
             "lexical",
             lambda: run_lexical_indexing(
                 settings=candidate.settings,
@@ -306,8 +316,13 @@ def run_product_replace_ingest(
             corpus_name=upload.corpus_name,
         )
 
+        if control is not None:
+            control.checkpoint("pre_publish")
         if hooks is not None and hooks.before_stage is not None:
             hooks.before_stage("publish")
+        # Publication critical section begins at ProductPublicationRegistry.publish.
+        if control is not None:
+            control.enter_publication()
         snapshot_id = runtime.publication.publish(upload.corpus_name, identity)
         if hooks is not None and hooks.after_stage is not None:
             hooks.after_stage("publish")

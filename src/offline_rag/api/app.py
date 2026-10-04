@@ -29,7 +29,8 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     try:
         yield
     finally:
-        runtime.shutdown()
+        # D19 drain: readiness false, cooperative cancel, grace wait, then close.
+        await runtime.drain_async()
 
 
 def create_app(
