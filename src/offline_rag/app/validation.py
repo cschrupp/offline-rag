@@ -5,7 +5,12 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from offline_rag.app.errors import AppError, ErrorCode
+from offline_rag.app.errors import (
+    AppError,
+    ErrorCode,
+    SafeErrorDetails,
+    ValidationFieldDetail,
+)
 
 _MAX_FIELDS = 32
 _MAX_LOC_PARTS = 16
@@ -53,17 +58,19 @@ def _loc_is_secret_bearing(parts: Sequence[str]) -> bool:
 
 def project_validation_errors(
     errors: Sequence[Mapping[str, Any]],
-) -> dict[str, Any]:
-    """Allowlisted projection: loc / msg / type only — never input values."""
-    fields: list[dict[str, str | list[str]]] = []
+) -> SafeErrorDetails:
+    """Trusted allowlisted projection: loc / msg / type only — never input values."""
+    fields: list[ValidationFieldDetail] = []
     for err in list(errors)[:_MAX_FIELDS]:
         loc_parts = _loc_parts(err.get("loc"))
         msg = _truncate(str(err.get("msg", "invalid")), _MAX_MSG_CHARS)
         err_type = _truncate(str(err.get("type", "value_error")), _MAX_TYPE_CHARS)
         if _loc_is_secret_bearing(loc_parts):
             msg = "Invalid value"
-        fields.append({"loc": loc_parts, "msg": msg, "type": err_type})
-    return {"fields": fields}
+        fields.append(
+            ValidationFieldDetail(loc=loc_parts, msg=msg, type=err_type)
+        )
+    return SafeErrorDetails(fields=fields)
 
 
 def app_error_from_validation_errors(

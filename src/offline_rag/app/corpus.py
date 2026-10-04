@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from offline_rag.app.errors import AppError, ErrorCode
+from offline_rag.app.errors import AppError, ErrorCode, SafeErrorDetails
 from offline_rag.ingestion.discovery import DiscoveryError, validate_corpus_name
 
 
@@ -18,5 +18,5 @@ def validate_product_corpus_name(name: str) -> str:
         raise AppError(
             code=ErrorCode.REQUEST_INVALID,
             message="Invalid corpus name",
-            details={"reason": str(exc)},
+            details=SafeErrorDetails(reason="invalid_corpus_name"),
         ) from exc

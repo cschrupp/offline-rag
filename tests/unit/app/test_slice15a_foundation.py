@@ -11,6 +11,7 @@ from offline_rag.app import (
     ERROR_CATALOG,
     AppError,
     ErrorCode,
+    SafeErrorDetails,
     app_error_from_validation_errors,
     ensure_data_directories,
     error_response_from_app_error,
@@ -158,7 +159,53 @@ def test_app_error_details_drop_secret_bearing_keys(secret_key: str) -> None:
     assert "super-secret-value" not in text
     assert secret_key.lower().replace("-", "_") not in str(payload.get("details"))
     assert payload["details"] == {"corpus": "manuals"}
-    assert sanitize_error_details({secret_key: "x", "reason": "ok"}) == {"reason": "ok"}
+    # Untrusted mappings cannot use free-form reason as a passthrough channel.
+    assert sanitize_error_details({secret_key: "x", "reason": "ok"}) is None
+
+
+def test_untrusted_details_cannot_inject_secret_via_reason() -> None:
+    err = AppError(
+        ErrorCode.INTERNAL_ERROR,
+        details={"reason": "Authorization: Bearer super-secret-value"},
+    )
+    assert err.details is None
+    payload = error_response_from_app_error(err).model_dump(mode="json")
+    assert payload["details"] is None
+    assert "super-secret-value" not in str(payload)
+    assert "Bearer" not in str(payload)
+
+
+def test_untrusted_details_cannot_inject_secret_via_fields_msg() -> None:
+    err = AppError(
+        ErrorCode.INTERNAL_ERROR,
+        details={
+            "fields": [
+                {
+                    "loc": ["body", "question"],
+                    "msg": "Authorization: Bearer super-secret-value",
+                    "type": "value_error",
+                }
+            ]
+        },
+    )
+    assert err.details is None
+    payload = error_response_from_app_error(err).model_dump(mode="json")
+    assert payload["details"] is None
+    assert "super-secret-value" not in str(payload)
+    assert "Bearer" not in str(payload)
+
+
+def test_trusted_safe_error_details_can_include_reason_code() -> None:
+    err = AppError(
+        ErrorCode.REQUEST_INVALID,
+        details=SafeErrorDetails(reason="invalid_corpus_name", corpus="manuals"),
+    )
+    assert err.details == {
+        "reason": "invalid_corpus_name",
+        "corpus": "manuals",
+    }
+    with pytest.raises(Exception):
+        SafeErrorDetails(reason="Authorization: Bearer super-secret-value")
 
 
 def test_residual_a_defaults_without_env() -> None:
@@ -305,11 +352,12 @@ def test_validation_projection_allowlisted_and_no_input_echo() -> None:
         },
     ]
     projected = project_validation_errors(errors)
-    assert "input" not in str(projected)
-    assert "sk-super-secret" not in str(projected)
-    assert projected["fields"][0]["msg"] == "Invalid value"
-    assert projected["fields"][0]["loc"] == ["body", "api_key"]
-    assert projected["fields"][1]["loc"] == ["body", "question"]
+    envelope = projected.to_envelope_dict()
+    assert "input" not in str(envelope)
+    assert "sk-super-secret" not in str(envelope)
+    assert envelope["fields"][0]["msg"] == "Invalid value"
+    assert envelope["fields"][0]["loc"] == ["body", "api_key"]
+    assert envelope["fields"][1]["loc"] == ["body", "question"]
 
 
 def test_validation_translator_request_invalid_envelope() -> None:

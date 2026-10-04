@@ -2,29 +2,29 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-# Top-level allowlisted detail keys for product envelopes (D08).
-_ALLOWED_DETAIL_KEYS = frozenset(
+# Identity-like values permitted from untrusted detail mappings.
+_SAFE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+
+# Top-level keys that may be accepted from arbitrary AppError(details=dict...).
+# Free-form text channels (reason, fields[].msg) are NOT accepted this way.
+_UNTRUSTED_DETAIL_KEYS = frozenset(
     {
         "corpus",
         "snapshot_id",
         "document_id",
+        "field",
         "stage",
         "provider_failure_class",
-        "field",
-        "reason",
-        "fields",
     }
 )
-
-# Nested keys permitted inside details["fields"] validation projections.
-_ALLOWED_FIELD_ENTRY_KEYS = frozenset({"loc", "msg", "type"})
 
 _SECRET_KEY_TOKENS = frozenset(
     {
@@ -121,54 +121,109 @@ def _is_secret_key(key: object) -> bool:
     return any(secret in token for secret in _SECRET_KEY_TOKENS)
 
 
-def _sanitize_field_entry(entry: Mapping[str, Any]) -> dict[str, Any] | None:
+def _is_safe_id(value: object) -> bool:
+    if not isinstance(value, str):
+        return False
+    return bool(_SAFE_ID_RE.fullmatch(value))
+
+
+class ValidationFieldDetail(BaseModel):
+    """Trusted validation projection entry (loc / msg / type only)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    loc: list[str] = Field(default_factory=list)
+    msg: str
+    type: str
+
+
+class SafeErrorDetails(BaseModel):
+    """Trusted, application-authored product error details.
+
+    Free-form ``reason`` / validation ``fields`` may only be attached through
+    this DTO (or factories that produce it). Arbitrary ``AppError(details=dict)``
+    input cannot inject those channels.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    corpus: str | None = None
+    snapshot_id: str | None = None
+    document_id: str | None = None
+    stage: str | None = None
+    provider_failure_class: str | None = None
+    field: str | None = None
+    reason: str | None = None
+    fields: list[ValidationFieldDetail] | None = None
+
+    @field_validator(
+        "corpus",
+        "snapshot_id",
+        "document_id",
+        "stage",
+        "provider_failure_class",
+        "field",
+        mode="before",
+    )
+    @classmethod
+    def _require_safe_ids(cls, value: object) -> object:
+        if value is None:
+            return None
+        if not _is_safe_id(value):
+            raise ValueError("detail identity fields must be safe identifiers")
+        return value
+
+    @field_validator("reason", mode="before")
+    @classmethod
+    def _bound_reason(cls, value: object) -> object:
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise ValueError("reason must be a string")
+        text = value.strip()
+        if not text or len(text) > 200:
+            raise ValueError("reason must be a non-empty bounded string")
+        # Closed application reason codes only (no free-form prose / headers).
+        if not _SAFE_ID_RE.fullmatch(text):
+            raise ValueError("reason must be a safe application reason code")
+        return text
+
+    def to_envelope_dict(self) -> dict[str, Any]:
+        return self.model_dump(mode="python", exclude_none=True)
+
+
+def _sanitize_untrusted_mapping(details: Mapping[str, Any]) -> dict[str, Any] | None:
     cleaned: dict[str, Any] = {}
-    for key, value in entry.items():
-        norm = _normalize_key(key)
-        if norm not in _ALLOWED_FIELD_ENTRY_KEYS or _is_secret_key(key):
+    for key, value in details.items():
+        if _is_secret_key(key):
             continue
-        if norm == "loc":
-            if isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
-                cleaned["loc"] = [str(part) for part in value]
-            else:
-                cleaned["loc"] = []
-        else:
-            cleaned[norm] = str(value)
+        norm = _normalize_key(key)
+        # Untrusted mappings cannot carry free-form text channels.
+        if norm in {"reason", "fields"}:
+            continue
+        if norm not in _UNTRUSTED_DETAIL_KEYS:
+            continue
+        if _is_safe_id(value):
+            cleaned[norm] = value
     return cleaned or None
 
 
-def sanitize_error_details(details: Mapping[str, Any] | None) -> dict[str, Any] | None:
-    """Fail-closed projection for ErrorResponse.details.
+def sanitize_error_details(
+    details: SafeErrorDetails | Mapping[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Project details for ErrorResponse.
 
-    Only allowlisted keys survive. Secret-bearing keys are dropped even if a
-    caller attempts to inject them into AppError.details.
+    - ``SafeErrorDetails``: trusted application projection (may include reason/fields)
+    - bare mappings: untrusted; identity-like keys only; no free-form reason/msg
     """
     if details is None:
         return None
-    if not isinstance(details, Mapping):
-        return None
-
-    cleaned: dict[str, Any] = {}
-    for key, value in details.items():
-        norm = _normalize_key(key)
-        if _is_secret_key(key) or norm not in _ALLOWED_DETAIL_KEYS:
-            continue
-        if norm == "fields":
-            if not isinstance(value, Sequence) or isinstance(value, (str, bytes)):
-                continue
-            fields: list[dict[str, Any]] = []
-            for item in value:
-                if not isinstance(item, Mapping):
-                    continue
-                projected = _sanitize_field_entry(item)
-                if projected is not None:
-                    fields.append(projected)
-            cleaned["fields"] = fields
-            continue
-        # Scalar allowlisted values only — no nested free-form objects.
-        if isinstance(value, (str, int, float, bool)) or value is None:
-            cleaned[norm] = value
-    return cleaned or None
+    if isinstance(details, SafeErrorDetails):
+        payload = details.to_envelope_dict()
+        return payload or None
+    if isinstance(details, Mapping):
+        return _sanitize_untrusted_mapping(details)
+    return None
 
 
 class ErrorBody(BaseModel):
@@ -197,24 +252,30 @@ class AppError(Exception):
         code: ErrorCode,
         message: str | None = None,
         *,
-        details: dict[str, Any] | None = None,
+        details: SafeErrorDetails | Mapping[str, Any] | None = None,
         trace_id: str | None = None,
     ) -> None:
         spec = ERROR_CATALOG[code]
         self.code = code
         self.message = message if message is not None else spec.default_message
-        self.details = sanitize_error_details(details)
+        # Keep the original trusted/untrusted input so SafeErrorDetails is not
+        # downgraded when projecting to the envelope.
+        self._details_input: SafeErrorDetails | Mapping[str, Any] | None = details
         self.trace_id = trace_id
         self.retryable = spec.retryable
         self.http_status = spec.http_status
         super().__init__(self.message)
+
+    @property
+    def details(self) -> dict[str, Any] | None:
+        return sanitize_error_details(self._details_input)
 
     def to_error_response(self) -> ErrorResponse:
         return ErrorResponse(
             error=ErrorBody(code=self.code, message=self.message),
             retryable=self.retryable,
             trace_id=self.trace_id,
-            details=sanitize_error_details(self.details),
+            details=sanitize_error_details(self._details_input),
         )
 
 
