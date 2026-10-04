@@ -177,22 +177,73 @@ class ProductPublicationRegistry:
         if require_current_config_match:
             self._assert_current_config_matches(identity)
 
-        if self.qdrant is not None:
-            exists = getattr(self.qdrant, "collection_exists", None)
-            if callable(exists) and not exists(dense_m.collection_name):
-                raise AppError(
-                    ErrorCode.SNAPSHOT_UNAVAILABLE,
-                    details=SafeErrorDetails(reason="qdrant_collection_missing"),
-                )
+        self._assert_dense_backing_complete(dense_m)
+        self._assert_lexical_backing_complete(lexical_m)
 
-        rel = lexical_m.physical_index_relpath
-        physical = Path(rel)
-        if not physical.is_absolute():
-            physical = self.settings.paths.lexical_indexes / Path(rel).name
-        if not physical.exists():
+    def _assert_dense_backing_complete(self, dense_m: Any) -> None:
+        """Require complete dense publication semantics (manifest + Qdrant)."""
+        if (
+            dense_m.expected_child_count != dense_m.indexed_child_count
+            or dense_m.indexed_child_count < 1
+        ):
+            raise AppError(
+                ErrorCode.CORPUS_NOT_READY,
+                details=SafeErrorDetails(reason="dense_index_incomplete"),
+            )
+
+        if self.qdrant is None:
+            raise AppError(
+                ErrorCode.SNAPSHOT_UNAVAILABLE,
+                details=SafeErrorDetails(reason="qdrant_unavailable"),
+            )
+        exists = getattr(self.qdrant, "collection_exists", None)
+        count = getattr(self.qdrant, "count", None)
+        if not callable(exists) or not callable(count):
+            raise AppError(
+                ErrorCode.SNAPSHOT_UNAVAILABLE,
+                details=SafeErrorDetails(reason="qdrant_unavailable"),
+            )
+        if not exists(dense_m.collection_name):
+            raise AppError(
+                ErrorCode.SNAPSHOT_UNAVAILABLE,
+                details=SafeErrorDetails(reason="qdrant_collection_missing"),
+            )
+        try:
+            actual = int(count(dense_m.collection_name))
+        except Exception as exc:
+            raise AppError(
+                ErrorCode.SNAPSHOT_UNAVAILABLE,
+                details=SafeErrorDetails(reason="qdrant_count_failed"),
+            ) from exc
+        if actual != dense_m.indexed_child_count:
+            raise AppError(
+                ErrorCode.SNAPSHOT_UNAVAILABLE,
+                details=SafeErrorDetails(reason="qdrant_count_mismatch"),
+            )
+
+    def _assert_lexical_backing_complete(self, lexical_m: Any) -> None:
+        """Require complete lexical publication semantics (manifest + validate)."""
+        if (
+            lexical_m.expected_child_count != lexical_m.indexed_child_count
+            or lexical_m.indexed_child_count < 1
+        ):
+            raise AppError(
+                ErrorCode.CORPUS_NOT_READY,
+                details=SafeErrorDetails(reason="lexical_index_incomplete"),
+            )
+
+        from offline_rag.lexical.backend import LocalInvertedIndexBackend
+
+        backend = LocalInvertedIndexBackend(self.settings.paths.lexical_indexes)
+        if not backend.index_exists(lexical_m.lexical_index_id):
             raise AppError(
                 ErrorCode.SNAPSHOT_UNAVAILABLE,
                 details=SafeErrorDetails(reason="lexical_index_missing"),
+            )
+        if not backend.validate(lexical_m.lexical_index_id):
+            raise AppError(
+                ErrorCode.SNAPSHOT_UNAVAILABLE,
+                details=SafeErrorDetails(reason="lexical_index_invalid"),
             )
 
     def _assert_current_config_matches(self, identity: CanonicalSnapshotManifest) -> None:

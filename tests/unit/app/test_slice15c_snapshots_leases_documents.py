@@ -55,10 +55,13 @@ class _FakeCloseable:
 
 class _FakeQdrant:
     def __init__(self) -> None:
-        self.collections: set[str] = set()
+        self.counts: dict[str, int] = {}
 
     def collection_exists(self, name: str) -> bool:
-        return name in self.collections
+        return name in self.counts
+
+    def count(self, name: str) -> int:
+        return int(self.counts[name])
 
     def close(self) -> None:
         return None
@@ -136,6 +139,11 @@ def _write_scientific_stack(
     collection_name: str = "col_ccc",
     document_id: str = "doc_001",
     source_name: str = "spec.pdf",
+    expected_child_count: int = 1,
+    indexed_child_count: int = 1,
+    lexical_expected_child_count: int | None = None,
+    lexical_indexed_child_count: int | None = None,
+    build_lexical: bool = True,
 ) -> CanonicalSnapshotManifest:
     hashes = _config_hashes(settings)
     now = datetime.now(tz=UTC)
@@ -193,8 +201,8 @@ def _write_scientific_stack(
         backend="qdrant_local",
         backend_contract="qdrant-local-v1",
         collection_name=collection_name,
-        expected_child_count=1,
-        indexed_child_count=1,
+        expected_child_count=expected_child_count,
+        indexed_child_count=indexed_child_count,
         created_at=now,
     )
     lexical = LexicalIndexManifest(
@@ -211,11 +219,24 @@ def _write_scientific_stack(
         bm25_b=0.75,
         bm25_idf="standard",
         bm25_query_tf="raw",
-        backend="whoosh",
-        backend_contract="whoosh-v1",
-        expected_child_count=1,
-        indexed_child_count=1,
-        document_count=1,
+        backend="local_inverted",
+        backend_contract="local-inverted-index-v1",
+        expected_child_count=(
+            expected_child_count
+            if lexical_expected_child_count is None
+            else lexical_expected_child_count
+        ),
+        indexed_child_count=(
+            indexed_child_count
+            if lexical_indexed_child_count is None
+            else lexical_indexed_child_count
+        ),
+        document_count=max(
+            indexed_child_count
+            if lexical_indexed_child_count is None
+            else lexical_indexed_child_count,
+            0,
+        ),
         vocabulary_size=1,
         avgdl=1.0,
         physical_index_relpath=f"{lexical_index_id}",
@@ -239,10 +260,35 @@ def _write_scientific_stack(
     (settings.paths.lexical_index_manifests / lexical_manifest_name).write_text(
         lexical.model_dump_json(), encoding="utf-8"
     )
-    (settings.paths.lexical_indexes / lexical_index_id).mkdir(parents=True, exist_ok=True)
-    (settings.paths.lexical_indexes / lexical_index_id / "index").write_text(
-        "ok", encoding="utf-8"
-    )
+    if build_lexical:
+        from offline_rag.lexical.backend import (
+            LexicalDocumentInput,
+            LocalInvertedIndexBackend,
+        )
+
+        lexical_path = settings.paths.lexical_indexes / lexical_index_id
+        if lexical_path.exists():
+            shutil.rmtree(lexical_path)
+        LocalInvertedIndexBackend(settings.paths.lexical_indexes).build(
+            lexical_index_id,
+            [
+                LexicalDocumentInput(
+                    chunk_id="chunk_1",
+                    terms=["offline", "rag"],
+                    document_id=document_id,
+                )
+            ],
+            chunk_set_id=chunk_set_id,
+            lexical_config_hash=hashes["lexical_config_hash"],
+        )
+    else:
+        # Invalid directory-only remnant (must not certify grounded readiness).
+        (settings.paths.lexical_indexes / lexical_index_id).mkdir(
+            parents=True, exist_ok=True
+        )
+        (settings.paths.lexical_indexes / lexical_index_id / "index").write_text(
+            "ok", encoding="utf-8"
+        )
 
     return CanonicalSnapshotManifest(
         corpus_id=corpus_id,
@@ -301,7 +347,7 @@ def test_atomic_publish_and_resolve_pinning(tmp_path: Path) -> None:
         collection_name="col_n",
         lexical_index_id="lexical_n",
     )
-    qdrant.collections.add("col_n")
+    qdrant.counts["col_n"] = 1
     sid_n = registry.publish("engineering", n)
     snap_n = registry.resolve("engineering")
     assert snap_n.snapshot_id == sid_n
@@ -316,7 +362,7 @@ def test_atomic_publish_and_resolve_pinning(tmp_path: Path) -> None:
         document_id="doc_002",
         source_name="other.pdf",
     )
-    qdrant.collections.add("col_n1")
+    qdrant.counts["col_n1"] = 1
     sid_n1 = registry.publish("engineering", n1)
     assert sid_n1 != sid_n
     snap_new = registry.resolve("engineering")
@@ -331,7 +377,7 @@ def test_publish_failure_before_pointer_leaves_n(
 ) -> None:
     settings = _settings(tmp_path)
     qdrant = _FakeQdrant()
-    qdrant.collections.add("col_a")
+    qdrant.counts["col_a"] = 1
     registry = ProductPublicationRegistry(settings, qdrant=qdrant)
     n = _write_scientific_stack(
         settings,
@@ -349,7 +395,7 @@ def test_publish_failure_before_pointer_leaves_n(
         lexical_index_id="lexical_b",
         collection_name="col_b",
     )
-    qdrant.collections.add("col_b")
+    qdrant.counts["col_b"] = 1
 
     from offline_rag.ingestion import io as io_mod
 
@@ -369,7 +415,7 @@ def test_publish_failure_before_pointer_leaves_n(
 def test_incompatible_published_snapshot_corpus_not_ready(tmp_path: Path) -> None:
     settings = _settings(tmp_path)
     qdrant = _FakeQdrant()
-    qdrant.collections.add("col_ccc")
+    qdrant.counts["col_ccc"] = 1
     registry = ProductPublicationRegistry(settings, qdrant=qdrant)
     identity = _write_scientific_stack(settings)
     registry.publish("engineering", identity)
@@ -386,7 +432,7 @@ def test_incompatible_published_snapshot_corpus_not_ready(tmp_path: Path) -> Non
 def test_missing_artifact_snapshot_unavailable(tmp_path: Path) -> None:
     settings = _settings(tmp_path)
     qdrant = _FakeQdrant()
-    qdrant.collections.add("col_ccc")
+    qdrant.counts["col_ccc"] = 1
     registry = ProductPublicationRegistry(settings, qdrant=qdrant)
     identity = _write_scientific_stack(settings)
     registry.publish("engineering", identity)
@@ -453,7 +499,7 @@ def test_holder_process_death_releases_lease(tmp_path: Path) -> None:
 def test_abandoned_candidate_recovery_never_changes_pointer(tmp_path: Path) -> None:
     settings = _settings(tmp_path)
     qdrant = _FakeQdrant()
-    qdrant.collections.add("col_ccc")
+    qdrant.counts["col_ccc"] = 1
     registry = ProductPublicationRegistry(settings, qdrant=qdrant)
     identity = _write_scientific_stack(settings)
     sid = registry.publish("engineering", identity)
@@ -477,7 +523,7 @@ def test_abandoned_candidate_recovery_never_changes_pointer(tmp_path: Path) -> N
 def test_documents_http_surface(tmp_path: Path) -> None:
     settings = _settings(tmp_path)
     qdrant = _FakeQdrant()
-    qdrant.collections.add("col_ccc")
+    qdrant.counts["col_ccc"] = 1
     runtime = ApplicationRuntime(settings=settings, factories=_factories(qdrant))
     runtime.start()
     identity = _write_scientific_stack(settings)
@@ -557,4 +603,92 @@ def test_startup_recovers_candidates_without_publish(tmp_path: Path) -> None:
     assert not cand.exists()
     assert list((settings.paths.corpora / "engineering" / "abandoned").iterdir())
     assert not current_pointer_path(settings.paths.corpora, "engineering").exists()
+    runtime.shutdown()
+
+
+def test_incomplete_dense_count_is_not_grounded_ready(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    qdrant = _FakeQdrant()
+    qdrant.counts["col_ccc"] = 70
+    registry = ProductPublicationRegistry(settings, qdrant=qdrant)
+    identity = _write_scientific_stack(
+        settings,
+        expected_child_count=100,
+        indexed_child_count=70,
+        lexical_expected_child_count=1,
+        lexical_indexed_child_count=1,
+    )
+    with pytest.raises(AppError) as exc:
+        registry.publish("engineering", identity)
+    assert exc.value.code is ErrorCode.CORPUS_NOT_READY
+
+
+def test_qdrant_count_mismatch_is_snapshot_unavailable(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    qdrant = _FakeQdrant()
+    qdrant.counts["col_ccc"] = 20
+    registry = ProductPublicationRegistry(settings, qdrant=qdrant)
+    identity = _write_scientific_stack(
+        settings,
+        expected_child_count=100,
+        indexed_child_count=100,
+        lexical_expected_child_count=1,
+        lexical_indexed_child_count=1,
+    )
+    with pytest.raises(AppError) as exc:
+        registry.publish("engineering", identity)
+    assert exc.value.code is ErrorCode.SNAPSHOT_UNAVAILABLE
+
+
+def test_invalid_lexical_backing_is_snapshot_unavailable(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    qdrant = _FakeQdrant()
+    qdrant.counts["col_ccc"] = 1
+    registry = ProductPublicationRegistry(settings, qdrant=qdrant)
+    identity = _write_scientific_stack(settings, build_lexical=False)
+    with pytest.raises(AppError) as exc:
+        registry.publish("engineering", identity)
+    assert exc.value.code is ErrorCode.SNAPSHOT_UNAVAILABLE
+
+
+def test_recovery_skips_candidates_while_lease_held(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    settings.paths.locks.mkdir(parents=True, exist_ok=True)
+    cand = settings.paths.corpora / "engineering" / "candidates" / "live_build"
+    cand.mkdir(parents=True)
+    marker = cand / "partial.txt"
+    marker.write_text("building", encoding="utf-8")
+    holder = CorpusMutationLease(settings, "engineering")
+    holder.acquire()
+    try:
+        moved = recover_abandoned_candidates(settings)
+        assert moved == []
+        assert cand.exists()
+        assert marker.exists()
+    finally:
+        holder.release()
+    moved = recover_abandoned_candidates(settings)
+    assert moved
+    assert not cand.exists()
+    assert (settings.paths.corpora / "engineering" / "abandoned").exists()
+
+
+def test_unsafe_unknown_document_id_still_document_unknown(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    qdrant = _FakeQdrant()
+    qdrant.counts["col_ccc"] = 1
+    runtime = ApplicationRuntime(settings=settings, factories=_factories(qdrant))
+    runtime.start()
+    identity = _write_scientific_stack(settings)
+    runtime.publication.publish("engineering", identity)
+    app = create_app(runtime=runtime)
+    with TestClient(app, raise_server_exceptions=False) as client:
+        response = client.get(
+            "/v1/documents/not$canonical", params={"corpus": "engineering"}
+        )
+    assert response.status_code == 404
+    body = response.json()
+    assert body["error"]["code"] == "document_unknown"
+    assert "validation error" not in response.text.lower()
+    assert "SafeErrorDetails" not in response.text
     runtime.shutdown()

@@ -45,12 +45,14 @@ def get_document(
     snapshot = runtime.publication.resolve(corpus)
     summary = snapshot.get_document_summary(document_id)
     if summary is None:
+        # Do not echo arbitrary path values into trusted identity fields —
+        # unsafe IDs must still map to document_unknown 404 (D10).
         raise AppError(
             ErrorCode.DOCUMENT_UNKNOWN,
             details=SafeErrorDetails(
                 corpus=snapshot.corpus_name,
                 snapshot_id=snapshot.snapshot_id,
-                document_id=document_id,
+                reason="document_not_in_snapshot",
             ),
         )
     return {
