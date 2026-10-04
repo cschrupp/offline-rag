@@ -938,12 +938,15 @@ update.** Milestone 6 remains COMPLETE / ACCEPTED unchanged.
 **Phase progress:**
 - **15A:** **COMPLETE / ACCEPTED** (`4a1c8dbcddc8408dd8b8b46dc0f18df56561d2f8`)
 - **15B:** **COMPLETE / ACCEPTED** (`00282d67f43edad7cb4094228c482bf8f361d578`)
-- **15C–15H:** **NOT AUTHORIZED**
+- **15C:** **COMPLETE / ACCEPTED** (implementation head `5d70be09a3534a093bad9754f4051840ed1fde92`; merge `47a11f1968be75cf772fc7a9e4447ee26e283c52`)
+- **15D:** **NOT AUTHORIZED**
+- **15E–15H:** **NOT AUTHORIZED**
 
 Roadmap path names such as unversioned `/ingest` and optional `/eval/run` are
 superseded by the locked design: product HTTP under `/v1/*`, CLI-first evaluation
-(D12), and unversioned `/health*` only. Landed 15B exposes `/health`,
-`/health/live`, and `/health/ready` only — product `/v1/*` remains later.
+(D12), and unversioned `/health*` only. Landed routes through 15C:
+`/health*`, `GET /v1/documents`, `GET /v1/documents/{document_id}`. Product
+ingest/query/trace remain later.
 
 ## Objective
 

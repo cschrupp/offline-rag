@@ -442,14 +442,18 @@ Slice 14 checklist:
   - Landed on main via FF through `4a1c8dbcddc8408dd8b8b46dc0f18df56561d2f8`
 - **15B** runtime lifecycle + `/health*` + doctor non-mutation: **COMPLETE / ACCEPTED**
   - Implementation commits `a009bd7d975b090d03d0b9b6b8d580dbfee6f796`, `00282d67f43edad7cb4094228c482bf8f361d578`
-  - Main HEAD / 15C candidate baseline: `00282d67f43edad7cb4094228c482bf8f361d578`
-- **15C–15H:** **NOT AUTHORIZED**
+- **15C** snapshots + leases + `/v1/documents*`: **COMPLETE / ACCEPTED**
+  - Implementation head: `5d70be09a3534a093bad9754f4051840ed1fde92`
+  - Merge commit: `47a11f1968be75cf772fc7a9e4447ee26e283c52`
+- **15D:** **NOT AUTHORIZED**
+- **15E–15H:** **NOT AUTHORIZED**
 
 Later M7 checklist (not Slice 14):
 
 - [x] FastAPI substrate + process lifecycle + `/health*` (15A/15B — **COMPLETE / ACCEPTED**)
 - [x] doctor non-mutation / startup-owned `/data` creation (15B — **COMPLETE / ACCEPTED**)
-- [ ] product `/v1/{ingest,query,documents,trace}` (15C–15E)
+- [x] product publication registry + leases + `/v1/documents*` (15C — **COMPLETE / ACCEPTED**)
+- [ ] product `/v1/{ingest,query,trace}` (15D–15E)
 - [ ] admission / deadlines / drain (15F)
 - [ ] single-container OfflineRAG application image (15G)
 - [ ] Qdrant Local standalone profile (15G)
@@ -462,7 +466,7 @@ Later M7 checklist (not Slice 14):
 **Release criterion:** a reviewer can interactively compare retrieval modes and inspect evidence flow.
 
 Milestone **6** remains **COMPLETE / ACCEPTED** at `dcc6b07…`. Milestone **7**
-remains **IN PROGRESS** (Slice 15 through **15B** landed; **15C+** not
+remains **IN PROGRESS** (Slice 15 through **15C** landed; **15D+** not
 authorized). Performance optimization, generator max-token change, reranker
 config change, `base.yaml` promotion, `PORTFOLIO_DEMO.md` update, 13C/13D,
 recovery enablement, LangGraph, and NeMo remain **NOT AUTHORIZED**.

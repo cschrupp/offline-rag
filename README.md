@@ -379,15 +379,17 @@ Use public, redistributable technical documents rather than proprietary material
 
 **Phase:** Milestone **7 IN PROGRESS**. Milestone **6 COMPLETE / ACCEPTED**.
 Slice **14 COMPLETE / ACCEPTED**. Slice **15** architecture locked; phases
-**15A/15B COMPLETE / ACCEPTED** on main (`00282d67…`) — app foundation, process
-lifecycle, `/health*`, and non-mutating `doctor`. Product `/v1/*`, admission,
-container packaging (**15C–15G**), retrieval inspector, citation viewer, and
-evaluation dashboard remain later Milestone 7 work (**15C+ not authorized**).
+**15A/15B/15C COMPLETE / ACCEPTED** on main (15C merge `47a11f19…`) — app
+foundation, process lifecycle, `/health*`, non-mutating `doctor`, product
+publication registry/leases, and `/v1/documents*`. Product ingest/query/trace
+(**15D–15E**), admission (**15F**), container packaging (**15G**), retrieval
+inspector, citation viewer, and evaluation dashboard remain later Milestone 7
+work (**15D+ not authorized**).
 
 Working local path: ingest → chunk → index / index lexical → retrieve ladder →
 `query` → grounded generation → `eval retrieve` / `eval compare` →
 `eval query` → `doctor` → gold authoring workflow → Slice 14 performance
-benchmarks → Slice 15B `/health*` runtime probes.
+benchmarks → Slice 15B `/health*` → Slice 15C `/v1/documents*`.
 
 Still deferred / not authorized from Slice 14 closeout: publication-grade
 portfolio claims (`PORTFOLIO_DEMO.md`); performance optimization; generator
