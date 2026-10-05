@@ -30,6 +30,7 @@ from offline_rag.app.errors import AppError, ErrorCode, SafeErrorDetails
 from offline_rag.app.ingest import run_product_replace_ingest
 from offline_rag.app.ingest_hooks import ProductIngestHooks
 from offline_rag.app.ingest_upload import spool_local_files
+from offline_rag.app.leases import CorpusMutationLease
 from offline_rag.app.operations import OperationHandle
 from offline_rag.app.workspace.create_idempotency import WorkspaceCreateCatalog
 from offline_rag.app.workspace.history import SourceHistoryStore
@@ -62,6 +63,7 @@ from offline_rag.app.workspace.publication_journal import (
     SourceVersionRef,
 )
 from offline_rag.app.workspace.store import WorkspaceStore
+from offline_rag.app.workspace.sync_journal import SyncMutationCoordinator
 from offline_rag.app.workspace.vault import RawSourceVault
 from offline_rag.config.models import AppSettings
 from offline_rag.ingestion.base import SUPPORTED_EXTENSIONS
@@ -166,6 +168,7 @@ class WorkspaceLifecycleService:
             self.settings, self.store, self.history
         )
         self.empty_transition = EmptyTransitionCoordinator(self.settings, self.store)
+        self.sync_mutations = SyncMutationCoordinator(self.settings)
 
     # ------------------------------------------------------- synchronous CRUD
 
@@ -200,7 +203,7 @@ class WorkspaceLifecycleService:
         idempotency_key: str,
         title: str | None = None,
         description: str | None = None,
-    ) -> tuple[WorkspaceRecord, ManagedOperationRecord]:
+    ) -> tuple[dict[str, Any], ManagedOperationRecord]:
         """Display-only edit with durable idempotency (S16-D11 / S16-D14)."""
         if title is None and description is None:
             raise AppError(
@@ -217,13 +220,16 @@ class WorkspaceLifecycleService:
                 expected_revision=expected_revision,
                 lease=lease,
             )
-            if op.status is ManagedOperationStatus.SUCCEEDED and op.result is not None:
-                return self._workspace_from_sync_result(workspace_id, op), op
-            if op.status in {
-                ManagedOperationStatus.FAILED,
-                ManagedOperationStatus.INTERRUPTED,
-            }:
-                return self.store.get(workspace_id, include_tombstoned=True), op
+            replay = self._replay_sync_operation(op)
+            if replay is not None:
+                return replay
+            self.sync_mutations.begin(
+                workspace_id,
+                operation_id=op.operation_id,
+                kind=ManagedOperationKind.WORKSPACE_METADATA_PATCH,
+                expected_revision=expected_revision,
+                lease=lease,
+            )
             try:
                 record = self.store.apply_metadata_patch(
                     workspace_id,
@@ -232,20 +238,17 @@ class WorkspaceLifecycleService:
                     description=description,
                     lease=lease,
                 )
-                op = self._succeed_sync_operation(
-                    workspace_id,
-                    op.operation_id,
-                    result=ManagedOperationResult(
-                        workspace_revision=record.revision,
-                        workspace_status=record.status,
-                        snapshot_id=record.current_snapshot_id,
-                        title=record.title,
-                        description=record.description,
-                    ),
-                    lease=lease,
+                result = self._workspace_result_receipt(record)
+                self.sync_mutations.mark_workspace_committed(
+                    workspace_id, result=result, lease=lease
                 )
-                return record, op
+                op = self._succeed_sync_operation(
+                    workspace_id, op.operation_id, result=result, lease=lease
+                )
+                self.sync_mutations.drop(workspace_id, lease=lease)
+                return self._workspace_public_from_result(workspace_id, op), op
             except AppError as exc:
+                self.sync_mutations.drop(workspace_id, lease=lease)
                 self.operations.update_status(
                     workspace_id,
                     op.operation_id,
@@ -262,7 +265,7 @@ class WorkspaceLifecycleService:
         *,
         expected_revision: WorkspaceRevision,
         idempotency_key: str,
-    ) -> tuple[WorkspaceRecord, ManagedOperationRecord]:
+    ) -> tuple[dict[str, Any], ManagedOperationRecord]:
         """Logical delete with durable idempotency (S16-D13 / S16-D14)."""
         payload = {"action": "tombstone"}
         with WorkspaceMutationLease(self.settings, workspace_id) as lease:
@@ -274,31 +277,31 @@ class WorkspaceLifecycleService:
                 expected_revision=expected_revision,
                 lease=lease,
             )
-            if op.status is ManagedOperationStatus.SUCCEEDED and op.result is not None:
-                return self._workspace_from_sync_result(workspace_id, op), op
-            if op.status in {
-                ManagedOperationStatus.FAILED,
-                ManagedOperationStatus.INTERRUPTED,
-            }:
-                return self.store.get(workspace_id, include_tombstoned=True), op
+            replay = self._replay_sync_operation(op)
+            if replay is not None:
+                return replay
+            self.sync_mutations.begin(
+                workspace_id,
+                operation_id=op.operation_id,
+                kind=ManagedOperationKind.WORKSPACE_DELETE,
+                expected_revision=expected_revision,
+                lease=lease,
+            )
             try:
                 record = self.store.tombstone(
                     workspace_id, expected_revision=expected_revision, lease=lease
                 )
-                op = self._succeed_sync_operation(
-                    workspace_id,
-                    op.operation_id,
-                    result=ManagedOperationResult(
-                        workspace_revision=record.revision,
-                        workspace_status=record.status,
-                        snapshot_id=None,
-                        title=record.title,
-                        description=record.description,
-                    ),
-                    lease=lease,
+                result = self._workspace_result_receipt(record)
+                self.sync_mutations.mark_workspace_committed(
+                    workspace_id, result=result, lease=lease
                 )
-                return record, op
+                op = self._succeed_sync_operation(
+                    workspace_id, op.operation_id, result=result, lease=lease
+                )
+                self.sync_mutations.drop(workspace_id, lease=lease)
+                return self._workspace_public_from_result(workspace_id, op), op
             except AppError as exc:
+                self.sync_mutations.drop(workspace_id, lease=lease)
                 self.operations.update_status(
                     workspace_id,
                     op.operation_id,
@@ -317,11 +320,7 @@ class WorkspaceLifecycleService:
         result: ManagedOperationResult,
         lease: WorkspaceMutationLease,
     ) -> ManagedOperationRecord:
-        """Terminalize a sync mutation through the legal status machine.
-
-        Sync work is too short for PREPARING progress, but PENDING may not jump
-        directly to SUCCEEDED — step through RUNNING first.
-        """
+        """Terminalize a sync mutation through the legal status machine."""
         self.operations.update_status(
             workspace_id,
             operation_id,
@@ -336,39 +335,89 @@ class WorkspaceLifecycleService:
             lease=lease,
         )
 
-    def _workspace_from_sync_result(
-        self, workspace_id: str, op: ManagedOperationRecord
-    ) -> WorkspaceRecord:
-        """Rebuild a product workspace view from a durable sync receipt (F2)."""
-        assert op.result is not None
-        try:
-            live = self.store.get(workspace_id, include_tombstoned=True)
-        except AppError:
-            live = None
-        # Prefer live record when still at the same revision; otherwise synthesize
-        # from the receipt so an exact retry does not require the current If-Match.
-        if live is not None and live.revision == op.result.workspace_revision:
-            return live
-        now = utc_now()
-        return WorkspaceRecord.model_construct(
-            schema_version="offline-rag-workspace-v1",
-            workspace_id=workspace_id,
-            title=op.result.title or (live.title if live else "workspace"),
-            description=op.result.description
-            if op.result.description is not None
-            else (live.description if live else ""),
-            revision=op.result.workspace_revision,
-            backing_corpus_name=(
-                live.backing_corpus_name
-                if live is not None
-                else f"wsc_{workspace_id.removeprefix('ws_')[:48]}"
-            ),
-            current_snapshot_id=op.result.snapshot_id,
-            status=op.result.workspace_status,
-            created_at=live.created_at if live is not None else now,
-            updated_at=live.updated_at if live is not None else now,
-            sources=list(live.sources) if live is not None else [],
+    @staticmethod
+    def _workspace_result_receipt(record: WorkspaceRecord) -> ManagedOperationResult:
+        active = [s for s in record.sources if s.active]
+        return ManagedOperationResult(
+            workspace_revision=record.revision,
+            workspace_status=record.status,
+            snapshot_id=record.current_snapshot_id,
+            title=record.title,
+            description=record.description,
+            source_count=len(active),
+            created_at=record.created_at,
+            updated_at=record.updated_at,
         )
+
+    @staticmethod
+    def _workspace_public_from_result(
+        workspace_id: str, op: ManagedOperationRecord
+    ) -> dict[str, Any]:
+        """Exact public workspace projection from a frozen sync receipt (F9)."""
+        assert op.result is not None
+        r = op.result
+        created = r.created_at or op.created_at
+        updated = r.updated_at or op.updated_at
+        return {
+            "workspace_id": workspace_id,
+            "title": r.title or "",
+            "description": r.description or "",
+            "revision": r.workspace_revision,
+            "status": str(r.workspace_status),
+            "current_snapshot_id": r.snapshot_id,
+            "source_count": int(r.source_count or 0),
+            "created_at": created.isoformat().replace("+00:00", "Z"),
+            "updated_at": updated.isoformat().replace("+00:00", "Z"),
+        }
+
+    @staticmethod
+    def _source_public_from_result(op: ManagedOperationRecord) -> dict[str, Any]:
+        assert op.result is not None
+        r = op.result
+        created = r.created_at or op.created_at
+        return {
+            "source_id": r.source_id,
+            "version": r.source_version,
+            "display_name": r.display_name,
+            "content_type": r.content_type,
+            "byte_size": r.byte_size,
+            "content_hash": r.content_hash,
+            "document_id": r.document_id,
+            "created_at": created.isoformat().replace("+00:00", "Z"),
+            "active_from_revision": r.active_from_revision,
+            "active_from_snapshot_id": r.active_from_snapshot_id,
+        }
+
+    def _raise_from_sync_terminal(self, op: ManagedOperationRecord) -> None:
+        if op.error is not None:
+            details = op.error.details
+            raise AppError(
+                op.error.code,
+                message=op.error.message,
+                details=details,
+            )
+        raise AppError(
+            ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+            details=SafeErrorDetails(
+                workspace_id=op.workspace_id,
+                operation_id=op.operation_id,
+                reason="operation_interrupted",
+            ),
+        )
+
+    def _replay_sync_operation(
+        self, op: ManagedOperationRecord
+    ) -> tuple[dict[str, Any], ManagedOperationRecord] | None:
+        if op.status is ManagedOperationStatus.SUCCEEDED and op.result is not None:
+            if op.kind is ManagedOperationKind.SOURCE_METADATA_PATCH:
+                return self._source_public_from_result(op), op
+            return self._workspace_public_from_result(op.workspace_id, op), op
+        if op.status in {
+            ManagedOperationStatus.FAILED,
+            ManagedOperationStatus.INTERRUPTED,
+        }:
+            self._raise_from_sync_terminal(op)
+        return None
 
     # ------------------------------------------------- managed source mutations
 
@@ -380,22 +429,63 @@ class WorkspaceLifecycleService:
         idempotency_key: str,
         expected_revision: WorkspaceRevision,
         payload: dict[str, Any],
+        require_source_id: str | None = None,
     ) -> tuple[ManagedOperationRecord, OperationHandle | None]:
         """Strict idempotency preflight before ingest capacity / worker launch.
 
-        Under ``WorkspaceMutationLease``:
-        - existing matching key → return that operation, no capacity, no worker
-        - conflicting key → ``idempotency_conflict``
-        - new reservation → admit exactly one ingest slot; on admission failure
-          terminalize the phantom reservation as FAILED (no queued ghost)
-
-        Returns ``(operation, handle)``. ``handle`` is None when the caller must
-        not launch a worker.
+        Ordering (F3/F8):
+        1. existing matching key → return it (even if If-Match is now stale)
+        2. conflicting key → idempotency_conflict
+        3. NEW key → validate workspace/revision/source preconditions
+        4. reserve + admit + launch
         """
         self.runtime.require_ready()
+        from offline_rag.app.workspace.models import canonical_operation_fingerprint
+
         lease = WorkspaceMutationLease(self.settings, workspace_id)
         lease.acquire(blocking=True)
         try:
+            fingerprint = canonical_operation_fingerprint(
+                kind=kind,
+                expected_revision=expected_revision,
+                payload=payload,
+            )
+            existing = self.operations.find_by_idempotency(workspace_id, idempotency_key)
+            if existing is not None:
+                if (
+                    existing.request_fingerprint != fingerprint
+                    or existing.kind != kind
+                    or existing.expected_revision != expected_revision
+                ):
+                    raise AppError(
+                        ErrorCode.IDEMPOTENCY_CONFLICT,
+                        details=SafeErrorDetails(
+                            workspace_id=workspace_id,
+                            operation_id=existing.operation_id,
+                            reason="idempotency_identity_mismatch",
+                        ),
+                    )
+                return existing, None
+
+            # NEW key: cheap preconditions before capacity / reservation.
+            record = self.store.get(workspace_id)
+            if record.status is WorkspaceStatus.TOMBSTONED:
+                raise AppError(
+                    ErrorCode.WORKSPACE_UNKNOWN,
+                    details=SafeErrorDetails(workspace_id=workspace_id),
+                )
+            if record.revision != expected_revision:
+                raise _conflict(workspace_id, "revision_conflict")
+            if require_source_id is not None and not any(
+                s.active and s.source_id == require_source_id for s in record.sources
+            ):
+                raise AppError(
+                    ErrorCode.SOURCE_UNKNOWN,
+                    details=SafeErrorDetails(
+                        workspace_id=workspace_id, source_id=require_source_id
+                    ),
+                )
+
             operation, created = self.operations.reserve(
                 workspace_id=workspace_id,
                 idempotency_key=idempotency_key,
@@ -484,7 +574,7 @@ class WorkspaceLifecycleService:
         expected_revision: WorkspaceRevision,
         idempotency_key: str,
         display_name: str,
-    ) -> tuple[WorkspaceRecord, ManagedOperationRecord, SourceVersionRecord]:
+    ) -> tuple[dict[str, Any], ManagedOperationRecord]:
         """Display-only rename with durable idempotency."""
         name = display_name.strip()
         if not name:
@@ -507,34 +597,16 @@ class WorkspaceLifecycleService:
                 expected_revision=expected_revision,
                 lease=lease,
             )
-            if op.status is ManagedOperationStatus.SUCCEEDED and op.result is not None:
-                ws = self._workspace_from_sync_result(workspace_id, op)
-                source = next(
-                    (
-                        s
-                        for s in ws.sources
-                        if s.active and s.source_id == source_id
-                    ),
-                    None,
-                )
-                if source is None:
-                    # Reconstruct minimal source view from receipt.
-                    source = SourceVersionRecord.model_construct(
-                        schema_version="offline-rag-source-version-v1",
-                        source_id=source_id,
-                        version=op.result.source_version or 1,
-                        display_name=op.result.display_name or name,
-                        content_type=None,
-                        byte_size=None,
-                        content_hash=None,
-                        document_id=None,
-                        vault_object_id="vobj_receipt",
-                        active=True,
-                        created_at=utc_now(),
-                        active_from_revision=op.result.workspace_revision,
-                        active_from_snapshot_id=op.result.snapshot_id,
-                    )
-                return ws, op, source
+            replay = self._replay_sync_operation(op)
+            if replay is not None:
+                return replay
+            self.sync_mutations.begin(
+                workspace_id,
+                operation_id=op.operation_id,
+                kind=ManagedOperationKind.SOURCE_METADATA_PATCH,
+                expected_revision=expected_revision,
+                lease=lease,
+            )
             try:
                 record = self.store.get(workspace_id)
                 if record.revision != expected_revision:
@@ -564,21 +636,35 @@ class WorkspaceLifecycleService:
                     }
                 )
                 saved = self.store.save(patched, lease=lease)
-                op = self._succeed_sync_operation(
-                    workspace_id,
-                    op.operation_id,
-                    result=ManagedOperationResult(
-                        workspace_revision=saved.revision,
-                        workspace_status=saved.status,
-                        snapshot_id=saved.current_snapshot_id,
-                        source_id=source_id,
-                        source_version=updated_source.version,
-                        display_name=updated_source.display_name,
-                    ),
-                    lease=lease,
+                result = ManagedOperationResult(
+                    workspace_revision=saved.revision,
+                    workspace_status=saved.status,
+                    snapshot_id=saved.current_snapshot_id,
+                    source_id=source_id,
+                    source_version=updated_source.version,
+                    display_name=updated_source.display_name,
+                    content_type=updated_source.content_type,
+                    byte_size=updated_source.byte_size,
+                    content_hash=updated_source.content_hash,
+                    document_id=updated_source.document_id,
+                    active_from_revision=updated_source.active_from_revision,
+                    active_from_snapshot_id=updated_source.active_from_snapshot_id,
+                    created_at=updated_source.created_at,
+                    updated_at=saved.updated_at,
+                    source_count=len([s for s in saved.sources if s.active]),
+                    title=saved.title,
+                    description=saved.description,
                 )
-                return saved, op, updated_source
+                self.sync_mutations.mark_workspace_committed(
+                    workspace_id, result=result, lease=lease
+                )
+                op = self._succeed_sync_operation(
+                    workspace_id, op.operation_id, result=result, lease=lease
+                )
+                self.sync_mutations.drop(workspace_id, lease=lease)
+                return self._source_public_from_result(op), op
             except AppError as exc:
+                self.sync_mutations.drop(workspace_id, lease=lease)
                 self.operations.update_status(
                     workspace_id,
                     op.operation_id,
@@ -821,14 +907,28 @@ class WorkspaceLifecycleService:
                     record, operation_id=operation_id, plan=resolved, lease=lease
                 )
             except AppError as exc:
-                self._fail_operation(workspace_id, operation_id, exc, lease=lease)
+                current = self.operations.get(workspace_id, operation_id)
+                if current.status not in {
+                    ManagedOperationStatus.SUCCEEDED,
+                    ManagedOperationStatus.FAILED,
+                    ManagedOperationStatus.INTERRUPTED,
+                }:
+                    self._fail_operation(workspace_id, operation_id, exc, lease=lease)
                 raise
             except Exception as exc:
                 wrapped = AppError(
                     ErrorCode.INTERNAL_ERROR,
                     details=SafeErrorDetails(reason="workspace_mutation_fault"),
                 )
-                self._fail_operation(workspace_id, operation_id, wrapped, lease=lease)
+                current = self.operations.get(workspace_id, operation_id)
+                if current.status not in {
+                    ManagedOperationStatus.SUCCEEDED,
+                    ManagedOperationStatus.FAILED,
+                    ManagedOperationStatus.INTERRUPTED,
+                }:
+                    self._fail_operation(
+                        workspace_id, operation_id, wrapped, lease=lease
+                    )
                 raise wrapped from exc
 
     def _execute_publication(
@@ -873,48 +973,72 @@ class WorkspaceLifecycleService:
         finally:
             materialized.cleanup()
 
-        # F1: hold corpus lease through publish → workspace/lineage/op success.
+        # F1/F7: hold corpus lease through success OR live failure recovery.
         from offline_rag.app.leases import CorpusMutationLease
 
         with CorpusMutationLease(
             self.settings, record.backing_corpus_name
         ) as corpus_lease:
-            ingested = run_product_replace_ingest(
-                self.runtime,
-                upload,
-                hooks=self._progress_hooks(workspace_id, operation_id, lease),
-                control=control,
-                corpus_lease=corpus_lease,
-            )
-            self.publication.mark_publication_observed(
-                workspace_id, ingested.snapshot_id, lease=lease
-            )
+            try:
+                ingested = run_product_replace_ingest(
+                    self.runtime,
+                    upload,
+                    hooks=self._progress_hooks(workspace_id, operation_id, lease),
+                    control=control,
+                    corpus_lease=corpus_lease,
+                    authorize_workspace_id=workspace_id,
+                )
+                self.publication.mark_publication_observed(
+                    workspace_id, ingested.snapshot_id, lease=lease
+                )
 
-            committed = self._committed_record(
-                record, plan=plan, snapshot_id=ingested.snapshot_id
-            )
-            self.publication.commit_workspace(workspace_id, committed, lease=lease)
-            # F5: lineage + COMMITTED phase retained until op SUCCEEDED is durable.
-            self.publication.mark_committed(workspace_id, lease=lease)
+                committed = self._committed_record(
+                    record, plan=plan, snapshot_id=ingested.snapshot_id
+                )
+                self.publication.commit_workspace(workspace_id, committed, lease=lease)
+                # F5: lineage + COMMITTED phase retained until op SUCCEEDED is durable.
+                self.publication.mark_committed(workspace_id, lease=lease)
 
-            succeeded = self.operations.update_status(
-                workspace_id,
-                operation_id,
-                ManagedOperationStatus.SUCCEEDED,
-                progress_stage=OperationProgressStage.READY,
-                result=ManagedOperationResult(
-                    workspace_revision=committed.revision,
-                    workspace_status=committed.status,
-                    snapshot_id=committed.current_snapshot_id,
-                    source_id=plan.source_id,
-                    source_ids=[item.source_id for item in committed.sources],
-                    source_version=plan.source_version,
-                ),
-                result_summary=str(plan.mutation_kind),
-                lease=lease,
-            )
-            self.publication.drop_journal(workspace_id, lease=lease)
-            return succeeded
+                succeeded = self.operations.update_status(
+                    workspace_id,
+                    operation_id,
+                    ManagedOperationStatus.SUCCEEDED,
+                    progress_stage=OperationProgressStage.READY,
+                    result=ManagedOperationResult(
+                        workspace_revision=committed.revision,
+                        workspace_status=committed.status,
+                        snapshot_id=committed.current_snapshot_id,
+                        source_id=plan.source_id,
+                        source_ids=[item.source_id for item in committed.sources],
+                        source_version=plan.source_version,
+                    ),
+                    result_summary=str(plan.mutation_kind),
+                    lease=lease,
+                )
+                self.publication.drop_journal(workspace_id, lease=lease)
+                return succeeded
+            except AppError as exc:
+                self._fail_operation(
+                    workspace_id,
+                    operation_id,
+                    exc,
+                    lease=lease,
+                    corpus_lease=corpus_lease,
+                )
+                raise
+            except Exception as exc:
+                wrapped = AppError(
+                    ErrorCode.INTERNAL_ERROR,
+                    details=SafeErrorDetails(reason="workspace_mutation_fault"),
+                )
+                self._fail_operation(
+                    workspace_id,
+                    operation_id,
+                    wrapped,
+                    lease=lease,
+                    corpus_lease=corpus_lease,
+                )
+                raise wrapped from exc
 
     def _execute_empty_transition(
         self,
@@ -957,41 +1081,64 @@ class WorkspaceLifecycleService:
         with CorpusMutationLease(
             self.settings, record.backing_corpus_name
         ) as corpus_lease:
-            # Retire + EMPTY workspace + lineage + op success under corpus lease.
-            self.empty_transition.step_retire_publication(
-                workspace_id, lease=lease, corpus_lease=corpus_lease
-            )
-            self.empty_transition.step_empty_workspace(workspace_id, lease=lease)
-            emptied = self.store.get(workspace_id)
+            try:
+                # Retire + EMPTY workspace + lineage + op success under corpus lease.
+                self.empty_transition.step_retire_publication(
+                    workspace_id, lease=lease, corpus_lease=corpus_lease
+                )
+                self.empty_transition.step_empty_workspace(workspace_id, lease=lease)
+                emptied = self.store.get(workspace_id)
 
-            self.operations.update_status(
-                workspace_id,
-                operation_id,
-                ManagedOperationStatus.RUNNING,
-                progress_stage=OperationProgressStage.FINALIZING,
-                lease=lease,
-            )
-            self._close_out_lineage(record, refs=plan.lineage.superseded)
-            self.empty_transition.mark_lineage_closed(workspace_id, lease=lease)
+                self.operations.update_status(
+                    workspace_id,
+                    operation_id,
+                    ManagedOperationStatus.RUNNING,
+                    progress_stage=OperationProgressStage.FINALIZING,
+                    lease=lease,
+                )
+                self._close_out_lineage(record, refs=plan.lineage.superseded)
+                self.empty_transition.mark_lineage_closed(workspace_id, lease=lease)
 
-            succeeded = self.operations.update_status(
-                workspace_id,
-                operation_id,
-                ManagedOperationStatus.SUCCEEDED,
-                progress_stage=OperationProgressStage.READY,
-                result=ManagedOperationResult(
-                    workspace_revision=emptied.revision,
-                    workspace_status=emptied.status,
-                    snapshot_id=None,
-                    source_id=plan.source_id,
-                    source_ids=[],
-                    source_version=plan.source_version,
-                ),
-                result_summary="empty_transition",
-                lease=lease,
-            )
-            self.empty_transition.drop_journal(workspace_id, lease=lease)
-            return succeeded
+                succeeded = self.operations.update_status(
+                    workspace_id,
+                    operation_id,
+                    ManagedOperationStatus.SUCCEEDED,
+                    progress_stage=OperationProgressStage.READY,
+                    result=ManagedOperationResult(
+                        workspace_revision=emptied.revision,
+                        workspace_status=emptied.status,
+                        snapshot_id=None,
+                        source_id=plan.source_id,
+                        source_ids=[],
+                        source_version=plan.source_version,
+                    ),
+                    result_summary="empty_transition",
+                    lease=lease,
+                )
+                self.empty_transition.drop_journal(workspace_id, lease=lease)
+                return succeeded
+            except AppError as exc:
+                self._fail_operation(
+                    workspace_id,
+                    operation_id,
+                    exc,
+                    lease=lease,
+                    corpus_lease=corpus_lease,
+                )
+                raise
+            except Exception as exc:
+                wrapped = AppError(
+                    ErrorCode.INTERNAL_ERROR,
+                    details=SafeErrorDetails(reason="workspace_mutation_fault"),
+                )
+                self._fail_operation(
+                    workspace_id,
+                    operation_id,
+                    wrapped,
+                    lease=lease,
+                    corpus_lease=corpus_lease,
+                )
+                raise wrapped from exc
 
     # ----------------------------------------------------------------- helpers
 
@@ -1081,13 +1228,21 @@ class WorkspaceLifecycleService:
         error: AppError,
         *,
         lease: WorkspaceMutationLease,
+        corpus_lease: CorpusMutationLease | None = None,
     ) -> None:
-        """Recover any open journal, then record the terminal failure."""
+        """Recover any open journal under the live corpus lease when held (F7)."""
+        from offline_rag.app.leases import CorpusMutationLease
+
+        _ = CorpusMutationLease  # typing only
         recovery_note: str | None = None
         try:
-            outcome = self.publication.recover(workspace_id, lease=lease)
+            outcome = self.publication.recover(
+                workspace_id, lease=lease, corpus_lease=corpus_lease
+            )
             if outcome == "clean":
-                outcome = self.empty_transition.recover(workspace_id, lease=lease)
+                outcome = self.empty_transition.recover(
+                    workspace_id, lease=lease, corpus_lease=corpus_lease
+                )
             if outcome != "clean":
                 recovery_note = f"recovered_{outcome}"
         except AppError as exc:
@@ -1152,14 +1307,19 @@ def recover_workspace_transactions(settings: AppSettings) -> dict[str, Any]:
     history = SourceHistoryStore(settings)
     publication = NonEmptyPublicationCoordinator(settings, store, history)
     empty = EmptyTransitionCoordinator(settings, store)
+    from offline_rag.app.workspace.sync_journal import SyncMutationCoordinator
+
     operations = ManagedOperationStore(settings)
+    sync = SyncMutationCoordinator(settings)
     pub = publication.recover_all()
     emp = empty.recover_all()
+    sync_results = sync.recover_all()
     interrupted = operations.interrupt_all_nonterminal()
     quarantined = quarantine_orphan_workspace_spools(settings)
     return {
         "publication_transitions": pub,
         "empty_transitions": emp,
+        "sync_mutations": sync_results,
         "interrupted_operations": [item.operation_id for item in interrupted],
         "quarantined_upload_spools": [str(path) for path in quarantined],
     }

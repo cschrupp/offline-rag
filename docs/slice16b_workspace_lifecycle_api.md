@@ -14,71 +14,129 @@ HUMAN ACCEPTANCE: PENDING
 | Authorized baseline / sealed 16A closeout | `155983fec59a3ae6434286276bd34dcfdaaf8968` |
 | Accepted 16A implementation | `e73959be508541a1c50d4919606aaf3157a5fa8a` |
 | Locked design authority | `e2e7475076ad18d4c4ae8d939389ceeffdeff6d8` |
-| Prior 16B candidate (rework base) | `852cbdbaa60f2b8b0b295e1803016c772e3cf29b` |
+| Prior 16B candidate (F1–F6) | `06413e89499db67aca5be7226f093245b9ed01ca` |
 | Branch | `implementation/16b-workspace-lifecycle-api` |
 | Phase | **16B only** |
 
-## Independent review rework (F1–F6)
+## Independent review rework (F7–F12 + corpus guard)
 
-Disposition was REWORK REQUIRED. This candidate hardens durability/idempotency only;
-workspace query binding and full-replace projection are preserved.
+Disposition was REWORK REQUIRED after F1–F6. This candidate closes live failure
+recovery lease lifetime, pre-202 scientific validation, exact sync receipt replay,
+sync crash recovery, complete async recovery results, workspace-owned corpus
+protection, and full pipeline supersession proof. Workspace query binding is
+preserved.
 
-### F1 — corpus lease spans cross-registry commit
+### F7 — corpus ownership through live failure recovery
 
-Non-empty path holds `WorkspaceMutationLease` → `CorpusMutationLease` across:
+Normal success already held `WorkspaceMutationLease` → `CorpusMutationLease`
+through scientific publication, workspace commit, lineage, op success, and
+journal drop.
 
-`run_product_replace_ingest` (optional already-held lease) → `publication_observed`
-→ workspace commit → lineage/`COMMITTED` → managed-op `SUCCEEDED` → journal drop
-→ release corpus → release workspace.
+Live failure path now recovers **before** releasing the corpus lease:
 
-EMPTY final-source path holds the same lease nesting across publication retirement,
-EMPTY workspace write, lineage closeout, op success, and journal drop.
+`WorkspaceMutationLease` → `CorpusMutationLease` → scientific work / publication
+→ on exception: recover A or B (reuse already-held corpus lease; no nested
+acquire) → repair pointer/workspace/lineage → terminalize managed op →
+retain/drop journal → **then** release corpus → release workspace.
 
-`run_product_replace_ingest(..., corpus_lease=...)` reuses an already-held lease
-without nested flock acquire; Slice-15 `/v1/ingest` unchanged when omitted.
+`NonEmptyPublicationCoordinator.recover` and `EmptyTransitionCoordinator.recover`
+accept optional `corpus_lease=`. When held, they must not nested-acquire.
+Startup recovery may still acquire its own corpus lease (runtime not READY).
 
-### F2 — durable synchronous mutation idempotency
+### F8 — scientific preconditions before 202
 
-`PATCH/DELETE /v1/workspaces/{id}` and `PATCH .../sources/{source_id}` reserve a
-managed operation with canonical `{kind, expected_revision, payload}` identity.
-Exact retries return the durable receipt (including after later workspace advances).
-Conflicting same-key requests return `idempotency_conflict` (not a second revision).
+For a **new** idempotency key, under `WorkspaceMutationLease` and before capacity
+admission:
 
-### F3 — scientific idempotency before capacity / worker
+1. inspect existing idempotency identity first
+2. matching existing → return it (even if historical If-Match is now stale)
+3. conflicting key → `idempotency_conflict`
+4. only if key is NEW: resolve workspace; reject unknown/tombstoned; compare
+   revision to If-Match; validate source existence for PUT/DELETE; validate
+   mutable state
+5. then reserve / admit / launch
 
-HTTP launch sequence:
+Stale valid If-Match on a new key → HTTP 409 `workspace_conflict` with no worker,
+no ingest capacity, no scientific mutation.
 
-1. durable spool + fingerprint
-2. blocking `WorkspaceMutationLease` + `ManagedOperationStore.reserve`
-3. matching existing → 202, no capacity, no worker
-4. conflict → 409, no capacity, no worker
-5. newly reserved → admit ingest capacity then launch exactly one worker
-6. admission failure → terminalize phantom reservation `FAILED` (no queued ghost)
+### F9 — exact sync success/failure replay
 
-Corrupt idempotency indexes fail closed.
+`PATCH/DELETE` workspace and `PATCH` source metadata reconstruct public responses
+exclusively from the frozen durable receipt/result. Live workspace state is never
+mixed into an old success. FAILED ops re-raise the persisted
+`ManagedOperationSafeError`. INTERRUPTED projects the interrupted contract — never
+HTTP 200 merely because a live workspace exists.
 
-### F4 — durable upload spool before 202
+### F10 — synchronous mutation crash recovery
 
-Multipart `files` stream into `/data/staging/ws_upload_*` with per-file and
-aggregate limits and SHA-256 digests computed during write. Workers receive
-durable `SourceUpload(spool_path=..., content_sha256=...)` references, not
-request-memory-only bytes. Startup quarantines orphan spools; never auto-resumes.
+`SyncMutationCoordinator` journals INTENT → workspace write → COMMITTED(+result)
+→ op SUCCEEDED → journal drop. Startup runs sync recovery **before**
+`interrupt_all_nonterminal()`:
 
-### F5 — journal outlives lineage + operation terminalization
+- INTENT only / mutation never committed → interrupt/fail per contract
+- COMMITTED with frozen result → reconstruct exact SUCCEEDED receipt
 
-Non-empty closeout: workspace committed → lineage/`COMMITTED` retained →
-op `SUCCEEDED`+result durable → drop journal.
+Covered crash points: after reservation before workspace write; after workspace
+write before SUCCEEDED receipt — for PATCH workspace, DELETE workspace, PATCH
+source.
 
-EMPTY closeout: retirement → EMPTY write → lineage closed → op `SUCCEEDED` →
-drop journal. Startup recovery to B completes `SUCCEEDED` idempotently before
-journal removal; recovery to A may `INTERRUPTED`/`FAILED` with recovery note.
+### F11 — recovery-to-B reconstructs complete scientific result
 
-### F6 — supersession / batch acceptance campaign
+Non-empty recovery projects `source_id`, `source_version`, `source_ids`,
+`workspace_revision`, `workspace_status`, `snapshot_id` from lineage + committed
+workspace (ADD/REPLACE from appended; REMOVE from superseded).
 
-HTTP campaign covers `manual_b_v05`/`OLD_MARKER` → replace `v06`/`NEW_MARKER`
-with snapshot N→N+1 agreement, version bump, vault/current evidence absence of
-OLD, and adversarial query unable to resurrect v05. Batch POST of two files then
-remove one republishes remaining desired set from vault without re-upload.
+EMPTY recovery uses `removed_source_json` for removed `source_id` /
+`source_version`, with `source_ids=[]`, `snapshot_id=null`,
+`workspace_status=empty`.
+
+### Workspace-owned corpus protection (S16-D08)
+
+`assert_legacy_ingest_allowed` fails closed when `POST /v1/ingest` targets a
+corpus that is any workspace's `backing_corpus_name`
+(`reason=workspace_managed_corpus` / `workspace_conflict`). Standalone Slice-15
+corpora unchanged. Lifecycle ingest passes `authorize_workspace_id` and
+`assert_authorized_workspace_corpus` for its own backing corpus only.
+
+### F12 — S16-D12 supersession through the retrieval stack
+
+After v05→v06 replacement, assertions exercise the **actual** snapshot-bound
+pipeline (not vault/JSON scans alone):
+
+- current corpus manifest: old document_id absent, new present
+- dense retrieval under bound index/collection: no old document_id / OLD_MARKER
+- lexical retrieval under bound index: no old document_id / OLD_MARKER
+- reranker never presented OLD_MARKER candidates
+- assembled context contains no OLD_MARKER
+- answered output cannot cite old document_id / contain OLD_MARKER
+- adversarial OLD_MARKER query cannot resurrect superseded source
+
+Batch add/remove HTTP campaign retained from F6.
+
+## Receipt / result schema (`ManagedOperationResult`)
+
+Frozen fields used for exact sync replay and recovered async success:
+
+| Field | Sync workspace | Sync source | Async scientific |
+| --- | --- | --- | --- |
+| `workspace_revision` | yes | yes | yes |
+| `workspace_status` | yes | yes | yes |
+| `snapshot_id` | yes | yes | yes |
+| `title` / `description` | yes | — | — |
+| `source_count` | yes | — | — |
+| `created_at` / `updated_at` | yes | yes | — |
+| `source_id` / `source_version` | — | yes | yes (incl. recovered) |
+| `source_ids` | — | — | yes |
+| `display_name`, `content_type`, `byte_size`, `content_hash`, `document_id` | — | yes | — |
+| `active_from_revision` / `active_from_snapshot_id` | — | yes | — |
+
+No public `backing_corpus_name` or `vault_object_id`.
+
+## Prior F1–F6 (retained)
+
+Corpus lease spans cross-registry commit; durable sync idempotency reservation;
+scientific idempotency before capacity; durable upload spool before 202; journal
+outlives lineage + op terminalization; HTTP OLD→NEW + batch campaigns.
 
 ### Query binding (preserved)
 
@@ -98,40 +156,48 @@ Does not re-resolve `current.json` inside the bound path.
 | POST | `/v1/workspaces/{workspace_id}/query` |
 | GET | `/v1/operations/{operation_id}` |
 
-Slice-15 routes remain registered and unchanged.
+Slice-15 routes remain registered; workspace-owned backing corpora are guarded.
 
 ## Tests run
 
 ```text
-uv run ruff check <touched 16B Python modules + rework tests>
+uv run ruff check <touched 16B Python modules + integrity/rework tests>
 → All checks passed
 
 uv run pytest \
   tests/unit/app/test_slice16b_workspace_api.py \
   tests/unit/app/test_slice16b_rework_hardening.py \
+  tests/unit/app/test_slice16b_integrity_rework.py \
   tests/unit/app/test_slice16b_publication_journal.py \
   tests/unit/app/test_slice16b_query_binding.py \
   tests/unit/app/test_slice16a_workspace_foundation.py \
   tests/unit/app/test_slice15a_foundation.py \
+  tests/unit/app/test_slice15b_runtime_health.py \
   tests/unit/app/test_slice15c_snapshots_leases_documents.py \
-  tests/unit/app/test_slice15d_product_ingest.py -q
-→ 146 passed
+  tests/unit/app/test_slice15d_product_ingest.py \
+  tests/unit/app/test_slice15e_product_query_traces.py \
+  tests/unit/app/test_slice15f_admission_deadlines_shutdown.py -q
+→ 158 passed (16B/16A/15a/15c/15d) ; 53 passed (15b/15e/15f)
 
 git diff --check
 → clean
 ```
+
+Integrity suite (`test_slice16b_integrity_rework.py`) covers F7 live recovery/corpus
+contention, F8 stale If-Match / unknown workspace/source / historical retry, F9
+frozen replay, F10 sync crash recovery, F11 recovered ADD result shape,
+workspace-owned corpus guard, and F12 dense/lexical/rerank/context isolation.
 
 Full-repo pytest was not claimed as green; unrelated pre-existing debt is outside
 this rework.
 
 ## Residual risks / deferred
 
-- HTTP workspace query under FakeEmbedder typically abstains; supersession evidence
-  for answer text relies on vault/chunk presence plus snapshot binding assertions
-  rather than dense semantic retrieval of markers.
-- Crash-point matrix is covered for representative F4/F5 points; not every journal
-  phase is re-driven through the HTTP worker in this pass (unit journal recovery
-  remains authoritative for A/B).
+- Crash-point matrix covers representative F7/F10/F11 points; not every journal
+  phase is re-driven through the HTTP worker (unit journal recovery remains
+  authoritative for A/B legality).
+- Workspace-owned corpus guard enumerates workspace catalog records; extremely
+  large catalogs would be a future scale concern, not a 16B acceptance gap.
 
 ## Explicit non-scope
 

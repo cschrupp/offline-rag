@@ -404,6 +404,7 @@ class EmptyTransitionCoordinator:
         workspace_id: str,
         *,
         lease: WorkspaceMutationLease | None = None,
+        corpus_lease: CorpusMutationLease | None = None,
     ) -> str:
         """Idempotent recovery to legal A or B. Returns ``A``, ``B``, or ``clean``."""
 
@@ -448,12 +449,16 @@ class EmptyTransitionCoordinator:
                 atomic_write_text(
                     self.store.workspace_path(workspace_id), prior.model_dump_json()
                 )
-                self._with_corpus_lease(corpus, _restore_pointer)
+                self._with_corpus_lease(
+                    corpus, _restore_pointer, corpus_lease=corpus_lease
+                )
                 self.journal_path(workspace_id).unlink(missing_ok=True)
                 return "A"
 
             if workspace.status is WorkspaceStatus.EMPTY:
-                self._with_corpus_lease(corpus, _retire_if_current)
+                self._with_corpus_lease(
+                    corpus, _retire_if_current, corpus_lease=corpus_lease
+                )
                 self._complete_empty_b(journal, lease=held)
                 return "B"
 
@@ -461,7 +466,9 @@ class EmptyTransitionCoordinator:
                 EmptyTransitionPhase.PUBLICATION_RETIRED,
                 EmptyTransitionPhase.INTENT_RECORDED,
             }:
-                self._with_corpus_lease(corpus, _ensure_a_publication)
+                self._with_corpus_lease(
+                    corpus, _ensure_a_publication, corpus_lease=corpus_lease
+                )
                 prior = WorkspaceRecord.model_validate_json(journal.prior_workspace_json)
                 atomic_write_text(
                     self.store.workspace_path(workspace_id), prior.model_dump_json()
@@ -471,7 +478,9 @@ class EmptyTransitionCoordinator:
                 return "A"
 
             if journal.phase is EmptyTransitionPhase.WORKSPACE_EMPTIED:
-                self._with_corpus_lease(corpus, _retire_if_current)
+                self._with_corpus_lease(
+                    corpus, _retire_if_current, corpus_lease=corpus_lease
+                )
                 self._complete_empty_b(journal, lease=held)
                 return "B"
 
@@ -544,6 +553,16 @@ class EmptyTransitionCoordinator:
                 ManagedOperationStatus.INTERRUPTED,
             }:
                 emptied = self.store.get(journal.workspace_id, include_tombstoned=True)
+                removed_id: str | None = None
+                removed_version: int | None = None
+                if journal.removed_source_json:
+                    from offline_rag.app.workspace.models import SourceVersionRecord
+
+                    removed = SourceVersionRecord.model_validate_json(
+                        journal.removed_source_json
+                    )
+                    removed_id = removed.source_id
+                    removed_version = removed.version
                 ops.update_status(
                     journal.workspace_id,
                     journal.operation_id,
@@ -553,7 +572,9 @@ class EmptyTransitionCoordinator:
                         workspace_revision=emptied.revision,
                         workspace_status=WorkspaceStatus.EMPTY,
                         snapshot_id=None,
+                        source_id=removed_id,
                         source_ids=[],
+                        source_version=removed_version,
                     ),
                     result_summary="empty_transition",
                     recovery_note="recovered_B",

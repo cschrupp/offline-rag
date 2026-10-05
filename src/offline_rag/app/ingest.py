@@ -185,6 +185,7 @@ def run_product_replace_ingest(
     hooks: ProductIngestHooks | None = None,
     control: OperationHandle | None = None,
     corpus_lease: CorpusMutationLease | None = None,
+    authorize_workspace_id: str | None = None,
 ) -> ProductIngestResult:
     """Execute the post-spool full-replace ingest transaction.
 
@@ -196,12 +197,30 @@ def run_product_replace_ingest(
     that lease is reused (no nested acquire / no release). Slice-16B workspace
     mutations use this so publication observation and workspace commit stay under
     the same corpus ownership as ``current.json`` mutation.
+
+    Legacy ``POST /v1/ingest`` must omit ``authorize_workspace_id`` and is refused
+    when the target is a workspace-owned backing corpus (S16-D08). The workspace
+    lifecycle path passes its own workspace id as explicit authorization.
     """
     runtime.require_ready()
     if runtime.resources is None:
         raise AppError(ErrorCode.RUNTIME_NOT_READY)
     if control is not None:
         control.checkpoint("pre_validate")
+
+    from offline_rag.app.workspace.corpus_ownership import (
+        assert_authorized_workspace_corpus,
+        assert_legacy_ingest_allowed,
+    )
+
+    if authorize_workspace_id is None:
+        assert_legacy_ingest_allowed(runtime.settings, upload.corpus_name)
+    else:
+        assert_authorized_workspace_corpus(
+            runtime.settings,
+            upload.corpus_name,
+            workspace_id=authorize_workspace_id,
+        )
 
     _validate_document_identities(upload)
 

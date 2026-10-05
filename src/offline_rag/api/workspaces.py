@@ -164,6 +164,7 @@ async def _launch_scientific_mutation(
     payload: dict[str, Any],
     worker_fn: Any,
     spool: WorkspaceUploadSpool | None = None,
+    require_source_id: str | None = None,
 ) -> JSONResponse:
     """Reserve durable op (and spool) before capacity; return 202 only then."""
     runtime.require_ready()
@@ -174,6 +175,7 @@ async def _launch_scientific_mutation(
             idempotency_key=idempotency_key,
             expected_revision=expected_revision,
             payload=payload,
+            require_source_id=require_source_id,
         )
     except Exception:
         if spool is not None:
@@ -255,14 +257,14 @@ def patch_workspace(
             ErrorCode.REQUEST_INVALID,
             details=SafeErrorDetails(reason="empty_metadata_patch"),
         )
-    record, _op = _lifecycle(request).patch_workspace_metadata(
+    view, _op = _lifecycle(request).patch_workspace_metadata(
         workspace_id,
         expected_revision=expected,
         idempotency_key=key,
         title=body.title,
         description=body.description,
     )
-    return _etag_response(workspace_view(record), revision=record.revision)
+    return _etag_response(view, revision=int(view["revision"]))
 
 
 @router.delete("/v1/workspaces/{workspace_id}")
@@ -276,10 +278,10 @@ def delete_workspace(
     runtime.require_ready()
     key = _require_idempotency_key(idempotency_key)
     expected = parse_if_match(if_match)
-    record, _op = _lifecycle(request).tombstone_workspace(
+    view, _op = _lifecycle(request).tombstone_workspace(
         workspace_id, expected_revision=expected, idempotency_key=key
     )
-    return _etag_response(workspace_view(record), revision=record.revision)
+    return _etag_response(view, revision=int(view["revision"]))
 
 
 @router.get("/v1/workspaces/{workspace_id}/sources")
@@ -401,6 +403,7 @@ async def replace_source(
         payload=payload,
         worker_fn=worker,
         spool=spool,
+        require_source_id=source_id,
     )
 
 
@@ -417,14 +420,19 @@ def patch_source(
     runtime.require_ready()
     key = _require_idempotency_key(idempotency_key)
     expected = parse_if_match(if_match)
-    _record, _op, active = _lifecycle(request).patch_source_metadata(
+    view, op = _lifecycle(request).patch_source_metadata(
         workspace_id,
         source_id,
         expected_revision=expected,
         idempotency_key=key,
         display_name=body.display_name,
     )
-    return _etag_response(source_view(active), revision=_record.revision)
+    revision = (
+        op.result.workspace_revision
+        if op.result is not None
+        else expected
+    )
+    return _etag_response(view, revision=int(revision))
 
 
 @router.delete("/v1/workspaces/{workspace_id}/sources/{source_id}")
@@ -460,6 +468,7 @@ async def delete_source(
         payload=payload,
         worker_fn=worker,
         spool=None,
+        require_source_id=source_id,
     )
 
 

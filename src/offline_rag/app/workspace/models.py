@@ -342,8 +342,25 @@ class ManagedOperationResult(BaseModel):
     title: str | None = Field(default=None, max_length=256)
     description: str | None = Field(default=None, max_length=4096)
     display_name: str | None = Field(default=None, max_length=512)
+    # Frozen public receipt fields for exact sync replay (F9).
+    source_count: int | None = Field(default=None, ge=0)
+    content_type: str | None = None
+    byte_size: int | None = Field(default=None, ge=0)
+    content_hash: str | None = None
+    document_id: str | None = None
+    active_from_revision: WorkspaceRevision | None = Field(default=None, ge=1)
+    active_from_snapshot_id: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
-    @field_validator("snapshot_id", "source_id", mode="before")
+    @field_validator(
+        "snapshot_id",
+        "source_id",
+        "content_hash",
+        "document_id",
+        "active_from_snapshot_id",
+        mode="before",
+    )
     @classmethod
     def _safe_ids(cls, value: object) -> object:
         if value is None:

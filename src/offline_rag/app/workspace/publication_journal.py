@@ -183,8 +183,23 @@ class NonEmptyPublicationCoordinator:
         with WorkspaceMutationLease(self.settings, workspace_id) as owned:
             return fn(owned)
 
-    def _with_corpus_lease(self, corpus_name: str, fn: Callable[[], T]) -> T:
-        """Acquire corpus lease while the workspace lease is already held."""
+    def _with_corpus_lease(
+        self,
+        corpus_name: str,
+        fn: Callable[[], T],
+        *,
+        corpus_lease: CorpusMutationLease | None = None,
+    ) -> T:
+        """Use an already-held corpus lease, or acquire one (startup recovery)."""
+        if corpus_lease is not None:
+            if not corpus_lease.held or corpus_lease.corpus_name != corpus_name:
+                raise AppError(
+                    ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                    details=SafeErrorDetails(
+                        corpus=corpus_name, reason="corpus_lease_not_held"
+                    ),
+                )
+            return fn()
         with CorpusMutationLease(self.settings, corpus_name):
             return fn()
 
@@ -536,6 +551,7 @@ class NonEmptyPublicationCoordinator:
         workspace_id: str,
         *,
         lease: WorkspaceMutationLease | None = None,
+        corpus_lease: CorpusMutationLease | None = None,
     ) -> str:
         """Idempotent recovery to legal A or B. Returns ``A``, ``B``, or ``clean``."""
 
@@ -564,7 +580,9 @@ class NonEmptyPublicationCoordinator:
                         else:
                             clear_retirement_marker(self.settings, corpus)
 
-                    self._with_corpus_lease(corpus, _ensure_new_current)
+                    self._with_corpus_lease(
+                        corpus, _ensure_new_current, corpus_lease=corpus_lease
+                    )
                 if journal.phase not in _FORWARD_PHASES:
                     # Workspace write landed but the phase marker did not.
                     journal = self._save_journal(
@@ -591,7 +609,9 @@ class NonEmptyPublicationCoordinator:
                 else:
                     clear_retirement_marker(self.settings, corpus)
 
-            self._with_corpus_lease(corpus, _restore_prior_publication)
+            self._with_corpus_lease(
+                corpus, _restore_prior_publication, corpus_lease=corpus_lease
+            )
             prior = journal.prior_workspace()
             path = self.store.workspace_path(workspace_id)
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -630,6 +650,21 @@ class NonEmptyPublicationCoordinator:
         }:
             return
         workspace = self.store.get(journal.workspace_id, include_tombstoned=True)
+        lineage = journal.lineage_delta()
+        primary_source_id: str | None = None
+        primary_version: int | None = None
+        if journal.mutation_kind in {
+            PublicationMutationKind.SOURCE_ADD,
+            PublicationMutationKind.SOURCE_REPLACE,
+        } and lineage.appended:
+            primary_source_id = lineage.appended[0].source_id
+            primary_version = lineage.appended[0].version
+        elif (
+            journal.mutation_kind is PublicationMutationKind.SOURCE_REMOVE
+            and lineage.superseded
+        ):
+            primary_source_id = lineage.superseded[0].source_id
+            primary_version = lineage.superseded[0].version
         ops.update_status(
             journal.workspace_id,
             journal.operation_id,
@@ -641,7 +676,9 @@ class NonEmptyPublicationCoordinator:
                 if isinstance(workspace.status, WorkspaceStatus)
                 else WorkspaceStatus(workspace.status),
                 snapshot_id=workspace.current_snapshot_id,
+                source_id=primary_source_id,
                 source_ids=[s.source_id for s in workspace.sources if s.active],
+                source_version=primary_version,
             ),
             result_summary=str(journal.mutation_kind),
             recovery_note="recovered_B",
