@@ -102,12 +102,13 @@ Target runtime shape:
 ollama serve                         # host
 ollama pull <local-model>            # provisioning step
 
-docker run ... offline-rag:latest   # application container
+docker build -f deploy/Dockerfile -t offline-rag:latest .
+docker compose -f deploy/docker-compose.example.yml up --build
 
-Browser -> http://localhost:8080
+# Host publish is loopback-only: 127.0.0.1:8080 -> container :8080
 ```
 
-The container persists application state through `/data` and receives locally provisioned embedding/reranker weights through `/models`. It does **not** contain the generative model.
+The container persists application state through `/data` and receives locally provisioned embedding/reranker weights through `/models` (read-only). It does **not** contain the generative model. Supported topology is one process / one ASGI worker; see `DEPLOYMENT.md` for bind policy, UID `10001` `/data` ownership, and host-gateway notes.
 
 Generation is configured through a generic interface:
 
@@ -259,7 +260,7 @@ offline-rag/
 ├── PORTFOLIO_DEMO.md
 ├── DEPLOYMENT.md
 ├── deploy/
-│   ├── Dockerfile.template
+│   ├── Dockerfile
 │   └── docker-compose.example.yml
 ├── config/
 │   ├── base.yaml

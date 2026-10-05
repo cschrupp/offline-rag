@@ -16,6 +16,7 @@ dependencies = [
     "sentence-transformers>=2.7.0",
     "tiktoken",
     "transformers>=4.51.0",
+    "uvicorn>=0.35.0",
 ]
 
 [project.scripts]

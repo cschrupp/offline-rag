@@ -1,0 +1,44 @@
+# Keep local durable state and provisioned weights out of the build context.
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+
+data/
+models/
+
+.venv/
+venv/
+**/__pycache__/
+**/*.py[cod]
+**/*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+.eggs/
+
+eval/results/
+**/results/
+*.log
+
+# Editor / agent / local tooling noise
+.idea/
+.vscode/
+.cursor/
+agent-transcripts/
+
+# Stale packaging template (real image is deploy/Dockerfile)
+deploy/Dockerfile.template
+
+# Large unrelated trees not needed for the runtime install
+docs/
+tests/
+scripts/
+*.md
+!README.md

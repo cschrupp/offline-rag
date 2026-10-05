@@ -27,9 +27,9 @@ This does **not** weaken the offline claim when the inference endpoint and model
                               HOST
 
                   +------------------------+
-                  | Ollama                 |
-                  | local generator model  |
-                  | :11434                 |
+                  | Ollama (or approved    |
+                  | local OpenAI-compat    |
+                  | endpoint) :11434       |
                   +-----------^------------+
                               |
                     host.docker.internal
@@ -37,80 +37,167 @@ This does **not** weaken the offline claim when the inference endpoint and model
         +---------------------+---------------------+
         |          OFFLINERAG CONTAINER            |
         |                                           |
-        | FastAPI + UI                              |
-        | Docling                                   |
-        | embeddings + reranker                     |
-        | Qdrant Local                              |
-        | LangGraph                                  |
-        | evaluation harness                        |
+        | FastAPI (one ASGI worker)                 |
+        | Docling / embeddings / reranker           |
+        | Qdrant client with Local-mode persistence |
+        | product /v1/* + /health*                  |
         +---------------+---------------------------+
                         |
                  +------+-------+
                  |              |
                /data          /models
               writable        read-only
-                         embed/rerank weights
+                         provisioned non-generator
+                         assets (no LLM weights)
 ```
+
+Supported topology notes:
+
+- **Qdrant client with Local-mode persistence** under `/data/qdrant` (not an
+  embedded Qdrant server process, and not a Compose Qdrant service).
+- **One process / one ASGI worker** only in the supported profile.
+- Slice 15 has **no application authentication or TLS**.
+- Deferred portfolio work (retrieval inspector, citation viewer, evaluation
+  dashboard, optional future orchestration adapters) is **not** part of this
+  packaging profile.
 
 ## 4. Runtime filesystem contract
 
-### `/data` — writable/persistent
+### `/data` — writable / persistent product state
 
-Suggested layout:
+`OFFLINE_RAG_DATA_DIR=/data` rebases the accepted durable path model to:
 
 ```text
 /data/
 ├── raw/
 ├── manifests/
 ├── processed/
+├── corpora/
+├── chunks/
+├── chunk-manifests/
+├── embeddings/
+├── index-manifests/
+├── lexical-indexes/
+├── lexical-index-manifests/
 ├── qdrant/
-├── eval/
 ├── traces/
-└── logs/
+├── staging/
+├── locks/
+├── logs/
+└── eval/
+    └── results/
 ```
 
-### `/models` — retrieval models only
+Startup (`ApplicationRuntime`) owns creation of required directories. `doctor`
+is read-only and must not mutate `/data`.
+
+**Linux bind-mount ownership:** the container runs as UID/GID `10001:10001`.
+The host `./data` directory (or volume) must be writable by UID `10001`, or an
+equivalent supported volume arrangement must be used. Example:
+
+```bash
+mkdir -p data models
+sudo chown -R 10001:10001 data
+```
+
+### `/models` — external provisioned non-generator assets
+
+`/models` is external, pre-provisioned, reproducible, normally mounted
+read-only, and is **not** durable corpus state. Expected categories:
 
 ```text
 /models/
+├── docling/
+├── tokenizers/
+│   └── tiktoken/
 ├── embeddings/
-└── reranker/
+└── rerankers/
 ```
 
-Generator weights belong to the external inference runtime and are not mounted into OfflineRAG.
+Do **not** bundle these weights into the application image. Do **not** enable
+runtime Hugging Face / model download fallbacks. Missing required assets keep
+the accepted fail-closed readiness behavior (`/health/ready` → `503`).
 
-## 5. Target quick start
+Generator weights remain entirely outside `/models` and outside the app image.
 
-These commands describe the intended release interface. Activate them once
-Phase **15G** container packaging lands. Phases **15A/15B/15C/15D/15E/15F**
-already provide the in-process FastAPI substrate, `/health*` probes,
-`/v1/documents*`, `POST /v1/ingest`, `POST /v1/query`, `GET /v1/trace/{trace_id}`,
-and admission/deadlines/drain; the application image remains later Slice 15 work.
+## 5. Supported quick start (Slice 15G packaging)
 
-### Host provisioning
+### Build the application image
+
+From the repository root:
 
 ```bash
-ollama serve
-ollama pull <approved-local-model>
+docker build -f deploy/Dockerfile -t offline-rag:latest .
 ```
 
-Provision embedding/reranker weights into `./models` separately.
+The build context excludes `.git`, `.env`, `data/`, `models/`, and other local
+artifacts via `.dockerignore`. Local provisioned weights and private `/data`
+content must not enter the build context.
 
-### macOS / Windows Docker Desktop
+### Compose (recommended)
+
+Provision host generator + models, then:
+
+```bash
+# Host generator (example: Ollama)
+ollama serve
+ollama pull <approved-local-model>
+
+export OFFLINE_RAG_LLM_MODEL=<approved-local-model>
+export OFFLINE_RAG_APPROVED_LLM_MODELS=<approved-local-model>
+
+# Linux: ensure ./data is writable by UID 10001
+mkdir -p data models
+# sudo chown -R 10001:10001 data   # when using a bind mount on Linux
+
+docker compose -f deploy/docker-compose.example.yml up --build
+```
+
+Compose profile summary:
+
+| Item | Value |
+|---|---|
+| Service | `offline-rag` only |
+| Host publish | `127.0.0.1:8080:8080` (loopback only) |
+| Container bind | `0.0.0.0:8080` with `OFFLINE_RAG_ALLOW_NON_LOOPBACK=true` |
+| Host generator bridge | `host.docker.internal:host-gateway` |
+| Mounts | `../data:/data` (rw), `../models:/models:ro` |
+| App shutdown grace | `OFFLINE_RAG_SHUTDOWN_GRACE_SECONDS=30` |
+| Compose stop grace | `stop_grace_period: 45s` (accommodates app drain) |
+| Workers / replicas | single process, single worker; no replica count |
+
+**Warning:** changing the published port mapping to `8080:8080` or
+`0.0.0.0:8080:8080` exposes an **unauthenticated** Slice-15 service to the
+network. The application cannot enforce Docker host-port overrides. Do not add
+app auth/TLS as a packaging workaround in Slice 15.
+
+### Direct `docker run`
+
+#### macOS / Windows Docker Desktop
 
 ```bash
 docker run --rm \
   -p 127.0.0.1:8080:8080 \
   -v "$(pwd)/data:/data" \
   -v "$(pwd)/models:/models:ro" \
+  -e OFFLINE_RAG_CONFIG=/app/config/base.yaml \
+  -e OFFLINE_RAG_DATA_DIR=/data \
+  -e OFFLINE_RAG_MODELS_DIR=/models \
   -e OFFLINE_RAG_STRICT_OFFLINE=true \
+  -e OFFLINE_RAG_HTTP_HOST=0.0.0.0 \
+  -e OFFLINE_RAG_HTTP_PORT=8080 \
+  -e OFFLINE_RAG_ALLOW_NON_LOOPBACK=true \
+  -e OFFLINE_RAG_SHUTDOWN_GRACE_SECONDS=30 \
+  -e HF_HUB_OFFLINE=1 \
+  -e TRANSFORMERS_OFFLINE=1 \
   -e OFFLINE_RAG_LLM_BASE_URL=http://host.docker.internal:11434/v1 \
   -e OFFLINE_RAG_LLM_MODEL=<approved-local-model> \
   -e OFFLINE_RAG_APPROVED_LLM_MODELS=<approved-local-model> \
+  -e OFFLINE_RAG_APPROVED_LLM_ENDPOINTS=http://host.docker.internal:11434/v1 \
   offline-rag:latest
 ```
 
-### Linux
+#### Linux
 
 Add the host gateway explicitly:
 
@@ -120,12 +207,38 @@ docker run --rm \
   -p 127.0.0.1:8080:8080 \
   -v "$(pwd)/data:/data" \
   -v "$(pwd)/models:/models:ro" \
+  -e OFFLINE_RAG_CONFIG=/app/config/base.yaml \
+  -e OFFLINE_RAG_DATA_DIR=/data \
+  -e OFFLINE_RAG_MODELS_DIR=/models \
   -e OFFLINE_RAG_STRICT_OFFLINE=true \
+  -e OFFLINE_RAG_HTTP_HOST=0.0.0.0 \
+  -e OFFLINE_RAG_HTTP_PORT=8080 \
+  -e OFFLINE_RAG_ALLOW_NON_LOOPBACK=true \
+  -e OFFLINE_RAG_SHUTDOWN_GRACE_SECONDS=30 \
+  -e HF_HUB_OFFLINE=1 \
+  -e TRANSFORMERS_OFFLINE=1 \
   -e OFFLINE_RAG_LLM_BASE_URL=http://host.docker.internal:11434/v1 \
   -e OFFLINE_RAG_LLM_MODEL=<approved-local-model> \
   -e OFFLINE_RAG_APPROVED_LLM_MODELS=<approved-local-model> \
+  -e OFFLINE_RAG_APPROVED_LLM_ENDPOINTS=http://host.docker.internal:11434/v1 \
   offline-rag:latest
 ```
+
+Optional generator API keys may be passed from the host environment
+(`OFFLINE_RAG_LLM_API_KEY`) but must never be baked into the image.
+
+### Direct-host process (non-container)
+
+Default bind remains loopback:
+
+```bash
+python -m offline_rag.api.server
+# listens on 127.0.0.1:8080
+```
+
+Non-loopback binds (`0.0.0.0`, `::`, LAN addresses) fail closed unless
+`OFFLINE_RAG_ALLOW_NON_LOOPBACK=true`. Policy is enforced before the listener
+starts (startup/configuration failure, not a product HTTP error).
 
 ## 6. Strict-offline contract
 
@@ -157,7 +270,8 @@ Process health is served by the FastAPI app:
 `/health/ready` reads startup-established process state only. It must not load
 models, probe the generator, hash artifacts, rebuild Qdrant, or scan corpus
 readiness. An approved but unreachable generator does **not** by itself make
-`/health/ready` fail.
+`/health/ready` fail. Deliberately absent `/models` assets may correctly keep
+readiness at `503`; do not download assets merely to force a green ready probe.
 
 ### Doctor (diagnostic / non-mutating)
 
@@ -182,9 +296,6 @@ Generation readiness (doctor/query path) requires Context READY,
 OpenAI-compatible adapter, and a successful non-generative `/models` probe that
 lists the selected model. Doctor never pulls models or sends completions.
 
-Later UI work should still load when Ollama is stopped and show a clear
-generation-unavailable state; that is separate from process `/health/ready`.
-
 ## 8. Scale-up profile
 
 The application boundary remains unchanged when scaling:
@@ -192,21 +303,21 @@ The application boundary remains unchanged when scaling:
 ```text
 OfflineRAG container
     |
-    +--> Qdrant server (optional)
+    +--> Qdrant server (optional; not the Slice 15 supported profile)
     |
     +--> vLLM / llama.cpp server / Ollama
 ```
 
-Do not introduce the server-backed topology until corpus scale or throughput benchmarks justify it.
+Do not introduce the server-backed topology until corpus scale or throughput benchmarks justify it. Multi-worker and multi-replica topologies are unsupported in Slice 15.
 
 ## 9. Image strategy
 
 Recommended release artifacts:
 
-- `offline-rag:<version>-cpu` if retrieval models need CPU-only dependencies;
-- `offline-rag:<version>-cuda` only if embedding/reranking GPU acceleration materially benefits the demo and packaging remains manageable.
+- `offline-rag:<version>` application image built from `deploy/Dockerfile`
+  (Python 3.14, non-root `10001:10001`, no generator weights).
 
-The generator's GPU stack remains outside both images.
+The generator's GPU stack remains outside the application image.
 
 ## 10. Portfolio phrasing
 
