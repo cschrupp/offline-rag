@@ -59,8 +59,11 @@ SLICE 16: DESIGN INTERVIEW COMPLETE
            16A COMPLETE / ACCEPTED
            ACCEPTED SHA e73959be508541a1c50d4919606aaf3157a5fa8a
            Evidence: docs/slice16a_workspace_foundation.md
-           16B NOT AUTHORIZED / NOT STARTED
-           16C–16H NOT AUTHORIZED
+           16B COMPLETE / ACCEPTED
+           ACCEPTED SHA eb8baefc6e3eaf7df33668c85fbbfef22364bb0e
+           Evidence: docs/slice16b_workspace_lifecycle_api.md
+           16C NOT AUTHORIZED
+           16D–16H NOT AUTHORIZED
            Slice 16 overall NOT COMPLETE
   Authority: docs/slice16_design_authority.md
   Plan: docs/slice16_implementation_plan.md
@@ -84,7 +87,8 @@ these results. Slice 15 architecture authority remains
 `docs/slice15_developer_api_packaging.md`. Slice 16 design authority:
 `docs/slice16_design_authority.md` (**ACCEPTED / LOCKED** at
 `e2e7475076ad18d4c4ae8d939389ceeffdeff6d8`). 16A accepted at
-`e73959be508541a1c50d4919606aaf3157a5fa8a`; **16B+ NOT AUTHORIZED**.
+`e73959be508541a1c50d4919606aaf3157a5fa8a`; 16B accepted at
+`eb8baefc6e3eaf7df33668c85fbbfef22364bb0e`; **16C NOT AUTHORIZED**.
 Historical pre-design frame: `docs/slice16_portfolio_ui.md`.
 
 **Milestone 6 remains COMPLETE / ACCEPTED** at closeout
@@ -839,8 +843,10 @@ SLICE 16: DESIGN INTERVIEW COMPLETE
            IMPLEMENTATION PLAN ACCEPTED
            16A COMPLETE / ACCEPTED
            ACCEPTED SHA e73959be508541a1c50d4919606aaf3157a5fa8a
-           16B NOT AUTHORIZED / NOT STARTED
-           16C–16H NOT AUTHORIZED
+           16B COMPLETE / ACCEPTED
+           ACCEPTED SHA eb8baefc6e3eaf7df33668c85fbbfef22364bb0e
+           16C NOT AUTHORIZED
+           16D–16H NOT AUTHORIZED
            Slice 16 overall NOT COMPLETE
 SLICE 17: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
 SLICE 18: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
@@ -856,8 +862,8 @@ M6 science: UNCHANGED
 ```
 
 **Next governance sequence (not authorized by this document):** separate
-explicit authorization of **16B+** → Slice 17 → Slice 18 → Milestone 7
+explicit authorization of **16C** → Slice 17 → Slice 18 → Milestone 7
 closeout. Slice 14 and Slice 15 are closed. Slice 16 design is
-**ACCEPTED / LOCKED**. **16A** is **COMPLETE / ACCEPTED**. **16B+**, Slice 17,
-Slice 18, and M7 closeout remain **NOT AUTHORIZED**. Slice 16 overall is
-**not** complete.
+**ACCEPTED / LOCKED**. **16A** and **16B** are **COMPLETE / ACCEPTED**.
+**16C**, Slice 17, Slice 18, and M7 closeout remain **NOT AUTHORIZED**.
+Slice 16 overall is **not** complete.

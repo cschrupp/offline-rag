@@ -1,9 +1,12 @@
 # Slice 16B — Workspace/source lifecycle API
 
 ```text
-STATUS: IMPLEMENTATION EVIDENCE CANDIDATE
-HUMAN ACCEPTANCE: PENDING
-16B: IMPLEMENTED CANDIDATE / NOT ACCEPTED
+STATUS: IMPLEMENTATION ACCEPTED
+HUMAN ACCEPTANCE: ACCEPTED
+16B: COMPLETE / ACCEPTED
+ACCEPTED IMPLEMENTATION SHA:
+eb8baefc6e3eaf7df33668c85fbbfef22364bb0e
+INDEPENDENT REVIEW: PASSED
 16C+: NOT AUTHORIZED / NOT STARTED
 ```
 
@@ -14,16 +17,20 @@ HUMAN ACCEPTANCE: PENDING
 | Authorized baseline / sealed 16A closeout | `155983fec59a3ae6434286276bd34dcfdaaf8968` |
 | Accepted 16A implementation | `e73959be508541a1c50d4919606aaf3157a5fa8a` |
 | Locked design authority | `e2e7475076ad18d4c4ae8d939389ceeffdeff6d8` |
+| **Accepted 16B implementation SHA** | `eb8baefc6e3eaf7df33668c85fbbfef22364bb0e` |
 | Prior 16B candidate (F13–F16) | `39b2b60c2d11c198f3f4850cfaf97084a51ec9e8` |
 | Branch | `implementation/16b-workspace-lifecycle-api` |
-| Phase | **16B only** |
+| Phase | **16B COMPLETE / ACCEPTED** |
+
+Human acceptance applies **exactly** to SHA
+`eb8baefc6e3eaf7df33668c85fbbfef22364bb0e`.
 
 ## Independent review rework (F17–F19)
 
-Disposition was REWORK REQUIRED — FINAL NARROW PASS. This candidate closes live
-sync-journal reconciliation on post-write AppError, true startup recovery-result
-evidence, and non-vacuous generator-request capture. F13/F14/F7–F9 architecture
-is preserved.
+Disposition was REWORK REQUIRED — FINAL NARROW PASS, then **PASS**. This accepted
+implementation closes live sync-journal reconciliation on post-write AppError,
+true startup recovery-result evidence, and non-vacuous generator-request capture.
+F13/F14/F7–F9 architecture is preserved.
 
 ### F17 — live AppError reconciles sync journal (never blind-drop)
 
@@ -72,7 +79,45 @@ fail-closed; live scientific recovery under corpus lease; pre-202 validation;
 frozen sync replay; dense/lexical/rerank/context supersession; spool/journal/
 query-binding contracts.
 
-## Tests run
+## Carried-forward contracts (inherited by 16C+ when authorized)
+
+These are accepted Slice-16B contracts for downstream phases. They are **not**
+authorization for 16C.
+
+1. **Workspace scientific mutation lock order:** `WorkspaceMutationLease` →
+   `CorpusMutationLease`.
+2. **Cross-registry publication invariant:** active
+   `workspace.current_snapshot_id` corresponds to that workspace-managed corpus
+   current publication.
+3. **Workspace-owned corpus protection:** legacy `/v1/ingest` MUST NOT mutate a
+   workspace-owned backing corpus; workspace-directory identity reserves the
+   deterministic backing-corpus namespace even if `workspace.json` is
+   missing/corrupt.
+4. **Scientific mutation semantics:** non-empty add/replace/remove → full
+   desired-set projection → immutable snapshot → journaled workspace/publication
+   commit.
+5. **Final-source removal:** MUST use EMPTY transition; MUST NOT use empty
+   scientific ingest; MUST NOT fabricate an empty snapshot.
+6. **Idempotency:** scientific and synchronous mutations retain the accepted
+   durable idempotency semantics.
+7. **Sync mutation crash recovery:** exact expected success receipt is durable
+   before `workspace.json` mutation; recovery distinguishes A (did not commit),
+   B (exact prepared post-state), and ambiguous (fail closed; retain evidence).
+8. **Scientific transaction recovery:** startup recovery converges
+   publication/workspace state to legal A or B before READY.
+9. **Query snapshot binding:** workspace query is server-bound to
+   `workspace.current_snapshot_id`; client snapshot pinning remains forbidden;
+   Slice-15 `/v1/query` behavior remains unchanged.
+10. **Supersession isolation:** once source version N+1 is current, version N
+    cannot participate in dense, lexical, reranking, context, citations, or
+    answer generation.
+11. **Durable source content:** workspace source preview/content is served from
+    hash-verified local vault state; no filesystem path exposure.
+12. **Managed operations:** no durable queue; admitted work starts immediately;
+    progress/result state is durable; interrupted scientific work is not
+    auto-resumed after crash.
+
+## Tests run (accepted candidate)
 
 ```text
 uv run ruff check <touched sync_journal/lifecycle + integrity tests>
@@ -109,7 +154,11 @@ Full-repo pytest was not claimed as green.
 - F18 traps suppress live `_fail_operation` only in tests; production live path
   remains F7 corpus-lease recovery.
 
-## Explicit non-scope
+## Explicit non-scope confirmation
 
-16C–16H, UI, Training Mode, Gold Lab, Slice 17/18, 9G, M7 closeout **NOT AUTHORIZED**.
-This document does **not** accept 16B.
+Human acceptance applies to exactly SHA
+`eb8baefc6e3eaf7df33668c85fbbfef22364bb0e`.
+
+16C–16H, UI, Training Mode, Gold Lab, Slice 17, Slice 18, 9G, and Milestone 7
+closeout were **not** started and remain **NOT AUTHORIZED**. Slice 16 overall is
+**not** complete.

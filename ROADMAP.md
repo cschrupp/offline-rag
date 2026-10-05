@@ -418,8 +418,11 @@ SLICE 15  COMPLETE / ACCEPTED
      16A COMPLETE / ACCEPTED
      ACCEPTED SHA e73959be508541a1c50d4919606aaf3157a5fa8a
      Evidence: docs/slice16a_workspace_foundation.md
-     16B NOT AUTHORIZED / NOT STARTED
-     16C–16H NOT AUTHORIZED
+     16B COMPLETE / ACCEPTED
+     ACCEPTED SHA eb8baefc6e3eaf7df33668c85fbbfef22364bb0e
+     Evidence: docs/slice16b_workspace_lifecycle_api.md
+     16C NOT AUTHORIZED
+     16D–16H NOT AUTHORIZED
      Slice 16 overall NOT COMPLETE
      Authority: docs/slice16_design_authority.md
      Plan: docs/slice16_implementation_plan.md
@@ -461,7 +464,8 @@ M7 closeout
 the API/container product boundary. Slice 16 design interview is **COMPLETE**;
 design authority is **ACCEPTED / LOCKED** at
 `e2e7475076ad18d4c4ae8d939389ceeffdeff6d8`; **16A** is **COMPLETE / ACCEPTED**
-at `e73959be508541a1c50d4919606aaf3157a5fa8a`; **16B+** remains
+at `e73959be508541a1c50d4919606aaf3157a5fa8a`; **16B** is **COMPLETE / ACCEPTED**
+at `eb8baefc6e3eaf7df33668c85fbbfef22364bb0e`; **16C** remains
 **NOT AUTHORIZED**. Slice 16 overall is **not** complete.
 
 **Slice 14 — Performance and resource benchmark harness**
@@ -548,15 +552,18 @@ Slice 14 checklist:
     debt (not claimed as a globally green suite)
 - **Slice 15:** **COMPLETE / ACCEPTED**
 
-**Slice 16 — Portfolio Demo UI:** **DESIGN AUTHORITY ACCEPTED / LOCKED**; **16A COMPLETE / ACCEPTED**; **16B+ NOT AUTHORIZED**; Slice 16 overall **NOT COMPLETE**
+**Slice 16 — Portfolio Demo UI:** **DESIGN AUTHORITY ACCEPTED / LOCKED**; **16A COMPLETE / ACCEPTED**; **16B COMPLETE / ACCEPTED**; **16C NOT AUTHORIZED**; Slice 16 overall **NOT COMPLETE** / **IN PROGRESS**
 - Authority: [`docs/slice16_design_authority.md`](docs/slice16_design_authority.md)
   (S16-D01 … S16-D35; **ACCEPTED / LOCKED**)
 - AUTHORITY SHA: `e2e7475076ad18d4c4ae8d939389ceeffdeff6d8`
 - Implementation plan: [`docs/slice16_implementation_plan.md`](docs/slice16_implementation_plan.md)
-  (16A–16H; plan **ACCEPTED**; **16A COMPLETE / ACCEPTED**; **16B+ NOT AUTHORIZED**)
+  (16A–16H; plan **ACCEPTED**; **16A/16B COMPLETE / ACCEPTED**; **16C NOT AUTHORIZED**)
 - **16A** workspace foundation: **COMPLETE / ACCEPTED** at
   `e73959be508541a1c50d4919606aaf3157a5fa8a`
   ([`docs/slice16a_workspace_foundation.md`](docs/slice16a_workspace_foundation.md))
+- **16B** workspace lifecycle API: **COMPLETE / ACCEPTED** at
+  `eb8baefc6e3eaf7df33668c85fbbfef22364bb0e`
+  ([`docs/slice16b_workspace_lifecycle_api.md`](docs/slice16b_workspace_lifecycle_api.md))
 - Historical pre-design frame: [`docs/slice16_portfolio_ui.md`](docs/slice16_portfolio_ui.md)
   (contextual only)
 - UI remains an adapter/client of `src/offline_rag/app/` (no direct Qdrant /
@@ -567,7 +574,7 @@ Slice 14 checklist:
   scientific knobs — S16-D20 / S16-D21
 - Gold Lab redesigns adjudication workflow granularity while preserving
   GoldDataset v1 / Silver→Gold truth criteria — S16-D23–S16-D34
-- Do **not** start 16B without separate explicit implementation authorization
+- Do **not** start 16C without separate explicit implementation authorization
 
 **Slice 17 — Regression CI:** **PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED**
 - Objective: prevent accepted product/retrieval/generation contracts and
@@ -599,21 +606,21 @@ Later M7 checklist:
 - [x] Qdrant Local standalone profile (15G — **COMPLETE / ACCEPTED**)
 - [x] `/data` + `/models` volume packaging contract (15G — **COMPLETE / ACCEPTED**)
 - [x] Slice 15 integration closeout (15H — **COMPLETE / ACCEPTED** at `1c1d94e…`)
-- [ ] Portfolio Demo UI (Slice 16 — design **ACCEPTED / LOCKED** at `e2e7475…`; **16A COMPLETE / ACCEPTED** at `e73959be…`; **16B+ NOT AUTHORIZED**; Slice 16 overall **NOT COMPLETE**)
+- [ ] Portfolio Demo UI (Slice 16 — design **ACCEPTED / LOCKED** at `e2e7475…`; **16A COMPLETE / ACCEPTED** at `e73959be…`; **16B COMPLETE / ACCEPTED** at `eb8baef…`; **16C NOT AUTHORIZED**; Slice 16 overall **NOT COMPLETE**)
 - [ ] Regression CI (Slice 17 — **PLANNED / DESIGN NOT OPEN**)
 - [ ] Portfolio release package (Slice 18 — **PLANNED / DESIGN NOT OPEN**)
 - [ ] Milestone 7 closeout (**NOT AUTHORIZED**)
 - [ ] Container image size / CPU–CUDA variants ([issue #1](https://github.com/cschrupp/offline-rag/issues/1) — **DEFERRED**)
 
 **M7 release direction (not a Slice-15 exit criterion):** a reviewer can use the
-accepted product/API surface and, after Slice 16 implementation (16A accepted;
-16B+ not authorized by this closeout), inspect evidence flow through a UI that
-remains a client of that surface — without expanding product query scientific
-knobs.
+accepted product/API surface and, after Slice 16 implementation (16A/16B
+accepted; 16C not authorized by this closeout), inspect evidence flow through a
+UI that remains a client of that surface — without expanding product query
+scientific knobs.
 
 Milestone **6** remains **COMPLETE / ACCEPTED** at `dcc6b07…`. Milestone **7**
 remains **IN PROGRESS** (Slice 15 through **15H** landed; Slice 16 design
-**ACCEPTED / LOCKED**; **16A COMPLETE / ACCEPTED**; **16B+**, **Slices 17–18**,
+**ACCEPTED / LOCKED**; **16A/16B COMPLETE / ACCEPTED**; **16C**, **Slices 17–18**,
 and **M7 closeout** remain **NOT AUTHORIZED**). Performance optimization,
 generator max-token change, reranker config change, `base.yaml` promotion,
 `PORTFOLIO_DEMO.md` update, 13C/13D, recovery enablement, LangGraph, and NeMo

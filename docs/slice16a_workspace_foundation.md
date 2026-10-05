@@ -7,7 +7,8 @@ HUMAN ACCEPTANCE: ACCEPTED
 ACCEPTED IMPLEMENTATION SHA:
 e73959be508541a1c50d4919606aaf3157a5fa8a
 INDEPENDENT REVIEW: PASSED
-16B+: NOT AUTHORIZED / NOT STARTED
+16B: COMPLETE / ACCEPTED @ eb8baefc6e3eaf7df33668c85fbbfef22364bb0e
+16C+: NOT AUTHORIZED / NOT STARTED
 ```
 
 ## Authority binding
@@ -250,18 +251,21 @@ retirement; concurrent begin (same/conflicting identity); concurrent terminal
 status race; recovery A clears stale `retired.json` when `current.json` still
 present; current overrides marker for resolve authority.
 
-## Known limitations / deferred to 16B+
+## Known limitations / deferred beyond 16A
 
-- No workspace HTTP CRUD / multipart upload / query adapter
+- No workspace HTTP CRUD / multipart upload / query adapter (delivered in
+  accepted **16B**)
 - No end-to-end add/remove/replace orchestration or ingest invocation
-- No UI / Training Mode / Gold Lab
-- No automatic EMPTY transition from product APIs (primitives only)
+  (delivered in accepted **16B**)
+- No UI / Training Mode / Gold Lab (**16C+** — **NOT AUTHORIZED**)
+- No automatic EMPTY transition from product APIs in 16A (primitives only;
+  product EMPTY path delivered in accepted **16B**)
 - Journal recovery is local/filesystem; no multi-worker redesign
-- Startup/readiness integration of outstanding EMPTY-journal recovery is a
-  **16B obligation** (not implemented in 16A): outstanding journals must be
-  recovered before workspace mutation/query surfaces are considered ready
+- Startup/readiness integration of outstanding EMPTY-journal recovery was a
+  **16B obligation** and is recorded as accepted under
+  `docs/slice16b_workspace_lifecycle_api.md`
 
-## Carried-forward contracts (inherited by 16B when authorized)
+## Carried-forward contracts (inherited by accepted 16B / later phases)
 
 1. **Workspace mutation ordering:** `WorkspaceMutationLease` →
    `CorpusMutationLease` (never reverse).
@@ -271,16 +275,19 @@ present; current overrides marker for resolve authority.
 3. **Managed-operation serialization:** `begin` / `update_status` serialize
    through the workspace lease (optional already-held lease for composition).
 4. **EMPTY transition recovery:** startup/readiness must recover outstanding
-   journals before workspace mutation/query surfaces become ready (16B
-   integration obligation; not claimed implemented here).
+   journals before workspace mutation/query surfaces become ready.
 
-These contracts are accepted 16A foundation constraints. This document does
-**not** claim 16B has implemented the integrations above.
+These contracts are accepted 16A foundation constraints. Accepted 16B
+implementation evidence:
+[`docs/slice16b_workspace_lifecycle_api.md`](slice16b_workspace_lifecycle_api.md)
+at `eb8baefc6e3eaf7df33668c85fbbfef22364bb0e`.
 
 ## Explicit non-scope confirmation
 
-Human acceptance applies to exactly SHA
+Human acceptance of **16A** applies to exactly SHA
 `e73959be508541a1c50d4919606aaf3157a5fa8a`.
 
-16B, 16C–16H, Slice 17, Slice 18, 9G, and Milestone 7 closeout were **not**
-started and remain **NOT AUTHORIZED**. Slice 16 overall is **not** complete.
+**16B** is separately **COMPLETE / ACCEPTED** at
+`eb8baefc6e3eaf7df33668c85fbbfef22364bb0e`. **16C–16H**, Slice 17, Slice 18,
+9G, and Milestone 7 closeout remain **NOT AUTHORIZED**. Slice 16 overall is
+**not** complete.
