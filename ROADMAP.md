@@ -454,7 +454,12 @@ Slice 14 checklist:
   - Implementation commits: `2a84ef015932980bda8757146e63ed6d1c1ed0ae`,
     `63f5965adae3c2a1c5a5b338bcc1243f9423bb5a`
   - Fast-forward onto main at `63f5965adae3c2a1c5a5b338bcc1243f9423bb5a`
-- **15F–15H:** **NOT AUTHORIZED**
+- **15F** admission + deadlines + cancel + drain: **COMPLETE / ACCEPTED**
+  - Implementation commits: `850d04e9861e9563a6ea35ea02a51a97f17222b6`,
+    `f907c849a597b016b76e3382ea2f8e986ad27a31`,
+    `7bfb0893e1537af99bdaad6f6af5336408afe750`
+  - Fast-forward onto main at `7bfb0893e1537af99bdaad6f6af5336408afe750`
+- **15G–15H:** **NOT AUTHORIZED**
 
 Later M7 checklist (not Slice 14):
 
@@ -463,7 +468,7 @@ Later M7 checklist (not Slice 14):
 - [x] product publication registry + leases + `/v1/documents*` (15C — **COMPLETE / ACCEPTED**)
 - [x] product `/v1/ingest` full-replace publish (15D — **COMPLETE / ACCEPTED**)
 - [x] product `/v1/{query,trace}` (15E — **COMPLETE / ACCEPTED**)
-- [ ] admission / deadlines / drain (15F)
+- [x] admission / deadlines / drain (15F — **COMPLETE / ACCEPTED**)
 - [ ] single-container OfflineRAG application image (15G)
 - [ ] Qdrant Local standalone profile (15G)
 - [ ] `/data` + `/models` volume packaging contract (15G)
@@ -475,7 +480,7 @@ Later M7 checklist (not Slice 14):
 **Release criterion:** a reviewer can interactively compare retrieval modes and inspect evidence flow.
 
 Milestone **6** remains **COMPLETE / ACCEPTED** at `dcc6b07…`. Milestone **7**
-remains **IN PROGRESS** (Slice 15 through **15E** landed; **15F+** not
+remains **IN PROGRESS** (Slice 15 through **15F** landed; **15G+** not
 authorized). Performance optimization, generator max-token change, reranker
 config change, `base.yaml` promotion, `PORTFOLIO_DEMO.md` update, 13C/13D,
 recovery enablement, LangGraph, and NeMo remain **NOT AUTHORIZED**.
