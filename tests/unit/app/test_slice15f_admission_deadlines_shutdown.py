@@ -1098,6 +1098,83 @@ def test_admit_after_require_ready_loses_to_drain_race(tmp_path: Path) -> None:
     runtime.finalize_shutdown()
 
 
+def test_ready_false_while_registry_draining_before_state_flip(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """D19: readiness fails from the instant registry drain is marked.
+
+    Window: operations._draining=True while runtime.state is still READY
+    (blocked inside active-handle shutdown signaling).
+    """
+    settings = _settings(tmp_path)
+    runtime = _query_runtime(settings)
+    runtime.start()
+    _publish_ready(runtime)
+
+    entered_cancel = threading.Event()
+    release_cancel = threading.Event()
+    real_signal_cancel = OperationHandle.signal_cancel
+
+    def blocking_signal_cancel(
+        self: OperationHandle, reason: CancelReason
+    ) -> None:
+        if reason is CancelReason.SHUTDOWN:
+            entered_cancel.set()
+            assert release_cancel.wait(timeout=5)
+        real_signal_cancel(self, reason)
+
+    monkeypatch.setattr(OperationHandle, "signal_cancel", blocking_signal_cancel)
+
+    op = runtime.operations.admit_query()
+    drain_finished = threading.Event()
+
+    def drainer() -> None:
+        runtime.begin_drain()
+        drain_finished.set()
+
+    drain_thread = threading.Thread(target=drainer)
+    drain_thread.start()
+    assert entered_cancel.wait(timeout=5)
+
+    assert runtime.state is RuntimeState.READY
+    assert runtime.operations.draining is True
+    assert runtime.is_ready is False
+    with pytest.raises(AppError) as ready_exc:
+        runtime.require_ready()
+    assert ready_exc.value.code is ErrorCode.RUNTIME_NOT_READY
+
+    # Probe HTTP without ASGI lifespan (avoid nested drain while signalling).
+    app = create_app(runtime=runtime)
+
+    async def probe() -> tuple[httpx.Response, httpx.Response, httpx.Response]:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://test"
+        ) as client:
+            ready = await client.get("/health/ready")
+            docs = await client.get(
+                "/v1/documents", params={"corpus": "engineering"}
+            )
+            trace = await client.get("/v1/trace/trace_" + ("a" * 32))
+            return ready, docs, trace
+
+    ready_resp, docs_resp, trace_resp = asyncio.run(probe())
+    assert ready_resp.status_code == 503
+    assert ready_resp.json()["error"]["code"] == "runtime_not_ready"
+    assert docs_resp.status_code == 503
+    assert docs_resp.json()["error"]["code"] == "runtime_not_ready"
+    assert trace_resp.status_code == 503
+    assert trace_resp.json()["error"]["code"] == "runtime_not_ready"
+
+    release_cancel.set()
+    assert drain_finished.wait(timeout=5)
+    drain_thread.join(timeout=5)
+    assert not drain_thread.is_alive()
+    assert runtime.state is RuntimeState.DRAINING
+    runtime.operations.release(op)
+    assert runtime.finalize_shutdown() is True
+
+
 # ---------------------------------------------------------------------------
 # Rework race: disconnect between lease.acquire and POST_LEASE
 # ---------------------------------------------------------------------------

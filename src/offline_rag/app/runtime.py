@@ -149,7 +149,9 @@ class ApplicationRuntime:
 
     @property
     def is_ready(self) -> bool:
-        return self.state is RuntimeState.READY
+        # Registry drain gate is authoritative from the instant signal_shutdown()
+        # marks _draining, even before runtime.state flips to DRAINING.
+        return self.state is RuntimeState.READY and not self.operations.draining
 
     @property
     def is_live(self) -> bool:
