@@ -2,6 +2,21 @@
 
 Does not change Slice-15 ingest. Retires product-visible current publication
 while preserving immutable snapshot manifests under product/snapshots/.
+
+Caller serialization contract
+-----------------------------
+These helpers do **not** acquire ``CorpusMutationLease`` themselves.
+Callers that mutate ``current.json`` / ``retired.json`` MUST already hold the
+corpus lease (and, for EMPTY transitions, the workspace lease first).
+
+Authority rule (F8)
+-------------------
+``current.json`` (existence + valid pointer) is the **sole** authority for
+whether a corpus currently has a product publication.
+
+``retired.json`` is **audit / recovery metadata only**. Its presence MUST NOT
+override an existing valid ``current.json``. Clear it opportunistically on
+restore/publish; never treat the two files as a two-bit state machine.
 """
 
 from __future__ import annotations
@@ -44,11 +59,16 @@ def retire_current_publication(
 ) -> PublicationRetirementRecord:
     """Retire current product publication for ``corpus_name``.
 
-    - Writes ``product/retired.json`` describing the last current snapshot (if any)
-    - Removes ``product/current.json`` so resolve/published-current cannot expose
-      the historical snapshot as current
+    Caller MUST hold ``CorpusMutationLease`` for ``corpus_name``.
+
+    - Writes ``product/retired.json`` audit/recovery metadata (last snapshot id)
+    - Removes ``product/current.json`` (authoritative current publication)
     - Leaves ``product/snapshots/*.json`` untouched
-    Idempotent when already retired / never published.
+    Idempotent when already unpublished / never published.
+
+    Note: a crash between writing ``retired.json`` and unlinking ``current.json``
+    may leave both files briefly. ``current.json`` remains authoritative until
+    unlinked; recovery/publish clears stale markers.
     """
     name = validate_product_corpus_name(corpus_name)
     pointer_path = current_pointer_path(settings.paths.corpora, name)
@@ -92,7 +112,11 @@ def retire_current_publication(
 
 
 def clear_retirement_marker(settings: AppSettings, corpus_name: str) -> None:
-    """Clear current-state retirement marker after a current publication exists."""
+    """Best-effort clear of retirement audit metadata.
+
+    Caller SHOULD hold ``CorpusMutationLease`` when composing with current-pointer
+    mutation. Safe if marker absent.
+    """
     name = validate_product_corpus_name(corpus_name)
     marker_path = retirement_marker_path(settings.paths.corpora, name)
     marker_path.unlink(missing_ok=True)
@@ -103,8 +127,10 @@ def restore_current_publication_pointer(
 ) -> str:
     """Restore ``current.json`` to an existing immutable snapshot (recovery to A).
 
-    Clears ``retired.json`` after a successful restore so current-state metadata
-    cannot claim both current and retired. Snapshot manifests are untouched.
+    Caller MUST hold ``CorpusMutationLease`` for ``corpus_name``.
+
+    Clears ``retired.json`` after a successful restore (audit cleanup only).
+    Snapshot manifests are untouched. ``current.json`` is the publication authority.
     """
     name = validate_product_corpus_name(corpus_name)
     if not snapshot_id or "/" in snapshot_id or "\\" in snapshot_id or ".." in snapshot_id:

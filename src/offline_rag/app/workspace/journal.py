@@ -26,6 +26,7 @@ from typing import Literal, TypeVar
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from offline_rag.app.errors import AppError, ErrorCode, SafeErrorDetails
+from offline_rag.app.leases import CorpusMutationLease
 from offline_rag.app.publication import current_pointer_path
 from offline_rag.app.workspace.leases import WorkspaceMutationLease
 from offline_rag.app.workspace.models import (
@@ -36,6 +37,7 @@ from offline_rag.app.workspace.models import (
     utc_now,
 )
 from offline_rag.app.workspace.retirement import (
+    clear_retirement_marker,
     restore_current_publication_pointer,
     retire_current_publication,
 )
@@ -99,6 +101,14 @@ class EmptyTransitionCoordinator:
             return fn(lease)
         with WorkspaceMutationLease(self.settings, workspace_id) as owned:
             return fn(owned)
+
+    def _with_corpus_lease(self, corpus_name: str, fn: Callable[[], T]) -> T:
+        """Acquire corpus lease while workspace lease is already held.
+
+        Lock order: workspace lease → corpus lease (never reverse).
+        """
+        with CorpusMutationLease(self.settings, corpus_name):
+            return fn()
 
     def begin(
         self,
@@ -206,7 +216,12 @@ class EmptyTransitionCoordinator:
                     ),
                 )
             if journal.phase is EmptyTransitionPhase.INTENT_RECORDED:
-                retire_current_publication(self.settings, journal.backing_corpus_name)
+                def _retire() -> None:
+                    retire_current_publication(
+                        self.settings, journal.backing_corpus_name
+                    )
+
+                self._with_corpus_lease(journal.backing_corpus_name, _retire)
                 return self._save_journal(
                     journal.model_copy(
                         update={"phase": EmptyTransitionPhase.PUBLICATION_RETIRED}
@@ -310,9 +325,31 @@ class EmptyTransitionCoordinator:
             if journal is None:
                 return "clean"
 
-            pointer = current_pointer_path(
-                self.settings.paths.corpora, journal.backing_corpus_name
-            )
+            corpus = journal.backing_corpus_name
+
+            def _restore_pointer() -> None:
+                restore_current_publication_pointer(
+                    self.settings, corpus, journal.prior_snapshot_id
+                )
+
+            def _retire_if_current() -> None:
+                live = current_pointer_path(self.settings.paths.corpora, corpus)
+                if live.exists():
+                    retire_current_publication(self.settings, corpus)
+                else:
+                    # No current pointer; still clear stale audit marker.
+                    clear_retirement_marker(self.settings, corpus)
+
+            def _ensure_a_publication() -> None:
+                """Restore current if missing; always clear stale retired.json."""
+                live = current_pointer_path(self.settings.paths.corpora, corpus)
+                if not live.exists():
+                    restore_current_publication_pointer(
+                        self.settings, corpus, journal.prior_snapshot_id
+                    )
+                else:
+                    clear_retirement_marker(self.settings, corpus)
+
             try:
                 workspace = self.store.get(workspace_id, include_tombstoned=True)
             except AppError:
@@ -323,17 +360,12 @@ class EmptyTransitionCoordinator:
                 atomic_write_text(
                     self.store.workspace_path(workspace_id), prior.model_dump_json()
                 )
-                restore_current_publication_pointer(
-                    self.settings, journal.backing_corpus_name, journal.prior_snapshot_id
-                )
+                self._with_corpus_lease(corpus, _restore_pointer)
                 self.journal_path(workspace_id).unlink(missing_ok=True)
                 return "A"
 
             if workspace.status is WorkspaceStatus.EMPTY:
-                if pointer.exists():
-                    retire_current_publication(
-                        self.settings, journal.backing_corpus_name
-                    )
+                self._with_corpus_lease(corpus, _retire_if_current)
                 self.journal_path(workspace_id).unlink(missing_ok=True)
                 return "B"
 
@@ -341,12 +373,7 @@ class EmptyTransitionCoordinator:
                 EmptyTransitionPhase.PUBLICATION_RETIRED,
                 EmptyTransitionPhase.INTENT_RECORDED,
             }:
-                if not pointer.exists():
-                    restore_current_publication_pointer(
-                        self.settings,
-                        journal.backing_corpus_name,
-                        journal.prior_snapshot_id,
-                    )
+                self._with_corpus_lease(corpus, _ensure_a_publication)
                 prior = WorkspaceRecord.model_validate_json(journal.prior_workspace_json)
                 atomic_write_text(
                     self.store.workspace_path(workspace_id), prior.model_dump_json()
@@ -355,10 +382,7 @@ class EmptyTransitionCoordinator:
                 return "A"
 
             if journal.phase is EmptyTransitionPhase.WORKSPACE_EMPTIED:
-                if pointer.exists():
-                    retire_current_publication(
-                        self.settings, journal.backing_corpus_name
-                    )
+                self._with_corpus_lease(corpus, _retire_if_current)
                 self.journal_path(workspace_id).unlink(missing_ok=True)
                 return "B"
 

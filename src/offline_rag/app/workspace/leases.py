@@ -61,13 +61,23 @@ class WorkspaceMutationLease:
     def held(self) -> bool:
         return self._held
 
-    def acquire(self) -> None:
+    def acquire(self, *, blocking: bool = False) -> None:
+        """Acquire exclusive lease.
+
+        Default is non-blocking fail-fast (``workspace_conflict`` /
+        ``reason=lease_held``), matching ``CorpusMutationLease``.
+
+        ``blocking=True`` waits for the flock — used by managed-operation
+        critical sections so concurrent ``begin`` / ``update_status`` serialize
+        rather than racing fail-fast.
+        """
         if self._held:
             return
         self._path.parent.mkdir(parents=True, exist_ok=True)
         fd = os.open(self._path, os.O_RDWR | os.O_CREAT, 0o644)
+        flags = fcntl.LOCK_EX if blocking else fcntl.LOCK_EX | fcntl.LOCK_NB
         try:
-            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            fcntl.flock(fd, flags)
         except BlockingIOError as exc:
             os.close(fd)
             raise AppError(

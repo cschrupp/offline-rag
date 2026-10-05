@@ -10,6 +10,7 @@ import pytest
 from pydantic import ValidationError
 
 from offline_rag.app.errors import AppError, ErrorCode
+from offline_rag.app.leases import CorpusMutationLease
 from offline_rag.app.paths import ensure_data_directories
 from offline_rag.app.publication import (
     ProductPublicationRegistry,
@@ -36,6 +37,7 @@ from offline_rag.app.workspace.models import (
 )
 from offline_rag.app.workspace.mutation_ops import ManagedOperationStore
 from offline_rag.app.workspace.retirement import (
+    clear_retirement_marker,
     list_snapshot_manifests,
     restore_current_publication_pointer,
     retire_current_publication,
@@ -583,7 +585,7 @@ def test_publication_retirement_preserves_snapshots(tmp_path: Path) -> None:
     assert registry.published_snapshot_id("manuals") is None
 
     # Re-publish after retirement establishes a future current snapshot and
-    # clears the current-state retirement marker.
+    # clears the retirement audit marker.
     restore_current_publication_pointer(settings, "manuals", snapshot_id)
     assert registry.resolve("manuals").snapshot_id == snapshot_id
     assert not marker.exists()
@@ -889,7 +891,280 @@ def test_publish_clears_stale_retirement_marker(tmp_path: Path) -> None:
     retire_current_publication(settings, "manuals")
     marker = retirement_marker_path(settings.paths.corpora, "manuals")
     assert marker.exists()
-    # Ordinary Slice-15 publish after retirement clears current-state marker.
+    # Ordinary Slice-15 publish after retirement clears audit marker.
     registry.publish("manuals", identity, require_current_config_match=True)
     assert not marker.exists()
     assert registry.resolve("manuals").snapshot_id == snapshot_id
+
+
+def _one_source_active(
+    settings: AppSettings, *, corpus_name: str, snapshot_id: str, title: str = "WS"
+) -> WorkspaceRecord:
+    store = WorkspaceStore(settings)
+    empty = new_empty_workspace(title=title)
+    empty = empty.model_copy(update={"backing_corpus_name": corpus_name})
+    store.create(empty)
+    meta = RawSourceVault(settings.paths.workspaces).put_bytes(
+        empty.workspace_id, b"one", display_name="only.pdf"
+    )
+    active = empty.model_copy(
+        update={
+            "status": WorkspaceStatus.ACTIVE,
+            "current_snapshot_id": snapshot_id,
+            "revision": 2,
+            "sources": [
+                SourceVersionRecord(
+                    source_id=new_source_id(),
+                    version=1,
+                    display_name="only.pdf",
+                    content_hash=meta.content_hash,
+                    document_id=document_id_for_content(b"one"),
+                    vault_object_id=meta.object_id,
+                    created_at=datetime.now(tz=UTC),
+                    active_from_revision=2,
+                    active_from_snapshot_id=snapshot_id,
+                )
+            ],
+            "updated_at": datetime.now(tz=UTC),
+        }
+    )
+    return store.save(active)
+
+
+# --- F6: corpus lease for publication mutation ---
+
+
+def test_empty_retire_requires_corpus_lease(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    registry, snapshot_id, _ = _publish_minimal(settings, "wsc_corpuslease")
+    store = WorkspaceStore(settings)
+    active = _one_source_active(
+        settings, corpus_name="wsc_corpuslease", snapshot_id=snapshot_id, title="CL"
+    )
+    coord = EmptyTransitionCoordinator(settings, store)
+    coord.begin(active.workspace_id, expected_revision=2)
+    pointer = current_pointer_path(settings.paths.corpora, "wsc_corpuslease")
+    assert pointer.exists()
+    holder = CorpusMutationLease(settings, "wsc_corpuslease")
+    holder.acquire()
+    try:
+        with pytest.raises(AppError) as busy:
+            coord.step_retire_publication(active.workspace_id)
+        assert busy.value.code is ErrorCode.CORPUS_BUSY
+        assert pointer.exists()
+        assert registry.published_snapshot_id("wsc_corpuslease") == snapshot_id
+    finally:
+        holder.release()
+    journal = coord.step_retire_publication(active.workspace_id)
+    assert journal.phase is EmptyTransitionPhase.PUBLICATION_RETIRED
+    assert not pointer.exists()
+    assert registry.published_snapshot_id("wsc_corpuslease") is None
+
+
+# --- F7: concurrent managed-operation serialization ---
+
+
+def test_concurrent_begin_same_identity_one_operation(tmp_path: Path) -> None:
+    import threading
+
+    settings = _settings(tmp_path)
+    store = WorkspaceStore(settings)
+    ops = ManagedOperationStore(settings)
+    ws = store.create(new_empty_workspace(title="IdemRace"))
+    results: list[object] = []
+    barrier = threading.Barrier(2)
+
+    def _attempt() -> None:
+        barrier.wait(timeout=5)
+        try:
+            results.append(
+                ops.begin(
+                    workspace_id=ws.workspace_id,
+                    idempotency_key="same-key",
+                    kind=ManagedOperationKind.SOURCE_ADD,
+                    request_payload={"file": "a.pdf"},
+                    expected_revision=1,
+                )
+            )
+        except AppError as exc:
+            results.append(exc)
+
+    t1 = threading.Thread(target=_attempt)
+    t2 = threading.Thread(target=_attempt)
+    t1.start()
+    t2.start()
+    t1.join(timeout=5)
+    t2.join(timeout=5)
+    records = [r for r in results if not isinstance(r, AppError)]
+    assert len(records) == 2
+    assert records[0].operation_id == records[1].operation_id
+
+
+def test_concurrent_begin_conflicting_identity(tmp_path: Path) -> None:
+    import threading
+
+    settings = _settings(tmp_path)
+    store = WorkspaceStore(settings)
+    ops = ManagedOperationStore(settings)
+    ws = store.create(new_empty_workspace(title="IdemConflict"))
+    results: list[object] = []
+    barrier = threading.Barrier(2)
+
+    def _attempt(payload: dict) -> None:
+        barrier.wait(timeout=5)
+        try:
+            results.append(
+                ops.begin(
+                    workspace_id=ws.workspace_id,
+                    idempotency_key="conflict-key",
+                    kind=ManagedOperationKind.SOURCE_ADD,
+                    request_payload=payload,
+                    expected_revision=1,
+                )
+            )
+        except AppError as exc:
+            results.append(exc)
+
+    t1 = threading.Thread(target=_attempt, args=({"file": "a.pdf"},))
+    t2 = threading.Thread(target=_attempt, args=({"file": "b.pdf"},))
+    t1.start()
+    t2.start()
+    t1.join(timeout=5)
+    t2.join(timeout=5)
+    wins = [r for r in results if not isinstance(r, AppError)]
+    losses = [r for r in results if isinstance(r, AppError)]
+    assert len(wins) == 1
+    assert len(losses) == 1
+    assert losses[0].code is ErrorCode.IDEMPOTENCY_CONFLICT
+
+
+def test_concurrent_terminal_status_one_winner(tmp_path: Path) -> None:
+    import threading
+
+    settings = _settings(tmp_path)
+    store = WorkspaceStore(settings)
+    ops = ManagedOperationStore(settings)
+    ws = store.create(new_empty_workspace(title="TermRace"))
+    op = ops.begin(
+        workspace_id=ws.workspace_id,
+        idempotency_key="term",
+        kind=ManagedOperationKind.SOURCE_REPLACE,
+        request_payload={"v": 1},
+        expected_revision=1,
+    )
+    ops.update_status(ws.workspace_id, op.operation_id, ManagedOperationStatus.RUNNING)
+    results: list[object] = []
+    barrier = threading.Barrier(2)
+
+    def _attempt(status: ManagedOperationStatus) -> None:
+        barrier.wait(timeout=5)
+        try:
+            results.append(ops.update_status(ws.workspace_id, op.operation_id, status))
+        except AppError as exc:
+            results.append(exc)
+
+    t1 = threading.Thread(target=_attempt, args=(ManagedOperationStatus.SUCCEEDED,))
+    t2 = threading.Thread(target=_attempt, args=(ManagedOperationStatus.FAILED,))
+    t1.start()
+    t2.start()
+    t1.join(timeout=5)
+    t2.join(timeout=5)
+    wins = [r for r in results if not isinstance(r, AppError)]
+    losses = [r for r in results if isinstance(r, AppError)]
+    assert len(wins) == 1
+    assert len(losses) == 1
+    assert losses[0].code is ErrorCode.WORKSPACE_STATE_UNAVAILABLE
+    final = ops.get(ws.workspace_id, op.operation_id)
+    assert final.status in {
+        ManagedOperationStatus.SUCCEEDED,
+        ManagedOperationStatus.FAILED,
+    }
+    assert wins[0].status is final.status
+
+
+# --- F8: retirement marker audit-only / crash edge ---
+
+
+def test_recovery_a_clears_stale_retired_when_current_still_present(
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path)
+    registry, snapshot_id, _ = _publish_minimal(settings, "wsc_stale")
+    store = WorkspaceStore(settings)
+    active = _one_source_active(
+        settings, corpus_name="wsc_stale", snapshot_id=snapshot_id, title="Stale"
+    )
+    coord = EmptyTransitionCoordinator(settings, store)
+    coord.begin(active.workspace_id, expected_revision=2)
+    # Crash edge: retired.json written, current.json still present.
+    from offline_rag.app.workspace.retirement import PublicationRetirementRecord
+
+    marker = retirement_marker_path(settings.paths.corpora, "wsc_stale")
+    atomic_write_text(
+        marker,
+        PublicationRetirementRecord(
+            corpus_name="wsc_stale",
+            retired_at=datetime.now(tz=UTC),
+            last_snapshot_id=snapshot_id,
+            already_retired=False,
+        ).model_dump_json(),
+    )
+    pointer = current_pointer_path(settings.paths.corpora, "wsc_stale")
+    assert pointer.exists()
+    assert marker.exists()
+    assert coord.recover(active.workspace_id) == "A"
+    restored = store.get(active.workspace_id)
+    assert restored.status is WorkspaceStatus.ACTIVE
+    assert restored.current_snapshot_id == snapshot_id
+    assert registry.published_snapshot_id("wsc_stale") == snapshot_id
+    assert not marker.exists()
+
+
+def test_recovery_a_restores_missing_current_and_clears_marker(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    registry, snapshot_id, _ = _publish_minimal(settings, "wsc_restore")
+    store = WorkspaceStore(settings)
+    active = _one_source_active(
+        settings, corpus_name="wsc_restore", snapshot_id=snapshot_id, title="Restore"
+    )
+    coord = EmptyTransitionCoordinator(settings, store)
+    coord.begin(active.workspace_id, expected_revision=2)
+    with CorpusMutationLease(settings, "wsc_restore"):
+        retire_current_publication(settings, "wsc_restore")
+    journal = coord.load_journal(active.workspace_id)
+    assert journal is not None
+    atomic_write_text(
+        coord.journal_path(active.workspace_id),
+        journal.model_copy(
+            update={"phase": EmptyTransitionPhase.INTENT_RECORDED}
+        ).model_dump_json(),
+    )
+    marker = retirement_marker_path(settings.paths.corpora, "wsc_restore")
+    assert marker.exists()
+    assert registry.published_snapshot_id("wsc_restore") is None
+    assert coord.recover(active.workspace_id) == "A"
+    assert registry.published_snapshot_id("wsc_restore") == snapshot_id
+    assert not marker.exists()
+    assert store.get(active.workspace_id).status is WorkspaceStatus.ACTIVE
+
+
+def test_current_json_overrides_stale_retired_marker_for_resolve(
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path)
+    registry, snapshot_id, _ = _publish_minimal(settings, "manuals")
+    marker = retirement_marker_path(settings.paths.corpora, "manuals")
+    from offline_rag.app.workspace.retirement import PublicationRetirementRecord
+
+    atomic_write_text(
+        marker,
+        PublicationRetirementRecord(
+            corpus_name="manuals",
+            retired_at=datetime.now(tz=UTC),
+            last_snapshot_id=snapshot_id,
+        ).model_dump_json(),
+    )
+    # current.json still present → authoritative; resolve succeeds.
+    assert registry.resolve("manuals").snapshot_id == snapshot_id
+    clear_retirement_marker(settings, "manuals")
+    assert not marker.exists()

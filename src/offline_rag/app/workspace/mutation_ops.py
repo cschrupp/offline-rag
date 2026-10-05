@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Callable
 from pathlib import Path
+from typing import TypeVar
 
 from pydantic import ValidationError
 
 from offline_rag.app.errors import AppError, ErrorCode, SafeErrorDetails
+from offline_rag.app.workspace.leases import WorkspaceMutationLease
 from offline_rag.app.workspace.models import (
     ManagedOperationKind,
     ManagedOperationRecord,
@@ -19,6 +22,8 @@ from offline_rag.app.workspace.models import (
 )
 from offline_rag.config.models import AppSettings
 from offline_rag.ingestion.io import atomic_write_text
+
+T = TypeVar("T")
 
 # Legal managed-operation transitions (16A). Terminal states are immutable except
 # idempotent same-status rewrite.
@@ -85,6 +90,9 @@ class ManagedOperationStore:
     Idempotency identity is the canonical envelope fingerprint of
     ``{kind, expected_revision, payload}``. Same key + same envelope recovers
     the same operation; any difference conflicts.
+
+    ``begin`` / ``update_status`` serialize on ``WorkspaceMutationLease`` (optional
+    already-held lease supported for 16B composition).
     """
 
     def __init__(self, settings: AppSettings) -> None:
@@ -112,6 +120,31 @@ class ManagedOperationStore:
             idempotency_key
         )
 
+    def _with_lease(
+        self,
+        workspace_id: str,
+        fn: Callable[[], T],
+        *,
+        lease: WorkspaceMutationLease | None,
+    ) -> T:
+        if lease is not None:
+            if lease.workspace_id != workspace_id or not lease.held:
+                raise AppError(
+                    ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                    details=SafeErrorDetails(
+                        workspace_id=workspace_id, reason="lease_not_held"
+                    ),
+                )
+            return fn()
+        # Blocking acquire: concurrent begin/update_status must serialize into
+        # one critical section, not fail-fast BUSY past each other.
+        owned = WorkspaceMutationLease(self.settings, workspace_id)
+        owned.acquire(blocking=True)
+        try:
+            return fn()
+        finally:
+            owned.release()
+
     def begin(
         self,
         *,
@@ -121,6 +154,7 @@ class ManagedOperationStore:
         request_payload: dict,
         expected_revision: WorkspaceRevision | None = None,
         status: ManagedOperationStatus = ManagedOperationStatus.PENDING,
+        lease: WorkspaceMutationLease | None = None,
     ) -> ManagedOperationRecord:
         if status is not ManagedOperationStatus.PENDING:
             raise AppError(
@@ -132,53 +166,58 @@ class ManagedOperationStore:
             expected_revision=expected_revision,
             payload=request_payload,
         )
-        idem_path = self._idem_path(workspace_id, idempotency_key)
-        if idem_path.exists():
-            try:
-                pointer = idem_path.read_text(encoding="utf-8").strip()
-            except OSError as exc:
-                raise AppError(
-                    ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
-                    details=SafeErrorDetails(
-                        workspace_id=workspace_id, reason="idempotency_index_unreadable"
-                    ),
-                ) from exc
-            existing = self.get(workspace_id, pointer)
-            if (
-                existing.request_fingerprint != fingerprint
-                or existing.kind != kind
-                or existing.expected_revision != expected_revision
-            ):
-                raise AppError(
-                    ErrorCode.IDEMPOTENCY_CONFLICT,
-                    details=SafeErrorDetails(
-                        workspace_id=workspace_id,
-                        operation_id=existing.operation_id,
-                        reason="idempotency_identity_mismatch",
-                    ),
-                )
-            return existing
 
-        now = utc_now()
-        record = ManagedOperationRecord(
-            operation_id=new_operation_id(),
-            idempotency_key=idempotency_key,
-            kind=kind,
-            workspace_id=workspace_id,
-            request_fingerprint=fingerprint,
-            expected_revision=expected_revision,
-            status=status,
-            created_at=now,
-            updated_at=now,
-        )
-        op_path = self._op_path(workspace_id, record.operation_id)
-        op_path.parent.mkdir(parents=True, exist_ok=True)
-        idem_path.parent.mkdir(parents=True, exist_ok=True)
-        atomic_write_text(op_path, record.model_dump_json())
-        # Index after durable op write so crash leaves orphan op (recoverable) not
-        # dangling index.
-        atomic_write_text(idem_path, record.operation_id)
-        return record
+        def _body() -> ManagedOperationRecord:
+            idem_path = self._idem_path(workspace_id, idempotency_key)
+            if idem_path.exists():
+                try:
+                    pointer = idem_path.read_text(encoding="utf-8").strip()
+                except OSError as exc:
+                    raise AppError(
+                        ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                        details=SafeErrorDetails(
+                            workspace_id=workspace_id,
+                            reason="idempotency_index_unreadable",
+                        ),
+                    ) from exc
+                existing = self.get(workspace_id, pointer)
+                if (
+                    existing.request_fingerprint != fingerprint
+                    or existing.kind != kind
+                    or existing.expected_revision != expected_revision
+                ):
+                    raise AppError(
+                        ErrorCode.IDEMPOTENCY_CONFLICT,
+                        details=SafeErrorDetails(
+                            workspace_id=workspace_id,
+                            operation_id=existing.operation_id,
+                            reason="idempotency_identity_mismatch",
+                        ),
+                    )
+                return existing
+
+            now = utc_now()
+            record = ManagedOperationRecord(
+                operation_id=new_operation_id(),
+                idempotency_key=idempotency_key,
+                kind=kind,
+                workspace_id=workspace_id,
+                request_fingerprint=fingerprint,
+                expected_revision=expected_revision,
+                status=status,
+                created_at=now,
+                updated_at=now,
+            )
+            op_path = self._op_path(workspace_id, record.operation_id)
+            op_path.parent.mkdir(parents=True, exist_ok=True)
+            idem_path.parent.mkdir(parents=True, exist_ok=True)
+            atomic_write_text(op_path, record.model_dump_json())
+            # Index after durable op write so crash leaves orphan op (recoverable)
+            # not dangling index.
+            atomic_write_text(idem_path, record.operation_id)
+            return record
+
+        return self._with_lease(workspace_id, _body, lease=lease)
 
     def get(self, workspace_id: str, operation_id: str) -> ManagedOperationRecord:
         path = self._op_path(workspace_id, operation_id)
@@ -222,28 +261,31 @@ class ManagedOperationStore:
         result_summary: str | None = None,
         failure_summary: str | None = None,
         recovery_note: str | None = None,
+        lease: WorkspaceMutationLease | None = None,
     ) -> ManagedOperationRecord:
-        record = self.get(workspace_id, operation_id)
-        assert_legal_status_transition(record.status, status)
-        if record.status is status and status in _TERMINAL:
-            # Idempotent terminal rewrite.
-            return record
-        updated = record.model_copy(
-            update={
-                "status": status,
-                "updated_at": utc_now(),
-                "result_summary": result_summary
-                if result_summary is not None
-                else record.result_summary,
-                "failure_summary": failure_summary
-                if failure_summary is not None
-                else record.failure_summary,
-                "recovery_note": recovery_note
-                if recovery_note is not None
-                else record.recovery_note,
-            }
-        )
-        atomic_write_text(
-            self._op_path(workspace_id, operation_id), updated.model_dump_json()
-        )
-        return updated
+        def _body() -> ManagedOperationRecord:
+            record = self.get(workspace_id, operation_id)
+            assert_legal_status_transition(record.status, status)
+            if record.status is status and status in _TERMINAL:
+                return record
+            updated = record.model_copy(
+                update={
+                    "status": status,
+                    "updated_at": utc_now(),
+                    "result_summary": result_summary
+                    if result_summary is not None
+                    else record.result_summary,
+                    "failure_summary": failure_summary
+                    if failure_summary is not None
+                    else record.failure_summary,
+                    "recovery_note": recovery_note
+                    if recovery_note is not None
+                    else record.recovery_note,
+                }
+            )
+            atomic_write_text(
+                self._op_path(workspace_id, operation_id), updated.model_dump_json()
+            )
+            return updated
+
+        return self._with_lease(workspace_id, _body, lease=lease)

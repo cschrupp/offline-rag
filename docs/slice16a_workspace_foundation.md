@@ -37,8 +37,8 @@ Introduced under `src/offline_rag/app/workspace/`:
   recovery to legal states A or B.
 
 Slice-15 `ProductPublicationRegistry` publish/resolve semantics are unchanged
-except clearing a stale `retired.json` current-state marker after successful
-publish. Empty scientific ingest was **not** introduced.
+except clearing stale `retired.json` audit metadata after successful publish.
+Empty scientific ingest was **not** introduced.
 
 ## Storage layout
 
@@ -68,8 +68,8 @@ Product publication retirement (per backing corpus):
 
 ```text
 corpora/<backing_corpus>/product/
-  current.json          # removed on retirement; restored/published clears retired.json
-  retired.json          # current-state retirement marker (not append-only audit)
+  current.json          # SOLE authority for current product publication
+  retired.json          # audit/recovery metadata only (never overrides current.json)
   snapshots/<snap>.json # immutable; never deleted by retirement/recovery
 ```
 
@@ -85,13 +85,22 @@ corpora/<backing_corpus>/product/
 - While `empty_transition.json` exists, ordinary mutations fail closed with
   `empty_transition_in_progress` (journal fence across split step calls)
 
-### Lock acquisition ordering (frozen for 16B)
+### Lock acquisition ordering (frozen / enforced)
 
 ```text
 workspace lease → corpus lease
 ```
 
-Never acquire in the opposite order.
+Never acquire in the opposite order. EMPTY coordinator paths that mutate or
+restore product publication (`step_retire_publication`, recovery A/B pointer
+work) acquire `CorpusMutationLease` for `journal.backing_corpus_name` **while
+the workspace lease is already held**. Low-level retirement/restore helpers
+remain caller-serialized and do not acquire the corpus lease internally
+(Slice-15 ingest already owns it through `publish()`).
+
+Contention: holding `CorpusMutationLease` for the backing corpus causes
+`step_retire_publication` to fail `corpus_busy` without modifying
+`current.json`.
 
 ## Idempotency identity (F2)
 
@@ -106,6 +115,22 @@ Persisted as `request_fingerprint = reqfp_<sha256(canonical_json(envelope))>`.
 Same key + same kind + same expected_revision + same payload → same operation.
 Any difference → `idempotency_conflict`.
 
+## Managed-operation serialization (F7)
+
+`ManagedOperationStore.begin` and `update_status` run inside a
+`WorkspaceMutationLease` critical section (optional already-held lease for
+16B composition). When acquiring their own lease they use **blocking** flock
+so concurrent callers serialize rather than fail-fast. The section covers:
+
+- idempotency index existence/read + identity comparison;
+- operation record + index creation;
+- status read + transition validation + durable write.
+
+Concurrent same-key/same-identity → one stable `operation_id`.
+Concurrent same-key/different-identity → one winner + one `idempotency_conflict`.
+Concurrent terminal transitions from RUNNING → exactly one terminal wins;
+loser re-reads committed terminal and fails closed.
+
 ## Managed-operation state machine (F3)
 
 ```text
@@ -118,13 +143,19 @@ SUCCEEDED, FAILED, INTERRUPTED → terminal
 Idempotent rewrite of the same terminal status is allowed.
 Illegal transitions fail closed with `workspace_state_unavailable` /
 `illegal_operation_status_transition`. Retries are new operations.
+Terminal immutability holds under concurrency (lease-guarded), not only
+sequentially.
 
-## Retirement marker semantics (F4)
+## Retirement / publication authority (F4 / F8)
 
-- `retired.json` is a **current-state** marker, not an append-only audit log
-- Present only while there is no current publication pointer
-- Cleared by `restore_current_publication_pointer` and by
+- `current.json` (existence + valid pointer) is the **sole** authority for
+  whether a corpus currently has a product publication
+- `retired.json` is **audit / recovery metadata only** — its presence MUST NOT
+  override an existing valid `current.json` (not a two-bit state machine)
+- Cleared opportunistically by `restore_current_publication_pointer` and by
   `ProductPublicationRegistry.publish` after writing `current.json`
+- Recovery to A clears stale `retired.json` even when `current.json` already
+  exists (crash between marker write and pointer unlink)
 - Historical snapshot manifests remain untouched
 
 ## Vault identity verification (F5)
@@ -148,15 +179,16 @@ Mismatch → `workspace_state_unavailable` with
 
 ## Depublication / retirement semantics
 
-`retire_current_publication(settings, corpus_name)`:
+`retire_current_publication(settings, corpus_name)` (caller holds corpus lease):
 
-1. writes `product/retired.json` with last current snapshot id (if any);
-2. unlinks `product/current.json`;
+1. writes `product/retired.json` audit metadata with last snapshot id (if any);
+2. unlinks `product/current.json` (authority bit);
 3. leaves `product/snapshots/*` intact.
 
-After retirement, `resolve()` fails as unpublished (`corpus_unknown` /
-`not_published`). Ordinary Slice-15 republish / pointer restore can establish a
-future current snapshot and clears the retirement marker.
+A crash may leave both files briefly; while `current.json` exists it remains
+authoritative. After retirement (pointer gone), `resolve()` fails as
+unpublished (`corpus_unknown` / `not_published`). Ordinary Slice-15 republish /
+pointer restore establishes a future current and clears the audit marker.
 
 ## Crash-recovery mechanism
 
@@ -173,9 +205,11 @@ intent_recorded → publication_retired → workspace_emptied → committed
 - **B** — EMPTY workspace + no active current publication.
 
 Rule of thumb: if workspace is already EMPTY, complete to B (ensure retired);
-otherwise restore prior workspace JSON + current pointer (A). Historical
+otherwise restore prior workspace JSON + ensure current pointer (A), clearing
+stale `retired.json` even when the pointer already exists. Historical
 snapshot manifests are never deleted. Competing metadata mutations cannot
-commit while the journal fence is present.
+commit while the journal fence is present. Publication restore/retire under
+recovery holds corpus lease inside the workspace lease.
 
 ## Error code additions
 
@@ -202,13 +236,16 @@ uv run pytest \
   tests/unit/app/test_slice15a_foundation.py \
   tests/unit/app/test_slice15c_snapshots_leases_documents.py \
   tests/unit/app/test_slice15g_container_packaging.py -q
-→ 92 passed
+→ 99 passed
+
+git diff --check
+→ clean
 ```
 
-Added/updated coverage for: lease contention, concurrent revision CAS, EMPTY
-journal fence vs competing metadata, idempotency envelope (revision/kind),
-operation transition legality, retirement marker clear on restore/publish,
-vault metadata identity mismatch.
+Coverage includes F1–F5 plus F6–F8: corpus-lease contention on EMPTY
+retirement; concurrent begin (same/conflicting identity); concurrent terminal
+status race; recovery A clears stale `retired.json` when `current.json` still
+present; current overrides marker for resolve authority.
 
 ## Known limitations / deferred to 16B+
 
