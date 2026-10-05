@@ -1,10 +1,9 @@
 # Slice 15H — Integration acceptance / closeout evidence
 
-Status: **15H IMPLEMENTATION / EVIDENCE CANDIDATE**  
-**INDEPENDENT REVIEW PENDING**  
-**NOT YET ACCEPTED**
-
-Do not treat this document as Slice 15 COMPLETE / ACCEPTED.
+Status: **15H COMPLETE / ACCEPTED**
+Accepted implementation / FF head: `1c1d94eada502523d44ec8e9c9a6e23b1f863d49`
+Independent review: **ACCEPT**
+Slice 15: **COMPLETE / ACCEPTED** (including this closeout)
 
 ## Authority
 
@@ -15,15 +14,19 @@ Do not treat this document as Slice 15 COMPLETE / ACCEPTED.
 | Accepted implementation plan | `docs/slice15_implementation_plan.md` |
 | Expected 15H baseline / starting SHA | `b6fe122a34367b39f44405012f022971cc53d858` |
 | Accepted 15G implementation | `140350b8cc6eec6a2491c0a1696042e65b2d2b7e` |
-| Candidate SHA | branch tip of `implementation/15H-integration-closeout` (see report / `git rev-parse HEAD`) |
+| Accepted 15H / Slice 15 closeout SHA | `1c1d94eada502523d44ec8e9c9a6e23b1f863d49` |
 
-## Governance after baseline
+## Governance after acceptance
 
-- 15A–15G COMPLETE / ACCEPTED
-- 15H AUTHORIZED / OPEN (this candidate)
-- Slice 16–18 PLANNED / DESIGN NOT OPEN / IMPLEMENTATION NOT AUTHORIZED
+- 15A–15H COMPLETE / ACCEPTED
+- Slice 15 COMPLETE / ACCEPTED
+- Slice 16 PLANNED / DESIGN NOT OPEN / IMPLEMENTATION NOT AUTHORIZED
+  (prerequisite for opening design interview is now satisfied)
+- Slice 17–18 PLANNED / DESIGN NOT OPEN / IMPLEMENTATION NOT AUTHORIZED
 - Milestone 7 IN PROGRESS / closeout NOT AUTHORIZED
 - Image optimization issue #1 remains deferred
+- Unrelated full-suite failures outside the 15H diff remain known repository
+  debt (not a green full-suite claim)
 
 ## Environment
 

@@ -47,17 +47,20 @@ LEVEL-C AUTHORITATIVE RUN: COMPLETE / ACCEPTED
 
 SLICE 14 CLOSEOUT: COMPLETE / ACCEPTED
 
-SLICE 15: 15A–15G COMPLETE / ACCEPTED
-15H: NOT AUTHORIZED
-     (integration acceptance / Slice-15 closeout; NOT the UI phase)
+SLICE 15: COMPLETE / ACCEPTED
+15A–15H: COMPLETE / ACCEPTED
+15H FF head: 1c1d94eada502523d44ec8e9c9a6e23b1f863d49
+Evidence: docs/slice15h_integration_acceptance.md
 
 SLICE 16: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
   Pre-design frame: docs/slice16_portfolio_ui.md
+  (Slice-15 closeout prerequisite satisfied)
 SLICE 17: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
 SLICE 18: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
 
 PORTFOLIO_DEMO.md UPDATE: NOT AUTHORIZED
 MILESTONE 7 CLOSEOUT: NOT AUTHORIZED
+issue #1 image-size debt: DEFERRED
 ```
 
 **Authoritative for:** Milestone 7 / Slice 14 performance & resource benchmark
@@ -814,8 +817,8 @@ SLICE 14: COMPLETE / ACCEPTED
 14A / 14B / 14C freeze / 14C harness / corrected 14C run: ACCEPTED
 LEVEL-C instrumentation / freeze / preflight / runner / run: ACCEPTED
 
-SLICE 15: 15A–15G COMPLETE / ACCEPTED
-15H: NOT AUTHORIZED
+SLICE 15: COMPLETE / ACCEPTED (15A–15H)
+15H FF head: 1c1d94eada502523d44ec8e9c9a6e23b1f863d49
 
 SLICE 16: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
 SLICE 17: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
@@ -825,13 +828,14 @@ MILESTONE 7: IN PROGRESS
 PORTFOLIO_DEMO.md UPDATE: NOT AUTHORIZED
 MILESTONE 7 CLOSEOUT: NOT AUTHORIZED
 PERFORMANCE OPTIMIZATION: NOT AUTHORIZED
+issue #1 image-size debt: DEFERRED
 M6 science: UNCHANGED
 13C / 13D / recovery / LangGraph / NeMo / base.yaml:
   NOT AUTHORIZED / UNCHANGED
 ```
 
-**Next governance sequence (not authorized by this document):** 15H Slice-15
-closeout → Slice 16 design open → Slice 17 → Slice 18 → Milestone 7 closeout.
-Slice 14 performance benchmark harness and accepted terminal runs are closed.
-15H is **not** the UI phase; Slice 16 remains DESIGN NOT OPEN until Slice 15 is
-closed and Slice 16 design is explicitly authorized.
+**Next governance sequence (not authorized by this document):** Slice 16 design
+open (explicit authorization) → Slice 17 → Slice 18 → Milestone 7 closeout.
+Slice 14 and Slice 15 are closed. Slice 16 remains DESIGN NOT OPEN until Slice
+16 design is explicitly authorized; the Slice-15 closeout prerequisite is
+satisfied.

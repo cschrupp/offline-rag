@@ -14,22 +14,28 @@ architecture, technology choices, or implementation authorization.
 
 ```text
 14  Performance evidence          COMPLETE / ACCEPTED
-15  Product/API/container         15A–15G COMPLETE / ACCEPTED
+15  Product/API/container         COMPLETE / ACCEPTED
 15H Integration acceptance /
-    Slice-15 closeout             NOT AUTHORIZED
+    Slice-15 closeout             COMPLETE / ACCEPTED
+                                  at 1c1d94eada502523d44ec8e9c9a6e23b1f863d49
 16  Portfolio Demo UI             PLANNED / DESIGN NOT OPEN
+                                  IMPLEMENTATION NOT AUTHORIZED
 ```
 
-Slice **15H** closes Slice 15 and validates the API/container product boundary.
-**15H is not the UI phase.** Slice 16 design cannot be formally opened until:
+Slice **15H** closed Slice 15 and validated the API/container product boundary
+(**15H was not the UI phase**). The closeout prerequisite for opening a Slice 16
+design interview is now satisfied. This document still does **not** authorize
+Slice 16 design or implementation until an explicit separate authorization is
+issued.
 
-1. Slice 15H has completed independent integration acceptance;
+Historical open criteria (now met):
+
+1. Slice 15H completed independent integration acceptance;
 2. Slice 15 is COMPLETE / ACCEPTED (including closeout);
 3. supported API contracts are stable;
-4. any integration findings relevant to UI consumption are resolved or
-   explicitly accepted.
-
-This document does **not** authorize 15H or Slice 16 design/implementation.
+4. integration findings relevant to UI consumption are resolved or
+   explicitly accepted (see
+   [`docs/slice15h_integration_acceptance.md`](slice15h_integration_acceptance.md)).
 
 ---
 
@@ -213,9 +219,10 @@ so Slice 16 design must decide the frontend delivery model explicitly.
 
 Before a formal Slice-16 design interview/authority document:
 
-1. 15H COMPLETE / ACCEPTED (or an explicit governance exception documenting why
-   design may open earlier — none exists today);
-2. Slice 15 COMPLETE / ACCEPTED including closeout;
-3. stable supported product contracts for UI consumption;
+1. ~~15H COMPLETE / ACCEPTED~~ **DONE** (`1c1d94e…`;
+   [`slice15h_integration_acceptance.md`](slice15h_integration_acceptance.md));
+2. ~~Slice 15 COMPLETE / ACCEPTED including closeout~~ **DONE**;
+3. stable supported product contracts for UI consumption — **met** by accepted
+   Slice 15 surface;
 4. explicit design authorization citing this roadmap frame and Slice-15
-   architecture authority.
+   architecture authority — **still required** (not granted by this document).

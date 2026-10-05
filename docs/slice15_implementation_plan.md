@@ -1,8 +1,8 @@
 # Slice 15 — Implementation plan
 
-**Status:** **ACCEPTED**  
-**Architecture + Residual A authority:** [`docs/slice15_developer_api_packaging.md`](slice15_developer_api_packaging.md)  
-(`6583fb3be64f2c66e8655b8b99166c358f8f0844`)  
+**Status:** **ACCEPTED**
+**Architecture + Residual A authority:** [`docs/slice15_developer_api_packaging.md`](slice15_developer_api_packaging.md)
+(`6583fb3be64f2c66e8655b8b99166c358f8f0844`)
 **Phase progress:**
 - **15A:** **COMPLETE / ACCEPTED** (baseline `4a1c8dbcddc8408dd8b8b46dc0f18df56561d2f8`)
 - **15B:** **COMPLETE / ACCEPTED** (head `00282d67f43edad7cb4094228c482bf8f361d578`)
@@ -11,7 +11,9 @@
 - **15E:** **COMPLETE / ACCEPTED** (FF head `63f5965adae3c2a1c5a5b338bcc1243f9423bb5a`; commits `2a84ef01…`, `63f5965a…`)
 - **15F:** **COMPLETE / ACCEPTED** (FF head `7bfb0893e1537af99bdaad6f6af5336408afe750`; commits `850d04e9…`, `f907c849…`, `7bfb0893…`)
 - **15G:** **COMPLETE / ACCEPTED** (FF head `140350b8cc6eec6a2491c0a1696042e65b2d2b7e`)
-- **15H:** **NOT AUTHORIZED**
+- **15H:** **COMPLETE / ACCEPTED** (FF head `1c1d94eada502523d44ec8e9c9a6e23b1f863d49`;
+  evidence [`docs/slice15h_integration_acceptance.md`](slice15h_integration_acceptance.md))
+- **Slice 15:** **COMPLETE / ACCEPTED**
 
 This plan decomposes Slice 15 into bounded phases with scope, dependencies,
 acceptance tests, and explicit non-scope. Coding still requires explicit
@@ -113,7 +115,7 @@ names) are free **within** each phase if D01–D22 + Residual A remain satisfied
 
 ## 3. Phase 15B — Process lifecycle, health, doctor debt
 
-**Status:** **COMPLETE / ACCEPTED** on main (`00282d67f43edad7cb4094228c482bf8f361d578`)  
+**Status:** **COMPLETE / ACCEPTED** on main (`00282d67f43edad7cb4094228c482bf8f361d578`)
 **Implementation commits:** `a009bd7d975b090d03d0b9b6b8d580dbfee6f796`, `00282d67f43edad7cb4094228c482bf8f361d578`
 
 ### Scope
@@ -144,7 +146,7 @@ names) are free **within** each phase if D01–D22 + Residual A remain satisfied
 
 ## 4. Phase 15C — Snapshot registry, leases, documents
 
-**Status:** **COMPLETE / ACCEPTED** on main (merge `47a11f1968be75cf772fc7a9e4447ee26e283c52`)  
+**Status:** **COMPLETE / ACCEPTED** on main (merge `47a11f1968be75cf772fc7a9e4447ee26e283c52`)
 **Implementation commits:** `e15769d8b452f7386f74c515619644c0ee67dfbb`, `5d70be09a3534a093bad9754f4051840ed1fde92`
 
 ### Scope
@@ -181,7 +183,7 @@ busy; CLI and API share coordination namespace.
 
 ## 5. Phase 15D — Product ingest
 
-**Status:** **COMPLETE / ACCEPTED** on main (FF head `2ef21d26b9513fa7bc98ab1ad8de3645d17cebd7`)  
+**Status:** **COMPLETE / ACCEPTED** on main (FF head `2ef21d26b9513fa7bc98ab1ad8de3645d17cebd7`)
 **Implementation commits:** `39ac270b19be2e87a2dc0bb48668a1c249709042`,
 `88908acd09e644e0107050d5a5fec28ffe2db7bf`,
 `2ef21d26b9513fa7bc98ab1ad8de3645d17cebd7`
@@ -342,6 +344,9 @@ busy; CLI and API share coordination namespace.
 
 ## 9. Phase 15H — Integration acceptance / closeout
 
+**Status:** **COMPLETE / ACCEPTED** on main (FF head `1c1d94eada502523d44ec8e9c9a6e23b1f863d49`)
+**Evidence:** [`docs/slice15h_integration_acceptance.md`](slice15h_integration_acceptance.md)
+
 ### Scope
 
 - End-to-end scripted acceptance on supported profile (local or Compose):
@@ -420,12 +425,12 @@ Unauthorized phase work, speculative refactors, and eval HTTP remain forbidden.
 
 ## 13. Phase exit checklist (per phase PR)
 
-- [ ] Scope matches this plan section  
-- [ ] No locked decision silently changed (reopen rule)  
-- [ ] Acceptance tests listed above added and green for the phase  
-- [ ] Secrets/tracebacks absent from new HTTP surfaces  
-- [ ] OpenAPI still free of `/eval/*` and unversioned product paths  
-- [x] Doctor remains non-mutating after 15B (landed in 15B)  
+- [ ] Scope matches this plan section
+- [ ] No locked decision silently changed (reopen rule)
+- [ ] Acceptance tests listed above added and green for the phase
+- [ ] Secrets/tracebacks absent from new HTTP surfaces
+- [ ] OpenAPI still free of `/eval/*` and unversioned product paths
+- [x] Doctor remains non-mutating after 15B (landed in 15B)
 
 ---
 

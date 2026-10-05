@@ -1,20 +1,22 @@
 # Slice 15 — Developer API and single-container packaging
 
-**Status:** Architecture **COMPLETE / LOCKED** (S15-D01 … S15-D22)  
-**Pre-implementation contract (Residual A):** **LOCKED / ACCEPTED**  
-**Implementation plan:** [`docs/slice15_implementation_plan.md`](slice15_implementation_plan.md) — **ACCEPTED**  
-**Code implementation:** phased — **15A/15B/15C/15D/15E/15F/15G COMPLETE / ACCEPTED**; **15H NOT AUTHORIZED**
+**Status:** Architecture **COMPLETE / LOCKED** (S15-D01 … S15-D22)
+**Pre-implementation contract (Residual A):** **LOCKED / ACCEPTED**
+**Implementation plan:** [`docs/slice15_implementation_plan.md`](slice15_implementation_plan.md) — **ACCEPTED**
+**Code implementation:** **Slice 15 COMPLETE / ACCEPTED** (15A–15H)
+**Closeout evidence:** [`docs/slice15h_integration_acceptance.md`](slice15h_integration_acceptance.md)
 
-**Architecture + Residual A authority:** this document.  
-**Authority SHA (design + Residual A):** `6583fb3be64f2c66e8655b8b99166c358f8f0844`  
-**Drafting baseline HEAD (pre-artifact):** `3ed9212c777798338d5b2229eff7d7aabe3d5adb`  
-**Milestone:** Milestone 7 **IN PROGRESS**; Slice 14 **COMPLETE / ACCEPTED**.  
-**Landed implementation head (15G):** `140350b8cc6eec6a2491c0a1696042e65b2d2b7e`  
-**15C merge commit:** `47a11f1968be75cf772fc7a9e4447ee26e283c52`  
-**15D fast-forward onto main:** `2ef21d26b9513fa7bc98ab1ad8de3645d17cebd7`  
-**15E fast-forward onto main:** `63f5965adae3c2a1c5a5b338bcc1243f9423bb5a`  
-**15F fast-forward onto main:** `7bfb0893e1537af99bdaad6f6af5336408afe750`  
+**Architecture + Residual A authority:** this document.
+**Authority SHA (design + Residual A):** `6583fb3be64f2c66e8655b8b99166c358f8f0844`
+**Drafting baseline HEAD (pre-artifact):** `3ed9212c777798338d5b2229eff7d7aabe3d5adb`
+**Milestone:** Milestone 7 **IN PROGRESS**; Slice 14 **COMPLETE / ACCEPTED**.
+**Landed implementation head (15H / Slice 15 closeout):** `1c1d94eada502523d44ec8e9c9a6e23b1f863d49`
+**15C merge commit:** `47a11f1968be75cf772fc7a9e4447ee26e283c52`
+**15D fast-forward onto main:** `2ef21d26b9513fa7bc98ab1ad8de3645d17cebd7`
+**15E fast-forward onto main:** `63f5965adae3c2a1c5a5b338bcc1243f9423bb5a`
+**15F fast-forward onto main:** `7bfb0893e1537af99bdaad6f6af5336408afe750`
 **15G fast-forward onto main:** `140350b8cc6eec6a2491c0a1696042e65b2d2b7e`
+**15H fast-forward onto main:** `1c1d94eada502523d44ec8e9c9a6e23b1f863d49`
 
 This document remains the reviewable architecture authority. Conversation history
 is not an authority once this artifact is accepted at a committed SHA. Later
@@ -38,7 +40,8 @@ PHASE 15D:                            COMPLETE / ACCEPTED
 PHASE 15E:                            COMPLETE / ACCEPTED
 PHASE 15F:                            COMPLETE / ACCEPTED
 PHASE 15G:                            COMPLETE / ACCEPTED
-PHASE 15H:                            NOT AUTHORIZED
+PHASE 15H:                            COMPLETE / ACCEPTED
+SLICE 15:                             COMPLETE / ACCEPTED
 S15-D20 TRANSPORT-ORDER CLARIFICATION: LOCKED / ACCEPTED
 ```
 
@@ -187,7 +190,7 @@ Owner: `offline_rag.app`. FastAPI/CLI translate only.
 | `trace_unknown` | 404 | false | Missing/expired/uncommitted trace |
 | `internal_error` | 500 | false | Unexpected orchestration failure |
 
-\* Retrying immediately is not something clients should assume helps.  
+\* Retrying immediately is not something clients should assume helps.
 † `request_cancelled` is application/trace-terminal only under D18: it has **no
 normative HTTP status**. Implementations must not invent `499`, `408`, or another
 HTTP mapping for the already-disconnected-peer case.
@@ -761,23 +764,25 @@ and must remain absent. Startup—not doctor—owns required `/data` creation.
 
 ## 7. Next governance steps
 
-1. ~~Commit this consolidation artifact (+ Residual A freeze text) for remote audit~~ **DONE**  
-2. ~~Independently review [`docs/slice15_implementation_plan.md`](slice15_implementation_plan.md)~~ **DONE / ACCEPTED**  
-3. ~~Confirm §5 matches the accepted Residual A freeze at the authority SHA~~ **DONE**  
-4. ~~Authorize and land 15A / 15B~~ **DONE** (`00282d67…` on main)  
-5. ~~Authorize and land 15C~~ **DONE** (`5d70be09…` / merge `47a11f19…`)  
-6. ~~Authorize and land 15D~~ **DONE** (`2ef21d26…` FF onto main)  
-7. ~~Authorize and land 15E~~ **DONE** (`63f5965…` FF onto main)  
-8. ~~Authorize and land 15F~~ **DONE** (`7bfb089…` FF onto main)  
-9. ~~Authorize and land 15G~~ **DONE** (`140350b…` FF onto main)  
-10. Issue explicit **15H** implementation authorization citing design authority
-    `6583fb3…` and the post-15G main baseline before Slice 15 closeout work  
-11. Only after Slice 15 is closed, open Slice 16 design under a separate
-    authority (see [`docs/slice16_portfolio_ui.md`](slice16_portfolio_ui.md);
-    15H is **not** the UI phase)
+1. ~~Commit this consolidation artifact (+ Residual A freeze text) for remote audit~~ **DONE**
+2. ~~Independently review [`docs/slice15_implementation_plan.md`](slice15_implementation_plan.md)~~ **DONE / ACCEPTED**
+3. ~~Confirm §5 matches the accepted Residual A freeze at the authority SHA~~ **DONE**
+4. ~~Authorize and land 15A / 15B~~ **DONE** (`00282d67…` on main)
+5. ~~Authorize and land 15C~~ **DONE** (`5d70be09…` / merge `47a11f19…`)
+6. ~~Authorize and land 15D~~ **DONE** (`2ef21d26…` FF onto main)
+7. ~~Authorize and land 15E~~ **DONE** (`63f5965…` FF onto main)
+8. ~~Authorize and land 15F~~ **DONE** (`7bfb089…` FF onto main)
+9. ~~Authorize and land 15G~~ **DONE** (`140350b…` FF onto main)
+10. ~~Authorize and land 15H / Slice 15 closeout~~ **DONE**
+    (`1c1d94e…` FF onto main; evidence
+    [`slice15h_integration_acceptance.md`](slice15h_integration_acceptance.md))
+11. Open Slice 16 design only under a separate explicit authorization
+    (see [`docs/slice16_portfolio_ui.md`](slice16_portfolio_ui.md);
+    15H was **not** the UI phase). Prerequisite for that interview is now
+    satisfied; design/implementation remain unauthorized until issued.
 
 ```text
-PHASE 15H: NOT AUTHORIZED BY THIS DOCUMENT ALONE
+SLICE 15: COMPLETE / ACCEPTED
 SLICE 16+: NOT AUTHORIZED BY THIS DOCUMENT
 ```
 

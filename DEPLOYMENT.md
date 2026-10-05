@@ -118,6 +118,15 @@ Do **not** bundle these weights into the application image. Do **not** enable
 runtime Hugging Face / model download fallbacks. Missing required assets keep
 the accepted fail-closed readiness behavior (`/health/ready` → `503`).
 
+**Linux bind-mount readability:** the container runs as UID/GID `10001:10001`.
+When using a host bind mount for `/models`, provisioned files must be
+**readable** and directories **traversable** by that UID (for example mode
+`0644`/`0755`, or ownership/ACLs that grant `10001` read+execute on the tree).
+A common failure mode is host-provisioned manifests at mode `0600` owned by a
+different UID: Docling/tokenizer static checks may pass while embedder/reranker
+manifest reads fail closed with `/health/ready` → `503` `runtime_not_ready`.
+`/models` is normally mounted read-only; the process must not need write access.
+
 Generator weights remain entirely outside `/models` and outside the app image.
 
 ## 5. Supported quick start (Slice 15G packaging)

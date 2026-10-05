@@ -1,9 +1,10 @@
 # Container image size optimization (deferred)
 
-**Status:** deferred technical debt — **not** a Slice 15G blocker  
-**Tracking:** [#1 Optimize Docker image size with CPU/CUDA variants and multi-stage builds](https://github.com/cschrupp/offline-rag/issues/1)  
-**Accepted 15G reference implementation:** `140350b8cc6eec6a2491c0a1696042e65b2d2b7e`  
-**Reference local test tag:** `offline-rag:15g-test`
+**Status:** deferred technical debt — **not** a Slice 15 / 15H blocker
+**Tracking:** [#1 Optimize Docker image size with CPU/CUDA variants and multi-stage builds](https://github.com/cschrupp/offline-rag/issues/1)
+**Accepted 15G reference implementation:** `140350b8cc6eec6a2491c0a1696042e65b2d2b7e`
+**Accepted Slice 15 closeout (15H):** `1c1d94eada502523d44ec8e9c9a6e23b1f863d49`
+**Reference local test tags:** `offline-rag:15g-test`, `offline-rag:15h-test` (~10.3GB)
 
 ## Current state
 
@@ -33,19 +34,19 @@ trees inside the image itself.
 
 ## Recommended future directions
 
-1. **Multi-stage Docker builds**  
+1. **Multi-stage Docker builds**
    Builder stage for install/build tooling; copy only the runtime environment into
    a clean runtime stage. Improves hygiene; size win alone may be modest if CUDA
    libraries remain runtime dependencies.
 
-2. **CPU release image (preferred default)**  
-   Candidate tag: `offline-rag:<version>-cpu`  
+2. **CPU release image (preferred default)**
+   Candidate tag: `offline-rag:<version>-cpu`
    Use `python:3.14-slim` with explicitly CPU-only PyTorch/runtime dependencies
    where practical. Likely the best default portfolio/release image because the
    generator remains external and retrieval does not require GPU execution.
 
-3. **CUDA release image (optional)**  
-   Candidate tag: `offline-rag:<version>-cuda`  
+3. **CUDA release image (optional)**
+   Candidate tag: `offline-rag:<version>-cuda`
    Prefer a matching NVIDIA CUDA runtime base image rather than indirectly
    installing CUDA into `python:3.14-slim`. Avoid duplicating CUDA libraries
    between the NVIDIA base image and PyTorch `nvidia-*` wheels.

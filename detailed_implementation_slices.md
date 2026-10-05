@@ -943,17 +943,18 @@ update.** Milestone 6 remains COMPLETE / ACCEPTED unchanged.
 - **15E:** **COMPLETE / ACCEPTED** (FF head `63f5965adae3c2a1c5a5b338bcc1243f9423bb5a`; commits `2a84ef01…`, `63f5965a…`)
 - **15F:** **COMPLETE / ACCEPTED** (FF head `7bfb0893e1537af99bdaad6f6af5336408afe750`; commits `850d04e9…`, `f907c849…`, `7bfb0893…`)
 - **15G:** **COMPLETE / ACCEPTED** (FF head `140350b8cc6eec6a2491c0a1696042e65b2d2b7e`)
-- **15H:** **NOT AUTHORIZED** (integration acceptance / Slice 15 closeout;
-  **not** the UI phase)
+- **15H:** **COMPLETE / ACCEPTED** (FF head `1c1d94eada502523d44ec8e9c9a6e23b1f863d49`;
+  evidence [`docs/slice15h_integration_acceptance.md`](docs/slice15h_integration_acceptance.md))
+- **Slice 15:** **COMPLETE / ACCEPTED**
 
 Roadmap path names such as unversioned `/ingest` and optional `/eval/run` are
 superseded by the locked design: product HTTP under `/v1/*`, CLI-first evaluation
-(D12), and unversioned `/health*` only. Landed through 15G:
+(D12), and unversioned `/health*` only. Landed Slice 15 surface:
 `/health*`, `GET /v1/documents`, `GET /v1/documents/{document_id}`,
 `POST /v1/ingest`, `POST /v1/query`, `GET /v1/trace/{trace_id}`,
-admission/deadlines/drain, and the supported container/Compose packaging
-profile. Slice 15 integration closeout (**15H**) remains **NOT AUTHORIZED**.
-Portfolio UI work is **Slice 16** and is separate from 15H.
+admission/deadlines/drain, supported container/Compose packaging, and product
+CLI ingest/query via `offline_rag.app`. Portfolio UI work is **Slice 16**
+(**PLANNED / DESIGN NOT OPEN**; closeout prerequisite satisfied).
 
 ## Objective
 

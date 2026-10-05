@@ -395,14 +395,18 @@ regression CI, and portfolio release packaging (Slices 14–18).
 ```text
 POST-SLICE-15 ROADMAP
 
-15H  NOT AUTHORIZED
-     Integration acceptance / Slice-15 closeout
+SLICE 15  COMPLETE / ACCEPTED
+15H       COMPLETE / ACCEPTED
+          at 1c1d94eada502523d44ec8e9c9a6e23b1f863d49
+          evidence: docs/slice15h_integration_acceptance.md
 
 16   PLANNED
      Portfolio Demo UI
      DESIGN NOT OPEN
      IMPLEMENTATION NOT AUTHORIZED
      Pre-design frame: docs/slice16_portfolio_ui.md
+     (15H/Slice-15 closeout prerequisite satisfied; design interview
+      still requires separate explicit authorization)
 
 17   PLANNED
      Regression CI
@@ -415,6 +419,7 @@ POST-SLICE-15 ROADMAP
      IMPLEMENTATION NOT AUTHORIZED
 
 M7 CLOSEOUT  NOT AUTHORIZED
+issue #1 (image size / CPU-CUDA variants)  DEFERRED
 ```
 
 Canonical dependency chain (sequential until explicitly redesigned):
@@ -512,9 +517,16 @@ Slice 14 checklist:
 - **15G** container packaging + Compose contract: **COMPLETE / ACCEPTED**
   - Implementation head: `140350b8cc6eec6a2491c0a1696042e65b2d2b7e`
   - Fast-forward onto main at `140350b8cc6eec6a2491c0a1696042e65b2d2b7e`
-- **15H** integration acceptance / Slice 15 closeout: **NOT AUTHORIZED**
-  - 15H validates the accepted API/container product boundary
-  - 15H does **not** implement the portfolio UI
+- **15H** integration acceptance / Slice 15 closeout: **COMPLETE / ACCEPTED**
+  - Fast-forward onto main at `1c1d94eada502523d44ec8e9c9a6e23b1f863d49`
+  - Evidence: [`docs/slice15h_integration_acceptance.md`](docs/slice15h_integration_acceptance.md)
+  - Product CLI ingest/query use `offline_rag.app` (§11)
+  - Readiness-503 with mounted models diagnosed as host `/models` permissions
+    (UID `10001` readability); see `DEPLOYMENT.md`
+  - Image-size debt remains deferred ([issue #1](https://github.com/cschrupp/offline-rag/issues/1))
+  - Unrelated full-suite failures outside the 15H diff remain known repository
+    debt (not claimed as a globally green suite)
+- **Slice 15:** **COMPLETE / ACCEPTED**
 
 **Slice 16 — Portfolio Demo UI:** **PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED**
 - Pre-design frame: [`docs/slice16_portfolio_ui.md`](docs/slice16_portfolio_ui.md)
@@ -560,11 +572,12 @@ Later M7 checklist:
 - [x] single-container OfflineRAG application image (15G — **COMPLETE / ACCEPTED**)
 - [x] Qdrant Local standalone profile (15G — **COMPLETE / ACCEPTED**)
 - [x] `/data` + `/models` volume packaging contract (15G — **COMPLETE / ACCEPTED**)
-- [ ] Slice 15 integration closeout (15H — **NOT AUTHORIZED**)
+- [x] Slice 15 integration closeout (15H — **COMPLETE / ACCEPTED** at `1c1d94e…`)
 - [ ] Portfolio Demo UI (Slice 16 — **PLANNED / DESIGN NOT OPEN**)
 - [ ] Regression CI (Slice 17 — **PLANNED / DESIGN NOT OPEN**)
 - [ ] Portfolio release package (Slice 18 — **PLANNED / DESIGN NOT OPEN**)
 - [ ] Milestone 7 closeout (**NOT AUTHORIZED**)
+- [ ] Container image size / CPU–CUDA variants ([issue #1](https://github.com/cschrupp/offline-rag/issues/1) — **DEFERRED**)
 
 **M7 release direction (not a Slice-15 exit criterion):** a reviewer can use the
 accepted product/API surface and, after Slice 16 design/implementation, inspect
