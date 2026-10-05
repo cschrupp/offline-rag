@@ -1183,7 +1183,10 @@ def test_f12_pipeline_supersession_isolation(tmp_path: Path) -> None:
             outcome = run_workspace_query(
                 runtime,
                 workspace_id=wid,
-                question=f"Quote {OLD_MARKER} from the superseded manual.",
+                question=(
+                    f"What valve torque procedure does {NEW_MARKER} document? "
+                    f"Do not use superseded {OLD_MARKER}."
+                ),
             )
             packed = json.dumps(outcome.as_dict())
             assert outcome.snapshot_id == record.current_snapshot_id
@@ -1194,11 +1197,16 @@ def test_f12_pipeline_supersession_isolation(tmp_path: Path) -> None:
 
             new_contexts = assembled[assembled_before:]
             assert new_contexts, "bound query must assemble context"
+            assert any(ctx.evidence_units for ctx in new_contexts), (
+                "assembled context must include evidence units"
+            )
             for ctx in new_contexts:
                 assert OLD_MARKER not in (ctx.assembled_text or "")
                 for unit in ctx.evidence_units:
                     assert OLD_MARKER not in unit.text
                     assert unit.document_id != old_doc
+            # F19: generation must actually run (non-vacuous).
+            assert generator_requests, "bound query must invoke the recording generator"
             for req in generator_requests:
                 blob = "\n".join(m.content for m in req.messages)
                 # Adversarial query may mention OLD_MARKER; evidence must not.
@@ -1209,3 +1217,440 @@ def test_f12_pipeline_supersession_isolation(tmp_path: Path) -> None:
                 assert old_doc not in evidence_blob
     finally:
         HybridRerankContextAssembler.assemble = original_assemble  # type: ignore[method-assign]
+
+
+# ---------------------------------------------------------------------------
+# F17 — live AppError after workspace write reconciles (does not drop journal)
+# ---------------------------------------------------------------------------
+
+
+def test_f17_patch_reconciles_after_post_write_apperror(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    runtime = _runtime(settings)
+    runtime.start()
+    try:
+        life = runtime.workspace_lifecycle
+        wid = life.create_workspace(idempotency_key="f17p", title="Desk").workspace_id
+        original = type(life.sync_mutations).mark_workspace_committed
+
+        def boom(self, workspace_id, *, result, lease):
+            raise AppError(
+                ErrorCode.INTERNAL_ERROR,
+                details={"reason": "forced_post_write_journal_fault"},
+            )
+
+        type(life.sync_mutations).mark_workspace_committed = boom  # type: ignore[method-assign]
+        try:
+            view, op = life.patch_workspace_metadata(
+                wid,
+                expected_revision=1,
+                idempotency_key="f17-patch",
+                title="Done",
+                description="",
+            )
+        finally:
+            type(life.sync_mutations).mark_workspace_committed = original  # type: ignore[method-assign]
+
+        assert view["title"] == "Done"
+        assert view["revision"] == 2
+        assert op.status is ManagedOperationStatus.SUCCEEDED
+        assert op.result is not None
+        assert op.result.title == "Done"
+        assert life.sync_mutations.load(wid) is None
+        assert WorkspaceStore(settings).get(wid).title == "Done"
+    finally:
+        runtime.shutdown()
+
+
+def test_f17_delete_reconciles_after_post_write_apperror(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    runtime = _runtime(settings)
+    runtime.start()
+    try:
+        life = runtime.workspace_lifecycle
+        wid = life.create_workspace(idempotency_key="f17d", title="Desk").workspace_id
+        original = type(life.sync_mutations).mark_workspace_committed
+
+        def boom(self, workspace_id, *, result, lease):
+            raise AppError(
+                ErrorCode.INTERNAL_ERROR,
+                details={"reason": "forced_post_write_journal_fault"},
+            )
+
+        type(life.sync_mutations).mark_workspace_committed = boom  # type: ignore[method-assign]
+        try:
+            view, op = life.tombstone_workspace(
+                wid, expected_revision=1, idempotency_key="f17-del"
+            )
+        finally:
+            type(life.sync_mutations).mark_workspace_committed = original  # type: ignore[method-assign]
+
+        assert view["status"] == "tombstoned"
+        assert op.status is ManagedOperationStatus.SUCCEEDED
+        assert op.result is not None
+        assert op.result.workspace_status.value == "tombstoned"
+        assert life.sync_mutations.load(wid) is None
+    finally:
+        runtime.shutdown()
+
+
+def test_f17_source_patch_reconciles_after_post_write_apperror(tmp_path: Path) -> None:
+    with _client(tmp_path) as (client, runtime):
+        wid = _create(client, "f17s")["workspace_id"]
+        add = client.post(
+            f"/v1/workspaces/{wid}/sources",
+            headers={"Idempotency-Key": "seed", "If-Match": '"1"'},
+            files={"files": ("a.txt", b"f17 src pumps\n", "text/plain")},
+        )
+        assert _wait(client, add.json()["operation_id"])["status"] == "succeeded"
+        sid = client.get(f"/v1/workspaces/{wid}/sources").json()["sources"][0]["source_id"]
+        rev = client.get(f"/v1/workspaces/{wid}").json()["revision"]
+        life = runtime.workspace_lifecycle
+        original = type(life.sync_mutations).mark_workspace_committed
+
+        def boom(self, workspace_id, *, result, lease):
+            raise AppError(
+                ErrorCode.INTERNAL_ERROR,
+                details={"reason": "forced_post_write_journal_fault"},
+            )
+
+        type(life.sync_mutations).mark_workspace_committed = boom  # type: ignore[method-assign]
+        try:
+            view, op = life.patch_source_metadata(
+                wid,
+                sid,
+                expected_revision=rev,
+                idempotency_key="f17-src",
+                display_name="renamed-f17.txt",
+            )
+        finally:
+            type(life.sync_mutations).mark_workspace_committed = original  # type: ignore[method-assign]
+
+        assert view["display_name"] == "renamed-f17.txt"
+        assert op.status is ManagedOperationStatus.SUCCEEDED
+        assert op.result is not None
+        assert op.result.display_name == "renamed-f17.txt"
+        assert life.sync_mutations.load(wid) is None
+
+
+def test_f17_ambiguous_state_keeps_journal(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    runtime = _runtime(settings)
+    runtime.start()
+    try:
+        life = runtime.workspace_lifecycle
+        wid = life.create_workspace(idempotency_key="f17a", title="Desk").workspace_id
+        from offline_rag.app.workspace.leases import WorkspaceMutationLease
+        from offline_rag.app.workspace.models import (
+            ManagedOperationKind,
+            ManagedOperationResult,
+            advance_revision,
+            utc_now,
+        )
+
+        ops = ManagedOperationStore(settings)
+        store = WorkspaceStore(settings)
+        sync = SyncMutationCoordinator(settings)
+        with WorkspaceMutationLease(settings, wid) as lease:
+            current = store.get(wid)
+            op = ops.begin(
+                workspace_id=wid,
+                idempotency_key="amb",
+                kind=ManagedOperationKind.WORKSPACE_METADATA_PATCH,
+                request_payload={"title": "Prepared", "description": ""},
+                expected_revision=current.revision,
+                lease=lease,
+            )
+            prepared = current.model_copy(
+                update={
+                    "title": "Prepared",
+                    "description": "",
+                    "revision": advance_revision(current.revision),
+                    "updated_at": utc_now(),
+                }
+            )
+            result = ManagedOperationResult(
+                workspace_revision=prepared.revision,
+                workspace_status=prepared.status,
+                snapshot_id=None,
+                title="Prepared",
+                description="",
+                source_count=0,
+                created_at=prepared.created_at,
+                updated_at=prepared.updated_at,
+            )
+            sync.begin(
+                wid,
+                operation_id=op.operation_id,
+                kind=ManagedOperationKind.WORKSPACE_METADATA_PATCH,
+                expected_revision=current.revision,
+                expected_result=result,
+                lease=lease,
+            )
+            # Ambiguous: workspace advanced differently from prepared receipt.
+            alien = current.model_copy(
+                update={
+                    "title": "Alien",
+                    "revision": advance_revision(current.revision),
+                    "updated_at": utc_now(),
+                }
+            )
+            store.save(alien, lease=lease)
+            with pytest.raises(AppError) as excinfo:
+                sync.reconcile(
+                    wid,
+                    lease=lease,
+                    failure=AppError(
+                        ErrorCode.INTERNAL_ERROR,
+                        details={"reason": "forced"},
+                    ),
+                )
+            assert excinfo.value.code is ErrorCode.WORKSPACE_STATE_UNAVAILABLE
+            assert sync.load(wid) is not None
+            still = ops.get(wid, op.operation_id)
+            assert still.status is ManagedOperationStatus.PENDING
+    finally:
+        runtime.shutdown()
+
+
+# ---------------------------------------------------------------------------
+# F18 — explicit startup recovery (live recovery blocked)
+# ---------------------------------------------------------------------------
+
+
+@contextmanager
+def _startup_recovery_trap():
+    """Leave durable B journal + nonterminal op; block live F7 recovery."""
+    from offline_rag.app.workspace.lifecycle import WorkspaceLifecycleService
+
+    original_fail = WorkspaceLifecycleService._fail_operation
+    original_update = ManagedOperationStore.update_status
+    crash = {"hit": False}
+
+    def noop_fail(self, *args, **kwargs):
+        return None
+
+    def crashing(self, workspace_id, operation_id, status, **kwargs):
+        if (
+            status is ManagedOperationStatus.SUCCEEDED
+            and kwargs.get("result") is not None
+            and not crash["hit"]
+        ):
+            crash["hit"] = True
+            raise RuntimeError("crash_before_op_success_for_startup")
+        return original_update(self, workspace_id, operation_id, status, **kwargs)
+
+    WorkspaceLifecycleService._fail_operation = noop_fail  # type: ignore[method-assign]
+    ManagedOperationStore.update_status = crashing  # type: ignore[method-assign]
+    try:
+        yield crash
+    finally:
+        WorkspaceLifecycleService._fail_operation = original_fail  # type: ignore[method-assign]
+        ManagedOperationStore.update_status = original_update  # type: ignore[method-assign]
+
+
+def _wait_startup_trap(
+    settings: AppSettings,
+    workspace_id: str,
+    crash: dict[str, bool],
+    *,
+    journal_name: str,
+    timeout: float = 30.0,
+) -> Path:
+    """Wait until the worker hit the SUCCEEDED crash with journal retained."""
+    journal = (
+        settings.paths.workspaces / workspace_id / "journal" / journal_name
+    )
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if crash["hit"] and journal.is_file():
+            return journal
+        time.sleep(0.05)
+    raise AssertionError(
+        f"startup trap did not leave {journal_name} (crash={crash['hit']})"
+    )
+
+
+def test_f18_startup_recovery_add_result(tmp_path: Path) -> None:
+    with _client(tmp_path) as (client, runtime):
+        wid = _create(client, "f18a")["workspace_id"]
+        from offline_rag.app.workspace.lifecycle import recover_workspace_transactions
+
+        with _startup_recovery_trap() as crash:
+            add = client.post(
+                f"/v1/workspaces/{wid}/sources",
+                headers={"Idempotency-Key": "f18a", "If-Match": '"1"'},
+                files={"files": ("a.txt", b"f18 add pumps\n", "text/plain")},
+            )
+            assert add.status_code == 202
+            journal = _wait_startup_trap(
+                runtime.settings,
+                wid,
+                crash,
+                journal_name="publication_transition.json",
+            )
+            op_id = add.json()["operation_id"]
+            ops = ManagedOperationStore(runtime.settings)
+            pre = ops.get(wid, op_id)
+            assert pre.status in {
+                ManagedOperationStatus.PENDING,
+                ManagedOperationStatus.RUNNING,
+            }
+            assert journal.is_file(), "B journal must survive for startup recovery"
+            # Recover while live _fail_operation remains suppressed.
+            out = recover_workspace_transactions(runtime.settings)
+        assert any(item[1] == "B" for item in out["publication_transitions"])
+        assert not journal.exists()
+        recovered = ops.get(wid, op_id)
+        assert recovered.status is ManagedOperationStatus.SUCCEEDED
+        result = recovered.result
+        assert result is not None
+        ws = WorkspaceStore(runtime.settings).get(wid)
+        assert result.source_id
+        assert result.source_version == 1
+        assert result.source_ids == [s.source_id for s in ws.sources if s.active]
+        assert result.snapshot_id == ws.current_snapshot_id
+        assert result.workspace_revision == ws.revision
+        assert result.workspace_status.value == "active"
+
+
+def test_f18_startup_recovery_replace_result(tmp_path: Path) -> None:
+    with _client(tmp_path) as (client, runtime):
+        wid = _create(client, "f18r")["workspace_id"]
+        add = client.post(
+            f"/v1/workspaces/{wid}/sources",
+            headers={"Idempotency-Key": "f18r0", "If-Match": '"1"'},
+            files={"files": ("a.txt", b"f18 replace v1 pumps\n", "text/plain")},
+        )
+        assert _wait(client, add.json()["operation_id"])["status"] == "succeeded"
+        src = client.get(f"/v1/workspaces/{wid}/sources").json()["sources"][0]
+        sid = src["source_id"]
+        rev = client.get(f"/v1/workspaces/{wid}").json()["revision"]
+        from offline_rag.app.workspace.lifecycle import recover_workspace_transactions
+
+        with _startup_recovery_trap() as crash:
+            repl = client.put(
+                f"/v1/workspaces/{wid}/sources/{sid}",
+                headers={"Idempotency-Key": "f18r1", "If-Match": f'"{rev}"'},
+                files={"files": ("a2.txt", b"f18 replace v2 pumps\n", "text/plain")},
+            )
+            assert repl.status_code == 202
+            journal = _wait_startup_trap(
+                runtime.settings,
+                wid,
+                crash,
+                journal_name="publication_transition.json",
+            )
+            op_id = repl.json()["operation_id"]
+            ops = ManagedOperationStore(runtime.settings)
+            assert ops.get(wid, op_id).status in {
+                ManagedOperationStatus.PENDING,
+                ManagedOperationStatus.RUNNING,
+            }
+            assert journal.is_file()
+            out = recover_workspace_transactions(runtime.settings)
+        assert any(item[1] == "B" for item in out["publication_transitions"])
+        recovered = ops.get(wid, op_id)
+        assert recovered.status is ManagedOperationStatus.SUCCEEDED
+        result = recovered.result
+        assert result is not None
+        ws = WorkspaceStore(runtime.settings).get(wid)
+        assert result.source_id == sid
+        assert result.source_version == 2
+        assert result.source_ids == [s.source_id for s in ws.sources if s.active]
+        assert result.snapshot_id == ws.current_snapshot_id
+        assert result.workspace_revision == ws.revision
+
+
+def test_f18_startup_recovery_nonfinal_remove_result(tmp_path: Path) -> None:
+    with _client(tmp_path) as (client, runtime):
+        wid = _create(client, "f18n")["workspace_id"]
+        add = client.post(
+            f"/v1/workspaces/{wid}/sources",
+            headers={"Idempotency-Key": "f18n0", "If-Match": '"1"'},
+            files=[
+                ("files", ("one.txt", b"one pumps\n", "text/plain")),
+                ("files", ("two.txt", b"two pumps\n", "text/plain")),
+            ],
+        )
+        assert _wait(client, add.json()["operation_id"])["status"] == "succeeded"
+        sources = client.get(f"/v1/workspaces/{wid}/sources").json()["sources"]
+        remove_id = next(s["source_id"] for s in sources if s["display_name"] == "one.txt")
+        removed_version = next(
+            s["version"] for s in sources if s["source_id"] == remove_id
+        )
+        remaining = [s["source_id"] for s in sources if s["source_id"] != remove_id]
+        rev = client.get(f"/v1/workspaces/{wid}").json()["revision"]
+        from offline_rag.app.workspace.lifecycle import recover_workspace_transactions
+
+        with _startup_recovery_trap() as crash:
+            rem = client.delete(
+                f"/v1/workspaces/{wid}/sources/{remove_id}",
+                headers={"Idempotency-Key": "f18n1", "If-Match": f'"{rev}"'},
+            )
+            assert rem.status_code == 202
+            journal = _wait_startup_trap(
+                runtime.settings,
+                wid,
+                crash,
+                journal_name="publication_transition.json",
+            )
+            op_id = rem.json()["operation_id"]
+            assert journal.is_file()
+            out = recover_workspace_transactions(runtime.settings)
+        assert any(item[1] == "B" for item in out["publication_transitions"])
+        recovered = ManagedOperationStore(runtime.settings).get(wid, op_id)
+        assert recovered.status is ManagedOperationStatus.SUCCEEDED
+        result = recovered.result
+        assert result is not None
+        ws = WorkspaceStore(runtime.settings).get(wid)
+        assert result.source_id == remove_id
+        assert result.source_version == removed_version
+        assert sorted(result.source_ids or []) == sorted(remaining)
+        assert result.snapshot_id == ws.current_snapshot_id
+        assert result.workspace_status.value == "active"
+        assert result.workspace_revision == ws.revision
+
+
+def test_f18_startup_recovery_empty_remove_result(tmp_path: Path) -> None:
+    with _client(tmp_path) as (client, runtime):
+        wid = _create(client, "f18e")["workspace_id"]
+        add = client.post(
+            f"/v1/workspaces/{wid}/sources",
+            headers={"Idempotency-Key": "f18e0", "If-Match": '"1"'},
+            files={"files": ("only.txt", b"only pumps\n", "text/plain")},
+        )
+        assert _wait(client, add.json()["operation_id"])["status"] == "succeeded"
+        src = client.get(f"/v1/workspaces/{wid}/sources").json()["sources"][0]
+        sid = src["source_id"]
+        version = src["version"]
+        rev = client.get(f"/v1/workspaces/{wid}").json()["revision"]
+        from offline_rag.app.workspace.lifecycle import recover_workspace_transactions
+
+        with _startup_recovery_trap() as crash:
+            rem = client.delete(
+                f"/v1/workspaces/{wid}/sources/{sid}",
+                headers={"Idempotency-Key": "f18e1", "If-Match": f'"{rev}"'},
+            )
+            assert rem.status_code == 202
+            journal = _wait_startup_trap(
+                runtime.settings,
+                wid,
+                crash,
+                journal_name="empty_transition.json",
+            )
+            op_id = rem.json()["operation_id"]
+            assert journal.is_file()
+            out = recover_workspace_transactions(runtime.settings)
+        assert any(item[1] == "B" for item in out["empty_transitions"])
+        recovered = ManagedOperationStore(runtime.settings).get(wid, op_id)
+        assert recovered.status is ManagedOperationStatus.SUCCEEDED
+        result = recovered.result
+        assert result is not None
+        ws = WorkspaceStore(runtime.settings).get(wid)
+        assert result.source_id == sid
+        assert result.source_version == version
+        assert result.source_ids == []
+        assert result.snapshot_id is None
+        assert result.workspace_status.value == "empty"
+        assert result.workspace_revision == ws.revision

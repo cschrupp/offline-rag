@@ -14,101 +14,68 @@ HUMAN ACCEPTANCE: PENDING
 | Authorized baseline / sealed 16A closeout | `155983fec59a3ae6434286276bd34dcfdaaf8968` |
 | Accepted 16A implementation | `e73959be508541a1c50d4919606aaf3157a5fa8a` |
 | Locked design authority | `e2e7475076ad18d4c4ae8d939389ceeffdeff6d8` |
-| Prior 16B candidate (F7–F12) | `2df2ea61b73c62c27dacc1c82eb898c758fc62c3` |
+| Prior 16B candidate (F13–F16) | `39b2b60c2d11c198f3f4850cfaf97084a51ec9e8` |
 | Branch | `implementation/16b-workspace-lifecycle-api` |
 | Phase | **16B only** |
 
-## Independent review rework (F13–F16)
+## Independent review rework (F17–F19)
 
-Disposition was REWORK REQUIRED — NARROW FINAL PASS. This candidate closes the
-sync journal torn-write window, fail-closed workspace corpus ownership, complete
-scientific recovery-result matrix evidence, and captured bound-query context
-isolation. F7–F12 scientific transaction architecture is preserved.
+Disposition was REWORK REQUIRED — FINAL NARROW PASS. This candidate closes live
+sync-journal reconciliation on post-write AppError, true startup recovery-result
+evidence, and non-vacuous generator-request capture. F13/F14/F7–F9 architecture
+is preserved.
 
-### F13 — sync journal torn-write closed
+### F17 — live AppError reconciles sync journal (never blind-drop)
 
-Unsafe prior window: INTENT durable → `workspace.json` lands → crash before
-`mark_workspace_committed()` → recovery treated INTENT as “never committed” (A)
-even though the mutation landed.
+Unsafe prior path: after `workspace.json` landed, `except AppError` dropped the
+sync journal and marked the operation FAILED — destroying recovery evidence for
+an already-applied mutation.
 
-**Mechanism:** prepare the exact post-mutation `ManagedOperationResult` first and
-persist it in the sync journal at `intent_recorded` **before** writing
-`workspace.json`. Then save the prepared workspace record, flip phase to
-`workspace_committed`, terminalize the op, drop the journal.
-
-**Post-state recognition on INTENT recovery:**
+**Live reconciliation** (`SyncMutationCoordinator.reconcile` under the
+already-held `WorkspaceMutationLease`):
 
 | Observation | Outcome |
 | --- | --- |
-| Live workspace matches prepared receipt (mutation-specific fields) | **B** → SUCCEEDED with frozen result |
-| Live `revision == expected_revision` (mutation never landed) | **A** → INTERRUPTED |
-| Neither | fail closed `sync_post_state_unrecognized` |
+| No sync journal | ordinary FAILED persistence; re-raise |
+| Live workspace matches prepared exact result (B) | operation SUCCEEDED with frozen receipt; journal dropped; caller returns success |
+| Live workspace still at pre-mutation revision (A) | operation FAILED with the AppError; journal dropped; re-raise |
+| Neither (ambiguous) | `workspace_state_unavailable`; **journal retained**; operation left nonterminal |
 
-Recognition uses title/description/revision/status/snapshot/source_count/timestamps
-for workspace PATCH/DELETE, and full source receipt fields for source metadata
-PATCH — not merely `revision == expected + 1`.
+Startup `recover()` uses the same rules with `failure=None` (A → INTERRUPTED).
 
-Crash matrix covered for each of PATCH workspace, DELETE workspace, PATCH source:
+### F18 — true startup recovery result matrix
 
-1. after INTENT before workspace write → A
-2. after workspace write before journal committed (no `mark_workspace_committed`) → B
-3. after journal committed before op SUCCEEDED → B
+Fault-inject SUCCEEDED crash while suppressing live `_fail_operation` recovery so
+the durable B journal and nonterminal op survive into
+`recover_workspace_transactions()`. Cases assert startup performed
+terminalization:
 
-### F14 — workspace corpus ownership fail-closed
+1. SOURCE_ADD — full result contract
+2. SOURCE_REPLACE — stable source_id, new version, committed set/snapshot
+3. non-final SOURCE_REMOVE — removed identity + remaining set
+4. final EMPTY REMOVE — removed identity, empty status, null snapshot
 
-`ws_*` directory identity reserves `backing_corpus_name_for(directory)` (`wsc_*`).
-Legacy `/v1/ingest` against that corpus:
+### F19 — non-vacuous generator evidence
 
-- valid record → `workspace_conflict` / `workspace_managed_corpus`
-- tombstoned → blocked
-- missing or corrupt/inconsistent `workspace.json` →
-  `workspace_state_unavailable` (never silently unowned)
-- unrelated standalone corpus → Slice-15 unchanged
+F16 assembled-context capture retained. After `run_workspace_query`:
 
-Lifecycle ingest still uses explicit `authorize_workspace_id`.
+- assert assembled contexts include evidence units
+- **assert `generator_requests`** (generation actually invoked)
+- inspect each request’s `EVIDENCE:` block for absence of OLD_MARKER / old doc
 
-### F15 — recovered scientific result matrix
+Adversarial user text may mention OLD_MARKER; only evidence/context must exclude it.
 
-Crash after durable B commit before op SUCCEEDED; startup recovery yields
-`SUCCEEDED` with result equal to the normal-success contract for:
+### Prior F13–F16 / F7–F12 / F1–F6 (retained)
 
-1. SOURCE_ADD — `source_id` / `source_version` / `source_ids` / revision / status / snapshot
-2. SOURCE_REPLACE — stable `source_id`, new `source_version`, committed set + N+1 snapshot
-3. non-final SOURCE_REMOVE — removed identity + remaining `source_ids` + republished snapshot
-4. final EMPTY REMOVE — removed identity, `source_ids=[]`, `snapshot_id=null`, `status=empty`
-
-### F16 — assembled context isolation
-
-F12 dense/lexical/rerank/citation/answer checks retained. Added instrumentation of
-`HybridRerankContextAssembler.assemble` on the canonical
-`workspace.current_snapshot_id → resolve → run_bound_snapshot_query` path, plus a
-recording `FakeGenerator`. After v05→v06:
-
-- assembled context contains no `OLD_MARKER` / old `document_id`
-- generator EVIDENCE block contains neither (query may mention OLD adversarially)
-- reranker never presented OLD candidates
-
-### Prior F7–F12 / F1–F6 (retained)
-
-Live failure recovery under held corpus lease; pre-202 scientific validation;
-frozen sync replay; complete async recovery results; durable spool; journal
-outlives op terminalization; batch add/remove; server-owned query binding.
-
-## Receipt / result schema (`ManagedOperationResult`)
-
-Unchanged from F9/F11: frozen fields reconstruct workspace_view / source_view /
-scientific op results without live-state mixing. Sync INTENT journals now
-**always** carry `result_json` (prepared expected receipt) before workspace write.
-
-## HTTP contract
-
-Unchanged. Slice-15 routes remain registered; workspace-owned backing corpora
-are guarded fail-closed by directory identity.
+Prepared sync receipt before workspace write; directory-identity corpus ownership
+fail-closed; live scientific recovery under corpus lease; pre-202 validation;
+frozen sync replay; dense/lexical/rerank/context supersession; spool/journal/
+query-binding contracts.
 
 ## Tests run
 
 ```text
-uv run ruff check <touched sync_journal/corpus_ownership/lifecycle + integrity tests>
+uv run ruff check <touched sync_journal/lifecycle + integrity tests>
 → All checks passed
 
 uv run pytest \
@@ -124,23 +91,23 @@ uv run pytest \
   tests/unit/app/test_slice15d_product_ingest.py \
   tests/unit/app/test_slice15e_product_query_traces.py \
   tests/unit/app/test_slice15f_admission_deadlines_shutdown.py -q
-→ 221 passed
+→ 229 passed
 
 git diff --check
 → clean
 ```
 
-Integrity suite specifically covers: 3× sync mutation three-point crash matrix;
-ADD/REPLACE/REMOVE/EMPTY recovered results; corrupt/missing/tombstone ownership;
-full OLD→NEW context instrumentation.
+Integrity suite specifically covers: 3 post-write live-AppError reconciliations;
+ambiguous F17 fail-closed retention; 4 true startup F18 recovery-result cases;
+non-vacuous F19 generator assertion.
 
 Full-repo pytest was not claimed as green.
 
 ## Residual risks / deferred
 
-- Ambiguous mid-state (workspace advanced but receipt mismatch) fails closed rather
-  than guessing; operators must repair manually — intentional.
-- Catalog directory scan remains fine at 16B scale.
+- Ambiguous sync mid-state retains journal for operator/startup diagnosis by design.
+- F18 traps suppress live `_fail_operation` only in tests; production live path
+  remains F7 corpus-lease recovery.
 
 ## Explicit non-scope
 

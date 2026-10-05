@@ -257,17 +257,13 @@ class WorkspaceLifecycleService:
                 self.sync_mutations.drop(workspace_id, lease=lease)
                 return self._workspace_public_from_result(workspace_id, op), op
             except AppError as exc:
-                if self.sync_mutations.load(workspace_id) is not None:
-                    self.sync_mutations.drop(workspace_id, lease=lease)
-                self.operations.update_status(
+                return self._handle_sync_app_error(
                     workspace_id,
-                    op.operation_id,
-                    ManagedOperationStatus.FAILED,
-                    error=ManagedOperationSafeError.from_app_error(exc),
-                    failure_summary=str(exc.code),
+                    op,
+                    exc,
                     lease=lease,
+                    public_from_result=self._workspace_public_from_result,
                 )
-                raise
 
     def tombstone_workspace(
         self,
@@ -322,17 +318,42 @@ class WorkspaceLifecycleService:
                 self.sync_mutations.drop(workspace_id, lease=lease)
                 return self._workspace_public_from_result(workspace_id, op), op
             except AppError as exc:
-                if self.sync_mutations.load(workspace_id) is not None:
-                    self.sync_mutations.drop(workspace_id, lease=lease)
-                self.operations.update_status(
+                return self._handle_sync_app_error(
                     workspace_id,
-                    op.operation_id,
-                    ManagedOperationStatus.FAILED,
-                    error=ManagedOperationSafeError.from_app_error(exc),
-                    failure_summary=str(exc.code),
+                    op,
+                    exc,
                     lease=lease,
+                    public_from_result=self._workspace_public_from_result,
                 )
-                raise
+
+    def _handle_sync_app_error(
+        self,
+        workspace_id: str,
+        op: ManagedOperationRecord,
+        exc: AppError,
+        *,
+        lease: WorkspaceMutationLease,
+        public_from_result: Callable[[str, ManagedOperationRecord], dict[str, Any]],
+    ) -> tuple[dict[str, Any], ManagedOperationRecord]:
+        """Reconcile sync journal on AppError; never drop post-write evidence (F17)."""
+        if self.sync_mutations.load(workspace_id) is None:
+            self.operations.update_status(
+                workspace_id,
+                op.operation_id,
+                ManagedOperationStatus.FAILED,
+                error=ManagedOperationSafeError.from_app_error(exc),
+                failure_summary=str(exc.code),
+                lease=lease,
+            )
+            raise exc
+        # Ambiguous post-state raises workspace_state_unavailable and keeps journal.
+        outcome = self.sync_mutations.reconcile(
+            workspace_id, lease=lease, failure=exc
+        )
+        if outcome == "B":
+            succeeded = self.operations.get(workspace_id, op.operation_id)
+            return public_from_result(workspace_id, succeeded), succeeded
+        raise exc
 
     def _succeed_sync_operation(
         self,
@@ -706,17 +727,15 @@ class WorkspaceLifecycleService:
                 self.sync_mutations.drop(workspace_id, lease=lease)
                 return self._source_public_from_result(op), op
             except AppError as exc:
-                if self.sync_mutations.load(workspace_id) is not None:
-                    self.sync_mutations.drop(workspace_id, lease=lease)
-                self.operations.update_status(
+                return self._handle_sync_app_error(
                     workspace_id,
-                    op.operation_id,
-                    ManagedOperationStatus.FAILED,
-                    error=ManagedOperationSafeError.from_app_error(exc),
-                    failure_summary=str(exc.code),
+                    op,
+                    exc,
                     lease=lease,
+                    public_from_result=lambda _wid, record: self._source_public_from_result(
+                        record
+                    ),
                 )
-                raise
 
     def replace_source(
         self,

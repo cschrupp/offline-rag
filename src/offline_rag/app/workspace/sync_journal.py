@@ -261,42 +261,67 @@ class SyncMutationCoordinator:
             )
         self.journal_path(workspace_id).unlink(missing_ok=True)
 
-    def recover(self, workspace_id: str) -> str:
-        """Recover one workspace sync journal. Returns A/B/clean."""
-        lease = WorkspaceMutationLease(self.settings, workspace_id)
-        lease.acquire(blocking=True)
-        try:
-            journal = self.load(workspace_id)
-            if journal is None:
-                return "clean"
-            result = journal.result()
-            if journal.phase is SyncMutationPhase.WORKSPACE_COMMITTED:
-                self._complete_succeeded(journal, result=result, lease=lease)
-                self.drop(workspace_id, lease=lease)
-                return "B"
+    def reconcile(
+        self,
+        workspace_id: str,
+        *,
+        lease: WorkspaceMutationLease,
+        failure: AppError | None = None,
+    ) -> str:
+        """Reconcile an open sync journal under an already-held workspace lease (F17).
 
-            # INTENT: distinguish durable post-state (B) from never-committed (A).
-            workspace = self.store.get(workspace_id, include_tombstoned=True)
-            if workspace_matches_expected_result(
-                workspace, result, kind=journal.kind
-            ):
-                self._complete_succeeded(journal, result=result, lease=lease)
-                self.drop(workspace_id, lease=lease)
-                return "B"
-            if workspace.revision == journal.expected_revision and (
-                journal.kind is not ManagedOperationKind.WORKSPACE_DELETE
-                or workspace.status is not WorkspaceStatus.TOMBSTONED
-            ):
-                self._interrupt(journal, lease=lease)
-                self.drop(workspace_id, lease=lease)
-                return "A"
+        Returns ``A`` / ``B`` / ``clean``. Ambiguous post-state raises
+        ``WORKSPACE_STATE_UNAVAILABLE`` and **retains** the journal.
+
+        When ``failure`` is provided (live AppError path), outcome A terminalizes
+        the operation as FAILED with that error. Startup recovery passes
+        ``failure=None`` and uses INTERRUPTED for A.
+        """
+        if lease.workspace_id != workspace_id or not lease.held:
             raise AppError(
                 ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
                 details=SafeErrorDetails(
-                    workspace_id=workspace_id,
-                    reason="sync_post_state_unrecognized",
+                    workspace_id=workspace_id, reason="lease_not_held"
                 ),
             )
+        journal = self.load(workspace_id)
+        if journal is None:
+            return "clean"
+        result = journal.result()
+        if journal.phase is SyncMutationPhase.WORKSPACE_COMMITTED:
+            self._complete_succeeded(journal, result=result, lease=lease)
+            self.drop(workspace_id, lease=lease)
+            return "B"
+
+        workspace = self.store.get(workspace_id, include_tombstoned=True)
+        if workspace_matches_expected_result(workspace, result, kind=journal.kind):
+            self._complete_succeeded(journal, result=result, lease=lease)
+            self.drop(workspace_id, lease=lease)
+            return "B"
+        if workspace.revision == journal.expected_revision and (
+            journal.kind is not ManagedOperationKind.WORKSPACE_DELETE
+            or workspace.status is not WorkspaceStatus.TOMBSTONED
+        ):
+            if failure is not None:
+                self._fail(journal, failure=failure, lease=lease)
+            else:
+                self._interrupt(journal, lease=lease)
+            self.drop(workspace_id, lease=lease)
+            return "A"
+        raise AppError(
+            ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+            details=SafeErrorDetails(
+                workspace_id=workspace_id,
+                reason="sync_post_state_unrecognized",
+            ),
+        )
+
+    def recover(self, workspace_id: str) -> str:
+        """Startup recovery for one workspace sync journal. Returns A/B/clean."""
+        lease = WorkspaceMutationLease(self.settings, workspace_id)
+        lease.acquire(blocking=True)
+        try:
+            return self.reconcile(workspace_id, lease=lease, failure=None)
         finally:
             lease.release()
 
@@ -365,5 +390,34 @@ class SyncMutationCoordinator:
             journal.operation_id,
             ManagedOperationStatus.INTERRUPTED,
             recovery_note="recovered_sync_A",
+            lease=lease,
+        )
+
+    def _fail(
+        self,
+        journal: SyncMutationJournal,
+        *,
+        failure: AppError,
+        lease: WorkspaceMutationLease,
+    ) -> None:
+        from offline_rag.app.workspace.models import ManagedOperationSafeError
+
+        try:
+            record = self.operations.get(journal.workspace_id, journal.operation_id)
+        except AppError:
+            return
+        if record.status in {
+            ManagedOperationStatus.SUCCEEDED,
+            ManagedOperationStatus.FAILED,
+            ManagedOperationStatus.INTERRUPTED,
+        }:
+            return
+        self.operations.update_status(
+            journal.workspace_id,
+            journal.operation_id,
+            ManagedOperationStatus.FAILED,
+            error=ManagedOperationSafeError.from_app_error(failure),
+            failure_summary=str(failure.code),
+            recovery_note="reconciled_sync_A",
             lease=lease,
         )
