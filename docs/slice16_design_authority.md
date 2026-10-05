@@ -1,36 +1,38 @@
-# Slice 16 — Portfolio-Grade Knowledge & Training UI — Design Authority Candidate
+# Slice 16 — Portfolio-Grade Knowledge & Training UI — Design Authority
 
 ```text
-STATUS: DESIGN AUTHORITY CANDIDATE
+STATUS: ACCEPTED / LOCKED
 DESIGN INTERVIEW: COMPLETE
-HUMAN ACCEPTANCE: PENDING
+HUMAN ACCEPTANCE: ACCEPTED
+AUTHORITY SHA: e2e7475076ad18d4c4ae8d939389ceeffdeff6d8
 IMPLEMENTATION: NOT AUTHORIZED
 BASELINE: c72215186524c9937de789adb1cf2056be13ea23
 ```
 
-**Authority role:** This document is the Slice 16 **design authority candidate**.
-It is **not** accepted, locked, or implementation-authorizing until independent
-review and explicit human acceptance.
+**Authority role:** This document is the Slice 16 **design authority**.
+S16-D01 … S16-D35 are **normative** Slice-16 design decisions. Design was
+accepted and locked at AUTHORITY SHA
+`e2e7475076ad18d4c4ae8d939389ceeffdeff6d8`. Acceptance/lock of design does
+**not** authorize implementation.
 
 **Related artifacts:**
 
-- Implementation plan candidate:
+- Accepted implementation plan (execution still unauthorized):
   [`docs/slice16_implementation_plan.md`](slice16_implementation_plan.md)
-- Historical pre-design frame (contextual only after acceptance):
+- Historical pre-design frame (contextual only):
   [`docs/slice16_portfolio_ui.md`](slice16_portfolio_ui.md)
 - Inherited product/API architecture:
   [`docs/slice15_developer_api_packaging.md`](slice15_developer_api_packaging.md)
 
 **Normative language:**
 
-- **MUST / MUST NOT** — binding design requirements if this candidate is
-  accepted.
+- **MUST / MUST NOT** — binding design requirements.
 - **SHOULD** — UX / presentation recommendations that implementation ought to
   follow unless a later accepted amendment says otherwise.
 - **MAY** — permitted options.
 - **DEFERRED** — explicitly out of Slice 16; not authorized here.
 
-This candidate **MUST NOT** weaken accepted Slice 15 decisions. Accepted
+This authority **MUST NOT** weaken accepted Slice 15 decisions. Accepted
 historical benchmark/gold artifacts retain their existing governance claims
 (development/regression/publication-readiness as already recorded). This
 document does **not** claim a globally green test suite.
@@ -41,11 +43,14 @@ document does **not** claim a globally green test suite.
 
 ```text
 SLICE 16 DESIGN INTERVIEW:       COMPLETE
-DESIGN AUTHORITY CANDIDATE:      PRESENT (this document)
-DESIGN ACCEPTANCE:               HUMAN REVIEW PENDING
-IMPLEMENTATION:                  NOT AUTHORIZED
+SLICE 16 DESIGN AUTHORITY:       ACCEPTED / LOCKED
+AUTHORITY SHA:                   e2e7475076ad18d4c4ae8d939389ceeffdeff6d8
+SLICE 16 IMPLEMENTATION PLAN:    ACCEPTED
+SLICE 16 IMPLEMENTATION:         NOT AUTHORIZED
+16A:                             NOT AUTHORIZED
 SLICE 17:                        NOT AUTHORIZED
 SLICE 18:                        NOT AUTHORIZED
+9G:                              DEFERRED / NOT AUTHORIZED
 M7 CLOSEOUT:                     NOT AUTHORIZED
 ```
 
@@ -1004,13 +1009,16 @@ Deferred beyond Slice 16 (**MUST NOT** implement in Slice 16):
 ## Authorization note
 
 ```text
-DESIGN AUTHORITY CANDIDATE: PRESENT
-HUMAN ACCEPTANCE: PENDING
+SLICE 16 DESIGN AUTHORITY: ACCEPTED / LOCKED
+AUTHORITY SHA: e2e7475076ad18d4c4ae8d939389ceeffdeff6d8
+SLICE 16 IMPLEMENTATION PLAN: ACCEPTED
 IMPLEMENTATION: NOT AUTHORIZED
+16A: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
 SLICE 18: NOT AUTHORIZED
+9G: DEFERRED / NOT AUTHORIZED
 M7 CLOSEOUT: NOT AUTHORIZED
 ```
 
-Independent review and human acceptance are required before any Slice 16
-implementation phase (16A+) may be authorized.
+Design acceptance/lock does **not** authorize any Slice 16 implementation
+phase. Explicit separate human authorization is required before 16A+ may start.

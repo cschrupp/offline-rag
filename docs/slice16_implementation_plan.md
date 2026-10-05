@@ -1,22 +1,26 @@
-# Slice 16 — Implementation plan candidate
+# Slice 16 — Implementation plan
 
 ```text
-STATUS: PLAN CANDIDATE
-DESIGN AUTHORITY CANDIDATE: docs/slice16_design_authority.md
-HUMAN ACCEPTANCE: PENDING
+STATUS: ACCEPTED IMPLEMENTATION PLAN
+DESIGN AUTHORITY: ACCEPTED / LOCKED
+AUTHORITY SHA: e2e7475076ad18d4c4ae8d939389ceeffdeff6d8
 IMPLEMENTATION: NOT AUTHORIZED
+16A: NOT AUTHORIZED
 BASELINE: c72215186524c9937de789adb1cf2056be13ea23
 ```
 
-This plan decomposes Slice 16 into sequential phase gates. Coding still requires
-explicit per-phase implementation authorization after design acceptance.
+This plan decomposes Slice 16 into sequential phase gates. Plan acceptance does
+**NOT** authorize execution. Coding still requires explicit per-phase
+implementation authorization.
 
-Authority candidate: [`docs/slice16_design_authority.md`](slice16_design_authority.md)
-(S16-D01 … S16-D35).
+Locked design authority: [`docs/slice16_design_authority.md`](slice16_design_authority.md)
+(S16-D01 … S16-D35) at AUTHORITY SHA
+`e2e7475076ad18d4c4ae8d939389ceeffdeff6d8`.
 
 ```text
 SLICE 17: NOT AUTHORIZED
 SLICE 18: NOT AUTHORIZED
+9G: DEFERRED / NOT AUTHORIZED
 M7 CLOSEOUT: NOT AUTHORIZED
 ```
 
@@ -31,7 +35,8 @@ Use sequential phase gates unless explicitly redesigned:
 ```
 
 Do not close Slice 16 automatically after 16H. Independent review and explicit
-human acceptance remain required.
+human acceptance of the implemented slice remain required. 16A+ remains
+**NOT AUTHORIZED** until separately authorized.
 
 ---
 
@@ -60,7 +65,8 @@ human acceptance remain required.
 ### Depends on
 
 - accepted Slice 15 product/API surface;
-- accepted Slice 16 design authority (when locked).
+- locked Slice 16 design authority
+  (`e2e7475076ad18d4c4ae8d939389ceeffdeff6d8`).
 
 ### Acceptance focus
 
@@ -308,10 +314,15 @@ Evidence candidate + independent review + explicit human acceptance only.
 ## Authorization note
 
 ```text
-PLAN CANDIDATE: PRESENT
+IMPLEMENTATION PLAN: ACCEPTED
+DESIGN AUTHORITY: ACCEPTED / LOCKED
+AUTHORITY SHA: e2e7475076ad18d4c4ae8d939389ceeffdeff6d8
 IMPLEMENTATION: NOT AUTHORIZED
 16A+: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
 SLICE 18: NOT AUTHORIZED
+9G: DEFERRED / NOT AUTHORIZED
 M7 CLOSEOUT: NOT AUTHORIZED
 ```
+
+Plan acceptance does **not** authorize 16A or any later phase.

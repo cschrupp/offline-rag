@@ -1,22 +1,22 @@
 # Slice 16 — Portfolio Demo UI
 
 ```text
-STATUS: DESIGN INTERVIEW COMPLETE
-DESIGN AUTHORITY CANDIDATE:
+STATUS: HISTORICAL PRE-DESIGN FRAME
+DESIGN INTERVIEW: COMPLETE
+DESIGN AUTHORITY: ACCEPTED / LOCKED
   docs/slice16_design_authority.md
-IMPLEMENTATION PLAN CANDIDATE:
+AUTHORITY SHA: e2e7475076ad18d4c4ae8d939389ceeffdeff6d8
+IMPLEMENTATION PLAN: ACCEPTED
   docs/slice16_implementation_plan.md
-DESIGN ACCEPTANCE: PENDING
-HUMAN ACCEPTANCE: PENDING
 IMPLEMENTATION: NOT AUTHORIZED
 ```
 
 This document is the **historical pre-design / roadmap frame** for Slice 16.
-It is **not** design authority. After human acceptance of the authority
-candidate, normative decisions live in
+It is **not** design authority. Normative decisions live in
 [`docs/slice16_design_authority.md`](slice16_design_authority.md)
-(S16-D01 … S16-D35). Until that acceptance, design remains **unaccepted** and
-implementation remains **NOT AUTHORIZED**.
+(S16-D01 … S16-D35), accepted and locked at AUTHORITY SHA
+`e2e7475076ad18d4c4ae8d939389ceeffdeff6d8`. Implementation remains
+**NOT AUTHORIZED**.
 
 **Prerequisite dependency (governance order):**
 
@@ -27,14 +27,15 @@ implementation remains **NOT AUTHORIZED**.
     Slice-15 closeout             COMPLETE / ACCEPTED
                                   at 1c1d94eada502523d44ec8e9c9a6e23b1f863d49
 16  Portfolio Demo UI             DESIGN INTERVIEW COMPLETE
-                                  DESIGN AUTHORITY CANDIDATE PRESENT
-                                  HUMAN ACCEPTANCE PENDING
+                                  DESIGN AUTHORITY ACCEPTED / LOCKED
+                                  AUTHORITY SHA e2e7475076ad18d4c4ae8d939389ceeffdeff6d8
+                                  IMPLEMENTATION PLAN ACCEPTED
                                   IMPLEMENTATION NOT AUTHORIZED
 ```
 
 Slice **15H** closed Slice 15 and validated the API/container product boundary
 (**15H was not the UI phase**). The Slice 16 design interview is **COMPLETE**.
-Authority formalization is a docs candidate only. This frame still does **not**
+Design authority is **ACCEPTED / LOCKED**. This frame still does **not**
 authorize implementation, Slice 17, Slice 18, or Milestone 7 closeout.
 
 Historical open criteria (met before the design interview):
@@ -131,7 +132,7 @@ development only.
 - No portfolio claim promotion beyond accepted evidence.
 - No Slice 17 / Slice 18 authorization by this document.
 
-See also S16-D35 deferred list in the authority candidate.
+See also S16-D35 deferred list in the locked design authority.
 
 ---
 
@@ -139,12 +140,16 @@ See also S16-D35 deferred list in the authority candidate.
 
 ```text
 DESIGN INTERVIEW: COMPLETE
-DESIGN AUTHORITY CANDIDATE: docs/slice16_design_authority.md
-IMPLEMENTATION PLAN CANDIDATE: docs/slice16_implementation_plan.md
-HUMAN ACCEPTANCE: PENDING
+DESIGN AUTHORITY: ACCEPTED / LOCKED
+  docs/slice16_design_authority.md
+AUTHORITY SHA: e2e7475076ad18d4c4ae8d939389ceeffdeff6d8
+IMPLEMENTATION PLAN: ACCEPTED
+  docs/slice16_implementation_plan.md
 IMPLEMENTATION: NOT AUTHORIZED
+16A: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
 SLICE 18: NOT AUTHORIZED
+9G: DEFERRED / NOT AUTHORIZED
 M7 CLOSEOUT: NOT AUTHORIZED
 ```
 
@@ -152,5 +157,6 @@ M7 CLOSEOUT: NOT AUTHORIZED
 2. ~~Slice 15 COMPLETE / ACCEPTED including closeout~~ **DONE**
 3. ~~stable supported product contracts~~ **DONE**
 4. ~~design interview~~ **DONE**
-5. human acceptance of design authority — **PENDING**
+5. ~~human acceptance of design authority~~ **DONE** (locked at
+   `e2e7475076ad18d4c4ae8d939389ceeffdeff6d8`)
 6. explicit per-phase implementation authorization — **NOT GRANTED**
