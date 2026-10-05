@@ -71,6 +71,10 @@ class EmptyTransitionJournal(BaseModel):
     prior_workspace_json: str
     created_at: datetime
     updated_at: datetime
+    # 16B final-source binding (optional for 16A-compatible journals).
+    operation_id: str | None = None
+    removed_source_json: str | None = None
+    lineage_closed: bool = False
 
 
 class EmptyTransitionCoordinator:
@@ -102,11 +106,26 @@ class EmptyTransitionCoordinator:
         with WorkspaceMutationLease(self.settings, workspace_id) as owned:
             return fn(owned)
 
-    def _with_corpus_lease(self, corpus_name: str, fn: Callable[[], T]) -> T:
+    def _with_corpus_lease(
+        self,
+        corpus_name: str,
+        fn: Callable[[], T],
+        *,
+        corpus_lease: CorpusMutationLease | None = None,
+    ) -> T:
         """Acquire corpus lease while workspace lease is already held.
 
         Lock order: workspace lease → corpus lease (never reverse).
         """
+        if corpus_lease is not None:
+            if not corpus_lease.held or corpus_lease.corpus_name != corpus_name:
+                raise AppError(
+                    ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                    details=SafeErrorDetails(
+                        reason="corpus_lease_not_held",
+                    ),
+                )
+            return fn()
         with CorpusMutationLease(self.settings, corpus_name):
             return fn()
 
@@ -116,6 +135,8 @@ class EmptyTransitionCoordinator:
         *,
         expected_revision: int,
         lease: WorkspaceMutationLease | None = None,
+        operation_id: str | None = None,
+        removed_source_json: str | None = None,
     ) -> EmptyTransitionJournal:
         def _body(held: WorkspaceMutationLease) -> EmptyTransitionJournal:
             _ = held
@@ -169,6 +190,9 @@ class EmptyTransitionCoordinator:
                 prior_workspace_json=record.model_dump_json(),
                 created_at=now,
                 updated_at=now,
+                operation_id=operation_id,
+                removed_source_json=removed_source_json,
+                lineage_closed=False,
             )
             path.parent.mkdir(parents=True, exist_ok=True)
             atomic_write_text(path, journal.model_dump_json())
@@ -204,6 +228,7 @@ class EmptyTransitionCoordinator:
         workspace_id: str,
         *,
         lease: WorkspaceMutationLease | None = None,
+        corpus_lease: CorpusMutationLease | None = None,
     ) -> EmptyTransitionJournal:
         def _body(held: WorkspaceMutationLease) -> EmptyTransitionJournal:
             _ = held
@@ -221,7 +246,9 @@ class EmptyTransitionCoordinator:
                         self.settings, journal.backing_corpus_name
                     )
 
-                self._with_corpus_lease(journal.backing_corpus_name, _retire)
+                self._with_corpus_lease(
+                    journal.backing_corpus_name, _retire, corpus_lease=corpus_lease
+                )
                 return self._save_journal(
                     journal.model_copy(
                         update={"phase": EmptyTransitionPhase.PUBLICATION_RETIRED}
@@ -297,19 +324,80 @@ class EmptyTransitionCoordinator:
         workspace_id: str,
         *,
         lease: WorkspaceMutationLease | None = None,
+        corpus_lease: CorpusMutationLease | None = None,
     ) -> EmptyTransitionJournal:
+        """Advance through EMPTY write to COMMITTED.
+
+        When no managed ``operation_id`` is bound (16A foundation path), the
+        journal is dropped here. 16B final-source mutations bind an operation
+        and must call ``drop_journal`` only after lineage + op SUCCEEDED (F5).
+        """
+
         def _body(held: WorkspaceMutationLease) -> EmptyTransitionJournal:
             journal = self.step_empty_workspace(workspace_id, lease=held)
+            _ = corpus_lease
             if journal.phase is EmptyTransitionPhase.WORKSPACE_EMPTIED:
                 journal = self._save_journal(
                     journal.model_copy(update={"phase": EmptyTransitionPhase.COMMITTED})
                 )
-            path = self.journal_path(workspace_id)
-            if path.exists():
-                path.unlink()
+            if journal.operation_id is None:
+                path = self.journal_path(workspace_id)
+                path.unlink(missing_ok=True)
             return journal
 
         return self._with_lease(workspace_id, _body, lease=lease)
+
+    def mark_lineage_closed(
+        self,
+        workspace_id: str,
+        *,
+        lease: WorkspaceMutationLease | None = None,
+    ) -> EmptyTransitionJournal:
+        def _body(held: WorkspaceMutationLease) -> EmptyTransitionJournal:
+            _ = held
+            journal = self.load_journal(workspace_id)
+            if journal is None:
+                raise AppError(
+                    ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                    details=SafeErrorDetails(
+                        workspace_id=workspace_id, reason="empty_journal_missing"
+                    ),
+                )
+            if journal.lineage_closed:
+                return journal
+            if journal.phase not in {
+                EmptyTransitionPhase.WORKSPACE_EMPTIED,
+                EmptyTransitionPhase.COMMITTED,
+            }:
+                raise AppError(
+                    ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                    details=SafeErrorDetails(
+                        workspace_id=workspace_id, reason="empty_journal_phase_invalid"
+                    ),
+                )
+            return self._save_journal(
+                journal.model_copy(
+                    update={
+                        "lineage_closed": True,
+                        "phase": EmptyTransitionPhase.COMMITTED,
+                    }
+                )
+            )
+
+        return self._with_lease(workspace_id, _body, lease=lease)
+
+    def drop_journal(
+        self,
+        workspace_id: str,
+        *,
+        lease: WorkspaceMutationLease | None = None,
+    ) -> None:
+        def _body(held: WorkspaceMutationLease) -> None:
+            _ = held
+            path = self.journal_path(workspace_id)
+            path.unlink(missing_ok=True)
+
+        self._with_lease(workspace_id, _body, lease=lease)
 
     def recover(
         self,
@@ -366,7 +454,7 @@ class EmptyTransitionCoordinator:
 
             if workspace.status is WorkspaceStatus.EMPTY:
                 self._with_corpus_lease(corpus, _retire_if_current)
-                self.journal_path(workspace_id).unlink(missing_ok=True)
+                self._complete_empty_b(journal, lease=held)
                 return "B"
 
             if journal.phase in {
@@ -378,17 +466,21 @@ class EmptyTransitionCoordinator:
                 atomic_write_text(
                     self.store.workspace_path(workspace_id), prior.model_dump_json()
                 )
+                self._interrupt_empty_operation(journal, lease=held)
                 self.journal_path(workspace_id).unlink(missing_ok=True)
                 return "A"
 
             if journal.phase is EmptyTransitionPhase.WORKSPACE_EMPTIED:
                 self._with_corpus_lease(corpus, _retire_if_current)
-                self.journal_path(workspace_id).unlink(missing_ok=True)
+                self._complete_empty_b(journal, lease=held)
                 return "B"
 
             if journal.phase is EmptyTransitionPhase.COMMITTED:
+                if workspace.status is WorkspaceStatus.EMPTY:
+                    self._complete_empty_b(journal, lease=held)
+                    return "B"
                 self.journal_path(workspace_id).unlink(missing_ok=True)
-                return "B" if workspace.status is WorkspaceStatus.EMPTY else "A"
+                return "A"
 
             raise AppError(
                 ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
@@ -398,6 +490,106 @@ class EmptyTransitionCoordinator:
             )
 
         return self._with_lease(workspace_id, _body, lease=lease)
+
+    def _complete_empty_b(
+        self,
+        journal: EmptyTransitionJournal,
+        *,
+        lease: WorkspaceMutationLease,
+    ) -> None:
+        """Finish lineage + operation SUCCEEDED before dropping journal (F5)."""
+        if not journal.lineage_closed and journal.removed_source_json:
+            from offline_rag.app.workspace.history import SourceHistoryStore
+            from offline_rag.app.workspace.models import SourceVersionRecord
+
+            history = SourceHistoryStore(self.settings)
+            seed = SourceVersionRecord.model_validate_json(journal.removed_source_json)
+            path = history.version_path(
+                journal.workspace_id, seed.source_id, seed.version
+            )
+            if not path.exists():
+                history.append(journal.workspace_id, seed)
+            history.supersede(
+                journal.workspace_id,
+                seed.source_id,
+                seed.version,
+                active_through_revision=journal.prior_revision,
+                active_through_snapshot_id=journal.prior_snapshot_id,
+            )
+            self._save_journal(
+                journal.model_copy(
+                    update={
+                        "lineage_closed": True,
+                        "phase": EmptyTransitionPhase.COMMITTED,
+                    }
+                )
+            )
+        if journal.operation_id:
+            from offline_rag.app.workspace.models import (
+                ManagedOperationResult,
+                ManagedOperationStatus,
+                OperationProgressStage,
+                WorkspaceStatus,
+            )
+            from offline_rag.app.workspace.mutation_ops import ManagedOperationStore
+
+            ops = ManagedOperationStore(self.settings)
+            try:
+                record = ops.get(journal.workspace_id, journal.operation_id)
+            except AppError:
+                record = None
+            if record is not None and record.status not in {
+                ManagedOperationStatus.SUCCEEDED,
+                ManagedOperationStatus.FAILED,
+                ManagedOperationStatus.INTERRUPTED,
+            }:
+                emptied = self.store.get(journal.workspace_id, include_tombstoned=True)
+                ops.update_status(
+                    journal.workspace_id,
+                    journal.operation_id,
+                    ManagedOperationStatus.SUCCEEDED,
+                    progress_stage=OperationProgressStage.READY,
+                    result=ManagedOperationResult(
+                        workspace_revision=emptied.revision,
+                        workspace_status=WorkspaceStatus.EMPTY,
+                        snapshot_id=None,
+                        source_ids=[],
+                    ),
+                    result_summary="empty_transition",
+                    recovery_note="recovered_B",
+                    lease=lease,
+                )
+        self.journal_path(journal.workspace_id).unlink(missing_ok=True)
+
+    def _interrupt_empty_operation(
+        self,
+        journal: EmptyTransitionJournal,
+        *,
+        lease: WorkspaceMutationLease,
+    ) -> None:
+        if not journal.operation_id:
+            return
+        from offline_rag.app.workspace.models import ManagedOperationStatus
+        from offline_rag.app.workspace.mutation_ops import ManagedOperationStore
+
+        ops = ManagedOperationStore(self.settings)
+        try:
+            record = ops.get(journal.workspace_id, journal.operation_id)
+        except AppError:
+            return
+        if record.status in {
+            ManagedOperationStatus.SUCCEEDED,
+            ManagedOperationStatus.FAILED,
+            ManagedOperationStatus.INTERRUPTED,
+        }:
+            return
+        ops.update_status(
+            journal.workspace_id,
+            journal.operation_id,
+            ManagedOperationStatus.INTERRUPTED,
+            recovery_note="recovered_A",
+            lease=lease,
+        )
 
     def recover_all(self) -> list[tuple[str, str]]:
         root = self.settings.paths.workspaces

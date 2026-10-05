@@ -10,24 +10,27 @@ from urllib.parse import quote
 from fastapi import APIRouter, Header, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from python_multipart.multipart import MultipartParser, parse_options_header
 
-from offline_rag.api.workers import run_owned_worker
 from offline_rag.api.workspace_views import (
     operation_view,
     source_view,
     workspace_view,
 )
 from offline_rag.app.errors import AppError, ErrorCode, SafeErrorDetails
+from offline_rag.app.ingest_upload import validate_ingest_http_envelope
+from offline_rag.app.operations import OperationHandle
 from offline_rag.app.query import MAX_QUESTION_CHARS, run_workspace_query
 from offline_rag.app.runtime import ApplicationRuntime
 from offline_rag.app.workspace.etag import format_etag, parse_if_match
 from offline_rag.app.workspace.lifecycle import SourceUpload, WorkspaceLifecycleService
-from offline_rag.app.workspace.models import WorkspaceStatus
+from offline_rag.app.workspace.models import ManagedOperationKind, WorkspaceStatus
 from offline_rag.app.workspace.mutation_ops import ManagedOperationStore
 from offline_rag.app.workspace.store import WorkspaceStore
+from offline_rag.app.workspace.upload_spool import (
+    WorkspaceUploadSpool,
+    spool_workspace_multipart,
+)
 from offline_rag.app.workspace.vault import RawSourceVault
-from offline_rag.ingestion.base import SUPPORTED_EXTENSIONS
 
 router = APIRouter(tags=["workspaces"])
 
@@ -74,6 +77,15 @@ def _safe_content_filename(display_name: str) -> str:
     return cleaned[:180]
 
 
+def _accepted_operation_response(operation: Any) -> JSONResponse:
+    body = operation_view(operation)
+    response = JSONResponse(content=body, status_code=202)
+    response.headers["Location"] = f"/v1/operations/{operation.operation_id}"
+    if operation.expected_revision is not None:
+        response.headers["ETag"] = format_etag(operation.expected_revision)
+    return response
+
+
 class WorkspaceCreateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -112,290 +124,85 @@ class WorkspaceQueryRequest(BaseModel):
         return trimmed
 
 
+def _uploads_from_spool(spool: WorkspaceUploadSpool) -> list[SourceUpload]:
+    return [
+        SourceUpload(
+            display_name=item.display_name,
+            content_type=item.content_type,
+            spool_path=item.absolute_path,
+            content_sha256=item.content_sha256,
+        )
+        for item in spool.files
+    ]
+
+
 async def _spool_workspace_files(
     request: Request, *, settings: Any, allow_multiple: bool
-) -> list[SourceUpload]:
-    """Stream multipart ``files`` parts into bounded SourceUpload list."""
-    from offline_rag.app.ingest_upload import client_basename
-
-    content_type = request.headers.get("content-type")
-    if not content_type:
-        raise AppError(
-            ErrorCode.REQUEST_INVALID,
-            details=SafeErrorDetails(reason="missing_content_type"),
-        )
-    main_type, options = parse_options_header(content_type.encode("latin-1"))
-    if main_type.lower() != b"multipart/form-data":
-        raise AppError(
-            ErrorCode.REQUEST_INVALID,
-            details=SafeErrorDetails(reason="not_multipart"),
-        )
-    boundary = options.get(b"boundary")
-    if not boundary:
-        raise AppError(
-            ErrorCode.REQUEST_INVALID,
-            details=SafeErrorDetails(reason="missing_boundary"),
-        )
-
-    max_files = int(settings.api.max_files_per_ingest)
-    max_doc = int(settings.api.max_bytes_per_document)
-    max_total = int(settings.api.max_total_upload_bytes)
-
-    uploads: list[SourceUpload] = []
-    total = 0
-    parse_error: AppError | None = None
-    current_headers: dict[bytes, bytes] = {}
-    header_field = bytearray()
-    header_value = bytearray()
-    current_field: str | None = None
-    current_filename: str | None = None
-    current_type: str | None = None
-    chunks: list[bytes] = []
-    size = 0
-
-    def _fail(exc: AppError) -> None:
-        nonlocal parse_error
-        if parse_error is None:
-            parse_error = exc
-
-    def on_part_begin() -> None:
-        nonlocal current_field, current_filename, current_type, size
-        current_headers.clear()
-        header_field.clear()
-        header_value.clear()
-        current_field = None
-        current_filename = None
-        current_type = None
-        chunks.clear()
-        size = 0
-
-    def on_header_field(data: bytes, start: int, end: int) -> None:
-        header_field.extend(data[start:end])
-
-    def on_header_value(data: bytes, start: int, end: int) -> None:
-        header_value.extend(data[start:end])
-
-    def on_header_end() -> None:
-        key = bytes(header_field).lower().strip()
-        value = bytes(header_value).strip()
-        current_headers[key] = value
-        header_field.clear()
-        header_value.clear()
-
-    def on_headers_finished() -> None:
-        nonlocal current_field, current_filename, current_type
-        if parse_error is not None:
-            return
-        disposition = current_headers.get(b"content-disposition", b"")
-        _disp, opts = parse_options_header(disposition)
-        name = opts.get(b"name", b"").decode("latin-1", errors="replace")
-        current_field = name
-        if name != "files":
-            _fail(
-                AppError(
-                    ErrorCode.REQUEST_INVALID,
-                    details=SafeErrorDetails(reason="unexpected_form_field"),
-                )
-            )
-            return
-        raw_filename = opts.get(b"filename")
-        filename = (
-            client_basename(raw_filename.decode("latin-1", errors="replace"))
-            if raw_filename is not None
-            else ""
-        )
-        if not filename:
-            _fail(
-                AppError(
-                    ErrorCode.DOCUMENT_INVALID,
-                    details=SafeErrorDetails(reason="missing_filename"),
-                )
-            )
-            return
-        current_filename = filename
-        ctype = current_headers.get(b"content-type")
-        current_type = (
-            ctype.decode("latin-1", errors="replace").strip() if ctype else None
-        )
-
-    def on_part_data(data: bytes, start: int, end: int) -> None:
-        nonlocal size, total
-        if parse_error is not None or current_field != "files":
-            return
-        chunk = data[start:end]
-        size += len(chunk)
-        if size > max_doc:
-            _fail(
-                AppError(
-                    ErrorCode.DOCUMENT_INVALID,
-                    details=SafeErrorDetails(reason="document_too_large"),
-                )
-            )
-            return
-        if total + size > max_total:
-            _fail(
-                AppError(
-                    ErrorCode.REQUEST_INVALID,
-                    details=SafeErrorDetails(reason="upload_too_large"),
-                )
-            )
-            return
-        chunks.append(chunk)
-
-    def on_part_end() -> None:
-        nonlocal total
-        if parse_error is not None or current_field != "files":
-            return
-        raw = b"".join(chunks)
-        if not raw:
-            _fail(
-                AppError(
-                    ErrorCode.DOCUMENT_INVALID,
-                    details=SafeErrorDetails(reason="empty_document"),
-                )
-            )
-            return
-        filename = current_filename or "upload.bin"
-        suffix = filename[filename.rfind(".") :].lower() if "." in filename else ""
-        if suffix not in SUPPORTED_EXTENSIONS:
-            _fail(
-                AppError(
-                    ErrorCode.DOCUMENT_INVALID,
-                    details=SafeErrorDetails(reason="unsupported_source_type"),
-                )
-            )
-            return
-        if len(uploads) >= max_files:
-            _fail(
-                AppError(
-                    ErrorCode.REQUEST_INVALID,
-                    details=SafeErrorDetails(reason="too_many_files"),
-                )
-            )
-            return
-        if not allow_multiple and uploads:
-            _fail(
-                AppError(
-                    ErrorCode.REQUEST_INVALID,
-                    details=SafeErrorDetails(reason="exactly_one_file_required"),
-                )
-            )
-            return
-        total += len(raw)
-        uploads.append(
-            SourceUpload(
-                display_name=filename,
-                content=raw,
-                content_type=current_type or SUPPORTED_EXTENSIONS.get(suffix),
-            )
-        )
-
-    parser = MultipartParser(
-        boundary,
-        callbacks={
-            "on_part_begin": on_part_begin,
-            "on_header_field": on_header_field,
-            "on_header_value": on_header_value,
-            "on_header_end": on_header_end,
-            "on_headers_finished": on_headers_finished,
-            "on_part_data": on_part_data,
-            "on_part_end": on_part_end,
-        },
+) -> WorkspaceUploadSpool:
+    """Stream multipart ``files`` parts into durable staging before acceptance."""
+    boundary = validate_ingest_http_envelope(
+        content_type=request.headers.get("content-type"),
+        content_length=request.headers.get("content-length"),
+        settings=settings,
     )
-    async for chunk in request.stream():
-        if parse_error is not None:
-            break
-        parser.write(chunk)
-    if parse_error is None:
-        parser.finalize()
-    if parse_error is not None:
-        raise parse_error
-    if not uploads:
-        raise AppError(
-            ErrorCode.REQUEST_INVALID,
-            details=SafeErrorDetails(reason="zero_files"),
-        )
-    if not allow_multiple and len(uploads) != 1:
-        raise AppError(
-            ErrorCode.REQUEST_INVALID,
-            details=SafeErrorDetails(reason="exactly_one_file_required"),
-        )
-    return uploads
+    return await spool_workspace_multipart(
+        settings=settings,
+        boundary=boundary,
+        body_chunks=request.stream(),
+        allow_multiple=allow_multiple,
+    )
 
 
 async def _launch_scientific_mutation(
     *,
-    request: Request,
     runtime: ApplicationRuntime,
+    lifecycle: WorkspaceLifecycleService,
     workspace_id: str,
     idempotency_key: str,
+    kind: ManagedOperationKind,
+    expected_revision: int,
+    payload: dict[str, Any],
     worker_fn: Any,
+    spool: WorkspaceUploadSpool | None = None,
 ) -> JSONResponse:
-    """Admit ingest capacity, start worker, return 202 once durable op exists."""
+    """Reserve durable op (and spool) before capacity; return 202 only then."""
     runtime.require_ready()
-    handle = runtime.operations.admit_ingest()
-    ops = ManagedOperationStore(runtime.settings)
+    try:
+        operation, handle = lifecycle.reserve_and_admit_scientific(
+            workspace_id,
+            kind=kind,
+            idempotency_key=idempotency_key,
+            expected_revision=expected_revision,
+            payload=payload,
+        )
+    except Exception:
+        if spool is not None:
+            spool.cleanup()
+        raise
+
+    if handle is None:
+        # Existing matching operation — do not acquire capacity or launch.
+        if spool is not None:
+            spool.cleanup()
+        return _accepted_operation_response(operation)
+
     loop = asyncio.get_running_loop()
-    error_box: list[BaseException] = []
 
     def _worker() -> None:
+        assert handle is not None
         try:
             worker_fn(handle)
-        except BaseException as exc:  # noqa: BLE001 — capture for polling path
-            error_box.append(exc)
         finally:
             runtime.operations.release(handle)
+            if spool is not None:
+                spool.cleanup()
 
-    future = loop.run_in_executor(None, _worker)
-    operation = None
-    for _ in range(400):
-        operation = ops.find_by_idempotency(workspace_id, idempotency_key)
-        if operation is not None:
-            break
-        if future.done():
-            break
-        await asyncio.sleep(0.025)
-
-    if operation is None:
-        # Worker failed before durable begin; surface the error.
-        try:
-            await asyncio.wrap_future(future)
-        except AppError:
-            raise
-        except Exception as exc:
-            if error_box:
-                boxed = error_box[0]
-                if isinstance(boxed, AppError):
-                    raise boxed from exc
-            raise AppError(
-                ErrorCode.INGEST_FAILED,
-                details=SafeErrorDetails(reason="workspace_mutation_fault"),
-            ) from exc
-        if error_box:
-            boxed = error_box[0]
-            if isinstance(boxed, AppError):
-                raise boxed
-            raise AppError(
-                ErrorCode.INGEST_FAILED,
-                details=SafeErrorDetails(reason="workspace_mutation_fault"),
-            ) from boxed
-        raise AppError(
-            ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
-            details=SafeErrorDetails(
-                workspace_id=workspace_id, reason="operation_not_visible"
-            ),
-        )
-
-    # Detached: do not await completion; disconnect must not cancel capacity.
-    body = operation_view(operation)
-    response = JSONResponse(content=body, status_code=202)
-    response.headers["Location"] = f"/v1/operations/{operation.operation_id}"
-    if operation.expected_revision is not None:
-        # ETag reflects the revision the mutation was admitted against until
-        # success advances workspace revision (client re-GETs workspace).
-        response.headers["ETag"] = format_etag(operation.expected_revision)
-    _ = request  # retained for future disconnect telemetry
-    return response
+    # Detached: disconnect must not cancel capacity ownership.
+    loop.run_in_executor(None, _worker)
+    # Re-read so the 202 body reflects durable state after reservation.
+    ops = ManagedOperationStore(runtime.settings)
+    fresh = ops.get(workspace_id, operation.operation_id)
+    return _accepted_operation_response(fresh)
 
 
 @router.get("/v1/workspaces")
@@ -418,7 +225,9 @@ def create_workspace(
     record = _lifecycle(request).create_workspace(
         idempotency_key=key, title=body.title, description=body.description
     )
-    return _etag_response(workspace_view(record), revision=record.revision, status_code=201)
+    return _etag_response(
+        workspace_view(record), revision=record.revision, status_code=201
+    )
 
 
 @router.get("/v1/workspaces/{workspace_id}")
@@ -439,16 +248,17 @@ def patch_workspace(
 ) -> JSONResponse:
     runtime = _runtime(request)
     runtime.require_ready()
-    _require_idempotency_key(idempotency_key)
+    key = _require_idempotency_key(idempotency_key)
     expected = parse_if_match(if_match)
     if body.title is None and body.description is None:
         raise AppError(
             ErrorCode.REQUEST_INVALID,
             details=SafeErrorDetails(reason="empty_metadata_patch"),
         )
-    record = _lifecycle(request).patch_workspace_metadata(
+    record, _op = _lifecycle(request).patch_workspace_metadata(
         workspace_id,
         expected_revision=expected,
+        idempotency_key=key,
         title=body.title,
         description=body.description,
     )
@@ -464,10 +274,10 @@ def delete_workspace(
 ) -> JSONResponse:
     runtime = _runtime(request)
     runtime.require_ready()
-    _require_idempotency_key(idempotency_key)
+    key = _require_idempotency_key(idempotency_key)
     expected = parse_if_match(if_match)
-    record = _lifecycle(request).tombstone_workspace(
-        workspace_id, expected_revision=expected
+    record, _op = _lifecycle(request).tombstone_workspace(
+        workspace_id, expected_revision=expected, idempotency_key=key
     )
     return _etag_response(workspace_view(record), revision=record.revision)
 
@@ -495,12 +305,23 @@ async def add_sources(
     runtime = _runtime(request)
     key = _require_idempotency_key(idempotency_key)
     expected = parse_if_match(if_match)
-    uploads = await _spool_workspace_files(
+    spool = await _spool_workspace_files(
         request, settings=runtime.settings, allow_multiple=True
     )
+    uploads = _uploads_from_spool(spool)
+    payload = {
+        "files": [
+            {
+                "display_name": u.display_name,
+                "content_type": u.content_type,
+                "content_sha256": u.digest(),
+            }
+            for u in uploads
+        ]
+    }
     lifecycle = _lifecycle(request)
 
-    def worker(handle: Any) -> None:
+    def worker(handle: OperationHandle) -> None:
         lifecycle.add_sources(
             workspace_id,
             expected_revision=expected,
@@ -510,11 +331,15 @@ async def add_sources(
         )
 
     return await _launch_scientific_mutation(
-        request=request,
         runtime=runtime,
+        lifecycle=lifecycle,
         workspace_id=workspace_id,
         idempotency_key=key,
+        kind=ManagedOperationKind.SOURCE_ADD,
+        expected_revision=expected,
+        payload=payload,
         worker_fn=worker,
+        spool=spool,
     )
 
 
@@ -543,27 +368,39 @@ async def replace_source(
     runtime = _runtime(request)
     key = _require_idempotency_key(idempotency_key)
     expected = parse_if_match(if_match)
-    uploads = await _spool_workspace_files(
+    spool = await _spool_workspace_files(
         request, settings=runtime.settings, allow_multiple=False
     )
+    uploads = _uploads_from_spool(spool)
+    upload = uploads[0]
+    payload = {
+        "source_id": source_id,
+        "display_name": upload.display_name,
+        "content_type": upload.content_type,
+        "content_sha256": upload.digest(),
+    }
     lifecycle = _lifecycle(request)
 
-    def worker(handle: Any) -> None:
+    def worker(handle: OperationHandle) -> None:
         lifecycle.replace_source(
             workspace_id,
             source_id=source_id,
             expected_revision=expected,
             idempotency_key=key,
-            upload=uploads[0],
+            upload=upload,
             control=handle,
         )
 
     return await _launch_scientific_mutation(
-        request=request,
         runtime=runtime,
+        lifecycle=lifecycle,
         workspace_id=workspace_id,
         idempotency_key=key,
+        kind=ManagedOperationKind.SOURCE_REPLACE,
+        expected_revision=expected,
+        payload=payload,
         worker_fn=worker,
+        spool=spool,
     )
 
 
@@ -578,16 +415,16 @@ def patch_source(
 ) -> JSONResponse:
     runtime = _runtime(request)
     runtime.require_ready()
-    _require_idempotency_key(idempotency_key)
+    key = _require_idempotency_key(idempotency_key)
     expected = parse_if_match(if_match)
-    record = _lifecycle(request).patch_source_metadata(
+    _record, _op, active = _lifecycle(request).patch_source_metadata(
         workspace_id,
         source_id,
         expected_revision=expected,
+        idempotency_key=key,
         display_name=body.display_name,
     )
-    active = next(s for s in record.sources if s.active and s.source_id == source_id)
-    return _etag_response(source_view(active), revision=record.revision)
+    return _etag_response(source_view(active), revision=_record.revision)
 
 
 @router.delete("/v1/workspaces/{workspace_id}/sources/{source_id}")
@@ -602,8 +439,9 @@ async def delete_source(
     key = _require_idempotency_key(idempotency_key)
     expected = parse_if_match(if_match)
     lifecycle = _lifecycle(request)
+    payload = {"source_id": source_id}
 
-    def worker(handle: Any) -> None:
+    def worker(handle: OperationHandle) -> None:
         lifecycle.remove_source(
             workspace_id,
             source_id=source_id,
@@ -613,11 +451,15 @@ async def delete_source(
         )
 
     return await _launch_scientific_mutation(
-        request=request,
         runtime=runtime,
+        lifecycle=lifecycle,
         workspace_id=workspace_id,
         idempotency_key=key,
+        kind=ManagedOperationKind.SOURCE_REMOVE,
+        expected_revision=expected,
+        payload=payload,
         worker_fn=worker,
+        spool=None,
     )
 
 
@@ -647,49 +489,26 @@ def get_source_content(
     data = vault.load_bytes(workspace_id, source.vault_object_id)
     meta = vault.get_meta(workspace_id, source.vault_object_id)
     filename = _safe_content_filename(source.display_name)
-    media = meta.content_type or "application/octet-stream"
+    safe = quote(filename)
     headers = {
-        "Content-Type": media,
-        "Content-Disposition": f"inline; filename=\"{filename}\"; "
-        f"filename*=UTF-8''{quote(filename)}",
+        "Content-Disposition": (
+            f'inline; filename="{filename}"; filename*=UTF-8\'\'{safe}'
+        ),
         "X-Content-Type-Options": "nosniff",
         "Cache-Control": "private, no-store",
-        "ETag": f'"{meta.content_hash}"',
+        "ETag": f'"{source.content_hash}"',
     }
+    media = meta.content_type or "application/octet-stream"
     return Response(content=data, media_type=media, headers=headers)
 
 
-@router.post("/v1/workspaces/{workspace_id}/query", response_model=None)
-async def workspace_query(
+@router.post("/v1/workspaces/{workspace_id}/query")
+def workspace_query(
     request: Request, workspace_id: str, body: WorkspaceQueryRequest
-) -> dict[str, Any] | Response:
+) -> dict[str, Any]:
     runtime = _runtime(request)
     runtime.require_ready()
-    operation = runtime.operations.admit_query()
-    try:
-
-        def worker() -> Any:
-            return run_workspace_query(
-                runtime,
-                workspace_id=workspace_id,
-                question=body.question,
-                control=operation,
-            )
-
-        try:
-            result = await run_owned_worker(
-                request=request,
-                operation=operation,
-                worker=worker,
-                watch_disconnect=True,
-            )
-        except AppError as exc:
-            if (
-                exc.code is ErrorCode.REQUEST_CANCELLED
-                and await request.is_disconnected()
-            ):
-                return Response(status_code=204)
-            raise
-        return result.as_dict()
-    finally:
-        runtime.operations.release(operation)
+    result = run_workspace_query(
+        runtime, workspace_id=workspace_id, question=body.question
+    )
+    return result.as_dict()

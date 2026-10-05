@@ -444,7 +444,26 @@ class NonEmptyPublicationCoordinator:
         *,
         lease: WorkspaceMutationLease | None = None,
     ) -> NonEmptyPublicationJournal:
-        """Commit and drop the journal, releasing the mutation fence."""
+        """Ensure lineage + COMMITTED phase, then drop the journal.
+
+        Prefer ``mark_committed`` + ``drop_journal`` when the managed operation
+        must become SUCCEEDED *before* the fence is released (F5).
+        """
+
+        def _body(held: WorkspaceMutationLease) -> NonEmptyPublicationJournal:
+            journal = self.mark_committed(workspace_id, lease=held)
+            self.drop_journal(workspace_id, lease=held)
+            return journal
+
+        return self._with_lease(workspace_id, _body, lease=lease)
+
+    def mark_committed(
+        self,
+        workspace_id: str,
+        *,
+        lease: WorkspaceMutationLease | None = None,
+    ) -> NonEmptyPublicationJournal:
+        """Commit lineage and advance to COMMITTED without deleting the journal."""
 
         def _body(held: WorkspaceMutationLease) -> NonEmptyPublicationJournal:
             journal = self.commit_lineage(workspace_id, lease=held)
@@ -454,10 +473,28 @@ class NonEmptyPublicationCoordinator:
                         update={"phase": NonEmptyPublicationPhase.COMMITTED}
                     )
                 )
-            self._drop_journal(workspace_id)
             return journal
 
         return self._with_lease(workspace_id, _body, lease=lease)
+
+    def drop_journal(
+        self,
+        workspace_id: str,
+        *,
+        lease: WorkspaceMutationLease | None = None,
+    ) -> None:
+        """Remove the journal fence after COMMITTED (and op terminalization)."""
+
+        def _body(held: WorkspaceMutationLease) -> None:
+            _ = held
+            journal = self.load_journal(workspace_id)
+            if journal is None:
+                return
+            if journal.phase is not NonEmptyPublicationPhase.COMMITTED:
+                raise _state_error(workspace_id, "publication_journal_phase_invalid")
+            self._drop_journal(workspace_id)
+
+        self._with_lease(workspace_id, _body, lease=lease)
 
     # ---------------------------------------------------------------- recovery
 
@@ -537,8 +574,9 @@ class NonEmptyPublicationCoordinator:
                             }
                         )
                     )
-                self.commit_lineage(workspace_id, lease=held)
-                self._drop_journal(workspace_id)
+                self.mark_committed(workspace_id, lease=held)
+                self._complete_operation_succeeded(journal, lease=held)
+                self.drop_journal(workspace_id, lease=held)
                 return "B"
 
             def _restore_prior_publication() -> None:
@@ -558,10 +596,85 @@ class NonEmptyPublicationCoordinator:
             path = self.store.workspace_path(workspace_id)
             path.parent.mkdir(parents=True, exist_ok=True)
             atomic_write_text(path, prior.model_dump_json())
+            self._interrupt_operation(journal, lease=held)
             self._drop_journal(workspace_id)
             return "A"
 
         return self._with_lease(workspace_id, _body, lease=lease)
+
+    def _complete_operation_succeeded(
+        self,
+        journal: NonEmptyPublicationJournal,
+        *,
+        lease: WorkspaceMutationLease,
+    ) -> None:
+        """Idempotently terminalize the managed op for recovery-to-B (F5)."""
+        from offline_rag.app.workspace.models import (
+            ManagedOperationResult,
+            ManagedOperationStatus,
+            OperationProgressStage,
+            WorkspaceStatus,
+        )
+        from offline_rag.app.workspace.mutation_ops import ManagedOperationStore
+
+        ops = ManagedOperationStore(self.settings)
+        try:
+            record = ops.get(journal.workspace_id, journal.operation_id)
+        except AppError:
+            return
+        if record.status is ManagedOperationStatus.SUCCEEDED:
+            return
+        if record.status in {
+            ManagedOperationStatus.FAILED,
+            ManagedOperationStatus.INTERRUPTED,
+        }:
+            return
+        workspace = self.store.get(journal.workspace_id, include_tombstoned=True)
+        ops.update_status(
+            journal.workspace_id,
+            journal.operation_id,
+            ManagedOperationStatus.SUCCEEDED,
+            progress_stage=OperationProgressStage.READY,
+            result=ManagedOperationResult(
+                workspace_revision=workspace.revision,
+                workspace_status=workspace.status
+                if isinstance(workspace.status, WorkspaceStatus)
+                else WorkspaceStatus(workspace.status),
+                snapshot_id=workspace.current_snapshot_id,
+                source_ids=[s.source_id for s in workspace.sources if s.active],
+            ),
+            result_summary=str(journal.mutation_kind),
+            recovery_note="recovered_B",
+            lease=lease,
+        )
+
+    def _interrupt_operation(
+        self,
+        journal: NonEmptyPublicationJournal,
+        *,
+        lease: WorkspaceMutationLease,
+    ) -> None:
+        from offline_rag.app.workspace.models import ManagedOperationStatus
+        from offline_rag.app.workspace.mutation_ops import ManagedOperationStore
+
+        ops = ManagedOperationStore(self.settings)
+        try:
+            record = ops.get(journal.workspace_id, journal.operation_id)
+        except AppError:
+            return
+        if record.status in {
+            ManagedOperationStatus.SUCCEEDED,
+            ManagedOperationStatus.FAILED,
+            ManagedOperationStatus.INTERRUPTED,
+        }:
+            return
+        ops.update_status(
+            journal.workspace_id,
+            journal.operation_id,
+            ManagedOperationStatus.INTERRUPTED,
+            recovery_note="recovered_A",
+            lease=lease,
+        )
 
     def recover_all(self) -> list[tuple[str, str]]:
         """Recover every workspace holding a publication journal."""

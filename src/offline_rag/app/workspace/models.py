@@ -339,6 +339,9 @@ class ManagedOperationResult(BaseModel):
     source_id: str | None = None
     source_ids: list[str] | None = None
     source_version: int | None = Field(default=None, ge=1)
+    title: str | None = Field(default=None, max_length=256)
+    description: str | None = Field(default=None, max_length=4096)
+    display_name: str | None = Field(default=None, max_length=512)
 
     @field_validator("snapshot_id", "source_id", mode="before")
     @classmethod

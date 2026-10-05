@@ -170,7 +170,7 @@ class ManagedOperationStore:
         finally:
             owned.release()
 
-    def begin(
+    def reserve(
         self,
         *,
         workspace_id: str,
@@ -180,7 +180,12 @@ class ManagedOperationStore:
         expected_revision: WorkspaceRevision | None = None,
         status: ManagedOperationStatus = ManagedOperationStatus.PENDING,
         lease: WorkspaceMutationLease | None = None,
-    ) -> ManagedOperationRecord:
+    ) -> tuple[ManagedOperationRecord, bool]:
+        """Create or recover an operation under strict fingerprint identity.
+
+        Returns ``(record, created)``. ``created`` is True only when this call
+        wrote a new durable operation. Corrupt idempotency state fails closed.
+        """
         if status is not ManagedOperationStatus.PENDING:
             raise AppError(
                 ErrorCode.REQUEST_INVALID,
@@ -192,7 +197,7 @@ class ManagedOperationStore:
             payload=request_payload,
         )
 
-        def _body() -> ManagedOperationRecord:
+        def _body() -> tuple[ManagedOperationRecord, bool]:
             idem_path = self._idem_path(workspace_id, idempotency_key)
             if idem_path.exists():
                 try:
@@ -205,6 +210,14 @@ class ManagedOperationStore:
                             reason="idempotency_index_unreadable",
                         ),
                     ) from exc
+                if not pointer:
+                    raise AppError(
+                        ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                        details=SafeErrorDetails(
+                            workspace_id=workspace_id,
+                            reason="idempotency_index_corrupt",
+                        ),
+                    )
                 existing = self.get(workspace_id, pointer)
                 if (
                     existing.request_fingerprint != fingerprint
@@ -219,7 +232,7 @@ class ManagedOperationStore:
                             reason="idempotency_identity_mismatch",
                         ),
                     )
-                return existing
+                return existing, False
 
             now = utc_now()
             record = ManagedOperationRecord(
@@ -248,27 +261,60 @@ class ManagedOperationStore:
                 ).model_dump_json(),
             )
             atomic_write_text(idem_path, record.operation_id)
-            return record
+            return record, True
 
         return self._with_lease(workspace_id, _body, lease=lease)
+
+    def begin(
+        self,
+        *,
+        workspace_id: str,
+        idempotency_key: str,
+        kind: ManagedOperationKind,
+        request_payload: dict,
+        expected_revision: WorkspaceRevision | None = None,
+        status: ManagedOperationStatus = ManagedOperationStatus.PENDING,
+        lease: WorkspaceMutationLease | None = None,
+    ) -> ManagedOperationRecord:
+        record, _created = self.reserve(
+            workspace_id=workspace_id,
+            idempotency_key=idempotency_key,
+            kind=kind,
+            request_payload=request_payload,
+            expected_revision=expected_revision,
+            status=status,
+            lease=lease,
+        )
+        return record
 
     def find_by_idempotency(
         self, workspace_id: str, idempotency_key: str
     ) -> ManagedOperationRecord | None:
-        """Return the operation for a key if the durable index exists."""
+        """Return the operation for a key if the durable index exists.
+
+        Corrupt index/state fails closed (raises) rather than treating the key
+        as absent. Absence alone returns ``None``.
+        """
         path = self._idem_path(workspace_id, idempotency_key)
         if not path.exists():
             return None
         try:
             operation_id = path.read_text(encoding="utf-8").strip()
-        except OSError:
-            return None
+        except OSError as exc:
+            raise AppError(
+                ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                details=SafeErrorDetails(
+                    workspace_id=workspace_id, reason="idempotency_index_unreadable"
+                ),
+            ) from exc
         if not operation_id:
-            return None
-        try:
-            return self.get(workspace_id, operation_id)
-        except AppError:
-            return None
+            raise AppError(
+                ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                details=SafeErrorDetails(
+                    workspace_id=workspace_id, reason="idempotency_index_corrupt"
+                ),
+            )
+        return self.get(workspace_id, operation_id)
 
     def get(self, workspace_id: str, operation_id: str) -> ManagedOperationRecord:
         path = self._op_path(workspace_id, operation_id)

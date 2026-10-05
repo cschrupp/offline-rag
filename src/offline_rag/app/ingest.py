@@ -184,12 +184,18 @@ def run_product_replace_ingest(
     *,
     hooks: ProductIngestHooks | None = None,
     control: OperationHandle | None = None,
+    corpus_lease: CorpusMutationLease | None = None,
 ) -> ProductIngestResult:
     """Execute the post-spool full-replace ingest transaction.
 
-    Caller must already hold ingest-class capacity. This function acquires the
-    per-corpus mutation lease, builds an isolated candidate, runs scientific
-    stages, and publishes via ProductPublicationRegistry.
+    Caller must already hold ingest-class capacity. By default this function
+    acquires the per-corpus mutation lease, builds an isolated candidate, runs
+    scientific stages, and publishes via ProductPublicationRegistry.
+
+    When ``corpus_lease`` is supplied and already held for ``upload.corpus_name``,
+    that lease is reused (no nested acquire / no release). Slice-16B workspace
+    mutations use this so publication observation and workspace commit stay under
+    the same corpus ownership as ``current.json`` mutation.
     """
     runtime.require_ready()
     if runtime.resources is None:
@@ -199,14 +205,34 @@ def run_product_replace_ingest(
 
     _validate_document_identities(upload)
 
-    lease = CorpusMutationLease(runtime.settings, upload.corpus_name)
+    owned_lease: CorpusMutationLease | None = None
+    if corpus_lease is not None:
+        if (
+            not corpus_lease.held
+            or corpus_lease.corpus_name != upload.corpus_name
+        ):
+            raise AppError(
+                ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                details=SafeErrorDetails(
+                    corpus=upload.corpus_name, reason="corpus_lease_not_held"
+                ),
+            )
+        lease = corpus_lease
+        leased = True
+        release_on_exit = False
+    else:
+        owned_lease = CorpusMutationLease(runtime.settings, upload.corpus_name)
+        lease = owned_lease
+        leased = False
+        release_on_exit = True
+
     candidate: _CandidateContext | None = None
-    leased = False
     try:
         if control is not None:
             control.checkpoint("pre_lease")
-        lease.acquire()
-        leased = True
+        if not leased:
+            lease.acquire()
+            leased = True
         # Cancellation-aware PRE_LEASE → POST_LEASE: disconnect/shutdown/deadline
         # discovered before this transition aborts without candidate mutation.
         if control is not None:
@@ -339,5 +365,5 @@ def run_product_replace_ingest(
             details=SafeErrorDetails(reason="internal_ingest_failure"),
         ) from exc
     finally:
-        if leased:
+        if release_on_exit and leased:
             lease.release()
