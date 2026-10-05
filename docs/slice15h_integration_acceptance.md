@@ -15,7 +15,7 @@ Do not treat this document as Slice 15 COMPLETE / ACCEPTED.
 | Accepted implementation plan | `docs/slice15_implementation_plan.md` |
 | Expected 15H baseline / starting SHA | `b6fe122a34367b39f44405012f022971cc53d858` |
 | Accepted 15G implementation | `140350b8cc6eec6a2491c0a1696042e65b2d2b7e` |
-| Candidate SHA | *(fill after commit; see git tip of `implementation/15H-integration-closeout`)* |
+| Candidate SHA | `923c29d419d1d4d49fb17d4f3d461b164a2248d1`* |
 
 ## Governance after baseline
 
