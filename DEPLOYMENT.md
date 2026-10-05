@@ -319,6 +319,14 @@ Recommended release artifacts:
 
 The generator's GPU stack remains outside the application image.
 
+**Technical debt (not a Slice 15G acceptance blocker):** the current application
+image is large because the Python ML dependency graph may pull CUDA-capable
+PyTorch artifacts. The image is not bloated by bundled model weights or `/data`
+(the architectural requirement). After Slice 15 acceptance, investigate
+CPU-only PyTorch/retrieval dependency resolution and/or CPU/CUDA image
+variants. Do not change the dependency architecture as an unreviewed packaging
+fix.
+
 ## 10. Portfolio phrasing
 
 Use:

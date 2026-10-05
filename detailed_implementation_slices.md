@@ -942,14 +942,16 @@ update.** Milestone 6 remains COMPLETE / ACCEPTED unchanged.
 - **15D:** **COMPLETE / ACCEPTED** (FF head `2ef21d26b9513fa7bc98ab1ad8de3645d17cebd7`; commits `39ac270b…`, `88908acd…`, `2ef21d26…`)
 - **15E:** **COMPLETE / ACCEPTED** (FF head `63f5965adae3c2a1c5a5b338bcc1243f9423bb5a`; commits `2a84ef01…`, `63f5965a…`)
 - **15F:** **COMPLETE / ACCEPTED** (FF head `7bfb0893e1537af99bdaad6f6af5336408afe750`; commits `850d04e9…`, `f907c849…`, `7bfb0893…`)
-- **15G–15H:** **NOT AUTHORIZED**
+- **15G:** **COMPLETE / ACCEPTED** (FF head `140350b8cc6eec6a2491c0a1696042e65b2d2b7e`)
+- **15H:** **NOT AUTHORIZED**
 
 Roadmap path names such as unversioned `/ingest` and optional `/eval/run` are
 superseded by the locked design: product HTTP under `/v1/*`, CLI-first evaluation
-(D12), and unversioned `/health*` only. Landed routes through 15F:
+(D12), and unversioned `/health*` only. Landed through 15G:
 `/health*`, `GET /v1/documents`, `GET /v1/documents/{document_id}`,
-`POST /v1/ingest`, `POST /v1/query`, `GET /v1/trace/{trace_id}`, plus
-admission/deadlines/drain. Packaging remains later.
+`POST /v1/ingest`, `POST /v1/query`, `GET /v1/trace/{trace_id}`,
+admission/deadlines/drain, and the supported container/Compose packaging
+profile. Slice 15 integration closeout remains later.
 
 ## Objective
 

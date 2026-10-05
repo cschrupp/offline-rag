@@ -459,7 +459,10 @@ Slice 14 checklist:
     `f907c849a597b016b76e3382ea2f8e986ad27a31`,
     `7bfb0893e1537af99bdaad6f6af5336408afe750`
   - Fast-forward onto main at `7bfb0893e1537af99bdaad6f6af5336408afe750`
-- **15G–15H:** **NOT AUTHORIZED**
+- **15G** container packaging + Compose contract: **COMPLETE / ACCEPTED**
+  - Implementation head: `140350b8cc6eec6a2491c0a1696042e65b2d2b7e`
+  - Fast-forward onto main at `140350b8cc6eec6a2491c0a1696042e65b2d2b7e`
+- **15H:** **NOT AUTHORIZED**
 
 Later M7 checklist (not Slice 14):
 
@@ -469,9 +472,9 @@ Later M7 checklist (not Slice 14):
 - [x] product `/v1/ingest` full-replace publish (15D — **COMPLETE / ACCEPTED**)
 - [x] product `/v1/{query,trace}` (15E — **COMPLETE / ACCEPTED**)
 - [x] admission / deadlines / drain (15F — **COMPLETE / ACCEPTED**)
-- [ ] single-container OfflineRAG application image (15G)
-- [ ] Qdrant Local standalone profile (15G)
-- [ ] `/data` + `/models` volume packaging contract (15G)
+- [x] single-container OfflineRAG application image (15G — **COMPLETE / ACCEPTED**)
+- [x] Qdrant Local standalone profile (15G — **COMPLETE / ACCEPTED**)
+- [x] `/data` + `/models` volume packaging contract (15G — **COMPLETE / ACCEPTED**)
 - [ ] Slice 15 integration closeout (15H)
 - [ ] retrieval inspector
 - [ ] citation source viewer
@@ -480,10 +483,13 @@ Later M7 checklist (not Slice 14):
 **Release criterion:** a reviewer can interactively compare retrieval modes and inspect evidence flow.
 
 Milestone **6** remains **COMPLETE / ACCEPTED** at `dcc6b07…`. Milestone **7**
-remains **IN PROGRESS** (Slice 15 through **15F** landed; **15G+** not
+remains **IN PROGRESS** (Slice 15 through **15G** landed; **15H** not
 authorized). Performance optimization, generator max-token change, reranker
 config change, `base.yaml` promotion, `PORTFOLIO_DEMO.md` update, 13C/13D,
 recovery enablement, LangGraph, and NeMo remain **NOT AUTHORIZED**.
+Technical debt (post–Slice 15): investigate CPU-only PyTorch/retrieval
+dependency resolution and/or CPU/CUDA image variants — do not treat as a 15G
+blocker.
 
 ## Milestone 8 — Portfolio release
 

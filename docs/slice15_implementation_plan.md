@@ -10,7 +10,8 @@
 - **15D:** **COMPLETE / ACCEPTED** (FF head `2ef21d26b9513fa7bc98ab1ad8de3645d17cebd7`; commits `39ac270b…`, `88908acd…`, `2ef21d26…`)
 - **15E:** **COMPLETE / ACCEPTED** (FF head `63f5965adae3c2a1c5a5b338bcc1243f9423bb5a`; commits `2a84ef01…`, `63f5965a…`)
 - **15F:** **COMPLETE / ACCEPTED** (FF head `7bfb0893e1537af99bdaad6f6af5336408afe750`; commits `850d04e9…`, `f907c849…`, `7bfb0893…`)
-- **15G–15H:** **NOT AUTHORIZED**
+- **15G:** **COMPLETE / ACCEPTED** (FF head `140350b8cc6eec6a2491c0a1696042e65b2d2b7e`)
+- **15H:** **NOT AUTHORIZED**
 
 This plan decomposes Slice 15 into bounded phases with scope, dependencies,
 acceptance tests, and explicit non-scope. Coding still requires explicit
@@ -307,6 +308,8 @@ busy; CLI and API share coordination namespace.
 ---
 
 ## 8. Phase 15G — Container packaging
+
+**Status:** **COMPLETE / ACCEPTED** on main (FF head `140350b8cc6eec6a2491c0a1696042e65b2d2b7e`)
 
 ### Scope
 
