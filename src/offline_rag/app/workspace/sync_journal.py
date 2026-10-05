@@ -1,13 +1,19 @@
-"""Minimal sync-mutation journal for crash-atomic idempotency receipts (F10).
+"""Minimal sync-mutation journal for crash-atomic idempotency receipts (F10/F13).
 
 Phases:
 
-- ``intent_recorded`` — durable op reserved; workspace.json not yet mutated
-- ``workspace_committed`` — workspace mutation durable; op may still be nonterminal
+- ``intent_recorded`` — durable op reserved; expected post-state/result prepared;
+  workspace.json may or may not yet reflect that post-state
+- ``workspace_committed`` — workspace mutation and frozen result are both durable;
+  op may still be nonterminal
 
-Startup recovers ``workspace_committed`` to exact SUCCEEDED from the frozen
-result, and ``intent_recorded`` to INTERRUPTED. Sync recovery runs before
-generic ``interrupt_all_nonterminal``.
+Recovery distinguishes A vs B even when the process dies after ``workspace.json``
+lands but before the journal phase flips to ``workspace_committed``: the INTENT
+record already carries the exact expected ``ManagedOperationResult``, and live
+workspace state is matched against that mutation-specific receipt.
+
+Startup recovers B to exact SUCCEEDED from the frozen result, and A to
+INTERRUPTED. Sync recovery runs before generic ``interrupt_all_nonterminal``.
 """
 
 from __future__ import annotations
@@ -25,10 +31,13 @@ from offline_rag.app.workspace.models import (
     ManagedOperationKind,
     ManagedOperationResult,
     ManagedOperationStatus,
+    WorkspaceRecord,
     WorkspaceRevision,
+    WorkspaceStatus,
     utc_now,
 )
 from offline_rag.app.workspace.mutation_ops import ManagedOperationStore
+from offline_rag.app.workspace.store import WorkspaceStore
 from offline_rag.config.models import AppSettings
 from offline_rag.ingestion.io import atomic_write_text
 
@@ -49,14 +58,83 @@ class SyncMutationJournal(BaseModel):
     kind: ManagedOperationKind
     expected_revision: WorkspaceRevision = Field(ge=1)
     phase: SyncMutationPhase
-    result_json: str | None = None
+    # Prepared exact success receipt, written at INTENT before workspace.json.
+    result_json: str
     created_at: datetime
     updated_at: datetime
 
-    def result(self) -> ManagedOperationResult | None:
-        if self.result_json is None:
-            return None
+    def result(self) -> ManagedOperationResult:
         return ManagedOperationResult.model_validate_json(self.result_json)
+
+
+def workspace_matches_expected_result(
+    workspace: WorkspaceRecord,
+    result: ManagedOperationResult,
+    *,
+    kind: ManagedOperationKind,
+) -> bool:
+    """True when live workspace.json matches the prepared post-mutation receipt."""
+    if workspace.revision != result.workspace_revision:
+        return False
+    if workspace.status != result.workspace_status:
+        return False
+    if workspace.current_snapshot_id != result.snapshot_id:
+        return False
+    active = [s for s in workspace.sources if s.active]
+    if result.source_count is not None and len(active) != result.source_count:
+        return False
+    if kind in {
+        ManagedOperationKind.WORKSPACE_METADATA_PATCH,
+        ManagedOperationKind.WORKSPACE_DELETE,
+    }:
+        if result.title is not None and workspace.title != result.title:
+            return False
+        if result.description is not None and workspace.description != result.description:
+            return False
+        if result.created_at is not None and workspace.created_at != result.created_at:
+            return False
+        return not (
+            result.updated_at is not None and workspace.updated_at != result.updated_at
+        )
+    if kind is ManagedOperationKind.SOURCE_METADATA_PATCH:
+        if result.source_id is None or result.source_version is None:
+            return False
+        match = next(
+            (
+                s
+                for s in workspace.sources
+                if s.active
+                and s.source_id == result.source_id
+                and s.version == result.source_version
+            ),
+            None,
+        )
+        if match is None:
+            return False
+        if result.display_name is not None and match.display_name != result.display_name:
+            return False
+        if result.content_type is not None and match.content_type != result.content_type:
+            return False
+        if result.byte_size is not None and match.byte_size != result.byte_size:
+            return False
+        if result.content_hash is not None and match.content_hash != result.content_hash:
+            return False
+        if result.document_id is not None and match.document_id != result.document_id:
+            return False
+        if (
+            result.active_from_revision is not None
+            and match.active_from_revision != result.active_from_revision
+        ):
+            return False
+        if (
+            result.active_from_snapshot_id is not None
+            and match.active_from_snapshot_id != result.active_from_snapshot_id
+        ):
+            return False
+        return not (
+            result.created_at is not None and match.created_at != result.created_at
+        )
+    return False
 
 
 class SyncMutationCoordinator:
@@ -65,6 +143,7 @@ class SyncMutationCoordinator:
     def __init__(self, settings: AppSettings) -> None:
         self.settings = settings
         self.operations = ManagedOperationStore(settings)
+        self.store = WorkspaceStore(settings)
 
     def journal_path(self, workspace_id: str) -> Path:
         return (
@@ -97,6 +176,7 @@ class SyncMutationCoordinator:
         operation_id: str,
         kind: ManagedOperationKind,
         expected_revision: WorkspaceRevision,
+        expected_result: ManagedOperationResult,
         lease: WorkspaceMutationLease,
     ) -> SyncMutationJournal:
         if lease.workspace_id != workspace_id or not lease.held:
@@ -121,6 +201,7 @@ class SyncMutationCoordinator:
             kind=kind,
             expected_revision=expected_revision,
             phase=SyncMutationPhase.INTENT_RECORDED,
+            result_json=expected_result.model_dump_json(),
             created_at=now,
             updated_at=now,
         )
@@ -153,10 +234,17 @@ class SyncMutationCoordinator:
             )
         if journal.phase is SyncMutationPhase.WORKSPACE_COMMITTED:
             return journal
+        prepared = journal.result()
+        if prepared.model_dump_json() != result.model_dump_json():
+            raise AppError(
+                ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                details=SafeErrorDetails(
+                    workspace_id=workspace_id, reason="sync_result_mismatch"
+                ),
+            )
         updated = journal.model_copy(
             update={
                 "phase": SyncMutationPhase.WORKSPACE_COMMITTED,
-                "result_json": result.model_dump_json(),
                 "updated_at": datetime.now(tz=UTC),
             }
         )
@@ -181,23 +269,34 @@ class SyncMutationCoordinator:
             journal = self.load(workspace_id)
             if journal is None:
                 return "clean"
+            result = journal.result()
             if journal.phase is SyncMutationPhase.WORKSPACE_COMMITTED:
-                result = journal.result()
-                if result is None:
-                    raise AppError(
-                        ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
-                        details=SafeErrorDetails(
-                            workspace_id=workspace_id,
-                            reason="sync_journal_result_missing",
-                        ),
-                    )
                 self._complete_succeeded(journal, result=result, lease=lease)
                 self.drop(workspace_id, lease=lease)
                 return "B"
-            # Intent only: mutation never committed.
-            self._interrupt(journal, lease=lease)
-            self.drop(workspace_id, lease=lease)
-            return "A"
+
+            # INTENT: distinguish durable post-state (B) from never-committed (A).
+            workspace = self.store.get(workspace_id, include_tombstoned=True)
+            if workspace_matches_expected_result(
+                workspace, result, kind=journal.kind
+            ):
+                self._complete_succeeded(journal, result=result, lease=lease)
+                self.drop(workspace_id, lease=lease)
+                return "B"
+            if workspace.revision == journal.expected_revision and (
+                journal.kind is not ManagedOperationKind.WORKSPACE_DELETE
+                or workspace.status is not WorkspaceStatus.TOMBSTONED
+            ):
+                self._interrupt(journal, lease=lease)
+                self.drop(workspace_id, lease=lease)
+                return "A"
+            raise AppError(
+                ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                details=SafeErrorDetails(
+                    workspace_id=workspace_id,
+                    reason="sync_post_state_unrecognized",
+                ),
+            )
         finally:
             lease.release()
 

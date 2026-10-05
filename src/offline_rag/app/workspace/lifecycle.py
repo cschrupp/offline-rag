@@ -223,21 +223,30 @@ class WorkspaceLifecycleService:
             replay = self._replay_sync_operation(op)
             if replay is not None:
                 return replay
-            self.sync_mutations.begin(
-                workspace_id,
-                operation_id=op.operation_id,
-                kind=ManagedOperationKind.WORKSPACE_METADATA_PATCH,
-                expected_revision=expected_revision,
-                lease=lease,
-            )
             try:
-                record = self.store.apply_metadata_patch(
+                current = self.store.get(workspace_id)
+                if current.revision != expected_revision:
+                    raise _conflict(workspace_id, "revision_conflict")
+                updates: dict[str, object] = {
+                    "revision": advance_revision(current.revision),
+                    "updated_at": utc_now(),
+                }
+                if title is not None:
+                    updates["title"] = title
+                if description is not None:
+                    updates["description"] = description
+                prepared = current.model_copy(update=updates)
+                result = self._workspace_result_receipt(prepared)
+                # F13: persist exact expected receipt before workspace.json lands.
+                self.sync_mutations.begin(
                     workspace_id,
+                    operation_id=op.operation_id,
+                    kind=ManagedOperationKind.WORKSPACE_METADATA_PATCH,
                     expected_revision=expected_revision,
-                    title=title,
-                    description=description,
+                    expected_result=result,
                     lease=lease,
                 )
+                record = self.store.save(prepared, lease=lease)
                 result = self._workspace_result_receipt(record)
                 self.sync_mutations.mark_workspace_committed(
                     workspace_id, result=result, lease=lease
@@ -248,7 +257,8 @@ class WorkspaceLifecycleService:
                 self.sync_mutations.drop(workspace_id, lease=lease)
                 return self._workspace_public_from_result(workspace_id, op), op
             except AppError as exc:
-                self.sync_mutations.drop(workspace_id, lease=lease)
+                if self.sync_mutations.load(workspace_id) is not None:
+                    self.sync_mutations.drop(workspace_id, lease=lease)
                 self.operations.update_status(
                     workspace_id,
                     op.operation_id,
@@ -280,17 +290,28 @@ class WorkspaceLifecycleService:
             replay = self._replay_sync_operation(op)
             if replay is not None:
                 return replay
-            self.sync_mutations.begin(
-                workspace_id,
-                operation_id=op.operation_id,
-                kind=ManagedOperationKind.WORKSPACE_DELETE,
-                expected_revision=expected_revision,
-                lease=lease,
-            )
             try:
-                record = self.store.tombstone(
-                    workspace_id, expected_revision=expected_revision, lease=lease
+                current = self.store.get(workspace_id)
+                if current.revision != expected_revision:
+                    raise _conflict(workspace_id, "revision_conflict")
+                prepared = current.model_copy(
+                    update={
+                        "status": WorkspaceStatus.TOMBSTONED,
+                        "current_snapshot_id": None,
+                        "revision": advance_revision(current.revision),
+                        "updated_at": utc_now(),
+                    }
                 )
+                result = self._workspace_result_receipt(prepared)
+                self.sync_mutations.begin(
+                    workspace_id,
+                    operation_id=op.operation_id,
+                    kind=ManagedOperationKind.WORKSPACE_DELETE,
+                    expected_revision=expected_revision,
+                    expected_result=result,
+                    lease=lease,
+                )
+                record = self.store.save(prepared, lease=lease)
                 result = self._workspace_result_receipt(record)
                 self.sync_mutations.mark_workspace_committed(
                     workspace_id, result=result, lease=lease
@@ -301,7 +322,8 @@ class WorkspaceLifecycleService:
                 self.sync_mutations.drop(workspace_id, lease=lease)
                 return self._workspace_public_from_result(workspace_id, op), op
             except AppError as exc:
-                self.sync_mutations.drop(workspace_id, lease=lease)
+                if self.sync_mutations.load(workspace_id) is not None:
+                    self.sync_mutations.drop(workspace_id, lease=lease)
                 self.operations.update_status(
                     workspace_id,
                     op.operation_id,
@@ -600,13 +622,6 @@ class WorkspaceLifecycleService:
             replay = self._replay_sync_operation(op)
             if replay is not None:
                 return replay
-            self.sync_mutations.begin(
-                workspace_id,
-                operation_id=op.operation_id,
-                kind=ManagedOperationKind.SOURCE_METADATA_PATCH,
-                expected_revision=expected_revision,
-                lease=lease,
-            )
             try:
                 record = self.store.get(workspace_id)
                 if record.revision != expected_revision:
@@ -634,6 +649,33 @@ class WorkspaceLifecycleService:
                         "revision": advance_revision(record.revision),
                         "updated_at": utc_now(),
                     }
+                )
+                result = ManagedOperationResult(
+                    workspace_revision=patched.revision,
+                    workspace_status=patched.status,
+                    snapshot_id=patched.current_snapshot_id,
+                    source_id=source_id,
+                    source_version=updated_source.version,
+                    display_name=updated_source.display_name,
+                    content_type=updated_source.content_type,
+                    byte_size=updated_source.byte_size,
+                    content_hash=updated_source.content_hash,
+                    document_id=updated_source.document_id,
+                    active_from_revision=updated_source.active_from_revision,
+                    active_from_snapshot_id=updated_source.active_from_snapshot_id,
+                    created_at=updated_source.created_at,
+                    updated_at=patched.updated_at,
+                    source_count=len([s for s in patched.sources if s.active]),
+                    title=patched.title,
+                    description=patched.description,
+                )
+                self.sync_mutations.begin(
+                    workspace_id,
+                    operation_id=op.operation_id,
+                    kind=ManagedOperationKind.SOURCE_METADATA_PATCH,
+                    expected_revision=expected_revision,
+                    expected_result=result,
+                    lease=lease,
                 )
                 saved = self.store.save(patched, lease=lease)
                 result = ManagedOperationResult(
@@ -664,7 +706,8 @@ class WorkspaceLifecycleService:
                 self.sync_mutations.drop(workspace_id, lease=lease)
                 return self._source_public_from_result(op), op
             except AppError as exc:
-                self.sync_mutations.drop(workspace_id, lease=lease)
+                if self.sync_mutations.load(workspace_id) is not None:
+                    self.sync_mutations.drop(workspace_id, lease=lease)
                 self.operations.update_status(
                     workspace_id,
                     op.operation_id,
