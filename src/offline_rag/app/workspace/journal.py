@@ -271,7 +271,7 @@ class EmptyTransitionCoordinator:
                     }
                 )
                 self.store.save(
-                    emptied, lease=held, allow_during_empty_transition=True
+                    emptied, lease=held, allow_during_journal=True
                 )
                 return self._save_journal(
                     journal.model_copy(

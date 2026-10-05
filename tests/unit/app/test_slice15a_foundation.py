@@ -55,6 +55,7 @@ _EXPECTED_HTTP: dict[ErrorCode, int | None] = {
     ErrorCode.OPERATION_UNKNOWN: 404,
     ErrorCode.IDEMPOTENCY_CONFLICT: 409,
     ErrorCode.WORKSPACE_STATE_UNAVAILABLE: 409,
+    ErrorCode.SOURCE_UNKNOWN: 404,
 }
 
 _EXPECTED_RETRYABLE: dict[ErrorCode, bool] = {
@@ -83,6 +84,7 @@ _EXPECTED_RETRYABLE: dict[ErrorCode, bool] = {
     ErrorCode.OPERATION_UNKNOWN: False,
     ErrorCode.IDEMPOTENCY_CONFLICT: False,
     ErrorCode.WORKSPACE_STATE_UNAVAILABLE: False,
+    ErrorCode.SOURCE_UNKNOWN: False,
 }
 
 

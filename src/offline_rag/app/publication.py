@@ -340,32 +340,47 @@ class ProductPublicationRegistry:
     def resolve(self, corpus_name: str) -> CorpusReadSnapshot:
         """Resolve the product current snapshot or raise D08 corpus/snapshot errors."""
         name = self._resolve_corpus_name(corpus_name)
-        pointer_path = current_pointer_path(self.settings.paths.corpora, name)
-        if not pointer_path.exists():
+        snapshot_id = self.published_snapshot_id(name)
+        if snapshot_id is None:
             raise AppError(
                 ErrorCode.CORPUS_UNKNOWN,
                 details=SafeErrorDetails(corpus=name, reason="not_published"),
             )
+        return self.resolve_snapshot(name, snapshot_id)
 
-        try:
-            pointer = PublishedPointer.model_validate_json(
-                pointer_path.read_text(encoding="utf-8")
-            )
-        except (OSError, ValidationError, ValueError) as exc:
+    def resolve_snapshot(
+        self, corpus_name: str, snapshot_id: str
+    ) -> CorpusReadSnapshot:
+        """Bind one exact immutable snapshot without consulting ``current.json``.
+
+        The caller supplies the snapshot identity, so this is the binding used
+        when a server-owned record (such as ``workspace.current_snapshot_id``)
+        is the authority. ``snapshot_id`` must never come from a client: this
+        method does not authorize access to arbitrary history, it only refuses
+        to re-resolve ``current.json`` behind the caller's back.
+        """
+        name = self._resolve_corpus_name(corpus_name)
+        if (
+            not snapshot_id
+            or not isinstance(snapshot_id, str)
+            or "/" in snapshot_id
+            or "\\" in snapshot_id
+            or ".." in snapshot_id
+        ):
             raise AppError(
-                ErrorCode.SNAPSHOT_UNAVAILABLE,
-                details=SafeErrorDetails(corpus=name, reason="pointer_unreadable"),
-            ) from exc
+                ErrorCode.REQUEST_INVALID,
+                details=SafeErrorDetails(corpus=name, reason="invalid_snapshot_id"),
+            )
 
         snap_path = snapshot_manifest_path(
-            self.settings.paths.corpora, name, pointer.snapshot_id
+            self.settings.paths.corpora, name, snapshot_id
         )
         if not snap_path.exists():
             raise AppError(
                 ErrorCode.SNAPSHOT_UNAVAILABLE,
                 details=SafeErrorDetails(
                     corpus=name,
-                    snapshot_id=pointer.snapshot_id,
+                    snapshot_id=snapshot_id,
                     reason="snapshot_missing",
                 ),
             )
@@ -378,18 +393,18 @@ class ProductPublicationRegistry:
                 ErrorCode.SNAPSHOT_UNAVAILABLE,
                 details=SafeErrorDetails(
                     corpus=name,
-                    snapshot_id=pointer.snapshot_id,
+                    snapshot_id=snapshot_id,
                     reason="snapshot_corrupt",
                 ),
             ) from exc
 
         expected_id = compute_snapshot_id(identity)
-        if expected_id != pointer.snapshot_id:
+        if expected_id != snapshot_id:
             raise AppError(
                 ErrorCode.SNAPSHOT_UNAVAILABLE,
                 details=SafeErrorDetails(
                     corpus=name,
-                    snapshot_id=pointer.snapshot_id,
+                    snapshot_id=snapshot_id,
                     reason="snapshot_id_mismatch",
                 ),
             )
@@ -405,14 +420,14 @@ class ProductPublicationRegistry:
                 ErrorCode.SNAPSHOT_UNAVAILABLE,
                 details=SafeErrorDetails(
                     corpus=name,
-                    snapshot_id=pointer.snapshot_id,
+                    snapshot_id=snapshot_id,
                     reason="corpus_manifest_unreadable",
                 ),
             ) from exc
 
         return CorpusReadSnapshot(
             corpus_name=name,
-            snapshot_id=pointer.snapshot_id,
+            snapshot_id=snapshot_id,
             identity=identity,
             corpus_manifest=corpus_manifest,
         )

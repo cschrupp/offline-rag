@@ -50,6 +50,21 @@ class ManagedOperationStatus(StrEnum):
     INTERRUPTED = "interrupted"
 
 
+class OperationProgressStage(StrEnum):
+    """Coarse user-facing progress stage (presentation only, not a state machine).
+
+    Progress stages are advisory UI detail. ``ManagedOperationStatus`` remains the
+    authoritative durable operation state.
+    """
+
+    PREPARING = "preparing"
+    PROCESSING = "processing"
+    BUILDING_INDEXES = "building_indexes"
+    PUBLISHING = "publishing"
+    FINALIZING = "finalizing"
+    READY = "ready"
+
+
 def utc_now() -> datetime:
     return datetime.now(tz=UTC)
 
@@ -270,8 +285,30 @@ def assert_non_empty_invariant(record: WorkspaceRecord) -> None:
         )
 
 
-def new_empty_workspace(*, title: str, description: str = "") -> WorkspaceRecord:
-    workspace_id = new_workspace_id()
+def new_empty_workspace(
+    *,
+    title: str,
+    description: str = "",
+    workspace_id: str | None = None,
+) -> WorkspaceRecord:
+    """Build a fresh EMPTY workspace.
+
+    ``workspace_id`` lets a durable create reservation reuse an already-allocated
+    identity so a crashed POST retry reconstructs the same workspace instead of
+    leaking a second one.
+    """
+    if workspace_id is None:
+        workspace_id = new_workspace_id()
+    elif (
+        "/" in workspace_id
+        or "\\" in workspace_id
+        or ".." in workspace_id
+        or not workspace_id.startswith("ws_")
+    ):
+        raise AppError(
+            ErrorCode.REQUEST_INVALID,
+            details=SafeErrorDetails(reason="invalid_workspace_id"),
+        )
     now = utc_now()
     return WorkspaceRecord(
         workspace_id=workspace_id,
@@ -285,6 +322,99 @@ def new_empty_workspace(*, title: str, description: str = "") -> WorkspaceRecord
         updated_at=now,
         sources=[],
     )
+
+
+class ManagedOperationResult(BaseModel):
+    """Terminal success projection of a managed mutation.
+
+    Lets a client that lost its connection recover the authoritative post-mutation
+    revision / publication identity without replaying the mutation.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    workspace_revision: WorkspaceRevision = Field(ge=1)
+    workspace_status: WorkspaceStatus
+    snapshot_id: str | None = None
+    source_id: str | None = None
+    source_ids: list[str] | None = None
+    source_version: int | None = Field(default=None, ge=1)
+
+    @field_validator("snapshot_id", "source_id", mode="before")
+    @classmethod
+    def _safe_ids(cls, value: object) -> object:
+        if value is None:
+            return None
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError("identity fields must be non-empty strings")
+        text = value.strip()
+        if "/" in text or "\\" in text or ".." in text:
+            raise ValueError("identity fields must not contain path elements")
+        return text
+
+    @field_validator("source_ids", mode="before")
+    @classmethod
+    def _safe_id_list(cls, value: object) -> object:
+        if value is None:
+            return None
+        if not isinstance(value, list) or len(value) > 1024:
+            raise ValueError("source_ids must be a bounded list")
+        cleaned: list[str] = []
+        for item in value:
+            if not isinstance(item, str) or not item.strip():
+                raise ValueError("source_ids entries must be non-empty strings")
+            text = item.strip()
+            if "/" in text or "\\" in text or ".." in text:
+                raise ValueError("source_ids entries must not contain path elements")
+            cleaned.append(text)
+        return cleaned
+
+
+class ManagedOperationSafeError(BaseModel):
+    """Terminal failure projection using the D08 safe error vocabulary.
+
+    Mirrors ``ErrorResponse`` so a polled operation surfaces the same product
+    error the synchronous call would have returned. Free-form provider text is
+    never persisted here.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    code: ErrorCode
+    message: str = Field(min_length=1, max_length=512)
+    retryable: bool
+    details: dict[str, str] | None = None
+
+    @field_validator("details", mode="before")
+    @classmethod
+    def _bounded_details(cls, value: object) -> object:
+        if value is None:
+            return None
+        if not isinstance(value, dict) or len(value) > 16:
+            raise ValueError("details must be a bounded mapping")
+        cleaned: dict[str, str] = {}
+        for key, item in value.items():
+            if not isinstance(key, str) or not key.strip() or len(key) > 64:
+                raise ValueError("detail keys must be bounded strings")
+            if not isinstance(item, str) or len(item) > 200:
+                raise ValueError("detail values must be bounded strings")
+            cleaned[key] = item
+        return cleaned or None
+
+    @classmethod
+    def from_app_error(cls, error: AppError) -> ManagedOperationSafeError:
+        raw = error.details or {}
+        details = {
+            key: str(value)
+            for key, value in raw.items()
+            if isinstance(value, str | int | float | bool)
+        }
+        return cls(
+            code=error.code,
+            message=error.message,
+            retryable=error.retryable,
+            details=details or None,
+        )
 
 
 class ManagedOperationRecord(BaseModel):
@@ -305,6 +435,11 @@ class ManagedOperationRecord(BaseModel):
     result_summary: str | None = Field(default=None, max_length=512)
     failure_summary: str | None = Field(default=None, max_length=512)
     recovery_note: str | None = Field(default=None, max_length=512)
+    # 16B additions. Optional with ``None`` defaults so 16A records on disk keep
+    # validating unchanged.
+    progress_stage: OperationProgressStage | None = None
+    result: ManagedOperationResult | None = None
+    error: ManagedOperationSafeError | None = None
 
     @field_validator(
         "operation_id",

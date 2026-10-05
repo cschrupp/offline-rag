@@ -105,9 +105,11 @@ Evidence: docs/slice16a_workspace_foundation.md
 ## 16B — Workspace/source lifecycle API
 
 ```text
-STATUS: NOT AUTHORIZED / NOT STARTED
+STATUS: AUTHORIZED / IN PROGRESS (implementation candidate)
+AUTHORIZED BASELINE: 155983fec59a3ae6434286276bd34dcfdaaf8968
+ACCEPTED 16A SHA: e73959be508541a1c50d4919606aaf3157a5fa8a
+16C+: NOT AUTHORIZED
 ```
-
 ### Inherited contracts from accepted 16A
 
 These are inherited implementation contracts (not new design scope). When 16B

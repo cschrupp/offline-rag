@@ -25,6 +25,13 @@ from offline_rag.app.traces import (
     ProductTraceStore,
     allocate_trace_id,
 )
+from offline_rag.app.workspace.models import (
+    SourceVersionRecord,
+    WorkspaceRecord,
+    WorkspaceRevision,
+    WorkspaceStatus,
+)
+from offline_rag.app.workspace.store import WorkspaceStore
 from offline_rag.domain.generation import GroundedAnswerResult, ResolvedCitation
 from offline_rag.generation.config_hash import build_generation_config_hash
 from offline_rag.generation.orchestrate import GroundedAnswerError
@@ -60,6 +67,44 @@ class ProductQueryResponse:
     def as_dict(self) -> dict[str, Any]:
         return {
             "corpus": self.corpus,
+            "snapshot_id": self.snapshot_id,
+            "product_mode_id": self.product_mode_id,
+            "trace_id": self.trace_id,
+            "status": self.status,
+            "answer": self.answer,
+            "citations": self.citations,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class BoundSnapshotQueryOutcome:
+    """Result of executing a query against one already-resolved snapshot."""
+
+    snapshot: CorpusReadSnapshot
+    binding: SnapshotQueryBinding
+    trace_id: str
+    status: ProductSuccessStatus
+    answer: str | None
+    citations: list[dict[str, Any]]
+
+
+@dataclass(frozen=True, slots=True)
+class WorkspaceQueryResponse:
+    """Workspace-scoped projection of a grounded answer (S16-D08)."""
+
+    workspace_id: str
+    workspace_revision: WorkspaceRevision
+    snapshot_id: str
+    product_mode_id: str
+    trace_id: str
+    status: ProductSuccessStatus
+    answer: str | None
+    citations: list[dict[str, Any]]
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "workspace_id": self.workspace_id,
+            "workspace_revision": self.workspace_revision,
             "snapshot_id": self.snapshot_id,
             "product_mode_id": self.product_mode_id,
             "trace_id": self.trace_id,
@@ -237,25 +282,21 @@ def _commit_terminal_trace(store: ProductTraceStore, record: ProductQueryTrace) 
         raise AppError(ErrorCode.INTERNAL_ERROR) from exc
 
 
-def run_product_query(
+def run_bound_snapshot_query(
     runtime: ApplicationRuntime,
     *,
-    corpus: str,
+    snapshot: CorpusReadSnapshot,
     question: str,
     control: OperationHandle | None = None,
-) -> ProductQueryResponse:
-    """Canonical app-layer product query (snapshot-bound, traced)."""
-    runtime.require_ready()
-    if control is not None:
-        control.checkpoint("pre_validate")
-    name = validate_product_corpus_name(corpus)
-    normalized = normalize_product_question(question)
+) -> BoundSnapshotQueryOutcome:
+    """Execute the canonical grounded query against an already-resolved snapshot.
 
-    # Pre-execution: resolve snapshot + bind/validate cached query runtime.
-    # No trace yet — backing failures are snapshot_unavailable (D08/D11).
-    if control is not None:
-        control.checkpoint("pre_resolve")
-    snapshot = runtime.publication.resolve(name)
+    This is the single execution path for every product read surface. The caller
+    owns snapshot *resolution*, which is what distinguishes the product path
+    (``current.json``) from the workspace path (``workspace.current_snapshot_id``);
+    execution, tracing, and citation validation must not differ between them.
+    """
+    normalized = normalize_product_question(question)
     binding = build_snapshot_query_binding(runtime.settings, snapshot)
     if binding.product_mode_id != PRODUCT_MODE_GROUNDED_V1:
         raise AppError(
@@ -348,10 +389,9 @@ def run_product_query(
             execution=_execution_summary(result),
         )
         _commit_terminal_trace(store, record)
-        return ProductQueryResponse(
-            corpus=binding.corpus_name,
-            snapshot_id=binding.snapshot_id,
-            product_mode_id=binding.product_mode_id,
+        return BoundSnapshotQueryOutcome(
+            snapshot=snapshot,
+            binding=binding,
             trace_id=trace_id,
             status=status,
             answer=answer,
@@ -359,6 +399,173 @@ def run_product_query(
         )
     finally:
         runtime.query_runtimes.release(handle)
+
+
+def run_product_query(
+    runtime: ApplicationRuntime,
+    *,
+    corpus: str,
+    question: str,
+    control: OperationHandle | None = None,
+) -> ProductQueryResponse:
+    """Canonical app-layer product query (snapshot-bound, traced).
+
+    Resolves the corpus current publication, then delegates to the shared bound
+    execution path.
+    """
+    runtime.require_ready()
+    if control is not None:
+        control.checkpoint("pre_validate")
+    name = validate_product_corpus_name(corpus)
+    normalized = normalize_product_question(question)
+
+    # Pre-execution: resolve snapshot + bind/validate cached query runtime.
+    # No trace yet — backing failures are snapshot_unavailable (D08/D11).
+    if control is not None:
+        control.checkpoint("pre_resolve")
+    snapshot = runtime.publication.resolve(name)
+    outcome = run_bound_snapshot_query(
+        runtime, snapshot=snapshot, question=normalized, control=control
+    )
+    return ProductQueryResponse(
+        corpus=outcome.binding.corpus_name,
+        snapshot_id=outcome.binding.snapshot_id,
+        product_mode_id=outcome.binding.product_mode_id,
+        trace_id=outcome.trace_id,
+        status=outcome.status,
+        answer=outcome.answer,
+        citations=outcome.citations,
+    )
+
+
+def _active_source_index(
+    record: WorkspaceRecord,
+) -> dict[str, list[SourceVersionRecord]]:
+    index: dict[str, list[SourceVersionRecord]] = {}
+    for source in record.sources:
+        if not source.active or source.document_id is None:
+            continue
+        index.setdefault(source.document_id, []).append(source)
+    return index
+
+
+def _enrich_workspace_citations(
+    citations: list[dict[str, Any]],
+    *,
+    record: WorkspaceRecord,
+    require_mapping: bool,
+) -> list[dict[str, Any]]:
+    """Attach workspace source identity to snapshot-level citations.
+
+    Citations are scientific (``document_id``); the UI needs the logical source
+    the user actually uploaded. Mapping must be unambiguous: if an answered
+    citation cannot be attributed to exactly one active source, the workspace
+    view of that answer would be wrong, so fail closed rather than emit a
+    citation the user cannot trace back (S16-D12).
+    """
+    index = _active_source_index(record)
+    enriched: list[dict[str, Any]] = []
+    for citation in citations:
+        row = dict(citation)
+        matches = index.get(str(citation.get("document_id")), [])
+        if len(matches) == 1:
+            source = matches[0]
+            row["source_id"] = source.source_id
+            row["source_version"] = source.version
+            row["source_display_name"] = source.display_name
+        elif require_mapping:
+            raise AppError(
+                ErrorCode.CITATION_INVALID,
+                details=SafeErrorDetails(
+                    workspace_id=record.workspace_id,
+                    reason="citation_source_unmappable"
+                    if not matches
+                    else "citation_source_ambiguous",
+                ),
+            )
+        else:
+            row["source_id"] = None
+            row["source_version"] = None
+            row["source_display_name"] = None
+        enriched.append(row)
+    return enriched
+
+
+def run_workspace_query(
+    runtime: ApplicationRuntime,
+    *,
+    workspace_id: str,
+    question: str,
+    control: OperationHandle | None = None,
+) -> WorkspaceQueryResponse:
+    """Workspace-scoped grounded query bound to the workspace's own snapshot.
+
+    The workspace record — not ``current.json`` — is the authority for which
+    snapshot a workspace reads. Re-resolving the corpus current publication here
+    would let an unrelated concurrent publication (or a retired-then-republished
+    corpus) silently answer from a snapshot this workspace never claimed.
+
+    EMPTY fails closed and never falls back to the previously current snapshot
+    (S16-D08 / S16-D13).
+    """
+    runtime.require_ready()
+    if control is not None:
+        control.checkpoint("pre_validate")
+    store = WorkspaceStore(runtime.settings)
+    record = store.get(workspace_id)
+    if record.status is not WorkspaceStatus.ACTIVE or record.current_snapshot_id is None:
+        raise AppError(
+            ErrorCode.WORKSPACE_NOT_READY,
+            details=SafeErrorDetails(
+                workspace_id=workspace_id,
+                reason="workspace_empty"
+                if record.status is WorkspaceStatus.EMPTY
+                else "workspace_no_current_publication",
+            ),
+        )
+    normalized = normalize_product_question(question)
+
+    bound_revision = record.revision
+    bound_snapshot_id = record.current_snapshot_id
+    if control is not None:
+        control.checkpoint("pre_resolve")
+    snapshot = runtime.publication.resolve_snapshot(
+        record.backing_corpus_name, bound_snapshot_id
+    )
+
+    # Torn read: a mutation committed between reading the record and binding its
+    # snapshot. The binding is no longer the workspace's current state, so refuse
+    # rather than answer from a revision the client cannot name.
+    recheck = store.get(workspace_id)
+    if (
+        recheck.revision != bound_revision
+        or recheck.current_snapshot_id != bound_snapshot_id
+    ):
+        raise AppError(
+            ErrorCode.WORKSPACE_CONFLICT,
+            details=SafeErrorDetails(
+                workspace_id=workspace_id, reason="workspace_revision_changed"
+            ),
+        )
+
+    outcome = run_bound_snapshot_query(
+        runtime, snapshot=snapshot, question=normalized, control=control
+    )
+    citations = _enrich_workspace_citations(
+        outcome.citations,
+        record=record,
+        require_mapping=outcome.status == "answered",
+    )
+    return WorkspaceQueryResponse(
+        workspace_id=workspace_id,
+        workspace_revision=bound_revision,
+        snapshot_id=outcome.binding.snapshot_id,
+        product_mode_id=outcome.binding.product_mode_id,
+        trace_id=outcome.trace_id,
+        status=outcome.status,
+        answer=outcome.answer,
+        citations=citations,
+    )
 
 
 def get_product_trace(

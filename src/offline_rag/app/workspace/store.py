@@ -26,8 +26,10 @@ class WorkspaceStore:
     """Filesystem-backed workspace catalog under ``settings.paths.workspaces``.
 
     Revision compare-and-set mutations serialize on ``WorkspaceMutationLease``.
-    While an EMPTY-transition journal is present, ordinary mutations fail closed
-    so recovery cannot overwrite concurrent metadata changes.
+    While a cross-registry transition journal is present (EMPTY transition or
+    non-empty publication transition), ordinary mutations fail closed so recovery
+    cannot overwrite concurrent metadata changes. Only the owning coordinator may
+    write through the fence, via ``allow_during_journal``.
     """
 
     def __init__(self, settings: AppSettings) -> None:
@@ -43,6 +45,11 @@ class WorkspaceStore:
 
     def empty_transition_journal_path(self, workspace_id: str) -> Path:
         return self.workspace_dir(workspace_id) / "journal" / "empty_transition.json"
+
+    def publication_transition_journal_path(self, workspace_id: str) -> Path:
+        return (
+            self.workspace_dir(workspace_id) / "journal" / "publication_transition.json"
+        )
 
     @staticmethod
     def _validate_workspace_id(workspace_id: str) -> None:
@@ -82,12 +89,21 @@ class WorkspaceStore:
         with WorkspaceMutationLease(self.settings, workspace_id) as owned:
             return self._with_lease(workspace_id, fn, lease=owned)
 
-    def _assert_no_empty_transition(self, workspace_id: str) -> None:
+    def _assert_no_transition_journal(self, workspace_id: str) -> None:
+        """Fail closed while any cross-registry transition owns this workspace."""
         if self.empty_transition_journal_path(workspace_id).exists():
             raise AppError(
                 ErrorCode.WORKSPACE_CONFLICT,
                 details=SafeErrorDetails(
                     workspace_id=workspace_id, reason="empty_transition_in_progress"
+                ),
+            )
+        if self.publication_transition_journal_path(workspace_id).exists():
+            raise AppError(
+                ErrorCode.WORKSPACE_CONFLICT,
+                details=SafeErrorDetails(
+                    workspace_id=workspace_id,
+                    reason="publication_transition_in_progress",
                 ),
             )
 
@@ -134,7 +150,7 @@ class WorkspaceStore:
         record: WorkspaceRecord,
         *,
         lease: WorkspaceMutationLease | None = None,
-        allow_during_empty_transition: bool = False,
+        allow_during_journal: bool = False,
     ) -> WorkspaceRecord:
         def _body() -> WorkspaceRecord:
             path = self.workspace_path(record.workspace_id)
@@ -143,8 +159,8 @@ class WorkspaceStore:
                     ErrorCode.WORKSPACE_UNKNOWN,
                     details=SafeErrorDetails(workspace_id=record.workspace_id),
                 )
-            if not allow_during_empty_transition:
-                self._assert_no_empty_transition(record.workspace_id)
+            if not allow_during_journal:
+                self._assert_no_transition_journal(record.workspace_id)
             self._write(record)
             return record
 
@@ -162,7 +178,7 @@ class WorkspaceStore:
         """Display-only mutation: advances revision; snapshot_id unchanged."""
 
         def _body() -> WorkspaceRecord:
-            self._assert_no_empty_transition(workspace_id)
+            self._assert_no_transition_journal(workspace_id)
             record = self.get(workspace_id)
             if record.revision != expected_revision:
                 raise AppError(
@@ -193,7 +209,7 @@ class WorkspaceStore:
         lease: WorkspaceMutationLease | None = None,
     ) -> WorkspaceRecord:
         def _body() -> WorkspaceRecord:
-            self._assert_no_empty_transition(workspace_id)
+            self._assert_no_transition_journal(workspace_id)
             record = self.get(workspace_id)
             if record.revision != expected_revision:
                 raise AppError(

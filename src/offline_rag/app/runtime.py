@@ -129,6 +129,7 @@ class ApplicationRuntime:
     _shutdown_count: int = field(default=0, init=False)
     _publication: ProductPublicationRegistry | None = field(default=None, init=False)
     _query_runtimes: QueryRuntimeCache | None = field(default=None, init=False)
+    _workspace_lifecycle: Any = field(default=None, init=False, repr=False)
     _finalize_lock: Any = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -176,6 +177,15 @@ class ApplicationRuntime:
             )
         return self._query_runtimes
 
+    @property
+    def workspace_lifecycle(self) -> Any:
+        """Lazy workspace/source lifecycle service (Slice 16B)."""
+        if self._workspace_lifecycle is None:
+            from offline_rag.app.workspace.lifecycle import WorkspaceLifecycleService
+
+            self._workspace_lifecycle = WorkspaceLifecycleService(self)
+        return self._workspace_lifecycle
+
     def start(self) -> None:
         """Initialize process resources at most once per startup attempt.
 
@@ -203,6 +213,13 @@ class ApplicationRuntime:
             validate_global_startup_requirements(self.settings)
             # D15: quarantine unpublished candidates; never auto-publish.
             recover_abandoned_candidates(self.settings)
+            # 16B: recover workspace publication/EMPTY journals and interrupt
+            # nonterminal managed ops before mutation/query surfaces become READY.
+            from offline_rag.app.workspace.lifecycle import (
+                recover_workspace_transactions,
+            )
+
+            recover_workspace_transactions(self.settings)
 
             self.construction_counts.embedder += 1
             embedder = self.factories.embedder(self.settings)

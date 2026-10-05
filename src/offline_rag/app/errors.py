@@ -66,6 +66,7 @@ class ErrorCode(StrEnum):
     WORKSPACE_UNKNOWN = "workspace_unknown"
     WORKSPACE_NOT_READY = "workspace_not_ready"
     WORKSPACE_CONFLICT = "workspace_conflict"
+    SOURCE_UNKNOWN = "source_unknown"
     OPERATION_UNKNOWN = "operation_unknown"
     IDEMPOTENCY_CONFLICT = "idempotency_conflict"
     WORKSPACE_STATE_UNAVAILABLE = "workspace_state_unavailable"
@@ -116,6 +117,7 @@ ERROR_CATALOG: dict[ErrorCode, ErrorSpec] = {
     ErrorCode.WORKSPACE_CONFLICT: ErrorSpec(
         409, False, "Workspace revision or state conflict"
     ),
+    ErrorCode.SOURCE_UNKNOWN: ErrorSpec(404, False, "Source not found in workspace"),
     ErrorCode.OPERATION_UNKNOWN: ErrorSpec(404, False, "Managed operation not found"),
     ErrorCode.IDEMPOTENCY_CONFLICT: ErrorSpec(
         409, False, "Idempotency key conflicts with a different request"

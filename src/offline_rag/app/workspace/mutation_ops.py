@@ -7,14 +7,17 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import TypeVar
 
-from pydantic import ValidationError
+from pydantic import BaseModel, ConfigDict, ValidationError
 
 from offline_rag.app.errors import AppError, ErrorCode, SafeErrorDetails
 from offline_rag.app.workspace.leases import WorkspaceMutationLease
 from offline_rag.app.workspace.models import (
     ManagedOperationKind,
     ManagedOperationRecord,
+    ManagedOperationResult,
+    ManagedOperationSafeError,
     ManagedOperationStatus,
+    OperationProgressStage,
     WorkspaceRevision,
     canonical_operation_fingerprint,
     new_operation_id,
@@ -24,6 +27,11 @@ from offline_rag.config.models import AppSettings
 from offline_rag.ingestion.io import atomic_write_text
 
 T = TypeVar("T")
+
+# Operation ids are globally unique but records are stored per workspace. The
+# locator lets GET /v1/operations/{id} find the owning workspace in one read
+# instead of scanning the catalog.
+OPERATION_INDEX_DIRNAME = "_operation_index"
 
 # Legal managed-operation transitions (16A). Terminal states are immutable except
 # idempotent same-status rewrite.
@@ -82,6 +90,15 @@ def _idempotency_filename(idempotency_key: str) -> str:
     return f"idem_{digest}.json"
 
 
+class OperationLocator(BaseModel):
+    """Global operation_id → owning workspace pointer."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    operation_id: str
+    workspace_id: str
+
+
 class ManagedOperationStore:
     """Per-workspace durable operation records + idempotency index.
 
@@ -119,6 +136,14 @@ class ManagedOperationStore:
         return self._ops_root(workspace_id) / "by_idempotency" / _idempotency_filename(
             idempotency_key
         )
+
+    def locator_path(self, operation_id: str) -> Path:
+        if "/" in operation_id or "\\" in operation_id or ".." in operation_id:
+            raise AppError(
+                ErrorCode.REQUEST_INVALID,
+                details=SafeErrorDetails(reason="invalid_operation_id"),
+            )
+        return self.root / OPERATION_INDEX_DIRNAME / f"{operation_id}.json"
 
     def _with_lease(
         self,
@@ -209,15 +234,41 @@ class ManagedOperationStore:
                 updated_at=now,
             )
             op_path = self._op_path(workspace_id, record.operation_id)
+            locator = self.locator_path(record.operation_id)
             op_path.parent.mkdir(parents=True, exist_ok=True)
+            locator.parent.mkdir(parents=True, exist_ok=True)
             idem_path.parent.mkdir(parents=True, exist_ok=True)
             atomic_write_text(op_path, record.model_dump_json())
-            # Index after durable op write so crash leaves orphan op (recoverable)
-            # not dangling index.
+            # Indexes after the durable op write so a crash leaves an orphan op
+            # (recoverable by scan) rather than a dangling index.
+            atomic_write_text(
+                locator,
+                OperationLocator(
+                    operation_id=record.operation_id, workspace_id=workspace_id
+                ).model_dump_json(),
+            )
             atomic_write_text(idem_path, record.operation_id)
             return record
 
         return self._with_lease(workspace_id, _body, lease=lease)
+
+    def find_by_idempotency(
+        self, workspace_id: str, idempotency_key: str
+    ) -> ManagedOperationRecord | None:
+        """Return the operation for a key if the durable index exists."""
+        path = self._idem_path(workspace_id, idempotency_key)
+        if not path.exists():
+            return None
+        try:
+            operation_id = path.read_text(encoding="utf-8").strip()
+        except OSError:
+            return None
+        if not operation_id:
+            return None
+        try:
+            return self.get(workspace_id, operation_id)
+        except AppError:
+            return None
 
     def get(self, workspace_id: str, operation_id: str) -> ManagedOperationRecord:
         path = self._op_path(workspace_id, operation_id)
@@ -261,8 +312,17 @@ class ManagedOperationStore:
         result_summary: str | None = None,
         failure_summary: str | None = None,
         recovery_note: str | None = None,
+        progress_stage: OperationProgressStage | None = None,
+        result: ManagedOperationResult | None = None,
+        error: ManagedOperationSafeError | None = None,
         lease: WorkspaceMutationLease | None = None,
     ) -> ManagedOperationRecord:
+        """Advance operation state and/or attach progress and terminal payloads.
+
+        Passing the same non-terminal status is how progress is published: the
+        status machine is unchanged, only ``progress_stage`` moves.
+        """
+
         def _body() -> ManagedOperationRecord:
             record = self.get(workspace_id, operation_id)
             assert_legal_status_transition(record.status, status)
@@ -281,6 +341,11 @@ class ManagedOperationStore:
                     "recovery_note": recovery_note
                     if recovery_note is not None
                     else record.recovery_note,
+                    "progress_stage": progress_stage
+                    if progress_stage is not None
+                    else record.progress_stage,
+                    "result": result if result is not None else record.result,
+                    "error": error if error is not None else record.error,
                 }
             )
             atomic_write_text(
@@ -289,3 +354,105 @@ class ManagedOperationStore:
             return updated
 
         return self._with_lease(workspace_id, _body, lease=lease)
+
+    def get_by_operation_id(self, operation_id: str) -> ManagedOperationRecord:
+        """Resolve an operation without knowing its workspace.
+
+        Uses the global locator; falls back to a catalog scan when the locator
+        write was lost to a crash. An ambiguous scan fails closed rather than
+        guessing an owner.
+        """
+        locator = self.locator_path(operation_id)
+        if locator.exists():
+            try:
+                pointer = OperationLocator.model_validate_json(
+                    locator.read_text(encoding="utf-8")
+                )
+            except (OSError, ValidationError, ValueError) as exc:
+                raise AppError(
+                    ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                    details=SafeErrorDetails(
+                        operation_id=operation_id, reason="operation_index_unreadable"
+                    ),
+                ) from exc
+            if pointer.operation_id != operation_id:
+                raise AppError(
+                    ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                    details=SafeErrorDetails(
+                        operation_id=operation_id, reason="operation_id_mismatch"
+                    ),
+                )
+            return self.get(pointer.workspace_id, operation_id)
+
+        owners = [
+            workspace_id
+            for workspace_id in self._workspace_ids()
+            if self._op_path(workspace_id, operation_id).exists()
+        ]
+        if not owners:
+            raise AppError(
+                ErrorCode.OPERATION_UNKNOWN,
+                details=SafeErrorDetails(operation_id=operation_id),
+            )
+        if len(owners) > 1:
+            raise AppError(
+                ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                details=SafeErrorDetails(
+                    operation_id=operation_id, reason="operation_owner_ambiguous"
+                ),
+            )
+        return self.get(owners[0], operation_id)
+
+    def list_for_workspace(self, workspace_id: str) -> list[ManagedOperationRecord]:
+        directory = self._ops_root(workspace_id) / "by_id"
+        if not directory.exists():
+            return []
+        records: list[ManagedOperationRecord] = []
+        for path in sorted(directory.glob("wop_*.json")):
+            if not path.is_file():
+                continue
+            records.append(self.get(workspace_id, path.stem))
+        return sorted(records, key=lambda item: item.created_at)
+
+    def interrupt_all_nonterminal(
+        self, *, recovery_note: str = "process_restart"
+    ) -> list[ManagedOperationRecord]:
+        """Mark operations left non-terminal by a crash as INTERRUPTED (S16-D15).
+
+        Scientific ingest is never auto-resumed; the prior published snapshot
+        stays valid. This only stops the UI from showing work that no longer has
+        a worker behind it.
+        """
+        interrupted: list[ManagedOperationRecord] = []
+        for workspace_id in self._workspace_ids():
+            if not (self._ops_root(workspace_id) / "by_id").exists():
+                continue
+            owned = WorkspaceMutationLease(self.settings, workspace_id)
+            owned.acquire(blocking=True)
+            try:
+                # Re-read under the lease: a live worker may have reached a
+                # terminal status since the scan above.
+                for record in self.list_for_workspace(workspace_id):
+                    if record.status in _TERMINAL:
+                        continue
+                    interrupted.append(
+                        self.update_status(
+                            workspace_id,
+                            record.operation_id,
+                            ManagedOperationStatus.INTERRUPTED,
+                            recovery_note=recovery_note,
+                            lease=owned,
+                        )
+                    )
+            finally:
+                owned.release()
+        return interrupted
+
+    def _workspace_ids(self) -> list[str]:
+        if not self.root.exists():
+            return []
+        return sorted(
+            child.name
+            for child in self.root.iterdir()
+            if child.is_dir() and child.name.startswith("ws_")
+        )
