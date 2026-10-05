@@ -13,6 +13,7 @@ from offline_rag.api.health import router as health_router
 from offline_rag.api.ingest import router as ingest_router
 from offline_rag.api.query import router as query_router
 from offline_rag.api.traces import router as traces_router
+from offline_rag.api.ui import router as ui_router
 from offline_rag.app.runtime import (
     ApplicationRuntime,
     ResourceFactories,
@@ -69,5 +70,6 @@ def create_app(
     app.include_router(documents_router)
     app.include_router(ingest_router)
     app.include_router(query_router)
+    app.include_router(ui_router)
     app.include_router(traces_router)
     return app
