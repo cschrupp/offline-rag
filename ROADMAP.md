@@ -221,27 +221,27 @@ Next gate: separate Slice **13B** authoritative measure-once authorization
 
 ## Milestone 6 — Agentic recovery and security
 
-**Status:** Milestone **6 COMPLETE / ACCEPTED** under revised disposition — Slice **11 COMPLETE / ACCEPTED**; Slice **12 COMPLETE / ACCEPTED** (recovery disabled; `insufficient_evidence_for_recovery_efficacy` retained); Slice **13 COMPLETE / ACCEPTED UNDER REVISED DISPOSITION** (**13A** / **13B** COMPLETE / ACCEPTED at `7baca2d` `completed` / `fail`; **13C** DEFERRED / OPEN / NOT REQUIRED FOR M6 / **NOT AUTHORIZED**; **13D** DEFERRED / OPTIONAL / NOT REQUIRED FOR M6 / **NOT AUTHORIZED**)  
-**Baseline:** `1983ff1376ea27fc1e8774b35136dc8c8ec93f40`  
-**Design authority:** [`docs/milestone6_agentic_recovery_security.md`](docs/milestone6_agentic_recovery_security.md)  
-**OD-12 design-lock baseline:** `4194d525211d994b97aa8abba93237cd8a23cbb9`  
-**12B docs closeout / 12C design authority baseline:** `692da961904e16a2a1bfa1ee1c2ece82a097df60`  
-**12C-1 accepted harness:** `c4f8734d57f45d3aa111997abf2bc8890322ff33`  
-**12C-2 authority baseline:** `47656d17b1e907f5965a60b0fe988a83942855ca`  
-**12C-2 accepted implementation:** `f213960bc494cd2180233345abf798f74313e8bd`  
-**12C-2 authoritative result:** `dc82432b7060c6adba189e96f8a053f76a6b2721`  
-**Slice 13 design-open / authority baseline:** `6a3806bdc89a17bcdf992dba068e843f8535de6a`  
-**Slice 13 design lock (accepted):** `571882e062359e258f5843b4289b2f556d22d7f7`  
-**Post-13B M6 status review authority baseline:** `0f14388e71cd0010d64d41c592c6df0aa308fd9c`  
-**13A accepted technical result:** `c2c1ff85c5383e224fc8767be1abbd5c435dd789`  
-**13B design-open baseline:** `1b87b90cad610ba40513d4ac0ca5e3239c2d7c3d`  
-**13B design authority:** `d3fc8616e5dfe474a53659bc3e276594d8eaa9c7`  
-**13B accepted harness:** `87b936789b2cf91e202be5ff4b818e3909460fd8`  
-**13B docs/provenance authority baseline:** `4efcda174d27f92f75cd3e04b96137d92a5c0ab5`  
-**13B sealed/executed executable SHA:** `7baca2d0fd0d89b6358d04bd943c8c14ea6e742c`  
-**13B Q1 seal:** `refs/offline-rag/authority/security_13b/q1` → `7baca2d0fd0d89b6358d04bd943c8c14ea6e742c`  
-**13B frozen campaign Git blob:** `7951ad964e7a91d5e89589acb4544fb99ca3079c`  
-**OD-13-4 amendment:** **LOCKED / AMENDED / ACCEPTED** (`efe7e1240974af27a1b8448215346abd094181a4`)  
+**Status:** Milestone **6 COMPLETE / ACCEPTED** under revised disposition — Slice **11 COMPLETE / ACCEPTED**; Slice **12 COMPLETE / ACCEPTED** (recovery disabled; `insufficient_evidence_for_recovery_efficacy` retained); Slice **13 COMPLETE / ACCEPTED UNDER REVISED DISPOSITION** (**13A** / **13B** COMPLETE / ACCEPTED at `7baca2d` `completed` / `fail`; **13C** DEFERRED / OPEN / NOT REQUIRED FOR M6 / **NOT AUTHORIZED**; **13D** DEFERRED / OPTIONAL / NOT REQUIRED FOR M6 / **NOT AUTHORIZED**)
+**Baseline:** `1983ff1376ea27fc1e8774b35136dc8c8ec93f40`
+**Design authority:** [`docs/milestone6_agentic_recovery_security.md`](docs/milestone6_agentic_recovery_security.md)
+**OD-12 design-lock baseline:** `4194d525211d994b97aa8abba93237cd8a23cbb9`
+**12B docs closeout / 12C design authority baseline:** `692da961904e16a2a1bfa1ee1c2ece82a097df60`
+**12C-1 accepted harness:** `c4f8734d57f45d3aa111997abf2bc8890322ff33`
+**12C-2 authority baseline:** `47656d17b1e907f5965a60b0fe988a83942855ca`
+**12C-2 accepted implementation:** `f213960bc494cd2180233345abf798f74313e8bd`
+**12C-2 authoritative result:** `dc82432b7060c6adba189e96f8a053f76a6b2721`
+**Slice 13 design-open / authority baseline:** `6a3806bdc89a17bcdf992dba068e843f8535de6a`
+**Slice 13 design lock (accepted):** `571882e062359e258f5843b4289b2f556d22d7f7`
+**Post-13B M6 status review authority baseline:** `0f14388e71cd0010d64d41c592c6df0aa308fd9c`
+**13A accepted technical result:** `c2c1ff85c5383e224fc8767be1abbd5c435dd789`
+**13B design-open baseline:** `1b87b90cad610ba40513d4ac0ca5e3239c2d7c3d`
+**13B design authority:** `d3fc8616e5dfe474a53659bc3e276594d8eaa9c7`
+**13B accepted harness:** `87b936789b2cf91e202be5ff4b818e3909460fd8`
+**13B docs/provenance authority baseline:** `4efcda174d27f92f75cd3e04b96137d92a5c0ab5`
+**13B sealed/executed executable SHA:** `7baca2d0fd0d89b6358d04bd943c8c14ea6e742c`
+**13B Q1 seal:** `refs/offline-rag/authority/security_13b/q1` → `7baca2d0fd0d89b6358d04bd943c8c14ea6e742c`
+**13B frozen campaign Git blob:** `7951ad964e7a91d5e89589acb4544fb99ca3079c`
+**OD-13-4 amendment:** **LOCKED / AMENDED / ACCEPTED** (`efe7e1240974af27a1b8448215346abd094181a4`)
 **M6 docs/status closeout:** this commit (`0f14388` → `efe7e12` → this SHA)
 
 **Implementation order (locked):** Slice **11** → Slice **12** → Slice **13**
@@ -381,13 +381,63 @@ Recovery remains disabled by default. LangGraph was not added and is
 **Post-Slice-12 / NOT AUTHORIZED** unless a future evaluation separately
 justifies conditional orchestration.
 
-## Milestone 7 — Performance and UI
+## Milestone 7 — Productization, Performance and Portfolio UI
 
-**Status:** Milestone **7 IN PROGRESS**  
-**M7 entry authority:** `dcc6b07c20f97472cf506c4665af1f88f00a886b`  
-**Slice 14 design authority:** [`docs/milestone7_performance_ui.md`](docs/milestone7_performance_ui.md)  
+**Status:** Milestone **7 IN PROGRESS** (closeout **NOT AUTHORIZED**)
+**Scope clarification:** retained historical short title “Performance and UI”
+still applies, but M7 also includes API/product packaging, portfolio UI,
+regression CI, and portfolio release packaging (Slices 14–18).
+**M7 entry authority:** `dcc6b07c20f97472cf506c4665af1f88f00a886b`
+**Slice 14 design authority:** [`docs/milestone7_performance_ui.md`](docs/milestone7_performance_ui.md)
 **Slice 14 design (LOCKED / ACCEPTED):** `89a395ae4df7aff23c2da2c8c44fd6fe405459a6`
 **Slice 14:** **COMPLETE / ACCEPTED**
+
+```text
+POST-SLICE-15 ROADMAP
+
+15H  NOT AUTHORIZED
+     Integration acceptance / Slice-15 closeout
+
+16   PLANNED
+     Portfolio Demo UI
+     DESIGN NOT OPEN
+     IMPLEMENTATION NOT AUTHORIZED
+     Pre-design frame: docs/slice16_portfolio_ui.md
+
+17   PLANNED
+     Regression CI
+     DESIGN NOT OPEN
+     IMPLEMENTATION NOT AUTHORIZED
+
+18   PLANNED
+     Portfolio Release Package
+     DESIGN NOT OPEN
+     IMPLEMENTATION NOT AUTHORIZED
+
+M7 CLOSEOUT  NOT AUTHORIZED
+```
+
+Canonical dependency chain (sequential until explicitly redesigned):
+
+```text
+14 — Performance evidence
+      ↓
+15 — Product/API/container boundary
+      ↓
+15H — Integration acceptance / Slice-15 closeout
+      ↓
+16 — Portfolio UI
+      ↓
+17 — Regression CI
+      ↓
+18 — Portfolio release
+      ↓
+M7 closeout
+```
+
+**Important:** **15H is not the UI phase.** 15H closes Slice 15 and validates
+the API/container product boundary. Slice 16 begins only after Slice 15 has been
+independently accepted and closed.
 
 **Slice 14 — Performance and resource benchmark harness**
 - Design: **LOCKED / ACCEPTED** (`89a395ae4df7aff23c2da2c8c44fd6fe405459a6`)
@@ -462,9 +512,44 @@ Slice 14 checklist:
 - **15G** container packaging + Compose contract: **COMPLETE / ACCEPTED**
   - Implementation head: `140350b8cc6eec6a2491c0a1696042e65b2d2b7e`
   - Fast-forward onto main at `140350b8cc6eec6a2491c0a1696042e65b2d2b7e`
-- **15H:** **NOT AUTHORIZED**
+- **15H** integration acceptance / Slice 15 closeout: **NOT AUTHORIZED**
+  - 15H validates the accepted API/container product boundary
+  - 15H does **not** implement the portfolio UI
 
-Later M7 checklist (not Slice 14):
+**Slice 16 — Portfolio Demo UI:** **PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED**
+- Pre-design frame: [`docs/slice16_portfolio_ui.md`](docs/slice16_portfolio_ui.md)
+  (`STATUS: PRE-DESIGN / ROADMAP FRAME`; design authority: **NONE**)
+- UI remains an adapter/client of `src/offline_rag/app/` (no direct Qdrant /
+  retriever / generator access; no UI-owned RAG pipeline)
+- Locked product query remains `{corpus, question}` with server-owned
+  `product_mode_id = grounded_v1` until a future architecture decision
+- Diagnostic / comparison surfaces (including any former “pipeline switcher”
+  ideas) are **DESIGN REQUIRED** and must not silently expand `/v1/query`
+- Candidate capability areas only (not locked): 16A query experience;
+  16B evidence/retrieval inspector; 16C corpus/document experience;
+  16D evaluation/performance presentation; 16E portfolio polish
+- Frontend technology and delivery model are Slice-16 design decisions
+  (Slice 15 did not implement the optional static-serving substrate)
+
+**Slice 17 — Regression CI:** **PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED**
+- Objective: prevent accepted product/retrieval/generation contracts and
+  measured quality from silently regressing after the portfolio surface exists
+- Candidate areas only (not locked / no thresholds defined here):
+  deterministic unit/regression tests; CI-safe retrieval subset; citation-
+  contract checks; API contract checks; security deterministic checks where
+  appropriate; container build/smoke where feasible
+- Do **not** invent SLOs or convert historical performance runs into gates here
+
+**Slice 18 — Portfolio Release Package:** **PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED**
+- Objective: reproducible public portfolio artifact backed by accepted evidence
+- Candidate deliverables only (not locked): polished README; architecture
+  diagram; public demo workflow; sample corpus instructions; benchmark
+  methodology/results; ablation evidence; limitations; hardware/runtime
+  profiles; demo media; reproducible install/run path; interview talking points
+- Claims remain conservative; deferred scientific/publication-grade promotions
+  stay unauthorized
+
+Later M7 checklist:
 
 - [x] FastAPI substrate + process lifecycle + `/health*` (15A/15B — **COMPLETE / ACCEPTED**)
 - [x] doctor non-mutation / startup-owned `/data` creation (15B — **COMPLETE / ACCEPTED**)
@@ -475,23 +560,33 @@ Later M7 checklist (not Slice 14):
 - [x] single-container OfflineRAG application image (15G — **COMPLETE / ACCEPTED**)
 - [x] Qdrant Local standalone profile (15G — **COMPLETE / ACCEPTED**)
 - [x] `/data` + `/models` volume packaging contract (15G — **COMPLETE / ACCEPTED**)
-- [ ] Slice 15 integration closeout (15H)
-- [ ] retrieval inspector
-- [ ] citation source viewer
-- [ ] evaluation dashboard
+- [ ] Slice 15 integration closeout (15H — **NOT AUTHORIZED**)
+- [ ] Portfolio Demo UI (Slice 16 — **PLANNED / DESIGN NOT OPEN**)
+- [ ] Regression CI (Slice 17 — **PLANNED / DESIGN NOT OPEN**)
+- [ ] Portfolio release package (Slice 18 — **PLANNED / DESIGN NOT OPEN**)
+- [ ] Milestone 7 closeout (**NOT AUTHORIZED**)
 
-**Release criterion:** a reviewer can interactively compare retrieval modes and inspect evidence flow.
+**M7 release direction (not a Slice-15 exit criterion):** a reviewer can use the
+accepted product/API surface and, after Slice 16 design/implementation, inspect
+evidence flow through a UI that remains a client of that surface — without
+expanding product query scientific knobs.
 
 Milestone **6** remains **COMPLETE / ACCEPTED** at `dcc6b07…`. Milestone **7**
-remains **IN PROGRESS** (Slice 15 through **15G** landed; **15H** not
-authorized). Performance optimization, generator max-token change, reranker
-config change, `base.yaml` promotion, `PORTFOLIO_DEMO.md` update, 13C/13D,
-recovery enablement, LangGraph, and NeMo remain **NOT AUTHORIZED**.
+remains **IN PROGRESS** (Slice 15 through **15G** landed; **15H** /
+**Slices 16–18** / **M7 closeout** not authorized). Performance optimization,
+generator max-token change, reranker config change, `base.yaml` promotion,
+`PORTFOLIO_DEMO.md` update, 13C/13D, recovery enablement, LangGraph, and NeMo
+remain **NOT AUTHORIZED**.
 Technical debt (post–Slice 15): investigate CPU-only PyTorch/retrieval
-dependency resolution and/or CPU/CUDA image variants — do not treat as a 15G
-blocker.
+dependency resolution and/or CPU/CUDA image variants — tracked in GitHub
+issue [#1](https://github.com/cschrupp/offline-rag/issues/1); not a 15G blocker.
 
-## Milestone 8 — Portfolio release
+## Milestone 8 — (historical stub; superseded by Slice 18 under M7)
+
+The checklist below is retained as a historical portfolio-release stub.
+Formal portfolio packaging work is now tracked as **Slice 18** under Milestone 7
+(**PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED**). Do not treat this section as a
+separately authorized milestone while Slice 18 remains unopened.
 
 - [ ] public demo corpus instructions
 - [ ] benchmark methodology page
@@ -505,7 +600,9 @@ blocker.
 - [ ] CI regression checks
 - [ ] optional public IR benchmark adapters (BEIR / `ir_datasets`) after private gold workflow works
 
-**Release criterion:** repository supports all public quality/security/performance claims with reproducible evidence.
+**Historical release criterion (now Slice 18 design territory):** repository
+supports all public quality/security/performance claims with reproducible
+evidence.
 
 ## Post-v1 candidates
 

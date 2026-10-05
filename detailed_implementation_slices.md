@@ -930,11 +930,11 @@ update.** Milestone 6 remains COMPLETE / ACCEPTED unchanged.
 
 # Slice 15 — Developer API and single-container application packaging
 
-**Architecture:** **COMPLETE / LOCKED** (S15-D01 … S15-D22)  
-**Design authority:** [`docs/slice15_developer_api_packaging.md`](docs/slice15_developer_api_packaging.md)  
-(`6583fb3be64f2c66e8655b8b99166c358f8f0844`)  
-**Residual A:** **LOCKED / ACCEPTED**  
-**Implementation plan:** [`docs/slice15_implementation_plan.md`](docs/slice15_implementation_plan.md) — **ACCEPTED**  
+**Architecture:** **COMPLETE / LOCKED** (S15-D01 … S15-D22)
+**Design authority:** [`docs/slice15_developer_api_packaging.md`](docs/slice15_developer_api_packaging.md)
+(`6583fb3be64f2c66e8655b8b99166c358f8f0844`)
+**Residual A:** **LOCKED / ACCEPTED**
+**Implementation plan:** [`docs/slice15_implementation_plan.md`](docs/slice15_implementation_plan.md) — **ACCEPTED**
 **Phase progress:**
 - **15A:** **COMPLETE / ACCEPTED** (`4a1c8dbcddc8408dd8b8b46dc0f18df56561d2f8`)
 - **15B:** **COMPLETE / ACCEPTED** (`00282d67f43edad7cb4094228c482bf8f361d578`)
@@ -943,7 +943,8 @@ update.** Milestone 6 remains COMPLETE / ACCEPTED unchanged.
 - **15E:** **COMPLETE / ACCEPTED** (FF head `63f5965adae3c2a1c5a5b338bcc1243f9423bb5a`; commits `2a84ef01…`, `63f5965a…`)
 - **15F:** **COMPLETE / ACCEPTED** (FF head `7bfb0893e1537af99bdaad6f6af5336408afe750`; commits `850d04e9…`, `f907c849…`, `7bfb0893…`)
 - **15G:** **COMPLETE / ACCEPTED** (FF head `140350b8cc6eec6a2491c0a1696042e65b2d2b7e`)
-- **15H:** **NOT AUTHORIZED**
+- **15H:** **NOT AUTHORIZED** (integration acceptance / Slice 15 closeout;
+  **not** the UI phase)
 
 Roadmap path names such as unversioned `/ingest` and optional `/eval/run` are
 superseded by the locked design: product HTTP under `/v1/*`, CLI-first evaluation
@@ -951,7 +952,8 @@ superseded by the locked design: product HTTP under `/v1/*`, CLI-first evaluatio
 `/health*`, `GET /v1/documents`, `GET /v1/documents/{document_id}`,
 `POST /v1/ingest`, `POST /v1/query`, `GET /v1/trace/{trace_id}`,
 admission/deadlines/drain, and the supported container/Compose packaging
-profile. Slice 15 integration closeout remains later.
+profile. Slice 15 integration closeout (**15H**) remains **NOT AUTHORIZED**.
+Portfolio UI work is **Slice 16** and is separate from 15H.
 
 ## Objective
 
@@ -962,7 +964,8 @@ Expose the RAG engine through a stable local API and package the application as 
 - FastAPI app (`/health*`, `/v1/ingest`, `/v1/query`, `/v1/documents`, `/v1/trace/{id}`);
 - CLI-first evaluation boundary (no HTTP `/eval/*` in Slice 15);
 - API schemas / OpenAPI;
-- optional same-origin static-serving substrate (Slice 16 UI not required);
+- optional same-origin static-serving substrate was **not** implemented in
+  Slice 15 (frontend delivery is a Slice 16 design decision);
 - standalone Qdrant Local persistence under `/data/qdrant`;
 - `/data` persistent volume contract;
 - `/models` read-only retrieval-model volume/cache contract;
@@ -982,12 +985,14 @@ Host Ollama :11434
        ^
        |
 OfflineRAG container :8080
-  + Qdrant Local
+  + Qdrant client with Local-mode persistence
   + embedding/reranker runtime
-  + API/UI/evaluation
+  + product HTTP API (/health*, /v1/*)
        |
   /data + /models
 ```
+
+(Evaluation remains CLI-first per Slice 15 D12. Portfolio UI is Slice 16.)
 
 ## Security default
 
@@ -995,117 +1000,141 @@ Bind the application to localhost unless the user explicitly configures network 
 
 ## Exit criteria
 
-The backend can be used from a CLI and browser UI through the same service layer, and the entire OfflineRAG application starts as one container while using an independently running local Ollama model.
+The accepted product/API surface can be used from CLI and (after Slice 16)
+browser clients through the same app layer, and the OfflineRAG application
+starts as one container while using an independently running local generator.
 
-# Slice 16 — Portfolio demo UI
+---
+
+# Slice 16 — Portfolio Demo UI
+
+**Status:** **PLANNED / DESIGN NOT OPEN / IMPLEMENTATION NOT AUTHORIZED**
+**Pre-design frame:** [`docs/slice16_portfolio_ui.md`](docs/slice16_portfolio_ui.md)
+(`STATUS: PRE-DESIGN / ROADMAP FRAME`; design authority: **NONE**)
 
 ## Objective
 
-Expose the internals that demonstrate engineering value rather than hiding everything behind a chat bubble.
+Expose OfflineRAG’s engineering value through a browser UI that is an
+**adapter/client** of the accepted product/API layer — not a second RAG stack.
 
-## Required views
+## Architectural boundary
 
-### Query view
+```text
+Browser UI
+   ↓
+supported UI/backend interface
+   ↓
+src/offline_rag/app/
+   ↓
+domain + infrastructure
+```
 
-- question;
-- final answer;
-- citations;
-- source preview.
+Forbidden: UI → Qdrant / retrievers / generator directly; UI-owned RAG pipeline
+or scientific algorithms; bypassing app/product semantics.
 
-### Retrieval inspector
+## Product query boundary (inherited from Slice 15)
 
-- dense candidates;
-- lexical candidates;
-- fusion rank;
-- reranker score;
-- final evidence;
-- query rewrite if triggered.
+Locked product query remains `{corpus, question}` with server-owned
+`product_mode_id = grounded_v1` until a future architecture decision. No client
+algorithm/mode selector, scientific knobs, snapshot pinning, or recovery-mode
+selector on `/v1/query`.
 
-### Pipeline switcher
+### Diagnostic / comparison surfaces — DESIGN REQUIRED
 
-Allow controlled comparison of:
+Historical “pipeline switcher” wording (dense / BM25 / hybrid /
+hybrid+reranker / recovery) **predates** the locked Slice-15 product API and is
+**not** an authorized product feature. Slice 16 design must decide whether any
+comparison surface is artifact visualization, a separate diagnostic interface,
+CLI-rendered evidence, or another non-product surface — and must not silently
+expand `/v1/query`.
 
-- dense;
-- BM25;
-- hybrid;
-- hybrid + reranker;
-- full agentic recovery.
+## Candidate capability areas (not locked)
 
-### Evaluation dashboard
+- **16A** query experience (corpus/question/answer/abstain/citations/preview/trace)
+- **16B** evidence / retrieval inspector (only via future approved diagnostic
+  surface; current `/v1/query` does not expose candidate lists / RRF / rerank
+  scores / raw scientific traces)
+- **16C** corpus/document experience (inventory, ingest, readiness)
+- **16D** evaluation / performance presentation (prefer read-only artifacts;
+  no `/eval/*` HTTP invented for UI convenience — D12 remains CLI-first)
+- **16E** portfolio polish (architecture/topology/status/limitations links)
 
-- aggregate retrieval metrics;
-- metrics by query category;
-- experiment comparison;
-- latency distribution summary;
-- abstention performance;
-- adversarial test status.
+Frontend technology and delivery model are Slice-16 design decisions.
 
-## Exit criteria
+## Prerequisites for opening design
 
-A reviewer can understand the system's differentiators in under two minutes without reading the source code.
+1. 15H COMPLETE / ACCEPTED (or explicit future exception — none today);
+2. Slice 15 COMPLETE / ACCEPTED including closeout;
+3. stable supported product contracts;
+4. explicit Slice-16 design authorization.
+
+## Exit criteria (aspirational; not authorized)
+
+A reviewer can understand the system’s differentiators quickly through a UI that
+remains a client of the accepted product surface.
 
 ---
 
 # Slice 17 — Regression CI
 
+**Status:** **PLANNED / DESIGN NOT OPEN / IMPLEMENTATION NOT AUTHORIZED**
+
 ## Objective
 
-Prevent retrieval-quality regressions from being hidden by implementation changes.
+Prevent accepted product/retrieval/generation contracts and measured quality
+from silently regressing after the portfolio UI/product surface exists.
 
-## Deliverables
+## Candidate areas (not locked; no thresholds defined here)
 
-- small CI-safe benchmark subset;
-- baseline metrics artifact;
-- configurable regression thresholds;
-- report attached to pull requests or CI logs;
-- deterministic tests that do not require a large generator when possible.
+- deterministic unit/regression tests;
+- CI-safe retrieval benchmark subset;
+- citation-contract regression;
+- API contract checks;
+- security deterministic checks where appropriate;
+- container build/smoke validation where feasible;
+- optional benchmark threshold policy only after explicitly designed.
 
-## Example gates
+Do **not** invent SLOs here or convert historical performance measurements into
+gates. Do **not** implement GitHub Actions in this roadmap frame.
 
-- fail if Recall@5 drops more than an agreed tolerance;
-- fail if citation resolvability < 100%;
-- fail if adversarial deterministic tests fail;
-- warn if p95 retrieval latency increases above threshold.
+## Exit criteria (aspirational; not authorized)
 
-## Exit criteria
-
-A change to chunking, retrieval, or ranking can automatically show whether it helped or hurt the benchmark.
+A change to chunking, retrieval, ranking, or product packaging can automatically
+show whether accepted contracts/quality moved.
 
 ---
 
-# Slice 18 — Portfolio release package
+# Slice 18 — Portfolio Release Package
+
+**Status:** **PLANNED / DESIGN NOT OPEN / IMPLEMENTATION NOT AUTHORIZED**
 
 ## Objective
 
-Turn the functioning project into a compelling public artifact.
+Turn the accepted engineering system into a reproducible public portfolio
+artifact backed by evidence rather than marketing claims.
 
-## Deliverables
+## Candidate deliverables (not locked)
 
 - polished README;
 - architecture diagram;
-- benchmark methodology;
-- benchmark results;
-- ablation table;
-- demo video or GIF;
+- public demo workflow;
 - public sample corpus instructions;
-- reproducible setup instructions;
-- hardware profiles;
+- benchmark methodology/results;
+- ablation evidence;
 - known limitations;
-- roadmap;
-- interview talking points.
+- hardware/runtime profiles;
+- demo video/GIF/screenshots;
+- reproducible installation/run path;
+- interview talking points;
+- portfolio-facing claims tied to exact accepted evidence.
 
-## Exit criteria
+Keep claims conservative. Do **not** promote deferred scientific results or
+publication-grade claims merely for portfolio presentation.
 
-The repository can support the following claims with evidence:
+## Exit criteria (aspirational; not authorized)
 
-1. The core path runs locally/offline.
-2. Hybrid retrieval outperforms at least one single-retriever baseline on the chosen benchmark, or the project clearly reports if it does not.
-3. Reranking has a quantified effect.
-4. Retrieval and generation failures are measured separately.
-5. Citations are provenance-validated.
-6. The system has an explicit abstention mechanism.
-7. Indirect prompt-injection behavior is tested.
-8. Quality/latency trade-offs are measured.
+The repository can support carefully scoped public claims with reproducible
+accepted evidence.
 
 ---
 
@@ -1124,13 +1153,21 @@ Foundation
   -> deterministic eval harness
   -> generation/citation eval
   -> abstention / evidence sufficiency   (Slice 11; BEFORE recovery)
-  -> LangGraph recovery                  (Slice 12; conditional only)
+  -> bounded recovery                    (Slice 12; conditional / current disposition)
   -> security tests                      (Slice 13)
-  -> performance benchmarks
-  -> API
-  -> UI
-  -> CI
-  -> portfolio release
+  -> performance benchmarks              (Slice 14 COMPLETE / ACCEPTED)
+  -> product API + packaging             (Slice 15A–15G COMPLETE / ACCEPTED)
+  -> Slice 15 integration closeout       (15H NOT AUTHORIZED)
+  -> Portfolio Demo UI                   (Slice 16 PLANNED / DESIGN NOT OPEN)
+  -> Regression CI                       (Slice 17 PLANNED / DESIGN NOT OPEN)
+  -> Portfolio release package           (Slice 18 PLANNED / DESIGN NOT OPEN)
+  -> Milestone 7 closeout                (NOT AUTHORIZED)
 ```
 
-The project should resist the temptation to jump directly to LangGraph, multiple agents, or a polished UI. The strongest development narrative is an evidence-based progression from a measurable baseline to increasingly capable retrieval. Milestone 6 design authority: `docs/milestone6_agentic_recovery_security.md`.
+The project should resist the temptation to jump directly to LangGraph, multiple
+agents, or a polished UI before the product/API boundary is closed. The
+strongest development narrative is an evidence-based progression from a
+measurable baseline to increasingly capable retrieval, then a UI that consumes
+the accepted product surface. Milestone 6 design authority:
+`docs/milestone6_agentic_recovery_security.md`. Slice 16 pre-design frame:
+`docs/slice16_portfolio_ui.md`.

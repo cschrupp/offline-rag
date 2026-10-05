@@ -1,7 +1,13 @@
-# Milestone 7 — Performance and UI
+# Milestone 7 — Productization, Performance and Portfolio UI
+
+Historical short title “Performance and UI” remains valid for Slice 14
+authority context; Milestone 7 scope also includes Slice 15 product/API
+packaging, Slice 16 portfolio UI, Slice 17 regression CI, and Slice 18
+portfolio release packaging.
 
 ```text
 MILESTONE 7: IN PROGRESS
+M7 CLOSEOUT: NOT AUTHORIZED
 M7 ENTRY AUTHORITY: dcc6b07c20f97472cf506c4665af1f88f00a886b
 
 SLICE 14: COMPLETE / ACCEPTED
@@ -40,6 +46,16 @@ LEVEL-C AUTHORITATIVE RUN: COMPLETE / ACCEPTED
   Executing SHA: 30b5abb627e16e50b2b848b44676b89b2372c3d6
 
 SLICE 14 CLOSEOUT: COMPLETE / ACCEPTED
+
+SLICE 15: 15A–15G COMPLETE / ACCEPTED
+15H: NOT AUTHORIZED
+     (integration acceptance / Slice-15 closeout; NOT the UI phase)
+
+SLICE 16: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
+  Pre-design frame: docs/slice16_portfolio_ui.md
+SLICE 17: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
+SLICE 18: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
+
 PORTFOLIO_DEMO.md UPDATE: NOT AUTHORIZED
 MILESTONE 7 CLOSEOUT: NOT AUTHORIZED
 ```
@@ -49,8 +65,11 @@ design, accepted implementation authorities, corrected 14C quality-vs-cost
 evidence, and accepted Level-C authoritative evidence recorded in this document.
 **Not authoritative for:** publication-grade validation; portfolio demo
 claims; Milestone 6 science; 13C/13D; recovery enablement; LangGraph; NeMo;
-`config/base.yaml` mutation; FastAPI/UI packaging (later M7 slices);
-performance optimization or configuration promotion from these results.
+`config/base.yaml` mutation; Slice 15/16/17/18 design beyond status pointers
+in this gate block; performance optimization or configuration promotion from
+these results. Slice 15 architecture authority remains
+`docs/slice15_developer_api_packaging.md`. Slice 16 pre-design frame:
+`docs/slice16_portfolio_ui.md` (no design authority).
 
 **Milestone 6 remains COMPLETE / ACCEPTED** at closeout
 `dcc6b07c20f97472cf506c4665af1f88f00a886b`. Sealed 13B executable / Q1
@@ -794,6 +813,14 @@ Slice 14 evidence is descriptive.
 SLICE 14: COMPLETE / ACCEPTED
 14A / 14B / 14C freeze / 14C harness / corrected 14C run: ACCEPTED
 LEVEL-C instrumentation / freeze / preflight / runner / run: ACCEPTED
+
+SLICE 15: 15A–15G COMPLETE / ACCEPTED
+15H: NOT AUTHORIZED
+
+SLICE 16: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
+SLICE 17: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
+SLICE 18: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
+
 MILESTONE 7: IN PROGRESS
 PORTFOLIO_DEMO.md UPDATE: NOT AUTHORIZED
 MILESTONE 7 CLOSEOUT: NOT AUTHORIZED
@@ -803,6 +830,8 @@ M6 science: UNCHANGED
   NOT AUTHORIZED / UNCHANGED
 ```
 
-**Next:** later Milestone 7 service/UI packaging work under separate
-authorization. Slice 14 performance benchmark harness and accepted terminal
-runs are closed.
+**Next governance sequence (not authorized by this document):** 15H Slice-15
+closeout → Slice 16 design open → Slice 17 → Slice 18 → Milestone 7 closeout.
+Slice 14 performance benchmark harness and accepted terminal runs are closed.
+15H is **not** the UI phase; Slice 16 remains DESIGN NOT OPEN until Slice 15 is
+closed and Slice 16 design is explicitly authorized.

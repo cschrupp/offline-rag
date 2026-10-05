@@ -82,7 +82,7 @@ The project therefore treats **evaluation as a first-class subsystem**, not as a
 |                                  |                              |
 |                           grounded answer                       |
 |                                                                 |
-|  FastAPI + static UI + evaluation harness + local traces        |
+|  FastAPI product API + local traces (portfolio UI = Slice 16)   |
 +--------------------------+----------------------+---------------+
                            |                      |
                        /data volume          /models volume
@@ -296,8 +296,10 @@ The project is intentionally sliced so each stage produces a working, testable s
 11. **Agentic recovery** — conditional LangGraph rewrite/retry.
 12. **Security and guardrails** — document-injection tests and hard controls.
 13. **Performance benchmarking** — latency, throughput, memory, VRAM.
-14. **Demo UI** — query inspector, retrieval visualization, benchmark dashboard.
-15. **Portfolio packaging** — reproducible benchmark report, architecture diagram, demo scenario.
+14. **Demo UI (Slice 16)** — portfolio browser client of the product API
+    (**PLANNED / DESIGN NOT OPEN**; not authorized).
+15. **Portfolio packaging (Slice 18)** — reproducible public release package
+    (**PLANNED / DESIGN NOT OPEN**; not authorized). Regression CI is Slice 17.
 
 Detailed exit criteria are in `detailed_implementation_slices.md`. Slice notes: `docs/slice0_contracts.md` … `docs/slice8_grounded_generation.md`.
 
@@ -385,8 +387,13 @@ app foundation, process lifecycle, `/health*`, non-mutating `doctor`, product
 publication registry/leases, `/v1/documents*`, `POST /v1/ingest`,
 `POST /v1/query`, `GET /v1/trace/{trace_id}`, admission/deadlines/drain, and
 single-container packaging (`deploy/Dockerfile` + Compose loopback profile).
-Slice **15H** integration closeout, retrieval inspector, citation viewer, and
-evaluation dashboard remain later Milestone 7 work (**15H not authorized**).
+Next Milestone 7 work remains unauthorized:
+
+- **15H** Slice 15 integration closeout — **NOT AUTHORIZED** (not the UI phase)
+- **Slice 16** Portfolio Demo UI — **PLANNED / DESIGN NOT OPEN**
+- **Slice 17** Regression CI — **PLANNED / DESIGN NOT OPEN**
+- **Slice 18** Portfolio Release Package — **PLANNED / DESIGN NOT OPEN**
+- Milestone 7 closeout — **NOT AUTHORIZED**
 
 Working local path: ingest → chunk → index / index lexical → retrieve ladder →
 `query` → grounded generation → `eval retrieve` / `eval compare` →
@@ -400,7 +407,8 @@ portfolio claims (`PORTFOLIO_DEMO.md`); performance optimization; generator
 max-token change; `base.yaml` promotion; Milestone 7 closeout.
 
 See `ROADMAP.md`, `docs/slice15_developer_api_packaging.md`,
-`docs/slice15_implementation_plan.md`, `docs/milestone7_performance_ui.md`,
+`docs/slice15_implementation_plan.md`, `docs/slice16_portfolio_ui.md`,
+`docs/milestone7_performance_ui.md`,
 `docs/milestone4_offline_gold_authoring.md`,
 `docs/slice10_generation_semantic_evaluation.md`, and
 `docs/slice8_grounded_generation.md`.

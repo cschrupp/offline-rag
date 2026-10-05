@@ -772,9 +772,13 @@ and must remain absent. Startup—not doctor—owns required `/data` creation.
 9. ~~Authorize and land 15G~~ **DONE** (`140350b…` FF onto main)  
 10. Issue explicit **15H** implementation authorization citing design authority
     `6583fb3…` and the post-15G main baseline before Slice 15 closeout work  
+11. Only after Slice 15 is closed, open Slice 16 design under a separate
+    authority (see [`docs/slice16_portfolio_ui.md`](slice16_portfolio_ui.md);
+    15H is **not** the UI phase)
 
 ```text
 PHASE 15H: NOT AUTHORIZED BY THIS DOCUMENT ALONE
+SLICE 16+: NOT AUTHORIZED BY THIS DOCUMENT
 ```
 
 ---
