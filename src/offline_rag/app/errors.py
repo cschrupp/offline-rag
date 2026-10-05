@@ -23,6 +23,9 @@ _UNTRUSTED_DETAIL_KEYS = frozenset(
         "field",
         "stage",
         "provider_failure_class",
+        "workspace_id",
+        "source_id",
+        "operation_id",
     }
 )
 
@@ -59,6 +62,13 @@ class ErrorCode(StrEnum):
     REQUEST_CANCELLED = "request_cancelled"
     TRACE_UNKNOWN = "trace_unknown"
     INTERNAL_ERROR = "internal_error"
+    # Slice 16A workspace foundation (HTTP mapping frozen for future 16B).
+    WORKSPACE_UNKNOWN = "workspace_unknown"
+    WORKSPACE_NOT_READY = "workspace_not_ready"
+    WORKSPACE_CONFLICT = "workspace_conflict"
+    OPERATION_UNKNOWN = "operation_unknown"
+    IDEMPOTENCY_CONFLICT = "idempotency_conflict"
+    WORKSPACE_STATE_UNAVAILABLE = "workspace_state_unavailable"
 
 
 @dataclass(frozen=True, slots=True)
@@ -99,6 +109,20 @@ ERROR_CATALOG: dict[ErrorCode, ErrorSpec] = {
     ErrorCode.REQUEST_CANCELLED: ErrorSpec(None, True, "Request was cancelled"),
     ErrorCode.TRACE_UNKNOWN: ErrorSpec(404, False, "Trace not found"),
     ErrorCode.INTERNAL_ERROR: ErrorSpec(500, False, "Internal application error"),
+    ErrorCode.WORKSPACE_UNKNOWN: ErrorSpec(404, False, "Workspace not found"),
+    ErrorCode.WORKSPACE_NOT_READY: ErrorSpec(
+        409, False, "Workspace has no current publication"
+    ),
+    ErrorCode.WORKSPACE_CONFLICT: ErrorSpec(
+        409, False, "Workspace revision or state conflict"
+    ),
+    ErrorCode.OPERATION_UNKNOWN: ErrorSpec(404, False, "Managed operation not found"),
+    ErrorCode.IDEMPOTENCY_CONFLICT: ErrorSpec(
+        409, False, "Idempotency key conflicts with a different request"
+    ),
+    ErrorCode.WORKSPACE_STATE_UNAVAILABLE: ErrorSpec(
+        409, False, "Workspace durable state cannot be bound safely"
+    ),
 }
 
 
@@ -150,6 +174,9 @@ class SafeErrorDetails(BaseModel):
     corpus: str | None = None
     snapshot_id: str | None = None
     document_id: str | None = None
+    workspace_id: str | None = None
+    source_id: str | None = None
+    operation_id: str | None = None
     stage: str | None = None
     provider_failure_class: str | None = None
     field: str | None = None
@@ -160,6 +187,9 @@ class SafeErrorDetails(BaseModel):
         "corpus",
         "snapshot_id",
         "document_id",
+        "workspace_id",
+        "source_id",
+        "operation_id",
         "stage",
         "provider_failure_class",
         "field",

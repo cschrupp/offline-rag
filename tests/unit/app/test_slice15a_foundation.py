@@ -49,6 +49,12 @@ _EXPECTED_HTTP: dict[ErrorCode, int | None] = {
     ErrorCode.REQUEST_CANCELLED: None,
     ErrorCode.TRACE_UNKNOWN: 404,
     ErrorCode.INTERNAL_ERROR: 500,
+    ErrorCode.WORKSPACE_UNKNOWN: 404,
+    ErrorCode.WORKSPACE_NOT_READY: 409,
+    ErrorCode.WORKSPACE_CONFLICT: 409,
+    ErrorCode.OPERATION_UNKNOWN: 404,
+    ErrorCode.IDEMPOTENCY_CONFLICT: 409,
+    ErrorCode.WORKSPACE_STATE_UNAVAILABLE: 409,
 }
 
 _EXPECTED_RETRYABLE: dict[ErrorCode, bool] = {
@@ -71,6 +77,12 @@ _EXPECTED_RETRYABLE: dict[ErrorCode, bool] = {
     ErrorCode.REQUEST_CANCELLED: True,
     ErrorCode.TRACE_UNKNOWN: False,
     ErrorCode.INTERNAL_ERROR: False,
+    ErrorCode.WORKSPACE_UNKNOWN: False,
+    ErrorCode.WORKSPACE_NOT_READY: False,
+    ErrorCode.WORKSPACE_CONFLICT: False,
+    ErrorCode.OPERATION_UNKNOWN: False,
+    ErrorCode.IDEMPOTENCY_CONFLICT: False,
+    ErrorCode.WORKSPACE_STATE_UNAVAILABLE: False,
 }
 
 
@@ -231,6 +243,7 @@ def test_residual_a_defaults_without_env() -> None:
     assert settings.paths.traces == Path("data/traces")
     assert settings.paths.staging == Path("data/staging")
     assert settings.paths.locks == Path("data/locks")
+    assert settings.paths.workspaces == Path("data/workspaces")
 
 
 def test_residual_a_env_overrides_and_precedence(tmp_path: Path) -> None:
@@ -276,6 +289,7 @@ def test_data_dir_resolves_frozen_layout() -> None:
     assert settings.paths.traces == root / "traces"
     assert settings.paths.staging == root / "staging"
     assert settings.paths.locks == root / "locks"
+    assert settings.paths.workspaces == root / "workspaces"
     assert settings.paths.logs == root / "logs"
     assert settings.paths.eval_results == root / "eval" / "results"
 
@@ -392,6 +406,7 @@ def test_ensure_data_directories_is_startup_owned(tmp_path: Path) -> None:
     required = required_data_directories(settings)
     assert settings.paths.raw_data in required
     assert settings.paths.locks in required
+    assert settings.paths.workspaces in required
     assert settings.paths.traces in required
     for path in required:
         assert not path.exists()

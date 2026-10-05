@@ -48,6 +48,7 @@ class PathSettings(BaseModel):
     traces: Path = Path("data/traces")
     staging: Path = Path("data/staging")
     locks: Path = Path("data/locks")
+    workspaces: Path = Path("data/workspaces")
     logs: Path = Path("data/logs")
     retrieval_models: Path = Path("models")
     docling_artifacts: Path = Path("models/docling")

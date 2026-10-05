@@ -22,6 +22,7 @@ _REQUIRED_PATH_ATTRS: tuple[str, ...] = (
     "traces",
     "staging",
     "locks",
+    "workspaces",
 )
 
 

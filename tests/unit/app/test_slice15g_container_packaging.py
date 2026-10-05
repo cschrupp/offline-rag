@@ -185,6 +185,7 @@ def test_container_env_projects_data_models_and_http() -> None:
     assert settings.paths.traces == root / "traces"
     assert settings.paths.staging == root / "staging"
     assert settings.paths.locks == root / "locks"
+    assert settings.paths.workspaces == root / "workspaces"
     assert settings.paths.logs == root / "logs"
     assert settings.paths.eval_results == root / "eval" / "results"
 
