@@ -91,12 +91,20 @@ def retire_current_publication(
     return record
 
 
+def clear_retirement_marker(settings: AppSettings, corpus_name: str) -> None:
+    """Clear current-state retirement marker after a current publication exists."""
+    name = validate_product_corpus_name(corpus_name)
+    marker_path = retirement_marker_path(settings.paths.corpora, name)
+    marker_path.unlink(missing_ok=True)
+
+
 def restore_current_publication_pointer(
     settings: AppSettings, corpus_name: str, snapshot_id: str
 ) -> str:
     """Restore ``current.json`` to an existing immutable snapshot (recovery to A).
 
-    Does not delete retirement markers or snapshot manifests. Snapshot must exist.
+    Clears ``retired.json`` after a successful restore so current-state metadata
+    cannot claim both current and retired. Snapshot manifests are untouched.
     """
     name = validate_product_corpus_name(corpus_name)
     if not snapshot_id or "/" in snapshot_id or "\\" in snapshot_id or ".." in snapshot_id:
@@ -116,6 +124,7 @@ def restore_current_publication_pointer(
     pointer_path = current_pointer_path(settings.paths.corpora, name)
     pointer_path.parent.mkdir(parents=True, exist_ok=True)
     atomic_write_text(pointer_path, pointer.model_dump_json())
+    clear_retirement_marker(settings, name)
     return snapshot_id
 
 

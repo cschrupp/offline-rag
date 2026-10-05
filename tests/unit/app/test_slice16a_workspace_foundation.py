@@ -21,6 +21,7 @@ from offline_rag.app.workspace.journal import (
     EmptyTransitionCoordinator,
     EmptyTransitionPhase,
 )
+from offline_rag.app.workspace.leases import WorkspaceMutationLease
 from offline_rag.app.workspace.models import (
     ManagedOperationKind,
     ManagedOperationStatus,
@@ -38,9 +39,10 @@ from offline_rag.app.workspace.retirement import (
     list_snapshot_manifests,
     restore_current_publication_pointer,
     retire_current_publication,
+    retirement_marker_path,
 )
 from offline_rag.app.workspace.store import WorkspaceStore
-from offline_rag.app.workspace.vault import RawSourceVault
+from offline_rag.app.workspace.vault import RawSourceVault, VaultObjectMeta
 from offline_rag.chunking.tokenize import TiktokenTokenCounter
 from offline_rag.config import load_settings
 from offline_rag.config.models import AppSettings
@@ -463,12 +465,14 @@ def test_operation_idempotency_and_terminal_states(tmp_path: Path) -> None:
         idempotency_key="k1",
         kind=ManagedOperationKind.WORKSPACE_CREATE,
         request_payload=payload,
+        expected_revision=1,
     )
     b = ops.begin(
         workspace_id=ws.workspace_id,
         idempotency_key="k1",
         kind=ManagedOperationKind.WORKSPACE_CREATE,
         request_payload=payload,
+        expected_revision=1,
     )
     assert a.operation_id == b.operation_id
 
@@ -478,9 +482,44 @@ def test_operation_idempotency_and_terminal_states(tmp_path: Path) -> None:
             idempotency_key="k1",
             kind=ManagedOperationKind.WORKSPACE_CREATE,
             request_payload={"title": "Other"},
+            expected_revision=1,
         )
     assert conflict.value.code is ErrorCode.IDEMPOTENCY_CONFLICT
 
+    with pytest.raises(AppError) as rev_conflict:
+        ops.begin(
+            workspace_id=ws.workspace_id,
+            idempotency_key="k1",
+            kind=ManagedOperationKind.WORKSPACE_CREATE,
+            request_payload=payload,
+            expected_revision=2,
+        )
+    assert rev_conflict.value.code is ErrorCode.IDEMPOTENCY_CONFLICT
+
+    with pytest.raises(AppError) as null_conflict:
+        ops.begin(
+            workspace_id=ws.workspace_id,
+            idempotency_key="k1",
+            kind=ManagedOperationKind.WORKSPACE_CREATE,
+            request_payload=payload,
+            expected_revision=None,
+        )
+    assert null_conflict.value.code is ErrorCode.IDEMPOTENCY_CONFLICT
+
+    with pytest.raises(AppError) as kind_conflict:
+        ops.begin(
+            workspace_id=ws.workspace_id,
+            idempotency_key="k1",
+            kind=ManagedOperationKind.WORKSPACE_METADATA_PATCH,
+            request_payload=payload,
+            expected_revision=1,
+        )
+    assert kind_conflict.value.code is ErrorCode.IDEMPOTENCY_CONFLICT
+
+    running = ops.update_status(
+        ws.workspace_id, a.operation_id, ManagedOperationStatus.RUNNING
+    )
+    assert running.status is ManagedOperationStatus.RUNNING
     terminal = ops.update_status(
         ws.workspace_id,
         a.operation_id,
@@ -488,12 +527,17 @@ def test_operation_idempotency_and_terminal_states(tmp_path: Path) -> None:
         result_summary="ok",
     )
     assert terminal.status is ManagedOperationStatus.SUCCEEDED
-    interrupted = ops.update_status(
-        ws.workspace_id, a.operation_id, ManagedOperationStatus.INTERRUPTED
+    same = ops.update_status(
+        ws.workspace_id, a.operation_id, ManagedOperationStatus.SUCCEEDED
     )
-    assert interrupted.status is ManagedOperationStatus.INTERRUPTED
+    assert same.status is ManagedOperationStatus.SUCCEEDED
+    with pytest.raises(AppError) as illegal:
+        ops.update_status(
+            ws.workspace_id, a.operation_id, ManagedOperationStatus.INTERRUPTED
+        )
+    assert illegal.value.code is ErrorCode.WORKSPACE_STATE_UNAVAILABLE
     reloaded = ops.get(ws.workspace_id, a.operation_id)
-    assert reloaded.status is ManagedOperationStatus.INTERRUPTED
+    assert reloaded.status is ManagedOperationStatus.SUCCEEDED
 
 
 # --- 7. Tombstone ---
@@ -531,14 +575,26 @@ def test_publication_retirement_preserves_snapshots(tmp_path: Path) -> None:
     assert not pointer.exists()
     assert snap.exists()
     assert list_snapshot_manifests(settings, "manuals")
+    marker = retirement_marker_path(settings.paths.corpora, "manuals")
+    assert marker.exists()
     with pytest.raises(AppError) as unresolved:
         registry.resolve("manuals")
     assert unresolved.value.code is ErrorCode.CORPUS_UNKNOWN
     assert registry.published_snapshot_id("manuals") is None
 
-    # Re-publish after retirement establishes a future current snapshot.
+    # Re-publish after retirement establishes a future current snapshot and
+    # clears the current-state retirement marker.
     restore_current_publication_pointer(settings, "manuals", snapshot_id)
     assert registry.resolve("manuals").snapshot_id == snapshot_id
+    assert not marker.exists()
+
+    # Retire again → marker accurate; restore again → no stale retired state.
+    retire_current_publication(settings, "manuals")
+    assert marker.exists()
+    restore_current_publication_pointer(settings, "manuals", snapshot_id)
+    assert not marker.exists()
+    assert pointer.exists()
+    assert snap.exists()
 
 
 # --- 9. Crash / recovery ---
@@ -644,3 +700,196 @@ def test_slice15_publish_resolve_unchanged_and_no_empty_ingest(tmp_path: Path) -
     assert registry.resolve("manuals").snapshot_id == snapshot_id
     # No empty-ingest API introduced on registry
     assert not hasattr(registry, "publish_empty")
+
+
+# --- F1: workspace mutation serialization ---
+
+
+def test_workspace_lease_busy_and_independent_workspaces(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    store = WorkspaceStore(settings)
+    a = store.create(new_empty_workspace(title="A"))
+    b = store.create(new_empty_workspace(title="B"))
+    lease_a = WorkspaceMutationLease(settings, a.workspace_id)
+    lease_a2 = WorkspaceMutationLease(settings, a.workspace_id)
+    lease_b = WorkspaceMutationLease(settings, b.workspace_id)
+    lease_a.acquire()
+    with pytest.raises(AppError) as busy:
+        lease_a2.acquire()
+    assert busy.value.code is ErrorCode.WORKSPACE_CONFLICT
+    assert busy.value.details and busy.value.details.get("reason") == "lease_held"
+    lease_b.acquire()
+    assert lease_b.held
+    lease_a.release()
+    lease_b.release()
+    lease_a2.acquire()
+    lease_a2.release()
+
+
+def test_concurrent_metadata_patch_same_revision_one_winner(tmp_path: Path) -> None:
+    import threading
+
+    settings = _settings(tmp_path)
+    store = WorkspaceStore(settings)
+    ws = store.create(new_empty_workspace(title="Race"))
+    results: list[object] = []
+    barrier = threading.Barrier(2)
+
+    def _attempt(title: str) -> None:
+        barrier.wait(timeout=5)
+        try:
+            results.append(
+                store.apply_metadata_patch(
+                    ws.workspace_id, expected_revision=1, title=title
+                )
+            )
+        except AppError as exc:
+            results.append(exc)
+
+    t1 = threading.Thread(target=_attempt, args=("One",))
+    t2 = threading.Thread(target=_attempt, args=("Two",))
+    t1.start()
+    t2.start()
+    t1.join(timeout=5)
+    t2.join(timeout=5)
+    wins = [r for r in results if isinstance(r, type(ws))]
+    losses = [r for r in results if isinstance(r, AppError)]
+    assert len(wins) == 1
+    assert len(losses) == 1
+    assert losses[0].code is ErrorCode.WORKSPACE_CONFLICT
+    assert wins[0].revision == 2
+    # Stale expected revision fails after winner commits.
+    with pytest.raises(AppError) as stale:
+        store.apply_metadata_patch(ws.workspace_id, expected_revision=1, title="Stale")
+    assert stale.value.code is ErrorCode.WORKSPACE_CONFLICT
+
+
+def test_empty_transition_blocks_competing_metadata_mutation(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    registry, snapshot_id, _ = _publish_minimal(settings, "wsc_fence")
+    store = WorkspaceStore(settings)
+    empty = new_empty_workspace(title="Fence")
+    empty = empty.model_copy(update={"backing_corpus_name": "wsc_fence"})
+    store.create(empty)
+    meta = RawSourceVault(settings.paths.workspaces).put_bytes(
+        empty.workspace_id, b"x", display_name="only.pdf"
+    )
+    active = empty.model_copy(
+        update={
+            "status": WorkspaceStatus.ACTIVE,
+            "current_snapshot_id": snapshot_id,
+            "revision": 2,
+            "sources": [
+                SourceVersionRecord(
+                    source_id=new_source_id(),
+                    version=1,
+                    display_name="only.pdf",
+                    content_hash=meta.content_hash,
+                    document_id=document_id_for_content(b"x"),
+                    vault_object_id=meta.object_id,
+                    created_at=datetime.now(tz=UTC),
+                    active_from_revision=2,
+                    active_from_snapshot_id=snapshot_id,
+                )
+            ],
+            "updated_at": datetime.now(tz=UTC),
+        }
+    )
+    store.save(active)
+    coord = EmptyTransitionCoordinator(settings, store)
+    coord.begin(active.workspace_id, expected_revision=2)
+    with pytest.raises(AppError) as blocked:
+        store.apply_metadata_patch(
+            active.workspace_id, expected_revision=2, title="Hijack"
+        )
+    assert blocked.value.code is ErrorCode.WORKSPACE_CONFLICT
+    assert blocked.value.details
+    assert blocked.value.details.get("reason") == "empty_transition_in_progress"
+    before = store.get(active.workspace_id)
+    assert before.title == "Fence"
+    assert before.revision == 2
+    assert coord.recover(active.workspace_id) == "A"
+    assert registry.published_snapshot_id("wsc_fence") == snapshot_id
+
+
+# --- F3: operation transition table ---
+
+
+def test_managed_operation_transition_table(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    store = WorkspaceStore(settings)
+    ops = ManagedOperationStore(settings)
+    ws = store.create(new_empty_workspace(title="Transitions"))
+    op = ops.begin(
+        workspace_id=ws.workspace_id,
+        idempotency_key="t1",
+        kind=ManagedOperationKind.SOURCE_ADD,
+        request_payload={"x": 1},
+        expected_revision=1,
+    )
+    ops.update_status(ws.workspace_id, op.operation_id, ManagedOperationStatus.PREPARING)
+    ops.update_status(ws.workspace_id, op.operation_id, ManagedOperationStatus.RUNNING)
+    ops.update_status(ws.workspace_id, op.operation_id, ManagedOperationStatus.FAILED)
+    with pytest.raises(AppError):
+        ops.update_status(ws.workspace_id, op.operation_id, ManagedOperationStatus.RUNNING)
+    with pytest.raises(AppError):
+        ops.update_status(
+            ws.workspace_id, op.operation_id, ManagedOperationStatus.SUCCEEDED
+        )
+
+    op2 = ops.begin(
+        workspace_id=ws.workspace_id,
+        idempotency_key="t2",
+        kind=ManagedOperationKind.SOURCE_ADD,
+        request_payload={"x": 2},
+        expected_revision=1,
+    )
+    ops.update_status(
+        ws.workspace_id, op2.operation_id, ManagedOperationStatus.INTERRUPTED
+    )
+    with pytest.raises(AppError):
+        ops.update_status(
+            ws.workspace_id, op2.operation_id, ManagedOperationStatus.RUNNING
+        )
+
+
+# --- F5: vault identity cross-check ---
+
+
+def test_vault_meta_identity_mismatch_fails_closed(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    store = WorkspaceStore(settings)
+    vault = RawSourceVault(settings.paths.workspaces)
+    ws = store.create(new_empty_workspace(title="VaultId"))
+    meta = vault.put_bytes(ws.workspace_id, b"bytes", display_name="a.txt")
+    meta_path = (
+        settings.paths.workspaces / ws.workspace_id / "vault" / "meta" / f"{meta.object_id}.json"
+    )
+    swapped = VaultObjectMeta(
+        object_id="vobj_" + "c" * 32,
+        workspace_id="ws_" + "d" * 32,
+        display_name="a.txt",
+        byte_size=5,
+        content_hash=meta.content_hash,
+        created_at=datetime.now(tz=UTC),
+    )
+    atomic_write_text(meta_path, swapped.model_dump_json())
+    with pytest.raises(AppError) as mismatch:
+        vault.get_meta(ws.workspace_id, meta.object_id)
+    assert mismatch.value.code is ErrorCode.WORKSPACE_STATE_UNAVAILABLE
+    reason = mismatch.value.details.get("reason") if mismatch.value.details else None
+    assert reason in {"vault_workspace_id_mismatch", "vault_object_id_mismatch"}
+    with pytest.raises(AppError):
+        vault.load_bytes(ws.workspace_id, meta.object_id)
+
+
+def test_publish_clears_stale_retirement_marker(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    registry, snapshot_id, identity = _publish_minimal(settings, "manuals")
+    retire_current_publication(settings, "manuals")
+    marker = retirement_marker_path(settings.paths.corpora, "manuals")
+    assert marker.exists()
+    # Ordinary Slice-15 publish after retirement clears current-state marker.
+    registry.publish("manuals", identity, require_current_config_match=True)
+    assert not marker.exists()
+    assert registry.resolve("manuals").snapshot_id == snapshot_id

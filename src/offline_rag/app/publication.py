@@ -331,6 +331,10 @@ class ProductPublicationRegistry:
         pointer_path = current_pointer_path(self.settings.paths.corpora, name)
         pointer_path.parent.mkdir(parents=True, exist_ok=True)
         atomic_write_text(pointer_path, pointer.model_dump_json())
+        # Clear stale retirement current-state marker if a prior 16A retirement
+        # left retired.json behind (S16 empty/depublication foundation).
+        retired = product_dir(self.settings.paths.corpora, name) / "retired.json"
+        retired.unlink(missing_ok=True)
         return snapshot_id
 
     def resolve(self, corpus_name: str) -> CorpusReadSnapshot:

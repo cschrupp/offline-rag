@@ -13,12 +13,63 @@ from offline_rag.app.workspace.models import (
     ManagedOperationRecord,
     ManagedOperationStatus,
     WorkspaceRevision,
-    canonical_request_fingerprint,
+    canonical_operation_fingerprint,
     new_operation_id,
     utc_now,
 )
 from offline_rag.config.models import AppSettings
 from offline_rag.ingestion.io import atomic_write_text
+
+# Legal managed-operation transitions (16A). Terminal states are immutable except
+# idempotent same-status rewrite.
+_TERMINAL = frozenset(
+    {
+        ManagedOperationStatus.SUCCEEDED,
+        ManagedOperationStatus.FAILED,
+        ManagedOperationStatus.INTERRUPTED,
+    }
+)
+
+_LEGAL_TRANSITIONS: dict[ManagedOperationStatus, frozenset[ManagedOperationStatus]] = {
+    ManagedOperationStatus.PENDING: frozenset(
+        {
+            ManagedOperationStatus.PREPARING,
+            ManagedOperationStatus.RUNNING,
+            ManagedOperationStatus.FAILED,
+            ManagedOperationStatus.INTERRUPTED,
+        }
+    ),
+    ManagedOperationStatus.PREPARING: frozenset(
+        {
+            ManagedOperationStatus.RUNNING,
+            ManagedOperationStatus.FAILED,
+            ManagedOperationStatus.INTERRUPTED,
+        }
+    ),
+    ManagedOperationStatus.RUNNING: frozenset(
+        {
+            ManagedOperationStatus.SUCCEEDED,
+            ManagedOperationStatus.FAILED,
+            ManagedOperationStatus.INTERRUPTED,
+        }
+    ),
+    ManagedOperationStatus.SUCCEEDED: frozenset(),
+    ManagedOperationStatus.FAILED: frozenset(),
+    ManagedOperationStatus.INTERRUPTED: frozenset(),
+}
+
+
+def assert_legal_status_transition(
+    current: ManagedOperationStatus, nxt: ManagedOperationStatus
+) -> None:
+    if current is nxt:
+        return
+    allowed = _LEGAL_TRANSITIONS[current]
+    if nxt not in allowed:
+        raise AppError(
+            ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+            details=SafeErrorDetails(reason="illegal_operation_status_transition"),
+        )
 
 
 def _idempotency_filename(idempotency_key: str) -> str:
@@ -29,8 +80,11 @@ def _idempotency_filename(idempotency_key: str) -> str:
 class ManagedOperationStore:
     """Per-workspace durable operation records + idempotency index.
 
-    Not a queue. No workers. Same key + same fingerprint recovers the same
-    operation; same key + different fingerprint conflicts.
+    Not a queue. No workers.
+
+    Idempotency identity is the canonical envelope fingerprint of
+    ``{kind, expected_revision, payload}``. Same key + same envelope recovers
+    the same operation; any difference conflicts.
     """
 
     def __init__(self, settings: AppSettings) -> None:
@@ -68,7 +122,16 @@ class ManagedOperationStore:
         expected_revision: WorkspaceRevision | None = None,
         status: ManagedOperationStatus = ManagedOperationStatus.PENDING,
     ) -> ManagedOperationRecord:
-        fingerprint = canonical_request_fingerprint(request_payload)
+        if status is not ManagedOperationStatus.PENDING:
+            raise AppError(
+                ErrorCode.REQUEST_INVALID,
+                details=SafeErrorDetails(reason="operation_must_begin_pending"),
+            )
+        fingerprint = canonical_operation_fingerprint(
+            kind=kind,
+            expected_revision=expected_revision,
+            payload=request_payload,
+        )
         idem_path = self._idem_path(workspace_id, idempotency_key)
         if idem_path.exists():
             try:
@@ -81,22 +144,17 @@ class ManagedOperationStore:
                     ),
                 ) from exc
             existing = self.get(workspace_id, pointer)
-            if existing.request_fingerprint != fingerprint:
+            if (
+                existing.request_fingerprint != fingerprint
+                or existing.kind != kind
+                or existing.expected_revision != expected_revision
+            ):
                 raise AppError(
                     ErrorCode.IDEMPOTENCY_CONFLICT,
                     details=SafeErrorDetails(
                         workspace_id=workspace_id,
                         operation_id=existing.operation_id,
-                        reason="idempotency_fingerprint_mismatch",
-                    ),
-                )
-            if existing.kind != kind:
-                raise AppError(
-                    ErrorCode.IDEMPOTENCY_CONFLICT,
-                    details=SafeErrorDetails(
-                        workspace_id=workspace_id,
-                        operation_id=existing.operation_id,
-                        reason="idempotency_kind_mismatch",
+                        reason="idempotency_identity_mismatch",
                     ),
                 )
             return existing
@@ -166,6 +224,10 @@ class ManagedOperationStore:
         recovery_note: str | None = None,
     ) -> ManagedOperationRecord:
         record = self.get(workspace_id, operation_id)
+        assert_legal_status_transition(record.status, status)
+        if record.status is status and status in _TERMINAL:
+            # Idempotent terminal rewrite.
+            return record
         updated = record.model_copy(
             update={
                 "status": status,

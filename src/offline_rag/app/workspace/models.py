@@ -127,12 +127,27 @@ def document_id_for_content(data: bytes) -> str:
 
 
 def canonical_request_fingerprint(payload: dict[str, Any]) -> str:
-    """Deterministic fingerprint of a canonical request body for idempotency."""
+    """Deterministic fingerprint of a canonical JSON object."""
     encoded = json.dumps(
         payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
     )
     digest = hashlib.sha256(encoded.encode("utf-8")).hexdigest()
     return f"reqfp_{digest}"
+
+
+def canonical_operation_fingerprint(
+    *,
+    kind: ManagedOperationKind | str,
+    expected_revision: WorkspaceRevision | None,
+    payload: dict[str, Any],
+) -> str:
+    """Idempotency identity: kind + expected_revision + payload envelope."""
+    envelope = {
+        "kind": str(kind),
+        "expected_revision": expected_revision,
+        "payload": payload,
+    }
+    return canonical_request_fingerprint(envelope)
 
 
 class SourceVersionRecord(BaseModel):

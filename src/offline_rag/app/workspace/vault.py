@@ -157,7 +157,7 @@ class RawSourceVault:
                 ),
             )
         try:
-            return VaultObjectMeta.model_validate_json(
+            meta = VaultObjectMeta.model_validate_json(
                 meta_path.read_text(encoding="utf-8")
             )
         except Exception as exc:
@@ -167,6 +167,21 @@ class RawSourceVault:
                     workspace_id=workspace_id, reason="vault_meta_corrupt"
                 ),
             ) from exc
+        if meta.workspace_id != workspace_id:
+            raise AppError(
+                ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                details=SafeErrorDetails(
+                    workspace_id=workspace_id, reason="vault_workspace_id_mismatch"
+                ),
+            )
+        if meta.object_id != object_id:
+            raise AppError(
+                ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                details=SafeErrorDetails(
+                    workspace_id=workspace_id, reason="vault_object_id_mismatch"
+                ),
+            )
+        return meta
 
     def load_bytes(self, workspace_id: str, object_id: str) -> bytes:
         meta = self.get_meta(workspace_id, object_id)
