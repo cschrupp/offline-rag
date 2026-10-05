@@ -5,7 +5,9 @@ STATUS: ACCEPTED / LOCKED
 DESIGN INTERVIEW: COMPLETE
 HUMAN ACCEPTANCE: ACCEPTED
 AUTHORITY SHA: e2e7475076ad18d4c4ae8d939389ceeffdeff6d8
-IMPLEMENTATION: NOT AUTHORIZED
+16A: COMPLETE / ACCEPTED
+ACCEPTED SHA: e73959be508541a1c50d4919606aaf3157a5fa8a
+16B+: NOT AUTHORIZED
 BASELINE: c72215186524c9937de789adb1cf2056be13ea23
 ```
 
@@ -13,12 +15,16 @@ BASELINE: c72215186524c9937de789adb1cf2056be13ea23
 S16-D01 … S16-D35 are **normative** Slice-16 design decisions. Design was
 accepted and locked at AUTHORITY SHA
 `e2e7475076ad18d4c4ae8d939389ceeffdeff6d8`. Acceptance/lock of design does
-**not** authorize implementation.
+**not** by itself authorize implementation; **16A** was separately authorized
+and is now **COMPLETE / ACCEPTED** at
+`e73959be508541a1c50d4919606aaf3157a5fa8a`. **16B+** remains **NOT AUTHORIZED**.
 
 **Related artifacts:**
 
-- Accepted implementation plan (execution still unauthorized):
+- Accepted implementation plan (**16B+ still unauthorized**):
   [`docs/slice16_implementation_plan.md`](slice16_implementation_plan.md)
+- Accepted 16A evidence:
+  [`docs/slice16a_workspace_foundation.md`](slice16a_workspace_foundation.md)
 - Historical pre-design frame (contextual only):
   [`docs/slice16_portfolio_ui.md`](slice16_portfolio_ui.md)
 - Inherited product/API architecture:
@@ -46,8 +52,10 @@ SLICE 16 DESIGN INTERVIEW:       COMPLETE
 SLICE 16 DESIGN AUTHORITY:       ACCEPTED / LOCKED
 AUTHORITY SHA:                   e2e7475076ad18d4c4ae8d939389ceeffdeff6d8
 SLICE 16 IMPLEMENTATION PLAN:    ACCEPTED
-SLICE 16 IMPLEMENTATION:         NOT AUTHORIZED
-16A:                             NOT AUTHORIZED
+16A:                             COMPLETE / ACCEPTED
+ACCEPTED SHA:                    e73959be508541a1c50d4919606aaf3157a5fa8a
+16B:                             NOT AUTHORIZED
+16C–16H:                         NOT AUTHORIZED
 SLICE 17:                        NOT AUTHORIZED
 SLICE 18:                        NOT AUTHORIZED
 9G:                              DEFERRED / NOT AUTHORIZED
@@ -1012,13 +1020,17 @@ Deferred beyond Slice 16 (**MUST NOT** implement in Slice 16):
 SLICE 16 DESIGN AUTHORITY: ACCEPTED / LOCKED
 AUTHORITY SHA: e2e7475076ad18d4c4ae8d939389ceeffdeff6d8
 SLICE 16 IMPLEMENTATION PLAN: ACCEPTED
-IMPLEMENTATION: NOT AUTHORIZED
-16A: NOT AUTHORIZED
+16A: COMPLETE / ACCEPTED
+ACCEPTED SHA: e73959be508541a1c50d4919606aaf3157a5fa8a
+16B: NOT AUTHORIZED
+16C–16H: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
 SLICE 18: NOT AUTHORIZED
 9G: DEFERRED / NOT AUTHORIZED
 M7 CLOSEOUT: NOT AUTHORIZED
 ```
 
-Design acceptance/lock does **not** authorize any Slice 16 implementation
-phase. Explicit separate human authorization is required before 16A+ may start.
+Design acceptance/lock does **not** by itself authorize later phases. **16A**
+was separately authorized and is **COMPLETE / ACCEPTED**. Explicit separate
+human authorization is required before **16B+** may start. Slice 16 overall is
+**not** complete.

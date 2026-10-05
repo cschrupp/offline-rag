@@ -4,18 +4,23 @@
 STATUS: ACCEPTED IMPLEMENTATION PLAN
 DESIGN AUTHORITY: ACCEPTED / LOCKED
 AUTHORITY SHA: e2e7475076ad18d4c4ae8d939389ceeffdeff6d8
-IMPLEMENTATION: NOT AUTHORIZED
-16A: NOT AUTHORIZED
+16A: COMPLETE / ACCEPTED
+ACCEPTED SHA: e73959be508541a1c50d4919606aaf3157a5fa8a
+16B: NOT AUTHORIZED / NOT STARTED
+16C–16H: NOT AUTHORIZED
 BASELINE: c72215186524c9937de789adb1cf2056be13ea23
 ```
 
 This plan decomposes Slice 16 into sequential phase gates. Plan acceptance does
 **NOT** authorize execution. Coding still requires explicit per-phase
-implementation authorization.
+implementation authorization. 16A has been separately authorized, implemented,
+reviewed, and **ACCEPTED**; later phases remain gated.
 
 Locked design authority: [`docs/slice16_design_authority.md`](slice16_design_authority.md)
 (S16-D01 … S16-D35) at AUTHORITY SHA
 `e2e7475076ad18d4c4ae8d939389ceeffdeff6d8`.
+
+16A evidence: [`docs/slice16a_workspace_foundation.md`](slice16a_workspace_foundation.md)
 
 ```text
 SLICE 17: NOT AUTHORIZED
@@ -31,16 +36,30 @@ M7 CLOSEOUT: NOT AUTHORIZED
 Use sequential phase gates unless explicitly redesigned:
 
 ```text
-16A → 16B → 16C → 16D → 16E → 16F → 16G → 16H
+16A [ACCEPTED]
+ ↓
+16B [NOT AUTHORIZED]
+ ↓
+16C
+ …
+16H
 ```
 
 Do not close Slice 16 automatically after 16H. Independent review and explicit
-human acceptance of the implemented slice remain required. 16A+ remains
+human acceptance of the implemented slice remain required. 16B+ remains
 **NOT AUTHORIZED** until separately authorized.
 
 ---
 
 ## 16A — Workspace contracts & persistence foundation
+
+```text
+STATUS: COMPLETE / ACCEPTED
+ACCEPTED SHA: e73959be508541a1c50d4919606aaf3157a5fa8a
+INDEPENDENT REVIEW: PASSED
+HUMAN ACCEPTANCE: ACCEPTED
+Evidence: docs/slice16a_workspace_foundation.md
+```
 
 ### Scope
 
@@ -84,6 +103,24 @@ human acceptance of the implemented slice remain required. 16A+ remains
 ---
 
 ## 16B — Workspace/source lifecycle API
+
+```text
+STATUS: NOT AUTHORIZED / NOT STARTED
+```
+
+### Inherited contracts from accepted 16A
+
+These are inherited implementation contracts (not new design scope). When 16B
+is separately authorized, it MUST:
+
+- use `WorkspaceMutationLease` → `CorpusMutationLease` lock order (never
+  reverse);
+- integrate outstanding EMPTY-journal recovery into startup/readiness before
+  workspace mutation/query surfaces become ready;
+- never call retirement/restore publication helpers without holding the corpus
+  mutation lease;
+- compose `ManagedOperationStore` with already-held workspace leases where
+  orchestration requires one atomic mutation section.
 
 ### Scope
 
@@ -317,12 +354,16 @@ Evidence candidate + independent review + explicit human acceptance only.
 IMPLEMENTATION PLAN: ACCEPTED
 DESIGN AUTHORITY: ACCEPTED / LOCKED
 AUTHORITY SHA: e2e7475076ad18d4c4ae8d939389ceeffdeff6d8
-IMPLEMENTATION: NOT AUTHORIZED
-16A+: NOT AUTHORIZED
+16A: COMPLETE / ACCEPTED
+ACCEPTED SHA: e73959be508541a1c50d4919606aaf3157a5fa8a
+16B: NOT AUTHORIZED / NOT STARTED
+16C–16H: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
 SLICE 18: NOT AUTHORIZED
 9G: DEFERRED / NOT AUTHORIZED
 M7 CLOSEOUT: NOT AUTHORIZED
 ```
 
-Plan acceptance does **not** authorize 16A or any later phase.
+Plan acceptance alone did **not** authorize execution. 16A was separately
+authorized and is now **COMPLETE / ACCEPTED**. 16B and later phases remain
+**NOT AUTHORIZED**. Slice 16 overall is **not** complete.

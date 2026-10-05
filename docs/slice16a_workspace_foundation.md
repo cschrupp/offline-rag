@@ -1,10 +1,12 @@
 # Slice 16A — Workspace contracts & persistence foundation
 
 ```text
-STATUS: IMPLEMENTATION EVIDENCE CANDIDATE
-HUMAN ACCEPTANCE: PENDING
-16A: IMPLEMENTED CANDIDATE / NOT ACCEPTED
-IMPLEMENTATION: CANDIDATE UNDER REVIEW
+STATUS: IMPLEMENTATION ACCEPTED
+HUMAN ACCEPTANCE: ACCEPTED
+16A: COMPLETE / ACCEPTED
+ACCEPTED IMPLEMENTATION SHA:
+e73959be508541a1c50d4919606aaf3157a5fa8a
+INDEPENDENT REVIEW: PASSED
 16B+: NOT AUTHORIZED / NOT STARTED
 ```
 
@@ -14,8 +16,9 @@ IMPLEMENTATION: CANDIDATE UNDER REVIEW
 | --- | --- |
 | Authorized baseline | `9f4b98f983a353f19c8e9f7e343cf8958ea8c525` |
 | Locked design authority | `e2e7475076ad18d4c4ae8d939389ceeffdeff6d8` |
+| Accepted implementation SHA | `e73959be508541a1c50d4919606aaf3157a5fa8a` |
 | Branch | `implementation/16a-workspace-foundation` |
-| Phase | **16A only** |
+| Phase | **16A COMPLETE / ACCEPTED** |
 
 ## Implementation summary
 
@@ -254,8 +257,30 @@ present; current overrides marker for resolve authority.
 - No UI / Training Mode / Gold Lab
 - No automatic EMPTY transition from product APIs (primitives only)
 - Journal recovery is local/filesystem; no multi-worker redesign
+- Startup/readiness integration of outstanding EMPTY-journal recovery is a
+  **16B obligation** (not implemented in 16A): outstanding journals must be
+  recovered before workspace mutation/query surfaces are considered ready
+
+## Carried-forward contracts (inherited by 16B when authorized)
+
+1. **Workspace mutation ordering:** `WorkspaceMutationLease` →
+   `CorpusMutationLease` (never reverse).
+2. **Product publication authority:** `current.json` is the sole
+   current-publication authority; `retired.json` is audit/recovery metadata
+   only.
+3. **Managed-operation serialization:** `begin` / `update_status` serialize
+   through the workspace lease (optional already-held lease for composition).
+4. **EMPTY transition recovery:** startup/readiness must recover outstanding
+   journals before workspace mutation/query surfaces become ready (16B
+   integration obligation; not claimed implemented here).
+
+These contracts are accepted 16A foundation constraints. This document does
+**not** claim 16B has implemented the integrations above.
 
 ## Explicit non-scope confirmation
 
+Human acceptance applies to exactly SHA
+`e73959be508541a1c50d4919606aaf3157a5fa8a`.
+
 16B, 16C–16H, Slice 17, Slice 18, 9G, and Milestone 7 closeout were **not**
-started and remain **NOT AUTHORIZED**. This document does **not** accept 16A.
+started and remain **NOT AUTHORIZED**. Slice 16 overall is **not** complete.

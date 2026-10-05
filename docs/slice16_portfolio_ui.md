@@ -8,14 +8,17 @@ DESIGN AUTHORITY: ACCEPTED / LOCKED
 AUTHORITY SHA: e2e7475076ad18d4c4ae8d939389ceeffdeff6d8
 IMPLEMENTATION PLAN: ACCEPTED
   docs/slice16_implementation_plan.md
-IMPLEMENTATION: NOT AUTHORIZED
+16A: COMPLETE / ACCEPTED
+ACCEPTED SHA: e73959be508541a1c50d4919606aaf3157a5fa8a
+16B+: NOT AUTHORIZED
 ```
 
 This document is the **historical pre-design / roadmap frame** for Slice 16.
 It is **not** design authority. Normative decisions live in
 [`docs/slice16_design_authority.md`](slice16_design_authority.md)
 (S16-D01 … S16-D35), accepted and locked at AUTHORITY SHA
-`e2e7475076ad18d4c4ae8d939389ceeffdeff6d8`. Implementation remains
+`e2e7475076ad18d4c4ae8d939389ceeffdeff6d8`. **16A** is **COMPLETE / ACCEPTED**
+at `e73959be508541a1c50d4919606aaf3157a5fa8a`. **16B+** remains
 **NOT AUTHORIZED**.
 
 **Prerequisite dependency (governance order):**
@@ -30,13 +33,17 @@ It is **not** design authority. Normative decisions live in
                                   DESIGN AUTHORITY ACCEPTED / LOCKED
                                   AUTHORITY SHA e2e7475076ad18d4c4ae8d939389ceeffdeff6d8
                                   IMPLEMENTATION PLAN ACCEPTED
-                                  IMPLEMENTATION NOT AUTHORIZED
+                                  16A COMPLETE / ACCEPTED
+                                  ACCEPTED SHA e73959be508541a1c50d4919606aaf3157a5fa8a
+                                  16B+ NOT AUTHORIZED
+                                  Slice 16 overall NOT COMPLETE
 ```
 
 Slice **15H** closed Slice 15 and validated the API/container product boundary
 (**15H was not the UI phase**). The Slice 16 design interview is **COMPLETE**.
-Design authority is **ACCEPTED / LOCKED**. This frame still does **not**
-authorize implementation, Slice 17, Slice 18, or Milestone 7 closeout.
+Design authority is **ACCEPTED / LOCKED**. **16A** is **COMPLETE / ACCEPTED**.
+This frame still does **not** authorize **16B+**, Slice 17, Slice 18, or
+Milestone 7 closeout.
 
 Historical open criteria (met before the design interview):
 
@@ -145,8 +152,10 @@ DESIGN AUTHORITY: ACCEPTED / LOCKED
 AUTHORITY SHA: e2e7475076ad18d4c4ae8d939389ceeffdeff6d8
 IMPLEMENTATION PLAN: ACCEPTED
   docs/slice16_implementation_plan.md
-IMPLEMENTATION: NOT AUTHORIZED
-16A: NOT AUTHORIZED
+16A: COMPLETE / ACCEPTED
+ACCEPTED SHA: e73959be508541a1c50d4919606aaf3157a5fa8a
+16B: NOT AUTHORIZED
+16C–16H: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
 SLICE 18: NOT AUTHORIZED
 9G: DEFERRED / NOT AUTHORIZED
