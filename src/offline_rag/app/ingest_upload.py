@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import shutil
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -14,6 +14,7 @@ from python_multipart.multipart import MultipartParser, parse_options_header
 from offline_rag.app.corpus import validate_product_corpus_name
 from offline_rag.app.errors import AppError, ErrorCode, SafeErrorDetails
 from offline_rag.config.models import AppSettings
+from offline_rag.core.ids import document_id_from_bytes
 from offline_rag.ingestion.base import SUPPORTED_EXTENSIONS
 
 _ALLOWED_FIELDS = frozenset({"corpus", "files"})
@@ -470,4 +471,121 @@ async def spool_multipart_upload(
         staging_root=staging_root,
         files_root=files_root,
         files=files,
+    )
+
+
+def spool_local_files(
+    *,
+    settings: AppSettings,
+    corpus_name: str,
+    files: Sequence[tuple[Path, str]],
+) -> SpooledIngestUpload:
+    """Copy local paths into the accepted product staging representation.
+
+    CLI/local adapters use this instead of fabricating HTTP multipart. After
+    return, mutation must proceed through ``run_product_replace_ingest``.
+    """
+    validated_corpus = validate_product_corpus_name(corpus_name)
+    if not files:
+        raise AppError(
+            ErrorCode.REQUEST_INVALID,
+            details=SafeErrorDetails(reason="zero_files"),
+        )
+    if len(files) > settings.api.max_files_per_ingest:
+        raise AppError(
+            ErrorCode.REQUEST_INVALID,
+            details=SafeErrorDetails(reason="too_many_files"),
+        )
+
+    upload_id = uuid.uuid4().hex
+    staging_root = settings.paths.staging / upload_id
+    files_root = staging_root / "files"
+    files_root.mkdir(parents=True, exist_ok=True)
+
+    spooled: list[SpooledUploadFile] = []
+    total_file_bytes = 0
+    seen_document_ids: set[str] = set()
+
+    try:
+        for absolute_path, source_name in files:
+            path = Path(absolute_path)
+            if not path.is_file():
+                raise AppError(
+                    ErrorCode.DOCUMENT_INVALID,
+                    details=SafeErrorDetails(reason="missing_filename"),
+                )
+            basename = client_basename(str(source_name) or path.name)
+            if not basename:
+                raise AppError(
+                    ErrorCode.DOCUMENT_INVALID,
+                    details=SafeErrorDetails(reason="missing_filename"),
+                )
+            extension = _safe_extension(basename)
+            if not extension:
+                raise AppError(
+                    ErrorCode.DOCUMENT_INVALID,
+                    details=SafeErrorDetails(reason="unsupported_source_type"),
+                )
+
+            raw = path.read_bytes()
+            size = len(raw)
+            if size == 0:
+                raise AppError(
+                    ErrorCode.DOCUMENT_INVALID,
+                    details=SafeErrorDetails(reason="empty_document"),
+                )
+            if size > settings.api.max_bytes_per_document:
+                raise AppError(
+                    ErrorCode.DOCUMENT_INVALID,
+                    details=SafeErrorDetails(reason="document_too_large"),
+                )
+            if total_file_bytes + size > settings.api.max_total_upload_bytes:
+                raise AppError(
+                    ErrorCode.REQUEST_INVALID,
+                    details=SafeErrorDetails(reason="upload_too_large"),
+                )
+
+            document_id = document_id_from_bytes(raw)
+            if document_id in seen_document_ids:
+                raise AppError(
+                    ErrorCode.DOCUMENT_INVALID,
+                    details=SafeErrorDetails(reason="document_identity_conflict"),
+                )
+            storage_name = f"{document_id}{extension}"
+            final_path = files_root / storage_name
+            if final_path.exists():
+                raise AppError(
+                    ErrorCode.DOCUMENT_INVALID,
+                    details=SafeErrorDetails(reason="document_identity_conflict"),
+                )
+            final_path.write_bytes(raw)
+            seen_document_ids.add(document_id)
+            total_file_bytes += size
+            spooled.append(
+                SpooledUploadFile(
+                    absolute_path=final_path,
+                    storage_name=storage_name,
+                    client_filename=basename,
+                    source_name=basename,
+                    document_id=document_id,
+                    size_bytes=size,
+                    media_type=SUPPORTED_EXTENSIONS[extension],
+                )
+            )
+    except AppError:
+        cleanup_staging(staging_root)
+        raise
+    except Exception as exc:
+        cleanup_staging(staging_root)
+        raise AppError(
+            ErrorCode.REQUEST_INVALID,
+            details=SafeErrorDetails(reason="upload_interrupted"),
+        ) from exc
+
+    return SpooledIngestUpload(
+        upload_id=upload_id,
+        corpus_name=validated_corpus,
+        staging_root=staging_root,
+        files_root=files_root,
+        files=spooled,
     )

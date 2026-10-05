@@ -6,7 +6,9 @@ import json
 from pathlib import Path
 
 from offline_rag.cli import main
+from offline_rag.config import load_settings
 from offline_rag.ingestion.docling_artifacts import write_provisioning_manifest
+from offline_rag.ingestion.pipeline import run_ingestion
 
 
 def _prepare_workspace(tmp_path: Path) -> Path:
@@ -35,15 +37,24 @@ def _prepare_workspace(tmp_path: Path) -> Path:
 def test_chunk_json_and_inspect(tmp_path: Path, monkeypatch, capsys) -> None:
     monkeypatch.chdir(tmp_path)
     docs = _prepare_workspace(tmp_path)
-    # Use fake tokenizer via env-less overrides: write a local config overlay.
+    # Scientific chunk remains a developer CLI surface (D12 / §11). Seed the
+    # scientific corpus via run_ingestion — product CLI ingest is full-replace
+    # app publication and does not initialize live scientific corpus state.
     cfg = tmp_path / "chunk.yaml"
     cfg.write_text(
         "project:\n  strict_offline: false\n"
         "chunking:\n  tokenizer:\n    implementation: fake\n",
         encoding="utf-8",
     )
-    assert main(["ingest", str(docs), "--corpus", "cli", "--config", str(cfg)]) == 0
-    capsys.readouterr()
+    settings = load_settings(yaml_paths=[cfg], environ={})
+    seeded = run_ingestion(
+        settings=settings,
+        inputs=[docs],
+        corpus_name="cli",
+        recursive=False,
+    )
+    assert seeded.status.value in {"success", "no_op"}
+
     code = main(["chunk", "--corpus", "cli", "--json", "--config", str(cfg)])
     out = capsys.readouterr().out
     assert code == 0

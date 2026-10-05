@@ -123,21 +123,56 @@ def test_doctor_ok_with_base_config(capsys: pytest.CaptureFixture[str], monkeypa
 
 
 def test_ingest_json_txt(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    import json
+    import shutil
+
     monkeypatch.chdir(tmp_path)
     docs = tmp_path / "docs"
     docs.mkdir()
     (docs / "a.txt").write_text("hello\n\nworld\n", encoding="utf-8")
-    # Minimal config via env overrides using default settings and local paths.
-    # Create required sibling dirs used by doctor/ingest defaults when resolving relative paths.
-    for name in ("data/processed", "data/manifests", "data/corpora", "models/docling", "data/raw", "data/qdrant", "eval/results", "models"):
+    for name in (
+        "data/processed",
+        "data/manifests",
+        "data/corpora",
+        "data/raw",
+        "data/qdrant",
+        "data/staging",
+        "data/locks",
+        "data/traces",
+        "eval/results",
+        "models",
+        "models/docling",
+        "models/tokenizers/tiktoken",
+    ):
         (tmp_path / name).mkdir(parents=True, exist_ok=True)
     from offline_rag.ingestion.docling_artifacts import write_provisioning_manifest
 
     (tmp_path / "models" / "docling" / "placeholder.bin").write_bytes(b"x")
     write_provisioning_manifest(tmp_path / "models" / "docling", docling_version="test")
+    tok_src = REPO_ROOT / "models" / "tokenizers" / "tiktoken"
+    if not (tok_src / "offline-rag-tokenizer.json").exists():
+        pytest.skip("tiktoken artifacts not provisioned")
+    shutil.copytree(tok_src, tmp_path / "models" / "tokenizers" / "tiktoken", dirs_exist_ok=True)
 
-    code = main(["ingest", str(docs), "--json", "--corpus", "default"])
+    cfg = tmp_path / "product.yaml"
+    cfg.write_text(
+        "project:\n  strict_offline: false\n"
+        "indexing:\n  embedding:\n    implementation: fake\n    dimension: 8\n"
+        "reranker:\n  enabled: false\n"
+        "generation:\n"
+        "  base_url: http://127.0.0.1:11434/v1\n"
+        "  model: local-test-model\n"
+        "  approved_endpoints: [http://127.0.0.1:11434/v1]\n"
+        "  approved_models: [local-test-model]\n",
+        encoding="utf-8",
+    )
+
+    code = main(
+        ["ingest", str(docs), "--json", "--corpus", "default", "--config", str(cfg)]
+    )
     out = capsys.readouterr().out
     assert code == 0
-    assert '"status":' in out
-    assert "corpus_" in out
+    payload = json.loads(out)
+    assert payload["corpus"] == "default"
+    assert payload["document_count"] == 1
+    assert str(payload["snapshot_id"]).startswith("snap_")

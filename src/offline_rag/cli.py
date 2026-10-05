@@ -9,6 +9,11 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from offline_rag.app.errors import AppError
+from offline_rag.app.ingest import run_product_replace_ingest
+from offline_rag.app.ingest_upload import cleanup_staging, spool_local_files
+from offline_rag.app.query import run_product_query
+from offline_rag.app.runtime import ApplicationRuntime
 from offline_rag.chunking.persistence import (
     chunk_state_path,
     load_chunk_artifact,
@@ -53,12 +58,8 @@ from offline_rag.dense.retrieve import DenseRetrievalError, DenseRetriever
 from offline_rag.dense.status import indexing_status_for_corpus
 from offline_rag.domain.chunking import ChunkingStatus
 from offline_rag.domain.indexing import IndexingStatus, ProvisioningStatus
-from offline_rag.domain.ingestion import IngestionStatus
 from offline_rag.generation.evaluate import QueryEvaluator
-from offline_rag.generation.orchestrate import (
-    GroundedAnswerError,
-    GroundedAnswerOrchestrator,
-)
+from offline_rag.generation.orchestrate import GroundedAnswerError
 from offline_rag.generation.status import (
     describe_generation_status,
     generation_status_for_corpus,
@@ -66,10 +67,13 @@ from offline_rag.generation.status import (
 from offline_rag.hybrid.evaluate import HybridRetrievalEvaluator
 from offline_rag.hybrid.retrieve import HybridRetrievalError, HybridRetriever
 from offline_rag.hybrid.status import hybrid_status_for_corpus
-from offline_rag.ingestion.discovery import DiscoveryError, validate_corpus_name
+from offline_rag.ingestion.discovery import (
+    DiscoveryError,
+    discover_sources,
+    validate_corpus_name,
+)
 from offline_rag.ingestion.docling_artifacts import validate_docling_artifacts
 from offline_rag.ingestion.persistence import corpus_state_path, load_corpus_state
-from offline_rag.ingestion.pipeline import run_ingestion
 from offline_rag.lexical.backend import LocalInvertedIndexBackend
 from offline_rag.lexical.evaluate import (
     LexicalEvaluationError,
@@ -187,6 +191,11 @@ def _not_implemented(command: str) -> int:
     return NOT_IMPLEMENTED_EXIT
 
 
+def _build_product_runtime(settings: AppSettings) -> ApplicationRuntime:
+    """Construct the process ApplicationRuntime for product CLI commands."""
+    return ApplicationRuntime(settings=settings)
+
+
 def cmd_ingest(args: argparse.Namespace) -> int:
     try:
         settings = _load_settings(args)
@@ -200,53 +209,65 @@ def cmd_ingest(args: argparse.Namespace) -> int:
     )
     log_event(logger, 20, "ingest started", event="ingest.start")
 
+    runtime = _build_product_runtime(settings)
+    upload = None
     try:
-        report = run_ingestion(
-            settings=settings,
-            inputs=[Path(p) for p in args.paths],
-            corpus_name=args.corpus,
-            recursive=bool(args.recursive),
-            root=Path(args.root) if args.root else None,
-        )
-    except (DiscoveryError, ConfigError) as exc:
+        runtime.start()
+        runtime.require_ready()
+
+        try:
+            discovered, _skipped = discover_sources(
+                [Path(p) for p in args.paths],
+                recursive=bool(args.recursive),
+                root=Path(args.root) if args.root else None,
+            )
+        except DiscoveryError as exc:
+            print(f"ingest: {exc}", file=sys.stderr)
+            return 1
+
+        # Admit before spool so saturated capacity rejects early (parity with HTTP).
+        operation = runtime.operations.admit_ingest()
+        try:
+            upload = spool_local_files(
+                settings=runtime.settings,
+                corpus_name=args.corpus,
+                files=[(item.absolute_path, item.source_name) for item in discovered],
+            )
+            result = run_product_replace_ingest(
+                runtime,
+                upload,
+                control=operation,
+            )
+        finally:
+            runtime.operations.release(operation)
+
+        if args.json:
+            print(
+                json.dumps(
+                    {
+                        "corpus": result.corpus,
+                        "snapshot_id": result.snapshot_id,
+                        "document_count": result.document_count,
+                    }
+                )
+            )
+        else:
+            print("Product ingest completed (full replace)")
+            print()
+            print(f"Corpus:          {result.corpus}")
+            print(f"Snapshot:        {result.snapshot_id}")
+            print(f"Document count:  {result.document_count}")
+        return 0
+    except AppError as exc:
+        print(f"ingest: {exc.code}: {exc.message}", file=sys.stderr)
+        return 1
+    except Exception as exc:
         print(f"ingest: {exc}", file=sys.stderr)
         return 1
-
-    if args.json:
-        print(report.model_dump_json())
-    else:
-        label = {
-            IngestionStatus.SUCCESS: "Ingestion completed",
-            IngestionStatus.NO_OP: "Ingestion completed (no changes)",
-            IngestionStatus.FAILED: "Ingestion failed",
-        }[report.status]
-        print(label)
-        print()
-        print(f"Discovered:  {report.files_discovered}")
-        print(f"Parsed:      {report.files_parsed}")
-        print(f"Reused:      {report.files_reused}")
-        print(f"Added:       {report.files_added}")
-        print(f"Updated:     {report.files_updated}")
-        print(f"Unchanged:   {report.files_unchanged}")
-        print(f"Failed:      {report.files_failed}")
-        print(f"Warnings:    {report.files_warned}")
-        print(f"Blocks:      {report.blocks_total}")
-        print()
-        if report.corpus_id and report.manifest_path:
-            print(f"Corpus:   {report.corpus_id}")
-            print(f"Manifest: {report.manifest_path}")
-        else:
-            print("No complete corpus manifest was published.")
-        failed_files = [item for item in report.files if item.status.value == "failed"]
-        if failed_files:
-            print()
-            print("Failed:")
-            for item in failed_files:
-                print(f"  {item.source_path}")
-                if item.error:
-                    print(f"    {item.error}")
-
-    return 1 if report.status == IngestionStatus.FAILED else 0
+    finally:
+        if upload is not None and upload.staging_root.exists():
+            cleanup_staging(upload.staging_root)
+        runtime.shutdown()
 
 
 def cmd_chunk(args: argparse.Namespace) -> int:
@@ -1272,50 +1293,62 @@ def cmd_query(args: argparse.Namespace) -> int:
     )
     log_event(logger, 20, "query started", event="query.start")
 
-    orchestrator = GroundedAnswerOrchestrator(settings)
+    runtime = _build_product_runtime(settings)
     try:
-        result = orchestrator.answer(query=args.query, corpus_name=args.corpus)
-    except GroundedAnswerError as exc:
+        runtime.start()
+        runtime.require_ready()
+
+        operation = runtime.operations.admit_query()
+        try:
+            result = run_product_query(
+                runtime,
+                corpus=args.corpus,
+                question=args.query,
+                control=operation,
+            )
+        finally:
+            runtime.operations.release(operation)
+
+        if args.json:
+            print(json.dumps(result.as_dict()))
+            return 0
+
+        print("Product Query")
+        print()
+        print(f"Corpus:       {result.corpus}")
+        print(f"Snapshot:     {result.snapshot_id}")
+        print(f"Mode:         {result.product_mode_id}")
+        print(f"Trace:        {result.trace_id}")
+        print(f"Status:       {result.status}")
+        print()
+        if result.status == "answered" and result.answer is not None:
+            print("Answer:")
+            print(result.answer)
+            print()
+            print("Citations:")
+            for citation in result.citations:
+                clip = " clipped" if citation.get("clipped") else ""
+                print(
+                    f"- {citation.get('evidence_unit_id')} "
+                    f"[{citation.get('kind')}{clip}] "
+                    f"source={citation.get('source_chunk_id')} "
+                    f"document={citation.get('document_id')}"
+                )
+        elif result.status == "insufficient_evidence":
+            print("Insufficient evidence to answer groundedly.")
+        else:
+            print("No validated grounded answer was produced.")
+        return 0
+    except AppError as exc:
+        print(f"query: {exc.code}: {exc.message}", file=sys.stderr)
+        if exc.trace_id:
+            print(f"query: trace_id={exc.trace_id}", file=sys.stderr)
+        return 1
+    except Exception as exc:
         print(f"query: {exc}", file=sys.stderr)
         return 1
     finally:
-        orchestrator.close()
-
-    if args.json:
-        print(result.model_dump_json())
-        return 0
-
-    print("Grounded Query")
-    print()
-    print("Query:")
-    print(result.query)
-    print()
-    print(f"Status:       {result.status}")
-    if result.abstention_reason:
-        print(f"Abstention:   {result.abstention_reason}")
-    if result.generation_failure_reason:
-        print(f"Failure:      {result.generation_failure_reason}")
-    print(f"Method:       {result.method}")
-    print(f"gen_config:   {result.generation_config_hash}")
-    if result.context_config_hash:
-        print(f"context_cfg:  {result.context_config_hash}")
-    print()
-    if result.status == "answered" and result.answer_text is not None:
-        print("Answer:")
-        print(result.answer_text)
-        print()
-        print("Citations:")
-        for citation in result.citations:
-            clip = " clipped" if citation.clipped else ""
-            print(
-                f"- {citation.evidence_unit_id} [{citation.kind}{clip}] "
-                f"source={citation.source_chunk_id}"
-            )
-    elif result.status == "insufficient_evidence":
-        print("Insufficient evidence to answer groundedly.")
-    else:
-        print("No validated grounded answer was produced.")
-    return 0
+        runtime.shutdown()
 
 
 def cmd_eval_run(_args: argparse.Namespace) -> int:
@@ -2197,7 +2230,10 @@ def cmd_gold_pool(args: argparse.Namespace) -> int:
 
 
 def cmd_gold_prelabel(args: argparse.Namespace) -> int:
-    from offline_rag.gold_authoring.prelabel import PrelabelPreRunError, run_gold_prelabel
+    from offline_rag.gold_authoring.prelabel import (
+        PrelabelPreRunError,
+        run_gold_prelabel,
+    )
 
     try:
         settings = _load_settings(args)
@@ -2272,7 +2308,7 @@ def cmd_gold_review(args: argparse.Namespace) -> int:
     except ReviewServerError as exc:
         print(f"gold review: {exc}", file=sys.stderr)
         return 2
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         print(f"gold review: {exc}", file=sys.stderr)
         return 2
 
@@ -2291,7 +2327,10 @@ def cmd_gold_review(args: argparse.Namespace) -> int:
 
 
 def cmd_gold_finalize(args: argparse.Namespace) -> int:
-    from offline_rag.gold_authoring.finalize import FinalizePreRunError, run_gold_finalize
+    from offline_rag.gold_authoring.finalize import (
+        FinalizePreRunError,
+        run_gold_finalize,
+    )
 
     try:
         settings = _load_settings(args)
@@ -2333,7 +2372,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     ingest = subparsers.add_parser(
         "ingest",
-        help="Ingest documents into a named corpus (additive/update; no deletion)",
+        help="Product full-replace ingest into a named corpus via offline_rag.app",
     )
     _add_config_argument(ingest)
     ingest.add_argument("paths", nargs="+", help="Files and/or directories to ingest")
@@ -2499,11 +2538,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     retrieve_hybrid_rerank_context.set_defaults(func=cmd_retrieve_hybrid_rerank_context)
 
-    query = subparsers.add_parser("query", help="Grounded answer generation with citations")
+    query = subparsers.add_parser(
+        "query",
+        help="Product grounded query via offline_rag.app (snapshot-bound, traced)",
+    )
     _add_config_argument(query)
     query.add_argument("--corpus", default="default", help="Logical corpus name")
     query.add_argument("--query", required=True, help="Query text")
-    query.add_argument("--json", action="store_true", help="Emit GroundedAnswerResult JSON")
+    query.add_argument("--json", action="store_true", help="Emit product query JSON")
     query.set_defaults(func=cmd_query)
 
     eval_parser = subparsers.add_parser("eval", help="Evaluation commands")
