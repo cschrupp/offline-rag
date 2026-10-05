@@ -110,6 +110,14 @@ Slice **9G** production-gold expansion is **DEFERRED — PUBLICATION READINESS**
 when the target corpus is substantially complete and a redesigned
 quiz/puzzle-style adjudication workflow is available.
 
+**Cross-reference (not an authorization):** Slice 16 Gold Lab
+([`docs/slice16_design_authority.md`](docs/slice16_design_authority.md)
+S16-D23–S16-D34; plan candidate
+[`docs/slice16_implementation_plan.md`](docs/slice16_implementation_plan.md)
+16F/16G) is the proposed redesigned adjudication surface for future 9G-style
+human gold work. Slice **9G** remains **DEFERRED / NOT AUTHORIZED** and is
+**not** resumed by the Slice 16 design candidate.
+
 Formal **9H** remains **FROZEN** behind future 9G.
 
 The 22-case / human-16 9F benchmark remains a **development/regression fixture
@@ -171,7 +179,9 @@ UI was operationally validated but is not the scale path.
 around quiz/puzzle-style evidence validation (e.g. best-passage, multi-select
 support, none-of-the-above, direct vs supporting) while preserving explicit
 human ground truth and provenance behind the scenes. Do not scale the current
-candidate-by-candidate workflow for production gold.
+candidate-by-candidate workflow for production gold. See the Slice 16 Gold Lab
+cross-reference under the Milestone 4 engineering checkpoint above (not an
+authorization of 9G).
 
 ---
 
@@ -400,13 +410,14 @@ SLICE 15  COMPLETE / ACCEPTED
           at 1c1d94eada502523d44ec8e9c9a6e23b1f863d49
           evidence: docs/slice15h_integration_acceptance.md
 
-16   PLANNED
+16   DESIGN INTERVIEW COMPLETE
      Portfolio Demo UI
-     DESIGN NOT OPEN
+     DESIGN AUTHORITY CANDIDATE
+     HUMAN ACCEPTANCE PENDING
      IMPLEMENTATION NOT AUTHORIZED
-     Pre-design frame: docs/slice16_portfolio_ui.md
-     (15H/Slice-15 closeout prerequisite satisfied; design interview
-      still requires separate explicit authorization)
+     Authority candidate: docs/slice16_design_authority.md
+     Plan candidate: docs/slice16_implementation_plan.md
+     Historical pre-design frame: docs/slice16_portfolio_ui.md
 
 17   PLANNED
      Regression CI
@@ -441,8 +452,9 @@ M7 closeout
 ```
 
 **Important:** **15H is not the UI phase.** 15H closes Slice 15 and validates
-the API/container product boundary. Slice 16 begins only after Slice 15 has been
-independently accepted and closed.
+the API/container product boundary. Slice 16 design interview is **COMPLETE**;
+authority candidate is present; human acceptance and implementation remain
+**NOT AUTHORIZED**.
 
 **Slice 14 — Performance and resource benchmark harness**
 - Design: **LOCKED / ACCEPTED** (`89a395ae4df7aff23c2da2c8c44fd6fe405459a6`)
@@ -528,20 +540,23 @@ Slice 14 checklist:
     debt (not claimed as a globally green suite)
 - **Slice 15:** **COMPLETE / ACCEPTED**
 
-**Slice 16 — Portfolio Demo UI:** **PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED**
-- Pre-design frame: [`docs/slice16_portfolio_ui.md`](docs/slice16_portfolio_ui.md)
-  (`STATUS: PRE-DESIGN / ROADMAP FRAME`; design authority: **NONE**)
+**Slice 16 — Portfolio Demo UI:** **DESIGN INTERVIEW COMPLETE / DESIGN AUTHORITY CANDIDATE / HUMAN ACCEPTANCE PENDING / IMPLEMENTATION NOT AUTHORIZED**
+- Authority candidate: [`docs/slice16_design_authority.md`](docs/slice16_design_authority.md)
+  (S16-D01 … S16-D35; **not accepted / not locked**)
+- Plan candidate: [`docs/slice16_implementation_plan.md`](docs/slice16_implementation_plan.md)
+  (16A–16H; **IMPLEMENTATION NOT AUTHORIZED**)
+- Historical pre-design frame: [`docs/slice16_portfolio_ui.md`](docs/slice16_portfolio_ui.md)
+  (contextual only once the authority candidate is accepted)
 - UI remains an adapter/client of `src/offline_rag/app/` (no direct Qdrant /
-  retriever / generator access; no UI-owned RAG pipeline)
-- Locked product query remains `{corpus, question}` with server-owned
-  `product_mode_id = grounded_v1` until a future architecture decision
-- Diagnostic / comparison surfaces (including any former “pipeline switcher”
-  ideas) are **DESIGN REQUIRED** and must not silently expand `/v1/query`
-- Candidate capability areas only (not locked): 16A query experience;
-  16B evidence/retrieval inspector; 16C corpus/document experience;
-  16D evaluation/performance presentation; 16E portfolio polish
-- Frontend technology and delivery model are Slice-16 design decisions
-  (Slice 15 did not implement the optional static-serving substrate)
+  retriever / generator access; no UI-owned RAG pipeline) — S16-D03
+- Product query remains single-turn `grounded_v1`; conversational memory deferred
+  — S16-D17
+- Evaluation surfaces are read-only presentation of accepted artifacts; no live
+  scientific knobs — S16-D20 / S16-D21
+- Gold Lab redesigns adjudication workflow granularity while preserving
+  GoldDataset v1 / Silver→Gold truth criteria — S16-D23–S16-D34
+- Do **not** start 16A or mark design ACCEPTED/LOCKED without independent human
+  acceptance
 
 **Slice 17 — Regression CI:** **PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED**
 - Objective: prevent accepted product/retrieval/generation contracts and
@@ -573,20 +588,22 @@ Later M7 checklist:
 - [x] Qdrant Local standalone profile (15G — **COMPLETE / ACCEPTED**)
 - [x] `/data` + `/models` volume packaging contract (15G — **COMPLETE / ACCEPTED**)
 - [x] Slice 15 integration closeout (15H — **COMPLETE / ACCEPTED** at `1c1d94e…`)
-- [ ] Portfolio Demo UI (Slice 16 — **PLANNED / DESIGN NOT OPEN**)
+- [ ] Portfolio Demo UI (Slice 16 — **DESIGN INTERVIEW COMPLETE / AUTHORITY CANDIDATE / HUMAN ACCEPTANCE PENDING / IMPLEMENTATION NOT AUTHORIZED**)
 - [ ] Regression CI (Slice 17 — **PLANNED / DESIGN NOT OPEN**)
 - [ ] Portfolio release package (Slice 18 — **PLANNED / DESIGN NOT OPEN**)
 - [ ] Milestone 7 closeout (**NOT AUTHORIZED**)
 - [ ] Container image size / CPU–CUDA variants ([issue #1](https://github.com/cschrupp/offline-rag/issues/1) — **DEFERRED**)
 
 **M7 release direction (not a Slice-15 exit criterion):** a reviewer can use the
-accepted product/API surface and, after Slice 16 design/implementation, inspect
+accepted product/API surface and, after Slice 16 design acceptance and
+implementation (neither authorized by this formalization alone), inspect
 evidence flow through a UI that remains a client of that surface — without
 expanding product query scientific knobs.
 
 Milestone **6** remains **COMPLETE / ACCEPTED** at `dcc6b07…`. Milestone **7**
-remains **IN PROGRESS** (Slice 15 through **15G** landed; **15H** /
-**Slices 16–18** / **M7 closeout** not authorized). Performance optimization,
+remains **IN PROGRESS** (Slice 15 through **15H** landed; Slice 16 design
+acceptance / implementation, **Slices 17–18**, and **M7 closeout** remain
+**NOT AUTHORIZED**). Performance optimization,
 generator max-token change, reranker config change, `base.yaml` promotion,
 `PORTFOLIO_DEMO.md` update, 13C/13D, recovery enablement, LangGraph, and NeMo
 remain **NOT AUTHORIZED**.

@@ -52,9 +52,13 @@ SLICE 15: COMPLETE / ACCEPTED
 15H FF head: 1c1d94eada502523d44ec8e9c9a6e23b1f863d49
 Evidence: docs/slice15h_integration_acceptance.md
 
-SLICE 16: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
-  Pre-design frame: docs/slice16_portfolio_ui.md
-  (Slice-15 closeout prerequisite satisfied)
+SLICE 16: DESIGN INTERVIEW COMPLETE
+           DESIGN AUTHORITY CANDIDATE
+           HUMAN ACCEPTANCE PENDING
+           IMPLEMENTATION NOT AUTHORIZED
+  Authority candidate: docs/slice16_design_authority.md
+  Plan candidate: docs/slice16_implementation_plan.md
+  Historical pre-design frame: docs/slice16_portfolio_ui.md
 SLICE 17: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
 SLICE 18: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
 
@@ -71,8 +75,10 @@ claims; Milestone 6 science; 13C/13D; recovery enablement; LangGraph; NeMo;
 `config/base.yaml` mutation; Slice 15/16/17/18 design beyond status pointers
 in this gate block; performance optimization or configuration promotion from
 these results. Slice 15 architecture authority remains
-`docs/slice15_developer_api_packaging.md`. Slice 16 pre-design frame:
-`docs/slice16_portfolio_ui.md` (no design authority).
+`docs/slice15_developer_api_packaging.md`. Slice 16 design authority candidate:
+`docs/slice16_design_authority.md` (**HUMAN ACCEPTANCE PENDING**;
+**IMPLEMENTATION NOT AUTHORIZED**). Historical pre-design frame:
+`docs/slice16_portfolio_ui.md`.
 
 **Milestone 6 remains COMPLETE / ACCEPTED** at closeout
 `dcc6b07c20f97472cf506c4665af1f88f00a886b`. Sealed 13B executable / Q1
@@ -820,7 +826,10 @@ LEVEL-C instrumentation / freeze / preflight / runner / run: ACCEPTED
 SLICE 15: COMPLETE / ACCEPTED (15A–15H)
 15H FF head: 1c1d94eada502523d44ec8e9c9a6e23b1f863d49
 
-SLICE 16: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
+SLICE 16: DESIGN INTERVIEW COMPLETE
+           DESIGN AUTHORITY CANDIDATE
+           HUMAN ACCEPTANCE PENDING
+           IMPLEMENTATION NOT AUTHORIZED
 SLICE 17: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
 SLICE 18: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
 
@@ -834,8 +843,8 @@ M6 science: UNCHANGED
   NOT AUTHORIZED / UNCHANGED
 ```
 
-**Next governance sequence (not authorized by this document):** Slice 16 design
-open (explicit authorization) → Slice 17 → Slice 18 → Milestone 7 closeout.
-Slice 14 and Slice 15 are closed. Slice 16 remains DESIGN NOT OPEN until Slice
-16 design is explicitly authorized; the Slice-15 closeout prerequisite is
-satisfied.
+**Next governance sequence (not authorized by this document):** independent
+human review of the Slice 16 design authority candidate → explicit design
+acceptance (if any) → separate implementation authorization → Slice 17 →
+Slice 18 → Milestone 7 closeout. Slice 14 and Slice 15 are closed. Slice 16
+implementation, Slice 17, Slice 18, and M7 closeout remain **NOT AUTHORIZED**.
