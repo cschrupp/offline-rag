@@ -40,19 +40,22 @@ human acceptance remain required.
 ### Scope
 
 - workspace/source identities;
-- metadata/revisions;
+- metadata/revisions (presentation metadata vs scientific publication);
+- empty-workspace / depublication state contract (S16-D07 / S16-D13);
 - raw-source vault;
 - operation/idempotency records;
 - tombstone models;
 - application use-case boundaries;
-- error taxonomy extensions;
+- error taxonomy extensions (including empty/not-ready query);
 - **NO UI**.
 
 ### Must not
 
 - mutate scientific pipeline semantics;
 - bypass `offline_rag.app`;
-- auto-publish unfinished candidates.
+- auto-publish unfinished candidates;
+- fabricate empty scientific snapshots;
+- treat display-only metadata edits as snapshot-creating mutations.
 
 ### Depends on
 
@@ -62,9 +65,15 @@ human acceptance remain required.
 ### Acceptance focus
 
 - durable workspace/source/revision models;
-- empty workspace validity (`current_snapshot_id = null`);
+- empty workspace validity (`current_snapshot_id = null`, `sources = []`);
+- depublication / retirement storage semantics preserving historical artifacts
+  while clearing active current publication;
+- distinct workspace revision advancement for display-only metadata vs
+  content/membership publication;
 - vault privacy under `/data`;
-- idempotency/revision record shapes without HTTP yet.
+- idempotency/revision record shapes without HTTP yet;
+- scoring contract/version identifier may be deferred until 16F unless naturally
+  part of shared contract scaffolding.
 
 ---
 
@@ -75,27 +84,43 @@ human acceptance remain required.
 - workspace CRUD;
 - source CRUD;
 - source replace;
-- full-snapshot projection;
+- full-snapshot projection for non-empty membership mutations;
+- final-source removal EMPTY / depublication transition (S16-D13);
+- display-only metadata PATCH without snapshot rebuild (S16-D11);
 - idempotency;
 - ETag/revision concurrency;
 - managed mutation operations;
 - operation status;
-- workspace query adapter;
+- workspace query adapter (fail closed when EMPTY);
 - source content delivery.
 
 ### Critical acceptance
 
-- `manual_b_v05` with `OLD_MARKER` → replace `manual_b_v06` with `NEW_MARKER`
-  → current N+1 retrieval/context/citations/answer contain no `OLD_MARKER`
-  (S16-D12);
-- crash/interruption: unfinished candidate never becomes current (S16-D15);
-- stale `If-Match` / conflicting idempotency keys fail closed (S16-D14).
+1. Normal add / remove / replace (non-empty result) publishes a new immutable
+   snapshot (S16-D11).
+2. `manual_b_v05` with `OLD_MARKER` → replace `manual_b_v06` with `NEW_MARKER`
+   → current N+1 retrieval/context/citations/answer contain no `OLD_MARKER`
+   (S16-D12).
+3. Final-source removal: one-source workspace → remove final source → workspace
+   EMPTY (`sources = []`, `current_snapshot_id = null`) → old source not
+   queryable through current workspace/product path; no empty Slice-15 ingest;
+   crash leaves either prior one-source+publication or committed EMPTY with no
+   active publication (S16-D13).
+4. Display-only rename: workspace revision advances; `snapshot_id` remains
+   unchanged (S16-D11).
+5. Byte-identical replacement creates a new source version iff the operation is
+   accepted as a new version; `document_id` changes iff content identity
+   changes; idempotent retry does not create another source version (S16-D09).
+6. Crash/interruption of unfinished candidate never becomes current (S16-D15).
+7. Stale `If-Match` / conflicting idempotency keys fail closed (S16-D14).
 
 ### Must not
 
 - build a second RAG pipeline;
 - introduce `/eval/*`;
-- auto-resume scientific ingest after crash.
+- auto-resume scientific ingest after crash;
+- fabricate empty scientific snapshots;
+- rebuild corpus on display-only metadata edits.
 
 ---
 
@@ -137,16 +162,19 @@ human acceptance remain required.
 - Current/Historical snapshot visibility;
 - abstention presentation as successful safety outcomes;
 - session-local visual history only;
-- training presentation mode;
+- **required** instructor-oriented Training Mode (S16-D19 — not optional);
 - saved prompts;
-- hide/reveal answer/evidence.
+- hide/reveal answer/evidence;
+- larger presentation-friendly typography;
+- optional fullscreen/presentation layout.
 
 ### Must not
 
 - conversational memory;
 - send history as hidden query context;
 - fabricate PDF text highlights without reliable mapping;
-- LMS / accounts / grading.
+- LMS / accounts / grading;
+- treat Training Mode as deferred/optional Slice-16 scope.
 
 ---
 
@@ -185,20 +213,25 @@ human acceptance remain required.
 - snapshot/chunk-set binding;
 - corrections/supersession;
 - canonical export/registration;
-- Gold Contribution score derivation.
+- Gold Contribution score as effective-state projection with scoring
+  contract/version identifier (S16-D34) — not raw append-event count.
 
 ### Must preserve
 
 - existing `GoldDataset` v1;
 - Silver→Gold boundary;
 - human-finalized absolute relevance as canonical;
-- exact `snapshot_id` / `chunk_set_id` binding.
+- exact `snapshot_id` / `chunk_set_id` binding;
+- append-only ledger as audit source while score uses effective unique
+  completed contributions.
 
 ### Must not
 
 - auto-promote model labels to gold;
 - migrate historical gold by filename/fuzzy text;
-- automatically change retrieval defaults from new gold.
+- automatically change retrieval defaults from new gold;
+- inflate contribution score from idempotent retries or superseding
+  corrections.
 
 ---
 

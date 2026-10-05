@@ -213,18 +213,27 @@ An empty workspace is valid (**MUST**):
 - `current_snapshot_id = null`
 - `sources = []`
 
+Empty workspaces **MAY** be created directly, or reached by the final-source
+removal / depublication transition defined in S16-D13. Empty is a first-class
+workspace state, **not** a fabricated empty scientific snapshot.
+
 ---
 
 ## S16-D08 — Corpus mapping
 
-Each active workspace **MUST** map to one server-managed OfflineRAG product
-corpus.
+Each non-empty active workspace **MUST** map to one server-managed OfflineRAG
+product corpus whose current publication corresponds to
+`current_snapshot_id`.
 
 Ordinary users **MUST** work with workspace/source identities, not corpus
 implementation names.
 
 Workspace query adapters **MUST** ultimately invoke the same canonical
-`grounded_v1` product query behavior.
+`grounded_v1` product query behavior when a current publication exists.
+
+When a workspace is EMPTY (`sources = []` and `current_snapshot_id = null`),
+workspace query **MUST** fail closed as workspace/corpus empty/not-ready and
+**MUST NOT** resolve any previously current historical snapshot (S16-D13).
 
 ---
 
@@ -233,10 +242,27 @@ Workspace query adapters **MUST** ultimately invoke the same canonical
 Distinguish (**MUST**):
 
 - `source_id` — stable logical source identity inside a workspace;
-- `document_id` — content-derived immutable scientific document identity.
+- `document_id` — content-derived immutable scientific document identity
+  (existing OfflineRAG content-identity rules);
+- source version / lineage event — workspace-level version of that logical
+  source.
 
-Replacing a source **MUST** preserve `source_id` and create a new
-`document_id`/version.
+Normative replacement rule (**MUST**):
+
+- `source_id` remains stable for the logical source;
+- every successful replacement creates a new source version / lineage event;
+- `document_id` is derived from the replacement content using existing
+  scientific identity rules;
+- `document_id` changes **iff** the replacement content identity changes;
+- a byte-identical replacement **MAY** therefore keep the same `document_id`
+  while still recording a distinct source-version operation when that
+  replacement is accepted as a new version;
+- an idempotent retry of the same replacement operation **MUST NOT** create
+  another source version.
+
+For the normal `manual_b_v05` → `manual_b_v06` case with changed content,
+`document_id` changes and S16-D12 supersession isolation still applies
+unchanged.
 
 Retain lineage metadata (**MUST**):
 
@@ -266,12 +292,17 @@ repository.
 
 User-facing operations (**MUST** support):
 
-- add;
-- remove;
-- replace;
-- metadata rename/edit.
+- add source;
+- remove source;
+- replace source;
+- display-only metadata rename/edit (workspace title/description; source
+  display label / user-facing rename; other explicitly non-scientific
+  presentation metadata).
 
-Internal mutation model (**MUST**):
+### Content / membership mutations
+
+For add / remove / replace operations that leave one or more active sources
+(**MUST**):
 
 ```text
 desired source set
@@ -282,8 +313,28 @@ desired source set
   → new current immutable snapshot
 ```
 
+Removing the final active source is the explicit EMPTY / depublication
+transition in S16-D13 (**MUST NOT** run empty Slice-15 ingest).
+
 **MUST NOT** incrementally mutate live Qdrant/lexical scientific state merely to
 mimic CRUD.
+
+### Display-only metadata mutations
+
+Display-only presentation metadata edits (**MUST**):
+
+- advance workspace revision / ETag;
+- persist metadata transactionally;
+- **MUST NOT** rebuild the corpus;
+- **MUST NOT** create a new `snapshot_id` merely because presentation metadata
+  changed.
+
+Workspace revision and scientific `snapshot_id` remain distinct for this
+reason (S16-D14).
+
+If a metadata field is later determined to participate in scientific
+provenance or corpus identity, it is **not** display-only and requires a
+separately frozen contract before implementation.
 
 ---
 
@@ -315,11 +366,70 @@ coverage and: query N → replace → query → N+1 isolation.
 
 ## S16-D13 — Removal and purge
 
-"Remove from workspace" (**MUST**):
+### Remove when one or more sources remain
 
-- logical removal from current/future workspace state followed by new snapshot
-  publication;
-- historical immutable artifacts **MAY** remain locally.
+When removal leaves one or more active sources (**MUST**):
+
+- logically remove the source from current/future workspace state;
+- project the remaining desired source set through the S16-D11 content /
+  membership pipeline;
+- publish a new current immutable snapshot;
+- historical immutable artifacts for the removed source **MAY** remain locally.
+
+### SPECIAL CASE — removing the final active source (EMPTY transition)
+
+Accepted Slice-15 ingest does **not** publish empty source sets. Therefore,
+when removal changes a workspace from one active source to zero active sources
+(**MUST**):
+
+- **MUST NOT** attempt empty Slice-15 ingest;
+- **MUST NOT** fabricate an empty scientific snapshot;
+- the workspace **MUST** atomically transition to EMPTY state:
+  - `sources = []`
+  - `current_snapshot_id = null`
+- the backing corpus **MUST** be depublished / retired from current product
+  resolution so it is no longer reachable as the current publication for
+  workspace/product use;
+- historical snapshot manifests/artifacts **MAY** remain locally for
+  provenance;
+- subsequent workspace query **MUST** fail closed as workspace/corpus
+  empty/not-ready and **MUST NOT** resolve the previously current historical
+  snapshot;
+- adding a future first source **MUST** construct and publish a new real
+  snapshot (normal S16-D11 content/membership path).
+
+#### Backing-corpus depublication / retirement (application-level)
+
+Slice 16 **MUST** define an application-level depublication / retirement
+operation sufficient for 16A/16B to freeze DTO, error, and storage semantics
+before implementation. Normative intent:
+
+- clear or retire the active current publication pointer (or equivalent
+  product-visible current publication state) for the workspace's backing
+  corpus;
+- preserve historical snapshot manifests/artifacts under `/data`;
+- advance workspace revision / ETag as part of the same atomic EMPTY
+  transition;
+- leave durable operation status consistent with S16-D15;
+- expose an explicit empty/not-ready failure mode for workspace query (exact
+  error DTO frozen before 16B).
+
+This is a Slice-16 application/product-resolution contract. It does **not**
+authorize changing Slice-15 scientific ingest to accept empty corpora.
+
+#### Crash consistency for final-source removal
+
+Failure during final-source removal **MUST** leave exactly one of:
+
+- **A.** prior one-source workspace + prior publication still active; or
+- **B.** committed EMPTY workspace (`sources = []`,
+  `current_snapshot_id = null`) + no active current publication.
+
+**MUST NOT** leave split-brain state where workspace metadata says empty but
+workspace query can still reach the retired source through the current
+workspace/product path.
+
+### Delete workspace
 
 "Delete workspace" (**MUST**):
 
@@ -328,7 +438,8 @@ coverage and: query N → replace → query → N+1 isolation.
 
 Permanent secure purge / reachability-aware garbage collection is **DEFERRED**.
 
-UI **MUST NOT** imply irreversible erasure when only logical removal occurs.
+UI **MUST NOT** imply irreversible erasure when only logical removal or
+depublication occurs.
 
 ---
 
@@ -449,8 +560,9 @@ inspection **MUST** explicitly display Historical snapshot.
 
 ## S16-D19 — Training Mode
 
-Instructor-oriented, simplified presentation mode (**MUST** if Training Mode is
-shipped in Slice 16).
+Slice 16 **MUST** provide an instructor-oriented Training Mode. Training Mode
+is an accepted Slice-16 capability (delivered in implementation phase 16D),
+not an optional add-on.
 
 Initial features (**MUST**):
 
@@ -779,19 +891,39 @@ training:
 
 Root Overview **MUST** display persistent transparent Gold contribution metrics.
 
-Initial scoring contract (**MUST**):
+The append-only Gold Lab ledger (S16-D25) remains the audit source. The
+contribution score **MUST** be a deterministic projection over **effective**
+completed work, not a raw count of append-only ledger rows.
 
-| Points | Event |
+Initial scoring contract (**MUST**), applied to effective unique completed
+identities:
+
+| Points | Effective completed contribution |
 | --- | --- |
-| 1 | one canonical absolute 0/1/2 expert judgment |
-| 5 | one Question Check completed |
-| 10 | one complete evidence map/case completed |
-| 15 | one Gold case finalized |
-| 5 | one designated Hard Call resolved |
+| 1 | one currently effective canonical absolute 0/1/2 expert judgment for a unique task/candidate |
+| 5 | one Question Check completed (once per stable completed identity) |
+| 10 | one complete evidence map/case completed (once per stable completed identity) |
+| 15 | one Gold case finalized (once per stable completed identity) |
+| 5 | one designated Hard Call resolved (once per stable completed identity) |
+
+Projection rules (**MUST**):
+
+- an idempotent retry **MUST NOT** award duplicate points;
+- superseding/correcting a judgment via `supersedes_judgment_id` **MUST NOT**
+  produce additional judgment points merely because a second ledger record
+  exists;
+- only the currently effective canonical judgment for a unique task/candidate
+  contributes the judgment point;
+- reopening/revising work **MUST NOT** duplicate a completion bonus unless a
+  future accepted scoring-version contract explicitly says otherwise.
 
 Score is a derived engagement metric, not scientific truth (**MUST**).
 
-Also show raw counters (**MUST**):
+Scoring presentation **MUST** record a scoring contract/version identifier so
+future scoring changes do not silently rewrite historical semantics.
+
+Also show raw counters (**MUST**), derived from the same effective-state
+projection (not inflated by superseded/retried ledger events):
 
 - expert judgments;
 - questions reviewed;
@@ -803,7 +935,8 @@ Also show raw counters (**MUST**):
 
 - leaderboard;
 - speed bonus;
-- model-agreement bonus.
+- model-agreement bonus;
+- inflate score from raw append-event count.
 
 ---
 
