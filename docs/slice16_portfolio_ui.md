@@ -17,7 +17,9 @@ ACCEPTED SHA: 936e41446eb1e3697f6b7d245659831f19cf0613
 AMENDMENT A1: ACCEPTED / LOCKED
   5060e2aeb4825f265072a1f870c3c963eace3b30
   docs/slice16_amendment_a1_seneca_product_ux.md
-16D-A / 16D-B / 16D-C: NOT AUTHORIZED / NOT STARTED
+16D-A: COMPLETE / ACCEPTED
+ACCEPTED SHA: 4f8962f2893ab433e6ea269ad54e46f67771ca70
+16D-B / 16D-C: NOT AUTHORIZED / NOT STARTED
 ```
 
 This document is the **historical pre-design / roadmap frame** for Slice 16.
@@ -32,8 +34,10 @@ knowledge workspace**). This historical frame remains contextual only.
 **16A** is **COMPLETE / ACCEPTED**
 at `e73959be508541a1c50d4919606aaf3157a5fa8a`. **16B** is **COMPLETE / ACCEPTED**
 at `eb8baefc6e3eaf7df33668c85fbbfef22364bb0e`. **16C** is **COMPLETE / ACCEPTED**
-at `936e41446eb1e3697f6b7d245659831f19cf0613`. **16D-A / 16D-B / 16D-C** remain
-**NOT AUTHORIZED / NOT STARTED**. Portfolio UI overall remains **not complete**.
+at `936e41446eb1e3697f6b7d245659831f19cf0613`. **16D-A** is **COMPLETE /
+ACCEPTED** at `4f8962f2893ab433e6ea269ad54e46f67771ca70`. **16D-B / 16D-C**
+remain **NOT AUTHORIZED / NOT STARTED**. Portfolio UI overall remains **not
+complete**.
 
 **Prerequisite dependency (governance order):**
 
@@ -55,16 +59,18 @@ at `936e41446eb1e3697f6b7d245659831f19cf0613`. **16D-A / 16D-B / 16D-C** remain
                                   ACCEPTED SHA 936e41446eb1e3697f6b7d245659831f19cf0613
                                   AMENDMENT A1 ACCEPTED / LOCKED
                                     5060e2aeb4825f265072a1f870c3c963eace3b30
-                                  16D-A / 16D-B / 16D-C NOT AUTHORIZED
+                                  16D-A COMPLETE / ACCEPTED
+                                    4f8962f2893ab433e6ea269ad54e46f67771ca70
+                                  16D-B / 16D-C NOT AUTHORIZED
                                   Slice 16 overall NOT COMPLETE
 ```
 
 Slice **15H** closed Slice 15 and validated the API/container product boundary
 (**15H was not the UI phase**). The Slice 16 design interview is **COMPLETE**.
-Design authority is **ACCEPTED / LOCKED**. **16A**, **16B**, and **16C** are
-**COMPLETE / ACCEPTED**. Amendment A1 is **ACCEPTED / LOCKED**. This frame still
-does **not** authorize **16D-A / 16D-B / 16D-C**, Slice 17, Slice 18, or
-Milestone 7 closeout.
+Design authority is **ACCEPTED / LOCKED**. **16A**, **16B**, **16C**, and
+**16D-A** are **COMPLETE / ACCEPTED**. Amendment A1 is **ACCEPTED / LOCKED**.
+This frame still does **not** authorize **16D-B / 16D-C**, Slice 17, Slice 18,
+or Milestone 7 closeout.
 
 Historical open criteria (met before the design interview):
 
@@ -181,7 +187,9 @@ ACCEPTED SHA: eb8baefc6e3eaf7df33668c85fbbfef22364bb0e
 ACCEPTED SHA: 936e41446eb1e3697f6b7d245659831f19cf0613
 AMENDMENT A1: ACCEPTED / LOCKED
   5060e2aeb4825f265072a1f870c3c963eace3b30
-16D-A / 16D-B / 16D-C: NOT AUTHORIZED
+16D-A: COMPLETE / ACCEPTED
+ACCEPTED SHA: 4f8962f2893ab433e6ea269ad54e46f67771ca70
+16D-B / 16D-C: NOT AUTHORIZED
 16E–16H: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
 SLICE 18: NOT AUTHORIZED
@@ -198,4 +206,6 @@ M7 CLOSEOUT: NOT AUTHORIZED
 6. ~~16A / 16B / 16C implementation acceptance~~ **DONE**
 7. ~~Amendment A1 human acceptance~~ **DONE** (locked at
    `5060e2aeb4825f265072a1f870c3c963eace3b30`)
-8. explicit 16D-A / 16D-B / 16D-C implementation authorization — **NOT GRANTED**
+8. ~~16D-A implementation acceptance~~ **DONE** at
+   `4f8962f2893ab433e6ea269ad54e46f67771ca70`
+9. explicit 16D-B / 16D-C implementation authorization — **NOT GRANTED**

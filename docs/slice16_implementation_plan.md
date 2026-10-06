@@ -13,8 +13,10 @@ ACCEPTED SHA: 936e41446eb1e3697f6b7d245659831f19cf0613
 AMENDMENT A1: ACCEPTED / LOCKED
   5060e2aeb4825f265072a1f870c3c963eace3b30
   docs/slice16_amendment_a1_seneca_product_ux.md
-16D-A: IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING
-16D-B / 16D-C: NOT AUTHORIZED
+16D-A: COMPLETE / ACCEPTED
+IMPLEMENTATION: 4f8962f2893ab433e6ea269ad54e46f67771ca70
+16D-B: NOT AUTHORIZED / NOT STARTED
+16D-C: NOT AUTHORIZED / NOT STARTED
 16E–16H: NOT AUTHORIZED
 BASELINE: c72215186524c9937de789adb1cf2056be13ea23
 ```
@@ -40,6 +42,8 @@ requires separate explicit implementation authorization.
 
 16C evidence: [`docs/slice16c_react_shell_source_ui.md`](slice16c_react_shell_source_ui.md)
 
+16D-A evidence: [`docs/slice16d_a_seneca_product_foundation_query_scope.md`](slice16d_a_seneca_product_foundation_query_scope.md)
+
 ```text
 SLICE 17: NOT AUTHORIZED
 SLICE 18: NOT AUTHORIZED
@@ -60,7 +64,7 @@ Use sequential phase gates unless explicitly redesigned:
  ↓
 16C [ACCEPTED / SEALED]
  ↓
-16D-A [IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING]
+16D-A [COMPLETE / ACCEPTED]
  ↓
 16D-B [NOT AUTHORIZED]
  ↓
@@ -81,13 +85,15 @@ AMENDMENT A1: ACCEPTED / LOCKED
 ```
 
 The revised 16D-A / 16D-B / 16D-C decomposition above is the authoritative
-future implementation sequence under accepted Amendment A1. Phase execution
-remains **NOT AUTHORIZED** until separate explicit implementation authorization.
+implementation sequence under accepted Amendment A1. **16D-A** is
+**COMPLETE / ACCEPTED**. **16D-B / 16D-C** remain **NOT AUTHORIZED** until
+separate explicit implementation authorization (prerequisite completion does
+not authorize the next phase).
 
 Do not close Slice 16 automatically after 16H. Independent review and explicit
-human acceptance of the implemented slice remain required. **16A**, **16B**, and
-**16C** are **COMPLETE / ACCEPTED**; **16D-A / 16D-B / 16D-C** and **16E–16H**
-remain **NOT AUTHORIZED**. Slice 16 overall is **not** complete.
+human acceptance of the implemented slice remain required. **16A**, **16B**,
+**16C**, and **16D-A** are **COMPLETE / ACCEPTED**; **16D-B / 16D-C** and
+**16E–16H** remain **NOT AUTHORIZED**. Slice 16 overall is **not** complete.
 
 ---
 
@@ -255,17 +261,18 @@ Evidence: docs/slice16c_react_shell_source_ui.md
 ## 16D-A — Seneca Product Foundation & Query-Scope Substrate
 
 ```text
-STATUS: IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING
+STATUS: COMPLETE / ACCEPTED
+IMPLEMENTATION: 4f8962f2893ab433e6ea269ad54e46f67771ca70
 AMENDMENT A1: ACCEPTED / LOCKED @ 5060e2aeb4825f265072a1f870c3c963eace3b30
 AUTHORIZED BASELINE: 185d3e3d2bd472ffaddf72cfddc49c7e38a3a146
 EVIDENCE: docs/slice16d_a_seneca_product_foundation_query_scope.md
 ```
 
-Authoritative under accepted Amendment A1. Implementation candidate is
-complete for independent review; human acceptance is pending. 16D-B / 16D-C
-remain NOT AUTHORIZED.
+Authoritative under accepted Amendment A1. **16D-A** is **COMPLETE / ACCEPTED**
+at `4f8962f2893ab433e6ea269ad54e46f67771ca70`. **16D-B / 16D-C** remain
+**NOT AUTHORIZED / NOT STARTED**.
 
-### Future scope (candidate)
+### Accepted scope
 
 - Seneca brand application; provisional stoa favicon/logo; canonical title;
 - compact source rail; source `⋮` CRUD; de-emphasized metadata management;
@@ -297,7 +304,10 @@ remain NOT AUTHORIZED.
 ```text
 STATUS: NOT AUTHORIZED / NOT STARTED
 AMENDMENT A1: ACCEPTED / LOCKED @ 5060e2aeb4825f265072a1f870c3c963eace3b30
+PREREQUISITE 16D-A: COMPLETE / ACCEPTED @ 4f8962f2893ab433e6ea269ad54e46f67771ca70
 ```
+
+Prerequisite completion does **not** authorize this phase.
 
 ### Future scope (candidate)
 
@@ -496,8 +506,10 @@ ACCEPTED SHA: eb8baefc6e3eaf7df33668c85fbbfef22364bb0e
 ACCEPTED SHA: 936e41446eb1e3697f6b7d245659831f19cf0613
 AMENDMENT A1: ACCEPTED / LOCKED
   5060e2aeb4825f265072a1f870c3c963eace3b30
-16D-A: IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING
-16D-B / 16D-C: NOT AUTHORIZED
+16D-A: COMPLETE / ACCEPTED
+IMPLEMENTATION: 4f8962f2893ab433e6ea269ad54e46f67771ca70
+16D-B: NOT AUTHORIZED / NOT STARTED
+16D-C: NOT AUTHORIZED / NOT STARTED
 16E–16H: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
 SLICE 18: NOT AUTHORIZED
@@ -505,10 +517,10 @@ SLICE 18: NOT AUTHORIZED
 M7 CLOSEOUT: NOT AUTHORIZED
 ```
 
-Plan acceptance alone did **not** authorize execution. 16A, 16B, and 16C were
-separately authorized and are now **COMPLETE / ACCEPTED**. Amendment A1 is
-**ACCEPTED / LOCKED** at `5060e2aeb4825f265072a1f870c3c963eace3b30`; the
-16D-A/B/C decomposition is the authoritative future sequence, but phase
-execution remains separately gated. **16D-A** is an **IMPLEMENTED CANDIDATE /
-HUMAN ACCEPTANCE PENDING**. **16D-B / 16D-C** and **16E–16H**
+Plan acceptance alone did **not** authorize execution. 16A, 16B, 16C, and
+16D-A were separately authorized and are now **COMPLETE / ACCEPTED**. Amendment
+A1 is **ACCEPTED / LOCKED** at `5060e2aeb4825f265072a1f870c3c963eace3b30`; the
+16D-A/B/C decomposition is the authoritative sequence, but later phase
+execution remains separately gated. **16D-A** is **COMPLETE / ACCEPTED** at
+`4f8962f2893ab433e6ea269ad54e46f67771ca70`. **16D-B / 16D-C** and **16E–16H**
 remain **NOT AUTHORIZED**. Slice 16 overall is **not** complete.

@@ -1,12 +1,27 @@
 # Slice 16D-A — Seneca Product Foundation & Query-Scope Substrate
 
-STATUS: IMPLEMENTATION CANDIDATE
-HUMAN ACCEPTANCE: PENDING
+```text
+STATUS: COMPLETE / ACCEPTED
+HUMAN ACCEPTANCE: ACCEPTED
+INDEPENDENT REVIEW: PASSED
+MANUAL UI SMOKE: PASSED
 
-Authorized baseline: `185d3e3d2bd472ffaddf72cfddc49c7e38a3a146`
-Prior candidate (review disposition REWORK REQUIRED): `a3fb0dbf33ce61c758d57fd61f21de0ab1620f9b`
-A1 authority: `5060e2aeb4825f265072a1f870c3c963eace3b30`
-Branch: `implementation/16d-a-seneca-product-foundation-query-scope`
+ACCEPTED IMPLEMENTATION SHA:
+4f8962f2893ab433e6ea269ad54e46f67771ca70
+
+AUTHORIZED BASELINE:
+185d3e3d2bd472ffaddf72cfddc49c7e38a3a146
+
+A1 AUTHORITY:
+5060e2aeb4825f265072a1f870c3c963eace3b30
+
+Branch: implementation/16d-a-seneca-product-foundation-query-scope
+
+F1–F12: CLOSED
+```
+
+Human acceptance applies **exactly** to SHA
+`4f8962f2893ab433e6ea269ad54e46f67771ca70`.
 
 ## Brand
 
@@ -79,24 +94,14 @@ Branch: `implementation/16d-a-seneca-product-foundation-query-scope`
 
 ## ACTIVE / PENDING
 
-- ACTIVE = current ApplicationRuntime generation settings
-- PENDING = effective future after restart (locked fields keep operator ACTIVE values)
-- Product-omitted selection fields keep ACTIVE values in PENDING
-- Capabilities reports ACTIVE only
-- Fresh `load_settings` after restart applies product overlay under env authority
+- PENDING settings require process restart to become ACTIVE
+- Capabilities expose ACTIVE generation only
+- Restart-required messaging in Settings when PENDING differs from ACTIVE
 
 ## Compact workspace UX
 
-- Compact header with capacity summary (`N / max sources · MiB / max MiB`)
-- Source rows with accessible `⋮` overflow menu (Rename / Replace / Remove)
-- Workspace metadata behind secondary Edit dialog
-- Add sources behind modal; preserves 16C idempotency + durable ops
-- No source-selection checkboxes (16D-B)
-- Compact terminal Ready tray; no permanent success card domination
-- **Rework:** FAILED / INTERRUPTED keep dismissible `OperationProgress` with
-  message/code / retry guidance (local terminal surface; not bootstrap-dependent)
-- **Rework:** `SourceActionsMenu` implements ArrowUp/Down, Home/End, Escape +
-  focus restoration under `role="menu"`
+- Compact source rail; source `⋮` actions menu; de-emphasized metadata via Edit modal
+- Operation completion UX for FAILED / INTERRUPTED restore paths
 - **Rework 4 (F11):** reusable `ModalDialog` visible Close (×) control; Edit
   workspace Save changes closes on success and restores focus to Edit
 - **Rework 5 (F12):** Edit workspace Remove confirmation is inline in
@@ -125,16 +130,36 @@ Branch: `implementation/16d-a-seneca-product-foundation-query-scope`
   `ALPHA_SCOPE_MARKER` / `BETA_SCOPE_MARKER` through dense→lexical→hybrid→
   reranker→context→generator→citations→trace
 
-## Independent review rework
+## Acceptance
 
-Disposition: **REWORK REQUIRED** against candidate
-`0a5bb534440737bcf0b02b3630c4b175fd00c159` (rework 1 → `ae63c0f…`).
+Independent review: **PASSED** (F1–F12 **CLOSED**).
+
+Manual UI smoke: **PASSED**
+
+- Edit workspace opens/closes visibly
+- Save changes closes successfully
+- Remove workspace inline confirmation
+- Cancel returns to edit surface
+- Escape closes the one Edit dialog
+- no nested modal
+
+Smoke paths exercised:
+
+- Edit → Remove workspace → Cancel
+- Edit → Remove workspace → Escape
+- Edit → Save changes
+
+## Independent review rework (historical)
+
+Disposition during review: **REWORK REQUIRED** against earlier candidates
+(historical narrative only; accepted SHA below supersedes).
 
 Rework 1 addressed F1–F7. Rework 2 addresses F8–F9 on the same branch.
 Rework 3 addresses F10 (probe keep after explicit product API-key clear).
 Rework 4 addresses F11 (Edit workspace / ModalDialog close UX from manual test).
 Rework 5 addresses F12 (nested Remove confirmation inside Edit modal).
-No merge, no self-accept, no 16D-B/C.
+
+Accepted implementation SHA: `4f8962f2893ab433e6ea269ad54e46f67771ca70`.
 
 ### Rework 2
 
@@ -181,7 +206,7 @@ Backend (selected):
 - `tests/unit/test_hybrid_retrieval.py` — passed
 - `tests/unit/test_hybrid_rerank.py` — passed
 
-Frontend (rework 5 / F12):
+Frontend (rework 5 / F12; retained for accepted candidate):
 
 - `npm run lint` — passed
 - `npm run typecheck` — passed
@@ -189,21 +214,14 @@ Frontend (rework 5 / F12):
 - `npm run build` — passed
 - `git diff --check` — passed
 
-Frontend (prior rework 1–4 evidence retained for backend-only passes):
-
-- `npm run lint` — passed
-- `npm run typecheck` — passed
-- `npm test` — 33 passed (incl. F5/F7/F11 modal close + save-dismiss)
-- `npm run build` — passed
-
 ## Known limitations
 
 - No Ask/Evidence UI (16D-B)
 - No Training Mode (16D-C)
 - No live generator hot-swap (restart required)
 - Favicon is a placeholder mark
-- Manual browser smoke not claimed in this evidence package unless separately recorded
 
 ## Explicit non-scope
 
-16D-B Ask/Evidence UX, 16D-C Training Mode, 16E–16H, Slice 17/18, 9G, M7 closeout, merge, and self-acceptance are **not** included.
+16D-B Ask/Evidence UX, 16D-C Training Mode, 16E–16H, Slice 17/18, 9G, M7 closeout,
+and merge are **not** included. 16D-B / 16D-C remain **NOT AUTHORIZED**.

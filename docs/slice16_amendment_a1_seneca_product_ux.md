@@ -21,7 +21,8 @@ e2e7475076ad18d4c4ae8d939389ceeffdeff6d8
 16B: COMPLETE / ACCEPTED
 16C: COMPLETE / ACCEPTED / SEALED
 
-16D-A: NOT AUTHORIZED / NOT STARTED
+16D-A: COMPLETE / ACCEPTED
+  4f8962f2893ab433e6ea269ad54e46f67771ca70
 16D-B: NOT AUTHORIZED / NOT STARTED
 16D-C: NOT AUTHORIZED / NOT STARTED
 16E–16H: NOT AUTHORIZED
@@ -785,7 +786,7 @@ Amend the implementation sequence to:
  ↓
 16C [ACCEPTED / SEALED]
  ↓
-16D-A [NOT AUTHORIZED]
+16D-A [COMPLETE / ACCEPTED]
  ↓
 16D-B [NOT AUTHORIZED]
  ↓
@@ -955,7 +956,8 @@ Seneca retains its own brand / design system.
 A1: ACCEPTED / LOCKED @ 5060e2aeb4825f265072a1f870c3c963eace3b30
 HUMAN ACCEPTANCE: ACCEPTED
 INDEPENDENT REVIEW: PASSED
-16D-A: NOT AUTHORIZED / NOT STARTED
+16D-A: COMPLETE / ACCEPTED
+  4f8962f2893ab433e6ea269ad54e46f67771ca70
 16D-B: NOT AUTHORIZED / NOT STARTED
 16D-C: NOT AUTHORIZED / NOT STARTED
 16E–16H: NOT AUTHORIZED
@@ -969,7 +971,7 @@ SLICE 16 OVERALL: IN PROGRESS / NOT COMPLETE
 Acceptance of this amendment locks supplemental design authority only. It does
 **not**:
 
-- authorize 16D-A / 16D-B / 16D-C implementation;
+- authorize 16D-B / 16D-C implementation (16D-A is separately COMPLETE / ACCEPTED);
 - mutate `ui/`, `src/`, `tests/`, `config/`, packaging, or Docker;
 - rewrite sealed 16A / 16B / 16C implementation evidence;
 - merge to main;
