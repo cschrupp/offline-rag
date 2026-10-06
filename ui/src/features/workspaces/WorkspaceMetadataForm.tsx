@@ -11,7 +11,6 @@ import {
 import { queryKeys } from "../../api/queryKeys";
 import type { Workspace } from "../../api/types";
 import { Button } from "../../components/Button";
-import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { TextArea, TextInput } from "../../components/Field";
 
 type Props = {
@@ -48,7 +47,7 @@ export function WorkspaceMetadataForm({
   }
 
   const [metaError, setMetaError] = useState<string | null>(null);
-  const [removeOpen, setRemoveOpen] = useState(false);
+  const [removeConfirming, setRemoveConfirming] = useState(false);
 
   const patchMutation = useMutation({
     mutationFn: () => {
@@ -114,7 +113,7 @@ export function WorkspaceMetadataForm({
       });
     },
     onSuccess: async () => {
-      setRemoveOpen(false);
+      setRemoveConfirming(false);
       removeIntent.current.reset();
       queryClient.removeQueries({
         queryKey: queryKeys.workspace(workspace.workspace_id),
@@ -132,7 +131,7 @@ export function WorkspaceMetadataForm({
           queryKey: queryKeys.workspace(workspace.workspace_id),
         });
         removeIntent.current.reset();
-        setRemoveOpen(false);
+        setRemoveConfirming(false);
         return;
       }
       setMetaError(userFacingErrorMessage(error));
@@ -148,6 +147,8 @@ export function WorkspaceMetadataForm({
     patchMutation.mutate();
   }
 
+  const busy = patchMutation.isPending || deleteMutation.isPending;
+
   return (
     <div className="stack">
       <form className="stack" onSubmit={onSubmit}>
@@ -160,6 +161,7 @@ export function WorkspaceMetadataForm({
           }
           maxLength={256}
           required
+          disabled={busy || removeConfirming}
         />
         <TextArea
           id="edit-description"
@@ -172,35 +174,67 @@ export function WorkspaceMetadataForm({
             }))
           }
           maxLength={4096}
+          disabled={busy || removeConfirming}
         />
         {metaError ? (
           <p className="error-box" role="alert">
             {metaError}
           </p>
         ) : null}
-        <div className="row">
-          <Button type="submit" disabled={patchMutation.isPending}>
-            Save changes
-          </Button>
-          <Button
-            variant="danger"
-            onClick={() => setRemoveOpen(true)}
-            disabled={deleteMutation.isPending}
-          >
-            Remove workspace
-          </Button>
-        </div>
+        {!removeConfirming ? (
+          <div className="row">
+            <Button type="submit" disabled={busy}>
+              Save changes
+            </Button>
+            <Button
+              variant="danger"
+              type="button"
+              onClick={() => {
+                setMetaError(null);
+                setRemoveConfirming(true);
+              }}
+              disabled={busy}
+            >
+              Remove workspace
+            </Button>
+          </div>
+        ) : null}
       </form>
-      <ConfirmDialog
-        open={removeOpen}
-        title="Remove workspace"
-        body="This removes the workspace from the active library. Historical/source artifacts may remain stored locally. This is not secure permanent deletion."
-        confirmLabel="Remove workspace"
-        danger
-        busy={deleteMutation.isPending}
-        onCancel={() => setRemoveOpen(false)}
-        onConfirm={() => deleteMutation.mutate()}
-      />
+      {removeConfirming ? (
+        <div
+          className="stack workspace-remove-confirm"
+          role="group"
+          aria-labelledby="workspace-remove-heading"
+        >
+          <hr className="workspace-remove-divider" />
+          <h3 id="workspace-remove-heading" className="workspace-remove-heading">
+            Remove this workspace?
+          </h3>
+          <p className="muted" style={{ margin: 0 }}>
+            This removes the workspace from the active library. Historical/source
+            artifacts may remain stored locally. This is not secure permanent
+            deletion.
+          </p>
+          <div className="row">
+            <Button
+              variant="secondary"
+              type="button"
+              onClick={() => setRemoveConfirming(false)}
+              disabled={deleteMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              type="button"
+              onClick={() => deleteMutation.mutate()}
+              disabled={deleteMutation.isPending}
+            >
+              Remove workspace
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

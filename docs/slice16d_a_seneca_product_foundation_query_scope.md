@@ -4,7 +4,7 @@ STATUS: IMPLEMENTATION CANDIDATE
 HUMAN ACCEPTANCE: PENDING
 
 Authorized baseline: `185d3e3d2bd472ffaddf72cfddc49c7e38a3a146`
-Prior candidate (review disposition REWORK REQUIRED): `d147a49b7e74da09f8d75ca6ec4b4069702a8b01`
+Prior candidate (review disposition REWORK REQUIRED): `a3fb0dbf33ce61c758d57fd61f21de0ab1620f9b`
 A1 authority: `5060e2aeb4825f265072a1f870c3c963eace3b30`
 Branch: `implementation/16d-a-seneca-product-foundation-query-scope`
 
@@ -99,6 +99,8 @@ Branch: `implementation/16d-a-seneca-product-foundation-query-scope`
   focus restoration under `role="menu"`
 - **Rework 4 (F11):** reusable `ModalDialog` visible Close (×) control; Edit
   workspace Save changes closes on success and restores focus to Edit
+- **Rework 5 (F12):** Edit workspace Remove confirmation is inline in
+  `WorkspaceMetadataForm` (no nested `ConfirmDialog` / second modal)
 
 ## Source-scope query substrate
 
@@ -131,6 +133,7 @@ Disposition: **REWORK REQUIRED** against candidate
 Rework 1 addressed F1–F7. Rework 2 addresses F8–F9 on the same branch.
 Rework 3 addresses F10 (probe keep after explicit product API-key clear).
 Rework 4 addresses F11 (Edit workspace / ModalDialog close UX from manual test).
+Rework 5 addresses F12 (nested Remove confirmation inside Edit modal).
 No merge, no self-accept, no 16D-B/C.
 
 ### Rework 2
@@ -152,6 +155,13 @@ No merge, no self-accept, no 16D-B/C.
   disabled while `busy`); successful Edit workspace Save changes closes the
   dialog; failed save keeps it open
 
+### Rework 5
+
+- F12: Workspace removal confirmation is inline inside the single Edit
+  workspace `ModalDialog` (Cancel restores edit controls; confirm runs existing
+  delete mutation; Escape closes Edit only; no nested alertdialog / second
+  focus trap). Source-removal `ConfirmDialog` paths unchanged.
+
 ## Tests run
 
 Backend (selected):
@@ -171,7 +181,15 @@ Backend (selected):
 - `tests/unit/test_hybrid_retrieval.py` — passed
 - `tests/unit/test_hybrid_rerank.py` — passed
 
-Frontend (unchanged in rework 2; prior rework 1 evidence retained):
+Frontend (rework 5 / F12):
+
+- `npm run lint` — passed
+- `npm run typecheck` — passed
+- `npm test` — 38 passed (incl. F5/F7/F11 + F12 inline remove)
+- `npm run build` — passed
+- `git diff --check` — passed
+
+Frontend (prior rework 1–4 evidence retained for backend-only passes):
 
 - `npm run lint` — passed
 - `npm run typecheck` — passed

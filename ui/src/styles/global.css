@@ -524,6 +524,18 @@ a.btn:hover {
   cursor: not-allowed;
 }
 
+.workspace-remove-divider {
+  border: 0;
+  border-top: 1px solid var(--color-border);
+  margin: var(--space-2) 0;
+}
+
+.workspace-remove-heading {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;

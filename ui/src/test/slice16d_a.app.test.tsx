@@ -650,3 +650,202 @@ describe("Slice 16D-A Edit workspace modal UX (F11)", () => {
     mock.restore();
   });
 });
+
+describe("Slice 16D-A Edit workspace inline remove (F12)", () => {
+  function editWorkspaceMock(handlers: {
+    onDelete?: (call: {
+      url: string;
+      method: string;
+      headers: Headers;
+    }) => Response | Promise<Response>;
+  } = {}) {
+    const revision = 2;
+    let deleted = false;
+    return installFetchMock(async (call) => {
+      if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces/ws_1" && call.method === "GET") {
+        if (deleted) return errorResponse("workspace_unknown", "gone", 404);
+        return jsonResponse(
+          workspace({
+            workspace_id: "ws_1",
+            title: "Remove Desk",
+            revision,
+            source_count: 1,
+            status: "active",
+          }),
+        );
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources") {
+        return jsonResponse({
+          workspace_id: "ws_1",
+          revision,
+          sources: [source({ source_id: "src_1", display_name: "manual.pdf" })],
+        });
+      }
+      if (call.url === "/v1/workspaces/ws_1" && call.method === "DELETE") {
+        if (handlers.onDelete) {
+          const response = await handlers.onDelete(call);
+          if (response.ok) deleted = true;
+          return response;
+        }
+        deleted = true;
+        return jsonResponse(
+          workspace({
+            workspace_id: "ws_1",
+            revision: revision + 1,
+            status: "tombstoned",
+            source_count: 0,
+          }),
+        );
+      }
+      if (call.url === "/v1/workspaces" && call.method === "GET") {
+        return jsonResponse([]);
+      }
+      return errorResponse("not_found", "x", 404);
+    });
+  }
+
+  it("shows inline remove confirmation without a second dialog", async () => {
+    const user = userEvent.setup();
+    const mock = editWorkspaceMock();
+
+    renderApp("/workspaces/ws_1");
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    const dialog = await screen.findByRole("dialog", { name: /edit workspace/i });
+    await user.click(
+      within(dialog).getByRole("button", { name: "Remove workspace" }),
+    );
+
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("heading", { name: /remove this workspace/i }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(/not secure permanent deletion/i),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("button", { name: "Cancel" }),
+    ).toBeInTheDocument();
+    mock.restore();
+  });
+
+  it("Cancel returns to normal edit form controls", async () => {
+    const user = userEvent.setup();
+    const mock = editWorkspaceMock();
+
+    renderApp("/workspaces/ws_1");
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    const dialog = await screen.findByRole("dialog", { name: /edit workspace/i });
+    await user.click(
+      within(dialog).getByRole("button", { name: "Remove workspace" }),
+    );
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+    expect(
+      within(dialog).queryByRole("heading", { name: /remove this workspace/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("button", { name: "Save changes" }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("button", { name: "Remove workspace" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: /edit workspace/i })).toBeInTheDocument();
+    mock.restore();
+  });
+
+  it("Escape while inline confirmation is shown closes the Edit dialog", async () => {
+    const user = userEvent.setup();
+    const mock = editWorkspaceMock();
+
+    renderApp("/workspaces/ws_1");
+    const editButton = await screen.findByRole("button", { name: "Edit" });
+    await user.click(editButton);
+    const dialog = await screen.findByRole("dialog", { name: /edit workspace/i });
+    await user.click(
+      within(dialog).getByRole("button", { name: "Remove workspace" }),
+    );
+    expect(
+      within(dialog).getByRole("heading", { name: /remove this workspace/i }),
+    ).toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("dialog", { name: /edit workspace/i }),
+      ).not.toBeInTheDocument();
+    });
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(document.activeElement).toBe(editButton);
+    });
+    mock.restore();
+  });
+
+  it("confirm Remove calls DELETE and navigates to /workspaces", async () => {
+    const user = userEvent.setup();
+    let deleteCount = 0;
+    const mock = editWorkspaceMock({
+      onDelete: (call) => {
+        deleteCount += 1;
+        expect(call.headers.get("If-Match")).toBe('"2"');
+        expect(call.headers.get("Idempotency-Key")).toBeTruthy();
+        return jsonResponse(
+          workspace({
+            workspace_id: "ws_1",
+            revision: 3,
+            status: "tombstoned",
+            source_count: 0,
+          }),
+        );
+      },
+    });
+
+    renderApp("/workspaces/ws_1");
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    const dialog = await screen.findByRole("dialog", { name: /edit workspace/i });
+    await user.click(
+      within(dialog).getByRole("button", { name: "Remove workspace" }),
+    );
+    await user.click(
+      within(dialog).getByRole("button", { name: "Remove workspace" }),
+    );
+
+    expect(await screen.findByRole("heading", { name: "Workspaces" })).toBeInTheDocument();
+    expect(deleteCount).toBe(1);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    mock.restore();
+  });
+
+  it("failed removal stays in Edit dialog with a safe error", async () => {
+    const user = userEvent.setup();
+    const mock = editWorkspaceMock({
+      onDelete: () =>
+        errorResponse(
+          "workspace_conflict",
+          "Workspace revision or state conflict",
+          409,
+        ),
+    });
+
+    renderApp("/workspaces/ws_1");
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    const dialog = await screen.findByRole("dialog", { name: /edit workspace/i });
+    await user.click(
+      within(dialog).getByRole("button", { name: "Remove workspace" }),
+    );
+    await user.click(
+      within(dialog).getByRole("button", { name: "Remove workspace" }),
+    );
+
+    expect(
+      await within(dialog).findByText(/workspace changed since you last loaded it/i),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: /edit workspace/i })).toBeInTheDocument();
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    mock.restore();
+  });
+});

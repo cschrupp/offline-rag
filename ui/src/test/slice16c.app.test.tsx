@@ -243,10 +243,13 @@ describe("workspace patch / remove", () => {
       screen.getByText(/not secure permanent deletion/i),
     ).toBeInTheDocument();
     expect(screen.queryByText(/delete forever/i)).not.toBeInTheDocument();
-    const removeDialog = screen.getByRole("alertdialog");
-    await user.click(
-      within(removeDialog).getByRole("button", { name: "Remove workspace" }),
-    );
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    const editDialog = screen.getByRole("dialog");
+    const confirmButtons = within(editDialog).getAllByRole("button", {
+      name: "Remove workspace",
+    });
+    await user.click(confirmButtons[confirmButtons.length - 1]!);
     expect(await screen.findByRole("heading", { name: "Workspaces" })).toBeInTheDocument();
     mock.restore();
   });
