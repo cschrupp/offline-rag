@@ -3,8 +3,12 @@
 ```text
 SLICE 16 DESIGN AMENDMENT A1
 
-STATUS: DESIGN CANDIDATE
-HUMAN ACCEPTANCE: PENDING
+STATUS: ACCEPTED / LOCKED
+HUMAN ACCEPTANCE: ACCEPTED
+INDEPENDENT REVIEW: PASSED
+
+ACCEPTED AMENDMENT SHA:
+5060e2aeb4825f265072a1f870c3c963eace3b30
 
 BASELINE:
 a18868e84f52994d6b529537c48f5da549711d20
@@ -37,10 +41,18 @@ adds or refines a future product contract.
   at `e2e7475076ad18d4c4ae8d939389ceeffdeff6d8`
 - Sealed 16C closeout baseline: `a18868e84f52994d6b529537c48f5da549711d20`
 - Accepted 16C implementation: `936e41446eb1e3697f6b7d245659831f19cf0613`
+- **Accepted Amendment A1 SHA:** `5060e2aeb4825f265072a1f870c3c963eace3b30`
 
-This document is a **design candidate** for independent review and explicit
-human acceptance. Until accepted, A1 is **not** locked supplemental authority
-and **does not** authorize implementation of 16D-A, 16D-B, or 16D-C.
+Human acceptance applies **exactly** to SHA
+`5060e2aeb4825f265072a1f870c3c963eace3b30`.
+
+This amendment is now **supplemental locked** Slice-16 design authority.
+Acceptance of A1 does **not** authorize implementation of 16D-A, 16D-B, or
+16D-C; those phases remain **NOT AUTHORIZED** until separate explicit
+implementation authorization.
+
+Substantive decisions A1-D01 … A1-D17 are frozen by this acceptance; closeout
+does not alter them.
 
 ---
 
@@ -940,7 +952,9 @@ Seneca retains its own brand / design system.
 ## Explicit non-authorization
 
 ```text
-A1 HUMAN ACCEPTANCE: PENDING
+A1: ACCEPTED / LOCKED @ 5060e2aeb4825f265072a1f870c3c963eace3b30
+HUMAN ACCEPTANCE: ACCEPTED
+INDEPENDENT REVIEW: PASSED
 16D-A: NOT AUTHORIZED / NOT STARTED
 16D-B: NOT AUTHORIZED / NOT STARTED
 16D-C: NOT AUTHORIZED / NOT STARTED
@@ -952,10 +966,11 @@ M7 CLOSEOUT: NOT AUTHORIZED
 SLICE 16 OVERALL: IN PROGRESS / NOT COMPLETE
 ```
 
-This amendment drafts design only. It does **not**:
+Acceptance of this amendment locks supplemental design authority only. It does
+**not**:
 
 - authorize 16D-A / 16D-B / 16D-C implementation;
 - mutate `ui/`, `src/`, `tests/`, `config/`, packaging, or Docker;
 - rewrite sealed 16A / 16B / 16C implementation evidence;
 - merge to main;
-- self-accept A1.
+- authorize Slice 17 / Slice 18 / 9G / M7 closeout.

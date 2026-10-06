@@ -10,7 +10,8 @@ ACCEPTED SHA: e73959be508541a1c50d4919606aaf3157a5fa8a
 ACCEPTED SHA: eb8baefc6e3eaf7df33668c85fbbfef22364bb0e
 16C: COMPLETE / ACCEPTED
 ACCEPTED SHA: 936e41446eb1e3697f6b7d245659831f19cf0613
-AMENDMENT A1: DESIGN CANDIDATE / HUMAN ACCEPTANCE PENDING
+AMENDMENT A1: ACCEPTED / LOCKED
+  5060e2aeb4825f265072a1f870c3c963eace3b30
   docs/slice16_amendment_a1_seneca_product_ux.md
 16D-A / 16D-B / 16D-C: NOT AUTHORIZED
 16E–16H: NOT AUTHORIZED
@@ -26,9 +27,11 @@ Locked design authority: [`docs/slice16_design_authority.md`](slice16_design_aut
 (S16-D01 … S16-D35) at AUTHORITY SHA
 `e2e7475076ad18d4c4ae8d939389ceeffdeff6d8`.
 
-Amendment A1 design candidate (**HUMAN ACCEPTANCE PENDING**; not yet locked
-implementation authority):
-[`docs/slice16_amendment_a1_seneca_product_ux.md`](slice16_amendment_a1_seneca_product_ux.md).
+Amendment A1 (**ACCEPTED / LOCKED** supplemental design authority):
+[`docs/slice16_amendment_a1_seneca_product_ux.md`](slice16_amendment_a1_seneca_product_ux.md)
+at `5060e2aeb4825f265072a1f870c3c963eace3b30`. The revised 16D-A / 16D-B / 16D-C
+decomposition is now the authoritative future sequence; phase execution still
+requires separate explicit implementation authorization.
 
 16A evidence: [`docs/slice16a_workspace_foundation.md`](slice16a_workspace_foundation.md)
 
@@ -72,12 +75,13 @@ Use sequential phase gates unless explicitly redesigned:
 ```
 
 ```text
-AMENDMENT A1 DESIGN CANDIDATE
-HUMAN ACCEPTANCE PENDING
+AMENDMENT A1: ACCEPTED / LOCKED
+5060e2aeb4825f265072a1f870c3c963eace3b30
 ```
 
-The revised 16D-A / 16D-B / 16D-C decomposition above is proposed by Amendment
-A1 and is **not** locked implementation authority until A1 is accepted.
+The revised 16D-A / 16D-B / 16D-C decomposition above is the authoritative
+future implementation sequence under accepted Amendment A1. Phase execution
+remains **NOT AUTHORIZED** until separate explicit implementation authorization.
 
 Do not close Slice 16 automatically after 16H. Independent review and explicit
 human acceptance of the implemented slice remain required. **16A**, **16B**, and
@@ -251,10 +255,10 @@ Evidence: docs/slice16c_react_shell_source_ui.md
 
 ```text
 STATUS: NOT AUTHORIZED / NOT STARTED
-AMENDMENT A1: DESIGN CANDIDATE / HUMAN ACCEPTANCE PENDING
+AMENDMENT A1: ACCEPTED / LOCKED @ 5060e2aeb4825f265072a1f870c3c963eace3b30
 ```
 
-Proposed by Amendment A1. Not locked until A1 is accepted. Not authorized for
+Authoritative under accepted Amendment A1. Not authorized for
 implementation by this plan update alone.
 
 ### Future scope (candidate)
@@ -288,7 +292,7 @@ implementation by this plan update alone.
 
 ```text
 STATUS: NOT AUTHORIZED / NOT STARTED
-AMENDMENT A1: DESIGN CANDIDATE / HUMAN ACCEPTANCE PENDING
+AMENDMENT A1: ACCEPTED / LOCKED @ 5060e2aeb4825f265072a1f870c3c963eace3b30
 ```
 
 ### Future scope (candidate)
@@ -317,7 +321,7 @@ AMENDMENT A1: DESIGN CANDIDATE / HUMAN ACCEPTANCE PENDING
 
 ```text
 STATUS: NOT AUTHORIZED / NOT STARTED
-AMENDMENT A1: DESIGN CANDIDATE / HUMAN ACCEPTANCE PENDING
+AMENDMENT A1: ACCEPTED / LOCKED @ 5060e2aeb4825f265072a1f870c3c963eace3b30
 ```
 
 ### Future scope (candidate)
@@ -338,9 +342,8 @@ AMENDMENT A1: DESIGN CANDIDATE / HUMAN ACCEPTANCE PENDING
 ## Historical note — former monolithic 16D gate
 
 Prior plan text treated Ask, Evidence, and Training Mode as a single **16D**
-gate. Amendment A1 proposes subdividing that gate into **16D-A / 16D-B / 16D-C**
-for implementation governance. Until A1 is accepted, that subdivision remains a
-design candidate only.
+gate. Accepted Amendment A1 subdivided that gate into **16D-A / 16D-B / 16D-C**
+for implementation governance. Phase execution remains separately gated.
 
 ---
 
@@ -487,7 +490,8 @@ ACCEPTED SHA: e73959be508541a1c50d4919606aaf3157a5fa8a
 ACCEPTED SHA: eb8baefc6e3eaf7df33668c85fbbfef22364bb0e
 16C: COMPLETE / ACCEPTED
 ACCEPTED SHA: 936e41446eb1e3697f6b7d245659831f19cf0613
-AMENDMENT A1: DESIGN CANDIDATE / HUMAN ACCEPTANCE PENDING
+AMENDMENT A1: ACCEPTED / LOCKED
+  5060e2aeb4825f265072a1f870c3c963eace3b30
 16D-A / 16D-B / 16D-C: NOT AUTHORIZED
 16E–16H: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
@@ -497,8 +501,8 @@ M7 CLOSEOUT: NOT AUTHORIZED
 ```
 
 Plan acceptance alone did **not** authorize execution. 16A, 16B, and 16C were
-separately authorized and are now **COMPLETE / ACCEPTED**. Amendment A1 is a
-**design candidate** with human acceptance pending; the proposed 16D-A/B/C
-decomposition is therefore **not** locked implementation authority yet.
-**16D-A / 16D-B / 16D-C** and **16E–16H** remain **NOT AUTHORIZED**. Slice 16
-overall is **not** complete.
+separately authorized and are now **COMPLETE / ACCEPTED**. Amendment A1 is
+**ACCEPTED / LOCKED** at `5060e2aeb4825f265072a1f870c3c963eace3b30`; the
+16D-A/B/C decomposition is the authoritative future sequence, but phase
+execution remains separately gated. **16D-A / 16D-B / 16D-C** and **16E–16H**
+remain **NOT AUTHORIZED**. Slice 16 overall is **not** complete.

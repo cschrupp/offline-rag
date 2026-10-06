@@ -65,7 +65,8 @@ SLICE 16: DESIGN INTERVIEW COMPLETE
            16C COMPLETE / ACCEPTED
            ACCEPTED SHA 936e41446eb1e3697f6b7d245659831f19cf0613
            Evidence: docs/slice16c_react_shell_source_ui.md
-           AMENDMENT A1 DESIGN CANDIDATE / HUMAN ACCEPTANCE PENDING
+           AMENDMENT A1 ACCEPTED / LOCKED
+             5060e2aeb4825f265072a1f870c3c963eace3b30
              docs/slice16_amendment_a1_seneca_product_ux.md
            16D-A NOT AUTHORIZED
            16D-B NOT AUTHORIZED
@@ -96,9 +97,10 @@ these results. Slice 15 architecture authority remains
 `e2e7475076ad18d4c4ae8d939389ceeffdeff6d8`). 16A accepted at
 `e73959be508541a1c50d4919606aaf3157a5fa8a`; 16B accepted at
 `eb8baefc6e3eaf7df33668c85fbbfef22364bb0e`; 16C accepted at
-`936e41446eb1e3697f6b7d245659831f19cf0613`; Amendment A1 is a **design
-candidate** (`docs/slice16_amendment_a1_seneca_product_ux.md`; **HUMAN
-ACCEPTANCE PENDING**); **16D-A / 16D-B / 16D-C NOT AUTHORIZED**.
+`936e41446eb1e3697f6b7d245659831f19cf0613`; Amendment A1 **ACCEPTED / LOCKED**
+at `5060e2aeb4825f265072a1f870c3c963eace3b30`
+(`docs/slice16_amendment_a1_seneca_product_ux.md`); **16D-A / 16D-B / 16D-C NOT
+AUTHORIZED**.
 Historical pre-design frame: `docs/slice16_portfolio_ui.md`.
 
 **Milestone 6 remains COMPLETE / ACCEPTED** at closeout
@@ -857,7 +859,8 @@ SLICE 16: DESIGN INTERVIEW COMPLETE
            ACCEPTED SHA eb8baefc6e3eaf7df33668c85fbbfef22364bb0e
            16C COMPLETE / ACCEPTED
            ACCEPTED SHA 936e41446eb1e3697f6b7d245659831f19cf0613
-           AMENDMENT A1 DESIGN CANDIDATE / HUMAN ACCEPTANCE PENDING
+           AMENDMENT A1 ACCEPTED / LOCKED
+             5060e2aeb4825f265072a1f870c3c963eace3b30
            16D-A / 16D-B / 16D-C NOT AUTHORIZED
            16E–16H NOT AUTHORIZED
            Slice 16 overall IN PROGRESS / NOT COMPLETE
@@ -874,11 +877,11 @@ M6 science: UNCHANGED
   NOT AUTHORIZED / UNCHANGED
 ```
 
-**Next governance sequence (not authorized by this document):** human acceptance
-of Amendment A1 (if review passes), then separate explicit authorization of
-**16D-A** → **16D-B** → **16D-C** → Slice 17 → Slice 18 → Milestone 7 closeout.
-Slice 14 and Slice 15 are closed. Slice 16 design is **ACCEPTED / LOCKED**.
-**16A**, **16B**, and **16C** are **COMPLETE / ACCEPTED**. Amendment A1 is a
-**design candidate** only. **16D-A / 16D-B / 16D-C**, Slice 17, Slice 18, and M7
-closeout remain **NOT AUTHORIZED**. Slice 16 overall is **IN PROGRESS / NOT
-COMPLETE**.
+**Next governance sequence (not authorized by this document):** separate
+explicit authorization of **16D-A** → **16D-B** → **16D-C** → Slice 17 →
+Slice 18 → Milestone 7 closeout. Slice 14 and Slice 15 are closed. Slice 16
+design is **ACCEPTED / LOCKED**. **16A**, **16B**, and **16C** are
+**COMPLETE / ACCEPTED**. Amendment A1 is **ACCEPTED / LOCKED** at
+`5060e2aeb4825f265072a1f870c3c963eace3b30`. **16D-A / 16D-B / 16D-C**, Slice 17,
+Slice 18, and M7 closeout remain **NOT AUTHORIZED**. Slice 16 overall is
+**IN PROGRESS / NOT COMPLETE**.
