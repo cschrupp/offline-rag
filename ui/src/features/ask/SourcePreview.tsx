@@ -3,7 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import { getSourceVersionContent } from "../../api/client";
 import { userFacingErrorMessage } from "../../api/errors";
 import { queryKeys } from "../../api/queryKeys";
-import type { WorkspaceCitation } from "../../api/types";
+import type { Source, WorkspaceCitation } from "../../api/types";
+import { snapshotBadge } from "./askHistory";
 import {
   buildTextLineWindow,
   isPdfContentType,
@@ -17,26 +18,35 @@ export type PreviewTarget =
       workspaceId: string;
       citation: WorkspaceCitation;
       workspaceRevision: number;
-      historical: boolean;
+      querySnapshotId: string;
     }
   | {
       kind: "source";
       workspaceId: string;
       sourceId: string;
-      version: number;
-      displayName: string;
-      contentType: string;
-      workspaceRevision: number;
-      historical: boolean;
     };
 
 type Props = {
   target: PreviewTarget | null;
+  currentSnapshotId: string | null;
+  currentSources: Source[];
+  currentWorkspaceRevision: number;
 };
 
-export function SourcePreview({ target }: Props) {
+export function SourcePreview({
+  target,
+  currentSnapshotId,
+  currentSources,
+  currentWorkspaceRevision,
+}: Props) {
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [decodedText, setDecodedText] = useState<string | null>(null);
+
+  const liveSource =
+    target?.kind === "source"
+      ? (currentSources.find((source) => source.source_id === target.sourceId) ??
+        null)
+      : null;
 
   const fetchParams =
     target == null
@@ -48,12 +58,14 @@ export function SourcePreview({ target }: Props) {
             version: target.citation.source_version,
             workspaceRevision: target.workspaceRevision,
           }
-        : {
-            workspaceId: target.workspaceId,
-            sourceId: target.sourceId,
-            version: target.version,
-            workspaceRevision: target.workspaceRevision,
-          };
+        : liveSource
+          ? {
+              workspaceId: target.workspaceId,
+              sourceId: liveSource.source_id,
+              version: liveSource.version,
+              workspaceRevision: currentWorkspaceRevision,
+            }
+          : null;
 
   const contentQuery = useQuery({
     queryKey: fetchParams
@@ -117,14 +129,22 @@ export function SourcePreview({ target }: Props) {
     );
   }
 
+  if (target.kind === "source" && !liveSource) {
+    return (
+      <p className="muted" style={{ margin: 0 }}>
+        Ask a question or choose a source to inspect its evidence.
+      </p>
+    );
+  }
+
   const title =
     target.kind === "citation"
       ? target.citation.source_display_name
-      : target.displayName;
+      : liveSource!.display_name;
   const version =
     target.kind === "citation"
       ? target.citation.source_version
-      : target.version;
+      : liveSource!.version;
   const pageStart =
     target.kind === "citation" ? target.citation.page_start : null;
   const contentType = contentQuery.data?.contentType ?? "";
@@ -132,6 +152,11 @@ export function SourcePreview({ target }: Props) {
     Boolean(contentQuery.data) &&
     (isUnsafePreviewContentType(contentType) ||
       (!isPdfContentType(contentType) && !isTextPreviewContentType(contentType)));
+
+  const historical =
+    target.kind === "citation"
+      ? snapshotBadge(target.querySnapshotId, currentSnapshotId) === "historical"
+      : false;
 
   return (
     <div className="stack source-preview">
@@ -143,12 +168,12 @@ export function SourcePreview({ target }: Props) {
         </p>
         <span
           className={
-            target.historical
+            historical
               ? "snapshot-badge snapshot-badge-historical"
               : "snapshot-badge snapshot-badge-current"
           }
         >
-          {target.historical ? "Historical snapshot" : "Current snapshot"}
+          {historical ? "Historical snapshot" : "Current snapshot"}
         </span>
       </div>
 

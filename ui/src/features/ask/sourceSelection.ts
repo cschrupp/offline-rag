@@ -1,14 +1,40 @@
 import type { Source } from "../../api/types";
 
+export type SourceSelectionMode = "all" | "subset";
+
 export type SourceSelectionState = {
   knownSourceIds: string[];
   selectedSourceIds: string[];
+  mode: SourceSelectionMode;
 };
 
 const KEY_PREFIX = "seneca.source-selection.v1:";
 
 function storageKey(workspaceId: string): string {
   return `${KEY_PREFIX}${workspaceId}`;
+}
+
+function migrateLegacy(
+  knownSourceIds: string[],
+  selectedSourceIds: string[],
+  modeRaw: unknown,
+): SourceSelectionState {
+  if (modeRaw === "all" || modeRaw === "subset") {
+    return { knownSourceIds, selectedSourceIds, mode: modeRaw };
+  }
+  // Legacy shape without mode: empty known set was the EMPTY-workspace trap —
+  // treat as follow-all. Otherwise infer all vs subset from arrays.
+  if (knownSourceIds.length === 0) {
+    return { knownSourceIds, selectedSourceIds: [], mode: "all" };
+  }
+  const allSelected = knownSourceIds.every((id) =>
+    selectedSourceIds.includes(id),
+  );
+  return {
+    knownSourceIds,
+    selectedSourceIds,
+    mode: allSelected ? "all" : "subset",
+  };
 }
 
 function readRaw(workspaceId: string): SourceSelectionState | null {
@@ -28,7 +54,7 @@ function readRaw(workspaceId: string): SourceSelectionState | null {
     const selectedSourceIds = parsed.selectedSourceIds.filter(
       (id): id is string => typeof id === "string" && id.length > 0,
     );
-    return { knownSourceIds, selectedSourceIds };
+    return migrateLegacy(knownSourceIds, selectedSourceIds, parsed.mode);
   } catch {
     return null;
   }
@@ -53,31 +79,32 @@ export function reconcileSourceSelection(
   const prior = readRaw(workspaceId);
 
   if (!prior) {
-    const next = {
+    const next: SourceSelectionState = {
       knownSourceIds: activeIds,
       selectedSourceIds: activeIds,
+      mode: "all",
     };
     persistSourceSelection(workspaceId, next);
     return next;
   }
 
-  const knownSet = new Set(prior.knownSourceIds);
+  if (prior.mode === "all") {
+    const next: SourceSelectionState = {
+      knownSourceIds: activeIds,
+      selectedSourceIds: activeIds,
+      mode: "all",
+    };
+    persistSourceSelection(workspaceId, next);
+    return next;
+  }
+
   const selectedSet = new Set(
     prior.selectedSourceIds.filter((id) => activeIds.includes(id)),
   );
-  const previouslyAllSelected =
-    prior.knownSourceIds.length > 0 &&
-    prior.knownSourceIds.every((id) => prior.selectedSourceIds.includes(id));
-
-  for (const id of activeIds) {
-    if (!knownSet.has(id) && previouslyAllSelected) {
-      selectedSet.add(id);
-    }
-  }
-
   const next: SourceSelectionState = {
     knownSourceIds: activeIds,
     selectedSourceIds: activeIds.filter((id) => selectedSet.has(id)),
+    mode: "subset",
   };
   persistSourceSelection(workspaceId, next);
   return next;
@@ -93,11 +120,22 @@ export function setSourceSelected(
   const selectedSet = new Set(current.selectedSourceIds);
   if (selected) selectedSet.add(sourceId);
   else selectedSet.delete(sourceId);
+  const selectedSourceIds = sources
+    .map((source) => source.source_id)
+    .filter((id) => selectedSet.has(id));
+  // Uncheck → subset. Select-all is the only intentional path back to follow-all.
+  // Checking boxes while in subset (even to full) stays subset.
+  let mode: SourceSelectionMode = "subset";
+  if (selected && current.mode === "all") {
+    const stillAll =
+      sources.length > 0 &&
+      sources.every((source) => selectedSourceIds.includes(source.source_id));
+    mode = stillAll ? "all" : "subset";
+  }
   const next: SourceSelectionState = {
     knownSourceIds: sources.map((source) => source.source_id),
-    selectedSourceIds: sources
-      .map((source) => source.source_id)
-      .filter((id) => selectedSet.has(id)),
+    selectedSourceIds,
+    mode,
   };
   persistSourceSelection(workspaceId, next);
   return next;
@@ -110,6 +148,7 @@ export function selectAllSources(
   const next: SourceSelectionState = {
     knownSourceIds: sources.map((source) => source.source_id),
     selectedSourceIds: sources.map((source) => source.source_id),
+    mode: "all",
   };
   persistSourceSelection(workspaceId, next);
   return next;

@@ -43,7 +43,6 @@ import {
   appendAskHistory,
   loadAskHistory,
   newHistoryEntryId,
-  snapshotBadge,
   type AskHistoryEntry,
 } from "../features/ask/askHistory";
 import {
@@ -52,6 +51,7 @@ import {
   setSourceSelected,
   sourceIdsForQuery,
 } from "../features/ask/sourceSelection";
+import { useNarrowLayout } from "../features/ask/useNarrowLayout";
 import {
   forgetActiveOperation,
   isTerminalOperationStatus,
@@ -158,6 +158,7 @@ export function WorkspacePage() {
   );
   const [sourcesDrawerOpen, setSourcesDrawerOpen] = useState(false);
   const [evidenceDrawerOpen, setEvidenceDrawerOpen] = useState(false);
+  const isNarrowLayout = useNarrowLayout();
 
   if (historyWorkspaceId !== workspaceId) {
     const loaded = workspaceId ? loadAskHistory(workspaceId) : [];
@@ -170,6 +171,13 @@ export function WorkspacePage() {
     setAskError(null);
     setConflictHint(null);
     setSelectionSyncKey("");
+    setSourcesDrawerOpen(false);
+    setEvidenceDrawerOpen(false);
+  }
+
+  if (!isNarrowLayout && (sourcesDrawerOpen || evidenceDrawerOpen)) {
+    setSourcesDrawerOpen(false);
+    setEvidenceDrawerOpen(false);
   }
 
   const activeSources = sourcesQuery.data?.sources ?? [];
@@ -180,6 +188,14 @@ export function WorkspacePage() {
     const next = reconcileSourceSelection(workspaceId, activeSources);
     setSelectionSyncKey(selectionKey);
     setSelectedSourceIds(next.selectedSourceIds);
+  }
+
+  if (
+    previewTarget?.kind === "source" &&
+    sourcesQuery.data &&
+    !activeSources.some((source) => source.source_id === previewTarget.sourceId)
+  ) {
+    setPreviewTarget(null);
   }
 
   function settleTerminalOperation(operation: Operation) {
@@ -434,9 +450,7 @@ export function WorkspacePage() {
           workspaceId,
           citation: first,
           workspaceRevision: response.workspace_revision,
-          historical:
-            snapshotBadge(response.snapshot_id, workspace?.current_snapshot_id ?? null) ===
-            "historical",
+          querySnapshotId: response.snapshot_id,
         });
       } else {
         setPreviewTarget(null);
@@ -554,11 +568,12 @@ export function WorkspacePage() {
       workspaceId,
       citation,
       workspaceRevision: entry.response.workspace_revision,
-      historical:
-        snapshotBadge(entry.response.snapshot_id, workspace.current_snapshot_id) ===
-        "historical",
+      querySnapshotId: entry.response.snapshot_id,
     });
-    setEvidenceDrawerOpen(true);
+    if (isNarrowLayout) {
+      setSourcesDrawerOpen(false);
+      setEvidenceDrawerOpen(true);
+    }
   }
 
   function openSourcePreview(source: Source) {
@@ -567,13 +582,10 @@ export function WorkspacePage() {
       kind: "source",
       workspaceId,
       sourceId: source.source_id,
-      version: source.version,
-      displayName: source.display_name,
-      contentType: source.content_type,
-      workspaceRevision: workspace.revision,
-      historical: false,
     });
-    setEvidenceDrawerOpen(true);
+    if (isNarrowLayout) {
+      closeSourcesDrawerThen(() => setEvidenceDrawerOpen(true));
+    }
   }
 
   const sourceRail = (
@@ -638,6 +650,8 @@ export function WorkspacePage() {
       activeEntry={activeEntry}
       selectedCitation={selectedCitation}
       currentSnapshotId={workspace.current_snapshot_id}
+      currentSources={sources}
+      currentWorkspaceRevision={workspace.revision}
     />
   );
 
@@ -796,11 +810,7 @@ export function WorkspacePage() {
                   workspaceId,
                   citation: first,
                   workspaceRevision: entry.response.workspace_revision,
-                  historical:
-                    snapshotBadge(
-                      entry.response.snapshot_id,
-                      workspace.current_snapshot_id,
-                    ) === "historical",
+                  querySnapshotId: entry.response.snapshot_id,
                 });
               } else {
                 setPreviewTarget(null);
@@ -815,23 +825,27 @@ export function WorkspacePage() {
         </aside>
       </div>
 
-      <ResponsiveDrawer
-        open={sourcesDrawerOpen}
-        title="Sources"
-        side="start"
-        onClose={() => setSourcesDrawerOpen(false)}
-      >
-        {sourceRail}
-      </ResponsiveDrawer>
+      {isNarrowLayout ? (
+        <ResponsiveDrawer
+          open={sourcesDrawerOpen}
+          title="Sources"
+          side="start"
+          onClose={() => setSourcesDrawerOpen(false)}
+        >
+          {sourceRail}
+        </ResponsiveDrawer>
+      ) : null}
 
-      <ResponsiveDrawer
-        open={evidenceDrawerOpen}
-        title="Evidence"
-        side="end"
-        onClose={() => setEvidenceDrawerOpen(false)}
-      >
-        {evidencePanel}
-      </ResponsiveDrawer>
+      {isNarrowLayout ? (
+        <ResponsiveDrawer
+          open={evidenceDrawerOpen}
+          title="Evidence"
+          side="end"
+          onClose={() => setEvidenceDrawerOpen(false)}
+        >
+          {evidencePanel}
+        </ResponsiveDrawer>
+      ) : null}
 
       <ModalDialog
         open={editWorkspaceOpen}

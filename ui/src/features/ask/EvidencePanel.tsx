@@ -1,4 +1,4 @@
-import type { WorkspaceCitation } from "../../api/types";
+import type { Source, WorkspaceCitation } from "../../api/types";
 import { SourcePreview, type PreviewTarget } from "./SourcePreview";
 import { snapshotBadge, type AskHistoryEntry } from "./askHistory";
 
@@ -7,6 +7,8 @@ type Props = {
   activeEntry: AskHistoryEntry | null;
   selectedCitation: WorkspaceCitation | null;
   currentSnapshotId: string | null;
+  currentSources: Source[];
+  currentWorkspaceRevision: number;
 };
 
 export function EvidencePanel({
@@ -14,6 +16,8 @@ export function EvidencePanel({
   activeEntry,
   selectedCitation,
   currentSnapshotId,
+  currentSources,
+  currentWorkspaceRevision,
 }: Props) {
   const badge =
     activeEntry != null
@@ -23,7 +27,12 @@ export function EvidencePanel({
   return (
     <section className="evidence-panel stack" aria-labelledby="evidence-heading">
       <h2 id="evidence-heading">Evidence</h2>
-      <SourcePreview target={previewTarget} />
+      <SourcePreview
+        target={previewTarget}
+        currentSnapshotId={currentSnapshotId}
+        currentSources={currentSources}
+        currentWorkspaceRevision={currentWorkspaceRevision}
+      />
       {selectedCitation || activeEntry ? (
         <details className="provenance-disclosure">
           <summary>Provenance</summary>

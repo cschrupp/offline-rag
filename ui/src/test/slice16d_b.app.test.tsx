@@ -21,14 +21,78 @@ import {
 } from "../features/ask/askHistory";
 import {
   reconcileSourceSelection,
+  selectAllSources,
+  setSourceSelected,
   sourceIdsForQuery,
 } from "../features/ask/sourceSelection";
 import { buildTextLineWindow } from "../features/ask/previewText";
+import { NARROW_LAYOUT_MEDIA } from "../features/ask/useNarrowLayout";
 
 afterEach(() => {
   vi.restoreAllMocks();
   sessionStorage.clear();
+  document.getElementById("root")?.removeAttribute("inert");
 });
+
+function ensureAppRoot(): HTMLElement {
+  let root = document.getElementById("root");
+  if (!root) {
+    root = document.createElement("div");
+    root.id = "root";
+    document.body.appendChild(root);
+  }
+  return root;
+}
+
+function expectRootNotInert() {
+  expect(ensureAppRoot().hasAttribute("inert")).toBe(false);
+}
+
+/** Drive `useNarrowLayout` via the same 960px media query the CSS uses. */
+function mockViewport(matchesNarrow: boolean) {
+  let matches = matchesNarrow;
+  const listeners = new Set<() => void>();
+  const media = {
+    get matches() {
+      return matches;
+    },
+    media: NARROW_LAYOUT_MEDIA,
+    onchange: null as ((ev: MediaQueryListEvent) => void) | null,
+    addEventListener: (event: string, cb: () => void) => {
+      if (event === "change") listeners.add(cb);
+    },
+    removeEventListener: (event: string, cb: () => void) => {
+      if (event === "change") listeners.delete(cb);
+    },
+    addListener: (cb: () => void) => listeners.add(cb),
+    removeListener: (cb: () => void) => listeners.delete(cb),
+    dispatchEvent: () => true,
+  };
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn((query: string) => {
+      if (query !== NARROW_LAYOUT_MEDIA) {
+        return {
+          matches: false,
+          media: query,
+          addEventListener: () => undefined,
+          removeEventListener: () => undefined,
+          addListener: () => undefined,
+          removeListener: () => undefined,
+          dispatchEvent: () => true,
+          onchange: null,
+        };
+      }
+      return media;
+    }),
+  );
+  return {
+    setNarrow(next: boolean) {
+      matches = next;
+      listeners.forEach((cb) => cb());
+    },
+  };
+}
 
 function queryResponse(
   partial: Partial<WorkspaceQueryResponse> = {},
@@ -63,33 +127,107 @@ function queryResponse(
 }
 
 describe("Slice 16D-B source selection helpers", () => {
-  it("reconciles all-selected vs explicit subset when sources change", () => {
+  it("EMPTY workspace then first source selects under mode=all", () => {
+    const empty = reconcileSourceSelection("ws_empty", []);
+    expect(empty).toEqual({
+      knownSourceIds: [],
+      selectedSourceIds: [],
+      mode: "all",
+    });
+    const first = source({ source_id: "src_1", display_name: "First.pdf" });
+    const after = reconcileSourceSelection("ws_empty", [first]);
+    expect(after.mode).toBe("all");
+    expect(after.selectedSourceIds).toEqual(["src_1"]);
+  });
+
+  it("mode=all auto-selects newly added sources; mode=subset does not", () => {
     const a = source({ source_id: "src_a", display_name: "A.pdf" });
     const b = source({ source_id: "src_b", display_name: "B.pdf" });
     const first = reconcileSourceSelection("ws_sel", [a, b]);
+    expect(first.mode).toBe("all");
     expect(first.selectedSourceIds).toEqual(["src_a", "src_b"]);
 
-    const subset = {
-      knownSourceIds: ["src_a", "src_b"],
-      selectedSourceIds: ["src_a"],
-    };
-    sessionStorage.setItem(
-      "seneca.source-selection.v1:ws_sel",
-      JSON.stringify(subset),
-    );
     const c = source({ source_id: "src_c", display_name: "C.pdf" });
-    const afterSubset = reconcileSourceSelection("ws_sel", [a, b, c]);
-    expect(afterSubset.selectedSourceIds).toEqual(["src_a"]);
+    const afterAll = reconcileSourceSelection("ws_sel", [a, b, c]);
+    expect(afterAll.mode).toBe("all");
+    expect(afterAll.selectedSourceIds).toEqual(["src_a", "src_b", "src_c"]);
+
+    const subset = setSourceSelected("ws_sel", [a, b, c], "src_b", false);
+    expect(subset.mode).toBe("subset");
+    expect(subset.selectedSourceIds).toEqual(["src_a", "src_c"]);
+
+    const d = source({ source_id: "src_d", display_name: "D.pdf" });
+    const afterSubset = reconcileSourceSelection("ws_sel", [a, b, c, d]);
+    expect(afterSubset.mode).toBe("subset");
+    expect(afterSubset.selectedSourceIds).toEqual(["src_a", "src_c"]);
+  });
+
+  it("explicit zero-source subset stays zero when a source later appears", () => {
+    const a = source({ source_id: "src_a" });
+    reconcileSourceSelection("ws_zero", [a]);
+    const zero = setSourceSelected("ws_zero", [a], "src_a", false);
+    expect(zero).toEqual({
+      knownSourceIds: ["src_a"],
+      selectedSourceIds: [],
+      mode: "subset",
+    });
+    const gone = reconcileSourceSelection("ws_zero", []);
+    expect(gone.mode).toBe("subset");
+    expect(gone.selectedSourceIds).toEqual([]);
+    const b = source({ source_id: "src_b" });
+    const reappeared = reconcileSourceSelection("ws_zero", [b]);
+    expect(reappeared.mode).toBe("subset");
+    expect(reappeared.selectedSourceIds).toEqual([]);
+  });
+
+  it("Select all restores follow-all; removed sources leave selected IDs", () => {
+    const a = source({ source_id: "src_a" });
+    const b = source({ source_id: "src_b" });
+    reconcileSourceSelection("ws_all", [a, b]);
+    setSourceSelected("ws_all", [a, b], "src_a", false);
+    const restored = selectAllSources("ws_all", [a, b]);
+    expect(restored.mode).toBe("all");
+    expect(restored.selectedSourceIds).toEqual(["src_a", "src_b"]);
+
+    const afterRemove = reconcileSourceSelection("ws_all", [b]);
+    expect(afterRemove.mode).toBe("all");
+    expect(afterRemove.selectedSourceIds).toEqual(["src_b"]);
+    expect(afterRemove.knownSourceIds).toEqual(["src_b"]);
+  });
+
+  it("migrates legacy shapes and keeps selection per workspace", () => {
+    sessionStorage.setItem(
+      "seneca.source-selection.v1:ws_legacy_empty",
+      JSON.stringify({ knownSourceIds: [], selectedSourceIds: [] }),
+    );
+    const migratedEmpty = reconcileSourceSelection("ws_legacy_empty", []);
+    expect(migratedEmpty.mode).toBe("all");
 
     sessionStorage.setItem(
-      "seneca.source-selection.v1:ws_all",
+      "seneca.source-selection.v1:ws_legacy_subset",
       JSON.stringify({
         knownSourceIds: ["src_a", "src_b"],
-        selectedSourceIds: ["src_a", "src_b"],
+        selectedSourceIds: ["src_a"],
       }),
     );
-    const afterAll = reconcileSourceSelection("ws_all", [a, b, c]);
-    expect(afterAll.selectedSourceIds).toEqual(["src_a", "src_b", "src_c"]);
+    const a = source({ source_id: "src_a" });
+    const b = source({ source_id: "src_b" });
+    const c = source({ source_id: "src_c" });
+    const migratedSubset = reconcileSourceSelection("ws_legacy_subset", [
+      a,
+      b,
+      c,
+    ]);
+    expect(migratedSubset.mode).toBe("subset");
+    expect(migratedSubset.selectedSourceIds).toEqual(["src_a"]);
+
+    reconcileSourceSelection("ws_a", [a]);
+    reconcileSourceSelection("ws_b", [b]);
+    setSourceSelected("ws_a", [a], "src_a", false);
+    expect(reconcileSourceSelection("ws_b", [b]).selectedSourceIds).toEqual([
+      "src_b",
+    ]);
+    expect(reconcileSourceSelection("ws_a", [a]).mode).toBe("subset");
   });
 
   it("omits source_ids only when every active source is selected", () => {
@@ -357,8 +495,9 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
     mock.restore();
   });
 
-  it("loads historical citation via exact version+revision after snapshot change", async () => {
+  it("derives citation Current/Historical from workspace snapshot without re-click", async () => {
     const user = userEvent.setup();
+    mockViewport(false);
     let currentSnapshot = "snap_1";
     let revision = 5;
     const versionFetches: string[] = [];
@@ -434,21 +573,6 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
     expect(
       (await screen.findAllByText(/Current snapshot/i)).length,
     ).toBeGreaterThan(0);
-
-    currentSnapshot = "snap_2";
-    revision = 6;
-    await queryClient.invalidateQueries({ queryKey: ["workspace", "ws_1"] });
-    await queryClient.invalidateQueries({
-      queryKey: ["workspace", "ws_1", "sources"],
-    });
-    await waitFor(() => {
-      expect(screen.getAllByText(/Historical snapshot/i).length).toBeGreaterThan(
-        0,
-      );
-    });
-    await user.click(
-      screen.getByRole("button", { name: /1 · Alpha\.pdf · p\. 2/i }),
-    );
     await waitFor(() => {
       expect(versionFetches.some((url) => url.includes("/versions/1/content"))).toBe(
         true,
@@ -457,12 +581,293 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
         versionFetches.some((url) => url.includes("workspace_revision=5")),
       ).toBe(true);
     });
+    expect(await screen.findByText("VERSION_ONE_BYTES")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    currentSnapshot = "snap_2";
+    revision = 6;
+    await queryClient.invalidateQueries({ queryKey: ["workspace", "ws_1"] });
+    await queryClient.invalidateQueries({
+      queryKey: ["workspace", "ws_1", "sources"],
+    });
+    // Without re-clicking the citation: answer, provenance, and SourcePreview
+    // all flip to Historical while pinned bytes stay on v1 / revision 5.
+    await waitFor(() => {
+      expect(screen.getAllByText(/Historical snapshot/i).length).toBeGreaterThan(
+        0,
+      );
+    });
+    expect(screen.queryByText(/Current snapshot/i)).not.toBeInTheDocument();
+    expect(screen.getByText("VERSION_ONE_BYTES")).toBeInTheDocument();
     expect(versionFetches.some((url) => url.includes("/versions/2/"))).toBe(false);
+    mock.restore();
+  });
+
+  it("rebinds direct current-source preview after replace; clears when removed", async () => {
+    const user = userEvent.setup();
+    mockViewport(false);
+    let revision = 5;
+    let active: ReturnType<typeof source> | null = source({
+      source_id: "src_1",
+      display_name: "Alpha.pdf",
+      version: 1,
+    });
+    const versionFetches: string[] = [];
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces/ws_1" && call.method === "GET") {
+        return jsonResponse(
+          workspace({
+            workspace_id: "ws_1",
+            title: "Ask Desk",
+            revision,
+            source_count: active ? 1 : 0,
+            status: active ? "active" : "empty",
+            current_snapshot_id: active ? `snap_${active.version}` : null,
+          }),
+        );
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources") {
+        return jsonResponse({
+          workspace_id: "ws_1",
+          revision,
+          sources: active ? [active] : [],
+        });
+      }
+      if (call.url.includes("/versions/") && call.url.includes("/content")) {
+        versionFetches.push(call.url);
+        const version = call.url.includes("/versions/2/") ? "TWO" : "ONE";
+        return new Response(`VERSION_${version}_BYTES`, {
+          status: 200,
+          headers: { "Content-Type": "text/plain" },
+        });
+      }
+      return errorResponse("not_found", "x", 404);
+    });
+
+    const { queryClient } = renderApp("/workspaces/ws_1");
+    await user.click(await screen.findByRole("button", { name: "Alpha.pdf" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(versionFetches.some((url) => url.includes("/versions/1/content"))).toBe(
+        true,
+      );
+    });
+    expect(await screen.findByText("VERSION_ONE_BYTES")).toBeInTheDocument();
+    expect(screen.getAllByText(/Current snapshot/i).length).toBeGreaterThan(0);
+
+    active = source({
+      source_id: "src_1",
+      display_name: "Alpha.pdf",
+      version: 2,
+    });
+    revision = 6;
+    await queryClient.invalidateQueries({ queryKey: ["workspace", "ws_1"] });
+    await queryClient.invalidateQueries({
+      queryKey: ["workspace", "ws_1", "sources"],
+    });
+    await waitFor(() => {
+      expect(versionFetches.some((url) => url.includes("/versions/2/content"))).toBe(
+        true,
+      );
+      expect(
+        versionFetches.some((url) => url.includes("workspace_revision=6")),
+      ).toBe(true);
+    });
+    expect(await screen.findByText("VERSION_TWO_BYTES")).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("heading", { name: "Evidence" }).closest("section")!).getByText(
+        /^Version 2$/,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("VERSION_ONE_BYTES")).not.toBeInTheDocument();
+    expect(screen.getAllByText(/Current snapshot/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Historical snapshot/i)).not.toBeInTheDocument();
+
+    active = null;
+    revision = 7;
+    await queryClient.invalidateQueries({ queryKey: ["workspace", "ws_1"] });
+    await queryClient.invalidateQueries({
+      queryKey: ["workspace", "ws_1", "sources"],
+    });
+    await waitFor(() => {
+      expect(screen.queryByText("VERSION_TWO_BYTES")).not.toBeInTheDocument();
+      expect(
+        screen.getByText(
+          /Ask a question or choose a source to inspect its evidence/i,
+        ),
+      ).toBeInTheDocument();
+    });
+    mock.restore();
+  });
+
+  it("desktop citation and source preview never mount Evidence drawer dialogs", async () => {
+    const user = userEvent.setup();
+    mockViewport(false);
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces/ws_1" && call.method === "GET") {
+        return jsonResponse(
+          workspace({
+            workspace_id: "ws_1",
+            title: "Ask Desk",
+            revision: 5,
+            source_count: 1,
+            status: "active",
+            current_snapshot_id: "snap_1",
+          }),
+        );
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources") {
+        return jsonResponse({
+          workspace_id: "ws_1",
+          revision: 5,
+          sources: [source({ source_id: "src_1", display_name: "Alpha.pdf" })],
+        });
+      }
+      if (call.url === "/v1/workspaces/ws_1/query" && call.method === "POST") {
+        return jsonResponse(queryResponse());
+      }
+      if (call.url.includes("/versions/") && call.url.includes("/content")) {
+        return new Response("BYTES", {
+          status: 200,
+          headers: { "Content-Type": "application/pdf" },
+        });
+      }
+      return errorResponse("not_found", "x", 404);
+    });
+
+    renderApp("/workspaces/ws_1");
+    await user.click(await screen.findByRole("button", { name: "Alpha.pdf" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expectRootNotInert();
+
+    await user.type(screen.getByLabelText("Question"), "Cite?");
+    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await user.click(
+      await screen.findByRole("button", { name: /1 · Week02\.pdf · p\. 14/i }),
+    );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expectRootNotInert();
+    mock.restore();
+  });
+
+  it("mobile Sources → source preview closes Sources then opens one Evidence drawer", async () => {
+    const user = userEvent.setup();
+    ensureAppRoot();
+    mockViewport(true);
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces/ws_1" && call.method === "GET") {
+        return jsonResponse(
+          workspace({
+            workspace_id: "ws_1",
+            title: "Ask Desk",
+            revision: 5,
+            source_count: 1,
+            status: "active",
+            current_snapshot_id: "snap_1",
+          }),
+        );
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources") {
+        return jsonResponse({
+          workspace_id: "ws_1",
+          revision: 5,
+          sources: [source({ source_id: "src_1", display_name: "Alpha.pdf" })],
+        });
+      }
+      if (call.url.includes("/versions/") && call.url.includes("/content")) {
+        return new Response("BYTES", {
+          status: 200,
+          headers: { "Content-Type": "text/plain" },
+        });
+      }
+      return errorResponse("not_found", "x", 404);
+    });
+
+    renderApp("/workspaces/ws_1");
+    const sourcesBtn = await screen.findByRole("button", { name: "Sources" });
+    await user.click(sourcesBtn);
+    const sourcesDrawer = await screen.findByRole("dialog", { name: "Sources" });
+    await user.click(within(sourcesDrawer).getByRole("button", { name: "Alpha.pdf" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: "Sources" })).not.toBeInTheDocument();
+    });
+    const evidenceDrawer = await screen.findByRole("dialog", { name: "Evidence" });
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    expect(within(evidenceDrawer).getByText("Alpha.pdf")).toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+    expectRootNotInert();
+    mock.restore();
+  });
+
+  it("mobile citation opens exactly one Evidence drawer; desktop transition closes it", async () => {
+    const user = userEvent.setup();
+    ensureAppRoot();
+    const viewport = mockViewport(true);
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces/ws_1" && call.method === "GET") {
+        return jsonResponse(
+          workspace({
+            workspace_id: "ws_1",
+            title: "Ask Desk",
+            revision: 5,
+            source_count: 1,
+            status: "active",
+            current_snapshot_id: "snap_1",
+          }),
+        );
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources") {
+        return jsonResponse({
+          workspace_id: "ws_1",
+          revision: 5,
+          sources: [source({ source_id: "src_1", display_name: "Alpha.pdf" })],
+        });
+      }
+      if (call.url === "/v1/workspaces/ws_1/query" && call.method === "POST") {
+        return jsonResponse(queryResponse());
+      }
+      if (call.url.includes("/versions/") && call.url.includes("/content")) {
+        return new Response("BYTES", {
+          status: 200,
+          headers: { "Content-Type": "application/pdf" },
+        });
+      }
+      return errorResponse("not_found", "x", 404);
+    });
+
+    renderApp("/workspaces/ws_1");
+    await user.type(await screen.findByLabelText("Question"), "Cite mobile?");
+    await user.click(screen.getByRole("button", { name: "Ask" }));
+    expect(screen.queryByRole("dialog", { name: "Evidence" })).not.toBeInTheDocument();
+    await user.click(
+      await screen.findByRole("button", { name: /1 · Week02\.pdf · p\. 14/i }),
+    );
+    expect(await screen.findByRole("dialog", { name: "Evidence" })).toBeInTheDocument();
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+
+    viewport.setNarrow(false);
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+    expectRootNotInert();
     mock.restore();
   });
 
   it("opens Sources drawer without nesting a second dialog for Add sources", async () => {
     const user = userEvent.setup();
+    mockViewport(true);
     const mock = installFetchMock(async (call) => {
       if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
       if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
@@ -484,7 +889,6 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
       return errorResponse("not_found", "x", 404);
     });
 
-    // Force narrow layout classes are CSS-only; exercise drawer controls directly.
     renderApp("/workspaces/ws_1");
     await user.click(await screen.findByRole("button", { name: "Sources" }));
     const drawer = await screen.findByRole("dialog", { name: "Sources" });
