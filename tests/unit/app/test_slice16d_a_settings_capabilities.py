@@ -1133,3 +1133,84 @@ def test_f9d_both_locked_and_approved_no_product_approval_required(
     assert raw["generation"]["timeout_seconds"] == 33
     assert "base_url" not in raw["generation"]
     assert "model" not in raw["generation"]
+
+
+def test_f10_probe_keep_honors_explicit_product_api_key_clear(tmp_path: Path) -> None:
+    """Keep after product null clear must not resurrect the ACTIVE YAML secret."""
+    yaml_path = tmp_path / "with_key.yaml"
+    yaml_path.write_text(
+        yaml.dump(
+            {
+                "generation": {
+                    "api_key": "yaml-secret",
+                    "base_url": APPROVED_ENDPOINT,
+                    "model": APPROVED_MODEL,
+                    "approved_endpoints": [APPROVED_ENDPOINT],
+                    "approved_models": [APPROVED_MODEL],
+                    "enabled": True,
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    settings = _settings(tmp_path, yaml_paths=[BASE_YAML, yaml_path])
+    assert settings.generation.api_key == "yaml-secret"
+
+    captured_keys: list[str | None] = []
+
+    def _recording_probe(self):  # type: ignore[no-untyped-def]
+        captured_keys.append(self.settings.generation.api_key)
+        headers = self._request_headers()
+        assert "Authorization" not in headers
+        assert "yaml-secret" not in json.dumps(headers)
+        return GeneratorProbeResult(ok=True, reason="ok", available_models=(APPROVED_MODEL,))
+
+    with patch(
+        "offline_rag.api.settings.OpenAICompatibleGenerator.probe",
+        _recording_probe,
+    ), _client(settings) as client:
+        get_active = client.get("/v1/settings/generation").json()
+        assert get_active["active"]["api_key_configured"] is True
+
+        cleared = client.put(
+            "/v1/settings/generation",
+            json={
+                "enabled": True,
+                "base_url": APPROVED_ENDPOINT,
+                "model": APPROVED_MODEL,
+                "timeout_seconds": 120,
+                "api_key_action": "clear",
+            },
+        )
+        assert cleared.status_code == 200, cleared.text
+        assert cleared.json()["pending"]["api_key_configured"] is False
+
+        raw = json.loads(
+            (settings.paths.product_settings / "seneca-generation.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        assert "api_key" in raw["generation"]
+        assert raw["generation"]["api_key"] is None
+
+        after_save = client.get("/v1/settings/generation").json()
+        assert after_save["pending"]["api_key_configured"] is False
+        assert after_save["active"]["api_key_configured"] is True
+
+        probe = client.post(
+            "/v1/settings/generation/probe",
+            json={
+                "enabled": True,
+                "base_url": APPROVED_ENDPOINT,
+                "model": APPROVED_MODEL,
+                "timeout_seconds": 120,
+                "api_key_action": "keep",
+                "api_key": None,
+            },
+        )
+        assert probe.status_code == 200
+        assert probe.json()["ok"] is True
+
+    assert captured_keys
+    assert all(key is None for key in captured_keys)
+    assert "yaml-secret" not in captured_keys

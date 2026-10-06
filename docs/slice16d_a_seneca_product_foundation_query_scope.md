@@ -4,7 +4,7 @@ STATUS: IMPLEMENTATION CANDIDATE
 HUMAN ACCEPTANCE: PENDING
 
 Authorized baseline: `185d3e3d2bd472ffaddf72cfddc49c7e38a3a146`
-Prior candidate (review disposition REWORK REQUIRED): `ae63c0f16e1452b3d8ff0859e5c7674336808e94`
+Prior candidate (review disposition REWORK REQUIRED): `5864e06c57368dcc432ea8867ecd681f99841434`
 A1 authority: `5060e2aeb4825f265072a1f870c3c963eace3b30`
 Branch: `implementation/16d-a-seneca-product-foundation-query-scope`
 
@@ -71,6 +71,8 @@ Branch: `implementation/16d-a-seneca-product-foundation-query-scope`
 - **Rework:** pending `api_key_configured` reflects effective future key under
   YAML / product-managed null / env-lock precedence (omit preserves YAML;
   explicit product null clears YAML)
+- **Rework 3:** probe `api_key_action=keep` honors explicit product `api_key: null`
+  and does not resurrect ACTIVE/YAML secrets for prospective Test Connection
 - **Rework 2:** endpoint and model approval authority are independent; product
   may own only model or only endpoint; locked selection is omitted from the
   durable product file (no duplicated operator approval)
@@ -125,6 +127,7 @@ Disposition: **REWORK REQUIRED** against candidate
 `0a5bb534440737bcf0b02b3630c4b175fd00c159` (rework 1 → `ae63c0f…`).
 
 Rework 1 addressed F1–F7. Rework 2 addresses F8–F9 on the same branch.
+Rework 3 addresses F10 (probe keep after explicit product API-key clear).
 No merge, no self-accept, no 16D-B/C.
 
 ### Rework 2
@@ -134,11 +137,17 @@ No merge, no self-accept, no 16D-B/C.
 - F9: field-specific endpoint/model lock semantics; partial-ownership product
   overlay; mixed-authority pending; partial-lock save/probe matrix
 
+### Rework 3
+
+- F10: `POST /v1/settings/generation/probe` with `api_key_action=keep` uses the
+  product-managed key exactly when the product file owns `api_key` (including
+  explicit null); omitted product key continues to inherit ACTIVE/YAML
+
 ## Tests run
 
 Backend (selected):
 
-- `tests/unit/app/test_slice16d_a_settings_capabilities.py` — passed (F1/F2/F6/F9)
+- `tests/unit/app/test_slice16d_a_settings_capabilities.py` — passed (F1/F2/F6/F9/F10)
 - `tests/unit/app/test_slice16d_a_query_scope.py` — passed (F3/F4/F8 + E2E)
 - `tests/unit/app/test_slice15e_product_query_traces.py` — passed
 - `tests/unit/app/test_slice16b_query_binding.py` — passed

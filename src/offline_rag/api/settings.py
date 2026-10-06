@@ -280,23 +280,32 @@ def probe_generation_settings(
         }
 
     existing_key = None
+    product_key_managed = False
     try:
         product = read_product_generation_settings(settings.paths.product_settings)
+        product_key_managed = product_api_key_is_managed(
+            settings.paths.product_settings
+        )
         if product is not None:
             existing_key = product.generation.api_key
     except ValueError:
         existing_key = settings.generation.api_key
+        product_key_managed = False
+
     if locks.get("api_key"):
         resolved_key = settings.generation.api_key
+    elif body.api_key_action == "keep":
+        # Keep must honor explicit product null (managed clear) and must not
+        # resurrect ACTIVE/YAML secrets that the pending product config cleared.
+        if product_key_managed:
+            resolved_key = existing_key
+        else:
+            resolved_key = settings.generation.api_key
     else:
         resolved_key = _resolve_api_key_for_write(
             action=body.api_key_action,
             supplied=body.api_key,
-            existing=(
-                existing_key
-                if existing_key is not None
-                else settings.generation.api_key
-            ),
+            existing=existing_key if product_key_managed else settings.generation.api_key,
         )
 
     approved_endpoints, approved_models = _probe_approvals(
