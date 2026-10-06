@@ -229,7 +229,7 @@ describe("workspace patch / remove", () => {
     expect(await screen.findByDisplayValue("Station Desk")).toBeInTheDocument();
     await user.clear(screen.getByLabelText("Title"));
     await user.type(screen.getByLabelText("Title"), "My Title");
-    await user.click(screen.getByRole("button", { name: "Save metadata" }));
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
     expect(
       await screen.findByText(/workspace changed since you last loaded it/i),
     ).toBeInTheDocument();

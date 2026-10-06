@@ -585,6 +585,7 @@ export function WorkspacePage() {
         <WorkspaceMetadataForm
           key={workspace.workspace_id}
           workspace={workspace}
+          onSaved={() => setEditWorkspaceOpen(false)}
           onRemoved={() => {
             setEditWorkspaceOpen(false);
             void navigate("/workspaces");

@@ -467,3 +467,186 @@ describe("Slice 16D-A SourceActionsMenu keyboard (F7)", () => {
     mock.restore();
   });
 });
+
+describe("Slice 16D-A Edit workspace modal UX (F11)", () => {
+  it("shows Close, restores focus, Escape dismisses, and successful save closes", async () => {
+    const user = userEvent.setup();
+    let revision = 2;
+    let title = "Edit Desk";
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces/ws_1" && call.method === "GET") {
+        return jsonResponse(
+          workspace({
+            workspace_id: "ws_1",
+            title,
+            revision,
+            source_count: 1,
+            status: "active",
+          }),
+        );
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources") {
+        return jsonResponse({
+          workspace_id: "ws_1",
+          revision,
+          sources: [source({ source_id: "src_1", display_name: "manual.pdf" })],
+        });
+      }
+      if (call.url === "/v1/workspaces/ws_1" && call.method === "PATCH") {
+        title = "Renamed Desk";
+        revision = 3;
+        return jsonResponse(
+          workspace({
+            workspace_id: "ws_1",
+            title,
+            revision,
+            source_count: 1,
+            status: "active",
+          }),
+        );
+      }
+      return errorResponse("not_found", "x", 404);
+    });
+
+    renderApp("/workspaces/ws_1");
+    const editButton = await screen.findByRole("button", { name: "Edit" });
+    await user.click(editButton);
+    const dialog = await screen.findByRole("dialog", { name: /edit workspace/i });
+    const closeButton = within(dialog).getByRole("button", { name: "Close" });
+    expect(closeButton).toBeEnabled();
+
+    await user.click(closeButton);
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: /edit workspace/i })).not.toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(document.activeElement).toBe(editButton);
+    });
+
+    await user.click(editButton);
+    expect(
+      await screen.findByRole("dialog", { name: /edit workspace/i }),
+    ).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: /edit workspace/i })).not.toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(document.activeElement).toBe(editButton);
+    });
+
+    await user.click(editButton);
+    const openDialog = await screen.findByRole("dialog", { name: /edit workspace/i });
+    await user.clear(within(openDialog).getByLabelText("Title"));
+    await user.type(within(openDialog).getByLabelText("Title"), "Renamed Desk");
+    await user.click(
+      within(openDialog).getByRole("button", { name: "Save changes" }),
+    );
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: /edit workspace/i })).not.toBeInTheDocument();
+    });
+    expect(await screen.findByRole("heading", { name: "Renamed Desk" })).toBeInTheDocument();
+    mock.restore();
+  });
+
+  it("keeps Edit dialog open when metadata save fails", async () => {
+    const user = userEvent.setup();
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces/ws_1" && call.method === "GET") {
+        return jsonResponse(
+          workspace({
+            workspace_id: "ws_1",
+            title: "Fail Edit",
+            revision: 2,
+            source_count: 1,
+            status: "active",
+          }),
+        );
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources") {
+        return jsonResponse({
+          workspace_id: "ws_1",
+          revision: 2,
+          sources: [source({ source_id: "src_1", display_name: "manual.pdf" })],
+        });
+      }
+      if (call.url === "/v1/workspaces/ws_1" && call.method === "PATCH") {
+        return errorResponse(
+          "workspace_conflict",
+          "Workspace revision or state conflict",
+          409,
+        );
+      }
+      return errorResponse("not_found", "x", 404);
+    });
+
+    renderApp("/workspaces/ws_1");
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    const dialog = await screen.findByRole("dialog", { name: /edit workspace/i });
+    await user.click(within(dialog).getByRole("button", { name: "Save changes" }));
+    expect(
+      await within(dialog).findByText(/workspace changed since you last loaded it/i),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: /edit workspace/i })).toBeInTheDocument();
+    mock.restore();
+  });
+
+  it("exposes Close on Add sources and disables it while uploading", async () => {
+    const user = userEvent.setup();
+    let releaseAdd: ((response: Response) => void) | null = null;
+    const addGate = new Promise<Response>((resolve) => {
+      releaseAdd = resolve;
+    });
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces/ws_1" && call.method === "GET") {
+        return jsonResponse(
+          workspace({
+            workspace_id: "ws_1",
+            title: "Add Desk",
+            revision: 1,
+            source_count: 0,
+            status: "empty",
+            current_snapshot_id: null,
+          }),
+        );
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources" && call.method === "GET") {
+        return jsonResponse({ workspace_id: "ws_1", revision: 1, sources: [] });
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources" && call.method === "POST") {
+        return addGate;
+      }
+      return errorResponse("not_found", "x", 404);
+    });
+
+    renderApp("/workspaces/ws_1");
+    const addButtons = await screen.findAllByRole("button", { name: "+ Add sources" });
+    await user.click(addButtons[0]);
+    const dialog = await screen.findByRole("dialog", { name: /add sources/i });
+    expect(within(dialog).getByRole("button", { name: "Close" })).toBeEnabled();
+
+    const fileInput = within(dialog).getByLabelText(/source files/i);
+    await user.upload(fileInput, new File(["pump"], "pump.txt", { type: "text/plain" }));
+    await user.click(within(dialog).getByRole("button", { name: /^add sources$/i }));
+    await waitFor(() => {
+      expect(within(dialog).getByRole("button", { name: "Close" })).toBeDisabled();
+    });
+    releaseAdd?.(
+      jsonResponse(
+        operation({
+          operation_id: "op_add",
+          status: "succeeded",
+          progress_stage: "ready",
+        }),
+        { status: 202 },
+      ),
+    );
+    mock.restore();
+  });
+});

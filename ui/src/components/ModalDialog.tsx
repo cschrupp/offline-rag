@@ -6,6 +6,7 @@ import {
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
+import { X } from "lucide-react";
 
 const FOCUSABLE_SELECTOR = [
   "a[href]",
@@ -115,7 +116,20 @@ export function ModalDialog({
         ref={dialogRef}
         tabIndex={-1}
       >
-        <h2 id={titleId}>{title}</h2>
+        <div className="dialog-header">
+          <h2 id={titleId}>{title}</h2>
+          <button
+            type="button"
+            className="dialog-close"
+            aria-label="Close"
+            disabled={busy}
+            onClick={() => {
+              if (!busy) onClose();
+            }}
+          >
+            <X aria-hidden="true" size={18} strokeWidth={2} />
+          </button>
+        </div>
         {description ? <p id={descriptionId}>{description}</p> : null}
         {children}
       </div>

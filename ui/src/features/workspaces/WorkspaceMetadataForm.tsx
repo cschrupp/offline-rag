@@ -11,13 +11,13 @@ import {
 import { queryKeys } from "../../api/queryKeys";
 import type { Workspace } from "../../api/types";
 import { Button } from "../../components/Button";
-import { Card } from "../../components/Card";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { TextArea, TextInput } from "../../components/Field";
 
 type Props = {
   workspace: Workspace;
   onRemoved: () => void;
+  onSaved?: (workspace: Workspace) => void;
 };
 
 type FormSnapshot = {
@@ -26,7 +26,11 @@ type FormSnapshot = {
   description: string;
 };
 
-export function WorkspaceMetadataForm({ workspace, onRemoved }: Props) {
+export function WorkspaceMetadataForm({
+  workspace,
+  onRemoved,
+  onSaved,
+}: Props) {
   const queryClient = useQueryClient();
   const patchIntent = useRef(IntentHandle.newIntent());
   const removeIntent = useRef(IntentHandle.newIntent());
@@ -74,6 +78,7 @@ export function WorkspaceMetadataForm({ workspace, onRemoved }: Props) {
       void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces });
       setMetaError(null);
       patchIntent.current.reset();
+      onSaved?.(updated);
     },
     onError: (error) => {
       if (isApiError(error) && error.code === "workspace_conflict") {
@@ -144,8 +149,7 @@ export function WorkspaceMetadataForm({ workspace, onRemoved }: Props) {
   }
 
   return (
-    <Card>
-      <h2>Workspace metadata</h2>
+    <div className="stack">
       <form className="stack" onSubmit={onSubmit}>
         <TextInput
           id="edit-title"
@@ -176,7 +180,7 @@ export function WorkspaceMetadataForm({ workspace, onRemoved }: Props) {
         ) : null}
         <div className="row">
           <Button type="submit" disabled={patchMutation.isPending}>
-            Save metadata
+            Save changes
           </Button>
           <Button
             variant="danger"
@@ -197,6 +201,6 @@ export function WorkspaceMetadataForm({ workspace, onRemoved }: Props) {
         onCancel={() => setRemoveOpen(false)}
         onConfirm={() => deleteMutation.mutate()}
       />
-    </Card>
+    </div>
   );
 }

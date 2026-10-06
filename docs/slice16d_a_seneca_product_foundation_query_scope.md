@@ -4,7 +4,7 @@ STATUS: IMPLEMENTATION CANDIDATE
 HUMAN ACCEPTANCE: PENDING
 
 Authorized baseline: `185d3e3d2bd472ffaddf72cfddc49c7e38a3a146`
-Prior candidate (review disposition REWORK REQUIRED): `5864e06c57368dcc432ea8867ecd681f99841434`
+Prior candidate (review disposition REWORK REQUIRED): `d147a49b7e74da09f8d75ca6ec4b4069702a8b01`
 A1 authority: `5060e2aeb4825f265072a1f870c3c963eace3b30`
 Branch: `implementation/16d-a-seneca-product-foundation-query-scope`
 
@@ -97,6 +97,8 @@ Branch: `implementation/16d-a-seneca-product-foundation-query-scope`
   message/code / retry guidance (local terminal surface; not bootstrap-dependent)
 - **Rework:** `SourceActionsMenu` implements ArrowUp/Down, Home/End, Escape +
   focus restoration under `role="menu"`
+- **Rework 4 (F11):** reusable `ModalDialog` visible Close (×) control; Edit
+  workspace Save changes closes on success and restores focus to Edit
 
 ## Source-scope query substrate
 
@@ -128,6 +130,7 @@ Disposition: **REWORK REQUIRED** against candidate
 
 Rework 1 addressed F1–F7. Rework 2 addresses F8–F9 on the same branch.
 Rework 3 addresses F10 (probe keep after explicit product API-key clear).
+Rework 4 addresses F11 (Edit workspace / ModalDialog close UX from manual test).
 No merge, no self-accept, no 16D-B/C.
 
 ### Rework 2
@@ -142,6 +145,12 @@ No merge, no self-accept, no 16D-B/C.
 - F10: `POST /v1/settings/generation/probe` with `api_key_action=keep` uses the
   product-managed key exactly when the product file owns `api_key` (including
   explicit null); omitted product key continues to inherit ACTIVE/YAML
+
+### Rework 4
+
+- F11: `ModalDialog` always exposes a visible Close button (`aria-label="Close"`,
+  disabled while `busy`); successful Edit workspace Save changes closes the
+  dialog; failed save keeps it open
 
 ## Tests run
 
@@ -166,7 +175,7 @@ Frontend (unchanged in rework 2; prior rework 1 evidence retained):
 
 - `npm run lint` — passed
 - `npm run typecheck` — passed
-- `npm test` — 30 passed (incl. F5 FAILED/INTERRUPTED + F7 menu keyboard)
+- `npm test` — 33 passed (incl. F5/F7/F11 modal close + save-dismiss)
 - `npm run build` — passed
 
 ## Known limitations
