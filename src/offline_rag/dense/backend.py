@@ -54,8 +54,13 @@ class DenseIndexBackend(Protocol):
         *,
         query_vector: list[float],
         top_k: int,
+        document_ids: frozenset[str] | None = None,
     ) -> list[DenseSearchHit]:
-        """Return ranked hits for ``query_vector``."""
+        """Return ranked hits for ``query_vector``.
+
+        When ``document_ids`` is provided, backends MUST apply the scope before
+        ``top_k`` (pre-ranking filter). ``None`` preserves unscoped behavior.
+        """
 
     def get_point(self, collection_name: str, point_id: str) -> DensePointRecord | None:
         """Fetch one point by ID, or None if missing."""

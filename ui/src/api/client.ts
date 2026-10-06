@@ -1,5 +1,8 @@
 import { ApiError, parseErrorEnvelope } from "./errors";
 import type {
+  Capabilities,
+  GenerationProbeResult,
+  GenerationSettingsState,
   HealthReady,
   Operation,
   Source,
@@ -255,4 +258,49 @@ export function getOperation(
   signal?: AbortSignal,
 ): Promise<Operation> {
   return apiRequest<Operation>(`/v1/operations/${operationId}`, { signal });
+}
+
+export function getCapabilities(signal?: AbortSignal): Promise<Capabilities> {
+  return apiRequest<Capabilities>("/v1/capabilities", { signal });
+}
+
+export function getGenerationSettings(
+  signal?: AbortSignal,
+): Promise<GenerationSettingsState> {
+  return apiRequest<GenerationSettingsState>("/v1/settings/generation", {
+    signal,
+  });
+}
+
+export function probeGenerationSettings(body: {
+  enabled: boolean;
+  base_url: string;
+  model: string;
+  timeout_seconds: number;
+  api_key?: string | null;
+  api_key_action: "keep" | "set" | "clear";
+}): Promise<GenerationProbeResult> {
+  return apiRequest<GenerationProbeResult>("/v1/settings/generation/probe", {
+    method: "POST",
+    json: body,
+  });
+}
+
+export function saveGenerationSettings(body: {
+  enabled: boolean;
+  base_url: string;
+  model: string;
+  timeout_seconds: number;
+  api_key?: string | null;
+  api_key_action: "keep" | "set" | "clear";
+}): Promise<{
+  saved: boolean;
+  restart_required: boolean;
+  pending: GenerationSettingsState["pending"];
+  active: GenerationSettingsState["active"];
+}> {
+  return apiRequest("/v1/settings/generation", {
+    method: "PUT",
+    json: body,
+  });
 }

@@ -406,7 +406,13 @@ describe("F3 accessible dialogs and nested interactives", () => {
     });
 
     renderApp("/workspaces/ws_1");
-    const removeBtn = await screen.findByRole("button", { name: "Remove workspace" });
+    const actionsBtn = await screen.findByRole("button", {
+      name: "Actions for sops.pdf",
+    });
+    await user.click(actionsBtn);
+    const removeBtn = await screen.findByRole("menuitem", {
+      name: "Remove source",
+    });
     await user.click(removeBtn);
     const dialog = await screen.findByRole("alertdialog");
     await waitFor(() => {
@@ -425,7 +431,7 @@ describe("F3 accessible dialogs and nested interactives", () => {
       expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     });
     await waitFor(() => {
-      expect(document.activeElement).toBe(removeBtn);
+      expect(document.activeElement).toBe(actionsBtn);
     });
     mock.restore();
   });
@@ -447,8 +453,11 @@ describe("F3 accessible dialogs and nested interactives", () => {
     });
 
     renderApp("/workspaces/ws_1");
-    const renameBtn = await screen.findByRole("button", { name: "Rename" });
-    await user.click(renameBtn);
+    const actionsBtn = await screen.findByRole("button", {
+      name: "Actions for sops.pdf",
+    });
+    await user.click(actionsBtn);
+    await user.click(screen.getByRole("menuitem", { name: "Rename source" }));
     const renameDialog = await screen.findByRole("dialog", {
       name: /rename display label/i,
     });
@@ -458,11 +467,13 @@ describe("F3 accessible dialogs and nested interactives", () => {
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     await waitFor(() => {
-      expect(document.activeElement).toBe(renameBtn);
+      expect(document.activeElement).toBe(actionsBtn);
     });
 
-    const replaceBtn = screen.getByRole("button", { name: "Replace current version" });
-    await user.click(replaceBtn);
+    await user.click(actionsBtn);
+    await user.click(
+      screen.getByRole("menuitem", { name: "Replace current version" }),
+    );
     const replaceDialog = await screen.findByRole("dialog", {
       name: /replace current version/i,
     });
@@ -474,7 +485,7 @@ describe("F3 accessible dialogs and nested interactives", () => {
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     await waitFor(() => {
-      expect(document.activeElement).toBe(replaceBtn);
+      expect(document.activeElement).toBe(actionsBtn);
     });
     mock.restore();
   });
@@ -489,7 +500,7 @@ describe("F3 accessible dialogs and nested interactives", () => {
     });
 
     const first = renderApp("/");
-    await screen.findByRole("heading", { name: "OfflineRAG" });
+    await screen.findByRole("heading", { name: "Seneca" });
     expect(first.container.querySelector("a button")).toBeNull();
     first.unmount();
     mock.restore();

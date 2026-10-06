@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
+import { Settings } from "lucide-react";
 
 export function AppShell() {
   const [navOpen, setNavOpen] = useState(false);
@@ -13,9 +14,12 @@ export function AppShell() {
         <div className="app-header-inner">
           <NavLink to="/" className="brand" onClick={() => setNavOpen(false)}>
             <span className="brand-mark" aria-hidden="true">
-              OR
+              <img src="/favicon.svg" alt="" width={28} height={28} />
             </span>
-            <span>OfflineRAG</span>
+            <span className="brand-text">
+              <span className="brand-name">Seneca</span>
+              <span className="brand-descriptor">Grounded knowledge workspace</span>
+            </span>
           </NavLink>
           <button
             type="button"
@@ -36,6 +40,15 @@ export function AppShell() {
             </NavLink>
             <NavLink to="/workspaces" onClick={() => setNavOpen(false)}>
               Workspaces
+            </NavLink>
+            <NavLink
+              to="/settings"
+              className="nav-settings"
+              onClick={() => setNavOpen(false)}
+              aria-label="Settings"
+            >
+              <Settings size={18} aria-hidden="true" />
+              <span>Settings</span>
             </NavLink>
           </nav>
         </div>

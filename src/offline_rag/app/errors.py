@@ -70,6 +70,9 @@ class ErrorCode(StrEnum):
     OPERATION_UNKNOWN = "operation_unknown"
     IDEMPOTENCY_CONFLICT = "idempotency_conflict"
     WORKSPACE_STATE_UNAVAILABLE = "workspace_state_unavailable"
+    SETTINGS_INVALID = "settings_invalid"
+    SETTINGS_LOCKED = "settings_locked"
+    SETTINGS_PROBE_FAILED = "settings_probe_failed"
 
 
 @dataclass(frozen=True, slots=True)
@@ -124,6 +127,13 @@ ERROR_CATALOG: dict[ErrorCode, ErrorSpec] = {
     ),
     ErrorCode.WORKSPACE_STATE_UNAVAILABLE: ErrorSpec(
         409, False, "Workspace durable state cannot be bound safely"
+    ),
+    ErrorCode.SETTINGS_INVALID: ErrorSpec(422, False, "Settings validation failed"),
+    ErrorCode.SETTINGS_LOCKED: ErrorSpec(
+        409, False, "Setting is locked by operator configuration"
+    ),
+    ErrorCode.SETTINGS_PROBE_FAILED: ErrorSpec(
+        409, True, "Generation connection probe failed"
     ),
 }
 

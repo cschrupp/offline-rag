@@ -362,7 +362,10 @@ def _stub_outcome(
         snapshot: CorpusReadSnapshot,
         question: str,
         control: Any = None,
+        document_ids: Any = None,
+        source_scope: Any = None,
     ) -> BoundSnapshotQueryOutcome:
+        del document_ids, source_scope
         captured.append(snapshot)
         rows = citations
         if rows is None:

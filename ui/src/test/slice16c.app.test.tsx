@@ -34,7 +34,7 @@ describe("application shell", () => {
     });
 
     renderApp("/");
-    expect(await screen.findByRole("heading", { name: "OfflineRAG" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Seneca" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /skip to content/i })).toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "Primary" })).toBeInTheDocument();
     expect(screen.getByRole("main")).toBeInTheDocument();
@@ -225,6 +225,7 @@ describe("workspace patch / remove", () => {
     });
 
     renderApp("/workspaces/ws_1");
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
     expect(await screen.findByDisplayValue("Station Desk")).toBeInTheDocument();
     await user.clear(screen.getByLabelText("Title"));
     await user.type(screen.getByLabelText("Title"), "My Title");
@@ -402,11 +403,12 @@ describe("source management", () => {
     renderApp("/workspaces/ws_1");
     expect(await screen.findByText("sops.pdf")).toBeInTheDocument();
     expect(screen.getByText(/2\.0 KiB|2048 B|2 KiB/)).toBeInTheDocument();
-    expect(screen.getByText("Version 1")).toBeInTheDocument();
+    expect(screen.getByText(/Version 1/)).toBeInTheDocument();
     expect(screen.queryByText(/vault/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/corpus/i)).not.toBeInTheDocument();
 
     const file = new File(["hello pumps"], "policy.txt", { type: "text/plain" });
+    await user.click(screen.getByRole("button", { name: "+ Add sources" }));
     await user.upload(screen.getByLabelText("Source files"), file);
     expect(screen.getByText(/policy\.txt/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Add sources" }));
@@ -436,9 +438,10 @@ describe("source management", () => {
       { timeout: 4000 },
     );
 
-    const firstCard = screen.getByText("sops.pdf").closest(".card");
-    expect(firstCard).toBeTruthy();
-    await user.click(within(firstCard as HTMLElement).getByRole("button", { name: "Rename" }));
+    await user.click(
+      screen.getByRole("button", { name: "Actions for sops.pdf" }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Rename source" }));
     expect(screen.queryByText(/Building search indexes/i)).not.toBeInTheDocument();
     const renameInput = screen.getByLabelText("Display name");
     await user.clear(renameInput);
@@ -496,7 +499,10 @@ describe("source management", () => {
 
     renderApp("/workspaces/ws_1");
     expect(await screen.findByText("sops.pdf")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Remove source" }));
+    await user.click(
+      screen.getByRole("button", { name: "Actions for sops.pdf" }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Remove source" }));
     expect(
       screen.getByText(/leave this workspace empty and retire its current searchable knowledge/i),
     ).toBeInTheDocument();

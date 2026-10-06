@@ -109,6 +109,7 @@ class HybridRerankRetriever:
         lexical_index_id: str | None = None,
         chunk_set_id: str | None = None,
         corpus_id: str | None = None,
+        document_ids: frozenset[str] | None = None,
     ) -> HybridRerankRetrievalResult:
         if not query or not query.strip():
             raise HybridRerankRetrievalError("query must be non-empty")
@@ -154,6 +155,7 @@ class HybridRerankRetriever:
                 lexical_index_id=lexical_index_id,
                 chunk_set_id=chunk_set_id,
                 corpus_id=corpus_id,
+                document_ids=document_ids,
             )
         except HybridRetrievalError as exc:
             raise HybridRerankRetrievalError(str(exc)) from exc

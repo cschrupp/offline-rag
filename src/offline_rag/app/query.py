@@ -22,6 +22,7 @@ from offline_rag.app.traces import (
     ProductTraceExecutionSummary,
     ProductTraceIdentitySummary,
     ProductTraceRequestSummary,
+    ProductTraceSourceScope,
     ProductTraceStore,
     allocate_trace_id,
 )
@@ -160,6 +161,7 @@ def _project_citations(
     snapshot: CorpusReadSnapshot,
     binding: SnapshotQueryBinding,
     result: GroundedAnswerResult,
+    document_ids: frozenset[str] | None = None,
 ) -> list[dict[str, Any]]:
     inventory = {entry.document_id for entry in snapshot.corpus_manifest.documents}
     if result.dense_index_id not in (None, binding.dense_index_id):
@@ -172,6 +174,8 @@ def _project_citations(
     projected: list[dict[str, Any]] = []
     for citation in citations:
         if citation.document_id not in inventory:
+            raise AppError(ErrorCode.CITATION_INVALID)
+        if document_ids is not None and citation.document_id not in document_ids:
             raise AppError(ErrorCode.CITATION_INVALID)
         row = {field: getattr(citation, field) for field in _CITATION_PUBLIC_FIELDS}
         projected.append(row)
@@ -196,6 +200,7 @@ def _project_success(
     *,
     snapshot: CorpusReadSnapshot,
     binding: SnapshotQueryBinding,
+    document_ids: frozenset[str] | None = None,
 ) -> tuple[ProductSuccessStatus, str | None, list[dict[str, Any]]]:
     if result.status == "answered":
         answer = result.answer_text
@@ -209,6 +214,7 @@ def _project_success(
             snapshot=snapshot,
             binding=binding,
             result=result,
+            document_ids=document_ids,
         )
         if not citations:
             raise AppError(ErrorCode.CITATION_INVALID)
@@ -231,10 +237,14 @@ def _execute_snapshot_query(
     handle: SnapshotQueryRuntimeHandle,
     question: str,
     control: OperationHandle | None = None,
+    *,
+    document_ids: frozenset[str] | None = None,
 ) -> GroundedAnswerResult:
     """Execute grounded query against an already-bound snapshot runtime."""
     checkpoint = None if control is None else control.checkpoint
-    return handle.answer(question, checkpoint=checkpoint)
+    return handle.answer(
+        question, checkpoint=checkpoint, document_ids=document_ids
+    )
 
 
 def _execution_summary(
@@ -288,6 +298,8 @@ def run_bound_snapshot_query(
     snapshot: CorpusReadSnapshot,
     question: str,
     control: OperationHandle | None = None,
+    document_ids: frozenset[str] | None = None,
+    source_scope: ProductTraceSourceScope | None = None,
 ) -> BoundSnapshotQueryOutcome:
     """Execute the canonical grounded query against an already-resolved snapshot.
 
@@ -318,6 +330,7 @@ def run_bound_snapshot_query(
         request_summary = ProductTraceRequestSummary(
             question_sha256=_question_sha256(normalized),
             question_char_count=len(normalized),
+            source_scope=source_scope,
         )
         identity = _identity_summary(binding, generation_config_hash=gencfg)
 
@@ -326,13 +339,21 @@ def run_bound_snapshot_query(
         try:
             if control is not None:
                 control.checkpoint("pre_execute")
-            result = _execute_snapshot_query(handle, normalized, control=control)
+            result = _execute_snapshot_query(
+                handle,
+                normalized,
+                control=control,
+                document_ids=document_ids,
+            )
             if control is not None:
                 control.checkpoint("post_execute")
             if control is not None:
                 control.checkpoint("pre_project")
             status, answer, citations = _project_success(
-                result, snapshot=snapshot, binding=binding
+                result,
+                snapshot=snapshot,
+                binding=binding,
+                document_ids=document_ids,
             )
         except AppError as exc:
             mapped_error = exc
@@ -440,10 +461,17 @@ def run_product_query(
 
 def _active_source_index(
     record: WorkspaceRecord,
+    *,
+    selected_source_ids: frozenset[str] | None = None,
 ) -> dict[str, list[SourceVersionRecord]]:
     index: dict[str, list[SourceVersionRecord]] = {}
     for source in record.sources:
         if not source.active or source.document_id is None:
+            continue
+        if (
+            selected_source_ids is not None
+            and source.source_id not in selected_source_ids
+        ):
             continue
         index.setdefault(source.document_id, []).append(source)
     return index
@@ -454,6 +482,7 @@ def _enrich_workspace_citations(
     *,
     record: WorkspaceRecord,
     require_mapping: bool,
+    selected_source_ids: frozenset[str] | None = None,
 ) -> list[dict[str, Any]]:
     """Attach workspace source identity to snapshot-level citations.
 
@@ -463,7 +492,7 @@ def _enrich_workspace_citations(
     view of that answer would be wrong, so fail closed rather than emit a
     citation the user cannot trace back (S16-D12).
     """
-    index = _active_source_index(record)
+    index = _active_source_index(record, selected_source_ids=selected_source_ids)
     enriched: list[dict[str, Any]] = []
     for citation in citations:
         row = dict(citation)
@@ -491,11 +520,68 @@ def _enrich_workspace_citations(
     return enriched
 
 
+def _resolve_workspace_source_scope(
+    record: WorkspaceRecord,
+    *,
+    source_ids: list[str] | None,
+) -> tuple[ProductTraceSourceScope, frozenset[str], frozenset[str]]:
+    """Resolve logical source_ids to document scope for a bound workspace record."""
+    active_by_id = {
+        source.source_id: source
+        for source in record.sources
+        if source.active and source.document_id
+    }
+    if source_ids is not None and len(source_ids) == 0:
+        raise AppError(
+            ErrorCode.REQUEST_INVALID,
+            details=SafeErrorDetails(
+                workspace_id=record.workspace_id, reason="empty_source_scope"
+            ),
+        )
+    if source_ids is None:
+        selected = list(active_by_id.values())
+        mode: Literal["all_active", "selected"] = "all_active"
+    else:
+        if len(source_ids) != len(set(source_ids)):
+            raise AppError(
+                ErrorCode.REQUEST_INVALID,
+                details=SafeErrorDetails(
+                    workspace_id=record.workspace_id, reason="duplicate_source_ids"
+                ),
+            )
+        selected = []
+        for source_id in source_ids:
+            source = active_by_id.get(source_id)
+            if source is None:
+                raise AppError(
+                    ErrorCode.SOURCE_UNKNOWN,
+                    details=SafeErrorDetails(
+                        workspace_id=record.workspace_id, source_id=source_id
+                    ),
+                )
+            selected.append(source)
+        mode = "selected"
+
+    logical_ids = sorted({source.source_id for source in selected})
+    document_ids = sorted(
+        {str(source.document_id) for source in selected if source.document_id}
+    )
+    scope = ProductTraceSourceScope(
+        workspace_id=record.workspace_id,
+        workspace_revision=int(record.revision),
+        mode=mode,
+        source_ids=logical_ids,
+        document_ids=document_ids,
+    )
+    return scope, frozenset(logical_ids), frozenset(document_ids)
+
+
 def run_workspace_query(
     runtime: ApplicationRuntime,
     *,
     workspace_id: str,
     question: str,
+    source_ids: list[str] | None = None,
     control: OperationHandle | None = None,
 ) -> WorkspaceQueryResponse:
     """Workspace-scoped grounded query bound to the workspace's own snapshot.
@@ -527,6 +613,9 @@ def run_workspace_query(
 
     bound_revision = record.revision
     bound_snapshot_id = record.current_snapshot_id
+    source_scope, selected_logical, document_scope = _resolve_workspace_source_scope(
+        record, source_ids=source_ids
+    )
     if control is not None:
         control.checkpoint("pre_resolve")
     snapshot = runtime.publication.resolve_snapshot(
@@ -549,12 +638,18 @@ def run_workspace_query(
         )
 
     outcome = run_bound_snapshot_query(
-        runtime, snapshot=snapshot, question=normalized, control=control
+        runtime,
+        snapshot=snapshot,
+        question=normalized,
+        control=control,
+        document_ids=document_scope,
+        source_scope=source_scope,
     )
     citations = _enrich_workspace_citations(
         outcome.citations,
         record=record,
         require_mapping=outcome.status == "answered",
+        selected_source_ids=selected_logical,
     )
     return WorkspaceQueryResponse(
         workspace_id=workspace_id,

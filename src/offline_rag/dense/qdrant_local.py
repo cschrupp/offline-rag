@@ -84,8 +84,23 @@ class QdrantLocalBackend:
         *,
         query_vector: list[float],
         top_k: int,
+        document_ids: frozenset[str] | None = None,
     ) -> list[DenseSearchHit]:
         client = self._get_client()
+        query_filter = None
+        if document_ids is not None:
+            if not document_ids:
+                return []
+            from qdrant_client.http import models as rest
+
+            query_filter = rest.Filter(
+                must=[
+                    rest.FieldCondition(
+                        key="document_id",
+                        match=rest.MatchAny(any=sorted(document_ids)),
+                    )
+                ]
+            )
         # qdrant-client >=1.12 prefers query_points; keep search for compatibility.
         if hasattr(client, "query_points"):
             response = client.query_points(
@@ -93,6 +108,7 @@ class QdrantLocalBackend:
                 query=query_vector,
                 limit=top_k,
                 with_payload=True,
+                query_filter=query_filter,
             )
             hits = response.points
         else:
@@ -101,6 +117,7 @@ class QdrantLocalBackend:
                 query_vector=query_vector,
                 limit=top_k,
                 with_payload=True,
+                query_filter=query_filter,
             )
         results: list[DenseSearchHit] = []
         for hit in hits:

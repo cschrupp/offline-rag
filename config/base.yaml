@@ -17,6 +17,8 @@ paths:
   traces: data/traces
   staging: data/staging
   locks: data/locks
+  workspaces: data/workspaces
+  product_settings: data/settings
   logs: data/logs
   retrieval_models: models
   docling_artifacts: models/docling
@@ -32,6 +34,11 @@ logging:
 deployment:
   profile: standalone_ollama
   qdrant_mode: local
+
+api:
+  max_files_per_ingest: 32
+  max_bytes_per_document: 26214400
+  max_total_upload_bytes: 104857600
 
 ingestion:
   parser: docling

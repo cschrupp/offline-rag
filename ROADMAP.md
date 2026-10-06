@@ -428,7 +428,8 @@ SLICE 15  COMPLETE / ACCEPTED
        5060e2aeb4825f265072a1f870c3c963eace3b30
        docs/slice16_amendment_a1_seneca_product_ux.md
        Product: Seneca — Grounded knowledge workspace
-     16D-A NOT AUTHORIZED
+     16D-A IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING
+       Evidence: docs/slice16d_a_seneca_product_foundation_query_scope.md
      16D-B NOT AUTHORIZED
      16D-C NOT AUTHORIZED
      16E–16H NOT AUTHORIZED
@@ -565,7 +566,7 @@ Slice 14 checklist:
     debt (not claimed as a globally green suite)
 - **Slice 15:** **COMPLETE / ACCEPTED**
 
-**Slice 16 — Portfolio Demo UI:** **DESIGN AUTHORITY ACCEPTED / LOCKED**; **16A COMPLETE / ACCEPTED**; **16B COMPLETE / ACCEPTED**; **16C COMPLETE / ACCEPTED** at `936e41446eb1e3697f6b7d245659831f19cf0613`; **Amendment A1 ACCEPTED / LOCKED** at `5060e2aeb4825f265072a1f870c3c963eace3b30` (Seneca — Grounded knowledge workspace); **16D-A / 16D-B / 16D-C NOT AUTHORIZED**; Slice 16 overall **IN PROGRESS / NOT COMPLETE**
+**Slice 16 — Portfolio Demo UI:** **DESIGN AUTHORITY ACCEPTED / LOCKED**; **16A COMPLETE / ACCEPTED**; **16B COMPLETE / ACCEPTED**; **16C COMPLETE / ACCEPTED** at `936e41446eb1e3697f6b7d245659831f19cf0613`; **Amendment A1 ACCEPTED / LOCKED** at `5060e2aeb4825f265072a1f870c3c963eace3b30` (Seneca — Grounded knowledge workspace); **16D-A IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING**; **16D-B / 16D-C NOT AUTHORIZED**; Slice 16 overall **IN PROGRESS / NOT COMPLETE**
 - Authority: [`docs/slice16_design_authority.md`](docs/slice16_design_authority.md)
   (S16-D01 … S16-D35; **ACCEPTED / LOCKED**)
 - AUTHORITY SHA: `e2e7475076ad18d4c4ae8d939389ceeffdeff6d8`
@@ -628,7 +629,7 @@ Later M7 checklist:
 - [x] Qdrant Local standalone profile (15G — **COMPLETE / ACCEPTED**)
 - [x] `/data` + `/models` volume packaging contract (15G — **COMPLETE / ACCEPTED**)
 - [x] Slice 15 integration closeout (15H — **COMPLETE / ACCEPTED** at `1c1d94e…`)
-- [ ] Portfolio Demo UI (Slice 16 — design **ACCEPTED / LOCKED** at `e2e7475…`; **16A COMPLETE / ACCEPTED** at `e73959be…`; **16B COMPLETE / ACCEPTED** at `eb8baef…`; **16C COMPLETE / ACCEPTED** at `936e414…`; **A1 ACCEPTED / LOCKED** at `5060e2ae…`; **16D-A/B/C NOT AUTHORIZED**; Slice 16 overall **IN PROGRESS / NOT COMPLETE**)
+- [ ] Portfolio Demo UI (Slice 16 — design **ACCEPTED / LOCKED** at `e2e7475…`; **16A COMPLETE / ACCEPTED** at `e73959be…`; **16B COMPLETE / ACCEPTED** at `eb8baef…`; **16C COMPLETE / ACCEPTED** at `936e414…`; **A1 ACCEPTED / LOCKED** at `5060e2ae…`; **16D-A IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING**; **16D-B/C NOT AUTHORIZED**; Slice 16 overall **IN PROGRESS / NOT COMPLETE**)
 - [ ] Regression CI (Slice 17 — **PLANNED / DESIGN NOT OPEN**)
 - [ ] Portfolio release package (Slice 18 — **PLANNED / DESIGN NOT OPEN**)
 - [ ] Milestone 7 closeout (**NOT AUTHORIZED**)

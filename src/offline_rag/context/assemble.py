@@ -90,6 +90,7 @@ class HybridRerankContextAssembler:
         lexical_index_id: str | None = None,
         chunk_set_id: str | None = None,
         corpus_id: str | None = None,
+        document_ids: frozenset[str] | None = None,
     ) -> HybridRerankContextResult:
         if not query or not query.strip():
             raise HybridRerankContextError("query must be non-empty")
@@ -116,6 +117,7 @@ class HybridRerankContextAssembler:
                 lexical_index_id=lexical_index_id,
                 chunk_set_id=chunk_set_id,
                 corpus_id=corpus_id,
+                document_ids=document_ids,
             )
         except HybridRerankRetrievalError as exc:
             raise HybridRerankContextError(str(exc)) from exc
@@ -125,6 +127,12 @@ class HybridRerankContextAssembler:
         store = self._structure(name)
         expander = ContextExpander(store=store, counter=counter, context=ctx)
         expanded = expander.expand(list(upstream.candidates))
+        if document_ids is not None:
+            for unit in expanded.evidence_units:
+                if str(unit.document_id) not in document_ids:
+                    raise HybridRerankContextError(
+                        "scoped context evidence escaped allowed document set"
+                    )
         expand_ms = int((time.perf_counter() - expand_t0) * 1000)
         total_ms = int((time.perf_counter() - total_t0) * 1000)
 

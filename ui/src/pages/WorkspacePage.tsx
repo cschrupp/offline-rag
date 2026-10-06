@@ -8,6 +8,7 @@ import type { FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   addSources,
+  getCapabilities,
   getOperation,
   getWorkspace,
   listSources,
@@ -33,6 +34,7 @@ import { EmptyState } from "../components/EmptyState";
 import { TextInput } from "../components/Field";
 import { ModalDialog } from "../components/ModalDialog";
 import { OperationProgress } from "../components/OperationProgress";
+import { SourceActionsMenu } from "../components/SourceActionsMenu";
 import {
   forgetActiveOperation,
   isTerminalOperationStatus,
@@ -40,13 +42,31 @@ import {
 } from "../features/operations/activeOperations";
 import { WorkspaceMetadataForm } from "../features/workspaces/WorkspaceMetadataForm";
 import {
-  SOURCE_LIMITS,
+  activeSourceBytes,
   formatBytes,
+  formatMiB,
   formatTimestamp,
-  shortenId,
+  type SourceCapacityLimits,
 } from "../features/workspaces/format";
 
 type PendingPhase = "idle" | "uploading" | "operation";
+
+function limitsFromCapabilities(
+  caps: {
+    source_limits: {
+      max_active_sources: number;
+      max_bytes_per_source: number;
+      max_active_source_bytes: number;
+    };
+  } | undefined,
+): SourceCapacityLimits | null {
+  if (!caps) return null;
+  return {
+    maxActiveSources: caps.source_limits.max_active_sources,
+    maxBytesPerFile: caps.source_limits.max_bytes_per_source,
+    maxDesiredActiveBytes: caps.source_limits.max_active_source_bytes,
+  };
+}
 
 export function WorkspacePage() {
   const { workspaceId = "" } = useParams();
@@ -70,11 +90,19 @@ export function WorkspacePage() {
     enabled: Boolean(workspaceId),
   });
 
+  const capabilitiesQuery = useQuery({
+    queryKey: queryKeys.capabilities,
+    queryFn: ({ signal }) => getCapabilities(signal),
+  });
+
   const workspace = workspaceQuery.data;
   const sources = sourcesQuery.data?.sources ?? [];
+  const limits = limitsFromCapabilities(capabilitiesQuery.data);
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [addError, setAddError] = useState<string | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
+  const [editWorkspaceOpen, setEditWorkspaceOpen] = useState(false);
 
   const [renameTarget, setRenameTarget] = useState<Source | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -181,6 +209,7 @@ export function WorkspacePage() {
     onSuccess: (operation) => {
       beginOperation(operation, "Add sources");
       setSelectedFiles([]);
+      setAddOpen(false);
       addIntent.current.reset();
     },
     onError: (error) => {
@@ -300,18 +329,22 @@ export function WorkspacePage() {
 
   function validateSelectedFiles(files: File[]): string | null {
     if (files.length === 0) return "Select at least one file.";
-    if (sources.length + files.length > SOURCE_LIMITS.maxActiveSources) {
-      return `At most ${SOURCE_LIMITS.maxActiveSources} active sources are allowed.`;
+    if (!limits) {
+      // Backend remains authoritative when capabilities are unavailable.
+      return null;
+    }
+    if (sources.length + files.length > limits.maxActiveSources) {
+      return `At most ${limits.maxActiveSources} active sources are allowed.`;
     }
     for (const file of files) {
-      if (file.size > SOURCE_LIMITS.maxBytesPerFile) {
-        return `${file.name} exceeds the 25 MiB per-file limit.`;
+      if (file.size > limits.maxBytesPerFile) {
+        return `${file.name} exceeds the ${formatMiB(limits.maxBytesPerFile)} MiB per-file limit.`;
       }
     }
-    const existingBytes = sources.reduce((sum, source) => sum + source.byte_size, 0);
+    const existingBytes = activeSourceBytes(sources);
     const incomingBytes = files.reduce((sum, file) => sum + file.size, 0);
-    if (existingBytes + incomingBytes > SOURCE_LIMITS.maxDesiredActiveBytes) {
-      return "Selected files would exceed the 100 MiB active-source budget.";
+    if (existingBytes + incomingBytes > limits.maxDesiredActiveBytes) {
+      return `Selected files would exceed the ${formatMiB(limits.maxDesiredActiveBytes)} MiB active-source budget.`;
     }
     return null;
   }
@@ -346,68 +379,197 @@ export function WorkspacePage() {
   }
 
   const isEmpty = workspace.status === "empty" || sources.length === 0;
+  const usedBytes = activeSourceBytes(sources);
+  const selectedBytes = selectedFiles.reduce((sum, file) => sum + file.size, 0);
   const finalSourceWarning =
     removeTarget && sources.length === 1
       ? "Removing the final source will leave this workspace empty and retire its current searchable knowledge. Historical artifacts may remain locally."
       : "Removing this source rebuilds the workspace's current searchable knowledge from the remaining active sources. Historical artifacts may remain locally.";
 
+  const showRunningTray =
+    pendingPhase === "uploading" ||
+    pendingPhase === "operation" ||
+    (operationQuery.data &&
+      !isTerminalOperationStatus(String(operationQuery.data.status)));
+
+  const showCompactTerminal =
+    operationQuery.data &&
+    isTerminalOperationStatus(String(operationQuery.data.status)) &&
+    pendingPhase === "idle";
+
   return (
-    <div className="stack">
+    <div className="stack workspace-page">
       <nav aria-label="Breadcrumb" className="muted">
         <Link to="/workspaces">Workspaces</Link>
         {" / "}
         <span>{workspace.title}</span>
       </nav>
 
-      <header className="stack" style={{ gap: "0.75rem" }}>
-        <div className="row">
-          <h1 style={{ margin: 0 }}>{workspace.title}</h1>
-          <Badge
-            tone={isEmpty ? "empty" : "ready"}
-            label={isEmpty ? "Empty" : "Active"}
-          />
+      <header className="workspace-header">
+        <div className="workspace-header-main">
+          <div className="row" style={{ gap: "0.75rem" }}>
+            <h1 style={{ margin: 0 }}>{workspace.title}</h1>
+            <Badge
+              tone={isEmpty ? "empty" : "ready"}
+              label={isEmpty ? "Empty" : "Active"}
+            />
+          </div>
+          <p className="muted capacity-summary" style={{ margin: 0 }}>
+            {limits ? (
+              <>
+                {sources.length} / {limits.maxActiveSources} sources ·{" "}
+                {formatMiB(usedBytes)} / {formatMiB(limits.maxDesiredActiveBytes)}{" "}
+                MiB
+              </>
+            ) : (
+              <>
+                {sources.length} sources · {formatBytes(usedBytes)}
+                {capabilitiesQuery.isError
+                  ? " · capacity unavailable"
+                  : " · loading capacity…"}
+              </>
+            )}
+          </p>
         </div>
-        <p className="muted" style={{ margin: 0 }}>
-          {workspace.description || "No description"}
-        </p>
-        <p className="muted" style={{ margin: 0 }}>
-          Revision {workspace.revision} · {workspace.source_count} source
-          {workspace.source_count === 1 ? "" : "s"} · Last workspace change{" "}
-          {formatTimestamp(workspace.updated_at)}
-        </p>
+        <div className="row workspace-header-actions">
+          <Button
+            variant="secondary"
+            onClick={() => setEditWorkspaceOpen(true)}
+          >
+            Edit
+          </Button>
+          <Button
+            onClick={() => {
+              setAddOpen(true);
+              setAddError(null);
+              setSelectedFiles([]);
+              addIntent.current = IntentHandle.newIntent();
+            }}
+            disabled={pendingPhase !== "idle"}
+          >
+            + Add sources
+          </Button>
+        </div>
       </header>
 
-      {pendingPhase === "uploading" ? (
-        <OperationProgress phase="uploading" label={operationLabel} />
-      ) : null}
-      {pendingPhase === "operation" || operationQuery.data ? (
-        <OperationProgress
-          phase="operation"
-          operation={operationQuery.data}
-          label={operationLabel}
-        />
+      {showRunningTray ? (
+        <div className="operation-tray" aria-live="polite">
+          {pendingPhase === "uploading" ? (
+            <OperationProgress phase="uploading" label={operationLabel} />
+          ) : null}
+          {pendingPhase === "operation" ||
+          (operationQuery.data &&
+            !isTerminalOperationStatus(String(operationQuery.data.status))) ? (
+            <OperationProgress
+              phase="operation"
+              operation={operationQuery.data}
+              label={operationLabel}
+            />
+          ) : null}
+        </div>
       ) : null}
 
-      <WorkspaceMetadataForm
-        key={workspace.workspace_id}
-        workspace={workspace}
-        onRemoved={() => {
-          void navigate("/workspaces");
-        }}
-      />
+      {showCompactTerminal && operationQuery.data ? (
+        <p className="operation-compact muted" role="status">
+          {String(operationQuery.data.status) === "SUCCEEDED"
+            ? "Ready"
+            : String(operationQuery.data.status)}
+          {operationLabel ? ` · ${operationLabel}` : ""}
+        </p>
+      ) : null}
 
       {isEmpty ? (
         <EmptyState
           title="This workspace is empty"
           body="This workspace is ready for sources but currently contains no active knowledge."
           action={
-            <span className="muted">Use Add sources below to get started.</span>
+            <Button
+              onClick={() => {
+                setAddOpen(true);
+                setAddError(null);
+                setSelectedFiles([]);
+                addIntent.current = IntentHandle.newIntent();
+              }}
+            >
+              + Add sources
+            </Button>
           }
         />
       ) : null}
 
-      <Card>
-        <h2>Add sources</h2>
+      <section className="stack" aria-labelledby="source-list-heading">
+        <h2 id="source-list-heading" className="source-list-heading">
+          Sources
+        </h2>
+        {sourcesQuery.isError ? (
+          <p className="error-box" role="alert">
+            {userFacingErrorMessage(sourcesQuery.error)}
+          </p>
+        ) : null}
+        {sourcesQuery.isLoading ? (
+          <p className="muted">Loading sources…</p>
+        ) : null}
+        <ul className="source-list">
+          {sources.map((source) => (
+            <li key={source.source_id} className="source-row">
+              <div className="source-row-main">
+                <span className="source-name">{source.display_name}</span>
+                <span className="muted source-meta">
+                  {formatBytes(source.byte_size)} · Version {source.version}
+                </span>
+              </div>
+              <SourceActionsMenu
+                source={source}
+                disabled={pendingPhase !== "idle"}
+                onRename={() => {
+                  setRenameTarget(source);
+                  setRenameValue(source.display_name);
+                  setRenameError(null);
+                  renameIntent.current = IntentHandle.newIntent();
+                }}
+                onReplace={() => {
+                  setReplaceTarget(source);
+                  setReplaceFile(null);
+                  setReplaceError(null);
+                  replaceIntent.current = IntentHandle.newIntent();
+                }}
+                onRemove={() => {
+                  setRemoveTarget(source);
+                  setRemoveError(null);
+                  removeIntent.current = IntentHandle.newIntent();
+                }}
+              />
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <ModalDialog
+        open={editWorkspaceOpen}
+        title="Edit workspace"
+        description="Update title and description, or remove this workspace."
+        onClose={() => setEditWorkspaceOpen(false)}
+      >
+        <WorkspaceMetadataForm
+          key={workspace.workspace_id}
+          workspace={workspace}
+          onRemoved={() => {
+            setEditWorkspaceOpen(false);
+            void navigate("/workspaces");
+          }}
+        />
+      </ModalDialog>
+
+      <ModalDialog
+        open={addOpen}
+        title="Add sources"
+        description="Select files to add to this knowledge workspace."
+        busy={addMutation.isPending || pendingPhase === "uploading"}
+        onClose={() => {
+          if (addMutation.isPending || pendingPhase === "uploading") return;
+          setAddOpen(false);
+        }}
+      >
         <form className="stack" onSubmit={onAddSubmit}>
           <div className="field">
             <label htmlFor="add-files">Source files</label>
@@ -422,105 +584,49 @@ export function WorkspacePage() {
               }}
             />
             <p className="muted">
-              Limits (backend authoritative): max 32 active sources, 25 MiB per
-              file, 100 MiB desired active total.
+              {limits
+                ? `Maximum file size: ${formatMiB(limits.maxBytesPerFile)} MiB`
+                : "Maximum file size: determined by the server"}
             </p>
           </div>
           {selectedFiles.length > 0 ? (
-            <ul>
-              {selectedFiles.map((file) => (
-                <li key={`${file.name}-${file.size}-${file.lastModified}`}>
-                  {file.name} · {formatBytes(file.size)}
-                </li>
-              ))}
-            </ul>
+            <>
+              <p className="muted" style={{ margin: 0 }}>
+                Selected: {selectedFiles.length} file
+                {selectedFiles.length === 1 ? "" : "s"} · {formatBytes(selectedBytes)}
+              </p>
+              <ul>
+                {selectedFiles.map((file) => (
+                  <li key={`${file.name}-${file.size}-${file.lastModified}`}>
+                    {file.name} · {formatBytes(file.size)}
+                  </li>
+                ))}
+              </ul>
+            </>
           ) : null}
           {addError ? (
             <p className="error-box" role="alert">
               {addError}
             </p>
           ) : null}
-          <Button
-            type="submit"
-            disabled={addMutation.isPending || pendingPhase !== "idle"}
-          >
-            Add sources
-          </Button>
+          <div className="row" style={{ justifyContent: "flex-end" }}>
+            <Button
+              variant="secondary"
+              type="button"
+              onClick={() => setAddOpen(false)}
+              disabled={addMutation.isPending || pendingPhase === "uploading"}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={addMutation.isPending || pendingPhase !== "idle"}
+            >
+              Add sources
+            </Button>
+          </div>
         </form>
-      </Card>
-
-      <section className="stack" aria-labelledby="source-list-heading">
-        <h2 id="source-list-heading">Active sources</h2>
-        {sourcesQuery.isError ? (
-          <p className="error-box" role="alert">
-            {userFacingErrorMessage(sourcesQuery.error)}
-          </p>
-        ) : null}
-        {sourcesQuery.isLoading ? (
-          <p className="muted">Loading sources…</p>
-        ) : null}
-        {sources.map((source) => (
-          <Card key={source.source_id}>
-            <div className="stack" style={{ gap: "0.75rem" }}>
-              <div>
-                <h3 style={{ marginBottom: "0.35rem" }}>
-                  {source.display_name}
-                </h3>
-                <div className="row">
-                  <span className="muted">
-                    {source.content_type || "unknown type"}
-                  </span>
-                  <span className="muted">{formatBytes(source.byte_size)}</span>
-                  <Badge tone="ready" label={`Version ${source.version}`} />
-                  <span className="muted">
-                    Added {formatTimestamp(source.created_at)}
-                  </span>
-                </div>
-                <details>
-                  <summary>Technical details</summary>
-                  <p className="muted">
-                    Document identity: {shortenId(source.document_id, 16)}
-                  </p>
-                </details>
-              </div>
-              <div className="row">
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setRenameTarget(source);
-                    setRenameValue(source.display_name);
-                    setRenameError(null);
-                    renameIntent.current = IntentHandle.newIntent();
-                  }}
-                >
-                  Rename
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setReplaceTarget(source);
-                    setReplaceFile(null);
-                    setReplaceError(null);
-                    replaceIntent.current = IntentHandle.newIntent();
-                  }}
-                >
-                  Replace current version
-                </Button>
-                <Button
-                  variant="danger"
-                  onClick={() => {
-                    setRemoveTarget(source);
-                    setRemoveError(null);
-                    removeIntent.current = IntentHandle.newIntent();
-                  }}
-                >
-                  Remove source
-                </Button>
-              </div>
-            </div>
-          </Card>
-        ))}
-      </section>
+      </ModalDialog>
 
       <ConfirmDialog
         open={Boolean(removeTarget)}
@@ -594,8 +700,10 @@ export function WorkspacePage() {
               setReplaceError("Choose exactly one file.");
               return;
             }
-            if (replaceFile.size > SOURCE_LIMITS.maxBytesPerFile) {
-              setReplaceError("File exceeds the 25 MiB per-file limit.");
+            if (limits && replaceFile.size > limits.maxBytesPerFile) {
+              setReplaceError(
+                `File exceeds the ${formatMiB(limits.maxBytesPerFile)} MiB per-file limit.`,
+              );
               return;
             }
             setReplaceError(null);
@@ -614,6 +722,11 @@ export function WorkspacePage() {
                 setReplaceError(null);
               }}
             />
+            {limits ? (
+              <p className="muted">
+                Maximum file size: {formatMiB(limits.maxBytesPerFile)} MiB
+              </p>
+            ) : null}
           </div>
           {replaceError ? (
             <p className="error-box" role="alert">
@@ -640,6 +753,11 @@ export function WorkspacePage() {
           {removeError}
         </p>
       ) : null}
+
+      <p className="muted" style={{ margin: 0, fontSize: "0.875rem" }}>
+        Revision {workspace.revision} · Last workspace change{" "}
+        {formatTimestamp(workspace.updated_at)}
+      </p>
     </div>
   );
 }

@@ -110,6 +110,7 @@ class WorkspaceQueryRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     question: str
+    source_ids: list[str] | None = None
 
     @field_validator("question")
     @classmethod
@@ -518,6 +519,9 @@ def workspace_query(
     runtime = _runtime(request)
     runtime.require_ready()
     result = run_workspace_query(
-        runtime, workspace_id=workspace_id, question=body.question
+        runtime,
+        workspace_id=workspace_id,
+        question=body.question,
+        source_ids=body.source_ids,
     )
     return result.as_dict()

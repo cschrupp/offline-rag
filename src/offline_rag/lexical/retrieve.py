@@ -95,6 +95,7 @@ class LexicalRetriever:
         top_k: int | None = None,
         index_id: str | None = None,
         chunk_set_id: str | None = None,
+        document_ids: frozenset[str] | None = None,
     ) -> LexicalRetrievalResult:
         if not query or not query.strip():
             raise LexicalRetrievalError("query must be non-empty")
@@ -130,7 +131,7 @@ class LexicalRetriever:
             self._backend.open(resolved_index_id)
             self._open_index_id = resolved_index_id
 
-        hits = self._backend.search(query_terms, top_k=k)
+        hits = self._backend.search(query_terms, top_k=k, document_ids=document_ids)
         candidates = [
             self._hit_to_candidate(hit, rank=rank) for rank, hit in enumerate(hits, start=1)
         ]

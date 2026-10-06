@@ -13,7 +13,8 @@ ACCEPTED SHA: 936e41446eb1e3697f6b7d245659831f19cf0613
 AMENDMENT A1: ACCEPTED / LOCKED
   5060e2aeb4825f265072a1f870c3c963eace3b30
   docs/slice16_amendment_a1_seneca_product_ux.md
-16D-A / 16D-B / 16D-C: NOT AUTHORIZED
+16D-A: IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING
+16D-B / 16D-C: NOT AUTHORIZED
 16E–16H: NOT AUTHORIZED
 BASELINE: c72215186524c9937de789adb1cf2056be13ea23
 ```
@@ -59,7 +60,7 @@ Use sequential phase gates unless explicitly redesigned:
  ↓
 16C [ACCEPTED / SEALED]
  ↓
-16D-A [NOT AUTHORIZED]
+16D-A [IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING]
  ↓
 16D-B [NOT AUTHORIZED]
  ↓
@@ -254,12 +255,15 @@ Evidence: docs/slice16c_react_shell_source_ui.md
 ## 16D-A — Seneca Product Foundation & Query-Scope Substrate
 
 ```text
-STATUS: NOT AUTHORIZED / NOT STARTED
+STATUS: IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING
 AMENDMENT A1: ACCEPTED / LOCKED @ 5060e2aeb4825f265072a1f870c3c963eace3b30
+AUTHORIZED BASELINE: 185d3e3d2bd472ffaddf72cfddc49c7e38a3a146
+EVIDENCE: docs/slice16d_a_seneca_product_foundation_query_scope.md
 ```
 
-Authoritative under accepted Amendment A1. Not authorized for
-implementation by this plan update alone.
+Authoritative under accepted Amendment A1. Implementation candidate is
+complete for independent review; human acceptance is pending. 16D-B / 16D-C
+remain NOT AUTHORIZED.
 
 ### Future scope (candidate)
 
@@ -492,7 +496,8 @@ ACCEPTED SHA: eb8baefc6e3eaf7df33668c85fbbfef22364bb0e
 ACCEPTED SHA: 936e41446eb1e3697f6b7d245659831f19cf0613
 AMENDMENT A1: ACCEPTED / LOCKED
   5060e2aeb4825f265072a1f870c3c963eace3b30
-16D-A / 16D-B / 16D-C: NOT AUTHORIZED
+16D-A: IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING
+16D-B / 16D-C: NOT AUTHORIZED
 16E–16H: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
 SLICE 18: NOT AUTHORIZED
@@ -504,5 +509,6 @@ Plan acceptance alone did **not** authorize execution. 16A, 16B, and 16C were
 separately authorized and are now **COMPLETE / ACCEPTED**. Amendment A1 is
 **ACCEPTED / LOCKED** at `5060e2aeb4825f265072a1f870c3c963eace3b30`; the
 16D-A/B/C decomposition is the authoritative future sequence, but phase
-execution remains separately gated. **16D-A / 16D-B / 16D-C** and **16E–16H**
+execution remains separately gated. **16D-A** is an **IMPLEMENTED CANDIDATE /
+HUMAN ACCEPTANCE PENDING**. **16D-B / 16D-C** and **16E–16H**
 remain **NOT AUTHORIZED**. Slice 16 overall is **not** complete.

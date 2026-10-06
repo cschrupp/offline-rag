@@ -1,4 +1,9 @@
-import type { Operation, Source, Workspace } from "../api/types";
+import type {
+  Capabilities,
+  Operation,
+  Source,
+  Workspace,
+} from "../api/types";
 
 export function workspace(partial: Partial<Workspace> & Pick<Workspace, "workspace_id">): Workspace {
   return {
@@ -43,6 +48,32 @@ export function operation(
     result: null,
     error: null,
     ...partial,
+  };
+}
+
+export function capabilities(
+  partial: Partial<Capabilities> = {},
+): Capabilities {
+  return {
+    product: {
+      name: "Seneca",
+      descriptor: "Grounded knowledge workspace",
+      ...(partial.product ?? {}),
+    },
+    source_limits: {
+      max_active_sources: 32,
+      max_bytes_per_source: 26_214_400,
+      max_active_source_bytes: 104_857_600,
+      ...(partial.source_limits ?? {}),
+    },
+    generation: {
+      enabled: true,
+      provider: "openai_compatible",
+      base_url: "http://127.0.0.1:11434/v1",
+      model: "local-test-model",
+      timeout_seconds: 120,
+      ...(partial.generation ?? {}),
+    },
   };
 }
 
@@ -95,7 +126,15 @@ export function installFetchMock(
     const headers = new Headers(init?.headers);
     const call: FetchCall = { url, method, headers, body: init?.body };
     calls.push(call);
-    return handler(call);
+    const response = await handler(call);
+    // Workspace capacity needs capabilities; default when tests leave them unhandled.
+    if (
+      response.status === 404 &&
+      (url === "/v1/capabilities" || url.endsWith("/v1/capabilities"))
+    ) {
+      return jsonResponse(capabilities());
+    }
+    return response;
   }) as typeof fetch;
   return {
     calls,

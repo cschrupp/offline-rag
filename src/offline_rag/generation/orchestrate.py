@@ -130,6 +130,7 @@ class GroundedAnswerOrchestrator:
         lexical_index_id: str | None = None,
         chunk_set_id: str | None = None,
         corpus_id: str | None = None,
+        document_ids: frozenset[str] | None = None,
         checkpoint: Callable[[str], None] | None = None,
     ) -> GroundedAnswerResult:
         if not query or not query.strip():
@@ -159,6 +160,7 @@ class GroundedAnswerOrchestrator:
                 lexical_index_id=lexical_index_id,
                 chunk_set_id=chunk_set_id,
                 corpus_id=corpus_id,
+                document_ids=document_ids,
             )
         except HybridRerankContextError as exc:
             raise GroundedAnswerError(str(exc)) from exc
@@ -216,6 +218,13 @@ class GroundedAnswerOrchestrator:
             context_breakdown=(active_context.metadata or {}).get("latency_ms"),
         )
         _cp("before_generation")
+        scoped_names = source_name_by_document_id
+        if document_ids is not None and source_name_by_document_id is not None:
+            scoped_names = {
+                doc_id: name
+                for doc_id, name in source_name_by_document_id.items()
+                if doc_id in document_ids
+            }
         try:
             # Generation always answers the original user query.
             result = self._executor.execute(
@@ -224,7 +233,7 @@ class GroundedAnswerOrchestrator:
                 evidence_units=list(active_context.evidence_units),
                 context_provenance=provenance,
                 check_ready=False,
-                source_name_by_document_id=source_name_by_document_id,
+                source_name_by_document_id=scoped_names,
             )
         except GroundedGenerationError as exc:
             raise GroundedAnswerError(str(exc)) from exc

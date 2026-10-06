@@ -97,6 +97,7 @@ class DenseRetriever:
         index_id: str | None = None,
         collection_name: str | None = None,
         chunk_set_id: str | None = None,
+        document_ids: frozenset[str] | None = None,
     ) -> DenseRetrievalResult:
         if not query or not query.strip():
             raise DenseRetrievalError("query must be non-empty")
@@ -135,7 +136,10 @@ class DenseRetriever:
 
         query_vector = embedder.embed_query(query.strip())
         hits = self._backend.search(
-            resolved_collection_name, query_vector=query_vector, top_k=k
+            resolved_collection_name,
+            query_vector=query_vector,
+            top_k=k,
+            document_ids=document_ids,
         )
         hits = sorted(
             hits,

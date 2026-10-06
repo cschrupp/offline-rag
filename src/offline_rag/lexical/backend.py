@@ -69,8 +69,18 @@ class LexicalIndexBackend(Protocol):
     def open(self, lexical_index_id: str) -> None:
         """Load a published index into memory for search."""
 
-    def search(self, query_terms: list[str], *, top_k: int) -> list[LexicalSearchHit]:
-        """Return ranked hits for unique analyzed query terms."""
+    def search(
+        self,
+        query_terms: list[str],
+        *,
+        top_k: int,
+        document_ids: frozenset[str] | None = None,
+    ) -> list[LexicalSearchHit]:
+        """Return ranked hits for unique analyzed query terms.
+
+        When ``document_ids`` is set, BM25 statistics and candidates are scoped
+        to those documents before ranking.
+        """
 
     def validate(self, lexical_index_id: str) -> bool:
         """Return whether the published index passes integrity checks."""
@@ -254,7 +264,13 @@ class LocalInvertedIndexBackend:
             b=float(metadata.get("b", 0.75)),
         )
 
-    def search(self, query_terms: list[str], *, top_k: int) -> list[LexicalSearchHit]:
+    def search(
+        self,
+        query_terms: list[str],
+        *,
+        top_k: int,
+        document_ids: frozenset[str] | None = None,
+    ) -> list[LexicalSearchHit]:
         if self._metadata is None:
             raise RuntimeError("lexical index is not open")
         if top_k < 1:
@@ -262,17 +278,51 @@ class LocalInvertedIndexBackend:
         if not query_terms:
             return []
 
-        n = int(self._metadata["N"])
-        avgdl = float(self._metadata["avgdl"])
-        dfs = {term: int(payload["df"]) for term, payload in self._postings.items()}
-        postings_by_term: dict[str, list[tuple[str, float]]] = {
-            term: [(str(chunk_id), float(tf)) for chunk_id, tf in payload["postings"]]
-            for term, payload in self._postings.items()
-        }
+        if document_ids is None:
+            n = int(self._metadata["N"])
+            avgdl = float(self._metadata["avgdl"])
+            dfs = {term: int(payload["df"]) for term, payload in self._postings.items()}
+            postings_by_term: dict[str, list[tuple[str, float]]] = {
+                term: [(str(chunk_id), float(tf)) for chunk_id, tf in payload["postings"]]
+                for term, payload in self._postings.items()
+            }
+            doc_lengths = self._doc_lengths
+        else:
+            if not document_ids:
+                return []
+            eligible_chunks = {
+                chunk_id
+                for chunk_id, row in self._doc_by_chunk.items()
+                if str(row.get("document_id") or "") in document_ids
+            }
+            if not eligible_chunks:
+                return []
+            doc_lengths = {
+                chunk_id: length
+                for chunk_id, length in self._doc_lengths.items()
+                if chunk_id in eligible_chunks
+            }
+            n = len(doc_lengths)
+            if n < 1:
+                return []
+            avgdl = sum(doc_lengths.values()) / float(n)
+            postings_by_term = {}
+            dfs = {}
+            for term, payload in self._postings.items():
+                scoped = [
+                    (str(chunk_id), float(tf))
+                    for chunk_id, tf in payload["postings"]
+                    if str(chunk_id) in eligible_chunks
+                ]
+                if not scoped:
+                    continue
+                postings_by_term[term] = scoped
+                dfs[term] = len(scoped)
+
         scores = self._scorer.accumulate(
             query_terms=query_terms,
             postings_by_term=postings_by_term,
-            doc_lengths=self._doc_lengths,
+            doc_lengths=doc_lengths,
             avgdl=avgdl,
             n=n,
             dfs=dfs,

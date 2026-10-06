@@ -1,5 +1,7 @@
 export const queryKeys = {
   healthReady: ["health", "ready"] as const,
+  capabilities: ["capabilities"] as const,
+  generationSettings: ["settings", "generation"] as const,
   workspaces: ["workspaces"] as const,
   workspace: (workspaceId: string) => ["workspace", workspaceId] as const,
   workspaceSources: (workspaceId: string) =>

@@ -28,10 +28,9 @@ export function OverviewPage() {
   return (
     <div className="stack">
       <header>
-        <h1>OfflineRAG</h1>
+        <h1>Seneca</h1>
         <p className="muted">
-          Local operational knowledge workspaces for this OfflineRAG
-          installation.
+          Grounded knowledge workspace for this local installation.
         </p>
       </header>
 
@@ -76,7 +75,7 @@ export function OverviewPage() {
           <h2>Local storage</h2>
           <Badge tone="ready" label="Local / offline product" />
           <p className="muted">
-            Source data is managed by this OfflineRAG installation. No cloud
+            Source data is managed by this local Seneca installation. No cloud
             source upload is provided by this product.
           </p>
         </Card>

@@ -81,6 +81,65 @@ export type HealthReady = {
   status: string;
 };
 
+export type Capabilities = {
+  product: {
+    name: string;
+    descriptor: string;
+  };
+  source_limits: {
+    max_active_sources: number;
+    max_bytes_per_source: number;
+    max_active_source_bytes: number;
+  };
+  generation: {
+    enabled: boolean;
+    provider: string;
+    base_url: string;
+    model: string;
+    timeout_seconds: number;
+  };
+};
+
+export type GenerationSettingsSnapshot = {
+  enabled: boolean;
+  provider: string;
+  base_url: string;
+  model: string;
+  timeout_seconds: number;
+  api_key_configured: boolean;
+};
+
+export type GenerationSettingsLocks = {
+  enabled: boolean;
+  base_url: boolean;
+  model: boolean;
+  timeout_seconds: boolean;
+  api_key: boolean;
+};
+
+export type GenerationSettingsState = {
+  active: GenerationSettingsSnapshot;
+  pending: GenerationSettingsSnapshot | null;
+  restart_required: boolean;
+  locks: GenerationSettingsLocks;
+  strict_offline: boolean;
+};
+
+export type GenerationSettingsCandidate = {
+  enabled: boolean;
+  base_url: string;
+  model: string;
+  timeout_seconds: number;
+  api_key_action: "keep" | "set" | "clear";
+  api_key?: string | null;
+};
+
+export type GenerationProbeResult = {
+  ok: boolean;
+  reason?: string | null;
+  available_models?: string[] | null;
+};
+
 export type ErrorEnvelope = {
   error: {
     code: string;

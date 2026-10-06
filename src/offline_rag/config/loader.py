@@ -1,7 +1,8 @@
 """Configuration loading with explicit precedence and no network access.
 
 Precedence (later wins):
-  built-in defaults < YAML < environment variables < explicit overrides
+  built-in defaults < YAML < Seneca product generation settings <
+  environment/operator overrides < explicit programmatic overrides
 """
 
 from __future__ import annotations
@@ -170,6 +171,7 @@ def _apply_data_dir(data: MutableMapping[str, Any], data_dir: str) -> None:
     paths["staging"] = str(root / "staging")
     paths["locks"] = str(root / "locks")
     paths["workspaces"] = str(root / "workspaces")
+    paths["product_settings"] = str(root / "settings")
     paths["logs"] = str(root / "logs")
     paths["eval_results"] = str(root / "eval" / "results")
 
@@ -288,6 +290,26 @@ def load_settings(
         overlay = _load_yaml_file(Path(yaml_path))
         _reject_legacy_sparse_config(overlay)
         payload = _deep_merge(payload, overlay)
+
+    # Rebase durable paths under DATA_DIR before reading the Seneca product
+    # overlay so YAML < product < env uses the effective settings directory.
+    data_dir = env.get(f"{ENV_PREFIX}DATA_DIR")
+    if data_dir:
+        _apply_data_dir(payload, data_dir)
+
+    # Seneca generation overlay sits between YAML and environment authority.
+    from offline_rag.app.product_settings import (
+        generation_overlay_from_product_settings,
+        resolve_product_settings_dir,
+    )
+
+    product_dir = resolve_product_settings_dir(payload, environ=env)
+    try:
+        product_overlay = generation_overlay_from_product_settings(product_dir)
+    except ValueError as exc:
+        raise ConfigError(f"invalid Seneca product settings: {exc}") from exc
+    if product_overlay:
+        payload = _deep_merge(payload, product_overlay)
 
     env_payload = env_overrides(env)
     _coerce_list_env_fields(env_payload)

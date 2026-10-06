@@ -53,6 +53,7 @@ class _SnapshotQueryRuntimeEntry:
         question: str,
         *,
         checkpoint: CheckpointFn | None = None,
+        document_ids: frozenset[str] | None = None,
     ) -> GroundedAnswerResult:
         if self.closed:
             raise AppError(ErrorCode.RUNTIME_NOT_READY)
@@ -68,6 +69,7 @@ class _SnapshotQueryRuntimeEntry:
             lexical_index_id=binding.lexical_index_id,
             chunk_set_id=binding.chunk_set_id,
             corpus_id=binding.corpus_id,
+            document_ids=document_ids,
             checkpoint=checkpoint,
         )
 
@@ -111,8 +113,11 @@ class SnapshotQueryRuntimeHandle:
         question: str,
         *,
         checkpoint: CheckpointFn | None = None,
+        document_ids: frozenset[str] | None = None,
     ) -> GroundedAnswerResult:
-        return self._entry.answer(question, checkpoint=checkpoint)
+        return self._entry.answer(
+            question, checkpoint=checkpoint, document_ids=document_ids
+        )
 
 
 @dataclass

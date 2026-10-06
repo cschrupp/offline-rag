@@ -76,6 +76,7 @@ class HybridRetriever:
         lexical_index_id: str | None = None,
         chunk_set_id: str | None = None,
         corpus_id: str | None = None,
+        document_ids: frozenset[str] | None = None,
     ) -> HybridRetrievalResult:
         if not query or not query.strip():
             raise HybridRetrievalError("query must be non-empty")
@@ -132,12 +133,14 @@ class HybridRetriever:
                 index_id=dense_index_id,
                 collection_name=dense_collection_name,
                 chunk_set_id=chunk_set_id,
+                document_ids=document_ids,
             )
         else:
             dense_result = self._dense.retrieve(
                 query=query.strip(),
                 corpus_name=name,
                 top_k=dense_depth,
+                document_ids=document_ids,
             )
         dense_s = time.perf_counter() - t0
         dense_ms = int(dense_s * 1000)
@@ -151,12 +154,14 @@ class HybridRetriever:
                     top_k=lexical_depth,
                     index_id=lexical_index_id,
                     chunk_set_id=chunk_set_id,
+                    document_ids=document_ids,
                 )
             else:
                 lexical_result = self._lexical.retrieve(
                     query=query.strip(),
                     corpus_name=name,
                     top_k=lexical_depth,
+                    document_ids=document_ids,
                 )
             lexical_s = time.perf_counter() - t1
             lexical_ms = int(lexical_s * 1000)

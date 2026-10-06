@@ -37,6 +37,19 @@ class ProductTraceRequestSummary(BaseModel):
 
     question_sha256: str = Field(min_length=1)
     question_char_count: int = Field(ge=0)
+    source_scope: ProductTraceSourceScope | None = None
+
+
+class ProductTraceSourceScope(BaseModel):
+    """Effective workspace source scope for a product query (16D-A)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    workspace_id: str = Field(min_length=1)
+    workspace_revision: int = Field(ge=0)
+    mode: Literal["all_active", "selected"]
+    source_ids: list[str] = Field(default_factory=list)
+    document_ids: list[str] = Field(default_factory=list)
 
 
 class ProductTraceIdentitySummary(BaseModel):
