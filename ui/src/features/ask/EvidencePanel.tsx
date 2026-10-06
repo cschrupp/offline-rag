@@ -19,10 +19,28 @@ export function EvidencePanel({
   currentSources,
   currentWorkspaceRevision,
 }: Props) {
-  const badge =
+  const isSourcePreview = previewTarget?.kind === "source";
+  const isCitationPreview = previewTarget?.kind === "citation";
+  const liveSource =
+    isSourcePreview && previewTarget
+      ? (currentSources.find(
+          (source) => source.source_id === previewTarget.sourceId,
+        ) ?? null)
+      : null;
+
+  const queryBadge =
     activeEntry != null
       ? snapshotBadge(activeEntry.response.snapshot_id, currentSnapshotId)
       : null;
+
+  // Query provenance belongs to citation / answer evidence only — never under
+  // an unrelated current-source inspection.
+  const showQueryProvenance =
+    (isCitationPreview || previewTarget == null) && activeEntry != null;
+  const showCitationDetails = isCitationPreview && selectedCitation != null;
+  const showSourceProvenance = isSourcePreview && liveSource != null;
+  const showProvenance =
+    showQueryProvenance || showCitationDetails || showSourceProvenance;
 
   return (
     <section className="evidence-panel stack" aria-labelledby="evidence-heading">
@@ -33,16 +51,32 @@ export function EvidencePanel({
         currentSources={currentSources}
         currentWorkspaceRevision={currentWorkspaceRevision}
       />
-      {selectedCitation || activeEntry ? (
+      {showProvenance ? (
         <details className="provenance-disclosure">
           <summary>Provenance</summary>
           <dl className="provenance-list">
-            {activeEntry ? (
+            {showSourceProvenance && liveSource ? (
+              <>
+                <div>
+                  <dt>Snapshot status</dt>
+                  <dd>Current snapshot</dd>
+                </div>
+                <div>
+                  <dt>Source version</dt>
+                  <dd>{liveSource.version}</dd>
+                </div>
+                <div>
+                  <dt>Workspace revision</dt>
+                  <dd>{currentWorkspaceRevision}</dd>
+                </div>
+              </>
+            ) : null}
+            {showQueryProvenance && activeEntry ? (
               <>
                 <div>
                   <dt>Snapshot status</dt>
                   <dd>
-                    {badge === "current"
+                    {queryBadge === "current"
                       ? "Current snapshot"
                       : "Historical snapshot"}
                   </dd>
@@ -61,7 +95,7 @@ export function EvidencePanel({
                 </div>
               </>
             ) : null}
-            {selectedCitation ? (
+            {showCitationDetails && selectedCitation ? (
               <>
                 <div>
                   <dt>Source version</dt>

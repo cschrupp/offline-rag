@@ -154,16 +154,25 @@ export function selectAllSources(
   return next;
 }
 
-/** When every active source is selected, omit source_ids (all-active semantics). */
+/**
+ * Build request scope from selection intent.
+ * Only mode=all with every known active source selected may omit source_ids.
+ * mode=subset always sends the explicit selected IDs (never silent broaden).
+ */
 export function sourceIdsForQuery(
   sources: Source[],
   selectedSourceIds: string[],
+  mode: SourceSelectionMode,
 ): string[] | undefined {
   if (sources.length === 0) return [];
   if (selectedSourceIds.length === 0) return [];
+  if (mode === "subset") {
+    return selectedSourceIds.slice();
+  }
   const allSelected = sources.every((source) =>
     selectedSourceIds.includes(source.source_id),
   );
   if (allSelected) return undefined;
+  // Defensive: mode=all but selection drifted — send explicit IDs.
   return selectedSourceIds.slice();
 }

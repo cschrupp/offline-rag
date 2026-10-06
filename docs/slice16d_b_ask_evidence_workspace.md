@@ -39,14 +39,22 @@ query-scope substrate without a second query pipeline.
   otherwise inferred from whether every known ID was selected); malformed discarded
 - Checkbox is query-scope only; ⋮ remains CRUD only
 - Zero selected disables Ask; request is not sent
-- All selected → omit `source_ids` (server all-active semantics)
-- Subset → exact `source_ids` list
+- Query scope honors `mode` (not list-equality alone):
+  - `mode = all` and every currently known active source selected → may omit
+    `source_ids`
+  - `mode = subset` → always send explicit `selectedSourceIds`, even when every
+    currently visible checkbox is checked (prevents silent broaden if the
+    backend has a source the UI has not yet observed)
+- React state retains `selectionMode` alongside `selectedSourceIds`
 
 ## Query contract
 
 - `POST /v1/workspaces/{id}/query` via `queryWorkspace`
 - Body: `{ question, source_ids? }` only — no history / prior answers / citations
 - Mutation `retry: false`
+- Submitted Ask captured immutably at click time (question, selected IDs/names,
+  mode, effective `source_ids`); history is built from that submit object, not
+  from React state at `onSuccess`
 - Frontend DTOs: `WorkspaceCitation`, `WorkspaceQueryResponse`
 
 ## Session-local history
@@ -55,7 +63,10 @@ query-scope substrate without a second query pipeline.
 - Max 25 successful entries
 - Stores question, selected scope names/IDs, and public query response
 - Never stores raw source bytes
-- Malformed session payload discarded
+- Malformed whole payload removed; individual malformed entries dropped
+  (deterministic filter). Guards cover entry fields, response status/answer
+  shape (`answered` requires string answer), and citation presentation fields
+  so loaded history cannot crash Ask / Evidence rendering
 - Display-only; never sent on subsequent Ask
 
 ## Desktop layout
@@ -106,6 +117,11 @@ GET /v1/workspaces/{workspace_id}/sources/{source_id}/versions/{version}/content
   workspace_revision + query snapshot_id (never “current version” bytes)
 - Direct source-name preview means “inspect the current source”: live-bound to
   current `Source.version` / workspace revision; cleared if source_id disappears
+- Provenance matches evidence mode:
+  - citation / answer: query snapshot status, snapshot ID, query revision,
+    trace ID, citation location fields
+  - direct current-source: Current snapshot + source version + current workspace
+    revision only (no prior Trace ID / query Snapshot ID)
 - PDF: browser-native iframe + `#page=` when page_start present
 - Text/Markdown: escaped text, bounded line window, cited-line highlight
 - Unsupported / HTML-capable types: honest unsupported preview (no active HTML)
@@ -135,6 +151,18 @@ Addressed:
   Sources→Evidence close-then-open; viewport widen closes drawers
 - **F3 / F3B** — derive snapshot badge; rebind/clear direct source preview
 
+## Independent review rework 2 (F4–F6)
+
+Disposition received: REWORK REQUIRED against candidate
+`d4817315610de12b84719bb70e5e801f8381bbbe`.
+
+Addressed:
+
+- **F4 / F4B** — `sourceIdsForQuery(..., mode)`; subset always sends explicit
+  IDs; React retains `selectionMode`; Ask history built from immutable submit
+- **F5** — strict session-history validation (answer/citation/status shapes)
+- **F6** — provenance gated by citation vs direct-source evidence mode
+
 Backend exact-version content contract unchanged (accepted 16D-B backend evidence
 retained). Scientific retrieval/generation stack untouched. No merge / no 16D-C.
 
@@ -151,11 +179,12 @@ Backend:
 Frontend:
 
 - `ui/src/test/slice16d_b.app.test.tsx` (selection mode / EMPTY→first,
-  no-memory, answers, derived historical badge, current-source rebind/clear,
-  desktop no-drawer, mobile one-drawer transition, drawer non-nesting)
+  mode-aware query scope, submitted-scope capture, malformed history rejection,
+  citation vs source provenance, derived historical badge, current-source
+  rebind/clear, desktop no-drawer, mobile one-drawer transition)
 - prior 16C / 16D-A suites retained green
 
-## Validation (rework 1)
+## Validation (rework 2)
 
 Frontend gates (run from `ui/`):
 

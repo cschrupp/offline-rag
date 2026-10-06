@@ -50,8 +50,18 @@ import {
   selectAllSources,
   setSourceSelected,
   sourceIdsForQuery,
+  type SourceSelectionMode,
 } from "../features/ask/sourceSelection";
 import { useNarrowLayout } from "../features/ask/useNarrowLayout";
+
+type AskSubmit = {
+  question: string;
+  selectedSourceIds: string[];
+  selectedSourceNames: string[];
+  mode: SourceSelectionMode;
+  /** undefined = omit source_ids (all-active); [] would mean empty scope */
+  sourceIds: string[] | undefined;
+};
 import {
   forgetActiveOperation,
   isTerminalOperationStatus,
@@ -139,6 +149,8 @@ export function WorkspacePage() {
   const [operationLabel, setOperationLabel] = useState<string | undefined>();
 
   const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
+  const [selectionMode, setSelectionMode] =
+    useState<SourceSelectionMode>("all");
   const [selectionSyncKey, setSelectionSyncKey] = useState("");
   const [question, setQuestion] = useState("");
   const [askError, setAskError] = useState<string | null>(null);
@@ -171,6 +183,7 @@ export function WorkspacePage() {
     setAskError(null);
     setConflictHint(null);
     setSelectionSyncKey("");
+    setSelectionMode("all");
     setSourcesDrawerOpen(false);
     setEvidenceDrawerOpen(false);
   }
@@ -188,6 +201,7 @@ export function WorkspacePage() {
     const next = reconcileSourceSelection(workspaceId, activeSources);
     setSelectionSyncKey(selectionKey);
     setSelectedSourceIds(next.selectedSourceIds);
+    setSelectionMode(next.mode);
   }
 
   if (
@@ -415,28 +429,24 @@ export function WorkspacePage() {
   });
 
   const askMutation = useMutation({
-    mutationFn: () => {
-      const scope = sourceIdsForQuery(sources, selectedSourceIds);
-      return queryWorkspace({
+    mutationFn: (submit: AskSubmit) =>
+      queryWorkspace({
         workspaceId,
-        question: question.trim(),
-        sourceIds: scope,
-      });
-    },
+        question: submit.question,
+        sourceIds: submit.sourceIds,
+      }),
     retry: false,
-    onSuccess: (response) => {
+    onSuccess: (response, submit) => {
       setAskError(null);
       setConflictHint(null);
       setSettingsHint(false);
-      const names = sources
-        .filter((source) => selectedSourceIds.includes(source.source_id))
-        .map((source) => source.display_name);
+      // History describes the immutable submitted request, not post-flight UI state.
       const entry: AskHistoryEntry = {
         entryId: newHistoryEntryId(),
         askedAt: new Date().toISOString(),
-        question: question.trim(),
-        selectedSourceIds: selectedSourceIds.slice(),
-        selectedSourceNames: names,
+        question: submit.question,
+        selectedSourceIds: submit.selectedSourceIds,
+        selectedSourceNames: submit.selectedSourceNames,
         response,
       };
       const next = appendAskHistory(workspaceId, entry);
@@ -480,6 +490,33 @@ export function WorkspacePage() {
       );
     },
   });
+
+  function submitAsk() {
+    const trimmed = question.trim();
+    if (
+      isEmpty ||
+      selectedSourceIds.length === 0 ||
+      trimmed.length === 0 ||
+      askMutation.isPending
+    ) {
+      return;
+    }
+    const submittedIds = selectedSourceIds.slice();
+    const submittedNames = sources
+      .filter((source) => submittedIds.includes(source.source_id))
+      .map((source) => source.display_name);
+    const submittedMode = selectionMode;
+    const submit: AskSubmit = {
+      question: trimmed,
+      selectedSourceIds: submittedIds,
+      selectedSourceNames: submittedNames,
+      mode: submittedMode,
+      sourceIds: sourceIdsForQuery(sources, submittedIds, submittedMode),
+    };
+    setAskError(null);
+    setConflictHint(null);
+    askMutation.mutate(submit);
+  }
 
   function closeSourcesDrawerThen(action: () => void) {
     setSourcesDrawerOpen(false);
@@ -604,10 +641,12 @@ export function WorkspacePage() {
       onToggle={(sourceId, selected) => {
         const next = setSourceSelected(workspaceId, sources, sourceId, selected);
         setSelectedSourceIds(next.selectedSourceIds);
+        setSelectionMode(next.mode);
       }}
       onSelectAll={() => {
         const next = selectAllSources(workspaceId, sources);
         setSelectedSourceIds(next.selectedSourceIds);
+        setSelectionMode(next.mode);
       }}
       onAdd={() =>
         closeSourcesDrawerThen(() => {
@@ -783,9 +822,7 @@ export function WorkspacePage() {
             onQuestionChange={setQuestion}
             onAsk={() => {
               if (askDisabled) return;
-              setAskError(null);
-              setConflictHint(null);
-              askMutation.mutate();
+              submitAsk();
             }}
             askDisabled={askDisabled}
             askPending={askMutation.isPending}

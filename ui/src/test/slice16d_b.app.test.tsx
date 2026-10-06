@@ -31,7 +31,9 @@ import { NARROW_LAYOUT_MEDIA } from "../features/ask/useNarrowLayout";
 afterEach(() => {
   vi.restoreAllMocks();
   sessionStorage.clear();
-  document.getElementById("root")?.removeAttribute("inert");
+  const root = document.getElementById("root");
+  root?.removeAttribute("inert");
+  root?.remove();
 });
 
 function ensureAppRoot(): HTMLElement {
@@ -230,14 +232,19 @@ describe("Slice 16D-B source selection helpers", () => {
     expect(reconcileSourceSelection("ws_a", [a]).mode).toBe("subset");
   });
 
-  it("omits source_ids only when every active source is selected", () => {
+  it("omits source_ids only for mode=all with every known source selected", () => {
     const sources = [
       source({ source_id: "src_a" }),
       source({ source_id: "src_b" }),
     ];
-    expect(sourceIdsForQuery(sources, ["src_a", "src_b"])).toBeUndefined();
-    expect(sourceIdsForQuery(sources, ["src_a"])).toEqual(["src_a"]);
-    expect(sourceIdsForQuery(sources, [])).toEqual([]);
+    expect(sourceIdsForQuery(sources, ["src_a", "src_b"], "all")).toBeUndefined();
+    expect(sourceIdsForQuery(sources, ["src_a"], "all")).toEqual(["src_a"]);
+    expect(sourceIdsForQuery(sources, ["src_a", "src_b"], "subset")).toEqual([
+      "src_a",
+      "src_b",
+    ]);
+    expect(sourceIdsForQuery(sources, ["src_a"], "subset")).toEqual(["src_a"]);
+    expect(sourceIdsForQuery(sources, [], "subset")).toEqual([]);
   });
 });
 
@@ -263,6 +270,63 @@ describe("Slice 16D-B ask history helpers", () => {
     expect(snapshotBadge("snap_1", "snap_1")).toBe("current");
     expect(snapshotBadge("snap_1", "snap_2")).toBe("historical");
     expect(snapshotBadge("snap_1", null)).toBe("historical");
+  });
+
+  it("discards malformed session history entries that would crash Ask rendering", () => {
+    const valid = {
+      entryId: "e_ok",
+      askedAt: "2026-01-01T00:00:00Z",
+      question: "Valid?",
+      selectedSourceIds: ["src_1"],
+      selectedSourceNames: ["Alpha.pdf"],
+      response: queryResponse({ trace_id: "tr_ok" }),
+    };
+    const answerObject = {
+      ...valid,
+      entryId: "e_bad_answer",
+      response: {
+        ...queryResponse(),
+        status: "answered",
+        answer: { text: "not a string" },
+      },
+    };
+    const badSelectedIds = {
+      ...valid,
+      entryId: "e_bad_ids",
+      selectedSourceIds: ["src_1", 2],
+    };
+    const badCitation = {
+      ...valid,
+      entryId: "e_bad_cite",
+      response: {
+        ...queryResponse(),
+        citations: [
+          {
+            evidence_unit_id: "eu_1",
+            source_id: "src_1",
+            source_version: 1,
+            // missing presentation fields
+          },
+        ],
+      },
+    };
+    const badStatus = {
+      ...valid,
+      entryId: "e_bad_status",
+      response: { ...queryResponse(), status: "hallucinated" },
+    };
+
+    sessionStorage.setItem(
+      "seneca.ask-history.v1:ws_malformed",
+      JSON.stringify([
+        answerObject,
+        badSelectedIds,
+        badCitation,
+        badStatus,
+        valid,
+      ]),
+    );
+    expect(loadAskHistory("ws_malformed")).toEqual([valid]);
   });
 
   it("builds cited text windows with line highlighting", () => {
@@ -330,6 +394,147 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
     await waitFor(() => expect(bodies).toHaveLength(1));
     expect(bodies[0]).toEqual({ question: "What does Alpha say?" });
     expect(bodies[0]).not.toHaveProperty("source_ids");
+    mock.restore();
+  });
+
+  it("mode=subset always sends explicit source_ids even when all known sources are checked", async () => {
+    const user = userEvent.setup();
+    const bodies: Array<Record<string, unknown>> = [];
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces/ws_1" && call.method === "GET") {
+        return jsonResponse(
+          workspace({
+            workspace_id: "ws_1",
+            title: "Ask Desk",
+            revision: 5,
+            source_count: 2,
+            status: "active",
+            current_snapshot_id: "snap_1",
+          }),
+        );
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources") {
+        return jsonResponse({
+          workspace_id: "ws_1",
+          revision: 5,
+          sources: [
+            source({ source_id: "src_1", display_name: "Alpha.pdf" }),
+            source({ source_id: "src_2", display_name: "Beta.pdf" }),
+          ],
+        });
+      }
+      if (call.url === "/v1/workspaces/ws_1/query" && call.method === "POST") {
+        bodies.push(JSON.parse(String(call.body)) as Record<string, unknown>);
+        return jsonResponse(
+          queryResponse({ trace_id: `tr_${bodies.length}`, answer: `A${bodies.length}` }),
+        );
+      }
+      return errorResponse("not_found", "x", 404);
+    });
+
+    renderApp("/workspaces/ws_1");
+    await screen.findByRole("heading", { name: "Ask your sources" });
+    const beta = screen.getByLabelText(/Include Beta\.pdf in next Ask/i);
+    // Enter subset, then re-check every currently known source.
+    await user.click(beta);
+    await user.click(beta);
+    await user.type(screen.getByLabelText("Question"), "Subset all visible?");
+    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await waitFor(() => expect(bodies).toHaveLength(1));
+    expect(bodies[0]).toEqual({
+      question: "Subset all visible?",
+      source_ids: ["src_1", "src_2"],
+    });
+
+    await user.click(screen.getByRole("button", { name: "Select all" }));
+    await user.clear(screen.getByLabelText("Question"));
+    await user.type(screen.getByLabelText("Question"), "Follow all again?");
+    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await waitFor(() => expect(bodies).toHaveLength(2));
+    expect(bodies[1]).toEqual({ question: "Follow all again?" });
+    expect(bodies[1]).not.toHaveProperty("source_ids");
+    mock.restore();
+  });
+
+  it("history records the submitted Ask scope even if sources refetch while pending", async () => {
+    const user = userEvent.setup();
+    let resolveQuery: ((value: Response) => void) | null = null;
+    let sourceList = [
+      source({ source_id: "src_1", display_name: "Alpha.pdf" }),
+      source({ source_id: "src_2", display_name: "Beta.pdf" }),
+    ];
+    let revision = 5;
+    const bodies: Array<Record<string, unknown>> = [];
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces/ws_1" && call.method === "GET") {
+        return jsonResponse(
+          workspace({
+            workspace_id: "ws_1",
+            title: "Ask Desk",
+            revision,
+            source_count: sourceList.length,
+            status: "active",
+            current_snapshot_id: "snap_1",
+          }),
+        );
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources") {
+        return jsonResponse({
+          workspace_id: "ws_1",
+          revision,
+          sources: sourceList,
+        });
+      }
+      if (call.url === "/v1/workspaces/ws_1/query" && call.method === "POST") {
+        bodies.push(JSON.parse(String(call.body)) as Record<string, unknown>);
+        return new Promise<Response>((resolve) => {
+          resolveQuery = resolve;
+        });
+      }
+      return errorResponse("not_found", "x", 404);
+    });
+
+    const { queryClient } = renderApp("/workspaces/ws_1");
+    await screen.findByRole("heading", { name: "Ask your sources" });
+    await user.click(screen.getByLabelText(/Include Beta\.pdf in next Ask/i));
+    await user.type(screen.getByLabelText("Question"), "Pending scope?");
+    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await waitFor(() => expect(bodies).toHaveLength(1));
+    expect(bodies[0]).toEqual({
+      question: "Pending scope?",
+      source_ids: ["src_1"],
+    });
+
+    // Mid-flight UI refresh must not rewrite the submitted history scope.
+    sourceList = [
+      source({ source_id: "src_2", display_name: "Beta.pdf" }),
+      source({ source_id: "src_3", display_name: "Gamma.pdf" }),
+    ];
+    revision = 6;
+    await queryClient.invalidateQueries({ queryKey: ["workspace", "ws_1"] });
+    await queryClient.invalidateQueries({
+      queryKey: ["workspace", "ws_1", "sources"],
+    });
+    await screen.findByRole("button", { name: "Gamma.pdf" });
+
+    resolveQuery!(
+      jsonResponse(
+        queryResponse({
+          answer: "Scoped answer",
+          trace_id: "tr_pending",
+        }),
+      ),
+    );
+    expect(await screen.findByText("Scoped answer")).toBeInTheDocument();
+    expect(screen.getByText(/Asked from 1 source: Alpha\.pdf/i)).toBeInTheDocument();
+    const stored = loadAskHistory("ws_1");
+    expect(stored[0]?.selectedSourceIds).toEqual(["src_1"]);
+    expect(stored[0]?.selectedSourceNames).toEqual(["Alpha.pdf"]);
+    expect(stored[0]?.question).toBe("Pending scope?");
     mock.restore();
   });
 
@@ -699,6 +904,110 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
         ),
       ).toBeInTheDocument();
     });
+    mock.restore();
+  });
+
+  it("shows query provenance for citations and hides it for direct source preview", async () => {
+    const user = userEvent.setup();
+    mockViewport(false);
+    let currentSnapshot = "snap_1";
+    let revision = 5;
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces/ws_1" && call.method === "GET") {
+        return jsonResponse(
+          workspace({
+            workspace_id: "ws_1",
+            title: "Ask Desk",
+            revision,
+            source_count: 1,
+            status: "active",
+            current_snapshot_id: currentSnapshot,
+          }),
+        );
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources") {
+        return jsonResponse({
+          workspace_id: "ws_1",
+          revision,
+          sources: [source({ source_id: "src_1", display_name: "Alpha.pdf" })],
+        });
+      }
+      if (call.url === "/v1/workspaces/ws_1/query" && call.method === "POST") {
+        return jsonResponse(
+          queryResponse({
+            snapshot_id: "snap_1",
+            workspace_revision: 5,
+            trace_id: "tr_query_1",
+          }),
+        );
+      }
+      if (call.url.includes("/versions/") && call.url.includes("/content")) {
+        return new Response("PREVIEW_BYTES", {
+          status: 200,
+          headers: { "Content-Type": "text/plain" },
+        });
+      }
+      return errorResponse("not_found", "x", 404);
+    });
+
+    const { queryClient } = renderApp("/workspaces/ws_1");
+    await user.type(await screen.findByLabelText("Question"), "Provenance?");
+    await user.click(screen.getByRole("button", { name: "Ask" }));
+    expect(
+      await screen.findByText(/Ventilation must be established first/i),
+    ).toBeInTheDocument();
+
+    const evidence = screen
+      .getByRole("heading", { name: "Evidence" })
+      .closest("section")!;
+    await user.click(within(evidence).getByText("Provenance"));
+    expect(within(evidence).getByText("tr_query_1")).toBeInTheDocument();
+    expect(within(evidence).getByText("snap_1")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Alpha.pdf" }));
+    await screen.findByText("PREVIEW_BYTES");
+    const evidenceAfter = screen
+      .getByRole("heading", { name: "Evidence" })
+      .closest("section")!;
+    await user.click(within(evidenceAfter).getByText("Provenance"));
+    expect(within(evidenceAfter).queryByText("tr_query_1")).not.toBeInTheDocument();
+    expect(within(evidenceAfter).queryByText("snap_1")).not.toBeInTheDocument();
+    expect(
+      within(evidenceAfter).getAllByText("Current snapshot").length,
+    ).toBeGreaterThan(0);
+    expect(within(evidenceAfter).queryByText("Historical snapshot")).not.toBeInTheDocument();
+
+    // Historical answer card + current-source preview must not contradict in Evidence.
+    currentSnapshot = "snap_2";
+    revision = 6;
+    await queryClient.invalidateQueries({ queryKey: ["workspace", "ws_1"] });
+    await waitFor(() => {
+      expect(screen.getAllByText(/Historical snapshot/i).length).toBeGreaterThan(0);
+    });
+    await user.click(screen.getByRole("button", { name: "Alpha.pdf" }));
+    const evidenceCurrent = screen
+      .getByRole("heading", { name: "Evidence" })
+      .closest("section")!;
+    await user.click(within(evidenceCurrent).getByText("Provenance"));
+    expect(
+      within(evidenceCurrent).getAllByText("Current snapshot").length,
+    ).toBeGreaterThan(0);
+    expect(
+      within(evidenceCurrent).queryByText("Historical snapshot"),
+    ).not.toBeInTheDocument();
+    expect(within(evidenceCurrent).queryByText("tr_query_1")).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: /1 · Week02\.pdf · p\. 14/i }),
+    );
+    const evidenceCite = screen
+      .getByRole("heading", { name: "Evidence" })
+      .closest("section")!;
+    await user.click(within(evidenceCite).getByText("Provenance"));
+    expect(within(evidenceCite).getByText("tr_query_1")).toBeInTheDocument();
+    expect(within(evidenceCite).getByText("snap_1")).toBeInTheDocument();
     mock.restore();
   });
 
