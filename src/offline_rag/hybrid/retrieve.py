@@ -17,6 +17,7 @@ from offline_rag.hybrid.fusion import RankedBranchHit, ReciprocalRankFusion
 from offline_rag.hybrid.status import describe_hybrid_status, hybrid_status_for_corpus
 from offline_rag.ingestion.discovery import validate_corpus_name
 from offline_rag.lexical.retrieve import LexicalRetriever
+from offline_rag.retrieval.scope import assert_document_scope
 
 
 class HybridRetrievalError(RuntimeError):
@@ -209,6 +210,19 @@ class HybridRetriever:
             )
             for candidate in dense_result.candidates
         ]
+        # Fail closed before fusion if either branch escaped scope.
+        assert_document_scope(
+            dense_result.candidates,
+            document_ids,
+            error_cls=HybridRetrievalError,
+            stage="hybrid-dense-branch",
+        )
+        assert_document_scope(
+            list(lexical_by_id.values()),
+            document_ids,
+            error_cls=HybridRetrievalError,
+            stage="hybrid-lexical-branch",
+        )
 
         dense_chunk_set = str(dense_result.metadata.get("chunk_set_id") or "")
         if lexical_chunk_set and dense_chunk_set and lexical_chunk_set != dense_chunk_set:
@@ -256,6 +270,12 @@ class HybridRetriever:
                     ),
                 )
             )
+        assert_document_scope(
+            candidates,
+            document_ids,
+            error_cls=HybridRetrievalError,
+            stage="hybrid",
+        )
 
         total_s = time.perf_counter() - wall_t0
         total_ms = int(total_s * 1000)

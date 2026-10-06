@@ -21,6 +21,7 @@ from offline_rag.lexical.persistence import (
 )
 from offline_rag.lexical.pipeline import make_lexical_analyzer
 from offline_rag.lexical.status import lexical_indexing_status_for_corpus
+from offline_rag.retrieval.scope import assert_document_scope
 
 
 class LexicalRetrievalError(RuntimeError):
@@ -135,6 +136,12 @@ class LexicalRetriever:
         candidates = [
             self._hit_to_candidate(hit, rank=rank) for rank, hit in enumerate(hits, start=1)
         ]
+        assert_document_scope(
+            candidates,
+            document_ids,
+            error_cls=LexicalRetrievalError,
+            stage="lexical",
+        )
         return LexicalRetrievalResult(
             query=query.strip(),
             method="lexical",

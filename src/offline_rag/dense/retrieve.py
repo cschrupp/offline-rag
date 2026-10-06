@@ -25,6 +25,7 @@ from offline_rag.dense.status import indexing_status_for_corpus
 from offline_rag.domain.indexing import DenseCandidate, DenseRetrievalResult
 from offline_rag.ingestion.discovery import validate_corpus_name
 from offline_rag.ingestion.persistence import corpus_state_path, load_corpus_state
+from offline_rag.retrieval.scope import assert_document_scope
 
 
 class DenseRetrievalError(RuntimeError):
@@ -146,6 +147,12 @@ class DenseRetriever:
             key=lambda hit: (-hit.score, str(hit.payload.get("chunk_id") or "")),
         )
         candidates = [self._hit_to_candidate(hit, rank=rank) for rank, hit in enumerate(hits, start=1)]
+        assert_document_scope(
+            candidates,
+            document_ids,
+            error_cls=DenseRetrievalError,
+            stage="dense",
+        )
         return DenseRetrievalResult(
             query=query.strip(),
             index_id=resolved_index_id,

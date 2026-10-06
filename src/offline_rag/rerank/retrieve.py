@@ -28,6 +28,7 @@ from offline_rag.rerank.status import (
     describe_hybrid_rerank_status,
     hybrid_rerank_status_for_corpus,
 )
+from offline_rag.retrieval.scope import assert_document_scope
 
 
 class HybridRerankRetrievalError(RuntimeError):
@@ -163,6 +164,12 @@ class HybridRerankRetriever:
         hybrid_ms = int(hybrid_s * 1000)
 
         pool = list(hybrid_result.candidates)
+        assert_document_scope(
+            pool,
+            document_ids,
+            error_cls=HybridRerankRetrievalError,
+            stage="hybrid-rerank-input",
+        )
         pool_ids = [candidate.chunk_id for candidate in pool]
         hybrid_breakdown = hybrid_result.metadata.get("latency_ms")
         if not isinstance(hybrid_breakdown, dict):
@@ -262,6 +269,12 @@ class HybridRerankRetriever:
                     ),
                 )
             )
+        assert_document_scope(
+            candidates,
+            document_ids,
+            error_cls=HybridRerankRetrievalError,
+            stage="hybrid-rerank",
+        )
         sort_s = time.perf_counter() - t_sort
         sort_ms = int(sort_s * 1000)
         # Stop only once the final HybridRerankCandidate list is available.

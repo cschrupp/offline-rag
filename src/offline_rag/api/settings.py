@@ -70,10 +70,19 @@ def _pending_effective_view(
         return None
     active = settings.generation
     body = product.generation
-    try:
-        normalized = normalize_endpoint(body.base_url)
-    except Exception:  # noqa: BLE001
-        normalized = body.base_url
+
+    if locks.get("base_url") or body.base_url is None:
+        pending_base_url = str(active.base_url)
+    else:
+        try:
+            pending_base_url = str(normalize_endpoint(body.base_url))
+        except Exception:  # noqa: BLE001
+            pending_base_url = str(body.base_url)
+
+    if locks.get("model") or body.model is None:
+        pending_model = str(active.model)
+    else:
+        pending_model = str(body.model)
 
     if locks.get("api_key"):
         future_key_configured = bool(active.api_key)
@@ -86,8 +95,8 @@ def _pending_effective_view(
     pending = {
         "enabled": bool(active.enabled) if locks.get("enabled") else bool(body.enabled),
         "provider": "openai_compatible",
-        "base_url": str(active.base_url) if locks.get("base_url") else str(normalized),
-        "model": str(active.model) if locks.get("model") else str(body.model),
+        "base_url": pending_base_url,
+        "model": pending_model,
         "timeout_seconds": (
             int(active.timeout_seconds)
             if locks.get("timeout_seconds")
@@ -219,17 +228,23 @@ def _probe_approvals(
     normalized: str,
     model: str,
 ) -> tuple[list[str], list[str]]:
-    """Resolve probe approvals without inventing product authority for locks.
+    """Resolve probe approvals with independent endpoint/model authority.
 
-    Selected-value authority (env lock) must not receive product-injected
-    approval merely because Settings probed or saved the locked value.
+    Locked selection uses active/operator approvals. Unlocked selection uses
+    the prospective product-managed value. Endpoint and model authority are
+    never coupled.
     """
-    if locks.get("base_url") or locks.get("model"):
-        return (
-            list(settings.generation.approved_endpoints),
-            list(settings.generation.approved_models),
-        )
-    return [normalized], [model]
+    approved_endpoints = (
+        list(settings.generation.approved_endpoints)
+        if locks.get("base_url")
+        else [normalized]
+    )
+    approved_models = (
+        list(settings.generation.approved_models)
+        if locks.get("model")
+        else [model]
+    )
+    return approved_endpoints, approved_models
 
 
 @router.post("/v1/settings/generation/probe")
@@ -377,26 +392,11 @@ def save_generation_settings(
             details=SafeErrorDetails(reason="malformed_product_settings"),
         ) from exc
 
-    # Locked selection must never acquire product-managed approval.
-    if locks.get("base_url") or locks.get("model"):
-        if existing is None:
-            raise AppError(
-                ErrorCode.SETTINGS_LOCKED,
-                details=SafeErrorDetails(
-                    reason="cannot_create_product_approval_for_operator_selection"
-                ),
-            )
-        persist_base_url = (
-            existing.generation.base_url
-            if locks.get("base_url")
-            else body.base_url
-        )
-        persist_model = (
-            existing.generation.model if locks.get("model") else body.model
-        )
-    else:
-        persist_base_url = body.base_url
-        persist_model = body.model
+    # Locked selection must never acquire product-managed approval. Unlocked
+    # selection may be owned independently even when the other field is locked
+    # and even when no prior product settings file exists.
+    persist_base_url: str | None = None if locks.get("base_url") else body.base_url
+    persist_model: str | None = None if locks.get("model") else body.model
 
     manage_api_key = False
     if locks.get("api_key"):
@@ -437,12 +437,12 @@ def save_generation_settings(
             details=SafeErrorDetails(reason=str(exc)),
         ) from exc
 
-    if body.enabled and not (locks.get("base_url") or locks.get("model")):
-        # Re-probe unlocked product-managed candidates only.
+    # Re-probe when enabling and at least one product-managed selection exists.
+    if body.enabled and (persist_base_url is not None or persist_model is not None):
         probe_body = GenerationProbeRequest(
             enabled=True,
-            base_url=record.generation.base_url,
-            model=record.generation.model,
+            base_url=persist_base_url or str(settings.generation.base_url),
+            model=persist_model or str(settings.generation.model),
             timeout_seconds=record.generation.timeout_seconds,
             api_key=resolved_key,
             api_key_action="set" if resolved_key else "clear",

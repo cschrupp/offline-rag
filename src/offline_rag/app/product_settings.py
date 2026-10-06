@@ -2,6 +2,10 @@
 
 Allowlisted generation-only overlay persisted under ``paths.product_settings``.
 Not a generic AppSettings JSON injector.
+
+Selection fields (``base_url``, ``model``) are independently optional so the
+product layer can own one without inventing approval for an operator-locked
+counterpart.
 """
 
 from __future__ import annotations
@@ -30,17 +34,21 @@ class SenecaGenerationBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     enabled: bool = True
-    base_url: str
-    model: str
+    base_url: str | None = None
+    model: str | None = None
     timeout_seconds: int = Field(default=120, ge=1, le=3600)
     api_key: str | None = None
 
-    @field_validator("base_url", "model")
+    @field_validator("base_url", "model", mode="before")
     @classmethod
-    def _non_empty(cls, value: str) -> str:
+    def _optional_non_empty(cls, value: object) -> object:
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise TypeError("must be a string or null")
         text = value.strip()
         if not text:
-            raise ValueError("must be non-empty")
+            raise ValueError("must be non-empty when present")
         return text
 
     @field_validator("api_key")
@@ -101,10 +109,12 @@ def generation_overlay_from_product_settings(
     Malformed files and strict-offline policy violations fail closed by raising;
     callers in ``load_settings`` treat that as ``ConfigError``.
 
-    API-key semantics:
-    - omitted ``api_key`` field in the file → do not override lower-priority YAML
-    - present ``api_key`` (including JSON null) → product owns the key and
-      overrides YAML (clear when null)
+    Field ownership:
+    - omitted ``base_url`` / ``model`` → product does not own that selection
+      (and does not inject the matching approval list)
+    - present ``base_url`` / ``model`` → product owns selection + matching approval
+    - omitted ``api_key`` → do not override lower-priority YAML
+    - present ``api_key`` (including JSON null) → product owns the key
     """
     path = product_settings_path(root)
     if not path.is_file():
@@ -117,25 +127,26 @@ def generation_overlay_from_product_settings(
         raise ValueError("malformed_product_settings: root must be object")  # noqa: TRY004
     record = SenecaGenerationSettingsFile.model_validate(raw)
     body = record.generation
-    try:
-        normalized = validate_endpoint_network_policy(
-            body.base_url, strict_offline=strict_offline
-        )
-    except EndpointPolicyError as exc:
-        raise ValueError(
-            f"malformed_product_settings: endpoint_policy:{exc.reason}"
-        ) from exc
     overlay_generation: dict[str, Any] = {
         "enabled": body.enabled,
-        "base_url": normalized,
-        "model": body.model,
         "timeout_seconds": body.timeout_seconds,
-        "approved_endpoints": [normalized],
-        "approved_models": [body.model],
     }
+    if body.base_url is not None:
+        try:
+            normalized = validate_endpoint_network_policy(
+                body.base_url, strict_offline=strict_offline
+            )
+        except EndpointPolicyError as exc:
+            raise ValueError(
+                f"malformed_product_settings: endpoint_policy:{exc.reason}"
+            ) from exc
+        overlay_generation["base_url"] = normalized
+        overlay_generation["approved_endpoints"] = [normalized]
+    if body.model is not None:
+        overlay_generation["model"] = body.model
+        overlay_generation["approved_models"] = [body.model]
     raw_generation = raw.get("generation")
     if isinstance(raw_generation, dict) and "api_key" in raw_generation:
-        # Explicit null clears YAML; a string sets the product-managed secret.
         overlay_generation["api_key"] = body.api_key
     return {"generation": overlay_generation}
 
@@ -174,14 +185,23 @@ def write_product_generation_settings(
     When ``manage_api_key`` is False, omit ``api_key`` from the durable file so
     lower-priority YAML keys remain effective. When True, persist the key
     (including JSON null for an explicit clear).
+
+    ``base_url`` / ``model`` are omitted from the durable file when null so the
+    product layer does not claim selection/approval for operator-owned fields.
     """
     root = Path(root)
     root.mkdir(parents=True, exist_ok=True)
     _chmod_owner_only(root, is_dir=True)
     path = product_settings_path(root)
     payload = record.model_dump(mode="json")
-    if not manage_api_key:
-        payload.get("generation", {}).pop("api_key", None)
+    generation = payload.get("generation")
+    if isinstance(generation, dict):
+        if generation.get("base_url") is None:
+            generation.pop("base_url", None)
+        if generation.get("model") is None:
+            generation.pop("model", None)
+        if not manage_api_key:
+            generation.pop("api_key", None)
     text = json.dumps(payload, indent=2, sort_keys=True) + "\n"
     fd, tmp_name = tempfile.mkstemp(
         prefix=f".{path.name}.",
@@ -206,23 +226,30 @@ def write_product_generation_settings(
 def build_validated_product_record(
     *,
     enabled: bool,
-    base_url: str,
-    model: str,
+    base_url: str | None,
+    model: str | None,
     timeout_seconds: int,
     api_key: str | None,
     strict_offline: bool,
 ) -> SenecaGenerationSettingsFile:
-    """Validate candidate values and return a persistable record."""
-    try:
-        normalized = validate_endpoint_network_policy(
-            base_url, strict_offline=strict_offline
-        )
-    except EndpointPolicyError as exc:
-        raise ValueError(exc.reason) from exc
+    """Validate candidate values and return a persistable record.
+
+    ``base_url`` / ``model`` may be None when the product layer does not own
+    that selection (operator lock). Present endpoint values are still checked
+    against the network policy.
+    """
+    normalized: str | None = None
+    if base_url is not None:
+        try:
+            normalized = validate_endpoint_network_policy(
+                base_url, strict_offline=strict_offline
+            )
+        except EndpointPolicyError as exc:
+            raise ValueError(exc.reason) from exc
     body = SenecaGenerationBody(
         enabled=enabled,
         base_url=normalized,
-        model=model.strip(),
+        model=None if model is None else model.strip(),
         timeout_seconds=timeout_seconds,
         api_key=api_key,
     )

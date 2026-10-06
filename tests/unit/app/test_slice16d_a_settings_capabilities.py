@@ -712,11 +712,14 @@ def test_f2_operator_locked_selection_cannot_gain_product_approval(
                 "api_key_action": "keep",
             },
         )
-        assert save.status_code == 409
-        assert save.json()["error"]["code"] == "settings_locked"
-
-    product_path = settings.paths.product_settings / "seneca-generation.json"
-    assert not product_path.exists()
+        # Both selections locked + unapproved: Save may persist unlocked
+        # controls (timeout/enabled) but must not product-approve B/M.
+        assert save.status_code == 200, save.text
+        product_path = settings.paths.product_settings / "seneca-generation.json"
+        assert product_path.is_file()
+        raw = json.loads(product_path.read_text(encoding="utf-8"))
+        assert "base_url" not in raw["generation"]
+        assert "model" not in raw["generation"]
 
     # Restart with selection but no approval remains fail-closed.
     reloaded = load_settings(
@@ -893,3 +896,240 @@ def test_f6_env_api_key_lock_blocks_product_clear(
         )
         assert response.status_code == 409
         assert response.json()["error"]["code"] == "settings_locked"
+
+
+# ---------------------------------------------------------------------------
+# Independent review rework 2 — F9 field-specific authority
+# ---------------------------------------------------------------------------
+
+
+def test_f9a_locked_endpoint_unlocked_model_can_save_model_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env_endpoint = APPROVED_ENDPOINT
+    monkeypatch.setenv("OFFLINE_RAG_LLM_BASE_URL", env_endpoint)
+    monkeypatch.setenv("OFFLINE_RAG_APPROVED_LLM_ENDPOINTS", env_endpoint)
+    settings = _settings(
+        tmp_path,
+        environ={
+            "OFFLINE_RAG_LLM_BASE_URL": env_endpoint,
+            "OFFLINE_RAG_APPROVED_LLM_ENDPOINTS": env_endpoint,
+            "OFFLINE_RAG_LLM_MODEL": APPROVED_MODEL,
+            "OFFLINE_RAG_APPROVED_LLM_MODELS": APPROVED_MODEL,
+        },
+    )
+    # Model lock from APPROVED_LLM_MODELS — remove so only endpoint stays locked.
+    monkeypatch.delenv("OFFLINE_RAG_APPROVED_LLM_MODELS", raising=False)
+    monkeypatch.delenv("OFFLINE_RAG_LLM_MODEL", raising=False)
+    settings = settings.model_copy(
+        update={
+            "generation": settings.generation.model_copy(
+                update={
+                    "base_url": env_endpoint,
+                    "model": APPROVED_MODEL,
+                    "approved_endpoints": [env_endpoint],
+                    "approved_models": [APPROVED_MODEL],
+                }
+            )
+        }
+    )
+    new_model = "product-only-model"
+    with patch(
+        "offline_rag.api.settings.OpenAICompatibleGenerator.probe",
+        return_value=GeneratorProbeResult(
+            ok=True, reason="ok", available_models=(new_model,)
+        ),
+    ), _client(settings) as client:
+        body = client.get("/v1/settings/generation").json()
+        assert body["locks"]["base_url"] is True
+        assert body["locks"]["model"] is False
+        assert not (settings.paths.product_settings / "seneca-generation.json").exists()
+
+        probe = client.post(
+            "/v1/settings/generation/probe",
+            json={
+                "enabled": True,
+                "base_url": env_endpoint,
+                "model": new_model,
+                "timeout_seconds": 60,
+                "api_key_action": "keep",
+            },
+        )
+        assert probe.status_code == 200
+        assert probe.json()["ok"] is True
+
+        save = client.put(
+            "/v1/settings/generation",
+            json={
+                "enabled": True,
+                "base_url": env_endpoint,
+                "model": new_model,
+                "timeout_seconds": 60,
+                "api_key_action": "keep",
+            },
+        )
+        assert save.status_code == 200, save.text
+        pending = save.json()["pending"]
+        assert pending is not None
+        assert pending["base_url"] == env_endpoint
+        assert pending["model"] == new_model
+
+    raw = json.loads(
+        (settings.paths.product_settings / "seneca-generation.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert raw["generation"]["model"] == new_model
+    assert "base_url" not in raw["generation"]
+
+    reloaded = load_settings(
+        yaml_paths=[BASE_YAML],
+        environ={
+            "OFFLINE_RAG_DATA_DIR": str(tmp_path / "data"),
+            "OFFLINE_RAG_MODELS_DIR": str(tmp_path / "models"),
+            "OFFLINE_RAG_STRICT_OFFLINE": "true",
+            "OFFLINE_RAG_LLM_BASE_URL": env_endpoint,
+            "OFFLINE_RAG_APPROVED_LLM_ENDPOINTS": env_endpoint,
+        },
+    )
+    assert reloaded.generation.model == new_model
+    assert reloaded.generation.approved_models == [new_model]
+    assert reloaded.generation.base_url == env_endpoint
+    # Product must not have invented endpoint approval beyond operator authority.
+    assert reloaded.generation.approved_endpoints == [env_endpoint]
+
+
+def test_f9b_locked_model_unlocked_endpoint_can_save_endpoint_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env_model = APPROVED_MODEL
+    monkeypatch.setenv("OFFLINE_RAG_LLM_MODEL", env_model)
+    monkeypatch.setenv("OFFLINE_RAG_APPROVED_LLM_MODELS", env_model)
+    settings = _settings(
+        tmp_path,
+        environ={
+            "OFFLINE_RAG_LLM_MODEL": env_model,
+            "OFFLINE_RAG_APPROVED_LLM_MODELS": env_model,
+            "OFFLINE_RAG_LLM_BASE_URL": APPROVED_ENDPOINT,
+            "OFFLINE_RAG_APPROVED_LLM_ENDPOINTS": APPROVED_ENDPOINT,
+        },
+    )
+    monkeypatch.delenv("OFFLINE_RAG_APPROVED_LLM_ENDPOINTS", raising=False)
+    monkeypatch.delenv("OFFLINE_RAG_LLM_BASE_URL", raising=False)
+    new_endpoint = "http://10.0.0.77:11434/v1"
+    with patch(
+        "offline_rag.api.settings.OpenAICompatibleGenerator.probe",
+        return_value=GeneratorProbeResult(
+            ok=True, reason="ok", available_models=(env_model,)
+        ),
+    ), _client(settings) as client:
+        body = client.get("/v1/settings/generation").json()
+        assert body["locks"]["model"] is True
+        assert body["locks"]["base_url"] is False
+
+        probe = client.post(
+            "/v1/settings/generation/probe",
+            json={
+                "enabled": True,
+                "base_url": new_endpoint,
+                "model": env_model,
+                "timeout_seconds": 45,
+                "api_key_action": "keep",
+            },
+        )
+        assert probe.status_code == 200
+        assert probe.json()["ok"] is True
+
+        save = client.put(
+            "/v1/settings/generation",
+            json={
+                "enabled": True,
+                "base_url": new_endpoint,
+                "model": env_model,
+                "timeout_seconds": 45,
+                "api_key_action": "keep",
+            },
+        )
+        assert save.status_code == 200, save.text
+        pending = save.json()["pending"]
+        assert pending["base_url"] == new_endpoint
+        assert pending["model"] == env_model
+
+    raw = json.loads(
+        (settings.paths.product_settings / "seneca-generation.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert raw["generation"]["base_url"] == new_endpoint
+    assert "model" not in raw["generation"]
+
+    reloaded = load_settings(
+        yaml_paths=[BASE_YAML],
+        environ={
+            "OFFLINE_RAG_DATA_DIR": str(tmp_path / "data"),
+            "OFFLINE_RAG_MODELS_DIR": str(tmp_path / "models"),
+            "OFFLINE_RAG_STRICT_OFFLINE": "true",
+            "OFFLINE_RAG_LLM_MODEL": env_model,
+            "OFFLINE_RAG_APPROVED_LLM_MODELS": env_model,
+        },
+    )
+    assert reloaded.generation.base_url == new_endpoint
+    assert reloaded.generation.approved_endpoints == [new_endpoint]
+    assert reloaded.generation.model == env_model
+    assert reloaded.generation.approved_models == [env_model]
+
+
+def test_f9d_both_locked_and_approved_no_product_approval_required(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env_endpoint = "http://10.0.0.88:11434/v1"
+    env_model = "ops-model"
+    monkeypatch.setenv("OFFLINE_RAG_LLM_BASE_URL", env_endpoint)
+    monkeypatch.setenv("OFFLINE_RAG_LLM_MODEL", env_model)
+    monkeypatch.setenv("OFFLINE_RAG_APPROVED_LLM_ENDPOINTS", env_endpoint)
+    monkeypatch.setenv("OFFLINE_RAG_APPROVED_LLM_MODELS", env_model)
+    settings = load_settings(
+        yaml_paths=[BASE_YAML],
+        environ={
+            "OFFLINE_RAG_DATA_DIR": str(tmp_path / "data"),
+            "OFFLINE_RAG_MODELS_DIR": str(tmp_path / "models"),
+            "OFFLINE_RAG_STRICT_OFFLINE": "true",
+            "OFFLINE_RAG_LLM_BASE_URL": env_endpoint,
+            "OFFLINE_RAG_LLM_MODEL": env_model,
+            "OFFLINE_RAG_APPROVED_LLM_ENDPOINTS": env_endpoint,
+            "OFFLINE_RAG_APPROVED_LLM_MODELS": env_model,
+        },
+    )
+    settings = settings.model_copy(
+        update={"reranker": settings.reranker.model_copy(update={"enabled": False})}
+    )
+    _provision_assets(settings)
+    assert settings.generation.base_url == env_endpoint
+    assert settings.generation.model == env_model
+    with _client(settings) as client:
+        # Timeout remains unlocked — must not be blocked by endpoint/model locks.
+        save = client.put(
+            "/v1/settings/generation",
+            json={
+                "enabled": True,
+                "base_url": env_endpoint,
+                "model": env_model,
+                "timeout_seconds": 33,
+                "api_key_action": "keep",
+            },
+        )
+        assert save.status_code == 200, save.text
+        pending = save.json()["pending"]
+        assert pending is not None
+        assert pending["timeout_seconds"] == 33
+        assert pending["base_url"] == env_endpoint
+        assert pending["model"] == env_model
+
+    raw = json.loads(
+        (settings.paths.product_settings / "seneca-generation.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert raw["generation"]["timeout_seconds"] == 33
+    assert "base_url" not in raw["generation"]
+    assert "model" not in raw["generation"]

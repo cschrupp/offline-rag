@@ -707,3 +707,222 @@ def test_f4_unknown_and_duplicate_source_ids_preserve_product_codes(
         )
         assert empty.status_code == 422
         assert empty.json()["error"]["code"] == "request_invalid"
+
+
+# ---------------------------------------------------------------------------
+# Independent review rework 2 — F8 fail-closed scope invariants
+# ---------------------------------------------------------------------------
+
+
+from offline_rag.dense.retrieve import DenseRetrievalError
+from offline_rag.domain.indexing import (
+    DenseCandidate,
+    FusionProvenance,
+    HybridCandidate,
+    HybridRetrievalResult,
+    LexicalCandidate,
+)
+from offline_rag.hybrid.retrieve import HybridRetrievalError
+from offline_rag.lexical.retrieve import LexicalRetrievalError
+from offline_rag.rerank.retrieve import HybridRerankRetrievalError
+
+
+def _dense_candidate(document_id: str, *, chunk_id: str = "chk_x") -> DenseCandidate:
+    return DenseCandidate(
+        rank=1,
+        score=0.9,
+        chunk_id=chunk_id,
+        document_id=document_id,
+        text="marker text",
+        point_id="point_1",
+        chunk_artifact_id="art_1",
+    )
+
+
+def _lexical_candidate(document_id: str, *, chunk_id: str = "chk_x") -> LexicalCandidate:
+    return LexicalCandidate(
+        rank=1,
+        score=0.8,
+        chunk_id=chunk_id,
+        document_id=document_id,
+        text="marker text",
+        chunk_artifact_id="art_1",
+    )
+
+
+def _hybrid_candidate(document_id: str, *, chunk_id: str = "chk_x") -> HybridCandidate:
+    return HybridCandidate(
+        rank=1,
+        score=0.05,
+        chunk_id=chunk_id,
+        document_id=document_id,
+        text="marker text",
+        fusion=FusionProvenance(
+            rrf_score=0.05,
+            dense_rank=1,
+            dense_score=0.9,
+            lexical_rank=None,
+            lexical_score=None,
+        ),
+    )
+
+
+def test_f8_dense_escaped_candidate_fails_closed() -> None:
+    settings = AppSettings()
+    backend = MagicMock()
+    hit = MagicMock()
+    hit.score = 1.0
+    hit.payload = {"chunk_id": "chk_beta", "chunk_artifact_id": "art"}
+    hit.point_id = "pt"
+    backend.search.return_value = [hit]
+    embedder = FakeEmbedder(dimension=8, normalize=True)
+    retriever = DenseRetriever(settings, embedder=embedder, backend=backend)
+    retriever._hit_to_candidate = (  # type: ignore[method-assign]
+        lambda hit, rank: _dense_candidate("doc_beta", chunk_id="chk_beta")
+    )
+    with pytest.raises(DenseRetrievalError, match="escaped"):
+        retriever.retrieve(
+            query="scope query",
+            corpus_name="eng",
+            top_k=3,
+            index_id="dense_idx",
+            collection_name="col",
+            chunk_set_id="cs",
+            document_ids=frozenset({"doc_alpha"}),
+        )
+
+
+def test_f8_lexical_escaped_candidate_fails_closed() -> None:
+    settings = AppSettings()
+    backend = MagicMock()
+    backend.search.return_value = [MagicMock(chunk_id="chk_beta", chunk_artifact_id="art", score=1.0)]
+    analyzer = MagicMock()
+    analyzer.analyze_query_terms.return_value = ["scope"]
+    retriever = LexicalRetriever(settings, backend=backend, analyzer=analyzer)
+    retriever._open_index_id = "lex_idx"
+    retriever._hit_to_candidate = (  # type: ignore[method-assign]
+        lambda hit, rank: _lexical_candidate("doc_beta", chunk_id="chk_beta")
+    )
+    with pytest.raises(LexicalRetrievalError, match="escaped"):
+        retriever.retrieve(
+            query="scope query",
+            corpus_name="eng",
+            top_k=3,
+            index_id="lex_idx",
+            chunk_set_id="cs",
+            document_ids=frozenset({"doc_alpha"}),
+        )
+
+
+def test_f8_hybrid_escaped_branch_fails_before_fusion() -> None:
+    settings = AppSettings()
+    dense = MagicMock()
+    dense.retrieve.return_value = MagicMock(
+        candidates=[_dense_candidate("doc_beta")],
+        index_id="d",
+        metadata={"chunk_set_id": "cs"},
+    )
+    lexical = MagicMock()
+    lexical.retrieve.return_value = MagicMock(
+        candidates=[_lexical_candidate("doc_alpha")],
+        index_id="l",
+        metadata={"chunk_set_id": "cs"},
+    )
+    hybrid = HybridRetriever(settings, dense=dense, lexical=lexical)
+    with pytest.raises(HybridRetrievalError, match="hybrid-dense-branch"):
+        hybrid.retrieve(
+            query="scope query",
+            corpus_name="eng",
+            top_k=3,
+            dense_index_id="d",
+            dense_collection_name="col",
+            lexical_index_id="l",
+            chunk_set_id="cs",
+            corpus_id="corp",
+            document_ids=frozenset({"doc_alpha"}),
+        )
+
+
+def test_f8_rerank_rejects_malicious_hybrid_pool_before_scoring() -> None:
+    settings = AppSettings().model_copy(
+        update={
+            "reranker": AppSettings().reranker.model_copy(
+                update={"enabled": True, "implementation": "fake", "input_k": 5, "output_k": 3}
+            )
+        }
+    )
+    hybrid = MagicMock()
+    hybrid.retrieve.return_value = HybridRetrievalResult(
+        query="q",
+        top_k=5,
+        candidates=[_hybrid_candidate("doc_beta")],
+        dense_index_id="d",
+        lexical_index_id="l",
+        fusion_config_hash="fuscfg_x",
+        metadata={"chunk_set_id": "cs", "latency_ms": {}},
+    )
+    scored = []
+
+    class _GuardReranker(FakeReranker):
+        def score_pairs(self, pairs):
+            scored.append(True)
+            return super().score_pairs(pairs)
+
+    retriever = HybridRerankRetriever(
+        settings, hybrid=hybrid, reranker=_GuardReranker()
+    )
+    retriever._require_ready = lambda _name: None  # type: ignore[method-assign]
+    with pytest.raises(HybridRerankRetrievalError, match="hybrid-rerank-input"):
+        retriever.retrieve(
+            query="q",
+            corpus_name="eng",
+            top_k=3,
+            check_ready=False,
+            document_ids=frozenset({"doc_alpha"}),
+        )
+    assert scored == []
+
+
+def test_f8_rerank_rejects_out_of_contract_result_before_return(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = AppSettings().model_copy(
+        update={
+            "reranker": AppSettings().reranker.model_copy(
+                update={"enabled": True, "implementation": "fake", "input_k": 5, "output_k": 3}
+            )
+        }
+    )
+    good = _hybrid_candidate("doc_alpha", chunk_id="chk_alpha")
+    hybrid = MagicMock()
+    hybrid.retrieve.return_value = HybridRetrievalResult(
+        query="q",
+        top_k=5,
+        candidates=[good],
+        dense_index_id="d",
+        lexical_index_id="l",
+        fusion_config_hash="fuscfg_x",
+        metadata={"chunk_set_id": "cs", "latency_ms": {}},
+    )
+    import offline_rag.rerank.retrieve as rr_mod
+
+    original_sort = rr_mod._sort_scored
+
+    def _evil_sort(pool, scores):
+        ordered = original_sort(pool, scores)
+        evil = _hybrid_candidate("doc_beta", chunk_id="chk_beta")
+        return [(evil, 99.0), *ordered]
+
+    monkeypatch.setattr(rr_mod, "_sort_scored", _evil_sort)
+    retriever = HybridRerankRetriever(
+        settings, hybrid=hybrid, reranker=FakeReranker(score_map={("q", "chk_alpha"): 1.0})
+    )
+    retriever._require_ready = lambda _name: None  # type: ignore[method-assign]
+    with pytest.raises(HybridRerankRetrievalError, match="hybrid-rerank"):
+        retriever.retrieve(
+            query="q",
+            corpus_name="eng",
+            top_k=3,
+            check_ready=False,
+            document_ids=frozenset({"doc_alpha"}),
+        )

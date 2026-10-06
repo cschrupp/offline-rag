@@ -4,7 +4,7 @@ STATUS: IMPLEMENTATION CANDIDATE
 HUMAN ACCEPTANCE: PENDING
 
 Authorized baseline: `185d3e3d2bd472ffaddf72cfddc49c7e38a3a146`
-Prior candidate (review disposition REWORK REQUIRED): `0a5bb534440737bcf0b02b3630c4b175fd00c159`
+Prior candidate (review disposition REWORK REQUIRED): `ae63c0f16e1452b3d8ff0859e5c7674336808e94`
 A1 authority: `5060e2aeb4825f265072a1f870c3c963eace3b30`
 Branch: `implementation/16d-a-seneca-product-foundation-query-scope`
 
@@ -71,11 +71,15 @@ Branch: `implementation/16d-a-seneca-product-foundation-query-scope`
 - **Rework:** pending `api_key_configured` reflects effective future key under
   YAML / product-managed null / env-lock precedence (omit preserves YAML;
   explicit product null clears YAML)
+- **Rework 2:** endpoint and model approval authority are independent; product
+  may own only model or only endpoint; locked selection is omitted from the
+  durable product file (no duplicated operator approval)
 
 ## ACTIVE / PENDING
 
 - ACTIVE = current ApplicationRuntime generation settings
 - PENDING = effective future after restart (locked fields keep operator ACTIVE values)
+- Product-omitted selection fields keep ACTIVE values in PENDING
 - Capabilities reports ACTIVE only
 - Fresh `load_settings` after restart applies product overlay under env authority
 
@@ -102,6 +106,9 @@ Branch: `implementation/16d-a-seneca-product-foundation-query-scope`
   workspace query → query runtime → orchestrator → context → reranker → hybrid → dense + lexical
 - Dense: native Qdrant `document_id` MatchAny filter before `limit=top_k`
 - Lexical: real scoped BM25 (scoped N / avgdl / df / postings) before ranking
+- **Rework 2:** fail-closed document-scope invariants after dense/lexical
+  candidate materialization, before hybrid fusion, on hybrid output, and on
+  hybrid-rerank input/output (`assert_document_scope` — never drop escaped hits)
 - Downstream scope invariants + citation document-set enforcement
 - Trace `ProductTraceSourceScope` on request summary; generic `/v1/query` remains `source_scope=null`
 - Old traces without `source_scope` remain readable
@@ -115,17 +122,24 @@ Branch: `implementation/16d-a-seneca-product-foundation-query-scope`
 ## Independent review rework
 
 Disposition: **REWORK REQUIRED** against candidate
-`0a5bb534440737bcf0b02b3630c4b175fd00c159`.
+`0a5bb534440737bcf0b02b3630c4b175fd00c159` (rework 1 → `ae63c0f…`).
 
-Addressed findings F1–F7 on the same implementation branch. No merge,
-no self-accept, no 16D-B/C.
+Rework 1 addressed F1–F7. Rework 2 addresses F8–F9 on the same branch.
+No merge, no self-accept, no 16D-B/C.
+
+### Rework 2
+
+- F8: dense / lexical / hybrid / hybrid-rerank fail-closed scope invariants +
+  fault-injection tests (escaped `doc_beta` never reaches fusion/scoring/return)
+- F9: field-specific endpoint/model lock semantics; partial-ownership product
+  overlay; mixed-authority pending; partial-lock save/probe matrix
 
 ## Tests run
 
 Backend (selected):
 
-- `tests/unit/app/test_slice16d_a_settings_capabilities.py` — passed (incl. F1/F2/F6)
-- `tests/unit/app/test_slice16d_a_query_scope.py` — passed (incl. F3/F4 e2e + malformed)
+- `tests/unit/app/test_slice16d_a_settings_capabilities.py` — passed (F1/F2/F6/F9)
+- `tests/unit/app/test_slice16d_a_query_scope.py` — passed (F3/F4/F8 + E2E)
 - `tests/unit/app/test_slice15e_product_query_traces.py` — passed
 - `tests/unit/app/test_slice16b_query_binding.py` — passed
 - `tests/unit/app/test_slice16b_workspace_api.py` — passed (in earlier batch)
@@ -139,7 +153,7 @@ Backend (selected):
 - `tests/unit/test_hybrid_retrieval.py` — passed
 - `tests/unit/test_hybrid_rerank.py` — passed
 
-Frontend:
+Frontend (unchanged in rework 2; prior rework 1 evidence retained):
 
 - `npm run lint` — passed
 - `npm run typecheck` — passed
