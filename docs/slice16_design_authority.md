@@ -13,7 +13,8 @@ ACCEPTED SHA: eb8baefc6e3eaf7df33668c85fbbfef22364bb0e
 ACCEPTED SHA: 936e41446eb1e3697f6b7d245659831f19cf0613
 16D-A: COMPLETE / ACCEPTED
 ACCEPTED SHA: 4f8962f2893ab433e6ea269ad54e46f67771ca70
-16D-B / 16D-C: NOT AUTHORIZED
+16D-B: IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING
+16D-C: NOT AUTHORIZED
 AMENDMENT A1: ACCEPTED / LOCKED
   5060e2aeb4825f265072a1f870c3c963eace3b30
   docs/slice16_amendment_a1_seneca_product_ux.md
@@ -29,8 +30,8 @@ accepted and locked at AUTHORITY SHA
 `e73959be508541a1c50d4919606aaf3157a5fa8a`,
 `eb8baefc6e3eaf7df33668c85fbbfef22364bb0e`,
 `936e41446eb1e3697f6b7d245659831f19cf0613`, and
-`4f8962f2893ab433e6ea269ad54e46f67771ca70`. **16D-B / 16D-C** remain
-**NOT AUTHORIZED**.
+`4f8962f2893ab433e6ea269ad54e46f67771ca70`. **16D-B** is an **IMPLEMENTED
+CANDIDATE / HUMAN ACCEPTANCE PENDING**. **16D-C** remains **NOT AUTHORIZED**.
 
 ```text
 AMENDMENT A1:
@@ -42,8 +43,8 @@ docs/slice16_amendment_a1_seneca_product_ux.md
 S16-D01 … S16-D35 remain accepted/locked at
 `e2e7475076ad18d4c4ae8d939389ceeffdeff6d8`. Amendment A1 is **supplemental
 accepted/locked** authority at `5060e2aeb4825f265072a1f870c3c963eace3b30`. A1
-acceptance does **not** authorize later phase implementation. **16D-B /
-16D-C** remain **NOT AUTHORIZED** until separate explicit implementation
+acceptance does **not** authorize later phase implementation. **16D-C**
+remains **NOT AUTHORIZED** until separate explicit implementation
 authorization.
 
 **Related artifacts:**
@@ -61,6 +62,8 @@ authorization.
   [`docs/slice16c_react_shell_source_ui.md`](slice16c_react_shell_source_ui.md)
 - Accepted 16D-A evidence:
   [`docs/slice16d_a_seneca_product_foundation_query_scope.md`](slice16d_a_seneca_product_foundation_query_scope.md)
+- 16D-B implementation evidence candidate:
+  [`docs/slice16d_b_ask_evidence_workspace.md`](slice16d_b_ask_evidence_workspace.md)
 - Historical pre-design frame (contextual only):
   [`docs/slice16_portfolio_ui.md`](slice16_portfolio_ui.md)
 - Inherited product/API architecture:
@@ -99,7 +102,8 @@ AMENDMENT A1:                    ACCEPTED / LOCKED
                                  docs/slice16_amendment_a1_seneca_product_ux.md
 16D-A:                           COMPLETE / ACCEPTED
 ACCEPTED SHA:                    4f8962f2893ab433e6ea269ad54e46f67771ca70
-16D-B / 16D-C:                   NOT AUTHORIZED
+16D-B:                           IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING
+16D-C:                           NOT AUTHORIZED
 16E–16H:                         NOT AUTHORIZED
 SLICE 17:                        NOT AUTHORIZED
 SLICE 18:                        NOT AUTHORIZED
@@ -1075,7 +1079,8 @@ AMENDMENT A1: ACCEPTED / LOCKED
   5060e2aeb4825f265072a1f870c3c963eace3b30
 16D-A: COMPLETE / ACCEPTED
 ACCEPTED SHA: 4f8962f2893ab433e6ea269ad54e46f67771ca70
-16D-B / 16D-C: NOT AUTHORIZED
+16D-B: IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING
+16D-C: NOT AUTHORIZED
 16E–16H: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
 SLICE 18: NOT AUTHORIZED
@@ -1085,8 +1090,9 @@ M7 CLOSEOUT: NOT AUTHORIZED
 
 Design acceptance/lock does **not** by itself authorize later phases. **16A**,
 **16B**, **16C**, and **16D-A** were separately authorized and are
-**COMPLETE / ACCEPTED**. Amendment A1 is **ACCEPTED / LOCKED** at
+**COMPLETE / ACCEPTED**. **16D-B** is an **IMPLEMENTED CANDIDATE / HUMAN
+ACCEPTANCE PENDING**. Amendment A1 is **ACCEPTED / LOCKED** at
 `5060e2aeb4825f265072a1f870c3c963eace3b30` as supplemental design authority and
 does **not** authorize later phase implementation. Explicit separate human
-authorization is required before **16D-B** may start. Slice 16 overall is
+authorization is required before **16D-C** may start. Slice 16 overall is
 **not** complete.

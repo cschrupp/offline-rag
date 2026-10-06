@@ -12,6 +12,7 @@ import {
   getOperation,
   getWorkspace,
   listSources,
+  queryWorkspace,
   removeSource,
   renameSource,
   replaceSource,
@@ -25,16 +26,32 @@ import {
   fingerprintReplaceSource,
 } from "../api/idempotency";
 import { queryKeys } from "../api/queryKeys";
-import type { Operation, Source } from "../api/types";
+import type { Operation, Source, WorkspaceCitation } from "../api/types";
 import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { ConfirmDialog } from "../components/ConfirmDialog";
-import { EmptyState } from "../components/EmptyState";
 import { TextInput } from "../components/Field";
 import { ModalDialog } from "../components/ModalDialog";
 import { OperationProgress } from "../components/OperationProgress";
-import { SourceActionsMenu } from "../components/SourceActionsMenu";
+import { ResponsiveDrawer } from "../components/ResponsiveDrawer";
+import { AskPanel } from "../features/ask/AskPanel";
+import { EvidencePanel } from "../features/ask/EvidencePanel";
+import { SourceRail } from "../features/ask/SourceRail";
+import type { PreviewTarget } from "../features/ask/SourcePreview";
+import {
+  appendAskHistory,
+  loadAskHistory,
+  newHistoryEntryId,
+  snapshotBadge,
+  type AskHistoryEntry,
+} from "../features/ask/askHistory";
+import {
+  reconcileSourceSelection,
+  selectAllSources,
+  setSourceSelected,
+  sourceIdsForQuery,
+} from "../features/ask/sourceSelection";
 import {
   forgetActiveOperation,
   isTerminalOperationStatus,
@@ -120,6 +137,50 @@ export function WorkspacePage() {
     null,
   );
   const [operationLabel, setOperationLabel] = useState<string | undefined>();
+
+  const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
+  const [selectionSyncKey, setSelectionSyncKey] = useState("");
+  const [question, setQuestion] = useState("");
+  const [askError, setAskError] = useState<string | null>(null);
+  const [conflictHint, setConflictHint] = useState<string | null>(null);
+  const [settingsHint, setSettingsHint] = useState(false);
+  const [history, setHistory] = useState<AskHistoryEntry[]>(() =>
+    workspaceId ? loadAskHistory(workspaceId) : [],
+  );
+  const [historyWorkspaceId, setHistoryWorkspaceId] = useState(workspaceId);
+  const [activeEntryId, setActiveEntryId] = useState<string | null>(() =>
+    workspaceId ? (loadAskHistory(workspaceId)[0]?.entryId ?? null) : null,
+  );
+  const [selectedCitation, setSelectedCitation] =
+    useState<WorkspaceCitation | null>(null);
+  const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(
+    null,
+  );
+  const [sourcesDrawerOpen, setSourcesDrawerOpen] = useState(false);
+  const [evidenceDrawerOpen, setEvidenceDrawerOpen] = useState(false);
+
+  if (historyWorkspaceId !== workspaceId) {
+    const loaded = workspaceId ? loadAskHistory(workspaceId) : [];
+    setHistoryWorkspaceId(workspaceId);
+    setHistory(loaded);
+    setActiveEntryId(loaded[0]?.entryId ?? null);
+    setSelectedCitation(loaded[0]?.response.citations[0] ?? null);
+    setPreviewTarget(null);
+    setQuestion("");
+    setAskError(null);
+    setConflictHint(null);
+    setSelectionSyncKey("");
+  }
+
+  const activeSources = sourcesQuery.data?.sources ?? [];
+  const selectionKey = `${workspaceId}:${activeSources
+    .map((source) => source.source_id)
+    .join(",")}`;
+  if (sourcesQuery.data && selectionSyncKey !== selectionKey) {
+    const next = reconcileSourceSelection(workspaceId, activeSources);
+    setSelectionSyncKey(selectionKey);
+    setSelectedSourceIds(next.selectedSourceIds);
+  }
 
   function settleTerminalOperation(operation: Operation) {
     if (handledTerminalOps.current.has(operation.operation_id)) return;
@@ -337,6 +398,80 @@ export function WorkspacePage() {
     },
   });
 
+  const askMutation = useMutation({
+    mutationFn: () => {
+      const scope = sourceIdsForQuery(sources, selectedSourceIds);
+      return queryWorkspace({
+        workspaceId,
+        question: question.trim(),
+        sourceIds: scope,
+      });
+    },
+    retry: false,
+    onSuccess: (response) => {
+      setAskError(null);
+      setConflictHint(null);
+      setSettingsHint(false);
+      const names = sources
+        .filter((source) => selectedSourceIds.includes(source.source_id))
+        .map((source) => source.display_name);
+      const entry: AskHistoryEntry = {
+        entryId: newHistoryEntryId(),
+        askedAt: new Date().toISOString(),
+        question: question.trim(),
+        selectedSourceIds: selectedSourceIds.slice(),
+        selectedSourceNames: names,
+        response,
+      };
+      const next = appendAskHistory(workspaceId, entry);
+      setHistory(next);
+      setActiveEntryId(entry.entryId);
+      const first = response.citations[0] ?? null;
+      setSelectedCitation(first);
+      if (first) {
+        setPreviewTarget({
+          kind: "citation",
+          workspaceId,
+          citation: first,
+          workspaceRevision: response.workspace_revision,
+          historical:
+            snapshotBadge(response.snapshot_id, workspace?.current_snapshot_id ?? null) ===
+            "historical",
+        });
+      } else {
+        setPreviewTarget(null);
+      }
+    },
+    onError: (error) => {
+      if (isApiError(error) && error.code === "workspace_conflict") {
+        setConflictHint(
+          "The workspace changed while this question was running. Sources were refreshed; review the selection and ask again.",
+        );
+        setAskError(null);
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.workspace(workspaceId),
+        });
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.workspaceSources(workspaceId),
+        });
+        return;
+      }
+      setConflictHint(null);
+      setAskError(userFacingErrorMessage(error));
+      setSettingsHint(
+        isApiError(error) &&
+          (error.code.includes("generation") ||
+            error.code.includes("settings") ||
+            error.code === "service_unavailable"),
+      );
+    },
+  });
+
+  function closeSourcesDrawerThen(action: () => void) {
+    setSourcesDrawerOpen(false);
+    queueMicrotask(action);
+  }
+
   function validateSelectedFiles(files: File[]): string | null {
     if (files.length === 0) return "Select at least one file.";
     if (!limits) {
@@ -397,7 +532,114 @@ export function WorkspacePage() {
       : "Removing this source rebuilds the workspace's current searchable knowledge from the remaining active sources. Historical artifacts may remain locally.";
 
   const busyForMutations =
-    pendingPhase === "uploading" || pendingPhase === "operation";
+    pendingPhase === "uploading" ||
+    pendingPhase === "operation" ||
+    askMutation.isPending;
+
+  const activeEntry =
+    history.find((entry) => entry.entryId === activeEntryId) ??
+    history[0] ??
+    null;
+
+  const askDisabled =
+    isEmpty ||
+    selectedSourceIds.length === 0 ||
+    question.trim().length === 0 ||
+    askMutation.isPending;
+
+  function openCitation(citation: WorkspaceCitation, entry: AskHistoryEntry) {
+    setSelectedCitation(citation);
+    setPreviewTarget({
+      kind: "citation",
+      workspaceId,
+      citation,
+      workspaceRevision: entry.response.workspace_revision,
+      historical:
+        snapshotBadge(entry.response.snapshot_id, workspace.current_snapshot_id) ===
+        "historical",
+    });
+    setEvidenceDrawerOpen(true);
+  }
+
+  function openSourcePreview(source: Source) {
+    setSelectedCitation(null);
+    setPreviewTarget({
+      kind: "source",
+      workspaceId,
+      sourceId: source.source_id,
+      version: source.version,
+      displayName: source.display_name,
+      contentType: source.content_type,
+      workspaceRevision: workspace.revision,
+      historical: false,
+    });
+    setEvidenceDrawerOpen(true);
+  }
+
+  const sourceRail = (
+    <SourceRail
+      sources={sources}
+      selectedSourceIds={selectedSourceIds}
+      limits={limits}
+      capacityLoading={capabilitiesQuery.isLoading}
+      capacityError={capabilitiesQuery.isError}
+      sourcesLoading={sourcesQuery.isLoading}
+      sourcesError={sourcesQuery.isError ? sourcesQuery.error : null}
+      usedBytes={usedBytes}
+      mutationsDisabled={busyForMutations}
+      selectionDisabled={askMutation.isPending}
+      isEmpty={isEmpty}
+      onToggle={(sourceId, selected) => {
+        const next = setSourceSelected(workspaceId, sources, sourceId, selected);
+        setSelectedSourceIds(next.selectedSourceIds);
+      }}
+      onSelectAll={() => {
+        const next = selectAllSources(workspaceId, sources);
+        setSelectedSourceIds(next.selectedSourceIds);
+      }}
+      onAdd={() =>
+        closeSourcesDrawerThen(() => {
+          setAddOpen(true);
+          setAddError(null);
+          setSelectedFiles([]);
+          addIntent.current = IntentHandle.newIntent();
+        })
+      }
+      onPreview={openSourcePreview}
+      onRename={(source) =>
+        closeSourcesDrawerThen(() => {
+          setRenameTarget(source);
+          setRenameValue(source.display_name);
+          setRenameError(null);
+          renameIntent.current = IntentHandle.newIntent();
+        })
+      }
+      onReplace={(source) =>
+        closeSourcesDrawerThen(() => {
+          setReplaceTarget(source);
+          setReplaceFile(null);
+          setReplaceError(null);
+          replaceIntent.current = IntentHandle.newIntent();
+        })
+      }
+      onRemove={(source) =>
+        closeSourcesDrawerThen(() => {
+          setRemoveTarget(source);
+          setRemoveError(null);
+          removeIntent.current = IntentHandle.newIntent();
+        })
+      }
+    />
+  );
+
+  const evidencePanel = (
+    <EvidencePanel
+      previewTarget={previewTarget}
+      activeEntry={activeEntry}
+      selectedCitation={selectedCitation}
+      currentSnapshotId={workspace.current_snapshot_id}
+    />
+  );
 
   const showRunningTray =
     pendingPhase === "uploading" ||
@@ -454,19 +696,9 @@ export function WorkspacePage() {
           <Button
             variant="secondary"
             onClick={() => setEditWorkspaceOpen(true)}
-          >
-            Edit
-          </Button>
-          <Button
-            onClick={() => {
-              setAddOpen(true);
-              setAddError(null);
-              setSelectedFiles([]);
-              addIntent.current = IntentHandle.newIntent();
-            }}
             disabled={busyForMutations}
           >
-            + Add sources
+            Edit
           </Button>
         </div>
       </header>
@@ -510,71 +742,96 @@ export function WorkspacePage() {
         </p>
       ) : null}
 
-      {isEmpty ? (
-        <EmptyState
-          title="This workspace is empty"
-          body="This workspace is ready for sources but currently contains no active knowledge."
-          action={
-            <Button
-              onClick={() => {
-                setAddOpen(true);
-                setAddError(null);
-                setSelectedFiles([]);
-                addIntent.current = IntentHandle.newIntent();
-              }}
-            >
-              + Add sources
-            </Button>
-          }
-        />
-      ) : null}
-
-      <section className="stack" aria-labelledby="source-list-heading">
-        <h2 id="source-list-heading" className="source-list-heading">
+      <div className="knowledge-mobile-bar row">
+        <Button
+          variant="secondary"
+          type="button"
+          onClick={() => setSourcesDrawerOpen(true)}
+        >
           Sources
-        </h2>
-        {sourcesQuery.isError ? (
-          <p className="error-box" role="alert">
-            {userFacingErrorMessage(sourcesQuery.error)}
-          </p>
-        ) : null}
-        {sourcesQuery.isLoading ? (
-          <p className="muted">Loading sources…</p>
-        ) : null}
-        <ul className="source-list">
-          {sources.map((source) => (
-            <li key={source.source_id} className="source-row">
-              <div className="source-row-main">
-                <span className="source-name">{source.display_name}</span>
-                <span className="muted source-meta">
-                  {formatBytes(source.byte_size)} · Version {source.version}
-                </span>
-              </div>
-              <SourceActionsMenu
-                source={source}
-                disabled={busyForMutations}
-                onRename={() => {
-                  setRenameTarget(source);
-                  setRenameValue(source.display_name);
-                  setRenameError(null);
-                  renameIntent.current = IntentHandle.newIntent();
-                }}
-                onReplace={() => {
-                  setReplaceTarget(source);
-                  setReplaceFile(null);
-                  setReplaceError(null);
-                  replaceIntent.current = IntentHandle.newIntent();
-                }}
-                onRemove={() => {
-                  setRemoveTarget(source);
-                  setRemoveError(null);
-                  removeIntent.current = IntentHandle.newIntent();
-                }}
-              />
-            </li>
-          ))}
-        </ul>
-      </section>
+        </Button>
+        <Button
+          variant="secondary"
+          type="button"
+          onClick={() => setEvidenceDrawerOpen(true)}
+        >
+          Evidence
+        </Button>
+      </div>
+
+      <div className="knowledge-layout">
+        <aside className="knowledge-sources knowledge-desktop-only">
+          {sourceRail}
+        </aside>
+        <div className="knowledge-ask">
+          <AskPanel
+            question={question}
+            onQuestionChange={setQuestion}
+            onAsk={() => {
+              if (askDisabled) return;
+              setAskError(null);
+              setConflictHint(null);
+              askMutation.mutate();
+            }}
+            askDisabled={askDisabled}
+            askPending={askMutation.isPending}
+            selectedCount={selectedSourceIds.length}
+            totalCount={sources.length}
+            askError={askError}
+            conflictHint={conflictHint}
+            activeEntry={activeEntry}
+            history={history}
+            selectedEvidenceUnitId={selectedCitation?.evidence_unit_id ?? null}
+            onSelectCitation={(citation) => {
+              if (!activeEntry) return;
+              openCitation(citation, activeEntry);
+            }}
+            onSelectHistory={(entry) => {
+              setActiveEntryId(entry.entryId);
+              const first = entry.response.citations[0] ?? null;
+              setSelectedCitation(first);
+              if (first) {
+                setPreviewTarget({
+                  kind: "citation",
+                  workspaceId,
+                  citation: first,
+                  workspaceRevision: entry.response.workspace_revision,
+                  historical:
+                    snapshotBadge(
+                      entry.response.snapshot_id,
+                      workspace.current_snapshot_id,
+                    ) === "historical",
+                });
+              } else {
+                setPreviewTarget(null);
+              }
+            }}
+            currentSnapshotId={workspace.current_snapshot_id}
+            settingsHint={settingsHint}
+          />
+        </div>
+        <aside className="knowledge-evidence knowledge-desktop-only">
+          {evidencePanel}
+        </aside>
+      </div>
+
+      <ResponsiveDrawer
+        open={sourcesDrawerOpen}
+        title="Sources"
+        side="start"
+        onClose={() => setSourcesDrawerOpen(false)}
+      >
+        {sourceRail}
+      </ResponsiveDrawer>
+
+      <ResponsiveDrawer
+        open={evidenceDrawerOpen}
+        title="Evidence"
+        side="end"
+        onClose={() => setEvidenceDrawerOpen(false)}
+      >
+        {evidencePanel}
+      </ResponsiveDrawer>
 
       <ModalDialog
         open={editWorkspaceOpen}

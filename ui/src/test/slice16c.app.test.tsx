@@ -404,7 +404,7 @@ describe("source management", () => {
     });
 
     renderApp("/workspaces/ws_1");
-    expect(await screen.findByText("sops.pdf")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "sops.pdf" })).toBeInTheDocument();
     expect(screen.getByText(/2\.0 KiB|2048 B|2 KiB/)).toBeInTheDocument();
     expect(screen.getByText(/Version 1/)).toBeInTheDocument();
     expect(screen.queryByText(/vault/i)).not.toBeInTheDocument();
@@ -450,7 +450,7 @@ describe("source management", () => {
     await user.clear(renameInput);
     await user.type(renameInput, "renamed.pdf");
     await user.click(screen.getByRole("button", { name: "Save label" }));
-    expect(await screen.findByText("renamed.pdf")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "renamed.pdf" })).toBeInTheDocument();
 
     mock.restore();
   });
@@ -501,7 +501,9 @@ describe("source management", () => {
     });
 
     renderApp("/workspaces/ws_1");
-    expect(await screen.findByText("sops.pdf")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "sops.pdf" }),
+    ).toBeInTheDocument();
     await user.click(
       screen.getByRole("button", { name: "Actions for sops.pdf" }),
     );
@@ -656,7 +658,7 @@ describe("operations / overload / idempotency / no 16D", () => {
     const user = userEvent.setup();
     renderApp("/");
     await user.click(await screen.findByRole("link", { name: "Open" }));
-    expect(await screen.findByText("sops.pdf")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "sops.pdf" })).toBeInTheDocument();
     expect(
       mock.calls.some(
         (call) => call.url.includes("/query") || call.url.includes("/content"),

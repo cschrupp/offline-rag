@@ -431,7 +431,8 @@ SLICE 15  COMPLETE / ACCEPTED
      16D-A COMPLETE / ACCEPTED
        ACCEPTED SHA 4f8962f2893ab433e6ea269ad54e46f67771ca70
        Evidence: docs/slice16d_a_seneca_product_foundation_query_scope.md
-     16D-B NOT AUTHORIZED
+     16D-B IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING
+       Evidence: docs/slice16d_b_ask_evidence_workspace.md
      16D-C NOT AUTHORIZED
      16E–16H NOT AUTHORIZED
      Slice 16 overall IN PROGRESS / NOT COMPLETE
@@ -481,8 +482,9 @@ at `936e41446eb1e3697f6b7d245659831f19cf0613`; Amendment A1 is **ACCEPTED /
 LOCKED** (`docs/slice16_amendment_a1_seneca_product_ux.md` at
 `5060e2aeb4825f265072a1f870c3c963eace3b30`; product **Seneca — Grounded
 knowledge workspace**); **16D-A** is **COMPLETE / ACCEPTED** at
-`4f8962f2893ab433e6ea269ad54e46f67771ca70`; **16D-B / 16D-C** remain
-**NOT AUTHORIZED**. Slice 16 overall is **IN PROGRESS / NOT COMPLETE**.
+`4f8962f2893ab433e6ea269ad54e46f67771ca70`; **16D-B** is an **IMPLEMENTED
+CANDIDATE / HUMAN ACCEPTANCE PENDING**; **16D-C** remains **NOT AUTHORIZED**.
+Slice 16 overall is **IN PROGRESS / NOT COMPLETE**.
 
 **Slice 14 — Performance and resource benchmark harness**
 - Design: **LOCKED / ACCEPTED** (`89a395ae4df7aff23c2da2c8c44fd6fe405459a6`)
@@ -568,7 +570,7 @@ Slice 14 checklist:
     debt (not claimed as a globally green suite)
 - **Slice 15:** **COMPLETE / ACCEPTED**
 
-**Slice 16 — Portfolio Demo UI:** **DESIGN AUTHORITY ACCEPTED / LOCKED**; **16A COMPLETE / ACCEPTED**; **16B COMPLETE / ACCEPTED**; **16C COMPLETE / ACCEPTED** at `936e41446eb1e3697f6b7d245659831f19cf0613`; **Amendment A1 ACCEPTED / LOCKED** at `5060e2aeb4825f265072a1f870c3c963eace3b30` (Seneca — Grounded knowledge workspace); **16D-A COMPLETE / ACCEPTED** at `4f8962f2893ab433e6ea269ad54e46f67771ca70`; **16D-B / 16D-C NOT AUTHORIZED**; Slice 16 overall **IN PROGRESS / NOT COMPLETE**
+**Slice 16 — Portfolio Demo UI:** **DESIGN AUTHORITY ACCEPTED / LOCKED**; **16A COMPLETE / ACCEPTED**; **16B COMPLETE / ACCEPTED**; **16C COMPLETE / ACCEPTED** at `936e41446eb1e3697f6b7d245659831f19cf0613`; **Amendment A1 ACCEPTED / LOCKED** at `5060e2aeb4825f265072a1f870c3c963eace3b30` (Seneca — Grounded knowledge workspace); **16D-A COMPLETE / ACCEPTED** at `4f8962f2893ab433e6ea269ad54e46f67771ca70`; **16D-B IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING**; **16D-C NOT AUTHORIZED**; Slice 16 overall **IN PROGRESS / NOT COMPLETE**
 - Authority: [`docs/slice16_design_authority.md`](docs/slice16_design_authority.md)
   (S16-D01 … S16-D35; **ACCEPTED / LOCKED**)
 - AUTHORITY SHA: `e2e7475076ad18d4c4ae8d939389ceeffdeff6d8`
@@ -577,7 +579,8 @@ Slice 14 checklist:
   supplemental design authority; does **not** authorize later phase implementation)
 - Implementation plan: [`docs/slice16_implementation_plan.md`](docs/slice16_implementation_plan.md)
   (16A–16H; plan **ACCEPTED**; **16A/16B/16C/16D-A COMPLETE / ACCEPTED**;
-  authoritative 16D-A/B/C sequence under A1; **16D-B/C NOT AUTHORIZED**)
+  authoritative 16D-A/B/C sequence under A1; **16D-B IMPLEMENTED CANDIDATE /
+  HUMAN ACCEPTANCE PENDING**; **16D-C NOT AUTHORIZED**)
 - **16A** workspace foundation: **COMPLETE / ACCEPTED** at
   `e73959be508541a1c50d4919606aaf3157a5fa8a`
   ([`docs/slice16a_workspace_foundation.md`](docs/slice16a_workspace_foundation.md))
@@ -590,6 +593,9 @@ Slice 14 checklist:
 - **16D-A** Seneca product foundation & query-scope substrate:
   **COMPLETE / ACCEPTED** at `4f8962f2893ab433e6ea269ad54e46f67771ca70`
   ([`docs/slice16d_a_seneca_product_foundation_query_scope.md`](docs/slice16d_a_seneca_product_foundation_query_scope.md))
+- **16D-B** Ask & Evidence workspace: **IMPLEMENTED CANDIDATE / HUMAN
+  ACCEPTANCE PENDING**
+  ([`docs/slice16d_b_ask_evidence_workspace.md`](docs/slice16d_b_ask_evidence_workspace.md))
 - Historical pre-design frame: [`docs/slice16_portfolio_ui.md`](docs/slice16_portfolio_ui.md)
   (contextual only)
 - UI remains an adapter/client of `src/offline_rag/app/` (no direct Qdrant /
@@ -600,8 +606,8 @@ Slice 14 checklist:
   scientific knobs — S16-D20 / S16-D21
 - Gold Lab redesigns adjudication workflow granularity while preserving
   GoldDataset v1 / Silver→Gold truth criteria — S16-D23–S16-D34
-- Do **not** start 16D-B / 16D-C without separate explicit implementation
-  authorization (16D-A acceptance does **not** authorize 16D-B)
+- Do **not** start 16D-C without separate explicit implementation authorization
+  (16D-B candidate acceptance does **not** authorize 16D-C)
 - Product: **Seneca — Grounded knowledge workspace**
 
 **Slice 17 — Regression CI:** **PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED**
@@ -634,7 +640,7 @@ Later M7 checklist:
 - [x] Qdrant Local standalone profile (15G — **COMPLETE / ACCEPTED**)
 - [x] `/data` + `/models` volume packaging contract (15G — **COMPLETE / ACCEPTED**)
 - [x] Slice 15 integration closeout (15H — **COMPLETE / ACCEPTED** at `1c1d94e…`)
-- [ ] Portfolio Demo UI (Slice 16 — design **ACCEPTED / LOCKED** at `e2e7475…`; **16A COMPLETE / ACCEPTED** at `e73959be…`; **16B COMPLETE / ACCEPTED** at `eb8baef…`; **16C COMPLETE / ACCEPTED** at `936e414…`; **A1 ACCEPTED / LOCKED** at `5060e2ae…`; **16D-A COMPLETE / ACCEPTED** at `4f8962f…`; **16D-B/C NOT AUTHORIZED**; Slice 16 overall **IN PROGRESS / NOT COMPLETE**)
+- [ ] Portfolio Demo UI (Slice 16 — design **ACCEPTED / LOCKED** at `e2e7475…`; **16A COMPLETE / ACCEPTED** at `e73959be…`; **16B COMPLETE / ACCEPTED** at `eb8baef…`; **16C COMPLETE / ACCEPTED** at `936e414…`; **A1 ACCEPTED / LOCKED** at `5060e2ae…`; **16D-A COMPLETE / ACCEPTED** at `4f8962f…`; **16D-B IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING**; **16D-C NOT AUTHORIZED**; Slice 16 overall **IN PROGRESS / NOT COMPLETE**)
 - [ ] Regression CI (Slice 17 — **PLANNED / DESIGN NOT OPEN**)
 - [ ] Portfolio release package (Slice 18 — **PLANNED / DESIGN NOT OPEN**)
 - [ ] Milestone 7 closeout (**NOT AUTHORIZED**)
@@ -642,15 +648,17 @@ Later M7 checklist:
 
 **M7 release direction (not a Slice-15 exit criterion):** a reviewer can use the
 accepted product/API surface and, after Slice 16 implementation (16A/16B/16C
-and 16D-A accepted; A1 accepted/locked; 16D-B/C not authorized by this update),
-inspect evidence flow through a UI that remains a client of that surface —
-without expanding product query scientific knobs.
+and 16D-A accepted; 16D-B candidate pending acceptance; A1 accepted/locked;
+16D-C not authorized by this update), inspect evidence flow through a UI that
+remains a client of that surface — without expanding product query scientific
+knobs.
 
 Milestone **6** remains **COMPLETE / ACCEPTED** at `dcc6b07…`. Milestone **7**
 remains **IN PROGRESS** (Slice 15 through **15H** landed; Slice 16 design
-**ACCEPTED / LOCKED**; **16A/16B/16C/16D-A COMPLETE / ACCEPTED**; Amendment A1
-**ACCEPTED / LOCKED**; **16D-B/C**, **Slices 17–18**, and **M7 closeout**
-remain **NOT AUTHORIZED**). Performance optimization,
+**ACCEPTED / LOCKED**; **16A/16B/16C/16D-A COMPLETE / ACCEPTED**; **16D-B
+IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING**; Amendment A1
+**ACCEPTED / LOCKED**; **16D-C**, **Slices 17–18**, and **M7 closeout** remain
+**NOT AUTHORIZED**). Performance optimization,
 generator max-token change, reranker config change, `base.yaml` promotion,
 `PORTFOLIO_DEMO.md` update, 13C/13D, recovery enablement, LangGraph, and NeMo
 remain **NOT AUTHORIZED**.

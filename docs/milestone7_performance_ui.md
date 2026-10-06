@@ -69,7 +69,7 @@ SLICE 16: DESIGN INTERVIEW COMPLETE
              5060e2aeb4825f265072a1f870c3c963eace3b30
            16D-A COMPLETE / ACCEPTED
              4f8962f2893ab433e6ea269ad54e46f67771ca70
-           16D-B NOT AUTHORIZED
+           16D-B IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING
            16D-C NOT AUTHORIZED
            16E–16H NOT AUTHORIZED
            Slice 16 overall IN PROGRESS / NOT COMPLETE
@@ -100,8 +100,8 @@ these results. Slice 15 architecture authority remains
 `936e41446eb1e3697f6b7d245659831f19cf0613`; Amendment A1 **ACCEPTED / LOCKED**
 at `5060e2aeb4825f265072a1f870c3c963eace3b30`
 (`docs/slice16_amendment_a1_seneca_product_ux.md`); **16D-A COMPLETE /
-ACCEPTED** at `4f8962f2893ab433e6ea269ad54e46f67771ca70`; **16D-B / 16D-C NOT
-AUTHORIZED**.
+ACCEPTED** at `4f8962f2893ab433e6ea269ad54e46f67771ca70`; **16D-B IMPLEMENTED
+CANDIDATE / HUMAN ACCEPTANCE PENDING**; **16D-C NOT AUTHORIZED**.
 Historical pre-design frame: `docs/slice16_portfolio_ui.md`.
 
 **Milestone 6 remains COMPLETE / ACCEPTED** at closeout
@@ -864,7 +864,8 @@ SLICE 16: DESIGN INTERVIEW COMPLETE
              5060e2aeb4825f265072a1f870c3c963eace3b30
            16D-A COMPLETE / ACCEPTED
              4f8962f2893ab433e6ea269ad54e46f67771ca70
-           16D-B / 16D-C NOT AUTHORIZED
+           16D-B IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING
+           16D-C NOT AUTHORIZED
            16E–16H NOT AUTHORIZED
            Slice 16 overall IN PROGRESS / NOT COMPLETE
 SLICE 17: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
@@ -880,11 +881,12 @@ M6 science: UNCHANGED
   NOT AUTHORIZED / UNCHANGED
 ```
 
-**Next governance sequence (not authorized by this document):** separate
-explicit authorization of **16D-B** → **16D-C** → Slice 17 → Slice 18 →
-Milestone 7 closeout. Slice 14 and Slice 15 are closed. Slice 16 design is
-**ACCEPTED / LOCKED**. **16A**, **16B**, **16C**, and **16D-A** are
-**COMPLETE / ACCEPTED**. Amendment A1 is **ACCEPTED / LOCKED** at
-`5060e2aeb4825f265072a1f870c3c963eace3b30`. **16D-B / 16D-C**, Slice 17,
-Slice 18, and M7 closeout remain **NOT AUTHORIZED**. Slice 16 overall is
+**Next governance sequence (not authorized by this document):** human acceptance
+of **16D-B**, then separate explicit authorization of **16D-C** → Slice 17 →
+Slice 18 → Milestone 7 closeout. Slice 14 and Slice 15 are closed. Slice 16
+design is **ACCEPTED / LOCKED**. **16A**, **16B**, **16C**, and **16D-A** are
+**COMPLETE / ACCEPTED**. **16D-B** is an **IMPLEMENTED CANDIDATE / HUMAN
+ACCEPTANCE PENDING**. Amendment A1 is **ACCEPTED / LOCKED** at
+`5060e2aeb4825f265072a1f870c3c963eace3b30`. **16D-C**, Slice 17, Slice 18, and
+M7 closeout remain **NOT AUTHORIZED**. Slice 16 overall is
 **IN PROGRESS / NOT COMPLETE**.

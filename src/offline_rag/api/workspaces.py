@@ -28,14 +28,18 @@ from offline_rag.app.query import MAX_QUESTION_CHARS, run_workspace_query
 from offline_rag.app.runtime import ApplicationRuntime
 from offline_rag.app.workspace.etag import format_etag, parse_if_match
 from offline_rag.app.workspace.lifecycle import SourceUpload, WorkspaceLifecycleService
-from offline_rag.app.workspace.models import ManagedOperationKind, WorkspaceStatus
+from offline_rag.app.workspace.models import ManagedOperationKind
 from offline_rag.app.workspace.mutation_ops import ManagedOperationStore
+from offline_rag.app.workspace.source_content import (
+    SourceContentPayload,
+    load_active_source_content,
+    load_versioned_source_content,
+)
 from offline_rag.app.workspace.store import WorkspaceStore
 from offline_rag.app.workspace.upload_spool import (
     WorkspaceUploadSpool,
     spool_workspace_multipart,
 )
-from offline_rag.app.workspace.vault import RawSourceVault
 
 router = APIRouter(tags=["workspaces"])
 
@@ -80,6 +84,24 @@ def _safe_content_filename(display_name: str) -> str:
     base = display_name.rsplit("/", 1)[-1].rsplit("\\", 1)[-1].strip() or "source.bin"
     cleaned = _SAFE_FILENAME_RE.sub("_", base).strip("._") or "source.bin"
     return cleaned[:180]
+
+
+def _source_content_http_response(payload: SourceContentPayload) -> Response:
+    filename = _safe_content_filename(payload.display_name)
+    safe = quote(filename)
+    headers = {
+        "Content-Disposition": (
+            f'inline; filename="{filename}"; filename*=UTF-8\'\'{safe}'
+        ),
+        "X-Content-Type-Options": "nosniff",
+        "Cache-Control": "private, no-store",
+        "ETag": f'"{payload.content_hash}"',
+    }
+    return Response(
+        content=payload.data,
+        media_type=payload.content_type,
+        headers=headers,
+    )
 
 
 def _accepted_operation_response(operation: Any) -> JSONResponse:
@@ -498,37 +520,32 @@ def get_source_content(
 ) -> Response:
     runtime = _runtime(request)
     runtime.require_ready()
-    record = WorkspaceStore(runtime.settings).get(workspace_id)
-    if record.status is WorkspaceStatus.TOMBSTONED:
-        raise AppError(
-            ErrorCode.WORKSPACE_UNKNOWN,
-            details=SafeErrorDetails(workspace_id=workspace_id),
-        )
-    source = None
-    for item in record.sources:
-        if item.active and item.source_id == source_id:
-            source = item
-            break
-    if source is None:
-        raise AppError(
-            ErrorCode.SOURCE_UNKNOWN,
-            details=SafeErrorDetails(workspace_id=workspace_id, source_id=source_id),
-        )
-    vault = RawSourceVault(runtime.settings.paths.workspaces)
-    data = vault.load_bytes(workspace_id, source.vault_object_id)
-    meta = vault.get_meta(workspace_id, source.vault_object_id)
-    filename = _safe_content_filename(source.display_name)
-    safe = quote(filename)
-    headers = {
-        "Content-Disposition": (
-            f'inline; filename="{filename}"; filename*=UTF-8\'\'{safe}'
-        ),
-        "X-Content-Type-Options": "nosniff",
-        "Cache-Control": "private, no-store",
-        "ETag": f'"{source.content_hash}"',
-    }
-    media = meta.content_type or "application/octet-stream"
-    return Response(content=data, media_type=media, headers=headers)
+    payload = load_active_source_content(
+        runtime.settings, workspace_id=workspace_id, source_id=source_id
+    )
+    return _source_content_http_response(payload)
+
+
+@router.get(
+    "/v1/workspaces/{workspace_id}/sources/{source_id}/versions/{version}/content"
+)
+def get_source_version_content(
+    request: Request,
+    workspace_id: str,
+    source_id: str,
+    version: int,
+    workspace_revision: int,
+) -> Response:
+    runtime = _runtime(request)
+    runtime.require_ready()
+    payload = load_versioned_source_content(
+        runtime.settings,
+        workspace_id=workspace_id,
+        source_id=source_id,
+        version=version,
+        workspace_revision=workspace_revision,
+    )
+    return _source_content_http_response(payload)
 
 
 @router.post("/v1/workspaces/{workspace_id}/query")

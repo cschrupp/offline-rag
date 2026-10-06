@@ -237,8 +237,10 @@ describe("Slice 16D-A compact workspace", () => {
     renderApp("/workspaces/ws_1");
     expect(await screen.findByRole("heading", { name: "testRAG" })).toBeInTheDocument();
     expect(await screen.findByText(/2 \/ 32 sources/i)).toBeInTheDocument();
-    expect(screen.getByText(/Week02\.pdf/)).toBeInTheDocument();
-    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Week02.pdf" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("checkbox").length).toBeGreaterThan(0);
 
     const menuButton = screen.getByRole("button", {
       name: "Actions for Week07.pdf",
@@ -394,7 +396,7 @@ describe("Slice 16D-A FAILED/INTERRUPTED operation UX (F5)", () => {
     });
 
     renderApp("/workspaces/ws_1");
-    expect(await screen.findByText("manual.pdf")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "manual.pdf" })).toBeInTheDocument();
     await user.click(
       screen.getByRole("button", { name: "Actions for manual.pdf" }),
     );

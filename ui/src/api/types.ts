@@ -149,3 +149,37 @@ export type ErrorEnvelope = {
   trace_id?: string | null;
   details?: Record<string, unknown> | null;
 };
+
+export type WorkspaceCitationKind = "parent" | "child";
+
+export type WorkspaceCitation = {
+  evidence_unit_id: string;
+  document_id: string;
+  source_chunk_id: string;
+  kind: WorkspaceCitationKind | string;
+  section_path: string[];
+  page_start: number | null;
+  page_end: number | null;
+  line_start: number | null;
+  line_end: number | null;
+  clipped: boolean;
+  source_id: string;
+  source_version: number;
+  source_display_name: string;
+};
+
+export type WorkspaceQueryStatus =
+  | "answered"
+  | "insufficient_evidence"
+  | "model_abstain";
+
+export type WorkspaceQueryResponse = {
+  workspace_id: string;
+  workspace_revision: number;
+  snapshot_id: string;
+  product_mode_id: string;
+  trace_id: string;
+  status: WorkspaceQueryStatus | string;
+  answer: string | null;
+  citations: WorkspaceCitation[];
+};

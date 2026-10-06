@@ -8,6 +8,7 @@ import type {
   Source,
   SourceListResponse,
   Workspace,
+  WorkspaceQueryResponse,
 } from "./types";
 
 export type RequestOptions = {
@@ -303,4 +304,97 @@ export function saveGenerationSettings(body: {
     method: "PUT",
     json: body,
   });
+}
+
+export function queryWorkspace(params: {
+  workspaceId: string;
+  question: string;
+  sourceIds?: string[];
+  signal?: AbortSignal;
+}): Promise<WorkspaceQueryResponse> {
+  const body: { question: string; source_ids?: string[] } = {
+    question: params.question,
+  };
+  if (params.sourceIds !== undefined) {
+    body.source_ids = params.sourceIds;
+  }
+  return apiRequest<WorkspaceQueryResponse>(
+    `/v1/workspaces/${params.workspaceId}/query`,
+    {
+      method: "POST",
+      json: body,
+      signal: params.signal,
+    },
+  );
+}
+
+export type SourceContentFetch = {
+  blob: Blob;
+  contentType: string;
+  etag: string | null;
+};
+
+async function fetchSourceBytes(
+  path: string,
+  signal?: AbortSignal,
+): Promise<SourceContentFetch> {
+  let response: Response;
+  try {
+    response = await fetch(path, {
+      method: "GET",
+      headers: { Accept: "*/*" },
+      signal,
+    });
+  } catch {
+    throw new ApiError({
+      kind: "network",
+      code: "network_error",
+      message:
+        "Could not reach OfflineRAG. Check that this installation is running and reachable.",
+      retryable: true,
+      status: null,
+    });
+  }
+  if (!response.ok) {
+    const payload = await readPayload(response);
+    const apiError = parseErrorEnvelope(payload, response.status);
+    if (apiError) throw apiError;
+    throw new ApiError({
+      kind: "unexpected",
+      code: "unexpected_response",
+      message: `Request failed with status ${response.status}`,
+      retryable: false,
+      status: response.status,
+    });
+  }
+  return {
+    blob: await response.blob(),
+    contentType: response.headers.get("content-type") ?? "application/octet-stream",
+    etag: response.headers.get("etag"),
+  };
+}
+
+export function getSourceContent(params: {
+  workspaceId: string;
+  sourceId: string;
+  signal?: AbortSignal;
+}): Promise<SourceContentFetch> {
+  return fetchSourceBytes(
+    `/v1/workspaces/${params.workspaceId}/sources/${params.sourceId}/content`,
+    params.signal,
+  );
+}
+
+export function getSourceVersionContent(params: {
+  workspaceId: string;
+  sourceId: string;
+  version: number;
+  workspaceRevision: number;
+  signal?: AbortSignal;
+}): Promise<SourceContentFetch> {
+  const path =
+    `/v1/workspaces/${params.workspaceId}/sources/${params.sourceId}` +
+    `/versions/${params.version}/content` +
+    `?workspace_revision=${params.workspaceRevision}`;
+  return fetchSourceBytes(path, params.signal);
 }

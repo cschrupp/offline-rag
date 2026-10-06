@@ -15,7 +15,7 @@ AMENDMENT A1: ACCEPTED / LOCKED
   docs/slice16_amendment_a1_seneca_product_ux.md
 16D-A: COMPLETE / ACCEPTED
 IMPLEMENTATION: 4f8962f2893ab433e6ea269ad54e46f67771ca70
-16D-B: NOT AUTHORIZED / NOT STARTED
+16D-B: IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING
 16D-C: NOT AUTHORIZED / NOT STARTED
 16E–16H: NOT AUTHORIZED
 BASELINE: c72215186524c9937de789adb1cf2056be13ea23
@@ -66,7 +66,7 @@ Use sequential phase gates unless explicitly redesigned:
  ↓
 16D-A [COMPLETE / ACCEPTED]
  ↓
-16D-B [NOT AUTHORIZED]
+16D-B [IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING]
  ↓
 16D-C [NOT AUTHORIZED]
  ↓
@@ -302,12 +302,15 @@ at `4f8962f2893ab433e6ea269ad54e46f67771ca70`. **16D-B / 16D-C** remain
 ## 16D-B — Ask & Evidence Workspace
 
 ```text
-STATUS: NOT AUTHORIZED / NOT STARTED
+STATUS: IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING
 AMENDMENT A1: ACCEPTED / LOCKED @ 5060e2aeb4825f265072a1f870c3c963eace3b30
 PREREQUISITE 16D-A: COMPLETE / ACCEPTED @ 4f8962f2893ab433e6ea269ad54e46f67771ca70
+AUTHORIZED BASELINE: a952a75bc07191b213a5113eee53cb967fef8326
+EVIDENCE: docs/slice16d_b_ask_evidence_workspace.md
 ```
 
-Prerequisite completion does **not** authorize this phase.
+Implementation candidate for independent review / human acceptance. **16D-C**
+remains **NOT AUTHORIZED / NOT STARTED**.
 
 ### Future scope (candidate)
 
@@ -508,7 +511,7 @@ AMENDMENT A1: ACCEPTED / LOCKED
   5060e2aeb4825f265072a1f870c3c963eace3b30
 16D-A: COMPLETE / ACCEPTED
 IMPLEMENTATION: 4f8962f2893ab433e6ea269ad54e46f67771ca70
-16D-B: NOT AUTHORIZED / NOT STARTED
+16D-B: IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING
 16D-C: NOT AUTHORIZED / NOT STARTED
 16E–16H: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
@@ -522,5 +525,6 @@ Plan acceptance alone did **not** authorize execution. 16A, 16B, 16C, and
 A1 is **ACCEPTED / LOCKED** at `5060e2aeb4825f265072a1f870c3c963eace3b30`; the
 16D-A/B/C decomposition is the authoritative sequence, but later phase
 execution remains separately gated. **16D-A** is **COMPLETE / ACCEPTED** at
-`4f8962f2893ab433e6ea269ad54e46f67771ca70`. **16D-B / 16D-C** and **16E–16H**
-remain **NOT AUTHORIZED**. Slice 16 overall is **not** complete.
+`4f8962f2893ab433e6ea269ad54e46f67771ca70`. **16D-B** is an **IMPLEMENTED
+CANDIDATE / HUMAN ACCEPTANCE PENDING**. **16D-C** and **16E–16H** remain
+**NOT AUTHORIZED**. Slice 16 overall is **not** complete.
