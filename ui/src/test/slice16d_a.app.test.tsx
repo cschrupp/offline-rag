@@ -5,11 +5,13 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderApp } from "./render";
+import { ACTIVE_OPERATIONS_KEY } from "../features/operations/activeOperations";
 import {
   capabilities,
   errorResponse,
   installFetchMock,
   jsonResponse,
+  operation,
   source,
   workspace,
 } from "./mockApi";
@@ -260,6 +262,208 @@ describe("Slice 16D-A compact workspace", () => {
       await screen.findByRole("dialog", { name: /edit workspace/i }),
     ).toBeInTheDocument();
     expect(within(screen.getByRole("dialog")).getByLabelText("Title")).toBeInTheDocument();
+    mock.restore();
+  });
+});
+
+describe("Slice 16D-A FAILED/INTERRUPTED operation UX (F5)", () => {
+  it("keeps FAILED details when local op terminates before bootstrap import", async () => {
+    const user = userEvent.setup();
+    // Intentionally empty — global bootstrap must not be the source of truth.
+    localStorage.removeItem(ACTIVE_OPERATIONS_KEY);
+    let opCalls = 0;
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces/ws_1" && call.method === "GET") {
+        return jsonResponse(
+          workspace({
+            workspace_id: "ws_1",
+            title: "Fail Desk",
+            revision: 1,
+            source_count: 0,
+            status: "empty",
+            current_snapshot_id: null,
+          }),
+        );
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources" && call.method === "GET") {
+        return jsonResponse({ workspace_id: "ws_1", revision: 1, sources: [] });
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources" && call.method === "POST") {
+        return jsonResponse(
+          operation({
+            operation_id: "op_fast_fail",
+            kind: "source_add",
+            status: "queued",
+            progress_stage: "preparing",
+          }),
+          { status: 202 },
+        );
+      }
+      if (call.url === "/v1/operations/op_fast_fail") {
+        opCalls += 1;
+        return jsonResponse(
+          operation({
+            operation_id: "op_fast_fail",
+            kind: "source_add",
+            status: "failed",
+            progress_stage: null,
+            error: {
+              code: "ingest_failed",
+              message: "Ingest failed before bootstrap",
+              retryable: false,
+            },
+          }),
+        );
+      }
+      if (call.url === "/v1/workspaces") return jsonResponse([]);
+      return errorResponse("not_found", "x", 404);
+    });
+
+    renderApp("/workspaces/ws_1");
+    expect(await screen.findByRole("heading", { name: "Fail Desk" })).toBeInTheDocument();
+    const addButtons = screen.getAllByRole("button", { name: "+ Add sources" });
+    await user.click(addButtons[0]);
+    const dialog = await screen.findByRole("dialog", { name: /add sources/i });
+    const fileInput = within(dialog).getByLabelText(/source files/i);
+    const file = new File(["pump"], "pump.txt", { type: "text/plain" });
+    await user.upload(fileInput, file);
+    await user.click(within(dialog).getByRole("button", { name: /^add sources$/i }));
+
+    expect(await screen.findByText("Failed")).toBeInTheDocument();
+    expect(screen.getByText("Ingest failed before bootstrap")).toBeInTheDocument();
+    expect(screen.getByText("ingest_failed")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Dismiss" })).toBeInTheDocument();
+    // Must not collapse to a bare compact "failed · Add sources" status line.
+    expect(screen.queryByText(/^failed · Add sources$/i)).not.toBeInTheDocument();
+    expect(opCalls).toBeGreaterThan(0);
+    mock.restore();
+  });
+
+  it("keeps INTERRUPTED retry guidance on local terminal surface", async () => {
+    const user = userEvent.setup();
+    localStorage.removeItem(ACTIVE_OPERATIONS_KEY);
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces/ws_1" && call.method === "GET") {
+        return jsonResponse(
+          workspace({
+            workspace_id: "ws_1",
+            title: "Interrupt Desk",
+            revision: 2,
+            source_count: 1,
+            status: "active",
+            current_snapshot_id: "snap_1",
+          }),
+        );
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources" && call.method === "GET") {
+        return jsonResponse({
+          workspace_id: "ws_1",
+          revision: 2,
+          sources: [source({ source_id: "src_1", display_name: "manual.pdf" })],
+        });
+      }
+      if (
+        call.url === "/v1/workspaces/ws_1/sources/src_1" &&
+        call.method === "PUT"
+      ) {
+        return jsonResponse(
+          operation({
+            operation_id: "op_fast_int",
+            kind: "source_replace",
+            status: "queued",
+            progress_stage: "preparing",
+          }),
+          { status: 202 },
+        );
+      }
+      if (call.url === "/v1/operations/op_fast_int") {
+        return jsonResponse(
+          operation({
+            operation_id: "op_fast_int",
+            kind: "source_replace",
+            status: "interrupted",
+            progress_stage: null,
+          }),
+        );
+      }
+      return errorResponse("not_found", "x", 404);
+    });
+
+    renderApp("/workspaces/ws_1");
+    expect(await screen.findByText("manual.pdf")).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Actions for manual.pdf" }),
+    );
+    await user.click(
+      screen.getByRole("menuitem", { name: "Replace current version" }),
+    );
+    const dialog = await screen.findByRole("dialog", { name: /replace/i });
+    const fileInput = within(dialog).getByLabelText(/file/i);
+    await user.upload(
+      fileInput,
+      new File(["v2"], "manual_v2.pdf", { type: "application/pdf" }),
+    );
+    await user.click(within(dialog).getByRole("button", { name: /replace/i }));
+    expect(await screen.findByText("Interrupted")).toBeInTheDocument();
+    expect(
+      screen.getByText(/processing was interrupted\. you may retry/i),
+    ).toBeInTheDocument();
+    mock.restore();
+  });
+});
+
+describe("Slice 16D-A SourceActionsMenu keyboard (F7)", () => {
+  it("supports arrow navigation within the menu", async () => {
+    const user = userEvent.setup();
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces/ws_1") {
+        return jsonResponse(
+          workspace({
+            workspace_id: "ws_1",
+            title: "Menu Desk",
+            revision: 2,
+            source_count: 1,
+            status: "active",
+          }),
+        );
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources") {
+        return jsonResponse({
+          workspace_id: "ws_1",
+          revision: 2,
+          sources: [source({ source_id: "src_1", display_name: "menu.pdf" })],
+        });
+      }
+      return errorResponse("not_found", "x", 404);
+    });
+
+    renderApp("/workspaces/ws_1");
+    const trigger = await screen.findByRole("button", {
+      name: "Actions for menu.pdf",
+    });
+    trigger.focus();
+    await user.keyboard("{ArrowDown}");
+    const rename = await screen.findByRole("menuitem", { name: "Rename source" });
+    expect(rename).toHaveFocus();
+    await user.keyboard("{ArrowDown}");
+    expect(
+      screen.getByRole("menuitem", { name: "Replace current version" }),
+    ).toHaveFocus();
+    await user.keyboard("{End}");
+    expect(screen.getByRole("menuitem", { name: "Remove source" })).toHaveFocus();
+    await user.keyboard("{Home}");
+    expect(rename).toHaveFocus();
+    await user.keyboard("{Escape}");
+    await waitFor(() => {
+      expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    });
+    expect(trigger).toHaveFocus();
     mock.restore();
   });
 });

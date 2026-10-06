@@ -104,6 +104,21 @@ class OpenAICompatibleGenerator:
 
     def _assert_authorized(self) -> None:
         gen = self.settings.generation
+        from offline_rag.app.endpoint_policy import (
+            EndpointPolicyError,
+            validate_endpoint_network_policy,
+        )
+
+        try:
+            validate_endpoint_network_policy(
+                gen.base_url,
+                strict_offline=bool(self.settings.project.strict_offline),
+            )
+        except EndpointPolicyError as exc:
+            raise OpenAICompatibleGeneratorError(
+                f"configured endpoint rejected by network policy: {exc.reason}",
+                failure_reason="provider_error",
+            ) from exc
         if self.settings.security.reject_unapproved_generation_endpoint and not endpoint_authorized(
             gen.base_url, list(gen.approved_endpoints)
         ):

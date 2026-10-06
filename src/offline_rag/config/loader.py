@@ -298,14 +298,29 @@ def load_settings(
         _apply_data_dir(payload, data_dir)
 
     # Seneca generation overlay sits between YAML and environment authority.
+    # Resolve effective strict_offline (YAML then env) before validating the
+    # product endpoint so tampered public endpoints fail closed under policy.
     from offline_rag.app.product_settings import (
         generation_overlay_from_product_settings,
         resolve_product_settings_dir,
     )
 
+    strict_offline = bool(
+        (payload.get("project") or {}).get("strict_offline", True)
+        if isinstance(payload.get("project"), dict)
+        else True
+    )
+    env_strict = env.get(f"{ENV_PREFIX}STRICT_OFFLINE")
+    if env_strict is not None:
+        parsed_strict = _parse_env_value(env_strict)
+        if isinstance(parsed_strict, bool):
+            strict_offline = parsed_strict
+
     product_dir = resolve_product_settings_dir(payload, environ=env)
     try:
-        product_overlay = generation_overlay_from_product_settings(product_dir)
+        product_overlay = generation_overlay_from_product_settings(
+            product_dir, strict_offline=strict_offline
+        )
     except ValueError as exc:
         raise ConfigError(f"invalid Seneca product settings: {exc}") from exc
     if product_overlay:

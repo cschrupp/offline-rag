@@ -73,6 +73,20 @@ def validate_generation_static_config(settings: AppSettings) -> None:
     ok, reason = _generation_config_ok(settings)
     if not ok:
         raise RuntimeError(reason or "generation configuration invalid")
+    from offline_rag.app.endpoint_policy import (
+        EndpointPolicyError,
+        validate_endpoint_network_policy,
+    )
+
+    try:
+        validate_endpoint_network_policy(
+            settings.generation.base_url,
+            strict_offline=bool(settings.project.strict_offline),
+        )
+    except EndpointPolicyError as exc:
+        raise RuntimeError(
+            f"configured endpoint rejected by network policy: {exc.reason}"
+        ) from exc
     endpoint_ok, model_ok, auth_reasons = _authorization_flags(settings)
     if not endpoint_ok or not model_ok:
         raise RuntimeError(

@@ -49,7 +49,7 @@ import {
   type SourceCapacityLimits,
 } from "../features/workspaces/format";
 
-type PendingPhase = "idle" | "uploading" | "operation";
+type PendingPhase = "idle" | "uploading" | "operation" | "terminal_error";
 
 function limitsFromCapabilities(
   caps: {
@@ -124,7 +124,7 @@ export function WorkspacePage() {
   function settleTerminalOperation(operation: Operation) {
     if (handledTerminalOps.current.has(operation.operation_id)) return;
     handledTerminalOps.current.add(operation.operation_id);
-    forgetActiveOperation(operation.operation_id);
+    const status = String(operation.status).toLowerCase();
     void queryClient.invalidateQueries({
       queryKey: queryKeys.workspace(workspaceId),
     });
@@ -132,6 +132,16 @@ export function WorkspacePage() {
       queryKey: queryKeys.workspaceSources(workspaceId),
     });
     void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces });
+    if (status === "succeeded") {
+      forgetActiveOperation(operation.operation_id);
+      setPendingPhase("idle");
+      return;
+    }
+    if (status === "failed" || status === "interrupted") {
+      // Keep error-capable terminal surface until dismissed; do not collapse.
+      setPendingPhase("terminal_error");
+      return;
+    }
     setPendingPhase("idle");
   }
 
@@ -386,15 +396,24 @@ export function WorkspacePage() {
       ? "Removing the final source will leave this workspace empty and retire its current searchable knowledge. Historical artifacts may remain locally."
       : "Removing this source rebuilds the workspace's current searchable knowledge from the remaining active sources. Historical artifacts may remain locally.";
 
+  const busyForMutations =
+    pendingPhase === "uploading" || pendingPhase === "operation";
+
   const showRunningTray =
     pendingPhase === "uploading" ||
     pendingPhase === "operation" ||
     (operationQuery.data &&
       !isTerminalOperationStatus(String(operationQuery.data.status)));
 
-  const showCompactTerminal =
+  const showFailedTerminal =
+    pendingPhase === "terminal_error" &&
     operationQuery.data &&
-    isTerminalOperationStatus(String(operationQuery.data.status)) &&
+    (String(operationQuery.data.status).toLowerCase() === "failed" ||
+      String(operationQuery.data.status).toLowerCase() === "interrupted");
+
+  const showCompactSuccess =
+    operationQuery.data &&
+    String(operationQuery.data.status).toLowerCase() === "succeeded" &&
     pendingPhase === "idle";
 
   return (
@@ -445,7 +464,7 @@ export function WorkspacePage() {
               setSelectedFiles([]);
               addIntent.current = IntentHandle.newIntent();
             }}
-            disabled={pendingPhase !== "idle"}
+            disabled={busyForMutations}
           >
             + Add sources
           </Button>
@@ -469,11 +488,24 @@ export function WorkspacePage() {
         </div>
       ) : null}
 
-      {showCompactTerminal && operationQuery.data ? (
+      {showFailedTerminal && operationQuery.data ? (
+        <div className="operation-tray" aria-live="assertive">
+          <OperationProgress
+            phase="operation"
+            operation={operationQuery.data}
+            label={operationLabel}
+            onDismiss={() => {
+              forgetActiveOperation(operationQuery.data!.operation_id);
+              setActiveOperationId(null);
+              setPendingPhase("idle");
+            }}
+          />
+        </div>
+      ) : null}
+
+      {showCompactSuccess && operationQuery.data ? (
         <p className="operation-compact muted" role="status">
-          {String(operationQuery.data.status) === "SUCCEEDED"
-            ? "Ready"
-            : String(operationQuery.data.status)}
+          Ready
           {operationLabel ? ` · ${operationLabel}` : ""}
         </p>
       ) : null}
@@ -520,7 +552,7 @@ export function WorkspacePage() {
               </div>
               <SourceActionsMenu
                 source={source}
-                disabled={pendingPhase !== "idle"}
+                disabled={busyForMutations}
                 onRename={() => {
                   setRenameTarget(source);
                   setRenameValue(source.display_name);
@@ -620,7 +652,7 @@ export function WorkspacePage() {
             </Button>
             <Button
               type="submit"
-              disabled={addMutation.isPending || pendingPhase !== "idle"}
+              disabled={addMutation.isPending || busyForMutations}
             >
               Add sources
             </Button>

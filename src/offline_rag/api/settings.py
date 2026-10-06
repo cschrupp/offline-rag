@@ -15,10 +15,10 @@ from offline_rag.app.endpoint_policy import (
 from offline_rag.app.errors import AppError, ErrorCode, SafeErrorDetails
 from offline_rag.app.product_settings import (
     ApiKeyAction,
-    SenecaGenerationBody,
     SenecaGenerationSettingsFile,
     build_validated_product_record,
     generation_field_locks,
+    product_api_key_is_managed,
     read_product_generation_settings,
     write_product_generation_settings,
 )
@@ -54,11 +54,17 @@ def _pending_effective_view(
     *,
     product: SenecaGenerationSettingsFile | None,
     locks: dict[str, bool],
+    api_key_managed: bool,
 ) -> dict[str, Any] | None:
     """Return PENDING effective future config, or None when no restart needed.
 
     Locked fields keep ACTIVE (operator) values so shadowed product values are
     never presented as becoming active after restart.
+
+    API-key future state:
+    - operator lock → ACTIVE key
+    - product file omits api_key → YAML/ACTIVE lower-priority key remains
+    - product file manages api_key (including null clear) → product wins
     """
     if product is None:
         return None
@@ -68,6 +74,14 @@ def _pending_effective_view(
         normalized = normalize_endpoint(body.base_url)
     except Exception:  # noqa: BLE001
         normalized = body.base_url
+
+    if locks.get("api_key"):
+        future_key_configured = bool(active.api_key)
+    elif api_key_managed:
+        future_key_configured = bool(body.api_key)
+    else:
+        # Product does not own the key → YAML / active lower-priority value remains.
+        future_key_configured = bool(active.api_key)
 
     pending = {
         "enabled": bool(active.enabled) if locks.get("enabled") else bool(body.enabled),
@@ -79,11 +93,7 @@ def _pending_effective_view(
             if locks.get("timeout_seconds")
             else int(body.timeout_seconds)
         ),
-        "api_key_configured": (
-            bool(active.api_key)
-            if locks.get("api_key")
-            else bool(body.api_key)
-        ),
+        "api_key_configured": future_key_configured,
     }
     active_view = _public_generation_view(active)
     if (
@@ -110,7 +120,12 @@ def get_generation_settings(request: Request) -> dict[str, Any]:
             ErrorCode.SETTINGS_INVALID,
             details=SafeErrorDetails(reason="malformed_product_settings"),
         ) from exc
-    pending = _pending_effective_view(settings, product=product, locks=locks)
+    pending = _pending_effective_view(
+        settings,
+        product=product,
+        locks=locks,
+        api_key_managed=product_api_key_is_managed(settings.paths.product_settings),
+    )
     active = _public_generation_view(settings.generation)
     return {
         "active": active,
@@ -178,7 +193,9 @@ def _resolve_api_key_for_write(
     return text
 
 
-def _assert_unlocked(locks: dict[str, bool], fields: dict[str, Any], active: GenerationSettings) -> None:
+def _assert_unlocked(
+    locks: dict[str, bool], fields: dict[str, Any], active: GenerationSettings
+) -> None:
     comparisons = {
         "enabled": bool(active.enabled),
         "base_url": str(active.base_url),
@@ -193,6 +210,26 @@ def _assert_unlocked(locks: dict[str, bool], fields: dict[str, Any], active: Gen
                 ErrorCode.SETTINGS_LOCKED,
                 details=SafeErrorDetails(field=field, reason="operator_locked"),
             )
+
+
+def _probe_approvals(
+    settings: AppSettings,
+    *,
+    locks: dict[str, bool],
+    normalized: str,
+    model: str,
+) -> tuple[list[str], list[str]]:
+    """Resolve probe approvals without inventing product authority for locks.
+
+    Selected-value authority (env lock) must not receive product-injected
+    approval merely because Settings probed or saved the locked value.
+    """
+    if locks.get("base_url") or locks.get("model"):
+        return (
+            list(settings.generation.approved_endpoints),
+            list(settings.generation.approved_models),
+        )
+    return [normalized], [model]
 
 
 @router.post("/v1/settings/generation/probe")
@@ -240,8 +277,16 @@ def probe_generation_settings(
         resolved_key = _resolve_api_key_for_write(
             action=body.api_key_action,
             supplied=body.api_key,
-            existing=existing_key if existing_key is not None else settings.generation.api_key,
+            existing=(
+                existing_key
+                if existing_key is not None
+                else settings.generation.api_key
+            ),
         )
+
+    approved_endpoints, approved_models = _probe_approvals(
+        settings, locks=locks, normalized=normalized, model=body.model
+    )
 
     probe_settings = settings.model_copy(deep=True)
     probe_settings.generation.enabled = True
@@ -249,8 +294,8 @@ def probe_generation_settings(
     probe_settings.generation.model = body.model
     probe_settings.generation.timeout_seconds = body.timeout_seconds
     probe_settings.generation.api_key = resolved_key
-    probe_settings.generation.approved_endpoints = [normalized]
-    probe_settings.generation.approved_models = [body.model]
+    probe_settings.generation.approved_endpoints = approved_endpoints
+    probe_settings.generation.approved_models = approved_models
 
     generator = OpenAICompatibleGenerator(probe_settings)
     try:
@@ -261,7 +306,6 @@ def probe_generation_settings(
             close()
 
     reason = result.reason or ("ok" if result.ok else "endpoint_unreachable")
-    # Map common probe reasons to closed vocabulary when possible.
     reason_text = str(reason).lower()
     if result.ok:
         closed = "ok"
@@ -273,7 +317,11 @@ def probe_generation_settings(
         closed = "invalid_response"
     elif "http" in reason_text:
         closed = "http_error"
-    elif "unauthorized" in reason_text or "not approved" in reason_text:
+    elif (
+        "unauthorized" in reason_text
+        or "not approved" in reason_text
+        or "network policy" in reason_text
+    ):
         closed = "policy_rejected"
     elif reason_text in {
         "policy_rejected",
@@ -317,6 +365,7 @@ def save_generation_settings(
             details=SafeErrorDetails(field="api_key", reason="operator_locked"),
         )
 
+    existing: SenecaGenerationSettingsFile | None = None
     existing_key = None
     try:
         existing = read_product_generation_settings(settings.paths.product_settings)
@@ -328,18 +377,57 @@ def save_generation_settings(
             details=SafeErrorDetails(reason="malformed_product_settings"),
         ) from exc
 
-    resolved_key = _resolve_api_key_for_write(
-        action=body.api_key_action,
-        supplied=body.api_key,
-        existing=existing_key,
-    )
+    # Locked selection must never acquire product-managed approval.
+    if locks.get("base_url") or locks.get("model"):
+        if existing is None:
+            raise AppError(
+                ErrorCode.SETTINGS_LOCKED,
+                details=SafeErrorDetails(
+                    reason="cannot_create_product_approval_for_operator_selection"
+                ),
+            )
+        persist_base_url = (
+            existing.generation.base_url
+            if locks.get("base_url")
+            else body.base_url
+        )
+        persist_model = (
+            existing.generation.model if locks.get("model") else body.model
+        )
+    else:
+        persist_base_url = body.base_url
+        persist_model = body.model
+
+    manage_api_key = False
+    if locks.get("api_key"):
+        resolved_key = existing_key
+        manage_api_key = product_api_key_is_managed(settings.paths.product_settings)
+    elif body.api_key_action == "keep":
+        if product_api_key_is_managed(settings.paths.product_settings):
+            resolved_key = existing_key
+            manage_api_key = True
+        else:
+            # Leave YAML key authority intact; omit api_key from product file.
+            resolved_key = None
+            manage_api_key = False
+    else:
+        resolved_key = _resolve_api_key_for_write(
+            action=body.api_key_action,
+            supplied=body.api_key,
+            existing=existing_key,
+        )
+        manage_api_key = True
 
     try:
         record = build_validated_product_record(
-            enabled=body.enabled,
-            base_url=body.base_url,
-            model=body.model,
-            timeout_seconds=body.timeout_seconds,
+            enabled=body.enabled if not locks.get("enabled") else bool(settings.generation.enabled),
+            base_url=persist_base_url,
+            model=persist_model,
+            timeout_seconds=(
+                body.timeout_seconds
+                if not locks.get("timeout_seconds")
+                else int(settings.generation.timeout_seconds)
+            ),
             api_key=resolved_key,
             strict_offline=bool(settings.project.strict_offline),
         )
@@ -349,8 +437,8 @@ def save_generation_settings(
             details=SafeErrorDetails(reason=str(exc)),
         ) from exc
 
-    if body.enabled:
-        # Re-probe so product-managed model approval is backed by validation.
+    if body.enabled and not (locks.get("base_url") or locks.get("model")):
+        # Re-probe unlocked product-managed candidates only.
         probe_body = GenerationProbeRequest(
             enabled=True,
             base_url=record.generation.base_url,
@@ -363,11 +451,22 @@ def save_generation_settings(
         if not probe.get("ok"):
             raise AppError(
                 ErrorCode.SETTINGS_PROBE_FAILED,
-                details=SafeErrorDetails(reason=str(probe.get("reason") or "probe_failed")),
+                details=SafeErrorDetails(
+                    reason=str(probe.get("reason") or "probe_failed")
+                ),
             )
 
-    write_product_generation_settings(settings.paths.product_settings, record)
-    pending = _pending_effective_view(settings, product=record, locks=locks)
+    write_product_generation_settings(
+        settings.paths.product_settings,
+        record,
+        manage_api_key=manage_api_key,
+    )
+    pending = _pending_effective_view(
+        settings,
+        product=record,
+        locks=locks,
+        api_key_managed=manage_api_key,
+    )
     return {
         "saved": True,
         "restart_required": pending is not None,

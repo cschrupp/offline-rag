@@ -19,7 +19,6 @@ from offline_rag.app.endpoint_policy import (
     EndpointPolicyError,
     validate_endpoint_network_policy,
 )
-from offline_rag.generation.openai_compatible import normalize_endpoint
 
 SCHEMA_VERSION = "seneca-generation-settings-v1"
 SETTINGS_FILENAME = "seneca-generation.json"
@@ -88,27 +87,44 @@ def read_product_generation_settings(
     except (OSError, json.JSONDecodeError) as exc:
         raise ValueError(f"malformed_product_settings: {exc}") from exc
     if not isinstance(raw, dict):
-        raise ValueError("malformed_product_settings: root must be object")
+        raise ValueError("malformed_product_settings: root must be object")  # noqa: TRY004
     return SenecaGenerationSettingsFile.model_validate(raw)
 
 
-def generation_overlay_from_product_settings(root: Path) -> dict[str, Any]:
-    """Return a deep-mergeable generation overlay, or ``{}`` when absent/invalid.
+def generation_overlay_from_product_settings(
+    root: Path,
+    *,
+    strict_offline: bool,
+) -> dict[str, Any]:
+    """Return a deep-mergeable generation overlay, or ``{}`` when absent.
 
-    Malformed files fail closed by raising; callers in ``load_settings`` treat
-    that as ``ConfigError``.
+    Malformed files and strict-offline policy violations fail closed by raising;
+    callers in ``load_settings`` treat that as ``ConfigError``.
+
+    API-key semantics:
+    - omitted ``api_key`` field in the file → do not override lower-priority YAML
+    - present ``api_key`` (including JSON null) → product owns the key and
+      overrides YAML (clear when null)
     """
-    try:
-        record = read_product_generation_settings(root)
-    except ValueError:
-        raise
-    if record is None:
+    path = product_settings_path(root)
+    if not path.is_file():
         return {}
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"malformed_product_settings: {exc}") from exc
+    if not isinstance(raw, dict):
+        raise ValueError("malformed_product_settings: root must be object")  # noqa: TRY004
+    record = SenecaGenerationSettingsFile.model_validate(raw)
     body = record.generation
     try:
-        normalized = normalize_endpoint(body.base_url)
-    except Exception as exc:  # noqa: BLE001
-        raise ValueError("malformed_product_settings: invalid base_url") from exc
+        normalized = validate_endpoint_network_policy(
+            body.base_url, strict_offline=strict_offline
+        )
+    except EndpointPolicyError as exc:
+        raise ValueError(
+            f"malformed_product_settings: endpoint_policy:{exc.reason}"
+        ) from exc
     overlay_generation: dict[str, Any] = {
         "enabled": body.enabled,
         "base_url": normalized,
@@ -117,7 +133,9 @@ def generation_overlay_from_product_settings(root: Path) -> dict[str, Any]:
         "approved_endpoints": [normalized],
         "approved_models": [body.model],
     }
-    if body.api_key is not None:
+    raw_generation = raw.get("generation")
+    if isinstance(raw_generation, dict) and "api_key" in raw_generation:
+        # Explicit null clears YAML; a string sets the product-managed secret.
         overlay_generation["api_key"] = body.api_key
     return {"generation": overlay_generation}
 
@@ -130,16 +148,40 @@ def _chmod_owner_only(path: Path, *, is_dir: bool) -> None:
         pass
 
 
+def product_api_key_is_managed(root: Path) -> bool:
+    """Return whether the product file explicitly owns the API-key field."""
+    path = product_settings_path(root)
+    if not path.is_file():
+        return False
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, ValueError):
+        return False
+    if not isinstance(raw, dict):
+        return False
+    generation = raw.get("generation")
+    return isinstance(generation, dict) and "api_key" in generation
+
+
 def write_product_generation_settings(
     root: Path,
     record: SenecaGenerationSettingsFile,
+    *,
+    manage_api_key: bool = False,
 ) -> Path:
-    """Atomically persist allowlisted generation settings with restrictive perms."""
+    """Atomically persist allowlisted generation settings with restrictive perms.
+
+    When ``manage_api_key`` is False, omit ``api_key`` from the durable file so
+    lower-priority YAML keys remain effective. When True, persist the key
+    (including JSON null for an explicit clear).
+    """
     root = Path(root)
     root.mkdir(parents=True, exist_ok=True)
     _chmod_owner_only(root, is_dir=True)
     path = product_settings_path(root)
     payload = record.model_dump(mode="json")
+    if not manage_api_key:
+        payload.get("generation", {}).pop("api_key", None)
     text = json.dumps(payload, indent=2, sort_keys=True) + "\n"
     fd, tmp_name = tempfile.mkstemp(
         prefix=f".{path.name}.",
@@ -226,6 +268,7 @@ __all__ = [
     "build_validated_product_record",
     "generation_field_locks",
     "generation_overlay_from_product_settings",
+    "product_api_key_is_managed",
     "product_settings_path",
     "read_product_generation_settings",
     "resolve_product_settings_dir",

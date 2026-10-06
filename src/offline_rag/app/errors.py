@@ -163,6 +163,11 @@ def _is_safe_id(value: object) -> bool:
     return bool(_SAFE_ID_RE.fullmatch(value))
 
 
+def is_safe_identity(value: object) -> bool:
+    """Return whether ``value`` is a bounded safe identity token."""
+    return _is_safe_id(value)
+
+
 class ValidationFieldDetail(BaseModel):
     """Trusted validation projection entry (loc / msg / type only)."""
 
@@ -221,7 +226,7 @@ class SafeErrorDetails(BaseModel):
         if value is None:
             return None
         if not isinstance(value, str):
-            raise ValueError("reason must be a string")
+            raise TypeError("reason must be a string")
         text = value.strip()
         if not text or len(text) > 200:
             raise ValueError("reason must be a non-empty bounded string")

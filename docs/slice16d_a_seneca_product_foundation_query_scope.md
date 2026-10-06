@@ -1,10 +1,11 @@
 # Slice 16D-A — Seneca Product Foundation & Query-Scope Substrate
 
-STATUS: IMPLEMENTATION EVIDENCE CANDIDATE  
+STATUS: IMPLEMENTATION CANDIDATE
 HUMAN ACCEPTANCE: PENDING
 
-Authorized baseline: `185d3e3d2bd472ffaddf72cfddc49c7e38a3a146`  
-A1 authority: `5060e2aeb4825f265072a1f870c3c963eace3b30`  
+Authorized baseline: `185d3e3d2bd472ffaddf72cfddc49c7e38a3a146`
+Prior candidate (review disposition REWORK REQUIRED): `0a5bb534440737bcf0b02b3630c4b175fd00c159`
+A1 authority: `5060e2aeb4825f265072a1f870c3c963eace3b30`
 Branch: `implementation/16d-a-seneca-product-foundation-query-scope`
 
 ## Brand
@@ -54,6 +55,9 @@ Branch: `implementation/16d-a-seneca-product-foundation-query-scope`
 - Rejects public Internet / arbitrary DNS under `strict_offline`
 - Rejects unsupported scheme, missing host, embedded credentials
 - Used by Settings validate / probe / save
+- **Rework:** also enforced at product-settings load and at the active
+  `OpenAICompatibleGenerator._assert_authorized` / startup
+  `validate_generation_static_config` boundary (defense in depth)
 
 ## Settings API
 
@@ -62,6 +66,11 @@ Branch: `implementation/16d-a-seneca-product-foundation-query-scope`
 - `PUT /v1/settings/generation` — persist only; no live hot-swap; re-probe when enabling
 - API key actions: `keep` | `set` | `clear`
 - Errors: `SETTINGS_INVALID` (422), `SETTINGS_LOCKED` (409), `SETTINGS_PROBE_FAILED`
+- **Rework:** operator-locked selection cannot acquire product-managed approval via
+  Test/Save; probe uses active approval authority when locks apply
+- **Rework:** pending `api_key_configured` reflects effective future key under
+  YAML / product-managed null / env-lock precedence (omit preserves YAML;
+  explicit product null clears YAML)
 
 ## ACTIVE / PENDING
 
@@ -78,6 +87,10 @@ Branch: `implementation/16d-a-seneca-product-foundation-query-scope`
 - Add sources behind modal; preserves 16C idempotency + durable ops
 - No source-selection checkboxes (16D-B)
 - Compact terminal Ready tray; no permanent success card domination
+- **Rework:** FAILED / INTERRUPTED keep dismissible `OperationProgress` with
+  message/code / retry guidance (local terminal surface; not bootstrap-dependent)
+- **Rework:** `SourceActionsMenu` implements ArrowUp/Down, Home/End, Escape +
+  focus restoration under `role="menu"`
 
 ## Source-scope query substrate
 
@@ -93,13 +106,26 @@ Branch: `implementation/16d-a-seneca-product-foundation-query-scope`
 - Trace `ProductTraceSourceScope` on request summary; generic `/v1/query` remains `source_scope=null`
 - Old traces without `source_scope` remain readable
 - Duplicate-content / shared document_id attribution remains fail-closed when ambiguous within selected scope
+- **Rework:** `source_ids` validated as safe identity tokens at the HTTP boundary
+  (malformed → bounded 422; never SafeErrorDetails 500)
+- **Rework:** canonical end-to-end isolation proof with
+  `ALPHA_SCOPE_MARKER` / `BETA_SCOPE_MARKER` through dense→lexical→hybrid→
+  reranker→context→generator→citations→trace
+
+## Independent review rework
+
+Disposition: **REWORK REQUIRED** against candidate
+`0a5bb534440737bcf0b02b3630c4b175fd00c159`.
+
+Addressed findings F1–F7 on the same implementation branch. No merge,
+no self-accept, no 16D-B/C.
 
 ## Tests run
 
 Backend (selected):
 
-- `tests/unit/app/test_slice16d_a_settings_capabilities.py` — passed
-- `tests/unit/app/test_slice16d_a_query_scope.py` — passed
+- `tests/unit/app/test_slice16d_a_settings_capabilities.py` — passed (incl. F1/F2/F6)
+- `tests/unit/app/test_slice16d_a_query_scope.py` — passed (incl. F3/F4 e2e + malformed)
 - `tests/unit/app/test_slice15e_product_query_traces.py` — passed
 - `tests/unit/app/test_slice16b_query_binding.py` — passed
 - `tests/unit/app/test_slice16b_workspace_api.py` — passed (in earlier batch)
@@ -117,7 +143,7 @@ Frontend:
 
 - `npm run lint` — passed
 - `npm run typecheck` — passed
-- `npm test` — 27 passed
+- `npm test` — 30 passed (incl. F5 FAILED/INTERRUPTED + F7 menu keyboard)
 - `npm run build` — passed
 
 ## Known limitations

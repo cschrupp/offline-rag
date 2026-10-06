@@ -16,7 +16,12 @@ from offline_rag.api.workspace_views import (
     source_view,
     workspace_view,
 )
-from offline_rag.app.errors import AppError, ErrorCode, SafeErrorDetails
+from offline_rag.app.errors import (
+    AppError,
+    ErrorCode,
+    SafeErrorDetails,
+    is_safe_identity,
+)
 from offline_rag.app.ingest_upload import validate_ingest_http_envelope
 from offline_rag.app.operations import OperationHandle
 from offline_rag.app.query import MAX_QUESTION_CHARS, run_workspace_query
@@ -123,6 +128,20 @@ class WorkspaceQueryRequest(BaseModel):
         if len(trimmed) > MAX_QUESTION_CHARS:
             raise ValueError("question exceeds maximum length")
         return trimmed
+
+    @field_validator("source_ids")
+    @classmethod
+    def _validate_source_ids(cls, value: object) -> list[str] | None:
+        if value is None:
+            return None
+        if not isinstance(value, list):
+            raise TypeError("source_ids must be a list")
+        validated: list[str] = []
+        for item in value:
+            if not isinstance(item, str) or not is_safe_identity(item):
+                raise ValueError("source_ids entries must be safe identity tokens")
+            validated.append(item)
+        return validated
 
 
 def _uploads_from_spool(spool: WorkspaceUploadSpool) -> list[SourceUpload]:
