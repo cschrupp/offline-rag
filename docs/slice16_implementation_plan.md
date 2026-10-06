@@ -10,7 +10,10 @@ ACCEPTED SHA: e73959be508541a1c50d4919606aaf3157a5fa8a
 ACCEPTED SHA: eb8baefc6e3eaf7df33668c85fbbfef22364bb0e
 16C: COMPLETE / ACCEPTED
 ACCEPTED SHA: 936e41446eb1e3697f6b7d245659831f19cf0613
-16D–16H: NOT AUTHORIZED
+AMENDMENT A1: DESIGN CANDIDATE / HUMAN ACCEPTANCE PENDING
+  docs/slice16_amendment_a1_seneca_product_ux.md
+16D-A / 16D-B / 16D-C: NOT AUTHORIZED
+16E–16H: NOT AUTHORIZED
 BASELINE: c72215186524c9937de789adb1cf2056be13ea23
 ```
 
@@ -22,6 +25,10 @@ implemented, reviewed, and **ACCEPTED**. Later phases remain gated.
 Locked design authority: [`docs/slice16_design_authority.md`](slice16_design_authority.md)
 (S16-D01 … S16-D35) at AUTHORITY SHA
 `e2e7475076ad18d4c4ae8d939389ceeffdeff6d8`.
+
+Amendment A1 design candidate (**HUMAN ACCEPTANCE PENDING**; not yet locked
+implementation authority):
+[`docs/slice16_amendment_a1_seneca_product_ux.md`](slice16_amendment_a1_seneca_product_ux.md).
 
 16A evidence: [`docs/slice16a_workspace_foundation.md`](slice16a_workspace_foundation.md)
 
@@ -47,9 +54,13 @@ Use sequential phase gates unless explicitly redesigned:
  ↓
 16B [ACCEPTED]
  ↓
-16C [ACCEPTED]
+16C [ACCEPTED / SEALED]
  ↓
-16D [NOT AUTHORIZED]
+16D-A [NOT AUTHORIZED]
+ ↓
+16D-B [NOT AUTHORIZED]
+ ↓
+16D-C [NOT AUTHORIZED]
  ↓
 16E
  ↓
@@ -60,10 +71,18 @@ Use sequential phase gates unless explicitly redesigned:
 16H
 ```
 
+```text
+AMENDMENT A1 DESIGN CANDIDATE
+HUMAN ACCEPTANCE PENDING
+```
+
+The revised 16D-A / 16D-B / 16D-C decomposition above is proposed by Amendment
+A1 and is **not** locked implementation authority until A1 is accepted.
+
 Do not close Slice 16 automatically after 16H. Independent review and explicit
 human acceptance of the implemented slice remain required. **16A**, **16B**, and
-**16C** are **COMPLETE / ACCEPTED**; **16D+** remain **NOT AUTHORIZED**. Slice 16
-overall is **not** complete.
+**16C** are **COMPLETE / ACCEPTED**; **16D-A / 16D-B / 16D-C** and **16E–16H**
+remain **NOT AUTHORIZED**. Slice 16 overall is **not** complete.
 
 ---
 
@@ -228,22 +247,74 @@ Evidence: docs/slice16c_react_shell_source_ui.md
 
 ---
 
-## 16D — Ask, Evidence & Training Mode
+## 16D-A — Seneca Product Foundation & Query-Scope Substrate
 
 ```text
 STATUS: NOT AUTHORIZED / NOT STARTED
+AMENDMENT A1: DESIGN CANDIDATE / HUMAN ACCEPTANCE PENDING
 ```
 
-### Scope
+Proposed by Amendment A1. Not locked until A1 is accepted. Not authorized for
+implementation by this plan update alone.
 
-- single-turn Ask;
+### Future scope (candidate)
+
+- Seneca brand application; provisional stoa favicon/logo; canonical title;
+- compact source rail; source `⋮` CRUD; de-emphasized metadata management;
+- compact operation completion UX; capacity presentation;
+- explicit internal YAML capacity defaults; read-only capabilities endpoint;
+- Settings cog/page; generation runtime configuration API/persistence;
+- endpoint/model probe; restart-required semantics;
+- source-scoped query DTO; server-side source→document binding;
+- dense + lexical pre-ranking scope enforcement; scoped-query provenance.
+
+### Must not
+
+- implement full Ask/Evidence UX merely because the query substrate exists;
+- weaken generation allow-list security;
+- hot-swap live generation clients without restart-required semantics;
+- treat source checkboxes as workspace membership mutations.
+
+---
+
+## 16D-B — Ask & Evidence Workspace
+
+```text
+STATUS: NOT AUTHORIZED / NOT STARTED
+AMENDMENT A1: DESIGN CANDIDATE / HUMAN ACCEPTANCE PENDING
+```
+
+### Future scope (candidate)
+
 - Sources | Ask | Evidence desktop layout;
 - responsive drawers;
+- source-selection checkboxes;
+- single-turn Ask;
+- answer rendering;
 - citation chips;
+- evidence panel;
 - source preview;
 - Current/Historical snapshot visibility;
 - abstention presentation as successful safety outcomes;
-- session-local visual history only;
+- session-local visual history only.
+
+### Must not
+
+- conversational memory;
+- send history as hidden query context;
+- fabricate PDF text highlights without reliable mapping.
+
+---
+
+## 16D-C — Training Mode
+
+```text
+STATUS: NOT AUTHORIZED / NOT STARTED
+AMENDMENT A1: DESIGN CANDIDATE / HUMAN ACCEPTANCE PENDING
+```
+
+### Future scope (candidate)
+
 - **required** instructor-oriented Training Mode (S16-D19 — not optional);
 - saved prompts;
 - hide/reveal answer/evidence;
@@ -252,11 +323,17 @@ STATUS: NOT AUTHORIZED / NOT STARTED
 
 ### Must not
 
-- conversational memory;
-- send history as hidden query context;
-- fabricate PDF text highlights without reliable mapping;
 - LMS / accounts / grading;
 - treat Training Mode as deferred/optional Slice-16 scope.
+
+---
+
+## Historical note — former monolithic 16D gate
+
+Prior plan text treated Ask, Evidence, and Training Mode as a single **16D**
+gate. Amendment A1 proposes subdividing that gate into **16D-A / 16D-B / 16D-C**
+for implementation governance. Until A1 is accepted, that subdivision remains a
+design candidate only.
 
 ---
 
@@ -361,13 +438,17 @@ STATUS: NOT AUTHORIZED / NOT STARTED
 - container/static delivery verification;
 - portfolio evidence consistency;
 - no fake data;
-- final Slice-16 integration harness.
+- final Slice-16 integration harness;
+- **empirical source/corpus capacity validation** on a declared local reference
+  machine (Amendment A1 candidate; e.g. 32 / 64 / 128 sources and increasing
+  active-source byte totals). Defaults must not be raised by intuition alone.
 
 ### Must not
 
 - self-accept Slice 16;
 - authorize Slice 17 / Slice 18 / M7 closeout;
-- claim globally green unrelated suites.
+- claim globally green unrelated suites;
+- promise NotebookLM-equivalent cloud capacity.
 
 ### Exit condition
 
@@ -399,7 +480,9 @@ ACCEPTED SHA: e73959be508541a1c50d4919606aaf3157a5fa8a
 ACCEPTED SHA: eb8baefc6e3eaf7df33668c85fbbfef22364bb0e
 16C: COMPLETE / ACCEPTED
 ACCEPTED SHA: 936e41446eb1e3697f6b7d245659831f19cf0613
-16D–16H: NOT AUTHORIZED
+AMENDMENT A1: DESIGN CANDIDATE / HUMAN ACCEPTANCE PENDING
+16D-A / 16D-B / 16D-C: NOT AUTHORIZED
+16E–16H: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
 SLICE 18: NOT AUTHORIZED
 9G: DEFERRED / NOT AUTHORIZED
@@ -407,5 +490,8 @@ M7 CLOSEOUT: NOT AUTHORIZED
 ```
 
 Plan acceptance alone did **not** authorize execution. 16A, 16B, and 16C were
-separately authorized and are now **COMPLETE / ACCEPTED**. **16D+** remain
-**NOT AUTHORIZED**. Slice 16 overall is **not** complete.
+separately authorized and are now **COMPLETE / ACCEPTED**. Amendment A1 is a
+**design candidate** with human acceptance pending; the proposed 16D-A/B/C
+decomposition is therefore **not** locked implementation authority yet.
+**16D-A / 16D-B / 16D-C** and **16E–16H** remain **NOT AUTHORIZED**. Slice 16
+overall is **not** complete.
