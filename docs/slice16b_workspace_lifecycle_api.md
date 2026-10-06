@@ -7,7 +7,8 @@ HUMAN ACCEPTANCE: ACCEPTED
 ACCEPTED IMPLEMENTATION SHA:
 eb8baefc6e3eaf7df33668c85fbbfef22364bb0e
 INDEPENDENT REVIEW: PASSED
-16C+: NOT AUTHORIZED / NOT STARTED
+16C: COMPLETE / ACCEPTED @ 936e41446eb1e3697f6b7d245659831f19cf0613
+16D+: NOT AUTHORIZED / NOT STARTED
 ```
 
 ## Authority binding
@@ -79,10 +80,10 @@ fail-closed; live scientific recovery under corpus lease; pre-202 validation;
 frozen sync replay; dense/lexical/rerank/context supersession; spool/journal/
 query-binding contracts.
 
-## Carried-forward contracts (inherited by 16C+ when authorized)
+## Carried-forward contracts (inherited by 16D+ when authorized)
 
 These are accepted Slice-16B contracts for downstream phases. They are **not**
-authorization for 16C.
+authorization for 16D.
 
 1. **Workspace scientific mutation lock order:** `WorkspaceMutationLease` →
    `CorpusMutationLease`.
@@ -159,6 +160,7 @@ Full-repo pytest was not claimed as green.
 Human acceptance applies to exactly SHA
 `eb8baefc6e3eaf7df33668c85fbbfef22364bb0e`.
 
-16C–16H, UI, Training Mode, Gold Lab, Slice 17, Slice 18, 9G, and Milestone 7
-closeout were **not** started and remain **NOT AUTHORIZED**. Slice 16 overall is
-**not** complete.
+**16C** is separately **COMPLETE / ACCEPTED** at
+`936e41446eb1e3697f6b7d245659831f19cf0613`. **16D–16H**, Training Mode, Gold
+Lab, Slice 17, Slice 18, 9G, and Milestone 7 closeout remain **NOT AUTHORIZED**.
+Slice 16 overall is **not** complete.

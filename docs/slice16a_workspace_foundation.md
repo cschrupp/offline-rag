@@ -8,7 +8,8 @@ ACCEPTED IMPLEMENTATION SHA:
 e73959be508541a1c50d4919606aaf3157a5fa8a
 INDEPENDENT REVIEW: PASSED
 16B: COMPLETE / ACCEPTED @ eb8baefc6e3eaf7df33668c85fbbfef22364bb0e
-16C+: NOT AUTHORIZED / NOT STARTED
+16C: COMPLETE / ACCEPTED @ 936e41446eb1e3697f6b7d245659831f19cf0613
+16D+: NOT AUTHORIZED / NOT STARTED
 ```
 
 ## Authority binding
@@ -288,6 +289,7 @@ Human acceptance of **16A** applies to exactly SHA
 `e73959be508541a1c50d4919606aaf3157a5fa8a`.
 
 **16B** is separately **COMPLETE / ACCEPTED** at
-`eb8baefc6e3eaf7df33668c85fbbfef22364bb0e`. **16C–16H**, Slice 17, Slice 18,
-9G, and Milestone 7 closeout remain **NOT AUTHORIZED**. Slice 16 overall is
-**not** complete.
+`eb8baefc6e3eaf7df33668c85fbbfef22364bb0e`. **16C** is separately
+**COMPLETE / ACCEPTED** at `936e41446eb1e3697f6b7d245659831f19cf0613`.
+**16D–16H**, Slice 17, Slice 18, 9G, and Milestone 7 closeout remain
+**NOT AUTHORIZED**. Slice 16 overall is **not** complete.

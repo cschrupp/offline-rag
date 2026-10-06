@@ -12,7 +12,9 @@ IMPLEMENTATION PLAN: ACCEPTED
 ACCEPTED SHA: e73959be508541a1c50d4919606aaf3157a5fa8a
 16B: COMPLETE / ACCEPTED
 ACCEPTED SHA: eb8baefc6e3eaf7df33668c85fbbfef22364bb0e
-16C: NOT AUTHORIZED
+16C: COMPLETE / ACCEPTED
+ACCEPTED SHA: 936e41446eb1e3697f6b7d245659831f19cf0613
+16D: NOT AUTHORIZED / NOT STARTED
 ```
 
 This document is the **historical pre-design / roadmap frame** for Slice 16.
@@ -21,8 +23,9 @@ It is **not** design authority. Normative decisions live in
 (S16-D01 … S16-D35), accepted and locked at AUTHORITY SHA
 `e2e7475076ad18d4c4ae8d939389ceeffdeff6d8`. **16A** is **COMPLETE / ACCEPTED**
 at `e73959be508541a1c50d4919606aaf3157a5fa8a`. **16B** is **COMPLETE / ACCEPTED**
-at `eb8baefc6e3eaf7df33668c85fbbfef22364bb0e`. **16C** remains
-**NOT AUTHORIZED**. Portfolio UI itself remains **not implemented**.
+at `eb8baefc6e3eaf7df33668c85fbbfef22364bb0e`. **16C** is **COMPLETE / ACCEPTED**
+at `936e41446eb1e3697f6b7d245659831f19cf0613`. **16D** remains
+**NOT AUTHORIZED / NOT STARTED**. Portfolio UI overall remains **not complete**.
 
 **Prerequisite dependency (governance order):**
 
@@ -40,14 +43,16 @@ at `eb8baefc6e3eaf7df33668c85fbbfef22364bb0e`. **16C** remains
                                   ACCEPTED SHA e73959be508541a1c50d4919606aaf3157a5fa8a
                                   16B COMPLETE / ACCEPTED
                                   ACCEPTED SHA eb8baefc6e3eaf7df33668c85fbbfef22364bb0e
-                                  16C NOT AUTHORIZED
+                                  16C COMPLETE / ACCEPTED
+                                  ACCEPTED SHA 936e41446eb1e3697f6b7d245659831f19cf0613
+                                  16D NOT AUTHORIZED / NOT STARTED
                                   Slice 16 overall NOT COMPLETE
 ```
 
 Slice **15H** closed Slice 15 and validated the API/container product boundary
 (**15H was not the UI phase**). The Slice 16 design interview is **COMPLETE**.
-Design authority is **ACCEPTED / LOCKED**. **16A** and **16B** are
-**COMPLETE / ACCEPTED**. This frame still does **not** authorize **16C**,
+Design authority is **ACCEPTED / LOCKED**. **16A**, **16B**, and **16C** are
+**COMPLETE / ACCEPTED**. This frame still does **not** authorize **16D**,
 Slice 17, Slice 18, or Milestone 7 closeout.
 
 Historical open criteria (met before the design interview):
@@ -161,7 +166,8 @@ IMPLEMENTATION PLAN: ACCEPTED
 ACCEPTED SHA: e73959be508541a1c50d4919606aaf3157a5fa8a
 16B: COMPLETE / ACCEPTED
 ACCEPTED SHA: eb8baefc6e3eaf7df33668c85fbbfef22364bb0e
-16C: NOT AUTHORIZED
+16C: COMPLETE / ACCEPTED
+ACCEPTED SHA: 936e41446eb1e3697f6b7d245659831f19cf0613
 16D–16H: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
 SLICE 18: NOT AUTHORIZED
@@ -175,5 +181,5 @@ M7 CLOSEOUT: NOT AUTHORIZED
 4. ~~design interview~~ **DONE**
 5. ~~human acceptance of design authority~~ **DONE** (locked at
    `e2e7475076ad18d4c4ae8d939389ceeffdeff6d8`)
-6. ~~16A / 16B implementation acceptance~~ **DONE**
-7. explicit 16C+ implementation authorization — **NOT GRANTED**
+6. ~~16A / 16B / 16C implementation acceptance~~ **DONE**
+7. explicit 16D+ implementation authorization — **NOT GRANTED**

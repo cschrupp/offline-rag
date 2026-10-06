@@ -8,16 +8,16 @@ AUTHORITY SHA: e2e7475076ad18d4c4ae8d939389ceeffdeff6d8
 ACCEPTED SHA: e73959be508541a1c50d4919606aaf3157a5fa8a
 16B: COMPLETE / ACCEPTED
 ACCEPTED SHA: eb8baefc6e3eaf7df33668c85fbbfef22364bb0e
-16C: IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING
+16C: COMPLETE / ACCEPTED
+ACCEPTED SHA: 936e41446eb1e3697f6b7d245659831f19cf0613
 16D–16H: NOT AUTHORIZED
 BASELINE: c72215186524c9937de789adb1cf2056be13ea23
 ```
 
 This plan decomposes Slice 16 into sequential phase gates. Plan acceptance does
 **NOT** authorize execution. Coding still requires explicit per-phase
-implementation authorization. 16A and 16B have been separately authorized,
-implemented, reviewed, and **ACCEPTED**; **16C** now has an implementation
-candidate pending human acceptance. Later phases remain gated.
+implementation authorization. 16A, 16B, and 16C have been separately authorized,
+implemented, reviewed, and **ACCEPTED**. Later phases remain gated.
 
 Locked design authority: [`docs/slice16_design_authority.md`](slice16_design_authority.md)
 (S16-D01 … S16-D35) at AUTHORITY SHA
@@ -26,6 +26,8 @@ Locked design authority: [`docs/slice16_design_authority.md`](slice16_design_aut
 16A evidence: [`docs/slice16a_workspace_foundation.md`](slice16a_workspace_foundation.md)
 
 16B evidence: [`docs/slice16b_workspace_lifecycle_api.md`](slice16b_workspace_lifecycle_api.md)
+
+16C evidence: [`docs/slice16c_react_shell_source_ui.md`](slice16c_react_shell_source_ui.md)
 
 ```text
 SLICE 17: NOT AUTHORIZED
@@ -45,9 +47,9 @@ Use sequential phase gates unless explicitly redesigned:
  ↓
 16B [ACCEPTED]
  ↓
-16C [IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING]
+16C [ACCEPTED]
  ↓
-16D
+16D [NOT AUTHORIZED]
  ↓
 16E
  ↓
@@ -59,9 +61,9 @@ Use sequential phase gates unless explicitly redesigned:
 ```
 
 Do not close Slice 16 automatically after 16H. Independent review and explicit
-human acceptance of the implemented slice remain required. **16C** is an
-**IMPLEMENTED CANDIDATE** with human acceptance pending; **16D+** remain
-**NOT AUTHORIZED**. Slice 16 overall is **not** complete.
+human acceptance of the implemented slice remain required. **16A**, **16B**, and
+**16C** are **COMPLETE / ACCEPTED**; **16D+** remain **NOT AUTHORIZED**. Slice 16
+overall is **not** complete.
 
 ---
 
@@ -125,7 +127,8 @@ INDEPENDENT REVIEW: PASSED
 HUMAN ACCEPTANCE: ACCEPTED
 AUTHORIZED BASELINE: 155983fec59a3ae6434286276bd34dcfdaaf8968
 ACCEPTED 16A SHA: e73959be508541a1c50d4919606aaf3157a5fa8a
-16C+: NOT AUTHORIZED
+16C: COMPLETE / ACCEPTED @ 936e41446eb1e3697f6b7d245659831f19cf0613
+16D+: NOT AUTHORIZED
 Evidence: docs/slice16b_workspace_lifecycle_api.md
 ```
 
@@ -190,6 +193,17 @@ MUST:
 
 ## 16C — React shell, design system & source-management UI
 
+```text
+STATUS: COMPLETE / ACCEPTED
+ACCEPTED SHA: 936e41446eb1e3697f6b7d245659831f19cf0613
+INDEPENDENT REVIEW: PASSED
+HUMAN ACCEPTANCE: ACCEPTED
+AUTHORIZED BASELINE: a0a8a3f9a38807f40676a9a249cd7c7b186c09cb
+ACCEPTED 16B SHA: eb8baefc6e3eaf7df33668c85fbbfef22364bb0e
+16D+: NOT AUTHORIZED
+Evidence: docs/slice16c_react_shell_source_ui.md
+```
+
 ### Scope
 
 - React/TS/Vite shell;
@@ -215,6 +229,10 @@ MUST:
 ---
 
 ## 16D — Ask, Evidence & Training Mode
+
+```text
+STATUS: NOT AUTHORIZED / NOT STARTED
+```
 
 ### Scope
 
@@ -379,7 +397,8 @@ AUTHORITY SHA: e2e7475076ad18d4c4ae8d939389ceeffdeff6d8
 ACCEPTED SHA: e73959be508541a1c50d4919606aaf3157a5fa8a
 16B: COMPLETE / ACCEPTED
 ACCEPTED SHA: eb8baefc6e3eaf7df33668c85fbbfef22364bb0e
-16C: IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING
+16C: COMPLETE / ACCEPTED
+ACCEPTED SHA: 936e41446eb1e3697f6b7d245659831f19cf0613
 16D–16H: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
 SLICE 18: NOT AUTHORIZED
@@ -387,7 +406,6 @@ SLICE 18: NOT AUTHORIZED
 M7 CLOSEOUT: NOT AUTHORIZED
 ```
 
-Plan acceptance alone did **not** authorize execution. 16A and 16B were
-separately authorized and are now **COMPLETE / ACCEPTED**. **16C** is an
-**IMPLEMENTED CANDIDATE** with human acceptance pending. **16D+** remain
+Plan acceptance alone did **not** authorize execution. 16A, 16B, and 16C were
+separately authorized and are now **COMPLETE / ACCEPTED**. **16D+** remain
 **NOT AUTHORIZED**. Slice 16 overall is **not** complete.

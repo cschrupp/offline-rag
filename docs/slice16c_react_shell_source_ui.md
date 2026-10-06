@@ -1,9 +1,12 @@
 # Slice 16C — React shell, design system & source-management UI
 
 ```text
-STATUS: IMPLEMENTATION EVIDENCE CANDIDATE
-HUMAN ACCEPTANCE: PENDING
-16C: IMPLEMENTED CANDIDATE / NOT ACCEPTED
+STATUS: IMPLEMENTATION ACCEPTED
+HUMAN ACCEPTANCE: ACCEPTED
+16C: COMPLETE / ACCEPTED
+ACCEPTED IMPLEMENTATION SHA:
+936e41446eb1e3697f6b7d245659831f19cf0613
+INDEPENDENT REVIEW: PASSED
 16D+: NOT AUTHORIZED / NOT STARTED
 ```
 
@@ -15,7 +18,13 @@ HUMAN ACCEPTANCE: PENDING
 | Accepted 16B SHA | `eb8baefc6e3eaf7df33668c85fbbfef22364bb0e` |
 | Accepted 16A SHA | `e73959be508541a1c50d4919606aaf3157a5fa8a` |
 | Locked design authority | `e2e7475076ad18d4c4ae8d939389ceeffdeff6d8` |
+| **Accepted 16C implementation SHA** | `936e41446eb1e3697f6b7d245659831f19cf0613` |
+| Prior 16C candidate (pre-rework) | `532ce8acf694155060cd29fdc8cbbc7a4194eae0` |
 | Branch | `implementation/16c-react-shell-source-ui` |
+| Phase | **16C COMPLETE / ACCEPTED** |
+
+Human acceptance applies **exactly** to SHA
+`936e41446eb1e3697f6b7d245659831f19cf0613`.
 
 ## Frontend architecture
 
@@ -136,15 +145,53 @@ Not implemented / not functional: `/ask`, `/evidence`, `/training`, `/evaluation
 - No 16D+ work started
 - No merge / no self-accept
 
+## Independent review history
+
+1. Candidate `532ce8acf694155060cd29fdc8cbbc7a4194eae0` — disposition
+   **REWORK REQUIRED** (F1–F3).
+2. Rework `936e41446eb1e3697f6b7d245659831f19cf0613` — disposition **PASS**.
+3. Human decision — **ACCEPT** Slice 16C at
+   `936e41446eb1e3697f6b7d245659831f19cf0613`.
+
 ## Independent review rework (F1–F3)
 
-Resolved on this candidate after disposition **REWORK REQUIRED**:
+Resolved on the accepted candidate after disposition **REWORK REQUIRED**:
 
 1. **F1** visible resumed-operation tray + terminal/error surfacing
 2. **F2** canonical client-intent fingerprint binding for idempotency keys
 3. **F3** shared accessible modal primitive + nested interactive cleanup
 
-## Quality gates (executed for rework SHA)
+## Carried-forward contracts (inherited by 16D+ when authorized)
+
+These are accepted Slice-16C contracts for downstream phases. They are **not**
+authorization for 16D.
+
+1. React / TypeScript / Vite frontend.
+2. Same-origin product topology: one OfflineRAG application/container serves
+   API + compiled frontend.
+3. Backend APIs remain authoritative; browser UI contains no scientific/RAG
+   implementation.
+4. Server state owned through TanStack Query.
+5. Existing-workspace mutations use If-Match revision semantics.
+6. Browser idempotency keys are bound to canonical client intent: same request
+   after network ambiguity → same key; changed request/revision/files → new key.
+7. Durable managed operations survive refresh through locator-only localStorage
+   and server-authoritative polling.
+8. Resumed operations are visibly surfaced: running, succeeded, failed,
+   interrupted, and lookup failure.
+9. EMPTY workspace remains a first-class valid UI state.
+10. Removal wording remains logical removal, never secure-erasure language.
+11. Workspace `updated_at` is NOT a "last successful knowledge update" timestamp.
+12. Shared keyboard-accessible `ModalDialog` remains the modal foundation:
+    focus containment, Escape, restoration, and inert background.
+13. No nested interactive controls such as `<a><button>`.
+14. Static SPA fallback MUST NOT swallow `/v1/*`, `/health*`, `/openapi.json`,
+    `/docs`, `/redoc`.
+15. Frontend runtime assets remain local/offline bundled.
+16. Node remains build-stage only; final runtime remains Python.
+17. No Ask / Evidence / Training Mode / source preview was accepted in 16C.
+
+## Quality gates (executed for accepted rework SHA)
 
 ### Frontend
 
@@ -196,3 +243,11 @@ those tests.
 - Operation poll interval remains aggressive for local single-user UX; tuning only.
 - “Last successful knowledge update” remains omitted until a future accepted API exposes that semantic.
 - 16D Ask/Evidence/Training surfaces remain unauthorized.
+
+## Explicit non-scope confirmation
+
+Human acceptance applies to exactly SHA
+`936e41446eb1e3697f6b7d245659831f19cf0613`.
+
+**16D–16H**, Slice 17, Slice 18, 9G, and Milestone 7 closeout were **not**
+started and remain **NOT AUTHORIZED**. Slice 16 overall is **not** complete.
