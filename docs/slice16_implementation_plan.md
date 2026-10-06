@@ -86,13 +86,15 @@ AMENDMENT A1: ACCEPTED / LOCKED
 
 The revised 16D-A / 16D-B / 16D-C decomposition above is the authoritative
 implementation sequence under accepted Amendment A1. **16D-A** is
-**COMPLETE / ACCEPTED**. **16D-B / 16D-C** remain **NOT AUTHORIZED** until
-separate explicit implementation authorization (prerequisite completion does
-not authorize the next phase).
+**COMPLETE / ACCEPTED**. **16D-B** is an **IMPLEMENTED CANDIDATE / HUMAN
+ACCEPTANCE PENDING**. **16D-C** remains **NOT AUTHORIZED** until separate
+explicit implementation authorization (prerequisite completion does not
+authorize the next phase).
 
 Do not close Slice 16 automatically after 16H. Independent review and explicit
 human acceptance of the implemented slice remain required. **16A**, **16B**,
-**16C**, and **16D-A** are **COMPLETE / ACCEPTED**; **16D-B / 16D-C** and
+**16C**, and **16D-A** are **COMPLETE / ACCEPTED**; **16D-B** is an
+**IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING**; **16D-C** and
 **16E–16H** remain **NOT AUTHORIZED**. Slice 16 overall is **not** complete.
 
 ---
