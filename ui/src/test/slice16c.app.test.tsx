@@ -577,7 +577,9 @@ describe("operations / overload / idempotency / no 16D", () => {
   });
 
   it("reuses idempotency key across transport retries and issues a new key after terminal failure", async () => {
-    const { IntentHandle } = await import("../api/idempotency");
+    const { IntentHandle, fingerprintCreateWorkspace } = await import(
+      "../api/idempotency"
+    );
     const { createWorkspace } = await import("../api/client");
     const keys: string[] = [];
     let attempt = 0;
@@ -597,25 +599,26 @@ describe("operations / overload / idempotency / no 16D", () => {
     });
 
     const intent = new IntentHandle("fixed-key-1");
+    const fp = fingerprintCreateWorkspace("A", "");
     await expect(
       createWorkspace({
         title: "A",
         description: "",
-        idempotencyKey: intent.key,
+        idempotencyKey: intent.prepare(fp),
       }),
     ).rejects.toThrow(/reach OfflineRAG/i);
     await expect(
       createWorkspace({
         title: "A",
         description: "",
-        idempotencyKey: intent.key,
+        idempotencyKey: intent.prepare(fp),
       }),
     ).rejects.toMatchObject({ code: "request_invalid" });
-    const next = IntentHandle.newIntent();
+    intent.reset();
     await createWorkspace({
       title: "A",
       description: "",
-      idempotencyKey: next.key,
+      idempotencyKey: intent.prepare(fp),
     });
     expect(keys[0]).toBe("fixed-key-1");
     expect(keys[1]).toBe("fixed-key-1");
@@ -653,7 +656,7 @@ describe("operations / overload / idempotency / no 16D", () => {
     mock.restore();
   });
 
-  it("restores remembered operations after remount and clears on terminal success", async () => {
+  it("restores remembered operations after remount with visible status then clears locator", async () => {
     localStorage.setItem(
       ACTIVE_OPERATIONS_KEY,
       JSON.stringify([
@@ -697,14 +700,9 @@ describe("operations / overload / idempotency / no 16D", () => {
       return errorResponse("not_found", "x", 404);
     });
 
-    const { unmount } = renderApp("/");
-    await waitFor(() => {
-      expect(
-        mock.calls.some((call) => call.url === "/v1/operations/op_resume"),
-      ).toBe(true);
-    });
-    unmount();
-    renderApp("/workspaces/ws_1");
+    renderApp("/");
+    expect(await screen.findByText("Publishing")).toBeInTheDocument();
+    expect(await screen.findByText("Ready")).toBeInTheDocument();
     await waitFor(() => {
       const stored = localStorage.getItem(ACTIVE_OPERATIONS_KEY);
       expect(stored === "[]" || stored === null || !stored?.includes("op_resume")).toBe(

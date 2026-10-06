@@ -1,9 +1,13 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { deleteWorkspace, patchWorkspace } from "../../api/client";
 import { isApiError, userFacingErrorMessage } from "../../api/errors";
-import { IntentHandle } from "../../api/idempotency";
+import {
+  IntentHandle,
+  fingerprintDeleteWorkspace,
+  fingerprintPatchWorkspace,
+} from "../../api/idempotency";
 import { queryKeys } from "../../api/queryKeys";
 import type { Workspace } from "../../api/types";
 import { Button } from "../../components/Button";
@@ -24,12 +28,13 @@ type FormSnapshot = {
 
 export function WorkspaceMetadataForm({ workspace, onRemoved }: Props) {
   const queryClient = useQueryClient();
+  const patchIntent = useRef(IntentHandle.newIntent());
+  const removeIntent = useRef(IntentHandle.newIntent());
   const [snapshot, setSnapshot] = useState<FormSnapshot>({
     revision: workspace.revision,
     title: workspace.title,
     description: workspace.description,
   });
-  // Adjust local fields when the server revision changes (e.g. conflict refetch).
   if (workspace.revision !== snapshot.revision) {
     setSnapshot({
       revision: workspace.revision,
@@ -39,19 +44,28 @@ export function WorkspaceMetadataForm({ workspace, onRemoved }: Props) {
   }
 
   const [metaError, setMetaError] = useState<string | null>(null);
-  const [metaIntent, setMetaIntent] = useState(() => IntentHandle.newIntent());
   const [removeOpen, setRemoveOpen] = useState(false);
-  const [removeIntent, setRemoveIntent] = useState(() => IntentHandle.newIntent());
 
   const patchMutation = useMutation({
-    mutationFn: () =>
-      patchWorkspace({
+    mutationFn: () => {
+      const title = snapshot.title.trim();
+      const description = snapshot.description.trim();
+      const key = patchIntent.current.prepare(
+        fingerprintPatchWorkspace({
+          workspaceId: workspace.workspace_id,
+          revision: workspace.revision,
+          title,
+          description,
+        }),
+      );
+      return patchWorkspace({
         workspaceId: workspace.workspace_id,
-        title: snapshot.title.trim(),
-        description: snapshot.description.trim(),
+        title,
+        description,
         revision: workspace.revision,
-        idempotencyKey: metaIntent.key,
-      }),
+        idempotencyKey: key,
+      });
+    },
     onSuccess: (updated) => {
       queryClient.setQueryData(
         queryKeys.workspace(workspace.workspace_id),
@@ -59,7 +73,7 @@ export function WorkspaceMetadataForm({ workspace, onRemoved }: Props) {
       );
       void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces });
       setMetaError(null);
-      setMetaIntent(IntentHandle.newIntent());
+      patchIntent.current.reset();
     },
     onError: (error) => {
       if (isApiError(error) && error.code === "workspace_conflict") {
@@ -70,25 +84,33 @@ export function WorkspaceMetadataForm({ workspace, onRemoved }: Props) {
         void queryClient.invalidateQueries({
           queryKey: queryKeys.workspaceSources(workspace.workspace_id),
         });
-        setMetaIntent(IntentHandle.newIntent());
+        patchIntent.current.reset();
         return;
       }
       setMetaError(userFacingErrorMessage(error));
       if (isApiError(error) && error.kind !== "network") {
-        setMetaIntent(IntentHandle.newIntent());
+        patchIntent.current.reset();
       }
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () =>
-      deleteWorkspace({
+    mutationFn: () => {
+      const key = removeIntent.current.prepare(
+        fingerprintDeleteWorkspace({
+          workspaceId: workspace.workspace_id,
+          revision: workspace.revision,
+        }),
+      );
+      return deleteWorkspace({
         workspaceId: workspace.workspace_id,
         revision: workspace.revision,
-        idempotencyKey: removeIntent.key,
-      }),
+        idempotencyKey: key,
+      });
+    },
     onSuccess: async () => {
       setRemoveOpen(false);
+      removeIntent.current.reset();
       queryClient.removeQueries({
         queryKey: queryKeys.workspace(workspace.workspace_id),
       });
@@ -104,13 +126,13 @@ export function WorkspaceMetadataForm({ workspace, onRemoved }: Props) {
         void queryClient.invalidateQueries({
           queryKey: queryKeys.workspace(workspace.workspace_id),
         });
-        setRemoveIntent(IntentHandle.newIntent());
+        removeIntent.current.reset();
         setRemoveOpen(false);
         return;
       }
       setMetaError(userFacingErrorMessage(error));
       if (isApiError(error) && error.kind !== "network") {
-        setRemoveIntent(IntentHandle.newIntent());
+        removeIntent.current.reset();
       }
     },
   });

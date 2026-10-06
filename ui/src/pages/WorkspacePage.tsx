@@ -16,7 +16,13 @@ import {
   replaceSource,
 } from "../api/client";
 import { isApiError, userFacingErrorMessage } from "../api/errors";
-import { IntentHandle } from "../api/idempotency";
+import {
+  IntentHandle,
+  fingerprintAddSources,
+  fingerprintRemoveSource,
+  fingerprintRenameSource,
+  fingerprintReplaceSource,
+} from "../api/idempotency";
 import { queryKeys } from "../api/queryKeys";
 import type { Operation, Source } from "../api/types";
 import { Badge } from "../components/Badge";
@@ -25,6 +31,7 @@ import { Card } from "../components/Card";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { TextInput } from "../components/Field";
+import { ModalDialog } from "../components/ModalDialog";
 import { OperationProgress } from "../components/OperationProgress";
 import {
   forgetActiveOperation,
@@ -46,6 +53,10 @@ export function WorkspacePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const handledTerminalOps = useRef(new Set<string>());
+  const addIntent = useRef(IntentHandle.newIntent());
+  const renameIntent = useRef(IntentHandle.newIntent());
+  const replaceIntent = useRef(IntentHandle.newIntent());
+  const removeIntent = useRef(IntentHandle.newIntent());
 
   const workspaceQuery = useQuery({
     queryKey: queryKeys.workspace(workspaceId),
@@ -64,27 +75,17 @@ export function WorkspacePage() {
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [addError, setAddError] = useState<string | null>(null);
-  const [addIntent, setAddIntent] = useState(() => IntentHandle.newIntent());
 
   const [renameTarget, setRenameTarget] = useState<Source | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [renameError, setRenameError] = useState<string | null>(null);
-  const [renameIntent, setRenameIntent] = useState(() =>
-    IntentHandle.newIntent(),
-  );
 
   const [replaceTarget, setReplaceTarget] = useState<Source | null>(null);
   const [replaceFile, setReplaceFile] = useState<File | null>(null);
   const [replaceError, setReplaceError] = useState<string | null>(null);
-  const [replaceIntent, setReplaceIntent] = useState(() =>
-    IntentHandle.newIntent(),
-  );
 
   const [removeTarget, setRemoveTarget] = useState<Source | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
-  const [removeIntent, setRemoveIntent] = useState(() =>
-    IntentHandle.newIntent(),
-  );
 
   const [pendingPhase, setPendingPhase] = useState<PendingPhase>("idle");
   const [activeOperationId, setActiveOperationId] = useState<string | null>(
@@ -163,23 +164,30 @@ export function WorkspacePage() {
   const addMutation = useMutation({
     mutationFn: async () => {
       if (!workspace) throw new Error("Workspace not loaded");
+      const key = addIntent.current.prepare(
+        fingerprintAddSources({
+          workspaceId,
+          revision: workspace.revision,
+          files: selectedFiles,
+        }),
+      );
       return addSources({
         workspaceId,
         files: selectedFiles,
         revision: workspace.revision,
-        idempotencyKey: addIntent.key,
+        idempotencyKey: key,
       });
     },
     onSuccess: (operation) => {
       beginOperation(operation, "Add sources");
       setSelectedFiles([]);
-      setAddIntent(IntentHandle.newIntent());
+      addIntent.current.reset();
     },
     onError: (error) => {
       setPendingPhase("idle");
       setAddError(userFacingErrorMessage(error));
       if (handleConflict(error) || (isApiError(error) && error.kind !== "network")) {
-        setAddIntent(IntentHandle.newIntent());
+        addIntent.current.reset();
       }
     },
   });
@@ -187,18 +195,27 @@ export function WorkspacePage() {
   const renameMutation = useMutation({
     mutationFn: () => {
       if (!workspace || !renameTarget) throw new Error("Missing rename target");
+      const displayName = renameValue.trim();
+      const key = renameIntent.current.prepare(
+        fingerprintRenameSource({
+          workspaceId,
+          sourceId: renameTarget.source_id,
+          revision: workspace.revision,
+          displayName,
+        }),
+      );
       return renameSource({
         workspaceId,
         sourceId: renameTarget.source_id,
-        displayName: renameValue.trim(),
+        displayName,
         revision: workspace.revision,
-        idempotencyKey: renameIntent.key,
+        idempotencyKey: key,
       });
     },
     onSuccess: async () => {
       setRenameTarget(null);
       setRenameError(null);
-      setRenameIntent(IntentHandle.newIntent());
+      renameIntent.current.reset();
       await queryClient.invalidateQueries({
         queryKey: queryKeys.workspace(workspaceId),
       });
@@ -209,7 +226,7 @@ export function WorkspacePage() {
     onError: (error) => {
       setRenameError(userFacingErrorMessage(error));
       if (handleConflict(error) || (isApiError(error) && error.kind !== "network")) {
-        setRenameIntent(IntentHandle.newIntent());
+        renameIntent.current.reset();
       }
     },
   });
@@ -219,25 +236,33 @@ export function WorkspacePage() {
       if (!workspace || !replaceTarget || !replaceFile) {
         throw new Error("Missing replace target");
       }
+      const key = replaceIntent.current.prepare(
+        fingerprintReplaceSource({
+          workspaceId,
+          sourceId: replaceTarget.source_id,
+          revision: workspace.revision,
+          file: replaceFile,
+        }),
+      );
       return replaceSource({
         workspaceId,
         sourceId: replaceTarget.source_id,
         file: replaceFile,
         revision: workspace.revision,
-        idempotencyKey: replaceIntent.key,
+        idempotencyKey: key,
       });
     },
     onSuccess: (operation) => {
       beginOperation(operation, "Replace source");
       setReplaceTarget(null);
       setReplaceFile(null);
-      setReplaceIntent(IntentHandle.newIntent());
+      replaceIntent.current.reset();
     },
     onError: (error) => {
       setPendingPhase("idle");
       setReplaceError(userFacingErrorMessage(error));
       if (handleConflict(error) || (isApiError(error) && error.kind !== "network")) {
-        setReplaceIntent(IntentHandle.newIntent());
+        replaceIntent.current.reset();
       }
     },
   });
@@ -246,22 +271,29 @@ export function WorkspacePage() {
     mutationFn: async () => {
       if (!workspace || !removeTarget) throw new Error("Missing remove target");
       setRemoveError(null);
+      const key = removeIntent.current.prepare(
+        fingerprintRemoveSource({
+          workspaceId,
+          sourceId: removeTarget.source_id,
+          revision: workspace.revision,
+        }),
+      );
       return removeSource({
         workspaceId,
         sourceId: removeTarget.source_id,
         revision: workspace.revision,
-        idempotencyKey: removeIntent.key,
+        idempotencyKey: key,
       });
     },
     onSuccess: (operation) => {
       beginOperation(operation, "Remove source");
       setRemoveTarget(null);
-      setRemoveIntent(IntentHandle.newIntent());
+      removeIntent.current.reset();
     },
     onError: (error) => {
       setRemoveError(userFacingErrorMessage(error));
       if (handleConflict(error) || (isApiError(error) && error.kind !== "network")) {
-        setRemoveIntent(IntentHandle.newIntent());
+        removeIntent.current.reset();
       }
     },
   });
@@ -458,7 +490,7 @@ export function WorkspacePage() {
                     setRenameTarget(source);
                     setRenameValue(source.display_name);
                     setRenameError(null);
-                    setRenameIntent(IntentHandle.newIntent());
+                    renameIntent.current = IntentHandle.newIntent();
                   }}
                 >
                   Rename
@@ -469,7 +501,7 @@ export function WorkspacePage() {
                     setReplaceTarget(source);
                     setReplaceFile(null);
                     setReplaceError(null);
-                    setReplaceIntent(IntentHandle.newIntent());
+                    replaceIntent.current = IntentHandle.newIntent();
                   }}
                 >
                   Replace current version
@@ -479,7 +511,7 @@ export function WorkspacePage() {
                   onClick={() => {
                     setRemoveTarget(source);
                     setRemoveError(null);
-                    setRemoveIntent(IntentHandle.newIntent());
+                    removeIntent.current = IntentHandle.newIntent();
                   }}
                 >
                   Remove source
@@ -501,120 +533,107 @@ export function WorkspacePage() {
         onConfirm={() => removeMutation.mutate()}
       />
 
-      {renameTarget ? (
-        <div className="dialog-backdrop" role="presentation">
-          <div
-            className="dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="rename-title"
-          >
-            <h2 id="rename-title">Rename display label</h2>
-            <p className="muted">
-              This updates the display name only. It does not reindex or change
-              the source version.
+      <ModalDialog
+        open={Boolean(renameTarget)}
+        title="Rename display label"
+        description="This updates the display name only. It does not reindex or change the source version."
+        busy={renameMutation.isPending}
+        onClose={() => setRenameTarget(null)}
+      >
+        <form
+          className="stack"
+          onSubmit={(event) => {
+            event.preventDefault();
+            renameMutation.mutate();
+          }}
+        >
+          <TextInput
+            id="rename-display-name"
+            label="Display name"
+            value={renameValue}
+            onChange={(event) => setRenameValue(event.target.value)}
+            maxLength={512}
+            required
+          />
+          {renameError ? (
+            <p className="error-box" role="alert">
+              {renameError}
             </p>
-            <form
-              className="stack"
-              onSubmit={(event) => {
-                event.preventDefault();
-                renameMutation.mutate();
-              }}
+          ) : null}
+          <div className="row" style={{ justifyContent: "flex-end" }}>
+            <Button
+              variant="secondary"
+              onClick={() => setRenameTarget(null)}
+              disabled={renameMutation.isPending}
             >
-              <TextInput
-                id="rename-display-name"
-                label="Display name"
-                value={renameValue}
-                onChange={(event) => setRenameValue(event.target.value)}
-                maxLength={512}
-                required
-              />
-              {renameError ? (
-                <p className="error-box" role="alert">
-                  {renameError}
-                </p>
-              ) : null}
-              <div className="row" style={{ justifyContent: "flex-end" }}>
-                <Button
-                  variant="secondary"
-                  onClick={() => setRenameTarget(null)}
-                  disabled={renameMutation.isPending}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={renameMutation.isPending}>
-                  Save label
-                </Button>
-              </div>
-            </form>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={renameMutation.isPending}>
+              Save label
+            </Button>
           </div>
-        </div>
-      ) : null}
+        </form>
+      </ModalDialog>
 
-      {replaceTarget ? (
-        <div className="dialog-backdrop" role="presentation">
-          <div
-            className="dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="replace-title"
-          >
-            <h2 id="replace-title">Replace current version</h2>
-            <p className="muted">
-              Replace the current version of {replaceTarget.display_name}. The
-              logical source identity remains stable; this does not create a
-              second copy.
-            </p>
-            <form
-              className="stack"
-              onSubmit={(event) => {
-                event.preventDefault();
-                if (!replaceFile) {
-                  setReplaceError("Choose exactly one file.");
-                  return;
-                }
-                if (replaceFile.size > SOURCE_LIMITS.maxBytesPerFile) {
-                  setReplaceError("File exceeds the 25 MiB per-file limit.");
-                  return;
-                }
+      <ModalDialog
+        open={Boolean(replaceTarget)}
+        title="Replace current version"
+        description={
+          replaceTarget
+            ? `Replace the current version of ${replaceTarget.display_name}. The logical source identity remains stable; this does not create a second copy.`
+            : undefined
+        }
+        busy={replaceMutation.isPending}
+        onClose={() => setReplaceTarget(null)}
+      >
+        <form
+          className="stack"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!replaceFile) {
+              setReplaceError("Choose exactly one file.");
+              return;
+            }
+            if (replaceFile.size > SOURCE_LIMITS.maxBytesPerFile) {
+              setReplaceError("File exceeds the 25 MiB per-file limit.");
+              return;
+            }
+            setReplaceError(null);
+            setOperationLabel("Replace source");
+            setPendingPhase("uploading");
+            replaceMutation.mutate();
+          }}
+        >
+          <div className="field">
+            <label htmlFor="replace-file">Replacement file</label>
+            <input
+              id="replace-file"
+              type="file"
+              onChange={(event) => {
+                setReplaceFile(event.target.files?.[0] ?? null);
                 setReplaceError(null);
-                setOperationLabel("Replace source");
-                setPendingPhase("uploading");
-                replaceMutation.mutate();
               }}
-            >
-              <div className="field">
-                <label htmlFor="replace-file">Replacement file</label>
-                <input
-                  id="replace-file"
-                  type="file"
-                  onChange={(event) => {
-                    setReplaceFile(event.target.files?.[0] ?? null);
-                    setReplaceError(null);
-                  }}
-                />
-              </div>
-              {replaceError ? (
-                <p className="error-box" role="alert">
-                  {replaceError}
-                </p>
-              ) : null}
-              <div className="row" style={{ justifyContent: "flex-end" }}>
-                <Button
-                  variant="secondary"
-                  onClick={() => setReplaceTarget(null)}
-                  disabled={replaceMutation.isPending}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={replaceMutation.isPending}>
-                  Replace current version
-                </Button>
-              </div>
-            </form>
+            />
           </div>
-        </div>
-      ) : null}
+          {replaceError ? (
+            <p className="error-box" role="alert">
+              {replaceError}
+            </p>
+          ) : null}
+          <div className="row" style={{ justifyContent: "flex-end" }}>
+            <Button
+              variant="secondary"
+              onClick={() => setReplaceTarget(null)}
+              disabled={replaceMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={replaceMutation.isPending}>
+              Replace current version
+            </Button>
+          </div>
+        </form>
+      </ModalDialog>
 
       {removeError ? (
         <p className="error-box" role="alert">

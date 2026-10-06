@@ -1,23 +1,47 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { Link } from "react-router-dom";
 
 type Variant = "primary" | "secondary" | "danger";
 
-type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
+function variantClass(variant: Variant, className = ""): string {
+  return `btn btn-${variant} ${className}`.trim();
+}
+
+type NativeButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: Variant;
   children: ReactNode;
 };
 
-export function Button({
-  variant = "primary",
-  className = "",
-  children,
-  type = "button",
-  ...rest
-}: Props) {
+type LinkAsButtonProps = {
+  variant?: Variant;
+  children: ReactNode;
+  to: string;
+  className?: string;
+};
+
+export function Button(props: NativeButtonProps | LinkAsButtonProps) {
+  if ("to" in props) {
+    const { to, variant = "primary", className = "", children } = props;
+    return (
+      <Link to={to} className={variantClass(variant, className)}>
+        {children}
+      </Link>
+    );
+  }
+
+  const buttonProps = props as NativeButtonProps;
+  const {
+    variant = "primary",
+    className = "",
+    children,
+    type = "button",
+    ...rest
+  } = buttonProps;
+
   return (
     <button
       type={type}
-      className={`btn btn-${variant} ${className}`.trim()}
+      className={variantClass(variant, className)}
       {...rest}
     >
       {children}

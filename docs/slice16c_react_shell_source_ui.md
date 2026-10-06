@@ -53,8 +53,12 @@ Not implemented / not functional: `/ask`, `/evidence`, `/training`, `/evaluation
 ## API client / idempotency / ETag
 
 - All browser calls use relative URLs (`/health/ready`, `/v1/...`).
-- Mutations send `Idempotency-Key` from `IntentHandle` / `crypto.randomUUID()`.
-- Transport retry of the same intent reuses the same key; terminal failure + explicit retry uses a new key.
+- `IntentHandle.prepare(canonicalFingerprint)` binds an opaque key to a client
+  request fingerprint covering the canonical mutation inputs (including expected
+  revision where applicable).
+- Same fingerprint after transport ambiguity → reuse key.
+- Changed fingerprint (edited fields, different files, new revision) → new key.
+- Terminal backend success/failure → `reset()` for the next user action.
 - TanStack Query mutation `retry: false`.
 - Existing-workspace mutations send quoted `If-Match: "<revision>"`.
 - `workspace_conflict` explains stale state, invalidates/refetches, and does **not** auto-resubmit.
@@ -65,7 +69,14 @@ Not implemented / not functional: `/ask`, `/evidence`, `/training`, `/evaluation
 - Upload phase shows **Uploading…** before HTTP 202.
 - After 202, polls `GET /v1/operations/{id}` and maps stages honestly (no percentages/ETA).
 - No Cancel control; no queue position.
-- Startup bootstrap rehydrates remembered nonterminal operations; terminal success invalidates workspace/source queries and clears the locator.
+- Application-level **operation tray** (`ActiveOperationsBootstrap`) visibly
+  resumes remembered operations after refresh/reconnect:
+  - RUNNING: label + durable stage visible
+  - SUCCEEDED: Ready surfaced; workspace/source caches invalidated; locator
+    cleared; dismissible terminal card retained until acknowledged
+  - FAILED / INTERRUPTED: safe message/guidance surfaced before/while locator
+    cleared; dismissible (not silent)
+  - `operation_unknown` / transport failure: bounded lookup-error card; polling stops
 
 ## Overview semantics
 
@@ -87,6 +98,10 @@ Not implemented / not functional: `/ask`, `/evidence`, `/training`, `/evaluation
 - Tokens: `--navy #0B1F33`, `--slate #24384A`, `--surface #F6F7F8`, `--white`, `--text`, `--muted`, `--action #175CD3`, `--critical #B42318`, `--brass #9A6700`, `--success #027A48`.
 - Primary actions blue; red reserved for destructive/critical.
 - Skip link, landmarks, labels, keyboard dialogs/nav toggle, visible focus, status text+badge (not color-only), ~44px targets, reduced-motion, responsive shell.
+- Shared `ModalDialog` primitive (portal + `aria-modal` + `#root` inert + Tab
+  cycle + Escape + focus restore) used by ConfirmDialog, rename, and replace.
+- Nested interactive controls removed: `Button to="..."` renders a styled
+  `Link`, not `<a><button>`.
 
 ## Same-origin static serving
 
@@ -121,27 +136,29 @@ Not implemented / not functional: `/ask`, `/evidence`, `/training`, `/evaluation
 - No 16D+ work started
 - No merge / no self-accept
 
-## Quality gates (executed)
+## Independent review rework (F1–F3)
+
+Resolved on this candidate after disposition **REWORK REQUIRED**:
+
+1. **F1** visible resumed-operation tray + terminal/error surfacing
+2. **F2** canonical client-intent fingerprint binding for idempotency keys
+3. **F3** shared accessible modal primitive + nested interactive cleanup
+
+## Quality gates (executed for rework SHA)
 
 ### Frontend
 
 ```text
 cd ui
-npm ci   # lockfile present; environment already installed during implementation
 npm run lint      -> pass
 npm run typecheck -> pass
-npm test          -> 12 passed
+npm test          -> 23 passed
 npm run build     -> pass
 ```
 
 ### Backend
 
 ```text
-uv run ruff check src/offline_rag/api/frontend.py src/offline_rag/api/app.py \
-  tests/unit/app/test_slice16c_frontend_static.py \
-  tests/unit/app/test_slice15g_container_packaging.py
--> All checks passed!
-
 uv run pytest \
   tests/unit/app/test_slice16c_frontend_static.py \
   tests/unit/app/test_slice16b_workspace_api.py \
@@ -158,20 +175,24 @@ uv run pytest \
 
 ```text
 git diff --check -> clean
-docker build -f deploy/Dockerfile . -> pass (exit 0)
-  image id: d657aac8dce6
-  tagged after build as: offline-rag:16c-test
-  elapsed: ~110 minutes (dominated by Torch/CUDA wheel download in pip install)
-  note: original build command was untagged; image is in Docker Desktop engine
+docker build:
+  prior candidate 532ce8ac... image build -> pass (exit 0),
+  tagged offline-rag:16c-test (d657aac8dce6)
+  rework changes are TypeScript/components/tests only (npm build green);
+  no fresh docker image build executed for this rework SHA
 ```
 
 ## Manual / browser acceptance
 
-Automated Vitest coverage exercised shell, a11y foundations, Overview, library, metadata, sources, operations, overload, idempotency, and no-16D API calls. Full desktop/mobile/keyboard/zoom browser walkthrough was not claimed as completed in this environment beyond those tests.
+Automated Vitest coverage now includes resumed-operation visibility, failed/
+interrupted/lookup-error surfacing, fingerprint same/changed-request key
+behavior, modal focus trap/Escape/restore, and no nested `a > button`.
+Full desktop/mobile/keyboard/zoom browser walkthrough was not claimed beyond
+those tests.
 
 ## Residual risks / deferred
 
-- Browser ETag/idempotency edge cases under flaky networks still deserve human manual soak.
-- Operation poll interval is intentionally short for responsive UX; may be tuned later without API changes.
+- Human manual soak of refresh reconnect under real network ambiguity remains useful.
+- Operation poll interval remains aggressive for local single-user UX; tuning only.
 - “Last successful knowledge update” remains omitted until a future accepted API exposes that semantic.
 - 16D Ask/Evidence/Training surfaces remain unauthorized.

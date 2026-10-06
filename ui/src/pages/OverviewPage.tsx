@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
 import { getHealthReady, listWorkspaces } from "../api/client";
 import { userFacingErrorMessage } from "../api/errors";
 import { queryKeys } from "../api/queryKeys";
@@ -91,9 +90,7 @@ export function OverviewPage() {
           available here.
         </p>
         <div className="row">
-          <Link to="/workspaces">
-            <Button>Open workspaces</Button>
-          </Link>
+          <Button to="/workspaces">Open workspaces</Button>
         </div>
       </Card>
 
@@ -112,9 +109,7 @@ export function OverviewPage() {
             <p className="muted">
               No workspaces yet. Create one from the workspace library.
             </p>
-            <Link to="/workspaces">
-              <Button>Create a workspace</Button>
-            </Link>
+            <Button to="/workspaces">Create a workspace</Button>
           </Card>
         ) : null}
         {workspaces.map((workspace) => (
@@ -145,9 +140,12 @@ export function OverviewPage() {
                   </span>
                 </div>
               </div>
-              <Link to={`/workspaces/${workspace.workspace_id}`}>
-                <Button variant="secondary">Open</Button>
-              </Link>
+              <Button
+                to={`/workspaces/${workspace.workspace_id}`}
+                variant="secondary"
+              >
+                Open
+              </Button>
             </div>
           </Card>
         ))}

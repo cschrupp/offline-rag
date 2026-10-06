@@ -1,10 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { createWorkspace, listWorkspaces } from "../api/client";
 import { isApiError, userFacingErrorMessage } from "../api/errors";
-import { IntentHandle } from "../api/idempotency";
+import {
+  IntentHandle,
+  fingerprintCreateWorkspace,
+} from "../api/idempotency";
 import { queryKeys } from "../api/queryKeys";
 import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
@@ -19,7 +22,7 @@ export function WorkspaceLibraryPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
-  const [intent, setIntent] = useState(() => IntentHandle.newIntent());
+  const intent = useRef(IntentHandle.newIntent());
 
   const workspacesQuery = useQuery({
     queryKey: queryKeys.workspaces,
@@ -27,25 +30,30 @@ export function WorkspaceLibraryPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: () =>
-      createWorkspace({
-        title: title.trim(),
-        description: description.trim(),
-        idempotencyKey: intent.key,
-      }),
+    mutationFn: () => {
+      const trimmedTitle = title.trim();
+      const trimmedDescription = description.trim();
+      const key = intent.current.prepare(
+        fingerprintCreateWorkspace(trimmedTitle, trimmedDescription),
+      );
+      return createWorkspace({
+        title: trimmedTitle,
+        description: trimmedDescription,
+        idempotencyKey: key,
+      });
+    },
     onSuccess: async (workspace) => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.workspaces });
       setTitle("");
       setDescription("");
       setFormError(null);
-      setIntent(IntentHandle.newIntent());
+      intent.current.reset();
       void navigate(`/workspaces/${workspace.workspace_id}`);
     },
     onError: (error) => {
       setFormError(userFacingErrorMessage(error));
       if (isApiError(error) && error.kind !== "network") {
-        // Terminal backend failure → next explicit retry is a new intent.
-        setIntent(IntentHandle.newIntent());
+        intent.current.reset();
       }
     },
   });
@@ -153,9 +161,12 @@ export function WorkspaceLibraryPage() {
                 </span>
               </div>
             </div>
-            <Link to={`/workspaces/${workspace.workspace_id}`}>
-              <Button variant="secondary">Open / Manage</Button>
-            </Link>
+            <Button
+              to={`/workspaces/${workspace.workspace_id}`}
+              variant="secondary"
+            >
+              Open / Manage
+            </Button>
           </div>
         </Card>
       ))}
