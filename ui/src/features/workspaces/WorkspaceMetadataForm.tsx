@@ -1,0 +1,180 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import type { FormEvent } from "react";
+import { deleteWorkspace, patchWorkspace } from "../../api/client";
+import { isApiError, userFacingErrorMessage } from "../../api/errors";
+import { IntentHandle } from "../../api/idempotency";
+import { queryKeys } from "../../api/queryKeys";
+import type { Workspace } from "../../api/types";
+import { Button } from "../../components/Button";
+import { Card } from "../../components/Card";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { TextArea, TextInput } from "../../components/Field";
+
+type Props = {
+  workspace: Workspace;
+  onRemoved: () => void;
+};
+
+type FormSnapshot = {
+  revision: number;
+  title: string;
+  description: string;
+};
+
+export function WorkspaceMetadataForm({ workspace, onRemoved }: Props) {
+  const queryClient = useQueryClient();
+  const [snapshot, setSnapshot] = useState<FormSnapshot>({
+    revision: workspace.revision,
+    title: workspace.title,
+    description: workspace.description,
+  });
+  // Adjust local fields when the server revision changes (e.g. conflict refetch).
+  if (workspace.revision !== snapshot.revision) {
+    setSnapshot({
+      revision: workspace.revision,
+      title: workspace.title,
+      description: workspace.description,
+    });
+  }
+
+  const [metaError, setMetaError] = useState<string | null>(null);
+  const [metaIntent, setMetaIntent] = useState(() => IntentHandle.newIntent());
+  const [removeOpen, setRemoveOpen] = useState(false);
+  const [removeIntent, setRemoveIntent] = useState(() => IntentHandle.newIntent());
+
+  const patchMutation = useMutation({
+    mutationFn: () =>
+      patchWorkspace({
+        workspaceId: workspace.workspace_id,
+        title: snapshot.title.trim(),
+        description: snapshot.description.trim(),
+        revision: workspace.revision,
+        idempotencyKey: metaIntent.key,
+      }),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(
+        queryKeys.workspace(workspace.workspace_id),
+        updated,
+      );
+      void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces });
+      setMetaError(null);
+      setMetaIntent(IntentHandle.newIntent());
+    },
+    onError: (error) => {
+      if (isApiError(error) && error.code === "workspace_conflict") {
+        setMetaError(userFacingErrorMessage(error));
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.workspace(workspace.workspace_id),
+        });
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.workspaceSources(workspace.workspace_id),
+        });
+        setMetaIntent(IntentHandle.newIntent());
+        return;
+      }
+      setMetaError(userFacingErrorMessage(error));
+      if (isApiError(error) && error.kind !== "network") {
+        setMetaIntent(IntentHandle.newIntent());
+      }
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () =>
+      deleteWorkspace({
+        workspaceId: workspace.workspace_id,
+        revision: workspace.revision,
+        idempotencyKey: removeIntent.key,
+      }),
+    onSuccess: async () => {
+      setRemoveOpen(false);
+      queryClient.removeQueries({
+        queryKey: queryKeys.workspace(workspace.workspace_id),
+      });
+      queryClient.removeQueries({
+        queryKey: queryKeys.workspaceSources(workspace.workspace_id),
+      });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.workspaces });
+      onRemoved();
+    },
+    onError: (error) => {
+      if (isApiError(error) && error.code === "workspace_conflict") {
+        setMetaError(userFacingErrorMessage(error));
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.workspace(workspace.workspace_id),
+        });
+        setRemoveIntent(IntentHandle.newIntent());
+        setRemoveOpen(false);
+        return;
+      }
+      setMetaError(userFacingErrorMessage(error));
+      if (isApiError(error) && error.kind !== "network") {
+        setRemoveIntent(IntentHandle.newIntent());
+      }
+    },
+  });
+
+  function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    setMetaError(null);
+    patchMutation.mutate();
+  }
+
+  return (
+    <Card>
+      <h2>Workspace metadata</h2>
+      <form className="stack" onSubmit={onSubmit}>
+        <TextInput
+          id="edit-title"
+          label="Title"
+          value={snapshot.title}
+          onChange={(event) =>
+            setSnapshot((current) => ({ ...current, title: event.target.value }))
+          }
+          maxLength={256}
+          required
+        />
+        <TextArea
+          id="edit-description"
+          label="Description"
+          value={snapshot.description}
+          onChange={(event) =>
+            setSnapshot((current) => ({
+              ...current,
+              description: event.target.value,
+            }))
+          }
+          maxLength={4096}
+        />
+        {metaError ? (
+          <p className="error-box" role="alert">
+            {metaError}
+          </p>
+        ) : null}
+        <div className="row">
+          <Button type="submit" disabled={patchMutation.isPending}>
+            Save metadata
+          </Button>
+          <Button
+            variant="danger"
+            onClick={() => setRemoveOpen(true)}
+            disabled={deleteMutation.isPending}
+          >
+            Remove workspace
+          </Button>
+        </div>
+      </form>
+      <ConfirmDialog
+        open={removeOpen}
+        title="Remove workspace"
+        body="This removes the workspace from the active library. Historical/source artifacts may remain stored locally. This is not secure permanent deletion."
+        confirmLabel="Remove workspace"
+        danger
+        busy={deleteMutation.isPending}
+        onCancel={() => setRemoveOpen(false)}
+        onConfirm={() => deleteMutation.mutate()}
+      />
+    </Card>
+  );
+}

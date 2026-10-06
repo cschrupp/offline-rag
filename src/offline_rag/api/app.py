@@ -9,6 +9,7 @@ from fastapi import FastAPI
 
 from offline_rag.api.documents import router as documents_router
 from offline_rag.api.errors import register_app_error_handler
+from offline_rag.api.frontend import mount_frontend
 from offline_rag.api.health import router as health_router
 from offline_rag.api.ingest import router as ingest_router
 from offline_rag.api.operations import router as operations_router
@@ -45,6 +46,7 @@ def create_app(
 
     Slice 15 routes: /health*, /v1/documents*, /v1/ingest, /v1/query, /v1/trace/{id}.
     Slice 16B routes: /v1/workspaces*, /v1/operations/{id}.
+    Slice 16C: same-origin SPA static delivery when OFFLINE_RAG_UI_DIR is present.
     """
     if runtime is not None and factories is not None:
         raise ValueError("pass runtime or factories, not both")
@@ -75,4 +77,7 @@ def create_app(
     app.include_router(traces_router)
     app.include_router(workspaces_router)
     app.include_router(operations_router)
+    # SPA fallback must be registered after API routers so /v1/* and /health*
+    # retain backend semantics (including API 404s).
+    mount_frontend(app)
     return app

@@ -1,5 +1,15 @@
-# OfflineRAG application image (Slice 15G).
+# OfflineRAG application image (Slice 15G + 16C frontend).
 # Generative LLM/runtime weights are intentionally NOT installed in this image.
+
+FROM node:22-bookworm-slim AS ui-builder
+
+WORKDIR /ui
+
+COPY ui/package.json ui/package-lock.json ./
+RUN npm ci
+
+COPY ui/ ./
+RUN npm run build
 
 FROM python:3.14-slim AS runtime
 
@@ -13,6 +23,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     OFFLINE_RAG_HTTP_PORT=8080 \
     OFFLINE_RAG_ALLOW_NON_LOOPBACK=true \
     OFFLINE_RAG_SHUTDOWN_GRACE_SECONDS=30 \
+    OFFLINE_RAG_UI_DIR=/app/ui \
     HF_HUB_OFFLINE=1 \
     TRANSFORMERS_OFFLINE=1
 
@@ -28,6 +39,7 @@ WORKDIR /app
 COPY pyproject.toml README.md /app/
 COPY src /app/src
 COPY config /app/config
+COPY --from=ui-builder /ui/dist /app/ui
 
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir . \

@@ -229,6 +229,14 @@ def test_container_http_without_allow_flag_fails_policy() -> None:
 def test_dockerfile_static_contract() -> None:
     text = DOCKERFILE.read_text(encoding="utf-8")
     assert "FROM python:3.14-slim" in text
+    assert "AS runtime" in text
+    assert "FROM node:22" in text
+    assert "AS ui-builder" in text
+    assert "npm ci" in text
+    assert "npm run build" in text
+    assert "COPY --from=ui-builder" in text
+    assert "/app/ui" in text
+    assert "OFFLINE_RAG_UI_DIR=/app/ui" in text
     assert "10001" in text
     assert re.search(r"^\s*USER\s+10001:10001\s*$", text, re.MULTILINE)
     assert "OFFLINE_RAG_DATA_DIR=/data" in text
@@ -245,6 +253,10 @@ def test_dockerfile_static_contract() -> None:
     assert "COPY . " not in text
     assert "COPY src /app/src" in text
     assert "COPY config /app/config" in text
+    # Final runtime base remains Python — Node is builder-only.
+    final_from = [line for line in text.splitlines() if line.startswith("FROM ")]
+    assert final_from[-1].startswith("FROM python:3.14-slim")
+    assert "nginx" not in text.lower()
     assert not (REPO_ROOT / "deploy" / "Dockerfile.template").exists()
 
 
@@ -293,7 +305,16 @@ def test_compose_static_contract() -> None:
 
 def test_dockerignore_excludes_sensitive_and_local_trees() -> None:
     text = DOCKERIGNORE.read_text(encoding="utf-8")
-    for pattern in (".git", ".env", "data/", "models/", ".venv/", "__pycache__"):
+    for pattern in (
+        ".git",
+        ".env",
+        "data/",
+        "models/",
+        ".venv/",
+        "__pycache__",
+        "ui/node_modules/",
+        "ui/dist/",
+    ):
         assert pattern in text
 
 

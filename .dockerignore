@@ -8,6 +8,11 @@
 data/
 models/
 
+# Frontend local install / build artifacts (image builds UI via npm ci)
+ui/node_modules/
+ui/dist/
+ui/coverage/
+
 .venv/
 venv/
 **/__pycache__/
