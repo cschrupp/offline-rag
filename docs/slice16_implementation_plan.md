@@ -264,14 +264,21 @@ implementation by this plan update alone.
 - compact operation completion UX; capacity presentation;
 - explicit internal YAML capacity defaults; read-only capabilities endpoint;
 - Settings cog/page; generation runtime configuration API/persistence;
-- endpoint/model probe; restart-required semantics;
+- product-managed local/LAN approval (not Internet under strict-offline);
+- operator/environment locks that cannot be bypassed from the UI;
+- endpoint/model probe against prospective policy (no activate/persist on probe);
+- ACTIVE vs PENDING configuration; restart-required semantics;
 - source-scoped query DTO; server-side source→document binding;
 - dense + lexical pre-ranking scope enforcement; scoped-query provenance.
 
 ### Must not
 
 - implement full Ask/Evidence UX merely because the query substrate exists;
-- weaken generation allow-list security;
+- weaken generation allow-list security or approve public Internet endpoints
+  under strict-offline merely because Settings accepted typed input;
+- bypass operator/environment locks with product-managed approvals;
+- activate or persist generator configuration from Test Connection alone;
+- report PENDING generator settings via capabilities as if ACTIVE;
 - hot-swap live generation clients without restart-required semantics;
 - treat source checkboxes as workspace membership mutations.
 

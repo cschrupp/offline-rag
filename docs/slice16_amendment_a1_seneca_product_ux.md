@@ -257,12 +257,16 @@ Minimum product-facing payload:
 }
 ```
 
-It **MAY** also safely expose non-secret runtime capability / state needed by
-the Settings UI.
+It **MAY** also safely expose non-secret **active / effective** runtime
+capability / state needed by product surfaces.
 
 Requirements:
 
-- values come from effective backend `AppSettings`;
+- values come from the **active / effective** backend runtime (`AppSettings`
+  as loaded into the running ApplicationRuntime);
+- **MUST** describe active/effective capability;
+- **MUST NOT** report an unapplied pending generator configuration as if it
+  were active;
 - no secrets;
 - no filesystem paths;
 - no vault / corpus internals;
@@ -270,6 +274,21 @@ Requirements:
 - browser does not hard-code effective capacity after this endpoint exists.
 
 Backend remains authoritative.
+
+### Capabilities versus Settings state
+
+Keep `GET /v1/capabilities` focused on **active / effective** runtime state.
+
+A separate Settings-specific API **MAY** carry:
+
+- active non-secret configuration;
+- pending non-secret configuration;
+- `restart_required`;
+- field lock / authority metadata.
+
+Exact Settings route naming remains a 16D-A implementation decision.
+
+Do **not** return secrets from either surface.
 
 ---
 
@@ -291,13 +310,81 @@ every OfflineRAG YAML / scientific parameter.
 - optional API key;
 - timeout where useful;
 - connection / model probe;
-- effective runtime information.
+- active and (where applicable) pending non-secret runtime information;
+- restart-required indication.
 
 Primary intended providers include:
 
 - Ollama;
-- other approved OpenAI-compatible local servers;
-- approved OpenAI-compatible private-network servers.
+- other OpenAI-compatible local servers;
+- OpenAI-compatible private-network servers within accepted endpoint classes.
+
+### Generator configuration / approval authority (normative)
+
+A1 freezes who may approve a newly entered endpoint / model so Settings can
+configure a local/LAN generator without weakening allow-list security.
+
+#### Product-managed standalone mode
+
+For the intended standalone Seneca deployment, the local user is also the
+product operator.
+
+When a generator endpoint / model is **not** locked by a higher-authority
+operator override, Seneca **MAY** persist both:
+
+- the selected endpoint / model; and
+- the corresponding **product-managed approval** necessary to use them.
+
+This is **not** permission for arbitrary Internet access.
+
+Under strict-offline operation, product-managed endpoint approval **MUST** be
+bounded to accepted local / private endpoint classes.
+
+At minimum distinguish:
+
+- loopback;
+- Docker host bridge;
+- explicit private-LAN endpoint.
+
+Public Internet endpoints **MUST NOT** become approved merely because a user
+typed one into Settings while strict-offline is active.
+
+Exact private-network validation mechanics may be finalized in 16D-A, but the
+fail-closed policy is normative.
+
+In standalone product-managed mode, configuring a user’s own Ollama (or other
+approved OpenAI-compatible local / private) server through Settings **MUST** be
+able to succeed without requiring a separate environment-variable edit merely
+to approve the address just entered — provided the candidate passes network
+policy and validation.
+
+#### Operator-managed / locked mode
+
+Environment / operator configuration remains higher authority.
+
+If endpoint / model / approval policy is supplied or locked by that authority:
+
+- Settings **MUST NOT** override it;
+- Settings **MUST NOT** create a product-managed approval that bypasses it;
+- affected controls **SHOULD** be shown as read-only / locked;
+- UI **SHOULD** explain that the effective value is operator-controlled.
+
+#### Model approval
+
+Apply the same authority distinction to models.
+
+In standalone product-managed mode:
+
+- a model returned by the explicitly approved / tested local or private
+  endpoint **MAY** become product-approved when the user explicitly saves /
+  selects it.
+
+In operator-managed mode:
+
+- UI **MUST NOT** bypass an operator-controlled approved-model list.
+
+Do **not** silently approve arbitrary model identifiers without endpoint /
+model validation.
 
 ### Not ordinary user-editable
 
@@ -331,18 +418,24 @@ Current accepted behavior includes:
 - approved model allow-list;
 - rejection of unapproved endpoint / model where configured.
 
+A1 clarifies that, in **product-managed standalone mode**, Seneca itself may
+write the product-managed approvals needed for a validated local / private
+selection (see A1-D05). That remains an allow-list mechanism — not removal of
+allow-lists.
+
 A Settings UI **MUST NOT** simply permit arbitrary Internet endpoints under a
 strict-offline profile.
 
-Support for a LAN server must preserve explicit authorization.
+Support for a LAN server must preserve explicit authorization via:
 
-The design **SHOULD** distinguish appropriate endpoint classes such as:
+- product-managed approval after validation (standalone, unlocked fields); or
+- pre-existing operator / environment approval (locked / operator-managed).
 
-- loopback / local host;
-- Docker host bridge;
-- explicitly approved private-network endpoint.
+Public Internet destinations remain forbidden under strict-offline operation.
 
 Do **not** silently reinterpret strict-offline as arbitrary network access.
+
+Operator / environment locks always win and cannot be bypassed from the UI.
 
 ---
 
@@ -355,11 +448,13 @@ Preferred initial lifecycle:
 ```text
 Settings UI
     ↓
-validate candidate values
+validate candidate values (prospective policy)
     ↓
-Test connection / model
+Test connection / model  (does not activate or persist)
     ↓
-persist product override under /data
+explicit Save
+    ↓
+persist product settings + product-managed approvals under /data
     ↓
 restart required
     ↓
@@ -374,15 +469,58 @@ active.
 ```text
 base YAML defaults
        ↓
-persistent Seneca product override
+persistent Seneca product settings / product-managed approvals
        ↓
-environment / operator overrides
+environment / operator overrides and locks
 ```
 
-Environment / operator overrides have the highest authority.
+Highest authority wins.
 
 If a setting is locked by an operator / environment override, the UI **SHOULD**
 make that state clear rather than pretending the user can change it.
+
+### ACTIVE versus PENDING configuration
+
+Because A1 uses restart-to-apply semantics, freeze:
+
+```text
+ACTIVE
+  Configuration actually loaded into the running ApplicationRuntime.
+  Example:
+    endpoint: http://host.docker.internal:11434/v1
+    model: qwen3:8b
+
+PENDING
+  Persisted product settings that differ from the active runtime and require
+  restart.
+  Example:
+    endpoint: http://192.168.1.40:11434/v1
+    model: qwen3:14b
+
+  Restart required
+```
+
+`GET /v1/capabilities` **MUST** describe **ACTIVE / effective** runtime
+capability and **MUST NOT** report an unapplied pending generator as if it were
+active.
+
+A Settings read surface **MAY** expose non-secret pending values.
+
+It **MUST** indicate:
+
+- whether restart is required;
+- active value;
+- pending value where safe;
+- whether a field is operator locked.
+
+API keys remain write-only / masked and **MUST NOT** be returned as plaintext.
+
+After successful restart, pending settings that became effective are reflected
+as ACTIVE.
+
+If an environment / operator override shadows a persisted product value, the UI
+must show the effective operator-controlled value and must not claim that the
+shadowed value is active.
 
 ### Secrets
 
@@ -405,12 +543,28 @@ Settings **SHOULD** provide **Test connection**.
 
 This probe **MUST NOT** activate the candidate configuration.
 
-Conceptually it should verify:
+A connection probe **MUST NOT** require the candidate to already be present in
+the currently **active** allow-list; otherwise a new valid endpoint can never
+be tested.
 
-- endpoint syntax / authorization;
-- endpoint reachability;
-- `/models` compatibility where supported;
-- selected model availability.
+Instead the backend **MUST** validate the candidate against the **prospective**
+Settings policy:
+
+1. syntax;
+2. endpoint class / network policy;
+3. operator locks;
+4. reachability;
+5. OpenAI-compatible `/models` behavior where supported;
+6. selected model availability.
+
+A successful probe:
+
+- does **NOT** activate the candidate;
+- does **NOT** modify the running generator;
+- does **NOT** itself persist approval unless the later explicit Save action
+  does so.
+
+Save remains an explicit user action.
 
 The existing OpenAI-compatible probe behavior **SHOULD** be reused rather than
 duplicated in the browser.
@@ -652,8 +806,9 @@ Future scope:
 - read-only capabilities endpoint;
 - Settings cog / page;
 - generation runtime configuration API / persistence;
-- endpoint / model probe;
-- restart-required semantics;
+- product-managed local/LAN approval vs operator-locked mode;
+- endpoint / model probe against prospective policy;
+- ACTIVE / PENDING configuration and restart-required semantics;
 - source-scoped query DTO;
 - server-side source → document binding;
 - dense + lexical pre-ranking scope enforcement;
