@@ -20,6 +20,9 @@ f0bdf78d0ae6a79737055d324b22fc35e1e501f5
 Branch:
 implementation/16d-b3-conversational-workspace
 
+Implementation candidate SHA:
+adbf2fcd01c4c2db08fe146993c04ce91b9b97c3
+
 16D-B2: COMPLETE / ACCEPTED / SEALED
 16D-B3: IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
 16D-C: NOT AUTHORIZED
@@ -27,9 +30,7 @@ implementation/16d-b3-conversational-workspace
 Slice 16: IN PROGRESS / NOT COMPLETE
 ```
 
-Implementation SHA(s) are recorded in git history on the branch above
-(tip at push time). This document is the B3 evidence packet and does **not**
-accept or seal B3.
+This document is the B3 evidence packet and does **not** accept or seal B3.
 
 ## A2 authority used
 
