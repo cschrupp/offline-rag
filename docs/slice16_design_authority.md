@@ -1,6 +1,12 @@
 # Slice 16 — Portfolio-Grade Knowledge & Training UI — Design Authority
 
 ```text
+HISTORICAL STATUS SNAPSHOT / PRE-A2
+Captured before Amendment A2.
+Not the current implementation-gate state.
+Current status is governed by accepted A2 and the Authorization note
+later in this document.
+
 STATUS: ACCEPTED / LOCKED
 DESIGN INTERVIEW: COMPLETE
 HUMAN ACCEPTANCE: ACCEPTED
@@ -30,8 +36,16 @@ accepted and locked at AUTHORITY SHA
 `e73959be508541a1c50d4919606aaf3157a5fa8a`,
 `eb8baefc6e3eaf7df33668c85fbbfef22364bb0e`,
 `936e41446eb1e3697f6b7d245659831f19cf0613`, and
-`4f8962f2893ab433e6ea269ad54e46f67771ca70`. **16D-B** is an **IMPLEMENTED
-CANDIDATE / HUMAN ACCEPTANCE PENDING**. **16D-C** remains **NOT AUTHORIZED**.
+`4f8962f2893ab433e6ea269ad54e46f67771ca70`.
+
+**Historical / pre-A2 status note (not current):** under the undivided A1
+Ask/Evidence gate, **16D-B** was recorded as **IMPLEMENTED CANDIDATE /
+HUMAN ACCEPTANCE PENDING**, and **16D-C** as **NOT AUTHORIZED**. That
+vocabulary is preserved as provenance only. Current implementation-gate
+state is governed by accepted Amendment A2 and the Authorization note
+later in this document (observed B1 product UX withheld; B1 foundation
+remediation **ACCEPTED / SEALED**; **16D-B2 / 16D-B3 / 16D-C NOT
+AUTHORIZED**).
 
 ```text
 AMENDMENT A1:
@@ -84,9 +98,15 @@ document does **not** claim a globally green test suite.
 
 ---
 
-## Gate status
+## Gate status (historical / pre-A2)
 
 ```text
+HISTORICAL STATUS SNAPSHOT / PRE-A2
+Captured before Amendment A2.
+Not the current implementation-gate state.
+Current status is governed by accepted A2 and the Authorization note
+later in this document.
+
 SLICE 16 DESIGN INTERVIEW:       COMPLETE
 SLICE 16 DESIGN AUTHORITY:       ACCEPTED / LOCKED
 AUTHORITY SHA:                   e2e7475076ad18d4c4ae8d939389ceeffdeff6d8
