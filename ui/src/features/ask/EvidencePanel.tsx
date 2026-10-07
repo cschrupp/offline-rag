@@ -12,6 +12,8 @@ type Props = {
   currentSnapshotId: string | null;
   currentSources: Source[];
   currentWorkspaceRevision: number;
+  /** Training Mode: omit source excerpts / evidence-bearing provenance. */
+  evidenceHidden?: boolean;
 };
 
 export function EvidencePanel({
@@ -21,6 +23,7 @@ export function EvidencePanel({
   currentSnapshotId,
   currentSources,
   currentWorkspaceRevision,
+  evidenceHidden = false,
 }: Props) {
   const isSourcePreview = previewTarget?.kind === "source";
   const isCitationPreview = previewTarget?.kind === "citation";
@@ -39,9 +42,13 @@ export function EvidencePanel({
   // Query provenance belongs to citation / answer evidence only — never under
   // an unrelated current-source inspection.
   const showQueryProvenance =
-    (isCitationPreview || previewTarget == null) && activeEntry != null;
-  const showCitationDetails = isCitationPreview && selectedCitation != null;
-  const showSourceProvenance = isSourcePreview && liveSource != null;
+    !evidenceHidden &&
+    (isCitationPreview || previewTarget == null) &&
+    activeEntry != null;
+  const showCitationDetails =
+    !evidenceHidden && isCitationPreview && selectedCitation != null;
+  const showSourceProvenance =
+    !evidenceHidden && isSourcePreview && liveSource != null;
   const showProvenance =
     showQueryProvenance || showCitationDetails || showSourceProvenance;
 
@@ -51,12 +58,22 @@ export function EvidencePanel({
         Evidence
       </h2>
       <div className="evidence-scroll">
-        <SourcePreview
-          target={previewTarget}
-          currentSnapshotId={currentSnapshotId}
-          currentSources={currentSources}
-          currentWorkspaceRevision={currentWorkspaceRevision}
-        />
+        {evidenceHidden ? (
+          <div className="training-evidence-hidden" role="status">
+            <p style={{ margin: 0 }}>Evidence hidden</p>
+            <p className="muted" style={{ margin: 0 }}>
+              Reveal evidence from Training Mode controls, or activate a
+              revealed citation to inspect the exact source.
+            </p>
+          </div>
+        ) : (
+          <SourcePreview
+            target={previewTarget}
+            currentSnapshotId={currentSnapshotId}
+            currentSources={currentSources}
+            currentWorkspaceRevision={currentWorkspaceRevision}
+          />
+        )}
         {showProvenance ? (
           <details className="provenance-disclosure">
             <summary>Provenance</summary>

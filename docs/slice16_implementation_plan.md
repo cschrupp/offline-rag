@@ -47,7 +47,8 @@ OBSERVED 16D-B1 CANDIDATE:
         A3 MATERIALIZATION: da1082d95630c12eaf0ce1a3b8d005aaa60d2f73
         EVIDENCE: docs/slice16d_b3_conversational_workspace.md
         A3 DOC: docs/slice16_amendment_a3_full_viewport_workspace.md
-16D-C: NOT AUTHORIZED / NOT STARTED
+16D-C: IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+        EVIDENCE: docs/slice16d_c_training_mode.md
 16E–16H: NOT AUTHORIZED
 BASELINE: c72215186524c9937de789adb1cf2056be13ea23
 ```
@@ -80,7 +81,8 @@ grant product acceptance to the legacy B1 Ask/Evidence UX. **16D-B2** is
 `baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`. **16D-B3** is **COMPLETE / ACCEPTED / SEALED** at
 `9c178ffb033cde41849379fc914f321697ff8691` (A3 **ACCEPTED / LOCKED / SEALED** at `da1082d95630c12eaf0ce1a3b8d005aaa60d2f73`; see
 [`docs/slice16d_b3_conversational_workspace.md`](slice16d_b3_conversational_workspace.md)).
-**16D-C** remains **NOT AUTHORIZED**.
+**16D-C** is **IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING** (see
+[`docs/slice16d_c_training_mode.md`](slice16d_c_training_mode.md)).
 
 16A evidence: [`docs/slice16a_workspace_foundation.md`](slice16a_workspace_foundation.md)
 
@@ -127,7 +129,7 @@ B1 foundation remediation [ACCEPTED / SEALED @ c68cc3f8… / closeout b5fa1e85�
 16D-B3 [COMPLETE / ACCEPTED / SEALED @ 9c178ffb… / A3 da1082d9…]
         ← Conversational workspace
  ↓
-16D-C [NOT AUTHORIZED / NOT STARTED]
+16D-C [IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING]
  ↓
 16E
  ↓
@@ -157,13 +159,14 @@ foundation upload remediation is **ACCEPTED / SEALED** (implementation
 `baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`. **16D-B3** is **COMPLETE / ACCEPTED / SEALED** at
 `9c178ffb033cde41849379fc914f321697ff8691` (A3 **ACCEPTED / LOCKED / SEALED** at `da1082d95630c12eaf0ce1a3b8d005aaa60d2f73`; see
 [`docs/slice16d_b3_conversational_workspace.md`](slice16d_b3_conversational_workspace.md)).
-**16D-C** remains **NOT AUTHORIZED**.
+**16D-C** is **IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING**.
 
 Do not close Slice 16 automatically after 16H. Independent review and explicit
 human acceptance of the implemented slice remain required. **16A**, **16B**,
 **16C**, **16D-A**, and **16D-B2** are **COMPLETE / ACCEPTED**; legacy B1
 product UX acceptance remains **WITHHELD**; B1 foundation remediation is
-**ACCEPTED / SEALED**; **16D-B3** is **COMPLETE / ACCEPTED / SEALED**; **16D-C** and **16E–16H** remain **NOT
+**ACCEPTED / SEALED**; **16D-B3** is **COMPLETE / ACCEPTED / SEALED**; **16D-C** is
+**IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING**; **16E–16H** remain **NOT
 AUTHORIZED**. Slice 16 overall is **not** complete.
 
 ---
@@ -505,31 +508,36 @@ started” or awaiting B2 activation.
 - second RAG pipeline;
 - fabricate PDF text highlights without reliable mapping;
 - treat B1 foundation remediation acceptance as legacy Ask UX acceptance;
-- start C without separate explicit implementation authorization
-  (**16D-C** remains **NOT AUTHORIZED** until separate human authorization).
+- treat B3 acceptance as automatic C acceptance
+  (**16D-C** is an implementation candidate pending independent human acceptance).
 
 ---
 
 ## 16D-C — Training Mode
 
 ```text
-STATUS: NOT AUTHORIZED / NOT STARTED
+STATUS: IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+EVIDENCE: docs/slice16d_c_training_mode.md
 AMENDMENT A1: ACCEPTED / LOCKED @ 5060e2aeb4825f265072a1f870c3c963eace3b30
 AMENDMENT A2: ACCEPTED / LOCKED / SEALED @ dce3456e519cb6c96570e20f5af800d00cafb5a7
+AUTHORIZED BASELINE: 396aa329e6c0413eb69aacd39067a70d9b478b72
+BRANCH: implementation/16d-c-training-mode
 ```
 
-### Future scope (candidate)
+### Accepted implementation scope (candidate)
 
 - **required** instructor-oriented Training Mode (S16-D19 — not optional);
 - saved prompts seed / start conversation turns (A2-D25);
-- hide/reveal answer/evidence on grounded assistant turns + claim citations;
+- hide/reveal answer / citations / evidence on grounded assistant turns;
 - larger presentation-friendly typography;
-- optional fullscreen/presentation layout.
+- optional fullscreen/presentation layout;
+- frontend-only pedagogical layer over accepted B3 conversation path.
 
 ### Must not
 
 - LMS / accounts / grading;
-- treat Training Mode as deferred/optional Slice-16 scope.
+- treat Training Mode as deferred/optional Slice-16 scope;
+- second RAG path / training-specific scientific pipeline.
 
 ---
 
@@ -717,7 +725,7 @@ OBSERVED 16D-B1 CANDIDATE:
         A3 MATERIALIZATION: da1082d95630c12eaf0ce1a3b8d005aaa60d2f73
         EVIDENCE: docs/slice16d_b3_conversational_workspace.md
         A3 DOC: docs/slice16_amendment_a3_full_viewport_workspace.md
-16D-C: NOT AUTHORIZED / NOT STARTED
+16D-C: IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
 16E–16H: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
 SLICE 18: NOT AUTHORIZED
@@ -738,5 +746,6 @@ foundation remediation is **ACCEPTED / SEALED** (implementation
 `b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90`). **16D-B2** is **COMPLETE /
 ACCEPTED / SEALED** at `baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`.
 **16D-B3** is **COMPLETE / ACCEPTED / SEALED** at `9c178ffb033cde41849379fc914f321697ff8691` (A3
-**ACCEPTED / LOCKED / SEALED** at `da1082d95630c12eaf0ce1a3b8d005aaa60d2f73`). **16D-C** and **16E–16H**
+**ACCEPTED / LOCKED / SEALED** at `da1082d95630c12eaf0ce1a3b8d005aaa60d2f73`). **16D-C** is
+**IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING**. **16E–16H**
 remain **NOT AUTHORIZED**. Slice 16 overall is **not** complete.

@@ -13,6 +13,8 @@ type Props = {
   citations: WorkspaceCitation[];
   selectedEvidenceUnitId: string | null;
   onSelectCitation: (citation: WorkspaceCitation) => void;
+  /** When false, render claim prose without citation markers/cards. */
+  citationsVisible?: boolean;
 };
 
 function citationByRef(
@@ -44,13 +46,16 @@ export function ClaimAnswer({
   citations,
   selectedEvidenceUnitId,
   onSelectCitation,
+  citationsVisible = true,
 }: Props) {
   const [activeRef, setActiveRef] = useState<string | null>(null);
   const cardId = useId();
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   const activeCitation =
-    activeRef != null ? citationByRef(citations, activeRef) : undefined;
+    citationsVisible && activeRef != null
+      ? citationByRef(citations, activeRef)
+      : undefined;
 
   function openCitation(citation: WorkspaceCitation) {
     setActiveRef(null);
@@ -100,38 +105,40 @@ export function ClaimAnswer({
       {blocks.map((block, blockIndex) => (
         <p key={blockIndex} className="claim-block">
           <span className="claim-block-text">{block.text}</span>
-          {block.citation_refs.map((ref) => {
-            const citation = citationByRef(citations, ref);
-            const n = displayIndex(citations, ref);
-            if (!citation || n == null) return null;
-            const selected =
-              citation.evidence_unit_id === selectedEvidenceUnitId;
-            return (
-              <button
-                key={`${blockIndex}-${ref}`}
-                type="button"
-                className={
-                  selected
-                    ? "claim-marker claim-marker-active"
-                    : "claim-marker"
-                }
-                aria-label={`Citation ${n}: ${citation.source_display_name}`}
-                aria-describedby={
-                  activeRef === ref ? `${cardId}-card` : undefined
-                }
-                onMouseEnter={() => setActiveRef(ref)}
-                onFocus={() => setActiveRef(ref)}
-                onBlur={onMarkerBlur}
-                onClick={(event: MouseEvent<HTMLButtonElement>) => {
-                  event.preventDefault();
-                  openCitation(citation);
-                }}
-                onKeyDown={(event) => onMarkerKeyDown(event, citation)}
-              >
-                <sup>{n}</sup>
-              </button>
-            );
-          })}
+          {citationsVisible
+            ? block.citation_refs.map((ref) => {
+                const citation = citationByRef(citations, ref);
+                const n = displayIndex(citations, ref);
+                if (!citation || n == null) return null;
+                const selected =
+                  citation.evidence_unit_id === selectedEvidenceUnitId;
+                return (
+                  <button
+                    key={`${blockIndex}-${ref}`}
+                    type="button"
+                    className={
+                      selected
+                        ? "claim-marker claim-marker-active"
+                        : "claim-marker"
+                    }
+                    aria-label={`Citation ${n}: ${citation.source_display_name}`}
+                    aria-describedby={
+                      activeRef === ref ? `${cardId}-card` : undefined
+                    }
+                    onMouseEnter={() => setActiveRef(ref)}
+                    onFocus={() => setActiveRef(ref)}
+                    onBlur={onMarkerBlur}
+                    onClick={(event: MouseEvent<HTMLButtonElement>) => {
+                      event.preventDefault();
+                      openCitation(citation);
+                    }}
+                    onKeyDown={(event) => onMarkerKeyDown(event, citation)}
+                  >
+                    <sup>{n}</sup>
+                  </button>
+                );
+              })
+            : null}
         </p>
       ))}
 

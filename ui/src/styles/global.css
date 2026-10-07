@@ -353,7 +353,8 @@ p {
 .workspace-page > nav,
 .workspace-page > .operation-tray,
 .workspace-page > .operation-compact,
-.workspace-page > .knowledge-mobile-bar {
+.workspace-page > .knowledge-mobile-bar,
+.workspace-page > .training-toolbar {
   flex-shrink: 0;
 }
 
@@ -1258,6 +1259,136 @@ button.snapshot-badge {
 
   .primary-nav.open {
     display: flex;
+  }
+}
+
+/* 16D-C — Training Mode presentation (workspace scope only). */
+.workspace-page.training-mode {
+  --training-type: clamp(1.05rem, 0.35vw + 1rem, 1.35rem);
+  --training-control: clamp(0.95rem, 0.25vw + 0.9rem, 1.15rem);
+}
+
+.workspace-page.training-mode .conversation-user-text,
+.workspace-page.training-mode .answer-body,
+.workspace-page.training-mode .claim-block,
+.workspace-page.training-mode .abstention-callout,
+.workspace-page.training-mode .training-answer-hidden {
+  font-size: var(--training-type);
+  line-height: 1.55;
+}
+
+.workspace-page.training-mode .training-reveal-controls .btn,
+.workspace-page.training-mode .training-toolbar .btn,
+.workspace-page.training-mode .conversation-composer label,
+.workspace-page.training-mode .conversation-composer textarea {
+  font-size: var(--training-control);
+}
+
+.training-toolbar {
+  flex-shrink: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+}
+
+.training-toolbar-actions {
+  justify-content: flex-start;
+}
+
+.training-prompt-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.training-prompt-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.training-prompt-use {
+  appearance: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  flex: 1 1 12rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.training-prompt-use:focus-visible,
+.training-prompt-delete:focus-visible {
+  outline: 2px solid var(--action);
+  outline-offset: 2px;
+}
+
+.training-prompt-delete {
+  appearance: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  min-height: var(--target);
+}
+
+.training-answer-hidden,
+.training-evidence-hidden {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.training-reveal-controls {
+  gap: var(--space-2);
+}
+
+.workspace-page.presentation-mode > nav,
+.workspace-page.presentation-mode .capacity-summary,
+.workspace-page.presentation-mode .operation-compact {
+  display: none;
+}
+
+.workspace-page.presentation-mode .workspace-header-main h1 {
+  font-size: clamp(1.25rem, 1vw + 1rem, 1.75rem);
+}
+
+.workspace-page.presentation-mode .training-toolbar {
+  border-color: transparent;
+  background: transparent;
+  padding-inline: 0;
+}
+
+.workspace-page.presentation-mode.training-mode {
+  --training-type: clamp(1.2rem, 0.8vw + 1rem, 1.65rem);
+  --training-control: clamp(1rem, 0.4vw + 0.9rem, 1.25rem);
+}
+
+@media (max-width: 960px) {
+  .training-toolbar-actions,
+  .training-reveal-controls {
+    width: 100%;
+  }
+
+  .training-reveal-controls .btn {
+    flex: 1 1 auto;
   }
 }
 

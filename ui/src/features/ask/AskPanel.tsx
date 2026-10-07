@@ -3,6 +3,11 @@ import { Link } from "react-router-dom";
 import type { WorkspaceCitation } from "../../api/types";
 import { Button } from "../../components/Button";
 import { TextArea } from "../../components/Field";
+import {
+  HIDDEN_REVEAL,
+  type RevealMap,
+  type TurnRevealState,
+} from "../training/revealState";
 import { ClaimAnswer } from "./ClaimAnswer";
 import { assistantPresentationText } from "./assistantPresentation";
 import {
@@ -35,6 +40,9 @@ type Props = {
   onSelectHistory: (entry: ConversationHistoryEntry) => void;
   currentSnapshotId: string | null;
   settingsHint?: boolean;
+  trainingMode?: boolean;
+  revealMap?: RevealMap;
+  onRevealChange?: (entryId: string, patch: Partial<TurnRevealState>) => void;
 };
 
 function statusLabel(status: string): string {
@@ -71,6 +79,9 @@ export function AskPanel({
   onSelectHistory,
   currentSnapshotId,
   settingsHint,
+  trainingMode = false,
+  revealMap = {},
+  onRevealChange,
 }: Props) {
   useEffect(() => {
     if (askPending) return;
@@ -96,10 +107,17 @@ export function AskPanel({
   const hasThread = timeline.length > 0;
 
   return (
-    <section className="ask-panel conversation-panel" aria-labelledby="ask-heading">
+    <section
+      className={
+        trainingMode
+          ? "ask-panel conversation-panel training-conversation"
+          : "ask-panel conversation-panel"
+      }
+      aria-labelledby="ask-heading"
+    >
       <div className="row conversation-panel-header">
         <h2 id="ask-heading" style={{ margin: 0 }}>
-          Conversation
+          {trainingMode ? "Training conversation" : "Conversation"}
         </h2>
         <Button
           type="button"
@@ -111,14 +129,17 @@ export function AskPanel({
         </Button>
       </div>
       <p className="muted" style={{ margin: 0 }}>
-        Using {selectedCount} of {totalCount} sources. Follow-ups use conversation
-        context for wording only — answers still come from selected sources.
+        {trainingMode
+          ? `Using ${selectedCount} of ${totalCount} sources. Training questions use the same grounded conversation path as Seneca.`
+          : `Using ${selectedCount} of ${totalCount} sources. Follow-ups use conversation context for wording only — answers still come from selected sources.`}
       </p>
 
       <div className="conversation-thread stack" aria-live="polite">
         {!hasThread ? (
           <p className="muted" style={{ margin: 0 }}>
-            Ask a question about your selected sources.
+            {trainingMode
+              ? "Enter a training question or select a saved question."
+              : "Ask a question about your selected sources."}
           </p>
         ) : null}
 
@@ -159,6 +180,15 @@ export function AskPanel({
           );
           const active = activeEntry?.entryId === entry.entryId;
           const assistantText = assistantPresentationText(entry.response);
+          const isAnswered = entry.response.status === "answered";
+          const mappedReveal = revealMap[entry.entryId];
+          const reveal = trainingMode
+            ? (mappedReveal ??
+              (isAnswered
+                ? HIDDEN_REVEAL
+                : { answer: true, citations: true, evidence: true }))
+            : { answer: true, citations: true, evidence: true };
+
           return (
             <article
               key={entry.entryId}
@@ -196,19 +226,96 @@ export function AskPanel({
                   {statusLabel(String(entry.response.status))} ·{" "}
                   {sourceScopeLabel(entry)}
                 </p>
-                {entry.response.status === "answered" ? (
-                  <div className="answer-body">
-                    <ClaimAnswer
-                      blocks={entry.response.answer_blocks}
-                      citations={entry.response.citations}
-                      selectedEvidenceUnitId={
-                        active ? selectedEvidenceUnitId : null
+
+                {trainingMode && isAnswered ? (
+                  <div
+                    className="training-reveal-controls row"
+                    role="group"
+                    aria-label="Training reveal controls"
+                  >
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      aria-expanded={reveal.answer}
+                      aria-controls={`training-answer-${entry.entryId}`}
+                      onClick={() =>
+                        onRevealChange?.(entry.entryId, {
+                          answer: !reveal.answer,
+                        })
                       }
-                      onSelectCitation={(citation) => {
-                        onSelectCitation(citation, entry);
-                      }}
-                    />
+                    >
+                      {reveal.answer ? "Hide answer" : "Reveal answer"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      aria-expanded={reveal.citations}
+                      onClick={() =>
+                        onRevealChange?.(entry.entryId, {
+                          citations: !reveal.citations,
+                        })
+                      }
+                    >
+                      {reveal.citations
+                        ? "Hide citations"
+                        : "Reveal citations"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      aria-expanded={reveal.evidence}
+                      onClick={() =>
+                        onRevealChange?.(entry.entryId, {
+                          evidence: !reveal.evidence,
+                        })
+                      }
+                    >
+                      {reveal.evidence ? "Hide evidence" : "Reveal evidence"}
+                    </Button>
                   </div>
+                ) : null}
+
+                {isAnswered ? (
+                  trainingMode && !reveal.answer ? (
+                    <div
+                      id={`training-answer-${entry.entryId}`}
+                      className="training-answer-hidden"
+                      role="status"
+                    >
+                      <p style={{ margin: 0 }}>Answer hidden</p>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        aria-expanded={false}
+                        onClick={() =>
+                          onRevealChange?.(entry.entryId, { answer: true })
+                        }
+                      >
+                        Reveal answer
+                      </Button>
+                    </div>
+                  ) : (
+                    <div
+                      id={
+                        trainingMode
+                          ? `training-answer-${entry.entryId}`
+                          : undefined
+                      }
+                      className="answer-body"
+                    >
+                      <ClaimAnswer
+                        blocks={entry.response.answer_blocks}
+                        citations={entry.response.citations}
+                        selectedEvidenceUnitId={
+                          active ? selectedEvidenceUnitId : null
+                        }
+                        citationsVisible={!trainingMode || reveal.citations}
+                        onSelectCitation={(citation) => {
+                          onSelectCitation(citation, entry);
+                        }}
+                      />
+                    </div>
+                  )
                 ) : (
                   <p className="abstention-callout" role="status">
                     {assistantText}
@@ -223,7 +330,7 @@ export function AskPanel({
       <form className="stack conversation-composer" onSubmit={onSubmit}>
         <TextArea
           id="ask-question"
-          label="Ask a follow-up"
+          label={trainingMode ? "Training question" : "Ask a follow-up"}
           value={question}
           onChange={(event) => onQuestionChange(event.target.value)}
           onKeyDown={onKeyDown}

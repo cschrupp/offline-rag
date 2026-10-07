@@ -3,7 +3,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
@@ -63,6 +63,19 @@ import {
   type SourceSelectionMode,
 } from "../features/ask/sourceSelection";
 import { useNarrowLayout } from "../features/ask/useNarrowLayout";
+import { TrainingToolbar } from "../features/training/TrainingToolbar";
+import {
+  HIDDEN_REVEAL,
+  withRevealPatch,
+  type RevealMap,
+  type TurnRevealState,
+} from "../features/training/revealState";
+import {
+  deleteTrainingPrompt,
+  loadTrainingPrompts,
+  saveTrainingPrompt,
+  type SavedTrainingPrompt,
+} from "../features/training/trainingPrompts";
 
 type AskSubmit = {
   pairId: string;
@@ -209,10 +222,31 @@ export function WorkspacePage() {
   const [evidenceRailExpanded, setEvidenceRailExpanded] = useState(
     () => loadDesktopRailState().evidenceExpanded,
   );
+  const [trainingMode, setTrainingMode] = useState(false);
+  const [presentationMode, setPresentationMode] = useState(false);
+  const [revealMap, setRevealMap] = useState<RevealMap>({});
+  const [savedPrompts, setSavedPrompts] = useState<SavedTrainingPrompt[]>(() =>
+    workspaceId ? loadTrainingPrompts(workspaceId) : [],
+  );
+  const presentationRailSnapshot = useRef<{
+    sourcesExpanded: boolean;
+    evidenceExpanded: boolean;
+  } | null>(null);
+  const presentationModeRef = useRef(false);
+  const trainingModeRef = useRef(false);
   const isNarrowLayout = useNarrowLayout();
+
+  useEffect(() => {
+    presentationModeRef.current = presentationMode;
+  }, [presentationMode]);
+
+  useEffect(() => {
+    trainingModeRef.current = trainingMode;
+  }, [trainingMode]);
 
   function setSourcesRailExpandedPersisted(expanded: boolean) {
     setSourcesRailExpanded(expanded);
+    if (presentationModeRef.current) return;
     saveDesktopRailState({
       sourcesExpanded: expanded,
       evidenceExpanded: evidenceRailExpanded,
@@ -221,10 +255,73 @@ export function WorkspacePage() {
 
   function setEvidenceRailExpandedPersisted(expanded: boolean) {
     setEvidenceRailExpanded(expanded);
+    if (presentationModeRef.current) return;
     saveDesktopRailState({
       sourcesExpanded: sourcesRailExpanded,
       evidenceExpanded: expanded,
     });
+  }
+
+  function exitPresentationMode() {
+    presentationModeRef.current = false;
+    setPresentationMode(false);
+    if (document.fullscreenElement && document.exitFullscreen) {
+      void document.exitFullscreen().catch(() => undefined);
+    }
+    const snapshot = presentationRailSnapshot.current;
+    presentationRailSnapshot.current = null;
+    if (snapshot) {
+      setSourcesRailExpanded(snapshot.sourcesExpanded);
+      setEvidenceRailExpanded(snapshot.evidenceExpanded);
+    }
+  }
+
+  function enterPresentationMode() {
+    if (presentationModeRef.current) return;
+    presentationRailSnapshot.current = {
+      sourcesExpanded: sourcesRailExpanded,
+      evidenceExpanded: evidenceRailExpanded,
+    };
+    presentationModeRef.current = true;
+    setPresentationMode(true);
+    setSourcesRailExpanded(false);
+    setEvidenceRailExpanded(false);
+    const root = document.documentElement;
+    if (root.requestFullscreen) {
+      void root.requestFullscreen().catch(() => undefined);
+    }
+  }
+
+  function togglePresentationMode() {
+    if (presentationModeRef.current) {
+      exitPresentationMode();
+    } else {
+      enterPresentationMode();
+    }
+  }
+
+  function enterTrainingMode() {
+    setTrainingMode(true);
+    setSavedPrompts(loadTrainingPrompts(workspaceId));
+  }
+
+  function exitTrainingMode() {
+    if (presentationModeRef.current) {
+      exitPresentationMode();
+    }
+    setTrainingMode(false);
+  }
+
+  function patchReveal(entryId: string, patch: Partial<TurnRevealState>) {
+    setRevealMap((prev) => withRevealPatch(prev, entryId, patch));
+    if (patch.evidence === true) {
+      if (isNarrowLayout) {
+        setSourcesDrawerOpen(false);
+        setEvidenceDrawerOpen(true);
+      } else if (!evidenceRailExpanded) {
+        setEvidenceRailExpandedPersisted(true);
+      }
+    }
   }
 
   if (historyWorkspaceId !== workspaceId) {
@@ -242,7 +339,15 @@ export function WorkspacePage() {
     setSelectionMode("all");
     setSourcesDrawerOpen(false);
     setEvidenceDrawerOpen(false);
+    setRevealMap({});
+    setSavedPrompts(workspaceId ? loadTrainingPrompts(workspaceId) : []);
+    setPresentationMode(false);
   }
+
+  useEffect(() => {
+    // Drop presentation rail snapshot when the workspace identity changes.
+    presentationRailSnapshot.current = null;
+  }, [workspaceId]);
 
   if (!isNarrowLayout && (sourcesDrawerOpen || evidenceDrawerOpen)) {
     setSourcesDrawerOpen(false);
@@ -609,6 +714,16 @@ export function WorkspacePage() {
       const next = appendConversationPair(workspaceId, pair);
       setPairs(next);
       setActiveEntryId(pair.pairId);
+      if (
+        trainingModeRef.current &&
+        String(response.status) === "answered"
+      ) {
+        // Seed before paint of answered content — fail closed for new training turns.
+        setRevealMap((prev) => ({
+          ...prev,
+          [pair.pairId]: { ...HIDDEN_REVEAL },
+        }));
+      }
       const first = response.citations[0] ?? null;
       setSelectedCitation(first);
       if (first) {
@@ -823,6 +938,12 @@ export function WorkspacePage() {
     citation: WorkspaceCitation,
     entry: ConversationHistoryEntry,
   ) {
+    if (trainingModeRef.current) {
+      // Citation activation while Evidence is hidden is an explicit inspect action.
+      setRevealMap((prev) =>
+        withRevealPatch(prev, entry.entryId, { evidence: true }),
+      );
+    }
     setSelectedCitation(citation);
     setPreviewTarget({
       kind: "citation",
@@ -912,6 +1033,19 @@ export function WorkspacePage() {
     />
   );
 
+  const activeReveal = (() => {
+    if (!trainingMode) {
+      return { answer: true, citations: true, evidence: true };
+    }
+    const entryId = activeEntry?.entryId ?? "";
+    if (entryId && revealMap[entryId]) return revealMap[entryId]!;
+    // Answered turns fail closed until seeded/revealed; other outcomes stay visible.
+    if (activeEntry?.response.status === "answered") {
+      return { ...HIDDEN_REVEAL };
+    }
+    return { answer: true, citations: true, evidence: true };
+  })();
+
   const evidencePanel = (
     <EvidencePanel
       previewTarget={previewTarget}
@@ -920,6 +1054,7 @@ export function WorkspacePage() {
       currentSnapshotId={workspace.current_snapshot_id}
       currentSources={sources}
       currentWorkspaceRevision={workspace.revision}
+      evidenceHidden={trainingMode && !activeReveal.evidence}
     />
   );
 
@@ -941,7 +1076,15 @@ export function WorkspacePage() {
     pendingPhase === "idle";
 
   return (
-    <div className="stack workspace-page">
+    <div
+      className={[
+        "stack workspace-page",
+        trainingMode ? "training-mode" : "",
+        presentationMode ? "presentation-mode" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <nav aria-label="Breadcrumb" className="muted">
         <Link to="/workspaces">Workspaces</Link>
         {" / "}
@@ -956,6 +1099,9 @@ export function WorkspacePage() {
               tone={isEmpty ? "empty" : "ready"}
               label={isEmpty ? "Empty" : "Active"}
             />
+            {trainingMode ? (
+              <Badge tone="ready" label="Training Mode" />
+            ) : null}
           </div>
           <p className="muted capacity-summary" style={{ margin: 0 }}>
             {limits ? (
@@ -975,6 +1121,24 @@ export function WorkspacePage() {
           </p>
         </div>
         <div className="row workspace-header-actions">
+          {trainingMode ? (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={exitTrainingMode}
+            >
+              Exit Training Mode
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={enterTrainingMode}
+              disabled={busyForMutations && askMutation.isPending}
+            >
+              Training Mode
+            </Button>
+          )}
           <Button
             variant="secondary"
             onClick={() => setEditWorkspaceOpen(true)}
@@ -984,6 +1148,25 @@ export function WorkspacePage() {
           </Button>
         </div>
       </header>
+
+      {trainingMode ? (
+        <TrainingToolbar
+          question={question}
+          savedPrompts={savedPrompts}
+          presentationMode={presentationMode}
+          askPending={askMutation.isPending}
+          onSavePrompt={() => {
+            setSavedPrompts(saveTrainingPrompt(workspaceId, question));
+          }}
+          onSelectPrompt={(prompt) => {
+            setQuestion(prompt.text);
+          }}
+          onDeletePrompt={(promptId) => {
+            setSavedPrompts(deleteTrainingPrompt(workspaceId, promptId));
+          }}
+          onTogglePresentation={togglePresentationMode}
+        />
+      ) : null}
 
       {showRunningTray ? (
         <div className="operation-tray" aria-live="polite">
@@ -1129,7 +1312,18 @@ export function WorkspacePage() {
                     workspaceRevision: entry.response.workspace_revision,
                     querySnapshotId: entry.response.snapshot_id,
                   });
-                  if (!isNarrowLayout && !evidenceRailExpanded) {
+                  const reveal = trainingMode
+                    ? (revealMap[entry.entryId] ?? {
+                        answer: true,
+                        citations: true,
+                        evidence: true,
+                      })
+                    : { evidence: true };
+                  if (
+                    reveal.evidence &&
+                    !isNarrowLayout &&
+                    !evidenceRailExpanded
+                  ) {
                     setEvidenceRailExpandedPersisted(true);
                   }
                 } else {
@@ -1138,6 +1332,9 @@ export function WorkspacePage() {
               }}
               currentSnapshotId={workspace.current_snapshot_id}
               settingsHint={settingsHint}
+              trainingMode={trainingMode}
+              revealMap={revealMap}
+              onRevealChange={patchReveal}
             />
           </div>
         </div>

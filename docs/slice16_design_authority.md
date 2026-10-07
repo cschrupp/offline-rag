@@ -45,7 +45,7 @@ vocabulary is preserved as provenance only. Current implementation-gate
 state is governed by accepted Amendment A2 and the Authorization note
 later in this document (observed B1 product UX withheld; B1 foundation
 remediation **ACCEPTED / SEALED**; **16D-B2 COMPLETE / ACCEPTED / SEALED**;
-**16D-B3 COMPLETE / ACCEPTED / SEALED** at `9c178ffb033cde41849379fc914f321697ff8691`; A3 **ACCEPTED / LOCKED / SEALED**; **16D-C NOT AUTHORIZED**).
+**16D-B3 COMPLETE / ACCEPTED / SEALED** at `9c178ffb033cde41849379fc914f321697ff8691`; A3 **ACCEPTED / LOCKED / SEALED**; **16D-C IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING**).
 
 ```text
 AMENDMENT A1:
@@ -123,7 +123,7 @@ AMENDMENT A1:                    ACCEPTED / LOCKED
 16D-A:                           COMPLETE / ACCEPTED
 ACCEPTED SHA:                    4f8962f2893ab433e6ea269ad54e46f67771ca70
 16D-B:                           IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING
-16D-C:                           NOT AUTHORIZED
+16D-C:                           IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
 16E–16H:                         NOT AUTHORIZED
 SLICE 17:                        NOT AUTHORIZED
 SLICE 18:                        NOT AUTHORIZED
@@ -1129,7 +1129,8 @@ B1 FOUNDATION REMEDIATION:
         A3 MATERIALIZATION: da1082d95630c12eaf0ce1a3b8d005aaa60d2f73
         EVIDENCE: docs/slice16d_b3_conversational_workspace.md
         A3 DOC: docs/slice16_amendment_a3_full_viewport_workspace.md
-16D-C: NOT AUTHORIZED
+16D-C: IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+  EVIDENCE: docs/slice16d_c_training_mode.md
 16E–16H: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
 SLICE 18: NOT AUTHORIZED
@@ -1149,6 +1150,6 @@ closeout `b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90`). Legacy B1 product UX
 remains **PRODUCT ACCEPTANCE WITHHELD**. **16D-B2** is **COMPLETE /
 ACCEPTED / SEALED** at `baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`.
 **16D-B3** is **COMPLETE / ACCEPTED / SEALED** at `9c178ffb033cde41849379fc914f321697ff8691` (A3
-**ACCEPTED / LOCKED / SEALED** at `da1082d95630c12eaf0ce1a3b8d005aaa60d2f73`). Explicit separate human
-authorization remains required before **16D-C** may start. Slice 16 overall
-is **not** complete.
+**ACCEPTED / LOCKED / SEALED** at `da1082d95630c12eaf0ce1a3b8d005aaa60d2f73`). **16D-C** is
+**IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING** and is not sealed.
+**16E–16H** remain **NOT AUTHORIZED**. Slice 16 overall is **not** complete.
