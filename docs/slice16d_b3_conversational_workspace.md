@@ -39,6 +39,9 @@ Rework 3 baseline (remote tip at authorization):
 Rework 3 implementation candidate SHA:
 9c178ffb033cde41849379fc914f321697ff8691
 
+Evidence packaging tip:
+625881f3b2bc82fc2af6af9e54ec260c3de526f9
+
 16D-B2: COMPLETE / ACCEPTED / SEALED
 16D-B3: REWORK 3 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
 16D-C: NOT AUTHORIZED
