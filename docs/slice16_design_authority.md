@@ -68,9 +68,10 @@ accepted as release Ask UX.
 - Amendment A1 (**ACCEPTED / LOCKED**):
   [`docs/slice16_amendment_a1_seneca_product_ux.md`](slice16_amendment_a1_seneca_product_ux.md)
   at `5060e2aeb4825f265072a1f870c3c963eace3b30`
-- Amendment A2 (**DESIGN CANDIDATE**; Design Rework 1 freezes dual-question
-  shared core, resolver trust boundary, `clarification_required`, dual traces,
-  abstention ownership):
+- Amendment A2 (**DESIGN CANDIDATE**; Design Rework 1+2: dual-question shared
+  core, resolver trust boundary, `clarification_required`, dual traces,
+  abstention ownership, server `prior_turns` validation, pre-resolver
+  snapshot/source admission):
   [`docs/slice16_amendment_a2_conversational_grounding.md`](slice16_amendment_a2_conversational_grounding.md)
 - Accepted 16A evidence:
   [`docs/slice16a_workspace_foundation.md`](slice16a_workspace_foundation.md)

@@ -22,9 +22,11 @@ OBSERVED 16D-B IMPLEMENTATION CANDIDATE:
 → NOT ACCEPTED as release Ask UX
 → NOT sealed by this design candidate
 
-PRIOR A2 DESIGN CANDIDATE:
+PRIOR A2 DESIGN CANDIDATES:
 3cf7790c67f6de11ad486a6a886b34f7b1d83176
 → DESIGN REWORK 1 applied (A2-F1…A2-F4)
+4c9168038762ea999e90e565ecc796dd78a5abae
+→ DESIGN REWORK 2 applied (A2-F5…A2-F6)
 
 ORIGINAL SLICE-16 AUTHORITY:
 e2e7475076ad18d4c4ae8d939389ceeffdeff6d8
@@ -119,9 +121,10 @@ internal evidence identifiers into user-facing prose. A2 therefore changes the
 | A2-D03 | Conversation is not factual memory |
 | A2-D04 | Preserve canonical single-turn `/query` |
 | A2-D05 | Conversation turn orchestration |
+| A2-D05b | Turn admission / snapshot binding (pre-resolver) |
 | A2-D05a | Retrieval question vs answer intent (shared core) |
 | A2-D06 | Context resolver (+ trust boundary) |
-| A2-D07 | Bounded resolver context |
+| A2-D07 | Bounded resolver context (+ server enforcement) |
 | A2-D08 | Conversation persistence v1 (+ presentation bound) |
 | A2-D09 | New conversation |
 | A2-D10 | Composer contract |
@@ -275,29 +278,37 @@ POST /v1/workspaces/{workspace_id}/conversation/turn
 Rules:
 
 - Backend remains **stateless** w.r.t. durable chat storage in A2 v1.
-- Client supplies bounded visible conversation context from the **active**
-  conversation only (`prior_turns` already truncated per A2-D07).
+- Client **SHOULD** construct `prior_turns` using the deterministic A2-D07
+  presentation truncation (UI convenience only).
+- Server **MUST** independently validate received `prior_turns` / `question`
+  bounds **before** resolver or admission (A2-D07) — the UI is **not** trusted
+  to enforce invariants.
 - `prior_turns` are **client-supplied / untrusted data** (A2-D06), including
   entries labeled `role="assistant"`.
 - Server **MUST NOT** load hidden older sessions or other workspaces.
+- Server **MUST NOT** silently widen accepted resolver context beyond A2-D07.
 
 ### Frozen orchestration pipeline
 
 ```text
-user_question (= request.question)
-+
-bounded prior_turns (UNTRUSTED)
+request (question + prior_turns + source_ids)
         ↓
-conversation_trace_id allocated (A2-D19)
+validate request shape / conversation bounds (A2-D07)
+  [invalid] ──→ safe request-invalid; resolver NOT invoked;
+                conversation_trace_id NOT required
+        ↓
+turn admission / binding (A2-D05b)
+  bind revision N / snapshot N / document scope / source selection
+  allocate conversation_trace_id
         ↓
 conversation-context resolver (A2-D06)
         ↓
-  [clarification_required] ──→ stop (no query_trace_id; generator not run)
+  [clarification_required] ──→ stop (query_trace_id=null; generator not run)
         ↓
-retrieval_question (= resolved standalone question)
-answer_intent (= user_question + retrieval_question pairing — A2-D05a)
+retrieval_question + answer_intent (A2-D05a)
         ↓
-run_grounded_query_core(...)  ← shared scientific path (allocates query_trace_id)
+run_grounded_query_core against BOUND snapshot N / bound document scope
+  (allocates query_trace_id)
         ↓
 fresh retrieval / evidence
         ↓
@@ -307,6 +318,8 @@ claim-level citations + public projection (A2-D14…A2-D16)
 ```
 
 The contextualizer **MUST NOT** create its own retrieval path.
+The resolver **MUST NOT** cause a later re-read that silently upgrades the
+turn to a newer workspace snapshot.
 
 ### Frozen response DTO (`ConversationTurnResponse`)
 
@@ -331,19 +344,95 @@ The contextualizer **MUST NOT** create its own retrieval path.
 
 Field notes:
 
-- `conversation_trace_id` **always** exists once the turn is admitted.
+- `conversation_trace_id` exists **only after successful turn admission /
+  binding** (A2-D05b / A2-D19). Pre-admission request or workspace failures do
+  **not** require a conversation trace.
+- After admission, `workspace_revision` and `snapshot_id` are the **admitted**
+  bound values (not a later live re-read).
 - `query_trace_id` is **null** unless canonical grounded query execution began.
 - `retrieval_question` is **null** when `status = clarification_required`.
 - `answer` is the deterministic plain-text projection of `answer_blocks` (or
   `null` when not answered).
-- For `clarification_required`: `answer = null`, `answer_blocks = []`,
-  `citations = []`, `abstention_reason = ambiguous_request`, grounded-answer
-  generator **NOT** invoked; retrieval **MAY** be skipped.
+- For `clarification_required` (post-admission): `answer = null`,
+  `answer_blocks = []`, `citations = []`, `abstention_reason =
+  ambiguous_request`, `workspace_revision` / `snapshot_id` = admitted bind,
+  grounded-answer generator **NOT** invoked; retrieval skipped.
 - Clarification is a **successful fail-closed product outcome**, not an HTTP
   error.
 
 Public alias: `standalone_question` **MUST NOT** be required; the frozen field
 name is `retrieval_question`.
+
+---
+
+## A2-D05b — Turn admission / snapshot binding
+
+Conversation turns **MUST** bind scientific workspace state **before** the
+context resolver runs.
+
+### Frozen admission sequence
+
+1. Validate request shape / conversation bounds (A2-D07).
+2. Require runtime ready (existing product readiness semantics).
+3. Resolve workspace record.
+4. Validate workspace state.
+5. Capture:
+   - `workspace_revision`
+   - `current_snapshot_id`
+6. Resolve submitted `source_ids` under accepted all / subset semantics
+   (A2-D11) against that bound workspace record.
+7. Resolve exact logical-source → document scope from that bound record.
+8. Bind / resolve the immutable snapshot.
+9. Allocate / admit conversation orchestration trace (`conversation_trace_id`).
+10. Run context resolver (A2-D06).
+11. If `clarification_required`: stop; no canonical query execution.
+12. Otherwise execute shared grounded core using:
+    - **BOUND** snapshot
+    - **BOUND** document scope
+    - `retrieval_question`
+    - `answer_intent`
+
+A turn is **not admitted** until steps 1–8 succeed. Binding failures (invalid
+workspace, invalid `source_ids`, unavailable required snapshot, etc.) use
+existing safe application failure semantics; resolver **NOT** invoked;
+`conversation_trace_id` **need not** be allocated.
+
+### Mutation during resolver / grounded execution (intentional Historical)
+
+Once admission / binding succeeded, a subsequent workspace mutation **MAY**
+occur while the resolver or grounded execution is running.
+
+The admitted turn **MUST** continue against its immutable bound snapshot.
+
+Example:
+
+```text
+turn admitted:  revision 9 / snapshot N / source A v1
+resolver runs
+source A replaced → revision 10 / snapshot N+1 / source A v2
+turn execution MUST continue against snapshot N / source A v1
+response: workspace_revision = 9, snapshot_id = N
+UI vs current workspace → Historical snapshot
+```
+
+This is **intentional**, not `workspace_conflict`.
+
+It preserves the accepted principle: a started read may finish its
+already-bound immutable snapshot while later reads observe the newer workspace
+state.
+
+**MUST NOT** silently upgrade the in-flight conversation turn to N+1.
+
+### Clarification after admission
+
+If the resolver returns `clarification_required` after admission:
+
+- `conversation_trace_id` present;
+- `query_trace_id = null`;
+- `workspace_revision` / `snapshot_id` = admitted bind;
+- generator not invoked;
+- no scientific query execution;
+- clarification remains a successful fail-closed product outcome.
 
 ---
 
@@ -529,9 +618,18 @@ accepted amendment).
 
 ---
 
-## A2-D07 — Bounded resolver context
+## A2-D07 — Bounded resolver context (+ server enforcement)
 
 Conversation context sent to the resolver **MUST** be bounded.
+
+Distinguish:
+
+| Layer | Role |
+| --- | --- |
+| **Client presentation truncation** | UI **SHOULD** construct `prior_turns` using the deterministic D07 window |
+| **Server API validation** | Server **MUST** independently validate the received request **before** resolver / admission |
+
+Do **not** trust the normal UI to enforce these invariants.
 
 ### Frozen resolver-context bound
 
@@ -541,7 +639,9 @@ Conversation context sent to the resolver **MUST** be bounded.
 | Hard character ceiling | **12_000** Unicode characters across all `prior_turns[].text` concatenated |
 | Scope | **current active conversation only** |
 
-Truncation algorithm (deterministic):
+### Client presentation truncation (SHOULD)
+
+Deterministic algorithm for UI construction:
 
 1. Keep newest completed pairs first;
 2. Drop oldest pairs until pair count ≤ 6;
@@ -550,6 +650,40 @@ Truncation algorithm (deterministic):
 
 Exceeding the presentation history bound (A2-D08) **MUST NOT** silently widen
 resolver context beyond this A2-D07 bound.
+
+### Server validation (MUST — before resolver)
+
+Validate independently on the received request:
+
+| Field | Rule |
+| --- | --- |
+| `question` | existing product-question normalization / max-length semantics |
+| `prior_turns` count | ≤ **12** role turns / ≤ **6** completed pairs |
+| aggregate `prior_turns` text | ≤ **12_000** Unicode characters |
+| each turn `role` | exactly `"user"` or `"assistant"` |
+| each turn `text` | non-empty after accepted normalization |
+| sequence | completed chronological pairs only: `user, assistant, user, assistant, …` |
+
+Sequence invariants:
+
+- no orphan assistant;
+- no trailing incomplete user turn in `prior_turns` (current question is
+  carried separately in `question`);
+- empty `prior_turns` is valid (first turn).
+
+Malformed or over-bound request:
+
+- bounded safe **request-invalid** outcome (existing product error taxonomy /
+  HTTP client-error class as appropriate);
+- resolver **NOT** invoked;
+- no model call;
+- `conversation_trace_id` **not** required.
+
+Server **MUST NOT** silently widen the accepted resolver context (e.g. by
+accepting 200 turns and truncating into the model without rejecting).
+
+If implementation chooses to canonicalize minor whitespace, that normalization
+**MUST** be deterministic and **MUST NOT** change conversational meaning.
 
 **MUST NOT:**
 
@@ -641,8 +775,9 @@ No fake percentage / ETA.
 
 ## A2-D11 — Source scope per turn
 
-Each turn binds to the source selection effective **when that turn is
-submitted**.
+Each turn binds to the source selection effective **at admission** (A2-D05b),
+i.e. when that turn is submitted and successfully bound — **before** the
+context resolver runs.
 
 Current source checkboxes govern the **next** turn.
 
@@ -652,11 +787,27 @@ Changing source selection later:
 - does **not** rewrite previous provenance;
 - affects future turns only.
 
+### Effective logical scope at admission
+
+| Mode | Bound scope |
+| --- | --- |
+| Explicit subset (`source_ids` present) | exactly those valid `source_ids` from the **bound** workspace record |
+| Follow-all / omitted `source_ids` | all active sources in the **bound** workspace record |
+
+A source added **after** admission **MUST NOT** silently enter the in-flight
+turn.
+
+A source removed / replaced after admission does **not** disappear from the
+already-bound immutable turn (execution continues against bound snapshot /
+versions — A2-D05b).
+
+Future turns see the newer workspace state.
+
 Each completed turn stores / presents:
 
-- submitted logical source scope;
-- workspace revision;
-- snapshot ID;
+- submitted logical source scope (as admitted);
+- workspace revision (admitted);
+- snapshot ID (admitted);
 - exact citation source versions.
 
 Historical turns remain inspectable through exact-version evidence.
@@ -963,36 +1114,42 @@ Freeze **two trace identities**:
 
 | Trace | When allocated | Authority |
 | --- | --- | --- |
-| `conversation_trace_id` | once a conversation turn is admitted | orchestration provenance |
+| `conversation_trace_id` | **after successful conversation-turn admission / binding** (A2-D05b) | orchestration provenance |
 | `query_trace_id` | only when canonical grounded query execution begins; else `null` | scientific retrieval / context / generation / citations |
 
 ### Outcomes
 
 | Outcome | `conversation_trace_id` | `query_trace_id` |
 | --- | --- | --- |
+| pre-admission request / workspace / binding failure | **not required** | **null** / N/A |
 | answered / insufficient_evidence / model_abstain (after query start) | present | present |
-| `clarification_required` (resolver fail-closed) | present | **null** |
+| `clarification_required` (post-admission resolver fail-closed) | present | **null** |
 
 ### Conversation-trace contents (privacy-minimized)
 
 Record:
 
+- admitted workspace revision;
+- admitted snapshot ID;
+- logical source-scope intent as admitted;
 - original current-question hash;
 - resolver invoked: yes / no;
 - prior-turn count used;
 - resolved / retrieval-question hash when available;
 - resolver result status (including clarification);
 - `query_trace_id` when execution occurred (link, not duplicate);
-- source-scope intent if resolved / bound;
 - prompt contract ID `conversation_context_resolver_v1`;
 - **no** transcript text.
+
+The conversation trace **MAY** record admitted binding metadata above, but the
+**query trace remains scientific authority** for actual query execution.
 
 ### Query-trace authority (unchanged scientific role)
 
 The canonical query trace remains authoritative for:
 
-- actual snapshot binding;
-- actual source / document scope;
+- actual snapshot binding used by retrieval;
+- actual source / document scope used by retrieval;
 - retrieval;
 - context;
 - generation;
@@ -1356,11 +1513,27 @@ Applied against prior candidate `3cf7790c67f6de11ad486a6a886b34f7b1d83176`.
 | A2-F1 | `user_question` vs `retrieval_question` / `answer_intent`; shared `run_grounded_query_core` (A2-D05a) |
 | A2-F2 | `prior_turns` untrusted; delimiter discipline; acceptance cases A–C (A2-D06) |
 | A2-F3 | `clarification_required` status; not `model_abstain` (A2-D05 / A2-D18) |
-| A2-F3B | `conversation_trace_id` always; `query_trace_id` nullable (A2-D19) |
+| A2-F3B | `conversation_trace_id` / `query_trace_id` ownership (A2-D19) |
 | A2-F4 | app-owned vs model-owned abstention subsets (A2-D12 / A2-D18) |
 | D07/D08 | resolver window 6/12k; presentation persistence max 50 pairs |
 
-B1/B2/B3 decomposition unchanged. A2 remains **DESIGN CANDIDATE / HUMAN
+---
+
+## Design rework 2 (A2-F5…A2-F6)
+
+Applied against prior candidate `4c9168038762ea999e90e565ecc796dd78a5abae`.
+Preserves all Rework-1 contracts.
+
+| Finding | Freeze |
+| --- | --- |
+| A2-F5 | Server **MUST** validate `prior_turns` bounds / roles / pair sequence before resolver; UI truncation is not trusted (A2-D05 / A2-D07) |
+| A2-F6 | Bind revision / snapshot / document scope / source selection **before** resolver (A2-D05b) |
+| A2-F6A | Mutation during resolver keeps admitted immutable snapshot; response Historical vs live N+1 (not conflict) |
+| A2-F6B | Pre-admission failures: no conversation trace; post-admission clarification keeps admitted bind + `query_trace_id=null` |
+| A2-F6C | Effective source scope frozen at admission against bound workspace record (A2-D11) |
+
+No change to B1/B2/B3 decomposition, GroundedAnswerV2, citation UX, abstention
+ownership, or Training Mode dependency. A2 remains **DESIGN CANDIDATE / HUMAN
 ACCEPTANCE PENDING**. **16D-B2 / 16D-B3 / 16D-C** remain **NOT AUTHORIZED**.
 
 ---
