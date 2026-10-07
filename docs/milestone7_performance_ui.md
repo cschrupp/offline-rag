@@ -67,16 +67,17 @@ SLICE 16: DESIGN INTERVIEW COMPLETE
            Evidence: docs/slice16c_react_shell_source_ui.md
            AMENDMENT A1 ACCEPTED / LOCKED
              5060e2aeb4825f265072a1f870c3c963eace3b30
-           AMENDMENT A2 DESIGN CANDIDATE / HUMAN ACCEPTANCE PENDING
+           AMENDMENT A2 ACCEPTED / LOCKED
+             dce3456e519cb6c96570e20f5af800d00cafb5a7
              docs/slice16_amendment_a2_conversational_grounding.md
-           16D-A COMPLETE / ACCEPTED
+           16D-A COMPLETE / ACCEPTED / SEALED
              4f8962f2893ab433e6ea269ad54e46f67771ca70
            LAST SEALED IMPLEMENTATION BASELINE
              a952a75bc07191b213a5113eee53cb967fef8326
-           OBSERVED 16D-B CANDIDATE (B1)
+           OBSERVED 16D-B1 CANDIDATE
              6b6524001f063a628505f572e7ca13d954a38260
              PRODUCT ACCEPTANCE WITHHELD / NOT SEALED
-           16D-B PRODUCT ACCEPTANCE WITHHELD PENDING A2
+           B1 FOUNDATION REMEDIATION REQUIRED / NOT AUTHORIZED
            16D-B2 / 16D-B3 / 16D-C NOT AUTHORIZED
            16E–16H NOT AUTHORIZED
            Slice 16 overall IN PROGRESS / NOT COMPLETE
@@ -106,11 +107,12 @@ these results. Slice 15 architecture authority remains
 `eb8baefc6e3eaf7df33668c85fbbfef22364bb0e`; 16C accepted at
 `936e41446eb1e3697f6b7d245659831f19cf0613`; Amendment A1 **ACCEPTED / LOCKED**
 at `5060e2aeb4825f265072a1f870c3c963eace3b30`
-(`docs/slice16_amendment_a1_seneca_product_ux.md`); Amendment A2 **DESIGN
-CANDIDATE / HUMAN ACCEPTANCE PENDING**
+(`docs/slice16_amendment_a1_seneca_product_ux.md`); Amendment A2 **ACCEPTED /
+LOCKED** at `dce3456e519cb6c96570e20f5af800d00cafb5a7`
 (`docs/slice16_amendment_a2_conversational_grounding.md`); **16D-A COMPLETE /
-ACCEPTED** at `4f8962f2893ab433e6ea269ad54e46f67771ca70`; observed 16D-B
-candidate `6b652400…` has **PRODUCT ACCEPTANCE WITHHELD**; **16D-B2 / 16D-B3 /
+ACCEPTED / SEALED** at `4f8962f2893ab433e6ea269ad54e46f67771ca70`; observed
+16D-B1 candidate `6b652400…` has **PRODUCT ACCEPTANCE WITHHELD**; B1
+foundation remediation **REQUIRED / NOT AUTHORIZED**; **16D-B2 / 16D-B3 /
 16D-C NOT AUTHORIZED**.
 Historical pre-design frame: `docs/slice16_portfolio_ui.md`.
 
@@ -872,16 +874,17 @@ SLICE 16: DESIGN INTERVIEW COMPLETE
            ACCEPTED SHA 936e41446eb1e3697f6b7d245659831f19cf0613
            AMENDMENT A1 ACCEPTED / LOCKED
              5060e2aeb4825f265072a1f870c3c963eace3b30
-           AMENDMENT A2 DESIGN CANDIDATE / HUMAN ACCEPTANCE PENDING
+           AMENDMENT A2 ACCEPTED / LOCKED
+             dce3456e519cb6c96570e20f5af800d00cafb5a7
              docs/slice16_amendment_a2_conversational_grounding.md
-           16D-A COMPLETE / ACCEPTED
+           16D-A COMPLETE / ACCEPTED / SEALED
              4f8962f2893ab433e6ea269ad54e46f67771ca70
            LAST SEALED IMPLEMENTATION BASELINE
              a952a75bc07191b213a5113eee53cb967fef8326
-           OBSERVED 16D-B CANDIDATE (B1)
+           OBSERVED 16D-B1 CANDIDATE
              6b6524001f063a628505f572e7ca13d954a38260
              PRODUCT ACCEPTANCE WITHHELD / NOT SEALED
-           16D-B PRODUCT ACCEPTANCE WITHHELD PENDING A2
+           B1 FOUNDATION REMEDIATION REQUIRED / NOT AUTHORIZED
            16D-B2 / 16D-B3 / 16D-C NOT AUTHORIZED
            16E–16H NOT AUTHORIZED
            Slice 16 overall IN PROGRESS / NOT COMPLETE
@@ -898,12 +901,13 @@ M6 science: UNCHANGED
   NOT AUTHORIZED / UNCHANGED
 ```
 
-**Next governance sequence (not authorized by this document):** human acceptance
-of **A2** (if warranted), then separate explicit authorization of **16D-B2** →
+**Next governance sequence (not authorized by this document):** separate
+explicit authorization of **B1 foundation upload remediation** → **16D-B2** →
 **16D-B3** → **16D-C** → Slice 17 → Slice 18 → Milestone 7 closeout. Slice 14
 and Slice 15 are closed. Slice 16 design is **ACCEPTED / LOCKED**. **16A**,
 **16B**, **16C**, and **16D-A** are **COMPLETE / ACCEPTED**. Amendment A1 is
 **ACCEPTED / LOCKED** at `5060e2aeb4825f265072a1f870c3c963eace3b30`. Amendment
-A2 is **DESIGN CANDIDATE / HUMAN ACCEPTANCE PENDING**. **16D-B2 / 16D-B3 /
-16D-C**, Slice 17, Slice 18, and M7 closeout remain **NOT AUTHORIZED**. Slice
-16 overall is **IN PROGRESS / NOT COMPLETE**.
+A2 is **ACCEPTED / LOCKED** at `dce3456e519cb6c96570e20f5af800d00cafb5a7`.
+B1 foundation remediation is **REQUIRED / NOT AUTHORIZED**. **16D-B2 /
+16D-B3 / 16D-C**, Slice 17, Slice 18, and M7 closeout remain **NOT
+AUTHORIZED**. Slice 16 overall is **IN PROGRESS / NOT COMPLETE**.

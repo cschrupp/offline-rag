@@ -1,8 +1,16 @@
 # Slice 16 Amendment A2 — Conversational Grounding & Claim-Level Citations
 
 ```text
-STATUS: DESIGN CANDIDATE / HUMAN ACCEPTANCE PENDING
-DESIGN AUTHORIZED: YES
+STATUS: ACCEPTED / LOCKED
+HUMAN ACCEPTANCE: ACCEPTED
+INDEPENDENT DESIGN REVIEW: PASSED
+CLOSEOUT: PENDING SEAL AFTER INDEPENDENT VERIFY
+
+ACCEPTED DESIGN SHA:
+dce3456e519cb6c96570e20f5af800d00cafb5a7
+→ acceptance applies exactly to this SHA
+
+DESIGN AUTHORIZED: YES (accepted)
 IMPLEMENTATION AUTHORIZED: NO
 MERGE AUTHORIZED: NO
 
@@ -16,17 +24,17 @@ cschrupp/offline-rag
 LAST SEALED IMPLEMENTATION BASELINE:
 a952a75bc07191b213a5113eee53cb967fef8326
 
-OBSERVED 16D-B IMPLEMENTATION CANDIDATE:
+OBSERVED 16D-B1 IMPLEMENTATION CANDIDATE:
 6b6524001f063a628505f572e7ca13d954a38260
 → useful engineering substrate
-→ NOT ACCEPTED as release Ask UX
-→ NOT sealed by this design candidate
+→ PRODUCT ACCEPTANCE WITHHELD / NOT SEALED
+→ A2 acceptance does NOT accept or seal B1
 
-PRIOR A2 DESIGN CANDIDATES:
+PRIOR A2 DESIGN CANDIDATES (historical):
 3cf7790c67f6de11ad486a6a886b34f7b1d83176
-→ DESIGN REWORK 1 applied (A2-F1…A2-F4)
+→ DESIGN REWORK 1 (A2-F1…A2-F4) — CLOSED
 4c9168038762ea999e90e565ecc796dd78a5abae
-→ DESIGN REWORK 2 applied (A2-F5…A2-F6)
+→ DESIGN REWORK 2 (A2-F5…A2-F6) — CLOSED
 
 ORIGINAL SLICE-16 AUTHORITY:
 e2e7475076ad18d4c4ae8d939389ceeffdeff6d8
@@ -41,19 +49,19 @@ design/slice16-amendment-a2-conversational-grounding
 
 ## Authority being amended
 
-A2 is **supplemental design authority**. If and only if A2 receives human
-acceptance, it supersedes **only** the clauses listed in
-[Superseded-clause inventory](#superseded-clause-inventory).
+A2 is **supplemental design authority**. Human acceptance at
+`dce3456e519cb6c96570e20f5af800d00cafb5a7` makes the clauses listed in
+[Superseded-clause inventory](#superseded-clause-inventory) **authoritative**.
 
-Until A2 is accepted:
-
-- S16-D01 … S16-D35 remain effective as locked;
-- Amendment A1 remains **ACCEPTED / LOCKED**;
-- this document is a **DESIGN CANDIDATE** only.
+Only those explicitly enumerated clauses are superseded. All unaffected
+original Slice-16 and A1 authority remains in force.
 
 A2 **MUST NOT** rewrite unrelated locked Slice-16 decisions (workspace identity,
 immutable snapshots, lineage, offline controls, Settings, operator locks,
 retrieval science, Gold Lab, etc.).
+
+A2 acceptance does **not** authorize implementation of B1 remediation, B2, B3,
+or 16D-C.
 
 ---
 
@@ -1257,7 +1265,7 @@ Viewport becoming desktop: close responsive drawer state / clear modal inert.
 
 ## A2-D24 — 16D-B decomposition
 
-### Revised implementation sequence (frozen by A2 candidate)
+### Revised implementation sequence (authoritative under accepted A2)
 
 ```text
 16D-A
@@ -1320,6 +1328,12 @@ Useful substrate preserved as engineering input (not accepted release UX):
 - session-state primitives.
 
 **MUST NOT** accept B1 merely through A2 design authorization or acceptance.
+
+```text
+B1 FOUNDATION REMEDIATION REQUIRED
+STATUS: REQUIRED / NOT AUTHORIZED
+→ prerequisite to B2 authorization; not authorized by A2 acceptance
+```
 
 ### 16D-B2 — Grounded Answer V2 & claim citations
 
@@ -1451,43 +1465,48 @@ A2 **MUST NOT** authorize:
 
 ## Superseded-clause inventory
 
-A2 **proposes** to supersede the following **if and only if** A2 is human
-accepted. Until then, existing authority remains effective.
+**ACTIVATED** by human acceptance of A2 at
+`dce3456e519cb6c96570e20f5af800d00cafb5a7`.
 
-| Prior clause | Prior freeze | A2 supersession |
+A2 now **authoritatively supersedes** only the enumerated affected portions
+below. Unaffected original Slice-16 and A1 authority remains in force.
+
+| Prior clause | Prior freeze | A2 supersession (now authoritative) |
 | --- | --- | --- |
-| **S16-D17** Query experience | Backend/product framed as single-turn only; conversational memory deferred; UI history must not be sent as query context | Product Ask becomes conversation; linguistic context **may** be sent to the **context resolver** only; factual authority remains fresh retrieval via canonical pipeline; `/query` stays single-turn (A2-D04) |
-| **S16-D18** Citations and evidence | Citation chips open evidence; flat chip-centric UX implied | Claim-level markers + hover/focus/tap card + Evidence deep pane (A2-D16/A2-D17); chips alone are insufficient |
+| **S16-D17** product single-turn interaction freeze | Backend/product framed as single-turn only; conversational memory deferred; UI history must not be sent as query context | Product Ask becomes conversation; linguistic context **may** be sent to the **context resolver** only; factual authority remains fresh retrieval via canonical pipeline; `/query` stays single-turn (A2-D04) |
+| **S16-D18** chip-centric citation interaction | Citation chips open evidence; flat chip-centric UX implied | Claim-level markers + hover/focus/tap card + Evidence deep pane (A2-D16/A2-D17); chips alone are insufficient |
 | **S16-D18** abstention | `insufficient_evidence` / `model_abstain` as safety outcomes | Retained; **augmented** with ownership-split `abstention_reason` codes and `clarification_required` (A2-D18) |
-| **S16-D19** Training Mode (interaction assumptions) | Hide/reveal answer/citations on isolated question UX | Operates on conversational turns + claim citations (A2-D25) |
-| **S16-D35** deferral “conversational memory / multi-turn RAG” | Blanket Slice-16 deferral | Narrowly superseded: **linguistic** multi-turn context + resolver is in scope; **factual conversational memory** and using prior answers as evidence remain **forbidden** (A2-D03) |
+| **S16-D19** Training Mode interaction assumptions | Hide/reveal answer/citations on isolated question UX | Operates on conversational turns + claim citations (A2-D25) |
+| **S16-D35** blanket “conversational memory / multi-turn RAG” deferral | Blanket Slice-16 deferral | Narrowly superseded: **linguistic** multi-turn context + resolver is in scope; **factual conversational memory** and using prior answers as evidence remain **forbidden** (A2-D03) |
 | **A1-D02** Sources \| Ask \| Evidence framing | Ask as question/answer workspace | Center column becomes Conversation (A2-D02) |
-| **A1-D13** source-selection UI state | Must not send as hidden conversational history | Selection still not chat memory; conversation context is a separate bounded prior-turns channel (A2-D05/D07) |
-| **A1 §16D-B** scope | Single-turn Ask; citation chips; no conversational memory; session-local visual history | Replaced by B1 observed / B2 claim citations / B3 conversation (A2-D24) |
-| **Implementation plan §16D-B** | Same single-turn Ask decomposition | Same B1/B2/B3 replacement |
-| **Implementation plan “Explicit non-scope”** | “multi-turn conversational RAG” | Replaced by A2’s narrower forbid: no factual memory / no second pipeline; linguistic conversation turns authorized by A2 |
-| **ROADMAP / M7 pointers** stating product query remains single-turn only / 16D-B not authorized without nuance | Status pointers | Updated to A2 candidate + B1 observed / B2/B3 not authorized |
+| **A1-D13** / Ask-history decomposition wording | Must not send selection as hidden conversational history | Selection still not chat memory; conversation context is a separate bounded prior-turns channel (A2-D05/D07) |
+| **A1 §16D-B** Ask/history decomposition | Single-turn Ask; citation chips; no conversational memory; session-local visual history | Replaced by B1 observed / B2 claim citations / B3 conversation (A2-D24) |
+| **Implementation plan §16D-B** | Same single-turn Ask decomposition | Same B1/B2/B3 replacement (authoritative under accepted A2) |
+| **Implementation plan “Explicit non-scope”** | “multi-turn conversational RAG” | Replaced by A2’s narrower forbid: no factual memory / no second pipeline; linguistic conversation turns in scope under A2 |
+| **ROADMAP / M7 status wording** | Product query single-turn only / undifferentiated 16D-B | Pointers record A2 ACCEPTED / LOCKED; B1 observed / acceptance withheld; B2/B3/C not authorized |
 
 **Not superseded:** S16-D01…D16, D20…D34; A1-D01, A1-D03…A1-D12, A1-D14…A1-D17
 capacity/settings/query-scope science; 16D-A sealed implementation.
 
 ---
 
-## Governance status (while A2 is candidate)
+## Governance status (accepted A2)
 
 ```text
 LAST SEALED IMPLEMENTATION BASELINE:
 a952a75bc07191b213a5113eee53cb967fef8326
 
-OBSERVED 16D-B CANDIDATE (B1 substrate):
+OBSERVED 16D-B1 CANDIDATE:
 6b6524001f063a628505f572e7ca13d954a38260
 PRODUCT ACCEPTANCE WITHHELD / NOT SEALED
 
-A2:
-DESIGN CANDIDATE / HUMAN ACCEPTANCE PENDING
+B1 FOUNDATION REMEDIATION (upload lifecycle):
+REQUIRED / NOT AUTHORIZED
+→ prerequisite to B2 authorization; not authorized by A2 acceptance
 
-16D-B:
-PRODUCT ACCEPTANCE WITHHELD PENDING A2
+A2:
+ACCEPTED / LOCKED
+dce3456e519cb6c96570e20f5af800d00cafb5a7
 
 16D-B2: NOT AUTHORIZED
 16D-B3: NOT AUTHORIZED
@@ -1499,50 +1518,104 @@ M7 closeout: NOT AUTHORIZED
 Slice 16: IN PROGRESS / NOT COMPLETE
 ```
 
-Original locked design and A1 remain valid except where A2 would explicitly
-supersede them **IF AND ONLY IF** A2 receives human acceptance.
+Original locked design and A1 remain valid except where A2 explicitly
+supersedes them per the activated inventory above.
 
 ---
 
-## Design rework 1 (A2-F1…A2-F4)
+## Independent design-review findings (CLOSED)
 
-Applied against prior candidate `3cf7790c67f6de11ad486a6a886b34f7b1d83176`.
-
-| Finding | Freeze |
+| Finding | Disposition |
 | --- | --- |
-| A2-F1 | `user_question` vs `retrieval_question` / `answer_intent`; shared `run_grounded_query_core` (A2-D05a) |
-| A2-F2 | `prior_turns` untrusted; delimiter discipline; acceptance cases A–C (A2-D06) |
-| A2-F3 | `clarification_required` status; not `model_abstain` (A2-D05 / A2-D18) |
-| A2-F3B | `conversation_trace_id` / `query_trace_id` ownership (A2-D19) |
-| A2-F4 | app-owned vs model-owned abstention subsets (A2-D12 / A2-D18) |
-| D07/D08 | resolver window 6/12k; presentation persistence max 50 pairs |
+| A2-F1 | **CLOSED** — `user_question` vs `retrieval_question` / `answer_intent` |
+| A2-F2 | **CLOSED** — resolver trust boundary for untrusted `prior_turns` |
+| A2-F3 | **CLOSED** — `clarification_required` |
+| A2-F3B | **CLOSED** — `conversation_trace_id` / `query_trace_id` ownership |
+| A2-F4 | **CLOSED** — app-owned vs model-owned abstention |
+| D07/D08 | **CLOSED** — resolver window 6/12k; presentation max 50 pairs |
+| A2-F5 | **CLOSED** — server `prior_turns` validation |
+| A2-F6 | **CLOSED** — pre-resolver admission / snapshot binding |
+| A2-F6A | **CLOSED** — mutation-during-resolver → Historical on admitted N |
+| A2-F6B | **CLOSED** — pre-admission vs post-admission clarification traces |
+| A2-F6C | **CLOSED** — source scope frozen at admission |
+
+Historical design candidates: Rework 1 @ `3cf7790…`; Rework 2 @ `4c91680…`;
+accepted design @ `dce3456…`.
 
 ---
 
-## Design rework 2 (A2-F5…A2-F6)
+## B1 foundation remediation (REQUIRED / NOT AUTHORIZED)
 
-Applied against prior candidate `4c9168038762ea999e90e565ecc796dd78a5abae`.
-Preserves all Rework-1 contracts.
+Recorded at A2 acceptance closeout as a **prerequisite to B2 authorization**.
+**NOT** authorized by this closeout. **NOT** an acceptance of B1
+`6b652400…`.
 
-| Finding | Freeze |
-| --- | --- |
-| A2-F5 | Server **MUST** validate `prior_turns` bounds / roles / pair sequence before resolver; UI truncation is not trusted (A2-D05 / A2-D07) |
-| A2-F6 | Bind revision / snapshot / document scope / source selection **before** resolver (A2-D05b) |
-| A2-F6A | Mutation during resolver keeps admitted immutable snapshot; response Historical vs live N+1 (not conflict) |
-| A2-F6B | Pre-admission failures: no conversation trace; post-admission clarification keeps admitted bind + `query_trace_id=null` |
-| A2-F6C | Effective source scope frozen at admission against bound workspace record (A2-D11) |
+```text
+B1 FOUNDATION REMEDIATION REQUIRED
+STATUS: REQUIRED / NOT AUTHORIZED
+OBSERVED AGAINST: 6b6524001f063a628505f572e7ca13d954a38260
+```
 
-No change to B1/B2/B3 decomposition, GroundedAnswerV2, citation UX, abstention
-ownership, or Training Mode dependency. A2 remains **DESIGN CANDIDATE / HUMAN
-ACCEPTANCE PENDING**. **16D-B2 / 16D-B3 / 16D-C** remain **NOT AUTHORIZED**.
+Scope to be separately authorized later:
+
+### A. Browser multi-file upload lifecycle
+
+Observed:
+
+- browser single-file upload succeeds;
+- browser two-or-more-file upload can fail ambiguously;
+- curl one-file through Vite → FastAPI succeeds;
+- curl two-file through Vite → FastAPI succeeds with stable revision;
+- therefore backend multipart and Vite multi-file proxy path are proven capable.
+
+### B. Pre-202 cancellation
+
+Observed:
+
+- during browser multipart upload, Add Sources modal becomes busy;
+- Close / Cancel are disabled;
+- stalled pre-accept transfer traps the user.
+
+Required future behavior:
+
+- browser upload has `AbortController` / cancellation before durable 202
+  acceptance;
+- Cancel upload aborts transport;
+- once 202 is received, durable operation semantics take over.
+
+### C. Honest transport error classification
+
+Observed: all fetch rejection paths currently collapse into
+“Could not reach OfflineRAG…” even when GETs prove the server is healthy.
+
+Future remediation must distinguish at least conceptually:
+
+- user / request abort;
+- interrupted / ambiguous upload transport;
+- genuinely unreachable backend;
+- canonical backend error response.
+
+Do **not** expose unsafe raw exception text.
+
+### D. Transport ambiguity / idempotent retry
+
+Existing server semantics already replay a matching idempotency key before
+stale-revision validation.
+
+Future UI remediation must preserve the same logical intent / key after
+transport ambiguity so retry can discover / replay an already-admitted
+operation instead of creating duplicate sources.
+
+**MUST NOT** authorize or implement this remediation in the A2 closeout.
 
 ---
 
 ## Authorization note
 
 ```text
-DESIGN WORK ONLY
+A2 DESIGN: ACCEPTED / LOCKED @ dce3456e519cb6c96570e20f5af800d00cafb5a7
 NO IMPLEMENTATION
+NO B1 UPLOAD HOTFIX IMPLEMENTATION
 NO MERGE
 NO 16D-B2
 NO 16D-B3
