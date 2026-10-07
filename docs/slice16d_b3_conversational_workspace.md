@@ -27,7 +27,7 @@ Rework 1 baseline (remote tip at authorization):
 c4a3c1a7c754a15b4b9a529479b2851915da74e3
 
 Rework 1 implementation candidate SHA:
-(see git tip after Rework 1 commit; recorded below after push)
+08622794c3186b3eb3684b1c2efc7529bbdac459
 
 16D-B2: COMPLETE / ACCEPTED / SEALED
 16D-B3: IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
