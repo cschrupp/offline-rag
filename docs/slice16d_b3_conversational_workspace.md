@@ -37,7 +37,7 @@ Rework 3 baseline (remote tip at authorization):
 528e7dbb10fdde24ea1ea7db71a4e35c2a9222e1
 
 Rework 3 implementation candidate SHA:
-(pending commit)
+9c178ffb033cde41849379fc914f321697ff8691
 
 16D-B2: COMPLETE / ACCEPTED / SEALED
 16D-B3: REWORK 3 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING

@@ -1120,6 +1120,7 @@ B1 FOUNDATION REMEDIATION:
         AUTHORIZED BASELINE: 28aad06f89e6d00a0b81b51f9c2de38fed06cb22
         REWORK 3 BASELINE: 528e7dbb10fdde24ea1ea7db71a4e35c2a9222e1
         A3 MATERIALIZATION: da1082d95630c12eaf0ce1a3b8d005aaa60d2f73
+        REWORK 3 IMPLEMENTATION CANDIDATE: 9c178ffb033cde41849379fc914f321697ff8691
         EVIDENCE: docs/slice16d_b3_conversational_workspace.md
         A3: docs/slice16_amendment_a3_full_viewport_workspace.md
 16D-C: NOT AUTHORIZED
