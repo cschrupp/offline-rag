@@ -13,9 +13,24 @@ ACCEPTED SHA: 936e41446eb1e3697f6b7d245659831f19cf0613
 AMENDMENT A1: ACCEPTED / LOCKED
   5060e2aeb4825f265072a1f870c3c963eace3b30
   docs/slice16_amendment_a1_seneca_product_ux.md
-16D-A: COMPLETE / ACCEPTED
+AMENDMENT A2: ACCEPTED / LOCKED / SEALED
+  dce3456e519cb6c96570e20f5af800d00cafb5a7
+  docs/slice16_amendment_a2_conversational_grounding.md
+  A2 GOVERNANCE CLOSEOUT: f0bdf78d0ae6a79737055d324b22fc35e1e501f5
+16D-A: COMPLETE / ACCEPTED / SEALED
 IMPLEMENTATION: 4f8962f2893ab433e6ea269ad54e46f67771ca70
-16D-B: IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING
+LAST SEALED IMPLEMENTATION BASELINE:
+  a952a75bc07191b213a5113eee53cb967fef8326
+OBSERVED 16D-B1 CANDIDATE:
+  6b6524001f063a628505f572e7ca13d954a38260
+  PRODUCT ACCEPTANCE WITHHELD / NOT SEALED
+16D-B1 FOUNDATION REMEDIATION:
+  ACCEPTED IMPLEMENTATION: c68cc3f8f16a2588ba093886f3e48e1c7037f83f
+  STATUS: ACCEPTED
+  CLOSEOUT PENDING IN THIS COMMIT
+  (SEALED after independent docs verification)
+16D-B2: NOT AUTHORIZED / NOT STARTED
+16D-B3: NOT AUTHORIZED / NOT STARTED
 16D-C: NOT AUTHORIZED / NOT STARTED
 16E–16H: NOT AUTHORIZED
 BASELINE: c72215186524c9937de789adb1cf2056be13ea23
@@ -32,9 +47,18 @@ Locked design authority: [`docs/slice16_design_authority.md`](slice16_design_aut
 
 Amendment A1 (**ACCEPTED / LOCKED** supplemental design authority):
 [`docs/slice16_amendment_a1_seneca_product_ux.md`](slice16_amendment_a1_seneca_product_ux.md)
-at `5060e2aeb4825f265072a1f870c3c963eace3b30`. The revised 16D-A / 16D-B / 16D-C
-decomposition is now the authoritative future sequence; phase execution still
-requires separate explicit implementation authorization.
+at `5060e2aeb4825f265072a1f870c3c963eace3b30`.
+
+Amendment A2 (**ACCEPTED / LOCKED / SEALED** at
+`dce3456e519cb6c96570e20f5af800d00cafb5a7`; governance closeout
+`f0bdf78d0ae6a79737055d324b22fc35e1e501f5`):
+[`docs/slice16_amendment_a2_conversational_grounding.md`](slice16_amendment_a2_conversational_grounding.md).
+A2 authoritatively supersedes only its enumerated clauses and revises the Ask
+path into **16D-B1 (observed) / 16D-B2 / 16D-B3** then **16D-C**. A2 acceptance
+does **not** authorize B2/B3/C. B1 foundation upload remediation is
+**ACCEPTED** at `c68cc3f8f16a2588ba093886f3e48e1c7037f83f` (closeout pending /
+not yet sealed); that acceptance does **not** grant product acceptance to the
+legacy B1 Ask/Evidence UX and does **not** authorize B2.
 
 16A evidence: [`docs/slice16a_workspace_foundation.md`](slice16a_workspace_foundation.md)
 
@@ -43,6 +67,9 @@ requires separate explicit implementation authorization.
 16C evidence: [`docs/slice16c_react_shell_source_ui.md`](slice16c_react_shell_source_ui.md)
 
 16D-A evidence: [`docs/slice16d_a_seneca_product_foundation_query_scope.md`](slice16d_a_seneca_product_foundation_query_scope.md)
+
+16D-B1 foundation remediation evidence:
+[`docs/slice16d_b1_upload_foundation_remediation.md`](slice16d_b1_upload_foundation_remediation.md)
 
 ```text
 SLICE 17: NOT AUTHORIZED
@@ -64,11 +91,17 @@ Use sequential phase gates unless explicitly redesigned:
  ↓
 16C [ACCEPTED / SEALED]
  ↓
-16D-A [COMPLETE / ACCEPTED]
+16D-A [COMPLETE / ACCEPTED / SEALED]
  ↓
-16D-B [IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING]
+16D-B1 [OBSERVED CANDIDATE / PRODUCT ACCEPTANCE WITHHELD]
  ↓
-16D-C [NOT AUTHORIZED]
+B1 foundation remediation [ACCEPTED @ c68cc3f8… / CLOSEOUT PENDING]
+ ↓
+16D-B2 [NOT AUTHORIZED / NOT STARTED]   ← Grounded Answer V2
+ ↓
+16D-B3 [NOT AUTHORIZED / NOT STARTED]   ← Conversational workspace
+ ↓
+16D-C [NOT AUTHORIZED / NOT STARTED]
  ↓
 16E
  ↓
@@ -82,20 +115,27 @@ Use sequential phase gates unless explicitly redesigned:
 ```text
 AMENDMENT A1: ACCEPTED / LOCKED
 5060e2aeb4825f265072a1f870c3c963eace3b30
+AMENDMENT A2: ACCEPTED / LOCKED / SEALED
+dce3456e519cb6c96570e20f5af800d00cafb5a7
+docs/slice16_amendment_a2_conversational_grounding.md
+A2 CLOSEOUT: f0bdf78d0ae6a79737055d324b22fc35e1e501f5
 ```
 
-The revised 16D-A / 16D-B / 16D-C decomposition above is the authoritative
-implementation sequence under accepted Amendment A1. **16D-A** is
-**COMPLETE / ACCEPTED**. **16D-B** is an **IMPLEMENTED CANDIDATE / HUMAN
-ACCEPTANCE PENDING**. **16D-C** remains **NOT AUTHORIZED** until separate
-explicit implementation authorization (prerequisite completion does not
-authorize the next phase).
+Under accepted A2, Ask/Evidence decomposes into **B1 / B2 / B3** (see A2-D24).
+**16D-A** is **COMPLETE / ACCEPTED / SEALED**. Observed B1 candidate
+`6b652400…` remains **PRODUCT ACCEPTANCE WITHHELD / NOT SEALED**. B1
+foundation upload remediation is **ACCEPTED** at
+`c68cc3f8f16a2588ba093886f3e48e1c7037f83f` (**CLOSEOUT PENDING**; **SEALED**
+after independent docs verification). **16D-B2 / 16D-B3 / 16D-C** remain
+**NOT AUTHORIZED** until separate explicit implementation authorization
+(prerequisite completion does not authorize the next phase).
 
 Do not close Slice 16 automatically after 16H. Independent review and explicit
 human acceptance of the implemented slice remain required. **16A**, **16B**,
-**16C**, and **16D-A** are **COMPLETE / ACCEPTED**; **16D-B** is an
-**IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING**; **16D-C** and
-**16E–16H** remain **NOT AUTHORIZED**. Slice 16 overall is **not** complete.
+**16C**, and **16D-A** are **COMPLETE / ACCEPTED**; legacy B1 product UX
+acceptance remains **WITHHELD**; B1 foundation remediation is **ACCEPTED**
+(closeout pending); **16D-B2 / 16D-B3 / 16D-C** and **16E–16H** remain
+**NOT AUTHORIZED**. Slice 16 overall is **not** complete.
 
 ---
 
@@ -301,38 +341,101 @@ at `4f8962f2893ab433e6ea269ad54e46f67771ca70`. **16D-B / 16D-C** remain
 
 ---
 
-## 16D-B — Ask & Evidence Workspace
+## 16D-B — Ask & Evidence Workspace (decomposed under accepted A2)
 
 ```text
-STATUS: IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING
 AMENDMENT A1: ACCEPTED / LOCKED @ 5060e2aeb4825f265072a1f870c3c963eace3b30
-PREREQUISITE 16D-A: COMPLETE / ACCEPTED @ 4f8962f2893ab433e6ea269ad54e46f67771ca70
-AUTHORIZED BASELINE: a952a75bc07191b213a5113eee53cb967fef8326
-EVIDENCE: docs/slice16d_b_ask_evidence_workspace.md
+AMENDMENT A2: ACCEPTED / LOCKED / SEALED @ dce3456e519cb6c96570e20f5af800d00cafb5a7
+A2 CLOSEOUT: f0bdf78d0ae6a79737055d324b22fc35e1e501f5
+PREREQUISITE 16D-A: COMPLETE / ACCEPTED / SEALED @ 4f8962f2893ab433e6ea269ad54e46f67771ca70
+LAST SEALED IMPLEMENTATION BASELINE:
+  a952a75bc07191b213a5113eee53cb967fef8326
 ```
 
-Implementation candidate for independent review / human acceptance. **16D-C**
-remains **NOT AUTHORIZED / NOT STARTED**.
+Historical A1 text treated 16D-B as a single Ask/Evidence gate (single-turn Ask,
+citation chips, session-local history). Accepted A2 authoritatively replaces
+that with B1/B2/B3 below. Do **not** implement B2/B3/C without separate
+authorization.
 
-### Future scope (candidate)
+### 16D-B1 — Ask/Evidence Engineering Foundation
 
-- Sources | Ask | Evidence desktop layout;
-- responsive drawers;
-- source-selection checkboxes;
-- single-turn Ask;
-- answer rendering;
-- citation chips;
-- evidence panel;
-- source preview;
-- Current/Historical snapshot visibility;
-- abstention presentation as successful safety outcomes;
-- session-local visual history only.
+```text
+STATUS: OBSERVED IMPLEMENTATION CANDIDATE
+PRODUCT ACCEPTANCE WITHHELD / NOT SEALED
+OBSERVED SHA: 6b6524001f063a628505f572e7ca13d954a38260
+HISTORICAL DISPOSITION: useful engineering substrate;
+  legacy product UX acceptance withheld
+EVIDENCE (historical): docs/slice16d_b_ask_evidence_workspace.md
+```
 
-### Must not
+Useful substrate preserved (not release-accepted Ask UX):
 
-- conversational memory;
-- send history as hidden query context;
-- fabricate PDF text highlights without reliable mapping.
+- source selection;
+- scoped query;
+- exact-version evidence;
+- Current / Historical semantics;
+- PDF / text evidence preview;
+- session presentation primitives.
+
+Known A2 product findings remain assigned downstream (not fixed by upload
+remediation):
+
+- F7 desktop shell too narrow → B3
+- F8 dynamic content spill/containment → B3
+- F9 composer lifecycle → B3
+- F10 single-turn interaction too primitive → B3
+
+### 16D-B1 FOUNDATION REMEDIATION
+
+```text
+STATUS: ACCEPTED
+CLOSEOUT PENDING IN THIS COMMIT
+(SEALED after independent docs verification)
+ACCEPTED IMPLEMENTATION:
+  c68cc3f8f16a2588ba093886f3e48e1c7037f83f
+IMPLEMENTATION BASELINE:
+  6b6524001f063a628505f572e7ca13d954a38260
+EVIDENCE: docs/slice16d_b1_upload_foundation_remediation.md
+FINDINGS CLOSED: B1-U1 / B1-U2 / B1-U3 / B1-U4 / B1-R1
+```
+
+Accepted upload-foundation scope only (does **not** grant legacy B1 product
+UX acceptance):
+
+- browser multi-file source-upload reliability;
+- pre-202 AbortController / cancellation;
+- honest transport-error classification;
+- transport-ambiguity-safe idempotent retry;
+- R1 canceled-upload fresh-intent duplicate hazard fix.
+
+### 16D-B2 — Grounded Answer V2 & Claim Citations
+
+```text
+STATUS: NOT AUTHORIZED / NOT STARTED
+```
+
+Future scope (A2-D24): response-local E1/E2 handles; grounded-answer-v2 blocks;
+excerpts; claim citation cards; structured abstention. **No** conversational
+orchestration. Requires sealed B1 foundation remediation before authorization
+consideration.
+
+### 16D-B3 — Conversational Workspace
+
+```text
+STATUS: NOT AUTHORIZED / NOT STARTED
+```
+
+Future scope (A2-D24): conversation/turn orchestration; context resolver;
+bounded prior turns; New conversation; composer reset; wide layout; overflow
+containment; responsive drawers. Owns F7/F8/F9/F10 where applicable.
+
+### Must not (all B* gates)
+
+- factual conversational memory / prior answers as evidence;
+- second RAG pipeline;
+- fabricate PDF text highlights without reliable mapping;
+- treat B1 foundation remediation acceptance as legacy Ask UX acceptance;
+- start B2 / B3 / C without separate explicit implementation authorization.
 
 ---
 
@@ -341,13 +444,14 @@ remains **NOT AUTHORIZED / NOT STARTED**.
 ```text
 STATUS: NOT AUTHORIZED / NOT STARTED
 AMENDMENT A1: ACCEPTED / LOCKED @ 5060e2aeb4825f265072a1f870c3c963eace3b30
+AMENDMENT A2: ACCEPTED / LOCKED / SEALED @ dce3456e519cb6c96570e20f5af800d00cafb5a7
 ```
 
 ### Future scope (candidate)
 
 - **required** instructor-oriented Training Mode (S16-D19 — not optional);
-- saved prompts;
-- hide/reveal answer/evidence;
+- saved prompts seed / start conversation turns (A2-D25);
+- hide/reveal answer/evidence on grounded assistant turns + claim citations;
 - larger presentation-friendly typography;
 - optional fullscreen/presentation layout.
 
@@ -511,9 +615,19 @@ ACCEPTED SHA: eb8baefc6e3eaf7df33668c85fbbfef22364bb0e
 ACCEPTED SHA: 936e41446eb1e3697f6b7d245659831f19cf0613
 AMENDMENT A1: ACCEPTED / LOCKED
   5060e2aeb4825f265072a1f870c3c963eace3b30
-16D-A: COMPLETE / ACCEPTED
+AMENDMENT A2: ACCEPTED / LOCKED / SEALED
+  dce3456e519cb6c96570e20f5af800d00cafb5a7
+  A2 CLOSEOUT: f0bdf78d0ae6a79737055d324b22fc35e1e501f5
+16D-A: COMPLETE / ACCEPTED / SEALED
 IMPLEMENTATION: 4f8962f2893ab433e6ea269ad54e46f67771ca70
-16D-B: IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING
+OBSERVED 16D-B1 CANDIDATE:
+  6b6524001f063a628505f572e7ca13d954a38260
+  PRODUCT ACCEPTANCE WITHHELD / NOT SEALED
+16D-B1 FOUNDATION REMEDIATION:
+  ACCEPTED @ c68cc3f8f16a2588ba093886f3e48e1c7037f83f
+  CLOSEOUT PENDING / NOT YET SEALED
+16D-B2: NOT AUTHORIZED / NOT STARTED
+16D-B3: NOT AUTHORIZED / NOT STARTED
 16D-C: NOT AUTHORIZED / NOT STARTED
 16E–16H: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
@@ -524,9 +638,13 @@ M7 CLOSEOUT: NOT AUTHORIZED
 
 Plan acceptance alone did **not** authorize execution. 16A, 16B, 16C, and
 16D-A were separately authorized and are now **COMPLETE / ACCEPTED**. Amendment
-A1 is **ACCEPTED / LOCKED** at `5060e2aeb4825f265072a1f870c3c963eace3b30`; the
-16D-A/B/C decomposition is the authoritative sequence, but later phase
-execution remains separately gated. **16D-A** is **COMPLETE / ACCEPTED** at
-`4f8962f2893ab433e6ea269ad54e46f67771ca70`. **16D-B** is an **IMPLEMENTED
-CANDIDATE / HUMAN ACCEPTANCE PENDING**. **16D-C** and **16E–16H** remain
+A1 is **ACCEPTED / LOCKED** at `5060e2aeb4825f265072a1f870c3c963eace3b30`.
+Amendment A2 is **ACCEPTED / LOCKED / SEALED** at
+`dce3456e519cb6c96570e20f5af800d00cafb5a7` (closeout
+`f0bdf78d0ae6a79737055d324b22fc35e1e501f5`). **16D-A** is **COMPLETE /
+ACCEPTED / SEALED** at `4f8962f2893ab433e6ea269ad54e46f67771ca70`. Observed
+16D-B1 candidate `6b652400…` remains **PRODUCT ACCEPTANCE WITHHELD**. B1
+foundation remediation is **ACCEPTED** at
+`c68cc3f8f16a2588ba093886f3e48e1c7037f83f` (**CLOSEOUT PENDING**; not yet
+**SEALED**). **16D-B2 / 16D-B3 / 16D-C** and **16E–16H** remain
 **NOT AUTHORIZED**. Slice 16 overall is **not** complete.

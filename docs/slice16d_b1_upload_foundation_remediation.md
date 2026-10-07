@@ -1,14 +1,20 @@
 # Slice 16D-B1 — Source upload foundation remediation
 
 ```text
-STATUS: IMPLEMENTATION EVIDENCE CANDIDATE
-HUMAN ACCEPTANCE: PENDING
-REWORK: R1 cancel-safety (after 855fd644…)
+STATUS: ACCEPTED
+HUMAN ACCEPTANCE: ACCEPTED
+INDEPENDENT IMPLEMENTATION REVIEW: PASSED
+CLOSEOUT: PENDING IN THIS COMMIT (SEAL after independent docs verification)
+
+ACCEPTED IMPLEMENTATION SHA:
+c68cc3f8f16a2588ba093886f3e48e1c7037f83f
+
+Acceptance applies exactly to that SHA (upload-foundation remediation only).
 
 Implementation baseline:
 6b6524001f063a628505f572e7ca13d954a38260
 
-Previous candidate:
+Previous candidate (pre-R1; did not pass acceptance):
 855fd6440ed5b9be18b7fe2cc303bb2700bc9f4f
 
 Governance authority (A2 acceptance closeout):
@@ -21,12 +27,107 @@ Branch:
 implementation/16d-b1-upload-foundation-remediation
 
 16D-B1 FOUNDATION REMEDIATION:
-IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+ACCEPTED @ c68cc3f8f16a2588ba093886f3e48e1c7037f83f
+CLOSEOUT PENDING / NOT YET SEALED
 
-16D-B1 product acceptance: WITHHELD (not sealed by this candidate)
+16D-B1 product acceptance (legacy Ask/Evidence UX):
+PRODUCT ACCEPTANCE WITHHELD / NOT SEALED
+
 16D-B2 / 16D-B3 / 16D-C: NOT AUTHORIZED
 Slice 16: IN PROGRESS / NOT COMPLETE
 ```
+
+## Acceptance disposition
+
+Human decision: **ACCEPT** the 16D-B1 foundation remediation implementation at
+`c68cc3f8f16a2588ba093886f3e48e1c7037f83f`.
+
+Independent implementation review: **PASS**.
+
+This acceptance applies specifically to the upload-foundation remediation:
+
+- multi-file browser upload;
+- pre-202 cancellation;
+- honest transport classification;
+- ambiguity-safe idempotent retry;
+- R1 cancellation reconciliation fix.
+
+It does **not** accept the legacy B1 Ask/product UX. Known A2 product findings
+F7/F8 (layout spilling) and F9/F10 (composer lifecycle / single-turn
+interaction) remain intentionally deferred to **16D-B3** where applicable.
+
+Do **not** rewrite history to imply the initial candidate (`855fd644…`) passed
+without rework. R1 was required after independent review.
+
+### Findings — CLOSED
+
+| ID | Finding | Disposition |
+| --- | --- | --- |
+| B1-U1 | Browser multi-file source-upload reliability | **CLOSED** |
+| B1-U2 | Pre-202 upload cancellation | **CLOSED** |
+| B1-U3 | Honest transport-error classification | **CLOSED** |
+| B1-U4 | Transport-ambiguity-safe retry | **CLOSED** |
+| B1-R1 | Canceled-upload fresh-intent duplicate hazard | **CLOSED** |
+
+---
+
+## Accepted product / transport contract (frozen)
+
+### Browser Add Sources
+
+- XMLHttpRequest multipart transport;
+- browser-owned multipart `Content-Type` boundary;
+- repeated `files` parts;
+- one Add Sources action → one `source_add` operation;
+- explicit `AbortController` / `xhr.abort()` pre-202 cancellation;
+- no automatic mutation retry.
+
+### Transport interruption
+
+`upload_transport_interrupted`
+→ acceptance unknown
+→ frozen files
+→ frozen expected revision
+→ frozen idempotency key
+→ explicit **Retry safely**
+
+### Explicit cancel
+
+`request_aborted`
+→ no **Retry safely**
+→ old intent/key abandoned
+→ selected files cleared
+→ native file input reset/remounted
+→ workspace + source state reconciled
+→ Add blocked during reconciliation
+→ new submission requires explicit new file selection
+
+### 202 boundary
+
+- before 202 → browser transport semantics
+- after 202 → durable managed-operation semantics
+
+---
+
+## Idempotency replay contract (accepted dependency)
+
+Matching existing idempotency identity is replayed **before** stale workspace
+revision rejection.
+
+Regression proof:
+
+`test_f3_idempotency_replay_precedes_stale_revision_after_success`
+
+Accepted behavior:
+
+same files + same key + original stale `If-Match`
+→ same operation replay
+→ no duplicate logical sources
+→ no `workspace_conflict`
+
+Do **not** broaden this into generic automatic retry authority.
+
+---
 
 ## Observed browser failure
 
@@ -94,7 +195,8 @@ After 202: modal closes; `rememberActiveOperation()` + existing polling/tray.
 Independent review finding B1-R1 (against `855fd644…`): cancel reset the
 idempotency handle while leaving `selectedFiles` populated, enabling
 immediate Add under a new key even though the aborted request may already
-have been admitted. R1 closes that gap as above.
+have been admitted. R1 closes that gap as above. Finding **B1-R1** is
+**CLOSED** at the accepted SHA.
 
 ## Ambiguity semantics
 
@@ -151,10 +253,10 @@ Backend:
   (two-file add, succeed, replay same key + stale If-Match 1 → same
   operation_id, source count remains 2).
 
-## Manual browser evidence
+## Manual browser evidence (frozen acceptance smoke)
 
-Performed against local Vite `:5173` → FastAPI `:8080` on this candidate
-working tree (workspace `ws_1f0faad69b9041e7aa6c60190538ba7d`):
+Performed against local Vite `:5173` → FastAPI `:8080` on the remediation
+candidate working tree (workspace `ws_1f0faad69b9041e7aa6c60190538ba7d`):
 
 | Smoke | Result |
 | --- | --- |
@@ -164,6 +266,19 @@ working tree (workspace `ws_1f0faad69b9041e7aa6c60190538ba7d`):
 | D. no duplicates | PASS (final unique set of 7 display names; no duplicates) |
 | E. pre-202 Cancel upload (R1) | See Rework 1 manual abort section below (must land abort before response). |
 | F/G. ambiguity + Retry safely | Covered by automated UI tests (`slice16d_b1_upload.test.tsx`); not separately forced in this manual session. |
+
+Frozen acceptance summary:
+
+- single-file upload **PASS**
+- two-file upload **PASS**
+- four-file upload **PASS**
+- one atomic `source_add` per batch
+- no duplicates
+- actual pre-202 `xhr.abort()` observed
+- cancel returned UI to usable state
+- canceled selection cleared
+- no **Retry safely** after explicit cancel
+- canceled test files not observed in resulting source set
 
 ### Rework 1 manual abort smoke
 
@@ -183,9 +298,9 @@ OPENED).
 | Selected files cleared; Add not one-click ready | PASS (selection list gone; **Add sources** disabled; no **Retry safely**) |
 | No fabricated local Operation / no admit of canceled files | PASS (source count remained 7; no `r1-cancel-*.bin` sources) |
 
-Do **not** interpret browser abort as proof the server never admitted a raced
-request; clearing selection + reconciliation is what prevents one-click
-duplicate under a fresh key.
+**Caveat (preserved):** browser abort does **not** logically prove the server
+could never have won an acceptance race. The reconciliation + cleared-selection
+contract is what prevents unsafe one-click duplicate resubmission.
 
 ## Limitations
 
@@ -193,5 +308,6 @@ duplicate under a fresh key.
 - does not implement B2/B3/C;
 - does not add durable operation cancellation;
 - does not chunk/resume uploads;
-- Ask layout ugliness remains deferred to B3;
+- Ask layout ugliness (F7/F8) and composer/single-turn findings (F9/F10)
+  remain deferred to B3 where applicable;
 - backend production code intentionally unchanged in this candidate.
