@@ -303,6 +303,19 @@ export function WorkspacePage() {
   function enterTrainingMode() {
     setTrainingMode(true);
     setSavedPrompts(loadTrainingPrompts(workspaceId));
+    // Explicit seed: answered turns start fully hidden before any patch (C-R1).
+    setRevealMap((prev) => {
+      const next: RevealMap = { ...prev };
+      for (const pair of pairs) {
+        if (
+          String(pair.response.status) === "answered" &&
+          next[pair.pairId] == null
+        ) {
+          next[pair.pairId] = { ...HIDDEN_REVEAL };
+        }
+      }
+      return next;
+    });
   }
 
   function exitTrainingMode() {
@@ -313,8 +326,28 @@ export function WorkspacePage() {
   }
 
   function patchReveal(entryId: string, patch: Partial<TurnRevealState>) {
-    setRevealMap((prev) => withRevealPatch(prev, entryId, patch));
+    setRevealMap((prev) =>
+      withRevealPatch(prev, entryId, patch, HIDDEN_REVEAL),
+    );
     if (patch.evidence === true) {
+      // C-R2: Reveal evidence targets this turn as Evidence/provenance context.
+      setActiveEntryId(entryId);
+      const pair = pairs.find((row) => row.pairId === entryId);
+      if (pair) {
+        const first = pair.response.citations[0] ?? null;
+        setSelectedCitation(first);
+        if (first) {
+          setPreviewTarget({
+            kind: "citation",
+            workspaceId,
+            citation: first,
+            workspaceRevision: pair.response.workspace_revision,
+            querySnapshotId: pair.response.snapshot_id,
+          });
+        } else {
+          setPreviewTarget(null);
+        }
+      }
       if (isNarrowLayout) {
         setSourcesDrawerOpen(false);
         setEvidenceDrawerOpen(true);
@@ -941,7 +974,7 @@ export function WorkspacePage() {
     if (trainingModeRef.current) {
       // Citation activation while Evidence is hidden is an explicit inspect action.
       setRevealMap((prev) =>
-        withRevealPatch(prev, entry.entryId, { evidence: true }),
+        withRevealPatch(prev, entry.entryId, { evidence: true }, HIDDEN_REVEAL),
       );
     }
     setSelectedCitation(citation);

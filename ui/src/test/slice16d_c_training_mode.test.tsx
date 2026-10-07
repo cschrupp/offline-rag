@@ -5,6 +5,10 @@ import type { ConversationTurnResponse } from "../api/types";
 import { loadDesktopRailState } from "../features/ask/desktopRailState";
 import { NARROW_LAYOUT_MEDIA } from "../features/ask/useNarrowLayout";
 import {
+  HIDDEN_REVEAL,
+  withRevealPatch,
+} from "../features/training/revealState";
+import {
   deleteTrainingPrompt,
   loadTrainingPrompts,
   saveTrainingPrompt,
@@ -173,6 +177,34 @@ function workspaceHandlers(opts?: {
   });
   return { mock, turnBodies };
 }
+
+describe("Slice 16D-C reveal-state helpers (Rework 1)", () => {
+  it("withRevealPatch defaults missing answered turns to hidden layers (C-R1)", () => {
+    const afterAnswer = withRevealPatch({}, "e1", { answer: true });
+    expect(afterAnswer.e1).toEqual({
+      answer: true,
+      citations: false,
+      evidence: false,
+    });
+    const afterCitations = withRevealPatch({}, "e2", { citations: true });
+    expect(afterCitations.e2).toEqual({
+      answer: false,
+      citations: true,
+      evidence: false,
+    });
+    const afterEvidence = withRevealPatch({}, "e3", { evidence: true });
+    expect(afterEvidence.e3).toEqual({
+      answer: false,
+      citations: false,
+      evidence: true,
+    });
+    expect(HIDDEN_REVEAL).toEqual({
+      answer: false,
+      citations: false,
+      evidence: false,
+    });
+  });
+});
 
 describe("Slice 16D-C training prompt storage", () => {
   it("persists per workspace and isolates libraries", () => {
@@ -564,6 +596,314 @@ describe("Slice 16D-C Training Mode UI", () => {
     // Mobile Sources/Evidence entry points remain; no second modal stack.
     expect(screen.getAllByRole("button", { name: "Sources" }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("button", { name: "Evidence" }).length).toBeGreaterThan(0);
+    mock.restore();
+  });
+
+  it("pre-existing normal answer keeps independent layers on first reveal (C-R1)", async () => {
+    ensureAppRoot();
+    const user = userEvent.setup();
+    const { mock } = workspaceHandlers({
+      onTurn: () =>
+        turnResponse({
+          answer: "Preexisting answer.",
+          answer_blocks: [
+            { text: "Preexisting answer.", citation_refs: ["c1"] },
+          ],
+        }),
+    });
+    renderApp("/workspaces/ws_1");
+    await screen.findByRole("heading", { name: "Conversation" });
+    await user.type(screen.getByLabelText("Ask a follow-up"), "Normal first?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("Preexisting answer.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Citation 1/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Training Mode" }));
+    expect(await screen.findByText("Answer hidden")).toBeInTheDocument();
+    expect(screen.queryByText("Preexisting answer.")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Citation 1/i })).toBeNull();
+    expect(screen.getByText("Evidence hidden")).toBeInTheDocument();
+
+    await user.click(
+      screen.getAllByRole("button", { name: "Reveal answer" })[0]!,
+    );
+    expect(screen.getByText("Preexisting answer.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Citation 1/i })).toBeNull();
+    expect(screen.getByText("Evidence hidden")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Reveal citations" }),
+    ).toHaveAttribute("aria-expanded", "false");
+    expect(
+      screen.getByRole("button", { name: "Reveal evidence" }),
+    ).toHaveAttribute("aria-expanded", "false");
+
+    await user.click(screen.getByRole("button", { name: "Hide answer" }));
+    expect(screen.getByText("Answer hidden")).toBeInTheDocument();
+    mock.restore();
+  });
+
+  it("first action Reveal citations does not reveal answer or evidence (C-R1)", async () => {
+    ensureAppRoot();
+    const user = userEvent.setup();
+    const { mock } = workspaceHandlers();
+    renderApp("/workspaces/ws_1");
+    await screen.findByRole("heading", { name: "Conversation" });
+    await user.type(screen.getByLabelText("Ask a follow-up"), "Cite first?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    await screen.findByText("Answer text.");
+
+    await user.click(screen.getByRole("button", { name: "Training Mode" }));
+    await screen.findByText("Answer hidden");
+    await user.click(screen.getByRole("button", { name: "Reveal citations" }));
+
+    expect(screen.getByText("Answer hidden")).toBeInTheDocument();
+    expect(screen.queryByText("Answer text.")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Citation 1/i })).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Hide citations" }),
+    ).toHaveAttribute("aria-expanded", "true");
+    expect(
+      screen.getAllByRole("button", { name: "Reveal answer" })[0],
+    ).toHaveAttribute("aria-expanded", "false");
+    expect(
+      screen.getByRole("button", { name: "Reveal evidence" }),
+    ).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByText("Evidence hidden")).toBeInTheDocument();
+    mock.restore();
+  });
+
+  it("first action Reveal evidence does not reveal answer or citations (C-R1)", async () => {
+    ensureAppRoot();
+    const user = userEvent.setup();
+    const { mock } = workspaceHandlers();
+    renderApp("/workspaces/ws_1");
+    await screen.findByRole("heading", { name: "Conversation" });
+    await user.type(screen.getByLabelText("Ask a follow-up"), "Evidence first?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    await screen.findByText("Answer text.");
+
+    await user.click(screen.getByRole("button", { name: "Training Mode" }));
+    await screen.findByText("Answer hidden");
+    await user.click(screen.getByRole("button", { name: "Reveal evidence" }));
+
+    expect(screen.getByText("Answer hidden")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Citation 1/i })).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Hide evidence" }),
+    ).toHaveAttribute("aria-expanded", "true");
+    expect(
+      screen.getAllByRole("button", { name: "Reveal answer" })[0],
+    ).toHaveAttribute("aria-expanded", "false");
+    expect(
+      screen.getByRole("button", { name: "Reveal citations" }),
+    ).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("Evidence hidden")).toBeNull();
+    mock.restore();
+  });
+
+  it("Reveal evidence on older non-active turn binds Evidence to that turn (C-R2)", async () => {
+    ensureAppRoot();
+    const user = userEvent.setup();
+    let n = 0;
+    const { mock } = workspaceHandlers({
+      onTurn: () => {
+        n += 1;
+        if (n === 1) {
+          return turnResponse({
+            conversation_trace_id: "ctr_old",
+            query_trace_id: "tr_old",
+            snapshot_id: "snap_old",
+            answer: "Older answer one.",
+            answer_blocks: [
+              { text: "Older answer one.", citation_refs: ["c1"] },
+            ],
+            citations: [
+              {
+                evidence_unit_id: "eu_old",
+                document_id: "doc_1",
+                source_chunk_id: "chunk_old",
+                kind: "parent",
+                section_path: ["Old"],
+                page_start: 2,
+                page_end: 2,
+                line_start: null,
+                line_end: null,
+                clipped: false,
+                source_id: "src_1",
+                source_version: 1,
+                source_display_name: "Alpha.pdf",
+                citation_ref: "c1",
+                excerpt: "Older excerpt.",
+                excerpt_clipped: false,
+              },
+            ],
+          });
+        }
+        return turnResponse({
+          conversation_trace_id: "ctr_new",
+          query_trace_id: "tr_new",
+          snapshot_id: "snap_1",
+          answer: "Newer answer two.",
+          answer_blocks: [
+            { text: "Newer answer two.", citation_refs: ["c1"] },
+          ],
+          citations: [
+            {
+              evidence_unit_id: "eu_new",
+              document_id: "doc_1",
+              source_chunk_id: "chunk_new",
+              kind: "parent",
+              section_path: ["New"],
+              page_start: 9,
+              page_end: 9,
+              line_start: null,
+              line_end: null,
+              clipped: false,
+              source_id: "src_1",
+              source_version: 1,
+              source_display_name: "Alpha.pdf",
+              citation_ref: "c1",
+              excerpt: "Newer excerpt.",
+              excerpt_clipped: false,
+            },
+          ],
+        });
+      },
+    });
+    renderApp("/workspaces/ws_1");
+    await screen.findByRole("heading", { name: "Conversation" });
+    await user.click(screen.getByRole("button", { name: "Training Mode" }));
+    await user.type(screen.getByLabelText("Training question"), "Q1 older?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    await screen.findByText("Answer hidden");
+    await user.click(
+      screen.getAllByRole("button", { name: "Reveal answer" })[0]!,
+    );
+    expect(await screen.findByText("Older answer one.")).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Training question"), "Q2 newer?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() =>
+      expect(screen.getAllByText("Answer hidden").length).toBeGreaterThan(0),
+    );
+    // Newest answered turn is active; reveal its answer so both turns show controls.
+    const revealAnswers = screen.getAllByRole("button", {
+      name: "Reveal answer",
+    });
+    await user.click(revealAnswers[revealAnswers.length - 1]!);
+    expect(await screen.findByText("Newer answer two.")).toBeInTheDocument();
+
+    // Reveal evidence on the older turn (first Reveal evidence control).
+    const revealEvidenceButtons = screen.getAllByRole("button", {
+      name: "Reveal evidence",
+    });
+    expect(revealEvidenceButtons.length).toBeGreaterThanOrEqual(1);
+    await user.click(revealEvidenceButtons[0]!);
+
+    await waitFor(() => {
+      expect(screen.queryByText("Evidence hidden")).toBeNull();
+    });
+    // Older turn's evidence context — page 2, not the newer page 9.
+    expect(screen.getAllByText(/page 2/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/page 9/i)).toBeNull();
+    await user.click(screen.getAllByText("Provenance")[0]!);
+    expect(screen.getAllByText("ctr_old").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("snap_old").length).toBeGreaterThan(0);
+    expect(screen.queryByText("ctr_new")).toBeNull();
+    // Older turn evidence control expanded.
+    const hideEvidence = screen.getAllByRole("button", {
+      name: "Hide evidence",
+    });
+    expect(hideEvidence.length).toBeGreaterThanOrEqual(1);
+    expect(hideEvidence[0]).toHaveAttribute("aria-expanded", "true");
+    mock.restore();
+  });
+
+  it("historical turn Reveal evidence keeps exact snapshot provenance (C-R2)", async () => {
+    ensureAppRoot();
+    const user = userEvent.setup();
+    let n = 0;
+    const { mock } = workspaceHandlers({
+      onTurn: () => {
+        n += 1;
+        if (n === 1) {
+          return turnResponse({
+            conversation_trace_id: "ctr_hist",
+            query_trace_id: "tr_hist",
+            snapshot_id: "snap_historical",
+            workspace_revision: 4,
+            answer: "Historical answer.",
+            answer_blocks: [
+              { text: "Historical answer.", citation_refs: ["c1"] },
+            ],
+            citations: [
+              {
+                evidence_unit_id: "eu_hist",
+                document_id: "doc_1",
+                source_chunk_id: "chunk_hist",
+                kind: "parent",
+                section_path: ["Hist"],
+                page_start: 3,
+                page_end: 3,
+                line_start: null,
+                line_end: null,
+                clipped: false,
+                source_id: "src_1",
+                source_version: 1,
+                source_display_name: "Alpha.pdf",
+                citation_ref: "c1",
+                excerpt: "Historical excerpt.",
+                excerpt_clipped: false,
+              },
+            ],
+          });
+        }
+        return turnResponse({
+          conversation_trace_id: "ctr_cur",
+          query_trace_id: "tr_cur",
+          snapshot_id: "snap_1",
+          answer: "Current answer.",
+          answer_blocks: [{ text: "Current answer.", citation_refs: ["c1"] }],
+        });
+      },
+    });
+    renderApp("/workspaces/ws_1");
+    await screen.findByRole("heading", { name: "Conversation" });
+    await user.click(screen.getByRole("button", { name: "Training Mode" }));
+    await user.type(screen.getByLabelText("Training question"), "Historical Q?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    await screen.findByText("Answer hidden");
+    await user.type(screen.getByLabelText("Training question"), "Current Q?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole("button", { name: /Historical snapshot/i }).length,
+      ).toBeGreaterThan(0),
+    );
+
+    // Reveal evidence on the historical turn via its reveal control group.
+    const historicalBadge = screen.getByRole("button", {
+      name: /Historical snapshot/i,
+    });
+    const historicalTurn = historicalBadge.closest("article");
+    expect(historicalTurn).toBeTruthy();
+    const revealEvidence = Array.from(
+      historicalTurn!.querySelectorAll("button"),
+    ).find((b) => b.textContent?.trim() === "Reveal evidence");
+    expect(revealEvidence).toBeTruthy();
+    await user.click(revealEvidence!);
+
+    await waitFor(() => {
+      expect(screen.queryByText("Evidence hidden")).toBeNull();
+    });
+    expect(screen.getAllByText(/page 3/i).length).toBeGreaterThan(0);
+    const provenance = screen.getAllByText("Provenance")[0]!;
+    await user.click(provenance);
+    expect(screen.getAllByText("ctr_hist").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("snap_historical").length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText("Historical snapshot").length,
+    ).toBeGreaterThan(0);
     mock.restore();
   });
 });

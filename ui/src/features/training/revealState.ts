@@ -12,32 +12,38 @@ export const HIDDEN_REVEAL: TurnRevealState = {
   evidence: false,
 };
 
+export const VISIBLE_REVEAL: TurnRevealState = {
+  answer: true,
+  citations: true,
+  evidence: true,
+};
+
 export type RevealMap = Record<string, TurnRevealState>;
 
 /**
- * Resolve an explicit map entry, or fall back to fully visible.
- * AskPanel uses a stricter answered-turn fail-closed default when Training Mode
- * is active and the entry is unanswered in the map yet.
+ * Resolve reveal layers for a turn.
+ * Training Mode answered turns must use HIDDEN_REVEAL when missing so the
+ * first patch never inherits a fully-visible base (C-R1).
  */
 export function revealForEntry(
   map: RevealMap,
   entryId: string,
+  missingBase: TurnRevealState = HIDDEN_REVEAL,
 ): TurnRevealState {
-  return (
-    map[entryId] ?? {
-      answer: true,
-      citations: true,
-      evidence: true,
-    }
-  );
+  return map[entryId] ?? missingBase;
 }
 
+/**
+ * Apply a partial reveal patch. Unspecified layers keep the current value,
+ * and missing map entries use `missingBase` (default HIDDEN_REVEAL).
+ */
 export function withRevealPatch(
   map: RevealMap,
   entryId: string,
   patch: Partial<TurnRevealState>,
+  missingBase: TurnRevealState = HIDDEN_REVEAL,
 ): RevealMap {
-  const current = revealForEntry(map, entryId);
+  const current = revealForEntry(map, entryId, missingBase);
   return {
     ...map,
     [entryId]: {

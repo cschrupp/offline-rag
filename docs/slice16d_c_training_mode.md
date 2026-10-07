@@ -4,8 +4,17 @@
 16D-C:
 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
 
+INDEPENDENT REVIEW:
+REWORK 1 REQUIRED → REWORK 1 IMPLEMENTED / HUMAN ACCEPTANCE PENDING
+
 Authorized baseline:
 396aa329e6c0413eb69aacd39067a70d9b478b72
+
+Original implementation candidate:
+2266d7b16bf01e11c5ca69b2ffe4d7f4e0e821ab
+
+Rework 1 baseline:
+6c609b60a85d1331fb4ae3c1d56e685472d77017
 
 Branch:
 implementation/16d-c-training-mode
@@ -103,9 +112,37 @@ Reveal state is transient UI state only (not persisted to backend/scientific res
 - Reveal/mode controls are real buttons with `aria-expanded` / accessible labels where applicable.
 - Hidden answer/citation/evidence content is omitted from the accessibility tree (not merely visually transparent).
 
+## Rework 1 — per-turn reveal-state integrity
+
+### C-R1 closure
+
+`withRevealPatch` / `revealForEntry` now default missing map entries to
+`HIDDEN_REVEAL` (not fully visible). Entering Training Mode also seeds answered
+turns with `HIDDEN_REVEAL` before any patch. First Reveal-answer / Reveal-citations /
+Reveal-evidence on a pre-existing answered turn preserves unspecified layers as
+hidden. Non-answered outcomes remain unhidden.
+
+### C-R2 closure
+
+`patchReveal(..., { evidence: true })` now activates the requested turn as the
+Evidence/provenance context: sets `activeEntryId`, binds first citation preview
+when present (no fabrication), then opens the A3 Evidence rail/drawer. Citation
+activation path unchanged.
+
+### Rework 1 tests
+
+Added in `ui/src/test/slice16d_c_training_mode.test.tsx`:
+
+- helper: missing-entry patch defaults hidden
+- pre-existing normal answer → Training Mode → Reveal answer only
+- first action Reveal citations
+- first action Reveal evidence
+- Reveal evidence on older non-active turn binds Evidence to that turn
+- historical turn Reveal evidence keeps exact snapshot provenance
+
 ## Tests
 
-Deterministic coverage in `ui/src/test/slice16d_c_training_mode.test.tsx` (entry/exit, saved prompts, B3 reuse, progressive reveal, non-answered outcomes, new conversation, presentation, a11y, narrow). Existing B3/A3 suites remain green.
+Deterministic coverage in `ui/src/test/slice16d_c_training_mode.test.tsx` (entry/exit, saved prompts, B3 reuse, progressive reveal, non-answered outcomes, new conversation, presentation, a11y, narrow, Rework 1 multi-turn/pre-existing). Existing B3/A3 suites remain green.
 
 ## Manual smoke
 
@@ -131,9 +168,12 @@ Observed:
 ## Implementation candidate SHA
 
 ```text
-IMPLEMENTATION CANDIDATE:
+ORIGINAL IMPLEMENTATION CANDIDATE:
 2266d7b16bf01e11c5ca69b2ffe4d7f4e0e821ab
 
-BRANCH TIP (evidence SHA record):
-ede02926dc55649d31256cdf4829ffe5be22d0dc
+REWORK 1 IMPLEMENTATION:
+<record after commit>
+
+FINAL BRANCH TIP:
+<record after push>
 ```
