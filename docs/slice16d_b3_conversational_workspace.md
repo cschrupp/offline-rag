@@ -1,9 +1,21 @@
 # Slice 16D-B3 — Conversational Workspace
 
 ```text
-STATUS: REWORK 3 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
-HUMAN ACCEPTANCE: PENDING
-INDEPENDENT REVIEW: REWORK 3 COMPLETE / PENDING RE-REVIEW
+STATUS: COMPLETE / ACCEPTED / SEALED
+HUMAN ACCEPTANCE: ACCEPTED
+INDEPENDENT REVIEW: PASSED
+
+ACCEPTED IMPLEMENTATION:
+9c178ffb033cde41849379fc914f321697ff8691
+
+AMENDMENT A3:
+ACCEPTED / LOCKED / SEALED
+MATERIALIZATION: da1082d95630c12eaf0ce1a3b8d005aaa60d2f73
+
+REWORK 1: COMPLETE
+REWORK 2: COMPLETE
+REWORK 3: COMPLETE
+REWORK 3A: COMPLETE
 
 Authorized implementation baseline:
 28aad06f89e6d00a0b81b51f9c2de38fed06cb22
@@ -17,39 +29,37 @@ dce3456e519cb6c96570e20f5af800d00cafb5a7
 A2 closeout:
 f0bdf78d0ae6a79737055d324b22fc35e1e501f5
 
-Amendment A3 (human-approved layout):
-docs/slice16_amendment_a3_full_viewport_workspace.md
-MATERIALIZATION: da1082d95630c12eaf0ce1a3b8d005aaa60d2f73
-
 Branch:
 implementation/16d-b3-conversational-workspace
 
-Original B3 implementation candidate SHA:
-adbf2fcd01c4c2db08fe146993c04ce91b9b97c3
-
-Rework 1 implementation candidate SHA:
-08622794c3186b3eb3684b1c2efc7529bbdac459
-
-Rework 2 implementation candidate SHA:
-b2cdad859e9467fd74dfe801bcdba721137d0afe
-
-Rework 3 baseline (remote tip at authorization):
-528e7dbb10fdde24ea1ea7db71a4e35c2a9222e1
-
-Rework 3 implementation candidate SHA:
-9c178ffb033cde41849379fc914f321697ff8691
-
-Evidence packaging tip:
-bab4c78c281cb21b6fd905a719b4433bb75acd3c
+Implementation / review lineage (not all accepted; accepted product = Rework 3):
+  Original B3 implementation candidate:
+    adbf2fcd01c4c2db08fe146993c04ce91b9b97c3
+  Rework 1 implementation:
+    08622794c3186b3eb3684b1c2efc7529bbdac459
+  Rework 2 implementation:
+    b2cdad859e9467fd74dfe801bcdba721137d0afe
+  Rework 3 baseline:
+    528e7dbb10fdde24ea1ea7db71a4e35c2a9222e1
+  A3 materialization:
+    da1082d95630c12eaf0ce1a3b8d005aaa60d2f73
+  Accepted Rework 3 implementation:
+    9c178ffb033cde41849379fc914f321697ff8691
+  Reviewed Rework 3 packaging tip:
+    8972e24b9c1737021a12e320293a3ce58407b1cb
+  Rework 3A governance synchronization:
+    f728289ca8283091a360d89c9d5514289df15156
 
 16D-B2: COMPLETE / ACCEPTED / SEALED
-16D-B3: REWORK 3 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
-16D-C: NOT AUTHORIZED
+16D-B3: COMPLETE / ACCEPTED / SEALED
+16D-C: NOT AUTHORIZED / NOT STARTED
 16E–16H: NOT AUTHORIZED
 Slice 16: IN PROGRESS / NOT COMPLETE
 ```
 
-This document is the B3 evidence packet and does **not** accept or seal B3.
+This document is the sealed B3 evidence packet for accepted implementation
+`9c178ffb033cde41849379fc914f321697ff8691`. Earlier candidates in the lineage
+above are provenance only and were not the accepted product state.
 
 ## A2 / A3 authority used
 
@@ -132,6 +142,9 @@ Normative sequence in `run_conversation_turn` (A2-D05b; Rework 1 R1):
 | Rework 1 review | REWORK 2 (R2 chronology only); R1/R3–R6 closed |
 | Rework 2 code review | PASS (superseded for acceptance by human visual review) |
 | Human visual acceptance | REWORK 3 authorized + Amendment A3 |
+| Rework 3 implementation review | PASS — recommend human acceptance |
+| Rework 3A governance sync | PASS |
+| Human acceptance / seal | **ACCEPTED / SEALED** at `9c178ffb…` |
 
 ## Rework 3 closure
 

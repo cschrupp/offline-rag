@@ -45,7 +45,7 @@ vocabulary is preserved as provenance only. Current implementation-gate
 state is governed by accepted Amendment A2 and the Authorization note
 later in this document (observed B1 product UX withheld; B1 foundation
 remediation **ACCEPTED / SEALED**; **16D-B2 COMPLETE / ACCEPTED / SEALED**;
-**16D-B3 REWORK 3 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING**; **16D-C NOT AUTHORIZED**).
+**16D-B3 COMPLETE / ACCEPTED / SEALED** at `9c178ffb033cde41849379fc914f321697ff8691`; A3 **ACCEPTED / LOCKED / SEALED**; **16D-C NOT AUTHORIZED**).
 
 ```text
 AMENDMENT A1:
@@ -1116,13 +1116,19 @@ B1 FOUNDATION REMEDIATION:
   INDEPENDENT REVIEW: PASSED
   HUMAN ACCEPTANCE: ACCEPTED
   REWORK 1: COMPLETE
-16D-B3: REWORK 3 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+16D-B3: COMPLETE / ACCEPTED / SEALED
+        ACCEPTED IMPLEMENTATION: 9c178ffb033cde41849379fc914f321697ff8691
+        INDEPENDENT REVIEW: PASSED
+        HUMAN ACCEPTANCE: ACCEPTED
+        REWORK 1: COMPLETE
+        REWORK 2: COMPLETE
+        REWORK 3: COMPLETE
+        REWORK 3A: COMPLETE
         AUTHORIZED BASELINE: 28aad06f89e6d00a0b81b51f9c2de38fed06cb22
-        REWORK 3 BASELINE: 528e7dbb10fdde24ea1ea7db71a4e35c2a9222e1
+        A3: ACCEPTED / LOCKED / SEALED
         A3 MATERIALIZATION: da1082d95630c12eaf0ce1a3b8d005aaa60d2f73
-        REWORK 3 IMPLEMENTATION CANDIDATE: 9c178ffb033cde41849379fc914f321697ff8691
         EVIDENCE: docs/slice16d_b3_conversational_workspace.md
-        A3: docs/slice16_amendment_a3_full_viewport_workspace.md
+        A3 DOC: docs/slice16_amendment_a3_full_viewport_workspace.md
 16D-C: NOT AUTHORIZED
 16E–16H: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
@@ -1142,8 +1148,7 @@ SEALED** (implementation `c68cc3f8f16a2588ba093886f3e48e1c7037f83f`; verified
 closeout `b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90`). Legacy B1 product UX
 remains **PRODUCT ACCEPTANCE WITHHELD**. **16D-B2** is **COMPLETE /
 ACCEPTED / SEALED** at `baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`.
-**16D-B3** is a **REWORK 3 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE
-PENDING** at `9c178ffb033cde41849379fc914f321697ff8691` (A3
-`da1082d95630c12eaf0ce1a3b8d005aaa60d2f73`). Explicit separate human
+**16D-B3** is **COMPLETE / ACCEPTED / SEALED** at `9c178ffb033cde41849379fc914f321697ff8691` (A3
+**ACCEPTED / LOCKED / SEALED** at `da1082d95630c12eaf0ce1a3b8d005aaa60d2f73`). Explicit separate human
 authorization remains required before **16D-C** may start. Slice 16 overall
 is **not** complete.

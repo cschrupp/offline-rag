@@ -3,12 +3,15 @@
 ```text
 SLICE 16 DESIGN AMENDMENT A3
 
-STATUS: HUMAN-APPROVED / MATERIALIZED (pending implementation acceptance with B3)
-HUMAN ACCEPTANCE OF AMENDMENT TEXT: APPROVED FOR B3 REWORK 3
-INDEPENDENT REVIEW: PENDING WITH 16D-B3 REWORK 3
+STATUS: ACCEPTED / LOCKED / SEALED
+HUMAN ACCEPTANCE: ACCEPTED
+INDEPENDENT REVIEW: PASSED
 
-MATERIALIZATION SHA:
+MATERIALIZATION:
 da1082d95630c12eaf0ce1a3b8d005aaa60d2f73
+
+IMPLEMENTED BY ACCEPTED 16D-B3:
+9c178ffb033cde41849379fc914f321697ff8691
 
 AUTHORIZED REWORK 3 BASELINE:
 528e7dbb10fdde24ea1ea7db71a4e35c2a9222e1
@@ -30,8 +33,9 @@ AMENDMENT A2: ACCEPTED / LOCKED / SEALED
 16D-B2: COMPLETE / ACCEPTED / SEALED
   baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149
 
-16D-B3: REWORK 3 AUTHORIZED / HUMAN ACCEPTANCE PENDING
-16D-C: NOT AUTHORIZED
+16D-B3: COMPLETE / ACCEPTED / SEALED
+  9c178ffb033cde41849379fc914f321697ff8691
+16D-C: NOT AUTHORIZED / NOT STARTED
 16E–16H: NOT AUTHORIZED
 
 SLICE 16 OVERALL:
@@ -309,9 +313,13 @@ Collapsible rails are authorized. Arbitrary draggable/resizable panes are not.
 
 ---
 
-## Implementation note
+## Implementation / seal note
 
 Rework 3 on
-`implementation/16d-b3-conversational-workspace` implements this amendment.
-B3 remains **HUMAN ACCEPTANCE PENDING** until separate human acceptance after
-independent review of Rework 3.
+`implementation/16d-b3-conversational-workspace` implemented this amendment.
+Accepted product implementation: `9c178ffb033cde41849379fc914f321697ff8691`.
+Amendment A3 is **ACCEPTED / LOCKED / SEALED** with **16D-B3**. Scope remains
+bounded to workspace-detail presentation (full-viewport workbench, collapsible
+desktop Sources/Evidence rails, Evidence auto-expand on inspection,
+containment, viewport-height workbench, responsive drawer preservation). Do not
+broaden A3 after acceptance. **16D-C** remains **NOT AUTHORIZED**.
