@@ -130,4 +130,6 @@ Observed:
 
 ## Implementation candidate SHA
 
-Recorded at packaging tip after push (see completion gate return block).
+```text
+2266d7b16bf01e11c5ca69b2ffe4d7f4e0e821ab
+```
