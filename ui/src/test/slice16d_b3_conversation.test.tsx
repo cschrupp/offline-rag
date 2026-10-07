@@ -2,6 +2,11 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ConversationTurnResponse } from "../api/types";
+import { abstentionCopy } from "../features/ask/abstentionCopy";
+import {
+  assistantPresentationText,
+  unicodeCharCount,
+} from "../features/ask/assistantPresentation";
 import {
   CONVERSATION_PAIR_MAX,
   RESOLVER_CHAR_MAX,
@@ -12,6 +17,8 @@ import {
   clearConversation,
   loadConversation,
   newPairId,
+  sourceScopeLabel,
+  toHistoryEntry,
 } from "../features/ask/conversationState";
 import { NARROW_LAYOUT_MEDIA } from "../features/ask/useNarrowLayout";
 import {
@@ -137,6 +144,7 @@ describe("Slice 16D-B3 conversation state helpers", () => {
         question: `Q${i}`,
         selectedSourceIds: ["src_1"],
         selectedSourceNames: ["A.pdf"],
+        selectionMode: "all",
         response: turnResponse({
           conversation_trace_id: `ctr_${i}`,
           query_trace_id: `tr_${i}`,
@@ -149,7 +157,15 @@ describe("Slice 16D-B3 conversation state helpers", () => {
   });
 
   it("builds 6-pair / 12k client resolver window", () => {
-    const pairs = [];
+    const pairs: Array<{
+      pairId: string;
+      askedAt: string;
+      question: string;
+      selectedSourceIds: string[];
+      selectedSourceNames: string[];
+      selectionMode: "all" | "subset";
+      response: ConversationTurnResponse;
+    }> = [];
     for (let i = 0; i < 8; i += 1) {
       pairs.push({
         pairId: `p${i}`,
@@ -157,6 +173,7 @@ describe("Slice 16D-B3 conversation state helpers", () => {
         question: `User ${i}`,
         selectedSourceIds: ["src_1"],
         selectedSourceNames: ["A.pdf"],
+        selectionMode: "all",
         response: turnResponse({ answer: `Assistant ${i}` }),
       });
     }
@@ -166,13 +183,22 @@ describe("Slice 16D-B3 conversation state helpers", () => {
     expect(turns.at(-1)).toEqual({ role: "assistant", text: "Assistant 7" });
 
     const huge = "x".repeat(RESOLVER_CHAR_MAX / 2 + 10);
-    const fat = [
+    const fat: Array<{
+      pairId: string;
+      askedAt: string;
+      question: string;
+      selectedSourceIds: string[];
+      selectedSourceNames: string[];
+      selectionMode: "all" | "subset";
+      response: ConversationTurnResponse;
+    }> = [
       {
         pairId: "old",
         askedAt: "2026-01-01T00:00:00Z",
         question: huge,
         selectedSourceIds: ["src_1"],
         selectedSourceNames: ["A.pdf"],
+        selectionMode: "all",
         response: turnResponse({ answer: huge }),
       },
       {
@@ -181,6 +207,7 @@ describe("Slice 16D-B3 conversation state helpers", () => {
         question: "short",
         selectedSourceIds: ["src_1"],
         selectedSourceNames: ["A.pdf"],
+        selectionMode: "subset",
         response: turnResponse({ answer: "ok" }),
       },
     ];
@@ -190,6 +217,110 @@ describe("Slice 16D-B3 conversation state helpers", () => {
       { role: "assistant", text: "ok" },
     ]);
     expect(chronologicalPairs([...fat].reverse())[0]?.pairId).toBe("old");
+  });
+
+  it("uses visible assistant presentation text for prior_turns (R5)", () => {
+    const reasons = [
+      "no_evidence",
+      "insufficient_support",
+      "conflicting_evidence",
+      "model_declined",
+      "ambiguous_request",
+    ] as const;
+    for (const reason of reasons) {
+      const status =
+        reason === "ambiguous_request"
+          ? "clarification_required"
+          : reason === "no_evidence"
+            ? "insufficient_evidence"
+            : "model_abstain";
+      const response = turnResponse({
+        status,
+        answer: null,
+        answer_blocks: [],
+        citations: [],
+        abstention_reason: reason,
+        query_trace_id:
+          status === "clarification_required" ? null : "tr_abs",
+        retrieval_question:
+          status === "clarification_required" ? null : "Resolved?",
+        context_used: status !== "clarification_required",
+      });
+      const visible = assistantPresentationText(response);
+      expect(visible).toBe(abstentionCopy(reason));
+      const turns = buildResolverPriorTurns([
+        {
+          pairId: "p1",
+          askedAt: "2026-01-01T00:00:00Z",
+          question: "Q?",
+          selectedSourceIds: ["src_1"],
+          selectedSourceNames: ["A.pdf"],
+          selectionMode: "subset",
+          response,
+        },
+      ]);
+      expect(turns[1]).toEqual({ role: "assistant", text: visible });
+    }
+    const answered = turnResponse({ answer: "Exact answer." });
+    answered.answer_blocks = [{ text: "Exact answer.", citation_refs: ["c1"] }];
+    expect(assistantPresentationText(answered)).toBe("Exact answer.");
+  });
+
+  it("counts Unicode code points for the 12k resolver window (R5)", () => {
+    // One emoji is one Python/Unicode character but two UTF-16 code units.
+    const emoji = "😀";
+    expect(emoji.length).toBe(2);
+    expect(unicodeCharCount(emoji)).toBe(1);
+    const pairChars = Math.floor(RESOLVER_CHAR_MAX / 2) + 1;
+    const block = emoji.repeat(pairChars);
+    expect(unicodeCharCount(block)).toBe(pairChars);
+    expect(block.length).toBeGreaterThan(pairChars);
+    const fat = [
+      {
+        pairId: "old",
+        askedAt: "2026-01-01T00:00:00Z",
+        question: block,
+        selectedSourceIds: ["src_1"],
+        selectedSourceNames: ["A.pdf"],
+        selectionMode: "all" as const,
+        response: turnResponse({
+          answer: block,
+          answer_blocks: [{ text: block, citation_refs: ["c1"] }],
+        }),
+      },
+      {
+        pairId: "new",
+        askedAt: "2026-01-02T00:00:00Z",
+        question: "keep",
+        selectedSourceIds: ["src_1"],
+        selectedSourceNames: ["A.pdf"],
+        selectionMode: "all" as const,
+        response: turnResponse({ answer: "me" }),
+      },
+    ];
+    // Unicode total for the old pair exceeds 12k code points; UTF-16 `.length`
+    // would be larger still. Window must drop the old pair.
+    expect(unicodeCharCount(block) * 2).toBeGreaterThan(RESOLVER_CHAR_MAX);
+    const turns = buildResolverPriorTurns(fat);
+    expect(turns).toEqual([
+      { role: "user", text: "keep" },
+      { role: "assistant", text: "me" },
+    ]);
+  });
+
+  it("presents frozen all|subset source scope labels (R6)", () => {
+    expect(
+      sourceScopeLabel({
+        selectionMode: "all",
+        selectedSourceNames: ["Alpha.pdf", "Beta.pdf"],
+      }),
+    ).toBe("All active sources · Alpha.pdf, Beta.pdf");
+    expect(
+      sourceScopeLabel({
+        selectionMode: "subset",
+        selectedSourceNames: ["Alpha.pdf"],
+      }),
+    ).toBe("Selected sources · Alpha.pdf");
   });
 });
 
@@ -364,5 +495,253 @@ describe("Slice 16D-B3 conversation workspace UI", () => {
       expect(document.getElementById("root")?.hasAttribute("inert")).toBe(false);
     });
     mock.restore();
+  });
+
+  it("keeps sent user turn visible after request failure (R2)", async () => {
+    const user = userEvent.setup();
+    const bodies: Array<Record<string, unknown>> = [];
+    let failFirst = true;
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces/ws_1" && call.method === "GET") {
+        return jsonResponse(
+          workspace({
+            workspace_id: "ws_1",
+            title: "Ask Desk",
+            revision: 5,
+            source_count: 1,
+            status: "active",
+            current_snapshot_id: "snap_1",
+          }),
+        );
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources") {
+        return jsonResponse({
+          workspace_id: "ws_1",
+          revision: 5,
+          sources: [source({ source_id: "src_1", display_name: "Alpha.pdf" })],
+        });
+      }
+      if (call.url === "/v1/workspaces/ws_1/conversation/turn" && call.method === "POST") {
+        bodies.push(JSON.parse(String(call.body)) as Record<string, unknown>);
+        if (failFirst) {
+          failFirst = false;
+          return errorResponse("generation_failed", "Generator failed", 502);
+        }
+        return jsonResponse(
+          turnResponse({
+            answer: "Recovered.",
+            answer_blocks: [{ text: "Recovered.", citation_refs: ["c1"] }],
+          }),
+        );
+      }
+      return errorResponse("not_found", "x", 404);
+    });
+
+    renderApp("/workspaces/ws_1");
+    await screen.findByRole("heading", { name: "Conversation" });
+    await user.type(screen.getByLabelText("Ask a follow-up"), "Failed send stays?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("Failed send stays?")).toBeInTheDocument();
+    expect(screen.getByLabelText("Ask a follow-up")).toHaveValue("");
+    // Failure UI appears; submitted turn remains immutable display content.
+    const alerts = await screen.findAllByRole("alert");
+    expect(alerts.some((el) => (el.textContent ?? "").length > 0)).toBe(true);
+    expect(screen.getByText("Failed send stays?")).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Ask a follow-up"), "Second try?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() => expect(bodies).toHaveLength(2));
+    expect(bodies[1]?.prior_turns).toEqual([]);
+    expect(JSON.stringify(bodies[1])).not.toContain("Failed send stays?");
+    expect(await screen.findByText("Recovered.")).toBeInTheDocument();
+    expect(screen.getByText("Failed send stays?")).toBeInTheDocument();
+    mock.restore();
+  });
+
+  it("distinguishes conversation and query traces in provenance (R3)", async () => {
+    const user = userEvent.setup();
+    let mode: "answered" | "clarification" = "answered";
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces/ws_1" && call.method === "GET") {
+        return jsonResponse(
+          workspace({
+            workspace_id: "ws_1",
+            title: "Ask Desk",
+            revision: 5,
+            source_count: 1,
+            status: "active",
+            current_snapshot_id: "snap_1",
+          }),
+        );
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources") {
+        return jsonResponse({
+          workspace_id: "ws_1",
+          revision: 5,
+          sources: [source({ source_id: "src_1", display_name: "Alpha.pdf" })],
+        });
+      }
+      if (call.url === "/v1/workspaces/ws_1/conversation/turn" && call.method === "POST") {
+        if (mode === "clarification") {
+          return jsonResponse(
+            turnResponse({
+              status: "clarification_required",
+              answer: null,
+              answer_blocks: [],
+              citations: [],
+              abstention_reason: "ambiguous_request",
+              query_trace_id: null,
+              retrieval_question: null,
+              context_used: true,
+              conversation_trace_id: "ctr_clarify",
+            }),
+          );
+        }
+        return jsonResponse(
+          turnResponse({
+            conversation_trace_id: "ctr_answer",
+            query_trace_id: "tr_answer",
+            answer: "Cited answer.",
+            answer_blocks: [{ text: "Cited answer.", citation_refs: ["c1"] }],
+          }),
+        );
+      }
+      return errorResponse("not_found", "x", 404);
+    });
+
+    renderApp("/workspaces/ws_1");
+    await screen.findByRole("heading", { name: "Conversation" });
+    await user.type(screen.getByLabelText("Ask a follow-up"), "Answered?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("Cited answer.")).toBeInTheDocument();
+    await user.click(screen.getByText("Provenance"));
+    expect(screen.getByText("Conversation trace ID")).toBeInTheDocument();
+    expect(screen.getByText("ctr_answer")).toBeInTheDocument();
+    expect(screen.getByText("Query trace ID")).toBeInTheDocument();
+    expect(screen.getByText("tr_answer")).toBeInTheDocument();
+    expect(screen.queryByText("Trace ID")).toBeNull();
+
+    mode = "clarification";
+    await user.type(screen.getByLabelText("Ask a follow-up"), "Which of those?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(
+      await screen.findByText(/could not safely resolve what this follow-up refers to/i),
+    ).toBeInTheDocument();
+    const badges = screen.getAllByRole("button", { name: /Current snapshot/i });
+    await user.click(badges[badges.length - 1]!);
+    await user.click(screen.getByText("Provenance"));
+    expect(screen.getByText("ctr_clarify")).toBeInTheDocument();
+    expect(
+      screen.getByText(/None \(no scientific query for this turn\)/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("tr_answer")).toBeNull();
+    mock.restore();
+  });
+
+  it("freezes subset source-scope presentation across later selection changes (R6)", async () => {
+    const user = userEvent.setup();
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces/ws_1" && call.method === "GET") {
+        return jsonResponse(
+          workspace({
+            workspace_id: "ws_1",
+            title: "Ask Desk",
+            revision: 5,
+            source_count: 2,
+            status: "active",
+            current_snapshot_id: "snap_1",
+          }),
+        );
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources") {
+        return jsonResponse({
+          workspace_id: "ws_1",
+          revision: 5,
+          sources: [
+            source({ source_id: "src_1", display_name: "Alpha.pdf" }),
+            source({ source_id: "src_2", display_name: "Beta.pdf" }),
+          ],
+        });
+      }
+      if (call.url === "/v1/workspaces/ws_1/conversation/turn" && call.method === "POST") {
+        return jsonResponse(
+          turnResponse({
+            answer: "Scoped.",
+            answer_blocks: [{ text: "Scoped.", citation_refs: ["c1"] }],
+          }),
+        );
+      }
+      return errorResponse("not_found", "x", 404);
+    });
+
+    renderApp("/workspaces/ws_1");
+    await screen.findByRole("heading", { name: "Conversation" });
+    await user.click(screen.getByLabelText(/Include Beta\.pdf in next Ask/i));
+    await user.type(screen.getByLabelText("Ask a follow-up"), "Alpha only?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("Scoped.")).toBeInTheDocument();
+    expect(
+      screen.getByText((text) => text.includes("Selected sources · Alpha.pdf")),
+    ).toBeInTheDocument();
+    const stored = loadConversation("ws_1");
+    expect(stored[0]?.selectionMode).toBe("subset");
+    expect(stored[0]?.selectedSourceNames).toEqual(["Alpha.pdf"]);
+
+    await user.click(screen.getByRole("button", { name: "Select all" }));
+    expect(
+      screen.getByText((text) => text.includes("Selected sources · Alpha.pdf")),
+    ).toBeInTheDocument();
+    expect(loadConversation("ws_1")[0]?.selectionMode).toBe("subset");
+    mock.restore();
+  });
+});
+
+describe("Slice 16D-B3 dual-trace history entry (R3)", () => {
+  it("does not alias query and conversation traces into a generic trace_id", () => {
+    const answered = toHistoryEntry({
+      pairId: "p1",
+      askedAt: "2026-01-01T00:00:00Z",
+      question: "Q?",
+      selectedSourceIds: ["src_1"],
+      selectedSourceNames: ["A.pdf"],
+      selectionMode: "all",
+      response: turnResponse({
+        conversation_trace_id: "ctr_x",
+        query_trace_id: "tr_y",
+      }),
+    });
+    expect(answered.response.conversation_trace_id).toBe("ctr_x");
+    expect(answered.response.query_trace_id).toBe("tr_y");
+    expect(
+      Object.prototype.hasOwnProperty.call(answered.response, "trace_id"),
+    ).toBe(false);
+
+    const clarification = toHistoryEntry({
+      pairId: "p2",
+      askedAt: "2026-01-01T00:00:00Z",
+      question: "Which?",
+      selectedSourceIds: ["src_1"],
+      selectedSourceNames: ["A.pdf"],
+      selectionMode: "subset",
+      response: turnResponse({
+        status: "clarification_required",
+        answer: null,
+        answer_blocks: [],
+        citations: [],
+        abstention_reason: "ambiguous_request",
+        conversation_trace_id: "ctr_c",
+        query_trace_id: null,
+        retrieval_question: null,
+        context_used: true,
+      }),
+    });
+    expect(clarification.response.conversation_trace_id).toBe("ctr_c");
+    expect(clarification.response.query_trace_id).toBeNull();
   });
 });

@@ -93,9 +93,20 @@ export function EvidencePanel({
                   <dd>{activeEntry.response.workspace_revision}</dd>
                 </div>
                 <div>
-                  <dt>Trace ID</dt>
-                  <dd>{activeEntry.response.trace_id}</dd>
+                  <dt>Conversation trace ID</dt>
+                  <dd>{activeEntry.response.conversation_trace_id}</dd>
                 </div>
+                {activeEntry.response.query_trace_id != null ? (
+                  <div>
+                    <dt>Query trace ID</dt>
+                    <dd>{activeEntry.response.query_trace_id}</dd>
+                  </div>
+                ) : (
+                  <div>
+                    <dt>Query trace ID</dt>
+                    <dd>None (no scientific query for this turn)</dd>
+                  </div>
+                )}
               </>
             ) : null}
             {showCitationDetails && selectedCitation ? (

@@ -4,18 +4,13 @@ import type { WorkspaceCitation } from "../../api/types";
 import { Button } from "../../components/Button";
 import { TextArea } from "../../components/Field";
 import { ClaimAnswer } from "./ClaimAnswer";
-import { abstentionCopy } from "./abstentionCopy";
+import { assistantPresentationText } from "./assistantPresentation";
 import {
   snapshotBadge,
+  sourceScopeLabel,
   type ConversationHistoryEntry,
+  type IncompleteUserTurn,
 } from "./conversationState";
-
-type PendingUserTurn = {
-  pairId: string;
-  question: string;
-  selectedSourceIds: string[];
-  selectedSourceNames: string[];
-};
 
 type Props = {
   question: string;
@@ -30,7 +25,7 @@ type Props = {
   conflictHint: string | null;
   activeEntry: ConversationHistoryEntry | null;
   history: ConversationHistoryEntry[];
-  pendingUser: PendingUserTurn | null;
+  incompleteTurns: IncompleteUserTurn[];
   selectedEvidenceUnitId: string | null;
   onSelectCitation: (
     citation: WorkspaceCitation,
@@ -69,7 +64,7 @@ export function AskPanel({
   conflictHint,
   activeEntry,
   history,
-  pendingUser,
+  incompleteTurns,
   selectedEvidenceUnitId,
   onSelectCitation,
   onSelectHistory,
@@ -82,7 +77,7 @@ export function AskPanel({
     if (el instanceof HTMLTextAreaElement) {
       el.focus();
     }
-  }, [askPending, history.length]);
+  }, [askPending, history.length, incompleteTurns.length]);
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -96,8 +91,8 @@ export function AskPanel({
     }
   }
 
-  // Chronological display: oldest first.
   const chronological = [...history].reverse();
+  const hasThread = chronological.length > 0 || incompleteTurns.length > 0;
 
   return (
     <section className="ask-panel conversation-panel stack" aria-labelledby="ask-heading">
@@ -109,7 +104,7 @@ export function AskPanel({
           type="button"
           variant="secondary"
           onClick={onNewConversation}
-          disabled={askPending || (history.length === 0 && !pendingUser)}
+          disabled={askPending || !hasThread}
         >
           + New conversation
         </Button>
@@ -120,7 +115,7 @@ export function AskPanel({
       </p>
 
       <div className="conversation-thread stack" aria-live="polite">
-        {chronological.length === 0 && !pendingUser ? (
+        {!hasThread ? (
           <p className="muted" style={{ margin: 0 }}>
             Ask a question about your selected sources.
           </p>
@@ -132,6 +127,7 @@ export function AskPanel({
             currentSnapshotId,
           );
           const active = activeEntry?.entryId === entry.entryId;
+          const assistantText = assistantPresentationText(entry.response);
           return (
             <article
               key={entry.entryId}
@@ -166,9 +162,8 @@ export function AskPanel({
                   </button>
                 </div>
                 <p className="muted" style={{ margin: 0, fontSize: "0.875rem" }}>
-                  {statusLabel(String(entry.response.status))} · Asked from{" "}
-                  {entry.selectedSourceIds.length} source
-                  {entry.selectedSourceIds.length === 1 ? "" : "s"}
+                  {statusLabel(String(entry.response.status))} ·{" "}
+                  {sourceScopeLabel(entry)}
                 </p>
                 {entry.response.status === "answered" ? (
                   <div className="answer-body">
@@ -183,33 +178,41 @@ export function AskPanel({
                       }}
                     />
                   </div>
-                ) : null}
-                {entry.response.status === "insufficient_evidence" ||
-                entry.response.status === "model_abstain" ||
-                entry.response.status === "clarification_required" ? (
+                ) : (
                   <p className="abstention-callout" role="status">
-                    {abstentionCopy(entry.response.abstention_reason)}
+                    {assistantText}
                   </p>
-                ) : null}
+                )}
               </div>
             </article>
           );
         })}
 
-        {pendingUser ? (
-          <article className="conversation-turn stack" aria-busy="true">
+        {incompleteTurns.map((turn) => (
+          <article
+            key={turn.pairId}
+            className="conversation-turn stack"
+            aria-busy={turn.status === "pending"}
+          >
             <div className="conversation-user-turn">
               <p className="conversation-role">You</p>
-              <p className="conversation-user-text">{pendingUser.question}</p>
+              <p className="conversation-user-text">{turn.question}</p>
             </div>
             <div className="conversation-assistant-turn">
               <p className="conversation-role">Seneca</p>
-              <p className="muted" role="status">
-                Searching your selected sources…
-              </p>
+              {turn.status === "pending" ? (
+                <p className="muted" role="status">
+                  Searching your selected sources…
+                </p>
+              ) : (
+                <p className="error-box" role="alert">
+                  {turn.errorMessage ??
+                    "This turn did not complete. Your question is still shown above."}
+                </p>
+              )}
             </div>
           </article>
-        ) : null}
+        ))}
       </div>
 
       <form className="stack conversation-composer" onSubmit={onSubmit}>

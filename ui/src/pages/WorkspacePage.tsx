@@ -49,6 +49,7 @@ import {
   toHistoryEntry,
   type ConversationHistoryEntry,
   type ConversationPair,
+  type IncompleteUserTurn,
 } from "../features/ask/conversationState";
 import {
   reconcileSourceSelection,
@@ -186,12 +187,9 @@ export function WorkspacePage() {
   const [activeEntryId, setActiveEntryId] = useState<string | null>(() =>
     workspaceId ? (loadConversation(workspaceId)[0]?.pairId ?? null) : null,
   );
-  const [pendingUser, setPendingUser] = useState<{
-    pairId: string;
-    question: string;
-    selectedSourceIds: string[];
-    selectedSourceNames: string[];
-  } | null>(null);
+  const [incompleteTurns, setIncompleteTurns] = useState<IncompleteUserTurn[]>(
+    [],
+  );
   const [selectedCitation, setSelectedCitation] =
     useState<WorkspaceCitation | null>(null);
   const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(
@@ -208,7 +206,7 @@ export function WorkspacePage() {
     setActiveEntryId(loaded[0]?.pairId ?? null);
     setSelectedCitation(loaded[0]?.response.citations[0] ?? null);
     setPreviewTarget(null);
-    setPendingUser(null);
+    setIncompleteTurns([]);
     setQuestion("");
     setAskError(null);
     setConflictHint(null);
@@ -568,13 +566,16 @@ export function WorkspacePage() {
       setAskError(null);
       setConflictHint(null);
       setSettingsHint(false);
-      setPendingUser(null);
+      setIncompleteTurns((prev) =>
+        prev.filter((turn) => turn.pairId !== submit.pairId),
+      );
       const pair: ConversationPair = {
         pairId: submit.pairId,
         askedAt: new Date().toISOString(),
         question: submit.question,
         selectedSourceIds: submit.selectedSourceIds,
         selectedSourceNames: submit.selectedSourceNames,
+        selectionMode: submit.mode,
         response,
       };
       const next = appendConversationPair(workspaceId, pair);
@@ -594,8 +595,16 @@ export function WorkspacePage() {
         setPreviewTarget(null);
       }
     },
-    onError: (error) => {
-      setPendingUser(null);
+    onError: (error, submit) => {
+      const message = userFacingErrorMessage(error);
+      // A2-D10: submitted user turn remains immutable display content.
+      setIncompleteTurns((prev) =>
+        prev.map((turn) =>
+          turn.pairId === submit.pairId
+            ? { ...turn, status: "failed", errorMessage: message }
+            : turn,
+        ),
+      );
       if (isApiError(error) && error.code === "workspace_conflict") {
         setConflictHint(
           "The workspace changed while this question was running. Sources were refreshed; review the selection and ask again.",
@@ -610,7 +619,7 @@ export function WorkspacePage() {
         return;
       }
       setConflictHint(null);
-      setAskError(userFacingErrorMessage(error));
+      setAskError(message);
       setSettingsHint(
         isApiError(error) &&
           (error.code.includes("generation") ||
@@ -636,6 +645,7 @@ export function WorkspacePage() {
       .map((source) => source.display_name);
     const submittedMode = selectionMode;
     const pairId = newPairId();
+    // Only completed pairs enter resolver context — never failed/incomplete.
     const priorTurns = buildResolverPriorTurns(chronologicalPairs(pairs));
     const submit: AskSubmit = {
       pairId,
@@ -649,12 +659,17 @@ export function WorkspacePage() {
     setAskError(null);
     setConflictHint(null);
     setQuestion("");
-    setPendingUser({
-      pairId,
-      question: trimmed,
-      selectedSourceIds: submittedIds,
-      selectedSourceNames: submittedNames,
-    });
+    setIncompleteTurns((prev) => [
+      ...prev,
+      {
+        pairId,
+        question: trimmed,
+        selectedSourceIds: submittedIds,
+        selectedSourceNames: submittedNames,
+        selectionMode: submittedMode,
+        status: "pending",
+      },
+    ]);
     askMutation.mutate(submit);
   }
 
@@ -665,7 +680,7 @@ export function WorkspacePage() {
     setActiveEntryId(null);
     setSelectedCitation(null);
     setPreviewTarget(null);
-    setPendingUser(null);
+    setIncompleteTurns([]);
     setAskError(null);
     setConflictHint(null);
     setQuestion("");
@@ -1017,7 +1032,7 @@ export function WorkspacePage() {
             conflictHint={conflictHint}
             activeEntry={activeEntry}
             history={history}
-            pendingUser={pendingUser}
+            incompleteTurns={incompleteTurns}
             selectedEvidenceUnitId={selectedCitation?.evidence_unit_id ?? null}
             onSelectCitation={(citation, entry) => {
               setActiveEntryId(entry.entryId);

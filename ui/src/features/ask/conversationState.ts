@@ -4,6 +4,11 @@ import type {
   ConversationTurnResponse,
   WorkspaceCitation,
 } from "../../api/types";
+import type { SourceSelectionMode } from "./sourceSelection";
+import {
+  assistantPresentationText,
+  unicodeCharCount,
+} from "./assistantPresentation";
 import { snapshotBadge } from "./askHistory";
 
 export type ConversationPair = {
@@ -12,17 +17,31 @@ export type ConversationPair = {
   question: string;
   selectedSourceIds: string[];
   selectedSourceNames: string[];
+  /** Frozen all | subset intent at admission (A2-D11). */
+  selectionMode: SourceSelectionMode;
   response: ConversationTurnResponse;
 };
 
-/** Presentation-only AskHistory-compatible view for Evidence / Claim UI. */
+/** Incomplete sent user turn that is not a completed pair (A2-D10 / R2). */
+export type IncompleteUserTurn = {
+  pairId: string;
+  question: string;
+  selectedSourceIds: string[];
+  selectedSourceNames: string[];
+  selectionMode: SourceSelectionMode;
+  status: "pending" | "failed";
+  errorMessage?: string | null;
+};
+
+/** Presentation view for Evidence / Claim UI — dual traces preserved. */
 export type ConversationHistoryEntry = {
   entryId: string;
   askedAt: string;
   question: string;
   selectedSourceIds: string[];
   selectedSourceNames: string[];
-  response: ConversationTurnResponse & { trace_id: string };
+  selectionMode: SourceSelectionMode;
+  response: ConversationTurnResponse;
 };
 
 const KEY_PREFIX = "seneca.conversation.v1:";
@@ -230,6 +249,7 @@ function isPair(value: unknown): value is ConversationPair {
     typeof row.question === "string" &&
     isStringArray(row.selectedSourceIds) &&
     isStringArray(row.selectedSourceNames) &&
+    (row.selectionMode === "all" || row.selectionMode === "subset") &&
     isTurnResponse(row.response)
   );
 }
@@ -273,7 +293,6 @@ export function appendConversationPair(
   pair: ConversationPair,
 ): ConversationPair[] {
   const prior = loadConversation(workspaceId);
-  // Newest completed pairs first (same presentation order as prior Ask history).
   const next = [pair, ...prior].slice(0, CONVERSATION_PAIR_MAX);
   persistConversation(workspaceId, next);
   return next;
@@ -296,8 +315,8 @@ export function newPairId(): string {
 
 /**
  * Deterministic resolver window (A2-D07 client SHOULD):
- * newest completed pairs win; max 6 pairs; drop oldest whole pairs for 12k.
- * Current question is never part of prior_turns.
+ * newest completed pairs win; max 6 pairs; drop oldest whole pairs for 12k
+ * Unicode code points. Incomplete/failed turns are never included.
  */
 export function buildResolverPriorTurns(
   pairsChronologicalOldestFirst: ConversationPair[],
@@ -312,13 +331,8 @@ export function buildResolverPriorTurns(
   const totalChars = () =>
     window.reduce((sum, pair) => {
       const user = pair.question.trim();
-      const assistant =
-        pair.response.status === "answered" && pair.response.answer
-          ? pair.response.answer
-          : pair.response.status === "clarification_required"
-            ? "Clarification required."
-            : "No answer from selected sources.";
-      return sum + user.length + assistant.length;
+      const assistant = assistantPresentationText(pair.response);
+      return sum + unicodeCharCount(user) + unicodeCharCount(assistant);
     }, 0);
   while (window.length > 0 && totalChars() > RESOLVER_CHAR_MAX) {
     window = window.slice(1);
@@ -326,18 +340,14 @@ export function buildResolverPriorTurns(
   const turns: ConversationPriorTurn[] = [];
   for (const pair of window) {
     turns.push({ role: "user", text: pair.question.trim() });
-    const assistantText =
-      pair.response.status === "answered" && pair.response.answer
-        ? pair.response.answer
-        : pair.response.status === "clarification_required"
-          ? "Clarification required."
-          : "No answer from selected sources.";
-    turns.push({ role: "assistant", text: assistantText });
+    turns.push({
+      role: "assistant",
+      text: assistantPresentationText(pair.response),
+    });
   }
   return turns;
 }
 
-/** Chronological oldest→newest from newest-first storage. */
 export function chronologicalPairs(
   newestFirst: ConversationPair[],
 ): ConversationPair[] {
@@ -351,12 +361,23 @@ export function toHistoryEntry(pair: ConversationPair): ConversationHistoryEntry
     question: pair.question,
     selectedSourceIds: pair.selectedSourceIds,
     selectedSourceNames: pair.selectedSourceNames,
-    response: {
-      ...pair.response,
-      trace_id:
-        pair.response.query_trace_id ?? pair.response.conversation_trace_id,
-    },
+    selectionMode: pair.selectionMode,
+    response: pair.response,
   };
 }
 
-export { snapshotBadge };
+/** Compact frozen logical source-scope presentation (A2-D11 / R6). */
+export function sourceScopeLabel(entry: {
+  selectionMode: SourceSelectionMode;
+  selectedSourceNames: string[];
+}): string {
+  const names = entry.selectedSourceNames.join(", ");
+  if (entry.selectionMode === "all") {
+    return names
+      ? `All active sources · ${names}`
+      : "All active sources";
+  }
+  return names ? `Selected sources · ${names}` : "Selected sources";
+}
+
+export { assistantPresentationText, snapshotBadge, unicodeCharCount };

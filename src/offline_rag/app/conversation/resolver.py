@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import re
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -117,11 +116,12 @@ def build_resolver_request(
     )
 
 
-_JSON_OBJECT_RE = re.compile(r"\{.*\}", re.DOTALL)
-
-
 def parse_resolver_content(content: str) -> ResolverResult:
-    """Parse resolver model output; invalid → clarification_required."""
+    """Parse resolver model output; invalid → clarification_required.
+
+    Accept only an exact top-level JSON object for the frozen schema. Do not
+    salvage prose-wrapped, fenced, or embedded JSON (A2-D06 / Rework 1 R4).
+    """
     text = (content or "").strip()
     if not text:
         return ResolverResult(
@@ -130,27 +130,15 @@ def parse_resolver_content(content: str) -> ResolverResult:
             context_used=True,
             resolver_invoked=True,
         )
-    payload: Any
     try:
-        payload = json.loads(text)
+        payload: Any = json.loads(text)
     except json.JSONDecodeError:
-        match = _JSON_OBJECT_RE.search(text)
-        if match is None:
-            return ResolverResult(
-                outcome="clarification_required",
-                retrieval_question=None,
-                context_used=True,
-                resolver_invoked=True,
-            )
-        try:
-            payload = json.loads(match.group(0))
-        except json.JSONDecodeError:
-            return ResolverResult(
-                outcome="clarification_required",
-                retrieval_question=None,
-                context_used=True,
-                resolver_invoked=True,
-            )
+        return ResolverResult(
+            outcome="clarification_required",
+            retrieval_question=None,
+            context_used=True,
+            resolver_invoked=True,
+        )
     if not isinstance(payload, dict):
         return ResolverResult(
             outcome="clarification_required",

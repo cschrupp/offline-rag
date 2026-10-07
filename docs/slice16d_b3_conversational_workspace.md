@@ -3,7 +3,7 @@
 ```text
 STATUS: IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
 HUMAN ACCEPTANCE: PENDING
-INDEPENDENT REVIEW: PENDING
+INDEPENDENT REVIEW: REWORK 1 COMPLETE / PENDING RE-REVIEW
 
 Authorized implementation baseline:
 28aad06f89e6d00a0b81b51f9c2de38fed06cb22
@@ -20,11 +20,14 @@ f0bdf78d0ae6a79737055d324b22fc35e1e501f5
 Branch:
 implementation/16d-b3-conversational-workspace
 
-Implementation candidate SHA:
+Original B3 implementation candidate SHA:
 adbf2fcd01c4c2db08fe146993c04ce91b9b97c3
 
-Evidence packaging tip:
-0224021c476b4376a54f4d458ee984e562ae220f
+Rework 1 baseline (remote tip at authorization):
+c4a3c1a7c754a15b4b9a529479b2851915da74e3
+
+Rework 1 implementation candidate SHA:
+(see git tip after Rework 1 commit; recorded below after push)
 
 16D-B2: COMPLETE / ACCEPTED / SEALED
 16D-B3: IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
@@ -57,12 +60,15 @@ substrate.
 - Delimited untrusted `<CONVERSATION_DATA>` / `<CURRENT_USER_TURN>`
 - Frozen model JSON: `{ "retrieval_question", "context_used" }`
 - Empty `prior_turns` bypasses resolver (`context_used=false`)
-- Unsafe / empty resolution → `clarification_required` +
+- Unsafe / empty / non-exact-JSON resolution → `clarification_required` +
   `abstention_reason=ambiguous_request` (no retrieval / no grounded generator)
+- Rework 1 R4: accept only exact top-level JSON object for the allowlisted
+  schema; no prose salvage, fences, or embedded-object extraction
 
 ## Admission ordering
 
-Normative sequence in `run_conversation_turn`:
+Normative sequence in `run_conversation_turn` (A2-D05b; Rework 1 R1 restores
+HTTP adapter to this order):
 
 1. validate request (question + prior_turns bounds/sequence)
 2. require runtime ready
@@ -74,8 +80,9 @@ Normative sequence in `run_conversation_turn`:
 11. resolver (if required)
 12. shared grounded query core on admitted binding
 
-Post-admission workspace mutation does **not** upgrade the in-flight turn and
-is **not** `workspace_conflict`.
+HTTP `workspace_conversation_turn` must not call `require_ready()` before
+`run_conversation_turn`. Post-admission workspace mutation does **not** upgrade
+the in-flight turn and is **not** `workspace_conflict`.
 
 ## Trace model
 
@@ -84,20 +91,28 @@ is **not** `workspace_conflict`.
 | `conversation_trace_id` | `traces/conversation/` | orchestration provenance (hashes, admission, resolver outcome, linked query id) |
 | `query_trace_id` | existing product query traces | scientific authority |
 
-Conversation traces never store transcript text.
+Conversation traces never store transcript text. Product Evidence UI labels
+these distinctly (Rework 1 R3); no generic aliased `trace_id` in B3 product
+presentation.
 
 ## Persistence behavior
 
 - Session-local `sessionStorage` key `seneca.conversation.v1:{workspaceId}`
 - Max **50** completed user/assistant pairs (drop oldest)
-- Client resolver window: newest **6** pairs / **12_000** chars (server
-  re-validates; no silent widen)
+- Client resolver window: newest **6** pairs / **12_000** Unicode code points
+  (server re-validates; no silent widen)
 - `+ New conversation` clears turns/context; preserves sources/selection/workspace
+- Failed/incomplete submissions keep the sent user turn visible but are excluded
+  from resolver `prior_turns` (Rework 1 R2)
 
 ## UI behavior
 
 - Workspace detail is the conversation-dominant three-column surface
 - Composer: immediate user turn, clear on Send, duplicate Send blocked while pending
+- Assistant visible text and `prior_turns[].text` share
+  `assistantPresentationText` (Rework 1 R5)
+- Per-turn source scope presents frozen `all` | `subset` intent with submitted
+  names (Rework 1 R6), e.g. `Selected sources · Alpha.pdf`
 - B2 claim markers / Evidence pane / historical version open preserved
 - Current vs Historical badge from `turn.snapshot_id == workspace.current_snapshot_id`
 
@@ -108,6 +123,21 @@ Conversation traces never store transcript text.
 - Narrow: Conversation primary; Sources/Evidence drawers; mutual exclusion
 - Returning to desktop clears drawers / inert
 
+## Independent review — Rework 1
+
+Disposition at tip `c4a3c1a7c754a15b4b9a529479b2851915da74e3`:
+**REWORK REQUIRED** (R1–R6). Architecture accepted; boundary/presentation
+defects closed as follows:
+
+| ID | Finding | Closure |
+| --- | --- | --- |
+| R1 | HTTP adapter `require_ready` before B3 validation | Removed premature readiness check from `workspace_conversation_turn`; validation inside `run_conversation_turn` runs first |
+| R2 | Failed request erased pending user turn | `incompleteTurns` retain sent question on error; excluded from `prior_turns` |
+| R3 | Generic aliased `trace_id` in Evidence | Distinct Conversation / Query trace ID labels; clarification shows null query trace |
+| R4 | Resolver salvaged embedded JSON via regex | `parse_resolver_content` exact `json.loads` only; malformed → clarification |
+| R5 | Synthetic prior assistant text ≠ visible copy | Shared `assistantPresentationText`; 12k window uses Unicode code points |
+| R6 | Source mode dropped; count-only provenance | Persist/present `selectionMode` + frozen submitted names |
+
 ## Tests
 
 Backend (`tests/unit/app/test_slice16d_b3_conversation.py`): first-turn bypass;
@@ -115,47 +145,51 @@ follow-up resolution; injection/schema fail-closed; malformed/over-bound
 prior_turns; invalid source subset; binding-before-resolver; mutation retains
 admitted snapshot; clarification dual-trace rules; fresh retrieval; prior
 assistant not evidence; exact subset; `/query` independence; privacy-minimized
-conversation trace; query-trace scientific hash.
+conversation trace; query-trace scientific hash; **R1** malformed prior vs
+unready → `request_invalid` (no resolver/model/conversation trace) and valid
+vs unready → `runtime_not_ready`; **R4** exact JSON only (prose/fence/suffix/
+empty question/extra keys → clarification).
 
-Frontend: conversation state bounds/window helpers; composer lifecycle; new
-conversation; layout/drawer coverage; existing 16D-B / B2 claim suites updated
-for conversation/turn.
+Frontend (`ui/src/test/slice16d_b3_conversation.test.tsx` + related): **R2**
+failed send retains question / cleared composer / excluded from next
+`prior_turns`; **R3** dual trace labels; **R5** presentation text parity +
+Unicode 12k; **R6** frozen source-scope labels across selection changes.
 
-Validation run (implementation branch):
+Validation run (Rework 1):
 
-- backend B3 + 16D-A scope: passed
-- `ui` vitest: 84 passed
+- backend focused: `test_slice16d_b3_conversation` + `test_slice16d_a_query_scope`
+  + `test_slice16b_workspace_api` + `test_slice16b_query_binding` +
+  `test_grounded_answer_v2`: **85 passed**
+- broader unrelated suites (`test_slice15e_product_query_traces`,
+  `test_grounded_generation`) showed pre-existing/env failures when batched;
+  not treated as B3 Rework 1 regressions (focused B3/API/scope suite green)
+- `ui` vitest: **91 passed**
 - `ui` lint / typecheck / production build: passed
-- `git diff --check`: clean (at evidence packaging)
+- `git diff --check`: clean (Rework 1 commit paths)
 
-## Manual smoke
+## Manual smoke (Rework 1)
 
 Environment: local generator + workspace
-`ws_1f0faad69b9041e7aa6c60190538ba7d` (10 ingested sources). API restarted onto
-B3 code on `127.0.0.1:8080` (prior process lacked `/conversation/turn`; second
-port blocked by exclusive local Qdrant lock).
+`ws_1f0faad69b9041e7aa6c60190538ba7d`. API restarted onto Rework 1 code on
+`127.0.0.1:8080`.
 
 Observed:
 
-1. First turn: `context_used=false`, `retrieval_question` equals user question,
-   `conversation_trace_id` + `query_trace_id` present. Scientific outcome
-   `model_abstain` (corpus/generation — also seen on `/query`).
-2. Follow-up after abstention prior: product `clarification_required` with
-   `query_trace_id=null` (fail-closed; no retrieval).
-3. Follow-up with substantive synthetic prior assistant text: resolver produced
-   standalone `retrieval_question` (“Which machine learning methods are
-   supervised?”), `context_used=true`, fresh `query_trace_id`.
-4. Explicit source subset turns retained admitted scope fields; changing subset
-   on later turn did not rewrite prior response provenance objects.
-5. `/query` remained independent (no `conversation_trace_id`).
-6. Display-only workspace PATCH left scientific snapshot identity unchanged for
-   prior turns (no false Historical from title-only edit).
+1. Malformed prior pair → `request_invalid` /
+   `prior_turns_incomplete_pair` (bounds before scientific work).
+2. First turn: `context_used=false`, dual
+   `conversation_trace_id` + `query_trace_id`, scientific `model_abstain`.
+3. Follow-up after abstention prior: `clarification_required`,
+   `query_trace_id=null`, conversation trace present.
+4. Follow-up with substantive synthetic prior: resolver path exercised;
+   conversation vs query identities remain distinct when a scientific query runs.
+5. R4 parser checked in-process: prose/fenced JSON → clarification.
+6. R2 / R3 / R5 / R6 product UI behaviors covered by automated browser tests;
+   live browser failed-send / frozen source-scope not re-run interactively this
+   rework (Vite available; automated coverage authoritative for those).
 
-Not exercised live (to avoid destructive source rebuild on the shared smoke
-workspace): publishing snapshot N+1 via source remove/replace, and full
-browser narrow citation→Evidence path. Those are covered by automated UI tests
-(current/historical + drawer contracts). Vite UI was available; API smoke was
-the authoritative live-provider check for dual-question orchestration.
+Destructive N+1 live smoke still omitted; automated historical-version coverage
+remains the evidence.
 
 ## Known limitations
 

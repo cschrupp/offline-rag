@@ -289,6 +289,74 @@ def test_resolver_injection_cannot_change_schema() -> None:
     assert result.outcome == "clarification_required"
 
 
+def test_resolver_exact_json_only_fail_closed() -> None:
+    valid = json.dumps(
+        {"retrieval_question": "Which methods are supervised?", "context_used": True}
+    )
+    assert parse_resolver_content(valid).outcome == "resolved"
+
+    for malformed in (
+        f"unexpected prose {valid} more prose",
+        f"{valid} trailing",
+        f"prefix {valid}",
+        f"```json\n{valid}\n```",
+        '[{"retrieval_question":"x","context_used":true}]',
+        '{"retrieval_question":"","context_used":true}',
+    ):
+        result = parse_resolver_content(malformed)
+        assert result.outcome == "clarification_required", malformed
+        assert result.retrieval_question is None
+
+
+def test_malformed_prior_against_unready_runtime_is_request_invalid(
+    tmp_path: Path,
+) -> None:
+    """R1: conversation bounds validation precedes require_ready (A2-D05b)."""
+    from offline_rag.app.runtime import RuntimeState
+
+    with _conversation_client(tmp_path) as (client, runtime, captures, generator):
+        wid, _, _, _ = _seed_workspace(client)
+        before = generator.generate_calls
+        runtime.state = RuntimeState.NOT_READY
+        resp = client.post(
+            f"/v1/workspaces/{wid}/conversation/turn",
+            json={
+                "question": "follow up?",
+                "prior_turns": [{"role": "assistant", "text": "orphan"}],
+            },
+        )
+        assert resp.status_code == 422, resp.text
+        body = resp.json()
+        assert body["error"]["code"] == "request_invalid"
+        assert generator.generate_calls == before
+        assert captures["generator_requests"] == []
+        # No conversation traces allocated for pre-admission failures.
+        croot = runtime.settings.paths.traces / "conversation"
+        if croot.exists():
+            assert list(croot.glob("trace_*.json")) == []
+
+
+def test_valid_turn_against_unready_runtime_is_runtime_not_ready(
+    tmp_path: Path,
+) -> None:
+    from offline_rag.app.runtime import RuntimeState
+
+    with _conversation_client(tmp_path) as (client, runtime, _c, generator):
+        wid, alpha_sid, _, _ = _seed_workspace(client)
+        before = generator.generate_calls
+        runtime.state = RuntimeState.NOT_READY
+        resp = client.post(
+            f"/v1/workspaces/{wid}/conversation/turn",
+            json={
+                "question": "What is discussed?",
+                "source_ids": [alpha_sid],
+            },
+        )
+        assert resp.status_code == 503, resp.text
+        assert resp.json()["error"]["code"] == "runtime_not_ready"
+        assert generator.generate_calls == before
+
+
 def test_fabricated_assistant_instruction_stays_in_data_delimiters() -> None:
     payload = build_resolver_user_payload(
         prior_turns=validate_prior_turns(

@@ -574,7 +574,9 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
       ),
     );
     expect(await screen.findByText("Scoped answer")).toBeInTheDocument();
-    expect(screen.getByText(/Asked from 1 source/i)).toBeInTheDocument();
+    expect(
+      screen.getByText((text) => text.includes("Selected sources · Alpha.pdf")),
+    ).toBeInTheDocument();
     const stored = loadConversation("ws_1");
     expect(stored[0]?.selectedSourceIds).toEqual(["src_1"]);
     expect(stored[0]?.selectedSourceNames).toEqual(["Alpha.pdf"]);

@@ -609,8 +609,10 @@ def workspace_query(
 def workspace_conversation_turn(
     request: Request, workspace_id: str, body: ConversationTurnRequest
 ) -> dict[str, Any]:
+    # A2-D05b: conversation bounds/sequence validation runs inside
+    # run_conversation_turn *before* require_ready / admission. Do not call
+    # require_ready() here — that would let unready runtimes mask request_invalid.
     runtime = _runtime(request)
-    runtime.require_ready()
     result = run_conversation_turn(
         runtime,
         workspace_id=workspace_id,
