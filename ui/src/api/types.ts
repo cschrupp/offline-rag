@@ -200,3 +200,30 @@ export type WorkspaceQueryResponse = {
   answer_blocks: AnswerBlock[];
   abstention_reason: AbstentionReason | null;
 };
+
+export type ConversationTurnStatus =
+  | WorkspaceQueryStatus
+  | "clarification_required";
+
+export type ConversationPriorTurn = {
+  role: "user" | "assistant";
+  text: string;
+};
+
+/** POST /v1/workspaces/{id}/conversation/turn response (A2-D05). */
+export type ConversationTurnResponse = {
+  workspace_id: string;
+  workspace_revision: number;
+  snapshot_id: string;
+  product_mode_id: string;
+  conversation_trace_id: string;
+  query_trace_id: string | null;
+  status: ConversationTurnStatus | string;
+  abstention_reason: AbstentionReason | null;
+  question: string;
+  retrieval_question: string | null;
+  context_used: boolean;
+  answer: string | null;
+  citations: WorkspaceCitation[];
+  answer_blocks: AnswerBlock[];
+};

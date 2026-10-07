@@ -1,6 +1,8 @@
 import { ApiError, parseErrorEnvelope } from "./errors";
 import type {
   Capabilities,
+  ConversationPriorTurn,
+  ConversationTurnResponse,
   GenerationProbeResult,
   GenerationSettingsState,
   HealthReady,
@@ -325,6 +327,34 @@ export function queryWorkspace(params: {
   }
   return apiRequest<WorkspaceQueryResponse>(
     `/v1/workspaces/${params.workspaceId}/query`,
+    {
+      method: "POST",
+      json: body,
+      signal: params.signal,
+    },
+  );
+}
+
+export function conversationTurn(params: {
+  workspaceId: string;
+  question: string;
+  sourceIds?: string[];
+  priorTurns?: ConversationPriorTurn[];
+  signal?: AbortSignal;
+}): Promise<ConversationTurnResponse> {
+  const body: {
+    question: string;
+    source_ids?: string[];
+    prior_turns: ConversationPriorTurn[];
+  } = {
+    question: params.question,
+    prior_turns: params.priorTurns ?? [],
+  };
+  if (params.sourceIds !== undefined) {
+    body.source_ids = params.sourceIds;
+  }
+  return apiRequest<ConversationTurnResponse>(
+    `/v1/workspaces/${params.workspaceId}/conversation/turn`,
     {
       method: "POST",
       json: body,

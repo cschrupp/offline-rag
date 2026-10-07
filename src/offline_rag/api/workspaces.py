@@ -24,6 +24,7 @@ from offline_rag.app.errors import (
 )
 from offline_rag.app.ingest_upload import validate_ingest_http_envelope
 from offline_rag.app.operations import OperationHandle
+from offline_rag.app.conversation import run_conversation_turn
 from offline_rag.app.query import MAX_QUESTION_CHARS, run_workspace_query
 from offline_rag.app.runtime import ApplicationRuntime
 from offline_rag.app.workspace.etag import format_etag, parse_if_match
@@ -138,6 +139,47 @@ class WorkspaceQueryRequest(BaseModel):
 
     question: str
     source_ids: list[str] | None = None
+
+    @field_validator("question")
+    @classmethod
+    def _trim_question(cls, value: object) -> str:
+        if not isinstance(value, str):
+            raise TypeError("question must be a string")
+        trimmed = value.strip()
+        if not trimmed:
+            raise ValueError("question must be non-empty")
+        if len(trimmed) > MAX_QUESTION_CHARS:
+            raise ValueError("question exceeds maximum length")
+        return trimmed
+
+    @field_validator("source_ids")
+    @classmethod
+    def _validate_source_ids(cls, value: object) -> list[str] | None:
+        if value is None:
+            return None
+        if not isinstance(value, list):
+            raise TypeError("source_ids must be a list")
+        validated: list[str] = []
+        for item in value:
+            if not isinstance(item, str) or not is_safe_identity(item):
+                raise ValueError("source_ids entries must be safe identity tokens")
+            validated.append(item)
+        return validated
+
+
+class ConversationPriorTurnModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    role: str
+    text: str
+
+
+class ConversationTurnRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    question: str
+    source_ids: list[str] | None = None
+    prior_turns: list[ConversationPriorTurnModel] = Field(default_factory=list)
 
     @field_validator("question")
     @classmethod
@@ -558,6 +600,22 @@ def workspace_query(
         runtime,
         workspace_id=workspace_id,
         question=body.question,
+        source_ids=body.source_ids,
+    )
+    return result.as_dict()
+
+
+@router.post("/v1/workspaces/{workspace_id}/conversation/turn")
+def workspace_conversation_turn(
+    request: Request, workspace_id: str, body: ConversationTurnRequest
+) -> dict[str, Any]:
+    runtime = _runtime(request)
+    runtime.require_ready()
+    result = run_conversation_turn(
+        runtime,
+        workspace_id=workspace_id,
+        question=body.question,
+        prior_turns=[turn.model_dump() for turn in body.prior_turns],
         source_ids=body.source_ids,
     )
     return result.as_dict()

@@ -10,7 +10,7 @@ import {
   source,
   workspace,
 } from "./mockApi";
-import type { WorkspaceQueryResponse } from "../api/types";
+import type { ConversationTurnResponse } from "../api/types";
 import {
   ASK_HISTORY_MAX,
   appendAskHistory,
@@ -19,6 +19,7 @@ import {
   persistAskHistory,
   snapshotBadge,
 } from "../features/ask/askHistory";
+import { loadConversation } from "../features/ask/conversationState";
 import {
   reconcileSourceSelection,
   selectAllSources,
@@ -97,15 +98,20 @@ function mockViewport(matchesNarrow: boolean) {
 }
 
 function queryResponse(
-  partial: Partial<WorkspaceQueryResponse> = {},
-): WorkspaceQueryResponse {
-  const base: WorkspaceQueryResponse = {
+  partial: Partial<ConversationTurnResponse> & { trace_id?: string } = {},
+): ConversationTurnResponse {
+  const { trace_id: legacyTrace, ...rest } = partial;
+  const base: ConversationTurnResponse = {
     workspace_id: "ws_1",
     workspace_revision: 5,
     snapshot_id: "snap_1",
     product_mode_id: "grounded_v1",
-    trace_id: "tr_1",
+    conversation_trace_id: "ctr_1",
+    query_trace_id: legacyTrace ?? "tr_1",
     status: "answered",
+    question: "What does Alpha say?",
+    retrieval_question: "What does Alpha say?",
+    context_used: false,
     answer: "Ventilation must be established first.",
     answer_blocks: [
       {
@@ -135,17 +141,24 @@ function queryResponse(
       },
     ],
   };
-  const merged = { ...base, ...partial };
+  const merged = { ...base, ...rest };
+  if (legacyTrace) {
+    merged.query_trace_id = legacyTrace;
+  }
   if (
-    typeof partial.answer === "string" &&
-    partial.answer_blocks === undefined &&
-    (partial.status === undefined || partial.status === "answered")
+    typeof rest.answer === "string" &&
+    rest.answer_blocks === undefined &&
+    (rest.status === undefined || rest.status === "answered")
   ) {
     merged.answer_blocks = [
-      { text: partial.answer, citation_refs: ["c1"] },
+      { text: rest.answer, citation_refs: ["c1"] },
     ];
   }
-  return merged;
+  // Test helper also exposes legacy trace_id for askHistory unit fixtures.
+  return {
+    ...merged,
+    trace_id: merged.query_trace_id ?? merged.conversation_trace_id,
+  } as ConversationTurnResponse & { trace_id: string };
 }
 
 describe("Slice 16D-B source selection helpers", () => {
@@ -391,7 +404,7 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
           ],
         });
       }
-      if (call.url === "/v1/workspaces/ws_1/query" && call.method === "POST") {
+      if (call.url === "/v1/workspaces/ws_1/conversation/turn" && call.method === "POST") {
         bodies.push(JSON.parse(String(call.body)));
         return jsonResponse(queryResponse());
       }
@@ -399,20 +412,23 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
     });
 
     renderApp("/workspaces/ws_1");
-    expect(await screen.findByRole("heading", { name: "Ask your sources" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Conversation" })).toBeInTheDocument();
     const boxes = await screen.findAllByRole("checkbox");
     expect(boxes).toHaveLength(2);
     expect(boxes.every((box) => (box as HTMLInputElement).checked)).toBe(true);
 
     await user.click(boxes[0]!);
     await user.click(boxes[1]!);
-    expect(screen.getByRole("button", { name: "Ask" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
 
     await user.click(screen.getByRole("button", { name: "Select all" }));
-    await user.type(screen.getByLabelText("Question"), "What does Alpha say?");
-    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await user.type(screen.getByLabelText("Ask a follow-up"), "What does Alpha say?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
     await waitFor(() => expect(bodies).toHaveLength(1));
-    expect(bodies[0]).toEqual({ question: "What does Alpha say?" });
+    expect(bodies[0]).toEqual({
+      question: "What does Alpha say?",
+      prior_turns: [],
+    });
     expect(bodies[0]).not.toHaveProperty("source_ids");
     mock.restore();
   });
@@ -445,7 +461,7 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
           ],
         });
       }
-      if (call.url === "/v1/workspaces/ws_1/query" && call.method === "POST") {
+      if (call.url === "/v1/workspaces/ws_1/conversation/turn" && call.method === "POST") {
         bodies.push(JSON.parse(String(call.body)) as Record<string, unknown>);
         return jsonResponse(
           queryResponse({ trace_id: `tr_${bodies.length}`, answer: `A${bodies.length}` }),
@@ -455,25 +471,32 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
     });
 
     renderApp("/workspaces/ws_1");
-    await screen.findByRole("heading", { name: "Ask your sources" });
+    await screen.findByRole("heading", { name: "Conversation" });
     const beta = screen.getByLabelText(/Include Beta\.pdf in next Ask/i);
     // Enter subset, then re-check every currently known source.
     await user.click(beta);
     await user.click(beta);
-    await user.type(screen.getByLabelText("Question"), "Subset all visible?");
-    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await user.type(screen.getByLabelText("Ask a follow-up"), "Subset all visible?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
     await waitFor(() => expect(bodies).toHaveLength(1));
     expect(bodies[0]).toEqual({
       question: "Subset all visible?",
       source_ids: ["src_1", "src_2"],
+      prior_turns: [],
     });
 
     await user.click(screen.getByRole("button", { name: "Select all" }));
-    await user.clear(screen.getByLabelText("Question"));
-    await user.type(screen.getByLabelText("Question"), "Follow all again?");
-    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await user.clear(screen.getByLabelText("Ask a follow-up"));
+    await user.type(screen.getByLabelText("Ask a follow-up"), "Follow all again?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
     await waitFor(() => expect(bodies).toHaveLength(2));
-    expect(bodies[1]).toEqual({ question: "Follow all again?" });
+    expect(bodies[1]).toEqual({
+      question: "Follow all again?",
+      prior_turns: [
+        { role: "user", text: "Subset all visible?" },
+        { role: "assistant", text: "A1" },
+      ],
+    });
     expect(bodies[1]).not.toHaveProperty("source_ids");
     mock.restore();
   });
@@ -509,7 +532,7 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
           sources: sourceList,
         });
       }
-      if (call.url === "/v1/workspaces/ws_1/query" && call.method === "POST") {
+      if (call.url === "/v1/workspaces/ws_1/conversation/turn" && call.method === "POST") {
         bodies.push(JSON.parse(String(call.body)) as Record<string, unknown>);
         return new Promise<Response>((resolve) => {
           resolveQuery = resolve;
@@ -519,14 +542,15 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
     });
 
     const { queryClient } = renderApp("/workspaces/ws_1");
-    await screen.findByRole("heading", { name: "Ask your sources" });
+    await screen.findByRole("heading", { name: "Conversation" });
     await user.click(screen.getByLabelText(/Include Beta\.pdf in next Ask/i));
-    await user.type(screen.getByLabelText("Question"), "Pending scope?");
-    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await user.type(screen.getByLabelText("Ask a follow-up"), "Pending scope?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
     await waitFor(() => expect(bodies).toHaveLength(1));
     expect(bodies[0]).toEqual({
       question: "Pending scope?",
       source_ids: ["src_1"],
+      prior_turns: [],
     });
 
     // Mid-flight UI refresh must not rewrite the submitted history scope.
@@ -550,15 +574,15 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
       ),
     );
     expect(await screen.findByText("Scoped answer")).toBeInTheDocument();
-    expect(screen.getByText(/Asked from 1 source: Alpha\.pdf/i)).toBeInTheDocument();
-    const stored = loadAskHistory("ws_1");
+    expect(screen.getByText(/Asked from 1 source/i)).toBeInTheDocument();
+    const stored = loadConversation("ws_1");
     expect(stored[0]?.selectedSourceIds).toEqual(["src_1"]);
     expect(stored[0]?.selectedSourceNames).toEqual(["Alpha.pdf"]);
     expect(stored[0]?.question).toBe("Pending scope?");
     mock.restore();
   });
 
-  it("sends exact subset for Q2 and never includes prior history in the request", async () => {
+  it("sends exact subset for Q2 with bounded prior completed pairs", async () => {
     const user = userEvent.setup();
     const bodies: Array<Record<string, unknown>> = [];
     const mock = installFetchMock(async (call) => {
@@ -586,7 +610,7 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
           ],
         });
       }
-      if (call.url === "/v1/workspaces/ws_1/query" && call.method === "POST") {
+      if (call.url === "/v1/workspaces/ws_1/conversation/turn" && call.method === "POST") {
         bodies.push(JSON.parse(String(call.body)) as Record<string, unknown>);
         return jsonResponse(
           queryResponse({
@@ -599,30 +623,33 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
     });
 
     renderApp("/workspaces/ws_1");
-    await screen.findByRole("heading", { name: "Ask your sources" });
+    await screen.findByRole("heading", { name: "Conversation" });
     const beta = screen.getByLabelText(/Include Beta\.pdf in next Ask/i);
     await user.click(beta);
 
-    await user.type(screen.getByLabelText("Question"), "Question one?");
-    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await user.type(screen.getByLabelText("Ask a follow-up"), "Question one?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
     await screen.findByText("A1");
 
-    await user.clear(screen.getByLabelText("Question"));
-    await user.type(screen.getByLabelText("Question"), "Question two?");
-    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await user.clear(screen.getByLabelText("Ask a follow-up"));
+    await user.type(screen.getByLabelText("Ask a follow-up"), "Question two?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
     await screen.findByText("A2");
 
     expect(bodies).toHaveLength(2);
     expect(bodies[0]).toEqual({
       question: "Question one?",
       source_ids: ["src_1"],
+      prior_turns: [],
     });
     expect(bodies[1]).toEqual({
       question: "Question two?",
       source_ids: ["src_1"],
+      prior_turns: [
+        { role: "user", text: "Question one?" },
+        { role: "assistant", text: "A1" },
+      ],
     });
-    expect(JSON.stringify(bodies[1])).not.toContain("Question one");
-    expect(JSON.stringify(bodies[1])).not.toContain("A1");
     mock.restore();
   });
 
@@ -651,7 +678,7 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
           sources: [source({ source_id: "src_1", display_name: "Alpha.pdf" })],
         });
       }
-      if (call.url === "/v1/workspaces/ws_1/query" && call.method === "POST") {
+      if (call.url === "/v1/workspaces/ws_1/conversation/turn" && call.method === "POST") {
         if (mode === "conflict") {
           return errorResponse(
             "workspace_conflict",
@@ -687,9 +714,9 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
     });
 
     renderApp("/workspaces/ws_1");
-    await screen.findByRole("heading", { name: "Ask your sources" });
-    await user.type(screen.getByLabelText("Question"), "Requirements?");
-    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await screen.findByRole("heading", { name: "Conversation" });
+    await user.type(screen.getByLabelText("Ask a follow-up"), "Requirements?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
     expect(
       await screen.findByText(/Ventilation must be established first/i),
     ).toBeInTheDocument();
@@ -700,9 +727,9 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
     expect(screen.queryByText(/Evidence used/i)).toBeNull();
 
     mode = "insufficient";
-    await user.clear(screen.getByLabelText("Question"));
-    await user.type(screen.getByLabelText("Question"), "Missing?");
-    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await user.clear(screen.getByLabelText("Ask a follow-up"));
+    await user.type(screen.getByLabelText("Ask a follow-up"), "Missing?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
     const insufficient = await screen.findByText(
       /did not find usable evidence in the selected sources/i,
     );
@@ -710,9 +737,9 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
     expect(insufficient.closest("[role='alert']")).toBeNull();
 
     mode = "abstain";
-    await user.clear(screen.getByLabelText("Question"));
-    await user.type(screen.getByLabelText("Question"), "Abstain?");
-    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await user.clear(screen.getByLabelText("Ask a follow-up"));
+    await user.type(screen.getByLabelText("Ask a follow-up"), "Abstain?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
     expect(
       await screen.findByText(
         /did not provide an answer from the available evidence/i,
@@ -720,9 +747,9 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
     ).toBeInTheDocument();
 
     mode = "conflict";
-    await user.clear(screen.getByLabelText("Question"));
-    await user.type(screen.getByLabelText("Question"), "Conflict?");
-    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await user.clear(screen.getByLabelText("Ask a follow-up"));
+    await user.type(screen.getByLabelText("Ask a follow-up"), "Conflict?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
     expect(
       await screen.findByText(/workspace changed while this question was running/i),
     ).toBeInTheDocument();
@@ -763,7 +790,7 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
           ],
         });
       }
-      if (call.url === "/v1/workspaces/ws_1/query" && call.method === "POST") {
+      if (call.url === "/v1/workspaces/ws_1/conversation/turn" && call.method === "POST") {
         return jsonResponse(
           queryResponse({
             workspace_revision: 5,
@@ -803,10 +830,10 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
 
     const { queryClient } = renderApp("/workspaces/ws_1");
     await user.type(
-      await screen.findByLabelText("Question"),
+      await screen.findByLabelText("Ask a follow-up"),
       "Historical evidence?",
     );
-    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await user.click(screen.getByRole("button", { name: "Send" }));
     expect(
       (await screen.findAllByText(/Current snapshot/i)).length,
     ).toBeGreaterThan(0);
@@ -966,7 +993,7 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
           sources: [source({ source_id: "src_1", display_name: "Alpha.pdf" })],
         });
       }
-      if (call.url === "/v1/workspaces/ws_1/query" && call.method === "POST") {
+      if (call.url === "/v1/workspaces/ws_1/conversation/turn" && call.method === "POST") {
         return jsonResponse(
           queryResponse({
             snapshot_id: "snap_1",
@@ -985,8 +1012,8 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
     });
 
     const { queryClient } = renderApp("/workspaces/ws_1");
-    await user.type(await screen.findByLabelText("Question"), "Provenance?");
-    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await user.type(await screen.findByLabelText("Ask a follow-up"), "Provenance?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
     expect(
       await screen.findByText(/Ventilation must be established first/i),
     ).toBeInTheDocument();
@@ -1068,7 +1095,7 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
           sources: [source({ source_id: "src_1", display_name: "Alpha.pdf" })],
         });
       }
-      if (call.url === "/v1/workspaces/ws_1/query" && call.method === "POST") {
+      if (call.url === "/v1/workspaces/ws_1/conversation/turn" && call.method === "POST") {
         return jsonResponse(queryResponse());
       }
       if (call.url.includes("/versions/") && call.url.includes("/content")) {
@@ -1085,8 +1112,8 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expectRootNotInert();
 
-    await user.type(screen.getByLabelText("Question"), "Cite?");
-    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await user.type(screen.getByLabelText("Ask a follow-up"), "Cite?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
     await user.click(
       await screen.findByRole("button", { name: /Citation 1: Week02\.pdf/i }),
     );
@@ -1176,7 +1203,7 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
           sources: [source({ source_id: "src_1", display_name: "Alpha.pdf" })],
         });
       }
-      if (call.url === "/v1/workspaces/ws_1/query" && call.method === "POST") {
+      if (call.url === "/v1/workspaces/ws_1/conversation/turn" && call.method === "POST") {
         return jsonResponse(queryResponse());
       }
       if (call.url.includes("/versions/") && call.url.includes("/content")) {
@@ -1189,8 +1216,8 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
     });
 
     renderApp("/workspaces/ws_1");
-    await user.type(await screen.findByLabelText("Question"), "Cite mobile?");
-    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await user.type(await screen.findByLabelText("Ask a follow-up"), "Cite mobile?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
     expect(screen.queryByRole("dialog", { name: "Evidence" })).not.toBeInTheDocument();
     await user.click(
       await screen.findByRole("button", { name: /Citation 1: Week02\.pdf/i }),

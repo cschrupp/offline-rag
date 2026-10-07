@@ -8,11 +8,11 @@ import type { FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   addSources,
+  conversationTurn,
   getCapabilities,
   getOperation,
   getWorkspace,
   listSources,
-  queryWorkspace,
   removeSource,
   renameSource,
   replaceSource,
@@ -40,11 +40,16 @@ import { EvidencePanel } from "../features/ask/EvidencePanel";
 import { SourceRail } from "../features/ask/SourceRail";
 import type { PreviewTarget } from "../features/ask/SourcePreview";
 import {
-  appendAskHistory,
-  loadAskHistory,
-  newHistoryEntryId,
-  type AskHistoryEntry,
-} from "../features/ask/askHistory";
+  appendConversationPair,
+  buildResolverPriorTurns,
+  chronologicalPairs,
+  clearConversation,
+  loadConversation,
+  newPairId,
+  toHistoryEntry,
+  type ConversationHistoryEntry,
+  type ConversationPair,
+} from "../features/ask/conversationState";
 import {
   reconcileSourceSelection,
   selectAllSources,
@@ -55,12 +60,14 @@ import {
 import { useNarrowLayout } from "../features/ask/useNarrowLayout";
 
 type AskSubmit = {
+  pairId: string;
   question: string;
   selectedSourceIds: string[];
   selectedSourceNames: string[];
   mode: SourceSelectionMode;
   /** undefined = omit source_ids (all-active); [] would mean empty scope */
   sourceIds: string[] | undefined;
+  priorTurns: ReturnType<typeof buildResolverPriorTurns>;
 };
 import {
   forgetActiveOperation,
@@ -172,13 +179,19 @@ export function WorkspacePage() {
   const [askError, setAskError] = useState<string | null>(null);
   const [conflictHint, setConflictHint] = useState<string | null>(null);
   const [settingsHint, setSettingsHint] = useState(false);
-  const [history, setHistory] = useState<AskHistoryEntry[]>(() =>
-    workspaceId ? loadAskHistory(workspaceId) : [],
+  const [pairs, setPairs] = useState<ConversationPair[]>(() =>
+    workspaceId ? loadConversation(workspaceId) : [],
   );
   const [historyWorkspaceId, setHistoryWorkspaceId] = useState(workspaceId);
   const [activeEntryId, setActiveEntryId] = useState<string | null>(() =>
-    workspaceId ? (loadAskHistory(workspaceId)[0]?.entryId ?? null) : null,
+    workspaceId ? (loadConversation(workspaceId)[0]?.pairId ?? null) : null,
   );
+  const [pendingUser, setPendingUser] = useState<{
+    pairId: string;
+    question: string;
+    selectedSourceIds: string[];
+    selectedSourceNames: string[];
+  } | null>(null);
   const [selectedCitation, setSelectedCitation] =
     useState<WorkspaceCitation | null>(null);
   const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(
@@ -189,12 +202,13 @@ export function WorkspacePage() {
   const isNarrowLayout = useNarrowLayout();
 
   if (historyWorkspaceId !== workspaceId) {
-    const loaded = workspaceId ? loadAskHistory(workspaceId) : [];
+    const loaded = workspaceId ? loadConversation(workspaceId) : [];
     setHistoryWorkspaceId(workspaceId);
-    setHistory(loaded);
-    setActiveEntryId(loaded[0]?.entryId ?? null);
+    setPairs(loaded);
+    setActiveEntryId(loaded[0]?.pairId ?? null);
     setSelectedCitation(loaded[0]?.response.citations[0] ?? null);
     setPreviewTarget(null);
+    setPendingUser(null);
     setQuestion("");
     setAskError(null);
     setConflictHint(null);
@@ -543,28 +557,29 @@ export function WorkspacePage() {
 
   const askMutation = useMutation({
     mutationFn: (submit: AskSubmit) =>
-      queryWorkspace({
+      conversationTurn({
         workspaceId,
         question: submit.question,
         sourceIds: submit.sourceIds,
+        priorTurns: submit.priorTurns,
       }),
     retry: false,
     onSuccess: (response, submit) => {
       setAskError(null);
       setConflictHint(null);
       setSettingsHint(false);
-      // History describes the immutable submitted request, not post-flight UI state.
-      const entry: AskHistoryEntry = {
-        entryId: newHistoryEntryId(),
+      setPendingUser(null);
+      const pair: ConversationPair = {
+        pairId: submit.pairId,
         askedAt: new Date().toISOString(),
         question: submit.question,
         selectedSourceIds: submit.selectedSourceIds,
         selectedSourceNames: submit.selectedSourceNames,
         response,
       };
-      const next = appendAskHistory(workspaceId, entry);
-      setHistory(next);
-      setActiveEntryId(entry.entryId);
+      const next = appendConversationPair(workspaceId, pair);
+      setPairs(next);
+      setActiveEntryId(pair.pairId);
       const first = response.citations[0] ?? null;
       setSelectedCitation(first);
       if (first) {
@@ -580,6 +595,7 @@ export function WorkspacePage() {
       }
     },
     onError: (error) => {
+      setPendingUser(null);
       if (isApiError(error) && error.code === "workspace_conflict") {
         setConflictHint(
           "The workspace changed while this question was running. Sources were refreshed; review the selection and ask again.",
@@ -619,16 +635,40 @@ export function WorkspacePage() {
       .filter((source) => submittedIds.includes(source.source_id))
       .map((source) => source.display_name);
     const submittedMode = selectionMode;
+    const pairId = newPairId();
+    const priorTurns = buildResolverPriorTurns(chronologicalPairs(pairs));
     const submit: AskSubmit = {
+      pairId,
       question: trimmed,
       selectedSourceIds: submittedIds,
       selectedSourceNames: submittedNames,
       mode: submittedMode,
       sourceIds: sourceIdsForQuery(sources, submittedIds, submittedMode),
+      priorTurns,
     };
     setAskError(null);
     setConflictHint(null);
+    setQuestion("");
+    setPendingUser({
+      pairId,
+      question: trimmed,
+      selectedSourceIds: submittedIds,
+      selectedSourceNames: submittedNames,
+    });
     askMutation.mutate(submit);
+  }
+
+  function startNewConversation() {
+    if (askMutation.isPending) return;
+    clearConversation(workspaceId);
+    setPairs([]);
+    setActiveEntryId(null);
+    setSelectedCitation(null);
+    setPreviewTarget(null);
+    setPendingUser(null);
+    setAskError(null);
+    setConflictHint(null);
+    setQuestion("");
   }
 
   function closeSourcesDrawerThen(action: () => void) {
@@ -721,6 +761,7 @@ export function WorkspacePage() {
     pendingPhase === "operation" ||
     askMutation.isPending;
 
+  const history: ConversationHistoryEntry[] = pairs.map(toHistoryEntry);
   const activeEntry =
     history.find((entry) => entry.entryId === activeEntryId) ??
     history[0] ??
@@ -732,7 +773,10 @@ export function WorkspacePage() {
     question.trim().length === 0 ||
     askMutation.isPending;
 
-  function openCitation(citation: WorkspaceCitation, entry: AskHistoryEntry) {
+  function openCitation(
+    citation: WorkspaceCitation,
+    entry: ConversationHistoryEntry,
+  ) {
     setSelectedCitation(citation);
     setPreviewTarget({
       kind: "citation",
@@ -933,14 +977,20 @@ export function WorkspacePage() {
         <Button
           variant="secondary"
           type="button"
-          onClick={() => setSourcesDrawerOpen(true)}
+          onClick={() => {
+            setEvidenceDrawerOpen(false);
+            setSourcesDrawerOpen(true);
+          }}
         >
           Sources
         </Button>
         <Button
           variant="secondary"
           type="button"
-          onClick={() => setEvidenceDrawerOpen(true)}
+          onClick={() => {
+            setSourcesDrawerOpen(false);
+            setEvidenceDrawerOpen(true);
+          }}
         >
           Evidence
         </Button>
@@ -958,6 +1008,7 @@ export function WorkspacePage() {
               if (askDisabled) return;
               submitAsk();
             }}
+            onNewConversation={startNewConversation}
             askDisabled={askDisabled}
             askPending={askMutation.isPending}
             selectedCount={selectedSourceIds.length}
@@ -966,10 +1017,11 @@ export function WorkspacePage() {
             conflictHint={conflictHint}
             activeEntry={activeEntry}
             history={history}
+            pendingUser={pendingUser}
             selectedEvidenceUnitId={selectedCitation?.evidence_unit_id ?? null}
-            onSelectCitation={(citation) => {
-              if (!activeEntry) return;
-              openCitation(citation, activeEntry);
+            onSelectCitation={(citation, entry) => {
+              setActiveEntryId(entry.entryId);
+              openCitation(citation, entry);
             }}
             onSelectHistory={(entry) => {
               setActiveEntryId(entry.entryId);

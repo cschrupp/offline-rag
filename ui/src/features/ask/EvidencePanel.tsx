@@ -1,10 +1,13 @@
 import type { Source, WorkspaceCitation } from "../../api/types";
 import { SourcePreview, type PreviewTarget } from "./SourcePreview";
-import { snapshotBadge, type AskHistoryEntry } from "./askHistory";
+import {
+  snapshotBadge,
+  type ConversationHistoryEntry,
+} from "./conversationState";
 
 type Props = {
   previewTarget: PreviewTarget | null;
-  activeEntry: AskHistoryEntry | null;
+  activeEntry: ConversationHistoryEntry | null;
   selectedCitation: WorkspaceCitation | null;
   currentSnapshotId: string | null;
   currentSources: Source[];

@@ -50,16 +50,23 @@ class _SnapshotQueryRuntimeEntry:
 
     def answer(
         self,
-        question: str,
+        question: str | None = None,
         *,
+        retrieval_question: str | None = None,
+        answer_intent: str | None = None,
         checkpoint: CheckpointFn | None = None,
         document_ids: frozenset[str] | None = None,
     ) -> GroundedAnswerResult:
         if self.closed:
             raise AppError(ErrorCode.RUNTIME_NOT_READY)
         binding = self.binding
-        return self.orchestrator.answer(
-            query=question,
+        # Dual-question path (A2-D05a): retrieval_question drives assembly;
+        # answer_intent drives generation. Single question keeps legacy /query.
+        retrieval = (retrieval_question if retrieval_question is not None else question) or ""
+        intent = (answer_intent if answer_intent is not None else question) or ""
+        return self.orchestrator.run_grounded_query_core(
+            retrieval_question=retrieval,
+            answer_intent=intent,
             corpus_name=binding.corpus_name,
             check_ready=False,
             allow_recovery=False,
@@ -111,13 +118,19 @@ class SnapshotQueryRuntimeHandle:
 
     def answer(
         self,
-        question: str,
+        question: str | None = None,
         *,
+        retrieval_question: str | None = None,
+        answer_intent: str | None = None,
         checkpoint: CheckpointFn | None = None,
         document_ids: frozenset[str] | None = None,
     ) -> GroundedAnswerResult:
         return self._entry.answer(
-            question, checkpoint=checkpoint, document_ids=document_ids
+            question,
+            retrieval_question=retrieval_question,
+            answer_intent=answer_intent,
+            checkpoint=checkpoint,
+            document_ids=document_ids,
         )
 
 

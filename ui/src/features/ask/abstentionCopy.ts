@@ -8,6 +8,8 @@ export function abstentionCopy(reason: string | null | undefined): string {
       return "The selected evidence conflicts materially, so Seneca did not provide an answer.";
     case "model_declined":
       return "Seneca did not provide an answer from the available evidence.";
+    case "ambiguous_request":
+      return "Seneca could not safely resolve what this follow-up refers to. Rephrase with the specific topic or terms you mean.";
     default:
       return "Seneca did not provide an answer from the available evidence.";
   }

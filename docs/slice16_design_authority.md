@@ -45,7 +45,7 @@ vocabulary is preserved as provenance only. Current implementation-gate
 state is governed by accepted Amendment A2 and the Authorization note
 later in this document (observed B1 product UX withheld; B1 foundation
 remediation **ACCEPTED / SEALED**; **16D-B2 COMPLETE / ACCEPTED / SEALED**;
-**16D-B3 AUTHORIZED BY HUMAN / NOT STARTED**; **16D-C NOT AUTHORIZED**).
+**16D-B3 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING**; **16D-C NOT AUTHORIZED**).
 
 ```text
 AMENDMENT A1:
@@ -1116,9 +1116,9 @@ B1 FOUNDATION REMEDIATION:
   INDEPENDENT REVIEW: PASSED
   HUMAN ACCEPTANCE: ACCEPTED
   REWORK 1: COMPLETE
-16D-B3: AUTHORIZED BY HUMAN
-        IMPLEMENTATION NOT YET STARTED
-        ACTIVATION PENDING VERIFIED B2 CLOSEOUT
+16D-B3: IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+        AUTHORIZED BASELINE: 28aad06f89e6d00a0b81b51f9c2de38fed06cb22
+        EVIDENCE: docs/slice16d_b3_conversational_workspace.md
 16D-C: NOT AUTHORIZED
 16E–16H: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
@@ -1138,7 +1138,7 @@ SEALED** (implementation `c68cc3f8f16a2588ba093886f3e48e1c7037f83f`; verified
 closeout `b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90`). Legacy B1 product UX
 remains **PRODUCT ACCEPTANCE WITHHELD**. **16D-B2** is **COMPLETE /
 ACCEPTED / SEALED** at `baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`.
-**16D-B3** is **AUTHORIZED BY HUMAN** with **IMPLEMENTATION NOT YET
-STARTED** (activation pending verified B2 closeout). Explicit separate human
+**16D-B3** is an **IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING**
+from baseline `28aad06f89e6d00a0b81b51f9c2de38fed06cb22`. Explicit separate human
 authorization remains required before **16D-C** may start. Slice 16 overall
 is **not** complete.

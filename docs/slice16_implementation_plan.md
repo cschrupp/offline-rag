@@ -34,9 +34,9 @@ OBSERVED 16D-B1 CANDIDATE:
   INDEPENDENT REVIEW: PASSED
   HUMAN ACCEPTANCE: ACCEPTED
   REWORK 1: COMPLETE
-16D-B3: AUTHORIZED BY HUMAN
-        IMPLEMENTATION NOT YET STARTED
-        ACTIVATION PENDING VERIFIED B2 CLOSEOUT
+16D-B3: IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+        AUTHORIZED BASELINE: 28aad06f89e6d00a0b81b51f9c2de38fed06cb22
+        EVIDENCE: docs/slice16d_b3_conversational_workspace.md
 16D-C: NOT AUTHORIZED / NOT STARTED
 16E–16H: NOT AUTHORIZED
 BASELINE: c72215186524c9937de789adb1cf2056be13ea23
@@ -67,9 +67,11 @@ did **not** by itself authorize B2/B3/C. B1 foundation upload remediation is
 `b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90`); that acceptance does **not**
 grant product acceptance to the legacy B1 Ask/Evidence UX. **16D-B2** is
 **COMPLETE / ACCEPTED / SEALED** at
-`baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`. **16D-B3** is **AUTHORIZED BY
-HUMAN** with **IMPLEMENTATION NOT YET STARTED** (activation pending verified
-B2 closeout). **16D-C** remains **NOT AUTHORIZED**.
+`baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`. **16D-B3** is an
+**IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING** from authorized
+baseline `28aad06f89e6d00a0b81b51f9c2de38fed06cb22` (see
+[`docs/slice16d_b3_conversational_workspace.md`](slice16d_b3_conversational_workspace.md)).
+**16D-C** remains **NOT AUTHORIZED**.
 
 16A evidence: [`docs/slice16a_workspace_foundation.md`](slice16a_workspace_foundation.md)
 
@@ -113,8 +115,8 @@ B1 foundation remediation [ACCEPTED / SEALED @ c68cc3f8… / closeout b5fa1e85�
  ↓
 16D-B2 [COMPLETE / ACCEPTED / SEALED @ baa16eba…]   ← Grounded Answer V2
  ↓
-16D-B3 [AUTHORIZED BY HUMAN / NOT STARTED
-        ACTIVATION PENDING VERIFIED B2 CLOSEOUT]   ← Conversational workspace
+16D-B3 [IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+        @ baseline 28aad06…]   ← Conversational workspace
  ↓
 16D-C [NOT AUTHORIZED / NOT STARTED]
  ↓
@@ -143,16 +145,19 @@ foundation upload remediation is **ACCEPTED / SEALED** (implementation
 `c68cc3f8f16a2588ba093886f3e48e1c7037f83f`; verified closeout
 `b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90`). **16D-B2** is
 **COMPLETE / ACCEPTED / SEALED** at
-`baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`. **16D-B3** is **AUTHORIZED BY
-HUMAN** with **IMPLEMENTATION NOT YET STARTED** (activation pending verified
-B2 closeout). **16D-C** remains **NOT AUTHORIZED**.
+`baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`. **16D-B3** is an
+**IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING** from authorized
+baseline `28aad06f89e6d00a0b81b51f9c2de38fed06cb22` (see
+[`docs/slice16d_b3_conversational_workspace.md`](slice16d_b3_conversational_workspace.md)).
+**16D-C** remains **NOT AUTHORIZED**.
 
 Do not close Slice 16 automatically after 16H. Independent review and explicit
 human acceptance of the implemented slice remain required. **16A**, **16B**,
 **16C**, **16D-A**, and **16D-B2** are **COMPLETE / ACCEPTED**; legacy B1
 product UX acceptance remains **WITHHELD**; B1 foundation remediation is
-**ACCEPTED / SEALED**; **16D-B3** is authorized but unstarted; **16D-C** and
-**16E–16H** remain **NOT AUTHORIZED**. Slice 16 overall is **not** complete.
+**ACCEPTED / SEALED**; **16D-B3** is an **IMPLEMENTATION CANDIDATE /
+HUMAN ACCEPTANCE PENDING**; **16D-C** and **16E–16H** remain **NOT
+AUTHORIZED**. Slice 16 overall is **not** complete.
 
 ---
 
@@ -659,9 +664,9 @@ OBSERVED 16D-B1 CANDIDATE:
   INDEPENDENT REVIEW: PASSED
   HUMAN ACCEPTANCE: ACCEPTED
   REWORK 1: COMPLETE
-16D-B3: AUTHORIZED BY HUMAN
-        IMPLEMENTATION NOT YET STARTED
-        ACTIVATION PENDING VERIFIED B2 CLOSEOUT
+16D-B3: IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+        AUTHORIZED BASELINE: 28aad06f89e6d00a0b81b51f9c2de38fed06cb22
+        EVIDENCE: docs/slice16d_b3_conversational_workspace.md
 16D-C: NOT AUTHORIZED / NOT STARTED
 16E–16H: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
@@ -682,7 +687,7 @@ foundation remediation is **ACCEPTED / SEALED** (implementation
 `c68cc3f8f16a2588ba093886f3e48e1c7037f83f`; verified closeout
 `b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90`). **16D-B2** is **COMPLETE /
 ACCEPTED / SEALED** at `baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`.
-**16D-B3** is **AUTHORIZED BY HUMAN** with **IMPLEMENTATION NOT YET
-STARTED** (activation pending verified B2 closeout). **16D-C** and
+**16D-B3** is an **IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING**
+from baseline `28aad06f89e6d00a0b81b51f9c2de38fed06cb22`. **16D-C** and
 **16E–16H** remain **NOT AUTHORIZED**. Slice 16 overall is **not**
 complete.

@@ -293,15 +293,19 @@ def _project_success(
 
 def _execute_snapshot_query(
     handle: SnapshotQueryRuntimeHandle,
-    question: str,
-    control: OperationHandle | None = None,
     *,
+    retrieval_question: str,
+    answer_intent: str,
+    control: OperationHandle | None = None,
     document_ids: frozenset[str] | None = None,
 ) -> GroundedAnswerResult:
     """Execute grounded query against an already-bound snapshot runtime."""
     checkpoint = None if control is None else control.checkpoint
     return handle.answer(
-        question, checkpoint=checkpoint, document_ids=document_ids
+        retrieval_question=retrieval_question,
+        answer_intent=answer_intent,
+        checkpoint=checkpoint,
+        document_ids=document_ids,
     )
 
 
@@ -354,7 +358,9 @@ def run_bound_snapshot_query(
     runtime: ApplicationRuntime,
     *,
     snapshot: CorpusReadSnapshot,
-    question: str,
+    question: str | None = None,
+    retrieval_question: str | None = None,
+    answer_intent: str | None = None,
     control: OperationHandle | None = None,
     document_ids: frozenset[str] | None = None,
     source_scope: ProductTraceSourceScope | None = None,
@@ -365,8 +371,26 @@ def run_bound_snapshot_query(
     owns snapshot *resolution*, which is what distinguishes the product path
     (``current.json``) from the workspace path (``workspace.current_snapshot_id``);
     execution, tracing, and citation validation must not differ between them.
+
+    Dual-question (A2-D05a): ``retrieval_question`` drives retrieval/assembly;
+    ``answer_intent`` drives generation. When only ``question`` is supplied
+    (``/query``), all three are equal.
     """
-    normalized = normalize_product_question(question)
+    if retrieval_question is not None or answer_intent is not None:
+        retrieval = normalize_product_question(
+            retrieval_question if retrieval_question is not None else (question or "")
+        )
+        intent = normalize_product_question(
+            answer_intent if answer_intent is not None else (question or "")
+        )
+    else:
+        if question is None:
+            raise AppError(
+                ErrorCode.REQUEST_INVALID,
+                details=SafeErrorDetails(reason="question_invalid"),
+            )
+        retrieval = normalize_product_question(question)
+        intent = retrieval
     binding = build_snapshot_query_binding(runtime.settings, snapshot)
     if binding.product_mode_id != PRODUCT_MODE_GROUNDED_V1:
         raise AppError(
@@ -385,9 +409,10 @@ def run_bound_snapshot_query(
         store = ProductTraceStore(runtime.settings)
         created_at = datetime.now(tz=UTC)
         gencfg = build_product_v2_generation_config_hash(runtime.settings)
+        # Query-trace scientific request hash is the retrieval question.
         request_summary = ProductTraceRequestSummary(
-            question_sha256=_question_sha256(normalized),
-            question_char_count=len(normalized),
+            question_sha256=_question_sha256(retrieval),
+            question_char_count=len(retrieval),
             source_scope=source_scope,
         )
         identity = _identity_summary(binding, generation_config_hash=gencfg)
@@ -399,7 +424,8 @@ def run_bound_snapshot_query(
                 control.checkpoint("pre_execute")
             result = _execute_snapshot_query(
                 handle,
-                normalized,
+                retrieval_question=retrieval,
+                answer_intent=intent,
                 control=control,
                 document_ids=document_ids,
             )

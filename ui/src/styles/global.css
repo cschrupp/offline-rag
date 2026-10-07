@@ -316,6 +316,10 @@ p {
   width: 100%;
 }
 
+.app-main:has(.workspace-page) {
+  max-width: min(var(--workspace-max-width), 100%);
+}
+
 .stack {
   display: grid;
   gap: var(--space-4);
@@ -550,14 +554,20 @@ a.btn:hover {
 
 .knowledge-layout {
   display: grid;
-  grid-template-columns: minmax(16rem, 18rem) minmax(0, 1fr) minmax(20rem, 24rem);
+  grid-template-columns: minmax(17rem, 18rem) minmax(0, 1fr) minmax(22rem, 24rem);
   gap: var(--space-4);
   align-items: start;
 }
 
 .knowledge-sources,
 .knowledge-evidence,
-.knowledge-ask {
+.knowledge-ask,
+.conversation-panel,
+.conversation-thread,
+.conversation-turn,
+.conversation-user-turn,
+.conversation-assistant-turn,
+.answer-body {
   min-width: 0;
 }
 
@@ -756,6 +766,64 @@ a.btn:hover {
 .ask-history-question {
   font-weight: 600;
   color: var(--navy);
+}
+
+.conversation-panel-header {
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.conversation-thread {
+  gap: var(--space-4);
+}
+
+.conversation-turn {
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.conversation-turn-active {
+  border-color: var(--action);
+  background: #e8f1ff;
+}
+
+.conversation-role {
+  margin: 0 0 var(--space-1);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.conversation-user-text,
+.answer-body,
+.provenance-list dd,
+.source-name-button,
+.ask-history-question,
+.conversation-assistant-turn .abstention-callout {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.conversation-user-text,
+.answer-body {
+  white-space: pre-wrap;
+}
+
+.conversation-composer {
+  margin-top: var(--space-2);
+}
+
+button.snapshot-badge {
+  appearance: none;
+  font: inherit;
+  cursor: pointer;
 }
 
 .answer-body p {
