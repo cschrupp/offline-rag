@@ -10,6 +10,7 @@ import type {
   Workspace,
   WorkspaceQueryResponse,
 } from "./types";
+import { uploadMultipart } from "./upload";
 
 export type RequestOptions = {
   method?: string;
@@ -187,16 +188,20 @@ export function addSources(params: {
   files: File[];
   revision: number;
   idempotencyKey: string;
+  signal?: AbortSignal;
 }): Promise<Operation> {
   const form = new FormData();
   for (const file of params.files) {
     form.append("files", file, file.name);
   }
-  return apiRequest<Operation>(`/v1/workspaces/${params.workspaceId}/sources`, {
-    method: "POST",
+  // Dedicated multipart transport (XHR): abortable, honest interruption
+  // classification, browser-owned Content-Type boundary.
+  return uploadMultipart<Operation>({
+    path: `/v1/workspaces/${params.workspaceId}/sources`,
+    formData: form,
     idempotencyKey: params.idempotencyKey,
     ifMatch: params.revision,
-    body: form,
+    signal: params.signal,
   });
 }
 

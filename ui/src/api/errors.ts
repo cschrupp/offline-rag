@@ -81,6 +81,10 @@ export function userFacingErrorMessage(error: unknown): string {
         return "Managed operation not found.";
       case "network_error":
         return "Could not reach OfflineRAG. Check that this installation is running and reachable.";
+      case "request_aborted":
+        return "Upload canceled before Seneca confirmed acceptance.";
+      case "upload_transport_interrupted":
+        return "Seneca couldn't confirm whether this upload was accepted. Retry the same upload safely.";
       default:
         return error.message;
     }

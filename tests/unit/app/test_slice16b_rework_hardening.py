@@ -286,6 +286,54 @@ def test_f2_sync_source_patch_idempotent(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
+def test_f3_idempotency_replay_precedes_stale_revision_after_success(
+    tmp_path: Path,
+) -> None:
+    """Matching key + stale If-Match after success must replay, not conflict.
+
+    Frontend safe-retry relies on this ordering: reservation lookup before
+    workspace revision validation.
+    """
+    with _client(tmp_path, max_concurrent_ingest=1) as (client, _runtime):
+        wid = _create_workspace(client, key="c-f3-stale")["workspace_id"]
+        files = [
+            ("files", ("a.txt", b"alpha content about pumps\n", "text/plain")),
+            ("files", ("b.txt", b"beta content about valves\n", "text/plain")),
+        ]
+        first = client.post(
+            f"/v1/workspaces/{wid}/sources",
+            headers={"Idempotency-Key": "stale-replay-k", "If-Match": '"1"'},
+            files=files,
+        )
+        assert first.status_code == 202, first.text
+        op_id = first.json()["operation_id"]
+        terminal = _wait_operation(client, op_id)
+        assert terminal["status"] == "succeeded", terminal
+
+        ws = client.get(f"/v1/workspaces/{wid}").json()
+        assert ws["revision"] > 1
+        sources_before = client.get(f"/v1/workspaces/{wid}/sources").json()["sources"]
+        assert len(sources_before) == 2
+
+        # Exact same files + same key + original (now stale) If-Match.
+        replay = client.post(
+            f"/v1/workspaces/{wid}/sources",
+            headers={"Idempotency-Key": "stale-replay-k", "If-Match": '"1"'},
+            files=files,
+        )
+        assert replay.status_code == 202, replay.text
+        assert replay.json()["operation_id"] == op_id
+        assert replay.json().get("error") is None
+        assert "workspace_conflict" not in (replay.text or "")
+        assert "idempotency_conflict" not in (replay.text or "")
+
+        sources_after = client.get(f"/v1/workspaces/{wid}/sources").json()["sources"]
+        assert len(sources_after) == 2
+        assert {s["source_id"] for s in sources_after} == {
+            s["source_id"] for s in sources_before
+        }
+
+
 def test_f3_retry_while_running_does_not_overload(tmp_path: Path) -> None:
     with _client(tmp_path, max_concurrent_ingest=1) as (client, runtime):
         wid = _create_workspace(client, key="c-f3r")["workspace_id"]

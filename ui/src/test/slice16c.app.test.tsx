@@ -415,7 +415,9 @@ describe("source management", () => {
     await user.upload(screen.getByLabelText("Source files"), file);
     expect(screen.getByText(/policy\.txt/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Add sources" }));
-    expect(await screen.findByText(/Uploading/i)).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: /cancel upload/i }),
+    ).toBeInTheDocument();
     releaseAdd(
       jsonResponse(
         operation({

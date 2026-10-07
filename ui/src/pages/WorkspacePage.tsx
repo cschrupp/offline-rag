@@ -78,6 +78,15 @@ import {
 
 type PendingPhase = "idle" | "uploading" | "operation" | "terminal_error";
 
+/** Frozen Add Sources submission — never rebuilt from live workspace on retry. */
+export type AddSourcesIntent = {
+  workspaceId: string;
+  expectedRevision: number;
+  files: File[];
+  fingerprint: string;
+  idempotencyKey: string;
+};
+
 function limitsFromCapabilities(
   caps: {
     source_limits: {
@@ -129,6 +138,10 @@ export function WorkspacePage() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [addError, setAddError] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [addSourcesIntent, setAddSourcesIntent] =
+    useState<AddSourcesIntent | null>(null);
+  const [addAmbiguous, setAddAmbiguous] = useState(false);
+  const addUploadAbortRef = useRef<AbortController | null>(null);
   const [editWorkspaceOpen, setEditWorkspaceOpen] = useState(false);
 
   const [renameTarget, setRenameTarget] = useState<Source | null>(null);
@@ -290,37 +303,116 @@ export function WorkspacePage() {
     return false;
   }
 
+  function clearAddUploadTransport() {
+    addUploadAbortRef.current = null;
+  }
+
+  function abandonAddSourcesIntent() {
+    addUploadAbortRef.current?.abort();
+    clearAddUploadTransport();
+    setAddSourcesIntent(null);
+    setAddAmbiguous(false);
+    addIntent.current.reset();
+  }
+
+  function cancelAddUpload() {
+    const controller = addUploadAbortRef.current;
+    if (controller && !controller.signal.aborted) {
+      controller.abort();
+    }
+  }
+
+  function closeAddSourcesModal() {
+    if (pendingPhase === "uploading" || addMutation.isPending) {
+      cancelAddUpload();
+    }
+    setAddSourcesIntent(null);
+    setAddAmbiguous(false);
+    addIntent.current.reset();
+    clearAddUploadTransport();
+    setSelectedFiles([]);
+    setAddError(null);
+    setAddOpen(false);
+    setPendingPhase((phase) => (phase === "uploading" ? "idle" : phase));
+  }
+
   const addMutation = useMutation({
-    mutationFn: async () => {
-      if (!workspace) throw new Error("Workspace not loaded");
-      const key = addIntent.current.prepare(
-        fingerprintAddSources({
-          workspaceId,
-          revision: workspace.revision,
-          files: selectedFiles,
-        }),
-      );
-      return addSources({
-        workspaceId,
-        files: selectedFiles,
-        revision: workspace.revision,
-        idempotencyKey: key,
-      });
+    mutationFn: async (intent: AddSourcesIntent) => {
+      const controller = new AbortController();
+      addUploadAbortRef.current = controller;
+      setPendingPhase("uploading");
+      setAddAmbiguous(false);
+      try {
+        return await addSources({
+          workspaceId: intent.workspaceId,
+          files: intent.files,
+          revision: intent.expectedRevision,
+          idempotencyKey: intent.idempotencyKey,
+          signal: controller.signal,
+        });
+      } finally {
+        if (addUploadAbortRef.current === controller) {
+          clearAddUploadTransport();
+        }
+      }
     },
     onSuccess: (operation) => {
       beginOperation(operation, "Add sources");
       setSelectedFiles([]);
       setAddOpen(false);
+      setAddSourcesIntent(null);
+      setAddAmbiguous(false);
+      setAddError(null);
       addIntent.current.reset();
     },
     onError: (error) => {
       setPendingPhase("idle");
       setAddError(userFacingErrorMessage(error));
-      if (handleConflict(error) || (isApiError(error) && error.kind !== "network")) {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.workspace(workspaceId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.workspaceSources(workspaceId),
+      });
+
+      if (isApiError(error) && error.code === "request_aborted") {
+        // Cancel is not a safe-retry surface; abandon intent after local abort.
+        setAddAmbiguous(false);
+        setAddSourcesIntent(null);
+        addIntent.current.reset();
+        return;
+      }
+
+      if (isApiError(error) && error.code === "upload_transport_interrupted") {
+        // Keep frozen intent for explicit "Retry safely".
+        setAddAmbiguous(true);
+        return;
+      }
+
+      if (
+        handleConflict(error) ||
+        (isApiError(error) && error.kind !== "network")
+      ) {
+        setAddAmbiguous(false);
+        setAddSourcesIntent(null);
         addIntent.current.reset();
       }
     },
   });
+
+  function submitAddSourcesIntent(intent: AddSourcesIntent) {
+    setAddSourcesIntent(intent);
+    setAddError(null);
+    setOperationLabel("Add sources");
+    addMutation.mutate(intent);
+  }
+
+  function retryAddSourcesSafely() {
+    if (!addSourcesIntent || addMutation.isPending) return;
+    setAddError(null);
+    setOperationLabel("Add sources");
+    addMutation.mutate(addSourcesIntent);
+  }
 
   const renameMutation = useMutation({
     mutationFn: () => {
@@ -547,15 +639,32 @@ export function WorkspacePage() {
 
   function onAddSubmit(event: FormEvent) {
     event.preventDefault();
+    if (!workspace || addMutation.isPending || pendingPhase === "uploading") {
+      return;
+    }
+    if (addAmbiguous && addSourcesIntent) {
+      // Unresolved ambiguous intent must be retried or explicitly abandoned.
+      return;
+    }
     const validation = validateSelectedFiles(selectedFiles);
     if (validation) {
       setAddError(validation);
       return;
     }
-    setAddError(null);
-    setOperationLabel("Add sources");
-    setPendingPhase("uploading");
-    addMutation.mutate();
+    const fingerprint = fingerprintAddSources({
+      workspaceId,
+      revision: workspace.revision,
+      files: selectedFiles,
+    });
+    const idempotencyKey = addIntent.current.prepare(fingerprint);
+    const intent: AddSourcesIntent = {
+      workspaceId,
+      expectedRevision: workspace.revision,
+      files: selectedFiles,
+      fingerprint,
+      idempotencyKey,
+    };
+    submitAddSourcesIntent(intent);
   }
 
   if (workspaceQuery.isLoading) {
@@ -576,7 +685,6 @@ export function WorkspacePage() {
 
   const isEmpty = workspace.status === "empty" || sources.length === 0;
   const usedBytes = activeSourceBytes(sources);
-  const selectedBytes = selectedFiles.reduce((sum, file) => sum + file.size, 0);
   const finalSourceWarning =
     removeTarget && sources.length === 1
       ? "Removing the final source will leave this workspace empty and retire its current searchable knowledge. Historical artifacts may remain locally."
@@ -905,11 +1013,8 @@ export function WorkspacePage() {
         open={addOpen}
         title="Add sources"
         description="Select files to add to this knowledge workspace."
-        busy={addMutation.isPending || pendingPhase === "uploading"}
-        onClose={() => {
-          if (addMutation.isPending || pendingPhase === "uploading") return;
-          setAddOpen(false);
-        }}
+        busy={false}
+        onClose={closeAddSourcesModal}
       >
         <form className="stack" onSubmit={onAddSubmit}>
           <div className="field">
@@ -918,8 +1023,13 @@ export function WorkspacePage() {
               id="add-files"
               type="file"
               multiple
+              disabled={pendingPhase === "uploading" || addMutation.isPending}
               onChange={(event) => {
                 const files = Array.from(event.target.files ?? []);
+                if (addAmbiguous && addSourcesIntent) {
+                  // Explicit abandonment — new selection must not reuse old key.
+                  abandonAddSourcesIntent();
+                }
                 setSelectedFiles(files);
                 setAddError(null);
               }}
@@ -930,14 +1040,19 @@ export function WorkspacePage() {
                 : "Maximum file size: determined by the server"}
             </p>
           </div>
-          {selectedFiles.length > 0 ? (
+          {(addSourcesIntent?.files ?? selectedFiles).length > 0 ? (
             <>
               <p className="muted" style={{ margin: 0 }}>
-                Selected: {selectedFiles.length} file
-                {selectedFiles.length === 1 ? "" : "s"} · {formatBytes(selectedBytes)}
+                {(() => {
+                  const files = addSourcesIntent?.files ?? selectedFiles;
+                  const label = files.length === 1 ? "file" : "files";
+                  return `Selected: ${files.length} ${label} · ${formatBytes(
+                    files.reduce((sum, file) => sum + file.size, 0),
+                  )}`;
+                })()}
               </p>
               <ul>
-                {selectedFiles.map((file) => (
+                {(addSourcesIntent?.files ?? selectedFiles).map((file) => (
                   <li key={`${file.name}-${file.size}-${file.lastModified}`}>
                     {file.name} · {formatBytes(file.size)}
                   </li>
@@ -945,26 +1060,48 @@ export function WorkspacePage() {
               </ul>
             </>
           ) : null}
+          {pendingPhase === "uploading" || addMutation.isPending ? (
+            <p className="muted" aria-live="polite">
+              Uploading...
+            </p>
+          ) : null}
           {addError ? (
             <p className="error-box" role="alert">
               {addError}
             </p>
           ) : null}
           <div className="row" style={{ justifyContent: "flex-end" }}>
-            <Button
-              variant="secondary"
-              type="button"
-              onClick={() => setAddOpen(false)}
-              disabled={addMutation.isPending || pendingPhase === "uploading"}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={addMutation.isPending || busyForMutations}
-            >
-              Add sources
-            </Button>
+            {pendingPhase === "uploading" || addMutation.isPending ? (
+              <Button
+                variant="secondary"
+                type="button"
+                onClick={cancelAddUpload}
+              >
+                Cancel upload
+              </Button>
+            ) : (
+              <Button
+                variant="secondary"
+                type="button"
+                onClick={closeAddSourcesModal}
+              >
+                Cancel
+              </Button>
+            )}
+            {pendingPhase === "uploading" || addMutation.isPending ? null : addAmbiguous &&
+              addSourcesIntent ? (
+              <Button
+                type="button"
+                onClick={retryAddSourcesSafely}
+                disabled={busyForMutations}
+              >
+                Retry safely
+              </Button>
+            ) : (
+              <Button type="submit" disabled={busyForMutations}>
+                Add sources
+              </Button>
+            )}
           </div>
         </form>
       </ModalDialog>

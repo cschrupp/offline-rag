@@ -597,7 +597,7 @@ describe("Slice 16D-A Edit workspace modal UX (F11)", () => {
     mock.restore();
   });
 
-  it("exposes Close on Add sources and disables it while uploading", async () => {
+  it("keeps Close available on Add sources during pre-202 upload (abortable)", async () => {
     const user = userEvent.setup();
     let releaseAdd: ((response: Response) => void) | null = null;
     const addGate = new Promise<Response>((resolve) => {
@@ -637,8 +637,11 @@ describe("Slice 16D-A Edit workspace modal UX (F11)", () => {
     await user.upload(fileInput, new File(["pump"], "pump.txt", { type: "text/plain" }));
     await user.click(within(dialog).getByRole("button", { name: /^add sources$/i }));
     await waitFor(() => {
-      expect(within(dialog).getByRole("button", { name: "Close" })).toBeDisabled();
+      expect(
+        within(dialog).getByRole("button", { name: /cancel upload/i }),
+      ).toBeEnabled();
     });
+    expect(within(dialog).getByRole("button", { name: "Close" })).toBeEnabled();
     releaseAdd?.(
       jsonResponse(
         operation({

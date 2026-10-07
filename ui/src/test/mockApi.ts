@@ -4,6 +4,7 @@ import type {
   Source,
   Workspace,
 } from "../api/types";
+import { installUploadHandlerForTests } from "../api/upload";
 
 export function workspace(partial: Partial<Workspace> & Pick<Workspace, "workspace_id">): Workspace {
   return {
@@ -115,6 +116,56 @@ export function installFetchMock(
 ): { calls: FetchCall[]; restore: () => void } {
   const calls: FetchCall[] = [];
   const original = globalThis.fetch;
+
+  // Route dedicated multipart upload transport through the same handler so
+  // existing Add Sources tests keep working after the XHR boundary.
+  installUploadHandlerForTests(async (uploadCall) => {
+    const call: FetchCall = {
+      url: uploadCall.path,
+      method: uploadCall.method,
+      headers: uploadCall.headers,
+      body: uploadCall.formData,
+    };
+    calls.push(call);
+
+    if (uploadCall.signal?.aborted) {
+      throw new DOMException("Aborted", "AbortError");
+    }
+
+    const waitAbort = new Promise<never>((_resolve, reject) => {
+      if (!uploadCall.signal) return;
+      uploadCall.signal.addEventListener(
+        "abort",
+        () => reject(new DOMException("Aborted", "AbortError")),
+        { once: true },
+      );
+    });
+
+    const response = await Promise.race([
+      Promise.resolve(handler(call)),
+      waitAbort,
+    ]);
+
+    if (
+      response.status === 404 &&
+      (uploadCall.path === "/v1/capabilities" ||
+        uploadCall.path.endsWith("/v1/capabilities"))
+    ) {
+      return { status: 200, body: capabilities() };
+    }
+
+    let body: unknown = null;
+    const contentType = response.headers.get("content-type") ?? "";
+    if (contentType.includes("application/json")) {
+      try {
+        body = await response.json();
+      } catch {
+        body = null;
+      }
+    }
+    return { status: response.status, body };
+  });
+
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url =
       typeof input === "string"
@@ -140,6 +191,7 @@ export function installFetchMock(
     calls,
     restore: () => {
       globalThis.fetch = original;
+      installUploadHandlerForTests(null);
     },
   };
 }
