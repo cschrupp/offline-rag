@@ -44,8 +44,8 @@ HUMAN ACCEPTANCE PENDING**, and **16D-C** as **NOT AUTHORIZED**. That
 vocabulary is preserved as provenance only. Current implementation-gate
 state is governed by accepted Amendment A2 and the Authorization note
 later in this document (observed B1 product UX withheld; B1 foundation
-remediation **ACCEPTED / SEALED**; **16D-B2 IMPLEMENTATION CANDIDATE /
-HUMAN ACCEPTANCE PENDING**; **16D-B3 / 16D-C NOT AUTHORIZED**).
+remediation **ACCEPTED / SEALED**; **16D-B2 COMPLETE / ACCEPTED / SEALED**;
+**16D-B3 AUTHORIZED BY HUMAN / NOT STARTED**; **16D-C NOT AUTHORIZED**).
 
 ```text
 AMENDMENT A1:
@@ -1111,8 +1111,15 @@ B1 FOUNDATION REMEDIATION:
   ACCEPTED IMPLEMENTATION: c68cc3f8f16a2588ba093886f3e48e1c7037f83f
   VERIFIED CLOSEOUT: b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90
   INDEPENDENT CLOSEOUT REVIEW: PASSED
-16D-B2: IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
-16D-B3 / 16D-C: NOT AUTHORIZED
+16D-B2: COMPLETE / ACCEPTED / SEALED
+  ACCEPTED IMPLEMENTATION: baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149
+  INDEPENDENT REVIEW: PASSED
+  HUMAN ACCEPTANCE: ACCEPTED
+  REWORK 1: COMPLETE
+16D-B3: AUTHORIZED BY HUMAN
+        IMPLEMENTATION NOT YET STARTED
+        ACTIVATION PENDING VERIFIED B2 CLOSEOUT
+16D-C: NOT AUTHORIZED
 16E–16H: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
 SLICE 18: NOT AUTHORIZED
@@ -1121,15 +1128,17 @@ M7 CLOSEOUT: NOT AUTHORIZED
 ```
 
 Design acceptance/lock does **not** by itself authorize later phases. **16A**,
-**16B**, **16C**, and **16D-A** were separately authorized and are
-**COMPLETE / ACCEPTED**. Amendment A1 is **ACCEPTED / LOCKED** at
+**16B**, **16C**, **16D-A**, and **16D-B2** were separately authorized and
+are **COMPLETE / ACCEPTED**. Amendment A1 is **ACCEPTED / LOCKED** at
 `5060e2aeb4825f265072a1f870c3c963eace3b30`. Amendment A2 is **ACCEPTED /
 LOCKED / SEALED** at `dce3456e519cb6c96570e20f5af800d00cafb5a7` (closeout
 `f0bdf78d0ae6a79737055d324b22fc35e1e501f5`) and did **not** by itself
 authorize B2/B3/C implementation. B1 foundation remediation is **ACCEPTED /
 SEALED** (implementation `c68cc3f8f16a2588ba093886f3e48e1c7037f83f`; verified
 closeout `b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90`). Legacy B1 product UX
-remains **PRODUCT ACCEPTANCE WITHHELD**. **16D-B2** is an
-**IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING**. Explicit separate
-human authorization is required before **16D-B3** or **16D-C** may start.
-Slice 16 overall is **not** complete.
+remains **PRODUCT ACCEPTANCE WITHHELD**. **16D-B2** is **COMPLETE /
+ACCEPTED / SEALED** at `baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`.
+**16D-B3** is **AUTHORIZED BY HUMAN** with **IMPLEMENTATION NOT YET
+STARTED** (activation pending verified B2 closeout). Explicit separate human
+authorization remains required before **16D-C** may start. Slice 16 overall
+is **not** complete.

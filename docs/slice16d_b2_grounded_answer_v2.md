@@ -1,11 +1,21 @@
 # Slice 16D-B2 — Grounded Answer V2 & Claim-Level Citations
 
 ```text
-STATUS: IMPLEMENTATION EVIDENCE CANDIDATE
-HUMAN ACCEPTANCE: PENDING
+STATUS: COMPLETE / ACCEPTED / SEALED
+HUMAN ACCEPTANCE: ACCEPTED
+INDEPENDENT REVIEW: PASSED
 
-Implementation baseline:
+Authorized implementation baseline:
 0874ba6d2273393e392ce92bab8d6956eb287490
+
+Initial implementation candidate:
+7b6da5d31b3815cce8c5bae57c3165e510f5e1ca
+
+Rework 1 accepted implementation:
+baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149
+
+REWORK:
+16D-B2 REWORK 1 COMPLETE
 
 Accepted A2 design:
 dce3456e519cb6c96570e20f5af800d00cafb5a7
@@ -21,8 +31,12 @@ closeout: b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90
 Branch:
 implementation/16d-b2-grounded-answer-v2
 
-16D-B2: IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
-16D-B3 / 16D-C: NOT AUTHORIZED
+16D-B2: COMPLETE / ACCEPTED / SEALED
+16D-B3: AUTHORIZED BY HUMAN
+        IMPLEMENTATION NOT YET STARTED
+        ACTIVATION PENDING VERIFIED B2 CLOSEOUT
+16D-C: NOT AUTHORIZED
+16E–16H: NOT AUTHORIZED
 Slice 16: IN PROGRESS / NOT COMPLETE
 ```
 
@@ -202,9 +216,24 @@ Performed against restarted local API on B2 code + Vite UI + local generator
      `abstentionCopy` tests; conflicting_evidence / model_declined not
      manually induced (fixture/automated coverage retained).
 
+## Acceptance closeout
+
+- Independent Rework-1 review: **PASS — RECOMMEND HUMAN ACCEPTANCE**
+- Human acceptance: **ACCEPTED**
+- Final status: **COMPLETE / ACCEPTED / SEALED**
+- Accepted implementation SHA: `baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`
+- Frontend validation (Rework 1): lint / typecheck / 79 tests / build **PASS**
+- Manual real-provider smoke: recorded above (not newly fabricated)
+- Backend suite: not re-run for frontend-only Rework 1
+- Previously documented unrelated backend failure
+  (`test_unauthorized_endpoint_not_probed`) remains unrelated
+- B2 did **not** implement B3 conversational orchestration or 16D-C
+
 ## Limitations / B3 deferrals
 
-- No conversation orchestration / `/conversation/turn`
-- No F7/F8/F9 layout/composer redesign
+- No conversation orchestration / `/conversation/turn` in B2
+- No F7/F8/F9 layout/composer redesign in B2
 - Legacy B1 Ask product UX remains acceptance-withheld
-- Narrow B1 shell intentionally retained for B2
+- Narrow B1 shell intentionally retained through B2
+- **16D-B3** is human-authorized but **not started**; activation awaits
+  verified B2 closeout
