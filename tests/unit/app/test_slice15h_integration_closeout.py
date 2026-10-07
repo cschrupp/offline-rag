@@ -404,8 +404,13 @@ def test_cli_query_uses_app_layer(
                     "line_start": None,
                     "line_end": None,
                     "clipped": False,
+                    "citation_ref": "c1",
+                    "excerpt": "42",
+                    "excerpt_clipped": False,
                 }
             ],
+            answer_blocks=[{"text": "42", "citation_refs": ["c1"]}],
+            abstention_reason=None,
         )
 
     class Boom:

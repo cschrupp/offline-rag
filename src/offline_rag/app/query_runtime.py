@@ -71,6 +71,7 @@ class _SnapshotQueryRuntimeEntry:
             corpus_id=binding.corpus_id,
             document_ids=document_ids,
             checkpoint=checkpoint,
+            product_v2=True,
         )
 
     def close(self) -> None:

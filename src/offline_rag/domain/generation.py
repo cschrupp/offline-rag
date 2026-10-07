@@ -45,6 +45,15 @@ class ResolvedCitation(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class GroundedAnswerBlock(BaseModel):
+    """Internal claim/block with canonical evidence-unit support (A2-D12/D14)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    text: NonEmptyStr
+    evidence_unit_ids: list[NonEmptyStr] = Field(default_factory=list)
+
+
 AnswerStatus = Literal[
     "answered",
     "insufficient_evidence",
@@ -53,6 +62,13 @@ AnswerStatus = Literal[
 ]
 
 AbstentionReason = Literal["empty_context", "model_abstain"]
+
+ProductAbstentionReason = Literal[
+    "no_evidence",
+    "insufficient_support",
+    "conflicting_evidence",
+    "model_declined",
+]
 
 
 class GroundedAnswerResult(BaseModel):
@@ -65,7 +81,9 @@ class GroundedAnswerResult(BaseModel):
     status: AnswerStatus
     answer_text: str | None = None
     citations: list[ResolvedCitation] = Field(default_factory=list)
+    answer_blocks: list[GroundedAnswerBlock] = Field(default_factory=list)
     abstention_reason: AbstentionReason | None = None
+    product_abstention_reason: ProductAbstentionReason | None = None
     generation_failure_reason: NonEmptyStr | None = None
     generator_invoked: bool = False
     attempt_count: NonNegativeInt = 0

@@ -34,8 +34,13 @@ from offline_rag.app.workspace.models import (
 )
 from offline_rag.app.workspace.store import WorkspaceStore
 from offline_rag.domain.generation import GroundedAnswerResult, ResolvedCitation
-from offline_rag.generation.config_hash import build_generation_config_hash
+from offline_rag.generation.config_hash import build_product_v2_generation_config_hash
+from offline_rag.generation.excerpts import build_citation_excerpt
 from offline_rag.generation.orchestrate import GroundedAnswerError
+from offline_rag.generation.projection_v2 import (
+    assign_public_citation_refs,
+    project_plain_answer,
+)
 
 MAX_QUESTION_CHARS = 8000
 
@@ -64,6 +69,8 @@ class ProductQueryResponse:
     status: ProductSuccessStatus
     answer: str | None
     citations: list[dict[str, Any]]
+    answer_blocks: list[dict[str, Any]]
+    abstention_reason: str | None
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -74,6 +81,8 @@ class ProductQueryResponse:
             "status": self.status,
             "answer": self.answer,
             "citations": self.citations,
+            "answer_blocks": self.answer_blocks,
+            "abstention_reason": self.abstention_reason,
         }
 
 
@@ -87,6 +96,8 @@ class BoundSnapshotQueryOutcome:
     status: ProductSuccessStatus
     answer: str | None
     citations: list[dict[str, Any]]
+    answer_blocks: list[dict[str, Any]]
+    abstention_reason: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,6 +112,8 @@ class WorkspaceQueryResponse:
     status: ProductSuccessStatus
     answer: str | None
     citations: list[dict[str, Any]]
+    answer_blocks: list[dict[str, Any]]
+    abstention_reason: str | None
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -112,6 +125,8 @@ class WorkspaceQueryResponse:
             "status": self.status,
             "answer": self.answer,
             "citations": self.citations,
+            "answer_blocks": self.answer_blocks,
+            "abstention_reason": self.abstention_reason,
         }
 
 
@@ -155,15 +170,11 @@ def _latency_int(diagnostics: dict[str, Any] | None, key: str) -> int | None:
         return None
 
 
-def _project_citations(
-    citations: list[ResolvedCitation],
-    *,
-    snapshot: CorpusReadSnapshot,
-    binding: SnapshotQueryBinding,
+def _validate_result_binding(
     result: GroundedAnswerResult,
-    document_ids: frozenset[str] | None = None,
-) -> list[dict[str, Any]]:
-    inventory = {entry.document_id for entry in snapshot.corpus_manifest.documents}
+    *,
+    binding: SnapshotQueryBinding,
+) -> None:
     if result.dense_index_id not in (None, binding.dense_index_id):
         raise AppError(ErrorCode.CITATION_INVALID)
     if result.lexical_index_id not in (None, binding.lexical_index_id):
@@ -171,15 +182,46 @@ def _project_citations(
     if result.context_config_hash not in (None, binding.context_config_hash):
         raise AppError(ErrorCode.CITATION_INVALID)
 
+
+def _project_v2_citations(
+    result: GroundedAnswerResult,
+    *,
+    snapshot: CorpusReadSnapshot,
+    binding: SnapshotQueryBinding,
+    document_ids: frozenset[str] | None = None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Project answer_blocks + citations with citation_ref / excerpt (A2-D14/D15)."""
+    _validate_result_binding(result, binding=binding)
+    inventory = {entry.document_id for entry in snapshot.corpus_manifest.documents}
+    if not result.answer_blocks:
+        raise AppError(ErrorCode.INTERNAL_ERROR)
+    public_blocks, ordered_ids = assign_public_citation_refs(list(result.answer_blocks))
+    by_id = {c.evidence_unit_id: c for c in result.citations}
     projected: list[dict[str, Any]] = []
-    for citation in citations:
+    for index, evidence_id in enumerate(ordered_ids, start=1):
+        citation = by_id.get(evidence_id)
+        if citation is None:
+            raise AppError(ErrorCode.CITATION_INVALID)
         if citation.document_id not in inventory:
             raise AppError(ErrorCode.CITATION_INVALID)
         if document_ids is not None and citation.document_id not in document_ids:
             raise AppError(ErrorCode.CITATION_INVALID)
+        # Excerpt from ResolvedCitation cannot carry unit text; use diagnostics
+        # metadata if present, else empty. Prefer unit text from result metadata.
+        excerpt = ""
+        excerpt_clipped = False
+        unit_text = None
+        units_meta = (result.metadata or {}).get("evidence_unit_texts")
+        if isinstance(units_meta, dict):
+            unit_text = units_meta.get(evidence_id)
+        if isinstance(unit_text, str):
+            excerpt, excerpt_clipped = build_citation_excerpt(unit_text)
         row = {field: getattr(citation, field) for field in _CITATION_PUBLIC_FIELDS}
+        row["citation_ref"] = f"c{index}"
+        row["excerpt"] = excerpt
+        row["excerpt_clipped"] = excerpt_clipped
         projected.append(row)
-    return projected
+    return [b.as_dict() for b in public_blocks], projected
 
 
 def _map_generation_failure(result: GroundedAnswerResult) -> AppError:
@@ -201,30 +243,46 @@ def _project_success(
     snapshot: CorpusReadSnapshot,
     binding: SnapshotQueryBinding,
     document_ids: frozenset[str] | None = None,
-) -> tuple[ProductSuccessStatus, str | None, list[dict[str, Any]]]:
+) -> tuple[
+    ProductSuccessStatus,
+    str | None,
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+    str | None,
+]:
     if result.status == "answered":
-        answer = result.answer_text
-        if not answer or not str(answer).strip():
-            raise AppError(ErrorCode.INTERNAL_ERROR)
-        # D21: answered requires non-empty validated citations.
+        # D21 / B2: answered requires validated citations and claim blocks.
         if not result.citations:
             raise AppError(ErrorCode.CITATION_INVALID)
-        citations = _project_citations(
-            list(result.citations),
+        if not result.answer_blocks:
+            raise AppError(ErrorCode.INTERNAL_ERROR)
+        answer = project_plain_answer(list(result.answer_blocks))
+        if not answer.strip():
+            raise AppError(ErrorCode.INTERNAL_ERROR)
+        answer_blocks, citations = _project_v2_citations(
+            result,
             snapshot=snapshot,
             binding=binding,
-            result=result,
             document_ids=document_ids,
         )
         if not citations:
             raise AppError(ErrorCode.CITATION_INVALID)
-        return "answered", str(answer), citations
+        return "answered", answer, citations, answer_blocks, None
 
     if result.status == "insufficient_evidence":
+        reason = result.product_abstention_reason
         if result.abstention_reason == "model_abstain":
-            return "model_abstain", None, []
+            if reason not in {
+                "insufficient_support",
+                "conflicting_evidence",
+                "model_declined",
+            }:
+                reason = "model_declined"
+            return "model_abstain", None, [], [], reason
         if result.abstention_reason == "empty_context":
-            return "insufficient_evidence", None, []
+            if reason not in {"no_evidence", "insufficient_support"}:
+                reason = "no_evidence"
+            return "insufficient_evidence", None, [], [], reason
         raise AppError(ErrorCode.INTERNAL_ERROR)
 
     if result.status in {"generation_failed", "citation_invalid"}:
@@ -326,7 +384,7 @@ def run_bound_snapshot_query(
         trace_id = allocate_trace_id()
         store = ProductTraceStore(runtime.settings)
         created_at = datetime.now(tz=UTC)
-        gencfg = build_generation_config_hash(runtime.settings)
+        gencfg = build_product_v2_generation_config_hash(runtime.settings)
         request_summary = ProductTraceRequestSummary(
             question_sha256=_question_sha256(normalized),
             question_char_count=len(normalized),
@@ -349,7 +407,7 @@ def run_bound_snapshot_query(
                 control.checkpoint("post_execute")
             if control is not None:
                 control.checkpoint("pre_project")
-            status, answer, citations = _project_success(
+            status, answer, citations, answer_blocks, abstention_reason = _project_success(
                 result,
                 snapshot=snapshot,
                 binding=binding,
@@ -360,6 +418,8 @@ def run_bound_snapshot_query(
             status = None
             answer = None
             citations = []
+            answer_blocks = []
+            abstention_reason = None
         except GroundedAnswerError as exc:
             mapped_error = AppError(
                 ErrorCode.INTERNAL_ERROR,
@@ -369,12 +429,16 @@ def run_bound_snapshot_query(
             status = None
             answer = None
             citations = []
+            answer_blocks = []
+            abstention_reason = None
         except Exception as exc:  # noqa: BLE001 - map unexpected defects to D08
             mapped_error = AppError(ErrorCode.INTERNAL_ERROR)
             mapped_error.__cause__ = exc
             status = None
             answer = None
             citations = []
+            answer_blocks = []
+            abstention_reason = None
 
         if mapped_error is not None:
             record = ProductQueryTrace(
@@ -417,6 +481,8 @@ def run_bound_snapshot_query(
             status=status,
             answer=answer,
             citations=citations,
+            answer_blocks=answer_blocks,
+            abstention_reason=abstention_reason,
         )
     finally:
         runtime.query_runtimes.release(handle)
@@ -456,6 +522,8 @@ def run_product_query(
         status=outcome.status,
         answer=outcome.answer,
         citations=outcome.citations,
+        answer_blocks=outcome.answer_blocks,
+        abstention_reason=outcome.abstention_reason,
     )
 
 
@@ -660,6 +728,8 @@ def run_workspace_query(
         status=outcome.status,
         answer=outcome.answer,
         citations=citations,
+        answer_blocks=outcome.answer_blocks,
+        abstention_reason=outcome.abstention_reason,
     )
 
 

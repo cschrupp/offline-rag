@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 import type { WorkspaceCitation } from "../../api/types";
 import { Button } from "../../components/Button";
 import { TextArea } from "../../components/Field";
-import { CitationChips } from "./CitationChips";
+import { ClaimAnswer } from "./ClaimAnswer";
+import { abstentionCopy } from "./abstentionCopy";
 import { snapshotBadge, type AskHistoryEntry } from "./askHistory";
 
 type Props = {
@@ -148,29 +149,20 @@ export function AskPanel({
           </p>
           {activeEntry.response.status === "answered" ? (
             <div className="answer-body">
-              {(activeEntry.response.answer ?? "")
-                .split(/\n{2,}/)
-                .map((paragraph, index) => (
-                  <p key={index}>{paragraph}</p>
-                ))}
+              <ClaimAnswer
+                blocks={activeEntry.response.answer_blocks}
+                citations={activeEntry.response.citations}
+                selectedEvidenceUnitId={selectedEvidenceUnitId}
+                onSelectCitation={onSelectCitation}
+              />
             </div>
           ) : null}
-          {activeEntry.response.status === "insufficient_evidence" ? (
+          {activeEntry.response.status === "insufficient_evidence" ||
+          activeEntry.response.status === "model_abstain" ? (
             <p className="abstention-callout" role="status">
-              Seneca did not find enough evidence in the selected sources to
-              answer this question.
+              {abstentionCopy(activeEntry.response.abstention_reason)}
             </p>
           ) : null}
-          {activeEntry.response.status === "model_abstain" ? (
-            <p className="abstention-callout" role="status">
-              Seneca chose not to answer from the available evidence.
-            </p>
-          ) : null}
-          <CitationChips
-            citations={activeEntry.response.citations}
-            selectedEvidenceUnitId={selectedEvidenceUnitId}
-            onSelect={onSelectCitation}
-          />
         </article>
       ) : null}
 

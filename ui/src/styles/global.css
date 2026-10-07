@@ -631,6 +631,80 @@ a.btn:hover {
   color: var(--brass);
 }
 
+.claim-answer {
+  position: relative;
+}
+
+.claim-block {
+  margin: 0 0 var(--space-3);
+  line-height: 1.55;
+}
+
+.claim-block:last-child {
+  margin-bottom: 0;
+}
+
+.claim-marker {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--action);
+  font: inherit;
+  padding: 0 0.15rem;
+  margin: 0 0.05rem;
+  cursor: pointer;
+  vertical-align: baseline;
+}
+
+.claim-marker:focus-visible {
+  outline: 2px solid var(--action);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.claim-marker-active,
+.claim-marker:hover {
+  color: var(--brass);
+}
+
+.claim-evidence-card {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgba(20, 28, 40, 0.08);
+}
+
+.claim-evidence-card-title {
+  margin: 0 0 0.25rem;
+  font-weight: 600;
+}
+
+.claim-evidence-card-section {
+  margin: 0 0 0.5rem;
+  font-size: 0.875rem;
+}
+
+.claim-evidence-card-excerpt {
+  margin: 0 0 0.75rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.claim-evidence-open {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--action);
+  font: inherit;
+  font-weight: 600;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
 .snapshot-badge {
   display: inline-block;
   font-size: 0.8rem;

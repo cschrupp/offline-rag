@@ -81,6 +81,9 @@ CITATION_FIELDS = (
     "line_start",
     "line_end",
     "clipped",
+    "citation_ref",
+    "excerpt",
+    "excerpt_clipped",
 )
 SUCCESS_KEYS = {
     "corpus",
@@ -90,6 +93,8 @@ SUCCESS_KEYS = {
     "status",
     "answer",
     "citations",
+    "answer_blocks",
+    "abstention_reason",
 }
 
 
@@ -395,15 +400,35 @@ def _canned(
     context_config_hash: str | None = None,
     query: str = "what pressure?",
 ) -> GroundedAnswerResult:
+    from offline_rag.domain.generation import GroundedAnswerBlock
+
+    cite_list = list(citations or [])
+    blocks = []
+    product_reason = None
+    texts: dict[str, str] = {}
+    if status == "answered" and answer_text and cite_list:
+        blocks = [
+            GroundedAnswerBlock(
+                text=answer_text,
+                evidence_unit_ids=[c.evidence_unit_id for c in cite_list],
+            )
+        ]
+        texts = {c.evidence_unit_id: answer_text for c in cite_list}
+    if abstention_reason == "empty_context":
+        product_reason = "no_evidence"
+    elif abstention_reason == "model_abstain":
+        product_reason = "model_declined"
     return GroundedAnswerResult(
         method="query",
         query=query,
         status=status,  # type: ignore[arg-type]
         answer_text=answer_text,
-        citations=list(citations or []),
+        citations=cite_list,
+        answer_blocks=blocks,
         abstention_reason=abstention_reason,  # type: ignore[arg-type]
+        product_abstention_reason=product_reason,  # type: ignore[arg-type]
         generation_failure_reason=generation_failure_reason,
-        generator_invoked=status == "answered",
+        generator_invoked=status == "answered" or abstention_reason == "model_abstain",
         attempt_count=1,
         generation_config_hash="gencfg_test",
         context_config_hash=context_config_hash,
@@ -412,6 +437,7 @@ def _canned(
         fusion_config_hash="fus_test",
         reranker_config_hash="rr_test",
         diagnostics={"latency_ms": {"context": 1, "generation": 2, "total": 3}},
+        metadata={"evidence_unit_texts": texts} if texts else {},
     )
 
 

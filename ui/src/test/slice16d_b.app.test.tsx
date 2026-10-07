@@ -99,7 +99,7 @@ function mockViewport(matchesNarrow: boolean) {
 function queryResponse(
   partial: Partial<WorkspaceQueryResponse> = {},
 ): WorkspaceQueryResponse {
-  return {
+  const base: WorkspaceQueryResponse = {
     workspace_id: "ws_1",
     workspace_revision: 5,
     snapshot_id: "snap_1",
@@ -107,6 +107,13 @@ function queryResponse(
     trace_id: "tr_1",
     status: "answered",
     answer: "Ventilation must be established first.",
+    answer_blocks: [
+      {
+        text: "Ventilation must be established first.",
+        citation_refs: ["c1"],
+      },
+    ],
+    abstention_reason: null,
     citations: [
       {
         evidence_unit_id: "eu_1",
@@ -122,10 +129,23 @@ function queryResponse(
         source_id: "src_1",
         source_version: 1,
         source_display_name: "Week02.pdf",
+        citation_ref: "c1",
+        excerpt: "Ventilation must be established first.",
+        excerpt_clipped: false,
       },
     ],
-    ...partial,
   };
+  const merged = { ...base, ...partial };
+  if (
+    typeof partial.answer === "string" &&
+    partial.answer_blocks === undefined &&
+    (partial.status === undefined || partial.status === "answered")
+  ) {
+    merged.answer_blocks = [
+      { text: partial.answer, citation_refs: ["c1"] },
+    ];
+  }
+  return merged;
 }
 
 describe("Slice 16D-B source selection helpers", () => {
@@ -317,7 +337,7 @@ describe("Slice 16D-B ask history helpers", () => {
     };
 
     sessionStorage.setItem(
-      "seneca.ask-history.v1:ws_malformed",
+      "seneca.ask-history.v2:ws_malformed",
       JSON.stringify([
         answerObject,
         badSelectedIds,
@@ -645,6 +665,8 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
               status: "insufficient_evidence",
               answer: null,
               citations: [],
+              answer_blocks: [],
+              abstention_reason: "no_evidence",
             }),
           );
         }
@@ -654,6 +676,8 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
               status: "model_abstain",
               answer: null,
               citations: [],
+              answer_blocks: [],
+              abstention_reason: "model_declined",
             }),
           );
         }
@@ -671,14 +695,17 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
     ).toBeInTheDocument();
     expect(screen.getAllByText(/Current snapshot/i).length).toBeGreaterThan(0);
     expect(
-      screen.getByRole("button", { name: /1 · Week02\.pdf · p\. 14/i }),
+      screen.getByRole("button", { name: /Citation 1: Week02\.pdf/i }),
     ).toBeInTheDocument();
+    expect(screen.queryByText(/Evidence used/i)).toBeNull();
 
     mode = "insufficient";
     await user.clear(screen.getByLabelText("Question"));
     await user.type(screen.getByLabelText("Question"), "Missing?");
     await user.click(screen.getByRole("button", { name: "Ask" }));
-    const insufficient = await screen.findByText(/did not find enough evidence/i);
+    const insufficient = await screen.findByText(
+      /did not find usable evidence in the selected sources/i,
+    );
     expect(insufficient).toBeInTheDocument();
     expect(insufficient.closest("[role='alert']")).toBeNull();
 
@@ -687,7 +714,9 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
     await user.type(screen.getByLabelText("Question"), "Abstain?");
     await user.click(screen.getByRole("button", { name: "Ask" }));
     expect(
-      await screen.findByText(/chose not to answer from the available evidence/i),
+      await screen.findByText(
+        /did not provide an answer from the available evidence/i,
+      ),
     ).toBeInTheDocument();
 
     mode = "conflict";
@@ -754,6 +783,9 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
                 source_id: "src_1",
                 source_version: 1,
                 source_display_name: "Alpha.pdf",
+                citation_ref: "c1",
+                excerpt: "Alpha excerpt",
+                excerpt_clipped: false,
               },
             ],
           }),
@@ -1000,7 +1032,7 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
     expect(within(evidenceCurrent).queryByText("tr_query_1")).not.toBeInTheDocument();
 
     await user.click(
-      screen.getByRole("button", { name: /1 · Week02\.pdf · p\. 14/i }),
+      screen.getByRole("button", { name: /Citation 1: Week02\.pdf/i }),
     );
     const evidenceCite = screen
       .getByRole("heading", { name: "Evidence" })
@@ -1056,7 +1088,7 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
     await user.type(screen.getByLabelText("Question"), "Cite?");
     await user.click(screen.getByRole("button", { name: "Ask" }));
     await user.click(
-      await screen.findByRole("button", { name: /1 · Week02\.pdf · p\. 14/i }),
+      await screen.findByRole("button", { name: /Citation 1: Week02\.pdf/i }),
     );
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expectRootNotInert();
@@ -1161,7 +1193,7 @@ describe("Slice 16D-B Ask & Evidence workspace", () => {
     await user.click(screen.getByRole("button", { name: "Ask" }));
     expect(screen.queryByRole("dialog", { name: "Evidence" })).not.toBeInTheDocument();
     await user.click(
-      await screen.findByRole("button", { name: /1 · Week02\.pdf · p\. 14/i }),
+      await screen.findByRole("button", { name: /Citation 1: Week02\.pdf/i }),
     );
     expect(await screen.findByRole("dialog", { name: "Evidence" })).toBeInTheDocument();
     expect(screen.getAllByRole("dialog")).toHaveLength(1);

@@ -588,7 +588,7 @@ def test_eval_query_operational_outcomes(
     fake = FakeGenerator(response_fn=_response_fn)
     assembler = MagicMock()
 
-    def _assemble(*, query: str, corpus_name: str):
+    def _assemble(*, query: str, corpus_name: str, **_kwargs):
         if query == "empty":
             return _context([])
         return _context([_unit("ev_A", "max pressure is 100 psi")])

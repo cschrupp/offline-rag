@@ -384,6 +384,12 @@ def _stub_outcome(
             status=status,  # type: ignore[arg-type]
             answer="grounded answer" if status == "answered" else None,
             citations=list(rows),
+            answer_blocks=(
+                [{"text": "grounded answer", "citation_refs": ["c1"]}]
+                if status == "answered"
+                else []
+            ),
+            abstention_reason=None if status == "answered" else "no_evidence",
         )
 
     return _stub

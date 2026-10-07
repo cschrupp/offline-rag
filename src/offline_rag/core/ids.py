@@ -61,6 +61,8 @@ OPENAI_COMPATIBLE_GENERATOR_V1 = "openai-compatible-generator-v1"
 PROMPT_GROUNDED_V1 = "prompt-grounded-v1"
 PROMPT_GROUNDED_PROVENANCE_V2 = "prompt-grounded-provenance-v2"
 GROUNDED_ANSWER_V1 = "grounded-answer-v1"
+# Product grounded-answer-v2 (A2-D12): model-facing schema + prompt contract id.
+GROUNDED_ANSWER_V2 = "grounded_answer_v2"
 NO_RETRY_V1 = "no-retry-v1"
 DIRECT_OUTPUT_V1 = "direct-output-v1"
 FAKE_GENERATOR_CONTRACT = "fake-generator-v1"

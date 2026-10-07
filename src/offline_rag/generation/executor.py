@@ -14,7 +14,7 @@ from offline_rag.core.document_metadata import (
     resolve_document_title_v1,
 )
 from offline_rag.core.ids import PROMPT_GROUNDED_PROVENANCE_V2, PROMPT_GROUNDED_V1
-from offline_rag.domain.generation import GroundedAnswerResult
+from offline_rag.domain.generation import GroundedAnswerBlock, GroundedAnswerResult
 from offline_rag.domain.indexing import EvidenceUnit
 from offline_rag.generation.citations import (
     resolve_citations,
@@ -23,18 +23,27 @@ from offline_rag.generation.citations import (
 from offline_rag.generation.config_hash import (
     build_generation_config_hash,
     build_generation_semantic_payload,
+    build_product_v2_generation_config_hash,
+    build_product_v2_generation_semantic_payload,
+)
+from offline_rag.generation.evidence_handles import (
+    assign_evidence_handles,
+    resolve_handles_to_evidence_ids,
 )
 from offline_rag.generation.openai_compatible import (
     OpenAICompatibleGenerator,
     OpenAICompatibleGeneratorError,
 )
 from offline_rag.generation.prompt import (
+    build_prompt_grounded_answer_v2,
     build_prompt_grounded_provenance_v2,
     build_prompt_grounded_v1,
 )
 from offline_rag.generation.prompt_evidence import PromptEvidence
+from offline_rag.generation.projection_v2 import project_plain_answer
 from offline_rag.generation.protocol import Generator, GeneratorRequest
 from offline_rag.generation.schema import parse_grounded_answer_v1
+from offline_rag.generation.schema_v2 import parse_grounded_answer_v2
 from offline_rag.generation.status import (
     describe_generation_status,
     generation_provider_status,
@@ -148,14 +157,42 @@ class GroundedGenerationExecutor:
     def execute(
         self,
         *,
-        query: str,
+        query: str | None = None,
         corpus_name: str,
         evidence_units: list[EvidenceUnit],
         context_provenance: GenerationContextProvenance | None = None,
         check_ready: bool = True,
         provider_only_ready: bool = False,
         source_name_by_document_id: Mapping[str, str] | None = None,
+        retrieval_question: str | None = None,
+        answer_intent: str | None = None,
+        product_v2: bool = False,
     ) -> GroundedAnswerResult:
+        """Execute grounded generation from fixed EvidenceUnit[].
+
+        Legacy/evaluation path: pass ``query`` (v1 schema).
+        Product B2 path: ``product_v2=True`` with ``retrieval_question`` and
+        ``answer_intent`` (A2-D05a / A2-D12). For standalone ``/query`` all three
+        question fields are identical.
+        """
+        if product_v2:
+            rq = (retrieval_question or query or "").strip()
+            ai = (answer_intent or query or "").strip()
+            if not rq or not ai:
+                raise GroundedGenerationError(
+                    "product_v2 requires retrieval_question and answer_intent"
+                )
+            return self._execute_product_v2(
+                retrieval_question=rq,
+                answer_intent=ai,
+                corpus_name=corpus_name,
+                evidence_units=evidence_units,
+                context_provenance=context_provenance,
+                check_ready=check_ready,
+                provider_only_ready=provider_only_ready,
+                source_name_by_document_id=source_name_by_document_id,
+            )
+
         if not query or not query.strip():
             raise GroundedGenerationError("query must be non-empty")
         name = validate_corpus_name(corpus_name)
@@ -196,6 +233,7 @@ class GroundedGenerationExecutor:
                 provenance=provenance,
                 total_ms=context_ms + exec_ms,
                 sufficiency=sufficiency,
+                product_v2=False,
             )
 
         prompt_t0 = time.perf_counter()
@@ -408,6 +446,284 @@ class GroundedGenerationExecutor:
     def _prompt_contract(self) -> str:
         return self.settings.generation.prompt.contract_version
 
+    def _execute_product_v2(
+        self,
+        *,
+        retrieval_question: str,
+        answer_intent: str,
+        corpus_name: str,
+        evidence_units: list[EvidenceUnit],
+        context_provenance: GenerationContextProvenance | None,
+        check_ready: bool,
+        provider_only_ready: bool,
+        source_name_by_document_id: Mapping[str, str] | None,
+    ) -> GroundedAnswerResult:
+        name = validate_corpus_name(corpus_name)
+        if check_ready:
+            self.require_ready(name, provider_only=provider_only_ready)
+
+        gen = self.settings.generation
+        if not gen.enabled:
+            raise GroundedGenerationError("generation.enabled is false")
+
+        gencfg = build_product_v2_generation_config_hash(self.settings)
+        semantics = build_product_v2_generation_semantic_payload(self.settings)
+        provenance = context_provenance or GenerationContextProvenance()
+        total_t0 = time.perf_counter()
+        # Result.query records the answer intent (current user question for /query).
+        query_text = answer_intent
+        units = list(evidence_units)
+        frozen_sources = (
+            dict(source_name_by_document_id)
+            if source_name_by_document_id is not None
+            else None
+        )
+        context_ms = int(provenance.context_latency_ms)
+
+        try:
+            sufficiency = evaluate_runtime_sufficiency(
+                self.settings, evidence_units=units
+            )
+        except SufficiencyPolicyError as exc:
+            raise GroundedGenerationError(str(exc)) from exc
+
+        if not sufficiency.sufficient:
+            exec_ms = int((time.perf_counter() - total_t0) * 1000)
+            return self._empty_context_result(
+                query=query_text,
+                gencfg=gencfg,
+                semantics=semantics,
+                provenance=provenance,
+                total_ms=context_ms + exec_ms,
+                sufficiency=sufficiency,
+                product_v2=True,
+            )
+
+        handle_to_id, _handle_to_unit = assign_evidence_handles(units)
+        id_to_handle = {eid: handle for handle, eid in handle_to_id.items()}
+        allowed_handles = set(handle_to_id)
+
+        prompt_t0 = time.perf_counter()
+        try:
+            prompt_evidence = self._adapt_prompt_evidence(
+                corpus_name=name,
+                evidence_units=units,
+                source_name_by_document_id=frozen_sources,
+            )
+            request = build_prompt_grounded_answer_v2(
+                user_question=answer_intent,
+                resolved_question=retrieval_question,
+                evidence=prompt_evidence,
+                handle_by_evidence_unit_id=id_to_handle,
+                model=gen.model,
+                temperature=float(gen.temperature),
+                max_output_tokens=int(gen.max_output_tokens),
+            )
+        except PromptProvenanceUnavailable as exc:
+            prompt_ms = int((time.perf_counter() - prompt_t0) * 1000)
+            return self._failed(
+                query=query_text,
+                status="generation_failed",
+                failure_reason="prompt_provenance_unavailable",
+                gencfg=gencfg,
+                semantics=semantics,
+                provenance=provenance,
+                sufficiency=sufficiency,
+                attempt_count=0,
+                latency={
+                    "context": context_ms,
+                    "prompt_assembly": prompt_ms,
+                    "validation": 0,
+                    "total": context_ms + prompt_ms,
+                },
+                extra_diagnostics={
+                    "failure_stage": "prompt_provenance_resolution",
+                    "failed_evidence_unit_id": exc.failed_evidence_unit_id,
+                    "failed_document_id": exc.failed_document_id,
+                    "error": str(exc),
+                },
+            )
+        prompt_ms = int((time.perf_counter() - prompt_t0) * 1000)
+
+        gen_t0 = time.perf_counter()
+        try:
+            response = self._generator.generate(request)
+            gen_ms = int((time.perf_counter() - gen_t0) * 1000)
+        except OpenAICompatibleGeneratorError as exc:
+            gen_ms = int((time.perf_counter() - gen_t0) * 1000)
+            return self._failed(
+                query=query_text,
+                status="generation_failed",
+                failure_reason=exc.failure_reason,
+                gencfg=gencfg,
+                semantics=semantics,
+                provenance=provenance,
+                sufficiency=sufficiency,
+                attempt_count=1,
+                latency={
+                    "context": context_ms,
+                    "prompt_assembly": prompt_ms,
+                    "generation": gen_ms,
+                    "validation": 0,
+                    "total": context_ms + prompt_ms + gen_ms,
+                },
+            )
+        except Exception as exc:  # noqa: BLE001
+            gen_ms = int((time.perf_counter() - gen_t0) * 1000)
+            return self._failed(
+                query=query_text,
+                status="generation_failed",
+                failure_reason="provider_error",
+                gencfg=gencfg,
+                semantics=semantics,
+                provenance=provenance,
+                sufficiency=sufficiency,
+                attempt_count=1,
+                latency={
+                    "context": context_ms,
+                    "prompt_assembly": prompt_ms,
+                    "generation": gen_ms,
+                    "validation": 0,
+                    "total": context_ms + prompt_ms + gen_ms,
+                },
+                extra_diagnostics={"error": str(exc)},
+            )
+
+        val_t0 = time.perf_counter()
+        parsed = parse_grounded_answer_v2(
+            response.content, allowed_handles=allowed_handles
+        )
+        if not parsed.ok or parsed.output is None:
+            val_ms = int((time.perf_counter() - val_t0) * 1000)
+            total_ms = context_ms + prompt_ms + gen_ms + val_ms
+            failure = parsed.failure_reason or "output_schema_invalid"
+            status = (
+                "citation_invalid" if failure == "citation_invalid" else "generation_failed"
+            )
+            return self._failed(
+                query=query_text,
+                status=status,
+                failure_reason=failure if status == "generation_failed" else None,
+                gencfg=gencfg,
+                semantics=semantics,
+                provenance=provenance,
+                sufficiency=sufficiency,
+                attempt_count=1,
+                latency={
+                    "context": context_ms,
+                    "prompt_assembly": prompt_ms,
+                    "generation": gen_ms,
+                    "validation": val_ms,
+                    "total": total_ms,
+                },
+                raw_model_output=response.content,
+                usage=response.usage,
+            )
+
+        output = parsed.output
+        if output.abstain:
+            val_ms = int((time.perf_counter() - val_t0) * 1000)
+            total_ms = context_ms + prompt_ms + gen_ms + val_ms
+            reason = output.abstention_reason or "model_declined"
+            return GroundedAnswerResult(
+                method="query",
+                query=query_text,
+                status="insufficient_evidence",
+                answer_text=None,
+                citations=[],
+                answer_blocks=[],
+                abstention_reason="model_abstain",
+                product_abstention_reason=reason,  # type: ignore[arg-type]
+                generator_invoked=True,
+                attempt_count=1,
+                generation_config_hash=gencfg,
+                context_config_hash=provenance.context_config_hash,
+                dense_index_id=provenance.dense_index_id,
+                lexical_index_id=provenance.lexical_index_id,
+                fusion_config_hash=provenance.fusion_config_hash,
+                reranker_config_hash=provenance.reranker_config_hash,
+                effective_generation_semantics=semantics,
+                diagnostics={
+                    "abstention_reason": "model_abstain",
+                    "product_abstention_reason": reason,
+                    "generator_invoked": True,
+                    "attempt_count": 1,
+                    **decision_diagnostics(sufficiency),
+                    "usage": response.usage,
+                    "latency_ms": {
+                        "context": context_ms,
+                        "prompt_assembly": prompt_ms,
+                        "generation": gen_ms,
+                        "validation": val_ms,
+                        "total": total_ms,
+                        "context_breakdown": provenance.context_breakdown,
+                    },
+                },
+                metadata={
+                    "chunk_set_id": provenance.chunk_set_id,
+                    "selected_endpoint": gen.base_url,
+                    "selected_model": gen.model,
+                },
+            )
+
+        domain_blocks: list[GroundedAnswerBlock] = []
+        ordered_citation_ids: list[str] = []
+        seen_ids: set[str] = set()
+        for block in output.blocks:
+            evidence_ids = resolve_handles_to_evidence_ids(
+                block.evidence_handles, handle_to_id=handle_to_id
+            )
+            domain_blocks.append(
+                GroundedAnswerBlock(text=block.text, evidence_unit_ids=evidence_ids)
+            )
+            for eid in evidence_ids:
+                if eid not in seen_ids:
+                    seen_ids.add(eid)
+                    ordered_citation_ids.append(eid)
+
+        val_ms = int((time.perf_counter() - val_t0) * 1000)
+        total_ms = context_ms + prompt_ms + gen_ms + val_ms
+        citations = resolve_citations(ordered_citation_ids, units)
+        plain = project_plain_answer(domain_blocks)
+        evidence_texts = {unit.evidence_unit_id: unit.text for unit in units}
+        return GroundedAnswerResult(
+            method="query",
+            query=query_text,
+            status="answered",
+            answer_text=plain,
+            citations=citations,
+            answer_blocks=domain_blocks,
+            generator_invoked=True,
+            attempt_count=1,
+            generation_config_hash=gencfg,
+            context_config_hash=provenance.context_config_hash,
+            dense_index_id=provenance.dense_index_id,
+            lexical_index_id=provenance.lexical_index_id,
+            fusion_config_hash=provenance.fusion_config_hash,
+            reranker_config_hash=provenance.reranker_config_hash,
+            effective_generation_semantics=semantics,
+            diagnostics={
+                "generator_invoked": True,
+                "attempt_count": 1,
+                **decision_diagnostics(sufficiency),
+                "usage": response.usage,
+                "latency_ms": {
+                    "context": context_ms,
+                    "prompt_assembly": prompt_ms,
+                    "generation": gen_ms,
+                    "validation": val_ms,
+                    "total": total_ms,
+                    "context_breakdown": provenance.context_breakdown,
+                },
+            },
+            metadata={
+                "chunk_set_id": provenance.chunk_set_id,
+                "selected_endpoint": gen.base_url,
+                "selected_model": gen.model,
+                "evidence_unit_texts": evidence_texts,
+            },
+        )
+
     def _load_source_name_by_document_id(self, corpus_name: str) -> dict[str, str]:
         corpus_path = corpus_state_path(self.settings.paths.corpora, corpus_name)
         if not corpus_path.exists():
@@ -543,15 +859,24 @@ class GroundedGenerationExecutor:
         provenance: GenerationContextProvenance,
         total_ms: int,
         sufficiency: SufficiencyPolicyDecisionV1,
+        product_v2: bool = False,
     ) -> GroundedAnswerResult:
         gen = self.settings.generation
+        # Authorized gate today: empty_context only. Non-empty insufficient would
+        # map to insufficient_support if a future policy returns that.
+        if sufficiency.empty_context:
+            product_reason = "no_evidence"
+        else:
+            product_reason = "insufficient_support"
         return GroundedAnswerResult(
             method="query",
             query=query,
             status="insufficient_evidence",
             answer_text=None,
             citations=[],
+            answer_blocks=[],
             abstention_reason="empty_context",
+            product_abstention_reason=product_reason if product_v2 else None,
             generator_invoked=False,
             attempt_count=0,
             generation_config_hash=gencfg,
@@ -563,6 +888,7 @@ class GroundedGenerationExecutor:
             effective_generation_semantics=semantics,
             diagnostics={
                 "abstention_reason": "empty_context",
+                "product_abstention_reason": product_reason if product_v2 else None,
                 "generator_invoked": False,
                 "attempt_count": 0,
                 **decision_diagnostics(sufficiency),

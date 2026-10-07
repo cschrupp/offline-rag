@@ -436,15 +436,27 @@ def _scope_client(tmp_path: Path) -> Iterator[tuple[TestClient, ApplicationRunti
     def _response_fn(request):
         blob = "\n".join(message.content for message in request.messages)
         captures["generator_text"].append(blob)
-        ids = re.findall(r"\bev_[A-Za-z0-9._-]+\b", blob)
-        unique = list(dict.fromkeys(ids))
+        # Product V2 uses response-local E-handles, not canonical ev_* citation language.
+        handles = re.findall(r"\[EVIDENCE (E[1-9][0-9]*)\]", blob)
+        unique = list(dict.fromkeys(handles))
         if not unique:
-            return json.dumps({"abstain": True, "answer": None, "citation_ids": []})
+            return json.dumps(
+                {
+                    "abstain": True,
+                    "blocks": [],
+                    "abstention_reason": "insufficient_support",
+                }
+            )
         return json.dumps(
             {
                 "abstain": False,
-                "answer": f"Alpha-only answer citing {ALPHA_SCOPE_MARKER}.",
-                "citation_ids": [unique[0]],
+                "blocks": [
+                    {
+                        "text": f"Alpha-only answer citing {ALPHA_SCOPE_MARKER}.",
+                        "evidence_handles": [unique[0]],
+                    }
+                ],
+                "abstention_reason": None,
             }
         )
 
@@ -562,13 +574,15 @@ def test_f3_canonical_source_isolation_end_to_end(tmp_path: Path) -> None:
         assert captures["generator_text"], "generator must receive evidence"
         for blob in captures["generator_text"]:
             blocks = re.findall(
-                r"### BEGIN EVIDENCE.*?### END EVIDENCE[^\n]*",
+                r"\[EVIDENCE E[1-9][0-9]*\].*?\[/EVIDENCE E[1-9][0-9]*\]",
                 blob,
                 flags=re.DOTALL,
             )
-            assert blocks, "generator prompt must include evidence blocks"
+            assert blocks, "generator prompt must include V2 evidence handle blocks"
             assert all(BETA_SCOPE_MARKER not in block for block in blocks)
             assert any(ALPHA_SCOPE_MARKER in block for block in blocks)
+            # Canonical ev_* IDs must not appear as citation language headers.
+            assert "### BEGIN EVIDENCE" not in blob
 
         packed = json.dumps(outcome.as_dict())
         assert BETA_SCOPE_MARKER not in packed
@@ -633,7 +647,11 @@ def test_f4_malformed_source_ids_return_safe_validation_error(
             reranker=lambda _s: None,
             generator_client=lambda _s: FakeGenerator(
                 default_response=json.dumps(
-                    {"abstain": True, "answer": None, "citation_ids": []}
+                    {
+                        "abstain": True,
+                        "blocks": [],
+                        "abstention_reason": "insufficient_support",
+                    }
                 )
             ),
             qdrant=_qdrant,

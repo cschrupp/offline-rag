@@ -1,4 +1,5 @@
 import type {
+  AnswerBlock,
   WorkspaceCitation,
   WorkspaceQueryResponse,
 } from "../../api/types";
@@ -12,7 +13,8 @@ export type AskHistoryEntry = {
   response: WorkspaceQueryResponse;
 };
 
-const KEY_PREFIX = "seneca.ask-history.v1:";
+/** Bumped for V2 claim-linked history; legacy B1 entries are not remapped. */
+const KEY_PREFIX = "seneca.ask-history.v2:";
 export const ASK_HISTORY_MAX = 25;
 
 const VALID_STATUSES = new Set([
@@ -57,7 +59,21 @@ function isCitation(value: unknown): value is WorkspaceCitation {
     typeof row.source_version === "number" &&
     Number.isFinite(row.source_version) &&
     row.source_version > 0 &&
-    typeof row.source_display_name === "string"
+    typeof row.source_display_name === "string" &&
+    isNonEmptyString(row.citation_ref) &&
+    typeof row.excerpt === "string" &&
+    typeof row.excerpt_clipped === "boolean"
+  );
+}
+
+function isAnswerBlock(value: unknown): value is AnswerBlock {
+  if (!value || typeof value !== "object") return false;
+  const row = value as Record<string, unknown>;
+  return (
+    typeof row.text === "string" &&
+    row.text.trim().length > 0 &&
+    isStringArray(row.citation_refs) &&
+    row.citation_refs.length > 0
   );
 }
 
@@ -74,16 +90,33 @@ function isResponse(value: unknown): value is WorkspaceQueryResponse {
     typeof row.status !== "string" ||
     !VALID_STATUSES.has(row.status) ||
     !Array.isArray(row.citations) ||
-    !row.citations.every(isCitation)
+    !row.citations.every(isCitation) ||
+    !Array.isArray(row.answer_blocks)
   ) {
     return false;
   }
   if (!(typeof row.answer === "string" || row.answer === null)) {
     return false;
   }
-  // Accepted DTO: answered responses carry a string answer for presentation.
-  if (row.status === "answered" && typeof row.answer !== "string") {
+  if (
+    !(
+      row.abstention_reason === null ||
+      typeof row.abstention_reason === "string"
+    )
+  ) {
     return false;
+  }
+  if (row.status === "answered") {
+    if (typeof row.answer !== "string") return false;
+    if (!row.answer_blocks.every(isAnswerBlock)) return false;
+    if (row.answer_blocks.length === 0) return false;
+    if (row.citations.length === 0) return false;
+    if (row.abstention_reason !== null) return false;
+  } else {
+    if (row.answer !== null) return false;
+    if (row.answer_blocks.length !== 0) return false;
+    if (row.citations.length !== 0) return false;
+    if (typeof row.abstention_reason !== "string") return false;
   }
   return true;
 }

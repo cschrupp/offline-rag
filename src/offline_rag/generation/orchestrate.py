@@ -132,9 +132,50 @@ class GroundedAnswerOrchestrator:
         corpus_id: str | None = None,
         document_ids: frozenset[str] | None = None,
         checkpoint: Callable[[str], None] | None = None,
+        product_v2: bool = False,
     ) -> GroundedAnswerResult:
-        if not query or not query.strip():
-            raise GroundedAnswerError("query must be non-empty")
+        """Legacy single-query entrypoint; delegates to shared core (A2-D05a)."""
+        q = (query or "").strip()
+        return self.run_grounded_query_core(
+            retrieval_question=q,
+            answer_intent=q,
+            corpus_name=corpus_name,
+            check_ready=check_ready,
+            source_name_by_document_id=source_name_by_document_id,
+            allow_recovery=allow_recovery,
+            dense_index_id=dense_index_id,
+            dense_collection_name=dense_collection_name,
+            lexical_index_id=lexical_index_id,
+            chunk_set_id=chunk_set_id,
+            corpus_id=corpus_id,
+            document_ids=document_ids,
+            checkpoint=checkpoint,
+            product_v2=product_v2,
+        )
+
+    def run_grounded_query_core(
+        self,
+        *,
+        retrieval_question: str,
+        answer_intent: str,
+        corpus_name: str = "default",
+        check_ready: bool = True,
+        source_name_by_document_id: Mapping[str, str] | None = None,
+        allow_recovery: bool = True,
+        dense_index_id: str | None = None,
+        dense_collection_name: str | None = None,
+        lexical_index_id: str | None = None,
+        chunk_set_id: str | None = None,
+        corpus_id: str | None = None,
+        document_ids: frozenset[str] | None = None,
+        checkpoint: Callable[[str], None] | None = None,
+        product_v2: bool = False,
+    ) -> GroundedAnswerResult:
+        """Shared grounded core: retrieval_question for assembly; answer_intent for generation."""
+        if not retrieval_question or not retrieval_question.strip():
+            raise GroundedAnswerError("retrieval_question must be non-empty")
+        if not answer_intent or not answer_intent.strip():
+            raise GroundedAnswerError("answer_intent must be non-empty")
         name = validate_corpus_name(corpus_name)
         if check_ready:
             self._require_ready(name)
@@ -147,12 +188,13 @@ class GroundedAnswerOrchestrator:
             if checkpoint is not None:
                 checkpoint(where)
 
-        original_query = query.strip()
+        retrieval_q = retrieval_question.strip()
+        answer_q = answer_intent.strip()
         _cp("before_context")
         context_t0 = time.perf_counter()
         try:
             context = self._assembler.assemble(
-                query=original_query,
+                query=retrieval_q,
                 corpus_name=name,
                 check_ready=check_ready,
                 dense_index_id=dense_index_id,
@@ -187,7 +229,7 @@ class GroundedAnswerOrchestrator:
         ):
             try:
                 recovery = self._coordinator.run(
-                    original_query=original_query,
+                    original_query=retrieval_q,
                     corpus_name=name,
                     initial_context=context,
                     initial_sufficiency=initial_decision,
@@ -226,15 +268,27 @@ class GroundedAnswerOrchestrator:
                 if doc_id in document_ids
             }
         try:
-            # Generation always answers the original user query.
-            result = self._executor.execute(
-                query=original_query,
-                corpus_name=name,
-                evidence_units=list(active_context.evidence_units),
-                context_provenance=provenance,
-                check_ready=False,
-                source_name_by_document_id=scoped_names,
-            )
+            if product_v2:
+                result = self._executor.execute(
+                    corpus_name=name,
+                    evidence_units=list(active_context.evidence_units),
+                    context_provenance=provenance,
+                    check_ready=False,
+                    source_name_by_document_id=scoped_names,
+                    retrieval_question=retrieval_q,
+                    answer_intent=answer_q,
+                    product_v2=True,
+                )
+            else:
+                # Legacy v1: generation answers answer_intent (historically = query).
+                result = self._executor.execute(
+                    query=answer_q,
+                    corpus_name=name,
+                    evidence_units=list(active_context.evidence_units),
+                    context_provenance=provenance,
+                    check_ready=False,
+                    source_name_by_document_id=scoped_names,
+                )
         except GroundedGenerationError as exc:
             raise GroundedAnswerError(str(exc)) from exc
         _cp("after_generation")

@@ -166,7 +166,22 @@ export type WorkspaceCitation = {
   source_id: string;
   source_version: number;
   source_display_name: string;
+  citation_ref: string;
+  excerpt: string;
+  excerpt_clipped: boolean;
 };
+
+export type AnswerBlock = {
+  text: string;
+  citation_refs: string[];
+};
+
+export type AbstentionReason =
+  | "no_evidence"
+  | "insufficient_support"
+  | "conflicting_evidence"
+  | "model_declined"
+  | string;
 
 export type WorkspaceQueryStatus =
   | "answered"
@@ -182,4 +197,6 @@ export type WorkspaceQueryResponse = {
   status: WorkspaceQueryStatus | string;
   answer: string | null;
   citations: WorkspaceCitation[];
+  answer_blocks: AnswerBlock[];
+  abstention_reason: AbstentionReason | null;
 };

@@ -84,7 +84,8 @@ SLICE 16: DESIGN INTERVIEW COMPLETE
              INDEPENDENT CLOSEOUT REVIEW PASSED
            LEGACY B1 PRODUCT UX
              PRODUCT ACCEPTANCE WITHHELD / NOT SEALED
-           16D-B2 / 16D-B3 / 16D-C NOT AUTHORIZED
+           16D-B2 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+           16D-B3 / 16D-C NOT AUTHORIZED
            16E–16H NOT AUTHORIZED
            Slice 16 overall IN PROGRESS / NOT COMPLETE
   Authority: docs/slice16_design_authority.md
@@ -122,7 +123,8 @@ candidate `6b652400…` has **PRODUCT ACCEPTANCE WITHHELD**; B1 foundation
 remediation **ACCEPTED / SEALED** (implementation
 `c68cc3f8f16a2588ba093886f3e48e1c7037f83f`; verified closeout
 `b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90`); legacy B1 product UX remains
-superseded / acceptance withheld; **16D-B2 / 16D-B3 / 16D-C NOT AUTHORIZED**.
+superseded / acceptance withheld; **16D-B2 IMPLEMENTATION CANDIDATE /
+HUMAN ACCEPTANCE PENDING**; **16D-B3 / 16D-C NOT AUTHORIZED**.
 Historical pre-design frame: `docs/slice16_portfolio_ui.md`.
 
 **Milestone 6 remains COMPLETE / ACCEPTED** at closeout
@@ -900,7 +902,8 @@ SLICE 16: DESIGN INTERVIEW COMPLETE
              INDEPENDENT CLOSEOUT REVIEW PASSED
            LEGACY B1 PRODUCT UX
              PRODUCT ACCEPTANCE WITHHELD / NOT SEALED
-           16D-B2 / 16D-B3 / 16D-C NOT AUTHORIZED
+           16D-B2 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+           16D-B3 / 16D-C NOT AUTHORIZED
            16E–16H NOT AUTHORIZED
            Slice 16 overall IN PROGRESS / NOT COMPLETE
 SLICE 17: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
@@ -916,14 +919,16 @@ M6 science: UNCHANGED
   NOT AUTHORIZED / UNCHANGED
 ```
 
-**Next governance sequence (not authorized by this document):** separate
-explicit authorization of **16D-B2** may be considered; then **16D-B3** →
-**16D-C** → Slice 17 → Slice 18 → Milestone 7 closeout. Slice 14 and Slice 15
-are closed. Slice 16 design is **ACCEPTED / LOCKED**. Amendment A2 is
-**ACCEPTED / LOCKED / SEALED**. **16A**, **16B**, **16C**, and **16D-A** are
-**COMPLETE / ACCEPTED**. B1 foundation remediation is **ACCEPTED / SEALED**
-(implementation `c68cc3f8f16a2588ba093886f3e48e1c7037f83f`; verified closeout
+**Next governance sequence (not authorized by this document):** human
+acceptance of the **16D-B2** implementation candidate; then separate explicit
+authorization of **16D-B3** → **16D-C** → Slice 17 → Slice 18 → Milestone 7
+closeout. Slice 14 and Slice 15 are closed. Slice 16 design is **ACCEPTED /
+LOCKED**. Amendment A2 is **ACCEPTED / LOCKED / SEALED**. **16A**, **16B**,
+**16C**, and **16D-A** are **COMPLETE / ACCEPTED**. B1 foundation remediation
+is **ACCEPTED / SEALED** (implementation
+`c68cc3f8f16a2588ba093886f3e48e1c7037f83f`; verified closeout
 `b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90`). Legacy B1 product UX remains
-**PRODUCT ACCEPTANCE WITHHELD**. **16D-B2 / 16D-B3 / 16D-C**, Slice 17,
-Slice 18, and M7 closeout remain **NOT AUTHORIZED**. Slice 16 overall is
-**IN PROGRESS / NOT COMPLETE**.
+**PRODUCT ACCEPTANCE WITHHELD**. **16D-B2** is **IMPLEMENTATION CANDIDATE /
+HUMAN ACCEPTANCE PENDING**. **16D-B3 / 16D-C**, Slice 17, Slice 18, and M7
+closeout remain **NOT AUTHORIZED**. Slice 16 overall is **IN PROGRESS / NOT
+COMPLETE**.
