@@ -131,5 +131,9 @@ Observed:
 ## Implementation candidate SHA
 
 ```text
+IMPLEMENTATION CANDIDATE:
 2266d7b16bf01e11c5ca69b2ffe4d7f4e0e821ab
+
+BRANCH TIP (evidence SHA record):
+ede02926dc55649d31256cdf4829ffe5be22d0dc
 ```
