@@ -53,8 +53,11 @@ export function SourceRail({
   const selectedCount = selectedSourceIds.length;
 
   return (
-    <section className="source-rail stack" aria-labelledby="source-list-heading">
-      <div className="row" style={{ justifyContent: "space-between" }}>
+    <section className="source-rail" aria-labelledby="source-list-heading">
+      <div
+        className="row"
+        style={{ justifyContent: "space-between", flexShrink: 0 }}
+      >
         <h2 id="source-list-heading" style={{ margin: 0 }}>
           Sources
         </h2>

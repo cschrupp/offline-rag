@@ -96,7 +96,7 @@ export function AskPanel({
   const hasThread = timeline.length > 0;
 
   return (
-    <section className="ask-panel conversation-panel stack" aria-labelledby="ask-heading">
+    <section className="ask-panel conversation-panel" aria-labelledby="ask-heading">
       <div className="row conversation-panel-header">
         <h2 id="ask-heading" style={{ margin: 0 }}>
           Conversation

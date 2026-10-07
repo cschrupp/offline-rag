@@ -480,12 +480,21 @@ describe("Slice 16D-B3 conversation workspace UI", () => {
     renderApp("/workspaces/ws_1");
     await screen.findByRole("heading", { name: "Conversation" });
     expect(document.querySelector(".knowledge-layout")).toBeTruthy();
+    expect(document.querySelector(".app-main:has(.workspace-page)")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Sources" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Evidence" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Collapse Sources" }),
+    ).toHaveAttribute("aria-expanded", "true");
+    expect(
+      screen.getByRole("button", { name: "Collapse Evidence" }),
+    ).toHaveAttribute("aria-expanded", "true");
 
     viewport.setNarrow(true);
     await user.click(await screen.findByRole("button", { name: "Sources" }));
     expect(screen.getByRole("dialog", { name: "Sources" })).toBeInTheDocument();
+    // Narrow uses drawers; desktop rail toggles are CSS-hidden, not unmounted.
+    expect(screen.getByRole("dialog", { name: "Sources" })).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Evidence" }));
     // No stacked drawers: Sources closes when Evidence opens from mobile bar path
     // (citation path closes Sources first). Mobile bar can open Evidence while Sources
@@ -495,6 +504,159 @@ describe("Slice 16D-B3 conversation workspace UI", () => {
       expect(screen.queryByRole("dialog")).toBeNull();
       expect(document.getElementById("root")?.hasAttribute("inert")).toBe(false);
     });
+    expect(
+      screen.getByRole("button", { name: "Collapse Sources" }),
+    ).toBeInTheDocument();
+    mock.restore();
+  });
+
+  it("desktop rails collapse/expand with accessible controls (A3)", async () => {
+    const user = userEvent.setup();
+    mockViewport(false);
+    ensureAppRoot();
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces/ws_1" && call.method === "GET") {
+        return jsonResponse(
+          workspace({
+            workspace_id: "ws_1",
+            title: "Ask Desk",
+            revision: 5,
+            source_count: 1,
+            status: "active",
+            current_snapshot_id: "snap_1",
+          }),
+        );
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources") {
+        return jsonResponse({
+          workspace_id: "ws_1",
+          revision: 5,
+          sources: [source({ source_id: "src_1", display_name: "Alpha.pdf" })],
+        });
+      }
+      return errorResponse("not_found", "x", 404);
+    });
+
+    renderApp("/workspaces/ws_1");
+    await screen.findByRole("heading", { name: "Conversation" });
+    const layout = document.querySelector(".knowledge-layout")!;
+    expect(layout.classList.contains("sources-collapsed")).toBe(false);
+    expect(layout.classList.contains("evidence-collapsed")).toBe(false);
+
+    await user.click(screen.getByRole("button", { name: "Collapse Sources" }));
+    expect(layout.classList.contains("sources-collapsed")).toBe(true);
+    expect(screen.queryByRole("heading", { name: "Sources" })).toBeNull();
+    const expandSources = screen.getByRole("button", { name: "Expand Sources" });
+    expect(expandSources).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("heading", { name: "Conversation" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Collapse Evidence" }));
+    expect(layout.classList.contains("evidence-collapsed")).toBe(true);
+    expect(screen.queryByRole("heading", { name: "Evidence" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Expand Evidence" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    expect(screen.getByLabelText("Ask a follow-up")).toBeInTheDocument();
+
+    await user.keyboard("{Tab}");
+    expandSources.focus();
+    await user.keyboard("{Enter}");
+    expect(layout.classList.contains("sources-collapsed")).toBe(false);
+    expect(screen.getByRole("heading", { name: "Sources" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Collapse Sources" }),
+    ).toHaveAttribute("aria-expanded", "true");
+
+    await user.click(screen.getByRole("button", { name: "Expand Evidence" }));
+    expect(layout.classList.contains("evidence-collapsed")).toBe(false);
+    expect(screen.getByRole("heading", { name: "Evidence" })).toBeInTheDocument();
+
+    // Containment contract hooks present (JSDOM cannot prove pixel geometry).
+    expect(document.querySelector(".evidence-scroll")).toBeTruthy();
+    expect(document.querySelector(".knowledge-layout")).toBeTruthy();
+    expect(document.querySelector(".workspace-page")).toBeTruthy();
+    mock.restore();
+  });
+
+  it("collapsed Evidence expands on citation and source preview (A3-D07)", async () => {
+    const user = userEvent.setup();
+    mockViewport(false);
+    ensureAppRoot();
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces/ws_1" && call.method === "GET") {
+        return jsonResponse(
+          workspace({
+            workspace_id: "ws_1",
+            title: "Ask Desk",
+            revision: 5,
+            source_count: 1,
+            status: "active",
+            current_snapshot_id: "snap_1",
+          }),
+        );
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources") {
+        return jsonResponse({
+          workspace_id: "ws_1",
+          revision: 5,
+          sources: [
+            source({
+              source_id: "src_1",
+              display_name: "Alpha.pdf",
+            }),
+          ],
+        });
+      }
+      if (call.url === "/v1/workspaces/ws_1/conversation/turn" && call.method === "POST") {
+        return jsonResponse(
+          turnResponse({
+            answer: "Cited answer.",
+            answer_blocks: [{ text: "Cited answer.", citation_refs: ["c1"] }],
+          }),
+        );
+      }
+      if (call.url.includes("/content")) {
+        return new Response("BYTES", {
+          status: 200,
+          headers: { "content-type": "application/pdf" },
+        });
+      }
+      return errorResponse("not_found", "x", 404);
+    });
+
+    renderApp("/workspaces/ws_1");
+    await screen.findByRole("heading", { name: "Conversation" });
+    await user.click(screen.getByRole("button", { name: "Collapse Evidence" }));
+    expect(screen.queryByRole("heading", { name: "Evidence" })).toBeNull();
+
+    await user.type(screen.getByLabelText("Ask a follow-up"), "Cite me");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    await user.click(
+      await screen.findByRole("button", { name: /Citation 1:/i }),
+    );
+    expect(await screen.findByRole("heading", { name: "Evidence" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Collapse Evidence" }),
+    ).toHaveAttribute("aria-expanded", "true");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    const checkedBefore = (
+      screen.getByRole("checkbox", { name: /Include Alpha\.pdf/i }) as HTMLInputElement
+    ).checked;
+    await user.click(screen.getByRole("button", { name: "Collapse Evidence" }));
+    await user.click(screen.getByRole("button", { name: "Collapse Sources" }));
+    await user.click(screen.getByRole("button", { name: "Expand Sources" }));
+    expect(
+      (screen.getByRole("checkbox", { name: /Include Alpha\.pdf/i }) as HTMLInputElement)
+        .checked,
+    ).toBe(checkedBefore);
+    await user.click(screen.getByRole("button", { name: "Alpha.pdf" }));
+    expect(await screen.findByRole("heading", { name: "Evidence" })).toBeInTheDocument();
     mock.restore();
   });
 

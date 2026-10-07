@@ -25,5 +25,8 @@
   --space-6: 2rem;
   --target: 44px;
   --max-width: 72rem;
-  --workspace-max-width: 96rem;
+  /* A3-D01: workspace detail is full-viewport; no page max-width. */
+  --workspace-gutter-x: var(--space-4);
+  --workspace-gutter-y: var(--space-3);
+  --rail-collapsed-width: 2.75rem;
 }

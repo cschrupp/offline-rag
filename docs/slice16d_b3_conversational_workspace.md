@@ -1,9 +1,9 @@
 # Slice 16D-B3 — Conversational Workspace
 
 ```text
-STATUS: IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+STATUS: REWORK 3 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
 HUMAN ACCEPTANCE: PENDING
-INDEPENDENT REVIEW: REWORK 2 COMPLETE / PENDING RE-REVIEW
+INDEPENDENT REVIEW: REWORK 3 COMPLETE / PENDING RE-REVIEW
 
 Authorized implementation baseline:
 28aad06f89e6d00a0b81b51f9c2de38fed06cb22
@@ -17,6 +17,10 @@ dce3456e519cb6c96570e20f5af800d00cafb5a7
 A2 closeout:
 f0bdf78d0ae6a79737055d324b22fc35e1e501f5
 
+Amendment A3 (human-approved layout):
+docs/slice16_amendment_a3_full_viewport_workspace.md
+MATERIALIZATION: da1082d95630c12eaf0ce1a3b8d005aaa60d2f73
+
 Branch:
 implementation/16d-b3-conversational-workspace
 
@@ -26,17 +30,17 @@ adbf2fcd01c4c2db08fe146993c04ce91b9b97c3
 Rework 1 implementation candidate SHA:
 08622794c3186b3eb3684b1c2efc7529bbdac459
 
-Rework 2 baseline (remote tip at authorization):
-7ddd9babece94df3f6a3f3332bfec4ffdc6b26ff
-
 Rework 2 implementation candidate SHA:
 b2cdad859e9467fd74dfe801bcdba721137d0afe
 
-Evidence packaging tip:
-4cfae97d4e5c81626d00893773877550c2e188e4
+Rework 3 baseline (remote tip at authorization):
+528e7dbb10fdde24ea1ea7db71a4e35c2a9222e1
+
+Rework 3 implementation candidate SHA:
+(pending commit)
 
 16D-B2: COMPLETE / ACCEPTED / SEALED
-16D-B3: IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+16D-B3: REWORK 3 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
 16D-C: NOT AUTHORIZED
 16E–16H: NOT AUTHORIZED
 Slice 16: IN PROGRESS / NOT COMPLETE
@@ -44,12 +48,16 @@ Slice 16: IN PROGRESS / NOT COMPLETE
 
 This document is the B3 evidence packet and does **not** accept or seal B3.
 
-## A2 authority used
+## A2 / A3 authority used
 
 Primary decisions: A2-D02…D11, A2-D19…D24 (conversation product model,
 resolver, dual-question core, admission, traces, persistence, composer,
 layout/responsive). Grounded Answer V2 (B2) remains the scientific answer
 substrate.
+
+**Amendment A3** (human visual-review trigger) supersedes only B3 desktop
+layout assumptions that conflict with full-viewport workbench + collapsible
+rails + containment (including the prior ~96rem workspace max-width).
 
 ## Architectural approach
 
@@ -73,8 +81,7 @@ substrate.
 
 ## Admission ordering
 
-Normative sequence in `run_conversation_turn` (A2-D05b; Rework 1 R1 restores
-HTTP adapter to this order):
+Normative sequence in `run_conversation_turn` (A2-D05b; Rework 1 R1):
 
 1. validate request (question + prior_turns bounds/sequence)
 2. require runtime ready
@@ -86,150 +93,124 @@ HTTP adapter to this order):
 11. resolver (if required)
 12. shared grounded query core on admitted binding
 
-HTTP `workspace_conversation_turn` must not call `require_ready()` before
-`run_conversation_turn`. Post-admission workspace mutation does **not** upgrade
-the in-flight turn and is **not** `workspace_conflict`.
-
 ## Trace model
 
 | Trace | Store | Role |
 | --- | --- | --- |
-| `conversation_trace_id` | `traces/conversation/` | orchestration provenance (hashes, admission, resolver outcome, linked query id) |
+| `conversation_trace_id` | `traces/conversation/` | orchestration provenance |
 | `query_trace_id` | existing product query traces | scientific authority |
-
-Conversation traces never store transcript text. Product Evidence UI labels
-these distinctly (Rework 1 R3); no generic aliased `trace_id` in B3 product
-presentation.
 
 ## Persistence behavior
 
 - Session-local `sessionStorage` key `seneca.conversation.v1:{workspaceId}`
 - Max **50** completed user/assistant pairs (drop oldest)
 - Client resolver window: newest **6** pairs / **12_000** Unicode code points
-  (server re-validates; no silent widen)
-- `+ New conversation` clears turns/context; preserves sources/selection/workspace
-- Failed/incomplete submissions keep the sent user turn visible but are excluded
-  from resolver `prior_turns` (Rework 1 R2)
-- Incomplete/failed turns are **presentation-only transient state** (in-memory);
-  they are not written to `sessionStorage`. Reload clears them. Completed pairs
-  remain session-persisted as before.
-- Visible thread merges completed + incomplete items by immutable submission
-  `askedAt` (Rework 2), not by completion time or collection grouping
+- Incomplete/failed turns are **presentation-only transient state** (in-memory)
+- Desktop rail collapse preference: session-local `seneca.workspace-rails.v1`
+  (UI only; A3-D06)
 
-## UI behavior
+## UI behavior (including Rework 3 / A3)
 
-- Workspace detail is the conversation-dominant three-column surface
-- Composer: immediate user turn, clear on Send, duplicate Send blocked while pending
+- Workspace detail is a **full-viewport** three-pane workbench (A3-D01/D02/D03)
+- Desktop rails independently collapsible; Conversation expands into freed space
+- Evidence inspection (citation / source preview) auto-expands collapsed Evidence
+- Narrow/mobile remains drawer-based (A3-D08); drawers mutually exclusive
+- Composer sticky at bottom of conversation pane
+- Containment: pane tracks do not grow from long IDs/filenames/PDF embeds
 - Assistant visible text and `prior_turns[].text` share
   `assistantPresentationText` (Rework 1 R5)
-- Per-turn source scope presents frozen `all` | `subset` intent with submitted
-  names (Rework 1 R6), e.g. `Selected sources · Alpha.pdf`
-- B2 claim markers / Evidence pane / historical version open preserved
-- Current vs Historical badge from `turn.snapshot_id == workspace.current_snapshot_id`
+- Failed-turn chronology via submission `askedAt` timeline (Rework 2)
 
-## Responsive behavior
+## Independent review history
 
-- Desktop: Sources (~18rem) \| Conversation (`1fr`) \| Evidence (~24rem)
-- Workspace detail max width ~96rem (`:has(.workspace-page)`)
-- Narrow: Conversation primary; Sources/Evidence drawers; mutual exclusion
-- Returning to desktop clears drawers / inert
+| Gate | Disposition |
+| --- | --- |
+| Initial B3 review | REWORK 1 (R1–R6) |
+| Rework 1 review | REWORK 2 (R2 chronology only); R1/R3–R6 closed |
+| Rework 2 code review | PASS (superseded for acceptance by human visual review) |
+| Human visual acceptance | REWORK 3 authorized + Amendment A3 |
 
-## Independent review — Rework 1
+## Rework 3 closure
 
-Disposition at tip `c4a3c1a7c754a15b4b9a529479b2851915da74e3`:
-**REWORK REQUIRED** (R1–R6). Architecture accepted; boundary/presentation
-defects closed as follows:
+**Trigger:** human visual acceptance review found remaining desktop UX defects
+(centered ~96rem page, non-collapsible rails, Evidence overflow).
 
-| ID | Finding | Closure |
-| --- | --- | --- |
-| R1 | HTTP adapter `require_ready` before B3 validation | Removed premature readiness check from `workspace_conversation_turn`; validation inside `run_conversation_turn` runs first |
-| R2 | Failed request erased pending user turn | `incompleteTurns` retain sent question on error; excluded from `prior_turns` |
-| R3 | Generic aliased `trace_id` in Evidence | Distinct Conversation / Query trace ID labels; clarification shows null query trace |
-| R4 | Resolver salvaged embedded JSON via regex | `parse_resolver_content` exact `json.loads` only; malformed → clarification |
-| R5 | Synthetic prior assistant text ≠ visible copy | Shared `assistantPresentationText`; 12k window uses Unicode code points |
-| R6 | Source mode dropped; count-only provenance | Persist/present `selectionMode` + frozen submitted names |
+**Authority:** Amendment A3 materialized at
+`da1082d95630c12eaf0ce1a3b8d005aaa60d2f73`.
 
-## Independent review — Rework 2
-
-Disposition at tip `7ddd9babece94df3f6a3f3332bfec4ffdc6b26ff`:
-**REWORK 2 REQUIRED** — R2 chronology only (R1/R3–R6 closed).
-
-Defect: completed pairs and incomplete/failed turns rendered as separate
-groups, so after Q1 fails then Q2 succeeds the thread could show Q2 before Q1.
-
-Closure: every submission stamps immutable `askedAt`;
-`buildConversationTimeline` merges completed + pending/failed into one
-submission-ordered thread. Completed-pair `askedAt` uses the submission stamp
-(not completion time). Resolver `prior_turns` unchanged (completed pairs only).
+| Topic | Closure |
+| --- | --- |
+| Full-viewport | `.app-main:has(.workspace-page)` max-width none; modest gutter; clamped grid tracks |
+| Sources collapse | Accessible Collapse/Expand Sources; compact restore affordance |
+| Evidence collapse | Accessible Collapse/Expand Evidence; Conversation expands |
+| Citation → collapsed Evidence | Desktop auto-expands Evidence; selection preserved |
+| Overflow containment | min-width 0 / max-width 100% / break-all on identifiers; PDF max-width 100% |
+| Vertical workbench | Independent scroll for Sources list, Conversation thread, Evidence scroll; sticky composer |
 
 ## Tests
 
-Backend (`tests/unit/app/test_slice16d_b3_conversation.py`): first-turn bypass;
-follow-up resolution; injection/schema fail-closed; malformed/over-bound
-prior_turns; invalid source subset; binding-before-resolver; mutation retains
-admitted snapshot; clarification dual-trace rules; fresh retrieval; prior
-assistant not evidence; exact subset; `/query` independence; privacy-minimized
-conversation trace; query-trace scientific hash; **R1** malformed prior vs
-unready → `request_invalid` (no resolver/model/conversation trace) and valid
-vs unready → `runtime_not_ready`; **R4** exact JSON only (prose/fence/suffix/
-empty question/extra keys → clarification).
+Backend (unchanged in Rework 3): focused B3 suite from prior reworks remains the
+scientific/API evidence. Rework 3 is frontend-only.
 
-Frontend (`ui/src/test/slice16d_b3_conversation.test.tsx` + related): **R2**
-failed send retains question / cleared composer / excluded from next
-`prior_turns`; **R2 Rework 2** submission-order timeline (failure then success;
-Q3 prior_turns = only completed Q2; pending at chronological end); **R3** dual
-trace labels; **R5** presentation text parity + Unicode 12k; **R6** frozen
-source-scope labels across selection changes.
+Frontend: prior R2–R6 / chronology / B2 citation / drawer suites preserved;
+Rework 3 adds desktop rail collapse/expand + aria-expanded, Evidence auto-open
+on citation/source preview, narrow drawer architecture assertions, containment
+class hooks.
 
-Validation run (Rework 1):
+Validation run (Rework 3 — frontend-only):
 
-- backend focused: `test_slice16d_b3_conversation` + `test_slice16d_a_query_scope`
-  + `test_slice16b_workspace_api` + `test_slice16b_query_binding` +
-  `test_grounded_answer_v2`: **85 passed**
-- broader unrelated suites (`test_slice15e_product_query_traces`,
-  `test_grounded_generation`) showed pre-existing/env failures when batched;
-  not treated as B3 Rework 1 regressions (focused B3/API/scope suite green)
-- `ui` vitest: **91 passed**
+- `ui` vitest (full): **94 passed**
 - `ui` lint / typecheck / production build: passed
-- `git diff --check`: clean (Rework 1 commit paths)
+- `git diff --check`: clean (Rework 3 commit paths)
+- Backend not re-run (no backend/scientific code changes)
 
-Validation run (Rework 2 — frontend-only):
+## Manual browser smoke (Rework 3)
 
-- `ui` vitest (full): **92 passed**
-- `ui` lint / typecheck / production build: passed
-- `git diff --check`: clean (Rework 2 commit paths)
-- Backend not re-run (no backend changes)
+Environment: Vite `127.0.0.1:5173` + API `127.0.0.1:8080`, workspace
+`ws_1f0faad69b9041e7aa6c60190538ba7d` (“B1 Upload Smoke”, 10 sources).
+CDP device metrics used for viewport sizes; layout measured from live DOM.
 
-## Manual smoke (Rework 1)
+### ~2048 × 1200 desktop
 
-Environment: local generator + workspace
-`ws_1f0faad69b9041e7aa6c60190538ba7d`. API restarted onto Rework 1 code on
-`127.0.0.1:8080`.
+- `app-main` max-width `none`; padding `16px` gutters
+- Tracks ≈ Sources 352 / Conversation 1160 / Evidence 480 (ask share ≈ 0.575)
+- No page-level horizontal scrollbar (`scrollWidth == clientWidth == 2048`)
+- Both rails expanded by default with Collapse controls
+- Both collapsed → Conversation ask share ≈ 0.79; restore affordances present
+- Long filename `Carlos_Schrupp_Berkeley_Career_Advising_CV.pdf`: wraps
+  (`overflow-wrap: anywhere`); PDF iframe width 447 ≤ Evidence 480
+- Hostile synthetic provenance IDs/section path: `maxDdOverhang == 0`, no page
+  horizontal overflow
+- Live first turn answered with citations; Sources list independently
+  scrollable; composer remained visible in viewport
+- Evidence collapsed → source preview auto-expanded Evidence
 
-Observed:
+### ~1440 × 900 desktop
 
-1. Malformed prior pair → `request_invalid` /
-   `prior_turns_incomplete_pair` (bounds before scientific work).
-2. First turn: `context_used=false`, dual
-   `conversation_trace_id` + `query_trace_id`, scientific `model_abstain`.
-3. Follow-up after abstention prior: `clarification_required`,
-   `query_trace_id=null`, conversation trace present.
-4. Follow-up with substantive synthetic prior: resolver path exercised;
-   conversation vs query identities remain distinct when a scientific query runs.
-5. R4 parser checked in-process: prose/fenced JSON → clarification.
-6. R2 / R3 / R5 / R6 product UI behaviors covered by automated browser tests;
-   live browser failed-send / frozen source-scope not re-run interactively this
-   rework (Vite available; automated coverage authoritative for those).
+- max-width none; no horizontal overflow
+- Tracks ≈ 259 / 764 / 346 (ask share ≈ 0.548)
+
+### ~1280 × 800 desktop
+
+- max-width none; no horizontal overflow
+- Tracks ≈ 240 / 649 / 320 (ask share ≈ 0.526)
+
+### Narrow ~390 × 844
+
+- Desktop rails `display: none`; mobile Sources/Evidence bar `flex`
+- Rail collapse toggles CSS-hidden
+- Citation opened exactly **one** Evidence drawer (`role=dialog` count = 1)
+- Returning to 1440 desktop: dialogs 0, root not inert, rail toggles displayed
 
 Destructive N+1 live smoke still omitted; automated historical-version coverage
-remains the evidence.
+remains the evidence for that contract.
 
 ## Known limitations
 
 - Session-local conversation only (no durable chat library) — per A2-D08
+- Incomplete/failed turns are not session-persisted (presentation-only)
+- Rail preference is session-local UI state only (no server preferences)
 - Clarification copy is application-owned; resolver does not answer factually
-- Live scientific answered/citation outcomes depend on corpus + generator
-  quality; B3 does not retune generator/reranker
 
 ## Unrelated baseline / test debt
 

@@ -36,6 +36,10 @@ import { ModalDialog } from "../components/ModalDialog";
 import { OperationProgress } from "../components/OperationProgress";
 import { ResponsiveDrawer } from "../components/ResponsiveDrawer";
 import { AskPanel } from "../features/ask/AskPanel";
+import {
+  loadDesktopRailState,
+  saveDesktopRailState,
+} from "../features/ask/desktopRailState";
 import { EvidencePanel } from "../features/ask/EvidencePanel";
 import { SourceRail } from "../features/ask/SourceRail";
 import type { PreviewTarget } from "../features/ask/SourcePreview";
@@ -199,7 +203,29 @@ export function WorkspacePage() {
   );
   const [sourcesDrawerOpen, setSourcesDrawerOpen] = useState(false);
   const [evidenceDrawerOpen, setEvidenceDrawerOpen] = useState(false);
+  const [sourcesRailExpanded, setSourcesRailExpanded] = useState(
+    () => loadDesktopRailState().sourcesExpanded,
+  );
+  const [evidenceRailExpanded, setEvidenceRailExpanded] = useState(
+    () => loadDesktopRailState().evidenceExpanded,
+  );
   const isNarrowLayout = useNarrowLayout();
+
+  function setSourcesRailExpandedPersisted(expanded: boolean) {
+    setSourcesRailExpanded(expanded);
+    saveDesktopRailState({
+      sourcesExpanded: expanded,
+      evidenceExpanded: evidenceRailExpanded,
+    });
+  }
+
+  function setEvidenceRailExpandedPersisted(expanded: boolean) {
+    setEvidenceRailExpanded(expanded);
+    saveDesktopRailState({
+      sourcesExpanded: sourcesRailExpanded,
+      evidenceExpanded: expanded,
+    });
+  }
 
   if (historyWorkspaceId !== workspaceId) {
     const loaded = workspaceId ? loadConversation(workspaceId) : [];
@@ -808,6 +834,9 @@ export function WorkspacePage() {
     if (isNarrowLayout) {
       setSourcesDrawerOpen(false);
       setEvidenceDrawerOpen(true);
+    } else if (!evidenceRailExpanded) {
+      // A3-D07: evidence inspection overrides collapsed Evidence rail.
+      setEvidenceRailExpandedPersisted(true);
     }
   }
 
@@ -820,6 +849,8 @@ export function WorkspacePage() {
     });
     if (isNarrowLayout) {
       closeSourcesDrawerThen(() => setEvidenceDrawerOpen(true));
+    } else if (!evidenceRailExpanded) {
+      setEvidenceRailExpandedPersisted(true);
     }
   }
 
@@ -1016,55 +1047,134 @@ export function WorkspacePage() {
         </Button>
       </div>
 
-      <div className="knowledge-layout">
-        <aside className="knowledge-sources knowledge-desktop-only">
-          {sourceRail}
+      <div
+        className={[
+          "knowledge-layout",
+          sourcesRailExpanded ? "" : "sources-collapsed",
+          evidenceRailExpanded ? "" : "evidence-collapsed",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        <aside
+          id="workspace-sources-rail"
+          className="knowledge-sources knowledge-desktop-only"
+        >
+          {sourcesRailExpanded ? (
+            <div className="rail-shell">
+              <div className="rail-toolbar">
+                <button
+                  type="button"
+                  className="rail-toggle"
+                  aria-expanded={true}
+                  aria-controls="workspace-sources-rail"
+                  aria-label="Collapse Sources"
+                  onClick={() => setSourcesRailExpandedPersisted(false)}
+                >
+                  «
+                </button>
+              </div>
+              {sourceRail}
+            </div>
+          ) : (
+            <div className="rail-shell rail-shell-collapsed">
+              <button
+                type="button"
+                className="rail-toggle rail-toggle-collapsed"
+                aria-expanded={false}
+                aria-controls="workspace-sources-rail"
+                aria-label="Expand Sources"
+                onClick={() => setSourcesRailExpandedPersisted(true)}
+              >
+                Sources
+              </button>
+            </div>
+          )}
         </aside>
         <div className="knowledge-ask">
-          <AskPanel
-            question={question}
-            onQuestionChange={setQuestion}
-            onAsk={() => {
-              if (askDisabled) return;
-              submitAsk();
-            }}
-            onNewConversation={startNewConversation}
-            askDisabled={askDisabled}
-            askPending={askMutation.isPending}
-            selectedCount={selectedSourceIds.length}
-            totalCount={sources.length}
-            askError={askError}
-            conflictHint={conflictHint}
-            activeEntry={activeEntry}
-            history={history}
-            incompleteTurns={incompleteTurns}
-            selectedEvidenceUnitId={selectedCitation?.evidence_unit_id ?? null}
-            onSelectCitation={(citation, entry) => {
-              setActiveEntryId(entry.entryId);
-              openCitation(citation, entry);
-            }}
-            onSelectHistory={(entry) => {
-              setActiveEntryId(entry.entryId);
-              const first = entry.response.citations[0] ?? null;
-              setSelectedCitation(first);
-              if (first) {
-                setPreviewTarget({
-                  kind: "citation",
-                  workspaceId,
-                  citation: first,
-                  workspaceRevision: entry.response.workspace_revision,
-                  querySnapshotId: entry.response.snapshot_id,
-                });
-              } else {
-                setPreviewTarget(null);
+          <div className="rail-shell">
+            <AskPanel
+              question={question}
+              onQuestionChange={setQuestion}
+              onAsk={() => {
+                if (askDisabled) return;
+                submitAsk();
+              }}
+              onNewConversation={startNewConversation}
+              askDisabled={askDisabled}
+              askPending={askMutation.isPending}
+              selectedCount={selectedSourceIds.length}
+              totalCount={sources.length}
+              askError={askError}
+              conflictHint={conflictHint}
+              activeEntry={activeEntry}
+              history={history}
+              incompleteTurns={incompleteTurns}
+              selectedEvidenceUnitId={
+                selectedCitation?.evidence_unit_id ?? null
               }
-            }}
-            currentSnapshotId={workspace.current_snapshot_id}
-            settingsHint={settingsHint}
-          />
+              onSelectCitation={(citation, entry) => {
+                setActiveEntryId(entry.entryId);
+                openCitation(citation, entry);
+              }}
+              onSelectHistory={(entry) => {
+                setActiveEntryId(entry.entryId);
+                const first = entry.response.citations[0] ?? null;
+                setSelectedCitation(first);
+                if (first) {
+                  setPreviewTarget({
+                    kind: "citation",
+                    workspaceId,
+                    citation: first,
+                    workspaceRevision: entry.response.workspace_revision,
+                    querySnapshotId: entry.response.snapshot_id,
+                  });
+                  if (!isNarrowLayout && !evidenceRailExpanded) {
+                    setEvidenceRailExpandedPersisted(true);
+                  }
+                } else {
+                  setPreviewTarget(null);
+                }
+              }}
+              currentSnapshotId={workspace.current_snapshot_id}
+              settingsHint={settingsHint}
+            />
+          </div>
         </div>
-        <aside className="knowledge-evidence knowledge-desktop-only">
-          {evidencePanel}
+        <aside
+          id="workspace-evidence-rail"
+          className="knowledge-evidence knowledge-desktop-only"
+        >
+          {evidenceRailExpanded ? (
+            <div className="rail-shell">
+              <div className="rail-toolbar">
+                <button
+                  type="button"
+                  className="rail-toggle"
+                  aria-expanded={true}
+                  aria-controls="workspace-evidence-rail"
+                  aria-label="Collapse Evidence"
+                  onClick={() => setEvidenceRailExpandedPersisted(false)}
+                >
+                  »
+                </button>
+              </div>
+              {evidencePanel}
+            </div>
+          ) : (
+            <div className="rail-shell rail-shell-collapsed">
+              <button
+                type="button"
+                className="rail-toggle rail-toggle-collapsed"
+                aria-expanded={false}
+                aria-controls="workspace-evidence-rail"
+                aria-label="Expand Evidence"
+                onClick={() => setEvidenceRailExpandedPersisted(true)}
+              >
+                Evidence
+              </button>
+            </div>
+          )}
         </aside>
       </div>
 

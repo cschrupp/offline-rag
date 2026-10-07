@@ -169,6 +169,7 @@ p {
   padding: 0;
   display: grid;
   gap: 0.5rem;
+  min-width: 0;
 }
 
 .source-row {
@@ -180,6 +181,9 @@ p {
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   background: var(--color-panel);
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .source-row-main {
@@ -316,8 +320,41 @@ p {
   width: 100%;
 }
 
+/* A3-D01/D03: workspace detail is a full-viewport workbench. */
+.app-shell:has(.workspace-page) {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
 .app-main:has(.workspace-page) {
-  max-width: min(var(--workspace-max-width), 100%);
+  max-width: none;
+  margin: 0;
+  width: 100%;
+  padding: var(--workspace-gutter-y) var(--workspace-gutter-x);
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.workspace-page,
+.workspace-page.stack {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  overflow: hidden;
+}
+
+.workspace-page > .workspace-header,
+.workspace-page > nav,
+.workspace-page > .operation-tray,
+.workspace-page > .operation-compact,
+.workspace-page > .knowledge-mobile-bar {
+  flex-shrink: 0;
 }
 
 .stack {
@@ -553,10 +590,31 @@ a.btn:hover {
 }
 
 .knowledge-layout {
+  --sources-track: clamp(15rem, 18vw, 22rem);
+  --evidence-track: clamp(20rem, 24vw, 30rem);
   display: grid;
-  grid-template-columns: minmax(17rem, 18rem) minmax(0, 1fr) minmax(22rem, 24rem);
-  gap: var(--space-4);
-  align-items: start;
+  grid-template-columns: var(--sources-track) minmax(0, 1fr) var(--evidence-track);
+  gap: var(--space-3);
+  align-items: stretch;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.knowledge-layout.sources-collapsed {
+  grid-template-columns: var(--rail-collapsed-width) minmax(0, 1fr) var(--evidence-track);
+}
+
+.knowledge-layout.evidence-collapsed {
+  grid-template-columns: var(--sources-track) minmax(0, 1fr) var(--rail-collapsed-width);
+}
+
+.knowledge-layout.sources-collapsed.evidence-collapsed {
+  grid-template-columns:
+    var(--rail-collapsed-width) minmax(0, 1fr) var(--rail-collapsed-width);
 }
 
 .knowledge-sources,
@@ -567,17 +625,163 @@ a.btn:hover {
 .conversation-turn,
 .conversation-user-turn,
 .conversation-assistant-turn,
-.answer-body {
+.answer-body,
+.source-preview,
+.source-list,
+.provenance-disclosure,
+.provenance-list,
+.pdf-preview-frame,
+.text-preview,
+.text-preview-pre {
   min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.knowledge-sources,
+.knowledge-evidence,
+.knowledge-ask {
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.rail-shell {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.rail-shell-collapsed {
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+.rail-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  padding: var(--space-2) var(--space-3) 0;
+}
+
+.rail-toggle {
+  appearance: none;
+  border: 1px solid var(--color-border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: var(--radius);
+  min-height: var(--target);
+  min-width: var(--target);
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rail-toggle:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.rail-toggle-collapsed {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  border-radius: var(--radius);
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  letter-spacing: 0.04em;
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 
 .source-rail,
 .ask-panel,
 .evidence-panel {
-  background: var(--color-panel);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
   padding: var(--space-4);
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  box-sizing: border-box;
+}
+
+.rail-shell > .source-rail,
+.rail-shell > .evidence-panel {
+  padding-top: var(--space-2);
+  flex: 1;
+  min-height: 0;
+}
+
+.source-rail > .source-list,
+.evidence-panel > .source-preview,
+.evidence-panel > .provenance-disclosure {
+  min-height: 0;
+}
+
+.source-rail .source-list {
+  flex: 1;
+  overflow: auto;
+  align-content: start;
+}
+
+.evidence-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.conversation-panel {
+  height: 100%;
+}
+
+.conversation-panel > .conversation-panel-header,
+.conversation-panel > .muted:first-of-type {
+  flex-shrink: 0;
+}
+
+.conversation-thread {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  align-content: start;
+}
+
+.conversation-composer {
+  flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin-top: auto;
+  padding-top: var(--space-3);
+  background: linear-gradient(
+    to bottom,
+    rgb(255 255 255 / 0%),
+    var(--color-panel) 0.75rem
+  );
+  border-top: 1px solid var(--color-border);
 }
 
 .source-row-ask {
@@ -816,10 +1020,6 @@ a.btn:hover {
   white-space: pre-wrap;
 }
 
-.conversation-composer {
-  margin-top: var(--space-2);
-}
-
 button.snapshot-badge {
   appearance: none;
   font: inherit;
@@ -855,19 +1055,40 @@ button.snapshot-badge {
   margin: 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.85rem;
+  overflow-wrap: anywhere;
   word-break: break-all;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.evidence-source-title,
+.source-name-button {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 100%;
 }
 
 .pdf-preview-frame {
+  display: block;
   width: 100%;
-  min-height: 24rem;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 16rem;
+  height: min(50vh, 28rem);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   background: var(--surface);
+  box-sizing: border-box;
+}
+
+.text-preview {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .text-preview-pre {
   margin: 0;
+  max-width: 100%;
   max-height: 28rem;
   overflow: auto;
   padding: var(--space-2);
@@ -876,13 +1097,20 @@ button.snapshot-badge {
   background: var(--surface);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.8rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  box-sizing: border-box;
 }
 
 .text-preview-line {
   display: grid;
-  grid-template-columns: 3rem 1fr;
+  grid-template-columns: 3rem minmax(0, 1fr);
   gap: var(--space-2);
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
 }
 
 .text-preview-line-cited {
@@ -935,8 +1163,71 @@ button.snapshot-badge {
 }
 
 @media (max-width: 960px) {
-  .knowledge-layout {
+  .app-shell:has(.workspace-page) {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .app-main:has(.workspace-page) {
+    overflow: visible;
+    display: block;
+    padding: var(--space-4);
+  }
+
+  .workspace-page {
+    overflow: visible;
+    display: grid;
+    gap: var(--space-4);
+    height: auto;
+    min-height: 0;
+  }
+
+  .knowledge-layout,
+  .knowledge-layout.sources-collapsed,
+  .knowledge-layout.evidence-collapsed,
+  .knowledge-layout.sources-collapsed.evidence-collapsed {
     grid-template-columns: 1fr;
+    overflow: visible;
+    height: auto;
+    flex: none;
+  }
+
+  .knowledge-sources,
+  .knowledge-evidence,
+  .knowledge-ask {
+    height: auto;
+    overflow: visible;
+  }
+
+  .source-rail,
+  .ask-panel,
+  .evidence-panel {
+    overflow: visible;
+    height: auto;
+  }
+
+  .conversation-thread {
+    overflow: visible;
+    flex: none;
+  }
+
+  .conversation-composer {
+    position: static;
+    border-top: 0;
+    background: transparent;
+  }
+
+  .rail-toolbar,
+  .rail-toggle,
+  .rail-shell-collapsed {
+    display: none;
+  }
+
+  .rail-shell {
+    border: 0;
+    background: transparent;
+    overflow: visible;
   }
 
   .knowledge-desktop-only {
