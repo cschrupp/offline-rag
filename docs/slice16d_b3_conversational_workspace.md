@@ -23,6 +23,9 @@ implementation/16d-b3-conversational-workspace
 Implementation candidate SHA:
 adbf2fcd01c4c2db08fe146993c04ce91b9b97c3
 
+Evidence packaging tip:
+3e13be098c58f149af2e4fab3d9f00248f04e47b
+
 16D-B2: COMPLETE / ACCEPTED / SEALED
 16D-B3: IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
 16D-C: NOT AUTHORIZED
