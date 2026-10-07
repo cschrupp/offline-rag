@@ -78,9 +78,10 @@ SLICE 16: DESIGN INTERVIEW COMPLETE
            OBSERVED 16D-B1 CANDIDATE
              6b6524001f063a628505f572e7ca13d954a38260
              PRODUCT ACCEPTANCE WITHHELD / NOT SEALED
-           B1 FOUNDATION REMEDIATION ACCEPTED
-             c68cc3f8f16a2588ba093886f3e48e1c7037f83f
-             CLOSEOUT PENDING / NOT YET SEALED
+           B1 FOUNDATION REMEDIATION ACCEPTED / SEALED
+             ACCEPTED IMPLEMENTATION c68cc3f8f16a2588ba093886f3e48e1c7037f83f
+             VERIFIED CLOSEOUT b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90
+             INDEPENDENT CLOSEOUT REVIEW PASSED
            LEGACY B1 PRODUCT UX
              PRODUCT ACCEPTANCE WITHHELD / NOT SEALED
            16D-B2 / 16D-B3 / 16D-C NOT AUTHORIZED
@@ -118,8 +119,9 @@ LOCKED / SEALED** at `dce3456e519cb6c96570e20f5af800d00cafb5a7`
 `f0bdf78d0ae6a79737055d324b22fc35e1e501f5`); **16D-A COMPLETE / ACCEPTED /
 SEALED** at `4f8962f2893ab433e6ea269ad54e46f67771ca70`; observed 16D-B1
 candidate `6b652400…` has **PRODUCT ACCEPTANCE WITHHELD**; B1 foundation
-remediation **ACCEPTED** at `c68cc3f8f16a2588ba093886f3e48e1c7037f83f`
-(**CLOSEOUT PENDING / NOT YET SEALED**); legacy B1 product UX remains
+remediation **ACCEPTED / SEALED** (implementation
+`c68cc3f8f16a2588ba093886f3e48e1c7037f83f`; verified closeout
+`b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90`); legacy B1 product UX remains
 superseded / acceptance withheld; **16D-B2 / 16D-B3 / 16D-C NOT AUTHORIZED**.
 Historical pre-design frame: `docs/slice16_portfolio_ui.md`.
 
@@ -892,9 +894,10 @@ SLICE 16: DESIGN INTERVIEW COMPLETE
            OBSERVED 16D-B1 CANDIDATE
              6b6524001f063a628505f572e7ca13d954a38260
              PRODUCT ACCEPTANCE WITHHELD / NOT SEALED
-           B1 FOUNDATION REMEDIATION ACCEPTED
-             c68cc3f8f16a2588ba093886f3e48e1c7037f83f
-             CLOSEOUT PENDING / NOT YET SEALED
+           B1 FOUNDATION REMEDIATION ACCEPTED / SEALED
+             ACCEPTED IMPLEMENTATION c68cc3f8f16a2588ba093886f3e48e1c7037f83f
+             VERIFIED CLOSEOUT b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90
+             INDEPENDENT CLOSEOUT REVIEW PASSED
            LEGACY B1 PRODUCT UX
              PRODUCT ACCEPTANCE WITHHELD / NOT SEALED
            16D-B2 / 16D-B3 / 16D-C NOT AUTHORIZED
@@ -913,14 +916,14 @@ M6 science: UNCHANGED
   NOT AUTHORIZED / UNCHANGED
 ```
 
-**Next governance sequence (not authorized by this document):** after
-independent verification seals the B1 foundation remediation closeout,
-separate explicit authorization of **16D-B2** may be considered; then
-**16D-B3** → **16D-C** → Slice 17 → Slice 18 → Milestone 7 closeout. Slice 14
-and Slice 15 are closed. Slice 16 design is **ACCEPTED / LOCKED**. Amendment
-A2 is **ACCEPTED / LOCKED / SEALED**. **16A**, **16B**, **16C**, and **16D-A**
-are **COMPLETE / ACCEPTED**. B1 foundation remediation is **ACCEPTED** at
-`c68cc3f8f16a2588ba093886f3e48e1c7037f83f` (**CLOSEOUT PENDING**). Legacy B1
-product UX remains **PRODUCT ACCEPTANCE WITHHELD**. **16D-B2 / 16D-B3 /
-16D-C**, Slice 17, Slice 18, and M7 closeout remain **NOT AUTHORIZED**. Slice
-16 overall is **IN PROGRESS / NOT COMPLETE**.
+**Next governance sequence (not authorized by this document):** separate
+explicit authorization of **16D-B2** may be considered; then **16D-B3** →
+**16D-C** → Slice 17 → Slice 18 → Milestone 7 closeout. Slice 14 and Slice 15
+are closed. Slice 16 design is **ACCEPTED / LOCKED**. Amendment A2 is
+**ACCEPTED / LOCKED / SEALED**. **16A**, **16B**, **16C**, and **16D-A** are
+**COMPLETE / ACCEPTED**. B1 foundation remediation is **ACCEPTED / SEALED**
+(implementation `c68cc3f8f16a2588ba093886f3e48e1c7037f83f`; verified closeout
+`b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90`). Legacy B1 product UX remains
+**PRODUCT ACCEPTANCE WITHHELD**. **16D-B2 / 16D-B3 / 16D-C**, Slice 17,
+Slice 18, and M7 closeout remain **NOT AUTHORIZED**. Slice 16 overall is
+**IN PROGRESS / NOT COMPLETE**.

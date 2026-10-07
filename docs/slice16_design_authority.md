@@ -1087,8 +1087,10 @@ OBSERVED 16D-B1 CANDIDATE:
   6b6524001f063a628505f572e7ca13d954a38260
   PRODUCT ACCEPTANCE WITHHELD / NOT SEALED
 B1 FOUNDATION REMEDIATION:
-  ACCEPTED @ c68cc3f8f16a2588ba093886f3e48e1c7037f83f
-  CLOSEOUT PENDING / NOT YET SEALED
+  ACCEPTED / SEALED
+  ACCEPTED IMPLEMENTATION: c68cc3f8f16a2588ba093886f3e48e1c7037f83f
+  VERIFIED CLOSEOUT: b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90
+  INDEPENDENT CLOSEOUT REVIEW: PASSED
 16D-B2 / 16D-B3 / 16D-C: NOT AUTHORIZED
 16E–16H: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
@@ -1103,8 +1105,9 @@ Design acceptance/lock does **not** by itself authorize later phases. **16A**,
 `5060e2aeb4825f265072a1f870c3c963eace3b30`. Amendment A2 is **ACCEPTED /
 LOCKED / SEALED** at `dce3456e519cb6c96570e20f5af800d00cafb5a7` (closeout
 `f0bdf78d0ae6a79737055d324b22fc35e1e501f5`) and does **not** authorize B2/B3/C
-implementation. B1 foundation remediation is **ACCEPTED** at
-`c68cc3f8f16a2588ba093886f3e48e1c7037f83f` (**CLOSEOUT PENDING**; not yet
-**SEALED**). Legacy B1 product UX remains **PRODUCT ACCEPTANCE WITHHELD**.
+implementation. B1 foundation remediation is **ACCEPTED / SEALED**
+(implementation `c68cc3f8f16a2588ba093886f3e48e1c7037f83f`; verified closeout
+`b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90`). Legacy B1 product UX remains
+**PRODUCT ACCEPTANCE WITHHELD**.
 Explicit separate human authorization is required before **16D-B2**,
 **16D-B3**, or **16D-C** may start. Slice 16 overall is **not** complete.

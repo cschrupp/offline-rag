@@ -25,10 +25,10 @@ OBSERVED 16D-B1 CANDIDATE:
   6b6524001f063a628505f572e7ca13d954a38260
   PRODUCT ACCEPTANCE WITHHELD / NOT SEALED
 16D-B1 FOUNDATION REMEDIATION:
+  ACCEPTED / SEALED
   ACCEPTED IMPLEMENTATION: c68cc3f8f16a2588ba093886f3e48e1c7037f83f
-  STATUS: ACCEPTED
-  CLOSEOUT PENDING IN THIS COMMIT
-  (SEALED after independent docs verification)
+  VERIFIED CLOSEOUT: b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90
+  INDEPENDENT CLOSEOUT REVIEW: PASSED
 16D-B2: NOT AUTHORIZED / NOT STARTED
 16D-B3: NOT AUTHORIZED / NOT STARTED
 16D-C: NOT AUTHORIZED / NOT STARTED
@@ -56,9 +56,11 @@ Amendment A2 (**ACCEPTED / LOCKED / SEALED** at
 A2 authoritatively supersedes only its enumerated clauses and revises the Ask
 path into **16D-B1 (observed) / 16D-B2 / 16D-B3** then **16D-C**. A2 acceptance
 does **not** authorize B2/B3/C. B1 foundation upload remediation is
-**ACCEPTED** at `c68cc3f8f16a2588ba093886f3e48e1c7037f83f` (closeout pending /
-not yet sealed); that acceptance does **not** grant product acceptance to the
-legacy B1 Ask/Evidence UX and does **not** authorize B2.
+**ACCEPTED / SEALED** (implementation
+`c68cc3f8f16a2588ba093886f3e48e1c7037f83f`; verified closeout
+`b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90`); that acceptance does **not**
+grant product acceptance to the legacy B1 Ask/Evidence UX and does **not**
+authorize B2.
 
 16A evidence: [`docs/slice16a_workspace_foundation.md`](slice16a_workspace_foundation.md)
 
@@ -95,7 +97,7 @@ Use sequential phase gates unless explicitly redesigned:
  ↓
 16D-B1 [OBSERVED CANDIDATE / PRODUCT ACCEPTANCE WITHHELD]
  ↓
-B1 foundation remediation [ACCEPTED @ c68cc3f8… / CLOSEOUT PENDING]
+B1 foundation remediation [ACCEPTED / SEALED @ c68cc3f8… / closeout b5fa1e85…]
  ↓
 16D-B2 [NOT AUTHORIZED / NOT STARTED]   ← Grounded Answer V2
  ↓
@@ -124,17 +126,17 @@ A2 CLOSEOUT: f0bdf78d0ae6a79737055d324b22fc35e1e501f5
 Under accepted A2, Ask/Evidence decomposes into **B1 / B2 / B3** (see A2-D24).
 **16D-A** is **COMPLETE / ACCEPTED / SEALED**. Observed B1 candidate
 `6b652400…` remains **PRODUCT ACCEPTANCE WITHHELD / NOT SEALED**. B1
-foundation upload remediation is **ACCEPTED** at
-`c68cc3f8f16a2588ba093886f3e48e1c7037f83f` (**CLOSEOUT PENDING**; **SEALED**
-after independent docs verification). **16D-B2 / 16D-B3 / 16D-C** remain
-**NOT AUTHORIZED** until separate explicit implementation authorization
-(prerequisite completion does not authorize the next phase).
+foundation upload remediation is **ACCEPTED / SEALED** (implementation
+`c68cc3f8f16a2588ba093886f3e48e1c7037f83f`; verified closeout
+`b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90`). **16D-B2 / 16D-B3 / 16D-C**
+remain **NOT AUTHORIZED** until separate explicit implementation
+authorization (prerequisite completion does not authorize the next phase).
 
 Do not close Slice 16 automatically after 16H. Independent review and explicit
 human acceptance of the implemented slice remain required. **16A**, **16B**,
 **16C**, and **16D-A** are **COMPLETE / ACCEPTED**; legacy B1 product UX
-acceptance remains **WITHHELD**; B1 foundation remediation is **ACCEPTED**
-(closeout pending); **16D-B2 / 16D-B3 / 16D-C** and **16E–16H** remain
+acceptance remains **WITHHELD**; B1 foundation remediation is **ACCEPTED /
+SEALED**; **16D-B2 / 16D-B3 / 16D-C** and **16E–16H** remain
 **NOT AUTHORIZED**. Slice 16 overall is **not** complete.
 
 ---
@@ -388,11 +390,12 @@ remediation):
 ### 16D-B1 FOUNDATION REMEDIATION
 
 ```text
-STATUS: ACCEPTED
-CLOSEOUT PENDING IN THIS COMMIT
-(SEALED after independent docs verification)
+STATUS: ACCEPTED / SEALED
 ACCEPTED IMPLEMENTATION:
   c68cc3f8f16a2588ba093886f3e48e1c7037f83f
+VERIFIED CLOSEOUT:
+  b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90
+INDEPENDENT CLOSEOUT REVIEW: PASSED
 IMPLEMENTATION BASELINE:
   6b6524001f063a628505f572e7ca13d954a38260
 EVIDENCE: docs/slice16d_b1_upload_foundation_remediation.md
@@ -624,8 +627,10 @@ OBSERVED 16D-B1 CANDIDATE:
   6b6524001f063a628505f572e7ca13d954a38260
   PRODUCT ACCEPTANCE WITHHELD / NOT SEALED
 16D-B1 FOUNDATION REMEDIATION:
-  ACCEPTED @ c68cc3f8f16a2588ba093886f3e48e1c7037f83f
-  CLOSEOUT PENDING / NOT YET SEALED
+  ACCEPTED / SEALED
+  ACCEPTED IMPLEMENTATION: c68cc3f8f16a2588ba093886f3e48e1c7037f83f
+  VERIFIED CLOSEOUT: b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90
+  INDEPENDENT CLOSEOUT REVIEW: PASSED
 16D-B2: NOT AUTHORIZED / NOT STARTED
 16D-B3: NOT AUTHORIZED / NOT STARTED
 16D-C: NOT AUTHORIZED / NOT STARTED
@@ -644,7 +649,8 @@ Amendment A2 is **ACCEPTED / LOCKED / SEALED** at
 `f0bdf78d0ae6a79737055d324b22fc35e1e501f5`). **16D-A** is **COMPLETE /
 ACCEPTED / SEALED** at `4f8962f2893ab433e6ea269ad54e46f67771ca70`. Observed
 16D-B1 candidate `6b652400…` remains **PRODUCT ACCEPTANCE WITHHELD**. B1
-foundation remediation is **ACCEPTED** at
-`c68cc3f8f16a2588ba093886f3e48e1c7037f83f` (**CLOSEOUT PENDING**; not yet
-**SEALED**). **16D-B2 / 16D-B3 / 16D-C** and **16E–16H** remain
-**NOT AUTHORIZED**. Slice 16 overall is **not** complete.
+foundation remediation is **ACCEPTED / SEALED** (implementation
+`c68cc3f8f16a2588ba093886f3e48e1c7037f83f`; verified closeout
+`b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90`). **16D-B2 / 16D-B3 / 16D-C**
+and **16E–16H** remain **NOT AUTHORIZED**. Slice 16 overall is **not**
+complete.

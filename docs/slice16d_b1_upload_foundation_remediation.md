@@ -1,15 +1,20 @@
 # Slice 16D-B1 — Source upload foundation remediation
 
 ```text
-STATUS: ACCEPTED
+STATUS: ACCEPTED / SEALED
 HUMAN ACCEPTANCE: ACCEPTED
 INDEPENDENT IMPLEMENTATION REVIEW: PASSED
-CLOSEOUT: PENDING IN THIS COMMIT (SEAL after independent docs verification)
+INDEPENDENT CLOSEOUT REVIEW: PASSED
 
-ACCEPTED IMPLEMENTATION SHA:
+ACCEPTED IMPLEMENTATION:
 c68cc3f8f16a2588ba093886f3e48e1c7037f83f
 
-Acceptance applies exactly to that SHA (upload-foundation remediation only).
+VERIFIED CLOSEOUT:
+b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90
+
+Acceptance applies exactly to the accepted implementation SHA
+(upload-foundation remediation only). Closeout verification applies to
+the docs-only acceptance closeout SHA.
 
 Implementation baseline:
 6b6524001f063a628505f572e7ca13d954a38260
@@ -27,8 +32,9 @@ Branch:
 implementation/16d-b1-upload-foundation-remediation
 
 16D-B1 FOUNDATION REMEDIATION:
-ACCEPTED @ c68cc3f8f16a2588ba093886f3e48e1c7037f83f
-CLOSEOUT PENDING / NOT YET SEALED
+ACCEPTED / SEALED
+IMPLEMENTATION: c68cc3f8f16a2588ba093886f3e48e1c7037f83f
+CLOSEOUT: b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90
 
 16D-B1 product acceptance (legacy Ask/Evidence UX):
 PRODUCT ACCEPTANCE WITHHELD / NOT SEALED
