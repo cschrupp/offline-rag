@@ -12,6 +12,7 @@ import {
   RESOLVER_CHAR_MAX,
   RESOLVER_PAIR_MAX,
   appendConversationPair,
+  buildConversationTimeline,
   buildResolverPriorTurns,
   chronologicalPairs,
   clearConversation,
@@ -497,10 +498,56 @@ describe("Slice 16D-B3 conversation workspace UI", () => {
     mock.restore();
   });
 
-  it("keeps sent user turn visible after request failure (R2)", async () => {
+  it("merges completed and incomplete turns by submission askedAt (R2 chronology)", () => {
+    const timeline = buildConversationTimeline(
+      [
+        toHistoryEntry({
+          pairId: "p2",
+          askedAt: "2026-01-01T00:00:02.000Z",
+          question: "Q2",
+          selectedSourceIds: ["src_1"],
+          selectedSourceNames: ["Alpha.pdf"],
+          selectionMode: "all",
+          response: turnResponse({ answer: "A2", question: "Q2" }),
+        }),
+      ],
+      [
+        {
+          pairId: "p1",
+          askedAt: "2026-01-01T00:00:01.000Z",
+          question: "Q1",
+          selectedSourceIds: ["src_1"],
+          selectedSourceNames: ["Alpha.pdf"],
+          selectionMode: "all",
+          status: "failed",
+          errorMessage: "Generator failed",
+        },
+        {
+          pairId: "p3",
+          askedAt: "2026-01-01T00:00:03.000Z",
+          question: "Q3",
+          selectedSourceIds: ["src_1"],
+          selectedSourceNames: ["Alpha.pdf"],
+          selectionMode: "all",
+          status: "pending",
+        },
+      ],
+    );
+    expect(timeline.map((item) =>
+      item.kind === "completed" ? item.entry.question : item.turn.question,
+    )).toEqual(["Q1", "Q2", "Q3"]);
+    expect(timeline.map((item) => item.kind)).toEqual([
+      "incomplete",
+      "completed",
+      "incomplete",
+    ]);
+  });
+
+  it("keeps failed turn chronologically before later success (R2)", async () => {
     const user = userEvent.setup();
     const bodies: Array<Record<string, unknown>> = [];
-    let failFirst = true;
+    let callCount = 0;
+    let releaseQ3: (() => void) | undefined;
     const mock = installFetchMock(async (call) => {
       if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
       if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
@@ -525,14 +572,26 @@ describe("Slice 16D-B3 conversation workspace UI", () => {
       }
       if (call.url === "/v1/workspaces/ws_1/conversation/turn" && call.method === "POST") {
         bodies.push(JSON.parse(String(call.body)) as Record<string, unknown>);
-        if (failFirst) {
-          failFirst = false;
+        callCount += 1;
+        if (callCount === 1) {
           return errorResponse("generation_failed", "Generator failed", 502);
         }
+        if (callCount === 2) {
+          return jsonResponse(
+            turnResponse({
+              answer: "Recovered.",
+              answer_blocks: [{ text: "Recovered.", citation_refs: ["c1"] }],
+            }),
+          );
+        }
+        // Hold Q3 pending until chronology assertions finish.
+        await new Promise<void>((resolve) => {
+          releaseQ3 = resolve;
+        });
         return jsonResponse(
           turnResponse({
-            answer: "Recovered.",
-            answer_blocks: [{ text: "Recovered.", citation_refs: ["c1"] }],
+            answer: "Q3 done.",
+            answer_blocks: [{ text: "Q3 done.", citation_refs: ["c1"] }],
           }),
         );
       }
@@ -541,22 +600,48 @@ describe("Slice 16D-B3 conversation workspace UI", () => {
 
     renderApp("/workspaces/ws_1");
     await screen.findByRole("heading", { name: "Conversation" });
-    await user.type(screen.getByLabelText("Ask a follow-up"), "Failed send stays?");
+    await user.type(screen.getByLabelText("Ask a follow-up"), "Q1 failed first");
     await user.click(screen.getByRole("button", { name: "Send" }));
-    expect(await screen.findByText("Failed send stays?")).toBeInTheDocument();
+    expect(await screen.findByText("Q1 failed first")).toBeInTheDocument();
     expect(screen.getByLabelText("Ask a follow-up")).toHaveValue("");
-    // Failure UI appears; submitted turn remains immutable display content.
     const alerts = await screen.findAllByRole("alert");
     expect(alerts.some((el) => (el.textContent ?? "").length > 0)).toBe(true);
-    expect(screen.getByText("Failed send stays?")).toBeInTheDocument();
 
-    await user.type(screen.getByLabelText("Ask a follow-up"), "Second try?");
+    await user.type(screen.getByLabelText("Ask a follow-up"), "Q2 succeeds later");
     await user.click(screen.getByRole("button", { name: "Send" }));
     await waitFor(() => expect(bodies).toHaveLength(2));
     expect(bodies[1]?.prior_turns).toEqual([]);
-    expect(JSON.stringify(bodies[1])).not.toContain("Failed send stays?");
+    expect(JSON.stringify(bodies[1])).not.toContain("Q1 failed first");
     expect(await screen.findByText("Recovered.")).toBeInTheDocument();
-    expect(screen.getByText("Failed send stays?")).toBeInTheDocument();
+    expect(screen.getByText("Q1 failed first")).toBeInTheDocument();
+
+    const thread = document.querySelector(".conversation-thread");
+    expect(thread).toBeTruthy();
+    const userTexts = Array.from(
+      thread!.querySelectorAll(".conversation-user-text"),
+    ).map((el) => el.textContent);
+    expect(userTexts).toEqual(["Q1 failed first", "Q2 succeeds later"]);
+
+    await user.type(screen.getByLabelText("Ask a follow-up"), "Q3 pending end");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() => expect(bodies).toHaveLength(3));
+    expect(bodies[2]?.prior_turns).toEqual([
+      { role: "user", text: "Q2 succeeds later" },
+      { role: "assistant", text: "Recovered." },
+    ]);
+    expect(JSON.stringify(bodies[2])).not.toContain("Q1 failed first");
+    expect(await screen.findByText("Q3 pending end")).toBeInTheDocument();
+    expect(screen.getByText("Searching your selected sources…")).toBeInTheDocument();
+    const userTextsPending = Array.from(
+      thread!.querySelectorAll(".conversation-user-text"),
+    ).map((el) => el.textContent);
+    expect(userTextsPending).toEqual([
+      "Q1 failed first",
+      "Q2 succeeds later",
+      "Q3 pending end",
+    ]);
+    releaseQ3?.();
+    await screen.findByText("Q3 done.");
     mock.restore();
   });
 

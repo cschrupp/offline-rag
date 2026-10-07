@@ -6,6 +6,7 @@ import { TextArea } from "../../components/Field";
 import { ClaimAnswer } from "./ClaimAnswer";
 import { assistantPresentationText } from "./assistantPresentation";
 import {
+  buildConversationTimeline,
   snapshotBadge,
   sourceScopeLabel,
   type ConversationHistoryEntry,
@@ -91,8 +92,8 @@ export function AskPanel({
     }
   }
 
-  const chronological = [...history].reverse();
-  const hasThread = chronological.length > 0 || incompleteTurns.length > 0;
+  const timeline = buildConversationTimeline(history, incompleteTurns);
+  const hasThread = timeline.length > 0;
 
   return (
     <section className="ask-panel conversation-panel stack" aria-labelledby="ask-heading">
@@ -121,7 +122,37 @@ export function AskPanel({
           </p>
         ) : null}
 
-        {chronological.map((entry) => {
+        {timeline.map((item) => {
+          if (item.kind === "incomplete") {
+            const turn = item.turn;
+            return (
+              <article
+                key={turn.pairId}
+                className="conversation-turn stack"
+                aria-busy={turn.status === "pending"}
+              >
+                <div className="conversation-user-turn">
+                  <p className="conversation-role">You</p>
+                  <p className="conversation-user-text">{turn.question}</p>
+                </div>
+                <div className="conversation-assistant-turn">
+                  <p className="conversation-role">Seneca</p>
+                  {turn.status === "pending" ? (
+                    <p className="muted" role="status">
+                      Searching your selected sources…
+                    </p>
+                  ) : (
+                    <p className="error-box" role="alert">
+                      {turn.errorMessage ??
+                        "This turn did not complete. Your question is still shown above."}
+                    </p>
+                  )}
+                </div>
+              </article>
+            );
+          }
+
+          const entry = item.entry;
           const badge = snapshotBadge(
             entry.response.snapshot_id,
             currentSnapshotId,
@@ -187,32 +218,6 @@ export function AskPanel({
             </article>
           );
         })}
-
-        {incompleteTurns.map((turn) => (
-          <article
-            key={turn.pairId}
-            className="conversation-turn stack"
-            aria-busy={turn.status === "pending"}
-          >
-            <div className="conversation-user-turn">
-              <p className="conversation-role">You</p>
-              <p className="conversation-user-text">{turn.question}</p>
-            </div>
-            <div className="conversation-assistant-turn">
-              <p className="conversation-role">Seneca</p>
-              {turn.status === "pending" ? (
-                <p className="muted" role="status">
-                  Searching your selected sources…
-                </p>
-              ) : (
-                <p className="error-box" role="alert">
-                  {turn.errorMessage ??
-                    "This turn did not complete. Your question is still shown above."}
-                </p>
-              )}
-            </div>
-          </article>
-        ))}
       </div>
 
       <form className="stack conversation-composer" onSubmit={onSubmit}>

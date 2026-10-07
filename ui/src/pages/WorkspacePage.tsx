@@ -62,6 +62,8 @@ import { useNarrowLayout } from "../features/ask/useNarrowLayout";
 
 type AskSubmit = {
   pairId: string;
+  /** Immutable submission-time order key (ISO). */
+  askedAt: string;
   question: string;
   selectedSourceIds: string[];
   selectedSourceNames: string[];
@@ -571,7 +573,7 @@ export function WorkspacePage() {
       );
       const pair: ConversationPair = {
         pairId: submit.pairId,
-        askedAt: new Date().toISOString(),
+        askedAt: submit.askedAt,
         question: submit.question,
         selectedSourceIds: submit.selectedSourceIds,
         selectedSourceNames: submit.selectedSourceNames,
@@ -645,10 +647,12 @@ export function WorkspacePage() {
       .map((source) => source.display_name);
     const submittedMode = selectionMode;
     const pairId = newPairId();
+    const askedAt = new Date().toISOString();
     // Only completed pairs enter resolver context — never failed/incomplete.
     const priorTurns = buildResolverPriorTurns(chronologicalPairs(pairs));
     const submit: AskSubmit = {
       pairId,
+      askedAt,
       question: trimmed,
       selectedSourceIds: submittedIds,
       selectedSourceNames: submittedNames,
@@ -663,6 +667,7 @@ export function WorkspacePage() {
       ...prev,
       {
         pairId,
+        askedAt,
         question: trimmed,
         selectedSourceIds: submittedIds,
         selectedSourceNames: submittedNames,

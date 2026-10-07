@@ -25,6 +25,8 @@ export type ConversationPair = {
 /** Incomplete sent user turn that is not a completed pair (A2-D10 / R2). */
 export type IncompleteUserTurn = {
   pairId: string;
+  /** Immutable submission-time order key (ISO). Presentation-only; not session-persisted. */
+  askedAt: string;
   question: string;
   selectedSourceIds: string[];
   selectedSourceNames: string[];
@@ -32,6 +34,41 @@ export type IncompleteUserTurn = {
   status: "pending" | "failed";
   errorMessage?: string | null;
 };
+
+/** Unified conversation thread item ordered by submission time (Rework 2). */
+export type ConversationTimelineItem =
+  | { kind: "completed"; askedAt: string; entry: ConversationHistoryEntry }
+  | { kind: "incomplete"; askedAt: string; turn: IncompleteUserTurn };
+
+/**
+ * Merge completed pairs and incomplete/failed turns into one chronological
+ * thread by immutable submission `askedAt` (not completion time).
+ */
+export function buildConversationTimeline(
+  historyNewestFirst: ConversationHistoryEntry[],
+  incompleteTurns: IncompleteUserTurn[],
+): ConversationTimelineItem[] {
+  const items: ConversationTimelineItem[] = [
+    ...historyNewestFirst.map((entry) => ({
+      kind: "completed" as const,
+      askedAt: entry.askedAt,
+      entry,
+    })),
+    ...incompleteTurns.map((turn) => ({
+      kind: "incomplete" as const,
+      askedAt: turn.askedAt,
+      turn,
+    })),
+  ];
+  items.sort((a, b) => {
+    if (a.askedAt < b.askedAt) return -1;
+    if (a.askedAt > b.askedAt) return 1;
+    const aId = a.kind === "completed" ? a.entry.entryId : a.turn.pairId;
+    const bId = b.kind === "completed" ? b.entry.entryId : b.turn.pairId;
+    return aId < bId ? -1 : aId > bId ? 1 : 0;
+  });
+  return items;
+}
 
 /** Presentation view for Evidence / Claim UI — dual traces preserved. */
 export type ConversationHistoryEntry = {

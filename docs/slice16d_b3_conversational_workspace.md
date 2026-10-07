@@ -3,7 +3,7 @@
 ```text
 STATUS: IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
 HUMAN ACCEPTANCE: PENDING
-INDEPENDENT REVIEW: REWORK 1 COMPLETE / PENDING RE-REVIEW
+INDEPENDENT REVIEW: REWORK 2 COMPLETE / PENDING RE-REVIEW
 
 Authorized implementation baseline:
 28aad06f89e6d00a0b81b51f9c2de38fed06cb22
@@ -23,14 +23,14 @@ implementation/16d-b3-conversational-workspace
 Original B3 implementation candidate SHA:
 adbf2fcd01c4c2db08fe146993c04ce91b9b97c3
 
-Rework 1 baseline (remote tip at authorization):
-c4a3c1a7c754a15b4b9a529479b2851915da74e3
-
 Rework 1 implementation candidate SHA:
 08622794c3186b3eb3684b1c2efc7529bbdac459
 
-Evidence packaging tip:
-55ae2590b7c2a6e092836b7a58bf9e9af2689580
+Rework 2 baseline (remote tip at authorization):
+7ddd9babece94df3f6a3f3332bfec4ffdc6b26ff
+
+Rework 2 implementation candidate SHA:
+(pending commit)
 
 16D-B2: COMPLETE / ACCEPTED / SEALED
 16D-B3: IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
@@ -107,6 +107,11 @@ presentation.
 - `+ New conversation` clears turns/context; preserves sources/selection/workspace
 - Failed/incomplete submissions keep the sent user turn visible but are excluded
   from resolver `prior_turns` (Rework 1 R2)
+- Incomplete/failed turns are **presentation-only transient state** (in-memory);
+  they are not written to `sessionStorage`. Reload clears them. Completed pairs
+  remain session-persisted as before.
+- Visible thread merges completed + incomplete items by immutable submission
+  `askedAt` (Rework 2), not by completion time or collection grouping
 
 ## UI behavior
 
@@ -141,6 +146,19 @@ defects closed as follows:
 | R5 | Synthetic prior assistant text ≠ visible copy | Shared `assistantPresentationText`; 12k window uses Unicode code points |
 | R6 | Source mode dropped; count-only provenance | Persist/present `selectionMode` + frozen submitted names |
 
+## Independent review — Rework 2
+
+Disposition at tip `7ddd9babece94df3f6a3f3332bfec4ffdc6b26ff`:
+**REWORK 2 REQUIRED** — R2 chronology only (R1/R3–R6 closed).
+
+Defect: completed pairs and incomplete/failed turns rendered as separate
+groups, so after Q1 fails then Q2 succeeds the thread could show Q2 before Q1.
+
+Closure: every submission stamps immutable `askedAt`;
+`buildConversationTimeline` merges completed + pending/failed into one
+submission-ordered thread. Completed-pair `askedAt` uses the submission stamp
+(not completion time). Resolver `prior_turns` unchanged (completed pairs only).
+
 ## Tests
 
 Backend (`tests/unit/app/test_slice16d_b3_conversation.py`): first-turn bypass;
@@ -155,8 +173,10 @@ empty question/extra keys → clarification).
 
 Frontend (`ui/src/test/slice16d_b3_conversation.test.tsx` + related): **R2**
 failed send retains question / cleared composer / excluded from next
-`prior_turns`; **R3** dual trace labels; **R5** presentation text parity +
-Unicode 12k; **R6** frozen source-scope labels across selection changes.
+`prior_turns`; **R2 Rework 2** submission-order timeline (failure then success;
+Q3 prior_turns = only completed Q2; pending at chronological end); **R3** dual
+trace labels; **R5** presentation text parity + Unicode 12k; **R6** frozen
+source-scope labels across selection changes.
 
 Validation run (Rework 1):
 
@@ -169,6 +189,13 @@ Validation run (Rework 1):
 - `ui` vitest: **91 passed**
 - `ui` lint / typecheck / production build: passed
 - `git diff --check`: clean (Rework 1 commit paths)
+
+Validation run (Rework 2 — frontend-only):
+
+- `ui` vitest (full): **92 passed**
+- `ui` lint / typecheck / production build: passed
+- `git diff --check`: clean (Rework 2 commit paths)
+- Backend not re-run (no backend changes)
 
 ## Manual smoke (Rework 1)
 
