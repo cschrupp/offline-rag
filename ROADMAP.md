@@ -588,8 +588,10 @@ Slice 14 checklist:
   (**ACCEPTED / LOCKED** at `5060e2aeb4825f265072a1f870c3c963eace3b30`;
   supplemental design authority; does **not** authorize later phase implementation)
 - Amendment A2: [`docs/slice16_amendment_a2_conversational_grounding.md`](docs/slice16_amendment_a2_conversational_grounding.md)
-  (**DESIGN CANDIDATE / HUMAN ACCEPTANCE PENDING**; conversational grounding &
-  claim-level citations; does **not** authorize B2/B3/C implementation)
+  (**DESIGN CANDIDATE / HUMAN ACCEPTANCE PENDING**; Design Rework 1 freezes
+  dual-question shared core, resolver trust boundary, clarification outcome,
+  dual traces, abstention ownership; does **not** authorize B2/B3/C
+  implementation)
 - Implementation plan: [`docs/slice16_implementation_plan.md`](docs/slice16_implementation_plan.md)
   (16A–16H; plan **ACCEPTED**; **16A/16B/16C/16D-A COMPLETE / ACCEPTED**;
   A2 candidate B1/B2/B3 Ask decomposition; **16D-B2/B3/C NOT AUTHORIZED**)

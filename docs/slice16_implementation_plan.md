@@ -44,10 +44,13 @@ Amendment A1 (**ACCEPTED / LOCKED** supplemental design authority):
 at `5060e2aeb4825f265072a1f870c3c963eace3b30`.
 
 Amendment A2 (**DESIGN CANDIDATE / HUMAN ACCEPTANCE PENDING**):
-[`docs/slice16_amendment_a2_conversational_grounding.md`](slice16_amendment_a2_conversational_grounding.md).
-If accepted, A2 revises the Ask path into **16D-B1 (observed) / 16D-B2 / 16D-B3**
-then **16D-C**. Until A2 is accepted, A1’s 16D-A/B/C labels remain historically
-valid; **16D-B2 / 16D-B3 / 16D-C** remain **NOT AUTHORIZED**.
+[`docs/slice16_amendment_a2_conversational_grounding.md`](slice16_amendment_a2_conversational_grounding.md)
+(Design Rework 1: `user_question`/`retrieval_question`, untrusted
+`prior_turns`, `clarification_required`, `conversation_trace_id` /
+`query_trace_id`, app- vs model-owned abstention). If accepted, A2 revises the
+Ask path into **16D-B1 (observed) / 16D-B2 / 16D-B3** then **16D-C**. Until A2
+is accepted, A1’s 16D-A/B/C labels remain historically valid; **16D-B2 /
+16D-B3 / 16D-C** remain **NOT AUTHORIZED**.
 
 16A evidence: [`docs/slice16a_workspace_foundation.md`](slice16a_workspace_foundation.md)
 
