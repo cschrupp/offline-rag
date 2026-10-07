@@ -23,6 +23,17 @@ const VALID_STATUSES = new Set([
   "model_abstain",
 ]);
 
+/** Standalone B2 public abstention reasons by status. */
+const INSUFFICIENT_EVIDENCE_REASONS = new Set([
+  "no_evidence",
+  "insufficient_support",
+]);
+const MODEL_ABSTAIN_REASONS = new Set([
+  "insufficient_support",
+  "conflicting_evidence",
+  "model_declined",
+]);
+
 function storageKey(workspaceId: string): string {
   return `${KEY_PREFIX}${workspaceId}`;
 }
@@ -77,6 +88,73 @@ function isAnswerBlock(value: unknown): value is AnswerBlock {
   );
 }
 
+/**
+ * First-reference unique citation_ref order walking answer_blocks.
+ * Matches server public projection semantics.
+ */
+function firstReferenceCitationRefs(blocks: AnswerBlock[]): string[] {
+  const ordered: string[] = [];
+  const seen = new Set<string>();
+  for (const block of blocks) {
+    for (const ref of block.citation_refs) {
+      if (seen.has(ref)) continue;
+      seen.add(ref);
+      ordered.push(ref);
+    }
+  }
+  return ordered;
+}
+
+function answeredReferentialIntegrity(
+  answer: string,
+  blocks: AnswerBlock[],
+  citations: WorkspaceCitation[],
+): boolean {
+  if (answer.trim().length === 0) return false;
+  if (blocks.length === 0 || citations.length === 0) return false;
+
+  const projected = blocks.map((b) => b.text).join("\n\n");
+  if (answer !== projected) return false;
+
+  const byRef = new Map<string, WorkspaceCitation>();
+  for (const citation of citations) {
+    if (byRef.has(citation.citation_ref)) return false;
+    byRef.set(citation.citation_ref, citation);
+  }
+
+  for (const block of blocks) {
+    let resolved = 0;
+    for (const ref of block.citation_refs) {
+      if (!byRef.has(ref)) return false;
+      resolved += 1;
+    }
+    if (resolved < 1) return false;
+  }
+
+  const expectedRefs = firstReferenceCitationRefs(blocks);
+  if (expectedRefs.length !== citations.length) return false;
+  for (let i = 0; i < expectedRefs.length; i += 1) {
+    if (citations[i]?.citation_ref !== expectedRefs[i]) return false;
+  }
+
+  return true;
+}
+
+function isValidAbstentionReason(
+  status: string,
+  reason: unknown,
+): reason is string {
+  if (typeof reason !== "string") return false;
+  if (reason === "ambiguous_request") return false;
+  if (status === "insufficient_evidence") {
+    return INSUFFICIENT_EVIDENCE_REASONS.has(reason);
+  }
+  if (status === "model_abstain") {
+    return MODEL_ABSTAIN_REASONS.has(reason);
+  }
+  return false;
+}
+
 function isResponse(value: unknown): value is WorkspaceQueryResponse {
   if (!value || typeof value !== "object") return false;
   const row = value as Record<string, unknown>;
@@ -98,27 +176,26 @@ function isResponse(value: unknown): value is WorkspaceQueryResponse {
   if (!(typeof row.answer === "string" || row.answer === null)) {
     return false;
   }
-  if (
-    !(
-      row.abstention_reason === null ||
-      typeof row.abstention_reason === "string"
-    )
-  ) {
-    return false;
-  }
+
   if (row.status === "answered") {
-    if (typeof row.answer !== "string") return false;
+    if (typeof row.answer !== "string" || row.answer.trim().length === 0) {
+      return false;
+    }
+    if (row.abstention_reason !== null) return false;
     if (!row.answer_blocks.every(isAnswerBlock)) return false;
     if (row.answer_blocks.length === 0) return false;
     if (row.citations.length === 0) return false;
-    if (row.abstention_reason !== null) return false;
-  } else {
-    if (row.answer !== null) return false;
-    if (row.answer_blocks.length !== 0) return false;
-    if (row.citations.length !== 0) return false;
-    if (typeof row.abstention_reason !== "string") return false;
+    return answeredReferentialIntegrity(
+      row.answer,
+      row.answer_blocks,
+      row.citations,
+    );
   }
-  return true;
+
+  if (row.answer !== null) return false;
+  if (row.answer_blocks.length !== 0) return false;
+  if (row.citations.length !== 0) return false;
+  return isValidAbstentionReason(row.status, row.abstention_reason);
 }
 
 function isEntry(value: unknown): value is AskHistoryEntry {
@@ -138,6 +215,7 @@ function isEntry(value: unknown): value is AskHistoryEntry {
  * Load session-local Ask history.
  * Malformed whole payloads are removed. Individual malformed entries are
  * dropped; remaining valid entries are kept (deterministic filter).
+ * No synthetic block↔citation bindings are invented for corrupt rows.
  */
 export function loadAskHistory(workspaceId: string): AskHistoryEntry[] {
   try {

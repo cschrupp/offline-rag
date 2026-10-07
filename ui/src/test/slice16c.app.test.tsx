@@ -12,6 +12,7 @@ const globalCss = readFileSync(
 );
 import { renderApp } from "./render";
 import {
+  capabilities,
   errorResponse,
   installFetchMock,
   jsonResponse,
@@ -22,6 +23,7 @@ import {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  sessionStorage.clear();
 });
 
 describe("application shell", () => {
@@ -117,6 +119,7 @@ describe("workspace library", () => {
     let created = false;
     const mock = installFetchMock(async (call) => {
       if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
       if (call.url === "/v1/workspaces" && call.method === "GET") {
         return jsonResponse(
           created
@@ -162,7 +165,11 @@ describe("workspace library", () => {
     expect(await screen.findByText(/no workspaces yet/i)).toBeInTheDocument();
     await user.type(screen.getByLabelText("Title"), "New Desk");
     await user.click(screen.getByRole("button", { name: "Create workspace" }));
-    expect(await screen.findByRole("heading", { name: "New Desk" })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: "New Desk" }),
+      ).toBeInTheDocument();
+    });
     mock.restore();
   });
 });

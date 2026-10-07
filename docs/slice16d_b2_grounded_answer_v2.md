@@ -120,32 +120,87 @@ query runtime explicitly selects V2 via `product_v2=True`.
 - Session history key bumped to `seneca.ask-history.v2:` (legacy B1 entries not
   remapped)
 
+### Rework 1 closures
+
+**R1 — fail-closed V2 history referential integrity**
+(`ui/src/features/ask/askHistory.ts`):
+
+- Answered entries require non-empty `answer`, blocks, citations;
+  `abstention_reason === null`; unique `citation_ref`s; every block ref
+  resolves; plain `answer` equals block projection; public citation set equals
+  first-reference unique order.
+- Non-answered entries require B2 reason matrix only; reject
+  `ambiguous_request`, arbitrary reasons, and answered/non-answered shape
+  mismatches. Malformed rows dropped (no synthetic bindings).
+
+**R2 — interactive claim evidence card**
+(`ui/src/features/ask/ClaimAnswer.tsx`):
+
+- Marker+card share one interaction root; leaving the root closes the card.
+- Pointer can move from marker into the card / Open evidence without
+  unmounting.
+- Focus leave uses `queueMicrotask` + `document.activeElement` containment
+  (jsdom/`relatedTarget` null-safe) so keyboard users can reach Open evidence.
+- Removed no-op document `pointerdown` listener.
+
 ## Tests / validation
 
 Backend focused suite (required packet set + `test_grounded_answer_v2.py`):
 
-- 99 passed
-- 1 failed (pre-existing / unrelated to B2):
+- Not re-run for Rework 1 (frontend-only code changes).
+- Pre-existing / unrelated failure remains documented from prior candidate:
   `tests/unit/test_grounded_generation.py::test_unauthorized_endpoint_not_probed`
-  — assertion expects `"not approved"`; runtime reason is
-  `configured endpoint rejected by network policy: public_endpoint_forbidden`.
-  Present on implementation baseline wording; B2 did not change probe logic.
+  (`"not approved"` vs `public_endpoint_forbidden`).
 
-Frontend:
+Frontend (Rework 1):
 
 - `npm run lint` — pass
 - `npm run typecheck` — pass
-- `npm test` — 69 passed (6 files), including
+- `npm test` — 79 passed (6 files), including R1/R2 cases in
   `ui/src/test/slice16d_b2_claim_citations.test.tsx`
 - `npm run build` — pass
 
-Repository: `git diff --check` — clean for staged B2 changes.
+Repository: `git diff --check` — clean for staged Rework 1 changes.
 
 ## Manual product smoke
 
-**Not performed** for this candidate (no live local provider + ingested-source
-product walkthrough claimed). Automated coverage exercises schema, handles,
-projection, product V2 orchestration, and claim-marker/card accessibility.
+Performed against restarted local API on B2 code + Vite UI + local generator
+(`qwen3.6-35b-a3b` at configured openai-compatible endpoint) and workspace
+`ws_1f0faad69b9041e7aa6c60190538ba7d` with ingested Week02/Week13 PDFs.
+
+1. **Answered query (UI + API)**
+   - V2 fields present: `answer_blocks`, `abstention_reason`, `citation_ref`,
+     `excerpt`, `excerpt_clipped`.
+   - Natural answer + claim marker `Citation 1: Week02 (1).pdf` after block.
+   - No raw `ev_*` in Answer/card UI; no “Evidence used” chip row.
+   - Evidence card showed source display name, page 3, section path, bounded
+     excerpt; Open evidence → Evidence pane `Version 1 · page 3`.
+
+2. **Multi-evidence (API)**
+   - Status `answered`; 2 blocks; citations `c1,c2,c3` unique; block1
+     `["c1","c2"]`, block2 `["c3"]`; excerpts from EvidenceUnits (400-char
+     bound observed).
+
+3. **No-evidence / empty retrieval**
+   - Live tiny-text scopes always returned non-empty retrieval; observed
+     `model_abstain` / `insufficient_support` with empty answer/blocks/citations
+     (generator invoked). True application `insufficient_evidence` /
+     `no_evidence` (generator not invoked) remains covered by automated
+     backend tests; not manually induced on this corpus.
+
+4. **Historical exact-version (UI)**
+   - After removing unrelated `a.txt` (workspace rev 5→6, new snapshot), prior
+     answered entries showed **Historical snapshot**.
+   - Claim marker reopen showed Evidence `Week02 (1).pdf` **Version 1 · page 3**
+     with Historical snapshot (not rebound to a newer source version).
+   - Note: Week02 PDF replace attempt via PUT failed validation / interrupted;
+     historical gate used snapshot bump via source remove instead.
+
+5. **Structured model abstention**
+   - Live: `model_abstain` / `insufficient_support` on nonce questions against
+     tiny text sources (API). UI canned copy path covered by automated
+     `abstentionCopy` tests; conflicting_evidence / model_declined not
+     manually induced (fixture/automated coverage retained).
 
 ## Limitations / B3 deferrals
 

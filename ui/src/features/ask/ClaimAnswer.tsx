@@ -1,8 +1,8 @@
 import {
-  useEffect,
   useId,
   useRef,
   useState,
+  type FocusEvent,
   type KeyboardEvent,
   type MouseEvent,
 } from "react";
@@ -30,6 +30,15 @@ function displayIndex(
   return index >= 0 ? index + 1 : null;
 }
 
+function isInside(
+  root: HTMLElement | null,
+  target: EventTarget | null,
+): boolean {
+  return (
+    root != null && target instanceof Node && root.contains(target)
+  );
+}
+
 export function ClaimAnswer({
   blocks,
   citations,
@@ -38,19 +47,7 @@ export function ClaimAnswer({
 }: Props) {
   const [activeRef, setActiveRef] = useState<string | null>(null);
   const cardId = useId();
-  const cardRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    function onPointerDown(event: Event) {
-      if (!cardRef.current) return;
-      if (event.target instanceof Node && cardRef.current.contains(event.target)) {
-        return;
-      }
-      // Keep card while focus remains on a marker; blur handlers clear it.
-    }
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, []);
+  const rootRef = useRef<HTMLDivElement | null>(null);
 
   const activeCitation =
     activeRef != null ? citationByRef(citations, activeRef) : undefined;
@@ -58,6 +55,17 @@ export function ClaimAnswer({
   function openCitation(citation: WorkspaceCitation) {
     setActiveRef(null);
     onSelectCitation(citation);
+  }
+
+  function clearIfFocusLeftRegion() {
+    // relatedTarget is often null in jsdom / during focus moves; settle first,
+    // then clear only if focus is outside the marker+card region.
+    queueMicrotask(() => {
+      const root = rootRef.current;
+      if (!root) return;
+      if (isInside(root, document.activeElement)) return;
+      setActiveRef(null);
+    });
   }
 
   function onMarkerKeyDown(
@@ -70,8 +78,25 @@ export function ClaimAnswer({
     }
   }
 
+  function onRootMouseLeave(event: MouseEvent<HTMLDivElement>) {
+    if (isInside(rootRef.current, event.relatedTarget)) return;
+    setActiveRef(null);
+  }
+
+  function onMarkerBlur(_event: FocusEvent<HTMLButtonElement>) {
+    clearIfFocusLeftRegion();
+  }
+
+  function onCardBlur(_event: FocusEvent<HTMLDivElement>) {
+    clearIfFocusLeftRegion();
+  }
+
   return (
-    <div className="claim-answer stack">
+    <div
+      ref={rootRef}
+      className="claim-answer stack"
+      onMouseLeave={onRootMouseLeave}
+    >
       {blocks.map((block, blockIndex) => (
         <p key={blockIndex} className="claim-block">
           <span className="claim-block-text">{block.text}</span>
@@ -95,13 +120,8 @@ export function ClaimAnswer({
                   activeRef === ref ? `${cardId}-card` : undefined
                 }
                 onMouseEnter={() => setActiveRef(ref)}
-                onMouseLeave={() =>
-                  setActiveRef((current) => (current === ref ? null : current))
-                }
                 onFocus={() => setActiveRef(ref)}
-                onBlur={() =>
-                  setActiveRef((current) => (current === ref ? null : current))
-                }
+                onBlur={onMarkerBlur}
                 onClick={(event: MouseEvent<HTMLButtonElement>) => {
                   event.preventDefault();
                   openCitation(citation);
@@ -117,10 +137,11 @@ export function ClaimAnswer({
 
       {activeCitation ? (
         <div
-          ref={cardRef}
           id={`${cardId}-card`}
           className="claim-evidence-card"
           role="note"
+          onMouseEnter={() => setActiveRef(activeCitation.citation_ref)}
+          onBlur={onCardBlur}
         >
           <p className="claim-evidence-card-title">
             {activeCitation.source_display_name}
@@ -140,7 +161,6 @@ export function ClaimAnswer({
           <button
             type="button"
             className="claim-evidence-open"
-            onMouseDown={(event) => event.preventDefault()}
             onClick={() => openCitation(activeCitation)}
           >
             Open evidence →
