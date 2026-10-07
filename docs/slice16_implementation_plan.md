@@ -71,9 +71,10 @@ did **not** by itself authorize B2/B3/C. B1 foundation upload remediation is
 `b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90`); that acceptance does **not**
 grant product acceptance to the legacy B1 Ask/Evidence UX. **16D-B2** is
 **COMPLETE / ACCEPTED / SEALED** at
-`baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`. **16D-B3** is an
-**IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING** from authorized
-baseline `28aad06f89e6d00a0b81b51f9c2de38fed06cb22` (see
+`baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`. **16D-B3** is a
+**REWORK 3 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING** (candidate
+`9c178ffb033cde41849379fc914f321697ff8691`; A3
+`da1082d95630c12eaf0ce1a3b8d005aaa60d2f73`; see
 [`docs/slice16d_b3_conversational_workspace.md`](slice16d_b3_conversational_workspace.md)).
 **16D-C** remains **NOT AUTHORIZED**.
 
@@ -119,8 +120,8 @@ B1 foundation remediation [ACCEPTED / SEALED @ c68cc3f8… / closeout b5fa1e85�
  ↓
 16D-B2 [COMPLETE / ACCEPTED / SEALED @ baa16eba…]   ← Grounded Answer V2
  ↓
-16D-B3 [IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
-        @ baseline 28aad06…]   ← Conversational workspace
+16D-B3 [REWORK 3 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+        @ 9c178ffb… / A3 da1082d9…]   ← Conversational workspace
  ↓
 16D-C [NOT AUTHORIZED / NOT STARTED]
  ↓
@@ -149,9 +150,10 @@ foundation upload remediation is **ACCEPTED / SEALED** (implementation
 `c68cc3f8f16a2588ba093886f3e48e1c7037f83f`; verified closeout
 `b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90`). **16D-B2** is
 **COMPLETE / ACCEPTED / SEALED** at
-`baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`. **16D-B3** is an
-**IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING** from authorized
-baseline `28aad06f89e6d00a0b81b51f9c2de38fed06cb22` (see
+`baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`. **16D-B3** is a
+**REWORK 3 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING** (candidate
+`9c178ffb033cde41849379fc914f321697ff8691`; A3
+`da1082d95630c12eaf0ce1a3b8d005aaa60d2f73`; see
 [`docs/slice16d_b3_conversational_workspace.md`](slice16d_b3_conversational_workspace.md)).
 **16D-C** remains **NOT AUTHORIZED**.
 
@@ -159,7 +161,7 @@ Do not close Slice 16 automatically after 16H. Independent review and explicit
 human acceptance of the implemented slice remain required. **16A**, **16B**,
 **16C**, **16D-A**, and **16D-B2** are **COMPLETE / ACCEPTED**; legacy B1
 product UX acceptance remains **WITHHELD**; B1 foundation remediation is
-**ACCEPTED / SEALED**; **16D-B3** is an **IMPLEMENTATION CANDIDATE /
+**ACCEPTED / SEALED**; **16D-B3** is a **REWORK 3 IMPLEMENTATION CANDIDATE /
 HUMAN ACCEPTANCE PENDING**; **16D-C** and **16E–16H** remain **NOT
 AUTHORIZED**. Slice 16 overall is **not** complete.
 
@@ -453,15 +455,41 @@ abstention. **No** conversational orchestration in B2.
 ### 16D-B3 — Conversational Workspace
 
 ```text
-STATUS: AUTHORIZED BY HUMAN
-IMPLEMENTATION NOT YET STARTED
-ACTIVATION PENDING VERIFIED B2 CLOSEOUT
+STATUS: REWORK 3 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+
+AUTHORIZED BASELINE:
+28aad06f89e6d00a0b81b51f9c2de38fed06cb22
+
+REWORK 3 BASELINE:
+528e7dbb10fdde24ea1ea7db71a4e35c2a9222e1
+
+AMENDMENT A3 MATERIALIZATION:
+da1082d95630c12eaf0ce1a3b8d005aaa60d2f73
+
+REWORK 3 IMPLEMENTATION CANDIDATE:
+9c178ffb033cde41849379fc914f321697ff8691
+
+EVIDENCE:
+docs/slice16d_b3_conversational_workspace.md
+
+16D-C:
+NOT AUTHORIZED
 ```
 
-Future scope (A2-D24): conversation/turn orchestration; context resolver;
-bounded prior turns; New conversation; composer reset; wide layout; overflow
-containment; responsive drawers. Owns F7/F8/F9/F10 where applicable.
-Must branch from the verified B2 closeout SHA when activated.
+**Candidate / delivered scope** (not yet human-accepted or sealed): the B3
+implementation candidate on
+`implementation/16d-b3-conversational-workspace` contains conversation/turn
+orchestration; bounded contextual resolver; fresh retrieval through the shared
+scientific core; New conversation / composer lifecycle; per-turn provenance;
+Current/Historical behavior; Grounded Answer V2 claim citations; full-viewport
+desktop workspace under Amendment A3; independently collapsible desktop
+Sources/Evidence rails; hard overflow containment; and responsive narrow
+drawers. Owns F7/F8/F9/F10 where applicable.
+
+**Historical prerequisites (already satisfied — not active gates):** B3
+activation required verified B2 closeout and branching from the authorized B2
+closeout / B3 baseline. Those prerequisites were met; B3 is no longer “not yet
+started” or awaiting B2 activation.
 
 ### Must not (all B* gates)
 
@@ -469,8 +497,8 @@ Must branch from the verified B2 closeout SHA when activated.
 - second RAG pipeline;
 - fabricate PDF text highlights without reliable mapping;
 - treat B1 foundation remediation acceptance as legacy Ask UX acceptance;
-- start C without separate explicit implementation authorization;
-- start B3 implementation before verified B2 closeout activation.
+- start C without separate explicit implementation authorization
+  (**16D-C** remains **NOT AUTHORIZED** until separate human authorization).
 
 ---
 
@@ -668,9 +696,13 @@ OBSERVED 16D-B1 CANDIDATE:
   INDEPENDENT REVIEW: PASSED
   HUMAN ACCEPTANCE: ACCEPTED
   REWORK 1: COMPLETE
-16D-B3: IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+16D-B3: REWORK 3 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
         AUTHORIZED BASELINE: 28aad06f89e6d00a0b81b51f9c2de38fed06cb22
+        REWORK 3 BASELINE: 528e7dbb10fdde24ea1ea7db71a4e35c2a9222e1
+        A3 MATERIALIZATION: da1082d95630c12eaf0ce1a3b8d005aaa60d2f73
+        REWORK 3 IMPLEMENTATION CANDIDATE: 9c178ffb033cde41849379fc914f321697ff8691
         EVIDENCE: docs/slice16d_b3_conversational_workspace.md
+        A3: docs/slice16_amendment_a3_full_viewport_workspace.md
 16D-C: NOT AUTHORIZED / NOT STARTED
 16E–16H: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
@@ -691,7 +723,7 @@ foundation remediation is **ACCEPTED / SEALED** (implementation
 `c68cc3f8f16a2588ba093886f3e48e1c7037f83f`; verified closeout
 `b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90`). **16D-B2** is **COMPLETE /
 ACCEPTED / SEALED** at `baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`.
-**16D-B3** is an **IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING**
-from baseline `28aad06f89e6d00a0b81b51f9c2de38fed06cb22`. **16D-C** and
-**16E–16H** remain **NOT AUTHORIZED**. Slice 16 overall is **not**
-complete.
+**16D-B3** is a **REWORK 3 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE
+PENDING** at `9c178ffb033cde41849379fc914f321697ff8691` (A3
+`da1082d95630c12eaf0ce1a3b8d005aaa60d2f73`). **16D-C** and **16E–16H**
+remain **NOT AUTHORIZED**. Slice 16 overall is **not** complete.

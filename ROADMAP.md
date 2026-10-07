@@ -514,9 +514,9 @@ foundation remediation is **ACCEPTED / SEALED** (implementation
 `c68cc3f8f16a2588ba093886f3e48e1c7037f83f`; verified closeout
 `b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90`); **16D-B2** is
 **COMPLETE / ACCEPTED / SEALED** at
-`baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`; **16D-B3** is an
-**IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING** from baseline
-`28aad06f89e6d00a0b81b51f9c2de38fed06cb22`; **16D-C** remains
+`baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`; **16D-B3** is a
+**REWORK 3 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING** at
+`9c178ffb033cde41849379fc914f321697ff8691`; **16D-C** remains
 **NOT AUTHORIZED**. Slice 16 overall is **IN PROGRESS / NOT COMPLETE**.
 
 **Slice 14 — Performance and resource benchmark harness**
@@ -643,8 +643,10 @@ Slice 14 checklist:
   `baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`
   ([`docs/slice16d_b2_grounded_answer_v2.md`](docs/slice16d_b2_grounded_answer_v2.md);
   Rework 1 complete; independent review PASSED; human acceptance ACCEPTED)
-- **16D-B3:** **IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING**
-  from baseline `28aad06f89e6d00a0b81b51f9c2de38fed06cb22`
+- **16D-B3:** **REWORK 3 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING**
+  at `9c178ffb033cde41849379fc914f321697ff8691` (A3
+  `da1082d95630c12eaf0ce1a3b8d005aaa60d2f73`; baseline
+  `28aad06f89e6d00a0b81b51f9c2de38fed06cb22`)
   ([`docs/slice16d_b3_conversational_workspace.md`](docs/slice16d_b3_conversational_workspace.md))
 - **16D-C:** **NOT AUTHORIZED**
 - Historical pre-design frame: [`docs/slice16_portfolio_ui.md`](docs/slice16_portfolio_ui.md)
@@ -701,8 +703,8 @@ Later M7 checklist:
 accepted product/API surface and, after Slice 16 implementation (16A/16B/16C
 and 16D-A/16D-B2 accepted; A1/A2 accepted/locked/sealed; B1 upload remediation
 **ACCEPTED / SEALED**; legacy B1 product UX acceptance withheld; 16D-B3
-implementation candidate / human acceptance pending; 16D-C not authorized
-by this update),
+Rework 3 implementation candidate / human acceptance pending; 16D-C not
+authorized by this update),
 inspect evidence flow through a UI that remains a client of that surface —
 without expanding product query scientific knobs.
 
@@ -711,7 +713,7 @@ remains **IN PROGRESS** (Slice 15 through **15H** landed; Slice 16 design
 **ACCEPTED / LOCKED**; **16A/16B/16C/16D-A/16D-B2 COMPLETE / ACCEPTED**;
 Amendment A1 **ACCEPTED / LOCKED**; Amendment A2 **ACCEPTED / LOCKED /
 SEALED**; B1 foundation remediation **ACCEPTED / SEALED**; **16D-B3
-IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING**; **16D-C**,
+REWORK 3 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING**; **16D-C**,
 **Slices 17–18**, and **M7 closeout** remain **NOT AUTHORIZED**). Performance
 optimization,
 generator max-token change, reranker config change, `base.yaml` promotion,
