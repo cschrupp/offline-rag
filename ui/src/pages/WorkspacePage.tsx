@@ -141,6 +141,9 @@ export function WorkspacePage() {
   const [addSourcesIntent, setAddSourcesIntent] =
     useState<AddSourcesIntent | null>(null);
   const [addAmbiguous, setAddAmbiguous] = useState(false);
+  /** After cancel: block Add until workspace/source refetch settles. */
+  const [addCancelReconciling, setAddCancelReconciling] = useState(false);
+  const [addFileInputKey, setAddFileInputKey] = useState(0);
   const addUploadAbortRef = useRef<AbortController | null>(null);
   const [editWorkspaceOpen, setEditWorkspaceOpen] = useState(false);
 
@@ -328,9 +331,11 @@ export function WorkspacePage() {
     }
     setAddSourcesIntent(null);
     setAddAmbiguous(false);
+    setAddCancelReconciling(false);
     addIntent.current.reset();
     clearAddUploadTransport();
     setSelectedFiles([]);
+    setAddFileInputKey((key) => key + 1);
     setAddError(null);
     setAddOpen(false);
     setPendingPhase((phase) => (phase === "uploading" ? "idle" : phase));
@@ -368,20 +373,36 @@ export function WorkspacePage() {
     onError: (error) => {
       setPendingPhase("idle");
       setAddError(userFacingErrorMessage(error));
+
+      if (isApiError(error) && error.code === "request_aborted") {
+        // Cancel is not a safe-retry surface. Abort cannot prove the server
+        // lost the race, so do not leave the same files preselected under a
+        // freshly reset idempotency key (would enable one-click duplicate).
+        setAddAmbiguous(false);
+        setAddSourcesIntent(null);
+        addIntent.current.reset();
+        setSelectedFiles([]);
+        setAddFileInputKey((key) => key + 1);
+        setAddCancelReconciling(true);
+        void Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.workspace(workspaceId),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.workspaceSources(workspaceId),
+          }),
+        ]).finally(() => {
+          setAddCancelReconciling(false);
+        });
+        return;
+      }
+
       void queryClient.invalidateQueries({
         queryKey: queryKeys.workspace(workspaceId),
       });
       void queryClient.invalidateQueries({
         queryKey: queryKeys.workspaceSources(workspaceId),
       });
-
-      if (isApiError(error) && error.code === "request_aborted") {
-        // Cancel is not a safe-retry surface; abandon intent after local abort.
-        setAddAmbiguous(false);
-        setAddSourcesIntent(null);
-        addIntent.current.reset();
-        return;
-      }
 
       if (isApiError(error) && error.code === "upload_transport_interrupted") {
         // Keep frozen intent for explicit "Retry safely".
@@ -639,7 +660,12 @@ export function WorkspacePage() {
 
   function onAddSubmit(event: FormEvent) {
     event.preventDefault();
-    if (!workspace || addMutation.isPending || pendingPhase === "uploading") {
+    if (
+      !workspace ||
+      addMutation.isPending ||
+      pendingPhase === "uploading" ||
+      addCancelReconciling
+    ) {
       return;
     }
     if (addAmbiguous && addSourcesIntent) {
@@ -1020,10 +1046,15 @@ export function WorkspacePage() {
           <div className="field">
             <label htmlFor="add-files">Source files</label>
             <input
+              key={addFileInputKey}
               id="add-files"
               type="file"
               multiple
-              disabled={pendingPhase === "uploading" || addMutation.isPending}
+              disabled={
+                pendingPhase === "uploading" ||
+                addMutation.isPending ||
+                addCancelReconciling
+              }
               onChange={(event) => {
                 const files = Array.from(event.target.files ?? []);
                 if (addAmbiguous && addSourcesIntent) {
@@ -1065,6 +1096,11 @@ export function WorkspacePage() {
               Uploading...
             </p>
           ) : null}
+          {addCancelReconciling ? (
+            <p className="muted" aria-live="polite">
+              Checking workspace state after cancel…
+            </p>
+          ) : null}
           {addError ? (
             <p className="error-box" role="alert">
               {addError}
@@ -1093,12 +1129,19 @@ export function WorkspacePage() {
               <Button
                 type="button"
                 onClick={retryAddSourcesSafely}
-                disabled={busyForMutations}
+                disabled={busyForMutations || addCancelReconciling}
               >
                 Retry safely
               </Button>
             ) : (
-              <Button type="submit" disabled={busyForMutations}>
+              <Button
+                type="submit"
+                disabled={
+                  busyForMutations ||
+                  addCancelReconciling ||
+                  selectedFiles.length === 0
+                }
+              >
                 Add sources
               </Button>
             )}

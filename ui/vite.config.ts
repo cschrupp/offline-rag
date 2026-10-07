@@ -13,5 +13,8 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
     css: true,
+    // Global fetch / multipart-upload mocks are process-wide; parallel files race.
+    fileParallelism: false,
+    maxWorkers: 1,
   },
 });

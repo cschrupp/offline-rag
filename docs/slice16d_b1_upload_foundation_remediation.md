@@ -3,9 +3,13 @@
 ```text
 STATUS: IMPLEMENTATION EVIDENCE CANDIDATE
 HUMAN ACCEPTANCE: PENDING
+REWORK: R1 cancel-safety (after 855fd644…)
 
 Implementation baseline:
 6b6524001f063a628505f572e7ca13d954a38260
+
+Previous candidate:
+855fd6440ed5b9be18b7fe2cc303bb2700bc9f4f
 
 Governance authority (A2 acceptance closeout):
 f0bdf78d0ae6a79737055d324b22fc35e1e501f5
@@ -75,9 +79,22 @@ While transfer is in flight and no 202 is confirmed:
 - abort does not fabricate a local Operation;
 - copy: “Upload canceled before Seneca confirmed acceptance.”;
 - no automatic retry;
+- no **Retry safely** for `request_aborted` (that is only for
+  `upload_transport_interrupted`);
+- after cancel: abandon submission identity, **clear selected files**, remount
+  file input, invalidate/refetch workspace + sources, and block Add until
+  reconciliation settles — so the user cannot one-click resubmit the same
+  files under a freshly reset idempotency key while acceptance is unknown;
 - no durable operation-cancellation architecture.
 
 After 202: modal closes; `rememberActiveOperation()` + existing polling/tray.
+
+### R1 — cancel must not leave a one-click fresh duplicate intent
+
+Independent review finding B1-R1 (against `855fd644…`): cancel reset the
+idempotency handle while leaving `selectedFiles` populated, enabling
+immediate Add under a new key even though the aborted request may already
+have been admitted. R1 closes that gap as above.
 
 ## Ambiguity semantics
 
@@ -123,6 +140,8 @@ Frontend (`ui/src/test/slice16d_b1_upload.test.tsx` + updated 16D-A Close test):
 - ambiguity → replay Operation once;
 - conflict on retry without auto revision bump;
 - pre-202 cancel; no fabricated operation;
+- cancel clears selection; Add disabled until re-selection; no Retry safely;
+  new explicit selection uses a new key;
 - error copy distinctions.
 
 Backend:
@@ -143,8 +162,30 @@ working tree (workspace `ws_1f0faad69b9041e7aa6c60190538ba7d`):
 | B. two-file Add Sources | PASS (`a.txt` + `b.txt` → one durable `source_add`, succeeded) |
 | C. four-file Add Sources | PASS (`c1`–`c4.txt` → one durable `source_add`, succeeded) |
 | D. no duplicates | PASS (final unique set of 7 display names; no duplicates) |
-| E. pre-202 Cancel upload control | PASS observed: while `Uploading...`, **Cancel upload** and **Close** remained enabled (not trapped). Timed cancel click raced a delayed XHR in the automation harness before abort landed; abort semantics covered by automated cancel test. |
+| E. pre-202 Cancel upload (R1) | See Rework 1 manual abort section below (must land abort before response). |
 | F/G. ambiguity + Retry safely | Covered by automated UI tests (`slice16d_b1_upload.test.tsx`); not separately forced in this manual session. |
+
+### Rework 1 manual abort smoke
+
+Recorded against this R1 candidate working tree on workspace
+`ws_1f0faad69b9041e7aa6c60190538ba7d` (Vite `:5173` → FastAPI `:8080`):
+
+Two ~1.4 MiB files selected; XHR `send` held open long enough that Cancel
+could land before any 202. Instrumentation recorded `xhr.abort()` (readyState
+OPENED).
+
+| Check | Result |
+| --- | --- |
+| Uploading visibly in progress | PASS (`Uploading…` + **Cancel upload**) |
+| Cancel upload clicked before response | PASS |
+| Request canceled/aborted | PASS (`xhr.abort()` logged; no 202 observed for this attempt) |
+| UI exits uploading; modal not trapped | PASS (Close/Cancel enabled; cancel alert shown) |
+| Selected files cleared; Add not one-click ready | PASS (selection list gone; **Add sources** disabled; no **Retry safely**) |
+| No fabricated local Operation / no admit of canceled files | PASS (source count remained 7; no `r1-cancel-*.bin` sources) |
+
+Do **not** interpret browser abort as proof the server never admitted a raced
+request; clearing selection + reconciliation is what prevents one-click
+duplicate under a fresh key.
 
 ## Limitations
 

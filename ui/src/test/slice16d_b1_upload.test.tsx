@@ -411,6 +411,139 @@ describe("B1 upload — immutable intent / safe retry", () => {
     });
     mock.restore();
   });
+
+  it("clears selected files after cancel so Add cannot one-click resubmit under a fresh key", async () => {
+    const user = userEvent.setup();
+    const posts: Array<{ key: string | null }> = [];
+    let postMode: "hang" | "accept" = "hang";
+    let hangResolve: ((response: Response) => void) | null = null;
+    let workspaceGets = 0;
+    let sourcesGets = 0;
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces/ws_1" && call.method === "GET") {
+        workspaceGets += 1;
+        return jsonResponse(
+          workspace({
+            workspace_id: "ws_1",
+            title: "Cancel Clear Desk",
+            revision: 5,
+            source_count: 0,
+            status: "empty",
+            current_snapshot_id: null,
+          }),
+        );
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources" && call.method === "GET") {
+        sourcesGets += 1;
+        return jsonResponse({
+          workspace_id: "ws_1",
+          revision: 5,
+          sources: [],
+        });
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources" && call.method === "POST") {
+        posts.push({ key: call.headers.get("Idempotency-Key") });
+        if (postMode === "hang") {
+          return new Promise<Response>((resolve) => {
+            hangResolve = resolve;
+          });
+        }
+        return jsonResponse(
+          operation({
+            operation_id: "op_new_intent",
+            status: "pending",
+            progress_stage: "preparing",
+          }),
+          { status: 202 },
+        );
+      }
+      if (call.url === "/v1/operations/op_new_intent") {
+        return jsonResponse(
+          operation({
+            operation_id: "op_new_intent",
+            status: "running",
+            progress_stage: "processing",
+          }),
+        );
+      }
+      if (call.url === "/v1/workspaces") return jsonResponse([]);
+      return errorResponse("not_found", "x", 404);
+    });
+
+    renderApp("/workspaces/ws_1");
+    await user.click(
+      (await screen.findAllByRole("button", { name: "+ Add sources" }))[0]!,
+    );
+    const dialog = await screen.findByRole("dialog", { name: /add sources/i });
+    const fileA = new File(["aaa"], "a.txt", { type: "text/plain" });
+    const fileB = new File(["bbb"], "b.txt", { type: "text/plain" });
+    await user.upload(within(dialog).getByLabelText(/source files/i), [
+      fileA,
+      fileB,
+    ]);
+    expect(within(dialog).getByText(/Selected: 2 files/i)).toBeInTheDocument();
+    await user.click(
+      within(dialog).getByRole("button", { name: /^add sources$/i }),
+    );
+    await user.click(
+      await within(dialog).findByRole("button", { name: /cancel upload/i }),
+    );
+
+    expect(
+      await within(dialog).findByText(
+        /canceled before Seneca confirmed acceptance/i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).queryByRole("button", { name: /retry safely/i }),
+    ).toBeNull();
+    await waitFor(() => {
+      expect(within(dialog).queryByText(/Selected:/i)).toBeNull();
+    });
+    // Cannot immediately submit the canceled A+B selection.
+    expect(
+      within(dialog).getByRole("button", { name: /^add sources$/i }),
+    ).toBeDisabled();
+    expect(posts).toHaveLength(1);
+    const firstKey = posts[0]!.key;
+    expect(firstKey).toBeTruthy();
+
+    // Reconciliation refetch must run after cancel.
+    await waitFor(() => {
+      expect(workspaceGets).toBeGreaterThan(1);
+      expect(sourcesGets).toBeGreaterThan(1);
+    });
+
+    // Explicit re-selection creates a genuinely new intent/key.
+    await waitFor(() => {
+      expect(
+        within(dialog).getByLabelText(/source files/i),
+      ).not.toBeDisabled();
+    });
+    postMode = "accept";
+    hangResolve?.(
+      jsonResponse(
+        operation({ operation_id: "op_ignored", status: "pending" }),
+        { status: 202 },
+      ),
+    );
+    await user.upload(within(dialog).getByLabelText(/source files/i), [
+      new File(["aaa"], "a.txt", { type: "text/plain" }),
+      new File(["bbb"], "b.txt", { type: "text/plain" }),
+    ]);
+    await user.click(
+      within(dialog).getByRole("button", { name: /^add sources$/i }),
+    );
+    await waitFor(() => {
+      expect(posts.length).toBe(2);
+    });
+    expect(posts[1]!.key).toBeTruthy();
+    expect(posts[1]!.key).not.toBe(firstKey);
+
+    mock.restore();
+  });
 });
 
 describe("B1 upload — XHR Content-Type boundary", () => {

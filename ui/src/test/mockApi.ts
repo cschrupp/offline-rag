@@ -132,19 +132,19 @@ export function installFetchMock(
       throw new DOMException("Aborted", "AbortError");
     }
 
-    const waitAbort = new Promise<never>((_resolve, reject) => {
-      if (!uploadCall.signal) return;
-      uploadCall.signal.addEventListener(
-        "abort",
-        () => reject(new DOMException("Aborted", "AbortError")),
-        { once: true },
-      );
-    });
-
-    const response = await Promise.race([
-      Promise.resolve(handler(call)),
-      waitAbort,
-    ]);
+    const responsePromise = Promise.resolve(handler(call));
+    const response = uploadCall.signal
+      ? await Promise.race([
+          responsePromise,
+          new Promise<never>((_resolve, reject) => {
+            uploadCall.signal!.addEventListener(
+              "abort",
+              () => reject(new DOMException("Aborted", "AbortError")),
+              { once: true },
+            );
+          }),
+        ])
+      : await responsePromise;
 
     if (
       response.status === 404 &&
