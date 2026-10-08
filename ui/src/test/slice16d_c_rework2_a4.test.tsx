@@ -153,6 +153,8 @@ function workspaceHandlers(opts?: {
     }
     if (call.url === "/v1/workspaces/ws_1/sources" && call.method === "GET") {
       return jsonResponse({
+        workspace_id: "ws_1",
+        revision: 7,
         sources: [source({ source_id: "src_1", display_name: "Alpha.pdf" })],
       });
     }

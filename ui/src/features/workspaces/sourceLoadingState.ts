@@ -18,7 +18,8 @@ type DeriveArgs = {
 
 /**
  * Derive source-list UI phase.
- * loading ≠ empty; error ≠ empty; active + [] ≠ empty.
+ * loading ≠ empty; error ≠ empty;
+ * ACTIVE+[] and EMPTY+nonempty are inconsistent (valid payload contradiction).
  */
 export function deriveSourceListPhase({
   workspace,
@@ -32,19 +33,33 @@ export function deriveSourceListPhase({
   if (!sourcePayloadAvailable) {
     return "loading";
   }
+  if (workspace.status === "empty") {
+    return sources.length === 0 ? "empty" : "inconsistent";
+  }
   if (sources.length > 0) {
     return "ready";
   }
-  if (workspace.status === "empty") {
-    return "empty";
-  }
-  // ACTIVE (or any non-empty status) with a successful empty list is inconsistent
-  // with the backend invariant that active workspaces have ≥1 active source.
+  // ACTIVE (non-empty status) with a successful empty list contradicts
+  // the backend invariant that active workspaces have ≥1 active source.
   return "inconsistent";
 }
 
-export function isGenuineEmptyPhase(phase: SourceListPhase): boolean {
-  return phase === "empty";
+/** Workspace badge uses saved status unless a valid payload proves mismatch. */
+export function workspaceStatusBadge(args: {
+  workspaceStatus: Workspace["status"];
+  sourcePhase: SourceListPhase;
+}): { tone: "ready" | "empty" | "error"; label: string } {
+  if (args.sourcePhase === "inconsistent") {
+    return { tone: "error", label: "Source issue" };
+  }
+  if (args.workspaceStatus === "empty") {
+    return { tone: "empty", label: "Empty" };
+  }
+  return { tone: "ready", label: "Active" };
+}
+
+export function sourceMutationStateKnown(phase: SourceListPhase): boolean {
+  return phase === "ready" || phase === "empty";
 }
 
 export function sourcesRecordsAvailable(phase: SourceListPhase): boolean {

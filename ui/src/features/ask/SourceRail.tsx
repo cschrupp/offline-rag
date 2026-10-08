@@ -148,12 +148,24 @@ export function SourceRail({
       ) : null}
 
       {sourcePhase === "inconsistent" ? (
-        <p className="error-box" role="alert">
-          Inconsistent workspace/source state: this workspace is Active and
-          records {recordedSourceCount} source
-          {recordedSourceCount === 1 ? "" : "s"}, but the source list returned
-          none. Source details are unavailable until this is resolved.
-        </p>
+        <div className="stack" style={{ gap: "0.75rem" }}>
+          <p className="error-box" role="alert">
+            Source list does not match the saved workspace state. Source
+            management and Ask are paused until the source list is reloaded.
+            {recordedSourceCount > 0 ? (
+              <>
+                <br />
+                <span className="muted">
+                  Workspace record shows {recordedSourceCount} source
+                  {recordedSourceCount === 1 ? "" : "s"}.
+                </span>
+              </>
+            ) : null}
+          </p>
+          <Button type="button" variant="secondary" onClick={onRetrySources}>
+            Retry
+          </Button>
+        </div>
       ) : null}
 
       {showRows ? (

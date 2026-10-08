@@ -46,7 +46,9 @@ import type { PreviewTarget } from "../features/ask/SourcePreview";
 import {
   deriveSourceListPhase,
   headerSourceCountLabel,
+  sourceMutationStateKnown,
   sourcesRecordsAvailable,
+  workspaceStatusBadge,
 } from "../features/workspaces/sourceLoadingState";
 import {
   appendConversationPair,
@@ -968,6 +970,8 @@ export function WorkspacePage() {
     pendingPhase === "uploading" ||
     pendingPhase === "operation" ||
     askMutation.isPending;
+  const sourceMutationsDisabled =
+    busyForMutations || !sourceMutationStateKnown(sourcePhase);
 
   const history: ConversationHistoryEntry[] = pairs.map(toHistoryEntry);
   const activeEntry =
@@ -981,12 +985,10 @@ export function WorkspacePage() {
     question.trim().length === 0 ||
     askMutation.isPending;
 
-  const statusBadge =
-    sourcePhase === "empty"
-      ? { tone: "empty" as const, label: "Empty" }
-      : sourcePhase === "inconsistent"
-        ? { tone: "error" as const, label: "Inconsistent" }
-        : { tone: "ready" as const, label: "Active" };
+  const statusBadge = workspaceStatusBadge({
+    workspaceStatus: workspace.status,
+    sourcePhase,
+  });
 
   const capacitySummary = (() => {
     const countLabel = headerSourceCountLabel({
@@ -1033,7 +1035,7 @@ export function WorkspacePage() {
         <>
           {countLabel}
           <br />
-          Source list does not match workspace summary.
+          Source list does not match the saved workspace state.
         </>
       );
     }
@@ -1099,7 +1101,7 @@ export function WorkspacePage() {
       sourcesError={sourcesQuery.isError ? sourcesQuery.error : null}
       recordedSourceCount={workspace.source_count}
       usedBytes={usedBytes}
-      mutationsDisabled={busyForMutations}
+      mutationsDisabled={sourceMutationsDisabled}
       selectionDisabled={askMutation.isPending || !askSourcesReady}
       onRetrySources={() => {
         void sourcesQuery.refetch();

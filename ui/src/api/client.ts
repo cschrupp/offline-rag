@@ -1,4 +1,5 @@
 import { ApiError, parseErrorEnvelope } from "./errors";
+import { validateSourceListResponse } from "./sourceListValidation";
 import type {
   Capabilities,
   ConversationPriorTurn,
@@ -39,7 +40,15 @@ async function readPayload(response: Response): Promise<unknown> {
     try {
       return await response.json();
     } catch {
-      return null;
+      // Incomplete/partial transfers must not become successful null data.
+      throw new ApiError({
+        kind: "unexpected",
+        code: "unexpected_response",
+        message:
+          "Received an incomplete or unreadable response from OfflineRAG.",
+        retryable: true,
+        status: response.status,
+      });
     }
   }
   // Never surface raw HTML/exception bodies to callers as primary UX.
@@ -175,14 +184,15 @@ export function deleteWorkspace(params: {
   });
 }
 
-export function listSources(
+export async function listSources(
   workspaceId: string,
   signal?: AbortSignal,
 ): Promise<SourceListResponse> {
-  return apiRequest<SourceListResponse>(
+  const raw = await apiRequest<unknown>(
     `/v1/workspaces/${workspaceId}/sources`,
     { signal },
   );
+  return validateSourceListResponse(raw, workspaceId);
 }
 
 export function addSources(params: {
