@@ -1,0 +1,815 @@
+{
+  "contract": "seneca-engineering-evidence-registry-v1",
+  "version": 1,
+  "records": [
+    {
+      "evidence_id": "retrieval.slice9hp",
+      "evidence_family": "retrieval",
+      "title": "Slice 9H-P retrieval A/B pilot",
+      "summary": "Descriptive six-arm retrieval pilot on the frozen Slice 9 development population.",
+      "evidence_authority": "accepted",
+      "promotion_status": "non_promotional",
+      "claim_scope": "Descriptive retrieval A/B pilot on the frozen Slice 9 development population.",
+      "caveats": [
+        "PILOT / NON-PROMOTIONAL",
+        "Small descriptive populations (full-22 / human-16).",
+        "Does not authorize base.yaml promotion or a production retrieval winner.",
+        "C↔D nDCG@10 ordering changes between full-22 and human-16."
+      ],
+      "source_refs": [
+        {
+          "source_ref_id": "retrieval-report",
+          "path": "docs/pilots/slice9h_p_results.md",
+          "role": "accepted_report",
+          "source_kind": "accepted_markdown_projection",
+          "source_locator": "§2 Six-arm aggregates — full-22; §3 Six-arm aggregates — human-16; §4 Full-22 vs human-16 sensitivity",
+          "expected_sha256": "5fc5688395ceea938ff85476bed99918a3f8aea4c119a6ff2c584950fd503c5e"
+        }
+      ],
+      "provenance": {
+        "evidence_family": "retrieval_9hp",
+        "fields": {
+          "gold_dataset_id": "gold_d3fc157c7b3206f6983abee766e7ce7b939244a7dea04f0be256f3a533a46172",
+          "corpus_name": "ics_modules",
+          "plan_commit": "9509c81d78707609942f5d6ffbaa11e5c9ab234c",
+          "governance_state": "PILOT / NON-PROMOTIONAL"
+        }
+      },
+      "value_source": "curated",
+      "presentation": {
+        "kind": "retrieval_arms",
+        "default_population": "full-22",
+        "populations": {
+          "full-22": {
+            "label": "full-22",
+            "ndcg_order_note": "D > C > F > E > A > B (descriptive; no winner declared)",
+            "arms": [
+              {
+                "arm_id": "A",
+                "label": "dense baseline",
+                "metrics": {
+                  "ndcg_at_10": {
+                    "availability": "measured",
+                    "value": 0.7643,
+                    "value_qualifier": "exact"
+                  },
+                  "hit_at_1": {
+                    "availability": "measured",
+                    "value": 0.8636,
+                    "value_qualifier": "exact"
+                  },
+                  "mrr": {
+                    "availability": "measured",
+                    "value": 0.9242,
+                    "value_qualifier": "exact"
+                  },
+                  "recall_at_10": {
+                    "availability": "measured",
+                    "value": 0.7232,
+                    "value_qualifier": "exact"
+                  },
+                  "descriptive_latency": {
+                    "availability": "measured",
+                    "value": 6847,
+                    "value_qualifier": "exact",
+                    "unit": "ms"
+                  }
+                }
+              },
+              {
+                "arm_id": "B",
+                "label": "lexical baseline",
+                "metrics": {
+                  "ndcg_at_10": {
+                    "availability": "measured",
+                    "value": 0.7062,
+                    "value_qualifier": "exact"
+                  },
+                  "hit_at_1": {
+                    "availability": "measured",
+                    "value": 0.7273,
+                    "value_qualifier": "exact"
+                  },
+                  "mrr": {
+                    "availability": "measured",
+                    "value": 0.822,
+                    "value_qualifier": "exact"
+                  },
+                  "recall_at_10": {
+                    "availability": "measured",
+                    "value": 0.7013,
+                    "value_qualifier": "exact"
+                  },
+                  "descriptive_latency": {
+                    "availability": "measured",
+                    "value": 149,
+                    "value_qualifier": "exact",
+                    "unit": "ms"
+                  }
+                }
+              },
+              {
+                "arm_id": "C",
+                "label": "dense query-prompt",
+                "metrics": {
+                  "ndcg_at_10": {
+                    "availability": "measured",
+                    "value": 0.8573,
+                    "value_qualifier": "exact"
+                  },
+                  "hit_at_1": {
+                    "availability": "measured",
+                    "value": 1.0,
+                    "value_qualifier": "exact"
+                  },
+                  "mrr": {
+                    "availability": "measured",
+                    "value": 1.0,
+                    "value_qualifier": "exact"
+                  },
+                  "recall_at_10": {
+                    "availability": "measured",
+                    "value": 0.8243,
+                    "value_qualifier": "exact"
+                  },
+                  "descriptive_latency": {
+                    "availability": "measured",
+                    "value": 7138,
+                    "value_qualifier": "exact",
+                    "unit": "ms"
+                  }
+                }
+              },
+              {
+                "arm_id": "D",
+                "label": "dense Arm H",
+                "metrics": {
+                  "ndcg_at_10": {
+                    "availability": "measured",
+                    "value": 0.8596,
+                    "value_qualifier": "exact"
+                  },
+                  "hit_at_1": {
+                    "availability": "measured",
+                    "value": 1.0,
+                    "value_qualifier": "exact"
+                  },
+                  "mrr": {
+                    "availability": "measured",
+                    "value": 1.0,
+                    "value_qualifier": "exact"
+                  },
+                  "recall_at_10": {
+                    "availability": "measured",
+                    "value": 0.8224,
+                    "value_qualifier": "exact"
+                  },
+                  "descriptive_latency": {
+                    "availability": "measured",
+                    "value": 5060,
+                    "value_qualifier": "exact",
+                    "unit": "ms"
+                  }
+                }
+              },
+              {
+                "arm_id": "E",
+                "label": "hybrid RRF",
+                "metrics": {
+                  "ndcg_at_10": {
+                    "availability": "measured",
+                    "value": 0.7905,
+                    "value_qualifier": "exact"
+                  },
+                  "hit_at_1": {
+                    "availability": "measured",
+                    "value": 0.7727,
+                    "value_qualifier": "exact"
+                  },
+                  "mrr": {
+                    "availability": "measured",
+                    "value": 0.8864,
+                    "value_qualifier": "exact"
+                  },
+                  "recall_at_10": {
+                    "availability": "measured",
+                    "value": 0.807,
+                    "value_qualifier": "exact"
+                  },
+                  "descriptive_latency": {
+                    "availability": "measured",
+                    "value": 7023,
+                    "value_qualifier": "exact",
+                    "unit": "ms"
+                  }
+                }
+              },
+              {
+                "arm_id": "F",
+                "label": "hybrid + reranker",
+                "metrics": {
+                  "ndcg_at_10": {
+                    "availability": "measured",
+                    "value": 0.8422,
+                    "value_qualifier": "exact"
+                  },
+                  "hit_at_1": {
+                    "availability": "measured",
+                    "value": 0.8636,
+                    "value_qualifier": "exact"
+                  },
+                  "mrr": {
+                    "availability": "measured",
+                    "value": 0.9318,
+                    "value_qualifier": "exact"
+                  },
+                  "recall_at_10": {
+                    "availability": "measured",
+                    "value": 0.8136,
+                    "value_qualifier": "exact"
+                  },
+                  "descriptive_latency": {
+                    "availability": "measured",
+                    "value": 68771,
+                    "value_qualifier": "exact",
+                    "unit": "ms"
+                  }
+                }
+              }
+            ]
+          },
+          "human-16": {
+            "label": "human-16",
+            "ndcg_order_note": "C > D > F > E > A > B (descriptive; C↔D top-rank swap vs full-22)",
+            "arms": [
+              {
+                "arm_id": "A",
+                "label": "dense baseline",
+                "metrics": {
+                  "ndcg_at_10": {
+                    "availability": "measured",
+                    "value": 0.7477,
+                    "value_qualifier": "exact"
+                  },
+                  "hit_at_1": {
+                    "availability": "measured",
+                    "value": 0.8125,
+                    "value_qualifier": "exact"
+                  },
+                  "mrr": {
+                    "availability": "measured",
+                    "value": 0.8958,
+                    "value_qualifier": "exact"
+                  },
+                  "recall_at_10": {
+                    "availability": "measured",
+                    "value": 0.6808,
+                    "value_qualifier": "exact"
+                  },
+                  "descriptive_latency": {
+                    "availability": "measured",
+                    "value": 6932,
+                    "value_qualifier": "exact",
+                    "unit": "ms"
+                  }
+                }
+              },
+              {
+                "arm_id": "B",
+                "label": "lexical baseline",
+                "metrics": {
+                  "ndcg_at_10": {
+                    "availability": "measured",
+                    "value": 0.6641,
+                    "value_qualifier": "exact"
+                  },
+                  "hit_at_1": {
+                    "availability": "measured",
+                    "value": 0.6875,
+                    "value_qualifier": "exact"
+                  },
+                  "mrr": {
+                    "availability": "measured",
+                    "value": 0.7865,
+                    "value_qualifier": "exact"
+                  },
+                  "recall_at_10": {
+                    "availability": "measured",
+                    "value": 0.6695,
+                    "value_qualifier": "exact"
+                  },
+                  "descriptive_latency": {
+                    "availability": "measured",
+                    "value": 146,
+                    "value_qualifier": "exact",
+                    "unit": "ms"
+                  }
+                }
+              },
+              {
+                "arm_id": "C",
+                "label": "dense query-prompt",
+                "metrics": {
+                  "ndcg_at_10": {
+                    "availability": "measured",
+                    "value": 0.8457,
+                    "value_qualifier": "exact"
+                  },
+                  "hit_at_1": {
+                    "availability": "measured",
+                    "value": 1.0,
+                    "value_qualifier": "exact"
+                  },
+                  "mrr": {
+                    "availability": "measured",
+                    "value": 1.0,
+                    "value_qualifier": "exact"
+                  },
+                  "recall_at_10": {
+                    "availability": "measured",
+                    "value": 0.7741,
+                    "value_qualifier": "exact"
+                  },
+                  "descriptive_latency": {
+                    "availability": "measured",
+                    "value": 7246,
+                    "value_qualifier": "exact",
+                    "unit": "ms"
+                  }
+                }
+              },
+              {
+                "arm_id": "D",
+                "label": "dense Arm H",
+                "metrics": {
+                  "ndcg_at_10": {
+                    "availability": "measured",
+                    "value": 0.8411,
+                    "value_qualifier": "exact"
+                  },
+                  "hit_at_1": {
+                    "availability": "measured",
+                    "value": 1.0,
+                    "value_qualifier": "exact"
+                  },
+                  "mrr": {
+                    "availability": "measured",
+                    "value": 1.0,
+                    "value_qualifier": "exact"
+                  },
+                  "recall_at_10": {
+                    "availability": "measured",
+                    "value": 0.7715,
+                    "value_qualifier": "exact"
+                  },
+                  "descriptive_latency": {
+                    "availability": "measured",
+                    "value": 5104,
+                    "value_qualifier": "exact",
+                    "unit": "ms"
+                  }
+                }
+              },
+              {
+                "arm_id": "E",
+                "label": "hybrid RRF",
+                "metrics": {
+                  "ndcg_at_10": {
+                    "availability": "measured",
+                    "value": 0.7684,
+                    "value_qualifier": "exact"
+                  },
+                  "hit_at_1": {
+                    "availability": "measured",
+                    "value": 0.75,
+                    "value_qualifier": "exact"
+                  },
+                  "mrr": {
+                    "availability": "measured",
+                    "value": 0.875,
+                    "value_qualifier": "exact"
+                  },
+                  "recall_at_10": {
+                    "availability": "measured",
+                    "value": 0.7628,
+                    "value_qualifier": "exact"
+                  },
+                  "descriptive_latency": {
+                    "availability": "measured",
+                    "value": 7057,
+                    "value_qualifier": "exact",
+                    "unit": "ms"
+                  }
+                }
+              },
+              {
+                "arm_id": "F",
+                "label": "hybrid + reranker",
+                "metrics": {
+                  "ndcg_at_10": {
+                    "availability": "measured",
+                    "value": 0.8283,
+                    "value_qualifier": "exact"
+                  },
+                  "hit_at_1": {
+                    "availability": "measured",
+                    "value": 0.8125,
+                    "value_qualifier": "exact"
+                  },
+                  "mrr": {
+                    "availability": "measured",
+                    "value": 0.9062,
+                    "value_qualifier": "exact"
+                  },
+                  "recall_at_10": {
+                    "availability": "measured",
+                    "value": 0.7905,
+                    "value_qualifier": "exact"
+                  },
+                  "descriptive_latency": {
+                    "availability": "measured",
+                    "value": 73255,
+                    "value_qualifier": "exact",
+                    "unit": "ms"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "evidence_id": "generation.slice10e",
+      "evidence_family": "generation",
+      "title": "Slice 10E generation prompt A/B",
+      "summary": "Development-only controlled generation prompt comparison on frozen evidence.",
+      "evidence_authority": "accepted",
+      "promotion_status": "non_promotional",
+      "claim_scope": "Development-only controlled generation prompt comparison on frozen evidence.",
+      "caveats": [
+        "DEVELOPMENT / NON-PROMOTIONAL",
+        "Same-model self-judge limitation.",
+        "No prompt promotion.",
+        "No config/base.yaml promotion.",
+        "Development fixture only."
+      ],
+      "source_refs": [
+        {
+          "source_ref_id": "generation-report",
+          "path": "docs/pilots/slice10e_generation_prompt_ab.md",
+          "role": "accepted_report",
+          "source_kind": "accepted_markdown_projection",
+          "source_locator": "§3 Judge configuration / self-judge limitation; §7 Positive full-22 results",
+          "expected_sha256": "27220cfe69d35f38b6f0e952b262dd21901d0dabce564ae5fec82bd489997a15"
+        }
+      ],
+      "provenance": {
+        "evidence_family": "generation_10e",
+        "fields": {
+          "generator_model_id": "qwen3.6-35b-a3b",
+          "judge_model_id": "qwen3.6-35b-a3b",
+          "same_model_self_judge": true,
+          "gold_dataset_id": "gold_d3fc157c7b3206f6983abee766e7ce7b939244a7dea04f0be256f3a533a46172",
+          "governance_state": "DEVELOPMENT / NON-PROMOTIONAL"
+        }
+      },
+      "value_source": "curated",
+      "presentation": {
+        "kind": "generation_prompt_ab",
+        "population_label": "positive full-22",
+        "prompts": [
+          {
+            "prompt_id": "prompt-grounded-v1",
+            "label": "prompt-grounded-v1",
+            "metrics": {
+              "answer_rate": {
+                "availability": "measured",
+                "value": 0.909,
+                "value_qualifier": "exact"
+              },
+              "generation_failed_rate": {
+                "availability": "measured",
+                "value": 0.091,
+                "value_qualifier": "exact"
+              },
+              "citation_invalid_rate": {
+                "availability": "measured",
+                "value": 0.0,
+                "value_qualifier": "exact"
+              },
+              "mean_gold_citation_recall": {
+                "availability": "measured",
+                "value": 0.636,
+                "value_qualifier": "exact"
+              },
+              "grade2_citation_hit_rate": {
+                "availability": "measured",
+                "value": 0.944,
+                "value_qualifier": "exact"
+              },
+              "fully_correct_rate": {
+                "availability": "measured",
+                "value": 1.0,
+                "value_qualifier": "exact"
+              },
+              "fully_supported_rate": {
+                "availability": "measured",
+                "value": 1.0,
+                "value_qualifier": "exact"
+              },
+              "complete_answer_rate": {
+                "availability": "measured",
+                "value": 1.0,
+                "value_qualifier": "exact"
+              }
+            }
+          },
+          {
+            "prompt_id": "prompt-grounded-provenance-v2",
+            "label": "prompt-grounded-provenance-v2",
+            "metrics": {
+              "answer_rate": {
+                "availability": "measured",
+                "value": 0.909,
+                "value_qualifier": "exact"
+              },
+              "generation_failed_rate": {
+                "availability": "measured",
+                "value": 0.091,
+                "value_qualifier": "exact"
+              },
+              "citation_invalid_rate": {
+                "availability": "measured",
+                "value": 0.0,
+                "value_qualifier": "exact"
+              },
+              "mean_gold_citation_recall": {
+                "availability": "measured",
+                "value": 0.596,
+                "value_qualifier": "exact"
+              },
+              "grade2_citation_hit_rate": {
+                "availability": "measured",
+                "value": 0.889,
+                "value_qualifier": "exact"
+              },
+              "fully_correct_rate": {
+                "availability": "measured",
+                "value": 1.0,
+                "value_qualifier": "exact"
+              },
+              "fully_supported_rate": {
+                "availability": "measured",
+                "value": 1.0,
+                "value_qualifier": "exact"
+              },
+              "complete_answer_rate": {
+                "availability": "measured",
+                "value": 1.0,
+                "value_qualifier": "exact"
+              }
+            }
+          }
+        ],
+        "notes": [
+          "Same-model self-judge limitation: generator and judge used the same model.",
+          "No prompt promotion and no config/base.yaml promotion.",
+          "Development fixture only."
+        ]
+      }
+    },
+    {
+      "evidence_id": "recovery.slice12c",
+      "evidence_family": "recovery",
+      "title": "Slice 12 recovery disposition",
+      "summary": "Bounded recovery contracts were implemented and evaluated; product recovery remains disabled.",
+      "evidence_authority": "authoritative",
+      "promotion_status": "disabled",
+      "claim_scope": "Accepted recovery evaluation disposition; does not establish recovery efficacy.",
+      "caveats": [
+        "Bounded recovery contracts: IMPLEMENTED / EVALUATED",
+        "Promotion evidence: INSUFFICIENT",
+        "Product recovery: DISABLED",
+        "LangGraph: DEFERRED / NOT AUTHORIZED"
+      ],
+      "source_refs": [
+        {
+          "source_ref_id": "recovery-disposition",
+          "path": "docs/milestone6_agentic_recovery_security.md",
+          "role": "accepted_disposition",
+          "source_kind": "accepted_markdown_projection",
+          "source_locator": "Document header status block — Slice 12 recovery DISABLED; disposition insufficient_evidence_for_recovery_efficacy",
+          "expected_sha256": "73ef4ca45c5cc6fdae596b27a737b32b49064e0e7f6aae184322fdc922e8580b"
+        }
+      ],
+      "provenance": {
+        "evidence_family": "recovery_12c",
+        "fields": {
+          "slice_status": "COMPLETE / ACCEPTED",
+          "product_recovery": "DISABLED",
+          "disposition": "insufficient_evidence_for_recovery_efficacy",
+          "langgraph": "DEFERRED / NOT AUTHORIZED"
+        }
+      },
+      "value_source": "curated",
+      "presentation": {
+        "kind": "recovery_disposition",
+        "evaluation": "Complete",
+        "efficacy_evidence": "Insufficient",
+        "product_recovery": "Disabled",
+        "langgraph": "Deferred / not authorized"
+      }
+    },
+    {
+      "evidence_id": "security.slice13b",
+      "evidence_family": "security",
+      "title": "Slice 13B query-path adversarial campaign",
+      "summary": "Authoritative query-path security campaign completed with fail-closed campaign outcome.",
+      "evidence_authority": "authoritative",
+      "promotion_status": "non_promotional",
+      "claim_scope": "Accepted Slice 13B query-path campaign result on the accepted measurement surface; does not establish security completeness.",
+      "caveats": [
+        "Campaign execution completed ≠ campaign PASS.",
+        "Campaign FAIL ≠ harness implementation failure.",
+        "Required invariant security_policy_immutable_v1 was UNEVALUABLE.",
+        "Does not imply 13C or NeMo coverage."
+      ],
+      "source_refs": [
+        {
+          "source_ref_id": "security-disposition",
+          "path": "docs/milestone6_agentic_recovery_security.md",
+          "role": "accepted_disposition",
+          "source_kind": "accepted_markdown_projection",
+          "source_locator": "Document header + authoritative narrative — 13B run_status=completed, campaign_outcome=fail; OD-13-1 fail-closed UNEVALUABLE semantics; adversarial 0 pass / 7 fail; benign FP=0",
+          "expected_sha256": "73ef4ca45c5cc6fdae596b27a737b32b49064e0e7f6aae184322fdc922e8580b"
+        }
+      ],
+      "provenance": {
+        "evidence_family": "security_13b",
+        "fields": {
+          "campaign_kind": "query-path adversarial campaign",
+          "execution_sha": "7baca2d0fd0d89b6358d04bd943c8c14ea6e742c",
+          "run_status": "completed",
+          "campaign_outcome": "fail",
+          "harness_status": "COMPLETE / ACCEPTED",
+          "decisive_invariant": "security_policy_immutable_v1",
+          "decisive_invariant_availability": "UNEVALUABLE",
+          "adversarial_pass": 0,
+          "adversarial_fail": 7,
+          "benign_pass": 0,
+          "benign_fail": 5,
+          "benign_false_positives": 0
+        }
+      },
+      "value_source": "curated",
+      "presentation": {
+        "kind": "security_13b",
+        "primary": {
+          "title": "Query-path adversarial campaign",
+          "execution": "Completed",
+          "campaign_outcome": "Fail — fail-closed",
+          "interpretation": "A required invariant was unevaluable on the accepted measurement surface, so the campaign fails closed by contract.",
+          "harness_implementation": "Accepted"
+        },
+        "cohort_detail": {
+          "adversarial": {
+            "pass": 0,
+            "fail": 7
+          },
+          "benign": {
+            "pass": 0,
+            "fail": 5,
+            "false_positives": 0
+          },
+          "note": "Cohort counts are evaluator outcomes, not “attacks blocked/succeeded” product claims."
+        }
+      }
+    },
+    {
+      "evidence_id": "performance.slice14c",
+      "evidence_family": "performance",
+      "title": "Slice 14C retrieval quality-vs-cost",
+      "summary": "Authoritative hybrid vs hybrid+reranker retrieval quality and latency comparison (generation excluded).",
+      "evidence_authority": "authoritative",
+      "promotion_status": "non_promotional",
+      "claim_scope": "Descriptive Slice 14C quality-vs-cost measurements on the frozen development population; no configuration promotion.",
+      "caveats": [
+        "Development/regression fixture — not publication-grade evidence.",
+        "No winner assignment.",
+        "Do not merge with Level-C end-to-end latency populations."
+      ],
+      "source_refs": [
+        {
+          "source_ref_id": "perf-14c-aggregate",
+          "path": "eval/results/performance_14/perfsuite_5248892df382995ac96ec2b09aea61bf27510673b93e0d816d6a255a2f4305ba/perfrun_deb7a58e49d0f64496553a16c3edc3a5b517deec5ec1c9ddd76831fee79627ca/aggregate.json",
+          "role": "accepted_machine_artifact",
+          "source_kind": "accepted_machine_readable",
+          "expected_sha256": "2b7083a58d61ca2b56d4bc5a1d5ebdcf4f399889eb918f99376ae2aa5a96f3a7"
+        },
+        {
+          "source_ref_id": "perf-14c-run-manifest",
+          "path": "eval/results/performance_14/perfsuite_5248892df382995ac96ec2b09aea61bf27510673b93e0d816d6a255a2f4305ba/perfrun_deb7a58e49d0f64496553a16c3edc3a5b517deec5ec1c9ddd76831fee79627ca/run_manifest.json",
+          "role": "accepted_machine_artifact",
+          "source_kind": "accepted_machine_readable",
+          "expected_sha256": "7e8a58e354e5b7e968843e1a725dfa27656e5bdeca5f5969bb67f7153d1c575e"
+        }
+      ],
+      "provenance": {
+        "evidence_family": "performance_14c",
+        "fields": {}
+      },
+      "value_source": "machine_extract",
+      "extraction": {
+        "aggregate_source_ref_id": "perf-14c-aggregate",
+        "run_manifest_source_ref_id": "perf-14c-run-manifest",
+        "variants": [
+          "hybrid",
+          "hybrid_rerank"
+        ],
+        "comparison_note": "higher observed ranking quality with higher observed retrieval latency"
+      }
+    },
+    {
+      "evidence_id": "performance.slice14-level-c",
+      "evidence_family": "performance",
+      "title": "Slice 14 Level-C end-to-end generation path",
+      "summary": "Accepted Level-C end-to-end generation-path latency projection from committed Milestone 7 documentation.",
+      "evidence_authority": "authoritative",
+      "promotion_status": "non_promotional",
+      "claim_scope": "Descriptive Level-C end-to-end measurements recorded in accepted Milestone 7 documentation; separate population from 14C.",
+      "caveats": [
+        "Separate population from 14C retrieval-path latency.",
+        "TTFT / decode / tokens-sec remain UNEVALUABLE on the accepted non-streaming generator path.",
+        "Approximate presentation values from accepted documentation summary."
+      ],
+      "source_refs": [
+        {
+          "source_ref_id": "level-c-report",
+          "path": "docs/milestone7_performance_ui.md",
+          "role": "accepted_report",
+          "source_kind": "accepted_markdown_projection",
+          "source_locator": "§18 Level-C authoritative end-to-end evidence — readable summary p50/p95; §18.3 Generation telemetry limitations (TTFT/decode/tokens-sec UNEVALUABLE)",
+          "expected_sha256": "1f8819d0f4295dc1f6c34c684715e8ca6e0d482957c144135f6ee051e9db7617"
+        }
+      ],
+      "provenance": {
+        "evidence_family": "performance_14_level_c",
+        "fields": {
+          "run_id": "perfrun_211ebf1f9bcdef93d1f14421b754ef5ff387e2e091dc7f603f455dd083fdbf39",
+          "executing_sha": "30b5abb627e16e50b2b848b44676b89b2372c3d6",
+          "generator_model_id": "qwen3.6-35b-a3b",
+          "machine_profile_id": "perfhost_9e010ef916cc1f6dd5211c069316abca938ec26bd11693f9402a88d805e71a65",
+          "cases": 5,
+          "warmups": 5,
+          "measured": 25
+        }
+      },
+      "value_source": "curated",
+      "presentation": {
+        "kind": "performance_level_c",
+        "metrics": {
+          "end_to_end_p50": {
+            "availability": "measured",
+            "value": 50.83,
+            "value_qualifier": "approximate",
+            "unit": "s"
+          },
+          "end_to_end_p95": {
+            "availability": "measured",
+            "value": 144.59,
+            "value_qualifier": "approximate",
+            "unit": "s"
+          },
+          "generation_p50": {
+            "availability": "measured",
+            "value": 13.71,
+            "value_qualifier": "approximate",
+            "unit": "s"
+          },
+          "generation_p95": {
+            "availability": "measured",
+            "value": 64.06,
+            "value_qualifier": "approximate",
+            "unit": "s"
+          },
+          "ttft": {
+            "availability": "unevaluable",
+            "value": null,
+            "value_qualifier": null
+          },
+          "decode_latency": {
+            "availability": "unevaluable",
+            "value": null,
+            "value_qualifier": null
+          },
+          "tokens_per_sec": {
+            "availability": "unevaluable",
+            "value": null,
+            "value_qualifier": null
+          }
+        }
+      }
+    }
+  ]
+}
