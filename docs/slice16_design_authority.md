@@ -60,8 +60,10 @@ accepted/locked** authority at `5060e2aeb4825f265072a1f870c3c963eace3b30`. A1
 acceptance alone did **not** authorize later phase implementation; **16D-C**
 was later separately authorized and is now **COMPLETE / ACCEPTED / SEALED**
 (see Authorization note and [`docs/slice16d_c_a4_closeout.md`](slice16d_c_a4_closeout.md)).
-**16E** is **IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING**
-([`docs/slice16e_engineering_evidence.md`](slice16e_engineering_evidence.md)).
+**16E** is **COMPLETE / ACCEPTED / SEALED**
+([`docs/slice16e_engineering_evidence.md`](slice16e_engineering_evidence.md);
+Workspace source-loading remediation
+[`docs/workspace_source_loading_remediation.md`](workspace_source_loading_remediation.md)).
 **16F–16H** remain **NOT AUTHORIZED**.
 
 **Related artifacts:**
@@ -1141,8 +1143,12 @@ B1 FOUNDATION REMEDIATION:
 AMENDMENT A4: ACCEPTED / LOCKED / SEALED
   A4 MATERIALIZATION: d12f6322ef13915002b49dcc8f1211052a66dcc5
   A4 DOC: docs/slice16_amendment_a4_workspace_portability_shell.md
-16E: IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+16E: COMPLETE / ACCEPTED / SEALED
+  ACCEPTED ENGINEERING IMPLEMENTATION: 3e1ce4c94fc511abb4e1d94bd194736d5497e64f
+  WORKSPACE SOURCE-LOADING REMEDIATION: 9dd2b008ebf9feee279dc6d0e58fafb006288ee5
+  REMEDIATION EVIDENCE TIP: 9cd5528ab6c6e22d2dca55aca221b65eac50269e
   EVIDENCE: docs/slice16e_engineering_evidence.md
+  REMEDIATION: docs/workspace_source_loading_remediation.md
 16F–16H: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
 SLICE 18: NOT AUTHORIZED
@@ -1166,6 +1172,8 @@ ACCEPTED / SEALED** at `baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`.
 **ACCEPTED / LOCKED / SEALED**. **16D-C** is **COMPLETE / ACCEPTED / SEALED** at
 `0381e0461f68c5fc09e7be2c7699d434e8b8a9cb` (closeout
 `docs/slice16d_c_a4_closeout.md`).
-**16E** is **IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING**
-(`docs/slice16e_engineering_evidence.md`). **16F–16H** remain **NOT
+**16E** is **COMPLETE / ACCEPTED / SEALED** (Engineering
+`3e1ce4c94fc511abb4e1d94bd194736d5497e64f`; Workspace source-loading remediation
+`9dd2b008ebf9feee279dc6d0e58fafb006288ee5`; evidence tip
+`9cd5528ab6c6e22d2dca55aca221b65eac50269e`). **16F–16H** remain **NOT
 AUTHORIZED**. Slice 16 overall is **not** complete.

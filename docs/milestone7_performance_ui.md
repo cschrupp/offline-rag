@@ -97,8 +97,15 @@ SLICE 16: DESIGN INTERVIEW COMPLETE
              A3 ACCEPTED / LOCKED / SEALED (da1082d95630c12eaf0ce1a3b8d005aaa60d2f73)
            16D-C COMPLETE / ACCEPTED / SEALED
            A4 ACCEPTED / LOCKED / SEALED
-           16E IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+           16E COMPLETE / ACCEPTED / SEALED
+             ACCEPTED ENGINEERING IMPLEMENTATION
+               3e1ce4c94fc511abb4e1d94bd194736d5497e64f
+             WORKSPACE SOURCE-LOADING REMEDIATION
+               9dd2b008ebf9feee279dc6d0e58fafb006288ee5
+             REMEDIATION EVIDENCE TIP
+               9cd5528ab6c6e22d2dca55aca221b65eac50269e
              Evidence: docs/slice16e_engineering_evidence.md
+             Remediation: docs/workspace_source_loading_remediation.md
            16F–16H NOT AUTHORIZED
            Slice 16 overall IN PROGRESS / NOT COMPLETE
   Authority: docs/slice16_design_authority.md
@@ -928,8 +935,15 @@ SLICE 16: DESIGN INTERVIEW COMPLETE
              REWORK 1–3A COMPLETE
              A3 ACCEPTED / LOCKED / SEALED (da1082d95630c12eaf0ce1a3b8d005aaa60d2f73)
            16D-C COMPLETE / ACCEPTED / SEALED
-           16E IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+           16E COMPLETE / ACCEPTED / SEALED
+             ACCEPTED ENGINEERING IMPLEMENTATION
+               3e1ce4c94fc511abb4e1d94bd194736d5497e64f
+             WORKSPACE SOURCE-LOADING REMEDIATION
+               9dd2b008ebf9feee279dc6d0e58fafb006288ee5
+             REMEDIATION EVIDENCE TIP
+               9cd5528ab6c6e22d2dca55aca221b65eac50269e
              Evidence: docs/slice16e_engineering_evidence.md
+             Remediation: docs/workspace_source_loading_remediation.md
            16F–16H NOT AUTHORIZED
            Slice 16 overall IN PROGRESS / NOT COMPLETE
 SLICE 17: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
@@ -949,10 +963,12 @@ M6 science: UNCHANGED
 **COMPLETE / ACCEPTED / SEALED** (B3 at `9c178ffb033cde41849379fc914f321697ff8691`).
 **16D-C** and Amendment **A4** are **COMPLETE / ACCEPTED / SEALED** at
 `0381e0461f68c5fc09e7be2c7699d434e8b8a9cb` (closeout
-`docs/slice16d_c_a4_closeout.md`). **16E** is **IMPLEMENTATION CANDIDATE /
-HUMAN ACCEPTANCE PENDING** (`docs/slice16e_engineering_evidence.md`); →
-separate later-phase authorization (**16F–16H**, Slice 17, Slice 18, M7
-closeout). Slice 14 and Slice 15 are closed.
+`docs/slice16d_c_a4_closeout.md`). **16E** is **COMPLETE / ACCEPTED / SEALED**
+(Engineering `3e1ce4c94fc511abb4e1d94bd194736d5497e64f`; Workspace
+source-loading remediation `9dd2b008ebf9feee279dc6d0e58fafb006288ee5`; tip
+`9cd5528ab6c6e22d2dca55aca221b65eac50269e`). → separate later-phase
+authorization (**16F–16H**, Slice 17, Slice 18, M7 closeout). Slice 14 and
+Slice 15 are closed.
 Slice 16 design is **ACCEPTED / LOCKED**. Amendment A2 is **ACCEPTED / LOCKED /
 SEALED**. **16A**, **16B**, **16C**, **16D-A**, and **16D-B2** are **COMPLETE /
 ACCEPTED**. B1 foundation remediation is **ACCEPTED / SEALED** (implementation

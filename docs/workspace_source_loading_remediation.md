@@ -1,14 +1,26 @@
 # Workspace source-loading remediation
 
 ```text
-16E Engineering:
-HUMAN ACCEPTED at 3e1ce4c94fc511abb4e1d94bd194736d5497e64f
+STATUS:
+COMPLETE / ACCEPTED
 
-16E closeout / seal:
-PAUSED
+Independent review:
+PASS
+
+Human acceptance:
+ACCEPTED
+
+Accepted implementation:
+9dd2b008ebf9feee279dc6d0e58fafb006288ee5
+
+Verified evidence / final remediation tip:
+9cd5528ab6c6e22d2dca55aca221b65eac50269e
+
+16E Engineering accepted implementation (unchanged):
+3e1ce4c94fc511abb4e1d94bd194736d5497e64f
 
 Remediation class:
-PRE-16E-CLOSEOUT INTEGRATION BLOCKER
+PRE-16E-CLOSEOUT INTEGRATION BLOCKER (resolved)
 
 16F–16H / Slice 17 / 18:
 NOT AUTHORIZED
@@ -100,11 +112,6 @@ Additional guards (Rework 1 entry points):
 - JSON parse failures on JSON content-type throw retryable `ApiError`;
 - Vite `server.port = 5173` with `strictPort: true`.
 
-## Validation
-
-See STOP report for Rework 1 SHAs and `npm test` / lint / typecheck / build
-results.
-
 ## Classification summary
 
 ```text
@@ -117,6 +124,9 @@ insufficient mutation gating;
 asymmetric workspace/source badge semantics;
 successful JSON parse failure admitted as null;
 Vite silent port fallback
+
+SCIENTIFIC MUTATION:
+NONE
 ```
 
 ## Final Rework 1 SHAs
@@ -150,8 +160,13 @@ unavailable.
 **Regression coverage:** stale-open-dialog races A–G in
 `ui/src/test/workspace_source_loading_state.test.tsx`.
 
-**Status:** STOP FOR INDEPENDENT REVIEW — do not claim remediation accepted
-until independent review passes.
+```text
+STATUS: COMPLETE / ACCEPTED
+Independent review: PASS
+Human acceptance: ACCEPTED
+Accepted implementation: 9dd2b008ebf9feee279dc6d0e58fafb006288ee5
+Verified evidence tip: 9cd5528ab6c6e22d2dca55aca221b65eac50269e
+```
 
 ### Rework 2 SHAs
 
@@ -167,4 +182,3 @@ Typecheck: pass
 Build: pass
 git diff --check: pass
 ```
-

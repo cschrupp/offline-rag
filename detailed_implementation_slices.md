@@ -1005,9 +1005,9 @@ Bind the application to localhost unless the user explicitly configures network 
 The accepted product/API surface can be used from CLI and from the Seneca
 browser client through the same app layer, and the OfflineRAG application
 starts as one container while using an independently running local generator.
-Slice 16 remains **IN PROGRESS / NOT COMPLETE** because **16E** is an
-**IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING** and **16F–16H** remain
-**NOT AUTHORIZED**; Seneca consuming the API does not close Slice 16.
+Slice 16 remains **IN PROGRESS / NOT COMPLETE** because **16F–16H** remain
+**NOT AUTHORIZED** (**16E** is **COMPLETE / ACCEPTED / SEALED**); Seneca
+consuming the API does not close Slice 16.
 
 ---
 
@@ -1020,7 +1020,7 @@ SLICE 16:          IN PROGRESS / NOT COMPLETE
 16A–16C:           COMPLETE / ACCEPTED
 16D-A / 16D-B2 / 16D-B3 / 16D-C: COMPLETE / ACCEPTED / SEALED
 AMENDMENT A4:      ACCEPTED / LOCKED / SEALED
-16E:               IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+16E:               COMPLETE / ACCEPTED / SEALED
 16F–16H:           NOT AUTHORIZED
 SLICE 17 / 18:     NOT AUTHORIZED
 M7 CLOSEOUT:       NOT AUTHORIZED
@@ -1031,6 +1031,8 @@ Authoritative current governance:
 - [`docs/slice16_design_authority.md`](docs/slice16_design_authority.md)
 - [`docs/slice16_implementation_plan.md`](docs/slice16_implementation_plan.md)
 - [`ROADMAP.md`](ROADMAP.md)
+- [`docs/slice16e_engineering_evidence.md`](docs/slice16e_engineering_evidence.md)
+- [`docs/workspace_source_loading_remediation.md`](docs/workspace_source_loading_remediation.md)
 - [`docs/slice16d_c_a4_closeout.md`](docs/slice16d_c_a4_closeout.md)
 
 ## Objective (current)
@@ -1103,9 +1105,8 @@ hybrid+reranker / recovery) **predates** the locked Slice-15 product API and is
 
 Original planning note (superseded as present-tense status): frontend
 technology and delivery model were Slice-16 design decisions; design later
-opened and progressed under separate authority. **16A–16D-C** are accepted;
-**16E** is an implementation candidate under separate evidence; **16F–16H**
-remain **NOT AUTHORIZED**.
+opened and progressed under separate authority. **16A–16E** are accepted;
+**16F–16H** remain **NOT AUTHORIZED**.
 
 ### Prerequisites for opening design (historical)
 
@@ -1206,7 +1207,7 @@ Foundation
   -> performance benchmarks              (Slice 14 COMPLETE / ACCEPTED)
   -> product API + packaging             (Slice 15 COMPLETE / ACCEPTED)
   -> Slice 15 integration closeout       (15H COMPLETE / ACCEPTED)
-  -> Seneca / Portfolio Demo UI          (Slice 16 IN PROGRESS; 16D-C COMPLETE / ACCEPTED / SEALED; 16E CANDIDATE; 16F–16H NOT AUTHORIZED)
+  -> Seneca / Portfolio Demo UI          (Slice 16 IN PROGRESS; 16D-C / 16E COMPLETE / ACCEPTED / SEALED; 16F–16H NOT AUTHORIZED)
   -> Regression CI                       (Slice 17 NOT AUTHORIZED)
   -> Portfolio release package           (Slice 18 NOT AUTHORIZED)
   -> Milestone 7 closeout                (NOT AUTHORIZED)
