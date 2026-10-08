@@ -95,7 +95,8 @@ SLICE 16: DESIGN INTERVIEW COMPLETE
              HUMAN ACCEPTANCE ACCEPTED
              REWORK 1–3A COMPLETE
              A3 ACCEPTED / LOCKED / SEALED (da1082d95630c12eaf0ce1a3b8d005aaa60d2f73)
-           16D-C IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+           16D-C REWORK 2 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+           A4 HUMAN-APPROVED / LOCKED / IMPLEMENTED CANDIDATE / ACCEPTANCE PENDING
            16E–16H NOT AUTHORIZED
            Slice 16 overall IN PROGRESS / NOT COMPLETE
   Authority: docs/slice16_design_authority.md
@@ -135,7 +136,7 @@ remediation **ACCEPTED / SEALED** (implementation
 `b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90`); legacy B1 product UX remains
 superseded / acceptance withheld; **16D-B2 COMPLETE / ACCEPTED / SEALED**
 at `baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`; **16D-B3 COMPLETE / ACCEPTED / SEALED** at `9c178ffb033cde41849379fc914f321697ff8691`;
-A3 **ACCEPTED / LOCKED / SEALED**; **16D-C IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING**.
+A3 **ACCEPTED / LOCKED / SEALED**; **16D-C REWORK 2 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING**.
 Historical pre-design frame: `docs/slice16_portfolio_ui.md`.
 
 **Milestone 6 remains COMPLETE / ACCEPTED** at closeout
@@ -924,7 +925,7 @@ SLICE 16: DESIGN INTERVIEW COMPLETE
              HUMAN ACCEPTANCE ACCEPTED
              REWORK 1–3A COMPLETE
              A3 ACCEPTED / LOCKED / SEALED (da1082d95630c12eaf0ce1a3b8d005aaa60d2f73)
-           16D-C IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+           16D-C REWORK 2 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
            16E–16H NOT AUTHORIZED
            Slice 16 overall IN PROGRESS / NOT COMPLETE
 SLICE 17: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
@@ -950,6 +951,6 @@ remediation is **ACCEPTED / SEALED** (implementation
 `b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90`). Legacy B1 product UX remains
 **PRODUCT ACCEPTANCE WITHHELD**. **16D-B2** is **COMPLETE / ACCEPTED /
 SEALED** at `baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`. **16D-B3** is **COMPLETE / ACCEPTED / SEALED** at `9c178ffb033cde41849379fc914f321697ff8691`
-(A3 **ACCEPTED / LOCKED / SEALED**). **16D-C** (implementation candidate / human acceptance pending), Slice 17, Slice 18, and M7
+(A3 **ACCEPTED / LOCKED / SEALED**). **16D-C** (Rework 2 implementation candidate / human acceptance pending), Slice 17, Slice 18, and M7
 closeout remain **NOT AUTHORIZED**. Slice 16
 overall is **IN PROGRESS / NOT COMPLETE**.

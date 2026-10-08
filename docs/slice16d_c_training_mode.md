@@ -2,19 +2,25 @@
 
 ```text
 16D-C:
-IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+REWORK 2 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+
+AMENDMENT A4:
+HUMAN-APPROVED / LOCKED
+IMPLEMENTED CANDIDATE / ACCEPTANCE PENDING
+DOC: docs/slice16_amendment_a4_workspace_portability_shell.md
 
 INDEPENDENT REVIEW:
-REWORK 1 REQUIRED → REWORK 1 IMPLEMENTED / HUMAN ACCEPTANCE PENDING
+REWORK 1 CLOSED
+REWORK 2 AUTHORIZED → IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
 
-Authorized baseline:
+Authorized baseline (original 16D-C):
 396aa329e6c0413eb69aacd39067a70d9b478b72
 
-Original implementation candidate:
-2266d7b16bf01e11c5ca69b2ffe4d7f4e0e821ab
+Rework 2 baseline:
+18bc60da038e210b1b8f2f9aa26884e962a15f8f
 
-Rework 1 baseline:
-6c609b60a85d1331fb4ae3c1d56e685472d77017
+A4 materialization:
+d12f6322ef13915002b49dcc8f1211052a66dcc5
 
 Branch:
 implementation/16d-c-training-mode
@@ -38,7 +44,19 @@ IN PROGRESS / NOT COMPLETE
 - S16-D19 — Training Mode (primary)
 - Amendment A1 — 16D-C decomposition (saved prompts; reveal; presentation typography/layout)
 - A2-D25 — saved training prompts seed/start accepted B3 conversation flow (no new query architecture)
-- Accepted B3 conversation path + A3 full-viewport/rails remain authoritative
+- Amendment A3 — full-viewport workspace / rails (sealed; preserved)
+- Amendment A4 — compact Question Bank, local portability, conversation export, full-width header
+- Accepted B3 conversation path remains authoritative
+
+## Live visual acceptance findings (pre-A4)
+
+Human live-product review after Rework 1 withheld 16D-C acceptance because:
+
+1. permanently expanded saved-question list consumed increasing vertical workspace;
+2. instructors needed portable Question Banks and conversation exports;
+3. global Seneca header remained centered `--max-width` while the workspace body was A3 full-width.
+
+A4 / Rework 2 addresses those presentation/integration findings only.
 
 ## Implementation architecture
 
@@ -62,30 +80,68 @@ claim citations / exact Evidence
 
 Primary UI modules:
 
-- `ui/src/features/training/trainingPrompts.ts` — per-workspace localStorage library
-- `ui/src/features/training/revealState.ts` — transient per-turn reveal map
-- `ui/src/features/training/TrainingToolbar.tsx` — save/select/delete + presentation control
-- `ui/src/features/ask/AskPanel.tsx` — Training Mode composer + reveal controls
-- `ui/src/features/ask/ClaimAnswer.tsx` — optional citation visibility
-- `ui/src/features/ask/EvidencePanel.tsx` — evidence-hidden placeholder
+- `ui/src/features/training/trainingPrompts.ts` — per-workspace localStorage library (`PROMPT_MAX = 100`)
+- `ui/src/features/training/questionBankIo.ts` — JSON/Markdown Question Bank serializers/parsers/merge plan
+- `ui/src/features/training/QuestionBankPanel.tsx` — compact closed-by-default bank surface
+- `ui/src/features/training/revealState.ts` — transient per-turn reveal map (Rework 1 closed)
+- `ui/src/features/training/TrainingToolbar.tsx` — presentation control only (A4-D03)
+- `ui/src/features/ask/conversationExport.ts` — conversation Markdown/JSON serializers
+- `ui/src/features/ask/ExportConversationMenu.tsx` — Normal + Training export menu
+- `ui/src/lib/downloadFile.ts` / `safeFilename.ts` — thin Blob download + filenames
+- `ui/src/features/ask/AskPanel.tsx` — composer-adjacent Save / Question bank; export header
+- `ui/src/styles/global.css` — A4 header viewport shell + Question Bank popover
 - `ui/src/pages/WorkspacePage.tsx` — mode entry/exit, reveal wiring, presentation rails
-- `ui/src/styles/global.css` — Training Mode / presentation typography & layout
 
 ### Confirmation: no second RAG path
 
 - No backend API, schema, query-contract, or scientific-path changes.
 - Training Mode Send uses the existing conversation/turn client path only.
-- No direct Qdrant access, alternate generator, hidden source expansion, or transcript-as-evidence.
+- Question Bank / conversation export are browser-local only.
+- No automatic source promotion from conversation export.
 
-## Saved-prompt persistence
+## Question Bank redesign (A4)
 
-- Key: `seneca.training-prompts.v1:{workspace_id}`
-- Browser `localStorage` only; presentation data (`id`, `text`, `createdAt`)
-- Per-workspace isolation; corrupt storage fails closed to `[]`
-- Selecting a prompt seeds the composer only (no auto-send)
-- Prompt library never enters `prior_turns` / model requests
+Normal Training composer chrome:
 
-## Reveal-state model
+```text
+[Send] [Save question] [Question bank (N)]
+```
+
+- Bank closed by default; rows are not in permanent document flow.
+- Desktop: bounded popover with internal scroll (`.question-bank-popover`).
+- Narrow: existing `ModalDialog` pattern; disabled while Sources/Evidence drawers open.
+- Search is presentation-only case-insensitive substring filter.
+- Selection seeds composer only (no auto-Send).
+- Delete remains a compact accessible row action inside the bank.
+- Presentation Mode retains compact bank access; does not permanently expand rows.
+
+### JSON / Markdown contracts
+
+- Canonical: `seneca-question-bank` v1 JSON (text only; no local IDs / workspace / traces / answers).
+- Markdown: optional heading + top-level `- ` bullets only.
+- Import = Merge only; trim + exact duplicate skip; capacity `PROMPT_MAX = 100`.
+- Parse → confirmation preview → explicit commit; corrupt/wrong format leaves bank untouched.
+- File-size guard: 256 KiB.
+
+## Conversation export (A4)
+
+- Available in Normal Mode and Training Mode conversation headers.
+- Formats: Markdown (source-ready notes) and JSON (`seneca-conversation` v1 archive).
+- Export ignores Training reveal state; hidden answers still serialize.
+- Pending turns disable export.
+- Markdown includes mandatory derived-Seneca / not-primary-evidence warning.
+- JSON retains scientifically meaningful B3 fields when present.
+- **Hard invariant:** export ≠ source ingestion. No Save-as-source / auto-promote bridge.
+- Manual later Add Sources of an exported `.md` uses ordinary ingestion (A4-D18).
+
+## Full-width application header (A4)
+
+- `.app-header-inner` tracks the application viewport (no centered `--max-width` dead space).
+- Brand near left gutter; primary nav near right gutter; modest padding gutters.
+- Header width is global across routes; page bodies remain route-specific (Overview/Settings constrained; workspace A3 full-width).
+- Mobile menu toggle / primary-nav a11y preserved.
+
+## Reveal-state model (Rework 1 preserved)
 
 Three independent layers per assistant turn (answered turns):
 
@@ -93,77 +149,43 @@ Three independent layers per assistant turn (answered turns):
 2. Citations
 3. Evidence
 
-Newly completed **answered** Training Mode turns begin fully hidden (fail closed; no answer flash). Non-answered outcomes (`clarification_required`, `model_abstain`, `insufficient_evidence`) keep accepted application copy and do **not** expose a fake Reveal-answer control; evidence is not force-hidden for those outcomes.
-
-Citation activation while Evidence is hidden reveals Evidence and opens the exact citation (A3 desktop auto-expand / narrow drawer preserved).
-
-Reveal state is transient UI state only (not persisted to backend/scientific response).
+Missing answered-turn reveal defaults remain `HIDDEN_REVEAL` (C-R1). Reveal Evidence binds the selected turn’s active/citation/evidence context (C-R2).
 
 ## Presentation mode
 
-- CSS/application presentation layout is the reliable baseline (`presentation-mode` class).
-- Temporarily collapses desktop rails without overwriting persisted rail preference; restores prior preference on exit.
-- Browser Fullscreen API is progressive enhancement only (denial/unavailability leaves presentation usable).
-- Exit control remains keyboard-reachable.
-
-## Responsive / accessibility
-
-- Narrow layout reuses existing Sources/Evidence drawers (no second modal system).
-- Reveal/mode controls are real buttons with `aria-expanded` / accessible labels where applicable.
-- Hidden answer/citation/evidence content is omitted from the accessibility tree (not merely visually transparent).
-
-## Rework 1 — per-turn reveal-state integrity
-
-### C-R1 closure
-
-`withRevealPatch` / `revealForEntry` now default missing map entries to
-`HIDDEN_REVEAL` (not fully visible). Entering Training Mode also seeds answered
-turns with `HIDDEN_REVEAL` before any patch. First Reveal-answer / Reveal-citations /
-Reveal-evidence on a pre-existing answered turn preserves unspecified layers as
-hidden. Non-answered outcomes remain unhidden.
-
-### C-R2 closure
-
-`patchReveal(..., { evidence: true })` now activates the requested turn as the
-Evidence/provenance context: sets `activeEntryId`, binds first citation preview
-when present (no fabrication), then opens the A3 Evidence rail/drawer. Citation
-activation path unchanged.
-
-### Rework 1 tests
-
-Added in `ui/src/test/slice16d_c_training_mode.test.tsx`:
-
-- helper: missing-entry patch defaults hidden
-- pre-existing normal answer → Training Mode → Reveal answer only
-- first action Reveal citations
-- first action Reveal evidence
-- Reveal evidence on older non-active turn binds Evidence to that turn
-- historical turn Reveal evidence keeps exact snapshot provenance
+- CSS/application presentation layout (`presentation-mode` class).
+- Temporarily collapses desktop rails without overwriting persisted rail preference.
+- Browser Fullscreen API remains progressive enhancement only.
 
 ## Tests
 
-Deterministic coverage in `ui/src/test/slice16d_c_training_mode.test.tsx` (entry/exit, saved prompts, B3 reuse, progressive reveal, non-answered outcomes, new conversation, presentation, a11y, narrow, Rework 1 multi-turn/pre-existing). Existing B3/A3 suites remain green.
+- `ui/src/test/slice16d_c_training_mode.test.tsx` — original Training Mode + Rework 1
+- `ui/src/test/slice16d_c_rework2_a4.test.tsx` — compact bank UX, bank IO, conversation export, header shell
+
+Existing B3/A3 suites remain green.
 
 ## Manual smoke
 
 Workspace: `ws_1f0faad69b9041e7aa6c60190538ba7d` (“B1 Upload Smoke”), local Vite + API.
 
-Observed:
+Observed (Rework 2 / A4):
 
-- Enter/exit Training Mode without workspace mutation; sources preserved
-- Save/select local training prompts; no auto-send
-- New conversation clears B3 thread; prompts + Training Mode retained
-- Non-answered outcomes: accepted abstention/clarification copy; no Reveal-answer control
-- Answered turn: answer/citations/evidence hidden by default; progressive reveal; citation activation opens exact CV evidence (source/version/page)
-- Presentation view enter/exit restores rails; no scientific mutation
-- Narrow (390px): no horizontal overflow; Sources control present; no stacked dialogs
+- Compact `Question bank (20)` closed by default; no permanent `.training-prompt-list`
+- Open bank: bounded `.question-bank-popover` (max-height ~352px); list `overflow: auto` with scrollHeight ≫ visible height; `.knowledge-ask` top unchanged
+- Selecting Smoke question 1 seeded composer without auto-Send; workspace revision remained 7
+- `Export conversation` present in Normal + Training; Markdown export invoked with answer still hidden on screen
+- Application header: `.app-header-inner` `max-width: none`; brand ~16px from left gutter; primary nav near right gutter
+- Automated Vitest covers search/import preview/merge/JSON+Markdown IO/header a11y contracts
+
+Source-ready Markdown ingestion smoke (human-mediated Add Sources of an exported `.md`) remains an optional follow-up check; no automatic promote bridge was added.
 
 ## Known limitations
 
-- Saved prompts are local-device only (no sync/export)
+- Question Bank is local-device only (no cloud sync)
+- Conversation import not implemented (export only)
 - No learner accounts / grading / LMS (intentionally out of scope)
-- Fullscreen permission is optional; presentation does not depend on it
-- Sticky conversation composer can visually overlap reveal controls on short viewports; controls remain keyboard-operable and scrollable
+- Replace-import for Question Bank not authorized in A4
+- JSDOM cannot prove pixel geometry; vertical containment is manual smoke
 
 ## Implementation candidate SHA
 
@@ -174,6 +196,15 @@ ORIGINAL IMPLEMENTATION CANDIDATE:
 REWORK 1 IMPLEMENTATION:
 4489d6fb295271c65dae2c9f38e3f53bab456ff8
 
+REWORK 2 BASELINE:
+18bc60da038e210b1b8f2f9aa26884e962a15f8f
+
+A4 MATERIALIZATION:
+d12f6322ef13915002b49dcc8f1211052a66dcc5
+
+REWORK 2 IMPLEMENTATION:
+3bac1f8dc1a7d0aa8ea46ec4ceb832e63f570aff
+
 FINAL BRANCH TIP:
-f1e6e9e8ab8e98b866b9a4a99d94ab8c3c0142a3
+<filled after packaging commit>
 ```
