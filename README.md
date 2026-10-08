@@ -45,7 +45,10 @@ Evaluation is a first-class subsystem, not an afterthought.
 
 Landed in the accepted repository (not aspirational):
 
-- local document ingestion (PDF / TXT / MD via Docling)
+- local document ingestion by media type:
+  - PDF via Docling (`DoclingPdfParser`)
+  - TXT via native `TextParser`
+  - Markdown (`.md` / `.markdown`) via native `MarkdownParser`
 - structure-aware chunking
 - Qwen3 embeddings (provisioned local weights; fake embedder for CI)
 - BM25 lexical retrieval
@@ -72,7 +75,9 @@ Landed in the accepted repository (not aspirational):
 
 | Layer | Choice | Status |
 |---|---|---|
-| Parsing | Docling | ACTIVE |
+| PDF parsing | Docling (`DoclingPdfParser`) | ACTIVE |
+| Text parsing | Native `TextParser` (`.txt`) | ACTIVE |
+| Markdown parsing | Native `MarkdownParser` (`.md` / `.markdown`) | ACTIVE |
 | Chunking | Structure-aware / parent-child | ACTIVE |
 | Dense embeddings | Qwen3-Embedding-0.6B (default; fake for CI) | ACTIVE |
 | Sparse retrieval | BM25 | ACTIVE |

@@ -669,7 +669,6 @@ Slice 14 checklist:
 - Gold Lab redesigns adjudication workflow granularity while preserving
   GoldDataset v1 / Silver→Gold truth criteria — S16-D23–S16-D34
 - **16D-C** / A4 closeout complete; do **not** start 16E without separate explicit authorization
-- Do **not** start 16E without separate explicit authorization
 - Product: **Seneca — Grounded knowledge workspace**
 
 **Slice 17 — Regression CI:** **PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED**

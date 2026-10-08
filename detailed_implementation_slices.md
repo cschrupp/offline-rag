@@ -1002,9 +1002,11 @@ Bind the application to localhost unless the user explicitly configures network 
 
 ## Exit criteria
 
-The accepted product/API surface can be used from CLI and (after Slice 16)
-browser clients through the same app layer, and the OfflineRAG application
+The accepted product/API surface can be used from CLI and from the Seneca
+browser client through the same app layer, and the OfflineRAG application
 starts as one container while using an independently running local generator.
+Slice 16 remains **IN PROGRESS / NOT COMPLETE** because **16E–16H** are still
+**NOT AUTHORIZED**; Seneca consuming the API does not close Slice 16.
 
 ---
 
@@ -1029,19 +1031,16 @@ Authoritative current governance:
 - [`ROADMAP.md`](ROADMAP.md)
 - [`docs/slice16d_c_a4_closeout.md`](docs/slice16d_c_a4_closeout.md)
 
-Historical pre-design frame (preserved):
-[`docs/slice16_portfolio_ui.md`](docs/slice16_portfolio_ui.md)
-
-## Objective
+## Objective (current)
 
 Expose OfflineRAG’s engineering value through a browser UI that is an
 **adapter/client** of the accepted product/API layer — not a second RAG stack.
 The current product surface is **Seneca — Grounded knowledge workspace**.
 
-## Architectural boundary
+## Architectural boundary (current)
 
 ```text
-Browser UI
+Browser UI (Seneca)
    ↓
 supported UI/backend interface
    ↓
@@ -1053,23 +1052,43 @@ domain + infrastructure
 Forbidden: UI → Qdrant / retrievers / generator directly; UI-owned RAG pipeline
 or scientific algorithms; bypassing app/product semantics.
 
-## Product query boundary (inherited from Slice 15)
+## Accepted interaction surfaces (current)
+
+- `/v1/query` remains the independent `grounded_v1` single-turn product path.
+- Seneca’s accepted conversational workspace additionally uses the separately
+  authorized workspace conversation endpoint (16D-B3 / A3 lineage).
+- Do not treat historical pre-design “`/v1/query` only” wording as the entirety
+  of the current Seneca interaction model.
+
+## Historical pre-design framing — superseded for current state
+
+The material below records the original Slice-16 roadmap frame from this
+aggregate summary file. It is retained for provenance only and is **not**
+current design authority.
+
+For current authority/status see:
+
+- [`docs/slice16_design_authority.md`](docs/slice16_design_authority.md)
+- [`docs/slice16_implementation_plan.md`](docs/slice16_implementation_plan.md)
+- [`docs/slice16d_c_a4_closeout.md`](docs/slice16d_c_a4_closeout.md)
+
+The original pre-design frame also remains at
+[`docs/slice16_portfolio_ui.md`](docs/slice16_portfolio_ui.md).
+
+### Product query boundary (historical pre-design note)
 
 Locked product query remains `{corpus, question}` with server-owned
-`product_mode_id = grounded_v1` until a future architecture decision. No client
-algorithm/mode selector, scientific knobs, snapshot pinning, or recovery-mode
-selector on `/v1/query`.
+`product_mode_id = grounded_v1` on `/v1/query`. That path is still valid as the
+independent single-turn product API; it is not the full Seneca conversational
+surface (see Accepted interaction surfaces above).
 
-### Diagnostic / comparison surfaces — DESIGN REQUIRED
+### Diagnostic / comparison surfaces (historical planning language)
 
 Historical “pipeline switcher” wording (dense / BM25 / hybrid /
 hybrid+reranker / recovery) **predates** the locked Slice-15 product API and is
-**not** an authorized product feature. Slice 16 design must decide whether any
-comparison surface is artifact visualization, a separate diagnostic interface,
-CLI-rendered evidence, or another non-product surface — and must not silently
-expand `/v1/query`.
+**not** an authorized product feature.
 
-## Candidate capability areas (not locked)
+### Candidate capability areas (historical pre-design list)
 
 - **16A** query experience (corpus/question/answer/abstain/citations/preview/trace)
 - **16B** evidence / retrieval inspector (only via future approved diagnostic
@@ -1080,16 +1099,21 @@ expand `/v1/query`.
   no `/eval/*` HTTP invented for UI convenience — D12 remains CLI-first)
 - **16E** portfolio polish (architecture/topology/status/limitations links)
 
-Frontend technology and delivery model are Slice-16 design decisions.
+Original planning note (superseded as present-tense status): frontend
+technology and delivery model were Slice-16 design decisions; design later
+opened and progressed under separate authority. **16A–16D-C** are accepted;
+**16E–16H** remain **NOT AUTHORIZED**.
 
-## Prerequisites for opening design
+### Prerequisites for opening design (historical)
 
-1. 15H COMPLETE / ACCEPTED (or explicit future exception — none today);
+1. 15H COMPLETE / ACCEPTED;
 2. Slice 15 COMPLETE / ACCEPTED including closeout;
 3. stable supported product contracts;
 4. explicit Slice-16 design authorization.
 
-## Exit criteria (aspirational; not authorized)
+These prerequisites were satisfied; design is no longer “not open.”
+
+### Exit criteria (historical aspirational wording)
 
 A reviewer can understand the system’s differentiators quickly through a UI that
 remains a client of the accepted product surface.
