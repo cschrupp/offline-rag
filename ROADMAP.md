@@ -670,7 +670,9 @@ Slice 14 checklist:
   scientific knobs — S16-D20 / S16-D21
 - Gold Lab redesigns adjudication workflow granularity while preserving
   GoldDataset v1 / Silver→Gold truth criteria — S16-D23–S16-D34
-- **16D-C** / A4 closeout complete; do **not** start 16E without separate explicit authorization
+- **16D-C** / A4 closeout complete; **16E** implementation candidate is under
+  independent/human acceptance review; do **not** start **16F** without
+  separate explicit authorization
 - Product: **Seneca — Grounded knowledge workspace**
 
 **Slice 17 — Regression CI:** **PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED**

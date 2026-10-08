@@ -1005,7 +1005,8 @@ Bind the application to localhost unless the user explicitly configures network 
 The accepted product/API surface can be used from CLI and from the Seneca
 browser client through the same app layer, and the OfflineRAG application
 starts as one container while using an independently running local generator.
-Slice 16 remains **IN PROGRESS / NOT COMPLETE** because **16E–16H** are still
+Slice 16 remains **IN PROGRESS / NOT COMPLETE** because **16E** is an
+**IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING** and **16F–16H** remain
 **NOT AUTHORIZED**; Seneca consuming the API does not close Slice 16.
 
 ---
