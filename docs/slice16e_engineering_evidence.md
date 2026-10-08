@@ -136,6 +136,70 @@ Disabled / LangGraph Deferred — no toggle.
 - Global nav: Engineering (with Overview / Workspaces / Settings)
 - Overview: bounded capability copy + Engineering evidence card
 - Architecture sections: Product / Snapshot-data / Deployment + Deferred
+  (accessible layered React/CSS flows; ASCII `<pre>` diagrams removed)
+
+## Rework 2 — presentation & visual accessibility
+
+Scope: UI presentation, hierarchy, accessibility, architecture visualization,
+bounded evidence charts. Evidence pipeline and scientific values unchanged.
+
+Presentation hierarchy (Evaluation):
+
+1. Engineering evidence + purpose + static/read-only limits
+2. Visual evidence summary (retrieval nDCG chart; 14C quality/latency panels)
+3. Precise supporting tables (disclosures)
+4. Methodological caveats (disclosures)
+5. Provenance (`manifest_id`, hashes) in disclosures — not page lead
+
+Charts (React/CSS only; no chart library):
+
+| Visual | Domain / layout | Data source |
+|---|---|---|
+| Retrieval nDCG@10 horizontal bars | fixed 0.0→1.0; A–F order | selected population arms |
+| 14C quality panel | nDCG@10 only | `performance.slice14c` variants |
+| 14C latency panel | retrieval p50/p95 | same variants (separate panel) |
+
+Generation and Level-C charts: not added (tables remain clearer).
+
+Security / recovery: status flows only (no charts). Campaign outcome remains
+visually separate from harness acceptance. Recovery remains disabled / no toggle.
+
+### Contrast checks (computed from `tokens.css` pairs)
+
+| Pair | Foreground | Background | Ratio | Target |
+|---|---|---|---|---|
+| Engineering inactive tab | `--navy` `#0b1f33` | `--white` `#ffffff` | 16.69:1 | ≥4.5 |
+| Engineering active tab | `--white` `#ffffff` | `--slate` `#24384a` | 12.07:1 | ≥4.5 |
+| Engineering hover | `--navy` `#0b1f33` | `--surface` `#f6f7f8` | 15.56:1 | ≥4.5 |
+| Focus indicator | `--action` `#175cd3` | `--white` `#ffffff` | 5.99:1 | ≥3 (large/UI) |
+| Diagram / chart primary text | `--text` / `--navy` | `--white` | ≥16:1 | ≥4.5 |
+| Muted explanatory copy | `--muted` `#5b6875` | `--white` / `--surface` | 5.70 / 5.32:1 | ≥4.5 |
+
+Undefined Engineering tokens `--ink` / `--line`: removed. Borders use
+`--color-border`.
+
+### Visual / reflow checks
+
+| Viewport | Result |
+|---|---|
+| Desktop ~1440 CSS px | Engineering Evaluation + Architecture readable; charts legible |
+| Wide desktop ~2048 CSS px | No excessive stretch; header prose bounded (`max-width: 48rem`); evidence canvas `min(84rem, 100%)` |
+| Narrow ~390 CSS px | Content reflows; no page-wide horizontal scroll; tables scroll in `.engineering-table-wrap` |
+| Browser zoom ~200% | Content remains usable; no page-wide horizontal scroll observed |
+
+Keyboard: Evaluation/Architecture subnav, population `<select>`, provenance /
+metrics / caveats `<details>`, and native links remain operable; focus-visible
+outline retained (`--color-focus`).
+
+### Chart / table parity
+
+- Retrieval chart values and detailed table share `arm.metrics.ndcg_at_10` from
+  the selected population.
+- Population switch (`full-22` / `human-16`) updates chart, table, and takeaway.
+- 14C quality/latency panels and detailed tables share the same variant metrics
+  from the manifest.
+- Vitest covers A–F order, 0–1 domain, parity, security/recovery flows, and no
+  `/eval/*` calls.
 
 ## Validation evidence
 
@@ -162,6 +226,16 @@ Manual browser smoke (Vite `127.0.0.1:5173`):
 - No `/eval/*` calls observed from Engineering
 - Narrow ~390 px: page scrollWidth matched clientWidth; tables scroll inside wrap
 
+16E Rework 2 (presentation / a11y):
+
+- `cd ui && npm test` — PASS (143 tests)
+- `npm run lint` / `npm run typecheck` / `npm run build` — PASS
+- `git diff --check` — PASS
+- Evidence registry / exporter / manifest bytes: unchanged
+- Manual desktop / wide / narrow / 200% zoom visual smoke: recorded above
+- Friend/manual-verification usability study: out of Codex scope for Rework 2
+  (separate human review before any Workspace remediation)
+
 ## Scientific non-scope
 
 Confirmed absent:
@@ -187,7 +261,14 @@ AUTHORIZED BASELINE:
 08b82a7f44cda6e0398293f47c248cd139fe2321
 
 16E-E3 evidence/status:
-(this documentation commit)
+1f5bd88935a222a4cee33e969b52f9126fccd9df
+
+16E-R1 governance wording:
+e3eb6bc835c3edf4878193499ecbae691867a398
+
+16E Rework 2 presentation / a11y:
+(this commit)
 ```
 
 Do not self-accept. Independent review + human acceptance required.
+Do not seal 16E. Do not begin 16F.

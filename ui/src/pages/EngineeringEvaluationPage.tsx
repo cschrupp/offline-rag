@@ -7,9 +7,12 @@ import {
   fetchEngineeringEvidenceManifest,
   recordById,
 } from "../features/engineering/evidenceClient";
+import { ComparisonPanel } from "../features/engineering/ComparisonPanel";
 import { EngineeringNav } from "../features/engineering/EngineeringNav";
 import { EvidenceMetric } from "../features/engineering/EvidenceMetric";
+import { MetricBarChart } from "../features/engineering/MetricBarChart";
 import { ProvenanceDetails } from "../features/engineering/ProvenanceDetails";
+import { StatusFlow } from "../features/engineering/StatusFlow";
 import {
   isMetric,
   type EvidenceRecord,
@@ -20,17 +23,24 @@ function asMetric(value: unknown): Metric | null {
   return isMetric(value) ? value : null;
 }
 
-function CaveatList({ record }: { record: EvidenceRecord }) {
+function PromotionExplain({ badge }: { badge: string }) {
   return (
-    <ul className="engineering-caveats">
-      {record.caveats.map((caveat) => (
-        <li key={caveat}>{caveat}</li>
-      ))}
-    </ul>
+    <div className="row engineering-status-explain">
+      <Badge tone="empty" label={badge} />
+      <span>
+        Exploratory result; does not authorize a configuration change.
+      </span>
+    </div>
   );
 }
 
-function RetrievalSection({ record }: { record: EvidenceRecord }) {
+function RetrievalSection({
+  record,
+  manifestId,
+}: {
+  record: EvidenceRecord;
+  manifestId: string;
+}) {
   const presentation = record.presentation;
   const populations = presentation.populations as
     | Record<
@@ -54,19 +64,33 @@ function RetrievalSection({ record }: { record: EvidenceRecord }) {
   const [populationId, setPopulationId] = useState(defaultPopulation ?? "");
   const population = populations?.[populationId];
 
+  const chartRows =
+    population?.arms.map((arm) => ({
+      id: arm.arm_id,
+      label: `${arm.arm_id} · ${arm.label}`,
+      metric: asMetric(arm.metrics.ndcg_at_10)!,
+    })) ?? [];
+
+  const takeaway =
+    populationId === "human-16"
+      ? "Several retrieval variants produce similar top ranking-quality results on this small pilot; ordering of the top two arms changes under the human-16 sensitivity view."
+      : "Several retrieval variants produce similar top ranking-quality results on this small pilot; ordering changes under the human-16 sensitivity view.";
+
   return (
-    <Card className="stack">
+    <Card className="stack engineering-evidence-card">
       <header className="stack" style={{ gap: "0.5rem" }}>
         <div className="row">
           <h2 style={{ margin: 0 }}>Retrieval quality</h2>
           <Badge tone="empty" label="Pilot" />
-          <Badge tone="empty" label="Non-promotional" />
         </div>
-        <p className="muted" style={{ margin: 0 }}>
-          {record.summary}
+        <PromotionExplain badge="Non-promotional" />
+        <p style={{ margin: 0 }}>{record.summary}</p>
+        <p className="engineering-result-limit" style={{ margin: 0 }}>
+          Exploratory result — does not authorize a configuration change. Small
+          descriptive populations only (Slice 9H-P pilot).
         </p>
-        <CaveatList record={record} />
       </header>
+
       {populationIds.length > 1 ? (
         <div className="row">
           <label htmlFor="retrieval-population">
@@ -85,64 +109,103 @@ function RetrievalSection({ record }: { record: EvidenceRecord }) {
           </label>
         </div>
       ) : null}
+
       {population ? (
         <>
-          <p className="muted" style={{ margin: 0 }}>
-            {population.ndcg_order_note}
+          <p style={{ margin: 0 }}>
+            <strong>nDCG@10.</strong> Ranking quality among the first ten
+            results; higher is better. This is retrieval-ranking evidence, not
+            answer accuracy.
           </p>
-          <div className="engineering-table-wrap">
-            <table>
-              <caption>
-                Retrieval arms for {population.label} (static accepted evidence)
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col">Arm</th>
-                  <th scope="col">nDCG@10</th>
-                  <th scope="col">Hit@1</th>
-                  <th scope="col">MRR</th>
-                  <th scope="col">Recall@10</th>
-                  <th scope="col">Descriptive latency</th>
-                </tr>
-              </thead>
-              <tbody>
-                {population.arms.map((arm) => (
-                  <tr key={arm.arm_id}>
-                    <th scope="row">
-                      {arm.arm_id} · {arm.label}
-                    </th>
-                    <td>
-                      <EvidenceMetric metric={asMetric(arm.metrics.ndcg_at_10)!} />
-                    </td>
-                    <td>
-                      <EvidenceMetric metric={asMetric(arm.metrics.hit_at_1)!} />
-                    </td>
-                    <td>
-                      <EvidenceMetric metric={asMetric(arm.metrics.mrr)!} />
-                    </td>
-                    <td>
-                      <EvidenceMetric
-                        metric={asMetric(arm.metrics.recall_at_10)!}
-                      />
-                    </td>
-                    <td>
-                      <EvidenceMetric
-                        metric={asMetric(arm.metrics.descriptive_latency)!}
-                      />
-                    </td>
+          <MetricBarChart
+            caption={`Retrieval nDCG@10 — ${population.label} (A–F order preserved)`}
+            rows={chartRows}
+            domainMax={1}
+            valueHeading="nDCG@10"
+          />
+          <p className="engineering-takeaway" style={{ margin: 0 }}>
+            {takeaway}
+          </p>
+          {population.ndcg_order_note ? (
+            <p className="muted" style={{ margin: 0 }}>
+              {population.ndcg_order_note}
+            </p>
+          ) : null}
+          <details className="engineering-provenance">
+            <summary>View detailed metrics</summary>
+            <div className="engineering-table-wrap" style={{ marginTop: "0.75rem" }}>
+              <table data-testid="retrieval-metrics-table">
+                <caption>
+                  Retrieval arms for {population.label} (static accepted evidence)
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Arm</th>
+                    <th scope="col">nDCG@10</th>
+                    <th scope="col">Hit@1</th>
+                    <th scope="col">MRR</th>
+                    <th scope="col">Recall@10</th>
+                    <th scope="col">Descriptive latency</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {population.arms.map((arm) => (
+                    <tr key={arm.arm_id} data-arm-id={arm.arm_id}>
+                      <th scope="row">
+                        {arm.arm_id} · {arm.label}
+                      </th>
+                      <td data-metric="ndcg_at_10">
+                        <EvidenceMetric metric={asMetric(arm.metrics.ndcg_at_10)!} />
+                      </td>
+                      <td>
+                        <EvidenceMetric metric={asMetric(arm.metrics.hit_at_1)!} />
+                      </td>
+                      <td>
+                        <EvidenceMetric metric={asMetric(arm.metrics.mrr)!} />
+                      </td>
+                      <td>
+                        <EvidenceMetric
+                          metric={asMetric(arm.metrics.recall_at_10)!}
+                        />
+                      </td>
+                      <td>
+                        <EvidenceMetric
+                          metric={asMetric(arm.metrics.descriptive_latency)!}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="muted" style={{ marginTop: "0.75rem" }}>
+              Descriptive latency in this table is from the Slice 9H-P pilot
+              population and is not interchangeable with Slice 14C or Level-C
+              latency measurements.
+            </p>
+          </details>
         </>
       ) : null}
-      <ProvenanceDetails record={record} />
+      <details className="engineering-provenance">
+        <summary>Methodological caveats</summary>
+        <ul className="engineering-caveats">
+          {record.caveats.map((caveat) => (
+            <li key={caveat}>{caveat}</li>
+          ))}
+        </ul>
+      </details>
+      <ProvenanceDetails record={record} manifestId={manifestId} />
     </Card>
   );
 }
 
-function GenerationSection({ record }: { record: EvidenceRecord }) {
+function GenerationSection({
+  record,
+  manifestId,
+}: {
+  record: EvidenceRecord;
+  manifestId: string;
+}) {
   const prompts = record.presentation.prompts as
     | Array<{
         prompt_id: string;
@@ -151,17 +214,18 @@ function GenerationSection({ record }: { record: EvidenceRecord }) {
       }>
     | undefined;
   return (
-    <Card className="stack">
+    <Card className="stack engineering-evidence-card">
       <header className="stack" style={{ gap: "0.5rem" }}>
         <div className="row">
           <h2 style={{ margin: 0 }}>Generation &amp; citations</h2>
           <Badge tone="empty" label="Development" />
-          <Badge tone="empty" label="Non-promotional" />
         </div>
-        <p className="muted" style={{ margin: 0 }}>
-          {record.summary}
+        <PromotionExplain badge="Non-promotional" />
+        <p style={{ margin: 0 }}>{record.summary}</p>
+        <p className="engineering-result-limit" style={{ margin: 0 }}>
+          Development evidence with same-model self-judge limitation. No prompt
+          promotion.
         </p>
-        <CaveatList record={record} />
       </header>
       {prompts ? (
         <div className="engineering-table-wrap">
@@ -216,12 +280,26 @@ function GenerationSection({ record }: { record: EvidenceRecord }) {
           </table>
         </div>
       ) : null}
-      <ProvenanceDetails record={record} />
+      <details className="engineering-provenance">
+        <summary>Methodological caveats</summary>
+        <ul className="engineering-caveats">
+          {record.caveats.map((caveat) => (
+            <li key={caveat}>{caveat}</li>
+          ))}
+        </ul>
+      </details>
+      <ProvenanceDetails record={record} manifestId={manifestId} />
     </Card>
   );
 }
 
-function Performance14cSection({ record }: { record: EvidenceRecord }) {
+function Performance14cSection({
+  record,
+  manifestId,
+}: {
+  record: EvidenceRecord;
+  manifestId: string;
+}) {
   const variants = record.presentation.variants as
     | Array<{
         variant_id: string;
@@ -234,123 +312,187 @@ function Performance14cSection({ record }: { record: EvidenceRecord }) {
   const note =
     typeof record.presentation.comparison_note === "string"
       ? record.presentation.comparison_note
-      : null;
+      : "Higher observed ranking quality with higher observed retrieval latency.";
+
   return (
-    <Card className="stack">
+    <Card className="stack engineering-evidence-card">
       <header className="stack" style={{ gap: "0.5rem" }}>
         <h2 style={{ margin: 0 }}>Performance — 14C retrieval quality-vs-cost</h2>
-        <p className="muted" style={{ margin: 0 }}>
-          {record.summary}
+        <PromotionExplain badge="Non-promotional" />
+        <p style={{ margin: 0 }}>{record.summary}</p>
+        <p className="engineering-result-limit" style={{ margin: 0 }}>
+          Separate population from Slice 9H-P descriptive latency and Level-C
+          end-to-end measurements. No configuration promotion.
         </p>
-        <CaveatList record={record} />
-        {note ? <p style={{ margin: 0 }}>{note}</p> : null}
       </header>
       {variants ? (
         <>
-          <h3>Quality</h3>
-          <div className="engineering-table-wrap">
-            <table>
-              <caption>14C quality metrics by variant</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Variant</th>
-                  <th scope="col">nDCG@10</th>
-                  <th scope="col">Hit@1</th>
-                  <th scope="col">MRR</th>
-                  <th scope="col">Recall@10</th>
-                </tr>
-              </thead>
-              <tbody>
-                {variants.map((variant) => (
-                  <tr key={`q-${variant.variant_id}`}>
-                    <th scope="row">{variant.label}</th>
-                    <td>
-                      <EvidenceMetric metric={asMetric(variant.quality.ndcg_at_10)!} />
-                    </td>
-                    <td>
-                      <EvidenceMetric metric={asMetric(variant.quality.hit_at_1)!} />
-                    </td>
-                    <td>
-                      <EvidenceMetric metric={asMetric(variant.quality.mrr)!} />
-                    </td>
-                    <td>
-                      <EvidenceMetric
-                        metric={asMetric(variant.quality.recall_at_10)!}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div
+            className="engineering-dual-panels"
+            data-testid="performance-14c-panels"
+          >
+            <ComparisonPanel
+              title="Quality"
+              data-testid="performance-14c-quality"
+              variants={variants.map((variant) => ({
+                id: variant.variant_id,
+                label: variant.label,
+                metrics: [
+                  {
+                    label: "nDCG@10",
+                    metric: asMetric(variant.quality.ndcg_at_10)!,
+                  },
+                ],
+              }))}
+            />
+            <ComparisonPanel
+              title="Latency"
+              data-testid="performance-14c-latency"
+              variants={variants.map((variant) => ({
+                id: variant.variant_id,
+                label: variant.label,
+                metrics: [
+                  {
+                    label: "Retrieval p50",
+                    metric: asMetric(variant.latency.retrieval_p50)!,
+                  },
+                  {
+                    label: "Retrieval p95",
+                    metric: asMetric(variant.latency.retrieval_p95)!,
+                  },
+                ],
+              }))}
+            />
           </div>
-          <h3>Latency</h3>
-          <div className="engineering-table-wrap">
-            <table>
-              <caption>14C retrieval-path latency by variant</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Variant</th>
-                  <th scope="col">Retrieval p50</th>
-                  <th scope="col">Retrieval p95</th>
-                </tr>
-              </thead>
-              <tbody>
-                {variants.map((variant) => (
-                  <tr key={`l-${variant.variant_id}`}>
-                    <th scope="row">{variant.label}</th>
-                    <td>
-                      <EvidenceMetric
-                        metric={asMetric(variant.latency.retrieval_p50)!}
-                      />
-                    </td>
-                    <td>
-                      <EvidenceMetric
-                        metric={asMetric(variant.latency.retrieval_p95)!}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <h3>Resources</h3>
-          <div className="engineering-table-wrap">
-            <table>
-              <caption>14C resource observations by variant</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Variant</th>
-                  <th scope="col">RAM RSS p50</th>
-                  <th scope="col">VRAM availability</th>
-                </tr>
-              </thead>
-              <tbody>
-                {variants.map((variant) => (
-                  <tr key={`r-${variant.variant_id}`}>
-                    <th scope="row">{variant.label}</th>
-                    <td>
-                      <EvidenceMetric
-                        metric={asMetric(variant.resources.ram_rss_bytes_p50)!}
-                      />
-                    </td>
-                    <td>
-                      <EvidenceMetric
-                        metric={asMetric(variant.resources.vram_availability)!}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <p className="engineering-takeaway" style={{ margin: 0 }}>
+            Adding the reranker increased observed ranking quality and retrieval
+            latency in the accepted 14C benchmark.
+          </p>
+          <p style={{ margin: 0 }}>{note}</p>
+          <details className="engineering-provenance">
+            <summary>View detailed metrics</summary>
+            <div className="stack" style={{ marginTop: "0.75rem" }}>
+              <div className="engineering-table-wrap">
+                <table data-testid="performance-14c-quality-table">
+                  <caption>14C quality metrics by variant</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Variant</th>
+                      <th scope="col">nDCG@10</th>
+                      <th scope="col">Hit@1</th>
+                      <th scope="col">MRR</th>
+                      <th scope="col">Recall@10</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {variants.map((variant) => (
+                      <tr key={`q-${variant.variant_id}`} data-variant-id={variant.variant_id}>
+                        <th scope="row">{variant.label}</th>
+                        <td data-metric="ndcg_at_10">
+                          <EvidenceMetric
+                            metric={asMetric(variant.quality.ndcg_at_10)!}
+                          />
+                        </td>
+                        <td>
+                          <EvidenceMetric
+                            metric={asMetric(variant.quality.hit_at_1)!}
+                          />
+                        </td>
+                        <td>
+                          <EvidenceMetric metric={asMetric(variant.quality.mrr)!} />
+                        </td>
+                        <td>
+                          <EvidenceMetric
+                            metric={asMetric(variant.quality.recall_at_10)!}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="engineering-table-wrap">
+                <table data-testid="performance-14c-latency-table">
+                  <caption>14C retrieval-path latency by variant</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Variant</th>
+                      <th scope="col">Retrieval p50</th>
+                      <th scope="col">Retrieval p95</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {variants.map((variant) => (
+                      <tr key={`l-${variant.variant_id}`} data-variant-id={variant.variant_id}>
+                        <th scope="row">{variant.label}</th>
+                        <td data-metric="retrieval_p50">
+                          <EvidenceMetric
+                            metric={asMetric(variant.latency.retrieval_p50)!}
+                          />
+                        </td>
+                        <td data-metric="retrieval_p95">
+                          <EvidenceMetric
+                            metric={asMetric(variant.latency.retrieval_p95)!}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="engineering-table-wrap">
+                <table>
+                  <caption>14C resource observations by variant</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Variant</th>
+                      <th scope="col">RAM RSS p50</th>
+                      <th scope="col">VRAM availability</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {variants.map((variant) => (
+                      <tr key={`r-${variant.variant_id}`}>
+                        <th scope="row">{variant.label}</th>
+                        <td>
+                          <EvidenceMetric
+                            metric={asMetric(variant.resources.ram_rss_bytes_p50)!}
+                          />
+                        </td>
+                        <td>
+                          <EvidenceMetric
+                            metric={asMetric(variant.resources.vram_availability)!}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </details>
         </>
       ) : null}
-      <ProvenanceDetails record={record} />
+      <details className="engineering-provenance">
+        <summary>Methodological caveats</summary>
+        <ul className="engineering-caveats">
+          {record.caveats.map((caveat) => (
+            <li key={caveat}>{caveat}</li>
+          ))}
+        </ul>
+      </details>
+      <ProvenanceDetails record={record} manifestId={manifestId} />
     </Card>
   );
 }
 
-function PerformanceLevelCSection({ record }: { record: EvidenceRecord }) {
+function PerformanceLevelCSection({
+  record,
+  manifestId,
+}: {
+  record: EvidenceRecord;
+  manifestId: string;
+}) {
   const metrics = record.presentation.metrics as Record<string, unknown> | undefined;
   const rows: Array<[string, string]> = [
     ["End-to-end p50", "end_to_end_p50"],
@@ -362,13 +504,15 @@ function PerformanceLevelCSection({ record }: { record: EvidenceRecord }) {
     ["Tokens/sec", "tokens_per_sec"],
   ];
   return (
-    <Card className="stack">
+    <Card className="stack engineering-evidence-card">
       <header className="stack" style={{ gap: "0.5rem" }}>
         <h2 style={{ margin: 0 }}>Performance — Level-C end-to-end</h2>
-        <p className="muted" style={{ margin: 0 }}>
-          {record.summary}
+        <PromotionExplain badge="Non-promotional" />
+        <p style={{ margin: 0 }}>{record.summary}</p>
+        <p className="engineering-result-limit" style={{ margin: 0 }}>
+          Separate population from 14C retrieval-path latency. No derived
+          stage-overhead arithmetic.
         </p>
-        <CaveatList record={record} />
       </header>
       {metrics ? (
         <div className="engineering-table-wrap">
@@ -396,46 +540,74 @@ function PerformanceLevelCSection({ record }: { record: EvidenceRecord }) {
           </table>
         </div>
       ) : null}
-      <ProvenanceDetails record={record} />
+      <details className="engineering-provenance">
+        <summary>Methodological caveats</summary>
+        <ul className="engineering-caveats">
+          {record.caveats.map((caveat) => (
+            <li key={caveat}>{caveat}</li>
+          ))}
+        </ul>
+      </details>
+      <ProvenanceDetails record={record} manifestId={manifestId} />
     </Card>
   );
 }
 
-function RecoverySection({ record }: { record: EvidenceRecord }) {
+function RecoverySection({
+  record,
+  manifestId,
+}: {
+  record: EvidenceRecord;
+  manifestId: string;
+}) {
   const p = record.presentation;
   return (
-    <Card className="stack">
+    <Card className="stack engineering-evidence-card">
       <header className="stack" style={{ gap: "0.5rem" }}>
         <h2 style={{ margin: 0 }}>Recovery</h2>
-        <p className="muted" style={{ margin: 0 }}>
-          {record.summary}
-        </p>
-        <CaveatList record={record} />
+        <p style={{ margin: 0 }}>{record.summary}</p>
       </header>
-      <dl className="engineering-status-dl">
-        <div>
-          <dt>Evaluation</dt>
-          <dd>{String(p.evaluation)}</dd>
-        </div>
-        <div>
-          <dt>Efficacy evidence</dt>
-          <dd>{String(p.efficacy_evidence)}</dd>
-        </div>
-        <div>
-          <dt>Product recovery</dt>
-          <dd>{String(p.product_recovery)}</dd>
-        </div>
-        <div>
-          <dt>LangGraph</dt>
-          <dd>{String(p.langgraph)}</dd>
-        </div>
-      </dl>
-      <ProvenanceDetails record={record} />
+      <StatusFlow
+        title="Recovery disposition"
+        data-testid="recovery-status-flow"
+        steps={[
+          { label: "Bounded recovery", value: "Implemented" },
+          { label: "Evaluation", value: String(p.evaluation) },
+          {
+            label: "Efficacy evidence",
+            value: String(p.efficacy_evidence),
+          },
+          {
+            label: "Product recovery",
+            value: String(p.product_recovery),
+          },
+        ]}
+        aside={{
+          label: "LangGraph",
+          value: String(p.langgraph),
+        }}
+        explanation="Product recovery remains disabled. This page does not offer a recovery control."
+      />
+      <details className="engineering-provenance">
+        <summary>Methodological caveats</summary>
+        <ul className="engineering-caveats">
+          {record.caveats.map((caveat) => (
+            <li key={caveat}>{caveat}</li>
+          ))}
+        </ul>
+      </details>
+      <ProvenanceDetails record={record} manifestId={manifestId} />
     </Card>
   );
 }
 
-function SecuritySection({ record }: { record: EvidenceRecord }) {
+function SecuritySection({
+  record,
+  manifestId,
+}: {
+  record: EvidenceRecord;
+  manifestId: string;
+}) {
   const primary = record.presentation.primary as
     | {
         title: string;
@@ -453,37 +625,36 @@ function SecuritySection({ record }: { record: EvidenceRecord }) {
       }
     | undefined;
   return (
-    <Card className="stack">
+    <Card className="stack engineering-evidence-card">
       <header className="stack" style={{ gap: "0.5rem" }}>
         <h2 style={{ margin: 0 }}>Security / robustness</h2>
-        <p className="muted" style={{ margin: 0 }}>
-          {record.summary}
+        <p style={{ margin: 0 }}>{record.summary}</p>
+        <p className="engineering-result-limit" style={{ margin: 0 }}>
+          Campaign execution completed is not a campaign PASS. Campaign FAIL is
+          not a harness implementation failure.
         </p>
-        <CaveatList record={record} />
       </header>
       {primary ? (
-        <dl className="engineering-status-dl">
-          <div>
-            <dt>Campaign</dt>
-            <dd>{primary.title}</dd>
-          </div>
-          <div>
-            <dt>Execution</dt>
-            <dd>{primary.execution}</dd>
-          </div>
-          <div>
-            <dt>Campaign outcome</dt>
-            <dd>{primary.campaign_outcome}</dd>
-          </div>
-          <div>
-            <dt>Interpretation</dt>
-            <dd>{primary.interpretation}</dd>
-          </div>
-          <div>
-            <dt>Harness</dt>
-            <dd>{primary.harness_implementation}</dd>
-          </div>
-        </dl>
+        <StatusFlow
+          title="Security campaign disposition"
+          data-testid="security-status-flow"
+          steps={[
+            { label: "Campaign execution", value: primary.execution },
+            {
+              label: "Required invariant",
+              value: "security_policy_immutable_v1 — Unevaluable",
+            },
+            {
+              label: "Fail-closed contract",
+              value: primary.campaign_outcome,
+            },
+          ]}
+          aside={{
+            label: "Harness implementation",
+            value: primary.harness_implementation,
+          }}
+          explanation="The campaign completed, but one required invariant could not be evaluated on the accepted measurement surface. The campaign therefore fails closed by contract. Harness accepted does not mean security passed."
+        />
       ) : null}
       {cohort ? (
         <details className="engineering-provenance">
@@ -493,17 +664,26 @@ function SecuritySection({ record }: { record: EvidenceRecord }) {
               {cohort.note}
             </p>
             <p style={{ margin: 0 }}>
-              Adversarial evaluator outcomes: pass {cohort.adversarial.pass} / fail{" "}
-              {cohort.adversarial.fail}
+              Adversarial evaluator outcomes: pass {cohort.adversarial.pass} /
+              fail {cohort.adversarial.fail}
             </p>
             <p style={{ margin: 0 }}>
               Benign evaluator outcomes: pass {cohort.benign.pass} / fail{" "}
-              {cohort.benign.fail}; false positives {cohort.benign.false_positives}
+              {cohort.benign.fail}; false positives{" "}
+              {cohort.benign.false_positives}
             </p>
           </div>
         </details>
       ) : null}
-      <ProvenanceDetails record={record} />
+      <details className="engineering-provenance">
+        <summary>Methodological caveats</summary>
+        <ul className="engineering-caveats">
+          {record.caveats.map((caveat) => (
+            <li key={caveat}>{caveat}</li>
+          ))}
+        </ul>
+      </details>
+      <ProvenanceDetails record={record} manifestId={manifestId} />
     </Card>
   );
 }
@@ -542,28 +722,59 @@ export function EngineeringEvaluationPage() {
     const security = recordById(manifest, "security.slice13b");
     return (
       <div className="stack">
-        <p className="muted" style={{ margin: 0 }}>
-          Manifest <code>{manifest.manifest_id}</code>. Static accepted evidence
-          only — not live telemetry and not an experiment console.
-        </p>
-        {retrieval ? <RetrievalSection record={retrieval} /> : null}
-        {generation ? <GenerationSection record={generation} /> : null}
-        {perf14c ? <Performance14cSection record={perf14c} /> : null}
-        {levelC ? <PerformanceLevelCSection record={levelC} /> : null}
-        {recovery ? <RecoverySection record={recovery} /> : null}
-        {security ? <SecuritySection record={security} /> : null}
+        {retrieval ? (
+          <RetrievalSection
+            record={retrieval}
+            manifestId={manifest.manifest_id}
+          />
+        ) : null}
+        {generation ? (
+          <GenerationSection
+            record={generation}
+            manifestId={manifest.manifest_id}
+          />
+        ) : null}
+        {perf14c ? (
+          <Performance14cSection
+            record={perf14c}
+            manifestId={manifest.manifest_id}
+          />
+        ) : null}
+        {levelC ? (
+          <PerformanceLevelCSection
+            record={levelC}
+            manifestId={manifest.manifest_id}
+          />
+        ) : null}
+        {recovery ? (
+          <RecoverySection
+            record={recovery}
+            manifestId={manifest.manifest_id}
+          />
+        ) : null}
+        {security ? (
+          <SecuritySection
+            record={security}
+            manifestId={manifest.manifest_id}
+          />
+        ) : null}
       </div>
     );
   }, [query.data, query.error, query.isError, query.isLoading]);
 
   return (
     <div className="stack engineering-page">
-      <header className="stack" style={{ gap: "0.5rem" }}>
+      <header className="stack engineering-page-header" style={{ gap: "0.5rem" }}>
         <h1>Engineering evidence</h1>
-        <p className="muted" style={{ margin: 0 }}>
-          Read-only presentation of accepted evaluation evidence. Seneca does not
-          execute benchmarks or mutate scientific configuration from this page.
+        <p style={{ margin: 0 }}>
+          Accepted project evaluation evidence for inspection and demo — not live
+          telemetry and not an experiment console.
         </p>
+        <ul className="engineering-page-limits">
+          <li>Static accepted evidence</li>
+          <li>Read-only</li>
+          <li>No live benchmark execution</li>
+        </ul>
         <EngineeringNav />
       </header>
       {content}

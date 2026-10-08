@@ -1,103 +1,93 @@
 import { Card } from "../components/Card";
+import { ArchitectureFlow } from "../features/engineering/ArchitectureFlow";
 import { EngineeringNav } from "../features/engineering/EngineeringNav";
-
-function Diagram({ children }: { children: string }) {
-  return (
-    <pre className="engineering-diagram" tabIndex={0}>
-      {children}
-    </pre>
-  );
-}
 
 export function EngineeringArchitecturePage() {
   return (
     <div className="stack engineering-page">
-      <header className="stack" style={{ gap: "0.5rem" }}>
+      <header className="stack engineering-page-header" style={{ gap: "0.5rem" }}>
         <h1>Architecture</h1>
-        <p className="muted" style={{ margin: 0 }}>
-          Explanatory diagrams based on accepted architecture. Not live telemetry.
+        <p style={{ margin: 0 }}>
+          Explanatory diagrams based on accepted architecture. Not live
+          telemetry.
         </p>
         <EngineeringNav />
       </header>
 
       <Card className="stack">
-        <h2>Product architecture</h2>
-        <p className="muted" style={{ margin: 0 }}>
-          Active grounded product path used by Seneca and the product API.
-        </p>
-        <Diagram>{`Seneca React UI
-      ↓
-FastAPI adapter
-      ↓
-offline_rag.app
-      ↓
-workspace / admission / query orchestration
-      ↓
-dense + lexical retrieval
-      ↓
-RRF
-      ↓
-reranker
-      ↓
-context assembly
-      ↓
-evidence sufficiency
-      ↓
-local generation client
-      ↓
-answer blocks / citations / provenance`}</Diagram>
+        <ArchitectureFlow
+          title="Product architecture"
+          data-testid="product-architecture-flow"
+          layers={[
+            { title: "Seneca", detail: "React UI" },
+            { title: "FastAPI", detail: "Product adapter" },
+            {
+              title: "Application / workspace core",
+              detail: "admission · snapshots · query/conversation",
+            },
+            {
+              title: "Retrieval & evidence",
+              detail: "dense + lexical · RRF · rerank · context",
+            },
+            {
+              title: "Grounded generation",
+              detail:
+                "sufficiency · local generator · answer blocks / citations / provenance",
+            },
+          ]}
+          notes={[
+            "Active grounded product path used by Seneca and the product API.",
+          ]}
+        />
       </Card>
 
       <Card className="stack">
-        <h2>Snapshot / data architecture</h2>
-        <p className="muted" style={{ margin: 0 }}>
-          Workspace mutations after admission do not silently upgrade prior
-          answers. Current / Historical provenance reflects snapshot binding.
-        </p>
-        <Diagram>{`source versions
-      ↓
-workspace revision
-      ↓
-immutable admitted snapshot
-      ↓
-query / conversational turn
-      ↓
-bound evidence + provenance
-
-workspace may mutate afterward
-but admitted turn remains snapshot-bound
-→ Current / Historical`}</Diagram>
+        <ArchitectureFlow
+          title="Snapshot / data architecture"
+          data-testid="snapshot-architecture-flow"
+          layers={[
+            { title: "Source versions" },
+            { title: "Workspace revision" },
+            { title: "Admitted immutable snapshot" },
+            { title: "Query / conversational turn" },
+            { title: "Evidence + provenance" },
+          ]}
+          notes={[
+            "Workspace changes later do not silently upgrade prior answers.",
+            "Previous admitted turns remain snapshot-bound → Current / Historical provenance.",
+          ]}
+        />
       </Card>
 
       <Card className="stack">
-        <h2>Deployment architecture</h2>
-        <p className="muted" style={{ margin: 0 }}>
-          Generator weights remain outside the application image. Normal
-          strict-offline operation does not require cloud inference; initial
-          model provisioning may still require prior downloads.
-        </p>
-        <Diagram>{`Browser
-   ↓
-OfflineRAG application container
-   ├── built Seneca frontend
-   ├── FastAPI
-   ├── app/product layer
-   ├── Qdrant Local
-   └── retrieval model runtime
-         │
-         ├── /data
-         └── /models
-
-OfflineRAG application
-   ↓ approved local OpenAI-compatible endpoint
-
-Host generation runtime
-   └── Ollama default`}</Diagram>
+        <ArchitectureFlow
+          title="Deployment architecture"
+          data-testid="deployment-architecture-flow"
+          layers={[
+            { title: "Browser" },
+            {
+              title: "OfflineRAG application container",
+              detail:
+                "Seneca frontend · FastAPI · app/product layer · Qdrant Local · retrieval models (/data, /models)",
+            },
+            {
+              title: "Approved local OpenAI-compatible endpoint",
+              detail: "Outside the application image",
+            },
+            {
+              title: "Host generation runtime",
+              detail: "Ollama default — generator weights not in the app container",
+            },
+          ]}
+          notes={[
+            "Normal strict-offline operation does not require cloud inference; initial model provisioning may still require prior downloads.",
+          ]}
+        />
       </Card>
 
-      <Card className="stack">
+      <Card className="stack engineering-deferred-card">
         <h2>Deferred / not active</h2>
-        <p className="muted" style={{ margin: 0 }}>
+        <p style={{ margin: 0 }}>
           These items are not part of the active Seneca execution path.
         </p>
         <ul>

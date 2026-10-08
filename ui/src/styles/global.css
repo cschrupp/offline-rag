@@ -1485,16 +1485,31 @@ button.snapshot-badge {
 }
 
 /* 16E — Engineering evidence presentation */
-.engineering-page,
+.engineering-page {
+  min-width: 0;
+  max-width: min(84rem, 100%);
+  margin-inline: auto;
+}
+
 .engineering-page .card,
 .engineering-page .stack {
   min-width: 0;
   max-width: 100%;
 }
 
+.engineering-page .engineering-page-header {
+  max-width: 48rem;
+}
+
 .engineering-page code {
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+.engineering-page-limits {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: var(--text);
 }
 
 .engineering-subnav {
@@ -1504,22 +1519,56 @@ button.snapshot-badge {
 }
 
 .engineering-subnav a {
-  color: var(--ink);
+  color: var(--navy);
+  background: var(--white);
   text-decoration: none;
-  padding: 0.35rem 0.65rem;
+  padding: 0.5rem 0.85rem;
+  min-height: var(--target);
+  display: inline-flex;
+  align-items: center;
   border-radius: var(--radius);
-  border: 1px solid transparent;
+  border: 1px solid var(--color-border);
+  font-weight: 500;
+}
+
+.engineering-subnav a:hover {
+  background: var(--surface);
+  color: var(--navy);
 }
 
 .engineering-subnav a[aria-current="page"] {
-  border-color: var(--line);
   background: var(--slate);
+  color: var(--white);
+  border-color: var(--slate);
   font-weight: 600;
+}
+
+.engineering-subnav a:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.engineering-status-explain {
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text);
+}
+
+.engineering-result-limit {
+  color: var(--text);
+  border-left: 3px solid var(--brass);
+  padding-left: var(--space-3);
+}
+
+.engineering-takeaway {
+  color: var(--text);
+  font-weight: 500;
 }
 
 .engineering-caveats {
   margin: 0;
   padding-left: 1.2rem;
+  color: var(--text);
 }
 
 .engineering-table-wrap {
@@ -1541,7 +1590,8 @@ button.snapshot-badge {
   text-align: left;
   vertical-align: top;
   padding: 0.5rem 0.65rem;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--text);
 }
 
 .engineering-table-wrap caption {
@@ -1549,19 +1599,213 @@ button.snapshot-badge {
   text-align: left;
   font-weight: 600;
   margin-bottom: 0.5rem;
+  color: var(--navy);
 }
 
-.engineering-diagram {
+.engineering-chart {
   margin: 0;
   padding: var(--space-3);
-  overflow-x: auto;
-  background: var(--slate);
-  border: 1px solid var(--line);
+  background: var(--white);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.engineering-chart-caption {
+  font-weight: 600;
+  color: var(--navy);
+  margin-bottom: var(--space-3);
+}
+
+.engineering-bar-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.engineering-bar-row {
+  display: grid;
+  grid-template-columns: minmax(8rem, 12rem) 1fr minmax(4.5rem, 6rem);
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.engineering-bar-label,
+.engineering-bar-value {
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.engineering-bar-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.engineering-bar-track {
+  height: 0.85rem;
+  background: var(--surface);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.engineering-bar-fill {
+  height: 100%;
+  background: var(--navy);
+}
+
+.engineering-bar-empty {
+  height: 100%;
+  background: transparent;
+}
+
+.engineering-dual-panels {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.engineering-comparison-panel {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+  background: var(--white);
+}
+
+.engineering-comparison-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.engineering-comparison-variant {
+  font-weight: 600;
+  color: var(--navy);
+}
+
+.engineering-comparison-metrics {
+  margin: 0.35rem 0 0;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.engineering-comparison-metrics dt {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.engineering-comparison-metrics dd {
+  margin: 0;
+  color: var(--text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.engineering-status-flow {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+  background: var(--white);
+}
+
+.engineering-flow-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.engineering-flow-steps > li {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+  background: var(--surface);
+}
+
+.engineering-flow-label {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.engineering-flow-value {
+  color: var(--navy);
+  font-weight: 600;
+}
+
+.engineering-flow-aside {
+  margin-top: var(--space-3);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+  background: var(--white);
+}
+
+.engineering-flow-explanation {
+  color: var(--text);
+}
+
+.engineering-arch-flow {
+  color: var(--text);
+}
+
+.engineering-arch-layers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+  max-width: 40rem;
+}
+
+.engineering-arch-layers > li {
+  display: grid;
+  gap: 0.25rem;
+  justify-items: stretch;
+}
+
+.engineering-arch-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--white);
+  color: var(--text);
+  padding: var(--space-3) var(--space-4);
+}
+
+.engineering-arch-step {
+  color: var(--muted);
   font-size: 0.85rem;
-  line-height: 1.45;
-  white-space: pre;
+}
+
+.engineering-arch-title {
+  color: var(--navy);
+  font-weight: 700;
+}
+
+.engineering-arch-detail {
+  color: var(--text);
+}
+
+.engineering-arch-connector {
+  color: var(--navy);
+  text-align: center;
+  font-size: 1.1rem;
+  line-height: 1.2;
+  padding: 0.15rem 0;
+}
+
+.engineering-arch-notes {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: var(--text);
+}
+
+.engineering-deferred-card {
+  border-style: dashed;
 }
 
 .engineering-status-dl,
@@ -1580,11 +1824,13 @@ button.snapshot-badge {
 .engineering-status-dl dt,
 .engineering-provenance-dl dt {
   font-weight: 600;
+  color: var(--navy);
 }
 
 .engineering-status-dl dd,
 .engineering-provenance-dl dd {
   margin: 0;
+  color: var(--text);
 }
 
 .engineering-source-list {
@@ -1595,6 +1841,37 @@ button.snapshot-badge {
 .engineering-provenance > summary {
   cursor: pointer;
   font-weight: 600;
+  color: var(--navy);
+  min-height: var(--target);
+  display: inline-flex;
+  align-items: center;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 800px) {
+  .engineering-bar-row {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+  }
+
+  .engineering-bar-value {
+    text-align: left;
+  }
+
+  .engineering-dual-panels {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

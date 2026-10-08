@@ -4,7 +4,11 @@ function formatField(value: unknown): string {
   if (value === null || value === undefined) {
     return "Unavailable in committed accepted evidence";
   }
-  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
     return String(value);
   }
   try {
@@ -16,9 +20,10 @@ function formatField(value: unknown): string {
 
 type Props = {
   record: EvidenceRecord;
+  manifestId?: string;
 };
 
-export function ProvenanceDetails({ record }: Props) {
+export function ProvenanceDetails({ record, manifestId }: Props) {
   const fields = record.provenance.fields ?? {};
   const entries = Object.entries(fields).filter(([, value]) => value !== undefined);
 
@@ -26,6 +31,11 @@ export function ProvenanceDetails({ record }: Props) {
     <details className="engineering-provenance">
       <summary>View provenance</summary>
       <div className="stack" style={{ gap: "0.75rem", marginTop: "0.75rem" }}>
+        {manifestId ? (
+          <p style={{ margin: 0 }}>
+            <strong>Manifest ID.</strong> <code>{manifestId}</code>
+          </p>
+        ) : null}
         <p className="muted" style={{ margin: 0 }}>
           Authority: {record.evidence_authority} · Promotion:{" "}
           {record.promotion_status}
