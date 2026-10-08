@@ -1149,6 +1149,7 @@ AMENDMENT A4: ACCEPTED / LOCKED / SEALED
   REMEDIATION EVIDENCE TIP: 9cd5528ab6c6e22d2dca55aca221b65eac50269e
   EVIDENCE: docs/slice16e_engineering_evidence.md
   REMEDIATION: docs/workspace_source_loading_remediation.md
+  CLOSEOUT: docs/slice16e_closeout.md
 16F–16H: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
 SLICE 18: NOT AUTHORIZED

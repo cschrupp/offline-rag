@@ -1032,6 +1032,7 @@ Authoritative current governance:
 - [`docs/slice16_implementation_plan.md`](docs/slice16_implementation_plan.md)
 - [`ROADMAP.md`](ROADMAP.md)
 - [`docs/slice16e_engineering_evidence.md`](docs/slice16e_engineering_evidence.md)
+- [`docs/slice16e_closeout.md`](docs/slice16e_closeout.md)
 - [`docs/workspace_source_loading_remediation.md`](docs/workspace_source_loading_remediation.md)
 - [`docs/slice16d_c_a4_closeout.md`](docs/slice16d_c_a4_closeout.md)
 

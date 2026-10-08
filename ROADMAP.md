@@ -470,6 +470,7 @@ SLICE 15  COMPLETE / ACCEPTED
        REMEDIATION EVIDENCE TIP 9cd5528ab6c6e22d2dca55aca221b65eac50269e
        Evidence: docs/slice16e_engineering_evidence.md
        Remediation: docs/workspace_source_loading_remediation.md
+       Closeout: docs/slice16e_closeout.md
      16F–16H NOT AUTHORIZED
      Slice 16 overall IN PROGRESS / NOT COMPLETE
      Authority: docs/slice16_design_authority.md

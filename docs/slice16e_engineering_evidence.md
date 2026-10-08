@@ -2,8 +2,16 @@
 
 ```text
 16E:
-IMPLEMENTATION CANDIDATE /
-HUMAN ACCEPTANCE PENDING
+COMPLETE / ACCEPTED / SEALED
+
+Accepted Engineering implementation:
+3e1ce4c94fc511abb4e1d94bd194736d5497e64f
+
+Independent review:
+PASSED
+
+Human acceptance:
+ACCEPTED
 
 AUTHORIZED BASELINE:
 5bfa43aad14b47f75bdc2c914cbe346f66225ff1
@@ -25,6 +33,25 @@ IN PROGRESS / NOT COMPLETE
 
 SLICE 17 / 18 / M7 CLOSEOUT:
 NOT AUTHORIZED
+```
+
+### Workspace source-loading integration remediation (post-Engineering)
+
+Separate accepted pre-closeout integration remediation. Does **not** change
+Engineering scientific evidence values.
+
+```text
+Workspace source-loading integration remediation:
+COMPLETE / ACCEPTED
+
+Implementation:
+9dd2b008ebf9feee279dc6d0e58fafb006288ee5
+
+Verified remediation tip:
+9cd5528ab6c6e22d2dca55aca221b65eac50269e
+
+Evidence:
+docs/workspace_source_loading_remediation.md
 ```
 
 ## Objective
@@ -60,14 +87,21 @@ Paths:
 - Manifest: `ui/public/evidence/engineering-evidence-v1.json`
 - Runtime request: `GET /evidence/engineering-evidence-v1.json` (static asset)
 
-Manifest ID (byte-identical regeneration):
+Manifest ID (byte-identical regeneration after sealed M7 re-pin):
+
+```text
+engmanifest_76918e8089ead9b34563ad33a0a4321467c642b5220ef1690bba761d53aad9b2
+```
+
+Previous ID (pre-seal M7 governance bytes):
 
 ```text
 engmanifest_d063642a25ceca842d716c5e2180144cb6c4734dd1b6269d37e610624a29caff
 ```
 
-(If governance edits re-pin a source hash, regenerate and update this ID in the
-same commit.)
+The ID change is controlled provenance churn from sealing 16E status inside
+the Level-C pinned Markdown source — not a benchmark rerun. See
+[`docs/slice16e_closeout.md`](slice16e_closeout.md).
 
 ## Evidence records
 
@@ -259,7 +293,7 @@ Presentation-only micro-rework (16E-VR8). No evidence/chart/logic changes.
 
 - `cd ui && npm test` / lint / typecheck / build — see STOP report
 - Registry / exporter / manifest: unchanged
-- 16E acceptance status: unchanged (HUMAN ACCEPTANCE PENDING)
+- 16E acceptance status: later sealed at Engineering `3e1ce4c…`
 
 ## Scientific non-scope
 
@@ -273,7 +307,7 @@ Confirmed absent:
 - `PORTFOLIO_DEMO.md` updates
 - Slice 17 CI workflows
 
-## Implementation lineage (this candidate)
+## Implementation lineage
 
 ```text
 AUTHORIZED BASELINE:
@@ -295,8 +329,12 @@ e3eb6bc835c3edf4878193499ecbae691867a398
 000d93986144510f2c9ba9d0149ab1992548dd48
 
 16E Rework 3 workflow visual hierarchy:
-(this commit)
+(presentation micro-rework; closed under Engineering acceptance)
+
+ACCEPTED ENGINEERING IMPLEMENTATION:
+3e1ce4c94fc511abb4e1d94bd194736d5497e64f
 ```
 
-Do not self-accept. Independent review + human acceptance required.
-Do not seal 16E. Do not begin 16F.
+Closeout / seal: [`docs/slice16e_closeout.md`](slice16e_closeout.md).
+
+Do not begin 16F without separate explicit authorization.

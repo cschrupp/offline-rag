@@ -313,6 +313,7 @@ cd ui && npm test && npm run lint && npm run typecheck && npm run build
 | M7 closeout | **NOT AUTHORIZED** |
 
 Detailed SHAs and evidence: [`ROADMAP.md`](ROADMAP.md),
+[`docs/slice16e_closeout.md`](docs/slice16e_closeout.md),
 [`docs/slice16e_engineering_evidence.md`](docs/slice16e_engineering_evidence.md),
 [`docs/workspace_source_loading_remediation.md`](docs/workspace_source_loading_remediation.md),
 [`docs/slice16d_c_a4_closeout.md`](docs/slice16d_c_a4_closeout.md),
