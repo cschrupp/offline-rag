@@ -236,6 +236,31 @@ Manual browser smoke (Vite `127.0.0.1:5173`):
 - Friend/manual-verification usability study: out of Codex scope for Rework 2
   (separate human review before any Workspace remediation)
 
+## Rework 3 — workflow visual hierarchy
+
+Presentation-only micro-rework (16E-VR8). No evidence/chart/logic changes.
+
+- Active architecture layers use one restrained action-tinted surface
+  (`rgb(23 92 211 / 5%)`) with a slightly stronger blue-gray border and a thin
+  `--action` leading edge — not white-on-white inside white cards.
+- Status-flow steps use the same active-path language; harness/LangGraph asides
+  remain dashed/neutral.
+- Deferred / not active stays quieter (`--surface`, dashed border) and does not
+  receive the active blue workflow treatment.
+- Semantic structure remains step number, title, detail, connectors, and ordered
+  list semantics — color is figure-ground only (no rainbow layers; no
+  green/red status coloring).
+- Contrast on tint ≈ `#f3f7fd`: muted 5.31:1; body text 15.16:1; navy title
+  15.53:1; focus action 5.57:1.
+- Desktop / wide / narrow / ~200% zoom visual smoke revalidated for architecture
+  hierarchy calmness.
+
+16E Rework 3 validation:
+
+- `cd ui && npm test` / lint / typecheck / build — see STOP report
+- Registry / exporter / manifest: unchanged
+- 16E acceptance status: unchanged (HUMAN ACCEPTANCE PENDING)
+
 ## Scientific non-scope
 
 Confirmed absent:
@@ -267,6 +292,9 @@ AUTHORIZED BASELINE:
 e3eb6bc835c3edf4878193499ecbae691867a398
 
 16E Rework 2 presentation / a11y:
+000d93986144510f2c9ba9d0149ab1992548dd48
+
+16E Rework 3 workflow visual hierarchy:
 (this commit)
 ```
 

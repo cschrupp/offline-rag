@@ -100,6 +100,30 @@ describe("16E presentation tokens and architecture", () => {
     expect(globalCss).not.toContain(".engineering-diagram");
   });
 
+  it("gives active architecture/workflow blocks a dedicated tinted treatment (not white-on-white)", () => {
+    const archBlock = globalCss.match(
+      /\.engineering-arch-card\s*\{[^}]+\}/,
+    )?.[0];
+    expect(archBlock).toBeTruthy();
+    expect(archBlock).toMatch(/background:\s*rgb\(23 92 211 \/ 5%\)/);
+    expect(archBlock).not.toMatch(/background:\s*var\(--white\)/);
+    expect(archBlock).toMatch(/border-inline-start:\s*3px solid var\(--action\)/);
+
+    const flowStep = globalCss.match(
+      /\.engineering-flow-steps > li\s*\{[^}]+\}/,
+    )?.[0];
+    expect(flowStep).toBeTruthy();
+    expect(flowStep).toMatch(/background:\s*rgb\(23 92 211 \/ 5%\)/);
+
+    const deferred = globalCss.match(
+      /\.engineering-deferred-card\s*\{[^}]+\}/,
+    )?.[0];
+    expect(deferred).toBeTruthy();
+    expect(deferred).toMatch(/border-style:\s*dashed/);
+    expect(deferred).toMatch(/background:\s*var\(--surface\)/);
+    expect(deferred).not.toMatch(/rgb\(23 92 211/);
+  });
+
   it("renders architecture flows instead of ASCII pre blocks", async () => {
     const mock = installAppMocks();
     renderApp("/engineering/architecture");
