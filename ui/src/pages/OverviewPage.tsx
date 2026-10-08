@@ -82,14 +82,30 @@ export function OverviewPage() {
       </div>
 
       <Card>
-        <h2>Manage sources</h2>
+        <h2>Inside a workspace</h2>
         <p className="muted">
-          Create and maintain workspaces and their active sources. Asking
-          questions and reviewing evidence belong to a later phase and are not
-          available here.
+          Create and open workspaces, add or version local sources, ask grounded
+          questions, inspect citations and Evidence, and optionally use Training
+          Mode.
         </p>
         <div className="row">
           <Button to="/workspaces">Open workspaces</Button>
+        </div>
+      </Card>
+
+      <Card className="stack">
+        <h2>Engineering evidence</h2>
+        <p className="muted" style={{ margin: 0 }}>
+          Review accepted evaluation evidence and system architecture.
+        </p>
+        <p className="muted" style={{ margin: 0 }}>
+          Static evidence is not live system telemetry.
+        </p>
+        <div className="row">
+          <Button to="/engineering/evaluation">Open Evaluation</Button>
+          <Button to="/engineering/architecture" variant="secondary">
+            View Architecture
+          </Button>
         </div>
       </Card>
 

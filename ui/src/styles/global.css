@@ -1484,6 +1484,119 @@ button.snapshot-badge {
   }
 }
 
+/* 16E — Engineering evidence presentation */
+.engineering-page,
+.engineering-page .card,
+.engineering-page .stack {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.engineering-page code {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.engineering-subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.engineering-subnav a {
+  color: var(--ink);
+  text-decoration: none;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+}
+
+.engineering-subnav a[aria-current="page"] {
+  border-color: var(--line);
+  background: var(--slate);
+  font-weight: 600;
+}
+
+.engineering-caveats {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.engineering-table-wrap {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.engineering-table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 36rem;
+}
+
+.engineering-table-wrap th,
+.engineering-table-wrap td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5rem 0.65rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.engineering-table-wrap caption {
+  caption-side: top;
+  text-align: left;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.engineering-diagram {
+  margin: 0;
+  padding: var(--space-3);
+  overflow-x: auto;
+  background: var(--slate);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  white-space: pre;
+}
+
+.engineering-status-dl,
+.engineering-provenance-dl {
+  margin: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.engineering-status-dl > div,
+.engineering-provenance-dl > div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.engineering-status-dl dt,
+.engineering-provenance-dl dt {
+  font-weight: 600;
+}
+
+.engineering-status-dl dd,
+.engineering-provenance-dl dd {
+  margin: 0;
+}
+
+.engineering-source-list {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.engineering-provenance > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

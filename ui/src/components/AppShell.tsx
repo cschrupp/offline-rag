@@ -41,6 +41,9 @@ export function AppShell() {
             <NavLink to="/workspaces" onClick={() => setNavOpen(false)}>
               Workspaces
             </NavLink>
+            <NavLink to="/engineering" onClick={() => setNavOpen(false)}>
+              Engineering
+            </NavLink>
             <NavLink
               to="/settings"
               className="nav-settings"
