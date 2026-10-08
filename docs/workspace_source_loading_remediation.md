@@ -156,7 +156,7 @@ until independent review passes.
 ### Rework 2 SHAs
 
 - Implementation: `9dd2b008ebf9feee279dc6d0e58fafb006288ee5`
-- Documentation: _(filled after this commit)_
+- Documentation: `2449f84f9161dcadad37d7ce71bdbbcc20c2558e`
 
 ### Rework 2 validation
 
