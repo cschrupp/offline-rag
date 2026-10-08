@@ -8,6 +8,7 @@ import {
   formatMiB,
   type SourceCapacityLimits,
 } from "../workspaces/format";
+import type { SourceListPhase } from "../workspaces/sourceLoadingState";
 
 type Props = {
   sources: Source[];
@@ -15,12 +16,13 @@ type Props = {
   limits: SourceCapacityLimits | null;
   capacityLoading: boolean;
   capacityError: boolean;
-  sourcesLoading: boolean;
+  sourcePhase: SourceListPhase;
   sourcesError: unknown;
+  recordedSourceCount: number;
   usedBytes: number;
   mutationsDisabled: boolean;
   selectionDisabled: boolean;
-  isEmpty: boolean;
+  onRetrySources: () => void;
   onToggle: (sourceId: string, selected: boolean) => void;
   onSelectAll: () => void;
   onAdd: () => void;
@@ -36,12 +38,13 @@ export function SourceRail({
   limits,
   capacityLoading,
   capacityError,
-  sourcesLoading,
+  sourcePhase,
   sourcesError,
+  recordedSourceCount,
   usedBytes,
   mutationsDisabled,
   selectionDisabled,
-  isEmpty,
+  onRetrySources,
   onToggle,
   onSelectAll,
   onAdd,
@@ -51,6 +54,8 @@ export function SourceRail({
   onRemove,
 }: Props) {
   const selectedCount = selectedSourceIds.length;
+  const showRows = sourcePhase === "ready";
+  const showSelectionControls = sourcePhase === "ready";
 
   return (
     <section className="source-rail" aria-labelledby="source-list-heading">
@@ -62,14 +67,14 @@ export function SourceRail({
           Sources
         </h2>
         <p className="muted capacity-summary" style={{ margin: 0 }}>
-          {limits ? (
+          {sourcePhase === "ready" && limits ? (
             <>
               {sources.length} / {limits.maxActiveSources}
               <br />
               {formatMiB(usedBytes)} / {formatMiB(limits.maxDesiredActiveBytes)}{" "}
               MiB
             </>
-          ) : (
+          ) : sourcePhase === "ready" ? (
             <>
               {sources.length} sources
               <br />
@@ -79,6 +84,26 @@ export function SourceRail({
                   ? "loading capacity…"
                   : formatBytes(usedBytes)}
             </>
+          ) : sourcePhase === "empty" && limits ? (
+            <>
+              0 / {limits.maxActiveSources}
+              <br />
+              0.0 / {formatMiB(limits.maxDesiredActiveBytes)} MiB
+            </>
+          ) : (
+            <>
+              {recordedSourceCount} recorded
+              <br />
+              {sourcePhase === "loading"
+                ? "loading details…"
+                : sourcePhase === "error"
+                  ? "details unavailable"
+                  : sourcePhase === "inconsistent"
+                    ? "state mismatch"
+                    : capacityError
+                      ? "capacity unavailable"
+                      : "—"}
+            </>
           )}
         </p>
       </div>
@@ -87,7 +112,7 @@ export function SourceRail({
         + Add sources
       </Button>
 
-      {isEmpty ? (
+      {sourcePhase === "empty" ? (
         <EmptyState
           title="This workspace is empty"
           body="This workspace is ready for sources but currently contains no active knowledge."
@@ -99,58 +124,85 @@ export function SourceRail({
         />
       ) : null}
 
-      {sourcesError ? (
-        <p className="error-box" role="alert">
-          {userFacingErrorMessage(sourcesError)}
+      {sourcePhase === "loading" ? (
+        <p className="muted" role="status">
+          Loading source details…
         </p>
       ) : null}
-      {sourcesLoading ? <p className="muted">Loading sources…</p> : null}
 
-      <ul className="source-list">
-        {sources.map((source) => {
-          const checked = selectedSourceIds.includes(source.source_id);
-          const checkboxId = `source-select-${source.source_id}`;
-          return (
-            <li key={source.source_id} className="source-row source-row-ask">
-              <div className="source-row-select">
-                <input
-                  id={checkboxId}
-                  type="checkbox"
-                  checked={checked}
-                  disabled={selectionDisabled}
-                  onChange={(event) =>
-                    onToggle(source.source_id, event.target.checked)
-                  }
-                />
-                <div className="source-row-main">
-                  <button
-                    type="button"
-                    className="source-name-button"
-                    onClick={() => onPreview(source)}
-                  >
-                    {source.display_name}
-                  </button>
-                  <label className="sr-only" htmlFor={checkboxId}>
-                    Include {source.display_name} in next Ask
-                  </label>
-                  <span className="muted source-meta">
-                    {formatBytes(source.byte_size)} · Version {source.version}
-                  </span>
+      {sourcePhase === "error" ? (
+        <div className="stack" style={{ gap: "0.75rem" }}>
+          <p className="error-box" role="alert">
+            Source details could not be loaded.
+            {sourcesError ? (
+              <>
+                <br />
+                <span className="muted">{userFacingErrorMessage(sourcesError)}</span>
+              </>
+            ) : null}
+          </p>
+          <Button type="button" variant="secondary" onClick={onRetrySources}>
+            Retry
+          </Button>
+        </div>
+      ) : null}
+
+      {sourcePhase === "inconsistent" ? (
+        <p className="error-box" role="alert">
+          Inconsistent workspace/source state: this workspace is Active and
+          records {recordedSourceCount} source
+          {recordedSourceCount === 1 ? "" : "s"}, but the source list returned
+          none. Source details are unavailable until this is resolved.
+        </p>
+      ) : null}
+
+      {showRows ? (
+        <ul className="source-list">
+          {sources.map((source) => {
+            const checked = selectedSourceIds.includes(source.source_id);
+            const checkboxId = `source-select-${source.source_id}`;
+            return (
+              <li key={source.source_id} className="source-row source-row-ask">
+                <div className="source-row-select">
+                  <input
+                    id={checkboxId}
+                    type="checkbox"
+                    checked={checked}
+                    disabled={selectionDisabled}
+                    onChange={(event) =>
+                      onToggle(source.source_id, event.target.checked)
+                    }
+                  />
+                  <div className="source-row-main">
+                    <button
+                      type="button"
+                      className="source-name-button"
+                      onClick={() => onPreview(source)}
+                    >
+                      {source.display_name}
+                    </button>
+                    <label className="sr-only" htmlFor={checkboxId}>
+                      Include {source.display_name} in next Ask
+                    </label>
+                    <span className="muted source-meta">
+                      {formatBytes(source.byte_size)} · Version {source.version}
+                    </span>
+                  </div>
                 </div>
-              </div>
-              <SourceActionsMenu
-                source={source}
-                disabled={mutationsDisabled}
-                onRename={() => onRename(source)}
-                onReplace={() => onReplace(source)}
-                onRemove={() => onRemove(source)}
-              />
-            </li>
-          );
-        })}
-      </ul>
+                <SourceActionsMenu
+                  source={source}
+                  disabled={mutationsDisabled}
+                  onRename={() => onRename(source)}
+                  onReplace={() => onReplace(source)}
+                  onRemove={() => onRemove(source)}
+                />
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
 
-      {!isEmpty ? (
+      {showSelectionControls ? (
         <div className="stack" style={{ gap: "0.35rem" }}>
           <p className="muted" style={{ margin: 0 }} aria-live="polite">
             {selectedCount} selected

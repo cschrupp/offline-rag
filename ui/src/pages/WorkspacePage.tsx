@@ -44,6 +44,11 @@ import { EvidencePanel } from "../features/ask/EvidencePanel";
 import { SourceRail } from "../features/ask/SourceRail";
 import type { PreviewTarget } from "../features/ask/SourcePreview";
 import {
+  deriveSourceListPhase,
+  headerSourceCountLabel,
+  sourcesRecordsAvailable,
+} from "../features/workspaces/sourceLoadingState";
+import {
   appendConversationPair,
   buildResolverPriorTurns,
   chronologicalPairs,
@@ -159,8 +164,18 @@ export function WorkspacePage() {
   });
 
   const workspace = workspaceQuery.data;
+  const sourcePayloadAvailable = sourcesQuery.data !== undefined;
   const sources = sourcesQuery.data?.sources ?? [];
   const limits = limitsFromCapabilities(capabilitiesQuery.data);
+  const sourcePhase = workspace
+    ? deriveSourceListPhase({
+        workspace,
+        sourcePayloadAvailable,
+        sourcesFailed: sourcesQuery.isError,
+        sources,
+      })
+    : "loading";
+  const askSourcesReady = sourcesRecordsAvailable(sourcePhase);
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [addError, setAddError] = useState<string | null>(null);
@@ -808,7 +823,7 @@ export function WorkspacePage() {
   function submitAsk() {
     const trimmed = question.trim();
     if (
-      isEmpty ||
+      !askSourcesReady ||
       selectedSourceIds.length === 0 ||
       trimmed.length === 0 ||
       askMutation.isPending
@@ -943,7 +958,6 @@ export function WorkspacePage() {
     );
   }
 
-  const isEmpty = workspace.status === "empty" || sources.length === 0;
   const usedBytes = activeSourceBytes(sources);
   const finalSourceWarning =
     removeTarget && sources.length === 1
@@ -962,10 +976,76 @@ export function WorkspacePage() {
     null;
 
   const askDisabled =
-    isEmpty ||
+    !askSourcesReady ||
     selectedSourceIds.length === 0 ||
     question.trim().length === 0 ||
     askMutation.isPending;
+
+  const statusBadge =
+    sourcePhase === "empty"
+      ? { tone: "empty" as const, label: "Empty" }
+      : sourcePhase === "inconsistent"
+        ? { tone: "error" as const, label: "Inconsistent" }
+        : { tone: "ready" as const, label: "Active" };
+
+  const capacitySummary = (() => {
+    const countLabel = headerSourceCountLabel({
+      phase: sourcePhase,
+      workspace,
+      loadedCount: sources.length,
+      maxActiveSources: limits?.maxActiveSources ?? null,
+    });
+    if (sourcePhase === "ready" && limits) {
+      return (
+        <>
+          {countLabel} · {formatMiB(usedBytes)} /{" "}
+          {formatMiB(limits.maxDesiredActiveBytes)} MiB
+        </>
+      );
+    }
+    if (sourcePhase === "empty" && limits) {
+      return (
+        <>
+          {countLabel} · 0.0 / {formatMiB(limits.maxDesiredActiveBytes)} MiB
+        </>
+      );
+    }
+    if (sourcePhase === "loading") {
+      return (
+        <>
+          {countLabel}
+          <br />
+          Loading source details…
+        </>
+      );
+    }
+    if (sourcePhase === "error") {
+      return (
+        <>
+          {countLabel}
+          <br />
+          Source details could not be loaded.
+        </>
+      );
+    }
+    if (sourcePhase === "inconsistent") {
+      return (
+        <>
+          {countLabel}
+          <br />
+          Source list does not match workspace summary.
+        </>
+      );
+    }
+    return (
+      <>
+        {countLabel}
+        {capabilitiesQuery.isError
+          ? " · capacity unavailable"
+          : " · loading capacity…"}
+      </>
+    );
+  })();
 
   function openCitation(
     citation: WorkspaceCitation,
@@ -1015,12 +1095,15 @@ export function WorkspacePage() {
       limits={limits}
       capacityLoading={capabilitiesQuery.isLoading}
       capacityError={capabilitiesQuery.isError}
-      sourcesLoading={sourcesQuery.isLoading}
+      sourcePhase={sourcePhase}
       sourcesError={sourcesQuery.isError ? sourcesQuery.error : null}
+      recordedSourceCount={workspace.source_count}
       usedBytes={usedBytes}
       mutationsDisabled={busyForMutations}
-      selectionDisabled={askMutation.isPending}
-      isEmpty={isEmpty}
+      selectionDisabled={askMutation.isPending || !askSourcesReady}
+      onRetrySources={() => {
+        void sourcesQuery.refetch();
+      }}
       onToggle={(sourceId, selected) => {
         const next = setSourceSelected(workspaceId, sources, sourceId, selected);
         setSelectedSourceIds(next.selectedSourceIds);
@@ -1128,29 +1211,13 @@ export function WorkspacePage() {
         <div className="workspace-header-main">
           <div className="row" style={{ gap: "0.75rem" }}>
             <h1 style={{ margin: 0 }}>{workspace.title}</h1>
-            <Badge
-              tone={isEmpty ? "empty" : "ready"}
-              label={isEmpty ? "Empty" : "Active"}
-            />
+            <Badge tone={statusBadge.tone} label={statusBadge.label} />
             {trainingMode ? (
               <Badge tone="ready" label="Training Mode" />
             ) : null}
           </div>
           <p className="muted capacity-summary" style={{ margin: 0 }}>
-            {limits ? (
-              <>
-                {sources.length} / {limits.maxActiveSources} sources ·{" "}
-                {formatMiB(usedBytes)} / {formatMiB(limits.maxDesiredActiveBytes)}{" "}
-                MiB
-              </>
-            ) : (
-              <>
-                {sources.length} sources · {formatBytes(usedBytes)}
-                {capabilitiesQuery.isError
-                  ? " · capacity unavailable"
-                  : " · loading capacity…"}
-              </>
-            )}
+            {capacitySummary}
           </p>
         </div>
         <div className="row workspace-header-actions">
