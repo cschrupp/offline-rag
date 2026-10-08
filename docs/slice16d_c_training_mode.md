@@ -2,7 +2,7 @@
 
 ```text
 16D-C:
-REWORK 3 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+REWORK 4 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
 
 AMENDMENT A4:
 HUMAN-APPROVED / LOCKED
@@ -12,7 +12,8 @@ DOC: docs/slice16_amendment_a4_workspace_portability_shell.md
 INDEPENDENT REVIEW:
 REWORK 1 CLOSED
 REWORK 2 CLOSED (implementation 3bac1f8d…)
-REWORK 3 AUTHORIZED → IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+REWORK 3 CLOSED (implementation 63517eeb…)
+REWORK 4 AUTHORIZED → IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
 
 Authorized baseline (original 16D-C):
 396aa329e6c0413eb69aacd39067a70d9b478b72
@@ -28,6 +29,12 @@ Rework 2 implementation:
 
 Rework 3 baseline:
 e19e4206dd92c0af519dbcd5eca783a881c64780
+
+Rework 3 implementation:
+63517eeb98a8065df526925a1f6995339cb19b4f
+
+Rework 4 baseline:
+63517eeb98a8065df526925a1f6995339cb19b4f
 
 Branch:
 implementation/16d-c-training-mode
@@ -212,9 +219,17 @@ strictness remains green.
 
 `docs/milestone7_performance_ui.md` active sequencing no longer claims
 “separate authorization of 16D-C” or groups 16D-C with items that remain
-**NOT AUTHORIZED**. Current gate: 16D-C Rework 3 implementation candidate →
+**NOT AUTHORIZED**. Current gate: 16D-C Rework 4 implementation candidate →
 independent review → human acceptance → 16D-C/A4 closeout; 16E–16H / Slice 17 /
 Slice 18 / M7 closeout remain **NOT AUTHORIZED**.
+
+### A4-R3 CLOSED
+
+Fence close requires matching character, length ≥ opener, and a
+whitespace-only suffix (info-string lines such as `` ```js `` do not close).
+Opening/closing fences may be indented by 0–3 spaces. Regression coverage:
+info-string false close, indented fence, suffixed non-close; Rework 3 fence
+cases remain green.
 
 Status remains human-acceptance pending. A4 is not sealed.
 
@@ -240,5 +255,11 @@ REWORK 3 BASELINE:
 e19e4206dd92c0af519dbcd5eca783a881c64780
 
 REWORK 3 IMPLEMENTATION:
+63517eeb98a8065df526925a1f6995339cb19b4f
+
+REWORK 4 BASELINE:
+63517eeb98a8065df526925a1f6995339cb19b4f
+
+REWORK 4 IMPLEMENTATION:
 (see git log on implementation/16d-c-training-mode)
 ```

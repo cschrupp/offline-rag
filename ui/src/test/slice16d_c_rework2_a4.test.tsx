@@ -419,6 +419,67 @@ describe("16D-C Rework 2 / A4 — Question Bank IO", () => {
     }
   });
 
+  it("requires whitespace-only close and recognizes indented fences (A4-R3)", () => {
+    const infoStringFalseClose = parseQuestionBankFile(
+      "bank.md",
+      [
+        "```text",
+        "```js",
+        "- Fake question inside code",
+        "```",
+        "- Real question?",
+        "",
+      ].join("\n"),
+      200,
+    );
+    expect(infoStringFalseClose.ok).toBe(true);
+    if (infoStringFalseClose.ok) {
+      expect(infoStringFalseClose.questions).toEqual(["Real question?"]);
+      expect(infoStringFalseClose.questions).not.toContain(
+        "Fake question inside code",
+      );
+    }
+
+    const indented = parseQuestionBankFile(
+      "bank.md",
+      [
+        "   ```text",
+        "- Fake question inside indented fence",
+        "   ```",
+        "- Real question?",
+        "",
+      ].join("\n"),
+      200,
+    );
+    expect(indented.ok).toBe(true);
+    if (indented.ok) {
+      expect(indented.questions).toEqual(["Real question?"]);
+      expect(indented.questions).not.toContain(
+        "Fake question inside indented fence",
+      );
+    }
+
+    const suffixedDoesNotClose = parseQuestionBankFile(
+      "bank.md",
+      [
+        "```text",
+        "```python",
+        "- Still inside after suffixed marker",
+        "```   ",
+        "- Real after true close",
+        "",
+      ].join("\n"),
+      220,
+    );
+    expect(suffixedDoesNotClose.ok).toBe(true);
+    if (suffixedDoesNotClose.ok) {
+      expect(suffixedDoesNotClose.questions).toEqual(["Real after true close"]);
+      expect(suffixedDoesNotClose.questions).not.toContain(
+        "Still inside after suffixed marker",
+      );
+    }
+  });
+
   it("plans merge with duplicates, invalid, and capacity skips", () => {
     const existing = Array.from({ length: PROMPT_MAX - 1 }, (_, i) => ({
       id: `id_${i}`,

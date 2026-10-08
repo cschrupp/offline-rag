@@ -131,31 +131,42 @@ function parseJsonQuestionBank(raw: string): ParseQuestionBankResult {
   return { ok: true, questions, title };
 }
 
-/** Fence line: 3+ backticks or tildes at column 0 (A4-D07 / A4-R1). */
-const FENCE_LINE = /^(```+|~~~+)(.*)$/;
+/**
+ * CommonMark-ish fence line (A4-D07 / A4-R1 / A4-R3):
+ * 0–3 leading spaces, 3+ backticks or tildes, then a suffix.
+ * Opening may carry an info string; closing requires whitespace-only suffix.
+ */
+const FENCE_LINE = /^( {0,3})(`{3,}|~{3,})(.*)$/;
 
 function parseMarkdownQuestionBank(raw: string): ParseQuestionBankResult {
   const text = stripBom(raw).replace(/\r\n/g, "\n");
   const lines = text.split("\n");
   const questions: string[] = [];
   let title: string | null = null;
-  /** Active fence: same character, close length >= open length. */
+  /** Active fence: same character, close length >= open length, whitespace suffix. */
   let activeFence: { char: "`" | "~"; length: number } | null = null;
 
   for (const line of lines) {
     const fence = line.match(FENCE_LINE);
     if (fence) {
-      const marker = fence[1]!;
+      const marker = fence[2]!;
+      const suffix = fence[3] ?? "";
       const char = marker[0] as "`" | "~";
       const length = marker.length;
       if (activeFence == null) {
+        // Opening fence: info-string/content after the marker is allowed.
         activeFence = { char, length };
         continue;
       }
-      if (char === activeFence.char && length >= activeFence.length) {
+      // Closing fence: matching char, sufficient length, whitespace-only suffix.
+      if (
+        char === activeFence.char &&
+        length >= activeFence.length &&
+        /^\s*$/.test(suffix)
+      ) {
         activeFence = null;
       }
-      // Non-matching fence lines inside a block are ignored as content.
+      // Info-string / mismatched fence lines remain code-block content.
       continue;
     }
 
