@@ -45,7 +45,7 @@ vocabulary is preserved as provenance only. Current implementation-gate
 state is governed by accepted Amendment A2 and the Authorization note
 later in this document (observed B1 product UX withheld; B1 foundation
 remediation **ACCEPTED / SEALED**; **16D-B2 COMPLETE / ACCEPTED / SEALED**;
-**16D-B3 COMPLETE / ACCEPTED / SEALED** at `9c178ffb033cde41849379fc914f321697ff8691`; A3 **ACCEPTED / LOCKED / SEALED**; **16D-C REWORK 4 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING**).
+**16D-B3 COMPLETE / ACCEPTED / SEALED** at `9c178ffb033cde41849379fc914f321697ff8691`; A3 **ACCEPTED / LOCKED / SEALED**; **16D-C COMPLETE / ACCEPTED / SEALED**).
 
 ```text
 AMENDMENT A1:
@@ -122,8 +122,9 @@ AMENDMENT A1:                    ACCEPTED / LOCKED
                                  docs/slice16_amendment_a1_seneca_product_ux.md
 16D-A:                           COMPLETE / ACCEPTED
 ACCEPTED SHA:                    4f8962f2893ab433e6ea269ad54e46f67771ca70
-16D-B:                           IMPLEMENTED CANDIDATE / HUMAN ACCEPTANCE PENDING
-16D-C:                           IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+16D-B3:                          COMPLETE / ACCEPTED / SEALED
+16D-C:                           COMPLETE / ACCEPTED / SEALED
+AMENDMENT A4:                    ACCEPTED / LOCKED / SEALED
 16E–16H:                         NOT AUTHORIZED
 SLICE 17:                        NOT AUTHORIZED
 SLICE 18:                        NOT AUTHORIZED
@@ -1129,9 +1130,9 @@ B1 FOUNDATION REMEDIATION:
         A3 MATERIALIZATION: da1082d95630c12eaf0ce1a3b8d005aaa60d2f73
         EVIDENCE: docs/slice16d_b3_conversational_workspace.md
         A3 DOC: docs/slice16_amendment_a3_full_viewport_workspace.md
-16D-C: REWORK 4 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+16D-C: COMPLETE / ACCEPTED / SEALED
   EVIDENCE: docs/slice16d_c_training_mode.md
-AMENDMENT A4: HUMAN-APPROVED / LOCKED / IMPLEMENTED CANDIDATE / ACCEPTANCE PENDING
+AMENDMENT A4: ACCEPTED / LOCKED / SEALED
   A4 MATERIALIZATION: d12f6322ef13915002b49dcc8f1211052a66dcc5
   A4 DOC: docs/slice16_amendment_a4_workspace_portability_shell.md
 16E–16H: NOT AUTHORIZED
@@ -1154,6 +1155,7 @@ remains **PRODUCT ACCEPTANCE WITHHELD**. **16D-B2** is **COMPLETE /
 ACCEPTED / SEALED** at `baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`.
 **16D-B3** is **COMPLETE / ACCEPTED / SEALED** at `9c178ffb033cde41849379fc914f321697ff8691` (A3
 **ACCEPTED / LOCKED / SEALED** at `da1082d95630c12eaf0ce1a3b8d005aaa60d2f73`). Amendment A4 is
-**HUMAN-APPROVED / LOCKED** and an **IMPLEMENTED CANDIDATE / ACCEPTANCE PENDING**.
-**16D-C** is **REWORK 4 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING** and is not sealed.
+**ACCEPTED / LOCKED / SEALED**. **16D-C** is **COMPLETE / ACCEPTED / SEALED** at
+`0381e0461f68c5fc09e7be2c7699d434e8b8a9cb` (closeout
+`docs/slice16d_c_a4_closeout.md`).
 **16E–16H** remain **NOT AUTHORIZED**. Slice 16 overall is **not** complete.

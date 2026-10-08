@@ -2,39 +2,51 @@
 
 ```text
 16D-C:
-REWORK 4 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+COMPLETE / ACCEPTED / SEALED
 
-AMENDMENT A4:
-HUMAN-APPROVED / LOCKED
-IMPLEMENTED CANDIDATE / ACCEPTANCE PENDING
-DOC: docs/slice16_amendment_a4_workspace_portability_shell.md
+ACCEPTED IMPLEMENTATION:
+0381e0461f68c5fc09e7be2c7699d434e8b8a9cb
 
 INDEPENDENT REVIEW:
-REWORK 1 CLOSED
-REWORK 2 CLOSED (implementation 3bac1f8d…)
-REWORK 3 CLOSED (implementation 63517eeb…)
-REWORK 4 AUTHORIZED → IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+PASSED
+
+HUMAN ACCEPTANCE:
+ACCEPTED
+
+REWORK 1:
+COMPLETE
+
+REWORK 2:
+COMPLETE
+
+REWORK 3:
+COMPLETE
+
+REWORK 4:
+COMPLETE
+
+AMENDMENT A4:
+ACCEPTED / LOCKED / SEALED
+DOC: docs/slice16_amendment_a4_workspace_portability_shell.md
+CLOSEOUT: docs/slice16d_c_a4_closeout.md
 
 Authorized baseline (original 16D-C):
 396aa329e6c0413eb69aacd39067a70d9b478b72
 
-Rework 2 baseline:
-18bc60da038e210b1b8f2f9aa26884e962a15f8f
-
 A4 materialization:
 d12f6322ef13915002b49dcc8f1211052a66dcc5
+
+Rework 1 implementation:
+4489d6fb295271c65dae2c9f38e3f53bab456ff8
 
 Rework 2 implementation:
 3bac1f8dc1a7d0aa8ea46ec4ceb832e63f570aff
 
-Rework 3 baseline:
-e19e4206dd92c0af519dbcd5eca783a881c64780
-
 Rework 3 implementation:
 63517eeb98a8065df526925a1f6995339cb19b4f
 
-Rework 4 baseline:
-63517eeb98a8065df526925a1f6995339cb19b4f
+Rework 4 / accepted product state:
+0381e0461f68c5fc09e7be2c7699d434e8b8a9cb
 
 Branch:
 implementation/16d-c-training-mode
