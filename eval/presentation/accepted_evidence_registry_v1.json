@@ -750,7 +750,7 @@
           "role": "accepted_report",
           "source_kind": "accepted_markdown_projection",
           "source_locator": "§18 Level-C authoritative end-to-end evidence — readable summary p50/p95; §18.3 Generation telemetry limitations (TTFT/decode/tokens-sec UNEVALUABLE)",
-          "expected_sha256": "9ba5eb9c335f54540d2a4b9fd6222ff6ca95157c5cd6e38650302d232b587787"
+          "expected_sha256": "1102a8b2816cea54598f408fe4a56837a32a4041a4bbd4ade2f77faeb0942b3a"
         }
       ],
       "provenance": {
