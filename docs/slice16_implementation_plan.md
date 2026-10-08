@@ -47,7 +47,7 @@ OBSERVED 16D-B1 CANDIDATE:
         A3 MATERIALIZATION: da1082d95630c12eaf0ce1a3b8d005aaa60d2f73
         EVIDENCE: docs/slice16d_b3_conversational_workspace.md
         A3 DOC: docs/slice16_amendment_a3_full_viewport_workspace.md
-16D-C: REWORK 2 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+16D-C: REWORK 3 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
         EVIDENCE: docs/slice16d_c_training_mode.md
 AMENDMENT A4: HUMAN-APPROVED / LOCKED / IMPLEMENTED CANDIDATE / ACCEPTANCE PENDING
         A4 MATERIALIZATION: d12f6322ef13915002b49dcc8f1211052a66dcc5
@@ -84,7 +84,7 @@ grant product acceptance to the legacy B1 Ask/Evidence UX. **16D-B2** is
 `baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`. **16D-B3** is **COMPLETE / ACCEPTED / SEALED** at
 `9c178ffb033cde41849379fc914f321697ff8691` (A3 **ACCEPTED / LOCKED / SEALED** at `da1082d95630c12eaf0ce1a3b8d005aaa60d2f73`; see
 [`docs/slice16d_b3_conversational_workspace.md`](slice16d_b3_conversational_workspace.md)).
-**16D-C** is **REWORK 2 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING** (see
+**16D-C** is **REWORK 3 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING** (see
 [`docs/slice16d_c_training_mode.md`](slice16d_c_training_mode.md)).
 
 16A evidence: [`docs/slice16a_workspace_foundation.md`](slice16a_workspace_foundation.md)
@@ -132,7 +132,7 @@ B1 foundation remediation [ACCEPTED / SEALED @ c68cc3f8… / closeout b5fa1e85�
 16D-B3 [COMPLETE / ACCEPTED / SEALED @ 9c178ffb… / A3 da1082d9…]
         ← Conversational workspace
  ↓
-16D-C [REWORK 2 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING]
+16D-C [REWORK 3 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING]
  ↓
 16E
  ↓
@@ -162,7 +162,7 @@ foundation upload remediation is **ACCEPTED / SEALED** (implementation
 `baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`. **16D-B3** is **COMPLETE / ACCEPTED / SEALED** at
 `9c178ffb033cde41849379fc914f321697ff8691` (A3 **ACCEPTED / LOCKED / SEALED** at `da1082d95630c12eaf0ce1a3b8d005aaa60d2f73`; see
 [`docs/slice16d_b3_conversational_workspace.md`](slice16d_b3_conversational_workspace.md)).
-**16D-C** is **REWORK 2 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING**.
+**16D-C** is **REWORK 3 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING**.
 
 Do not close Slice 16 automatically after 16H. Independent review and explicit
 human acceptance of the implemented slice remain required. **16A**, **16B**,
@@ -728,7 +728,7 @@ OBSERVED 16D-B1 CANDIDATE:
         A3 MATERIALIZATION: da1082d95630c12eaf0ce1a3b8d005aaa60d2f73
         EVIDENCE: docs/slice16d_b3_conversational_workspace.md
         A3 DOC: docs/slice16_amendment_a3_full_viewport_workspace.md
-16D-C: REWORK 2 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+16D-C: REWORK 3 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
 AMENDMENT A4: HUMAN-APPROVED / LOCKED / IMPLEMENTED CANDIDATE / ACCEPTANCE PENDING
 16E–16H: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED

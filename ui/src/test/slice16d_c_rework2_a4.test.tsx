@@ -340,6 +340,85 @@ describe("16D-C Rework 2 / A4 — Question Bank IO", () => {
     if (md.ok) expect(md.questions).toEqual(["First", "Second"]);
   });
 
+  it("ignores bullet-looking lines inside fenced code (A4-R1)", () => {
+    const backtick = parseQuestionBankFile(
+      "bank.md",
+      [
+        "# Bank",
+        "",
+        "```text",
+        "- Do not import this",
+        "```",
+        "",
+        "- Import this question?",
+        "",
+      ].join("\n"),
+      200,
+    );
+    expect(backtick.ok).toBe(true);
+    if (backtick.ok) {
+      expect(backtick.questions).toEqual(["Import this question?"]);
+      expect(backtick.questions).not.toContain("Do not import this");
+    }
+
+    const tilde = parseQuestionBankFile(
+      "bank.md",
+      [
+        "~~~markdown",
+        "- Also not a question",
+        "~~~",
+        "",
+        "- Real question",
+        "",
+      ].join("\n"),
+      200,
+    );
+    expect(tilde.ok).toBe(true);
+    if (tilde.ok) {
+      expect(tilde.questions).toEqual(["Real question"]);
+      expect(tilde.questions).not.toContain("Also not a question");
+    }
+
+    const longer = parseQuestionBankFile(
+      "bank.md",
+      [
+        "- Before fence",
+        "````text",
+        "- Inside longer fence",
+        "```",
+        "- Still inside (short close)",
+        "````",
+        "- After fence",
+        "",
+      ].join("\n"),
+      240,
+    );
+    expect(longer.ok).toBe(true);
+    if (longer.ok) {
+      expect(longer.questions).toEqual(["Before fence", "After fence"]);
+      expect(longer.questions).not.toContain("Inside longer fence");
+      expect(longer.questions).not.toContain("Still inside (short close)");
+    }
+
+    const unclosed = parseQuestionBankFile(
+      "bank.md",
+      [
+        "- Before unclosed",
+        "```text",
+        "- Fake after open",
+        "- Also fake",
+        "",
+      ].join("\n"),
+      160,
+    );
+    expect(unclosed.ok).toBe(true);
+    if (unclosed.ok) {
+      expect(unclosed.questions).toEqual(["Before unclosed"]);
+      expect(unclosed.questions).not.toContain("Fake after open");
+      expect(unclosed.questions).not.toContain("Also fake");
+    }
+  });
+
   it("plans merge with duplicates, invalid, and capacity skips", () => {
     const existing = Array.from({ length: PROMPT_MAX - 1 }, (_, i) => ({
       id: `id_${i}`,

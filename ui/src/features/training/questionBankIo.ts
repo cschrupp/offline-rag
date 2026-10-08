@@ -131,12 +131,39 @@ function parseJsonQuestionBank(raw: string): ParseQuestionBankResult {
   return { ok: true, questions, title };
 }
 
+/** Fence line: 3+ backticks or tildes at column 0 (A4-D07 / A4-R1). */
+const FENCE_LINE = /^(```+|~~~+)(.*)$/;
+
 function parseMarkdownQuestionBank(raw: string): ParseQuestionBankResult {
   const text = stripBom(raw).replace(/\r\n/g, "\n");
   const lines = text.split("\n");
   const questions: string[] = [];
   let title: string | null = null;
+  /** Active fence: same character, close length >= open length. */
+  let activeFence: { char: "`" | "~"; length: number } | null = null;
+
   for (const line of lines) {
+    const fence = line.match(FENCE_LINE);
+    if (fence) {
+      const marker = fence[1]!;
+      const char = marker[0] as "`" | "~";
+      const length = marker.length;
+      if (activeFence == null) {
+        activeFence = { char, length };
+        continue;
+      }
+      if (char === activeFence.char && length >= activeFence.length) {
+        activeFence = null;
+      }
+      // Non-matching fence lines inside a block are ignored as content.
+      continue;
+    }
+
+    if (activeFence != null) {
+      // Inside fenced code (including unclosed): never import bullets.
+      continue;
+    }
+
     const heading = line.match(/^#\s+(.+)\s*$/);
     if (heading && title == null) {
       const headingText = heading[1]!.trim();

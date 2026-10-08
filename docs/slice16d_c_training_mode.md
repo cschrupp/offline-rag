@@ -2,7 +2,7 @@
 
 ```text
 16D-C:
-REWORK 2 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+REWORK 3 IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
 
 AMENDMENT A4:
 HUMAN-APPROVED / LOCKED
@@ -11,7 +11,8 @@ DOC: docs/slice16_amendment_a4_workspace_portability_shell.md
 
 INDEPENDENT REVIEW:
 REWORK 1 CLOSED
-REWORK 2 AUTHORIZED → IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+REWORK 2 CLOSED (implementation 3bac1f8d…)
+REWORK 3 AUTHORIZED → IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
 
 Authorized baseline (original 16D-C):
 396aa329e6c0413eb69aacd39067a70d9b478b72
@@ -21,6 +22,12 @@ Rework 2 baseline:
 
 A4 materialization:
 d12f6322ef13915002b49dcc8f1211052a66dcc5
+
+Rework 2 implementation:
+3bac1f8dc1a7d0aa8ea46ec4ceb832e63f570aff
+
+Rework 3 baseline:
+e19e4206dd92c0af519dbcd5eca783a881c64780
 
 Branch:
 implementation/16d-c-training-mode
@@ -187,6 +194,30 @@ Source-ready Markdown ingestion smoke (human-mediated Add Sources of an exported
 - Replace-import for Question Bank not authorized in A4
 - JSDOM cannot prove pixel geometry; vertical containment is manual smoke
 
+## Rework 3 — A4-R1 / A4-R2 closure
+
+### A4-R1 CLOSED
+
+Markdown Question Bank import now uses a small fence state machine in
+`questionBankIo.ts`. Bullet-looking lines inside backtick or tilde fenced
+blocks (including longer fences and unclosed fences) are ignored. Legitimate
+top-level `- ` bullets outside fences continue to import.
+
+Regression coverage in `ui/src/test/slice16d_c_rework2_a4.test.tsx`:
+backtick fence, tilde fence, longer fence (short close insufficient), unclosed
+fence, bullets before/after closed fences; prior prose/nested/numbered-list
+strictness remains green.
+
+### A4-R2 CLOSED
+
+`docs/milestone7_performance_ui.md` active sequencing no longer claims
+“separate authorization of 16D-C” or groups 16D-C with items that remain
+**NOT AUTHORIZED**. Current gate: 16D-C Rework 3 implementation candidate →
+independent review → human acceptance → 16D-C/A4 closeout; 16E–16H / Slice 17 /
+Slice 18 / M7 closeout remain **NOT AUTHORIZED**.
+
+Status remains human-acceptance pending. A4 is not sealed.
+
 ## Implementation candidate SHA
 
 ```text
@@ -205,6 +236,9 @@ d12f6322ef13915002b49dcc8f1211052a66dcc5
 REWORK 2 IMPLEMENTATION:
 3bac1f8dc1a7d0aa8ea46ec4ceb832e63f570aff
 
-FINAL BRANCH TIP:
-0d19c81e4e0cb0098238f18349fcb29c03980aac
+REWORK 3 BASELINE:
+e19e4206dd92c0af519dbcd5eca783a881c64780
+
+REWORK 3 IMPLEMENTATION:
+(see git log on implementation/16d-c-training-mode)
 ```
