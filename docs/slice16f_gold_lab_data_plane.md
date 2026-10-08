@@ -2,7 +2,7 @@
 
 ```text
 16F GOLD LAB DATA PLANE
-DESIGN CANDIDATE — REWORK 1
+DESIGN CANDIDATE — REWORK 2
 
 INDEPENDENT DESIGN REVIEW:
 PENDING
@@ -31,6 +31,9 @@ d53b29645882b2ecfa9bd6cde25c215e9d4a3921
 
 INITIAL DESIGN CANDIDATE:
 e50b041ae8ef5a8624b74e00c4f32b859be62458
+
+REWORK 1 CANDIDATE:
+3b94856fd26541dc8c21869a345ce2a3f91d02f2
 ```
 
 ## Purpose
@@ -50,8 +53,9 @@ Locked Slice-16 authority remains:
 Normative decisions reused here: **S16-D23 … S16-D34**. Explicit deferrals:
 **S16-D35**. Those decisions are **not** reopened by this materialization.
 
-Rework 1 closes implementation-readiness gaps (R1-01 … R1-18) without redesigning
-D01–D20 architecture.
+Rework 1 closes implementation-readiness gaps (R1-01 … R1-18). Rework 2 freezes
+remaining durable-identity, Hard Call authority, dataset-reuse, and
+crash/idempotency interactions without redesigning D01–D20 or reopening R1.
 
 ## Existing scientific contracts (must reuse)
 
@@ -314,16 +318,46 @@ Record `workspace_revision_at_creation` in GoldCampaign provenance.
 A later workspace mutation does **NOT** invalidate or rewrite an already
 committed campaign.
 
-### Candidate identity validation (R1-18)
+### Candidate / source-seed identity validation (R1-18, R2-10)
 
-Before campaign commit, validate every baseline case / candidate / source-seed
-identity needed by the campaign against the bound immutable chunk set.
+Before campaign commit, for every baseline `SilverCase`:
 
-At minimum: all candidate `chunk_id`s exist in bound `chunk_set_id`.
+- every `candidate.chunk_id` **MUST** resolve in bound `chunk_set_id`;
+- `source_seed.chunk_id`, when present, **MUST** resolve in bound `chunk_set_id`;
+- `source_seed.document_id`, when present, **MUST** agree with the resolved
+  chunk's document identity where available.
 
-Any unresolved candidate: **FAIL CLOSED**.
+Any unresolved / mismatched identity: **FAIL CLOSED**.
 
 No CURRENT substitution. No omission. No fuzzy matching.
+
+### Campaign publication atomicity (R2-04)
+
+Campaign creation **MUST NOT** expose a partially created final campaign
+directory.
+
+Freeze:
+
+1. validate project / workspace / snapshot / baseline / candidates / seeds;
+2. prepare complete campaign contents in a private temporary sibling / staging
+   location;
+3. include at least:
+   - `campaign.json`
+   - immutable `baseline/authoring_run.json`
+   - `hard_calls.json` or canonical empty equivalent
+   - required immutable metadata
+4. compute / record `baseline_sha256` from the exact bytes to be published;
+5. re-read workspace;
+6. require ACTIVE + same revision + same `current_snapshot_id`;
+7. atomically promote the complete prepared campaign directory into
+   `campaigns/<campaign_id>/`.
+
+Failure / crash before promotion: **NO** visible committed campaign.
+
+Existing committed campaign **MUST NOT** be partially overwritten.
+
+Temporary abandoned preparation may be cleaned / quarantined later and is not
+scientific authority.
 
 ### Creation steps (summary)
 
@@ -334,11 +368,13 @@ No CURRENT substitution. No omission. No fuzzy matching.
 5. resolve exact `CorpusReadSnapshot`;
 6. validate imported `GoldAuthoringRun` (authoring-v1 + pristine human state);
 7. require exact corpus / chunk_set equalities above;
-8. validate all candidate chunk ids against bound chunk set;
-9. copy authoring run into immutable campaign baseline storage;
-10. record `baseline_sha256` of baseline bytes;
+8. validate all candidate and source-seed identities against bound chunk set;
+9. prepare complete campaign package in private staging (baseline, hard_calls,
+   campaign.json, metadata);
+10. compute `baseline_sha256` from exact staged baseline bytes;
 11. re-read / revalidate ACTIVE + revision + snapshot;
-12. publish campaign atomically with `workspace_revision_at_creation`.
+12. atomically promote staged directory to `campaigns/<campaign_id>/` with
+    `workspace_revision_at_creation`.
 
 ---
 
@@ -364,6 +400,7 @@ data/gold-lab/
 
   campaigns/<campaign_id>/
     campaign.json
+    hard_calls.json
     baseline/
       authoring_run.json
     ledger/
@@ -401,7 +438,21 @@ Private Gold Lab state remains under `/data`.
 | dataset identity | existing GoldDataset-v1 `gold_<sha256>` |
 
 Use existing repository UUID / hash helpers where compatible
-(`new_execution_id`-style uuid4hex; canonical JSON hashing for digests).
+(`new_execution_id`-style uuid4hex; `canonical_config_hash` / sha256 digests).
+
+### Semantic contract identifiers (R2-01)
+
+Exact v1 strings — **no aliases**:
+
+| Role | Exact identifier |
+|---|---|
+| Absolute relevance | `gold-absolute-relevance-v1` |
+| Question Check | `gold-question-check-v1` |
+| Auxiliary pairwise preference | `gold-auxiliary-preference-v1` |
+| Hard Call designation | `gold-hard-call-designation-v1` |
+
+These exact strings participate in durable `goldtask_<sha256>` /
+`goldhard_<sha256>` identities.
 
 ### Deterministic task payloads
 
@@ -416,7 +467,7 @@ Task IDs use deterministic canonical JSON over the payloads below, then
   "task_kind": "absolute_relevance",
   "case_id": "...",
   "candidate_chunk_id": "...",
-  "semantic_contract": "..."
+  "semantic_contract": "gold-absolute-relevance-v1"
 }
 ```
 
@@ -427,7 +478,7 @@ Task IDs use deterministic canonical JSON over the payloads below, then
   "campaign_id": "...",
   "task_kind": "question_check",
   "case_id": "...",
-  "semantic_contract": "..."
+  "semantic_contract": "gold-question-check-v1"
 }
 ```
 
@@ -439,7 +490,7 @@ Task IDs use deterministic canonical JSON over the payloads below, then
   "task_kind": "auxiliary_preference",
   "case_id": "...",
   "candidate_pair": ["lower_chunk_id", "higher_chunk_id"],
-  "semantic_contract": "..."
+  "semantic_contract": "gold-auxiliary-preference-v1"
 }
 ```
 
@@ -507,22 +558,71 @@ Do **NOT** add fake completion for rejected questions.
 
 This keeps stable task identity while preserving query-basis correctness.
 
-### Hard Call designation (R1-12)
+### Hard Call designation (R1-12, R2-03)
 
 For v1, hard-call designation targets an `absolute_relevance` task.
 
-Stable identity:
+Hard Call designation is **NOT** an expert judgment ledger event.
+It is **immutable campaign provenance**.
+
+Durable artifact:
+
+```text
+campaigns/<campaign_id>/hard_calls.json
+```
+
+Contract:
+
+```text
+offline-rag-gold-hard-calls-v1
+```
+
+Conceptual structure:
+
+```json
+{
+  "schema_version": "offline-rag-gold-hard-calls-v1",
+  "campaign_id": "...",
+  "designation_contract": "gold-hard-call-designation-v1",
+  "designations": [
+    {
+      "designation_id": "goldhard_<sha256>",
+      "target_task_id": "goldtask_<sha256>",
+      "reason_code": "..."
+    }
+  ]
+}
+```
+
+Requirements:
+
+- `target_task_id` **MUST** resolve to an `absolute_relevance` task in this
+  campaign;
+- one designation maximum per target task in v1;
+- `designation_id` **MUST** be recomputed / validated from:
 
 ```text
 goldhard_<sha256({
   campaign_id,
   target_task_id,
-  designation_contract
+  designation_contract: "gold-hard-call-designation-v1"
 })>
 ```
 
-Designation provenance **MAY** derive from diagnostic policy / model
-disagreement internally.
+- designations are immutable after campaign creation;
+- changing the designation set requires a **new** campaign;
+- `reason_code` is provenance / internal metadata;
+- pre-commit expert task views **MUST NOT** reveal `reason_code` or designation
+  cause;
+- absence of designation file / empty list means no Hard Calls.
+
+The designation set **MAY** be generated deterministically from baseline
+diagnostic information / selection policy, or explicitly supplied by an
+authorized campaign-construction path. Regardless of source, the committed
+immutable artifact is authoritative.
+
+Hard Call scoring reads this artifact + effective task state.
+**MUST NOT** infer current Hard Calls dynamically from changing model outputs.
 
 Pre-commit expert view **MUST NOT** reveal:
 
@@ -530,7 +630,8 @@ Pre-commit expert view **MUST NOT** reveal:
 - model agreement;
 - model confidence;
 - retrieval score / rank;
-- why the task was machine-designated.
+- why the task was machine-designated;
+- `reason_code`.
 
 Resolution occurs when the designated target task has a current effective
 canonical judgment.
@@ -647,7 +748,7 @@ silently project into canonical 0/1/2 Gold truth.
 
 ---
 
-## 16F-D09 — Idempotency
+## 16F-D09 — Idempotency (R2-07, R2-08)
 
 Gold Lab mutation commands **MUST** be idempotent, with semantics equivalent to
 existing workspace mutation behavior:
@@ -666,6 +767,55 @@ Idempotency metadata / request fingerprint **MUST** be durable enough to survive
 process restart.
 
 **MUST NOT** rely only on React / client deduplication.
+
+### Mutation processing order vs lifecycle gates (R2-07)
+
+For operations carrying an idempotency key:
+
+**FIRST:** resolve durable idempotency state.
+
+If same key + same canonical request already committed:
+
+- **RETURN** the original committed result;
+- do not append;
+- do not rewrite timestamps;
+- do **not** fail merely because project / campaign is now archived / closed.
+
+If same key exists with different request: **CONFLICT**.
+
+**ONLY** for a previously unseen idempotency key: apply current lifecycle gates.
+
+Therefore:
+
+```text
+closed campaign + previously committed exact retry
+  → replay original result
+
+closed campaign + new mutation
+  → reject
+
+archived project + previously committed exact retry
+  → replay original result
+
+archived project + new mutation
+  → reject
+```
+
+### 16F-A / 16F-B idempotency boundary (R2-08)
+
+16F-A may implement low-level storage / create / append primitives and campaign
+binding, but **MUST NOT** expose a supported product / API mutation surface.
+
+16F-B adds the durable idempotency / effective-state mutation service over those
+primitives.
+
+Until 16F-B is accepted:
+
+- no external / product mutation API for Gold Lab;
+- no UI;
+- low-level append primitive is **not** a supported mutation command.
+
+16F-D later exposes API only over the accepted idempotent service.
 
 ---
 
@@ -750,21 +900,39 @@ Required fields:
 |---|---|
 | `selection_policy_id` | policy identity |
 | `project_type` | `benchmark` \| `improvement` |
-| `parameters` | typed policy parameters |
-| `selection_policy_fingerprint` | deterministic fingerprint |
+| `parameters` | JSON-compatible deterministic data |
+| `selection_policy_fingerprint` | exact `cfg_<sha256>` |
 
-Fingerprint is deterministic over canonical JSON of:
+### Selection policy fingerprint representation (R2-02)
 
-```json
-{
-  "contract": "gold-selection-policy-v1",
-  "selection_policy_id": "...",
-  "project_type": "...",
-  "parameters": { }
-}
+Use existing repository helper `canonical_config_hash`
+(`src/offline_rag/core/ids.py`):
+
+```text
+selection_policy_fingerprint =
+  canonical_config_hash({
+    "contract": "gold-selection-policy-v1",
+    "selection_policy_id": ...,
+    "project_type": ...,
+    "parameters": ...
+  })
 ```
 
-using repository canonical JSON hashing semantics.
+Representation is exactly:
+
+```text
+cfg_<sha256>
+```
+
+Do **not** introduce another hash encoder for this contract.
+
+`parameters` **MUST** be JSON-compatible deterministic data:
+
+- object / array / string / integer / finite float / boolean / null
+
+No `Path` / `datetime` / custom-object serialization in the fingerprint payload.
+Object keys are canonicalized by existing repository hashing semantics
+(`sort_keys=True`).
 
 Policy / fingerprint are **immutable** for one campaign.
 Changing selection policy requires a **new** campaign.
@@ -941,7 +1109,7 @@ No automatic model labels enter `GoldDataset`.
 
 ---
 
-## 16F-D17 — Immutable dataset storage / registration (R1-16)
+## 16F-D17 — Immutable dataset storage / registration (R1-16, R2-05, R2-06)
 
 Candidate storage:
 
@@ -951,23 +1119,76 @@ data/gold-lab/datasets/<dataset_id>/
   cases.jsonl
 ```
 
-A dataset directory is immutable.
+A dataset directory is immutable. Canonical storage key remains
+`datasets/<dataset_id>/`.
 
-If the same `dataset_id` already exists:
+### Semantic equivalence vs non-semantic metadata (R2-05)
 
-- validate existing bytes / semantic identity;
-- treat exact equivalent publication as idempotent;
-- conflict / fail on mismatch.
+Existing GoldDataset-v1 identity intentionally excludes `meta.metadata`.
+The existing Slice-9 finalizer may emit campaign / run-specific
+`metadata.authoring_run_id`.
+
+Therefore the same scientific GoldDataset **MAY** yield the same
+`gold_<sha256>` `dataset_id` while candidate `meta.json` non-semantic metadata
+bytes differ.
+
+Scientific equivalence is determined by existing GoldDataset-v1 validation and
+computed `dataset_id`, **NOT** byte equality of non-semantic metadata.
+
+When `<dataset_id>` already exists:
+
+1. load existing dataset with `load_gold_dataset()`;
+2. require existing computed `dataset_id ==` requested `dataset_id`;
+3. require requested candidate computed `dataset_id ==` requested `dataset_id`;
+4. if both are the same valid GoldDataset-v1 semantic identity:
+   - **reuse** the existing immutable dataset;
+   - **DO NOT** rewrite it;
+   - **DO NOT** treat differing non-semantic `meta.metadata` as conflict;
+5. if semantic identity differs, path contents are corrupt / conflicting:
+   **FAIL CLOSED**.
+
+Campaign-specific provenance **MUST** live in:
+
+```text
+registrations/<dataset_id>/<campaign_id>.json
+```
+
+Registration is the authority for:
+
+- `campaign_id` / `project_id`;
+- baseline hash / projection hash;
+- workspace / snapshot binding;
+- exported case IDs;
+- campaign-specific provenance.
+
+`GoldDataset` `meta.metadata.authoring_run_id` **MUST NOT** be treated as the
+authoritative campaign-registration relation.
+
+This permits multiple campaigns to register the same scientific `dataset_id`
+without rewriting the immutable shared dataset.
 
 No `--force` overwrite semantics for registered Gold Lab datasets.
 
-Registration contract candidate:
+### Multi-campaign registration reuse (R2-06)
+
+When an existing semantic-equivalent dataset object is reused for a second
+campaign:
+
+- create only that campaign's immutable registration record;
+- registration points to the existing dataset path;
+- validate exported case IDs against the loaded dataset;
+- preserve that campaign's `baseline_sha256` / `projection_sha256`;
+- do **not** mutate the shared dataset object.
+
+Two campaign registrations for one `dataset_id` are valid.
+
+### Registration contract
 
 ```text
 offline-rag-gold-registration-v1
 ```
 
-Registration path:
+Path:
 
 ```text
 data/gold-lab/registrations/<dataset_id>/<campaign_id>.json
@@ -975,9 +1196,10 @@ data/gold-lab/registrations/<dataset_id>/<campaign_id>.json
 
 Registration is immutable once created.
 
-First successful registration:
+First successful registration for a `(dataset_id, campaign_id)` pair:
 
-1. validate dataset through `load_gold_dataset()`;
+1. validate / resolve dataset through `load_gold_dataset()` (reuse or first
+   publish under semantic rules above);
 2. verify `dataset_id`;
 3. write registration atomically;
 4. assign `registered_at` once.
@@ -1069,7 +1291,8 @@ Maximum 15 points per campaign / case for this category.
 
 Count once when:
 
-- stable hard-call designation exists;
+- stable hard-call designation exists in immutable `hard_calls.json`
+  (R2-03);
 - target task currently has an effective canonical resolution.
 
 If query edit invalidates the target judgment: Hard Call bonus becomes
@@ -1093,11 +1316,35 @@ No points merely for auxiliary pairwise preference.
 | `gold_finalized` | count satisfying R1-14.D |
 | `hard_calls_resolved` | count satisfying R1-14.E |
 
-**Campaign coverage:**
+**Campaign coverage (R2-09):**
+
+Expose:
+
+```text
+completed_active_absolute_tasks
+total_active_absolute_tasks
+```
 
 - numerator / denominator from **active** canonical absolute tasks;
 - rejected cases are **excluded** from the denominator (absolute tasks not
   active after reject).
+
+If `total_active_absolute_tasks > 0`:
+
+```text
+coverage_fraction = completed_active_absolute_tasks / total_active_absolute_tasks
+```
+
+If denominator `== 0`:
+
+```text
+coverage_fraction = null / unavailable
+```
+
+**MUST NOT** report numeric 0% or 100% for a 0/0 task population.
+
+Question Check progress is separately available through `questions_reviewed`
+and question task counts.
 
 No counter from raw ledger row count.
 
@@ -1116,6 +1363,8 @@ Crash guarantees:
 
 - existing immutable ledger records survive;
 - no partially written ledger record becomes valid;
+- campaign final directory appears atomically or not at all (R2-04);
+- failed / stale campaign creation leaves no committed campaign;
 - derived projections may be rebuilt;
 - incomplete export **MUST NOT** become registered;
 - existing registered GoldDataset remains intact;
@@ -1136,15 +1385,18 @@ Later implementation remains separately gated.
 - package boundary;
 - settings / path root;
 - project / campaign models + lifecycle;
-- identities + selection-policy contract;
+- identities + frozen semantic-contract strings;
+- selection-policy contract + `canonical_config_hash` fingerprint (`cfg_`);
 - exact workspace snapshot / chunk / corpus binding;
 - pristine-baseline admission;
 - CURRENT-snapshot race revalidation;
-- candidate chunk-set validation;
+- candidate / source-seed chunk-set validation;
+- atomic staged campaign publication;
 - immutable authoring baseline import;
+- immutable `hard_calls.json` campaign provenance;
 - ledger record contracts / envelope;
-- append primitive / locking;
-- **NO** API;
+- low-level append primitive / locking (**not** a supported mutation command);
+- **NO** product / API mutation surface;
 - **NO** UI;
 - **NO** Gold export.
 
@@ -1153,11 +1405,12 @@ Later implementation remains separately gated.
 - deterministic task identities + activation;
 - Question Check semantics;
 - pending / completed task projection;
-- idempotency;
+- durable idempotency / effective-state mutation service (R2-07 / R2-08);
+- lifecycle-gate ordering after idempotency replay resolution;
 - correction / supersession fold;
 - query-basis invalidation;
-- Hard Call designation;
-- contribution-v1 projection + counters;
+- Hard Call scoring against durable designation artifact;
+- contribution-v1 projection + counters + zero-denominator coverage;
 - **NO** games / UI.
 
 ### 16F-C — Scientific projection / export / registration
@@ -1165,8 +1418,8 @@ Later implementation remains separately gated.
 - deterministic SilverCase / HumanReview projection;
 - existing invariant reuse;
 - GoldDataset-v1 finalization;
-- immutable dataset storage;
-- local registration (idempotent);
+- immutable dataset storage with semantic-equivalent reuse (R2-05 / R2-06);
+- local multi-campaign registration (idempotent);
 - existing evaluation-loader compatibility;
 - no retrieval / config promotion.
 
@@ -1215,7 +1468,21 @@ Future implementation authorization **MUST** require tests covering at least:
 27. Hard Call designation awards +5 only with current effective target judgment;
 28. no retrieval / default / config promotion;
 29. no 9G status change;
-30. archived project / closed campaign mutation gates enforced.
+30. archived project / closed campaign mutation gates enforced for **new** keys;
+31. exact semantic-contract strings participate in deterministic task IDs;
+32. selection policy fingerprint exactly uses `canonical_config_hash` / `cfg_`;
+33. Hard Call designation artifact validates IDs / targets and is immutable;
+34. Hard Call `reason_code` not exposed pre-commit;
+35. campaign final directory appears atomically or not at all;
+36. failed / stale campaign creation leaves no committed campaign;
+37. same GoldDataset semantic identity from two campaigns can reuse one dataset
+    object despite differing non-semantic metadata;
+38. each campaign receives its own registration for a shared `dataset_id`;
+39. conflicting semantic dataset at `dataset_id` path fails closed;
+40. exact idempotent replay still succeeds after campaign close / project archive;
+41. unseen mutation fails after close / archive;
+42. coverage denominator 0 → unavailable / null, not fabricated percentage;
+43. `source_seed` historical identity validates against bound chunk set.
 
 ---
 
@@ -1253,12 +1520,14 @@ Verified against sealed baseline / this design branch:
 | `GoldAuthoringRun` / `SilverCase` | present |
 | `HumanReview` / `HumanJudgment` / `HumanReviewStatus` | present |
 | `canonicalize_query()` in `review_models.py` | present |
+| `canonical_config_hash()` → `cfg_<sha256>` in `core/ids.py` | present |
 | `finalize.py` + `load_gold_dataset()` | present |
 | `CorpusReadSnapshot` + `identity.corpus_id` / `identity.chunk_set_id` | present |
 | `WorkspaceRecord.backing_corpus_name` | present |
 | existing `src/offline_rag/app/gold_lab/` | **absent** |
 | GoldDataset `ChunkJudgment.relevance` | `Literal[1, 2]` only |
 | HumanJudgment.relevance | `Literal[0, 1, 2]` |
+| GoldDataset-v1 identity excludes `meta.metadata` | preserved (R2-05) |
 
 ---
 
@@ -1285,12 +1554,27 @@ R1-17 Hash provenance: FROZEN
 R1-18 Campaign create candidate validation: FROZEN
 ```
 
+## Rework 2 closure checklist
+
+```text
+R2-01 Semantic contract IDs: FROZEN
+R2-02 Selection-policy fingerprint (canonical_config_hash / cfg_): FROZEN
+R2-03 Hard Call durable authority (hard_calls.json): FROZEN
+R2-04 Campaign atomic publication: FROZEN
+R2-05 Dataset semantic reuse vs non-semantic metadata: FROZEN
+R2-06 Multi-campaign registration: FROZEN
+R2-07 Lifecycle / idempotent replay ordering: FROZEN
+R2-08 16F-A/B idempotency boundary: FROZEN
+R2-09 Coverage zero denominator: FROZEN
+R2-10 Source-seed validation: FROZEN
+```
+
 ---
 
 ## Design disposition
 
 ```text
-16F DESIGN GATE: OPEN (candidate — Rework 1)
+16F DESIGN GATE: OPEN (candidate — Rework 2)
 16F IMPLEMENTATION: NOT AUTHORIZED
 16F-A … 16F-D: NOT AUTHORIZED
 16G–16H: NOT AUTHORIZED
