@@ -121,6 +121,6 @@ Vite silent port fallback
 
 ## Final Rework 1 SHAs
 
-- Implementation: 
-- Documentation: (this commit)
+- Implementation: `b1da3c076d56bed77bbdc328346ce92220950c8b`
+- Documentation: `5f00c148719d9903f12795bececf89a075bc3d3e`
 
