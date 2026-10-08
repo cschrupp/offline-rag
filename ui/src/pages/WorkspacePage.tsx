@@ -44,9 +44,11 @@ import { EvidencePanel } from "../features/ask/EvidencePanel";
 import { SourceRail } from "../features/ask/SourceRail";
 import type { PreviewTarget } from "../features/ask/SourcePreview";
 import {
+  SOURCE_STATE_STALE_MESSAGE,
+  canAddSources,
+  canMutateExistingSource,
   deriveSourceListPhase,
   headerSourceCountLabel,
-  sourceMutationStateKnown,
   sourcesRecordsAvailable,
   workspaceStatusBadge,
 } from "../features/workspaces/sourceLoadingState";
@@ -178,6 +180,8 @@ export function WorkspacePage() {
       })
     : "loading";
   const askSourcesReady = sourcesRecordsAvailable(sourcePhase);
+  const addSourcesAllowed = canAddSources(sourcePhase);
+  const existingSourceMutationsAllowed = canMutateExistingSource(sourcePhase);
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [addError, setAddError] = useState<string | null>(null);
@@ -538,6 +542,9 @@ export function WorkspacePage() {
 
   const addMutation = useMutation({
     mutationFn: async (intent: AddSourcesIntent) => {
+      if (!canAddSources(sourcePhase)) {
+        throw new Error(SOURCE_STATE_STALE_MESSAGE);
+      }
       const controller = new AbortController();
       addUploadAbortRef.current = controller;
       setPendingPhase("uploading");
@@ -617,6 +624,10 @@ export function WorkspacePage() {
   });
 
   function submitAddSourcesIntent(intent: AddSourcesIntent) {
+    if (!canAddSources(sourcePhase)) {
+      setAddError(SOURCE_STATE_STALE_MESSAGE);
+      return;
+    }
     setAddSourcesIntent(intent);
     setAddError(null);
     setOperationLabel("Add sources");
@@ -625,6 +636,10 @@ export function WorkspacePage() {
 
   function retryAddSourcesSafely() {
     if (!addSourcesIntent || addMutation.isPending) return;
+    if (!canAddSources(sourcePhase)) {
+      setAddError(SOURCE_STATE_STALE_MESSAGE);
+      return;
+    }
     setAddError(null);
     setOperationLabel("Add sources");
     addMutation.mutate(addSourcesIntent);
@@ -632,6 +647,9 @@ export function WorkspacePage() {
 
   const renameMutation = useMutation({
     mutationFn: () => {
+      if (!canMutateExistingSource(sourcePhase)) {
+        throw new Error(SOURCE_STATE_STALE_MESSAGE);
+      }
       if (!workspace || !renameTarget) throw new Error("Missing rename target");
       const displayName = renameValue.trim();
       const key = renameIntent.current.prepare(
@@ -671,6 +689,9 @@ export function WorkspacePage() {
 
   const replaceMutation = useMutation({
     mutationFn: async () => {
+      if (!canMutateExistingSource(sourcePhase)) {
+        throw new Error(SOURCE_STATE_STALE_MESSAGE);
+      }
       if (!workspace || !replaceTarget || !replaceFile) {
         throw new Error("Missing replace target");
       }
@@ -707,6 +728,9 @@ export function WorkspacePage() {
 
   const removeMutation = useMutation({
     mutationFn: async () => {
+      if (!canMutateExistingSource(sourcePhase)) {
+        throw new Error(SOURCE_STATE_STALE_MESSAGE);
+      }
       if (!workspace || !removeTarget) throw new Error("Missing remove target");
       setRemoveError(null);
       const key = removeIntent.current.prepare(
@@ -919,6 +943,10 @@ export function WorkspacePage() {
     ) {
       return;
     }
+    if (!canAddSources(sourcePhase)) {
+      setAddError(SOURCE_STATE_STALE_MESSAGE);
+      return;
+    }
     if (addAmbiguous && addSourcesIntent) {
       // Unresolved ambiguous intent must be retried or explicitly abandoned.
       return;
@@ -970,8 +998,18 @@ export function WorkspacePage() {
     pendingPhase === "uploading" ||
     pendingPhase === "operation" ||
     askMutation.isPending;
-  const sourceMutationsDisabled =
-    busyForMutations || !sourceMutationStateKnown(sourcePhase);
+  const addSourcesDisabled = busyForMutations || !addSourcesAllowed;
+  const existingSourceMutationsDisabled =
+    busyForMutations || !existingSourceMutationsAllowed;
+  const addFormSubmitDisabled =
+    busyForMutations ||
+    addCancelReconciling ||
+    !addSourcesAllowed ||
+    selectedFiles.length === 0;
+  const addRetrySafelyDisabled =
+    busyForMutations || addCancelReconciling || !addSourcesAllowed;
+  const existingMutationSubmitDisabled =
+    busyForMutations || !existingSourceMutationsAllowed;
 
   const history: ConversationHistoryEntry[] = pairs.map(toHistoryEntry);
   const activeEntry =
@@ -1101,7 +1139,8 @@ export function WorkspacePage() {
       sourcesError={sourcesQuery.isError ? sourcesQuery.error : null}
       recordedSourceCount={workspace.source_count}
       usedBytes={usedBytes}
-      mutationsDisabled={sourceMutationsDisabled}
+      addDisabled={addSourcesDisabled}
+      existingSourceActionsDisabled={existingSourceMutationsDisabled}
       selectionDisabled={askMutation.isPending || !askSourcesReady}
       onRetrySources={() => {
         void sourcesQuery.refetch();
@@ -1116,38 +1155,42 @@ export function WorkspacePage() {
         setSelectedSourceIds(next.selectedSourceIds);
         setSelectionMode(next.mode);
       }}
-      onAdd={() =>
+      onAdd={() => {
+        if (!canAddSources(sourcePhase)) return;
         closeSourcesDrawerThen(() => {
           setAddOpen(true);
           setAddError(null);
           setSelectedFiles([]);
           addIntent.current = IntentHandle.newIntent();
-        })
-      }
+        });
+      }}
       onPreview={openSourcePreview}
-      onRename={(source) =>
+      onRename={(source) => {
+        if (!canMutateExistingSource(sourcePhase)) return;
         closeSourcesDrawerThen(() => {
           setRenameTarget(source);
           setRenameValue(source.display_name);
           setRenameError(null);
           renameIntent.current = IntentHandle.newIntent();
-        })
-      }
-      onReplace={(source) =>
+        });
+      }}
+      onReplace={(source) => {
+        if (!canMutateExistingSource(sourcePhase)) return;
         closeSourcesDrawerThen(() => {
           setReplaceTarget(source);
           setReplaceFile(null);
           setReplaceError(null);
           replaceIntent.current = IntentHandle.newIntent();
-        })
-      }
-      onRemove={(source) =>
+        });
+      }}
+      onRemove={(source) => {
+        if (!canMutateExistingSource(sourcePhase)) return;
         closeSourcesDrawerThen(() => {
           setRemoveTarget(source);
           setRemoveError(null);
           removeIntent.current = IntentHandle.newIntent();
-        })
-      }
+        });
+      }}
     />
   );
 
@@ -1585,6 +1628,11 @@ export function WorkspacePage() {
               Checking workspace state after cancel…
             </p>
           ) : null}
+          {!addSourcesAllowed ? (
+            <p className="muted" role="status">
+              {SOURCE_STATE_STALE_MESSAGE}
+            </p>
+          ) : null}
           {addError ? (
             <p className="error-box" role="alert">
               {addError}
@@ -1613,19 +1661,12 @@ export function WorkspacePage() {
               <Button
                 type="button"
                 onClick={retryAddSourcesSafely}
-                disabled={busyForMutations || addCancelReconciling}
+                disabled={addRetrySafelyDisabled}
               >
                 Retry safely
               </Button>
             ) : (
-              <Button
-                type="submit"
-                disabled={
-                  busyForMutations ||
-                  addCancelReconciling ||
-                  selectedFiles.length === 0
-                }
-              >
+              <Button type="submit" disabled={addFormSubmitDisabled}>
                 Add sources
               </Button>
             )}
@@ -1640,8 +1681,15 @@ export function WorkspacePage() {
         confirmLabel="Remove source"
         danger
         busy={removeMutation.isPending}
+        confirmDisabled={!existingSourceMutationsAllowed}
+        notice={
+          !existingSourceMutationsAllowed ? SOURCE_STATE_STALE_MESSAGE : null
+        }
         onCancel={() => setRemoveTarget(null)}
-        onConfirm={() => removeMutation.mutate()}
+        onConfirm={() => {
+          if (!canMutateExistingSource(sourcePhase)) return;
+          removeMutation.mutate();
+        }}
       />
 
       <ModalDialog
@@ -1655,6 +1703,10 @@ export function WorkspacePage() {
           className="stack"
           onSubmit={(event) => {
             event.preventDefault();
+            if (!canMutateExistingSource(sourcePhase)) {
+              setRenameError(SOURCE_STATE_STALE_MESSAGE);
+              return;
+            }
             renameMutation.mutate();
           }}
         >
@@ -1666,6 +1718,11 @@ export function WorkspacePage() {
             maxLength={512}
             required
           />
+          {!existingSourceMutationsAllowed ? (
+            <p className="muted" role="status">
+              {SOURCE_STATE_STALE_MESSAGE}
+            </p>
+          ) : null}
           {renameError ? (
             <p className="error-box" role="alert">
               {renameError}
@@ -1679,7 +1736,12 @@ export function WorkspacePage() {
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={renameMutation.isPending}>
+            <Button
+              type="submit"
+              disabled={
+                renameMutation.isPending || existingMutationSubmitDisabled
+              }
+            >
               Save label
             </Button>
           </div>
@@ -1701,6 +1763,10 @@ export function WorkspacePage() {
           className="stack"
           onSubmit={(event) => {
             event.preventDefault();
+            if (!canMutateExistingSource(sourcePhase)) {
+              setReplaceError(SOURCE_STATE_STALE_MESSAGE);
+              return;
+            }
             if (!replaceFile) {
               setReplaceError("Choose exactly one file.");
               return;
@@ -1733,6 +1799,11 @@ export function WorkspacePage() {
               </p>
             ) : null}
           </div>
+          {!existingSourceMutationsAllowed ? (
+            <p className="muted" role="status">
+              {SOURCE_STATE_STALE_MESSAGE}
+            </p>
+          ) : null}
           {replaceError ? (
             <p className="error-box" role="alert">
               {replaceError}
@@ -1746,7 +1817,12 @@ export function WorkspacePage() {
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={replaceMutation.isPending}>
+            <Button
+              type="submit"
+              disabled={
+                replaceMutation.isPending || existingMutationSubmitDisabled
+              }
+            >
               Replace current version
             </Button>
           </div>

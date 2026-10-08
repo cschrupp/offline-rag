@@ -20,7 +20,10 @@ type Props = {
   sourcesError: unknown;
   recordedSourceCount: number;
   usedBytes: number;
-  mutationsDisabled: boolean;
+  /** Disables Add Sources (allowed in ready|empty when not busy). */
+  addDisabled: boolean;
+  /** Disables rename/replace/remove menus (ready only). */
+  existingSourceActionsDisabled: boolean;
   selectionDisabled: boolean;
   onRetrySources: () => void;
   onToggle: (sourceId: string, selected: boolean) => void;
@@ -42,7 +45,8 @@ export function SourceRail({
   sourcesError,
   recordedSourceCount,
   usedBytes,
-  mutationsDisabled,
+  addDisabled,
+  existingSourceActionsDisabled,
   selectionDisabled,
   onRetrySources,
   onToggle,
@@ -108,7 +112,7 @@ export function SourceRail({
         </p>
       </div>
 
-      <Button onClick={onAdd} disabled={mutationsDisabled}>
+      <Button onClick={onAdd} disabled={addDisabled}>
         + Add sources
       </Button>
 
@@ -117,7 +121,7 @@ export function SourceRail({
           title="This workspace is empty"
           body="This workspace is ready for sources but currently contains no active knowledge."
           action={
-            <Button onClick={onAdd} disabled={mutationsDisabled}>
+            <Button onClick={onAdd} disabled={addDisabled}>
               + Add sources
             </Button>
           }
@@ -203,7 +207,7 @@ export function SourceRail({
                 </div>
                 <SourceActionsMenu
                   source={source}
-                  disabled={mutationsDisabled}
+                  disabled={existingSourceActionsDisabled}
                   onRename={() => onRename(source)}
                   onReplace={() => onReplace(source)}
                   onRemove={() => onRemove(source)}

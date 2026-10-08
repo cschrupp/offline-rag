@@ -1,12 +1,16 @@
 import { QueryClient } from "@tanstack/react-query";
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { AppRouter } from "../app/router";
+import { queryKeys } from "../api/queryKeys";
 import {
+  SOURCE_STATE_STALE_MESSAGE,
+  canAddSources,
+  canMutateExistingSource,
   deriveSourceListPhase,
   headerSourceCountLabel,
   sourceMutationStateKnown,
@@ -230,6 +234,14 @@ describe("sourceLoadingState helpers", () => {
     expect(sourceMutationStateKnown("ready")).toBe(true);
     expect(sourceMutationStateKnown("empty")).toBe(true);
     expect(sourceMutationStateKnown("loading")).toBe(false);
+    expect(canAddSources("ready")).toBe(true);
+    expect(canAddSources("empty")).toBe(true);
+    expect(canAddSources("error")).toBe(false);
+    expect(canAddSources("inconsistent")).toBe(false);
+    expect(canMutateExistingSource("ready")).toBe(true);
+    expect(canMutateExistingSource("empty")).toBe(false);
+    expect(canMutateExistingSource("error")).toBe(false);
+    expect(canMutateExistingSource("inconsistent")).toBe(false);
     expect(sourcesRecordsAvailable("ready")).toBe(true);
     expect(
       headerSourceCountLabel({
@@ -473,6 +485,314 @@ describe("Workspace source-loading presentation", () => {
     expect(await screen.findByRole("button", { name: "doc-1.txt" })).toBeInTheDocument();
     expect(screen.getByText("Active")).toBeInTheDocument();
     expect(screen.queryByText("Source issue")).toBeNull();
+    ctl.mock.restore();
+  });
+});
+
+type MutableSourcesMode = "ok" | "empty-ok" | "http-500";
+
+function installMutableWorkspaceMocks(options?: {
+  status?: "active" | "empty";
+  sourceCount?: number;
+  initialMode?: MutableSourcesMode;
+}) {
+  let sourcesMode: MutableSourcesMode = options?.initialMode ?? "ok";
+  const mutationCalls: { method: string; url: string }[] = [];
+
+  const mock = installFetchMock(async (call) => {
+    if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
+    if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+    if (call.url === "/v1/workspaces/ws_1" && call.method === "GET") {
+      const status = options?.status ?? "active";
+      const sourceCount =
+        options?.sourceCount ?? (status === "empty" ? 0 : 10);
+      return jsonResponse(
+        workspace({
+          workspace_id: "ws_1",
+          title: "B1 Upload Smoke",
+          revision: 7,
+          status,
+          source_count: sourceCount,
+          current_snapshot_id: status === "empty" ? null : "snap_1",
+        }),
+      );
+    }
+    if (call.url === "/v1/workspaces/ws_1/sources" && call.method === "GET") {
+      if (sourcesMode === "http-500") {
+        return errorResponse("internal_error", "sources failed", 500);
+      }
+      if (sourcesMode === "empty-ok") {
+        return jsonResponse({
+          workspace_id: "ws_1",
+          revision: 7,
+          sources: [],
+        });
+      }
+      return jsonResponse({
+        workspace_id: "ws_1",
+        revision: 7,
+        sources: tenSources,
+      });
+    }
+    if (
+      call.url.startsWith("/v1/workspaces/ws_1/sources") &&
+      (call.method === "POST" ||
+        call.method === "PATCH" ||
+        call.method === "PUT" ||
+        call.method === "DELETE")
+    ) {
+      mutationCalls.push({ method: call.method, url: call.url });
+      return errorResponse("internal_error", "mutation should not dispatch", 500);
+    }
+    if (call.url === "/v1/workspaces") return jsonResponse([]);
+    return errorResponse("not_found", "x", 404);
+  });
+
+  return {
+    mock,
+    mutationCalls,
+    setSourcesMode: (mode: MutableSourcesMode) => {
+      sourcesMode = mode;
+    },
+  };
+}
+
+describe("Workspace source mutation stale-open-dialog guards (Rework 2)", () => {
+  it("A ADD: open modal then source becomes unsafe → submit disabled and POST blocked", async () => {
+    const user = userEvent.setup();
+    const ctl = installMutableWorkspaceMocks();
+    const { queryClient } = renderApp("/workspaces/ws_1");
+    expect(await screen.findByRole("button", { name: "doc-1.txt" })).toBeInTheDocument();
+
+    await user.click(screen.getAllByRole("button", { name: "+ Add sources" })[0]!);
+    const dialog = await screen.findByRole("dialog", { name: /add sources/i });
+    await user.upload(
+      within(dialog).getByLabelText(/source files/i),
+      new File(["hello"], "new.txt", { type: "text/plain" }),
+    );
+    expect(
+      within(dialog).getByRole("button", { name: /^add sources$/i }),
+    ).toBeEnabled();
+
+    // ACTIVE + [] → inconsistent (fail-closed for Add)
+    ctl.setSourcesMode("empty-ok");
+    await queryClient.invalidateQueries({
+      queryKey: queryKeys.workspaceSources("ws_1"),
+    });
+    await waitFor(() => {
+      expect(
+        within(dialog).getByRole("button", { name: /^add sources$/i }),
+      ).toBeDisabled();
+    });
+    expect(within(dialog).getByText(SOURCE_STATE_STALE_MESSAGE)).toBeInTheDocument();
+
+    fireEvent.submit(
+      within(dialog).getByRole("button", { name: /^add sources$/i }).closest("form")!,
+    );
+    expect(ctl.mutationCalls.filter((c) => c.method === "POST")).toHaveLength(0);
+    ctl.mock.restore();
+  });
+
+  it("B ADD Retry safely: frozen intent preserved; unsafe state blocks retry POST", async () => {
+    const user = userEvent.setup();
+    let sourcesMode: MutableSourcesMode = "ok";
+    const posts: string[] = [];
+    let postAttempt = 0;
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces/ws_1" && call.method === "GET") {
+        return jsonResponse(
+          workspace({
+            workspace_id: "ws_1",
+            title: "B1 Upload Smoke",
+            revision: 7,
+            status: "active",
+            source_count: 10,
+          }),
+        );
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources" && call.method === "GET") {
+        if (sourcesMode === "http-500") {
+          return errorResponse("internal_error", "sources failed", 500);
+        }
+        return jsonResponse({
+          workspace_id: "ws_1",
+          revision: 7,
+          sources: tenSources,
+        });
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources" && call.method === "POST") {
+        posts.push(call.method);
+        postAttempt += 1;
+        if (postAttempt === 1) {
+          throw new TypeError("Failed to fetch");
+        }
+        return errorResponse("internal_error", "should not retry", 500);
+      }
+      if (call.url === "/v1/workspaces") return jsonResponse([]);
+      return errorResponse("not_found", "x", 404);
+    });
+
+    const { queryClient } = renderApp("/workspaces/ws_1");
+    await user.click(
+      (await screen.findAllByRole("button", { name: "+ Add sources" }))[0]!,
+    );
+    const dialog = await screen.findByRole("dialog", { name: /add sources/i });
+    await user.upload(
+      within(dialog).getByLabelText(/source files/i),
+      new File(["x"], "x.txt", { type: "text/plain" }),
+    );
+    await user.click(within(dialog).getByRole("button", { name: /^add sources$/i }));
+    const retry = await within(dialog).findByRole("button", { name: /retry safely/i });
+    expect(retry).toBeEnabled();
+    expect(posts).toHaveLength(1);
+
+    sourcesMode = "http-500";
+    await queryClient.invalidateQueries({
+      queryKey: queryKeys.workspaceSources("ws_1"),
+    });
+    await waitFor(() => {
+      expect(retry).toBeDisabled();
+    });
+    expect(within(dialog).getByText(SOURCE_STATE_STALE_MESSAGE)).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("button", { name: /retry safely/i }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(retry);
+    expect(posts).toHaveLength(1);
+    mock.restore();
+  });
+
+  it("C RENAME: open then unsafe → Save disabled and no PATCH", async () => {
+    const user = userEvent.setup();
+    const ctl = installMutableWorkspaceMocks();
+    const { queryClient } = renderApp("/workspaces/ws_1");
+    expect(await screen.findByRole("button", { name: "doc-1.txt" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Actions for doc-1.txt" }));
+    await user.click(screen.getByRole("menuitem", { name: "Rename source" }));
+    const dialog = await screen.findByRole("dialog", { name: /rename display label/i });
+    expect(within(dialog).getByRole("button", { name: "Save label" })).toBeEnabled();
+
+    ctl.setSourcesMode("http-500");
+    await queryClient.invalidateQueries({
+      queryKey: queryKeys.workspaceSources("ws_1"),
+    });
+    await waitFor(() => {
+      expect(within(dialog).getByRole("button", { name: "Save label" })).toBeDisabled();
+    });
+    expect(within(dialog).getByText(SOURCE_STATE_STALE_MESSAGE)).toBeInTheDocument();
+
+    fireEvent.submit(within(dialog).getByRole("button", { name: "Save label" }).closest("form")!);
+    expect(ctl.mutationCalls.filter((c) => c.method === "PATCH")).toHaveLength(0);
+    expect(within(dialog).getByRole("button", { name: "Cancel" })).toBeEnabled();
+    ctl.mock.restore();
+  });
+
+  it("D REPLACE: open then unsafe → Replace disabled, no PUT, not uploading", async () => {
+    const user = userEvent.setup();
+    const ctl = installMutableWorkspaceMocks();
+    const { queryClient } = renderApp("/workspaces/ws_1");
+    expect(await screen.findByRole("button", { name: "doc-1.txt" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Actions for doc-1.txt" }));
+    await user.click(screen.getByRole("menuitem", { name: "Replace current version" }));
+    const dialog = await screen.findByRole("dialog", { name: /replace current version/i });
+    await user.upload(
+      within(dialog).getByLabelText(/replacement file/i),
+      new File(["new"], "replacement.txt", { type: "text/plain" }),
+    );
+    expect(
+      within(dialog).getByRole("button", { name: "Replace current version" }),
+    ).toBeEnabled();
+
+    ctl.setSourcesMode("http-500");
+    await queryClient.invalidateQueries({
+      queryKey: queryKeys.workspaceSources("ws_1"),
+    });
+    await waitFor(() => {
+      expect(
+        within(dialog).getByRole("button", { name: "Replace current version" }),
+      ).toBeDisabled();
+    });
+
+    fireEvent.submit(
+      within(dialog)
+        .getByRole("button", { name: "Replace current version" })
+        .closest("form")!,
+    );
+    expect(ctl.mutationCalls.filter((c) => c.method === "PUT")).toHaveLength(0);
+    expect(screen.queryByText(/^Uploading/i)).toBeNull();
+    expect(within(dialog).getByRole("button", { name: "Cancel" })).toBeEnabled();
+    ctl.mock.restore();
+  });
+
+  it("E REMOVE: open then unsafe → confirm disabled, Cancel available, no DELETE", async () => {
+    const user = userEvent.setup();
+    const ctl = installMutableWorkspaceMocks();
+    const { queryClient } = renderApp("/workspaces/ws_1");
+    expect(await screen.findByRole("button", { name: "doc-1.txt" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Actions for doc-1.txt" }));
+    await user.click(screen.getByRole("menuitem", { name: "Remove source" }));
+    const dialog = await screen.findByRole("alertdialog", { name: /remove source/i });
+    const confirm = within(dialog).getByRole("button", { name: "Remove source" });
+    expect(confirm).toBeEnabled();
+
+    ctl.setSourcesMode("http-500");
+    await queryClient.invalidateQueries({
+      queryKey: queryKeys.workspaceSources("ws_1"),
+    });
+    await waitFor(() => {
+      expect(confirm).toBeDisabled();
+    });
+    expect(within(dialog).getByText(SOURCE_STATE_STALE_MESSAGE)).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Cancel" })).toBeEnabled();
+
+    fireEvent.click(confirm);
+    expect(ctl.mutationCalls.filter((c) => c.method === "DELETE")).toHaveLength(0);
+    ctl.mock.restore();
+  });
+
+  it("F EMPTY: Add remains allowed; rename/replace/remove remain impossible", async () => {
+    const ctl = installWorkspaceMocks({
+      status: "empty",
+      sourceCount: 0,
+      sourcesMode: "empty-ok",
+    });
+    renderApp("/workspaces/ws_1");
+    expect(await screen.findByText("This workspace is empty")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "+ Add sources" })[0]).toBeEnabled();
+    expect(screen.queryByRole("button", { name: /Actions for/i })).toBeNull();
+    ctl.mock.restore();
+  });
+
+  it("G READY: normal Add/Rename/Replace/Remove controls remain enabled", async () => {
+    const user = userEvent.setup();
+    const ctl = installMutableWorkspaceMocks();
+    renderApp("/workspaces/ws_1");
+    expect(await screen.findByRole("button", { name: "doc-1.txt" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "+ Add sources" })[0]).toBeEnabled();
+
+    await user.click(screen.getAllByRole("button", { name: "+ Add sources" })[0]!);
+    const addDialog = await screen.findByRole("dialog", { name: /add sources/i });
+    await user.upload(
+      within(addDialog).getByLabelText(/source files/i),
+      new File(["a"], "a.txt", { type: "text/plain" }),
+    );
+    expect(
+      within(addDialog).getByRole("button", { name: /^add sources$/i }),
+    ).toBeEnabled();
+    await user.click(within(addDialog).getByRole("button", { name: "Cancel" }));
+
+    await user.click(screen.getByRole("button", { name: "Actions for doc-1.txt" }));
+    expect(screen.getByRole("menuitem", { name: "Rename source" })).toBeEnabled();
+    expect(
+      screen.getByRole("menuitem", { name: "Replace current version" }),
+    ).toBeEnabled();
+    expect(screen.getByRole("menuitem", { name: "Remove source" })).toBeEnabled();
     ctl.mock.restore();
   });
 });

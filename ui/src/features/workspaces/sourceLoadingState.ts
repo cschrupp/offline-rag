@@ -58,13 +58,27 @@ export function workspaceStatusBadge(args: {
   return { tone: "ready", label: "Active" };
 }
 
-export function sourceMutationStateKnown(phase: SourceListPhase): boolean {
+/** Add Sources may run in a genuine empty workspace or a ready populated one. */
+export function canAddSources(phase: SourceListPhase): boolean {
   return phase === "ready" || phase === "empty";
+}
+
+/** Rename / replace / remove require an authoritative nonempty source list. */
+export function canMutateExistingSource(phase: SourceListPhase): boolean {
+  return phase === "ready";
+}
+
+/** @deprecated Prefer canAddSources — kept as the Add-compatible known-state check. */
+export function sourceMutationStateKnown(phase: SourceListPhase): boolean {
+  return canAddSources(phase);
 }
 
 export function sourcesRecordsAvailable(phase: SourceListPhase): boolean {
   return phase === "ready";
 }
+
+export const SOURCE_STATE_STALE_MESSAGE =
+  "Source details changed. Reload the source list before continuing.";
 
 export function headerSourceCountLabel(args: {
   phase: SourceListPhase;

@@ -9,6 +9,10 @@ type Props = {
   cancelLabel?: string;
   danger?: boolean;
   busy?: boolean;
+  /** Disables confirm only — Cancel remains available. */
+  confirmDisabled?: boolean;
+  /** Compact status shown above actions (e.g. stale source-state notice). */
+  notice?: string | null;
   onConfirm: () => void;
   onCancel: () => void;
 };
@@ -21,6 +25,8 @@ export function ConfirmDialog({
   cancelLabel = "Cancel",
   danger = false,
   busy = false,
+  confirmDisabled = false,
+  notice = null,
   onConfirm,
   onCancel,
 }: Props) {
@@ -33,6 +39,11 @@ export function ConfirmDialog({
       busy={busy}
       onClose={onCancel}
     >
+      {notice ? (
+        <p className="muted" role="status">
+          {notice}
+        </p>
+      ) : null}
       <div className="row" style={{ justifyContent: "flex-end" }}>
         <Button variant="secondary" onClick={onCancel} disabled={busy}>
           {cancelLabel}
@@ -40,7 +51,7 @@ export function ConfirmDialog({
         <Button
           variant={danger ? "danger" : "primary"}
           onClick={onConfirm}
-          disabled={busy}
+          disabled={busy || confirmDisabled}
         >
           {confirmLabel}
         </Button>
