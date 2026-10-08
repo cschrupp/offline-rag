@@ -97,7 +97,9 @@ SLICE 16: DESIGN INTERVIEW COMPLETE
              A3 ACCEPTED / LOCKED / SEALED (da1082d95630c12eaf0ce1a3b8d005aaa60d2f73)
            16D-C COMPLETE / ACCEPTED / SEALED
            A4 ACCEPTED / LOCKED / SEALED
-           16E–16H NOT AUTHORIZED
+           16E IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+             Evidence: docs/slice16e_engineering_evidence.md
+           16F–16H NOT AUTHORIZED
            Slice 16 overall IN PROGRESS / NOT COMPLETE
   Authority: docs/slice16_design_authority.md
   Plan: docs/slice16_implementation_plan.md
@@ -926,7 +928,9 @@ SLICE 16: DESIGN INTERVIEW COMPLETE
              REWORK 1–3A COMPLETE
              A3 ACCEPTED / LOCKED / SEALED (da1082d95630c12eaf0ce1a3b8d005aaa60d2f73)
            16D-C COMPLETE / ACCEPTED / SEALED
-           16E–16H NOT AUTHORIZED
+           16E IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+             Evidence: docs/slice16e_engineering_evidence.md
+           16F–16H NOT AUTHORIZED
            Slice 16 overall IN PROGRESS / NOT COMPLETE
 SLICE 17: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
 SLICE 18: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
@@ -945,8 +949,10 @@ M6 science: UNCHANGED
 **COMPLETE / ACCEPTED / SEALED** (B3 at `9c178ffb033cde41849379fc914f321697ff8691`).
 **16D-C** and Amendment **A4** are **COMPLETE / ACCEPTED / SEALED** at
 `0381e0461f68c5fc09e7be2c7699d434e8b8a9cb` (closeout
-`docs/slice16d_c_a4_closeout.md`); → separate later-phase authorization
-(**16E–16H**, Slice 17, Slice 18, M7 closeout). Slice 14 and Slice 15 are closed.
+`docs/slice16d_c_a4_closeout.md`). **16E** is **IMPLEMENTATION CANDIDATE /
+HUMAN ACCEPTANCE PENDING** (`docs/slice16e_engineering_evidence.md`); →
+separate later-phase authorization (**16F–16H**, Slice 17, Slice 18, M7
+closeout). Slice 14 and Slice 15 are closed.
 Slice 16 design is **ACCEPTED / LOCKED**. Amendment A2 is **ACCEPTED / LOCKED /
 SEALED**. **16A**, **16B**, **16C**, **16D-A**, and **16D-B2** are **COMPLETE /
 ACCEPTED**. B1 foundation remediation is **ACCEPTED / SEALED** (implementation
@@ -954,6 +960,6 @@ ACCEPTED**. B1 foundation remediation is **ACCEPTED / SEALED** (implementation
 `b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90`). Legacy B1 product UX remains
 **PRODUCT ACCEPTANCE WITHHELD**. **16D-B2** is **COMPLETE / ACCEPTED /
 SEALED** at `baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`. **16D-B3** is **COMPLETE / ACCEPTED / SEALED** at `9c178ffb033cde41849379fc914f321697ff8691`
-(A3 **ACCEPTED / LOCKED / SEALED**). **16E–16H**, Slice 17, Slice 18, and M7
+(A3 **ACCEPTED / LOCKED / SEALED**). **16F–16H**, Slice 17, Slice 18, and M7
 closeout remain **NOT AUTHORIZED**. Slice 16 overall is **IN PROGRESS / NOT
 COMPLETE**.

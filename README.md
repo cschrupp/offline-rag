@@ -307,7 +307,8 @@ cd ui && npm test && npm run lint && npm run typecheck && npm run build
 | 16A / 16B / 16C | **COMPLETE / ACCEPTED** |
 | 16D-A / 16D-B2 / 16D-B3 / 16D-C | **COMPLETE / ACCEPTED / SEALED** |
 | Amendment A4 | **ACCEPTED / LOCKED / SEALED** |
-| 16E–16H | **NOT AUTHORIZED** |
+| 16E | **IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING** |
+| 16F–16H | **NOT AUTHORIZED** |
 | Slice 17 / 18 | **NOT AUTHORIZED** |
 | M7 closeout | **NOT AUTHORIZED** |
 

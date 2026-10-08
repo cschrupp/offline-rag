@@ -4,7 +4,7 @@
 PROGRESS**. Slices **14** and **15 COMPLETE / ACCEPTED**. Slice **16 IN PROGRESS
 / NOT COMPLETE**, with **16A–16C COMPLETE / ACCEPTED** and **16D-A / 16D-B2 /
 16D-B3 / 16D-C COMPLETE / ACCEPTED / SEALED** (Amendment **A4 ACCEPTED / LOCKED /
-SEALED**). **16E–16H**, Slice **17**, Slice **18**, and M7 closeout remain **NOT
+SEALED**). **16E** is **IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING**. **16F–16H**, Slice **17**, Slice **18**, and M7 closeout remain **NOT
 AUTHORIZED**. Product recovery remains disabled; LangGraph adapter and NeMo /
 13D remain deferred / not authorized. See `ROADMAP.md` and
 `docs/slice16d_c_a4_closeout.md`.

@@ -1019,7 +1019,8 @@ SLICE 16:          IN PROGRESS / NOT COMPLETE
 16A–16C:           COMPLETE / ACCEPTED
 16D-A / 16D-B2 / 16D-B3 / 16D-C: COMPLETE / ACCEPTED / SEALED
 AMENDMENT A4:      ACCEPTED / LOCKED / SEALED
-16E–16H:           NOT AUTHORIZED
+16E:               IMPLEMENTATION CANDIDATE / HUMAN ACCEPTANCE PENDING
+16F–16H:           NOT AUTHORIZED
 SLICE 17 / 18:     NOT AUTHORIZED
 M7 CLOSEOUT:       NOT AUTHORIZED
 ```
@@ -1102,7 +1103,8 @@ hybrid+reranker / recovery) **predates** the locked Slice-15 product API and is
 Original planning note (superseded as present-tense status): frontend
 technology and delivery model were Slice-16 design decisions; design later
 opened and progressed under separate authority. **16A–16D-C** are accepted;
-**16E–16H** remain **NOT AUTHORIZED**.
+**16E** is an implementation candidate under separate evidence; **16F–16H**
+remain **NOT AUTHORIZED**.
 
 ### Prerequisites for opening design (historical)
 
@@ -1203,7 +1205,7 @@ Foundation
   -> performance benchmarks              (Slice 14 COMPLETE / ACCEPTED)
   -> product API + packaging             (Slice 15 COMPLETE / ACCEPTED)
   -> Slice 15 integration closeout       (15H COMPLETE / ACCEPTED)
-  -> Seneca / Portfolio Demo UI          (Slice 16 IN PROGRESS; 16D-C COMPLETE / ACCEPTED / SEALED; 16E–16H NOT AUTHORIZED)
+  -> Seneca / Portfolio Demo UI          (Slice 16 IN PROGRESS; 16D-C COMPLETE / ACCEPTED / SEALED; 16E CANDIDATE; 16F–16H NOT AUTHORIZED)
   -> Regression CI                       (Slice 17 NOT AUTHORIZED)
   -> Portfolio release package           (Slice 18 NOT AUTHORIZED)
   -> Milestone 7 closeout                (NOT AUTHORIZED)
