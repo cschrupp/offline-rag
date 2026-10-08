@@ -2,7 +2,7 @@
 
 ```text
 16F GOLD LAB DATA PLANE
-DESIGN CANDIDATE
+DESIGN CANDIDATE — REWORK 1
 
 INDEPENDENT DESIGN REVIEW:
 PENDING
@@ -28,6 +28,9 @@ NOT AUTHORIZED
 SEALED STARTING BASELINE:
 d53b29645882b2ecfa9bd6cde25c215e9d4a3921
 (16E COMPLETE / ACCEPTED / SEALED)
+
+INITIAL DESIGN CANDIDATE:
+e50b041ae8ef5a8624b74e00c4f32b859be62458
 ```
 
 ## Purpose
@@ -47,6 +50,9 @@ Locked Slice-16 authority remains:
 Normative decisions reused here: **S16-D23 … S16-D34**. Explicit deferrals:
 **S16-D35**. Those decisions are **not** reopened by this materialization.
 
+Rework 1 closes implementation-readiness gaps (R1-01 … R1-18) without redesigning
+D01–D20 architecture.
+
 ## Existing scientific contracts (must reuse)
 
 | Contract / type | Location | Identity |
@@ -56,8 +62,12 @@ Normative decisions reused here: **S16-D23 … S16-D34**. Explicit deferrals:
 | Authoring run | `GoldAuthoringRun` | `models.py` |
 | Silver case | `SilverCase` | `draft_case_id` |
 | Human review | `HumanReview` / `HumanJudgment` / `HumanReviewStatus` | `review_models.py` |
+| Query canonicalize | `canonicalize_query()` | `review_models.py` |
 | Finalizer | `src/offline_rag/gold_authoring/finalize.py` | projects to GoldDataset-v1 |
 | Loader | `load_gold_dataset()` | fail-closed validation |
+| Product snapshot | `CorpusReadSnapshot` | `app/snapshot.py` |
+| Snapshot identity | `CanonicalSnapshotManifest` | `identity.corpus_id`, `identity.chunk_set_id` |
+| Workspace corpus | `WorkspaceRecord.backing_corpus_name` | workspace models |
 
 Relevance semantics (unchanged):
 
@@ -123,13 +133,13 @@ Conceptual fields:
 
 | Field | Notes |
 |---|---|
-| `project_id` | opaque stable random identity |
+| `project_id` | `goldproj_<uuid4hex>` |
 | `workspace_id` | owning workspace |
 | `title` | human title |
 | `description` | human description |
 | `project_type` | `benchmark` \| `improvement` |
 | `created_at` | creation timestamp |
-| `status` | project lifecycle status |
+| `status` | `active` \| `archived` |
 
 `project_type` is scientifically meaningful provenance and **MUST NOT** silently
 change after project creation.
@@ -142,52 +152,193 @@ Conceptual fields:
 
 | Field | Notes |
 |---|---|
-| `campaign_id` | opaque stable random identity |
-| `project_id` | owning project |
-| `workspace_id` | owning workspace |
+| `campaign_id` | `goldcamp_<uuid4hex>` |
+| `project_id` | owning project (must resolve) |
+| `workspace_id` | **MUST** equal `project.workspace_id` |
 | `snapshot_id` | exact bound snapshot |
 | `chunk_set_id` | exact bound chunk set |
-| `corpus_id` | from product snapshot / authoring binding |
-| `corpus_name` | from product snapshot / authoring binding |
-| `selection_policy` | versioned provenance |
+| `corpus_id` | exact bound corpus id |
+| `corpus_name` | exact bound corpus name |
+| `selection_policy` | `gold-selection-policy-v1` (typed) |
 | `baseline_authoring_run_id` | imported baseline identity |
-| `baseline_sha256` | hash of immutable baseline bytes |
+| `baseline_sha256` | SHA-256 of immutable baseline bytes |
+| `workspace_revision_at_creation` | revision captured at successful create |
 | `created_at` | creation timestamp |
-| `status` | campaign lifecycle status |
+| `status` | `open` \| `closed` |
 
-`snapshot_id` / `chunk_set_id` **MUST NOT** mutate after campaign creation.
+`snapshot_id` / `chunk_set_id` / `corpus_id` / `corpus_name` **MUST NOT** mutate
+after campaign creation.
+
+`project_type` is inherited from `GoldProject` and **MUST NOT** be independently
+rewritten at campaign level.
+
+No cross-workspace campaign under a project:
+
+```text
+campaign.project_id → project
+campaign.workspace_id == project.workspace_id
+```
 
 A new workspace snapshot requires a **new** campaign where new adjudication is
 appropriate. No filename / fuzzy / similarity migration of historical labels
 (S16-D29).
 
+### Lifecycle states (R1-05)
+
+**GoldProject.status**
+
+```text
+active
+archived
+```
+
+Transition: `active → archived` only. **No unarchive** in 16F v1.
+
+Archived project:
+
+- readable;
+- existing artifacts readable;
+- **no** new campaign creation;
+- **no** new Gold Lab adjudication mutation through that project.
+
+**GoldCampaign.status**
+
+```text
+open
+closed
+```
+
+Transition: `open → closed` only. **No reopen** in 16F v1.
+
+Closed campaign:
+
+- readable;
+- ledger immutable;
+- **no** new / corrected human decisions;
+- existing valid derived / export artifacts remain readable.
+
+Export / registration of already-valid projected work **MAY** occur after
+closure. Closing **MUST NOT** fabricate completeness.
+
 ---
 
 ## 16F-D03 — Campaign creation binding
 
-Initial 16F campaign creation is from the **CURRENT ACTIVE** workspace snapshot.
+### Pristine baseline human state (R1-01)
 
-Creation **MUST**:
+16F v1 campaign creation **MUST** accept only an authoring baseline with **no**
+pre-existing substantive human adjudication.
 
-1. load the Workspace record;
-2. require workspace status **ACTIVE**;
-3. resolve `workspace.current_snapshot_id` through the existing product snapshot;
-4. obtain exact `snapshot_id` / `chunk_set_id` / `corpus_id` / `corpus_name`;
-5. validate the imported `GoldAuthoringRun` (`offline-rag-gold-authoring-v1`);
-6. require exact compatible `chunk_set_id`;
-7. verify corpus identity where present;
-8. copy the authoring run into immutable campaign baseline storage;
-9. record SHA-256 of baseline bytes.
+For every `SilverCase`, **ACCEPT** when:
 
-If any binding differs: **FAIL CLOSED**.
+- `human_review` is absent; **or**
+- `human_review` is semantically empty:
+  - `status = pending`
+  - `judgments = []`
+  - `query_override = null`
+  - `category_override.is_overridden = false`
+  - `category_override.value = null`
+  - `tags_override = null`
+  - `grade_basis_query = null`
 
-After creation, workspace mutation:
+**REJECT** campaign import if any case contains:
 
-- **MUST NOT** update campaign binding;
-- **MUST NOT** migrate judgments;
-- **MUST NOT** substitute CURRENT chunk set.
+- human judgment;
+- `accepted` / `edited` / `rejected` status;
+- query override;
+- category override;
+- tags override;
+- grade basis;
+- any other substantive human-review state.
 
-Historical campaigns remain historical.
+Failure: explicit `baseline_human_state_present`-style error.
+
+Model / prelabel state **MAY** remain in baseline. It remains advisory and
+**MUST** be hidden from blind pre-commit task views.
+
+**MUST NOT** implement migration / bootstrap of historical reviewed Slice-9 runs
+in 16F v1 (future separately governed compatibility scope).
+
+### Exact workspace / corpus / chunk binding (R1-02)
+
+A 16F v1 baseline **MUST** have non-null / nonblank:
+
+- `corpus_name`
+- `corpus_id`
+- `chunk_set_id`
+
+Campaign creation requires **exact** equality:
+
+```text
+baseline.chunk_set_id
+  == resolved_workspace_snapshot.identity.chunk_set_id
+
+baseline.corpus_id
+  == resolved_workspace_snapshot.identity.corpus_id
+
+baseline.corpus_name
+  == workspace.backing_corpus_name
+
+resolved_workspace_snapshot.corpus_name
+  == workspace.backing_corpus_name
+```
+
+Any mismatch: **FAIL CLOSED**.
+
+Campaign stores these exact values. No aliasing, source-name matching, or fuzzy
+migration.
+
+### CURRENT-snapshot creation race (R1-03)
+
+Campaign creation binds CURRENT ACTIVE workspace state. Freeze:
+
+1. capture `workspace_id`;
+2. capture workspace revision;
+3. capture `current_snapshot_id`;
+4. resolve that exact snapshot (`CorpusReadSnapshot`);
+5. validate baseline against it;
+6. before durable campaign publication, re-read / revalidate the workspace.
+
+Required at commit:
+
+```text
+workspace still ACTIVE
+workspace revision unchanged
+current_snapshot_id unchanged
+```
+
+Otherwise: **STALE / CONFLICT** — **NO** campaign publication.
+
+Record `workspace_revision_at_creation` in GoldCampaign provenance.
+
+A later workspace mutation does **NOT** invalidate or rewrite an already
+committed campaign.
+
+### Candidate identity validation (R1-18)
+
+Before campaign commit, validate every baseline case / candidate / source-seed
+identity needed by the campaign against the bound immutable chunk set.
+
+At minimum: all candidate `chunk_id`s exist in bound `chunk_set_id`.
+
+Any unresolved candidate: **FAIL CLOSED**.
+
+No CURRENT substitution. No omission. No fuzzy matching.
+
+### Creation steps (summary)
+
+1. load Workspace record;
+2. require ACTIVE workspace;
+3. require project resolvable and `project.workspace_id` match;
+4. capture revision + `current_snapshot_id`;
+5. resolve exact `CorpusReadSnapshot`;
+6. validate imported `GoldAuthoringRun` (authoring-v1 + pristine human state);
+7. require exact corpus / chunk_set equalities above;
+8. validate all candidate chunk ids against bound chunk set;
+9. copy authoring run into immutable campaign baseline storage;
+10. record `baseline_sha256` of baseline bytes;
+11. re-read / revalidate ACTIVE + revision + snapshot;
+12. publish campaign atomically with `workspace_revision_at_creation`.
 
 ---
 
@@ -232,41 +383,80 @@ Private Gold Lab state remains under `/data`.
 
 ---
 
-## 16F-D05 — Identity model
+## 16F-D05 — Identity model (R1-07)
 
-| Identity | Class | Notes |
-|---|---|---|
-| `project_id` | opaque stable random | |
-| `campaign_id` | opaque stable random | |
-| `task_id` | **deterministic** stable | from canonical task identity |
-| ledger record id | opaque unique append | |
-| `judgment_id` | opaque unique | judgment records |
-| case identity | existing | `SilverCase.draft_case_id` |
-| candidate identity | existing | `chunk_id` |
-| dataset identity | existing | GoldDataset-v1 `gold_<sha256>` |
+### Prefixes
 
-`task_id` **MUST NOT** depend on:
+| Identity | Form |
+|---|---|
+| `project_id` | `goldproj_<uuid4hex>` |
+| `campaign_id` | `goldcamp_<uuid4hex>` |
+| ledger record id | `goldrec_<uuid4hex>` |
+| `judgment_id` | `goldjud_<uuid4hex>` |
+| `task_id` | `goldtask_<sha256>` |
+| query fingerprint | `goldquery_<sha256>` |
+| hard-call designation | `goldhard_<sha256>` |
+| case identity | existing `SilverCase.draft_case_id` |
+| candidate identity | existing `chunk_id` |
+| dataset identity | existing GoldDataset-v1 `gold_<sha256>` |
 
-- timestamp;
-- UI ordering;
-- retrieval score / rank;
-- presentation cosmetics.
+Use existing repository UUID / hash helpers where compatible
+(`new_execution_id`-style uuid4hex; canonical JSON hashing for digests).
 
-For an absolute relevance task, stable identity includes at least:
+### Deterministic task payloads
 
-```text
-campaign_id
-task semantic kind
-case_id
-candidate chunk_id
-semantic_contract
+Task IDs use deterministic canonical JSON over the payloads below, then
+`goldtask_<sha256(...)>`.
+
+**Absolute relevance — EXACTLY:**
+
+```json
+{
+  "campaign_id": "...",
+  "task_kind": "absolute_relevance",
+  "case_id": "...",
+  "candidate_chunk_id": "...",
+  "semantic_contract": "..."
+}
 ```
 
-**Query fingerprint is NOT part of stable task identity.**
+**Question Check — EXACTLY:**
 
-Reason: a semantic query edit invalidates the old judgment and requires
-rejudgment, but **MUST NOT** create a second scoring identity for the same
-campaign / case / candidate task.
+```json
+{
+  "campaign_id": "...",
+  "task_kind": "question_check",
+  "case_id": "...",
+  "semantic_contract": "..."
+}
+```
+
+**Auxiliary pairwise preference:**
+
+```json
+{
+  "campaign_id": "...",
+  "task_kind": "auxiliary_preference",
+  "case_id": "...",
+  "candidate_pair": ["lower_chunk_id", "higher_chunk_id"],
+  "semantic_contract": "..."
+}
+```
+
+Pair order **MUST** be canonical / sorted.
+Presentation ordering **MUST NOT** affect task identity.
+
+### Query fingerprint
+
+```text
+canonical_query = canonicalize_query(query)   # existing gold_authoring helper
+query_fingerprint = goldquery_<sha256(UTF-8 bytes of canonical_query)>
+```
+
+**Do NOT** include query fingerprint in stable absolute `task_id`.
+
+`task_id` **MUST NOT** depend on timestamp, UI ordering, retrieval score/rank,
+or presentation cosmetics.
 
 ---
 
@@ -274,38 +464,94 @@ campaign / case / candidate task.
 
 Gold Lab human work units are atomic and resumable (S16-D24).
 
-Data-plane task kinds **MUST** support:
+### Task kinds (scientific / ledger)
 
 | Kind | Role |
 |---|---|
 | `absolute_relevance` | canonical 0/1/2 |
 | `question_check` | accept / edit / reject question |
-| `auxiliary_preference` | non-canonical preference (e.g. Chunk Duel) |
-| `hard_call` | designated hard-call resolution |
+| `auxiliary_preference` | explicitly NON-CANONICAL preference |
+
+**Hard Call is NOT an independent scientific task kind** (R1-12).
+It is a stable **designation** on an existing canonical absolute_relevance task.
 
 16F may initially materialize only kinds needed by backend tests; **16G** owns
 game presentations.
 
-Case completion and Gold finalization are **completion milestones**, not
-separate relevance semantics.
+Case completion and Gold finalization are **deterministic derived milestones**,
+not separate ledger event types created merely for scoring.
 
-Task state is a deterministic projection:
+### Task state
 
 ```text
 pending
 completed
 ```
 
-**MUST NOT** introduce:
+Do **NOT** add fake completion for rejected questions.
 
-- distributed queue;
-- task leasing;
-- multi-user ownership;
-- learner identity.
+### Task activation (R1-08)
+
+**QUESTION CHECK:** active for each reviewable case.
+
+**ABSOLUTE RELEVANCE:**
+
+- active only when current effective question decision is `accept` or `edit`;
+- before Question Check completion: absolute tasks are **not** active in
+  workload projection;
+- after `reject`: absolute tasks are **not** active;
+- after `accept` / `edit`: absolute tasks become active;
+- after semantic edit: same stable task IDs remain; judgments bound to prior
+  query fingerprint are ineffective; those tasks become `pending` against the
+  new query.
+
+This keeps stable task identity while preserving query-basis correctness.
+
+### Hard Call designation (R1-12)
+
+For v1, hard-call designation targets an `absolute_relevance` task.
+
+Stable identity:
+
+```text
+goldhard_<sha256({
+  campaign_id,
+  target_task_id,
+  designation_contract
+})>
+```
+
+Designation provenance **MAY** derive from diagnostic policy / model
+disagreement internally.
+
+Pre-commit expert view **MUST NOT** reveal:
+
+- model grade;
+- model agreement;
+- model confidence;
+- retrieval score / rank;
+- why the task was machine-designated.
+
+Resolution occurs when the designated target task has a current effective
+canonical judgment.
+
+Contribution can therefore be:
+
+```text
++1 canonical expert judgment
++5 designated Hard Call resolution
+```
+
+without introducing a second truth label.
+
+### Workload selection
+
+**MUST NOT** introduce distributed queue, task leasing, multi-user ownership, or
+learner identity.
 
 Future 16G workload choices (`1`, `5`, `10`, `25`, complete case, until stop)
-**MUST** be implementable by selecting pending tasks from this data plane.
-16F itself does **not** implement the chooser UI.
+**MUST** be implementable by selecting pending **active** tasks from this data
+plane. 16F itself does **not** implement the chooser UI.
 
 ---
 
@@ -329,7 +575,8 @@ campaigns/<campaign_id>/ledger/
 ```
 
 Sequence allocation + publication occurs under a campaign-local filesystem lock.
-Each record is written atomically.
+Each record is written atomically. Sequence is assigned by the storage layer,
+not the client.
 
 Existing records **MUST NEVER** be rewritten or deleted during ordinary
 correction.
@@ -341,48 +588,62 @@ Do not repair silently.
 
 ---
 
-## 16F-D08 — Ledger provenance
+## 16F-D08 — Ledger provenance / envelope (R1-10, R1-11)
 
-All judgment records **MUST** support S16-D25 provenance:
+### Required common envelope (expert-decision records)
 
 | Field | Notes |
 |---|---|
-| `judgment_id` | opaque unique |
-| `task_id` | deterministic stable task |
+| `schema_version` | `offline-rag-gold-lab-ledger-v1` |
+| `sequence` | storage-assigned |
+| `record_id` | `goldrec_<uuid4hex>` |
+| `record_type` | versioned event type |
+| `judgment_id` | `goldjud_<uuid4hex>` |
+| `task_id` | deterministic `goldtask_<sha256>` |
 | `project_id` | |
 | `campaign_id` | |
 | `workspace_id` | |
 | `snapshot_id` | campaign-bound |
 | `chunk_set_id` | campaign-bound |
-| `authoring_run_id` | baseline / projected identity |
+| `authoring_run_id` | baseline identity |
 | `case_id` | `draft_case_id` |
-| query identity / fingerprint | bound at commit time |
-| candidate identity | where applicable |
+| `query_fingerprint` | where semantically applicable |
+| `candidate_chunk_id` | where applicable |
 | `semantic_contract` | separate from presentation |
-| `game_id` / `presentation_id` | where applicable |
-| `selection_policy` | provenance |
-| timestamp | |
-| `supersedes_judgment_id` | when corrected |
+| `selection_policy_id` | from campaign policy |
+| `selection_policy_fingerprint` | from campaign policy |
+| `game_id` | nullable |
+| `presentation_id` | nullable |
+| `idempotency_key` | durable |
+| `request_fingerprint` | durable |
+| `created_at` | |
+| `supersedes_judgment_id` | nullable |
+| `payload` | typed body |
 
-Absolute judgment:
+All fields needed to validate campaign provenance **MUST** be checked against
+the immutable `GoldCampaign` rather than trusted from caller input.
+
+### Ledger event types (R1-11)
+
+Freeze at least:
+
+| `record_type` | Role |
+|---|---|
+| `question_check` | expert judgment |
+| `absolute_relevance` | expert judgment |
+| `auxiliary_preference` | explicitly NON-CANONICAL |
+
+Do **NOT** create case-completion or Gold-finalization ledger events merely to
+obtain contribution points. Those are deterministic derived milestones.
+
+Absolute judgment payload relevance:
 
 ```text
 relevance = strict integer 0 | 1 | 2
 ```
 
-Auxiliary preference:
-
-- **MUST** be explicitly typed auxiliary;
-- **MUST NOT** silently project into canonical 0/1/2 Gold truth.
-
-The ledger **MAY** define additional versioned event record types for:
-
-- `question_check`;
-- `case_completion`;
-- `hard_call_resolution`;
-- `gold_export_registration`.
-
-All event types remain explicit and versioned.
+Auxiliary preference **MUST** be explicitly typed auxiliary and **MUST NOT**
+silently project into canonical 0/1/2 Gold truth.
 
 ---
 
@@ -408,27 +669,41 @@ process restart.
 
 ---
 
-## 16F-D10 — Correction / supersession
+## 16F-D10 — Correction / supersession (R1-13)
 
 Corrections append new records. Never erase the prior judgment.
 
-For canonical relevance correction:
+### Same-query correction
 
-```text
-new judgment.supersedes_judgment_id
-  MUST reference the currently effective judgment for the SAME task
-```
+New absolute judgment **MUST** supersede the currently effective judgment for
+the same task / query basis.
 
 Reject:
 
-- unknown superseded id;
-- cross-task supersession;
-- cross-campaign supersession;
-- superseding a non-current judgment;
-- branching correction chains.
+- branching;
+- cross-task;
+- cross-campaign;
+- superseding a non-current same-basis judgment.
 
-Effective state contains one current canonical judgment per stable task.
-Historical chain remains inspectable.
+### After semantic query edit
+
+Old-query judgments become ineffective by query fingerprint.
+
+A new judgment for the **SAME** stable task under the **NEW** query fingerprint:
+
+- is **NOT** required to supersede the old-query judgment;
+- begins the effective chain for the new query basis.
+
+Historical old-query chain remains intact.
+
+### Question Check correction
+
+Uses the same append / supersession principle against the currently effective
+Question Check judgment.
+
+Effective state contains one current canonical judgment per stable task under
+the current query basis (where applicable). Historical chain remains
+inspectable.
 
 ---
 
@@ -437,14 +712,14 @@ Historical chain remains inspectable.
 Preserve existing Slice-9 HumanReview semantics.
 
 Each canonical absolute judgment **MUST** be bound to the effective query
-identity used when the grade was committed, via a deterministic canonical query
-fingerprint.
+identity used when the grade was committed, via
+`goldquery_<sha256(UTF-8 canonicalize_query(query))>`.
 
 If Question Check later changes the effective query:
 
 1. historical judgments remain in the ledger;
 2. judgments bound to the old query cease to be CURRENT / EFFECTIVE;
-3. those candidate tasks become `pending` again;
+3. those candidate tasks become `pending` again (same stable `task_id`);
 4. old grades **MUST NOT** project into current `HumanReview`;
 5. old grades **MUST NOT** contribute current judgment points;
 6. no history is erased.
@@ -454,7 +729,7 @@ query when current judgments exist.
 
 ---
 
-## 16F-D12 — Benchmark vs Improvement Gold
+## 16F-D12 — Benchmark vs Improvement Gold + selection policy (R1-06)
 
 `project_type` **MUST** be explicit:
 
@@ -463,22 +738,49 @@ benchmark
 improvement
 ```
 
-Selection policy is versioned provenance.
+### Selection policy contract
 
-| Type | Selection | Use |
-|---|---|---|
-| Benchmark | representative / frozen | unbiased evaluation claims (separately governed) |
-| Improvement | uncertainty, disagreement, errors, hard negatives, regressions, source-version changes, other recorded diagnostic policies | diagnosis / future improvement |
+```text
+gold-selection-policy-v1
+```
+
+Required fields:
+
+| Field | Notes |
+|---|---|
+| `selection_policy_id` | policy identity |
+| `project_type` | `benchmark` \| `improvement` |
+| `parameters` | typed policy parameters |
+| `selection_policy_fingerprint` | deterministic fingerprint |
+
+Fingerprint is deterministic over canonical JSON of:
+
+```json
+{
+  "contract": "gold-selection-policy-v1",
+  "selection_policy_id": "...",
+  "project_type": "...",
+  "parameters": { }
+}
+```
+
+using repository canonical JSON hashing semantics.
+
+Policy / fingerprint are **immutable** for one campaign.
+Changing selection policy requires a **new** campaign.
+
+Benchmark project's policy **MUST** identify benchmark / representative
+semantics. Improvement project's policy **MUST** identify diagnostic /
+improvement semantics.
+
+Do not prescribe every future policy algorithm in 16F.
 
 Improvement Gold **MUST NOT** be presented as unbiased benchmark evidence
 (S16-D28).
 
-A 16F project of type `benchmark` does **NOT** by itself:
-
-- complete Slice 9G;
-- become publication-grade validation;
-- authorize portfolio scientific claims;
-- authorize retrieval / config promotion.
+A 16F project of type `benchmark` does **NOT** by itself complete Slice 9G,
+become publication-grade validation, authorize portfolio scientific claims, or
+authorize retrieval / config promotion.
 
 **9G** remains **DEFERRED / NOT AUTHORIZED**.
 
@@ -486,7 +788,7 @@ A 16F project of type `benchmark` does **NOT** by itself:
 
 ## 16F-D13 — Immutable baseline + derived projection
 
-At campaign creation, copy the validated `GoldAuthoringRun` into:
+At campaign creation, copy the validated pristine `GoldAuthoringRun` into:
 
 ```text
 campaigns/<campaign_id>/baseline/authoring_run.json
@@ -494,6 +796,23 @@ campaigns/<campaign_id>/baseline/authoring_run.json
 
 Treat that file as immutable campaign baseline.
 The pre-existing Slice-9 authoring run remains untouched.
+
+### Hash provenance (R1-17)
+
+| Field | Meaning |
+|---|---|
+| `baseline_sha256` | SHA-256 of exact immutable `baseline/authoring_run.json` bytes |
+| `projection_sha256` | SHA-256 of exact `projection/authoring_run.json` bytes used for export |
+
+Do **not** call those semantic dataset identities.
+
+Gold scientific dataset identity remains existing:
+
+```text
+gold_<sha256>
+```
+
+from GoldDataset-v1 semantic payload (`gold_dataset_id_from_payload`).
 
 Current Gold Lab review state is derived:
 
@@ -505,17 +824,36 @@ effective Gold Lab ledger
 projected GoldAuthoringRun
 ```
 
-Projection output **MAY** be cached at:
-
-```text
-projection/authoring_run.json
-```
-
-but it is **DERIVED / REBUILDABLE**. Ledger + baseline remain authority.
+Projection output **MAY** be cached at `projection/authoring_run.json` but is
+**DERIVED / REBUILDABLE**. Ledger + baseline remain authority.
 
 ---
 
-## 16F-D14 — SilverCase / HumanReview projection
+## 16F-D14 — Question Check + SilverCase / HumanReview projection
+
+### Question Check semantics (R1-09)
+
+Current question-decision values:
+
+```text
+accept
+edit
+reject
+```
+
+Question Check is itself an append-only expert decision.
+
+| Decision | Effect |
+|---|---|
+| `accept` | effective query / category / tags equal canonical proposal values |
+| `edit` | record complete effective query / category / tags; require ≥1 semantic difference from proposal |
+| `reject` | case projects to `HumanReviewStatus.REJECTED` |
+
+Question Check corrections append and supersede the current Question Check
+decision. Historical decisions remain. Only latest valid current decision is
+effective.
+
+### Silver / HumanReview projection
 
 Projection **MUST** use existing:
 
@@ -559,7 +897,8 @@ NOT** expose (S16-D31):
 - model relevance grade;
 - model agreement;
 - model confidence;
-- reward / score for agreeing with model.
+- reward / score for agreeing with model;
+- why a Hard Call was machine-designated.
 
 The immutable baseline may contain prelabel information internally.
 The pre-commit task view / projection **MUST** exclude it.
@@ -602,7 +941,7 @@ No automatic model labels enter `GoldDataset`.
 
 ---
 
-## 16F-D17 — Immutable dataset storage / registration
+## 16F-D17 — Immutable dataset storage / registration (R1-16)
 
 Candidate storage:
 
@@ -634,6 +973,27 @@ Registration path:
 data/gold-lab/registrations/<dataset_id>/<campaign_id>.json
 ```
 
+Registration is immutable once created.
+
+First successful registration:
+
+1. validate dataset through `load_gold_dataset()`;
+2. verify `dataset_id`;
+3. write registration atomically;
+4. assign `registered_at` once.
+
+Retry with same dataset / campaign and canonical equivalent registration:
+
+- return existing registration;
+- **DO NOT** rewrite;
+- **DO NOT** change `registered_at`.
+
+Conflicting existing registration: **FAIL CLOSED**.
+
+Registration should include or make deterministically recoverable **exported
+case IDs** so Gold-finalized contribution projection can determine which stable
+campaign / case identities were finalized.
+
 Record at least:
 
 - `dataset_id`
@@ -643,18 +1003,17 @@ Record at least:
 - `workspace_id`
 - `snapshot_id`
 - `chunk_set_id`
-- baseline authoring_run identity / hash
-- projection identity / hash
+- baseline authoring_run identity / `baseline_sha256`
+- `projection_sha256`
 - dataset path
-- registration timestamp
-
-Registration **MUST** validate with existing `load_gold_dataset()`.
+- `registered_at`
+- exported case IDs (or recoverable equivalent)
 
 “Registered” **MUST NOT** mean “production promoted” (S16-D30).
 
 ---
 
-## 16F-D18 — Gold Contribution contract
+## 16F-D18 — Gold Contribution contract (R1-14, R1-15)
 
 Scoring contract id:
 
@@ -663,37 +1022,84 @@ gold-contribution-v1
 ```
 
 Projection is deterministic over **EFFECTIVE UNIQUE COMPLETED** identities
-(S16-D34). Weights inherited exactly:
+(S16-D34).
 
-| Points | Effective completed contribution |
-|---|---|
-| 1 | currently effective canonical absolute 0/1/2 expert judgment for one unique stable candidate task |
-| 5 | Question Check completed once per stable question-check identity |
-| 10 | complete evidence map / case once per stable campaign/case identity |
-| 15 | Gold case finalized once per stable campaign/case identity |
-| 5 | designated Hard Call resolved once per stable hard-call identity |
+### A. Expert judgment +1
+
+Count one when:
+
+- absolute task is currently active;
+- one current canonical judgment exists;
+- judgment `query_fingerprint` equals current effective query fingerprint.
+
+Old-query / superseded judgments: **0** current points.
+
+### B. Question Check +5
+
+Count once per stable campaign / case Question Check task when a current
+effective decision exists: `accept` | `edit` | `reject`.
+
+Correction / retry: never more than one bonus.
+
+### C. Complete evidence map / case +10
+
+Count once when:
+
+- current question decision is `accept` or `edit`;
+- every current candidate absolute task has a current effective judgment for
+  the current query.
+
+A complete all-zero map **MAY** receive the work-completion bonus but remains
+scientifically non-finalizable under existing Gold rules.
+
+`reject`: no case-complete bonus.
+
+### D. Gold case finalized +15
+
+Count once per stable campaign / case when that case appears in at least one
+valid immutable GoldDataset registration for that campaign.
+
+This is sticky historical completion: later correction / reopen does not award
+a second bonus and does not erase that a valid immutable historical
+finalization occurred.
+
+Maximum 15 points per campaign / case for this category.
+
+### E. Hard Call +5
+
+Count once when:
+
+- stable hard-call designation exists;
+- target task currently has an effective canonical resolution.
+
+If query edit invalidates the target judgment: Hard Call bonus becomes
+non-effective until rejudged.
+
+Never duplicate from correction / retry.
+
+### Forbidden bonuses
 
 No points merely for auxiliary pairwise preference.
 
-**MUST NOT:**
+**MUST NOT:** speed bonus; model-agreement bonus; leaderboard semantics.
 
-- speed bonus;
-- model-agreement bonus;
-- leaderboard semantics.
+### Raw counters (same projection)
 
-Idempotent retries: **NO** duplicate score.
-Judgment correction: **NO** duplicate judgment point.
-Reopen / re-complete: **NO** second completion bonus for the same stable
-identity.
+| Counter | Definition |
+|---|---|
+| `expert_judgments` | count of current effective absolute tasks |
+| `questions_reviewed` | stable Question Check tasks with current effective decision |
+| `cases_completed` | count satisfying R1-14.C |
+| `gold_finalized` | count satisfying R1-14.D |
+| `hard_calls_resolved` | count satisfying R1-14.E |
 
-Expose from the same projection:
+**Campaign coverage:**
 
-- total contribution score;
-- expert judgment count;
-- questions reviewed;
-- cases completed;
-- Gold finalized count;
-- campaign coverage / progress.
+- numerator / denominator from **active** canonical absolute tasks;
+- rejected cases are **excluded** from the denominator (absolute tasks not
+  active after reject).
+
+No counter from raw ledger row count.
 
 Score is engagement / progress metadata, **not** scientific truth.
 
@@ -729,11 +1135,14 @@ Later implementation remains separately gated.
 
 - package boundary;
 - settings / path root;
-- project / campaign models;
-- identities;
-- exact workspace snapshot / chunk binding;
+- project / campaign models + lifecycle;
+- identities + selection-policy contract;
+- exact workspace snapshot / chunk / corpus binding;
+- pristine-baseline admission;
+- CURRENT-snapshot race revalidation;
+- candidate chunk-set validation;
 - immutable authoring baseline import;
-- ledger record contracts;
+- ledger record contracts / envelope;
 - append primitive / locking;
 - **NO** API;
 - **NO** UI;
@@ -741,13 +1150,14 @@ Later implementation remains separately gated.
 
 ### 16F-B — Effective-state / tasks / scoring
 
-- deterministic task identities;
+- deterministic task identities + activation;
+- Question Check semantics;
 - pending / completed task projection;
 - idempotency;
 - correction / supersession fold;
 - query-basis invalidation;
-- effective state;
-- contribution-v1 projection;
+- Hard Call designation;
+- contribution-v1 projection + counters;
 - **NO** games / UI.
 
 ### 16F-C — Scientific projection / export / registration
@@ -756,7 +1166,7 @@ Later implementation remains separately gated.
 - existing invariant reuse;
 - GoldDataset-v1 finalization;
 - immutable dataset storage;
-- local registration;
+- local registration (idempotent);
 - existing evaluation-loader compatibility;
 - no retrieval / config promotion.
 
@@ -775,31 +1185,37 @@ No 16G implementation by implication.
 
 Future implementation authorization **MUST** require tests covering at least:
 
-1. project / campaign ids stable;
-2. exact `snapshot_id` / `chunk_set_id` binding;
-3. campaign does not follow workspace CURRENT after source mutation;
-4. baseline run copied / hashed / immutable;
-5. candidate chunk identities resolve against bound chunk set;
-6. append ledger never rewrites historical records;
-7. interrupted append does not produce a valid record;
-8. same idempotency key + same request returns same result;
-9. same key + different request conflicts;
-10. supersession cannot branch / cross task / cross campaign;
-11. only current judgment is effective;
-12. query edit invalidates old-query judgments without erasing history;
-13. partial review safely resumes;
-14. expert pre-commit view excludes model / rank / score signals;
-15. Silver / HumanReview projection is deterministic;
-16. human 0 grades retained in review projection;
-17. GoldDataset-v1 export remains positive-only 1/2;
-18. all-zero case cannot be falsely finalized;
-19. exported dataset validates through existing `load_gold_dataset()`;
-20. registered dataset uses exact `dataset_id`;
-21. re-registration is idempotent;
-22. benchmark / improvement provenance remains distinct;
-23. retries / corrections do not inflate contribution score;
-24. no retrieval / default / config promotion;
-25. no 9G status change.
+1. project / campaign ids stable with frozen prefixes;
+2. exact `snapshot_id` / `chunk_set_id` / `corpus_id` / `corpus_name` binding;
+3. pristine baseline human-state admission / rejection;
+4. CURRENT-snapshot race fails closed on revision / snapshot change;
+5. campaign does not follow workspace CURRENT after source mutation;
+6. baseline run copied / hashed / immutable (`baseline_sha256` = file bytes);
+7. candidate chunk identities resolve against bound chunk set;
+8. append ledger never rewrites historical records;
+9. interrupted append does not produce a valid record;
+10. same idempotency key + same request returns same result;
+11. same key + different request conflicts;
+12. supersession cannot branch / cross task / cross campaign;
+13. only current same-basis judgment is effective;
+14. query edit invalidates old-query judgments without erasing history and
+    without requiring supersession of old-query judgments;
+15. task activation: absolute inactive before Question Check / after reject;
+16. partial review safely resumes;
+17. expert pre-commit view excludes model / rank / score / hard-call reason;
+18. Silver / HumanReview projection is deterministic;
+19. human 0 grades retained in review projection;
+20. GoldDataset-v1 export remains positive-only 1/2;
+21. all-zero case cannot be falsely finalized (may earn case-complete points);
+22. exported dataset validates through existing `load_gold_dataset()`;
+23. registered dataset uses exact `dataset_id`;
+24. re-registration is idempotent and does not rewrite `registered_at`;
+25. benchmark / improvement + selection-policy provenance remain distinct;
+26. retries / corrections do not inflate contribution score;
+27. Hard Call designation awards +5 only with current effective target judgment;
+28. no retrieval / default / config promotion;
+29. no 9G status change;
+30. archived project / closed campaign mutation gates enforced.
 
 ---
 
@@ -807,7 +1223,7 @@ Future implementation authorization **MUST** require tests covering at least:
 
 **MUST NOT** implement or authorize in 16F:
 
-- 16G game UI (Rapid Fire, Evidence Sweep, Question Check, Chunk Duel);
+- 16G game UI (Rapid Fire, Evidence Sweep, Question Check UI, Chunk Duel);
 - training compiler;
 - leaderboards;
 - learner identity / mastery / spaced repetition;
@@ -820,6 +1236,7 @@ Future implementation authorization **MUST** require tests covering at least:
 - authentication / multi-user;
 - distributed queues;
 - M7 closeout;
+- migration / bootstrap of historically reviewed Slice-9 authoring runs;
 - edits to pinned `docs/milestone7_performance_ui.md` / Engineering evidence
   registry / manifest as part of opening 16F.
 
@@ -827,7 +1244,7 @@ Future implementation authorization **MUST** require tests covering at least:
 
 ## Repository verification notes (design-time)
 
-Verified against sealed baseline `d53b296…`:
+Verified against sealed baseline / this design branch:
 
 | Check | Result |
 |---|---|
@@ -835,23 +1252,52 @@ Verified against sealed baseline `d53b296…`:
 | `offline-rag-gold-authoring-v1` in `gold_authoring` | present |
 | `GoldAuthoringRun` / `SilverCase` | present |
 | `HumanReview` / `HumanJudgment` / `HumanReviewStatus` | present |
+| `canonicalize_query()` in `review_models.py` | present |
 | `finalize.py` + `load_gold_dataset()` | present |
-| existing `src/offline_rag/app/gold_lab/` | **absent** (no conflicting implementation) |
+| `CorpusReadSnapshot` + `identity.corpus_id` / `identity.chunk_set_id` | present |
+| `WorkspaceRecord.backing_corpus_name` | present |
+| existing `src/offline_rag/app/gold_lab/` | **absent** |
 | GoldDataset `ChunkJudgment.relevance` | `Literal[1, 2]` only |
 | HumanJudgment.relevance | `Literal[0, 1, 2]` |
+
+---
+
+## Rework 1 closure checklist
+
+```text
+R1-01 Baseline human-state admission: FROZEN
+R1-02 Exact workspace/corpus/chunk binding: FROZEN
+R1-03 CURRENT-snapshot race: FROZEN
+R1-04 Project/campaign relation: FROZEN
+R1-05 Lifecycle states: FROZEN
+R1-06 Selection-policy contract: FROZEN
+R1-07 Identity algorithms: FROZEN
+R1-08 Task activation: FROZEN
+R1-09 Question Check semantics: FROZEN
+R1-10 Ledger envelope: FROZEN
+R1-11 Ledger event types: FROZEN
+R1-12 Hard Call semantics: FROZEN
+R1-13 Supersession/query-basis semantics: FROZEN
+R1-14 Contribution projection: FROZEN
+R1-15 Raw counters: FROZEN
+R1-16 Registration idempotency: FROZEN
+R1-17 Hash provenance: FROZEN
+R1-18 Campaign create candidate validation: FROZEN
+```
 
 ---
 
 ## Design disposition
 
 ```text
-16F DESIGN GATE: OPEN (this candidate)
+16F DESIGN GATE: OPEN (candidate — Rework 1)
 16F IMPLEMENTATION: NOT AUTHORIZED
 16F-A … 16F-D: NOT AUTHORIZED
 16G–16H: NOT AUTHORIZED
 9G: DEFERRED / NOT AUTHORIZED
 
 Do not self-accept.
+Do not mark ACCEPTED / LOCKED.
 Independent design review + human design acceptance required before any
 implementation authorization.
 ```
