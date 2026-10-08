@@ -166,6 +166,9 @@ authorized sequence):
 - `EVALUATION_HARNESS.md` (introductory readiness only)
 - `ARCHITECTURE_DECISIONS.md` (ADR-008 current disposition)
 - `STARTER_PACKAGE_CONTENTS.md` (historical banner only)
+- `docs/known_limitations.md` (present-tense Slice 10 readiness)
+- `docs/offline_runtime_contract.md` (present-tense Slice 10 readiness)
+- `docs/slice16_design_authority.md` (stale present-tense 16D-C gate language)
 
 ### Historical docs intentionally preserved
 

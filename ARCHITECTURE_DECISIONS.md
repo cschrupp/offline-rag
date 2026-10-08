@@ -66,11 +66,21 @@ This file records the reasoning behind major decisions so future development doe
 
 ---
 
-## ADR-008 — LangGraph only for conditional recovery
+## ADR-008 — Conditional recovery; orchestration adapter deferred
 
-**Decision:** The normal happy path remains deterministic. LangGraph coordinates bounded query rewrite/retry only when retrieval is insufficient.
+**Decision (original):** The normal happy path remains deterministic. Bounded
+query rewrite/retry should run only when retrieval is insufficient; an
+orchestration adapter (historically proposed as LangGraph) was the intended
+coordination mechanism for that conditional path.
 
-**Reasoning:** Agent loops introduce latency and nondeterminism. They should be justified by benchmark improvements.
+**Reasoning (original):** Agent loops introduce latency and nondeterminism. They
+should be justified by benchmark improvements.
+
+**Current disposition:** The underlying principle remains accepted: recovery
+must be conditional and bounded. Slice 11/12 implemented project-owned
+deterministic sufficiency and bounded recovery contracts. Accepted Slice-12
+evaluation did not justify product recovery promotion; **recovery remains
+disabled**. A **LangGraph adapter remains deferred / NOT AUTHORIZED**.
 
 ---
 

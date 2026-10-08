@@ -10,7 +10,9 @@ The preferred loop is:
 baseline -> observe failure -> form hypothesis -> implement change -> benchmark -> keep/revert
 ```
 
-## 1b. Current local pipeline (Slices 0–8)
+## 1b. Current developer workflows
+
+### CLI / evaluation pipeline
 
 ```bash
 uv sync
@@ -42,11 +44,55 @@ offline-rag eval query --dataset <dir> --corpus <name>
 offline-rag doctor --corpus <name>
 ```
 
-`offline-rag query` runs grounded generation via Slice 7 context assembly. Retrieval ablation remains under `retrieve` / `eval retrieve` / `eval compare`. Prefer GoldDataset v1 datasets (`offline-rag-gold-v1`); legacy `relevant_chunk_ids` gold still loads. Generation READY requires approved endpoint/model allowlists and a live OpenAI-compatible `/models` probe. Authoring READY (Slice 9A) is config + privacy only — no live probe; `doctor` reports the Authoring section. `offline-rag gold propose` (Slice 9B) performs one authorized proposal attempt per sampled seed. `offline-rag gold pool` (Slice 9C) builds `candidate-pooling-v1` pools from pending SilverCases (retrieval-only; no LLM). `offline-rag gold prelabel` (Slice 9D) runs blind double-pass local relevance judging (silver-only). `offline-rag gold review` / `gold finalize` (Slice 9E) provide localhost human adjudication and fail-closed GoldDataset publication.
+`offline-rag query` runs grounded generation via context assembly. Retrieval
+ablation remains under `retrieve` / `eval retrieve` / `eval compare`. Prefer
+GoldDataset v1 datasets (`offline-rag-gold-v1`). Generation READY requires
+approved endpoint/model allowlists and a live OpenAI-compatible `/models`
+probe. Slice 10 generation/citation semantic evaluation is implemented; see
+`docs/slice10_generation_semantic_evaluation.md` and `EVALUATION_HARNESS.md`.
 
-Milestone 4 offline gold authoring reached **9F GO** / **9H-P COMPLETE / NON-PROMOTIONAL** (**9G** deferred; formal **9H** frozen). See `docs/milestone4_offline_gold_authoring.md` and `docs/pilots/slice9f_ics_modules.md`. Do not treat silver/authoring drafts as gold. Slice 10 design contract: `docs/slice10_generation_semantic_evaluation.md` (implementation not started; do not overload `eval query`).
+Milestone 4 offline gold authoring reached **9F GO** / **9H-P COMPLETE /
+NON-PROMOTIONAL** (**9G** deferred; formal **9H** frozen). See
+`docs/milestone4_offline_gold_authoring.md`. Do not treat silver/authoring
+drafts as gold.
 
-For CI-scale dense/rerank/generation tests, set `indexing.embedding.implementation: fake` and/or `reranker.implementation: fake`, and inject `FakeGenerator` in unit tests. Do not rely on FakeEmbedder / FakeReranker / FakeGenerator for portfolio quality claims.
+For CI-scale dense/rerank/generation tests, set
+`indexing.embedding.implementation: fake` and/or `reranker.implementation:
+fake`, and inject `FakeGenerator` in unit tests. Do not rely on fakes for
+portfolio quality claims.
+
+### FastAPI product API
+
+```bash
+uv sync
+python -m offline_rag.api.server    # 127.0.0.1:8080 by default
+```
+
+See `DEPLOYMENT.md` for bind policy, container profile, and environment
+variables. Product use-cases live under `src/offline_rag/app/`; HTTP adapters
+under `src/offline_rag/api/`.
+
+### Seneca frontend
+
+```bash
+cd ui
+npm install
+npm run dev          # Vite; proxies /v1 and /health to 127.0.0.1:8080
+npm test
+npm run lint
+npm run typecheck
+npm run build
+```
+
+Local UI development expects the product API running separately unless you use
+the packaged container image that serves the built frontend.
+
+### Backend tests / lint
+
+```bash
+uv run pytest
+uv run ruff check src tests
+```
 
 ## 2. Keep the core path simple
 
@@ -70,7 +116,8 @@ Record at least:
 - generator model;
 - prompt version;
 - abstention policy;
-- graph retry count.
+- recovery / rewrite settings where present (product recovery remains disabled;
+  LangGraph adapter not authorized — treat related knobs as experimental/deferred).
 
 ## 4. Data/version discipline
 
@@ -116,7 +163,7 @@ Examples:
 - structure-aware chunking with FakeTokenCounter;
 - FakeEmbedder + dense index reuse / no-op;
 - Recall/Precision/HitRate/nDCG/MRR math and GoldDataset identity;
-- citation validation (future);
+- citation validation;
 - config validation;
 
 Real Docling PDF and optional real Qwen embedding loads belong in dedicated integration tests / provisioned environments.

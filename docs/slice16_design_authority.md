@@ -57,9 +57,10 @@ docs/slice16_amendment_a1_seneca_product_ux.md
 S16-D01 … S16-D35 remain accepted/locked at
 `e2e7475076ad18d4c4ae8d939389ceeffdeff6d8`. Amendment A1 is **supplemental
 accepted/locked** authority at `5060e2aeb4825f265072a1f870c3c963eace3b30`. A1
-acceptance does **not** authorize later phase implementation. **16D-C**
-remains **NOT AUTHORIZED** until separate explicit implementation
-authorization.
+acceptance alone did **not** authorize later phase implementation; **16D-C**
+was later separately authorized and is now **COMPLETE / ACCEPTED / SEALED**
+(see Authorization note and [`docs/slice16d_c_a4_closeout.md`](slice16d_c_a4_closeout.md)).
+**16E–16H** remain **NOT AUTHORIZED**.
 
 **Related artifacts:**
 

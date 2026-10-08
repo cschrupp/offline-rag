@@ -2,7 +2,7 @@
 
 This file should evolve with measured project results.
 
-## Implemented baseline (Slices 0–8)
+## Implemented baseline (core engine)
 
 - Dense retrieval quality depends on provisioning real Qwen3-Embedding-0.6B weights; FakeEmbedder is for CI/architecture only.
 - Default PDF profile is born-digital / non-OCR; scanned/image-only PDFs may degrade or warn.
@@ -14,7 +14,7 @@ This file should evolve with measured project results.
 - Hybrid retrieval is query-time RRF only (no hybrid index); both dense and lexical indexes must be CURRENT on the same chunk set or hybrid fails hard.
 - Hybrid-rerank is hybrid-pool-only; disabled/missing reranker fails hard (no silent hybrid-only labeled as hybrid-rerank). FakeReranker is CI-only.
 - Context expansion (`hybrid-rerank-context`) is query-time structural assembly only (no ContextState); Slice 7 eval reports anchor ranking + assembly diagnostics, not evidence-quality metrics.
-- Grounded `query` validates closed-world `ev_` citation membership only; it does not score answer correctness, faithfulness, or citation entailment (Milestone 5 / Slice 10 — design drafted / not started).
+- Grounded `query` validates closed-world `ev_` citation membership only at the product path; Slice 10 generation/citation semantic evaluation scores correctness/faithfulness separately in the evaluation harness (not on every live product response).
 - No publication-grade `ics_modules` production retrieval gold yet. Milestone 4: **9A**–**9E** done; **9F GO** (22-case / human-16 development fixture); **9H-P COMPLETE / NON-PROMOTIONAL**; **9G** deferred; formal **9H** frozen.
 - Generation READY requires a live approved OpenAI-compatible endpoint + approved model listing; empty `approved_models` keeps Generation NOT_READY by design.
 - Lexical BM25 is corpus-global (full rebuild per `lexical_index_id`); no per-child lexical cache.

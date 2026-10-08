@@ -1,5 +1,15 @@
 # Starter Package Contents
 
+```text
+HISTORICAL STARTER-PACKAGE SNAPSHOT
+
+This file records the original project handoff/bootstrap contents.
+It is not the current repository inventory.
+
+For current structure, see PROJECT_STRUCTURE.md.
+For current status, see ROADMAP.md.
+```
+
 This file lists the files included in the updated project handoff.
 
 - `.env.example`

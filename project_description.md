@@ -1,12 +1,22 @@
 # Project Description — OfflineRAG
 
-**Implementation status:** Slices 0–9 and Milestone 4 through **9F GO** / **9H-P** are done for near-term engineering (**9G** deferred; formal **9H** frozen). Slice **10** design contract drafted / implementation not started. Agentic recovery remains planned (Milestone 6). See `ROADMAP.md`, `docs/milestone4_offline_gold_authoring.md`, and `docs/slice10_generation_semantic_evaluation.md`.
+**Implementation status:** Milestone **6 COMPLETE / ACCEPTED**. Milestone **7 IN
+PROGRESS**. Slices **14** and **15 COMPLETE / ACCEPTED**. Slice **16 IN PROGRESS
+/ NOT COMPLETE**, with **16A–16C COMPLETE / ACCEPTED** and **16D-A / 16D-B2 /
+16D-B3 / 16D-C COMPLETE / ACCEPTED / SEALED** (Amendment **A4 ACCEPTED / LOCKED /
+SEALED**). **16E–16H**, Slice **17**, Slice **18**, and M7 closeout remain **NOT
+AUTHORIZED**. Product recovery remains disabled; LangGraph adapter and NeMo /
+13D remain deferred / not authorized. See `ROADMAP.md` and
+`docs/slice16d_c_a4_closeout.md`.
 
 ## 1. Working title
 
-**OfflineRAG — Evaluated Local RAG for Private Technical Knowledge**
+**OfflineRAG** is the repository / local RAG engine / evaluation and product
+platform. **Seneca — Grounded knowledge workspace** is the current user-facing
+application experience (React UI over the FastAPI product layer).
 
-The name is intentionally provisional. The architecture and documentation should not depend on branding.
+Package, CLI, and image identifiers remain `offline-rag` / OfflineRAG unless
+renamed by separate authority.
 
 ## 2. Executive summary
 
@@ -17,7 +27,7 @@ The project has two equally important goals:
 1. Build a high-quality, extensible offline RAG system for real technical knowledge work.
 2. Serve as a strong portfolio demonstration of retrieval engineering, LLM systems design, evaluation, local inference integration, deployment architecture, security controls, and experimental rigor.
 
-The design rejects the common “PDF -> fixed chunks -> embeddings -> vector search -> LLM” baseline as insufficient for serious technical retrieval. Instead it combines structure-aware parsing, dense and lexical retrieval, rank fusion, reranking, hierarchical context expansion, local generation, citation validation, conditional query recovery, explicit abstention, and a first-class evaluation harness.
+The design rejects the common “PDF -> fixed chunks -> embeddings -> vector search -> LLM” baseline as insufficient for serious technical retrieval. Instead it combines structure-aware parsing, dense and lexical retrieval, rank fusion, reranking, hierarchical context expansion, local generation, citation validation, explicit abstention, and a first-class evaluation harness. Bounded recovery contracts exist from Milestone 6 evaluation work, but the accepted product disposition keeps recovery disabled. The Seneca UI exposes versioned workspaces, grounded multi-turn conversation, claim-level citations, Evidence inspection, and Training Mode.
 
 ## 3. Problem statement
 

@@ -953,8 +953,9 @@ superseded by the locked design: product HTTP under `/v1/*`, CLI-first evaluatio
 `/health*`, `GET /v1/documents`, `GET /v1/documents/{document_id}`,
 `POST /v1/ingest`, `POST /v1/query`, `GET /v1/trace/{trace_id}`,
 admission/deadlines/drain, supported container/Compose packaging, and product
-CLI ingest/query via `offline_rag.app`. Portfolio UI work is **Slice 16**
-(**PLANNED / DESIGN NOT OPEN**; closeout prerequisite satisfied).
+CLI ingest/query via `offline_rag.app`. Portfolio UI work continues under
+**Slice 16** (**IN PROGRESS / NOT COMPLETE**; design authority accepted/locked;
+see `docs/slice16_design_authority.md`).
 
 ## Objective
 
@@ -1007,16 +1008,35 @@ starts as one container while using an independently running local generator.
 
 ---
 
-# Slice 16 — Portfolio Demo UI
+# Slice 16 — Portfolio Demo UI / Seneca product surface
 
-**Status:** **PLANNED / DESIGN NOT OPEN / IMPLEMENTATION NOT AUTHORIZED**
-**Pre-design frame:** [`docs/slice16_portfolio_ui.md`](docs/slice16_portfolio_ui.md)
-(`STATUS: PRE-DESIGN / ROADMAP FRAME`; design authority: **NONE**)
+```text
+CURRENT STATUS (compact; authoritative detail elsewhere)
+
+SLICE 16:          IN PROGRESS / NOT COMPLETE
+16A–16C:           COMPLETE / ACCEPTED
+16D-A / 16D-B2 / 16D-B3 / 16D-C: COMPLETE / ACCEPTED / SEALED
+AMENDMENT A4:      ACCEPTED / LOCKED / SEALED
+16E–16H:           NOT AUTHORIZED
+SLICE 17 / 18:     NOT AUTHORIZED
+M7 CLOSEOUT:       NOT AUTHORIZED
+```
+
+Authoritative current governance:
+
+- [`docs/slice16_design_authority.md`](docs/slice16_design_authority.md)
+- [`docs/slice16_implementation_plan.md`](docs/slice16_implementation_plan.md)
+- [`ROADMAP.md`](ROADMAP.md)
+- [`docs/slice16d_c_a4_closeout.md`](docs/slice16d_c_a4_closeout.md)
+
+Historical pre-design frame (preserved):
+[`docs/slice16_portfolio_ui.md`](docs/slice16_portfolio_ui.md)
 
 ## Objective
 
 Expose OfflineRAG’s engineering value through a browser UI that is an
 **adapter/client** of the accepted product/API layer — not a second RAG stack.
+The current product surface is **Seneca — Grounded knowledge workspace**.
 
 ## Architectural boundary
 
@@ -1157,18 +1177,19 @@ Foundation
   -> bounded recovery                    (Slice 12; conditional / current disposition)
   -> security tests                      (Slice 13)
   -> performance benchmarks              (Slice 14 COMPLETE / ACCEPTED)
-  -> product API + packaging             (Slice 15A–15G COMPLETE / ACCEPTED)
-  -> Slice 15 integration closeout       (15H NOT AUTHORIZED)
-  -> Portfolio Demo UI                   (Slice 16 PLANNED / DESIGN NOT OPEN)
-  -> Regression CI                       (Slice 17 PLANNED / DESIGN NOT OPEN)
-  -> Portfolio release package           (Slice 18 PLANNED / DESIGN NOT OPEN)
+  -> product API + packaging             (Slice 15 COMPLETE / ACCEPTED)
+  -> Slice 15 integration closeout       (15H COMPLETE / ACCEPTED)
+  -> Seneca / Portfolio Demo UI          (Slice 16 IN PROGRESS; 16D-C COMPLETE / ACCEPTED / SEALED; 16E–16H NOT AUTHORIZED)
+  -> Regression CI                       (Slice 17 NOT AUTHORIZED)
+  -> Portfolio release package           (Slice 18 NOT AUTHORIZED)
   -> Milestone 7 closeout                (NOT AUTHORIZED)
 ```
 
-The project should resist the temptation to jump directly to LangGraph, multiple
-agents, or a polished UI before the product/API boundary is closed. The
-strongest development narrative is an evidence-based progression from a
-measurable baseline to increasingly capable retrieval, then a UI that consumes
-the accepted product surface. Milestone 6 design authority:
-`docs/milestone6_agentic_recovery_security.md`. Slice 16 pre-design frame:
-`docs/slice16_portfolio_ui.md`.
+The project should resist the temptation to jump directly to deferred
+orchestration adapters, multi-agent systems, or publication packaging before
+accepted product gates close. The strongest development narrative is an
+evidence-based progression from a measurable baseline to increasingly capable
+retrieval, then a UI that consumes the accepted product surface. Milestone 6
+design authority: `docs/milestone6_agentic_recovery_security.md`. Slice 16
+current authority: `docs/slice16_design_authority.md`,
+`docs/slice16_implementation_plan.md`, `ROADMAP.md`.

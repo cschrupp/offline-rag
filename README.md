@@ -1,50 +1,92 @@
 # OfflineRAG
 
-**An evaluated, fully local RAG platform for private technical knowledge.**
+### Seneca — Grounded knowledge workspace
 
-OfflineRAG is a portfolio-grade retrieval-augmented generation system designed for sensitive technical documents. The project emphasizes retrieval quality, reproducible evaluation, grounded answers, traceable citations, and secure local execution rather than simply demonstrating that a chatbot can answer questions about PDFs.
+A local-first, evaluated RAG platform for private technical knowledge, with
+versioned workspaces, grounded conversational answers, claim-level citations,
+evidence inspection, training workflows, and reproducible retrieval/generation
+evaluation.
+
+**Naming**
+
+| Name | Role |
+|---|---|
+| **OfflineRAG** | Repository, local RAG engine, evaluation harness, CLI, and product/API platform (`offline-rag` package / image) |
+| **Seneca — Grounded knowledge workspace** | Current user-facing React application experience over that platform |
+
+Repository, Python package, CLI, and Docker image names remain **OfflineRAG** /
+`offline-rag` unless renamed elsewhere by separate authority.
 
 ## Why this project exists
 
-Most RAG demos prove only that a model can answer a few hand-picked questions after indexing a PDF. OfflineRAG is designed to answer harder engineering questions:
+Most RAG demos prove only that a model can answer a few hand-picked questions
+after indexing a PDF. OfflineRAG is built to answer harder engineering questions:
 
 - How much does hybrid retrieval improve recall over dense retrieval alone?
 - Does reranking improve ranking quality enough to justify its latency cost?
 - When should the system abstain rather than generate an answer?
 - Can every answer citation be traced to evidence actually retrieved and passed to the model?
 - How does the system behave when retrieved documents contain prompt-injection instructions?
-- Which document types or query classes remain difficult: tables, numeric lookup, acronyms, comparisons, or multi-document synthesis?
 
-The project therefore treats **evaluation as a first-class subsystem**, not as an afterthought.
+Evaluation is a first-class subsystem, not an afterthought.
 
 ## Core principles
 
 - **Fully local/offline by design.** Documents, embeddings, queries, retrieval, reranking, generation, and evaluation remain on the local machine; the generative model is served by a separate local inference runtime.
 - **Retrieval before generation.** Retrieval quality is measured independently from answer quality.
-- **Hybrid retrieval by default.** Dense semantic retrieval is complemented by lexical retrieval for identifiers, acronyms, numbers, engineering terminology, and exact phrases.
+- **Hybrid retrieval by default.** Dense semantic retrieval is complemented by lexical retrieval for identifiers, acronyms, numbers, and exact phrases.
 - **Rerank before generation.** A second-stage cross-encoder improves the final evidence ranking.
 - **Small chunks for search, larger context for reasoning.** Hierarchical/parent-child retrieval preserves precision without starving the generator of context.
 - **Abstention is a feature.** The system should explicitly say when the indexed corpus does not support an answer.
-- **Citations are verified.** References must resolve to real chunks that were retrieved and included in the generation context.
-- **Agentic behavior is conditional.** Query rewriting and retry are used only when evidence quality is insufficient.
-- **Every architectural addition must earn its complexity.** Improvements should be supported by ablation results.
+- **Citations are verified.** References must resolve to real evidence that was retrieved and included in the generation context.
+- **Every architectural addition must earn its complexity.** Improvements should be supported by ablation or accepted evaluation evidence.
 
-## Proposed stack
+## Current capabilities
 
-| Layer | Default choice | Notes |
+Landed in the accepted repository (not aspirational):
+
+- local document ingestion (PDF / TXT / MD via Docling)
+- structure-aware chunking
+- Qwen3 embeddings (provisioned local weights; fake embedder for CI)
+- BM25 lexical retrieval
+- hybrid RRF fusion
+- cross-encoder reranking
+- hierarchical context assembly
+- local grounded generation (external OpenAI-compatible endpoint)
+- evidence sufficiency / abstention
+- citation validation
+- retrieval evaluation + generation/citation semantic evaluation (Slice 10)
+- security / adversarial evaluation campaigns (Slice 13)
+- performance measurement harness (Slice 14)
+- FastAPI product/application layer (`src/offline_rag/app/`, `src/offline_rag/api/`)
+- versioned workspaces, snapshots, source upload/versioning
+- React **Seneca** UI (`ui/`)
+- grounded multi-turn conversation (16D-B3)
+- claim-level citations and Evidence inspection
+- Current / Historical provenance
+- Training Mode with compact Question Bank, progressive reveal, presentation view
+- Question Bank JSON/Markdown portability and conversation Markdown/JSON export
+- strict-offline deployment profile
+
+## Active stack
+
+| Layer | Choice | Status |
 |---|---|---|
-| Parsing | Docling | Layout-aware PDF/document understanding, OCR when needed, structural metadata |
-| Chunking | Structure-aware / hybrid chunking | Preserve headings, pages, tables, parent-child relationships |
-| Dense embeddings | Qwen3-Embedding-0.6B (default) | Swappable; BGE-M3 reserved for later experiments |
-| Sparse retrieval | BM25 initially | Strong baseline for exact technical terms; SPLADE can be evaluated later |
-| Vector/search database | Qdrant Local | Persistent local path; server mode deferred |
-| Fusion | Reciprocal Rank Fusion (RRF) | Simple, robust hybrid baseline |
-| Reranker | Qwen3-Reranker or BGE reranker | Second-stage cross-encoder ranking |
-| Orchestration | LangGraph + small LangChain integrations | Explicit retrieval/rewrite/retry/abstain graph |
-| Generation runtime | External local OpenAI-compatible endpoint | Ollama on the host is the default; llama.cpp/vLLM remain swappable alternatives |
-| API | FastAPI | Local API boundary between UI and RAG engine |
-| Guardrails | Deterministic controls + optional NeMo Guardrails | Retrieval security, citation validation, prompt-injection resistance |
-| Evaluation | Custom harness (Slice 9) + offline gold authoring (Milestone 4; 9A done) | IR metrics, serialized experiments, `eval compare`; optional public IR adapters later. DeepEval/Ragas are not required architecture. |
+| Parsing | Docling | ACTIVE |
+| Chunking | Structure-aware / parent-child | ACTIVE |
+| Dense embeddings | Qwen3-Embedding-0.6B (default; fake for CI) | ACTIVE |
+| Sparse retrieval | BM25 | ACTIVE |
+| Vector store | Qdrant Local (in-process under `/data`) | ACTIVE |
+| Fusion | Reciprocal Rank Fusion (RRF) | ACTIVE |
+| Reranker | BGE reranker (default; fake for CI) | ACTIVE |
+| Product / API | FastAPI (`offline_rag.app` + `offline_rag.api`) | ACTIVE |
+| UI | React + Vite (Seneca) | ACTIVE |
+| Generation runtime | External local OpenAI-compatible endpoint (Ollama default on host) | ACTIVE |
+| Evaluation | Project-owned harness (retrieval, generation semantic, security, performance) | ACTIVE |
+| Recovery / LangGraph adapter | Deferred | DEFERRED / NOT AUTHORIZED |
+| NeMo Guardrails | Deferred | DEFERRED / NOT AUTHORIZED |
+
+Derive configuration from `config/`, `pyproject.toml`, and `ui/package.json`.
 
 ## High-level architecture
 
@@ -56,103 +98,94 @@ The project therefore treats **evaluation as a first-class subsystem**, not as a
                   |  Ollama by default          |
                   |  OpenAI-compatible endpoint |
                   +--------------^--------------+
-                                 | localhost/host gateway
+                                 | localhost / host gateway
                                  |
 +--------------------------------+--------------------------------+
-|                  OFFLINERAG APPLICATION CONTAINER               |
+|                  OFFLINERAG APPLICATION                         |
 |                                                                 |
-|  PDF / TXT / MD                                                 |
-|         |                                                       |
-|      Docling                                                    |
-|         |                                                       |
-|  structured chunks                                              |
-|     +---+---+                                                   |
-|     |       |                                                   |
-|   dense    BM25                                                 |
-|     |       |                                                   |
-|     +---+---+ -> Qdrant Local -> RRF -> reranker               |
-|                                  |                              |
-|                           context expansion                     |
-|                                  |                              |
-|                              LangGraph                          |
-|                                  |                              |
-|                          generation client ---------------------+
-|                                  |                              |
-|                           citation checks                       |
-|                                  |                              |
-|                           grounded answer                       |
+|  React / Seneca  →  FastAPI product/application layer           |
+|                           |                                     |
+|              workspace / snapshot / admission contracts         |
+|                           |                                     |
+|              dense + lexical retrieval → RRF → reranker         |
+|                           |                                     |
+|                    context assembly                             |
+|                           |                                     |
+|                 evidence sufficiency                            |
+|                           |                                     |
+|              local generation client ---------------------------+
+|                           |                                     |
+|         answer blocks + claim citations                         |
+|                           |                                     |
+|         Evidence / provenance / traces                          |
 |                                                                 |
-|  FastAPI product API + local traces (portfolio UI = Slice 16)   |
-+--------------------------+----------------------+---------------+
-                           |                      |
-                       /data volume          /models volume
-                                           embeddings/reranker
-                                           weights only
+|  /data volume          /models volume (embeddings/reranker)     |
++-----------------------------------------------------------------+
 ```
 
-The **generative model is intentionally outside the application image**. OfflineRAG owns retrieval and evaluation; Ollama (or another local OpenAI-compatible server) owns model execution. This keeps the image smaller, makes GPU/runtime support replaceable, and preserves a clean inference boundary.
+The generative model remains outside the application image. Product recovery is
+**disabled** in the accepted disposition (Slice 12 efficacy evidence did not
+justify promotion). A LangGraph adapter remains **NOT AUTHORIZED**. NeMo /
+13D remains **DEFERRED / OPTIONAL / NOT AUTHORIZED**.
+
+## Seneca product experience
+
+```text
+Create/open workspace
+      ↓
+Add/version local sources
+      ↓
+Select source scope
+      ↓
+Ask grounded question
+      ↓
+inspect claim-level citations and Evidence
+      ↓
+ask conversational follow-ups
+      ↓
+inspect Current/Historical provenance
+      ↓
+optionally use Training Mode
+```
+
+Training Mode (accepted 16D-C / A4) includes a compact Question Bank (search;
+JSON/Markdown import-export), progressive answer/citation/evidence reveal,
+presentation view, and conversation Markdown/JSON export.
+
+**Hard boundary:** conversation export is not source ingestion. An exported
+`.md` may later be uploaded only through an explicit human Add Sources action.
+Exports never automatically become workspace knowledge.
 
 ## Deployment model
 
-The flagship deployment target is **one OfflineRAG Docker container plus a local inference service already running on the host**. Ollama is the documented default because it makes local model provisioning and hardware support a separate concern from the RAG application.
+Flagship shape: one OfflineRAG container plus a local inference service on the
+host. See `DEPLOYMENT.md`.
 
-Target runtime shape:
-
-```text
-ollama serve                         # host
-ollama pull <local-model>            # provisioning step
+```bash
+ollama serve
+ollama pull <local-model>
 
 docker build -f deploy/Dockerfile -t offline-rag:latest .
 docker compose -f deploy/docker-compose.example.yml up --build
-
 # Host publish is loopback-only: 127.0.0.1:8080 -> container :8080
 ```
 
-The container persists application state through `/data` and receives locally provisioned embedding/reranker weights through `/models` (read-only). It does **not** contain the generative model. Supported topology is one process / one ASGI worker; see `DEPLOYMENT.md` for bind policy, UID `10001` `/data` ownership, and host-gateway notes.
+Direct-host API (non-container):
 
-Generation is configured through a generic interface:
-
-```yaml
-generation:
-  provider: openai_compatible
-  base_url: http://host.docker.internal:11434/v1
-  model: <approved-local-model>
+```bash
+uv sync
+python -m offline_rag.api.server   # 127.0.0.1:8080
 ```
-
-Later deployments can point the same client at llama.cpp, vLLM, or another compatible local server without changing retrieval code. See `DEPLOYMENT.md` and `docs/offline_runtime_contract.md`.
 
 ### Strict offline mode
 
-`strict_offline: true` means:
+`strict_offline: true` means no cloud API keys are required or consumed at
+runtime; generation endpoint/model must match local allowlists; embedding and
+reranker weights load from provisioned local files; runtime auto-downloads and
+external telemetry are disabled where supported. Provisioning may require
+internet; normal runtime must not.
 
-- no cloud API keys are required or consumed;
-- the generation endpoint must match an explicit local endpoint allowlist;
-- the generation model must match an explicit locally approved model allowlist/manifest;
-- embedding and reranker models must load from already provisioned local files/cache;
-- runtime auto-downloads and external tracing/telemetry are disabled where supported;
-- offline verification is part of the integration/security test suite.
-
-Provisioning may require internet access. Normal runtime must not.
-
-## What makes this portfolio-worthy
-
-The differentiator is not the chat UI. The differentiator is the experimental discipline around retrieval and grounded generation.
-
-The project should eventually publish an ablation table similar to:
-
-| Pipeline | Recall@5 | MRR | nDCG@10 | Answer accuracy | Citation accuracy | p50 latency |
-|---|---:|---:|---:|---:|---:|---:|
-| Dense baseline | TBD | TBD | TBD | TBD | TBD | TBD |
-| BM25 baseline | TBD | TBD | TBD | TBD | TBD | TBD |
-| Hybrid | TBD | TBD | TBD | TBD | TBD | TBD |
-| Hybrid + reranker | TBD | TBD | TBD | TBD | TBD | TBD |
-| Hybrid + reranker + conditional rewrite | TBD | TBD | TBD | TBD | TBD | TBD |
-
-The goal is to be able to make evidence-backed statements such as:
-
-> Adding the reranker improved MRR by X% while increasing median retrieval latency by Y ms. Query rewriting improved difficult semantic queries but produced little gain on exact-keyword questions.
-
-### Measured performance evidence (Slice 14)
+## Measured performance evidence (Slice 14)
 
 Slice 14 is **COMPLETE / ACCEPTED**. Evidence is descriptive under frozen
 protocols; it does not define a latency SLO, declare a winner, or authorize
@@ -162,256 +195,149 @@ configuration promotion. Full provenance:
 **Retrieval quality-vs-cost benchmark (14C; generation excluded)**
 
 - Terminal run: `perfrun_deb7a58e49d0f64496553a16c3edc3a5b517deec5ec1c9ddd76831fee79627ca`
-- Suite / config: `perfsuite_5248892…` / `perfcfg_aae1ea9b…`
 - Population: 44 cases; 440 measured observations; 88 warm-ups; 0 failures
 - Observed warm totals (measured): hybrid p50 ≈ 5.62 s / p95 ≈ 8.31 s;
   hybrid + reranker p50 ≈ 7.41 s / p95 ≈ 13.53 s
-- On the frozen development fixture, hybrid + reranker had higher accepted
-  retrieval-quality metrics while also adding latency. That is not a
-  promotion decision. The 22-case Gold population remains a
-  development/regression fixture, not publication-grade evidence.
+- Development/regression fixture only — not publication-grade evidence.
 
 **End-to-end generation-path benchmark (Level-C; separate population)**
 
 - Terminal run: `perfrun_211ebf1f9bcdef93d1f14421b754ef5ff387e2e091dc7f603f455dd083fdbf39`
-- Runner authority: `30b5abb627e16e50b2b848b44676b89b2372c3d6`
 - Population: 5 queries; 5 warm-ups + 25 measured = 30 attempts
 - Observed warm end-to-end (measured): p50 ≈ 50.83 s / p95 ≈ 144.59 s
 - Observed warm generation (measured): p50 ≈ 13.71 s / p95 ≈ 64.06 s
 - TTFT / decode / tokens-sec remain UNEVALUABLE on the accepted non-streaming
-  generator path; output tokens use provider `completion_tokens` when present
-- One frozen query produced `response_parse_error` after reaching the
-  configured 1,200-token ceiling on all six attempts; generation stage timing
-  remained valid. Pattern consistent with truncation at the token ceiling;
-  stronger causation and any max-token change are not authorized here.
+  generator path.
 
 Do **not** merge 14C retrieval-path latency with Level-C end-to-end latency.
-
-## Evaluation dimensions
-
-### Offline gold authoring (Milestone 4)
-
-Private corpora are labeled through a fully local workflow: source-seeded question proposal, multi-retriever pooling, blind local pre-labeling, human review, and GoldDataset finalization. Slices **9A**–**9E** done; **9F GO** (22-case / human-16 development fixture); **9H-P COMPLETE / NON-PROMOTIONAL**; **9G** deferred; formal **9H** frozen — [`docs/milestone4_offline_gold_authoring.md`](docs/milestone4_offline_gold_authoring.md), [`docs/pilots/slice9f_ics_modules.md`](docs/pilots/slice9f_ics_modules.md).
-
-### Retrieval
-
-- Recall@1 / @5 / @10
-- Precision@k
-- Mean Reciprocal Rank (MRR)
-- nDCG@k
-- Hit rate
-- Per-query-category performance
-- `offline-rag eval compare` on serialized retrieval-eval artifacts
-
-### Generation
-
-- Answer correctness
-- Faithfulness / groundedness
-- Completeness
-- Unsupported-claim rate
-
-### Citations
-
-- Citation resolvability
-- Citation-in-retrieved-set rate
-- Citation-in-context rate
-- Citation entailment/support
-
-### Abstention
-
-- Correct abstention rate
-- False-answer rate
-- False-refusal rate
-
-### Security
-
-- Direct prompt injection
-- Indirect prompt injection in retrieved documents
-- Fake system messages in documents
-- Citation manipulation attempts
-- Tool / filesystem access attempts
-
-### Performance
-
-- Parse throughput
-- Embedding throughput
-- Index build time
-- Retrieval p50/p95
-- Reranking p50/p95
-- End-to-end p50/p95
-- Time to first token
-- Generation tokens/sec
-- RAM/VRAM usage
-- Index size
 
 ## Repository map
 
 ```text
 offline-rag/
 ├── README.md
-├── project_description.md
-├── detailed_implementation_slices.md
-├── PROJECT_STRUCTURE.md
-├── ARCHITECTURE_DECISIONS.md
-├── EVALUATION_HARNESS.md
-├── SECURITY_MODEL.md
-├── DEVELOPMENT_GUIDE.md
 ├── ROADMAP.md
-├── PORTFOLIO_DEMO.md
 ├── DEPLOYMENT.md
-├── deploy/
-│   ├── Dockerfile
-│   └── docker-compose.example.yml
+├── DEVELOPMENT_GUIDE.md
+├── PROJECT_STRUCTURE.md
+├── pyproject.toml
 ├── config/
-│   ├── base.yaml
-│   ├── deployment/
-│   └── experiments/
-├── models/
-│   ├── README.md
-│   └── manifest.example.yaml
-├── eval/
-│   └── datasets/
-├── src/
-│   └── offline_rag/
-├── tests/
-└── scripts/
+├── deploy/
+├── docs/                 # slice evidence, amendments, plans
+├── eval/                 # gold / evaluation datasets
+├── models/               # provisioned local weights (gitignored content)
+├── scripts/
+├── src/offline_rag/      # engine + product/application layer
+│   ├── app/              # product use-cases (workspaces, query, ingest, …)
+│   ├── api/              # FastAPI surface
+│   ├── evaluation/
+│   └── …                 # ingestion, retrieval, generation, …
+├── ui/                   # Seneca React application
+└── tests/
 ```
 
-See `PROJECT_STRUCTURE.md` for the current Slice 0–6 tree and the intended long-term module layout.
+See `PROJECT_STRUCTURE.md` for the current tree. Detailed provenance lives in
+`ROADMAP.md` and `docs/`.
 
-## Development sequence
+## Quick start
 
-The project is intentionally sliced so each stage produces a working, testable system.
-
-1. **Foundation and contracts** — repository, configuration, IDs, logging, typed interfaces. *(done)*
-2. **Document ingestion** — Docling parsing, metadata normalization, deterministic document/parsed IDs. *(done)*
-3. **Structure-aware chunking** — parent/child chunks, neighbor links, chunk-set state. *(done)*
-4. **Dense baseline** — local embeddings, Qdrant Local, `retrieve`, dense Recall@k/MRR. *(done)*
-5. **Lexical baseline and hybrid retrieval** — BM25 + RRF. *(done)*
-6. **Reranking** — second-stage cross-encoder. *(done)*
-7. **Hierarchical context** — child retrieval + parent/neighbor expansion. *(done)*
-8. **Grounded generation** — generic local inference client, Ollama default, answer schema, closed-world `ev_` citations. *(done)*
-9. **Evaluation harness** — gold dataset expansion, experiment registry, generation quality metrics.
-10. **Abstention and confidence policy** — richer evidence-sufficiency policy beyond closed-world abstention.
-11. **Agentic recovery** — conditional LangGraph rewrite/retry.
-12. **Security and guardrails** — document-injection tests and hard controls.
-13. **Performance benchmarking** — latency, throughput, memory, VRAM.
-14. **Demo UI (Slice 16)** — portfolio browser client of the product API
-    (**PLANNED / DESIGN NOT OPEN**; not authorized).
-15. **Portfolio packaging (Slice 18)** — reproducible public release package
-    (**PLANNED / DESIGN NOT OPEN**; not authorized). Regression CI is Slice 17.
-
-Detailed exit criteria are in `detailed_implementation_slices.md`. Slice notes: `docs/slice0_contracts.md` … `docs/slice8_grounded_generation.md`.
-
-## Quick start (through grounded query)
+### CLI retrieval / generation path
 
 ```bash
 uv sync
-uv run python scripts/provision_docling.py      # PDF support
-uv run python scripts/provision_tiktoken.py     # chunk budgets
-# For real dense quality (large download):
+uv run python scripts/provision_docling.py
+uv run python scripts/provision_tiktoken.py
+# optional for real dense / rerank quality:
 # uv run offline-rag provision embedding
-# For real rerank quality (large download):
 # uv run offline-rag provision reranker
 
 offline-rag ingest ./documents --corpus engineering
 offline-rag chunk --corpus engineering
-offline-rag index --corpus engineering          # requires provisioned Qwen unless embedding.implementation=fake
+offline-rag index --corpus engineering
 offline-rag index lexical --corpus engineering
-offline-rag retrieve --corpus engineering --query "maximum operating pressure"
-offline-rag retrieve lexical --corpus engineering --query "API-12"
-offline-rag retrieve hybrid --corpus engineering --query "API-12 pressure"
-offline-rag retrieve hybrid-rerank --corpus engineering --query "API-12 pressure"
-offline-rag retrieve hybrid-rerank-context --corpus engineering --query "API-12 pressure"
-# Configure generation.approved_models + a running local OpenAI-compatible server, then:
-offline-rag query --corpus engineering --query "What is the maximum operating pressure?"
+offline-rag retrieve hybrid-rerank-context --corpus engineering --query "…"
+# Configure approved local generation endpoint/model, then:
+offline-rag query --corpus engineering --query "…"
 offline-rag doctor --corpus engineering
 ```
 
-Default config expects Qwen weights under `models/embeddings/qwen3-embedding-0.6b/` and BGE reranker under `models/rerankers/bge-reranker-v2-m3/`. CI and unit tests use `FakeEmbedder` / `FakeReranker` / `FakeGenerator` / fake tokenizer so they do not require those weights.
+### Seneca UI (local development)
 
-## Demo experience
+Two processes: product API on `:8080`, Vite on `:5173` (proxies `/v1` and
+`/health` to the API — see `ui/vite.config.ts`).
 
-**Today (Slice 8):** ingest → chunk → dense + lexical index → retrieve ladder → `query` / `eval query` / doctor (Context + Generation readiness).
+```bash
+# terminal 1 — product API
+uv sync
+python -m offline_rag.api.server
 
-**Target demo** should allow a user to:
+# terminal 2 — Seneca UI
+cd ui
+npm install
+npm run dev
+```
 
-1. Ingest a small set of public technical documents.
-2. Ask an engineering question.
-3. Inspect the dense and sparse candidates.
-4. Observe RRF fusion and reranker scores.
-5. Open the exact source page/chunk behind a citation.
-6. Compare dense-only vs hybrid vs hybrid+reranker.
-7. Ask an unanswerable question and see correct abstention.
-8. Trigger an adversarial document test and observe that retrieved instructions are treated as data.
-9. Open an evaluation dashboard showing the measured impact of each retrieval component.
+Container profile (API + packaged frontend serving): see `DEPLOYMENT.md` and
+`deploy/docker-compose.example.yml`.
+
+### Validation commands
+
+```bash
+uv run pytest
+uv run ruff check src tests
+cd ui && npm test && npm run lint && npm run typecheck && npm run build
+```
+
+## Project status
+
+| Gate | Status |
+|---|---|
+| Milestone 4 | Near-term engineering closed; **9G** publication expansion deferred |
+| Milestone 5 | Development checkpoint reached; Slice **10A–10E** implemented / verified |
+| Milestone 6 | **COMPLETE / ACCEPTED** |
+| Milestone 7 | **IN PROGRESS** |
+| Slice 14 | **COMPLETE / ACCEPTED** |
+| Slice 15 | **COMPLETE / ACCEPTED** |
+| Slice 16 | **IN PROGRESS / NOT COMPLETE** |
+| 16A / 16B / 16C | **COMPLETE / ACCEPTED** |
+| 16D-A / 16D-B2 / 16D-B3 / 16D-C | **COMPLETE / ACCEPTED / SEALED** |
+| Amendment A4 | **ACCEPTED / LOCKED / SEALED** |
+| 16E–16H | **NOT AUTHORIZED** |
+| Slice 17 / 18 | **NOT AUTHORIZED** |
+| M7 closeout | **NOT AUTHORIZED** |
+
+Detailed SHAs and evidence: [`ROADMAP.md`](ROADMAP.md),
+[`docs/slice16d_c_a4_closeout.md`](docs/slice16d_c_a4_closeout.md),
+[`docs/milestone7_performance_ui.md`](docs/milestone7_performance_ui.md).
+
+Still deferred / not authorized as product deliverables:
+
+- publication-grade portfolio claims (`PORTFOLIO_DEMO.md` update gated)
+- product LangGraph recovery / NeMo integration
+- `config/base.yaml` scientific promotion
+- cloud inference in the strict-offline core
+- enterprise auth / RBAC
+- distributed Qdrant / GraphRAG / multi-agent swarms
 
 ## Scope boundaries
 
-### In scope
+### In scope (accepted)
 
 - Fully local document ingestion and retrieval
-- PDF/TXT/MD first, with other Docling-supported formats added incrementally
-- Dense + lexical hybrid retrieval
-- Cross-encoder reranking
-- Hierarchical context expansion
+- Dense + lexical hybrid retrieval, reranking, hierarchical context
 - Local generation through an external local inference runtime
-- Page/chunk citations
-- Retrieval and generation evaluation
-- Abstention and prompt-injection defenses
-- Reproducible experiment configuration
+- Claim-level citations and Evidence inspection
+- Workspace product API and Seneca UI through accepted Slice 16 gates
+- Retrieval, generation-semantic, security, and performance evaluation
 
 ### Explicitly deferred
 
-- Knowledge-graph RAG
-- GraphRAG
+- Knowledge-graph / GraphRAG
 - Fine-tuning of the generator
 - Multi-agent swarms
 - Cloud inference in the strict-offline/core profile
 - Enterprise identity/RBAC
 - Distributed vector-database deployment
-- Complex multimodal reasoning over arbitrary figures
-
-These can be added only if evaluation reveals a concrete need.
-
-## Suggested corpus for the portfolio demo
-
-Use public, redistributable technical documents rather than proprietary material. Prefer a compact domain where exact terminology, tables, sections, acronyms, and cross-document comparisons matter. The engine should remain domain-agnostic even if the showcased corpus is engineering-focused.
-
-## Project status
-
-**Phase:** Milestone **7 IN PROGRESS**. Milestone **6 COMPLETE / ACCEPTED**.
-Slice **14 COMPLETE / ACCEPTED**. Slice **15 COMPLETE / ACCEPTED** on main
-(15H FF head `1c1d94e…`; evidence
-[`docs/slice15h_integration_acceptance.md`](docs/slice15h_integration_acceptance.md)) —
-app foundation, process lifecycle, `/health*`, non-mutating `doctor`, product
-publication registry/leases, `/v1/documents*`, `POST /v1/ingest`,
-`POST /v1/query`, `GET /v1/trace/{trace_id}`, admission/deadlines/drain,
-single-container packaging, and product CLI ingest/query via `offline_rag.app`.
-Next Milestone 7 work remains unauthorized:
-
-- **Slice 16** Portfolio Demo UI — **PLANNED / DESIGN NOT OPEN**
-  (Slice-15 closeout prerequisite satisfied; design interview still requires
-  separate authorization)
-- **Slice 17** Regression CI — **PLANNED / DESIGN NOT OPEN**
-- **Slice 18** Portfolio Release Package — **PLANNED / DESIGN NOT OPEN**
-- Milestone 7 closeout — **NOT AUTHORIZED**
-- Container image size / CPU–CUDA variants — **DEFERRED**
-  ([issue #1](https://github.com/cschrupp/offline-rag/issues/1))
-
-Working local path: ingest → chunk → index / index lexical → retrieve ladder →
-`query` → grounded generation → `eval retrieve` / `eval compare` →
-`eval query` → `doctor` → gold authoring workflow → Slice 14 performance
-benchmarks → Slice 15 product `/health*` + `/v1/*` + container packaging
-(closeout accepted).
-
-Still deferred / not authorized from Slice 14 closeout: publication-grade
-portfolio claims (`PORTFOLIO_DEMO.md`); performance optimization; generator
-max-token change; `base.yaml` promotion; Milestone 7 closeout.
-
-See `ROADMAP.md`, `docs/slice15_developer_api_packaging.md`,
-`docs/slice15_implementation_plan.md`, `docs/slice16_portfolio_ui.md`,
-`docs/milestone7_performance_ui.md`,
-`docs/milestone4_offline_gold_authoring.md`,
-`docs/slice10_generation_semantic_evaluation.md`, and
-`docs/slice8_grounded_generation.md`.
+- Product LangGraph recovery adapter
+- NeMo Guardrails integration
+- Publication-grade 9G promotion / M7 closeout packaging
