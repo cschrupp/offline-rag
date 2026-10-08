@@ -3,11 +3,13 @@ import { Link } from "react-router-dom";
 import type { WorkspaceCitation } from "../../api/types";
 import { Button } from "../../components/Button";
 import { TextArea } from "../../components/Field";
+import { QuestionBankPanel } from "../training/QuestionBankPanel";
 import {
   HIDDEN_REVEAL,
   type RevealMap,
   type TurnRevealState,
 } from "../training/revealState";
+import type { SavedTrainingPrompt } from "../training/trainingPrompts";
 import { ClaimAnswer } from "./ClaimAnswer";
 import { assistantPresentationText } from "./assistantPresentation";
 import {
@@ -17,6 +19,7 @@ import {
   type ConversationHistoryEntry,
   type IncompleteUserTurn,
 } from "./conversationState";
+import { ExportConversationMenu } from "./ExportConversationMenu";
 
 type Props = {
   question: string;
@@ -43,6 +46,15 @@ type Props = {
   trainingMode?: boolean;
   revealMap?: RevealMap;
   onRevealChange?: (entryId: string, patch: Partial<TurnRevealState>) => void;
+  workspaceId?: string;
+  workspaceTitle?: string;
+  workspaceRevision?: number;
+  savedPrompts?: SavedTrainingPrompt[];
+  onSavePrompt?: () => void;
+  onPromptsChange?: (prompts: SavedTrainingPrompt[]) => void;
+  onSelectPrompt?: (prompt: SavedTrainingPrompt) => void;
+  onDeletePrompt?: (promptId: string) => void;
+  drawersOpen?: boolean;
 };
 
 function statusLabel(status: string): string {
@@ -82,6 +94,15 @@ export function AskPanel({
   trainingMode = false,
   revealMap = {},
   onRevealChange,
+  workspaceId = "",
+  workspaceTitle = "workspace",
+  workspaceRevision = 0,
+  savedPrompts = [],
+  onSavePrompt,
+  onPromptsChange,
+  onSelectPrompt,
+  onDeletePrompt,
+  drawersOpen = false,
 }: Props) {
   useEffect(() => {
     if (askPending) return;
@@ -119,14 +140,28 @@ export function AskPanel({
         <h2 id="ask-heading" style={{ margin: 0 }}>
           {trainingMode ? "Training conversation" : "Conversation"}
         </h2>
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={onNewConversation}
-          disabled={askPending || !hasThread}
-        >
-          + New conversation
-        </Button>
+        <div className="row conversation-panel-actions">
+          <ExportConversationMenu
+            workspace={{
+              workspace_id: workspaceId,
+              title: workspaceTitle,
+              revision: workspaceRevision,
+              current_snapshot_id: currentSnapshotId,
+            }}
+            history={history}
+            incompleteTurns={incompleteTurns}
+            exportedFromView={trainingMode ? "training" : "normal"}
+            askPending={askPending}
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onNewConversation}
+            disabled={askPending || !hasThread}
+          >
+            + New conversation
+          </Button>
+        </div>
       </div>
       <p className="muted" style={{ margin: 0 }}>
         {trainingMode
@@ -337,10 +372,32 @@ export function AskPanel({
           rows={3}
           disabled={askPending}
         />
-        <div className="row">
+        <div className="row conversation-composer-actions">
           <Button type="submit" disabled={askDisabled || askPending}>
             Send
           </Button>
+          {trainingMode ? (
+            <>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => onSavePrompt?.()}
+                disabled={askPending || question.trim().length === 0}
+              >
+                Save question
+              </Button>
+              <QuestionBankPanel
+                workspaceId={workspaceId}
+                workspaceTitle={workspaceTitle}
+                savedPrompts={savedPrompts}
+                askPending={askPending}
+                drawersOpen={drawersOpen}
+                onPromptsChange={(prompts) => onPromptsChange?.(prompts)}
+                onSelectPrompt={(prompt) => onSelectPrompt?.(prompt)}
+                onDeletePrompt={(promptId) => onDeletePrompt?.(promptId)}
+              />
+            </>
+          ) : null}
         </div>
       </form>
 

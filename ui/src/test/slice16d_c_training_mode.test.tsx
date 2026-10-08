@@ -284,9 +284,16 @@ describe("Slice 16D-C Training Mode UI", () => {
       "Saved training drill?",
     ]);
     expect(turnBodies).toHaveLength(0);
+    expect(
+      screen.getByRole("button", { name: "Question bank (1)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Saved training drill?" }),
+    ).toBeNull();
 
     await user.clear(composer);
     expect(composer).toHaveValue("");
+    await user.click(screen.getByRole("button", { name: "Question bank (1)" }));
     await user.click(
       screen.getByRole("button", { name: "Saved training drill?" }),
     );
@@ -303,6 +310,7 @@ describe("Slice 16D-C Training Mode UI", () => {
     expect(Array.isArray(prior)).toBe(true);
     expect(prior).toEqual([]);
 
+    await user.click(screen.getByRole("button", { name: "Question bank (1)" }));
     await user.click(
       screen.getByRole("button", {
         name: /Delete saved question: Saved training drill/i,
@@ -324,8 +332,12 @@ describe("Slice 16D-C Training Mode UI", () => {
     await screen.findByRole("heading", { name: "Conversation" });
     await user.click(screen.getByRole("button", { name: "Training Mode" }));
     expect(
+      screen.getByRole("button", { name: "Question bank (0)" }),
+    ).toBeInTheDocument();
+    expect(
       screen.queryByRole("button", { name: "Only for ws_1" }),
     ).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Question bank (0)" }));
     expect(screen.getByText(/No saved training questions yet/i)).toBeInTheDocument();
     expect(loadTrainingPrompts("ws_1").map((p) => p.text)).toEqual([
       "Only for ws_1",
@@ -496,6 +508,10 @@ describe("Slice 16D-C Training Mode UI", () => {
     expect(
       screen.getByText(/Enter a training question or select a saved question/i),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Question bank (1)" }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Question bank (1)" }));
     expect(
       screen.getByRole("button", { name: "Keep this prompt" }),
     ).toBeInTheDocument();

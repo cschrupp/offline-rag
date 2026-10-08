@@ -7,7 +7,8 @@ export type SavedTrainingPrompt = {
 };
 
 const KEY_PREFIX = "seneca.training-prompts.v1:";
-const PROMPT_MAX = 100;
+/** Local Question Bank capacity (A4-D08). */
+export const PROMPT_MAX = 100;
 
 function storageKey(workspaceId: string): string {
   return `${KEY_PREFIX}${workspaceId}`;

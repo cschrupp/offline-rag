@@ -1184,19 +1184,7 @@ export function WorkspacePage() {
 
       {trainingMode ? (
         <TrainingToolbar
-          question={question}
-          savedPrompts={savedPrompts}
           presentationMode={presentationMode}
-          askPending={askMutation.isPending}
-          onSavePrompt={() => {
-            setSavedPrompts(saveTrainingPrompt(workspaceId, question));
-          }}
-          onSelectPrompt={(prompt) => {
-            setQuestion(prompt.text);
-          }}
-          onDeletePrompt={(promptId) => {
-            setSavedPrompts(deleteTrainingPrompt(workspaceId, promptId));
-          }}
           onTogglePresentation={togglePresentationMode}
         />
       ) : null}
@@ -1368,6 +1356,21 @@ export function WorkspacePage() {
               trainingMode={trainingMode}
               revealMap={revealMap}
               onRevealChange={patchReveal}
+              workspaceId={workspaceId}
+              workspaceTitle={workspace.title}
+              workspaceRevision={workspace.revision}
+              savedPrompts={savedPrompts}
+              onSavePrompt={() => {
+                setSavedPrompts(saveTrainingPrompt(workspaceId, question));
+              }}
+              onPromptsChange={setSavedPrompts}
+              onSelectPrompt={(prompt) => {
+                setQuestion(prompt.text);
+              }}
+              onDeletePrompt={(promptId) => {
+                setSavedPrompts(deleteTrainingPrompt(workspaceId, promptId));
+              }}
+              drawersOpen={sourcesDrawerOpen || evidenceDrawerOpen}
             />
           </div>
         </div>
