@@ -92,9 +92,9 @@ User-facing badge for that phase: **Source issue** (not “Inconsistent”).
 Transport/JSON/contract failures remain **source-loading error** with Retry —
 never Empty, never Source issue.
 
-Additional guards:
+Additional guards (Rework 1 entry points):
 
-- source mutations allowed only when `sourcePhase` is `ready` or `empty`;
+- Add entry controls gated when source state is unknown;
 - Ask disabled until real source records are available;
 - `SourceListResponse` runtime validation in `listSources()`;
 - JSON parse failures on JSON content-type throw retryable `ApiError`;
@@ -123,4 +123,48 @@ Vite silent port fallback
 
 - Implementation: `b1da3c076d56bed77bbdc328346ce92220950c8b`
 - Documentation: `5f00c148719d9903f12795bececf89a075bc3d3e`
+- Docs SHA fill-in: `75ba49dff3d33ef3a76835c67951dcc567234017`
+
+## Rework 2 — mutation-boundary fail-closed gate
+
+**Reason:** Mutation entry controls were gated, but already-open Add / Rename /
+Replace / Remove dialogs could still dispatch after source state became
+unavailable.
+
+**Permission model (shared for UI disable + dispatch guards):**
+
+- Add Sources: `sourcePhase === "ready" || sourcePhase === "empty"`
+- Rename / Replace / Remove: `sourcePhase === "ready"` only
+
+**Guards added:**
+
+- Form submit buttons disable when source state leaves the allowed set
+- Submit handlers and `mutationFn` refuse dispatch when permissions fail
+- Replace does not enter `uploading` when the existing-source gate fails
+- Frozen Add “Retry safely” intent is preserved but not dispatched until Add
+  is again allowed
+- Compact notice: “Source details changed. Reload the source list before
+  continuing.”
+- `ConfirmDialog` supports `confirmDisabled` (Cancel remains available)
+
+**Regression coverage:** stale-open-dialog races A–G in
+`ui/src/test/workspace_source_loading_state.test.tsx`.
+
+**Status:** STOP FOR INDEPENDENT REVIEW — do not claim remediation accepted
+until independent review passes.
+
+### Rework 2 SHAs
+
+- Implementation: `9dd2b008ebf9feee279dc6d0e58fafb006288ee5`
+- Documentation: _(filled after this commit)_
+
+### Rework 2 validation
+
+```text
+Frontend tests: 170 passed (12 files)
+Lint: pass
+Typecheck: pass
+Build: pass
+git diff --check: pass
+```
 
