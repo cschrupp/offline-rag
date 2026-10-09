@@ -11,8 +11,8 @@
 | Implementation SHA | `10520c1625f63e347116055124c181df3a446df1` |
 | Documentation SHA | `65e86ead38794a93a3961db6640fcaaf616e8fc7` |
 | Rework 1 starting HEAD | `d6da49309f863955f65148d166dab8b770284c34` |
-| Rework 1 implementation SHA | `_FILL_AFTER_FEAT_COMMIT_` |
-| Rework 1 documentation SHA | `_FILL_AFTER_DOCS_COMMIT_` |
+| Rework 1 implementation SHA | `5416d536d7aff641ce81348a46ba2e750e710871` |
+| Rework 1 documentation SHA | `60b5c795df76fa0ab5d2d9b95b67b0e576794ae9` |
 
 ## Scope
 
