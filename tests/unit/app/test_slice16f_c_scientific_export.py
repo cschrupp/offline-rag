@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 import sys
 from pathlib import Path
 
@@ -38,19 +39,35 @@ from offline_rag.app.gold_lab import (
     GoldProjectType,
     GoldRegistration,
     new_campaign_id,
+    new_project_id,
     project_authoring_run,
     projection_text,
     valid_registered_case_ids_for_campaign,
 )
+from offline_rag.app.gold_lab.leases import GoldLabDatasetLease
 from offline_rag.app.gold_lab.paths import (
     baseline_authoring_run_path,
+    campaign_json_path,
     dataset_dir,
+    datasets_root,
     projection_authoring_run_path,
     registration_path,
 )
-from offline_rag.evaluation.gold import GOLD_SCHEMA_V1, load_gold_dataset
+from offline_rag.app.gold_lab.registrations import (
+    load_registration,
+    validate_registration_against_authority,
+)
+from offline_rag.evaluation.gold import (
+    GOLD_SCHEMA_V1,
+    ChunkJudgment,
+    GoldCase,
+    GoldDatasetMeta,
+    compute_gold_dataset_id,
+    load_gold_dataset,
+)
 from offline_rag.gold_authoring.models import GoldAuthoringRun
 from offline_rag.gold_authoring.review_models import HumanReviewStatus
+from offline_rag.ingestion.io import atomic_write_text
 
 
 def _complete_positive(mut: GoldLabMutationService, campaign_id: str) -> None:
@@ -635,3 +652,341 @@ def test_dataset_id_path_grammar() -> None:
         validate_dataset_id("gold_nothex")
     with pytest.raises(GoldLabError):
         dataset_dir(PathSettings(gold_lab=Path("data/gold-lab")), "../evil")
+
+
+# --- Rework 1 ---
+
+
+def _candidate_dirs(settings, campaign_id: str) -> list[Path]:
+    root = datasets_root(settings)
+    if not root.is_dir():
+        return []
+    return sorted(
+        p for p in root.glob(f".candidate.{campaign_id}.*") if p.is_dir()
+    )
+
+
+def _write_forged_dataset(
+    settings,
+    *,
+    chunk_set_id: str,
+    corpus_id: str,
+    corpus_name: str,
+    case_id: str,
+    query: str,
+) -> str:
+    cases = (
+        GoldCase(
+            id=case_id,
+            query=query,
+            category=None,
+            tags=(),
+            judgments=(ChunkJudgment(chunk_id=CHUNK_A, relevance=2),),
+        ),
+    )
+    dataset_id = compute_gold_dataset_id(
+        chunk_set_id=chunk_set_id,
+        corpus_id=corpus_id,
+        corpus_name=corpus_name,
+        cases=cases,
+    )
+    dest = dataset_dir(settings, dataset_id)
+    dest.mkdir(parents=True, exist_ok=False)
+    meta = GoldDatasetMeta(
+        schema_version=GOLD_SCHEMA_V1,
+        chunk_set_id=chunk_set_id,
+        corpus_id=corpus_id,
+        corpus_name=corpus_name,
+        dataset_id=dataset_id,
+        metadata={"authoring_run_id": "forged"},
+    )
+    (dest / "meta.json").write_text(meta.model_dump_json(indent=2) + "\n", encoding="utf-8")
+    line = json.dumps(
+        {
+            "id": cases[0].id,
+            "query": cases[0].query,
+            "category": cases[0].category,
+            "tags": list(cases[0].tags),
+            "judgments": [
+                {"chunk_id": j.chunk_id, "relevance": int(j.relevance)}
+                for j in cases[0].judgments
+            ],
+        },
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    (dest / "cases.jsonl").write_text(line + "\n", encoding="utf-8")
+    return dataset_id
+
+
+def test_rework1_dataset_campaign_scientific_binding(tmp_path: Path) -> None:
+    settings, store, campaign, mut = _ready(tmp_path)
+    _complete_positive(mut, campaign.campaign_id)
+    result = _export(settings, store, campaign.campaign_id)
+
+    # Forge a second GoldDataset with different scientific binding.
+    other_id = _write_forged_dataset(
+        settings,
+        chunk_set_id="chunkset_other_binding",
+        corpus_id="corpus_other",
+        corpus_name="othercorpus",
+        case_id=CASE_ID,
+        query="What is offline RAG?",
+    )
+    assert other_id != result.dataset_id
+
+    # Registration carries campaign A provenance but points at dataset B.
+    forged = result.registration.model_copy(
+        update={
+            "dataset_id": other_id,
+            "dataset_path": f"datasets/{other_id}",
+            "exported_case_ids": [CASE_ID],
+        }
+    )
+    # Move authoritative registration to the forged dataset path.
+    registration_path(settings, result.dataset_id, campaign.campaign_id).unlink()
+    dest = registration_path(settings, other_id, campaign.campaign_id)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    atomic_write_text(dest, forged.model_dump_json())
+
+    with pytest.raises(GoldLabError) as exc:
+        validate_registration_against_authority(
+            settings,
+            forged,
+            campaign=store.get_campaign(campaign.campaign_id),
+            project=store.get_project(campaign.project_id),
+        )
+    assert exc.value.reason in {
+        "registration_dataset_chunk_set_mismatch",
+        "registration_dataset_corpus_id_mismatch",
+        "registration_dataset_corpus_name_mismatch",
+    }
+
+    with pytest.raises(GoldLabError):
+        mut.contribution(campaign.campaign_id)
+    del store
+
+
+def test_rework1_baseline_exported_case_membership(tmp_path: Path) -> None:
+    settings, store, campaign, mut = _ready(tmp_path)
+    _complete_positive(mut, campaign.campaign_id)
+    result = _export(settings, store, campaign.campaign_id)
+
+    ghost_id = _write_forged_dataset(
+        settings,
+        chunk_set_id=campaign.chunk_set_id,
+        corpus_id=campaign.corpus_id,
+        corpus_name=campaign.corpus_name,
+        case_id="ghost_case_not_in_baseline",
+        query="Ghost query",
+    )
+    registration_path(settings, result.dataset_id, campaign.campaign_id).unlink()
+    forged = result.registration.model_copy(
+        update={
+            "dataset_id": ghost_id,
+            "dataset_path": f"datasets/{ghost_id}",
+            "exported_case_ids": ["ghost_case_not_in_baseline"],
+        }
+    )
+    dest = registration_path(settings, ghost_id, campaign.campaign_id)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    atomic_write_text(dest, forged.model_dump_json())
+
+    with pytest.raises(GoldLabError) as exc:
+        validate_registration_against_authority(
+            settings,
+            forged,
+            campaign=store.get_campaign(campaign.campaign_id),
+            project=store.get_project(campaign.project_id),
+        )
+    assert exc.value.reason == "registration_unknown_exported_case"
+
+    with pytest.raises(GoldLabError) as exc2:
+        valid_registered_case_ids_for_campaign(
+            settings,
+            campaign_id=campaign.campaign_id,
+            campaign=store.get_campaign(campaign.campaign_id),
+            project=store.get_project(campaign.project_id),
+        )
+    assert exc2.value.reason == "registration_unknown_exported_case"
+    del store
+
+
+def test_rework1_load_registration_path_identity(tmp_path: Path) -> None:
+    settings, store, campaign, mut = _ready(tmp_path)
+    _complete_positive(mut, campaign.campaign_id)
+    result = _export(settings, store, campaign.campaign_id)
+    path = registration_path(settings, result.dataset_id, campaign.campaign_id)
+    existing = GoldRegistration.model_validate_json(path.read_text(encoding="utf-8"))
+    other_dataset = "gold_" + ("cd" * 32)
+    other_campaign = new_campaign_id()
+    mismatched = existing.model_copy(
+        update={
+            "dataset_id": other_dataset,
+            "campaign_id": other_campaign,
+            "dataset_path": f"datasets/{other_dataset}",
+        }
+    )
+    # Bypass model path consistency for this tamper by writing raw JSON.
+    raw = mismatched.model_dump(mode="json")
+    path.write_text(json.dumps(raw), encoding="utf-8")
+
+    with pytest.raises(GoldLabError) as exc:
+        load_registration(
+            settings, dataset_id=result.dataset_id, campaign_id=campaign.campaign_id
+        )
+    assert exc.value.reason == "registration_path_mismatch"
+    del store
+
+
+def test_rework1_missing_registered_dataset_no_repair(tmp_path: Path) -> None:
+    settings, store, campaign, mut = _ready(tmp_path)
+    _complete_positive(mut, campaign.campaign_id)
+    result = _export(settings, store, campaign.campaign_id)
+    reg_path = registration_path(settings, result.dataset_id, campaign.campaign_id)
+    reg_bytes = reg_path.read_bytes()
+    canonical = dataset_dir(settings, result.dataset_id)
+    shutil.rmtree(canonical)
+    assert not canonical.exists()
+
+    with pytest.raises(GoldLabError) as exc:
+        _export(settings, store, campaign.campaign_id)
+    assert exc.value.reason == "registered_dataset_missing"
+    assert not canonical.exists()
+    assert reg_path.read_bytes() == reg_bytes
+    assert _candidate_dirs(settings, campaign.campaign_id) == []
+    del store
+
+
+def test_rework1_missing_dataset_blocks_peer_campaign_reuse(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    registry, snapshot_id, _ = _publish_bound(settings)
+    ws = _active_workspace(settings, snapshot_id, title="16FC R1 peer")
+    store = GoldLabStore(settings)
+    project = store.create_project(
+        workspace_id=ws.workspace_id,
+        title="Peer",
+        project_type=GoldProjectType.BENCHMARK,
+    )
+    svc = GoldCampaignService(settings, qdrant=registry.qdrant)
+    camp_a = svc.create_campaign(
+        project_id=project.project_id,
+        baseline=_baseline(authoring_run_id="authorrun_a"),
+        selection_policy=_policy(),
+        campaign_id=new_campaign_id(),
+    )
+    camp_b = svc.create_campaign(
+        project_id=project.project_id,
+        baseline=_baseline(authoring_run_id="authorrun_b"),
+        selection_policy=_policy(),
+        campaign_id=new_campaign_id(),
+    )
+    mut = GoldLabMutationService(settings, store=store)
+    _complete_positive(mut, camp_a.campaign_id)
+    _complete_positive(mut, camp_b.campaign_id)
+    r1 = _export(settings, store, camp_a.campaign_id)
+    shutil.rmtree(dataset_dir(settings, r1.dataset_id))
+    with pytest.raises(GoldLabError) as exc:
+        _export(settings, store, camp_b.campaign_id)
+    assert exc.value.reason == "registered_dataset_missing"
+    assert not dataset_dir(settings, r1.dataset_id).exists()
+    assert registration_path(settings, r1.dataset_id, camp_a.campaign_id).is_file()
+    assert not registration_path(settings, r1.dataset_id, camp_b.campaign_id).exists()
+    del store
+
+
+def test_rework1_crash_recovery_preserved(tmp_path: Path) -> None:
+    settings, store, campaign, mut = _ready(tmp_path)
+    _complete_positive(mut, campaign.campaign_id)
+
+    class Boom(RuntimeError):
+        pass
+
+    with pytest.raises(Boom):
+        GoldLabScientificExportService(
+            settings,
+            store=store,
+            after_dataset_hook=lambda: (_ for _ in ()).throw(Boom("crash")),
+        ).export_and_register(campaign.campaign_id)
+
+    datasets = [
+        p
+        for p in datasets_root(settings).iterdir()
+        if p.is_dir() and p.name.startswith("gold_")
+    ]
+    assert len(datasets) == 1
+    dataset_id = datasets[0].name
+    before_meta = (datasets[0] / "meta.json").read_bytes()
+    before_cases = (datasets[0] / "cases.jsonl").read_bytes()
+    assert not registration_path(settings, dataset_id, campaign.campaign_id).exists()
+
+    retry = _export(settings, store, campaign.campaign_id)
+    assert retry.dataset_reused is True
+    assert retry.registration_replayed is False
+    assert (datasets[0] / "meta.json").read_bytes() == before_meta
+    assert (datasets[0] / "cases.jsonl").read_bytes() == before_cases
+    del store
+
+
+def test_rework1_candidate_cleanup_on_lease_and_corrupt(tmp_path: Path) -> None:
+    settings, store, campaign, mut = _ready(tmp_path)
+    _complete_positive(mut, campaign.campaign_id)
+
+    # First publish so we know dataset_id, then hold lease and retry-like export
+    # after removing registration would reuse — instead hold lease during first export
+    # by precomputing via a parallel path: export once, then corrupt and re-export.
+    result = _export(settings, store, campaign.campaign_id)
+    dataset_id = result.dataset_id
+
+    # Lease contention during a second export after deleting registration (reuse path).
+    registration_path(settings, dataset_id, campaign.campaign_id).unlink()
+    with GoldLabDatasetLease(settings, dataset_id):
+        with pytest.raises(GoldLabError) as exc:
+            _export(settings, store, campaign.campaign_id)
+        assert exc.value.reason == "gold_lab_lease_held"
+    assert _candidate_dirs(settings, campaign.campaign_id) == []
+
+    # Corrupt canonical dataset; export must clean candidate and leave corrupt bytes.
+    canonical = dataset_dir(settings, dataset_id)
+    meta_path = canonical / "meta.json"
+    corrupt_bytes = b'{"schema_version":"offline-rag-gold-v1","broken":true}\n'
+    meta_path.write_bytes(corrupt_bytes)
+    with pytest.raises(GoldLabError) as exc2:
+        _export(settings, store, campaign.campaign_id)
+    assert exc2.value.reason in {
+        "canonical_dataset_corrupt",
+        "registered_dataset_missing",
+        "canonical_dataset_schema_invalid",
+        "canonical_dataset_id_mismatch",
+    }
+    assert meta_path.read_bytes() == corrupt_bytes
+    assert _candidate_dirs(settings, campaign.campaign_id) == []
+    del store
+
+
+def test_rework1_locked_project_identity(tmp_path: Path) -> None:
+    from offline_rag.app.gold_lab.models import GoldCampaign
+
+    settings, store, campaign, mut = _ready(tmp_path)
+    _complete_positive(mut, campaign.campaign_id)
+    captured = campaign.project_id
+
+    def _rewrite_campaign_project() -> None:
+        path = campaign_json_path(settings, campaign.campaign_id)
+        current = GoldCampaign.model_validate_json(path.read_text(encoding="utf-8"))
+        mutated = current.model_copy(update={"project_id": new_project_id()})
+        atomic_write_text(path, mutated.model_dump_json())
+        assert mutated.project_id != captured
+
+    with pytest.raises(GoldLabError) as exc:
+        GoldLabScientificExportService(
+            settings,
+            store=store,
+            after_locks_hook=_rewrite_campaign_project,
+        ).export_and_register(campaign.campaign_id)
+    assert exc.value.reason == "export_project_lock_mismatch"
+    assert not any(
+        p.is_file()
+        for p in (settings.paths.gold_lab / "registrations").rglob("*.json")
+    )
+    assert list(datasets_root(settings).glob("gold_*")) == []

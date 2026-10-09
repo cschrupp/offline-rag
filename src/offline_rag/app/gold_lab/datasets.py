@@ -10,6 +10,9 @@ from pathlib import Path
 from offline_rag.app.gold_lab.errors import GoldLabError
 from offline_rag.app.gold_lab.ids import validate_campaign_id, validate_dataset_id
 from offline_rag.app.gold_lab.paths import dataset_dir, datasets_root
+from offline_rag.app.gold_lab.registrations import (
+    existing_registration_files_for_dataset,
+)
 from offline_rag.config.models import AppSettings
 from offline_rag.evaluation.gold import GOLD_SCHEMA_V1, load_gold_dataset
 from offline_rag.gold_authoring.finalize import FinalizePreRunError, run_gold_finalize
@@ -23,6 +26,11 @@ def candidate_dataset_dir(
     cid = validate_campaign_id(campaign_id)
     suffix = token or uuid.uuid4().hex
     return datasets_root(settings) / f".candidate.{cid}.{suffix}"
+
+
+def cleanup_candidate_directory(path: Path | None) -> None:
+    """Remove unpromoted candidate staging (no-op if missing / already promoted)."""
+    _cleanup_dir(path)
 
 
 def finalize_projected_run_to_candidate(
@@ -130,26 +138,37 @@ def publish_or_reuse_canonical_dataset(
     try:
         candidate_ds = load_gold_dataset(candidate)
     except Exception as exc:
+        _cleanup_dir(candidate)
         raise GoldLabError(
             "candidate_dataset_invalid",
             f"candidate failed load_gold_dataset: {exc}",
         ) from exc
 
     if candidate_ds.source_schema != GOLD_SCHEMA_V1:
+        _cleanup_dir(candidate)
         raise GoldLabError(
             "candidate_schema_invalid",
             f"expected {GOLD_SCHEMA_V1}",
         )
     if candidate_ds.dataset_id != did:
+        _cleanup_dir(candidate)
         raise GoldLabError(
             "candidate_dataset_id_mismatch",
             "candidate dataset_id mismatch",
         )
 
     if not canonical.exists():
+        # Never silently repair a registered-but-missing canonical dataset.
+        if existing_registration_files_for_dataset(settings, did):
+            _cleanup_dir(candidate)
+            raise GoldLabError(
+                "registered_dataset_missing",
+                f"registrations exist for {did} but canonical dataset is absent",
+            )
         try:
             os.replace(candidate, canonical)
         except OSError as exc:
+            _cleanup_dir(candidate)
             raise GoldLabError(
                 "dataset_publish_failed",
                 f"failed to promote candidate dataset: {exc}",
@@ -168,26 +187,30 @@ def publish_or_reuse_canonical_dataset(
             )
         return canonical, False
 
-    # Reuse path — never rewrite bytes.
+    # Reuse path — never rewrite or replace existing canonical bytes.
     try:
         existing = load_gold_dataset(canonical)
     except Exception as exc:
+        _cleanup_dir(candidate)
         raise GoldLabError(
             "canonical_dataset_corrupt",
             f"existing canonical dataset unreadable: {exc}",
         ) from exc
 
     if existing.source_schema != GOLD_SCHEMA_V1:
+        _cleanup_dir(candidate)
         raise GoldLabError(
             "canonical_dataset_schema_invalid",
             f"expected {GOLD_SCHEMA_V1}",
         )
     if existing.dataset_id != did:
+        _cleanup_dir(candidate)
         raise GoldLabError(
             "canonical_dataset_id_mismatch",
             "canonical path dataset_id mismatch",
         )
     if candidate_ds.dataset_id != existing.dataset_id:
+        _cleanup_dir(candidate)
         raise GoldLabError(
             "dataset_semantic_conflict",
             "candidate and canonical dataset_id differ",

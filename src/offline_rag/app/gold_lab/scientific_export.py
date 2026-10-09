@@ -5,9 +5,11 @@ from __future__ import annotations
 import hashlib
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 
 from offline_rag.app.gold_lab.baseline import load_sealed_baseline_run
 from offline_rag.app.gold_lab.datasets import (
+    cleanup_candidate_directory,
     finalize_projected_run_to_candidate,
     publish_or_reuse_canonical_dataset,
 )
@@ -20,7 +22,7 @@ from offline_rag.app.gold_lab.leases import (
     GoldLabProjectLease,
 )
 from offline_rag.app.gold_lab.ledger import GoldLabLedger
-from offline_rag.app.gold_lab.models import GoldCampaign, GoldProject, GoldRegistration
+from offline_rag.app.gold_lab.models import GoldRegistration
 from offline_rag.app.gold_lab.paths import (
     canonical_dataset_relpath,
     projection_authoring_run_path,
@@ -60,41 +62,52 @@ class GoldLabScientificExportService:
         store: GoldLabStore | None = None,
         ledger: GoldLabLedger | None = None,
         after_dataset_hook: Callable[[], None] | None = None,
+        after_locks_hook: Callable[[], None] | None = None,
     ) -> None:
         self.settings = settings
         self.store = store or GoldLabStore(settings)
         self.ledger = ledger or GoldLabLedger(settings, store=self.store)
         self._after_dataset_hook = after_dataset_hook
+        self._after_locks_hook = after_locks_hook
 
     def export_and_register(self, campaign_id: str) -> ScientificExportResult:
         cid = validate_campaign_id(campaign_id)
-        campaign = self.store.get_campaign(cid)
-        project = self.store.get_project(campaign.project_id)
+        campaign_probe = self.store.get_campaign(cid)
+        captured_project_id = campaign_probe.project_id
 
         with (
-            GoldLabProjectLease(self.settings, campaign.project_id),
+            GoldLabProjectLease(self.settings, captured_project_id),
             GoldLabCampaignLease(self.settings, cid),
         ):
+            if self._after_locks_hook is not None:
+                self._after_locks_hook()
             return self._export_under_campaign_leases(
                 campaign_id=cid,
-                campaign=campaign,
-                project=project,
+                captured_project_id=captured_project_id,
             )
 
     def _export_under_campaign_leases(
         self,
         *,
         campaign_id: str,
-        campaign: GoldCampaign,
-        project: GoldProject,
+        captured_project_id: str,
     ) -> ScientificExportResult:
-        # Re-load campaign under lease for durable authority.
         campaign = self.store.get_campaign(campaign_id)
-        project = self.store.get_project(campaign.project_id)
+        if campaign.project_id != captured_project_id:
+            raise GoldLabError(
+                "export_project_lock_mismatch",
+                "reloaded campaign.project_id does not match held project lease",
+            )
+        project = self.store.get_project(captured_project_id)
         if project.project_id != campaign.project_id:
             raise GoldLabError(
                 "registration_project_mismatch",
                 "project/campaign binding mismatch",
+            )
+        if project.project_type != campaign.selection_policy.project_type:
+            raise GoldLabError(
+                "registration_project_type_mismatch",
+                "project.project_type must equal campaign.selection_policy.project_type",
             )
 
         baseline = load_sealed_baseline_run(
@@ -123,30 +136,40 @@ class GoldLabScientificExportService:
             )
         validated = GoldAuthoringRun.model_validate_json(file_bytes.decode("utf-8"))
 
-        candidate, dataset_id, exported = finalize_projected_run_to_candidate(
-            self.settings,
-            projected_run=validated,
-            projection_path=proj_path,
-            campaign_id=campaign_id,
-        )
-
-        with GoldLabDatasetLease(self.settings, dataset_id):
-            _canonical, reused = publish_or_reuse_canonical_dataset(
+        candidate: Path | None = None
+        try:
+            candidate, dataset_id, exported = finalize_projected_run_to_candidate(
                 self.settings,
-                dataset_id=dataset_id,
-                candidate_dir=candidate,
+                projected_run=validated,
+                projection_path=proj_path,
+                campaign_id=campaign_id,
             )
-            if self._after_dataset_hook is not None:
-                self._after_dataset_hook()
-            registration, replayed = create_or_reuse_registration(
-                self.settings,
-                campaign=campaign,
-                project=project,
-                dataset_id=dataset_id,
-                projection_sha256=projection_sha256,
-                exported_case_ids=exported,
-                baseline_case_ids={c.draft_case_id for c in baseline.cases},
-            )
+            try:
+                with GoldLabDatasetLease(self.settings, dataset_id):
+                    _canonical, reused = publish_or_reuse_canonical_dataset(
+                        self.settings,
+                        dataset_id=dataset_id,
+                        candidate_dir=candidate,
+                    )
+                    # Candidate is either promoted away or cleaned on reuse.
+                    candidate = None
+                    if self._after_dataset_hook is not None:
+                        self._after_dataset_hook()
+                    registration, replayed = create_or_reuse_registration(
+                        self.settings,
+                        campaign=campaign,
+                        project=project,
+                        dataset_id=dataset_id,
+                        projection_sha256=projection_sha256,
+                        exported_case_ids=exported,
+                        baseline_case_ids={c.draft_case_id for c in baseline.cases},
+                    )
+            except Exception:
+                cleanup_candidate_directory(candidate)
+                raise
+        except Exception:
+            cleanup_candidate_directory(candidate)
+            raise
 
         return ScientificExportResult(
             campaign_id=campaign_id,
