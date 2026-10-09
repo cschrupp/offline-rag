@@ -21,7 +21,6 @@ def _fsync_tree(root: Path) -> None:
     for path in sorted(root.rglob("*")):
         if path.is_file():
             _fsync_file(path)
-    # Best-effort directory fsync after file contents.
     fd = os.open(root, os.O_RDONLY)
     try:
         os.fsync(fd)
@@ -33,19 +32,11 @@ def _rmtree(path: Path) -> None:
     shutil.rmtree(path, ignore_errors=True)
 
 
-def atomic_publish_nested_directory(
+def stage_nested_directory(
     destination: Path,
     populate: Callable[[Path], None],
-    *,
-    preflight: Callable[[], None] | None = None,
-) -> None:
-    """Publish a nested directory tree into a previously absent destination.
-
-    Writes into a temporary sibling, optionally runs ``preflight`` immediately
-    before promotion, then ``os.replace`` into ``destination``. Existing
-    destinations are never overwritten. Crash/failure before promotion leaves
-    no committed destination.
-    """
+) -> Path:
+    """Populate a temporary sibling directory for later atomic promotion."""
     destination = Path(destination)
     if destination.exists():
         raise GoldLabError(
@@ -63,14 +54,51 @@ def atomic_publish_nested_directory(
     try:
         populate(tmp_dir)
         _fsync_tree(tmp_dir)
-        if preflight is not None:
-            preflight()
-        if destination.exists():
-            raise GoldLabError(
-                "campaign_already_exists",
-                f"destination already exists: {destination}",
-            )
-        os.replace(tmp_dir, destination)
+        return tmp_dir
     except Exception:
         _rmtree(tmp_dir)
+        raise
+
+
+def promote_staged_directory(tmp_dir: Path, destination: Path) -> None:
+    """Atomically rename staged directory into a previously absent destination."""
+    destination = Path(destination)
+    tmp_dir = Path(tmp_dir)
+    if destination.exists():
+        raise GoldLabError(
+            "campaign_already_exists",
+            f"destination already exists: {destination}",
+        )
+    if not tmp_dir.is_dir():
+        raise GoldLabError(
+            "campaign_staging_missing",
+            f"staged directory missing: {tmp_dir}",
+        )
+    os.replace(tmp_dir, destination)
+
+
+def cleanup_staged_directory(tmp_dir: Path | None) -> None:
+    if tmp_dir is not None:
+        _rmtree(tmp_dir)
+
+
+def atomic_publish_nested_directory(
+    destination: Path,
+    populate: Callable[[Path], None],
+    *,
+    preflight: Callable[[], None] | None = None,
+) -> None:
+    """Stage, optionally preflight, then promote (legacy helper).
+
+    Prefer explicit stage + promote under held leases for campaign publication.
+    """
+    tmp_dir: Path | None = None
+    try:
+        tmp_dir = stage_nested_directory(destination, populate)
+        if preflight is not None:
+            preflight()
+        promote_staged_directory(tmp_dir, destination)
+        tmp_dir = None
+    except Exception:
+        cleanup_staged_directory(tmp_dir)
         raise

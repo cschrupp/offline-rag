@@ -26,6 +26,15 @@ from offline_rag.app.gold_lab.ids import (
     QUESTION_CHECK_CONTRACT,
     SELECTION_POLICY_CONTRACT,
     hard_call_designation_id,
+    validate_campaign_id,
+    validate_hard_call_designation_id,
+    validate_judgment_id,
+    validate_project_id,
+    validate_query_fingerprint,
+    validate_record_id,
+    validate_request_fingerprint,
+    validate_selection_policy_fingerprint,
+    validate_task_id,
 )
 from offline_rag.core.ids import canonical_config_hash
 from offline_rag.domain.types import NonEmptyStr
@@ -118,10 +127,12 @@ class GoldSelectionPolicy(BaseModel):
             project_type=self.project_type,
             parameters=self.parameters,
         )
+        try:
+            validate_selection_policy_fingerprint(self.selection_policy_fingerprint)
+        except GoldLabError as exc:
+            raise ValueError(str(exc)) from exc
         if self.selection_policy_fingerprint != expected:
             raise ValueError("selection_policy_fingerprint does not match recomputation")
-        if not self.selection_policy_fingerprint.startswith("cfg_"):
-            raise ValueError("selection_policy_fingerprint must use cfg_<sha256> form")
         return self
 
 
@@ -158,10 +169,11 @@ class GoldProject(BaseModel):
 
     @field_validator("project_id")
     @classmethod
-    def _project_id_prefix(cls, value: str) -> str:
-        if not value.startswith("goldproj_"):
-            raise ValueError("project_id must start with goldproj_")
-        return value
+    def _project_id_grammar(cls, value: str) -> str:
+        try:
+            return validate_project_id(value)
+        except GoldLabError as exc:
+            raise ValueError(str(exc)) from exc
 
     @field_validator("workspace_id")
     @classmethod
@@ -191,10 +203,19 @@ class GoldCampaign(BaseModel):
 
     @field_validator("campaign_id")
     @classmethod
-    def _campaign_id_prefix(cls, value: str) -> str:
-        if not value.startswith("goldcamp_"):
-            raise ValueError("campaign_id must start with goldcamp_")
-        return value
+    def _campaign_id_grammar(cls, value: str) -> str:
+        try:
+            return validate_campaign_id(value)
+        except GoldLabError as exc:
+            raise ValueError(str(exc)) from exc
+
+    @field_validator("project_id")
+    @classmethod
+    def _project_id_grammar(cls, value: str) -> str:
+        try:
+            return validate_project_id(value)
+        except GoldLabError as exc:
+            raise ValueError(str(exc)) from exc
 
     @field_validator("baseline_sha256")
     @classmethod
@@ -212,6 +233,22 @@ class HardCallDesignation(BaseModel):
     target_task_id: NonEmptyStr
     reason_code: NonEmptyStr
 
+    @field_validator("designation_id")
+    @classmethod
+    def _designation_id_grammar(cls, value: str) -> str:
+        try:
+            return validate_hard_call_designation_id(value)
+        except GoldLabError as exc:
+            raise ValueError(str(exc)) from exc
+
+    @field_validator("target_task_id")
+    @classmethod
+    def _target_task_id_grammar(cls, value: str) -> str:
+        try:
+            return validate_task_id(value)
+        except GoldLabError as exc:
+            raise ValueError(str(exc)) from exc
+
 
 class HardCallsArtifact(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -222,6 +259,14 @@ class HardCallsArtifact(BaseModel):
         HARD_CALL_DESIGNATION_CONTRACT
     )
     designations: list[HardCallDesignation] = Field(default_factory=list)
+
+    @field_validator("campaign_id")
+    @classmethod
+    def _campaign_id_grammar(cls, value: str) -> str:
+        try:
+            return validate_campaign_id(value)
+        except GoldLabError as exc:
+            raise ValueError(str(exc)) from exc
 
     @model_validator(mode="after")
     def _validate_designations(self) -> HardCallsArtifact:
@@ -321,31 +366,69 @@ class GoldLedgerRecord(BaseModel):
 
     @field_validator("record_id")
     @classmethod
-    def _record_id_prefix(cls, value: str) -> str:
-        if not value.startswith("goldrec_"):
-            raise ValueError("record_id must start with goldrec_")
-        return value
+    def _record_id_grammar(cls, value: str) -> str:
+        try:
+            return validate_record_id(value)
+        except GoldLabError as exc:
+            raise ValueError(str(exc)) from exc
 
     @field_validator("judgment_id")
     @classmethod
-    def _judgment_id_prefix(cls, value: str) -> str:
-        if not value.startswith("goldjud_"):
-            raise ValueError("judgment_id must start with goldjud_")
-        return value
+    def _judgment_id_grammar(cls, value: str) -> str:
+        try:
+            return validate_judgment_id(value)
+        except GoldLabError as exc:
+            raise ValueError(str(exc)) from exc
 
     @field_validator("task_id")
     @classmethod
-    def _task_id_prefix(cls, value: str) -> str:
-        if not value.startswith("goldtask_"):
-            raise ValueError("task_id must start with goldtask_")
-        return value
+    def _task_id_grammar(cls, value: str) -> str:
+        try:
+            return validate_task_id(value)
+        except GoldLabError as exc:
+            raise ValueError(str(exc)) from exc
+
+    @field_validator("project_id")
+    @classmethod
+    def _project_id_grammar(cls, value: str) -> str:
+        try:
+            return validate_project_id(value)
+        except GoldLabError as exc:
+            raise ValueError(str(exc)) from exc
+
+    @field_validator("campaign_id")
+    @classmethod
+    def _campaign_id_grammar(cls, value: str) -> str:
+        try:
+            return validate_campaign_id(value)
+        except GoldLabError as exc:
+            raise ValueError(str(exc)) from exc
 
     @field_validator("request_fingerprint")
     @classmethod
-    def _reqfp_prefix(cls, value: str) -> str:
-        if not value.startswith("reqfp_"):
-            raise ValueError("request_fingerprint must start with reqfp_")
-        return value
+    def _reqfp_grammar(cls, value: str) -> str:
+        try:
+            return validate_request_fingerprint(value)
+        except GoldLabError as exc:
+            raise ValueError(str(exc)) from exc
+
+    @field_validator("selection_policy_fingerprint")
+    @classmethod
+    def _cfg_grammar(cls, value: str) -> str:
+        try:
+            return validate_selection_policy_fingerprint(value)
+        except GoldLabError as exc:
+            raise ValueError(str(exc)) from exc
+
+    @field_validator("query_fingerprint")
+    @classmethod
+    def _query_fp_grammar(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        try:
+            return validate_query_fingerprint(value)
+        except GoldLabError as exc:
+            raise ValueError(str(exc)) from exc
 
     @model_validator(mode="after")
     def _validate_typed_payload_and_contracts(self) -> GoldLedgerRecord:

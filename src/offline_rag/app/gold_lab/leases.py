@@ -10,28 +10,17 @@ from types import TracebackType
 from typing import Self
 
 from offline_rag.app.gold_lab.errors import GoldLabError
+from offline_rag.app.gold_lab.ids import validate_campaign_id, validate_project_id
 from offline_rag.config.models import AppSettings
 
 
-def _safe_id(value: str, *, kind: str) -> str:
-    text = value.strip()
-    if (
-        not text
-        or "/" in text
-        or "\\" in text
-        or ".." in text
-    ):
-        raise GoldLabError("invalid_gold_lab_id", f"invalid {kind}")
-    return text
-
-
 def gold_lab_project_lease_path(locks_root: Path, project_id: str) -> Path:
-    pid = _safe_id(project_id, kind="project_id")
+    pid = validate_project_id(project_id)
     return locks_root / f"goldlab.project.{pid}.lock"
 
 
 def gold_lab_campaign_lease_path(locks_root: Path, campaign_id: str) -> Path:
-    cid = _safe_id(campaign_id, kind="campaign_id")
+    cid = validate_campaign_id(campaign_id)
     return locks_root / f"goldlab.campaign.{cid}.lock"
 
 
@@ -46,7 +35,7 @@ class GoldLabProjectLease:
     _held: bool = field(default=False, init=False, repr=False)
 
     def __post_init__(self) -> None:
-        pid = _safe_id(self.project_id, kind="project_id")
+        pid = validate_project_id(self.project_id)
         object.__setattr__(self, "project_id", pid)
         self._path = gold_lab_project_lease_path(self.settings.paths.locks, pid)
 
@@ -109,7 +98,7 @@ class GoldLabCampaignLease:
     _held: bool = field(default=False, init=False, repr=False)
 
     def __post_init__(self) -> None:
-        cid = _safe_id(self.campaign_id, kind="campaign_id")
+        cid = validate_campaign_id(self.campaign_id)
         object.__setattr__(self, "campaign_id", cid)
         self._path = gold_lab_campaign_lease_path(self.settings.paths.locks, cid)
 

@@ -21,6 +21,13 @@ from offline_rag.app.gold_lab.ids import (
     new_project_id,
     query_fingerprint,
     question_check_task_id,
+    validate_campaign_id,
+    validate_judgment_id,
+    validate_project_id,
+    validate_record_id,
+    validate_request_fingerprint,
+    validate_selection_policy_fingerprint,
+    validate_task_id,
 )
 from offline_rag.app.gold_lab.ledger import GoldLabLedger
 from offline_rag.app.gold_lab.models import (
@@ -76,4 +83,11 @@ __all__ = [
     "query_fingerprint",
     "question_check_task_id",
     "selection_policy_fingerprint",
+    "validate_campaign_id",
+    "validate_judgment_id",
+    "validate_project_id",
+    "validate_record_id",
+    "validate_request_fingerprint",
+    "validate_selection_policy_fingerprint",
+    "validate_task_id",
 ]

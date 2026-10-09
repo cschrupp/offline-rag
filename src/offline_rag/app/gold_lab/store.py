@@ -5,8 +5,12 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from offline_rag.app.gold_lab.errors import GoldLabError
-from offline_rag.app.gold_lab.ids import new_project_id
-from offline_rag.app.gold_lab.leases import GoldLabProjectLease
+from offline_rag.app.gold_lab.ids import (
+    new_project_id,
+    validate_campaign_id,
+    validate_project_id,
+)
+from offline_rag.app.gold_lab.leases import GoldLabCampaignLease, GoldLabProjectLease
 from offline_rag.app.gold_lab.models import (
     GoldCampaign,
     GoldCampaignStatus,
@@ -44,11 +48,8 @@ class GoldLabStore:
         project_type: GoldProjectType | str,
         project_id: str | None = None,
     ) -> GoldProject:
-        # Workspace must resolve (ownership immutability starts at create).
         WorkspaceStore(self.settings).get(workspace_id)
-        pid = project_id or new_project_id()
-        if not pid.startswith("goldproj_"):
-            raise GoldLabError("invalid_project_id", "project_id must start with goldproj_")
+        pid = validate_project_id(project_id or new_project_id())
         project = GoldProject(
             project_id=pid,
             workspace_id=workspace_id,
@@ -74,12 +75,20 @@ class GoldLabStore:
         if not path.exists():
             raise GoldLabError("project_not_found", f"unknown project: {project_id}")
         try:
-            return GoldProject.model_validate_json(path.read_text(encoding="utf-8"))
+            project = GoldProject.model_validate_json(path.read_text(encoding="utf-8"))
+        except GoldLabError:
+            raise
         except Exception as exc:
             raise GoldLabError(
                 "project_corrupt",
                 f"unreadable project: {project_id}",
             ) from exc
+        if project.project_id != project_id:
+            raise GoldLabError(
+                "project_identity_mismatch",
+                "stored project_id disagrees with durable path identity",
+            )
+        return project
 
     def list_projects(self) -> list[GoldProject]:
         root = projects_root(self.settings)
@@ -88,6 +97,10 @@ class GoldLabStore:
         projects: list[GoldProject] = []
         for path in sorted(root.iterdir()):
             if not path.is_dir():
+                continue
+            try:
+                validate_project_id(path.name)
+            except GoldLabError:
                 continue
             json_path = path / "project.json"
             if not json_path.exists():
@@ -127,16 +140,23 @@ class GoldLabStore:
         path = campaign_json_path(self.settings, campaign_id)
         if not path.exists():
             raise GoldLabError("campaign_not_found", f"unknown campaign: {campaign_id}")
-        # Staged/temp siblings must never be treated as authority.
         if not campaign_dir(self.settings, campaign_id).is_dir():
             raise GoldLabError("campaign_not_found", f"unknown campaign: {campaign_id}")
         try:
-            return GoldCampaign.model_validate_json(path.read_text(encoding="utf-8"))
+            campaign = GoldCampaign.model_validate_json(path.read_text(encoding="utf-8"))
+        except GoldLabError:
+            raise
         except Exception as exc:
             raise GoldLabError(
                 "campaign_corrupt",
                 f"unreadable campaign: {campaign_id}",
             ) from exc
+        if campaign.campaign_id != campaign_id:
+            raise GoldLabError(
+                "campaign_identity_mismatch",
+                "stored campaign_id disagrees with durable path identity",
+            )
+        return campaign
 
     def list_campaigns(self, *, project_id: str | None = None) -> list[GoldCampaign]:
         root = campaigns_root(self.settings)
@@ -148,7 +168,10 @@ class GoldLabStore:
                 continue
             name = path.name
             if name.startswith("."):
-                # Abandoned staging directories are not campaign authority.
+                continue
+            try:
+                validate_campaign_id(name)
+            except GoldLabError:
                 continue
             json_path = path / "campaign.json"
             if not json_path.exists():
@@ -161,8 +184,6 @@ class GoldLabStore:
 
     def close_campaign(self, campaign_id: str) -> GoldCampaign:
         """Internal lifecycle primitive: open -> closed only."""
-        from offline_rag.app.gold_lab.leases import GoldLabCampaignLease
-
         with GoldLabCampaignLease(self.settings, campaign_id):
             campaign = self.get_campaign(campaign_id)
             if campaign.status is GoldCampaignStatus.CLOSED:

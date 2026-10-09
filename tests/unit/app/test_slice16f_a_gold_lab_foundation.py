@@ -13,6 +13,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
+from offline_rag.app.errors import AppError, ErrorCode
 from offline_rag.app.gold_lab import (
     ABSOLUTE_RELEVANCE_CONTRACT,
     AUXILIARY_PREFERENCE_CONTRACT,
@@ -41,6 +42,13 @@ from offline_rag.app.gold_lab import (
     query_fingerprint,
     question_check_task_id,
     selection_policy_fingerprint,
+    validate_campaign_id,
+    validate_judgment_id,
+    validate_project_id,
+    validate_record_id,
+    validate_request_fingerprint,
+    validate_selection_policy_fingerprint,
+    validate_task_id,
 )
 from offline_rag.app.gold_lab.baseline import assert_pristine_baseline
 from offline_rag.app.gold_lab.leases import GoldLabCampaignLease
@@ -50,9 +58,12 @@ from offline_rag.app.gold_lab.models import (
 )
 from offline_rag.app.gold_lab.paths import (
     campaign_dir,
+    campaign_json_path,
     campaigns_root,
     datasets_root,
     gold_lab_root,
+    project_dir,
+    project_json_path,
     projects_root,
     registrations_root,
 )
@@ -988,7 +999,7 @@ def test_workspace_race_and_inactive(tmp_path: Path) -> None:
             baseline=_baseline(authoring_run_id="authorrun_race_rev"),
             selection_policy=_policy(),
             campaign_id=cid,
-            before_promote=bump,
+            after_stage=bump,
         )
     assert exc.value.reason == "workspace_revision_changed"
     assert not campaign_dir(settings, cid).exists()
@@ -1013,7 +1024,7 @@ def test_workspace_race_and_inactive(tmp_path: Path) -> None:
             baseline=_baseline(authoring_run_id="authorrun_race_snap"),
             selection_policy=_policy(),
             campaign_id=cid2,
-            before_promote=bump_snap,
+            after_stage=bump_snap,
         )
     assert exc.value.reason == "workspace_snapshot_changed"
     assert not campaign_dir(settings, cid2).exists()
@@ -1366,3 +1377,342 @@ def test_nonscope_surfaces() -> None:
     from offline_rag.evaluation import gold as gold_mod
 
     assert hasattr(gold_mod, "load_gold_dataset")
+
+
+# --- Rework 1: strict IDs / path safety / commit races / ledger membership ---
+
+
+def test_rework1_strict_id_grammar() -> None:
+    with pytest.raises(GoldLabError) as exc:
+        validate_project_id("goldproj_bad")
+    assert exc.value.reason == "invalid_project_id"
+    with pytest.raises(GoldLabError):
+        validate_campaign_id("goldcamp_../x")
+    with pytest.raises(GoldLabError):
+        validate_record_id("goldrec_bad")
+    with pytest.raises(GoldLabError):
+        validate_judgment_id("goldjud_" + "g" * 32)
+    with pytest.raises(GoldLabError):
+        validate_task_id("goldtask_short")
+    with pytest.raises(GoldLabError):
+        validate_request_fingerprint("reqfp_short")
+    with pytest.raises(GoldLabError):
+        validate_selection_policy_fingerprint("cfg_short")
+    # generated forms remain valid
+    validate_project_id(new_project_id())
+    validate_campaign_id(new_campaign_id())
+    validate_record_id(new_ledger_record_id())
+    validate_judgment_id(new_judgment_id())
+    validate_task_id(
+        absolute_relevance_task_id(
+            campaign_id=new_campaign_id(),
+            case_id="c1",
+            candidate_chunk_id="chunk_a",
+        )
+    )
+
+
+def test_rework1_path_safety_and_identity_consistency(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    with pytest.raises(GoldLabError):
+        project_dir(settings, "goldproj_../../etc")
+    with pytest.raises(GoldLabError):
+        campaign_dir(settings, "goldcamp_not32hexcharsxxxxxxxxxxxx")
+
+    registry, snapshot_id, _ = _publish_bound(settings)
+    ws = _active_workspace(settings, snapshot_id, title="Path Desk")
+    store = GoldLabStore(settings)
+    project = store.create_project(
+        workspace_id=ws.workspace_id,
+        title="Path",
+        project_type=GoldProjectType.BENCHMARK,
+    )
+    # corrupt stored project identity
+    path = project_json_path(settings, project.project_id)
+    path.write_text(
+        project.model_copy(update={"project_id": new_project_id()}).model_dump_json(),
+        encoding="utf-8",
+    )
+    with pytest.raises(GoldLabError) as exc:
+        store.get_project(project.project_id)
+    assert exc.value.reason == "project_identity_mismatch"
+
+    path.write_text(project.model_dump_json(), encoding="utf-8")
+    svc = GoldCampaignService(settings, qdrant=registry.qdrant)
+    campaign = svc.create_campaign(
+        project_id=project.project_id,
+        baseline=_baseline(authoring_run_id="authorrun_path"),
+        selection_policy=_policy(),
+    )
+    cpath = campaign_json_path(settings, campaign.campaign_id)
+    cpath.write_text(
+        campaign.model_copy(update={"campaign_id": new_campaign_id()}).model_dump_json(),
+        encoding="utf-8",
+    )
+    with pytest.raises(GoldLabError) as exc:
+        store.get_campaign(campaign.campaign_id)
+    assert exc.value.reason == "campaign_identity_mismatch"
+
+
+def test_rework1_ledger_precommit_and_membership(tmp_path: Path) -> None:
+    settings, store, campaign, _ = _ready_campaign(tmp_path)
+    ledger = GoldLabLedger(settings, store=store)
+    root = campaign_dir(settings, campaign.campaign_id) / "ledger"
+    before = set(root.glob("*.json")) if root.exists() else set()
+
+    with pytest.raises(GoldLabError) as exc:
+        ledger.append(
+            campaign.campaign_id,
+            record_type=GoldLedgerRecordType.ABSOLUTE_RELEVANCE,
+            case_id="draft_reviewable",
+            candidate_chunk_id=CHUNK_A,
+            payload={"relevance": 1},
+            idempotency_key="bad_rec",
+            request_fingerprint=_reqfp({"bad": 1}),
+            record_id="goldrec_bad",
+        )
+    assert exc.value.reason == "invalid_record_id"
+    after = set(root.glob("*.json")) if root.exists() else set()
+    assert after == before
+
+    with pytest.raises(GoldLabError) as exc:
+        ledger.append(
+            campaign.campaign_id,
+            record_type=GoldLedgerRecordType.ABSOLUTE_RELEVANCE,
+            case_id="draft_missing",
+            candidate_chunk_id=CHUNK_A,
+            payload={"relevance": 1},
+            idempotency_key="miss_case",
+            request_fingerprint=_reqfp({"miss": 1}),
+        )
+    assert exc.value.reason == "ledger_case_not_found"
+
+    with pytest.raises(GoldLabError) as exc:
+        ledger.append(
+            campaign.campaign_id,
+            record_type=GoldLedgerRecordType.QUESTION_CHECK,
+            case_id="draft_inert",
+            payload={"decision": "accept"},
+            idempotency_key="inert_qc",
+            request_fingerprint=_reqfp({"inert": 1}),
+        )
+    assert exc.value.reason == "ledger_case_not_reviewable"
+
+    # CHUNK_B is in snapshot and in reviewable case — use a snapshot-valid id
+    # that is absent from a case that only has CHUNK_A.
+    settings2, store2, campaign2, registry = _ready_campaign(tmp_path / "mem")
+    svc = GoldCampaignService(settings2, qdrant=registry.qdrant)
+    # overwrite with a fresh campaign that has a single-candidate reviewable case
+    # (reuse helper project via new campaign)
+    project = store2.get_project(campaign2.project_id)
+    single = svc.create_campaign(
+        project_id=project.project_id,
+        baseline=_baseline(
+            authoring_run_id="authorrun_single",
+            cases=[
+                SilverCase(
+                    draft_case_id="draft_single",
+                    proposed_query="single candidate query",
+                    source_seed=SourceSeed(chunk_id=CHUNK_A, document_id=DOC_ID),
+                    candidates=[PoolCandidate(chunk_id=CHUNK_A, document_id=DOC_ID)],
+                )
+            ],
+        ),
+        selection_policy=_policy(),
+    )
+    ledger2 = GoldLabLedger(settings2, store=store2)
+    with pytest.raises(GoldLabError) as exc:
+        ledger2.append(
+            single.campaign_id,
+            record_type=GoldLedgerRecordType.ABSOLUTE_RELEVANCE,
+            case_id="draft_single",
+            candidate_chunk_id=CHUNK_B,  # in chunk set, not in this case pool
+            payload={"relevance": 1},
+            idempotency_key="case_pool",
+            request_fingerprint=_reqfp({"pool": 1}),
+        )
+    assert exc.value.reason == "ledger_candidate_not_in_case"
+
+    with pytest.raises(GoldLabError) as exc:
+        ledger2.append(
+            single.campaign_id,
+            record_type=GoldLedgerRecordType.AUXILIARY_PREFERENCE,
+            case_id="draft_single",
+            payload={"preferred_chunk_id": CHUNK_A, "other_chunk_id": CHUNK_B},
+            idempotency_key="aux_pool",
+            request_fingerprint=_reqfp({"aux": 1}),
+        )
+    assert exc.value.reason == "ledger_candidate_not_in_case"
+
+    assert ledger2.list_records(single.campaign_id) == []
+
+
+def test_rework1_baseline_authority_for_ledger(tmp_path: Path) -> None:
+    settings, store, campaign, _ = _ready_campaign(tmp_path)
+    ledger = GoldLabLedger(settings, store=store)
+    baseline_path = (
+        campaign_dir(settings, campaign.campaign_id) / "baseline" / "authoring_run.json"
+    )
+    original = baseline_path.read_bytes()
+
+    baseline_path.unlink()
+    with pytest.raises(GoldLabError) as exc:
+        ledger.append(
+            campaign.campaign_id,
+            record_type=GoldLedgerRecordType.ABSOLUTE_RELEVANCE,
+            case_id="draft_reviewable",
+            candidate_chunk_id=CHUNK_A,
+            payload={"relevance": 1},
+            idempotency_key="no_base",
+            request_fingerprint=_reqfp({"nb": 1}),
+        )
+    assert exc.value.reason == "baseline_missing"
+    baseline_path.write_bytes(original)
+
+    baseline_path.write_text("{not-json", encoding="utf-8")
+    # hash will mismatch first
+    with pytest.raises(GoldLabError) as exc:
+        ledger.append(
+            campaign.campaign_id,
+            record_type=GoldLedgerRecordType.ABSOLUTE_RELEVANCE,
+            case_id="draft_reviewable",
+            candidate_chunk_id=CHUNK_A,
+            payload={"relevance": 1},
+            idempotency_key="bad_hash",
+            request_fingerprint=_reqfp({"bh": 1}),
+        )
+    assert exc.value.reason == "baseline_hash_mismatch"
+
+    # restore bytes but mutate authoring_run_id while keeping hash in campaign
+    # (force hash match by rewriting campaign.json baseline_sha256)
+    run = GoldAuthoringRun.model_validate_json(original.decode("utf-8"))
+    mutated = run.model_copy(update={"authoring_run_id": "authorrun_mutated"})
+    mutated_bytes = mutated.model_dump_json().encode("utf-8")
+    baseline_path.write_bytes(mutated_bytes)
+    cpath = campaign_json_path(settings, campaign.campaign_id)
+    cpayload = json.loads(cpath.read_text(encoding="utf-8"))
+    cpayload["baseline_sha256"] = hashlib.sha256(mutated_bytes).hexdigest()
+    cpath.write_text(json.dumps(cpayload), encoding="utf-8")
+    with pytest.raises(GoldLabError) as exc:
+        ledger.append(
+            campaign.campaign_id,
+            record_type=GoldLedgerRecordType.ABSOLUTE_RELEVANCE,
+            case_id="draft_reviewable",
+            candidate_chunk_id=CHUNK_A,
+            payload={"relevance": 1},
+            idempotency_key="bad_arid",
+            request_fingerprint=_reqfp({"ba": 1}),
+        )
+    assert exc.value.reason == "baseline_authoring_run_id_mismatch"
+
+
+def test_rework1_workspace_commit_boundary_lease(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    registry, snapshot_id, _ = _publish_bound(settings)
+    ws = _active_workspace(settings, snapshot_id, title="Commit Desk")
+    store = GoldLabStore(settings)
+    project = store.create_project(
+        workspace_id=ws.workspace_id,
+        title="Commit",
+        project_type=GoldProjectType.BENCHMARK,
+    )
+    svc = GoldCampaignService(settings, qdrant=registry.qdrant)
+    wstore = WorkspaceStore(settings)
+    held = threading.Event()
+    release = threading.Event()
+    mutation_error: list[BaseException] = []
+
+    def mutate_under_contention() -> None:
+        assert held.wait(timeout=5)
+        try:
+            current = wstore.get(ws.workspace_id)
+            wstore.save(current.model_copy(update={"revision": current.revision + 1}))
+        except BaseException as exc:  # noqa: BLE001 - capture for assertion
+            mutation_error.append(exc)
+        finally:
+            release.set()
+
+    def hold_point() -> None:
+        held.set()
+        assert release.wait(timeout=5)
+
+    t = threading.Thread(target=mutate_under_contention)
+    t.start()
+    campaign = svc.create_campaign(
+        project_id=project.project_id,
+        baseline=_baseline(authoring_run_id="authorrun_lease_ws"),
+        selection_policy=_policy(),
+        before_commit=hold_point,
+    )
+    t.join(timeout=5)
+    assert campaign_dir(settings, campaign.campaign_id).is_dir()
+    assert mutation_error
+    assert isinstance(mutation_error[0], AppError)
+    assert mutation_error[0].code is ErrorCode.WORKSPACE_CONFLICT
+    # workspace unchanged through the validation→rename window
+    assert wstore.get(ws.workspace_id).revision == ws.revision
+
+
+def test_rework1_project_archive_commit_race(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    registry, snapshot_id, _ = _publish_bound(settings)
+    ws = _active_workspace(settings, snapshot_id, title="Archive Desk")
+    store = GoldLabStore(settings)
+    project = store.create_project(
+        workspace_id=ws.workspace_id,
+        title="Archive",
+        project_type=GoldProjectType.BENCHMARK,
+    )
+    svc = GoldCampaignService(settings, qdrant=registry.qdrant)
+
+    # archive commits first (after_stage) -> campaign fails
+    cid = new_campaign_id()
+    with pytest.raises(GoldLabError) as exc:
+        svc.create_campaign(
+            project_id=project.project_id,
+            baseline=_baseline(authoring_run_id="authorrun_arch_first"),
+            selection_policy=_policy(),
+            campaign_id=cid,
+            after_stage=lambda: store.archive_project(project.project_id),
+        )
+    assert exc.value.reason == "project_archived"
+    assert not campaign_dir(settings, cid).exists()
+
+    # new active project for lease-owner race
+    project2 = store.create_project(
+        workspace_id=ws.workspace_id,
+        title="Archive2",
+        project_type=GoldProjectType.BENCHMARK,
+    )
+    held = threading.Event()
+    release = threading.Event()
+    archive_error: list[BaseException] = []
+
+    def archive_under_contention() -> None:
+        assert held.wait(timeout=5)
+        try:
+            store.archive_project(project2.project_id)
+        except BaseException as exc:  # noqa: BLE001
+            archive_error.append(exc)
+        finally:
+            release.set()
+
+    def hold_point() -> None:
+        held.set()
+        assert release.wait(timeout=5)
+
+    t = threading.Thread(target=archive_under_contention)
+    t.start()
+    campaign = svc.create_campaign(
+        project_id=project2.project_id,
+        baseline=_baseline(authoring_run_id="authorrun_arch_lease"),
+        selection_policy=_policy(),
+        before_commit=hold_point,
+    )
+    t.join(timeout=5)
+    assert campaign_dir(settings, campaign.campaign_id).is_dir()
+    assert archive_error
+    assert isinstance(archive_error[0], GoldLabError)
+    assert archive_error[0].reason == "gold_lab_lease_held"
+    assert store.get_project(project2.project_id).status is GoldProjectStatus.ACTIVE
+

@@ -2,8 +2,15 @@
 
 from __future__ import annotations
 
+import hashlib
+
 from offline_rag.app.gold_lab.errors import GoldLabError
-from offline_rag.app.gold_lab.ids import absolute_relevance_task_id
+from offline_rag.app.gold_lab.ids import (
+    absolute_relevance_task_id,
+    auxiliary_preference_task_id,
+    question_check_task_id,
+)
+from offline_rag.app.gold_lab.paths import baseline_authoring_run_path
 from offline_rag.app.gold_lab.reviewable import is_reviewable_case
 from offline_rag.chunking.access import ChunkAccessError, load_chunk_set_snapshot
 from offline_rag.config.models import AppSettings
@@ -152,3 +159,114 @@ def validate_hard_call_targets(
                 "hard_call_target_invalid",
                 f"Hard Call target is not a reviewable absolute task: {task_id}",
             )
+
+
+def load_sealed_baseline_run(
+    settings: AppSettings,
+    *,
+    campaign_id: str,
+    baseline_authoring_run_id: str,
+    baseline_sha256: str,
+) -> GoldAuthoringRun:
+    """Load and verify the immutable baseline sealed into a campaign package."""
+    path = baseline_authoring_run_path(settings, campaign_id)
+    if not path.is_file():
+        raise GoldLabError(
+            "baseline_missing",
+            f"sealed baseline missing for campaign: {campaign_id}",
+        )
+    try:
+        raw = path.read_bytes()
+    except OSError as exc:
+        raise GoldLabError(
+            "baseline_unreadable",
+            f"sealed baseline unreadable for campaign: {campaign_id}",
+        ) from exc
+    digest = hashlib.sha256(raw).hexdigest()
+    if digest != baseline_sha256:
+        raise GoldLabError(
+            "baseline_hash_mismatch",
+            "sealed baseline bytes do not match campaign.baseline_sha256",
+        )
+    try:
+        run = GoldAuthoringRun.model_validate_json(raw.decode("utf-8"))
+    except Exception as exc:
+        raise GoldLabError(
+            "baseline_corrupt",
+            f"sealed baseline corrupt for campaign: {campaign_id}",
+        ) from exc
+    if run.authoring_run_id != baseline_authoring_run_id:
+        raise GoldLabError(
+            "baseline_authoring_run_id_mismatch",
+            "sealed baseline authoring_run_id does not match campaign",
+        )
+    return run
+
+
+def resolve_ledger_task_id(
+    *,
+    campaign_id: str,
+    record_type: str,
+    case_id: str,
+    baseline: GoldAuthoringRun,
+    candidate_chunk_id: str | None = None,
+    preferred_chunk_id: str | None = None,
+    other_chunk_id: str | None = None,
+) -> str:
+    """Validate case/task membership against the sealed baseline candidate pools."""
+    cases = {case.draft_case_id: case for case in baseline.cases}
+    case = cases.get(case_id)
+    if case is None:
+        raise GoldLabError(
+            "ledger_case_not_found",
+            f"case_id not present in sealed baseline: {case_id}",
+        )
+    if not is_reviewable_case(case):
+        raise GoldLabError(
+            "ledger_case_not_reviewable",
+            f"case is not reviewable for ledger append: {case_id}",
+        )
+    candidate_ids = {c.chunk_id for c in case.candidates}
+
+    if record_type == "question_check":
+        return question_check_task_id(campaign_id=campaign_id, case_id=case_id)
+
+    if record_type == "absolute_relevance":
+        if not candidate_chunk_id:
+            raise GoldLabError(
+                "candidate_chunk_required",
+                "absolute_relevance requires candidate_chunk_id",
+            )
+        if candidate_chunk_id not in candidate_ids:
+            raise GoldLabError(
+                "ledger_candidate_not_in_case",
+                f"candidate {candidate_chunk_id} not in case {case_id} pool",
+            )
+        return absolute_relevance_task_id(
+            campaign_id=campaign_id,
+            case_id=case_id,
+            candidate_chunk_id=candidate_chunk_id,
+        )
+
+    if record_type == "auxiliary_preference":
+        if not isinstance(preferred_chunk_id, str) or not isinstance(other_chunk_id, str):
+            raise GoldLabError(
+                "auxiliary_pair_required",
+                "auxiliary_preference requires preferred/other chunk ids",
+            )
+        if preferred_chunk_id not in candidate_ids or other_chunk_id not in candidate_ids:
+            raise GoldLabError(
+                "ledger_candidate_not_in_case",
+                f"auxiliary pair not in case {case_id} pool",
+            )
+        return auxiliary_preference_task_id(
+            campaign_id=campaign_id,
+            case_id=case_id,
+            candidate_a=preferred_chunk_id,
+            candidate_b=other_chunk_id,
+        )
+
+    raise GoldLabError(
+        "ledger_record_type_invalid",
+        f"unsupported ledger record_type: {record_type}",
+    )

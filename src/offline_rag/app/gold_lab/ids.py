@@ -1,13 +1,15 @@
-"""Frozen Gold Lab identity helpers (16F-A)."""
+"""Frozen Gold Lab identity helpers (16F-A / Rework 1)."""
 
 from __future__ import annotations
 
 import hashlib
 import json
+import re
 import uuid
 from collections.abc import Mapping
 from typing import Any
 
+from offline_rag.app.gold_lab.errors import GoldLabError
 from offline_rag.gold_authoring.review_models import canonicalize_query
 
 ABSOLUTE_RELEVANCE_CONTRACT = "gold-absolute-relevance-v1"
@@ -17,6 +19,16 @@ HARD_CALL_DESIGNATION_CONTRACT = "gold-hard-call-designation-v1"
 LEDGER_SCHEMA = "offline-rag-gold-lab-ledger-v1"
 HARD_CALLS_SCHEMA = "offline-rag-gold-hard-calls-v1"
 SELECTION_POLICY_CONTRACT = "gold-selection-policy-v1"
+
+_PROJECT_ID_RE = re.compile(r"^goldproj_[0-9a-f]{32}$")
+_CAMPAIGN_ID_RE = re.compile(r"^goldcamp_[0-9a-f]{32}$")
+_RECORD_ID_RE = re.compile(r"^goldrec_[0-9a-f]{32}$")
+_JUDGMENT_ID_RE = re.compile(r"^goldjud_[0-9a-f]{32}$")
+_TASK_ID_RE = re.compile(r"^goldtask_[0-9a-f]{64}$")
+_QUERY_FP_RE = re.compile(r"^goldquery_[0-9a-f]{64}$")
+_HARD_CALL_ID_RE = re.compile(r"^goldhard_[0-9a-f]{64}$")
+_REQFP_RE = re.compile(r"^reqfp_[0-9a-f]{64}$")
+_CFG_FP_RE = re.compile(r"^cfg_[0-9a-f]{64}$")
 
 
 def _sha256_hex(data: bytes) -> str:
@@ -35,6 +47,78 @@ def _canonical_json_bytes(payload: Mapping[str, Any]) -> bytes:
 
 def _uuid4_hex() -> str:
     return uuid.uuid4().hex
+
+
+def _require_match(pattern: re.Pattern[str], value: str, *, reason: str, label: str) -> str:
+    if not isinstance(value, str) or pattern.fullmatch(value) is None:
+        raise GoldLabError(reason, f"invalid {label}: {value!r}")
+    return value
+
+
+def validate_project_id(value: str) -> str:
+    return _require_match(
+        _PROJECT_ID_RE, value, reason="invalid_project_id", label="project_id"
+    )
+
+
+def validate_campaign_id(value: str) -> str:
+    return _require_match(
+        _CAMPAIGN_ID_RE, value, reason="invalid_campaign_id", label="campaign_id"
+    )
+
+
+def validate_record_id(value: str) -> str:
+    return _require_match(
+        _RECORD_ID_RE, value, reason="invalid_record_id", label="record_id"
+    )
+
+
+def validate_judgment_id(value: str) -> str:
+    return _require_match(
+        _JUDGMENT_ID_RE, value, reason="invalid_judgment_id", label="judgment_id"
+    )
+
+
+def validate_task_id(value: str) -> str:
+    return _require_match(
+        _TASK_ID_RE, value, reason="invalid_task_id", label="task_id"
+    )
+
+
+def validate_query_fingerprint(value: str) -> str:
+    return _require_match(
+        _QUERY_FP_RE,
+        value,
+        reason="invalid_query_fingerprint",
+        label="query_fingerprint",
+    )
+
+
+def validate_hard_call_designation_id(value: str) -> str:
+    return _require_match(
+        _HARD_CALL_ID_RE,
+        value,
+        reason="invalid_hard_call_designation_id",
+        label="designation_id",
+    )
+
+
+def validate_request_fingerprint(value: str) -> str:
+    return _require_match(
+        _REQFP_RE,
+        value,
+        reason="invalid_request_fingerprint",
+        label="request_fingerprint",
+    )
+
+
+def validate_selection_policy_fingerprint(value: str) -> str:
+    return _require_match(
+        _CFG_FP_RE,
+        value,
+        reason="invalid_selection_policy_fingerprint",
+        label="selection_policy_fingerprint",
+    )
 
 
 def new_project_id() -> str:

@@ -1,9 +1,10 @@
-"""Gold Lab durable path helpers."""
+"""Gold Lab durable path helpers (strict ID grammar at the boundary)."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
+from offline_rag.app.gold_lab.ids import validate_campaign_id, validate_project_id
 from offline_rag.config.models import AppSettings, PathSettings
 
 
@@ -29,7 +30,8 @@ def registrations_root(settings: AppSettings | PathSettings) -> Path:
 
 
 def project_dir(settings: AppSettings | PathSettings, project_id: str) -> Path:
-    return projects_root(settings) / project_id
+    pid = validate_project_id(project_id)
+    return projects_root(settings) / pid
 
 
 def project_json_path(settings: AppSettings | PathSettings, project_id: str) -> Path:
@@ -37,7 +39,8 @@ def project_json_path(settings: AppSettings | PathSettings, project_id: str) -> 
 
 
 def campaign_dir(settings: AppSettings | PathSettings, campaign_id: str) -> Path:
-    return campaigns_root(settings) / campaign_id
+    cid = validate_campaign_id(campaign_id)
+    return campaigns_root(settings) / cid
 
 
 def campaign_json_path(settings: AppSettings | PathSettings, campaign_id: str) -> Path:
