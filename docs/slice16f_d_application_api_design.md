@@ -36,7 +36,7 @@ NOT AUTHORIZED
 | Rework 1 design SHA | `1082ecb22ba9db5ac691ae3ff2d29016a2906650` |
 | Rework 1 tip | `86a3fd6028db4a26567fe8de05a706e7a147685f` |
 | Rework 2 starting HEAD | `86a3fd6028db4a26567fe8de05a706e7a147685f` |
-| Rework 2 design SHA | `REWORK2_DESIGN_SHA_PENDING` |
+| Rework 2 design SHA | `bcd6afc74eb995037da5477d7b3eef8e4ea8545a` |
 
 Frozen parent decision (must not be reopened):
 
