@@ -11,7 +11,7 @@
 | Branch | `implementation/16f-a-gold-lab-foundation` |
 | Starting HEAD | `4fde40da2458d69f9249b8334210fc84e9f3239c` |
 | Implementation SHA | `2933d6fdd85e511fc72897dfb946aa095774287c` |
-| Documentation SHA | _(filled after docs commit)_ |
+| Documentation SHA | `c17d4681e438ba72e64f159a73343dbcd75a05b2` |
 
 ## Scope
 
