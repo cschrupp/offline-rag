@@ -18,12 +18,26 @@ from offline_rag.app.gold_lab.models import (
     QuestionCheckPayload,
 )
 from offline_rag.app.gold_lab.question_check import (
-    canonicalize_question_check_payload,
     proposal_effective_values,
     question_check_query_fingerprint,
+    validate_durable_question_check_payload,
 )
 from offline_rag.app.gold_lab.reviewable import is_reviewable_case
 from offline_rag.gold_authoring.models import GoldAuthoringRun, SilverCase
+
+
+def assert_no_duplicate_ledger_idempotency_keys(
+    records: list[GoldLedgerRecord],
+) -> None:
+    """Fail closed when validated ledger contains duplicate durable keys."""
+    seen: set[str] = set()
+    for record in records:
+        if record.idempotency_key in seen:
+            raise GoldLabError(
+                "idempotency_duplicate_ledger_key",
+                "multiple ledger rows claim the same idempotency key",
+            )
+        seen.add(record.idempotency_key)
 
 
 @dataclass(frozen=True)
@@ -89,6 +103,7 @@ def fold_effective_state(
     records: list[GoldLedgerRecord],
 ) -> EffectiveCampaignState:
     """Fold ledger in sequence order; fail closed on integrity violations."""
+    assert_no_duplicate_ledger_idempotency_keys(records)
     state = EffectiveCampaignState(
         campaign_id=campaign_id,
         baseline=baseline,
@@ -157,20 +172,7 @@ def _fold_question_check(
             "Question Check task_id mismatch",
         )
 
-    try:
-        raw_payload = QuestionCheckPayload.model_validate(record.payload)
-    except Exception as exc:
-        raise GoldLabError(
-            "effective_state_qc_payload_invalid",
-            f"invalid Question Check payload: {exc}",
-        ) from exc
-
-    if raw_payload.decision is QuestionCheckDecision.EDIT:
-        payload = canonicalize_question_check_payload(
-            record.payload, case=case
-        )
-    else:
-        payload = raw_payload
+    payload = validate_durable_question_check_payload(record.payload, case=case)
 
     expected_fp = question_check_query_fingerprint(payload, case)
     if record.query_fingerprint != expected_fp:

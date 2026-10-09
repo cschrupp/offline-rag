@@ -374,6 +374,12 @@ class IdempotencyStatus(StrEnum):
     COMMITTED = "committed"
 
 
+class IdempotencyCommandKind(StrEnum):
+    QUESTION_CHECK = "question_check"
+    ABSOLUTE_RELEVANCE = "absolute_relevance"
+    AUXILIARY_PREFERENCE = "auxiliary_preference"
+
+
 class IdempotencyEntry(BaseModel):
     """offline-rag-gold-idempotency-v1 campaign-local catalog entry."""
 
@@ -385,7 +391,7 @@ class IdempotencyEntry(BaseModel):
     campaign_id: NonEmptyStr
     idempotency_key: NonEmptyStr
     request_fingerprint: NonEmptyStr
-    command_kind: NonEmptyStr
+    command_kind: IdempotencyCommandKind
     status: IdempotencyStatus
     record_id: NonEmptyStr
     judgment_id: NonEmptyStr

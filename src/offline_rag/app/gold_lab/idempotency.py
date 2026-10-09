@@ -15,6 +15,7 @@ from offline_rag.app.gold_lab.ids import (
 )
 from offline_rag.app.gold_lab.models import (
     GoldLedgerRecord,
+    IdempotencyCommandKind,
     IdempotencyEntry,
     IdempotencyStatus,
 )
@@ -110,11 +111,18 @@ class GoldLabIdempotencyCatalog:
         validate_request_fingerprint(request_fingerprint)
         rid = validate_record_id(record_id)
         jid = validate_judgment_id(judgment_id)
+        try:
+            kind = IdempotencyCommandKind(command_kind)
+        except Exception as exc:
+            raise GoldLabError(
+                "idempotency_command_kind_invalid",
+                f"unsupported command_kind: {command_kind!r}",
+            ) from exc
         entry = IdempotencyEntry(
             campaign_id=cid,
             idempotency_key=key,
             request_fingerprint=request_fingerprint,
-            command_kind=command_kind,
+            command_kind=kind,
             status=IdempotencyStatus.PENDING,
             record_id=rid,
             judgment_id=jid,
@@ -210,6 +218,11 @@ class GoldLabIdempotencyCatalog:
                 "idempotency_reserved_fingerprint_mismatch",
                 "ledger request_fingerprint disagrees with reservation",
             )
+        if record.record_type.value != entry.command_kind.value:
+            raise GoldLabError(
+                "idempotency_command_kind_mismatch",
+                "ledger record_type disagrees with catalog command_kind",
+            )
         return record
 
     def validate_committed_against_ledger(
@@ -230,3 +243,14 @@ class GoldLabIdempotencyCatalog:
                 "COMMITTED catalog references missing ledger record",
             )
         return record
+
+    @staticmethod
+    def require_command_kind(
+        entry: IdempotencyEntry, command_kind: str | IdempotencyCommandKind
+    ) -> None:
+        expected = IdempotencyCommandKind(command_kind)
+        if entry.command_kind is not expected:
+            raise GoldLabError(
+                "idempotency_command_kind_mismatch",
+                "catalog command_kind disagrees with invoked command",
+            )

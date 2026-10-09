@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sys
+import threading
 from pathlib import Path
 
 import pytest
@@ -36,6 +37,7 @@ from offline_rag.app.gold_lab import (
     GoldLabMutationService,
     GoldLabStore,
     GoldLedgerRecordType,
+    GoldProjectStatus,
     GoldProjectType,
     HardCallDesignation,
     absolute_relevance_task_id,
@@ -48,11 +50,13 @@ from offline_rag.app.gold_lab import (
 )
 from offline_rag.app.gold_lab.idempotency import idempotency_entry_filename
 from offline_rag.app.gold_lab.ids import new_judgment_id, new_ledger_record_id
-from offline_rag.app.gold_lab.leases import GoldLabCampaignLease
+from offline_rag.app.gold_lab.leases import GoldLabCampaignLease, GoldLabProjectLease
 from offline_rag.app.gold_lab.paths import (
+    campaign_dir,
     datasets_root,
     hard_calls_path,
     idempotency_dir,
+    idempotency_entry_path,
     projection_dir,
     registrations_root,
 )
@@ -1086,3 +1090,441 @@ def test_two_finalized_cases_score(tmp_path: Path) -> None:
     )
     assert proj.gold_finalized == 2
     assert proj.total_score == 30
+
+
+# --- Rework 1 ---
+
+
+def _ledger_path(settings, campaign_id: str, record) -> Path:
+    return (
+        campaign_dir(settings, campaign_id)
+        / "ledger"
+        / f"{record.sequence:012d}_{record.record_id}.json"
+    )
+
+
+def _rewrite_ledger_payload(path: Path, payload: dict) -> None:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["payload"] = payload
+    path.write_text(json.dumps(data), encoding="utf-8")
+
+
+def test_rework1_absolute_gate_before_reservation(tmp_path: Path) -> None:
+    settings, store, campaign, mut = _ready(tmp_path / "r1_gate")
+    key = "abs_before_qc"
+    with pytest.raises(GoldLabError) as exc:
+        mut.submit_absolute_relevance(
+            campaign_id=campaign.campaign_id,
+            case_id=CASE_ID,
+            candidate_chunk_id=CHUNK_A,
+            relevance=2,
+            idempotency_key=key,
+        )
+    assert exc.value.reason == "absolute_task_inactive"
+    assert list(idempotency_dir(settings, campaign.campaign_id).glob("*.json")) == []
+    assert GoldLabLedger(settings, store=store).list_records(campaign.campaign_id) == []
+
+    mut.submit_question_check(
+        campaign_id=campaign.campaign_id,
+        case_id=CASE_ID,
+        payload={"decision": "accept"},
+        idempotency_key="qc_then",
+    )
+    result = mut.submit_absolute_relevance(
+        campaign_id=campaign.campaign_id,
+        case_id=CASE_ID,
+        candidate_chunk_id=CHUNK_A,
+        relevance=2,
+        idempotency_key=key,
+    )
+    assert result.replayed is False
+    rows = GoldLabLedger(settings, store=store).list_records(campaign.campaign_id)
+    abs_rows = [
+        r for r in rows if r.record_type is GoldLedgerRecordType.ABSOLUTE_RELEVANCE
+    ]
+    assert len(abs_rows) == 1
+    assert abs_rows[0].record_id == result.record.record_id
+
+
+def test_rework1_duplicate_idempotency_key_fail_closed(tmp_path: Path) -> None:
+    settings, store, campaign, mut = _ready(tmp_path / "r1_dup")
+    ledger = GoldLabLedger(settings, store=store)
+    mut.submit_question_check(
+        campaign_id=campaign.campaign_id,
+        case_id=CASE_ID,
+        payload={"decision": "accept"},
+        idempotency_key="qc_dup",
+    )
+    r1 = ledger.append(
+        campaign.campaign_id,
+        record_type=GoldLedgerRecordType.ABSOLUTE_RELEVANCE,
+        case_id=CASE_ID,
+        candidate_chunk_id=CHUNK_A,
+        payload={"relevance": 2},
+        idempotency_key="dup_key",
+        request_fingerprint=canonical_request_fingerprint({"dup": 1}),
+        query_fingerprint=query_fingerprint("What is offline RAG?"),
+    )
+    ledger.append(
+        campaign.campaign_id,
+        record_type=GoldLedgerRecordType.ABSOLUTE_RELEVANCE,
+        case_id=CASE_ID,
+        candidate_chunk_id=CHUNK_B,
+        payload={"relevance": 1},
+        idempotency_key="dup_key",
+        request_fingerprint=canonical_request_fingerprint({"dup": 2}),
+        query_fingerprint=query_fingerprint("What is offline RAG?"),
+    )
+    catalog = GoldLabIdempotencyCatalog(settings)
+    catalog.write_pending(
+        campaign_id=campaign.campaign_id,
+        idempotency_key="dup_key",
+        request_fingerprint=canonical_request_fingerprint(
+            {
+                "kind": "absolute_relevance",
+                "campaign_id": campaign.campaign_id,
+                "case_id": CASE_ID,
+                "candidate_chunk_id": CHUNK_A,
+                "relevance": 2,
+                "game_id": None,
+                "presentation_id": None,
+            }
+        ),
+        command_kind="absolute_relevance",
+        record_id=r1.record_id,
+        judgment_id=r1.judgment_id,
+    )
+    catalog.mark_committed(
+        campaign_id=campaign.campaign_id, idempotency_key="dup_key"
+    )
+
+    with pytest.raises(GoldLabError) as exc:
+        mut.submit_absolute_relevance(
+            campaign_id=campaign.campaign_id,
+            case_id=CASE_ID,
+            candidate_chunk_id=CHUNK_A,
+            relevance=2,
+            idempotency_key="dup_key",
+        )
+    assert exc.value.reason == "idempotency_duplicate_ledger_key"
+
+    with pytest.raises(GoldLabError) as exc:
+        mut.load_effective_state(campaign.campaign_id)
+    assert exc.value.reason == "idempotency_duplicate_ledger_key"
+
+    with pytest.raises(GoldLabError) as exc:
+        mut.project_tasks(campaign.campaign_id)
+    assert exc.value.reason == "idempotency_duplicate_ledger_key"
+
+    with pytest.raises(GoldLabError) as exc:
+        mut.contribution(campaign.campaign_id)
+    assert exc.value.reason == "idempotency_duplicate_ledger_key"
+
+
+def test_rework1_catalog_command_kind_integrity(tmp_path: Path) -> None:
+    settings, _store, campaign, mut = _ready(tmp_path / "r1_kind")
+    mut.submit_question_check(
+        campaign_id=campaign.campaign_id,
+        case_id=CASE_ID,
+        payload={"decision": "accept"},
+        idempotency_key="kind_key",
+    )
+    # Wrong invoked command against existing catalog entry
+    with pytest.raises(GoldLabError) as exc:
+        mut.submit_absolute_relevance(
+            campaign_id=campaign.campaign_id,
+            case_id=CASE_ID,
+            candidate_chunk_id=CHUNK_A,
+            relevance=2,
+            idempotency_key="kind_key",
+        )
+    assert exc.value.reason == "idempotency_command_kind_mismatch"
+
+    # Catalog kind disagrees with reserved ledger record_type
+    settings2, store2, campaign2, mut2 = _ready(tmp_path / "r1_kind2")
+    catalog = GoldLabIdempotencyCatalog(settings2)
+    key = "kind_mismatch_ledger"
+    req = canonical_request_fingerprint(
+        {
+            "kind": "absolute_relevance",
+            "campaign_id": campaign2.campaign_id,
+            "case_id": CASE_ID,
+            "candidate_chunk_id": CHUNK_A,
+            "relevance": 1,
+            "game_id": None,
+            "presentation_id": None,
+        }
+    )
+    rid = new_ledger_record_id()
+    jid = new_judgment_id()
+    catalog.write_pending(
+        campaign_id=campaign2.campaign_id,
+        idempotency_key=key,
+        request_fingerprint=req,
+        command_kind="absolute_relevance",
+        record_id=rid,
+        judgment_id=jid,
+    )
+    ledger = GoldLabLedger(settings2, store=store2)
+    with GoldLabCampaignLease(settings2, campaign2.campaign_id) as lease:
+        ledger.append_under_lease(
+            lease,
+            campaign2.campaign_id,
+            record_type=GoldLedgerRecordType.QUESTION_CHECK,
+            case_id=CASE_ID,
+            payload={"decision": "accept"},
+            idempotency_key=key,
+            request_fingerprint=req,
+            query_fingerprint=query_fingerprint("What is offline RAG?"),
+            record_id=rid,
+            judgment_id=jid,
+        )
+    with pytest.raises(GoldLabError) as exc:
+        mut2.submit_absolute_relevance(
+            campaign_id=campaign2.campaign_id,
+            case_id=CASE_ID,
+            candidate_chunk_id=CHUNK_A,
+            relevance=1,
+            idempotency_key=key,
+        )
+    assert exc.value.reason == "idempotency_command_kind_mismatch"
+
+    # Unknown command_kind in persisted catalog
+    path = idempotency_entry_path(
+        settings,
+        campaign.campaign_id,
+        idempotency_entry_filename(normalize_idempotency_key("kind_key")),
+    )
+    bad = json.loads(path.read_text(encoding="utf-8"))
+    bad["command_kind"] = "not_a_command"
+    path.write_text(json.dumps(bad), encoding="utf-8")
+    with pytest.raises(GoldLabError) as exc:
+        GoldLabIdempotencyCatalog(settings).load_entry(
+            campaign.campaign_id, normalize_idempotency_key("kind_key")
+        )
+    assert exc.value.reason == "idempotency_catalog_corrupt"
+
+
+def test_rework1_project_archive_commit_boundary(tmp_path: Path) -> None:
+    settings, store, campaign, _mut = _ready(tmp_path / "r1_arch")
+    held = threading.Event()
+    release = threading.Event()
+    archive_errors: list[BaseException] = []
+
+    def archive_under_contention() -> None:
+        assert held.wait(timeout=5)
+        try:
+            store.archive_project(campaign.project_id)
+        except BaseException as exc:  # noqa: BLE001
+            archive_errors.append(exc)
+        finally:
+            release.set()
+
+    def hold_point() -> None:
+        held.set()
+        assert release.wait(timeout=5)
+
+    mut = GoldLabMutationService(
+        settings, store=store, under_lease_hook=hold_point
+    )
+    t = threading.Thread(target=archive_under_contention)
+    t.start()
+    result = mut.submit_question_check(
+        campaign_id=campaign.campaign_id,
+        case_id=CASE_ID,
+        payload={"decision": "accept"},
+        idempotency_key="under_lease_qc",
+    )
+    t.join(timeout=5)
+    assert result.record.sequence == 1
+    assert archive_errors
+    assert isinstance(archive_errors[0], GoldLabError)
+    assert archive_errors[0].reason == "gold_lab_lease_held"
+    assert store.get_project(campaign.project_id).status is GoldProjectStatus.ACTIVE
+
+    # Archive owns project lease first → new mutation cannot pass as active.
+    with GoldLabProjectLease(settings, campaign.project_id):
+        blocked = GoldLabMutationService(settings, store=store)
+        with pytest.raises(GoldLabError) as exc:
+            blocked.submit_question_check(
+                campaign_id=campaign.campaign_id,
+                case_id=CASE_ID,
+                payload={"decision": "reject"},
+                idempotency_key="blocked_new",
+            )
+        assert exc.value.reason == "gold_lab_lease_held"
+
+    store.archive_project(campaign.project_id)
+    # Exact replay after archive
+    replay = GoldLabMutationService(settings, store=store).submit_question_check(
+        campaign_id=campaign.campaign_id,
+        case_id=CASE_ID,
+        payload={"decision": "accept"},
+        idempotency_key="under_lease_qc",
+    )
+    assert replay.replayed is True
+    assert replay.record.record_id == result.record.record_id
+    with pytest.raises(GoldLabError) as exc:
+        GoldLabMutationService(settings, store=store).submit_question_check(
+            campaign_id=campaign.campaign_id,
+            case_id=CASE_ID,
+            payload={"decision": "reject"},
+            idempotency_key="new_after_archive_r1",
+        )
+    assert exc.value.reason == "project_archived"
+
+
+def test_rework1_question_check_canonical_replay(tmp_path: Path) -> None:
+    settings, _store, campaign, mut = _ready(tmp_path / "r1_qc")
+    accept = mut.submit_question_check(
+        campaign_id=campaign.campaign_id,
+        case_id=CASE_ID,
+        payload={"decision": "accept"},
+        idempotency_key="qc_accept_canon",
+    )
+    path = _ledger_path(settings, campaign.campaign_id, accept.record)
+    _rewrite_ledger_payload(
+        path, {"decision": "accept", "effective_query": None}
+    )
+    with pytest.raises(GoldLabError) as exc:
+        mut.load_effective_state(campaign.campaign_id)
+    assert exc.value.reason == "effective_state_qc_payload_noncanonical"
+
+    settings2, _store2, campaign2, mut2 = _ready(tmp_path / "r1_qc2")
+    reject = mut2.submit_question_check(
+        campaign_id=campaign2.campaign_id,
+        case_id=CASE_ID,
+        payload={"decision": "reject"},
+        idempotency_key="qc_reject_canon",
+    )
+    path2 = _ledger_path(settings2, campaign2.campaign_id, reject.record)
+    _rewrite_ledger_payload(
+        path2, {"decision": "reject", "effective_tags": None}
+    )
+    with pytest.raises(GoldLabError) as exc:
+        mut2.load_effective_state(campaign2.campaign_id)
+    assert exc.value.reason == "effective_state_qc_payload_noncanonical"
+
+    settings3, _store3, campaign3, mut3 = _ready(tmp_path / "r1_qc3")
+    mut3.submit_question_check(
+        campaign_id=campaign3.campaign_id,
+        case_id=CASE_ID,
+        payload={"decision": "accept"},
+        idempotency_key="qc_base",
+    )
+    edited = mut3.submit_question_check(
+        campaign_id=campaign3.campaign_id,
+        case_id=CASE_ID,
+        payload={
+            "decision": "edit",
+            "effective_query": "Edited query",
+            "effective_category": None,
+            "effective_tags": ["a", "b"],
+        },
+        idempotency_key="qc_edit_canon",
+    )
+    path3 = _ledger_path(settings3, campaign3.campaign_id, edited.record)
+
+    missing_cat = json.loads(path3.read_text(encoding="utf-8"))
+    missing_cat["payload"] = {
+        "decision": "edit",
+        "effective_query": "Edited query",
+        "effective_tags": ["a", "b"],
+    }
+    path3.write_text(json.dumps(missing_cat), encoding="utf-8")
+    with pytest.raises(GoldLabError) as exc:
+        mut3.load_effective_state(campaign3.campaign_id)
+    assert exc.value.reason == "effective_state_qc_payload_noncanonical"
+
+    # restore canonical then whitespace query
+    settings4, _store4, campaign4, mut4 = _ready(tmp_path / "r1_qc4")
+    mut4.submit_question_check(
+        campaign_id=campaign4.campaign_id,
+        case_id=CASE_ID,
+        payload={"decision": "accept"},
+        idempotency_key="qc_base4",
+    )
+    edited4 = mut4.submit_question_check(
+        campaign_id=campaign4.campaign_id,
+        case_id=CASE_ID,
+        payload={
+            "decision": "edit",
+            "effective_query": "Edited query",
+            "effective_category": None,
+            "effective_tags": ["a", "b"],
+        },
+        idempotency_key="qc_edit4",
+    )
+    path4 = _ledger_path(settings4, campaign4.campaign_id, edited4.record)
+    _rewrite_ledger_payload(
+        path4,
+        {
+            "decision": "edit",
+            "effective_query": "  Edited query  ",
+            "effective_category": None,
+            "effective_tags": ["a", "b"],
+        },
+    )
+    with pytest.raises(GoldLabError) as exc:
+        mut4.load_effective_state(campaign4.campaign_id)
+    assert exc.value.reason == "effective_state_qc_payload_noncanonical"
+
+    settings5, _store5, campaign5, mut5 = _ready(tmp_path / "r1_qc5")
+    mut5.submit_question_check(
+        campaign_id=campaign5.campaign_id,
+        case_id=CASE_ID,
+        payload={"decision": "accept"},
+        idempotency_key="qc_base5",
+    )
+    edited5 = mut5.submit_question_check(
+        campaign_id=campaign5.campaign_id,
+        case_id=CASE_ID,
+        payload={
+            "decision": "edit",
+            "effective_query": "Edited query",
+            "effective_category": None,
+            "effective_tags": ["a", "b"],
+        },
+        idempotency_key="qc_edit5",
+    )
+    path5 = _ledger_path(settings5, campaign5.campaign_id, edited5.record)
+    _rewrite_ledger_payload(
+        path5,
+        {
+            "decision": "edit",
+            "effective_query": "Edited query",
+            "effective_category": None,
+            "effective_tags": ["b", "a"],
+        },
+    )
+    with pytest.raises(GoldLabError) as exc:
+        mut5.load_effective_state(campaign5.campaign_id)
+    assert exc.value.reason == "effective_state_qc_payload_noncanonical"
+
+    # Canonical accept/edit/reject pass
+    _settings6, _, campaign6, mut6 = _ready(tmp_path / "r1_qc6")
+    mut6.submit_question_check(
+        campaign_id=campaign6.campaign_id,
+        case_id=CASE_ID,
+        payload={"decision": "accept"},
+        idempotency_key="ok_accept",
+    )
+    mut6.submit_question_check(
+        campaign_id=campaign6.campaign_id,
+        case_id=CASE_ID,
+        payload={
+            "decision": "edit",
+            "effective_query": "Canonical edit",
+            "effective_category": "cat",
+            "effective_tags": ["t1", "t2"],
+        },
+        idempotency_key="ok_edit",
+    )
+    mut6.submit_question_check(
+        campaign_id=campaign6.campaign_id,
+        case_id=CASE_ID,
+        payload={"decision": "reject"},
+        idempotency_key="ok_reject",
+    )
+    state = mut6.load_effective_state(campaign6.campaign_id)
+    assert state.current_question_for_case(CASE_ID).decision.value == "reject"
