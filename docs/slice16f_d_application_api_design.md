@@ -37,6 +37,9 @@ NOT AUTHORIZED
 | Rework 1 tip | `86a3fd6028db4a26567fe8de05a706e7a147685f` |
 | Rework 2 starting HEAD | `86a3fd6028db4a26567fe8de05a706e7a147685f` |
 | Rework 2 design SHA | `bcd6afc74eb995037da5477d7b3eef8e4ea8545a` |
+| Rework 2 tip | `82fef0b71abd341b7a201d91a5eb01fa2b490ee0` |
+| Rework 3 starting HEAD | `82fef0b71abd341b7a201d91a5eb01fa2b490ee0` |
+| Rework 3 design SHA | `REWORK3_DESIGN_SHA_PENDING` |
 
 Frozen parent decision (must not be reopened):
 
@@ -69,6 +72,17 @@ Hardening only (preserves Rework 1 + route/DTO surface):
 - historical Gold task read from immutable snapshot/corpus/chunk manifests only
   (no current retrieval-config / Qdrant / lexical / embedder / reranker dependency);
 - exact display-only `document_title` authority.
+
+### Design Rework 3
+
+Hardening only (preserves Rework 1 / Rework 2 + route/DTO surface):
+
+- filesystem confinement for the direct historical reader (durable path data is
+  untrusted until validated; root-confined snapshot / manifest / chunk reads);
+- baseline eligibility class **D** for structurally valid but scientifically
+  ineligible pristine-admission failures (`baseline_human_state_present`,
+  `baseline_identity_missing` → preflight `gold_conflict`);
+- preflight vs post-successful-preflight escape provenance for those reasons.
 
 ---
 
@@ -326,24 +340,42 @@ It **MUST** perform:
 5. pristine 16F-A admission;
 6. exact current project-workspace snapshot corpus / chunk-set binding.
 
-### Classification (frozen)
+### Classification (frozen — A/B/C/D)
 
 | Condition | Product projection |
 |---|---|
 | A. canonical run does not exist | `gold_baseline_unknown` / **404** |
-| B. file exists but is corrupt or internal path/content identity disagrees | `gold_state_unavailable` / **409** |
-| C. valid canonical run exists but is no longer eligible for the project's CURRENT workspace binding | `gold_conflict` / **409** |
+| B. canonical file corrupt, schema invalid, or path/internal identity disagrees | `gold_state_unavailable` / **409** |
+| C. otherwise eligible-form run is stale against the project's CURRENT workspace corpus/chunk-set binding | `gold_conflict` / **409** |
+| D. canonical `GoldAuthoringRun` is structurally valid but scientifically **INELIGIBLE** for pristine campaign admission | `gold_conflict` / **409** |
 
-Do **not** use `request_invalid` merely because the user selected a stale
-server-owned artifact.
+Class D includes at minimum:
+
+- `baseline_human_state_present`
+- `baseline_identity_missing`
+
+The run exists; it is simply not a valid pristine campaign seed.
+Do **not** classify D as 404 or `request_invalid`.
+
+Do **not** use `request_invalid` merely because the user selected a stale or
+non-pristine server-owned artifact.
 
 `GoldCampaignService` remains final scientific authority after application
 preflight.
 
-Discovery surfaces only runs that pass class-success under this resolver
-(identity + pristine + CURRENT binding). Path-identity-mismatched artifacts are
-never imported under another ID (discovery silently skips them; create fails
-closed under B).
+### Discovery scanning behavior
+
+`GET .../baselines` returns only successful resolver results.
+
+| Class | Discovery scan |
+|---|---|
+| A absent | not applicable to a scanned existing file |
+| B corrupt / path-identity invalid | do **not** surface |
+| C stale | do **not** surface |
+| D non-pristine / ineligible | do **not** surface |
+
+Do **not** silently reinterpret an ineligible artifact as another baseline.
+Campaign-create direct lookup still returns the exact A/B/C/D product error.
 
 ## Baseline discovery
 
@@ -360,7 +392,8 @@ Rules:
 - Scan only the existing canonical authoring-run directory for that corpus
   (`default_authoring_runs_dir(settings, corpus_name=...)`).
 - Apply the shared baseline eligibility resolver to every candidate file.
-- Only eligible runs are returned (with reviewable-case counting).
+- Surface only class-success results (identity + pristine + CURRENT binding);
+  suppress B/C/D as above.
 
 Response:
 
@@ -459,7 +492,7 @@ Client **MUST NOT** provide:
 1. resolve project;
 2. resolve project workspace / backing corpus;
 3. run shared baseline eligibility resolver for
-   `(project_id, baseline_authoring_run_id)` and apply A/B/C classification
+   `(project_id, baseline_authoring_run_id)` and apply A/B/C/D classification
    above (do **not** alias one run through another filename);
 4. allocate `campaign_id` server-side;
 5. derive `project_type` from project;
@@ -472,19 +505,36 @@ Client **MUST NOT** provide:
 `GoldCampaignService` remains the final scientific validator.
 The HTTP adapter **MUST NOT** reproduce campaign-binding logic.
 
-#### Service-level baseline escapes after preflight
+#### Preflight vs post-preflight escape (frozen)
 
-Normal path: eligibility failures are intercepted by the shared preflight
-(A/B/C). If the following escape from `GoldCampaignService` after a successful
-preflight, map conservatively and **never** as `request_invalid`:
+During baseline eligibility **preflight**:
+
+| reason | Preflight class | Product |
+|---|---|---|
+| `baseline_human_state_present` | D | `gold_conflict` / 409 |
+| `baseline_identity_missing` | D | `gold_conflict` / 409 |
+| `chunk_set_mismatch` | C | `gold_conflict` / 409 |
+| `corpus_id_mismatch` | C | `gold_conflict` / 409 |
+| `corpus_name_mismatch` | C | `gold_conflict` / 409 |
+
+If `baseline_human_state_present` or `baseline_identity_missing` somehow
+escapes from `GoldCampaignService` **after** that same baseline successfully
+passed the shared preflight:
+
+→ `gold_state_unavailable` / 409
+
+because the application preflight and authoritative campaign service then
+disagree about the same immutable artifact.
+
+Race / staleness escapes after preflight remain:
 
 | reason | Escape mapping | Why |
 |---|---|---|
-| `baseline_human_state_present` | `gold_state_unavailable` / 409 | durable admission contradiction |
-| `baseline_identity_missing` | `gold_state_unavailable` / 409 | durable admission contradiction |
 | `chunk_set_mismatch` | `gold_conflict` / 409 | CURRENT binding race / staleness |
 | `corpus_id_mismatch` | `gold_conflict` / 409 | CURRENT binding race / staleness |
 | `corpus_name_mismatch` | `gold_conflict` / 409 | CURRENT binding race / staleness |
+
+Never map any of the above as `request_invalid`.
 
 Success: **201** `GoldCampaignView`.
 
@@ -674,65 +724,190 @@ exposed.
 }
 ```
 
-### Historical source resolution algorithm (frozen — Rework 2)
+### Historical source resolution algorithm (frozen — Rework 2 + Rework 3)
 
 Historical Gold source presentation **MUST NOT** use normal
 `ProductPublicationRegistry.resolve_snapshot(...)` as the final resolver when
 that path requires current embedding / dense-index / lexical / fusion /
 reranker / context config or live Qdrant / lexical backing.
 
-Frozen immutable-artifact algorithm:
+Path validation for confinement **MUST NOT** accidentally reintroduce that
+method's current-readiness semantics.
+
+#### Server-owned path data is untrusted until validated
+
+HTTP clients do not supply historical filesystem paths, but durable Gold /
+snapshot metadata **MUST NOT** be blindly trusted for path construction.
+
+Before constructing **any** historical-source filesystem path, validate the
+server-owned durable identity / reference. Corrupt durable path metadata →
+`gold_state_unavailable` / HTTP **409** / retryable **false**. Never reinterpret
+as `request_invalid`.
+
+#### Frozen root hierarchy (only roots allowed)
+
+```text
+settings.paths.corpora
+  / <validated campaign.corpus_name>
+  / product
+  / snapshots
+  / <validated campaign.snapshot_id>.json
+
+settings.paths.manifests
+  / <validated filename-only corpus_manifest>
+
+settings.paths.chunk_manifests
+  / <validated filename-only chunk_manifest>
+
+settings.paths.chunks
+  / <validated chunk_artifact_id>.json
+```
+
+No other roots. No caller-supplied paths. No absolute reference escape.
+No symlink policy change is required in 16F-D unless existing repository
+policy already mandates one.
+
+#### Frozen immutable-artifact algorithm
 
 1. load server-owned `GoldCampaign`;
-2. derive immutable snapshot-manifest path from
-   `campaign.corpus_name` + `campaign.snapshot_id`;
-3. load `CanonicalSnapshotManifest` **directly** from that immutable snapshot
-   file;
-4. recompute snapshot identity and require
+
+2. **before** snapshot-path construction, validate `campaign.corpus_name` with
+   existing product corpus-name authority
+   `validate_product_corpus_name(...)` (or an exactly equivalent validation
+   contract). Reject `/`, `\`, `..`, absolute paths, and any product-invalid
+   corpus name. Failure → historical binding corruption →
+   `gold_state_unavailable` / 409;
+
+3. **before** snapshot-path construction, require durable
+   `campaign.snapshot_id` matches exact canonical grammar:
+
+   ```text
+   ^snap_[0-9a-f]{64}$
+   ```
+
+   (matches `compute_snapshot_id()` output). Any mismatch →
+   `gold_state_unavailable` / 409. Do **not** construct a snapshot path first
+   and validate later;
+
+4. derive immutable snapshot-manifest path **only** as:
+
+   ```text
+   settings.paths.corpora / validated_corpus_name / "product" / "snapshots"
+     / f"{validated_snapshot_id}.json"
+   ```
+
+5. load `CanonicalSnapshotManifest` **directly** from that immutable snapshot
+   file; parse strictly. Require at minimum:
+
+   ```text
+   schema_version == offline-rag-corpus-read-snapshot-v1
+   product_mode_id == grounded_v1
+   ```
+
+6. recompute snapshot identity and require
    `compute_snapshot_id(identity) == campaign.snapshot_id`;
-5. require:
+
+7. require:
 
    ```text
    identity.corpus_id == campaign.corpus_id
    identity.chunk_set_id == campaign.chunk_set_id
    ```
 
-6. load the **exact** corpus manifest named by `identity.corpus_manifest`;
-7. require corpus manifest `corpus_id == campaign.corpus_id`;
-8. load the **exact** chunk-set manifest bound by
-   `identity.chunk_set_id` / `identity.chunk_manifest`;
-9. require:
+8. validate `identity.corpus_manifest` and `identity.chunk_manifest` as
+   **filename-only** durable references (canonical construction stores
+   `Path(...).name`):
 
-   ```text
-   chunk_manifest.chunk_set_id == campaign.chunk_set_id
-   chunk_manifest.corpus_id == campaign.corpus_id
-   ```
+   - non-empty string;
+   - `Path(value).name == value`;
+   - not absolute;
+   - no `/` or `\`;
+   - no `..`.
 
-10. load only the chunk artifacts referenced by that immutable manifest;
-11. exact `chunk_id` lookup;
-12. construct `GoldSourceContext`.
+   Absolute or nested manifest references are **not** supported historical
+   authority. Failure → `gold_state_unavailable` / 409;
+
+9. resolve corpus manifest **only** beneath `settings.paths.manifests` using
+   the validated filename; load the exact file; require
+   corpus manifest `corpus_id == campaign.corpus_id`;
+
+10. resolve chunk-set manifest **only** beneath
+    `settings.paths.chunk_manifests` using the validated filename; load the
+    exact file. Where canonical filename convention permits, require the
+    manifest filename to agree with the durable identity it represents
+    rather than silently loading an alias. Require:
+
+    ```text
+    ChunkSetManifest.chunk_set_id == campaign.chunk_set_id
+    ChunkSetManifest.corpus_id == campaign.corpus_id
+    ```
+
+    No fuzzy / alternate manifest lookup;
+
+11. for each `ChunkSetDocumentEntry.chunk_artifact_id` used to load chunk
+    text, **before** path construction require canonical grammar:
+
+    ```text
+    ^chunkartifact_[0-9a-f]{64}$
+    ```
+
+    No slash / backslash / `..`. Resolve **only** as:
+
+    ```text
+    settings.paths.chunks / f"{validated_chunk_artifact_id}.json"
+    ```
+
+    Then require loaded `DocumentChunkArtifact`:
+
+    ```text
+    artifact.chunk_artifact_id == entry.chunk_artifact_id
+    artifact.document_id == entry.document_id
+    artifact.parsed_artifact_id == entry.parsed_artifact_id
+    ```
+
+    Failure → `gold_state_unavailable` / 409. Do not allow a corrupted
+    chunk-set manifest to redirect historical reads outside the configured
+    chunk-artifact root;
+
+12. exact `chunk_id` lookup within the loaded immutable chunk artifacts;
+
+13. construct `GoldSourceContext`.
 
 **NO consultation of:**
 
 `current.json`, CURRENT chunk state, current workspace snapshot, current
-retrieval configuration, Qdrant, lexical indexes, embedder, reranker,
+retrieval configuration (embedding / dense index / lexical / fusion /
+reranker / context), Qdrant, lexical indexes, embedder, reranker,
 generator.
 
 No model / provider / retrieval calls.
 
 ### Historical artifact error normalization
 
-Missing / corrupt / mismatched immutable historical artifacts used for Gold
-task detail map through the Gold application facade to:
+The following durable / path / integrity failures all normalize through the
+Gold application facade to:
 
 `gold_state_unavailable` / HTTP **409** / retryable **false**
 
-(adapter reasons `historical_chunk_unavailable` /
-`historical_chunk_mismatch` / snapshot-manifest or chunk-manifest mismatch).
+- invalid durable `corpus_name`;
+- invalid durable `snapshot_id`;
+- snapshot manifest missing / corrupt;
+- snapshot schema / `product_mode_id` mismatch;
+- snapshot identity mismatch;
+- absolute / nested `corpus_manifest` reference;
+- absolute / nested `chunk_manifest` reference;
+- corpus manifest mismatch;
+- chunk-set manifest mismatch;
+- invalid `chunk_artifact_id`;
+- chunk-artifact identity / provenance mismatch;
+- requested `chunk_id` absent;
+- baseline / historical `document_id` / `section_path` cross-check mismatch
+  (adapter reasons `historical_chunk_unavailable` /
+  `historical_chunk_mismatch`).
 
-Do **not** leak underlying `CORPUS_NOT_READY`, `SNAPSHOT_UNAVAILABLE`, or raw
-filesystem exceptions as route-specific accidental behavior. The Gold Lab HTTP
-contract owns the product projection.
+Do **not** leak underlying `CORPUS_NOT_READY`, `SNAPSHOT_UNAVAILABLE`, raw
+filesystem exceptions, or filesystem paths as route-specific accidental
+behavior. The Gold Lab HTTP contract owns the product projection.
 
 Explicitly **forbid**:
 
@@ -742,6 +917,7 @@ Explicitly **forbid**:
 - CURRENT chunk state / CURRENT workspace snapshot substitution
 - fuzzy / nearest chunk matching
 - retrieval during task-detail source resolution
+- constructing any historical path from unvalidated durable metadata
 
 ### GoldSourceContext field authority
 
@@ -1128,7 +1304,7 @@ No per-route ad hoc mapping.
 Any reachable reason not listed below → `internal_error` with safe reason
 `gold_lab_unmapped_error`.
 
-### Provenance principles (Rework 1 + Rework 2)
+### Provenance principles (Rework 1 + Rework 2 + Rework 3)
 
 Classify each reachable reason by **throw-site provenance through the supported
 16F-D route**, not by reason-name similarity alone:
@@ -1137,7 +1313,7 @@ Classify each reachable reason by **throw-site provenance through the supported
 |---|---|
 | TRANSPORT / HUMAN COMMAND | `request_invalid` / 422 |
 | TRUE SAME-KEY DIFFERENT-REQUEST | `idempotency_conflict` / 409 |
-| VALID LIFECYCLE / STALENESS | `gold_conflict` / 409 |
+| VALID LIFECYCLE / STALENESS / SCIENTIFIC INELIGIBILITY | `gold_conflict` / 409 |
 | LEASE CONTENTION | `gold_busy` / 409 |
 | PERSISTED / SEALED / LEDGER / REGISTRATION / GENERATED IDENTITY FAILURE | `gold_state_unavailable` / 409 |
 | IMPOSSIBLE SERVER PROGRAMMING ESCAPE | `internal_error` / 500 |
@@ -1170,7 +1346,7 @@ Preserved Rework 1 rules:
 6. **`gold_finalize_failed`** → `gold_state_unavailable` / 409 (conservative;
    do not inspect exception text).
 
-Rework 2 additions:
+Preserved Rework 2 additions:
 
 7. **Question Check edit semantics**
    - Command-input `question_check_edit_not_semantic` → `request_invalid` / 422.
@@ -1184,9 +1360,24 @@ Rework 2 additions:
    (`hard_call_designation_id`, selection-policy `project_type`) →
    durable mismatches → `gold_state_unavailable`.
 
-10. **Baseline eligibility** uses shared A/B/C preflight; service escapes after
-    preflight use the escape table under Campaign create (never generic
-    `request_invalid` for stale server-owned baselines).
+Rework 3 additions:
+
+10. **Baseline eligibility A/B/C/D**
+    - A absent → `gold_baseline_unknown` / 404.
+    - B corrupt / path-identity → `gold_state_unavailable` / 409.
+    - C stale CURRENT binding → `gold_conflict` / 409.
+    - D structurally valid but pristine-ineligible
+      (`baseline_human_state_present`, `baseline_identity_missing`) →
+      **preflight** `gold_conflict` / 409.
+    - Same D reasons escaping **after** successful preflight →
+      `gold_state_unavailable` / 409 (application vs service contradiction).
+    - Never `request_invalid` for stale / non-pristine server-owned baselines.
+
+11. **Historical durable path confinement**
+    - Invalid durable `corpus_name` / `snapshot_id` / manifest filename /
+      `chunk_artifact_id`, root escapes, schema/product-mode mismatches →
+      `gold_state_unavailable` / 409.
+    - Never blame expert JSON for corrupt server-owned historical metadata.
 
 ### Adapter-introduced stable reasons
 
@@ -1275,8 +1466,8 @@ are handled by adapter reasons `transport_*_invalid` before service call.
 | `hard_call_designation_id_mismatch` | durable → `gold_state_unavailable` | server-derived designation |
 | `selection_policy_project_type_mismatch` | durable → `gold_state_unavailable` | server-derived project_type |
 | `question_check_case_not_reviewable` | **NOT REACHABLE IN NORMAL 16F-D v1**; escape → `gold_state_unavailable` | QC tasks only for reviewable cases; mutation service also admits |
-| `baseline_human_state_present` | preflight A/B/C; escape → `gold_state_unavailable` | not request_invalid |
-| `baseline_identity_missing` | preflight A/B/C; escape → `gold_state_unavailable` | not request_invalid |
+| `baseline_human_state_present` | preflight class **D** → `gold_conflict`; post-successful-preflight escape → `gold_state_unavailable` | not request_invalid / not 404 |
+| `baseline_identity_missing` | preflight class **D** → `gold_conflict`; post-successful-preflight escape → `gold_state_unavailable` | not request_invalid / not 404 |
 | `chunk_set_mismatch` | preflight class C → `gold_conflict`; escape → `gold_conflict` | not request_invalid |
 | `corpus_id_mismatch` | preflight class C → `gold_conflict`; escape → `gold_conflict` | not request_invalid |
 | `corpus_name_mismatch` | preflight class C → `gold_conflict`; escape → `gold_conflict` | not request_invalid |
@@ -1306,6 +1497,8 @@ are handled by adapter reasons `transport_*_invalid` before service call.
 | `chunk_set_mismatch` | `gold_conflict` | 409 | false | yes (eligibility C / escape) |
 | `corpus_id_mismatch` | `gold_conflict` | 409 | false | yes (eligibility C / escape) |
 | `corpus_name_mismatch` | `gold_conflict` | 409 | false | yes (eligibility C / escape) |
+| `baseline_human_state_present` | `gold_conflict` | 409 | false | yes (**preflight class D**) |
+| `baseline_identity_missing` | `gold_conflict` | 409 | false | yes (**preflight class D**) |
 
 #### DURABLE STATE / CORRUPTION → `gold_state_unavailable`
 
@@ -1327,8 +1520,8 @@ mismatches.
 | `hard_call_designation_id_mismatch` | `gold_state_unavailable` | 409 | false | yes |
 | `selection_policy_project_type_mismatch` | `gold_state_unavailable` | 409 | false | yes |
 | `question_check_case_not_reviewable` | `gold_state_unavailable` | 409 | false | **NOT REACHABLE IN NORMAL 16F-D v1**; escape only |
-| `baseline_human_state_present` | `gold_state_unavailable` | 409 | false | yes (escape after preflight) |
-| `baseline_identity_missing` | `gold_state_unavailable` | 409 | false | yes (escape after preflight) |
+| `baseline_human_state_present` | `gold_state_unavailable` | 409 | false | yes (**post-successful-preflight escape only**) |
+| `baseline_identity_missing` | `gold_state_unavailable` | 409 | false | yes (**post-successful-preflight escape only**) |
 | `baseline_missing` | `gold_state_unavailable` | 409 | false | yes |
 | `baseline_corrupt` | `gold_state_unavailable` | 409 | false | yes |
 | `baseline_hash_mismatch` | `gold_state_unavailable` | 409 | false | yes |
@@ -1661,6 +1854,30 @@ When separately authorized, implementation **MUST** cover at least:
     metadata.
 44. Absolute `document_title` comes only from `PoolCandidate` display metadata.
 
+### Rework 3 additional tests
+
+45. Corrupted campaign `corpus_name` containing path elements →
+    `gold_state_unavailable`; no out-of-root file access.
+46. Malformed durable `snapshot_id` containing path elements →
+    `gold_state_unavailable` **before** path construction.
+47. Snapshot `corpus_manifest` absolute / nested reference →
+    `gold_state_unavailable`.
+48. Snapshot `chunk_manifest` absolute / nested reference →
+    `gold_state_unavailable`.
+49. Corrupted `chunk_artifact_id` path / reference →
+    `gold_state_unavailable`; no out-of-root read.
+50. Loaded chunk artifact ID / document / parsed identity disagrees with
+    manifest entry → `gold_state_unavailable`.
+51. Structurally valid baseline containing existing human review state selected
+    for campaign → `gold_conflict` / **409** (class D).
+52. Structurally valid baseline missing required corpus / chunk scientific
+    identity → `gold_conflict` / **409** (class D).
+53. Same baseline passes application preflight but authoritative service later
+    detects pristine / identity contradiction → `gold_state_unavailable`.
+54. Discovery does not surface class-B / C / D baseline artifacts.
+55. Historical-read path confinement does not require Qdrant / retrieval /
+    current config and preserves Rework-2 independence behavior.
+
 ### Regression requirements
 
 - Accepted 16F-A foundation tests
@@ -1677,7 +1894,8 @@ When separately authorized, implementation **MUST** cover at least:
 |---|---|
 | 16F-D0 design materialization | AUTHORIZED |
 | 16F-D0 Design Rework 1 | AUTHORIZED / PRESERVED |
-| 16F-D0 Design Rework 2 | AUTHORIZED (this revision) |
+| 16F-D0 Design Rework 2 | AUTHORIZED / PRESERVED |
+| 16F-D0 Design Rework 3 | AUTHORIZED (this revision) |
 | Independent design review | PENDING |
 | Human design acceptance | PENDING (do not claim) |
 | 16F-D production implementation | NOT AUTHORIZED |
