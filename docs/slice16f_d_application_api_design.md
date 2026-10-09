@@ -30,7 +30,7 @@ NOT AUTHORIZED
 | Accepted / frozen 16F-C | `646b1f178e10b49d3f39322dff8314dbd4f9987e` |
 | Branch | `design/16f-d-application-api-data-plane` |
 | Starting HEAD | `646b1f178e10b49d3f39322dff8314dbd4f9987e` |
-| Design SHA | `DESIGN_SHA_PENDING` |
+| Design SHA | `aaa409b0338ceb46bfaeeea18f9b2d5dc6ee5e71` |
 
 Frozen parent decision (must not be reopened):
 
