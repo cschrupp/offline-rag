@@ -1715,4 +1715,3 @@ def test_rework1_project_archive_commit_race(tmp_path: Path) -> None:
     assert isinstance(archive_error[0], GoldLabError)
     assert archive_error[0].reason == "gold_lab_lease_held"
     assert store.get_project(project2.project_id).status is GoldProjectStatus.ACTIVE
-
