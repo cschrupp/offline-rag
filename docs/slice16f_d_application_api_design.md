@@ -34,6 +34,9 @@ NOT AUTHORIZED
 | Design SHA fill tip | `982629d25c17f7641688f266785019755aeb8913` |
 | Rework 1 starting HEAD | `982629d25c17f7641688f266785019755aeb8913` |
 | Rework 1 design SHA | `1082ecb22ba9db5ac691ae3ff2d29016a2906650` |
+| Rework 1 tip | `86a3fd6028db4a26567fe8de05a706e7a147685f` |
+| Rework 2 starting HEAD | `86a3fd6028db4a26567fe8de05a706e7a147685f` |
+| Rework 2 design SHA | `REWORK2_DESIGN_SHA_PENDING` |
 
 Frozen parent decision (must not be reopened):
 
@@ -55,6 +58,17 @@ Hardening only (no route/DTO redesign; no production authorization):
 - durable scientific-identity error provenance;
 - exact historical source resolution algorithm and field authority;
 - strict authoring-run path/content identity for discovery and campaign create.
+
+### Design Rework 2
+
+Hardening only (preserves Rework 1 + route/DTO surface):
+
+- complete throw-site-accurate error table (`question_check_edit_not_semantic` vs
+  durable QC edit invariant; ledger membership / server-derived authorities);
+- shared baseline eligibility preflight with consistent 404 / 409 classification;
+- historical Gold task read from immutable snapshot/corpus/chunk manifests only
+  (no current retrieval-config / Qdrant / lexical / embedder / reranker dependency);
+- exact display-only `document_title` authority.
 
 ---
 
@@ -293,6 +307,44 @@ Request (`extra="forbid"`):
 
 ---
 
+## Baseline eligibility resolver (shared)
+
+Freeze one application-level baseline eligibility resolver used by both:
+
+- `GET .../baselines` (discovery scan)
+- `POST .../campaigns` (create preflight)
+
+Input: `project_id` + `baseline_authoring_run_id`
+
+It **MUST** perform:
+
+1. safe `authoring_run_id` validation;
+2. exact canonical path lookup
+   (`default_authoring_run_path(..., authoring_run_id=R)`);
+3. `filename stem == loaded run.authoring_run_id`;
+4. valid `GoldAuthoringRun`;
+5. pristine 16F-A admission;
+6. exact current project-workspace snapshot corpus / chunk-set binding.
+
+### Classification (frozen)
+
+| Condition | Product projection |
+|---|---|
+| A. canonical run does not exist | `gold_baseline_unknown` / **404** |
+| B. file exists but is corrupt or internal path/content identity disagrees | `gold_state_unavailable` / **409** |
+| C. valid canonical run exists but is no longer eligible for the project's CURRENT workspace binding | `gold_conflict` / **409** |
+
+Do **not** use `request_invalid` merely because the user selected a stale
+server-owned artifact.
+
+`GoldCampaignService` remains final scientific authority after application
+preflight.
+
+Discovery surfaces only runs that pass class-success under this resolver
+(identity + pristine + CURRENT binding). Path-identity-mismatched artifacts are
+never imported under another ID (discovery silently skips them; create fails
+closed under B).
+
 ## Baseline discovery
 
 ### GET `/v1/gold-lab/projects/{project_id}/baselines`
@@ -307,21 +359,8 @@ Rules:
 - Resolve `project → workspace → backing corpus`.
 - Scan only the existing canonical authoring-run directory for that corpus
   (`default_authoring_runs_dir(settings, corpus_name=...)`).
-- Every surfaced run **MUST** satisfy the canonical identity rule:
-
-  ```text
-  filename stem == loaded GoldAuthoringRun.authoring_run_id
-  ```
-
-  Path-identity-mismatched artifacts are **not** surfaced (silent skip during
-  discovery; they are never imported under another ID).
-
-Return **ONLY** runs that pass identity, then:
-
-1. valid `GoldAuthoringRun`;
-2. pristine according to accepted 16F-A admission;
-3. exact current workspace snapshot corpus / chunk-set binding;
-4. usable by `GoldCampaignService` (including reviewable-case counting).
+- Apply the shared baseline eligibility resolver to every candidate file.
+- Only eligible runs are returned (with reviewable-case counting).
 
 Response:
 
@@ -419,25 +458,9 @@ Client **MUST NOT** provide:
 
 1. resolve project;
 2. resolve project workspace / backing corpus;
-3. resolve baseline **only** by `baseline_authoring_run_id = R` after safe-ID
-   validation, via exactly:
-
-   ```text
-   default_authoring_run_path(..., authoring_run_id=R)
-   ```
-
-   Then require:
-
-   ```text
-   requested R
-     == canonical filename stem
-     == loaded GoldAuthoringRun.authoring_run_id
-   ```
-
-   - Requested `R` does not resolve to an eligible canonical run → adapter
-     `gold_baseline_unknown` / **404**.
-   - File exists but identity triple mismatches → `gold_state_unavailable` /
-     **409** (do **not** alias one run through another filename).
+3. run shared baseline eligibility resolver for
+   `(project_id, baseline_authoring_run_id)` and apply A/B/C classification
+   above (do **not** alias one run through another filename);
 4. allocate `campaign_id` server-side;
 5. derive `project_type` from project;
 6. construct `GoldSelectionPolicy` using accepted builder;
@@ -448,6 +471,20 @@ Client **MUST NOT** provide:
 
 `GoldCampaignService` remains the final scientific validator.
 The HTTP adapter **MUST NOT** reproduce campaign-binding logic.
+
+#### Service-level baseline escapes after preflight
+
+Normal path: eligibility failures are intercepted by the shared preflight
+(A/B/C). If the following escape from `GoldCampaignService` after a successful
+preflight, map conservatively and **never** as `request_invalid`:
+
+| reason | Escape mapping | Why |
+|---|---|---|
+| `baseline_human_state_present` | `gold_state_unavailable` / 409 | durable admission contradiction |
+| `baseline_identity_missing` | `gold_state_unavailable` / 409 | durable admission contradiction |
+| `chunk_set_mismatch` | `gold_conflict` / 409 | CURRENT binding race / staleness |
+| `corpus_id_mismatch` | `gold_conflict` / 409 | CURRENT binding race / staleness |
+| `corpus_name_mismatch` | `gold_conflict` / 409 | CURRENT binding race / staleness |
 
 Success: **201** `GoldCampaignView`.
 
@@ -637,42 +674,72 @@ exposed.
 }
 ```
 
-### Historical snapshot resolution algorithm (frozen)
+### Historical source resolution algorithm (frozen — Rework 2)
 
-1. load campaign;
-2. resolve **exact** snapshot:
+Historical Gold source presentation **MUST NOT** use normal
+`ProductPublicationRegistry.resolve_snapshot(...)` as the final resolver when
+that path requires current embedding / dense-index / lexical / fusion /
+reranker / context config or live Qdrant / lexical backing.
+
+Frozen immutable-artifact algorithm:
+
+1. load server-owned `GoldCampaign`;
+2. derive immutable snapshot-manifest path from
+   `campaign.corpus_name` + `campaign.snapshot_id`;
+3. load `CanonicalSnapshotManifest` **directly** from that immutable snapshot
+   file;
+4. recompute snapshot identity and require
+   `compute_snapshot_id(identity) == campaign.snapshot_id`;
+5. require:
 
    ```text
-   runtime.publication.resolve_snapshot(
-       campaign.corpus_name,
-       campaign.snapshot_id
-   )
-   ```
-
-3. require resolved snapshot:
-
-   ```text
-   snapshot_id == campaign.snapshot_id
-   corpus_name == campaign.corpus_name
    identity.corpus_id == campaign.corpus_id
    identity.chunk_set_id == campaign.chunk_set_id
    ```
 
-4. use the resolved snapshot's immutable corpus-manifest identity when loading
-   the historical chunk set;
-5. load exact `chunk_set_id`;
-6. construct exact `chunk_id` lookup;
-7. require requested source chunk exists.
+6. load the **exact** corpus manifest named by `identity.corpus_manifest`;
+7. require corpus manifest `corpus_id == campaign.corpus_id`;
+8. load the **exact** chunk-set manifest bound by
+   `identity.chunk_set_id` / `identity.chunk_manifest`;
+9. require:
 
-Any mismatch / unavailable historical artifact → adapter reason
-`historical_chunk_unavailable` or `historical_chunk_mismatch` →
-`gold_state_unavailable` / **409**.
+   ```text
+   chunk_manifest.chunk_set_id == campaign.chunk_set_id
+   chunk_manifest.corpus_id == campaign.corpus_id
+   ```
+
+10. load only the chunk artifacts referenced by that immutable manifest;
+11. exact `chunk_id` lookup;
+12. construct `GoldSourceContext`.
+
+**NO consultation of:**
+
+`current.json`, CURRENT chunk state, current workspace snapshot, current
+retrieval configuration, Qdrant, lexical indexes, embedder, reranker,
+generator.
+
+No model / provider / retrieval calls.
+
+### Historical artifact error normalization
+
+Missing / corrupt / mismatched immutable historical artifacts used for Gold
+task detail map through the Gold application facade to:
+
+`gold_state_unavailable` / HTTP **409** / retryable **false**
+
+(adapter reasons `historical_chunk_unavailable` /
+`historical_chunk_mismatch` / snapshot-manifest or chunk-manifest mismatch).
+
+Do **not** leak underlying `CORPUS_NOT_READY`, `SNAPSHOT_UNAVAILABLE`, or raw
+filesystem exceptions as route-specific accidental behavior. The Gold Lab HTTP
+contract owns the product projection.
 
 Explicitly **forbid**:
 
+- `ProductPublicationRegistry.resolve_snapshot(...)` for this historical path
+  when it invokes current-config `validate_grounded_identity`
 - `load_current_corpus_chunk_snapshot()`
-- CURRENT chunk state
-- CURRENT workspace snapshot substitution
+- CURRENT chunk state / CURRENT workspace snapshot substitution
 - fuzzy / nearest chunk matching
 - retrieval during task-detail source resolution
 
@@ -688,9 +755,20 @@ Explicitly **forbid**:
 | `content_type` | historical Chunk |
 | `text` | historical Chunk |
 | `source_name` | exact historical corpus manifest |
-| `document_title` | baseline case metadata when present (display-only) |
+| `document_title` | display-only (see below) |
 
 Do **not** use baseline retrieval-hit objects to fill scientific/source fields.
+
+### Document-title authority (display-only)
+
+| Task kind | `document_title` source |
+|---|---|
+| Question Check | `source_seed.document_title` if present, else `null` |
+| Absolute relevance | `PoolCandidate.document_title` if present, else `null` |
+
+Do **not** cross-fill from unrelated baseline candidates or CURRENT document
+inventory. All scientific/source identity still comes from historical
+Chunk/manifests.
 
 ### Baseline / historical identity cross-check
 
@@ -1050,50 +1128,65 @@ No per-route ad hoc mapping.
 Any reachable reason not listed below → `internal_error` with safe reason
 `gold_lab_unmapped_error`.
 
-### Provenance principles (Rework 1)
+### Provenance principles (Rework 1 + Rework 2)
+
+Classify each reachable reason by **throw-site provenance through the supported
+16F-D route**, not by reason-name similarity alone:
+
+| Provenance class | Product |
+|---|---|
+| TRANSPORT / HUMAN COMMAND | `request_invalid` / 422 |
+| TRUE SAME-KEY DIFFERENT-REQUEST | `idempotency_conflict` / 409 |
+| VALID LIFECYCLE / STALENESS | `gold_conflict` / 409 |
+| LEASE CONTENTION | `gold_busy` / 409 |
+| PERSISTED / SEALED / LEDGER / REGISTRATION / GENERATED IDENTITY FAILURE | `gold_state_unavailable` / 409 |
+| IMPOSSIBLE SERVER PROGRAMMING ESCAPE | `internal_error` / 500 |
+| UNKNOWN FUTURE REASON | `internal_error` + `gold_lab_unmapped_error` |
+
+Preserved Rework 1 rules:
 
 1. **Baseline lookup vs sealed corruption**
-   - HTTP/application baseline lookup failure (requested
-     `baseline_authoring_run_id` does not resolve to an eligible canonical run)
-     → adapter `gold_baseline_unknown` / **404**.
-   - Existing committed campaign sealed file
-     `campaigns/<campaign_id>/baseline/authoring_run.json` missing
-     (`GoldLabError.baseline_missing`) → `gold_state_unavailable` / **409**.
-     Do **not** map accepted-A `baseline_missing` to 404.
+   - Shared eligibility class A (canonical run does not exist) →
+     `gold_baseline_unknown` / **404**.
+   - Sealed campaign `baseline_missing` → `gold_state_unavailable` / **409**
+     (never 404).
 
-2. **Idempotency error provenance**
-   - Only true caller request divergence `idempotency_conflict` →
-     `ErrorCode.idempotency_conflict` / **409**.
-   - Header shape `idempotency_key_required` /
-     `idempotency_key_invalid` → `request_invalid` / **422**.
-   - Persisted catalog/ledger integrity conditions →
-     `gold_state_unavailable` / **409** (not caller conflicts).
+2. **Idempotency**
+   - Only `idempotency_conflict` → `idempotency_conflict` / 409.
+   - Header shape → `request_invalid` / 422.
+   - Catalog/ledger integrity → `gold_state_unavailable` / 409.
 
-3. **Server-owned idempotency programming contract**
-   - `idempotency_command_kind` is server-owned.
-   - If `idempotency_command_kind_invalid` escapes the accepted service
-     boundary → **`internal_error` / 500** (frozen choice; not
-     `request_invalid`).
-   - Impossible server-generated `invalid_idempotency_path` →
-     **`internal_error` / 500** (not attributed to user request data).
+3. **Server-owned idempotency programming**
+   - `idempotency_command_kind_invalid` → `internal_error` / 500.
+   - `invalid_idempotency_path` → `internal_error` / 500.
 
-4. **Transport ID grammar vs durable identity grammar**
-   - User-controlled path/body IDs validated at HTTP/application boundary
-     (malformed path `project_id` / `campaign_id` / `task_id`) →
-     `request_invalid` / **422**.
-   - After transport validation succeeds, invalid grammar encountered in
-     server-owned durable/generated state is **`gold_state_unavailable`**.
+4. **Transport vs durable identity grammar**
+   - Malformed path/body IDs → `request_invalid` / 422.
+   - Post-transport durable/generated grammar faults →
+     `gold_state_unavailable`.
 
-5. **`registration_missing`**
-   - 16F-D v1 has no GET-one-registration route.
-   - Freeze: **`registration_missing` is NOT REACHABLE IN 16F-D v1**.
-   - Do **not** map it to `gold_campaign_unknown`.
+5. **`registration_missing`**: **NOT REACHABLE IN 16F-D v1**.
 
-6. **`gold_finalize_failed`**
-   - Accepted 16F-C collapses FinalizePreRunError and generic finalizer
-     exceptions into one reason.
-   - Conservative transport mapping without inspecting exception text:
-     `gold_finalize_failed` → `gold_state_unavailable` / **409**.
+6. **`gold_finalize_failed`** → `gold_state_unavailable` / 409 (conservative;
+   do not inspect exception text).
+
+Rework 2 additions:
+
+7. **Question Check edit semantics**
+   - Command-input `question_check_edit_not_semantic` → `request_invalid` / 422.
+   - Durable ledger/replay `effective_state_qc_edit_not_semantic` →
+     `gold_state_unavailable` / 409.
+
+8. **Low-level ledger membership** after mutation-service admission →
+   `gold_state_unavailable` (not client JSON blame).
+
+9. **Server-derived campaign authorities**
+   (`hard_call_designation_id`, selection-policy `project_type`) →
+   durable mismatches → `gold_state_unavailable`.
+
+10. **Baseline eligibility** uses shared A/B/C preflight; service escapes after
+    preflight use the escape table under Campaign create (never generic
+    `request_invalid` for stale server-owned baselines).
 
 ### Adapter-introduced stable reasons
 
@@ -1147,41 +1240,46 @@ Sealed-campaign `baseline_missing` is durable corruption →
 
 #### REQUEST INVALID → `request_invalid`
 
-Caller/transport scientific request shape only.
+Caller/transport scientific request shape only (human command / HTTP body).
 
 | reason | ErrorCode | HTTP | retryable | Reachable |
 |---|---|---|---|---|
 | `absolute_relevance_invalid` | `request_invalid` | 422 | false | yes |
 | `question_check_payload_invalid` | `request_invalid` | 422 | false | yes |
-| `effective_state_qc_edit_not_semantic` | `request_invalid` | 422 | false | yes |
+| `question_check_edit_not_semantic` | `request_invalid` | 422 | false | yes |
 | `auxiliary_preference_invalid` | `request_invalid` | 422 | false | yes |
 | `auxiliary_pair_not_distinct` | `request_invalid` | 422 | false | yes |
-| `auxiliary_pair_required` | `request_invalid` | 422 | false | yes |
-| `auxiliary_pair_mismatch` | `request_invalid` | 422 | false | yes |
-| `candidate_chunk_required` | `request_invalid` | 422 | false | yes |
 | `candidate_not_in_case` | `request_invalid` | 422 | false | yes |
 | `case_not_reviewable` | `request_invalid` | 422 | false | yes |
-| `question_check_case_not_reviewable` | `request_invalid` | 422 | false | yes |
-| `ledger_case_not_reviewable` | `request_invalid` | 422 | false | yes |
-| `ledger_case_not_found` | `request_invalid` | 422 | false | yes |
-| `ledger_candidate_not_in_case` | `request_invalid` | 422 | false | yes |
 | `hard_call_reason_empty` | `request_invalid` | 422 | false | yes |
 | `hard_call_target_invalid` | `request_invalid` | 422 | false | yes |
 | `hard_call_duplicate_target` | `request_invalid` | 422 | false | yes |
-| `hard_call_designation_id_mismatch` | `request_invalid` | 422 | false | yes |
 | `selection_policy_parameters_invalid` | `request_invalid` | 422 | false | yes |
-| `selection_policy_project_type_mismatch` | `request_invalid` | 422 | false | yes |
 | `provenance_type_invalid` | `request_invalid` | 422 | false | yes |
 | `case_not_found` | `request_invalid` | 422 | false | yes |
-| `baseline_human_state_present` | `request_invalid` | 422 | false | yes (create admission) |
-| `baseline_identity_missing` | `request_invalid` | 422 | false | yes (create admission) |
-| `chunk_set_mismatch` | `request_invalid` | 422 | false | yes (create binding) |
-| `corpus_id_mismatch` | `request_invalid` | 422 | false | yes (create binding) |
-| `corpus_name_mismatch` | `request_invalid` | 422 | false | yes (create binding) |
 
 Note: malformed transport path/body `project_id` / `campaign_id` / `task_id`
-are handled by adapter reasons `transport_*_invalid` before service call, not
-by blaming durable `invalid_*_id` reasons on the client.
+are handled by adapter reasons `transport_*_invalid` before service call.
+
+#### Explicitly NOT client-invalid (audited)
+
+| reason | Classification | Notes |
+|---|---|---|
+| `effective_state_qc_edit_not_semantic` | durable → `gold_state_unavailable` | ledger/replay invariant |
+| `ledger_case_not_found` | durable → `gold_state_unavailable` | low-level sealed-baseline/ledger |
+| `ledger_case_not_reviewable` | durable → `gold_state_unavailable` | low-level sealed-baseline/ledger |
+| `ledger_candidate_not_in_case` | durable → `gold_state_unavailable` | low-level sealed-baseline/ledger |
+| `candidate_chunk_required` | durable → `gold_state_unavailable` | low-level sealed-baseline/ledger |
+| `auxiliary_pair_required` | durable → `gold_state_unavailable` | server pair vs payload reconcile |
+| `auxiliary_pair_mismatch` | durable → `gold_state_unavailable` | server pair vs payload reconcile |
+| `hard_call_designation_id_mismatch` | durable → `gold_state_unavailable` | server-derived designation |
+| `selection_policy_project_type_mismatch` | durable → `gold_state_unavailable` | server-derived project_type |
+| `question_check_case_not_reviewable` | **NOT REACHABLE IN NORMAL 16F-D v1**; escape → `gold_state_unavailable` | QC tasks only for reviewable cases; mutation service also admits |
+| `baseline_human_state_present` | preflight A/B/C; escape → `gold_state_unavailable` | not request_invalid |
+| `baseline_identity_missing` | preflight A/B/C; escape → `gold_state_unavailable` | not request_invalid |
+| `chunk_set_mismatch` | preflight class C → `gold_conflict`; escape → `gold_conflict` | not request_invalid |
+| `corpus_id_mismatch` | preflight class C → `gold_conflict`; escape → `gold_conflict` | not request_invalid |
+| `corpus_name_mismatch` | preflight class C → `gold_conflict`; escape → `gold_conflict` | not request_invalid |
 
 #### LIFECYCLE / VALID CONFLICT → `gold_conflict`
 
@@ -1205,15 +1303,32 @@ by blaming durable `invalid_*_id` reasons on the client.
 | `project_workspace_changed` | `gold_conflict` | 409 | false | yes |
 | `registration_conflict` | `gold_conflict` | 409 | false | yes |
 | `dataset_semantic_conflict` | `gold_conflict` | 409 | false | yes |
+| `chunk_set_mismatch` | `gold_conflict` | 409 | false | yes (eligibility C / escape) |
+| `corpus_id_mismatch` | `gold_conflict` | 409 | false | yes (eligibility C / escape) |
+| `corpus_name_mismatch` | `gold_conflict` | 409 | false | yes (eligibility C / escape) |
 
 #### DURABLE STATE / CORRUPTION → `gold_state_unavailable`
 
 Includes sealed baseline corruption, durable identity violations, idempotency
-catalog/ledger integrity, finalizer collapse, and server-owned identity grammar
-faults after transport validation.
+catalog/ledger integrity, finalizer collapse, server-owned identity grammar
+faults after transport validation, low-level ledger membership after mutation
+admission, durable QC replay invariants, and server-derived campaign-authority
+mismatches.
 
 | reason | ErrorCode | HTTP | retryable | Reachable |
 |---|---|---|---|---|
+| `effective_state_qc_edit_not_semantic` | `gold_state_unavailable` | 409 | false | yes |
+| `ledger_case_not_found` | `gold_state_unavailable` | 409 | false | yes |
+| `ledger_case_not_reviewable` | `gold_state_unavailable` | 409 | false | yes |
+| `ledger_candidate_not_in_case` | `gold_state_unavailable` | 409 | false | yes |
+| `candidate_chunk_required` | `gold_state_unavailable` | 409 | false | yes |
+| `auxiliary_pair_required` | `gold_state_unavailable` | 409 | false | yes |
+| `auxiliary_pair_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `hard_call_designation_id_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `selection_policy_project_type_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `question_check_case_not_reviewable` | `gold_state_unavailable` | 409 | false | **NOT REACHABLE IN NORMAL 16F-D v1**; escape only |
+| `baseline_human_state_present` | `gold_state_unavailable` | 409 | false | yes (escape after preflight) |
+| `baseline_identity_missing` | `gold_state_unavailable` | 409 | false | yes (escape after preflight) |
 | `baseline_missing` | `gold_state_unavailable` | 409 | false | yes |
 | `baseline_corrupt` | `gold_state_unavailable` | 409 | false | yes |
 | `baseline_hash_mismatch` | `gold_state_unavailable` | 409 | false | yes |
@@ -1339,8 +1454,16 @@ faults after transport validation.
 | `idempotency_command_kind_invalid` | `internal_error` | 500 | false | yes (if escapes) |
 | `invalid_idempotency_path` | `internal_error` | 500 | false | yes (if escapes) |
 
-`details.reason` for these remains the original reason token (closed code), not
-client-facing prose.
+Frozen choice for server-derived campaign authorities
+(`hard_call_designation_id_mismatch`, `selection_policy_project_type_mismatch`):
+**`gold_state_unavailable` / 409**, not `internal_error`. Rationale: the same
+reasons can arise while validating persisted / sealed Gold Lab state against
+server-derived designation and project-type authorities; fail closed as durable
+state unavailable rather than blaming expert JSON or assuming a pure
+programming escape.
+
+`details.reason` for programming escapes remains the original reason token
+(closed code), not client-facing prose.
 
 #### Default
 
@@ -1513,6 +1636,31 @@ When separately authorized, implementation **MUST** cover at least:
     `gold_state_unavailable`.
 32. No retrieval/model call occurs during task-detail source resolution.
 
+### Rework 2 additional tests
+
+33. Semantic no-op Question Check edit → `request_invalid` / **422**
+    (`question_check_edit_not_semantic`).
+34. Tampered durable edit that is no longer semantic →
+    `gold_state_unavailable` / **409**
+    (`effective_state_qc_edit_not_semantic`).
+35. Persisted ledger case absent from sealed baseline →
+    `gold_state_unavailable` / **409**.
+36. Persisted ledger candidate absent from sealed baseline →
+    `gold_state_unavailable` / **409**.
+37. Auxiliary persisted-pair / server-argument mismatch →
+    `gold_state_unavailable`.
+38. Stale but otherwise valid server-owned baseline selected for campaign →
+    `gold_conflict`, **not** `request_invalid`.
+39. Immutable snapshot S remains readable for Gold task detail after current
+    embedding / reranker / config changes.
+40. Historical task detail does not require Qdrant / lexical index availability.
+41. Immutable snapshot-manifest ID mismatch → `gold_state_unavailable`.
+42. Immutable chunk-manifest corpus / chunk-set mismatch →
+    `gold_state_unavailable`.
+43. Question source `document_title` comes only from `source_seed` display
+    metadata.
+44. Absolute `document_title` comes only from `PoolCandidate` display metadata.
+
 ### Regression requirements
 
 - Accepted 16F-A foundation tests
@@ -1528,7 +1676,8 @@ When separately authorized, implementation **MUST** cover at least:
 | Gate | Status |
 |---|---|
 | 16F-D0 design materialization | AUTHORIZED |
-| 16F-D0 Design Rework 1 | AUTHORIZED (this revision) |
+| 16F-D0 Design Rework 1 | AUTHORIZED / PRESERVED |
+| 16F-D0 Design Rework 2 | AUTHORIZED (this revision) |
 | Independent design review | PENDING |
 | Human design acceptance | PENDING (do not claim) |
 | 16F-D production implementation | NOT AUTHORIZED |
