@@ -10,6 +10,9 @@
 | Starting HEAD | `2e4d51b06763ed04bce8b6e2d60337f61082bc64` |
 | Implementation SHA | `10520c1625f63e347116055124c181df3a446df1` |
 | Documentation SHA | `65e86ead38794a93a3961db6640fcaaf616e8fc7` |
+| Rework 1 starting HEAD | `d6da49309f863955f65148d166dab8b770284c34` |
+| Rework 1 implementation SHA | `_FILL_AFTER_FEAT_COMMIT_` |
+| Rework 1 documentation SHA | `_FILL_AFTER_DOCS_COMMIT_` |
 
 ## Scope
 
@@ -26,20 +29,31 @@
 - `gold-contribution-v1` score/counters, Hard Call resolution scoring, zero-denominator coverage
 - Safe pre-commit blind task projection (no model/retrieval leakage)
 
+## Rework 1 — Idempotency / lifecycle / audit-canonicality closure
+
+Hardening only (no redesign; no 16F-C entry):
+
+- **Effective-state gate before PENDING reservation:** for a new key, build and validate the complete append intent (including absolute QC-active / same-basis supersedes resolution) before writing the idempotency catalog PENDING entry. Invalid/inactive commands leave no reservation and no ledger row.
+- **Genuine PENDING recovery preserved:** PENDING+no ledger revalidates lifecycle/effective-state and resumes with the same reserved IDs; PENDING+matching ledger finalizes COMMITTED without duplicate append.
+- **Duplicate durable idempotency keys fail closed** on every supported path: committed replay, pending recovery, new-key mutation, `load_effective_state` / task projection / contribution.
+- **Catalog command-kind integrity:** `command_kind` is exactly `question_check` | `absolute_relevance` | `auxiliary_preference`; must match invoked command and reserved ledger `record_type`.
+- **Project-archive commit serialization:** supported mutations hold `GoldLabProjectLease` then `GoldLabCampaignLease` through lookup → lifecycle → fold → PENDING → append → COMMITTED. Replay of exact COMMITTED requests still succeeds after archive/close; new/uncommitted keys are rejected.
+- **Exact durable Question Check replay shape:** accept/reject payloads must be exactly `{decision}`; edit must contain exactly the four canonical keys with already-canonical values (no whitespace/unsorted tags accepted on fold). Shared helpers: command-input canonicalize vs ledger-replay validate-already-canonical.
+
 ## Modules
 
 Primary package: `src/offline_rag/app/gold_lab/`
 
 | Module | Role |
 |---|---|
-| `effective_state.py` | Fail-closed fold; QC + absolute supersession / event-time audit |
+| `effective_state.py` | Fail-closed fold; QC + absolute supersession / event-time audit; duplicate-key check |
 | `tasks.py` | Task pending/completed/active projection; blind DTO |
 | `idempotency.py` | Campaign-local `offline-rag-gold-idempotency-v1` catalog |
-| `mutations.py` | `GoldLabMutationService` commands under campaign lease |
+| `mutations.py` | `GoldLabMutationService` under project+campaign leases |
 | `contribution.py` | Pure `gold-contribution-v1` projector |
-| `question_check.py` | QC payload canonicalize / fingerprint helpers |
+| `question_check.py` | QC command canonicalize + durable replay validator |
 | `ledger.py` | `append_under_lease` (held lease; no second lock) |
-| `models.py` | `QuestionCheckPayload`, `IdempotencyEntry` |
+| `models.py` | `QuestionCheckPayload`, `IdempotencyEntry`, `IdempotencyCommandKind` |
 | `paths.py` | `idempotency/` path helpers |
 | `ids.py` | `IDEMPOTENCY_SCHEMA`, `CONTRIBUTION_CONTRACT` |
 
@@ -59,6 +73,7 @@ Caller supplies: scientific decision, idempotency key, optional game/presentatio
 - Path: `campaigns/<campaign_id>/idempotency/idem_<sha256(UTF-8 normalized key)>.json`
 - Status: `pending` → `committed`
 - Replay-first ordering; conflict beats lifecycle; crash recovery for PENDING+ledger and PENDING-only
+- New-key PENDING write occurs only after validated append intent
 
 ## Effective-state / tasks (summary)
 
