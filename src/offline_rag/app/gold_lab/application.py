@@ -743,24 +743,15 @@ class GoldLabApplicationService:
         campaign_id: str,
         task_id: str,
         idempotency_key: str,
-        decision: str,
-        fields_set: set[str],
-        effective_query: str | None = None,
-        effective_category: str | None = None,
-        effective_tags: list[str] | None = None,
+        payload: dict[str, Any],
         game_id: str | None = None,
         presentation_id: str | None = None,
     ) -> dict[str, Any]:
         cid = self._transport_campaign_id(campaign_id)
         tid = self._transport_task_id(task_id)
         view = self._require_task(cid, tid, kind="question_check")
-        payload = self._qc_payload(
-            decision=decision,
-            fields_set=fields_set,
-            effective_query=effective_query,
-            effective_category=effective_category,
-            effective_tags=effective_tags,
-        )
+        # Transport already validated the decision-discriminated union; pass the
+        # exact frozen adapter payload through to accepted 16F-B canonicalization.
         result = self._call(
             self.mutations.submit_question_check,
             campaign_id=cid,
@@ -878,42 +869,6 @@ class GoldLabApplicationService:
                 task_id=task_id,
             )
         return match
-
-    def _qc_payload(
-        self,
-        *,
-        decision: str,
-        fields_set: set[str],
-        effective_query: str | None,
-        effective_category: str | None,
-        effective_tags: list[str] | None,
-    ) -> dict[str, Any]:
-        decision_norm = str(decision).strip().lower()
-        if decision_norm in {"accept", "reject"}:
-            for key in ("effective_query", "effective_category", "effective_tags"):
-                if key in fields_set:
-                    raise _app_error(
-                        ErrorCode.REQUEST_INVALID,
-                        "question_check_payload_invalid",
-                    )
-            return {"decision": decision_norm}
-        if decision_norm == "edit":
-            required = {"effective_query", "effective_category", "effective_tags"}
-            if not required.issubset(fields_set):
-                raise _app_error(
-                    ErrorCode.REQUEST_INVALID,
-                    "question_check_payload_invalid",
-                )
-            return {
-                "decision": "edit",
-                "effective_query": effective_query,
-                "effective_category": effective_category,
-                "effective_tags": effective_tags,
-            }
-        raise _app_error(
-            ErrorCode.REQUEST_INVALID,
-            "question_check_payload_invalid",
-        )
 
     def _transport_project_id(self, value: str) -> str:
         try:

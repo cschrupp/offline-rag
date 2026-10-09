@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from offline_rag.app.gold_lab.contribution import ContributionProjection
@@ -16,7 +16,7 @@ def rfc3339_z(value: datetime) -> str:
     if value.tzinfo is None:
         text = value.isoformat()
         return text if text.endswith("Z") else f"{text}Z"
-    return value.astimezone().isoformat().replace("+00:00", "Z")
+    return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
 
 
 def project_view(project: GoldProject) -> dict[str, Any]:

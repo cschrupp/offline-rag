@@ -147,6 +147,10 @@ def resolve_historical_chunk(
     ):
         raise _state_unavailable("historical_chunk_mismatch")
 
+    # Canonical writer stores ``{chunk_set_id}.json``; reject filename aliases.
+    if chunk_manifest_name != f"{campaign.chunk_set_id}.json":
+        raise _state_unavailable("historical_chunk_mismatch")
+
     chunk_manifest_path = settings.paths.chunk_manifests / chunk_manifest_name
     if not chunk_manifest_path.is_file():
         raise _state_unavailable("historical_chunk_unavailable")
@@ -209,18 +213,13 @@ def _resolve_verified_chunk(
     *,
     chunk_id: str,
 ) -> tuple[ChunkSetDocumentEntry, DocumentChunkArtifact, Chunk]:
-    last_integrity_error: AppError | None = None
+    # Fail closed on the first artifact-integrity failure encountered while
+    # locating the chunk. Never skip a corrupt entry to fall back on another.
     for entry in chunk_manifest.documents:
-        try:
-            artifact = _load_verified_artifact(settings, chunk_manifest, entry)
-        except AppError as exc:
-            last_integrity_error = exc
-            continue
+        artifact = _load_verified_artifact(settings, chunk_manifest, entry)
         for chunk in list(artifact.parents) + list(artifact.children):
             if chunk.chunk_id == chunk_id:
                 return entry, artifact, chunk
-    if last_integrity_error is not None and len(chunk_manifest.documents) == 1:
-        raise last_integrity_error
     raise _state_unavailable("historical_chunk_unavailable")
 
 

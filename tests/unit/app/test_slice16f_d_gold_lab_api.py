@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 _APP_TEST_DIR = Path(__file__).resolve().parent
@@ -628,3 +630,77 @@ def test_safe_error_details_gold_ids() -> None:
         reason="baseline_missing",
     )
     assert details.project_id is not None
+
+
+def test_question_check_discriminated_union_openapi_and_reject_shape(
+    tmp_path: Path,
+) -> None:
+    from pydantic import TypeAdapter, ValidationError
+
+    from offline_rag.api.gold_lab import (
+        QuestionCheckAcceptRequest,
+        QuestionCheckEditRequest,
+        QuestionCheckRejectRequest,
+        QuestionCheckRequest,
+    )
+
+    adapter = TypeAdapter(QuestionCheckRequest)
+    assert isinstance(
+        adapter.validate_python({"decision": "accept"}), QuestionCheckAcceptRequest
+    )
+    assert isinstance(
+        adapter.validate_python({"decision": "reject"}), QuestionCheckRejectRequest
+    )
+    assert isinstance(
+        adapter.validate_python(
+            {
+                "decision": "edit",
+                "effective_query": "revised?",
+                "effective_category": None,
+                "effective_tags": ["t"],
+            }
+        ),
+        QuestionCheckEditRequest,
+    )
+    with pytest.raises(ValidationError):
+        adapter.validate_python({"decision": "accept", "effective_query": None})
+    with pytest.raises(ValidationError):
+        adapter.validate_python({"decision": "reject", "effective_tags": []})
+    with pytest.raises(ValidationError):
+        adapter.validate_python(
+            {"decision": "edit", "effective_query": "x", "effective_tags": []}
+        )
+
+    with _ready_client(tmp_path) as (client, _ctx):
+        schema = client.app.openapi()
+        qc_path = (
+            "/v1/gold-lab/campaigns/{campaign_id}/tasks/{task_id}/question-check"
+        )
+        body_schema = schema["paths"][qc_path]["post"]["requestBody"]["content"][
+            "application/json"
+        ]["schema"]
+        # Discriminated union must surface as oneOf / discriminator, not a single
+        # flat model with optional effective_* fields.
+        dumped = json.dumps(body_schema)
+        assert "oneOf" in dumped or "discriminator" in dumped or "$ref" in dumped
+        # Resolve $ref if present and assert accept variant forbids effective_*.
+        resolved = body_schema
+        if "$ref" in body_schema:
+            name = body_schema["$ref"].rsplit("/", 1)[-1]
+            resolved = schema["components"]["schemas"][name]
+        text = json.dumps(resolved) + json.dumps(schema.get("components", {}))
+        assert "QuestionCheckAcceptRequest" in text
+        assert "QuestionCheckEditRequest" in text
+        assert "QuestionCheckRejectRequest" in text
+
+
+def test_rfc3339_z_normalizes_non_utc_aware_datetime() -> None:
+    from datetime import datetime, timedelta, timezone
+
+    from offline_rag.app.gold_lab.views import rfc3339_z
+
+    eastern = timezone(timedelta(hours=-4))
+    value = datetime(2024, 6, 15, 12, 30, 0, tzinfo=eastern)
+    assert rfc3339_z(value) == "2024-06-15T16:30:00Z"
+    assert rfc3339_z(value).endswith("Z")
+    assert "-04:00" not in rfc3339_z(value)

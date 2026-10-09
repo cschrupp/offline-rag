@@ -69,15 +69,39 @@ class CampaignCreateRequest(BaseModel):
     hard_calls: list[HardCallRequest] = Field(default_factory=list)
 
 
-class QuestionCheckRequest(BaseModel):
+class QuestionCheckAcceptRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    decision: Literal["accept", "edit", "reject"]
-    effective_query: str | None = None
-    effective_category: str | None = None
-    effective_tags: list[str] | None = None
+    decision: Literal["accept"]
     game_id: str | None = None
     presentation_id: str | None = None
+
+
+class QuestionCheckRejectRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    decision: Literal["reject"]
+    game_id: str | None = None
+    presentation_id: str | None = None
+
+
+class QuestionCheckEditRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    decision: Literal["edit"]
+    effective_query: str = Field(min_length=1)
+    effective_category: str | None
+    effective_tags: list[str]
+    game_id: str | None = None
+    presentation_id: str | None = None
+
+
+QuestionCheckRequest = Annotated[
+    QuestionCheckAcceptRequest
+    | QuestionCheckRejectRequest
+    | QuestionCheckEditRequest,
+    Field(discriminator="decision"),
+]
 
 
 class RelevanceRequest(BaseModel):
@@ -199,15 +223,20 @@ def submit_question_check(
     idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> dict[str, Any]:
     key = _require_idempotency_key(idempotency_key)
+    if isinstance(body, QuestionCheckEditRequest):
+        payload: dict[str, Any] = {
+            "decision": "edit",
+            "effective_query": body.effective_query,
+            "effective_category": body.effective_category,
+            "effective_tags": body.effective_tags,
+        }
+    else:
+        payload = {"decision": body.decision}
     return _gold(request).submit_question_check(
         campaign_id=campaign_id,
         task_id=task_id,
         idempotency_key=key,
-        decision=body.decision,
-        fields_set=set(body.model_fields_set),
-        effective_query=body.effective_query,
-        effective_category=body.effective_category,
-        effective_tags=body.effective_tags,
+        payload=payload,
         game_id=body.game_id,
         presentation_id=body.presentation_id,
     )

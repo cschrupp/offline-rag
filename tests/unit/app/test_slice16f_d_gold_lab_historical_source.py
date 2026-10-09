@@ -14,7 +14,7 @@ from offline_rag.app.gold_lab.historical_source import resolve_historical_chunk
 from offline_rag.app.gold_lab.models import GoldCampaign, build_selection_policy
 from offline_rag.app.paths import ensure_data_directories
 from offline_rag.app.publication import ProductPublicationRegistry
-from offline_rag.app.snapshot import CanonicalSnapshotManifest
+from offline_rag.app.snapshot import CanonicalSnapshotManifest, compute_snapshot_id
 from offline_rag.chunking.persistence import (
     chunk_artifact_relpath,
     write_chunk_artifact,
@@ -477,3 +477,144 @@ def test_relative_path_field_never_followed(tmp_path: Path) -> None:
         resolve_historical_chunk(settings, campaign, chunk_id=CHUNK_A)
     assert getattr(exc.value, "code", None) is ErrorCode.GOLD_STATE_UNAVAILABLE
     assert not (settings.paths.chunks.parent / "escape.json").exists()
+
+
+def test_multi_document_integrity_failure_does_not_fallback(tmp_path: Path) -> None:
+    """Corrupt entry A must fail closed even when entry B holds the chunk."""
+    settings = _settings(tmp_path)
+    snapshot_id, corpus_id, chunk_set_id, art_id = _publish_integrity(settings)
+
+    # Second document with a valid artifact that also contains CHUNK_A.
+    doc_b = "doc_16fd_b"
+    parsed_b = "parsed_16fd_b"
+    art_b_id = chunk_artifact_id(
+        parsed_b, CHUNK_CFG, chunker_version=STRUCTURE_AWARE_CHUNKER_VERSION
+    )
+    children_b = [
+        Chunk(
+            chunk_id=CHUNK_A,
+            document_id=doc_b,
+            kind=ChunkKind.CHILD,
+            text="fallback candidate text that must never surface",
+            order=0,
+            token_count=4,
+            content_hash="ch_fallback",
+            source_block_ids=["blk_fb"],
+        )
+    ]
+    artifact_b = DocumentChunkArtifact(
+        chunk_artifact_id=art_b_id,
+        parsed_artifact_id=parsed_b,
+        document_id=doc_b,
+        chunk_config_hash=CHUNK_CFG,
+        chunker_version=STRUCTURE_AWARE_CHUNKER_VERSION,
+        tokenizer_name="tiktoken",
+        tokenizer_encoding="cl100k_base",
+        parents=[],
+        children=children_b,
+        parent_count=0,
+        child_count=1,
+    )
+    _path_b, digest_b = write_chunk_artifact(settings.paths.chunks, artifact_b)
+
+    manifest_path = settings.paths.chunk_manifests / f"{chunk_set_id}.json"
+    data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    entry_a = data["documents"][0]
+    entry_b = {
+        "document_id": doc_b,
+        "parsed_artifact_id": parsed_b,
+        "chunk_artifact_id": art_b_id,
+        "chunk_artifact": chunk_artifact_relpath(art_b_id),
+        "chunk_artifact_hash": digest_b,
+        "parent_count": 0,
+        "child_count": 1,
+    }
+    # Keep declared chunk_set_id; recompute so identity chain still binds.
+    new_chunk_set_id = chunk_set_id_from_entries(
+        corpus_id=corpus_id,
+        chunk_cfg_hash=CHUNK_CFG,
+        chunker_version=STRUCTURE_AWARE_CHUNKER_VERSION,
+        document_entries=[
+            {
+                "document_id": entry_a["document_id"],
+                "parsed_artifact_id": entry_a["parsed_artifact_id"],
+                "chunk_artifact_id": entry_a["chunk_artifact_id"],
+            },
+            {
+                "document_id": doc_b,
+                "parsed_artifact_id": parsed_b,
+                "chunk_artifact_id": art_b_id,
+            },
+        ],
+    )
+    data["documents"] = [entry_a, entry_b]
+    data["chunk_set_id"] = new_chunk_set_id
+    data["total_child_count"] = 3
+    # Write under the new canonical filename and republish snapshot identity.
+    new_manifest_path = settings.paths.chunk_manifests / f"{new_chunk_set_id}.json"
+    atomic_write_text(new_manifest_path, json.dumps(data))
+
+    snap_path = (
+        settings.paths.corpora
+        / CORPUS_NAME
+        / "product"
+        / "snapshots"
+        / f"{snapshot_id}.json"
+    )
+    snap = json.loads(snap_path.read_text(encoding="utf-8"))
+    snap["chunk_set_id"] = new_chunk_set_id
+    snap["chunk_manifest"] = f"{new_chunk_set_id}.json"
+    identity = CanonicalSnapshotManifest.model_validate(snap)
+    new_snapshot_id = compute_snapshot_id(identity)
+    atomic_write_text(
+        snap_path.parent / f"{new_snapshot_id}.json",
+        identity.model_dump_json(),
+    )
+
+    # Corrupt artifact A after the multi-doc identity is sealed.
+    path_a = settings.paths.chunks / f"{art_id}.json"
+    payload = json.loads(path_a.read_text(encoding="utf-8"))
+    payload["children"][0]["text"] = "tampered evidence text"
+    path_a.write_text(json.dumps(payload), encoding="utf-8")
+
+    campaign = _campaign(
+        snapshot_id=new_snapshot_id,
+        corpus_id=corpus_id,
+        chunk_set_id=new_chunk_set_id,
+    )
+    with pytest.raises(Exception) as exc:
+        resolve_historical_chunk(settings, campaign, chunk_id=CHUNK_A)
+    err = exc.value
+    assert getattr(err, "code", None) is ErrorCode.GOLD_STATE_UNAVAILABLE
+    assert "fallback" not in str(getattr(err, "message", "")).lower()
+    assert "tampered" not in str(getattr(err, "message", "")).lower()
+
+
+def test_chunk_manifest_filename_alias_rejected(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    snapshot_id, corpus_id, chunk_set_id, _ = _publish_integrity(settings)
+    canonical = settings.paths.chunk_manifests / f"{chunk_set_id}.json"
+    alias_name = "alias_chunk_manifest.json"
+    shutil.copy(canonical, settings.paths.chunk_manifests / alias_name)
+
+    snap_path = (
+        settings.paths.corpora
+        / CORPUS_NAME
+        / "product"
+        / "snapshots"
+        / f"{snapshot_id}.json"
+    )
+    snap = json.loads(snap_path.read_text(encoding="utf-8"))
+    snap["chunk_manifest"] = alias_name
+    identity = CanonicalSnapshotManifest.model_validate(snap)
+    new_snapshot_id = compute_snapshot_id(identity)
+    atomic_write_text(
+        snap_path.parent / f"{new_snapshot_id}.json",
+        identity.model_dump_json(),
+    )
+    campaign = _campaign(
+        snapshot_id=new_snapshot_id, corpus_id=corpus_id, chunk_set_id=chunk_set_id
+    )
+    with pytest.raises(Exception) as exc:
+        resolve_historical_chunk(settings, campaign, chunk_id=CHUNK_A)
+    assert getattr(exc.value, "code", None) is ErrorCode.GOLD_STATE_UNAVAILABLE
