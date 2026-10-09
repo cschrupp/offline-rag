@@ -16,8 +16,22 @@ IMPLEMENTATION EVIDENCE — STOP FOR INDEPENDENT IMPLEMENTATION REVIEW
 | Frozen 16F-D0 design | `7df8a151c6bf47ab9c93d54edf9bece4e3f6ed39` |
 | Frozen design document | `docs/slice16f_d_application_api_design.md` |
 | Starting HEAD | `7df8a151c6bf47ab9c93d54edf9bece4e3f6ed39` |
-| Implementation SHA | `b6f67a2d365f225bcbb5b6abc62b7cb6b0d8a440` |
-| Documentation SHA | `50f560e4b9f26eae3e73c5c5d06c77614ea80a84` |
+| Prior reviewed tip | `67523ad53bb5c10197560c6ff3c1e7f69eb76a2d` |
+| Implementation SHA | `IMPLEMENTATION_SHA_PENDING` |
+| Documentation SHA | `DOCUMENTATION_SHA_PENDING` |
+
+## Corrective rework (post independent review)
+
+Addresses independent review findings against frozen D0 `7df8a151...`:
+
+| ID | Correction |
+|---|---|
+| F001 | Historical chunk resolution no longer continues past an artifact-integrity failure; multi-document fallback is forbidden |
+| F002 | Canonical chunk-manifest filename must equal `{campaign.chunk_set_id}.json` before load |
+| F003 | Question Check HTTP body is a `decision`-discriminated Pydantic union (`accept` / `reject` / `edit`) with `extra="forbid"` |
+| F004 | `rfc3339_z()` normalizes aware datetimes with `astimezone(UTC)` |
+
+Frozen D0 design document was not semantically edited. No A/B/C scientific semantics changed.
 
 ## Production footprint
 
@@ -61,8 +75,12 @@ finalizer duplication.
 Implements the frozen immutable chain:
 
 validated corpus/snapshot path → snapshot schema/ID → root-confined corpus +
-chunk-set manifests with semantic ID recomputation → canonical chunk artifact
-derivation → exact on-disk `artifact_bytes_hash` → provenance → chunk lookup.
+chunk-set manifests with **canonical chunk-manifest filename agreement** +
+semantic ID recomputation → canonical chunk artifact derivation → exact on-disk
+`artifact_bytes_hash` → provenance → chunk lookup.
+
+Artifact integrity failures during resolution are fail-closed (no skip/fallback
+across multi-document manifests).
 
 Does **not** call `ProductPublicationRegistry.resolve_snapshot()` for task
 evidence. Independent of current embedding/reranker/Qdrant/lexical readiness.
@@ -97,7 +115,7 @@ Commands / results (local):
 
 ```text
 uv run pytest tests/unit/app/test_slice16f_d_*.py
-→ 14 passed
+→ 18 passed
 
 uv run pytest tests/unit/app/test_slice16f_a_gold_lab_foundation.py
 → 22 passed
