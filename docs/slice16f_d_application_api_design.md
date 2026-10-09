@@ -31,6 +31,9 @@ NOT AUTHORIZED
 | Branch | `design/16f-d-application-api-data-plane` |
 | Starting HEAD | `646b1f178e10b49d3f39322dff8314dbd4f9987e` |
 | Design SHA | `aaa409b0338ceb46bfaeeea18f9b2d5dc6ee5e71` |
+| Design SHA fill tip | `982629d25c17f7641688f266785019755aeb8913` |
+| Rework 1 starting HEAD | `982629d25c17f7641688f266785019755aeb8913` |
+| Rework 1 design SHA | `REWORK1_DESIGN_SHA_PENDING` |
 
 Frozen parent decision (must not be reopened):
 
@@ -41,6 +44,17 @@ This document freezes that contract. It does **not** authorize implementation.
 
 Do **not** treat this design materialization as human acceptance of 16F-D
 implementation.
+
+### Design Rework 1
+
+Hardening only (no route/DTO redesign; no production authorization):
+
+- separate HTTP baseline lookup (`gold_baseline_unknown`) from sealed-campaign
+  baseline corruption (`baseline_missing` → `gold_state_unavailable`);
+- idempotency error provenance (true caller conflict vs durable catalog integrity);
+- durable scientific-identity error provenance;
+- exact historical source resolution algorithm and field authority;
+- strict authoring-run path/content identity for discovery and campaign create.
 
 ---
 
@@ -293,16 +307,21 @@ Rules:
 - Resolve `project → workspace → backing corpus`.
 - Scan only the existing canonical authoring-run directory for that corpus
   (`default_authoring_runs_dir(settings, corpus_name=...)`).
-- `baseline_authoring_run_id` used for lookup **MUST** be validated as a safe
-  identity token (`is_safe_identity` / existing safe-id grammar) before any path
-  construction.
+- Every surfaced run **MUST** satisfy the canonical identity rule:
 
-Return **ONLY** runs that are:
+  ```text
+  filename stem == loaded GoldAuthoringRun.authoring_run_id
+  ```
+
+  Path-identity-mismatched artifacts are **not** surfaced (silent skip during
+  discovery; they are never imported under another ID).
+
+Return **ONLY** runs that pass identity, then:
 
 1. valid `GoldAuthoringRun`;
 2. pristine according to accepted 16F-A admission;
 3. exact current workspace snapshot corpus / chunk-set binding;
-4. usable by `GoldCampaignService`.
+4. usable by `GoldCampaignService` (including reviewable-case counting).
 
 Response:
 
@@ -400,8 +419,25 @@ Client **MUST NOT** provide:
 
 1. resolve project;
 2. resolve project workspace / backing corpus;
-3. resolve baseline only by `baseline_authoring_run_id` from canonical server
-   authoring-run storage;
+3. resolve baseline **only** by `baseline_authoring_run_id = R` after safe-ID
+   validation, via exactly:
+
+   ```text
+   default_authoring_run_path(..., authoring_run_id=R)
+   ```
+
+   Then require:
+
+   ```text
+   requested R
+     == canonical filename stem
+     == loaded GoldAuthoringRun.authoring_run_id
+   ```
+
+   - Requested `R` does not resolve to an eligible canonical run → adapter
+     `gold_baseline_unknown` / **404**.
+   - File exists but identity triple mismatches → `gold_state_unavailable` /
+     **409** (do **not** alias one run through another filename).
 4. allocate `campaign_id` server-side;
 5. derive `project_type` from project;
 6. construct `GoldSelectionPolicy` using accepted builder;
@@ -510,6 +546,14 @@ When `task_kind == "question_check"`:
 }
 ```
 
+Exact Question Check source authority:
+
+- `case.source_seed is None` → `source = null`
+- `case.source_seed` present → resolve **exact** `case.source_seed.chunk_id`
+  from the campaign historical binding (algorithm below)
+
+No candidate substitution. No CURRENT substitution. No nearest/fuzzy source.
+
 Must **not** expose: proposal rationale, model judgments, prelabel summary /
 provenance, retrieval hits, hard-call designation/reason.
 
@@ -548,6 +592,14 @@ When `task_kind == "absolute_relevance"`:
 }
 ```
 
+Exact absolute source authority:
+
+- `candidate_chunk_id` is already server-derived from stable task authority;
+- `presentation.candidate` resolves **exact** `candidate_chunk_id` from the
+  campaign historical binding;
+
+No retrieval is run. No neighboring expansion. No source-seed substitution.
+
 ### Absolute current result
 
 - No current effective judgment → `null`
@@ -585,13 +637,80 @@ exposed.
 }
 ```
 
-### Binding rules
+### Historical snapshot resolution algorithm (frozen)
 
-- Resolve from the campaign's **exact immutable historical** snapshot / chunk set.
-- Never CURRENT substitution.
-- Never fuzzy chunk matching.
-- If baseline candidate/source identity disagrees with historical chunk:
-  **FAIL CLOSED** → `gold_state_unavailable`.
+1. load campaign;
+2. resolve **exact** snapshot:
+
+   ```text
+   runtime.publication.resolve_snapshot(
+       campaign.corpus_name,
+       campaign.snapshot_id
+   )
+   ```
+
+3. require resolved snapshot:
+
+   ```text
+   snapshot_id == campaign.snapshot_id
+   corpus_name == campaign.corpus_name
+   identity.corpus_id == campaign.corpus_id
+   identity.chunk_set_id == campaign.chunk_set_id
+   ```
+
+4. use the resolved snapshot's immutable corpus-manifest identity when loading
+   the historical chunk set;
+5. load exact `chunk_set_id`;
+6. construct exact `chunk_id` lookup;
+7. require requested source chunk exists.
+
+Any mismatch / unavailable historical artifact → adapter reason
+`historical_chunk_unavailable` or `historical_chunk_mismatch` →
+`gold_state_unavailable` / **409**.
+
+Explicitly **forbid**:
+
+- `load_current_corpus_chunk_snapshot()`
+- CURRENT chunk state
+- CURRENT workspace snapshot substitution
+- fuzzy / nearest chunk matching
+- retrieval during task-detail source resolution
+
+### GoldSourceContext field authority
+
+| Field | Authority |
+|---|---|
+| `chunk_id` | historical Chunk |
+| `document_id` | historical Chunk |
+| `section_path` | historical Chunk |
+| `page_start` / `page_end` | historical Chunk |
+| `line_start` / `line_end` | historical Chunk |
+| `content_type` | historical Chunk |
+| `text` | historical Chunk |
+| `source_name` | exact historical corpus manifest |
+| `document_title` | baseline case metadata when present (display-only) |
+
+Do **not** use baseline retrieval-hit objects to fill scientific/source fields.
+
+### Baseline / historical identity cross-check
+
+For Question Check `source_seed`:
+
+- if `source_seed.document_id` is non-null: require
+  `source_seed.document_id == historical_chunk.document_id`
+- if `source_seed.section_path` is non-empty: require it equals the historical
+  chunk `section_path` (chunk value does **not** silently supersede a
+  disagreeing seed; mismatch fails closed)
+
+For absolute `PoolCandidate`:
+
+- if `PoolCandidate.document_id` is non-null: require
+  `PoolCandidate.document_id == historical_chunk.document_id`
+- if `PoolCandidate.section_path` is non-empty: require equality with historical
+  chunk `section_path` under the same rule
+
+Mismatch → adapter reason `historical_chunk_mismatch` →
+`gold_state_unavailable`. Do not silently normalize identity disagreement.
 
 ### Forbidden source fields
 
@@ -931,225 +1050,297 @@ No per-route ad hoc mapping.
 Any reachable reason not listed below → `internal_error` with safe reason
 `gold_lab_unmapped_error`.
 
-Adapter-introduced stable reasons (not from `GoldLabError`, but frozen for the
-translator / facade) are included for completeness:
+### Provenance principles (Rework 1)
 
-| Adapter reason | ErrorCode | HTTP | retryable |
-|---|---|---|---|
-| `gold_task_unknown` | `gold_task_unknown` | 404 | false |
-| `gold_task_kind_mismatch` | `request_invalid` | 422 | false |
-| `gold_baseline_unknown` | `gold_baseline_unknown` | 404 | false |
-| `idempotency_key_required` | `request_invalid` | 422 | false |
-| `idempotency_key_invalid` | `request_invalid` | 422 | false |
-| `historical_chunk_unavailable` | `gold_state_unavailable` | 409 | false |
-| `historical_chunk_mismatch` | `gold_state_unavailable` | 409 | false |
+1. **Baseline lookup vs sealed corruption**
+   - HTTP/application baseline lookup failure (requested
+     `baseline_authoring_run_id` does not resolve to an eligible canonical run)
+     → adapter `gold_baseline_unknown` / **404**.
+   - Existing committed campaign sealed file
+     `campaigns/<campaign_id>/baseline/authoring_run.json` missing
+     (`GoldLabError.baseline_missing`) → `gold_state_unavailable` / **409**.
+     Do **not** map accepted-A `baseline_missing` to 404.
+
+2. **Idempotency error provenance**
+   - Only true caller request divergence `idempotency_conflict` →
+     `ErrorCode.idempotency_conflict` / **409**.
+   - Header shape `idempotency_key_required` /
+     `idempotency_key_invalid` → `request_invalid` / **422**.
+   - Persisted catalog/ledger integrity conditions →
+     `gold_state_unavailable` / **409** (not caller conflicts).
+
+3. **Server-owned idempotency programming contract**
+   - `idempotency_command_kind` is server-owned.
+   - If `idempotency_command_kind_invalid` escapes the accepted service
+     boundary → **`internal_error` / 500** (frozen choice; not
+     `request_invalid`).
+   - Impossible server-generated `invalid_idempotency_path` →
+     **`internal_error` / 500** (not attributed to user request data).
+
+4. **Transport ID grammar vs durable identity grammar**
+   - User-controlled path/body IDs validated at HTTP/application boundary
+     (malformed path `project_id` / `campaign_id` / `task_id`) →
+     `request_invalid` / **422**.
+   - After transport validation succeeds, invalid grammar encountered in
+     server-owned durable/generated state is **`gold_state_unavailable`**.
+
+5. **`registration_missing`**
+   - 16F-D v1 has no GET-one-registration route.
+   - Freeze: **`registration_missing` is NOT REACHABLE IN 16F-D v1**.
+   - Do **not** map it to `gold_campaign_unknown`.
+
+6. **`gold_finalize_failed`**
+   - Accepted 16F-C collapses FinalizePreRunError and generic finalizer
+     exceptions into one reason.
+   - Conservative transport mapping without inspecting exception text:
+     `gold_finalize_failed` → `gold_state_unavailable` / **409**.
+
+### Adapter-introduced stable reasons
+
+| Adapter reason | ErrorCode | HTTP | retryable | Reachable |
+|---|---|---|---|---|
+| `gold_task_unknown` | `gold_task_unknown` | 404 | false | yes |
+| `gold_task_kind_mismatch` | `request_invalid` | 422 | false | yes |
+| `gold_baseline_unknown` | `gold_baseline_unknown` | 404 | false | yes |
+| `idempotency_key_required` | `request_invalid` | 422 | false | yes |
+| `idempotency_key_invalid` | `request_invalid` | 422 | false | yes |
+| `historical_chunk_unavailable` | `gold_state_unavailable` | 409 | false | yes |
+| `historical_chunk_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `transport_project_id_invalid` | `request_invalid` | 422 | false | yes |
+| `transport_campaign_id_invalid` | `request_invalid` | 422 | false | yes |
+| `transport_task_id_invalid` | `request_invalid` | 422 | false | yes |
+
+Unknown task IDs are adapter-resolved as `gold_task_unknown` when the sealed
+baseline task set does not contain the path `task_id`.
 
 ### Exhaustive `GoldLabError.reason` → product mapping
 
-Columns: reason → ErrorCode → HTTP → retryable → `details.reason` (same token).
+Columns: reason → ErrorCode → HTTP → retryable → `details.reason` (same token
+unless noted) → Reachable in 16F-D v1.
 
-#### NOT FOUND → `gold_*_unknown`
+#### NOT FOUND (404 product codes)
 
-| reason | ErrorCode | HTTP | retryable |
-|---|---|---|---|
-| `project_not_found` | `gold_project_unknown` | 404 | false |
-| `campaign_not_found` | `gold_campaign_unknown` | 404 | false |
-| `case_not_found` | `request_invalid` | 422 | false |
-| `baseline_missing` | `gold_baseline_unknown` | 404 | false |
-| `registration_missing` | `gold_campaign_unknown` | 404 | false |
+| reason | ErrorCode | HTTP | retryable | Reachable |
+|---|---|---|---|---|
+| `project_not_found` | `gold_project_unknown` | 404 | false | yes |
+| `campaign_not_found` | `gold_campaign_unknown` | 404 | false | yes |
+| `registration_missing` | — | — | — | **NOT REACHABLE IN 16F-D v1** |
 
-Note: unknown task IDs are adapter-resolved as `gold_task_unknown` before service
-call when the sealed-baseline task set does not contain the path `task_id`.
+Caller `case_id` unknown (`case_not_found`) is transport/domain validation →
+`request_invalid` / 422 (listed below), not a Gold “unknown campaign/project”
+404.
+
+Sealed-campaign `baseline_missing` is durable corruption →
+`gold_state_unavailable` / 409 (listed under durable state). Never 404.
 
 #### BUSY → `gold_busy`
 
-| reason | ErrorCode | HTTP | retryable |
-|---|---|---|---|
-| `gold_lab_lease_held` | `gold_busy` | 409 | true |
+| reason | ErrorCode | HTTP | retryable | Reachable |
+|---|---|---|---|---|
+| `gold_lab_lease_held` | `gold_busy` | 409 | true | yes |
 
-#### IDEMPOTENCY → `idempotency_conflict`
+#### TRUE CALLER IDEMPOTENCY CONFLICT → `idempotency_conflict`
 
-| reason | ErrorCode | HTTP | retryable |
-|---|---|---|---|
-| `idempotency_conflict` | `idempotency_conflict` | 409 | false |
-| `idempotency_reservation_exists` | `idempotency_conflict` | 409 | false |
-| `idempotency_reserved_fingerprint_mismatch` | `idempotency_conflict` | 409 | false |
-| `idempotency_reserved_id_mismatch` | `idempotency_conflict` | 409 | false |
-| `idempotency_reserved_key_mismatch` | `idempotency_conflict` | 409 | false |
-| `idempotency_key_mismatch` | `idempotency_conflict` | 409 | false |
-| `idempotency_duplicate_ledger_key` | `idempotency_conflict` | 409 | false |
-| `idempotency_duplicate_record_id` | `idempotency_conflict` | 409 | false |
-| `idempotency_command_kind_mismatch` | `idempotency_conflict` | 409 | false |
+| reason | ErrorCode | HTTP | retryable | Reachable |
+|---|---|---|---|---|
+| `idempotency_conflict` | `idempotency_conflict` | 409 | false | yes |
 
 #### REQUEST INVALID → `request_invalid`
 
-| reason | ErrorCode | HTTP | retryable |
-|---|---|---|---|
-| `invalid_project_id` | `request_invalid` | 422 | false |
-| `invalid_campaign_id` | `request_invalid` | 422 | false |
-| `invalid_task_id` | `request_invalid` | 422 | false |
-| `invalid_record_id` | `request_invalid` | 422 | false |
-| `invalid_judgment_id` | `request_invalid` | 422 | false |
-| `invalid_dataset_id` | `request_invalid` | 422 | false |
-| `invalid_query_fingerprint` | `request_invalid` | 422 | false |
-| `invalid_request_fingerprint` | `request_invalid` | 422 | false |
-| `invalid_selection_policy_fingerprint` | `request_invalid` | 422 | false |
-| `invalid_hard_call_designation_id` | `request_invalid` | 422 | false |
-| `invalid_idempotency_path` | `request_invalid` | 422 | false |
-| `idempotency_key_invalid` | `request_invalid` | 422 | false |
-| `idempotency_command_kind_invalid` | `request_invalid` | 422 | false |
-| `idempotency_status_invalid` | `request_invalid` | 422 | false |
-| `idempotency_schema_invalid` | `request_invalid` | 422 | false |
-| `idempotency_entry_invalid` | `request_invalid` | 422 | false |
-| `absolute_relevance_invalid` | `request_invalid` | 422 | false |
-| `question_check_payload_invalid` | `request_invalid` | 422 | false |
-| `effective_state_qc_edit_not_semantic` | `request_invalid` | 422 | false |
-| `auxiliary_preference_invalid` | `request_invalid` | 422 | false |
-| `auxiliary_pair_not_distinct` | `request_invalid` | 422 | false |
-| `auxiliary_pair_required` | `request_invalid` | 422 | false |
-| `auxiliary_pair_mismatch` | `request_invalid` | 422 | false |
-| `candidate_chunk_required` | `request_invalid` | 422 | false |
-| `candidate_not_in_case` | `request_invalid` | 422 | false |
-| `case_not_reviewable` | `request_invalid` | 422 | false |
-| `question_check_case_not_reviewable` | `request_invalid` | 422 | false |
-| `ledger_case_not_reviewable` | `request_invalid` | 422 | false |
-| `ledger_case_not_found` | `request_invalid` | 422 | false |
-| `ledger_candidate_not_in_case` | `request_invalid` | 422 | false |
-| `hard_call_reason_empty` | `request_invalid` | 422 | false |
-| `hard_call_target_invalid` | `request_invalid` | 422 | false |
-| `hard_call_duplicate_target` | `request_invalid` | 422 | false |
-| `hard_call_designation_id_mismatch` | `request_invalid` | 422 | false |
-| `selection_policy_parameters_invalid` | `request_invalid` | 422 | false |
-| `selection_policy_project_type_mismatch` | `request_invalid` | 422 | false |
-| `provenance_type_invalid` | `request_invalid` | 422 | false |
-| `task_identity_mismatch` | `request_invalid` | 422 | false |
-| `contribution_unknown_finalized_case` | `request_invalid` | 422 | false |
-| `registration_unknown_exported_case` | `request_invalid` | 422 | false |
+Caller/transport scientific request shape only.
+
+| reason | ErrorCode | HTTP | retryable | Reachable |
+|---|---|---|---|---|
+| `absolute_relevance_invalid` | `request_invalid` | 422 | false | yes |
+| `question_check_payload_invalid` | `request_invalid` | 422 | false | yes |
+| `effective_state_qc_edit_not_semantic` | `request_invalid` | 422 | false | yes |
+| `auxiliary_preference_invalid` | `request_invalid` | 422 | false | yes |
+| `auxiliary_pair_not_distinct` | `request_invalid` | 422 | false | yes |
+| `auxiliary_pair_required` | `request_invalid` | 422 | false | yes |
+| `auxiliary_pair_mismatch` | `request_invalid` | 422 | false | yes |
+| `candidate_chunk_required` | `request_invalid` | 422 | false | yes |
+| `candidate_not_in_case` | `request_invalid` | 422 | false | yes |
+| `case_not_reviewable` | `request_invalid` | 422 | false | yes |
+| `question_check_case_not_reviewable` | `request_invalid` | 422 | false | yes |
+| `ledger_case_not_reviewable` | `request_invalid` | 422 | false | yes |
+| `ledger_case_not_found` | `request_invalid` | 422 | false | yes |
+| `ledger_candidate_not_in_case` | `request_invalid` | 422 | false | yes |
+| `hard_call_reason_empty` | `request_invalid` | 422 | false | yes |
+| `hard_call_target_invalid` | `request_invalid` | 422 | false | yes |
+| `hard_call_duplicate_target` | `request_invalid` | 422 | false | yes |
+| `hard_call_designation_id_mismatch` | `request_invalid` | 422 | false | yes |
+| `selection_policy_parameters_invalid` | `request_invalid` | 422 | false | yes |
+| `selection_policy_project_type_mismatch` | `request_invalid` | 422 | false | yes |
+| `provenance_type_invalid` | `request_invalid` | 422 | false | yes |
+| `case_not_found` | `request_invalid` | 422 | false | yes |
+| `baseline_human_state_present` | `request_invalid` | 422 | false | yes (create admission) |
+| `baseline_identity_missing` | `request_invalid` | 422 | false | yes (create admission) |
+| `chunk_set_mismatch` | `request_invalid` | 422 | false | yes (create binding) |
+| `corpus_id_mismatch` | `request_invalid` | 422 | false | yes (create binding) |
+| `corpus_name_mismatch` | `request_invalid` | 422 | false | yes (create binding) |
+
+Note: malformed transport path/body `project_id` / `campaign_id` / `task_id`
+are handled by adapter reasons `transport_*_invalid` before service call, not
+by blaming durable `invalid_*_id` reasons on the client.
 
 #### LIFECYCLE / VALID CONFLICT → `gold_conflict`
 
-| reason | ErrorCode | HTTP | retryable |
-|---|---|---|---|
-| `project_archived` | `gold_conflict` | 409 | false |
-| `project_already_archived` | `gold_conflict` | 409 | false |
-| `project_unarchive_forbidden` | `gold_conflict` | 409 | false |
-| `project_status_invalid` | `gold_conflict` | 409 | false |
-| `project_already_exists` | `gold_conflict` | 409 | false |
-| `campaign_closed` | `gold_conflict` | 409 | false |
-| `campaign_already_closed` | `gold_conflict` | 409 | false |
-| `campaign_status_invalid` | `gold_conflict` | 409 | false |
-| `campaign_already_exists` | `gold_conflict` | 409 | false |
-| `absolute_task_inactive` | `gold_conflict` | 409 | false |
-| `workspace_stale` | `gold_conflict` | 409 | false |
-| `workspace_revision_changed` | `gold_conflict` | 409 | false |
-| `workspace_snapshot_changed` | `gold_conflict` | 409 | false |
-| `workspace_not_active` | `gold_conflict` | 409 | false |
-| `project_type_changed` | `gold_conflict` | 409 | false |
-| `project_workspace_changed` | `gold_conflict` | 409 | false |
-| `registration_conflict` | `gold_conflict` | 409 | false |
-| `gold_finalize_failed` | `gold_conflict` | 409 | false |
-| `baseline_human_state_present` | `gold_conflict` | 409 | false |
-| `baseline_identity_missing` | `gold_conflict` | 409 | false |
-| `chunk_set_mismatch` | `gold_conflict` | 409 | false |
-| `corpus_id_mismatch` | `gold_conflict` | 409 | false |
-| `corpus_name_mismatch` | `gold_conflict` | 409 | false |
-| `dataset_semantic_conflict` | `gold_conflict` | 409 | false |
+| reason | ErrorCode | HTTP | retryable | Reachable |
+|---|---|---|---|---|
+| `project_archived` | `gold_conflict` | 409 | false | yes |
+| `project_already_archived` | `gold_conflict` | 409 | false | yes |
+| `project_unarchive_forbidden` | `gold_conflict` | 409 | false | yes |
+| `project_status_invalid` | `gold_conflict` | 409 | false | yes |
+| `project_already_exists` | `gold_conflict` | 409 | false | yes |
+| `campaign_closed` | `gold_conflict` | 409 | false | yes |
+| `campaign_already_closed` | `gold_conflict` | 409 | false | yes |
+| `campaign_status_invalid` | `gold_conflict` | 409 | false | yes |
+| `campaign_already_exists` | `gold_conflict` | 409 | false | yes |
+| `absolute_task_inactive` | `gold_conflict` | 409 | false | yes |
+| `workspace_stale` | `gold_conflict` | 409 | false | yes |
+| `workspace_revision_changed` | `gold_conflict` | 409 | false | yes |
+| `workspace_snapshot_changed` | `gold_conflict` | 409 | false | yes |
+| `workspace_not_active` | `gold_conflict` | 409 | false | yes |
+| `project_type_changed` | `gold_conflict` | 409 | false | yes |
+| `project_workspace_changed` | `gold_conflict` | 409 | false | yes |
+| `registration_conflict` | `gold_conflict` | 409 | false | yes |
+| `dataset_semantic_conflict` | `gold_conflict` | 409 | false | yes |
 
 #### DURABLE STATE / CORRUPTION → `gold_state_unavailable`
 
-| reason | ErrorCode | HTTP | retryable |
-|---|---|---|---|
-| `baseline_corrupt` | `gold_state_unavailable` | 409 | false |
-| `baseline_hash_mismatch` | `gold_state_unavailable` | 409 | false |
-| `baseline_schema_invalid` | `gold_state_unavailable` | 409 | false |
-| `baseline_unreadable` | `gold_state_unavailable` | 409 | false |
-| `baseline_authoring_run_id_mismatch` | `gold_state_unavailable` | 409 | false |
-| `campaign_corrupt` | `gold_state_unavailable` | 409 | false |
-| `campaign_identity_mismatch` | `gold_state_unavailable` | 409 | false |
-| `campaign_staging_missing` | `gold_state_unavailable` | 409 | false |
-| `project_corrupt` | `gold_state_unavailable` | 409 | false |
-| `project_identity_mismatch` | `gold_state_unavailable` | 409 | false |
-| `export_project_lock_mismatch` | `gold_state_unavailable` | 409 | false |
-| `hard_calls_missing` | `gold_state_unavailable` | 409 | false |
-| `hard_calls_corrupt` | `gold_state_unavailable` | 409 | false |
-| `hard_calls_campaign_mismatch` | `gold_state_unavailable` | 409 | false |
-| `hard_calls_schema_invalid` | `gold_state_unavailable` | 409 | false |
-| `hard_calls_contract_invalid` | `gold_state_unavailable` | 409 | false |
-| `hard_call_target_unknown` | `gold_state_unavailable` | 409 | false |
-| `ledger_schema_invalid` | `gold_state_unavailable` | 409 | false |
-| `ledger_record_invalid` | `gold_state_unavailable` | 409 | false |
-| `ledger_record_type_invalid` | `gold_state_unavailable` | 409 | false |
-| `ledger_semantic_contract_mismatch` | `gold_state_unavailable` | 409 | false |
-| `ledger_filename_invalid` | `gold_state_unavailable` | 409 | false |
-| `ledger_filename_record_id_mismatch` | `gold_state_unavailable` | 409 | false |
-| `ledger_filename_sequence_mismatch` | `gold_state_unavailable` | 409 | false |
-| `ledger_sequence_gap` | `gold_state_unavailable` | 409 | false |
-| `ledger_duplicate_sequence` | `gold_state_unavailable` | 409 | false |
-| `ledger_record_exists` | `gold_state_unavailable` | 409 | false |
-| `ledger_append_failed` | `gold_state_unavailable` | 409 | false |
-| `ledger_provenance_mismatch` | `gold_state_unavailable` | 409 | false |
-| `lease_not_held` | `gold_state_unavailable` | 409 | false |
-| `lease_campaign_mismatch` | `gold_state_unavailable` | 409 | false |
-| `idempotency_catalog_corrupt` | `gold_state_unavailable` | 409 | false |
-| `idempotency_entry_missing` | `gold_state_unavailable` | 409 | false |
-| `idempotency_campaign_mismatch` | `gold_state_unavailable` | 409 | false |
-| `idempotency_committed_missing_ledger` | `gold_state_unavailable` | 409 | false |
-| `idempotency_orphan_ledger_key` | `gold_state_unavailable` | 409 | false |
-| `idempotency_finalize_failed` | `gold_state_unavailable` | 409 | false |
-| `effective_state_unknown_record_type` | `gold_state_unavailable` | 409 | false |
-| `effective_state_duplicate_judgment_id` | `gold_state_unavailable` | 409 | false |
-| `effective_state_supersession_invalid` | `gold_state_unavailable` | 409 | false |
-| `effective_state_supersession_branch` | `gold_state_unavailable` | 409 | false |
-| `effective_state_supersession_non_current` | `gold_state_unavailable` | 409 | false |
-| `effective_state_supersession_unknown` | `gold_state_unavailable` | 409 | false |
-| `effective_state_cross_basis_supersession` | `gold_state_unavailable` | 409 | false |
-| `effective_state_cross_task_supersession` | `gold_state_unavailable` | 409 | false |
-| `effective_state_task_mismatch` | `gold_state_unavailable` | 409 | false |
-| `effective_state_qc_non_reviewable` | `gold_state_unavailable` | 409 | false |
-| `effective_state_qc_payload_invalid` | `gold_state_unavailable` | 409 | false |
-| `effective_state_qc_payload_noncanonical` | `gold_state_unavailable` | 409 | false |
-| `effective_state_qc_fingerprint_mismatch` | `gold_state_unavailable` | 409 | false |
-| `effective_state_absolute_inactive_question` | `gold_state_unavailable` | 409 | false |
-| `effective_state_absolute_missing_candidate` | `gold_state_unavailable` | 409 | false |
-| `effective_state_absolute_non_reviewable` | `gold_state_unavailable` | 409 | false |
-| `effective_state_absolute_null_fingerprint` | `gold_state_unavailable` | 409 | false |
-| `effective_state_absolute_payload_invalid` | `gold_state_unavailable` | 409 | false |
-| `effective_state_absolute_query_mismatch` | `gold_state_unavailable` | 409 | false |
-| `projection_invalid` | `gold_state_unavailable` | 409 | false |
-| `projection_export_mismatch` | `gold_state_unavailable` | 409 | false |
-| `projection_sha256_mismatch` | `gold_state_unavailable` | 409 | false |
-| `candidate_staging_missing` | `gold_state_unavailable` | 409 | false |
-| `candidate_dataset_invalid` | `gold_state_unavailable` | 409 | false |
-| `candidate_schema_invalid` | `gold_state_unavailable` | 409 | false |
-| `candidate_dataset_id_mismatch` | `gold_state_unavailable` | 409 | false |
-| `candidate_exported_ids_mismatch` | `gold_state_unavailable` | 409 | false |
-| `canonical_dataset_invalid` | `gold_state_unavailable` | 409 | false |
-| `canonical_dataset_corrupt` | `gold_state_unavailable` | 409 | false |
-| `canonical_dataset_schema_invalid` | `gold_state_unavailable` | 409 | false |
-| `canonical_dataset_id_mismatch` | `gold_state_unavailable` | 409 | false |
-| `dataset_publish_failed` | `gold_state_unavailable` | 409 | false |
-| `registered_dataset_missing` | `gold_state_unavailable` | 409 | false |
-| `registration_corrupt` | `gold_state_unavailable` | 409 | false |
-| `registration_schema_invalid` | `gold_state_unavailable` | 409 | false |
-| `registration_path_mismatch` | `gold_state_unavailable` | 409 | false |
-| `registration_campaign_mismatch` | `gold_state_unavailable` | 409 | false |
-| `registration_project_mismatch` | `gold_state_unavailable` | 409 | false |
-| `registration_project_type_mismatch` | `gold_state_unavailable` | 409 | false |
-| `registration_provenance_mismatch` | `gold_state_unavailable` | 409 | false |
-| `registration_dataset_path_mismatch` | `gold_state_unavailable` | 409 | false |
-| `registration_dataset_missing` | `gold_state_unavailable` | 409 | false |
-| `registration_dataset_corrupt` | `gold_state_unavailable` | 409 | false |
-| `registration_dataset_schema_invalid` | `gold_state_unavailable` | 409 | false |
-| `registration_dataset_id_mismatch` | `gold_state_unavailable` | 409 | false |
-| `registration_dataset_chunk_set_mismatch` | `gold_state_unavailable` | 409 | false |
-| `registration_dataset_corpus_id_mismatch` | `gold_state_unavailable` | 409 | false |
-| `registration_dataset_corpus_name_mismatch` | `gold_state_unavailable` | 409 | false |
-| `registration_exported_ids_mismatch` | `gold_state_unavailable` | 409 | false |
-| `candidate_chunk_unresolved` | `gold_state_unavailable` | 409 | false |
-| `source_seed_chunk_unresolved` | `gold_state_unavailable` | 409 | false |
-| `source_seed_document_mismatch` | `gold_state_unavailable` | 409 | false |
-| `chunk_set_unavailable` | `gold_state_unavailable` | 409 | false |
-| `workspace_snapshot_missing` | `gold_state_unavailable` | 409 | false |
+Includes sealed baseline corruption, durable identity violations, idempotency
+catalog/ledger integrity, finalizer collapse, and server-owned identity grammar
+faults after transport validation.
+
+| reason | ErrorCode | HTTP | retryable | Reachable |
+|---|---|---|---|---|
+| `baseline_missing` | `gold_state_unavailable` | 409 | false | yes |
+| `baseline_corrupt` | `gold_state_unavailable` | 409 | false | yes |
+| `baseline_hash_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `baseline_schema_invalid` | `gold_state_unavailable` | 409 | false | yes |
+| `baseline_unreadable` | `gold_state_unavailable` | 409 | false | yes |
+| `baseline_authoring_run_id_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `campaign_corrupt` | `gold_state_unavailable` | 409 | false | yes |
+| `campaign_identity_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `campaign_staging_missing` | `gold_state_unavailable` | 409 | false | yes |
+| `project_corrupt` | `gold_state_unavailable` | 409 | false | yes |
+| `project_identity_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `export_project_lock_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `hard_calls_missing` | `gold_state_unavailable` | 409 | false | yes |
+| `hard_calls_corrupt` | `gold_state_unavailable` | 409 | false | yes |
+| `hard_calls_campaign_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `hard_calls_schema_invalid` | `gold_state_unavailable` | 409 | false | yes |
+| `hard_calls_contract_invalid` | `gold_state_unavailable` | 409 | false | yes |
+| `hard_call_target_unknown` | `gold_state_unavailable` | 409 | false | yes |
+| `ledger_schema_invalid` | `gold_state_unavailable` | 409 | false | yes |
+| `ledger_record_invalid` | `gold_state_unavailable` | 409 | false | yes |
+| `ledger_record_type_invalid` | `gold_state_unavailable` | 409 | false | yes |
+| `ledger_semantic_contract_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `ledger_filename_invalid` | `gold_state_unavailable` | 409 | false | yes |
+| `ledger_filename_record_id_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `ledger_filename_sequence_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `ledger_sequence_gap` | `gold_state_unavailable` | 409 | false | yes |
+| `ledger_duplicate_sequence` | `gold_state_unavailable` | 409 | false | yes |
+| `ledger_record_exists` | `gold_state_unavailable` | 409 | false | yes |
+| `ledger_append_failed` | `gold_state_unavailable` | 409 | false | yes |
+| `ledger_provenance_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `lease_not_held` | `gold_state_unavailable` | 409 | false | yes |
+| `lease_campaign_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `task_identity_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `contribution_unknown_finalized_case` | `gold_state_unavailable` | 409 | false | yes |
+| `registration_unknown_exported_case` | `gold_state_unavailable` | 409 | false | yes |
+| `gold_finalize_failed` | `gold_state_unavailable` | 409 | false | yes |
+| `idempotency_catalog_corrupt` | `gold_state_unavailable` | 409 | false | yes |
+| `idempotency_schema_invalid` | `gold_state_unavailable` | 409 | false | yes |
+| `idempotency_entry_invalid` | `gold_state_unavailable` | 409 | false | yes |
+| `idempotency_campaign_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `idempotency_key_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `idempotency_reservation_exists` | `gold_state_unavailable` | 409 | false | yes |
+| `idempotency_entry_missing` | `gold_state_unavailable` | 409 | false | yes |
+| `idempotency_orphan_ledger_key` | `gold_state_unavailable` | 409 | false | yes |
+| `idempotency_duplicate_ledger_key` | `gold_state_unavailable` | 409 | false | yes |
+| `idempotency_duplicate_record_id` | `gold_state_unavailable` | 409 | false | yes |
+| `idempotency_reserved_id_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `idempotency_reserved_key_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `idempotency_reserved_fingerprint_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `idempotency_command_kind_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `idempotency_status_invalid` | `gold_state_unavailable` | 409 | false | yes |
+| `idempotency_committed_missing_ledger` | `gold_state_unavailable` | 409 | false | yes |
+| `idempotency_finalize_failed` | `gold_state_unavailable` | 409 | false | yes |
+| `invalid_project_id` | `gold_state_unavailable` | 409 | false | yes (post-transport durable) |
+| `invalid_campaign_id` | `gold_state_unavailable` | 409 | false | yes (post-transport durable) |
+| `invalid_task_id` | `gold_state_unavailable` | 409 | false | yes (post-transport durable) |
+| `invalid_record_id` | `gold_state_unavailable` | 409 | false | yes |
+| `invalid_judgment_id` | `gold_state_unavailable` | 409 | false | yes |
+| `invalid_dataset_id` | `gold_state_unavailable` | 409 | false | yes |
+| `invalid_query_fingerprint` | `gold_state_unavailable` | 409 | false | yes |
+| `invalid_request_fingerprint` | `gold_state_unavailable` | 409 | false | yes |
+| `invalid_selection_policy_fingerprint` | `gold_state_unavailable` | 409 | false | yes |
+| `invalid_hard_call_designation_id` | `gold_state_unavailable` | 409 | false | yes |
+| `effective_state_unknown_record_type` | `gold_state_unavailable` | 409 | false | yes |
+| `effective_state_duplicate_judgment_id` | `gold_state_unavailable` | 409 | false | yes |
+| `effective_state_supersession_invalid` | `gold_state_unavailable` | 409 | false | yes |
+| `effective_state_supersession_branch` | `gold_state_unavailable` | 409 | false | yes |
+| `effective_state_supersession_non_current` | `gold_state_unavailable` | 409 | false | yes |
+| `effective_state_supersession_unknown` | `gold_state_unavailable` | 409 | false | yes |
+| `effective_state_cross_basis_supersession` | `gold_state_unavailable` | 409 | false | yes |
+| `effective_state_cross_task_supersession` | `gold_state_unavailable` | 409 | false | yes |
+| `effective_state_task_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `effective_state_qc_non_reviewable` | `gold_state_unavailable` | 409 | false | yes |
+| `effective_state_qc_payload_invalid` | `gold_state_unavailable` | 409 | false | yes |
+| `effective_state_qc_payload_noncanonical` | `gold_state_unavailable` | 409 | false | yes |
+| `effective_state_qc_fingerprint_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `effective_state_absolute_inactive_question` | `gold_state_unavailable` | 409 | false | yes |
+| `effective_state_absolute_missing_candidate` | `gold_state_unavailable` | 409 | false | yes |
+| `effective_state_absolute_non_reviewable` | `gold_state_unavailable` | 409 | false | yes |
+| `effective_state_absolute_null_fingerprint` | `gold_state_unavailable` | 409 | false | yes |
+| `effective_state_absolute_payload_invalid` | `gold_state_unavailable` | 409 | false | yes |
+| `effective_state_absolute_query_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `projection_invalid` | `gold_state_unavailable` | 409 | false | yes |
+| `projection_export_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `projection_sha256_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `candidate_staging_missing` | `gold_state_unavailable` | 409 | false | yes |
+| `candidate_dataset_invalid` | `gold_state_unavailable` | 409 | false | yes |
+| `candidate_schema_invalid` | `gold_state_unavailable` | 409 | false | yes |
+| `candidate_dataset_id_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `candidate_exported_ids_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `canonical_dataset_invalid` | `gold_state_unavailable` | 409 | false | yes |
+| `canonical_dataset_corrupt` | `gold_state_unavailable` | 409 | false | yes |
+| `canonical_dataset_schema_invalid` | `gold_state_unavailable` | 409 | false | yes |
+| `canonical_dataset_id_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `dataset_publish_failed` | `gold_state_unavailable` | 409 | false | yes |
+| `registered_dataset_missing` | `gold_state_unavailable` | 409 | false | yes |
+| `registration_corrupt` | `gold_state_unavailable` | 409 | false | yes |
+| `registration_schema_invalid` | `gold_state_unavailable` | 409 | false | yes |
+| `registration_path_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `registration_campaign_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `registration_project_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `registration_project_type_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `registration_provenance_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `registration_dataset_path_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `registration_dataset_missing` | `gold_state_unavailable` | 409 | false | yes |
+| `registration_dataset_corrupt` | `gold_state_unavailable` | 409 | false | yes |
+| `registration_dataset_schema_invalid` | `gold_state_unavailable` | 409 | false | yes |
+| `registration_dataset_id_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `registration_dataset_chunk_set_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `registration_dataset_corpus_id_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `registration_dataset_corpus_name_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `registration_exported_ids_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `candidate_chunk_unresolved` | `gold_state_unavailable` | 409 | false | yes |
+| `source_seed_chunk_unresolved` | `gold_state_unavailable` | 409 | false | yes |
+| `source_seed_document_mismatch` | `gold_state_unavailable` | 409 | false | yes |
+| `chunk_set_unavailable` | `gold_state_unavailable` | 409 | false | yes |
+| `workspace_snapshot_missing` | `gold_state_unavailable` | 409 | false | yes |
+
+#### SERVER PROGRAMMING ESCAPES → `internal_error`
+
+| reason | ErrorCode | HTTP | retryable | Reachable |
+|---|---|---|---|---|
+| `idempotency_command_kind_invalid` | `internal_error` | 500 | false | yes (if escapes) |
+| `invalid_idempotency_path` | `internal_error` | 500 | false | yes (if escapes) |
+
+`details.reason` for these remains the original reason token (closed code), not
+client-facing prose.
 
 #### Default
 
@@ -1167,11 +1358,14 @@ Any other / future / unlisted reachable reason:
 |---|---|
 | 200 | Successful read; archive/close; mutation commit/replay; export replay |
 | 201 | Project/campaign create; first export registration |
-| 404 | Unknown project / campaign / task / baseline |
-| 409 | Conflict / busy / durable state unavailable / idempotency conflict |
-| 422 | Request validation / invalid scientific request shape |
-| 500 | Unmapped internal faults |
+| 404 | Unknown project / campaign / task; HTTP baseline lookup unknown |
+| 409 | Conflict / busy / durable state unavailable / true idempotency conflict |
+| 422 | Request validation / invalid scientific request shape / transport IDs |
+| 500 | Unmapped internal faults; escaped server programming invariants |
 | 503 | Runtime not ready |
+
+Note: sealed-campaign `baseline_missing` is **409** `gold_state_unavailable`,
+never 404.
 
 No 202.
 
@@ -1274,7 +1468,8 @@ When separately authorized, implementation **MUST** cover at least:
 
 1. Route surface exactly matches this freeze (no extras).
 2. Project/campaign DTO field sets exact; no path leakage.
-3. Baseline discovery returns only pristine / snapshot-bound runs; rejects path input.
+3. Baseline discovery returns only pristine / snapshot-bound runs; rejects path input;
+   filename stem == `authoring_run_id` identity rule.
 4. Campaign create derives ids/fingerprints server-side; delegates to
    `GoldCampaignService`.
 5. Task list order matches `project_tasks()`; filters compose without reshuffle.
@@ -1297,6 +1492,27 @@ When separately authorized, implementation **MUST** cover at least:
 19. Regression: all accepted 16F-A / 16F-B / 16F-C tests remain green.
 20. No retrieval/config/`base.yaml` mutation; no UI modules introduced.
 
+### Rework 1 additional tests
+
+21. Requested baseline ID `A` whose file contains run ID `B` → fail closed;
+    `B` is not silently imported.
+22. Sealed campaign baseline file missing → `gold_state_unavailable`, **not**
+    `gold_baseline_unknown`.
+23. Corrupted idempotency catalog/ledger relation → `gold_state_unavailable`,
+    **not** `idempotency_conflict`.
+24. True same-key / different-request → `idempotency_conflict`.
+25. `task_identity_mismatch` in durable ledger → `gold_state_unavailable`.
+26. Registration exported case absent from sealed baseline →
+    `gold_state_unavailable`.
+27. Question Check source resolves `source_seed` exact historical chunk.
+28. Absolute detail resolves exact candidate historical chunk.
+29. Workspace CURRENT advances after campaign creation → task detail still
+    returns campaign historical source.
+30. Historical snapshot / chunk-set mismatch → `gold_state_unavailable`.
+31. Baseline candidate/source `document_id` mismatch →
+    `gold_state_unavailable`.
+32. No retrieval/model call occurs during task-detail source resolution.
+
 ### Regression requirements
 
 - Accepted 16F-A foundation tests
@@ -1311,7 +1527,8 @@ When separately authorized, implementation **MUST** cover at least:
 
 | Gate | Status |
 |---|---|
-| 16F-D0 design materialization | AUTHORIZED (this document) |
+| 16F-D0 design materialization | AUTHORIZED |
+| 16F-D0 Design Rework 1 | AUTHORIZED (this revision) |
 | Independent design review | PENDING |
 | Human design acceptance | PENDING (do not claim) |
 | 16F-D production implementation | NOT AUTHORIZED |
