@@ -15,6 +15,11 @@
 | Rework 1 starting HEAD | `b4de3409219dae8d7c0682707a8dff2facd7adbf` |
 | Rework 1 implementation SHA | `3cf64b366556e02eb1275fd96e0ee5cb2c09fd3a` |
 | Rework 1 documentation SHA | `046fb6b3e5d640121b7a9c727242484eec84d454` |
+| Rework 1 evidence SHA fill | `0110311d12e98d4892ff3b7f35110871fdcd5365` |
+| Rework 1 prior final tip | `bac812e3646e9b4e6e148859c92d5afa9ade36b7` |
+| Rework 2 starting HEAD | `bac812e3646e9b4e6e148859c92d5afa9ade36b7` |
+| Rework 2 implementation SHA |  |
+| Rework 2 documentation SHA | _(filled after docs commit)_ |
 
 ## Scope
 
@@ -47,6 +52,17 @@ Hardening only (no redesign; no 16F-B entry):
 - Ledger immutable IDs validated before any ledger file publication
 - Ledger task membership validated against sealed baseline case candidate pools
 - Sealed baseline load verifies `authoring_run_id` + SHA-256 bytes
+
+## Rework 2 — Ledger audit-integrity closure
+
+Narrow closure so append and replay agree on valid immutable records:
+
+- `list_records` loads sealed baseline and validates every row against it
+- Shared sealed-authority validator used before append publication and on each read
+- Read-time case/candidate membership + deterministic task-id recomputation
+- Auxiliary preference: persisted payload is the pair authority; optional args must match
+- `supersedes_judgment_id` when present must match `goldjud_<32 hex>` grammar only (no 16F-B chain semantics)
+- Query fingerprint remains grammar-only when present (no effective-query validation)
 
 ## Non-scope (explicit)
 
@@ -116,7 +132,7 @@ data/gold-lab/
 
 `tests/unit/app/test_slice16f_a_gold_lab_foundation.py`
 
-Matrix coverage: paths, ids, selection policy, projects/lifecycle, baseline admission, exact binding + CURRENT race, historical identity, reviewable helper, Hard Calls, atomic campaign publication, ledger append/integrity, campaign locking, Rework 1 strict IDs / path safety / commit races / ledger membership / sealed baseline authority, non-scope surface assertions.
+Matrix coverage: paths, ids, selection policy, projects/lifecycle, baseline admission, exact binding + CURRENT race, historical identity, reviewable helper, Hard Calls, atomic campaign publication, ledger append/integrity, campaign locking, Rework 1 strict IDs / path safety / commit races / ledger membership / sealed baseline authority, Rework 2 read-time audit validation / auxiliary payload authority / supersedes grammar, non-scope surface assertions.
 
 ## Validation
 
@@ -131,14 +147,14 @@ uv run ruff check src/offline_rag/app/gold_lab \
 git diff --check
 ```
 
-## Governance after 16F-A / Rework 1
+## Governance after 16F-A / Rework 2
 
 | Gate | Status |
 |---|---|
 | 16F design authority | FROZEN at `4fde40da2458d69f9249b8334210fc84e9f3239c` |
-| 16F-A | REWORK AUTHORIZED (this hardening) — not human-accepted |
+| 16F-A | REWORK 2 AUTHORIZED (ledger audit-integrity closure) — not human-accepted |
 | 16F-B / 16F-C / 16F-D | NOT AUTHORIZED |
 | 16G–16H | NOT AUTHORIZED |
 | 9G | DEFERRED / NOT AUTHORIZED |
 
-After 16F-A (+ Rework 1) the repository has durable, auditable Gold Lab storage and immutable campaign provenance, but still no product/UI client path to create or mutate scientific truth.
+After 16F-A (+ Rework 1 + Rework 2) the repository has durable, auditable Gold Lab storage whose append and replay paths agree on sealed-baseline scientific identity, but still no product/UI client path to create or mutate scientific truth.
