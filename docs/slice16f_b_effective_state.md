@@ -15,7 +15,7 @@
 | Rework 1 documentation SHA | `60b5c795df76fa0ab5d2d9b95b67b0e576794ae9` |
 | Rework 2 starting HEAD | `5b0fca3b675debf3b96b4b595a2cec0640b83327` |
 | Rework 2 implementation SHA | `f2118986e40e2058a89c3053b8456eaa69271eca` |
-| Rework 2 documentation SHA | `_FILL_AFTER_DOCS_COMMIT_` |
+| Rework 2 documentation SHA | `4fa27b232ad63a90d66ca441108e2f000680f6bb` |
 
 ## Scope
 
