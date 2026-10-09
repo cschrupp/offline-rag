@@ -68,6 +68,18 @@ class MutationResult:
     replayed: bool
 
 
+def _validate_optional_provenance(value: object, *, field_name: str) -> str | None:
+    """Strict runtime contract: optional provenance is exactly str or None."""
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise GoldLabError(
+            "provenance_type_invalid",
+            f"{field_name} must be a string or null",
+        )
+    return value
+
+
 class GoldLabMutationService:
     """Durable idempotent mutation commands under project+campaign leases."""
 
@@ -147,10 +159,15 @@ class GoldLabMutationService:
         case_id: str,
         payload: dict[str, Any],
         idempotency_key: str,
-        game_id: str | None = None,
-        presentation_id: str | None = None,
+        game_id: object = None,
+        presentation_id: object = None,
     ) -> MutationResult:
         cid = validate_campaign_id(campaign_id)
+        normalize_idempotency_key(idempotency_key)
+        game_id = _validate_optional_provenance(game_id, field_name="game_id")
+        presentation_id = _validate_optional_provenance(
+            presentation_id, field_name="presentation_id"
+        )
 
         def prepare(campaign: GoldCampaign, state: EffectiveCampaignState, reserved):
             baseline = self._load_baseline(campaign)
@@ -210,10 +227,15 @@ class GoldLabMutationService:
         candidate_chunk_id: str,
         relevance: object,
         idempotency_key: str,
-        game_id: str | None = None,
-        presentation_id: str | None = None,
+        game_id: object = None,
+        presentation_id: object = None,
     ) -> MutationResult:
         cid = validate_campaign_id(campaign_id)
+        normalize_idempotency_key(idempotency_key)
+        game_id = _validate_optional_provenance(game_id, field_name="game_id")
+        presentation_id = _validate_optional_provenance(
+            presentation_id, field_name="presentation_id"
+        )
         try:
             abs_payload = AbsoluteRelevancePayload.model_validate(
                 {"relevance": relevance}
@@ -287,10 +309,15 @@ class GoldLabMutationService:
         preferred_chunk_id: str,
         other_chunk_id: str,
         idempotency_key: str,
-        game_id: str | None = None,
-        presentation_id: str | None = None,
+        game_id: object = None,
+        presentation_id: object = None,
     ) -> MutationResult:
         cid = validate_campaign_id(campaign_id)
+        normalize_idempotency_key(idempotency_key)
+        game_id = _validate_optional_provenance(game_id, field_name="game_id")
+        presentation_id = _validate_optional_provenance(
+            presentation_id, field_name="presentation_id"
+        )
         if preferred_chunk_id == other_chunk_id:
             raise GoldLabError(
                 "auxiliary_pair_not_distinct",

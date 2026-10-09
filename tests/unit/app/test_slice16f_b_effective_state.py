@@ -1528,3 +1528,163 @@ def test_rework1_question_check_canonical_replay(tmp_path: Path) -> None:
     )
     state = mut6.load_effective_state(campaign6.campaign_id)
     assert state.current_question_for_case(CASE_ID).decision.value == "reject"
+
+
+# --- Rework 2 ---
+
+
+def _assert_no_reservation_or_ledger(
+    settings, store, campaign_id: str, *, key: str
+) -> None:
+    assert list(idempotency_dir(settings, campaign_id).glob("*.json")) == []
+    assert GoldLabLedger(settings, store=store).list_records(campaign_id) == []
+    # Also ensure the hashed path for this key was never created.
+    from offline_rag.app.gold_lab.idempotency import (
+        idempotency_entry_filename,
+        normalize_idempotency_key,
+    )
+
+    path = idempotency_entry_path(
+        settings, campaign_id, idempotency_entry_filename(normalize_idempotency_key(key))
+    )
+    assert not path.exists()
+
+
+def test_rework2_question_check_invalid_provenance_no_reservation(
+    tmp_path: Path,
+) -> None:
+    settings, store, campaign, mut = _ready(tmp_path / "r2_qc")
+    with pytest.raises(GoldLabError) as exc:
+        mut.submit_question_check(
+            campaign_id=campaign.campaign_id,
+            case_id=CASE_ID,
+            payload={"decision": "accept"},
+            idempotency_key="prov_qc_game",
+            game_id=123,  # type: ignore[arg-type]
+        )
+    assert exc.value.reason == "provenance_type_invalid"
+    _assert_no_reservation_or_ledger(
+        settings, store, campaign.campaign_id, key="prov_qc_game"
+    )
+
+    with pytest.raises(GoldLabError) as exc:
+        mut.submit_question_check(
+            campaign_id=campaign.campaign_id,
+            case_id=CASE_ID,
+            payload={"decision": "accept"},
+            idempotency_key="prov_qc_pres",
+            presentation_id=["x"],  # type: ignore[arg-type]
+        )
+    assert exc.value.reason == "provenance_type_invalid"
+    _assert_no_reservation_or_ledger(
+        settings, store, campaign.campaign_id, key="prov_qc_pres"
+    )
+
+
+def test_rework2_absolute_invalid_provenance_no_reservation(tmp_path: Path) -> None:
+    settings, store, campaign, mut = _ready(tmp_path / "r2_abs")
+    mut.submit_question_check(
+        campaign_id=campaign.campaign_id,
+        case_id=CASE_ID,
+        payload={"decision": "accept"},
+        idempotency_key="qc_for_abs",
+    )
+    before = GoldLabLedger(settings, store=store).list_records(campaign.campaign_id)
+    with pytest.raises(GoldLabError) as exc:
+        mut.submit_absolute_relevance(
+            campaign_id=campaign.campaign_id,
+            case_id=CASE_ID,
+            candidate_chunk_id=CHUNK_A,
+            relevance=2,
+            idempotency_key="prov_abs_game",
+            game_id=True,  # type: ignore[arg-type]
+        )
+    assert exc.value.reason == "provenance_type_invalid"
+    after = GoldLabLedger(settings, store=store).list_records(campaign.campaign_id)
+    assert after == before
+    assert not idempotency_entry_path(
+        settings,
+        campaign.campaign_id,
+        idempotency_entry_filename(normalize_idempotency_key("prov_abs_game")),
+    ).exists()
+
+    with pytest.raises(GoldLabError) as exc:
+        mut.submit_absolute_relevance(
+            campaign_id=campaign.campaign_id,
+            case_id=CASE_ID,
+            candidate_chunk_id=CHUNK_A,
+            relevance=2,
+            idempotency_key="prov_abs_pres",
+            presentation_id={"id": "p"},  # type: ignore[arg-type]
+        )
+    assert exc.value.reason == "provenance_type_invalid"
+    assert GoldLabLedger(settings, store=store).list_records(campaign.campaign_id) == before
+    assert not any(
+        r.record_type is GoldLedgerRecordType.ABSOLUTE_RELEVANCE for r in before
+    )
+
+
+def test_rework2_auxiliary_invalid_provenance_no_reservation(tmp_path: Path) -> None:
+    settings, store, campaign, mut = _ready(tmp_path / "r2_aux")
+    mut.submit_question_check(
+        campaign_id=campaign.campaign_id,
+        case_id=CASE_ID,
+        payload={"decision": "accept"},
+        idempotency_key="qc_for_aux",
+    )
+    before = len(GoldLabLedger(settings, store=store).list_records(campaign.campaign_id))
+    with pytest.raises(GoldLabError) as exc:
+        mut.submit_auxiliary_preference(
+            campaign_id=campaign.campaign_id,
+            case_id=CASE_ID,
+            preferred_chunk_id=CHUNK_A,
+            other_chunk_id=CHUNK_B,
+            idempotency_key="prov_aux",
+            game_id=b"g",  # type: ignore[arg-type]
+        )
+    assert exc.value.reason == "provenance_type_invalid"
+    rows = GoldLabLedger(settings, store=store).list_records(campaign.campaign_id)
+    assert len(rows) == before
+    assert not any(
+        r.record_type is GoldLedgerRecordType.AUXILIARY_PREFERENCE for r in rows
+    )
+    assert not idempotency_entry_path(
+        settings,
+        campaign.campaign_id,
+        idempotency_entry_filename(normalize_idempotency_key("prov_aux")),
+    ).exists()
+
+
+def test_rework2_fresh_retry_after_invalid_provenance(tmp_path: Path) -> None:
+    settings, store, campaign, mut = _ready(tmp_path / "r2_retry")
+    key = "retry_after_bad_prov"
+    with pytest.raises(GoldLabError) as exc:
+        mut.submit_question_check(
+            campaign_id=campaign.campaign_id,
+            case_id=CASE_ID,
+            payload={"decision": "accept"},
+            idempotency_key=key,
+            game_id=123,  # type: ignore[arg-type]
+        )
+    assert exc.value.reason == "provenance_type_invalid"
+    _assert_no_reservation_or_ledger(settings, store, campaign.campaign_id, key=key)
+
+    ok = mut.submit_question_check(
+        campaign_id=campaign.campaign_id,
+        case_id=CASE_ID,
+        payload={"decision": "accept"},
+        idempotency_key=key,
+        game_id="g1",
+    )
+    assert ok.replayed is False
+    rows = GoldLabLedger(settings, store=store).list_records(campaign.campaign_id)
+    assert len(rows) == 1
+    assert rows[0].record_id == ok.record.record_id
+    assert rows[0].game_id == "g1"
+    entry_path = idempotency_entry_path(
+        settings,
+        campaign.campaign_id,
+        idempotency_entry_filename(normalize_idempotency_key(key)),
+    )
+    assert entry_path.is_file()
+    assert json.loads(entry_path.read_text(encoding="utf-8"))["status"] == "committed"
