@@ -2,7 +2,7 @@
 
 ```text
 16F GOLD LAB DATA PLANE
-DESIGN CANDIDATE — REWORK 2
+DESIGN CANDIDATE — REWORK 3
 
 INDEPENDENT DESIGN REVIEW:
 PENDING
@@ -34,6 +34,9 @@ e50b041ae8ef5a8624b74e00c4f32b859be62458
 
 REWORK 1 CANDIDATE:
 3b94856fd26541dc8c21869a345ce2a3f91d02f2
+
+REWORK 2 CANDIDATE:
+0e00fe9bbee685f3a6ce7e98ac146161d178cdff
 ```
 
 ## Purpose
@@ -55,7 +58,9 @@ Normative decisions reused here: **S16-D23 … S16-D34**. Explicit deferrals:
 
 Rework 1 closes implementation-readiness gaps (R1-01 … R1-18). Rework 2 freezes
 remaining durable-identity, Hard Call authority, dataset-reuse, and
-crash/idempotency interactions without redesigning D01–D20 or reopening R1.
+crash/idempotency interactions. Rework 3 freezes reviewable-case /
+zero-candidate non-vacuous completion and request-fingerprint reuse without
+redesigning D01–D20 or reopening R1 / R2.
 
 ## Existing scientific contracts (must reuse)
 
@@ -515,6 +520,41 @@ or presentation cosmetics.
 
 Gold Lab human work units are atomic and resumable (S16-D24).
 
+### Reviewable case (R3-01)
+
+A baseline `SilverCase` is **REVIEWABLE** by Gold Lab only when:
+
+1. `proposed_query` is non-null / nonblank; **and**
+2. `candidates` is non-empty.
+
+Equivalent conceptual predicate:
+
+```text
+reviewable_case =
+  case.proposed_query is not None
+  and canonicalize_query(case.proposed_query) succeeds
+  and len(case.candidates) > 0
+```
+
+A baseline case that is **not** reviewable:
+
+- remains preserved in the immutable baseline;
+- is not deleted;
+- is not silently repaired;
+- receives no Question Check task;
+- receives no absolute-relevance tasks;
+- receives no Hard Call designation;
+- contributes no Gold Lab score / counters;
+- cannot become Gold-finalized through this campaign.
+
+This permits a valid imported authoring run to contain historical failed /
+unpooled cases without making the entire campaign invalid.
+
+**No candidate generation / pooling is authorized in 16F.**
+
+This aligns with existing `SilverCase.review_complete()`, which requires a
+non-empty candidate set (`bool(candidate_ids) and judged == candidate_ids`).
+
 ### Task kinds (scientific / ledger)
 
 | Kind | Role |
@@ -540,21 +580,30 @@ completed
 ```
 
 Do **NOT** add fake completion for rejected questions.
+Do **NOT** synthesize a fake `rejected` decision merely because a case has no
+candidate pool.
 
-### Task activation (R1-08)
+### Task activation (R1-08, R3-02, R3-03)
 
-**QUESTION CHECK:** active for each reviewable case.
+**QUESTION CHECK** (R3-02):
 
-**ABSOLUTE RELEVANCE:**
+- task exists / is active **only** for **REVIEWABLE** cases (R3-01);
+- non-reviewable baseline cases are inert in Gold Lab task projection.
 
-- active only when current effective question decision is `accept` or `edit`;
-- before Question Check completion: absolute tasks are **not** active in
-  workload projection;
-- after `reject`: absolute tasks are **not** active;
-- after `accept` / `edit`: absolute tasks become active;
+**ABSOLUTE RELEVANCE** (R3-03):
+
+For each **REVIEWABLE** case: one stable `absolute_relevance` task exists per
+candidate `chunk_id`.
+
+- before Question Check accept / edit: absolute tasks inactive;
+- after accept / edit: absolute tasks active;
+- after reject: absolute tasks inactive;
 - after semantic edit: same stable task IDs remain; judgments bound to prior
   query fingerprint are ineffective; those tasks become `pending` against the
   new query.
+
+For a non-reviewable zero-candidate case: there are **no** Gold Lab absolute
+tasks and **no** Question Check task.
 
 This keeps stable task identity while preserving query-basis correctness.
 
@@ -597,7 +646,8 @@ Conceptual structure:
 Requirements:
 
 - `target_task_id` **MUST** resolve to an `absolute_relevance` task in this
-  campaign;
+  campaign belonging to a **REVIEWABLE** case (R3-06);
+- non-reviewable / zero-candidate cases cannot contain Hard Call targets;
 - one designation maximum per target task in v1;
 - `designation_id` **MUST** be recomputed / validated from:
 
@@ -767,6 +817,40 @@ Idempotency metadata / request fingerprint **MUST** be durable enough to survive
 process restart.
 
 **MUST NOT** rely only on React / client deduplication.
+
+### Request fingerprint (R3-08)
+
+Freeze durable Gold Lab mutation request fingerprint semantics to reuse:
+
+```text
+offline_rag.app.workspace.models.canonical_request_fingerprint
+```
+
+Representation:
+
+```text
+reqfp_<sha256>
+```
+
+The helper canonicalizes JSON as currently defined:
+
+```text
+json.dumps(
+  payload,
+  sort_keys=True,
+  separators=(",", ":"),
+  ensure_ascii=False
+)
+```
+
+then SHA-256 over UTF-8 bytes.
+
+Gold Lab **MUST NOT** invent a second request-fingerprint encoder.
+
+The exact canonical request payload for each mutation command is frozen in the
+relevant implementation subphase before that command is implemented.
+
+This is an idempotency identity, not a scientific identity.
 
 ### Mutation processing order vs lifecycle gates (R2-07)
 
@@ -1052,6 +1136,25 @@ Complete all-zero candidate grading:
 
 Existing model / prelabel judgments remain advisory and unchanged.
 
+### Non-reviewable baseline cases in projection (R3-07)
+
+Non-reviewable baseline cases remain **PENDING** / pristine in the projected
+`GoldAuthoringRun` unless existing non-Gold-Lab baseline structure requires
+otherwise.
+
+They **MUST NOT** be manufactured into:
+
+- `ACCEPTED`
+- `EDITED`
+- `REJECTED`
+
+solely due to being non-reviewable.
+
+Existing Gold finalization naturally excludes them because only valid
+`ACCEPTED` / `EDITED` cases are selected.
+
+No omission from the immutable baseline is permitted.
+
 ---
 
 ## 16F-D15 — Blind expert authority
@@ -1261,20 +1364,36 @@ Old-query / superseded judgments: **0** current points.
 Count once per stable campaign / case Question Check task when a current
 effective decision exists: `accept` | `edit` | `reject`.
 
+Question Check tasks exist only for **REVIEWABLE** cases (R3-01 / R3-02).
+
 Correction / retry: never more than one bonus.
 
-### C. Complete evidence map / case +10
+### C. Complete evidence map / case +10 (R3-04)
 
-Count once when:
+Count once when **all** of:
 
-- current question decision is `accept` or `edit`;
-- every current candidate absolute task has a current effective judgment for
-  the current query.
+- case is **REVIEWABLE**;
+- current Question Check decision is `accept` or `edit`;
+- active absolute-task count `> 0`;
+- every active absolute task has a current effective judgment for the current
+  query.
 
-A complete all-zero map **MAY** receive the work-completion bonus but remains
-scientifically non-finalizable under existing Gold rules.
+Therefore:
+
+```text
+0 candidate tasks
+MUST NOT satisfy case completion
+```
+
+This mirrors existing `SilverCase.review_complete()`, which requires a
+non-empty candidate set.
+
+A complete all-zero map with **one or more** candidates **MAY** still receive
++10 work-completion points, but remains scientifically non-finalizable because
+it has no positive judgment. That existing Gold rule is unchanged.
 
 `reject`: no case-complete bonus.
+Non-reviewable cases: no case-complete bonus.
 
 ### D. Gold case finalized +15
 
@@ -1310,13 +1429,13 @@ No points merely for auxiliary pairwise preference.
 
 | Counter | Definition |
 |---|---|
-| `expert_judgments` | count of current effective absolute tasks |
-| `questions_reviewed` | stable Question Check tasks with current effective decision |
-| `cases_completed` | count satisfying R1-14.C |
+| `expert_judgments` | count of current effective absolute tasks (REVIEWABLE cases only) |
+| `questions_reviewed` | stable Question Check tasks with current effective decision (REVIEWABLE only) |
+| `cases_completed` | count satisfying R3-04 (non-vacuous) |
 | `gold_finalized` | count satisfying R1-14.D |
 | `hard_calls_resolved` | count satisfying R1-14.E |
 
-**Campaign coverage (R2-09):**
+**Campaign coverage (R2-09, R3-05):**
 
 Expose:
 
@@ -1325,9 +1444,11 @@ completed_active_absolute_tasks
 total_active_absolute_tasks
 ```
 
-- numerator / denominator from **active** canonical absolute tasks;
+- numerator / denominator from **active** canonical absolute tasks on
+  **REVIEWABLE** cases only;
 - rejected cases are **excluded** from the denominator (absolute tasks not
-  active after reject).
+  active after reject);
+- non-reviewable cases are neither numerator nor denominator.
 
 If `total_active_absolute_tasks > 0`:
 
@@ -1344,7 +1465,7 @@ coverage_fraction = null / unavailable
 **MUST NOT** report numeric 0% or 100% for a 0/0 task population.
 
 Question Check progress is separately available through `questions_reviewed`
-and question task counts.
+and question task counts (REVIEWABLE cases only).
 
 No counter from raw ledger row count.
 
@@ -1406,7 +1527,9 @@ Later implementation remains separately gated.
 - Question Check semantics;
 - pending / completed task projection;
 - durable idempotency / effective-state mutation service (R2-07 / R2-08);
+- `canonical_request_fingerprint` → `reqfp_<sha256>` (R3-08);
 - lifecycle-gate ordering after idempotency replay resolution;
+- REVIEWABLE-case task population / non-vacuous case completion (R3);
 - correction / supersession fold;
 - query-basis invalidation;
 - Hard Call scoring against durable designation artifact;
@@ -1482,7 +1605,19 @@ Future implementation authorization **MUST** require tests covering at least:
 40. exact idempotent replay still succeeds after campaign close / project archive;
 41. unseen mutation fails after close / archive;
 42. coverage denominator 0 → unavailable / null, not fabricated percentage;
-43. `source_seed` historical identity validates against bound chunk set.
+43. `source_seed` historical identity validates against bound chunk set;
+44. case with proposed query + zero candidates is non-reviewable;
+45. non-reviewable case produces no Question Check task;
+46. non-reviewable case produces no absolute task;
+47. non-reviewable case cannot earn case-complete +10;
+48. non-reviewable case remains preserved in baseline / projection;
+49. one-or-more-candidate all-zero completed case may earn +10 but cannot
+    finalize to GoldDataset;
+50. Hard Call cannot target a non-reviewable case;
+51. zero active absolute tasks yields `coverage_fraction = null`;
+52. `request_fingerprint` uses exact existing `reqfp_` helper semantics;
+53. same canonical request produces identical `reqfp_`;
+54. semantically different canonical request produces different `reqfp_`.
 
 ---
 
@@ -1520,7 +1655,9 @@ Verified against sealed baseline / this design branch:
 | `GoldAuthoringRun` / `SilverCase` | present |
 | `HumanReview` / `HumanJudgment` / `HumanReviewStatus` | present |
 | `canonicalize_query()` in `review_models.py` | present |
+| `SilverCase.review_complete()` requires non-empty candidates | present (R3) |
 | `canonical_config_hash()` → `cfg_<sha256>` in `core/ids.py` | present |
+| `canonical_request_fingerprint()` → `reqfp_<sha256>` in workspace models | present (R3-08) |
 | `finalize.py` + `load_gold_dataset()` | present |
 | `CorpusReadSnapshot` + `identity.corpus_id` / `identity.chunk_set_id` | present |
 | `WorkspaceRecord.backing_corpus_name` | present |
@@ -1569,16 +1706,32 @@ R2-09 Coverage zero denominator: FROZEN
 R2-10 Source-seed validation: FROZEN
 ```
 
+## Rework 3 closure checklist
+
+```text
+R3-01 Reviewable-case semantics: FROZEN
+R3-02 Question-task eligibility: FROZEN
+R3-03 Absolute task population: FROZEN
+R3-04 Zero-candidate / non-vacuous case completion: FROZEN
+R3-05 Coverage/counter treatment: FROZEN
+R3-06 Hard Call reviewable-target rule: FROZEN
+R3-07 Non-reviewable export/projection consistency: FROZEN
+R3-08 Request fingerprint (canonical_request_fingerprint / reqfp_): FROZEN
+```
+
 ---
 
 ## Design disposition
 
 ```text
-16F DESIGN GATE: OPEN (candidate — Rework 2)
+16F DESIGN GATE: OPEN (candidate — Rework 3)
 16F IMPLEMENTATION: NOT AUTHORIZED
 16F-A … 16F-D: NOT AUTHORIZED
 16G–16H: NOT AUTHORIZED
 9G: DEFERRED / NOT AUTHORIZED
+
+R1 closures: PRESERVED
+R2 closures: PRESERVED
 
 Do not self-accept.
 Do not mark ACCEPTED / LOCKED.
