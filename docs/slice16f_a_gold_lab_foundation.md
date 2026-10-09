@@ -14,7 +14,7 @@
 | Documentation SHA (16F-A) | `c17d4681e438ba72e64f159a73343dbcd75a05b2` |
 | Rework 1 starting HEAD | `b4de3409219dae8d7c0682707a8dff2facd7adbf` |
 | Rework 1 implementation SHA | `3cf64b366556e02eb1275fd96e0ee5cb2c09fd3a` |
-| Rework 1 documentation SHA | _(filled after docs commit)_ |
+| Rework 1 documentation SHA | `046fb6b3e5d640121b7a9c727242484eec84d454` |
 
 ## Scope
 
