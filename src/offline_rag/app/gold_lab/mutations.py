@@ -50,6 +50,9 @@ from offline_rag.app.gold_lab.question_check import (
     durable_question_check_payload,
     question_check_query_fingerprint,
 )
+from offline_rag.app.gold_lab.registrations import (
+    valid_registered_case_ids_for_campaign,
+)
 from offline_rag.app.gold_lab.reviewable import is_reviewable_case
 from offline_rag.app.gold_lab.store import GoldLabStore
 from offline_rag.app.gold_lab.tasks import (
@@ -145,11 +148,20 @@ class GoldLabMutationService:
         return blind_task_views(self.load_effective_state(campaign_id))
 
     def contribution(self, campaign_id: str) -> ContributionProjection:
-        """Live application contribution; gold_finalized is always 0 until 16F-C."""
-        state = self.load_effective_state(campaign_id)
-        hard_calls = self.load_hard_calls(campaign_id)
+        """Live contribution; gold_finalized from valid registration union (16F-C)."""
+        cid = validate_campaign_id(campaign_id)
+        state = self.load_effective_state(cid)
+        hard_calls = self.load_hard_calls(cid)
+        campaign = self.store.get_campaign(cid)
+        project = self.store.get_project(campaign.project_id)
+        finalized = valid_registered_case_ids_for_campaign(
+            self.settings,
+            campaign_id=cid,
+            campaign=campaign,
+            project=project,
+        )
         return project_contribution(
-            state, hard_calls=hard_calls, finalized_case_ids=()
+            state, hard_calls=hard_calls, finalized_case_ids=finalized
         )
 
     def submit_question_check(

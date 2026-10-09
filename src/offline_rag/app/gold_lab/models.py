@@ -24,9 +24,11 @@ from offline_rag.app.gold_lab.ids import (
     HARD_CALLS_SCHEMA,
     LEDGER_SCHEMA,
     QUESTION_CHECK_CONTRACT,
+    REGISTRATION_SCHEMA,
     SELECTION_POLICY_CONTRACT,
     hard_call_designation_id,
     validate_campaign_id,
+    validate_dataset_id,
     validate_hard_call_designation_id,
     validate_judgment_id,
     validate_project_id,
@@ -589,4 +591,117 @@ class GoldLedgerRecord(BaseModel):
                     "auxiliary_preference requires gold-auxiliary-preference-v1",
                 )
             AuxiliaryPreferencePayload.model_validate(self.payload)
+        return self
+
+
+class GoldRegistration(BaseModel):
+    """offline-rag-gold-registration-v1 immutable scientific registration."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: Literal["offline-rag-gold-registration-v1"] = REGISTRATION_SCHEMA
+    dataset_id: NonEmptyStr
+    project_id: NonEmptyStr
+    campaign_id: NonEmptyStr
+    project_type: GoldProjectType
+    workspace_id: NonEmptyStr
+    snapshot_id: NonEmptyStr
+    chunk_set_id: NonEmptyStr
+    corpus_id: NonEmptyStr
+    corpus_name: NonEmptyStr
+    baseline_authoring_run_id: NonEmptyStr
+    baseline_sha256: NonEmptyStr
+    projection_sha256: NonEmptyStr
+    selection_policy_id: NonEmptyStr
+    selection_policy_fingerprint: NonEmptyStr
+    dataset_path: NonEmptyStr
+    exported_case_ids: list[str] = Field(default_factory=list)
+    registered_at: datetime
+
+    @field_validator("dataset_id")
+    @classmethod
+    def _dataset_id_grammar(cls, value: str) -> str:
+        try:
+            return validate_dataset_id(value)
+        except GoldLabError as exc:
+            raise ValueError(str(exc)) from exc
+
+    @field_validator("project_id")
+    @classmethod
+    def _project_id_grammar(cls, value: str) -> str:
+        try:
+            return validate_project_id(value)
+        except GoldLabError as exc:
+            raise ValueError(str(exc)) from exc
+
+    @field_validator("campaign_id")
+    @classmethod
+    def _campaign_id_grammar(cls, value: str) -> str:
+        try:
+            return validate_campaign_id(value)
+        except GoldLabError as exc:
+            raise ValueError(str(exc)) from exc
+
+    @field_validator("baseline_sha256", "projection_sha256")
+    @classmethod
+    def _sha256_hex(cls, value: str) -> str:
+        text = value.strip().lower()
+        if len(text) != 64 or any(ch not in "0123456789abcdef" for ch in text):
+            raise ValueError("sha256 must be 64 lowercase hex chars")
+        return text
+
+    @field_validator("selection_policy_fingerprint")
+    @classmethod
+    def _cfg_grammar(cls, value: str) -> str:
+        try:
+            return validate_selection_policy_fingerprint(value)
+        except GoldLabError as exc:
+            raise ValueError(str(exc)) from exc
+
+    @field_validator("dataset_path")
+    @classmethod
+    def _dataset_path_relative(cls, value: str) -> str:
+        text = value.strip()
+        if not text.startswith("datasets/"):
+            raise ValueError("dataset_path must be datasets/<dataset_id>")
+        suffix = text.removeprefix("datasets/")
+        try:
+            validate_dataset_id(suffix)
+        except GoldLabError as exc:
+            raise ValueError(str(exc)) from exc
+        if "/" in suffix or "\\" in suffix or ".." in text:
+            raise ValueError("dataset_path must be datasets/<dataset_id>")
+        return f"datasets/{suffix}"
+
+    @field_validator("exported_case_ids")
+    @classmethod
+    def _exported_case_ids_unique_sorted(cls, value: list[str]) -> list[str]:
+        cleaned: list[str] = []
+        seen: set[str] = set()
+        for item in value:
+            if not isinstance(item, str) or not item.strip():
+                raise ValueError("exported_case_ids entries must be non-empty strings")
+            text = item.strip()
+            if text in seen:
+                raise ValueError(f"duplicate exported_case_id: {text}")
+            seen.add(text)
+            cleaned.append(text)
+        ordered = sorted(cleaned)
+        if cleaned != ordered:
+            raise ValueError("exported_case_ids must be deterministically sorted")
+        return ordered
+
+    @model_validator(mode="after")
+    def _schema_and_path_ids(self) -> GoldRegistration:
+        if self.schema_version != REGISTRATION_SCHEMA:
+            raise GoldLabError(
+                "registration_schema_invalid",
+                f"expected {REGISTRATION_SCHEMA}",
+            )
+        expected_path = f"datasets/{self.dataset_id}"
+        if self.dataset_path != expected_path:
+            raise GoldLabError(
+                "registration_dataset_path_mismatch",
+                "dataset_path must equal datasets/<dataset_id>",
+            )
         return self

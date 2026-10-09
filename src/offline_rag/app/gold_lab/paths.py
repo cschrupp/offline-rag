@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from offline_rag.app.gold_lab.ids import validate_campaign_id, validate_project_id
+from offline_rag.app.gold_lab.ids import (
+    validate_campaign_id,
+    validate_dataset_id,
+    validate_project_id,
+)
 from offline_rag.config.models import AppSettings, PathSettings
 
 
@@ -92,6 +96,35 @@ def idempotency_entry_path(
             f"invalid idempotency filename: {entry_filename!r}",
         )
     return idempotency_dir(settings, campaign_id) / name
+
+
+def projection_authoring_run_path(
+    settings: AppSettings | PathSettings, campaign_id: str
+) -> Path:
+    return projection_dir(settings, campaign_id) / "authoring_run.json"
+
+
+def dataset_dir(settings: AppSettings | PathSettings, dataset_id: str) -> Path:
+    did = validate_dataset_id(dataset_id)
+    return datasets_root(settings) / did
+
+
+def registration_dir(settings: AppSettings | PathSettings, dataset_id: str) -> Path:
+    did = validate_dataset_id(dataset_id)
+    return registrations_root(settings) / did
+
+
+def registration_path(
+    settings: AppSettings | PathSettings, dataset_id: str, campaign_id: str
+) -> Path:
+    did = validate_dataset_id(dataset_id)
+    cid = validate_campaign_id(campaign_id)
+    return registration_dir(settings, did) / f"{cid}.json"
+
+
+def canonical_dataset_relpath(dataset_id: str) -> str:
+    did = validate_dataset_id(dataset_id)
+    return f"datasets/{did}"
 
 
 def ensure_gold_lab_layout(settings: AppSettings | PathSettings) -> None:

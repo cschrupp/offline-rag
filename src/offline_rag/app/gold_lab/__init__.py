@@ -1,4 +1,4 @@
-"""16F Gold Lab contracts, persistence, and effective-state mutation service."""
+"""16F Gold Lab contracts, persistence, and scientific export service."""
 
 from __future__ import annotations
 
@@ -25,6 +25,7 @@ from offline_rag.app.gold_lab.ids import (
     IDEMPOTENCY_SCHEMA,
     LEDGER_SCHEMA,
     QUESTION_CHECK_CONTRACT,
+    REGISTRATION_SCHEMA,
     SELECTION_POLICY_CONTRACT,
     absolute_relevance_task_id,
     auxiliary_preference_task_id,
@@ -36,6 +37,7 @@ from offline_rag.app.gold_lab.ids import (
     query_fingerprint,
     question_check_task_id,
     validate_campaign_id,
+    validate_dataset_id,
     validate_judgment_id,
     validate_project_id,
     validate_record_id,
@@ -54,6 +56,7 @@ from offline_rag.app.gold_lab.models import (
     GoldProject,
     GoldProjectStatus,
     GoldProjectType,
+    GoldRegistration,
     GoldSelectionPolicy,
     HardCallDesignation,
     HardCallsArtifact,
@@ -66,7 +69,15 @@ from offline_rag.app.gold_lab.models import (
     selection_policy_fingerprint,
 )
 from offline_rag.app.gold_lab.mutations import GoldLabMutationService, MutationResult
+from offline_rag.app.gold_lab.projection import project_authoring_run, projection_text
+from offline_rag.app.gold_lab.registrations import (
+    valid_registered_case_ids_for_campaign,
+)
 from offline_rag.app.gold_lab.reviewable import is_reviewable_case
+from offline_rag.app.gold_lab.scientific_export import (
+    GoldLabScientificExportService,
+    ScientificExportResult,
+)
 from offline_rag.app.gold_lab.store import GoldLabStore
 from offline_rag.app.gold_lab.tasks import (
     BlindTaskView,
@@ -86,6 +97,7 @@ __all__ = [
     "IDEMPOTENCY_SCHEMA",
     "LEDGER_SCHEMA",
     "QUESTION_CHECK_CONTRACT",
+    "REGISTRATION_SCHEMA",
     "SELECTION_POLICY_CONTRACT",
     "AbsoluteRelevancePayload",
     "AuxiliaryPreferencePayload",
@@ -99,12 +111,14 @@ __all__ = [
     "GoldLabIdempotencyCatalog",
     "GoldLabLedger",
     "GoldLabMutationService",
+    "GoldLabScientificExportService",
     "GoldLabStore",
     "GoldLedgerRecord",
     "GoldLedgerRecordType",
     "GoldProject",
     "GoldProjectStatus",
     "GoldProjectType",
+    "GoldRegistration",
     "GoldSelectionPolicy",
     "HardCallDesignation",
     "HardCallsArtifact",
@@ -115,6 +129,7 @@ __all__ = [
     "ProjectedTask",
     "QuestionCheckDecision",
     "QuestionCheckPayload",
+    "ScientificExportResult",
     "TaskKind",
     "TaskState",
     "absolute_relevance_task_id",
@@ -129,12 +144,16 @@ __all__ = [
     "new_ledger_record_id",
     "new_project_id",
     "normalize_idempotency_key",
+    "project_authoring_run",
     "project_contribution",
     "project_tasks",
+    "projection_text",
     "query_fingerprint",
     "question_check_task_id",
     "selection_policy_fingerprint",
+    "valid_registered_case_ids_for_campaign",
     "validate_campaign_id",
+    "validate_dataset_id",
     "validate_judgment_id",
     "validate_project_id",
     "validate_record_id",

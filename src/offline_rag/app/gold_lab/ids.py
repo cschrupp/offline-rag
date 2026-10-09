@@ -21,6 +21,9 @@ HARD_CALLS_SCHEMA = "offline-rag-gold-hard-calls-v1"
 SELECTION_POLICY_CONTRACT = "gold-selection-policy-v1"
 IDEMPOTENCY_SCHEMA = "offline-rag-gold-idempotency-v1"
 CONTRIBUTION_CONTRACT = "gold-contribution-v1"
+REGISTRATION_SCHEMA = "offline-rag-gold-registration-v1"
+
+_DATASET_ID_RE = re.compile(r"^gold_[0-9a-f]{64}$")
 
 _PROJECT_ID_RE = re.compile(r"^goldproj_[0-9a-f]{32}$")
 _CAMPAIGN_ID_RE = re.compile(r"^goldcamp_[0-9a-f]{32}$")
@@ -120,6 +123,15 @@ def validate_selection_policy_fingerprint(value: str) -> str:
         value,
         reason="invalid_selection_policy_fingerprint",
         label="selection_policy_fingerprint",
+    )
+
+
+def validate_dataset_id(value: str) -> str:
+    return _require_match(
+        _DATASET_ID_RE,
+        value,
+        reason="invalid_dataset_id",
+        label="dataset_id",
     )
 
 
