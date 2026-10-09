@@ -10,7 +10,7 @@
 | Branch | `implementation/16f-c-scientific-export` |
 | Starting HEAD | `f4fe892044f8443594d7629e5b49a3d9f39b6297` |
 | Implementation SHA | `3b802a5d066370af5ab696e8e0529d865a612002` |
-| Documentation SHA | `DOCUMENTATION_SHA_PENDING` |
+| Documentation SHA | `1c902f52a604348b9da82e43e99fff00f611e72c` |
 
 ## Scope
 
