@@ -1362,8 +1362,16 @@ def test_campaign_lease_excludes_concurrent_owner(tmp_path: Path) -> None:
 
 
 def test_nonscope_surfaces() -> None:
+    # 16F-A forbade any Gold Lab HTTP. 16F-D authorized exactly api/gold_lab.py
+    # (wired from api/app.py). Other API modules must still stay Gold-free.
     api_root = REPO_ROOT / "src" / "offline_rag" / "api"
+    allowed = {
+        (api_root / "gold_lab.py").resolve(),
+        (api_root / "app.py").resolve(),
+    }
     for path in api_root.rglob("*.py"):
+        if path.resolve() in allowed:
+            continue
         text = path.read_text(encoding="utf-8")
         assert "gold_lab" not in text
         assert "GoldLab" not in text

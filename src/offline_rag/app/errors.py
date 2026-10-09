@@ -26,6 +26,11 @@ _UNTRUSTED_DETAIL_KEYS = frozenset(
         "workspace_id",
         "source_id",
         "operation_id",
+        "project_id",
+        "campaign_id",
+        "task_id",
+        "dataset_id",
+        "case_id",
     }
 )
 
@@ -73,6 +78,14 @@ class ErrorCode(StrEnum):
     SETTINGS_INVALID = "settings_invalid"
     SETTINGS_LOCKED = "settings_locked"
     SETTINGS_PROBE_FAILED = "settings_probe_failed"
+    # Slice 16F-D Gold Lab application / API data plane.
+    GOLD_PROJECT_UNKNOWN = "gold_project_unknown"
+    GOLD_CAMPAIGN_UNKNOWN = "gold_campaign_unknown"
+    GOLD_TASK_UNKNOWN = "gold_task_unknown"
+    GOLD_BASELINE_UNKNOWN = "gold_baseline_unknown"
+    GOLD_CONFLICT = "gold_conflict"
+    GOLD_BUSY = "gold_busy"
+    GOLD_STATE_UNAVAILABLE = "gold_state_unavailable"
 
 
 @dataclass(frozen=True, slots=True)
@@ -135,6 +148,19 @@ ERROR_CATALOG: dict[ErrorCode, ErrorSpec] = {
     ErrorCode.SETTINGS_PROBE_FAILED: ErrorSpec(
         409, True, "Generation connection probe failed"
     ),
+    ErrorCode.GOLD_PROJECT_UNKNOWN: ErrorSpec(404, False, "Gold project not found"),
+    ErrorCode.GOLD_CAMPAIGN_UNKNOWN: ErrorSpec(404, False, "Gold campaign not found"),
+    ErrorCode.GOLD_TASK_UNKNOWN: ErrorSpec(404, False, "Gold task not found"),
+    ErrorCode.GOLD_BASELINE_UNKNOWN: ErrorSpec(
+        404, False, "Gold authoring baseline not found"
+    ),
+    ErrorCode.GOLD_CONFLICT: ErrorSpec(
+        409, False, "Gold Lab state conflicts with the requested operation"
+    ),
+    ErrorCode.GOLD_BUSY: ErrorSpec(409, True, "Gold Lab resource is busy"),
+    ErrorCode.GOLD_STATE_UNAVAILABLE: ErrorSpec(
+        409, False, "Gold Lab durable state cannot be bound safely"
+    ),
 }
 
 
@@ -194,6 +220,11 @@ class SafeErrorDetails(BaseModel):
     workspace_id: str | None = None
     source_id: str | None = None
     operation_id: str | None = None
+    project_id: str | None = None
+    campaign_id: str | None = None
+    task_id: str | None = None
+    dataset_id: str | None = None
+    case_id: str | None = None
     stage: str | None = None
     provider_failure_class: str | None = None
     field: str | None = None
@@ -207,6 +238,11 @@ class SafeErrorDetails(BaseModel):
         "workspace_id",
         "source_id",
         "operation_id",
+        "project_id",
+        "campaign_id",
+        "task_id",
+        "dataset_id",
+        "case_id",
         "stage",
         "provider_failure_class",
         "field",

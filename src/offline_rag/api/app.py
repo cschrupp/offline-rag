@@ -11,6 +11,7 @@ from offline_rag.api.capabilities import router as capabilities_router
 from offline_rag.api.documents import router as documents_router
 from offline_rag.api.errors import register_app_error_handler
 from offline_rag.api.frontend import mount_frontend
+from offline_rag.api.gold_lab import router as gold_lab_router
 from offline_rag.api.health import router as health_router
 from offline_rag.api.ingest import router as ingest_router
 from offline_rag.api.operations import router as operations_router
@@ -81,6 +82,7 @@ def create_app(
     app.include_router(traces_router)
     app.include_router(workspaces_router)
     app.include_router(operations_router)
+    app.include_router(gold_lab_router)
     # SPA fallback must be registered after API routers so /v1/* and /health*
     # retain backend semantics (including API 404s).
     mount_frontend(app)

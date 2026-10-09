@@ -130,6 +130,7 @@ class ApplicationRuntime:
     _publication: ProductPublicationRegistry | None = field(default=None, init=False)
     _query_runtimes: QueryRuntimeCache | None = field(default=None, init=False)
     _workspace_lifecycle: Any = field(default=None, init=False, repr=False)
+    _gold_lab: Any = field(default=None, init=False, repr=False)
     _finalize_lock: Any = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -185,6 +186,15 @@ class ApplicationRuntime:
 
             self._workspace_lifecycle = WorkspaceLifecycleService(self)
         return self._workspace_lifecycle
+
+    @property
+    def gold_lab(self) -> Any:
+        """Lazy Gold Lab application facade (Slice 16F-D)."""
+        if self._gold_lab is None:
+            from offline_rag.app.gold_lab.application import GoldLabApplicationService
+
+            self._gold_lab = GoldLabApplicationService(self)
+        return self._gold_lab
 
     def start(self) -> None:
         """Initialize process resources at most once per startup attempt.
