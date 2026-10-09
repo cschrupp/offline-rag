@@ -40,6 +40,9 @@ NOT AUTHORIZED
 | Rework 2 tip | `82fef0b71abd341b7a201d91a5eb01fa2b490ee0` |
 | Rework 3 starting HEAD | `82fef0b71abd341b7a201d91a5eb01fa2b490ee0` |
 | Rework 3 design SHA | `8cfa559f513dcda2052ee8eca58f1a245ec1e306` |
+| Rework 3 tip | `dfd72d97d9a69e8084734b6b41f41ef062b0bebc` |
+| Rework 4 starting HEAD | `dfd72d97d9a69e8084734b6b41f41ef062b0bebc` |
+| Rework 4 design SHA | `REWORK4_DESIGN_SHA_PENDING` |
 
 Frozen parent decision (must not be reopened):
 
@@ -83,6 +86,17 @@ Hardening only (preserves Rework 1 / Rework 2 + route/DTO surface):
   ineligible pristine-admission failures (`baseline_human_state_present`,
   `baseline_identity_missing` → preflight `gold_conflict`);
 - preflight vs post-successful-preflight escape provenance for those reasons.
+
+### Design Rework 4
+
+Narrow historical-integrity closure (preserves Reworks 1–3 + route/DTO surface):
+
+- verify existing immutable corpus / chunk-set semantic IDs by recomputation;
+- verify canonical `chunk_artifact_id` derivation and relative-path consistency;
+- require exact on-disk `artifact_bytes_hash` == `entry.chunk_artifact_hash`
+  before any expert-visible source text;
+- expand artifact/manifest provenance cross-checks;
+- no new scientific identities — reuse existing helpers only.
 
 ---
 
@@ -724,7 +738,7 @@ exposed.
 }
 ```
 
-### Historical source resolution algorithm (frozen — Rework 2 + Rework 3)
+### Historical source resolution algorithm (frozen — Rework 2 + Rework 3 + Rework 4)
 
 Historical Gold source presentation **MUST NOT** use normal
 `ProductPublicationRegistry.resolve_snapshot(...)` as the final resolver when
@@ -828,8 +842,42 @@ policy already mandates one.
    authority. Failure → `gold_state_unavailable` / 409;
 
 9. resolve corpus manifest **only** beneath `settings.paths.manifests` using
-   the validated filename; load the exact file; require
-   corpus manifest `corpus_id == campaign.corpus_id`;
+   the validated filename; load the exact file. Require:
+
+   ```text
+   corpus_manifest.schema_version == "offline-rag-corpus-manifest-v1"
+   corpus_manifest.corpus_id == campaign.corpus_id
+   ```
+
+   Do not rely on Pydantic parse success alone (`schema_version` is a
+   non-empty string field, not a Literal). Then recompute corpus semantic
+   identity with existing helper:
+
+   ```text
+   recomputed_corpus_id = corpus_id_from_entries(
+       schema_version=corpus_manifest.schema_version,
+       parse_cfg_hash=corpus_manifest.config_hash,
+       document_identities=[
+           {
+               "document_id": ...,
+               "source_content_hash": ...,
+               "processed_artifact_hash": ...,
+               "parsed_artifact_id": ...,
+           },
+           ...
+       ],
+   )
+   ```
+
+   Require:
+
+   ```text
+   recomputed_corpus_id
+     == corpus_manifest.corpus_id
+     == campaign.corpus_id
+   ```
+
+   Failure → `gold_state_unavailable` / 409;
 
 10. resolve chunk-set manifest **only** beneath
     `settings.paths.chunk_manifests` using the validated filename; load the
@@ -838,40 +886,175 @@ policy already mandates one.
     rather than silently loading an alias. Require:
 
     ```text
-    ChunkSetManifest.chunk_set_id == campaign.chunk_set_id
+    ChunkSetManifest.schema_version == "offline-rag-chunkset-manifest-v1"
     ChunkSetManifest.corpus_id == campaign.corpus_id
+    ChunkSetManifest.chunk_set_id == campaign.chunk_set_id
     ```
 
-    No fuzzy / alternate manifest lookup;
-
-11. for each `ChunkSetDocumentEntry.chunk_artifact_id` used to load chunk
-    text, **before** path construction require canonical grammar:
+    Then recompute with existing helper:
 
     ```text
-    ^chunkartifact_[0-9a-f]{64}$
+    recomputed_chunk_set_id = chunk_set_id_from_entries(
+        corpus_id=chunk_manifest.corpus_id,
+        chunk_cfg_hash=chunk_manifest.chunk_config_hash,
+        chunker_version=chunk_manifest.chunker_version,
+        document_entries=[
+            {
+                "document_id": entry.document_id,
+                "parsed_artifact_id": entry.parsed_artifact_id,
+                "chunk_artifact_id": entry.chunk_artifact_id,
+            },
+            ...
+        ],
+    )
     ```
 
-    No slash / backslash / `..`. Resolve **only** as:
+    Require:
 
     ```text
-    settings.paths.chunks / f"{validated_chunk_artifact_id}.json"
+    recomputed_chunk_set_id
+      == chunk_manifest.chunk_set_id
+      == campaign.chunk_set_id
+      == snapshot_identity.chunk_set_id
     ```
 
-    Then require loaded `DocumentChunkArtifact`:
+    Do **not** trust only the manifest's declared `chunk_set_id` field.
+    No fuzzy / alternate manifest lookup. Failure →
+    `gold_state_unavailable` / 409;
 
-    ```text
-    artifact.chunk_artifact_id == entry.chunk_artifact_id
-    artifact.document_id == entry.document_id
-    artifact.parsed_artifact_id == entry.parsed_artifact_id
-    ```
+11. for each `ChunkSetDocumentEntry` used by historical Gold source
+    resolution:
 
-    Failure → `gold_state_unavailable` / 409. Do not allow a corrupted
-    chunk-set manifest to redirect historical reads outside the configured
-    chunk-artifact root;
+    a. **before** path construction require canonical grammar on
+       `entry.chunk_artifact_id`:
 
-12. exact `chunk_id` lookup within the loaded immutable chunk artifacts;
+       ```text
+       ^chunkartifact_[0-9a-f]{64}$
+       ```
+
+       No slash / backslash / `..`;
+
+    b. recompute expected artifact identity with existing helper:
+
+       ```text
+       expected_chunk_artifact_id = chunk_artifact_id(
+           entry.parsed_artifact_id,
+           chunk_manifest.chunk_config_hash,
+           chunker_version=chunk_manifest.chunker_version,
+       )
+       ```
+
+       Require `expected_chunk_artifact_id == entry.chunk_artifact_id`;
+
+    c. require informational relative-path field consistency (never follow
+       this field as a filesystem path):
+
+       ```text
+       entry.chunk_artifact
+         == chunk_artifact_relpath(entry.chunk_artifact_id)
+       ```
+
+       The reader derives the file **only** from the validated
+       `chunk_artifact_id`;
+
+    d. resolve **only** as:
+
+       ```text
+       settings.paths.chunks / f"{validated_chunk_artifact_id}.json"
+       ```
+
+    e. **REQUIRED** exact byte-hash verification: read raw on-disk bytes;
+       compute `artifact_bytes_hash(raw_bytes)` against those exact bytes
+       (not a reserialized Pydantic dump). Require:
+
+       ```text
+       artifact_bytes_hash(raw_bytes) == entry.chunk_artifact_hash
+       ```
+
+       Hash mismatch → `gold_state_unavailable` / 409; **no source text
+       may be returned**;
+
+    f. after byte-hash verification, parse `DocumentChunkArtifact`
+       strictly; require:
+
+       ```text
+       artifact.schema_version == "offline-rag-chunk-artifact-v1"
+       ```
+
+    g. provenance cross-checks (exact byte hash remains the principal
+       immutable-artifact check):
+
+       ```text
+       artifact.chunk_artifact_id == entry.chunk_artifact_id
+       artifact.document_id == entry.document_id
+       artifact.parsed_artifact_id == entry.parsed_artifact_id
+       artifact.chunk_config_hash == chunk_manifest.chunk_config_hash
+       artifact.chunker_version == chunk_manifest.chunker_version
+       artifact.parent_count == entry.parent_count
+       artifact.child_count == entry.child_count
+       ```
+
+    Failure at any substep → `gold_state_unavailable` / 409. Do not allow
+    a corrupted chunk-set manifest to redirect historical reads outside
+    the configured chunk-artifact root;
+
+12. **only after** step 11 passes for the relevant entry may parent/child
+    chunks from that verified artifact enter exact `chunk_id` lookup.
+    Requested source chunk:
+
+    - must occur in the verified artifact set;
+    - must have `document_id` consistent with the artifact / manifest
+      entry;
+    - remains subject to the already-frozen `source_seed` /
+      `PoolCandidate` `document_id` and `section_path` cross-checks.
+
+    Missing or inconsistent → `gold_state_unavailable` / 409;
 
 13. construct `GoldSourceContext`.
+
+#### Final historical chain (summary)
+
+```text
+validated campaign corpus/snapshot path
+        ↓
+strict CanonicalSnapshotManifest
+        ↓
+snapshot ID recomputation
+        ↓
+root-confined CorpusManifest
+        ↓
+corpus schema + corpus ID recomputation
+        ↓
+root-confined ChunkSetManifest
+        ↓
+chunk-set schema + chunk-set ID recomputation
+        ↓
+validated ChunkSetDocumentEntry
+        ↓
+canonical chunk_artifact_id derivation
+        ↓
+root-confined artifact file
+        ↓
+EXACT artifact byte-hash verification
+        ↓
+strict DocumentChunkArtifact
+        ↓
+artifact/manifest provenance checks
+        ↓
+exact chunk_id lookup
+        ↓
+GoldSourceContext
+```
+
+Any failure → `gold_state_unavailable`. No partial / fallback evidence.
+
+#### No new scientific identity
+
+Do **not** create a Gold-specific chunk hash, a second chunk-set ID, another
+corpus identity, or another artifact schema. Reuse existing authorities only:
+
+`artifact_bytes_hash`, `corpus_id_from_entries`, `chunk_set_id_from_entries`,
+`chunk_artifact_id`, `chunk_artifact_relpath`.
 
 **NO consultation of:**
 
@@ -880,7 +1063,8 @@ retrieval configuration (embedding / dense index / lexical / fusion /
 reranker / context), Qdrant, lexical indexes, embedder, reranker,
 generator.
 
-No model / provider / retrieval calls.
+No model / provider / retrieval calls. Verification remains fully local to
+immutable artifact files and canonical identity helpers.
 
 ### Historical artifact error normalization
 
@@ -896,11 +1080,16 @@ Gold application facade to:
 - snapshot identity mismatch;
 - absolute / nested `corpus_manifest` reference;
 - absolute / nested `chunk_manifest` reference;
-- corpus manifest mismatch;
-- chunk-set manifest mismatch;
+- corpus manifest schema / `corpus_id` / semantic recomputation mismatch;
+- chunk-set manifest schema / `chunk_set_id` / semantic recomputation mismatch;
 - invalid `chunk_artifact_id`;
-- chunk-artifact identity / provenance mismatch;
-- requested `chunk_id` absent;
+- canonical `chunk_artifact_id` derivation mismatch;
+- `entry.chunk_artifact` vs `chunk_artifact_relpath(...)` mismatch;
+- exact on-disk `artifact_bytes_hash` vs `entry.chunk_artifact_hash` mismatch;
+- chunk-artifact schema mismatch;
+- chunk-artifact identity / provenance mismatch
+  (including `chunk_config_hash` / `chunker_version` / counts);
+- requested `chunk_id` absent from the verified artifact;
 - baseline / historical `document_id` / `section_path` cross-check mismatch
   (adapter reasons `historical_chunk_unavailable` /
   `historical_chunk_mismatch`).
@@ -1304,7 +1493,7 @@ No per-route ad hoc mapping.
 Any reachable reason not listed below → `internal_error` with safe reason
 `gold_lab_unmapped_error`.
 
-### Provenance principles (Rework 1 + Rework 2 + Rework 3)
+### Provenance principles (Rework 1 + Rework 2 + Rework 3 + Rework 4)
 
 Classify each reachable reason by **throw-site provenance through the supported
 16F-D route**, not by reason-name similarity alone:
@@ -1378,6 +1567,17 @@ Rework 3 additions:
       `chunk_artifact_id`, root escapes, schema/product-mode mismatches →
       `gold_state_unavailable` / 409.
     - Never blame expert JSON for corrupt server-owned historical metadata.
+
+Rework 4 additions:
+
+12. **Immutable historical artifact integrity**
+    - Corpus / chunk-set schema mismatches, semantic ID recomputation
+      failures, canonical `chunk_artifact_id` derivation mismatch,
+      relative-path consistency failure, exact `artifact_bytes_hash`
+      mismatch, artifact schema / provenance mismatch →
+      `gold_state_unavailable` / 409; no partial evidence.
+    - Verification uses existing helpers only; no Gold-specific second
+      identity system.
 
 ### Adapter-introduced stable reasons
 
@@ -1878,6 +2078,31 @@ When separately authorized, implementation **MUST** cover at least:
 55. Historical-read path confinement does not require Qdrant / retrieval /
     current config and preserves Rework-2 independence behavior.
 
+### Rework 4 additional tests
+
+56. Chunk artifact bytes modified while internal IDs remain unchanged →
+    artifact hash mismatch → `gold_state_unavailable`; no source text
+    returned.
+57. `chunk_artifact_hash` in manifest disagrees with exact artifact bytes →
+    `gold_state_unavailable`.
+58. Chunk-set manifest entries changed while declared `chunk_set_id` remains
+    old → recomputed `chunk_set_id` mismatch → `gold_state_unavailable`.
+59. Corpus manifest semantic identity changed while declared `corpus_id`
+    remains old → recomputed `corpus_id` mismatch →
+    `gold_state_unavailable`.
+60. Wrong `CorpusManifest.schema_version` → `gold_state_unavailable`.
+61. Wrong `ChunkSetManifest.schema_version` → `gold_state_unavailable`.
+62. Wrong `DocumentChunkArtifact.schema_version` → `gold_state_unavailable`.
+63. Canonical `chunk_artifact_id` recomputation mismatch →
+    `gold_state_unavailable`.
+64. `entry.chunk_artifact` relative path disagrees with canonical
+    `chunk_artifact_relpath()` → `gold_state_unavailable`; persisted path
+    value is never followed.
+65. Artifact `chunk_config_hash` / `chunker_version` / count provenance
+    mismatch → `gold_state_unavailable`.
+66. Valid historical artifact chain still succeeds when Qdrant / current
+    retrieval configuration are unavailable / changed.
+
 ### Regression requirements
 
 - Accepted 16F-A foundation tests
@@ -1895,7 +2120,8 @@ When separately authorized, implementation **MUST** cover at least:
 | 16F-D0 design materialization | AUTHORIZED |
 | 16F-D0 Design Rework 1 | AUTHORIZED / PRESERVED |
 | 16F-D0 Design Rework 2 | AUTHORIZED / PRESERVED |
-| 16F-D0 Design Rework 3 | AUTHORIZED (this revision) |
+| 16F-D0 Design Rework 3 | AUTHORIZED / PRESERVED |
+| 16F-D0 Design Rework 4 | AUTHORIZED (this revision) |
 | Independent design review | PENDING |
 | Human design acceptance | PENDING (do not claim) |
 | 16F-D production implementation | NOT AUTHORIZED |
