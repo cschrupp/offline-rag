@@ -1715,3 +1715,221 @@ def test_rework1_project_archive_commit_race(tmp_path: Path) -> None:
     assert isinstance(archive_error[0], GoldLabError)
     assert archive_error[0].reason == "gold_lab_lease_held"
     assert store.get_project(project2.project_id).status is GoldProjectStatus.ACTIVE
+
+
+# --- Rework 2: ledger audit-integrity closure ---
+
+
+def _rewrite_ledger_record(path: Path, **updates: object) -> None:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data.update(updates)
+    path.write_text(json.dumps(data), encoding="utf-8")
+
+
+def test_rework2_read_time_tamper_detection(tmp_path: Path) -> None:
+    settings, store, campaign, _ = _ready_campaign(tmp_path)
+    ledger = GoldLabLedger(settings, store=store)
+    record = ledger.append(
+        campaign.campaign_id,
+        record_type=GoldLedgerRecordType.ABSOLUTE_RELEVANCE,
+        case_id="draft_reviewable",
+        candidate_chunk_id=CHUNK_A,
+        payload={"relevance": 1},
+        idempotency_key="r2_ok",
+        request_fingerprint=_reqfp({"r2": 1}),
+        query_fingerprint=query_fingerprint("What is offline RAG?"),
+    )
+    path = (
+        campaign_dir(settings, campaign.campaign_id)
+        / "ledger"
+        / f"000000000001_{record.record_id}.json"
+    )
+
+    # nonexistent case with consistently recomputed task_id
+    fake_task = absolute_relevance_task_id(
+        campaign_id=campaign.campaign_id,
+        case_id="draft_missing",
+        candidate_chunk_id=CHUNK_A,
+    )
+    _rewrite_ledger_record(path, case_id="draft_missing", task_id=fake_task)
+    with pytest.raises(GoldLabError) as exc:
+        ledger.list_records(campaign.campaign_id)
+    assert exc.value.reason == "ledger_case_not_found"
+
+    # restore then: snapshot-valid candidate not in a single-candidate case
+    path.write_text(record.model_dump_json(), encoding="utf-8")
+    settings2, store2, campaign2, registry = _ready_campaign(tmp_path / "r2case")
+    svc = GoldCampaignService(settings2, qdrant=registry.qdrant)
+    project = store2.get_project(campaign2.project_id)
+    single = svc.create_campaign(
+        project_id=project.project_id,
+        baseline=_baseline(
+            authoring_run_id="authorrun_r2_single",
+            cases=[
+                SilverCase(
+                    draft_case_id="draft_single",
+                    proposed_query="single candidate query",
+                    source_seed=SourceSeed(chunk_id=CHUNK_A, document_id=DOC_ID),
+                    candidates=[PoolCandidate(chunk_id=CHUNK_A, document_id=DOC_ID)],
+                )
+            ],
+        ),
+        selection_policy=_policy(),
+    )
+    ledger2 = GoldLabLedger(settings2, store=store2)
+    rec2 = ledger2.append(
+        single.campaign_id,
+        record_type=GoldLedgerRecordType.ABSOLUTE_RELEVANCE,
+        case_id="draft_single",
+        candidate_chunk_id=CHUNK_A,
+        payload={"relevance": 2},
+        idempotency_key="r2_single",
+        request_fingerprint=_reqfp({"r2s": 1}),
+        query_fingerprint=query_fingerprint("single candidate query"),
+    )
+    path2 = (
+        campaign_dir(settings2, single.campaign_id)
+        / "ledger"
+        / f"000000000001_{rec2.record_id}.json"
+    )
+    outside_task = absolute_relevance_task_id(
+        campaign_id=single.campaign_id,
+        case_id="draft_single",
+        candidate_chunk_id=CHUNK_B,
+    )
+    _rewrite_ledger_record(
+        path2,
+        candidate_chunk_id=CHUNK_B,
+        task_id=outside_task,
+    )
+    with pytest.raises(GoldLabError) as exc:
+        ledger2.list_records(single.campaign_id)
+    assert exc.value.reason == "ledger_candidate_not_in_case"
+
+    # restore then mismatch task_id against valid membership
+    path2.write_text(rec2.model_dump_json(), encoding="utf-8")
+    wrong_task = absolute_relevance_task_id(
+        campaign_id=single.campaign_id,
+        case_id="draft_single",
+        candidate_chunk_id=CHUNK_B,
+    )
+    _rewrite_ledger_record(path2, task_id=wrong_task)
+    with pytest.raises(GoldLabError) as exc:
+        ledger2.list_records(single.campaign_id)
+    assert exc.value.reason == "task_identity_mismatch"
+
+
+def test_rework2_auxiliary_payload_authority(tmp_path: Path) -> None:
+    settings, store, campaign, _ = _ready_campaign(tmp_path)
+    ledger = GoldLabLedger(settings, store=store)
+    with pytest.raises(GoldLabError) as exc:
+        ledger.append(
+            campaign.campaign_id,
+            record_type=GoldLedgerRecordType.AUXILIARY_PREFERENCE,
+            case_id="draft_reviewable",
+            preferred_chunk_id=CHUNK_A,
+            other_chunk_id=CHUNK_B,
+            payload={"preferred_chunk_id": CHUNK_A, "other_chunk_id": CHUNK_A},
+            idempotency_key="aux_mismatch",
+            request_fingerprint=_reqfp({"auxm": 1}),
+        )
+    assert exc.value.reason == "auxiliary_pair_mismatch"
+
+    with pytest.raises(GoldLabError) as exc:
+        ledger.append(
+            campaign.campaign_id,
+            record_type=GoldLedgerRecordType.AUXILIARY_PREFERENCE,
+            case_id="draft_reviewable",
+            payload={"preferred_chunk_id": CHUNK_A, "other_chunk_id": "chunk_missing"},
+            idempotency_key="aux_out",
+            request_fingerprint=_reqfp({"auxo": 1}),
+        )
+    assert exc.value.reason == "ledger_candidate_not_in_case"
+
+    ok = ledger.append(
+        campaign.campaign_id,
+        record_type=GoldLedgerRecordType.AUXILIARY_PREFERENCE,
+        case_id="draft_reviewable",
+        payload={"preferred_chunk_id": CHUNK_A, "other_chunk_id": CHUNK_B},
+        preferred_chunk_id=CHUNK_A,
+        other_chunk_id=CHUNK_B,
+        idempotency_key="aux_ok",
+        request_fingerprint=_reqfp({"auxok": 1}),
+    )
+    path = (
+        campaign_dir(settings, campaign.campaign_id)
+        / "ledger"
+        / f"000000000001_{ok.record_id}.json"
+    )
+    # tamper payload to disagree with stored task_id
+    _rewrite_ledger_record(
+        path,
+        payload={"preferred_chunk_id": CHUNK_B, "other_chunk_id": CHUNK_B},
+    )
+    with pytest.raises(GoldLabError) as exc:
+        ledger.list_records(campaign.campaign_id)
+    assert exc.value.reason in {
+        "task_identity_mismatch",
+        "ledger_candidate_not_in_case",
+    }
+
+
+def test_rework2_supersedes_id_grammar(tmp_path: Path) -> None:
+    settings, store, campaign, _ = _ready_campaign(tmp_path)
+    ledger = GoldLabLedger(settings, store=store)
+    with pytest.raises(GoldLabError) as exc:
+        ledger.append(
+            campaign.campaign_id,
+            record_type=GoldLedgerRecordType.ABSOLUTE_RELEVANCE,
+            case_id="draft_reviewable",
+            candidate_chunk_id=CHUNK_A,
+            payload={"relevance": 1},
+            idempotency_key="sup_bad",
+            request_fingerprint=_reqfp({"supb": 1}),
+            query_fingerprint=query_fingerprint("What is offline RAG?"),
+            supersedes_judgment_id="not-a-judgment-id",
+        )
+    assert exc.value.reason == "invalid_judgment_id"
+    assert ledger.list_records(campaign.campaign_id) == []
+
+    valid_prior = new_judgment_id()
+    committed = ledger.append(
+        campaign.campaign_id,
+        record_type=GoldLedgerRecordType.ABSOLUTE_RELEVANCE,
+        case_id="draft_reviewable",
+        candidate_chunk_id=CHUNK_A,
+        payload={"relevance": 0},
+        idempotency_key="sup_ok",
+        request_fingerprint=_reqfp({"supo": 1}),
+        query_fingerprint=query_fingerprint("What is offline RAG?"),
+        supersedes_judgment_id=valid_prior,
+    )
+    assert committed.supersedes_judgment_id == valid_prior
+
+
+def test_rework2_baseline_required_for_list(tmp_path: Path) -> None:
+    settings, store, campaign, _ = _ready_campaign(tmp_path)
+    ledger = GoldLabLedger(settings, store=store)
+    ledger.append(
+        campaign.campaign_id,
+        record_type=GoldLedgerRecordType.ABSOLUTE_RELEVANCE,
+        case_id="draft_reviewable",
+        candidate_chunk_id=CHUNK_A,
+        payload={"relevance": 1},
+        idempotency_key="base_list",
+        request_fingerprint=_reqfp({"bl": 1}),
+        query_fingerprint=query_fingerprint("What is offline RAG?"),
+    )
+    baseline_path = (
+        campaign_dir(settings, campaign.campaign_id) / "baseline" / "authoring_run.json"
+    )
+    original = baseline_path.read_bytes()
+    baseline_path.unlink()
+    with pytest.raises(GoldLabError) as exc:
+        ledger.list_records(campaign.campaign_id)
+    assert exc.value.reason == "baseline_missing"
+
+    baseline_path.write_bytes(original + b" ")
+    with pytest.raises(GoldLabError) as exc:
+        ledger.list_records(campaign.campaign_id)
+    assert exc.value.reason == "baseline_hash_mismatch"

@@ -270,3 +270,110 @@ def resolve_ledger_task_id(
         "ledger_record_type_invalid",
         f"unsupported ledger record_type: {record_type}",
     )
+
+
+def assert_campaign_ledger_provenance(
+    record: object,
+    campaign: object,
+) -> None:
+    """Require campaign-bound provenance fields match campaign.json."""
+    from offline_rag.app.gold_lab.models import GoldCampaign, GoldLedgerRecord
+
+    assert isinstance(record, GoldLedgerRecord)
+    assert isinstance(campaign, GoldCampaign)
+    checks = (
+        ("campaign_id", record.campaign_id, campaign.campaign_id),
+        ("project_id", record.project_id, campaign.project_id),
+        ("workspace_id", record.workspace_id, campaign.workspace_id),
+        ("snapshot_id", record.snapshot_id, campaign.snapshot_id),
+        ("chunk_set_id", record.chunk_set_id, campaign.chunk_set_id),
+        (
+            "authoring_run_id",
+            record.authoring_run_id,
+            campaign.baseline_authoring_run_id,
+        ),
+        (
+            "selection_policy_id",
+            record.selection_policy_id,
+            campaign.selection_policy.selection_policy_id,
+        ),
+        (
+            "selection_policy_fingerprint",
+            record.selection_policy_fingerprint,
+            campaign.selection_policy.selection_policy_fingerprint,
+        ),
+    )
+    for name, got, expected in checks:
+        if got != expected:
+            raise GoldLabError(
+                "ledger_provenance_mismatch",
+                f"ledger {name} does not match campaign.json",
+            )
+
+
+def validate_ledger_record_against_sealed_authority(
+    record: object,
+    *,
+    campaign: object,
+    baseline: GoldAuthoringRun,
+) -> None:
+    """Shared append/read scientific integrity for one ledger record.
+
+    Validates campaign provenance, sealed-baseline task membership, and
+    deterministic task identity. Does not implement 16F-B effective-state.
+    """
+    from offline_rag.app.gold_lab.models import (
+        AuxiliaryPreferencePayload,
+        GoldCampaign,
+        GoldLedgerRecord,
+        GoldLedgerRecordType,
+    )
+
+    assert isinstance(record, GoldLedgerRecord)
+    assert isinstance(campaign, GoldCampaign)
+    assert_campaign_ledger_provenance(record, campaign)
+
+    rtype = record.record_type
+    if rtype is GoldLedgerRecordType.QUESTION_CHECK:
+        expected = resolve_ledger_task_id(
+            campaign_id=record.campaign_id,
+            record_type=rtype.value,
+            case_id=record.case_id,
+            baseline=baseline,
+        )
+    elif rtype is GoldLedgerRecordType.ABSOLUTE_RELEVANCE:
+        expected = resolve_ledger_task_id(
+            campaign_id=record.campaign_id,
+            record_type=rtype.value,
+            case_id=record.case_id,
+            baseline=baseline,
+            candidate_chunk_id=record.candidate_chunk_id,
+        )
+    elif rtype is GoldLedgerRecordType.AUXILIARY_PREFERENCE:
+        # Persisted payload is the sole pair authority.
+        try:
+            aux = AuxiliaryPreferencePayload.model_validate(record.payload)
+        except Exception as exc:
+            raise GoldLabError(
+                "ledger_record_invalid",
+                f"invalid auxiliary_preference payload: {exc}",
+            ) from exc
+        expected = resolve_ledger_task_id(
+            campaign_id=record.campaign_id,
+            record_type=rtype.value,
+            case_id=record.case_id,
+            baseline=baseline,
+            preferred_chunk_id=aux.preferred_chunk_id,
+            other_chunk_id=aux.other_chunk_id,
+        )
+    else:
+        raise GoldLabError(
+            "ledger_record_type_invalid",
+            f"unsupported ledger record_type: {rtype}",
+        )
+
+    if record.task_id != expected:
+        raise GoldLabError(
+            "task_identity_mismatch",
+            "task_id does not match sealed-baseline deterministic identity",
+        )

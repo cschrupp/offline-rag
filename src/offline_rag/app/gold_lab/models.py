@@ -430,6 +430,16 @@ class GoldLedgerRecord(BaseModel):
         except GoldLabError as exc:
             raise ValueError(str(exc)) from exc
 
+    @field_validator("supersedes_judgment_id")
+    @classmethod
+    def _supersedes_judgment_id_grammar(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        try:
+            return validate_judgment_id(value)
+        except GoldLabError as exc:
+            raise ValueError(str(exc)) from exc
+
     @model_validator(mode="after")
     def _validate_typed_payload_and_contracts(self) -> GoldLedgerRecord:
         if self.schema_version != LEDGER_SCHEMA:

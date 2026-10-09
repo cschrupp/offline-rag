@@ -9,6 +9,7 @@ from pathlib import Path
 from offline_rag.app.gold_lab.baseline import (
     load_sealed_baseline_run,
     resolve_ledger_task_id,
+    validate_ledger_record_against_sealed_authority,
 )
 from offline_rag.app.gold_lab.errors import GoldLabError
 from offline_rag.app.gold_lab.ids import (
@@ -26,7 +27,7 @@ from offline_rag.app.gold_lab.ids import (
 )
 from offline_rag.app.gold_lab.leases import GoldLabCampaignLease
 from offline_rag.app.gold_lab.models import (
-    GoldCampaign,
+    AuxiliaryPreferencePayload,
     GoldCampaignStatus,
     GoldLedgerRecord,
     GoldLedgerRecordType,
@@ -35,6 +36,7 @@ from offline_rag.app.gold_lab.models import (
 from offline_rag.app.gold_lab.paths import campaign_dir, ledger_dir
 from offline_rag.app.gold_lab.store import GoldLabStore
 from offline_rag.config.models import AppSettings
+from offline_rag.gold_authoring.models import GoldAuthoringRun
 from offline_rag.ingestion.io import atomic_write_text
 
 _LEDGER_FILENAME = re.compile(
@@ -85,6 +87,8 @@ class GoldLabLedger:
         cid = validate_campaign_id(campaign_id)
         rtype = GoldLedgerRecordType(record_type)
         validate_request_fingerprint(request_fingerprint)
+        if supersedes_judgment_id is not None:
+            validate_judgment_id(supersedes_judgment_id)
 
         with GoldLabCampaignLease(self.settings, cid):
             campaign = self.store.get_campaign(cid)
@@ -107,15 +111,28 @@ class GoldLabLedger:
                 baseline_sha256=campaign.baseline_sha256,
             )
 
-            a = preferred_chunk_id
-            b = other_chunk_id
+            aux_preferred: str | None = None
+            aux_other: str | None = None
             if rtype is GoldLedgerRecordType.AUXILIARY_PREFERENCE:
-                if a is None:
-                    raw_a = payload.get("preferred_chunk_id")
-                    a = raw_a if isinstance(raw_a, str) else None
-                if b is None:
-                    raw_b = payload.get("other_chunk_id")
-                    b = raw_b if isinstance(raw_b, str) else None
+                try:
+                    aux = AuxiliaryPreferencePayload.model_validate(payload)
+                except Exception as exc:
+                    raise GoldLabError(
+                        "ledger_record_invalid",
+                        f"invalid auxiliary_preference payload: {exc}",
+                    ) from exc
+                aux_preferred = aux.preferred_chunk_id
+                aux_other = aux.other_chunk_id
+                if preferred_chunk_id is not None and preferred_chunk_id != aux_preferred:
+                    raise GoldLabError(
+                        "auxiliary_pair_mismatch",
+                        "preferred_chunk_id argument disagrees with payload",
+                    )
+                if other_chunk_id is not None and other_chunk_id != aux_other:
+                    raise GoldLabError(
+                        "auxiliary_pair_mismatch",
+                        "other_chunk_id argument disagrees with payload",
+                    )
 
             expected_task = resolve_ledger_task_id(
                 campaign_id=cid,
@@ -123,8 +140,8 @@ class GoldLabLedger:
                 case_id=case_id,
                 baseline=baseline,
                 candidate_chunk_id=candidate_chunk_id,
-                preferred_chunk_id=a,
-                other_chunk_id=b,
+                preferred_chunk_id=aux_preferred,
+                other_chunk_id=aux_other,
             )
             tid = task_id or expected_task
             validate_task_id(tid)
@@ -187,7 +204,9 @@ class GoldLabLedger:
                     f"invalid ledger record: {exc}",
                 ) from exc
 
-            self._assert_campaign_provenance(record, campaign)
+            validate_ledger_record_against_sealed_authority(
+                record, campaign=campaign, baseline=baseline
+            )
 
             path = ledger_dir(self.settings, cid) / ledger_record_filename(
                 sequence=record.sequence,
@@ -213,11 +232,26 @@ class GoldLabLedger:
         cid = validate_campaign_id(campaign_id)
         if not campaign_dir(self.settings, cid).is_dir():
             raise GoldLabError("campaign_not_found", f"unknown campaign: {cid}")
-        root = ledger_dir(self.settings, cid)
+        campaign = self.store.get_campaign(cid)
+        baseline = load_sealed_baseline_run(
+            self.settings,
+            campaign_id=cid,
+            baseline_authoring_run_id=campaign.baseline_authoring_run_id,
+            baseline_sha256=campaign.baseline_sha256,
+        )
+        return self._list_records_with_authority(cid, campaign=campaign, baseline=baseline)
+
+    def _list_records_with_authority(
+        self,
+        campaign_id: str,
+        *,
+        campaign: object,
+        baseline: GoldAuthoringRun,
+    ) -> list[GoldLedgerRecord]:
+        root = ledger_dir(self.settings, campaign_id)
         if not root.exists():
             return []
 
-        campaign = self.store.get_campaign(cid)
         entries: list[tuple[int, str, Path]] = []
         for path in root.iterdir():
             if not path.is_file():
@@ -272,40 +306,8 @@ class GoldLabLedger:
                     "ledger_filename_record_id_mismatch",
                     f"filename/record_id mismatch for {path.name}",
                 )
-            self._assert_campaign_provenance(record, campaign)
+            validate_ledger_record_against_sealed_authority(
+                record, campaign=campaign, baseline=baseline
+            )
             records.append(record)
         return records
-
-    def _assert_campaign_provenance(
-        self,
-        record: GoldLedgerRecord,
-        campaign: GoldCampaign,
-    ) -> None:
-        checks = (
-            ("campaign_id", record.campaign_id, campaign.campaign_id),
-            ("project_id", record.project_id, campaign.project_id),
-            ("workspace_id", record.workspace_id, campaign.workspace_id),
-            ("snapshot_id", record.snapshot_id, campaign.snapshot_id),
-            ("chunk_set_id", record.chunk_set_id, campaign.chunk_set_id),
-            (
-                "authoring_run_id",
-                record.authoring_run_id,
-                campaign.baseline_authoring_run_id,
-            ),
-            (
-                "selection_policy_id",
-                record.selection_policy_id,
-                campaign.selection_policy.selection_policy_id,
-            ),
-            (
-                "selection_policy_fingerprint",
-                record.selection_policy_fingerprint,
-                campaign.selection_policy.selection_policy_fingerprint,
-            ),
-        )
-        for name, got, expected in checks:
-            if got != expected:
-                raise GoldLabError(
-                    "ledger_provenance_mismatch",
-                    f"ledger {name} does not match campaign.json",
-                )
