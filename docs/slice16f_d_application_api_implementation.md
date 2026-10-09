@@ -16,8 +16,8 @@ IMPLEMENTATION EVIDENCE — STOP FOR INDEPENDENT IMPLEMENTATION REVIEW
 | Frozen 16F-D0 design | `7df8a151c6bf47ab9c93d54edf9bece4e3f6ed39` |
 | Frozen design document | `docs/slice16f_d_application_api_design.md` |
 | Starting HEAD | `7df8a151c6bf47ab9c93d54edf9bece4e3f6ed39` |
-| Implementation SHA | `IMPLEMENTATION_SHA_PENDING` |
-| Documentation SHA | `DOCUMENTATION_SHA_PENDING` |
+| Implementation SHA | `b6f67a2d365f225bcbb5b6abc62b7cb6b0d8a440` |
+| Documentation SHA | `50f560e4b9f26eae3e73c5c5d06c77614ea80a84` |
 
 ## Production footprint
 
