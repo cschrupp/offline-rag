@@ -9,7 +9,7 @@
 | Branch | `implementation/16f-b-effective-state` |
 | Starting HEAD | `2e4d51b06763ed04bce8b6e2d60337f61082bc64` |
 | Implementation SHA | `10520c1625f63e347116055124c181df3a446df1` |
-| Documentation SHA | `_FILL_AFTER_DOCS_COMMIT_` |
+| Documentation SHA | `65e86ead38794a93a3961db6640fcaaf616e8fc7` |
 
 ## Scope
 
