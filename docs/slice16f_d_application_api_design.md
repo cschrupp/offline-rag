@@ -42,7 +42,7 @@ NOT AUTHORIZED
 | Rework 3 design SHA | `8cfa559f513dcda2052ee8eca58f1a245ec1e306` |
 | Rework 3 tip | `dfd72d97d9a69e8084734b6b41f41ef062b0bebc` |
 | Rework 4 starting HEAD | `dfd72d97d9a69e8084734b6b41f41ef062b0bebc` |
-| Rework 4 design SHA | `REWORK4_DESIGN_SHA_PENDING` |
+| Rework 4 design SHA | `cded628e1c2662d489935e9d703525031eb27d63` |
 
 Frozen parent decision (must not be reopened):
 
