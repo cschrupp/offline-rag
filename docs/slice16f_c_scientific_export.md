@@ -11,6 +11,11 @@
 | Starting HEAD | `f4fe892044f8443594d7629e5b49a3d9f39b6297` |
 | Implementation SHA | `3b802a5d066370af5ab696e8e0529d865a612002` |
 | Documentation SHA | `1c902f52a604348b9da82e43e99fff00f611e72c` |
+| Documentation SHA fill | `36916216615981017013cb5e6e5ee822ade804b5` |
+| Pre-Rework-1 tip | `ca5d605e21820d0a5cb53a0ddd8c7e7ebfffa701` |
+| Rework 1 starting HEAD | `ca5d605e21820d0a5cb53a0ddd8c7e7ebfffa701` |
+| Rework 1 implementation SHA | `09a25122311fc554504683f513e505e6a8891d88` |
+| Rework 1 documentation SHA | `REWORK1_DOCUMENTATION_SHA_PENDING` |
 
 ## Scope
 
@@ -86,10 +91,13 @@ Derived/rebuildable cache. Not a scientific dataset identity.
 1. Finalize projection into `datasets/.candidate.<campaign_id>.<uuid>/` via existing `run_gold_finalize`
 2. `load_gold_dataset` + `dataset_id` grammar `^gold_[0-9a-f]{64}$`
 3. Under `GoldLabDatasetLease`:
-   - Absent canonical → atomic `os.replace` to `datasets/<dataset_id>/`
+   - Absent canonical **and** no existing `registrations/<dataset_id>/*.json` → atomic `os.replace`
+   - Absent canonical **but** registrations already exist → `registered_dataset_missing` fail-closed (no silent repair)
    - Present same semantic `dataset_id` → reuse; delete candidate; do not rewrite bytes
+   - Present but corrupt/wrong schema/identity → fail-closed; candidate cleaned; canonical untouched
    - Differing `meta.metadata.authoring_run_id` is not a conflict
 4. No `--force`; no overwrite of occupied canonical path
+5. Normal handled failures clean unpromoted `.candidate.<campaign_id>.*` staging
 
 ## Registration schema / path
 
@@ -132,22 +140,37 @@ Two campaigns may resolve to the same `dataset_id`:
 ## Locks
 
 ```
-GoldLabProjectLease → GoldLabCampaignLease → GoldLabDatasetLease
+GoldLabProjectLease(captured_project_id) → GoldLabCampaignLease → GoldLabDatasetLease
 ```
 
+Before lock acquisition, capture `campaign_probe.project_id`. After both project and campaign leases are held, re-read the campaign and require `campaign.project_id == captured_project_id`, then load the project by the captured id. Mismatch → fail-closed (`export_project_lock_mismatch`).
+
 Export does **not** require campaign OPEN. Closed campaigns may export already-derived work. No ledger append; no reopen; no project status mutation.
+
+## Rework 1 — Registration scientific-binding / fail-closed recovery
+
+Hardening only (no redesign; no 16F-D entry):
+
+- **Dataset ↔ registration ↔ campaign scientific binding:** authoritative validation requires loaded GoldDataset `source_schema`, `dataset_id`, `chunk_set_id`, `corpus_id`, and `corpus_name` to match the registration (which already matches campaign authority). Dataset-id equality alone is insufficient.
+- **Project / selection-policy coherence:** `project.project_id == campaign.project_id` and `project.project_type == campaign.selection_policy.project_type`.
+- **Baseline exported-case membership on read:** every `exported_case_ids` entry must exist in the sealed campaign baseline (`load_sealed_baseline_run`); enforced by the same validator used for create, replay, and contribution scans.
+- **Strict `load_registration` path identity:** parsed `dataset_id` / `campaign_id` must equal the requested path identity.
+- **No silent repair of missing registered dataset:** if `datasets/<D>/` is absent but `registrations/<D>/*.json` exists, promotion is refused (`registered_dataset_missing`).
+- **Candidate cleanup:** unpromoted candidates are removed on lease-held, corrupt/reuse failure, and publication reject paths. Crash may still leave hidden staging (non-authoritative).
+- **Crash-after-dataset recovery preserved:** dataset present + registration absent → retry reuses dataset and creates registration without rewrite.
+- **Single authoritative validator:** `validate_registration_against_authority` is shared across first registration, exact replay, and contribution registration scans.
 
 ## Tests
 
 `tests/unit/app/test_slice16f_c_scientific_export.py`
 
-Coverage includes projection matrix, deterministic hash, GoldDataset-v1 positive-only export, dataset publish/reuse, registration-v1 idempotency, multi-campaign share, crash-after-dataset, sticky +15, closed-campaign export, nonscope.
+Coverage includes projection matrix, deterministic hash, GoldDataset-v1 positive-only export, dataset publish/reuse, registration-v1 idempotency, multi-campaign share, crash-after-dataset, sticky +15, closed-campaign export, nonscope, plus Rework 1 binding / baseline membership / path identity / missing-registered-dataset / candidate cleanup / project-lock identity.
 
 ## Regression
 
 | Suite | Result |
 |---|---|
-| 16F-C `test_slice16f_c_scientific_export.py` | 12 PASS |
+| 16F-C `test_slice16f_c_scientific_export.py` | 20 PASS |
 | 16F-B `test_slice16f_b_effective_state.py` | 24 PASS |
 | 16F-A `test_slice16f_a_gold_lab_foundation.py` | 22 PASS |
 | Slice-9E gold review (finalize-adjacent) | 34 PASS |
