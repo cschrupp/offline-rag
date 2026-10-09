@@ -13,6 +13,9 @@
 | Rework 1 starting HEAD | `d6da49309f863955f65148d166dab8b770284c34` |
 | Rework 1 implementation SHA | `5416d536d7aff641ce81348a46ba2e750e710871` |
 | Rework 1 documentation SHA | `60b5c795df76fa0ab5d2d9b95b67b0e576794ae9` |
+| Rework 2 starting HEAD | `5b0fca3b675debf3b96b4b595a2cec0640b83327` |
+| Rework 2 implementation SHA | `f2118986e40e2058a89c3053b8456eaa69271eca` |
+| Rework 2 documentation SHA | `_FILL_AFTER_DOCS_COMMIT_` |
 
 ## Scope
 
@@ -39,6 +42,14 @@ Hardening only (no redesign; no 16F-C entry):
 - **Catalog command-kind integrity:** `command_kind` is exactly `question_check` | `absolute_relevance` | `auxiliary_preference`; must match invoked command and reserved ledger `record_type`.
 - **Project-archive commit serialization:** supported mutations hold `GoldLabProjectLease` then `GoldLabCampaignLease` through lookup → lifecycle → fold → PENDING → append → COMMITTED. Replay of exact COMMITTED requests still succeeds after archive/close; new/uncommitted keys are rejected.
 - **Exact durable Question Check replay shape:** accept/reject payloads must be exactly `{decision}`; edit must contain exactly the four canonical keys with already-canonical values (no whitespace/unsorted tags accepted on fold). Shared helpers: command-input canonicalize vs ledger-replay validate-already-canonical.
+
+## Rework 2 — Complete pre-reservation command validation
+
+Narrow closure so PENDING means interrupted valid commit, never deterministic caller error:
+
+- **Complete deterministic command preflight before PENDING:** all supported-command shape/type/domain failures (including optional provenance) occur before request fingerprint commit identity is durable-reserved.
+- **Strict `str | null` optional provenance:** `game_id` and `presentation_id` accept only Python `str` or `None` (no coercion of int/bool/list/dict/bytes/etc.).
+- **Invalid supported command leaves no crash-recovery reservation:** no idempotency catalog entry and no ledger row; a later retry with the same key and valid inputs is treated as a fresh request.
 
 ## Modules
 
