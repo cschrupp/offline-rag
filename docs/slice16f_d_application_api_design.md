@@ -33,7 +33,7 @@ NOT AUTHORIZED
 | Design SHA | `aaa409b0338ceb46bfaeeea18f9b2d5dc6ee5e71` |
 | Design SHA fill tip | `982629d25c17f7641688f266785019755aeb8913` |
 | Rework 1 starting HEAD | `982629d25c17f7641688f266785019755aeb8913` |
-| Rework 1 design SHA | `REWORK1_DESIGN_SHA_PENDING` |
+| Rework 1 design SHA | `1082ecb22ba9db5ac691ae3ff2d29016a2906650` |
 
 Frozen parent decision (must not be reopened):
 
