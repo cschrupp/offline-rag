@@ -1,0 +1,79 @@
+"""16F-A Gold Lab contracts and persistence foundation (no API/UI)."""
+
+from __future__ import annotations
+
+from offline_rag.app.gold_lab.campaigns import GoldCampaignService
+from offline_rag.app.gold_lab.errors import GoldLabError
+from offline_rag.app.gold_lab.ids import (
+    ABSOLUTE_RELEVANCE_CONTRACT,
+    AUXILIARY_PREFERENCE_CONTRACT,
+    HARD_CALL_DESIGNATION_CONTRACT,
+    HARD_CALLS_SCHEMA,
+    LEDGER_SCHEMA,
+    QUESTION_CHECK_CONTRACT,
+    SELECTION_POLICY_CONTRACT,
+    absolute_relevance_task_id,
+    auxiliary_preference_task_id,
+    hard_call_designation_id,
+    new_campaign_id,
+    new_judgment_id,
+    new_ledger_record_id,
+    new_project_id,
+    query_fingerprint,
+    question_check_task_id,
+)
+from offline_rag.app.gold_lab.ledger import GoldLabLedger
+from offline_rag.app.gold_lab.models import (
+    AbsoluteRelevancePayload,
+    GoldCampaign,
+    GoldCampaignStatus,
+    GoldLedgerRecord,
+    GoldLedgerRecordType,
+    GoldProject,
+    GoldProjectStatus,
+    GoldProjectType,
+    GoldSelectionPolicy,
+    HardCallDesignation,
+    HardCallsArtifact,
+    build_selection_policy,
+    selection_policy_fingerprint,
+)
+from offline_rag.app.gold_lab.reviewable import is_reviewable_case
+from offline_rag.app.gold_lab.store import GoldLabStore
+
+__all__ = [
+    "ABSOLUTE_RELEVANCE_CONTRACT",
+    "AUXILIARY_PREFERENCE_CONTRACT",
+    "HARD_CALLS_SCHEMA",
+    "HARD_CALL_DESIGNATION_CONTRACT",
+    "LEDGER_SCHEMA",
+    "QUESTION_CHECK_CONTRACT",
+    "SELECTION_POLICY_CONTRACT",
+    "AbsoluteRelevancePayload",
+    "GoldCampaign",
+    "GoldCampaignService",
+    "GoldCampaignStatus",
+    "GoldLabError",
+    "GoldLabLedger",
+    "GoldLabStore",
+    "GoldLedgerRecord",
+    "GoldLedgerRecordType",
+    "GoldProject",
+    "GoldProjectStatus",
+    "GoldProjectType",
+    "GoldSelectionPolicy",
+    "HardCallDesignation",
+    "HardCallsArtifact",
+    "absolute_relevance_task_id",
+    "auxiliary_preference_task_id",
+    "build_selection_policy",
+    "hard_call_designation_id",
+    "is_reviewable_case",
+    "new_campaign_id",
+    "new_judgment_id",
+    "new_ledger_record_id",
+    "new_project_id",
+    "query_fingerprint",
+    "question_check_task_id",
+    "selection_policy_fingerprint",
+]

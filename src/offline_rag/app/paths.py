@@ -23,6 +23,7 @@ _REQUIRED_PATH_ATTRS: tuple[str, ...] = (
     "staging",
     "locks",
     "workspaces",
+    "gold_lab",
     "product_settings",
 )
 

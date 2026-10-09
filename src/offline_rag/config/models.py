@@ -49,6 +49,7 @@ class PathSettings(BaseModel):
     staging: Path = Path("data/staging")
     locks: Path = Path("data/locks")
     workspaces: Path = Path("data/workspaces")
+    gold_lab: Path = Path("data/gold-lab")
     product_settings: Path = Path("data/settings")
     logs: Path = Path("data/logs")
     retrieval_models: Path = Path("models")
@@ -490,7 +491,7 @@ class AuthoringSettings(BaseModel):
         if value is None:
             return None
         if not isinstance(value, str):
-            raise ValueError("authoring.model must be a string or null")
+            raise TypeError("authoring.model must be a string or null")
         text = value.strip()
         return text or None
 

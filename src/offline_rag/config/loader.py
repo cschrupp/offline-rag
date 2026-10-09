@@ -171,6 +171,7 @@ def _apply_data_dir(data: MutableMapping[str, Any], data_dir: str) -> None:
     paths["staging"] = str(root / "staging")
     paths["locks"] = str(root / "locks")
     paths["workspaces"] = str(root / "workspaces")
+    paths["gold_lab"] = str(root / "gold-lab")
     paths["product_settings"] = str(root / "settings")
     paths["logs"] = str(root / "logs")
     paths["eval_results"] = str(root / "eval" / "results")
