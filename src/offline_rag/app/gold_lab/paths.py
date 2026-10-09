@@ -69,6 +69,31 @@ def projection_dir(settings: AppSettings | PathSettings, campaign_id: str) -> Pa
     return campaign_dir(settings, campaign_id) / "projection"
 
 
+def idempotency_dir(settings: AppSettings | PathSettings, campaign_id: str) -> Path:
+    return campaign_dir(settings, campaign_id) / "idempotency"
+
+
+def idempotency_entry_path(
+    settings: AppSettings | PathSettings, campaign_id: str, entry_filename: str
+) -> Path:
+    name = entry_filename.strip()
+    if (
+        not name
+        or "/" in name
+        or "\\" in name
+        or ".." in name
+        or not name.startswith("idem_")
+        or not name.endswith(".json")
+    ):
+        from offline_rag.app.gold_lab.errors import GoldLabError
+
+        raise GoldLabError(
+            "invalid_idempotency_path",
+            f"invalid idempotency filename: {entry_filename!r}",
+        )
+    return idempotency_dir(settings, campaign_id) / name
+
+
 def ensure_gold_lab_layout(settings: AppSettings | PathSettings) -> None:
     """Ensure Gold Lab root role directories exist (empty datasets/registrations OK)."""
     for path in (

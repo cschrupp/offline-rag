@@ -318,12 +318,46 @@ class AbsoluteRelevancePayload(BaseModel):
         return value
 
 
+class QuestionCheckDecision(StrEnum):
+    ACCEPT = "accept"
+    EDIT = "edit"
+    REJECT = "reject"
+
+
 class QuestionCheckPayload(BaseModel):
-    """Envelope-capable payload; full QC semantics belong to 16F-B."""
+    """Strict Question Check decision body (16F-B durable semantics)."""
 
     model_config = ConfigDict(extra="forbid")
 
-    decision: NonEmptyStr
+    decision: QuestionCheckDecision
+    effective_query: str | None = None
+    effective_category: str | None = None
+    effective_tags: list[str] | None = None
+
+    @model_validator(mode="after")
+    def _decision_shape(self) -> QuestionCheckPayload:
+        if self.decision is QuestionCheckDecision.ACCEPT:
+            if (
+                self.effective_query is not None
+                or self.effective_category is not None
+                or self.effective_tags is not None
+            ):
+                raise ValueError("accept payload must not include edit fields")
+            return self
+        if self.decision is QuestionCheckDecision.REJECT:
+            if (
+                self.effective_query is not None
+                or self.effective_category is not None
+                or self.effective_tags is not None
+            ):
+                raise ValueError("reject payload must not include edit fields")
+            return self
+        # edit
+        if self.effective_query is None or not str(self.effective_query).strip():
+            raise ValueError("edit requires non-empty effective_query")
+        if self.effective_tags is None:
+            raise ValueError("edit requires effective_tags list")
+        return self
 
 
 class AuxiliaryPreferencePayload(BaseModel):
@@ -333,6 +367,81 @@ class AuxiliaryPreferencePayload(BaseModel):
 
     preferred_chunk_id: NonEmptyStr
     other_chunk_id: NonEmptyStr
+
+
+class IdempotencyStatus(StrEnum):
+    PENDING = "pending"
+    COMMITTED = "committed"
+
+
+class IdempotencyEntry(BaseModel):
+    """offline-rag-gold-idempotency-v1 campaign-local catalog entry."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: Literal["offline-rag-gold-idempotency-v1"] = (
+        "offline-rag-gold-idempotency-v1"
+    )
+    campaign_id: NonEmptyStr
+    idempotency_key: NonEmptyStr
+    request_fingerprint: NonEmptyStr
+    command_kind: NonEmptyStr
+    status: IdempotencyStatus
+    record_id: NonEmptyStr
+    judgment_id: NonEmptyStr
+    created_at: datetime
+    committed_at: datetime | None = None
+
+    @field_validator("campaign_id")
+    @classmethod
+    def _campaign_id_grammar(cls, value: str) -> str:
+        try:
+            return validate_campaign_id(value)
+        except GoldLabError as exc:
+            raise ValueError(str(exc)) from exc
+
+    @field_validator("record_id")
+    @classmethod
+    def _record_id_grammar(cls, value: str) -> str:
+        try:
+            return validate_record_id(value)
+        except GoldLabError as exc:
+            raise ValueError(str(exc)) from exc
+
+    @field_validator("judgment_id")
+    @classmethod
+    def _judgment_id_grammar(cls, value: str) -> str:
+        try:
+            return validate_judgment_id(value)
+        except GoldLabError as exc:
+            raise ValueError(str(exc)) from exc
+
+    @field_validator("request_fingerprint")
+    @classmethod
+    def _reqfp_grammar(cls, value: str) -> str:
+        try:
+            return validate_request_fingerprint(value)
+        except GoldLabError as exc:
+            raise ValueError(str(exc)) from exc
+
+    @model_validator(mode="after")
+    def _status_committed_at(self) -> IdempotencyEntry:
+        if self.schema_version != "offline-rag-gold-idempotency-v1":
+            raise GoldLabError(
+                "idempotency_schema_invalid",
+                "expected offline-rag-gold-idempotency-v1",
+            )
+        if self.status is IdempotencyStatus.COMMITTED and self.committed_at is None:
+            raise GoldLabError(
+                "idempotency_entry_invalid",
+                "committed entry requires committed_at",
+            )
+        if self.status is IdempotencyStatus.PENDING and self.committed_at is not None:
+            raise GoldLabError(
+                "idempotency_entry_invalid",
+                "pending entry must not set committed_at",
+            )
+        return self
 
 
 class GoldLedgerRecord(BaseModel):
@@ -460,7 +569,13 @@ class GoldLedgerRecord(BaseModel):
                     "ledger_semantic_contract_mismatch",
                     "question_check requires gold-question-check-v1",
                 )
-            QuestionCheckPayload.model_validate(self.payload)
+            try:
+                QuestionCheckPayload.model_validate(self.payload)
+            except Exception as exc:
+                raise GoldLabError(
+                    "ledger_record_invalid",
+                    f"invalid question_check payload: {exc}",
+                ) from exc
         elif self.record_type is GoldLedgerRecordType.AUXILIARY_PREFERENCE:
             if self.semantic_contract != AUXILIARY_PREFERENCE_CONTRACT:
                 raise GoldLabError(

@@ -19,6 +19,8 @@ HARD_CALL_DESIGNATION_CONTRACT = "gold-hard-call-designation-v1"
 LEDGER_SCHEMA = "offline-rag-gold-lab-ledger-v1"
 HARD_CALLS_SCHEMA = "offline-rag-gold-hard-calls-v1"
 SELECTION_POLICY_CONTRACT = "gold-selection-policy-v1"
+IDEMPOTENCY_SCHEMA = "offline-rag-gold-idempotency-v1"
+CONTRIBUTION_CONTRACT = "gold-contribution-v1"
 
 _PROJECT_ID_RE = re.compile(r"^goldproj_[0-9a-f]{32}$")
 _CAMPAIGN_ID_RE = re.compile(r"^goldcamp_[0-9a-f]{32}$")

@@ -1,14 +1,28 @@
-"""16F-A Gold Lab contracts and persistence foundation (no API/UI)."""
+"""16F Gold Lab contracts, persistence, and effective-state mutation service."""
 
 from __future__ import annotations
 
 from offline_rag.app.gold_lab.campaigns import GoldCampaignService
+from offline_rag.app.gold_lab.contribution import (
+    ContributionProjection,
+    project_contribution,
+)
+from offline_rag.app.gold_lab.effective_state import (
+    EffectiveCampaignState,
+    fold_effective_state,
+)
 from offline_rag.app.gold_lab.errors import GoldLabError
+from offline_rag.app.gold_lab.idempotency import (
+    GoldLabIdempotencyCatalog,
+    normalize_idempotency_key,
+)
 from offline_rag.app.gold_lab.ids import (
     ABSOLUTE_RELEVANCE_CONTRACT,
     AUXILIARY_PREFERENCE_CONTRACT,
+    CONTRIBUTION_CONTRACT,
     HARD_CALL_DESIGNATION_CONTRACT,
     HARD_CALLS_SCHEMA,
+    IDEMPOTENCY_SCHEMA,
     LEDGER_SCHEMA,
     QUESTION_CHECK_CONTRACT,
     SELECTION_POLICY_CONTRACT,
@@ -32,6 +46,7 @@ from offline_rag.app.gold_lab.ids import (
 from offline_rag.app.gold_lab.ledger import GoldLabLedger
 from offline_rag.app.gold_lab.models import (
     AbsoluteRelevancePayload,
+    AuxiliaryPreferencePayload,
     GoldCampaign,
     GoldCampaignStatus,
     GoldLedgerRecord,
@@ -42,26 +57,47 @@ from offline_rag.app.gold_lab.models import (
     GoldSelectionPolicy,
     HardCallDesignation,
     HardCallsArtifact,
+    IdempotencyEntry,
+    IdempotencyStatus,
+    QuestionCheckDecision,
+    QuestionCheckPayload,
     build_selection_policy,
     selection_policy_fingerprint,
 )
+from offline_rag.app.gold_lab.mutations import GoldLabMutationService, MutationResult
 from offline_rag.app.gold_lab.reviewable import is_reviewable_case
 from offline_rag.app.gold_lab.store import GoldLabStore
+from offline_rag.app.gold_lab.tasks import (
+    BlindTaskView,
+    ProjectedTask,
+    TaskKind,
+    TaskState,
+    blind_task_views,
+    project_tasks,
+)
 
 __all__ = [
     "ABSOLUTE_RELEVANCE_CONTRACT",
     "AUXILIARY_PREFERENCE_CONTRACT",
+    "CONTRIBUTION_CONTRACT",
     "HARD_CALLS_SCHEMA",
     "HARD_CALL_DESIGNATION_CONTRACT",
+    "IDEMPOTENCY_SCHEMA",
     "LEDGER_SCHEMA",
     "QUESTION_CHECK_CONTRACT",
     "SELECTION_POLICY_CONTRACT",
     "AbsoluteRelevancePayload",
+    "AuxiliaryPreferencePayload",
+    "BlindTaskView",
+    "ContributionProjection",
+    "EffectiveCampaignState",
     "GoldCampaign",
     "GoldCampaignService",
     "GoldCampaignStatus",
     "GoldLabError",
+    "GoldLabIdempotencyCatalog",
     "GoldLabLedger",
+    "GoldLabMutationService",
     "GoldLabStore",
     "GoldLedgerRecord",
     "GoldLedgerRecordType",
@@ -71,15 +107,28 @@ __all__ = [
     "GoldSelectionPolicy",
     "HardCallDesignation",
     "HardCallsArtifact",
+    "IdempotencyEntry",
+    "IdempotencyStatus",
+    "MutationResult",
+    "ProjectedTask",
+    "QuestionCheckDecision",
+    "QuestionCheckPayload",
+    "TaskKind",
+    "TaskState",
     "absolute_relevance_task_id",
     "auxiliary_preference_task_id",
+    "blind_task_views",
     "build_selection_policy",
+    "fold_effective_state",
     "hard_call_designation_id",
     "is_reviewable_case",
     "new_campaign_id",
     "new_judgment_id",
     "new_ledger_record_id",
     "new_project_id",
+    "normalize_idempotency_key",
+    "project_contribution",
+    "project_tasks",
     "query_fingerprint",
     "question_check_task_id",
     "selection_policy_fingerprint",
