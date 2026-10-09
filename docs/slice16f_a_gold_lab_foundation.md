@@ -18,8 +18,8 @@
 | Rework 1 evidence SHA fill | `0110311d12e98d4892ff3b7f35110871fdcd5365` |
 | Rework 1 prior final tip | `bac812e3646e9b4e6e148859c92d5afa9ade36b7` |
 | Rework 2 starting HEAD | `bac812e3646e9b4e6e148859c92d5afa9ade36b7` |
-| Rework 2 implementation SHA |  |
-| Rework 2 documentation SHA |  |
+| Rework 2 implementation SHA | `7e886ed5758dd8c2e0b47eea62550c1694240af0` |
+| Rework 2 documentation SHA | `85e96cfeebeb48f8a1c4d5a279bf8be5efa3d40f` |
 
 ## Scope
 
