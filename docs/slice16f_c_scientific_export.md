@@ -147,9 +147,9 @@ Coverage includes projection matrix, deterministic hash, GoldDataset-v1 positive
 
 | Suite | Result |
 |---|---|
-| 16F-C | PASS |
+| 16F-C `test_slice16f_c_scientific_export.py` | 12 PASS |
 | 16F-B `test_slice16f_b_effective_state.py` | 24 PASS |
 | 16F-A `test_slice16f_a_gold_lab_foundation.py` | 22 PASS |
-| Slice-9E gold review (finalize-adjacent) | PASS |
+| Slice-9E gold review (finalize-adjacent) | 34 PASS |
 | Ruff (gold_lab + 16F-A/B/C tests) | PASS |
 | `git diff --check` | PASS |
