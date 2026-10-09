@@ -15,7 +15,7 @@
 | Pre-Rework-1 tip | `ca5d605e21820d0a5cb53a0ddd8c7e7ebfffa701` |
 | Rework 1 starting HEAD | `ca5d605e21820d0a5cb53a0ddd8c7e7ebfffa701` |
 | Rework 1 implementation SHA | `09a25122311fc554504683f513e505e6a8891d88` |
-| Rework 1 documentation SHA | `REWORK1_DOCUMENTATION_SHA_PENDING` |
+| Rework 1 documentation SHA | `18142bf55ab07b6c06bf9d0d151753b0cf7fe393` |
 
 ## Scope
 
