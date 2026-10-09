@@ -17,8 +17,8 @@ IMPLEMENTATION EVIDENCE — STOP FOR INDEPENDENT IMPLEMENTATION REVIEW
 | Frozen design document | `docs/slice16f_d_application_api_design.md` |
 | Starting HEAD | `7df8a151c6bf47ab9c93d54edf9bece4e3f6ed39` |
 | Prior reviewed tip | `67523ad53bb5c10197560c6ff3c1e7f69eb76a2d` |
-| Implementation SHA | `IMPLEMENTATION_SHA_PENDING` |
-| Documentation SHA | `DOCUMENTATION_SHA_PENDING` |
+| Implementation SHA | `a9086e9f49c12901d5301b9f1e632c78cfcfb86b` |
+| Documentation SHA | `0929cfc6508bcf8522f2ba4dd75dcc00d8eb96d3` |
 
 ## Corrective rework (post independent review)
 
