@@ -19,7 +19,7 @@
 | Rework 1 prior final tip | `bac812e3646e9b4e6e148859c92d5afa9ade36b7` |
 | Rework 2 starting HEAD | `bac812e3646e9b4e6e148859c92d5afa9ade36b7` |
 | Rework 2 implementation SHA |  |
-| Rework 2 documentation SHA | _(filled after docs commit)_ |
+| Rework 2 documentation SHA |  |
 
 ## Scope
 
