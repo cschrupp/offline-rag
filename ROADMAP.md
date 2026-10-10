@@ -118,6 +118,13 @@ S16-D23–S16-D34; plan
 human gold work. Slice **9G** remains **DEFERRED / NOT AUTHORIZED** and is
 **not** resumed by Slice 16 design acceptance/lock.
 
+**GAP-16G-02 — Gold baseline bootstrap / candidate-generation product flow:**
+**DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED.** Seneca still lacks
+browser orchestration for existing Slice 9B proposal + 9C pooling (+ optional
+9D advisory prelabel) before Gold Lab campaign creation. See
+[`docs/slice16g_gap_registry_addendum.md`](docs/slice16g_gap_registry_addendum.md).
+Slice **9G** remains **DEFERRED / NOT AUTHORIZED**.
+
 Formal **9H** remains **FROZEN** behind future 9G.
 
 The 22-case / human-16 9F benchmark remains a **development/regression fixture
@@ -478,6 +485,8 @@ SLICE 15  COMPLETE / ACCEPTED
        DESIGN TIP 8af2dbab72d1a79f53b0f3958e7c7142b4273693
        FROZEN DESIGN: docs/slice16g_gold_lab_games_pedagogy_design.md
      GAP-16G-01 DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED
+     GAP-16G-02 DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED
+       Addendum: docs/slice16g_gap_registry_addendum.md
      16G IMPLEMENTATION NOT AUTHORIZED
      16H NOT AUTHORIZED
      Slice 16 overall IN PROGRESS / NOT COMPLETE
@@ -494,6 +503,12 @@ SLICE 15  COMPLETE / ACCEPTED
      Portfolio Release Package
      DESIGN NOT OPEN
      IMPLEMENTATION NOT AUTHORIZED
+
+POST-M7 CANDIDATE-01  PLANNING REGISTERED
+     Answer-level user feedback / continuous evaluation
+     DESIGN NOT OPEN
+     IMPLEMENTATION NOT AUTHORIZED
+     Addendum: docs/slice16g_gap_registry_addendum.md
 
 M7 CLOSEOUT  NOT AUTHORIZED
 issue #1 (image size / CPU-CUDA variants)  DEFERRED
@@ -708,6 +723,17 @@ Slice 14 checklist:
   profiles; demo media; reproducible install/run path; interview talking points
 - Claims remain conservative; deferred scientific/publication-grade promotions
   stay unauthorized
+
+**Post-M7 candidate — Answer-level user feedback / continuous evaluation:**
+**PLANNING REGISTERED / DESIGN NOT OPEN / IMPLEMENTATION NOT AUTHORIZED**
+([`docs/slice16g_gap_registry_addendum.md`](docs/slice16g_gap_registry_addendum.md)
+as `NEXT-MILESTONE-CANDIDATE-01`). Named planning candidate only — not a formal
+milestone number yet (Milestone 8 remains a historical stub superseded by
+Slice 18). Candidate direction: response-level thumbs; optional
+structured/free-text feedback; exact response provenance; append-only feedback
+history; observational product metrics; reviewed bridge to regression
+candidates. Explicitly **not** Gold, **not** benchmark truth, **not** automatic
+training data, and **not** automatic promotion authority.
 
 Later M7 checklist:
 

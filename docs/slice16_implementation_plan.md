@@ -67,6 +67,7 @@ AMENDMENT A4: ACCEPTED / LOCKED / SEALED
   DESIGN BLOB: edc2be739621dbedfc44ed77861119a35f8f6d18
   FROZEN DESIGN: docs/slice16g_gold_lab_games_pedagogy_design.md
 GAP-16G-01: DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED
+GAP-16G-02: DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED
 16G IMPLEMENTATION: NOT AUTHORIZED
 16H: NOT AUTHORIZED
 BASELINE: 1610f9282d1edbd4dfc8ae76d7644a1b9ea4e75e
@@ -659,6 +660,7 @@ DESIGN TIP: 8af2dbab72d1a79f53b0f3958e7c7142b4273693
 DESIGN BLOB: edc2be739621dbedfc44ed77861119a35f8f6d18
 FROZEN DESIGN: docs/slice16g_gold_lab_games_pedagogy_design.md
 GAP-16G-01: DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED
+GAP-16G-02: DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED
 Authority: 16G-D0-AUTH-001 / Human acceptance ACCEPTED
 ```
 
@@ -732,6 +734,30 @@ Evidence candidate + independent review + explicit human acceptance only.
 - issue #1 image-size optimization;
 - Slice 17 / Slice 18 / Milestone 7 closeout.
 
+### Registered product-flow gap — GAP-16G-02
+
+**Status:** **DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED**
+
+Seneca still lacks browser orchestration for creating the pristine
+GoldAuthoringRun baseline that Gold Lab campaign creation requires. The
+registered future product path (not authorized here) is:
+
+```text
+workspace publication
+→ 9B propose
+→ 9C pool
+→ optional 9D advisory prelabel
+→ pristine-baseline validation
+→ Gold Lab
+```
+
+Detail: [`docs/slice16g_gap_registry_addendum.md`](slice16g_gap_registry_addendum.md).
+
+This registration does **not** amend frozen 16G-D0, does **not** reopen
+Slice **9G** (**DEFERRED / NOT AUTHORIZED**), and does **not** place
+`NEXT-MILESTONE-CANDIDATE-01` (answer-level user feedback) into 16G
+implementation scope.
+
 ---
 
 ## Authorization note
@@ -796,6 +822,7 @@ AMENDMENT A4: ACCEPTED / LOCKED / SEALED
   DESIGN BLOB: edc2be739621dbedfc44ed77861119a35f8f6d18
   FROZEN DESIGN: docs/slice16g_gold_lab_games_pedagogy_design.md
 GAP-16G-01: DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED
+GAP-16G-02: DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED
 16G IMPLEMENTATION: NOT AUTHORIZED
 16H: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
@@ -828,5 +855,8 @@ evidence tip `9cd5528ab6c6e22d2dca55aca221b65eac50269e`). **16F** is
 `docs/slice16f_closeout.md`). **16G-D0** is **ACCEPTED / FROZEN**
 (`docs/slice16g_gold_lab_games_pedagogy_design.md` at tip
 `8af2dbab72d1a79f53b0f3958e7c7142b4273693`). **GAP-16G-01** is **DESIGN
-REGISTERED / IMPLEMENTATION NOT AUTHORIZED**. **16G implementation** and
-**16H** remain **NOT AUTHORIZED**. Slice 16 overall is **not** complete.
+REGISTERED / IMPLEMENTATION NOT AUTHORIZED**. **GAP-16G-02** is **DESIGN
+REGISTERED / IMPLEMENTATION NOT AUTHORIZED**
+([`docs/slice16g_gap_registry_addendum.md`](slice16g_gap_registry_addendum.md)).
+**16G implementation** and **16H** remain **NOT AUTHORIZED**. Slice 16 overall
+is **not** complete.

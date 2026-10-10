@@ -1026,6 +1026,7 @@ AMENDMENT A4:      ACCEPTED / LOCKED / SEALED
 16F:               COMPLETE / ACCEPTED / SEALED
 16G-D0:            ACCEPTED / FROZEN
 GAP-16G-01:         DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED
+GAP-16G-02:         DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED
 16G IMPLEMENTATION / 16H: NOT AUTHORIZED
 SLICE 17 / 18:     NOT AUTHORIZED
 M7 CLOSEOUT:       NOT AUTHORIZED
@@ -1040,6 +1041,7 @@ Authoritative current governance:
 - [`docs/slice16e_closeout.md`](docs/slice16e_closeout.md)
 - [`docs/slice16f_closeout.md`](docs/slice16f_closeout.md)
 - [`docs/slice16g_gold_lab_games_pedagogy_design.md`](docs/slice16g_gold_lab_games_pedagogy_design.md)
+- [`docs/slice16g_gap_registry_addendum.md`](docs/slice16g_gap_registry_addendum.md)
 - [`docs/workspace_source_loading_remediation.md`](docs/workspace_source_loading_remediation.md)
 - [`docs/slice16d_c_a4_closeout.md`](docs/slice16d_c_a4_closeout.md)
 
@@ -1131,6 +1133,32 @@ These prerequisites were satisfied; design is no longer “not open.”
 
 A reviewer can understand the system’s differentiators quickly through a UI that
 remains a client of the accepted product surface.
+
+---
+
+# NEXT-MILESTONE-CANDIDATE-01 — Answer-level user feedback / continuous evaluation
+
+**Status:** **PLANNING REGISTERED / DESIGN NOT OPEN / IMPLEMENTATION NOT AUTHORIZED**
+
+Named post-M7 planning candidate only — not a formal milestone number, not
+Slice 16 / 16G scope, and not Slice 17. Registration detail:
+[`docs/slice16g_gap_registry_addendum.md`](docs/slice16g_gap_registry_addendum.md).
+
+Direction (planning only): response-level thumbs; optional structured/free-text
+feedback; exact response provenance; append-only history; observational product
+metrics; reviewed bridge to regression candidates. Explicitly **not** Gold,
+**not** benchmark truth, **not** automatic training data, and **not** automatic
+promotion authority.
+
+Also registered in that addendum (unchanged here as 16G executable scope):
+
+```text
+GAP-16G-02:
+DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED
+```
+
+Slice **9G** remains **DEFERRED / NOT AUTHORIZED**. **GAP-16G-01** status is
+unchanged.
 
 ---
 
