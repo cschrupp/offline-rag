@@ -62,8 +62,11 @@ AMENDMENT A4: ACCEPTED / LOCKED / SEALED
 16F: COMPLETE / ACCEPTED / SEALED
      FINAL TIP: f25f8358aead7fcfe161fff388012cec23b5a573
      CLOSEOUT: docs/slice16f_closeout.md
-16G–16H: NOT AUTHORIZED
-BASELINE: c72215186524c9937de789adb1cf2056be13ea23
+16G-D0: DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED
+  DESIGN CANDIDATE: docs/slice16g_gold_lab_games_pedagogy_design.md
+16G IMPLEMENTATION: NOT AUTHORIZED
+16H: NOT AUTHORIZED
+BASELINE: 1610f9282d1edbd4dfc8ae76d7644a1b9ea4e75e
 ```
 
 This plan decomposes Slice 16 into sequential phase gates. Plan acceptance does
@@ -148,7 +151,9 @@ B1 foundation remediation [ACCEPTED / SEALED @ c68cc3f8… / closeout b5fa1e85�
  ↓
 16F [COMPLETE / ACCEPTED / SEALED]
  ↓
-16G
+16G-D0 [DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED]
+ ↓
+16G implementation [NOT AUTHORIZED]
  ↓
 16H
 ```
@@ -185,8 +190,10 @@ ACCEPTED / SEALED** (Engineering `3e1ce4c94fc511abb4e1d94bd194736d5497e64f`;
 Workspace source-loading remediation `9dd2b008ebf9feee279dc6d0e58fafb006288ee5`);
 **16F** is **COMPLETE / ACCEPTED / SEALED** at
 `f25f8358aead7fcfe161fff388012cec23b5a573` (closeout
-[`docs/slice16f_closeout.md`](slice16f_closeout.md)). **16G–16H** remain
-**NOT AUTHORIZED**. Slice 16 overall is **not** complete.
+[`docs/slice16f_closeout.md`](slice16f_closeout.md)). **16G-D0** is **DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED**
+([`docs/slice16g_gold_lab_games_pedagogy_design.md`](slice16g_gold_lab_games_pedagogy_design.md)).
+**16G implementation** and **16H** remain **NOT AUTHORIZED**. Slice 16 overall
+is **not** complete.
 
 ---
 
@@ -643,6 +650,12 @@ CLOSEOUT: docs/slice16f_closeout.md
 
 ## 16G — Gold Lab games & pedagogical training compiler
 
+```text
+STATUS: 16G-D0 DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED
+DESIGN CANDIDATE: docs/slice16g_gold_lab_games_pedagogy_design.md
+Authority: 16G-D0-AUTH-001
+```
+
 ### Scope
 
 - Rapid Fire;
@@ -772,7 +785,10 @@ AMENDMENT A4: ACCEPTED / LOCKED / SEALED
 16F: COMPLETE / ACCEPTED / SEALED
   FINAL TIP: f25f8358aead7fcfe161fff388012cec23b5a573
   CLOSEOUT: docs/slice16f_closeout.md
-16G–16H: NOT AUTHORIZED
+16G-D0: DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED
+  DESIGN CANDIDATE: docs/slice16g_gold_lab_games_pedagogy_design.md
+16G IMPLEMENTATION: NOT AUTHORIZED
+16H: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
 SLICE 18: NOT AUTHORIZED
 9G: DEFERRED / NOT AUTHORIZED
@@ -800,5 +816,7 @@ Workspace source-loading remediation `9dd2b008ebf9feee279dc6d0e58fafb006288ee5`;
 evidence tip `9cd5528ab6c6e22d2dca55aca221b65eac50269e`). **16F** is
 **COMPLETE / ACCEPTED / SEALED** at
 `f25f8358aead7fcfe161fff388012cec23b5a573` (closeout
-`docs/slice16f_closeout.md`). **16G–16H** remain **NOT AUTHORIZED**. Slice 16
-overall is **not** complete.
+`docs/slice16f_closeout.md`). **16G-D0** is **DESIGN OPEN / IMPLEMENTATION NOT
+AUTHORIZED** (`docs/slice16g_gold_lab_games_pedagogy_design.md`). **16G
+implementation** and **16H** remain **NOT AUTHORIZED**. Slice 16 overall is
+**not** complete.
