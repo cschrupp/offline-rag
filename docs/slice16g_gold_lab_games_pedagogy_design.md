@@ -9,16 +9,21 @@ D0 DETAILED DESIGN — CANDIDATE AUTHORITY
 STATUS:
 DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED
 REWORK 1 APPLIED (16G-D0-REWORK-AUTH-001)
+REWORK 2 APPLIED (16G-D0-REWORK2-AUTH-001)
 
 Authority:
 16G-D0-AUTH-001
 16G-D0-REWORK-AUTH-001
+16G-D0-REWORK2-AUTH-001
 
 Starting SHA:
 1610f9282d1edbd4dfc8ae76d7644a1b9ea4e75e
 
 Prior candidate tip:
 0fdbdd3235ab675b513464e1ac7400b008b9bd2f
+
+Rework 1 tip:
+af152c3877c82bab8588fe5f4f328b1c66cbe3cc
 
 Branch:
 design/16g-gold-lab-games-pedagogy
@@ -36,8 +41,13 @@ PRESERVED
 DEFAULT: NO NEW GOLD MUTATION ROUTES
 BOUNDED READ GAP: GAP-16G-01 (immutable training/calibration package)
   — registered only; NOT AUTHORIZED to implement under D0
+  — binds GoldDataset-v1 + registration-time projected adjudication
+    (projection_sha256) + historical source; does NOT redefine GoldDataset-v1
 
 F001 / F002 / F003:
+CLOSED (design level)
+
+F004:
 CLOSED IN THIS REWORK (design level)
 
 16H / 9G / Slice 17 / 18 / M7 closeout:
@@ -210,7 +220,12 @@ GOLD MODE (production-eligible presentations only)
   optional POST export → GoldDataset registration
 
 CALIBRATION MODE (candidate presentations; non-Gold)
-  GAP-16G-01 immutable package (registration + GoldDataset + historical source)
+  GAP-16G-01 immutable package
+    = registration
+      + REGISTERED DATASET TRUTH (GoldDataset-v1)
+      + REGISTRATION-TIME ADJUDICATION TRUTH
+        (projected HumanReview state @ projection_sha256)
+      + historical source contexts
        ↓
   candidate presentation UI
        ↓
@@ -222,7 +237,7 @@ CALIBRATION MODE (candidate presentations; non-Gold)
        ✗  NO contribution
 
 TRAINING MODE
-  GAP-16G-01 immutable package
+  GAP-16G-01 immutable package (same three authorities)
        ↓
   client-side training compiler (deterministic)
        ↓
@@ -234,8 +249,13 @@ TRAINING MODE
 
 **MUST NOT** reconstruct Training or Calibration truth from live campaign task
 DTOs. Export does not freeze the campaign; later corrections can change
-effective task state after a registration exists. Only the immutable registered
-dataset (+ validated historical binding) is training/calibration truth.
+effective task state after a registration exists.
+
+**MUST NOT** treat GoldDataset-v1 alone as complete adjudication truth.
+GoldDataset-v1 stores positive relevance (1/2) and finalized
+ACCEPTED/EDITED cases only; it deliberately omits explicit relevance `0`
+and QC `reject`. Calibration of those paths requires registration-time
+projected HumanReview state proven against `registration.projection_sha256`.
 
 ### Existing Training Mode reuse
 
@@ -419,7 +439,9 @@ not browser preference:
 ### Non-mutation invariant (F002) — CRITICAL
 
 ```text
-immutable prior Gold truth (GAP-16G-01 package)
+immutable prior adjudication truth
+  (GAP-16G-01 REGISTRATION-TIME ADJUDICATION TRUTH
+   proven by registration.projection_sha256)
         ↓
 candidate presentation
         ↓
@@ -444,12 +466,13 @@ be used in Gold Mode, where the sealed mutation endpoints apply.
 ### Protocol (concrete, threshold-light)
 
 ```text
-1. Load immutable prior truth via GAP-16G-01 package for a chosen registration
-   (not live campaign task DTOs).
+1. Load GAP-16G-01 package for a chosen registration (not live campaign task
+   DTOs; not GoldDataset alone).
 2. Expert works those cases under the candidate (game_id, presentation_id)
    WITHOUT seeing prior answers (blind).
 3. Capture LOCAL calibration responses only (no Gold POST).
-4. Compare locally to package labels; compute observational metrics.
+4. Compare locally to REGISTRATION-TIME ADJUDICATION TRUTH
+   (complete 0/1/2 + QC accept/edit/reject); compute observational metrics.
 5. Export calibration evidence JSON (download).
 6. Human disposition: ALLOW_PRODUCTION | REPAIR_REQUIRED | DISALLOW
 7. If ALLOW_PRODUCTION: update versioned approved-presentations policy via
@@ -459,8 +482,9 @@ be used in Gold Mode, where the sealed mutation endpoints apply.
 ### Observables (SHOULD collect; not frozen pass thresholds)
 
 ```text
-agreement with immutable package truth
-0/1/2 distribution vs package distribution
+agreement with registration-time projected adjudication truth
+0/1/2 distribution vs projected distribution (including explicit 0)
+QC disposition agreement including reject
 unsure / skip rate (if UI exposes skip — v1: no skip; abandon = leave session)
 local revision rate within the calibration session (not Gold supersession)
 completion time per task
@@ -543,7 +567,8 @@ Unavailable historical source → fail closed (show integrity error; no fake tex
 ### Required direction
 
 ```text
-immutable registered Gold (GAP-16G-01)
+GAP-16G-01 immutable package
+  (dataset truth + registration-time adjudication truth + historical source)
    ↓
 training/drill compiler
    ↓
@@ -555,34 +580,44 @@ learner activity
 ```text
 learner activity → canonical Gold
 live campaign task DTOs → training truth
+GoldDataset-v1 alone → complete QC/0-label adjudication truth
 browser reads of /data or dataset_path → training truth
 ```
 
-### Immutable package dependency (F001)
+### Immutable package dependency (F001 / F004)
 
 Sealed registration listing returns metadata (`dataset_id`, `dataset_path`,
-hashes, exported case IDs). `dataset_path` is **not** browser-readable, and
-the SPA has no `/data` static exposure. Therefore Training **and** Calibration
-require the bounded read-only gap **GAP-16G-01** (Matrix M).
+`projection_sha256`, hashes, exported case IDs). `dataset_path` is **not**
+browser-readable, and the SPA has no `/data` static exposure. Therefore
+Training **and** Calibration require the bounded read-only gap **GAP-16G-01**
+(Matrix M).
+
+GoldDataset-v1 is the evaluation-facing **REGISTERED DATASET TRUTH**
+(positive 1/2 judgments; ACCEPTED/EDITED cases). It is **not** the complete
+prior adjudication record. QC `reject` and explicit relevance `0` live in the
+registration-time projected HumanReview / authoring-run projection whose
+bytes hash to `registration.projection_sha256`.
 
 Until GAP-16G-01 is separately authorized and implemented, Training/Calibration
-**MUST NOT** ship against live task DTOs as a substitute truth source.
+**MUST NOT** ship against live task DTOs or GoldDataset-alone as substitute
+truth sources.
 
 ### Compiler rules
 
 | Topic | Design |
 |---|---|
-| Eligible input | GAP-16G-01 package derived from registration + exact registered GoldDataset + campaign historical binding |
-| Transformation | deterministic: grade 2 → direct; grade 1 → supporting; hard 0 → distractors (S16-D33) |
+| Eligible input | GAP-16G-01 package (three authorities in Matrix M) |
+| Evidence-selection drills | Prefer REGISTERED DATASET TRUTH (grade 2 → direct; grade 1 → supporting; hard 0 distractors from adjudication map when present) |
+| QC / reject / full 0–2 drills | **MUST** use REGISTRATION-TIME ADJUDICATION TRUTH, not GoldDataset alone |
 | Exercise identity | `goldex_<dataset_id>_<case_id>_<template_id>_v1` |
 | Source provenance | exact historical source contexts inside the package (server-validated); fail closed if unavailable |
-| Answer authority | labels from the registered GoldDataset only |
-| Correction/debrief | compare learner choice to package label; show package source text |
-| Superseded Gold | package identity is the registration/dataset pin; do not silently follow later campaign effective-state |
+| Answer authority | adjudication projection for complete judgments; dataset for evaluation-facing positives |
+| Correction/debrief | compare learner choice to the authority appropriate to the drill type; show package source text |
+| Superseded Gold | package identity is the registration pin (`dataset_id` + `projection_sha256`); do not follow later campaign effective-state |
 | Persistence | compiler output may be ephemeral/session; package fetch is read-only |
 
 Compiler runs in the client over the GAP-16G-01 payload. No general filesystem
-endpoint. No Gold mutation from Training.
+endpoint. No Gold mutation from Training. No redefinition of GoldDataset-v1.
 
 ---
 
@@ -738,7 +773,7 @@ envelope handling. Do **not** implement during D0.
 |---|---|
 | Project/campaign/task DTOs | SERVER / PRODUCT + SCIENTIFIC AUTHORITY |
 | Committed judgment / contribution | SERVER / SCIENTIFIC AUTHORITY |
-| GAP-16G-01 immutable package | SERVER / PRODUCT READ AUTHORITY (proposed; not yet implemented) |
+| GAP-16G-01 immutable package | SERVER / PRODUCT READ AUTHORITY (proposed; not yet implemented); binds dataset + `projection_sha256` adjudication + historical source |
 | Approved-presentations policy (`ALLOW_PRODUCTION` set) | **VERSIONED PRODUCT GOVERNANCE** (repo/compile-time artifact; not local preference) |
 | Calibration evidence export JSON | CLIENT EPHEMERAL / downloaded artifact (review input only) |
 | Calibration local responses | CLIENT EPHEMERAL PRESENTATION STATE (never Gold) |
@@ -853,9 +888,10 @@ See §9.
 | Affect GoldDataset | via export only | **NO** | **NO** |
 | Earn contribution | YES | **NO** | **NO** |
 | See model/prelabel pre-commit | **NO** | **NO** | N/A |
-| Truth source | live sealed task DTOs | GAP-16G-01 package | GAP-16G-01 package |
+| Truth source | live sealed task DTOs | GAP-16G-01 adjudication projection (`projection_sha256`) | GAP-16G-01 package (dataset + adjudication as needed) |
 | Use unapproved presentation | **NO** | YES | N/A (learner UI) |
 | Create drills from Gold | N/A | N/A | YES (compiler) |
+| Treat GoldDataset alone as complete QC/0 truth | N/A | **NO** | **NO** |
 
 ### F. Client/server state ownership matrix
 
@@ -878,8 +914,10 @@ See §15–§16.
 ```text
 draft presentation_id (candidate)
  → fetch GAP-16G-01 immutable package for chosen registration
+ → calibrate against REGISTRATION-TIME ADJUDICATION TRUTH
+   (projection proven by registration.projection_sha256)
  → calibration session (LOCAL responses only; no Gold POST)
- → local metrics vs package truth
+ → local metrics vs complete 0/1/2 + QC accept/edit/reject
  → calibration evidence export
  → Human disposition
  → ALLOW_PRODUCTION | REPAIR_REQUIRED | DISALLOW
@@ -893,11 +931,15 @@ draft presentation_id (candidate)
 ```text
 GET registrations (metadata index)
  → GET GAP-16G-01 immutable package for chosen registration
-      (registration + exact GoldDataset + historical source contexts)
- → deterministic exercise build from package only
+      ├─ REGISTERED DATASET TRUTH (GoldDataset-v1)
+      ├─ REGISTRATION-TIME ADJUDICATION TRUTH
+      │    (projected HumanReview / authoring-run @ projection_sha256)
+      └─ historical source contexts
+ → deterministic exercise build from package authorities only
  → learner session (local commits)
- → feedback from package labels + package source
- → (terminates; no Gold writeback; no live task-DTO truth)
+ → feedback from the authority matching the drill type + package source
+ → (terminates; no Gold writeback; no live task-DTO truth;
+    no GoldDataset-alone QC/0 reconstruction)
 ```
 
 ### K. Error-state matrix
@@ -924,27 +966,62 @@ IMPLEMENTATION OF ANY GAP: NOT AUTHORIZED BY D0
 
 | Gap ID | Capability | Why 17 routes insufficient? | Missing info/mutation | Presentation vs scientific | UI-only alternative | Authority owner | Blindness impact | Gold semantics impact | Provenance impact | Min contract extension |
 |---|---|---|---|---|---|---|---|---|---|---|
-| **GAP-16G-01** | Immutable Training/Calibration package read | Registration list exposes metadata/`dataset_path` only; SPA cannot read `/data`; live task DTOs are not equivalent to registered GoldDataset (campaign may still receive corrections after export) | Read-only validated package: dataset identity/hashes, exported cases, accepted queries/labels, exact historical source contexts bound to campaign snapshot/chunk-set | **Presentation / pedagogy input** (not a scientific mutation) | Manual authenticated import of exact Gold artifacts with full hash/provenance validation is an allowed alternative design; **not** preferred; no general filesystem endpoint | Product transport over accepted 16F-C registration + historical reader; **MUST NOT** invent new Gold truth | Package must omit model/prelabel/rank; serve only fields needed for blind presentation + post-response scoring | **None** — read-only; no ledger/contribution/GoldDataset writes | Pins training/calibration to registration-time immutable dataset rather than later effective-state | e.g. `GET /v1/gold-lab/campaigns/{campaign_id}/registrations/{dataset_id}/training-package` (name illustrative) returning a fail-closed validated DTO; **no** arbitrary path read |
+| **GAP-16G-01** | Immutable Training/Calibration package read | Registration list exposes metadata/`dataset_path`/`projection_sha256` only; SPA cannot read `/data`; live task DTOs ≠ registration-time truth; **GoldDataset-v1 alone lacks QC reject + explicit 0** | Read-only validated package binding **three** authorities (below) | **Presentation / pedagogy input** (not a scientific mutation) | Manual authenticated import of exact Gold artifacts + projection artifact proven to `projection_sha256` with full hash validation; **not** preferred; no general filesystem endpoint | Product transport over accepted 16F-C registration + projection + historical reader; **MUST NOT** invent/redefine GoldDataset-v1 | Package must omit model/prelabel/rank; serve only fields needed for blind presentation + post-response scoring | **None** — read-only; no ledger/contribution/GoldDataset writes; no scientific schema change | Pins Training/Calibration to registration-time immutable dataset **and** projected adjudication rather than later effective-state | e.g. `GET /v1/gold-lab/campaigns/{campaign_id}/registrations/{dataset_id}/training-package` (name illustrative) returning a fail-closed validated DTO; **no** arbitrary path read |
 
-**GAP-16G-01 minimum semantics (design freeze; implementation unauthorized):**
+**GAP-16G-01 three immutable authorities (F004 freeze; implementation unauthorized):**
 
 ```text
-Input authority:
-  existing registration record
-  + exact registered GoldDataset bytes/identity
-  + campaign historical binding (snapshot_id / chunk_set_id / corpus)
+registration
+  ├─ dataset_id
+  ├─ projection_sha256
+  ├─ baseline_sha256 / exported_case_ids / workspace provenance
+  └─ campaign historical binding (snapshot_id / chunk_set_id / corpus)
+          ↓
+1) REGISTERED DATASET TRUTH
+   - exact GoldDataset-v1 bytes/identity
+   - positive relevance judgments (1 / 2)
+   - finalized effective query/category/tags for exported ACCEPTED/EDITED cases
+   - evaluation-facing Gold semantics UNCHANGED
 
-Output (read-only):
-  dataset_id / hashes / registration identity
-  exported cases with accepted queries + absolute/QC labels as registered
-  exact historical GoldSourceContext (or equivalent) per needed chunk
-  fail closed on any integrity mismatch
+2) REGISTRATION-TIME ADJUDICATION TRUTH
+   - exact projected HumanReview / authoring-run state that produced the export
+   - complete relevance map including explicit 0 / 1 / 2
+   - QC disposition accept | edit | reject
+   - candidate universe as projected
+   - bytes/hash MUST equal registration.projection_sha256
+   - recovery MAY be:
+       (a) durable projection artifact proven against projection_sha256, OR
+       (b) deterministic reconstruction from sealed baseline + append-only
+           ledger with exact projection-hash match
+   - fail closed if neither yields matching bytes
 
-MUST NOT:
-  expose /data paths to the browser
-  accept arbitrary filesystem paths
-  mutate ledger / contribution / registration
-  substitute current campaign task effective-state for registered truth
+3) HISTORICAL SOURCE TRUTH
+   - exact historical chunk contexts via accepted 16F historical reader
+     semantics bound to campaign snapshot/chunk-set
+          ↓
+immutable Training / Calibration package
+```
+
+**Package output (read-only) MAY expose:**
+
+```text
+dataset / projection / registration provenance
+effective query / category / tags
+QC disposition: accept | edit | reject
+complete relevance map: 0 | 1 | 2
+candidate universe
+exact historical source contexts
+```
+
+**MUST NOT:**
+
+```text
+expose /data paths to the browser
+accept arbitrary filesystem paths
+mutate ledger / contribution / registration
+substitute current campaign task effective-state for registration-time truth
+claim GoldDataset-v1 contains QC reject or complete 0-label maps
+redefine GoldDataset-v1 / finalizer / HumanReview scientific schemas
 ```
 
 **Deferred non-blocking product notes (not additional scientific gaps):**
@@ -964,8 +1041,8 @@ Hypothesis (not frozen until D0 acceptance):
 | **16G-I1** | API client + IA + project/campaign shell + workload chooser (no commits) | accepted D0 + sealed 16F | `ui/src/features/goldLab/**`, pages, router | route/render/API mocks | navigate projects→campaign→workload | no mutations; no training |
 | **16G-I2** | Expert work shell + Rapid Fire + Question Check; enforce approved-presentations policy | I1 accepted | games/rapidFire, questionCheck, policy module, idempotency UX | mutation/a11y/blindness/policy gate | commit+replay+blind; refuse non-approved presentation in Gold Mode | no Sweep/Duel |
 | **16G-I3** | Evidence Sweep + Chunk Duel | I2 accepted | games/evidenceSweep, chunkDuel | batch/a11y/auxiliary framing | Sweep==absolute semantic; Duel auxiliary only | no training compiler |
-| **16G-I4** | Contribution dashboard + calibration surface (local responses only) | I3 accepted **and** GAP-16G-01 separately authorized/implemented for live package fetch; contribution UI may land earlier on sealed GET contribution alone | contribution/, calibration/, policy wiring | contribution DTO-only; **assert zero Gold mutation calls** during calibration; package-hash binding | calibration evidence export; policy update remains governed docs/code commit | no drills; no Gold POST from calibration |
-| **16G-I5** | Training compiler + drills + scenario/debrief over GAP-16G-01 | I4 accepted + GAP-16G-01 available | training/ under goldLab | no Gold writeback; package-only truth; fail closed | learner never hits mutations; no live task-DTO truth | no spaced repetition |
+| **16G-I4** | Contribution dashboard + calibration surface (local responses only) | I3 accepted **and** GAP-16G-01 separately authorized/implemented for live package fetch; contribution UI may land earlier on sealed GET contribution alone | contribution/, calibration/, policy wiring | contribution DTO-only; **assert zero Gold mutation calls**; bind scoring to `projection_sha256` adjudication authority (not GoldDataset alone) | calibration evidence export; policy update remains governed docs/code commit | no drills; no Gold POST from calibration |
+| **16G-I5** | Training compiler + drills + scenario/debrief over GAP-16G-01 | I4 accepted + GAP-16G-01 available | training/ under goldLab | no Gold writeback; package-only truth; fail closed; QC/0 drills require adjudication authority | learner never hits mutations; no live task-DTO truth; no GoldDataset-alone QC reconstruct | no spaced repetition |
 | **16G-I6** | 16G integration / regression / a11y preflight | I5 accepted | tests + harness | keyboard paths; error matrix; calibration non-mutation; policy gate | ready for 16H handoff | **not** 16H seal |
 
 Each slice: independent review stop. GAP-16G-01 requires **separate**
@@ -1043,32 +1120,38 @@ Independent design review should verify:
 3. Games map onto sealed 17 routes for Gold Mode mutations.
 4. Backend gap register records GAP-16G-01 for immutable Training/Calibration
    reads; no general filesystem endpoint; gap implementation not authorized by D0.
-5. Matrices A–N are present and consistent (I/J/M reworked).
-6. Blindness uses sealed DTOs (Gold) / package blind adapters (Calibration).
-7. Contribution is API-authoritative.
-8. Chunk Duel remains auxiliary.
-9. Calibration does not invent fake statistical thresholds.
-10. Calibration responses never call Gold mutation endpoints (F002).
-11. Production presentation eligibility is versioned governance, not local
+5. GAP-16G-01 binds REGISTERED DATASET TRUTH + REGISTRATION-TIME ADJUDICATION
+   TRUTH (`projection_sha256`) + HISTORICAL SOURCE TRUTH (F004).
+6. Matrices A–N are present and consistent (I/J/M reworked).
+7. Blindness uses sealed DTOs (Gold) / package blind adapters (Calibration).
+8. Contribution is API-authoritative.
+9. Chunk Duel remains auxiliary.
+10. Calibration does not invent fake statistical thresholds.
+11. Calibration responses never call Gold mutation endpoints (F002).
+12. Production presentation eligibility is versioned governance, not local
     preference (F003).
-12. Training/Calibration truth is never live campaign task effective-state (F001).
-13. Implementation decomposition is reviewable and gated.
-14. No production code changed under D0.
+13. Training/Calibration truth is never live campaign task effective-state (F001).
+14. GoldDataset-v1 is not treated as a complete QC/0 adjudication record (F004).
+15. Implementation decomposition is reviewable and gated.
+16. No production code changed under D0.
 
 ---
 
-## 27. Rework disposition (16G-D0-REWORK-AUTH-001)
+## 27. Rework disposition
 
 ```text
-F001 CLOSED (design):
-IMMUTABLE TRAINING/CALIBRATION READ PATH → GAP-16G-01
+16G-D0-REWORK-AUTH-001:
+F001 CLOSED (design): IMMUTABLE TRAINING/CALIBRATION READ PATH → GAP-16G-01
+F002 CLOSED (design): CALIBRATION RESPONSES NEVER MUTATE GOLD
+F003 CLOSED (design): PRODUCTION PRESENTATION ELIGIBILITY IS VERSIONED GOVERNANCE
 
-F002 CLOSED (design):
-CALIBRATION RESPONSES NEVER MUTATE GOLD
-
-F003 CLOSED (design):
-PRODUCTION PRESENTATION ELIGIBILITY IS VERSIONED GOVERNANCE,
-NOT LOCAL USER PREFERENCE
+16G-D0-REWORK2-AUTH-001:
+F004 CLOSED (design):
+  GoldDataset-v1 is evaluation-facing REGISTERED DATASET TRUTH only;
+  REGISTRATION-TIME ADJUDICATION TRUTH is the projected HumanReview /
+  authoring-run state proven by registration.projection_sha256;
+  GAP-16G-01 binds dataset + projection + historical source;
+  GoldDataset-v1 semantics UNCHANGED
 ```
 
 Game design, IA, idempotency, contribution semantics, and I1–I6 ordering remain
@@ -1081,6 +1164,7 @@ policy gate in I2.
 16G-D0:
 DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED
 REWORK 1 APPLIED
+REWORK 2 APPLIED
 
 16G implementation:
 NOT AUTHORIZED
