@@ -1007,8 +1007,9 @@ browser client through the same app layer, and the OfflineRAG application
 starts as one container while using an independently running local generator.
 Slice 16 remains **IN PROGRESS / NOT COMPLETE** because **16G implementation**
 and **16H** remain **NOT AUTHORIZED** (**16E** / **16F** are **COMPLETE /
-ACCEPTED / SEALED**; **16G-D0** is **DESIGN OPEN / IMPLEMENTATION NOT
-AUTHORIZED**); Seneca consuming the API does not close Slice 16.
+ACCEPTED / SEALED**; **16G-D0** is **ACCEPTED / FROZEN**; **GAP-16G-01** is
+**DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED**); Seneca consuming the
+API does not close Slice 16.
 
 ---
 
@@ -1023,7 +1024,8 @@ SLICE 16:          IN PROGRESS / NOT COMPLETE
 AMENDMENT A4:      ACCEPTED / LOCKED / SEALED
 16E:               COMPLETE / ACCEPTED / SEALED
 16F:               COMPLETE / ACCEPTED / SEALED
-16G-D0:            DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED
+16G-D0:            ACCEPTED / FROZEN
+GAP-16G-01:         DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED
 16G IMPLEMENTATION / 16H: NOT AUTHORIZED
 SLICE 17 / 18:     NOT AUTHORIZED
 M7 CLOSEOUT:       NOT AUTHORIZED
@@ -1113,7 +1115,7 @@ Original planning note (superseded as present-tense status): frontend
 technology and delivery model were Slice-16 design decisions; design later
 opened and progressed under separate authority. **16A–16E** are accepted;
 **16F** is **COMPLETE / ACCEPTED / SEALED**;
-**16G-D0** is **DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED**;
+**16G-D0** is **ACCEPTED / FROZEN**;
 **16G implementation** and **16H** remain **NOT AUTHORIZED**.
 
 ### Prerequisites for opening design (historical)
@@ -1215,7 +1217,7 @@ Foundation
   -> performance benchmarks              (Slice 14 COMPLETE / ACCEPTED)
   -> product API + packaging             (Slice 15 COMPLETE / ACCEPTED)
   -> Slice 15 integration closeout       (15H COMPLETE / ACCEPTED)
-  -> Seneca / Portfolio Demo UI          (Slice 16 IN PROGRESS; 16D-C / 16E / 16F COMPLETE / ACCEPTED / SEALED; 16G-D0 DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED; 16H NOT AUTHORIZED)
+  -> Seneca / Portfolio Demo UI          (Slice 16 IN PROGRESS; 16D-C / 16E / 16F COMPLETE / ACCEPTED / SEALED; 16G-D0 ACCEPTED / FROZEN; 16H NOT AUTHORIZED)
   -> Regression CI                       (Slice 17 NOT AUTHORIZED)
   -> Portfolio release package           (Slice 18 NOT AUTHORIZED)
   -> Milestone 7 closeout                (NOT AUTHORIZED)

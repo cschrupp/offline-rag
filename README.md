@@ -309,7 +309,8 @@ cd ui && npm test && npm run lint && npm run typecheck && npm run build
 | Amendment A4 | **ACCEPTED / LOCKED / SEALED** |
 | 16E | **COMPLETE / ACCEPTED / SEALED** |
 | 16F (Gold Lab backend / data plane) | **COMPLETE / ACCEPTED / SEALED** |
-| 16G-D0 (games / pedagogy design) | **DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED** |
+| 16G-D0 (games / pedagogy design) | **ACCEPTED / FROZEN** |
+| GAP-16G-01 (immutable training/calibration package) | **DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED** |
 | 16G implementation / 16H | **NOT AUTHORIZED** |
 | Slice 17 / 18 | **NOT AUTHORIZED** |
 | M7 closeout | **NOT AUTHORIZED** |
@@ -325,7 +326,7 @@ Detailed SHAs and evidence: [`ROADMAP.md`](ROADMAP.md),
 
 Gold Lab **backend/data-plane** APIs are **COMPLETE / ACCEPTED / SEALED**;
 Gold Lab games / UI workloads remain **implementation not authorized**
-(**16G-D0 DESIGN OPEN** only).
+(**16G-D0 ACCEPTED / FROZEN**; implementation still **NOT AUTHORIZED**).
 
 Still deferred / not authorized as product deliverables:
 

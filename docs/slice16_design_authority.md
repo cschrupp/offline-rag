@@ -66,8 +66,7 @@ Workspace source-loading remediation
 [`docs/workspace_source_loading_remediation.md`](workspace_source_loading_remediation.md)).
 **16F** is **COMPLETE / ACCEPTED / SEALED** at
 `f25f8358aead7fcfe161fff388012cec23b5a573` (closeout
-[`docs/slice16f_closeout.md`](slice16f_closeout.md)). **16G-D0** is **DESIGN OPEN /
-IMPLEMENTATION NOT AUTHORIZED**
+[`docs/slice16f_closeout.md`](slice16f_closeout.md)). **16G-D0** is **ACCEPTED / FROZEN**
 ([`docs/slice16g_gold_lab_games_pedagogy_design.md`](slice16g_gold_lab_games_pedagogy_design.md)).
 **16G implementation** and **16H** remain **NOT AUTHORIZED**.
 
@@ -77,7 +76,7 @@ IMPLEMENTATION NOT AUTHORIZED**
   [`docs/slice16_implementation_plan.md`](slice16_implementation_plan.md)
 - 16F closeout / seal:
   [`docs/slice16f_closeout.md`](slice16f_closeout.md)
-- 16G-D0 design candidate:
+- 16G-D0 frozen design authority:
   [`docs/slice16g_gold_lab_games_pedagogy_design.md`](slice16g_gold_lab_games_pedagogy_design.md)
 - Amendment A1 (**ACCEPTED / LOCKED**):
   [`docs/slice16_amendment_a1_seneca_product_ux.md`](slice16_amendment_a1_seneca_product_ux.md)
@@ -1162,8 +1161,11 @@ AMENDMENT A4: ACCEPTED / LOCKED / SEALED
 16F: COMPLETE / ACCEPTED / SEALED
   FINAL TIP: f25f8358aead7fcfe161fff388012cec23b5a573
   CLOSEOUT: docs/slice16f_closeout.md
-16G-D0: DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED
-  DESIGN CANDIDATE: docs/slice16g_gold_lab_games_pedagogy_design.md
+16G-D0: ACCEPTED / FROZEN
+  DESIGN TIP: 8af2dbab72d1a79f53b0f3958e7c7142b4273693
+  DESIGN BLOB: edc2be739621dbedfc44ed77861119a35f8f6d18
+  FROZEN DESIGN: docs/slice16g_gold_lab_games_pedagogy_design.md
+GAP-16G-01: DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED
 16G IMPLEMENTATION: NOT AUTHORIZED
 16H: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
@@ -1194,7 +1196,8 @@ ACCEPTED / SEALED** at `baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`.
 `9cd5528ab6c6e22d2dca55aca221b65eac50269e`). **16F** is **COMPLETE /
 ACCEPTED / SEALED** at
 `f25f8358aead7fcfe161fff388012cec23b5a573` (closeout
-`docs/slice16f_closeout.md`). **16G-D0** is **DESIGN OPEN / IMPLEMENTATION NOT
-AUTHORIZED** (`docs/slice16g_gold_lab_games_pedagogy_design.md`). **16G
-implementation** and **16H** remain **NOT AUTHORIZED**. Slice 16 overall is
-**not** complete.
+`docs/slice16f_closeout.md`). **16G-D0** is **ACCEPTED / FROZEN**
+(`docs/slice16g_gold_lab_games_pedagogy_design.md` at tip
+`8af2dbab72d1a79f53b0f3958e7c7142b4273693`). **GAP-16G-01** is **DESIGN
+REGISTERED / IMPLEMENTATION NOT AUTHORIZED**. **16G implementation** and
+**16H** remain **NOT AUTHORIZED**. Slice 16 overall is **not** complete.

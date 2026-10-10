@@ -9,8 +9,10 @@ SEALED**). **16E** is **COMPLETE / ACCEPTED / SEALED** (Engineering
 `9dd2b008ebf9feee279dc6d0e58fafb006288ee5`). **16F** is **COMPLETE /
 ACCEPTED / SEALED** at
 `f25f8358aead7fcfe161fff388012cec23b5a573` (`docs/slice16f_closeout.md`).
-**16G-D0** is **DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED**
-(`docs/slice16g_gold_lab_games_pedagogy_design.md`). **16G implementation**,
+**16G-D0** is **ACCEPTED / FROZEN**
+(`docs/slice16g_gold_lab_games_pedagogy_design.md` at tip
+`8af2dbab72d1a79f53b0f3958e7c7142b4273693`). **GAP-16G-01** is **DESIGN
+REGISTERED / IMPLEMENTATION NOT AUTHORIZED**. **16G implementation**,
 **16H**, Slice **17**, Slice **18**, and M7 closeout remain **NOT AUTHORIZED**.
 Product recovery remains disabled; LangGraph adapter and NeMo / 13D remain
 deferred / not authorized. See `ROADMAP.md`,
