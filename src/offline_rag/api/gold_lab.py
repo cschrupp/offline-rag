@@ -294,3 +294,12 @@ def export_campaign(request: Request, campaign_id: str) -> JSONResponse:
 @router.get("/campaigns/{campaign_id}/registrations")
 def list_registrations(request: Request, campaign_id: str) -> dict[str, Any]:
     return _gold(request).list_registrations(campaign_id)
+
+
+@router.get(
+    "/campaigns/{campaign_id}/registrations/{dataset_id}/training-package"
+)
+def get_training_package(
+    request: Request, campaign_id: str, dataset_id: str
+) -> dict[str, Any]:
+    return _gold(request).get_training_package(campaign_id, dataset_id)

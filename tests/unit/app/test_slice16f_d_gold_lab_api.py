@@ -73,6 +73,10 @@ EXPECTED_ROUTES = {
     ("GET", "/v1/gold-lab/campaigns/{campaign_id}/contribution"),
     ("POST", "/v1/gold-lab/campaigns/{campaign_id}/export"),
     ("GET", "/v1/gold-lab/campaigns/{campaign_id}/registrations"),
+    (
+        "GET",
+        "/v1/gold-lab/campaigns/{campaign_id}/registrations/{dataset_id}/training-package",
+    ),
 }
 
 
