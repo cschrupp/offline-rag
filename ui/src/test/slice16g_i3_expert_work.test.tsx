@@ -677,4 +677,246 @@ describe("16G-I3 Chunk Duel session", () => {
     ).toHaveLength(postsBefore);
     mock.restore();
   });
+
+  it("counts replayed=true confirmation toward workload=1 and blocks another POST", async () => {
+    const user = userEvent.setup();
+    const tasks = [
+      goldTask({
+        task_id: "t1",
+        case_id: "case_a",
+        candidate_chunk_id: "chunk_a",
+      }),
+      goldTask({
+        task_id: "t2",
+        case_id: "case_a",
+        candidate_chunk_id: "chunk_b",
+      }),
+    ];
+    let attempts = 0;
+
+    const mock = installFetchMock(async (call) => {
+      if (call.url.includes("/tasks?") || call.url.endsWith("/tasks")) {
+        return jsonResponse({ campaign_id: "camp_1", tasks });
+      }
+      const detailMatch = call.url.match(
+        /^\/v1\/gold-lab\/campaigns\/camp_1\/tasks\/([^/?]+)$/,
+      );
+      if (detailMatch && call.method === "GET") {
+        const id = detailMatch[1]!;
+        const summary = tasks.find((task) => task.task_id === id)!;
+        return jsonResponse(
+          absoluteDetail(id, summary.candidate_chunk_id!, {
+            case_id: summary.case_id,
+          }),
+        );
+      }
+      if (call.url.endsWith("/preferences") && call.method === "POST") {
+        attempts += 1;
+        if (attempts === 1) {
+          throw new TypeError("network down");
+        }
+        return jsonResponse(preferenceReceipt({ replayed: true }));
+      }
+      return jsonResponse(
+        { error: { code: "not_found", message: "x" } },
+        { status: 404 },
+      );
+    });
+
+    renderWithProviders(
+      <ChunkDuelWorkSession campaignId="camp_1" campaignClosed={false} />,
+      { initialPath: "/?game=chunk_duel&workload=1" },
+    );
+
+    const checkboxes = await screen.findAllByRole("checkbox");
+    await user.click(checkboxes[0]!);
+    await user.click(checkboxes[1]!);
+    await user.click(
+      await screen.findByRole("button", { name: "Prefer candidate A" }),
+    );
+    await user.click(
+      await screen.findByRole("button", { name: "Retry same commit" }),
+    );
+    expect(await screen.findByText("Preference recorded.")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Session preference cap: 1 \/ 1/),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Compare another pair" }),
+    ).toBeNull();
+
+    const postsAfterConfirm = mock.calls.filter((call) =>
+      call.url.endsWith("/preferences"),
+    ).length;
+    expect(postsAfterConfirm).toBe(2);
+
+    // Cap reached: preference controls must not issue another POST.
+    const preferButtons = screen.queryAllByRole("button", {
+      name: /Prefer candidate/,
+    });
+    for (const button of preferButtons) {
+      expect(button).toBeDisabled();
+    }
+    expect(
+      mock.calls.filter((call) => call.url.endsWith("/preferences")),
+    ).toHaveLength(postsAfterConfirm);
+    mock.restore();
+  });
+
+  it("locks workload=case to the valid anchored case only", async () => {
+    const tasks = [
+      goldTask({
+        task_id: "t1",
+        case_id: "case_a",
+        candidate_chunk_id: "chunk_a",
+      }),
+      goldTask({
+        task_id: "t2",
+        case_id: "case_a",
+        candidate_chunk_id: "chunk_b",
+      }),
+      goldTask({
+        task_id: "t3",
+        case_id: "case_b",
+        candidate_chunk_id: "chunk_c",
+      }),
+      goldTask({
+        task_id: "t4",
+        case_id: "case_b",
+        candidate_chunk_id: "chunk_d",
+      }),
+    ];
+
+    const mock = installFetchMock(async (call) => {
+      if (call.url.includes("/tasks?") || call.url.endsWith("/tasks")) {
+        return jsonResponse({ campaign_id: "camp_1", tasks });
+      }
+      if (/\/tasks\/[^/?]+$/.test(call.url) && call.method === "GET") {
+        throw new Error(`Unexpected detail fetch: ${call.url}`);
+      }
+      if (call.url.endsWith("/preferences")) {
+        throw new Error("Unexpected preference POST");
+      }
+      return jsonResponse(
+        { error: { code: "not_found", message: "x" } },
+        { status: 404 },
+      );
+    });
+
+    renderWithProviders(
+      <ChunkDuelWorkSession campaignId="camp_1" campaignClosed={false} />,
+      { initialPath: "/?game=chunk_duel&workload=case&task=t3" },
+    );
+
+    expect(await screen.findByRole("radio", { name: "case_b" })).toBeChecked();
+    expect(screen.queryByRole("radio", { name: "case_a" })).toBeNull();
+    expect(
+      screen.queryByText("No cases are available from the current task list."),
+    ).toBeNull();
+    mock.restore();
+  });
+
+  it("fail-closes workload=case when the task anchor is invalid", async () => {
+    const tasks = [
+      goldTask({
+        task_id: "t1",
+        case_id: "case_a",
+        candidate_chunk_id: "chunk_a",
+      }),
+      goldTask({
+        task_id: "t2",
+        case_id: "case_a",
+        candidate_chunk_id: "chunk_b",
+      }),
+      goldTask({
+        task_id: "t3",
+        case_id: "case_b",
+        candidate_chunk_id: "chunk_c",
+      }),
+    ];
+
+    const mock = installFetchMock(async (call) => {
+      if (call.url.includes("/tasks?") || call.url.endsWith("/tasks")) {
+        return jsonResponse({ campaign_id: "camp_1", tasks });
+      }
+      if (/\/tasks\/[^/?]+$/.test(call.url) && call.method === "GET") {
+        throw new Error(`Unexpected detail fetch behind fail-closed case: ${call.url}`);
+      }
+      if (call.url.endsWith("/preferences") && call.method === "POST") {
+        throw new Error("Unexpected preference POST behind fail-closed case");
+      }
+      return jsonResponse(
+        { error: { code: "not_found", message: "x" } },
+        { status: 404 },
+      );
+    });
+
+    renderWithProviders(
+      <ChunkDuelWorkSession campaignId="camp_1" campaignClosed={false} />,
+      { initialPath: "/?game=chunk_duel&workload=case&task=missing_task" },
+    );
+
+    expect(
+      await screen.findByText("No cases are available from the current task list."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("radio")).toBeNull();
+    expect(screen.queryByRole("checkbox")).toBeNull();
+    expect(
+      mock.calls.some(
+        (call) =>
+          call.method === "GET" &&
+          /\/tasks\/[^/?]+$/.test(call.url) &&
+          !call.url.includes("?"),
+      ),
+    ).toBe(false);
+    expect(
+      mock.calls.some((call) => call.url.endsWith("/preferences")),
+    ).toBe(false);
+    mock.restore();
+  });
+
+  it("fail-closes workload=case when the task anchor is missing", async () => {
+    const tasks = [
+      goldTask({
+        task_id: "t1",
+        case_id: "case_a",
+        candidate_chunk_id: "chunk_a",
+      }),
+      goldTask({
+        task_id: "t2",
+        case_id: "case_a",
+        candidate_chunk_id: "chunk_b",
+      }),
+    ];
+
+    const mock = installFetchMock(async (call) => {
+      if (call.url.includes("/tasks?") || call.url.endsWith("/tasks")) {
+        return jsonResponse({ campaign_id: "camp_1", tasks });
+      }
+      if (/\/tasks\/[^/?]+$/.test(call.url) && call.method === "GET") {
+        throw new Error(`Unexpected detail fetch: ${call.url}`);
+      }
+      if (call.url.endsWith("/preferences")) {
+        throw new Error("Unexpected preference POST");
+      }
+      return jsonResponse(
+        { error: { code: "not_found", message: "x" } },
+        { status: 404 },
+      );
+    });
+
+    renderWithProviders(
+      <ChunkDuelWorkSession campaignId="camp_1" campaignClosed={false} />,
+      { initialPath: "/?game=chunk_duel&workload=case" },
+    );
+
+    expect(
+      await screen.findByText("No cases are available from the current task list."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: "case_a" })).toBeNull();
+    expect(
+      mock.calls.some((call) => call.url.endsWith("/preferences")),
+    ).toBe(false);
+    mock.restore();
+  });
 });

@@ -86,6 +86,8 @@ export function ChunkDuelWorkSession({
     useState<PendingMutation | null>(null);
   const intent = useRef(IntentHandle.newIntent());
   const caseBootstrapped = useRef(false);
+  /** Idempotency keys already counted toward the ephemeral preference cap. */
+  const countedPreferenceKeys = useRef(new Set<string>());
 
   const listFilters: GoldTaskListFilters = useMemo(
     () => ({
@@ -104,9 +106,13 @@ export function ChunkDuelWorkSession({
     const tasks = tasksQuery.data?.tasks ?? [];
     const allCases = caseIdsInServerOrder(tasks);
     if (session.workload === "case") {
-      const anchored =
-        tasks.find((task) => task.task_id === session.taskId)?.case_id ?? null;
-      return anchored ? [anchored] : allCases.slice(0, 0);
+      const anchored = tasks.find(
+        (task) =>
+          task.task_id === session.taskId &&
+          task.active &&
+          task.task_kind === "absolute_relevance",
+      );
+      return anchored ? [anchored.case_id] : [];
     }
     return allCases;
   }, [tasksQuery.data?.tasks, session.workload, session.taskId]);
@@ -116,23 +122,29 @@ export function ChunkDuelWorkSession({
     caseBootstrapped.current = true;
     const current = parseSessionConfig(searchParams);
     const tasks = tasksQuery.data.tasks;
-    let initialCase: string | null = null;
+    let initialCase: string | null;
+    let anchorTask: string | null;
     if (current.workload === "case") {
-      initialCase =
-        tasks.find((task) => task.task_id === current.taskId)?.case_id ??
-        caseIdsInServerOrder(tasks)[0] ??
-        null;
-    } else {
-      initialCase = caseIdsInServerOrder(tasks)[0] ?? null;
-    }
-    setCaseId(initialCase);
-    const anchorTask =
-      tasks.find(
+      // Fail closed: no first-case fallback when the task anchor is missing/invalid.
+      const anchored = tasks.find(
         (task) =>
-          task.case_id === initialCase &&
+          task.task_id === current.taskId &&
           task.active &&
           task.task_kind === "absolute_relevance",
-      )?.task_id ?? current.taskId;
+      );
+      initialCase = anchored?.case_id ?? null;
+      anchorTask = anchored?.task_id ?? current.taskId;
+    } else {
+      initialCase = caseIdsInServerOrder(tasks)[0] ?? null;
+      anchorTask =
+        tasks.find(
+          (task) =>
+            task.case_id === initialCase &&
+            task.active &&
+            task.task_kind === "absolute_relevance",
+        )?.task_id ?? current.taskId;
+    }
+    setCaseId(initialCase);
     const next = applySessionConfig(searchParams, {
       ...current,
       game: "chunk_duel",
@@ -196,7 +208,12 @@ export function ChunkDuelWorkSession({
       );
       setLastReceipt(receipt);
       setLastPreferredChunkId(pending.body.preferred_chunk_id);
-      setPreferenceCount((count) => count + (receipt.replayed ? 0 : 1));
+      // Ambiguity-resolved replayed=true still completes one logical interaction.
+      // Count once per frozen idempotency key; never skip replay confirmations.
+      if (!countedPreferenceKeys.current.has(pending.key)) {
+        countedPreferenceKeys.current.add(pending.key);
+        setPreferenceCount((count) => count + 1);
+      }
       setPendingMutation(null);
       intent.current.reset();
     },
