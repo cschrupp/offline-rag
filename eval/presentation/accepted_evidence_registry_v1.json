@@ -14,7 +14,7 @@
         "PILOT / NON-PROMOTIONAL",
         "Small descriptive populations (full-22 / human-16).",
         "Does not authorize base.yaml promotion or a production retrieval winner.",
-        "C↔D nDCG@10 ordering changes between full-22 and human-16."
+        "C\u2194D nDCG@10 ordering changes between full-22 and human-16."
       ],
       "source_refs": [
         {
@@ -22,7 +22,7 @@
           "path": "docs/pilots/slice9h_p_results.md",
           "role": "accepted_report",
           "source_kind": "accepted_markdown_projection",
-          "source_locator": "§2 Six-arm aggregates — full-22; §3 Six-arm aggregates — human-16; §4 Full-22 vs human-16 sensitivity",
+          "source_locator": "\u00a72 Six-arm aggregates \u2014 full-22; \u00a73 Six-arm aggregates \u2014 human-16; \u00a74 Full-22 vs human-16 sensitivity",
           "expected_sha256": "5fc5688395ceea938ff85476bed99918a3f8aea4c119a6ff2c584950fd503c5e"
         }
       ],
@@ -240,7 +240,7 @@
           },
           "human-16": {
             "label": "human-16",
-            "ndcg_order_note": "C > D > F > E > A > B (descriptive; C↔D top-rank swap vs full-22)",
+            "ndcg_order_note": "C > D > F > E > A > B (descriptive; C\u2194D top-rank swap vs full-22)",
             "arms": [
               {
                 "arm_id": "A",
@@ -460,7 +460,7 @@
           "path": "docs/pilots/slice10e_generation_prompt_ab.md",
           "role": "accepted_report",
           "source_kind": "accepted_markdown_projection",
-          "source_locator": "§3 Judge configuration / self-judge limitation; §7 Positive full-22 results",
+          "source_locator": "\u00a73 Judge configuration / self-judge limitation; \u00a77 Positive full-22 results",
           "expected_sha256": "27220cfe69d35f38b6f0e952b262dd21901d0dabce564ae5fec82bd489997a15"
         }
       ],
@@ -599,7 +599,7 @@
           "path": "docs/milestone6_agentic_recovery_security.md",
           "role": "accepted_disposition",
           "source_kind": "accepted_markdown_projection",
-          "source_locator": "Document header status block — Slice 12 recovery DISABLED; disposition insufficient_evidence_for_recovery_efficacy",
+          "source_locator": "Document header status block \u2014 Slice 12 recovery DISABLED; disposition insufficient_evidence_for_recovery_efficacy",
           "expected_sha256": "73ef4ca45c5cc6fdae596b27a737b32b49064e0e7f6aae184322fdc922e8580b"
         }
       ],
@@ -630,8 +630,8 @@
       "promotion_status": "non_promotional",
       "claim_scope": "Accepted Slice 13B query-path campaign result on the accepted measurement surface; does not establish security completeness.",
       "caveats": [
-        "Campaign execution completed ≠ campaign PASS.",
-        "Campaign FAIL ≠ harness implementation failure.",
+        "Campaign execution completed \u2260 campaign PASS.",
+        "Campaign FAIL \u2260 harness implementation failure.",
         "Required invariant security_policy_immutable_v1 was UNEVALUABLE.",
         "Does not imply 13C or NeMo coverage."
       ],
@@ -641,7 +641,7 @@
           "path": "docs/milestone6_agentic_recovery_security.md",
           "role": "accepted_disposition",
           "source_kind": "accepted_markdown_projection",
-          "source_locator": "Document header + authoritative narrative — 13B run_status=completed, campaign_outcome=fail; OD-13-1 fail-closed UNEVALUABLE semantics; adversarial 0 pass / 7 fail; benign FP=0",
+          "source_locator": "Document header + authoritative narrative \u2014 13B run_status=completed, campaign_outcome=fail; OD-13-1 fail-closed UNEVALUABLE semantics; adversarial 0 pass / 7 fail; benign FP=0",
           "expected_sha256": "73ef4ca45c5cc6fdae596b27a737b32b49064e0e7f6aae184322fdc922e8580b"
         }
       ],
@@ -668,7 +668,7 @@
         "primary": {
           "title": "Query-path adversarial campaign",
           "execution": "Completed",
-          "campaign_outcome": "Fail — fail-closed",
+          "campaign_outcome": "Fail \u2014 fail-closed",
           "interpretation": "A required invariant was unevaluable on the accepted measurement surface, so the campaign fails closed by contract.",
           "harness_implementation": "Accepted"
         },
@@ -682,7 +682,7 @@
             "fail": 5,
             "false_positives": 0
           },
-          "note": "Cohort counts are evaluator outcomes, not “attacks blocked/succeeded” product claims."
+          "note": "Cohort counts are evaluator outcomes, not \u201cattacks blocked/succeeded\u201d product claims."
         }
       }
     },
@@ -695,7 +695,7 @@
       "promotion_status": "non_promotional",
       "claim_scope": "Descriptive Slice 14C quality-vs-cost measurements on the frozen development population; no configuration promotion.",
       "caveats": [
-        "Development/regression fixture — not publication-grade evidence.",
+        "Development/regression fixture \u2014 not publication-grade evidence.",
         "No winner assignment.",
         "Do not merge with Level-C end-to-end latency populations."
       ],
@@ -749,8 +749,8 @@
           "path": "docs/milestone7_performance_ui.md",
           "role": "accepted_report",
           "source_kind": "accepted_markdown_projection",
-          "source_locator": "§18 Level-C authoritative end-to-end evidence — readable summary p50/p95; §18.3 Generation telemetry limitations (TTFT/decode/tokens-sec UNEVALUABLE)",
-          "expected_sha256": "1102a8b2816cea54598f408fe4a56837a32a4041a4bbd4ade2f77faeb0942b3a"
+          "source_locator": "\u00a718 Level-C authoritative end-to-end evidence \u2014 readable summary p50/p95; \u00a718.3 Generation telemetry limitations (TTFT/decode/tokens-sec UNEVALUABLE)",
+          "expected_sha256": "2392f2d20f2771bed3e0d5125145dcd122dd38e6513d8866a8eeb0a8e271efea"
         }
       ],
       "provenance": {

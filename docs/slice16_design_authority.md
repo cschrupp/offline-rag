@@ -64,12 +64,17 @@ was later separately authorized and is now **COMPLETE / ACCEPTED / SEALED**
 ([`docs/slice16e_engineering_evidence.md`](slice16e_engineering_evidence.md);
 Workspace source-loading remediation
 [`docs/workspace_source_loading_remediation.md`](workspace_source_loading_remediation.md)).
-**16F–16H** remain **NOT AUTHORIZED**.
+**16F** is **CLOSURE READY / TECHNICALLY ACCEPTED / NOT SEALED** at
+`f25f8358aead7fcfe161fff388012cec23b5a573` (closeout candidate
+[`docs/slice16f_closeout.md`](slice16f_closeout.md)). **16G–16H** remain
+**NOT AUTHORIZED**.
 
 **Related artifacts:**
 
 - Accepted implementation plan:
   [`docs/slice16_implementation_plan.md`](slice16_implementation_plan.md)
+- 16F closure-ready candidate:
+  [`docs/slice16f_closeout.md`](slice16f_closeout.md)
 - Amendment A1 (**ACCEPTED / LOCKED**):
   [`docs/slice16_amendment_a1_seneca_product_ux.md`](slice16_amendment_a1_seneca_product_ux.md)
   at `5060e2aeb4825f265072a1f870c3c963eace3b30`
@@ -1150,7 +1155,10 @@ AMENDMENT A4: ACCEPTED / LOCKED / SEALED
   EVIDENCE: docs/slice16e_engineering_evidence.md
   REMEDIATION: docs/workspace_source_loading_remediation.md
   CLOSEOUT: docs/slice16e_closeout.md
-16F–16H: NOT AUTHORIZED
+16F: CLOSURE READY / TECHNICALLY ACCEPTED / NOT SEALED
+  FINAL TIP: f25f8358aead7fcfe161fff388012cec23b5a573
+  CLOSEOUT CANDIDATE: docs/slice16f_closeout.md
+16G–16H: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
 SLICE 18: NOT AUTHORIZED
 9G: DEFERRED / NOT AUTHORIZED
@@ -1176,5 +1184,8 @@ ACCEPTED / SEALED** at `baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`.
 **16E** is **COMPLETE / ACCEPTED / SEALED** (Engineering
 `3e1ce4c94fc511abb4e1d94bd194736d5497e64f`; Workspace source-loading remediation
 `9dd2b008ebf9feee279dc6d0e58fafb006288ee5`; evidence tip
-`9cd5528ab6c6e22d2dca55aca221b65eac50269e`). **16F–16H** remain **NOT
-AUTHORIZED**. Slice 16 overall is **not** complete.
+`9cd5528ab6c6e22d2dca55aca221b65eac50269e`). **16F** is **CLOSURE READY /
+TECHNICALLY ACCEPTED / NOT SEALED** at
+`f25f8358aead7fcfe161fff388012cec23b5a573` (closeout candidate
+`docs/slice16f_closeout.md`). **16G–16H** remain **NOT AUTHORIZED**. Slice 16
+overall is **not** complete.

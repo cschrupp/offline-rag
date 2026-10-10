@@ -106,7 +106,10 @@ SLICE 16: DESIGN INTERVIEW COMPLETE
                9cd5528ab6c6e22d2dca55aca221b65eac50269e
              Evidence: docs/slice16e_engineering_evidence.md
              Remediation: docs/workspace_source_loading_remediation.md
-           16F–16H NOT AUTHORIZED
+           16F CLOSURE READY / TECHNICALLY ACCEPTED / NOT SEALED
+             FINAL TIP f25f8358aead7fcfe161fff388012cec23b5a573
+             CLOSEOUT CANDIDATE: docs/slice16f_closeout.md
+           16G–16H NOT AUTHORIZED
            Slice 16 overall IN PROGRESS / NOT COMPLETE
   Authority: docs/slice16_design_authority.md
   Plan: docs/slice16_implementation_plan.md
@@ -944,7 +947,10 @@ SLICE 16: DESIGN INTERVIEW COMPLETE
                9cd5528ab6c6e22d2dca55aca221b65eac50269e
              Evidence: docs/slice16e_engineering_evidence.md
              Remediation: docs/workspace_source_loading_remediation.md
-           16F–16H NOT AUTHORIZED
+           16F CLOSURE READY / TECHNICALLY ACCEPTED / NOT SEALED
+             FINAL TIP f25f8358aead7fcfe161fff388012cec23b5a573
+             CLOSEOUT CANDIDATE: docs/slice16f_closeout.md
+           16G–16H NOT AUTHORIZED
            Slice 16 overall IN PROGRESS / NOT COMPLETE
 SLICE 17: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
 SLICE 18: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
@@ -966,9 +972,12 @@ M6 science: UNCHANGED
 `docs/slice16d_c_a4_closeout.md`). **16E** is **COMPLETE / ACCEPTED / SEALED**
 (Engineering `3e1ce4c94fc511abb4e1d94bd194736d5497e64f`; Workspace
 source-loading remediation `9dd2b008ebf9feee279dc6d0e58fafb006288ee5`; tip
-`9cd5528ab6c6e22d2dca55aca221b65eac50269e`). → separate later-phase
-authorization (**16F–16H**, Slice 17, Slice 18, M7 closeout). Slice 14 and
-Slice 15 are closed.
+`9cd5528ab6c6e22d2dca55aca221b65eac50269e`). **16F** is **CLOSURE READY /
+TECHNICALLY ACCEPTED / NOT SEALED** at
+`f25f8358aead7fcfe161fff388012cec23b5a573` (closeout candidate
+`docs/slice16f_closeout.md`). → separate later-phase authorization
+(**16G–16H**, Slice 17, Slice 18, M7 closeout). Slice 14 and Slice 15 are
+closed.
 Slice 16 design is **ACCEPTED / LOCKED**. Amendment A2 is **ACCEPTED / LOCKED /
 SEALED**. **16A**, **16B**, **16C**, **16D-A**, and **16D-B2** are **COMPLETE /
 ACCEPTED**. B1 foundation remediation is **ACCEPTED / SEALED** (implementation
@@ -976,6 +985,6 @@ ACCEPTED**. B1 foundation remediation is **ACCEPTED / SEALED** (implementation
 `b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90`). Legacy B1 product UX remains
 **PRODUCT ACCEPTANCE WITHHELD**. **16D-B2** is **COMPLETE / ACCEPTED /
 SEALED** at `baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`. **16D-B3** is **COMPLETE / ACCEPTED / SEALED** at `9c178ffb033cde41849379fc914f321697ff8691`
-(A3 **ACCEPTED / LOCKED / SEALED**). **16F–16H**, Slice 17, Slice 18, and M7
+(A3 **ACCEPTED / LOCKED / SEALED**). **16G–16H**, Slice 17, Slice 18, and M7
 closeout remain **NOT AUTHORIZED**. Slice 16 overall is **IN PROGRESS / NOT
 COMPLETE**.

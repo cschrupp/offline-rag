@@ -308,16 +308,21 @@ cd ui && npm test && npm run lint && npm run typecheck && npm run build
 | 16D-A / 16D-B2 / 16D-B3 / 16D-C | **COMPLETE / ACCEPTED / SEALED** |
 | Amendment A4 | **ACCEPTED / LOCKED / SEALED** |
 | 16E | **COMPLETE / ACCEPTED / SEALED** |
-| 16F–16H | **NOT AUTHORIZED** |
+| 16F (Gold Lab backend / data plane) | **CLOSURE READY / TECHNICALLY ACCEPTED / NOT SEALED** |
+| 16G–16H | **NOT AUTHORIZED** |
 | Slice 17 / 18 | **NOT AUTHORIZED** |
 | M7 closeout | **NOT AUTHORIZED** |
 
 Detailed SHAs and evidence: [`ROADMAP.md`](ROADMAP.md),
 [`docs/slice16e_closeout.md`](docs/slice16e_closeout.md),
 [`docs/slice16e_engineering_evidence.md`](docs/slice16e_engineering_evidence.md),
+[`docs/slice16f_closeout.md`](docs/slice16f_closeout.md),
 [`docs/workspace_source_loading_remediation.md`](docs/workspace_source_loading_remediation.md),
 [`docs/slice16d_c_a4_closeout.md`](docs/slice16d_c_a4_closeout.md),
 [`docs/milestone7_performance_ui.md`](docs/milestone7_performance_ui.md).
+
+Gold Lab **backend/data-plane** APIs are technically accepted and closure-ready;
+Gold Lab games / UI workloads are **not** authorized (**16G–16H NOT AUTHORIZED**).
 
 Still deferred / not authorized as product deliverables:
 
