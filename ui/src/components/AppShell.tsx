@@ -41,6 +41,9 @@ export function AppShell() {
             <NavLink to="/workspaces" onClick={() => setNavOpen(false)}>
               Workspaces
             </NavLink>
+            <NavLink to="/gold-lab" onClick={() => setNavOpen(false)}>
+              Gold Lab
+            </NavLink>
             <NavLink to="/engineering" onClick={() => setNavOpen(false)}>
               Engineering
             </NavLink>

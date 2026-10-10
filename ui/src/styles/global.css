@@ -1884,6 +1884,117 @@ button.snapshot-badge {
   }
 }
 
+/* 16G-I1 — Gold Lab product foundation */
+.gold-lab-page {
+  min-width: 0;
+  max-width: min(56rem, 100%);
+}
+
+.gold-lab-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.gold-lab-card-header {
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.gold-lab-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-3);
+  margin: var(--space-3) 0 0;
+}
+
+.gold-lab-meta dt {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 0;
+}
+
+.gold-lab-meta dd {
+  margin: 0.15rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.gold-lab-fieldset {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+  margin: 0;
+  min-width: 0;
+}
+
+.gold-lab-fieldset legend {
+  padding-inline: 0.35rem;
+  font-weight: 600;
+}
+
+.gold-lab-radio-row {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+
+.gold-lab-radio {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+  min-height: var(--target);
+  padding: 0.35rem 0;
+  cursor: pointer;
+}
+
+.gold-lab-radio input {
+  margin-top: 0.3rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: 0 0 auto;
+}
+
+.gold-lab-baseline h3 {
+  margin: 0 0 0.35rem;
+}
+
+.gold-lab-provenance {
+  margin-top: var(--space-3);
+}
+
+.gold-lab-provenance summary {
+  cursor: pointer;
+  min-height: var(--target);
+  display: inline-flex;
+  align-items: center;
+  color: var(--navy);
+  font-weight: 500;
+}
+
+.gold-lab-provenance summary:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.gold-lab-task-order {
+  margin: 0;
+  padding-left: 1.2rem;
+  overflow-wrap: anywhere;
+}
+
+.gold-lab-task-order li {
+  margin-bottom: 0.35rem;
+}
+
+.gold-lab-ready {
+  margin: 0;
+  padding: var(--space-3);
+  border-left: 3px solid var(--brass);
+  background: var(--surface);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
