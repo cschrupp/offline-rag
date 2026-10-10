@@ -59,9 +59,9 @@ AMENDMENT A4: ACCEPTED / LOCKED / SEALED
         EVIDENCE: docs/slice16e_engineering_evidence.md
         REMEDIATION: docs/workspace_source_loading_remediation.md
         CLOSEOUT: docs/slice16e_closeout.md
-16F: CLOSURE READY / TECHNICALLY ACCEPTED / NOT SEALED
+16F: COMPLETE / ACCEPTED / SEALED
      FINAL TIP: f25f8358aead7fcfe161fff388012cec23b5a573
-     CLOSEOUT CANDIDATE: docs/slice16f_closeout.md
+     CLOSEOUT: docs/slice16f_closeout.md
 16G–16H: NOT AUTHORIZED
 BASELINE: c72215186524c9937de789adb1cf2056be13ea23
 ```
@@ -146,7 +146,7 @@ B1 foundation remediation [ACCEPTED / SEALED @ c68cc3f8… / closeout b5fa1e85�
  ↓
 16E [COMPLETE / ACCEPTED / SEALED]
  ↓
-16F [CLOSURE READY / TECHNICALLY ACCEPTED / NOT SEALED]
+16F [COMPLETE / ACCEPTED / SEALED]
  ↓
 16G
  ↓
@@ -183,8 +183,8 @@ Amendment **A4** are **COMPLETE / ACCEPTED / SEALED** at
 `0381e0461f68c5fc09e7be2c7699d434e8b8a9cb`; **16E** is **COMPLETE /
 ACCEPTED / SEALED** (Engineering `3e1ce4c94fc511abb4e1d94bd194736d5497e64f`;
 Workspace source-loading remediation `9dd2b008ebf9feee279dc6d0e58fafb006288ee5`);
-**16F** is **CLOSURE READY / TECHNICALLY ACCEPTED / NOT SEALED** at
-`f25f8358aead7fcfe161fff388012cec23b5a573` (closeout candidate
+**16F** is **COMPLETE / ACCEPTED / SEALED** at
+`f25f8358aead7fcfe161fff388012cec23b5a573` (closeout
 [`docs/slice16f_closeout.md`](slice16f_closeout.md)). **16G–16H** remain
 **NOT AUTHORIZED**. Slice 16 overall is **not** complete.
 
@@ -598,12 +598,14 @@ for implementation governance. Phase execution remains separately gated.
 ## 16F — Gold Lab data plane
 
 ```text
-STATUS: CLOSURE READY / TECHNICALLY ACCEPTED / NOT SEALED
+STATUS: COMPLETE / ACCEPTED / SEALED
 FINAL TIP: f25f8358aead7fcfe161fff388012cec23b5a573
 INDEPENDENT IMPLEMENTATION REVIEW: ACCEPT
 HUMAN TECHNICAL ACCEPTANCE: ACCEPTED
-INDEPENDENT CLOSEOUT REVIEW: PENDING
-Closeout candidate: docs/slice16f_closeout.md
+INDEPENDENT CLOSEOUT REVIEW: ACCEPT
+HUMAN CLOSURE ACCEPTANCE: ACCEPTED
+CLOSURE-READY TIP REVIEWED: f273d2d570a052672e46ece7f6200508c4015b36
+CLOSEOUT: docs/slice16f_closeout.md
 ```
 
 ### Scope
@@ -767,9 +769,9 @@ AMENDMENT A4: ACCEPTED / LOCKED / SEALED
   EVIDENCE: docs/slice16e_engineering_evidence.md
   REMEDIATION: docs/workspace_source_loading_remediation.md
   CLOSEOUT: docs/slice16e_closeout.md
-16F: CLOSURE READY / TECHNICALLY ACCEPTED / NOT SEALED
+16F: COMPLETE / ACCEPTED / SEALED
   FINAL TIP: f25f8358aead7fcfe161fff388012cec23b5a573
-  CLOSEOUT CANDIDATE: docs/slice16f_closeout.md
+  CLOSEOUT: docs/slice16f_closeout.md
 16G–16H: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
 SLICE 18: NOT AUTHORIZED
@@ -796,7 +798,7 @@ Amendment **A4** are **COMPLETE / ACCEPTED / SEALED** at
 ACCEPTED / SEALED** (Engineering `3e1ce4c94fc511abb4e1d94bd194736d5497e64f`;
 Workspace source-loading remediation `9dd2b008ebf9feee279dc6d0e58fafb006288ee5`;
 evidence tip `9cd5528ab6c6e22d2dca55aca221b65eac50269e`). **16F** is
-**CLOSURE READY / TECHNICALLY ACCEPTED / NOT SEALED** at
-`f25f8358aead7fcfe161fff388012cec23b5a573` (closeout candidate
+**COMPLETE / ACCEPTED / SEALED** at
+`f25f8358aead7fcfe161fff388012cec23b5a573` (closeout
 `docs/slice16f_closeout.md`). **16G–16H** remain **NOT AUTHORIZED**. Slice 16
 overall is **not** complete.

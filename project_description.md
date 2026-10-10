@@ -6,8 +6,8 @@ PROGRESS**. Slices **14** and **15 COMPLETE / ACCEPTED**. Slice **16 IN PROGRESS
 16D-B3 / 16D-C COMPLETE / ACCEPTED / SEALED** (Amendment **A4 ACCEPTED / LOCKED /
 SEALED**). **16E** is **COMPLETE / ACCEPTED / SEALED** (Engineering
 `3e1ce4c94fc511abb4e1d94bd194736d5497e64f`; Workspace source-loading remediation
-`9dd2b008ebf9feee279dc6d0e58fafb006288ee5`). **16F** is **CLOSURE READY /
-TECHNICALLY ACCEPTED / NOT SEALED** at
+`9dd2b008ebf9feee279dc6d0e58fafb006288ee5`). **16F** is **COMPLETE /
+ACCEPTED / SEALED** at
 `f25f8358aead7fcfe161fff388012cec23b5a573` (`docs/slice16f_closeout.md`).
 **16G–16H**, Slice **17**, Slice **18**, and M7 closeout remain **NOT
 AUTHORIZED**. Product recovery remains disabled; LangGraph adapter and NeMo /

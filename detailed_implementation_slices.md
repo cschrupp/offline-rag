@@ -1007,7 +1007,7 @@ browser client through the same app layer, and the OfflineRAG application
 starts as one container while using an independently running local generator.
 Slice 16 remains **IN PROGRESS / NOT COMPLETE** because **16G–16H** remain
 **NOT AUTHORIZED** (**16E** is **COMPLETE / ACCEPTED / SEALED**; **16F** is
-**CLOSURE READY / TECHNICALLY ACCEPTED / NOT SEALED**); Seneca consuming the
+**COMPLETE / ACCEPTED / SEALED**); Seneca consuming the
 API does not close Slice 16.
 
 ---
@@ -1022,7 +1022,7 @@ SLICE 16:          IN PROGRESS / NOT COMPLETE
 16D-A / 16D-B2 / 16D-B3 / 16D-C: COMPLETE / ACCEPTED / SEALED
 AMENDMENT A4:      ACCEPTED / LOCKED / SEALED
 16E:               COMPLETE / ACCEPTED / SEALED
-16F:               CLOSURE READY / TECHNICALLY ACCEPTED / NOT SEALED
+16F:               COMPLETE / ACCEPTED / SEALED
 16G–16H:           NOT AUTHORIZED
 SLICE 17 / 18:     NOT AUTHORIZED
 M7 CLOSEOUT:       NOT AUTHORIZED
@@ -1110,7 +1110,7 @@ hybrid+reranker / recovery) **predates** the locked Slice-15 product API and is
 Original planning note (superseded as present-tense status): frontend
 technology and delivery model were Slice-16 design decisions; design later
 opened and progressed under separate authority. **16A–16E** are accepted;
-**16F** is **CLOSURE READY / TECHNICALLY ACCEPTED / NOT SEALED**;
+**16F** is **COMPLETE / ACCEPTED / SEALED**;
 **16G–16H** remain **NOT AUTHORIZED**.
 
 ### Prerequisites for opening design (historical)
@@ -1212,7 +1212,7 @@ Foundation
   -> performance benchmarks              (Slice 14 COMPLETE / ACCEPTED)
   -> product API + packaging             (Slice 15 COMPLETE / ACCEPTED)
   -> Slice 15 integration closeout       (15H COMPLETE / ACCEPTED)
-  -> Seneca / Portfolio Demo UI          (Slice 16 IN PROGRESS; 16D-C / 16E COMPLETE / ACCEPTED / SEALED; 16F CLOSURE READY / TECHNICALLY ACCEPTED / NOT SEALED; 16G–16H NOT AUTHORIZED)
+  -> Seneca / Portfolio Demo UI          (Slice 16 IN PROGRESS; 16D-C / 16E COMPLETE / ACCEPTED / SEALED; 16F COMPLETE / ACCEPTED / SEALED; 16G–16H NOT AUTHORIZED)
   -> Regression CI                       (Slice 17 NOT AUTHORIZED)
   -> Portfolio release package           (Slice 18 NOT AUTHORIZED)
   -> Milestone 7 closeout                (NOT AUTHORIZED)

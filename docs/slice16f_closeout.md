@@ -1,18 +1,27 @@
 # 16F GOLD LAB DATA PLANE
-## FINALIZATION / CLOSURE-READY RECONCILIATION
+## CLOSEOUT / SEAL
 
 ```text
 16F GOLD LAB DATA PLANE
-FINALIZATION / CLOSURE-READY RECONCILIATION
+CLOSEOUT / SEAL
 
 STATUS:
-CLOSURE READY / INDEPENDENT CLOSEOUT REVIEW PENDING
+COMPLETE / ACCEPTED / SEALED
 
 SEALED:
-NO
+YES
 
-HUMAN TECHNICAL ACCEPTANCE:
+INDEPENDENT CLOSEOUT REVIEW:
+ACCEPT
+
+CLOSURE-READY TIP REVIEWED:
+f273d2d570a052672e46ece7f6200508c4015b36
+
+HUMAN CLOSURE ACCEPTANCE:
 ACCEPTED
+
+HUMAN-ACCEPTED CLOSURE TIP:
+f273d2d570a052672e46ece7f6200508c4015b36
 
 FINAL TECHNICALLY ACCEPTED IMPLEMENTATION TIP:
 f25f8358aead7fcfe161fff388012cec23b5a573
@@ -25,20 +34,52 @@ DEFERRED / NOT AUTHORIZED
 
 SLICE 17 / 18 / M7 CLOSEOUT:
 NOT AUTHORIZED
+
+SLICE 16:
+IN PROGRESS / NOT COMPLETE
 ```
 
 ## Authority
 
 ```text
 Authority:
-16F-D-FINALIZE-AUTH-001 — AUTHORIZED
+16F-SEAL-AUTH-001 — AUTHORIZED
 
 Purpose:
-Prepare the technically accepted 16F-D implementation, and therefore the
-completed 16F-A/B/C/D implementation sequence, for independent closeout review.
+Materialize the already-approved 16F closure decision into the repository
+governance projections and seal record.
 
-This finalization is documentation / governance reconciliation only.
+Prior finalization authority (closure-ready only):
+16F-D-FINALIZE-AUTH-001
+
+This seal reconciliation is documentation / governance reconciliation only.
+It does not alter the meaning of what was accepted at
+f273d2d570a052672e46ece7f6200508c4015b36.
 ```
+
+## Closure-ready → seal transition
+
+```text
+Closure-ready state:
+f273d2d570a052672e46ece7f6200508c4015b36
+INDEPENDENT CLOSEOUT REVIEW: ACCEPT
+HUMAN CLOSURE ACCEPTANCE: ACCEPTED
+
+Seal reconciliation:
+16F COMPLETE / ACCEPTED / SEALED
+```
+
+Historical closure-ready banner language (superseded as current-state):
+
+```text
+CLOSURE READY
+INDEPENDENT CLOSEOUT REVIEW PENDING
+NOT YET SEALED
+```
+
+That language described the independently reviewed / Human-accepted tip
+`f273d2d570a052672e46ece7f6200508c4015b36` and remains provenance of that tip
+in Git. It is not the current 16F projection after seal reconciliation.
 
 ## Authoritative 16F lineage
 
@@ -75,6 +116,15 @@ ACCEPT
 
 Human technical acceptance:
 ACCEPTED
+
+Independently reviewed / Human-accepted closure-ready tip:
+f273d2d570a052672e46ece7f6200508c4015b36
+
+Independent closeout review:
+ACCEPT
+
+Human closure acceptance:
+ACCEPTED
 ```
 
 ## Phase boundaries
@@ -98,11 +148,7 @@ Product/transport FastAPI data plane over accepted A/B/C
 Final tip: f25f8358aead7fcfe161fff388012cec23b5a573
 
 16F aggregate:
-IMPLEMENTATION COMPLETE
-TECHNICALLY ACCEPTED
-CLOSURE READY
-INDEPENDENT CLOSEOUT REVIEW PENDING
-NOT YET SEALED
+COMPLETE / ACCEPTED / SEALED
 ```
 
 ## D corrective-review history (closed)
@@ -131,7 +177,7 @@ Frozen 16F-D0 design authority:
 
 D0 design blob (docs/slice16f_d_application_api_design.md):
 60db5b17694f814de3e911459ff79b44372dd5b7
-UNCHANGED by this finalization
+UNCHANGED by this seal reconciliation
 
 Accepted corrective implementation:
 a9086e9f49c12901d5301b9f1e632c78cfcfb86b
@@ -141,22 +187,12 @@ Corrective implementation documentation:
 
 Final technically accepted implementation tip:
 f25f8358aead7fcfe161fff388012cec23b5a573
+
+Independently reviewed / Human-accepted closure-ready tip:
+f273d2d570a052672e46ece7f6200508c4015b36
 ```
 
-## Independent / Human technical acceptance
-
-```text
-Independent implementation review:
-ACCEPT
-
-Human technical acceptance:
-ACCEPTED
-```
-
-This document does **not** invent an independent closeout result.
-This document does **not** fabricate Human closure acceptance.
-
-## Finalization non-scope (this branch)
+## Seal non-scope
 
 ```text
 Production-code changes: NO
@@ -183,7 +219,7 @@ NOT AUTHORIZED
 NOT AUTHORIZED
 ```
 
-Technical acceptance of 16F does **not** authorize 16G or 16H by implication.
+Sealing 16F does **not** authorize 16G or 16H by implication.
 
 ## 9G
 
@@ -196,25 +232,8 @@ DEFERRED / NOT AUTHORIZED
 
 ```text
 16F:
-CLOSURE READY
-NOT SEALED
-INDEPENDENT CLOSEOUT REVIEW PENDING
-```
-
-Do **not** write `16F COMPLETE / ACCEPTED / SEALED` until:
-
-1. independent closeout review returns `ACCEPT`; and
-2. Human closure acceptance is separately recorded.
-
-## Next gate
-
-```text
-Independent closeout review:
-PENDING
-
-After a future closeout ACCEPT:
-Human closure acceptance remains separately required before changing 16F to
-COMPLETE / ACCEPTED / SEALED.
+COMPLETE / ACCEPTED / SEALED
+SEALED: YES
 ```
 
 ## M7 pinned evidence provenance churn
@@ -223,18 +242,30 @@ COMPLETE / ACCEPTED / SEALED.
 pinned source for `performance.slice14-level-c`. Updating 16F status changes
 its bytes; the registry pin is reconciled as controlled provenance churn only.
 
-```text
-OLD M7 SOURCE SHA-256:
-1102a8b2816cea54598f408fe4a56837a32a4041a4bbd4ade2f77faeb0942b3a
+Closure-ready pin (accepted at `f273d2d…`):
 
-NEW M7 SOURCE SHA-256:
+```text
+M7 SOURCE SHA-256:
 2392f2d20f2771bed3e0d5125145dcd122dd38e6513d8866a8eeb0a8e271efea
 
+ENGINEERING MANIFEST ID:
+engmanifest_a679ca246a22ab757405277ab679bb3cf1fbb520d0598adec0d4fcadb8a81885
+```
+
+Seal reconciliation pin (after this document / live-projection update):
+
+```text
+OLD M7 SOURCE SHA-256:
+2392f2d20f2771bed3e0d5125145dcd122dd38e6513d8866a8eeb0a8e271efea
+
+NEW M7 SOURCE SHA-256:
+0821d4fa117a003aab6a274af262104f17263673fd666acb9b685949a8422eac
+
 OLD ENGINEERING MANIFEST ID:
-engmanifest_76918e8089ead9b34563ad33a0a4321467c642b5220ef1690bba761d53aad9b2
+engmanifest_a679ca246a22ab757405277ab679bb3cf1fbb520d0598adec0d4fcadb8a81885
 
 NEW ENGINEERING MANIFEST ID:
-engmanifest_a679ca246a22ab757405277ab679bb3cf1fbb520d0598adec0d4fcadb8a81885
+engmanifest_e20522edda3247831b1273344f7543e3461b702e1bb9947f5bff70eb5ece0727
 
 Registry contract changed: NO
 Manifest contract changed: NO
@@ -265,7 +296,7 @@ TTFT / decode / tokens-sec: UNEVALUABLE
 ## Evidence / design pointers
 
 - Frozen 16F design: [`docs/slice16f_gold_lab_data_plane.md`](slice16f_gold_lab_data_plane.md)
-  (historical authority; byte-unchanged by this finalization)
+  (historical authority; byte-unchanged by this seal reconciliation)
 - Frozen D0 design: [`docs/slice16f_d_application_api_design.md`](slice16f_d_application_api_design.md)
 - D implementation evidence: [`docs/slice16f_d_application_api_implementation.md`](slice16f_d_application_api_implementation.md)
 - A/B/C evidence: [`docs/slice16f_a_gold_lab_foundation.md`](slice16f_a_gold_lab_foundation.md),

@@ -106,9 +106,9 @@ SLICE 16: DESIGN INTERVIEW COMPLETE
                9cd5528ab6c6e22d2dca55aca221b65eac50269e
              Evidence: docs/slice16e_engineering_evidence.md
              Remediation: docs/workspace_source_loading_remediation.md
-           16F CLOSURE READY / TECHNICALLY ACCEPTED / NOT SEALED
+           16F COMPLETE / ACCEPTED / SEALED
              FINAL TIP f25f8358aead7fcfe161fff388012cec23b5a573
-             CLOSEOUT CANDIDATE: docs/slice16f_closeout.md
+             CLOSEOUT: docs/slice16f_closeout.md
            16G–16H NOT AUTHORIZED
            Slice 16 overall IN PROGRESS / NOT COMPLETE
   Authority: docs/slice16_design_authority.md
@@ -947,9 +947,9 @@ SLICE 16: DESIGN INTERVIEW COMPLETE
                9cd5528ab6c6e22d2dca55aca221b65eac50269e
              Evidence: docs/slice16e_engineering_evidence.md
              Remediation: docs/workspace_source_loading_remediation.md
-           16F CLOSURE READY / TECHNICALLY ACCEPTED / NOT SEALED
+           16F COMPLETE / ACCEPTED / SEALED
              FINAL TIP f25f8358aead7fcfe161fff388012cec23b5a573
-             CLOSEOUT CANDIDATE: docs/slice16f_closeout.md
+             CLOSEOUT: docs/slice16f_closeout.md
            16G–16H NOT AUTHORIZED
            Slice 16 overall IN PROGRESS / NOT COMPLETE
 SLICE 17: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
@@ -972,9 +972,9 @@ M6 science: UNCHANGED
 `docs/slice16d_c_a4_closeout.md`). **16E** is **COMPLETE / ACCEPTED / SEALED**
 (Engineering `3e1ce4c94fc511abb4e1d94bd194736d5497e64f`; Workspace
 source-loading remediation `9dd2b008ebf9feee279dc6d0e58fafb006288ee5`; tip
-`9cd5528ab6c6e22d2dca55aca221b65eac50269e`). **16F** is **CLOSURE READY /
-TECHNICALLY ACCEPTED / NOT SEALED** at
-`f25f8358aead7fcfe161fff388012cec23b5a573` (closeout candidate
+`9cd5528ab6c6e22d2dca55aca221b65eac50269e`). **16F** is **COMPLETE /
+ACCEPTED / SEALED** at
+`f25f8358aead7fcfe161fff388012cec23b5a573` (closeout
 `docs/slice16f_closeout.md`). → separate later-phase authorization
 (**16G–16H**, Slice 17, Slice 18, M7 closeout). Slice 14 and Slice 15 are
 closed.
