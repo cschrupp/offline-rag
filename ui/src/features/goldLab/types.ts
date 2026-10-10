@@ -201,3 +201,11 @@ export type QuestionCheckMutationBody =
   | QuestionCheckAcceptBody
   | QuestionCheckRejectBody
   | QuestionCheckEditBody;
+
+export type GoldPreferenceMutationBody = {
+  case_id: string;
+  preferred_chunk_id: string;
+  other_chunk_id: string;
+  game_id: string;
+  presentation_id: string;
+};

@@ -7,10 +7,14 @@ import { goldLabErrorMessage } from "../features/goldLab/errors/goldLabErrors";
 import {
   candidatePresentationForGame,
   isAllowProduction,
+  isExpertWorkGame,
   isI2ExpertGame,
+  isI3ExpertGame,
 } from "../features/goldLab/policy/presentations";
 import { goldLabQueryKeys } from "../features/goldLab/queryKeys";
 import { parseSessionConfig } from "../features/goldLab/state/sessionConfig";
+import { ChunkDuelWorkSession } from "../features/goldLab/work/ChunkDuelWorkSession";
+import { EvidenceSweepWorkSession } from "../features/goldLab/work/EvidenceSweepWorkSession";
 import { GoldWorkSession } from "../features/goldLab/work/GoldWorkSession";
 
 export function GoldLabWorkPage() {
@@ -58,26 +62,7 @@ export function GoldLabWorkPage() {
 
   const campaign = campaignQuery.data;
 
-  if (
-    session.game === "evidence_sweep" ||
-    session.game === "chunk_duel"
-  ) {
-    return (
-      <div className="stack gold-lab-page">
-        <p className="muted">
-          <Link to={`/gold-lab/campaigns/${campaignId}`}>Back to campaign</Link>
-        </p>
-        <Card>
-          <h1>Expert work</h1>
-          <p className="muted" role="status">
-            This game is not available in the current Gold Lab build.
-          </p>
-        </Card>
-      </div>
-    );
-  }
-
-  if (!isI2ExpertGame(session.game)) {
+  if (!isExpertWorkGame(session.game)) {
     return (
       <Card>
         <h1>Expert work</h1>
@@ -112,11 +97,25 @@ export function GoldLabWorkPage() {
       <p className="muted" style={{ margin: 0 }}>
         <Link to={`/gold-lab/campaigns/${campaignId}`}>Back to campaign</Link>
       </p>
-      <GoldWorkSession
-        campaignId={campaignId}
-        game={session.game}
-        campaignClosed={campaign.status === "closed"}
-      />
+      {isI2ExpertGame(session.game) ? (
+        <GoldWorkSession
+          campaignId={campaignId}
+          game={session.game}
+          campaignClosed={campaign.status === "closed"}
+        />
+      ) : null}
+      {isI3ExpertGame(session.game) && session.game === "evidence_sweep" ? (
+        <EvidenceSweepWorkSession
+          campaignId={campaignId}
+          campaignClosed={campaign.status === "closed"}
+        />
+      ) : null}
+      {isI3ExpertGame(session.game) && session.game === "chunk_duel" ? (
+        <ChunkDuelWorkSession
+          campaignId={campaignId}
+          campaignClosed={campaign.status === "closed"}
+        />
+      ) : null}
     </div>
   );
 }

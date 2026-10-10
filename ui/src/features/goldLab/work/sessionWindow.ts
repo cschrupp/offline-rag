@@ -6,6 +6,9 @@ import {
 } from "../state/sessionConfig";
 import type { GoldTaskSummary } from "../types";
 
+/** Evidence Sweep presentation constant (16G-I3). */
+export const EVIDENCE_SWEEP_BATCH_SIZE = 5;
+
 export type FrozenSessionWindow = {
   mode: "frozen";
   taskIds: readonly string[];
@@ -97,4 +100,33 @@ export function nextTaskInWindow(
     return membership[0] ?? null;
   }
   return membership[index + 1] ?? null;
+}
+
+/**
+ * Full session-window order for batch construction.
+ * Frozen windows keep the initial cohort order even after commits leave pending.
+ * Dynamic (until_stop) uses the current pending-eligible server order.
+ */
+export function orderedWindowTaskIds(
+  window: SessionWindow,
+  pendingOrdered: GoldTaskSummary[],
+  game: GoldGameId,
+): string[] {
+  if (window.mode === "frozen") {
+    return [...window.taskIds];
+  }
+  return eligiblePendingForGame(pendingOrdered, game).map(
+    (task) => task.task_id,
+  );
+}
+
+/** Next Evidence Sweep batch: at most batchSize unconsumed membership ids. */
+export function nextBatchTaskIds(
+  orderedMembership: readonly string[],
+  consumedBatchIds: ReadonlySet<string>,
+  batchSize: number = EVIDENCE_SWEEP_BATCH_SIZE,
+): string[] {
+  return orderedMembership
+    .filter((id) => !consumedBatchIds.has(id))
+    .slice(0, batchSize);
 }

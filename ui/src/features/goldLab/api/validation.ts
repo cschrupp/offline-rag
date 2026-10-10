@@ -697,11 +697,10 @@ export function validateGoldTaskDetail(
   };
 }
 
-export function validateGoldMutationReceipt(
+function parseGoldMutationReceiptShape(
   raw: unknown,
   requested: {
     campaignId: string;
-    taskId: string;
     expectedRecordType: GoldMutationRecordType;
   },
 ): GoldMutationReceipt {
@@ -716,11 +715,6 @@ export function validateGoldMutationReceipt(
   }
   if (!isNonEmptyString(row.task_id)) {
     throw unexpectedResponse("Mutation receipt is missing task_id.");
-  }
-  if (row.task_id !== requested.taskId) {
-    throw unexpectedResponse(
-      "Mutation receipt did not match the requested task.",
-    );
   }
   if (!isNonEmptyString(row.record_id)) {
     throw unexpectedResponse("Mutation receipt is missing record_id.");
@@ -759,4 +753,38 @@ export function validateGoldMutationReceipt(
     created_at: row.created_at,
     replayed: row.replayed,
   };
+}
+
+/**
+ * Relevance / Question Check receipts must match the client-requested task_id.
+ */
+export function validateGoldMutationReceipt(
+  raw: unknown,
+  requested: {
+    campaignId: string;
+    taskId: string;
+    expectedRecordType: GoldMutationRecordType;
+  },
+): GoldMutationReceipt {
+  const receipt = parseGoldMutationReceiptShape(raw, requested);
+  if (receipt.task_id !== requested.taskId) {
+    throw unexpectedResponse(
+      "Mutation receipt did not match the requested task.",
+    );
+  }
+  return receipt;
+}
+
+/**
+ * Auxiliary preference receipts carry a server-issued task identity.
+ * Do not invent an expected task_id on the client.
+ */
+export function validateGoldPreferenceReceipt(
+  raw: unknown,
+  requested: { campaignId: string },
+): GoldMutationReceipt {
+  return parseGoldMutationReceiptShape(raw, {
+    campaignId: requested.campaignId,
+    expectedRecordType: "auxiliary_preference",
+  });
 }

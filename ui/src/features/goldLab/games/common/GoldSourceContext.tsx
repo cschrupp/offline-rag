@@ -3,11 +3,14 @@ import type { GoldSourceContext as Source } from "../../types";
 type Props = {
   source: Source;
   heading?: string;
+  /** Unique heading id when multiple source panels appear (Evidence Sweep). */
+  headingId?: string;
 };
 
 export function GoldSourceContextView({
   source,
   heading = "Source context",
+  headingId = "gold-source-heading",
 }: Props) {
   const pageRange =
     source.page_start !== null || source.page_end !== null
@@ -19,8 +22,8 @@ export function GoldSourceContextView({
       : null;
 
   return (
-    <section className="gold-lab-source" aria-labelledby="gold-source-heading">
-      <h3 id="gold-source-heading">{heading}</h3>
+    <section className="gold-lab-source" aria-labelledby={headingId}>
+      <h3 id={headingId}>{heading}</h3>
       <dl className="gold-lab-meta">
         <div>
           <dt>Document</dt>

@@ -2,10 +2,14 @@ import { Button } from "../../../../components/Button";
 
 type Props = {
   replayed: boolean;
-  onNext: () => void;
+  onNext?: () => void;
   onCorrect: () => void;
   nextDisabled?: boolean;
   correctDisabled?: boolean;
+  /** When false, only correction is offered (Evidence Sweep per-card). */
+  showNext?: boolean;
+  nextLabel?: string;
+  recordedLabel?: string;
 };
 
 export function GoldAfterAction({
@@ -14,6 +18,9 @@ export function GoldAfterAction({
   onCorrect,
   nextDisabled = false,
   correctDisabled = false,
+  showNext = true,
+  nextLabel = "Next task",
+  recordedLabel = "Judgment recorded.",
 }: Props) {
   return (
     <div className="stack gold-lab-after-action">
@@ -23,13 +30,15 @@ export function GoldAfterAction({
         </p>
       ) : (
         <p className="muted" role="status">
-          Judgment recorded.
+          {recordedLabel}
         </p>
       )}
       <div className="row">
-        <Button onClick={onNext} disabled={nextDisabled}>
-          Next task
-        </Button>
+        {showNext && onNext ? (
+          <Button onClick={onNext} disabled={nextDisabled}>
+            {nextLabel}
+          </Button>
+        ) : null}
         <Button variant="secondary" onClick={onCorrect} disabled={correctDisabled}>
           Correct judgment
         </Button>

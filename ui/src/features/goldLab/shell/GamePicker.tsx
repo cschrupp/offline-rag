@@ -19,7 +19,7 @@ export function GamePicker({ value, onChange, disabled = false }: Props) {
     <fieldset className="gold-lab-fieldset" disabled={disabled}>
       <legend>Game</legend>
       <p className="muted">
-        Selection only. Expert task execution is not available in this build.
+        Selection sets the expert-work game identity for the session URL.
       </p>
       <div className="row gold-lab-radio-row">
         {GOLD_GAMES.map((game) => (

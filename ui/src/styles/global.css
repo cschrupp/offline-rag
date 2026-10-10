@@ -2019,6 +2019,67 @@ button.snapshot-badge {
   margin-top: var(--space-3);
 }
 
+.gold-lab-evidence-sweep-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style-position: inside;
+}
+
+.gold-lab-evidence-sweep-card {
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.gold-lab-evidence-sweep-card h3,
+.gold-lab-evidence-sweep-card h4 {
+  margin: 0 0 0.35rem;
+}
+
+.gold-lab-auxiliary-banner {
+  margin: 0;
+  padding: var(--space-3);
+  border-left: 3px solid var(--brass);
+  background: var(--surface);
+  font-weight: 600;
+}
+
+.gold-lab-chunk-duel-pick-list {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.gold-lab-chunk-duel-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.gold-lab-chunk-duel-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+@media (max-width: 48rem) {
+  .gold-lab-evidence-sweep-list {
+    grid-template-columns: 1fr;
+  }
+
+  .gold-lab-chunk-duel-pair {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

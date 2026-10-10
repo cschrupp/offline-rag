@@ -5,6 +5,7 @@ import type {
   GoldCampaignCreateRequest,
   GoldCampaignListResponse,
   GoldMutationReceipt,
+  GoldPreferenceMutationBody,
   GoldProject,
   GoldProjectCreateRequest,
   GoldProjectListResponse,
@@ -20,6 +21,7 @@ import {
   validateGoldCampaign,
   validateGoldCampaignListResponse,
   validateGoldMutationReceipt,
+  validateGoldPreferenceReceipt,
   validateGoldProject,
   validateGoldProjectListResponse,
   validateGoldTaskDetail,
@@ -206,5 +208,23 @@ export async function submitGoldQuestionCheck(params: {
     campaignId: params.campaignId,
     taskId: params.taskId,
     expectedRecordType: "question_check",
+  });
+}
+
+export async function submitGoldPreference(params: {
+  campaignId: string;
+  body: GoldPreferenceMutationBody;
+  idempotencyKey: string;
+}): Promise<GoldMutationReceipt> {
+  const raw = await apiRequest<unknown>(
+    `/v1/gold-lab/campaigns/${encodeURIComponent(params.campaignId)}/preferences`,
+    {
+      method: "POST",
+      idempotencyKey: params.idempotencyKey,
+      json: params.body,
+    },
+  );
+  return validateGoldPreferenceReceipt(raw, {
+    campaignId: params.campaignId,
   });
 }

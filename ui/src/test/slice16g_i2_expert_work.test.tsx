@@ -173,13 +173,16 @@ describe("16G-I2 production work route policy gate", () => {
     mock2.restore();
   });
 
-  it("shows unavailable state for Evidence Sweep / Chunk Duel without mutations", async () => {
+  it("refuses unapproved Evidence Sweep / Chunk Duel without task or mutation calls", async () => {
     const campaign = goldCampaign({ campaign_id: "camp_1" });
     const mock = installFetchMock(async (call) => {
       if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
       if (call.url === "/v1/workspaces") return jsonResponse([]);
       if (call.url === "/v1/gold-lab/campaigns/camp_1") {
         return jsonResponse(campaign);
+      }
+      if (call.url.includes("/tasks") || call.url.includes("/preferences")) {
+        throw new Error(`Unexpected call behind policy gate: ${call.url}`);
       }
       return jsonResponse(
         { error: { code: "not_found", message: "x" } },
@@ -189,9 +192,10 @@ describe("16G-I2 production work route policy gate", () => {
     renderApp("/gold-lab/campaigns/camp_1/work?game=evidence_sweep");
     expect(
       await screen.findByText(
-        /This game is not available in the current Gold Lab build/,
+        /This presentation is not approved for production Gold Mode/,
       ),
     ).toBeInTheDocument();
+    expect(mock.calls.some((call) => call.url.includes("/tasks"))).toBe(false);
     assertNoForbidden(mock.calls);
     mock.restore();
   });
