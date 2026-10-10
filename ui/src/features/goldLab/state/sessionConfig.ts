@@ -21,6 +21,8 @@ export type GoldSessionConfig = {
   taskId: string | null;
 };
 
+export type GoldTaskKind = "question_check" | "absolute_relevance";
+
 export const DEFAULT_SESSION_CONFIG: GoldSessionConfig = {
   game: "rapid_fire",
   workload: "until_stop",
@@ -32,6 +34,11 @@ const WORKLOAD_URL_SET = new Set<string>([
   ...GOLD_WORKLOAD_NUMERIC,
   "case",
 ]);
+
+/** Presentation-only mapping from frozen game identity to sealed task_kind. */
+export function taskKindForGame(game: GoldGameId): GoldTaskKind {
+  return game === "question_check" ? "question_check" : "absolute_relevance";
+}
 
 export function parseSessionConfig(
   searchParams: URLSearchParams,
@@ -128,23 +135,38 @@ export function caseIdForTask(
   return null;
 }
 
-export function pendingTasksMatchingConfig(
-  tasks: Array<{
-    task_id: string;
-    case_id: string;
-    state: string;
-    active: boolean;
-  }>,
-  config: GoldSessionConfig,
-): typeof tasks {
-  const pending = tasks.filter(
-    (task) => task.state === "pending" && task.active,
+type SessionTask = {
+  task_id: string;
+  case_id: string;
+  state: string;
+  active: boolean;
+  task_kind: string;
+};
+
+/** Pending+active tasks whose sealed kind matches the selected game. */
+export function eligiblePendingForGame(
+  tasks: SessionTask[],
+  game: GoldGameId,
+): SessionTask[] {
+  const kind = taskKindForGame(game);
+  return tasks.filter(
+    (task) =>
+      task.state === "pending" &&
+      task.active &&
+      task.task_kind === kind,
   );
+}
+
+export function pendingTasksMatchingConfig(
+  tasks: SessionTask[],
+  config: GoldSessionConfig,
+): SessionTask[] {
+  const pending = eligiblePendingForGame(tasks, config.game);
   if (config.workload === "until_stop") {
     return pending;
   }
   if (config.workload === "case") {
-    const caseId = caseIdForTask(tasks, config.taskId);
+    const caseId = caseIdForTask(pending, config.taskId);
     if (!caseId) return [];
     return pending.filter((task) => task.case_id === caseId);
   }

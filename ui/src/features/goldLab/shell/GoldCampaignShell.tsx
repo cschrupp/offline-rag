@@ -15,6 +15,7 @@ import {
   applySessionConfig,
   caseIdForTask,
   caseIdsInServerOrder,
+  eligiblePendingForGame,
   parseSessionConfig,
   pendingTasksMatchingConfig,
   sessionConfigEquals,
@@ -49,8 +50,15 @@ export function GoldCampaignShell({ campaign }: Props) {
     () => tasksQuery.data?.tasks ?? [],
     [tasksQuery.data?.tasks],
   );
-  const caseIds = useMemo(() => caseIdsInServerOrder(tasks), [tasks]);
-  const selectedCaseId = caseIdForTask(tasks, session.taskId);
+  const gameEligiblePending = useMemo(
+    () => eligiblePendingForGame(tasks, session.game),
+    [tasks, session.game],
+  );
+  const caseIds = useMemo(
+    () => caseIdsInServerOrder(gameEligiblePending),
+    [gameEligiblePending],
+  );
+  const selectedCaseId = caseIdForTask(gameEligiblePending, session.taskId);
   const matchingPending = useMemo(
     () => pendingTasksMatchingConfig(tasks, session),
     [tasks, session],
@@ -89,24 +97,27 @@ export function GoldCampaignShell({ campaign }: Props) {
 
   function onWorkloadChange(workload: GoldWorkload) {
     if (workload === "case") {
-      const anchor =
-        session.taskId && caseIdForTask(tasks, session.taskId)
-          ? session.taskId
-          : caseIds[0]
-            ? anchorTaskForCase(tasks, caseIds[0])
-            : null;
+      const currentCase = caseIdForTask(
+        gameEligiblePending,
+        session.taskId,
+      );
+      const anchor = currentCase
+        ? session.taskId
+        : caseIds[0]
+          ? anchorTaskForCase(gameEligiblePending, caseIds[0])
+          : null;
       updateSession({ ...session, workload, taskId: anchor });
       return;
     }
     updateSession({
       ...session,
       workload,
-      taskId: workload === "until_stop" ? session.taskId : session.taskId,
+      taskId: session.taskId,
     });
   }
 
   function onCaseChange(caseId: string) {
-    const anchor = anchorTaskForCase(tasks, caseId);
+    const anchor = anchorTaskForCase(gameEligiblePending, caseId);
     updateSession({ ...session, workload: "case", taskId: anchor });
   }
 
@@ -321,7 +332,7 @@ export function GoldCampaignShell({ campaign }: Props) {
             </p>
           ) : null}
 
-          {prepared ? (
+          {prepared && matchingPending.length > 0 ? (
             <p className="gold-lab-ready" role="status">
               Session configuration is ready. Expert task execution is not
               available in this build.
@@ -335,6 +346,7 @@ export function GoldCampaignShell({ campaign }: Props) {
                 closed ||
                 tasksQuery.isLoading ||
                 tasksQuery.isError ||
+                matchingPending.length === 0 ||
                 (session.workload === "case" && !selectedCaseId)
               }
             >

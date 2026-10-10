@@ -33,7 +33,9 @@ export async function createGoldProject(
     method: "POST",
     json: body,
   });
-  return validateGoldProject(raw);
+  return validateGoldProject(raw, "Gold project", {
+    workspaceId: body.workspace_id,
+  });
 }
 
 export async function getGoldProject(
@@ -44,7 +46,7 @@ export async function getGoldProject(
     `/v1/gold-lab/projects/${encodeURIComponent(projectId)}`,
     { signal },
   );
-  return validateGoldProject(raw);
+  return validateGoldProject(raw, "Gold project", { projectId });
 }
 
 export async function archiveGoldProject(
@@ -54,7 +56,7 @@ export async function archiveGoldProject(
     `/v1/gold-lab/projects/${encodeURIComponent(projectId)}/archive`,
     { method: "POST" },
   );
-  return validateGoldProject(raw);
+  return validateGoldProject(raw, "Gold project", { projectId });
 }
 
 export async function listGoldBaselines(
@@ -90,7 +92,7 @@ export async function createGoldCampaign(
       json: body,
     },
   );
-  return validateGoldCampaign(raw);
+  return validateGoldCampaign(raw, "Gold campaign", { projectId });
 }
 
 export async function getGoldCampaign(
@@ -101,7 +103,7 @@ export async function getGoldCampaign(
     `/v1/gold-lab/campaigns/${encodeURIComponent(campaignId)}`,
     { signal },
   );
-  return validateGoldCampaign(raw);
+  return validateGoldCampaign(raw, "Gold campaign", { campaignId });
 }
 
 export async function closeGoldCampaign(
@@ -111,7 +113,7 @@ export async function closeGoldCampaign(
     `/v1/gold-lab/campaigns/${encodeURIComponent(campaignId)}/close`,
     { method: "POST" },
   );
-  return validateGoldCampaign(raw);
+  return validateGoldCampaign(raw, "Gold campaign", { campaignId });
 }
 
 export async function listGoldTasks(

@@ -46,7 +46,16 @@ function asRecord(raw: unknown, label: string): Record<string, unknown> {
   return raw as Record<string, unknown>;
 }
 
-export function validateGoldProject(raw: unknown, label = "Gold project"): GoldProject {
+export type ExpectedGoldProjectIdentity = {
+  projectId?: string;
+  workspaceId?: string;
+};
+
+export function validateGoldProject(
+  raw: unknown,
+  label = "Gold project",
+  expected?: ExpectedGoldProjectIdentity,
+): GoldProject {
   const row = asRecord(raw, label);
   if (!isNonEmptyString(row.project_id)) {
     throw unexpectedResponse(`${label} is missing project_id.`);
@@ -68,6 +77,22 @@ export function validateGoldProject(raw: unknown, label = "Gold project"): GoldP
   }
   if (!isString(row.created_at)) {
     throw unexpectedResponse(`${label} has an invalid created_at.`);
+  }
+  if (
+    expected?.projectId !== undefined &&
+    row.project_id !== expected.projectId
+  ) {
+    throw unexpectedResponse(
+      `${label} did not match the requested project.`,
+    );
+  }
+  if (
+    expected?.workspaceId !== undefined &&
+    row.workspace_id !== expected.workspaceId
+  ) {
+    throw unexpectedResponse(
+      `${label} did not match the requested workspace.`,
+    );
   }
   return {
     project_id: row.project_id,
@@ -157,9 +182,15 @@ export function validateGoldBaselineListResponse(
   };
 }
 
+export type ExpectedGoldCampaignIdentity = {
+  campaignId?: string;
+  projectId?: string;
+};
+
 export function validateGoldCampaign(
   raw: unknown,
   label = "Gold campaign",
+  expected?: ExpectedGoldCampaignIdentity,
 ): GoldCampaign {
   const row = asRecord(raw, label);
   if (!isNonEmptyString(row.campaign_id)) {
@@ -199,6 +230,22 @@ export function validateGoldCampaign(
   }
   if (!isString(row.created_at)) {
     throw unexpectedResponse(`${label} has an invalid created_at.`);
+  }
+  if (
+    expected?.campaignId !== undefined &&
+    row.campaign_id !== expected.campaignId
+  ) {
+    throw unexpectedResponse(
+      `${label} did not match the requested campaign.`,
+    );
+  }
+  if (
+    expected?.projectId !== undefined &&
+    row.project_id !== expected.projectId
+  ) {
+    throw unexpectedResponse(
+      `${label} did not match the requested project.`,
+    );
   }
   return {
     campaign_id: row.campaign_id,

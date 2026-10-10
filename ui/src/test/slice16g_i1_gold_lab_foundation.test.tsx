@@ -2,7 +2,17 @@ import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  archiveGoldProject,
+  closeGoldCampaign,
+  createGoldCampaign,
+  createGoldProject,
+  getGoldCampaign,
+  getGoldProject,
+} from "../features/goldLab/api/client";
+import {
   validateGoldBaselineListResponse,
+  validateGoldCampaign,
+  validateGoldProject,
   validateGoldProjectListResponse,
   validateGoldTaskListResponse,
 } from "../features/goldLab/api/validation";
@@ -766,5 +776,177 @@ describe("16G-I1 validation helpers", () => {
         "c1",
       ),
     ).toThrow(/different campaign/i);
+  });
+
+  it("binds singular project/campaign identities to the requested resource", () => {
+    const project = goldProject({ project_id: "proj_1", workspace_id: "ws_1" });
+    expect(() =>
+      validateGoldProject(project, "Gold project", { projectId: "proj_other" }),
+    ).toThrow(/did not match the requested project/i);
+    expect(() =>
+      validateGoldProject(project, "Gold project", { workspaceId: "ws_other" }),
+    ).toThrow(/did not match the requested workspace/i);
+    expect(
+      validateGoldProject(project, "Gold project", {
+        projectId: "proj_1",
+        workspaceId: "ws_1",
+      }),
+    ).toEqual(project);
+
+    const campaign = goldCampaign({
+      campaign_id: "camp_1",
+      project_id: "proj_1",
+    });
+    expect(() =>
+      validateGoldCampaign(campaign, "Gold campaign", {
+        campaignId: "camp_other",
+      }),
+    ).toThrow(/did not match the requested campaign/i);
+    expect(() =>
+      validateGoldCampaign(campaign, "Gold campaign", { projectId: "proj_other" }),
+    ).toThrow(/did not match the requested project/i);
+    expect(
+      validateGoldCampaign(campaign, "Gold campaign", {
+        campaignId: "camp_1",
+        projectId: "proj_1",
+      }),
+    ).toEqual(campaign);
+  });
+});
+
+describe("16G-I1-REWORK identity and session gates", () => {
+  it("rejects mismatched singular API identities at the client boundary", async () => {
+    const project = goldProject({ project_id: "wrong_proj", workspace_id: "ws_x" });
+    const campaign = goldCampaign({
+      campaign_id: "wrong_camp",
+      project_id: "wrong_proj",
+    });
+
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/v1/gold-lab/projects/proj_1" && call.method === "GET") {
+        return jsonResponse(project);
+      }
+      if (
+        call.url === "/v1/gold-lab/projects/proj_1/archive" &&
+        call.method === "POST"
+      ) {
+        return jsonResponse(project);
+      }
+      if (call.url === "/v1/gold-lab/projects" && call.method === "POST") {
+        return jsonResponse(project, { status: 201 });
+      }
+      if (
+        call.url === "/v1/gold-lab/projects/proj_1/campaigns" &&
+        call.method === "POST"
+      ) {
+        return jsonResponse(campaign, { status: 201 });
+      }
+      if (call.url === "/v1/gold-lab/campaigns/camp_1" && call.method === "GET") {
+        return jsonResponse(campaign);
+      }
+      if (
+        call.url === "/v1/gold-lab/campaigns/camp_1/close" &&
+        call.method === "POST"
+      ) {
+        return jsonResponse(campaign);
+      }
+      return jsonResponse(
+        { error: { code: "not_found", message: "x" } },
+        { status: 404 },
+      );
+    });
+
+    await expect(getGoldProject("proj_1")).rejects.toMatchObject({
+      code: "unexpected_response",
+    });
+    await expect(archiveGoldProject("proj_1")).rejects.toMatchObject({
+      code: "unexpected_response",
+    });
+    await expect(
+      createGoldProject({
+        workspace_id: "ws_1",
+        title: "X",
+        description: "",
+        project_type: "benchmark",
+      }),
+    ).rejects.toMatchObject({ code: "unexpected_response" });
+    await expect(
+      createGoldCampaign("proj_1", {
+        baseline_authoring_run_id: "run_1",
+        selection_policy_id: "policy_a",
+        selection_policy_parameters: {},
+        hard_calls: [],
+      }),
+    ).rejects.toMatchObject({ code: "unexpected_response" });
+    await expect(getGoldCampaign("camp_1")).rejects.toMatchObject({
+      code: "unexpected_response",
+    });
+    await expect(closeGoldCampaign("camp_1")).rejects.toMatchObject({
+      code: "unexpected_response",
+    });
+    mock.restore();
+  });
+
+  it("reports game-specific eligible counts and blocks prepare when zero match", async () => {
+    const user = userEvent.setup();
+    const campaign = goldCampaign({ campaign_id: "camp_1" });
+    const { mock } = installGoldLabMocks({
+      campaigns: { camp_1: campaign },
+      tasksByCampaign: {
+        camp_1: [
+          goldTask({
+            task_id: "ar1",
+            task_kind: "absolute_relevance",
+            case_id: "case_a",
+            state: "pending",
+          }),
+          goldTask({
+            task_id: "qc1",
+            task_kind: "question_check",
+            case_id: "case_q",
+            state: "pending",
+          }),
+        ],
+      },
+    });
+    renderApp("/gold-lab/campaigns/camp_1");
+    expect(
+      await screen.findByText(/Eligible pending tasks for this configuration: 1/),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByLabelText("Question Check"));
+    expect(
+      await screen.findByText(/Eligible pending tasks for this configuration: 1/),
+    ).toBeInTheDocument();
+
+    const emptyCampaign = goldCampaign({ campaign_id: "camp_empty" });
+    mock.restore();
+    cleanup();
+    const empty = installGoldLabMocks({
+      campaigns: { camp_empty: emptyCampaign },
+      tasksByCampaign: {
+        camp_empty: [
+          goldTask({
+            task_id: "qc_only",
+            campaign_id: "camp_empty",
+            task_kind: "question_check",
+            state: "pending",
+          }),
+        ],
+      },
+    });
+    renderApp("/gold-lab/campaigns/camp_empty?game=rapid_fire");
+    expect(
+      await screen.findByText(
+        "No pending tasks match this session configuration.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Prepare session" }),
+    ).toBeDisabled();
+    expect(
+      screen.queryByText(/Session configuration is ready/),
+    ).not.toBeInTheDocument();
+    empty.mock.restore();
   });
 });

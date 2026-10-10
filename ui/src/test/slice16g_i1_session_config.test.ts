@@ -2,9 +2,49 @@ import { describe, expect, it } from "vitest";
 import {
   applySessionConfig,
   caseIdsInServerOrder,
+  eligiblePendingForGame,
   parseSessionConfig,
   pendingTasksMatchingConfig,
+  taskKindForGame,
 } from "../features/goldLab/state/sessionConfig";
+
+const mixedTasks = [
+  {
+    task_id: "qc1",
+    case_id: "case_q",
+    state: "pending",
+    active: true,
+    task_kind: "question_check",
+  },
+  {
+    task_id: "ar1",
+    case_id: "case_a",
+    state: "pending",
+    active: true,
+    task_kind: "absolute_relevance",
+  },
+  {
+    task_id: "ar2",
+    case_id: "case_b",
+    state: "pending",
+    active: true,
+    task_kind: "absolute_relevance",
+  },
+  {
+    task_id: "qc2",
+    case_id: "case_q",
+    state: "pending",
+    active: true,
+    task_kind: "question_check",
+  },
+  {
+    task_id: "ar3",
+    case_id: "case_a",
+    state: "completed",
+    active: true,
+    task_kind: "absolute_relevance",
+  },
+];
 
 describe("16G-I1 session config", () => {
   it("accepts frozen game and workload values", () => {
@@ -47,37 +87,71 @@ describe("16G-I1 session config", () => {
     expect(next.get("foo")).toBe("1");
   });
 
-  it("preserves server case/task order for complete-case grouping", () => {
-    const tasks = [
-      { case_id: "case_b", task_id: "t2" },
-      { case_id: "case_a", task_id: "t1" },
-      { case_id: "case_b", task_id: "t3" },
-    ];
-    expect(caseIdsInServerOrder(tasks)).toEqual(["case_b", "case_a"]);
+  it("maps each frozen game to its sealed task_kind", () => {
+    expect(taskKindForGame("rapid_fire")).toBe("absolute_relevance");
+    expect(taskKindForGame("evidence_sweep")).toBe("absolute_relevance");
+    expect(taskKindForGame("chunk_duel")).toBe("absolute_relevance");
+    expect(taskKindForGame("question_check")).toBe("question_check");
+  });
+
+  it("filters mixed-kind pending populations per game without reordering", () => {
     expect(
-      pendingTasksMatchingConfig(
-        [
-          {
-            task_id: "t2",
-            case_id: "case_b",
-            state: "pending",
-            active: true,
-          },
-          {
-            task_id: "t1",
-            case_id: "case_a",
-            state: "pending",
-            active: true,
-          },
-          {
-            task_id: "t3",
-            case_id: "case_b",
-            state: "completed",
-            active: true,
-          },
-        ],
-        { game: "rapid_fire", workload: "case", taskId: "t2" },
-      ).map((task) => task.task_id),
-    ).toEqual(["t2"]);
+      pendingTasksMatchingConfig(mixedTasks, {
+        game: "rapid_fire",
+        workload: "until_stop",
+        taskId: null,
+      }).map((task) => task.task_id),
+    ).toEqual(["ar1", "ar2"]);
+
+    expect(
+      pendingTasksMatchingConfig(mixedTasks, {
+        game: "evidence_sweep",
+        workload: "1",
+        taskId: null,
+      }).map((task) => task.task_id),
+    ).toEqual(["ar1"]);
+
+    expect(
+      pendingTasksMatchingConfig(mixedTasks, {
+        game: "chunk_duel",
+        workload: "until_stop",
+        taskId: null,
+      }).map((task) => task.task_id),
+    ).toEqual(["ar1", "ar2"]);
+
+    expect(
+      pendingTasksMatchingConfig(mixedTasks, {
+        game: "question_check",
+        workload: "until_stop",
+        taskId: null,
+      }).map((task) => task.task_id),
+    ).toEqual(["qc1", "qc2"]);
+  });
+
+  it("drives complete-case grouping from game-eligible pending tasks only", () => {
+    const rapidEligible = eligiblePendingForGame(mixedTasks, "rapid_fire");
+    expect(caseIdsInServerOrder(rapidEligible)).toEqual(["case_a", "case_b"]);
+
+    const questionEligible = eligiblePendingForGame(
+      mixedTasks,
+      "question_check",
+    );
+    expect(caseIdsInServerOrder(questionEligible)).toEqual(["case_q"]);
+
+    expect(
+      pendingTasksMatchingConfig(mixedTasks, {
+        game: "rapid_fire",
+        workload: "case",
+        taskId: "ar1",
+      }).map((task) => task.task_id),
+    ).toEqual(["ar1"]);
+
+    expect(
+      pendingTasksMatchingConfig(mixedTasks, {
+        game: "question_check",
+        workload: "case",
+        taskId: "ar1",
+      }),
+    ).toEqual([]);
   });
 });
