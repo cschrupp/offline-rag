@@ -324,7 +324,7 @@ describe("16G-I1 navigation and routing", () => {
     cleanup();
 
     const unknown = installGoldLabMocks();
-    renderApp("/gold-lab/campaigns/camp_1/work");
+    renderApp("/gold-lab/campaigns/camp_1/contribution");
     expect(
       await screen.findByRole("heading", { name: "Page not found" }),
     ).toBeInTheDocument();
@@ -672,25 +672,24 @@ describe("16G-I1 campaign shell, close, session, scientific boundary", () => {
     renderApp("/gold-lab/campaigns/camp_1");
     await screen.findByRole("heading", { name: "Session configuration" });
 
-    await user.click(screen.getByLabelText("Evidence Sweep"));
+    expect(screen.getByLabelText("Rapid Fire")).toBeInTheDocument();
+    expect(screen.getByLabelText("Evidence Sweep")).toBeInTheDocument();
+    expect(screen.getByLabelText("Question Check")).toBeInTheDocument();
+    expect(screen.getByLabelText("Chunk Duel")).toBeInTheDocument();
+    expect(screen.getByLabelText("1")).toBeInTheDocument();
+    expect(screen.getByLabelText("5")).toBeInTheDocument();
+    expect(screen.getByLabelText("10")).toBeInTheDocument();
+    expect(screen.getByLabelText("25")).toBeInTheDocument();
+    expect(screen.getByLabelText("Until stop")).toBeInTheDocument();
+    expect(screen.getByLabelText("Complete case")).toBeInTheDocument();
+
     await user.click(screen.getByLabelText("5"));
     await user.click(screen.getByRole("button", { name: "Prepare session" }));
     expect(
       await screen.findByText(
-        /Session configuration is ready\. Expert task execution is not available in this build\./,
+        /This presentation is not approved for production Gold Mode/,
       ),
     ).toBeInTheDocument();
-
-    await user.click(screen.getByLabelText("Until stop"));
-    await user.click(screen.getByLabelText("Complete case"));
-    await user.selectOptions(screen.getByLabelText("Case"), "case_b");
-
-    expect(screen.getByLabelText("Rapid Fire")).toBeInTheDocument();
-    expect(screen.getByLabelText("Question Check")).toBeInTheDocument();
-    expect(screen.getByLabelText("Chunk Duel")).toBeInTheDocument();
-    expect(screen.getByLabelText("1")).toBeInTheDocument();
-    expect(screen.getByLabelText("10")).toBeInTheDocument();
-    expect(screen.getByLabelText("25")).toBeInTheDocument();
 
     assertNoForbiddenCalls(mock.calls);
     expect(

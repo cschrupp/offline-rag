@@ -22,4 +22,6 @@ export const goldLabQueryKeys = {
     ["gold-lab", "campaign", campaignId] as const,
   tasks: (campaignId: string, filters?: GoldTaskListFilters) =>
     ["gold-lab", "tasks", campaignId, stableFilters(filters)] as const,
+  task: (campaignId: string, taskId: string) =>
+    ["gold-lab", "task", campaignId, taskId] as const,
 };

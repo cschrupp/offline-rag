@@ -4,18 +4,25 @@ import type {
   GoldCampaign,
   GoldCampaignCreateRequest,
   GoldCampaignListResponse,
+  GoldMutationReceipt,
   GoldProject,
   GoldProjectCreateRequest,
   GoldProjectListResponse,
+  GoldRelevance,
+  GoldTaskDetail,
+  GoldTaskKind,
   GoldTaskListFilters,
   GoldTaskListResponse,
+  QuestionCheckMutationBody,
 } from "../types";
 import {
   validateGoldBaselineListResponse,
   validateGoldCampaign,
   validateGoldCampaignListResponse,
+  validateGoldMutationReceipt,
   validateGoldProject,
   validateGoldProjectListResponse,
+  validateGoldTaskDetail,
   validateGoldTaskListResponse,
 } from "./validation";
 
@@ -134,4 +141,70 @@ export async function listGoldTasks(
     (query ? `?${query}` : "");
   const raw = await apiRequest<unknown>(path, { signal });
   return validateGoldTaskListResponse(raw, campaignId);
+}
+
+export async function getGoldTask(
+  campaignId: string,
+  taskId: string,
+  expectedKind?: GoldTaskKind,
+  signal?: AbortSignal,
+): Promise<GoldTaskDetail> {
+  const raw = await apiRequest<unknown>(
+    `/v1/gold-lab/campaigns/${encodeURIComponent(campaignId)}/tasks/${encodeURIComponent(taskId)}`,
+    { signal },
+  );
+  return validateGoldTaskDetail(raw, {
+    campaignId,
+    taskId,
+    expectedKind,
+  });
+}
+
+export async function submitGoldRelevance(params: {
+  campaignId: string;
+  taskId: string;
+  relevance: GoldRelevance;
+  gameId: string;
+  presentationId: string;
+  idempotencyKey: string;
+}): Promise<GoldMutationReceipt> {
+  const body = {
+    relevance: params.relevance,
+    game_id: params.gameId,
+    presentation_id: params.presentationId,
+  };
+  const raw = await apiRequest<unknown>(
+    `/v1/gold-lab/campaigns/${encodeURIComponent(params.campaignId)}/tasks/${encodeURIComponent(params.taskId)}/relevance`,
+    {
+      method: "POST",
+      idempotencyKey: params.idempotencyKey,
+      json: body,
+    },
+  );
+  return validateGoldMutationReceipt(raw, {
+    campaignId: params.campaignId,
+    taskId: params.taskId,
+    expectedRecordType: "absolute_relevance",
+  });
+}
+
+export async function submitGoldQuestionCheck(params: {
+  campaignId: string;
+  taskId: string;
+  body: QuestionCheckMutationBody;
+  idempotencyKey: string;
+}): Promise<GoldMutationReceipt> {
+  const raw = await apiRequest<unknown>(
+    `/v1/gold-lab/campaigns/${encodeURIComponent(params.campaignId)}/tasks/${encodeURIComponent(params.taskId)}/question-check`,
+    {
+      method: "POST",
+      idempotencyKey: params.idempotencyKey,
+      json: params.body,
+    },
+  );
+  return validateGoldMutationReceipt(raw, {
+    campaignId: params.campaignId,
+    taskId: params.taskId,
+    expectedRecordType: "question_check",
+  });
 }

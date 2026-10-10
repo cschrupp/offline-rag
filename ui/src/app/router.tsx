@@ -5,6 +5,7 @@ import { EngineeringEvaluationPage } from "../pages/EngineeringEvaluationPage";
 import { GoldLabCampaignPage } from "../pages/GoldLabCampaignPage";
 import { GoldLabPage } from "../pages/GoldLabPage";
 import { GoldLabProjectPage } from "../pages/GoldLabProjectPage";
+import { GoldLabWorkPage } from "../pages/GoldLabWorkPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { OverviewPage } from "../pages/OverviewPage";
 import { SettingsPage } from "../pages/SettingsPage";
@@ -26,6 +27,10 @@ export function AppRouter() {
         <Route
           path="gold-lab/campaigns/:campaignId"
           element={<GoldLabCampaignPage />}
+        />
+        <Route
+          path="gold-lab/campaigns/:campaignId/work"
+          element={<GoldLabWorkPage />}
         />
         <Route
           path="engineering"

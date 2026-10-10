@@ -89,3 +89,115 @@ export type GoldTaskListFilters = {
   active?: boolean;
   case_id?: string;
 };
+
+export type GoldSourceContext = {
+  chunk_id: string;
+  document_id: string;
+  document_title: string | null;
+  source_name: string | null;
+  section_path: string[];
+  page_start: number | null;
+  page_end: number | null;
+  line_start: number | null;
+  line_end: number | null;
+  content_type: string;
+  text: string;
+};
+
+export type GoldTaskDetailBase = {
+  task_id: string;
+  task_kind: GoldTaskKind;
+  campaign_id: string;
+  case_id: string;
+  active: boolean;
+  state: GoldTaskState;
+  candidate_chunk_id: string | null;
+  effective_query: string | null;
+};
+
+export type QuestionCheckPresentation = {
+  kind: "question_check";
+  proposed_query: string;
+  proposed_category: string | null;
+  proposed_tags: string[];
+  source: GoldSourceContext | null;
+};
+
+export type QuestionCheckCurrentResult = {
+  kind: "question_check";
+  decision: "accept" | "edit" | "reject";
+  effective_query: string | null;
+  effective_category: string | null;
+  effective_tags: string[];
+};
+
+export type AbsoluteRelevancePresentation = {
+  kind: "absolute_relevance";
+  effective_query: string;
+  effective_category: string | null;
+  effective_tags: string[];
+  candidate: GoldSourceContext;
+};
+
+export type AbsoluteRelevanceCurrentResult = {
+  kind: "absolute_relevance";
+  relevance: 0 | 1 | 2;
+};
+
+export type QuestionCheckTaskDetail = GoldTaskDetailBase & {
+  task_kind: "question_check";
+  presentation: QuestionCheckPresentation;
+  current_result: QuestionCheckCurrentResult | null;
+};
+
+export type AbsoluteRelevanceTaskDetail = GoldTaskDetailBase & {
+  task_kind: "absolute_relevance";
+  presentation: AbsoluteRelevancePresentation;
+  current_result: AbsoluteRelevanceCurrentResult | null;
+};
+
+export type GoldTaskDetail = QuestionCheckTaskDetail | AbsoluteRelevanceTaskDetail;
+
+export type GoldMutationRecordType =
+  | "question_check"
+  | "absolute_relevance"
+  | "auxiliary_preference";
+
+export type GoldMutationReceipt = {
+  campaign_id: string;
+  record_id: string;
+  judgment_id: string;
+  task_id: string;
+  record_type: GoldMutationRecordType;
+  sequence: number;
+  created_at: string;
+  replayed: boolean;
+};
+
+export type GoldRelevance = 0 | 1 | 2;
+
+export type QuestionCheckAcceptBody = {
+  decision: "accept";
+  game_id: string;
+  presentation_id: string;
+};
+
+export type QuestionCheckRejectBody = {
+  decision: "reject";
+  game_id: string;
+  presentation_id: string;
+};
+
+export type QuestionCheckEditBody = {
+  decision: "edit";
+  effective_query: string;
+  effective_category: string | null;
+  effective_tags: string[];
+  game_id: string;
+  presentation_id: string;
+};
+
+export type QuestionCheckMutationBody =
+  | QuestionCheckAcceptBody
+  | QuestionCheckRejectBody
+  | QuestionCheckEditBody;

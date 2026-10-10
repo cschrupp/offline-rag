@@ -1995,6 +1995,30 @@ button.snapshot-badge {
   background: var(--surface);
 }
 
+.gold-lab-source-text {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: inherit;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  max-height: 24rem;
+  overflow: auto;
+}
+
+.gold-lab-game h2,
+.gold-lab-game h3 {
+  margin: 0 0 0.35rem;
+}
+
+.gold-lab-after-action {
+  margin-top: var(--space-3);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

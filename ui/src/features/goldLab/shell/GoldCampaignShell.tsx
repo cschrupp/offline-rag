@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Badge } from "../../../components/Badge";
 import { Button } from "../../../components/Button";
 import { Card } from "../../../components/Card";
@@ -33,11 +33,12 @@ type Props = {
 
 export function GoldCampaignShell({ campaign }: Props) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const session = parseSessionConfig(searchParams);
   const [confirmClose, setConfirmClose] = useState(false);
   const [closeError, setCloseError] = useState<string | null>(null);
-  const [prepared, setPrepared] = useState(false);
+  const [prepareError, setPrepareError] = useState<string | null>(null);
 
   const closed = campaign.status === "closed";
 
@@ -77,7 +78,6 @@ export function GoldCampaignShell({ campaign }: Props) {
       ]);
       setConfirmClose(false);
       setCloseError(null);
-      setPrepared(false);
     },
     onError: (error) => {
       setCloseError(goldLabErrorMessage(error));
@@ -87,12 +87,13 @@ export function GoldCampaignShell({ campaign }: Props) {
 
   function updateSession(next: GoldSessionConfig) {
     if (sessionConfigEquals(session, next)) return;
-    setPrepared(false);
+    setPrepareError(null);
     setSearchParams(applySessionConfig(searchParams, next), { replace: false });
   }
 
   function onGameChange(game: GoldGameId) {
-    updateSession({ ...session, game });
+    // Drop prior-game task anchors; prepare will choose a valid membership task.
+    updateSession({ ...session, game, taskId: null });
   }
 
   function onWorkloadChange(workload: GoldWorkload) {
@@ -112,13 +113,54 @@ export function GoldCampaignShell({ campaign }: Props) {
     updateSession({
       ...session,
       workload,
-      taskId: session.taskId,
+      taskId: null,
     });
   }
 
   function onCaseChange(caseId: string) {
     const anchor = anchorTaskForCase(gameEligiblePending, caseId);
     updateSession({ ...session, workload: "case", taskId: anchor });
+  }
+
+  function onPrepareSession() {
+    setPrepareError(null);
+    let next: GoldSessionConfig = { ...session };
+    if (next.workload === "case") {
+      const belongs = gameEligiblePending.some(
+        (task) => task.task_id === next.taskId,
+      );
+      if (!belongs) {
+        const firstCase = caseIds[0];
+        const anchor = firstCase
+          ? anchorTaskForCase(gameEligiblePending, firstCase)
+          : null;
+        if (!anchor) {
+          setPrepareError(
+            "No pending tasks match this session configuration.",
+          );
+          return;
+        }
+        next = { ...next, taskId: anchor };
+      }
+    } else {
+      const membership = pendingTasksMatchingConfig(tasks, next);
+      if (membership.length === 0) {
+        setPrepareError(
+          "No pending tasks match this session configuration.",
+        );
+        return;
+      }
+      if (
+        !next.taskId ||
+        !membership.some((task) => task.task_id === next.taskId)
+      ) {
+        next = { ...next, taskId: membership[0]?.task_id ?? null };
+      }
+    }
+    const params = applySessionConfig(new URLSearchParams(), next);
+    void navigate(
+      `/gold-lab/campaigns/${campaign.campaign_id}/work?${params.toString()}`,
+    );
   }
 
   const pendingCount = tasks.filter(
@@ -332,16 +374,15 @@ export function GoldCampaignShell({ campaign }: Props) {
             </p>
           ) : null}
 
-          {prepared && matchingPending.length > 0 ? (
-            <p className="gold-lab-ready" role="status">
-              Session configuration is ready. Expert task execution is not
-              available in this build.
+          {prepareError ? (
+            <p className="error-box" role="alert">
+              {prepareError}
             </p>
           ) : null}
 
           <div className="row">
             <Button
-              onClick={() => setPrepared(true)}
+              onClick={onPrepareSession}
               disabled={
                 closed ||
                 tasksQuery.isLoading ||
