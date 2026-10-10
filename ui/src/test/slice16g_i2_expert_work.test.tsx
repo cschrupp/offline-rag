@@ -575,3 +575,341 @@ describe("16G-I2 Rapid Fire / Question Check session (direct work session)", () 
     mock.restore();
   });
 });
+
+describe("16G-I2-REWORK session latch, retry identity, blocks, QC reset", () => {
+  it("keeps the committed task latched after pending-list refresh until Next", async () => {
+    const user = userEvent.setup();
+    let pendingIds = ["t1", "t2"];
+    const details: Record<string, unknown> = {
+      t1: absoluteDetail("t1"),
+      t2: absoluteDetail("t2", {
+        effective_query: "Second query?",
+        presentation: {
+          kind: "absolute_relevance",
+          effective_query: "Second query?",
+          effective_category: null,
+          effective_tags: [],
+          candidate: source,
+        },
+      }),
+    };
+    const mock = installFetchMock(async (call) => {
+      if (call.url.includes("/tasks?") || call.url.endsWith("/tasks")) {
+        return jsonResponse({
+          campaign_id: "camp_1",
+          tasks: pendingIds.map((id) =>
+            goldTask({ task_id: id, state: "pending" }),
+          ),
+        });
+      }
+      const detailMatch = call.url.match(
+        /^\/v1\/gold-lab\/campaigns\/camp_1\/tasks\/([^/?]+)$/,
+      );
+      if (detailMatch && call.method === "GET") {
+        return jsonResponse(details[detailMatch[1]!]);
+      }
+      if (call.url.endsWith("/relevance") && call.method === "POST") {
+        expect(call.url).toContain("/tasks/t1/relevance");
+        pendingIds = ["t2"];
+        details.t1 = absoluteDetail("t1", {
+          state: "completed",
+          current_result: { kind: "absolute_relevance", relevance: 1 },
+        });
+        return jsonResponse(receipt({ task_id: "t1" }));
+      }
+      return jsonResponse(
+        { error: { code: "not_found", message: "x" } },
+        { status: 404 },
+      );
+    });
+
+    renderWithProviders(
+      <GoldWorkSession
+        campaignId="camp_1"
+        game="rapid_fire"
+        campaignClosed={false}
+      />,
+      { initialPath: "/work?game=rapid_fire&workload=5&task=t1" },
+    );
+    await screen.findByText("What pressure?");
+    await user.click(screen.getByRole("button", { name: /1 — Supporting/ }));
+    expect(
+      await screen.findByRole("button", { name: "Correct judgment" }),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(pendingIds).toEqual(["t2"]);
+    });
+    // Still reviewing t1 — not auto-advanced to t2.
+    expect(screen.getByText("What pressure?")).toBeInTheDocument();
+    expect(screen.queryByText("Second query?")).not.toBeInTheDocument();
+    expect(screen.getByText(/Current recorded relevance: 1/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Correct judgment" }));
+    await user.click(screen.getByRole("button", { name: /2 — Direct evidence/ }));
+    await waitFor(() => {
+      expect(
+        mock.calls.filter((call) => call.url.endsWith("/tasks/t1/relevance"))
+          .length,
+      ).toBe(2);
+    });
+    expect(
+      mock.calls.some((call) => call.url.includes("/tasks/t2/relevance")),
+    ).toBe(false);
+
+    await user.click(screen.getByRole("button", { name: "Next task" }));
+    expect(await screen.findByText("Second query?")).toBeInTheDocument();
+    mock.restore();
+  });
+
+  it("retries ambiguous commits against the frozen original task endpoint", async () => {
+    const user = userEvent.setup();
+    let failOnce = true;
+    const relevancePosts: string[] = [];
+    const keys: string[] = [];
+    let pendingIds = ["t1", "t2"];
+    const mock = installFetchMock(async (call) => {
+      if (call.url.includes("/tasks?") || call.url.endsWith("/tasks")) {
+        return jsonResponse({
+          campaign_id: "camp_1",
+          tasks: pendingIds.map((id) =>
+            goldTask({ task_id: id, state: "pending" }),
+          ),
+        });
+      }
+      const detailMatch = call.url.match(
+        /^\/v1\/gold-lab\/campaigns\/camp_1\/tasks\/([^/?]+)$/,
+      );
+      if (detailMatch && call.method === "GET") {
+        return jsonResponse(
+          absoluteDetail(detailMatch[1]!, {
+            effective_query:
+              detailMatch[1] === "t2" ? "Second query?" : "What pressure?",
+            presentation: {
+              kind: "absolute_relevance",
+              effective_query:
+                detailMatch[1] === "t2" ? "Second query?" : "What pressure?",
+              effective_category: null,
+              effective_tags: [],
+              candidate: source,
+            },
+          }),
+        );
+      }
+      if (call.url.includes("/relevance") && call.method === "POST") {
+        relevancePosts.push(call.url);
+        keys.push(call.headers.get("Idempotency-Key") ?? "");
+        if (failOnce) {
+          failOnce = false;
+          // Simulate route/task drift while the ambiguous intent is unresolved.
+          pendingIds = ["t2"];
+          throw new TypeError("network down");
+        }
+        return jsonResponse(receipt({ task_id: "t1", replayed: true }));
+      }
+      return jsonResponse(
+        { error: { code: "not_found", message: "x" } },
+        { status: 404 },
+      );
+    });
+
+    renderWithProviders(
+      <GoldWorkSession
+        campaignId="camp_1"
+        game="rapid_fire"
+        campaignClosed={false}
+      />,
+      { initialPath: "/work?game=rapid_fire&workload=5&task=t1" },
+    );
+    await screen.findByText("What pressure?");
+    await user.click(screen.getByRole("button", { name: /1 — Supporting/ }));
+    expect(
+      await screen.findByRole("button", { name: "Retry same commit" }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Retry same commit" }));
+    await screen.findByRole("button", { name: "Correct judgment" });
+    expect(relevancePosts).toEqual([
+      "/v1/gold-lab/campaigns/camp_1/tasks/t1/relevance",
+      "/v1/gold-lab/campaigns/camp_1/tasks/t1/relevance",
+    ]);
+    expect(keys[0]).toBeTruthy();
+    expect(keys[1]).toBe(keys[0]);
+    mock.restore();
+  });
+
+  it("blocks further judgments after idempotency_conflict and gold_state_unavailable", async () => {
+    const user = userEvent.setup();
+    let mode: "conflict" | "unavailable" = "conflict";
+    const posts: string[] = [];
+    const mock = installFetchMock(async (call) => {
+      if (call.url.includes("/tasks?") || call.url.endsWith("/tasks")) {
+        return jsonResponse({
+          campaign_id: "camp_1",
+          tasks: [goldTask({ task_id: "t1", state: "pending" })],
+        });
+      }
+      if (call.url.endsWith("/tasks/t1") && call.method === "GET") {
+        return jsonResponse(absoluteDetail("t1"));
+      }
+      if (call.url.endsWith("/relevance") && call.method === "POST") {
+        posts.push(call.url);
+        if (mode === "conflict") {
+          return errorResponse("idempotency_conflict", "bound", 409);
+        }
+        return errorResponse("gold_state_unavailable", "provenance", 409);
+      }
+      return jsonResponse(
+        { error: { code: "not_found", message: "x" } },
+        { status: 404 },
+      );
+    });
+
+    renderWithProviders(
+      <GoldWorkSession
+        campaignId="camp_1"
+        game="rapid_fire"
+        campaignClosed={false}
+      />,
+      { initialPath: "/work?game=rapid_fire&workload=1&task=t1" },
+    );
+    await screen.findByText("What pressure?");
+    await user.click(screen.getByRole("button", { name: /0 — Irrelevant/ }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /already bound to a different earlier attempt/i,
+    );
+    expect(
+      screen.getByRole("button", { name: "Reload to reconcile" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /1 — Supporting/ }),
+    ).toBeDisabled();
+    const postsAfterConflict = posts.length;
+    await user.click(screen.getByRole("button", { name: /1 — Supporting/ }));
+    expect(posts.length).toBe(postsAfterConflict);
+    mock.restore();
+    cleanup();
+
+    mode = "unavailable";
+    const mock2 = installFetchMock(async (call) => {
+      if (call.url.includes("/tasks?") || call.url.endsWith("/tasks")) {
+        return jsonResponse({
+          campaign_id: "camp_1",
+          tasks: [goldTask({ task_id: "t1", state: "pending" })],
+        });
+      }
+      if (call.url.endsWith("/tasks/t1") && call.method === "GET") {
+        return jsonResponse(absoluteDetail("t1"));
+      }
+      if (call.url.endsWith("/relevance") && call.method === "POST") {
+        posts.push(call.url);
+        return errorResponse("gold_state_unavailable", "provenance", 409);
+      }
+      return jsonResponse(
+        { error: { code: "not_found", message: "x" } },
+        { status: 404 },
+      );
+    });
+    renderWithProviders(
+      <GoldWorkSession
+        campaignId="camp_1"
+        game="rapid_fire"
+        campaignClosed={false}
+      />,
+      { initialPath: "/work?game=rapid_fire&workload=1&task=t1" },
+    );
+    await screen.findByText("What pressure?");
+    const before = posts.length;
+    await user.click(screen.getByRole("button", { name: /2 — Direct evidence/ }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /cannot be trusted|unavailable/i,
+    );
+    expect(
+      screen.getByRole("button", { name: /0 — Irrelevant/ }),
+    ).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: /0 — Irrelevant/ }));
+    expect(posts.length).toBe(before + 1);
+    mock2.restore();
+  });
+
+  it("resets Question Check edit draft when advancing from Q1 to Q2", async () => {
+    const user = userEvent.setup();
+    let pendingIds = ["q1", "q2"];
+    const details: Record<string, unknown> = {
+      q1: questionDetail("q1"),
+      q2: questionDetail("q2", {
+        presentation: {
+          kind: "question_check",
+          proposed_query: "Second proposed question?",
+          proposed_category: null,
+          proposed_tags: ["tag-b"],
+          source: null,
+        },
+      }),
+    };
+    const mock = installFetchMock(async (call) => {
+      if (call.url.includes("/tasks?") || call.url.endsWith("/tasks")) {
+        return jsonResponse({
+          campaign_id: "camp_1",
+          tasks: pendingIds.map((id) =>
+            goldTask({
+              task_id: id,
+              task_kind: "question_check",
+              state: "pending",
+            }),
+          ),
+        });
+      }
+      const detailMatch = call.url.match(
+        /^\/v1\/gold-lab\/campaigns\/camp_1\/tasks\/([^/?]+)$/,
+      );
+      if (detailMatch && call.method === "GET") {
+        return jsonResponse(details[detailMatch[1]!]);
+      }
+      if (call.url.endsWith("/question-check") && call.method === "POST") {
+        pendingIds = ["q2"];
+        details.q1 = questionDetail("q1", {
+          state: "completed",
+          current_result: {
+            kind: "question_check",
+            decision: "edit",
+            effective_query: "Edited Q1",
+            effective_category: "ops",
+            effective_tags: ["tag-a"],
+          },
+        });
+        return jsonResponse(
+          receipt({
+            task_id: "q1",
+            record_type: "question_check",
+          }),
+        );
+      }
+      return jsonResponse(
+        { error: { code: "not_found", message: "x" } },
+        { status: 404 },
+      );
+    });
+
+    renderWithProviders(
+      <GoldWorkSession
+        campaignId="camp_1"
+        game="question_check"
+        campaignClosed={false}
+      />,
+      { initialPath: "/work?game=question_check&workload=5&task=q1" },
+    );
+    await screen.findByText("Proposed question?");
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    const query = screen.getByLabelText("Effective query");
+    await user.clear(query);
+    await user.type(query, "Edited Q1");
+    await user.click(screen.getByRole("button", { name: "Submit edit" }));
+    await screen.findByRole("button", { name: "Next task" });
+    await user.click(screen.getByRole("button", { name: "Next task" }));
+    expect(
+      await screen.findByText("Second proposed question?"),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Effective query")).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue("Edited Q1")).not.toBeInTheDocument();
+    mock.restore();
+  });
+});

@@ -56,11 +56,14 @@ type Props = {
   campaignClosed: boolean;
 };
 
-type PendingMutation =
+type PendingMutation = {
+  campaignId: string;
+  taskId: string;
+  key: string;
+} & (
   | {
       kind: "relevance";
       relevance: GoldRelevance;
-      key: string;
       body: {
         relevance: GoldRelevance;
         game_id: string;
@@ -69,9 +72,14 @@ type PendingMutation =
     }
   | {
       kind: "question_check";
-      key: string;
       body: QuestionCheckMutationBody;
-    };
+    }
+);
+
+type MutationBlockReason =
+  | "idempotency_conflict"
+  | "gold_state_unavailable"
+  | "gold_conflict";
 
 export function GoldWorkSession({
   campaignId,
@@ -85,12 +93,18 @@ export function GoldWorkSession({
   const expectedKind = taskKindForGame(game);
 
   const [windowState, setWindowState] = useState<SessionWindow | null>(null);
+  /** Latched task under review; pending-list refresh must not advance this. */
+  const [currentWorkTaskId, setCurrentWorkTaskId] = useState<string | null>(
+    null,
+  );
   const [afterAction, setAfterAction] = useState<GoldMutationReceipt | null>(
     null,
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [ambiguous, setAmbiguous] = useState(false);
+  const [mutationBlocked, setMutationBlocked] =
+    useState<MutationBlockReason | null>(null);
   const [pendingMutation, setPendingMutation] =
     useState<PendingMutation | null>(null);
   const intent = useRef(IntentHandle.newIntent());
@@ -125,6 +139,7 @@ export function GoldWorkSession({
       current.taskId,
       game,
     );
+    setCurrentWorkTaskId(resolved);
     const next = applySessionConfig(searchParams, {
       ...current,
       game,
@@ -135,29 +150,19 @@ export function GoldWorkSession({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tasksQuery.data, game]);
 
-  const activeTaskId =
-    windowState && tasksQuery.data
-      ? resolveTaskInWindow(
-          windowState,
-          tasksQuery.data.tasks,
-          session.taskId,
-          game,
-        )
-      : null;
-
   const taskQuery = useQuery({
-    queryKey: goldLabQueryKeys.task(campaignId, activeTaskId ?? ""),
+    queryKey: goldLabQueryKeys.task(campaignId, currentWorkTaskId ?? ""),
     queryFn: ({ signal }) =>
-      getGoldTask(campaignId, activeTaskId!, expectedKind, signal),
-    enabled: Boolean(activeTaskId) && !campaignClosed,
+      getGoldTask(campaignId, currentWorkTaskId!, expectedKind, signal),
+    enabled: Boolean(currentWorkTaskId) && !campaignClosed,
   });
 
   const mutation = useMutation({
     mutationFn: async (pending: PendingMutation) => {
       if (pending.kind === "relevance") {
         return submitGoldRelevance({
-          campaignId,
-          taskId: activeTaskId!,
+          campaignId: pending.campaignId,
+          taskId: pending.taskId,
           relevance: pending.relevance,
           gameId: pending.body.game_id,
           presentationId: pending.body.presentation_id,
@@ -165,27 +170,29 @@ export function GoldWorkSession({
         });
       }
       return submitGoldQuestionCheck({
-        campaignId,
-        taskId: activeTaskId!,
+        campaignId: pending.campaignId,
+        taskId: pending.taskId,
         body: pending.body,
         idempotencyKey: pending.key,
       });
     },
-    onSuccess: async (receipt) => {
+    onSuccess: async (receipt, pending) => {
       setAmbiguous(false);
+      setMutationBlocked(null);
       setErrorMessage(null);
       setStatusMessage(
         receipt.replayed ? "Previous commit confirmed." : null,
       );
       setAfterAction(receipt);
+      setCurrentWorkTaskId(pending.taskId);
       setPendingMutation(null);
       intent.current.reset();
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: goldLabQueryKeys.task(campaignId, activeTaskId ?? ""),
+          queryKey: goldLabQueryKeys.task(pending.campaignId, pending.taskId),
         }),
         queryClient.invalidateQueries({
-          queryKey: goldLabQueryKeys.tasks(campaignId, listFilters),
+          queryKey: goldLabQueryKeys.tasks(pending.campaignId, listFilters),
         }),
       ]);
     },
@@ -193,18 +200,35 @@ export function GoldWorkSession({
       setErrorMessage(goldLabErrorMessage(error));
       if (isAmbiguousTransportError(error)) {
         setAmbiguous(true);
-        return;
-      }
-      if (isIdempotencyConflict(error)) {
-        setAmbiguous(false);
+        setMutationBlocked(null);
         return;
       }
       if (isApiError(error) && error.code === "gold_busy") {
         setAmbiguous(true);
+        setMutationBlocked(null);
+        return;
+      }
+      if (isIdempotencyConflict(error)) {
+        setAmbiguous(false);
+        setMutationBlocked("idempotency_conflict");
+        setPendingMutation(null);
+        return;
+      }
+      if (isApiError(error) && error.code === "gold_state_unavailable") {
+        setAmbiguous(false);
+        setMutationBlocked("gold_state_unavailable");
+        setPendingMutation(null);
+        return;
+      }
+      if (isApiError(error) && error.code === "gold_conflict") {
+        setAmbiguous(false);
+        setMutationBlocked("gold_conflict");
+        setPendingMutation(null);
         return;
       }
       if (isApiError(error) && error.code === "request_invalid") {
         setAmbiguous(false);
+        setMutationBlocked(null);
         intent.current.reset();
         setPendingMutation(null);
         return;
@@ -214,7 +238,9 @@ export function GoldWorkSession({
   });
 
   function runPending(pending: PendingMutation) {
+    if (mutationBlocked) return;
     if (campaignClosed && !ambiguous) {
+      setMutationBlocked("gold_conflict");
       setErrorMessage(
         "This Gold Lab resource changed since you last loaded it. Refresh, then try again.",
       );
@@ -227,7 +253,15 @@ export function GoldWorkSession({
   }
 
   function onRelevance(relevance: GoldRelevance) {
-    if (mutation.isPending || afterAction || ambiguous) return;
+    if (
+      mutation.isPending ||
+      afterAction ||
+      ambiguous ||
+      mutationBlocked ||
+      !currentWorkTaskId
+    ) {
+      return;
+    }
     const body = {
       relevance,
       game_id: presentation.gameId,
@@ -236,17 +270,32 @@ export function GoldWorkSession({
     const key = intent.current.prepare(
       fingerprintGoldRelevance({
         campaignId,
-        taskId: activeTaskId!,
+        taskId: currentWorkTaskId,
         relevance,
         gameId: presentation.gameId,
         presentationId: presentation.presentationId,
       }),
     );
-    runPending({ kind: "relevance", relevance, key, body });
+    runPending({
+      kind: "relevance",
+      campaignId,
+      taskId: currentWorkTaskId,
+      relevance,
+      key,
+      body,
+    });
   }
 
   function onQuestionCheck(partial: QuestionCheckCommitDraft) {
-    if (mutation.isPending || afterAction || ambiguous) return;
+    if (
+      mutation.isPending ||
+      afterAction ||
+      ambiguous ||
+      mutationBlocked ||
+      !currentWorkTaskId
+    ) {
+      return;
+    }
     const body = {
       ...partial,
       game_id: presentation.gameId,
@@ -255,19 +304,26 @@ export function GoldWorkSession({
     const key = intent.current.prepare(
       fingerprintGoldQuestionCheck({
         campaignId,
-        taskId: activeTaskId!,
+        taskId: currentWorkTaskId,
         body,
       }),
     );
-    runPending({ kind: "question_check", key, body });
+    runPending({
+      kind: "question_check",
+      campaignId,
+      taskId: currentWorkTaskId,
+      key,
+      body,
+    });
   }
 
   function onRetrySame() {
-    if (!pendingMutation) return;
+    if (!pendingMutation || mutationBlocked) return;
     mutation.mutate(pendingMutation);
   }
 
   function onCorrect() {
+    if (mutationBlocked) return;
     setAfterAction(null);
     setStatusMessage(null);
     setErrorMessage(null);
@@ -277,7 +333,7 @@ export function GoldWorkSession({
   }
 
   async function onNext() {
-    if (!windowState || !activeTaskId) return;
+    if (!windowState || !currentWorkTaskId || mutationBlocked) return;
     const refreshed = await queryClient.fetchQuery({
       queryKey: goldLabQueryKeys.tasks(campaignId, listFilters),
       queryFn: ({ signal }) => listGoldTasks(campaignId, listFilters, signal),
@@ -285,7 +341,7 @@ export function GoldWorkSession({
     const nextId = nextTaskInWindow(
       windowState,
       refreshed.tasks,
-      activeTaskId,
+      currentWorkTaskId,
       game,
     );
     setAfterAction(null);
@@ -294,6 +350,7 @@ export function GoldWorkSession({
     setAmbiguous(false);
     setPendingMutation(null);
     intent.current.reset();
+    setCurrentWorkTaskId(nextId);
     const next = applySessionConfig(searchParams, {
       ...session,
       game,
@@ -314,7 +371,7 @@ export function GoldWorkSession({
     );
   }
 
-  if (!activeTaskId) {
+  if (!currentWorkTaskId) {
     return (
       <Card>
         <h2>No eligible tasks</h2>
@@ -328,7 +385,7 @@ export function GoldWorkSession({
     );
   }
 
-  if (campaignClosed && !ambiguous && !pendingMutation) {
+  if (campaignClosed && !ambiguous && !pendingMutation && !afterAction) {
     return (
       <Card>
         <h2>Campaign closed</h2>
@@ -357,41 +414,73 @@ export function GoldWorkSession({
     nextTaskInWindow(
       windowState,
       tasksQuery.data?.tasks ?? [],
-      activeTaskId,
+      currentWorkTaskId,
       game,
     ) === null;
 
+  const blockedMessage =
+    mutationBlocked === "idempotency_conflict"
+      ? "This commit key is already bound to a different earlier attempt. Reload and reconcile state before correcting."
+      : mutationBlocked === "gold_state_unavailable"
+        ? "Gold Lab state is temporarily unavailable. Reload the page. Do not continue with this action until state can be trusted."
+        : mutationBlocked === "gold_conflict"
+          ? "This Gold Lab resource changed since you last loaded it. Reload to reconcile lifecycle state before continuing."
+          : null;
+
+  const gameProps = {
+    mutationBusy: mutation.isPending,
+    ambiguous,
+    mutationBlocked: mutationBlocked !== null,
+    errorMessage: blockedMessage ?? errorMessage,
+    statusMessage,
+    afterAction,
+    onRetrySame,
+    onNext: () => void onNext(),
+    onCorrect,
+    nextDisabled: nextDisabled || mutationBlocked !== null,
+  };
+
   if (game === "rapid_fire") {
     return (
-      <RapidFireGame
-        task={taskQuery.data as AbsoluteRelevanceTaskDetail}
-        mutationBusy={mutation.isPending}
-        ambiguous={ambiguous}
-        errorMessage={errorMessage}
-        statusMessage={statusMessage}
-        afterAction={afterAction}
-        onCommit={onRelevance}
-        onRetrySame={onRetrySame}
-        onNext={() => void onNext()}
-        onCorrect={onCorrect}
-        nextDisabled={nextDisabled}
-      />
+      <>
+        {mutationBlocked ? (
+          <div className="row" role="status">
+            <Button
+              variant="secondary"
+              onClick={() => window.location.reload()}
+            >
+              Reload to reconcile
+            </Button>
+          </div>
+        ) : null}
+        <RapidFireGame
+          key={currentWorkTaskId}
+          task={taskQuery.data as AbsoluteRelevanceTaskDetail}
+          {...gameProps}
+          onCommit={onRelevance}
+        />
+      </>
     );
   }
 
   return (
-    <QuestionCheckGame
-      task={taskQuery.data as QuestionCheckTaskDetail}
-      mutationBusy={mutation.isPending}
-      ambiguous={ambiguous}
-      errorMessage={errorMessage}
-      statusMessage={statusMessage}
-      afterAction={afterAction}
-      onCommit={onQuestionCheck}
-      onRetrySame={onRetrySame}
-      onNext={() => void onNext()}
-      onCorrect={onCorrect}
-      nextDisabled={nextDisabled}
-    />
+    <>
+      {mutationBlocked ? (
+        <div className="row" role="status">
+          <Button
+            variant="secondary"
+            onClick={() => window.location.reload()}
+          >
+            Reload to reconcile
+          </Button>
+        </div>
+      ) : null}
+      <QuestionCheckGame
+        key={currentWorkTaskId}
+        task={taskQuery.data as QuestionCheckTaskDetail}
+        {...gameProps}
+        onCommit={onQuestionCheck}
+      />
+    </>
   );
 }

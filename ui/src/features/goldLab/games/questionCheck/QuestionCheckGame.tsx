@@ -24,6 +24,8 @@ type Props = {
   task: QuestionCheckTaskDetail;
   mutationBusy: boolean;
   ambiguous: boolean;
+  /** Terminal reconciliation block; no new mutation or same-intent retry. */
+  mutationBlocked?: boolean;
   errorMessage: string | null;
   statusMessage: string | null;
   afterAction: GoldMutationReceipt | null;
@@ -45,6 +47,7 @@ export function QuestionCheckGame({
   task,
   mutationBusy,
   ambiguous,
+  mutationBlocked = false,
   errorMessage,
   statusMessage,
   afterAction,
@@ -65,7 +68,14 @@ export function QuestionCheckGame({
   );
   const [formError, setFormError] = useState<string | null>(null);
 
-  const locked = mutationBusy || ambiguous || afterAction !== null;
+  // Parent remounts with key={task.task_id} so edit/draft state never
+  // leaks across Q1→Q2 (I2-R4). Do not sync via effect.
+
+  const locked =
+    mutationBusy ||
+    ambiguous ||
+    mutationBlocked ||
+    afterAction !== null;
 
   function seedEdit() {
     setQuery(presentation.proposed_query);
@@ -217,12 +227,12 @@ export function QuestionCheckGame({
       <GoldMutationStatus
         errorMessage={errorMessage}
         statusMessage={statusMessage}
-        ambiguous={ambiguous}
-        onRetrySame={onRetrySame}
+        ambiguous={ambiguous && !mutationBlocked}
+        onRetrySame={mutationBlocked ? undefined : onRetrySame}
         retryBusy={mutationBusy}
       />
 
-      {afterAction ? (
+      {afterAction && !mutationBlocked ? (
         <GoldAfterAction
           replayed={afterAction.replayed}
           onNext={onNext}

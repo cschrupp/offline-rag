@@ -23,6 +23,8 @@ type Props = {
   task: AbsoluteRelevanceTaskDetail;
   mutationBusy: boolean;
   ambiguous: boolean;
+  /** Terminal reconciliation block; no new mutation or same-intent retry. */
+  mutationBlocked?: boolean;
   errorMessage: string | null;
   statusMessage: string | null;
   afterAction: GoldMutationReceipt | null;
@@ -48,6 +50,7 @@ export function RapidFireGame({
   task,
   mutationBusy,
   ambiguous,
+  mutationBlocked = false,
   errorMessage,
   statusMessage,
   afterAction,
@@ -58,7 +61,11 @@ export function RapidFireGame({
   nextDisabled = false,
 }: Props) {
   const presentation = task.presentation;
-  const locked = mutationBusy || ambiguous || afterAction !== null;
+  const locked =
+    mutationBusy ||
+    ambiguous ||
+    mutationBlocked ||
+    afterAction !== null;
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -132,12 +139,12 @@ export function RapidFireGame({
       <GoldMutationStatus
         errorMessage={errorMessage}
         statusMessage={statusMessage}
-        ambiguous={ambiguous}
-        onRetrySame={onRetrySame}
+        ambiguous={ambiguous && !mutationBlocked}
+        onRetrySame={mutationBlocked ? undefined : onRetrySame}
         retryBusy={mutationBusy}
       />
 
-      {afterAction ? (
+      {afterAction && !mutationBlocked ? (
         <GoldAfterAction
           replayed={afterAction.replayed}
           onNext={onNext}
