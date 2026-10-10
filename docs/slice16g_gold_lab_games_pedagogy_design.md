@@ -8,12 +8,17 @@ D0 DETAILED DESIGN — CANDIDATE AUTHORITY
 
 STATUS:
 DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED
+REWORK 1 APPLIED (16G-D0-REWORK-AUTH-001)
 
 Authority:
 16G-D0-AUTH-001
+16G-D0-REWORK-AUTH-001
 
 Starting SHA:
 1610f9282d1edbd4dfc8ae76d7644a1b9ea4e75e
+
+Prior candidate tip:
+0fdbdd3235ab675b513464e1ac7400b008b9bd2f
 
 Branch:
 design/16g-gold-lab-games-pedagogy
@@ -27,8 +32,13 @@ COMPLETE / ACCEPTED / SEALED
 PRESERVED
 
 16F API surface:
-17 /v1/gold-lab routes
-DEFAULT: NO NEW BACKEND ROUTES
+17 /v1/gold-lab routes for Gold Mode
+DEFAULT: NO NEW GOLD MUTATION ROUTES
+BOUNDED READ GAP: GAP-16G-01 (immutable training/calibration package)
+  — registered only; NOT AUTHORIZED to implement under D0
+
+F001 / F002 / F003:
+CLOSED IN THIS REWORK (design level)
 
 16H / 9G / Slice 17 / 18 / M7 closeout:
 NOT AUTHORIZED
@@ -112,15 +122,17 @@ accepted A/B/C scientific authorities
 
 ```text
 DEFAULT:
-NO NEW BACKEND ROUTES
+NO NEW GOLD MUTATION ROUTES
 
-NEW BACKEND CONTRACT:
+BOUNDED READ GAP:
+GAP-16G-01 registered in Matrix M for immutable Training/Calibration packages
+
+NEW BACKEND CONTRACT IMPLEMENTATION:
 NOT AUTHORIZED BY D0
 ```
 
-If a genuine contract gap appears, it is recorded only in
-**§23 Matrix M — Backend gap register**. A gap is **not** permission to
-implement.
+Gaps are recorded only in **Matrix M — Backend gap register**. A registered
+gap is **not** permission to implement it.
 
 ---
 
@@ -188,7 +200,7 @@ NEVER call Gold mutation endpoints for learner commits
 ### Explicit data-flow boundary
 
 ```text
-GOLD MODE
+GOLD MODE (production-eligible presentations only)
   sealed GET tasks/detail
        ↓
   expert commit via sealed POST mutations
@@ -197,8 +209,20 @@ GOLD MODE
        ↓
   optional POST export → GoldDataset registration
 
+CALIBRATION MODE (candidate presentations; non-Gold)
+  GAP-16G-01 immutable package (registration + GoldDataset + historical source)
+       ↓
+  candidate presentation UI
+       ↓
+  LOCAL calibration response only
+       ↓
+  local comparison / metrics / evidence export
+       ✗  NO Gold mutation endpoint
+       ✗  NO ledger write
+       ✗  NO contribution
+
 TRAINING MODE
-  accepted GoldDataset / registration + historical source
+  GAP-16G-01 immutable package
        ↓
   client-side training compiler (deterministic)
        ↓
@@ -207,6 +231,11 @@ TRAINING MODE
   source-grounded feedback / debrief
        ✗  (no path back to ledger / GoldDataset)
 ```
+
+**MUST NOT** reconstruct Training or Calibration truth from live campaign task
+DTOs. Export does not freeze the campaign; later corrections can change
+effective task state after a registration exists. Only the immutable registered
+dataset (+ validated historical binding) is training/calibration truth.
 
 ### Existing Training Mode reuse
 
@@ -348,36 +377,98 @@ goldpres_chunk_duel_side_by_side_v1
 
 ### Calibration binding
 
-Calibration runs record `(game_id, presentation_id, campaign_id, case set,
-metrics, disposition)`. A presentation is production-eligible only after an
-explicit Human disposition (see §10).
+Calibration runs record `(game_id, presentation_id, registration/dataset
+identity, case set, metrics, disposition)`. A presentation is
+production-eligible only after Human disposition **and** inclusion in the
+versioned approved-presentations policy (see §8).
+
+### Gold Mode presentation eligibility (F003)
+
+```text
+candidate presentation
+        ↓
+calibration evidence (non-mutating)
+        ↓
+Human disposition
+        ↓
+versioned approved-presentations policy
+        ↓
+Gold Mode exposes ONLY ALLOW_PRODUCTION presentations
+```
+
+| Mode | Presentations exposed |
+|---|---|
+| Calibration Mode | candidate / unapproved presentations **MAY** |
+| Gold Mode | **ONLY** presentations listed as `ALLOW_PRODUCTION` in the versioned policy |
+
+The approved-presentations policy is **version-controlled product governance**,
+not browser preference:
+
+- shipped as a static compile-time / repository artifact (e.g.
+  `ui/src/features/goldLab/policy/approvedPresentations.v1.json` or equivalent
+  TypeScript constant module);
+- changes require an explicit governed commit + Human acceptance;
+- Gold Mode **MUST** refuse to mount mutation UI for non-approved
+  `(game_id, presentation_id)`;
+- campaign/project notes alone are **insufficient** as the eligibility authority.
 
 ---
 
 ## 8. Calibration gate (S16-D27)
 
+### Non-mutation invariant (F002) — CRITICAL
+
+```text
+immutable prior Gold truth (GAP-16G-01 package)
+        ↓
+candidate presentation
+        ↓
+LOCAL calibration response
+        ↓
+local comparison / metrics
+        ↓
+calibration evidence export
+        ✗
+NO POST .../question-check
+NO POST .../relevance
+NO POST .../preferences
+NO ledger write
+NO contribution
+```
+
+Calibration responses are **ephemeral local records**. They **MUST NEVER** call
+normal Gold mutation endpoints. Only after a presentation receives
+`ALLOW_PRODUCTION` and is listed in the versioned policy may that presentation
+be used in Gold Mode, where the sealed mutation endpoints apply.
+
 ### Protocol (concrete, threshold-light)
 
 ```text
-1. Select previously adjudicated cases with known effective absolute / QC truth
-   (calibration campaign or sealed export subset).
+1. Load immutable prior truth via GAP-16G-01 package for a chosen registration
+   (not live campaign task DTOs).
 2. Expert works those cases under the candidate (game_id, presentation_id)
    WITHOUT seeing prior answers (blind).
-3. After session, compute observational metrics against prior effective truth.
-4. Human reviews metrics + qualitative notes.
-5. Disposition: ALLOW_PRODUCTION | REPAIR_REQUIRED | DISALLOW
+3. Capture LOCAL calibration responses only (no Gold POST).
+4. Compare locally to package labels; compute observational metrics.
+5. Export calibration evidence JSON (download).
+6. Human disposition: ALLOW_PRODUCTION | REPAIR_REQUIRED | DISALLOW
+7. If ALLOW_PRODUCTION: update versioned approved-presentations policy via
+   governed commit (not localStorage / notes alone).
 ```
 
 ### Observables (SHOULD collect; not frozen pass thresholds)
 
 ```text
-agreement with prior effective truth
-0/1/2 distribution vs prior distribution
+agreement with immutable package truth
+0/1/2 distribution vs package distribution
 unsure / skip rate (if UI exposes skip — v1: no skip; abandon = leave session)
-correction rate (superseding commits)
+local revision rate within the calibration session (not Gold supersession)
 completion time per task
 abandonment (session leave before workload complete)
 ```
+
+Note: “correction rate” in calibration means **local response revisions inside
+the calibration session**, not Gold ledger supersession (which must not occur).
 
 ### Population
 
@@ -388,14 +479,9 @@ fabricated numeric gate.
 
 ### Storage / reporting
 
-v1 calibration archive is **client-exported JSON** (download) plus optional
-paste into Engineering notes. No new backend route in D0.
-
-Production use authorization: Human acceptance recorded in campaign/project
-notes or Engineering evidence notes referencing `(game_id, presentation_id)`.
-
-Failed/biasing presentations: UI feature flag / allow-list of production
-`presentation_id`s; non-allowed IDs may still be used in calibration mode only.
+v1 calibration **evidence** archive is client-exported JSON (download) for
+Human review. Production eligibility itself is recorded only by updating the
+versioned approved-presentations policy after Human disposition.
 
 ---
 
@@ -417,8 +503,15 @@ Failed/biasing presentations: UI feature flag / allow-list of production
 | Contribution points | NO (not on task) | Campaign dash only | Campaign dash only | **NO** |
 | Prior absolute label | **NO** | YES (current_result) | YES | YES (answer key) |
 
-Authority: sealed BlindTaskView / Gold task DTOs only. Browser **MUST NOT**
-reconstruct blindness from richer unsafe payloads (none are exposed by 16F).
+Authority:
+
+- **Gold Mode:** sealed BlindTaskView / Gold task DTOs only.
+- **Calibration Mode:** GAP-16G-01 package items rendered through the same
+  blind presentation adapters; prior labels remain hidden until local commit
+  of the calibration response; package answer keys used only for local
+  scoring after response.
+
+Browser **MUST NOT** reconstruct blindness from richer unsafe payloads.
 
 ---
 
@@ -450,30 +543,46 @@ Unavailable historical source → fail closed (show integrity error; no fake tex
 ### Required direction
 
 ```text
-Gold truth → training/drill compiler → learner activity
+immutable registered Gold (GAP-16G-01)
+   ↓
+training/drill compiler
+   ↓
+learner activity
 ```
 
 ### Forbidden
 
 ```text
 learner activity → canonical Gold
+live campaign task DTOs → training truth
+browser reads of /data or dataset_path → training truth
 ```
+
+### Immutable package dependency (F001)
+
+Sealed registration listing returns metadata (`dataset_id`, `dataset_path`,
+hashes, exported case IDs). `dataset_path` is **not** browser-readable, and
+the SPA has no `/data` static exposure. Therefore Training **and** Calibration
+require the bounded read-only gap **GAP-16G-01** (Matrix M).
+
+Until GAP-16G-01 is separately authorized and implemented, Training/Calibration
+**MUST NOT** ship against live task DTOs as a substitute truth source.
 
 ### Compiler rules
 
 | Topic | Design |
 |---|---|
-| Eligible input | registered GoldDataset cases with finalized absolute labels + export provenance |
+| Eligible input | GAP-16G-01 package derived from registration + exact registered GoldDataset + campaign historical binding |
 | Transformation | deterministic: grade 2 → direct; grade 1 → supporting; hard 0 → distractors (S16-D33) |
 | Exercise identity | `goldex_<dataset_id>_<case_id>_<template_id>_v1` |
-| Source provenance | campaign snapshot/chunk bindings via registration + historical reader semantics (client uses task-detail-equivalent source only when available through export+local compile; if source unavailable, exercise is ineligible) |
-| Answer authority | Gold labels only |
-| Correction/debrief | compare learner choice to Gold label; show source text from compiled package |
-| Superseded Gold | use currently registered dataset only; stale packages invalidated by dataset_id change |
-| Persistence | v1: **ephemeral / session** or downloaded package; no new server store |
+| Source provenance | exact historical source contexts inside the package (server-validated); fail closed if unavailable |
+| Answer authority | labels from the registered GoldDataset only |
+| Correction/debrief | compare learner choice to package label; show package source text |
+| Superseded Gold | package identity is the registration/dataset pin; do not silently follow later campaign effective-state |
+| Persistence | compiler output may be ephemeral/session; package fetch is read-only |
 
-Compiler runs in the client (or a future authorized offline CLI). D0 does **not**
-add backend routes.
+Compiler runs in the client over the GAP-16G-01 payload. No general filesystem
+endpoint. No Gold mutation from Training.
 
 ---
 
@@ -629,17 +738,22 @@ envelope handling. Do **not** implement during D0.
 |---|---|
 | Project/campaign/task DTOs | SERVER / PRODUCT + SCIENTIFIC AUTHORITY |
 | Committed judgment / contribution | SERVER / SCIENTIFIC AUTHORITY |
-| Calibration disposition allow-list (v1 file/export) | CLIENT PERSISTED NON-SCIENTIFIC PREFERENCE (local) until separate product store authorized |
+| GAP-16G-01 immutable package | SERVER / PRODUCT READ AUTHORITY (proposed; not yet implemented) |
+| Approved-presentations policy (`ALLOW_PRODUCTION` set) | **VERSIONED PRODUCT GOVERNANCE** (repo/compile-time artifact; not local preference) |
+| Calibration evidence export JSON | CLIENT EPHEMERAL / downloaded artifact (review input only) |
+| Calibration local responses | CLIENT EPHEMERAL PRESENTATION STATE (never Gold) |
 | Selected game | CLIENT ROUTE STATE |
 | Workload size | CLIENT ROUTE STATE |
-| Current task id | CLIENT ROUTE STATE (must match server membership) |
-| Answer draft (uncommitted) | CLIENT EPHEMERAL PRESENTATION STATE |
+| Current task id (Gold Mode) | CLIENT ROUTE STATE (must match server membership) |
+| Answer draft (uncommitted Gold) | CLIENT EPHEMERAL PRESENTATION STATE |
 | Reveal / after-action open | CLIENT EPHEMERAL PRESENTATION STATE |
-| presentation_id / game_id constants | CLIENT COMPILE-TIME + sent to server on commit |
+| presentation_id / game_id constants | CLIENT COMPILE-TIME; Gold Mode sends only policy-approved IDs on commit |
 | Drill progress | CLIENT EPHEMERAL PRESENTATION STATE |
 | Scenario step | CLIENT EPHEMERAL PRESENTATION STATE |
 
 Browser **MUST NOT** become a parallel scientific database.
+Browser **MUST NOT** treat localStorage/notes as production-presentation
+eligibility authority.
 
 ---
 
@@ -730,17 +844,18 @@ Design now for later WCAG 2.2 AA acceptance:
 
 See §9.
 
-### E. Gold Mode vs Training Mode authority matrix
+### E. Gold Mode vs Training Mode vs Calibration authority matrix
 
-| Action | Gold Mode | Training Mode |
-|---|---|---|
-| Call Gold mutation APIs | YES | **NO** |
-| Append ledger | YES (via API) | **NO** |
-| Affect GoldDataset | via export only | **NO** |
-| Earn contribution | YES | **NO** |
-| See model/prelabel pre-commit | **NO** | N/A |
-| Use historical source | YES | YES (compiled) |
-| Create drills from Gold | N/A | YES (compiler) |
+| Action | Gold Mode | Calibration Mode | Training Mode |
+|---|---|---|---|
+| Call Gold mutation APIs | YES (approved presentations only) | **NO** | **NO** |
+| Append ledger | YES (via API) | **NO** | **NO** |
+| Affect GoldDataset | via export only | **NO** | **NO** |
+| Earn contribution | YES | **NO** | **NO** |
+| See model/prelabel pre-commit | **NO** | **NO** | N/A |
+| Truth source | live sealed task DTOs | GAP-16G-01 package | GAP-16G-01 package |
+| Use unapproved presentation | **NO** | YES | N/A (learner UI) |
+| Create drills from Gold | N/A | N/A | YES (compiler) |
 
 ### F. Client/server state ownership matrix
 
@@ -761,21 +876,28 @@ See §15–§16.
 ### I. Calibration lifecycle
 
 ```text
-draft presentation_id
- → calibration session on adjudicated cases
- → metrics export
+draft presentation_id (candidate)
+ → fetch GAP-16G-01 immutable package for chosen registration
+ → calibration session (LOCAL responses only; no Gold POST)
+ → local metrics vs package truth
+ → calibration evidence export
  → Human disposition
  → ALLOW_PRODUCTION | REPAIR_REQUIRED | DISALLOW
- → production allow-list update (local)
+ → if ALLOW_PRODUCTION: governed commit to versioned
+   approved-presentations policy
+ → Gold Mode may then expose that presentation
 ```
 
 ### J. Training compiler provenance flow
 
 ```text
-registration list → dataset load → eligible labeled cases
- → deterministic exercise build → learner session
- → feedback from Gold labels + source package
- → (terminates; no Gold writeback)
+GET registrations (metadata index)
+ → GET GAP-16G-01 immutable package for chosen registration
+      (registration + exact GoldDataset + historical source contexts)
+ → deterministic exercise build from package only
+ → learner session (local commits)
+ → feedback from package labels + package source
+ → (terminates; no Gold writeback; no live task-DTO truth)
 ```
 
 ### K. Error-state matrix
@@ -796,21 +918,42 @@ See §19.
 
 ```text
 16G BACKEND GAP REGISTER
-STATUS: NONE REQUIRED FOR V1 GOLD MODE OVER SEALED 17 ROUTES
+STATUS: ONE BOUNDED READ-ONLY GAP REGISTERED
+IMPLEMENTATION OF ANY GAP: NOT AUTHORIZED BY D0
 ```
 
 | Gap ID | Capability | Why 17 routes insufficient? | Missing info/mutation | Presentation vs scientific | UI-only alternative | Authority owner | Blindness impact | Gold semantics impact | Provenance impact | Min contract extension |
 |---|---|---|---|---|---|---|---|---|---|---|
-| — | — | — | — | — | — | — | — | — | — | — |
+| **GAP-16G-01** | Immutable Training/Calibration package read | Registration list exposes metadata/`dataset_path` only; SPA cannot read `/data`; live task DTOs are not equivalent to registered GoldDataset (campaign may still receive corrections after export) | Read-only validated package: dataset identity/hashes, exported cases, accepted queries/labels, exact historical source contexts bound to campaign snapshot/chunk-set | **Presentation / pedagogy input** (not a scientific mutation) | Manual authenticated import of exact Gold artifacts with full hash/provenance validation is an allowed alternative design; **not** preferred; no general filesystem endpoint | Product transport over accepted 16F-C registration + historical reader; **MUST NOT** invent new Gold truth | Package must omit model/prelabel/rank; serve only fields needed for blind presentation + post-response scoring | **None** — read-only; no ledger/contribution/GoldDataset writes | Pins training/calibration to registration-time immutable dataset rather than later effective-state | e.g. `GET /v1/gold-lab/campaigns/{campaign_id}/registrations/{dataset_id}/training-package` (name illustrative) returning a fail-closed validated DTO; **no** arbitrary path read |
 
-**Deferred non-blocking product notes (not gaps authorizing routes):**
+**GAP-16G-01 minimum semantics (design freeze; implementation unauthorized):**
 
-- Calibration archive persistence beyond downloaded JSON → future product store;
-  UI export sufficient for v1.
+```text
+Input authority:
+  existing registration record
+  + exact registered GoldDataset bytes/identity
+  + campaign historical binding (snapshot_id / chunk_set_id / corpus)
+
+Output (read-only):
+  dataset_id / hashes / registration identity
+  exported cases with accepted queries + absolute/QC labels as registered
+  exact historical GoldSourceContext (or equivalent) per needed chunk
+  fail closed on any integrity mismatch
+
+MUST NOT:
+  expose /data paths to the browser
+  accept arbitrary filesystem paths
+  mutate ledger / contribution / registration
+  substitute current campaign task effective-state for registered truth
+```
+
+**Deferred non-blocking product notes (not additional scientific gaps):**
+
 - Cross-campaign Overview rollup → repeated per-campaign GET contribution
   (display aggregation only).
 
-No scientific backend extension is proposed by D0.
+Gold Mode expert games remain fully supported by the sealed 17 routes.
+GAP-16G-01 is required for Training + Calibration provenance only.
 
 ### N. Implementation slice proposal
 
@@ -819,14 +962,14 @@ Hypothesis (not frozen until D0 acceptance):
 | Slice | Scope | Starting authority | Expected files (future) | Tests | Acceptance | Non-scope |
 |---|---|---|---|---|---|---|
 | **16G-I1** | API client + IA + project/campaign shell + workload chooser (no commits) | accepted D0 + sealed 16F | `ui/src/features/goldLab/**`, pages, router | route/render/API mocks | navigate projects→campaign→workload | no mutations; no training |
-| **16G-I2** | Expert work shell + Rapid Fire + Question Check | I1 accepted | games/rapidFire, questionCheck, idempotency UX | mutation/a11y/blindness | commit+replay+blind | no Sweep/Duel |
+| **16G-I2** | Expert work shell + Rapid Fire + Question Check; enforce approved-presentations policy | I1 accepted | games/rapidFire, questionCheck, policy module, idempotency UX | mutation/a11y/blindness/policy gate | commit+replay+blind; refuse non-approved presentation in Gold Mode | no Sweep/Duel |
 | **16G-I3** | Evidence Sweep + Chunk Duel | I2 accepted | games/evidenceSweep, chunkDuel | batch/a11y/auxiliary framing | Sweep==absolute semantic; Duel auxiliary only | no training compiler |
-| **16G-I4** | Contribution dashboard + calibration surface | I3 accepted | contribution/, calibration/ | contribution DTO-only; calibration export | no local score math | no drills |
-| **16G-I5** | Training compiler + drills + scenario/debrief | I4 accepted | training/ under goldLab | no Gold writeback; provenance | learner never hits mutations | no spaced repetition |
-| **16G-I6** | 16G integration / regression / a11y preflight | I5 accepted | tests + harness | keyboard paths; error matrix | ready for 16H handoff | **not** 16H seal |
+| **16G-I4** | Contribution dashboard + calibration surface (local responses only) | I3 accepted **and** GAP-16G-01 separately authorized/implemented for live package fetch; contribution UI may land earlier on sealed GET contribution alone | contribution/, calibration/, policy wiring | contribution DTO-only; **assert zero Gold mutation calls** during calibration; package-hash binding | calibration evidence export; policy update remains governed docs/code commit | no drills; no Gold POST from calibration |
+| **16G-I5** | Training compiler + drills + scenario/debrief over GAP-16G-01 | I4 accepted + GAP-16G-01 available | training/ under goldLab | no Gold writeback; package-only truth; fail closed | learner never hits mutations; no live task-DTO truth | no spaced repetition |
+| **16G-I6** | 16G integration / regression / a11y preflight | I5 accepted | tests + harness | keyboard paths; error matrix; calibration non-mutation; policy gate | ready for 16H handoff | **not** 16H seal |
 
-Each slice: independent review stop; no scientific/backend changes unless a
-separately authorized gap is opened (none today).
+Each slice: independent review stop. GAP-16G-01 requires **separate**
+authorization before implementation; D0 only registers the gap.
 
 ---
 
@@ -882,7 +1025,8 @@ Deferred:
 | OQ-1 | Evidence Sweep default batch size | 5 |
 | OQ-2 | Calibration numeric thresholds | **None frozen**; Human disposition |
 | OQ-3 | Overview contribution aggregation | Optional multi-GET display |
-| OQ-4 | Training package persistence | Ephemeral + download |
+| OQ-4 | Training package delivery | Prefer GAP-16G-01 read API; manual import only as explicit fallback design |
+| OQ-4b | Approved-presentations artifact format | Compile-time JSON/TS module under `features/goldLab/policy/` |
 | OQ-5 | Chunk Duel candidate pairing UX | Side-by-side from two active candidates |
 
 These defaults are part of the D0 candidate; changing them after acceptance
@@ -895,26 +1039,53 @@ requires design amendment, not silent UI drift.
 Independent design review should verify:
 
 1. All locked 16G surfaces are designed.
-2. Gold Mode / Training Mode boundary is airtight.
-3. Games map onto sealed 17 routes without new scientific APIs.
-4. Backend gap register is empty for v1 Gold Mode (or explicitly justified).
-5. Matrices A–N are present and consistent.
-6. Blindness uses sealed DTOs only.
+2. Gold Mode / Training Mode / Calibration Mode boundaries are airtight.
+3. Games map onto sealed 17 routes for Gold Mode mutations.
+4. Backend gap register records GAP-16G-01 for immutable Training/Calibration
+   reads; no general filesystem endpoint; gap implementation not authorized by D0.
+5. Matrices A–N are present and consistent (I/J/M reworked).
+6. Blindness uses sealed DTOs (Gold) / package blind adapters (Calibration).
 7. Contribution is API-authoritative.
 8. Chunk Duel remains auxiliary.
 9. Calibration does not invent fake statistical thresholds.
-10. Implementation decomposition is reviewable and gated.
-11. No production code changed under D0.
+10. Calibration responses never call Gold mutation endpoints (F002).
+11. Production presentation eligibility is versioned governance, not local
+    preference (F003).
+12. Training/Calibration truth is never live campaign task effective-state (F001).
+13. Implementation decomposition is reviewable and gated.
+14. No production code changed under D0.
 
 ---
 
-## 27. Status
+## 27. Rework disposition (16G-D0-REWORK-AUTH-001)
+
+```text
+F001 CLOSED (design):
+IMMUTABLE TRAINING/CALIBRATION READ PATH → GAP-16G-01
+
+F002 CLOSED (design):
+CALIBRATION RESPONSES NEVER MUTATE GOLD
+
+F003 CLOSED (design):
+PRODUCTION PRESENTATION ELIGIBILITY IS VERSIONED GOVERNANCE,
+NOT LOCAL USER PREFERENCE
+```
+
+Game design, IA, idempotency, contribution semantics, and I1–I6 ordering remain
+stable aside from the narrow I4/I5 dependency on GAP-16G-01 and the Gold Mode
+policy gate in I2.
+
+## 28. Status
 
 ```text
 16G-D0:
 DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED
+REWORK 1 APPLIED
 
 16G implementation:
+NOT AUTHORIZED
+
+GAP-16G-01 implementation:
 NOT AUTHORIZED
 
 16H:
