@@ -1263,7 +1263,7 @@ Foundation
   -> performance benchmarks              (Slice 14 COMPLETE / ACCEPTED)
   -> product API + packaging             (Slice 15 COMPLETE / ACCEPTED)
   -> Slice 15 integration closeout       (15H COMPLETE / ACCEPTED)
-  -> Seneca / Portfolio Demo UI          (Slice 16 IN PROGRESS; 16D-C / 16E / 16F COMPLETE / ACCEPTED / SEALED; 16G-D0 ACCEPTED / FROZEN; 16G-I1…I5 / GAP-16G-01 ACCEPTED; GAP-16G-02 CLOSEOUT ACCEPTED / PROMOTED TO MAIN (HA-001 / IR-002; subject e5d116b8…; main promotion COMPLETE at f7fb999…); 16G-I6 / 16H NOT AUTHORIZED)
+  -> Seneca / Portfolio Demo UI          (Slice 16 IN PROGRESS; 16D-C / 16E / 16F COMPLETE / ACCEPTED / SEALED; 16G-D0 ACCEPTED / FROZEN; 16G-I1…I5 / GAP-16G-01 ACCEPTED; GAP-16G-02 CLOSEOUT ACCEPTED / PROMOTED TO MAIN (HA-001 / IR-002; subject e5d116b8…; main promotion COMPLETE at f7fb999…); 16G-I6 COMPLETE / ACCEPTED (IR-002 ACCEPT; exact candidate cc7ff520eb146fa555f2b48e1f7dcc89a7952729); 16G IMPLEMENTATION COMPLETE / ACCEPTED; 16H NOT AUTHORIZED)
   -> Regression CI                       (Slice 17 NOT AUTHORIZED)
   -> Portfolio release package           (Slice 18 NOT AUTHORIZED)
   -> Milestone 7 closeout                (NOT AUTHORIZED)

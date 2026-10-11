@@ -76,7 +76,11 @@ GAP-16G-02:
   CLOSEOUT: docs/gap16g_02_gold_baseline_bootstrap_closeout.md
   MAIN PROMOTION: COMPLETE
   PROMOTED MAIN: f7fb999758ce6219be27d27a3f1c0a16ece97506
-16G-I6: NOT AUTHORIZED
+16G-I6: COMPLETE / ACCEPTED
+  Independent review: 16G-I6-IR-002 — ACCEPT
+  Human technical acceptance: ACCEPTED
+  Exact accepted candidate: cc7ff520eb146fa555f2b48e1f7dcc89a7952729
+16G: IMPLEMENTATION COMPLETE / ACCEPTED
 16H: NOT AUTHORIZED
 9G: DEFERRED / NOT AUTHORIZED
 BASELINE: 1610f9282d1edbd4dfc8ae76d7644a1b9ea4e75e
@@ -171,7 +175,7 @@ B1 foundation remediation [ACCEPTED / SEALED @ c68cc3f8… / closeout b5fa1e85�
 GAP-16G-02 [CLOSEOUT ACCEPTED @ HA-001 / IR-002; subject e5d116b8…;
             main promotion COMPLETE at f7fb999…]
  ↓
-16G-I6 [NOT AUTHORIZED]
+16G-I6 [COMPLETE / ACCEPTED @ cc7ff520eb146fa555f2b48e1f7dcc89a7952729]
  ↓
 16H [NOT AUTHORIZED]
 ```
@@ -214,7 +218,9 @@ Workspace source-loading remediation `9dd2b008ebf9feee279dc6d0e58fafb006288ee5`)
 exact subject `e5d116b8a2990f3b0ac7f3fe1cbf052b4f6ac087`; main promotion
 **COMPLETE** at `f7fb999…`) (closeout
 [`docs/gap16g_02_gold_baseline_bootstrap_closeout.md`](gap16g_02_gold_baseline_bootstrap_closeout.md)).
-**16G-I6** and **16H** remain **NOT AUTHORIZED**. **9G** remains
+**16G-I6** is **COMPLETE / ACCEPTED** (IR-002 **ACCEPT**; exact candidate
+`cc7ff520eb146fa555f2b48e1f7dcc89a7952729`). **16G** is **IMPLEMENTATION
+COMPLETE / ACCEPTED**. **16H** remains **NOT AUTHORIZED**. **9G** remains
 **DEFERRED / NOT AUTHORIZED**. Slice 16 overall is **not** complete.
 
 ---
@@ -675,7 +681,8 @@ CLOSEOUT: docs/slice16f_closeout.md
 ```text
 STATUS: 16G-D0 ACCEPTED / FROZEN; I1–I5 / GAP-16G-01 ACCEPTED;
         GAP-16G-02 CLOSEOUT ACCEPTED (HA-001 / IR-002; subject e5d116b8…);
-        MAIN PROMOTION COMPLETE at f7fb999…; I6 NOT AUTHORIZED
+        MAIN PROMOTION COMPLETE at f7fb999…;
+        I6 COMPLETE / ACCEPTED; 16G IMPLEMENTATION COMPLETE / ACCEPTED
 DESIGN TIP: 8af2dbab72d1a79f53b0f3958e7c7142b4273693
 DESIGN BLOB: edc2be739621dbedfc44ed77861119a35f8f6d18
 FROZEN DESIGN: docs/slice16g_gold_lab_games_pedagogy_design.md
@@ -689,7 +696,12 @@ GAP-16G-02:
   CLOSEOUT: docs/gap16g_02_gold_baseline_bootstrap_closeout.md
   MAIN PROMOTION: COMPLETE
   PROMOTED MAIN: f7fb999758ce6219be27d27a3f1c0a16ece97506
-16G-I6: NOT AUTHORIZED
+16G-I6: COMPLETE / ACCEPTED
+  Independent review: 16G-I6-IR-002 — ACCEPT
+  Human technical acceptance: ACCEPTED
+  Exact accepted candidate: cc7ff520eb146fa555f2b48e1f7dcc89a7952729
+16G: IMPLEMENTATION COMPLETE / ACCEPTED
+16H: NOT AUTHORIZED
 Authority: 16G-D0-AUTH-001 / Human acceptance ACCEPTED
 ```
 
@@ -865,7 +877,11 @@ GAP-16G-02:
   CLOSEOUT: docs/gap16g_02_gold_baseline_bootstrap_closeout.md
   MAIN PROMOTION: COMPLETE
   PROMOTED MAIN: f7fb999758ce6219be27d27a3f1c0a16ece97506
-16G-I6: NOT AUTHORIZED
+16G-I6: COMPLETE / ACCEPTED
+  Independent review: 16G-I6-IR-002 — ACCEPT
+  Human technical acceptance: ACCEPTED
+  Exact accepted candidate: cc7ff520eb146fa555f2b48e1f7dcc89a7952729
+16G: IMPLEMENTATION COMPLETE / ACCEPTED
 16H: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
 SLICE 18: NOT AUTHORIZED
@@ -901,5 +917,7 @@ are **ACCEPTED**. **GAP-16G-02** is **CLOSEOUT ACCEPTED** (`HA-001`; IR-002 **AC
 subject `e5d116b8…`; main promotion **COMPLETE** at `f7fb999…`)
 ([`docs/gap16g_02_gold_baseline_bootstrap_closeout.md`](gap16g_02_gold_baseline_bootstrap_closeout.md);
 [`docs/slice16g_gap_registry_addendum.md`](slice16g_gap_registry_addendum.md)).
-**16G-I6** and **16H** remain **NOT AUTHORIZED**. **9G** remains
+**16G-I6** is **COMPLETE / ACCEPTED** (IR-002 **ACCEPT**; exact candidate
+`cc7ff520eb146fa555f2b48e1f7dcc89a7952729`). **16G** is **IMPLEMENTATION
+COMPLETE / ACCEPTED**. **16H** remains **NOT AUTHORIZED**. **9G** remains
 **DEFERRED / NOT AUTHORIZED**. Slice 16 overall is **not** complete.

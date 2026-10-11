@@ -66,7 +66,11 @@ Accepted implementation:
 Closeout:
 docs/gap16g_02_gold_baseline_bootstrap_closeout.md
 
-16G-I6: NOT AUTHORIZED
+16G-I6: COMPLETE / ACCEPTED
+Independent review: 16G-I6-IR-002 — ACCEPT
+Human technical acceptance: ACCEPTED
+Exact accepted candidate: cc7ff520eb146fa555f2b48e1f7dcc89a7952729
+16G: IMPLEMENTATION COMPLETE / ACCEPTED
 16H: NOT AUTHORIZED
 9G: DEFERRED / NOT AUTHORIZED
 Slice 16: IN PROGRESS / NOT COMPLETE
