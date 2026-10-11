@@ -27,6 +27,10 @@ export function GoldLabTrainingScenarioPage() {
   );
   const [scenarioIndex, setScenarioIndex] = useState(0);
   const [scenarioKey, setScenarioKey] = useState(0);
+  const [scenarioCommitted, setScenarioCommitted] = useState(false);
+  const [scenarioAuthority, setScenarioAuthority] = useState<
+    ScenarioAuthority | undefined
+  >(undefined);
 
   const campaignQuery = useQuery({
     queryKey: goldLabQueryKeys.campaign(campaignId),
@@ -57,11 +61,18 @@ export function GoldLabTrainingScenarioPage() {
   );
 
   const exercise = compiled?.scenarios[scenarioIndex] ?? null;
+  const scenarioComplete = Boolean(scenarioCommitted && scenarioAuthority);
+
+  function clearScenarioSession() {
+    setScenarioCommitted(false);
+    setScenarioAuthority(undefined);
+  }
 
   function selectDataset(datasetId: string) {
     setSelectedDatasetId(datasetId);
     setScenarioIndex(0);
     setScenarioKey((value) => value + 1);
+    clearScenarioSession();
     setSearchParams({ dataset: datasetId }, { replace: true });
   }
 
@@ -170,6 +181,7 @@ export function GoldLabTrainingScenarioPage() {
             variant="secondary"
             onClick={() => {
               setSelectedDatasetId(null);
+              clearScenarioSession();
               setSearchParams({}, { replace: true });
             }}
           >
@@ -186,19 +198,28 @@ export function GoldLabTrainingScenarioPage() {
           <ScenarioWorkspace
             key={`${exercise.exerciseId}-${scenarioKey}`}
             exercise={exercise}
-            resolveAuthorityAfterCommit={() =>
-              compiled.authorityByExerciseId.get(exercise.exerciseId) as
-                | ScenarioAuthority
-                | undefined
-            }
-            onRestart={() => setScenarioKey((value) => value + 1)}
+            authority={scenarioCommitted ? scenarioAuthority : undefined}
+            committed={scenarioCommitted}
+            onCommit={() => {
+              const auth = compiled.authorityByExerciseId.get(
+                exercise.exerciseId,
+              ) as ScenarioAuthority | undefined;
+              setScenarioAuthority(auth);
+              setScenarioCommitted(true);
+            }}
+            onRestart={() => {
+              setScenarioKey((value) => value + 1);
+              clearScenarioSession();
+            }}
           />
-          {scenarioIndex + 1 < compiled.scenarios.length ? (
+          {scenarioComplete &&
+          scenarioIndex + 1 < compiled.scenarios.length ? (
             <Button
               variant="secondary"
               onClick={() => {
                 setScenarioIndex((value) => value + 1);
                 setScenarioKey((value) => value + 1);
+                clearScenarioSession();
               }}
             >
               Next scenario case

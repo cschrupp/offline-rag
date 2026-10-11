@@ -19,17 +19,18 @@ const GRADE_LABEL: Record<GoldRelevance, string> = {
 
 type Props = {
   exercise: BlindScenarioExercise;
-  /**
-   * Called only after local scenario commit to obtain registration-time
-   * authority. Must not be invoked while the scenario remains editable.
-   */
-  resolveAuthorityAfterCommit: () => ScenarioAuthority | undefined;
+  /** Present only after parent-side local scenario commit. */
+  authority: ScenarioAuthority | undefined;
+  committed: boolean;
+  onCommit: (learnerByChunkId: Record<string, GoldRelevance>) => void;
   onRestart: () => void;
 };
 
 export function ScenarioWorkspace({
   exercise,
-  resolveAuthorityAfterCommit,
+  authority,
+  committed,
+  onCommit,
   onRestart,
 }: Props) {
   const [drafts, setDrafts] = useState<Record<string, GoldRelevance | null>>(
@@ -38,10 +39,6 @@ export function ScenarioWorkspace({
         exercise.candidates.map((c) => [c.chunkId, null]),
       ) as Record<string, GoldRelevance | null>,
   );
-  const [committed, setCommitted] = useState(false);
-  const [authority, setAuthority] = useState<ScenarioAuthority | undefined>(
-    undefined,
-  );
 
   const allClassified = exercise.candidates.every(
     (c) => drafts[c.chunkId] !== null && drafts[c.chunkId] !== undefined,
@@ -49,9 +46,13 @@ export function ScenarioWorkspace({
 
   function commit() {
     if (!allClassified || committed) return;
-    const resolved = resolveAuthorityAfterCommit();
-    setAuthority(resolved);
-    setCommitted(true);
+    const learnerByChunkId = Object.fromEntries(
+      Object.entries(drafts).filter(
+        (entry): entry is [string, GoldRelevance] =>
+          entry[1] === 0 || entry[1] === 1 || entry[1] === 2,
+      ),
+    );
+    onCommit(learnerByChunkId);
   }
 
   const learnerByChunkId = Object.fromEntries(
