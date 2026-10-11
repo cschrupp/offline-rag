@@ -28,8 +28,10 @@ from test_slice16f_d_gold_lab_api import (
 from test_slice16f_d_gold_lab_historical_source import (
     CHUNK_A,
     CHUNK_B,
+    CHUNK_CFG,
     CORPUS_NAME,
     DOC_ID,
+    PARSED,
     _publish_integrity,
 )
 from test_slice16f_d_gold_lab_historical_source import (
@@ -49,8 +51,11 @@ from offline_rag.app.gold_lab.bootstrap_staging import (
     scavenge_bootstrap_staging,
 )
 from offline_rag.app.gold_lab.models import GoldProjectType
+from offline_rag.app.gold_lab.reviewable import is_reviewable_case
 from offline_rag.app.gold_lab.store import GoldLabStore
-from offline_rag.app.runtime import ApplicationRuntime
+from offline_rag.app.publication import ProductPublicationRegistry
+from offline_rag.app.runtime import ApplicationRuntime, ResourceFactories
+from offline_rag.app.snapshot import CanonicalSnapshotManifest
 from offline_rag.app.workspace.lifecycle import recover_workspace_journals
 from offline_rag.app.workspace.models import (
     GoldLabBaselineBootstrapAuthority,
@@ -59,7 +64,37 @@ from offline_rag.app.workspace.models import (
     OperationProgressStage,
 )
 from offline_rag.app.workspace.mutation_ops import ManagedOperationStore
+from offline_rag.chunking.persistence import (
+    chunk_artifact_relpath,
+    write_chunk_artifact,
+)
 from offline_rag.config.models import AppSettings, AuthoringSettings
+from offline_rag.context.config_hash import build_context_config_hash
+from offline_rag.core.ids import (
+    DENSE_INDEX_CONTRACT_VERSION,
+    STRUCTURE_AWARE_CHUNKER_VERSION,
+    chunk_artifact_id,
+    chunk_set_id_from_entries,
+    corpus_id_from_entries,
+    dense_index_id,
+    dense_point_uuid,
+    lexical_index_id,
+)
+from offline_rag.dense.backend import DensePointRecord
+from offline_rag.dense.config_hash import (
+    build_embedding_config_hash,
+    build_index_config_hash,
+)
+from offline_rag.dense.embedder import FakeEmbedder
+from offline_rag.dense.qdrant_local import QdrantLocalBackend
+from offline_rag.domain.chunking import (
+    ChunkSetDocumentEntry,
+    ChunkSetManifest,
+    DocumentChunkArtifact,
+)
+from offline_rag.domain.corpus import CorpusDocumentEntry, CorpusManifest
+from offline_rag.domain.documents import Chunk, ChunkKind
+from offline_rag.domain.indexing import DenseIndexManifest, LexicalIndexManifest
 from offline_rag.gold_authoring.models import (
     GoldAuthoringRun,
     ProposalAttempt,
@@ -69,11 +104,18 @@ from offline_rag.gold_authoring.models import (
 )
 from offline_rag.gold_authoring.persist import (
     default_authoring_run_path,
+    load_authoring_run,
     serialize_authoring_run_bytes,
     write_authoring_run_bytes,
 )
 from offline_rag.gold_authoring.pooling_models import PoolCandidate
 from offline_rag.gold_authoring.propose import ProposeJobResult, run_gold_propose
+from offline_rag.hybrid.config_hash import build_fusion_config_hash
+from offline_rag.ingestion.io import atomic_write_text
+from offline_rag.lexical.backend import LexicalDocumentInput, LocalInvertedIndexBackend
+from offline_rag.lexical.config_hash import build_lexical_config_hash
+from offline_rag.rerank.config_hash import build_reranker_config_hash
+from offline_rag.rerank.fake import FakeReranker
 
 
 def _authoring_ready(settings: AppSettings) -> AppSettings:
@@ -172,6 +214,322 @@ def _project_and_workspace(tmp_path: Path):
     # TestClient / publication resolution needs the live fake counts.
     runtime.publication.qdrant = q
     return settings, runtime, project, workspace, corpus_id, chunk_set_id, snap_id
+
+
+def _pooling_ready_settings(tmp_path: Path) -> AppSettings:
+    """Authoring-ready settings with fake embed/rerank for real 9C execution."""
+    settings = _authoring_ready(_integrity_settings(tmp_path))
+    return settings.model_copy(
+        update={
+            "indexing": settings.indexing.model_copy(
+                update={
+                    "embedding": settings.indexing.embedding.model_copy(
+                        update={
+                            "implementation": "fake",
+                            "model_id": "fake",
+                            "revision": "fake-v1",
+                            "dimension": 8,
+                            "adapter_contract": "fake-embedder-v1",
+                        }
+                    )
+                }
+            ),
+            "reranker": settings.reranker.model_copy(
+                update={"enabled": True, "implementation": "fake"}
+            ),
+        }
+    )
+
+
+def _publish_real_qdrant_pooling_ready(
+    settings: AppSettings,
+) -> tuple[str, str, str, str]:
+    """Publish integrity artifacts that satisfy real 9C historical preflight.
+
+    Builds lexical + baseline-dense + Arm-H dense artifacts with identity IDs
+    derived from current settings hashes, and materializes vectors into a real
+    persistent ``QdrantLocalBackend`` (closed before return so runtime can own
+    the exclusive storage lock).
+    """
+    from offline_rag.chunking.tokenize import TiktokenTokenCounter
+    from offline_rag.gold_authoring.pool_preflight import (
+        _settings_arm_h as arm_h_settings,
+    )
+
+    counter = TiktokenTokenCounter(
+        encoding=settings.chunking.tokenizer.encoding,
+        artifacts_path=settings.paths.tokenizer_artifacts,
+    )
+    hashes = {
+        "embedding_config_hash": build_embedding_config_hash(settings),
+        "index_config_hash": build_index_config_hash(settings),
+        "lexical_config_hash": build_lexical_config_hash(settings),
+        "fusion_config_hash": build_fusion_config_hash(settings),
+        "reranker_config_hash": build_reranker_config_hash(settings),
+        "context_config_hash": build_context_config_hash(
+            settings, token_counter=counter
+        ),
+    }
+    art_id = chunk_artifact_id(
+        PARSED, CHUNK_CFG, chunker_version=STRUCTURE_AWARE_CHUNKER_VERSION
+    )
+    children = [
+        Chunk(
+            chunk_id=CHUNK_A,
+            document_id=DOC_ID,
+            kind=ChunkKind.CHILD,
+            text="alpha candidate text for gold lab",
+            order=0,
+            token_count=4,
+            content_hash="ch_a",
+            source_block_ids=["blk_a"],
+        ),
+        Chunk(
+            chunk_id=CHUNK_B,
+            document_id=DOC_ID,
+            kind=ChunkKind.CHILD,
+            text="beta candidate text for gold lab",
+            order=1,
+            token_count=4,
+            content_hash="ch_b",
+            source_block_ids=["blk_b"],
+        ),
+    ]
+    artifact = DocumentChunkArtifact(
+        chunk_artifact_id=art_id,
+        parsed_artifact_id=PARSED,
+        document_id=DOC_ID,
+        chunk_config_hash=CHUNK_CFG,
+        chunker_version=STRUCTURE_AWARE_CHUNKER_VERSION,
+        tokenizer_name="tiktoken",
+        tokenizer_encoding="cl100k_base",
+        parents=[],
+        children=children,
+        parent_count=0,
+        child_count=2,
+    )
+    _path, digest = write_chunk_artifact(settings.paths.chunks, artifact)
+    docs = [
+        CorpusDocumentEntry(
+            document_id=DOC_ID,
+            source_path="spec.pdf",
+            source_name="spec.pdf",
+            source_content_hash="ch_16fd",
+            source_size_bytes=12,
+            source_media_type="application/pdf",
+            parser_name="docling_pdf",
+            parser_version="v1",
+            block_count=1,
+            processed_artifact="processed/x.json",
+            processed_artifact_hash="pah_1",
+            parsed_artifact_id=PARSED,
+            parse_config_hash="cfg_parse",
+        )
+    ]
+    schema = "offline-rag-corpus-manifest-v1"
+    cfg_hash = "cfg_corpus"
+    corpus_id = corpus_id_from_entries(
+        schema_version=schema,
+        parse_cfg_hash=cfg_hash,
+        document_identities=[
+            {
+                "document_id": d.document_id,
+                "source_content_hash": d.source_content_hash,
+                "processed_artifact_hash": d.processed_artifact_hash,
+                "parsed_artifact_id": d.parsed_artifact_id,
+            }
+            for d in docs
+        ],
+    )
+    now = datetime.now(tz=UTC)
+    corpus = CorpusManifest(
+        schema_version=schema,
+        corpus_id=corpus_id,
+        corpus_hash="corphash",
+        created_at=now,
+        config_hash=cfg_hash,
+        documents=docs,
+    )
+    chunk_set_id = chunk_set_id_from_entries(
+        corpus_id=corpus_id,
+        chunk_cfg_hash=CHUNK_CFG,
+        chunker_version=STRUCTURE_AWARE_CHUNKER_VERSION,
+        document_entries=[
+            {
+                "document_id": DOC_ID,
+                "parsed_artifact_id": PARSED,
+                "chunk_artifact_id": art_id,
+            }
+        ],
+    )
+    entry = ChunkSetDocumentEntry(
+        document_id=DOC_ID,
+        parsed_artifact_id=PARSED,
+        chunk_artifact_id=art_id,
+        chunk_artifact=chunk_artifact_relpath(art_id),
+        chunk_artifact_hash=digest,
+        parent_count=0,
+        child_count=2,
+    )
+    chunk = ChunkSetManifest(
+        chunk_set_id=chunk_set_id,
+        corpus_id=corpus_id,
+        chunk_config_hash=CHUNK_CFG,
+        chunker_version=STRUCTURE_AWARE_CHUNKER_VERSION,
+        tokenizer_name="tiktoken",
+        tokenizer_encoding="cl100k_base",
+        created_at=now,
+        documents=[entry],
+        total_parent_count=0,
+        total_child_count=2,
+    )
+    for root in (
+        settings.paths.manifests,
+        settings.paths.chunk_manifests,
+        settings.paths.index_manifests,
+        settings.paths.lexical_index_manifests,
+        settings.paths.lexical_indexes,
+        settings.paths.qdrant_storage,
+    ):
+        root.mkdir(parents=True, exist_ok=True)
+    atomic_write_text(
+        settings.paths.manifests / f"{corpus_id}.json", corpus.model_dump_json()
+    )
+    atomic_write_text(
+        settings.paths.chunk_manifests / f"{chunk_set_id}.json", chunk.model_dump_json()
+    )
+
+    baseline_cfg = hashes["index_config_hash"]
+    baseline_id = dense_index_id(chunk_set_id, baseline_cfg)
+    arm_h_cfg = build_index_config_hash(arm_h_settings(settings))
+    arm_h_id = dense_index_id(chunk_set_id, arm_h_cfg)
+    lex_id = lexical_index_id(
+        chunk_set_id,
+        hashes["lexical_config_hash"],
+        backend_contract=settings.lexical.backend_contract,
+    )
+    baseline_collection = f"col_base_{baseline_id[-16:]}"
+    arm_h_collection = f"col_armh_{arm_h_id[-16:]}"
+
+    def _dense_manifest(
+        index_id: str, collection: str, index_cfg: str
+    ) -> DenseIndexManifest:
+        return DenseIndexManifest(
+            index_id=index_id,
+            corpus_id=corpus_id,
+            chunk_set_id=chunk_set_id,
+            embedding_config_hash=hashes["embedding_config_hash"],
+            index_config_hash=index_cfg,
+            index_contract_version=DENSE_INDEX_CONTRACT_VERSION,
+            embedding_text_strategy="plain",
+            embedding_text_contract="plain-v1",
+            embedding_model_id="fake",
+            embedding_model_revision="fake-v1",
+            embedding_dimension=8,
+            normalize=True,
+            similarity_metric="cosine",
+            backend="qdrant_local",
+            backend_contract=settings.indexing.backend_contract,
+            collection_name=collection,
+            expected_child_count=2,
+            indexed_child_count=2,
+            created_at=now,
+        )
+
+    atomic_write_text(
+        settings.paths.index_manifests / f"{baseline_id}.json",
+        _dense_manifest(
+            baseline_id, baseline_collection, baseline_cfg
+        ).model_dump_json(),
+    )
+    atomic_write_text(
+        settings.paths.index_manifests / f"{arm_h_id}.json",
+        _dense_manifest(arm_h_id, arm_h_collection, arm_h_cfg).model_dump_json(),
+    )
+    lexical = LexicalIndexManifest(
+        lexical_index_id=lex_id,
+        corpus_id=corpus_id,
+        chunk_set_id=chunk_set_id,
+        lexical_config_hash=hashes["lexical_config_hash"],
+        text_strategy="plain",
+        text_contract="plain-v1",
+        analyzer_strategy="technical",
+        analyzer_contract="technical-v1",
+        bm25_contract="bm25-okapi-v1",
+        bm25_k1=1.2,
+        bm25_b=0.75,
+        bm25_idf="rsj-positive-smoothed-v1",
+        bm25_query_tf="unique-terms-v1",
+        backend="local_inverted",
+        backend_contract=settings.lexical.backend_contract,
+        expected_child_count=2,
+        indexed_child_count=2,
+        document_count=1,
+        vocabulary_size=2,
+        avgdl=1.0,
+        physical_index_relpath=f"{lex_id}",
+        created_at=now,
+    )
+    atomic_write_text(
+        settings.paths.lexical_index_manifests / f"{lex_id}.json",
+        lexical.model_dump_json(),
+    )
+    LocalInvertedIndexBackend(settings.paths.lexical_indexes).build(
+        lex_id,
+        [
+            LexicalDocumentInput(
+                chunk_id=CHUNK_A, terms=["offline", "rag"], document_id=DOC_ID
+            ),
+            LexicalDocumentInput(
+                chunk_id=CHUNK_B, terms=["gold", "lab"], document_id=DOC_ID
+            ),
+        ],
+        chunk_set_id=chunk_set_id,
+        lexical_config_hash=hashes["lexical_config_hash"],
+    )
+
+    embedder = FakeEmbedder(dimension=8, normalize=True)
+    points = [
+        DensePointRecord(
+            point_id=dense_point_uuid(chunk.chunk_id),
+            vector=embedder.embed_documents([chunk.text])[0],
+            payload={
+                "chunk_id": chunk.chunk_id,
+                "chunk_artifact_id": art_id,
+                "document_id": DOC_ID,
+                "kind": "child",
+            },
+        )
+        for chunk in children
+    ]
+    backend = QdrantLocalBackend(settings.paths.qdrant_storage)
+    try:
+        for collection in (baseline_collection, arm_h_collection):
+            backend.create_collection(collection, dimension=8, metric="cosine")
+            backend.upsert(collection, points)
+        identity = CanonicalSnapshotManifest(
+            corpus_id=corpus_id,
+            corpus_manifest=f"{corpus_id}.json",
+            chunk_set_id=chunk_set_id,
+            chunk_manifest=f"{chunk_set_id}.json",
+            dense_index_id=baseline_id,
+            dense_index_manifest=f"{baseline_id}.json",
+            lexical_index_id=lex_id,
+            lexical_index_manifest=f"{lex_id}.json",
+            **hashes,
+        )
+        registry = ProductPublicationRegistry(settings, qdrant=backend)
+        snapshot_id = registry.publish(
+            CORPUS_NAME, identity, require_current_config_match=True
+        )
+    finally:
+        backend.close()
+    return snapshot_id, corpus_id, chunk_set_id, art_id
+
+
+class _Closeable:
+    def close(self) -> None:
+        return None
 
 
 # --- Seed -----------------------------------------------------------------
@@ -869,6 +1227,156 @@ def test_r1_bootstrap_passes_runtime_qdrant_into_pool(tmp_path: Path) -> None:
     assert executor is not None
     assert getattr(executor, "_qdrant", None) is runtime.resources.qdrant
     assert getattr(executor, "_owns_qdrant", True) is False
+
+
+def test_r1_real_persistent_qdrant_nine_c_product_path(tmp_path: Path) -> None:
+    """AUTH-002: real persistent Qdrant Local + real run_gold_pool dense path.
+
+    Proves the F001 product path: runtime owns exclusive Qdrant storage while
+    actual HistoricalPoolArmExecutor / run_gold_pool execute six-arm 9C without
+    opening a second persistent owner.
+    """
+    from offline_rag.app.gold_lab import bootstrap as bootstrap_mod
+    from offline_rag.gold_authoring import pool_arms as pool_arms_mod
+    from offline_rag.gold_authoring.pool_arms import HistoricalPoolArmExecutor
+
+    settings = _pooling_ready_settings(tmp_path)
+    snap_id, corpus_id, chunk_set_id, _art_id = _publish_real_qdrant_pooling_ready(
+        settings
+    )
+    workspace = _active_workspace(settings, snap_id)
+    store = GoldLabStore(settings)
+    project = store.create_project(
+        workspace_id=workspace.workspace_id,
+        title="R1 Real Qdrant Desk",
+        description="",
+        project_type=GoldProjectType.BENCHMARK,
+    )
+
+    storage = settings.paths.qdrant_storage.expanduser().resolve()
+    constructions: list[Path] = []
+    orig_init = QdrantLocalBackend.__init__
+
+    def counting_init(self, storage_path):  # type: ignore[no-untyped-def]
+        constructions.append(Path(storage_path).expanduser().resolve())
+        return orig_init(self, storage_path)
+
+    def fake_make_embedder(_settings: AppSettings) -> FakeEmbedder:
+        # FakeEmbedder cannot satisfy model-query-prompt; keep deterministic
+        # vectors while exercising the real dense search / ownership path.
+        return FakeEmbedder(dimension=8, normalize=True)
+
+    seen_executor: dict[str, object] = {}
+
+    class _ObservingExecutor(HistoricalPoolArmExecutor):
+        def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+            super().__init__(*args, **kwargs)
+            seen_executor["executor"] = self
+
+    with patch.object(QdrantLocalBackend, "__init__", counting_init):
+        runtime = ApplicationRuntime(
+            settings=settings,
+            factories=ResourceFactories(
+                embedder=lambda _s: FakeEmbedder(dimension=8, normalize=True),
+                reranker=lambda _s: FakeReranker(),
+                generator_client=lambda _s: _Closeable(),
+                qdrant=lambda s: QdrantLocalBackend(s.paths.qdrant_storage),
+            ),
+        )
+        runtime.start()
+        assert runtime.resources is not None
+        assert isinstance(runtime.resources.qdrant, QdrantLocalBackend)
+        assert len(constructions) == 1
+        assert constructions[0] == storage
+        owner = runtime.resources.qdrant
+
+        def propose(settings_arg, **kwargs):
+            # Deterministic 9B: write a query that hits lexical offline/rag terms.
+            run = _reviewable_run(
+                corpus_id=corpus_id,
+                chunk_set_id=chunk_set_id,
+                authoring_run_id=kwargs["authoring_run_id"],
+                sampling_seed=kwargs["seed"],
+            )
+            # Clear pre-seeded candidates so real 9C builds the pool.
+            cases = [c.model_copy(update={"candidates": []}) for c in run.cases]
+            run = run.model_copy(
+                update={
+                    "corpus_id": corpus_id,
+                    "chunk_set_id": chunk_set_id,
+                    "cases": cases,
+                    "pool_successful_case_count": 0,
+                }
+            )
+            path = kwargs["output"]
+            path.parent.mkdir(parents=True, exist_ok=True)
+            write_authoring_run_bytes(path, serialize_authoring_run_bytes(run))
+            return ProposeJobResult(exit_code=0, run=run, output_path=path)
+
+        svc = GoldLabBaselineBootstrapService(runtime)
+        with (
+            patch(
+                "offline_rag.app.gold_lab.bootstrap.run_gold_propose_on_snapshot",
+                side_effect=propose,
+            ),
+            # Real run_gold_pool remains unbound — only observe executor construction.
+            patch.object(
+                bootstrap_mod, "HistoricalPoolArmExecutor", _ObservingExecutor
+            ),
+            patch.object(
+                pool_arms_mod, "make_embedder", side_effect=fake_make_embedder
+            ),
+            patch(
+                "offline_rag.app.gold_lab.bootstrap.build_eligible_population",
+                return_value=[object()] * 50,
+            ),
+        ):
+            record = svc.start_baseline_bootstrap(
+                project_id=project.project_id,
+                proposal_count=3,
+                prelabel_enabled=False,
+                idempotency_key="r1-real-qdrant-9c",
+            )
+            deadline = time.time() + 30
+            ops = ManagedOperationStore(settings)
+            current = ops.get(workspace.workspace_id, record.operation_id)
+            while time.time() < deadline:
+                current = ops.get(workspace.workspace_id, record.operation_id)
+                if current.status in (
+                    ManagedOperationStatus.SUCCEEDED,
+                    ManagedOperationStatus.FAILED,
+                ):
+                    break
+                time.sleep(0.05)
+            else:
+                pytest.fail(
+                    f"bootstrap did not finish: {current.status} {current.error}"
+                )
+
+        assert current.status is ManagedOperationStatus.SUCCEEDED, (
+            f"bootstrap failed: {current.error}"
+        )
+        executor = seen_executor.get("executor")
+        assert executor is not None
+        assert getattr(executor, "_qdrant", None) is owner
+        assert getattr(executor, "_owns_qdrant", True) is False
+        # No second persistent Qdrant Local owner for the same storage path.
+        assert constructions == [storage]
+        assert current.bootstrap_authority is not None
+        assert current.bootstrap_authority.reviewable_case_count >= 1
+        assert current.result is not None
+        assert current.result.baseline_eligible is True
+
+        # Canonical published run must be reviewable after real 9C.
+        auth = current.bootstrap_authority
+        published = default_authoring_run_path(
+            settings,
+            corpus_name=CORPUS_NAME,
+            authoring_run_id=auth.authoring_run_id,
+        )
+        run = load_authoring_run(published)
+        assert sum(1 for c in run.cases if is_reviewable_case(c)) >= 1
+        assert (run.pool_successful_case_count or 0) >= 1
 
 
 def test_r2_pool_and_prelabel_persistence_failures(tmp_path: Path) -> None:
