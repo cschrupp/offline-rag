@@ -15,6 +15,7 @@ import {
 import { goldLabErrorMessage } from "../errors/goldLabErrors";
 import { goldLabQueryKeys } from "../queryKeys";
 import type { GoldProject } from "../types";
+import { GoldBaselineBootstrapForm } from "./GoldBaselineBootstrapForm";
 import { GoldCampaignCreateForm } from "./GoldCampaignCreateForm";
 
 type Props = {
@@ -25,6 +26,9 @@ export function GoldProjectDetail({ project }: Props) {
   const queryClient = useQueryClient();
   const [confirmArchive, setConfirmArchive] = useState(false);
   const [archiveError, setArchiveError] = useState<string | null>(null);
+  const [preferredBaselineId, setPreferredBaselineId] = useState<string | null>(
+    null,
+  );
 
   const baselinesQuery = useQuery({
     queryKey: goldLabQueryKeys.baselines(project.project_id),
@@ -176,7 +180,7 @@ export function GoldProjectDetail({ project }: Props) {
         {baselinesQuery.isSuccess && baselines.length === 0 ? (
           <EmptyState
             title="No eligible pristine authoring baselines are available for this project."
-            body="Campaign creation stays disabled until the server reports an eligible baseline. Seneca does not synthesize baselines in the browser."
+            body="Create a baseline from the project workspace below, or wait until an eligible authoring run is published for this workspace."
           />
         ) : null}
         {baselines.length > 0 ? (
@@ -258,11 +262,20 @@ export function GoldProjectDetail({ project }: Props) {
         ) : null}
       </Card>
 
+      <GoldBaselineBootstrapForm
+        project={project}
+        hasBaselines={baselines.length > 0}
+        onPreferBaseline={(authoringRunId) => {
+          setPreferredBaselineId(authoringRunId);
+        }}
+      />
+
       <GoldCampaignCreateForm
         projectId={project.project_id}
         baselines={baselines}
         disabled={!canCreateCampaign}
         disabledReason={createDisabledReason}
+        preferredBaselineId={preferredBaselineId}
       />
 
       <ConfirmDialog

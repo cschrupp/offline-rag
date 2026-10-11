@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../../components/Button";
@@ -15,6 +15,8 @@ type Props = {
   baselines: GoldBaselineSummary[];
   disabled: boolean;
   disabledReason?: string;
+  /** Preferred baseline from bootstrap handoff; operator must still submit. */
+  preferredBaselineId?: string | null;
 };
 
 export function GoldCampaignCreateForm({
@@ -22,12 +24,20 @@ export function GoldCampaignCreateForm({
   baselines,
   disabled,
   disabledReason,
+  preferredBaselineId = null,
 }: Props) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [baselineId, setBaselineId] = useState("");
   const [selectionPolicyId, setSelectionPolicyId] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!preferredBaselineId) return;
+    if (baselines.some((b) => b.authoring_run_id === preferredBaselineId)) {
+      setBaselineId(preferredBaselineId);
+    }
+  }, [preferredBaselineId, baselines]);
 
   const createMutation = useMutation({
     mutationFn: () =>

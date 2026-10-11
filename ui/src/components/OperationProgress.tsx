@@ -12,7 +12,16 @@ type Props = {
   label?: string;
   lookupError?: string;
   onDismiss?: () => void;
+  /** Optional kind-aware success copy; overrides the default workspace text. */
+  successMessage?: string;
 };
+
+function defaultSuccessMessage(operation: Operation): string {
+  if (operation.kind === "gold_lab_baseline_bootstrap") {
+    return "Baseline ready.";
+  }
+  return "Ready. Workspace knowledge has been updated.";
+}
 
 export function OperationProgress({
   phase,
@@ -20,6 +29,7 @@ export function OperationProgress({
   label,
   lookupError,
   onDismiss,
+  successMessage,
 }: Props) {
   if (phase === "uploading") {
     return (
@@ -42,7 +52,7 @@ export function OperationProgress({
         <div className="row" style={{ justifyContent: "space-between" }}>
           <div className="row">
             <Badge tone="error" label="Unavailable" />
-            <strong>{label ?? "Workspace operation"}</strong>
+            <strong>{label ?? "Operation"}</strong>
           </div>
           {onDismiss ? (
             <Button variant="secondary" onClick={onDismiss}>
@@ -65,8 +75,9 @@ export function OperationProgress({
     operation.status === "failed" ||
     operation.status === "interrupted";
 
+  const kind = String(operation.kind);
   let tone: "ready" | "busy" | "error" = "busy";
-  let statusText = progressStageLabel(operation.progress_stage);
+  let statusText = progressStageLabel(operation.progress_stage, kind);
   if (operation.status === "succeeded") {
     tone = "ready";
     statusText = "Ready";
@@ -89,7 +100,7 @@ export function OperationProgress({
       <div className="row" style={{ justifyContent: "space-between" }}>
         <div className="row">
           <Badge tone={tone} label={statusText} />
-          <strong>{label ?? "Workspace operation"}</strong>
+          <strong>{label ?? "Operation"}</strong>
         </div>
         {terminal && onDismiss ? (
           <Button variant="secondary" onClick={onDismiss}>
@@ -100,7 +111,7 @@ export function OperationProgress({
       <p className="muted">
         Status: {operationStatusLabel(String(operation.status))}
         {operation.progress_stage
-          ? ` · ${progressStageLabel(operation.progress_stage)}`
+          ? ` · ${progressStageLabel(operation.progress_stage, kind)}`
           : ""}
       </p>
       {operation.status === "failed" && operation.error ? (
@@ -121,7 +132,9 @@ export function OperationProgress({
         </p>
       ) : null}
       {operation.status === "succeeded" ? (
-        <p className="muted">Ready. Workspace knowledge has been updated.</p>
+        <p className="muted">
+          {successMessage ?? defaultSuccessMessage(operation)}
+        </p>
       ) : null}
       {!terminal ? (
         <p className="muted">

@@ -5,6 +5,7 @@ import { userFacingErrorMessage } from "../../api/errors";
 import { queryKeys } from "../../api/queryKeys";
 import type { Operation } from "../../api/types";
 import { OperationProgress } from "../../components/OperationProgress";
+import { goldLabQueryKeys } from "../goldLab/queryKeys";
 import {
   ACTIVE_OPERATIONS_KEY,
   forgetActiveOperation,
@@ -46,11 +47,11 @@ export function ActiveOperationsBootstrap() {
   return (
     <aside
       className="operation-tray"
-      aria-label="Workspace operations"
+      aria-label="Active operations"
       data-testid="operation-tray"
     >
       <div className="operation-tray-inner stack">
-        <h2 className="sr-only">Workspace operations</h2>
+        <h2 className="sr-only">Active operations</h2>
         {items.map((item) => (
           <ResumedOperationCard
             key={item.ref.operation_id}
@@ -120,13 +121,24 @@ function ResumedOperationCard({
     if (!operation || handledTerminal.current) return;
     if (!isTerminalOperationStatus(String(operation.status))) return;
     handledTerminal.current = true;
-    void queryClient.invalidateQueries({
-      queryKey: queryKeys.workspace(refItem.workspace_id),
-    });
-    void queryClient.invalidateQueries({
-      queryKey: queryKeys.workspaceSources(refItem.workspace_id),
-    });
-    void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces });
+    if (String(operation.kind) === "gold_lab_baseline_bootstrap") {
+      if (operation.status === "succeeded") {
+        const projectId = operation.result?.project_id;
+        if (typeof projectId === "string" && projectId) {
+          void queryClient.invalidateQueries({
+            queryKey: goldLabQueryKeys.baselines(projectId),
+          });
+        }
+      }
+    } else {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.workspace(refItem.workspace_id),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.workspaceSources(refItem.workspace_id),
+      });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces });
+    }
     onTerminalRef.current();
   }, [query.data, queryClient, refItem.workspace_id]);
 
@@ -174,7 +186,9 @@ function operationKindLabel(kind: string): string {
       return "Replace source";
     case "source_remove":
       return "Remove source";
+    case "gold_lab_baseline_bootstrap":
+      return "Create baseline from workspace";
     default:
-      return "Workspace operation";
+      return "Operation";
   }
 }

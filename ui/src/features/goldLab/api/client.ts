@@ -1,4 +1,5 @@
 import { apiRequest } from "../../../api/client";
+import type { Operation } from "../../../api/types";
 import type {
   GoldBaselineListResponse,
   GoldCampaign,
@@ -83,6 +84,25 @@ export async function listGoldBaselines(
     { signal },
   );
   return validateGoldBaselineListResponse(raw, projectId);
+}
+
+export async function startGoldBaselineBootstrap(params: {
+  projectId: string;
+  proposalCount: number;
+  prelabelEnabled: boolean;
+  idempotencyKey: string;
+}): Promise<Operation> {
+  return apiRequest<Operation>(
+    `/v1/gold-lab/projects/${encodeURIComponent(params.projectId)}/baseline-bootstrap`,
+    {
+      method: "POST",
+      idempotencyKey: params.idempotencyKey,
+      json: {
+        proposal_count: params.proposalCount,
+        prelabel_enabled: params.prelabelEnabled,
+      },
+    },
+  );
 }
 
 export async function listGoldCampaigns(

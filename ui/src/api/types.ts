@@ -43,6 +43,9 @@ export type ProgressStage =
   | "preparing"
   | "processing"
   | "building_indexes"
+  | "proposing"
+  | "pooling"
+  | "prelabeling"
   | "publishing"
   | "finalizing"
   | "ready";
@@ -55,7 +58,8 @@ export type OperationKind =
   | "source_remove"
   | "source_replace"
   | "source_metadata_patch"
-  | "empty_transition";
+  | "empty_transition"
+  | "gold_lab_baseline_bootstrap";
 
 export type OperationError = {
   code: string;
