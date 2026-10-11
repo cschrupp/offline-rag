@@ -1009,7 +1009,7 @@ Slice 16 remains **IN PROGRESS / NOT COMPLETE** because **16G-I6** and **16H**
 remain **NOT AUTHORIZED** (**16E** / **16F** are **COMPLETE / ACCEPTED /
 SEALED**; **16G-D0** is **ACCEPTED / FROZEN**; **16G-I1…I5** and **GAP-16G-01**
 are **ACCEPTED**; **GAP-16G-02** is **IMPLEMENTATION COMPLETE / HUMAN ACCEPTED /
-CLOSEOUT REVIEW PENDING**); Seneca consuming the API does not close Slice 16.
+CLOSEOUT ACCEPTED** (`HA-001` / IR-002; subject `e5d116b8…`; main promotion **NOT AUTHORIZED**)); Seneca consuming the API does not close Slice 16.
 
 ---
 
@@ -1027,10 +1027,12 @@ AMENDMENT A4:      ACCEPTED / LOCKED / SEALED
 16G-D0:            ACCEPTED / FROZEN
 16G-I1…I5:         ACCEPTED
 GAP-16G-01:         ACCEPTED
-GAP-16G-02:         IMPLEMENTATION COMPLETE / HUMAN ACCEPTED /
-                   CLOSEOUT REVIEW PENDING
+GAP-16G-02:         CLOSEOUT ACCEPTED
+                   IR-002 ACCEPT / HA-001 ACCEPTED
+                   HUMAN-ACCEPTED SUBJECT: e5d116b8a2990f3b0ac7f3fe1cbf052b4f6ac087
                    ACCEPTED IMPLEMENTATION: 120c03cd79f3af142144a6b73e05bcb43fdacb76
                    CLOSEOUT: docs/gap16g_02_gold_baseline_bootstrap_closeout.md
+                   MAIN PROMOTION: NOT AUTHORIZED
 16G-I6 / 16H:      NOT AUTHORIZED
 9G:                DEFERRED / NOT AUTHORIZED
 SLICE 17 / 18:     NOT AUTHORIZED
@@ -1163,8 +1165,10 @@ Also projected from that addendum (current disposition):
 ```text
 GAP-16G-01: ACCEPTED
 GAP-16G-02:
-IMPLEMENTATION COMPLETE / HUMAN ACCEPTED
-CLOSEOUT REVIEW PENDING
+CLOSEOUT ACCEPTED
+IR-002 ACCEPT / HA-001 ACCEPTED
+Exact Human-accepted closeout subject: e5d116b8a2990f3b0ac7f3fe1cbf052b4f6ac087
+Main promotion: NOT AUTHORIZED
 Closeout: docs/gap16g_02_gold_baseline_bootstrap_closeout.md
 ```
 
@@ -1255,7 +1259,7 @@ Foundation
   -> performance benchmarks              (Slice 14 COMPLETE / ACCEPTED)
   -> product API + packaging             (Slice 15 COMPLETE / ACCEPTED)
   -> Slice 15 integration closeout       (15H COMPLETE / ACCEPTED)
-  -> Seneca / Portfolio Demo UI          (Slice 16 IN PROGRESS; 16D-C / 16E / 16F COMPLETE / ACCEPTED / SEALED; 16G-D0 ACCEPTED / FROZEN; 16G-I1…I5 / GAP-16G-01 ACCEPTED; GAP-16G-02 IMPLEMENTATION COMPLETE / HUMAN ACCEPTED / CLOSEOUT REVIEW PENDING; 16G-I6 / 16H NOT AUTHORIZED)
+  -> Seneca / Portfolio Demo UI          (Slice 16 IN PROGRESS; 16D-C / 16E / 16F COMPLETE / ACCEPTED / SEALED; 16G-D0 ACCEPTED / FROZEN; 16G-I1…I5 / GAP-16G-01 ACCEPTED; GAP-16G-02 CLOSEOUT ACCEPTED (HA-001 / IR-002; subject e5d116b8…; main promotion NOT AUTHORIZED); 16G-I6 / 16H NOT AUTHORIZED)
   -> Regression CI                       (Slice 17 NOT AUTHORIZED)
   -> Portfolio release package           (Slice 18 NOT AUTHORIZED)
   -> Milestone 7 closeout                (NOT AUTHORIZED)

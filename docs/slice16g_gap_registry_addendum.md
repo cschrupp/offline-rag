@@ -44,8 +44,12 @@ GAP-16G-01: ACCEPTED
 16G-I5: ACCEPTED
 
 GAP-16G-02:
-IMPLEMENTATION COMPLETE / HUMAN ACCEPTED
-CLOSEOUT REVIEW PENDING
+CLOSEOUT ACCEPTED
+Independent closeout review: GAP-16G-02-CLOSEOUT-IR-002 — ACCEPT
+Human closeout acceptance: GAP-16G-02-CLOSEOUT-HA-001 — ACCEPTED
+Exact Human-accepted closeout subject:
+e5d116b8a2990f3b0ac7f3fe1cbf052b4f6ac087
+Main promotion: NOT AUTHORIZED
 
 Accepted design:
 4b872cc0e9caf3323196cc2c3afe4772e249f191
@@ -56,7 +60,7 @@ Accepted design blob:
 Accepted implementation:
 120c03cd79f3af142144a6b73e05bcb43fdacb76
 
-Closeout candidate:
+Closeout:
 docs/gap16g_02_gold_baseline_bootstrap_closeout.md
 
 16G-I6: NOT AUTHORIZED
@@ -82,8 +86,12 @@ DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED
 Authority: DOC-GAPS-REGISTER-AUTH-001
 
 Current disposition:
-IMPLEMENTATION COMPLETE / HUMAN ACCEPTED
-CLOSEOUT REVIEW PENDING
+CLOSEOUT ACCEPTED
+Independent closeout review: GAP-16G-02-CLOSEOUT-IR-002 — ACCEPT
+Human closeout acceptance: GAP-16G-02-CLOSEOUT-HA-001 — ACCEPTED
+Exact Human-accepted closeout subject:
+e5d116b8a2990f3b0ac7f3fe1cbf052b4f6ac087
+Main promotion: NOT AUTHORIZED
 
 Accepted design:
 4b872cc0e9caf3323196cc2c3afe4772e249f191

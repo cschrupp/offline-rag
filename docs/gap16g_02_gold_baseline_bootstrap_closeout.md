@@ -1,12 +1,15 @@
 # GAP-16G-02 — Gold Baseline Bootstrap
-## CLOSEOUT CANDIDATE
+## CLOSEOUT ACCEPTED (Human-accepted subject preserved)
 
 ```text
 GAP-16G-02 — GOLD BASELINE BOOTSTRAP
-CLOSEOUT CANDIDATE
+CLOSEOUT ACCEPTED
+
+DESIGN:
+ACCEPTED / FROZEN
 
 IMPLEMENTATION:
-COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED
+COMPLETE / HUMAN ACCEPTED
 
 ACCEPTED IMPLEMENTATION:
 120c03cd79f3af142144a6b73e05bcb43fdacb76
@@ -23,16 +26,25 @@ GAP-16G-02-IMPL-IR-003 — ACCEPT
 HUMAN IMPLEMENTATION ACCEPTANCE:
 ACCEPTED
 
+INTEGRATION:
+COMPLETE
+
 INDEPENDENT CLOSEOUT REVIEW:
-PENDING
+GAP-16G-02-CLOSEOUT-IR-002 — ACCEPT
 
 HUMAN CLOSEOUT ACCEPTANCE:
-PENDING
+GAP-16G-02-CLOSEOUT-HA-001 — ACCEPTED
+
+HUMAN-ACCEPTED CLOSEOUT SUBJECT:
+e5d116b8a2990f3b0ac7f3fe1cbf052b4f6ac087
 
 MAIN PROMOTION:
 NOT AUTHORIZED
 
 16G-I6:
+NOT AUTHORIZED
+
+16H:
 NOT AUTHORIZED
 
 9G:
@@ -45,19 +57,37 @@ SLICE 16:
 IN PROGRESS / NOT COMPLETE
 ```
 
+### Acceptance subject vs governance-recording successor
+
+```text
+Exact independently reviewed and Human-accepted closeout subject:
+e5d116b8a2990f3b0ac7f3fe1cbf052b4f6ac087
+
+Any later commit on finalization/gap-16g-02-closeout that only records
+GAP-16G-02-CLOSEOUT-HA-001 is a governance reconciliation successor.
+It does NOT replace e5d116b8… as the accepted closeout subject and is
+NOT a newly reviewed implementation or acceptance tip.
+```
+
 ## Authority
 
 ```text
-Authority:
+Closeout preparation authority:
 GAP-16G-02-CLOSEOUT-AUTH-001 — AUTHORIZED
 
-Purpose:
-Integrate the Human-accepted GAP-16G-02 implementation lineage onto a
-finalization branch from canonical main, and prepare a closeout candidate
-for independent closeout review.
+Closeout rework authority:
+GAP-16G-02-CLOSEOUT-REWORK-AUTH-001 — AUTHORIZED
 
-This document is a closeout candidate, not a sealed record.
-Do not treat SEALED / CLOSED / PROMOTED as current state under this tip.
+Independent closeout review:
+GAP-16G-02-CLOSEOUT-IR-002 — ACCEPT
+
+Human closeout acceptance:
+GAP-16G-02-CLOSEOUT-HA-001 — ACCEPTED
+
+HUMAN CLOSEOUT ACCEPTANCE != MAIN PROMOTION AUTHORITY
+
+Main promotion remains NOT AUTHORIZED until a separate Human promotion
+authority names an exact fast-forward target.
 ```
 
 ## Accepted design / implementation
@@ -260,12 +290,18 @@ git diff --check:
 PASS
 ```
 
-## Current disposition (not sealed)
+## Current disposition
 
 ```text
 GAP-16G-02:
-IMPLEMENTATION COMPLETE / HUMAN ACCEPTED
-CLOSEOUT REVIEW PENDING
+Design: ACCEPTED / FROZEN
+Implementation: COMPLETE / HUMAN ACCEPTED
+Independent implementation review: ACCEPT
+Integration: COMPLETE
+Independent closeout review: GAP-16G-02-CLOSEOUT-IR-002 — ACCEPT
+Human closeout acceptance: GAP-16G-02-CLOSEOUT-HA-001 — ACCEPTED
+Exact Human-accepted closeout subject: e5d116b8a2990f3b0ac7f3fe1cbf052b4f6ac087
+Main promotion: NOT AUTHORIZED
 
 16G-I6:
 NOT AUTHORIZED
@@ -286,7 +322,20 @@ Slice 16:
 IN PROGRESS / NOT COMPLETE
 ```
 
-## Invariants preserved by this closeout candidate
+### Historical closeout-candidate pending state (provenance only)
+
+Before GAP-16G-02-CLOSEOUT-IR-002 / HA-001, the closeout candidate tip
+`e5d116b8a2990f3b0ac7f3fe1cbf052b4f6ac087` carried:
+
+```text
+INDEPENDENT CLOSEOUT REVIEW: PENDING
+HUMAN CLOSEOUT ACCEPTANCE: PENDING
+```
+
+That pending language is historical provenance of the pre-acceptance record
+and is **not** the current GAP-16G-02 disposition.
+
+## Invariants preserved by the Human-accepted closeout subject
 
 ```text
 Accepted implementation SHA preserved: YES
@@ -302,7 +351,42 @@ Gold semantics changed: NO
 9G activated: NO
 16G-I6 opened: NO
 ALLOW_PRODUCTION: UNCHANGED / EMPTY
-Independent closeout review: PENDING
-Human closeout acceptance: PENDING
+Independent closeout review: GAP-16G-02-CLOSEOUT-IR-002 — ACCEPT
+Human closeout acceptance: GAP-16G-02-CLOSEOUT-HA-001 — ACCEPTED
+Exact Human-accepted closeout subject: e5d116b8a2990f3b0ac7f3fe1cbf052b4f6ac087
 Main promotion: NOT AUTHORIZED
+```
+
+## Human closeout acceptance provenance
+
+```text
+Human decision:
+GAP-16G-02-CLOSEOUT-HA-001 — ACCEPTED
+
+Exact accepted subject:
+e5d116b8a2990f3b0ac7f3fe1cbf052b4f6ac087
+
+Independent review:
+GAP-16G-02-CLOSEOUT-IR-002 — ACCEPT
+
+Closeout rework start:
+14de3c9e01337a3ba98f71ef0b82ba51b76a4bf7
+
+Integration merge:
+d26f0f8152df9faabc89199fc29a2f24c8a6e74c
+
+Integration parent 1:
+1c4e62a16f7e6b3f8cbf1efada2bafce7bc0f0d8
+
+Integration parent 2:
+120c03cd79f3af142144a6b73e05bcb43fdacb76
+
+Accepted implementation:
+120c03cd79f3af142144a6b73e05bcb43fdacb76
+
+Accepted design blob:
+4e9714bd18c7d71316a993e6df2e133f72f596ad
+
+Frozen 16G-D0:
+edc2be739621dbedfc44ed77861119a35f8f6d18
 ```
