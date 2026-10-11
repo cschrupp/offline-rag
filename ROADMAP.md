@@ -119,9 +119,12 @@ human gold work. Slice **9G** remains **DEFERRED / NOT AUTHORIZED** and is
 **not** resumed by Slice 16 design acceptance/lock.
 
 **GAP-16G-02 — Gold baseline bootstrap / candidate-generation product flow:**
-**DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED.** Seneca still lacks
-browser orchestration for existing Slice 9B proposal + 9C pooling (+ optional
-9D advisory prelabel) before Gold Lab campaign creation. See
+**IMPLEMENTATION COMPLETE / HUMAN ACCEPTED / CLOSEOUT REVIEW PENDING.**
+Seneca now provides the accepted browser orchestration over existing
+9B proposal → 9C pooling → optional advisory 9D, producing an eligible
+Gold Lab baseline. See
+[`docs/gap16g_02_gold_baseline_bootstrap_closeout.md`](docs/gap16g_02_gold_baseline_bootstrap_closeout.md)
+and
 [`docs/slice16g_gap_registry_addendum.md`](docs/slice16g_gap_registry_addendum.md).
 Slice **9G** remains **DEFERRED / NOT AUTHORIZED**.
 

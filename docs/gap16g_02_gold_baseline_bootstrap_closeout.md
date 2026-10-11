@@ -192,29 +192,72 @@ GAP-16G-02:  120c03cd79f3af142144a6b73e05bcb43fdacb76
 ## Closeout integration topology
 
 ```text
-Canonical main (parent 1):
+Integration merge:
+d26f0f8152df9faabc89199fc29a2f24c8a6e74c
+
+Parent 1 (canonical main):
 1c4e62a16f7e6b3f8cbf1efada2bafce7bc0f0d8
 
-Accepted implementation (parent 2):
+Parent 2 (accepted implementation):
 120c03cd79f3af142144a6b73e05bcb43fdacb76
 
 Merge-base:
 84f9e1bba1516de173ff0f2d495d7a00f35abb8d
 
+Merge conflicts:
+NONE
+
 Branch:
 finalization/gap-16g-02-closeout
 ```
 
-Expected topology:
+Actual integration topology:
 
 ```text
 84f9e1bb
 ├── 1c4e62a      canonical registry commit
 │        \
-│         M      finalization integration merge
+│         d26f0f81  finalization integration merge
 │        /
 └── ... → 120c03cd
          accepted 16G + GAP-16G-02 lineage
+                 |
+            14de3c9e  docs-only closeout candidate
+                      (+ subsequent docs-only rework commits)
+```
+
+## Merged-finalization validation
+
+Evidence captured on the integrated finalization branch after the exact merge
+`d26f0f8152df9faabc89199fc29a2f24c8a6e74c` (and before/alongside the docs-only
+closeout reconciliation commits):
+
+```text
+GAP-16G-02:
+19 passed
+
+9B / 9C / 9D:
+60 passed
+
+Gold Lab (16F-D API + historical):
+18 passed
+
+Workspace / ManagedOperation
+(16a foundation + 16b workspace API + publication journal + 16F-D):
+58 passed
+
+Frontend:
+24 GAP-16G-02 + I1 tests
+11 Slice-16C static tests
+tsc -b PASS
+vite build PASS
+
+Real persistent-Qdrant 9C proof
+(test_r1_real_persistent_qdrant_nine_c_product_path):
+PASS
+
+git diff --check:
+PASS
 ```
 
 ## Current disposition (not sealed)
@@ -250,7 +293,8 @@ Accepted implementation SHA preserved: YES
 Accepted design blob preserved: YES
 Canonical main registry commit preserved: YES
 Merge ancestry: MAIN + EXACT ACCEPTED IMPLEMENTATION
-Unaccepted/rejected candidate promoted: NO
+Rejected/intermediate candidates designated as accepted authority: NO
+Historical rejected/intermediate commits remain in ancestry: YES / provenance only
 Additional scientific change: NO
 Additional production-code change after merge: NO (docs/governance only)
 Second authoring pipeline: NO
@@ -258,4 +302,7 @@ Gold semantics changed: NO
 9G activated: NO
 16G-I6 opened: NO
 ALLOW_PRODUCTION: UNCHANGED / EMPTY
+Independent closeout review: PENDING
+Human closeout acceptance: PENDING
+Main promotion: NOT AUTHORIZED
 ```

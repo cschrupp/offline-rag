@@ -95,9 +95,11 @@ Closeout:
 docs/gap16g_02_gold_baseline_bootstrap_closeout.md
 ```
 
-### Problem statement
+### Historical registered problem statement
 
-Gold Lab currently:
+At the time GAP-16G-02 was registered under `DOC-GAPS-REGISTER-AUTH-001`:
+
+Gold Lab could:
 
 ```text
 CAN:
@@ -106,14 +108,14 @@ CAN:
   perform human Gold adjudication
 ```
 
-but the Seneca browser UI currently:
+but the Seneca browser UI could not:
 
 ```text
 CANNOT:
   create the pristine baseline that Gold Lab requires
 ```
 
-Today the user must leave Seneca and use the existing CLI:
+Users had to leave Seneca and use the existing CLI:
 
 ```text
 offline-rag gold propose
@@ -121,11 +123,41 @@ offline-rag gold pool
 optional: offline-rag gold prelabel
 ```
 
-This is a **product-orchestration gap**, not a missing scientific subsystem.
+That registration-time gap was a **product-orchestration gap**, not a missing
+scientific subsystem. The wording above is **historical provenance only** and
+is **not** the current Seneca capability claim.
 
-### Existing authorities that must be reused
+### Accepted implemented product flow
 
-A future product flow **MUST** reuse:
+Current disposition after Human-accepted implementation
+`120c03cd79f3af142144a6b73e05bcb43fdacb76`:
+
+```text
+Gold Project
+        ↓
+exact workspace publication
+        ↓
+9B propose
+        ↓
+9C pool
+        ↓
+optional advisory 9D
+        ↓
+pristine baseline validation
+        ↓
+Gold Lab baseline
+        ↓
+explicit campaign creation
+        ↓
+Human adjudication games
+```
+
+Server/application layers remain scientific authority.
+The browser is orchestration/presentation only.
+
+### Existing authorities reused by the accepted implementation
+
+The accepted implementation reuses:
 
 | Authority | Role |
 |---|---|
@@ -137,31 +169,6 @@ A future product flow **MUST** reuse:
 | Workspace publication | existing snapshot / corpus / chunk-set identity |
 
 No second authoring pipeline.
-
-### Expected future baseline-bootstrap flow
-
-```text
-Workspace / current publication
-        ↓
-Choose authoring proposal budget
-        ↓
-Generate candidate cases/questions
-        ↓
-Pool candidate evidence
-        ↓
-Optional advisory prelabel
-        ↓
-Validate pristine GoldAuthoringRun
-        ↓
-Expose as eligible Gold Lab baseline
-        ↓
-Create campaign
-        ↓
-Human adjudication games
-```
-
-Server/application layers remain scientific authority.
-The browser is orchestration/presentation only.
 
 ### Registration-level invariants
 
