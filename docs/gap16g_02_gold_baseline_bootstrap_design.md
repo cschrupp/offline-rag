@@ -1604,7 +1604,7 @@ Starting product tip:
 35ec9be5647d41c887eb280146c05b9688dea685
 
 Design tip:
-<filled at commit>
+650ed772ea7f0b710f504af84ae59b16796d51a9
 
 Frozen 16G-D0 blob:
 edc2be739621dbedfc44ed77861119a35f8f6d18
