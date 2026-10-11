@@ -12,6 +12,8 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 from offline_rag.app.errors import AppError, ErrorCode, SafeErrorDetails
 from offline_rag.app.workspace.leases import WorkspaceMutationLease
 from offline_rag.app.workspace.models import (
+    GoldLabBaselineBootstrapAuthority,
+    GoldLabBaselineBootstrapResult,
     ManagedOperationKind,
     ManagedOperationRecord,
     ManagedOperationResult,
@@ -22,6 +24,10 @@ from offline_rag.app.workspace.models import (
     canonical_operation_fingerprint,
     new_operation_id,
     utc_now,
+)
+
+ManagedOperationTerminalResult = (
+    ManagedOperationResult | GoldLabBaselineBootstrapResult | None
 )
 from offline_rag.config.models import AppSettings
 from offline_rag.ingestion.io import atomic_write_text
@@ -48,6 +54,7 @@ _LEGAL_TRANSITIONS: dict[ManagedOperationStatus, frozenset[ManagedOperationStatu
         {
             ManagedOperationStatus.PREPARING,
             ManagedOperationStatus.RUNNING,
+            ManagedOperationStatus.SUCCEEDED,  # GAP-16G-02 startup reconciliation
             ManagedOperationStatus.FAILED,
             ManagedOperationStatus.INTERRUPTED,
         }
@@ -55,6 +62,7 @@ _LEGAL_TRANSITIONS: dict[ManagedOperationStatus, frozenset[ManagedOperationStatu
     ManagedOperationStatus.PREPARING: frozenset(
         {
             ManagedOperationStatus.RUNNING,
+            ManagedOperationStatus.SUCCEEDED,  # GAP-16G-02 startup reconciliation
             ManagedOperationStatus.FAILED,
             ManagedOperationStatus.INTERRUPTED,
         }
@@ -133,8 +141,10 @@ class ManagedOperationStore:
         return self._ops_root(workspace_id) / "by_id" / f"{operation_id}.json"
 
     def _idem_path(self, workspace_id: str, idempotency_key: str) -> Path:
-        return self._ops_root(workspace_id) / "by_idempotency" / _idempotency_filename(
-            idempotency_key
+        return (
+            self._ops_root(workspace_id)
+            / "by_idempotency"
+            / _idempotency_filename(idempotency_key)
         )
 
     def locator_path(self, operation_id: str) -> Path:
@@ -180,6 +190,7 @@ class ManagedOperationStore:
         expected_revision: WorkspaceRevision | None = None,
         status: ManagedOperationStatus = ManagedOperationStatus.PENDING,
         lease: WorkspaceMutationLease | None = None,
+        bootstrap_authority: GoldLabBaselineBootstrapAuthority | None = None,
     ) -> tuple[ManagedOperationRecord, bool]:
         """Create or recover an operation under strict fingerprint identity.
 
@@ -245,6 +256,7 @@ class ManagedOperationStore:
                 status=status,
                 created_at=now,
                 updated_at=now,
+                bootstrap_authority=bootstrap_authority,
             )
             op_path = self._op_path(workspace_id, record.operation_id)
             locator = self.locator_path(record.operation_id)
@@ -275,6 +287,7 @@ class ManagedOperationStore:
         expected_revision: WorkspaceRevision | None = None,
         status: ManagedOperationStatus = ManagedOperationStatus.PENDING,
         lease: WorkspaceMutationLease | None = None,
+        bootstrap_authority: GoldLabBaselineBootstrapAuthority | None = None,
     ) -> ManagedOperationRecord:
         record, _created = self.reserve(
             workspace_id=workspace_id,
@@ -284,6 +297,7 @@ class ManagedOperationStore:
             expected_revision=expected_revision,
             status=status,
             lease=lease,
+            bootstrap_authority=bootstrap_authority,
         )
         return record
 
@@ -359,8 +373,9 @@ class ManagedOperationStore:
         failure_summary: str | None = None,
         recovery_note: str | None = None,
         progress_stage: OperationProgressStage | None = None,
-        result: ManagedOperationResult | None = None,
+        result: ManagedOperationTerminalResult = None,
         error: ManagedOperationSafeError | None = None,
+        bootstrap_authority: GoldLabBaselineBootstrapAuthority | None = None,
         lease: WorkspaceMutationLease | None = None,
     ) -> ManagedOperationRecord:
         """Advance operation state and/or attach progress and terminal payloads.
@@ -392,6 +407,9 @@ class ManagedOperationStore:
                     else record.progress_stage,
                     "result": result if result is not None else record.result,
                     "error": error if error is not None else record.error,
+                    "bootstrap_authority": bootstrap_authority
+                    if bootstrap_authority is not None
+                    else record.bootstrap_authority,
                 }
             )
             atomic_write_text(

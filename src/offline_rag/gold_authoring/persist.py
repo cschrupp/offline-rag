@@ -39,8 +39,20 @@ def default_authoring_gold_dir(
     )
 
 
+def serialize_authoring_run_bytes(run: GoldAuthoringRun) -> bytes:
+    """Exact UTF-8 JSON bytes used for hashing and atomic canonical writes."""
+    return run.model_dump_json().encode("utf-8")
+
+
 def write_authoring_run(path: Path, run: GoldAuthoringRun) -> None:
     atomic_write_text(path, run.model_dump_json())
+
+
+def write_authoring_run_bytes(path: Path, payload: bytes) -> None:
+    """Atomically write pre-serialized authoring-run bytes (hash/write identity)."""
+    from offline_rag.ingestion.io import atomic_write_bytes
+
+    atomic_write_bytes(path, payload)
 
 
 def load_authoring_run(path: Path) -> GoldAuthoringRun:
