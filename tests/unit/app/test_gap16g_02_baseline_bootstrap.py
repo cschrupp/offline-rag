@@ -758,3 +758,368 @@ def test_allow_production_file_unchanged() -> None:
     else:
         # Absent file is the empty/unchanged production gate.
         assert not path.exists()
+
+
+# --- IMPL-REWORK-AUTH-001 regressions -------------------------------------
+
+
+def test_r1_injected_qdrant_avoids_second_storage_owner(tmp_path: Path) -> None:
+    """Product 9C must reuse runtime-owned persistent Qdrant Local."""
+    from offline_rag.gold_authoring.pool_arms import HistoricalPoolArmExecutor
+
+    settings = _authoring_ready(_integrity_settings(tmp_path))
+    constructions: list[Path] = []
+
+    class TrackingBackend:
+        def __init__(self, storage_path):  # type: ignore[no-untyped-def]
+            constructions.append(Path(storage_path))
+            self.storage_path = Path(storage_path)
+            self._client = object()
+
+        def close(self) -> None:
+            self._client = None
+
+        def search(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+            return []
+
+    owner = TrackingBackend(settings.paths.qdrant_storage)
+    assert len(constructions) == 1
+
+    with patch(
+        "offline_rag.gold_authoring.pool_arms.QdrantLocalBackend", TrackingBackend
+    ):
+        executor = HistoricalPoolArmExecutor(settings, qdrant=owner)  # type: ignore[arg-type]
+        assert executor._qdrant is owner
+        assert executor._owns_qdrant is False
+        assert len(constructions) == 1
+        executor.close()
+        assert owner._client is not None
+
+        owned = HistoricalPoolArmExecutor(settings)
+        assert owned._owns_qdrant is True
+        assert owned._qdrant is None
+        # Same lazy construction site used by _dense_hits when no owner injected.
+        from offline_rag.gold_authoring import pool_arms as pool_arms_mod
+
+        owned._qdrant = pool_arms_mod.QdrantLocalBackend(settings.paths.qdrant_storage)
+        assert len(constructions) == 2
+        owned.close()
+        assert owned._qdrant is None
+
+
+def test_r1_bootstrap_passes_runtime_qdrant_into_pool(tmp_path: Path) -> None:
+    settings, runtime, project, workspace, corpus_id, chunk_set_id, _ = (
+        _project_and_workspace(tmp_path)
+    )
+    svc = GoldLabBaselineBootstrapService(runtime)
+    seen: dict[str, object] = {}
+
+    def propose(settings_arg, **kwargs):
+        run = _reviewable_run(
+            corpus_id=corpus_id,
+            chunk_set_id=chunk_set_id,
+            authoring_run_id=kwargs["authoring_run_id"],
+            sampling_seed=kwargs["seed"],
+        )
+        path = kwargs["output"]
+        path.parent.mkdir(parents=True, exist_ok=True)
+        write_authoring_run_bytes(path, serialize_authoring_run_bytes(run))
+        from offline_rag.gold_authoring.propose import ProposeJobResult
+
+        return ProposeJobResult(exit_code=0, run=run, output_path=path)
+
+    def pool(settings_arg, **kwargs):
+        seen["executor"] = kwargs.get("executor")
+        from offline_rag.gold_authoring.persist import load_authoring_run
+        from offline_rag.gold_authoring.pool import PoolJobResult
+
+        run = load_authoring_run(kwargs["run_path"])
+        return PoolJobResult(exit_code=0, run=run, output_path=kwargs["run_path"])
+
+    with (
+        patch(
+            "offline_rag.app.gold_lab.bootstrap.run_gold_propose_on_snapshot",
+            side_effect=propose,
+        ),
+        patch("offline_rag.app.gold_lab.bootstrap.run_gold_pool", side_effect=pool),
+        patch(
+            "offline_rag.app.gold_lab.bootstrap.build_eligible_population",
+            return_value=[object()] * 50,
+        ),
+        patch(
+            "offline_rag.app.gold_lab.bootstrap.validate_historical_chunk_identities",
+            return_value=None,
+        ),
+    ):
+        record = svc.start_baseline_bootstrap(
+            project_id=project.project_id,
+            proposal_count=3,
+            prelabel_enabled=False,
+            idempotency_key="r1-qdrant",
+        )
+        deadline = time.time() + 10
+        ops = ManagedOperationStore(settings)
+        while time.time() < deadline:
+            current = ops.get(workspace.workspace_id, record.operation_id)
+            if current.status is ManagedOperationStatus.SUCCEEDED:
+                break
+            time.sleep(0.05)
+        assert current.status is ManagedOperationStatus.SUCCEEDED
+    executor = seen["executor"]
+    assert executor is not None
+    assert getattr(executor, "_qdrant", None) is runtime.resources.qdrant
+    assert getattr(executor, "_owns_qdrant", True) is False
+
+
+def test_r2_pool_and_prelabel_persistence_failures(tmp_path: Path) -> None:
+    from offline_rag.gold_authoring.pool import PoolJobResult
+    from offline_rag.gold_authoring.prelabel import PrelabelJobResult
+    from offline_rag.gold_authoring.propose import ProposeJobResult
+
+    settings, runtime, project, workspace, corpus_id, chunk_set_id, _ = (
+        _project_and_workspace(tmp_path)
+    )
+    svc = GoldLabBaselineBootstrapService(runtime)
+
+    def propose(settings_arg, **kwargs):
+        run = _reviewable_run(
+            corpus_id=corpus_id,
+            chunk_set_id=chunk_set_id,
+            authoring_run_id=kwargs["authoring_run_id"],
+            sampling_seed=kwargs["seed"],
+        )
+        path = kwargs["output"]
+        path.parent.mkdir(parents=True, exist_ok=True)
+        write_authoring_run_bytes(path, serialize_authoring_run_bytes(run))
+        return ProposeJobResult(exit_code=0, run=run, output_path=path)
+
+    def pool_persist_fail(settings_arg, **kwargs):
+        return PoolJobResult(
+            exit_code=2,
+            run=None,
+            output_path=None,
+            message="failed to persist enriched authoring run: /secret/pool.json",
+        )
+
+    with (
+        patch(
+            "offline_rag.app.gold_lab.bootstrap.run_gold_propose_on_snapshot",
+            side_effect=propose,
+        ),
+        patch(
+            "offline_rag.app.gold_lab.bootstrap.run_gold_pool",
+            side_effect=pool_persist_fail,
+        ),
+        patch(
+            "offline_rag.app.gold_lab.bootstrap.build_eligible_population",
+            return_value=[object()] * 50,
+        ),
+    ):
+        record = svc.start_baseline_bootstrap(
+            project_id=project.project_id,
+            proposal_count=2,
+            prelabel_enabled=False,
+            idempotency_key="r2-pool",
+        )
+        deadline = time.time() + 10
+        ops = ManagedOperationStore(settings)
+        while time.time() < deadline:
+            current = ops.get(workspace.workspace_id, record.operation_id)
+            if current.status is ManagedOperationStatus.FAILED:
+                break
+            time.sleep(0.05)
+        assert current.error is not None
+        assert current.error.details["reason"] == "bootstrap_internal_failure"
+        assert "/secret/pool.json" not in (current.error.message or "")
+
+    def pool_ok(settings_arg, **kwargs):
+        from offline_rag.gold_authoring.persist import load_authoring_run
+
+        run = load_authoring_run(kwargs["run_path"])
+        return PoolJobResult(exit_code=0, run=run, output_path=kwargs["run_path"])
+
+    def prelabel_persist_fail(settings_arg, **kwargs):
+        return PrelabelJobResult(
+            exit_code=2,
+            run=None,
+            output_path=None,
+            message="failed to persist: /secret/prelabel.json provider=boom",
+        )
+
+    with (
+        patch(
+            "offline_rag.app.gold_lab.bootstrap.run_gold_propose_on_snapshot",
+            side_effect=propose,
+        ),
+        patch("offline_rag.app.gold_lab.bootstrap.run_gold_pool", side_effect=pool_ok),
+        patch(
+            "offline_rag.app.gold_lab.bootstrap.run_gold_prelabel",
+            side_effect=prelabel_persist_fail,
+        ),
+        patch(
+            "offline_rag.app.gold_lab.bootstrap.build_eligible_population",
+            return_value=[object()] * 50,
+        ),
+    ):
+        record = svc.start_baseline_bootstrap(
+            project_id=project.project_id,
+            proposal_count=2,
+            prelabel_enabled=True,
+            idempotency_key="r2-prelabel",
+        )
+        deadline = time.time() + 10
+        while time.time() < deadline:
+            current = ops.get(workspace.workspace_id, record.operation_id)
+            if current.status is ManagedOperationStatus.FAILED:
+                break
+            time.sleep(0.05)
+        assert current.error is not None
+        assert current.error.details["reason"] == "bootstrap_internal_failure"
+        blob = json.dumps(current.error.model_dump(mode="json"))
+        assert "/secret/prelabel.json" not in blob
+        assert "provider=boom" not in blob
+
+
+def test_r3_worker_launch_failure_returns_failed_op(tmp_path: Path) -> None:
+    _settings, runtime, project, _workspace, *_ = _project_and_workspace(tmp_path)
+    svc = GoldLabBaselineBootstrapService(runtime)
+    with patch("threading.Thread.start", side_effect=RuntimeError("thread boom")):
+        record = svc.start_baseline_bootstrap(
+            project_id=project.project_id,
+            proposal_count=2,
+            prelabel_enabled=False,
+            idempotency_key="r3-launch",
+        )
+    assert record.status is ManagedOperationStatus.FAILED
+    assert record.error is not None
+    assert record.error.details["reason"] == "bootstrap_internal_failure"
+    # Capacity released — a subsequent admit can acquire again.
+    control = runtime.operations.admit_gold_bootstrap()
+    runtime.operations.release(control)
+
+
+def test_r3_publication_capture_failure_is_post_admission(tmp_path: Path) -> None:
+    settings, runtime, project, workspace, *_ = _project_and_workspace(tmp_path)
+    svc = GoldLabBaselineBootstrapService(runtime)
+    with patch.object(
+        runtime.publication,
+        "resolve_snapshot",
+        side_effect=RuntimeError("bind failed /secret/snap.json"),
+    ):
+        record = svc.start_baseline_bootstrap(
+            project_id=project.project_id,
+            proposal_count=2,
+            prelabel_enabled=False,
+            idempotency_key="r3-capture",
+        )
+    assert record.status is ManagedOperationStatus.FAILED
+    assert record.error is not None
+    assert record.error.code is ErrorCode.SNAPSHOT_UNAVAILABLE
+    assert record.error.details["reason"] == "captured_chunk_set_unavailable"
+    assert "/secret/snap.json" not in record.error.message
+    stored = ManagedOperationStore(settings).find_by_idempotency(
+        workspace.workspace_id, "r3-capture"
+    )
+    assert stored is not None
+    assert stored.operation_id == record.operation_id
+
+
+def test_r5_zero_reviewable_reconcile_not_succeeded(tmp_path: Path) -> None:
+    settings, runtime, project, workspace, corpus_id, chunk_set_id, snap_id = (
+        _project_and_workspace(tmp_path)
+    )
+    ops = ManagedOperationStore(settings)
+    authoring_run_id = "authorrun_zero_review"
+    run = GoldAuthoringRun(
+        authoring_run_id=authoring_run_id,
+        authorcfg_id="authorcfg_" + ("a" * 64),
+        network_policy="localhost_only",
+        created_at=datetime.now(tz=UTC),
+        corpus_name=CORPUS_NAME,
+        corpus_id=corpus_id,
+        chunk_set_id=chunk_set_id,
+        sampling_seed=1,
+        cases=[
+            SilverCase(
+                draft_case_id="draft_inert",
+                proposed_query="ignored",
+                candidates=[],
+            )
+        ],
+    )
+    final_bytes = serialize_authoring_run_bytes(run)
+    expected_sha = hashlib.sha256(final_bytes).hexdigest()
+    canonical = default_authoring_run_path(
+        settings, corpus_name=CORPUS_NAME, authoring_run_id=authoring_run_id
+    )
+    canonical.parent.mkdir(parents=True, exist_ok=True)
+    write_authoring_run_bytes(canonical, final_bytes)
+    record, _ = ops.reserve(
+        workspace_id=workspace.workspace_id,
+        idempotency_key="r5-zero",
+        kind=ManagedOperationKind.GOLD_LAB_BASELINE_BOOTSTRAP,
+        request_payload={
+            "project_id": project.project_id,
+            "proposal_count": 5,
+            "prelabel_enabled": False,
+        },
+        expected_revision=None,
+    )
+    auth = GoldLabBaselineBootstrapAuthority(
+        project_id=project.project_id,
+        workspace_id=workspace.workspace_id,
+        workspace_revision=workspace.revision,
+        snapshot_id=snap_id,
+        corpus_name=CORPUS_NAME,
+        corpus_id=corpus_id,
+        chunk_set_id=chunk_set_id,
+        authoring_run_id=authoring_run_id,
+        proposal_count=5,
+        sampling_seed=1,
+        prelabel_enabled=False,
+        expected_final_artifact_sha256=expected_sha,
+        reviewable_case_count=0,
+    )
+    ops.update_status(
+        workspace.workspace_id,
+        record.operation_id,
+        ManagedOperationStatus.RUNNING,
+        bootstrap_authority=auth,
+    )
+    out = reconcile_gold_bootstrap_operations(runtime)
+    assert record.operation_id in out["left_for_interrupt"]
+    still = ops.get(workspace.workspace_id, record.operation_id)
+    assert still.status is ManagedOperationStatus.RUNNING
+    assert still.result is None
+
+
+def test_r6_workspace_ops_cannot_jump_to_succeeded(tmp_path: Path) -> None:
+    settings, _runtime, _project, workspace, *_ = _project_and_workspace(tmp_path)
+    ops = ManagedOperationStore(settings)
+    record, _ = ops.reserve(
+        workspace_id=workspace.workspace_id,
+        idempotency_key="r6-ws",
+        kind=ManagedOperationKind.SOURCE_ADD,
+        request_payload={"files": ["a.pdf"]},
+        expected_revision=1,
+    )
+    with pytest.raises(AppError) as exc:
+        ops.update_status(
+            workspace.workspace_id,
+            record.operation_id,
+            ManagedOperationStatus.SUCCEEDED,
+        )
+    assert exc.value.details["reason"] == "illegal_operation_status_transition"
+    prep = ops.update_status(
+        workspace.workspace_id,
+        record.operation_id,
+        ManagedOperationStatus.PREPARING,
+    )
+    assert prep.status is ManagedOperationStatus.PREPARING
+    with pytest.raises(AppError) as exc2:
+        ops.update_status(
+            workspace.workspace_id,
+            record.operation_id,
+            ManagedOperationStatus.SUCCEEDED,
+        )
+    assert exc2.value.details["reason"] == "illegal_operation_status_transition"

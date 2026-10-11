@@ -54,7 +54,6 @@ _LEGAL_TRANSITIONS: dict[ManagedOperationStatus, frozenset[ManagedOperationStatu
         {
             ManagedOperationStatus.PREPARING,
             ManagedOperationStatus.RUNNING,
-            ManagedOperationStatus.SUCCEEDED,  # GAP-16G-02 startup reconciliation
             ManagedOperationStatus.FAILED,
             ManagedOperationStatus.INTERRUPTED,
         }
@@ -62,7 +61,6 @@ _LEGAL_TRANSITIONS: dict[ManagedOperationStatus, frozenset[ManagedOperationStatu
     ManagedOperationStatus.PREPARING: frozenset(
         {
             ManagedOperationStatus.RUNNING,
-            ManagedOperationStatus.SUCCEEDED,  # GAP-16G-02 startup reconciliation
             ManagedOperationStatus.FAILED,
             ManagedOperationStatus.INTERRUPTED,
         }
@@ -78,6 +76,14 @@ _LEGAL_TRANSITIONS: dict[ManagedOperationStatus, frozenset[ManagedOperationStatu
     ManagedOperationStatus.FAILED: frozenset(),
     ManagedOperationStatus.INTERRUPTED: frozenset(),
 }
+
+_BOOTSTRAP_RECOVERY_NONTERMINAL = frozenset(
+    {
+        ManagedOperationStatus.PENDING,
+        ManagedOperationStatus.PREPARING,
+        ManagedOperationStatus.RUNNING,
+    }
+)
 
 
 def assert_legal_status_transition(
@@ -410,6 +416,59 @@ class ManagedOperationStore:
                     "bootstrap_authority": bootstrap_authority
                     if bootstrap_authority is not None
                     else record.bootstrap_authority,
+                }
+            )
+            atomic_write_text(
+                self._op_path(workspace_id, operation_id), updated.model_dump_json()
+            )
+            return updated
+
+        return self._with_lease(workspace_id, _body, lease=lease)
+
+    def mark_bootstrap_reconciled_succeeded(
+        self,
+        workspace_id: str,
+        operation_id: str,
+        *,
+        result: GoldLabBaselineBootstrapResult,
+        result_summary: str = "Baseline ready.",
+        bootstrap_authority: GoldLabBaselineBootstrapAuthority | None = None,
+        lease: WorkspaceMutationLease | None = None,
+    ) -> ManagedOperationRecord:
+        """Kind-scoped recovery transition: nonterminal bootstrap → SUCCEEDED.
+
+        Regular workspace ManagedOperation kinds retain the global transition
+        graph and cannot use this path.
+        """
+
+        def _body() -> ManagedOperationRecord:
+            record = self.get(workspace_id, operation_id)
+            if record.kind is not ManagedOperationKind.GOLD_LAB_BASELINE_BOOTSTRAP:
+                raise AppError(
+                    ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                    details=SafeErrorDetails(
+                        reason="illegal_operation_status_transition"
+                    ),
+                )
+            if record.status not in _BOOTSTRAP_RECOVERY_NONTERMINAL:
+                raise AppError(
+                    ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                    details=SafeErrorDetails(
+                        reason="illegal_operation_status_transition"
+                    ),
+                )
+            updated = record.model_copy(
+                update={
+                    "status": ManagedOperationStatus.SUCCEEDED,
+                    "updated_at": utc_now(),
+                    "result_summary": result_summary,
+                    "progress_stage": OperationProgressStage.READY,
+                    "result": result,
+                    "bootstrap_authority": bootstrap_authority
+                    if bootstrap_authority is not None
+                    else record.bootstrap_authority,
+                    "error": None,
+                    "failure_summary": None,
                 }
             )
             atomic_write_text(

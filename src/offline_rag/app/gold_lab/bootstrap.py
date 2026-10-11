@@ -44,11 +44,11 @@ from offline_rag.core.ids import new_execution_id
 from offline_rag.gold_authoring.chunk_access import load_chunk_set_snapshot
 from offline_rag.gold_authoring.persist import (
     default_authoring_run_path,
-    load_authoring_run,
     serialize_authoring_run_bytes,
     write_authoring_run_bytes,
 )
 from offline_rag.gold_authoring.pool import PoolPreRunError, run_gold_pool
+from offline_rag.gold_authoring.pool_arms import HistoricalPoolArmExecutor
 from offline_rag.gold_authoring.prelabel import PrelabelPreRunError, run_gold_prelabel
 from offline_rag.gold_authoring.privacy import (
     AuthoringPrivacyError,
@@ -106,6 +106,7 @@ def _fail_op(
     operation_id: str,
     error: AppError,
     progress_stage: OperationProgressStage | None = None,
+    lease: WorkspaceMutationLease | None = None,
 ) -> ManagedOperationRecord:
     return ops.update_status(
         workspace_id,
@@ -114,6 +115,7 @@ def _fail_op(
         failure_summary=error.message[:512],
         progress_stage=progress_stage,
         error=ManagedOperationSafeError.from_app_error(error),
+        lease=lease,
     )
 
 
@@ -269,22 +271,7 @@ class GoldLabBaselineBootstrapService:
                     ) from exc
                 raise
 
-            try:
-                snapshot = self.publication.resolve_snapshot(
-                    workspace.backing_corpus_name,
-                    workspace.current_snapshot_id,
-                )
-            except Exception as exc:
-                self.runtime.operations.release(control)
-                control = None
-                raise _app(
-                    ErrorCode.SNAPSHOT_UNAVAILABLE,
-                    "captured_chunk_set_unavailable",
-                ) from exc
-
             authoring_run_id = new_execution_id(prefix="authorrun")
-            # operation_id not known yet — seed derived after reserve; rewrite
-            # authority once we have operation_id (seed uses operation_id).
             try:
                 record, created = self.operations.reserve(
                     workspace_id=workspace_id,
@@ -303,6 +290,32 @@ class GoldLabBaselineBootstrapService:
                     self.runtime.operations.release(control)
                     control = None
                     return record
+
+                # Post-admission publication capture: durable op already exists.
+                try:
+                    snapshot = self.publication.resolve_snapshot(
+                        workspace.backing_corpus_name,
+                        workspace.current_snapshot_id,
+                    )
+                except Exception:
+                    logger.exception(
+                        "bootstrap publication capture failed op=%s",
+                        record.operation_id,
+                    )
+                    failed = _fail_op(
+                        self.operations,
+                        workspace_id=workspace_id,
+                        operation_id=record.operation_id,
+                        error=_app(
+                            ErrorCode.SNAPSHOT_UNAVAILABLE,
+                            "captured_chunk_set_unavailable",
+                        ),
+                        progress_stage=OperationProgressStage.PREPARING,
+                        lease=lease,
+                    )
+                    self.runtime.operations.release(control)
+                    control = None
+                    return failed
 
                 sampling_seed = derive_bootstrap_sampling_seed(record.operation_id)
                 authority = GoldLabBaselineBootstrapAuthority(
@@ -353,22 +366,20 @@ class GoldLabBaselineBootstrapService:
         )
         try:
             thread.start()
-        except Exception as exc:
+        except Exception:
+            logger.exception(
+                "bootstrap worker launch failed op=%s", record.operation_id
+            )
             self.runtime.operations.release(control)
-            _fail_op(
+            return _fail_op(
                 self.operations,
                 workspace_id=workspace_id,
                 operation_id=record.operation_id,
                 error=_app(
                     ErrorCode.INTERNAL_ERROR,
                     "bootstrap_internal_failure",
-                    message="failed to launch bootstrap worker",
                 ),
             )
-            raise _app(
-                ErrorCode.INTERNAL_ERROR,
-                "bootstrap_internal_failure",
-            ) from exc
         return record
 
     def _worker(
@@ -507,15 +518,30 @@ class GoldLabBaselineBootstrapService:
                 skip_readiness=True,
             )
         except ProposePreRunError as exc:
+            logger.info("bootstrap 9B pre-run failure op=%s: %s", operation_id, exc)
             reason = "zero_usable_proposals"
-            msg = str(exc)
-            if "exceeds eligible" in msg:
+            if "exceeds eligible" in str(exc):
                 reason = "proposal_count_exceeds_eligible_population"
             _fail_op(
                 self.operations,
                 workspace_id=workspace_id,
                 operation_id=operation_id,
-                error=_app(ErrorCode.GOLD_CONFLICT, reason, message=msg[:512]),
+                error=_app(ErrorCode.GOLD_CONFLICT, reason),
+                progress_stage=OperationProgressStage.PROPOSING,
+            )
+            return
+
+        if propose_result.output_path is None:
+            logger.error(
+                "bootstrap 9B persistence failure op=%s: %s",
+                operation_id,
+                propose_result.message,
+            )
+            _fail_op(
+                self.operations,
+                workspace_id=workspace_id,
+                operation_id=operation_id,
+                error=_app(ErrorCode.INTERNAL_ERROR, "bootstrap_internal_failure"),
                 progress_stage=OperationProgressStage.PROPOSING,
             )
             return
@@ -564,23 +590,62 @@ class GoldLabBaselineBootstrapService:
             bootstrap_authority=auth,
         )
         control.checkpoint("pooling")
-        try:
-            run_gold_pool(self.settings, run_path=staging_path, force=True)
-        except PoolPreRunError as exc:
+        resources = self.runtime.resources
+        if resources is None or resources.qdrant is None:
             _fail_op(
                 self.operations,
                 workspace_id=workspace_id,
                 operation_id=operation_id,
-                error=_app(
-                    ErrorCode.GOLD_CONFLICT,
-                    "zero_reviewable_cases",
-                    message=str(exc)[:512],
-                ),
+                error=_app(ErrorCode.INTERNAL_ERROR, "bootstrap_internal_failure"),
+                progress_stage=OperationProgressStage.POOLING,
+            )
+            return
+        pool_executor = HistoricalPoolArmExecutor(
+            self.settings,
+            qdrant=resources.qdrant,
+            reranker=resources.reranker,
+        )
+        try:
+            try:
+                pool_result = run_gold_pool(
+                    self.settings,
+                    run_path=staging_path,
+                    force=True,
+                    executor=pool_executor,
+                )
+            except PoolPreRunError as exc:
+                logger.info("bootstrap 9C pre-run failure op=%s: %s", operation_id, exc)
+                _fail_op(
+                    self.operations,
+                    workspace_id=workspace_id,
+                    operation_id=operation_id,
+                    error=_app(ErrorCode.GOLD_CONFLICT, "zero_reviewable_cases"),
+                    progress_stage=OperationProgressStage.POOLING,
+                )
+                return
+        finally:
+            pool_executor.close()
+
+        if (
+            pool_result.exit_code == 2
+            or pool_result.run is None
+            or pool_result.output_path is None
+        ):
+            logger.error(
+                "bootstrap 9C persistence/infrastructure failure op=%s: %s",
+                operation_id,
+                pool_result.message,
+            )
+            _fail_op(
+                self.operations,
+                workspace_id=workspace_id,
+                operation_id=operation_id,
+                error=_app(ErrorCode.INTERNAL_ERROR, "bootstrap_internal_failure"),
                 progress_stage=OperationProgressStage.POOLING,
             )
             return
 
-        run = load_authoring_run(staging_path)
+        run = pool_result.run
         pool_targeted = auth.proposal_succeeded
         pool_succeeded = int(run.pool_successful_case_count or 0)
         pool_failed = max(0, pool_targeted - pool_succeeded)
@@ -621,8 +686,11 @@ class GoldLabBaselineBootstrapService:
             )
             control.checkpoint("prelabeling")
             try:
-                run_gold_prelabel(self.settings, run_path=staging_path, force=True)
+                pre_result = run_gold_prelabel(
+                    self.settings, run_path=staging_path, force=True
+                )
             except PrelabelPreRunError as exc:
+                logger.info("bootstrap 9D pre-run failure op=%s: %s", operation_id, exc)
                 _fail_op(
                     self.operations,
                     workspace_id=workspace_id,
@@ -630,16 +698,46 @@ class GoldLabBaselineBootstrapService:
                     error=_app(
                         ErrorCode.GOLD_CONFLICT,
                         "prelabel_stage_cannot_start",
-                        message=str(exc)[:512],
                     ),
                     progress_stage=OperationProgressStage.PRELABELING,
                 )
                 return
-            run = load_authoring_run(staging_path)
+            if (
+                pre_result.exit_code == 2
+                or pre_result.run is None
+                or pre_result.output_path is None
+            ):
+                logger.error(
+                    "bootstrap 9D persistence/infrastructure failure op=%s: %s",
+                    operation_id,
+                    pre_result.message,
+                )
+                _fail_op(
+                    self.operations,
+                    workspace_id=workspace_id,
+                    operation_id=operation_id,
+                    error=_app(ErrorCode.INTERNAL_ERROR, "bootstrap_internal_failure"),
+                    progress_stage=OperationProgressStage.PRELABELING,
+                )
+                return
+            run = pre_result.run
             stage = run.prelabeling
             targeted = int(stage.targeted_case_count) if stage is not None else 0
             succeeded = int(stage.successful_case_count) if stage is not None else 0
             failed = int(stage.failed_case_count) if stage is not None else 0
+            if stage is None:
+                logger.error(
+                    "bootstrap 9D completed without durable prelabeling stage op=%s",
+                    operation_id,
+                )
+                _fail_op(
+                    self.operations,
+                    workspace_id=workspace_id,
+                    operation_id=operation_id,
+                    error=_app(ErrorCode.INTERNAL_ERROR, "bootstrap_internal_failure"),
+                    progress_stage=OperationProgressStage.PRELABELING,
+                )
+                return
             auth = auth.model_copy(
                 update={
                     "prelabel_targeted": targeted,
@@ -659,7 +757,6 @@ class GoldLabBaselineBootstrapService:
                 }
             )
 
-        run = load_authoring_run(staging_path)
         auth = auth.model_copy(
             update={
                 "reviewable_case_count": sum(
@@ -870,6 +967,9 @@ class GoldLabBaselineBootstrapService:
                     return
 
                 reviewable = sum(1 for c in admitted.cases if is_reviewable_case(c))
+                if reviewable < 1:
+                    fail(_app(ErrorCode.GOLD_CONFLICT, "zero_reviewable_cases"))
+                    return
                 result = GoldLabBaselineBootstrapResult(
                     project_id=auth.project_id,
                     workspace_id=auth.workspace_id,
@@ -890,7 +990,7 @@ class GoldLabBaselineBootstrapService:
                     prelabel_targeted=auth.prelabel_targeted,
                     prelabel_succeeded=auth.prelabel_succeeded,
                     prelabel_failed=auth.prelabel_failed,
-                    reviewable_case_count=max(reviewable, 1),
+                    reviewable_case_count=reviewable,
                     baseline_eligible=True,
                 )
                 self.operations.update_status(
@@ -1001,6 +1101,10 @@ def reconcile_gold_bootstrap_operations(runtime: Any) -> dict[str, Any]:
                 deferred.append(record.operation_id)
                 continue
             reviewable = sum(1 for c in admitted.cases if is_reviewable_case(c))
+            if reviewable < 1:
+                # Preserve canonical historical artifact; generic interrupt follows.
+                deferred.append(record.operation_id)
+                continue
             result = GoldLabBaselineBootstrapResult(
                 project_id=auth.project_id,
                 workspace_id=auth.workspace_id,
@@ -1021,14 +1125,12 @@ def reconcile_gold_bootstrap_operations(runtime: Any) -> dict[str, Any]:
                 prelabel_targeted=auth.prelabel_targeted,
                 prelabel_succeeded=auth.prelabel_succeeded,
                 prelabel_failed=auth.prelabel_failed,
-                reviewable_case_count=max(reviewable, 1),
+                reviewable_case_count=reviewable,
                 baseline_eligible=True,
             )
-            ops.update_status(
+            ops.mark_bootstrap_reconciled_succeeded(
                 workspace_id,
                 record.operation_id,
-                ManagedOperationStatus.SUCCEEDED,
-                progress_stage=OperationProgressStage.READY,
                 result=result,
                 result_summary="Baseline ready.",
                 bootstrap_authority=auth,

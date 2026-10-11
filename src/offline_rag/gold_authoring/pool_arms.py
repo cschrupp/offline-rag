@@ -10,8 +10,11 @@ from offline_rag.config.models import (
     DenseQueryTextSettings,
     DenseSearchableUnitsSettings,
 )
-from offline_rag.core.ids import EXCLUDE_HEADING_ONLY_V1, MODEL_QUERY_PROMPT_V1
-from offline_rag.core.ids import dense_point_uuid
+from offline_rag.core.ids import (
+    EXCLUDE_HEADING_ONLY_V1,
+    MODEL_QUERY_PROMPT_V1,
+    dense_point_uuid,
+)
 from offline_rag.dense.embedder import make_embedder
 from offline_rag.dense.persistence import try_load_index_manifest
 from offline_rag.dense.qdrant_local import QdrantLocalBackend
@@ -109,23 +112,25 @@ class HistoricalPoolArmExecutor:
         settings: AppSettings,
         *,
         reranker: Reranker | None = None,
+        qdrant: QdrantLocalBackend | None = None,
     ) -> None:
         self.settings = settings
         self._reranker = reranker
         self._lexical_backend: LocalInvertedIndexBackend | None = None
-        self._qdrant: QdrantLocalBackend | None = None
+        # Product callers may inject the process-owned Qdrant Local backend so
+        # pooling does not open a second exclusive storage client.
+        self._qdrant: QdrantLocalBackend | None = qdrant
+        self._owns_qdrant = qdrant is None
 
     def close(self) -> None:
         if self._lexical_backend is not None:
             self._lexical_backend.close()
             self._lexical_backend = None
-        if self._qdrant is not None:
+        if self._owns_qdrant and self._qdrant is not None:
             self._qdrant.close()
             self._qdrant = None
 
-    def _lexical_hits(
-        self, *, query: str, index_id: str, top_k: int
-    ) -> list[ArmHit]:
+    def _lexical_hits(self, *, query: str, index_id: str, top_k: int) -> list[ArmHit]:
         if self._lexical_backend is None:
             self._lexical_backend = LocalInvertedIndexBackend(
                 self.settings.paths.lexical_indexes
@@ -225,7 +230,7 @@ class HistoricalPoolArmExecutor:
                 index_id=artifacts.lexical_index_id,
                 top_k=depths[RETRIEVER_LEXICAL_PLAIN_V1],
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             raise ArmExecutionError(
                 str(exc),
                 reason=PoolFailureReason.LEXICAL_RETRIEVAL_FAILED,
@@ -241,7 +246,7 @@ class HistoricalPoolArmExecutor:
             )
         except ArmExecutionError:
             raise
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             raise ArmExecutionError(
                 str(exc),
                 reason=PoolFailureReason.DENSE_BASELINE_FAILED,
@@ -257,7 +262,7 @@ class HistoricalPoolArmExecutor:
             )
         except ArmExecutionError:
             raise
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             raise ArmExecutionError(
                 str(exc),
                 reason=PoolFailureReason.DENSE_QUERY_PROMPT_FAILED,
@@ -273,7 +278,7 @@ class HistoricalPoolArmExecutor:
             )
         except ArmExecutionError:
             raise
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             raise ArmExecutionError(
                 str(exc),
                 reason=PoolFailureReason.DENSE_ARM_H_FAILED,
@@ -282,11 +287,15 @@ class HistoricalPoolArmExecutor:
 
         try:
             dense_branch = [
-                RankedBranchHit(chunk_id=h.chunk_id, rank=h.rank, score=float(h.score or 0.0))
+                RankedBranchHit(
+                    chunk_id=h.chunk_id, rank=h.rank, score=float(h.score or 0.0)
+                )
                 for h in results[RETRIEVER_DENSE_PLAIN_V1]
             ]
             lex_branch = [
-                RankedBranchHit(chunk_id=h.chunk_id, rank=h.rank, score=float(h.score or 0.0))
+                RankedBranchHit(
+                    chunk_id=h.chunk_id, rank=h.rank, score=float(h.score or 0.0)
+                )
                 for h in results[RETRIEVER_LEXICAL_PLAIN_V1]
             ]
             fusion = ReciprocalRankFusion(rrf_k=int(self.settings.fusion.rrf_k))
@@ -300,7 +309,7 @@ class HistoricalPoolArmExecutor:
                 )
                 for i, item in enumerate(hybrid_top, start=1)
             ]
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             raise ArmExecutionError(
                 str(exc),
                 reason=PoolFailureReason.HYBRID_RRF_FAILED,
@@ -324,7 +333,7 @@ class HistoricalPoolArmExecutor:
                         chunk_set_id=artifacts.chunk_set_id,
                         chunk_id=hit.chunk_id,
                     )
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     raise ArmExecutionError(
                         f"missing passage text for rerank chunk {hit.chunk_id}: {exc}",
                         reason=PoolFailureReason.HYBRID_RERANK_FAILED,
@@ -355,7 +364,7 @@ class HistoricalPoolArmExecutor:
             ]
         except ArmExecutionError:
             raise
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             raise ArmExecutionError(
                 str(exc),
                 reason=PoolFailureReason.HYBRID_RERANK_FAILED,
