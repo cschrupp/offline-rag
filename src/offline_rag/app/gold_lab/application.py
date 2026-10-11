@@ -292,9 +292,7 @@ class GoldLabApplicationService:
         projects = self._call(self.store.list_projects)
         if workspace_id is not None:
             projects = [p for p in projects if p.workspace_id == workspace_id]
-        projects = sorted(
-            projects, key=lambda p: (p.created_at, p.project_id)
-        )
+        projects = sorted(projects, key=lambda p: (p.created_at, p.project_id))
         return {"projects": [project_view(p) for p in projects]}
 
     def create_project(
@@ -456,6 +454,24 @@ class GoldLabApplicationService:
                 project_id=project_id,
             )
         return run
+
+    def start_baseline_bootstrap(
+        self,
+        *,
+        project_id: str,
+        proposal_count: object,
+        prelabel_enabled: object,
+        idempotency_key: str,
+    ) -> Any:
+        """Admit GAP-16G-02 browser→baseline ManagedOperation (I1–I3)."""
+        from offline_rag.app.gold_lab.bootstrap import GoldLabBaselineBootstrapService
+
+        return GoldLabBaselineBootstrapService(self.runtime).start_baseline_bootstrap(
+            project_id=project_id,
+            proposal_count=proposal_count,
+            prelabel_enabled=prelabel_enabled,
+            idempotency_key=idempotency_key,
+        )
 
     def list_baselines(self, project_id: str) -> dict[str, Any]:
         pid = self._transport_project_id(project_id)
@@ -690,11 +706,7 @@ class GoldLabApplicationService:
         if not summary.active:
             return None, None
         candidate = next(
-            (
-                c
-                for c in case.candidates
-                if c.chunk_id == summary.candidate_chunk_id
-            ),
+            (c for c in case.candidates if c.chunk_id == summary.candidate_chunk_id),
             None,
         )
         if candidate is None:
@@ -721,7 +733,10 @@ class GoldLabApplicationService:
                 else None
             ),
             "effective_tags": (
-                list(state.current_question_for_case(summary.case_id).effective_tags or [])
+                list(
+                    state.current_question_for_case(summary.case_id).effective_tags
+                    or []
+                )
                 if state.current_question_for_case(summary.case_id) is not None
                 else []
             ),
@@ -859,9 +874,7 @@ class GoldLabApplicationService:
         items.sort(key=lambda row: (row["registered_at"], row["dataset_id"]))
         return {"campaign_id": cid, "registrations": items}
 
-    def get_training_package(
-        self, campaign_id: str, dataset_id: str
-    ) -> dict[str, Any]:
+    def get_training_package(self, campaign_id: str, dataset_id: str) -> dict[str, Any]:
         cid = self._transport_campaign_id(campaign_id)
         did = self._transport_dataset_id(dataset_id)
         return self._call(
@@ -926,5 +939,3 @@ class GoldLabApplicationService:
 
 class _DiscoverySkip(Exception):
     """Internal: suppress ineligible baseline during discovery scan."""
-
-

@@ -61,6 +61,7 @@ EXPECTED_ROUTES = {
     ("GET", "/v1/gold-lab/projects/{project_id}"),
     ("POST", "/v1/gold-lab/projects/{project_id}/archive"),
     ("GET", "/v1/gold-lab/projects/{project_id}/baselines"),
+    ("POST", "/v1/gold-lab/projects/{project_id}/baseline-bootstrap"),
     ("GET", "/v1/gold-lab/projects/{project_id}/campaigns"),
     ("POST", "/v1/gold-lab/projects/{project_id}/campaigns"),
     ("GET", "/v1/gold-lab/campaigns/{campaign_id}"),
