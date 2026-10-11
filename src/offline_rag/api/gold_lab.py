@@ -8,6 +8,7 @@ from fastapi import APIRouter, Header, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, Strict, field_validator
 
+from offline_rag.api.workspace_views import operation_view
 from offline_rag.app.errors import AppError, ErrorCode, SafeErrorDetails
 from offline_rag.app.gold_lab.application import GoldLabApplicationService
 from offline_rag.app.runtime import ApplicationRuntime
@@ -97,9 +98,7 @@ class QuestionCheckEditRequest(BaseModel):
 
 
 QuestionCheckRequest = Annotated[
-    QuestionCheckAcceptRequest
-    | QuestionCheckRejectRequest
-    | QuestionCheckEditRequest,
+    QuestionCheckAcceptRequest | QuestionCheckRejectRequest | QuestionCheckEditRequest,
     Field(discriminator="decision"),
 ]
 
@@ -132,9 +131,7 @@ class PreferenceRequest(BaseModel):
 
 
 @router.get("/projects")
-def list_projects(
-    request: Request, workspace_id: str | None = None
-) -> dict[str, Any]:
+def list_projects(request: Request, workspace_id: str | None = None) -> dict[str, Any]:
     return _gold(request).list_projects(workspace_id=workspace_id)
 
 
@@ -161,6 +158,62 @@ def archive_project(request: Request, project_id: str) -> dict[str, Any]:
 @router.get("/projects/{project_id}/baselines")
 def list_baselines(request: Request, project_id: str) -> dict[str, Any]:
     return _gold(request).list_baselines(project_id)
+
+
+@router.post("/projects/{project_id}/baseline-bootstrap", status_code=202)
+async def baseline_bootstrap(
+    request: Request,
+    project_id: str,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+) -> JSONResponse:
+    if idempotency_key is None or not str(idempotency_key).strip():
+        raise AppError(
+            ErrorCode.REQUEST_INVALID,
+            details=SafeErrorDetails(reason="idempotency_key_invalid"),
+        )
+    key = str(idempotency_key).strip()
+    if len(key) > 256:
+        raise AppError(
+            ErrorCode.REQUEST_INVALID,
+            details=SafeErrorDetails(reason="idempotency_key_invalid"),
+        )
+    try:
+        payload = await request.json()
+    except Exception as exc:
+        raise AppError(
+            ErrorCode.REQUEST_INVALID,
+            details=SafeErrorDetails(reason="proposal_count_invalid"),
+        ) from exc
+    if not isinstance(payload, dict):
+        raise AppError(
+            ErrorCode.REQUEST_INVALID,
+            details=SafeErrorDetails(reason="proposal_count_invalid"),
+        )
+    allowed = {"proposal_count", "prelabel_enabled"}
+    if set(payload.keys()) - allowed:
+        raise AppError(
+            ErrorCode.REQUEST_INVALID,
+            details=SafeErrorDetails(reason="proposal_count_invalid"),
+        )
+    if "proposal_count" not in payload:
+        raise AppError(
+            ErrorCode.REQUEST_INVALID,
+            details=SafeErrorDetails(reason="proposal_count_invalid"),
+        )
+    if "prelabel_enabled" not in payload:
+        raise AppError(
+            ErrorCode.REQUEST_INVALID,
+            details=SafeErrorDetails(reason="prelabel_enabled_invalid"),
+        )
+    operation = _gold(request).start_baseline_bootstrap(
+        project_id=project_id,
+        proposal_count=payload["proposal_count"],
+        prelabel_enabled=payload["prelabel_enabled"],
+        idempotency_key=key,
+    )
+    response = JSONResponse(content=operation_view(operation), status_code=202)
+    response.headers["Location"] = f"/v1/operations/{operation.operation_id}"
+    return response
 
 
 @router.get("/projects/{project_id}/campaigns")
@@ -294,3 +347,10 @@ def export_campaign(request: Request, campaign_id: str) -> JSONResponse:
 @router.get("/campaigns/{campaign_id}/registrations")
 def list_registrations(request: Request, campaign_id: str) -> dict[str, Any]:
     return _gold(request).list_registrations(campaign_id)
+
+
+@router.get("/campaigns/{campaign_id}/registrations/{dataset_id}/training-package")
+def get_training_package(
+    request: Request, campaign_id: str, dataset_id: str
+) -> dict[str, Any]:
+    return _gold(request).get_training_package(campaign_id, dataset_id)

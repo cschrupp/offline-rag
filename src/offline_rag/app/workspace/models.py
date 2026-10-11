@@ -19,7 +19,9 @@ WORKSPACE_SCHEMA_VERSION = "offline-rag-workspace-v1"
 SOURCE_VERSION_SCHEMA_VERSION = "offline-rag-source-version-v1"
 MANAGED_OP_SCHEMA_VERSION = "offline-rag-managed-op-v1"
 
-WorkspaceRevision = int  # monotonic positive integer; serialized for If-Match as decimal
+WorkspaceRevision = (
+    int  # monotonic positive integer; serialized for If-Match as decimal
+)
 
 
 class WorkspaceStatus(StrEnum):
@@ -39,6 +41,7 @@ class ManagedOperationKind(StrEnum):
     SOURCE_REPLACE = "source_replace"
     SOURCE_METADATA_PATCH = "source_metadata_patch"
     EMPTY_TRANSITION = "empty_transition"
+    GOLD_LAB_BASELINE_BOOTSTRAP = "gold_lab_baseline_bootstrap"
 
 
 class ManagedOperationStatus(StrEnum):
@@ -60,6 +63,9 @@ class OperationProgressStage(StrEnum):
     PREPARING = "preparing"
     PROCESSING = "processing"
     BUILDING_INDEXES = "building_indexes"
+    PROPOSING = "proposing"
+    POOLING = "pooling"
+    PRELABELING = "prelabeling"
     PUBLISHING = "publishing"
     FINALIZING = "finalizing"
     READY = "ready"
@@ -170,7 +176,9 @@ class SourceVersionRecord(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["offline-rag-source-version-v1"] = SOURCE_VERSION_SCHEMA_VERSION
+    schema_version: Literal["offline-rag-source-version-v1"] = (
+        SOURCE_VERSION_SCHEMA_VERSION
+    )
     source_id: str = Field(min_length=1)
     version: int = Field(ge=1)
     display_name: str = Field(min_length=1, max_length=512)
@@ -186,7 +194,9 @@ class SourceVersionRecord(BaseModel):
     active_through_revision: WorkspaceRevision | None = Field(default=None, ge=1)
     active_through_snapshot_id: str | None = None
 
-    @field_validator("source_id", "vault_object_id", "document_id", "content_hash", mode="before")
+    @field_validator(
+        "source_id", "vault_object_id", "document_id", "content_hash", mode="before"
+    )
     @classmethod
     def _safe_ids(cls, value: object) -> object:
         if value is None:
@@ -216,7 +226,9 @@ class WorkspaceRecord(BaseModel):
     updated_at: datetime
     sources: list[SourceVersionRecord] = Field(default_factory=list)
 
-    @field_validator("workspace_id", "backing_corpus_name", "current_snapshot_id", mode="before")
+    @field_validator(
+        "workspace_id", "backing_corpus_name", "current_snapshot_id", mode="before"
+    )
     @classmethod
     def _safe_ids(cls, value: object) -> object:
         if value is None:
@@ -235,16 +247,22 @@ class WorkspaceRecord(BaseModel):
             if self.sources:
                 raise ValueError("empty workspace must have sources == []")
             if self.current_snapshot_id is not None:
-                raise ValueError("empty workspace must have current_snapshot_id == null")
+                raise ValueError(
+                    "empty workspace must have current_snapshot_id == null"
+                )
         elif self.status is WorkspaceStatus.ACTIVE:
             if not active_sources:
-                raise ValueError("active workspace must have at least one active source")
+                raise ValueError(
+                    "active workspace must have at least one active source"
+                )
             if self.current_snapshot_id is None:
                 raise ValueError("active workspace must have current_snapshot_id set")
         elif self.status is WorkspaceStatus.TOMBSTONED:
             # Tombstone may retain historical source metadata; current pointer must be null.
             if self.current_snapshot_id is not None:
-                raise ValueError("tombstoned workspace must have current_snapshot_id == null")
+                raise ValueError(
+                    "tombstoned workspace must have current_snapshot_id == null"
+                )
         if self.title == self.backing_corpus_name:
             raise ValueError("workspace title must not equal backing corpus identity")
         validate_product_corpus_name(self.backing_corpus_name)
@@ -390,6 +408,63 @@ class ManagedOperationResult(BaseModel):
         return cleaned
 
 
+class GoldLabBaselineBootstrapResult(BaseModel):
+    """Terminal success receipt for gold_lab_baseline_bootstrap (GAP-16G-02)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    project_id: str = Field(min_length=1)
+    workspace_id: str = Field(min_length=1)
+    workspace_revision: WorkspaceRevision = Field(ge=1)
+    snapshot_id: str = Field(min_length=1)
+    corpus_id: str = Field(min_length=1)
+    chunk_set_id: str = Field(min_length=1)
+    authoring_run_id: str = Field(min_length=1)
+    proposal_count: int = Field(ge=1, le=40)
+    sampling_seed: int = Field(ge=0, lt=2**63)
+    prelabel_enabled: bool
+    proposal_attempted: int = Field(ge=0)
+    proposal_succeeded: int = Field(ge=0)
+    proposal_failed: int = Field(ge=0)
+    pool_targeted: int = Field(ge=0)
+    pool_succeeded: int = Field(ge=0)
+    pool_failed: int = Field(ge=0)
+    prelabel_targeted: int = Field(ge=0)
+    prelabel_succeeded: int = Field(ge=0)
+    prelabel_failed: int = Field(ge=0)
+    reviewable_case_count: int = Field(ge=1)
+    baseline_eligible: Literal[True] = True
+
+
+class GoldLabBaselineBootstrapAuthority(BaseModel):
+    """Private durable execution authority for a bootstrap operation."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    project_id: str = Field(min_length=1)
+    workspace_id: str = Field(min_length=1)
+    workspace_revision: WorkspaceRevision = Field(ge=1)
+    snapshot_id: str = Field(min_length=1)
+    corpus_name: str = Field(min_length=1)
+    corpus_id: str = Field(min_length=1)
+    chunk_set_id: str = Field(min_length=1)
+    authoring_run_id: str = Field(min_length=1)
+    proposal_count: int = Field(ge=1, le=40)
+    sampling_seed: int = Field(ge=0, lt=2**63)
+    prelabel_enabled: bool
+    expected_final_artifact_sha256: str | None = None
+    proposal_attempted: int = 0
+    proposal_succeeded: int = 0
+    proposal_failed: int = 0
+    pool_targeted: int = 0
+    pool_succeeded: int = 0
+    pool_failed: int = 0
+    prelabel_targeted: int = 0
+    prelabel_succeeded: int = 0
+    prelabel_failed: int = 0
+    reviewable_case_count: int = 0
+
+
 class ManagedOperationSafeError(BaseModel):
     """Terminal failure projection using the D08 safe error vocabulary.
 
@@ -458,8 +533,10 @@ class ManagedOperationRecord(BaseModel):
     # 16B additions. Optional with ``None`` defaults so 16A records on disk keep
     # validating unchanged.
     progress_stage: OperationProgressStage | None = None
-    result: ManagedOperationResult | None = None
+    result: ManagedOperationResult | GoldLabBaselineBootstrapResult | None = None
     error: ManagedOperationSafeError | None = None
+    # GAP-16G-02 private execution authority (never projected by operation_view).
+    bootstrap_authority: GoldLabBaselineBootstrapAuthority | None = None
 
     @field_validator(
         "operation_id",

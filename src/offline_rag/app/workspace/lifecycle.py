@@ -347,9 +347,7 @@ class WorkspaceLifecycleService:
             )
             raise exc
         # Ambiguous post-state raises workspace_state_unavailable and keeps journal.
-        outcome = self.sync_mutations.reconcile(
-            workspace_id, lease=lease, failure=exc
-        )
+        outcome = self.sync_mutations.reconcile(workspace_id, lease=lease, failure=exc)
         if outcome == "B":
             succeeded = self.operations.get(workspace_id, op.operation_id)
             return public_from_result(workspace_id, succeeded), succeeded
@@ -493,7 +491,9 @@ class WorkspaceLifecycleService:
                 expected_revision=expected_revision,
                 payload=payload,
             )
-            existing = self.operations.find_by_idempotency(workspace_id, idempotency_key)
+            existing = self.operations.find_by_idempotency(
+                workspace_id, idempotency_key
+            )
             if existing is not None:
                 if (
                     existing.request_fingerprint != fingerprint
@@ -732,8 +732,8 @@ class WorkspaceLifecycleService:
                     op,
                     exc,
                     lease=lease,
-                    public_from_result=lambda _wid, record: self._source_public_from_result(
-                        record
+                    public_from_result=lambda _wid, record: (
+                        self._source_public_from_result(record)
                     ),
                 )
 
@@ -874,17 +874,13 @@ class WorkspaceLifecycleService:
             record, source_id=source_id, version=next_version, upload=upload
         )
         remaining = [
-            item
-            for item in self._active_sources(record)
-            if item.source_id != source_id
+            item for item in self._active_sources(record) if item.source_id != source_id
         ]
         return _MutationPlan(
             mutation_kind=PublicationMutationKind.SOURCE_REPLACE,
             desired=[*remaining, replacement],
             lineage=LineageDelta(
-                appended=[
-                    SourceVersionRef(source_id=source_id, version=next_version)
-                ],
+                appended=[SourceVersionRef(source_id=source_id, version=next_version)],
                 superseded=[
                     SourceVersionRef(source_id=source_id, version=current.version)
                 ],
@@ -896,9 +892,7 @@ class WorkspaceLifecycleService:
     def _plan_remove(self, record: WorkspaceRecord, source_id: str) -> _MutationPlan:
         current = self._find_active_source(record, source_id)
         remaining = [
-            item
-            for item in self._active_sources(record)
-            if item.source_id != source_id
+            item for item in self._active_sources(record) if item.source_id != source_id
         ]
         return _MutationPlan(
             mutation_kind=PublicationMutationKind.SOURCE_REMOVE,
@@ -1235,9 +1229,7 @@ class WorkspaceLifecycleService:
         self, prior: WorkspaceRecord, *, refs: Sequence[SourceVersionRef]
     ) -> None:
         """Record supersession for the EMPTY transition's removed source."""
-        by_key = {
-            (item.source_id, item.version): item for item in prior.sources
-        }
+        by_key = {(item.source_id, item.version): item for item in prior.sources}
         for ref in refs:
             path = self.history.version_path(
                 prior.workspace_id, ref.source_id, ref.version
@@ -1349,39 +1341,48 @@ class WorkspaceLifecycleService:
         return {
             "publication_transitions": publication,
             "empty_transitions": empty,
-            "interrupted_operations": [
-                item.operation_id for item in interrupted
-            ],
+            "interrupted_operations": [item.operation_id for item in interrupted],
         }
 
 
-def recover_workspace_transactions(settings: AppSettings) -> dict[str, Any]:
-    """Recover workspace journals without requiring process scientific resources.
+def recover_workspace_journals(settings: AppSettings) -> dict[str, Any]:
+    """Recover publication/EMPTY/sync journals without interrupting operations.
 
-    Called from ``ApplicationRuntime.start`` before READY so mutation/query
-    surfaces cannot open against unresolved publication/EMPTY journals.
+    GAP-16G-02 startup topology step A: journal recovery must complete before
+    publication-proof resources exist and before generic interrupt.
     """
     from offline_rag.app.workspace.upload_spool import (
         quarantine_orphan_workspace_spools,
     )
+    from offline_rag.app.workspace.sync_journal import SyncMutationCoordinator
 
     store = WorkspaceStore(settings)
     history = SourceHistoryStore(settings)
     publication = NonEmptyPublicationCoordinator(settings, store, history)
     empty = EmptyTransitionCoordinator(settings, store)
-    from offline_rag.app.workspace.sync_journal import SyncMutationCoordinator
-
-    operations = ManagedOperationStore(settings)
     sync = SyncMutationCoordinator(settings)
     pub = publication.recover_all()
     emp = empty.recover_all()
     sync_results = sync.recover_all()
-    interrupted = operations.interrupt_all_nonterminal()
     quarantined = quarantine_orphan_workspace_spools(settings)
     return {
         "publication_transitions": pub,
         "empty_transitions": emp,
         "sync_mutations": sync_results,
-        "interrupted_operations": [item.operation_id for item in interrupted],
         "quarantined_upload_spools": [str(path) for path in quarantined],
+    }
+
+
+def recover_workspace_transactions(settings: AppSettings) -> dict[str, Any]:
+    """Journal recovery plus generic interrupt (test / legacy helper).
+
+    Production ``ApplicationRuntime.start`` uses the GAP-16G-02 split:
+    journals → resources → bootstrap reconcile → interrupt → scavenge → READY.
+    """
+    journals = recover_workspace_journals(settings)
+    operations = ManagedOperationStore(settings)
+    interrupted = operations.interrupt_all_nonterminal()
+    return {
+        **journals,
+        "interrupted_operations": [item.operation_id for item in interrupted],
     }

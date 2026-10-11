@@ -18,6 +18,7 @@ from offline_rag.app.gold_lab.ids import (
     hard_call_designation_id,
     new_campaign_id,
     validate_campaign_id,
+    validate_dataset_id,
     validate_project_id,
     validate_task_id,
 )
@@ -34,6 +35,7 @@ from offline_rag.app.gold_lab.registrations import (
 from offline_rag.app.gold_lab.reviewable import is_reviewable_case
 from offline_rag.app.gold_lab.scientific_export import GoldLabScientificExportService
 from offline_rag.app.gold_lab.store import GoldLabStore
+from offline_rag.app.gold_lab.training_package import GoldLabTrainingPackageService
 from offline_rag.app.gold_lab.views import (
     baseline_summary_view,
     campaign_view,
@@ -138,6 +140,7 @@ GOLD_LAB_REASON_TO_ERROR_CODE: dict[str, ErrorCode] = {
     "hard_calls_corrupt": ErrorCode.GOLD_STATE_UNAVAILABLE,
     "hard_calls_missing": ErrorCode.GOLD_STATE_UNAVAILABLE,
     "hard_calls_schema_invalid": ErrorCode.GOLD_STATE_UNAVAILABLE,
+    "historical_chunk_unavailable": ErrorCode.GOLD_STATE_UNAVAILABLE,
     "idempotency_campaign_mismatch": ErrorCode.GOLD_STATE_UNAVAILABLE,
     "idempotency_catalog_corrupt": ErrorCode.GOLD_STATE_UNAVAILABLE,
     "idempotency_command_kind_invalid": ErrorCode.INTERNAL_ERROR,
@@ -215,12 +218,16 @@ GOLD_LAB_REASON_TO_ERROR_CODE: dict[str, ErrorCode] = {
     "registration_dataset_path_mismatch": ErrorCode.GOLD_STATE_UNAVAILABLE,
     "registration_dataset_schema_invalid": ErrorCode.GOLD_STATE_UNAVAILABLE,
     "registration_exported_ids_mismatch": ErrorCode.GOLD_STATE_UNAVAILABLE,
+    "registration_missing": ErrorCode.GOLD_STATE_UNAVAILABLE,
     "registration_path_mismatch": ErrorCode.GOLD_STATE_UNAVAILABLE,
     "registration_project_mismatch": ErrorCode.GOLD_STATE_UNAVAILABLE,
     "registration_project_type_mismatch": ErrorCode.GOLD_STATE_UNAVAILABLE,
     "registration_provenance_mismatch": ErrorCode.GOLD_STATE_UNAVAILABLE,
     "registration_schema_invalid": ErrorCode.GOLD_STATE_UNAVAILABLE,
     "registration_unknown_exported_case": ErrorCode.GOLD_STATE_UNAVAILABLE,
+    "training_package_adjudication_invalid": ErrorCode.GOLD_STATE_UNAVAILABLE,
+    "training_package_dataset_projection_mismatch": ErrorCode.GOLD_STATE_UNAVAILABLE,
+    "training_package_projection_unavailable": ErrorCode.GOLD_STATE_UNAVAILABLE,
     "selection_policy_parameters_invalid": ErrorCode.REQUEST_INVALID,
     "selection_policy_project_type_mismatch": ErrorCode.GOLD_STATE_UNAVAILABLE,
     "source_seed_chunk_unresolved": ErrorCode.GOLD_STATE_UNAVAILABLE,
@@ -267,6 +274,9 @@ class GoldLabApplicationService:
         )
         self.mutations = GoldLabMutationService(self.settings, store=self.store)
         self.exports = GoldLabScientificExportService(self.settings, store=self.store)
+        self.training_packages = GoldLabTrainingPackageService(
+            self.settings, store=self.store
+        )
 
     def _call(self, fn, /, *args, **kwargs):
         try:
@@ -282,9 +292,7 @@ class GoldLabApplicationService:
         projects = self._call(self.store.list_projects)
         if workspace_id is not None:
             projects = [p for p in projects if p.workspace_id == workspace_id]
-        projects = sorted(
-            projects, key=lambda p: (p.created_at, p.project_id)
-        )
+        projects = sorted(projects, key=lambda p: (p.created_at, p.project_id))
         return {"projects": [project_view(p) for p in projects]}
 
     def create_project(
@@ -446,6 +454,24 @@ class GoldLabApplicationService:
                 project_id=project_id,
             )
         return run
+
+    def start_baseline_bootstrap(
+        self,
+        *,
+        project_id: str,
+        proposal_count: object,
+        prelabel_enabled: object,
+        idempotency_key: str,
+    ) -> Any:
+        """Admit GAP-16G-02 browser→baseline ManagedOperation (I1–I3)."""
+        from offline_rag.app.gold_lab.bootstrap import GoldLabBaselineBootstrapService
+
+        return GoldLabBaselineBootstrapService(self.runtime).start_baseline_bootstrap(
+            project_id=project_id,
+            proposal_count=proposal_count,
+            prelabel_enabled=prelabel_enabled,
+            idempotency_key=idempotency_key,
+        )
 
     def list_baselines(self, project_id: str) -> dict[str, Any]:
         pid = self._transport_project_id(project_id)
@@ -680,11 +706,7 @@ class GoldLabApplicationService:
         if not summary.active:
             return None, None
         candidate = next(
-            (
-                c
-                for c in case.candidates
-                if c.chunk_id == summary.candidate_chunk_id
-            ),
+            (c for c in case.candidates if c.chunk_id == summary.candidate_chunk_id),
             None,
         )
         if candidate is None:
@@ -711,7 +733,10 @@ class GoldLabApplicationService:
                 else None
             ),
             "effective_tags": (
-                list(state.current_question_for_case(summary.case_id).effective_tags or [])
+                list(
+                    state.current_question_for_case(summary.case_id).effective_tags
+                    or []
+                )
                 if state.current_question_for_case(summary.case_id) is not None
                 else []
             ),
@@ -849,6 +874,15 @@ class GoldLabApplicationService:
         items.sort(key=lambda row: (row["registered_at"], row["dataset_id"]))
         return {"campaign_id": cid, "registrations": items}
 
+    def get_training_package(self, campaign_id: str, dataset_id: str) -> dict[str, Any]:
+        cid = self._transport_campaign_id(campaign_id)
+        did = self._transport_dataset_id(dataset_id)
+        return self._call(
+            self.training_packages.get_training_package,
+            campaign_id=cid,
+            dataset_id=did,
+        )
+
     # --- helpers ---
 
     def _require_task(self, campaign_id: str, task_id: str, *, kind: str):
@@ -894,8 +928,14 @@ class GoldLabApplicationService:
                 ErrorCode.REQUEST_INVALID, "transport_task_id_invalid"
             ) from exc
 
+    def _transport_dataset_id(self, value: str) -> str:
+        try:
+            return validate_dataset_id(value)
+        except GoldLabError as exc:
+            raise _app_error(
+                ErrorCode.REQUEST_INVALID, "transport_dataset_id_invalid"
+            ) from exc
+
 
 class _DiscoverySkip(Exception):
     """Internal: suppress ineligible baseline during discovery scan."""
-
-

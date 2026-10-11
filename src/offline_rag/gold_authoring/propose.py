@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
+from offline_rag.chunking.access import CorpusChunkSnapshot
 from offline_rag.config.models import AppSettings
 from offline_rag.core.ids import new_execution_id
 from offline_rag.gold_authoring.adapter import (
@@ -67,9 +68,14 @@ class ProposeJobResult:
     failure_reason_counts: Counter[str] = field(default_factory=Counter)
 
 
-def _map_adapter_failure(reason: str) -> tuple[ProposalAttemptStatus, ProposalFailureReason]:
+def _map_adapter_failure(
+    reason: str,
+) -> tuple[ProposalAttemptStatus, ProposalFailureReason]:
     mapping: dict[str, tuple[ProposalAttemptStatus, ProposalFailureReason]] = {
-        "timeout": (ProposalAttemptStatus.FAILED_TRANSPORT, ProposalFailureReason.TIMEOUT),
+        "timeout": (
+            ProposalAttemptStatus.FAILED_TRANSPORT,
+            ProposalFailureReason.TIMEOUT,
+        ),
         "transport_error": (
             ProposalAttemptStatus.FAILED_TRANSPORT,
             ProposalFailureReason.TRANSPORT_ERROR,
@@ -97,54 +103,52 @@ def _map_adapter_failure(reason: str) -> tuple[ProposalAttemptStatus, ProposalFa
     )
 
 
-def run_gold_propose(
+def run_gold_propose_on_snapshot(
     settings: AppSettings,
     *,
-    corpus_name: str,
-    count: int = 20,
-    seed: int = 0,
-    output: Path | None = None,
+    snapshot: CorpusChunkSnapshot,
+    authoring_run_id: str,
+    count: int,
+    seed: int,
+    output: Path,
     force: bool = False,
     adapter: OpenAICompatibleAuthoringAdapter | None = None,
+    skip_readiness: bool = False,
 ) -> ProposeJobResult:
-    # --- Pre-run readiness / privacy ---
-    readiness = evaluate_authoring_readiness(settings)
-    if not readiness.ready:
-        raise ProposePreRunError(
-            f"Authoring NOT READY: {', '.join(readiness.reason_codes) or 'unknown'}"
-        )
-    try:
-        authorized = authorize_authoring_endpoint(settings)
-        effective_endpoint = authorized.endpoint
-    except AuthoringPrivacyError as exc:
-        raise ProposePreRunError(f"authoring endpoint unauthorized: {exc}") from exc
+    """Execute 9B proposal science against an already-resolved ChunkSet.
 
-    # --- Resolve CURRENT chunk snapshot ---
-    try:
-        snapshot = load_current_corpus_chunk_snapshot(
-            settings, corpus_name=corpus_name
-        )
-    except ChunkAccessError as exc:
-        raise ProposePreRunError(str(exc)) from exc
+    Does not resolve corpus CURRENT and does not allocate authoring_run_id.
+    """
+    if not skip_readiness:
+        readiness = evaluate_authoring_readiness(settings)
+        if not readiness.ready:
+            raise ProposePreRunError(
+                f"Authoring NOT READY: {', '.join(readiness.reason_codes) or 'unknown'}"
+            )
+        try:
+            authorized = authorize_authoring_endpoint(settings)
+            effective_endpoint = authorized.endpoint
+        except AuthoringPrivacyError as exc:
+            raise ProposePreRunError(f"authoring endpoint unauthorized: {exc}") from exc
+    else:
+        try:
+            authorized = authorize_authoring_endpoint(settings)
+            effective_endpoint = authorized.endpoint
+        except AuthoringPrivacyError as exc:
+            raise ProposePreRunError(f"authoring endpoint unauthorized: {exc}") from exc
 
     population = build_eligible_population(snapshot.chunks)
     if not population:
-        raise ProposePreRunError("no eligible source children in CURRENT ChunkSet")
+        raise ProposePreRunError("no eligible source children in captured ChunkSet")
 
     try:
         selected = sample_source_seeds(population, count=count, seed=seed)
     except SamplingError as exc:
         raise ProposePreRunError(str(exc)) from exc
 
-    authoring_run_id = new_execution_id(prefix="authorrun")
-    output_path = output or default_authoring_run_path(
-        settings,
-        corpus_name=corpus_name,
-        authoring_run_id=authoring_run_id,
-    )
-    if output_path.exists() and not force:
+    if output.exists() and not force:
         raise ProposePreRunError(
-            f"output already exists (pass --force to overwrite): {output_path}"
+            f"output already exists (pass --force to overwrite): {output}"
         )
 
     owned_adapter = adapter is None
@@ -287,7 +291,7 @@ def run_gold_propose(
     )
 
     try:
-        write_authoring_run(output_path, run)
+        write_authoring_run(output, run)
     except OSError as exc:
         return ProposeJobResult(
             exit_code=1,
@@ -301,7 +305,52 @@ def run_gold_propose(
     return ProposeJobResult(
         exit_code=exit_code,
         run=run,
-        output_path=output_path,
+        output_path=output,
         message="Gold proposal run completed.",
         failure_reason_counts=reason_counts,
+    )
+
+
+def run_gold_propose(
+    settings: AppSettings,
+    *,
+    corpus_name: str,
+    count: int = 20,
+    seed: int = 0,
+    output: Path | None = None,
+    force: bool = False,
+    adapter: OpenAICompatibleAuthoringAdapter | None = None,
+) -> ProposeJobResult:
+    """CLI convenience wrapper: resolve CURRENT, allocate run id, propose."""
+    readiness = evaluate_authoring_readiness(settings)
+    if not readiness.ready:
+        raise ProposePreRunError(
+            f"Authoring NOT READY: {', '.join(readiness.reason_codes) or 'unknown'}"
+        )
+    try:
+        authorize_authoring_endpoint(settings)
+    except AuthoringPrivacyError as exc:
+        raise ProposePreRunError(f"authoring endpoint unauthorized: {exc}") from exc
+
+    try:
+        snapshot = load_current_corpus_chunk_snapshot(settings, corpus_name=corpus_name)
+    except ChunkAccessError as exc:
+        raise ProposePreRunError(str(exc)) from exc
+
+    authoring_run_id = new_execution_id(prefix="authorrun")
+    output_path = output or default_authoring_run_path(
+        settings,
+        corpus_name=corpus_name,
+        authoring_run_id=authoring_run_id,
+    )
+    return run_gold_propose_on_snapshot(
+        settings,
+        snapshot=snapshot,
+        authoring_run_id=authoring_run_id,
+        count=count,
+        seed=seed,
+        output=output_path,
+        force=force,
+        adapter=adapter,
+        skip_readiness=True,
     )

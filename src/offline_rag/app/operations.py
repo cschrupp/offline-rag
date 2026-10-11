@@ -16,6 +16,7 @@ from offline_rag.config.models import AppSettings
 class OperationKind(StrEnum):
     QUERY = "query"
     INGEST = "ingest"
+    GOLD_BOOTSTRAP = "gold_bootstrap"
 
 
 class IngestLifecycle(StrEnum):
@@ -53,13 +54,27 @@ class OperationHandle:
         if reason is CancelReason.NONE:
             return
         with self._lock:
+            if self.kind is OperationKind.GOLD_BOOTSTRAP:
+                # After 202, client disconnect must not cancel scientific work.
+                if reason is CancelReason.CLIENT_DISCONNECT:
+                    return
+                # Shutdown is cooperative before publication CS.
+                if (
+                    reason is CancelReason.SHUTDOWN
+                    and self.ingest_lifecycle is IngestLifecycle.PUBLICATION
+                ):
+                    return
             if self.kind is OperationKind.INGEST:
                 # D18: post-lease client disconnect is not a cancel signal.
-                if reason is CancelReason.CLIENT_DISCONNECT and self.ingest_lifecycle in {
-                    IngestLifecycle.POST_LEASE,
-                    IngestLifecycle.PUBLICATION,
-                    IngestLifecycle.TERMINAL,
-                }:
+                if (
+                    reason is CancelReason.CLIENT_DISCONNECT
+                    and self.ingest_lifecycle
+                    in {
+                        IngestLifecycle.POST_LEASE,
+                        IngestLifecycle.PUBLICATION,
+                        IngestLifecycle.TERMINAL,
+                    }
+                ):
                     return
                 # Shutdown cannot abort an ingest already in publication CS.
                 if (
@@ -79,8 +94,10 @@ class OperationHandle:
         without establishing candidate mutation.
         """
         with self._lock:
-            if self.kind is not OperationKind.INGEST:
-                raise RuntimeError("complete_lease_acquire only valid for ingest")
+            if self.kind not in {OperationKind.INGEST, OperationKind.GOLD_BOOTSTRAP}:
+                raise RuntimeError(
+                    "complete_lease_acquire only valid for ingest/bootstrap"
+                )
             if self.ingest_lifecycle is IngestLifecycle.TERMINAL:
                 return
             if self.ingest_lifecycle is not IngestLifecycle.PRE_LEASE:
@@ -90,12 +107,16 @@ class OperationHandle:
                 if reason is CancelReason.CLIENT_DISCONNECT:
                     raise AppError(
                         ErrorCode.REQUEST_CANCELLED,
-                        details=SafeErrorDetails(reason="client_disconnect", stage="lease"),
+                        details=SafeErrorDetails(
+                            reason="client_disconnect", stage="lease"
+                        ),
                     )
                 if reason is CancelReason.SHUTDOWN:
                     raise AppError(
                         ErrorCode.INGEST_FAILED,
-                        details=SafeErrorDetails(reason="shutdown_abort", stage="lease"),
+                        details=SafeErrorDetails(
+                            reason="shutdown_abort", stage="lease"
+                        ),
                     )
             if time.monotonic() >= self.deadline_mono:
                 raise AppError(
@@ -118,18 +139,29 @@ class OperationHandle:
         success, shutdown/deadline must not roll publication back.
         """
         with self._lock:
-            if self.kind is not OperationKind.INGEST:
-                raise RuntimeError("enter_publication only valid for ingest")
+            if self.kind not in {OperationKind.INGEST, OperationKind.GOLD_BOOTSTRAP}:
+                raise RuntimeError("enter_publication only valid for ingest/bootstrap")
             if self.ingest_lifecycle is IngestLifecycle.TERMINAL:
                 return
             if self.ingest_lifecycle is IngestLifecycle.PUBLICATION:
                 return
-            if self.cancel_event.is_set() and self.cancel_reason is CancelReason.SHUTDOWN:
+            if (
+                self.cancel_event.is_set()
+                and self.cancel_reason is CancelReason.SHUTDOWN
+            ):
+                code = (
+                    ErrorCode.INTERNAL_ERROR
+                    if self.kind is OperationKind.GOLD_BOOTSTRAP
+                    else ErrorCode.INGEST_FAILED
+                )
                 raise AppError(
-                    ErrorCode.INGEST_FAILED,
+                    code,
                     details=SafeErrorDetails(reason="shutdown_abort", stage="publish"),
                 )
-            if time.monotonic() >= self.deadline_mono:
+            if (
+                self.kind is OperationKind.INGEST
+                and time.monotonic() >= self.deadline_mono
+            ):
                 raise AppError(
                     ErrorCode.REQUEST_TIMEOUT,
                     details=SafeErrorDetails(
@@ -141,7 +173,7 @@ class OperationHandle:
 
     def mark_terminal(self) -> None:
         with self._lock:
-            if self.kind is OperationKind.INGEST:
+            if self.kind in {OperationKind.INGEST, OperationKind.GOLD_BOOTSTRAP}:
                 self.ingest_lifecycle = IngestLifecycle.TERMINAL
 
     def deadline_expired(self) -> bool:
@@ -157,6 +189,19 @@ class OperationHandle:
             lifecycle = self.ingest_lifecycle
             cancelled = self.cancel_event.is_set()
 
+        if self.kind is OperationKind.GOLD_BOOTSTRAP:
+            # No whole-bootstrap deadline; only cooperative shutdown before publish.
+            if cancelled and reason is CancelReason.SHUTDOWN:
+                if lifecycle is IngestLifecycle.PUBLICATION:
+                    return
+                raise AppError(
+                    ErrorCode.INTERNAL_ERROR,
+                    details=SafeErrorDetails(
+                        reason="shutdown_abort", stage=where or None
+                    ),
+                )
+            return
+
         if self.kind is OperationKind.QUERY:
             if cancelled and reason in {
                 CancelReason.CLIENT_DISCONNECT,
@@ -170,7 +215,9 @@ class OperationHandle:
                 if cancelled and reason is CancelReason.SHUTDOWN:
                     raise AppError(
                         ErrorCode.REQUEST_CANCELLED,
-                        details=SafeErrorDetails(reason=str(reason), stage=where or None),
+                        details=SafeErrorDetails(
+                            reason=str(reason), stage=where or None
+                        ),
                     )
                 raise AppError(
                     ErrorCode.REQUEST_TIMEOUT,
@@ -216,6 +263,7 @@ class OperationRegistry:
     settings: AppSettings
     query_capacity: CapacityGate
     ingest_capacity: CapacityGate
+    gold_bootstrap_capacity: CapacityGate
     _lock: threading.RLock = field(default_factory=threading.RLock, init=False)
     _active: dict[str, OperationHandle] = field(default_factory=dict, init=False)
     _idle: threading.Condition = field(init=False)
@@ -261,13 +309,19 @@ class OperationRegistry:
             if self._draining:
                 capacity.release()
                 raise AppError(ErrorCode.RUNTIME_NOT_READY)
+            prefix = {
+                OperationKind.QUERY: "opq",
+                OperationKind.INGEST: "opi",
+                OperationKind.GOLD_BOOTSTRAP: "opg",
+            }[kind]
+            lifecycle = None
+            if kind is OperationKind.INGEST or kind is OperationKind.GOLD_BOOTSTRAP:
+                lifecycle = IngestLifecycle.PRE_LEASE
             handle = OperationHandle(
-                op_id=f"op{'q' if kind is OperationKind.QUERY else 'i'}_{uuid.uuid4().hex}",
+                op_id=f"{prefix}_{uuid.uuid4().hex}",
                 kind=kind,
                 deadline_mono=time.monotonic() + seconds,
-                ingest_lifecycle=(
-                    IngestLifecycle.PRE_LEASE if kind is OperationKind.INGEST else None
-                ),
+                ingest_lifecycle=lifecycle,
             )
             self._active[handle.op_id] = handle
             return handle
@@ -290,6 +344,17 @@ class OperationRegistry:
             exhausted_reason="ingest_capacity_exhausted",
         )
 
+    def admit_gold_bootstrap(self) -> OperationHandle:
+        """Admit a Gold Lab baseline bootstrap. No whole-pipeline deadline."""
+        return self._admit(
+            kind=OperationKind.GOLD_BOOTSTRAP,
+            capacity=self.gold_bootstrap_capacity,
+            deadline_seconds=None,
+            # Large sentinel; checkpoint ignores deadline for GOLD_BOOTSTRAP.
+            default_deadline=86_400.0 * 7,
+            exhausted_reason="gold_bootstrap_capacity_exhausted",
+        )
+
     def release(self, handle: OperationHandle) -> None:
         with self._idle:
             if handle._released:
@@ -299,15 +364,19 @@ class OperationRegistry:
             self._active.pop(handle.op_id, None)
             if handle.kind is OperationKind.QUERY:
                 self.query_capacity.release()
-            else:
+            elif handle.kind is OperationKind.INGEST:
                 self.ingest_capacity.release()
+            else:
+                self.gold_bootstrap_capacity.release()
             self._idle.notify_all()
 
     def prepare_for_start(self) -> None:
         """Clear drain flags so a restarted runtime can admit again."""
         with self._idle:
             if self._active:
-                raise RuntimeError("cannot prepare registry while operations are active")
+                raise RuntimeError(
+                    "cannot prepare registry while operations are active"
+                )
             self._draining = False
             self.grace_exhausted = False
 

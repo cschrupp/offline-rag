@@ -1884,6 +1884,274 @@ button.snapshot-badge {
   }
 }
 
+/* 16G-I1 — Gold Lab product foundation */
+.gold-lab-page {
+  min-width: 0;
+  max-width: min(56rem, 100%);
+}
+
+.gold-lab-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.gold-lab-card-header {
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.gold-lab-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-3);
+  margin: var(--space-3) 0 0;
+}
+
+.gold-lab-meta dt {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 0;
+}
+
+.gold-lab-meta dd {
+  margin: 0.15rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.gold-lab-fieldset {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+  margin: 0;
+  min-width: 0;
+}
+
+.gold-lab-fieldset legend {
+  padding-inline: 0.35rem;
+  font-weight: 600;
+}
+
+.gold-lab-radio-row {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+
+.gold-lab-radio {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+  min-height: var(--target);
+  padding: 0.35rem 0;
+  cursor: pointer;
+}
+
+.gold-lab-radio input {
+  margin-top: 0.3rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: 0 0 auto;
+}
+
+.gold-lab-baseline h3 {
+  margin: 0 0 0.35rem;
+}
+
+.gold-lab-provenance {
+  margin-top: var(--space-3);
+}
+
+.gold-lab-provenance summary {
+  cursor: pointer;
+  min-height: var(--target);
+  display: inline-flex;
+  align-items: center;
+  color: var(--navy);
+  font-weight: 500;
+}
+
+.gold-lab-provenance summary:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.gold-lab-task-order {
+  margin: 0;
+  padding-left: 1.2rem;
+  overflow-wrap: anywhere;
+}
+
+.gold-lab-task-order li {
+  margin-bottom: 0.35rem;
+}
+
+.gold-lab-ready {
+  margin: 0;
+  padding: var(--space-3);
+  border-left: 3px solid var(--brass);
+  background: var(--surface);
+}
+
+.gold-lab-source-text {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: inherit;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  max-height: 24rem;
+  overflow: auto;
+}
+
+.gold-lab-game h2,
+.gold-lab-game h3 {
+  margin: 0 0 0.35rem;
+}
+
+.gold-lab-after-action {
+  margin-top: var(--space-3);
+}
+
+.gold-lab-evidence-sweep-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style-position: inside;
+}
+
+.gold-lab-evidence-sweep-card {
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.gold-lab-evidence-sweep-card h3,
+.gold-lab-evidence-sweep-card h4 {
+  margin: 0 0 0.35rem;
+}
+
+.gold-lab-auxiliary-banner {
+  margin: 0;
+  padding: var(--space-3);
+  border-left: 3px solid var(--brass);
+  background: var(--surface);
+  font-weight: 600;
+}
+
+.gold-lab-campaign-nav {
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.gold-lab-campaign-nav a:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+}
+
+.gold-lab-contribution-score {
+  padding: var(--space-4) 0;
+}
+
+.gold-lab-contribution-total {
+  margin: 0;
+  font-size: 2.5rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.gold-lab-contribution-metrics {
+  margin-bottom: var(--space-4);
+}
+
+.gold-lab-calibration-reveal {
+  padding: var(--space-3);
+  border-left: 3px solid var(--color-border-strong, var(--color-border));
+  background: var(--surface);
+}
+
+.gold-lab-calibration-governance {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  background: var(--surface);
+}
+
+.gold-lab-training-candidate-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.gold-lab-training-candidate-list > li {
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.gold-lab-training-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.gold-lab-training-reveal {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border-left: 3px solid var(--color-border-strong, var(--color-border));
+  background: var(--surface);
+}
+
+.gold-lab-training-debrief {
+  margin-top: var(--space-4);
+}
+
+.gold-lab-chunk-duel-pick-list {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.gold-lab-chunk-duel-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.gold-lab-chunk-duel-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+@media (max-width: 48rem) {
+  .gold-lab-evidence-sweep-list {
+    grid-template-columns: 1fr;
+  }
+
+  .gold-lab-chunk-duel-pair {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

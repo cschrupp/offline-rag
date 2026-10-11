@@ -76,6 +76,11 @@ _ENV_FIELD_MAP: dict[str, tuple[str, ...]] = {
     "INGEST_DEADLINE_SECONDS": ("api", "ingest_deadline_seconds"),
     "MAX_CONCURRENT_QUERY": ("api", "max_concurrent_query"),
     "MAX_CONCURRENT_INGEST": ("api", "max_concurrent_ingest"),
+    "MAX_CONCURRENT_GOLD_BOOTSTRAP": ("api", "max_concurrent_gold_bootstrap"),
+    "GOLD_BOOTSTRAP_STAGING_RETENTION_HOURS": (
+        "api",
+        "gold_bootstrap_staging_retention_hours",
+    ),
     "SHUTDOWN_GRACE_SECONDS": ("api", "shutdown_grace_seconds"),
     "TRACE_RETENTION_DAYS": ("api", "trace_retention_days"),
     "TRACE_RETENTION_MAX_COUNT": ("api", "trace_retention_max_count"),
@@ -86,7 +91,9 @@ class ConfigError(ValueError):
     """Raised when configuration cannot be loaded or validated."""
 
 
-def _deep_merge(base: MutableMapping[str, Any], overlay: Mapping[str, Any]) -> dict[str, Any]:
+def _deep_merge(
+    base: MutableMapping[str, Any], overlay: Mapping[str, Any]
+) -> dict[str, Any]:
     merged: dict[str, Any] = dict(base)
     for key, value in overlay.items():
         existing = merged.get(key)
@@ -182,7 +189,9 @@ def _apply_models_dir(data: MutableMapping[str, Any], models_dir: str) -> None:
     root = Path(models_dir)
     paths = data.setdefault("paths", {})
     if not isinstance(paths, dict):
-        raise ConfigError("paths must be a mapping when applying OFFLINE_RAG_MODELS_DIR")
+        raise ConfigError(
+            "paths must be a mapping when applying OFFLINE_RAG_MODELS_DIR"
+        )
     paths["retrieval_models"] = str(root)
     paths["docling_artifacts"] = str(root / "docling")
     paths["tokenizer_artifacts"] = str(root / "tokenizers" / "tiktoken")
@@ -209,7 +218,9 @@ def _rebase_models_prefixed_path(value: Any, models_root: Path) -> str | None:
     return str(models_root.joinpath(*parts[1:]))
 
 
-def _rebase_runtime_model_paths(payload: MutableMapping[str, Any], models_dir: str) -> None:
+def _rebase_runtime_model_paths(
+    payload: MutableMapping[str, Any], models_dir: str
+) -> None:
     """Ensure runtime model_path values follow OFFLINE_RAG_MODELS_DIR.
 
     ``dense.model_path`` / ``reranker.model.model_path`` often come from YAML as
@@ -374,7 +385,9 @@ def experiment_config_from_settings(settings: AppSettings) -> ExperimentConfig |
     )
 
 
-def load_dotenv(path: Path | None = None, *, environ: MutableMapping[str, str] | None = None) -> Path | None:
+def load_dotenv(
+    path: Path | None = None, *, environ: MutableMapping[str, str] | None = None
+) -> Path | None:
     """Load KEY=VALUE pairs from a local ``.env`` into the process environment.
 
     Existing environment variables win (are not overwritten). Returns the path

@@ -142,10 +142,14 @@ class ApplicationRuntime:
         self.ingest_capacity = CapacityGate(
             max_concurrent=int(self.settings.api.max_concurrent_ingest)
         )
+        self.gold_bootstrap_capacity = CapacityGate(
+            max_concurrent=int(self.settings.api.max_concurrent_gold_bootstrap)
+        )
         self.operations = OperationRegistry(
             settings=self.settings,
             query_capacity=self.query_capacity,
             ingest_capacity=self.ingest_capacity,
+            gold_bootstrap_capacity=self.gold_bootstrap_capacity,
         )
         self._finalize_lock = threading.Lock()
 
@@ -163,9 +167,7 @@ class ApplicationRuntime:
     def publication(self) -> ProductPublicationRegistry:
         if self._publication is None:
             qdrant = None if self.resources is None else self.resources.qdrant
-            self._publication = ProductPublicationRegistry(
-                self.settings, qdrant=qdrant
-            )
+            self._publication = ProductPublicationRegistry(self.settings, qdrant=qdrant)
         return self._publication
 
     @property
@@ -223,13 +225,19 @@ class ApplicationRuntime:
             validate_global_startup_requirements(self.settings)
             # D15: quarantine unpublished candidates; never auto-publish.
             recover_abandoned_candidates(self.settings)
-            # 16B: recover workspace publication/EMPTY journals and interrupt
-            # nonterminal managed ops before mutation/query surfaces become READY.
-            from offline_rag.app.workspace.lifecycle import (
-                recover_workspace_transactions,
+            # GAP-16G-02 startup topology:
+            # A journals → B resources → C bootstrap reconcile →
+            # D generic interrupt → E staging scavenge → F READY
+            from offline_rag.app.gold_lab.bootstrap import (
+                reconcile_gold_bootstrap_operations,
             )
+            from offline_rag.app.gold_lab.bootstrap_staging import (
+                scavenge_bootstrap_staging,
+            )
+            from offline_rag.app.workspace.lifecycle import recover_workspace_journals
+            from offline_rag.app.workspace.mutation_ops import ManagedOperationStore
 
-            recover_workspace_transactions(self.settings)
+            recover_workspace_journals(self.settings)
 
             self.construction_counts.embedder += 1
             embedder = self.factories.embedder(self.settings)
@@ -250,13 +258,24 @@ class ApplicationRuntime:
                 generator_client=generator_client,
                 qdrant=qdrant,
             )
-            self._publication = ProductPublicationRegistry(
-                self.settings, qdrant=qdrant
-            )
+            self._publication = ProductPublicationRegistry(self.settings, qdrant=qdrant)
             self._query_runtimes = QueryRuntimeCache(
                 settings=self.settings,
                 resources_provider=lambda: self.resources,
             )
+
+            # C: reconcile bootstrap crash window before generic interrupt.
+            # If publication proof resources above could not be built, we never
+            # reach here — runtime stays NOT_READY and ambiguous bootstrap ops
+            # are not generic-interrupted.
+            reconcile_gold_bootstrap_operations(self)
+
+            # D: interrupt remaining non-terminal managed operations.
+            ManagedOperationStore(self.settings).interrupt_all_nonterminal()
+
+            # E: scavenge aged private bootstrap staging.
+            scavenge_bootstrap_staging(self.settings)
+
             self.state = RuntimeState.READY
         except Exception:  # noqa: BLE001 — fail closed on any startup fault
             for obj in (generator_client, reranker, embedder, qdrant):

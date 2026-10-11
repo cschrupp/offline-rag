@@ -77,6 +77,8 @@ class ApiSettings(BaseModel):
     ingest_deadline_seconds: PositiveInt = 1_800
     max_concurrent_query: PositiveInt = 1
     max_concurrent_ingest: PositiveInt = 1
+    max_concurrent_gold_bootstrap: PositiveInt = 1
+    gold_bootstrap_staging_retention_hours: PositiveInt = 24
     admission_wait_seconds: NonNegativeInt = 0
     shutdown_grace_seconds: PositiveInt = 30
     http_host: NonEmptyStr = "127.0.0.1"
