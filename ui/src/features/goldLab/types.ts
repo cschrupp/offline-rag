@@ -209,3 +209,107 @@ export type GoldPreferenceMutationBody = {
   game_id: string;
   presentation_id: string;
 };
+
+export type GoldContribution = {
+  contract: "gold-contribution-v1";
+  campaign_id: string;
+  total_score: number;
+  expert_judgments: number;
+  questions_reviewed: number;
+  cases_completed: number;
+  gold_finalized: number;
+  hard_calls_resolved: number;
+  completed_active_absolute_tasks: number;
+  total_active_absolute_tasks: number;
+  coverage_fraction: number | null;
+  total_question_tasks: number;
+};
+
+/** Safe registration index fields for Calibration selection (no dataset_path). */
+export type GoldRegistrationSummary = {
+  dataset_id: string;
+  baseline_sha256: string;
+  projection_sha256: string;
+  exported_case_ids: string[];
+  registered_at: string;
+};
+
+export type GoldRegistrationListResponse = {
+  campaign_id: string;
+  registrations: GoldRegistrationSummary[];
+};
+
+export type GoldQcDisposition = "accept" | "edit" | "reject";
+
+export type TrainingPackageJudgment = {
+  chunk_id: string;
+  relevance: 0 | 1 | 2;
+};
+
+export type TrainingPackageGoldJudgment = {
+  chunk_id: string;
+  relevance: 1 | 2;
+};
+
+export type TrainingPackageCandidate = {
+  chunk_id: string;
+  source: GoldSourceContext;
+};
+
+export type TrainingPackageAdjudicationCase = {
+  case_id: string;
+  qc_disposition: GoldQcDisposition;
+  proposed_query: string;
+  proposed_category: string | null;
+  proposed_tags: string[];
+  effective_query: string | null;
+  effective_category: string | null;
+  effective_tags: string[];
+  question_source: GoldSourceContext | null;
+  candidates: TrainingPackageCandidate[];
+  relevance_judgments: TrainingPackageJudgment[];
+};
+
+export type TrainingPackageRegisteredCase = {
+  case_id: string;
+  query: string;
+  category: string | null;
+  tags: string[];
+  judgments: TrainingPackageGoldJudgment[];
+};
+
+export type GoldTrainingCalibrationPackage = {
+  schema_version: "offline-rag-gold-lab-training-calibration-package-v1";
+  campaign_id: string;
+  dataset_id: string;
+  registration: {
+    dataset_id: string;
+    project_id: string;
+    campaign_id: string;
+    project_type: GoldProjectType;
+    workspace_id: string;
+    snapshot_id: string;
+    chunk_set_id: string;
+    corpus_id: string;
+    corpus_name: string;
+    baseline_authoring_run_id: string;
+    baseline_sha256: string;
+    projection_sha256: string;
+    selection_policy_id: string;
+    selection_policy_fingerprint: string;
+    exported_case_ids: string[];
+    registered_at: string;
+  };
+  registered_dataset: {
+    schema_version: string;
+    dataset_id: string;
+    chunk_set_id: string;
+    corpus_id: string;
+    corpus_name: string;
+    cases: TrainingPackageRegisteredCase[];
+  };
+  adjudication: {
+    projection_sha256: string;
+    cases: TrainingPackageAdjudicationCase[];
+  };
+};

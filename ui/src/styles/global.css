@@ -2049,6 +2049,44 @@ button.snapshot-badge {
   font-weight: 600;
 }
 
+.gold-lab-campaign-nav {
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.gold-lab-campaign-nav a:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+}
+
+.gold-lab-contribution-score {
+  padding: var(--space-4) 0;
+}
+
+.gold-lab-contribution-total {
+  margin: 0;
+  font-size: 2.5rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.gold-lab-contribution-metrics {
+  margin-bottom: var(--space-4);
+}
+
+.gold-lab-calibration-reveal {
+  padding: var(--space-3);
+  border-left: 3px solid var(--color-border-strong, var(--color-border));
+  background: var(--surface);
+}
+
+.gold-lab-calibration-governance {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  background: var(--surface);
+}
+
 .gold-lab-chunk-duel-pick-list {
   margin: 0;
   padding-left: 1.2rem;

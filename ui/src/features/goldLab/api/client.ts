@@ -4,26 +4,32 @@ import type {
   GoldCampaign,
   GoldCampaignCreateRequest,
   GoldCampaignListResponse,
+  GoldContribution,
   GoldMutationReceipt,
   GoldPreferenceMutationBody,
   GoldProject,
   GoldProjectCreateRequest,
   GoldProjectListResponse,
+  GoldRegistrationListResponse,
   GoldRelevance,
   GoldTaskDetail,
   GoldTaskKind,
   GoldTaskListFilters,
   GoldTaskListResponse,
+  GoldTrainingCalibrationPackage,
   QuestionCheckMutationBody,
 } from "../types";
+import { validateTrainingCalibrationPackage } from "./trainingPackageValidation";
 import {
   validateGoldBaselineListResponse,
   validateGoldCampaign,
   validateGoldCampaignListResponse,
+  validateGoldContribution,
   validateGoldMutationReceipt,
   validateGoldPreferenceReceipt,
   validateGoldProject,
   validateGoldProjectListResponse,
+  validateGoldRegistrationListResponse,
   validateGoldTaskDetail,
   validateGoldTaskListResponse,
 } from "./validation";
@@ -226,5 +232,42 @@ export async function submitGoldPreference(params: {
   );
   return validateGoldPreferenceReceipt(raw, {
     campaignId: params.campaignId,
+  });
+}
+
+export async function getGoldContribution(
+  campaignId: string,
+  signal?: AbortSignal,
+): Promise<GoldContribution> {
+  const raw = await apiRequest<unknown>(
+    `/v1/gold-lab/campaigns/${encodeURIComponent(campaignId)}/contribution`,
+    { signal },
+  );
+  return validateGoldContribution(raw, campaignId);
+}
+
+export async function listGoldRegistrations(
+  campaignId: string,
+  signal?: AbortSignal,
+): Promise<GoldRegistrationListResponse> {
+  const raw = await apiRequest<unknown>(
+    `/v1/gold-lab/campaigns/${encodeURIComponent(campaignId)}/registrations`,
+    { signal },
+  );
+  return validateGoldRegistrationListResponse(raw, campaignId);
+}
+
+export async function getGoldTrainingPackage(
+  campaignId: string,
+  datasetId: string,
+  signal?: AbortSignal,
+): Promise<GoldTrainingCalibrationPackage> {
+  const raw = await apiRequest<unknown>(
+    `/v1/gold-lab/campaigns/${encodeURIComponent(campaignId)}/registrations/${encodeURIComponent(datasetId)}/training-package`,
+    { signal },
+  );
+  return validateTrainingCalibrationPackage(raw, {
+    campaignId,
+    datasetId,
   });
 }

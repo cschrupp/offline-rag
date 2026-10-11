@@ -188,6 +188,14 @@ export function GoldCampaignShell({ campaign }: Props) {
         <p className="muted" style={{ margin: 0 }}>
           <code>{campaign.campaign_id}</code>
         </p>
+        <nav className="row gold-lab-campaign-nav" aria-label="Campaign areas">
+          <Link to={`/gold-lab/campaigns/${campaign.campaign_id}/contribution`}>
+            Contribution
+          </Link>
+          <Link to={`/gold-lab/campaigns/${campaign.campaign_id}/calibration`}>
+            Calibration
+          </Link>
+        </nav>
       </header>
 
       <Card>

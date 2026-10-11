@@ -6,10 +6,13 @@ import type {
   GoldBaselineSummary,
   GoldCampaign,
   GoldCampaignListResponse,
+  GoldContribution,
   GoldMutationReceipt,
   GoldMutationRecordType,
   GoldProject,
   GoldProjectListResponse,
+  GoldRegistrationListResponse,
+  GoldRegistrationSummary,
   GoldSourceContext,
   GoldTaskDetail,
   GoldTaskKind,
@@ -787,4 +790,117 @@ export function validateGoldPreferenceReceipt(
     campaignId: requested.campaignId,
     expectedRecordType: "auxiliary_preference",
   });
+}
+
+function isFiniteCoverage(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1;
+}
+
+export function validateGoldContribution(
+  raw: unknown,
+  requestedCampaignId: string,
+): GoldContribution {
+  const row = asRecord(raw, "Gold contribution");
+  if (row.contract !== "gold-contribution-v1") {
+    throw unexpectedResponse("Contribution contract must be gold-contribution-v1.");
+  }
+  if (row.campaign_id !== requestedCampaignId) {
+    throw unexpectedResponse(
+      "Contribution campaign_id did not match the requested campaign.",
+    );
+  }
+  const intFields = [
+    "total_score",
+    "expert_judgments",
+    "questions_reviewed",
+    "cases_completed",
+    "gold_finalized",
+    "hard_calls_resolved",
+    "completed_active_absolute_tasks",
+    "total_active_absolute_tasks",
+    "total_question_tasks",
+  ] as const;
+  for (const field of intFields) {
+    if (!isNonNegativeInt(row[field])) {
+      throw unexpectedResponse(`Contribution ${field} must be a non-negative integer.`);
+    }
+  }
+  if (row.coverage_fraction !== null && !isFiniteCoverage(row.coverage_fraction)) {
+    throw unexpectedResponse(
+      "Contribution coverage_fraction must be null or a finite number in [0, 1].",
+    );
+  }
+  return {
+    contract: "gold-contribution-v1",
+    campaign_id: row.campaign_id as string,
+    total_score: row.total_score as number,
+    expert_judgments: row.expert_judgments as number,
+    questions_reviewed: row.questions_reviewed as number,
+    cases_completed: row.cases_completed as number,
+    gold_finalized: row.gold_finalized as number,
+    hard_calls_resolved: row.hard_calls_resolved as number,
+    completed_active_absolute_tasks:
+      row.completed_active_absolute_tasks as number,
+    total_active_absolute_tasks: row.total_active_absolute_tasks as number,
+    coverage_fraction: row.coverage_fraction as number | null,
+    total_question_tasks: row.total_question_tasks as number,
+  };
+}
+
+function validateRegistrationSummary(
+  raw: unknown,
+  label: string,
+): GoldRegistrationSummary {
+  const row = asRecord(raw, label);
+  if (!isNonEmptyString(row.dataset_id)) {
+    throw unexpectedResponse(`${label} is missing dataset_id.`);
+  }
+  if (!isNonEmptyString(row.baseline_sha256)) {
+    throw unexpectedResponse(`${label} is missing baseline_sha256.`);
+  }
+  if (!isNonEmptyString(row.projection_sha256)) {
+    throw unexpectedResponse(`${label} is missing projection_sha256.`);
+  }
+  if (!isString(row.registered_at)) {
+    throw unexpectedResponse(`${label} has an invalid registered_at.`);
+  }
+  if (!Array.isArray(row.exported_case_ids)) {
+    throw unexpectedResponse(`${label} is missing exported_case_ids.`);
+  }
+  for (const [index, caseId] of row.exported_case_ids.entries()) {
+    if (typeof caseId !== "string") {
+      throw unexpectedResponse(
+        `${label}.exported_case_ids[${index}] must be a string.`,
+      );
+    }
+  }
+  // Intentionally drop dataset_path from application state.
+  return {
+    dataset_id: row.dataset_id,
+    baseline_sha256: row.baseline_sha256,
+    projection_sha256: row.projection_sha256,
+    exported_case_ids: row.exported_case_ids as string[],
+    registered_at: row.registered_at,
+  };
+}
+
+export function validateGoldRegistrationListResponse(
+  raw: unknown,
+  requestedCampaignId: string,
+): GoldRegistrationListResponse {
+  const obj = asRecord(raw, "Registration list");
+  if (obj.campaign_id !== requestedCampaignId) {
+    throw unexpectedResponse(
+      "Registration list campaign_id did not match the requested campaign.",
+    );
+  }
+  if (!Array.isArray(obj.registrations)) {
+    throw unexpectedResponse("Registration list is missing registrations.");
+  }
+  return {
+    campaign_id: obj.campaign_id as string,
+    registrations: obj.registrations.map((entry, index) =>
+      validateRegistrationSummary(entry, `Registration list entry ${index}`),
+    ),
+  };
 }

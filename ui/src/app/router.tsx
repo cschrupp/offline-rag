@@ -2,7 +2,9 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "../components/AppShell";
 import { EngineeringArchitecturePage } from "../pages/EngineeringArchitecturePage";
 import { EngineeringEvaluationPage } from "../pages/EngineeringEvaluationPage";
+import { GoldLabCalibrationPage } from "../pages/GoldLabCalibrationPage";
 import { GoldLabCampaignPage } from "../pages/GoldLabCampaignPage";
+import { GoldLabContributionPage } from "../pages/GoldLabContributionPage";
 import { GoldLabPage } from "../pages/GoldLabPage";
 import { GoldLabProjectPage } from "../pages/GoldLabProjectPage";
 import { GoldLabWorkPage } from "../pages/GoldLabWorkPage";
@@ -31,6 +33,14 @@ export function AppRouter() {
         <Route
           path="gold-lab/campaigns/:campaignId/work"
           element={<GoldLabWorkPage />}
+        />
+        <Route
+          path="gold-lab/campaigns/:campaignId/contribution"
+          element={<GoldLabContributionPage />}
+        />
+        <Route
+          path="gold-lab/campaigns/:campaignId/calibration"
+          element={<GoldLabCalibrationPage />}
         />
         <Route
           path="engineering"
