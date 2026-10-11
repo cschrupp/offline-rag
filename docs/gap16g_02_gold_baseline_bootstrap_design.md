@@ -9,17 +9,22 @@ D0 DETAILED DESIGN — CANDIDATE AUTHORITY
 STATUS:
 DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED
 REWORK 1 APPLIED (GAP-16G-02-D0-REWORK-AUTH-001)
+REWORK 2 APPLIED (GAP-16G-02-D0-REWORK-AUTH-002)
 
 Authority:
 GAP-16G-02-D0-AUTH-002
 GAP16G02-D0-WRITE-GATE-01
 GAP-16G-02-D0-REWORK-AUTH-001
+GAP-16G-02-D0-REWORK-AUTH-002
 
 Starting product tip:
 35ec9be5647d41c887eb280146c05b9688dea685
 
 Prior candidate tip:
 062b59a72f8909123d67f896885bfea1d4707bbe
+
+Rework 1 tip:
+6b7f2d5cd4573e90f9ed3e7aa6b6da9decd6b811
 
 Branch:
 design/gap-16g-02-gold-baseline-bootstrap
@@ -82,6 +87,18 @@ ownership decisions; does **not** authorize implementation:
 | R6 | Persistence / concurrency / crash / test matrices updated for R2–R5 |
 | R7 | Unresolved issues empty only after R1–R6 explicit |
 
+### Design Rework 2 (GAP-16G-02-D0-REWORK-AUTH-002)
+
+Narrow R5 determinization only — does **not** reopen ENTRY/ORCH/PUBLISH/
+REQUEST/CONCURRENCY/SEED/STAGING/CRASH/BINDING/ADMISSION or scientific
+semantics; does **not** authorize implementation:
+
+| ID | Closure |
+|---|---|
+| R5 | Remove every `or` / `maybe` / phase-ambiguous row; freeze pre- vs post-admission boundary |
+| R6 | Keep error/test matrices consistent with deterministic R5 |
+| R7 | Unresolved issues `NONE` only after R5 has zero alternatives |
+
 ---
 
 ## 1. Authority inventory
@@ -90,9 +107,10 @@ ownership decisions; does **not** authorize implementation:
 |---|---|
 | Design authority | `GAP-16G-02-D0-AUTH-002` |
 | Write gate | `GAP16G02-D0-WRITE-GATE-01` |
-| Rework authority | `GAP-16G-02-D0-REWORK-AUTH-001` |
+| Rework authorities | `GAP-16G-02-D0-REWORK-AUTH-001`, `GAP-16G-02-D0-REWORK-AUTH-002` |
 | Starting product tip (Human-accepted 16G-I5) | `35ec9be5647d41c887eb280146c05b9688dea685` |
 | Prior IR candidate | `062b59a72f8909123d67f896885bfea1d4707bbe` |
+| Rework 1 tip | `6b7f2d5cd4573e90f9ed3e7aa6b6da9decd6b811` |
 | Design content commit | `650ed772ea7f0b710f504af84ae59b16796d51a9` |
 | Final review candidate | EXTERNAL HANDOFF / INDEPENDENT REVIEW RECORD |
 | Source branch | `implementation/16g-i5-training-compiler` |
@@ -1289,61 +1307,138 @@ Bootstrap must bind product failures to the **existing** `ErrorCode` vocabulary
 unless a future separate authority adds codes. Implementation must not invent
 ad-hoc HTTP behavior.
 
-Legend:
-
-| Column | Meaning |
-|---|---|
-| Sync HTTP | Status on the initiating `POST` when rejected before/at admission |
-| Retryable | Catalog retryable bit / product guidance |
-| Op created | Whether a durable `ManagedOperation` record exists |
-| Terminal | Terminal status if an operation was created |
-
-| Failure condition | ErrorCode | Sync HTTP | Retryable | Safe reason code | Op created | Terminal if created |
-|---|---|---|---|---|---|---|
-| Invalid / missing Idempotency-Key | `REQUEST_INVALID` | 422 | no | `idempotency_key_invalid` | no | — |
-| `proposal_count` missing / non-integer / `<1` / `>40` | `REQUEST_INVALID` | 422 | no | `proposal_count_invalid` | no | — |
-| `prelabel_enabled` missing / non-boolean | `REQUEST_INVALID` | 422 | no | `prelabel_enabled_invalid` | no | — |
-| Unknown project | `GOLD_PROJECT_UNKNOWN` | 404 | no | `project_unknown` | no | — |
-| Archived project | `GOLD_CONFLICT` | 409 | no | `project_archived` | no | — |
-| Project status not ACTIVE (non-archived invalid) | `GOLD_CONFLICT` | 409 | no | `project_status_invalid` | no | — |
-| Bound workspace unknown | `WORKSPACE_UNKNOWN` | 404 | no | `workspace_unknown` | no | — |
-| Workspace not ACTIVE / no current publication | `WORKSPACE_NOT_READY` | 409 | no | `workspace_not_ready` | no | — |
-| Workspace durable state unreadable | `WORKSPACE_STATE_UNAVAILABLE` | 409 | no | `workspace_state_unavailable` | no | — |
-| Same key + different fingerprint | `IDEMPOTENCY_CONFLICT` | 409 | no | `idempotency_identity_mismatch` | existing only | unchanged |
-| Same workspace non-terminal bootstrap already active (new key) | `GOLD_BUSY` | 409 | yes | `baseline_bootstrap_active` | no | — |
-| Global bootstrap capacity exhausted | `SERVICE_OVERLOADED` | 503 | yes | `gold_bootstrap_capacity_exhausted` | no | — |
-| Runtime not READY | `RUNTIME_NOT_READY` | 503 | yes | `runtime_not_ready` | no | — |
-| Authoring disabled / not ready | `GOLD_CONFLICT` | 409 | no | `authoring_not_ready` | no* | — / FAILED if after reserve |
-| Unauthorized authoring endpoint/model | `GOLD_CONFLICT` | 409 | no | `authoring_endpoint_unauthorized` | no* | — / FAILED if after reserve |
-| `proposal_count` > eligible source population | `GOLD_CONFLICT` | 409 or async FAIL | no | `proposal_count_exceeds_eligible_population` | yes if admitted before 9B population check | `FAILED` |
-| 9B zero usable proposals | (async) `GOLD_CONFLICT` via op error | 202 then observe | no | `zero_usable_proposals` | yes | `FAILED` |
-| 9C zero reviewable pooled cases | (async) `GOLD_CONFLICT` via op error | 202 then observe | no | `zero_reviewable_cases` | yes | `FAILED` |
-| 9D requested but cannot validly start | (async) `GOLD_CONFLICT` via op error | 202 then observe | no | `prelabel_stage_cannot_start` | yes | `FAILED` |
-| Captured historical ChunkSet unavailable | (async) `SNAPSHOT_UNAVAILABLE` or `GOLD_STATE_UNAVAILABLE` | 202 then observe | no | `captured_chunk_set_unavailable` | yes | `FAILED` |
-| Staged run schema/identity invalid | (async) `GOLD_STATE_UNAVAILABLE` | 202 then observe | no | `staged_run_invalid` | yes | `FAILED` |
-| Historical candidate/source identity failure | (async) `GOLD_STATE_UNAVAILABLE` | 202 then observe | no | `historical_identity_failure` | yes | `FAILED` |
-| Workspace revision/snapshot drift before commit | (async) `WORKSPACE_CONFLICT` | 202 then observe | no | `publication_drift_before_commit` | yes | `FAILED` |
-| Project state drift before commit | (async) `GOLD_CONFLICT` | 202 then observe | no | `project_drift_before_commit` | yes | `FAILED` |
-| Canonical destination conflict (non-reconciling) | (async) `GOLD_STATE_UNAVAILABLE` | 202 then observe | no | `canonical_destination_conflict` | yes | `FAILED` |
-| Startup hash/provenance conflict | recovery fail-closed | n/a (startup) | no | `canonical_recovery_conflict` | yes | `FAILED` |
-| Ordinary process interruption after unresolved non-terminal | recovery | n/a | yes observe | `operation_interrupted` | yes | `INTERRUPTED` |
-| Unexpected internal orchestration failure | `INTERNAL_ERROR` | 500 or async FAIL | no | `bootstrap_internal_failure` | maybe | `FAILED` if created |
-
-\* Authoring readiness / endpoint authorization that can be checked cheaply
-during admission may reject synchronously with **no** operation. If discovered
-only after durable reservation, the operation terminals as `FAILED` with the
-same safe reason and capacity is released.
-
-Distinctions that must remain crisp:
+This matrix is **deterministic**. There are:
 
 ```text
-same-workspace single-flight     → GOLD_BUSY / baseline_bootstrap_active
-global resource overload         → SERVICE_OVERLOADED / gold_bootstrap_capacity_exhausted
-scientific baseline invalidity   → GOLD_CONFLICT or GOLD_STATE_UNAVAILABLE
-                                   with stage-specific reason
-durable-state corruption         → GOLD_STATE_UNAVAILABLE / WORKSPACE_STATE_UNAVAILABLE
-                                   fail closed; no overwrite
-idempotency identity mismatch    → IDEMPOTENCY_CONFLICT
+ambiguous "or" ErrorCode choices: 0
+"maybe" operation-creation mappings: 0
+```
+
+### Frozen phase boundary
+
+```text
+PRE-ADMISSION DETERMINISTIC VALIDATION
+  → synchronous HTTP error
+  → no new ManagedOperation
+
+POST-ADMISSION SCIENTIFIC / EXECUTION FAILURE
+  → POST returns 202 Accepted
+  → ManagedOperation exists
+  → terminal FAILED (or INTERRUPTED via recovery rules)
+  → observe via GET /v1/operations/{operation_id}
+```
+
+Authoring readiness and configured endpoint/model authorization are
+**pre-admission** checks. They must complete before durable reservation.
+They do not share a post-admission alternate path.
+
+`proposal_count` product bounds (`1..40`) are pre-admission transport/product
+validation. Comparison against the exact captured 9B eligible population is
+**post-admission** scientific execution against frozen publication (no silent
+clamp; no model calls; no canonical artifact).
+
+### Pre-admission deterministic validation
+
+| Failure condition | ErrorCode | HTTP | Retryable | Safe reason code | Op created |
+|---|---|---|---|---|---|
+| Invalid / missing Idempotency-Key | `REQUEST_INVALID` | 422 | no | `idempotency_key_invalid` | no |
+| `proposal_count` missing / non-integer / `<1` / `>40` | `REQUEST_INVALID` | 422 | no | `proposal_count_invalid` | no |
+| `prelabel_enabled` missing / non-boolean | `REQUEST_INVALID` | 422 | no | `prelabel_enabled_invalid` | no |
+| Unknown project | `GOLD_PROJECT_UNKNOWN` | 404 | no | `project_unknown` | no |
+| Archived project | `GOLD_CONFLICT` | 409 | no | `project_archived` | no |
+| Project status not ACTIVE (non-archived invalid) | `GOLD_CONFLICT` | 409 | no | `project_status_invalid` | no |
+| Bound workspace unknown | `WORKSPACE_UNKNOWN` | 404 | no | `workspace_unknown` | no |
+| Workspace not ACTIVE / no current publication | `WORKSPACE_NOT_READY` | 409 | no | `workspace_not_ready` | no |
+| Workspace durable state unreadable | `WORKSPACE_STATE_UNAVAILABLE` | 409 | no | `workspace_state_unavailable` | no |
+| Same key + different fingerprint | `IDEMPOTENCY_CONFLICT` | 409 | no | `idempotency_identity_mismatch` | existing only (unchanged) |
+| Same workspace non-terminal bootstrap already active (new key) | `GOLD_BUSY` | 409 | yes | `baseline_bootstrap_active` | no |
+| Global bootstrap capacity exhausted | `SERVICE_OVERLOADED` | 503 | yes | `gold_bootstrap_capacity_exhausted` | no |
+| Runtime not READY | `RUNTIME_NOT_READY` | 503 | yes | `runtime_not_ready` | no |
+| Authoring disabled / static authoring configuration not ready | `GOLD_CONFLICT` | 409 | no | `authoring_not_ready` | no |
+| Configured authoring endpoint/model is not authorized | `GOLD_CONFLICT` | 409 | no | `authoring_endpoint_unauthorized` | no |
+| Unexpected internal failure **before** durable reservation | `INTERNAL_ERROR` | 500 | no | `bootstrap_internal_failure` | no |
+
+### Post-admission scientific / execution failure
+
+Initiating `POST` has already returned `202 Accepted`. Failures below terminalize
+the operation; they are not alternate sync HTTP mappings for the same condition.
+
+| Failure condition | ErrorCode (op.error.code) | Retryable | Safe reason code | Op created | Terminal |
+|---|---|---|---|---|---|
+| `proposal_count` > exact eligible 9B population | `GOLD_CONFLICT` | no | `proposal_count_exceeds_eligible_population` | yes | `FAILED` |
+| 9B zero usable proposals | `GOLD_CONFLICT` | no | `zero_usable_proposals` | yes | `FAILED` |
+| 9C zero reviewable pooled cases | `GOLD_CONFLICT` | no | `zero_reviewable_cases` | yes | `FAILED` |
+| 9D requested but cannot validly start | `GOLD_CONFLICT` | no | `prelabel_stage_cannot_start` | yes | `FAILED` |
+| Captured historical ChunkSet cannot be loaded/bound | `SNAPSHOT_UNAVAILABLE` | no | `captured_chunk_set_unavailable` | yes | `FAILED` |
+| Staged `GoldAuthoringRun` schema/identity invalid | `GOLD_STATE_UNAVAILABLE` | no | `staged_run_invalid` | yes | `FAILED` |
+| Historical candidate/source identity failure | `GOLD_STATE_UNAVAILABLE` | no | `historical_identity_failure` | yes | `FAILED` |
+| Workspace revision/snapshot drift before commit | `WORKSPACE_CONFLICT` | no | `publication_drift_before_commit` | yes | `FAILED` |
+| Project state drift before commit | `GOLD_CONFLICT` | no | `project_drift_before_commit` | yes | `FAILED` |
+| Canonical destination conflict (non-reconciling) | `GOLD_STATE_UNAVAILABLE` | no | `canonical_destination_conflict` | yes | `FAILED` |
+| Unexpected internal failure **after** durable reservation | `INTERNAL_ERROR` | no | `bootstrap_internal_failure` | yes | `FAILED` |
+
+Population oversize example (frozen):
+
+```text
+proposal_count = 40
+exact eligible population = 27
+
+POST → 202 Accepted
+operation → FAILED
+ErrorCode → GOLD_CONFLICT
+reason → proposal_count_exceeds_eligible_population
+model calls → NONE
+canonical artifact → NONE
+silent clamp → FORBIDDEN
+```
+
+Publication-input vs Gold-state distinction (frozen):
+
+```text
+publication input unavailable
+  → SNAPSHOT_UNAVAILABLE / captured_chunk_set_unavailable
+
+Gold authoring/baseline durable state invalid
+  → GOLD_STATE_UNAVAILABLE
+     (staged_run_invalid | historical_identity_failure |
+      canonical_destination_conflict)
+```
+
+### Recovery-only dispositions (not initiating-POST mappings)
+
+| Condition | Disposition | Safe reason code | Terminal |
+|---|---|---|---|
+| Startup hash/provenance conflict on canonical | fail closed; no overwrite/delete | `canonical_recovery_conflict` | `FAILED` |
+| Ordinary unresolved non-terminal after successful recovery topology | generic interrupt | `operation_interrupted` | `INTERRUPTED` |
+
+### Crisp class distinctions
+
+```text
+same-workspace single-flight
+  → GOLD_BUSY / baseline_bootstrap_active
+  → no ManagedOperation
+
+global resource overload
+  → SERVICE_OVERLOADED / gold_bootstrap_capacity_exhausted
+  → no ManagedOperation
+
+scientific baseline invalidity (post-admission)
+  → GOLD_CONFLICT with stage-specific reason
+    OR SNAPSHOT_UNAVAILABLE for captured publication bind failure
+    OR GOLD_STATE_UNAVAILABLE for authoring/baseline durable incoherence
+
+durable-state corruption
+  → GOLD_STATE_UNAVAILABLE / WORKSPACE_STATE_UNAVAILABLE
+  → fail closed; no overwrite
+
+idempotency identity mismatch
+  → IDEMPOTENCY_CONFLICT
+
+internal failure before reservation
+  → HTTP 500 INTERNAL_ERROR; no ManagedOperation
+
+internal failure after reservation
+  → ManagedOperation FAILED; INTERNAL_ERROR / bootstrap_internal_failure
 ```
 
 Async operation errors use existing `ManagedOperationSafeError`
@@ -1752,7 +1847,11 @@ Future implementation authorities must prove at least:
 | Crash topology | journals → publication resources → bootstrap reconcile → generic interrupt → READY |
 | Crash NOT_READY | missing Qdrant/publication proof resources leave runtime NOT_READY; do not interrupt ambiguous post-publication bootstraps |
 | Crash GET | observation read-only; staging alone ≠ success |
-| Errors | matrix §6A bindings for sync vs async failures |
+| Errors pre-admission | authoring_not_ready / authoring_endpoint_unauthorized / busy / overloaded → sync; no op |
+| Errors post-admission | population oversize / zero proposals / zero reviewable / ChunkSet bind → 202 then FAILED |
+| Errors codes | ChunkSet unavailable → `SNAPSHOT_UNAVAILABLE`; staged/Gold incoherence → `GOLD_STATE_UNAVAILABLE` |
+| Errors internal | before reserve → HTTP 500 no op; after reserve → op FAILED `INTERNAL_ERROR` |
+| Errors determinism | zero `or` ErrorCode forks; zero `maybe` op-creation rows |
 | Privacy | no paths/raw model/seed bodies in API result |
 | Policy | ALLOW_PRODUCTION unchanged/empty |
 | CLI | propose/pool/prelabel public contract preserved |
@@ -1843,15 +1942,18 @@ CONCURRENCY SEED STAGING OBSERVATION HANDOFF
 CRASH BINDING STAGING-RETENTION NONSCOPE ADMISSION
 ```
 
-Rework 1 closures (R1–R7) are explicit in this document:
+Rework 1 closures (R1–R7 architectural) and Rework 2 (R5 determinization) are
+explicit in this document:
 
 ```text
 R1 external candidate tip semantics
 R2 executable startup topology + NOT_READY edge
 R3 atomic WorkspaceMutationLease admission + capacity rollback
 R4 expected_revision = null fingerprint neutrality
-R5 complete safe error / reason matrix
-R6 updated concurrency/crash/persistence/test matrices
+R5 deterministic safe error / reason matrix
+   (0 "or" mappings; 0 "maybe" op-creation mappings;
+    frozen pre- vs post-admission boundary)
+R6 updated concurrency/crash/persistence/test/error matrices
 R7 unresolved = NONE
 ```
 
@@ -1865,13 +1967,13 @@ the visibility/ownership/reuse/recovery contracts frozen above.
 ## 21. Stop condition
 
 ```text
-STOP — GAP-16G-02 D0 design rework handoff
+STOP — GAP-16G-02 D0 design rework 2 handoff
 
 Authority:
-GAP-16G-02-D0-REWORK-AUTH-001
+GAP-16G-02-D0-REWORK-AUTH-002
 
 Base candidate:
-062b59a72f8909123d67f896885bfea1d4707bbe
+6b7f2d5cd4573e90f9ed3e7aa6b6da9decd6b811
 
 Branch:
 design/gap-16g-02-gold-baseline-bootstrap
@@ -1896,22 +1998,26 @@ PRESERVED
 9B/9C/9D design blobs:
 PRESERVED
 
-R1 self-referential Design tip:
+R5 deterministic safe-error matrix:
 CLOSED
 
-R2 startup-recovery topology:
-CLOSED
+Ambiguous "or" mappings:
+0
 
-R3 atomic admission:
-CLOSED
+"maybe" operation-creation mappings:
+0
 
-R4 expected_revision fingerprint:
-CLOSED
+Pre-admission vs post-admission failure boundary:
+FROZEN
 
-R5 safe error matrix:
-CLOSED
+Captured ChunkSet unavailable:
+SNAPSHOT_UNAVAILABLE / captured_chunk_set_unavailable
 
-R6 matrix updates:
+proposal_count > eligible population:
+ASYNC FAILED / GOLD_CONFLICT /
+proposal_count_exceeds_eligible_population
+
+R6 consistency:
 CLOSED
 
 R7 unresolved issues:
