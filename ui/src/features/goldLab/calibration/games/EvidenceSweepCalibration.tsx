@@ -11,7 +11,8 @@ const OPTIONS: Array<{ value: GoldRelevance; label: string }> = [
 
 export type SweepCardState = {
   item: BlindAbsoluteItem;
-  authority: AbsoluteAuthority;
+  /** Present only after this card's local commit (structural blindness). */
+  authority: AbsoluteAuthority | undefined;
   draft: GoldRelevance | null;
   committed: boolean;
 };
@@ -98,10 +99,11 @@ export function EvidenceSweepCalibration({
               >
                 Commit local response
               </Button>
-            ) : (
+            ) : card.authority ? (
               <section
                 className="gold-lab-calibration-reveal"
                 aria-live="polite"
+                data-testid={`calibration-reveal-${card.item.itemId}`}
               >
                 <p>Your response: {card.draft}</p>
                 <p>
@@ -111,7 +113,7 @@ export function EvidenceSweepCalibration({
                     : " — mismatch"}
                 </p>
               </section>
-            )}
+            ) : null}
           </li>
         ))}
       </ol>

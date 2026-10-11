@@ -374,62 +374,9 @@ describe("16G-I4 calibration surface", () => {
   });
 
   it("Evidence Sweep batches at most 5 and stays local", async () => {
-    const manyCandidates = Array.from({ length: 6 }, (_, index) => ({
-      chunk_id: `chunk_${index}`,
-      source: {
-        chunk_id: `chunk_${index}`,
-        document_id: "doc_1",
-        document_title: "Ops",
-        source_name: "ops.pdf",
-        section_path: [],
-        page_start: null,
-        page_end: null,
-        line_start: null,
-        line_end: null,
-        content_type: "text/plain",
-        text: `Evidence ${index}`,
-      },
-    }));
-    const pkg = trainingPackageFixture({
-      adjudication: {
-        projection_sha256: "c".repeat(64),
-        cases: [
-          {
-            case_id: "case_accept",
-            qc_disposition: "accept",
-            proposed_query: "What pressure?",
-            proposed_category: "ops",
-            proposed_tags: ["pump"],
-            effective_query: "What pressure?",
-            effective_category: "ops",
-            effective_tags: ["pump"],
-            question_source: manyCandidates[0]!.source,
-            candidates: manyCandidates,
-            relevance_judgments: manyCandidates.map((c, index) => ({
-              chunk_id: c.chunk_id,
-              relevance: index === 0 ? 2 : 0,
-            })),
-          },
-        ],
-      },
-      registered_dataset: {
-        schema_version: "offline-rag-gold-v1",
-        dataset_id: DATASET_ID,
-        chunk_set_id: "chunkset_1",
-        corpus_id: "corpus_1",
-        corpus_name: "Ops Corpus",
-        cases: [
-          {
-            case_id: "case_accept",
-            query: "What pressure?",
-            category: "ops",
-            tags: ["pump"],
-            judgments: [{ chunk_id: "chunk_0", relevance: 2 }],
-          },
-        ],
-      },
+    const mock = installCalibrationMock({
+      packageBody: multiCandidatePackage(6),
     });
-    const mock = installCalibrationMock({ packageBody: pkg });
     const user = userEvent.setup();
     renderApp("/gold-lab/campaigns/camp_1/calibration");
     await user.click(
@@ -443,4 +390,280 @@ describe("16G-I4 calibration surface", () => {
     assertNoMutationOrTasks(mock.calls);
     mock.restore();
   });
+
+  it("I4-R1: authority is absent pre-commit for all four games; Sweep is per-card", async () => {
+    const user = userEvent.setup();
+
+    // Rapid Fire
+    {
+      const mock = installCalibrationMock();
+      renderApp("/gold-lab/campaigns/camp_1/calibration");
+      await user.click(
+        await screen.findByRole("button", { name: /Use for calibration/i }),
+      );
+      await user.click(
+        await screen.findByRole("button", { name: /Calibrate Rapid Fire/i }),
+      );
+      const game = await screen.findByTestId("calibration-rapid-fire");
+      expect(within(game).queryByTestId("calibration-reveal")).toBeNull();
+      expect(within(game).queryByText(/Registration-time relevance/i)).toBeNull();
+      await user.click(within(game).getByLabelText(/2 — Direct evidence/i));
+      await user.click(
+        within(game).getByRole("button", { name: /Commit local response/i }),
+      );
+      expect(
+        await within(game).findByText(/Registration-time relevance: 2/),
+      ).toBeInTheDocument();
+      mock.restore();
+      cleanup();
+    }
+
+    // Question Check
+    {
+      const mock = installCalibrationMock();
+      renderApp("/gold-lab/campaigns/camp_1/calibration");
+      await user.click(
+        await screen.findByRole("button", { name: /Use for calibration/i }),
+      );
+      await user.click(
+        await screen.findByRole("button", { name: /Calibrate Question Check/i }),
+      );
+      const game = await screen.findByTestId("calibration-question-check");
+      expect(within(game).queryByText(/Registration-time disposition/i)).toBeNull();
+      await user.click(within(game).getByRole("button", { name: "Accept" }));
+      expect(
+        await within(game).findByText(/Registration-time disposition: accept/),
+      ).toBeInTheDocument();
+      mock.restore();
+      cleanup();
+    }
+
+    // Chunk Duel
+    {
+      const mock = installCalibrationMock();
+      renderApp("/gold-lab/campaigns/camp_1/calibration");
+      await user.click(
+        await screen.findByRole("button", { name: /Use for calibration/i }),
+      );
+      await user.click(
+        await screen.findByRole("button", { name: /Calibrate Chunk Duel/i }),
+      );
+      const game = await screen.findByTestId("calibration-chunk-duel");
+      expect(within(game).queryByTestId("calibration-reveal")).toBeNull();
+      expect(
+        within(game).queryByText(/absolute relevance authority/i),
+      ).toBeNull();
+      await user.click(within(game).getByRole("button", { name: "Prefer A" }));
+      await user.click(
+        within(game).getByRole("button", { name: /Commit local preference/i }),
+      );
+      expect(await within(game).findByTestId("calibration-reveal")).toBeInTheDocument();
+      mock.restore();
+      cleanup();
+    }
+
+    // Evidence Sweep — commit A must not reveal B
+    {
+      const mock = installCalibrationMock({
+        packageBody: multiCandidatePackage(3),
+      });
+      renderApp("/gold-lab/campaigns/camp_1/calibration");
+      await user.click(
+        await screen.findByRole("button", { name: /Use for calibration/i }),
+      );
+      await user.click(
+        await screen.findByRole("button", { name: /Calibrate Evidence Sweep/i }),
+      );
+      const sweep = await screen.findByTestId("calibration-evidence-sweep");
+      const cards = within(sweep).getAllByRole("listitem");
+      expect(cards).toHaveLength(3);
+      expect(
+        within(sweep).queryByText(/Registration-time relevance/i),
+      ).toBeNull();
+
+      const cardA = cards[0]!;
+      const cardB = cards[1]!;
+      const itemA = cardA.getAttribute("data-item-id")!;
+      const itemB = cardB.getAttribute("data-item-id")!;
+
+      await user.click(within(cardA).getByLabelText(/2 — Direct evidence/i));
+      await user.click(
+        within(cardA).getByRole("button", { name: /Commit local response/i }),
+      );
+      expect(
+        await screen.findByTestId(`calibration-reveal-${itemA}`),
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId(`calibration-reveal-${itemB}`)).toBeNull();
+      expect(
+        within(cardB).queryByText(/Registration-time relevance/i),
+      ).toBeNull();
+
+      await user.click(within(cardB).getByLabelText(/0 — Irrelevant/i));
+      await user.click(
+        within(cardB).getByRole("button", { name: /Commit local response/i }),
+      );
+      expect(
+        await screen.findByTestId(`calibration-reveal-${itemB}`),
+      ).toBeInTheDocument();
+      mock.restore();
+    }
+  });
+
+  it("I4-R2: Evidence Sweep revision_count is per-item and does not bleed", async () => {
+    const mock = installCalibrationMock({
+      packageBody: multiCandidatePackage(6),
+    });
+    const user = userEvent.setup();
+    const artifacts: Array<Record<string, unknown>> = [];
+    const OriginalBlob = Blob;
+    vi.stubGlobal(
+      "Blob",
+      class extends OriginalBlob {
+        constructor(parts?: BlobPart[], options?: BlobPropertyBag) {
+          super(parts, options);
+          const text = (parts ?? [])
+            .map((part) => (typeof part === "string" ? part : ""))
+            .join("");
+          if (text.includes("offline-rag-gold-calibration-evidence-v1")) {
+            artifacts.push(JSON.parse(text) as Record<string, unknown>);
+          }
+        }
+      },
+    );
+    vi.stubGlobal(
+      "URL",
+      {
+        ...URL,
+        createObjectURL: () => "blob:cal-r2",
+        revokeObjectURL: () => undefined,
+      } as unknown as typeof URL,
+    );
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+
+    renderApp("/gold-lab/campaigns/camp_1/calibration");
+    await user.click(
+      await screen.findByRole("button", { name: /Use for calibration/i }),
+    );
+    await user.click(
+      await screen.findByRole("button", { name: /Calibrate Evidence Sweep/i }),
+    );
+    const sweep = await screen.findByTestId("calibration-evidence-sweep");
+    const cards = within(sweep).getAllByRole("listitem");
+    const cardA = cards[0]!;
+    const cardB = cards[1]!;
+
+    // A: revise 0 → 1 (revision_count = 1)
+    await user.click(within(cardA).getByLabelText(/0 — Irrelevant/i));
+    await user.click(within(cardA).getByLabelText(/1 — Supporting evidence/i));
+    await user.click(
+      within(cardA).getByRole("button", { name: /Commit local response/i }),
+    );
+
+    // B: select once (revision_count = 0)
+    await user.click(within(cardB).getByLabelText(/2 — Direct evidence/i));
+    await user.click(
+      within(cardB).getByRole("button", { name: /Commit local response/i }),
+    );
+
+    // Finish remaining batch cards with single selections, then next batch.
+    for (const card of cards.slice(2)) {
+      await user.click(within(card).getByLabelText(/0 — Irrelevant/i));
+      await user.click(
+        within(card).getByRole("button", { name: /Commit local response/i }),
+      );
+    }
+    await user.click(
+      await screen.findByRole("button", { name: /Next batch|Finish session/i }),
+    );
+
+    // Next batch (chunk_5): single select must start at revision_count 0.
+    const nextSweep = await screen.findByTestId("calibration-evidence-sweep");
+    const nextCard = within(nextSweep).getAllByRole("listitem")[0]!;
+    await user.click(within(nextCard).getByLabelText(/0 — Irrelevant/i));
+    await user.click(
+      within(nextCard).getByRole("button", { name: /Commit local response/i }),
+    );
+    await user.click(
+      await screen.findByRole("button", { name: /Finish session/i }),
+    );
+    await user.click(
+      await screen.findByRole("button", {
+        name: /Download calibration evidence/i,
+      }),
+    );
+
+    await waitFor(() => expect(artifacts.length).toBeGreaterThan(0));
+    const artifact = artifacts[artifacts.length - 1]!;
+    const responses = artifact.responses as Array<{
+      candidate_chunk_id: string;
+      revision_count: number;
+    }>;
+    const byChunk = Object.fromEntries(
+      responses.map((row) => [row.candidate_chunk_id, row.revision_count]),
+    );
+    expect(byChunk.chunk_0).toBe(1);
+    expect(byChunk.chunk_1).toBe(0);
+    expect(byChunk.chunk_5).toBe(0);
+
+    assertNoMutationOrTasks(mock.calls);
+    mock.restore();
+  });
 });
+
+function multiCandidatePackage(count: number) {
+  const manyCandidates = Array.from({ length: count }, (_, index) => ({
+    chunk_id: `chunk_${index}`,
+    source: {
+      chunk_id: `chunk_${index}`,
+      document_id: "doc_1",
+      document_title: "Ops",
+      source_name: "ops.pdf",
+      section_path: [] as string[],
+      page_start: null,
+      page_end: null,
+      line_start: null,
+      line_end: null,
+      content_type: "text/plain",
+      text: `Evidence ${index}`,
+    },
+  }));
+  return trainingPackageFixture({
+    adjudication: {
+      projection_sha256: "c".repeat(64),
+      cases: [
+        {
+          case_id: "case_accept",
+          qc_disposition: "accept",
+          proposed_query: "What pressure?",
+          proposed_category: "ops",
+          proposed_tags: ["pump"],
+          effective_query: "What pressure?",
+          effective_category: "ops",
+          effective_tags: ["pump"],
+          question_source: manyCandidates[0]!.source,
+          candidates: manyCandidates,
+          relevance_judgments: manyCandidates.map((c, index) => ({
+            chunk_id: c.chunk_id,
+            relevance: (index === 0 ? 2 : 0) as 0 | 1 | 2,
+          })),
+        },
+      ],
+    },
+    registered_dataset: {
+      schema_version: "offline-rag-gold-v1",
+      dataset_id: DATASET_ID,
+      chunk_set_id: "chunkset_1",
+      corpus_id: "corpus_1",
+      corpus_name: "Ops Corpus",
+      cases: [
+        {
+          case_id: "case_accept",
+          query: "What pressure?",
+          category: "ops",
+          tags: ["pump"],
+          judgments: [{ chunk_id: "chunk_0", relevance: 2 as const }],
+        },
+      ],
+    },
+  });
+}

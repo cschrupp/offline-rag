@@ -87,6 +87,9 @@ export function CalibrationWorkspace({
   const [sweepCommitted, setSweepCommitted] = useState<Record<string, boolean>>(
     {},
   );
+  const [sweepRevisions, setSweepRevisions] = useState<Record<string, number>>(
+    {},
+  );
   const [duelSide, setDuelSide] = useState<"a" | "b" | null>(null);
   const [committed, setCommitted] = useState(false);
   const [revisionCount, setRevisionCount] = useState(0);
@@ -101,6 +104,7 @@ export function CalibrationWorkspace({
   const [duelRecords, setDuelRecords] = useState<DuelLocalRecord[]>([]);
   const [exported, setExported] = useState(false);
   const lastDraftRef = useRef<GoldRelevance | null>(null);
+  const sweepLastDraftRef = useRef<Record<string, GoldRelevance | null>>({});
 
   const absoluteBundle = useMemo(() => compileAbsoluteItems(pkg), [pkg]);
   const questionBundle = useMemo(() => compileQuestionItems(pkg), [pkg]);
@@ -124,19 +128,21 @@ export function CalibrationWorkspace({
     setDuelRecords([]);
     setSweepDrafts({});
     setSweepCommitted({});
+    setSweepRevisions({});
+    sweepLastDraftRef.current = {};
     setExported(false);
     setStartedAt(nowIso());
     resetItemClock();
   }
 
-  function recordTiming() {
+  function recordTiming(itemRevisionCount: number = revisionCount) {
     const shown = shownAt ?? nowIso();
     const committedAt = nowIso();
     return {
       shownAt: shown,
       committedAt,
       durationMs: Math.max(0, Date.parse(committedAt) - Date.parse(shown)),
-      revisionCount,
+      revisionCount: itemRevisionCount,
     };
   }
 
@@ -170,6 +176,19 @@ export function CalibrationWorkspace({
     setCommitted(true);
   }
 
+  function onSweepDraftChange(itemId: string, value: GoldRelevance) {
+    if (sweepCommitted[itemId]) return;
+    const prior = sweepLastDraftRef.current[itemId];
+    if (prior !== null && prior !== undefined && prior !== value) {
+      setSweepRevisions((prev) => ({
+        ...prev,
+        [itemId]: (prev[itemId] ?? 0) + 1,
+      }));
+    }
+    sweepLastDraftRef.current[itemId] = value;
+    setSweepDrafts((prev) => ({ ...prev, [itemId]: value }));
+  }
+
   function commitSweep(itemId: string) {
     if (sweepCommitted[itemId]) return;
     const draftValue = sweepDrafts[itemId];
@@ -177,7 +196,7 @@ export function CalibrationWorkspace({
     const authority = absoluteBundle.authorityByItemId.get(itemId);
     const item = absoluteBundle.items.find((entry) => entry.itemId === itemId);
     if (!authority || !item) return;
-    const timing = recordTiming();
+    const timing = recordTiming(sweepRevisions[itemId] ?? 0);
     setAbsoluteRecords((prev) => [
       ...prev,
       {
@@ -365,9 +384,13 @@ export function CalibrationWorkspace({
           <RapidFireCalibration
             key={absoluteBundle.items[index]!.itemId}
             item={absoluteBundle.items[index]!}
-            authority={absoluteBundle.authorityByItemId.get(
-              absoluteBundle.items[index]!.itemId,
-            )}
+            authority={
+              committed
+                ? absoluteBundle.authorityByItemId.get(
+                    absoluteBundle.items[index]!.itemId,
+                  )
+                : undefined
+            }
             committed={committed}
             draft={draft}
             revealRelevance={committed ? draft : null}
@@ -409,21 +432,18 @@ export function CalibrationWorkspace({
           />
         ) : (
           <EvidenceSweepCalibration
-            cards={sweepBatch.map((item) => ({
-              item,
-              authority: absoluteBundle.authorityByItemId.get(item.itemId)!,
-              draft: sweepDrafts[item.itemId] ?? null,
-              committed: Boolean(sweepCommitted[item.itemId]),
-            }))}
-            onDraftChange={(itemId, value) => {
-              setSweepDrafts((prev) => {
-                const prior = prev[itemId];
-                if (prior !== null && prior !== undefined && prior !== value) {
-                  setRevisionCount((count) => count + 1);
-                }
-                return { ...prev, [itemId]: value };
-              });
-            }}
+            cards={sweepBatch.map((item) => {
+              const cardCommitted = Boolean(sweepCommitted[item.itemId]);
+              return {
+                item,
+                authority: cardCommitted
+                  ? absoluteBundle.authorityByItemId.get(item.itemId)
+                  : undefined,
+                draft: sweepDrafts[item.itemId] ?? null,
+                committed: cardCommitted,
+              };
+            })}
+            onDraftChange={onSweepDraftChange}
             onCommit={commitSweep}
             onNextBatch={() => {
               const next = batchOffset + BATCH_SIZE;
@@ -433,6 +453,8 @@ export function CalibrationWorkspace({
               }
               setBatchOffset(next);
               setShownAt(nowIso());
+              setSweepRevisions({});
+              sweepLastDraftRef.current = {};
             }}
             batchComplete={sweepBatchComplete}
             nextBatchDisabled={false}
@@ -456,9 +478,13 @@ export function CalibrationWorkspace({
           <QuestionCheckCalibration
             key={questionBundle.items[index]!.itemId}
             item={questionBundle.items[index]!}
-            authority={questionBundle.authorityByItemId.get(
-              questionBundle.items[index]!.itemId,
-            )}
+            authority={
+              committed
+                ? questionBundle.authorityByItemId.get(
+                    questionBundle.items[index]!.itemId,
+                  )
+                : undefined
+            }
             committed={committed}
             onCommit={commitQuestion}
             onNext={() => advanceLinear(questionBundle.items.length)}
@@ -488,10 +514,15 @@ export function CalibrationWorkspace({
           </Card>
         ) : index < duelBundle.items.length ? (
           <ChunkDuelCalibration
+            key={duelBundle.items[index]!.itemId}
             item={duelBundle.items[index]!}
-            authority={duelBundle.authorityByItemId.get(
-              duelBundle.items[index]!.itemId,
-            )}
+            authority={
+              committed
+                ? duelBundle.authorityByItemId.get(
+                    duelBundle.items[index]!.itemId,
+                  )
+                : undefined
+            }
             committed={committed}
             preferredSide={duelSide}
             onPrefer={preferDuel}
