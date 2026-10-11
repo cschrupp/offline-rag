@@ -1,8 +1,9 @@
-import { isApiError, userFacingErrorMessage } from "../../../api/errors";
+import { isApiError } from "../../../api/errors";
 
 const GOLD_LAB_MESSAGES: Record<string, string> = {
   request_invalid:
     "Check the form fields and try again. One or more values are not accepted.",
+  not_found: "Gold Lab resource not found.",
   gold_project_unknown: "Gold project not found.",
   gold_campaign_unknown: "Gold campaign not found.",
   gold_task_unknown: "Gold task not found.",
@@ -23,17 +24,23 @@ const GOLD_LAB_MESSAGES: Record<string, string> = {
     "Could not reach OfflineRAG. Check that this installation is running and reachable.",
 };
 
+const MISSING_RESOURCE_MESSAGE = "Gold Lab resource not found.";
+
+function isMissingResourceCode(code: string): boolean {
+  return code === "not_found" || code.endsWith("_unknown");
+}
+
+/**
+ * Gold Lab UI error text. Never surfaces raw backend exception / ApiError.message.
+ */
 export function goldLabErrorMessage(error: unknown): string {
   if (isApiError(error)) {
     const mapped = GOLD_LAB_MESSAGES[error.code];
     if (mapped) return mapped;
-    if (error.code === "network_error") {
-      return GOLD_LAB_MESSAGES.network_error;
+    if (isMissingResourceCode(error.code)) {
+      return MISSING_RESOURCE_MESSAGE;
     }
-  }
-  const fallback = userFacingErrorMessage(error);
-  if (fallback && fallback !== "Something went wrong.") {
-    return fallback;
+    return GOLD_LAB_MESSAGES.internal_error;
   }
   return GOLD_LAB_MESSAGES.internal_error;
 }

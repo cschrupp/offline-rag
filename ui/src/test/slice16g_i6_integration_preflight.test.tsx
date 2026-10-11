@@ -11,10 +11,17 @@
  * - exhaustive dialog focus-trap matrix beyond exercised surfaces
  * - narrow/mobile layout visual QA across all four games + shell
  */
-import { cleanup, render, screen, within } from "@testing-library/react";
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../api/errors";
 import { validateTrainingCalibrationPackage } from "../features/goldLab/api/trainingPackageValidation";
@@ -45,7 +52,7 @@ import {
 import { WorkloadChooser } from "../features/goldLab/shell/WorkloadChooser";
 import { GoldWorkSession } from "../features/goldLab/work/GoldWorkSession";
 import { trainingPackageFixture } from "./calibrationPackageFixture";
-import { goldCampaign, goldTask } from "./goldLabFixtures";
+import { goldBaseline, goldCampaign, goldTask } from "./goldLabFixtures";
 import {
   errorResponse,
   installFetchMock,
@@ -58,6 +65,23 @@ afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
 });
+
+type User = ReturnType<typeof userEvent.setup>;
+
+async function tabUntil(
+  user: User,
+  match: (el: Element | null) => boolean,
+  label: string,
+  maxTabs = 48,
+): Promise<HTMLElement> {
+  for (let i = 0; i < maxTabs; i += 1) {
+    await user.tab();
+    if (match(document.activeElement)) {
+      return document.activeElement as HTMLElement;
+    }
+  }
+  throw new Error(`keyboard tabUntil exhausted before reaching: ${label}`);
+}
 
 const source = {
   chunk_id: "chunk_1",
@@ -176,7 +200,7 @@ function apiErr(code: string, message = "x") {
 }
 
 describe("16G-I6 A — keyboard / accessible interaction preflight", () => {
-  it("Rapid Fire: keyboard shortcuts commit 0/1/2 with semantic labels and status", async () => {
+  it("Rapid Fire: Tab reaches judgment controls; shortcut and Enter commit", async () => {
     const user = userEvent.setup();
     const onCommit = vi.fn();
     render(
@@ -194,32 +218,43 @@ describe("16G-I6 A — keyboard / accessible interaction preflight", () => {
       />,
     );
 
-    expect(
-      screen.getByRole("button", { name: /0 — Irrelevant/ }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /1 — Supporting evidence/ }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /2 — Direct evidence/ }),
-    ).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("Commit recorded");
-    expect(
-      screen.getByRole("region", { name: /Candidate source/i }) ||
-        screen.getByText("Candidate source"),
-    ).toBeTruthy();
+    expect(screen.getByText("Candidate source")).toBeInTheDocument();
 
+    // Accepted digit shortcut (window-level) without pointer / programmatic focus.
     await user.keyboard("1");
     expect(onCommit).toHaveBeenCalledWith(1);
+    onCommit.mockClear();
 
-    const btn0 = screen.getByRole("button", { name: /0 — Irrelevant/ });
-    btn0.focus();
-    expect(document.activeElement).toBe(btn0);
+    cleanup();
+    const onCommit2 = vi.fn();
+    render(
+      <RapidFireGame
+        task={absoluteDetail("t1") as never}
+        mutationBusy={false}
+        ambiguous={false}
+        errorMessage={null}
+        statusMessage={null}
+        afterAction={null}
+        onCommit={onCommit2}
+        onRetrySame={vi.fn()}
+        onNext={vi.fn()}
+        onCorrect={vi.fn()}
+      />,
+    );
+    const supporting = await tabUntil(
+      user,
+      (el) =>
+        el instanceof HTMLButtonElement &&
+        /1 — Supporting evidence/i.test(el.textContent ?? ""),
+      "Rapid Fire Supporting button",
+    );
+    expect(supporting).toHaveFocus();
     await user.keyboard("{Enter}");
-    expect(onCommit).toHaveBeenCalledWith(0);
+    expect(onCommit2).toHaveBeenCalledWith(1);
   });
 
-  it("Evidence Sweep: linear list is first-class; relevance is semantic text not color-only", async () => {
+  it("Evidence Sweep: Tab into linear-list relevance actions and commit", async () => {
     const user = userEvent.setup();
     const onCommit = vi.fn();
     render(
@@ -257,27 +292,29 @@ describe("16G-I6 A — keyboard / accessible interaction preflight", () => {
     const list = screen.getByRole("list");
     expect(list.tagName).toBe("OL");
     expect(within(list).getAllByRole("listitem")).toHaveLength(2);
-
     for (const label of [
       /0 — Irrelevant/,
       /1 — Supporting evidence/,
       /2 — Direct evidence/,
     ]) {
-      expect(screen.getAllByRole("button", { name: label }).length).toBeGreaterThan(
-        0,
-      );
+      expect(
+        screen.getAllByRole("button", { name: label }).length,
+      ).toBeGreaterThan(0);
     }
 
-    const supporting = screen.getAllByRole("button", {
-      name: /1 — Supporting evidence/,
-    })[0]!;
-    supporting.focus();
-    expect(document.activeElement).toBe(supporting);
+    const supporting = await tabUntil(
+      user,
+      (el) =>
+        el instanceof HTMLButtonElement &&
+        /1 — Supporting evidence/i.test(el.textContent ?? ""),
+      "Evidence Sweep Supporting button",
+    );
+    expect(supporting).toHaveFocus();
     await user.keyboard("{Enter}");
     expect(onCommit).toHaveBeenCalledWith("t1", 1);
   });
 
-  it("Question Check: Accept/Edit/Reject are keyboard-reachable decisions", async () => {
+  it("Question Check: Tab to Edit, keyboard-edit query, submit edit decision", async () => {
     const user = userEvent.setup();
     const onCommit = vi.fn();
     render(
@@ -295,17 +332,48 @@ describe("16G-I6 A — keyboard / accessible interaction preflight", () => {
       />,
     );
 
-    const accept = screen.getByRole("button", { name: "Accept" });
-    const edit = screen.getByRole("button", { name: "Edit" });
-    const reject = screen.getByRole("button", { name: "Reject" });
-    expect(accept).toBeEnabled();
-    expect(edit).toBeEnabled();
-    expect(reject).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Accept" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Reject" })).toBeEnabled();
 
-    accept.focus();
+    const edit = await tabUntil(
+      user,
+      (el) =>
+        el instanceof HTMLButtonElement && el.textContent?.trim() === "Edit",
+      "Question Check Edit button",
+    );
+    expect(edit).toHaveFocus();
     await user.keyboard("{Enter}");
-    expect(onCommit).toHaveBeenCalledWith({ decision: "accept" });
+    expect(
+      await screen.findByRole("heading", { name: "Edit proposed question" }),
+    ).toBeInTheDocument();
 
+    const queryField = await tabUntil(
+      user,
+      (el) =>
+        el instanceof HTMLInputElement && el.id === "gold-qc-edit-query",
+      "Question Check Effective query field",
+    );
+    expect(queryField).toHaveFocus();
+    await user.clear(queryField);
+    await user.keyboard("Revised keyboard query?");
+
+    const submit = await tabUntil(
+      user,
+      (el) =>
+        el instanceof HTMLButtonElement &&
+        el.textContent?.trim() === "Submit edit",
+      "Question Check Submit edit",
+    );
+    expect(submit).toHaveFocus();
+    await user.keyboard("{Enter}");
+    expect(onCommit).toHaveBeenCalledWith({
+      decision: "edit",
+      effective_query: "Revised keyboard query?",
+      effective_category: "ops",
+      effective_tags: ["tag-a"],
+    });
+
+    // Decision actions remain keyboard-reachable after cancel path on a fresh mount.
     cleanup();
     const onCommit2 = vi.fn();
     render(
@@ -323,70 +391,131 @@ describe("16G-I6 A — keyboard / accessible interaction preflight", () => {
       />,
     );
     expect(screen.getByRole("status")).toHaveTextContent("Replay applied");
-    const reject2 = screen.getByRole("button", { name: "Reject" });
-    reject2.focus();
+    const reject = await tabUntil(
+      user,
+      (el) =>
+        el instanceof HTMLButtonElement && el.textContent?.trim() === "Reject",
+      "Question Check Reject button",
+    );
+    expect(reject).toHaveFocus();
     await user.keyboard("{Enter}");
     expect(onCommit2).toHaveBeenCalledWith({ decision: "reject" });
   });
 
-  it("Chunk Duel: case/candidate controls and prefer actions are keyboard operable", async () => {
+  it("Chunk Duel: keyboard-reach case/candidates, toggle pair, submit preference", async () => {
     const user = userEvent.setup();
     const onPrefer = vi.fn();
-    const onToggle = vi.fn();
-    render(
-      <ChunkDuelGame
-        caseId="case_a"
-        caseIds={["case_a"]}
-        candidates={[
-          { taskId: "t1", chunkId: "chunk_1", label: "A" },
-          { taskId: "t2", chunkId: "chunk_2", label: "B" },
-        ]}
-        selectedChunkIds={["chunk_1", "chunk_2"]}
-        duelDetails={[
-          absoluteDetail("t1") as never,
-          absoluteDetail("t2", {
-            candidate_chunk_id: "chunk_2",
-            presentation: {
-              kind: "absolute_relevance",
-              effective_query: "What pressure?",
-              effective_category: "ops",
-              effective_tags: ["pump"],
-              candidate: { ...source, chunk_id: "chunk_2" },
-            },
-          }) as never,
-        ]}
-        preferenceCount={0}
-        preferenceCap={5}
-        mutationBusy={false}
-        ambiguous={false}
-        errorMessage={null}
-        statusMessage={null}
-        lastReceipt={null}
-        lastPreferredChunkId={null}
-        onSelectCase={vi.fn()}
-        onToggleCandidate={onToggle}
-        onPrefer={onPrefer}
-        onRetrySame={vi.fn()}
-        onStartAnother={vi.fn()}
-      />,
-    );
 
+    function ChunkDuelKeyboardHarness() {
+      const [caseId, setCaseId] = useState("case_a");
+      const [selectedChunkIds, setSelectedChunkIds] = useState<
+        [string | null, string | null]
+      >([null, null]);
+      const detailA = absoluteDetail("t1");
+      const detailB = absoluteDetail("t2", {
+        candidate_chunk_id: "chunk_2",
+        presentation: {
+          kind: "absolute_relevance",
+          effective_query: "What pressure?",
+          effective_category: "ops",
+          effective_tags: ["pump"],
+          candidate: { ...source, chunk_id: "chunk_2" },
+        },
+      });
+      return (
+        <ChunkDuelGame
+          caseId={caseId}
+          caseIds={["case_a", "case_b"]}
+          candidates={[
+            { taskId: "t1", chunkId: "chunk_1", label: "A" },
+            { taskId: "t2", chunkId: "chunk_2", label: "B" },
+          ]}
+          selectedChunkIds={selectedChunkIds}
+          duelDetails={[
+            selectedChunkIds[0] ? (detailA as never) : null,
+            selectedChunkIds[1] ? (detailB as never) : null,
+          ]}
+          preferenceCount={0}
+          preferenceCap={5}
+          mutationBusy={false}
+          ambiguous={false}
+          errorMessage={null}
+          statusMessage={null}
+          lastReceipt={null}
+          lastPreferredChunkId={null}
+          onSelectCase={setCaseId}
+          onToggleCandidate={(chunkId) => {
+            setSelectedChunkIds(([a, b]) => {
+              if (a === chunkId) return [b, null];
+              if (b === chunkId) return [a, null];
+              if (a === null) return [chunkId, b];
+              if (b === null) return [a, chunkId];
+              return [a, b];
+            });
+          }}
+          onPrefer={onPrefer}
+          onRetrySame={vi.fn()}
+          onStartAnother={vi.fn()}
+        />
+      );
+    }
+
+    render(<ChunkDuelKeyboardHarness />);
     expect(
-      screen.getAllByRole("status").some((el) =>
-        el.textContent?.includes(CHUNK_DUEL_AUXILIARY_MESSAGE),
-      ),
+      screen
+        .getAllByRole("status")
+        .some((el) => el.textContent?.includes(CHUNK_DUEL_AUXILIARY_MESSAGE)),
     ).toBe(true);
-    const preferA = screen.getByRole("button", {
-      name: /Prefer candidate A/i,
-    });
-    preferA.focus();
-    expect(document.activeElement).toBe(preferA);
+
+    const caseRadio = await tabUntil(
+      user,
+      (el) =>
+        el instanceof HTMLInputElement &&
+        el.type === "radio" &&
+        el.name === "gold-chunk-duel-case" &&
+        el.value === "case_a",
+      "Chunk Duel case radio",
+    );
+    expect(caseRadio).toHaveFocus();
+    expect((caseRadio as HTMLInputElement).checked).toBe(true);
+
+    const candA = await tabUntil(
+      user,
+      (el) =>
+        el instanceof HTMLInputElement &&
+        el.type === "checkbox" &&
+        /chunk_1/i.test(el.parentElement?.textContent ?? ""),
+      "Chunk Duel candidate A checkbox",
+    );
+    expect(candA).toHaveFocus();
+    await user.keyboard(" ");
+    expect((candA as HTMLInputElement).checked).toBe(true);
+
+    const candB = await tabUntil(
+      user,
+      (el) =>
+        el instanceof HTMLInputElement &&
+        el.type === "checkbox" &&
+        /chunk_2/i.test(el.parentElement?.textContent ?? ""),
+      "Chunk Duel candidate B checkbox",
+    );
+    expect(candB).toHaveFocus();
+    await user.keyboard(" ");
+    expect((candB as HTMLInputElement).checked).toBe(true);
+
+    const preferA = await tabUntil(
+      user,
+      (el) =>
+        el instanceof HTMLButtonElement &&
+        /Prefer candidate A/i.test(el.textContent ?? ""),
+      "Chunk Duel Prefer A",
+    );
+    expect(preferA).toHaveFocus();
     await user.keyboard("{Enter}");
     expect(onPrefer).toHaveBeenCalledWith("a");
-    expect(onToggle).not.toHaveBeenCalled();
   });
 
-  it("Workload chooser radios are keyboard-selectable on the shell path", async () => {
+  it("Workload chooser: Tab reaches radios; arrow keys change selection", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     render(
@@ -398,9 +527,17 @@ describe("16G-I6 A — keyboard / accessible interaction preflight", () => {
         onCaseChange={vi.fn()}
       />,
     );
-    const radio10 = screen.getByRole("radio", { name: "10" });
-    radio10.focus();
-    await user.keyboard(" ");
+    const radio5 = await tabUntil(
+      user,
+      (el) =>
+        el instanceof HTMLInputElement &&
+        el.type === "radio" &&
+        el.name === "gold-lab-workload" &&
+        el.value === "5",
+      "Workload radio 5",
+    );
+    expect(radio5).toHaveFocus();
+    await user.keyboard("{ArrowRight}");
     expect(onChange).toHaveBeenCalledWith("10");
   });
 
@@ -459,22 +596,44 @@ describe("16G-I6 B — error-matrix regression", () => {
       },
     ];
 
+    const RAW = "RAW_BACKEND_SECRET_NOT_FOR_UI";
+    const TRACE = "TRACEBACK_INTERNAL_DETAIL";
+
     for (const row of matrix) {
-      const err = apiErr(row.code, `RAW_BACKEND_EXCEPTION::${row.code}`);
+      const err = apiErr(row.code, `${RAW}::${row.code}`);
       const msg = goldLabErrorMessage(err);
       expect(msg).toMatch(row.expect);
-      expect(msg).not.toContain("RAW_BACKEND_EXCEPTION");
+      expect(msg).not.toContain(RAW);
+      expect(msg).not.toContain(TRACE);
       if (row.helper) expect(row.helper(err)).toBe(true);
     }
 
-    // Non-ApiError fallback uses userFacingErrorMessage; ApiError internal_error
-    // is the safe Gold Lab generic path (asserted above).
-    expect(goldLabErrorMessage(apiErr("totally_unknown_code", "leak?"))).toBe(
-      "leak?",
+    expect(goldLabErrorMessage(apiErr("not_found", RAW))).toBe(
+      "Gold Lab resource not found.",
     );
-    expect(goldLabErrorMessage(apiErr("internal_error", "Traceback…"))).not.toContain(
-      "Traceback",
+    expect(goldLabErrorMessage(apiErr("not_found", RAW))).not.toContain(RAW);
+    expect(goldLabErrorMessage(apiErr("gold_widget_unknown", RAW))).toBe(
+      "Gold Lab resource not found.",
     );
+    expect(goldLabErrorMessage(apiErr("gold_widget_unknown", RAW))).not.toContain(
+      RAW,
+    );
+    expect(goldLabErrorMessage(apiErr("totally_unknown_code", RAW))).toBe(
+      "Something went wrong in Gold Lab. Try again later.",
+    );
+    expect(
+      goldLabErrorMessage(apiErr("totally_unknown_code", RAW)),
+    ).not.toContain(RAW);
+    expect(goldLabErrorMessage(apiErr("internal_error", TRACE))).toBe(
+      "Something went wrong in Gold Lab. Try again later.",
+    );
+    expect(goldLabErrorMessage(apiErr("internal_error", TRACE))).not.toContain(
+      TRACE,
+    );
+    expect(goldLabErrorMessage(new Error(RAW))).toBe(
+      "Something went wrong in Gold Lab. Try again later.",
+    );
+    expect(goldLabErrorMessage(new Error(RAW))).not.toContain(RAW);
   });
 
   it("integrated Rapid Fire surfaces gold_busy retry-later and gold_state_unavailable fail-closed", async () => {
@@ -560,7 +719,7 @@ describe("16G-I6 B — error-matrix regression", () => {
   });
 
   it("campaign create path maps gold_baseline_unknown (creation blocked)", async () => {
-    const campaign = goldCampaign({ campaign_id: "camp_1" });
+    const campaignPosts: FetchCall[] = [];
     const mock = installFetchMock(async (call) => {
       if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
       if (call.url === "/v1/workspaces") return jsonResponse([]);
@@ -575,30 +734,31 @@ describe("16G-I6 B — error-matrix regression", () => {
           created_at: "2026-03-01T12:00:00Z",
         });
       }
-      if (call.url.includes("/baselines")) {
+      if (
+        call.url === "/v1/gold-lab/projects/proj_1/baselines" &&
+        call.method === "GET"
+      ) {
         return jsonResponse({
-          baselines: [
-            {
-              authoring_run_id: "run_missing",
-              created_at: "2026-02-01T10:00:00Z",
-              corpus_id: "corpus_1",
-              corpus_name: "Ops Corpus",
-              chunk_set_id: "chunkset_1",
-              case_count: 4,
-              reviewable_case_count: 3,
-            },
-          ],
+          project_id: "proj_1",
+          baselines: [goldBaseline({ authoring_run_id: "run_missing" })],
         });
       }
-      if (call.url.includes("/campaigns") && call.method === "GET") {
-        return jsonResponse({ campaigns: [] });
-      }
-      if (call.url.includes("/campaigns") && call.method === "POST") {
+      if (
+        call.url === "/v1/gold-lab/projects/proj_1/campaigns" &&
+        call.method === "POST"
+      ) {
+        campaignPosts.push(call);
         return errorResponse(
           "gold_baseline_unknown",
-          "baseline gone",
+          "RAW_BACKEND_SECRET_NOT_FOR_UI",
           404,
         );
+      }
+      if (
+        call.url === "/v1/gold-lab/projects/proj_1/campaigns" &&
+        call.method === "GET"
+      ) {
+        return jsonResponse({ project_id: "proj_1", campaigns: [] });
       }
       if (call.url.includes("/baseline-bootstrap")) {
         return jsonResponse(
@@ -606,7 +766,6 @@ describe("16G-I6 B — error-matrix regression", () => {
           { status: 404 },
         );
       }
-      void campaign;
       return jsonResponse(
         { error: { code: "not_found", message: "x" } },
         { status: 404 },
@@ -615,22 +774,32 @@ describe("16G-I6 B — error-matrix regression", () => {
 
     const user = userEvent.setup();
     renderApp("/gold-lab/projects/proj_1");
-    const createBtn = await screen.findByRole("button", {
-      name: /Create campaign/i,
-    });
-    await user.click(createBtn);
-    // Form may require selecting baseline — if create is immediate POST:
-    const alert = await screen.findByRole("alert").catch(() => null);
-    if (alert) {
-      expect(alert).toHaveTextContent(
-        /baseline is no longer available|choose another eligible/i,
-      );
-    } else {
-      // Mapping contract still holds even if UI gating differs by form state.
+    const baselineSelect = await screen.findByLabelText("Eligible baseline");
+    await waitFor(() => {
       expect(
-        goldLabErrorMessage(apiErr("gold_baseline_unknown")),
-      ).toMatch(/baseline is no longer available/i);
-    }
+        within(baselineSelect).getByRole("option", { name: /run_missing/ }),
+      ).toBeInTheDocument();
+    });
+    await user.selectOptions(baselineSelect, "run_missing");
+    await user.type(
+      screen.getByLabelText("Selection policy ID"),
+      "policy_i6_baseline_unknown",
+    );
+    await user.click(screen.getByRole("button", { name: "Create campaign" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /baseline is no longer available|choose another eligible/i,
+    );
+    expect(screen.getByRole("alert")).not.toHaveTextContent(
+      "RAW_BACKEND_SECRET_NOT_FOR_UI",
+    );
+    expect(campaignPosts).toHaveLength(1);
+    expect(
+      screen.queryByRole("heading", { name: "Campaign" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Create campaign" }),
+    ).toBeInTheDocument();
     mock.restore();
   });
 });
@@ -684,6 +853,67 @@ describe("16G-I6 C — idempotency / retry regression", () => {
     await screen.findByRole("button", { name: "Correct judgment" });
     expect(keys[0]).toBeTruthy();
     expect(keys[1]).toBe(keys[0]);
+    mock.restore();
+  });
+
+  it("suppresses double-submit while a relevance mutation is pending (POST count == 1)", async () => {
+    const user = userEvent.setup();
+    let resolvePost: ((value: Response) => void) | null = null;
+    let relevancePosts = 0;
+    const mock = installFetchMock(async (call) => {
+      if (call.url.includes("/tasks?") || call.url.endsWith("/tasks")) {
+        return jsonResponse({
+          campaign_id: "camp_1",
+          tasks: [goldTask({ task_id: "t1", state: "pending" })],
+        });
+      }
+      if (call.url.endsWith("/tasks/t1") && call.method === "GET") {
+        return jsonResponse(absoluteDetail("t1"));
+      }
+      if (call.url.endsWith("/relevance") && call.method === "POST") {
+        relevancePosts += 1;
+        return new Promise<Response>((resolve) => {
+          resolvePost = resolve;
+        });
+      }
+      return jsonResponse(
+        { error: { code: "not_found", message: "x" } },
+        { status: 404 },
+      );
+    });
+
+    renderWithProviders(
+      <GoldWorkSession
+        campaignId="camp_1"
+        game="rapid_fire"
+        campaignClosed={false}
+      />,
+      { initialPath: "/work?game=rapid_fire&workload=1&task=t1" },
+    );
+    await screen.findByText("What pressure?");
+    const supporting = screen.getByRole("button", {
+      name: /1 — Supporting/,
+    });
+    await user.click(supporting);
+    await waitFor(() => {
+      expect(relevancePosts).toBe(1);
+      expect(resolvePost).toBeTruthy();
+    });
+    expect(
+      screen.getByRole("button", { name: /1 — Supporting/ }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /0 — Irrelevant/ }),
+    ).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: /1 — Supporting/ }));
+    await user.keyboard("1");
+    expect(relevancePosts).toBe(1);
+
+    resolvePost!(jsonResponse(receipt({ replayed: false })));
+    expect(
+      await screen.findByRole("button", { name: "Correct judgment" }),
+    ).toBeInTheDocument();
+    expect(relevancePosts).toBe(1);
     mock.restore();
   });
 });
