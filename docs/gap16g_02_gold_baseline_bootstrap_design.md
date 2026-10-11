@@ -8,19 +8,30 @@ D0 DETAILED DESIGN — CANDIDATE AUTHORITY
 
 STATUS:
 DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED
+REWORK 1 APPLIED (GAP-16G-02-D0-REWORK-AUTH-001)
 
 Authority:
 GAP-16G-02-D0-AUTH-002
 GAP16G02-D0-WRITE-GATE-01
+GAP-16G-02-D0-REWORK-AUTH-001
 
 Starting product tip:
 35ec9be5647d41c887eb280146c05b9688dea685
+
+Prior candidate tip:
+062b59a72f8909123d67f896885bfea1d4707bbe
 
 Branch:
 design/gap-16g-02-gold-baseline-bootstrap
 
 Design deliverable:
 docs/gap16g_02_gold_baseline_bootstrap_design.md
+
+Design content commit:
+650ed772ea7f0b710f504af84ae59b16796d51a9
+
+Final review candidate:
+SUPPLIED BY EXTERNAL HANDOFF / INDEPENDENT REVIEW RECORD
 
 Production ALLOW_PRODUCTION:
 UNCHANGED / EMPTY
@@ -50,7 +61,26 @@ Phrases such as “implement now”, “proceed to I1”, “authorized next”,
 “implementation may begin after commit” are **not** operative under this
 document unless a separate Human-issued implementation authority exists.
 
+This document must **not** embed its own final commit SHA as a self-referential
+“Design tip.” The reviewable candidate SHA is supplied only by external Codex
+handoff and the independent review/acceptance record.
+
 Unresolved design issues under this D0: **NONE**.
+
+### Design Rework 1 (GAP-16G-02-D0-REWORK-AUTH-001)
+
+Hardening only — does **not** reopen ENTRY/ORCH/PUBLISH/REQUEST product
+ownership decisions; does **not** authorize implementation:
+
+| ID | Closure |
+|---|---|
+| R1 | Remove self-referential Design tip; external handoff owns candidate SHA |
+| R2 | Executable startup-recovery topology + NOT_READY when proof resources unavailable |
+| R3 | Atomic workspace-leased admission critical section + capacity rollback |
+| R4 | `ManagedOperation.expected_revision = null` for bootstrap fingerprinting |
+| R5 | Complete safe ErrorCode / reason mapping matrix |
+| R6 | Persistence / concurrency / crash / test matrices updated for R2–R5 |
+| R7 | Unresolved issues empty only after R1–R6 explicit |
 
 ---
 
@@ -60,7 +90,11 @@ Unresolved design issues under this D0: **NONE**.
 |---|---|
 | Design authority | `GAP-16G-02-D0-AUTH-002` |
 | Write gate | `GAP16G02-D0-WRITE-GATE-01` |
+| Rework authority | `GAP-16G-02-D0-REWORK-AUTH-001` |
 | Starting product tip (Human-accepted 16G-I5) | `35ec9be5647d41c887eb280146c05b9688dea685` |
+| Prior IR candidate | `062b59a72f8909123d67f896885bfea1d4707bbe` |
+| Design content commit | `650ed772ea7f0b710f504af84ae59b16796d51a9` |
+| Final review candidate | EXTERNAL HANDOFF / INDEPENDENT REVIEW RECORD |
 | Source branch | `implementation/16g-i5-training-compiler` |
 | Design branch | `design/gap-16g-02-gold-baseline-bootstrap` |
 | Design deliverable | `docs/gap16g_02_gold_baseline_bootstrap_design.md` |
@@ -467,18 +501,33 @@ Gold labels
 Client fingerprint includes:
 
 ```text
-project_id
-proposal_count
-prelabel_enabled
+kind = gold_lab_baseline_bootstrap
+expected_revision = null
+payload = {
+  project_id,
+  proposal_count,
+  prelabel_enabled
+}
 ```
 
-plus existing ManagedOperation envelope fields as required.
+`ManagedOperation.expected_revision` for
+`gold_lab_baseline_bootstrap` **MUST be `null`**.
+
+Captured `workspace_revision` is durable **execution authority** stored in
+bootstrap private metadata / success result. It is **not** part of the
+idempotency request fingerprint.
+
+Rationale: existing `canonical_operation_fingerprint()` includes
+`expected_revision`. If bootstrap stored the captured workspace revision in
+that field, an exact same-key retry after an unrelated workspace republish
+would incorrectly become `IDEMPOTENCY_CONFLICT` even though the client request
+body is unchanged.
 
 After first admission, durable execution authority binds:
 
 ```text
 workspace_id
-workspace_revision
+workspace_revision          // private execution metadata; NOT fingerprint
 snapshot_id
 corpus_id
 corpus_name
@@ -491,8 +540,8 @@ Exact same-key retry recovers the original frozen execution authority and must
 **not** recapture today's publication.
 
 ```text
-same key + same request → recover same operation
-same key + different request → IDEMPOTENCY_CONFLICT
+same key + same request fingerprint → recover same operation
+same key + different fingerprint → IDEMPOTENCY_CONFLICT
 new key + same visible request → new bootstrap intent
 ```
 
@@ -577,14 +626,28 @@ FAILED
 INTERRUPTED
 ```
 
-Admission order:
+Logical admission order (must be realized atomically — see §5.14 / §9):
 
-1. Validate Idempotency-Key / request.
-2. Same key + same request → recover that operation (skip single-flight reject).
-3. Resolve project → workspace.
-4. Another non-terminal bootstrap on that workspace → semantic conflict.
-5. Otherwise continue to global capacity (ADMISSION-01).
-6. Reserve/admit.
+1. Validate Idempotency-Key / request body bounds.
+2. Resolve immutable project → workspace binding.
+3. Under `WorkspaceMutationLease(workspace_id)` critical section:
+   - same key + same fingerprint → recover (no new capacity)
+   - same key + different fingerprint → `IDEMPOTENCY_CONFLICT`
+   - another non-terminal bootstrap on workspace → semantic conflict
+   - acquire global bootstrap capacity or `SERVICE_OVERLOADED`
+   - reserve durable ManagedOperation + `authoring_run_id` + frozen identities
+4. Release workspace lease.
+5. Launch worker outside the lease.
+
+Invariant:
+
+```text
+ACTIVE-BOOTSTRAP CHECK
++
+NEW OPERATION RESERVATION
+=
+ONE ATOMIC WORKSPACE-SCOPED DECISION
+```
 
 No queue. No global scientific singleton across workspaces.
 
@@ -828,18 +891,86 @@ must not invent a baseline from staging.
 RECOVERY MECHANISM:
   STARTUP-TIME DETERMINISTIC RECONCILIATION
 
-RECOVERY ORDER:
-  1. recover publication/workspace journals
-  2. reconcile non-terminal gold_lab_baseline_bootstrap ops
-  3. generic interrupt_all_nonterminal()
-  4. runtime may become READY
-
 RECONCILE-ON-GET:
   FORBIDDEN
 
 GET /v1/operations/{id}:
   READ-ONLY
 ```
+
+#### Executable startup-recovery topology (frozen)
+
+Current repository startup bundles journal recovery and
+`interrupt_all_nonterminal()` inside `recover_workspace_transactions()`, and
+constructs Qdrant / `ProductPublicationRegistry` only afterward. Future
+implementation **must mechanically decompose** that bundling so bootstrap
+reconciliation can run with resolver-authoritative publication resources
+**before** generic interruption. That is a startup-orchestration refactor, not
+a scientific change.
+
+Frozen order:
+
+```text
+STARTUP RECOVERY ORDER
+
+A. Recover workspace publication / EMPTY / sync journals.
+   DO NOT yet generic-interrupt bootstrap operations.
+   (Decompose today's recover_workspace_transactions() so journal recovery
+    is separable from interrupt_all_nonterminal().)
+
+B. Construct the publication resources required to prove
+   canonical baseline eligibility, including Qdrant /
+   ProductPublicationRegistry (or equivalent resolver inputs).
+
+C. Reconcile non-terminal operations with:
+   kind = gold_lab_baseline_bootstrap
+
+   For each such operation:
+     canonical exact + expected hash + frozen authority
+     + current eligibility proof
+     → SUCCEEDED (+ reconstructed GoldLabBaselineBootstrapResult)
+
+     canonical conflict (hash/provenance)
+     → fail closed (no overwrite/delete)
+
+     canonical absent
+     → leave unresolved for generic interruption
+
+D. Run generic interrupt_all_nonterminal()
+   for every remaining non-terminal operation
+   (including unresolved bootstrap ops with canonical absent).
+
+E. Runtime may become READY.
+```
+
+#### Startup-failure edge (frozen)
+
+```text
+If the runtime cannot obtain the resources needed to perform
+bootstrap reconciliation (for example Qdrant / publication registry
+construction fails):
+
+  MUST NOT irreversibly mark an ambiguous post-publication bootstrap
+  INTERRUPTED merely because success could not yet be proved.
+
+  Runtime remains NOT_READY.
+  Reconciliation is retried on the next startup capable of performing
+  the proof.
+
+  Journal recovery from step A may still run, but step D's generic
+  interruption of gold_lab_baseline_bootstrap operations that still need
+  eligibility proof MUST NOT proceed without step B/C capability.
+```
+
+This preserves the legal recovery window:
+
+```text
+canonical successfully committed
++
+SUCCEEDED write lost
+```
+
+against transient publication-resource startup failures.
 
 Pre-promotion durable proof MUST include at least:
 
@@ -879,11 +1010,12 @@ Reconciliation matrix:
 
 | Condition | Disposition |
 |---|---|
-| canonical absent | do not promote staging; generic INTERRUPTED |
-| canonical present + exact hash/identity + PUBLISH-01 still holds | SUCCEEDED + reconstructed result |
+| canonical absent | do not promote staging; after successful step C pass, generic INTERRUPTED in step D |
+| canonical present + exact hash/identity + PUBLISH-01 holds now | step C → SUCCEEDED + reconstructed result |
 | canonical present + exact artifact but eligibility no longer holds | NOT SUCCEEDED; preserve historical artifact; INTERRUPTED-class recovery disposition; no deletion |
 | canonical present + hash/provenance conflict | FAIL CLOSED; no overwrite; no delete |
 | staging alone | NEVER proves success |
+| reconciliation resources unavailable at startup | runtime NOT_READY; do not generic-interrupt ambiguous post-publication bootstraps |
 
 ```text
 INTERRUPTED → SUCCEEDED transition: NOT REQUIRED / NOT AUTHORIZED
@@ -1023,13 +1155,43 @@ DEDICATED AUTHORING/BOOTSTRAP ADMISSION CLASS:
   MUST NOT inherit ingest semantics accidentally
 ```
 
-Admission order:
+Atomic admission critical section (new intent):
 
 ```text
-same-key replay? → recover
-same-workspace active? → semantic conflict
-global capacity available? → else SERVICE_OVERLOADED
-admit/reserve → execute → terminal → release
+resolve immutable project → workspace binding
+        ↓
+acquire WorkspaceMutationLease(workspace_id)
+        ↓
+same-key lookup / fingerprint validation
+  (expected_revision = null; payload fingerprint only)
+        ↓
+same-workspace active-bootstrap check
+        ↓
+attempt dedicated global bootstrap capacity acquisition
+        ↓
+reserve durable ManagedOperation
++ reserve authoring_run_id
++ persist frozen request/execution identity
++ capture publication authority into private metadata
+        ↓
+release WorkspaceMutationLease
+        ↓
+launch worker
+```
+
+Capacity / reservation rollback:
+
+| Condition | Behavior |
+|---|---|
+| Global capacity unavailable | `SERVICE_OVERLOADED`; **no** new ManagedOperation; no queue; same key may retry later |
+| Capacity acquired; durable reservation fails | release capacity; no operation launch |
+| Durable reservation succeeds; worker launch fails | operation → `FAILED`; release capacity |
+| Same-key exact recovery | return existing operation; consumes **no** additional capacity slot |
+| Terminal SUCCEEDED/FAILED/INTERRUPTED | releases capacity |
+
+```text
+ACTIVE-BOOTSTRAP CHECK + NEW OPERATION RESERVATION
+are one atomic workspace-scoped decision under WorkspaceMutationLease.
 ```
 
 Global capacity protects expensive authoring/retrieval resources; it is not a
@@ -1121,6 +1283,75 @@ not invent a second campaign API.
 
 ---
 
+## 6A. Safe error / reason mapping matrix
+
+Bootstrap must bind product failures to the **existing** `ErrorCode` vocabulary
+unless a future separate authority adds codes. Implementation must not invent
+ad-hoc HTTP behavior.
+
+Legend:
+
+| Column | Meaning |
+|---|---|
+| Sync HTTP | Status on the initiating `POST` when rejected before/at admission |
+| Retryable | Catalog retryable bit / product guidance |
+| Op created | Whether a durable `ManagedOperation` record exists |
+| Terminal | Terminal status if an operation was created |
+
+| Failure condition | ErrorCode | Sync HTTP | Retryable | Safe reason code | Op created | Terminal if created |
+|---|---|---|---|---|---|---|
+| Invalid / missing Idempotency-Key | `REQUEST_INVALID` | 422 | no | `idempotency_key_invalid` | no | — |
+| `proposal_count` missing / non-integer / `<1` / `>40` | `REQUEST_INVALID` | 422 | no | `proposal_count_invalid` | no | — |
+| `prelabel_enabled` missing / non-boolean | `REQUEST_INVALID` | 422 | no | `prelabel_enabled_invalid` | no | — |
+| Unknown project | `GOLD_PROJECT_UNKNOWN` | 404 | no | `project_unknown` | no | — |
+| Archived project | `GOLD_CONFLICT` | 409 | no | `project_archived` | no | — |
+| Project status not ACTIVE (non-archived invalid) | `GOLD_CONFLICT` | 409 | no | `project_status_invalid` | no | — |
+| Bound workspace unknown | `WORKSPACE_UNKNOWN` | 404 | no | `workspace_unknown` | no | — |
+| Workspace not ACTIVE / no current publication | `WORKSPACE_NOT_READY` | 409 | no | `workspace_not_ready` | no | — |
+| Workspace durable state unreadable | `WORKSPACE_STATE_UNAVAILABLE` | 409 | no | `workspace_state_unavailable` | no | — |
+| Same key + different fingerprint | `IDEMPOTENCY_CONFLICT` | 409 | no | `idempotency_identity_mismatch` | existing only | unchanged |
+| Same workspace non-terminal bootstrap already active (new key) | `GOLD_BUSY` | 409 | yes | `baseline_bootstrap_active` | no | — |
+| Global bootstrap capacity exhausted | `SERVICE_OVERLOADED` | 503 | yes | `gold_bootstrap_capacity_exhausted` | no | — |
+| Runtime not READY | `RUNTIME_NOT_READY` | 503 | yes | `runtime_not_ready` | no | — |
+| Authoring disabled / not ready | `GOLD_CONFLICT` | 409 | no | `authoring_not_ready` | no* | — / FAILED if after reserve |
+| Unauthorized authoring endpoint/model | `GOLD_CONFLICT` | 409 | no | `authoring_endpoint_unauthorized` | no* | — / FAILED if after reserve |
+| `proposal_count` > eligible source population | `GOLD_CONFLICT` | 409 or async FAIL | no | `proposal_count_exceeds_eligible_population` | yes if admitted before 9B population check | `FAILED` |
+| 9B zero usable proposals | (async) `GOLD_CONFLICT` via op error | 202 then observe | no | `zero_usable_proposals` | yes | `FAILED` |
+| 9C zero reviewable pooled cases | (async) `GOLD_CONFLICT` via op error | 202 then observe | no | `zero_reviewable_cases` | yes | `FAILED` |
+| 9D requested but cannot validly start | (async) `GOLD_CONFLICT` via op error | 202 then observe | no | `prelabel_stage_cannot_start` | yes | `FAILED` |
+| Captured historical ChunkSet unavailable | (async) `SNAPSHOT_UNAVAILABLE` or `GOLD_STATE_UNAVAILABLE` | 202 then observe | no | `captured_chunk_set_unavailable` | yes | `FAILED` |
+| Staged run schema/identity invalid | (async) `GOLD_STATE_UNAVAILABLE` | 202 then observe | no | `staged_run_invalid` | yes | `FAILED` |
+| Historical candidate/source identity failure | (async) `GOLD_STATE_UNAVAILABLE` | 202 then observe | no | `historical_identity_failure` | yes | `FAILED` |
+| Workspace revision/snapshot drift before commit | (async) `WORKSPACE_CONFLICT` | 202 then observe | no | `publication_drift_before_commit` | yes | `FAILED` |
+| Project state drift before commit | (async) `GOLD_CONFLICT` | 202 then observe | no | `project_drift_before_commit` | yes | `FAILED` |
+| Canonical destination conflict (non-reconciling) | (async) `GOLD_STATE_UNAVAILABLE` | 202 then observe | no | `canonical_destination_conflict` | yes | `FAILED` |
+| Startup hash/provenance conflict | recovery fail-closed | n/a (startup) | no | `canonical_recovery_conflict` | yes | `FAILED` |
+| Ordinary process interruption after unresolved non-terminal | recovery | n/a | yes observe | `operation_interrupted` | yes | `INTERRUPTED` |
+| Unexpected internal orchestration failure | `INTERNAL_ERROR` | 500 or async FAIL | no | `bootstrap_internal_failure` | maybe | `FAILED` if created |
+
+\* Authoring readiness / endpoint authorization that can be checked cheaply
+during admission may reject synchronously with **no** operation. If discovered
+only after durable reservation, the operation terminals as `FAILED` with the
+same safe reason and capacity is released.
+
+Distinctions that must remain crisp:
+
+```text
+same-workspace single-flight     → GOLD_BUSY / baseline_bootstrap_active
+global resource overload         → SERVICE_OVERLOADED / gold_bootstrap_capacity_exhausted
+scientific baseline invalidity   → GOLD_CONFLICT or GOLD_STATE_UNAVAILABLE
+                                   with stage-specific reason
+durable-state corruption         → GOLD_STATE_UNAVAILABLE / WORKSPACE_STATE_UNAVAILABLE
+                                   fail closed; no overwrite
+idempotency identity mismatch    → IDEMPOTENCY_CONFLICT
+```
+
+Async operation errors use existing `ManagedOperationSafeError`
+(`code`, `message`, `retryable`, bounded `details`). Scientific grades, paths,
+raw model text, and credentials remain forbidden in `details`.
+
+---
+
 ## 7. Lifecycle / state model
 
 ### 7.1 ManagedOperation status (unchanged)
@@ -1169,20 +1400,22 @@ No eligible baseline
 
 | Condition | Result |
 |---|---|
-| Valid key + first request | Admit new operation; freeze execution authority |
-| Same key + identical request fingerprint | Recover existing operation; no new capacity slot |
+| Valid key + first request | Atomic lease admit; freeze execution authority; `expected_revision=null` |
+| Same key + identical fingerprint | Recover existing operation; no new capacity slot |
 | Same key + different `proposal_count` / `prelabel_enabled` / project | `IDEMPOTENCY_CONFLICT` |
-| Missing/invalid Idempotency-Key | request invalid per existing rules |
+| Same key + unchanged body after workspace revision change | Still recover (revision not in fingerprint) |
+| Missing/invalid Idempotency-Key | `REQUEST_INVALID` |
 | New key + identical visible body | New bootstrap intent; new `operation_id`; new seed |
 | `force=true` | NOT SUPPORTED |
 
 Client fingerprint authority:
 
 ```text
-project_id + proposal_count + prelabel_enabled
+kind + expected_revision=null + {project_id, proposal_count, prelabel_enabled}
 ```
 
-Server-resolved publication identities are **not** client fingerprint fields.
+Server-resolved publication identities / captured `workspace_revision` are
+**not** client fingerprint fields.
 
 ---
 
@@ -1190,11 +1423,13 @@ Server-resolved publication identities are **not** client fingerprint fields.
 
 | Condition | Class | Outcome |
 |---|---|---|
-| Same key replay while op active | recovery | return existing operation |
-| Different key; same workspace active | semantic conflict | reject; no queue |
-| Different key; different project; same workspace active | semantic conflict | reject |
-| Different workspace; global capacity free | admit | may start |
-| Different workspace; global capacity exhausted | runtime busy | `SERVICE_OVERLOADED` / retryable |
+| Same key replay while op active | recovery under lease | return existing operation; no new capacity |
+| Different key; same workspace active | semantic conflict under lease | `GOLD_BUSY` / `baseline_bootstrap_active`; no op; no queue |
+| Different key; different project; same workspace active | semantic conflict under lease | same as above |
+| Different workspace; global capacity free | admit under that workspace lease | may start |
+| Different workspace; global capacity exhausted | runtime busy | `SERVICE_OVERLOADED`; **no** ManagedOperation |
+| Capacity acquired; reservation fails | rollback | release capacity; no launch |
+| Reservation ok; worker launch fails | terminal fail | op `FAILED`; release capacity |
 | Prior op terminal SUCCEEDED/FAILED/INTERRUPTED | free | new key may start |
 | INTERRUPTED counts as active | no | terminal |
 
@@ -1202,6 +1437,8 @@ Server-resolved publication identities are **not** client fingerprint fields.
 scientific single-flight key = workspace_id
 global capacity default = 1
 queue = NONE
+critical section = WorkspaceMutationLease(workspace_id)
+ACTIVE check + reservation = atomic
 ```
 
 ---
@@ -1226,16 +1463,25 @@ execution.
 
 | Evidence | Action |
 |---|---|
-| Non-terminal bootstrap; canonical absent | do not promote staging; later generic INTERRUPTED |
-| Non-terminal; canonical present; hash matches expected; PUBLISH-01 holds now | startup → SUCCEEDED + result |
+| Startup step A journals only; bootstrap interrupt deferred | required |
+| Startup cannot build Qdrant/publication proof resources | runtime NOT_READY; do not generic-interrupt ambiguous post-publication bootstraps |
+| Non-terminal bootstrap; canonical absent; proof resources available | leave for step D → INTERRUPTED; never promote staging |
+| Non-terminal; canonical present; hash matches expected; PUBLISH-01 holds now | step C → SUCCEEDED + result before generic interrupt |
 | Non-terminal; canonical present; hash matches; eligibility no longer holds | preserve artifact; NOT SUCCEEDED; INTERRUPTED-class recovery |
 | Non-terminal; canonical present; hash/provenance conflict | FAIL CLOSED; no overwrite/delete |
 | Staging complete validators pass; canonical absent | still not success |
 | GET observation during ambiguity | read-only; no mutation |
 | After generic interrupt already applied | no INTERRUPTED→SUCCEEDED transition authorized |
 
-Recovery order is mandatory: bootstrap reconciliation **before**
-`interrupt_all_nonterminal()`.
+Recovery order is mandatory:
+
+```text
+A journals → B publication resources → C bootstrap reconcile
+→ D interrupt_all_nonterminal → E READY
+```
+
+Today’s `recover_workspace_transactions()` bundling of journal recovery with
+`interrupt_all_nonterminal()` must be decomposed in future implementation.
 
 ---
 
@@ -1246,6 +1492,8 @@ Recovery order is mandatory: bootstrap reconciliation **before**
 | Staged authoring run | operation-private | NO | NO |
 | Canonical authoring run | existing corpus runs path | YES if resolver admits | YES |
 | ManagedOperation record | existing operations store | N/A | durable request/proof |
+| `ManagedOperation.expected_revision` | null for bootstrap | N/A | fingerprint neutrality |
+| Captured `workspace_revision` | private execution metadata + success result | NO as path | execution authority |
 | expected_final_artifact_sha256 | private operation metadata | NO | recovery proof |
 | Failed staging after TTL/scavenge | deleted | NO | NO |
 | Success staging after SUCCEEDED | deleted best-effort | NO | NO |
@@ -1254,6 +1502,7 @@ Recovery order is mandatory: bootstrap reconciliation **before**
 reserved authoring_run_id = X throughout 9B/9C/9D/canonical
 canonical filename = X.json
 identity rewrite on promote = FORBIDDEN
+expected_revision fingerprint field = null
 ```
 
 ---
@@ -1456,12 +1705,17 @@ Possible future scope:
 
 Possible future scope:
 
-- startup crash reconciliation
+- decompose `recover_workspace_transactions()` so journal recovery is
+  separable from `interrupt_all_nonterminal()`
+- startup order: journals → publication resources (incl. Qdrant) →
+  bootstrap reconcile → generic interrupt → READY
+- NOT_READY when bootstrap reconciliation proof resources unavailable
 - expected-final-artifact hash proof
 - staging scavenging
-- `POST .../baseline-bootstrap` route
+- `POST .../baseline-bootstrap` route with atomic lease admission
+- `expected_revision=null` fingerprinting
 - existing `/v1/operations` observation integration
-- safe error/result DTO projection
+- safe error/result DTO projection per §6A
 
 ### GAP-16G-02-I4 — Gold Lab browser integration and closure tests
 
@@ -1485,14 +1739,20 @@ Future implementation authorities must prove at least:
 |---|---|
 | Entry | Project-scoped command; browser cannot supply competing publication ids |
 | Idempotency | same-key recover; same-key different body conflict; new-key new seed |
-| Concurrency | second workspace intent conflicts; different workspace may proceed |
-| Admission | capacity exhausted → overloaded/retryable; not gold_conflict |
+| Fingerprint | `expected_revision=null`; workspace republish does not break exact same-key replay |
+| Concurrency | concurrent different-key admits cannot both pass active-check without lease serialization |
+| Single-flight | second workspace intent → `GOLD_BUSY` / `baseline_bootstrap_active`; no op created |
+| Admission | capacity exhausted → `SERVICE_OVERLOADED`; **no** ManagedOperation; not `GOLD_CONFLICT` |
+| Rollback | capacity released when reservation fails; op `FAILED` + capacity released when worker launch fails |
 | Binding | 9B/9C/9D use captured ChunkSet; CURRENT drift does not retarget science |
 | Publish | zero reviewable → no canonical; partial 9C/9D permitted; pristine holds |
 | Staging | intermediate never in baseline discovery |
 | Success | SUCCEEDED only after canonical + resolver admission; `baseline_eligible=true` |
 | Handoff | no auto campaign/games; refresh baselines; explicit create CTA |
-| Crash | startup reconcile before interrupt; GET read-only; staging alone ≠ success |
+| Crash topology | journals → publication resources → bootstrap reconcile → generic interrupt → READY |
+| Crash NOT_READY | missing Qdrant/publication proof resources leave runtime NOT_READY; do not interrupt ambiguous post-publication bootstraps |
+| Crash GET | observation read-only; staging alone ≠ success |
+| Errors | matrix §6A bindings for sync vs async failures |
 | Privacy | no paths/raw model/seed bodies in API result |
 | Policy | ALLOW_PRODUCTION unchanged/empty |
 | CLI | propose/pool/prelabel public contract preserved |
@@ -1583,19 +1843,35 @@ CONCURRENCY SEED STAGING OBSERVATION HANDOFF
 CRASH BINDING STAGING-RETENTION NONSCOPE ADMISSION
 ```
 
-Exact staging pathname, exact TTL hours, and exact internal function names remain
-implementation details constrained by the visibility/ownership/reuse contracts
-frozen above.
+Rework 1 closures (R1–R7) are explicit in this document:
+
+```text
+R1 external candidate tip semantics
+R2 executable startup topology + NOT_READY edge
+R3 atomic WorkspaceMutationLease admission + capacity rollback
+R4 expected_revision = null fingerprint neutrality
+R5 complete safe error / reason matrix
+R6 updated concurrency/crash/persistence/test matrices
+R7 unresolved = NONE
+```
+
+Exact staging pathname, exact TTL hours, exact internal function names, and the
+concrete mechanical patch that decomposes
+`recover_workspace_transactions()` remain implementation details constrained by
+the visibility/ownership/reuse/recovery contracts frozen above.
 
 ---
 
 ## 21. Stop condition
 
 ```text
-STOP — GAP-16G-02 D0 design handoff
+STOP — GAP-16G-02 D0 design rework handoff
 
 Authority:
-GAP-16G-02-D0-AUTH-002
+GAP-16G-02-D0-REWORK-AUTH-001
+
+Base candidate:
+062b59a72f8909123d67f896885bfea1d4707bbe
 
 Branch:
 design/gap-16g-02-gold-baseline-bootstrap
@@ -1603,8 +1879,11 @@ design/gap-16g-02-gold-baseline-bootstrap
 Starting product tip:
 35ec9be5647d41c887eb280146c05b9688dea685
 
-Design tip:
+Design content commit:
 650ed772ea7f0b710f504af84ae59b16796d51a9
+
+Final review candidate:
+SUPPLIED BY EXTERNAL HANDOFF / INDEPENDENT REVIEW RECORD
 
 Frozen 16G-D0 blob:
 edc2be739621dbedfc44ed77861119a35f8f6d18
@@ -1616,6 +1895,27 @@ PRESERVED
 
 9B/9C/9D design blobs:
 PRESERVED
+
+R1 self-referential Design tip:
+CLOSED
+
+R2 startup-recovery topology:
+CLOSED
+
+R3 atomic admission:
+CLOSED
+
+R4 expected_revision fingerprint:
+CLOSED
+
+R5 safe error matrix:
+CLOSED
+
+R6 matrix updates:
+CLOSED
+
+R7 unresolved issues:
+NONE
 
 Implementation:
 NOT AUTHORIZED
@@ -1630,5 +1930,5 @@ ALLOW_PRODUCTION:
 UNCHANGED / EMPTY
 
 FINAL ACTION:
-STOP FOR INDEPENDENT GAP-16G-02 D0 DESIGN REVIEW
+STOP FOR INDEPENDENT GAP-16G-02 D0 RE-REVIEW
 ```
