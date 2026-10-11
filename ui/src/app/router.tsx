@@ -7,6 +7,8 @@ import { GoldLabCampaignPage } from "../pages/GoldLabCampaignPage";
 import { GoldLabContributionPage } from "../pages/GoldLabContributionPage";
 import { GoldLabPage } from "../pages/GoldLabPage";
 import { GoldLabProjectPage } from "../pages/GoldLabProjectPage";
+import { GoldLabTrainingPage } from "../pages/GoldLabTrainingPage";
+import { GoldLabTrainingScenarioPage } from "../pages/GoldLabTrainingScenarioPage";
 import { GoldLabWorkPage } from "../pages/GoldLabWorkPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { OverviewPage } from "../pages/OverviewPage";
@@ -41,6 +43,14 @@ export function AppRouter() {
         <Route
           path="gold-lab/campaigns/:campaignId/calibration"
           element={<GoldLabCalibrationPage />}
+        />
+        <Route
+          path="gold-lab/campaigns/:campaignId/training"
+          element={<GoldLabTrainingPage />}
+        />
+        <Route
+          path="gold-lab/campaigns/:campaignId/training/scenario"
+          element={<GoldLabTrainingScenarioPage />}
         />
         <Route
           path="engineering"

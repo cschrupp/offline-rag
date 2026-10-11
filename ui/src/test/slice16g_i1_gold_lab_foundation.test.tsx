@@ -324,7 +324,7 @@ describe("16G-I1 navigation and routing", () => {
     cleanup();
 
     const unknown = installGoldLabMocks();
-    renderApp("/gold-lab/campaigns/camp_1/training");
+    renderApp("/gold-lab/campaigns/camp_1/mastery");
     expect(
       await screen.findByRole("heading", { name: "Page not found" }),
     ).toBeInTheDocument();

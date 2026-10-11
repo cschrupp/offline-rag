@@ -359,9 +359,9 @@ describe("16G-I4 calibration surface", () => {
     mock.restore();
   });
 
-  it("does not register training routes", async () => {
+  it("does not register workspace Training Mode routes outside Gold Lab", async () => {
     const mock = installCalibrationMock({ registrations: [] });
-    renderApp("/gold-lab/campaigns/camp_1/training");
+    renderApp("/training");
     expect(
       await screen.findByRole("heading", { name: "Page not found" }),
     ).toBeInTheDocument();

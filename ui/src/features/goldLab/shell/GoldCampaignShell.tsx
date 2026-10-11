@@ -195,6 +195,9 @@ export function GoldCampaignShell({ campaign }: Props) {
           <Link to={`/gold-lab/campaigns/${campaign.campaign_id}/calibration`}>
             Calibration
           </Link>
+          <Link to={`/gold-lab/campaigns/${campaign.campaign_id}/training`}>
+            Training
+          </Link>
         </nav>
       </header>
 

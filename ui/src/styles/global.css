@@ -2087,6 +2087,40 @@ button.snapshot-badge {
   background: var(--surface);
 }
 
+.gold-lab-training-candidate-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.gold-lab-training-candidate-list > li {
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.gold-lab-training-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.gold-lab-training-reveal {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border-left: 3px solid var(--color-border-strong, var(--color-border));
+  background: var(--surface);
+}
+
+.gold-lab-training-debrief {
+  margin-top: var(--space-4);
+}
+
 .gold-lab-chunk-duel-pick-list {
   margin: 0;
   padding-left: 1.2rem;
