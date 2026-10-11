@@ -1005,11 +1005,11 @@ Bind the application to localhost unless the user explicitly configures network 
 The accepted product/API surface can be used from CLI and from the Seneca
 browser client through the same app layer, and the OfflineRAG application
 starts as one container while using an independently running local generator.
-Slice 16 remains **IN PROGRESS / NOT COMPLETE** because **16G implementation**
-and **16H** remain **NOT AUTHORIZED** (**16E** / **16F** are **COMPLETE /
-ACCEPTED / SEALED**; **16G-D0** is **ACCEPTED / FROZEN**; **GAP-16G-01** is
-**DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED**); Seneca consuming the
-API does not close Slice 16.
+Slice 16 remains **IN PROGRESS / NOT COMPLETE** because **16G-I6** and **16H**
+remain **NOT AUTHORIZED** (**16E** / **16F** are **COMPLETE / ACCEPTED /
+SEALED**; **16G-D0** is **ACCEPTED / FROZEN**; **16G-I1…I5** and **GAP-16G-01**
+are **ACCEPTED**; **GAP-16G-02** is **IMPLEMENTATION COMPLETE / HUMAN ACCEPTED /
+CLOSEOUT REVIEW PENDING**); Seneca consuming the API does not close Slice 16.
 
 ---
 
@@ -1025,9 +1025,14 @@ AMENDMENT A4:      ACCEPTED / LOCKED / SEALED
 16E:               COMPLETE / ACCEPTED / SEALED
 16F:               COMPLETE / ACCEPTED / SEALED
 16G-D0:            ACCEPTED / FROZEN
-GAP-16G-01:         DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED
-GAP-16G-02:         DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED
-16G IMPLEMENTATION / 16H: NOT AUTHORIZED
+16G-I1…I5:         ACCEPTED
+GAP-16G-01:         ACCEPTED
+GAP-16G-02:         IMPLEMENTATION COMPLETE / HUMAN ACCEPTED /
+                   CLOSEOUT REVIEW PENDING
+                   ACCEPTED IMPLEMENTATION: 120c03cd79f3af142144a6b73e05bcb43fdacb76
+                   CLOSEOUT: docs/gap16g_02_gold_baseline_bootstrap_closeout.md
+16G-I6 / 16H:      NOT AUTHORIZED
+9G:                DEFERRED / NOT AUTHORIZED
 SLICE 17 / 18:     NOT AUTHORIZED
 M7 CLOSEOUT:       NOT AUTHORIZED
 ```
@@ -1042,6 +1047,7 @@ Authoritative current governance:
 - [`docs/slice16f_closeout.md`](docs/slice16f_closeout.md)
 - [`docs/slice16g_gold_lab_games_pedagogy_design.md`](docs/slice16g_gold_lab_games_pedagogy_design.md)
 - [`docs/slice16g_gap_registry_addendum.md`](docs/slice16g_gap_registry_addendum.md)
+- [`docs/gap16g_02_gold_baseline_bootstrap_closeout.md`](docs/gap16g_02_gold_baseline_bootstrap_closeout.md)
 - [`docs/workspace_source_loading_remediation.md`](docs/workspace_source_loading_remediation.md)
 - [`docs/slice16d_c_a4_closeout.md`](docs/slice16d_c_a4_closeout.md)
 
@@ -1118,7 +1124,9 @@ technology and delivery model were Slice-16 design decisions; design later
 opened and progressed under separate authority. **16A–16E** are accepted;
 **16F** is **COMPLETE / ACCEPTED / SEALED**;
 **16G-D0** is **ACCEPTED / FROZEN**;
-**16G implementation** and **16H** remain **NOT AUTHORIZED**.
+**16G-I1…I5** and **GAP-16G-01** are **ACCEPTED**;
+**GAP-16G-02** is **IMPLEMENTATION COMPLETE / HUMAN ACCEPTED / CLOSEOUT REVIEW
+PENDING**; **16G-I6** and **16H** remain **NOT AUTHORIZED**.
 
 ### Prerequisites for opening design (historical)
 
@@ -1150,15 +1158,17 @@ metrics; reviewed bridge to regression candidates. Explicitly **not** Gold,
 **not** benchmark truth, **not** automatic training data, and **not** automatic
 promotion authority.
 
-Also registered in that addendum (unchanged here as 16G executable scope):
+Also projected from that addendum (current disposition):
 
 ```text
+GAP-16G-01: ACCEPTED
 GAP-16G-02:
-DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED
+IMPLEMENTATION COMPLETE / HUMAN ACCEPTED
+CLOSEOUT REVIEW PENDING
+Closeout: docs/gap16g_02_gold_baseline_bootstrap_closeout.md
 ```
 
-Slice **9G** remains **DEFERRED / NOT AUTHORIZED**. **GAP-16G-01** status is
-unchanged.
+Slice **9G** remains **DEFERRED / NOT AUTHORIZED**.
 
 ---
 
@@ -1245,7 +1255,7 @@ Foundation
   -> performance benchmarks              (Slice 14 COMPLETE / ACCEPTED)
   -> product API + packaging             (Slice 15 COMPLETE / ACCEPTED)
   -> Slice 15 integration closeout       (15H COMPLETE / ACCEPTED)
-  -> Seneca / Portfolio Demo UI          (Slice 16 IN PROGRESS; 16D-C / 16E / 16F COMPLETE / ACCEPTED / SEALED; 16G-D0 ACCEPTED / FROZEN; 16H NOT AUTHORIZED)
+  -> Seneca / Portfolio Demo UI          (Slice 16 IN PROGRESS; 16D-C / 16E / 16F COMPLETE / ACCEPTED / SEALED; 16G-D0 ACCEPTED / FROZEN; 16G-I1…I5 / GAP-16G-01 ACCEPTED; GAP-16G-02 IMPLEMENTATION COMPLETE / HUMAN ACCEPTED / CLOSEOUT REVIEW PENDING; 16G-I6 / 16H NOT AUTHORIZED)
   -> Regression CI                       (Slice 17 NOT AUTHORIZED)
   -> Portfolio release package           (Slice 18 NOT AUTHORIZED)
   -> Milestone 7 closeout                (NOT AUTHORIZED)

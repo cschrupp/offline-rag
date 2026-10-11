@@ -484,11 +484,21 @@ SLICE 15  COMPLETE / ACCEPTED
      16G-D0 ACCEPTED / FROZEN
        DESIGN TIP 8af2dbab72d1a79f53b0f3958e7c7142b4273693
        FROZEN DESIGN: docs/slice16g_gold_lab_games_pedagogy_design.md
-     GAP-16G-01 DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED
-     GAP-16G-02 DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED
+     16G-I1 ACCEPTED
+     16G-I2 ACCEPTED
+     16G-I3 ACCEPTED
+     GAP-16G-01 ACCEPTED
+     16G-I4 ACCEPTED
+     16G-I5 ACCEPTED
+     GAP-16G-02 IMPLEMENTATION COMPLETE / HUMAN ACCEPTED /
+       CLOSEOUT REVIEW PENDING
+       ACCEPTED IMPLEMENTATION 120c03cd79f3af142144a6b73e05bcb43fdacb76
+       ACCEPTED DESIGN 4b872cc0e9caf3323196cc2c3afe4772e249f191
+       Closeout: docs/gap16g_02_gold_baseline_bootstrap_closeout.md
        Addendum: docs/slice16g_gap_registry_addendum.md
-     16G IMPLEMENTATION NOT AUTHORIZED
+     16G-I6 NOT AUTHORIZED
      16H NOT AUTHORIZED
+     9G DEFERRED / NOT AUTHORIZED
      Slice 16 overall IN PROGRESS / NOT COMPLETE
      Authority: docs/slice16_design_authority.md
      Plan: docs/slice16_implementation_plan.md
@@ -639,7 +649,7 @@ Slice 14 checklist:
     debt (not claimed as a globally green suite)
 - **Slice 15:** **COMPLETE / ACCEPTED**
 
-**Slice 16 — Portfolio Demo UI:** **DESIGN AUTHORITY ACCEPTED / LOCKED**; **16A COMPLETE / ACCEPTED**; **16B COMPLETE / ACCEPTED**; **16C COMPLETE / ACCEPTED** at `936e41446eb1e3697f6b7d245659831f19cf0613`; **Amendment A1 ACCEPTED / LOCKED** at `5060e2aeb4825f265072a1f870c3c963eace3b30` (Seneca — Grounded knowledge workspace); **Amendment A2 ACCEPTED / LOCKED / SEALED** at `dce3456e519cb6c96570e20f5af800d00cafb5a7`; **16D-A COMPLETE / ACCEPTED / SEALED** at `4f8962f2893ab433e6ea269ad54e46f67771ca70`; observed 16D-B1 candidate `6b652400…` **PRODUCT ACCEPTANCE WITHHELD**; B1 foundation remediation **ACCEPTED / SEALED** (implementation `c68cc3f8f16a2588ba093886f3e48e1c7037f83f`; verified closeout `b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90`); legacy B1 product UX **PRODUCT ACCEPTANCE WITHHELD / NOT SEALED**; **16D-B2 COMPLETE / ACCEPTED / SEALED** at `baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`; **16D-B3 COMPLETE / ACCEPTED / SEALED** at `9c178ffb033cde41849379fc914f321697ff8691` (A3 **ACCEPTED / LOCKED / SEALED**); **16D-C COMPLETE / ACCEPTED / SEALED**; **16E COMPLETE / ACCEPTED / SEALED** (Engineering `3e1ce4c94fc511abb4e1d94bd194736d5497e64f`; Workspace source-loading remediation `9dd2b008ebf9feee279dc6d0e58fafb006288ee5`; tip `9cd5528ab6c6e22d2dca55aca221b65eac50269e`); **16F COMPLETE / ACCEPTED / SEALED** at `f25f8358aead7fcfe161fff388012cec23b5a573` ([`docs/slice16f_closeout.md`](docs/slice16f_closeout.md)); **16G-D0 ACCEPTED / FROZEN** ([`docs/slice16g_gold_lab_games_pedagogy_design.md`](docs/slice16g_gold_lab_games_pedagogy_design.md)); **16G implementation / 16H NOT AUTHORIZED**; Slice 16 overall **IN PROGRESS / NOT COMPLETE**
+**Slice 16 — Portfolio Demo UI:** **DESIGN AUTHORITY ACCEPTED / LOCKED**; **16A COMPLETE / ACCEPTED**; **16B COMPLETE / ACCEPTED**; **16C COMPLETE / ACCEPTED** at `936e41446eb1e3697f6b7d245659831f19cf0613`; **Amendment A1 ACCEPTED / LOCKED** at `5060e2aeb4825f265072a1f870c3c963eace3b30` (Seneca — Grounded knowledge workspace); **Amendment A2 ACCEPTED / LOCKED / SEALED** at `dce3456e519cb6c96570e20f5af800d00cafb5a7`; **16D-A COMPLETE / ACCEPTED / SEALED** at `4f8962f2893ab433e6ea269ad54e46f67771ca70`; observed 16D-B1 candidate `6b652400…` **PRODUCT ACCEPTANCE WITHHELD**; B1 foundation remediation **ACCEPTED / SEALED** (implementation `c68cc3f8f16a2588ba093886f3e48e1c7037f83f`; verified closeout `b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90`); legacy B1 product UX **PRODUCT ACCEPTANCE WITHHELD / NOT SEALED**; **16D-B2 COMPLETE / ACCEPTED / SEALED** at `baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`; **16D-B3 COMPLETE / ACCEPTED / SEALED** at `9c178ffb033cde41849379fc914f321697ff8691` (A3 **ACCEPTED / LOCKED / SEALED**); **16D-C COMPLETE / ACCEPTED / SEALED**; **16E COMPLETE / ACCEPTED / SEALED** (Engineering `3e1ce4c94fc511abb4e1d94bd194736d5497e64f`; Workspace source-loading remediation `9dd2b008ebf9feee279dc6d0e58fafb006288ee5`; tip `9cd5528ab6c6e22d2dca55aca221b65eac50269e`); **16F COMPLETE / ACCEPTED / SEALED** at `f25f8358aead7fcfe161fff388012cec23b5a573` ([`docs/slice16f_closeout.md`](docs/slice16f_closeout.md)); **16G-D0 ACCEPTED / FROZEN** ([`docs/slice16g_gold_lab_games_pedagogy_design.md`](docs/slice16g_gold_lab_games_pedagogy_design.md)); **16G-I1…I5 / GAP-16G-01 ACCEPTED**; **GAP-16G-02 IMPLEMENTATION COMPLETE / HUMAN ACCEPTED / CLOSEOUT REVIEW PENDING** at `120c03cd…` ([`docs/gap16g_02_gold_baseline_bootstrap_closeout.md`](docs/gap16g_02_gold_baseline_bootstrap_closeout.md)); **16G-I6 / 16H NOT AUTHORIZED**; **9G DEFERRED / NOT AUTHORIZED**; Slice 16 overall **IN PROGRESS / NOT COMPLETE**
 - Authority: [`docs/slice16_design_authority.md`](docs/slice16_design_authority.md)
   (S16-D01 … S16-D35; **ACCEPTED / LOCKED**; A2 supersedes enumerated clauses only)
 - AUTHORITY SHA: `e2e7475076ad18d4c4ae8d939389ceeffdeff6d8`
@@ -703,7 +713,12 @@ Slice 14 checklist:
   ([`docs/slice16f_closeout.md`](docs/slice16f_closeout.md));
   **16G-D0** is **ACCEPTED / FROZEN**
   ([`docs/slice16g_gold_lab_games_pedagogy_design.md`](docs/slice16g_gold_lab_games_pedagogy_design.md));
-  do **not** start **16G implementation** without separate explicit authorization
+  **16G-I1…I5** and **GAP-16G-01** are **ACCEPTED**;
+  **GAP-16G-02** is **IMPLEMENTATION COMPLETE / HUMAN ACCEPTED /
+  CLOSEOUT REVIEW PENDING** at `120c03cd…`
+  ([`docs/gap16g_02_gold_baseline_bootstrap_closeout.md`](docs/gap16g_02_gold_baseline_bootstrap_closeout.md));
+  **16G-I6** / **16H** remain **NOT AUTHORIZED**; **9G** remains
+  **DEFERRED / NOT AUTHORIZED**
 - Product: **Seneca — Grounded knowledge workspace**
 
 **Slice 17 — Regression CI:** **PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED**
@@ -747,7 +762,7 @@ Later M7 checklist:
 - [x] Qdrant Local standalone profile (15G — **COMPLETE / ACCEPTED**)
 - [x] `/data` + `/models` volume packaging contract (15G — **COMPLETE / ACCEPTED**)
 - [x] Slice 15 integration closeout (15H — **COMPLETE / ACCEPTED** at `1c1d94e…`)
-- [ ] Portfolio Demo UI (Slice 16 — design **ACCEPTED / LOCKED** at `e2e7475…`; **16A COMPLETE / ACCEPTED** at `e73959be…`; **16B COMPLETE / ACCEPTED** at `eb8baef…`; **16C COMPLETE / ACCEPTED** at `936e414…`; **A1 ACCEPTED / LOCKED** at `5060e2ae…`; **A2 ACCEPTED / LOCKED / SEALED** at `dce3456e…`; **16D-A COMPLETE / ACCEPTED / SEALED** at `4f8962f…`; observed B1 `6b652400…` **ACCEPTANCE WITHHELD**; B1 upload remediation **ACCEPTED / SEALED** at `c68cc3f8…` / closeout `b5fa1e85…`; **16D-B2 COMPLETE / ACCEPTED / SEALED** at `baa16eba…`; **16D-B3 COMPLETE / ACCEPTED / SEALED** at `9c178ffb…`; **16D-C COMPLETE / ACCEPTED / SEALED** at `0381e046…`; A4 **ACCEPTED / LOCKED / SEALED**; **16E COMPLETE / ACCEPTED / SEALED** at Engineering `3e1ce4c9…` / remediation `9dd2b008…`; **16F COMPLETE / ACCEPTED / SEALED** at `f25f835…`; **16G-D0 ACCEPTED / FROZEN**; **16G implementation / 16H NOT AUTHORIZED**; Slice 16 overall **IN PROGRESS / NOT COMPLETE**)
+- [ ] Portfolio Demo UI (Slice 16 — design **ACCEPTED / LOCKED** at `e2e7475…`; **16A COMPLETE / ACCEPTED** at `e73959be…`; **16B COMPLETE / ACCEPTED** at `eb8baef…`; **16C COMPLETE / ACCEPTED** at `936e414…`; **A1 ACCEPTED / LOCKED** at `5060e2ae…`; **A2 ACCEPTED / LOCKED / SEALED** at `dce3456e…`; **16D-A COMPLETE / ACCEPTED / SEALED** at `4f8962f…`; observed B1 `6b652400…` **ACCEPTANCE WITHHELD**; B1 upload remediation **ACCEPTED / SEALED** at `c68cc3f8…` / closeout `b5fa1e85…`; **16D-B2 COMPLETE / ACCEPTED / SEALED** at `baa16eba…`; **16D-B3 COMPLETE / ACCEPTED / SEALED** at `9c178ffb…`; **16D-C COMPLETE / ACCEPTED / SEALED** at `0381e046…`; A4 **ACCEPTED / LOCKED / SEALED**; **16E COMPLETE / ACCEPTED / SEALED** at Engineering `3e1ce4c9…` / remediation `9dd2b008…`; **16F COMPLETE / ACCEPTED / SEALED** at `f25f835…`; **16G-D0 ACCEPTED / FROZEN**; **16G-I1…I5 / GAP-16G-01 ACCEPTED**; **GAP-16G-02 IMPLEMENTATION COMPLETE / HUMAN ACCEPTED / CLOSEOUT REVIEW PENDING** at `120c03cd…`; **16G-I6 / 16H NOT AUTHORIZED**; **9G DEFERRED / NOT AUTHORIZED**; Slice 16 overall **IN PROGRESS / NOT COMPLETE**)
 - [ ] Regression CI (Slice 17 — **PLANNED / DESIGN NOT OPEN**)
 - [ ] Portfolio release package (Slice 18 — **PLANNED / DESIGN NOT OPEN**)
 - [ ] Milestone 7 closeout (**NOT AUTHORIZED**)

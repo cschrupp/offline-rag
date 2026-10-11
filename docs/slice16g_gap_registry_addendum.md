@@ -1,27 +1,72 @@
 # Slice 16G gap registry addendum — Gold bootstrap + future answer feedback
 
-Status: REGISTERED / NON-AUTHORIZING
+Status: LIVE GOVERNANCE PROJECTION (registration history preserved below)
 
-Authority: `DOC-GAPS-REGISTER-AUTH-001`
+Original registration authority: `DOC-GAPS-REGISTER-AUTH-001`
 
 This addendum:
 
 - does **not** modify the frozen 16G-D0 design
   ([`docs/slice16g_gold_lab_games_pedagogy_design.md`](slice16g_gold_lab_games_pedagogy_design.md);
   blob `edc2be739621dbedfc44ed77861119a35f8f6d18`);
-- does **not** authorize implementation of any registered item;
-- registers discovered product/design gaps and a post-M7 planning candidate only.
+- originally registered discovered product/design gaps and a post-M7 planning
+  candidate only (non-authorizing at registration time);
+- now also carries the current GAP-16G-02 disposition after Human-accepted
+  implementation (closeout review still pending).
 
-Preserved (unchanged by this registration):
+### Original registration (history)
 
 ```text
+Original registration:
+DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED
+Authority: DOC-GAPS-REGISTER-AUTH-001
+
+At registration time (preserved as history, not current claim):
 GAP-16G-01: DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED
+GAP-16G-02: DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED
 16G-I3: NOT AUTHORIZED
 16H: NOT AUTHORIZED
 9G: DEFERRED / NOT AUTHORIZED
 Slice 17: NOT AUTHORIZED
 Slice 18: NOT AUTHORIZED
 M7 closeout: NOT AUTHORIZED
+```
+
+### Current disposition
+
+```text
+16G-D0: ACCEPTED / FROZEN
+16G-I1: ACCEPTED
+16G-I2: ACCEPTED
+16G-I3: ACCEPTED
+GAP-16G-01: ACCEPTED
+16G-I4: ACCEPTED
+16G-I5: ACCEPTED
+
+GAP-16G-02:
+IMPLEMENTATION COMPLETE / HUMAN ACCEPTED
+CLOSEOUT REVIEW PENDING
+
+Accepted design:
+4b872cc0e9caf3323196cc2c3afe4772e249f191
+
+Accepted design blob:
+4e9714bd18c7d71316a993e6df2e133f72f596ad
+
+Accepted implementation:
+120c03cd79f3af142144a6b73e05bcb43fdacb76
+
+Closeout candidate:
+docs/gap16g_02_gold_baseline_bootstrap_closeout.md
+
+16G-I6: NOT AUTHORIZED
+16H: NOT AUTHORIZED
+9G: DEFERRED / NOT AUTHORIZED
+Slice 16: IN PROGRESS / NOT COMPLETE
+Slice 17: NOT AUTHORIZED
+Slice 18: NOT AUTHORIZED
+M7 closeout: NOT AUTHORIZED
+ALLOW_PRODUCTION: UNCHANGED / EMPTY
 ```
 
 ---
@@ -31,7 +76,23 @@ M7 closeout: NOT AUTHORIZED
 ```text
 Identifier: GAP-16G-02
 Title:      Gold Baseline Bootstrap / Candidate-Generation Product Flow
-Status:     DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED
+
+Original registration:
+DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED
+Authority: DOC-GAPS-REGISTER-AUTH-001
+
+Current disposition:
+IMPLEMENTATION COMPLETE / HUMAN ACCEPTED
+CLOSEOUT REVIEW PENDING
+
+Accepted design:
+4b872cc0e9caf3323196cc2c3afe4772e249f191
+
+Accepted implementation:
+120c03cd79f3af142144a6b73e05bcb43fdacb76
+
+Closeout:
+docs/gap16g_02_gold_baseline_bootstrap_closeout.md
 ```
 
 ### Problem statement

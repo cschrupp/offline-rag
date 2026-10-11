@@ -66,10 +66,16 @@ AMENDMENT A4: ACCEPTED / LOCKED / SEALED
   DESIGN TIP: 8af2dbab72d1a79f53b0f3958e7c7142b4273693
   DESIGN BLOB: edc2be739621dbedfc44ed77861119a35f8f6d18
   FROZEN DESIGN: docs/slice16g_gold_lab_games_pedagogy_design.md
-GAP-16G-01: DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED
-GAP-16G-02: DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED
-16G IMPLEMENTATION: NOT AUTHORIZED
+16G-I1…I5: ACCEPTED
+GAP-16G-01: ACCEPTED
+GAP-16G-02:
+  IMPLEMENTATION COMPLETE / HUMAN ACCEPTED
+  CLOSEOUT REVIEW PENDING
+  ACCEPTED IMPLEMENTATION: 120c03cd79f3af142144a6b73e05bcb43fdacb76
+  CLOSEOUT: docs/gap16g_02_gold_baseline_bootstrap_closeout.md
+16G-I6: NOT AUTHORIZED
 16H: NOT AUTHORIZED
+9G: DEFERRED / NOT AUTHORIZED
 BASELINE: 1610f9282d1edbd4dfc8ae76d7644a1b9ea4e75e
 ```
 
@@ -157,9 +163,14 @@ B1 foundation remediation [ACCEPTED / SEALED @ c68cc3f8… / closeout b5fa1e85�
  ↓
 16G-D0 [ACCEPTED / FROZEN]
  ↓
-16G implementation [NOT AUTHORIZED]
+16G-I1…I5 / GAP-16G-01 [ACCEPTED]
  ↓
-16H
+GAP-16G-02 [IMPLEMENTATION COMPLETE / HUMAN ACCEPTED /
+            CLOSEOUT REVIEW PENDING @ 120c03cd…]
+ ↓
+16G-I6 [NOT AUTHORIZED]
+ ↓
+16H [NOT AUTHORIZED]
 ```
 
 ```text
@@ -196,8 +207,12 @@ Workspace source-loading remediation `9dd2b008ebf9feee279dc6d0e58fafb006288ee5`)
 `f25f8358aead7fcfe161fff388012cec23b5a573` (closeout
 [`docs/slice16f_closeout.md`](slice16f_closeout.md)). **16G-D0** is **ACCEPTED / FROZEN**
 ([`docs/slice16g_gold_lab_games_pedagogy_design.md`](slice16g_gold_lab_games_pedagogy_design.md)).
-**16G implementation** and **16H** remain **NOT AUTHORIZED**. Slice 16 overall
-is **not** complete.
+**16G-I1…I5** and **GAP-16G-01** are **ACCEPTED**. **GAP-16G-02** is
+**IMPLEMENTATION COMPLETE / HUMAN ACCEPTED / CLOSEOUT REVIEW PENDING** at
+`120c03cd79f3af142144a6b73e05bcb43fdacb76` (closeout
+[`docs/gap16g_02_gold_baseline_bootstrap_closeout.md`](gap16g_02_gold_baseline_bootstrap_closeout.md)).
+**16G-I6** and **16H** remain **NOT AUTHORIZED**. **9G** remains
+**DEFERRED / NOT AUTHORIZED**. Slice 16 overall is **not** complete.
 
 ---
 
@@ -655,12 +670,20 @@ CLOSEOUT: docs/slice16f_closeout.md
 ## 16G — Gold Lab games & pedagogical training compiler
 
 ```text
-STATUS: 16G-D0 ACCEPTED / FROZEN
+STATUS: 16G-D0 ACCEPTED / FROZEN; I1–I5 / GAP-16G-01 ACCEPTED;
+        GAP-16G-02 IMPLEMENTATION COMPLETE / HUMAN ACCEPTED /
+        CLOSEOUT REVIEW PENDING; I6 NOT AUTHORIZED
 DESIGN TIP: 8af2dbab72d1a79f53b0f3958e7c7142b4273693
 DESIGN BLOB: edc2be739621dbedfc44ed77861119a35f8f6d18
 FROZEN DESIGN: docs/slice16g_gold_lab_games_pedagogy_design.md
-GAP-16G-01: DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED
-GAP-16G-02: DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED
+GAP-16G-01: ACCEPTED
+GAP-16G-02:
+  IMPLEMENTATION COMPLETE / HUMAN ACCEPTED
+  CLOSEOUT REVIEW PENDING
+  ACCEPTED IMPLEMENTATION: 120c03cd79f3af142144a6b73e05bcb43fdacb76
+  ACCEPTED DESIGN: 4b872cc0e9caf3323196cc2c3afe4772e249f191
+  CLOSEOUT: docs/gap16g_02_gold_baseline_bootstrap_closeout.md
+16G-I6: NOT AUTHORIZED
 Authority: 16G-D0-AUTH-001 / Human acceptance ACCEPTED
 ```
 
@@ -736,11 +759,15 @@ Evidence candidate + independent review + explicit human acceptance only.
 
 ### Registered product-flow gap — GAP-16G-02
 
-**Status:** **DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED**
+**Status:** **IMPLEMENTATION COMPLETE / HUMAN ACCEPTED / CLOSEOUT REVIEW PENDING**
 
-Seneca still lacks browser orchestration for creating the pristine
-GoldAuthoringRun baseline that Gold Lab campaign creation requires. The
-registered future product path (not authorized here) is:
+Seneca now includes the accepted baseline-bootstrap product path that creates
+the pristine GoldAuthoringRun baseline Gold Lab campaign creation requires.
+Accepted implementation: `120c03cd79f3af142144a6b73e05bcb43fdacb76`.
+Closeout candidate:
+[`docs/gap16g_02_gold_baseline_bootstrap_closeout.md`](gap16g_02_gold_baseline_bootstrap_closeout.md).
+
+Product path (accepted):
 
 ```text
 workspace publication
@@ -753,7 +780,7 @@ workspace publication
 
 Detail: [`docs/slice16g_gap_registry_addendum.md`](slice16g_gap_registry_addendum.md).
 
-This registration does **not** amend frozen 16G-D0, does **not** reopen
+This closeout projection does **not** amend frozen 16G-D0, does **not** reopen
 Slice **9G** (**DEFERRED / NOT AUTHORIZED**), and does **not** place
 `NEXT-MILESTONE-CANDIDATE-01` (answer-level user feedback) into 16G
 implementation scope.
@@ -821,9 +848,15 @@ AMENDMENT A4: ACCEPTED / LOCKED / SEALED
   DESIGN TIP: 8af2dbab72d1a79f53b0f3958e7c7142b4273693
   DESIGN BLOB: edc2be739621dbedfc44ed77861119a35f8f6d18
   FROZEN DESIGN: docs/slice16g_gold_lab_games_pedagogy_design.md
-GAP-16G-01: DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED
-GAP-16G-02: DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED
-16G IMPLEMENTATION: NOT AUTHORIZED
+16G-I1…I5: ACCEPTED
+GAP-16G-01: ACCEPTED
+GAP-16G-02:
+  IMPLEMENTATION COMPLETE / HUMAN ACCEPTED
+  CLOSEOUT REVIEW PENDING
+  ACCEPTED IMPLEMENTATION: 120c03cd79f3af142144a6b73e05bcb43fdacb76
+  ACCEPTED DESIGN: 4b872cc0e9caf3323196cc2c3afe4772e249f191
+  CLOSEOUT: docs/gap16g_02_gold_baseline_bootstrap_closeout.md
+16G-I6: NOT AUTHORIZED
 16H: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
 SLICE 18: NOT AUTHORIZED
@@ -854,9 +887,10 @@ evidence tip `9cd5528ab6c6e22d2dca55aca221b65eac50269e`). **16F** is
 `f25f8358aead7fcfe161fff388012cec23b5a573` (closeout
 `docs/slice16f_closeout.md`). **16G-D0** is **ACCEPTED / FROZEN**
 (`docs/slice16g_gold_lab_games_pedagogy_design.md` at tip
-`8af2dbab72d1a79f53b0f3958e7c7142b4273693`). **GAP-16G-01** is **DESIGN
-REGISTERED / IMPLEMENTATION NOT AUTHORIZED**. **GAP-16G-02** is **DESIGN
-REGISTERED / IMPLEMENTATION NOT AUTHORIZED**
-([`docs/slice16g_gap_registry_addendum.md`](slice16g_gap_registry_addendum.md)).
-**16G implementation** and **16H** remain **NOT AUTHORIZED**. Slice 16 overall
-is **not** complete.
+`8af2dbab72d1a79f53b0f3958e7c7142b4273693`). **16G-I1…I5** and **GAP-16G-01**
+are **ACCEPTED**. **GAP-16G-02** is **IMPLEMENTATION COMPLETE / HUMAN ACCEPTED /
+CLOSEOUT REVIEW PENDING** at `120c03cd79f3af142144a6b73e05bcb43fdacb76`
+([`docs/gap16g_02_gold_baseline_bootstrap_closeout.md`](gap16g_02_gold_baseline_bootstrap_closeout.md);
+[`docs/slice16g_gap_registry_addendum.md`](slice16g_gap_registry_addendum.md)).
+**16G-I6** and **16H** remain **NOT AUTHORIZED**. **9G** remains
+**DEFERRED / NOT AUTHORIZED**. Slice 16 overall is **not** complete.
