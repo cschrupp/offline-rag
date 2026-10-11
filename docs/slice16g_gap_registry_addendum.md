@@ -12,7 +12,7 @@ This addendum:
 - originally registered discovered product/design gaps and a post-M7 planning
   candidate only (non-authorizing at registration time);
 - now also carries the current GAP-16G-02 disposition after Human-accepted
-  implementation (closeout review still pending).
+  implementation (closeout accepted / promoted to main).
 
 ### Original registration (history)
 
