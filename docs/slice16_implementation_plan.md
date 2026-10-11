@@ -74,7 +74,8 @@ GAP-16G-02:
   HUMAN-ACCEPTED SUBJECT: e5d116b8a2990f3b0ac7f3fe1cbf052b4f6ac087
   ACCEPTED IMPLEMENTATION: 120c03cd79f3af142144a6b73e05bcb43fdacb76
   CLOSEOUT: docs/gap16g_02_gold_baseline_bootstrap_closeout.md
-  MAIN PROMOTION: NOT AUTHORIZED
+  MAIN PROMOTION: COMPLETE
+  PROMOTED MAIN: f7fb999758ce6219be27d27a3f1c0a16ece97506
 16G-I6: NOT AUTHORIZED
 16H: NOT AUTHORIZED
 9G: DEFERRED / NOT AUTHORIZED
@@ -168,7 +169,7 @@ B1 foundation remediation [ACCEPTED / SEALED @ c68cc3f8… / closeout b5fa1e85�
 16G-I1…I5 / GAP-16G-01 [ACCEPTED]
  ↓
 GAP-16G-02 [CLOSEOUT ACCEPTED @ HA-001 / IR-002; subject e5d116b8…;
-            main promotion NOT AUTHORIZED]
+            main promotion COMPLETE at f7fb999…]
  ↓
 16G-I6 [NOT AUTHORIZED]
  ↓
@@ -211,7 +212,7 @@ Workspace source-loading remediation `9dd2b008ebf9feee279dc6d0e58fafb006288ee5`)
 ([`docs/slice16g_gold_lab_games_pedagogy_design.md`](slice16g_gold_lab_games_pedagogy_design.md)).
 **16G-I1…I5** and **GAP-16G-01** are **ACCEPTED**. **GAP-16G-02** is **CLOSEOUT ACCEPTED** (`HA-001`; IR-002 **ACCEPT**;
 exact subject `e5d116b8a2990f3b0ac7f3fe1cbf052b4f6ac087`; main promotion
-**NOT AUTHORIZED**) (closeout
+**COMPLETE** at `f7fb999…`) (closeout
 [`docs/gap16g_02_gold_baseline_bootstrap_closeout.md`](gap16g_02_gold_baseline_bootstrap_closeout.md)).
 **16G-I6** and **16H** remain **NOT AUTHORIZED**. **9G** remains
 **DEFERRED / NOT AUTHORIZED**. Slice 16 overall is **not** complete.
@@ -674,7 +675,7 @@ CLOSEOUT: docs/slice16f_closeout.md
 ```text
 STATUS: 16G-D0 ACCEPTED / FROZEN; I1–I5 / GAP-16G-01 ACCEPTED;
         GAP-16G-02 CLOSEOUT ACCEPTED (HA-001 / IR-002; subject e5d116b8…);
-        MAIN PROMOTION NOT AUTHORIZED; I6 NOT AUTHORIZED
+        MAIN PROMOTION COMPLETE at f7fb999…; I6 NOT AUTHORIZED
 DESIGN TIP: 8af2dbab72d1a79f53b0f3958e7c7142b4273693
 DESIGN BLOB: edc2be739621dbedfc44ed77861119a35f8f6d18
 FROZEN DESIGN: docs/slice16g_gold_lab_games_pedagogy_design.md
@@ -686,7 +687,8 @@ GAP-16G-02:
   ACCEPTED IMPLEMENTATION: 120c03cd79f3af142144a6b73e05bcb43fdacb76
   ACCEPTED DESIGN: 4b872cc0e9caf3323196cc2c3afe4772e249f191
   CLOSEOUT: docs/gap16g_02_gold_baseline_bootstrap_closeout.md
-  MAIN PROMOTION: NOT AUTHORIZED
+  MAIN PROMOTION: COMPLETE
+  PROMOTED MAIN: f7fb999758ce6219be27d27a3f1c0a16ece97506
 16G-I6: NOT AUTHORIZED
 Authority: 16G-D0-AUTH-001 / Human acceptance ACCEPTED
 ```
@@ -763,7 +765,7 @@ Evidence candidate + independent review + explicit human acceptance only.
 
 ### Registered product-flow gap — GAP-16G-02
 
-**Status:** **CLOSEOUT ACCEPTED** (`HA-001`; IR-002 **ACCEPT**; subject `e5d116b8…`; main promotion **NOT AUTHORIZED**)
+**Status:** **CLOSEOUT ACCEPTED / PROMOTED TO MAIN** (`HA-001`; IR-002 **ACCEPT**; subject `e5d116b8…`; main promotion **COMPLETE** at `f7fb999…`)
 
 Seneca now includes the accepted baseline-bootstrap product path that creates
 the pristine GoldAuthoringRun baseline Gold Lab campaign creation requires.
@@ -861,7 +863,8 @@ GAP-16G-02:
   ACCEPTED IMPLEMENTATION: 120c03cd79f3af142144a6b73e05bcb43fdacb76
   ACCEPTED DESIGN: 4b872cc0e9caf3323196cc2c3afe4772e249f191
   CLOSEOUT: docs/gap16g_02_gold_baseline_bootstrap_closeout.md
-  MAIN PROMOTION: NOT AUTHORIZED
+  MAIN PROMOTION: COMPLETE
+  PROMOTED MAIN: f7fb999758ce6219be27d27a3f1c0a16ece97506
 16G-I6: NOT AUTHORIZED
 16H: NOT AUTHORIZED
 SLICE 17: NOT AUTHORIZED
@@ -895,7 +898,7 @@ evidence tip `9cd5528ab6c6e22d2dca55aca221b65eac50269e`). **16F** is
 (`docs/slice16g_gold_lab_games_pedagogy_design.md` at tip
 `8af2dbab72d1a79f53b0f3958e7c7142b4273693`). **16G-I1…I5** and **GAP-16G-01**
 are **ACCEPTED**. **GAP-16G-02** is **CLOSEOUT ACCEPTED** (`HA-001`; IR-002 **ACCEPT**;
-subject `e5d116b8…`; main promotion **NOT AUTHORIZED**)
+subject `e5d116b8…`; main promotion **COMPLETE** at `f7fb999…`)
 ([`docs/gap16g_02_gold_baseline_bootstrap_closeout.md`](gap16g_02_gold_baseline_bootstrap_closeout.md);
 [`docs/slice16g_gap_registry_addendum.md`](slice16g_gap_registry_addendum.md)).
 **16G-I6** and **16H** remain **NOT AUTHORIZED**. **9G** remains

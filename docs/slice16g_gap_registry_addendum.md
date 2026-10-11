@@ -49,7 +49,10 @@ Independent closeout review: GAP-16G-02-CLOSEOUT-IR-002 — ACCEPT
 Human closeout acceptance: GAP-16G-02-CLOSEOUT-HA-001 — ACCEPTED
 Exact Human-accepted closeout subject:
 e5d116b8a2990f3b0ac7f3fe1cbf052b4f6ac087
-Main promotion: NOT AUTHORIZED
+Current status: CLOSEOUT ACCEPTED / PROMOTED TO MAIN
+Main promotion: COMPLETE
+Promotion authority: GAP-16G-02-MAIN-PROMOTION-AUTH-001 — EXECUTED
+Promoted main target: f7fb999758ce6219be27d27a3f1c0a16ece97506
 
 Accepted design:
 4b872cc0e9caf3323196cc2c3afe4772e249f191
@@ -91,7 +94,10 @@ Independent closeout review: GAP-16G-02-CLOSEOUT-IR-002 — ACCEPT
 Human closeout acceptance: GAP-16G-02-CLOSEOUT-HA-001 — ACCEPTED
 Exact Human-accepted closeout subject:
 e5d116b8a2990f3b0ac7f3fe1cbf052b4f6ac087
-Main promotion: NOT AUTHORIZED
+Current status: CLOSEOUT ACCEPTED / PROMOTED TO MAIN
+Main promotion: COMPLETE
+Promotion authority: GAP-16G-02-MAIN-PROMOTION-AUTH-001 — EXECUTED
+Promoted main target: f7fb999758ce6219be27d27a3f1c0a16ece97506
 
 Accepted design:
 4b872cc0e9caf3323196cc2c3afe4772e249f191

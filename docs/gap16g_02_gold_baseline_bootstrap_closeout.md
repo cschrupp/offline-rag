@@ -39,7 +39,13 @@ HUMAN-ACCEPTED CLOSEOUT SUBJECT:
 e5d116b8a2990f3b0ac7f3fe1cbf052b4f6ac087
 
 MAIN PROMOTION:
-NOT AUTHORIZED
+COMPLETE
+
+PROMOTION AUTHORITY:
+GAP-16G-02-MAIN-PROMOTION-AUTH-001 — EXECUTED
+
+PROMOTED MAIN TARGET:
+f7fb999758ce6219be27d27a3f1c0a16ece97506
 
 16G-I6:
 NOT AUTHORIZED
@@ -63,10 +69,13 @@ IN PROGRESS / NOT COMPLETE
 Exact independently reviewed and Human-accepted closeout subject:
 e5d116b8a2990f3b0ac7f3fe1cbf052b4f6ac087
 
-Any later commit on finalization/gap-16g-02-closeout that only records
-GAP-16G-02-CLOSEOUT-HA-001 is a governance reconciliation successor.
+Any later commit that only records GAP-16G-02-CLOSEOUT-HA-001 or the
+post-promotion canonical reconciliation is a governance successor.
 It does NOT replace e5d116b8… as the accepted closeout subject and is
 NOT a newly reviewed implementation or acceptance tip.
+
+Governance reconciliation / promoted canonical main target:
+f7fb999758ce6219be27d27a3f1c0a16ece97506
 ```
 
 ## Authority
@@ -86,8 +95,13 @@ GAP-16G-02-CLOSEOUT-HA-001 — ACCEPTED
 
 HUMAN CLOSEOUT ACCEPTANCE != MAIN PROMOTION AUTHORITY
 
-Main promotion remains NOT AUTHORIZED until a separate Human promotion
-authority names an exact fast-forward target.
+Historical pre-promotion gate (provenance only):
+Before GAP-16G-02-MAIN-PROMOTION-AUTH-001 was executed, main promotion
+remained NOT AUTHORIZED until a separate Human promotion authority named
+an exact fast-forward target. That gate has now been executed.
+
+Promotion authority:
+GAP-16G-02-MAIN-PROMOTION-AUTH-001 — EXECUTED
 ```
 
 ## Accepted design / implementation
@@ -301,7 +315,9 @@ Integration: COMPLETE
 Independent closeout review: GAP-16G-02-CLOSEOUT-IR-002 — ACCEPT
 Human closeout acceptance: GAP-16G-02-CLOSEOUT-HA-001 — ACCEPTED
 Exact Human-accepted closeout subject: e5d116b8a2990f3b0ac7f3fe1cbf052b4f6ac087
-Main promotion: NOT AUTHORIZED
+Main promotion: COMPLETE
+Promotion authority: GAP-16G-02-MAIN-PROMOTION-AUTH-001 — EXECUTED
+Promoted main target: f7fb999758ce6219be27d27a3f1c0a16ece97506
 
 16G-I6:
 NOT AUTHORIZED
@@ -335,6 +351,19 @@ HUMAN CLOSEOUT ACCEPTANCE: PENDING
 That pending language is historical provenance of the pre-acceptance record
 and is **not** the current GAP-16G-02 disposition.
 
+### Historical pre-promotion main-promotion gate (provenance only)
+
+Before GAP-16G-02-MAIN-PROMOTION-AUTH-001 was executed, current-state
+projections correctly stated:
+
+```text
+MAIN PROMOTION: NOT AUTHORIZED
+```
+
+That wording is historical provenance of the pre-promotion record and is
+**not** the current GAP-16G-02 disposition after pure fast-forward to
+`f7fb999758ce6219be27d27a3f1c0a16ece97506`.
+
 ## Invariants preserved by the Human-accepted closeout subject
 
 ```text
@@ -354,7 +383,37 @@ ALLOW_PRODUCTION: UNCHANGED / EMPTY
 Independent closeout review: GAP-16G-02-CLOSEOUT-IR-002 — ACCEPT
 Human closeout acceptance: GAP-16G-02-CLOSEOUT-HA-001 — ACCEPTED
 Exact Human-accepted closeout subject: e5d116b8a2990f3b0ac7f3fe1cbf052b4f6ac087
-Main promotion: NOT AUTHORIZED
+Main promotion: COMPLETE
+Promotion authority: GAP-16G-02-MAIN-PROMOTION-AUTH-001 — EXECUTED
+Promoted main target: f7fb999758ce6219be27d27a3f1c0a16ece97506
+```
+
+## Canonical main promotion
+
+```text
+Promotion authority:
+GAP-16G-02-MAIN-PROMOTION-AUTH-001 — EXECUTED
+
+Previous main:
+1c4e62a16f7e6b3f8cbf1efada2bafce7bc0f0d8
+
+Fast-forward / promoted main target:
+f7fb999758ce6219be27d27a3f1c0a16ece97506
+
+Promotion mode:
+PURE FAST-FORWARD
+
+Merge commit:
+NONE
+
+Promotion-created commit:
+NONE
+
+Exact Human-accepted closeout subject (unchanged):
+e5d116b8a2990f3b0ac7f3fe1cbf052b4f6ac087
+
+Governance reconciliation / promoted target:
+f7fb999758ce6219be27d27a3f1c0a16ece97506
 ```
 
 ## Human closeout acceptance provenance
