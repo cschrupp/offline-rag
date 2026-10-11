@@ -1035,7 +1035,12 @@ GAP-16G-02:         CLOSEOUT ACCEPTED
                    MAIN PROMOTION: COMPLETE
                    PROMOTION AUTHORITY: GAP-16G-02-MAIN-PROMOTION-AUTH-001 — EXECUTED
                    PROMOTED MAIN: f7fb999758ce6219be27d27a3f1c0a16ece97506
-16G-I6 / 16H:      NOT AUTHORIZED
+16G-I6:            COMPLETE / ACCEPTED
+                   Independent review: 16G-I6-IR-002 — ACCEPT
+                   Human technical acceptance: ACCEPTED
+                   Exact accepted candidate: cc7ff520eb146fa555f2b48e1f7dcc89a7952729
+16G:               IMPLEMENTATION COMPLETE / ACCEPTED
+16H:               NOT AUTHORIZED
 9G:                DEFERRED / NOT AUTHORIZED
 SLICE 17 / 18:     NOT AUTHORIZED
 M7 CLOSEOUT:       NOT AUTHORIZED
@@ -1129,8 +1134,10 @@ opened and progressed under separate authority. **16A–16E** are accepted;
 **16F** is **COMPLETE / ACCEPTED / SEALED**;
 **16G-D0** is **ACCEPTED / FROZEN**;
 **16G-I1…I5** and **GAP-16G-01** are **ACCEPTED**;
-**GAP-16G-02** is **IMPLEMENTATION COMPLETE / HUMAN ACCEPTED / CLOSEOUT REVIEW
-PENDING**; **16G-I6** and **16H** remain **NOT AUTHORIZED**.
+**GAP-16G-02** is **CLOSEOUT ACCEPTED / PROMOTED TO MAIN**;
+**16G-I6** is **COMPLETE / ACCEPTED** (IR-002 **ACCEPT**; exact candidate
+`cc7ff520eb146fa555f2b48e1f7dcc89a7952729`); **16G** is **IMPLEMENTATION
+COMPLETE / ACCEPTED**; **16H** remains **NOT AUTHORIZED**.
 
 ### Prerequisites for opening design (historical)
 
