@@ -196,6 +196,14 @@ def _client(runtime: ApplicationRuntime) -> Iterator[TestClient]:
         yield client
 
 
+def _patch_ensure_noop():
+    """Skip Arm-H ensure for tests that mock pool and use integrity-only fixtures."""
+    return patch(
+        "offline_rag.app.gold_lab.bootstrap.ensure_pooling_artifacts",
+        return_value=MagicMock(),
+    )
+
+
 def _project_and_workspace(tmp_path: Path):
     settings = _authoring_ready(_integrity_settings(tmp_path))
     snap_id, corpus_id, chunk_set_id, _ = _publish_integrity(settings)
@@ -243,17 +251,23 @@ def _pooling_ready_settings(tmp_path: Path) -> AppSettings:
 
 def _publish_real_qdrant_pooling_ready(
     settings: AppSettings,
+    *,
+    include_arm_h: bool = False,
 ) -> tuple[str, str, str, str]:
-    """Publish integrity artifacts that satisfy real 9C historical preflight.
+    """Publish ordinary Seneca publication artifacts for real 9C.
 
-    Builds lexical + baseline-dense + Arm-H dense artifacts with identity IDs
+    Builds lexical + baseline-dense (and optionally Arm-H) with identity IDs
     derived from current settings hashes, and materializes vectors into a real
     persistent ``QdrantLocalBackend`` (closed before return so runtime can own
     the exclusive storage lock).
+
+    Default ``include_arm_h=False`` matches ordinary Add Sources / publication
+    (16M product path). Pass ``include_arm_h=True`` only for tests whose subject
+    is reuse of a pre-existing Arm-H artifact or pure preflight.
     """
     from offline_rag.chunking.tokenize import TiktokenTokenCounter
-    from offline_rag.gold_authoring.pool_preflight import (
-        _settings_arm_h as arm_h_settings,
+    from offline_rag.gold_authoring.pool_contract import (
+        settings_arm_h as arm_h_settings,
     )
 
     counter = TiktokenTokenCounter(
@@ -399,6 +413,8 @@ def _publish_real_qdrant_pooling_ready(
         settings.paths.chunk_manifests / f"{chunk_set_id}.json", chunk.model_dump_json()
     )
 
+    from offline_rag.core.ids import dense_collection_name
+
     baseline_cfg = hashes["index_config_hash"]
     baseline_id = dense_index_id(chunk_set_id, baseline_cfg)
     arm_h_cfg = build_index_config_hash(arm_h_settings(settings))
@@ -408,8 +424,8 @@ def _publish_real_qdrant_pooling_ready(
         hashes["lexical_config_hash"],
         backend_contract=settings.lexical.backend_contract,
     )
-    baseline_collection = f"col_base_{baseline_id[-16:]}"
-    arm_h_collection = f"col_armh_{arm_h_id[-16:]}"
+    baseline_collection = dense_collection_name(baseline_id)
+    arm_h_collection = dense_collection_name(arm_h_id)
 
     def _dense_manifest(
         index_id: str, collection: str, index_cfg: str
@@ -442,10 +458,11 @@ def _publish_real_qdrant_pooling_ready(
             baseline_id, baseline_collection, baseline_cfg
         ).model_dump_json(),
     )
-    atomic_write_text(
-        settings.paths.index_manifests / f"{arm_h_id}.json",
-        _dense_manifest(arm_h_id, arm_h_collection, arm_h_cfg).model_dump_json(),
-    )
+    if include_arm_h:
+        atomic_write_text(
+            settings.paths.index_manifests / f"{arm_h_id}.json",
+            _dense_manifest(arm_h_id, arm_h_collection, arm_h_cfg).model_dump_json(),
+        )
     lexical = LexicalIndexManifest(
         lexical_index_id=lex_id,
         corpus_id=corpus_id,
@@ -504,7 +521,10 @@ def _publish_real_qdrant_pooling_ready(
     ]
     backend = QdrantLocalBackend(settings.paths.qdrant_storage)
     try:
-        for collection in (baseline_collection, arm_h_collection):
+        collections = [baseline_collection]
+        if include_arm_h:
+            collections.append(arm_h_collection)
+        for collection in collections:
             backend.create_collection(collection, dimension=8, metric="cosine")
             backend.upsert(collection, points)
         identity = CanonicalSnapshotManifest(
@@ -651,6 +671,7 @@ def test_happy_path_idempotency_capacity_privacy(tmp_path: Path) -> None:
             side_effect=propose,
         ),
         patch("offline_rag.app.gold_lab.bootstrap.run_gold_pool", side_effect=pool),
+        _patch_ensure_noop(),
         patch(
             "offline_rag.app.gold_lab.bootstrap.build_eligible_population",
             return_value=[object()] * 50,
@@ -762,6 +783,7 @@ def test_single_flight_and_capacity(tmp_path: Path) -> None:
             side_effect=slow_propose,
         ),
         patch("offline_rag.app.gold_lab.bootstrap.run_gold_pool", side_effect=pool),
+        _patch_ensure_noop(),
         patch(
             "offline_rag.app.gold_lab.bootstrap.build_eligible_population",
             return_value=[object()] * 50,
@@ -1200,6 +1222,7 @@ def test_r1_bootstrap_passes_runtime_qdrant_into_pool(tmp_path: Path) -> None:
             side_effect=propose,
         ),
         patch("offline_rag.app.gold_lab.bootstrap.run_gold_pool", side_effect=pool),
+        _patch_ensure_noop(),
         patch(
             "offline_rag.app.gold_lab.bootstrap.build_eligible_population",
             return_value=[object()] * 50,
@@ -1418,6 +1441,7 @@ def test_r2_pool_and_prelabel_persistence_failures(tmp_path: Path) -> None:
             "offline_rag.app.gold_lab.bootstrap.run_gold_pool",
             side_effect=pool_persist_fail,
         ),
+        _patch_ensure_noop(),
         patch(
             "offline_rag.app.gold_lab.bootstrap.build_eligible_population",
             return_value=[object()] * 50,
@@ -1460,6 +1484,7 @@ def test_r2_pool_and_prelabel_persistence_failures(tmp_path: Path) -> None:
             side_effect=propose,
         ),
         patch("offline_rag.app.gold_lab.bootstrap.run_gold_pool", side_effect=pool_ok),
+        _patch_ensure_noop(),
         patch(
             "offline_rag.app.gold_lab.bootstrap.run_gold_prelabel",
             side_effect=prelabel_persist_fail,
@@ -1671,6 +1696,7 @@ def test_pooling_zero_reviewable_preserves_safe_reason_on_get(tmp_path: Path) ->
             side_effect=propose,
         ),
         patch("offline_rag.app.gold_lab.bootstrap.run_gold_pool", side_effect=pool),
+        _patch_ensure_noop(),
         patch(
             "offline_rag.app.gold_lab.bootstrap.build_eligible_population",
             return_value=[object()] * 50,

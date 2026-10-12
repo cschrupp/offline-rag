@@ -5,21 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
-from offline_rag.config.models import (
-    AppSettings,
-    DenseQueryTextSettings,
-    DenseSearchableUnitsSettings,
-)
-from offline_rag.core.ids import (
-    EXCLUDE_HEADING_ONLY_V1,
-    MODEL_QUERY_PROMPT_V1,
-    dense_point_uuid,
-)
+from offline_rag.config.models import AppSettings
+from offline_rag.core.ids import dense_point_uuid
 from offline_rag.dense.embedder import make_embedder
 from offline_rag.dense.persistence import try_load_index_manifest
 from offline_rag.dense.qdrant_local import QdrantLocalBackend
 from offline_rag.dense.resolver import resolve_child_chunk
-from offline_rag.dense.searchable_units import EXCLUDE_HEADING_ONLY_STRATEGY
 from offline_rag.gold_authoring.chunk_access import resolve_seed_text_from_chunk_set
 from offline_rag.gold_authoring.contracts import (
     POOLING_DEPTHS,
@@ -29,6 +20,10 @@ from offline_rag.gold_authoring.contracts import (
     RETRIEVER_HYBRID_RERANK_V1,
     RETRIEVER_HYBRID_RRF_V1,
     RETRIEVER_LEXICAL_PLAIN_V1,
+)
+from offline_rag.gold_authoring.pool_contract import (
+    settings_arm_h,
+    settings_query_prompt,
 )
 from offline_rag.gold_authoring.pool_preflight import ResolvedPoolingArtifacts
 from offline_rag.gold_authoring.pooling_models import PoolFailureReason, RetrievalHit
@@ -71,37 +66,6 @@ class PoolArmExecutor(Protocol):
         artifacts: ResolvedPoolingArtifacts,
     ) -> dict[str, list[RetrievalHit]]:
         """Return hits keyed by retriever id (1-based ranks)."""
-
-
-def _settings_query_prompt(settings: AppSettings) -> AppSettings:
-    return settings.model_copy(
-        update={
-            "dense": settings.dense.model_copy(
-                update={
-                    "query_text": DenseQueryTextSettings(
-                        strategy="model_query_prompt",
-                        contract_version=MODEL_QUERY_PROMPT_V1,
-                    )
-                }
-            )
-        }
-    )
-
-
-def _settings_arm_h(settings: AppSettings) -> AppSettings:
-    qp = _settings_query_prompt(settings)
-    return qp.model_copy(
-        update={
-            "indexing": qp.indexing.model_copy(
-                update={
-                    "searchable_units": DenseSearchableUnitsSettings(
-                        strategy=EXCLUDE_HEADING_ONLY_STRATEGY,
-                        contract_version=EXCLUDE_HEADING_ONLY_V1,
-                    )
-                }
-            )
-        }
-    )
 
 
 class HistoricalPoolArmExecutor:
@@ -258,7 +222,7 @@ class HistoricalPoolArmExecutor:
                 query=query,
                 index_id=artifacts.dense_baseline_index_id,
                 top_k=depths[RETRIEVER_DENSE_MODEL_QUERY_PROMPT_V1],
-                settings=_settings_query_prompt(self.settings),
+                settings=settings_query_prompt(self.settings),
             )
         except ArmExecutionError:
             raise
@@ -274,7 +238,7 @@ class HistoricalPoolArmExecutor:
                 query=query,
                 index_id=artifacts.dense_arm_h_index_id,
                 top_k=depths[RETRIEVER_DENSE_ARM_H_V1],
-                settings=_settings_arm_h(self.settings),
+                settings=settings_arm_h(self.settings),
             )
         except ArmExecutionError:
             raise

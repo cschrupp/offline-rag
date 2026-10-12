@@ -110,19 +110,29 @@ def _validate_collection(
     return backend.count(collection_name) == expected_count
 
 
-def _child_jobs_from_chunk_set(
+def child_jobs_from_chunk_set(
     *,
     settings: AppSettings,
     chunk_set_id: str,
     chunk_manifest_name: str,
+    expected_corpus_id: str | None = None,
 ) -> tuple[list[tuple[Chunk, str]], int]:
-    """Return (child, chunk_artifact_id) pairs and unique document count."""
+    """Return (child, chunk_artifact_id) pairs and unique document count.
+
+    Historical-safe: takes an explicit chunk_set_id and manifest name; does not
+    read ChunkState / CURRENT pointers. When ``expected_corpus_id`` is set, the
+    chunk-set manifest corpus_id must match.
+    """
     manifest_path = settings.paths.chunk_manifests / Path(chunk_manifest_name).name
     if not manifest_path.exists():
         raise IndexingError(f"missing chunk-set manifest: {chunk_manifest_name}")
     chunk_set = load_chunk_set_manifest(manifest_path)
     if chunk_set.chunk_set_id != chunk_set_id:
         raise IndexingError("chunk state/manifest ID mismatch")
+    if expected_corpus_id is not None and chunk_set.corpus_id != expected_corpus_id:
+        raise IndexingError(
+            f"chunk-set corpus_id mismatch: {chunk_set.corpus_id} != {expected_corpus_id}"
+        )
 
     jobs: list[tuple[Chunk, str]] = []
     documents: set[str] = set()
@@ -148,6 +158,20 @@ def _child_jobs_from_chunk_set(
             f"child count mismatch: loaded {len(jobs)} vs manifest {chunk_set.total_child_count}"
         )
     return jobs, len(documents)
+
+
+def _child_jobs_from_chunk_set(
+    *,
+    settings: AppSettings,
+    chunk_set_id: str,
+    chunk_manifest_name: str,
+) -> tuple[list[tuple[Chunk, str]], int]:
+    """Backward-compatible alias for :func:`child_jobs_from_chunk_set`."""
+    return child_jobs_from_chunk_set(
+        settings=settings,
+        chunk_set_id=chunk_set_id,
+        chunk_manifest_name=chunk_manifest_name,
+    )
 
 
 def _ensure_embeddings(

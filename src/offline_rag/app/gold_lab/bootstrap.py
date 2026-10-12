@@ -50,6 +50,10 @@ from offline_rag.gold_authoring.persist import (
 )
 from offline_rag.gold_authoring.pool import PoolPreRunError, run_gold_pool
 from offline_rag.gold_authoring.pool_arms import HistoricalPoolArmExecutor
+from offline_rag.gold_authoring.pool_ensure import (
+    PoolEnsureError,
+    ensure_pooling_artifacts,
+)
 from offline_rag.gold_authoring.prelabel import PrelabelPreRunError, run_gold_prelabel
 from offline_rag.gold_authoring.privacy import (
     AuthoringPrivacyError,
@@ -600,12 +604,49 @@ class GoldLabBaselineBootstrapService:
         progress.set_stage(OperationProgressStage.POOLING)
         control.checkpoint("pooling")
         resources = self.runtime.resources
-        if resources is None or resources.qdrant is None:
+        if (
+            resources is None
+            or resources.qdrant is None
+            or resources.embedder is None
+        ):
             _fail_op(
                 self.operations,
                 workspace_id=workspace_id,
                 operation_id=operation_id,
                 error=_app(ErrorCode.INTERNAL_ERROR, "bootstrap_internal_failure"),
+                progress_stage=OperationProgressStage.POOLING,
+            )
+            return
+        try:
+            ensure_pooling_artifacts(
+                self.settings,
+                corpus_id=auth.corpus_id,
+                corpus_name=auth.corpus_name,
+                chunk_set_id=auth.chunk_set_id,
+                qdrant=resources.qdrant,
+                embedder=resources.embedder,
+                on_progress=progress,
+            )
+        except PoolEnsureError as exc:
+            logger.info(
+                "bootstrap 9C pooling artifact ensure failure op=%s subcause=%s: %s",
+                operation_id,
+                exc.subcause,
+                exc,
+            )
+            _fail_op(
+                self.operations,
+                workspace_id=workspace_id,
+                operation_id=operation_id,
+                error=_app(
+                    ErrorCode.GOLD_STATE_UNAVAILABLE,
+                    "pooling_artifact_unavailable",
+                    message=(
+                        "Gold Lab could not prepare the retrieval artifacts "
+                        "required to assemble evidence for this baseline. "
+                        "No baseline was published."
+                    ),
+                ),
                 progress_stage=OperationProgressStage.POOLING,
             )
             return
@@ -625,11 +666,38 @@ class GoldLabBaselineBootstrapService:
                 )
             except PoolPreRunError as exc:
                 logger.info("bootstrap 9C pre-run failure op=%s: %s", operation_id, exc)
+                message = str(exc).lower()
+                if any(
+                    token in message
+                    for token in (
+                        "artifact",
+                        "arm h",
+                        "arm-h",
+                        "missing/mismatched",
+                        "preflight",
+                    )
+                ):
+                    _fail_op(
+                        self.operations,
+                        workspace_id=workspace_id,
+                        operation_id=operation_id,
+                        error=_app(
+                            ErrorCode.GOLD_STATE_UNAVAILABLE,
+                            "pooling_artifact_unavailable",
+                            message=(
+                                "Gold Lab could not prepare the retrieval artifacts "
+                                "required to assemble evidence for this baseline. "
+                                "No baseline was published."
+                            ),
+                        ),
+                        progress_stage=OperationProgressStage.POOLING,
+                    )
+                    return
                 _fail_op(
                     self.operations,
                     workspace_id=workspace_id,
                     operation_id=operation_id,
-                    error=_app(ErrorCode.GOLD_CONFLICT, "zero_reviewable_cases"),
+                    error=_app(ErrorCode.INTERNAL_ERROR, "bootstrap_internal_failure"),
                     progress_stage=OperationProgressStage.POOLING,
                 )
                 return

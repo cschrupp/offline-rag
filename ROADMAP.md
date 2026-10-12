@@ -519,13 +519,20 @@ SLICE 15  COMPLETE / ACCEPTED
        Authority: S16-I-MANAGED-OP-PROGRESS-AUTH-001
        Exact accepted candidate: a3e65ce4bfa698f49e3aa21c4c5a7ddb0ea356a5
        Managed-operation progress telemetry
-     16J PLANNED / NOT AUTHORIZED
+     16J PAUSED
        Seneca public-surface branding cleanup
+       (paused pending 16M product-path closure)
      16K PLANNED / NOT AUTHORIZED
        First-user corpus capacity model + empirical validation
-     16L AUTHORIZED / IN PROGRESS
+     16L COMPLETE / ACCEPTED
        Authority: S16-L-EMBEDDING-AUTO-DEVICE-UX-AUTH-002
+       Exact accepted subject: 88fadc7c3e8e70c4886cbff0c7863cccc63ef14a
        Embedding accelerator auto-selection + Compute settings
+     16M AUTHORIZED / IN PROGRESS
+       Authority: S16-M-GOLD-POOL-AUX-INDEX-AUTH-001
+       Gold pooling auxiliary-index integration
+       Branch: implementation/16m-gold-pool-aux-index
+       Exact base: 88fadc7c3e8e70c4886cbff0c7863cccc63ef14a
      9G DEFERRED / NOT AUTHORIZED
      Slice 16 overall IN PROGRESS / NOT COMPLETE
      Authority: docs/slice16_design_authority.md

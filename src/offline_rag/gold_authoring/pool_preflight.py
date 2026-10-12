@@ -4,17 +4,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from offline_rag.config.models import AppSettings, DenseQueryTextSettings, DenseSearchableUnitsSettings
-from offline_rag.core.ids import (
-    EXCLUDE_HEADING_ONLY_V1,
-    MODEL_QUERY_PROMPT_V1,
-    dense_index_id,
-    lexical_index_id,
-)
+from offline_rag.config.models import AppSettings
+from offline_rag.core.ids import dense_index_id, lexical_index_id
 from offline_rag.dense.config_hash import build_index_config_hash
 from offline_rag.dense.persistence import try_load_index_manifest
-from offline_rag.dense.searchable_units import EXCLUDE_HEADING_ONLY_STRATEGY
-from offline_rag.gold_authoring.chunk_access import ChunkAccessError, load_chunk_set_snapshot
+from offline_rag.gold_authoring.chunk_access import (
+    ChunkAccessError,
+    load_chunk_set_snapshot,
+)
 from offline_rag.gold_authoring.contracts import (
     POOLING_CONTRACT,
     POOLING_DEPTHS,
@@ -27,6 +24,10 @@ from offline_rag.gold_authoring.contracts import (
     RETRIEVER_LEXICAL_PLAIN_V1,
 )
 from offline_rag.gold_authoring.models import GoldAuthoringRun
+from offline_rag.gold_authoring.pool_contract import (
+    arm_h_index_identity,
+    settings_query_prompt,
+)
 from offline_rag.gold_authoring.pooling_models import PoolingProvenance
 from offline_rag.lexical.config_hash import build_lexical_config_hash
 from offline_rag.lexical.persistence import try_load_lexical_index_manifest
@@ -47,49 +48,34 @@ class ResolvedPoolingArtifacts:
     provenance: PoolingProvenance
 
 
-def _settings_query_prompt(settings: AppSettings) -> AppSettings:
-    return settings.model_copy(
-        update={
-            "dense": settings.dense.model_copy(
-                update={
-                    "query_text": DenseQueryTextSettings(
-                        strategy="model_query_prompt",
-                        contract_version=MODEL_QUERY_PROMPT_V1,
-                    )
-                }
-            )
-        }
-    )
-
-
-def _settings_arm_h(settings: AppSettings) -> AppSettings:
-    qp = _settings_query_prompt(settings)
-    return qp.model_copy(
-        update={
-            "indexing": qp.indexing.model_copy(
-                update={
-                    "searchable_units": DenseSearchableUnitsSettings(
-                        strategy=EXCLUDE_HEADING_ONLY_STRATEGY,
-                        contract_version=EXCLUDE_HEADING_ONLY_V1,
-                    )
-                }
-            )
-        }
-    )
-
-
 def preflight_pooling_artifacts(
     settings: AppSettings,
     run: GoldAuthoringRun,
 ) -> ResolvedPoolingArtifacts:
+    """Validate that all six pooling dependencies exist for the run's captured identity.
+
+    Side-effect free: never constructs missing artifacts.
+    """
     if run.chunk_set_id is None or not str(run.chunk_set_id).strip():
         raise PoolPreflightError("authoring run missing chunk_set_id")
     if run.corpus_id is None or not str(run.corpus_id).strip():
         raise PoolPreflightError("authoring run missing corpus_id")
-    chunk_set_id = str(run.chunk_set_id)
-    corpus_id = str(run.corpus_id)
-    corpus_name = str(run.corpus_name or "default")
+    return preflight_pooling_artifacts_for_ids(
+        settings,
+        corpus_id=str(run.corpus_id),
+        corpus_name=str(run.corpus_name or "default"),
+        chunk_set_id=str(run.chunk_set_id),
+    )
 
+
+def preflight_pooling_artifacts_for_ids(
+    settings: AppSettings,
+    *,
+    corpus_id: str,
+    corpus_name: str,
+    chunk_set_id: str,
+) -> ResolvedPoolingArtifacts:
+    """Pure validation of pooling artifacts for an exact historical identity."""
     # Ensure historical ChunkSet exists.
     try:
         load_chunk_set_snapshot(
@@ -125,31 +111,25 @@ def preflight_pooling_artifacts(
         )
 
     # Query-prompt reuses baseline passage index (query contract only).
-    qp_settings = _settings_query_prompt(settings)
+    qp_settings = settings_query_prompt(settings)
     qp_cfg = build_index_config_hash(qp_settings)
     if qp_cfg != baseline_cfg:
-        # Should match when only query_text differs; fail closed if not.
         raise PoolPreflightError(
             "query-prompt dense index identity unexpectedly differs from baseline"
         )
 
-    arm_h_settings = _settings_arm_h(settings)
-    arm_h_cfg = build_index_config_hash(arm_h_settings)
-    arm_h_id = dense_index_id(chunk_set_id, arm_h_cfg)
-    arm_h_manifest = try_load_index_manifest(settings.paths.index_manifests, arm_h_id)
+    arm_h = arm_h_index_identity(settings, chunk_set_id=chunk_set_id)
+    arm_h_manifest = try_load_index_manifest(settings.paths.index_manifests, arm_h.index_id)
     if arm_h_manifest is None or arm_h_manifest.chunk_set_id != chunk_set_id:
         raise PoolPreflightError(
             f"Arm H dense artifact missing/mismatched for chunk_set_id={chunk_set_id}"
         )
 
-    # Hybrid / hybrid-rerank depend on lexical + baseline dense both matching A.
-    # Already validated above.
-
     artifact_ids = {
         RETRIEVER_LEXICAL_PLAIN_V1: lex_id,
         RETRIEVER_DENSE_PLAIN_V1: baseline_id,
         RETRIEVER_DENSE_MODEL_QUERY_PROMPT_V1: baseline_id,
-        RETRIEVER_DENSE_ARM_H_V1: arm_h_id,
+        RETRIEVER_DENSE_ARM_H_V1: arm_h.index_id,
         RETRIEVER_HYBRID_RRF_V1: f"hybrid({lex_id}+{baseline_id})",
         RETRIEVER_HYBRID_RERANK_V1: f"hybrid-rerank({lex_id}+{baseline_id})",
     }
@@ -166,6 +146,6 @@ def preflight_pooling_artifacts(
         corpus_name=corpus_name,
         lexical_index_id=lex_id,
         dense_baseline_index_id=baseline_id,
-        dense_arm_h_index_id=arm_h_id,
+        dense_arm_h_index_id=arm_h.index_id,
         provenance=provenance,
     )
