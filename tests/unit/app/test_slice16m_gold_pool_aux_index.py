@@ -343,6 +343,95 @@ def test_d_immutable_arm_h_conflict_fail_closed(tmp_path: Path) -> None:
     assert try_load_index_manifest(settings.paths.index_manifests, arm_h.index_id) is not None
 
 
+def _arm_h_manifest_path(settings: AppSettings, chunk_set_id: str) -> Path:
+    arm_h = arm_h_index_identity(settings, chunk_set_id=chunk_set_id)
+    return settings.paths.index_manifests / f"{arm_h.index_id}.json"
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("collection_name", "wrong_aux_collection"),
+        ("embedding_model_id", "other-model"),
+        ("embedding_model_revision", "other-rev"),
+        ("embedding_dimension", 16),
+        ("normalize", False),
+        ("similarity_metric", "dot"),
+        ("embedding_config_hash", "embcfg_" + ("d" * 64)),
+        ("expected_child_count", 99),
+        ("indexed_child_count", 99),
+    ],
+)
+def test_d_immutable_manifest_field_conflict_no_mutation(
+    tmp_path: Path, field: str, value: object
+) -> None:
+    """DoD D: any immutable field conflict fails closed without Qdrant/manifest mutation."""
+    import json
+
+    settings = _pooling_ready_settings(tmp_path)
+    _snap_id, corpus_id, chunk_set_id, _ = _publish_real_qdrant_pooling_ready(
+        settings, include_arm_h=True
+    )
+    arm_h = arm_h_index_identity(settings, chunk_set_id=chunk_set_id)
+    manifest_path = _arm_h_manifest_path(settings, chunk_set_id)
+    before = manifest_path.read_text(encoding="utf-8")
+    payload = json.loads(before)
+    payload[field] = value
+    manifest_path.write_text(json.dumps(payload), encoding="utf-8")
+    after_write = manifest_path.read_text(encoding="utf-8")
+
+    runtime = _runtime_with_qdrant(settings)
+    assert runtime.resources is not None
+    qdrant = runtime.resources.qdrant
+    existed = qdrant.collection_exists(arm_h.collection_name)
+    count_before = qdrant.count(arm_h.collection_name) if existed else None
+
+    with pytest.raises(PoolEnsureError) as exc:
+        ensure_pooling_artifacts(
+            settings,
+            corpus_id=corpus_id,
+            corpus_name=CORPUS_NAME,
+            chunk_set_id=chunk_set_id,
+            qdrant=qdrant,
+            embedder=runtime.resources.embedder,
+        )
+    assert exc.value.subcause == "arm_h_manifest_conflict"
+    assert manifest_path.read_text(encoding="utf-8") == after_write
+    assert qdrant.collection_exists(arm_h.collection_name) is existed
+    if existed:
+        assert qdrant.count(arm_h.collection_name) == count_before
+
+
+def test_d_corrupt_manifest_fail_closed_no_mutation(tmp_path: Path) -> None:
+    settings = _pooling_ready_settings(tmp_path)
+    _snap_id, corpus_id, chunk_set_id, _ = _publish_real_qdrant_pooling_ready(
+        settings, include_arm_h=True
+    )
+    arm_h = arm_h_index_identity(settings, chunk_set_id=chunk_set_id)
+    manifest_path = _arm_h_manifest_path(settings, chunk_set_id)
+    manifest_path.write_text("{not-json", encoding="utf-8")
+    corrupt_bytes = manifest_path.read_text(encoding="utf-8")
+
+    runtime = _runtime_with_qdrant(settings)
+    assert runtime.resources is not None
+    qdrant = runtime.resources.qdrant
+    count_before = qdrant.count(arm_h.collection_name)
+
+    with pytest.raises(PoolEnsureError) as exc:
+        ensure_pooling_artifacts(
+            settings,
+            corpus_id=corpus_id,
+            corpus_name=CORPUS_NAME,
+            chunk_set_id=chunk_set_id,
+            qdrant=qdrant,
+            embedder=runtime.resources.embedder,
+        )
+    assert exc.value.subcause == "arm_h_manifest_conflict"
+    assert manifest_path.read_text(encoding="utf-8") == corrupt_bytes
+    assert qdrant.collection_exists(arm_h.collection_name)
+    assert qdrant.count(arm_h.collection_name) == count_before
+
+
 def test_d_bootstrap_maps_ensure_failure_to_pooling_artifact_unavailable(
     tmp_path: Path,
 ) -> None:
@@ -433,6 +522,63 @@ def test_e_missing_baseline_not_rebuilt(tmp_path: Path) -> None:
     assert exc.value.subcause == "baseline_dense_missing"
     arm_h = arm_h_index_identity(settings, chunk_set_id=chunk_set_id)
     assert try_load_index_manifest(settings.paths.index_manifests, arm_h.index_id) is None
+
+
+def test_e_missing_lexical_not_rebuilt(tmp_path: Path) -> None:
+    """DoD E: missing lexical → ensure fails; does not rebuild lexical or Arm-H."""
+    from offline_rag.core.ids import lexical_index_id
+    from offline_rag.lexical.config_hash import build_lexical_config_hash
+
+    settings = _pooling_ready_settings(tmp_path)
+    _snap_id, corpus_id, chunk_set_id, _ = _publish_real_qdrant_pooling_ready(
+        settings, include_arm_h=False
+    )
+    lex_id = lexical_index_id(
+        chunk_set_id,
+        build_lexical_config_hash(settings),
+        backend_contract=settings.lexical.backend_contract,
+    )
+    lex_path = settings.paths.lexical_index_manifests / f"{lex_id}.json"
+    assert lex_path.exists()
+    lex_path.unlink()
+    runtime = _runtime_with_qdrant(settings)
+    assert runtime.resources is not None
+    with pytest.raises(PoolEnsureError) as exc:
+        ensure_pooling_artifacts(
+            settings,
+            corpus_id=corpus_id,
+            corpus_name=CORPUS_NAME,
+            chunk_set_id=chunk_set_id,
+            qdrant=runtime.resources.qdrant,
+            embedder=runtime.resources.embedder,
+        )
+    assert exc.value.subcause == "lexical_index_missing"
+    assert not lex_path.exists()
+    arm_h = arm_h_index_identity(settings, chunk_set_id=chunk_set_id)
+    assert try_load_index_manifest(settings.paths.index_manifests, arm_h.index_id) is None
+
+
+def test_f003_pool_prerun_preflight_uses_typed_category(tmp_path: Path) -> None:
+    """F003: PoolPreflightError wraps as PoolPreRunError(category=pooling_artifact)."""
+    from offline_rag.gold_authoring.persist import serialize_authoring_run_bytes
+    from offline_rag.gold_authoring.pool import PoolPreRunError, run_gold_pool
+
+    settings = _pooling_ready_settings(tmp_path)
+    _snap_id, corpus_id, chunk_set_id, _ = _publish_real_qdrant_pooling_ready(
+        settings, include_arm_h=False
+    )
+    run = _reviewable_run(
+        corpus_id=corpus_id,
+        chunk_set_id=chunk_set_id,
+        authoring_run_id="authorrun_" + ("c" * 56),
+    )
+    cases = [c.model_copy(update={"candidates": []}) for c in run.cases]
+    run = run.model_copy(update={"cases": cases, "pool_successful_case_count": 0})
+    path = tmp_path / "staged.json"
+    path.write_bytes(serialize_authoring_run_bytes(run))
+    with pytest.raises(PoolPreRunError) as exc:
+        run_gold_pool(settings, run_path=path, force=True)
+    assert exc.value.category == "pooling_artifact"
 
 
 def test_f_genuine_zero_reviewable_still_gold_conflict(tmp_path: Path) -> None:

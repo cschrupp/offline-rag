@@ -665,18 +665,13 @@ class GoldLabBaselineBootstrapService:
                     on_progress=progress,
                 )
             except PoolPreRunError as exc:
-                logger.info("bootstrap 9C pre-run failure op=%s: %s", operation_id, exc)
-                message = str(exc).lower()
-                if any(
-                    token in message
-                    for token in (
-                        "artifact",
-                        "arm h",
-                        "arm-h",
-                        "missing/mismatched",
-                        "preflight",
-                    )
-                ):
+                logger.info(
+                    "bootstrap 9C pre-run failure op=%s category=%s: %s",
+                    operation_id,
+                    getattr(exc, "category", None),
+                    exc,
+                )
+                if getattr(exc, "category", None) == "pooling_artifact":
                     _fail_op(
                         self.operations,
                         workspace_id=workspace_id,

@@ -39,6 +39,8 @@ const SAFE_REASON_MESSAGES: Record<string, string> = {
     "Gold Lab authoring did not produce usable candidate questions from this workspace publication.",
   zero_reviewable_cases:
     "Candidate questions were produced, but no reviewable evidence cases could be assembled from this workspace publication.",
+  pooling_artifact_unavailable:
+    "Gold Lab could not prepare the retrieval artifacts required to assemble evidence for this baseline. No baseline was published.",
   prelabel_stage_cannot_start:
     "Advisory prelabeling could not start for this baseline attempt.",
   publication_drift_before_commit:

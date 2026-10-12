@@ -50,7 +50,17 @@ from offline_rag.ingestion.persistence import (
 
 
 class PoolPreRunError(RuntimeError):
-    """Valid pooling run could not start (CLI exit 2)."""
+    """Valid pooling run could not start (CLI exit 2).
+
+    ``category`` is an internal classifier for product callers (e.g. bootstrap).
+    It is not a public API/UI reason. Known values:
+    - ``pooling_artifact`` — historical retrieval-artifact preflight failed
+    - ``None`` — other pre-run / staged-run failures
+    """
+
+    def __init__(self, message: str, *, category: str | None = None) -> None:
+        super().__init__(message)
+        self.category = category
 
 
 @dataclass
@@ -299,7 +309,9 @@ def run_gold_pool(
         artifacts = preflight_pooling_artifacts(settings, run)
         snapshot = _load_historical_snapshot(settings, artifacts)
     except PoolPreflightError as exc:
-        raise PoolPreRunError(str(exc)) from exc
+        raise PoolPreRunError(
+            str(exc), category="pooling_artifact"
+        ) from exc
 
     children = _child_lookup(snapshot)
     owned_executor = executor is None

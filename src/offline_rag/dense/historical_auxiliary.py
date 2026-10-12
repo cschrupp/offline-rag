@@ -19,7 +19,11 @@ from offline_rag.dense.config_hash import (
     build_index_config_hash,
 )
 from offline_rag.dense.embedder import Embedder
-from offline_rag.dense.persistence import try_load_index_manifest, write_index_manifest
+from offline_rag.dense.persistence import (
+    index_manifest_path,
+    try_load_index_manifest,
+    write_index_manifest,
+)
 from offline_rag.dense.pipeline import (
     IndexingError,
     _ensure_embeddings,
@@ -56,6 +60,37 @@ class HistoricalAuxiliaryBuildResult:
     embeddings_generated: int
     embeddings_reused: int
     reused_existing: bool
+
+
+def _manifest_fully_compatible(
+    existing: DenseIndexManifest,
+    *,
+    index_id: str,
+    corpus_id: str,
+    chunk_set_id: str,
+    emb_cfg_hash: str,
+    idx_cfg_hash: str,
+    collection_name: str,
+    children_total: int,
+    embedder: Embedder,
+    settings: AppSettings,
+) -> bool:
+    """Match write_index_manifest immutable compatibility fields exactly."""
+    return (
+        existing.index_id == index_id
+        and existing.corpus_id == corpus_id
+        and existing.chunk_set_id == chunk_set_id
+        and existing.embedding_config_hash == emb_cfg_hash
+        and existing.index_config_hash == idx_cfg_hash
+        and existing.collection_name == collection_name
+        and existing.expected_child_count == children_total
+        and existing.indexed_child_count == children_total
+        and existing.embedding_model_id == embedder.model_id
+        and existing.embedding_model_revision == embedder.model_revision
+        and existing.embedding_dimension == embedder.dimension
+        and existing.normalize == embedder.normalize
+        and existing.similarity_metric == settings.indexing.metric
+    )
 
 
 def build_historical_auxiliary_dense_index(
@@ -110,60 +145,55 @@ def build_historical_auxiliary_dense_index(
             subcause="arm_h_build_failed",
         )
 
-    existing_manifest = try_load_index_manifest(settings.paths.index_manifests, index_id)
-    collection_ok = _validate_collection(
-        backend,
-        collection_name=collection_name,
-        expected_count=children_total,
-    )
-    complete = (
-        existing_manifest is not None
-        and existing_manifest.index_id == index_id
-        and existing_manifest.corpus_id == corpus_id
-        and existing_manifest.chunk_set_id == chunk_set_id
-        and existing_manifest.index_config_hash == idx_cfg_hash
-        and existing_manifest.indexed_child_count == children_total
-        and existing_manifest.expected_child_count == children_total
-        and collection_ok
-    )
-    if complete:
-        assert existing_manifest is not None
+    # Manifest-path gate BEFORE any Qdrant mutation.
+    # absent → may materialize; present+compatible+collection ok → reuse;
+    # present+corrupt / any immutable conflict → fail closed (no mutation);
+    # present+fully compatible but collection incomplete → fail closed.
+    manifest_path = index_manifest_path(settings.paths.index_manifests, index_id)
+    if manifest_path.exists():
+        existing_manifest = try_load_index_manifest(
+            settings.paths.index_manifests, index_id
+        )
+        if existing_manifest is None:
+            raise HistoricalAuxiliaryError(
+                f"Arm-H auxiliary manifest corrupt for index_id={index_id}; "
+                "refusing mutation",
+                subcause="arm_h_manifest_conflict",
+            )
+        compatible = _manifest_fully_compatible(
+            existing_manifest,
+            index_id=index_id,
+            corpus_id=corpus_id,
+            chunk_set_id=chunk_set_id,
+            emb_cfg_hash=emb_cfg_hash,
+            idx_cfg_hash=idx_cfg_hash,
+            collection_name=collection_name,
+            children_total=children_total,
+            embedder=embedder,
+            settings=settings,
+        )
+        if not compatible:
+            raise HistoricalAuxiliaryError(
+                f"Arm-H auxiliary manifest conflict for index_id={index_id}; "
+                "refusing mutation",
+                subcause="arm_h_manifest_conflict",
+            )
+        collection_ok = _validate_collection(
+            backend,
+            collection_name=collection_name,
+            expected_count=children_total,
+        )
+        if not collection_ok:
+            raise HistoricalAuxiliaryError(
+                f"Arm-H auxiliary index {index_id} claims complete but collection "
+                f"{collection_name} is missing or count-mismatched; refusing mutation",
+                subcause="arm_h_collection_incomplete",
+            )
         return HistoricalAuxiliaryBuildResult(
             manifest=existing_manifest,
             embeddings_generated=0,
             embeddings_reused=children_total,
             reused_existing=True,
-        )
-
-    # Fail closed: manifest claims a complete scientific artifact but backing
-    # collection is inconsistent — never silently mutate.
-    if (
-        existing_manifest is not None
-        and existing_manifest.index_id == index_id
-        and existing_manifest.corpus_id == corpus_id
-        and existing_manifest.chunk_set_id == chunk_set_id
-        and existing_manifest.index_config_hash == idx_cfg_hash
-        and existing_manifest.indexed_child_count == children_total
-        and existing_manifest.expected_child_count == children_total
-        and not collection_ok
-    ):
-        raise HistoricalAuxiliaryError(
-            f"Arm-H auxiliary index {index_id} claims complete but collection "
-            f"{collection_name} is missing or count-mismatched; refusing mutation",
-            subcause="arm_h_collection_incomplete",
-        )
-
-    if (
-        existing_manifest is not None
-        and (
-            existing_manifest.corpus_id != corpus_id
-            or existing_manifest.chunk_set_id != chunk_set_id
-            or existing_manifest.index_config_hash != idx_cfg_hash
-        )
-    ):
-        raise HistoricalAuxiliaryError(
-            f"Arm-H auxiliary manifest identity conflict for index_id={index_id}",
-            subcause="arm_h_manifest_conflict",
         )
 
     text_builder = make_embedding_text_builder(settings)
@@ -313,7 +343,12 @@ def build_historical_auxiliary_dense_index(
             "chunk_manifest": Path(chunk_manifest_name).name,
         },
     )
-    write_index_manifest(settings.paths.index_manifests, manifest)
+    try:
+        write_index_manifest(settings.paths.index_manifests, manifest)
+    except RuntimeError as exc:
+        raise HistoricalAuxiliaryError(
+            str(exc), subcause="arm_h_manifest_conflict"
+        ) from exc
     return HistoricalAuxiliaryBuildResult(
         manifest=manifest,
         embeddings_generated=generated,

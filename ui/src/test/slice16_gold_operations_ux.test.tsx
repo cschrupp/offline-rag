@@ -55,6 +55,7 @@ function failedBootstrapOp(partial: {
   operation_id: string;
   reason: string;
   message?: string;
+  code?: string;
 }) {
   return operation({
     operation_id: partial.operation_id,
@@ -63,7 +64,7 @@ function failedBootstrapOp(partial: {
     status: "failed",
     progress_stage: "pooling",
     error: {
-      code: "gold_conflict",
+      code: partial.code ?? "gold_conflict",
       message:
         partial.message ??
         "Gold Lab state conflicts with the requested operation",
@@ -85,6 +86,22 @@ describe("Gold bootstrap operation failure copy", () => {
     expect(text).not.toMatch(/gold_conflict/i);
     expect(text).not.toMatch(/zero_reviewable_cases/i);
     expect(text).not.toContain("SENTINEL_BACKEND_MESSAGE");
+  });
+
+  it("maps pooling_artifact_unavailable to retrieval-artifact copy (16M)", () => {
+    const op = failedBootstrapOp({
+      operation_id: "wop_16m_artifact",
+      code: "gold_state_unavailable",
+      reason: "pooling_artifact_unavailable",
+      message: "SENTINEL_BACKEND_EXCEPTION_TRACE",
+    });
+    const text = managedOperationFailureMessage(op);
+    expect(text).toMatch(/could not prepare the retrieval artifacts/i);
+    expect(text).toMatch(/no baseline was published/i);
+    expect(text).not.toMatch(/temporarily unavailable/i);
+    expect(text).not.toMatch(/gold_state_unavailable/i);
+    expect(text).not.toMatch(/pooling_artifact_unavailable/i);
+    expect(text).not.toContain("SENTINEL_BACKEND_EXCEPTION_TRACE");
   });
 
   it("maps representative bootstrap reasons and unknown fallback", () => {
