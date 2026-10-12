@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Badge } from "./Badge";
 import { Button } from "./Button";
 import { managedOperationFailureMessage } from "../features/operations/operationErrorMessages";
@@ -5,6 +6,14 @@ import {
   operationStatusLabel,
   progressStageLabel,
 } from "../features/operations/progressLabels";
+import {
+  approximateEtaSeconds,
+  formatElapsed,
+  parseTimestampMs,
+  progressPercent,
+  progressStepLabel,
+  progressUnitLabel,
+} from "../features/operations/progressTelemetry";
 import type { Operation } from "../api/types";
 
 type Props = {
@@ -24,6 +33,10 @@ function defaultSuccessMessage(operation: Operation): string {
   return "Ready. Workspace knowledge has been updated.";
 }
 
+function formatCount(value: number): string {
+  return value.toLocaleString("en-US");
+}
+
 export function OperationProgress({
   phase,
   operation,
@@ -32,6 +45,19 @@ export function OperationProgress({
   onDismiss,
   successMessage,
 }: Props) {
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (phase !== "operation" || !operation) return;
+    const terminal =
+      operation.status === "succeeded" ||
+      operation.status === "failed" ||
+      operation.status === "interrupted";
+    if (terminal) return;
+    const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [phase, operation]);
+
   if (phase === "uploading") {
     return (
       <div className="card" aria-live="polite">
@@ -77,8 +103,11 @@ export function OperationProgress({
     operation.status === "interrupted";
 
   const kind = String(operation.kind);
+  const progress = operation.progress ?? null;
   let tone: "ready" | "busy" | "error" = "busy";
-  let statusText = progressStageLabel(operation.progress_stage, kind);
+  let statusText = progress
+    ? progressStepLabel(progress.step)
+    : progressStageLabel(operation.progress_stage, kind);
   if (operation.status === "succeeded") {
     tone = "ready";
     statusText = "Ready";
@@ -88,9 +117,18 @@ export function OperationProgress({
   } else if (operation.status === "interrupted") {
     tone = "error";
     statusText = "Interrupted";
-  } else if (!operation.progress_stage) {
+  } else if (!operation.progress_stage && !progress) {
     statusText = operationStatusLabel(String(operation.status));
   }
+
+  const percent = progressPercent(progress);
+  const createdMs = parseTimestampMs(operation.created_at);
+  const elapsedSeconds =
+    !terminal && createdMs != null ? (nowMs - createdMs) / 1000 : null;
+  const etaSeconds =
+    !terminal && progress
+      ? approximateEtaSeconds({ progress, nowMs })
+      : null;
 
   return (
     <div
@@ -111,10 +149,41 @@ export function OperationProgress({
       </div>
       <p className="muted">
         Status: {operationStatusLabel(String(operation.status))}
-        {operation.progress_stage
-          ? ` · ${progressStageLabel(operation.progress_stage, kind)}`
-          : ""}
+        {progress
+          ? ` · ${progressStepLabel(progress.step)}`
+          : operation.progress_stage
+            ? ` · ${progressStageLabel(operation.progress_stage, kind)}`
+            : ""}
       </p>
+      {!terminal && progress && percent != null && progress.total != null ? (
+        <div className="stack" style={{ gap: "0.35rem" }}>
+          <p className="muted" style={{ margin: 0 }}>
+            {formatCount(progress.current)} / {formatCount(progress.total)}
+            {progressUnitLabel(progress.unit)
+              ? ` ${progressUnitLabel(progress.unit)}`
+              : ""}{" "}
+            · {percent}%
+          </p>
+          <progress
+            value={progress.current}
+            max={progress.total}
+            aria-label={`${progressStepLabel(progress.step)} ${percent} percent`}
+          />
+        </div>
+      ) : null}
+      {!terminal && progress && percent == null ? (
+        <p className="muted" style={{ margin: 0 }}>
+          {progressStepLabel(progress.step)}…
+        </p>
+      ) : null}
+      {!terminal && elapsedSeconds != null ? (
+        <p className="muted" style={{ margin: 0 }}>
+          Elapsed {formatElapsed(elapsedSeconds)}
+          {etaSeconds != null
+            ? ` · Approx. ${formatElapsed(etaSeconds)} remaining`
+            : ""}
+        </p>
+      ) : null}
       {operation.status === "failed" && operation.error ? (
         <p className="error-box" role="alert">
           {managedOperationFailureMessage(operation)}
@@ -128,12 +197,6 @@ export function OperationProgress({
       {operation.status === "succeeded" ? (
         <p className="muted">
           {successMessage ?? defaultSuccessMessage(operation)}
-        </p>
-      ) : null}
-      {!terminal ? (
-        <p className="muted">
-          No percentage or ETA is shown. OfflineRAG reports coarse progress
-          stages only.
         </p>
       ) : null}
     </div>

@@ -14,6 +14,7 @@ from offline_rag.chunking.persistence import (
 )
 from offline_rag.config.models import AppSettings
 from offline_rag.core.ids import lexical_index_id, new_execution_id
+from offline_rag.core.progress import ProgressReporter, report_progress
 from offline_rag.domain.documents import Chunk, ChunkKind
 from offline_rag.domain.indexing import (
     IndexingStatus,
@@ -171,6 +172,7 @@ def run_lexical_indexing(
     settings: AppSettings,
     corpus_name: str = "default",
     backend: LexicalIndexBackend | None = None,
+    on_progress: ProgressReporter | None = None,
 ) -> LexicalIndexingReport:
     started = datetime.now(tz=UTC)
     run_id = new_execution_id(prefix="lexindex")
@@ -351,6 +353,14 @@ def run_lexical_indexing(
             raise LexicalIndexingError(str(exc)) from exc
 
         analyzed: list[LexicalDocumentInput] = []
+        children_total = len(jobs)
+        report_progress(
+            on_progress,
+            step="analyzing_lexical_chunks",
+            current=0,
+            total=children_total if children_total > 0 else None,
+            unit="chunks",
+        )
         for chunk, chunk_artifact_id in jobs:
             try:
                 inputs = ranking_inputs_for_chunk(
@@ -374,6 +384,13 @@ def run_lexical_indexing(
                     document_id=chunk.document_id,
                 )
             )
+            report_progress(
+                on_progress,
+                step="analyzing_lexical_chunks",
+                current=len(analyzed),
+                total=children_total if children_total > 0 else None,
+                unit="chunks",
+            )
 
         indexed_ids = {item.chunk_id for item in analyzed}
         if indexed_ids != expected_chunk_ids:
@@ -381,6 +398,13 @@ def run_lexical_indexing(
                 "lexical index universe mismatch vs active child chunk IDs"
             )
 
+        report_progress(
+            on_progress,
+            step="materializing_lexical_index",
+            current=0,
+            total=None,
+            unit="chunks",
+        )
         metadata = backend_impl.build(
             index_id,
             analyzed,

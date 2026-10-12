@@ -22,6 +22,7 @@ from offline_rag.core.ids import (
     embedding_text_hash,
     new_execution_id,
 )
+from offline_rag.core.progress import ProgressReporter, report_progress
 from offline_rag.dense.backend import DenseIndexBackend, DensePointRecord
 from offline_rag.dense.cache import (
     try_load_reusable_embedding_artifact,
@@ -157,6 +158,7 @@ def _ensure_embeddings(
     embedder: Embedder,
     emb_cfg_hash: str,
     document_titles: dict[str, str | None],
+    on_progress: ProgressReporter | None = None,
 ) -> tuple[list[tuple[Chunk, str, EmbeddingArtifact]], int, int, int]:
     """Return materialized (chunk, artifact_id, embedding), generated/reused/failed counts."""
     settings.paths.embeddings.mkdir(parents=True, exist_ok=True)
@@ -198,6 +200,15 @@ def _ensure_embeddings(
             continue
         pending_chunks.append((chunk, chunk_artifact_id, emb_text, emb_id))
 
+    children_total = len(jobs)
+    report_progress(
+        on_progress,
+        step="embedding_chunks",
+        current=reused,
+        total=children_total if children_total > 0 else None,
+        unit="chunks",
+    )
+
     batch_size = max(1, settings.indexing.embedding.batch_size)
     for start in range(0, len(pending_chunks), batch_size):
         batch = pending_chunks[start : start + batch_size]
@@ -233,6 +244,13 @@ def _ensure_embeddings(
             write_embedding_artifact(settings.paths.embeddings, artifact)
             generated += 1
             results.append((chunk, chunk_artifact_id, artifact))
+        report_progress(
+            on_progress,
+            step="embedding_chunks",
+            current=reused + generated,
+            total=children_total if children_total > 0 else None,
+            unit="chunks",
+        )
 
     results.sort(key=lambda item: item[0].chunk_id)
     return results, generated, reused, failed
@@ -285,6 +303,7 @@ def run_indexing(
     corpus_name: str = "default",
     embedder: Embedder | None = None,
     backend: DenseIndexBackend | None = None,
+    on_progress: ProgressReporter | None = None,
 ) -> IndexingReport:
     started = datetime.now(tz=UTC)
     run_id = new_execution_id(prefix="index")
@@ -384,10 +403,12 @@ def run_indexing(
                 started_at=started,
                 completed_at=completed,
                 duration_ms=int((completed - started).total_seconds() * 1000),
-                errors=[
-                    "dense searchable-unit policy excluded all children; "
-                    "refusing empty dense index"
-                ],
+                    errors=[
+                        (
+                            "dense searchable-unit policy excluded all children; "
+                            "refusing empty dense index"
+                        )
+                    ],
             )
 
         backend_impl = backend or QdrantLocalBackend(settings.paths.qdrant_storage)
@@ -509,6 +530,14 @@ def run_indexing(
             embedder=active_embedder,
             emb_cfg_hash=emb_cfg_hash,
             document_titles=document_titles,
+            on_progress=on_progress,
+        )
+        report_progress(
+            on_progress,
+            step="materializing_dense_index",
+            current=0,
+            total=None,
+            unit="chunks",
         )
         _validate_point_ids(rows)
 

@@ -16,6 +16,7 @@ from offline_rag.core.ids import (
     parse_config_hash,
     parsed_artifact_id,
 )
+from offline_rag.core.progress import ProgressReporter, report_progress
 from offline_rag.domain.blocks import ParsedDocument
 from offline_rag.domain.corpus import (
     CorpusDocumentEntry,
@@ -150,6 +151,7 @@ def run_ingestion(
     recursive: bool = False,
     root: Path | None = None,
     source_name_by_path: Mapping[str, str] | None = None,
+    on_progress: ProgressReporter | None = None,
 ) -> IngestionReport:
     started = datetime.now(tz=UTC)
     run_id = new_execution_id(prefix="ingest")
@@ -197,6 +199,23 @@ def run_ingestion(
 
     # Cache Docling parser instance across PDFs.
     pdf_parser: DoclingPdfParser | None = None
+    documents_total = len(discovered)
+    report_progress(
+        on_progress,
+        step="parsing_documents",
+        current=0,
+        total=documents_total if documents_total > 0 else None,
+        unit="documents",
+    )
+
+    def _note_document_progress() -> None:
+        report_progress(
+            on_progress,
+            step="parsing_documents",
+            current=len(file_results),
+            total=documents_total if documents_total > 0 else None,
+            unit="documents",
+        )
 
     for source in discovered:
         file_started = datetime.now(tz=UTC)
@@ -315,6 +334,7 @@ def run_ingestion(
                     processed_artifact=entry.processed_artifact,
                 )
             )
+            _note_document_progress()
         except DocumentIngestionError as exc:
             failed = True
             document_failed = True
@@ -330,6 +350,7 @@ def run_ingestion(
                     metadata={"failure_class": "document"},
                 )
             )
+            _note_document_progress()
         except InternalIngestionError as exc:
             failed = True
             internal_failed = True
@@ -345,6 +366,7 @@ def run_ingestion(
                     metadata={"failure_class": "internal"},
                 )
             )
+            _note_document_progress()
         except Exception as exc:
             # Unknown faults are internal — never present as client document errors.
             failed = True
@@ -361,6 +383,7 @@ def run_ingestion(
                     metadata={"failure_class": "internal"},
                 )
             )
+            _note_document_progress()
 
     completed = datetime.now(tz=UTC)
     duration_ms = int((completed - started).total_seconds() * 1000)

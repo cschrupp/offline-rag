@@ -277,6 +277,7 @@ def run_product_replace_ingest(
             return _run_stage(hooks, stage, fn)
 
         source_names = upload.source_name_by_storage_name()
+        progress = hooks.on_progress if hooks is not None else None
         ingest_report = _gated(
             "ingest",
             lambda: run_ingestion(
@@ -286,6 +287,7 @@ def run_product_replace_ingest(
                 recursive=False,
                 root=candidate.sources_root,
                 source_name_by_path=source_names,
+                on_progress=progress,
             ),
         )
         assert isinstance(ingest_report, IngestionReport)
@@ -315,6 +317,7 @@ def run_product_replace_ingest(
             lambda: run_chunking(
                 settings=candidate.settings,
                 corpus_name=upload.corpus_name,
+                on_progress=progress,
             ),
         )
         assert isinstance(chunk_report, ChunkingReport)
@@ -331,6 +334,7 @@ def run_product_replace_ingest(
                 corpus_name=upload.corpus_name,
                 embedder=embedder,
                 backend=qdrant,
+                on_progress=progress,
             ),
         )
         assert isinstance(index_report, IndexingReport)
@@ -345,6 +349,7 @@ def run_product_replace_ingest(
             lambda: run_lexical_indexing(
                 settings=candidate.settings,
                 corpus_name=upload.corpus_name,
+                on_progress=progress,
             ),
         )
         assert isinstance(lexical_report, LexicalIndexingReport)

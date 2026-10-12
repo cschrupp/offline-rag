@@ -68,6 +68,37 @@ export type OperationError = {
   details?: Record<string, unknown> | null;
 };
 
+export type OperationProgressStep =
+  | "parsing_documents"
+  | "chunking_documents"
+  | "embedding_chunks"
+  | "materializing_dense_index"
+  | "analyzing_lexical_chunks"
+  | "materializing_lexical_index"
+  | "proposing_questions"
+  | "pooling_cases"
+  | "prelabeling_candidates"
+  | "publishing"
+  | "finalizing"
+  | string;
+
+export type OperationProgressUnit =
+  | "documents"
+  | "chunks"
+  | "questions"
+  | "cases"
+  | "candidates"
+  | "model_calls"
+  | string;
+
+export type OperationProgressTelemetry = {
+  step: OperationProgressStep;
+  current: number;
+  total: number | null;
+  unit: OperationProgressUnit;
+  started_at: string;
+};
+
 export type Operation = {
   operation_id: string;
   kind: OperationKind | string;
@@ -75,6 +106,7 @@ export type Operation = {
   expected_revision: number | null;
   status: OperationStatus | string;
   progress_stage: ProgressStage | string | null;
+  progress?: OperationProgressTelemetry | null;
   created_at: string;
   updated_at: string;
   result: Record<string, unknown> | null;

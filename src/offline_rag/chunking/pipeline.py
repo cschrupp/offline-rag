@@ -28,6 +28,7 @@ from offline_rag.core.ids import (
     chunk_set_id_from_entries,
     new_execution_id,
 )
+from offline_rag.core.progress import ProgressReporter, report_progress
 from offline_rag.domain.chunking import (
     ChunkingReport,
     ChunkingStatus,
@@ -91,6 +92,7 @@ def run_chunking(
     settings: AppSettings,
     corpus_name: str = "default",
     token_counter: TokenCounter | None = None,
+    on_progress: ProgressReporter | None = None,
 ) -> ChunkingReport:
     started = datetime.now(tz=UTC)
     run_id = new_execution_id(prefix="chunk")
@@ -138,6 +140,23 @@ def run_chunking(
     failed = False
     chunked = reused = 0
     parents_total = children_total = 0
+    documents_total = len(corpus_manifest.documents)
+    report_progress(
+        on_progress,
+        step="chunking_documents",
+        current=0,
+        total=documents_total if documents_total > 0 else None,
+        unit="documents",
+    )
+
+    def _note_chunk_progress() -> None:
+        report_progress(
+            on_progress,
+            step="chunking_documents",
+            current=len(results),
+            total=documents_total if documents_total > 0 else None,
+            unit="documents",
+        )
 
     for doc in sorted(corpus_manifest.documents, key=lambda item: item.document_id):
         file_started = datetime.now(tz=UTC)
@@ -207,6 +226,7 @@ def run_chunking(
                     duration_ms=duration,
                 )
             )
+            _note_chunk_progress()
         except Exception as exc:
             failed = True
             duration = int((datetime.now(tz=UTC) - file_started).total_seconds() * 1000)
@@ -219,6 +239,7 @@ def run_chunking(
                     error=str(exc),
                 )
             )
+            _note_chunk_progress()
 
     completed = datetime.now(tz=UTC)
     duration_ms = int((completed - started).total_seconds() * 1000)

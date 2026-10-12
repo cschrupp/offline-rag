@@ -15,6 +15,9 @@ from offline_rag.app.workspace.models import (
     GoldLabBaselineBootstrapAuthority,
     GoldLabBaselineBootstrapResult,
     ManagedOperationKind,
+    ManagedOperationProgress,
+    ManagedOperationProgressStep,
+    ManagedOperationProgressUnit,
     ManagedOperationRecord,
     ManagedOperationResult,
     ManagedOperationSafeError,
@@ -416,6 +419,91 @@ class ManagedOperationStore:
                     "bootstrap_authority": bootstrap_authority
                     if bootstrap_authority is not None
                     else record.bootstrap_authority,
+                }
+            )
+            atomic_write_text(
+                self._op_path(workspace_id, operation_id), updated.model_dump_json()
+            )
+            return updated
+
+        return self._with_lease(workspace_id, _body, lease=lease)
+
+    def update_progress(
+        self,
+        workspace_id: str,
+        operation_id: str,
+        *,
+        step: ManagedOperationProgressStep | str,
+        current: int,
+        total: int | None,
+        unit: ManagedOperationProgressUnit | str,
+        progress_stage: OperationProgressStage | None = None,
+        lease: WorkspaceMutationLease | None = None,
+    ) -> ManagedOperationRecord:
+        """Publish fine-grained progress without changing ManagedOperationStatus.
+
+        Terminal operations cannot receive progress. Same-step ``current`` must
+        not regress; ``total`` must not change incompatibly within a step.
+        Step changes reset ``started_at``.
+        """
+
+        step_value = (
+            step
+            if isinstance(step, ManagedOperationProgressStep)
+            else ManagedOperationProgressStep(str(step))
+        )
+        unit_value = (
+            unit
+            if isinstance(unit, ManagedOperationProgressUnit)
+            else ManagedOperationProgressUnit(str(unit))
+        )
+
+        def _body() -> ManagedOperationRecord:
+            record = self.get(workspace_id, operation_id)
+            if record.status in _TERMINAL:
+                raise AppError(
+                    ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                    details=SafeErrorDetails(
+                        reason="illegal_operation_progress_on_terminal"
+                    ),
+                )
+            prior = record.progress
+            now = utc_now()
+            if prior is not None and prior.step is step_value:
+                if current < prior.current:
+                    raise AppError(
+                        ErrorCode.REQUEST_INVALID,
+                        details=SafeErrorDetails(
+                            reason="progress_current_regression"
+                        ),
+                    )
+                if prior.total is not None and total is not None and total != prior.total:
+                    raise AppError(
+                        ErrorCode.REQUEST_INVALID,
+                        details=SafeErrorDetails(
+                            reason="progress_total_changed"
+                        ),
+                    )
+                started_at = prior.started_at
+                resolved_total = total if total is not None else prior.total
+            else:
+                started_at = now
+                resolved_total = total
+
+            progress = ManagedOperationProgress(
+                step=step_value,
+                current=current,
+                total=resolved_total,
+                unit=unit_value,
+                started_at=started_at,
+            )
+            updated = record.model_copy(
+                update={
+                    "updated_at": now,
+                    "progress": progress,
+                    "progress_stage": progress_stage
+                    if progress_stage is not None
+                    else record.progress_stage,
                 }
             )
             atomic_write_text(

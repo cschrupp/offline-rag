@@ -44,6 +44,7 @@ export function operation(
     expected_revision: 1,
     status: "running",
     progress_stage: "processing",
+    progress: null,
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-01T00:00:01Z",
     result: null,

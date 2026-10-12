@@ -10,6 +10,7 @@ from pathlib import Path
 from offline_rag.chunking.access import CorpusChunkSnapshot
 from offline_rag.config.models import AppSettings
 from offline_rag.core.ids import new_execution_id
+from offline_rag.core.progress import ProgressReporter, report_progress
 from offline_rag.gold_authoring.adapter import (
     AuthoringAdapterError,
     OpenAICompatibleAuthoringAdapter,
@@ -114,6 +115,7 @@ def run_gold_propose_on_snapshot(
     force: bool = False,
     adapter: OpenAICompatibleAuthoringAdapter | None = None,
     skip_readiness: bool = False,
+    on_progress: ProgressReporter | None = None,
 ) -> ProposeJobResult:
     """Execute 9B proposal science against an already-resolved ChunkSet.
 
@@ -159,6 +161,24 @@ def run_gold_propose_on_snapshot(
     accepted_queries: list[str] = []
     reason_counts: Counter[str] = Counter()
 
+    total_attempts = len(selected)
+    report_progress(
+        on_progress,
+        step="proposing_questions",
+        current=0,
+        total=total_attempts if total_attempts > 0 else None,
+        unit="questions",
+    )
+
+    def _note_attempt() -> None:
+        report_progress(
+            on_progress,
+            step="proposing_questions",
+            current=len(attempts),
+            total=total_attempts if total_attempts > 0 else None,
+            unit="questions",
+        )
+
     try:
         for item in selected:
             source_seed = SourceSeed(
@@ -183,6 +203,7 @@ def run_gold_propose_on_snapshot(
                     proposal=None,
                 )
                 attempts.append(attempt)
+                _note_attempt()
                 reason_counts[str(attempt.failure_reason)] += 1
                 continue
 
@@ -207,6 +228,7 @@ def run_gold_propose_on_snapshot(
                     failure_reason=reason,
                 )
                 attempts.append(attempt)
+                _note_attempt()
                 reason_counts[str(reason)] += 1
                 continue
 
@@ -226,6 +248,7 @@ def run_gold_propose_on_snapshot(
                     failure_reason=reason,
                 )
                 attempts.append(attempt)
+                _note_attempt()
                 reason_counts[str(reason)] += 1
                 continue
 
@@ -243,6 +266,7 @@ def run_gold_propose_on_snapshot(
                     proposal=proposal,
                 )
                 attempts.append(attempt)
+                _note_attempt()
                 reason_counts[str(gate.reason)] += 1
                 continue
 
@@ -266,6 +290,7 @@ def run_gold_propose_on_snapshot(
                     proposal=proposal,
                 )
             )
+            _note_attempt()
     finally:
         if owned_adapter:
             active.close()

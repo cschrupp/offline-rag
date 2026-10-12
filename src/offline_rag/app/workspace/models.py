@@ -71,6 +71,56 @@ class OperationProgressStage(StrEnum):
     READY = "ready"
 
 
+class ManagedOperationProgressStep(StrEnum):
+    """Bounded fine-grained progress step vocabulary (16I presentation telemetry)."""
+
+    PARSING_DOCUMENTS = "parsing_documents"
+    CHUNKING_DOCUMENTS = "chunking_documents"
+    EMBEDDING_CHUNKS = "embedding_chunks"
+    MATERIALIZING_DENSE_INDEX = "materializing_dense_index"
+    ANALYZING_LEXICAL_CHUNKS = "analyzing_lexical_chunks"
+    MATERIALIZING_LEXICAL_INDEX = "materializing_lexical_index"
+    PROPOSING_QUESTIONS = "proposing_questions"
+    POOLING_CASES = "pooling_cases"
+    PRELABELING_CANDIDATES = "prelabeling_candidates"
+    PUBLISHING = "publishing"
+    FINALIZING = "finalizing"
+
+
+class ManagedOperationProgressUnit(StrEnum):
+    """Bounded progress unit vocabulary (16I)."""
+
+    DOCUMENTS = "documents"
+    CHUNKS = "chunks"
+    QUESTIONS = "questions"
+    CASES = "cases"
+    CANDIDATES = "candidates"
+    MODEL_CALLS = "model_calls"
+
+
+class ManagedOperationProgress(BaseModel):
+    """Optional durable fine-grained progress telemetry (presentation only).
+
+    Additive on ``offline-rag-managed-op-v1``: absent/null on historical records.
+    Never influences scientific decisions.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    step: ManagedOperationProgressStep
+    current: int = Field(ge=0)
+    total: int | None = Field(default=None, gt=0)
+    unit: ManagedOperationProgressUnit
+    started_at: datetime
+
+    @model_validator(mode="after")
+    def _bounds(self) -> ManagedOperationProgress:
+        if self.total is not None and self.current > self.total:
+            raise ValueError("current must be <= total when total is known")
+        return self
+
+
+
 def utc_now() -> datetime:
     return datetime.now(tz=UTC)
 
@@ -533,6 +583,8 @@ class ManagedOperationRecord(BaseModel):
     # 16B additions. Optional with ``None`` defaults so 16A records on disk keep
     # validating unchanged.
     progress_stage: OperationProgressStage | None = None
+    # 16I fine-grained telemetry. Optional; historical records omit it.
+    progress: ManagedOperationProgress | None = None
     result: ManagedOperationResult | GoldLabBaselineBootstrapResult | None = None
     error: ManagedOperationSafeError | None = None
     # GAP-16G-02 private execution authority (never projected by operation_view).

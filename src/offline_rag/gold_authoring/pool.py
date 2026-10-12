@@ -11,6 +11,7 @@ from offline_rag.core.document_metadata import (
     DocumentMetadataError,
     resolve_document_title_v1,
 )
+from offline_rag.core.progress import ProgressReporter, report_progress
 from offline_rag.domain.documents import Chunk, ChunkKind
 from offline_rag.gold_authoring.chunk_access import (
     ChunkAccessError,
@@ -84,7 +85,7 @@ def _resolve_corpus_manifest_name(
     for path in sorted(manifests_root.glob("*.json")):
         try:
             manifest = load_corpus_manifest(path)
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001, S112
             continue
         if manifest.corpus_id == corpus_id:
             return path.name
@@ -263,6 +264,7 @@ def run_gold_pool(
     output: Path | None = None,
     force: bool = False,
     executor: PoolArmExecutor | None = None,
+    on_progress: ProgressReporter | None = None,
 ) -> PoolJobResult:
     """Enrich an existing authoring run with candidate-pooling-v1 pools."""
     path = Path(run_path)
@@ -271,7 +273,7 @@ def run_gold_pool(
 
     try:
         run = load_authoring_run(path)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise PoolPreRunError(f"invalid authoring run: {exc}") from exc
 
     destination = Path(output) if output is not None else path
@@ -311,6 +313,15 @@ def run_gold_pool(
     reason_counts: Counter[str] = Counter()
     success_count = 0
 
+    total_cases = len(targets)
+    report_progress(
+        on_progress,
+        step="pooling_cases",
+        current=0,
+        total=total_cases if total_cases > 0 else None,
+        unit="cases",
+    )
+
     try:
         for target in targets:
             case = case_by_id[target.draft_case_id]
@@ -324,6 +335,13 @@ def run_gold_pool(
                 source_name_by_document_id=snapshot.source_name_by_document_id,
             )
             outcomes.append(outcome)
+            report_progress(
+                on_progress,
+                step="pooling_cases",
+                current=len(outcomes),
+                total=total_cases if total_cases > 0 else None,
+                unit="cases",
+            )
             if outcome.status == PoolCaseStatus.SUCCEEDED and new_pool is not None:
                 case.candidates = new_pool
                 success_count += 1

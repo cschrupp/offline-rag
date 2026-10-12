@@ -32,6 +32,7 @@ from offline_rag.app.ingest_hooks import ProductIngestHooks
 from offline_rag.app.ingest_upload import spool_local_files
 from offline_rag.app.leases import CorpusMutationLease
 from offline_rag.app.operations import OperationHandle
+from offline_rag.app.progress_publish import DurableProgressPublisher
 from offline_rag.app.workspace.create_idempotency import WorkspaceCreateCatalog
 from offline_rag.app.workspace.history import SourceHistoryStore
 from offline_rag.app.workspace.journal import EmptyTransitionCoordinator
@@ -66,6 +67,7 @@ from offline_rag.app.workspace.store import WorkspaceStore
 from offline_rag.app.workspace.sync_journal import SyncMutationCoordinator
 from offline_rag.app.workspace.vault import RawSourceVault
 from offline_rag.config.models import AppSettings
+from offline_rag.core.progress import ProgressEvent
 from offline_rag.ingestion.base import SUPPORTED_EXTENSIONS
 
 if TYPE_CHECKING:
@@ -1250,10 +1252,18 @@ class WorkspaceLifecycleService:
     def _progress_hooks(
         self, workspace_id: str, operation_id: str, lease: WorkspaceMutationLease
     ) -> ProductIngestHooks:
+        publisher = DurableProgressPublisher(
+            operations=self.operations,
+            workspace_id=workspace_id,
+            operation_id=operation_id,
+            lease=lease,
+        )
+
         def _before(stage: str) -> None:
             mapped = _STAGE_PROGRESS.get(stage)
             if mapped is None:
                 return
+            publisher.set_stage(mapped)
             self.operations.update_status(
                 workspace_id,
                 operation_id,
@@ -1261,10 +1271,20 @@ class WorkspaceLifecycleService:
                 progress_stage=mapped,
                 lease=lease,
             )
+            if stage == "publish":
+                publisher(
+                    ProgressEvent(
+                        step="publishing",
+                        current=0,
+                        total=None,
+                        unit="documents",
+                    )
+                )
 
         def _after(stage: str) -> None:
             if stage != "publish":
                 return
+            publisher.set_stage(OperationProgressStage.FINALIZING)
             self.operations.update_status(
                 workspace_id,
                 operation_id,
@@ -1272,8 +1292,20 @@ class WorkspaceLifecycleService:
                 progress_stage=OperationProgressStage.FINALIZING,
                 lease=lease,
             )
+            publisher(
+                ProgressEvent(
+                    step="finalizing",
+                    current=0,
+                    total=None,
+                    unit="documents",
+                )
+            )
 
-        return ProductIngestHooks(before_stage=_before, after_stage=_after)
+        return ProductIngestHooks(
+            before_stage=_before,
+            after_stage=_after,
+            on_progress=publisher,
+        )
 
     def _fail_operation(
         self,
@@ -1351,10 +1383,10 @@ def recover_workspace_journals(settings: AppSettings) -> dict[str, Any]:
     GAP-16G-02 startup topology step A: journal recovery must complete before
     publication-proof resources exist and before generic interrupt.
     """
+    from offline_rag.app.workspace.sync_journal import SyncMutationCoordinator
     from offline_rag.app.workspace.upload_spool import (
         quarantine_orphan_workspace_spools,
     )
-    from offline_rag.app.workspace.sync_journal import SyncMutationCoordinator
 
     store = WorkspaceStore(settings)
     history = SourceHistoryStore(settings)

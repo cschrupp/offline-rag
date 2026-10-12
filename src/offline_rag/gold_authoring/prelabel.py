@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Protocol
 
 from offline_rag.config.models import AppSettings
+from offline_rag.core.progress import ProgressReporter, report_progress
 from offline_rag.domain.documents import Chunk, ChunkKind
 from offline_rag.gold_authoring.adapter import (
     AuthoringAdapterError,
@@ -226,6 +227,9 @@ def _judge_case(
     source_name_by_document_id: dict[str, str],
     client: PrelabelModelClient,
     system_prompt: str,
+    on_progress: ProgressReporter | None = None,
+    progress_total: int | None = None,
+    progress_base: int = 0,
 ) -> tuple[list[ModelJudgment], CasePrelabelProvenance, object, int]:
     """Return judgments, provenance, summary, and model request count."""
     from offline_rag.gold_authoring.prelabel_models import PrelabelSummary
@@ -273,6 +277,13 @@ def _judge_case(
                     model_calls=calls,
                 ) from exc
             calls += 1
+            report_progress(
+                on_progress,
+                step="prelabeling_candidates",
+                current=progress_base + calls,
+                total=progress_total,
+                unit="model_calls",
+            )
             try:
                 parsed = parse_relevance_prelabel_v1(content)
             except RelevancePrelabelParseError as exc:
@@ -335,6 +346,7 @@ def run_gold_prelabel(
     output: Path | None = None,
     force: bool = False,
     adapter: PrelabelModelClient | None = None,
+    on_progress: ProgressReporter | None = None,
 ) -> PrelabelJobResult:
     path = Path(run_path)
     if not path.exists():
@@ -404,6 +416,13 @@ def run_gold_prelabel(
     model_calls = 0
     total_candidates = sum(len(c.candidates) for c in targets)
     expected_calls = total_candidates * 2
+    report_progress(
+        on_progress,
+        step="prelabeling_candidates",
+        current=0,
+        total=expected_calls if expected_calls > 0 else None,
+        unit="model_calls",
+    )
     _progress(
         f"starting {len(targets)} cases / {total_candidates} candidates "
         f"(~{expected_calls} expected model calls); "
@@ -441,6 +460,9 @@ def run_gold_prelabel(
                     source_name_by_document_id=snapshot.source_name_by_document_id,
                     client=active,
                     system_prompt=system_prompt,
+                    on_progress=on_progress,
+                    progress_total=expected_calls if expected_calls > 0 else None,
+                    progress_base=model_calls,
                 )
                 model_calls += calls
                 case.model_judgments = judgments
@@ -464,6 +486,13 @@ def run_gold_prelabel(
                 )
             except PrelabelCaseError as exc:
                 model_calls += int(exc.model_calls)
+                report_progress(
+                    on_progress,
+                    step="prelabeling_candidates",
+                    current=model_calls,
+                    total=expected_calls if expected_calls > 0 else None,
+                    unit="model_calls",
+                )
                 case.model_judgments = prior_judgments
                 case.prelabel_summary = prior_summary
                 case.prelabel_provenance = prior_provenance

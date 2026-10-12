@@ -26,6 +26,7 @@ from offline_rag.app.gold_lab.models import GoldProjectStatus
 from offline_rag.app.gold_lab.reviewable import is_reviewable_case
 from offline_rag.app.gold_lab.store import GoldLabStore
 from offline_rag.app.operations import OperationHandle
+from offline_rag.app.progress_publish import DurableProgressPublisher
 from offline_rag.app.workspace.leases import WorkspaceMutationLease
 from offline_rag.app.workspace.models import (
     GoldLabBaselineBootstrapAuthority,
@@ -505,6 +506,12 @@ class GoldLabBaselineBootstrapService:
             progress_stage=OperationProgressStage.PROPOSING,
             bootstrap_authority=auth,
         )
+        progress = DurableProgressPublisher(
+            operations=self.operations,
+            workspace_id=workspace_id,
+            operation_id=operation_id,
+            progress_stage=OperationProgressStage.PROPOSING,
+        )
         control.checkpoint("proposing")
         try:
             propose_result = run_gold_propose_on_snapshot(
@@ -516,6 +523,7 @@ class GoldLabBaselineBootstrapService:
                 output=staging_path,
                 force=True,
                 skip_readiness=True,
+                on_progress=progress,
             )
         except ProposePreRunError as exc:
             logger.info("bootstrap 9B pre-run failure op=%s: %s", operation_id, exc)
@@ -589,6 +597,7 @@ class GoldLabBaselineBootstrapService:
             progress_stage=OperationProgressStage.POOLING,
             bootstrap_authority=auth,
         )
+        progress.set_stage(OperationProgressStage.POOLING)
         control.checkpoint("pooling")
         resources = self.runtime.resources
         if resources is None or resources.qdrant is None:
@@ -612,6 +621,7 @@ class GoldLabBaselineBootstrapService:
                     run_path=staging_path,
                     force=True,
                     executor=pool_executor,
+                    on_progress=progress,
                 )
             except PoolPreRunError as exc:
                 logger.info("bootstrap 9C pre-run failure op=%s: %s", operation_id, exc)
@@ -684,10 +694,14 @@ class GoldLabBaselineBootstrapService:
                 progress_stage=OperationProgressStage.PRELABELING,
                 bootstrap_authority=auth,
             )
+            progress.set_stage(OperationProgressStage.PRELABELING)
             control.checkpoint("prelabeling")
             try:
                 pre_result = run_gold_prelabel(
-                    self.settings, run_path=staging_path, force=True
+                    self.settings,
+                    run_path=staging_path,
+                    force=True,
+                    on_progress=progress,
                 )
             except PrelabelPreRunError as exc:
                 logger.info("bootstrap 9D pre-run failure op=%s: %s", operation_id, exc)
