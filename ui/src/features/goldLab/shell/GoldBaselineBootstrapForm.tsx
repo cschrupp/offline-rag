@@ -335,20 +335,6 @@ export function GoldBaselineBootstrapForm({
           </Button>
         </form>
       )}
-      {operationId && operationQuery.isError ? (
-        <div className="stack" role="alert">
-          <p className="error-box">{goldLabErrorMessage(operationQuery.error)}</p>
-          <div className="row">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setOperationId(null)}
-            >
-              Dismiss
-            </Button>
-          </div>
-        </div>
-      ) : null}
     </Card>
   );
 }

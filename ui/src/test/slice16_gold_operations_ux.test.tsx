@@ -135,6 +135,20 @@ describe("Gold bootstrap operation failure copy", () => {
   });
 });
 
+function firstRuleBody(css: string, selector: string): string {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = css.match(new RegExp(`${escaped}\\s*\\{([^}]+)\\}`));
+  expect(match, `missing CSS rule for ${selector}`).toBeTruthy();
+  return match![1]!;
+}
+
+function declaredZIndex(css: string, selector: string): number {
+  const body = firstRuleBody(css, selector);
+  const match = body.match(/z-index:\s*(-?\d+)/);
+  expect(match, `missing z-index for ${selector}`).toBeTruthy();
+  return Number(match![1]);
+}
+
 describe("operation-tray CSS layout contract", () => {
   it("uses fixed lower-right tray and drops sticky top", () => {
     const cssPath = join(
@@ -150,6 +164,20 @@ describe("operation-tray CSS layout contract", () => {
     expect(blocks).toMatch(/right:/);
     expect(blocks).not.toMatch(/position:\s*sticky/);
     expect(blocks).not.toMatch(/top:\s*0/);
+  });
+
+  it("keeps tray z-index below drawer and dialog backdrops", () => {
+    const cssPath = join(
+      dirname(fileURLToPath(import.meta.url)),
+      "../styles/global.css",
+    );
+    const css = readFileSync(cssPath, "utf8");
+    const trayZ = declaredZIndex(css, ".operation-tray");
+    const drawerZ = declaredZIndex(css, ".drawer-backdrop");
+    const dialogZ = declaredZIndex(css, ".dialog-backdrop");
+    expect(trayZ).toBeLessThan(drawerZ);
+    expect(trayZ).toBeLessThan(dialogZ);
+    expect(drawerZ).toBeLessThan(dialogZ);
   });
 });
 
@@ -389,6 +417,76 @@ describe("global tray single authority and recovery", () => {
     expect(screen.queryByText("zero_reviewable_cases")).not.toBeInTheDocument();
     expect(screen.queryByText("SENTINEL_BACKEND_MESSAGE")).not.toBeInTheDocument();
     expect(baselinesHits).toBeGreaterThan(0);
+    mock.restore();
+  });
+
+  it("admitted Gold bootstrap lookup failure surfaces only in the tray", async () => {
+    const user = userEvent.setup();
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/capabilities") {
+        return jsonResponse(authoringReadyCapabilities());
+      }
+      if (call.url === "/v1/workspaces") {
+        return jsonResponse([
+          workspace({ workspace_id: PROJECT.workspace_id }),
+        ]);
+      }
+      if (call.url === `/v1/gold-lab/projects/${PROJECT.project_id}`) {
+        return jsonResponse(PROJECT);
+      }
+      if (
+        call.url === `/v1/gold-lab/projects/${PROJECT.project_id}/baselines`
+      ) {
+        return jsonResponse({ baselines: [] });
+      }
+      if (
+        call.url === `/v1/gold-lab/projects/${PROJECT.project_id}/campaigns`
+      ) {
+        return jsonResponse({ campaigns: [] });
+      }
+      if (
+        call.url.includes("/baseline-bootstrap") &&
+        call.method === "POST"
+      ) {
+        return jsonResponse(
+          operation({
+            operation_id: "wop_boot_lookup",
+            kind: "gold_lab_baseline_bootstrap",
+            workspace_id: PROJECT.workspace_id,
+            status: "pending",
+            progress_stage: "preparing",
+          }),
+          { status: 202 },
+        );
+      }
+      if (call.url === "/v1/operations/wop_boot_lookup") {
+        return errorResponse("not_found", "SENTINEL_LOOKUP_FAILURE", 404);
+      }
+      return errorResponse("not_found", "x", 404);
+    });
+
+    renderApp(`/gold-lab/projects/${PROJECT.project_id}`);
+    expect(
+      await screen.findByRole("button", {
+        name: "Create baseline from workspace",
+      }),
+    ).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", {
+        name: "Create baseline from workspace",
+      }),
+    );
+
+    const tray = await screen.findByTestId("operation-tray", {}, { timeout: 4000 });
+    const lookup = await within(tray).findByTestId("operation-lookup-error");
+    expect(lookup).toBeInTheDocument();
+    expect(screen.getAllByTestId("operation-lookup-error")).toHaveLength(1);
+    expect(tray.contains(lookup)).toBe(true);
+    // Page form must not render a second post-admission lookup-error surface.
+    expect(
+      screen.queryByRole("button", { name: "Create baseline from workspace" }),
+    ).toBeInTheDocument();
     mock.restore();
   });
 

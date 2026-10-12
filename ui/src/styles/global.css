@@ -406,7 +406,8 @@ a.btn:hover {
   position: fixed;
   right: var(--space-4);
   bottom: var(--space-4);
-  z-index: 45;
+  /* Below drawer (40) and dialog (50); above ordinary page content. */
+  z-index: 30;
   width: min(28rem, calc(100vw - (2 * var(--space-4))));
   max-height: min(40rem, calc(100vh - (2 * var(--space-4))));
   overflow-x: hidden;
