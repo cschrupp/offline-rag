@@ -118,6 +118,37 @@ class ComputeSaveRequest(BaseModel):
     embedding_device: EmbeddingDevicePolicy
 
 
+def _assert_cuda_save_allowed(runtime: ApplicationRuntime) -> None:
+    """Reject explicit CUDA when the ACTIVE process-owned embedder cannot use it."""
+    if runtime.resources is None or runtime.resources.embedder is None:
+        raise AppError(
+            ErrorCode.SETTINGS_INVALID,
+            details=SafeErrorDetails(reason="cuda_unavailable"),
+        )
+    view = embedder_runtime_view(runtime.resources.embedder)
+    if view.get("cuda_available") is True:
+        return
+    reason = cuda_availability_reason(
+        cuda_available=view.get("cuda_available")
+        if isinstance(view.get("cuda_available"), bool)
+        else None,
+        torch_cuda_build=(
+            str(view["torch_cuda_build"])
+            if view.get("torch_cuda_build") is not None
+            else None
+        ),
+        selection_reason=(
+            str(view["selection_reason"])
+            if view.get("selection_reason") is not None
+            else None
+        ),
+    )
+    raise AppError(
+        ErrorCode.SETTINGS_INVALID,
+        details=SafeErrorDetails(reason=reason or "cuda_unavailable"),
+    )
+
+
 @router.put("/v1/settings/compute")
 def save_compute_settings(
     request: Request, body: ComputeSaveRequest
@@ -133,6 +164,8 @@ def save_compute_settings(
                 field="embedding_device", reason="operator_locked"
             ),
         )
+    if body.embedding_device == "cuda":
+        _assert_cuda_save_allowed(runtime)
     record = SenecaComputeSettingsFile(
         compute=SenecaComputeBody(embedding_device=body.embedding_device)
     )

@@ -380,3 +380,171 @@ def test_invalid_env_device_rejected(tmp_path: Path) -> None:
             yaml_paths=[],
             environ={"OFFLINE_RAG_EMBEDDING_DEVICE": "gpu"},
         )
+
+
+def test_compute_api_rejects_unavailable_cuda_without_write(tmp_path: Path) -> None:
+    from offline_rag.api.app import create_app
+    from offline_rag.app.compute_product_settings import compute_product_settings_path
+
+    settings = _api_settings(tmp_path, device="auto")
+    product_path = compute_product_settings_path(settings.paths.product_settings)
+    write_product_compute_settings(
+        settings.paths.product_settings,
+        SenecaComputeSettingsFile(
+            compute=SenecaComputeBody(embedding_device="auto")
+        ),
+    )
+    before = product_path.read_bytes()
+    runtime = _api_runtime(settings)
+    app = create_app(runtime=runtime)
+    with TestClient(app) as client:
+        # FakeEmbedder reports cuda_available=None → unavailable.
+        put = client.put("/v1/settings/compute", json={"embedding_device": "cuda"})
+        assert put.status_code == 422
+        body = put.json()
+        assert body["error"]["code"] == "settings_invalid"
+        reason = (body.get("details") or {}).get("reason")
+        assert reason in {
+            "pytorch_cpu_only",
+            "cuda_device_unavailable",
+            "cuda_probe_failed",
+            "cuda_unavailable",
+        }
+        assert product_path.read_bytes() == before
+        # auto/cpu remain saveable.
+        ok_cpu = client.put("/v1/settings/compute", json={"embedding_device": "cpu"})
+        assert ok_cpu.status_code == 200
+        assert ok_cpu.json()["pending"]["embedding_device"] == "cpu"
+        ok_auto = client.put("/v1/settings/compute", json={"embedding_device": "auto"})
+        assert ok_auto.status_code == 200
+
+
+def test_compute_api_accepts_cuda_when_runtime_reports_available(tmp_path: Path) -> None:
+    from offline_rag.api.app import create_app
+    from offline_rag.dense.qdrant_local import QdrantLocalBackend
+
+    settings = _api_settings(tmp_path, device="auto")
+
+    def _cuda_ready_embedder(s: AppSettings) -> FakeEmbedder:
+        emb = FakeEmbedder(
+            dimension=8, configured_device=str(s.indexing.embedding.device)
+        )
+        emb.cuda_available = True
+        emb.torch_cuda_build = "12.8"
+        emb.device_selection_reason = "cuda_available"
+        emb.resolved_device = "cuda"
+        emb.device = "cuda"
+        return emb
+
+    runtime = ApplicationRuntime(
+        settings=settings,
+        factories=ResourceFactories(
+            embedder=_cuda_ready_embedder,
+            reranker=lambda _s: None,
+            generator_client=lambda _s: _Closeable(),
+            qdrant=lambda s: QdrantLocalBackend(s.paths.qdrant_storage),
+        ),
+    )
+    app = create_app(runtime=runtime)
+    with TestClient(app) as client:
+        put = client.put("/v1/settings/compute", json={"embedding_device": "cuda"})
+        assert put.status_code == 200
+        saved = put.json()
+        assert saved["saved"] is True
+        assert saved["restart_required"] is True
+        assert saved["active"]["embedding_device"] == "auto"
+        assert saved["pending"]["embedding_device"] == "cuda"
+        loaded = read_product_compute_settings(settings.paths.product_settings)
+        assert loaded is not None
+        assert loaded.compute.embedding_device == "cuda"
+
+
+def test_runtime_explicit_cuda_unavailable_fails_closed(tmp_path: Path) -> None:
+    from offline_rag.app.runtime import RuntimeState
+    from offline_rag.dense.qdrant_local import QdrantLocalBackend
+
+    settings = _api_settings(tmp_path, device="cuda")
+    emb = settings.indexing.embedding.model_copy(
+        update={"implementation": "sentence_transformers", "device": "cuda"}
+    )
+    settings = settings.model_copy(
+        update={"indexing": settings.indexing.model_copy(update={"embedding": emb})}
+    )
+    runtime = ApplicationRuntime(
+        settings=settings,
+        factories=ResourceFactories(
+            embedder=make_embedder,
+            reranker=lambda _s: None,
+            generator_client=lambda _s: _Closeable(),
+            qdrant=lambda s: QdrantLocalBackend(s.paths.qdrant_storage),
+        ),
+    )
+    with patch(
+        "offline_rag.dense.device.probe_torch_cuda",
+        return_value=(False, None, False),
+    ):
+        runtime.start()
+    assert runtime.state is RuntimeState.NOT_READY
+    assert runtime.is_ready is False
+    assert runtime.resources is None
+    assert runtime.failure_reason == "startup_failed"
+
+
+def test_runtime_auto_unavailable_cuda_starts_ready(tmp_path: Path) -> None:
+    from offline_rag.app.runtime import RuntimeState
+    from offline_rag.dense.qdrant_local import QdrantLocalBackend
+
+    settings = _api_settings(tmp_path, device="auto")
+    emb = settings.indexing.embedding.model_copy(
+        update={"implementation": "sentence_transformers", "device": "auto"}
+    )
+    settings = settings.model_copy(
+        update={"indexing": settings.indexing.model_copy(update={"embedding": emb})}
+    )
+
+    class _StubST:
+        def __init__(self, **kwargs):  # type: ignore[no-untyped-def]
+            self.device = kwargs["device"]
+            self.resolved_device = kwargs["device"]
+            self.configured_device = kwargs["configured_device"]
+            self.cuda_available = kwargs["cuda_available"]
+            self.torch_cuda_build = kwargs["torch_cuda_build"]
+            self.device_selection_reason = kwargs["device_selection_reason"]
+            self.model_id = kwargs["model_id"]
+            self.model_revision = kwargs["model_revision"]
+            self.dimension = kwargs["dimension"]
+            self.normalize = kwargs["normalize"]
+            self.adapter_contract = "sentence-transformers-v1"
+            self.query_text_contract = "raw-query-v1"
+
+        def close(self) -> None:
+            return None
+
+    runtime = ApplicationRuntime(
+        settings=settings,
+        factories=ResourceFactories(
+            embedder=make_embedder,
+            reranker=lambda _s: None,
+            generator_client=lambda _s: _Closeable(),
+            qdrant=lambda s: QdrantLocalBackend(s.paths.qdrant_storage),
+        ),
+    )
+    with (
+        patch(
+            "offline_rag.dense.device.probe_torch_cuda",
+            return_value=(False, "12.8", False),
+        ),
+        patch(
+            "offline_rag.dense.embedder.resolve_embedding_model_dir",
+            return_value=tmp_path,
+        ),
+        patch(
+            "offline_rag.dense.embedder.SentenceTransformersEmbedder",
+            _StubST,
+        ),
+    ):
+        runtime.start()
+    assert runtime.state is RuntimeState.READY
+    assert runtime.is_ready is True
+    assert runtime.resources is not None
+    assert runtime.resources.embedder.device == "cpu"  # type: ignore[union-attr]
