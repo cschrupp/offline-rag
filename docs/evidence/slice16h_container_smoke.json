@@ -1,4 +1,5 @@
 {
+  "build_ca_transport": "BUILDKIT_SECRET / BUILD-TIME ONLY",
   "built_from": "deploy/Dockerfile",
   "checks": {
     "api_same_origin": {
@@ -6,6 +7,11 @@
       "content_type": "application/json",
       "json_surface_ok": true,
       "status": 503
+    },
+    "build_ca_secret": {
+      "note": "BuildKit secret only during docker build; not in build context / image COPY; runtime trust clean",
+      "provided": true,
+      "src_basename": "norton-web-mail-shield-root.crt"
     },
     "container_user": "10001:10001",
     "data_mount": {
@@ -41,6 +47,11 @@
       "has_seneca_title": true,
       "status": 200
     },
+    "runtime_trust_store": {
+      "exit_code": 0,
+      "ok": true,
+      "stdout": "EXTRA_CRT_COUNT 0\nTRUST_HIT NONE\n"
+    },
     "spa_fallback": {
       "serves_index": true,
       "status": 200
@@ -51,11 +62,12 @@
       "status": 200
     }
   },
-  "contract": "slice16h-container-smoke-v2",
+  "contract": "slice16h-container-smoke-v3",
   "disposition": "PASS",
   "image": "offline-rag:16h-smoke",
+  "image_id": "sha256:925402a9740e8e3d8557c3bd2bf0555b17bac919de4e424456643aefacee30c3",
   "model_ready_required_for_pass": false,
-  "note": "Static/API topology PASS does not require /health/ready. Model-ready is recorded separately when available.",
+  "note": "Static/API topology PASS does not require /health/ready. Model-ready is recorded separately when available. Optional build_ca BuildKit secret assists npm/pip only and must not persist in the final runtime trust store.",
   "ok": true,
   "second_frontend_service": false,
   "single_container": true

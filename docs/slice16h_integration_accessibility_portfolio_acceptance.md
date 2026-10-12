@@ -167,19 +167,19 @@ semantics (no auto-publish of unfinished candidates).
 
 ## 10. Container delivery (Family H)
 
-**Disposition: PASS** (current-SHA image build + runtime/static smoke) — filled after smoke run.
+**Disposition: PASS** (current-SHA image build + runtime/static smoke)
 
-IR-001 F001 rework:
+IR-001/IR-002 F001 packaging trust:
 
-- Build-host Docker path was TLS-intercepted (Norton Web/Mail Shield). Fix: optional
-  gitignored `deploy/certs/*.crt` installed into image trust store with verification still on.
-- Smoke script (`slice16h-container-smoke-v2`) now waits for `/health` live (not model-ready),
-  accepts same-origin `/v1` JSON 200 **or** structured not-ready error, checks `/data` RW +
-  `/models` RO mounts, and proves no-egress static serving via `docker run --network none` +
-  `docker exec` internal GET `/`.
+- Optional build-host CA is supplied only as BuildKit secret `id=build_ca` (never `COPY`'d).
+- `.dockerignore` excludes `deploy/certs/*.crt`, `deploy/certs/*.pem`, `deploy/wheelhouse/`.
+- Dependency RUNs may temporarily use the secret for npm/pip TLS; final runtime trust store
+  remains the standard image CA bundle (custom CA ABSENT).
+- Smoke (`slice16h-container-smoke-v3`): `/health` live (not model-ready), SPA/static,
+  same-origin `/v1` JSON surface, `/data` RW + `/models` RO, `--network none` static probe,
+  runtime trust-store marker absence.
 
-Evidence: `docs/evidence/slice16h_container_smoke.json` (must show `disposition: PASS`,
-`built_from: deploy/Dockerfile`, `image: offline-rag:16h-smoke`).
+Evidence: `docs/evidence/slice16h_container_smoke.json`.
 
 ## 11. Portfolio evidence consistency (Family I)
 

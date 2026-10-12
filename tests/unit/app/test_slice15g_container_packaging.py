@@ -258,6 +258,14 @@ def test_dockerfile_static_contract() -> None:
     assert final_from[-1].startswith("FROM python:3.14-slim")
     assert "nginx" not in text.lower()
     assert not (REPO_ROOT / "deploy" / "Dockerfile.template").exists()
+    # 16H-IR-002: build-host CA must be BuildKit-secret only — never COPY'd.
+    assert "COPY deploy/certs" not in text
+    assert "id=build_ca" in text
+    assert "--mount=type=secret,id=build_ca" in text
+    assert "PIP_NO_VERIFY" not in text
+    assert "NODE_TLS_REJECT_UNAUTHORIZED=0" not in text
+    assert "--trusted-host" not in text
+    assert "curl -k" not in text
 
 
 # ---------------------------------------------------------------------------
@@ -314,6 +322,9 @@ def test_dockerignore_excludes_sensitive_and_local_trees() -> None:
         "__pycache__",
         "ui/node_modules/",
         "ui/dist/",
+        "deploy/certs/*.crt",
+        "deploy/certs/*.pem",
+        "deploy/wheelhouse/",
     ):
         assert pattern in text
 

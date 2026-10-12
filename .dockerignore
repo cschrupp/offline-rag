@@ -41,6 +41,12 @@ agent-transcripts/
 # Stale packaging template (real image is deploy/Dockerfile)
 deploy/Dockerfile.template
 
+# Build-host TLS interception CAs / local wheelhouses must never enter context.
+# Optional BuildKit secret id=build_ca is the only supported transport.
+deploy/certs/*.crt
+deploy/certs/*.pem
+deploy/wheelhouse/
+
 # Large unrelated trees not needed for the runtime install
 docs/
 tests/
