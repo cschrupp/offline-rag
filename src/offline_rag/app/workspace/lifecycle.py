@@ -67,7 +67,7 @@ from offline_rag.app.workspace.store import WorkspaceStore
 from offline_rag.app.workspace.sync_journal import SyncMutationCoordinator
 from offline_rag.app.workspace.vault import RawSourceVault
 from offline_rag.config.models import AppSettings
-from offline_rag.core.progress import ProgressEvent
+from offline_rag.core.progress import report_progress
 from offline_rag.ingestion.base import SUPPORTED_EXTENSIONS
 
 if TYPE_CHECKING:
@@ -1272,13 +1272,13 @@ class WorkspaceLifecycleService:
                 lease=lease,
             )
             if stage == "publish":
-                publisher(
-                    ProgressEvent(
-                        step="publishing",
-                        current=0,
-                        total=None,
-                        unit="documents",
-                    )
+                # Fine-grained only — DurableProgressPublisher also isolates faults.
+                report_progress(
+                    publisher,
+                    step="publishing",
+                    current=0,
+                    total=None,
+                    unit="documents",
                 )
 
         def _after(stage: str) -> None:
@@ -1292,13 +1292,12 @@ class WorkspaceLifecycleService:
                 progress_stage=OperationProgressStage.FINALIZING,
                 lease=lease,
             )
-            publisher(
-                ProgressEvent(
-                    step="finalizing",
-                    current=0,
-                    total=None,
-                    unit="documents",
-                )
+            report_progress(
+                publisher,
+                step="finalizing",
+                current=0,
+                total=None,
+                unit="documents",
             )
 
         return ProductIngestHooks(

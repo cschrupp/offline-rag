@@ -1289,3 +1289,107 @@ def test_durable_progress_publisher_throttling(tmp_path: Path) -> None:
     assert final.progress is not None
     assert final.progress.current == total
     assert final.progress.total == total
+
+
+def test_durable_publisher_contains_update_progress_failures(tmp_path: Path) -> None:
+    from offline_rag.app.progress_publish import DurableProgressPublisher
+    from offline_rag.app.workspace.models import (
+        ManagedOperationKind,
+        ManagedOperationStatus,
+    )
+    from offline_rag.core.progress import ProgressEvent
+
+    settings = _settings(tmp_path)
+    settings.paths.workspaces.mkdir(parents=True, exist_ok=True)
+    ops = ManagedOperationStore(settings)
+    rec, _ = ops.reserve(
+        workspace_id="ws_1",
+        idempotency_key="pub-iso-1",
+        kind=ManagedOperationKind.SOURCE_ADD,
+        request_payload={"files": ["a.pdf"]},
+        expected_revision=1,
+    )
+    ops.update_status(
+        rec.workspace_id,
+        rec.operation_id,
+        ManagedOperationStatus.RUNNING,
+        progress_stage=OperationProgressStage.BUILDING_INDEXES,
+    )
+
+    def boom(*_a, **_k):
+        raise RuntimeError("deliberate progress persistence failure")
+
+    ops.update_progress = boom  # type: ignore[method-assign]
+    pub = DurableProgressPublisher(
+        operations=ops,
+        workspace_id=rec.workspace_id,
+        operation_id=rec.operation_id,
+    )
+    pub(
+        ProgressEvent(
+            step="publishing",
+            current=0,
+            total=None,
+            unit="documents",
+        )
+    )
+    assert pub.write_count == 0
+    # Coarse status was not touched by the telemetry path.
+    current = ops.get(rec.workspace_id, rec.operation_id)
+    assert current.status is ManagedOperationStatus.RUNNING
+    assert current.progress_stage is OperationProgressStage.BUILDING_INDEXES
+
+
+def test_lifecycle_publish_finalize_survive_progress_persistence_failure(
+    tmp_path: Path,
+) -> None:
+    from offline_rag.app.workspace.lifecycle import WorkspaceLifecycleService
+    from offline_rag.app.workspace.models import (
+        ManagedOperationKind,
+        ManagedOperationStatus,
+    )
+
+    settings = _settings(tmp_path)
+    settings.paths.workspaces.mkdir(parents=True, exist_ok=True)
+    ops = ManagedOperationStore(settings)
+    rec, _ = ops.reserve(
+        workspace_id="ws_1",
+        idempotency_key="pub-iso-2",
+        kind=ManagedOperationKind.SOURCE_ADD,
+        request_payload={"files": ["a.pdf"]},
+        expected_revision=1,
+    )
+    ops.update_status(
+        rec.workspace_id,
+        rec.operation_id,
+        ManagedOperationStatus.RUNNING,
+        progress_stage=OperationProgressStage.BUILDING_INDEXES,
+    )
+
+    progress_calls = {"n": 0}
+
+    def boom(*_a, **_k):
+        progress_calls["n"] += 1
+        raise RuntimeError("deliberate progress persistence failure")
+
+    ops.update_progress = boom  # type: ignore[method-assign]
+
+    svc = object.__new__(WorkspaceLifecycleService)
+    svc.operations = ops
+    hooks = WorkspaceLifecycleService._progress_hooks(
+        svc, rec.workspace_id, rec.operation_id, None  # type: ignore[arg-type]
+    )
+    assert hooks.before_stage is not None
+    assert hooks.after_stage is not None
+
+    hooks.before_stage("publish")
+    after_publish = ops.get(rec.workspace_id, rec.operation_id)
+    assert after_publish.status is ManagedOperationStatus.RUNNING
+    assert after_publish.progress_stage is OperationProgressStage.PUBLISHING
+    assert progress_calls["n"] >= 1
+
+    hooks.after_stage("publish")
+    after_finalize = ops.get(rec.workspace_id, rec.operation_id)
+    assert after_finalize.status is ManagedOperationStatus.RUNNING
+    assert after_finalize.progress_stage is OperationProgressStage.FINALIZING
+    assert progress_calls["n"] >= 2

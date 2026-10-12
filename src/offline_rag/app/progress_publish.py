@@ -39,6 +39,12 @@ class DurableProgressPublisher:
     write_count: int = field(default=0, init=False)
 
     def __call__(self, event: ProgressEvent) -> None:
+        """Publish fine-grained progress; never raise into scientific/publication paths.
+
+        Coarse ``update_status`` remains authoritative elsewhere and is not
+        suppressed here. Only best-effort ``update_progress`` telemetry is
+        isolated.
+        """
         now = self.clock() if self.clock is not None else time.monotonic()
         pct = -1
         if event.total is not None and event.total > 0:
@@ -54,16 +60,20 @@ class DurableProgressPublisher:
         if not should:
             return
 
-        self.operations.update_progress(
-            self.workspace_id,
-            self.operation_id,
-            step=ManagedOperationProgressStep(event.step),
-            current=event.current,
-            total=event.total,
-            unit=ManagedOperationProgressUnit(event.unit),
-            progress_stage=self.progress_stage,
-            lease=self.lease,
-        )
+        try:
+            self.operations.update_progress(
+                self.workspace_id,
+                self.operation_id,
+                step=ManagedOperationProgressStep(event.step),
+                current=event.current,
+                total=event.total,
+                unit=ManagedOperationProgressUnit(event.unit),
+                progress_stage=self.progress_stage,
+                lease=self.lease,
+            )
+        except Exception:  # noqa: BLE001 — fine-grained telemetry must not escape
+            return
+
         self.write_count += 1
         self._last_step = event.step
         self._last_current = event.current
