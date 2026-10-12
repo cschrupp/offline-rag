@@ -140,5 +140,61 @@
     "LangGraph deferred text present; no recovery toggle control observed",
     "Performance quality and latency presented in separate regions",
     "Static accepted evidence disclaimer present"
-  ]
+  ],
+  "wcag_f002_rework": {
+    "runtime": "Cursor IDE Chromium CDP @ 1440x900 workspace ws_1f0faad69b9041e7aa6c60190538ba7d",
+    "1_4_12_text_spacing": {
+      "method": "Injected WCAG 1.4.12 spacing overrides (line-height 1.5, letter-spacing 0.12em, word-spacing 0.16em)",
+      "overflowX": false,
+      "ask_visible": true,
+      "add_sources_visible": true,
+      "header_visible": true,
+      "result": "PASS"
+    },
+    "1_4_11_non_text_contrast": {
+      "samples": [
+        {
+          "control": "Add sources",
+          "outline": "rgb(255,255,255)",
+          "bg": "rgb(23,92,211)",
+          "outlineContrast": 5.99,
+          "aa_ui_3_0": true
+        }
+      ],
+      "result": "PASS"
+    },
+    "2_5_8_target_size": {
+      "samples": [
+        {
+          "name": "Add sources",
+          "w": 225.86,
+          "h": 44,
+          "ok": true
+        },
+        {
+          "name": "Send",
+          "w": 72.98,
+          "h": 44,
+          "ok": true
+        },
+        {
+          "name": "Training Mode",
+          "w": 144.32,
+          "h": 44,
+          "ok": true
+        }
+      ],
+      "criterion": ">=24x24 CSS px",
+      "result": "PASS"
+    },
+    "2_4_11_focus_not_obscured": {
+      "source_menu_dialog": {
+        "role": "menu",
+        "active": "Rename source",
+        "inViewport": true,
+        "notObscured": true
+      },
+      "result": "PASS"
+    }
+  }
 }

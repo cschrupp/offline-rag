@@ -139,9 +139,14 @@ def _make_runtime(data_dir: Path, models_dir: Path):
     _provision(settings)
     embedder = FakeEmbedder(dimension=8, normalize=True)
     reranker_impl = FakeReranker()
+    # grounded_answer_v2 abstain contract (accepted current schema).
     generator = FakeGenerator(
         response_fn=lambda _req: json.dumps(
-            {"abstain": True, "answer": None, "citation_ids": []}
+            {
+                "abstain": True,
+                "blocks": [],
+                "abstention_reason": "insufficient_support",
+            }
         )
     )
 
@@ -160,7 +165,7 @@ def _make_runtime(data_dir: Path, models_dir: Path):
     return runtime, settings
 
 
-def _wait_op(client: TestClient, op_id: str, timeout_s: float = 120.0) -> dict:
+def _wait_op(client: TestClient, op_id: str, timeout_s: float = 900.0) -> dict:
     deadline = time.time() + timeout_s
     while time.time() < deadline:
         response = client.get(f"/v1/operations/{op_id}")
@@ -260,8 +265,11 @@ def _run_ingest(
         json={"question": "What capacity fixture marker is present?"},
     )
     query_elapsed = time.perf_counter() - query_t0
-    # Query may abstain/502 under FakeEmbedder depending on corpus binding;
-    # ingest/list correctness remains the capacity functional gate.
+    query_body: dict = {}
+    if query.headers.get("content-type", "").startswith("application/json"):
+        query_body = query.json()
+    query_ok = query.status_code == 200 and "snapshot_id" in query_body
+    ingest_ok = op["status"] == "succeeded"
 
     return {
         "requested_source_count": source_count,
@@ -275,9 +283,14 @@ def _run_ingest(
         "source_list_avg_s": list_elapsed,
         "query_elapsed_s": query_elapsed,
         "query_http_status": query.status_code,
+        "query_ok": query_ok,
+        "query_status": query_body.get("status"),
+        "query_snapshot_id": query_body.get("snapshot_id"),
         "rss_before_bytes": rss_before,
         "rss_max_bytes_observed": _rss_bytes(),
-        "result": "SUCCEEDED" if op["status"] == "succeeded" else op["status"],
+        "result": "SUCCEEDED" if ingest_ok and query_ok else (
+            "QUERY_FAILED" if ingest_ok and not query_ok else op["status"]
+        ),
         "workspace_id": wid,
     }
 
@@ -331,18 +344,15 @@ def main(argv: list[str] | None = None) -> int:
             observations["runs"].append(moderate)
             print(json.dumps(moderate, indent=2), flush=True)
 
-            # Elevated toward total-byte guardrail while remaining practical on
-            # FakeEmbedder in-process harness: 32 × 512 KiB = 16 MiB.
-            # Full ~96 MiB near-cap ingest is recorded as a separate optional
-            # heavy observation when --heavy is set.
-            print("run: 32_sources_elevated_bytes", flush=True)
+            # Near accepted 100 MiB total-byte guardrail: 32 × 3 MiB = 96 MiB.
+            print("run: 32_sources_near_cap_96MiB", flush=True)
             near = _run_ingest(
                 client,
                 source_count=32,
-                bytes_per_source=512 * 1024,
+                bytes_per_source=3 * 1024 * 1024,
                 key_prefix="cap32n",
             )
-            near["label"] = "32_sources_elevated_bytes_16MiB"
+            near["label"] = "32_sources_near_cap_96MiB"
             near["storage_growth_bytes"] = _dir_size(data_dir)
             observations["runs"].append(near)
             print(json.dumps(near, indent=2), flush=True)
@@ -383,13 +393,21 @@ def main(argv: list[str] | None = None) -> int:
                 }
 
     default_ok = all(
-        run.get("result") == "SUCCEEDED" and run.get("active_source_count") == 32
+        run.get("result") == "SUCCEEDED"
+        and run.get("active_source_count") == 32
+        and run.get("query_ok") is True
         for run in observations["runs"]
     )
-    if default_ok:
+    near_cap = next(
+        (r for r in observations["runs"] if r.get("label") == "32_sources_near_cap_96MiB"),
+        None,
+    )
+    if default_ok and near_cap and near_cap.get("reported_active_bytes", 0) >= 90 * 1024 * 1024:
         observations["conclusion"] = "CURRENT DEFAULTS SUPPORTED BY OBSERVATION"
-    else:
+    elif not default_ok:
         observations["conclusion"] = "CURRENT DEFAULTS REQUIRE REDUCTION"
+    else:
+        observations["conclusion"] = "INSUFFICIENT EMPIRICAL EVIDENCE"
 
     args.json_out.parent.mkdir(parents=True, exist_ok=True)
     args.json_out.write_text(json.dumps(observations, indent=2, sort_keys=True) + "\n")

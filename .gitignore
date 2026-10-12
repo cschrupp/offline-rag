@@ -77,3 +77,8 @@ eval/reports/*
 .idea/
 .DS_Store
 Thumbs.db
+
+# Local build-host TLS interception CAs (never commit)
+deploy/certs/*.crt
+deploy/certs/*.pem
+deploy/wheelhouse/

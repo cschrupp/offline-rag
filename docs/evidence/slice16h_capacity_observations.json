@@ -10,7 +10,7 @@
     "128": {
       "bytes_per_source": 1024,
       "disposition": "NOT TESTABLE WITHOUT CONTRACT/CONFIG CHANGE (max_files_per_ingest=32)",
-      "elapsed_http_s": 0.008562080998672172,
+      "elapsed_http_s": 0.008455240007606335,
       "error": {
         "details": {
           "reason": "too_many_files"
@@ -25,12 +25,12 @@
       "http_status": 422,
       "requested_source_count": 128,
       "result": "REFUSED_OR_FAILED_AT_ADMISSION",
-      "rss_max_bytes_observed": 524935168
+      "rss_max_bytes_observed": 981872640
     },
     "64": {
       "bytes_per_source": 1024,
       "disposition": "NOT TESTABLE WITHOUT CONTRACT/CONFIG CHANGE (max_files_per_ingest=32)",
-      "elapsed_http_s": 0.007416484993882477,
+      "elapsed_http_s": 0.006355436009471305,
       "error": {
         "details": {
           "reason": "too_many_files"
@@ -45,12 +45,12 @@
       "http_status": 422,
       "requested_source_count": 64,
       "result": "REFUSED_OR_FAILED_AT_ADMISSION",
-      "rss_max_bytes_observed": 524935168
+      "rss_max_bytes_observed": 981872640
     }
   },
   "guardrail_admission": {
     "bytes_per_source": 14680064,
-    "elapsed_http_s": 0.3526711059967056,
+    "elapsed_http_s": 0.522396331987693,
     "error": {
       "details": {
         "reason": "upload_too_large"
@@ -66,14 +66,14 @@
     "label": "total_byte_guardrail_admission_over_100MiB",
     "requested_source_count": 8,
     "result": "REFUSED_OR_FAILED_AT_ADMISSION",
-    "rss_max_bytes_observed": 524935168
+    "rss_max_bytes_observed": 981872640
   },
   "machine": {
     "cpu": "x86_64",
     "cpu_count_logical": 16,
     "docker_version": "Docker version 29.1.3, build 29.1.3-0ubuntu3~24.04.2",
     "embedding_model": "FakeEmbedder(dimension=8) \u2014 capacity observation harness",
-    "exact_git_sha": "f1b6e27bfbc9b156552073304210da0c5d9af32e",
+    "exact_git_sha": "71185d327b76db8cc804d3afb2c4845414043ed6",
     "generation_configuration": "FakeGenerator abstain \u2014 not a live LLM",
     "gpu": "not_declared_for_this_run",
     "kernel": "6.18.33.2-microsoft-standard-WSL2",
@@ -89,40 +89,46 @@
     {
       "active_source_count": 32,
       "bytes_per_source": 65536,
-      "elapsed_http_s": 0.05441933800466359,
-      "elapsed_total_s": 10.924434030006523,
+      "elapsed_http_s": 0.03152832500927616,
+      "elapsed_total_s": 5.387524115998531,
       "http_status": 202,
       "label": "32_sources_moderate_bytes",
       "operation_status": "succeeded",
-      "query_elapsed_s": 215.30226429800678,
-      "query_http_status": 502,
+      "query_elapsed_s": 214.27275770998676,
+      "query_http_status": 200,
+      "query_ok": true,
+      "query_snapshot_id": "snap_726b72dd766357a07df0fe7821ec3592754fb8b5471595097c99bb1ab9c31914",
+      "query_status": "model_abstain",
       "reported_active_bytes": 2097152,
       "requested_source_count": 32,
       "result": "SUCCEEDED",
-      "rss_before_bytes": 124784640,
-      "rss_max_bytes_observed": 191225856,
-      "source_list_avg_s": 0.004308666999956283,
-      "storage_growth_bytes": 11013864,
-      "workspace_id": "ws_aa6a025c589c4391bf1232ba25d9d57e"
+      "rss_before_bytes": 123957248,
+      "rss_max_bytes_observed": 191799296,
+      "source_list_avg_s": 0.0023036703350953758,
+      "storage_growth_bytes": 11013857,
+      "workspace_id": "ws_0f90af029b694e11a080785bf131bedf"
     },
     {
       "active_source_count": 32,
-      "bytes_per_source": 524288,
-      "elapsed_http_s": 0.1150776849972317,
-      "elapsed_total_s": 44.85163304499292,
+      "bytes_per_source": 3145728,
+      "elapsed_http_s": 0.440649027004838,
+      "elapsed_total_s": 355.5530507890071,
       "http_status": 202,
-      "label": "32_sources_elevated_bytes_16MiB",
+      "label": "32_sources_near_cap_96MiB",
       "operation_status": "succeeded",
-      "query_elapsed_s": 219.33876151200093,
-      "query_http_status": 502,
-      "reported_active_bytes": 16777216,
+      "query_elapsed_s": 222.1329077190021,
+      "query_http_status": 200,
+      "query_ok": true,
+      "query_snapshot_id": "snap_20875445a12bbb64f8f85161c9578777e987e2f842982bb7377c693ce130041b",
+      "query_status": "model_abstain",
+      "reported_active_bytes": 100663296,
       "requested_source_count": 32,
       "result": "SUCCEEDED",
-      "rss_before_bytes": 206299136,
-      "rss_max_bytes_observed": 286879744,
-      "source_list_avg_s": 0.0020067510001050928,
-      "storage_growth_bytes": 95886915,
-      "workspace_id": "ws_527bf90aabcb4ccd80df9a565aecd3d1"
+      "rss_before_bytes": 293777408,
+      "rss_max_bytes_observed": 981872640,
+      "source_list_avg_s": 0.0015720760032612209,
+      "storage_growth_bytes": 517938965,
+      "workspace_id": "ws_ada4102f2b024236bf91975fa5b237aa"
     }
   ],
   "runtime_effective_limits": {

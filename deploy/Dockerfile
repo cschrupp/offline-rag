@@ -5,6 +5,18 @@ FROM node:22-bookworm-slim AS ui-builder
 
 WORKDIR /ui
 
+# Optional local CA material for TLS-intercepted Docker build hosts.
+# Verification remains enabled; this only extends the trust store when present.
+COPY deploy/certs/ /tmp/extra-ca-certs/
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && if ls /tmp/extra-ca-certs/*.crt >/dev/null 2>&1; then \
+         cp /tmp/extra-ca-certs/*.crt /usr/local/share/ca-certificates/ \
+         && update-ca-certificates; \
+       fi \
+    && rm -rf /tmp/extra-ca-certs /var/lib/apt/lists/*
+ENV NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
+
 COPY ui/package.json ui/package-lock.json ./
 RUN npm ci
 
@@ -41,7 +53,18 @@ COPY src /app/src
 COPY config /app/config
 COPY --from=ui-builder /ui/dist /app/ui
 
-RUN pip install --no-cache-dir --upgrade pip \
+# Optional local CA material under deploy/certs/ (gitignored) for build hosts whose
+# Docker path is TLS-intercepted. Verification remains enabled; this only extends
+# the trust store. Empty directory is a no-op.
+COPY deploy/certs/ /tmp/extra-ca-certs/
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && if ls /tmp/extra-ca-certs/*.crt >/dev/null 2>&1; then \
+         cp /tmp/extra-ca-certs/*.crt /usr/local/share/ca-certificates/ \
+         && update-ca-certificates; \
+       fi \
+    && rm -rf /tmp/extra-ca-certs /var/lib/apt/lists/* \
+    && pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir . \
     && chown -R 10001:10001 /app
 
