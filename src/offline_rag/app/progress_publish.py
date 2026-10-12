@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from offline_rag.app.workspace.leases import WorkspaceMutationLease
@@ -28,22 +29,28 @@ class DurableProgressPublisher:
     operation_id: str
     lease: WorkspaceMutationLease | None = None
     progress_stage: OperationProgressStage | None = None
+    # Injectable clock for deterministic throttling tests (seconds monotonic).
+    clock: Callable[[], float] | None = None
     _last_step: str | None = field(default=None, init=False, repr=False)
     _last_current: int | None = field(default=None, init=False, repr=False)
     _last_total: int | None = field(default=None, init=False, repr=False)
     _last_pct: int = field(default=-1, init=False, repr=False)
     _last_mono: float = field(default=0.0, init=False, repr=False)
+    write_count: int = field(default=0, init=False)
 
     def __call__(self, event: ProgressEvent) -> None:
-        now = time.monotonic()
+        now = self.clock() if self.clock is not None else time.monotonic()
         pct = -1
         if event.total is not None and event.total > 0:
             pct = min(100, int((event.current * 100) / event.total))
 
-        should = False
-        if self._last_step != event.step or event.total is not None and event.current >= event.total or self._last_current is None or pct >= 0 and pct > self._last_pct or (now - self._last_mono) >= 1.0:
-            should = True
-
+        should = (
+            self._last_step != event.step
+            or (event.total is not None and event.current >= event.total)
+            or self._last_current is None
+            or (pct >= 0 and pct > self._last_pct)
+            or (now - self._last_mono) >= 1.0
+        )
         if not should:
             return
 
@@ -57,6 +64,7 @@ class DurableProgressPublisher:
             progress_stage=self.progress_stage,
             lease=self.lease,
         )
+        self.write_count += 1
         self._last_step = event.step
         self._last_current = event.current
         self._last_total = event.total

@@ -31,10 +31,17 @@ def report_progress(
     total: int | None,
     unit: str,
 ) -> None:
-    """Invoke an optional progress reporter; never raises into the pipeline."""
+    """Invoke an optional progress reporter; never raises into the pipeline.
+
+    Progress is presentation telemetry. Reporter faults must not alter
+    scientific/ingest/index/Gold outcomes.
+    """
     if reporter is None:
         return
-    reporter(ProgressEvent(step=step, current=current, total=total, unit=unit))
+    try:
+        reporter(ProgressEvent(step=step, current=current, total=total, unit=unit))
+    except Exception:  # noqa: BLE001 — telemetry must not escape into science
+        return
 
 
 __all__ = [

@@ -51,24 +51,6 @@ export function progressPercent(
   return Math.max(0, Math.min(100, raw));
 }
 
-export function approximateEtaSeconds(params: {
-  progress: OperationProgressTelemetry | null | undefined;
-  nowMs: number;
-}): number | null {
-  const { progress, nowMs } = params;
-  if (!progress || progress.total == null || progress.total <= 0) return null;
-  if (progress.current <= 0 || progress.current >= progress.total) return null;
-  const started = Date.parse(progress.started_at);
-  if (!Number.isFinite(started)) return null;
-  const elapsed = (nowMs - started) / 1000;
-  if (elapsed < 10) return null;
-  const rate = progress.current / elapsed;
-  if (!(rate > 0)) return null;
-  const remaining = (progress.total - progress.current) / rate;
-  if (!(remaining > 0) || !Number.isFinite(remaining)) return null;
-  return remaining;
-}
-
 export function parseTimestampMs(value: string | null | undefined): number | null {
   if (!value) return null;
   const ms = Date.parse(value);

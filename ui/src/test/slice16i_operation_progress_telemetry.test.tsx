@@ -2,7 +2,6 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { OperationProgress } from "../components/OperationProgress";
 import {
-  approximateEtaSeconds,
   formatElapsed,
   progressPercent,
 } from "../features/operations/progressTelemetry";
@@ -54,48 +53,17 @@ describe("progress telemetry helpers", () => {
     expect(formatElapsed(14)).toBe("14s");
     expect(formatElapsed(74)).toBe("1m 14s");
   });
-
-  it("omits ETA before threshold and when total unknown", () => {
-    const now = Date.parse("2026-01-01T00:00:15Z");
-    expect(
-      approximateEtaSeconds({
-        progress: {
-          step: "embedding_chunks",
-          current: 10,
-          total: 100,
-          unit: "chunks",
-          started_at: "2026-01-01T00:00:10Z",
-        },
-        nowMs: now,
-      }),
-    ).toBeNull();
-    expect(
-      approximateEtaSeconds({
-        progress: {
-          step: "materializing_dense_index",
-          current: 0,
-          total: null,
-          unit: "chunks",
-          started_at: "2026-01-01T00:00:00Z",
-        },
-        nowMs: now,
-      }),
-    ).toBeNull();
-    const eta = approximateEtaSeconds({
-      progress: {
-        step: "embedding_chunks",
-        current: 20,
-        total: 100,
-        unit: "chunks",
-        started_at: "2026-01-01T00:00:00Z",
-      },
-      nowMs: Date.parse("2026-01-01T00:00:20Z"),
-    });
-    expect(eta).toBeGreaterThan(0);
-  });
 });
 
 describe("OperationProgress telemetry UI", () => {
+  it("uses Seneca in upload copy touched by 16I", () => {
+    render(<OperationProgress phase="uploading" label="Add sources" />);
+    expect(
+      screen.getByText(/Sending files to Seneca/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/OfflineRAG/i)).not.toBeInTheDocument();
+  });
+
   it("removes old coarse-only disclaimer and renders known denominator", () => {
     render(
       <OperationProgress
@@ -120,6 +88,9 @@ describe("OperationProgress telemetry UI", () => {
       screen.queryByText(/No percentage or ETA is shown/i),
     ).not.toBeInTheDocument();
     expect(
+      screen.queryByText(/Approx\.|remaining/i),
+    ).not.toBeInTheDocument();
+    expect(
       screen.getAllByText(/Building semantic search index/i).length,
     ).toBeGreaterThan(0);
     expect(
@@ -128,6 +99,7 @@ describe("OperationProgress telemetry UI", () => {
       ).length,
     ).toBeGreaterThan(0);
     expect(screen.getByRole("progressbar")).toBeInTheDocument();
+    expect(screen.getByText(/Elapsed/i)).toBeInTheDocument();
   });
 
   it("renders indeterminate step without inventing a percentage", () => {

@@ -7,7 +7,6 @@ import {
   progressStageLabel,
 } from "../features/operations/progressLabels";
 import {
-  approximateEtaSeconds,
   formatElapsed,
   parseTimestampMs,
   progressPercent,
@@ -66,8 +65,8 @@ export function OperationProgress({
           <strong>{label ?? "Uploading…"}</strong>
         </div>
         <p className="muted">
-          Sending files to OfflineRAG. Durable processing starts after the
-          server accepts the request.
+          Sending files to Seneca. Durable processing starts after the server
+          accepts the request.
         </p>
       </div>
     );
@@ -125,10 +124,6 @@ export function OperationProgress({
   const createdMs = parseTimestampMs(operation.created_at);
   const elapsedSeconds =
     !terminal && createdMs != null ? (nowMs - createdMs) / 1000 : null;
-  const etaSeconds =
-    !terminal && progress
-      ? approximateEtaSeconds({ progress, nowMs })
-      : null;
 
   return (
     <div
@@ -179,9 +174,6 @@ export function OperationProgress({
       {!terminal && elapsedSeconds != null ? (
         <p className="muted" style={{ margin: 0 }}>
           Elapsed {formatElapsed(elapsedSeconds)}
-          {etaSeconds != null
-            ? ` · Approx. ${formatElapsed(etaSeconds)} remaining`
-            : ""}
         </p>
       ) : null}
       {operation.status === "failed" && operation.error ? (
