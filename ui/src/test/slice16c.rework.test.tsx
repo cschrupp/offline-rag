@@ -129,7 +129,7 @@ describe("F1 resumed operation visibility", () => {
     mock.restore();
   });
 
-  it("surfaces FAILED message/code and does not silently disappear", async () => {
+  it("surfaces FAILED message without raw error code and does not silently disappear", async () => {
     localStorage.setItem(
       ACTIVE_OPERATIONS_KEY,
       JSON.stringify([
@@ -164,7 +164,7 @@ describe("F1 resumed operation visibility", () => {
     renderApp("/");
     expect(await screen.findByText("Failed")).toBeInTheDocument();
     expect(screen.getByText("Ingest failed")).toBeInTheDocument();
-    expect(screen.getByText("ingest_failed")).toBeInTheDocument();
+    expect(screen.queryByText("ingest_failed")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Dismiss" })).toBeInTheDocument();
     mock.restore();
   });

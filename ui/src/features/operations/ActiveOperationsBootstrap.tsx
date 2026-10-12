@@ -7,6 +7,7 @@ import type { Operation } from "../../api/types";
 import { OperationProgress } from "../../components/OperationProgress";
 import { goldLabQueryKeys } from "../goldLab/queryKeys";
 import {
+  ACTIVE_OPERATIONS_CHANGED_EVENT,
   ACTIVE_OPERATIONS_KEY,
   forgetActiveOperation,
   isTerminalOperationStatus,
@@ -35,9 +36,11 @@ export function ActiveOperationsBootstrap() {
       if (event.key === ACTIVE_OPERATIONS_KEY) sync();
     };
     window.addEventListener("storage", onStorage);
+    window.addEventListener(ACTIVE_OPERATIONS_CHANGED_EVENT, sync);
     const timer = window.setInterval(sync, 1000);
     return () => {
       window.removeEventListener("storage", onStorage);
+      window.removeEventListener(ACTIVE_OPERATIONS_CHANGED_EVENT, sync);
       window.clearInterval(timer);
     };
   }, []);

@@ -1631,3 +1631,128 @@ def test_r6_workspace_ops_cannot_jump_to_succeeded(tmp_path: Path) -> None:
             ManagedOperationStatus.SUCCEEDED,
         )
     assert exc2.value.details["reason"] == "illegal_operation_status_transition"
+
+
+def test_pooling_zero_reviewable_preserves_safe_reason_on_get(tmp_path: Path) -> None:
+    """POST-admission pooling GOLD_CONFLICT reason survives GET /v1/operations."""
+    settings, runtime, project, workspace, corpus_id, chunk_set_id, _ = (
+        _project_and_workspace(tmp_path)
+    )
+    svc = GoldLabBaselineBootstrapService(runtime)
+
+    def propose(settings_arg, **kwargs):
+        run = _reviewable_run(
+            corpus_id=corpus_id,
+            chunk_set_id=chunk_set_id,
+            authoring_run_id=kwargs["authoring_run_id"],
+            sampling_seed=kwargs["seed"],
+        )
+        path = kwargs["output"]
+        path.parent.mkdir(parents=True, exist_ok=True)
+        write_authoring_run_bytes(path, serialize_authoring_run_bytes(run))
+        return ProposeJobResult(exit_code=0, run=run, output_path=path)
+
+    def pool(settings_arg, **kwargs):
+        from offline_rag.gold_authoring.persist import load_authoring_run
+        from offline_rag.gold_authoring.pool import PoolJobResult
+
+        run = load_authoring_run(kwargs["run_path"])
+        stripped = [
+            case.model_copy(update={"candidates": []}) for case in run.cases
+        ]
+        bare = run.model_copy(
+            update={"cases": stripped, "pool_successful_case_count": 0}
+        )
+        return PoolJobResult(exit_code=0, run=bare, output_path=kwargs["run_path"])
+
+    with (
+        patch(
+            "offline_rag.app.gold_lab.bootstrap.run_gold_propose_on_snapshot",
+            side_effect=propose,
+        ),
+        patch("offline_rag.app.gold_lab.bootstrap.run_gold_pool", side_effect=pool),
+        patch(
+            "offline_rag.app.gold_lab.bootstrap.build_eligible_population",
+            return_value=[object()] * 50,
+        ),
+        patch(
+            "offline_rag.app.gold_lab.bootstrap.validate_historical_chunk_identities",
+            return_value=None,
+        ),
+    ):
+        record = svc.start_baseline_bootstrap(
+            project_id=project.project_id,
+            proposal_count=2,
+            prelabel_enabled=False,
+            idempotency_key="zero-review-get",
+        )
+        deadline = time.time() + 10
+        ops = ManagedOperationStore(settings)
+        while time.time() < deadline:
+            current = ops.get(workspace.workspace_id, record.operation_id)
+            if current.status is ManagedOperationStatus.FAILED:
+                break
+            time.sleep(0.05)
+        else:
+            pytest.fail(f"expected FAILED: {current.status} {current.error}")
+
+        assert current.progress_stage is OperationProgressStage.POOLING
+        assert current.error is not None
+        assert current.error.code is ErrorCode.GOLD_CONFLICT
+        assert current.error.details["reason"] == "zero_reviewable_cases"
+
+        with _client(runtime) as client:
+            view = client.get(f"/v1/operations/{record.operation_id}").json()
+        assert view["status"] == "failed"
+        assert view["progress_stage"] == "pooling"
+        assert view["error"]["code"] == "gold_conflict"
+        assert view["error"]["details"]["reason"] == "zero_reviewable_cases"
+        assert view["error"]["retryable"] is False
+
+
+def test_proposing_population_exceeded_preserves_safe_reason_on_get(
+    tmp_path: Path,
+) -> None:
+    settings, runtime, project, workspace, *_rest = _project_and_workspace(tmp_path)
+    svc = GoldLabBaselineBootstrapService(runtime)
+
+    with (
+        patch(
+            "offline_rag.app.gold_lab.bootstrap.build_eligible_population",
+            return_value=[object(), object()],
+        ),
+        patch(
+            "offline_rag.app.gold_lab.bootstrap.validate_historical_chunk_identities",
+            return_value=None,
+        ),
+    ):
+        record = svc.start_baseline_bootstrap(
+            project_id=project.project_id,
+            proposal_count=5,
+            prelabel_enabled=False,
+            idempotency_key="pop-exceed-get",
+        )
+        deadline = time.time() + 10
+        ops = ManagedOperationStore(settings)
+        while time.time() < deadline:
+            current = ops.get(workspace.workspace_id, record.operation_id)
+            if current.status is ManagedOperationStatus.FAILED:
+                break
+            time.sleep(0.05)
+        else:
+            pytest.fail(f"expected FAILED: {current.status} {current.error}")
+
+        assert current.progress_stage is OperationProgressStage.PROPOSING
+        assert current.error is not None
+        assert current.error.details["reason"] == (
+            "proposal_count_exceeds_eligible_population"
+        )
+
+        with _client(runtime) as client:
+            view = client.get(f"/v1/operations/{record.operation_id}").json()
+        assert view["status"] == "failed"
+        assert view["progress_stage"] == "proposing"
+        assert view["error"]["code"] == "gold_conflict"
+        assert view["error"]["details"]["reason"] == (
+            "proposal_count_exceeds_eligible_population"
+        )

@@ -37,6 +37,39 @@ describe("GAP-16G-02 baseline bootstrap UI", () => {
       "fetch",
       vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input);
+        if (url.includes("/v1/capabilities")) {
+          return new Response(
+            JSON.stringify({
+              product: { name: "Seneca", descriptor: "x" },
+              source_limits: {
+                max_active_sources: 32,
+                max_bytes_per_source: 1,
+                max_active_source_bytes: 1,
+              },
+              generation: {
+                enabled: true,
+                provider: "openai_compatible",
+                base_url: "http://127.0.0.1:11434/v1",
+                model: "m",
+                timeout_seconds: 120,
+              },
+              authoring: {
+                enabled: true,
+                ready: true,
+                reason_codes: [],
+                provider: "openai_compatible",
+                base_url: "http://127.0.0.1:11434/v1",
+                model: "qwen",
+                timeout_seconds: 300,
+                api_key_configured: true,
+              },
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          );
+        }
         if (url.includes("/baselines")) {
           return new Response(JSON.stringify({ baselines: [] }), {
             status: 200,

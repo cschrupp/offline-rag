@@ -1,5 +1,6 @@
 import { Badge } from "./Badge";
 import { Button } from "./Button";
+import { managedOperationFailureMessage } from "../features/operations/operationErrorMessages";
 import {
   operationStatusLabel,
   progressStageLabel,
@@ -116,14 +117,7 @@ export function OperationProgress({
       </p>
       {operation.status === "failed" && operation.error ? (
         <p className="error-box" role="alert">
-          {operation.error.message}
-          <span className="sr-only"> Error code: {operation.error.code}</span>
-          <span
-            className="muted"
-            style={{ display: "block", marginTop: "0.5rem" }}
-          >
-            {operation.error.code}
-          </span>
+          {managedOperationFailureMessage(operation)}
         </p>
       ) : null}
       {operation.status === "interrupted" ? (

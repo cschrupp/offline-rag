@@ -24,6 +24,7 @@ const GOLD_LAB_MESSAGES: Record<string, string> = {
     "Could not reach OfflineRAG. Check that this installation is running and reachable.",
 };
 
+/** Bounded safe-reason vocabulary shared by sync API errors and operation cards. */
 const SAFE_REASON_MESSAGES: Record<string, string> = {
   authoring_not_ready:
     "Gold Lab authoring is not ready. Configure it in Settings and restart if required.",
@@ -32,12 +33,26 @@ const SAFE_REASON_MESSAGES: Record<string, string> = {
   project_archived: "Archived projects cannot accept this Gold Lab action.",
   project_status_invalid:
     "This Gold project is not in a state that allows the requested action.",
-  publication_drift_before_commit:
-    "The workspace publication changed before this action could complete. Refresh and try again.",
-  project_drift_before_commit:
-    "This Gold project changed before the action could complete. Refresh and try again.",
+  proposal_count_exceeds_eligible_population:
+    "The requested proposal count is larger than the eligible workspace population. Reduce the proposal count and try again.",
+  zero_usable_proposals:
+    "Gold Lab authoring did not produce usable candidate questions from this workspace publication.",
   zero_reviewable_cases:
-    "No reviewable cases were produced. Adjust the workspace or proposal settings and try again.",
+    "Candidate questions were produced, but no reviewable evidence cases could be assembled from this workspace publication.",
+  prelabel_stage_cannot_start:
+    "Advisory prelabeling could not start for this baseline attempt.",
+  publication_drift_before_commit:
+    "The workspace publication changed while the baseline was being created. Refresh and try again.",
+  project_drift_before_commit:
+    "The Gold project changed while the baseline was being created. Refresh and try again.",
+  staged_run_invalid:
+    "Gold Lab could not verify the staged baseline state. Reload before continuing.",
+  historical_identity_failure:
+    "Gold Lab could not verify historical evidence identity for this baseline. Reload before continuing.",
+  canonical_destination_conflict:
+    "Gold Lab detected a baseline-state conflict and did not overwrite existing canonical state.",
+  bootstrap_internal_failure:
+    "Baseline creation failed unexpectedly. No baseline was published.",
 };
 
 const MISSING_RESOURCE_MESSAGE = "Gold Lab resource not found.";
@@ -54,14 +69,22 @@ function safeReasonFromError(error: unknown): string | null {
   return typeof reason === "string" && reason.trim() ? reason.trim() : null;
 }
 
+/** Pure mapper for accepted Gold safe-reason codes. Unknown → null. */
+export function messageForGoldSafeReason(reason: string): string | null {
+  const key = reason.trim();
+  if (!key) return null;
+  return SAFE_REASON_MESSAGES[key] ?? null;
+}
+
 /**
  * Gold Lab UI error text. Never surfaces raw backend exception / ApiError.message.
  */
 export function goldLabErrorMessage(error: unknown): string {
   if (isApiError(error)) {
     const reason = safeReasonFromError(error);
-    if (reason && SAFE_REASON_MESSAGES[reason]) {
-      return SAFE_REASON_MESSAGES[reason];
+    if (reason) {
+      const mapped = messageForGoldSafeReason(reason);
+      if (mapped) return mapped;
     }
     const mapped = GOLD_LAB_MESSAGES[error.code];
     if (mapped) return mapped;

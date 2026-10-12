@@ -235,7 +235,7 @@ describe("Gold Lab authoring readiness + reason mapping", () => {
           details: { reason: "project_drift_before_commit" },
         }),
       ),
-    ).toMatch(/changed before the action could complete/i);
+    ).toMatch(/Gold project changed while the baseline was being created/i);
 
     expect(
       goldLabErrorMessage(

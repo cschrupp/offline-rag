@@ -7,9 +7,7 @@ import type { Operation } from "../../../api/types";
 import { Button } from "../../../components/Button";
 import { Card } from "../../../components/Card";
 import { TextInput } from "../../../components/Field";
-import { OperationProgress } from "../../../components/OperationProgress";
 import {
-  forgetActiveOperation,
   isTerminalOperationStatus,
   rememberActiveOperation,
 } from "../../operations/activeOperations";
@@ -101,7 +99,7 @@ export function GoldBaselineBootstrapForm({
         queryKey: goldLabQueryKeys.baselines(project.project_id),
       });
     }
-    forgetActiveOperation(operation.operation_id);
+    // Locator lifetime is owned by ActiveOperationsBootstrap (global tray).
   }, [operationQuery.data, project.project_id, queryClient]);
 
   const startMutation = useMutation({
@@ -337,21 +335,19 @@ export function GoldBaselineBootstrapForm({
           </Button>
         </form>
       )}
-      {operationId && operationQuery.data ? (
-        <OperationProgress
-          phase="operation"
-          operation={operationQuery.data}
-          label="Create baseline from workspace"
-          successMessage="Baseline ready."
-        />
-      ) : null}
       {operationId && operationQuery.isError ? (
-        <OperationProgress
-          phase="lookup_error"
-          label="Create baseline from workspace"
-          lookupError={goldLabErrorMessage(operationQuery.error)}
-          onDismiss={() => setOperationId(null)}
-        />
+        <div className="stack" role="alert">
+          <p className="error-box">{goldLabErrorMessage(operationQuery.error)}</p>
+          <div className="row">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setOperationId(null)}
+            >
+              Dismiss
+            </Button>
+          </div>
+        </div>
       ) : null}
     </Card>
   );

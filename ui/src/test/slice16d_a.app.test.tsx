@@ -335,7 +335,7 @@ describe("Slice 16D-A FAILED/INTERRUPTED operation UX (F5)", () => {
 
     expect(await screen.findByText("Failed")).toBeInTheDocument();
     expect(screen.getByText("Ingest failed before bootstrap")).toBeInTheDocument();
-    expect(screen.getByText("ingest_failed")).toBeInTheDocument();
+    expect(screen.queryByText("ingest_failed")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Dismiss" })).toBeInTheDocument();
     // Must not collapse to a bare compact "failed · Add sources" status line.
     expect(screen.queryByText(/^failed · Add sources$/i)).not.toBeInTheDocument();

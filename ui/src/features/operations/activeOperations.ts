@@ -1,11 +1,20 @@
 export const ACTIVE_OPERATIONS_KEY = "offline-rag.active-operations.v1";
 
+/** Same-tab signal so the global tray can sync without waiting on the poll interval. */
+export const ACTIVE_OPERATIONS_CHANGED_EVENT =
+  "offline-rag-active-operations-changed";
+
 export type ActiveOperationRef = {
   operation_id: string;
   workspace_id: string;
   kind: string;
   label?: string;
 };
+
+function notifyActiveOperationsChanged(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(ACTIVE_OPERATIONS_CHANGED_EVENT));
+}
 
 function isActiveOperationRef(value: unknown): value is ActiveOperationRef {
   if (!value || typeof value !== "object") return false;
@@ -40,12 +49,14 @@ export function rememberActiveOperation(ref: ActiveOperationRef): void {
   );
   current.push(ref);
   saveActiveOperations(current);
+  notifyActiveOperationsChanged();
 }
 
 export function forgetActiveOperation(operationId: string): void {
   saveActiveOperations(
     loadActiveOperations().filter((item) => item.operation_id !== operationId),
   );
+  notifyActiveOperationsChanged();
 }
 
 export function isTerminalOperationStatus(status: string): boolean {

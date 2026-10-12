@@ -1,0 +1,15 @@
+{
+  "contract": "slice16-gold-ops-manual-conflict-v1",
+  "candidate_sha": "293ae8d0033fe6e534899bad9ffe23cd926d7398",
+  "authority": "S16-CLOSURE-GOLD-OPS-UX-AUTH-001",
+  "operation_kind": "gold_lab_baseline_bootstrap",
+  "status": "failed",
+  "progress_stage": "pooling",
+  "error_code": "gold_conflict",
+  "safe_reason": "zero_reviewable_cases",
+  "retryable": false,
+  "operation_id": "wop_b1be01ae74414af9943dcaee6ac98d07",
+  "classification": "legitimate_domain_failure",
+  "diagnostic_result": "A",
+  "notes": "Durable managed-operation record already preserved details.reason; GET projection intact. Remediation is UI presentation + tray UX only."
+}

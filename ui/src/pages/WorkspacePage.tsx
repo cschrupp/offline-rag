@@ -444,8 +444,9 @@ export function WorkspacePage() {
       return;
     }
     if (status === "failed" || status === "interrupted") {
-      // Keep error-capable terminal surface until dismissed; do not collapse.
-      setPendingPhase("terminal_error");
+      // Global ActiveOperationsBootstrap owns transient failure presentation.
+      setPendingPhase("idle");
+      setActiveOperationId(null);
       return;
     }
     setPendingPhase("idle");
@@ -1219,17 +1220,8 @@ export function WorkspacePage() {
     />
   );
 
-  const showRunningTray =
-    pendingPhase === "uploading" ||
-    pendingPhase === "operation" ||
-    (operationQuery.data &&
-      !isTerminalOperationStatus(String(operationQuery.data.status)));
-
-  const showFailedTerminal =
-    pendingPhase === "terminal_error" &&
-    operationQuery.data &&
-    (String(operationQuery.data.status).toLowerCase() === "failed" ||
-      String(operationQuery.data.status).toLowerCase() === "interrupted");
+  // Pre-admission upload may stay local; durable managed ops use the global tray.
+  const showLocalUploadProgress = pendingPhase === "uploading";
 
   const showCompactSuccess =
     operationQuery.data &&
@@ -1301,35 +1293,9 @@ export function WorkspacePage() {
         />
       ) : null}
 
-      {showRunningTray ? (
-        <div className="operation-tray" aria-live="polite">
-          {pendingPhase === "uploading" ? (
-            <OperationProgress phase="uploading" label={operationLabel} />
-          ) : null}
-          {pendingPhase === "operation" ||
-          (operationQuery.data &&
-            !isTerminalOperationStatus(String(operationQuery.data.status))) ? (
-            <OperationProgress
-              phase="operation"
-              operation={operationQuery.data}
-              label={operationLabel}
-            />
-          ) : null}
-        </div>
-      ) : null}
-
-      {showFailedTerminal && operationQuery.data ? (
-        <div className="operation-tray" aria-live="assertive">
-          <OperationProgress
-            phase="operation"
-            operation={operationQuery.data}
-            label={operationLabel}
-            onDismiss={() => {
-              forgetActiveOperation(operationQuery.data!.operation_id);
-              setActiveOperationId(null);
-              setPendingPhase("idle");
-            }}
-          />
+      {showLocalUploadProgress ? (
+        <div className="operation-local" aria-live="polite">
+          <OperationProgress phase="uploading" label={operationLabel} />
         </div>
       ) : null}
 
