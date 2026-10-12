@@ -309,9 +309,12 @@ def load_settings(
     if data_dir:
         _apply_data_dir(payload, data_dir)
 
-    # Seneca generation overlay sits between YAML and environment authority.
+    # Seneca product overlays sit between YAML and environment authority.
     # Resolve effective strict_offline (YAML then env) before validating the
     # product endpoint so tampered public endpoints fail closed under policy.
+    from offline_rag.app.authoring_product_settings import (
+        authoring_overlay_from_product_settings,
+    )
     from offline_rag.app.product_settings import (
         generation_overlay_from_product_settings,
         resolve_product_settings_dir,
@@ -337,6 +340,15 @@ def load_settings(
         raise ConfigError(f"invalid Seneca product settings: {exc}") from exc
     if product_overlay:
         payload = _deep_merge(payload, product_overlay)
+
+    try:
+        authoring_overlay = authoring_overlay_from_product_settings(
+            product_dir, strict_offline=strict_offline
+        )
+    except ValueError as exc:
+        raise ConfigError(f"invalid Seneca authoring product settings: {exc}") from exc
+    if authoring_overlay:
+        payload = _deep_merge(payload, authoring_overlay)
 
     env_payload = env_overrides(env)
     _coerce_list_env_fields(env_payload)

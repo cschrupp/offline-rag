@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import APIRouter, Request
 
 from offline_rag.app.runtime import ApplicationRuntime
+from offline_rag.gold_authoring.readiness import evaluate_authoring_readiness
 
 router = APIRouter(tags=["capabilities"])
 
@@ -22,7 +23,9 @@ def get_capabilities(request: Request) -> dict[str, Any]:
     runtime.require_ready()
     settings = runtime.settings
     gen = settings.generation
+    auth = settings.authoring
     api = settings.api
+    readiness = evaluate_authoring_readiness(settings)
     return {
         "product": {
             "name": "Seneca",
@@ -39,5 +42,15 @@ def get_capabilities(request: Request) -> dict[str, Any]:
             "base_url": str(gen.base_url),
             "model": str(gen.model),
             "timeout_seconds": int(gen.timeout_seconds),
+        },
+        "authoring": {
+            "enabled": bool(auth.enabled),
+            "provider": str(auth.provider),
+            "base_url": str(auth.base_url),
+            "model": auth.model,
+            "timeout_seconds": int(auth.timeout_seconds),
+            "ready": bool(readiness.ready),
+            "reason_codes": list(readiness.reason_codes),
+            "api_key_configured": bool(auth.api_key),
         },
     }

@@ -290,8 +290,11 @@ def test_capabilities_active_only_no_secrets(tmp_path: Path) -> None:
         assert body["generation"]["model"] == settings.generation.model
         text = json.dumps(body)
         assert "should-never-appear" not in text
-        assert "api_key" not in text
+        # Safe boolean flag may appear; never a secret-bearing api_key field.
+        assert '"api_key":' not in text
         assert "pending-model" not in text
+        assert "authoring" in body
+        assert "api_key_configured" in body["authoring"]
 
 
 def test_settings_get_never_returns_api_key(tmp_path: Path) -> None:

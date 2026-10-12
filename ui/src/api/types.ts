@@ -102,6 +102,16 @@ export type Capabilities = {
     model: string;
     timeout_seconds: number;
   };
+  authoring?: {
+    enabled: boolean;
+    provider: string;
+    base_url: string;
+    model: string | null;
+    timeout_seconds: number;
+    ready: boolean;
+    reason_codes: string[];
+    api_key_configured?: boolean;
+  };
 };
 
 export type GenerationSettingsSnapshot = {
@@ -139,6 +149,52 @@ export type GenerationSettingsCandidate = {
 };
 
 export type GenerationProbeResult = {
+  ok: boolean;
+  reason?: string | null;
+  available_models?: string[] | null;
+};
+
+export type AuthoringSettingsSnapshot = {
+  enabled: boolean;
+  provider: string;
+  base_url: string;
+  model: string | null;
+  timeout_seconds: number;
+  network_policy: string;
+  api_key_configured: boolean;
+};
+
+export type AuthoringSettingsLocks = {
+  enabled: boolean;
+  base_url: boolean;
+  model: boolean;
+  timeout_seconds: boolean;
+  api_key: boolean;
+  network_policy: boolean;
+};
+
+export type AuthoringReadinessView = {
+  ready: boolean;
+  reason_codes: string[];
+  enabled: boolean;
+  endpoint_configured: boolean;
+  endpoint_approved: boolean;
+  model_configured: boolean;
+  model_approved: boolean;
+  network_policy_satisfied: boolean;
+  api_key_configured: boolean;
+};
+
+export type AuthoringSettingsState = {
+  active: AuthoringSettingsSnapshot;
+  pending: AuthoringSettingsSnapshot | null;
+  restart_required: boolean;
+  locks: AuthoringSettingsLocks;
+  strict_offline: boolean;
+  readiness: AuthoringReadinessView;
+};
+
+export type AuthoringProbeResult = {
   ok: boolean;
   reason?: string | null;
   available_models?: string[] | null;

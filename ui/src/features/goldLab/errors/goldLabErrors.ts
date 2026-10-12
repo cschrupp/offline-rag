@@ -24,10 +24,34 @@ const GOLD_LAB_MESSAGES: Record<string, string> = {
     "Could not reach OfflineRAG. Check that this installation is running and reachable.",
 };
 
+const SAFE_REASON_MESSAGES: Record<string, string> = {
+  authoring_not_ready:
+    "Gold Lab authoring is not ready. Configure it in Settings and restart if required.",
+  authoring_endpoint_unauthorized:
+    "The configured Gold Lab authoring server is not authorized by the active network policy.",
+  project_archived: "Archived projects cannot accept this Gold Lab action.",
+  project_status_invalid:
+    "This Gold project is not in a state that allows the requested action.",
+  publication_drift_before_commit:
+    "The workspace publication changed before this action could complete. Refresh and try again.",
+  project_drift_before_commit:
+    "This Gold project changed before the action could complete. Refresh and try again.",
+  zero_reviewable_cases:
+    "No reviewable cases were produced. Adjust the workspace or proposal settings and try again.",
+};
+
 const MISSING_RESOURCE_MESSAGE = "Gold Lab resource not found.";
 
 function isMissingResourceCode(code: string): boolean {
   return code === "not_found" || code.endsWith("_unknown");
+}
+
+function safeReasonFromError(error: unknown): string | null {
+  if (!isApiError(error) || !error.details || typeof error.details !== "object") {
+    return null;
+  }
+  const reason = error.details.reason;
+  return typeof reason === "string" && reason.trim() ? reason.trim() : null;
 }
 
 /**
@@ -35,6 +59,10 @@ function isMissingResourceCode(code: string): boolean {
  */
 export function goldLabErrorMessage(error: unknown): string {
   if (isApiError(error)) {
+    const reason = safeReasonFromError(error);
+    if (reason && SAFE_REASON_MESSAGES[reason]) {
+      return SAFE_REASON_MESSAGES[reason];
+    }
     const mapped = GOLD_LAB_MESSAGES[error.code];
     if (mapped) return mapped;
     if (isMissingResourceCode(error.code)) {

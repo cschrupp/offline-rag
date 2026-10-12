@@ -1,6 +1,8 @@
 import { ApiError, parseErrorEnvelope } from "./errors";
 import { validateSourceListResponse } from "./sourceListValidation";
 import type {
+  AuthoringProbeResult,
+  AuthoringSettingsState,
   Capabilities,
   ConversationPriorTurn,
   ConversationTurnResponse,
@@ -318,6 +320,47 @@ export function saveGenerationSettings(body: {
   active: GenerationSettingsState["active"];
 }> {
   return apiRequest("/v1/settings/generation", {
+    method: "PUT",
+    json: body,
+  });
+}
+
+export function getAuthoringSettings(
+  signal?: AbortSignal,
+): Promise<AuthoringSettingsState> {
+  return apiRequest<AuthoringSettingsState>("/v1/settings/authoring", {
+    signal,
+  });
+}
+
+export function probeAuthoringSettings(body: {
+  enabled: boolean;
+  base_url: string;
+  model: string;
+  timeout_seconds: number;
+  api_key?: string | null;
+  api_key_action: "keep" | "set" | "clear";
+}): Promise<AuthoringProbeResult> {
+  return apiRequest<AuthoringProbeResult>("/v1/settings/authoring/probe", {
+    method: "POST",
+    json: body,
+  });
+}
+
+export function saveAuthoringSettings(body: {
+  enabled: boolean;
+  base_url: string;
+  model: string;
+  timeout_seconds: number;
+  api_key?: string | null;
+  api_key_action: "keep" | "set" | "clear";
+}): Promise<{
+  saved: boolean;
+  restart_required: boolean;
+  pending: AuthoringSettingsState["pending"];
+  active: AuthoringSettingsState["active"];
+}> {
+  return apiRequest("/v1/settings/authoring", {
     method: "PUT",
     json: body,
   });

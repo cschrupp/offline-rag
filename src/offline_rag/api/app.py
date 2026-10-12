@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from offline_rag.api.authoring_settings import router as authoring_settings_router
 from offline_rag.api.capabilities import router as capabilities_router
 from offline_rag.api.documents import router as documents_router
 from offline_rag.api.errors import register_app_error_handler
@@ -76,6 +77,7 @@ def create_app(
     app.include_router(health_router)
     app.include_router(capabilities_router)
     app.include_router(settings_router)
+    app.include_router(authoring_settings_router)
     app.include_router(documents_router)
     app.include_router(ingest_router)
     app.include_router(query_router)

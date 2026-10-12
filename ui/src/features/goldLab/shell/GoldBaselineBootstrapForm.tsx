@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { getOperation } from "../../../api/client";
+import { getCapabilities, getOperation } from "../../../api/client";
 import { queryKeys } from "../../../api/queryKeys";
 import type { Operation } from "../../../api/types";
 import { Button } from "../../../components/Button";
@@ -48,6 +48,13 @@ export function GoldBaselineBootstrapForm({
   } | null>(null);
   const idempotencyKeyRef = useRef(newIdempotencyKey());
   const lastIntentRef = useRef({ proposalCount: 20, prelabelEnabled: false });
+
+  const capabilitiesQuery = useQuery({
+    queryKey: queryKeys.capabilities,
+    queryFn: ({ signal }) => getCapabilities(signal),
+    retry: false,
+  });
+  const authoringReady = Boolean(capabilitiesQuery.data?.authoring?.ready);
 
   const operationQuery = useQuery({
     queryKey: operationId
@@ -163,6 +170,24 @@ export function GoldBaselineBootstrapForm({
         <p className="muted" role="status">
           Archived projects cannot bootstrap a baseline from the workspace.
         </p>
+      </Card>
+    );
+  }
+
+  if (capabilitiesQuery.isSuccess && !authoringReady) {
+    return (
+      <Card>
+        <h2>Baseline from workspace</h2>
+        <p className="error-box" role="status">
+          Gold Lab authoring is not ready. Configure the authoring server in
+          Settings, apply any required restart, then return here to create a
+          baseline.
+        </p>
+        <div className="row">
+          <Button to="/settings?section=authoring" variant="primary">
+            Configure Gold Lab authoring
+          </Button>
+        </div>
       </Card>
     );
   }
