@@ -2,6 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../api/errors";
+import { authoringReadinessStatusText } from "../features/goldLab/authoringReadinessCopy";
 import { goldLabErrorMessage } from "../features/goldLab/errors/goldLabErrors";
 import {
   errorResponse,
@@ -69,6 +70,37 @@ const authoringState = {
   },
 };
 
+function projectFixture(projectId: string) {
+  return {
+    project_id: projectId,
+    title: "Demo",
+    description: "",
+    project_type: "benchmark",
+    status: "active",
+    workspace_id: "ws_1",
+    created_at: "2026-01-01T00:00:00Z",
+  };
+}
+
+function capabilitiesBody(authoring: unknown) {
+  return {
+    product: { name: "Seneca", descriptor: "x" },
+    source_limits: {
+      max_active_sources: 32,
+      max_bytes_per_source: 1,
+      max_active_source_bytes: 1,
+    },
+    generation: {
+      enabled: true,
+      provider: "openai_compatible",
+      base_url: "http://127.0.0.1:11434/v1",
+      model: "m",
+      timeout_seconds: 120,
+    },
+    ...(authoring === undefined ? {} : { authoring }),
+  };
+}
+
 describe("Slice 16 authoring Settings UX", () => {
   it("exposes dual selectors with aria-pressed and deep-links authoring", async () => {
     const user = userEvent.setup();
@@ -98,6 +130,11 @@ describe("Slice 16 authoring Settings UX", () => {
     expect(
       screen.getAllByText(/Operator controlled/i).length,
     ).toBeGreaterThan(0);
+    expect(
+      screen.getByText(/Gold Lab authoring is disabled/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/model_unset/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/disabled,/i)).not.toBeInTheDocument();
 
     await user.click(generation);
     await screen.findByRole("heading", { name: "Generation server" });
@@ -125,6 +162,43 @@ describe("Slice 16 authoring Settings UX", () => {
       screen.getByRole("button", { name: "Save settings" }),
     ).toBeInTheDocument();
     mock.restore();
+  });
+});
+
+describe("authoring readiness product language", () => {
+  it("maps known codes and never echoes unknown identifiers", () => {
+    expect(
+      authoringReadinessStatusText({
+        ready: true,
+        reasonCodes: ["disabled"],
+      }),
+    ).toBe("Gold Lab authoring is ready.");
+
+    expect(
+      authoringReadinessStatusText({
+        ready: false,
+        reasonCodes: ["disabled", "model_unset"],
+      }),
+    ).toMatch(/disabled/i);
+    expect(
+      authoringReadinessStatusText({
+        ready: false,
+        reasonCodes: ["disabled", "model_unset"],
+      }),
+    ).toMatch(/No authoring model is configured/i);
+    expect(
+      authoringReadinessStatusText({
+        ready: false,
+        reasonCodes: ["disabled", "model_unset"],
+      }),
+    ).not.toMatch(/model_unset/);
+
+    expect(
+      authoringReadinessStatusText({
+        ready: false,
+        reasonCodes: ["totally_unknown_code"],
+      }),
+    ).toBe("Gold Lab authoring is not ready.");
   });
 });
 
@@ -174,37 +248,114 @@ describe("Gold Lab authoring readiness + reason mapping", () => {
       ),
     ).toMatch(/changed since you last loaded it/i);
   });
+});
 
-  it("disables baseline bootstrap and links to authoring Settings when not ready", async () => {
-    const projectId = `goldproj_${"a".repeat(32)}`;
-    const project = {
-      project_id: projectId,
-      title: "Demo",
-      description: "",
-      project_type: "benchmark",
-      status: "active",
-      workspace_id: "ws_1",
-      created_at: "2026-01-01T00:00:00Z",
-    };
+describe("Gold baseline bootstrap fail-closed readiness", () => {
+  it("loading: shows checking status and no create action", async () => {
+    const projectId = `goldproj_${"b".repeat(32)}`;
+    let resolveCaps: ((value: Response) => void) | null = null;
     const mock = installFetchMock(async ({ url }) => {
       if (url === "/health/ready") return jsonResponse({ status: "ready" });
       if (url === "/v1/workspaces") return jsonResponse([]);
       if (url === "/v1/capabilities") {
-        return jsonResponse({
-          product: { name: "Seneca", descriptor: "x" },
-          source_limits: {
-            max_active_sources: 32,
-            max_bytes_per_source: 1,
-            max_active_source_bytes: 1,
-          },
-          generation: {
-            enabled: true,
-            provider: "openai_compatible",
-            base_url: "http://127.0.0.1:11434/v1",
-            model: "m",
-            timeout_seconds: 120,
-          },
-          authoring: {
+        return await new Promise<Response>((resolve) => {
+          resolveCaps = resolve;
+        });
+      }
+      if (url === `/v1/gold-lab/projects/${projectId}`) {
+        return jsonResponse(projectFixture(projectId));
+      }
+      if (url.endsWith("/baselines")) return jsonResponse({ baselines: [] });
+      if (url.endsWith("/campaigns")) return jsonResponse({ campaigns: [] });
+      return errorResponse("not_found", "x", 404);
+    });
+    renderApp(`/gold-lab/projects/${projectId}`);
+    await screen.findByText(/Checking Gold Lab authoring readiness/i);
+    expect(
+      screen.queryByRole("button", {
+        name: /Create baseline from workspace/i,
+      }),
+    ).not.toBeInTheDocument();
+    resolveCaps?.(
+      jsonResponse(
+        capabilitiesBody({
+          enabled: true,
+          provider: "openai_compatible",
+          base_url: "http://127.0.0.1:11434/v1",
+          model: "m",
+          timeout_seconds: 120,
+          ready: true,
+          reason_codes: [],
+        }),
+      ),
+    );
+    await screen.findByRole("button", {
+      name: /Create baseline from workspace/i,
+    });
+    mock.restore();
+  });
+
+  it("capabilities error: blocks create and offers retry", async () => {
+    const projectId = `goldproj_${"c".repeat(32)}`;
+    const mock = installFetchMock(async ({ url }) => {
+      if (url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (url === "/v1/workspaces") return jsonResponse([]);
+      if (url === "/v1/capabilities") {
+        return errorResponse("internal_error", "boom", 500);
+      }
+      if (url === `/v1/gold-lab/projects/${projectId}`) {
+        return jsonResponse(projectFixture(projectId));
+      }
+      if (url.endsWith("/baselines")) return jsonResponse({ baselines: [] });
+      if (url.endsWith("/campaigns")) return jsonResponse({ campaigns: [] });
+      return errorResponse("not_found", "x", 404);
+    });
+    renderApp(`/gold-lab/projects/${projectId}`);
+    await screen.findByText(/readiness could not be checked/i);
+    expect(
+      screen.getByRole("button", { name: /Retry readiness check/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: /Create baseline from workspace/i,
+      }),
+    ).not.toBeInTheDocument();
+    mock.restore();
+  });
+
+  it("missing authoring capability: blocks create", async () => {
+    const projectId = `goldproj_${"d".repeat(32)}`;
+    const mock = installFetchMock(async ({ url }) => {
+      if (url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (url === "/v1/workspaces") return jsonResponse([]);
+      if (url === "/v1/capabilities") {
+        return jsonResponse(capabilitiesBody(undefined));
+      }
+      if (url === `/v1/gold-lab/projects/${projectId}`) {
+        return jsonResponse(projectFixture(projectId));
+      }
+      if (url.endsWith("/baselines")) return jsonResponse({ baselines: [] });
+      if (url.endsWith("/campaigns")) return jsonResponse({ campaigns: [] });
+      return errorResponse("not_found", "x", 404);
+    });
+    renderApp(`/gold-lab/projects/${projectId}`);
+    await screen.findByText(/readiness is unavailable/i);
+    expect(
+      screen.queryByRole("button", {
+        name: /Create baseline from workspace/i,
+      }),
+    ).not.toBeInTheDocument();
+    mock.restore();
+  });
+
+  it("ready=false: Settings CTA and no create action", async () => {
+    const projectId = `goldproj_${"e".repeat(32)}`;
+    const mock = installFetchMock(async ({ url }) => {
+      if (url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (url === "/v1/workspaces") return jsonResponse([]);
+      if (url === "/v1/capabilities") {
+        return jsonResponse(
+          capabilitiesBody({
             enabled: false,
             provider: "openai_compatible",
             base_url: "http://127.0.0.1:11434/v1",
@@ -212,11 +363,11 @@ describe("Gold Lab authoring readiness + reason mapping", () => {
             timeout_seconds: 120,
             ready: false,
             reason_codes: ["disabled"],
-          },
-        });
+          }),
+        );
       }
       if (url === `/v1/gold-lab/projects/${projectId}`) {
-        return jsonResponse(project);
+        return jsonResponse(projectFixture(projectId));
       }
       if (url.endsWith("/baselines")) return jsonResponse({ baselines: [] });
       if (url.endsWith("/campaigns")) return jsonResponse({ campaigns: [] });
@@ -238,6 +389,38 @@ describe("Gold Lab authoring readiness + reason mapping", () => {
         name: /Create baseline from workspace/i,
       }),
     ).not.toBeInTheDocument();
+    mock.restore();
+  });
+
+  it("ready=true: renders bootstrap form", async () => {
+    const projectId = `goldproj_${"f".repeat(32)}`;
+    const mock = installFetchMock(async ({ url }) => {
+      if (url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (url === "/v1/workspaces") return jsonResponse([]);
+      if (url === "/v1/capabilities") {
+        return jsonResponse(
+          capabilitiesBody({
+            enabled: true,
+            provider: "openai_compatible",
+            base_url: "http://127.0.0.1:11434/v1",
+            model: "m",
+            timeout_seconds: 120,
+            ready: true,
+            reason_codes: [],
+          }),
+        );
+      }
+      if (url === `/v1/gold-lab/projects/${projectId}`) {
+        return jsonResponse(projectFixture(projectId));
+      }
+      if (url.endsWith("/baselines")) return jsonResponse({ baselines: [] });
+      if (url.endsWith("/campaigns")) return jsonResponse({ campaigns: [] });
+      return errorResponse("not_found", "x", 404);
+    });
+    renderApp(`/gold-lab/projects/${projectId}`);
+    await screen.findByRole("button", {
+      name: /Create baseline from workspace/i,
+    });
     mock.restore();
   });
 });

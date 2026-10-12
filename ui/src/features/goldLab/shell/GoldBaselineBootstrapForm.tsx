@@ -54,7 +54,12 @@ export function GoldBaselineBootstrapForm({
     queryFn: ({ signal }) => getCapabilities(signal),
     retry: false,
   });
-  const authoringReady = Boolean(capabilitiesQuery.data?.authoring?.ready);
+  const authoringCapability = capabilitiesQuery.data?.authoring;
+  const authoringReady =
+    capabilitiesQuery.isSuccess &&
+    authoringCapability != null &&
+    typeof authoringCapability === "object" &&
+    authoringCapability.ready === true;
 
   const operationQuery = useQuery({
     queryKey: operationId
@@ -174,7 +179,72 @@ export function GoldBaselineBootstrapForm({
     );
   }
 
-  if (capabilitiesQuery.isSuccess && !authoringReady) {
+  // Fail closed: only ready===true enables bootstrap creation.
+  if (capabilitiesQuery.isPending) {
+    return (
+      <Card>
+        <h2>Baseline from workspace</h2>
+        <p className="muted" role="status">
+          Checking Gold Lab authoring readiness…
+        </p>
+      </Card>
+    );
+  }
+
+  if (capabilitiesQuery.isError) {
+    return (
+      <Card>
+        <h2>Baseline from workspace</h2>
+        <p className="error-box" role="status">
+          Gold Lab authoring readiness could not be checked. Reload this page
+          and try again. Baseline creation stays disabled until readiness is
+          confirmed.
+        </p>
+        <div className="row">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              void capabilitiesQuery.refetch();
+            }}
+          >
+            Retry readiness check
+          </Button>
+        </div>
+      </Card>
+    );
+  }
+
+  if (
+    !capabilitiesQuery.isSuccess ||
+    authoringCapability == null ||
+    typeof authoringCapability !== "object" ||
+    !("ready" in authoringCapability)
+  ) {
+    return (
+      <Card>
+        <h2>Baseline from workspace</h2>
+        <p className="error-box" role="status">
+          Gold Lab authoring readiness is unavailable from this installation.
+          Reload the page. Baseline creation stays disabled until readiness is
+          confirmed.
+        </p>
+        <div className="row">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              void capabilitiesQuery.refetch();
+            }}
+          >
+            Retry readiness check
+          </Button>
+        </div>
+      </Card>
+    );
+  }
+
+  if (!authoringReady) {
     return (
       <Card>
         <h2>Baseline from workspace</h2>

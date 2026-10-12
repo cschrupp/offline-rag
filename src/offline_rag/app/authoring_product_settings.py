@@ -271,14 +271,20 @@ def build_validated_authoring_product_record(
 def authoring_field_locks(
     environ: Mapping[str, str] | None = None,
 ) -> dict[str, bool]:
-    """Return which authoring Settings fields are operator-locked by env."""
+    """Return which authoring Settings fields are operator-locked by env.
+
+    For ``OFFLINE_RAG_AUTHORING_API_KEY``, variable *presence* is authority —
+    including an empty value, which means operator-controlled explicit no-key.
+    Absence of the variable leaves product Settings free to keep/set/clear.
+    """
     env = environ if environ is not None else os.environ
     locks = {
         "enabled": bool(env.get("OFFLINE_RAG_AUTHORING_ENABLED")),
         "base_url": bool(env.get("OFFLINE_RAG_AUTHORING_BASE_URL")),
         "model": bool(env.get("OFFLINE_RAG_AUTHORING_MODEL")),
         "timeout_seconds": bool(env.get("OFFLINE_RAG_AUTHORING_TIMEOUT_SECONDS")),
-        "api_key": bool(env.get("OFFLINE_RAG_AUTHORING_API_KEY")),
+        # Presence semantics: empty string is still operator-owned.
+        "api_key": "OFFLINE_RAG_AUTHORING_API_KEY" in env,
         "network_policy": bool(env.get("OFFLINE_RAG_AUTHORING_NETWORK_POLICY")),
     }
     if env.get("OFFLINE_RAG_AUTHORING_APPROVED_ENDPOINTS"):

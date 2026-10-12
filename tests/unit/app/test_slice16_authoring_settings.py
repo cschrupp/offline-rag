@@ -208,6 +208,90 @@ def test_authoring_field_locks() -> None:
     assert locks["timeout_seconds"] is True
 
 
+def test_authoring_api_key_env_presence_authority(tmp_path: Path) -> None:
+    """Absent vs nonempty vs empty AUTHORING_API_KEY ownership."""
+    absent = authoring_field_locks({})
+    assert absent["api_key"] is False
+
+    nonempty = authoring_field_locks({"OFFLINE_RAG_AUTHORING_API_KEY": "secret"})
+    assert nonempty["api_key"] is True
+
+    empty = authoring_field_locks({"OFFLINE_RAG_AUTHORING_API_KEY": ""})
+    assert empty["api_key"] is True
+
+    data_dir = tmp_path / "data"
+    product_dir = data_dir / "settings"
+    write_product_authoring_settings(
+        product_dir,
+        SenecaAuthoringSettingsFile(
+            authoring=SenecaAuthoringBody(
+                enabled=True,
+                base_url=APPROVED_ENDPOINT,
+                model=APPROVED_MODEL,
+                timeout_seconds=120,
+                api_key="product-secret",
+                network_policy="localhost_only",
+            )
+        ),
+        manage_api_key=True,
+    )
+
+    # Empty env key wins over product key (explicit operator no-key).
+    cleared = load_settings(
+        yaml_paths=[BASE_YAML],
+        environ={
+            "OFFLINE_RAG_DATA_DIR": str(data_dir),
+            "OFFLINE_RAG_STRICT_OFFLINE": "true",
+            "OFFLINE_RAG_AUTHORING_API_KEY": "",
+        },
+    )
+    assert cleared.authoring.api_key is None
+
+    # Nonempty env key wins over product key.
+    owned = load_settings(
+        yaml_paths=[BASE_YAML],
+        environ={
+            "OFFLINE_RAG_DATA_DIR": str(data_dir),
+            "OFFLINE_RAG_STRICT_OFFLINE": "true",
+            "OFFLINE_RAG_AUTHORING_API_KEY": "env-secret",
+        },
+    )
+    assert owned.authoring.api_key == "env-secret"
+
+
+def test_empty_env_api_key_no_perpetual_pending(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Empty env API key locks ownership; product cannot invent restart/pending key."""
+    monkeypatch.setenv("OFFLINE_RAG_AUTHORING_API_KEY", "")
+    settings = _settings(
+        tmp_path,
+        environ={"OFFLINE_RAG_AUTHORING_API_KEY": ""},
+    )
+    write_product_authoring_settings(
+        settings.paths.product_settings,
+        SenecaAuthoringSettingsFile(
+            authoring=SenecaAuthoringBody(
+                enabled=bool(settings.authoring.enabled),
+                base_url=None,
+                model=None,
+                timeout_seconds=int(settings.authoring.timeout_seconds),
+                api_key="should-not-become-pending",
+                network_policy=None,
+            )
+        ),
+        manage_api_key=True,
+    )
+    with _client(settings) as client:
+        body = client.get("/v1/settings/authoring").json()
+    assert body["locks"]["api_key"] is True
+    assert body["active"]["api_key_configured"] is False
+    # Locked empty env key means product secret must not appear as pending key.
+    if body["pending"] is not None:
+        assert body["pending"]["api_key_configured"] is False
+    assert "should-not-become-pending" not in json.dumps(body)
+
+
 def test_public_endpoint_rejected_under_strict_offline(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="public_endpoint_forbidden"):
         build_validated_authoring_product_record(

@@ -19,6 +19,7 @@ import type {
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { TextInput } from "../components/Field";
+import { authoringReadinessStatusText } from "../features/goldLab/authoringReadinessCopy";
 
 type SettingsSection = "generation" | "authoring";
 
@@ -366,14 +367,10 @@ function AuthoringSettingsForm({ state }: AuthoringFormProps) {
           not create Gold labels.
         </p>
         <p className="muted" role="status">
-          Active readiness:{" "}
-          {readiness.ready
-            ? "READY"
-            : `NOT READY${
-                readiness.reason_codes.length
-                  ? ` (${readiness.reason_codes.join(", ")})`
-                  : ""
-              }`}
+          {authoringReadinessStatusText({
+            ready: readiness.ready,
+            reasonCodes: readiness.reason_codes,
+          })}
         </p>
         {anySelectionLocked ? (
           <p className="muted" role="status">
