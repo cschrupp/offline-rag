@@ -227,6 +227,9 @@ class DenseSearchableUnitsSettings(BaseModel):
         return self
 
 
+EmbeddingDevicePolicy = Literal["auto", "cpu", "cuda"]
+
+
 class EmbeddingModelSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -237,7 +240,8 @@ class EmbeddingModelSettings(BaseModel):
     normalize: bool = True
     adapter_contract: NonEmptyStr = "sentence-transformers-v1"
     batch_size: PositiveInt = 32
-    device: NonEmptyStr = "cpu"
+    # Execution policy only — never participates in embedding/index identity hashes.
+    device: EmbeddingDevicePolicy = "auto"
     query_instruction: str | None = None
     document_instruction: str | None = None
 

@@ -85,12 +85,17 @@ GAP-16G-02:
   Independent review: 16H-IR-003 — ACCEPT
   Human acceptance: 16H-HA-001 — ACCEPTED
   Exact Human-accepted subject: 01a4a984d438d5bb7c4e3d0fa2f5bb908e0b4a10
-16I: AUTHORIZED / IN PROGRESS
+16I: COMPLETE / ACCEPTED
+  Independent review: S16-I-MANAGED-OP-PROGRESS-IR-003 — ACCEPT
   Authority: S16-I-MANAGED-OP-PROGRESS-AUTH-001
+  Exact accepted candidate: a3e65ce4bfa698f49e3aa21c4c5a7ddb0ea356a5
 16J: PLANNED / NOT AUTHORIZED
   Seneca public-surface branding cleanup
 16K: PLANNED / NOT AUTHORIZED
   First-user corpus capacity model + empirical validation
+16L: AUTHORIZED / IN PROGRESS
+  Authority: S16-L-EMBEDDING-AUTO-DEVICE-UX-AUTH-002
+  Embedding accelerator auto-selection + Compute settings
 9G: DEFERRED / NOT AUTHORIZED
 SLICE 16: IN PROGRESS / NOT COMPLETE
 BASELINE: 1610f9282d1edbd4dfc8ae76d7644a1b9ea4e75e

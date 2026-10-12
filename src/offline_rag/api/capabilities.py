@@ -1,4 +1,4 @@
-"""Read-only product capabilities (Slice 16D-A)."""
+"""Read-only product capabilities (Slice 16D-A / 16L)."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import APIRouter, Request
 
 from offline_rag.app.runtime import ApplicationRuntime
+from offline_rag.dense.embedder import embedder_runtime_view
 from offline_rag.gold_authoring.readiness import evaluate_authoring_readiness
 
 router = APIRouter(tags=["capabilities"])
@@ -25,7 +26,33 @@ def get_capabilities(request: Request) -> dict[str, Any]:
     gen = settings.generation
     auth = settings.authoring
     api = settings.api
+    emb = settings.indexing.embedding
     readiness = evaluate_authoring_readiness(settings)
+    embedding_block: dict[str, Any] = {
+        "model": str(emb.model_id),
+        "configured_device": str(emb.device),
+        "batch_size": int(emb.batch_size),
+    }
+    # ACTIVE device authority is the process-owned embedder — never recompute here.
+    if runtime.resources is not None and runtime.resources.embedder is not None:
+        view = embedder_runtime_view(runtime.resources.embedder)
+        embedding_block.update(
+            {
+                "active_device": view["active_device"],
+                "cuda_available": view["cuda_available"],
+                "torch_cuda_build": view["torch_cuda_build"],
+                "selection_reason": view["selection_reason"],
+            }
+        )
+    else:
+        embedding_block.update(
+            {
+                "active_device": None,
+                "cuda_available": None,
+                "torch_cuda_build": None,
+                "selection_reason": None,
+            }
+        )
     return {
         "product": {
             "name": "Seneca",
@@ -53,4 +80,5 @@ def get_capabilities(request: Request) -> dict[str, Any]:
             "reason_codes": list(readiness.reason_codes),
             "api_key_configured": bool(auth.api_key),
         },
+        "embedding": embedding_block,
     }

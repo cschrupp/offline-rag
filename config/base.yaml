@@ -88,7 +88,7 @@ indexing:
     normalize: true
     adapter_contract: sentence-transformers-v1
     batch_size: 32
-    device: cpu
+    device: auto
 
 lexical:
   enabled: true

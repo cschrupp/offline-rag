@@ -144,6 +144,47 @@ export type Capabilities = {
     reason_codes: string[];
     api_key_configured?: boolean;
   };
+  embedding?: {
+    model: string;
+    configured_device: string;
+    active_device: string | null;
+    batch_size: number;
+    cuda_available: boolean | null;
+    torch_cuda_build: string | null;
+    selection_reason: string | null;
+  };
+};
+
+export type EmbeddingDevicePolicy = "auto" | "cpu" | "cuda";
+
+export type ComputeSettingsSnapshot = {
+  embedding_device: EmbeddingDevicePolicy;
+};
+
+export type ComputeSettingsLocks = {
+  embedding_device: boolean;
+};
+
+export type ComputeRuntimeView = {
+  active_device: string | null;
+  cuda_available: boolean | null;
+  torch_cuda_build: string | null;
+  selection_reason: string | null;
+};
+
+export type ComputeAvailability = {
+  auto: { available: boolean };
+  cpu: { available: boolean };
+  cuda: { available: boolean; reason: string | null };
+};
+
+export type ComputeSettingsState = {
+  active: ComputeSettingsSnapshot;
+  pending: ComputeSettingsSnapshot | null;
+  restart_required: boolean;
+  locks: ComputeSettingsLocks;
+  runtime: ComputeRuntimeView;
+  availability: ComputeAvailability;
 };
 
 export type GenerationSettingsSnapshot = {

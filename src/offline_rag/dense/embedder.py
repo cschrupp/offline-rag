@@ -80,6 +80,7 @@ class FakeEmbedder:
         dimension: int = 8,
         normalize: bool = True,
         query_text_contract: str = RAW_QUERY_V1,
+        configured_device: str = "auto",
     ) -> None:
         if dimension <= 0:
             raise ValueError("dimension must be positive")
@@ -90,6 +91,13 @@ class FakeEmbedder:
         self.dimension = dimension
         self.normalize = normalize
         self.query_text_contract = query_text_contract
+        # Safe test-backend diagnostics (do not import torch).
+        self.configured_device = configured_device
+        self.resolved_device = "test"
+        self.device = "test"
+        self.cuda_available: bool | None = None
+        self.torch_cuda_build: str | None = None
+        self.device_selection_reason = "test_backend"
 
     def embed_documents(self, texts: Sequence[str]) -> list[list[float]]:
         return [self._embed_one(text) for text in texts]
@@ -123,13 +131,27 @@ class SentenceTransformersEmbedder:
         document_instruction: str | None = None,
         expected_dimension: int | None = None,
         query_text_contract: str = RAW_QUERY_V1,
+        configured_device: str = "cpu",
+        cuda_available: bool = False,
+        torch_cuda_build: str | None = None,
+        device_selection_reason: str = "explicit_cpu",
     ) -> None:
+        if device not in {"cpu", "cuda"}:
+            raise EmbedderError(
+                f"SentenceTransformersEmbedder requires resolved device "
+                f"'cpu' or 'cuda'; got {device!r}"
+            )
         self.model_path = Path(model_path).expanduser().resolve()
         self.model_id = model_id
         self.model_revision = model_revision
         self.dimension = dimension
         self.normalize = normalize
         self.device = device
+        self.resolved_device = device
+        self.configured_device = configured_device
+        self.cuda_available = cuda_available
+        self.torch_cuda_build = torch_cuda_build
+        self.device_selection_reason = device_selection_reason
         self.batch_size = batch_size
         self.query_instruction = query_instruction
         self.document_instruction = document_instruction
@@ -234,7 +256,13 @@ class EmbedderError(RuntimeError):
 
 
 def make_embedder(settings: AppSettings) -> Embedder:
-    """Construct the configured embedder (fake never silently substitutes)."""
+    """Construct the configured embedder (fake never silently substitutes).
+
+    Resolves embedding device policy once at construction. SentenceTransformer
+    never receives ``device="auto"``.
+    """
+    from offline_rag.dense.device import resolve_embedding_device
+
     emb = settings.indexing.embedding
     query = settings.dense.query_text
     query_contract = resolve_query_text_contract(
@@ -251,10 +279,12 @@ def make_embedder(settings: AppSettings) -> Embedder:
             dimension=emb.dimension,
             normalize=emb.normalize,
             query_text_contract=query_contract,
+            configured_device=str(emb.device),
         )
     if emb.implementation != "sentence_transformers":
         raise EmbedderError(f"unsupported embedding implementation: {emb.implementation}")
 
+    resolution = resolve_embedding_device(emb.device)
     model_dir = resolve_embedding_model_dir(
         embedding_artifacts_root=settings.paths.embedding_artifacts,
         model_path=settings.dense.model_path,
@@ -265,10 +295,27 @@ def make_embedder(settings: AppSettings) -> Embedder:
         model_revision=emb.revision,
         dimension=emb.dimension,
         normalize=emb.normalize,
-        device=emb.device,
+        device=resolution.resolved_device,
         batch_size=emb.batch_size,
         query_instruction=emb.query_instruction,
         document_instruction=emb.document_instruction,
         expected_dimension=emb.dimension,
         query_text_contract=query_contract,
+        configured_device=resolution.configured_device,
+        cuda_available=resolution.cuda_available,
+        torch_cuda_build=resolution.torch_cuda_build,
+        device_selection_reason=resolution.selection_reason,
     )
+
+
+def embedder_runtime_view(embedder: object) -> dict[str, object | None]:
+    """Safe runtime diagnostics from the process-owned embedder."""
+    configured = getattr(embedder, "configured_device", None)
+    resolved = getattr(embedder, "resolved_device", getattr(embedder, "device", None))
+    return {
+        "configured_device": configured,
+        "active_device": resolved,
+        "cuda_available": getattr(embedder, "cuda_available", None),
+        "torch_cuda_build": getattr(embedder, "torch_cuda_build", None),
+        "selection_reason": getattr(embedder, "device_selection_reason", None),
+    }

@@ -3,6 +3,7 @@ export const queryKeys = {
   capabilities: ["capabilities"] as const,
   generationSettings: ["settings", "generation"] as const,
   authoringSettings: ["settings", "authoring"] as const,
+  computeSettings: ["settings", "compute"] as const,
   workspaces: ["workspaces"] as const,
   workspace: (workspaceId: string) => ["workspace", workspaceId] as const,
   workspaceSources: (workspaceId: string) =>

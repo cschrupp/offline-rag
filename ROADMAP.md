@@ -514,13 +514,18 @@ SLICE 15  COMPLETE / ACCEPTED
        IR-003 ACCEPT
        16H-HA-001 — ACCEPTED
        EXACT HUMAN-ACCEPTED SUBJECT 01a4a984d438d5bb7c4e3d0fa2f5bb908e0b4a10
-     16I AUTHORIZED / IN PROGRESS
+     16I COMPLETE / ACCEPTED
+       IR-003 ACCEPT
        Authority: S16-I-MANAGED-OP-PROGRESS-AUTH-001
+       Exact accepted candidate: a3e65ce4bfa698f49e3aa21c4c5a7ddb0ea356a5
        Managed-operation progress telemetry
      16J PLANNED / NOT AUTHORIZED
        Seneca public-surface branding cleanup
      16K PLANNED / NOT AUTHORIZED
        First-user corpus capacity model + empirical validation
+     16L AUTHORIZED / IN PROGRESS
+       Authority: S16-L-EMBEDDING-AUTO-DEVICE-UX-AUTH-002
+       Embedding accelerator auto-selection + Compute settings
      9G DEFERRED / NOT AUTHORIZED
      Slice 16 overall IN PROGRESS / NOT COMPLETE
      Authority: docs/slice16_design_authority.md

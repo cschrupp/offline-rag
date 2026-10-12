@@ -7,6 +7,8 @@ import type {
   ConversationPriorTurn,
   ConversationTurnResponse,
   GenerationProbeResult,
+  ComputeSettingsState,
+  EmbeddingDevicePolicy,
   GenerationSettingsState,
   HealthReady,
   Operation,
@@ -330,6 +332,29 @@ export function getAuthoringSettings(
 ): Promise<AuthoringSettingsState> {
   return apiRequest<AuthoringSettingsState>("/v1/settings/authoring", {
     signal,
+  });
+}
+
+export function getComputeSettings(
+  signal?: AbortSignal,
+): Promise<ComputeSettingsState> {
+  return apiRequest<ComputeSettingsState>("/v1/settings/compute", { signal });
+}
+
+export function saveComputeSettings(body: {
+  embedding_device: EmbeddingDevicePolicy;
+}): Promise<{
+  saved: boolean;
+  restart_required: boolean;
+  pending: ComputeSettingsState["pending"];
+  active: ComputeSettingsState["active"];
+  runtime: ComputeSettingsState["runtime"];
+  availability: ComputeSettingsState["availability"];
+  locks: ComputeSettingsState["locks"];
+}> {
+  return apiRequest("/v1/settings/compute", {
+    method: "PUT",
+    json: body,
   });
 }
 

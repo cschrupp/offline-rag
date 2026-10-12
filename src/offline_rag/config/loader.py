@@ -1,8 +1,8 @@
 """Configuration loading with explicit precedence and no network access.
 
 Precedence (later wins):
-  built-in defaults < YAML < Seneca product generation settings <
-  environment/operator overrides < explicit programmatic overrides
+  built-in defaults < YAML < Seneca product settings (generation / authoring /
+  compute) < environment/operator overrides < explicit programmatic overrides
 """
 
 from __future__ import annotations
@@ -60,6 +60,7 @@ _ENV_FIELD_MAP: dict[str, tuple[str, ...]] = {
     "DOCLING_ARTIFACTS_PATH": ("paths", "docling_artifacts"),
     "TOKENIZER_ARTIFACTS_PATH": ("paths", "tokenizer_artifacts"),
     "EMBEDDING_ARTIFACTS_PATH": ("paths", "embedding_artifacts"),
+    "EMBEDDING_DEVICE": ("indexing", "embedding", "device"),
     "RERANKER_ARTIFACTS_PATH": ("paths", "reranker_artifacts"),
     "EVAL_RESULTS": ("paths", "eval_results"),
     "LOG_LEVEL": ("logging", "level"),
@@ -315,6 +316,9 @@ def load_settings(
     from offline_rag.app.authoring_product_settings import (
         authoring_overlay_from_product_settings,
     )
+    from offline_rag.app.compute_product_settings import (
+        compute_overlay_from_product_settings,
+    )
     from offline_rag.app.product_settings import (
         generation_overlay_from_product_settings,
         resolve_product_settings_dir,
@@ -349,6 +353,13 @@ def load_settings(
         raise ConfigError(f"invalid Seneca authoring product settings: {exc}") from exc
     if authoring_overlay:
         payload = _deep_merge(payload, authoring_overlay)
+
+    try:
+        compute_overlay = compute_overlay_from_product_settings(product_dir)
+    except ValueError as exc:
+        raise ConfigError(f"invalid Seneca compute product settings: {exc}") from exc
+    if compute_overlay:
+        payload = _deep_merge(payload, compute_overlay)
 
     env_payload = env_overrides(env)
     _coerce_list_env_fields(env_payload)

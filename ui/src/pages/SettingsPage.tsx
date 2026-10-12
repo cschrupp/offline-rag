@@ -4,16 +4,20 @@ import type { FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   getAuthoringSettings,
+  getComputeSettings,
   getGenerationSettings,
   probeAuthoringSettings,
   probeGenerationSettings,
   saveAuthoringSettings,
+  saveComputeSettings,
   saveGenerationSettings,
 } from "../api/client";
 import { userFacingErrorMessage } from "../api/errors";
 import { queryKeys } from "../api/queryKeys";
 import type {
   AuthoringSettingsState,
+  ComputeSettingsState,
+  EmbeddingDevicePolicy,
   GenerationSettingsState,
 } from "../api/types";
 import { Button } from "../components/Button";
@@ -21,10 +25,38 @@ import { Card } from "../components/Card";
 import { TextInput } from "../components/Field";
 import { authoringReadinessStatusText } from "../features/goldLab/authoringReadinessCopy";
 
-type SettingsSection = "generation" | "authoring";
+type SettingsSection = "generation" | "authoring" | "compute";
 
 function parseSection(raw: string | null): SettingsSection {
-  return raw === "authoring" ? "authoring" : "generation";
+  if (raw === "authoring") return "authoring";
+  if (raw === "compute") return "compute";
+  return "generation";
+}
+
+function policyLabel(policy: EmbeddingDevicePolicy): string {
+  if (policy === "auto") return "Auto";
+  if (policy === "cuda") return "GPU (CUDA)";
+  return "CPU";
+}
+
+function activeDeviceLabel(device: string | null | undefined): string {
+  if (device === "cuda") return "GPU (CUDA)";
+  if (device === "cpu") return "CPU";
+  if (device === "test") return "Test";
+  return device ?? "Unknown";
+}
+
+function cudaUnavailableCopy(reason: string | null | undefined): string {
+  if (reason === "pytorch_cpu_only") {
+    return "GPU acceleration is unavailable in this Seneca installation.";
+  }
+  if (reason === "cuda_device_unavailable") {
+    return "CUDA support is installed, but no usable GPU is visible to Seneca.";
+  }
+  if (reason === "cuda_probe_failed") {
+    return "Seneca could not verify CUDA availability in this runtime.";
+  }
+  return "GPU acceleration is unavailable in this Seneca installation.";
 }
 
 type GenerationFormProps = {
@@ -527,6 +559,177 @@ function AuthoringSettingsForm({ state }: AuthoringFormProps) {
   );
 }
 
+type ComputeFormProps = {
+  state: ComputeSettingsState;
+};
+
+function ComputeSettingsForm({ state }: ComputeFormProps) {
+  const queryClient = useQueryClient();
+  const view = state.pending ?? state.active;
+  const locked = Boolean(state.locks.embedding_device);
+  const cudaAvailable = Boolean(state.availability.cuda.available);
+  const [policy, setPolicy] = useState<EmbeddingDevicePolicy>(
+    view.embedding_device,
+  );
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const saveMutation = useMutation({
+    mutationFn: () => saveComputeSettings({ embedding_device: policy }),
+    retry: false,
+    onSuccess: async (result) => {
+      setFormError(null);
+      setSaveMessage(
+        result.restart_required
+          ? "Saved. Restart the application to apply pending settings."
+          : "Saved.",
+      );
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.computeSettings,
+      });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.capabilities });
+    },
+    onError: (error) => {
+      setSaveMessage(null);
+      setFormError(userFacingErrorMessage(error));
+    },
+  });
+
+  function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    setSaveMessage(null);
+    saveMutation.mutate();
+  }
+
+  const pytorchLabel =
+    state.runtime.torch_cuda_build != null
+      ? `CUDA ${state.runtime.torch_cuda_build}`
+      : state.runtime.cuda_available === null
+        ? "Test / unavailable"
+        : "CPU only";
+
+  return (
+    <div className="stack">
+      {state.restart_required ? (
+        <p className="error-box" role="status">
+          Restart required. Pending compute settings are saved but not yet
+          active in this running application.
+        </p>
+      ) : null}
+
+      <Card>
+        <h2>Embedding acceleration</h2>
+        <p style={{ margin: 0 }} data-testid="compute-active-device">
+          <strong>Active device</strong>
+          <br />
+          {activeDeviceLabel(state.runtime.active_device)}
+        </p>
+        <p className="muted" style={{ margin: 0 }}>
+          Configured policy: {policyLabel(state.active.embedding_device)}
+          {state.pending
+            ? ` · Pending policy: ${policyLabel(state.pending.embedding_device)}`
+            : ""}
+        </p>
+        <p className="muted" style={{ margin: 0 }}>
+          PyTorch build: {pytorchLabel}
+        </p>
+
+        <form className="stack" onSubmit={onSubmit} style={{ marginTop: "1rem" }}>
+          <fieldset
+            disabled={locked}
+            style={{ border: 0, margin: 0, padding: 0 }}
+          >
+            <legend style={{ fontWeight: 600 }}>
+              Embedding device policy
+              {locked ? (
+                <span className="muted"> — Operator controlled</span>
+              ) : null}
+            </legend>
+            <div
+              className="stack"
+              role="radiogroup"
+              aria-label="Embedding device policy"
+              style={{ gap: "0.75rem", marginTop: "0.75rem" }}
+            >
+              <label className="stack" style={{ gap: "0.15rem" }}>
+                <span className="row" style={{ gap: "0.5rem" }}>
+                  <input
+                    type="radio"
+                    name="embedding-device"
+                    value="auto"
+                    checked={policy === "auto"}
+                    disabled={locked}
+                    onChange={() => setPolicy("auto")}
+                  />
+                  Auto <span className="muted">(Recommended)</span>
+                </span>
+                <span className="muted">
+                  Use GPU when CUDA is available; otherwise use CPU.
+                </span>
+              </label>
+
+              <label className="stack" style={{ gap: "0.15rem" }}>
+                <span className="row" style={{ gap: "0.5rem" }}>
+                  <input
+                    type="radio"
+                    name="embedding-device"
+                    value="cpu"
+                    checked={policy === "cpu"}
+                    disabled={locked}
+                    onChange={() => setPolicy("cpu")}
+                  />
+                  CPU
+                </span>
+                <span className="muted">Always use CPU for embedding.</span>
+              </label>
+
+              <label className="stack" style={{ gap: "0.15rem" }}>
+                <span className="row" style={{ gap: "0.5rem" }}>
+                  <input
+                    type="radio"
+                    name="embedding-device"
+                    value="cuda"
+                    checked={policy === "cuda"}
+                    disabled={locked || !cudaAvailable}
+                    onChange={() => setPolicy("cuda")}
+                  />
+                  GPU (CUDA)
+                </span>
+                <span className="muted">Require CUDA acceleration.</span>
+                {!cudaAvailable ? (
+                  <span className="muted" id="cuda-unavailable-reason">
+                    {cudaUnavailableCopy(state.availability.cuda.reason)}
+                  </span>
+                ) : null}
+              </label>
+            </div>
+          </fieldset>
+
+          {formError ? (
+            <p className="error-box" role="alert">
+              {formError}
+            </p>
+          ) : null}
+          {saveMessage ? (
+            <p className="muted" role="status">
+              {saveMessage}
+            </p>
+          ) : null}
+
+          <div className="row" style={{ gap: "0.5rem" }}>
+            <Button
+              type="submit"
+              disabled={locked || saveMutation.isPending}
+            >
+              Save settings
+            </Button>
+          </div>
+        </form>
+      </Card>
+    </div>
+  );
+}
+
 export function SettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const section = useMemo(
@@ -543,6 +746,11 @@ export function SettingsPage() {
     queryFn: ({ signal }) => getAuthoringSettings(signal),
     enabled: section === "authoring",
   });
+  const computeQuery = useQuery({
+    queryKey: queryKeys.computeSettings,
+    queryFn: ({ signal }) => getComputeSettings(signal),
+    enabled: section === "compute",
+  });
 
   function selectSection(next: SettingsSection) {
     const params = new URLSearchParams(searchParams);
@@ -554,27 +762,23 @@ export function SettingsPage() {
     setSearchParams(params, { replace: true });
   }
 
-  const loading =
-    section === "generation"
-      ? generationQuery.isLoading
-      : authoringQuery.isLoading;
-  const errored =
-    section === "generation"
-      ? generationQuery.isError || !generationQuery.data
-      : authoringQuery.isError || !authoringQuery.data;
+  const activeQuery =
+    section === "authoring"
+      ? authoringQuery
+      : section === "compute"
+        ? computeQuery
+        : generationQuery;
 
-  if (loading) {
+  if (activeQuery.isLoading) {
     return <p className="muted">Loading settings…</p>;
   }
 
-  if (errored) {
-    const error =
-      section === "generation" ? generationQuery.error : authoringQuery.error;
+  if (activeQuery.isError || !activeQuery.data) {
     return (
       <Card>
         <h1>Settings unavailable</h1>
         <p className="error-box" role="alert">
-          {userFacingErrorMessage(error ?? new Error("Missing"))}
+          {userFacingErrorMessage(activeQuery.error ?? new Error("Missing"))}
         </p>
       </Card>
     );
@@ -596,20 +800,30 @@ export function SettingsPage() {
         authoringQuery.data.pending?.model ?? "",
       ].join(":")
     : "authoring";
+  const computeKey = computeQuery.data
+    ? [
+        computeQuery.dataUpdatedAt,
+        computeQuery.data.restart_required ? "1" : "0",
+        computeQuery.data.active.embedding_device,
+        computeQuery.data.pending?.embedding_device ?? "",
+        computeQuery.data.runtime.active_device ?? "",
+      ].join(":")
+    : "compute";
 
   const strictOffline =
     section === "generation"
       ? Boolean(generationQuery.data?.strict_offline)
-      : Boolean(authoringQuery.data?.strict_offline);
+      : section === "authoring"
+        ? Boolean(authoringQuery.data?.strict_offline)
+        : false;
 
   return (
     <div className="stack">
       <header className="stack" style={{ gap: "0.35rem" }}>
         <h1 style={{ margin: 0 }}>Settings</h1>
         <p className="muted" style={{ margin: 0 }}>
-          Configure local OpenAI-compatible servers used by Seneca. Answer
-          generation and Gold Lab authoring remain independent. Scientific
-          retrieval settings are not editable here.
+          Configure Seneca runtime services and local compute preferences.
+          Retrieval scientific contracts remain protected.
         </p>
       </header>
 
@@ -635,6 +849,14 @@ export function SettingsPage() {
         >
           Gold Lab authoring
         </Button>
+        <Button
+          type="button"
+          variant={section === "compute" ? "primary" : "secondary"}
+          aria-pressed={section === "compute"}
+          onClick={() => selectSection("compute")}
+        >
+          Compute
+        </Button>
       </div>
 
       {strictOffline ? (
@@ -652,6 +874,9 @@ export function SettingsPage() {
       ) : null}
       {section === "authoring" && authoringQuery.data ? (
         <AuthoringSettingsForm key={authoringKey} state={authoringQuery.data} />
+      ) : null}
+      {section === "compute" && computeQuery.data ? (
+        <ComputeSettingsForm key={computeKey} state={computeQuery.data} />
       ) : null}
 
       {section === "authoring" ? (
