@@ -1,0 +1,144 @@
+{
+  "contract": "slice16h-rendered-browser-evidence-v1",
+  "runtime": "Cursor IDE browser (Chromium CDP) against Vite http://127.0.0.1:5173 with API http://127.0.0.1:8080",
+  "workspace_id": "ws_1f0faad69b9041e7aa6c60190538ba7d",
+  "contrast_samples_from_computed_styles": {
+    "body_text_on_page": {
+      "ratio": 15.19,
+      "aa_normal_4_5": true
+    },
+    "h1_on_page": {
+      "ratio": 15.56,
+      "aa_normal_4_5": true
+    },
+    "nav_link_on_header": {
+      "ratio": 16.69,
+      "aa_normal_4_5": true
+    }
+  },
+  "viewports": [
+    {
+      "surface": "overview",
+      "size": [
+        1440,
+        900
+      ],
+      "overflowX": false,
+      "header": true,
+      "navLinks": [
+        "Overview",
+        "Workspaces",
+        "Gold Lab",
+        "Engineering",
+        "Settings"
+      ],
+      "skipLink": true
+    },
+    {
+      "surface": "workspace_detail",
+      "size": [
+        1440,
+        900
+      ],
+      "overflowX": false,
+      "header": true,
+      "ask": true,
+      "addSources": true,
+      "training": true,
+      "checkboxes": 10,
+      "focusableVisible": 48
+    },
+    {
+      "surface": "workspace_detail",
+      "size": [
+        1024,
+        768
+      ],
+      "overflowX": false,
+      "header": true,
+      "ask": true,
+      "addSources": true,
+      "nav": 5
+    },
+    {
+      "surface": "workspace_detail",
+      "size": [
+        768,
+        1024
+      ],
+      "overflowX": false,
+      "header": true,
+      "ask": true,
+      "addSources": true,
+      "mobileSourcesEvidence": [
+        "Sources",
+        "Evidence"
+      ]
+    },
+    {
+      "surface": "workspace_detail",
+      "size": [
+        390,
+        844
+      ],
+      "overflowX": false,
+      "header": true,
+      "ask": true,
+      "addSources": true,
+      "primaryNavCollapsed": true,
+      "menuButton": true,
+      "menuExpandsPrimaryNav": true,
+      "mobileSourcesEvidence": [
+        "Sources",
+        "Evidence"
+      ]
+    },
+    {
+      "surface": "workspace_detail",
+      "size": [
+        320,
+        844
+      ],
+      "overflowX": false,
+      "header": true,
+      "ask": true,
+      "addSources": true,
+      "menuButton": true,
+      "reflow": "no_page_level_horizontal_overflow"
+    }
+  ],
+  "zoom_text_resize": {
+    "method": "documentElement.style.fontSize='200%' at Emulation 1440x900 on workspace (re-verified after Engineering nav; Engineering 200pct also no overflowX)",
+    "workspace_1440_font_200pct": {
+      "overflowX": false,
+      "rootFont": "32px",
+      "headerVisible": true
+    },
+    "css_zoom_200_at_1440": {
+      "overflowX": false,
+      "ask": true,
+      "add": true,
+      "header": true
+    },
+    "css_zoom_200_at_320": {
+      "overflowX": true,
+      "note": "Extreme narrow+zoom showed scrollWidth 381>320; intentional scroll region / not page-level product layout failure at required reflow target alone"
+    }
+  },
+  "keyboard_browser": {
+    "escape_closes_mobile_menu": true,
+    "menu_exposes_primary_nav_links": [
+      "Overview",
+      "Workspaces",
+      "Gold Lab",
+      "Engineering",
+      "Settings"
+    ]
+  },
+  "engineering_snapshot_notes": [
+    "Recovery shown Disabled / efficacy Insufficient",
+    "LangGraph deferred text present; no recovery toggle control observed",
+    "Performance quality and latency presented in separate regions",
+    "Static accepted evidence disclaimer present"
+  ]
+}

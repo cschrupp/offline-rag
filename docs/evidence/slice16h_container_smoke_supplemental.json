@@ -1,0 +1,35 @@
+{
+  "checks": {
+    "api_same_origin": {
+      "body": "{\"error\":{\"code\":\"runtime_not_ready\",\"message\":\"OfflineRAG runtime is not ready\"},\"retryable\":true,\"trace_id\":null,\"details\":null}",
+      "status": 503
+    },
+    "container_user": "10001:10001",
+    "health": {
+      "body": "{\"status\":\"live\"}",
+      "status": 200
+    },
+    "non_root": true,
+    "root_html": {
+      "has_root": true,
+      "status": 200
+    },
+    "serves_without_requiring_internet": true,
+    "spa_fallback": {
+      "serves_index": true,
+      "status": 200
+    },
+    "static_js_asset": {
+      "content_type": "text/javascript; charset=utf-8",
+      "path": "/assets/index-Dbhof9TR.js",
+      "status": 200
+    }
+  },
+  "contract": "slice16h-container-smoke-supplemental-v1",
+  "disposition": "SUPPLEMENTAL_FAIL",
+  "image": "offline-rag:16c-test + bind-mount ui/dist",
+  "note": "Current deploy/Dockerfile rebuild ENVIRONMENT BLOCKED (container PyPI TLS). Supplemental runtime proof: prior packaging image offline-rag:16c-test + bind-mounted current ui/dist. Not a substitute for current-SHA image rebuild PASS.",
+  "ok": false,
+  "second_frontend_service": false,
+  "single_container": true
+}

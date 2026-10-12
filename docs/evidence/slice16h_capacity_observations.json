@@ -1,0 +1,133 @@
+{
+  "accepted_defaults": {
+    "max_bytes_per_document": 26214400,
+    "max_files_per_ingest": 32,
+    "max_total_upload_bytes": 104857600
+  },
+  "conclusion": "CURRENT DEFAULTS SUPPORTED BY OBSERVATION",
+  "contract": "slice16h-capacity-observations-v1",
+  "exploratory": {
+    "128": {
+      "bytes_per_source": 1024,
+      "disposition": "NOT TESTABLE WITHOUT CONTRACT/CONFIG CHANGE (max_files_per_ingest=32)",
+      "elapsed_http_s": 0.008562080998672172,
+      "error": {
+        "details": {
+          "reason": "too_many_files"
+        },
+        "error": {
+          "code": "request_invalid",
+          "message": "Request validation failed"
+        },
+        "retryable": false,
+        "trace_id": null
+      },
+      "http_status": 422,
+      "requested_source_count": 128,
+      "result": "REFUSED_OR_FAILED_AT_ADMISSION",
+      "rss_max_bytes_observed": 524935168
+    },
+    "64": {
+      "bytes_per_source": 1024,
+      "disposition": "NOT TESTABLE WITHOUT CONTRACT/CONFIG CHANGE (max_files_per_ingest=32)",
+      "elapsed_http_s": 0.007416484993882477,
+      "error": {
+        "details": {
+          "reason": "too_many_files"
+        },
+        "error": {
+          "code": "request_invalid",
+          "message": "Request validation failed"
+        },
+        "retryable": false,
+        "trace_id": null
+      },
+      "http_status": 422,
+      "requested_source_count": 64,
+      "result": "REFUSED_OR_FAILED_AT_ADMISSION",
+      "rss_max_bytes_observed": 524935168
+    }
+  },
+  "guardrail_admission": {
+    "bytes_per_source": 14680064,
+    "elapsed_http_s": 0.3526711059967056,
+    "error": {
+      "details": {
+        "reason": "upload_too_large"
+      },
+      "error": {
+        "code": "request_invalid",
+        "message": "Request validation failed"
+      },
+      "retryable": false,
+      "trace_id": null
+    },
+    "http_status": 422,
+    "label": "total_byte_guardrail_admission_over_100MiB",
+    "requested_source_count": 8,
+    "result": "REFUSED_OR_FAILED_AT_ADMISSION",
+    "rss_max_bytes_observed": 524935168
+  },
+  "machine": {
+    "cpu": "x86_64",
+    "cpu_count_logical": 16,
+    "docker_version": "Docker version 29.1.3, build 29.1.3-0ubuntu3~24.04.2",
+    "embedding_model": "FakeEmbedder(dimension=8) \u2014 capacity observation harness",
+    "exact_git_sha": "f1b6e27bfbc9b156552073304210da0c5d9af32e",
+    "generation_configuration": "FakeGenerator abstain \u2014 not a live LLM",
+    "gpu": "not_declared_for_this_run",
+    "kernel": "6.18.33.2-microsoft-standard-WSL2",
+    "node_version": "v22.23.3",
+    "note": "No personal identifiers or machine secrets included.",
+    "os": "Linux 6.18.33.2-microsoft-standard-WSL2",
+    "physical_ram_bytes": 33507909632,
+    "python_version": "3.14.5",
+    "reranker_model": "FakeReranker \u2014 capacity observation harness",
+    "storage_type": "WSL2_virtual_disk_or_host_fs"
+  },
+  "runs": [
+    {
+      "active_source_count": 32,
+      "bytes_per_source": 65536,
+      "elapsed_http_s": 0.05441933800466359,
+      "elapsed_total_s": 10.924434030006523,
+      "http_status": 202,
+      "label": "32_sources_moderate_bytes",
+      "operation_status": "succeeded",
+      "query_elapsed_s": 215.30226429800678,
+      "query_http_status": 502,
+      "reported_active_bytes": 2097152,
+      "requested_source_count": 32,
+      "result": "SUCCEEDED",
+      "rss_before_bytes": 124784640,
+      "rss_max_bytes_observed": 191225856,
+      "source_list_avg_s": 0.004308666999956283,
+      "storage_growth_bytes": 11013864,
+      "workspace_id": "ws_aa6a025c589c4391bf1232ba25d9d57e"
+    },
+    {
+      "active_source_count": 32,
+      "bytes_per_source": 524288,
+      "elapsed_http_s": 0.1150776849972317,
+      "elapsed_total_s": 44.85163304499292,
+      "http_status": 202,
+      "label": "32_sources_elevated_bytes_16MiB",
+      "operation_status": "succeeded",
+      "query_elapsed_s": 219.33876151200093,
+      "query_http_status": 502,
+      "reported_active_bytes": 16777216,
+      "requested_source_count": 32,
+      "result": "SUCCEEDED",
+      "rss_before_bytes": 206299136,
+      "rss_max_bytes_observed": 286879744,
+      "source_list_avg_s": 0.0020067510001050928,
+      "storage_growth_bytes": 95886915,
+      "workspace_id": "ws_527bf90aabcb4ccd80df9a565aecd3d1"
+    }
+  ],
+  "runtime_effective_limits": {
+    "max_bytes_per_document": 26214400,
+    "max_files_per_ingest": 32,
+    "max_total_upload_bytes": 104857600
+  }
+}
