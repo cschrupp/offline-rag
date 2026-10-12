@@ -1,9 +1,12 @@
 # 16H — Integration / Accessibility / Portfolio Acceptance
 
-**Status:** 16H REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
+**Status:** 16H COMPLETE / ACCEPTED
 **Envelope:** `16H-ACCEPTANCE-ENVELOPE-AUTH-001`
+**Independent review:** 16H-IR-003 — ACCEPT
+**Human acceptance:** 16H-HA-001 — ACCEPTED
+**Exact Human-accepted technical subject:** `01a4a984d438d5bb7c4e3d0fa2f5bb908e0b4a10`
 **Prior candidate (IR-001 NOT ACCEPTED):** `71185d327b76db8cc804d3afb2c4845414043ed6`
-**This document does not self-accept 16H or close Slice 16.**
+**Slice 16 overall:** IN PROGRESS / NOT COMPLETE (16H acceptance does not auto-close Slice 16)
 
 ## 1. Authority / exact baseline
 
@@ -285,6 +288,18 @@ NONE.
 - Slice 16: IN PROGRESS / NOT COMPLETE
 - Do not update `PORTFOLIO_DEMO.md` under this envelope
 
----
+## 20. Human acceptance / canonicalization record
 
-**STOP FOR INDEPENDENT 16H REVIEW**
+| Item | Value |
+|------|--------|
+| Human acceptance | 16H-HA-001 — ACCEPTED |
+| Independent review | 16H-IR-003 — ACCEPT |
+| Exact Human-accepted technical subject | `01a4a984d438d5bb7c4e3d0fa2f5bb908e0b4a10` |
+| Acceptance envelope | `16H-ACCEPTANCE-ENVELOPE-AUTH-001` |
+| 16H | COMPLETE / ACCEPTED |
+| Slice 16 | IN PROGRESS / NOT COMPLETE |
+| 9G / Slice 17 / Slice 18 / M7 closeout | NOT AUTHORIZED |
+| `ALLOW_PRODUCTION` | UNCHANGED / EMPTY |
+
+Technical subject `01a4a984…` remains the accepted implementation even if a
+docs-only acceptance-record successor is created for live-projection sync.

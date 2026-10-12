@@ -81,8 +81,12 @@ GAP-16G-02:
   Human technical acceptance: ACCEPTED
   Exact accepted candidate: cc7ff520eb146fa555f2b48e1f7dcc89a7952729
 16G: IMPLEMENTATION COMPLETE / ACCEPTED
-16H: NOT AUTHORIZED
+16H: COMPLETE / ACCEPTED
+  Independent review: 16H-IR-003 — ACCEPT
+  Human acceptance: 16H-HA-001 — ACCEPTED
+  Exact Human-accepted subject: 01a4a984d438d5bb7c4e3d0fa2f5bb908e0b4a10
 9G: DEFERRED / NOT AUTHORIZED
+SLICE 16: IN PROGRESS / NOT COMPLETE
 BASELINE: 1610f9282d1edbd4dfc8ae76d7644a1b9ea4e75e
 ```
 
@@ -220,8 +224,11 @@ exact subject `e5d116b8a2990f3b0ac7f3fe1cbf052b4f6ac087`; main promotion
 [`docs/gap16g_02_gold_baseline_bootstrap_closeout.md`](gap16g_02_gold_baseline_bootstrap_closeout.md)).
 **16G-I6** is **COMPLETE / ACCEPTED** (IR-002 **ACCEPT**; exact candidate
 `cc7ff520eb146fa555f2b48e1f7dcc89a7952729`). **16G** is **IMPLEMENTATION
-COMPLETE / ACCEPTED**. **16H** remains **NOT AUTHORIZED**. **9G** remains
-**DEFERRED / NOT AUTHORIZED**. Slice 16 overall is **not** complete.
+COMPLETE / ACCEPTED**. **16H** is **COMPLETE / ACCEPTED** (16H-IR-003
+**ACCEPT**; 16H-HA-001 **ACCEPTED**; exact subject
+`01a4a984d438d5bb7c4e3d0fa2f5bb908e0b4a10`). **9G** remains
+**DEFERRED / NOT AUTHORIZED**. Slice 16 overall remains **IN PROGRESS /
+NOT COMPLETE** (do not close Slice 16 automatically after 16H).
 
 ---
 
@@ -701,7 +708,11 @@ GAP-16G-02:
   Human technical acceptance: ACCEPTED
   Exact accepted candidate: cc7ff520eb146fa555f2b48e1f7dcc89a7952729
 16G: IMPLEMENTATION COMPLETE / ACCEPTED
-16H: NOT AUTHORIZED
+16H: COMPLETE / ACCEPTED
+  Independent review: 16H-IR-003 — ACCEPT
+  Human acceptance: 16H-HA-001 — ACCEPTED
+  Exact Human-accepted subject: 01a4a984d438d5bb7c4e3d0fa2f5bb908e0b4a10
+SLICE 16: IN PROGRESS / NOT COMPLETE
 Authority: 16G-D0-AUTH-001 / Human acceptance ACCEPTED
 ```
 
@@ -882,7 +893,11 @@ GAP-16G-02:
   Human technical acceptance: ACCEPTED
   Exact accepted candidate: cc7ff520eb146fa555f2b48e1f7dcc89a7952729
 16G: IMPLEMENTATION COMPLETE / ACCEPTED
-16H: NOT AUTHORIZED
+16H: COMPLETE / ACCEPTED
+  Independent review: 16H-IR-003 — ACCEPT
+  Human acceptance: 16H-HA-001 — ACCEPTED
+  Exact Human-accepted subject: 01a4a984d438d5bb7c4e3d0fa2f5bb908e0b4a10
+SLICE 16: IN PROGRESS / NOT COMPLETE
 SLICE 17: NOT AUTHORIZED
 SLICE 18: NOT AUTHORIZED
 9G: DEFERRED / NOT AUTHORIZED
@@ -919,5 +934,8 @@ subject `e5d116b8…`; main promotion **COMPLETE** at `f7fb999…`)
 [`docs/slice16g_gap_registry_addendum.md`](slice16g_gap_registry_addendum.md)).
 **16G-I6** is **COMPLETE / ACCEPTED** (IR-002 **ACCEPT**; exact candidate
 `cc7ff520eb146fa555f2b48e1f7dcc89a7952729`). **16G** is **IMPLEMENTATION
-COMPLETE / ACCEPTED**. **16H** remains **NOT AUTHORIZED**. **9G** remains
-**DEFERRED / NOT AUTHORIZED**. Slice 16 overall is **not** complete.
+COMPLETE / ACCEPTED**. **16H** is **COMPLETE / ACCEPTED** (16H-IR-003
+**ACCEPT**; 16H-HA-001 **ACCEPTED**; exact subject
+`01a4a984d438d5bb7c4e3d0fa2f5bb908e0b4a10`). **9G** remains
+**DEFERRED / NOT AUTHORIZED**. Slice 16 overall remains **IN PROGRESS /
+NOT COMPLETE** (do not close Slice 16 automatically after 16H).

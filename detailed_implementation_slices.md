@@ -1005,11 +1005,16 @@ Bind the application to localhost unless the user explicitly configures network 
 The accepted product/API surface can be used from CLI and from the Seneca
 browser client through the same app layer, and the OfflineRAG application
 starts as one container while using an independently running local generator.
-Slice 16 remains **IN PROGRESS / NOT COMPLETE** because **16G-I6** and **16H**
-remain **NOT AUTHORIZED** (**16E** / **16F** are **COMPLETE / ACCEPTED /
-SEALED**; **16G-D0** is **ACCEPTED / FROZEN**; **16G-I1…I5** and **GAP-16G-01**
-are **ACCEPTED**; **GAP-16G-02** is **IMPLEMENTATION COMPLETE / HUMAN ACCEPTED /
-CLOSEOUT ACCEPTED / PROMOTED TO MAIN** (`HA-001` / IR-002; subject `e5d116b8…`; main promotion **COMPLETE** at `f7fb999…`)); Seneca consuming the API does not close Slice 16.
+Slice 16 remains **IN PROGRESS / NOT COMPLETE** because the final
+implemented-slice review / Human closure decision is a separate substantive
+step (**16H** is **COMPLETE / ACCEPTED** and does not auto-close Slice 16;
+**16E** / **16F** are **COMPLETE / ACCEPTED / SEALED**; **16G-D0** is
+**ACCEPTED / FROZEN**; **16G-I1…I5** and **GAP-16G-01** are **ACCEPTED**;
+**GAP-16G-02** is **IMPLEMENTATION COMPLETE / HUMAN ACCEPTED / CLOSEOUT
+ACCEPTED / PROMOTED TO MAIN** (`HA-001` / IR-002; subject `e5d116b8…`; main
+promotion **COMPLETE** at `f7fb999…`); **16G-I6** is **COMPLETE / ACCEPTED**;
+**16G** is **IMPLEMENTATION COMPLETE / ACCEPTED**); Seneca consuming the API
+does not close Slice 16.
 
 ---
 
@@ -1040,7 +1045,10 @@ GAP-16G-02:         CLOSEOUT ACCEPTED
                    Human technical acceptance: ACCEPTED
                    Exact accepted candidate: cc7ff520eb146fa555f2b48e1f7dcc89a7952729
 16G:               IMPLEMENTATION COMPLETE / ACCEPTED
-16H:               NOT AUTHORIZED
+16H:               COMPLETE / ACCEPTED
+                   Independent review: 16H-IR-003 — ACCEPT
+                   Human acceptance: 16H-HA-001 — ACCEPTED
+                   Exact Human-accepted subject: 01a4a984d438d5bb7c4e3d0fa2f5bb908e0b4a10
 9G:                DEFERRED / NOT AUTHORIZED
 SLICE 17 / 18:     NOT AUTHORIZED
 M7 CLOSEOUT:       NOT AUTHORIZED
@@ -1137,7 +1145,10 @@ opened and progressed under separate authority. **16A–16E** are accepted;
 **GAP-16G-02** is **CLOSEOUT ACCEPTED / PROMOTED TO MAIN**;
 **16G-I6** is **COMPLETE / ACCEPTED** (IR-002 **ACCEPT**; exact candidate
 `cc7ff520eb146fa555f2b48e1f7dcc89a7952729`); **16G** is **IMPLEMENTATION
-COMPLETE / ACCEPTED**; **16H** remains **NOT AUTHORIZED**.
+COMPLETE / ACCEPTED**; **16H** is **COMPLETE / ACCEPTED** (16H-IR-003
+**ACCEPT**; 16H-HA-001 **ACCEPTED**; exact subject
+`01a4a984d438d5bb7c4e3d0fa2f5bb908e0b4a10`); Slice 16 overall remains
+**IN PROGRESS / NOT COMPLETE**.
 
 ### Prerequisites for opening design (historical)
 
@@ -1270,7 +1281,7 @@ Foundation
   -> performance benchmarks              (Slice 14 COMPLETE / ACCEPTED)
   -> product API + packaging             (Slice 15 COMPLETE / ACCEPTED)
   -> Slice 15 integration closeout       (15H COMPLETE / ACCEPTED)
-  -> Seneca / Portfolio Demo UI          (Slice 16 IN PROGRESS; 16D-C / 16E / 16F COMPLETE / ACCEPTED / SEALED; 16G-D0 ACCEPTED / FROZEN; 16G-I1…I5 / GAP-16G-01 ACCEPTED; GAP-16G-02 CLOSEOUT ACCEPTED / PROMOTED TO MAIN (HA-001 / IR-002; subject e5d116b8…; main promotion COMPLETE at f7fb999…); 16G-I6 COMPLETE / ACCEPTED (IR-002 ACCEPT; exact candidate cc7ff520eb146fa555f2b48e1f7dcc89a7952729); 16G IMPLEMENTATION COMPLETE / ACCEPTED; 16H NOT AUTHORIZED)
+  -> Seneca / Portfolio Demo UI          (Slice 16 IN PROGRESS; 16D-C / 16E / 16F COMPLETE / ACCEPTED / SEALED; 16G-D0 ACCEPTED / FROZEN; 16G-I1…I5 / GAP-16G-01 ACCEPTED; GAP-16G-02 CLOSEOUT ACCEPTED / PROMOTED TO MAIN (HA-001 / IR-002; subject e5d116b8…; main promotion COMPLETE at f7fb999…); 16G-I6 COMPLETE / ACCEPTED (IR-002 ACCEPT; exact candidate cc7ff520eb146fa555f2b48e1f7dcc89a7952729); 16G IMPLEMENTATION COMPLETE / ACCEPTED; 16H COMPLETE / ACCEPTED (16H-IR-003 ACCEPT; 16H-HA-001 ACCEPTED; exact subject 01a4a984d438d5bb7c4e3d0fa2f5bb908e0b4a10))
   -> Regression CI                       (Slice 17 NOT AUTHORIZED)
   -> Portfolio release package           (Slice 18 NOT AUTHORIZED)
   -> Milestone 7 closeout                (NOT AUTHORIZED)
