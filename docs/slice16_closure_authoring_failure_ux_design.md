@@ -12,7 +12,7 @@
 | Q1 | Mixed-attempt classification | ACCEPTED / FROZEN |
 | Q2 | Model-unavailable class | ACCEPTED / FROZEN (deferred) |
 | Q3 | Safe-reason identifiers | ACCEPTED / FROZEN |
-| Q4 | Surfacing `failure_reason_counts` | OPEN |
+| Q4 | Surfacing `failure_reason_counts` | ACCEPTED / FROZEN |
 | Q5 | ErrorCode choice | OPEN |
 | Q6 | Operator UI copy | OPEN |
 
@@ -217,20 +217,51 @@ Pre-run failures (`ProposePreRunError`) must map to the correct safe reason
 
 ---
 
-## 7. Propagation contract (DRAFT — not frozen)
+## 7. Propagation contract (partially frozen)
 
 ```text
 9B propose completes with successful_count == 0
-  → classify(failure_reason_counts, attempts)
+  → classify(failure_reason_counts, attempts)   # Q1
   → operation FAILED
-  → ErrorCode: GOLD_CONFLICT (unless a stronger existing code is frozen)
-  → details.reason: <classified safe reason>
-  → optional details.failure_reason_counts: existing counts (if already exposed
-     or trivially promotable without a new subsystem)
+  → ErrorCode: <Q5>
+  → details.reason: <Q3 safe reason>
+  → failure_reason_counts: NOT serialized to client  # Q4
 
 Seneca operation / error UI
-  → messageForGoldSafeReason(reason)
+  → messageForGoldSafeReason(reason)            # Q6
   → operator-safe copy for that reason only
+```
+
+### 7.1 Failure_reason_counts surfacing — Q4 ACCEPTED / FROZEN
+
+**Authority freeze:** `S16-CLOSURE-AUTHORING-FAILURE-UX — Q4 FAILURE_REASON_COUNTS SURFACING`  
+**Disposition:** ACCEPTED / FROZEN
+
+`failure_reason_counts` is **server-side classification evidence only**.
+
+It may be used internally to determine:
+
+```text
+attempt evidence → Q1 highest-priority terminal class → Q3 details.reason
+```
+
+It must **not** be added to client-facing error details in this slice.
+
+**Frozen constraints:**
+
+- no new `SafeErrorDetails` field for `failure_reason_counts`
+- no operator-facing counts map
+- no new diagnostic API
+- no provider/error histogram in the UI
+- no raw adapter exception details exposed
+- primary UX branches only on the frozen Q3 `details.reason`
+- existing admission/progress fields remain unchanged
+
+**Implementation invariant to test:**
+
+```text
+server may inspect failure_reason_counts
+client response must not serialize failure_reason_counts
 ```
 
 No connectivity probing, background health monitors, provider-specific SDKs,
@@ -255,7 +286,7 @@ existing semantics.
 1. ~~Mixed-attempt priority~~ — Q1 FROZEN
 2. ~~Model unavailable~~ — Q2 FROZEN (deferred; remain `http_error`)
 3. ~~Safe-reason identifiers~~ — Q3 FROZEN
-4. Whether `failure_reason_counts` is surfaced in operation error details (Q4)
+4. ~~failure_reason_counts surfacing~~ — Q4 FROZEN (server-side only)
 5. ErrorCode: keep `GOLD_CONFLICT` for all operational classes vs split codes (Q5)
 6. UI copy strings for each safe reason (Q6)
 
