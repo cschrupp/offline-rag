@@ -552,11 +552,9 @@ SLICE 15  COMPLETE / ACCEPTED
          Exact starting SHA: 21dfb3e88920c40fe227d51efc8022995ef41c9e
        Evidence Sweep: NOT APPROVED
        Chunk Duel: NOT APPROVED
-     16N-B HUMAN ACCEPTED
+     16N-B COMPLETE / HUMAN ACCEPTED
        Authority: S16-N-B-IMPLEMENTATION-AUTH-001
        Frozen design: S16-N-GOLD-EXPERT-ENTRY-DESIGN-FREEZE-001
-       Branch: implementation/16n-b-expert-first-campaign-ux
-       Exact starting SHA: aac51029f279f07cafd1078160efbd592d5fc4be
        Independent review: S16-N-B-IMPLEMENTATION-IR-003 — ACCEPT
        Human acceptance: S16-N-B-HA-001 — ACCEPTED
        Exact Human-accepted technical subject:
@@ -567,10 +565,9 @@ SLICE 15  COMPLETE / ACCEPTED
          IR-003: ae137649565881ed295dc51dba422446fa81e682 — ACCEPT
        IR-003 acceptance-record successor:
          c704ba4752225f8204195015fecc5e2ae4feea44
-       Expert-first campaign UX Human-accepted
        16J: NOT AUTHORIZED FROM THIS DISPOSITION
        16K: NOT AUTHORIZED FROM THIS DISPOSITION
-       Authoring-server failure UX defect: OPEN / NOT TOUCHED
+       Authoring-server failure UX defect: OPEN
      9G DEFERRED / NOT AUTHORIZED
      Slice 16 overall IN PROGRESS / NOT COMPLETE
      Authority: docs/slice16_design_authority.md
