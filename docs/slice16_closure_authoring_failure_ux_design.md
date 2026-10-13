@@ -2,9 +2,10 @@
 
 **Design authority:** `S16-CLOSURE-AUTHORING-FAILURE-UX-DESIGN-AUTH-001` — AUTHORIZED  
 **Design freeze:** `S16-CLOSURE-AUTHORING-FAILURE-UX-DESIGN-FREEZE-001` — ACCEPTED / FROZEN  
-**Independent design review:** `S16-CLOSURE-AUTHORING-FAILURE-UX-DESIGN-IR-001` — REWORK REQUIRED  
-**Reviewed subject (IR-001):** `ea95a2fe5261a42c8d841a4789f6aed1b9028cc7`  
-**Design rework:** R1 / R2 / R3 — ACCEPTED / FROZEN (amends FREEZE-001; no new Human Authority)  
+**Independent design review lineage:**  
+- `S16-CLOSURE-AUTHORING-FAILURE-UX-DESIGN-IR-001` — REWORK REQUIRED at `ea95a2fe5261a42c8d841a4789f6aed1b9028cc7`  
+- `S16-CLOSURE-AUTHORING-FAILURE-UX-DESIGN-IR-002` — REWORK REQUIRED at `5faae42410ee38ef9e291a94f496a0a48da5739b`  
+**Design rework:** R1 / R2 / R3 / R4 — ACCEPTED / FROZEN (amends FREEZE-001; no new Human Authority)  
 **Status:** DESIGN FROZEN / READY FOR INDEPENDENT DESIGN RE-REVIEW  
 **Implementation:** NOT AUTHORIZED  
 **Parent product surface:** Gold Lab baseline bootstrap (GAP-16G-02 / 9B propose)
@@ -13,16 +14,17 @@
 
 | ID | Topic | Disposition |
 |---|---|---|
-| Q1 | Mixed-attempt classification | ACCEPTED / FROZEN (amended by R2 / R3) |
+| Q1 | Mixed-attempt classification | ACCEPTED / FROZEN (amended by R2 / R3 / R4) |
 | Q2 | Model-unavailable class | ACCEPTED / FROZEN (deferred) |
 | Q3 | Safe-reason identifiers | ACCEPTED / FROZEN |
 | Q4 | Surfacing `failure_reason_counts` | ACCEPTED / FROZEN |
-| Q5 | ErrorCode choice | ACCEPTED / FROZEN |
+| Q5 | ErrorCode choice | ACCEPTED / FROZEN (amended by R4; GOLD_CONFLICT narrow) |
 | Q6 | Operator UI copy | ACCEPTED / FROZEN (amended by R3) |
-| Q7 | Design freeze completeness | ACCEPTED / FROZEN (reaffirmed after R1–R3) |
-| R1 | Typed ProposePreRunError classification | ACCEPTED / FROZEN |
+| Q7 | Design freeze completeness | ACCEPTED / FROZEN (reaffirmed after R1–R4) |
+| R1 | Typed ProposePreRunError classification | ACCEPTED / FROZEN (fallback tightened by R4) |
 | R2 | Authentication provenance | ACCEPTED / FROZEN |
 | R3 | Auth/authz copy + redirect classification | ACCEPTED / FROZEN |
+| R4 | PROPOSAL_CONTEXT_UNAVAILABLE classification | ACCEPTED / FROZEN |
 
 This design does **not** close Slice 16, authorize 16J/16K, or change authoring
 science (prompts, sampling, quality gates, pooling).
@@ -52,11 +54,18 @@ candidates — even when every attempt was a transport/auth/timeout/HTTP failure
 **IR-001 additional defects (design-level, at reviewed SHA):**
 
 - F001: `ProposePreRunError` has no stable machine-readable reason; classification
-  via message text is non-deterministic.
+  via message text is non-deterministic. **CLOSED by R1.**
 - F002: adapter `authentication_error` can be emitted for local readiness/privacy
-  failures, which must not become `authoring_authentication_failed`.
+  failures, which must not become `authoring_authentication_failed`. **CLOSED by R2.**
 - F003: Q6 auth copy says only “authentication” while 403 is authorization; and
   `REDIRECT_NOT_ALLOWED` was classified under unreachable transport copy.
+  **CLOSED by R3.**
+
+**IR-002 additional defect (design-level, at reviewed SHA):**
+
+- F004: `PROPOSAL_CONTEXT_UNAVAILABLE` occurs before any authoring request and was
+  grouped with evaluation/content-only failure → `zero_usable_proposals`, which
+  contradicts the Q6 “completed its calls” meaning. **CLOSED by R4.**
 
 ---
 
@@ -90,19 +99,25 @@ Adapter (`OpenAICompatibleAuthoringAdapter`) already emits:
 | `redirect_not_allowed` | `REDIRECT_NOT_ALLOWED` / `failed_transport` |
 | `empty_response` | `EMPTY_RESPONSE` / `failed_response` |
 
-Propose also records non-transport evaluation failures:
-`invalid_json`, `schema_invalid`, quality rejects, `proposal_context_unavailable`.
+Propose also records:
+
+- response/evaluation failures after an authoring call path is reached:
+  `invalid_json`, `schema_invalid`, quality rejects, empty/unusable response, …
+- pre-call internal failure: `proposal_context_unavailable` (R4; **not**
+  evaluation/content-only)
 
 `ProposeJobResult.failure_reason_counts` already aggregates these. Design
 preference: **promote this evidence** into bootstrap classification; do not invent
 a parallel diagnostic subsystem unless classification cannot be derived from
 counts + attempt statuses.
 
-**R2 / R3 note:** adapter emission of `authentication_error` for local
+**R2 / R3 / R4 notes:** adapter emission of `authentication_error` for local
 readiness/privacy failures is an implementation defect relative to this freeze.
 Those local paths must retain truthful local safe reasons and must not enter the
 Q1 authentication class. `REDIRECT_NOT_ALLOWED` remains a distinct
 `ProposalFailureReason` but classifies under the Q1 HTTP tier (R3).
+`PROPOSAL_CONTEXT_UNAVAILABLE` classifies as internal pre-call failure (R4), not
+`zero_usable_proposals`.
 
 ---
 
@@ -160,6 +175,7 @@ tier without changing mixed-attempt priority.
 | transport_error | `authoring_endpoint_unreachable` |
 | http_error | `authoring_http_error` |
 | evaluation/content-only failure | `zero_usable_proposals` |
+| `proposal_context_unavailable` (R4) | `bootstrap_internal_failure` |
 
 **Frozen constraints:**
 
@@ -167,9 +183,11 @@ tier without changing mixed-attempt priority.
 - Existing admission/pre-run reasons remain unchanged
   (`authoring_not_ready`, `authoring_endpoint_unauthorized`,
   `proposal_count_exceeds_eligible_population`, …).
-- `zero_usable_proposals` retains its corrected Q1 meaning: successful authoring
-  interaction occurred sufficiently to evaluate output, but no usable proposals
-  resulted, with no operational failure class present.
+- `zero_usable_proposals` retains its corrected Q1/R4 meaning: attempts reached
+  response/evaluation/content processing, but no usable proposals resulted, with
+  no operational or proposal-context failure evidence present.
+- `bootstrap_internal_failure` is reused for R4 context failures and R1 unhandled
+  pre-run reasons; it is not a new client API field.
 - No `authoring_model_unavailable` reason exists in this slice (Q2).
 - No provider names, endpoint URLs, credentials, response bodies, or raw
   exception strings may be encoded into `details.reason`.
@@ -191,7 +209,7 @@ failure_reason_counts
 ## 6. Mixed-attempt classification — Q1 ACCEPTED / FROZEN
 
 **Authority freeze:** `S16-CLOSURE-AUTHORING-FAILURE-UX — Q1 MIXED-ATTEMPT CLASSIFICATION`  
-**Disposition:** ACCEPTED / FROZEN (amended by R2 / R3)
+**Disposition:** ACCEPTED / FROZEN (amended by R2 / R3 / R4)
 
 **Applicability:** `successful_count < 1` and proposal attempts contain one or
 more classified failure reasons.
@@ -214,13 +232,23 @@ last-error-wins.
    - `REDIRECT_NOT_ALLOWED` (disallowed HTTP redirect; R3)
    - any later-frozen model-unavailable subtype is classified within/refined
      from this class, without changing Q1 priority
-5. evaluation/content-only failure → `zero_usable_proposals`
+5. `proposal_context_unavailable` (R4)
+   - pre-call / internal proposal-context failure
+   - → `INTERNAL_ERROR` + `bootstrap_internal_failure`
+6. genuine response/evaluation/content-only failure → `zero_usable_proposals`
 
-**Invariant:** `zero_usable_proposals` is legal **ONLY** when no authentication,
-timeout, transport, or HTTP failure evidence exists.
+**Invariant:** `zero_usable_proposals` is legal **ONLY** when:
 
-Therefore any operational/infrastructure failure evidence **MUST NOT** emit
-`zero_usable_proposals`.
+- `successful_count == 0`
+- no authentication evidence
+- no timeout evidence
+- no transport evidence
+- no HTTP / redirect evidence
+- no `proposal_context_unavailable` evidence
+- the attempts actually reached response/evaluation/content processing
+
+Therefore any operational/infrastructure or proposal-context failure evidence
+**MUST NOT** emit `zero_usable_proposals`.
 
 **Aggregation source:** Use the complete observed failure evidence /
 `failure_reason_counts` for the proposal run. Do not infer the terminal reason
@@ -228,14 +256,16 @@ from iteration order.
 
 **No-success examples:**
 
-| Observed evidence | Terminal class |
+| Observed evidence | Terminal class / envelope |
 |---|---|
-| auth + timeout | authentication_error |
-| timeout + transport | timeout |
-| transport + HTTP error | transport_error |
-| HTTP error + evaluation rejection | http_error |
-| redirect-not-allowed + evaluation rejection | http_error |
-| evaluation rejection + unusable/empty model output only | zero_usable_proposals |
+| auth + timeout | authentication_error / `GOLD_CONFLICT` |
+| timeout + transport | timeout / `GOLD_CONFLICT` |
+| transport + HTTP error | transport_error / `GOLD_CONFLICT` |
+| HTTP error + evaluation rejection | http_error / `GOLD_CONFLICT` |
+| redirect-not-allowed + evaluation rejection | http_error / `GOLD_CONFLICT` |
+| context + quality/schema/empty-response | proposal_context_unavailable / `INTERNAL_ERROR` |
+| context only | proposal_context_unavailable / `INTERNAL_ERROR` |
+| evaluation rejection + unusable/empty model output only | zero_usable_proposals / `GOLD_CONFLICT` |
 
 **Q1 boundary:** Does **not** decide whether a specific HTTP status/body can
 safely become `model_unavailable`. Until that later freeze, those cases remain
@@ -289,8 +319,8 @@ invariant/path mismatch, not “zero usable proposals.”
 - Every `ProposePreRunError` raise site MUST assign a `ProposePreRunReason`.
 - Bootstrap switches on `exc.reason` only.
 - An unknown, missing, or future unhandled `ProposePreRunReason` MUST fail closed
-  as `GOLD_CONFLICT` (or the existing appropriate coarse envelope) +
-  `bootstrap_internal_failure`, and MUST NEVER become `zero_usable_proposals`.
+  as `INTERNAL_ERROR` + `bootstrap_internal_failure`, and MUST NEVER become
+  `GOLD_CONFLICT` or `zero_usable_proposals` (R4 tightening).
 - `zero_usable_proposals` is not a `ProposePreRunError` fallback.
 - Existing user/operator-safe admission reasons remain unchanged where an exact
   typed mapping exists.
@@ -381,16 +411,72 @@ receipt of a redirect proves an HTTP response was received.
 - `authoring_authentication_failed` only means upstream 401/403
 - `authoring_http_error` covers generic non-auth HTTP failure + disallowed redirect
 
+### 6.4 PROPOSAL_CONTEXT_UNAVAILABLE — DESIGN REWORK R4 ACCEPTED / FROZEN
+
+**Authority freeze:** `S16-CLOSURE-AUTHORING-FAILURE-UX — DESIGN REWORK R4 PROPOSAL_CONTEXT_UNAVAILABLE CLASSIFICATION`  
+**Disposition:** ACCEPTED / FROZEN  
+**Closes IR-002 finding:** F004
+
+`ProposalFailureReason.PROPOSAL_CONTEXT_UNAVAILABLE` is a **pre-call / internal**
+proposal-context failure. It occurs before any authoring request is made (source
+metadata required to construct the prompt is unavailable).
+
+**Exact terminal contract when this class wins:**
+
+```text
+PROPOSAL_CONTEXT_UNAVAILABLE
+  → ErrorCode.INTERNAL_ERROR
+  → details.reason = bootstrap_internal_failure
+```
+
+**Deterministic mixed cases:**
+
+| Observed evidence | ErrorCode | `details.reason` |
+|---|---|---|
+| authentication + context | `GOLD_CONFLICT` | `authoring_authentication_failed` |
+| timeout + context | `GOLD_CONFLICT` | `authoring_request_timeout` |
+| transport + context | `GOLD_CONFLICT` | `authoring_endpoint_unreachable` |
+| HTTP/redirect + context | `GOLD_CONFLICT` | `authoring_http_error` |
+| context + quality/schema/empty-response | `INTERNAL_ERROR` | `bootstrap_internal_failure` |
+| context only | `INTERNAL_ERROR` | `bootstrap_internal_failure` |
+| schema/empty-response/quality-only | `GOLD_CONFLICT` | `zero_usable_proposals` |
+
+**Required R4 regressions:**
+
+```text
+all context failures
+  → INTERNAL_ERROR + bootstrap_internal_failure
+  → MUST NOT zero_usable_proposals
+
+context + quality rejection
+  → INTERNAL_ERROR + bootstrap_internal_failure
+
+context + invalid JSON
+  → INTERNAL_ERROR + bootstrap_internal_failure
+
+context + timeout
+  → GOLD_CONFLICT + authoring_request_timeout
+
+context + HTTP
+  → GOLD_CONFLICT + authoring_http_error
+
+quality/schema/empty-response only
+  → GOLD_CONFLICT + zero_usable_proposals
+
+unhandled ProposePreRunReason
+  → INTERNAL_ERROR + bootstrap_internal_failure
+```
+
 ---
 
 ## 7. Propagation contract (frozen)
 
 ```text
 9B propose completes with successful_count == 0
-  → classify(failure_reason_counts, attempts)   # Q1 (+ R2/R3)
+  → classify(failure_reason_counts, attempts)   # Q1 (+ R2/R3/R4)
   → operation FAILED
-  → ErrorCode: GOLD_CONFLICT                     # Q5
-  → details.reason: <Q3 safe reason>
+  → ErrorCode: GOLD_CONFLICT | INTERNAL_ERROR   # Q5 (+ R4)
+  → details.reason: <Q3 / bootstrap_internal_failure>
   → failure_reason_counts: NOT serialized to client  # Q4
 
 Seneca operation / error UI
@@ -422,16 +508,18 @@ Exact normative `messageForGoldSafeReason` strings:
 | transport | endpoint could not be reached |
 | HTTP | endpoint responded with a non-auth result Seneca could not accept (including disallowed redirect) |
 | zero_usable_proposals | authoring calls completed sufficiently to evaluate output, but no usable candidate questions resulted |
+| bootstrap_internal_failure (context / invariant) | existing admission/internal copy; must not claim authoring calls completed |
 
 **Frozen constraints:**
 
-- Exact copy above is normative for this slice.
+- Exact copy above is normative for this slice (five Q3 authoring terminals).
 - No provider names, endpoint URL values, credentials, HTTP status codes, raw
   response bodies, or raw exception strings.
 - No model-unavailable inference.
 - Operational failures must not imply that proposal outputs were evaluated.
-- `zero_usable_proposals` must not be shown for Q1 operational failure classes.
-- Existing admission-failure copy remains unchanged.
+- `zero_usable_proposals` must not be shown for Q1 operational failure classes
+  or for `proposal_context_unavailable` (R4).
+- Existing admission-failure / `bootstrap_internal_failure` copy remains unchanged.
 
 **Required regression (original defect):**
 
@@ -445,9 +533,10 @@ authoring server stopped / connection refused
 ### 7.2 ErrorCode — Q5 ACCEPTED / FROZEN
 
 **Authority freeze:** `S16-CLOSURE-AUTHORING-FAILURE-UX — Q5 ERRORCODE FOR CLASSIFIED POST-ADMISSION TERMINAL FAILURES`  
-**Disposition:** ACCEPTED / FROZEN
+**Disposition:** ACCEPTED / FROZEN (amended by R4; GOLD_CONFLICT read narrowly)
 
-All Q1→Q3 terminal classes use:
+**Q5 `GOLD_CONFLICT` applies only to the five originally frozen authoring
+terminal classes:**
 
 | Terminal class | ErrorCode | `details.reason` |
 |---|---|---|
@@ -455,7 +544,15 @@ All Q1→Q3 terminal classes use:
 | timeout | `GOLD_CONFLICT` | `authoring_request_timeout` |
 | transport/unreachable | `GOLD_CONFLICT` | `authoring_endpoint_unreachable` |
 | HTTP failure | `GOLD_CONFLICT` | `authoring_http_error` |
-| evaluation/content-only | `GOLD_CONFLICT` | `zero_usable_proposals` |
+| genuine zero-usable evaluation/content outcome | `GOLD_CONFLICT` | `zero_usable_proposals` |
+
+**Q5 does NOT apply `GOLD_CONFLICT` to:**
+
+| Terminal class | ErrorCode | `details.reason` |
+|---|---|---|
+| `proposal_context_unavailable` (R4) | `INTERNAL_ERROR` | `bootstrap_internal_failure` |
+| unhandled / missing `ProposePreRunReason` (R1+R4) | `INTERNAL_ERROR` | `bootstrap_internal_failure` |
+| other internal invariant failures mapped to `bootstrap_internal_failure` | `INTERNAL_ERROR` | `bootstrap_internal_failure` |
 
 **Semantic split:**
 
@@ -471,9 +568,10 @@ All Q1→Q3 terminal classes use:
   client/user authentication or authorization semantics.
 - Do not use HTTP status/error-code differences as a second competing
   classification channel.
-- UI copy for these failures branches on frozen Q3 `details.reason`.
+- UI copy for these failures branches on frozen Q3 `details.reason` (or existing
+  `bootstrap_internal_failure` copy for internal classes).
 - `zero_usable_proposals` keeps `GOLD_CONFLICT` exactly as before, with
-  corrected Q1 meaning.
+  corrected Q1/R4 meaning.
 - Retryability must not be inferred from `GOLD_CONFLICT` alone; the safe
   reason remains the discriminant if retry guidance is later frozen.
 
@@ -521,12 +619,15 @@ existing semantics.
 
 - deterministic classification of existing authoring failure evidence
 - corrected bootstrap terminal reason
-- existing `GOLD_CONFLICT` envelope
+- existing `GOLD_CONFLICT` envelope for the five Q5 authoring terminals
+- existing `INTERNAL_ERROR` + `bootstrap_internal_failure` for R4 context /
+  R1 unhandled pre-run / other mapped invariant failures
 - exact operator-safe UI copy
 - tests proving classification and non-leakage of `failure_reason_counts`
 - typed `ProposePreRunError` / `ProposePreRunReason` contract (R1)
 - authentication provenance limited to upstream 401/403 (R2)
 - redirect classified under HTTP tier with truthful copy (R3)
+- `PROPOSAL_CONTEXT_UNAVAILABLE` as pre-call internal failure (R4)
 
 ### OUT OF SCOPE
 
@@ -549,24 +650,25 @@ existing semantics.
 ## 9. Design freeze completeness — Q7 ACCEPTED / FROZEN
 
 **Authority freeze:** `S16-CLOSURE-AUTHORING-FAILURE-UX — Q7 DESIGN FREEZE COMPLETENESS`  
-**Disposition:** ACCEPTED / FROZEN (reaffirmed after R1–R3)
+**Disposition:** ACCEPTED / FROZEN (reaffirmed after R1–R4)
 
-Q1–Q6, as amended by DESIGN REWORK R1–R3, constitute the complete design freeze
+Q1–Q6, as amended by DESIGN REWORK R1–R4, constitute the complete design freeze
 for this closure gate under:
 
 `S16-CLOSURE-AUTHORING-FAILURE-UX-DESIGN-FREEZE-001` — ACCEPTED / FROZEN
 
 | Freeze | Summary |
 |---|---|
-| Q1 | Highest-priority observed class wins; any operational evidence forbids `zero_usable_proposals`; HTTP includes `REDIRECT_NOT_ALLOWED` |
+| Q1 | Highest-priority observed class wins; operational or context evidence forbids `zero_usable_proposals`; HTTP includes `REDIRECT_NOT_ALLOWED`; context is tier 5 |
 | Q2 | No separate `model_unavailable`; non-auth HTTP remains `http_error` |
-| Q3 | Exact Q3 `details.reason` identifiers |
+| Q3 | Exact Q3 `details.reason` identifiers; context → `bootstrap_internal_failure` |
 | Q4 | `failure_reason_counts` server-side only; not client-serialized |
-| Q5 | All five post-admission terminals: `GOLD_CONFLICT` + Q3 reason |
+| Q5 | Five authoring terminals: `GOLD_CONFLICT` + Q3 reason; context/unhandled pre-run: `INTERNAL_ERROR` + `bootstrap_internal_failure` |
 | Q6 | Exact five Seneca operator strings (auth/authz + response-not-accepted wording) |
-| R1 | Closed `ProposePreRunReason`; bootstrap switches on `exc.reason` only; unhandled → `bootstrap_internal_failure` |
+| R1 | Closed `ProposePreRunReason`; bootstrap switches on `exc.reason` only; unhandled → `INTERNAL_ERROR` + `bootstrap_internal_failure` |
 | R2 | `authoring_authentication_failed` only from upstream HTTP 401/403 |
 | R3 | Auth copy covers authz; redirect → HTTP tier |
+| R4 | `PROPOSAL_CONTEXT_UNAVAILABLE` → `INTERNAL_ERROR` + `bootstrap_internal_failure` |
 | Q7 | Design decision surface closed; ready for independent design re-review |
 
 **Next gate:** independent design re-review of this successor tip.  

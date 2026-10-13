@@ -143,9 +143,10 @@ Authoring-server failure UX design: FROZEN
   Design doc: docs/slice16_closure_authoring_failure_ux_design.md
   Independent design review:
     IR-001: ea95a2fe5261a42c8d841a4789f6aed1b9028cc7 — REWORK REQUIRED
-  Design rework R1–R3: ACCEPTED / FROZEN (amends FREEZE-001)
+    IR-002: 5faae42410ee38ef9e291a94f496a0a48da5739b — REWORK REQUIRED
+  Design rework R1–R4: ACCEPTED / FROZEN (amends FREEZE-001)
   Status: DESIGN FROZEN / READY FOR INDEPENDENT DESIGN RE-REVIEW
-  Q1–Q7 ACCEPTED / FROZEN (amended by R1–R3)
+  Q1–Q7 ACCEPTED / FROZEN (amended by R1–R4)
   IMPLEMENTATION NOT AUTHORIZED
 9G: DEFERRED / NOT AUTHORIZED
 SLICE 16: IN PROGRESS / NOT COMPLETE
