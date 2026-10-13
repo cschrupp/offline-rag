@@ -11,7 +11,7 @@
 |---|---|---|
 | Q1 | Mixed-attempt classification | ACCEPTED / FROZEN |
 | Q2 | Model-unavailable class | ACCEPTED / FROZEN (deferred) |
-| Q3 | Safe-reason identifiers | OPEN |
+| Q3 | Safe-reason identifiers | ACCEPTED / FROZEN |
 | Q4 | Surfacing `failure_reason_counts` | OPEN |
 | Q5 | ErrorCode choice | OPEN |
 | Q6 | Operator UI copy | OPEN |
@@ -123,24 +123,41 @@ tier without changing mixed-attempt priority.
 
 ---
 
-## 5. Proposed operator-safe reason codes (DRAFT — not frozen)
+## 5. Operator-safe terminal reason identifiers — Q3 ACCEPTED / FROZEN
 
-Recommended additive safe reasons (names draft):
+**Authority freeze:** `S16-CLOSURE-AUTHORING-FAILURE-UX — Q3 OPERATOR-SAFE TERMINAL REASON IDENTIFIERS`  
+**Disposition:** ACCEPTED / FROZEN
 
-| Safe reason | Meaning |
+| Q1 terminal class | `details.reason` |
 |---|---|
-| `authoring_endpoint_unreachable` | Transport failure reaching the configured endpoint |
-| `authoring_request_timeout` | Authoring request timed out |
-| `authoring_authentication_failed` | HTTP 401/403 or equivalent auth failure during invoke |
-| `authoring_http_error` | Other HTTP ≥400 from authoring server |
-| `authoring_model_unavailable` | *(optional)* Model rejected/unavailable when independently knowable |
-| `zero_usable_proposals` | Calls succeeded enough to evaluate; zero usable candidates |
+| authentication_error | `authoring_authentication_failed` |
+| timeout | `authoring_request_timeout` |
+| transport_error | `authoring_endpoint_unreachable` |
+| http_error | `authoring_http_error` |
+| evaluation/content-only failure | `zero_usable_proposals` |
 
-Pre-existing sync/admission reasons remain unchanged:
-`authoring_not_ready`, `authoring_endpoint_unauthorized`, etc.
+**Frozen constraints:**
 
-UI copy MUST be truthful and must not instruct the operator that proposals were
-evaluated when only transport failed.
+- These are terminal bootstrap reason identifiers, not adapter exception names.
+- Existing admission/pre-run reasons remain unchanged
+  (`authoring_not_ready`, `authoring_endpoint_unauthorized`,
+  `proposal_count_exceeds_eligible_population`, …).
+- `zero_usable_proposals` retains its corrected Q1 meaning: successful authoring
+  interaction occurred sufficiently to evaluate output, but no usable proposals
+  resulted, with no operational failure class present.
+- No `authoring_model_unavailable` reason exists in this slice (Q2).
+- No provider names, endpoint URLs, credentials, response bodies, or raw
+  exception strings may be encoded into `details.reason`.
+- Mixed failures first resolve through frozen Q1 priority, then map exactly once
+  to the corresponding Q3 safe reason.
+
+**Canonical transformation:**
+
+```text
+failure_reason_counts
+  → Q1 deterministic terminal class
+  → Q3 stable operator-safe details.reason
+```
 
 ---
 
@@ -236,8 +253,8 @@ existing semantics.
 ## 9. Remaining freeze questions
 
 1. ~~Mixed-attempt priority~~ — Q1 FROZEN
-2. Whether `model_unavailable` is a separate class in this slice (Q2)
-3. Exact safe-reason string identifiers (Q3)
+2. ~~Model unavailable~~ — Q2 FROZEN (deferred; remain `http_error`)
+3. ~~Safe-reason identifiers~~ — Q3 FROZEN
 4. Whether `failure_reason_counts` is surfaced in operation error details (Q4)
 5. ErrorCode: keep `GOLD_CONFLICT` for all operational classes vs split codes (Q5)
 6. UI copy strings for each safe reason (Q6)
