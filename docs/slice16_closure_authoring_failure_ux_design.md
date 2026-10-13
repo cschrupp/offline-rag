@@ -10,7 +10,7 @@
 | ID | Topic | Disposition |
 |---|---|---|
 | Q1 | Mixed-attempt classification | ACCEPTED / FROZEN |
-| Q2 | Model-unavailable class | OPEN |
+| Q2 | Model-unavailable class | ACCEPTED / FROZEN (deferred) |
 | Q3 | Safe-reason identifiers | OPEN |
 | Q4 | Surfacing `failure_reason_counts` | OPEN |
 | Q5 | ErrorCode choice | OPEN |
@@ -93,16 +93,33 @@ The frozen taxonomy MUST distinguish at least:
 5. Configured model unavailable or rejected, **if independently knowable**
 6. Genuine successful authoring calls producing zero usable proposals
 
-### 4.1 Current knowability note (pre-freeze)
+### 4.1 Model unavailable — Q2 ACCEPTED / FROZEN (deferred)
 
-- Timeout, transport, auth (HTTP 401/403), and generic HTTP ≥400 are already
-  independently labeled by the adapter.
-- “Model unavailable/rejected” is **not** currently a separate adapter reason;
-  many local stacks return HTTP 404/400/500 with body text. Design freeze must
-  decide whether to:
-  - keep these under `http_error` / a new HTTP-class safe reason, or
-  - add a narrowly parsed model-unavailable class when response evidence is
-    unambiguous.
+**Authority freeze:** `S16-CLOSURE-AUTHORING-FAILURE-UX — Q2 MODEL UNAVAILABLE / REJECTED CLASSIFICATION`  
+**Disposition:** ACCEPTED / FROZEN
+
+For this design, there is **no** separate `model_unavailable` operator-facing
+failure class. All non-authentication HTTP failures at or above the existing
+HTTP-error boundary remain `http_error`.
+
+This includes responses that might, from provider-specific wording, appear to
+mean model not found / unavailable / rejected / not loaded / unsupported /
+deployment unavailable — unless a future authority establishes a strict,
+machine-verifiable, non-heuristic signal.
+
+**Frozen constraints:**
+
+- no response-body substring matching
+- no provider-message heuristics
+- no inferred model state from arbitrary HTTP text
+- no provider-specific special casing
+- no new `model_unavailable` enum/class in this slice
+- authentication remains `authentication_error`
+- all other HTTP ≥400 failures remain `http_error`
+
+A later slice may introduce `model_unavailable` only under a stable contract
+(e.g. documented status/code field). That refinement may sit under Q1’s HTTP
+tier without changing mixed-attempt priority.
 
 ---
 
