@@ -534,11 +534,17 @@ SLICE 15  COMPLETE / ACCEPTED
      16N DESIGN FROZEN
        Authority: S16-N-GOLD-EXPERT-ENTRY-AUTH-001
        Q1–Q11 FROZEN — expert entry + presentation review
-     16N-A COMPLETE / READY FOR INDEPENDENT REVIEW
+     16N-A COMPLETE / INDEPENDENTLY ACCEPTED
        Authority: S16-N-A-IMPLEMENTATION-AUTH-001
+       Independent review: S16-N-A-IMPLEMENTATION-IR-002 — ACCEPT
+       Exact accepted technical subject:
+         36de7feaab33fddf77d4bdf5818f3cc60e8a1832
        Presentation Review bootstrap (non-mutating)
        Branch: implementation/16n-a-presentation-review-bootstrap
        Exact base: dcf6bf02a77a4e68678d8887f836c471448422bc
+       ALLOW_PRODUCTION: EMPTY / UNCHANGED
+       Question Check policy approval: NOT YET PERFORMED
+       Rapid Fire policy approval: NOT YET PERFORMED
      16N-B DESIGNED / NOT AUTHORIZED
      9G DEFERRED / NOT AUTHORIZED
      Slice 16 overall IN PROGRESS / NOT COMPLETE
