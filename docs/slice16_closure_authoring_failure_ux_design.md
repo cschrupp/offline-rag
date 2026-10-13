@@ -1,9 +1,20 @@
 # Slice 16 closure — authoring-server failure UX design
 
 **Authority:** `S16-CLOSURE-AUTHORING-FAILURE-UX-DESIGN-AUTH-001` — AUTHORIZED  
-**Status:** DESIGN IN PROGRESS / NOT FROZEN  
+**Status:** DESIGN IN PROGRESS / PARTIALLY FROZEN  
 **Implementation:** NOT AUTHORIZED  
 **Parent product surface:** Gold Lab baseline bootstrap (GAP-16G-02 / 9B propose)
+
+### Freeze ledger
+
+| ID | Topic | Disposition |
+|---|---|---|
+| Q1 | Mixed-attempt classification | ACCEPTED / FROZEN |
+| Q2 | Model-unavailable class | OPEN |
+| Q3 | Safe-reason identifiers | OPEN |
+| Q4 | Surfacing `failure_reason_counts` | OPEN |
+| Q5 | ErrorCode choice | OPEN |
+| Q6 | Operator UI copy | OPEN |
 
 This design does **not** close Slice 16, authorize 16J/16K, or change authoring
 science (prompts, sampling, quality gates, pooling).
@@ -116,29 +127,55 @@ evaluated when only transport failed.
 
 ---
 
-## 6. Mixed-attempt classification (DRAFT — not frozen)
+## 6. Mixed-attempt classification — Q1 ACCEPTED / FROZEN
 
-When `successful_count == 0` and `failure_reason_counts` is non-empty, classify
-with a **deterministic priority** (highest wins), not “last error wins”:
+**Authority freeze:** `S16-CLOSURE-AUTHORING-FAILURE-UX — Q1 MIXED-ATTEMPT CLASSIFICATION`  
+**Disposition:** ACCEPTED / FROZEN
 
-**Recommended priority (highest → lowest):**
+**Applicability:** `successful_count < 1` and proposal attempts contain one or
+more classified failure reasons.
 
-1. `authentication_error` → `authoring_authentication_failed`
-2. `timeout` → `authoring_request_timeout`
-3. `transport_error` (+ `redirect_not_allowed` as unreachable/policy transport) → `authoring_endpoint_unreachable`
-4. `http_error` → `authoring_http_error` (or model-unavailable if separately frozen)
-5. Evaluation-only reasons (`empty_response`, `invalid_json`, `schema_invalid`,
-   quality rejects, context unavailable) → `zero_usable_proposals`
+**Classification rule:** Choose the highest-priority observed failure class
+across the complete set of attempt evidence. Never use last-attempt-wins /
+last-error-wins.
 
-**Rules:**
+**Priority (highest → lowest):**
 
-- If any transport-class reason is present in counts, **never** emit
-  `zero_usable_proposals`.
-- `zero_usable_proposals` only when every failed attempt is evaluation-class
-  (or there were attempts with successful HTTP/content evaluation that all
-  rejected).
-- Counts remain available for diagnostics; classification uses counts, not
-  attempt order.
+1. `authentication_error`
+2. `timeout`
+3. `transport_error`
+   - connection refused / unreachable
+   - DNS / socket / transport failure
+   - redirect-not-allowed or equivalent endpoint transport-policy rejection
+4. `http_error`
+   - generic HTTP failure
+   - any later-frozen model-unavailable subtype is classified within/refined
+     from this class, without changing Q1 priority
+5. evaluation/content-only failure → `zero_usable_proposals`
+
+**Invariant:** `zero_usable_proposals` is legal **ONLY** when no authentication,
+timeout, transport, or HTTP failure evidence exists.
+
+Therefore any operational/infrastructure failure evidence **MUST NOT** emit
+`zero_usable_proposals`.
+
+**Aggregation source:** Use the complete observed failure evidence /
+`failure_reason_counts` for the proposal run. Do not infer the terminal reason
+from iteration order.
+
+**No-success examples:**
+
+| Observed evidence | Terminal class |
+|---|---|
+| auth + timeout | authentication_error |
+| timeout + transport | timeout |
+| transport + HTTP error | transport_error |
+| HTTP error + evaluation rejection | http_error |
+| evaluation rejection + unusable/empty model output only | zero_usable_proposals |
+
+**Q1 boundary:** Does **not** decide whether a specific HTTP status/body can
+safely become `model_unavailable`. Until that later freeze, those cases remain
+`http_error`; no heuristic string matching may promote them.
 
 Pre-run failures (`ProposePreRunError`) must map to the correct safe reason
 (population oversize stays; unauthorized/not-ready stay; must **not** default to
@@ -179,16 +216,14 @@ existing semantics.
 
 ---
 
-## 9. Freeze checklist (Human + independent design review)
+## 9. Remaining freeze questions
 
-Open freeze questions (ask one at a time):
-
-1. Mixed-attempt priority order (section 6 recommendation)
-2. Whether `model_unavailable` is a separate class or folded into HTTP error
-3. Exact safe-reason string identifiers
-4. Whether `failure_reason_counts` is surfaced in operation error details
-5. ErrorCode: keep `GOLD_CONFLICT` for all transport classes vs split codes
-6. UI copy strings for each safe reason
+1. ~~Mixed-attempt priority~~ — Q1 FROZEN
+2. Whether `model_unavailable` is a separate class in this slice (Q2)
+3. Exact safe-reason string identifiers (Q3)
+4. Whether `failure_reason_counts` is surfaced in operation error details (Q4)
+5. ErrorCode: keep `GOLD_CONFLICT` for all operational classes vs split codes (Q5)
+6. UI copy strings for each safe reason (Q6)
 
 **Implementation remains NOT AUTHORIZED until design freeze ACCEPT and a
 separate implementation authority.**
