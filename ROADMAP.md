@@ -552,18 +552,23 @@ SLICE 15  COMPLETE / ACCEPTED
          Exact starting SHA: 21dfb3e88920c40fe227d51efc8022995ef41c9e
        Evidence Sweep: NOT APPROVED
        Chunk Duel: NOT APPROVED
-     16N-B AUTHORIZED / IN PROGRESS
+     16N-B INDEPENDENTLY ACCEPTED
        Authority: S16-N-B-IMPLEMENTATION-AUTH-001
        Frozen design: S16-N-GOLD-EXPERT-ENTRY-DESIGN-FREEZE-001
        Branch: implementation/16n-b-expert-first-campaign-ux
        Exact starting SHA: aac51029f279f07cafd1078160efbd592d5fc4be
-       First candidate (IR-001 REWORK REQUIRED):
-         1b993b5a111f18a0b8148e57e597b5332fe17179
-       IR-001 successor / IR-002 subject (REWORK REQUIRED):
-         244e064356ad99ff65589acdecd60eb9cce60022
-       Independent review: S16-N-B-IMPLEMENTATION-IR-002 — REWORK REQUIRED
-         F001 CLOSED · F002 CLOSED · F003 End session on I2 loading/error
-       Successor candidate: READY FOR IR-003 (same branch / same base)
+       Independent review: S16-N-B-IMPLEMENTATION-IR-003 — ACCEPT
+       Exact independently accepted technical subject:
+         ae137649565881ed295dc51dba422446fa81e682
+       Prior reviewed lineage:
+         IR-001: 1b993b5a111f18a0b8148e57e597b5332fe17179 — REWORK REQUIRED
+         IR-002: 244e064356ad99ff65589acdecd60eb9cce60022 — REWORK REQUIRED
+         IR-003: ae137649565881ed295dc51dba422446fa81e682 — ACCEPT
+       Human acceptance: PENDING / NOT YET DISPOSED
+       16N-B: NOT COMPLETE (Human disposition pending)
+       16J: NOT AUTHORIZED FROM THIS ACCEPTANCE
+       16K: NOT AUTHORIZED FROM THIS ACCEPTANCE
+       Authoring-server failure UX defect: OPEN / NOT TOUCHED
      9G DEFERRED / NOT AUTHORIZED
      Slice 16 overall IN PROGRESS / NOT COMPLETE
      Authority: docs/slice16_design_authority.md
