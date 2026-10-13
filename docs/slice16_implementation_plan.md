@@ -111,12 +111,16 @@ GAP-16G-02:
   Presentation Review bootstrap (non-mutating)
   Human QC presentation disposition:
     S16-N-A-QC-PRESENTATION-HA-001 — ACCEPTED
-  QC ALLOW_PRODUCTION: AUTHORIZED / IN REVIEW
-    Authority: S16-N-A-QC-ALLOW-PRODUCTION-AUTH-001
-    Branch: implementation/16n-a-qc-allow-production
-    Exact starting SHA: 51ce497f33dbd4af66f2b4b5e4574d57b122d86c
-  Rapid Fire policy approval: NOT YET PERFORMED / NOT APPROVED
-  Rapid Fire presentation: NOT YET REVIEWED
+  QC ALLOW_PRODUCTION: ACCEPTED SUBJECT
+    21dfb3e88920c40fe227d51efc8022995ef41c9e
+  Human RF presentation disposition:
+    S16-N-A-RF-PRESENTATION-HA-001 — ACCEPTED
+  RF ALLOW_PRODUCTION: AUTHORIZED / IN REVIEW
+    Authority: S16-N-A-RF-ALLOW-PRODUCTION-AUTH-001
+    Branch: implementation/16n-a-rf-allow-production
+    Exact starting SHA: 21dfb3e88920c40fe227d51efc8022995ef41c9e
+  Evidence Sweep: NOT APPROVED
+  Chunk Duel: NOT APPROVED
 16N-B: DESIGNED / NOT AUTHORIZED
 9G: DEFERRED / NOT AUTHORIZED
 SLICE 16: IN PROGRESS / NOT COMPLETE

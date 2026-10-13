@@ -32,10 +32,15 @@ afterEach(() => {
   sessionStorage.clear();
 });
 
-const QC_ONLY_POLICY = [
+const QC_RF_POLICY = [
   {
     game_id: "goldgame_question_check_v1",
     presentation_id: "goldpres_question_check_source_panel_v1",
+    disposition: "ALLOW_PRODUCTION",
+  },
+  {
+    game_id: "goldgame_rapid_fire_v1",
+    presentation_id: "goldpres_rapid_fire_single_card_v1",
     disposition: "ALLOW_PRODUCTION",
   },
 ] as const;
@@ -76,18 +81,19 @@ function questionDetail(taskId: string) {
 }
 
 describe("16N-A QC ALLOW_PRODUCTION policy", () => {
-  it("QC-POL: exact single QC entry; RF/ES/CD remain false; storage cannot grant", () => {
-    expect([...APPROVED_PRESENTATIONS_V1]).toEqual([...QC_ONLY_POLICY]);
-    expect(APPROVED_PRESENTATIONS_V1).toHaveLength(1);
+  it("QC-POL: QC entry preserved; RF also approved; ES/CD remain false", () => {
+    expect([...APPROVED_PRESENTATIONS_V1]).toEqual([...QC_RF_POLICY]);
+    expect(APPROVED_PRESENTATIONS_V1).toHaveLength(2);
     expect(Object.isFrozen(APPROVED_PRESENTATIONS_V1)).toBe(true);
     expect(Object.isFrozen(APPROVED_PRESENTATIONS_V1[0])).toBe(true);
+    expect(Object.isFrozen(APPROVED_PRESENTATIONS_V1[1])).toBe(true);
 
     expect(
       isAllowProduction(QUESTION_CHECK_GAME_ID, QUESTION_CHECK_PRESENTATION_ID),
     ).toBe(true);
     expect(
       isAllowProduction(RAPID_FIRE_GAME_ID, RAPID_FIRE_PRESENTATION_ID),
-    ).toBe(false);
+    ).toBe(true);
     expect(
       isAllowProduction(EVIDENCE_SWEEP_GAME_ID, EVIDENCE_SWEEP_PRESENTATION_ID),
     ).toBe(false);
@@ -97,15 +103,12 @@ describe("16N-A QC ALLOW_PRODUCTION policy", () => {
 
     localStorage.setItem(
       "gold-lab-allow-production",
-      JSON.stringify([RAPID_FIRE_PRESENTATION_ID, EVIDENCE_SWEEP_PRESENTATION_ID]),
+      JSON.stringify([EVIDENCE_SWEEP_PRESENTATION_ID]),
     );
     sessionStorage.setItem(
       "gold-lab-allow-production",
       JSON.stringify([CHUNK_DUEL_PRESENTATION_ID]),
     );
-    expect(
-      isAllowProduction(RAPID_FIRE_GAME_ID, RAPID_FIRE_PRESENTATION_ID),
-    ).toBe(false);
     expect(
       isAllowProduction(EVIDENCE_SWEEP_GAME_ID, EVIDENCE_SWEEP_PRESENTATION_ID),
     ).toBe(false);
@@ -117,44 +120,36 @@ describe("16N-A QC ALLOW_PRODUCTION policy", () => {
     ).toBe(true);
   });
 
-  it("QC-POL-07: deep-frozen entry cannot grant RF/ES/CD via runtime mutation", () => {
-    const entry = APPROVED_PRESENTATIONS_V1[0];
-    expect(entry).toBeDefined();
-    expect(Object.isFrozen(APPROVED_PRESENTATIONS_V1)).toBe(true);
-    expect(Object.isFrozen(entry)).toBe(true);
+  it("QC-POL-07: deep-frozen entries cannot grant ES/CD via runtime mutation", () => {
+    for (const entry of APPROVED_PRESENTATIONS_V1) {
+      expect(Object.isFrozen(entry)).toBe(true);
+      const mutableView = entry as {
+        game_id: string;
+        presentation_id: string;
+        disposition: string;
+      };
+      expect(() => {
+        mutableView.game_id = EVIDENCE_SWEEP_GAME_ID;
+      }).toThrow(TypeError);
+      expect(() => {
+        mutableView.presentation_id = EVIDENCE_SWEEP_PRESENTATION_ID;
+      }).toThrow(TypeError);
+      expect(() => {
+        mutableView.game_id = CHUNK_DUEL_GAME_ID;
+        mutableView.presentation_id = CHUNK_DUEL_PRESENTATION_ID;
+      }).toThrow(TypeError);
+    }
 
-    const mutableView = entry as {
-      game_id: string;
-      presentation_id: string;
-      disposition: string;
-    };
-    expect(() => {
-      mutableView.game_id = RAPID_FIRE_GAME_ID;
-    }).toThrow(TypeError);
-    expect(() => {
-      mutableView.presentation_id = RAPID_FIRE_PRESENTATION_ID;
-    }).toThrow(TypeError);
-    expect(() => {
-      mutableView.disposition = "ALLOW_PRODUCTION";
-    }).toThrow(TypeError);
-    expect(() => {
-      mutableView.game_id = EVIDENCE_SWEEP_GAME_ID;
-      mutableView.presentation_id = EVIDENCE_SWEEP_PRESENTATION_ID;
-    }).toThrow(TypeError);
-    expect(() => {
-      mutableView.game_id = CHUNK_DUEL_GAME_ID;
-      mutableView.presentation_id = CHUNK_DUEL_PRESENTATION_ID;
-    }).toThrow(TypeError);
-
-    expect(entry.game_id).toBe(QUESTION_CHECK_GAME_ID);
-    expect(entry.presentation_id).toBe(QUESTION_CHECK_PRESENTATION_ID);
-    expect(entry.disposition).toBe("ALLOW_PRODUCTION");
+    expect(APPROVED_PRESENTATIONS_V1[0]?.game_id).toBe(QUESTION_CHECK_GAME_ID);
+    expect(APPROVED_PRESENTATIONS_V1[0]?.presentation_id).toBe(
+      QUESTION_CHECK_PRESENTATION_ID,
+    );
     expect(
       isAllowProduction(QUESTION_CHECK_GAME_ID, QUESTION_CHECK_PRESENTATION_ID),
     ).toBe(true);
     expect(
       isAllowProduction(RAPID_FIRE_GAME_ID, RAPID_FIRE_PRESENTATION_ID),
-    ).toBe(false);
+    ).toBe(true);
     expect(
       isAllowProduction(EVIDENCE_SWEEP_GAME_ID, EVIDENCE_SWEEP_PRESENTATION_ID),
     ).toBe(false);
@@ -234,32 +229,6 @@ describe("16N-A QC ALLOW_PRODUCTION policy", () => {
           c.url.includes("/question-check"),
       ),
     ).toBe(true);
-    mock.restore();
-  });
-
-  it("QC-WORK-03: Rapid Fire /work remains fail-closed", async () => {
-    const campaign = goldCampaign({ campaign_id: "camp_1" });
-    const mock = installFetchMock(async (call) => {
-      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
-      if (call.url === "/v1/workspaces") return jsonResponse([]);
-      if (call.url === "/v1/gold-lab/campaigns/camp_1") {
-        return jsonResponse(campaign);
-      }
-      if (call.url.includes("/tasks")) {
-        throw new Error(`Unexpected task call behind RF policy gate: ${call.url}`);
-      }
-      return jsonResponse(
-        { error: { code: "not_found", message: "x" } },
-        { status: 404 },
-      );
-    });
-    renderApp("/gold-lab/campaigns/camp_1/work?game=rapid_fire&workload=1");
-    expect(
-      await screen.findByText(
-        /This presentation is not approved for production Gold Mode/,
-      ),
-    ).toBeInTheDocument();
-    expect(screen.queryByTestId("rapid-fire-presentation")).not.toBeInTheDocument();
     mock.restore();
   });
 

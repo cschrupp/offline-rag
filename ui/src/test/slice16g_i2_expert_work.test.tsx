@@ -115,16 +115,28 @@ function assertNoForbidden(calls: FetchCall[]) {
 }
 
 describe("16G-I2 production work route policy gate", () => {
-  it("refuses unapproved Rapid Fire without task-detail GETs", async () => {
+  it("allows Rapid Fire /work after QC+RF ALLOW_PRODUCTION", async () => {
     const campaign = goldCampaign({ campaign_id: "camp_1" });
+    const task = goldTask({
+      task_id: "t1",
+      task_kind: "absolute_relevance",
+      active: true,
+      state: "pending",
+    });
     const mock = installFetchMock(async (call) => {
       if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
       if (call.url === "/v1/workspaces") return jsonResponse([]);
       if (call.url === "/v1/gold-lab/campaigns/camp_1") {
         return jsonResponse(campaign);
       }
-      if (call.url.includes("/tasks")) {
-        throw new Error(`Unexpected task call behind policy gate: ${call.url}`);
+      if (
+        call.url.startsWith("/v1/gold-lab/campaigns/camp_1/tasks?") ||
+        call.url === "/v1/gold-lab/campaigns/camp_1/tasks"
+      ) {
+        return jsonResponse({ campaign_id: "camp_1", tasks: [task] });
+      }
+      if (call.url === "/v1/gold-lab/campaigns/camp_1/tasks/t1") {
+        return jsonResponse(absoluteDetail("t1"));
       }
       return jsonResponse(
         { error: { code: "not_found", message: "x" } },
@@ -134,19 +146,19 @@ describe("16G-I2 production work route policy gate", () => {
 
     renderApp("/gold-lab/campaigns/camp_1/work?game=rapid_fire&workload=1");
     expect(
-      await screen.findByText(
+      screen.queryByText(
         /This presentation is not approved for production Gold Mode/,
       ),
-    ).toBeInTheDocument();
+    ).not.toBeInTheDocument();
     expect(
-      mock.calls.some((call) => /\/tasks\//.test(call.url)),
-    ).toBe(false);
-
+      await screen.findByTestId("rapid-fire-presentation"),
+    ).toBeInTheDocument();
+    expect(mock.calls.some((call) => call.method === "POST")).toBe(false);
     cleanup();
     mock.restore();
   });
 
-  it("allows Question Check /work after QC-only ALLOW_PRODUCTION", async () => {
+  it("allows Question Check /work after QC+RF ALLOW_PRODUCTION", async () => {
     const campaign = goldCampaign({ campaign_id: "camp_1" });
     const task = goldTask({
       task_id: "q1",

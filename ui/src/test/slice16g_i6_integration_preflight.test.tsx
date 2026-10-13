@@ -1026,11 +1026,16 @@ describe("16G-I6 D/E — Calibration and Training Gold non-mutation", () => {
 });
 
 describe("16G-I6 F — presentation-policy gate (integrated route)", () => {
-  it("ALLOW_PRODUCTION is QC-only; RF/ES/CD fail closed on work routes", async () => {
+  it("ALLOW_PRODUCTION is QC+RF; ES/CD fail closed on work routes", async () => {
     expect([...APPROVED_PRESENTATIONS_V1]).toEqual([
       {
         game_id: "goldgame_question_check_v1",
         presentation_id: "goldpres_question_check_source_panel_v1",
+        disposition: "ALLOW_PRODUCTION",
+      },
+      {
+        game_id: "goldgame_rapid_fire_v1",
+        presentation_id: "goldpres_rapid_fire_single_card_v1",
         disposition: "ALLOW_PRODUCTION",
       },
     ]);
@@ -1039,7 +1044,7 @@ describe("16G-I6 F — presentation-policy gate (integrated route)", () => {
     ).toBe(true);
     expect(
       isAllowProduction(RAPID_FIRE_GAME_ID, RAPID_FIRE_PRESENTATION_ID),
-    ).toBe(false);
+    ).toBe(true);
     expect(
       isAllowProduction(EVIDENCE_SWEEP_GAME_ID, EVIDENCE_SWEEP_PRESENTATION_ID),
     ).toBe(false);
@@ -1049,7 +1054,6 @@ describe("16G-I6 F — presentation-policy gate (integrated route)", () => {
 
     const campaign = goldCampaign({ campaign_id: "camp_1" });
     for (const game of [
-      "rapid_fire",
       "evidence_sweep",
       "chunk_duel",
     ] as const) {
@@ -1271,6 +1275,11 @@ describe("16G-I6 I — GAP-16G-02 baseline bootstrap product path", () => {
       {
         game_id: "goldgame_question_check_v1",
         presentation_id: "goldpres_question_check_source_panel_v1",
+        disposition: "ALLOW_PRODUCTION",
+      },
+      {
+        game_id: "goldgame_rapid_fire_v1",
+        presentation_id: "goldpres_rapid_fire_single_card_v1",
         disposition: "ALLOW_PRODUCTION",
       },
     ]);

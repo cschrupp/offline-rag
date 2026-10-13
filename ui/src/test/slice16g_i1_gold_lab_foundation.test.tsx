@@ -684,6 +684,7 @@ describe("16G-I1 campaign shell, close, session, scientific boundary", () => {
     expect(screen.getByLabelText("Complete case")).toBeInTheDocument();
 
     await user.click(screen.getByLabelText("5"));
+    await user.click(screen.getByLabelText("Evidence Sweep"));
     await user.click(screen.getByRole("button", { name: "Prepare session" }));
     expect(
       await screen.findByText(

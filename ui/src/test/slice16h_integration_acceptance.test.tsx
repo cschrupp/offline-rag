@@ -78,11 +78,16 @@ describe("16H-J — no fake data in production surfaces", () => {
     }
   });
 
-  it("ALLOW_PRODUCTION contains Question Check only", () => {
+  it("ALLOW_PRODUCTION contains Question Check and Rapid Fire only", () => {
     expect([...APPROVED_PRESENTATIONS_V1]).toEqual([
       {
         game_id: "goldgame_question_check_v1",
         presentation_id: "goldpres_question_check_source_panel_v1",
+        disposition: "ALLOW_PRODUCTION",
+      },
+      {
+        game_id: "goldgame_rapid_fire_v1",
+        presentation_id: "goldpres_rapid_fire_single_card_v1",
         disposition: "ALLOW_PRODUCTION",
       },
     ]);
@@ -243,7 +248,7 @@ describe("16H-A2 — Question Bank / export local-only", () => {
 });
 
 describe("16H-A3 — Gold Lab policy boundaries preserved", () => {
-  it("Expert Work still fails closed for unapproved presentations", async () => {
+  it("Expert Work still fails closed for unapproved Evidence Sweep", async () => {
     const campaign = goldCampaign({ campaign_id: "camp_1" });
     const mock = installFetchMock(async (call) => {
       if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
@@ -251,7 +256,7 @@ describe("16H-A3 — Gold Lab policy boundaries preserved", () => {
       if (call.url === "/v1/gold-lab/campaigns/camp_1") {
         return jsonResponse(campaign);
       }
-      if (call.url.includes("/tasks") || call.url.includes("/relevance")) {
+      if (call.url.includes("/tasks") || call.url.includes("/preferences")) {
         throw new Error(`Policy gate leaked: ${call.url}`);
       }
       return jsonResponse(
@@ -259,7 +264,7 @@ describe("16H-A3 — Gold Lab policy boundaries preserved", () => {
         { status: 404 },
       );
     });
-    renderApp("/gold-lab/campaigns/camp_1/work?game=rapid_fire&workload=1");
+    renderApp("/gold-lab/campaigns/camp_1/work?game=evidence_sweep&workload=1");
     expect(
       await screen.findByText(
         /This presentation is not approved for production Gold Mode/,
