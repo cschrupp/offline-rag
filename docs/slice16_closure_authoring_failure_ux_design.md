@@ -1,7 +1,8 @@
 # Slice 16 closure — authoring-server failure UX design
 
-**Authority:** `S16-CLOSURE-AUTHORING-FAILURE-UX-DESIGN-AUTH-001` — AUTHORIZED  
-**Status:** DESIGN IN PROGRESS / PARTIALLY FROZEN  
+**Design authority:** `S16-CLOSURE-AUTHORING-FAILURE-UX-DESIGN-AUTH-001` — AUTHORIZED  
+**Design freeze:** `S16-CLOSURE-AUTHORING-FAILURE-UX-DESIGN-FREEZE-001` — ACCEPTED / FROZEN  
+**Status:** DESIGN FROZEN / READY FOR INDEPENDENT DESIGN REVIEW  
 **Implementation:** NOT AUTHORIZED  
 **Parent product surface:** Gold Lab baseline bootstrap (GAP-16G-02 / 9B propose)
 
@@ -15,7 +16,7 @@
 | Q4 | Surfacing `failure_reason_counts` | ACCEPTED / FROZEN |
 | Q5 | ErrorCode choice | ACCEPTED / FROZEN |
 | Q6 | Operator UI copy | ACCEPTED / FROZEN |
-| Q7 | Design freeze completeness | OPEN |
+| Q7 | Design freeze completeness | ACCEPTED / FROZEN |
 
 This design does **not** close Slice 16, authorize 16J/16K, or change authoring
 science (prompts, sampling, quality gates, pooling).
@@ -212,13 +213,21 @@ from iteration order.
 safely become `model_unavailable`. Until that later freeze, those cases remain
 `http_error`; no heuristic string matching may promote them.
 
-Pre-run failures (`ProposePreRunError`) must map to the correct safe reason
-(population oversize stays; unauthorized/not-ready stay; must **not** default to
-`zero_usable_proposals`).
+### 6.1 ProposePreRunError (implementation-critical; within this design)
+
+`ProposePreRunError` handling is within this design.
+
+A post-admission `ProposePreRunError` **MUST NOT** fall through/default to
+`zero_usable_proposals` when its available evidence establishes one of the Q1
+operational classes.
+
+Existing genuine admission/pre-run reasons remain unchanged
+(`authoring_not_ready`, `authoring_endpoint_unauthorized`,
+`proposal_count_exceeds_eligible_population`, …).
 
 ---
 
-## 7. Propagation contract (partially frozen)
+## 7. Propagation contract (frozen)
 
 ```text
 9B propose completes with successful_count == 0
@@ -350,26 +359,54 @@ existing semantics.
 
 ---
 
-## 8. Explicit non-goals
+## 8. Scope boundary (frozen)
 
+### IN SCOPE
+
+- deterministic classification of existing authoring failure evidence
+- corrected bootstrap terminal reason
+- existing `GOLD_CONFLICT` envelope
+- exact operator-safe UI copy
+- tests proving classification and non-leakage of `failure_reason_counts`
+- `ProposePreRunError` must not default to `zero_usable_proposals` when
+  operational class evidence is available
+
+### OUT OF SCOPE
+
+- new provider diagnostics
+- `model_unavailable`
+- body/status heuristics
+- new `SafeErrorDetails` fields
+- new diagnostic API
+- connectivity probes / health monitoring
+- retry redesign
+- authoring configuration changes
 - 16J branding
 - 16K capacity work
-- Slice 16 closeout
+- Slice 16 final closeout
 - Changing proposal prompts, sampling, quality gates, pooling science
 - Changing Gold ledger / QC / RF / ES / CD policy
-- Parallel telemetry platform
 
 ---
 
-## 9. Remaining freeze questions
+## 9. Design freeze completeness — Q7 ACCEPTED / FROZEN
 
-1. ~~Mixed-attempt priority~~ — Q1 FROZEN
-2. ~~Model unavailable~~ — Q2 FROZEN (deferred; remain `http_error`)
-3. ~~Safe-reason identifiers~~ — Q3 FROZEN
-4. ~~failure_reason_counts surfacing~~ — Q4 FROZEN (server-side only)
-5. ~~ErrorCode~~ — Q5 FROZEN (`GOLD_CONFLICT` + Q3 reason)
-6. ~~Operator UI copy~~ — Q6 FROZEN
-7. Design freeze completeness / ready for independent design review (Q7)
+**Authority freeze:** `S16-CLOSURE-AUTHORING-FAILURE-UX — Q7 DESIGN FREEZE COMPLETENESS`  
+**Disposition:** ACCEPTED / FROZEN
 
-**Implementation remains NOT AUTHORIZED until full design freeze ACCEPT and a
-separate implementation authority.**
+Q1–Q6 constitute the complete design freeze for this closure gate under:
+
+`S16-CLOSURE-AUTHORING-FAILURE-UX-DESIGN-FREEZE-001` — ACCEPTED / FROZEN
+
+| Freeze | Summary |
+|---|---|
+| Q1 | Highest-priority observed class wins; any operational evidence forbids `zero_usable_proposals` |
+| Q2 | No separate `model_unavailable`; non-auth HTTP remains `http_error` |
+| Q3 | Exact Q3 `details.reason` identifiers |
+| Q4 | `failure_reason_counts` server-side only; not client-serialized |
+| Q5 | All five post-admission terminals: `GOLD_CONFLICT` + Q3 reason |
+| Q6 | Exact five Seneca operator strings |
+| Q7 | Design decision surface closed; ready for independent design review |
+
+**Next gate:** independent design review.  
+**Implementation:** NOT AUTHORIZED until separate implementation authority after design IR ACCEPT.

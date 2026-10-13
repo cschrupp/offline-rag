@@ -568,10 +568,12 @@ SLICE 15  COMPLETE / ACCEPTED
        16J: NOT AUTHORIZED FROM THIS DISPOSITION
        16K: NOT AUTHORIZED FROM THIS DISPOSITION
        Authoring-server failure UX defect: OPEN
-     Authoring-server failure UX design AUTHORIZED
+     Authoring-server failure UX design FROZEN
        Authority: S16-CLOSURE-AUTHORING-FAILURE-UX-DESIGN-AUTH-001
+       Design freeze: S16-CLOSURE-AUTHORING-FAILURE-UX-DESIGN-FREEZE-001 — ACCEPTED / FROZEN
        Design doc: docs/slice16_closure_authoring_failure_ux_design.md
-       Status: DESIGN IN PROGRESS / NOT FROZEN
+       Status: DESIGN FROZEN / READY FOR INDEPENDENT DESIGN REVIEW
+       Q1–Q7 ACCEPTED / FROZEN
        IMPLEMENTATION NOT AUTHORIZED
      9G DEFERRED / NOT AUTHORIZED
      Slice 16 overall IN PROGRESS / NOT COMPLETE
