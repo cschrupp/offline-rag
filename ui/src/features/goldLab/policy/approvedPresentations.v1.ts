@@ -8,14 +8,17 @@
  * S16-N-A-QC-PRESENTATION-HA-001 — ACCEPTED.
  *
  * Rapid Fire, Evidence Sweep, and Chunk Duel remain unapproved.
+ *
+ * The array and each entry are deeply frozen so runtime mutation cannot grant
+ * eligibility for unapproved presentations.
  */
 export type PresentationDisposition = "ALLOW_PRODUCTION" | "DENIED";
 
-export type ApprovedPresentationEntry = {
+export type ApprovedPresentationEntry = Readonly<{
   game_id: string;
   presentation_id: string;
   disposition: PresentationDisposition;
-};
+}>;
 
 export const APPROVED_PRESENTATIONS_ARTIFACT_VERSION = "v1" as const;
 
@@ -25,9 +28,9 @@ export const APPROVED_PRESENTATIONS_ARTIFACT_VERSION = "v1" as const;
  */
 export const APPROVED_PRESENTATIONS_V1: readonly ApprovedPresentationEntry[] =
   Object.freeze([
-    {
+    Object.freeze({
       game_id: "goldgame_question_check_v1",
       presentation_id: "goldpres_question_check_source_panel_v1",
-      disposition: "ALLOW_PRODUCTION",
-    },
+      disposition: "ALLOW_PRODUCTION" as const,
+    }),
   ]);

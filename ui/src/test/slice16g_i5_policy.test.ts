@@ -24,6 +24,7 @@ describe("16G-I5 approved-presentations policy", () => {
   it("QC alone is ALLOW_PRODUCTION while Training stays independent of RF/ES/CD", () => {
     expect([...APPROVED_PRESENTATIONS_V1]).toEqual([...QC_ONLY]);
     expect(Object.isFrozen(APPROVED_PRESENTATIONS_V1)).toBe(true);
+    expect(Object.isFrozen(APPROVED_PRESENTATIONS_V1[0])).toBe(true);
     expect(
       isAllowProduction(QUESTION_CHECK_GAME_ID, QUESTION_CHECK_PRESENTATION_ID),
     ).toBe(true);

@@ -80,6 +80,7 @@ describe("16N-A QC ALLOW_PRODUCTION policy", () => {
     expect([...APPROVED_PRESENTATIONS_V1]).toEqual([...QC_ONLY_POLICY]);
     expect(APPROVED_PRESENTATIONS_V1).toHaveLength(1);
     expect(Object.isFrozen(APPROVED_PRESENTATIONS_V1)).toBe(true);
+    expect(Object.isFrozen(APPROVED_PRESENTATIONS_V1[0])).toBe(true);
 
     expect(
       isAllowProduction(QUESTION_CHECK_GAME_ID, QUESTION_CHECK_PRESENTATION_ID),
@@ -114,6 +115,52 @@ describe("16N-A QC ALLOW_PRODUCTION policy", () => {
     expect(
       isAllowProduction(QUESTION_CHECK_GAME_ID, QUESTION_CHECK_PRESENTATION_ID),
     ).toBe(true);
+  });
+
+  it("QC-POL-07: deep-frozen entry cannot grant RF/ES/CD via runtime mutation", () => {
+    const entry = APPROVED_PRESENTATIONS_V1[0];
+    expect(entry).toBeDefined();
+    expect(Object.isFrozen(APPROVED_PRESENTATIONS_V1)).toBe(true);
+    expect(Object.isFrozen(entry)).toBe(true);
+
+    const mutableView = entry as {
+      game_id: string;
+      presentation_id: string;
+      disposition: string;
+    };
+    expect(() => {
+      mutableView.game_id = RAPID_FIRE_GAME_ID;
+    }).toThrow(TypeError);
+    expect(() => {
+      mutableView.presentation_id = RAPID_FIRE_PRESENTATION_ID;
+    }).toThrow(TypeError);
+    expect(() => {
+      mutableView.disposition = "ALLOW_PRODUCTION";
+    }).toThrow(TypeError);
+    expect(() => {
+      mutableView.game_id = EVIDENCE_SWEEP_GAME_ID;
+      mutableView.presentation_id = EVIDENCE_SWEEP_PRESENTATION_ID;
+    }).toThrow(TypeError);
+    expect(() => {
+      mutableView.game_id = CHUNK_DUEL_GAME_ID;
+      mutableView.presentation_id = CHUNK_DUEL_PRESENTATION_ID;
+    }).toThrow(TypeError);
+
+    expect(entry.game_id).toBe(QUESTION_CHECK_GAME_ID);
+    expect(entry.presentation_id).toBe(QUESTION_CHECK_PRESENTATION_ID);
+    expect(entry.disposition).toBe("ALLOW_PRODUCTION");
+    expect(
+      isAllowProduction(QUESTION_CHECK_GAME_ID, QUESTION_CHECK_PRESENTATION_ID),
+    ).toBe(true);
+    expect(
+      isAllowProduction(RAPID_FIRE_GAME_ID, RAPID_FIRE_PRESENTATION_ID),
+    ).toBe(false);
+    expect(
+      isAllowProduction(EVIDENCE_SWEEP_GAME_ID, EVIDENCE_SWEEP_PRESENTATION_ID),
+    ).toBe(false);
+    expect(
+      isAllowProduction(CHUNK_DUEL_GAME_ID, CHUNK_DUEL_PRESENTATION_ID),
+    ).toBe(false);
   });
 
   it("QC-WORK: /work mounts production QC presentation and mutation path", async () => {

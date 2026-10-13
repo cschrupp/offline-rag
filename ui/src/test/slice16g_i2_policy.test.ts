@@ -20,6 +20,8 @@ const QC_ONLY = [
 describe("16G-I2 approved-presentations policy", () => {
   it("authorizes Question Check only under 16N-A QC policy enablement", () => {
     expect([...APPROVED_PRESENTATIONS_V1]).toEqual([...QC_ONLY]);
+    expect(Object.isFrozen(APPROVED_PRESENTATIONS_V1)).toBe(true);
+    expect(Object.isFrozen(APPROVED_PRESENTATIONS_V1[0])).toBe(true);
     expect(
       isAllowProduction(RAPID_FIRE_GAME_ID, RAPID_FIRE_PRESENTATION_ID),
     ).toBe(false);

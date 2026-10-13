@@ -115,7 +115,7 @@ function assertNoForbidden(calls: FetchCall[]) {
 }
 
 describe("16G-I2 production work route policy gate", () => {
-  it("refuses unapproved Rapid Fire and Question Check without task-detail GETs", async () => {
+  it("refuses unapproved Rapid Fire without task-detail GETs", async () => {
     const campaign = goldCampaign({ campaign_id: "camp_1" });
     const mock = installFetchMock(async (call) => {
       if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
@@ -191,7 +191,7 @@ describe("16G-I2 production work route policy gate", () => {
     mock.restore();
   });
 
-  it("refuses unapproved Evidence Sweep / Chunk Duel without task or mutation calls", async () => {
+  it("refuses unapproved Evidence Sweep without task or mutation calls", async () => {
     const campaign = goldCampaign({ campaign_id: "camp_1" });
     const mock = installFetchMock(async (call) => {
       if (call.url === "/health/ready") return jsonResponse({ status: "ready" });

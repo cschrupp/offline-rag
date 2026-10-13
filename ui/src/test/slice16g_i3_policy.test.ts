@@ -25,6 +25,8 @@ const QC_ONLY = [
 describe("16G-I3 approved-presentations policy", () => {
   it("keeps RF/ES/CD unapproved while QC alone is ALLOW_PRODUCTION", () => {
     expect([...APPROVED_PRESENTATIONS_V1]).toEqual([...QC_ONLY]);
+    expect(Object.isFrozen(APPROVED_PRESENTATIONS_V1)).toBe(true);
+    expect(Object.isFrozen(APPROVED_PRESENTATIONS_V1[0])).toBe(true);
     expect(
       isAllowProduction(QUESTION_CHECK_GAME_ID, QUESTION_CHECK_PRESENTATION_ID),
     ).toBe(true);
