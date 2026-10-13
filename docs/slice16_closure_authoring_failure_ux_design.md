@@ -13,7 +13,7 @@
 | Q2 | Model-unavailable class | ACCEPTED / FROZEN (deferred) |
 | Q3 | Safe-reason identifiers | ACCEPTED / FROZEN |
 | Q4 | Surfacing `failure_reason_counts` | ACCEPTED / FROZEN |
-| Q5 | ErrorCode choice | OPEN |
+| Q5 | ErrorCode choice | ACCEPTED / FROZEN |
 | Q6 | Operator UI copy | OPEN |
 
 This design does **not** close Slice 16, authorize 16J/16K, or change authoring
@@ -223,7 +223,7 @@ Pre-run failures (`ProposePreRunError`) must map to the correct safe reason
 9B propose completes with successful_count == 0
   → classify(failure_reason_counts, attempts)   # Q1
   → operation FAILED
-  → ErrorCode: <Q5>
+  → ErrorCode: GOLD_CONFLICT                     # Q5
   → details.reason: <Q3 safe reason>
   → failure_reason_counts: NOT serialized to client  # Q4
 
@@ -231,6 +231,41 @@ Seneca operation / error UI
   → messageForGoldSafeReason(reason)            # Q6
   → operator-safe copy for that reason only
 ```
+
+### 7.2 ErrorCode — Q5 ACCEPTED / FROZEN
+
+**Authority freeze:** `S16-CLOSURE-AUTHORING-FAILURE-UX — Q5 ERRORCODE FOR CLASSIFIED POST-ADMISSION TERMINAL FAILURES`  
+**Disposition:** ACCEPTED / FROZEN
+
+All Q1→Q3 terminal classes use:
+
+| Terminal class | ErrorCode | `details.reason` |
+|---|---|---|
+| authentication | `GOLD_CONFLICT` | `authoring_authentication_failed` |
+| timeout | `GOLD_CONFLICT` | `authoring_request_timeout` |
+| transport/unreachable | `GOLD_CONFLICT` | `authoring_endpoint_unreachable` |
+| HTTP failure | `GOLD_CONFLICT` | `authoring_http_error` |
+| evaluation/content-only | `GOLD_CONFLICT` | `zero_usable_proposals` |
+
+**Semantic split:**
+
+- `ErrorCode` → coarse failed-operation category
+- `details.reason` → precise operator-safe authoring failure classification
+
+**Frozen constraints:**
+
+- Applies only after authoring admission has succeeded.
+- Existing admission/pre-run ErrorCode behavior is unchanged.
+- Do not introduce new ErrorCode values for this closure slice.
+- Do not translate upstream authoring authentication failure into Seneca
+  client/user authentication or authorization semantics.
+- Do not use HTTP status/error-code differences as a second competing
+  classification channel.
+- UI copy for these failures branches on frozen Q3 `details.reason`.
+- `zero_usable_proposals` keeps `GOLD_CONFLICT` exactly as before, with
+  corrected Q1 meaning.
+- Retryability must not be inferred from `GOLD_CONFLICT` alone; the safe
+  reason remains the discriminant if retry guidance is later frozen.
 
 ### 7.1 Failure_reason_counts surfacing — Q4 ACCEPTED / FROZEN
 
@@ -287,7 +322,7 @@ existing semantics.
 2. ~~Model unavailable~~ — Q2 FROZEN (deferred; remain `http_error`)
 3. ~~Safe-reason identifiers~~ — Q3 FROZEN
 4. ~~failure_reason_counts surfacing~~ — Q4 FROZEN (server-side only)
-5. ErrorCode: keep `GOLD_CONFLICT` for all operational classes vs split codes (Q5)
+5. ~~ErrorCode~~ — Q5 FROZEN (`GOLD_CONFLICT` + Q3 reason)
 6. UI copy strings for each safe reason (Q6)
 
 **Implementation remains NOT AUTHORIZED until design freeze ACCEPT and a
