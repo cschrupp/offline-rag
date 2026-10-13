@@ -14,12 +14,22 @@ import {
   isAllowProduction,
 } from "../features/goldLab/policy/presentations";
 
+const QC_ONLY = [
+  {
+    game_id: "goldgame_question_check_v1",
+    presentation_id: "goldpres_question_check_source_panel_v1",
+    disposition: "ALLOW_PRODUCTION",
+  },
+] as const;
+
 describe("16G-I3 approved-presentations policy", () => {
-  it("keeps ALLOW_PRODUCTION empty for all four expert games", () => {
-    expect(APPROVED_PRESENTATIONS_V1).toEqual([]);
+  it("keeps RF/ES/CD unapproved while QC alone is ALLOW_PRODUCTION", () => {
+    expect([...APPROVED_PRESENTATIONS_V1]).toEqual([...QC_ONLY]);
+    expect(
+      isAllowProduction(QUESTION_CHECK_GAME_ID, QUESTION_CHECK_PRESENTATION_ID),
+    ).toBe(true);
     for (const [gameId, presentationId] of [
       [RAPID_FIRE_GAME_ID, RAPID_FIRE_PRESENTATION_ID],
-      [QUESTION_CHECK_GAME_ID, QUESTION_CHECK_PRESENTATION_ID],
       [EVIDENCE_SWEEP_GAME_ID, EVIDENCE_SWEEP_PRESENTATION_ID],
       [CHUNK_DUEL_GAME_ID, CHUNK_DUEL_PRESENTATION_ID],
     ] as const) {

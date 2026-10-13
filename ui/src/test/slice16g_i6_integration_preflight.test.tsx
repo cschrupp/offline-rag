@@ -38,7 +38,6 @@ import { QuestionCheckGame } from "../features/goldLab/games/questionCheck/Quest
 import { RapidFireGame } from "../features/goldLab/games/rapidFire/RapidFireGame";
 import { APPROVED_PRESENTATIONS_V1 } from "../features/goldLab/policy/approvedPresentations.v1";
 import {
-  candidatePresentationForGame,
   CHUNK_DUEL_GAME_ID,
   CHUNK_DUEL_PRESENTATION_ID,
   EVIDENCE_SWEEP_GAME_ID,
@@ -1027,22 +1026,19 @@ describe("16G-I6 D/E — Calibration and Training Gold non-mutation", () => {
 });
 
 describe("16G-I6 F — presentation-policy gate (integrated route)", () => {
-  it("ALLOW_PRODUCTION remains empty; all four games fail closed on work routes", async () => {
-    expect(APPROVED_PRESENTATIONS_V1).toEqual([]);
-    for (const game of [
-      "rapid_fire",
-      "question_check",
-      "evidence_sweep",
-      "chunk_duel",
-    ] as const) {
-      const { gameId, presentationId } = candidatePresentationForGame(game);
-      expect(isAllowProduction(gameId, presentationId)).toBe(false);
-    }
-    expect(
-      isAllowProduction(RAPID_FIRE_GAME_ID, RAPID_FIRE_PRESENTATION_ID),
-    ).toBe(false);
+  it("ALLOW_PRODUCTION is QC-only; RF/ES/CD fail closed on work routes", async () => {
+    expect([...APPROVED_PRESENTATIONS_V1]).toEqual([
+      {
+        game_id: "goldgame_question_check_v1",
+        presentation_id: "goldpres_question_check_source_panel_v1",
+        disposition: "ALLOW_PRODUCTION",
+      },
+    ]);
     expect(
       isAllowProduction(QUESTION_CHECK_GAME_ID, QUESTION_CHECK_PRESENTATION_ID),
+    ).toBe(true);
+    expect(
+      isAllowProduction(RAPID_FIRE_GAME_ID, RAPID_FIRE_PRESENTATION_ID),
     ).toBe(false);
     expect(
       isAllowProduction(EVIDENCE_SWEEP_GAME_ID, EVIDENCE_SWEEP_PRESENTATION_ID),
@@ -1054,7 +1050,6 @@ describe("16G-I6 F — presentation-policy gate (integrated route)", () => {
     const campaign = goldCampaign({ campaign_id: "camp_1" });
     for (const game of [
       "rapid_fire",
-      "question_check",
       "evidence_sweep",
       "chunk_duel",
     ] as const) {
@@ -1272,7 +1267,13 @@ describe("16G-I6 I — GAP-16G-02 baseline bootstrap product path", () => {
         name: "Create baseline from workspace",
       }),
     ).toBeInTheDocument();
-    expect([...APPROVED_PRESENTATIONS_V1]).toEqual([]);
+    expect([...APPROVED_PRESENTATIONS_V1]).toEqual([
+      {
+        game_id: "goldgame_question_check_v1",
+        presentation_id: "goldpres_question_check_source_panel_v1",
+        disposition: "ALLOW_PRODUCTION",
+      },
+    ]);
     mock.restore();
   });
 });

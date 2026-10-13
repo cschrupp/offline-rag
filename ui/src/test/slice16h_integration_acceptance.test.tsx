@@ -78,8 +78,14 @@ describe("16H-J — no fake data in production surfaces", () => {
     }
   });
 
-  it("ALLOW_PRODUCTION remains empty", () => {
-    expect([...APPROVED_PRESENTATIONS_V1]).toEqual([]);
+  it("ALLOW_PRODUCTION contains Question Check only", () => {
+    expect([...APPROVED_PRESENTATIONS_V1]).toEqual([
+      {
+        game_id: "goldgame_question_check_v1",
+        presentation_id: "goldpres_question_check_source_panel_v1",
+        disposition: "ALLOW_PRODUCTION",
+      },
+    ]);
   });
 });
 

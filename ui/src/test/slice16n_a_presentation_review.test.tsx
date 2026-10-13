@@ -354,7 +354,7 @@ describe("16N-A Presentation Review", () => {
     mock.restore();
   });
 
-  it("preserves unapproved /work refusal for QC and RF", async () => {
+  it("preserves unapproved /work refusal for Rapid Fire after QC-only policy", async () => {
     const campaign = goldCampaign({ campaign_id: "camp_1" });
     const mock = installFetchMock(async (call) => {
       if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
@@ -371,15 +371,6 @@ describe("16N-A Presentation Review", () => {
       );
     });
 
-    renderApp("/gold-lab/campaigns/camp_1/work?game=question_check&workload=1");
-    expect(
-      await screen.findByText(
-        /This presentation is not approved for production Gold Mode/,
-      ),
-    ).toBeInTheDocument();
-    expect(screen.queryByTestId("question-check-presentation")).not.toBeInTheDocument();
-    cleanup();
-
     renderApp("/gold-lab/campaigns/camp_1/work?game=rapid_fire&workload=1");
     expect(
       await screen.findByText(
@@ -390,8 +381,14 @@ describe("16N-A Presentation Review", () => {
     mock.restore();
   });
 
-  it("keeps APPROVED_PRESENTATIONS_V1 empty and calibration separate", async () => {
-    expect(APPROVED_PRESENTATIONS_V1).toEqual([]);
+  it("keeps QC-only APPROVED_PRESENTATIONS_V1 and calibration separate", async () => {
+    expect([...APPROVED_PRESENTATIONS_V1]).toEqual([
+      {
+        game_id: "goldgame_question_check_v1",
+        presentation_id: "goldpres_question_check_source_panel_v1",
+        disposition: "ALLOW_PRODUCTION",
+      },
+    ]);
 
     const campaign = goldCampaign({ campaign_id: "camp_1" });
     const mock = installFetchMock(async (call) => {

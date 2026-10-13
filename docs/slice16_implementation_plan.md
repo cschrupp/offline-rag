@@ -109,11 +109,14 @@ GAP-16G-02:
   Exact accepted technical subject:
     36de7feaab33fddf77d4bdf5818f3cc60e8a1832
   Presentation Review bootstrap (non-mutating)
-  Branch: implementation/16n-a-presentation-review-bootstrap
-  Exact base: dcf6bf02a77a4e68678d8887f836c471448422bc
-  ALLOW_PRODUCTION: EMPTY / UNCHANGED
-  Question Check policy approval: NOT YET PERFORMED
-  Rapid Fire policy approval: NOT YET PERFORMED
+  Human QC presentation disposition:
+    S16-N-A-QC-PRESENTATION-HA-001 — ACCEPTED
+  QC ALLOW_PRODUCTION: AUTHORIZED / IN REVIEW
+    Authority: S16-N-A-QC-ALLOW-PRODUCTION-AUTH-001
+    Branch: implementation/16n-a-qc-allow-production
+    Exact starting SHA: 51ce497f33dbd4af66f2b4b5e4574d57b122d86c
+  Rapid Fire policy approval: NOT YET PERFORMED / NOT APPROVED
+  Rapid Fire presentation: NOT YET REVIEWED
 16N-B: DESIGNED / NOT AUTHORIZED
 9G: DEFERRED / NOT AUTHORIZED
 SLICE 16: IN PROGRESS / NOT COMPLETE

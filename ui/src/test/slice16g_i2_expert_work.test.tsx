@@ -144,15 +144,32 @@ describe("16G-I2 production work route policy gate", () => {
 
     cleanup();
     mock.restore();
+  });
 
-    const mock2 = installFetchMock(async (call) => {
+  it("allows Question Check /work after QC-only ALLOW_PRODUCTION", async () => {
+    const campaign = goldCampaign({ campaign_id: "camp_1" });
+    const task = goldTask({
+      task_id: "q1",
+      task_kind: "question_check",
+      case_id: "case_q",
+      active: true,
+      state: "pending",
+      candidate_chunk_id: null,
+    });
+    const mock = installFetchMock(async (call) => {
       if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
       if (call.url === "/v1/workspaces") return jsonResponse([]);
       if (call.url === "/v1/gold-lab/campaigns/camp_1") {
         return jsonResponse(campaign);
       }
-      if (call.url.includes("/tasks")) {
-        throw new Error(`Unexpected task call behind policy gate: ${call.url}`);
+      if (
+        call.url.startsWith("/v1/gold-lab/campaigns/camp_1/tasks?") ||
+        call.url === "/v1/gold-lab/campaigns/camp_1/tasks"
+      ) {
+        return jsonResponse({ campaign_id: "camp_1", tasks: [task] });
+      }
+      if (call.url === "/v1/gold-lab/campaigns/camp_1/tasks/q1") {
+        return jsonResponse(questionDetail("q1"));
       }
       return jsonResponse(
         { error: { code: "not_found", message: "x" } },
@@ -163,14 +180,15 @@ describe("16G-I2 production work route policy gate", () => {
       "/gold-lab/campaigns/camp_1/work?game=question_check&workload=1",
     );
     expect(
-      await screen.findByText(
+      screen.queryByText(
         /This presentation is not approved for production Gold Mode/,
       ),
-    ).toBeInTheDocument();
+    ).not.toBeInTheDocument();
     expect(
-      mock2.calls.some((call) => call.method === "POST"),
-    ).toBe(false);
-    mock2.restore();
+      await screen.findByTestId("question-check-presentation"),
+    ).toBeInTheDocument();
+    expect(mock.calls.some((call) => call.method === "POST")).toBe(false);
+    mock.restore();
   });
 
   it("refuses unapproved Evidence Sweep / Chunk Duel without task or mutation calls", async () => {
