@@ -92,15 +92,21 @@ export function GoldLabWorkPage() {
     );
   }
 
+  // Active QC/RF production sessions: End session is the campaign exit so
+  // unsaved Question Check edits cannot be discarded via a breadcrumb bypass.
+  const i2Game = isI2ExpertGame(session.game) ? session.game : null;
+
   return (
     <div className="stack gold-lab-page">
-      <p className="muted" style={{ margin: 0 }}>
-        <Link to={`/gold-lab/campaigns/${campaignId}`}>Back to campaign</Link>
-      </p>
-      {isI2ExpertGame(session.game) ? (
+      {!i2Game ? (
+        <p className="muted" style={{ margin: 0 }}>
+          <Link to={`/gold-lab/campaigns/${campaignId}`}>Back to campaign</Link>
+        </p>
+      ) : null}
+      {i2Game ? (
         <GoldWorkSession
           campaignId={campaignId}
-          game={session.game}
+          game={i2Game}
           campaignClosed={campaign.status === "closed"}
         />
       ) : null}

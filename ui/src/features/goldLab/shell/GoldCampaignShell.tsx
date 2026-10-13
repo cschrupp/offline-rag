@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Badge } from "../../../components/Badge";
+import { Button } from "../../../components/Button";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { closeGoldCampaign, listGoldTasks } from "../api/client";
 import { goldLabErrorMessage } from "../errors/goldLabErrors";
@@ -231,92 +232,135 @@ export function GoldCampaignShell({ campaign }: Props) {
         </p>
       </header>
 
-      {!closed ? <GoldGuide state={expertState} /> : null}
+      {tasksQuery.isError ? (
+        <section
+          className="card"
+          data-testid="gold-task-status-error"
+          aria-labelledby="gold-task-status-error-heading"
+        >
+          <h2 id="gold-task-status-error-heading" style={{ marginTop: 0 }}>
+            Gold work status unavailable
+          </h2>
+          <p className="error-box" role="alert">
+            Seneca could not load the campaign task state.
+            {tasksQuery.error
+              ? ` ${goldLabErrorMessage(tasksQuery.error)}`
+              : ""}
+          </p>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              void tasksQuery.refetch();
+            }}
+          >
+            Retry
+          </Button>
+        </section>
+      ) : null}
 
-      <GoldWorkflowProgress state={expertState} />
+      {!tasksQuery.isSuccess && !tasksQuery.isError ? (
+        <section
+          className="card"
+          data-testid="gold-task-status-loading"
+          role="status"
+        >
+          <h2 style={{ marginTop: 0 }}>Gold work status</h2>
+          <p className="muted" style={{ margin: 0 }}>
+            Loading campaign task state…
+          </p>
+        </section>
+      ) : null}
 
-      <GoldContinueAction
-        state={expertState}
-        closed={closed}
-        busy={tasksQuery.isLoading}
-        onContinue={onContinueGoldWork}
-      />
+      {tasksQuery.isSuccess ? (
+        <>
+          {!closed ? <GoldGuide state={expertState} /> : null}
 
-      <section
-        className="gold-lab-work-cards"
-        aria-label="Gold work activities"
-        data-testid="gold-work-cards"
-      >
-        <GoldWorkCard
-          kind="question_check"
-          title="Question Check"
-          purpose="Review generated questions before evidence judgment."
-          status={
-            expertState.qcPending > 0
-              ? `${expertState.qcPending} questions remaining`
-              : "Complete"
-          }
-          actionLabel={
-            expertState.qcPending > 0
-              ? expertState.qcReviewed > 0
-                ? "Continue Question Check"
-                : "Start Question Check"
-              : undefined
-          }
-          onAction={
-            expertState.qcPending > 0 && !closed
-              ? () =>
-                  navigateToWork(
-                    "question_check",
-                    expertState.firstQcTaskId,
-                  )
-              : undefined
-          }
-          disabled={closed || tasksQuery.isLoading}
-        />
-        <GoldWorkCard
-          kind="rapid_fire"
-          title="Rapid Fire"
-          purpose="Judge how strongly a source supports the accepted question."
-          status={
-            expertState.relevancePending > 0
-              ? `${expertState.relevancePending} evidence judgments ready`
-              : expertState.qcPending > 0
-                ? "Available as accepted questions become ready"
-                : "Complete"
-          }
-          actionLabel={
-            expertState.relevancePending > 0
-              ? expertState.relevanceCompleted > 0
-                ? "Continue Rapid Fire"
-                : "Start Rapid Fire"
-              : undefined
-          }
-          onAction={
-            expertState.relevancePending > 0 && !closed
-              ? () =>
-                  navigateToWork("rapid_fire", expertState.firstRfTaskId)
-              : undefined
-          }
-          disabled={closed || tasksQuery.isLoading}
-        />
-        <GoldWorkCard
-          kind="evidence_sweep"
-          title="Evidence Sweep"
-          purpose="Optional spatial evidence review."
-          status="Optional · Not available yet"
-          locked
-          lockedReason="Optional. Not available for production Gold work yet."
-        />
-        <GoldWorkCard
-          kind="chunk_duel"
-          title="Chunk Duel"
-          purpose="Optional preference comparison. Does not create canonical absolute Gold."
-          status="Optional · Not available yet"
-          locked
-          lockedReason="Optional. Not available for production Gold work yet."
-        />
-      </section>
+          <GoldWorkflowProgress state={expertState} />
+
+          <GoldContinueAction
+            state={expertState}
+            closed={closed}
+            busy={false}
+            onContinue={onContinueGoldWork}
+          />
+
+          <section
+            className="gold-lab-work-cards"
+            aria-label="Gold work activities"
+            data-testid="gold-work-cards"
+          >
+            <GoldWorkCard
+              kind="question_check"
+              title="Question Check"
+              purpose="Review generated questions before evidence judgment."
+              status={
+                expertState.qcPending > 0
+                  ? `${expertState.qcPending} questions remaining`
+                  : "Complete"
+              }
+              actionLabel={
+                expertState.qcPending > 0
+                  ? expertState.qcReviewed > 0
+                    ? "Continue Question Check"
+                    : "Start Question Check"
+                  : undefined
+              }
+              onAction={
+                expertState.qcPending > 0 && !closed
+                  ? () =>
+                      navigateToWork(
+                        "question_check",
+                        expertState.firstQcTaskId,
+                      )
+                  : undefined
+              }
+              disabled={closed}
+            />
+            <GoldWorkCard
+              kind="rapid_fire"
+              title="Rapid Fire"
+              purpose="Judge how strongly a source supports the accepted question."
+              status={
+                expertState.relevancePending > 0
+                  ? `${expertState.relevancePending} evidence judgments ready`
+                  : expertState.qcPending > 0
+                    ? "Available as accepted questions become ready"
+                    : "Complete"
+              }
+              actionLabel={
+                expertState.relevancePending > 0
+                  ? expertState.relevanceCompleted > 0
+                    ? "Continue Rapid Fire"
+                    : "Start Rapid Fire"
+                  : undefined
+              }
+              onAction={
+                expertState.relevancePending > 0 && !closed
+                  ? () =>
+                      navigateToWork("rapid_fire", expertState.firstRfTaskId)
+                  : undefined
+              }
+              disabled={closed}
+            />
+            <GoldWorkCard
+              kind="evidence_sweep"
+              title="Evidence Sweep"
+              purpose="Optional spatial evidence review."
+              status="Optional · Not available yet"
+              locked
+              lockedReason="Optional. Not available for production Gold work yet."
+            />
+            <GoldWorkCard
+              kind="chunk_duel"
+              title="Chunk Duel"
+              purpose="Optional preference comparison. Does not create canonical absolute Gold."
+              status="Optional · Not available yet"
+              locked
+              lockedReason="Optional. Not available for production Gold work yet."
+            />
+          </section>
+        </>
+      ) : null}
 
       {prepareError ? (
         <p className="error-box" role="alert">

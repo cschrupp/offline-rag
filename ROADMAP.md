@@ -557,6 +557,12 @@ SLICE 15  COMPLETE / ACCEPTED
        Frozen design: S16-N-GOLD-EXPERT-ENTRY-DESIGN-FREEZE-001
        Branch: implementation/16n-b-expert-first-campaign-ux
        Exact starting SHA: aac51029f279f07cafd1078160efbd592d5fc4be
+       First candidate (IR-001 REWORK REQUIRED):
+         1b993b5a111f18a0b8148e57e597b5332fe17179
+       Independent review: S16-N-B-IMPLEMENTATION-IR-001 — REWORK REQUIRED
+         R1 fail-closed task-query loading/error on primary UX
+         R2 bind/remove active-session breadcrumb around unsaved QC edits
+       Successor candidate: READY FOR IR-002 (same branch / same base)
      9G DEFERRED / NOT AUTHORIZED
      Slice 16 overall IN PROGRESS / NOT COMPLETE
      Authority: docs/slice16_design_authority.md

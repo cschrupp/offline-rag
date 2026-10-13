@@ -226,6 +226,41 @@ describe("16N-B session exit and completion", () => {
     mock.restore();
   });
 
+  it("IR-001 F002: active QC surface has no breadcrumb escape around unsaved edit", async () => {
+    const user = userEvent.setup();
+    const mock = installWorkReads({
+      game: "question_check",
+      tasks: [
+        goldTask({
+          task_id: "q1",
+          task_kind: "question_check",
+          active: true,
+          state: "pending",
+          candidate_chunk_id: null,
+        }),
+      ],
+      details: { q1: questionDetail("q1") },
+    });
+    renderApp(
+      "/gold-lab/campaigns/camp_1/work?game=question_check&workload=until_stop&task=q1",
+    );
+    await screen.findByTestId("question-check-presentation");
+    await user.click(screen.getByRole("button", { name: /^Edit$/i }));
+    expect(screen.getByLabelText(/Effective query/i)).toBeInTheDocument();
+
+    expect(
+      screen.queryByRole("link", { name: /^Back to campaign$/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("end-session")).toBeInTheDocument();
+
+    await user.click(screen.getByTestId("end-session"));
+    expect(
+      await screen.findByText(/Discard this unsaved edit and end the session/i),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/Effective query/i)).toBeInTheDocument();
+    mock.restore();
+  });
+
   it("B-EXIT-05/06: unsaved QC edit requires discard confirmation; Keep working stays", async () => {
     const user = userEvent.setup();
     let posts = 0;

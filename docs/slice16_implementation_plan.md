@@ -126,6 +126,12 @@ GAP-16G-02:
   Frozen design: S16-N-GOLD-EXPERT-ENTRY-DESIGN-FREEZE-001
   Branch: implementation/16n-b-expert-first-campaign-ux
   Exact starting SHA: aac51029f279f07cafd1078160efbd592d5fc4be
+  First candidate (IR-001 REWORK REQUIRED):
+    1b993b5a111f18a0b8148e57e597b5332fe17179
+  Independent review: S16-N-B-IMPLEMENTATION-IR-001 — REWORK REQUIRED
+    R1 fail-closed task-query loading/error on primary UX
+    R2 bind/remove active-session breadcrumb around unsaved QC edits
+  Successor candidate: READY FOR IR-002 (same branch / same base)
 9G: DEFERRED / NOT AUTHORIZED
 SLICE 16: IN PROGRESS / NOT COMPLETE
 BASELINE: 1610f9282d1edbd4dfc8ae76d7644a1b9ea4e75e

@@ -10,7 +10,7 @@ import {
   GOLD_GUIDE_DISMISSED_KEY,
 } from "../features/goldLab/shell/goldGuideStorage";
 import { goldCampaign, goldTask } from "./goldLabFixtures";
-import { installFetchMock, jsonResponse } from "./mockApi";
+import { errorResponse, installFetchMock, jsonResponse } from "./mockApi";
 import { renderApp } from "./render";
 
 afterEach(() => {
@@ -139,6 +139,95 @@ describe("16N-B expert-first campaign", () => {
     expect(
       screen.getByText(/Canonical Gold work is complete for now/i),
     ).toBeInTheDocument();
+    mock.restore();
+  });
+
+  it("IR-001 F001: tasks loading must not claim Canonical Gold work complete", async () => {
+    const campaign = goldCampaign({ campaign_id: "camp_1" });
+    let resolveTasks: ((value: Response) => void) | null = null;
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces") return jsonResponse([]);
+      if (call.url === "/v1/gold-lab/campaigns/camp_1") {
+        return jsonResponse(campaign);
+      }
+      if (
+        call.url.startsWith("/v1/gold-lab/campaigns/camp_1/tasks") ||
+        call.url === "/v1/gold-lab/campaigns/camp_1/tasks"
+      ) {
+        return new Promise<Response>((resolve) => {
+          resolveTasks = resolve;
+        });
+      }
+      return jsonResponse(
+        { error: { code: "not_found", message: "x" } },
+        { status: 404 },
+      );
+    });
+
+    renderApp("/gold-lab/campaigns/camp_1");
+    expect(await screen.findByTestId("gold-task-status-loading")).toBeInTheDocument();
+    expect(screen.queryByText(/Canonical Gold work complete/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Canonical Gold work is complete for now/i)).not.toBeInTheDocument();
+    expect(screen.queryByTestId("gold-work-cards")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("gold-continue-resting")).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Complete$/)).not.toBeInTheDocument();
+
+    resolveTasks?.(jsonResponse({ campaign_id: "camp_1", tasks: [] }));
+    expect(await screen.findByTestId("gold-continue-resting")).toBeInTheDocument();
+    mock.restore();
+  });
+
+  it("IR-001 F001: tasks request error fails closed on primary surface", async () => {
+    const campaign = goldCampaign({ campaign_id: "camp_1" });
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces") return jsonResponse([]);
+      if (call.url === "/v1/gold-lab/campaigns/camp_1") {
+        return jsonResponse(campaign);
+      }
+      if (
+        call.url.startsWith("/v1/gold-lab/campaigns/camp_1/tasks") ||
+        call.url === "/v1/gold-lab/campaigns/camp_1/tasks"
+      ) {
+        return errorResponse("unavailable", "task list failed", 503, true);
+      }
+      return jsonResponse(
+        { error: { code: "not_found", message: "x" } },
+        { status: 404 },
+      );
+    });
+
+    renderApp("/gold-lab/campaigns/camp_1");
+    expect(await screen.findByTestId("gold-task-status-error")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /Gold work status unavailable/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Seneca could not load the campaign task state/i),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Retry$/i })).toBeInTheDocument();
+    expect(screen.queryByText(/Canonical Gold work complete/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Canonical Gold work is complete for now/i)).not.toBeInTheDocument();
+    expect(screen.queryByTestId("gold-continue-action")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("gold-continue-resting")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("gold-work-cards")).not.toBeInTheDocument();
+    mock.restore();
+  });
+
+  it("IR-001 F001: authoritative empty task list still shows resting completion", async () => {
+    const mock = installCampaignTasks([]);
+    renderApp("/gold-lab/campaigns/camp_1");
+    expect(await screen.findByTestId("gold-continue-resting")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Canonical Gold work is complete for now/i),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("gold-work-card-question_check")).toHaveTextContent(
+      "Complete",
+    );
+    expect(screen.getByTestId("gold-work-card-rapid_fire")).toHaveTextContent(
+      "Complete",
+    );
     mock.restore();
   });
 
