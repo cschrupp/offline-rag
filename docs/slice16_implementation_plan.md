@@ -97,11 +97,18 @@ GAP-16G-02:
   Authority: S16-L-EMBEDDING-AUTO-DEVICE-UX-AUTH-002
   Exact accepted subject: 88fadc7c3e8e70c4886cbff0c7863cccc63ef14a
   Embedding accelerator auto-selection + Compute settings
-16M: AUTHORIZED / IN PROGRESS
+16M: COMPLETE / ACCEPTED
   Authority: S16-M-GOLD-POOL-AUX-INDEX-AUTH-001
-  Gold pooling auxiliary-index integration
-  Branch: implementation/16m-gold-pool-aux-index
-  Exact base: 88fadc7c3e8e70c4886cbff0c7863cccc63ef14a
+  Exact accepted subject: dcf6bf02a77a4e68678d8887f836c471448422bc
+16N: DESIGN FROZEN
+  Authority: S16-N-GOLD-EXPERT-ENTRY-AUTH-001
+  Q1–Q11 FROZEN
+16N-A: COMPLETE / READY FOR INDEPENDENT REVIEW
+  Authority: S16-N-A-IMPLEMENTATION-AUTH-001
+  Presentation Review bootstrap (non-mutating)
+  Branch: implementation/16n-a-presentation-review-bootstrap
+  Exact base: dcf6bf02a77a4e68678d8887f836c471448422bc
+16N-B: DESIGNED / NOT AUTHORIZED
 9G: DEFERRED / NOT AUTHORIZED
 SLICE 16: IN PROGRESS / NOT COMPLETE
 BASELINE: 1610f9282d1edbd4dfc8ae76d7644a1b9ea4e75e

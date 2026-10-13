@@ -308,6 +308,32 @@ export function GoldCampaignShell({ campaign }: Props) {
       )}
 
       <Card>
+        <details data-testid="campaign-advanced">
+          <summary>Advanced</summary>
+          <div className="stack" style={{ marginTop: "0.75rem" }}>
+            <p className="muted" style={{ margin: 0 }}>
+              Tools for presentation review, provenance, and campaign
+              diagnostics.
+            </p>
+            <div>
+              <p style={{ margin: "0 0 0.35rem" }}>
+                <strong>Presentation review</strong>
+              </p>
+              <p className="muted" style={{ margin: "0 0 0.5rem" }}>
+                Inspect candidate game presentations without writing Gold.
+              </p>
+              <Button
+                to={`/gold-lab/campaigns/${campaign.campaign_id}/presentation-review`}
+                variant="secondary"
+              >
+                Open presentation review
+              </Button>
+            </div>
+          </div>
+        </details>
+      </Card>
+
+      <Card>
         <h2>Workload discovery</h2>
         {tasksQuery.isLoading ? (
           <p className="muted">Loading tasks…</p>
