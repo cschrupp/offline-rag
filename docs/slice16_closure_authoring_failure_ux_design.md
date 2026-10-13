@@ -14,7 +14,8 @@
 | Q3 | Safe-reason identifiers | ACCEPTED / FROZEN |
 | Q4 | Surfacing `failure_reason_counts` | ACCEPTED / FROZEN |
 | Q5 | ErrorCode choice | ACCEPTED / FROZEN |
-| Q6 | Operator UI copy | OPEN |
+| Q6 | Operator UI copy | ACCEPTED / FROZEN |
+| Q7 | Design freeze completeness | OPEN |
 
 This design does **not** close Slice 16, authorize 16J/16K, or change authoring
 science (prompts, sampling, quality gates, pooling).
@@ -228,8 +229,52 @@ Pre-run failures (`ProposePreRunError`) must map to the correct safe reason
   → failure_reason_counts: NOT serialized to client  # Q4
 
 Seneca operation / error UI
-  → messageForGoldSafeReason(reason)            # Q6
+  → messageForGoldSafeReason(reason)            # Q6 FROZEN
   → operator-safe copy for that reason only
+```
+
+### 7.3 Operator UI copy — Q6 ACCEPTED / FROZEN
+
+**Authority freeze:** `S16-CLOSURE-AUTHORING-FAILURE-UX — Q6 OPERATOR UI COPY`  
+**Disposition:** ACCEPTED / FROZEN
+
+Exact normative `messageForGoldSafeReason` strings:
+
+| `details.reason` | Exact operator copy |
+|---|---|
+| `authoring_authentication_failed` | The configured Gold Lab authoring server rejected authentication. Check the authoring API key and Settings, then try again. |
+| `authoring_request_timeout` | The Gold Lab authoring server did not respond in time. Confirm the server is running and reachable, then try again. |
+| `authoring_endpoint_unreachable` | Seneca could not reach the configured Gold Lab authoring server. Confirm the endpoint in Settings and that the server is running, then try again. |
+| `authoring_http_error` | The Gold Lab authoring server returned an error. Check authoring Settings and server logs, then try again. |
+| `zero_usable_proposals` | Gold Lab authoring completed its calls but did not produce usable candidate questions from this workspace publication. |
+
+**Semantic distinctions (must be tested):**
+
+| Class | Meaning |
+|---|---|
+| authentication | server responded, authentication rejected |
+| timeout | request did not complete within the allowed time |
+| transport | endpoint could not be reached |
+| HTTP | endpoint responded with an unsuccessful HTTP result |
+| zero_usable_proposals | authoring calls completed sufficiently to evaluate output, but no usable candidate questions resulted |
+
+**Frozen constraints:**
+
+- Exact copy above is normative for this slice.
+- No provider names, endpoint URL values, credentials, HTTP status codes, raw
+  response bodies, or raw exception strings.
+- No model-unavailable inference.
+- Operational failures must not imply that proposal outputs were evaluated.
+- `zero_usable_proposals` must not be shown for Q1 operational failure classes.
+- Existing admission-failure copy remains unchanged.
+
+**Required regression (original defect):**
+
+```text
+authoring server stopped / connection refused
+  → authoring_endpoint_unreachable
+  → "Seneca could not reach the configured Gold Lab authoring server..."
+  → MUST NOT show zero_usable_proposals copy
 ```
 
 ### 7.2 ErrorCode — Q5 ACCEPTED / FROZEN
@@ -323,7 +368,8 @@ existing semantics.
 3. ~~Safe-reason identifiers~~ — Q3 FROZEN
 4. ~~failure_reason_counts surfacing~~ — Q4 FROZEN (server-side only)
 5. ~~ErrorCode~~ — Q5 FROZEN (`GOLD_CONFLICT` + Q3 reason)
-6. UI copy strings for each safe reason (Q6)
+6. ~~Operator UI copy~~ — Q6 FROZEN
+7. Design freeze completeness / ready for independent design review (Q7)
 
-**Implementation remains NOT AUTHORIZED until design freeze ACCEPT and a
+**Implementation remains NOT AUTHORIZED until full design freeze ACCEPT and a
 separate implementation authority.**
