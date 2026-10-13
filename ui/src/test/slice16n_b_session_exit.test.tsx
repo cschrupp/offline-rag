@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { GoldWorkSession } from "../features/goldLab/work/GoldWorkSession";
 import { goldCampaign, goldTask } from "./goldLabFixtures";
 import {
+  errorResponse,
   installFetchMock,
   jsonResponse,
   type FetchCall,
@@ -258,6 +259,132 @@ describe("16N-B session exit and completion", () => {
       await screen.findByText(/Discard this unsaved edit and end the session/i),
     ).toBeInTheDocument();
     expect(screen.getByLabelText(/Effective query/i)).toBeInTheDocument();
+    mock.restore();
+  });
+
+  it("IR-002 F003: End session available during QC task-list loading", async () => {
+    const campaign = goldCampaign({ campaign_id: "camp_1" });
+    let resolveTasks: ((value: Response) => void) | null = null;
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces") return jsonResponse([]);
+      if (call.url === "/v1/gold-lab/campaigns/camp_1") {
+        return jsonResponse(campaign);
+      }
+      if (call.url.includes("/tasks")) {
+        return new Promise<Response>((resolve) => {
+          resolveTasks = resolve;
+        });
+      }
+      return jsonResponse(
+        { error: { code: "not_found", message: "x" } },
+        { status: 404 },
+      );
+    });
+    renderApp(
+      "/gold-lab/campaigns/camp_1/work?game=question_check&workload=until_stop",
+    );
+    expect(await screen.findByTestId("end-session")).toBeInTheDocument();
+    expect(screen.getByText(/Preparing expert work session/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /^Back to campaign$/i }),
+    ).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(resolveTasks).not.toBeNull();
+    });
+    resolveTasks!(
+      jsonResponse({
+        campaign_id: "camp_1",
+        tasks: [
+          goldTask({
+            task_id: "q1",
+            task_kind: "question_check",
+            active: true,
+            state: "pending",
+            candidate_chunk_id: null,
+          }),
+        ],
+      }),
+    );
+    mock.restore();
+  });
+
+  it("IR-002 F003: End session available on QC task-list error and returns to campaign", async () => {
+    const user = userEvent.setup();
+    const campaign = goldCampaign({ campaign_id: "camp_1" });
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces") return jsonResponse([]);
+      if (call.url === "/v1/gold-lab/campaigns/camp_1") {
+        return jsonResponse(campaign);
+      }
+      if (
+        call.url.startsWith("/v1/gold-lab/campaigns/camp_1/tasks") ||
+        call.url === "/v1/gold-lab/campaigns/camp_1/tasks"
+      ) {
+        return errorResponse("unavailable", "task list failed", 503, true);
+      }
+      return jsonResponse(
+        { error: { code: "not_found", message: "x" } },
+        { status: 404 },
+      );
+    });
+    renderApp(
+      "/gold-lab/campaigns/camp_1/work?game=question_check&workload=until_stop",
+    );
+    expect(await screen.findByTestId("end-session")).toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    await user.click(screen.getByTestId("end-session"));
+    expect(await screen.findByRole("heading", { name: "Campaign" })).toBeInTheDocument();
+    mock.restore();
+  });
+
+  it("IR-002 F003: End session available during RF task-detail loading and error", async () => {
+    const campaign = goldCampaign({ campaign_id: "camp_1" });
+    const task = goldTask({
+      task_id: "t1",
+      task_kind: "absolute_relevance",
+      active: true,
+      state: "pending",
+    });
+    let resolveDetail: ((value: Response) => void) | null = null;
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces") return jsonResponse([]);
+      if (call.url === "/v1/gold-lab/campaigns/camp_1") {
+        return jsonResponse(campaign);
+      }
+      if (
+        call.url.startsWith("/v1/gold-lab/campaigns/camp_1/tasks?") ||
+        call.url === "/v1/gold-lab/campaigns/camp_1/tasks"
+      ) {
+        return jsonResponse({ campaign_id: "camp_1", tasks: [task] });
+      }
+      if (call.url.includes("/tasks/t1") && call.method === "GET") {
+        return new Promise<Response>((resolve) => {
+          resolveDetail = resolve;
+        });
+      }
+      return jsonResponse(
+        { error: { code: "not_found", message: "x" } },
+        { status: 404 },
+      );
+    });
+    renderApp(
+      "/gold-lab/campaigns/camp_1/work?game=rapid_fire&workload=until_stop&task=t1",
+    );
+    expect(await screen.findByTestId("end-session")).toBeInTheDocument();
+    expect(await screen.findByText(/Loading task/i)).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(resolveDetail).not.toBeNull();
+    });
+    resolveDetail!(errorResponse("not_found", "missing detail", 404));
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(screen.getByTestId("end-session")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /^Back to campaign$/i }),
+    ).not.toBeInTheDocument();
     mock.restore();
   });
 

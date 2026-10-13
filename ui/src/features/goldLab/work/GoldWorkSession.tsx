@@ -1,5 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { isApiError } from "../../../api/errors";
 import { IntentHandle } from "../../../api/idempotency";
@@ -388,15 +394,51 @@ export function GoldWorkSession({
     leaveToCampaign();
   }
 
+  const endSessionConfirm = (
+    <ConfirmDialog
+      open={confirmEnd}
+      title="Discard this unsaved edit and end the session?"
+      body="Your unsubmitted Question Check edit will be discarded. Already committed judgments stay committed."
+      confirmLabel="Discard and end"
+      cancelLabel="Keep working"
+      danger
+      onConfirm={() => {
+        setConfirmEnd(false);
+        setEditingDraft(false);
+        leaveToCampaign();
+      }}
+      onCancel={() => setConfirmEnd(false)}
+    />
+  );
+
+  function sessionShell(body: ReactNode) {
+    return (
+      <div className="stack">
+        <ExpertSessionHeader
+          title={sessionTitle}
+          endDisabled={endBlocked}
+          endDisabledReason={endDisabledReason}
+          onEndSession={onEndSession}
+        />
+        {body}
+        {endSessionConfirm}
+      </div>
+    );
+  }
+
   if (tasksQuery.isLoading || (tasksQuery.isSuccess && !windowState)) {
-    return <p className="muted">Preparing expert work session…</p>;
+    return sessionShell(
+      <p className="muted" role="status">
+        Preparing expert work session…
+      </p>,
+    );
   }
 
   if (tasksQuery.isError) {
-    return (
+    return sessionShell(
       <p className="error-box" role="alert">
         {goldLabErrorMessage(tasksQuery.error)}
-      </p>
+      </p>,
     );
   }
 
@@ -422,14 +464,18 @@ export function GoldWorkSession({
   }
 
   if (taskQuery.isLoading) {
-    return <p className="muted">Loading task…</p>;
+    return sessionShell(
+      <p className="muted" role="status">
+        Loading task…
+      </p>,
+    );
   }
 
   if (taskQuery.isError || !taskQuery.data) {
-    return (
+    return sessionShell(
       <p className="error-box" role="alert">
         {goldLabErrorMessage(taskQuery.error)}
-      </p>
+      </p>,
     );
   }
 
@@ -468,14 +514,8 @@ export function GoldWorkSession({
     nextDisabled,
   };
 
-  return (
-    <div className="stack">
-      <ExpertSessionHeader
-        title={sessionTitle}
-        endDisabled={endBlocked}
-        endDisabledReason={endDisabledReason}
-        onEndSession={onEndSession}
-      />
+  return sessionShell(
+    <>
       {mutationBlocked ? (
         <div className="row" role="status">
           <Button
@@ -502,20 +542,6 @@ export function GoldWorkSession({
           onEditingChange={setEditingDraft}
         />
       )}
-      <ConfirmDialog
-        open={confirmEnd}
-        title="Discard this unsaved edit and end the session?"
-        body="Your unsubmitted Question Check edit will be discarded. Already committed judgments stay committed."
-        confirmLabel="Discard and end"
-        cancelLabel="Keep working"
-        danger
-        onConfirm={() => {
-          setConfirmEnd(false);
-          setEditingDraft(false);
-          leaveToCampaign();
-        }}
-        onCancel={() => setConfirmEnd(false)}
-      />
-    </div>
+    </>,
   );
 }

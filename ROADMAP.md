@@ -559,10 +559,11 @@ SLICE 15  COMPLETE / ACCEPTED
        Exact starting SHA: aac51029f279f07cafd1078160efbd592d5fc4be
        First candidate (IR-001 REWORK REQUIRED):
          1b993b5a111f18a0b8148e57e597b5332fe17179
-       Independent review: S16-N-B-IMPLEMENTATION-IR-001 — REWORK REQUIRED
-         R1 fail-closed task-query loading/error on primary UX
-         R2 bind/remove active-session breadcrumb around unsaved QC edits
-       Successor candidate: READY FOR IR-002 (same branch / same base)
+       IR-001 successor / IR-002 subject (REWORK REQUIRED):
+         244e064356ad99ff65589acdecd60eb9cce60022
+       Independent review: S16-N-B-IMPLEMENTATION-IR-002 — REWORK REQUIRED
+         F001 CLOSED · F002 CLOSED · F003 End session on I2 loading/error
+       Successor candidate: READY FOR IR-003 (same branch / same base)
      9G DEFERRED / NOT AUTHORIZED
      Slice 16 overall IN PROGRESS / NOT COMPLETE
      Authority: docs/slice16_design_authority.md
