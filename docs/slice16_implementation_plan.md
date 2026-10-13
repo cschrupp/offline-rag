@@ -109,18 +109,24 @@ GAP-16G-02:
   Exact accepted technical subject:
     36de7feaab33fddf77d4bdf5818f3cc60e8a1832
   Presentation Review bootstrap (non-mutating)
+  Bootstrap objective COMPLETE:
+    QC + RF Human-reviewed and ALLOW_PRODUCTION governed
   Human QC presentation disposition:
     S16-N-A-QC-PRESENTATION-HA-001 — ACCEPTED
-  QC ALLOW_PRODUCTION: ACCEPTED SUBJECT
-    21dfb3e88920c40fe227d51efc8022995ef41c9e
+  QC ALLOW_PRODUCTION: INDEPENDENTLY ACCEPTED
+    S16-N-A-QC-POLICY-IR-002 — ACCEPT
+    Exact accepted subject: 21dfb3e88920c40fe227d51efc8022995ef41c9e
   Human RF presentation disposition:
     S16-N-A-RF-PRESENTATION-HA-001 — ACCEPTED
-  RF ALLOW_PRODUCTION: AUTHORIZED / IN REVIEW
-    Authority: S16-N-A-RF-ALLOW-PRODUCTION-AUTH-001
-    Branch: implementation/16n-a-rf-allow-production
-    Exact starting SHA: 21dfb3e88920c40fe227d51efc8022995ef41c9e
+  RF ALLOW_PRODUCTION: INDEPENDENTLY ACCEPTED
+    S16-N-A-RF-POLICY-IR-001 — ACCEPT
+    Exact accepted subject: aac51029f279f07cafd1078160efbd592d5fc4be
   Evidence Sweep: NOT APPROVED
   Chunk Duel: NOT APPROVED
+  Open UX defects (still open / not in policy commits):
+    preview recycling; per-task preview-memory loss;
+    finite preview completion; End session / Return to campaign;
+    authoring-server failure diagnosis
 16N-B: DESIGNED / NOT AUTHORIZED
 9G: DEFERRED / NOT AUTHORIZED
 SLICE 16: IN PROGRESS / NOT COMPLETE
