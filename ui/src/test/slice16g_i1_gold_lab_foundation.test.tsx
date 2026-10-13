@@ -621,13 +621,17 @@ describe("16G-I1 campaign shell, close, session, scientific boundary", () => {
     expect(screen.queryByText(/model confidence/i)).not.toBeInTheDocument();
 
     expect(await screen.findByText("t1")).toBeInTheDocument();
-    const taskList = screen.getByRole("list");
+    const advanced = screen.getByTestId("campaign-advanced");
+    await user.click(within(advanced).getByText("Advanced"));
+    const taskList = within(advanced).getByRole("list");
     const taskItems = within(taskList).getAllByRole("listitem");
     expect(taskItems[0]?.textContent).toContain("t1");
     expect(taskItems[1]?.textContent).toContain("t2");
     expect(taskItems[2]?.textContent).toContain("t3");
 
-    await user.click(screen.getByRole("button", { name: "Close campaign" }));
+    await user.click(
+      within(advanced).getByRole("button", { name: "Close campaign" }),
+    );
     expect(
       screen.getByRole("alertdialog", { name: /Close this campaign/i }),
     ).toBeInTheDocument();
@@ -642,7 +646,9 @@ describe("16G-I1 campaign shell, close, session, scientific boundary", () => {
       ).toBeInTheDocument();
     });
     expect(screen.queryByRole("button", { name: /reopen/i })).toBeNull();
-    expect(screen.getByRole("button", { name: "Prepare session" })).toBeDisabled();
+    expect(
+      within(advanced).getByRole("button", { name: "Prepare session" }),
+    ).toBeDisabled();
     expect(
       mock.calls.some(
         (call) =>
@@ -670,25 +676,41 @@ describe("16G-I1 campaign shell, close, session, scientific boundary", () => {
       tasksByCampaign: { camp_1: tasks },
     });
     renderApp("/gold-lab/campaigns/camp_1");
-    await screen.findByRole("heading", { name: "Session configuration" });
-
-    expect(screen.getByLabelText("Rapid Fire")).toBeInTheDocument();
-    expect(screen.getByLabelText("Evidence Sweep")).toBeInTheDocument();
-    expect(screen.getByLabelText("Question Check")).toBeInTheDocument();
-    expect(screen.getByLabelText("Chunk Duel")).toBeInTheDocument();
-    expect(screen.getByLabelText("1")).toBeInTheDocument();
-    expect(screen.getByLabelText("5")).toBeInTheDocument();
-    expect(screen.getByLabelText("10")).toBeInTheDocument();
-    expect(screen.getByLabelText("25")).toBeInTheDocument();
-    expect(screen.getByLabelText("Until stop")).toBeInTheDocument();
-    expect(screen.getByLabelText("Complete case")).toBeInTheDocument();
-
-    await user.click(screen.getByLabelText("5"));
-    await user.click(screen.getByLabelText("Evidence Sweep"));
-    await user.click(screen.getByRole("button", { name: "Prepare session" }));
+    const advanced = await screen.findByTestId("campaign-advanced");
+    await user.click(within(advanced).getByText("Advanced"));
     expect(
-      await screen.findByText(
-        /This presentation is not approved for production Gold Mode/,
+      within(advanced).getByRole("heading", {
+        name: "Custom session configuration",
+      }),
+    ).toBeInTheDocument();
+
+    expect(
+      within(advanced).getByRole("radio", { name: "Rapid Fire" }),
+    ).toBeInTheDocument();
+    expect(
+      within(advanced).getByRole("radio", { name: "Evidence Sweep" }),
+    ).toBeInTheDocument();
+    expect(
+      within(advanced).getByRole("radio", { name: "Question Check" }),
+    ).toBeInTheDocument();
+    expect(
+      within(advanced).getByRole("radio", { name: "Chunk Duel" }),
+    ).toBeInTheDocument();
+    expect(within(advanced).getByLabelText("1")).toBeInTheDocument();
+    expect(within(advanced).getByLabelText("5")).toBeInTheDocument();
+    expect(within(advanced).getByLabelText("10")).toBeInTheDocument();
+    expect(within(advanced).getByLabelText("25")).toBeInTheDocument();
+    expect(within(advanced).getByLabelText("Until stop")).toBeInTheDocument();
+    expect(within(advanced).getByLabelText("Complete case")).toBeInTheDocument();
+
+    await user.click(within(advanced).getByLabelText("5"));
+    await user.click(within(advanced).getByRole("radio", { name: "Evidence Sweep" }));
+    expect(
+      within(advanced).getByRole("button", { name: "Prepare session" }),
+    ).toBeDisabled();
+    expect(
+      within(advanced).getByText(
+        /Evidence Sweep and Chunk Duel are optional and not available/i,
       ),
     ).toBeInTheDocument();
 
@@ -711,8 +733,11 @@ describe("16G-I1 campaign shell, close, session, scientific boundary", () => {
       tasksByCampaign: { camp_1: [] },
     });
     renderApp("/gold-lab/campaigns/camp_1");
+    const advancedEmpty = await screen.findByTestId("campaign-advanced");
     expect(
-      await screen.findByRole("heading", { name: "No tasks yet." }),
+      await within(advancedEmpty).findByRole("heading", {
+        name: "No tasks yet.",
+      }),
     ).toBeInTheDocument();
     expect(screen.queryByText(/demo/i)).not.toBeInTheDocument();
     assertNoForbiddenCalls(mock.calls);
@@ -737,8 +762,12 @@ describe("16G-I1 campaign shell, close, session, scientific boundary", () => {
       },
     });
     renderApp("/gold-lab/campaigns/camp_1");
-    expect(await screen.findByLabelText("Rapid Fire")).toBeInTheDocument();
-    expect(screen.getByLabelText("Until stop")).toBeInTheDocument();
+    const advanced = await screen.findByTestId("campaign-advanced");
+    await user.click(within(advanced).getByText("Advanced"));
+    expect(
+      within(advanced).getByRole("radio", { name: "Rapid Fire" }),
+    ).toBeInTheDocument();
+    expect(within(advanced).getByLabelText("Until stop")).toBeInTheDocument();
     await user.tab();
     expect(document.activeElement).not.toBe(document.body);
     next.mock.restore();
@@ -910,13 +939,21 @@ describe("16G-I1-REWORK identity and session gates", () => {
       },
     });
     renderApp("/gold-lab/campaigns/camp_1");
+    const advanced = await screen.findByTestId("campaign-advanced");
+    await user.click(within(advanced).getByText("Advanced"));
     expect(
-      await screen.findByText(/Eligible pending tasks for this configuration: 1/),
+      await within(advanced).findByText(
+        /Eligible pending tasks for this configuration: 1/,
+      ),
     ).toBeInTheDocument();
 
-    await user.click(screen.getByLabelText("Question Check"));
+    await user.click(
+      within(advanced).getByRole("radio", { name: "Question Check" }),
+    );
     expect(
-      await screen.findByText(/Eligible pending tasks for this configuration: 1/),
+      await within(advanced).findByText(
+        /Eligible pending tasks for this configuration: 1/,
+      ),
     ).toBeInTheDocument();
 
     const emptyCampaign = goldCampaign({ campaign_id: "camp_empty" });
@@ -936,13 +973,15 @@ describe("16G-I1-REWORK identity and session gates", () => {
       },
     });
     renderApp("/gold-lab/campaigns/camp_empty?game=rapid_fire");
+    const emptyAdvanced = await screen.findByTestId("campaign-advanced");
+    await userEvent.setup().click(within(emptyAdvanced).getByText("Advanced"));
     expect(
-      await screen.findByText(
+      await within(emptyAdvanced).findByText(
         "No pending tasks match this session configuration.",
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Prepare session" }),
+      within(emptyAdvanced).getByRole("button", { name: "Prepare session" }),
     ).toBeDisabled();
     expect(
       screen.queryByText(/Session configuration is ready/),

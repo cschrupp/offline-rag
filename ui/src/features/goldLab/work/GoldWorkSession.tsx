@@ -1,10 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { isApiError } from "../../../api/errors";
 import { IntentHandle } from "../../../api/idempotency";
 import { Button } from "../../../components/Button";
 import { Card } from "../../../components/Card";
+import { ConfirmDialog } from "../../../components/ConfirmDialog";
+import { ExpertSessionComplete } from "./ExpertSessionComplete";
+import { ExpertSessionHeader } from "./ExpertSessionHeader";
 import {
   getGoldTask,
   listGoldTasks,
@@ -87,6 +90,7 @@ export function GoldWorkSession({
   campaignClosed,
 }: Props) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const session = parseSessionConfig(searchParams);
   const presentation = candidatePresentationForGame(game);
@@ -107,6 +111,8 @@ export function GoldWorkSession({
     useState<MutationBlockReason | null>(null);
   const [pendingMutation, setPendingMutation] =
     useState<PendingMutation | null>(null);
+  const [editingDraft, setEditingDraft] = useState(false);
+  const [confirmEnd, setConfirmEnd] = useState(false);
   const intent = useRef(IntentHandle.newIntent());
   const windowBootstrapped = useRef(false);
 
@@ -359,6 +365,29 @@ export function GoldWorkSession({
     setSearchParams(next, { replace: false });
   }
 
+  const endBlocked = mutation.isPending || ambiguous;
+  const endDisabledReason = mutation.isPending
+    ? "Wait for the current judgment to finish before ending the session."
+    : ambiguous
+      ? "Reconcile the ambiguous judgment before ending the session."
+      : null;
+  const boundedWorkload = session.workload !== "until_stop";
+  const sessionTitle =
+    game === "question_check" ? "Question Check" : "Rapid Fire";
+
+  function leaveToCampaign() {
+    void navigate(`/gold-lab/campaigns/${campaignId}`);
+  }
+
+  function onEndSession() {
+    if (endBlocked) return;
+    if (game === "question_check" && editingDraft) {
+      setConfirmEnd(true);
+      return;
+    }
+    leaveToCampaign();
+  }
+
   if (tasksQuery.isLoading || (tasksQuery.isSuccess && !windowState)) {
     return <p className="muted">Preparing expert work session…</p>;
   }
@@ -373,15 +402,10 @@ export function GoldWorkSession({
 
   if (!currentWorkTaskId) {
     return (
-      <Card>
-        <h2>No eligible tasks</h2>
-        <p className="muted" role="status">
-          No pending tasks match this session configuration.
-        </p>
-        <Button to={`/gold-lab/campaigns/${campaignId}`} variant="secondary">
-          Back to campaign
-        </Button>
-      </Card>
+      <ExpertSessionComplete
+        campaignId={campaignId}
+        boundedWorkload={boundedWorkload}
+      />
     );
   }
 
@@ -409,7 +433,7 @@ export function GoldWorkSession({
     );
   }
 
-  const nextDisabled =
+  const noFurtherInWindow =
     !windowState ||
     nextTaskInWindow(
       windowState,
@@ -417,6 +441,10 @@ export function GoldWorkSession({
       currentWorkTaskId,
       game,
     ) === null;
+  // After a commit with no further tasks, keep after-action visible so Correct /
+  // Judgment recorded remain available; Next finishes into Session complete.
+  const nextDisabled =
+    mutationBlocked !== null || (noFurtherInWindow && !afterAction);
 
   const blockedMessage =
     mutationBlocked === "idempotency_conflict"
@@ -437,34 +465,17 @@ export function GoldWorkSession({
     onRetrySame,
     onNext: () => void onNext(),
     onCorrect,
-    nextDisabled: nextDisabled || mutationBlocked !== null,
+    nextDisabled,
   };
 
-  if (game === "rapid_fire") {
-    return (
-      <>
-        {mutationBlocked ? (
-          <div className="row" role="status">
-            <Button
-              variant="secondary"
-              onClick={() => window.location.reload()}
-            >
-              Reload to reconcile
-            </Button>
-          </div>
-        ) : null}
-        <RapidFireGame
-          key={currentWorkTaskId}
-          task={taskQuery.data as AbsoluteRelevanceTaskDetail}
-          {...gameProps}
-          onCommit={onRelevance}
-        />
-      </>
-    );
-  }
-
   return (
-    <>
+    <div className="stack">
+      <ExpertSessionHeader
+        title={sessionTitle}
+        endDisabled={endBlocked}
+        endDisabledReason={endDisabledReason}
+        onEndSession={onEndSession}
+      />
       {mutationBlocked ? (
         <div className="row" role="status">
           <Button
@@ -475,12 +486,36 @@ export function GoldWorkSession({
           </Button>
         </div>
       ) : null}
-      <QuestionCheckGame
-        key={currentWorkTaskId}
-        task={taskQuery.data as QuestionCheckTaskDetail}
-        {...gameProps}
-        onCommit={onQuestionCheck}
+      {game === "rapid_fire" ? (
+        <RapidFireGame
+          key={currentWorkTaskId}
+          task={taskQuery.data as AbsoluteRelevanceTaskDetail}
+          {...gameProps}
+          onCommit={onRelevance}
+        />
+      ) : (
+        <QuestionCheckGame
+          key={currentWorkTaskId}
+          task={taskQuery.data as QuestionCheckTaskDetail}
+          {...gameProps}
+          onCommit={onQuestionCheck}
+          onEditingChange={setEditingDraft}
+        />
+      )}
+      <ConfirmDialog
+        open={confirmEnd}
+        title="Discard this unsaved edit and end the session?"
+        body="Your unsubmitted Question Check edit will be discarded. Already committed judgments stay committed."
+        confirmLabel="Discard and end"
+        cancelLabel="Keep working"
+        danger
+        onConfirm={() => {
+          setConfirmEnd(false);
+          setEditingDraft(false);
+          leaveToCampaign();
+        }}
+        onCancel={() => setConfirmEnd(false)}
       />
-    </>
+    </div>
   );
 }

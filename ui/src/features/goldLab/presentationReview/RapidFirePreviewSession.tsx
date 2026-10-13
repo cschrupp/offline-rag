@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "../../../components/Button";
 import { getGoldTask, listGoldTasks } from "../api/readClient";
@@ -6,13 +7,15 @@ import { goldLabErrorMessage } from "../errors/goldLabErrors";
 import { RapidFirePresentation } from "../games/rapidFire/RapidFirePresentation";
 import { goldLabQueryKeys } from "../queryKeys";
 import type { AbsoluteRelevanceTaskDetail, GoldRelevance } from "../types";
-import { createPreviewInteraction } from "./PreviewInteraction";
+import {
+  createPreviewInteraction,
+  type PreviewResponseMap,
+} from "./PreviewInteraction";
 import { isPreviewableTaskDetail } from "./previewEligibility";
 import {
   PREVIEW_CORRECT_LABEL,
   PREVIEW_LOCAL_STATUS,
   PREVIEW_NEXT_LABEL,
-  type PreviewResponse,
 } from "./previewTypes";
 
 type Props = {
@@ -20,17 +23,18 @@ type Props = {
 };
 
 export function RapidFirePreviewSession({ campaignId }: Props) {
-  const [previewResponse, setPreviewResponse] =
-    useState<PreviewResponse | null>(null);
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [responses, setResponses] = useState<PreviewResponseMap>({});
+  const [cursor, setCursor] = useState(0);
+  const [runIds, setRunIds] = useState<string[] | null>(null);
+  const [complete, setComplete] = useState(false);
 
   const interaction = useMemo(
     () =>
       createPreviewInteraction({
-        getResponse: () => previewResponse,
-        setResponse: setPreviewResponse,
+        getMap: () => responses,
+        setMap: setResponses,
       }),
-    [previewResponse],
+    [responses],
   );
 
   const tasksQuery = useQuery({
@@ -48,10 +52,18 @@ export function RapidFirePreviewSession({ campaignId }: Props) {
   });
 
   const pending = tasksQuery.data?.tasks ?? [];
+
+  useEffect(() => {
+    if (!tasksQuery.isSuccess || runIds !== null) return;
+    if (pending.length === 0) return;
+    setRunIds(pending.map((t) => t.task_id));
+  }, [tasksQuery.isSuccess, pending, runIds]);
+
+  const snapshotIds = runIds ?? [];
   const activeTaskId =
-    selectedTaskId && pending.some((t) => t.task_id === selectedTaskId)
-      ? selectedTaskId
-      : (pending[0]?.task_id ?? null);
+    !complete && snapshotIds.length > 0
+      ? (snapshotIds[Math.min(cursor, snapshotIds.length - 1)] ?? null)
+      : null;
 
   const detailQuery = useQuery({
     queryKey: goldLabQueryKeys.task(campaignId, activeTaskId ?? ""),
@@ -67,14 +79,29 @@ export function RapidFirePreviewSession({ campaignId }: Props) {
 
   function onNext() {
     if (!activeTaskId) return;
-    const idx = pending.findIndex((t) => t.task_id === activeTaskId);
-    const next = pending[idx + 1] ?? pending[0] ?? null;
-    interaction.clear();
-    setSelectedTaskId(next?.task_id ?? null);
+    if (cursor >= snapshotIds.length - 1) {
+      setComplete(true);
+      return;
+    }
+    setCursor((c) => c + 1);
+  }
+
+  function onPrevious() {
+    if (cursor <= 0) return;
+    setComplete(false);
+    setCursor((c) => c - 1);
   }
 
   function onCorrect() {
-    interaction.clear();
+    if (!activeTaskId) return;
+    interaction.clearTask(activeTaskId);
+  }
+
+  function restartPreview() {
+    interaction.clearAll();
+    setComplete(false);
+    setCursor(0);
+    setRunIds(pending.map((t) => t.task_id));
   }
 
   if (tasksQuery.isLoading) {
@@ -87,14 +114,40 @@ export function RapidFirePreviewSession({ campaignId }: Props) {
       </p>
     );
   }
-  if (pending.length === 0) {
+  if (tasksQuery.isSuccess && pending.length === 0 && snapshotIds.length === 0) {
     return (
-      <p className="muted" role="status" data-testid="rf-preview-unavailable">
-        Rapid Fire preview is not available yet. Approve the Question Check
-        presentation, record one real Question Check Accept or Edit in normal
-        Gold work, then return here to inspect Rapid Fire.
-      </p>
+      <div className="stack" data-testid="rf-preview-unavailable">
+        <p className="muted" role="status">
+          No active Rapid Fire tasks are available yet. Rapid Fire becomes
+          available for a question after a real Question Check Accept or Edit.
+        </p>
+        <Button to={`/gold-lab/campaigns/${campaignId}`} variant="secondary">
+          Return to campaign
+        </Button>
+      </div>
     );
+  }
+
+  if (complete) {
+    return (
+      <div className="stack" data-testid="rf-preview-complete">
+        <h3>End of available preview tasks</h3>
+        <p className="muted" role="status">
+          You reviewed {snapshotIds.length} of {snapshotIds.length} presentations
+          in this preview session.
+        </p>
+        <div className="row">
+          <Button to={`/gold-lab/campaigns/${campaignId}`} variant="secondary">
+            Return to campaign
+          </Button>
+          <Button onClick={restartPreview}>Restart preview</Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (runIds === null) {
+    return <p className="muted">Preparing preview session…</p>;
   }
 
   if (detailQuery.isLoading) {
@@ -119,13 +172,15 @@ export function RapidFirePreviewSession({ campaignId }: Props) {
     );
   }
 
+  const previewResponse = interaction.getResponse(task.task_id);
   const locked = previewResponse !== null;
+  const atFirst = cursor === 0;
 
   return (
     <div className="stack" data-testid="rf-preview-session">
       <p className="muted" role="status">
-        Previewing real pending active Rapid Fire task{" "}
-        <code>{task.task_id}</code> ({pending.length} available).
+        Previewing Rapid Fire {cursor + 1} of {snapshotIds.length}{" "}
+        <code>{task.task_id}</code>.
       </p>
       <RapidFirePresentation
         key={task.task_id}
@@ -143,29 +198,24 @@ export function RapidFirePreviewSession({ campaignId }: Props) {
         }}
         onNext={onNext}
         onCorrect={onCorrect}
-        nextDisabled={pending.length < 2 && previewResponse !== null}
+        nextDisabled={false}
       />
       {previewResponse?.kind === "rapid_fire" ? (
         <p className="muted" role="status" data-testid="preview-response-summary">
           Local preview relevance: {previewResponse.relevance}
         </p>
       ) : null}
-      {pending.length > 1 ? (
-        <div className="row">
-          <Button
-            variant="secondary"
-            onClick={() => {
-              interaction.clear();
-              const idx = pending.findIndex((t) => t.task_id === activeTaskId);
-              const prev =
-                pending[idx - 1] ?? pending[pending.length - 1] ?? null;
-              setSelectedTaskId(prev?.task_id ?? null);
-            }}
-          >
-            Previous preview task
-          </Button>
-        </div>
-      ) : null}
+      <div className="row">
+        <Button
+          variant="secondary"
+          onClick={onPrevious}
+          disabled={atFirst}
+          aria-disabled={atFirst}
+        >
+          Previous preview task
+        </Button>
+        <Link to={`/gold-lab/campaigns/${campaignId}`}>Return to campaign</Link>
+      </div>
     </div>
   );
 }

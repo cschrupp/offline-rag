@@ -2,13 +2,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Badge } from "../../../components/Badge";
-import { Button } from "../../../components/Button";
-import { Card } from "../../../components/Card";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
-import { EmptyState } from "../../../components/EmptyState";
-import { formatTimestamp, shortenId } from "../../workspaces/format";
 import { closeGoldCampaign, listGoldTasks } from "../api/client";
 import { goldLabErrorMessage } from "../errors/goldLabErrors";
+import {
+  candidatePresentationForGame,
+  isAllowProduction,
+} from "../policy/presentations";
 import { goldLabQueryKeys } from "../queryKeys";
 import {
   anchorTaskForCase,
@@ -24,8 +24,15 @@ import {
   type GoldWorkload,
 } from "../state/sessionConfig";
 import type { GoldCampaign } from "../types";
-import { GamePicker } from "./GamePicker";
-import { WorkloadChooser } from "./WorkloadChooser";
+import { GoldCampaignAdvanced } from "./GoldCampaignAdvanced";
+import { GoldContinueAction } from "./GoldContinueAction";
+import { GoldGuide } from "./GoldGuide";
+import { GoldWorkCard } from "./GoldWorkCard";
+import { GoldWorkflowProgress } from "./GoldWorkflowProgress";
+import {
+  continueAnchorTaskId,
+  deriveExpertCampaignState,
+} from "./deriveExpertCampaignState";
 
 type Props = {
   campaign: GoldCampaign;
@@ -50,6 +57,10 @@ export function GoldCampaignShell({ campaign }: Props) {
   const tasks = useMemo(
     () => tasksQuery.data?.tasks ?? [],
     [tasksQuery.data?.tasks],
+  );
+  const expertState = useMemo(
+    () => deriveExpertCampaignState(tasks),
+    [tasks],
   );
   const gameEligiblePending = useMemo(
     () => eligiblePendingForGame(tasks, session.game),
@@ -92,16 +103,12 @@ export function GoldCampaignShell({ campaign }: Props) {
   }
 
   function onGameChange(game: GoldGameId) {
-    // Drop prior-game task anchors; prepare will choose a valid membership task.
     updateSession({ ...session, game, taskId: null });
   }
 
   function onWorkloadChange(workload: GoldWorkload) {
     if (workload === "case") {
-      const currentCase = caseIdForTask(
-        gameEligiblePending,
-        session.taskId,
-      );
+      const currentCase = caseIdForTask(gameEligiblePending, session.taskId);
       const anchor = currentCase
         ? session.taskId
         : caseIds[0]
@@ -122,8 +129,47 @@ export function GoldCampaignShell({ campaign }: Props) {
     updateSession({ ...session, workload: "case", taskId: anchor });
   }
 
+  function navigateToWork(game: GoldGameId, taskId: string | null) {
+    const candidate = candidatePresentationForGame(game);
+    if (!isAllowProduction(candidate.gameId, candidate.presentationId)) {
+      setPrepareError(
+        "This presentation is not approved for production Gold Mode.",
+      );
+      return;
+    }
+    const next: GoldSessionConfig = {
+      game,
+      workload: "until_stop",
+      taskId,
+    };
+    const params = applySessionConfig(new URLSearchParams(), next);
+    void navigate(
+      `/gold-lab/campaigns/${campaign.campaign_id}/work?${params.toString()}`,
+    );
+  }
+
+  function onContinueGoldWork() {
+    setPrepareError(null);
+    const game = expertState.nextPrimaryGame;
+    if (!game) return;
+    navigateToWork(game, continueAnchorTaskId(expertState));
+  }
+
   function onPrepareSession() {
     setPrepareError(null);
+    if (session.game !== "question_check" && session.game !== "rapid_fire") {
+      setPrepareError(
+        "Evidence Sweep and Chunk Duel are not available for production Gold work yet.",
+      );
+      return;
+    }
+    const candidate = candidatePresentationForGame(session.game);
+    if (!isAllowProduction(candidate.gameId, candidate.presentationId)) {
+      setPrepareError(
+        "This presentation is not approved for production Gold Mode.",
+      );
+      return;
+    }
     let next: GoldSessionConfig = { ...session };
     if (next.workload === "case") {
       const belongs = gameEligiblePending.some(
@@ -163,13 +209,6 @@ export function GoldCampaignShell({ campaign }: Props) {
     );
   }
 
-  const pendingCount = tasks.filter(
-    (task) => task.state === "pending" && task.active,
-  ).length;
-  const completedCount = tasks.filter(
-    (task) => task.state === "completed",
-  ).length;
-
   return (
     <div className="stack gold-lab-page">
       <header className="stack" style={{ gap: "0.5rem" }}>
@@ -186,253 +225,137 @@ export function GoldCampaignShell({ campaign }: Props) {
           />
         </div>
         <p className="muted" style={{ margin: 0 }}>
-          <code>{campaign.campaign_id}</code>
+          {campaign.corpus_name}
+          {" · "}
+          {campaign.project_type === "benchmark" ? "Benchmark" : "Improvement"}
         </p>
-        <nav className="row gold-lab-campaign-nav" aria-label="Campaign areas">
-          <Link to={`/gold-lab/campaigns/${campaign.campaign_id}/contribution`}>
-            Contribution
-          </Link>
-          <Link to={`/gold-lab/campaigns/${campaign.campaign_id}/calibration`}>
-            Calibration
-          </Link>
-          <Link to={`/gold-lab/campaigns/${campaign.campaign_id}/training`}>
-            Training
-          </Link>
-        </nav>
       </header>
 
-      <Card>
-        <h2>Campaign binding</h2>
-        <dl className="gold-lab-meta">
-          <div>
-            <dt>Status</dt>
-            <dd>{closed ? "Closed" : "Open"}</dd>
-          </div>
-          <div>
-            <dt>Project</dt>
-            <dd>
-              <Link to={`/gold-lab/projects/${campaign.project_id}`}>
-                {campaign.project_id}
-              </Link>
-            </dd>
-          </div>
-          <div>
-            <dt>Project type</dt>
-            <dd>
-              {campaign.project_type === "benchmark"
-                ? "Benchmark"
-                : "Improvement"}
-            </dd>
-          </div>
-          <div>
-            <dt>Baseline authoring run</dt>
-            <dd>
-              <code>{campaign.baseline_authoring_run_id}</code>
-            </dd>
-          </div>
-          <div>
-            <dt>Corpus</dt>
-            <dd>{campaign.corpus_name}</dd>
-          </div>
-          <div>
-            <dt>Created</dt>
-            <dd>{formatTimestamp(campaign.created_at)}</dd>
-          </div>
-        </dl>
-        <details className="gold-lab-provenance">
-          <summary>Scientific provenance</summary>
-          <dl className="gold-lab-meta">
-            <div>
-              <dt>Snapshot</dt>
-              <dd>
-                <code>{campaign.snapshot_id}</code>
-              </dd>
-            </div>
-            <div>
-              <dt>Chunk set</dt>
-              <dd>
-                <code>{campaign.chunk_set_id}</code>
-              </dd>
-            </div>
-            <div>
-              <dt>Corpus ID</dt>
-              <dd>
-                <code>{shortenId(campaign.corpus_id, 24)}</code>
-              </dd>
-            </div>
-            <div>
-              <dt>Workspace revision at creation</dt>
-              <dd>{campaign.workspace_revision_at_creation}</dd>
-            </div>
-            <div>
-              <dt>Workspace</dt>
-              <dd>
-                <code>{campaign.workspace_id}</code>
-              </dd>
-            </div>
-          </dl>
-        </details>
-      </Card>
+      {!closed ? <GoldGuide state={expertState} /> : null}
 
-      {!closed ? (
-        <Card>
-          <h2>Close campaign</h2>
-          <p className="muted">
-            Closing is one-way. The campaign remains readable, but new expert
-            session preparation is disabled.
-          </p>
-          {closeError ? (
-            <p className="error-box" role="alert">
-              {closeError}
-            </p>
-          ) : null}
-          <Button
-            variant="danger"
-            onClick={() => {
-              setCloseError(null);
-              setConfirmClose(true);
-            }}
-            disabled={closeMutation.isPending}
-          >
-            Close campaign
-          </Button>
-        </Card>
-      ) : (
-        <Card>
-          <h2>Campaign closed</h2>
-          <p className="muted" role="status">
-            This campaign is closed. New expert-session preparation is disabled.
-            Reopening is not available.
-          </p>
-        </Card>
-      )}
+      <GoldWorkflowProgress state={expertState} />
 
-      <Card>
-        <details data-testid="campaign-advanced">
-          <summary>Advanced</summary>
-          <div className="stack" style={{ marginTop: "0.75rem" }}>
-            <p className="muted" style={{ margin: 0 }}>
-              Tools for presentation review, provenance, and campaign
-              diagnostics.
-            </p>
-            <div>
-              <p style={{ margin: "0 0 0.35rem" }}>
-                <strong>Presentation review</strong>
-              </p>
-              <p className="muted" style={{ margin: "0 0 0.5rem" }}>
-                Inspect candidate game presentations without writing Gold.
-              </p>
-              <Button
-                to={`/gold-lab/campaigns/${campaign.campaign_id}/presentation-review`}
-                variant="secondary"
-              >
-                Open presentation review
-              </Button>
-            </div>
-          </div>
-        </details>
-      </Card>
+      <GoldContinueAction
+        state={expertState}
+        closed={closed}
+        busy={tasksQuery.isLoading}
+        onContinue={onContinueGoldWork}
+      />
 
-      <Card>
-        <h2>Workload discovery</h2>
-        {tasksQuery.isLoading ? (
-          <p className="muted">Loading tasks…</p>
-        ) : null}
-        {tasksQuery.isError ? (
-          <p className="error-box" role="alert">
-            {goldLabErrorMessage(tasksQuery.error)}
-          </p>
-        ) : null}
-        {tasksQuery.isSuccess && tasks.length === 0 ? (
-          <EmptyState
-            title="No tasks yet."
-            body="The campaign task list is empty. Expert adjudication is not started from this screen."
-          />
-        ) : null}
-        {tasksQuery.isSuccess && tasks.length > 0 ? (
-          <>
-            <p className="muted">
-              Pending (active): {pendingCount}. Completed: {completedCount}.
-              Server order is preserved.
-            </p>
-            <ol className="gold-lab-task-order">
-              {tasks.map((task) => (
-                <li key={task.task_id}>
-                  <code>{task.task_id}</code>
-                  {" · "}
-                  {task.task_kind}
-                  {" · "}
-                  {task.state}
-                  {task.active ? "" : " · inactive"}
-                  {" · case "}
-                  <code>{task.case_id}</code>
-                </li>
-              ))}
-            </ol>
-          </>
-        ) : null}
-      </Card>
+      <section
+        className="gold-lab-work-cards"
+        aria-label="Gold work activities"
+        data-testid="gold-work-cards"
+      >
+        <GoldWorkCard
+          kind="question_check"
+          title="Question Check"
+          purpose="Review generated questions before evidence judgment."
+          status={
+            expertState.qcPending > 0
+              ? `${expertState.qcPending} questions remaining`
+              : "Complete"
+          }
+          actionLabel={
+            expertState.qcPending > 0
+              ? expertState.qcReviewed > 0
+                ? "Continue Question Check"
+                : "Start Question Check"
+              : undefined
+          }
+          onAction={
+            expertState.qcPending > 0 && !closed
+              ? () =>
+                  navigateToWork(
+                    "question_check",
+                    expertState.firstQcTaskId,
+                  )
+              : undefined
+          }
+          disabled={closed || tasksQuery.isLoading}
+        />
+        <GoldWorkCard
+          kind="rapid_fire"
+          title="Rapid Fire"
+          purpose="Judge how strongly a source supports the accepted question."
+          status={
+            expertState.relevancePending > 0
+              ? `${expertState.relevancePending} evidence judgments ready`
+              : expertState.qcPending > 0
+                ? "Available as accepted questions become ready"
+                : "Complete"
+          }
+          actionLabel={
+            expertState.relevancePending > 0
+              ? expertState.relevanceCompleted > 0
+                ? "Continue Rapid Fire"
+                : "Start Rapid Fire"
+              : undefined
+          }
+          onAction={
+            expertState.relevancePending > 0 && !closed
+              ? () =>
+                  navigateToWork("rapid_fire", expertState.firstRfTaskId)
+              : undefined
+          }
+          disabled={closed || tasksQuery.isLoading}
+        />
+        <GoldWorkCard
+          kind="evidence_sweep"
+          title="Evidence Sweep"
+          purpose="Optional spatial evidence review."
+          status="Optional · Not available yet"
+          locked
+          lockedReason="Optional. Not available for production Gold work yet."
+        />
+        <GoldWorkCard
+          kind="chunk_duel"
+          title="Chunk Duel"
+          purpose="Optional preference comparison. Does not create canonical absolute Gold."
+          status="Optional · Not available yet"
+          locked
+          lockedReason="Optional. Not available for production Gold work yet."
+        />
+      </section>
 
-      <Card>
-        <h2>Session configuration</h2>
-        {closed ? (
-          <p className="muted" role="status">
-            Session preparation is disabled because this campaign is closed.
-          </p>
-        ) : null}
-        <div className="stack">
-          <GamePicker
-            value={session.game}
-            onChange={onGameChange}
-            disabled={closed}
-          />
-          <WorkloadChooser
-            value={session.workload}
-            onChange={onWorkloadChange}
-            caseIds={caseIds}
-            selectedCaseId={selectedCaseId}
-            onCaseChange={onCaseChange}
-            disabled={closed}
-          />
+      {prepareError ? (
+        <p className="error-box" role="alert">
+          {prepareError}
+        </p>
+      ) : null}
 
-          {!closed && tasksQuery.isSuccess && matchingPending.length === 0 ? (
-            <p className="muted" role="status">
-              No pending tasks match this session configuration.
-            </p>
-          ) : null}
-
-          {!closed && matchingPending.length > 0 ? (
-            <p className="muted" role="status">
-              Eligible pending tasks for this configuration:{" "}
-              {matchingPending.length}.
-              {session.workload === "case" && selectedCaseId
-                ? ` Case ${selectedCaseId}.`
-                : null}
-            </p>
-          ) : null}
-
-          {prepareError ? (
-            <p className="error-box" role="alert">
-              {prepareError}
-            </p>
-          ) : null}
-
-          <div className="row">
-            <Button
-              onClick={onPrepareSession}
-              disabled={
-                closed ||
-                tasksQuery.isLoading ||
-                tasksQuery.isError ||
-                matchingPending.length === 0 ||
-                (session.workload === "case" && !selectedCaseId)
-              }
-            >
-              Prepare session
-            </Button>
-          </div>
-        </div>
-      </Card>
+      <GoldCampaignAdvanced
+        campaign={campaign}
+        closed={closed}
+        tasks={tasks}
+        tasksLoading={tasksQuery.isLoading}
+        tasksError={
+          tasksQuery.isError ? goldLabErrorMessage(tasksQuery.error) : null
+        }
+        sessionGame={session.game}
+        sessionWorkload={session.workload}
+        caseIds={caseIds}
+        selectedCaseId={selectedCaseId}
+        matchingPendingCount={matchingPending.length}
+        prepareError={null}
+        closeError={closeError}
+        closeBusy={closeMutation.isPending}
+        onGameChange={onGameChange}
+        onWorkloadChange={onWorkloadChange}
+        onCaseChange={onCaseChange}
+        onPrepareSession={onPrepareSession}
+        prepareDisabled={
+          closed ||
+          tasksQuery.isLoading ||
+          tasksQuery.isError ||
+          matchingPending.length === 0 ||
+          (session.workload === "case" && !selectedCaseId)
+        }
+        onRequestClose={() => {
+          setCloseError(null);
+          setConfirmClose(true);
+        }}
+      />
 
       <ConfirmDialog
         open={confirmClose}

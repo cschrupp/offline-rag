@@ -1242,6 +1242,17 @@ describe("16G-I6 I — GAP-16G-02 baseline bootstrap product path", () => {
     const mock = installFetchMock(async (call) => {
       if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
       if (call.url === "/v1/workspaces") return jsonResponse([]);
+      if (call.url.includes("/v1/capabilities")) {
+        return jsonResponse({
+          product: { name: "Seneca", descriptor: "x" },
+          source_limits: {
+            max_active_sources: 32,
+            max_bytes_per_source: 1,
+            max_active_source_bytes: 1,
+          },
+          authoring: { ready: true },
+        });
+      }
       if (call.url.match(/\/v1\/gold-lab\/projects\/[^/]+$/)) {
         return jsonResponse({
           project_id: "proj_1",

@@ -258,7 +258,10 @@ describe("16N-A Presentation Review", () => {
     );
     expect(
       await screen.findByTestId("rf-preview-unavailable"),
-    ).toHaveTextContent(/Rapid Fire preview is not available yet/i);
+    ).toHaveTextContent(/No active Rapid Fire tasks are available yet/i);
+    expect(
+      screen.getByTestId("rf-preview-unavailable"),
+    ).not.toHaveTextContent(/Approve the Question Check presentation/i);
     expect(
       mock.calls.some((c) => c.url.includes("absolute_relevance")),
     ).toBe(true);

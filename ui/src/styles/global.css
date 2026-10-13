@@ -2147,6 +2147,41 @@ button.snapshot-badge {
   padding-left: 1.2rem;
 }
 
+.gold-lab-work-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.gold-lab-work-card h3 {
+  margin-bottom: 0.25rem;
+}
+
+.gold-lab-guide-steps {
+  margin: 0.5rem 0;
+  padding-left: 1.2rem;
+}
+
+.gold-lab-guide-steps li[aria-current="step"] {
+  font-weight: 600;
+}
+
+.gold-lab-workflow-ladder {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.gold-lab-workflow-ladder > li {
+  margin-bottom: 0.75rem;
+}
+
+@media (max-width: 48rem) {
+  .gold-lab-work-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+
 .gold-lab-chunk-duel-pair {
   display: grid;
   grid-template-columns: 1fr 1fr;

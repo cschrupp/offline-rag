@@ -20,6 +20,7 @@ type Props = {
   onNext: () => void;
   onCorrect: () => void;
   nextDisabled?: boolean;
+  onEditingChange?: (editing: boolean) => void;
 };
 
 /** Production Question Check wrapper — owns Gold mutation after-action semantics. */
@@ -36,6 +37,7 @@ export function QuestionCheckGame({
   onNext,
   onCorrect,
   nextDisabled = false,
+  onEditingChange,
 }: Props) {
   const locked =
     mutationBusy ||
@@ -60,6 +62,7 @@ export function QuestionCheckGame({
       nextDisabled={nextDisabled}
       correctDisabled={mutationBusy}
       retryBusy={mutationBusy}
+      onEditingChange={onEditingChange}
     />
   );
 }

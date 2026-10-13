@@ -7,11 +7,11 @@ import type {
 } from "./previewTypes";
 
 /**
- * Non-authoritative local preview interaction.
+ * Non-authoritative local preview interaction with per-task memory.
  * Contains zero Gold mutation API calls by construction.
  */
 export type PreviewInteraction = {
-  readonly response: PreviewResponse | null;
+  getResponse: (taskId: string) => PreviewResponse | null;
   submitQuestionCheck: (
     taskId: string,
     draft: QuestionCheckCommitDraft,
@@ -20,16 +20,21 @@ export type PreviewInteraction = {
     taskId: string,
     relevance: GoldRelevance,
   ) => Promise<PreviewRelevanceResponse>;
-  clear: () => void;
+  clearTask: (taskId: string) => void;
+  clearAll: () => void;
 };
 
+export type PreviewResponseMap = Readonly<
+  Record<string, PreviewResponse>
+>;
+
 export function createPreviewInteraction(options: {
-  getResponse: () => PreviewResponse | null;
-  setResponse: (next: PreviewResponse | null) => void;
+  getMap: () => PreviewResponseMap;
+  setMap: (next: PreviewResponseMap) => void;
 }): PreviewInteraction {
   return {
-    get response() {
-      return options.getResponse();
+    getResponse(taskId) {
+      return options.getMap()[taskId] ?? null;
     },
     async submitQuestionCheck(taskId, draft) {
       const recordedAt = new Date().toISOString();
@@ -50,7 +55,7 @@ export function createPreviewInteraction(options: {
               decision: draft.decision,
               recordedAt,
             };
-      options.setResponse(next);
+      options.setMap({ ...options.getMap(), [taskId]: next });
       return next;
     },
     async submitRelevance(taskId, relevance) {
@@ -60,11 +65,16 @@ export function createPreviewInteraction(options: {
         relevance,
         recordedAt: new Date().toISOString(),
       };
-      options.setResponse(next);
+      options.setMap({ ...options.getMap(), [taskId]: next });
       return next;
     },
-    clear() {
-      options.setResponse(null);
+    clearTask(taskId) {
+      const current = { ...options.getMap() };
+      delete current[taskId];
+      options.setMap(current);
+    },
+    clearAll() {
+      options.setMap({});
     },
   };
 }

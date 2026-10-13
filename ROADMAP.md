@@ -552,7 +552,11 @@ SLICE 15  COMPLETE / ACCEPTED
          Exact starting SHA: 21dfb3e88920c40fe227d51efc8022995ef41c9e
        Evidence Sweep: NOT APPROVED
        Chunk Duel: NOT APPROVED
-     16N-B DESIGNED / NOT AUTHORIZED
+     16N-B AUTHORIZED / IN PROGRESS
+       Authority: S16-N-B-IMPLEMENTATION-AUTH-001
+       Frozen design: S16-N-GOLD-EXPERT-ENTRY-DESIGN-FREEZE-001
+       Branch: implementation/16n-b-expert-first-campaign-ux
+       Exact starting SHA: aac51029f279f07cafd1078160efbd592d5fc4be
      9G DEFERRED / NOT AUTHORIZED
      Slice 16 overall IN PROGRESS / NOT COMPLETE
      Authority: docs/slice16_design_authority.md

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Button } from "../../../../components/Button";
 import { TextArea, TextInput } from "../../../../components/Field";
@@ -37,6 +37,8 @@ export type QuestionCheckPresentationProps = {
   afterActionRecordedLabel?: string;
   afterActionCorrectLabel?: string;
   afterActionNextLabel?: string;
+  /** Notifies parent when an unsubmitted edit form is open. */
+  onEditingChange?: (editing: boolean) => void;
 };
 
 function tagsFromLines(value: string): string[] {
@@ -69,9 +71,14 @@ export function QuestionCheckPresentation({
   afterActionRecordedLabel,
   afterActionCorrectLabel,
   afterActionNextLabel,
+  onEditingChange,
 }: QuestionCheckPresentationProps) {
   const presentation = task.presentation;
   const [editing, setEditing] = useState(false);
+
+  useEffect(() => {
+    onEditingChange?.(editing && !showAfterAction);
+  }, [editing, showAfterAction, onEditingChange]);
   const [query, setQuery] = useState(presentation.proposed_query);
   const [category, setCategory] = useState(
     presentation.proposed_category ?? "",
