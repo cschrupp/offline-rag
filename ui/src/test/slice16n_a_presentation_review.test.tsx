@@ -221,7 +221,9 @@ describe("16N-A Presentation Review", () => {
     );
     assertNoGoldMutationPosts(mock.calls);
 
-    await user.click(screen.getByRole("button", { name: /Correct judgment/i }));
+    await user.click(
+      screen.getByRole("button", { name: /Change preview response/i }),
+    );
     await user.click(screen.getByRole("button", { name: /^Edit$/i }));
     await user.clear(screen.getByLabelText(/Effective query/i));
     await user.type(screen.getByLabelText(/Effective query/i), "Edited query?");
@@ -234,7 +236,9 @@ describe("16N-A Presentation Review", () => {
     );
     assertNoGoldMutationPosts(mock.calls);
 
-    await user.click(screen.getByRole("button", { name: /Correct judgment/i }));
+    await user.click(
+      screen.getByRole("button", { name: /Change preview response/i }),
+    );
     await user.click(screen.getByRole("button", { name: /^Reject$/i }));
     expect(
       await screen.findByText(/Preview response recorded locally/i),
@@ -308,14 +312,18 @@ describe("16N-A Presentation Review", () => {
     );
     assertNoGoldMutationPosts(mock.calls);
 
-    await user.click(screen.getByRole("button", { name: /Correct judgment/i }));
+    await user.click(
+      screen.getByRole("button", { name: /Change preview response/i }),
+    );
     await user.click(
       screen.getByRole("button", { name: /1 — Supporting evidence/i }),
     );
     expect(screen.getByTestId("preview-response-summary")).toHaveTextContent(
       "1",
     );
-    await user.click(screen.getByRole("button", { name: /Correct judgment/i }));
+    await user.click(
+      screen.getByRole("button", { name: /Change preview response/i }),
+    );
     await user.click(
       screen.getByRole("button", { name: /2 — Direct evidence/i }),
     );
@@ -417,6 +425,7 @@ describe("16N-A Presentation Review", () => {
       "RapidFirePreviewSession.tsx",
       "PreviewInteraction.ts",
       "previewTypes.ts",
+      "previewEligibility.ts",
     ];
     const forbidden = [
       "submitGoldQuestionCheck",
@@ -440,5 +449,164 @@ describe("16N-A Presentation Review", () => {
     );
     expect(page).toContain('from "../features/goldLab/api/readClient"');
     expect(page).not.toContain("submitGold");
+  });
+
+  it("F001: preview after-action never uses durable Gold judgment wording", async () => {
+    const user = userEvent.setup();
+    const mock = installCampaignReads({});
+    renderApp("/gold-lab/campaigns/camp_1/presentation-review");
+    await screen.findByTestId("question-check-presentation");
+    await user.click(screen.getByRole("button", { name: /^Accept$/i }));
+    expect(
+      await screen.findByText(/Preview response recorded locally\. Gold was not changed\./i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Judgment recorded\.?/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Previous commit confirmed\.?/i),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Correct judgment/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Change preview response/i }),
+    ).toBeInTheDocument();
+    mock.restore();
+    cleanup();
+
+    const mockRf = installCampaignReads({
+      arTasks: [
+        goldTask({
+          task_id: "ar_1",
+          task_kind: "absolute_relevance",
+          active: true,
+          state: "pending",
+        }),
+      ],
+      arDetail: absoluteDetail("ar_1"),
+    });
+    renderApp(
+      "/gold-lab/campaigns/camp_1/presentation-review?presentation=rapid_fire",
+    );
+    await screen.findByTestId("rapid-fire-presentation");
+    await user.click(
+      screen.getByRole("button", { name: /0 — Irrelevant/i }),
+    );
+    expect(
+      await screen.findByText(/Preview response recorded locally\. Gold was not changed\./i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Judgment recorded\.?/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Previous commit confirmed\.?/i),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Correct judgment/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Change preview response/i }),
+    ).toBeInTheDocument();
+    mockRf.restore();
+  });
+
+  it("F002: fails closed when QC detail is completed or inactive", async () => {
+    const mockCompleted = installCampaignReads({
+      qcDetail: questionDetail("qc_1", {
+        active: true,
+        state: "completed",
+        current_result: {
+          kind: "question_check",
+          decision: "accept",
+          effective_query: "Proposed question?",
+          effective_category: "ops",
+          effective_tags: ["tag-a"],
+        },
+      }),
+    });
+    renderApp("/gold-lab/campaigns/camp_1/presentation-review");
+    expect(await screen.findByTestId("qc-preview-stale")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("question-check-presentation"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^Accept$/i }),
+    ).not.toBeInTheDocument();
+    mockCompleted.restore();
+    cleanup();
+
+    const mockInactive = installCampaignReads({
+      qcDetail: questionDetail("qc_1", {
+        active: false,
+        state: "pending",
+      }),
+    });
+    renderApp("/gold-lab/campaigns/camp_1/presentation-review");
+    expect(await screen.findByTestId("qc-preview-stale")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("question-check-presentation"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^Accept$/i }),
+    ).not.toBeInTheDocument();
+    mockInactive.restore();
+  });
+
+  it("F002: fails closed when RF detail is completed after pending list", async () => {
+    const mock = installCampaignReads({
+      arTasks: [
+        goldTask({
+          task_id: "ar_1",
+          task_kind: "absolute_relevance",
+          active: true,
+          state: "pending",
+        }),
+      ],
+      arDetail: absoluteDetail("ar_1", {
+        active: true,
+        state: "completed",
+        current_result: {
+          kind: "absolute_relevance",
+          relevance: 2,
+        },
+      }),
+    });
+    renderApp(
+      "/gold-lab/campaigns/camp_1/presentation-review?presentation=rapid_fire",
+    );
+    expect(await screen.findByTestId("rf-preview-stale")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("rapid-fire-presentation"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /0 — Irrelevant/i }),
+    ).not.toBeInTheDocument();
+    mock.restore();
+  });
+
+  it("F003: presentation selector uses button-group pressed semantics", async () => {
+    const user = userEvent.setup();
+    const mock = installCampaignReads({ arTasks: [] });
+    renderApp("/gold-lab/campaigns/camp_1/presentation-review");
+    await screen.findByTestId("qc-preview-session");
+
+    const group = screen.getByRole("group", {
+      name: /Presentation review targets/i,
+    });
+    expect(group).not.toHaveAttribute("role", "tablist");
+    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+
+    const qc = screen.getByRole("button", { name: /^Question Check$/i });
+    const rf = screen.getByRole("button", { name: /^Rapid Fire$/i });
+    expect(qc).toHaveAttribute("aria-pressed", "true");
+    expect(rf).toHaveAttribute("aria-pressed", "false");
+    expect(qc).not.toHaveAttribute("aria-selected");
+    expect(rf).not.toHaveAttribute("aria-selected");
+
+    await user.click(rf);
+    expect(await screen.findByTestId("rf-preview-unavailable")).toBeInTheDocument();
+    expect(qc).toHaveAttribute("aria-pressed", "false");
+    expect(rf).toHaveAttribute("aria-pressed", "true");
+
+    await user.keyboard("{Tab}");
+    mock.restore();
   });
 });

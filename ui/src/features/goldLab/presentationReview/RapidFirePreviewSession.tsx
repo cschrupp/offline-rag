@@ -7,8 +7,11 @@ import { RapidFirePresentation } from "../games/rapidFire/RapidFirePresentation"
 import { goldLabQueryKeys } from "../queryKeys";
 import type { AbsoluteRelevanceTaskDetail, GoldRelevance } from "../types";
 import { createPreviewInteraction } from "./PreviewInteraction";
+import { isPreviewableTaskDetail } from "./previewEligibility";
 import {
+  PREVIEW_CORRECT_LABEL,
   PREVIEW_LOCAL_STATUS,
+  PREVIEW_NEXT_LABEL,
   type PreviewResponse,
 } from "./previewTypes";
 
@@ -20,7 +23,6 @@ export function RapidFirePreviewSession({ campaignId }: Props) {
   const [previewResponse, setPreviewResponse] =
     useState<PreviewResponse | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const interaction = useMemo(
     () =>
@@ -61,7 +63,6 @@ export function RapidFirePreviewSession({ campaignId }: Props) {
   async function onCommit(relevance: GoldRelevance) {
     if (!activeTaskId) return;
     await interaction.submitRelevance(activeTaskId, relevance);
-    setStatusMessage(PREVIEW_LOCAL_STATUS);
   }
 
   function onNext() {
@@ -69,13 +70,11 @@ export function RapidFirePreviewSession({ campaignId }: Props) {
     const idx = pending.findIndex((t) => t.task_id === activeTaskId);
     const next = pending[idx + 1] ?? pending[0] ?? null;
     interaction.clear();
-    setStatusMessage(null);
     setSelectedTaskId(next?.task_id ?? null);
   }
 
   function onCorrect() {
     interaction.clear();
-    setStatusMessage(null);
   }
 
   if (tasksQuery.isLoading) {
@@ -110,11 +109,12 @@ export function RapidFirePreviewSession({ campaignId }: Props) {
   }
 
   const task = detailQuery.data as AbsoluteRelevanceTaskDetail;
-  if (!task.active) {
+  if (!isPreviewableTaskDetail(task)) {
     return (
-      <p className="error-box" role="alert" data-testid="rf-preview-inactive">
-        Rapid Fire preview refused an inactive absolute-relevance task. Preview
-        never activates inactive scientific work.
+      <p className="error-box" role="alert" data-testid="rf-preview-stale">
+        Rapid Fire preview is not available for this task because it is no
+        longer pending and active. Preview never treats inactive or completed
+        absolute-relevance work as actionable.
       </p>
     );
   }
@@ -132,9 +132,12 @@ export function RapidFirePreviewSession({ campaignId }: Props) {
         task={task}
         locked={locked}
         errorMessage={null}
-        statusMessage={statusMessage}
+        statusMessage={null}
         showAfterAction={previewResponse?.kind === "rapid_fire"}
         afterActionReplayed={false}
+        afterActionRecordedLabel={PREVIEW_LOCAL_STATUS}
+        afterActionCorrectLabel={PREVIEW_CORRECT_LABEL}
+        afterActionNextLabel={PREVIEW_NEXT_LABEL}
         onCommit={(relevance) => {
           void onCommit(relevance);
         }}
@@ -153,7 +156,6 @@ export function RapidFirePreviewSession({ campaignId }: Props) {
             variant="secondary"
             onClick={() => {
               interaction.clear();
-              setStatusMessage(null);
               const idx = pending.findIndex((t) => t.task_id === activeTaskId);
               const prev =
                 pending[idx - 1] ?? pending[pending.length - 1] ?? null;

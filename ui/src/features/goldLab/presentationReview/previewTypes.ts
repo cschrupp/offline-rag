@@ -26,3 +26,7 @@ export type PreviewResponse =
 
 export const PREVIEW_LOCAL_STATUS =
   "Preview response recorded locally. Gold was not changed.";
+
+export const PREVIEW_CORRECT_LABEL = "Change preview response";
+
+export const PREVIEW_NEXT_LABEL = "Next preview task";

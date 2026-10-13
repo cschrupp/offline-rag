@@ -34,6 +34,10 @@ export type RapidFirePresentationProps = {
   nextDisabled?: boolean;
   correctDisabled?: boolean;
   retryBusy?: boolean;
+  /** Injected after-action copy; production keeps GoldAfterAction defaults. */
+  afterActionRecordedLabel?: string;
+  afterActionCorrectLabel?: string;
+  afterActionNextLabel?: string;
 };
 
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -67,6 +71,9 @@ export function RapidFirePresentation({
   nextDisabled = false,
   correctDisabled = false,
   retryBusy = false,
+  afterActionRecordedLabel,
+  afterActionCorrectLabel,
+  afterActionNextLabel,
 }: RapidFirePresentationProps) {
   const presentation = task.presentation;
 
@@ -154,6 +161,9 @@ export function RapidFirePresentation({
           onCorrect={onCorrect}
           nextDisabled={nextDisabled}
           correctDisabled={correctDisabled}
+          recordedLabel={afterActionRecordedLabel}
+          correctLabel={afterActionCorrectLabel}
+          nextLabel={afterActionNextLabel}
         />
       ) : null}
     </div>

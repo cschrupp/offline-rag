@@ -10,8 +10,11 @@ import {
 import { goldLabQueryKeys } from "../queryKeys";
 import type { QuestionCheckTaskDetail } from "../types";
 import { createPreviewInteraction } from "./PreviewInteraction";
+import { isPreviewableTaskDetail } from "./previewEligibility";
 import {
+  PREVIEW_CORRECT_LABEL,
   PREVIEW_LOCAL_STATUS,
+  PREVIEW_NEXT_LABEL,
   type PreviewResponse,
 } from "./previewTypes";
 
@@ -23,7 +26,6 @@ export function QuestionCheckPreviewSession({ campaignId }: Props) {
   const [previewResponse, setPreviewResponse] =
     useState<PreviewResponse | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const interaction = useMemo(
     () =>
@@ -64,7 +66,6 @@ export function QuestionCheckPreviewSession({ campaignId }: Props) {
   async function onCommit(draft: QuestionCheckCommitDraft) {
     if (!activeTaskId) return;
     await interaction.submitQuestionCheck(activeTaskId, draft);
-    setStatusMessage(PREVIEW_LOCAL_STATUS);
   }
 
   function onNext() {
@@ -72,13 +73,11 @@ export function QuestionCheckPreviewSession({ campaignId }: Props) {
     const idx = pending.findIndex((t) => t.task_id === activeTaskId);
     const next = pending[idx + 1] ?? pending[0] ?? null;
     interaction.clear();
-    setStatusMessage(null);
     setSelectedTaskId(next?.task_id ?? null);
   }
 
   function onCorrect() {
     interaction.clear();
-    setStatusMessage(null);
   }
 
   if (tasksQuery.isLoading) {
@@ -112,6 +111,15 @@ export function QuestionCheckPreviewSession({ campaignId }: Props) {
   }
 
   const task = detailQuery.data as QuestionCheckTaskDetail;
+  if (!isPreviewableTaskDetail(task)) {
+    return (
+      <p className="error-box" role="alert" data-testid="qc-preview-stale">
+        Question Check preview is not available for this task because it is no
+        longer pending and active. Refresh the campaign task list and try again.
+      </p>
+    );
+  }
+
   const locked = previewResponse !== null;
 
   return (
@@ -125,9 +133,12 @@ export function QuestionCheckPreviewSession({ campaignId }: Props) {
         task={task}
         locked={locked}
         errorMessage={null}
-        statusMessage={statusMessage}
+        statusMessage={null}
         showAfterAction={previewResponse?.kind === "question_check"}
         afterActionReplayed={false}
+        afterActionRecordedLabel={PREVIEW_LOCAL_STATUS}
+        afterActionCorrectLabel={PREVIEW_CORRECT_LABEL}
+        afterActionNextLabel={PREVIEW_NEXT_LABEL}
         onCommit={(draft) => {
           void onCommit(draft);
         }}
@@ -149,7 +160,6 @@ export function QuestionCheckPreviewSession({ campaignId }: Props) {
             variant="secondary"
             onClick={() => {
               interaction.clear();
-              setStatusMessage(null);
               const idx = pending.findIndex((t) => t.task_id === activeTaskId);
               const prev =
                 pending[idx - 1] ?? pending[pending.length - 1] ?? null;

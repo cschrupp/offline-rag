@@ -31,20 +31,20 @@ export function PresentationReviewWorkspace({ campaignId }: Props) {
 
       <div
         className="row"
-        role="tablist"
+        role="group"
         aria-label="Presentation review targets"
         style={{ flexWrap: "wrap" }}
       >
         <Button
           variant={target === "question_check" ? "primary" : "secondary"}
-          aria-selected={target === "question_check"}
+          aria-pressed={target === "question_check"}
           onClick={() => selectTarget("question_check")}
         >
           Question Check
         </Button>
         <Button
           variant={target === "rapid_fire" ? "primary" : "secondary"}
-          aria-selected={target === "rapid_fire"}
+          aria-pressed={target === "rapid_fire"}
           onClick={() => selectTarget("rapid_fire")}
         >
           Rapid Fire

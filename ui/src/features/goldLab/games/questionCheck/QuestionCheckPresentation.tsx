@@ -33,6 +33,10 @@ export type QuestionCheckPresentationProps = {
   nextDisabled?: boolean;
   correctDisabled?: boolean;
   retryBusy?: boolean;
+  /** Injected after-action copy; production keeps GoldAfterAction defaults. */
+  afterActionRecordedLabel?: string;
+  afterActionCorrectLabel?: string;
+  afterActionNextLabel?: string;
 };
 
 function tagsFromLines(value: string): string[] {
@@ -62,6 +66,9 @@ export function QuestionCheckPresentation({
   nextDisabled = false,
   correctDisabled = false,
   retryBusy = false,
+  afterActionRecordedLabel,
+  afterActionCorrectLabel,
+  afterActionNextLabel,
 }: QuestionCheckPresentationProps) {
   const presentation = task.presentation;
   const [editing, setEditing] = useState(false);
@@ -239,6 +246,9 @@ export function QuestionCheckPresentation({
           }}
           nextDisabled={nextDisabled}
           correctDisabled={correctDisabled}
+          recordedLabel={afterActionRecordedLabel}
+          correctLabel={afterActionCorrectLabel}
+          nextLabel={afterActionNextLabel}
         />
       ) : null}
     </div>

@@ -10,6 +10,9 @@ type Props = {
   showNext?: boolean;
   nextLabel?: string;
   recordedLabel?: string;
+  /** Production default; Presentation Review injects non-durable copy. */
+  correctLabel?: string;
+  previousCommitLabel?: string;
 };
 
 export function GoldAfterAction({
@@ -21,12 +24,14 @@ export function GoldAfterAction({
   showNext = true,
   nextLabel = "Next task",
   recordedLabel = "Judgment recorded.",
+  correctLabel = "Correct judgment",
+  previousCommitLabel = "Previous commit confirmed.",
 }: Props) {
   return (
     <div className="stack gold-lab-after-action">
       {replayed ? (
         <p className="muted" role="status">
-          Previous commit confirmed.
+          {previousCommitLabel}
         </p>
       ) : (
         <p className="muted" role="status">
@@ -40,7 +45,7 @@ export function GoldAfterAction({
           </Button>
         ) : null}
         <Button variant="secondary" onClick={onCorrect} disabled={correctDisabled}>
-          Correct judgment
+          {correctLabel}
         </Button>
       </div>
     </div>
