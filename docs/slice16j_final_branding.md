@@ -12,13 +12,17 @@
 
 **Exact independently accepted technical subject:** `8208f86e3c4bb2508d35048ceb0ba9033f3de2ef`
 
-**Status:** INDEPENDENTLY ACCEPTED
+**Human acceptance:** `S16-J-FINAL-BRANDING-HA-001` — ACCEPTED
+
+**Exact Human-accepted technical subject:** `8208f86e3c4bb2508d35048ceb0ba9033f3de2ef`
+
+**IR-002 acceptance-record tip:** `65aced367d92f3b411d476676f532c1727c78d70`
+
+**Status:** COMPLETE / HUMAN ACCEPTED
 
 **F001:** CLOSED
 
-**Human acceptance:** PENDING
-
-**Promotion / merge:** NOT AUTHORIZED
+**Promotion / merge:** NOT YET EXECUTED
 
 **Slice 16:** IN PROGRESS / NOT COMPLETE
 
