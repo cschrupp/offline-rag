@@ -641,6 +641,12 @@ SLICE 15  COMPLETE / ACCEPTED
        Author: Carlos A. Schrupp
        Contact: carlos.schrupp@berkeley.edu
        Does NOT close Slice 16
+     Slice-16 closeout inventory AUTHORIZED / IN PROGRESS
+       Authority: S16-CLOSEOUT-INVENTORY-AUTH-001 — AUTHORIZED
+       Exact base: 168af70b54fba39f0efba69100d57b41a574667f
+       Artifact: docs/slice16_closeout_inventory.md
+       Scope: docs/governance only; no product code; no 16K/9G/17/18
+       Does NOT declare Slice 16 complete
      9G DEFERRED / NOT AUTHORIZED
      16K: NOT AUTHORIZED
      Slice 16 overall IN PROGRESS / NOT COMPLETE
