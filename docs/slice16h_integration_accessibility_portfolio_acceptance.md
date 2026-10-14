@@ -43,10 +43,14 @@ Primary artifacts:
 
 Production-code corrections in this envelope: **NONE**.
 
-Packaging-only change (not product semantics): `deploy/Dockerfile` optionally installs
-local `deploy/certs/*.crt` (gitignored) into the image trust store before `npm`/`pip`
-so TLS-intercepted Docker build hosts can build with verification still enabled.
-Empty `deploy/certs/` remains a no-op.
+Packaging-only build support (not product semantics): `deploy/Dockerfile`
+accepts an optional BuildKit `build_ca` secret for TLS-intercepted dependency
+fetches. The secret is mount-only and is never copied into the image. The UI
+builder exposes it through `NODE_EXTRA_CA_CERTS` only for the `npm ci` RUN; the
+Python build combines it with the system CA bundle in a temporary
+`/tmp/offlinerag-build-ca-bundle.pem` used only for the pip-install RUN and
+removes that file before the layer commits. No custom CA is installed into the
+final runtime system trust store.
 
 ## 3. Cross-surface integration (Family A)
 
