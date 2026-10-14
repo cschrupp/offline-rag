@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import { Settings } from "lucide-react";
+import { Info, Settings } from "lucide-react";
+import { AboutDialog } from "./AboutDialog";
 
 export function AppShell() {
   const [navOpen, setNavOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   return (
     <div className="app-shell">
@@ -56,12 +58,26 @@ export function AppShell() {
               <Settings size={18} aria-hidden="true" />
               <span>Settings</span>
             </NavLink>
+            <button
+              type="button"
+              className="nav-about"
+              aria-haspopup="dialog"
+              aria-label="About"
+              onClick={() => {
+                setNavOpen(false);
+                setAboutOpen(true);
+              }}
+            >
+              <Info size={18} aria-hidden="true" />
+              <span>About</span>
+            </button>
           </nav>
         </div>
       </header>
       <main id="main-content" className="app-main">
         <Outlet />
       </main>
+      <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
     </div>
   );
 }

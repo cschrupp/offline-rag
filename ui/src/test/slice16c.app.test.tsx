@@ -626,7 +626,7 @@ describe("operations / overload / idempotency / no 16D", () => {
         description: "",
         idempotencyKey: intent.prepare(fp),
       }),
-    ).rejects.toThrow(/reach OfflineRAG/i);
+    ).rejects.toThrow(/reach Seneca/i);
     await expect(
       createWorkspace({
         title: "A",

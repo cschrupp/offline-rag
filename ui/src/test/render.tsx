@@ -4,6 +4,7 @@ import type { ReactElement, ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { AppRouter } from "../app/router";
 import { ActiveOperationsBootstrap } from "../features/operations/ActiveOperationsBootstrap";
+import { WELCOME_SESSION_KEY } from "../product/identity";
 
 export function createTestQueryClient(): QueryClient {
   return new QueryClient({
@@ -12,6 +13,15 @@ export function createTestQueryClient(): QueryClient {
       mutations: { retry: false },
     },
   });
+}
+
+/** Default harness models a returning session so legacy tests keep Overview. */
+export function seedReturningWelcomeSession(): void {
+  sessionStorage.setItem(WELCOME_SESSION_KEY, "1");
+}
+
+export function seedFreshWelcomeSession(): void {
+  sessionStorage.removeItem(WELCOME_SESSION_KEY);
 }
 
 function Providers({
@@ -35,8 +45,17 @@ function Providers({
 
 export function renderApp(
   initialPath = "/",
-  options?: Omit<RenderOptions, "wrapper">,
+  options?: Omit<RenderOptions, "wrapper"> & {
+    /** When true, clears the welcome session key (16J fresh-session tests). */
+    freshWelcomeSession?: boolean;
+  },
 ) {
+  const { freshWelcomeSession = false, ...renderOptions } = options ?? {};
+  if (freshWelcomeSession) {
+    seedFreshWelcomeSession();
+  } else {
+    seedReturningWelcomeSession();
+  }
   const queryClient = createTestQueryClient();
   return {
     queryClient,
@@ -46,7 +65,7 @@ export function renderApp(
           {children}
         </Providers>
       ),
-      ...options,
+      ...renderOptions,
     }),
   };
 }
@@ -56,8 +75,18 @@ export function renderWithProviders(
   {
     initialPath = "/",
     queryClient = createTestQueryClient(),
-  }: { initialPath?: string; queryClient?: QueryClient } = {},
+    freshWelcomeSession = false,
+  }: {
+    initialPath?: string;
+    queryClient?: QueryClient;
+    freshWelcomeSession?: boolean;
+  } = {},
 ) {
+  if (freshWelcomeSession) {
+    seedFreshWelcomeSession();
+  } else {
+    seedReturningWelcomeSession();
+  }
   return {
     queryClient,
     ...render(ui, {

@@ -80,7 +80,7 @@ export function userFacingErrorMessage(error: unknown): string {
       case "operation_unknown":
         return "Managed operation not found.";
       case "network_error":
-        return "Could not reach OfflineRAG. Check that this installation is running and reachable.";
+        return "Could not reach Seneca. Check that this installation is running and reachable.";
       case "request_aborted":
         return "Upload canceled before Seneca confirmed acceptance.";
       case "upload_transport_interrupted":

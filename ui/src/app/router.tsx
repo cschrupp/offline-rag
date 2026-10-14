@@ -12,16 +12,18 @@ import { GoldLabTrainingPage } from "../pages/GoldLabTrainingPage";
 import { GoldLabTrainingScenarioPage } from "../pages/GoldLabTrainingScenarioPage";
 import { GoldLabWorkPage } from "../pages/GoldLabWorkPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
-import { OverviewPage } from "../pages/OverviewPage";
+import { RootEntryGate } from "../pages/RootEntryGate";
 import { SettingsPage } from "../pages/SettingsPage";
+import { WelcomePage } from "../pages/WelcomePage";
 import { WorkspaceLibraryPage } from "../pages/WorkspaceLibraryPage";
 import { WorkspacePage } from "../pages/WorkspacePage";
 
 export function AppRouter() {
   return (
     <Routes>
+      <Route path="/welcome" element={<WelcomePage />} />
       <Route element={<AppShell />}>
-        <Route index element={<OverviewPage />} />
+        <Route index element={<RootEntryGate />} />
         <Route path="workspaces" element={<WorkspaceLibraryPage />} />
         <Route path="workspaces/:workspaceId" element={<WorkspacePage />} />
         <Route path="gold-lab" element={<GoldLabPage />} />

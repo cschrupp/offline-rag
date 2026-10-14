@@ -376,7 +376,7 @@ describe("F2 canonical intent fingerprints", () => {
     renderApp("/workspaces");
     await user.type(await screen.findByLabelText("Title"), "Manuals");
     await user.click(screen.getByRole("button", { name: "Create workspace" }));
-    expect(await screen.findByText(/could not reach offlinerag/i)).toBeInTheDocument();
+    expect(await screen.findByText(/could not reach seneca/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Create workspace" }));
     expect(keys[0]).toBe(keys[1]);
     await user.clear(screen.getByLabelText("Title"));

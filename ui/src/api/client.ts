@@ -49,7 +49,7 @@ async function readPayload(response: Response): Promise<unknown> {
         kind: "unexpected",
         code: "unexpected_response",
         message:
-          "Received an incomplete or unreadable response from OfflineRAG.",
+          "Received an incomplete or unreadable response from Seneca.",
         retryable: true,
         status: response.status,
       });
@@ -103,7 +103,7 @@ export async function apiRequest<T>(
       kind: "network",
       code: "network_error",
       message:
-        "Could not reach OfflineRAG. Check that this installation is running and reachable.",
+        "Could not reach Seneca. Check that this installation is running and reachable.",
       retryable: true,
       status: null,
     });
@@ -463,7 +463,7 @@ async function fetchSourceBytes(
       kind: "network",
       code: "network_error",
       message:
-        "Could not reach OfflineRAG. Check that this installation is running and reachable.",
+        "Could not reach Seneca. Check that this installation is running and reachable.",
       retryable: true,
       status: null,
     });

@@ -139,8 +139,27 @@ p {
   color: rgb(255 255 255 / 72%);
 }
 
-.nav-settings {
+.nav-settings,
+.nav-about {
   gap: 0.35rem;
+}
+
+.nav-about {
+  color: var(--white);
+  text-decoration: none;
+  min-height: var(--target);
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+}
+
+.nav-about:hover {
+  background: rgb(255 255 255 / 12%);
 }
 
 .workspace-header {
@@ -2215,5 +2234,136 @@ button.snapshot-badge {
     animation: none !important;
     transition: none !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* 16J — Seneca welcome / About */
+.welcome-screen {
+  min-height: 100dvh;
+  background: var(--navy);
+  color: var(--white);
+}
+
+.welcome-layout {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(18rem, 26rem) 1fr;
+}
+
+.welcome-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: clamp(1.5rem, 4vw, 3.5rem);
+  background: linear-gradient(180deg, #0b1f33 0%, #24384a 100%);
+}
+
+.welcome-kicker {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", Times, serif;
+  font-size: 0.95rem;
+  letter-spacing: 0.18em;
+  color: #c5a572;
+}
+
+.welcome-title {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", Times, serif;
+  font-size: clamp(1.6rem, 2.4vw, 2.4rem);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--white);
+  line-height: 1.2;
+}
+
+.welcome-tagline {
+  margin: 0;
+  font-size: 1.15rem;
+  color: #c5a572;
+}
+
+.welcome-body {
+  margin: 0;
+  max-width: 28rem;
+  color: rgb(255 255 255 / 88%);
+}
+
+.welcome-cta {
+  margin: var(--space-2) 0 0;
+}
+
+.welcome-pillars {
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  color: rgb(255 255 255 / 78%);
+  font-size: 0.95rem;
+}
+
+.welcome-art {
+  min-height: 100dvh;
+  overflow: hidden;
+  background: #0b1f33;
+}
+
+.welcome-art-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center right;
+}
+
+.about-dialog-body {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.about-product-name {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.about-product-descriptor {
+  margin: 0;
+  color: var(--slate);
+}
+
+.about-pillars {
+  margin: 0;
+  color: var(--brass);
+  font-weight: 600;
+}
+
+.about-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+@media (max-width: 767px) {
+  .welcome-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(12rem, 42vh) 1fr;
+  }
+
+  .welcome-art {
+    min-height: 0;
+    order: -1;
+  }
+
+  .welcome-copy {
+    order: 1;
+  }
+
+  .welcome-art-image {
+    object-position: center top;
   }
 }

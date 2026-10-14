@@ -17,6 +17,11 @@ evaluation.
 Repository, Python package, CLI, and Docker image names remain **OfflineRAG** /
 `offline-rag` unless renamed elsewhere by separate authority.
 
+## Author
+
+- **Carlos A. Schrupp**
+- Contact: [carlos.schrupp@berkeley.edu](mailto:carlos.schrupp@berkeley.edu)
+
 ## Why this project exists
 
 Most RAG demos prove only that a model can answer a few hand-picked questions

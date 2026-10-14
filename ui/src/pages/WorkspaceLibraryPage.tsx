@@ -79,7 +79,7 @@ export function WorkspaceLibraryPage() {
       <header>
         <h1>Workspaces</h1>
         <p className="muted">
-          Manage the active workspace library for this OfflineRAG installation.
+          Manage the active workspace library for this Seneca installation.
         </p>
       </header>
 

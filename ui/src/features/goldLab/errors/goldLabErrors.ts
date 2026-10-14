@@ -21,7 +21,7 @@ const GOLD_LAB_MESSAGES: Record<string, string> = {
     "Received an unexpected Gold Lab response. Reload and try again.",
   internal_error: "Something went wrong in Gold Lab. Try again later.",
   network_error:
-    "Could not reach OfflineRAG. Check that this installation is running and reachable.",
+    "Could not reach Seneca. Check that this installation is running and reachable.",
 };
 
 /** Bounded safe-reason vocabulary shared by sync API errors and operation cards. */

@@ -6,8 +6,8 @@ export function NotFoundPage() {
     <Card>
       <h1>Page not found</h1>
       <p className="muted">
-        This OfflineRAG screen is not available. Ask, Evidence, and Training Mode
-        are not part of this release surface.
+        This Seneca page is not available. Check the address or return to
+        Overview.
       </p>
       <p>
         <Link to="/">Return to Overview</Link>
