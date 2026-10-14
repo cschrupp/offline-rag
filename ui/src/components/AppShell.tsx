@@ -64,7 +64,8 @@ export function AppShell() {
               aria-haspopup="dialog"
               aria-label="About"
               onClick={() => {
-                setNavOpen(false);
+                // Keep mobile nav open while About is open so the trigger
+                // remains visible for ModalDialog focus restoration (F001).
                 setAboutOpen(true);
               }}
             >

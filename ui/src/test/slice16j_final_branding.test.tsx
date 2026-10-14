@@ -140,6 +140,31 @@ describe("S16-J final Seneca branding", () => {
     expect(about).toHaveFocus();
   });
 
+  it("keeps mobile nav open so About focus restores after Escape (F001)", async () => {
+    const user = userEvent.setup();
+    seedReturningWelcomeSession();
+    renderApp("/");
+
+    const menu = await screen.findByRole("button", { name: "Menu" });
+    await user.click(menu);
+
+    const nav = screen.getByRole("navigation", { name: "Primary" });
+    expect(nav).toHaveClass("open");
+
+    const about = within(nav).getByRole("button", { name: "About" });
+    await user.click(about);
+
+    expect(await screen.findByRole("dialog", { name: /About Seneca/i })).toBeInTheDocument();
+    expect(nav).toHaveClass("open");
+
+    await user.keyboard("{Escape}");
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+    expect(about).toHaveFocus();
+    expect(nav).toHaveClass("open");
+  });
+
   it("removes known rendered OfflineRAG product copy", async () => {
     seedReturningWelcomeSession();
     renderApp("/workspaces");
