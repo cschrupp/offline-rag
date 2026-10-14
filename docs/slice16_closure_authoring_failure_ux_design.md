@@ -677,5 +677,8 @@ for this closure gate under:
 | R4 | `PROPOSAL_CONTEXT_UNAVAILABLE` → `INTERNAL_ERROR` + `bootstrap_internal_failure` |
 | Q7 | Design decision surface closed; ready for independent design re-review |
 
-**Next gate:** independent design re-review of this successor tip.  
-**Implementation:** NOT AUTHORIZED until separate implementation authority after design IR ACCEPT.
+**Design gate:** CLOSED by `S16-CLOSURE-AUTHORING-FAILURE-UX-DESIGN-IR-003` — ACCEPT.  
+**Implementation gate:** CLOSED by `S16-CLOSURE-AUTHORING-FAILURE-UX-IMPLEMENTATION-IR-001` — ACCEPT.  
+**Exact independently accepted technical subject:** `5cb63dad7344b9f6a3766ef83760801f375b5217`.  
+**Next gate:** separate Human implementation disposition.  
+**Not authorized from this disposition:** merge, Slice 16 closeout, 16J resume, 16K.
