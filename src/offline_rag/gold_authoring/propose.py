@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from enum import StrEnum
 from pathlib import Path
 
 from offline_rag.chunking.access import CorpusChunkSnapshot
@@ -56,8 +57,30 @@ from offline_rag.gold_authoring.schema import (
 )
 
 
+class ProposePreRunReason(StrEnum):
+    """Closed internal discriminator for ProposePreRunError (R1)."""
+
+    AUTHORING_NOT_READY = "authoring_not_ready"
+    AUTHORING_ENDPOINT_UNAUTHORIZED = "authoring_endpoint_unauthorized"
+    NO_ELIGIBLE_POPULATION = "no_eligible_population"
+    PROPOSAL_COUNT_INVALID = "proposal_count_invalid"
+    PROPOSAL_COUNT_EXCEEDS_ELIGIBLE_POPULATION = (
+        "proposal_count_exceeds_eligible_population"
+    )
+    OUTPUT_EXISTS = "output_exists"
+    SOURCE_SNAPSHOT_UNAVAILABLE = "source_snapshot_unavailable"
+
+
 class ProposePreRunError(RuntimeError):
     """Valid proposal run could not start (CLI exit 2)."""
+
+    def __init__(self, message: str, *, reason: ProposePreRunReason) -> None:
+        super().__init__(message)
+        self.reason = reason
+
+
+class UnknownAdapterFailureError(RuntimeError):
+    """Adapter emitted an unrecognized failure_reason discriminator."""
 
 
 @dataclass
@@ -69,39 +92,56 @@ class ProposeJobResult:
     failure_reason_counts: Counter[str] = field(default_factory=Counter)
 
 
+_ADAPTER_FAILURE_MAP: dict[str, tuple[ProposalAttemptStatus, ProposalFailureReason]] = {
+    "timeout": (
+        ProposalAttemptStatus.FAILED_TRANSPORT,
+        ProposalFailureReason.TIMEOUT,
+    ),
+    "transport_error": (
+        ProposalAttemptStatus.FAILED_TRANSPORT,
+        ProposalFailureReason.TRANSPORT_ERROR,
+    ),
+    "http_error": (
+        ProposalAttemptStatus.FAILED_TRANSPORT,
+        ProposalFailureReason.HTTP_ERROR,
+    ),
+    "authentication_error": (
+        ProposalAttemptStatus.FAILED_TRANSPORT,
+        ProposalFailureReason.AUTHENTICATION_ERROR,
+    ),
+    "redirect_not_allowed": (
+        ProposalAttemptStatus.FAILED_TRANSPORT,
+        ProposalFailureReason.REDIRECT_NOT_ALLOWED,
+    ),
+    "empty_response": (
+        ProposalAttemptStatus.FAILED_RESPONSE,
+        ProposalFailureReason.EMPTY_RESPONSE,
+    ),
+}
+
+
 def _map_adapter_failure(
     reason: str,
 ) -> tuple[ProposalAttemptStatus, ProposalFailureReason]:
-    mapping: dict[str, tuple[ProposalAttemptStatus, ProposalFailureReason]] = {
-        "timeout": (
-            ProposalAttemptStatus.FAILED_TRANSPORT,
-            ProposalFailureReason.TIMEOUT,
-        ),
-        "transport_error": (
-            ProposalAttemptStatus.FAILED_TRANSPORT,
-            ProposalFailureReason.TRANSPORT_ERROR,
-        ),
-        "http_error": (
-            ProposalAttemptStatus.FAILED_TRANSPORT,
-            ProposalFailureReason.HTTP_ERROR,
-        ),
-        "authentication_error": (
-            ProposalAttemptStatus.FAILED_TRANSPORT,
-            ProposalFailureReason.AUTHENTICATION_ERROR,
-        ),
-        "redirect_not_allowed": (
-            ProposalAttemptStatus.FAILED_TRANSPORT,
-            ProposalFailureReason.REDIRECT_NOT_ALLOWED,
-        ),
-        "empty_response": (
-            ProposalAttemptStatus.FAILED_RESPONSE,
-            ProposalFailureReason.EMPTY_RESPONSE,
-        ),
-    }
-    return mapping.get(
-        reason,
-        (ProposalAttemptStatus.FAILED_TRANSPORT, ProposalFailureReason.TRANSPORT_ERROR),
-    )
+    mapped = _ADAPTER_FAILURE_MAP.get(reason)
+    if mapped is None:
+        raise UnknownAdapterFailureError(
+            f"unrecognized adapter failure_reason: {reason!r}"
+        )
+    return mapped
+
+
+def _raise_local_adapter_as_pre_run(exc: AuthoringAdapterError) -> None:
+    if exc.failure_reason == "authoring_not_ready":
+        raise ProposePreRunError(
+            str(exc),
+            reason=ProposePreRunReason.AUTHORING_NOT_READY,
+        ) from exc
+    if exc.failure_reason == "authoring_endpoint_unauthorized":
+        raise ProposePreRunError(
+            str(exc),
+            reason=ProposePreRunReason.AUTHORING_ENDPOINT_UNAUTHORIZED,
+        ) from exc
 
 
 def run_gold_propose_on_snapshot(
@@ -125,32 +165,57 @@ def run_gold_propose_on_snapshot(
         readiness = evaluate_authoring_readiness(settings)
         if not readiness.ready:
             raise ProposePreRunError(
-                f"Authoring NOT READY: {', '.join(readiness.reason_codes) or 'unknown'}"
+                f"Authoring NOT READY: {', '.join(readiness.reason_codes) or 'unknown'}",
+                reason=ProposePreRunReason.AUTHORING_NOT_READY,
             )
         try:
             authorized = authorize_authoring_endpoint(settings)
             effective_endpoint = authorized.endpoint
         except AuthoringPrivacyError as exc:
-            raise ProposePreRunError(f"authoring endpoint unauthorized: {exc}") from exc
+            raise ProposePreRunError(
+                f"authoring endpoint unauthorized: {exc}",
+                reason=ProposePreRunReason.AUTHORING_ENDPOINT_UNAUTHORIZED,
+            ) from exc
     else:
         try:
             authorized = authorize_authoring_endpoint(settings)
             effective_endpoint = authorized.endpoint
         except AuthoringPrivacyError as exc:
-            raise ProposePreRunError(f"authoring endpoint unauthorized: {exc}") from exc
+            raise ProposePreRunError(
+                f"authoring endpoint unauthorized: {exc}",
+                reason=ProposePreRunReason.AUTHORING_ENDPOINT_UNAUTHORIZED,
+            ) from exc
 
     population = build_eligible_population(snapshot.chunks)
     if not population:
-        raise ProposePreRunError("no eligible source children in captured ChunkSet")
+        raise ProposePreRunError(
+            "no eligible source children in captured ChunkSet",
+            reason=ProposePreRunReason.NO_ELIGIBLE_POPULATION,
+        )
 
+    if count <= 0:
+        raise ProposePreRunError(
+            f"requested count must be > 0; got {count}",
+            reason=ProposePreRunReason.PROPOSAL_COUNT_INVALID,
+        )
+    if count > len(population):
+        raise ProposePreRunError(
+            f"requested count {count} exceeds eligible population {len(population)}",
+            reason=ProposePreRunReason.PROPOSAL_COUNT_EXCEEDS_ELIGIBLE_POPULATION,
+        )
     try:
         selected = sample_source_seeds(population, count=count, seed=seed)
     except SamplingError as exc:
-        raise ProposePreRunError(str(exc)) from exc
+        # Preconditions already checked via structured count/population state.
+        raise ProposePreRunError(
+            f"sampling rejected: {exc}",
+            reason=ProposePreRunReason.PROPOSAL_COUNT_INVALID,
+        ) from exc
 
     if output.exists() and not force:
         raise ProposePreRunError(
-            f"output already exists (pass --force to overwrite): {output}"
+            f"output already exists (pass --force to overwrite): {output}",
+            reason=ProposePreRunReason.OUTPUT_EXISTS,
         )
 
     owned_adapter = adapter is None
@@ -221,6 +286,7 @@ def run_gold_propose_on_snapshot(
                     user_content=user_message,
                 )
             except AuthoringAdapterError as exc:
+                _raise_local_adapter_as_pre_run(exc)
                 status, reason = _map_adapter_failure(exc.failure_reason)
                 attempt = ProposalAttempt(
                     source_seed=source_seed,
@@ -350,17 +416,24 @@ def run_gold_propose(
     readiness = evaluate_authoring_readiness(settings)
     if not readiness.ready:
         raise ProposePreRunError(
-            f"Authoring NOT READY: {', '.join(readiness.reason_codes) or 'unknown'}"
+            f"Authoring NOT READY: {', '.join(readiness.reason_codes) or 'unknown'}",
+            reason=ProposePreRunReason.AUTHORING_NOT_READY,
         )
     try:
         authorize_authoring_endpoint(settings)
     except AuthoringPrivacyError as exc:
-        raise ProposePreRunError(f"authoring endpoint unauthorized: {exc}") from exc
+        raise ProposePreRunError(
+            f"authoring endpoint unauthorized: {exc}",
+            reason=ProposePreRunReason.AUTHORING_ENDPOINT_UNAUTHORIZED,
+        ) from exc
 
     try:
         snapshot = load_current_corpus_chunk_snapshot(settings, corpus_name=corpus_name)
     except ChunkAccessError as exc:
-        raise ProposePreRunError(str(exc)) from exc
+        raise ProposePreRunError(
+            str(exc),
+            reason=ProposePreRunReason.SOURCE_SNAPSHOT_UNAVAILABLE,
+        ) from exc
 
     authoring_run_id = new_execution_id(prefix="authorrun")
     output_path = output or default_authoring_run_path(

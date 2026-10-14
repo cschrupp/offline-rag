@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import threading
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from offline_rag.app.errors import AppError, ErrorCode, SafeErrorDetails
@@ -43,6 +44,10 @@ from offline_rag.app.workspace.mutation_ops import ManagedOperationStore
 from offline_rag.app.workspace.store import WorkspaceStore
 from offline_rag.core.ids import new_execution_id
 from offline_rag.gold_authoring.chunk_access import load_chunk_set_snapshot
+from offline_rag.gold_authoring.models import (
+    ProposalAttempt,
+    ProposalFailureReason,
+)
 from offline_rag.gold_authoring.persist import (
     default_authoring_run_path,
     serialize_authoring_run_bytes,
@@ -61,6 +66,7 @@ from offline_rag.gold_authoring.privacy import (
 )
 from offline_rag.gold_authoring.propose import (
     ProposePreRunError,
+    ProposePreRunReason,
     run_gold_propose_on_snapshot,
 )
 from offline_rag.gold_authoring.readiness import evaluate_authoring_readiness
@@ -76,6 +82,48 @@ _NONTERMINAL = frozenset(
     }
 )
 
+_AUTH_REASONS = frozenset({ProposalFailureReason.AUTHENTICATION_ERROR.value})
+_TIMEOUT_REASONS = frozenset({ProposalFailureReason.TIMEOUT.value})
+_TRANSPORT_REASONS = frozenset({ProposalFailureReason.TRANSPORT_ERROR.value})
+_HTTP_REASONS = frozenset(
+    {
+        ProposalFailureReason.HTTP_ERROR.value,
+        ProposalFailureReason.REDIRECT_NOT_ALLOWED.value,
+    }
+)
+_CONTEXT_REASONS = frozenset(
+    {ProposalFailureReason.PROPOSAL_CONTEXT_UNAVAILABLE.value}
+)
+_EVAL_REASONS = frozenset(
+    {
+        ProposalFailureReason.EMPTY_RESPONSE.value,
+        ProposalFailureReason.INVALID_JSON.value,
+        ProposalFailureReason.SCHEMA_INVALID.value,
+        ProposalFailureReason.DEICTIC_QUERY.value,
+        ProposalFailureReason.SEED_QUOTE_OVERLAP.value,
+        ProposalFailureReason.DUPLICATE_QUERY_EXACT.value,
+        ProposalFailureReason.DUPLICATE_QUERY_NEAR.value,
+    }
+)
+_CLASSIFIED_REASONS = (
+    _AUTH_REASONS
+    | _TIMEOUT_REASONS
+    | _TRANSPORT_REASONS
+    | _HTTP_REASONS
+    | _CONTEXT_REASONS
+    | _EVAL_REASONS
+)
+
+_PRE_RUN_GOLD_CONFLICT: dict[ProposePreRunReason, str] = {
+    ProposePreRunReason.AUTHORING_NOT_READY: "authoring_not_ready",
+    ProposePreRunReason.AUTHORING_ENDPOINT_UNAUTHORIZED: (
+        "authoring_endpoint_unauthorized"
+    ),
+    ProposePreRunReason.PROPOSAL_COUNT_EXCEEDS_ELIGIBLE_POPULATION: (
+        "proposal_count_exceeds_eligible_population"
+    ),
+}
+
 
 def _app(
     code: ErrorCode,
@@ -88,6 +136,52 @@ def _app(
         message=message,
         details=SafeErrorDetails(reason=reason),
     )
+
+
+def classify_zero_success_proposal(
+    failure_reason_counts: Mapping[str, int] | None,
+    attempts: Sequence[ProposalAttempt] | None,
+) -> tuple[ErrorCode, str]:
+    """Deterministic Q1/R4 terminal classification for successful_count == 0."""
+    evidence: set[str] = set()
+    if failure_reason_counts:
+        for key, count in failure_reason_counts.items():
+            if int(count) > 0:
+                evidence.add(str(key))
+    if attempts:
+        for attempt in attempts:
+            if attempt.failure_reason is not None:
+                evidence.add(str(attempt.failure_reason))
+
+    if not evidence:
+        return ErrorCode.INTERNAL_ERROR, "bootstrap_internal_failure"
+    if any(reason not in _CLASSIFIED_REASONS for reason in evidence):
+        return ErrorCode.INTERNAL_ERROR, "bootstrap_internal_failure"
+
+    if evidence & _AUTH_REASONS:
+        return ErrorCode.GOLD_CONFLICT, "authoring_authentication_failed"
+    if evidence & _TIMEOUT_REASONS:
+        return ErrorCode.GOLD_CONFLICT, "authoring_request_timeout"
+    if evidence & _TRANSPORT_REASONS:
+        return ErrorCode.GOLD_CONFLICT, "authoring_endpoint_unreachable"
+    if evidence & _HTTP_REASONS:
+        return ErrorCode.GOLD_CONFLICT, "authoring_http_error"
+    if evidence & _CONTEXT_REASONS:
+        return ErrorCode.INTERNAL_ERROR, "bootstrap_internal_failure"
+    if evidence & _EVAL_REASONS:
+        return ErrorCode.GOLD_CONFLICT, "zero_usable_proposals"
+    return ErrorCode.INTERNAL_ERROR, "bootstrap_internal_failure"
+
+
+def map_propose_pre_run_error(exc: ProposePreRunError) -> tuple[ErrorCode, str]:
+    """Structural R1 bootstrap mapping; never uses str(exc)."""
+    reason = getattr(exc, "reason", None)
+    if isinstance(reason, ProposePreRunReason):
+        mapped = _PRE_RUN_GOLD_CONFLICT.get(reason)
+        if mapped is not None:
+            return ErrorCode.GOLD_CONFLICT, mapped
+        return ErrorCode.INTERNAL_ERROR, "bootstrap_internal_failure"
+    return ErrorCode.INTERNAL_ERROR, "bootstrap_internal_failure"
 
 
 def bootstrap_request_fingerprint(
@@ -531,14 +625,12 @@ class GoldLabBaselineBootstrapService:
             )
         except ProposePreRunError as exc:
             logger.info("bootstrap 9B pre-run failure op=%s: %s", operation_id, exc)
-            reason = "zero_usable_proposals"
-            if "exceeds eligible" in str(exc):
-                reason = "proposal_count_exceeds_eligible_population"
+            code, reason = map_propose_pre_run_error(exc)
             _fail_op(
                 self.operations,
                 workspace_id=workspace_id,
                 operation_id=operation_id,
-                error=_app(ErrorCode.GOLD_CONFLICT, reason),
+                error=_app(code, reason),
                 progress_stage=OperationProgressStage.PROPOSING,
             )
             return
@@ -576,11 +668,21 @@ class GoldLabBaselineBootstrapService:
                 bootstrap_authority=auth,
                 progress_stage=OperationProgressStage.PROPOSING,
             )
+            if run is None:
+                code, reason = (
+                    ErrorCode.INTERNAL_ERROR,
+                    "bootstrap_internal_failure",
+                )
+            else:
+                code, reason = classify_zero_success_proposal(
+                    propose_result.failure_reason_counts,
+                    run.attempts,
+                )
             _fail_op(
                 self.operations,
                 workspace_id=workspace_id,
                 operation_id=operation_id,
-                error=_app(ErrorCode.GOLD_CONFLICT, "zero_usable_proposals"),
+                error=_app(code, reason),
                 progress_stage=OperationProgressStage.PROPOSING,
             )
             return

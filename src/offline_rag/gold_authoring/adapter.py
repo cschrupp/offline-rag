@@ -11,8 +11,8 @@ from offline_rag.core.ids import DIRECT_OUTPUT_V1
 from offline_rag.gold_authoring.contracts import ADAPTER_CONTRACT
 from offline_rag.gold_authoring.privacy import (
     AuthoringPrivacyError,
-    authorize_authoring_endpoint,
     authoring_follow_redirects,
+    authorize_authoring_endpoint,
     normalize_authoring_endpoint,
 )
 from offline_rag.gold_authoring.readiness import evaluate_authoring_readiness
@@ -95,7 +95,7 @@ class OpenAICompatibleAuthoringAdapter:
         if not readiness.ready:
             raise AuthoringAdapterError(
                 f"authoring is not READY: {', '.join(readiness.reason_codes)}",
-                failure_reason="authentication_error",
+                failure_reason="authoring_not_ready",
             )
         if authoring_follow_redirects():
             raise AuthoringAdapterError(
@@ -107,7 +107,7 @@ class OpenAICompatibleAuthoringAdapter:
         except AuthoringPrivacyError as exc:
             raise AuthoringAdapterError(
                 str(exc),
-                failure_reason="authentication_error",
+                failure_reason="authoring_endpoint_unauthorized",
             ) from exc
 
         auth = self.settings.authoring

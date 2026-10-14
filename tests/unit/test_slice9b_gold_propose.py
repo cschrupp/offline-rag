@@ -13,7 +13,10 @@ from offline_rag.config.models import AppSettings, AuthoringSettings
 from offline_rag.domain.documents import Chunk, ChunkKind
 from offline_rag.evaluation.gold import GoldDatasetError, load_gold_dataset
 from offline_rag.generation.config_hash import build_generation_config_hash
-from offline_rag.gold_authoring.adapter import OpenAICompatibleAuthoringAdapter
+from offline_rag.gold_authoring.adapter import (
+    AuthoringAdapterError,
+    OpenAICompatibleAuthoringAdapter,
+)
 from offline_rag.gold_authoring.config_hash import build_authoring_config_hash
 from offline_rag.gold_authoring.context import build_proposal_source_context
 from offline_rag.gold_authoring.models import (
@@ -25,7 +28,11 @@ from offline_rag.gold_authoring.models import (
 )
 from offline_rag.gold_authoring.persist import load_authoring_run, write_authoring_run
 from offline_rag.gold_authoring.prompt import question_proposal_system_prompt
-from offline_rag.gold_authoring.propose import ProposePreRunError, run_gold_propose
+from offline_rag.gold_authoring.propose import (
+    ProposePreRunError,
+    ProposePreRunReason,
+    run_gold_propose,
+)
 from offline_rag.gold_authoring.quality import apply_proposal_quality_gates
 from offline_rag.gold_authoring.sampling import (
     EligibleChild,
@@ -417,8 +424,9 @@ def test_propose_zero_success_exit_1(monkeypatch: pytest.MonkeyPatch, tmp_path: 
 
 def test_propose_prerun_not_ready() -> None:
     settings = AppSettings(authoring=AuthoringSettings(enabled=False))
-    with pytest.raises(ProposePreRunError):
+    with pytest.raises(ProposePreRunError) as err:
         run_gold_propose(settings, corpus_name="demo", count=1, seed=0)
+    assert err.value.reason is ProposePreRunReason.AUTHORING_NOT_READY
 
 
 def test_propose_existing_output_without_force(
@@ -429,7 +437,7 @@ def test_propose_existing_output_without_force(
     settings = _ready_settings()
     out = tmp_path / "exists.json"
     out.write_text("{}", encoding="utf-8")
-    with pytest.raises(ProposePreRunError, match="already exists"):
+    with pytest.raises(ProposePreRunError, match="already exists") as err:
         run_gold_propose(
             settings,
             corpus_name="demo",
@@ -439,6 +447,7 @@ def test_propose_existing_output_without_force(
             force=False,
             adapter=_ScriptedAdapter([]),  # type: ignore[arg-type]
         )
+    assert err.value.reason is ProposePreRunReason.OUTPUT_EXISTS
 
 
 def test_authorcfg_unchanged_by_pipeline_fields() -> None:
@@ -494,7 +503,7 @@ def test_adapter_request_shape_and_privacy() -> None:
     bad = _ready_settings(approved_endpoints=[])
     client2 = MagicMock()
     adapter2 = OpenAICompatibleAuthoringAdapter(bad, client=client2)
-    with pytest.raises(Exception):
+    with pytest.raises(AuthoringAdapterError):
         adapter2.propose(system_prompt="sys", user_content="DOCUMENT: X\n\nbody")
     client2.post.assert_not_called()
 
@@ -507,7 +516,7 @@ def test_adapter_no_redirect_follow() -> None:
     response.status_code = 302
     client.post.return_value = response
     adapter = OpenAICompatibleAuthoringAdapter(settings, client=client)
-    with pytest.raises(Exception):
+    with pytest.raises(AuthoringAdapterError):
         adapter.propose(system_prompt="sys", user_content="DOCUMENT: X\n\nbody")
     assert client.post.call_count == 1
 
@@ -517,12 +526,12 @@ def test_cli_gold_propose_help() -> None:
 
     parser = build_parser()
     gold = None
-    for action in parser._subparsers._group_actions:  # noqa: SLF001
+    for action in parser._subparsers._group_actions:
         if getattr(action, "dest", None) == "command":
             gold = action.choices.get("gold")
             break
     assert gold is not None
-    propose_action = gold._subparsers._group_actions[0]  # noqa: SLF001
+    propose_action = gold._subparsers._group_actions[0]
     propose = propose_action.choices["propose"]
     text = propose.format_help()
     assert "--corpus" in text

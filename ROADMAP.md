@@ -568,18 +568,30 @@ SLICE 15  COMPLETE / ACCEPTED
        16J: NOT AUTHORIZED FROM THIS DISPOSITION
        16K: NOT AUTHORIZED FROM THIS DISPOSITION
        Authoring-server failure UX defect: OPEN
-     Authoring-server failure UX design FROZEN
+     Authoring-server failure UX design ACCEPTED
        Authority: S16-CLOSURE-AUTHORING-FAILURE-UX-DESIGN-AUTH-001
        Design freeze: S16-CLOSURE-AUTHORING-FAILURE-UX-DESIGN-FREEZE-001 — ACCEPTED / FROZEN
+         (amended by R1–R4)
        Design doc: docs/slice16_closure_authoring_failure_ux_design.md
-       Independent design review:
+       Independent design review: S16-CLOSURE-AUTHORING-FAILURE-UX-DESIGN-IR-003 — ACCEPT
+       Exact accepted design subject:
+         5922e0b9fa9f8986b23d801507b879a321124395
+       Prior design review lineage:
          IR-001: ea95a2fe5261a42c8d841a4789f6aed1b9028cc7 — REWORK REQUIRED
          IR-002: 5faae42410ee38ef9e291a94f496a0a48da5739b — REWORK REQUIRED
-       Design rework R1–R4: ACCEPTED / FROZEN (amends FREEZE-001)
-       Status: DESIGN FROZEN / READY FOR INDEPENDENT DESIGN RE-REVIEW
+         IR-003: 5922e0b9fa9f8986b23d801507b879a321124395 — ACCEPT
+       Design rework R1–R4: ACCEPTED / FROZEN
        Q1–Q7 ACCEPTED / FROZEN (amended by R1–R4)
-       IMPLEMENTATION NOT AUTHORIZED
+     Authoring-server failure UX implementation IN PROGRESS
+       Authority: S16-CLOSURE-AUTHORING-FAILURE-UX-IMPLEMENTATION-AUTH-001 — AUTHORIZED
+       Exact implementation base:
+         5922e0b9fa9f8986b23d801507b879a321124395
+       Branch: implementation/s16-closure-authoring-failure-ux
+       Status: IMPLEMENTATION IN PROGRESS
+       NOT ACCEPTED
      9G DEFERRED / NOT AUTHORIZED
+     16J: PRE-EXISTING AUTHORITY REMAINS PAUSED (this authority does not resume 16J)
+     16K: NOT AUTHORIZED
      Slice 16 overall IN PROGRESS / NOT COMPLETE
      Authority: docs/slice16_design_authority.md
      Plan: docs/slice16_implementation_plan.md

@@ -7,6 +7,7 @@ import json
 import sys
 import threading
 import time
+from collections import Counter
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
@@ -99,6 +100,7 @@ from offline_rag.gold_authoring.models import (
     GoldAuthoringRun,
     ProposalAttempt,
     ProposalAttemptStatus,
+    ProposalFailureReason,
     SilverCase,
     SourceSeed,
 )
@@ -902,6 +904,7 @@ def test_zero_proposals_fails_without_canonical(tmp_path: Path) -> None:
                 ProposalAttempt(
                     source_seed=SourceSeed(chunk_id=CHUNK_A, document_id=DOC_ID),
                     status=ProposalAttemptStatus.FAILED_SCHEMA,
+                    failure_reason=ProposalFailureReason.SCHEMA_INVALID,
                 )
             ],
             cases=[],
@@ -909,7 +912,14 @@ def test_zero_proposals_fails_without_canonical(tmp_path: Path) -> None:
         path = kwargs["output"]
         path.parent.mkdir(parents=True, exist_ok=True)
         write_authoring_run_bytes(path, serialize_authoring_run_bytes(run))
-        return ProposeJobResult(exit_code=1, run=run, output_path=path)
+        return ProposeJobResult(
+            exit_code=1,
+            run=run,
+            output_path=path,
+            failure_reason_counts=Counter(
+                {ProposalFailureReason.SCHEMA_INVALID.value: 1}
+            ),
+        )
 
     with (
         patch(

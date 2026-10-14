@@ -35,8 +35,16 @@ const SAFE_REASON_MESSAGES: Record<string, string> = {
     "This Gold project is not in a state that allows the requested action.",
   proposal_count_exceeds_eligible_population:
     "The requested proposal count is larger than the eligible workspace population. Reduce the proposal count and try again.",
+  authoring_authentication_failed:
+    "The configured Gold Lab authoring server rejected authentication or authorization. Check the authoring API key and Settings, then try again.",
+  authoring_request_timeout:
+    "The Gold Lab authoring server did not respond in time. Confirm the server is running and reachable, then try again.",
+  authoring_endpoint_unreachable:
+    "Seneca could not reach the configured Gold Lab authoring server. Confirm the endpoint in Settings and that the server is running, then try again.",
+  authoring_http_error:
+    "The configured Gold Lab authoring endpoint returned a response Seneca could not accept. Check authoring Settings and server logs, then try again.",
   zero_usable_proposals:
-    "Gold Lab authoring did not produce usable candidate questions from this workspace publication.",
+    "Gold Lab authoring completed its calls but did not produce usable candidate questions from this workspace publication.",
   zero_reviewable_cases:
     "Candidate questions were produced, but no reviewable evidence cases could be assembled from this workspace publication.",
   pooling_artifact_unavailable:
