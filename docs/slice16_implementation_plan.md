@@ -178,8 +178,19 @@ Accepted-lineage documentation reconciliation: AUTHORIZED
   Exact base: 19694dac3cc9d405621f297bb1a237359a1c7327
   Does NOT claim: Slice 16 complete, 16J resumed, 16K/9G/17 authorized,
     or canonical main promotion complete
+16J FINAL BRANDING: AUTHORIZED / IN PROGRESS
+  Design freeze: S16-J-REOPEN-BRANDING-UX-DESIGN-FREEZE-001 — ACCEPTED / FROZEN
+  Implementation authority: S16-J-FINAL-BRANDING-IMPLEMENTATION-AUTH-001 — AUTHORIZED
+  Design doc: docs/slice16j_final_branding.md
+  Canonical technical base:
+    09407ae0e5186b262a0b034e752672424e237fa2
+  Branch: implementation/16j-final-branding
+  Product: Seneca — Grounded knowledge workspace
+  Author: Carlos A. Schrupp
+  Contact: carlos.schrupp@berkeley.edu
+  Status: DESIGN FROZEN / IMPLEMENTATION AUTHORIZED (NOT COMPLETE / NOT ACCEPTED)
+  Does NOT close Slice 16
 9G: DEFERRED / NOT AUTHORIZED
-16J: PRE-EXISTING AUTHORITY REMAINS PAUSED (this authority does not resume 16J)
 16K: NOT AUTHORIZED
 SLICE 16: IN PROGRESS / NOT COMPLETE
 BASELINE: 1610f9282d1edbd4dfc8ae76d7644a1b9ea4e75e
