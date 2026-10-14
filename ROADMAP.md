@@ -582,13 +582,21 @@ SLICE 15  COMPLETE / ACCEPTED
          IR-003: 5922e0b9fa9f8986b23d801507b879a321124395 — ACCEPT
        Design rework R1–R4: ACCEPTED / FROZEN
        Q1–Q7 ACCEPTED / FROZEN (amended by R1–R4)
-     Authoring-server failure UX implementation COMPLETE / READY FOR IR
+     Authoring-server failure UX implementation INDEPENDENTLY ACCEPTED
        Authority: S16-CLOSURE-AUTHORING-FAILURE-UX-IMPLEMENTATION-AUTH-001 — AUTHORIZED
        Exact implementation base:
          5922e0b9fa9f8986b23d801507b879a321124395
        Branch: implementation/s16-closure-authoring-failure-ux
-       Status: IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
-       NOT ACCEPTED
+       Independent implementation review:
+         S16-CLOSURE-AUTHORING-FAILURE-UX-IMPLEMENTATION-IR-001 — ACCEPT
+       Exact independently accepted technical subject:
+         5cb63dad7344b9f6a3766ef83760801f375b5217
+       Implementation-review handoff / docs tip:
+         133f9c37cb82d8541e3347a0eec3d9c246f4ac0d
+       Status: INDEPENDENTLY ACCEPTED
+       Human acceptance: PENDING
+       Repository lint baseline: STILL RED (pre-existing; not a candidate regression)
+       NOT MERGED
      9G DEFERRED / NOT AUTHORIZED
      16J: PRE-EXISTING AUTHORITY REMAINS PAUSED (this authority does not resume 16J)
      16K: NOT AUTHORIZED

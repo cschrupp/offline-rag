@@ -6,11 +6,14 @@
 - `S16-CLOSURE-AUTHORING-FAILURE-UX-DESIGN-IR-001` — REWORK REQUIRED at `ea95a2fe5261a42c8d841a4789f6aed1b9028cc7`  
 - `S16-CLOSURE-AUTHORING-FAILURE-UX-DESIGN-IR-002` — REWORK REQUIRED at `5faae42410ee38ef9e291a94f496a0a48da5739b`  
 **Design rework:** R1 / R2 / R3 / R4 — ACCEPTED / FROZEN (amends FREEZE-001; no new Human Authority)  
-**Status:** DESIGN ACCEPTED / IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
+**Status:** DESIGN ACCEPTED / IMPLEMENTATION INDEPENDENTLY ACCEPTED
 **Independent design review:** `S16-CLOSURE-AUTHORING-FAILURE-UX-DESIGN-IR-003` — ACCEPT
 **Exact accepted design subject:** `5922e0b9fa9f8986b23d801507b879a321124395`
 **Implementation authority:** `S16-CLOSURE-AUTHORING-FAILURE-UX-IMPLEMENTATION-AUTH-001` — AUTHORIZED
-**Implementation:** COMPLETE / READY FOR INDEPENDENT REVIEW (NOT ACCEPTED)
+**Independent implementation review:** `S16-CLOSURE-AUTHORING-FAILURE-UX-IMPLEMENTATION-IR-001` — ACCEPT
+**Exact independently accepted technical subject:** `5cb63dad7344b9f6a3766ef83760801f375b5217`
+**Implementation-review handoff / docs tip:** `133f9c37cb82d8541e3347a0eec3d9c246f4ac0d`
+**Implementation:** INDEPENDENTLY ACCEPTED (Human acceptance PENDING; NOT MERGED)
 **Parent product surface:** Gold Lab baseline bootstrap (GAP-16G-02 / 9B propose)
 
 ### Freeze ledger
