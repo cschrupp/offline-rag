@@ -646,9 +646,12 @@ SLICE 15  COMPLETE / ACCEPTED
        Exact inventory base: 168af70b54fba39f0efba69100d57b41a574667f
        Artifact: docs/slice16_closeout_inventory.md
        Historical IR-002 ACCEPT (exact subject d284776…): remains valid provenance
+       Acceptance-record authority:
+         S16-CLOSEOUT-INVENTORY-IR-002-ACCEPTANCE-RECORD-AUTH-001 — AUTHORIZED
        IR-002 acceptance-record tip (provenance): 5df7af2…
        Post-acceptance amendment: I-32 README live Project-status residual
-       Human acceptance of d284776…: WITHHELD (subject no longer exhaustive)
+       Human acceptance of d284776…: NOT GRANTED — superseded as current
+         acceptance target by amended inventory
        Inventory verdict:
          CLOSEOUT BLOCKED — REQUIRED RESIDUALS REMAIN
        Authoritative required residual set:

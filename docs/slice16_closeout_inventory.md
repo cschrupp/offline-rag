@@ -9,6 +9,8 @@
 - `S16-CLOSEOUT-INVENTORY-IR-001` — REWORK REQUIRED (F001 / F002)
 - `S16-CLOSEOUT-INVENTORY-IR-002` — ACCEPT on exact subject
   `d284776ce25fc4db3af89cabfc4228564af5f3f9`
+- Acceptance-record authority:
+  `S16-CLOSEOUT-INVENTORY-IR-002-ACCEPTANCE-RECORD-AUTH-001` — AUTHORIZED
 - IR-002 acceptance-record tip (provenance):
   `5df7af2b8d58e7fb48abc10e35d5af7aace0620b`
 
@@ -17,10 +19,14 @@
 subject is **no longer** the newest exhaustive inventory. The `5df7af2…`
 acceptance record remains untouched as provenance and is **not** rewritten.
 
-**Inventory status:** AMENDED / PENDING INDEPENDENT RE-REVIEW (I-32 added)
+**Inventory status:** AMENDED / PENDING INDEPENDENT RE-REVIEW (I-32 added;
+F003 Human-status wording corrected)
 
-**Human acceptance:** NOT PENDING ON `d284776…` — withhold until the amended
-inventory tip is independently re-reviewed
+**Human acceptance of `d284776…`:** NOT GRANTED — superseded as current
+acceptance target by amended inventory
+
+**Human acceptance:** NOT GRANTED; amended inventory requires independent
+re-review before Human acceptance
 
 **Inventory verdict:** CLOSEOUT BLOCKED — REQUIRED RESIDUALS REMAIN
 
@@ -154,7 +160,7 @@ CLOSEOUT BLOCKED — REQUIRED RESIDUALS REMAIN
 
 - Slice 16 complete
 - Final Slice-16 closeout authorized
-- Human acceptance of `d284776…` (withheld; subject no longer exhaustive)
+- Human acceptance of `d284776…` (NOT GRANTED; superseded as current acceptance target)
 - Any product/source change
 - Any repair of I-26…I-32 under this inventory authority
 - Any new implementation authority
