@@ -1,9 +1,30 @@
 # Slice 16J — Final Seneca public branding
 
-**Design freeze:** `S16-J-REOPEN-BRANDING-UX-DESIGN-FREEZE-001` — ACCEPTED / FROZEN  
-**Implementation authority:** `S16-J-FINAL-BRANDING-IMPLEMENTATION-AUTH-001` — AUTHORIZED  
-**Canonical technical base:** `09407ae0e5186b262a0b034e752672424e237fa2`  
-**Status:** DESIGN FROZEN / IMPLEMENTATION AUTHORIZED (NOT COMPLETE / NOT ACCEPTED)
+**Design freeze:** `S16-J-REOPEN-BRANDING-UX-DESIGN-FREEZE-001` — ACCEPTED / FROZEN
+
+**Implementation authority:** `S16-J-FINAL-BRANDING-IMPLEMENTATION-AUTH-001` — AUTHORIZED
+
+**Acceptance-record authority:** `S16-J-FINAL-BRANDING-IR-002-ACCEPTANCE-RECORD-AUTH-001` — AUTHORIZED
+
+**Canonical technical base:** `09407ae0e5186b262a0b034e752672424e237fa2`
+
+**Independent review:** `S16-J-FINAL-BRANDING-IMPLEMENTATION-IR-002` — ACCEPT
+
+**Exact independently accepted technical subject:** `8208f86e3c4bb2508d35048ceb0ba9033f3de2ef`
+
+**Status:** INDEPENDENTLY ACCEPTED
+
+**F001:** CLOSED
+
+**Human acceptance:** PENDING
+
+**Promotion / merge:** NOT AUTHORIZED
+
+**Slice 16:** IN PROGRESS / NOT COMPLETE
+
+**16K:** NOT AUTHORIZED
+
+**9G:** DEFERRED / NOT AUTHORIZED
 
 ## Product identity (frozen)
 
