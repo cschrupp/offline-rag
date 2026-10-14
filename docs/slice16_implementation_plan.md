@@ -136,7 +136,7 @@ GAP-16G-02:
     c704ba4752225f8204195015fecc5e2ae4feea44
   16J: NOT AUTHORIZED FROM THIS DISPOSITION
   16K: NOT AUTHORIZED FROM THIS DISPOSITION
-  Authoring-server failure UX defect: OPEN
+  Authoring-server failure UX defect: CLOSED
 Authoring-server failure UX design: ACCEPTED
   Authority: S16-CLOSURE-AUTHORING-FAILURE-UX-DESIGN-AUTH-001
   Design freeze: S16-CLOSURE-AUTHORING-FAILURE-UX-DESIGN-FREEZE-001 — ACCEPTED / FROZEN
@@ -151,21 +151,26 @@ Authoring-server failure UX design: ACCEPTED
     IR-003: 5922e0b9fa9f8986b23d801507b879a321124395 — ACCEPT
   Design rework R1–R4: ACCEPTED / FROZEN
   Q1–Q7 ACCEPTED / FROZEN (amended by R1–R4)
-Authoring-server failure UX implementation: INDEPENDENTLY ACCEPTED
+Authoring-server failure UX: COMPLETE / HUMAN ACCEPTED
   Authority: S16-CLOSURE-AUTHORING-FAILURE-UX-IMPLEMENTATION-AUTH-001 — AUTHORIZED
   Exact implementation base:
     5922e0b9fa9f8986b23d801507b879a321124395
   Branch: implementation/s16-closure-authoring-failure-ux
   Independent implementation review:
     S16-CLOSURE-AUTHORING-FAILURE-UX-IMPLEMENTATION-IR-001 — ACCEPT
-  Exact independently accepted technical subject:
+  Human acceptance: S16-CLOSURE-AUTHORING-FAILURE-UX-HA-001 — ACCEPTED
+  Exact Human-accepted technical subject:
     5cb63dad7344b9f6a3766ef83760801f375b5217
+  IR acceptance-record tip:
+    6591c07c5c61d4cf3eb41cd445f3bcc602fb78b2
+  Pre-Human gate-footer successor:
+    b7871738a5d986f24d9e9408ea0aa696f34f6e91
   Implementation-review handoff / docs tip:
     133f9c37cb82d8541e3347a0eec3d9c246f4ac0d
-  Status: INDEPENDENTLY ACCEPTED
-  Human acceptance: PENDING
+  Status: COMPLETE / HUMAN ACCEPTED
+  Original misleading server-unreachable defect: CLOSED
   Repository lint baseline: STILL RED (pre-existing; not a candidate regression)
-  NOT MERGED
+  Slice 16 final closeout: NOT AUTHORIZED FROM THIS DISPOSITION
 9G: DEFERRED / NOT AUTHORIZED
 16J: PRE-EXISTING AUTHORITY REMAINS PAUSED (this authority does not resume 16J)
 16K: NOT AUTHORIZED
