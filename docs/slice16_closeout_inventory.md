@@ -2,15 +2,30 @@
 
 **Authority:** `S16-CLOSEOUT-INVENTORY-AUTH-001` — AUTHORIZED
 
+**Acceptance-record authority:** `S16-CLOSEOUT-INVENTORY-IR-002-ACCEPTANCE-RECORD-AUTH-001` — AUTHORIZED
+
 **Exact base:** `168af70b54fba39f0efba69100d57b41a574667f`
 
-**Independent review:** `S16-CLOSEOUT-INVENTORY-IR-001` — REWORK REQUIRED
-(F001 multi-turn plan non-scope; F002 missing A2 canonical path). This tip is
-the IR-001 rework candidate; it does **not** yet claim inventory ACCEPT.
+**Independent review lineage:**
+
+- `S16-CLOSEOUT-INVENTORY-IR-001` — REWORK REQUIRED (F001 / F002)
+- `S16-CLOSEOUT-INVENTORY-IR-002` — ACCEPT
+
+**Exact independently accepted inventory subject:** `d284776ce25fc4db3af89cabfc4228564af5f3f9`
+
+**Inventory status:** INDEPENDENTLY ACCEPTED
+
+**Human acceptance:** PENDING
+
+**Inventory verdict:** CLOSEOUT BLOCKED — REQUIRED RESIDUALS REMAIN
+
+**Required residual set (unchanged):** I-26, I-27, I-28, I-30, I-31
+
+**Slice 16:** IN PROGRESS / NOT COMPLETE
 
 **Scope:** Docs / governance only. No product code. No new implementation
 authority. Does **not** declare Slice 16 complete. Does **not** authorize
-16K, 9G, Slice 17/18, or M7 closeout.
+16K, 9G, Slice 17/18, or M7 closeout. Does **not** repair I-26…I-31.
 
 **Method:** Inspect accepted canonical lineage (ROADMAP live ledger, accepted
 implementation-plan tip block, Human-accepted phase artifacts, and related
@@ -130,7 +145,8 @@ CLOSEOUT BLOCKED — REQUIRED RESIDUALS REMAIN
 - Any repair of I-26…I-31 under this inventory authority
 - Any new implementation authority
 
-Next gate after independent review of this corrected inventory: authorize one
-**bounded docs-only reconciliation** covering **I-26, I-27, I-28, I-30, I-31**,
-then reconsider Human Slice-16 closeout. Do **not** treat a clear later
-inventory as automatic Slice-16 closeout.
+Next gate: **Human acceptance** of exact inventory subject
+`d284776ce25fc4db3af89cabfc4228564af5f3f9`. After Human acceptance, authorize
+one **bounded docs-only reconciliation** covering **I-26, I-27, I-28, I-30,
+I-31**, then reconsider final Slice-16 closeout. Do **not** treat inventory
+acceptance or a later clear reconciliation as automatic Slice-16 closeout.
