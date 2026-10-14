@@ -1,13 +1,16 @@
 # Slice 16 closure — authoring-server failure UX design
 
 **Design authority:** `S16-CLOSURE-AUTHORING-FAILURE-UX-DESIGN-AUTH-001` — AUTHORIZED  
-**Design freeze:** `S16-CLOSURE-AUTHORING-FAILURE-UX-DESIGN-FREEZE-001` — ACCEPTED / FROZEN  
-**Independent design review lineage:**  
+**Design freeze:** `S16-CLOSURE-AUTHORING-FAILURE-UX-DESIGN-FREEZE-001` — ACCEPTED / FROZEN (amended by R1–R4)  
+**Independent design review:** `S16-CLOSURE-AUTHORING-FAILURE-UX-DESIGN-IR-003` — ACCEPT  
+**Exact accepted design subject:** `5922e0b9fa9f8986b23d801507b879a321124395`  
+**Prior independent design review lineage:**  
 - `S16-CLOSURE-AUTHORING-FAILURE-UX-DESIGN-IR-001` — REWORK REQUIRED at `ea95a2fe5261a42c8d841a4789f6aed1b9028cc7`  
 - `S16-CLOSURE-AUTHORING-FAILURE-UX-DESIGN-IR-002` — REWORK REQUIRED at `5faae42410ee38ef9e291a94f496a0a48da5739b`  
+- `S16-CLOSURE-AUTHORING-FAILURE-UX-DESIGN-IR-003` — ACCEPT at `5922e0b9fa9f8986b23d801507b879a321124395`  
 **Design rework:** R1 / R2 / R3 / R4 — ACCEPTED / FROZEN (amends FREEZE-001; no new Human Authority)  
-**Status:** DESIGN FROZEN / READY FOR INDEPENDENT DESIGN RE-REVIEW  
-**Implementation:** NOT AUTHORIZED  
+**Status:** DESIGN ACCEPTED / IMPLEMENTATION NOT AUTHORIZED  
+**Implementation:** NOT AUTHORIZED (requires separate bounded implementation authority against exact accepted design subject `5922e0b9…`)  
 **Parent product surface:** Gold Lab baseline bootstrap (GAP-16G-02 / 9B propose)
 
 ### Freeze ledger
@@ -20,7 +23,7 @@
 | Q4 | Surfacing `failure_reason_counts` | ACCEPTED / FROZEN |
 | Q5 | ErrorCode choice | ACCEPTED / FROZEN (amended by R4; GOLD_CONFLICT narrow) |
 | Q6 | Operator UI copy | ACCEPTED / FROZEN (amended by R3) |
-| Q7 | Design freeze completeness | ACCEPTED / FROZEN (reaffirmed after R1–R4) |
+| Q7 | Design freeze completeness | ACCEPTED / FROZEN (reaffirmed after R1–R4; IR-003 ACCEPT) |
 | R1 | Typed ProposePreRunError classification | ACCEPTED / FROZEN (fallback tightened by R4) |
 | R2 | Authentication provenance | ACCEPTED / FROZEN |
 | R3 | Auth/authz copy + redirect classification | ACCEPTED / FROZEN |
@@ -671,5 +674,12 @@ for this closure gate under:
 | R4 | `PROPOSAL_CONTEXT_UNAVAILABLE` → `INTERNAL_ERROR` + `bootstrap_internal_failure` |
 | Q7 | Design decision surface closed; ready for independent design re-review |
 
-**Next gate:** independent design re-review of this successor tip.  
-**Implementation:** NOT AUTHORIZED until separate implementation authority after design IR ACCEPT.
+**Design gate:** CLOSED by `S16-CLOSURE-AUTHORING-FAILURE-UX-DESIGN-IR-003` — ACCEPT.  
+**Next gate:** separate bounded implementation authorization against exact accepted
+design subject `5922e0b9fa9f8986b23d801507b879a321124395`.  
+**Implementation:** NOT AUTHORIZED until that separate authority is granted.
+
+**Implementation-reading note (IR-003):** Where older prose says existing
+admission/pre-run behavior is unchanged, the explicit R1/R4 mapping tables are
+controlling for the newly frozen invariant/pre-run cases. Implement the specific
+tables; do not infer behavior from the broader historical sentence alone.
