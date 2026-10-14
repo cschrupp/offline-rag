@@ -602,11 +602,17 @@ SLICE 15  COMPLETE / ACCEPTED
        Original misleading server-unreachable defect: CLOSED
        Repository lint baseline: STILL RED (pre-existing; not a candidate regression)
        Slice 16 final closeout: NOT AUTHORIZED FROM THIS DISPOSITION
-     Accepted-lineage documentation reconciliation AUTHORIZED
+     Accepted-lineage documentation reconciliation INDEPENDENTLY ACCEPTED
        Authority: S16-ACCEPTED-LINEAGE-RECONCILIATION-AUTH-001 — AUTHORIZED
+       Independent review: S16-ACCEPTED-LINEAGE-RECONCILIATION-IR-001 — ACCEPT
+       Exact accepted reconciliation subject:
+         09407ae0e5186b262a0b034e752672424e237fa2
+       Exact base: 19694dac3cc9d405621f297bb1a237359a1c7327
        Purpose: docs-only correction of RF accepted status and 16H
          BuildKit-secret CA wording before canonical promotion
-       Exact base: 19694dac3cc9d405621f297bb1a237359a1c7327
+       Canonical promotion: NOT YET EXECUTED
+         Expected: fast-forward main@be3ff320… → 09407ae0…
+         Requires separate promotion authority
        Does NOT claim: Slice 16 complete, 16J resumed, 16K/9G/17 authorized,
          or canonical main promotion complete
      9G DEFERRED / NOT AUTHORIZED
