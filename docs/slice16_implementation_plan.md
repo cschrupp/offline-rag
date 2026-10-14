@@ -178,7 +178,7 @@ Accepted-lineage documentation reconciliation: AUTHORIZED
   Exact base: 19694dac3cc9d405621f297bb1a237359a1c7327
   Does NOT claim: Slice 16 complete, 16J resumed, 16K/9G/17 authorized,
     or canonical main promotion complete
-16J FINAL BRANDING: COMPLETE / HUMAN ACCEPTED
+16J FINAL BRANDING: COMPLETE / HUMAN ACCEPTED / CANONICAL
   Design freeze: S16-J-REOPEN-BRANDING-UX-DESIGN-FREEZE-001 — ACCEPTED / FROZEN
   Implementation authority: S16-J-FINAL-BRANDING-IMPLEMENTATION-AUTH-001 — AUTHORIZED
   Acceptance-record authority:
@@ -196,8 +196,16 @@ Accepted-lineage documentation reconciliation: AUTHORIZED
     8208f86e3c4bb2508d35048ceb0ba9033f3de2ef
   IR-002 acceptance-record tip:
     65aced367d92f3b411d476676f532c1727c78d70
+  HA-001 acceptance-record tip:
+    29d74c3a884d10f222eab07b92411e5a921bbba8
   F001: CLOSED
-  Promotion / merge: NOT YET EXECUTED
+  MAIN PROMOTION COMPLETE
+  Promotion authority:
+    S16-J-FINAL-BRANDING-MAIN-PROMOTION-AUTH-001 — EXECUTED
+  Promotion target / pre-reconciliation main:
+    29d74c3a884d10f222eab07b92411e5a921bbba8
+  Canonical main carries Human-accepted technical subject:
+    8208f86e3c4bb2508d35048ceb0ba9033f3de2ef
   Product: Seneca — Grounded knowledge workspace
   Author: Carlos A. Schrupp
   Contact: carlos.schrupp@berkeley.edu
