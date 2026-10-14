@@ -2,30 +2,35 @@
 
 **Authority:** `S16-CLOSEOUT-INVENTORY-AUTH-001` — AUTHORIZED
 
-**Acceptance-record authority:** `S16-CLOSEOUT-INVENTORY-IR-002-ACCEPTANCE-RECORD-AUTH-001` — AUTHORIZED
+**Exact inventory base:** `168af70b54fba39f0efba69100d57b41a574667f`
 
-**Exact base:** `168af70b54fba39f0efba69100d57b41a574667f`
-
-**Independent review lineage:**
+**Independent review lineage (historical):**
 
 - `S16-CLOSEOUT-INVENTORY-IR-001` — REWORK REQUIRED (F001 / F002)
-- `S16-CLOSEOUT-INVENTORY-IR-002` — ACCEPT
+- `S16-CLOSEOUT-INVENTORY-IR-002` — ACCEPT on exact subject
+  `d284776ce25fc4db3af89cabfc4228564af5f3f9`
+- IR-002 acceptance-record tip (provenance):
+  `5df7af2b8d58e7fb48abc10e35d5af7aace0620b`
 
-**Exact independently accepted inventory subject:** `d284776ce25fc4db3af89cabfc4228564af5f3f9`
+**Provenance note:** IR-002 ACCEPT remains historically valid for exact subject
+`d284776…`. After post-acceptance discovery of README live-status drift, that
+subject is **no longer** the newest exhaustive inventory. The `5df7af2…`
+acceptance record remains untouched as provenance and is **not** rewritten.
 
-**Inventory status:** INDEPENDENTLY ACCEPTED
+**Inventory status:** AMENDED / PENDING INDEPENDENT RE-REVIEW (I-32 added)
 
-**Human acceptance:** PENDING
+**Human acceptance:** NOT PENDING ON `d284776…` — withhold until the amended
+inventory tip is independently re-reviewed
 
 **Inventory verdict:** CLOSEOUT BLOCKED — REQUIRED RESIDUALS REMAIN
 
-**Required residual set (unchanged):** I-26, I-27, I-28, I-30, I-31
+**Authoritative required residual set:** I-26, I-27, I-28, I-30, I-31, **I-32**
 
 **Slice 16:** IN PROGRESS / NOT COMPLETE
 
 **Scope:** Docs / governance only. No product code. No new implementation
 authority. Does **not** declare Slice 16 complete. Does **not** authorize
-16K, 9G, Slice 17/18, or M7 closeout. Does **not** repair I-26…I-31.
+16K, 9G, Slice 17/18, or M7 closeout. Does **not** repair I-26…I-32.
 
 **Method:** Inspect accepted canonical lineage (ROADMAP live ledger, accepted
 implementation-plan tip block, Human-accepted phase artifacts, and related
@@ -82,12 +87,13 @@ Closeout significance is classified separately.
 | I-23 | Q2 model-unavailable class | ACCEPTED / FROZEN (deferred) | Authoring-failure UX freeze ledger | **DEFERRED-NOT-REQUIRED** | Frozen choice: remains `http_error` class | No |
 | I-24 | Accepted-lineage reconciliation auth block | Still labeled AUTHORIZED; “Does NOT claim 16J resumed…” | `S16-ACCEPTED-LINEAGE-RECONCILIATION-AUTH-001`; tip `09407ae…` then 16J promotion | **SUPERSEDED-HISTORICAL** | Point-in-time docs prep discharged; later 16J CANONICAL supersedes the “16J not resumed” fence | No |
 | I-25 | Sealed phase packet footers still saying `16E–16H: NOT AUTHORIZED` | Many sealed evidence/closeout packets | Packets labeled sealed / historical | **SUPERSEDED-HISTORICAL** | Provenance footers of earlier seals; live tip is ROADMAP/plan | No (do not rewrite sealed packets into false contemporaneous acceptance) |
-| I-26 | **Live** design-authority Authorization note | Footer + closing prose still claim `GAP-16G-01: … NOT AUTHORIZED`, `16G IMPLEMENTATION: NOT AUTHORIZED`, `16H: NOT AUTHORIZED` while also stating those govern “current status” | `docs/slice16_design_authority.md` Authorization note (~L1168–1174, ~L1201–1203); intro says current status governed by Authorization note | **REQUIRED BEFORE CLOSEOUT** | This is presented as **live** projection, not a labeled historical snapshot, and contradicts the accepted tip ledger (16G/16H COMPLETE / ACCEPTED). Sealing Slice 16 while the design-authority Authorization note denies 16G/16H would leave a normative contradiction. | **Yes — docs reconciliation** (separate docs-only authority; outside this inventory’s three-file footprint) |
+| I-26 | **Live** design-authority Authorization note | Footer + closing prose still claim `GAP-16G-01: … NOT AUTHORIZED`, `16G IMPLEMENTATION: NOT AUTHORIZED`, `16H: NOT AUTHORIZED` while also stating those govern “current status” | `docs/slice16_design_authority.md` Authorization note (~L1168–1174, ~L1201–1203); intro says current status governed by Authorization note | **REQUIRED BEFORE CLOSEOUT** | Narrowly scoped to the design-authority live Authorization note. Same class of drift as README, but README is classified separately as **I-32**. | **Yes — docs reconciliation** |
 | I-27 | Plan phase-order diagram ends `16H [NOT AUTHORIZED]` | Diagram contradicts plan tip header `16H: COMPLETE / ACCEPTED` | `docs/slice16_implementation_plan.md` ~L310 vs tip ~L84–87 | **REQUIRED BEFORE CLOSEOUT** | Internal live-plan contradiction in the accepted implementation plan | **Yes — docs reconciliation** (may be combined with I-26 / I-28) |
 | I-28 | Gap-registry addendum `ALLOW_PRODUCTION: UNCHANGED / EMPTY` under **Current disposition** | Addendum labeled `LIVE GOVERNANCE PROJECTION`; still EMPTY while QC/RF ALLOW_PRODUCTION subjects are Human-accepted and policy lists them | `docs/slice16g_gap_registry_addendum.md` L3, L83; ROADMAP 16N-A QC/RF subjects; `ui/src/features/goldLab/policy/approvedPresentations.v1.ts` | **REQUIRED BEFORE CLOSEOUT** | Live projection falsely freezes EMPTY after later accepted ALLOW_PRODUCTION enablement. Evidence Sweep / Chunk Duel remaining NOT APPROVED is unrelated and stays DEFERRED-NOT-REQUIRED (I-12/I-13). | **Yes — docs reconciliation** |
 | I-29 | 16H acceptance artifact `ALLOW_PRODUCTION: UNCHANGED / EMPTY` | Recorded at 16H HA time | `docs/slice16h_integration_accessibility_portfolio_acceptance.md` | **SUPERSEDED-HISTORICAL** | Accurate for the 16H acceptance moment. Later 16N-A enablement supersedes emptiness; do not rewrite 16H artifact into a false contemporaneous claim. Live correction belongs on I-28. | No (preserve 16H-era truth) |
 | I-30 | Live plan “Explicit non-scope” still lists `multi-turn conversational RAG` | Unlabeled current plan bullet contradicts accepted A2 | `docs/slice16_implementation_plan.md` §Explicit non-scope (~L915); A2 superseded-clause inventory replaces that plan bullet with narrower forbid (linguistic multi-turn + resolver **in scope**; factual conversational memory / prior answers as evidence **forbidden**); B3 accepted conversational workspace `9c178ffb…` | **REQUIRED BEFORE CLOSEOUT** | Pre-A2 blanket exclusion is **SUPERSEDED-HISTORICAL** as a rule, but the live unlabeled plan text still asserts it, contradicting accepted A2/B3. Do **not** treat linguistic grounding as remaining S16-D35 OUT-OF-SCOPE (I-18 refined). | **Yes — docs reconciliation** (classify now; repair later — do not rewrite under this inventory authority) |
-| I-31 | Accepted A2 canonical document path absent from current tip/main | Ledger repeatedly references `docs/slice16_amendment_a2_conversational_grounding.md`, but path is missing at `04b3db0…` / `168af70…` | Referenced throughout ROADMAP/plan; recoverable at accepted A2 tip `dce3456e519cb6c96570e20f5af800d00cafb5a7` and ACCEPTED/LOCKED seal successor `f0bdf78d0ae6a79737055d324b22fc35e1e501f5` | **REQUIRED BEFORE CLOSEOUT** | A2 remains valid in Git history (SHA authority recoverable), so A2 is not invalidated. For closeout integrity, a normal canonical relative link must resolve. Prefer later minimally invasive materialization of the already accepted/sealed artifact at the referenced path — no A2 redesign. | **Yes — docs reconciliation** (materialize accepted artifact later; not under this inventory authority) |
+| I-31 | Accepted A2 canonical document path absent from current tip/main | Ledger repeatedly references `docs/slice16_amendment_a2_conversational_grounding.md`, but path is missing at tip/main | Referenced throughout ROADMAP/plan; recoverable at accepted A2 tip `dce3456e519cb6c96570e20f5af800d00cafb5a7` and ACCEPTED/LOCKED seal successor `f0bdf78d0ae6a79737055d324b22fc35e1e501f5` | **REQUIRED BEFORE CLOSEOUT** | A2 remains valid in Git history (SHA authority recoverable), so A2 is not invalidated. For closeout integrity, a normal canonical relative link must resolve. Prefer later minimally invasive materialization of the already accepted/sealed artifact at the referenced path — no A2 redesign. | **Yes — docs reconciliation** (materialize accepted artifact later; not under this inventory authority) |
+| I-32 | README live Project-status projection is stale | `README.md` §Project status still shows GAP-16G-01 as `DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED`, `16G implementation / 16H` as `NOT AUTHORIZED`, and Gold Lab games/UI as implementation-not-authorized; table stops before accepted 16I/L/M/N, authoring-failure UX, 16J CANONICAL, and closeout-inventory state | Verified at acceptance-record tip `5df7af2b8d58e7fb48abc10e35d5af7aace0620b`; public README vs ROADMAP/plan tip ledger | **REQUIRED BEFORE CLOSEOUT** | README is a **live public project-state projection**, not a sealed historical evidence artifact. It currently denies accepted Slice-16 state. Distinct from I-26 (design-authority Authorization note only). Do **not** fold into I-26. Slice 16 `IN PROGRESS / NOT COMPLETE` in README remains correct. | **Yes — docs reconciliation** (classify now; repair later in the same tranche as I-26…I-31) |
 
 ---
 
@@ -113,6 +119,12 @@ Closeout significance is classified separately.
 | F001 — live plan `multi-turn conversational RAG` non-scope vs accepted A2/B3 | **Confirmed** as I-30 REQUIRED BEFORE CLOSEOUT; I-18 refined so factual memory stays OUT-OF-SCOPE and linguistic grounding is not misclassified |
 | F002 — `docs/slice16_amendment_a2_conversational_grounding.md` absent from tip/main while still referenced | **Confirmed** as I-31 REQUIRED BEFORE CLOSEOUT; A2 SHA authority still recoverable (`dce3456e…` / `f0bdf78d…`) |
 
+### Post-IR-002 discovery (I-32)
+
+| Finding | Result |
+|---|---|
+| README §Project status publicly contradicts accepted 16G/16H/Gold Lab state | **Confirmed** as **I-32** REQUIRED BEFORE CLOSEOUT; distinct from I-26; blocks Human acceptance of prior exhaustive subject `d284776…` |
+
 ---
 
 ## Deterministic closeout verdict
@@ -121,13 +133,14 @@ Closeout significance is classified separately.
 CLOSEOUT BLOCKED — REQUIRED RESIDUALS REMAIN
 ```
 
-**Required residuals (docs / live-governance projection / canonical-docs integrity only; no product implementation):**
+**Authoritative required residuals (docs / live-governance projection / canonical-docs integrity / public README only; no product implementation):**
 
 1. **I-26** — Reconcile `docs/slice16_design_authority.md` Authorization note so live projection no longer claims 16G/16H `NOT AUTHORIZED`.
 2. **I-27** — Reconcile `docs/slice16_implementation_plan.md` phase-order diagram ending in `16H [NOT AUTHORIZED]`.
 3. **I-28** — Reconcile `docs/slice16g_gap_registry_addendum.md` live `ALLOW_PRODUCTION` projection to reflect accepted QC/RF enablement (while preserving Evidence Sweep / Chunk Duel as NOT APPROVED).
 4. **I-30** — Reconcile live plan “Explicit non-scope” `multi-turn conversational RAG` bullet to the accepted A2 narrower rule (linguistic multi-turn in scope; factual conversational memory still forbidden).
 5. **I-31** — Restore/materialize the accepted/sealed A2 artifact at the referenced canonical path `docs/slice16_amendment_a2_conversational_grounding.md` (no A2 redesign).
+6. **I-32** — Refresh `README.md` live Project-status projection so it no longer denies accepted 16G/16H/Gold Lab state; bring table current through accepted 16I/L/M/N, authoring-failure UX, 16J CANONICAL, and closeout-inventory blocked state (keep Slice 16 incomplete).
 
 **Not required for Slice-16 closeout (confirmed):**
 
@@ -141,12 +154,14 @@ CLOSEOUT BLOCKED — REQUIRED RESIDUALS REMAIN
 
 - Slice 16 complete
 - Final Slice-16 closeout authorized
+- Human acceptance of `d284776…` (withheld; subject no longer exhaustive)
 - Any product/source change
-- Any repair of I-26…I-31 under this inventory authority
+- Any repair of I-26…I-32 under this inventory authority
 - Any new implementation authority
 
-Next gate: **Human acceptance** of exact inventory subject
-`d284776ce25fc4db3af89cabfc4228564af5f3f9`. After Human acceptance, authorize
-one **bounded docs-only reconciliation** covering **I-26, I-27, I-28, I-30,
-I-31**, then reconsider final Slice-16 closeout. Do **not** treat inventory
-acceptance or a later clear reconciliation as automatic Slice-16 closeout.
+Next gate: **independent re-review** of this amended inventory tip (I-32
+added). After IR ACCEPT and Human acceptance of the **amended** inventory
+subject, authorize one **bounded docs-only reconciliation** covering
+**I-26, I-27, I-28, I-30, I-31, I-32**. Do **not** repair residuals before that
+sequence. Do **not** treat inventory acceptance or a later clear reconciliation
+as automatic Slice-16 closeout.
