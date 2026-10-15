@@ -68,7 +68,8 @@ Workspace source-loading remediation
 `f25f8358aead7fcfe161fff388012cec23b5a573` (closeout
 [`docs/slice16f_closeout.md`](slice16f_closeout.md)). **16G-D0** is **ACCEPTED / FROZEN**
 ([`docs/slice16g_gold_lab_games_pedagogy_design.md`](slice16g_gold_lab_games_pedagogy_design.md)).
-**16G implementation** and **16H** remain **NOT AUTHORIZED**.
+**16G** is **IMPLEMENTATION COMPLETE / ACCEPTED**, and **16H** is
+**COMPLETE / ACCEPTED**.
 
 **Related artifacts:**
 
