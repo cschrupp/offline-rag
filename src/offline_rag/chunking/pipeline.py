@@ -28,6 +28,7 @@ from offline_rag.core.ids import (
     chunk_set_id_from_entries,
     new_execution_id,
 )
+from offline_rag.core.observability import ObservabilityReporter, report_document_phase
 from offline_rag.core.progress import ProgressReporter, report_progress
 from offline_rag.domain.chunking import (
     ChunkingReport,
@@ -93,6 +94,7 @@ def run_chunking(
     corpus_name: str = "default",
     token_counter: TokenCounter | None = None,
     on_progress: ProgressReporter | None = None,
+    on_document_phase: ObservabilityReporter | None = None,
 ) -> ChunkingReport:
     started = datetime.now(tz=UTC)
     run_id = new_execution_id(prefix="chunk")
@@ -140,6 +142,7 @@ def run_chunking(
     failed = False
     chunked = reused = 0
     parents_total = children_total = 0
+    oversized_unsplittable_count = 0
     documents_total = len(corpus_manifest.documents)
     report_progress(
         on_progress,
@@ -160,6 +163,12 @@ def run_chunking(
 
     for doc in sorted(corpus_manifest.documents, key=lambda item: item.document_id):
         file_started = datetime.now(tz=UTC)
+        report_document_phase(
+            on_document_phase,
+            document_id=doc.document_id,
+            source_name=doc.source_name or doc.document_id,
+            phase="chunking",
+        )
         try:
             if not doc.parsed_artifact_id:
                 raise ChunkingError("manifest entry missing parsed_artifact_id")
@@ -203,6 +212,11 @@ def run_chunking(
 
             parents_total += artifact.parent_count
             children_total += artifact.child_count
+            oversized_unsplittable_count += sum(
+                1
+                for child in artifact.children
+                if bool((child.metadata or {}).get("oversized_unsplittable"))
+            )
             entries.append(
                 ChunkSetDocumentEntry(
                     document_id=doc.document_id,
@@ -226,6 +240,12 @@ def run_chunking(
                     duration_ms=duration,
                 )
             )
+            report_document_phase(
+                on_document_phase,
+                document_id=doc.document_id,
+                source_name=doc.source_name or doc.document_id,
+                phase="chunked",
+            )
             _note_chunk_progress()
         except Exception as exc:
             failed = True
@@ -238,6 +258,12 @@ def run_chunking(
                     duration_ms=duration,
                     error=str(exc),
                 )
+            )
+            report_document_phase(
+                on_document_phase,
+                document_id=doc.document_id,
+                source_name=doc.source_name or doc.document_id,
+                phase="failed",
             )
             _note_chunk_progress()
 
@@ -261,6 +287,7 @@ def run_chunking(
             child_chunks=children_total,
             documents=results,
             errors=["one or more documents failed; chunk state was not updated"],
+            metadata={"oversized_unsplittable_count": oversized_unsplittable_count},
         )
 
     set_id = chunk_set_id_from_entries(
@@ -336,6 +363,7 @@ def run_chunking(
         chunk_set_id=set_id,
         chunk_manifest_path=relative_manifest,
         documents=results,
+        metadata={"oversized_unsplittable_count": oversized_unsplittable_count},
     )
 
 

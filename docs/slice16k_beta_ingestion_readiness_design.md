@@ -15,10 +15,14 @@
 **16K-A HA record:** `S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-AUTH-001` — AUTHORIZED
 **Exact Human-accepted 16K-A technical subject:** `1370b99327124045ad96005e829095683842c06f`
 **16K-A branch:** `implementation/16k-a-managed-ingestion-correctness`
+**16K-A HA-record IR:** `S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-IR-001` — ACCEPT
+**16K-B implementation authority:** `S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-AUTH-001` — AUTHORIZED
+**Exact 16K-B implementation base:** `39e5e09363193b2315ada9e56cb3e1c14ba9377d`
+**16K-B branch:** `implementation/16k-b-ingestion-observability`
 **Status:** DESIGN ACCEPTED / FROZEN
 **16K-A:** IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED
-**16K-B:** NEXT GATE / NOT YET AUTHORIZED
-**16K-B → 16K-G:** NOT YET AUTHORIZED
+**16K-B:** IMPLEMENTATION AUTHORIZED / NOT YET ACCEPTED
+**16K-C → 16K-G:** NOT YET AUTHORIZED
 **Frozen implementation order:** 16K-A → 16K-B → baseline evidence → 16K-C → 16K-D → 16K-E → 16K-F → 16K-G
 **Parent governance:** Slice 16 — COMPLETE / HUMAN ACCEPTED / CANONICAL
 **Product:** Seneca — Grounded knowledge workspace
@@ -34,10 +38,10 @@ for Slice-16 closeout remains correct historical provenance
 
 Human design acceptance freezes this design. **16K-A** managed-ingestion
 correctness is **IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN
-ACCEPTED** at subject `1370b993…`. **16K-B** is the next gate and remains
-**NOT YET AUTHORIZED**. 16K-C→G, capacity expansion, metrics/worklist schema,
-CUDA optimization, UI work, OCR, Slice 17/18, 9G, and M7 closeout remain
-unauthorized.
+ACCEPTED** at subject `1370b993…`. **16K-B** ingestion observability is
+**IMPLEMENTATION AUTHORIZED / NOT YET ACCEPTED** from base `39e5e093…`.
+16K-C→G, capacity expansion, CUDA optimization, UI work, OCR, Slice 17/18, 9G,
+and M7 closeout remain unauthorized.
 
 ---
 
@@ -651,15 +655,20 @@ Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
   Human acceptance: S16-K-A-MANAGED-INGESTION-CORRECTNESS-IMPLEMENTATION-HA-001 — ACCEPTED
   HA record: S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-AUTH-001 — AUTHORIZED
   Exact Human-accepted technical subject: 1370b99327124045ad96005e829095683842c06f
-16K-B: NEXT GATE / NOT YET AUTHORIZED
-16K-B → 16K-G: NOT YET AUTHORIZED
+  HA-record IR: S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-IR-001 — ACCEPT
+16K-B: IMPLEMENTATION AUTHORIZED / NOT YET ACCEPTED
+  Implementation authority:
+    S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-AUTH-001 — AUTHORIZED
+  Exact implementation base: 39e5e09363193b2315ada9e56cb3e1c14ba9377d
+  Branch: implementation/16k-b-ingestion-observability
+16K-C → 16K-G: NOT YET AUTHORIZED
 Frozen order: 16K-A → 16K-B → baseline evidence → 16K-C → 16K-D → 16K-E → 16K-F → 16K-G
 Slice 16: COMPLETE / HUMAN ACCEPTED / CANONICAL
 Slice 17: NOT AUTHORIZED
 Slice 18: NOT AUTHORIZED
 9G: DEFERRED / NOT AUTHORIZED
 M7 CLOSEOUT: NOT AUTHORIZED
-Does NOT authorize 16K-B→G / capacity / CUDA / UI
+Does NOT authorize 16K-C→G / capacity / CUDA / UI
 Does NOT reopen Slice 16 closeout
 Does NOT authorize main promotion
 Outstanding separate operation: promote 3a7d8ff… onto origin/main (still at e21b3e6…)

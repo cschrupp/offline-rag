@@ -67,6 +67,12 @@ def operation_view(record: ManagedOperationRecord) -> dict[str, Any]:
             "unit": str(record.progress.unit),
             "started_at": record.progress.started_at.isoformat().replace("+00:00", "Z"),
         }
+    metrics = None
+    if record.metrics is not None:
+        metrics = record.metrics.model_dump(mode="python", exclude_none=True)
+    worklist = None
+    if record.worklist is not None:
+        worklist = record.worklist.model_dump(mode="python", exclude_none=True)
     return {
         "operation_id": record.operation_id,
         "kind": str(record.kind),
@@ -77,6 +83,8 @@ def operation_view(record: ManagedOperationRecord) -> dict[str, Any]:
             str(record.progress_stage) if record.progress_stage is not None else None
         ),
         "progress": progress,
+        "metrics": metrics,
+        "worklist": worklist,
         "created_at": record.created_at.isoformat().replace("+00:00", "Z"),
         "updated_at": record.updated_at.isoformat().replace("+00:00", "Z"),
         "result": result,

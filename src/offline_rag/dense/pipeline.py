@@ -24,6 +24,7 @@ from offline_rag.core.ids import (
     embedding_text_hash,
     new_execution_id,
 )
+from offline_rag.core.observability import ObservabilityReporter, report_document_phase
 from offline_rag.core.progress import ProgressReporter, report_progress
 from offline_rag.dense.backend import DenseIndexBackend, DensePointRecord
 from offline_rag.dense.cache import (
@@ -335,6 +336,7 @@ def run_indexing(
     embedder: Embedder | None = None,
     backend: DenseIndexBackend | None = None,
     on_progress: ProgressReporter | None = None,
+    on_document_phase: ObservabilityReporter | None = None,
     control_checkpoint: Callable[[str], None] | None = None,
 ) -> IndexingReport:
     started = datetime.now(tz=UTC)
@@ -546,6 +548,14 @@ def run_indexing(
             entry.document_id: entry.source_name for entry in corpus_manifest.documents
         }
         document_ids = {chunk.document_id for chunk, _ in jobs}
+        # Dense batches may span multiple documents; report the full active set.
+        for document_id in sorted(document_ids):
+            report_document_phase(
+                on_document_phase,
+                document_id=document_id,
+                source_name=source_names.get(document_id, document_id),
+                phase="indexing",
+            )
         try:
             document_titles = resolve_document_titles_from_source_names(
                 document_ids=document_ids,
@@ -555,6 +565,7 @@ def run_indexing(
         except RankingTextError as exc:
             raise IndexingError(str(exc)) from exc
 
+        generation_started = datetime.now(tz=UTC)
         rows, generated, reused, failed = _ensure_embeddings(
             settings=settings,
             jobs=jobs,
@@ -565,6 +576,10 @@ def run_indexing(
             on_progress=on_progress,
             control_checkpoint=control_checkpoint,
         )
+        generation_completed = datetime.now(tz=UTC)
+        dense_generation_ms = int(
+            (generation_completed - generation_started).total_seconds() * 1000
+        )
         report_progress(
             on_progress,
             step="materializing_dense_index",
@@ -572,6 +587,7 @@ def run_indexing(
             total=None,
             unit="chunks",
         )
+        materialization_started = datetime.now(tz=UTC)
         _validate_point_ids(rows)
 
         points: list[DensePointRecord] = [
@@ -606,8 +622,23 @@ def run_indexing(
             raise IndexingError(
                 f"collection count validation failed: {actual_count} != {children_total}"
             )
+        dense_materialization_ms = int(
+            (datetime.now(tz=UTC) - materialization_started).total_seconds() * 1000
+        )
+        for document_id in sorted(document_ids):
+            report_document_phase(
+                on_document_phase,
+                document_id=document_id,
+                source_name=source_names.get(document_id, document_id),
+                phase="indexed",
+            )
 
         completed = datetime.now(tz=UTC)
+        dense_device = getattr(
+            active_embedder, "resolved_device", getattr(active_embedder, "device", None)
+        )
+        dense_dtype = getattr(active_embedder, "dtype", None)
+        dense_attention = getattr(active_embedder, "attention_backend", None)
         manifest = DenseIndexManifest(
             index_id=index_id,
             corpus_id=corpus_state.current_corpus_id,
@@ -668,6 +699,19 @@ def run_indexing(
             index_id=index_id,
             collection_name=collection_name,
             index_manifest_path=state.current_index_manifest,
+            metadata={
+                "dense_generation_ms": dense_generation_ms,
+                "dense_materialization_ms": dense_materialization_ms,
+                "dense_execution": {
+                    "device": str(dense_device) if dense_device is not None else None,
+                    "dtype": str(dense_dtype) if dense_dtype is not None else None,
+                    "batch_size": int(settings.indexing.embedding.batch_size),
+                    "attention_backend": (
+                        str(dense_attention) if dense_attention is not None else None
+                    ),
+                    "embedding_dimension": int(active_embedder.dimension),
+                },
+            },
         )
     except AppError:
         # Cooperative control (cancel/shutdown) must remain authoritative.

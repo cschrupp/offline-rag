@@ -124,6 +124,11 @@ def _run_stage(hooks: ProductIngestHooks | None, name: str, fn: Callable[[], obj
     if hooks is not None and hooks.before_stage is not None:
         hooks.before_stage(name)
     result = fn()
+    if hooks is not None and hooks.after_stage_report is not None:
+        try:
+            hooks.after_stage_report(name, result)
+        except Exception:  # noqa: BLE001 — observability must not escape
+            pass
     if hooks is not None and hooks.after_stage is not None:
         hooks.after_stage(name)
     return result
@@ -278,6 +283,7 @@ def run_product_replace_ingest(
 
         source_names = upload.source_name_by_storage_name()
         progress = hooks.on_progress if hooks is not None else None
+        document_phase = hooks.on_document_phase if hooks is not None else None
         ingest_report = _gated(
             "ingest",
             lambda: run_ingestion(
@@ -288,6 +294,7 @@ def run_product_replace_ingest(
                 root=candidate.sources_root,
                 source_name_by_path=source_names,
                 on_progress=progress,
+                on_document_phase=document_phase,
             ),
         )
         assert isinstance(ingest_report, IngestionReport)
@@ -318,6 +325,7 @@ def run_product_replace_ingest(
                 settings=candidate.settings,
                 corpus_name=upload.corpus_name,
                 on_progress=progress,
+                on_document_phase=document_phase,
             ),
         )
         assert isinstance(chunk_report, ChunkingReport)
@@ -338,6 +346,7 @@ def run_product_replace_ingest(
                 embedder=embedder,
                 backend=qdrant,
                 on_progress=progress,
+                on_document_phase=document_phase,
                 control_checkpoint=dense_checkpoint,
             ),
         )

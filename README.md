@@ -329,7 +329,7 @@ cd ui && npm test && npm run lint && npm run typecheck && npm run build
 | Canonical main promotion | **COMPLETE / EXECUTED** (`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-AUTH-001` — EXECUTED; pure FF `168af70…` → `feab2b2…`; 0/0) |
 | Post-promotion record | **COMPLETE / HUMAN ACCEPTED / CANONICAL** (`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-IR-001` — ACCEPT; `S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-HA-001` — ACCEPTED; subject `76caab2…`; HA tip `e21b3e6…`) |
 | Second main promotion (HA tip) | **COMPLETE / EXECUTED** (`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-HA-MAIN-PROMOTION-AUTH-001` — EXECUTED; pure FF `feab2b2…` → `e21b3e6…`; 0/0) |
-| 16K | **DESIGN ACCEPTED / FROZEN** (`S16-K-BETA-INGESTION-READINESS-DESIGN-HA-001` — ACCEPTED; subject `0839b565…`; [`docs/slice16k_beta_ingestion_readiness_design.md`](docs/slice16k_beta_ingestion_readiness_design.md); 16K-A **IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED** at `1370b993…`; 16K-B **NEXT GATE / NOT YET AUTHORIZED**; 16K-B→G **NOT YET AUTHORIZED**; post-closeout; does not reopen Slice 16) |
+| 16K | **DESIGN ACCEPTED / FROZEN** (`S16-K-BETA-INGESTION-READINESS-DESIGN-HA-001` — ACCEPTED; subject `0839b565…`; [`docs/slice16k_beta_ingestion_readiness_design.md`](docs/slice16k_beta_ingestion_readiness_design.md); 16K-A **IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED** at `1370b993…`; 16K-B **IMPLEMENTATION AUTHORIZED / NOT YET ACCEPTED** from `39e5e093…`; 16K-C→G **NOT YET AUTHORIZED**; post-closeout; does not reopen Slice 16) |
 | Slice 17 / 18 | **NOT AUTHORIZED** |
 | M7 closeout | **NOT AUTHORIZED** |
 
@@ -356,7 +356,7 @@ Still deferred / not authorized as product deliverables:
 - cloud inference in the strict-offline core
 - enterprise auth / RBAC
 - distributed Qdrant / GraphRAG / multi-agent swarms
-- 16K-B→G implementation (design accepted/frozen; 16K-A complete/accepted; 16K-B next gate not yet authorized)
+- 16K-C→G implementation (design accepted/frozen; 16K-A complete/accepted; 16K-B implementation authorized / not yet accepted)
 
 ## Scope boundaries
 

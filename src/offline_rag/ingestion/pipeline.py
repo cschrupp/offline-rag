@@ -16,6 +16,7 @@ from offline_rag.core.ids import (
     parse_config_hash,
     parsed_artifact_id,
 )
+from offline_rag.core.observability import ObservabilityReporter, report_document_phase
 from offline_rag.core.progress import ProgressReporter, report_progress
 from offline_rag.domain.blocks import ParsedDocument
 from offline_rag.domain.corpus import (
@@ -152,6 +153,7 @@ def run_ingestion(
     root: Path | None = None,
     source_name_by_path: Mapping[str, str] | None = None,
     on_progress: ProgressReporter | None = None,
+    on_document_phase: ObservabilityReporter | None = None,
 ) -> IngestionReport:
     started = datetime.now(tz=UTC)
     run_id = new_execution_id(prefix="ingest")
@@ -219,6 +221,7 @@ def run_ingestion(
 
     for source in discovered:
         file_started = datetime.now(tz=UTC)
+        doc_id: str | None = None
         try:
             try:
                 source_bytes = source.absolute_path.read_bytes()
@@ -227,6 +230,12 @@ def run_ingestion(
             if not source_bytes:
                 raise DocumentIngestionError("source file is empty")
             doc_id = document_id_from_bytes(source_bytes)
+            report_document_phase(
+                on_document_phase,
+                document_id=doc_id,
+                source_name=source.source_name,
+                phase="parsing",
+            )
             content_hash = content_hash_from_bytes(source_bytes)
             try:
                 parser_name, parser_version, parser, ocr_enabled = _parser_for_media(
@@ -334,6 +343,12 @@ def run_ingestion(
                     processed_artifact=entry.processed_artifact,
                 )
             )
+            report_document_phase(
+                on_document_phase,
+                document_id=entry.document_id,
+                source_name=source.source_name,
+                phase="parsed",
+            )
             _note_document_progress()
         except DocumentIngestionError as exc:
             failed = True
@@ -345,11 +360,20 @@ def run_ingestion(
                     source_name=source.source_name,
                     absolute_path=str(source.absolute_path),
                     status=FileIngestionStatus.FAILED,
+                    document_id=doc_id,
                     duration_ms=duration,
                     error=str(exc),
                     metadata={"failure_class": "document"},
                 )
             )
+            if doc_id is not None:
+                phase = "requires_ocr" if "ocr" in str(exc).lower() else "failed"
+                report_document_phase(
+                    on_document_phase,
+                    document_id=doc_id,
+                    source_name=source.source_name,
+                    phase=phase,
+                )
             _note_document_progress()
         except InternalIngestionError as exc:
             failed = True
@@ -361,11 +385,19 @@ def run_ingestion(
                     source_name=source.source_name,
                     absolute_path=str(source.absolute_path),
                     status=FileIngestionStatus.FAILED,
+                    document_id=doc_id,
                     duration_ms=duration,
                     error=str(exc),
                     metadata={"failure_class": "internal"},
                 )
             )
+            if doc_id is not None:
+                report_document_phase(
+                    on_document_phase,
+                    document_id=doc_id,
+                    source_name=source.source_name,
+                    phase="failed",
+                )
             _note_document_progress()
         except Exception as exc:
             # Unknown faults are internal — never present as client document errors.
@@ -378,11 +410,19 @@ def run_ingestion(
                     source_name=source.source_name,
                     absolute_path=str(source.absolute_path),
                     status=FileIngestionStatus.FAILED,
+                    document_id=doc_id,
                     duration_ms=duration,
                     error=str(exc),
                     metadata={"failure_class": "internal"},
                 )
             )
+            if doc_id is not None:
+                report_document_phase(
+                    on_document_phase,
+                    document_id=doc_id,
+                    source_name=source.source_name,
+                    phase="failed",
+                )
             _note_document_progress()
 
     completed = datetime.now(tz=UTC)

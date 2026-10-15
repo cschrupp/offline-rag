@@ -120,6 +120,170 @@ class ManagedOperationProgress(BaseModel):
         return self
 
 
+class ManagedOperationDocumentPhase(StrEnum):
+    """Bounded per-document worklist phase vocabulary (16K-B).
+
+    ``ready`` is intentionally absent — reserved for canonical published source
+    state, not merely prepared candidate content.
+    """
+
+    PENDING = "pending"
+    PARSING = "parsing"
+    PARSED = "parsed"
+    CHUNKING = "chunking"
+    CHUNKED = "chunked"
+    INDEXING = "indexing"
+    INDEXED = "indexed"
+    FAILED = "failed"
+    REQUIRES_OCR = "requires_ocr"
+
+
+_ACTIVE_DOCUMENT_PHASES = frozenset(
+    {
+        ManagedOperationDocumentPhase.PARSING,
+        ManagedOperationDocumentPhase.CHUNKING,
+        ManagedOperationDocumentPhase.INDEXING,
+    }
+)
+
+
+class ManagedOperationWorklistDocument(BaseModel):
+    """One admitted document in a durable managed-operation worklist."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    document_id: str = Field(min_length=1, max_length=256)
+    display_name: str = Field(min_length=1, max_length=512)
+    phase: ManagedOperationDocumentPhase
+    child_chunk_count: int | None = Field(default=None, ge=0)
+    embeddings_generated: int | None = Field(default=None, ge=0)
+    embeddings_reused: int | None = Field(default=None, ge=0)
+
+    @field_validator("document_id", "display_name", mode="before")
+    @classmethod
+    def _non_empty(cls, value: object) -> object:
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError("must be a non-empty string")
+        return value.strip()
+
+
+class ManagedOperationWorklist(BaseModel):
+    """Optional durable admitted-operation worklist (16K-B).
+
+    Membership is frozen after admission. Phases and optional per-document
+    counters may advance. Historical records may omit this projection.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    total_document_count: int = Field(ge=0)
+    pending_count: int = Field(ge=0)
+    completed_count: int | None = Field(default=None, ge=0)
+    remaining_count: int | None = Field(default=None, ge=0)
+    documents: list[ManagedOperationWorklistDocument] = Field(default_factory=list)
+    active_documents: list[ManagedOperationWorklistDocument] = Field(
+        default_factory=list
+    )
+
+    @model_validator(mode="after")
+    def _coherent(self) -> ManagedOperationWorklist:
+        if self.total_document_count != len(self.documents):
+            raise ValueError("total_document_count must equal documents length")
+        if self.pending_count > self.total_document_count:
+            raise ValueError("pending_count exceeds total_document_count")
+        ids = [item.document_id for item in self.documents]
+        if len(ids) != len(set(ids)):
+            raise ValueError("worklist document_id values must be unique")
+        return self
+
+
+class ManagedOperationDenseExecution(BaseModel):
+    """Observed dense execution facts (not authority to change settings)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    device: str | None = Field(default=None, max_length=64)
+    dtype: str | None = Field(default=None, max_length=64)
+    batch_size: int | None = Field(default=None, gt=0)
+    attention_backend: str | None = Field(default=None, max_length=128)
+    embedding_dimension: int | None = Field(default=None, gt=0)
+
+
+class ManagedOperationStageDurations(BaseModel):
+    """Bounded aggregate stage timings in milliseconds."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    parsing_ms: int | None = Field(default=None, ge=0)
+    chunking_ms: int | None = Field(default=None, ge=0)
+    dense_generation_ms: int | None = Field(default=None, ge=0)
+    dense_materialization_ms: int | None = Field(default=None, ge=0)
+    lexical_ms: int | None = Field(default=None, ge=0)
+    publication_ms: int | None = Field(default=None, ge=0)
+    total_ms: int | None = Field(default=None, ge=0)
+
+
+class ManagedOperationMetrics(BaseModel):
+    """Optional bounded durable metrics/diagnostics projection (16K-B).
+
+    Absent/null on historical records remains valid. Throughput fields are
+    omitted when not reliably measurable — never fabricated.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    requested_document_count: int | None = Field(default=None, ge=0)
+    pre_active_source_count: int | None = Field(default=None, ge=0)
+    post_active_source_count: int | None = Field(default=None, ge=0)
+    uploaded_raw_bytes: int | None = Field(default=None, ge=0)
+    parsed_searchable_document_count: int | None = Field(default=None, ge=0)
+    child_chunk_count: int | None = Field(default=None, ge=0)
+    oversized_unsplittable_count: int | None = Field(default=None, ge=0)
+    parsed_artifacts_generated: int | None = Field(default=None, ge=0)
+    parsed_artifacts_reused: int | None = Field(default=None, ge=0)
+    chunk_artifacts_generated: int | None = Field(default=None, ge=0)
+    chunk_artifacts_reused: int | None = Field(default=None, ge=0)
+    embeddings_generated: int | None = Field(default=None, ge=0)
+    embeddings_reused: int | None = Field(default=None, ge=0)
+    dense_execution: ManagedOperationDenseExecution | None = None
+    generated_chunks_per_sec: float | None = Field(default=None, ge=0)
+    model_input_tokens_per_sec: float | None = Field(default=None, ge=0)
+    stage_durations: ManagedOperationStageDurations | None = None
+    # ETA intentionally absent: 16K-B may expose measurements only.
+
+
+_TERMINAL_DOCUMENT_PHASES = frozenset(
+    {
+        ManagedOperationDocumentPhase.INDEXED,
+        ManagedOperationDocumentPhase.FAILED,
+        ManagedOperationDocumentPhase.REQUIRES_OCR,
+    }
+)
+
+
+def build_managed_operation_worklist(
+    documents: list[ManagedOperationWorklistDocument],
+) -> ManagedOperationWorklist:
+    """Recompute bounded worklist aggregates from membership + phases."""
+    pending = sum(
+        1 for item in documents if item.phase is ManagedOperationDocumentPhase.PENDING
+    )
+    completed = sum(1 for item in documents if item.phase in _TERMINAL_DOCUMENT_PHASES)
+    remaining = sum(
+        1 for item in documents if item.phase not in _TERMINAL_DOCUMENT_PHASES
+    )
+    active = [
+        item for item in documents if item.phase in _ACTIVE_DOCUMENT_PHASES
+    ]
+    return ManagedOperationWorklist(
+        total_document_count=len(documents),
+        pending_count=pending,
+        completed_count=completed,
+        remaining_count=remaining,
+        documents=list(documents),
+        active_documents=active,
+    )
+
 
 def utc_now() -> datetime:
     return datetime.now(tz=UTC)
@@ -585,6 +749,9 @@ class ManagedOperationRecord(BaseModel):
     progress_stage: OperationProgressStage | None = None
     # 16I fine-grained telemetry. Optional; historical records omit it.
     progress: ManagedOperationProgress | None = None
+    # 16K-B observability. Optional; historical records omit metrics/worklist.
+    metrics: ManagedOperationMetrics | None = None
+    worklist: ManagedOperationWorklist | None = None
     result: ManagedOperationResult | GoldLabBaselineBootstrapResult | None = None
     error: ManagedOperationSafeError | None = None
     # GAP-16G-02 private execution authority (never projected by operation_view).

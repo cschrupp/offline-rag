@@ -32,6 +32,7 @@ from offline_rag.app.ingest_hooks import ProductIngestHooks
 from offline_rag.app.ingest_upload import spool_local_files
 from offline_rag.app.leases import CorpusMutationLease
 from offline_rag.app.operations import OperationHandle
+from offline_rag.app.observability_publish import DurableObservabilityPublisher
 from offline_rag.app.progress_publish import DurableProgressPublisher
 from offline_rag.app.workspace.create_idempotency import WorkspaceCreateCatalog
 from offline_rag.app.workspace.history import SourceHistoryStore
@@ -1022,6 +1023,24 @@ class WorkspaceLifecycleService:
             lease=lease,
         )
 
+        observability = DurableObservabilityPublisher(
+            operations=self.operations,
+            workspace_id=workspace_id,
+            operation_id=operation_id,
+            lease=lease,
+        )
+        # Freeze worklist membership at admission against the desired active set.
+        existing = self.operations.get(workspace_id, operation_id)
+        if existing.worklist is None:
+            observability.initialize(
+                desired=plan.desired,
+                pre_active_source_count=len(self._active_sources(record)),
+            )
+        else:
+            observability.hydrate(
+                worklist=existing.worklist, metrics=existing.metrics
+            )
+
         materialized = materialize_desired_sources(
             self.settings,
             workspace_id=workspace_id,
@@ -1047,7 +1066,12 @@ class WorkspaceLifecycleService:
                 ingested = run_product_replace_ingest(
                     self.runtime,
                     upload,
-                    hooks=self._progress_hooks(workspace_id, operation_id, lease),
+                    hooks=self._progress_hooks(
+                        workspace_id,
+                        operation_id,
+                        lease,
+                        observability=observability,
+                    ),
                     control=control,
                     corpus_lease=corpus_lease,
                     authorize_workspace_id=workspace_id,
@@ -1262,7 +1286,12 @@ class WorkspaceLifecycleService:
             )
 
     def _progress_hooks(
-        self, workspace_id: str, operation_id: str, lease: WorkspaceMutationLease
+        self,
+        workspace_id: str,
+        operation_id: str,
+        lease: WorkspaceMutationLease,
+        *,
+        observability: DurableObservabilityPublisher | None = None,
     ) -> ProductIngestHooks:
         publisher = DurableProgressPublisher(
             operations=self.operations,
@@ -1283,6 +1312,8 @@ class WorkspaceLifecycleService:
                 progress_stage=mapped,
                 lease=lease,
             )
+            if observability is not None:
+                observability.before_stage(stage)
             if stage == "publish":
                 # Fine-grained only — DurableProgressPublisher also isolates faults.
                 report_progress(
@@ -1294,6 +1325,8 @@ class WorkspaceLifecycleService:
                 )
 
         def _after(stage: str) -> None:
+            if observability is not None:
+                observability.after_stage(stage)
             if stage != "publish":
                 return
             publisher.set_stage(OperationProgressStage.FINALIZING)
@@ -1312,10 +1345,16 @@ class WorkspaceLifecycleService:
                 unit="documents",
             )
 
+        def _after_report(stage: str, report: object) -> None:
+            if observability is not None:
+                observability.after_stage_report(stage, report)
+
         return ProductIngestHooks(
             before_stage=_before,
             after_stage=_after,
             on_progress=publisher,
+            after_stage_report=_after_report,
+            on_document_phase=observability,
         )
 
     def _fail_operation(

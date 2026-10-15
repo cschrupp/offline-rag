@@ -548,8 +548,15 @@ SLICE 15  COMPLETE / ACCEPTED
          Exact Human-accepted technical subject:
            1370b99327124045ad96005e829095683842c06f
          Branch: implementation/16k-a-managed-ingestion-correctness
-       16K-B: NEXT GATE / NOT YET AUTHORIZED
-       16K-B → 16K-G: NOT YET AUTHORIZED
+         HA-record IR:
+           S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-IR-001 — ACCEPT
+       16K-B: IMPLEMENTATION AUTHORIZED / NOT YET ACCEPTED
+         Implementation authority:
+           S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-AUTH-001 — AUTHORIZED
+         Exact implementation base:
+           39e5e09363193b2315ada9e56cb3e1c14ba9377d
+         Branch: implementation/16k-b-ingestion-observability
+       16K-C → 16K-G: NOT YET AUTHORIZED
        Historical closeout disposition (inventory I-11): DEFERRED / NOT REQUIRED
          / NOT AUTHORIZED — preserved as provenance
      16L COMPLETE / ACCEPTED
@@ -799,8 +806,15 @@ SLICE 15  COMPLETE / ACCEPTED
          Exact Human-accepted technical subject:
            1370b99327124045ad96005e829095683842c06f
          Branch: implementation/16k-a-managed-ingestion-correctness
-       16K-B: NEXT GATE / NOT YET AUTHORIZED
-       16K-B → 16K-G: NOT YET AUTHORIZED
+         HA-record IR:
+           S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-IR-001 — ACCEPT
+       16K-B: IMPLEMENTATION AUTHORIZED / NOT YET ACCEPTED
+         Implementation authority:
+           S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-AUTH-001 — AUTHORIZED
+         Exact implementation base:
+           39e5e09363193b2315ada9e56cb3e1c14ba9377d
+         Branch: implementation/16k-b-ingestion-observability
+       16K-C → 16K-G: NOT YET AUTHORIZED
        Historical closeout disposition (inventory I-11): DEFERRED / NOT REQUIRED
          / NOT AUTHORIZED — preserved as provenance; not rewritten
      Slice 16: COMPLETE / HUMAN ACCEPTED / CANONICAL

@@ -117,8 +117,15 @@ GAP-16G-02:
     Exact Human-accepted technical subject:
       1370b99327124045ad96005e829095683842c06f
     Branch: implementation/16k-a-managed-ingestion-correctness
-  16K-B: NEXT GATE / NOT YET AUTHORIZED
-  16K-B → 16K-G: NOT YET AUTHORIZED
+    HA-record IR:
+      S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-IR-001 — ACCEPT
+  16K-B: IMPLEMENTATION AUTHORIZED / NOT YET ACCEPTED
+    Implementation authority:
+      S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-AUTH-001 — AUTHORIZED
+    Exact implementation base:
+      39e5e09363193b2315ada9e56cb3e1c14ba9377d
+    Branch: implementation/16k-b-ingestion-observability
+  16K-C → 16K-G: NOT YET AUTHORIZED
 16L: COMPLETE / ACCEPTED
   Authority: S16-L-EMBEDDING-AUTO-DEVICE-UX-AUTH-002
   Exact accepted subject: 88fadc7c3e8e70c4886cbff0c7863cccc63ef14a
@@ -364,8 +371,15 @@ Slice-16 closeout inventory: HUMAN ACCEPTED
     Exact Human-accepted technical subject:
       1370b99327124045ad96005e829095683842c06f
     Branch: implementation/16k-a-managed-ingestion-correctness
-  16K-B: NEXT GATE / NOT YET AUTHORIZED
-  16K-B → 16K-G: NOT YET AUTHORIZED
+    HA-record IR:
+      S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-IR-001 — ACCEPT
+  16K-B: IMPLEMENTATION AUTHORIZED / NOT YET ACCEPTED
+    Implementation authority:
+      S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-AUTH-001 — AUTHORIZED
+    Exact implementation base:
+      39e5e09363193b2315ada9e56cb3e1c14ba9377d
+    Branch: implementation/16k-b-ingestion-observability
+  16K-C → 16K-G: NOT YET AUTHORIZED
   Does NOT reopen Slice 16 closeout
 SLICE 16: COMPLETE / HUMAN ACCEPTED / CANONICAL
 SLICE 17: NOT AUTHORIZED

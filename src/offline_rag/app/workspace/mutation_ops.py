@@ -15,6 +15,7 @@ from offline_rag.app.workspace.models import (
     GoldLabBaselineBootstrapAuthority,
     GoldLabBaselineBootstrapResult,
     ManagedOperationKind,
+    ManagedOperationMetrics,
     ManagedOperationProgress,
     ManagedOperationProgressStep,
     ManagedOperationProgressUnit,
@@ -22,6 +23,7 @@ from offline_rag.app.workspace.models import (
     ManagedOperationResult,
     ManagedOperationSafeError,
     ManagedOperationStatus,
+    ManagedOperationWorklist,
     OperationProgressStage,
     WorkspaceRevision,
     canonical_operation_fingerprint,
@@ -505,6 +507,90 @@ class ManagedOperationStore:
                     if progress_stage is not None
                     else record.progress_stage,
                 }
+            )
+            atomic_write_text(
+                self._op_path(workspace_id, operation_id), updated.model_dump_json()
+            )
+            return updated
+
+        return self._with_lease(workspace_id, _body, lease=lease)
+
+    def update_metrics(
+        self,
+        workspace_id: str,
+        operation_id: str,
+        metrics: ManagedOperationMetrics,
+        *,
+        lease: WorkspaceMutationLease | None = None,
+    ) -> ManagedOperationRecord:
+        """Publish bounded durable metrics without changing ManagedOperationStatus."""
+
+        def _body() -> ManagedOperationRecord:
+            record = self.get(workspace_id, operation_id)
+            if record.status in _TERMINAL:
+                raise AppError(
+                    ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                    details=SafeErrorDetails(
+                        reason="illegal_operation_metrics_on_terminal"
+                    ),
+                )
+            updated = record.model_copy(
+                update={"updated_at": utc_now(), "metrics": metrics}
+            )
+            atomic_write_text(
+                self._op_path(workspace_id, operation_id), updated.model_dump_json()
+            )
+            return updated
+
+        return self._with_lease(workspace_id, _body, lease=lease)
+
+    def update_worklist(
+        self,
+        workspace_id: str,
+        operation_id: str,
+        worklist: ManagedOperationWorklist,
+        *,
+        lease: WorkspaceMutationLease | None = None,
+    ) -> ManagedOperationRecord:
+        """Publish bounded durable worklist without changing ManagedOperationStatus.
+
+        Membership (document_id set + display names) is immutable after the first
+        worklist write. Later updates may advance phases and optional counters.
+        """
+
+        def _body() -> ManagedOperationRecord:
+            record = self.get(workspace_id, operation_id)
+            if record.status in _TERMINAL:
+                raise AppError(
+                    ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                    details=SafeErrorDetails(
+                        reason="illegal_operation_worklist_on_terminal"
+                    ),
+                )
+            prior = record.worklist
+            if prior is not None:
+                prior_ids = [item.document_id for item in prior.documents]
+                next_ids = [item.document_id for item in worklist.documents]
+                if prior_ids != next_ids:
+                    raise AppError(
+                        ErrorCode.REQUEST_INVALID,
+                        details=SafeErrorDetails(
+                            reason="worklist_membership_immutable"
+                        ),
+                    )
+                prior_names = {
+                    item.document_id: item.display_name for item in prior.documents
+                }
+                for item in worklist.documents:
+                    if prior_names.get(item.document_id) != item.display_name:
+                        raise AppError(
+                            ErrorCode.REQUEST_INVALID,
+                            details=SafeErrorDetails(
+                                reason="worklist_membership_immutable"
+                            ),
+                        )
+            updated = record.model_copy(
+                update={"updated_at": utc_now(), "worklist": worklist}
             )
             atomic_write_text(
                 self._op_path(workspace_id, operation_id), updated.model_dump_json()
