@@ -308,7 +308,7 @@ cd ui && npm test && npm run lint && npm run typecheck && npm run build
 | Milestone 7 | **IN PROGRESS** |
 | Slice 14 | **COMPLETE / ACCEPTED** |
 | Slice 15 | **COMPLETE / ACCEPTED** |
-| Slice 16 | **FINAL CLOSEOUT CANDIDATE / PENDING INDEPENDENT REVIEW** |
+| Slice 16 | **COMPLETE / HUMAN ACCEPTED** |
 | 16A / 16B / 16C | **COMPLETE / ACCEPTED** |
 | 16D-A / 16D-B2 / 16D-B3 / 16D-C | **COMPLETE / ACCEPTED / SEALED** |
 | Amendment A2 / A4 | **ACCEPTED / LOCKED / SEALED** |
@@ -323,9 +323,10 @@ cd ui && npm test && npm run lint && npm run typecheck && npm run build
 | Authoring-server failure UX | **COMPLETE / HUMAN ACCEPTED** |
 | 16J final branding | **COMPLETE / HUMAN ACCEPTED / CANONICAL** |
 | Slice-16 closeout inventory | **HUMAN ACCEPTED** |
-| Closeout residuals I-26…I-32 | **HUMAN ACCEPTED / CLOSED AS CLOSEOUT RESIDUALS** |
+| Closeout residuals I-26…I-32 | **HUMAN ACCEPTED / CLOSED** |
 | Reconciliation | **COMPLETE / HUMAN ACCEPTED**; technical residuals **CLEAR** |
-| Final Slice-16 closeout | **PENDING INDEPENDENT REVIEW** (candidate under `S16-FINAL-CLOSEOUT-AUTH-001`; not yet Human-accepted) |
+| Final Slice-16 closeout | **HUMAN ACCEPTED** (`S16-FINAL-CLOSEOUT-IR-001` — ACCEPT; `S16-FINAL-CLOSEOUT-HA-001` — ACCEPTED; subject `c4ba1e7…`) |
+| Canonical main promotion | **NOT AUTHORIZED / NOT YET EXECUTED** |
 | 16K | **DEFERRED / NOT REQUIRED / NOT AUTHORIZED** |
 | Slice 17 / 18 | **NOT AUTHORIZED** |
 | M7 closeout | **NOT AUTHORIZED** |
