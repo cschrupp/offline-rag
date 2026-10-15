@@ -10,10 +10,14 @@
 **Exact rework base:** `5c693c531ded432b10cf5f6ac19d558a1f4e9431`
 **HA-record IR:** `S16-K-BETA-INGESTION-READINESS-DESIGN-HA-RECORD-IR-001` — ACCEPT
 **16K-A implementation authority:** `S16-K-A-MANAGED-INGESTION-CORRECTNESS-IMPLEMENTATION-AUTH-001` — AUTHORIZED
-**Exact 16K-A implementation base:** `96c4d1f7261a3f07374afa2963e2c88bdd77a201`
+**16K-A independent review:** `S16-K-A-MANAGED-INGESTION-CORRECTNESS-IMPLEMENTATION-IR-002` — ACCEPT
+**16K-A Human acceptance:** `S16-K-A-MANAGED-INGESTION-CORRECTNESS-IMPLEMENTATION-HA-001` — ACCEPTED
+**16K-A HA record:** `S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-AUTH-001` — AUTHORIZED
+**Exact Human-accepted 16K-A technical subject:** `1370b99327124045ad96005e829095683842c06f`
 **16K-A branch:** `implementation/16k-a-managed-ingestion-correctness`
 **Status:** DESIGN ACCEPTED / FROZEN
-**16K-A:** IMPLEMENTATION AUTHORIZED / NOT YET ACCEPTED
+**16K-A:** IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED
+**16K-B:** NEXT GATE / NOT YET AUTHORIZED
 **16K-B → 16K-G:** NOT YET AUTHORIZED
 **Frozen implementation order:** 16K-A → 16K-B → baseline evidence → 16K-C → 16K-D → 16K-E → 16K-F → 16K-G
 **Parent governance:** Slice 16 — COMPLETE / HUMAN ACCEPTED / CANONICAL
@@ -28,10 +32,11 @@ inventory conclusion that 16K was **DEFERRED / NOT REQUIRED / NOT AUTHORIZED**
 for Slice-16 closeout remains correct historical provenance
 (`docs/slice16_closeout_inventory.md` I-11) and must not be rewritten.
 
-Human acceptance freezes this design. **16K-A** is separately authorized for
-managed-ingestion correctness only (**IMPLEMENTATION AUTHORIZED / NOT YET
-ACCEPTED**). 16K-B→G, capacity expansion, metrics/worklist schema, CUDA
-optimization, UI work, OCR, Slice 17/18, 9G, and M7 closeout remain
+Human design acceptance freezes this design. **16K-A** managed-ingestion
+correctness is **IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN
+ACCEPTED** at subject `1370b993…`. **16K-B** is the next gate and remains
+**NOT YET AUTHORIZED**. 16K-C→G, capacity expansion, metrics/worklist schema,
+CUDA optimization, UI work, OCR, Slice 17/18, 9G, and M7 closeout remain
 unauthorized.
 
 ---
@@ -641,9 +646,12 @@ Exact Human-accepted design subject: 0839b565cd60958141366048520236a71bf16fd0
 Exact design-open base: 3a7d8ff2c442c5d4cd10c0c21637ebc4c52b65fa
 Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
 16K: DESIGN ACCEPTED / FROZEN
-16K-A: IMPLEMENTATION AUTHORIZED / NOT YET ACCEPTED
-  Authority: S16-K-A-MANAGED-INGESTION-CORRECTNESS-IMPLEMENTATION-AUTH-001
-  Exact implementation base: 96c4d1f7261a3f07374afa2963e2c88bdd77a201
+16K-A: IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED
+  Implementation IR: S16-K-A-MANAGED-INGESTION-CORRECTNESS-IMPLEMENTATION-IR-002 — ACCEPT
+  Human acceptance: S16-K-A-MANAGED-INGESTION-CORRECTNESS-IMPLEMENTATION-HA-001 — ACCEPTED
+  HA record: S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-AUTH-001 — AUTHORIZED
+  Exact Human-accepted technical subject: 1370b99327124045ad96005e829095683842c06f
+16K-B: NEXT GATE / NOT YET AUTHORIZED
 16K-B → 16K-G: NOT YET AUTHORIZED
 Frozen order: 16K-A → 16K-B → baseline evidence → 16K-C → 16K-D → 16K-E → 16K-F → 16K-G
 Slice 16: COMPLETE / HUMAN ACCEPTED / CANONICAL

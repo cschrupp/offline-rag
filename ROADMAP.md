@@ -535,11 +535,20 @@ SLICE 15  COMPLETE / ACCEPTED
          safety ≠ searchable workload (post-closeout; does NOT reopen Slice 16)
        Frozen order: 16K-A → 16K-B → baseline evidence → 16K-C → 16K-D
          → 16K-E → 16K-F → 16K-G
-       16K-A: IMPLEMENTATION AUTHORIZED / NOT YET ACCEPTED
-         Authority: S16-K-A-MANAGED-INGESTION-CORRECTNESS-IMPLEMENTATION-AUTH-001
+       16K-A: IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED
+         Implementation authority:
+           S16-K-A-MANAGED-INGESTION-CORRECTNESS-IMPLEMENTATION-AUTH-001
            — AUTHORIZED
-         Exact implementation base: 96c4d1f7261a3f07374afa2963e2c88bdd77a201
+         Independent review:
+           S16-K-A-MANAGED-INGESTION-CORRECTNESS-IMPLEMENTATION-IR-002 — ACCEPT
+         Human acceptance:
+           S16-K-A-MANAGED-INGESTION-CORRECTNESS-IMPLEMENTATION-HA-001 — ACCEPTED
+         HA record:
+           S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-AUTH-001 — AUTHORIZED
+         Exact Human-accepted technical subject:
+           1370b99327124045ad96005e829095683842c06f
          Branch: implementation/16k-a-managed-ingestion-correctness
+       16K-B: NEXT GATE / NOT YET AUTHORIZED
        16K-B → 16K-G: NOT YET AUTHORIZED
        Historical closeout disposition (inventory I-11): DEFERRED / NOT REQUIRED
          / NOT AUTHORIZED — preserved as provenance
@@ -777,11 +786,20 @@ SLICE 15  COMPLETE / ACCEPTED
          safety ≠ searchable workload (does NOT reopen Slice 16)
        Frozen order: 16K-A → 16K-B → baseline evidence → 16K-C → 16K-D
          → 16K-E → 16K-F → 16K-G
-       16K-A: IMPLEMENTATION AUTHORIZED / NOT YET ACCEPTED
-         Authority: S16-K-A-MANAGED-INGESTION-CORRECTNESS-IMPLEMENTATION-AUTH-001
+       16K-A: IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED
+         Implementation authority:
+           S16-K-A-MANAGED-INGESTION-CORRECTNESS-IMPLEMENTATION-AUTH-001
            — AUTHORIZED
-         Exact implementation base: 96c4d1f7261a3f07374afa2963e2c88bdd77a201
+         Independent review:
+           S16-K-A-MANAGED-INGESTION-CORRECTNESS-IMPLEMENTATION-IR-002 — ACCEPT
+         Human acceptance:
+           S16-K-A-MANAGED-INGESTION-CORRECTNESS-IMPLEMENTATION-HA-001 — ACCEPTED
+         HA record:
+           S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-AUTH-001 — AUTHORIZED
+         Exact Human-accepted technical subject:
+           1370b99327124045ad96005e829095683842c06f
          Branch: implementation/16k-a-managed-ingestion-correctness
+       16K-B: NEXT GATE / NOT YET AUTHORIZED
        16K-B → 16K-G: NOT YET AUTHORIZED
        Historical closeout disposition (inventory I-11): DEFERRED / NOT REQUIRED
          / NOT AUTHORIZED — preserved as provenance; not rewritten
