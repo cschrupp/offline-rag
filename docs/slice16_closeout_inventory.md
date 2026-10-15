@@ -31,12 +31,12 @@
 target by amended subject `e24c11d…` (historical IR-002 ACCEPT on `d284776…`
 remains valid provenance)
 
-**Inventory verdict:** CLOSEOUT BLOCKED — awaiting Human reconciliation
-acceptance of subject `fc36aa8…` and a separate final Slice-16 closeout
-authority (six residual repairs are **INDEPENDENTLY ACCEPTED**)
+**Inventory verdict:** TECHNICAL RESIDUALS CLEAR — I-26…I-32 are
+**HUMAN ACCEPTED REPAIRS**; final Slice-16 closeout remains **NOT AUTHORIZED**
+(separate determination required)
 
 **Authoritative residual set:** I-26, I-27, I-28, I-30, I-31, **I-32**
-(independently accepted; Human reconciliation acceptance PENDING)
+(**HUMAN ACCEPTED REPAIRS**)
 
 **Reconciliation authority:**
 `S16-CLOSEOUT-REQUIRED-RESIDUALS-RECONCILIATION-AUTH-001` — AUTHORIZED
@@ -53,12 +53,22 @@ authority (six residual repairs are **INDEPENDENTLY ACCEPTED**)
 `S16-CLOSEOUT-REQUIRED-RESIDUALS-RECONCILIATION-IR-002-ACCEPTANCE-RECORD-AUTH-001`
 — AUTHORIZED
 
-**Exact independently accepted reconciliation subject:**
+**IR-002 acceptance-record tip:**
+`e7305f06df22da4898e2246c40bf256c9535ccad`
+
+**Exact Human-accepted reconciliation subject:**
 `fc36aa8013a90b6355e85d97a00dc145b5802cd5`
 
-**Repairs (I-26, I-27, I-28, I-30, I-31, I-32):** INDEPENDENTLY ACCEPTED
+**Human acceptance:**
+`S16-CLOSEOUT-REQUIRED-RESIDUALS-RECONCILIATION-HA-001` — ACCEPTED
 
-**Human reconciliation acceptance:** PENDING
+**HA acceptance-record authority:**
+`S16-CLOSEOUT-REQUIRED-RESIDUALS-RECONCILIATION-HA-001-ACCEPTANCE-RECORD-AUTH-001`
+— AUTHORIZED
+
+**Reconciliation status:** COMPLETE / HUMAN ACCEPTED
+
+**Repairs (I-26, I-27, I-28, I-30, I-31, I-32):** HUMAN ACCEPTED
 
 **A2 restored blob provenance exception:** historical trailing whitespace in
 accepted blob `68128f7555f73d5ff893ef63b6b192d449c78086` retained for
@@ -70,9 +80,9 @@ byte-identity (not a defect)
 
 **Scope:** Docs / governance only. No product code. Distinguishes: inventory
 Human acceptance (`S16-CLOSEOUT-INVENTORY-HA-001` — ACCEPTED) from
-reconciliation independent acceptance (IR-002 — ACCEPT) from Human
-reconciliation acceptance (PENDING) from final Slice-16 closeout (NOT
-AUTHORIZED).
+reconciliation independent acceptance (IR-002 — ACCEPT on `fc36aa8…`) from
+Human reconciliation acceptance (`S16-CLOSEOUT-REQUIRED-RESIDUALS-RECONCILIATION-HA-001`
+— ACCEPTED on the same subject) from final Slice-16 closeout (NOT AUTHORIZED).
 
 **Method:** Inspect accepted canonical lineage (ROADMAP live ledger, accepted
 implementation-plan tip block, Human-accepted phase artifacts, and related
@@ -171,11 +181,20 @@ Closeout significance is classified separately.
 
 ## Deterministic closeout verdict
 
+**Historical inventory verdict (at inventory HA):**
+
 ```text
 CLOSEOUT BLOCKED — REQUIRED RESIDUALS REMAIN
 ```
 
-**Authoritative required residuals (docs / live-governance projection / canonical-docs integrity / public README only; no product implementation):**
+**Live post-reconciliation verdict:**
+
+```text
+TECHNICAL RESIDUALS CLEAR — I-26…I-32 HUMAN ACCEPTED REPAIRS;
+FINAL SLICE-16 CLOSEOUT NOT AUTHORIZED
+```
+
+**Authoritative residuals (docs / live-governance projection / canonical-docs integrity / public README only; no product implementation) — repaired and Human-accepted:**
 
 1. **I-26** — Reconcile `docs/slice16_design_authority.md` Authorization note so live projection no longer claims 16G/16H `NOT AUTHORIZED`.
 2. **I-27** — Reconcile `docs/slice16_implementation_plan.md` phase-order diagram ending in `16H [NOT AUTHORIZED]`.
@@ -192,26 +211,26 @@ CLOSEOUT BLOCKED — REQUIRED RESIDUALS REMAIN
 - Clearing the repository lint baseline to green
 - Resuming **9G** or opening Slice **17** / **18** / M7 closeout
 
-**Explicitly not claimed by this inventory / HA record:**
+**Explicitly not claimed by this inventory / reconciliation HA record:**
 
 - Slice 16 complete
 - Final Slice-16 closeout authorized
-- Repair of I-26…I-32
-- Human acceptance of `d284776…` (NOT GRANTED; superseded by `e24c11d…`)
+- Human acceptance of inventory subject `d284776…` (NOT GRANTED; superseded by `e24c11d…`)
 - Any product/source change
 - 16K / 9G / Slice 17 / 18 / M7 closeout
 
-### Reconciliation repair mapping (independently accepted; Human pending)
+### Reconciliation repair mapping (HUMAN ACCEPTED)
 
 | Residual | Repair target | Status |
 |---|---|---|
-| I-26 | `docs/slice16_design_authority.md` live Authorization note + closing prose + intro sentence (F001) | INDEPENDENTLY ACCEPTED |
-| I-27 | plan phase-order diagram `16H` line | INDEPENDENTLY ACCEPTED |
-| I-28 | gap-registry LIVE GOVERNANCE PROJECTION `ALLOW_PRODUCTION` | INDEPENDENTLY ACCEPTED |
-| I-30 | plan Explicit non-scope conversational rule | INDEPENDENTLY ACCEPTED |
-| I-31 | `docs/slice16_amendment_a2_conversational_grounding.md` restored blob `68128f7555f73d5ff893ef63b6b192d449c78086` | INDEPENDENTLY ACCEPTED |
-| I-32 | `README.md` Project status | INDEPENDENTLY ACCEPTED |
+| I-26 | `docs/slice16_design_authority.md` live Authorization note + closing prose + intro sentence (F001) | HUMAN ACCEPTED |
+| I-27 | plan phase-order diagram `16H` line | HUMAN ACCEPTED |
+| I-28 | gap-registry LIVE GOVERNANCE PROJECTION `ALLOW_PRODUCTION` | HUMAN ACCEPTED |
+| I-30 | plan Explicit non-scope conversational rule | HUMAN ACCEPTED |
+| I-31 | `docs/slice16_amendment_a2_conversational_grounding.md` restored blob `68128f7555f73d5ff893ef63b6b192d449c78086` | HUMAN ACCEPTED |
+| I-32 | `README.md` Project status | HUMAN ACCEPTED |
 
-Next gate: **Human acceptance** of exact reconciliation subject
-`fc36aa8013a90b6355e85d97a00dc145b5802cd5`. That acceptance remains distinct
-from final Slice-16 closeout, which stays **NOT AUTHORIZED**.
+**Reconciliation:** COMPLETE / HUMAN ACCEPTED on exact subject
+`fc36aa8013a90b6355e85d97a00dc145b5802cd5` (IR-002 ACCEPT; IR-002
+acceptance-record tip `e7305f06…`; HA-001 ACCEPTED). Next gate: **separate
+final Slice-16 closeout determination** (NOT AUTHORIZED from this record).

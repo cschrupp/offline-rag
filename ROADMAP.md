@@ -670,10 +670,17 @@ SLICE 15  COMPLETE / ACCEPTED
        IR-002 acceptance-record authority:
          S16-CLOSEOUT-REQUIRED-RESIDUALS-RECONCILIATION-IR-002-ACCEPTANCE-RECORD-AUTH-001
          — AUTHORIZED
-       Exact independently accepted reconciliation subject:
+       IR-002 acceptance-record tip:
+         e7305f06df22da4898e2246c40bf256c9535ccad
+       Exact Human-accepted reconciliation subject:
          fc36aa8013a90b6355e85d97a00dc145b5802cd5
-       Repairs I-26…I-28, I-30…I-32: INDEPENDENTLY ACCEPTED
-       Human reconciliation acceptance: PENDING
+       Human acceptance:
+         S16-CLOSEOUT-REQUIRED-RESIDUALS-RECONCILIATION-HA-001 — ACCEPTED
+       HA acceptance-record authority:
+         S16-CLOSEOUT-REQUIRED-RESIDUALS-RECONCILIATION-HA-001-ACCEPTANCE-RECORD-AUTH-001
+         — AUTHORIZED
+       Reconciliation status: COMPLETE / HUMAN ACCEPTED
+       Repairs I-26…I-28, I-30…I-32: HUMAN ACCEPTED
        Final Slice-16 closeout: NOT AUTHORIZED
        Scope: docs/governance only; no product code; no 16K/9G/17/18
        Does NOT declare Slice 16 complete
