@@ -89,21 +89,44 @@ byte-identity (not a defect)
 **HA acceptance-record authority:**
 `S16-FINAL-CLOSEOUT-HA-001-ACCEPTANCE-RECORD-AUTH-001` — AUTHORIZED
 
+**HA acceptance-record tip:**
+`feab2b2778aeec2f73b8a6f64f8d82e7921ae2a6`
+
 **Technical residual verdict:** CLEAR
 
-**Final Slice-16 closeout:** HUMAN ACCEPTED
+**Final Slice-16 closeout:** HUMAN ACCEPTED / CANONICAL
 
-**Slice 16:** COMPLETE / HUMAN ACCEPTED
+**Slice 16:** COMPLETE / HUMAN ACCEPTED / CANONICAL
 
-**Canonical main promotion:** NOT AUTHORIZED / NOT YET EXECUTED
+**Canonical main promotion:** COMPLETE / EXECUTED
+
+**Main-promotion authority:**
+`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-AUTH-001` — EXECUTED
+
+**Post-promotion record authority:**
+`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-AUTH-001` — AUTHORIZED
+
+**Promotion operation:** PURE FAST-FORWARD
+
+**Pre-promotion canonical main:**
+`168af70b54fba39f0efba69100d57b41a574667f`
+
+**Promoted canonical main:**
+`feab2b2778aeec2f73b8a6f64f8d82e7921ae2a6`
+
+**Target vs canonical main after promotion:** 0 / 0
+
+**Historical pre-promotion live claim (at HA tip `feab2b2…`):**
+Canonical main promotion: NOT AUTHORIZED / NOT YET EXECUTED
+(provenance only; superseded as live status by EXECUTED promotion)
 
 **Scope:** Docs / governance only. No product code. Distinguishes: inventory
 Human acceptance (`S16-CLOSEOUT-INVENTORY-HA-001` — ACCEPTED) from
 reconciliation independent acceptance (IR-002 — ACCEPT on `fc36aa8…`) from
 Human reconciliation acceptance (`S16-CLOSEOUT-REQUIRED-RESIDUALS-RECONCILIATION-HA-001`
 — ACCEPTED on the same subject) from final closeout IR-001 ACCEPT / HA-001
-ACCEPTED on subject `c4ba1e7…`. Canonical main promotion remains
-**NOT AUTHORIZED / NOT YET EXECUTED**.
+ACCEPTED on subject `c4ba1e7…` from canonical main promotion EXECUTED at
+`feab2b2…`.
 
 **Method:** Inspect accepted canonical lineage (ROADMAP live ledger, accepted
 implementation-plan tip block, Human-accepted phase artifacts, and related
@@ -125,10 +148,10 @@ Closeout significance is classified separately.
 
 | Item | Live state | Note |
 |---|---|---|
-| Slice 16 overall | `COMPLETE / HUMAN ACCEPTED` | Final closeout HA-001 on subject `c4ba1e7…`. |
-| Slice 16 final closeout | `HUMAN ACCEPTED` (`S16-FINAL-CLOSEOUT-HA-001`) | IR-001 ACCEPT; exact subject `c4ba1e7956a6812279fdf45f28c24738856dec44`. |
-| Canonical main promotion | `NOT AUTHORIZED / NOT YET EXECUTED` | Separate pure fast-forward authority required; not performed by this record. |
-| M7 checklist “Portfolio Demo UI” | Checkable once Slice 16 Human-accepted | Tracks Slice 16 closeout; M7 closeout remains NOT AUTHORIZED. |
+| Slice 16 overall | `COMPLETE / HUMAN ACCEPTED / CANONICAL` | Final closeout HA-001 on subject `c4ba1e7…`; promoted at `feab2b2…`. |
+| Slice 16 final closeout | `HUMAN ACCEPTED / CANONICAL` (`S16-FINAL-CLOSEOUT-HA-001`) | IR-001 ACCEPT; exact subject `c4ba1e7956a6812279fdf45f28c24738856dec44`. |
+| Canonical main promotion | `COMPLETE / EXECUTED` | `S16-FINAL-CLOSEOUT-MAIN-PROMOTION-AUTH-001` — EXECUTED; pure FF `168af70…` → `feab2b2…` (0/0). |
+| M7 checklist “Portfolio Demo UI” | Checked (Slice 16 Human-accepted / canonical) | Tracks Slice 16 closeout; M7 closeout remains NOT AUTHORIZED. |
 
 ---
 
@@ -209,12 +232,20 @@ Closeout significance is classified separately.
 CLOSEOUT BLOCKED — REQUIRED RESIDUALS REMAIN
 ```
 
-**Live final-closeout Human-accepted verdict:**
+**Live post-promotion canonical verdict:**
 
 ```text
 TECHNICAL RESIDUALS CLEAR — I-26…I-32 HUMAN ACCEPTED / CLOSED;
-SLICE 16: COMPLETE / HUMAN ACCEPTED;
-FINAL SLICE-16 CLOSEOUT: HUMAN ACCEPTED;
+SLICE 16: COMPLETE / HUMAN ACCEPTED / CANONICAL;
+FINAL SLICE-16 CLOSEOUT: HUMAN ACCEPTED / CANONICAL;
+CANONICAL MAIN PROMOTION: COMPLETE / EXECUTED
+  (S16-FINAL-CLOSEOUT-MAIN-PROMOTION-AUTH-001 — EXECUTED;
+   PURE FAST-FORWARD 168af70… → feab2b2…; 0 / 0)
+```
+
+**Historical pre-promotion live claim (at HA tip `feab2b2…`, provenance only):**
+
+```text
 CANONICAL MAIN PROMOTION: NOT AUTHORIZED / NOT YET EXECUTED
 ```
 
@@ -235,9 +266,9 @@ CANONICAL MAIN PROMOTION: NOT AUTHORIZED / NOT YET EXECUTED
 - Clearing the repository lint baseline to green
 - Resuming **9G** or opening Slice **17** / **18** / M7 closeout
 
-**Explicitly not claimed / not authorized by this HA acceptance record:**
+**Explicitly not authorized by this post-promotion record:**
 
-- Canonical main promotion (NOT AUTHORIZED / NOT YET EXECUTED)
+- Another merge / main promotion / force push / history rewrite
 - Human acceptance of inventory subject `d284776…` (NOT GRANTED; superseded by `e24c11d…`)
 - Any product/source change
 - 16K / 9G / Slice 17 / 18 / M7 closeout
@@ -256,8 +287,10 @@ CANONICAL MAIN PROMOTION: NOT AUTHORIZED / NOT YET EXECUTED
 **Reconciliation:** COMPLETE / HUMAN ACCEPTED on exact subject
 `fc36aa8013a90b6355e85d97a00dc145b5802cd5` (IR-002 ACCEPT; IR-002
 acceptance-record tip `e7305f06…`; HA-001 ACCEPTED; HA acceptance-record tip
-`3b366309…`). **Final Slice-16 closeout:** HUMAN ACCEPTED
+`3b366309…`). **Final Slice-16 closeout:** HUMAN ACCEPTED / CANONICAL
 (`S16-FINAL-CLOSEOUT-IR-001` — ACCEPT; `S16-FINAL-CLOSEOUT-HA-001` — ACCEPTED;
-exact subject `c4ba1e7956a6812279fdf45f28c24738856dec44`). **Slice 16:**
-COMPLETE / HUMAN ACCEPTED. **Canonical main promotion:** NOT AUTHORIZED /
-NOT YET EXECUTED.
+exact subject `c4ba1e7956a6812279fdf45f28c24738856dec44`; HA acceptance-record
+tip `feab2b2778aeec2f73b8a6f64f8d82e7921ae2a6`). **Slice 16:** COMPLETE /
+HUMAN ACCEPTED / CANONICAL. **Canonical main promotion:** COMPLETE / EXECUTED
+(`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-AUTH-001` — EXECUTED; pure FF
+`168af70b…` → `feab2b2…`; 0 / 0).

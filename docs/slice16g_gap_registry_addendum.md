@@ -77,18 +77,30 @@ Human acceptance: 16H-HA-001 — ACCEPTED
 Exact Human-accepted subject: 01a4a984d438d5bb7c4e3d0fa2f5bb908e0b4a10
 9G: DEFERRED / NOT AUTHORIZED
 16K: DEFERRED / NOT REQUIRED / NOT AUTHORIZED
-Slice 16: COMPLETE / HUMAN ACCEPTED
-Final Slice-16 closeout: HUMAN ACCEPTED
+Slice 16: COMPLETE / HUMAN ACCEPTED / CANONICAL
+Final Slice-16 closeout: HUMAN ACCEPTED / CANONICAL
   Authority: S16-FINAL-CLOSEOUT-AUTH-001 — AUTHORIZED
   Exact Human-accepted subject: c4ba1e7956a6812279fdf45f28c24738856dec44
   Independent review: S16-FINAL-CLOSEOUT-IR-001 — ACCEPT
   Human acceptance: S16-FINAL-CLOSEOUT-HA-001 — ACCEPTED
   HA acceptance-record authority:
     S16-FINAL-CLOSEOUT-HA-001-ACCEPTANCE-RECORD-AUTH-001 — AUTHORIZED
+  HA acceptance-record tip: feab2b2778aeec2f73b8a6f64f8d82e7921ae2a6
   Exact final-closeout base: 3b36630952f34a147c3c8e82fdec7c0649620c0b
   Technical residual verdict: CLEAR
   I-26…I-32: HUMAN ACCEPTED / CLOSED
-  Canonical main promotion: NOT AUTHORIZED / NOT YET EXECUTED
+  Canonical main promotion: COMPLETE / EXECUTED
+  Main-promotion authority:
+    S16-FINAL-CLOSEOUT-MAIN-PROMOTION-AUTH-001 — EXECUTED
+  Post-promotion record authority:
+    S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-AUTH-001 — AUTHORIZED
+  Promotion operation: PURE FAST-FORWARD
+  Pre-promotion canonical main: 168af70b54fba39f0efba69100d57b41a574667f
+  Promoted canonical main: feab2b2778aeec2f73b8a6f64f8d82e7921ae2a6
+  Target vs canonical main after promotion: 0 / 0
+  Historical pre-promotion live claim (at HA tip feab2b2…):
+    Canonical main promotion: NOT AUTHORIZED / NOT YET EXECUTED
+    (provenance only)
 Slice 17: NOT AUTHORIZED
 Slice 18: NOT AUTHORIZED
 M7 closeout: NOT AUTHORIZED

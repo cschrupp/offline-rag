@@ -263,14 +263,29 @@ Slice-16 closeout inventory: HUMAN ACCEPTED
   Human acceptance: S16-FINAL-CLOSEOUT-HA-001 — ACCEPTED
   HA acceptance-record authority:
     S16-FINAL-CLOSEOUT-HA-001-ACCEPTANCE-RECORD-AUTH-001 — AUTHORIZED
-  Final Slice-16 closeout: HUMAN ACCEPTED
+  Final Slice-16 closeout: HUMAN ACCEPTED / CANONICAL
   Technical residual verdict: CLEAR
   Repairs I-26…I-32: HUMAN ACCEPTED / CLOSED
-  Canonical main promotion: NOT AUTHORIZED / NOT YET EXECUTED
+  HA acceptance-record tip:
+    feab2b2778aeec2f73b8a6f64f8d82e7921ae2a6
+  Canonical main promotion: COMPLETE / EXECUTED
+  Main-promotion authority:
+    S16-FINAL-CLOSEOUT-MAIN-PROMOTION-AUTH-001 — EXECUTED
+  Post-promotion record authority:
+    S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-AUTH-001 — AUTHORIZED
+  Promotion operation: PURE FAST-FORWARD
+  Pre-promotion canonical main:
+    168af70b54fba39f0efba69100d57b41a574667f
+  Promoted canonical main:
+    feab2b2778aeec2f73b8a6f64f8d82e7921ae2a6
+  Target vs canonical main after promotion: 0 / 0
+  Historical pre-promotion live claim (at HA tip feab2b2…):
+    Canonical main promotion: NOT AUTHORIZED / NOT YET EXECUTED
+    (provenance only)
   Scope: docs/governance only; no product code; no 16K/9G/17/18
 9G: DEFERRED / NOT AUTHORIZED
 16K: DEFERRED / NOT REQUIRED / NOT AUTHORIZED
-SLICE 16: COMPLETE / HUMAN ACCEPTED
+SLICE 16: COMPLETE / HUMAN ACCEPTED / CANONICAL
 BASELINE: 1610f9282d1edbd4dfc8ae76d7644a1b9ea4e75e
 ```
 
@@ -412,10 +427,10 @@ COMPLETE / ACCEPTED**. **16H** is **COMPLETE / ACCEPTED** (16H-IR-003
 **ACCEPT**; 16H-HA-001 **ACCEPTED**; exact subject
 `01a4a984d438d5bb7c4e3d0fa2f5bb908e0b4a10`). **9G** remains
 **DEFERRED / NOT AUTHORIZED**. Slice 16 overall is **COMPLETE /
-HUMAN ACCEPTED** (`S16-FINAL-CLOSEOUT-IR-001` — ACCEPT;
+HUMAN ACCEPTED / CANONICAL** (`S16-FINAL-CLOSEOUT-IR-001` — ACCEPT;
 `S16-FINAL-CLOSEOUT-HA-001` — ACCEPTED; exact subject `c4ba1e7…`;
 technical residual verdict **CLEAR**; canonical main promotion
-**NOT AUTHORIZED / NOT YET EXECUTED**).
+**COMPLETE / EXECUTED** at `feab2b2…`).
 
 ---
 
@@ -899,7 +914,7 @@ GAP-16G-02:
   Independent review: 16H-IR-003 — ACCEPT
   Human acceptance: 16H-HA-001 — ACCEPTED
   Exact Human-accepted subject: 01a4a984d438d5bb7c4e3d0fa2f5bb908e0b4a10
-SLICE 16: COMPLETE / HUMAN ACCEPTED
+SLICE 16: COMPLETE / HUMAN ACCEPTED / CANONICAL
 Authority: 16G-D0-AUTH-001 / Human acceptance ACCEPTED
 ```
 
@@ -1088,7 +1103,7 @@ GAP-16G-02:
   Independent review: 16H-IR-003 — ACCEPT
   Human acceptance: 16H-HA-001 — ACCEPTED
   Exact Human-accepted subject: 01a4a984d438d5bb7c4e3d0fa2f5bb908e0b4a10
-SLICE 16: COMPLETE / HUMAN ACCEPTED
+SLICE 16: COMPLETE / HUMAN ACCEPTED / CANONICAL
 SLICE 17: NOT AUTHORIZED
 SLICE 18: NOT AUTHORIZED
 9G: DEFERRED / NOT AUTHORIZED
@@ -1129,7 +1144,7 @@ COMPLETE / ACCEPTED**. **16H** is **COMPLETE / ACCEPTED** (16H-IR-003
 **ACCEPT**; 16H-HA-001 **ACCEPTED**; exact subject
 `01a4a984d438d5bb7c4e3d0fa2f5bb908e0b4a10`). **9G** remains
 **DEFERRED / NOT AUTHORIZED**. Slice 16 overall is **COMPLETE /
-HUMAN ACCEPTED** (`S16-FINAL-CLOSEOUT-IR-001` — ACCEPT;
+HUMAN ACCEPTED / CANONICAL** (`S16-FINAL-CLOSEOUT-IR-001` — ACCEPT;
 `S16-FINAL-CLOSEOUT-HA-001` — ACCEPTED; exact subject `c4ba1e7…`;
 technical residual verdict **CLEAR**; canonical main promotion
-**NOT AUTHORIZED / NOT YET EXECUTED**).
+**COMPLETE / EXECUTED** at `feab2b2…`).
