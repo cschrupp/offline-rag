@@ -24,7 +24,12 @@ from offline_rag.core.ids import (
     embedding_text_hash,
     new_execution_id,
 )
-from offline_rag.core.observability import ObservabilityReporter, report_document_phase
+from offline_rag.core.observability import (
+    ActivityReporter,
+    ObservabilityReporter,
+    report_document_activity,
+    report_document_phase,
+)
 from offline_rag.core.progress import ProgressReporter, report_progress
 from offline_rag.dense.backend import DenseIndexBackend, DensePointRecord
 from offline_rag.dense.cache import (
@@ -186,6 +191,7 @@ def _ensure_embeddings(
     emb_cfg_hash: str,
     document_titles: dict[str, str | None],
     on_progress: ProgressReporter | None = None,
+    on_document_activity: ActivityReporter | None = None,
     control_checkpoint: Callable[[str], None] | None = None,
 ) -> tuple[list[tuple[Chunk, str, EmbeddingArtifact]], int, int, int]:
     """Return materialized (chunk, artifact_id, embedding), generated/reused/failed counts."""
@@ -244,18 +250,34 @@ def _ensure_embeddings(
         if control_checkpoint is not None:
             control_checkpoint(f"dense_batch_{start}")
         batch = pending_chunks[start : start + batch_size]
+        # Truthful current activity = documents contributing to this batch only.
+        batch_doc_ids = sorted({item[0].document_id for item in batch})
+        report_document_activity(
+            on_document_activity,
+            document_ids=batch_doc_ids,
+            stage="dense_batch",
+        )
         texts = [item[2] for item in batch]
         try:
             vectors = embedder.embed_documents(texts)
         except Exception as exc:
             failed += len(batch)
+            report_document_activity(
+                on_document_activity, document_ids=(), stage="dense_batch"
+            )
             raise IndexingError(f"embedding generation failed: {exc}") from exc
         if len(vectors) != len(batch):
             failed += len(batch)
+            report_document_activity(
+                on_document_activity, document_ids=(), stage="dense_batch"
+            )
             raise IndexingError("embedder returned unexpected batch size")
         for (chunk, chunk_artifact_id, emb_text, emb_id), vector in zip(batch, vectors, strict=True):
             if len(vector) != embedder.dimension:
                 failed += 1
+                report_document_activity(
+                    on_document_activity, document_ids=(), stage="dense_batch"
+                )
                 raise IndexingError(
                     f"embedding dimension mismatch for {chunk.chunk_id}: "
                     f"{len(vector)} != {embedder.dimension}"
@@ -276,6 +298,9 @@ def _ensure_embeddings(
             write_embedding_artifact(settings.paths.embeddings, artifact)
             generated += 1
             results.append((chunk, chunk_artifact_id, artifact))
+        report_document_activity(
+            on_document_activity, document_ids=(), stage="dense_batch"
+        )
         report_progress(
             on_progress,
             step="embedding_chunks",
@@ -337,6 +362,7 @@ def run_indexing(
     backend: DenseIndexBackend | None = None,
     on_progress: ProgressReporter | None = None,
     on_document_phase: ObservabilityReporter | None = None,
+    on_document_activity: ActivityReporter | None = None,
     control_checkpoint: Callable[[str], None] | None = None,
 ) -> IndexingReport:
     started = datetime.now(tz=UTC)
@@ -548,7 +574,7 @@ def run_indexing(
             entry.document_id: entry.source_name for entry in corpus_manifest.documents
         }
         document_ids = {chunk.document_id for chunk, _ in jobs}
-        # Dense batches may span multiple documents; report the full active set.
+        # Phase progression only — current activity comes from batch membership.
         for document_id in sorted(document_ids):
             report_document_phase(
                 on_document_phase,
@@ -556,6 +582,9 @@ def run_indexing(
                 source_name=source_names.get(document_id, document_id),
                 phase="indexing",
             )
+        report_document_activity(
+            on_document_activity, document_ids=(), stage="dense_batch"
+        )
         try:
             document_titles = resolve_document_titles_from_source_names(
                 document_ids=document_ids,
@@ -574,6 +603,7 @@ def run_indexing(
             emb_cfg_hash=emb_cfg_hash,
             document_titles=document_titles,
             on_progress=on_progress,
+            on_document_activity=on_document_activity,
             control_checkpoint=control_checkpoint,
         )
         generation_completed = datetime.now(tz=UTC)
@@ -634,11 +664,14 @@ def run_indexing(
             )
 
         completed = datetime.now(tz=UTC)
+        from offline_rag.dense.embedder import observe_embedder_execution_facts
+
         dense_device = getattr(
             active_embedder, "resolved_device", getattr(active_embedder, "device", None)
         )
-        dense_dtype = getattr(active_embedder, "dtype", None)
-        dense_attention = getattr(active_embedder, "attention_backend", None)
+        observed = observe_embedder_execution_facts(active_embedder)
+        dense_dtype = observed.get("dtype")
+        dense_attention = observed.get("attention_backend")
         manifest = DenseIndexManifest(
             index_id=index_id,
             corpus_id=corpus_state.current_corpus_id,

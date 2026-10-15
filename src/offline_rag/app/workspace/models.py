@@ -7,6 +7,7 @@ import json
 import uuid
 from datetime import UTC, datetime
 from enum import StrEnum
+from collections.abc import Sequence
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -134,17 +135,9 @@ class ManagedOperationDocumentPhase(StrEnum):
     CHUNKED = "chunked"
     INDEXING = "indexing"
     INDEXED = "indexed"
+    REMOVED = "removed"
     FAILED = "failed"
     REQUIRES_OCR = "requires_ocr"
-
-
-_ACTIVE_DOCUMENT_PHASES = frozenset(
-    {
-        ManagedOperationDocumentPhase.PARSING,
-        ManagedOperationDocumentPhase.CHUNKING,
-        ManagedOperationDocumentPhase.INDEXING,
-    }
-)
 
 
 class ManagedOperationWorklistDocument(BaseModel):
@@ -220,6 +213,7 @@ class ManagedOperationStageDurations(BaseModel):
     dense_materialization_ms: int | None = Field(default=None, ge=0)
     lexical_ms: int | None = Field(default=None, ge=0)
     publication_ms: int | None = Field(default=None, ge=0)
+    finalization_ms: int | None = Field(default=None, ge=0)
     total_ms: int | None = Field(default=None, ge=0)
 
 
@@ -255,6 +249,7 @@ class ManagedOperationMetrics(BaseModel):
 _TERMINAL_DOCUMENT_PHASES = frozenset(
     {
         ManagedOperationDocumentPhase.INDEXED,
+        ManagedOperationDocumentPhase.REMOVED,
         ManagedOperationDocumentPhase.FAILED,
         ManagedOperationDocumentPhase.REQUIRES_OCR,
     }
@@ -263,8 +258,15 @@ _TERMINAL_DOCUMENT_PHASES = frozenset(
 
 def build_managed_operation_worklist(
     documents: list[ManagedOperationWorklistDocument],
+    *,
+    active_document_ids: Sequence[str] | None = None,
 ) -> ManagedOperationWorklist:
-    """Recompute bounded worklist aggregates from membership + phases."""
+    """Recompute bounded worklist aggregates from membership + phases.
+
+    ``active_documents`` is the current execution activity set (0..N), tracked
+    separately from per-document phase. Phase ``indexing`` alone does not imply
+    current activity.
+    """
     pending = sum(
         1 for item in documents if item.phase is ManagedOperationDocumentPhase.PENDING
     )
@@ -272,9 +274,15 @@ def build_managed_operation_worklist(
     remaining = sum(
         1 for item in documents if item.phase not in _TERMINAL_DOCUMENT_PHASES
     )
-    active = [
-        item for item in documents if item.phase in _ACTIVE_DOCUMENT_PHASES
-    ]
+    by_id = {item.document_id: item for item in documents}
+    if active_document_ids is None:
+        active: list[ManagedOperationWorklistDocument] = []
+    else:
+        active = [
+            by_id[doc_id]
+            for doc_id in active_document_ids
+            if doc_id in by_id
+        ]
     return ManagedOperationWorklist(
         total_document_count=len(documents),
         pending_count=pending,

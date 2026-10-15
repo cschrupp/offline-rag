@@ -105,6 +105,10 @@ class FakeEmbedder:
     def embed_query(self, text: str) -> list[float]:
         return self._embed_one(text)
 
+    def observe_execution_facts(self) -> dict[str, str | None]:
+        """Fake backend has no trustworthy dtype/attention — leave absent."""
+        return {"dtype": None, "attention_backend": None}
+
     def _embed_one(self, text: str) -> list[float]:
         vector = _digest_vector(text, dimension=self.dimension)
         if self.normalize:
@@ -200,6 +204,39 @@ class SentenceTransformersEmbedder:
                 f"{MODEL_QUERY_PROMPT_V1}: prompts[{MODEL_QUERY_PROMPT_NAME!r}] "
                 f"must be a string (got {type(value).__name__})"
             )
+
+    def observe_execution_facts(self) -> dict[str, str | None]:
+        """Introspect loaded runtime dtype/attention when safely available.
+
+        Does not change precision, attention implementation, or model identity.
+        Absence is valid when the backend does not expose a trustworthy value.
+        """
+        facts: dict[str, str | None] = {"dtype": None, "attention_backend": None}
+        try:
+            model = self._load()
+        except Exception:  # noqa: BLE001 — observation must not alter outcomes
+            return facts
+        try:
+            first = model[0] if len(model) else None
+            auto_model = getattr(first, "auto_model", None)
+            if auto_model is None:
+                return facts
+            param = next(auto_model.parameters(), None)
+            if param is not None:
+                dtype = getattr(param, "dtype", None)
+                if dtype is not None:
+                    text = str(dtype)
+                    facts["dtype"] = text.removeprefix("torch.")
+            cfg = getattr(auto_model, "config", None)
+            if cfg is not None:
+                attention = getattr(cfg, "_attn_implementation", None)
+                if attention is None:
+                    attention = getattr(cfg, "attn_implementation", None)
+                if attention is not None:
+                    facts["attention_backend"] = str(attention)
+        except Exception:  # noqa: BLE001
+            return facts
+        return facts
 
     def embed_documents(self, texts: Sequence[str]) -> list[list[float]]:
         if not texts:
@@ -319,3 +356,29 @@ def embedder_runtime_view(embedder: object) -> dict[str, object | None]:
         "torch_cuda_build": getattr(embedder, "torch_cuda_build", None),
         "selection_reason": getattr(embedder, "device_selection_reason", None),
     }
+
+
+def observe_embedder_execution_facts(embedder: object) -> dict[str, str | None]:
+    """Best-effort dtype/attention facts; never invent FP32 or attention."""
+    facts: dict[str, str | None] = {"dtype": None, "attention_backend": None}
+    observe = getattr(embedder, "observe_execution_facts", None)
+    if callable(observe):
+        try:
+            observed = observe()
+        except Exception:  # noqa: BLE001
+            return facts
+        if isinstance(observed, dict):
+            dtype = observed.get("dtype")
+            attention = observed.get("attention_backend")
+            if dtype is not None:
+                facts["dtype"] = str(dtype)
+            if attention is not None:
+                facts["attention_backend"] = str(attention)
+            return facts
+    dtype = getattr(embedder, "dtype", None)
+    attention = getattr(embedder, "attention_backend", None)
+    if dtype is not None:
+        facts["dtype"] = str(dtype)
+    if attention is not None:
+        facts["attention_backend"] = str(attention)
+    return facts

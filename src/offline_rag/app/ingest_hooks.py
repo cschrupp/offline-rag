@@ -6,7 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from offline_rag.core.observability import ObservabilityReporter
+from offline_rag.core.observability import ActivityReporter, ObservabilityReporter
 from offline_rag.core.progress import ProgressReporter
 
 
@@ -19,6 +19,7 @@ class ProductIngestHooks:
     after_stage: Callable[[str], None] | None = None
     # 16I: optional fine-grained progress reporter for pipeline loops.
     on_progress: ProgressReporter | None = None
-    # 16K-B: optional stage-report + per-document phase observability.
+    # 16K-B: optional stage-report + per-document phase/activity observability.
     after_stage_report: Callable[[str, object], None] | None = None
     on_document_phase: ObservabilityReporter | None = None
+    on_document_activity: ActivityReporter | None = None

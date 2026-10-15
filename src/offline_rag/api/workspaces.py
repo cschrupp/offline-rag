@@ -249,6 +249,7 @@ async def _launch_scientific_mutation(
     worker_fn: Any,
     spool: WorkspaceUploadSpool | None = None,
     require_source_id: str | None = None,
+    uploaded_raw_bytes: int | None = None,
 ) -> JSONResponse:
     """Reserve durable op (and spool) before capacity; return 202 only then."""
     runtime.require_ready()
@@ -260,6 +261,7 @@ async def _launch_scientific_mutation(
             expected_revision=expected_revision,
             payload=payload,
             require_source_id=require_source_id,
+            uploaded_raw_bytes=uploaded_raw_bytes,
         )
     except Exception:
         if spool is not None:
@@ -426,6 +428,7 @@ async def add_sources(
         payload=payload,
         worker_fn=worker,
         spool=spool,
+        uploaded_raw_bytes=sum(item.size_bytes for item in spool.files),
     )
 
 
@@ -488,6 +491,7 @@ async def replace_source(
         worker_fn=worker,
         spool=spool,
         require_source_id=source_id,
+        uploaded_raw_bytes=sum(item.size_bytes for item in spool.files),
     )
 
 
@@ -553,6 +557,7 @@ async def delete_source(
         worker_fn=worker,
         spool=None,
         require_source_id=source_id,
+        uploaded_raw_bytes=None,
     )
 
 

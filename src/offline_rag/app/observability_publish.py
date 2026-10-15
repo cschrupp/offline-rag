@@ -13,12 +13,12 @@ from offline_rag.app.workspace.models import (
     ManagedOperationDocumentPhase,
     ManagedOperationMetrics,
     ManagedOperationStageDurations,
+    ManagedOperationWorklist,
     ManagedOperationWorklistDocument,
-    SourceVersionRecord,
     build_managed_operation_worklist,
 )
 from offline_rag.app.workspace.mutation_ops import ManagedOperationStore
-from offline_rag.core.observability import DocumentPhaseEvent
+from offline_rag.core.observability import DocumentActivityEvent, DocumentPhaseEvent
 from offline_rag.domain.chunking import ChunkingReport, DocumentChunkStatus
 from offline_rag.domain.indexing import IndexingReport, LexicalIndexingReport
 from offline_rag.domain.ingestion import FileIngestionStatus, IngestionReport
@@ -32,6 +32,7 @@ _PHASE_RANK = {
     ManagedOperationDocumentPhase.CHUNKED: 4,
     ManagedOperationDocumentPhase.INDEXING: 5,
     ManagedOperationDocumentPhase.INDEXED: 6,
+    ManagedOperationDocumentPhase.REMOVED: 6,
     ManagedOperationDocumentPhase.FAILED: 100,
     ManagedOperationDocumentPhase.REQUIRES_OCR: 100,
 }
@@ -56,48 +57,45 @@ class DurableObservabilityPublisher:
     _documents: dict[str, ManagedOperationWorklistDocument] = field(
         default_factory=dict, init=False, repr=False
     )
+    _active_ids: list[str] = field(default_factory=list, init=False, repr=False)
     _metrics: ManagedOperationMetrics = field(
         default_factory=ManagedOperationMetrics, init=False, repr=False
     )
     _stage_started: dict[str, float] = field(default_factory=dict, init=False, repr=False)
     _stage_ms: dict[str, int] = field(default_factory=dict, init=False, repr=False)
     _op_started: float | None = field(default=None, init=False, repr=False)
-    _dense_generation_started: float | None = field(default=None, init=False, repr=False)
+    _finalization_started: float | None = field(default=None, init=False, repr=False)
     _membership_frozen: bool = field(default=False, init=False, repr=False)
     write_count: int = field(default=0, init=False)
 
     def _mono(self) -> float:
         return self.clock() if self.clock is not None else time.monotonic()
 
-    def initialize(
+    def freeze_admission(
         self,
         *,
-        desired: Sequence[SourceVersionRecord],
+        documents: Sequence[ManagedOperationWorklistDocument],
+        requested_document_count: int,
+        uploaded_raw_bytes: int | None,
         pre_active_source_count: int,
+        post_active_source_count: int,
     ) -> None:
-        """Freeze worklist membership and seed workload metrics at admission."""
+        """Freeze worklist membership and seed request/reconstruction metrics.
+
+        Request metrics (requested_document_count / uploaded_raw_bytes) are
+        independent of worklist ``total_document_count`` (reconstruction set).
+        """
         if self._membership_frozen:
             return
-        docs: list[ManagedOperationWorklistDocument] = []
-        uploaded = 0
-        for item in desired:
-            doc_id = item.document_id or item.source_id
-            docs.append(
-                ManagedOperationWorklistDocument(
-                    document_id=doc_id,
-                    display_name=item.display_name,
-                    phase=ManagedOperationDocumentPhase.PENDING,
-                )
-            )
-            if item.byte_size is not None:
-                uploaded += item.byte_size
+        docs = list(documents)
         self._documents = {item.document_id: item for item in docs}
+        self._active_ids = []
         self._membership_frozen = True
-        self._op_started = self._mono()
         self._metrics = ManagedOperationMetrics(
-            requested_document_count=len(docs),
+            requested_document_count=requested_document_count,
+            uploaded_raw_bytes=uploaded_raw_bytes,
             pre_active_source_count=pre_active_source_count,
-            uploaded_raw_bytes=uploaded,
+            post_active_source_count=post_active_source_count,
             stage_durations=ManagedOperationStageDurations(),
         )
         self._persist()
@@ -111,21 +109,26 @@ class DurableObservabilityPublisher:
         """Resume publisher state from an already-admitted durable worklist."""
         if self._membership_frozen:
             return
-        self._documents = {
-            item.document_id: item for item in worklist.documents
-        }
+        self._documents = {item.document_id: item for item in worklist.documents}
+        self._active_ids = [item.document_id for item in worklist.active_documents]
         self._membership_frozen = True
+        # Measured execution starts when the worker resumes scientific work.
         self._op_started = self._mono()
         self._metrics = metrics or ManagedOperationMetrics(
-            requested_document_count=worklist.total_document_count,
+            requested_document_count=None,
             stage_durations=ManagedOperationStageDurations(),
         )
+
+    def mark_execution_started(self) -> None:
+        """Start the total-duration clock at worker scientific execution."""
+        if self._op_started is None:
+            self._op_started = self._mono()
 
     def before_stage(self, stage: str) -> None:
         self._stage_started[stage] = self._mono()
         if stage == "dense":
-            # Dense batches may span many documents; mark the full ready set active.
-            self._dense_generation_started = self._mono()
+            # Phase advances to indexing for the ready set; activity stays empty
+            # until a real dense batch reports membership.
             self._advance_all_ready_for(
                 from_phases={
                     ManagedOperationDocumentPhase.CHUNKED,
@@ -134,8 +137,8 @@ class DurableObservabilityPublisher:
                 },
                 to_phase=ManagedOperationDocumentPhase.INDEXING,
             )
+            self._active_ids = []
             self._persist()
-        # Parse/chunk phases are driven by per-document events for truthful 0..N activity.
 
     def after_stage(self, stage: str) -> None:
         started = self._stage_started.pop(stage, None)
@@ -143,23 +146,13 @@ class DurableObservabilityPublisher:
             elapsed = max(0, int((self._mono() - started) * 1000))
             self._stage_ms[stage] = elapsed
         if stage == "publish":
-            self._metrics = self._metrics.model_copy(
-                update={
-                    "stage_durations": self._durations_model(),
-                    "post_active_source_count": self._metrics.requested_document_count,
-                }
+            # Low-level publication call only; finalization is measured separately.
+            durations = self._durations_model().model_copy(
+                update={"publication_ms": self._stage_ms.get("publish")}
             )
-            if self._op_started is not None:
-                total_ms = max(0, int((self._mono() - self._op_started) * 1000))
-                durations = self._metrics.stage_durations or ManagedOperationStageDurations()
-                self._metrics = self._metrics.model_copy(
-                    update={
-                        "stage_durations": durations.model_copy(
-                            update={"total_ms": total_ms, "publication_ms": self._stage_ms.get("publish")}
-                        )
-                    }
-                )
-            # Mark non-failed documents indexed/prepared at publish completion.
+            self._metrics = self._metrics.model_copy(
+                update={"stage_durations": durations}
+            )
             for doc_id, item in list(self._documents.items()):
                 if item.phase not in {
                     ManagedOperationDocumentPhase.FAILED,
@@ -168,7 +161,56 @@ class DurableObservabilityPublisher:
                     self._documents[doc_id] = item.model_copy(
                         update={"phase": ManagedOperationDocumentPhase.INDEXED}
                     )
+            self._active_ids = []
+            self._finalization_started = self._mono()
         self._persist()
+
+    def complete_lifecycle(self) -> None:
+        """Persist final timing through lifecycle bookkeeping before terminalization."""
+        if not self._membership_frozen:
+            return
+        finalization_ms = None
+        if self._finalization_started is not None:
+            finalization_ms = max(
+                0, int((self._mono() - self._finalization_started) * 1000)
+            )
+        total_ms = None
+        if self._op_started is not None:
+            total_ms = max(0, int((self._mono() - self._op_started) * 1000))
+        durations = self._durations_model().model_copy(
+            update={
+                "finalization_ms": finalization_ms,
+                "total_ms": total_ms,
+                "publication_ms": self._stage_ms.get(
+                    "publish",
+                    (self._metrics.stage_durations.publication_ms
+                     if self._metrics.stage_durations is not None
+                     else None),
+                ),
+            }
+        )
+        self._active_ids = []
+        self._metrics = self._metrics.model_copy(update={"stage_durations": durations})
+        self._persist()
+
+    def complete_empty_lifecycle(self) -> None:
+        """EMPTY/Remove path: publication+finalization without ingest stages."""
+        if not self._membership_frozen:
+            return
+        if self._op_started is None:
+            self._op_started = self._mono()
+        # Treat EMPTY publication/finalization as combined finalization span.
+        if self._finalization_started is None:
+            self._finalization_started = self._op_started
+        for doc_id, item in list(self._documents.items()):
+            if item.phase not in {
+                ManagedOperationDocumentPhase.FAILED,
+                ManagedOperationDocumentPhase.REQUIRES_OCR,
+            }:
+                self._documents[doc_id] = item.model_copy(
+                    update={"phase": ManagedOperationDocumentPhase.REMOVED}
+                )
+        self.complete_lifecycle()
 
     def after_stage_report(self, stage: str, report: object) -> None:
         try:
@@ -184,14 +226,25 @@ class DurableObservabilityPublisher:
             return
         self._persist()
 
-    def set_dense_execution(self, execution: ManagedOperationDenseExecution) -> None:
-        self._metrics = self._metrics.model_copy(update={"dense_execution": execution})
-        self._persist()
-
     def __call__(self, event: DocumentPhaseEvent) -> None:
         """Document-phase reporter entrypoint (exception-isolated by caller too)."""
         try:
             self._apply_document_phase(event)
+            self._persist()
+        except Exception:  # noqa: BLE001
+            return
+
+    def on_activity(self, event: DocumentActivityEvent) -> None:
+        """Current-activity reporter; independent of document phase."""
+        try:
+            # Preserve order; drop unknowns and duplicates.
+            seen: set[str] = set()
+            ordered: list[str] = []
+            for doc_id in event.document_ids:
+                if doc_id in self._documents and doc_id not in seen:
+                    seen.add(doc_id)
+                    ordered.append(doc_id)
+            self._active_ids = ordered
             self._persist()
         except Exception:  # noqa: BLE001
             return
@@ -205,7 +258,6 @@ class DurableObservabilityPublisher:
         doc_id = event.document_id
         item = self._documents.get(doc_id)
         if item is None:
-            # Match by display name when pipeline keys by source_name only briefly.
             for key, existing in self._documents.items():
                 if existing.display_name == event.source_name:
                     doc_id = key
@@ -316,7 +368,6 @@ class DurableObservabilityPublisher:
             and dense_gen_ms > 0
         ):
             chunks_per_sec = (report.embeddings_generated * 1000.0) / float(dense_gen_ms)
-        # model_input_tokens_per_sec omitted unless a truthful measurement exists.
         token_rate = report.metadata.get("model_input_tokens_per_sec")
         tokens_per_sec = float(token_rate) if isinstance(token_rate, (int, float)) else None
         execution = self._metrics.dense_execution
@@ -346,6 +397,7 @@ class DurableObservabilityPublisher:
                 "stage_durations": durations,
             }
         )
+        self._active_ids = []
         for doc_id, item in list(self._documents.items()):
             if item.phase is ManagedOperationDocumentPhase.INDEXING:
                 self._documents[doc_id] = item.model_copy(
@@ -382,7 +434,10 @@ class DurableObservabilityPublisher:
     def _persist(self) -> None:
         if not self._membership_frozen:
             return
-        worklist = build_managed_operation_worklist(list(self._documents.values()))
+        worklist = build_managed_operation_worklist(
+            list(self._documents.values()),
+            active_document_ids=self._active_ids,
+        )
         try:
             self.operations.update_metrics(
                 self.workspace_id,
@@ -406,6 +461,9 @@ class DurableObservabilityPublisher:
     def snapshot_worklist_docs(self) -> list[ManagedOperationWorklistDocument]:
         return list(self._documents.values())
 
+    def snapshot_active_ids(self) -> list[str]:
+        return list(self._active_ids)
+
 
 def dense_execution_from_runtime(
     *,
@@ -413,17 +471,16 @@ def dense_execution_from_runtime(
     batch_size: int | None,
 ) -> ManagedOperationDenseExecution:
     """Capture observed dense execution facts from the live embedder/settings."""
+    from offline_rag.dense.embedder import observe_embedder_execution_facts
+
     device = getattr(embedder, "resolved_device", None) or getattr(embedder, "device", None)
-    dtype = getattr(embedder, "dtype", None)
-    if dtype is not None and not isinstance(dtype, str):
-        dtype = str(dtype)
-    attention = getattr(embedder, "attention_backend", None)
+    observed = observe_embedder_execution_facts(embedder)
     dimension = getattr(embedder, "dimension", None)
     return ManagedOperationDenseExecution(
         device=str(device) if device is not None else None,
-        dtype=dtype,
+        dtype=observed.get("dtype"),
         batch_size=batch_size,
-        attention_backend=str(attention) if attention is not None else None,
+        attention_backend=observed.get("attention_backend"),
         embedding_dimension=int(dimension) if isinstance(dimension, int) else None,
     )
 

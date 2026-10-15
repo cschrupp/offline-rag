@@ -39,11 +39,13 @@ from offline_rag.app.workspace.history import SourceHistoryStore
 from offline_rag.app.workspace.journal import EmptyTransitionCoordinator
 from offline_rag.app.workspace.leases import WorkspaceMutationLease
 from offline_rag.app.workspace.models import (
+    ManagedOperationDocumentPhase,
     ManagedOperationKind,
     ManagedOperationRecord,
     ManagedOperationResult,
     ManagedOperationSafeError,
     ManagedOperationStatus,
+    ManagedOperationWorklistDocument,
     OperationProgressStage,
     SourceVersionRecord,
     WorkspaceRecord,
@@ -474,14 +476,15 @@ class WorkspaceLifecycleService:
         expected_revision: WorkspaceRevision,
         payload: dict[str, Any],
         require_source_id: str | None = None,
+        uploaded_raw_bytes: int | None = None,
     ) -> tuple[ManagedOperationRecord, OperationHandle | None]:
         """Strict idempotency preflight before ingest capacity / worker launch.
 
-        Ordering (F3/F8):
+        Ordering (F3/F8 + 16K-B R3):
         1. existing matching key → return it (even if If-Match is now stale)
         2. conflicting key → idempotency_conflict
         3. NEW key → validate workspace/revision/source preconditions
-        4. reserve + admit + launch
+        4. reserve + freeze durable worklist/metrics → admit → launch
         """
         self.runtime.require_ready()
         from offline_rag.app.workspace.models import canonical_operation_fingerprint
@@ -542,6 +545,16 @@ class WorkspaceLifecycleService:
             )
             if not created:
                 return operation, None
+            # Durable admitted worklist before capacity/202 (16K-B R3).
+            self._freeze_admission_observability(
+                workspace_id=workspace_id,
+                operation_id=operation.operation_id,
+                kind=kind,
+                payload=payload,
+                record=record,
+                uploaded_raw_bytes=uploaded_raw_bytes,
+                lease=lease,
+            )
             try:
                 # Detached 202 scientific mutations: managed-ingest admission
                 # (ingest capacity + drain) without request-style whole-job deadline.
@@ -556,7 +569,7 @@ class WorkspaceLifecycleService:
                     lease=lease,
                 )
                 raise
-            return operation, handle
+            return self.operations.get(workspace_id, operation.operation_id), handle
         finally:
             lease.release()
 
@@ -955,6 +968,18 @@ class WorkspaceLifecycleService:
                 record = self.store.get(workspace_id)
                 if record.revision != expected_revision:
                     raise _conflict(workspace_id, "revision_conflict")
+                # Direct/non-HTTP callers may not have reserved via API; freeze now.
+                if self.operations.get(workspace_id, operation_id).worklist is None:
+                    uploaded = self._uploaded_bytes_from_payload(kind, payload)
+                    self._freeze_admission_observability(
+                        workspace_id=workspace_id,
+                        operation_id=operation_id,
+                        kind=kind,
+                        payload=payload,
+                        record=record,
+                        uploaded_raw_bytes=uploaded,
+                        lease=lease,
+                    )
                 resolved = plan(record)
                 if resolved.desired:
                     return self._execute_publication(
@@ -1023,23 +1048,11 @@ class WorkspaceLifecycleService:
             lease=lease,
         )
 
-        observability = DurableObservabilityPublisher(
-            operations=self.operations,
+        observability = self._observability_for_worker(
             workspace_id=workspace_id,
             operation_id=operation_id,
             lease=lease,
         )
-        # Freeze worklist membership at admission against the desired active set.
-        existing = self.operations.get(workspace_id, operation_id)
-        if existing.worklist is None:
-            observability.initialize(
-                desired=plan.desired,
-                pre_active_source_count=len(self._active_sources(record)),
-            )
-        else:
-            observability.hydrate(
-                worklist=existing.worklist, metrics=existing.metrics
-            )
 
         materialized = materialize_desired_sources(
             self.settings,
@@ -1086,6 +1099,9 @@ class WorkspaceLifecycleService:
                 self.publication.commit_workspace(workspace_id, committed, lease=lease)
                 # F5: lineage + COMMITTED phase retained until op SUCCEEDED is durable.
                 self.publication.mark_committed(workspace_id, lease=lease)
+
+                # Final observability through lifecycle bookkeeping before terminal.
+                observability.complete_lifecycle()
 
                 succeeded = self.operations.update_status(
                     workspace_id,
@@ -1164,6 +1180,11 @@ class WorkspaceLifecycleService:
             progress_stage=OperationProgressStage.PUBLISHING,
             lease=lease,
         )
+        observability = self._observability_for_worker(
+            workspace_id=workspace_id,
+            operation_id=operation_id,
+            lease=lease,
+        )
 
         from offline_rag.app.leases import CorpusMutationLease
 
@@ -1192,6 +1213,8 @@ class WorkspaceLifecycleService:
                 )
                 self._close_out_lineage(record, refs=plan.lineage.superseded)
                 self.empty_transition.mark_lineage_closed(workspace_id, lease=lease)
+
+                observability.complete_empty_lifecycle()
 
                 succeeded = self.operations.update_status(
                     workspace_id,
@@ -1285,6 +1308,155 @@ class WorkspaceLifecycleService:
                 active_through_snapshot_id=prior.current_snapshot_id,
             )
 
+    def _freeze_admission_observability(
+        self,
+        *,
+        workspace_id: str,
+        operation_id: str,
+        kind: ManagedOperationKind,
+        payload: dict[str, Any],
+        record: WorkspaceRecord,
+        uploaded_raw_bytes: int | None,
+        lease: WorkspaceMutationLease,
+    ) -> None:
+        existing = self.operations.get(workspace_id, operation_id)
+        if existing.worklist is not None:
+            return
+        docs, requested, post = self._admission_worklist_seed(
+            kind=kind, payload=payload, record=record
+        )
+        pre = len(self._active_sources(record))
+        publisher = DurableObservabilityPublisher(
+            operations=self.operations,
+            workspace_id=workspace_id,
+            operation_id=operation_id,
+            lease=lease,
+        )
+        publisher.freeze_admission(
+            documents=docs,
+            requested_document_count=requested,
+            uploaded_raw_bytes=uploaded_raw_bytes,
+            pre_active_source_count=pre,
+            post_active_source_count=post,
+        )
+
+    def _admission_worklist_seed(
+        self,
+        *,
+        kind: ManagedOperationKind,
+        payload: dict[str, Any],
+        record: WorkspaceRecord,
+    ) -> tuple[list[ManagedOperationWorklistDocument], int, int]:
+        """Build frozen membership + request/post counts (not request bytes)."""
+        active = self._active_sources(record)
+        pre = len(active)
+
+        def _doc(
+            document_id: str, display_name: str
+        ) -> ManagedOperationWorklistDocument:
+            return ManagedOperationWorklistDocument(
+                document_id=document_id,
+                display_name=display_name,
+                phase=ManagedOperationDocumentPhase.PENDING,
+            )
+
+        if kind is ManagedOperationKind.SOURCE_ADD:
+            files = payload.get("files") or []
+            if not isinstance(files, list):
+                files = []
+            requested = len(files)
+            docs: list[ManagedOperationWorklistDocument] = []
+            seen: set[str] = set()
+            for item in active:
+                doc_id = item.document_id or item.source_id
+                if doc_id in seen:
+                    continue
+                seen.add(doc_id)
+                docs.append(_doc(doc_id, item.display_name))
+            for entry in files:
+                if not isinstance(entry, dict):
+                    continue
+                sha = str(entry.get("content_sha256") or "").strip()
+                name = str(entry.get("display_name") or "").strip() or sha
+                if not sha:
+                    continue
+                doc_id = f"doc_{sha}"
+                if doc_id in seen:
+                    continue
+                seen.add(doc_id)
+                docs.append(_doc(doc_id, name))
+            return docs, requested, pre + requested
+
+        if kind is ManagedOperationKind.SOURCE_REPLACE:
+            source_id = str(payload.get("source_id") or "")
+            sha = str(payload.get("content_sha256") or "").strip()
+            name = str(payload.get("display_name") or "").strip() or sha
+            docs = []
+            seen = set()
+            for item in active:
+                if item.source_id == source_id:
+                    continue
+                doc_id = item.document_id or item.source_id
+                if doc_id in seen:
+                    continue
+                seen.add(doc_id)
+                docs.append(_doc(doc_id, item.display_name))
+            if sha:
+                doc_id = f"doc_{sha}"
+                if doc_id not in seen:
+                    docs.append(_doc(doc_id, name or doc_id))
+            return docs, 1, pre
+
+        if kind is ManagedOperationKind.SOURCE_REMOVE:
+            source_id = str(payload.get("source_id") or "")
+            target = next((s for s in active if s.source_id == source_id), None)
+            remaining = [s for s in active if s.source_id != source_id]
+            post = max(0, pre - 1)
+            if remaining:
+                docs = [
+                    _doc(item.document_id or item.source_id, item.display_name)
+                    for item in remaining
+                ]
+            elif target is not None:
+                docs = [_doc(target.document_id or target.source_id, target.display_name)]
+            else:
+                docs = []
+            return docs, 1, post
+
+        return [], 0, pre
+
+    @staticmethod
+    def _uploaded_bytes_from_payload(
+        kind: ManagedOperationKind, payload: dict[str, Any]
+    ) -> int | None:
+        """Best-effort request bytes when spool sizes are unavailable.
+
+        Remove has no upload. Direct callers without spool cannot always know
+        raw byte sizes from the fingerprint payload alone.
+        """
+        if kind is ManagedOperationKind.SOURCE_REMOVE:
+            return None
+        return None
+
+    def _observability_for_worker(
+        self,
+        *,
+        workspace_id: str,
+        operation_id: str,
+        lease: WorkspaceMutationLease,
+    ) -> DurableObservabilityPublisher:
+        existing = self.operations.get(workspace_id, operation_id)
+        publisher = DurableObservabilityPublisher(
+            operations=self.operations,
+            workspace_id=workspace_id,
+            operation_id=operation_id,
+            lease=lease,
+        )
+        if existing.worklist is not None:
+            publisher.hydrate(worklist=existing.worklist, metrics=existing.metrics)
+        publisher.mark_execution_started()
+        return publisher
+
     def _progress_hooks(
         self,
         workspace_id: str,
@@ -1355,6 +1527,9 @@ class WorkspaceLifecycleService:
             on_progress=publisher,
             after_stage_report=_after_report,
             on_document_phase=observability,
+            on_document_activity=(
+                observability.on_activity if observability is not None else None
+            ),
         )
 
     def _fail_operation(

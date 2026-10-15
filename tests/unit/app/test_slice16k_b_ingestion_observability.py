@@ -198,7 +198,9 @@ def test_progress_metrics_worklist_are_separate_fields() -> None:
             phase=ManagedOperationDocumentPhase.INDEXING,
         ),
     ]
-    worklist = build_managed_operation_worklist(docs)
+    worklist = build_managed_operation_worklist(
+        docs, active_document_ids=["doc_a", "doc_b"]
+    )
     assert len(worklist.active_documents) == 2
     record = ManagedOperationRecord(
         operation_id="wop_1",
@@ -263,38 +265,32 @@ def test_worklist_membership_immutable_after_first_write(tmp_path: Path) -> None
     _ = now
 
 
-def test_active_documents_supports_zero_to_n() -> None:
-    empty = build_managed_operation_worklist(
-        [
-            ManagedOperationWorklistDocument(
-                document_id="doc_a",
-                display_name="a.md",
-                phase=ManagedOperationDocumentPhase.PENDING,
-            )
-        ]
-    )
+def test_active_documents_supports_zero_to_n_and_is_not_phase_derived() -> None:
+    docs = [
+        ManagedOperationWorklistDocument(
+            document_id="doc_a",
+            display_name="a.md",
+            phase=ManagedOperationDocumentPhase.INDEXING,
+        ),
+        ManagedOperationWorklistDocument(
+            document_id="doc_b",
+            display_name="b.md",
+            phase=ManagedOperationDocumentPhase.INDEXING,
+        ),
+        ManagedOperationWorklistDocument(
+            document_id="doc_c",
+            display_name="c.md",
+            phase=ManagedOperationDocumentPhase.INDEXING,
+        ),
+    ]
+    empty = build_managed_operation_worklist(docs, active_document_ids=[])
     assert empty.active_documents == []
     multi = build_managed_operation_worklist(
-        [
-            ManagedOperationWorklistDocument(
-                document_id="doc_a",
-                display_name="a.md",
-                phase=ManagedOperationDocumentPhase.INDEXING,
-            ),
-            ManagedOperationWorklistDocument(
-                document_id="doc_b",
-                display_name="b.md",
-                phase=ManagedOperationDocumentPhase.INDEXING,
-            ),
-            ManagedOperationWorklistDocument(
-                document_id="doc_c",
-                display_name="c.md",
-                phase=ManagedOperationDocumentPhase.CHUNKED,
-            ),
-        ]
+        docs, active_document_ids=["doc_a", "doc_c"]
     )
-    assert len(multi.active_documents) == 2
-    assert {d.document_id for d in multi.active_documents} == {"doc_a", "doc_b"}
+    assert {d.document_id for d in multi.active_documents} == {"doc_a", "doc_c"}
+    # Indexing phase alone must not imply activity for doc_b.
+    assert "doc_b" not in {d.document_id for d in multi.active_documents}
 
 
 # ---------------------------------------------------------------------------
@@ -356,9 +352,15 @@ def test_successful_add_persists_bounded_metrics_and_worklist(tmp_path: Path) ->
             "dense_generation_ms",
             "lexical_ms",
             "publication_ms",
+            "finalization_ms",
             "total_ms",
         ):
             assert durations.get(key) is None or durations[key] >= 0
+        assert durations.get("total_ms") is not None and durations["total_ms"] >= 0
+        assert durations.get("finalization_ms") is not None
+        # Fake embedder: dtype/attention truthfully unavailable (not invented).
+        assert dense.get("dtype") is None
+        assert dense.get("attention_backend") is None
         assert worklist["total_document_count"] == 2
         assert worklist["pending_count"] == 0
         assert worklist["completed_count"] == 2
@@ -377,49 +379,78 @@ def test_successful_add_persists_bounded_metrics_and_worklist(tmp_path: Path) ->
             assert "documents" not in again["progress"]
 
 
-def test_multi_document_dense_active_set_not_falsely_singular(tmp_path: Path) -> None:
-    """During dense, active_documents may be 0..N — never forced to one file."""
-    with _client(tmp_path) as (client, runtime):
-        wid = _create(client)["workspace_id"]
-        seen_multi_active = {"ok": False}
-        original = runtime.workspace_lifecycle._progress_hooks
+def test_dense_active_documents_follow_exact_batch_membership(tmp_path: Path) -> None:
+    """R2: activity tracks batch membership, not the full indexing-ready set."""
+    from offline_rag.app.observability_publish import DurableObservabilityPublisher
+    from offline_rag.core.observability import DocumentActivityEvent, DocumentPhaseEvent
 
-        def wrapped(workspace_id, operation_id, lease, *, observability=None):
-            hooks = original(
-                workspace_id, operation_id, lease, observability=observability
+    settings = _settings(tmp_path)
+    store = ManagedOperationStore(settings)
+    wid = "ws_act"
+    op = store.begin(
+        workspace_id=wid,
+        idempotency_key="act",
+        kind=ManagedOperationKind.SOURCE_ADD,
+        request_payload={"files": []},
+        expected_revision=1,
+    )
+    store.update_status(wid, op.operation_id, ManagedOperationStatus.RUNNING)
+    pub = DurableObservabilityPublisher(
+        operations=store, workspace_id=wid, operation_id=op.operation_id
+    )
+    docs = [
+        ManagedOperationWorklistDocument(
+            document_id="doc_a",
+            display_name="a.md",
+            phase=ManagedOperationDocumentPhase.PENDING,
+        ),
+        ManagedOperationWorklistDocument(
+            document_id="doc_b",
+            display_name="b.md",
+            phase=ManagedOperationDocumentPhase.PENDING,
+        ),
+        ManagedOperationWorklistDocument(
+            document_id="doc_c",
+            display_name="c.md",
+            phase=ManagedOperationDocumentPhase.PENDING,
+        ),
+        ManagedOperationWorklistDocument(
+            document_id="doc_d",
+            display_name="d.md",
+            phase=ManagedOperationDocumentPhase.PENDING,
+        ),
+    ]
+    pub.freeze_admission(
+        documents=docs,
+        requested_document_count=4,
+        uploaded_raw_bytes=10,
+        pre_active_source_count=0,
+        post_active_source_count=4,
+    )
+    for doc_id in ("doc_a", "doc_b", "doc_c", "doc_d"):
+        pub(
+            DocumentPhaseEvent(
+                document_id=doc_id, source_name=f"{doc_id}.md", phase="indexing"
             )
-            prior_before = hooks.before_stage
-
-            def before(stage: str) -> None:
-                if prior_before is not None:
-                    prior_before(stage)
-                if stage == "dense" and observability is not None:
-                    docs = observability.snapshot_worklist_docs()
-                    active = [
-                        d
-                        for d in docs
-                        if d.phase is ManagedOperationDocumentPhase.INDEXING
-                    ]
-                    if len(active) >= 2:
-                        seen_multi_active["ok"] = True
-
-            hooks.before_stage = before
-            return hooks
-
-        runtime.workspace_lifecycle._progress_hooks = wrapped  # type: ignore[method-assign]
-        accepted = _add_sources(
-            client,
-            wid,
-            files=[
-                ("one.md", b"# One\n\nPassage alpha for indexing.\n"),
-                ("two.md", b"# Two\n\nPassage beta for indexing.\n"),
-            ],
-            key="multi-dense",
-            rev=1,
         )
-        final = _wait(client, accepted["operation_id"])
-        assert final["status"] == "succeeded"
-        assert seen_multi_active["ok"] is True
+    assert pub.snapshot_active_ids() == []
+    pub.on_activity(
+        DocumentActivityEvent(document_ids=("doc_a", "doc_c"), stage="dense_batch")
+    )
+    recorded = store.get(wid, op.operation_id)
+    assert recorded.worklist is not None
+    assert {d.document_id for d in recorded.worklist.active_documents} == {
+        "doc_a",
+        "doc_c",
+    }
+    assert all(
+        d.phase is ManagedOperationDocumentPhase.INDEXING
+        for d in recorded.worklist.documents
+    )
+    pub.on_activity(DocumentActivityEvent(document_ids=(), stage="dense_batch"))
+    cleared = store.get(wid, op.operation_id)
+    assert cleared.worklist is not None
+    assert cleared.worklist.active_documents == []
 
 
 def test_idempotent_replay_keeps_single_worklist_identity(tmp_path: Path) -> None:
@@ -493,3 +524,189 @@ def test_existing_16i_progress_tests_still_importable() -> None:
     from offline_rag.app.workspace.models import ManagedOperationProgress
 
     assert ManagedOperationProgress is not None
+
+
+# ---------------------------------------------------------------------------
+# R1–R4 rework proofs
+# ---------------------------------------------------------------------------
+
+
+def test_r1_add_to_existing_separates_request_from_reconstruction(tmp_path: Path) -> None:
+    with _client(tmp_path) as (client, _runtime):
+        wid = _create(client)["workspace_id"]
+        first = _add_sources(
+            client,
+            wid,
+            files=[("seed.md", b"# Seed\n\nExisting source body.\n")],
+            key="seed",
+            rev=1,
+        )
+        assert _wait(client, first["operation_id"])["status"] == "succeeded"
+        rev = int(client.get(f"/v1/workspaces/{wid}").json()["revision"])
+        added = b"# New\n\nAdded one document only.\n"
+        second = _add_sources(
+            client,
+            wid,
+            files=[("new.md", added)],
+            key="add-existing",
+            rev=rev,
+        )
+        # Worklist durable on 202 body.
+        assert second["worklist"] is not None
+        assert second["metrics"]["requested_document_count"] == 1
+        assert second["metrics"]["uploaded_raw_bytes"] == len(added)
+        assert second["metrics"]["pre_active_source_count"] == 1
+        assert second["metrics"]["post_active_source_count"] == 2
+        assert second["worklist"]["total_document_count"] == 2
+        final = _wait(client, second["operation_id"])
+        assert final["status"] == "succeeded"
+        assert final["metrics"]["requested_document_count"] == 1
+        assert final["metrics"]["uploaded_raw_bytes"] == len(added)
+        assert final["worklist"]["total_document_count"] == 2
+
+
+def test_r1_replace_request_metrics(tmp_path: Path) -> None:
+    with _client(tmp_path) as (client, _runtime):
+        wid = _create(client)["workspace_id"]
+        first = _add_sources(
+            client,
+            wid,
+            files=[
+                ("keep.md", b"# Keep\n\nStay.\n"),
+                ("old.md", b"# Old\n\nReplace me.\n"),
+            ],
+            key="seed-rep",
+            rev=1,
+        )
+        assert _wait(client, first["operation_id"])["status"] == "succeeded"
+        sources = client.get(f"/v1/workspaces/{wid}/sources").json()["sources"]
+        target = next(s for s in sources if s["display_name"] == "old.md")
+        rev = int(client.get(f"/v1/workspaces/{wid}").json()["revision"])
+        replacement = b"# New\n\nReplacement body.\n"
+        r = client.put(
+            f"/v1/workspaces/{wid}/sources/{target['source_id']}",
+            headers={"Idempotency-Key": "rep-1", "If-Match": f'"{rev}"'},
+            files={"files": ("new.md", replacement, "text/plain")},
+        )
+        assert r.status_code == 202, r.text
+        body = r.json()
+        assert body["metrics"]["requested_document_count"] == 1
+        assert body["metrics"]["uploaded_raw_bytes"] == len(replacement)
+        assert body["metrics"]["pre_active_source_count"] == 2
+        assert body["metrics"]["post_active_source_count"] == 2
+        assert body["worklist"]["total_document_count"] == 2
+        final = _wait(client, body["operation_id"])
+        assert final["status"] == "succeeded"
+
+
+def test_r1_remove_with_remaining_and_empty(tmp_path: Path) -> None:
+    with _client(tmp_path) as (client, _runtime):
+        wid = _create(client)["workspace_id"]
+        first = _add_sources(
+            client,
+            wid,
+            files=[
+                ("a.md", b"# A\n\nOne.\n"),
+                ("b.md", b"# B\n\nTwo.\n"),
+            ],
+            key="seed-rm",
+            rev=1,
+        )
+        assert _wait(client, first["operation_id"])["status"] == "succeeded"
+        sources = client.get(f"/v1/workspaces/{wid}/sources").json()["sources"]
+        remove_a = next(s for s in sources if s["display_name"] == "a.md")
+        rev = int(client.get(f"/v1/workspaces/{wid}").json()["revision"])
+        r = client.delete(
+            f"/v1/workspaces/{wid}/sources/{remove_a['source_id']}",
+            headers={"Idempotency-Key": "rm-1", "If-Match": f'"{rev}"'},
+        )
+        assert r.status_code == 202, r.text
+        body = r.json()
+        assert body["metrics"]["requested_document_count"] == 1
+        assert body["metrics"].get("uploaded_raw_bytes") is None
+        assert body["metrics"]["pre_active_source_count"] == 2
+        assert body["metrics"]["post_active_source_count"] == 1
+        assert body["worklist"]["total_document_count"] == 1
+        assert body["worklist"]["documents"][0]["display_name"] == "b.md"
+        assert _wait(client, body["operation_id"])["status"] == "succeeded"
+
+        sources = client.get(f"/v1/workspaces/{wid}/sources").json()["sources"]
+        last = sources[0]
+        rev = int(client.get(f"/v1/workspaces/{wid}").json()["revision"])
+        r2 = client.delete(
+            f"/v1/workspaces/{wid}/sources/{last['source_id']}",
+            headers={"Idempotency-Key": "rm-empty", "If-Match": f'"{rev}"'},
+        )
+        assert r2.status_code == 202, r2.text
+        empty_body = r2.json()
+        assert empty_body["metrics"]["requested_document_count"] == 1
+        assert empty_body["metrics"].get("uploaded_raw_bytes") is None
+        assert empty_body["metrics"]["pre_active_source_count"] == 1
+        assert empty_body["metrics"]["post_active_source_count"] == 0
+        assert empty_body["worklist"]["total_document_count"] == 1
+        assert empty_body["worklist"]["documents"][0]["display_name"] == last["display_name"]
+        final = _wait(client, empty_body["operation_id"])
+        assert final["status"] == "succeeded"
+        assert final["worklist"]["documents"][0]["phase"] == "removed"
+        durations = final["metrics"]["stage_durations"]
+        assert durations.get("parsing_ms") is None
+        assert durations.get("chunking_ms") is None
+        assert durations.get("dense_generation_ms") is None
+        assert durations.get("total_ms") is not None
+
+
+def test_r3_worklist_durable_on_202_before_worker(tmp_path: Path) -> None:
+    with _client(tmp_path) as (client, runtime):
+        wid = _create(client)["workspace_id"]
+        # Block the worker from running by not releasing — instead, intercept
+        # reserve and do not launch: call reserve_and_admit directly.
+        lifecycle = runtime.workspace_lifecycle
+        blob = b"# Early\n\nFrozen before worker.\n"
+        from offline_rag.core.ids import content_hash_from_bytes
+
+        sha = content_hash_from_bytes(blob)
+        payload = {
+            "files": [
+                {
+                    "display_name": "early.md",
+                    "content_type": "text/plain",
+                    "content_sha256": sha,
+                }
+            ]
+        }
+        op, handle = lifecycle.reserve_and_admit_scientific(
+            wid,
+            kind=ManagedOperationKind.SOURCE_ADD,
+            idempotency_key="early-freeze",
+            expected_revision=1,
+            payload=payload,
+            uploaded_raw_bytes=len(blob),
+        )
+        try:
+            assert handle is not None
+            assert op.worklist is not None
+            assert op.metrics is not None
+            assert op.worklist.total_document_count == 1
+            assert op.metrics.requested_document_count == 1
+            assert op.metrics.uploaded_raw_bytes == len(blob)
+            # Crash-after-202 simulation: release capacity without running worker.
+        finally:
+            if handle is not None:
+                runtime.operations.release(handle)
+        reloaded = lifecycle.operations.get(wid, op.operation_id)
+        assert reloaded.worklist is not None
+        assert reloaded.worklist.documents[0].display_name == "early.md"
+
+
+def test_r4_fake_embedder_execution_facts_are_truthfully_unavailable() -> None:
+    from offline_rag.dense.embedder import FakeEmbedder, observe_embedder_execution_facts
+
+    embedder = FakeEmbedder(dimension=8)
+    facts = observe_embedder_execution_facts(embedder)
+    assert facts["dtype"] is None
+    assert facts["attention_backend"] is None
+    # Explicit observe path must not invent FP32.
+    assert embedder.observe_execution_facts() == {
+        "dtype": None,
+        "attention_backend": None,
+    }

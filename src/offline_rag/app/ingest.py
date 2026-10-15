@@ -284,6 +284,9 @@ def run_product_replace_ingest(
         source_names = upload.source_name_by_storage_name()
         progress = hooks.on_progress if hooks is not None else None
         document_phase = hooks.on_document_phase if hooks is not None else None
+        document_activity = (
+            hooks.on_document_activity if hooks is not None else None
+        )
         ingest_report = _gated(
             "ingest",
             lambda: run_ingestion(
@@ -347,6 +350,7 @@ def run_product_replace_ingest(
                 backend=qdrant,
                 on_progress=progress,
                 on_document_phase=document_phase,
+                on_document_activity=document_activity,
                 control_checkpoint=dense_checkpoint,
             ),
         )
