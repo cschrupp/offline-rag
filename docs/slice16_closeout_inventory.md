@@ -31,23 +31,48 @@
 target by amended subject `e24c11d…` (historical IR-002 ACCEPT on `d284776…`
 remains valid provenance)
 
-**Inventory verdict:** CLOSEOUT BLOCKED — REQUIRED RESIDUALS REMAIN
+**Inventory verdict:** CLOSEOUT BLOCKED — awaiting Human reconciliation
+acceptance of subject `fc36aa8…` and a separate final Slice-16 closeout
+authority (six residual repairs are **INDEPENDENTLY ACCEPTED**)
 
-**Authoritative required residual set:** I-26, I-27, I-28, I-30, I-31, **I-32**
+**Authoritative residual set:** I-26, I-27, I-28, I-30, I-31, **I-32**
+(independently accepted; Human reconciliation acceptance PENDING)
 
-**Repairs:** RECONCILIATION CANDIDATE / PENDING INDEPENDENT REVIEW
-(`S16-CLOSEOUT-REQUIRED-RESIDUALS-RECONCILIATION-AUTH-001` — AUTHORIZED;
-exact base `73b7fc99d7dc24930962f40a584ed957de4e716a`)
+**Reconciliation authority:**
+`S16-CLOSEOUT-REQUIRED-RESIDUALS-RECONCILIATION-AUTH-001` — AUTHORIZED
+
+**Exact reconciliation base:** `73b7fc99d7dc24930962f40a584ed957de4e716a`
+
+**Reconciliation independent review lineage:**
+
+- `S16-CLOSEOUT-REQUIRED-RESIDUALS-RECONCILIATION-IR-001` — REWORK REQUIRED
+  (F001: remaining live intro contradiction in design authority)
+- `S16-CLOSEOUT-REQUIRED-RESIDUALS-RECONCILIATION-IR-002` — ACCEPT
+
+**IR-002 acceptance-record authority:**
+`S16-CLOSEOUT-REQUIRED-RESIDUALS-RECONCILIATION-IR-002-ACCEPTANCE-RECORD-AUTH-001`
+— AUTHORIZED
+
+**Exact independently accepted reconciliation subject:**
+`fc36aa8013a90b6355e85d97a00dc145b5802cd5`
+
+**Repairs (I-26, I-27, I-28, I-30, I-31, I-32):** INDEPENDENTLY ACCEPTED
+
+**Human reconciliation acceptance:** PENDING
+
+**A2 restored blob provenance exception:** historical trailing whitespace in
+accepted blob `68128f7555f73d5ff893ef63b6b192d449c78086` retained for
+byte-identity (not a defect)
 
 **Final Slice-16 closeout:** NOT AUTHORIZED
 
 **Slice 16:** IN PROGRESS / NOT COMPLETE
 
-**Scope:** Docs / governance only. No product code. No new implementation
-authority. Does **not** declare Slice 16 complete. Does **not** authorize
-16K, 9G, Slice 17/18, or M7 closeout. Edits under the reconciliation
-authority do **not** by themselves finally close I-26…I-32 until independent
-review accepts the repair candidate.
+**Scope:** Docs / governance only. No product code. Distinguishes: inventory
+Human acceptance (`S16-CLOSEOUT-INVENTORY-HA-001` — ACCEPTED) from
+reconciliation independent acceptance (IR-002 — ACCEPT) from Human
+reconciliation acceptance (PENDING) from final Slice-16 closeout (NOT
+AUTHORIZED).
 
 **Method:** Inspect accepted canonical lineage (ROADMAP live ledger, accepted
 implementation-plan tip block, Human-accepted phase artifacts, and related
@@ -176,17 +201,17 @@ CLOSEOUT BLOCKED — REQUIRED RESIDUALS REMAIN
 - Any product/source change
 - 16K / 9G / Slice 17 / 18 / M7 closeout
 
-### Reconciliation candidate mapping (pending independent review)
+### Reconciliation repair mapping (independently accepted; Human pending)
 
-| Residual | Repair target | Candidate status |
+| Residual | Repair target | Status |
 |---|---|---|
-| I-26 | `docs/slice16_design_authority.md` live Authorization note + closing prose | candidate repaired |
-| I-27 | plan phase-order diagram `16H` line | candidate repaired |
-| I-28 | gap-registry LIVE GOVERNANCE PROJECTION `ALLOW_PRODUCTION` | candidate repaired |
-| I-30 | plan Explicit non-scope conversational rule | candidate repaired |
-| I-31 | `docs/slice16_amendment_a2_conversational_grounding.md` restored blob `68128f7555f73d5ff893ef63b6b192d449c78086` | candidate repaired |
-| I-32 | `README.md` Project status | candidate repaired |
+| I-26 | `docs/slice16_design_authority.md` live Authorization note + closing prose + intro sentence (F001) | INDEPENDENTLY ACCEPTED |
+| I-27 | plan phase-order diagram `16H` line | INDEPENDENTLY ACCEPTED |
+| I-28 | gap-registry LIVE GOVERNANCE PROJECTION `ALLOW_PRODUCTION` | INDEPENDENTLY ACCEPTED |
+| I-30 | plan Explicit non-scope conversational rule | INDEPENDENTLY ACCEPTED |
+| I-31 | `docs/slice16_amendment_a2_conversational_grounding.md` restored blob `68128f7555f73d5ff893ef63b6b192d449c78086` | INDEPENDENTLY ACCEPTED |
+| I-32 | `README.md` Project status | INDEPENDENTLY ACCEPTED |
 
-Next gate: **independent review** of this reconciliation candidate. Residuals
-are **not** finally closed by edits alone. Final Slice-16 closeout remains
-**NOT AUTHORIZED**.
+Next gate: **Human acceptance** of exact reconciliation subject
+`fc36aa8013a90b6355e85d97a00dc145b5802cd5`. That acceptance remains distinct
+from final Slice-16 closeout, which stays **NOT AUTHORIZED**.
