@@ -130,6 +130,12 @@ GAP-16G-02:
       S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-REWORK-AUTH-001 — AUTHORIZED
     Exact rework base:
       85f01f40080fe485b6ddb7700855aa34280c9c75
+    Independent review:
+      S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-IR-002 — REWORK REQUIRED (R3 / R4a / R4b)
+    Rework authority:
+      S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-REWORK-AUTH-002 — AUTHORIZED
+    Exact rework-002 base / parent:
+      533a07c3d1313d08eae5647e4c266d4fa3a439c5
     Branch: implementation/16k-b-ingestion-observability
   16K-C → 16K-G: NOT YET AUTHORIZED
 16L: COMPLETE / ACCEPTED
@@ -390,6 +396,12 @@ Slice-16 closeout inventory: HUMAN ACCEPTED
       S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-REWORK-AUTH-001 — AUTHORIZED
     Exact rework base:
       85f01f40080fe485b6ddb7700855aa34280c9c75
+    Independent review:
+      S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-IR-002 — REWORK REQUIRED (R3 / R4a / R4b)
+    Rework authority:
+      S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-REWORK-AUTH-002 — AUTHORIZED
+    Exact rework-002 base / parent:
+      533a07c3d1313d08eae5647e4c266d4fa3a439c5
     Branch: implementation/16k-b-ingestion-observability
   16K-C → 16K-G: NOT YET AUTHORIZED
   Does NOT reopen Slice 16 closeout

@@ -515,6 +515,55 @@ class ManagedOperationStore:
 
         return self._with_lease(workspace_id, _body, lease=lease)
 
+    def freeze_admission_projection(
+        self,
+        workspace_id: str,
+        operation_id: str,
+        *,
+        metrics: ManagedOperationMetrics,
+        worklist: ManagedOperationWorklist,
+        lease: WorkspaceMutationLease | None = None,
+    ) -> ManagedOperationRecord:
+        """Authoritatively persist the initial 16K-B admission projection.
+
+        Writes metrics and worklist in one durable record update. Failures
+        propagate — this path is not best-effort telemetry.
+        """
+
+        def _body() -> ManagedOperationRecord:
+            record = self.get(workspace_id, operation_id)
+            if record.status in _TERMINAL:
+                raise AppError(
+                    ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                    details=SafeErrorDetails(
+                        reason="illegal_admission_freeze_on_terminal"
+                    ),
+                )
+            if record.worklist is not None and record.metrics is not None:
+                prior_ids = [item.document_id for item in record.worklist.documents]
+                next_ids = [item.document_id for item in worklist.documents]
+                if prior_ids != next_ids:
+                    raise AppError(
+                        ErrorCode.REQUEST_INVALID,
+                        details=SafeErrorDetails(
+                            reason="worklist_membership_immutable"
+                        ),
+                    )
+                return record
+            updated = record.model_copy(
+                update={
+                    "updated_at": utc_now(),
+                    "metrics": metrics,
+                    "worklist": worklist,
+                }
+            )
+            atomic_write_text(
+                self._op_path(workspace_id, operation_id), updated.model_dump_json()
+            )
+            return updated
+
+        return self._with_lease(workspace_id, _body, lease=lease)
+
     def update_metrics(
         self,
         workspace_id: str,

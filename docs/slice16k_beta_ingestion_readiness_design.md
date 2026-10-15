@@ -21,6 +21,9 @@
 **16K-B independent review:** `S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-IR-001` — REWORK REQUIRED (R1–R4)
 **16K-B rework authority:** `S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-REWORK-AUTH-001` — AUTHORIZED
 **Exact 16K-B rework base:** `85f01f40080fe485b6ddb7700855aa34280c9c75`
+**16K-B independent review:** `S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-IR-002` — REWORK REQUIRED (R3 / R4a / R4b)
+**16K-B rework authority:** `S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-REWORK-AUTH-002` — AUTHORIZED
+**Exact 16K-B rework-002 base / parent:** `533a07c3d1313d08eae5647e4c266d4fa3a439c5`
 **16K-B branch:** `implementation/16k-b-ingestion-observability`
 **Status:** DESIGN ACCEPTED / FROZEN
 **16K-A:** IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED
@@ -43,8 +46,10 @@ Human design acceptance freezes this design. **16K-A** managed-ingestion
 correctness is **IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN
 ACCEPTED** at subject `1370b993…`. **16K-B** ingestion observability is
 **IMPLEMENTATION AUTHORIZED / NOT YET ACCEPTED**; IR-001 required R1–R4 rework
-from base `85f01f4…`. 16K-C→G, capacity expansion, CUDA optimization, UI work,
-OCR, Slice 17/18, 9G, and M7 closeout remain unauthorized.
+from base `85f01f4…` (R1/R2 closed at `533a07c…`); IR-002 required R3/R4a/R4b
+rework under REWORK-AUTH-002 from parent `533a07c…`. 16K-C→G, capacity
+expansion, CUDA optimization, UI work, OCR, Slice 17/18, 9G, and M7 closeout
+remain unauthorized.
 
 ---
 
@@ -668,6 +673,11 @@ Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
   Rework authority:
     S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-REWORK-AUTH-001 — AUTHORIZED
   Exact rework base: 85f01f40080fe485b6ddb7700855aa34280c9c75
+  Independent review:
+    S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-IR-002 — REWORK REQUIRED (R3 / R4a / R4b)
+  Rework authority:
+    S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-REWORK-AUTH-002 — AUTHORIZED
+  Exact rework-002 base / parent: 533a07c3d1313d08eae5647e4c266d4fa3a439c5
   Branch: implementation/16k-b-ingestion-observability
 16K-C → 16K-G: NOT YET AUTHORIZED
 Frozen order: 16K-A → 16K-B → baseline evidence → 16K-C → 16K-D → 16K-E → 16K-F → 16K-G

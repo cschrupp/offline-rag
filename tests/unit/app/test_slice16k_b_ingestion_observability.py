@@ -710,3 +710,445 @@ def test_r4_fake_embedder_execution_facts_are_truthfully_unavailable() -> None:
         "dtype": None,
         "attention_backend": None,
     }
+
+
+# ---------------------------------------------------------------------------
+# IR-002 / REWORK-AUTH-002 — R3 / R4a / R4b
+# ---------------------------------------------------------------------------
+
+
+def _add_payload(blob: bytes, *, name: str = "doc.md") -> tuple[dict, str]:
+    from offline_rag.core.ids import content_hash_from_bytes
+
+    sha = content_hash_from_bytes(blob)
+    payload = {
+        "files": [
+            {
+                "display_name": name,
+                "content_type": "text/plain",
+                "content_sha256": sha,
+            }
+        ]
+    }
+    return payload, sha
+
+
+def test_r3_forced_admission_freeze_failure_prevents_202(tmp_path: Path) -> None:
+    with _client(tmp_path) as (client, runtime):
+        wid = _create(client)["workspace_id"]
+        lifecycle = runtime.workspace_lifecycle
+        blob = b"# Freeze-fail\n\nBody.\n"
+        payload, _ = _add_payload(blob, name="freeze-fail.md")
+        real_freeze = lifecycle.operations.freeze_admission_projection
+
+        def boom(*_a, **_k):
+            raise OSError("forced admission freeze write failure")
+
+        lifecycle.operations.freeze_admission_projection = boom  # type: ignore[method-assign]
+        try:
+            with pytest.raises(AppError) as exc_info:
+                lifecycle.reserve_and_admit_scientific(
+                    wid,
+                    kind=ManagedOperationKind.SOURCE_ADD,
+                    idempotency_key="freeze-fail-key",
+                    expected_revision=1,
+                    payload=payload,
+                    uploaded_raw_bytes=len(blob),
+                )
+            assert exc_info.value.code is ErrorCode.WORKSPACE_STATE_UNAVAILABLE
+            assert (exc_info.value.details or {}).get("reason") == (
+                "admission_projection_persist_failed"
+            )
+        finally:
+            lifecycle.operations.freeze_admission_projection = real_freeze  # type: ignore[method-assign]
+
+        orphan = lifecycle.operations.find_by_idempotency(wid, "freeze-fail-key")
+        assert orphan is not None
+        assert orphan.status is ManagedOperationStatus.PENDING
+        assert orphan.metrics is None
+        assert orphan.worklist is None
+
+
+def test_r3_no_partial_admission_projection_on_freeze_failure(tmp_path: Path) -> None:
+    """Coherent freeze: failure must not leave metrics-only or worklist-only."""
+    with _client(tmp_path) as (client, runtime):
+        wid = _create(client)["workspace_id"]
+        store = runtime.workspace_lifecycle.operations
+        blob = b"# Partial\n\nBody.\n"
+        payload, _ = _add_payload(blob, name="partial.md")
+        op, created = store.reserve(
+            workspace_id=wid,
+            idempotency_key="partial-freeze",
+            kind=ManagedOperationKind.SOURCE_ADD,
+            request_payload=payload,
+            expected_revision=1,
+        )
+        assert created
+        from offline_rag.app.observability_publish import DurableObservabilityPublisher
+        from offline_rag.app.workspace.models import ManagedOperationWorklistDocument
+
+        pub = DurableObservabilityPublisher(
+            operations=store,
+            workspace_id=wid,
+            operation_id=op.operation_id,
+        )
+        real = store.freeze_admission_projection
+
+        def boom(*_a, **_k):
+            raise RuntimeError("coherent freeze denied")
+
+        store.freeze_admission_projection = boom  # type: ignore[method-assign]
+        try:
+            with pytest.raises(RuntimeError):
+                pub.freeze_admission(
+                    documents=[
+                        ManagedOperationWorklistDocument(
+                            document_id="doc_partial",
+                            display_name="partial.md",
+                            phase=ManagedOperationDocumentPhase.PENDING,
+                        )
+                    ],
+                    requested_document_count=1,
+                    uploaded_raw_bytes=len(blob),
+                    pre_active_source_count=0,
+                    post_active_source_count=1,
+                )
+        finally:
+            store.freeze_admission_projection = real  # type: ignore[method-assign]
+        reloaded = store.get(wid, op.operation_id)
+        assert reloaded.metrics is None
+        assert reloaded.worklist is None
+        assert pub.write_count == 0
+        assert pub.snapshot_active_ids() == []
+
+
+def test_r3_existing_nonterminal_missing_observability_is_repaired(
+    tmp_path: Path,
+) -> None:
+    with _client(tmp_path) as (client, runtime):
+        wid = _create(client)["workspace_id"]
+        lifecycle = runtime.workspace_lifecycle
+        blob = b"# Repair-me\n\nDeterministic body.\n"
+        payload, _ = _add_payload(blob, name="repair.md")
+        orphan, created = lifecycle.operations.reserve(
+            workspace_id=wid,
+            idempotency_key="repair-obs",
+            kind=ManagedOperationKind.SOURCE_ADD,
+            request_payload=payload,
+            expected_revision=1,
+        )
+        assert created
+        assert orphan.worklist is None
+        assert orphan.metrics is None
+        repaired, handle = lifecycle.reserve_and_admit_scientific(
+            wid,
+            kind=ManagedOperationKind.SOURCE_ADD,
+            idempotency_key="repair-obs",
+            expected_revision=1,
+            payload=payload,
+            uploaded_raw_bytes=len(blob),
+        )
+        assert handle is None
+        assert repaired.operation_id == orphan.operation_id
+        assert repaired.request_fingerprint == orphan.request_fingerprint
+        assert repaired.worklist is not None
+        assert repaired.metrics is not None
+        assert repaired.metrics.requested_document_count == 1
+        assert repaired.metrics.uploaded_raw_bytes == len(blob)
+        assert repaired.worklist.total_document_count == 1
+        assert repaired.worklist.documents[0].display_name == "repair.md"
+
+
+def test_r3_unrepairable_existing_reservation_fails_closed(tmp_path: Path) -> None:
+    with _client(tmp_path) as (client, runtime):
+        wid = _create(client)["workspace_id"]
+        lifecycle = runtime.workspace_lifecycle
+        blob = b"# Unrepairable\n\nBody.\n"
+        payload, _ = _add_payload(blob, name="bad.md")
+        orphan, created = lifecycle.operations.reserve(
+            workspace_id=wid,
+            idempotency_key="unrepairable-obs",
+            kind=ManagedOperationKind.SOURCE_ADD,
+            request_payload=payload,
+            expected_revision=1,
+        )
+        assert created
+        # Advance workspace revision so admission seed is ambiguous vs expected.
+        seed = _add_sources(
+            client,
+            wid,
+            files=[("seed.md", b"# Seed\n\nMove revision.\n")],
+            key="seed-rev",
+            rev=1,
+        )
+        assert _wait(client, seed["operation_id"])["status"] == "succeeded"
+        with pytest.raises(AppError) as exc_info:
+            lifecycle.reserve_and_admit_scientific(
+                wid,
+                kind=ManagedOperationKind.SOURCE_ADD,
+                idempotency_key="unrepairable-obs",
+                expected_revision=1,
+                payload=payload,
+                uploaded_raw_bytes=len(blob),
+            )
+        assert exc_info.value.code is ErrorCode.WORKSPACE_STATE_UNAVAILABLE
+        assert (exc_info.value.details or {}).get("reason") == (
+            "admission_projection_unrepairable"
+        )
+        still = lifecycle.operations.get(wid, orphan.operation_id)
+        assert still.operation_id == orphan.operation_id
+        assert still.worklist is None
+        assert still.metrics is None
+
+
+def test_r3_idempotent_replay_with_frozen_worklist_unchanged(tmp_path: Path) -> None:
+    with _client(tmp_path) as (client, _runtime):
+        wid = _create(client)["workspace_id"]
+        first = _add_sources(
+            client,
+            wid,
+            files=[("stable.md", b"# Stable\n\nReplay me.\n")],
+            key="r3-replay",
+            rev=1,
+        )
+        final = _wait(client, first["operation_id"])
+        assert final["status"] == "succeeded"
+        worklist_a = final["worklist"]
+        metrics_a = final["metrics"]
+        replay = _add_sources(
+            client,
+            wid,
+            files=[("stable.md", b"# Stable\n\nReplay me.\n")],
+            key="r3-replay",
+            rev=1,
+        )
+        assert replay["operation_id"] == first["operation_id"]
+        body = client.get(f"/v1/operations/{first['operation_id']}").json()
+        assert body["worklist"] == worklist_a
+        assert body["metrics"]["requested_document_count"] == metrics_a[
+            "requested_document_count"
+        ]
+
+
+def test_r3_capacity_not_leaked_when_admission_freeze_fails(tmp_path: Path) -> None:
+    with _client(tmp_path, max_concurrent_ingest=1) as (client, runtime):
+        wid = _create(client)["workspace_id"]
+        lifecycle = runtime.workspace_lifecycle
+        blob = b"# Cap\n\nBody.\n"
+        payload, _ = _add_payload(blob, name="cap.md")
+        real_freeze = lifecycle.operations.freeze_admission_projection
+
+        def boom(*_a, **_k):
+            raise OSError("forced freeze for capacity proof")
+
+        lifecycle.operations.freeze_admission_projection = boom  # type: ignore[method-assign]
+        try:
+            with pytest.raises(AppError):
+                lifecycle.reserve_and_admit_scientific(
+                    wid,
+                    kind=ManagedOperationKind.SOURCE_ADD,
+                    idempotency_key="cap-fail",
+                    expected_revision=1,
+                    payload=payload,
+                    uploaded_raw_bytes=len(blob),
+                )
+        finally:
+            lifecycle.operations.freeze_admission_projection = real_freeze  # type: ignore[method-assign]
+
+        # Capacity must still be available for a distinct new admission.
+        ok_blob = b"# Cap-ok\n\nBody.\n"
+        ok_payload, _ = _add_payload(ok_blob, name="cap-ok.md")
+        op, handle = lifecycle.reserve_and_admit_scientific(
+            wid,
+            kind=ManagedOperationKind.SOURCE_ADD,
+            idempotency_key="cap-ok",
+            expected_revision=1,
+            payload=ok_payload,
+            uploaded_raw_bytes=len(ok_blob),
+        )
+        try:
+            assert handle is not None
+            assert op.worklist is not None
+        finally:
+            if handle is not None:
+                runtime.operations.release(handle)
+
+
+def test_r4a_live_failure_records_truthful_total_and_clears_activity(
+    tmp_path: Path,
+) -> None:
+    with _client(tmp_path) as (client, runtime):
+        wid = _create(client)["workspace_id"]
+        from offline_rag.app import ingest as ingest_mod
+
+        real_run_indexing = ingest_mod.run_indexing
+
+        def boom(**kwargs):
+            raise AppError(ErrorCode.INGEST_FAILED)
+
+        ingest_mod.run_indexing = boom  # type: ignore[assignment]
+        try:
+            accepted = _add_sources(
+                client,
+                wid,
+                files=[("fail-live.md", b"# Fail\n\nBreak after parse/chunk.\n")],
+                key="fail-live-r4a",
+                rev=1,
+            )
+            final = _wait(client, accepted["operation_id"])
+        finally:
+            ingest_mod.run_indexing = real_run_indexing  # type: ignore[assignment]
+
+        assert final["status"] == "failed"
+        assert final["error"] is not None
+        op = runtime.workspace_lifecycle.operations.get_by_operation_id(
+            accepted["operation_id"]
+        )
+        assert op.recovery_note == "recovered_A"
+        assert op.error is not None
+        assert op.metrics is not None
+        assert op.metrics.stage_durations is not None
+        durations = op.metrics.stage_durations
+        assert durations.total_ms is not None
+        assert durations.total_ms >= 0
+        # Completed stages survive; incomplete dense stage is not fabricated.
+        assert durations.parsing_ms is not None
+        assert durations.chunking_ms is not None
+        assert durations.dense_generation_ms is None
+        assert durations.dense_materialization_ms is None
+        assert op.worklist is not None
+        assert op.worklist.active_documents == []
+        for doc in op.worklist.documents:
+            assert doc.phase is not ManagedOperationDocumentPhase.INDEXED
+            assert doc.phase is not ManagedOperationDocumentPhase.REMOVED
+
+
+def test_r4a_startup_interrupted_does_not_fabricate_live_timing(
+    tmp_path: Path,
+) -> None:
+    """Crash/startup INTERRUPTED path: unavailable live timing stays null."""
+    from offline_rag.app.observability_publish import DurableObservabilityPublisher
+
+    with _client(tmp_path) as (client, runtime):
+        wid = _create(client)["workspace_id"]
+        lifecycle = runtime.workspace_lifecycle
+        blob = b"# Crash\n\nNo live clock.\n"
+        payload, _ = _add_payload(blob, name="crash.md")
+        op, handle = lifecycle.reserve_and_admit_scientific(
+            wid,
+            kind=ManagedOperationKind.SOURCE_ADD,
+            idempotency_key="crash-timing",
+            expected_revision=1,
+            payload=payload,
+            uploaded_raw_bytes=len(blob),
+        )
+        if handle is not None:
+            runtime.operations.release(handle)
+        # Simulate lost live publisher context (startup recovery has no mono clock).
+        pub = DurableObservabilityPublisher(
+            operations=lifecycle.operations,
+            workspace_id=wid,
+            operation_id=op.operation_id,
+        )
+        frozen = lifecycle.operations.get(wid, op.operation_id)
+        assert frozen.worklist is not None
+        pub.hydrate(worklist=frozen.worklist, metrics=frozen.metrics)
+        # Drop live timing context as if the process crashed.
+        pub._op_started = None
+        pub.complete_failed_lifecycle()
+        lifecycle.operations.update_status(
+            wid,
+            op.operation_id,
+            ManagedOperationStatus.INTERRUPTED,
+            recovery_note="recovered_A",
+        )
+        terminal = lifecycle.operations.get(wid, op.operation_id)
+        assert terminal.status is ManagedOperationStatus.INTERRUPTED
+        assert terminal.recovery_note == "recovered_A"
+        assert terminal.metrics is not None
+        assert terminal.metrics.stage_durations is not None
+        assert terminal.metrics.stage_durations.total_ms is None
+
+
+def test_r4b_unloaded_sentence_transformers_does_not_load() -> None:
+    from offline_rag.dense.embedder import SentenceTransformersEmbedder
+
+    emb = object.__new__(SentenceTransformersEmbedder)
+    emb._model = None
+    load_calls: list[int] = []
+
+    def _load_should_not_run():
+        load_calls.append(1)
+        raise AssertionError("observe_execution_facts must not call _load()")
+
+    emb._load = _load_should_not_run  # type: ignore[method-assign]
+    facts = emb.observe_execution_facts()
+    assert facts == {"dtype": None, "attention_backend": None}
+    assert load_calls == []
+
+
+def test_r4b_loaded_sentence_transformers_reports_dtype_attention() -> None:
+    from offline_rag.dense.embedder import SentenceTransformersEmbedder
+
+    class _Param:
+        dtype = "torch.float32"
+
+    class _Cfg:
+        _attn_implementation = "eager"
+
+    class _Auto:
+        config = _Cfg()
+
+        def parameters(self):
+            yield _Param()
+
+    class _Module:
+        auto_model = _Auto()
+
+    class _Model(list):
+        def __init__(self) -> None:
+            super().__init__([_Module()])
+
+    emb = object.__new__(SentenceTransformersEmbedder)
+    emb._model = _Model()
+    load_calls: list[int] = []
+
+    def _load_should_not_run():
+        load_calls.append(1)
+        raise AssertionError("loaded observe must not call _load()")
+
+    emb._load = _load_should_not_run  # type: ignore[method-assign]
+    facts = emb.observe_execution_facts()
+    assert facts["dtype"] == "float32"
+    assert facts["attention_backend"] == "eager"
+    assert load_calls == []
+
+
+def test_r4b_cache_reused_observation_does_not_perturb_execution(tmp_path: Path) -> None:
+    """Observability on FakeEmbedder must not invent dtype/attention or load work."""
+    from offline_rag.dense.embedder import observe_embedder_execution_facts
+
+    with _client(tmp_path) as (client, runtime):
+        wid = _create(client)["workspace_id"]
+        embedder = runtime.factories.embedder(runtime.settings)
+        before = observe_embedder_execution_facts(embedder)
+        assert before["dtype"] is None
+        assert before["attention_backend"] is None
+        accepted = _add_sources(
+            client,
+            wid,
+            files=[("cache.md", b"# Cache\n\nReuse path body.\n")],
+            key="cache-obs",
+            rev=1,
+        )
+        final = _wait(client, accepted["operation_id"])
+        assert final["status"] == "succeeded"
+        after = observe_embedder_execution_facts(embedder)
+        assert after["dtype"] is None
+        assert after["attention_backend"] is None
+        # Request metrics remain request-scoped; execution facts stay unavailable.
+        assert final["metrics"]["requested_document_count"] == 1
+        dense = final["metrics"].get("dense_execution")
+        if dense is not None:
+            assert dense.get("dtype") is None
+            assert dense.get("attention_backend") is None

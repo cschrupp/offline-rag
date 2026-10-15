@@ -80,10 +80,11 @@ class DurableObservabilityPublisher:
         pre_active_source_count: int,
         post_active_source_count: int,
     ) -> None:
-        """Freeze worklist membership and seed request/reconstruction metrics.
+        """Authoritatively freeze admission metrics/worklist (fail-closed).
 
         Request metrics (requested_document_count / uploaded_raw_bytes) are
         independent of worklist ``total_document_count`` (reconstruction set).
+        Persistence failures propagate — unlike later best-effort telemetry.
         """
         if self._membership_frozen:
             return
@@ -98,7 +99,26 @@ class DurableObservabilityPublisher:
             post_active_source_count=post_active_source_count,
             stage_durations=ManagedOperationStageDurations(),
         )
-        self._persist()
+        worklist = build_managed_operation_worklist(
+            list(self._documents.values()),
+            active_document_ids=self._active_ids,
+        )
+        try:
+            self.operations.freeze_admission_projection(
+                self.workspace_id,
+                self.operation_id,
+                metrics=self._metrics,
+                worklist=worklist,
+                lease=self.lease,
+            )
+        except Exception:
+            # Admission freeze is fail-closed: roll back in-memory freeze markers
+            # so a later repair path can retry a complete projection write.
+            self._membership_frozen = False
+            self._documents = {}
+            self._active_ids = []
+            raise
+        self.write_count += 1
 
     def hydrate(
         self,
@@ -211,6 +231,24 @@ class DurableObservabilityPublisher:
                     update={"phase": ManagedOperationDocumentPhase.REMOVED}
                 )
         self.complete_lifecycle()
+
+    def complete_failed_lifecycle(self) -> None:
+        """Finalize live-failure observability immediately before FAILED.
+
+        Persists total elapsed when the live monotonic context exists, clears
+        current activity, and retains completed stage timings. Does not fabricate
+        incomplete-stage durations or mark unfinished documents terminal-success.
+        """
+        if not self._membership_frozen:
+            return
+        total_ms = None
+        if self._op_started is not None:
+            total_ms = max(0, int((self._mono() - self._op_started) * 1000))
+        durations = self._durations_model().model_copy(update={"total_ms": total_ms})
+        self._active_ids = []
+        self._metrics = self._metrics.model_copy(update={"stage_durations": durations})
+        # Best-effort: must not block authoritative FAILED terminalization.
+        self._persist()
 
     def after_stage_report(self, stage: str, report: object) -> None:
         try:

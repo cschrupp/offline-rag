@@ -206,15 +206,14 @@ class SentenceTransformersEmbedder:
             )
 
     def observe_execution_facts(self) -> dict[str, str | None]:
-        """Introspect loaded runtime dtype/attention when safely available.
+        """Introspect dtype/attention only when the model is already loaded.
 
-        Does not change precision, attention implementation, or model identity.
-        Absence is valid when the backend does not expose a trustworthy value.
+        Never calls ``_load()`` — observability must not turn a cache-reused
+        dense run into a model-loading run. Unloaded → dtype/attention null.
         """
         facts: dict[str, str | None] = {"dtype": None, "attention_backend": None}
-        try:
-            model = self._load()
-        except Exception:  # noqa: BLE001 — observation must not alter outcomes
+        model = self._model
+        if model is None:
             return facts
         try:
             first = model[0] if len(model) else None

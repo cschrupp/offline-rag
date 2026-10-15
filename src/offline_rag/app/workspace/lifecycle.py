@@ -514,7 +514,28 @@ class WorkspaceLifecycleService:
                             reason="idempotency_identity_mismatch",
                         ),
                     )
-                return existing, None
+                if existing.status in {
+                    ManagedOperationStatus.SUCCEEDED,
+                    ManagedOperationStatus.FAILED,
+                    ManagedOperationStatus.INTERRUPTED,
+                }:
+                    # Terminal historical/pre-16K-B records may omit observability.
+                    return existing, None
+                if existing.worklist is not None and existing.metrics is not None:
+                    return existing, None
+                # Nonterminal reservation missing admission projection: repair
+                # authoritatively before returning as accepted (IR-002 R3).
+                return (
+                    self._repair_admission_observability(
+                        workspace_id=workspace_id,
+                        operation=existing,
+                        kind=kind,
+                        payload=payload,
+                        uploaded_raw_bytes=uploaded_raw_bytes,
+                        lease=lease,
+                    ),
+                    None,
+                )
 
             # NEW key: cheap preconditions before capacity / reservation.
             record = self.store.get(workspace_id)
@@ -544,8 +565,28 @@ class WorkspaceLifecycleService:
                 lease=lease,
             )
             if not created:
-                return operation, None
-            # Durable admitted worklist before capacity/202 (16K-B R3).
+                # Concurrent reserve race: treat as existing-path repair/return.
+                if operation.status in {
+                    ManagedOperationStatus.SUCCEEDED,
+                    ManagedOperationStatus.FAILED,
+                    ManagedOperationStatus.INTERRUPTED,
+                }:
+                    return operation, None
+                if operation.worklist is not None and operation.metrics is not None:
+                    return operation, None
+                return (
+                    self._repair_admission_observability(
+                        workspace_id=workspace_id,
+                        operation=operation,
+                        kind=kind,
+                        payload=payload,
+                        uploaded_raw_bytes=uploaded_raw_bytes,
+                        lease=lease,
+                    ),
+                    None,
+                )
+            # Authoritative admitted worklist before capacity/202 (16K-B R3).
+            # Failures propagate; capacity is not acquired on freeze failure.
             self._freeze_admission_observability(
                 workspace_id=workspace_id,
                 operation_id=operation.operation_id,
@@ -1128,6 +1169,7 @@ class WorkspaceLifecycleService:
                     exc,
                     lease=lease,
                     corpus_lease=corpus_lease,
+                    observability=observability,
                 )
                 raise
             except Exception as exc:
@@ -1141,6 +1183,7 @@ class WorkspaceLifecycleService:
                     wrapped,
                     lease=lease,
                     corpus_lease=corpus_lease,
+                    observability=observability,
                 )
                 raise wrapped from exc
 
@@ -1241,6 +1284,7 @@ class WorkspaceLifecycleService:
                     exc,
                     lease=lease,
                     corpus_lease=corpus_lease,
+                    observability=observability,
                 )
                 raise
             except Exception as exc:
@@ -1254,6 +1298,7 @@ class WorkspaceLifecycleService:
                     wrapped,
                     lease=lease,
                     corpus_lease=corpus_lease,
+                    observability=observability,
                 )
                 raise wrapped from exc
 
@@ -1320,7 +1365,7 @@ class WorkspaceLifecycleService:
         lease: WorkspaceMutationLease,
     ) -> None:
         existing = self.operations.get(workspace_id, operation_id)
-        if existing.worklist is not None:
+        if existing.worklist is not None and existing.metrics is not None:
             return
         docs, requested, post = self._admission_worklist_seed(
             kind=kind, payload=payload, record=record
@@ -1332,13 +1377,115 @@ class WorkspaceLifecycleService:
             operation_id=operation_id,
             lease=lease,
         )
-        publisher.freeze_admission(
-            documents=docs,
-            requested_document_count=requested,
-            uploaded_raw_bytes=uploaded_raw_bytes,
-            pre_active_source_count=pre,
-            post_active_source_count=post,
+        try:
+            publisher.freeze_admission(
+                documents=docs,
+                requested_document_count=requested,
+                uploaded_raw_bytes=uploaded_raw_bytes,
+                pre_active_source_count=pre,
+                post_active_source_count=post,
+            )
+        except AppError:
+            raise
+        except Exception as exc:
+            raise AppError(
+                ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                details=SafeErrorDetails(
+                    workspace_id=workspace_id,
+                    operation_id=operation_id,
+                    reason="admission_projection_persist_failed",
+                ),
+            ) from exc
+
+    def _repair_admission_observability(
+        self,
+        *,
+        workspace_id: str,
+        operation: ManagedOperationRecord,
+        kind: ManagedOperationKind,
+        payload: dict[str, Any],
+        uploaded_raw_bytes: int | None,
+        lease: WorkspaceMutationLease,
+    ) -> ManagedOperationRecord:
+        """Repair a nonterminal reservation missing its 16K-B admission projection.
+
+        Reconstructs from the current request payload (fingerprint-verified) and
+        the authoritative workspace state at the operation's expected revision.
+        Fails closed when the workspace revision has moved or seed is ambiguous.
+        """
+        if operation.expected_revision is None:
+            raise AppError(
+                ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                details=SafeErrorDetails(
+                    workspace_id=workspace_id,
+                    operation_id=operation.operation_id,
+                    reason="admission_projection_unrepairable",
+                ),
+            )
+        record = self.store.get(workspace_id)
+        if record.revision != operation.expected_revision:
+            raise AppError(
+                ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                details=SafeErrorDetails(
+                    workspace_id=workspace_id,
+                    operation_id=operation.operation_id,
+                    reason="admission_projection_unrepairable",
+                ),
+            )
+        if kind not in {
+            ManagedOperationKind.SOURCE_ADD,
+            ManagedOperationKind.SOURCE_REPLACE,
+            ManagedOperationKind.SOURCE_REMOVE,
+        }:
+            raise AppError(
+                ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                details=SafeErrorDetails(
+                    workspace_id=workspace_id,
+                    operation_id=operation.operation_id,
+                    reason="admission_projection_unrepairable",
+                ),
+            )
+        docs, requested, post = self._admission_worklist_seed(
+            kind=kind, payload=payload, record=record
         )
+        if requested < 1 and kind is not ManagedOperationKind.SOURCE_REMOVE:
+            raise AppError(
+                ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                details=SafeErrorDetails(
+                    workspace_id=workspace_id,
+                    operation_id=operation.operation_id,
+                    reason="admission_projection_unrepairable",
+                ),
+            )
+        if kind is ManagedOperationKind.SOURCE_REMOVE and not docs and post != 0:
+            raise AppError(
+                ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                details=SafeErrorDetails(
+                    workspace_id=workspace_id,
+                    operation_id=operation.operation_id,
+                    reason="admission_projection_unrepairable",
+                ),
+            )
+        self._freeze_admission_observability(
+            workspace_id=workspace_id,
+            operation_id=operation.operation_id,
+            kind=kind,
+            payload=payload,
+            record=record,
+            uploaded_raw_bytes=uploaded_raw_bytes,
+            lease=lease,
+        )
+        repaired = self.operations.get(workspace_id, operation.operation_id)
+        if repaired.worklist is None or repaired.metrics is None:
+            raise AppError(
+                ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                details=SafeErrorDetails(
+                    workspace_id=workspace_id,
+                    operation_id=operation.operation_id,
+                    reason="admission_projection_unrepairable",
+                ),
+            )
+        return repaired
 
     def _admission_worklist_seed(
         self,
@@ -1540,11 +1687,17 @@ class WorkspaceLifecycleService:
         *,
         lease: WorkspaceMutationLease,
         corpus_lease: CorpusMutationLease | None = None,
+        observability: DurableObservabilityPublisher | None = None,
     ) -> None:
         """Recover any open journal under the live corpus lease when held (F7)."""
         from offline_rag.app.leases import CorpusMutationLease
 
         _ = CorpusMutationLease  # typing only
+        if observability is not None:
+            try:
+                observability.complete_failed_lifecycle()
+            except Exception:  # noqa: BLE001 — must not block FAILED terminalization
+                pass
         recovery_note: str | None = None
         try:
             # Live failure: restore A/B without prematurely terminalizing as

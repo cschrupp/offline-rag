@@ -563,6 +563,14 @@ SLICE 15  COMPLETE / ACCEPTED
            — AUTHORIZED
          Exact rework base:
            85f01f40080fe485b6ddb7700855aa34280c9c75
+         Independent review:
+           S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-IR-002
+           — REWORK REQUIRED (R3 / R4a / R4b)
+         Rework authority:
+           S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-REWORK-AUTH-002
+           — AUTHORIZED
+         Exact rework-002 base / parent:
+           533a07c3d1313d08eae5647e4c266d4fa3a439c5
          Branch: implementation/16k-b-ingestion-observability
        16K-C → 16K-G: NOT YET AUTHORIZED
        Historical closeout disposition (inventory I-11): DEFERRED / NOT REQUIRED
@@ -829,6 +837,14 @@ SLICE 15  COMPLETE / ACCEPTED
            — AUTHORIZED
          Exact rework base:
            85f01f40080fe485b6ddb7700855aa34280c9c75
+         Independent review:
+           S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-IR-002
+           — REWORK REQUIRED (R3 / R4a / R4b)
+         Rework authority:
+           S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-REWORK-AUTH-002
+           — AUTHORIZED
+         Exact rework-002 base / parent:
+           533a07c3d1313d08eae5647e4c266d4fa3a439c5
          Branch: implementation/16k-b-ingestion-observability
        16K-C → 16K-G: NOT YET AUTHORIZED
        Historical closeout disposition (inventory I-11): DEFERRED / NOT REQUIRED
