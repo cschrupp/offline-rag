@@ -119,22 +119,46 @@ byte-identity (not a defect)
 `S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-HA-001-ACCEPTANCE-RECORD-AUTH-001`
 — AUTHORIZED
 
-**Post-promotion record status:** COMPLETE / HUMAN ACCEPTED
+**Post-promotion record status:** COMPLETE / HUMAN ACCEPTED / CANONICAL
+
+**HA acceptance-record tip lineage:**
+`e21b3e6013c743d7d09f13836704dd88969d4d4a`
 
 **Current canonical origin/main:**
+`e21b3e6013c743d7d09f13836704dd88969d4d4a`
+
+**Second main promotion (HA acceptance-record tip):** COMPLETE / EXECUTED
+
+**Second-promotion authority:**
+`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-HA-MAIN-PROMOTION-AUTH-001` — EXECUTED
+
+**Second-promotion record authority:**
+`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-HA-MAIN-PROMOTION-RECORD-AUTH-001`
+— AUTHORIZED
+
+**Second promotion operation:** PURE FAST-FORWARD
+
+**Pre-second-promotion canonical main:**
 `feab2b2778aeec2f73b8a6f64f8d82e7921ae2a6`
 
-**This HA acceptance-record successor:** NOT YET PROMOTED TO MAIN
+**Promoted canonical main (second FF):**
+`e21b3e6013c743d7d09f13836704dd88969d4d4a`
 
-**Promotion operation:** PURE FAST-FORWARD
+**Target vs canonical main after second promotion:** 0 / 0
 
-**Pre-promotion canonical main:**
+**Historical pre-second-promotion live claim (at tip `e21b3e6…` as authored):**
+This HA acceptance-record successor: NOT YET PROMOTED TO MAIN
+(provenance only; superseded as live status by second FF EXECUTED)
+
+**First promotion operation:** PURE FAST-FORWARD
+
+**Pre-promotion canonical main (first FF):**
 `168af70b54fba39f0efba69100d57b41a574667f`
 
-**Promoted canonical main:**
+**Promoted canonical main (first FF):**
 `feab2b2778aeec2f73b8a6f64f8d82e7921ae2a6`
 
-**Target vs canonical main after promotion:** 0 / 0
+**Target vs canonical main after first promotion:** 0 / 0
 
 **Historical pre-promotion live claim (at HA tip `feab2b2…`):**
 Canonical main promotion: NOT AUTHORIZED / NOT YET EXECUTED
@@ -145,9 +169,9 @@ Human acceptance (`S16-CLOSEOUT-INVENTORY-HA-001` — ACCEPTED) from
 reconciliation independent acceptance (IR-002 — ACCEPT on `fc36aa8…`) from
 Human reconciliation acceptance (`S16-CLOSEOUT-REQUIRED-RESIDUALS-RECONCILIATION-HA-001`
 — ACCEPTED on the same subject) from final closeout IR-001 ACCEPT / HA-001
-ACCEPTED on subject `c4ba1e7…` from canonical main promotion EXECUTED at
+ACCEPTED on subject `c4ba1e7…` from first canonical main promotion EXECUTED at
 `feab2b2…` from post-promotion record IR-001 ACCEPT / HA-001 ACCEPTED on
-subject `76caab2…` (this successor NOT YET PROMOTED TO MAIN).
+subject `76caab2…` from second FF of HA tip `e21b3e6…` EXECUTED.
 
 **Method:** Inspect accepted canonical lineage (ROADMAP live ledger, accepted
 implementation-plan tip block, Human-accepted phase artifacts, and related
@@ -169,10 +193,11 @@ Closeout significance is classified separately.
 
 | Item | Live state | Note |
 |---|---|---|
-| Slice 16 overall | `COMPLETE / HUMAN ACCEPTED / CANONICAL` | Final closeout HA-001 on subject `c4ba1e7…`; promoted at `feab2b2…`. |
+| Slice 16 overall | `COMPLETE / HUMAN ACCEPTED / CANONICAL` | Final closeout HA-001 on subject `c4ba1e7…`; canonical at `e21b3e6…`. |
 | Slice 16 final closeout | `HUMAN ACCEPTED / CANONICAL` (`S16-FINAL-CLOSEOUT-HA-001`) | IR-001 ACCEPT; exact subject `c4ba1e7956a6812279fdf45f28c24738856dec44`. |
-| Canonical main promotion | `COMPLETE / EXECUTED` | `S16-FINAL-CLOSEOUT-MAIN-PROMOTION-AUTH-001` — EXECUTED; pure FF `168af70…` → `feab2b2…` (0/0). |
-| Post-promotion record | `COMPLETE / HUMAN ACCEPTED` | IR-001 ACCEPT; HA-001 ACCEPTED; exact subject `76caab2…`; NOT YET PROMOTED TO MAIN (`origin/main` still `feab2b2…`). |
+| Canonical main promotion (first) | `COMPLETE / EXECUTED` | `S16-FINAL-CLOSEOUT-MAIN-PROMOTION-AUTH-001` — EXECUTED; pure FF `168af70…` → `feab2b2…` (0/0). |
+| Post-promotion record | `COMPLETE / HUMAN ACCEPTED / CANONICAL` | IR-001 ACCEPT; HA-001 ACCEPTED; exact subject `76caab2…`; HA tip `e21b3e6…` promoted. |
+| Second main promotion (HA tip) | `COMPLETE / EXECUTED` | `S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-HA-MAIN-PROMOTION-AUTH-001` — EXECUTED; pure FF `feab2b2…` → `e21b3e6…` (0/0). |
 | M7 checklist “Portfolio Demo UI” | Checked (Slice 16 Human-accepted / canonical) | Tracks Slice 16 closeout; M7 closeout remains NOT AUTHORIZED. |
 
 ---
@@ -316,8 +341,13 @@ tip `feab2b2778aeec2f73b8a6f64f8d82e7921ae2a6`). **Slice 16:** COMPLETE /
 HUMAN ACCEPTED / CANONICAL. **Canonical main promotion:** COMPLETE / EXECUTED
 (`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-AUTH-001` — EXECUTED; pure FF
 `168af70b…` → `feab2b2…`; 0 / 0). **Post-promotion record:** COMPLETE /
-HUMAN ACCEPTED (`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-IR-001` — ACCEPT;
+HUMAN ACCEPTED / CANONICAL
+(`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-IR-001` — ACCEPT;
 `S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-HA-001` — ACCEPTED; exact subject
-`76caab2a68ef42c0c2b216b7e3b3e989ab4d56b3`; this HA acceptance-record
-successor NOT YET PROMOTED TO MAIN; current `origin/main` remains
-`feab2b2778aeec2f73b8a6f64f8d82e7921ae2a6`).
+`76caab2a68ef42c0c2b216b7e3b3e989ab4d56b3`; HA tip
+`e21b3e6013c743d7d09f13836704dd88969d4d4a`). **Second main promotion:**
+COMPLETE / EXECUTED
+(`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-HA-MAIN-PROMOTION-AUTH-001` —
+EXECUTED; pure FF `feab2b2…` → `e21b3e6…`; 0 / 0). Historical
+pre-second-promotion live claim at tip `e21b3e6…`: NOT YET PROMOTED TO MAIN
+(provenance only).

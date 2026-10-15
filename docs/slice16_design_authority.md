@@ -1197,10 +1197,27 @@ FINAL SLICE-16 CLOSEOUT: HUMAN ACCEPTED / CANONICAL
   Post-promotion record HA acceptance-record authority:
     S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-HA-001-ACCEPTANCE-RECORD-AUTH-001
     — AUTHORIZED
-  Post-promotion record status: COMPLETE / HUMAN ACCEPTED
+  Post-promotion record status: COMPLETE / HUMAN ACCEPTED / CANONICAL
+  HA acceptance-record tip lineage:
+    e21b3e6013c743d7d09f13836704dd88969d4d4a
   Current canonical origin/main:
+    e21b3e6013c743d7d09f13836704dd88969d4d4a
+  Second main promotion (HA acceptance-record tip): COMPLETE / EXECUTED
+  Second-promotion authority:
+    S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-HA-MAIN-PROMOTION-AUTH-001
+    — EXECUTED
+  Second-promotion record authority:
+    S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-HA-MAIN-PROMOTION-RECORD-AUTH-001
+    — AUTHORIZED
+  Second promotion operation: PURE FAST-FORWARD
+  Pre-second-promotion canonical main:
     feab2b2778aeec2f73b8a6f64f8d82e7921ae2a6
-  This HA acceptance-record successor: NOT YET PROMOTED TO MAIN
+  Promoted canonical main (second FF):
+    e21b3e6013c743d7d09f13836704dd88969d4d4a
+  Target vs canonical main after second promotion: 0 / 0
+  Historical pre-second-promotion live claim (at tip e21b3e6… as authored):
+    This HA acceptance-record successor: NOT YET PROMOTED TO MAIN
+    (provenance only)
   Promotion operation: PURE FAST-FORWARD
   Pre-promotion canonical main: 168af70b54fba39f0efba69100d57b41a574667f
   Promoted canonical main: feab2b2778aeec2f73b8a6f64f8d82e7921ae2a6
@@ -1250,6 +1267,10 @@ ACCEPT; `S16-FINAL-CLOSEOUT-HA-001` — ACCEPTED; exact subject
 **CLEAR**). Canonical main promotion is **COMPLETE / EXECUTED**
 (`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-AUTH-001` — EXECUTED; pure FF
 `168af70b…` → `feab2b2…`; 0 / 0). Post-promotion record is **COMPLETE /
-HUMAN ACCEPTED** on subject `76caab2…` (IR-001 ACCEPT; HA-001 ACCEPTED;
-this HA acceptance-record successor NOT YET PROMOTED TO MAIN; current
-`origin/main` remains `feab2b2…`).
+HUMAN ACCEPTED / CANONICAL** on subject `76caab2…` (IR-001 ACCEPT; HA-001
+ACCEPTED; HA tip `e21b3e6…`). Second main promotion of that HA tip is
+**COMPLETE / EXECUTED**
+(`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-HA-MAIN-PROMOTION-AUTH-001` —
+EXECUTED; pure FF `feab2b2…` → `e21b3e6…`; 0 / 0). Historical
+pre-second-promotion live claim at tip `e21b3e6…`: NOT YET PROMOTED TO MAIN
+(provenance only).

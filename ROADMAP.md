@@ -711,10 +711,27 @@ SLICE 15  COMPLETE / ACCEPTED
        Post-promotion record HA acceptance-record authority:
          S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-HA-001-ACCEPTANCE-RECORD-AUTH-001
          — AUTHORIZED
-       Post-promotion record status: COMPLETE / HUMAN ACCEPTED
+       Post-promotion record status: COMPLETE / HUMAN ACCEPTED / CANONICAL
+       HA acceptance-record tip lineage:
+         e21b3e6013c743d7d09f13836704dd88969d4d4a
        Current canonical origin/main:
+         e21b3e6013c743d7d09f13836704dd88969d4d4a
+       Second main promotion (HA acceptance-record tip): COMPLETE / EXECUTED
+       Second-promotion authority:
+         S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-HA-MAIN-PROMOTION-AUTH-001
+         — EXECUTED
+       Second-promotion record authority:
+         S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-HA-MAIN-PROMOTION-RECORD-AUTH-001
+         — AUTHORIZED
+       Second promotion operation: PURE FAST-FORWARD
+       Pre-second-promotion canonical main:
          feab2b2778aeec2f73b8a6f64f8d82e7921ae2a6
-       This HA acceptance-record successor: NOT YET PROMOTED TO MAIN
+       Promoted canonical main (second FF):
+         e21b3e6013c743d7d09f13836704dd88969d4d4a
+       Target vs canonical main after second promotion: 0 / 0
+       Historical pre-second-promotion live claim (at tip e21b3e6… as authored):
+         This HA acceptance-record successor: NOT YET PROMOTED TO MAIN
+         (provenance only)
        Promotion operation: PURE FAST-FORWARD
        Pre-promotion canonical main:
          168af70b54fba39f0efba69100d57b41a574667f

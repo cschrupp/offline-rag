@@ -327,7 +327,8 @@ cd ui && npm test && npm run lint && npm run typecheck && npm run build
 | Reconciliation | **COMPLETE / HUMAN ACCEPTED**; technical residuals **CLEAR** |
 | Final Slice-16 closeout | **HUMAN ACCEPTED / CANONICAL** (`S16-FINAL-CLOSEOUT-IR-001` — ACCEPT; `S16-FINAL-CLOSEOUT-HA-001` — ACCEPTED; subject `c4ba1e7…`) |
 | Canonical main promotion | **COMPLETE / EXECUTED** (`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-AUTH-001` — EXECUTED; pure FF `168af70…` → `feab2b2…`; 0/0) |
-| Post-promotion record | **COMPLETE / HUMAN ACCEPTED** (`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-IR-001` — ACCEPT; `S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-HA-001` — ACCEPTED; subject `76caab2…`; NOT YET PROMOTED TO MAIN; `origin/main` still `feab2b2…`) |
+| Post-promotion record | **COMPLETE / HUMAN ACCEPTED / CANONICAL** (`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-IR-001` — ACCEPT; `S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-HA-001` — ACCEPTED; subject `76caab2…`; HA tip `e21b3e6…`) |
+| Second main promotion (HA tip) | **COMPLETE / EXECUTED** (`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-HA-MAIN-PROMOTION-AUTH-001` — EXECUTED; pure FF `feab2b2…` → `e21b3e6…`; 0/0) |
 | 16K | **DEFERRED / NOT REQUIRED / NOT AUTHORIZED** |
 | Slice 17 / 18 | **NOT AUTHORIZED** |
 | M7 closeout | **NOT AUTHORIZED** |
