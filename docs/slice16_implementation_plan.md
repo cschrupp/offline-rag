@@ -92,10 +92,14 @@ GAP-16G-02:
 16J: PAUSED
   Seneca public-surface branding cleanup
 16K: DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED
-  Authority: S16-K-BETA-INGESTION-READINESS-DESIGN-OPEN-AUTH-001 — AUTHORIZED
-  Exact design base: 3a7d8ff2c442c5d4cd10c0c21637ebc4c52b65fa
+  Design-open: S16-K-BETA-INGESTION-READINESS-DESIGN-OPEN-AUTH-001 — AUTHORIZED
+  Rework: S16-K-BETA-INGESTION-READINESS-DESIGN-REWORK-AUTH-001 — AUTHORIZED
+    (addresses DESIGN-OPEN-IR-001 R1–R5)
+  Exact design-open base: 3a7d8ff2c442c5d4cd10c0c21637ebc4c52b65fa
+  Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
   Design: docs/slice16k_beta_ingestion_readiness_design.md
-  Beta ingestion readiness (post-closeout; does NOT reopen Slice 16)
+  Detached managed-ingest lifetime ≠ HTTP request deadline; transport safety
+    ≠ searchable workload (post-closeout; does NOT reopen Slice 16)
 16L: COMPLETE / ACCEPTED
   Authority: S16-L-EMBEDDING-AUTO-DEVICE-UX-AUTH-002
   Exact accepted subject: 88fadc7c3e8e70c4886cbff0c7863cccc63ef14a
@@ -316,9 +320,14 @@ Slice-16 closeout inventory: HUMAN ACCEPTED
   Scope: docs/governance only; no product code; no 16K/9G/17/18
 9G: DEFERRED / NOT AUTHORIZED
 16K: DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED
-  Authority: S16-K-BETA-INGESTION-READINESS-DESIGN-OPEN-AUTH-001 — AUTHORIZED
-  Exact design base: 3a7d8ff2c442c5d4cd10c0c21637ebc4c52b65fa
+  Design-open: S16-K-BETA-INGESTION-READINESS-DESIGN-OPEN-AUTH-001 — AUTHORIZED
+  Rework: S16-K-BETA-INGESTION-READINESS-DESIGN-REWORK-AUTH-001 — AUTHORIZED
+    (addresses DESIGN-OPEN-IR-001 R1–R5)
+  Exact design-open base: 3a7d8ff2c442c5d4cd10c0c21637ebc4c52b65fa
+  Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
   Design: docs/slice16k_beta_ingestion_readiness_design.md
+  Detached managed-ingest lifetime ≠ HTTP request deadline; transport safety
+    ≠ searchable workload
   Does NOT authorize implementation; does NOT reopen Slice 16 closeout
 SLICE 16: COMPLETE / HUMAN ACCEPTED / CANONICAL
 SLICE 17: NOT AUTHORIZED

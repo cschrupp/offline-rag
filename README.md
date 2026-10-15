@@ -329,7 +329,7 @@ cd ui && npm test && npm run lint && npm run typecheck && npm run build
 | Canonical main promotion | **COMPLETE / EXECUTED** (`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-AUTH-001` — EXECUTED; pure FF `168af70…` → `feab2b2…`; 0/0) |
 | Post-promotion record | **COMPLETE / HUMAN ACCEPTED / CANONICAL** (`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-IR-001` — ACCEPT; `S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-HA-001` — ACCEPTED; subject `76caab2…`; HA tip `e21b3e6…`) |
 | Second main promotion (HA tip) | **COMPLETE / EXECUTED** (`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-HA-MAIN-PROMOTION-AUTH-001` — EXECUTED; pure FF `feab2b2…` → `e21b3e6…`; 0/0) |
-| 16K | **DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED** ([`docs/slice16k_beta_ingestion_readiness_design.md`](docs/slice16k_beta_ingestion_readiness_design.md); post-closeout; does not reopen Slice 16) |
+| 16K | **DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED** ([`docs/slice16k_beta_ingestion_readiness_design.md`](docs/slice16k_beta_ingestion_readiness_design.md); rework `S16-K-…-DESIGN-REWORK-AUTH-001` for IR-001 R1–R5; detached managed lifetime ≠ HTTP deadline; transport ≠ workload; post-closeout; does not reopen Slice 16) |
 | Slice 17 / 18 | **NOT AUTHORIZED** |
 | M7 closeout | **NOT AUTHORIZED** |
 

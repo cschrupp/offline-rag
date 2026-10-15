@@ -522,10 +522,14 @@ SLICE 15  COMPLETE / ACCEPTED
      16J PAUSED
        Seneca public-surface branding cleanup
      16K DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED
-       Authority: S16-K-BETA-INGESTION-READINESS-DESIGN-OPEN-AUTH-001 — AUTHORIZED
-       Exact design base: 3a7d8ff2c442c5d4cd10c0c21637ebc4c52b65fa
+       Design-open: S16-K-BETA-INGESTION-READINESS-DESIGN-OPEN-AUTH-001 — AUTHORIZED
+       Rework: S16-K-BETA-INGESTION-READINESS-DESIGN-REWORK-AUTH-001 — AUTHORIZED
+         (addresses DESIGN-OPEN-IR-001 R1–R5)
+       Exact design-open base: 3a7d8ff2c442c5d4cd10c0c21637ebc4c52b65fa
+       Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
        Design: docs/slice16k_beta_ingestion_readiness_design.md
-       Beta ingestion readiness (post-closeout; does NOT reopen Slice 16)
+       Detached managed-ingest lifetime ≠ HTTP request deadline; transport
+         safety ≠ searchable workload (post-closeout; does NOT reopen Slice 16)
        Historical closeout disposition (inventory I-11): DEFERRED / NOT REQUIRED
          / NOT AUTHORIZED — preserved as provenance
      16L COMPLETE / ACCEPTED
@@ -749,10 +753,14 @@ SLICE 15  COMPLETE / ACCEPTED
        Scope: docs/governance only; no product code; no 16K/9G/17/18
      9G DEFERRED / NOT AUTHORIZED
      16K: DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED
-       Authority: S16-K-BETA-INGESTION-READINESS-DESIGN-OPEN-AUTH-001 — AUTHORIZED
-       Exact design base: 3a7d8ff2c442c5d4cd10c0c21637ebc4c52b65fa
+       Design-open: S16-K-BETA-INGESTION-READINESS-DESIGN-OPEN-AUTH-001 — AUTHORIZED
+       Rework: S16-K-BETA-INGESTION-READINESS-DESIGN-REWORK-AUTH-001 — AUTHORIZED
+         (addresses DESIGN-OPEN-IR-001 R1–R5)
+       Exact design-open base: 3a7d8ff2c442c5d4cd10c0c21637ebc4c52b65fa
+       Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
        Design: docs/slice16k_beta_ingestion_readiness_design.md
-       Post-closeout beta-readiness successor (does NOT reopen Slice 16)
+       Detached managed-ingest lifetime ≠ HTTP request deadline; transport
+         safety ≠ searchable workload (does NOT reopen Slice 16)
        Historical closeout disposition (inventory I-11): DEFERRED / NOT REQUIRED
          / NOT AUTHORIZED — preserved as provenance; not rewritten
      Slice 16: COMPLETE / HUMAN ACCEPTED / CANONICAL
