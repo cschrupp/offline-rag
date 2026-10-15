@@ -227,10 +227,12 @@ Slice-16 closeout inventory: HUMAN ACCEPTED
     e24c11df70a59c41c494f302a19ae211bf787bf9
   Human acceptance of d284776…: NOT GRANTED — superseded as Human
     acceptance target by e24c11d…
-  Inventory verdict:
+  Historical inventory verdict (at inventory HA):
     CLOSEOUT BLOCKED — REQUIRED RESIDUALS REMAIN
-  Authoritative required residual set:
+  Live technical residual verdict: CLEAR
+  Authoritative residual set (closed):
     I-26, I-27, I-28, I-30, I-31, I-32
+    HUMAN ACCEPTED / CLOSED AS CLOSEOUT RESIDUALS
   Reconciliation authority:
     S16-CLOSEOUT-REQUIRED-RESIDUALS-RECONCILIATION-AUTH-001 — AUTHORIZED
   Exact reconciliation base: 73b7fc99d7dc24930962f40a584ed957de4e716a
@@ -248,14 +250,21 @@ Slice-16 closeout inventory: HUMAN ACCEPTED
   HA acceptance-record authority:
     S16-CLOSEOUT-REQUIRED-RESIDUALS-RECONCILIATION-HA-001-ACCEPTANCE-RECORD-AUTH-001
     — AUTHORIZED
+  HA acceptance-record tip:
+    3b36630952f34a147c3c8e82fdec7c0649620c0b
   Reconciliation status: COMPLETE / HUMAN ACCEPTED
-  Repairs I-26…I-28, I-30…I-32: HUMAN ACCEPTED
-  Final Slice-16 closeout: NOT AUTHORIZED
+  Repairs I-26…I-28, I-30…I-32:
+    HUMAN ACCEPTED / CLOSED AS CLOSEOUT RESIDUALS
+  Final Slice-16 closeout authority:
+    S16-FINAL-CLOSEOUT-AUTH-001 — AUTHORIZED
+  Exact final-closeout base:
+    3b36630952f34a147c3c8e82fdec7c0649620c0b
+  Final Slice-16 closeout: PENDING INDEPENDENT REVIEW
   Scope: docs/governance only; no product code; no 16K/9G/17/18
-  Does NOT declare Slice 16 complete
+  Does NOT claim Slice 16 COMPLETE / HUMAN ACCEPTED
 9G: DEFERRED / NOT AUTHORIZED
-16K: NOT AUTHORIZED
-SLICE 16: IN PROGRESS / NOT COMPLETE
+16K: DEFERRED / NOT REQUIRED / NOT AUTHORIZED
+SLICE 16: FINAL CLOSEOUT CANDIDATE / PENDING INDEPENDENT REVIEW
 BASELINE: 1610f9282d1edbd4dfc8ae76d7644a1b9ea4e75e
 ```
 
@@ -396,8 +405,10 @@ exact subject `e5d116b8a2990f3b0ac7f3fe1cbf052b4f6ac087`; main promotion
 COMPLETE / ACCEPTED**. **16H** is **COMPLETE / ACCEPTED** (16H-IR-003
 **ACCEPT**; 16H-HA-001 **ACCEPTED**; exact subject
 `01a4a984d438d5bb7c4e3d0fa2f5bb908e0b4a10`). **9G** remains
-**DEFERRED / NOT AUTHORIZED**. Slice 16 overall remains **IN PROGRESS /
-NOT COMPLETE** (do not close Slice 16 automatically after 16H).
+**DEFERRED / NOT AUTHORIZED**. Slice 16 overall is a **FINAL CLOSEOUT
+CANDIDATE / PENDING INDEPENDENT REVIEW** under `S16-FINAL-CLOSEOUT-AUTH-001`
+(technical residual verdict **CLEAR**; does not claim Slice 16 COMPLETE /
+HUMAN ACCEPTED).
 
 ---
 
@@ -881,7 +892,7 @@ GAP-16G-02:
   Independent review: 16H-IR-003 — ACCEPT
   Human acceptance: 16H-HA-001 — ACCEPTED
   Exact Human-accepted subject: 01a4a984d438d5bb7c4e3d0fa2f5bb908e0b4a10
-SLICE 16: IN PROGRESS / NOT COMPLETE
+SLICE 16: FINAL CLOSEOUT CANDIDATE / PENDING INDEPENDENT REVIEW
 Authority: 16G-D0-AUTH-001 / Human acceptance ACCEPTED
 ```
 
@@ -1070,7 +1081,7 @@ GAP-16G-02:
   Independent review: 16H-IR-003 — ACCEPT
   Human acceptance: 16H-HA-001 — ACCEPTED
   Exact Human-accepted subject: 01a4a984d438d5bb7c4e3d0fa2f5bb908e0b4a10
-SLICE 16: IN PROGRESS / NOT COMPLETE
+SLICE 16: FINAL CLOSEOUT CANDIDATE / PENDING INDEPENDENT REVIEW
 SLICE 17: NOT AUTHORIZED
 SLICE 18: NOT AUTHORIZED
 9G: DEFERRED / NOT AUTHORIZED
@@ -1110,5 +1121,7 @@ subject `e5d116b8…`; main promotion **COMPLETE** at `f7fb999…`)
 COMPLETE / ACCEPTED**. **16H** is **COMPLETE / ACCEPTED** (16H-IR-003
 **ACCEPT**; 16H-HA-001 **ACCEPTED**; exact subject
 `01a4a984d438d5bb7c4e3d0fa2f5bb908e0b4a10`). **9G** remains
-**DEFERRED / NOT AUTHORIZED**. Slice 16 overall remains **IN PROGRESS /
-NOT COMPLETE** (do not close Slice 16 automatically after 16H).
+**DEFERRED / NOT AUTHORIZED**. Slice 16 overall is a **FINAL CLOSEOUT
+CANDIDATE / PENDING INDEPENDENT REVIEW** under `S16-FINAL-CLOSEOUT-AUTH-001`
+(technical residual verdict **CLEAR**; does not claim Slice 16 COMPLETE /
+HUMAN ACCEPTED).

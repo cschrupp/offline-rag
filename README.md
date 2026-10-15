@@ -308,7 +308,7 @@ cd ui && npm test && npm run lint && npm run typecheck && npm run build
 | Milestone 7 | **IN PROGRESS** |
 | Slice 14 | **COMPLETE / ACCEPTED** |
 | Slice 15 | **COMPLETE / ACCEPTED** |
-| Slice 16 | **IN PROGRESS / NOT COMPLETE** |
+| Slice 16 | **FINAL CLOSEOUT CANDIDATE / PENDING INDEPENDENT REVIEW** |
 | 16A / 16B / 16C | **COMPLETE / ACCEPTED** |
 | 16D-A / 16D-B2 / 16D-B3 / 16D-C | **COMPLETE / ACCEPTED / SEALED** |
 | Amendment A2 / A4 | **ACCEPTED / LOCKED / SEALED** |
@@ -322,8 +322,11 @@ cd ui && npm test && npm run lint && npm run typecheck && npm run build
 | 16N-A / 16N-B | **COMPLETE** (QC/RF `ALLOW_PRODUCTION` accepted; Evidence Sweep / Chunk Duel **NOT APPROVED**) |
 | Authoring-server failure UX | **COMPLETE / HUMAN ACCEPTED** |
 | 16J final branding | **COMPLETE / HUMAN ACCEPTED / CANONICAL** |
-| Slice-16 closeout inventory | **HUMAN ACCEPTED**; verdict **CLOSEOUT BLOCKED** pending reconciliation review of residuals I-26…I-28, I-30…I-32 |
-| 16K | **NOT AUTHORIZED** (deferred; not required for current-envelope closeout) |
+| Slice-16 closeout inventory | **HUMAN ACCEPTED** |
+| Closeout residuals I-26…I-32 | **HUMAN ACCEPTED / CLOSED AS CLOSEOUT RESIDUALS** |
+| Reconciliation | **COMPLETE / HUMAN ACCEPTED**; technical residuals **CLEAR** |
+| Final Slice-16 closeout | **PENDING INDEPENDENT REVIEW** (candidate under `S16-FINAL-CLOSEOUT-AUTH-001`; not yet Human-accepted) |
+| 16K | **DEFERRED / NOT REQUIRED / NOT AUTHORIZED** |
 | Slice 17 / 18 | **NOT AUTHORIZED** |
 | M7 closeout | **NOT AUTHORIZED** |
 
