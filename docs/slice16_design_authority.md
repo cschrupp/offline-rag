@@ -1190,6 +1190,17 @@ FINAL SLICE-16 CLOSEOUT: HUMAN ACCEPTED / CANONICAL
     S16-FINAL-CLOSEOUT-MAIN-PROMOTION-AUTH-001 — EXECUTED
   Post-promotion record authority:
     S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-AUTH-001 — AUTHORIZED
+  Exact Human-accepted post-promotion record subject:
+    76caab2a68ef42c0c2b216b7e3b3e989ab4d56b3
+  Post-promotion record IR-001: ACCEPT
+  Post-promotion record HA-001: ACCEPTED
+  Post-promotion record HA acceptance-record authority:
+    S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-HA-001-ACCEPTANCE-RECORD-AUTH-001
+    — AUTHORIZED
+  Post-promotion record status: COMPLETE / HUMAN ACCEPTED
+  Current canonical origin/main:
+    feab2b2778aeec2f73b8a6f64f8d82e7921ae2a6
+  This HA acceptance-record successor: NOT YET PROMOTED TO MAIN
   Promotion operation: PURE FAST-FORWARD
   Pre-promotion canonical main: 168af70b54fba39f0efba69100d57b41a574667f
   Promoted canonical main: feab2b2778aeec2f73b8a6f64f8d82e7921ae2a6
@@ -1238,4 +1249,7 @@ ACCEPT; `S16-FINAL-CLOSEOUT-HA-001` — ACCEPTED; exact subject
 `c4ba1e7956a6812279fdf45f28c24738856dec44`; technical residual verdict
 **CLEAR**). Canonical main promotion is **COMPLETE / EXECUTED**
 (`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-AUTH-001` — EXECUTED; pure FF
-`168af70b…` → `feab2b2…`; 0 / 0).
+`168af70b…` → `feab2b2…`; 0 / 0). Post-promotion record is **COMPLETE /
+HUMAN ACCEPTED** on subject `76caab2…` (IR-001 ACCEPT; HA-001 ACCEPTED;
+this HA acceptance-record successor NOT YET PROMOTED TO MAIN; current
+`origin/main` remains `feab2b2…`).

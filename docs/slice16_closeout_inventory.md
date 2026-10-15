@@ -106,6 +106,26 @@ byte-identity (not a defect)
 **Post-promotion record authority:**
 `S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-AUTH-001` — AUTHORIZED
 
+**Exact Human-accepted post-promotion record subject:**
+`76caab2a68ef42c0c2b216b7e3b3e989ab4d56b3`
+
+**Post-promotion record independent review:**
+`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-IR-001` — ACCEPT
+
+**Post-promotion record Human acceptance:**
+`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-HA-001` — ACCEPTED
+
+**Post-promotion record HA acceptance-record authority:**
+`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-HA-001-ACCEPTANCE-RECORD-AUTH-001`
+— AUTHORIZED
+
+**Post-promotion record status:** COMPLETE / HUMAN ACCEPTED
+
+**Current canonical origin/main:**
+`feab2b2778aeec2f73b8a6f64f8d82e7921ae2a6`
+
+**This HA acceptance-record successor:** NOT YET PROMOTED TO MAIN
+
 **Promotion operation:** PURE FAST-FORWARD
 
 **Pre-promotion canonical main:**
@@ -126,7 +146,8 @@ reconciliation independent acceptance (IR-002 — ACCEPT on `fc36aa8…`) from
 Human reconciliation acceptance (`S16-CLOSEOUT-REQUIRED-RESIDUALS-RECONCILIATION-HA-001`
 — ACCEPTED on the same subject) from final closeout IR-001 ACCEPT / HA-001
 ACCEPTED on subject `c4ba1e7…` from canonical main promotion EXECUTED at
-`feab2b2…`.
+`feab2b2…` from post-promotion record IR-001 ACCEPT / HA-001 ACCEPTED on
+subject `76caab2…` (this successor NOT YET PROMOTED TO MAIN).
 
 **Method:** Inspect accepted canonical lineage (ROADMAP live ledger, accepted
 implementation-plan tip block, Human-accepted phase artifacts, and related
@@ -151,6 +172,7 @@ Closeout significance is classified separately.
 | Slice 16 overall | `COMPLETE / HUMAN ACCEPTED / CANONICAL` | Final closeout HA-001 on subject `c4ba1e7…`; promoted at `feab2b2…`. |
 | Slice 16 final closeout | `HUMAN ACCEPTED / CANONICAL` (`S16-FINAL-CLOSEOUT-HA-001`) | IR-001 ACCEPT; exact subject `c4ba1e7956a6812279fdf45f28c24738856dec44`. |
 | Canonical main promotion | `COMPLETE / EXECUTED` | `S16-FINAL-CLOSEOUT-MAIN-PROMOTION-AUTH-001` — EXECUTED; pure FF `168af70…` → `feab2b2…` (0/0). |
+| Post-promotion record | `COMPLETE / HUMAN ACCEPTED` | IR-001 ACCEPT; HA-001 ACCEPTED; exact subject `76caab2…`; NOT YET PROMOTED TO MAIN (`origin/main` still `feab2b2…`). |
 | M7 checklist “Portfolio Demo UI” | Checked (Slice 16 Human-accepted / canonical) | Tracks Slice 16 closeout; M7 closeout remains NOT AUTHORIZED. |
 
 ---
@@ -293,4 +315,9 @@ exact subject `c4ba1e7956a6812279fdf45f28c24738856dec44`; HA acceptance-record
 tip `feab2b2778aeec2f73b8a6f64f8d82e7921ae2a6`). **Slice 16:** COMPLETE /
 HUMAN ACCEPTED / CANONICAL. **Canonical main promotion:** COMPLETE / EXECUTED
 (`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-AUTH-001` — EXECUTED; pure FF
-`168af70b…` → `feab2b2…`; 0 / 0).
+`168af70b…` → `feab2b2…`; 0 / 0). **Post-promotion record:** COMPLETE /
+HUMAN ACCEPTED (`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-IR-001` — ACCEPT;
+`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-HA-001` — ACCEPTED; exact subject
+`76caab2a68ef42c0c2b216b7e3b3e989ab4d56b3`; this HA acceptance-record
+successor NOT YET PROMOTED TO MAIN; current `origin/main` remains
+`feab2b2778aeec2f73b8a6f64f8d82e7921ae2a6`).
