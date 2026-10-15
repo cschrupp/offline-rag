@@ -2,9 +2,12 @@
 
 **Authority:** `S16-CLOSEOUT-INVENTORY-AUTH-001` — AUTHORIZED
 
+**HA acceptance-record authority:**
+`S16-CLOSEOUT-INVENTORY-HA-001-ACCEPTANCE-RECORD-AUTH-001` — AUTHORIZED
+
 **Exact inventory base:** `168af70b54fba39f0efba69100d57b41a574667f`
 
-**Independent review lineage (historical):**
+**Independent review lineage:**
 
 - `S16-CLOSEOUT-INVENTORY-IR-001` — REWORK REQUIRED (F001 / F002)
 - `S16-CLOSEOUT-INVENTORY-IR-002` — ACCEPT on exact subject
@@ -13,24 +16,28 @@
   `S16-CLOSEOUT-INVENTORY-IR-002-ACCEPTANCE-RECORD-AUTH-001` — AUTHORIZED
 - IR-002 acceptance-record tip (provenance):
   `5df7af2b8d58e7fb48abc10e35d5af7aace0620b`
+- Post-IR-002 I-32 amendment + IR-003 F003 Human-status wording correction
+- `S16-CLOSEOUT-INVENTORY-IR-003` — REWORK REQUIRED (F003)
+- `S16-CLOSEOUT-INVENTORY-IR-004` — ACCEPT
 
-**Provenance note:** IR-002 ACCEPT remains historically valid for exact subject
-`d284776…`. After post-acceptance discovery of README live-status drift, that
-subject is **no longer** the newest exhaustive inventory. The `5df7af2…`
-acceptance record remains untouched as provenance and is **not** rewritten.
+**Exact Human-accepted inventory subject:**
+`e24c11df70a59c41c494f302a19ae211bf787bf9`
 
-**Inventory status:** AMENDED / PENDING INDEPENDENT RE-REVIEW (I-32 added;
-F003 Human-status wording corrected)
+**Human acceptance:** `S16-CLOSEOUT-INVENTORY-HA-001` — ACCEPTED
 
-**Human acceptance of `d284776…`:** NOT GRANTED — superseded as current
-acceptance target by amended inventory
+**Inventory status:** HUMAN ACCEPTED
 
-**Human acceptance:** NOT GRANTED; amended inventory requires independent
-re-review before Human acceptance
+**Human acceptance of `d284776…`:** NOT GRANTED — superseded as Human-acceptance
+target by amended subject `e24c11d…` (historical IR-002 ACCEPT on `d284776…`
+remains valid provenance)
 
 **Inventory verdict:** CLOSEOUT BLOCKED — REQUIRED RESIDUALS REMAIN
 
 **Authoritative required residual set:** I-26, I-27, I-28, I-30, I-31, **I-32**
+
+**Repairs:** NOT YET AUTHORIZED
+
+**Final Slice-16 closeout:** NOT AUTHORIZED
 
 **Slice 16:** IN PROGRESS / NOT COMPLETE
 
@@ -156,18 +163,15 @@ CLOSEOUT BLOCKED — REQUIRED RESIDUALS REMAIN
 - Clearing the repository lint baseline to green
 - Resuming **9G** or opening Slice **17** / **18** / M7 closeout
 
-**Explicitly not claimed by this inventory:**
+**Explicitly not claimed by this inventory / HA record:**
 
 - Slice 16 complete
 - Final Slice-16 closeout authorized
-- Human acceptance of `d284776…` (NOT GRANTED; superseded as current acceptance target)
+- Repair of I-26…I-32
+- Human acceptance of `d284776…` (NOT GRANTED; superseded by `e24c11d…`)
 - Any product/source change
-- Any repair of I-26…I-32 under this inventory authority
-- Any new implementation authority
+- 16K / 9G / Slice 17 / 18 / M7 closeout
 
-Next gate: **independent re-review** of this amended inventory tip (I-32
-added). After IR ACCEPT and Human acceptance of the **amended** inventory
-subject, authorize one **bounded docs-only reconciliation** covering
-**I-26, I-27, I-28, I-30, I-31, I-32**. Do **not** repair residuals before that
-sequence. Do **not** treat inventory acceptance or a later clear reconciliation
-as automatic Slice-16 closeout.
+Next gate: authorize one **bounded docs-only reconciliation** covering exactly
+**I-26, I-27, I-28, I-30, I-31, I-32**. Human acceptance of this inventory does
+**not** by itself authorize those repairs or final Slice-16 closeout.

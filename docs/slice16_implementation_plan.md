@@ -210,21 +210,29 @@ Accepted-lineage documentation reconciliation: AUTHORIZED
   Author: Carlos A. Schrupp
   Contact: carlos.schrupp@berkeley.edu
   Does NOT close Slice 16
-Slice-16 closeout inventory: AMENDED / PENDING INDEPENDENT RE-REVIEW
+Slice-16 closeout inventory: HUMAN ACCEPTED
   Authority: S16-CLOSEOUT-INVENTORY-AUTH-001 — AUTHORIZED
+  HA acceptance-record authority:
+    S16-CLOSEOUT-INVENTORY-HA-001-ACCEPTANCE-RECORD-AUTH-001 — AUTHORIZED
   Exact inventory base: 168af70b54fba39f0efba69100d57b41a574667f
   Artifact: docs/slice16_closeout_inventory.md
   Historical IR-002 ACCEPT (exact subject d284776…): remains valid provenance
-  Acceptance-record authority:
+  IR-002 acceptance-record authority:
     S16-CLOSEOUT-INVENTORY-IR-002-ACCEPTANCE-RECORD-AUTH-001 — AUTHORIZED
   IR-002 acceptance-record tip (provenance): 5df7af2…
-  Post-acceptance amendment: I-32 README live Project-status residual
-  Human acceptance of d284776…: NOT GRANTED — superseded as current
-    acceptance target by amended inventory
+  I-32 amendment + IR-003 F003 wording correction: historical
+  Independent review: S16-CLOSEOUT-INVENTORY-IR-004 — ACCEPT
+  Human acceptance: S16-CLOSEOUT-INVENTORY-HA-001 — ACCEPTED
+  Exact Human-accepted inventory subject:
+    e24c11df70a59c41c494f302a19ae211bf787bf9
+  Human acceptance of d284776…: NOT GRANTED — superseded as Human
+    acceptance target by e24c11d…
   Inventory verdict:
     CLOSEOUT BLOCKED — REQUIRED RESIDUALS REMAIN
   Authoritative required residual set:
     I-26, I-27, I-28, I-30, I-31, I-32
+  Repairs: NOT YET AUTHORIZED
+  Final Slice-16 closeout: NOT AUTHORIZED
   Scope: docs/governance only; no product code; no 16K/9G/17/18
   Does NOT repair I-26…I-32
   Does NOT declare Slice 16 complete
