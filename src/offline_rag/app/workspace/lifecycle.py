@@ -964,7 +964,11 @@ class WorkspaceLifecycleService:
                         control=control,
                     )
                 return self._execute_empty_transition(
-                    record, operation_id=operation_id, plan=resolved, lease=lease
+                    record,
+                    operation_id=operation_id,
+                    plan=resolved,
+                    lease=lease,
+                    control=control,
                 )
             except AppError as exc:
                 current = self.operations.get(workspace_id, operation_id)
@@ -1107,6 +1111,7 @@ class WorkspaceLifecycleService:
         operation_id: str,
         plan: _MutationPlan,
         lease: WorkspaceMutationLease,
+        control: OperationHandle | None,
     ) -> ManagedOperationRecord:
         """Final-source removal: depublish and go EMPTY, never ingest (S16-D13)."""
         workspace_id = record.workspace_id
@@ -1142,6 +1147,11 @@ class WorkspaceLifecycleService:
             self.settings, record.backing_corpus_name
         ) as corpus_lease:
             try:
+                # Same managed-control contract as Add/Replace publication CS:
+                # cooperative checkpoint, then atomic enter before destructive retire.
+                if control is not None:
+                    control.checkpoint("pre_empty_publish")
+                    control.enter_publication()
                 # Retire + EMPTY workspace + lineage + op success under corpus lease.
                 self.empty_transition.step_retire_publication(
                     workspace_id, lease=lease, corpus_lease=corpus_lease

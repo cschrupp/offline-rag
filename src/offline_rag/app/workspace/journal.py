@@ -444,6 +444,13 @@ class EmptyTransitionCoordinator:
                 else:
                     clear_retirement_marker(self.settings, corpus)
 
+            def _finish_recovery_a() -> str:
+                """All recovery-A exits share frozen terminalize_abandoned semantics."""
+                if terminalize_abandoned:
+                    self._interrupt_empty_operation(journal, lease=held)
+                self.journal_path(workspace_id).unlink(missing_ok=True)
+                return "A"
+
             try:
                 workspace = self.store.get(workspace_id, include_tombstoned=True)
             except AppError:
@@ -457,8 +464,7 @@ class EmptyTransitionCoordinator:
                 self._with_corpus_lease(
                     corpus, _restore_pointer, corpus_lease=corpus_lease
                 )
-                self.journal_path(workspace_id).unlink(missing_ok=True)
-                return "A"
+                return _finish_recovery_a()
 
             if workspace.status is WorkspaceStatus.EMPTY:
                 self._with_corpus_lease(
@@ -478,10 +484,7 @@ class EmptyTransitionCoordinator:
                 atomic_write_text(
                     self.store.workspace_path(workspace_id), prior.model_dump_json()
                 )
-                if terminalize_abandoned:
-                    self._interrupt_empty_operation(journal, lease=held)
-                self.journal_path(workspace_id).unlink(missing_ok=True)
-                return "A"
+                return _finish_recovery_a()
 
             if journal.phase is EmptyTransitionPhase.WORKSPACE_EMPTIED:
                 self._with_corpus_lease(
@@ -494,8 +497,8 @@ class EmptyTransitionCoordinator:
                 if workspace.status is WorkspaceStatus.EMPTY:
                     self._complete_empty_b(journal, lease=held)
                     return "B"
-                self.journal_path(workspace_id).unlink(missing_ok=True)
-                return "A"
+                # Inconsistent: journal claims committed but workspace is not EMPTY.
+                return _finish_recovery_a()
 
             raise AppError(
                 ErrorCode.WORKSPACE_STATE_UNAVAILABLE,

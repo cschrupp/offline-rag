@@ -25,6 +25,7 @@ from offline_rag.app.ingest_upload import (
 from offline_rag.app.operations import (
     CancelReason,
     IngestLifecycle,
+    OperationHandle,
     OperationKind,
 )
 from offline_rag.app.paths import ensure_data_directories
@@ -40,6 +41,10 @@ from offline_rag.app.workspace.models import (
     document_id_for_content,
     new_empty_workspace,
     new_source_id,
+)
+from offline_rag.app.workspace.journal import (
+    EmptyTransitionCoordinator,
+    EmptyTransitionPhase,
 )
 from offline_rag.app.workspace.mutation_ops import ManagedOperationStore
 from offline_rag.app.workspace.publication_journal import (
@@ -662,3 +667,299 @@ def test_idempotent_replay_and_no_partial_on_live_fail(tmp_path: Path) -> None:
         ws = WorkspaceStore(runtime.settings).get(wid)
         assert ws.revision == 2
         assert len([s for s in ws.sources if s.active]) == 1
+
+
+# ---------------------------------------------------------------------------
+# R1 — Final-source Remove cooperative control / EMPTY publication CS
+# ---------------------------------------------------------------------------
+
+
+def _add_one_source(client: TestClient, wid: str, *, key: str) -> tuple[str, int]:
+    add = client.post(
+        f"/v1/workspaces/{wid}/sources",
+        headers={"Idempotency-Key": key, "If-Match": '"1"'},
+        files={"files": ("only.txt", b"sole source for empty remove\n", "text/plain")},
+    )
+    assert add.status_code == 202, add.text
+    body = _wait(client, add.json()["operation_id"])
+    assert body["status"] == "succeeded", body
+    sources = client.get(f"/v1/workspaces/{wid}/sources").json()["sources"]
+    sid = sources[0]["source_id"]
+    rev = int(client.get(f"/v1/workspaces/{wid}").json()["revision"])
+    return sid, rev
+
+
+def test_final_remove_shutdown_before_empty_publication_cs(tmp_path: Path) -> None:
+    """R1: shutdown before EMPTY CS aborts; prior workspace remains authoritative."""
+    with _client(tmp_path) as (client, runtime):
+        wid = _create(client, "rm-pre")["workspace_id"]
+        sid, rev = _add_one_source(client, wid, key="add-pre")
+        prior = WorkspaceStore(runtime.settings).get(wid)
+        assert prior.status is WorkspaceStatus.ACTIVE
+
+        original = OperationHandle.checkpoint
+
+        def checkpoint_inject_shutdown(self: OperationHandle, where: str = "") -> None:
+            if where == "pre_empty_publish":
+                self.signal_cancel(CancelReason.SHUTDOWN)
+            return original(self, where)
+
+        OperationHandle.checkpoint = checkpoint_inject_shutdown  # type: ignore[method-assign]
+        try:
+            remove = client.delete(
+                f"/v1/workspaces/{wid}/sources/{sid}",
+                headers={"Idempotency-Key": "rm-pre", "If-Match": f'"{rev}"'},
+            )
+            assert remove.status_code == 202, remove.text
+            op_id = remove.json()["operation_id"]
+            body = _wait(client, op_id)
+            assert body["status"] == "failed", body
+            assert body["error"]["code"] == "ingest_failed"
+            failed = ManagedOperationStore(runtime.settings).get(wid, op_id)
+            assert failed.recovery_note == "recovered_A"
+        finally:
+            OperationHandle.checkpoint = original  # type: ignore[method-assign]
+
+        restored = WorkspaceStore(runtime.settings).get(wid)
+        assert restored.status is WorkspaceStatus.ACTIVE
+        assert restored.revision == prior.revision
+        assert restored.current_snapshot_id == prior.current_snapshot_id
+        assert any(s.active and s.source_id == sid for s in restored.sources)
+        assert current_pointer_path(
+            runtime.settings.paths.corpora, restored.backing_corpus_name
+        ).exists()
+
+
+def test_final_remove_shutdown_after_empty_publication_cs_completes(
+    tmp_path: Path,
+) -> None:
+    """R1: shutdown after EMPTY CS entry does not tear the transition in half."""
+    with _client(tmp_path) as (client, runtime):
+        wid = _create(client, "rm-post")["workspace_id"]
+        sid, rev = _add_one_source(client, wid, key="add-post")
+
+        original = OperationHandle.enter_publication
+
+        def enter_then_shutdown(self: OperationHandle) -> None:
+            original(self)
+            self.signal_cancel(CancelReason.SHUTDOWN)
+
+        OperationHandle.enter_publication = enter_then_shutdown  # type: ignore[method-assign]
+        try:
+            remove = client.delete(
+                f"/v1/workspaces/{wid}/sources/{sid}",
+                headers={"Idempotency-Key": "rm-post", "If-Match": f'"{rev}"'},
+            )
+            assert remove.status_code == 202, remove.text
+            body = _wait(client, remove.json()["operation_id"])
+            assert body["status"] == "succeeded", body
+        finally:
+            OperationHandle.enter_publication = original  # type: ignore[method-assign]
+
+        emptied = WorkspaceStore(runtime.settings).get(wid)
+        assert emptied.status is WorkspaceStatus.EMPTY
+        assert emptied.current_snapshot_id is None
+        assert [s for s in emptied.sources if s.active] == []
+
+
+# ---------------------------------------------------------------------------
+# R2 — EMPTY recovery-A terminal semantics on every A exit
+# ---------------------------------------------------------------------------
+
+
+def _seed_active_one_source_via_api(
+    client: TestClient, runtime: ApplicationRuntime, *, prefix: str
+) -> tuple[str, str, int]:
+    wid = _create(client, f"{prefix}-ws")["workspace_id"]
+    sid, rev = _add_one_source(client, wid, key=f"{prefix}-add")
+    return wid, sid, rev
+
+
+def _begin_empty_journal(
+    settings: AppSettings,
+    wid: str,
+    *,
+    op_id: str,
+    removed_source_json: str | None,
+) -> EmptyTransitionCoordinator:
+    store = WorkspaceStore(settings)
+    coord = EmptyTransitionCoordinator(settings, store)
+    record = store.get(wid)
+    with WorkspaceMutationLease(settings, wid) as lease:
+        coord.begin(
+            wid,
+            expected_revision=record.revision,
+            lease=lease,
+            operation_id=op_id,
+            removed_source_json=removed_source_json,
+        )
+    return coord
+
+
+def test_empty_recovery_a_missing_workspace_startup_and_live(tmp_path: Path) -> None:
+    """R2: missing workspace.json A exit honors terminalize_abandoned."""
+    with _client(tmp_path) as (client, runtime):
+        wid, sid, _rev = _seed_active_one_source_via_api(client, runtime, prefix="miss")
+        settings = runtime.settings
+        store = WorkspaceStore(settings)
+        ops = ManagedOperationStore(settings)
+        record = store.get(wid)
+        removed = next(s for s in record.sources if s.source_id == sid)
+        op = ops.begin(
+            workspace_id=wid,
+            idempotency_key="miss-op",
+            kind=ManagedOperationKind.SOURCE_REMOVE,
+            request_payload={"source_id": sid},
+            expected_revision=record.revision,
+        )
+        ops.update_status(wid, op.operation_id, ManagedOperationStatus.RUNNING)
+        coord = _begin_empty_journal(
+            settings,
+            wid,
+            op_id=op.operation_id,
+            removed_source_json=removed.model_dump_json(),
+        )
+        # Exceptional A branch: workspace.json unreadable/missing.
+        store.workspace_path(wid).unlink()
+        with WorkspaceMutationLease(settings, wid) as lease:
+            assert (
+                coord.recover(wid, lease=lease, terminalize_abandoned=True) == "A"
+            )
+        interrupted = ops.get(wid, op.operation_id)
+        assert interrupted.status is ManagedOperationStatus.INTERRUPTED
+        assert interrupted.recovery_note == "recovered_A"
+        restored = store.get(wid)
+        assert restored.status is WorkspaceStatus.ACTIVE
+        assert any(s.active and s.source_id == sid for s in restored.sources)
+
+        # Live-failure mode on a fresh op/journal: leave nonterminal.
+        op2 = ops.begin(
+            workspace_id=wid,
+            idempotency_key="miss-live",
+            kind=ManagedOperationKind.SOURCE_REMOVE,
+            request_payload={"source_id": sid},
+            expected_revision=restored.revision,
+        )
+        ops.update_status(wid, op2.operation_id, ManagedOperationStatus.RUNNING)
+        coord2 = _begin_empty_journal(
+            settings,
+            wid,
+            op_id=op2.operation_id,
+            removed_source_json=removed.model_dump_json(),
+        )
+        store.workspace_path(wid).unlink()
+        with WorkspaceMutationLease(settings, wid) as lease:
+            assert (
+                coord2.recover(wid, lease=lease, terminalize_abandoned=False) == "A"
+            )
+        mid = ops.get(wid, op2.operation_id)
+        assert mid.status is ManagedOperationStatus.RUNNING
+        err = AppError(
+            ErrorCode.INGEST_FAILED,
+            details=SafeErrorDetails(reason="shutdown_abort", stage="pre_empty_publish"),
+        )
+        with WorkspaceMutationLease(settings, wid) as lease:
+            ops.update_status(
+                wid,
+                op2.operation_id,
+                ManagedOperationStatus.FAILED,
+                failure_summary=str(err.code),
+                recovery_note="recovered_A",
+                error=ManagedOperationSafeError.from_app_error(err),
+                lease=lease,
+            )
+        failed = ops.get(wid, op2.operation_id)
+        assert failed.status is ManagedOperationStatus.FAILED
+        assert failed.recovery_note == "recovered_A"
+        assert failed.error is not None
+        assert failed.error.code == ErrorCode.INGEST_FAILED.value
+
+
+def test_empty_recovery_a_intent_and_committed_inconsistent(tmp_path: Path) -> None:
+    """R2: INTENT_RECORDED and inconsistent COMMITTED A exits terminalize correctly."""
+    with _client(tmp_path) as (client, runtime):
+        wid, sid, _rev = _seed_active_one_source_via_api(client, runtime, prefix="ph")
+        settings = runtime.settings
+        store = WorkspaceStore(settings)
+        ops = ManagedOperationStore(settings)
+        record = store.get(wid)
+        removed = next(s for s in record.sources if s.source_id == sid)
+
+        # INTENT_RECORDED → startup A
+        op = ops.begin(
+            workspace_id=wid,
+            idempotency_key="intent-a",
+            kind=ManagedOperationKind.SOURCE_REMOVE,
+            request_payload={"source_id": sid},
+            expected_revision=record.revision,
+        )
+        ops.update_status(wid, op.operation_id, ManagedOperationStatus.RUNNING)
+        coord = _begin_empty_journal(
+            settings,
+            wid,
+            op_id=op.operation_id,
+            removed_source_json=removed.model_dump_json(),
+        )
+        with WorkspaceMutationLease(settings, wid) as lease:
+            assert (
+                coord.recover(wid, lease=lease, terminalize_abandoned=True) == "A"
+            )
+        assert ops.get(wid, op.operation_id).status is ManagedOperationStatus.INTERRUPTED
+        assert ops.get(wid, op.operation_id).recovery_note == "recovered_A"
+        assert store.get(wid).status is WorkspaceStatus.ACTIVE
+
+        # PUBLICATION_RETIRED → live A leaves nonterminal
+        record = store.get(wid)
+        op2 = ops.begin(
+            workspace_id=wid,
+            idempotency_key="retired-live",
+            kind=ManagedOperationKind.SOURCE_REMOVE,
+            request_payload={"source_id": sid},
+            expected_revision=record.revision,
+        )
+        ops.update_status(wid, op2.operation_id, ManagedOperationStatus.RUNNING)
+        coord2 = _begin_empty_journal(
+            settings,
+            wid,
+            op_id=op2.operation_id,
+            removed_source_json=removed.model_dump_json(),
+        )
+        with WorkspaceMutationLease(settings, wid) as lease:
+            coord2.step_retire_publication(wid, lease=lease)
+            assert (
+                coord2.recover(wid, lease=lease, terminalize_abandoned=False) == "A"
+            )
+        assert ops.get(wid, op2.operation_id).status is ManagedOperationStatus.RUNNING
+        assert store.get(wid).status is WorkspaceStatus.ACTIVE
+        assert current_pointer_path(
+            settings.paths.corpora, store.get(wid).backing_corpus_name
+        ).exists()
+
+        # COMMITTED + non-EMPTY workspace → startup A
+        record = store.get(wid)
+        op3 = ops.begin(
+            workspace_id=wid,
+            idempotency_key="committed-a",
+            kind=ManagedOperationKind.SOURCE_REMOVE,
+            request_payload={"source_id": sid},
+            expected_revision=record.revision,
+        )
+        ops.update_status(wid, op3.operation_id, ManagedOperationStatus.RUNNING)
+        coord3 = _begin_empty_journal(
+            settings,
+            wid,
+            op_id=op3.operation_id,
+            removed_source_json=removed.model_dump_json(),
+        )
+        journal = coord3.load_journal(wid)
+        assert journal is not None
+        coord3._save_journal(  # noqa: SLF001
+            journal.model_copy(update={"phase": EmptyTransitionPhase.COMMITTED})
+        )
+        with WorkspaceMutationLease(settings, wid) as lease:
+            assert (
+                coord3.recover(wid, lease=lease, terminalize_abandoned=True) == "A"
+            )
+        assert ops.get(wid, op3.operation_id).status is ManagedOperationStatus.INTERRUPTED
+        assert ops.get(wid, op3.operation_id).recovery_note == "recovered_A"
+        assert store.get(wid).status is WorkspaceStatus.ACTIVE
