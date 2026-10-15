@@ -80,7 +80,16 @@ Slice 16: IN PROGRESS / NOT COMPLETE
 Slice 17: NOT AUTHORIZED
 Slice 18: NOT AUTHORIZED
 M7 closeout: NOT AUTHORIZED
-ALLOW_PRODUCTION: UNCHANGED / EMPTY
+ALLOW_PRODUCTION:
+  Question Check: ALLOW_PRODUCTION
+    Human disposition: S16-N-A-QC-PRESENTATION-HA-001 — ACCEPTED
+    Exact accepted subject: 21dfb3e88920c40fe227d51efc8022995ef41c9e
+  Rapid Fire: ALLOW_PRODUCTION
+    Authority: S16-N-A-RF-ALLOW-PRODUCTION-AUTH-001
+    Human disposition: S16-N-A-RF-PRESENTATION-HA-001 — ACCEPTED
+    Exact accepted subject: aac51029f279f07cafd1078160efbd592d5fc4be
+Evidence Sweep: NOT APPROVED
+Chunk Duel: NOT APPROVED
 ```
 
 ---

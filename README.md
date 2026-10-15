@@ -311,27 +311,36 @@ cd ui && npm test && npm run lint && npm run typecheck && npm run build
 | Slice 16 | **IN PROGRESS / NOT COMPLETE** |
 | 16A / 16B / 16C | **COMPLETE / ACCEPTED** |
 | 16D-A / 16D-B2 / 16D-B3 / 16D-C | **COMPLETE / ACCEPTED / SEALED** |
-| Amendment A4 | **ACCEPTED / LOCKED / SEALED** |
+| Amendment A2 / A4 | **ACCEPTED / LOCKED / SEALED** |
 | 16E | **COMPLETE / ACCEPTED / SEALED** |
 | 16F (Gold Lab backend / data plane) | **COMPLETE / ACCEPTED / SEALED** |
 | 16G-D0 (games / pedagogy design) | **ACCEPTED / FROZEN** |
-| GAP-16G-01 (immutable training/calibration package) | **DESIGN REGISTERED / IMPLEMENTATION NOT AUTHORIZED** |
-| 16G implementation / 16H | **NOT AUTHORIZED** |
+| GAP-16G-01 | **ACCEPTED** |
+| 16G implementation | **IMPLEMENTATION COMPLETE / ACCEPTED** |
+| 16H | **COMPLETE / ACCEPTED** |
+| 16I / 16L / 16M | **COMPLETE / ACCEPTED** |
+| 16N-A / 16N-B | **COMPLETE** (QC/RF `ALLOW_PRODUCTION` accepted; Evidence Sweep / Chunk Duel **NOT APPROVED**) |
+| Authoring-server failure UX | **COMPLETE / HUMAN ACCEPTED** |
+| 16J final branding | **COMPLETE / HUMAN ACCEPTED / CANONICAL** |
+| Slice-16 closeout inventory | **HUMAN ACCEPTED**; verdict **CLOSEOUT BLOCKED** pending reconciliation review of residuals I-26…I-28, I-30…I-32 |
+| 16K | **NOT AUTHORIZED** (deferred; not required for current-envelope closeout) |
 | Slice 17 / 18 | **NOT AUTHORIZED** |
 | M7 closeout | **NOT AUTHORIZED** |
 
 Detailed SHAs and evidence: [`ROADMAP.md`](ROADMAP.md),
+[`docs/slice16_closeout_inventory.md`](docs/slice16_closeout_inventory.md),
+[`docs/slice16j_final_branding.md`](docs/slice16j_final_branding.md),
+[`docs/slice16h_integration_accessibility_portfolio_acceptance.md`](docs/slice16h_integration_accessibility_portfolio_acceptance.md),
 [`docs/slice16e_closeout.md`](docs/slice16e_closeout.md),
-[`docs/slice16e_engineering_evidence.md`](docs/slice16e_engineering_evidence.md),
 [`docs/slice16f_closeout.md`](docs/slice16f_closeout.md),
 [`docs/slice16g_gold_lab_games_pedagogy_design.md`](docs/slice16g_gold_lab_games_pedagogy_design.md),
-[`docs/workspace_source_loading_remediation.md`](docs/workspace_source_loading_remediation.md),
-[`docs/slice16d_c_a4_closeout.md`](docs/slice16d_c_a4_closeout.md),
+[`docs/slice16_amendment_a2_conversational_grounding.md`](docs/slice16_amendment_a2_conversational_grounding.md),
 [`docs/milestone7_performance_ui.md`](docs/milestone7_performance_ui.md).
 
-Gold Lab **backend/data-plane** APIs are **COMPLETE / ACCEPTED / SEALED**;
-Gold Lab games / UI workloads remain **implementation not authorized**
-(**16G-D0 ACCEPTED / FROZEN**; implementation still **NOT AUTHORIZED**).
+Gold Lab **backend/data-plane** APIs and **games / expert-entry UI** are
+**accepted** under 16G / 16N. Production presentation eligibility currently
+includes **Question Check** and **Rapid Fire** only; **Evidence Sweep** and
+**Chunk Duel** remain **NOT APPROVED**.
 
 Still deferred / not authorized as product deliverables:
 
@@ -341,6 +350,7 @@ Still deferred / not authorized as product deliverables:
 - cloud inference in the strict-offline core
 - enterprise auth / RBAC
 - distributed Qdrant / GraphRAG / multi-agent swarms
+- 16K first-user corpus capacity expansion beyond the accepted current envelope
 
 ## Scope boundaries
 

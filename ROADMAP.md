@@ -662,10 +662,13 @@ SLICE 15  COMPLETE / ACCEPTED
          CLOSEOUT BLOCKED — REQUIRED RESIDUALS REMAIN
        Authoritative required residual set:
          I-26, I-27, I-28, I-30, I-31, I-32
-       Repairs: NOT YET AUTHORIZED
+       Reconciliation authority:
+         S16-CLOSEOUT-REQUIRED-RESIDUALS-RECONCILIATION-AUTH-001 — AUTHORIZED
+       Exact reconciliation base: 73b7fc99d7dc24930962f40a584ed957de4e716a
+       Repair status: RECONCILIATION CANDIDATE / PENDING INDEPENDENT REVIEW
        Final Slice-16 closeout: NOT AUTHORIZED
        Scope: docs/governance only; no product code; no 16K/9G/17/18
-       Does NOT repair I-26…I-32
+       Does NOT declare residuals finally closed until IR ACCEPT
        Does NOT declare Slice 16 complete
      9G DEFERRED / NOT AUTHORIZED
      16K: NOT AUTHORIZED

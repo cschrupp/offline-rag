@@ -35,7 +35,9 @@ remains valid provenance)
 
 **Authoritative required residual set:** I-26, I-27, I-28, I-30, I-31, **I-32**
 
-**Repairs:** NOT YET AUTHORIZED
+**Repairs:** RECONCILIATION CANDIDATE / PENDING INDEPENDENT REVIEW
+(`S16-CLOSEOUT-REQUIRED-RESIDUALS-RECONCILIATION-AUTH-001` — AUTHORIZED;
+exact base `73b7fc99d7dc24930962f40a584ed957de4e716a`)
 
 **Final Slice-16 closeout:** NOT AUTHORIZED
 
@@ -43,7 +45,9 @@ remains valid provenance)
 
 **Scope:** Docs / governance only. No product code. No new implementation
 authority. Does **not** declare Slice 16 complete. Does **not** authorize
-16K, 9G, Slice 17/18, or M7 closeout. Does **not** repair I-26…I-32.
+16K, 9G, Slice 17/18, or M7 closeout. Edits under the reconciliation
+authority do **not** by themselves finally close I-26…I-32 until independent
+review accepts the repair candidate.
 
 **Method:** Inspect accepted canonical lineage (ROADMAP live ledger, accepted
 implementation-plan tip block, Human-accepted phase artifacts, and related
@@ -172,6 +176,17 @@ CLOSEOUT BLOCKED — REQUIRED RESIDUALS REMAIN
 - Any product/source change
 - 16K / 9G / Slice 17 / 18 / M7 closeout
 
-Next gate: authorize one **bounded docs-only reconciliation** covering exactly
-**I-26, I-27, I-28, I-30, I-31, I-32**. Human acceptance of this inventory does
-**not** by itself authorize those repairs or final Slice-16 closeout.
+### Reconciliation candidate mapping (pending independent review)
+
+| Residual | Repair target | Candidate status |
+|---|---|---|
+| I-26 | `docs/slice16_design_authority.md` live Authorization note + closing prose | candidate repaired |
+| I-27 | plan phase-order diagram `16H` line | candidate repaired |
+| I-28 | gap-registry LIVE GOVERNANCE PROJECTION `ALLOW_PRODUCTION` | candidate repaired |
+| I-30 | plan Explicit non-scope conversational rule | candidate repaired |
+| I-31 | `docs/slice16_amendment_a2_conversational_grounding.md` restored blob `68128f7555f73d5ff893ef63b6b192d449c78086` | candidate repaired |
+| I-32 | `README.md` Project status | candidate repaired |
+
+Next gate: **independent review** of this reconciliation candidate. Residuals
+are **not** finally closed by edits alone. Final Slice-16 closeout remains
+**NOT AUTHORIZED**.
