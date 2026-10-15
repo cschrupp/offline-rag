@@ -848,15 +848,117 @@ def test_r3_existing_nonterminal_missing_observability_is_repaired(
             payload=payload,
             uploaded_raw_bytes=len(blob),
         )
-        assert handle is None
-        assert repaired.operation_id == orphan.operation_id
-        assert repaired.request_fingerprint == orphan.request_fingerprint
-        assert repaired.worklist is not None
-        assert repaired.metrics is not None
-        assert repaired.metrics.requested_document_count == 1
-        assert repaired.metrics.uploaded_raw_bytes == len(blob)
-        assert repaired.worklist.total_document_count == 1
-        assert repaired.worklist.documents[0].display_name == "repair.md"
+        try:
+            # IR-003: PENDING orphan repair must return a real admit handle.
+            assert handle is not None
+            assert repaired.operation_id == orphan.operation_id
+            assert repaired.request_fingerprint == orphan.request_fingerprint
+            assert repaired.worklist is not None
+            assert repaired.metrics is not None
+            assert repaired.metrics.requested_document_count == 1
+            assert repaired.metrics.uploaded_raw_bytes == len(blob)
+            assert repaired.worklist.total_document_count == 1
+            assert repaired.worklist.documents[0].display_name == "repair.md"
+        finally:
+            if handle is not None:
+                runtime.operations.release(handle)
+
+
+def test_r3_api_freeze_fail_retry_launches_same_operation(tmp_path: Path) -> None:
+    """IR-003 decisive path: freeze fail → same-key HTTP retry owns + finishes."""
+    with _client(tmp_path) as (client, runtime):
+        wid = _create(client)["workspace_id"]
+        lifecycle = runtime.workspace_lifecycle
+        store = lifecycle.operations
+        real_freeze = store.freeze_admission_projection
+        blob = b"# Orphan-retry\n\nMust launch on retry.\n"
+        key = "api-orphan-retry"
+
+        def boom(*_a, **_k):
+            raise OSError("forced freeze once")
+
+        store.freeze_admission_projection = boom  # type: ignore[method-assign]
+        try:
+            failed = client.post(
+                f"/v1/workspaces/{wid}/sources",
+                headers={"Idempotency-Key": key, "If-Match": '"1"'},
+                files=[("files", ("orphan.md", blob, "text/plain"))],
+            )
+        finally:
+            store.freeze_admission_projection = real_freeze  # type: ignore[method-assign]
+
+        assert failed.status_code >= 400, failed.text
+        orphan = store.find_by_idempotency(wid, key)
+        assert orphan is not None
+        assert orphan.status is ManagedOperationStatus.PENDING
+        assert orphan.metrics is None
+        assert orphan.worklist is None
+
+        retry = client.post(
+            f"/v1/workspaces/{wid}/sources",
+            headers={"Idempotency-Key": key, "If-Match": '"1"'},
+            files=[("files", ("orphan.md", blob, "text/plain"))],
+        )
+        assert retry.status_code == 202, retry.text
+        body = retry.json()
+        assert body["operation_id"] == orphan.operation_id
+        assert body["worklist"] is not None
+        assert body["metrics"] is not None
+        final = _wait(client, body["operation_id"])
+        assert final["status"] == "succeeded"
+        assert final["operation_id"] == orphan.operation_id
+
+
+def test_r3_preparing_missing_projection_fails_closed_no_admit(
+    tmp_path: Path,
+) -> None:
+    """PREPARING + missing projection is ownership-ambiguous — never relaunch."""
+    with _client(tmp_path) as (client, runtime):
+        wid = _create(client)["workspace_id"]
+        lifecycle = runtime.workspace_lifecycle
+        blob = b"# Ambiguous\n\nProgressed without projection.\n"
+        payload, _ = _add_payload(blob, name="ambig.md")
+        orphan, created = lifecycle.operations.reserve(
+            workspace_id=wid,
+            idempotency_key="ambig-prep",
+            kind=ManagedOperationKind.SOURCE_ADD,
+            request_payload=payload,
+            expected_revision=1,
+        )
+        assert created
+        lifecycle.operations.update_status(
+            wid, orphan.operation_id, ManagedOperationStatus.PREPARING
+        )
+        admit_calls: list[int] = []
+        real_admit = runtime.operations.admit_managed_ingest
+
+        def tracking_admit():
+            admit_calls.append(1)
+            return real_admit()
+
+        runtime.operations.admit_managed_ingest = tracking_admit  # type: ignore[method-assign]
+        try:
+            with pytest.raises(AppError) as exc_info:
+                lifecycle.reserve_and_admit_scientific(
+                    wid,
+                    kind=ManagedOperationKind.SOURCE_ADD,
+                    idempotency_key="ambig-prep",
+                    expected_revision=1,
+                    payload=payload,
+                    uploaded_raw_bytes=len(blob),
+                )
+        finally:
+            runtime.operations.admit_managed_ingest = real_admit  # type: ignore[method-assign]
+
+        assert exc_info.value.code is ErrorCode.WORKSPACE_STATE_UNAVAILABLE
+        assert (exc_info.value.details or {}).get("reason") == (
+            "admission_projection_ownership_ambiguous"
+        )
+        assert admit_calls == []
+        still = lifecycle.operations.get(wid, orphan.operation_id)
+        assert still.status is ManagedOperationStatus.PREPARING
+        assert still.metrics is None
+        assert still.worklist is None
 
 
 def test_r3_unrepairable_existing_reservation_fails_closed(tmp_path: Path) -> None:

@@ -24,6 +24,9 @@
 **16K-B independent review:** `S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-IR-002` — REWORK REQUIRED (R3 / R4a / R4b)
 **16K-B rework authority:** `S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-REWORK-AUTH-002` — AUTHORIZED
 **Exact 16K-B rework-002 base / parent:** `533a07c3d1313d08eae5647e4c266d4fa3a439c5`
+**16K-B independent review:** `S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-IR-003` — REWORK REQUIRED (R3 orphan ownership)
+**16K-B rework authority:** `S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-REWORK-AUTH-003` — AUTHORIZED
+**Exact 16K-B rework-003 base / parent:** `2c0e7bf21c8c427ee99b1b9518342a8080596463`
 **16K-B branch:** `implementation/16k-b-ingestion-observability`
 **Status:** DESIGN ACCEPTED / FROZEN
 **16K-A:** IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED
@@ -47,9 +50,11 @@ correctness is **IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN
 ACCEPTED** at subject `1370b993…`. **16K-B** ingestion observability is
 **IMPLEMENTATION AUTHORIZED / NOT YET ACCEPTED**; IR-001 required R1–R4 rework
 from base `85f01f4…` (R1/R2 closed at `533a07c…`); IR-002 required R3/R4a/R4b
-rework under REWORK-AUTH-002 from parent `533a07c…`. 16K-C→G, capacity
-expansion, CUDA optimization, UI work, OCR, Slice 17/18, 9G, and M7 closeout
-remain unauthorized.
+rework under REWORK-AUTH-002 from parent `533a07c…` (R4a/R4b + atomic freeze
+closed at `2c0e7bf…`); IR-003 required R3 orphan-ownership correction under
+REWORK-AUTH-003 from parent `2c0e7bf…`. 16K-C→G, capacity expansion, CUDA
+optimization, UI work, OCR, Slice 17/18, 9G, and M7 closeout remain
+unauthorized.
 
 ---
 
@@ -678,6 +683,11 @@ Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
   Rework authority:
     S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-REWORK-AUTH-002 — AUTHORIZED
   Exact rework-002 base / parent: 533a07c3d1313d08eae5647e4c266d4fa3a439c5
+  Independent review:
+    S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-IR-003 — REWORK REQUIRED (R3 orphan ownership)
+  Rework authority:
+    S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-REWORK-AUTH-003 — AUTHORIZED
+  Exact rework-003 base / parent: 2c0e7bf21c8c427ee99b1b9518342a8080596463
   Branch: implementation/16k-b-ingestion-observability
 16K-C → 16K-G: NOT YET AUTHORIZED
 Frozen order: 16K-A → 16K-B → baseline evidence → 16K-C → 16K-D → 16K-E → 16K-F → 16K-G

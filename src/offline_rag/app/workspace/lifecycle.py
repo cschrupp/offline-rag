@@ -523,18 +523,15 @@ class WorkspaceLifecycleService:
                     return existing, None
                 if existing.worklist is not None and existing.metrics is not None:
                     return existing, None
-                # Nonterminal reservation missing admission projection: repair
-                # authoritatively before returning as accepted (IR-002 R3).
-                return (
-                    self._repair_admission_observability(
-                        workspace_id=workspace_id,
-                        operation=existing,
-                        kind=kind,
-                        payload=payload,
-                        uploaded_raw_bytes=uploaded_raw_bytes,
-                        lease=lease,
-                    ),
-                    None,
+                # Nonterminal missing projection: PENDING → repair+re-admit;
+                # PREPARING/RUNNING → fail closed (IR-003 R3).
+                return self._resolve_missing_admission_projection(
+                    workspace_id=workspace_id,
+                    operation=existing,
+                    kind=kind,
+                    payload=payload,
+                    uploaded_raw_bytes=uploaded_raw_bytes,
+                    lease=lease,
                 )
 
             # NEW key: cheap preconditions before capacity / reservation.
@@ -565,7 +562,7 @@ class WorkspaceLifecycleService:
                 lease=lease,
             )
             if not created:
-                # Concurrent reserve race: treat as existing-path repair/return.
+                # Concurrent reserve race: same ownership rules as existing-key path.
                 if operation.status in {
                     ManagedOperationStatus.SUCCEEDED,
                     ManagedOperationStatus.FAILED,
@@ -574,16 +571,13 @@ class WorkspaceLifecycleService:
                     return operation, None
                 if operation.worklist is not None and operation.metrics is not None:
                     return operation, None
-                return (
-                    self._repair_admission_observability(
-                        workspace_id=workspace_id,
-                        operation=operation,
-                        kind=kind,
-                        payload=payload,
-                        uploaded_raw_bytes=uploaded_raw_bytes,
-                        lease=lease,
-                    ),
-                    None,
+                return self._resolve_missing_admission_projection(
+                    workspace_id=workspace_id,
+                    operation=operation,
+                    kind=kind,
+                    payload=payload,
+                    uploaded_raw_bytes=uploaded_raw_bytes,
+                    lease=lease,
                 )
             # Authoritative admitted worklist before capacity/202 (16K-B R3).
             # Failures propagate; capacity is not acquired on freeze failure.
@@ -596,21 +590,11 @@ class WorkspaceLifecycleService:
                 uploaded_raw_bytes=uploaded_raw_bytes,
                 lease=lease,
             )
-            try:
-                # Detached 202 scientific mutations: managed-ingest admission
-                # (ingest capacity + drain) without request-style whole-job deadline.
-                handle = self.runtime.operations.admit_managed_ingest()
-            except AppError as exc:
-                self.operations.update_status(
-                    workspace_id,
-                    operation.operation_id,
-                    ManagedOperationStatus.FAILED,
-                    error=ManagedOperationSafeError.from_app_error(exc),
-                    failure_summary=str(exc.code),
-                    lease=lease,
-                )
-                raise
-            return self.operations.get(workspace_id, operation.operation_id), handle
+            return self._admit_scientific_handle(
+                workspace_id=workspace_id,
+                operation_id=operation.operation_id,
+                lease=lease,
+            )
         finally:
             lease.release()
 
@@ -1396,6 +1380,81 @@ class WorkspaceLifecycleService:
                     reason="admission_projection_persist_failed",
                 ),
             ) from exc
+
+    def _admit_scientific_handle(
+        self,
+        *,
+        workspace_id: str,
+        operation_id: str,
+        lease: WorkspaceMutationLease,
+    ) -> tuple[ManagedOperationRecord, OperationHandle]:
+        """Acquire managed-ingest capacity for a frozen admission projection."""
+        try:
+            # Detached 202 scientific mutations: managed-ingest admission
+            # (ingest capacity + drain) without request-style whole-job deadline.
+            handle = self.runtime.operations.admit_managed_ingest()
+        except AppError as exc:
+            self.operations.update_status(
+                workspace_id,
+                operation_id,
+                ManagedOperationStatus.FAILED,
+                error=ManagedOperationSafeError.from_app_error(exc),
+                failure_summary=str(exc.code),
+                lease=lease,
+            )
+            raise
+        return self.operations.get(workspace_id, operation_id), handle
+
+    def _resolve_missing_admission_projection(
+        self,
+        *,
+        workspace_id: str,
+        operation: ManagedOperationRecord,
+        kind: ManagedOperationKind,
+        payload: dict[str, Any],
+        uploaded_raw_bytes: int | None,
+        lease: WorkspaceMutationLease,
+    ) -> tuple[ManagedOperationRecord, OperationHandle]:
+        """IR-003: repair+re-admit PENDING orphans; fail closed if progressed.
+
+        PENDING + missing metrics/worklist proves freeze never completed, so
+        capacity was never acquired. PREPARING/RUNNING + missing projection is
+        ownership-ambiguous and must not relaunch.
+        """
+        if operation.status in {
+            ManagedOperationStatus.PREPARING,
+            ManagedOperationStatus.RUNNING,
+        }:
+            raise AppError(
+                ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                details=SafeErrorDetails(
+                    workspace_id=workspace_id,
+                    operation_id=operation.operation_id,
+                    reason="admission_projection_ownership_ambiguous",
+                ),
+            )
+        if operation.status is not ManagedOperationStatus.PENDING:
+            raise AppError(
+                ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                details=SafeErrorDetails(
+                    workspace_id=workspace_id,
+                    operation_id=operation.operation_id,
+                    reason="admission_projection_ownership_ambiguous",
+                ),
+            )
+        repaired = self._repair_admission_observability(
+            workspace_id=workspace_id,
+            operation=operation,
+            kind=kind,
+            payload=payload,
+            uploaded_raw_bytes=uploaded_raw_bytes,
+            lease=lease,
+        )
+        return self._admit_scientific_handle(
+            workspace_id=workspace_id,
+            operation_id=repaired.operation_id,
+            lease=lease,
+        )
 
     def _repair_admission_observability(
         self,
