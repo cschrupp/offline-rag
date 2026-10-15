@@ -542,7 +542,9 @@ class WorkspaceLifecycleService:
             if not created:
                 return operation, None
             try:
-                handle = self.runtime.operations.admit_ingest()
+                # Detached 202 scientific mutations: managed-ingest admission
+                # (ingest capacity + drain) without request-style whole-job deadline.
+                handle = self.runtime.operations.admit_managed_ingest()
             except AppError as exc:
                 self.operations.update_status(
                     workspace_id,
@@ -1321,12 +1323,20 @@ class WorkspaceLifecycleService:
         _ = CorpusMutationLease  # typing only
         recovery_note: str | None = None
         try:
+            # Live failure: restore A/B without prematurely terminalizing as
+            # INTERRUPTED so this method can record FAILED + safe error.
             outcome = self.publication.recover(
-                workspace_id, lease=lease, corpus_lease=corpus_lease
+                workspace_id,
+                lease=lease,
+                corpus_lease=corpus_lease,
+                terminalize_abandoned=False,
             )
             if outcome == "clean":
                 outcome = self.empty_transition.recover(
-                    workspace_id, lease=lease, corpus_lease=corpus_lease
+                    workspace_id,
+                    lease=lease,
+                    corpus_lease=corpus_lease,
+                    terminalize_abandoned=False,
                 )
             if outcome != "clean":
                 recovery_note = f"recovered_{outcome}"

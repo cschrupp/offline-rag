@@ -8,9 +8,13 @@
 **Exact Human-accepted design subject:** `0839b565cd60958141366048520236a71bf16fd0`
 **Exact design-open base:** `3a7d8ff2c442c5d4cd10c0c21637ebc4c52b65fa`
 **Exact rework base:** `5c693c531ded432b10cf5f6ac19d558a1f4e9431`
-**Branch:** `design/16k-beta-ingestion-readiness`
-**Status:** DESIGN ACCEPTED / FROZEN / IMPLEMENTATION NOT YET AUTHORIZED
-**Next gate:** 16K-A — NEXT GATE / NOT YET AUTHORIZED
+**HA-record IR:** `S16-K-BETA-INGESTION-READINESS-DESIGN-HA-RECORD-IR-001` — ACCEPT
+**16K-A implementation authority:** `S16-K-A-MANAGED-INGESTION-CORRECTNESS-IMPLEMENTATION-AUTH-001` — AUTHORIZED
+**Exact 16K-A implementation base:** `96c4d1f7261a3f07374afa2963e2c88bdd77a201`
+**16K-A branch:** `implementation/16k-a-managed-ingestion-correctness`
+**Status:** DESIGN ACCEPTED / FROZEN
+**16K-A:** IMPLEMENTATION AUTHORIZED / NOT YET ACCEPTED
+**16K-B → 16K-G:** NOT YET AUTHORIZED
 **Frozen implementation order:** 16K-A → 16K-B → baseline evidence → 16K-C → 16K-D → 16K-E → 16K-F → 16K-G
 **Parent governance:** Slice 16 — COMPLETE / HUMAN ACCEPTED / CANONICAL
 **Product:** Seneca — Grounded knowledge workspace
@@ -24,11 +28,11 @@ inventory conclusion that 16K was **DEFERRED / NOT REQUIRED / NOT AUTHORIZED**
 for Slice-16 closeout remains correct historical provenance
 (`docs/slice16_closeout_inventory.md` I-11) and must not be rewritten.
 
-Human acceptance freezes this design. It does **not** authorize implementation.
-16K-A remains **NEXT GATE / NOT YET AUTHORIZED**. Capacity changes, timeout
-behavior changes going live, OCR, FP16/FlashAttention as default policy,
-benchmarks as a design deliverable, Slice 17 implementation, Slice 18, 9G,
-and M7 closeout remain unauthorized.
+Human acceptance freezes this design. **16K-A** is separately authorized for
+managed-ingestion correctness only (**IMPLEMENTATION AUTHORIZED / NOT YET
+ACCEPTED**). 16K-B→G, capacity expansion, metrics/worklist schema, CUDA
+optimization, UI work, OCR, Slice 17/18, 9G, and M7 closeout remain
+unauthorized.
 
 ---
 
@@ -632,19 +636,22 @@ Rework: S16-K-BETA-INGESTION-READINESS-DESIGN-REWORK-AUTH-001 — AUTHORIZED
 Addresses: S16-K-BETA-INGESTION-READINESS-DESIGN-OPEN-IR-001 — REWORK REQUIRED
 Human acceptance: S16-K-BETA-INGESTION-READINESS-DESIGN-HA-001 — ACCEPTED
 HA record: S16-K-BETA-INGESTION-READINESS-DESIGN-HA-RECORD-AUTH-001 — AUTHORIZED
+HA-record IR: S16-K-BETA-INGESTION-READINESS-DESIGN-HA-RECORD-IR-001 — ACCEPT
 Exact Human-accepted design subject: 0839b565cd60958141366048520236a71bf16fd0
 Exact design-open base: 3a7d8ff2c442c5d4cd10c0c21637ebc4c52b65fa
 Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
-16K: DESIGN ACCEPTED / FROZEN / IMPLEMENTATION NOT YET AUTHORIZED
-16K-A: NEXT GATE / NOT YET AUTHORIZED
+16K: DESIGN ACCEPTED / FROZEN
+16K-A: IMPLEMENTATION AUTHORIZED / NOT YET ACCEPTED
+  Authority: S16-K-A-MANAGED-INGESTION-CORRECTNESS-IMPLEMENTATION-AUTH-001
+  Exact implementation base: 96c4d1f7261a3f07374afa2963e2c88bdd77a201
+16K-B → 16K-G: NOT YET AUTHORIZED
 Frozen order: 16K-A → 16K-B → baseline evidence → 16K-C → 16K-D → 16K-E → 16K-F → 16K-G
 Slice 16: COMPLETE / HUMAN ACCEPTED / CANONICAL
 Slice 17: NOT AUTHORIZED
 Slice 18: NOT AUTHORIZED
 9G: DEFERRED / NOT AUTHORIZED
 M7 CLOSEOUT: NOT AUTHORIZED
-Does NOT authorize implementation
-Does NOT authorize 16K-A
+Does NOT authorize 16K-B→G / capacity / CUDA / UI
 Does NOT reopen Slice 16 closeout
 Does NOT authorize main promotion
 Outstanding separate operation: promote 3a7d8ff… onto origin/main (still at e21b3e6…)

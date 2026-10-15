@@ -552,8 +552,15 @@ class NonEmptyPublicationCoordinator:
         *,
         lease: WorkspaceMutationLease | None = None,
         corpus_lease: CorpusMutationLease | None = None,
+        terminalize_abandoned: bool = True,
     ) -> str:
-        """Idempotent recovery to legal A or B. Returns ``A``, ``B``, or ``clean``."""
+        """Idempotent recovery to legal A or B. Returns ``A``, ``B``, or ``clean``.
+
+        When ``terminalize_abandoned`` is True (startup/crash recovery), recovery
+        to A terminalizes the managed op as INTERRUPTED / recovered_A.
+        When False (live failure path), journal/workspace restore still occurs
+        but the caller is responsible for FAILED terminalization.
+        """
 
         def _body(held: WorkspaceMutationLease) -> str:
             journal = self.load_journal(workspace_id)
@@ -616,7 +623,8 @@ class NonEmptyPublicationCoordinator:
             path = self.store.workspace_path(workspace_id)
             path.parent.mkdir(parents=True, exist_ok=True)
             atomic_write_text(path, prior.model_dump_json())
-            self._interrupt_operation(journal, lease=held)
+            if terminalize_abandoned:
+                self._interrupt_operation(journal, lease=held)
             self._drop_journal(workspace_id)
             return "A"
 

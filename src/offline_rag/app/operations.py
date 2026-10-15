@@ -16,6 +16,7 @@ from offline_rag.config.models import AppSettings
 class OperationKind(StrEnum):
     QUERY = "query"
     INGEST = "ingest"
+    MANAGED_INGEST = "managed_ingest"
     GOLD_BOOTSTRAP = "gold_bootstrap"
 
 
@@ -49,12 +50,26 @@ class OperationHandle:
     def in_publication(self) -> bool:
         return self.ingest_lifecycle is IngestLifecycle.PUBLICATION
 
+    def _is_ingest_lifecycle_kind(self) -> bool:
+        return self.kind in {
+            OperationKind.INGEST,
+            OperationKind.MANAGED_INGEST,
+            OperationKind.GOLD_BOOTSTRAP,
+        }
+
+    def _has_request_deadline(self) -> bool:
+        """True only for synchronous ingest / query request envelopes."""
+        return self.kind is OperationKind.INGEST
+
     def signal_cancel(self, reason: CancelReason) -> None:
         """Request cooperative cancellation. Idempotent; first reason wins."""
         if reason is CancelReason.NONE:
             return
         with self._lock:
-            if self.kind is OperationKind.GOLD_BOOTSTRAP:
+            if self.kind in {
+                OperationKind.GOLD_BOOTSTRAP,
+                OperationKind.MANAGED_INGEST,
+            }:
                 # After 202, client disconnect must not cancel scientific work.
                 if reason is CancelReason.CLIENT_DISCONNECT:
                     return
@@ -94,7 +109,7 @@ class OperationHandle:
         without establishing candidate mutation.
         """
         with self._lock:
-            if self.kind not in {OperationKind.INGEST, OperationKind.GOLD_BOOTSTRAP}:
+            if not self._is_ingest_lifecycle_kind():
                 raise RuntimeError(
                     "complete_lease_acquire only valid for ingest/bootstrap"
                 )
@@ -118,7 +133,7 @@ class OperationHandle:
                             reason="shutdown_abort", stage="lease"
                         ),
                     )
-            if time.monotonic() >= self.deadline_mono:
+            if self._has_request_deadline() and time.monotonic() >= self.deadline_mono:
                 raise AppError(
                     ErrorCode.REQUEST_TIMEOUT,
                     details=SafeErrorDetails(
@@ -139,7 +154,7 @@ class OperationHandle:
         success, shutdown/deadline must not roll publication back.
         """
         with self._lock:
-            if self.kind not in {OperationKind.INGEST, OperationKind.GOLD_BOOTSTRAP}:
+            if not self._is_ingest_lifecycle_kind():
                 raise RuntimeError("enter_publication only valid for ingest/bootstrap")
             if self.ingest_lifecycle is IngestLifecycle.TERMINAL:
                 return
@@ -159,7 +174,7 @@ class OperationHandle:
                     details=SafeErrorDetails(reason="shutdown_abort", stage="publish"),
                 )
             if (
-                self.kind is OperationKind.INGEST
+                self._has_request_deadline()
                 and time.monotonic() >= self.deadline_mono
             ):
                 raise AppError(
@@ -173,7 +188,7 @@ class OperationHandle:
 
     def mark_terminal(self) -> None:
         with self._lock:
-            if self.kind in {OperationKind.INGEST, OperationKind.GOLD_BOOTSTRAP}:
+            if self._is_ingest_lifecycle_kind():
                 self.ingest_lifecycle = IngestLifecycle.TERMINAL
 
     def deadline_expired(self) -> bool:
@@ -196,6 +211,20 @@ class OperationHandle:
                     return
                 raise AppError(
                     ErrorCode.INTERNAL_ERROR,
+                    details=SafeErrorDetails(
+                        reason="shutdown_abort", stage=where or None
+                    ),
+                )
+            return
+
+        if self.kind is OperationKind.MANAGED_INGEST:
+            # Detached 202 scientific work: no request-style whole-job deadline.
+            # Client disconnect never cancels; shutdown is cooperative pre-publish.
+            if cancelled and reason is CancelReason.SHUTDOWN:
+                if lifecycle is IngestLifecycle.PUBLICATION:
+                    return
+                raise AppError(
+                    ErrorCode.INGEST_FAILED,
                     details=SafeErrorDetails(
                         reason="shutdown_abort", stage=where or None
                     ),
@@ -227,7 +256,7 @@ class OperationHandle:
                 )
             return
 
-        # INGEST
+        # Synchronous INGEST (request-style deadline)
         if cancelled and reason is CancelReason.CLIENT_DISCONNECT:
             if lifecycle is IngestLifecycle.PRE_LEASE:
                 raise AppError(
@@ -312,10 +341,15 @@ class OperationRegistry:
             prefix = {
                 OperationKind.QUERY: "opq",
                 OperationKind.INGEST: "opi",
+                OperationKind.MANAGED_INGEST: "opm",
                 OperationKind.GOLD_BOOTSTRAP: "opg",
             }[kind]
             lifecycle = None
-            if kind is OperationKind.INGEST or kind is OperationKind.GOLD_BOOTSTRAP:
+            if kind in {
+                OperationKind.INGEST,
+                OperationKind.MANAGED_INGEST,
+                OperationKind.GOLD_BOOTSTRAP,
+            }:
                 lifecycle = IngestLifecycle.PRE_LEASE
             handle = OperationHandle(
                 op_id=f"{prefix}_{uuid.uuid4().hex}",
@@ -336,11 +370,28 @@ class OperationRegistry:
         )
 
     def admit_ingest(self, *, deadline_seconds: float | None = None) -> OperationHandle:
+        """Admit synchronous /v1/ingest (request-style whole-operation deadline)."""
         return self._admit(
             kind=OperationKind.INGEST,
             capacity=self.ingest_capacity,
             deadline_seconds=deadline_seconds,
             default_deadline=float(self.settings.api.ingest_deadline_seconds),
+            exhausted_reason="ingest_capacity_exhausted",
+        )
+
+    def admit_managed_ingest(self) -> OperationHandle:
+        """Admit detached workspace scientific mutation (Add/Replace/Remove).
+
+        Uses the same ingest-capacity slot and drain/shutdown ownership as
+        ``admit_ingest``, but does **not** inherit the synchronous request-style
+        whole-job deadline. Client disconnect after admission is ignored.
+        """
+        return self._admit(
+            kind=OperationKind.MANAGED_INGEST,
+            capacity=self.ingest_capacity,
+            deadline_seconds=None,
+            # Sentinel only; MANAGED_INGEST checkpoints ignore request deadlines.
+            default_deadline=86_400.0 * 7,
             exhausted_reason="ingest_capacity_exhausted",
         )
 
@@ -364,7 +415,10 @@ class OperationRegistry:
             self._active.pop(handle.op_id, None)
             if handle.kind is OperationKind.QUERY:
                 self.query_capacity.release()
-            elif handle.kind is OperationKind.INGEST:
+            elif handle.kind in {
+                OperationKind.INGEST,
+                OperationKind.MANAGED_INGEST,
+            }:
                 self.ingest_capacity.release()
             else:
                 self.gold_bootstrap_capacity.release()

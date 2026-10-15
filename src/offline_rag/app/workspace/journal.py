@@ -405,8 +405,13 @@ class EmptyTransitionCoordinator:
         *,
         lease: WorkspaceMutationLease | None = None,
         corpus_lease: CorpusMutationLease | None = None,
+        terminalize_abandoned: bool = True,
     ) -> str:
-        """Idempotent recovery to legal A or B. Returns ``A``, ``B``, or ``clean``."""
+        """Idempotent recovery to legal A or B. Returns ``A``, ``B``, or ``clean``.
+
+        ``terminalize_abandoned`` mirrors publication-journal semantics: True for
+        startup/crash recovery (INTERRUPTED), False for live failure (caller fails).
+        """
 
         def _body(held: WorkspaceMutationLease) -> str:
             _ = held
@@ -473,7 +478,8 @@ class EmptyTransitionCoordinator:
                 atomic_write_text(
                     self.store.workspace_path(workspace_id), prior.model_dump_json()
                 )
-                self._interrupt_empty_operation(journal, lease=held)
+                if terminalize_abandoned:
+                    self._interrupt_empty_operation(journal, lease=held)
                 self.journal_path(workspace_id).unlink(missing_ok=True)
                 return "A"
 

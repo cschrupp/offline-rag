@@ -327,6 +327,9 @@ def run_product_replace_ingest(
                 details=SafeErrorDetails(stage="chunk", reason="stage_failed"),
             )
 
+        dense_checkpoint = (
+            (lambda where: control.checkpoint(where)) if control is not None else None
+        )
         index_report = _gated(
             "dense",
             lambda: run_indexing(
@@ -335,6 +338,7 @@ def run_product_replace_ingest(
                 embedder=embedder,
                 backend=qdrant,
                 on_progress=progress,
+                control_checkpoint=dense_checkpoint,
             ),
         )
         assert isinstance(index_report, IndexingReport)

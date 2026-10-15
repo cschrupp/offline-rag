@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
+from offline_rag.app.errors import AppError
 from offline_rag.chunking.persistence import (
     chunk_artifact_path,
     chunk_state_path,
@@ -183,6 +185,7 @@ def _ensure_embeddings(
     emb_cfg_hash: str,
     document_titles: dict[str, str | None],
     on_progress: ProgressReporter | None = None,
+    control_checkpoint: Callable[[str], None] | None = None,
 ) -> tuple[list[tuple[Chunk, str, EmbeddingArtifact]], int, int, int]:
     """Return materialized (chunk, artifact_id, embedding), generated/reused/failed counts."""
     settings.paths.embeddings.mkdir(parents=True, exist_ok=True)
@@ -235,6 +238,10 @@ def _ensure_embeddings(
 
     batch_size = max(1, settings.indexing.embedding.batch_size)
     for start in range(0, len(pending_chunks), batch_size):
+        # Authoritative cooperative control between interruptible dense batches.
+        # Must not rely on progress callbacks (best-effort / exception-isolated).
+        if control_checkpoint is not None:
+            control_checkpoint(f"dense_batch_{start}")
         batch = pending_chunks[start : start + batch_size]
         texts = [item[2] for item in batch]
         try:
@@ -328,6 +335,7 @@ def run_indexing(
     embedder: Embedder | None = None,
     backend: DenseIndexBackend | None = None,
     on_progress: ProgressReporter | None = None,
+    control_checkpoint: Callable[[str], None] | None = None,
 ) -> IndexingReport:
     started = datetime.now(tz=UTC)
     run_id = new_execution_id(prefix="index")
@@ -555,6 +563,7 @@ def run_indexing(
             emb_cfg_hash=emb_cfg_hash,
             document_titles=document_titles,
             on_progress=on_progress,
+            control_checkpoint=control_checkpoint,
         )
         report_progress(
             on_progress,
@@ -660,6 +669,9 @@ def run_indexing(
             collection_name=collection_name,
             index_manifest_path=state.current_index_manifest,
         )
+    except AppError:
+        # Cooperative control (cancel/shutdown) must remain authoritative.
+        raise
     except Exception as exc:
         completed = datetime.now(tz=UTC)
         return IndexingReport(
