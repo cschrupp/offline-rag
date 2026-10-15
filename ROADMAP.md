@@ -521,8 +521,13 @@ SLICE 15  COMPLETE / ACCEPTED
        Managed-operation progress telemetry
      16J PAUSED
        Seneca public-surface branding cleanup
-     16K PLANNED / NOT AUTHORIZED
-       First-user corpus capacity model + empirical validation
+     16K DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED
+       Authority: S16-K-BETA-INGESTION-READINESS-DESIGN-OPEN-AUTH-001 — AUTHORIZED
+       Exact design base: 3a7d8ff2c442c5d4cd10c0c21637ebc4c52b65fa
+       Design: docs/slice16k_beta_ingestion_readiness_design.md
+       Beta ingestion readiness (post-closeout; does NOT reopen Slice 16)
+       Historical closeout disposition (inventory I-11): DEFERRED / NOT REQUIRED
+         / NOT AUTHORIZED — preserved as provenance
      16L COMPLETE / ACCEPTED
        Authority: S16-L-EMBEDDING-AUTO-DEVICE-UX-AUTH-002
        Exact accepted subject: 88fadc7c3e8e70c4886cbff0c7863cccc63ef14a
@@ -743,7 +748,13 @@ SLICE 15  COMPLETE / ACCEPTED
          (provenance only)
        Scope: docs/governance only; no product code; no 16K/9G/17/18
      9G DEFERRED / NOT AUTHORIZED
-     16K: DEFERRED / NOT REQUIRED / NOT AUTHORIZED
+     16K: DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED
+       Authority: S16-K-BETA-INGESTION-READINESS-DESIGN-OPEN-AUTH-001 — AUTHORIZED
+       Exact design base: 3a7d8ff2c442c5d4cd10c0c21637ebc4c52b65fa
+       Design: docs/slice16k_beta_ingestion_readiness_design.md
+       Post-closeout beta-readiness successor (does NOT reopen Slice 16)
+       Historical closeout disposition (inventory I-11): DEFERRED / NOT REQUIRED
+         / NOT AUTHORIZED — preserved as provenance; not rewritten
      Slice 16: COMPLETE / HUMAN ACCEPTED / CANONICAL
      Authority: docs/slice16_design_authority.md
      Plan: docs/slice16_implementation_plan.md
