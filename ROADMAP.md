@@ -521,15 +521,20 @@ SLICE 15  COMPLETE / ACCEPTED
        Managed-operation progress telemetry
      16J PAUSED
        Seneca public-surface branding cleanup
-     16K DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED
+     16K DESIGN ACCEPTED / FROZEN / IMPLEMENTATION NOT YET AUTHORIZED
        Design-open: S16-K-BETA-INGESTION-READINESS-DESIGN-OPEN-AUTH-001 — AUTHORIZED
        Rework: S16-K-BETA-INGESTION-READINESS-DESIGN-REWORK-AUTH-001 — AUTHORIZED
          (addresses DESIGN-OPEN-IR-001 R1–R5)
-       Exact design-open base: 3a7d8ff2c442c5d4cd10c0c21637ebc4c52b65fa
-       Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
+       Human acceptance: S16-K-BETA-INGESTION-READINESS-DESIGN-HA-001 — ACCEPTED
+       HA record: S16-K-BETA-INGESTION-READINESS-DESIGN-HA-RECORD-AUTH-001 — AUTHORIZED
+       Exact Human-accepted design subject:
+         0839b565cd60958141366048520236a71bf16fd0
        Design: docs/slice16k_beta_ingestion_readiness_design.md
        Detached managed-ingest lifetime ≠ HTTP request deadline; transport
          safety ≠ searchable workload (post-closeout; does NOT reopen Slice 16)
+       Frozen order: 16K-A → 16K-B → baseline evidence → 16K-C → 16K-D
+         → 16K-E → 16K-F → 16K-G
+       16K-A: NEXT GATE / NOT YET AUTHORIZED
        Historical closeout disposition (inventory I-11): DEFERRED / NOT REQUIRED
          / NOT AUTHORIZED — preserved as provenance
      16L COMPLETE / ACCEPTED
@@ -752,15 +757,20 @@ SLICE 15  COMPLETE / ACCEPTED
          (provenance only)
        Scope: docs/governance only; no product code; no 16K/9G/17/18
      9G DEFERRED / NOT AUTHORIZED
-     16K: DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED
+     16K: DESIGN ACCEPTED / FROZEN / IMPLEMENTATION NOT YET AUTHORIZED
        Design-open: S16-K-BETA-INGESTION-READINESS-DESIGN-OPEN-AUTH-001 — AUTHORIZED
        Rework: S16-K-BETA-INGESTION-READINESS-DESIGN-REWORK-AUTH-001 — AUTHORIZED
          (addresses DESIGN-OPEN-IR-001 R1–R5)
-       Exact design-open base: 3a7d8ff2c442c5d4cd10c0c21637ebc4c52b65fa
-       Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
+       Human acceptance: S16-K-BETA-INGESTION-READINESS-DESIGN-HA-001 — ACCEPTED
+       HA record: S16-K-BETA-INGESTION-READINESS-DESIGN-HA-RECORD-AUTH-001 — AUTHORIZED
+       Exact Human-accepted design subject:
+         0839b565cd60958141366048520236a71bf16fd0
        Design: docs/slice16k_beta_ingestion_readiness_design.md
        Detached managed-ingest lifetime ≠ HTTP request deadline; transport
          safety ≠ searchable workload (does NOT reopen Slice 16)
+       Frozen order: 16K-A → 16K-B → baseline evidence → 16K-C → 16K-D
+         → 16K-E → 16K-F → 16K-G
+       16K-A: NEXT GATE / NOT YET AUTHORIZED
        Historical closeout disposition (inventory I-11): DEFERRED / NOT REQUIRED
          / NOT AUTHORIZED — preserved as provenance; not rewritten
      Slice 16: COMPLETE / HUMAN ACCEPTED / CANONICAL

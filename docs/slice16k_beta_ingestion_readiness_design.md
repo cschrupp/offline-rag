@@ -3,10 +3,15 @@
 **Design-open authority:** `S16-K-BETA-INGESTION-READINESS-DESIGN-OPEN-AUTH-001` — AUTHORIZED
 **Rework authority:** `S16-K-BETA-INGESTION-READINESS-DESIGN-REWORK-AUTH-001` — AUTHORIZED
 **Addresses:** `S16-K-BETA-INGESTION-READINESS-DESIGN-OPEN-IR-001` — REWORK REQUIRED (R1–R5 binding)
+**Human acceptance:** `S16-K-BETA-INGESTION-READINESS-DESIGN-HA-001` — ACCEPTED
+**HA record authority:** `S16-K-BETA-INGESTION-READINESS-DESIGN-HA-RECORD-AUTH-001` — AUTHORIZED
+**Exact Human-accepted design subject:** `0839b565cd60958141366048520236a71bf16fd0`
 **Exact design-open base:** `3a7d8ff2c442c5d4cd10c0c21637ebc4c52b65fa`
 **Exact rework base:** `5c693c531ded432b10cf5f6ac19d558a1f4e9431`
 **Branch:** `design/16k-beta-ingestion-readiness`
-**Status:** DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED
+**Status:** DESIGN ACCEPTED / FROZEN / IMPLEMENTATION NOT YET AUTHORIZED
+**Next gate:** 16K-A — NEXT GATE / NOT YET AUTHORIZED
+**Frozen implementation order:** 16K-A → 16K-B → baseline evidence → 16K-C → 16K-D → 16K-E → 16K-F → 16K-G
 **Parent governance:** Slice 16 — COMPLETE / HUMAN ACCEPTED / CANONICAL
 **Product:** Seneca — Grounded knowledge workspace
 
@@ -19,10 +24,11 @@ inventory conclusion that 16K was **DEFERRED / NOT REQUIRED / NOT AUTHORIZED**
 for Slice-16 closeout remains correct historical provenance
 (`docs/slice16_closeout_inventory.md` I-11) and must not be rewritten.
 
-This design document alone does **not** authorize implementation, capacity
-limit changes, timeout behavior changes going live, OCR, FP16/FlashAttention
-as default policy, benchmarks as a design-open deliverable, Slice 17
-implementation, Slice 18, 9G, or M7 closeout.
+Human acceptance freezes this design. It does **not** authorize implementation.
+16K-A remains **NEXT GATE / NOT YET AUTHORIZED**. Capacity changes, timeout
+behavior changes going live, OCR, FP16/FlashAttention as default policy,
+benchmarks as a design deliverable, Slice 17 implementation, Slice 18, 9G,
+and M7 closeout remain unauthorized.
 
 ---
 
@@ -624,15 +630,21 @@ confirm:
 Design-open: S16-K-BETA-INGESTION-READINESS-DESIGN-OPEN-AUTH-001 — AUTHORIZED
 Rework: S16-K-BETA-INGESTION-READINESS-DESIGN-REWORK-AUTH-001 — AUTHORIZED
 Addresses: S16-K-BETA-INGESTION-READINESS-DESIGN-OPEN-IR-001 — REWORK REQUIRED
+Human acceptance: S16-K-BETA-INGESTION-READINESS-DESIGN-HA-001 — ACCEPTED
+HA record: S16-K-BETA-INGESTION-READINESS-DESIGN-HA-RECORD-AUTH-001 — AUTHORIZED
+Exact Human-accepted design subject: 0839b565cd60958141366048520236a71bf16fd0
 Exact design-open base: 3a7d8ff2c442c5d4cd10c0c21637ebc4c52b65fa
 Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
-16K: DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED
+16K: DESIGN ACCEPTED / FROZEN / IMPLEMENTATION NOT YET AUTHORIZED
+16K-A: NEXT GATE / NOT YET AUTHORIZED
+Frozen order: 16K-A → 16K-B → baseline evidence → 16K-C → 16K-D → 16K-E → 16K-F → 16K-G
 Slice 16: COMPLETE / HUMAN ACCEPTED / CANONICAL
 Slice 17: NOT AUTHORIZED
 Slice 18: NOT AUTHORIZED
 9G: DEFERRED / NOT AUTHORIZED
 M7 CLOSEOUT: NOT AUTHORIZED
 Does NOT authorize implementation
+Does NOT authorize 16K-A
 Does NOT reopen Slice 16 closeout
 Does NOT authorize main promotion
 Outstanding separate operation: promote 3a7d8ff… onto origin/main (still at e21b3e6…)
