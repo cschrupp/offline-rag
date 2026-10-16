@@ -5,14 +5,25 @@
 **Governance parent:** `4f2c045717e2f8fe5b583173847a3bfa97046061`  
 **Technical subject under measurement:** `40c6eb3824ac9f9c1cbc35c889e3e4110b229469`  
 **Branch:** `evidence/16k-baseline`  
-**Campaign status:** AUTHORIZED / IN PROGRESS  
-**Execution pin:** this AUTH-open commit (repository SHA after publication)  
-**Freeze subject (future):** `S16-K-BASELINE-EVIDENCE-FREEZE-001` — NOT YET PUBLISHED  
+**Campaign status:** EXECUTION COMPLETE / FROZEN / PENDING INDEPENDENT REVIEW  
+**Exact AUTH-open execution pin:** `eb0ebd86f5d69378acc8142f63a6fa0b5a16d85e`  
+**Freeze subject:** `S16-K-BASELINE-EVIDENCE-FREEZE-001` — published with this freeze tip  
+**Evidence paths:** `docs/evidence/16k_baseline/*.json`  
+**Freeze narrative:** `docs/slice16k_baseline_evidence.md`  
 
-This document is the pre-execution measurement contract. It does **not** contain
-campaign run results. Design charter remains
+This document remains the pre-execution measurement contract. It is **not** the
+results narrative. Design charter remains
 [`docs/slice16k_beta_ingestion_readiness_design.md`](slice16k_beta_ingestion_readiness_design.md)
 (Q3 / Q11 / Q12 / Q13 / §9.1). Those questions are **not** reopened here.
+
+### Execution-closed record
+
+- B0–B3 execution complete under execution pin `eb0ebd86…`
+- Campaign workspace (live): `ws_5cba280e8c3649e7babe980cc87b2566`
+- B1 operation: `wop_6ec49226e3034c5ebc5af2d2c63f5fe8` — succeeded
+- B2 operation: `wop_735d1d59a0994032a78cb4258494adb8` — succeeded
+- API PID continuity: `1926194` through B1 → idle → B2
+- Independent review: PENDING (`S16-K-BASELINE-EVIDENCE-FREEZE-001`)
 
 ## 1. Purpose
 

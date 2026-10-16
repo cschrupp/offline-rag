@@ -1,0 +1,177 @@
+{
+  "byte_size": 6796067,
+  "content_sha256": "01bea4d628ffea01aab164535c81392a8b42b9a587f9b6295f302a9938f2f0c2",
+  "display_name": "Fireground_Operational_Guides.pdf",
+  "execution_pin_for_campaign_context": "eb0ebd86f5d69378acc8142f63a6fa0b5a16d85e",
+  "historical_workspace_id": "ws_fdd77b77611448eb93cdc239d2610281",
+  "interpretation_boundary": {
+    "hypothesis_not_finding": "Failure appears intermittent/runtime-state dependent rather than a deterministic document-content failure; CUDA root cause is NOT solved.",
+    "measured_fact": "Same content_sha256 failed then later succeeded in historical workspace ops."
+  },
+  "note": "Prior Fireground reliability evidence; not campaign-generated runs.",
+  "operations": {
+    "adjacent_successful_source_add_different_bytes": {
+      "created_at": "2026-10-16T18:39:07.498737Z",
+      "error": null,
+      "failure_summary": null,
+      "kind": "source_add",
+      "metrics_subset": {
+        "child_chunk_count": 2623,
+        "chunk_artifacts_generated": 1,
+        "chunk_artifacts_reused": 11,
+        "dense_execution": {
+          "attention_backend": "sdpa",
+          "batch_size": 32,
+          "device": "cuda",
+          "dtype": "bfloat16",
+          "embedding_dimension": 1024
+        },
+        "dense_failure_classification": null,
+        "embeddings_failed": 0,
+        "embeddings_generated": 95,
+        "embeddings_reused": 2528,
+        "parsed_artifacts_generated": 1,
+        "parsed_artifacts_reused": 11,
+        "stage_durations": {
+          "chunking_ms": 900,
+          "dense_generation_ms": 69611,
+          "dense_materialization_ms": 65032,
+          "finalization_ms": 76,
+          "lexical_ms": 4172,
+          "parsing_ms": 21227,
+          "publication_ms": 807,
+          "total_ms": 164322
+        },
+        "uploaded_raw_bytes": 4716611
+      },
+      "operation_id": "wop_11cdee8f125a45c394bd5ae1accdcd2b",
+      "recovery_note": null,
+      "status": "succeeded",
+      "updated_at": "2026-10-16T18:41:57.319828Z"
+    },
+    "cublas_era_dense_failure_with_partial_counters": {
+      "created_at": "2026-10-16T17:43:58.397716Z",
+      "error": {
+        "code": "ingest_failed",
+        "details": {
+          "reason": "embedding_generation_failed",
+          "stage": "dense"
+        },
+        "message": "Ingest failed",
+        "retryable": false
+      },
+      "failure_summary": "ingest_failed",
+      "kind": "source_add",
+      "metrics_subset": {
+        "child_chunk_count": 3113,
+        "chunk_artifacts_generated": 0,
+        "chunk_artifacts_reused": 12,
+        "dense_execution": null,
+        "dense_failure_classification": "embedding_generation_failed",
+        "embeddings_failed": 32,
+        "embeddings_generated": 384,
+        "embeddings_reused": 2528,
+        "parsed_artifacts_generated": 0,
+        "parsed_artifacts_reused": 12,
+        "stage_durations": {
+          "chunking_ms": 874,
+          "dense_generation_ms": null,
+          "dense_materialization_ms": null,
+          "finalization_ms": null,
+          "lexical_ms": null,
+          "parsing_ms": 1702,
+          "publication_ms": null,
+          "total_ms": 274777
+        },
+        "uploaded_raw_bytes": 6796067
+      },
+      "operation_id": "wop_e6fa35c221a94189a71df317edd28ca6",
+      "recovery_note": "recovered_A",
+      "status": "failed",
+      "updated_at": "2026-10-16T17:48:42.119638Z"
+    },
+    "prior_dense_failure_observability_gap": {
+      "created_at": "2026-10-16T15:43:45.234411Z",
+      "error": {
+        "code": "ingest_failed",
+        "details": {
+          "reason": "stage_failed",
+          "stage": "dense"
+        },
+        "message": "Ingest failed",
+        "retryable": false
+      },
+      "failure_summary": "ingest_failed",
+      "kind": "source_add",
+      "metrics_subset": {
+        "child_chunk_count": 3113,
+        "chunk_artifacts_generated": 1,
+        "chunk_artifacts_reused": 11,
+        "dense_execution": null,
+        "dense_failure_classification": null,
+        "embeddings_failed": null,
+        "embeddings_generated": 0,
+        "embeddings_reused": 0,
+        "parsed_artifacts_generated": 1,
+        "parsed_artifacts_reused": 11,
+        "stage_durations": {
+          "chunking_ms": 2992,
+          "dense_generation_ms": null,
+          "dense_materialization_ms": null,
+          "finalization_ms": null,
+          "lexical_ms": null,
+          "parsing_ms": 79848,
+          "publication_ms": null,
+          "total_ms": 101387
+        },
+        "uploaded_raw_bytes": 6796067
+      },
+      "operation_id": "wop_b6133d6d172c43058f9d81edd566a4f3",
+      "recovery_note": "recovered_A",
+      "status": "failed",
+      "updated_at": "2026-10-16T15:45:27.784250Z"
+    },
+    "successful_fireground_source_add": {
+      "created_at": "2026-10-16T18:45:25.088146Z",
+      "error": null,
+      "failure_summary": null,
+      "kind": "source_add",
+      "metrics_subset": {
+        "child_chunk_count": 3208,
+        "chunk_artifacts_generated": 0,
+        "chunk_artifacts_reused": 13,
+        "dense_execution": {
+          "attention_backend": "sdpa",
+          "batch_size": 32,
+          "device": "cuda",
+          "dtype": "bfloat16",
+          "embedding_dimension": 1024
+        },
+        "dense_failure_classification": null,
+        "embeddings_failed": 0,
+        "embeddings_generated": 201,
+        "embeddings_reused": 3007,
+        "parsed_artifacts_generated": 0,
+        "parsed_artifacts_reused": 13,
+        "stage_durations": {
+          "chunking_ms": 909,
+          "dense_generation_ms": 412272,
+          "dense_materialization_ms": 71987,
+          "finalization_ms": 79,
+          "lexical_ms": 5291,
+          "parsing_ms": 1430,
+          "publication_ms": 1081,
+          "total_ms": 481371
+        },
+        "uploaded_raw_bytes": 6796067
+      },
+      "operation_id": "wop_861fc8bfcfc34dd1a20f3badcccd630b",
+      "recovery_note": null,
+      "status": "succeeded",
+      "updated_at": "2026-10-16T18:53:40.436432Z"
+    }
+  },
+  "record_kind": "historical_evidence",
+  "technical_subject_under_measurement": "40c6eb3824ac9f9c1cbc35c889e3e4110b229469",
+  "workload_identity": "B1-FIREGROUND-INCIDENT-CLASS-V1"
+}

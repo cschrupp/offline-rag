@@ -1,0 +1,159 @@
+{
+  "api_pid": 1926194,
+  "b1_metrics_summary": {
+    "child_chunk_count": 585,
+    "dense_execution": {
+      "batch_size": 32,
+      "device": "cuda",
+      "embedding_dimension": 1024
+    },
+    "dense_failure_classification": null,
+    "embeddings_failed": 0,
+    "embeddings_generated": 0,
+    "embeddings_reused": 585,
+    "oversized_unsplittable_count": 0,
+    "stage_durations": {
+      "chunking_ms": 44,
+      "dense_generation_ms": 106,
+      "dense_materialization_ms": 3538,
+      "finalization_ms": 20,
+      "lexical_ms": 398,
+      "parsing_ms": 93,
+      "publication_ms": 64,
+      "total_ms": 8795
+    }
+  },
+  "b1_status": "succeeded",
+  "b2_metrics_summary": {
+    "child_chunk_count": 585,
+    "dense_execution": null,
+    "dense_failure_classification": null,
+    "embeddings_failed": 0,
+    "embeddings_generated": 0,
+    "embeddings_reused": 585,
+    "oversized_unsplittable_count": 0,
+    "stage_durations": {
+      "chunking_ms": 49,
+      "finalization_ms": 27,
+      "lexical_ms": 69,
+      "parsing_ms": 123,
+      "publication_ms": 81,
+      "total_ms": 483
+    }
+  },
+  "b2_status": "succeeded",
+  "execution_pin": "eb0ebd86f5d69378acc8142f63a6fa0b5a16d85e",
+  "idle_samples": {
+    "T+15m": {
+      "api_pid": 1926194,
+      "api_process_gpu_memory": null,
+      "external_gpu": {
+        "compute_apps": [],
+        "memory_free_mib": 2730,
+        "memory_total_mib": 8192,
+        "memory_used_mib": 5258,
+        "name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+        "source": "nvidia-smi",
+        "utilization_gpu_pct": "19",
+        "uuid": "GPU-60a82378-8c4d-dacd-c88f-f0c4148dcf2d"
+      },
+      "intervening_work_observed": false,
+      "label": "idle_T+15m",
+      "timestamp": "2026-10-16T23:13:56.477303Z",
+      "torch_device_level": {
+        "api_process_allocator_observability": "unavailable_without_in_process_instrumentation",
+        "api_process_memory_allocated": null,
+        "api_process_memory_reserved": null,
+        "cuda_available": true,
+        "cuda_version": "13.0",
+        "mem_get_info_free_bytes": 7448035328,
+        "mem_get_info_total_bytes": 8589606912,
+        "note": "Device-level mem_get_info from side process; not API allocator",
+        "torch_version": "2.14.0+cu130"
+      }
+    },
+    "T+5m": {
+      "api_pid": 1926194,
+      "api_process_gpu_memory": null,
+      "external_gpu": {
+        "compute_apps": [],
+        "memory_free_mib": 2708,
+        "memory_total_mib": 8192,
+        "memory_used_mib": 5280,
+        "name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+        "source": "nvidia-smi",
+        "utilization_gpu_pct": "6",
+        "uuid": "GPU-60a82378-8c4d-dacd-c88f-f0c4148dcf2d"
+      },
+      "intervening_work_observed": false,
+      "label": "idle_T+5m",
+      "timestamp": "2026-10-16T23:03:27.357429Z",
+      "torch_device_level": {
+        "api_process_allocator_observability": "unavailable_without_in_process_instrumentation",
+        "api_process_memory_allocated": null,
+        "api_process_memory_reserved": null,
+        "cuda_available": true,
+        "cuda_version": "13.0",
+        "mem_get_info_free_bytes": 7448035328,
+        "mem_get_info_total_bytes": 8589606912,
+        "note": "Device-level mem_get_info from side process; not API allocator",
+        "torch_version": "2.14.0+cu130"
+      }
+    },
+    "T0": {
+      "api_pid": 1926194,
+      "api_process_gpu_memory": null,
+      "external_gpu": {
+        "compute_apps": [],
+        "memory_free_mib": 2831,
+        "memory_total_mib": 8192,
+        "memory_used_mib": 5157,
+        "name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+        "source": "nvidia-smi",
+        "utilization_gpu_pct": "4",
+        "uuid": "GPU-60a82378-8c4d-dacd-c88f-f0c4148dcf2d"
+      },
+      "intervening_work_observed": false,
+      "label": "idle_T0",
+      "timestamp": "2026-10-16T22:58:10.874977Z",
+      "torch_device_level": {
+        "api_process_allocator_observability": "unavailable_without_in_process_instrumentation",
+        "api_process_memory_allocated": null,
+        "api_process_memory_reserved": null,
+        "cuda_available": true,
+        "cuda_version": "13.0",
+        "mem_get_info_free_bytes": 7448035328,
+        "mem_get_info_total_bytes": 8589606912,
+        "note": "Device-level mem_get_info from side process; not API allocator",
+        "torch_version": "2.14.0+cu130"
+      }
+    }
+  },
+  "note": "Analysis over B1\u2192idle\u2192B2 only; not a third ingest",
+  "process_continuity_ok": true,
+  "record_kind": "derived_metric_and_analysis",
+  "residency_observations": {
+    "after_b1_gpu_used_mib": 5149,
+    "after_b2_gpu_used_mib": 5202,
+    "api_process_gpu_present_after_idle": false,
+    "claim_boundary": "Host GPU memory remained elevated (~5.1\u20135.3 GiB used) across the 15-minute idle window; the API PID remained continuous. This does NOT establish embedding-model residency in the API process: nvidia-smi never attributed GPU memory to the API PID, and B1/B2 were fully embedding-reuse dominated.",
+    "embedding_model_resident_in_api_process": false,
+    "embedding_model_resident_observability": "not_observed_via_nvidia_smi_compute_apps; in-process torch allocator unavailable",
+    "host_gpu_memory_idle_persistence_observed": true,
+    "idle_T0_gpu_used_mib": 5157,
+    "idle_T15_gpu_used_mib": 5258,
+    "pre_b1_gpu_used_mib": 5181,
+    "torch_allocator_note": "API-process torch.cuda.memory_allocated/reserved unavailable without in-process instrumentation (not authorized under this campaign)."
+  },
+  "run_id": "B3",
+  "sequence": [
+    "pre_b1_cold",
+    "B1",
+    "idle_T0",
+    "idle_T+5m",
+    "idle_T+15m",
+    "B2",
+    "after_b2"
+  ],
+  "technical_subject": "40c6eb3824ac9f9c1cbc35c889e3e4110b229469"
+}

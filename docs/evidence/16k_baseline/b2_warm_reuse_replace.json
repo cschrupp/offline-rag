@@ -1,0 +1,254 @@
+{
+  "api_pid": 1926194,
+  "error": null,
+  "execution_pin": "eb0ebd86f5d69378acc8142f63a6fa0b5a16d85e",
+  "idempotency_key": "16k-baseline-b2-3ac355c2-bcc5-465e-ade5-713ce9ed6bba",
+  "label": "B2-WARM-REUSE-REPLACE-V1",
+  "membership_after": [
+    {
+      "active": null,
+      "byte_size": 6796067,
+      "content_hash": "01bea4d628ffea01aab164535c81392a8b42b9a587f9b6295f302a9938f2f0c2",
+      "display_name": "Fireground_Operational_Guides.pdf",
+      "document_id": "doc_01bea4d628ffea01aab164535c81392a8b42b9a587f9b6295f302a9938f2f0c2",
+      "source_id": "src_654fc8150fc745739b1d907aad51f739",
+      "version": 2
+    }
+  ],
+  "membership_before": [
+    {
+      "active": null,
+      "byte_size": 6796067,
+      "content_hash": "01bea4d628ffea01aab164535c81392a8b42b9a587f9b6295f302a9938f2f0c2",
+      "display_name": "Fireground_Operational_Guides.pdf",
+      "document_id": "doc_01bea4d628ffea01aab164535c81392a8b42b9a587f9b6295f302a9938f2f0c2",
+      "source_id": "src_654fc8150fc745739b1d907aad51f739",
+      "version": 1
+    }
+  ],
+  "memory_samples": {
+    "after_b2_terminal": {
+      "api_pid": 1926194,
+      "api_process_gpu_memory": null,
+      "external_gpu": {
+        "compute_apps": [],
+        "memory_free_mib": 2786,
+        "memory_total_mib": 8192,
+        "memory_used_mib": 5202,
+        "name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+        "source": "nvidia-smi",
+        "utilization_gpu_pct": "17",
+        "uuid": "GPU-60a82378-8c4d-dacd-c88f-f0c4148dcf2d"
+      },
+      "intervening_work_observed": false,
+      "label": "after_b2_terminal",
+      "timestamp": "2026-10-16T23:14:08.426007Z",
+      "torch_device_level": {
+        "api_process_allocator_observability": "unavailable_without_in_process_instrumentation",
+        "api_process_memory_allocated": null,
+        "api_process_memory_reserved": null,
+        "cuda_available": true,
+        "cuda_version": "13.0",
+        "mem_get_info_free_bytes": 7448035328,
+        "mem_get_info_total_bytes": 8589606912,
+        "note": "Device-level mem_get_info from side process; not API allocator",
+        "torch_version": "2.14.0+cu130"
+      }
+    },
+    "before_b2": {
+      "api_pid": 1926194,
+      "api_process_gpu_memory": null,
+      "external_gpu": {
+        "compute_apps": [],
+        "memory_free_mib": 2785,
+        "memory_total_mib": 8192,
+        "memory_used_mib": 5203,
+        "name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+        "source": "nvidia-smi",
+        "utilization_gpu_pct": "19",
+        "uuid": "GPU-60a82378-8c4d-dacd-c88f-f0c4148dcf2d"
+      },
+      "intervening_work_observed": false,
+      "label": "before_b2",
+      "timestamp": "2026-10-16T23:13:58.972934Z",
+      "torch_device_level": {
+        "api_process_allocator_observability": "unavailable_without_in_process_instrumentation",
+        "api_process_memory_allocated": null,
+        "api_process_memory_reserved": null,
+        "cuda_available": true,
+        "cuda_version": "13.0",
+        "mem_get_info_free_bytes": 7448035328,
+        "mem_get_info_total_bytes": 8589606912,
+        "note": "Device-level mem_get_info from side process; not API allocator",
+        "torch_version": "2.14.0+cu130"
+      }
+    },
+    "during_b2_start": {
+      "api_pid": 1926194,
+      "api_process_gpu_memory": null,
+      "external_gpu": {
+        "compute_apps": [],
+        "memory_free_mib": 2785,
+        "memory_total_mib": 8192,
+        "memory_used_mib": 5203,
+        "name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+        "source": "nvidia-smi",
+        "utilization_gpu_pct": "12",
+        "uuid": "GPU-60a82378-8c4d-dacd-c88f-f0c4148dcf2d"
+      },
+      "intervening_work_observed": false,
+      "label": "during_b2_start",
+      "timestamp": "2026-10-16T23:14:06.108730Z",
+      "torch_device_level": {
+        "api_process_allocator_observability": "unavailable_without_in_process_instrumentation",
+        "api_process_memory_allocated": null,
+        "api_process_memory_reserved": null,
+        "cuda_available": true,
+        "cuda_version": "13.0",
+        "mem_get_info_free_bytes": 7448035328,
+        "mem_get_info_total_bytes": 8589606912,
+        "note": "Device-level mem_get_info from side process; not API allocator",
+        "torch_version": "2.14.0+cu130"
+      }
+    }
+  },
+  "metrics": {
+    "child_chunk_count": 585,
+    "chunk_artifacts_generated": 0,
+    "chunk_artifacts_reused": 1,
+    "embeddings_failed": 0,
+    "embeddings_generated": 0,
+    "embeddings_reused": 585,
+    "lexical": {
+      "chunk_set_child_count": 585,
+      "eligible_child_count": 585,
+      "indexed_child_count": 585,
+      "searchable_units_contract": "exclude-zero-term-v1",
+      "zero_term_excluded_count": 0
+    },
+    "oversized_unsplittable_count": 0,
+    "parsed_artifacts_generated": 0,
+    "parsed_artifacts_reused": 1,
+    "parsed_searchable_document_count": 1,
+    "post_active_source_count": 1,
+    "pre_active_source_count": 1,
+    "requested_document_count": 1,
+    "stage_durations": {
+      "chunking_ms": 49,
+      "finalization_ms": 27,
+      "lexical_ms": 69,
+      "parsing_ms": 123,
+      "publication_ms": 81,
+      "total_ms": 483
+    },
+    "uploaded_raw_bytes": 6796067
+  },
+  "operation_id": "wop_735d1d59a0994032a78cb4258494adb8",
+  "process_continuity_ok": true,
+  "record_kind": "measured_fact",
+  "replacement_content_sha256": "01bea4d628ffea01aab164535c81392a8b42b9a587f9b6295f302a9938f2f0c2",
+  "run_id": "B2",
+  "scientific_membership_unchanged": true,
+  "source_id": "src_654fc8150fc745739b1d907aad51f739",
+  "status": "succeeded",
+  "technical_subject": "40c6eb3824ac9f9c1cbc35c889e3e4110b229469",
+  "terminal_operation": {
+    "created_at": "2026-10-16T23:14:00.993937Z",
+    "error": null,
+    "expected_revision": 2,
+    "kind": "source_replace",
+    "metrics": {
+      "child_chunk_count": 585,
+      "chunk_artifacts_generated": 0,
+      "chunk_artifacts_reused": 1,
+      "embeddings_failed": 0,
+      "embeddings_generated": 0,
+      "embeddings_reused": 585,
+      "lexical": {
+        "chunk_set_child_count": 585,
+        "eligible_child_count": 585,
+        "indexed_child_count": 585,
+        "searchable_units_contract": "exclude-zero-term-v1",
+        "zero_term_excluded_count": 0
+      },
+      "oversized_unsplittable_count": 0,
+      "parsed_artifacts_generated": 0,
+      "parsed_artifacts_reused": 1,
+      "parsed_searchable_document_count": 1,
+      "post_active_source_count": 1,
+      "pre_active_source_count": 1,
+      "requested_document_count": 1,
+      "stage_durations": {
+        "chunking_ms": 49,
+        "finalization_ms": 27,
+        "lexical_ms": 69,
+        "parsing_ms": 123,
+        "publication_ms": 81,
+        "total_ms": 483
+      },
+      "uploaded_raw_bytes": 6796067
+    },
+    "operation_id": "wop_735d1d59a0994032a78cb4258494adb8",
+    "progress": {
+      "current": 0,
+      "started_at": "2026-10-16T23:14:01.565829Z",
+      "step": "finalizing",
+      "total": null,
+      "unit": "documents"
+    },
+    "progress_stage": "ready",
+    "result": {
+      "snapshot_id": "snap_77542a7fb25dc25b93c577c8b6ecdc099e36344cd37e3062180ca62831dda580",
+      "source_id": "src_654fc8150fc745739b1d907aad51f739",
+      "source_ids": [
+        "src_654fc8150fc745739b1d907aad51f739"
+      ],
+      "source_version": 2,
+      "workspace_revision": 3,
+      "workspace_status": "active"
+    },
+    "status": "succeeded",
+    "updated_at": "2026-10-16T23:14:01.592666Z",
+    "worklist": {
+      "active_documents": [],
+      "completed_count": 1,
+      "documents": [
+        {
+          "child_chunk_count": 585,
+          "display_name": "Fireground_Operational_Guides.pdf",
+          "document_id": "doc_01bea4d628ffea01aab164535c81392a8b42b9a587f9b6295f302a9938f2f0c2",
+          "phase": "indexed"
+        }
+      ],
+      "pending_count": 0,
+      "remaining_count": 0,
+      "total_document_count": 1
+    },
+    "workspace_id": "ws_5cba280e8c3649e7babe980cc87b2566"
+  },
+  "timestamps": {
+    "started_at": "2026-10-16T23:14:01.007067Z",
+    "terminal_at": "2026-10-16T23:14:10.358636Z"
+  },
+  "worklist": {
+    "active_documents": [],
+    "completed_count": 1,
+    "documents": [
+      {
+        "child_chunk_count": 585,
+        "display_name": "Fireground_Operational_Guides.pdf",
+        "document_id": "doc_01bea4d628ffea01aab164535c81392a8b42b9a587f9b6295f302a9938f2f0c2",
+        "phase": "indexed"
+      }
+    ],
+    "pending_count": 0,
+    "remaining_count": 0,
+    "total_document_count": 1
+  },
+  "workspace_after": {
+    "current_snapshot_id": "snap_77542a7fb25dc25b93c577c8b6ecdc099e36344cd37e3062180ca62831dda580",
+    "revision": 3,
+    "source_count": 1
+  },
+  "workspace_id": "ws_5cba280e8c3649e7babe980cc87b2566"
+}

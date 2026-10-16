@@ -63,14 +63,20 @@
 **Status:** DESIGN ACCEPTED / FROZEN
 **16K-A:** IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED
 **16K-B:** COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / HA RECORD INDEPENDENTLY ACCEPTED
-**16K baseline evidence:** AUTHORIZED / IN PROGRESS
+**16K baseline evidence:** FROZEN / PENDING INDEPENDENT REVIEW
 **16K baseline campaign authority:** `S16-K-BASELINE-EVIDENCE-CAMPAIGN-AUTH-001` — AUTHORIZED
 **16K baseline AUTH-open:** `S16-K-BASELINE-EVIDENCE-CAMPAIGN-AUTH-OPEN-001`
+**Exact AUTH-open execution pin:** `eb0ebd86f5d69378acc8142f63a6fa0b5a16d85e`
 **Exact baseline governance parent:** `4f2c045717e2f8fe5b583173847a3bfa97046061`
 **Technical subject under measurement:** `40c6eb3824ac9f9c1cbc35c889e3e4110b229469`
+**16K baseline freeze subject:** `S16-K-BASELINE-EVIDENCE-FREEZE-001`
 **16K baseline branch:** `evidence/16k-baseline`
 **16K baseline manifest:** `docs/slice16k_baseline_evidence_campaign.md`
-**16K-C → 16K-G:** NOT YET AUTHORIZED
+**16K baseline freeze narrative:** `docs/slice16k_baseline_evidence.md`
+**Fireground CUDA/cublasGemmEx runtime issue:** OPEN / SEPARATE / CHARACTERIZED BY BASELINE WHERE EVIDENCE SUPPORTS IT / NOT FIXED
+**16K-C:** NOT YET AUTHORIZED
+**16K-D:** NOT YET AUTHORIZED
+**16K-E → 16K-G:** NOT YET AUTHORIZED
 **Main promotion:** NOT AUTHORIZED
 **Frozen implementation order:** 16K-A → 16K-B → baseline evidence → 16K-C → 16K-D → 16K-E → 16K-F → 16K-G
 **Parent governance:** Slice 16 — COMPLETE / HUMAN ACCEPTED / CANONICAL
@@ -865,18 +871,30 @@ Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
   Fireground CUDA/cublasGemmEx runtime issue:
     OPEN / SEPARATE / NOT FIXED
   Branch: implementation/16k-b-ingestion-observability
-16K baseline evidence: AUTHORIZED / IN PROGRESS
+16K baseline evidence: FROZEN / PENDING INDEPENDENT REVIEW
   Campaign authority:
     S16-K-BASELINE-EVIDENCE-CAMPAIGN-AUTH-001 — AUTHORIZED
   AUTH-open:
     S16-K-BASELINE-EVIDENCE-CAMPAIGN-AUTH-OPEN-001
+  Exact AUTH-open execution pin:
+    eb0ebd86f5d69378acc8142f63a6fa0b5a16d85e
   Exact governance parent:
     4f2c045717e2f8fe5b583173847a3bfa97046061
   Technical subject under measurement:
     40c6eb3824ac9f9c1cbc35c889e3e4110b229469
+  Freeze subject:
+    S16-K-BASELINE-EVIDENCE-FREEZE-001
   Branch: evidence/16k-baseline
   Manifest: docs/slice16k_baseline_evidence_campaign.md
-16K-C → 16K-G: NOT YET AUTHORIZED
+  Freeze narrative: docs/slice16k_baseline_evidence.md
+  Evidence: docs/evidence/16k_baseline/
+  Fireground CUDA/cublasGemmEx:
+    OPEN / SEPARATE /
+    CHARACTERIZED BY BASELINE WHERE EVIDENCE SUPPORTS IT /
+    NOT FIXED
+16K-C: NOT YET AUTHORIZED
+16K-D: NOT YET AUTHORIZED
+16K-E → 16K-G: NOT YET AUTHORIZED
 Main promotion: NOT AUTHORIZED
 Frozen order: 16K-A → 16K-B → baseline evidence → 16K-C → 16K-D → 16K-E → 16K-F → 16K-G
 Slice 16: COMPLETE / HUMAN ACCEPTED / CANONICAL

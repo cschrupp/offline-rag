@@ -1,0 +1,119 @@
+{
+  "artifact_cache_as_found": {
+    "content_reference_json_count_approx": 598,
+    "content_sha256": "01bea4d628ffea01aab164535c81392a8b42b9a587f9b6295f302a9938f2f0c2",
+    "document_id": "doc_01bea4d628ffea01aab164535c81392a8b42b9a587f9b6295f302a9938f2f0c2",
+    "note": "Pre-existing embedding/chunk/manifest references observed under data/; scientific caches not cleared."
+  },
+  "as_found_api_pid": 1874700,
+  "as_found_memory": {
+    "api_pid": 1874700,
+    "api_process_gpu_memory": null,
+    "external_gpu": {
+      "compute_apps": [],
+      "memory_free_mib": 892,
+      "memory_total_mib": 8192,
+      "memory_used_mib": 7096,
+      "name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+      "source": "nvidia-smi",
+      "utilization_gpu_pct": 4,
+      "uuid": "GPU-60a82378-8c4d-dacd-c88f-f0c4148dcf2d"
+    },
+    "label": "b0_as_found",
+    "timestamp": "2026-10-16T22:54:14.191138Z",
+    "torch_device_level": {
+      "api_process_allocator_observability": "unavailable_without_in_process_instrumentation",
+      "api_process_memory_allocated": null,
+      "api_process_memory_reserved": null,
+      "cuda_available": true,
+      "cuda_version": "13.0",
+      "device_count": 1,
+      "mem_get_info_free_bytes": 7448035328,
+      "mem_get_info_total_bytes": 8589606912,
+      "note": "Side-process torch.cuda.mem_get_info is device-level free/total; not API-process memory_allocated/reserved.",
+      "torch_version": "2.14.0+cu130"
+    }
+  },
+  "as_found_memory_sample_note": "As-found process sample for pin capture only; not a residency claim.",
+  "b1_manifest_verification": {
+    "frozen_aggregate_manifest_hash": "9864d642c45b485f175555dff229252fceea1b81437869189179766508526070",
+    "match": true,
+    "member_count": 1,
+    "recomputed_aggregate_manifest_hash": "9864d642c45b485f175555dff229252fceea1b81437869189179766508526070",
+    "recomputed_member_table": [
+      {
+        "byte_size": 6796067,
+        "content_sha256": "01bea4d628ffea01aab164535c81392a8b42b9a587f9b6295f302a9938f2f0c2",
+        "display_name": "Fireground_Operational_Guides.pdf"
+      }
+    ]
+  },
+  "b1_manifest_verification_recheck_after_wsl_restart": {
+    "checked_at": "2026-10-16T22:56:00Z",
+    "match": true,
+    "note": "Reverified after WSL restart before cold API start; aggregate unchanged."
+  },
+  "cold_restart": {
+    "api_pid_after_cold_start": 1926194,
+    "model_load_observation": "nvidia-smi compute_apps empty before/during/after B1; B1 reused 585/585 embeddings with dense_generation_ms=106; API process never listed as a GPU compute app during the campaign sequence.",
+    "pre_b1_memory_sample": {
+      "api_pid": 1926194,
+      "api_process_gpu_memory": null,
+      "external_gpu": {
+        "compute_apps": [],
+        "memory_free_mib": 2807,
+        "memory_total_mib": 8192,
+        "memory_used_mib": 5181,
+        "name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+        "source": "nvidia-smi",
+        "utilization_gpu_pct": "2",
+        "uuid": "GPU-60a82378-8c4d-dacd-c88f-f0c4148dcf2d"
+      },
+      "intervening_work_observed": false,
+      "label": "pre_b1_cold",
+      "timestamp": "2026-10-16T22:57:49.587750Z",
+      "torch_device_level": {
+        "api_process_allocator_observability": "unavailable_without_in_process_instrumentation",
+        "api_process_memory_allocated": null,
+        "api_process_memory_reserved": null,
+        "cuda_available": true,
+        "cuda_version": "13.0",
+        "mem_get_info_free_bytes": 7448035328,
+        "mem_get_info_total_bytes": 8589606912,
+        "note": "Device-level mem_get_info from side process; not API allocator",
+        "torch_version": "2.14.0+cu130"
+      }
+    },
+    "process_start_observed_at": "2026-10-16T22:57:49.387530Z",
+    "trigger": "WSL restart left port 8080 free; intentional cold API start before B1"
+  },
+  "config_pins_static": {
+    "batch_size_default": 32,
+    "contract": "plain/plain-v1",
+    "device_policy_default": "auto",
+    "embedding_dimension": 1024,
+    "embedding_model_id": "Qwen/Qwen3-Embedding-0.6B",
+    "embedding_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3"
+  },
+  "execution_pin": "eb0ebd86f5d69378acc8142f63a6fa0b5a16d85e",
+  "record_kind": "measured_fact",
+  "repository_sha_checked": "eb0ebd86f5d69378acc8142f63a6fa0b5a16d85e",
+  "run_id": "B0",
+  "technical_subject": "40c6eb3824ac9f9c1cbc35c889e3e4110b229469",
+  "timestamp": "2026-10-16T22:54:10.112931Z",
+  "versions": {
+    "python": "3.14.5 (main, May 10 2026, 19:28:16) [Clang 22.1.3 ]",
+    "torch_cuda": {
+      "api_process_allocator_observability": "unavailable_without_in_process_instrumentation",
+      "api_process_memory_allocated": null,
+      "api_process_memory_reserved": null,
+      "cuda_available": true,
+      "cuda_version": "13.0",
+      "device_count": 1,
+      "mem_get_info_free_bytes": 7448035328,
+      "mem_get_info_total_bytes": 8589606912,
+      "note": "Side-process torch.cuda.mem_get_info is device-level free/total; not API-process memory_allocated/reserved.",
+      "torch_version": "2.14.0+cu130"
+    }
+  }
+}

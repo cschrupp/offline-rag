@@ -675,18 +675,30 @@ SLICE 15  COMPLETE / ACCEPTED
          Fireground CUDA/cublasGemmEx runtime issue:
            OPEN / SEPARATE / NOT FIXED
          Branch: implementation/16k-b-ingestion-observability
-       16K baseline evidence: AUTHORIZED / IN PROGRESS
+       16K baseline evidence: FROZEN / PENDING INDEPENDENT REVIEW
          Campaign authority:
            S16-K-BASELINE-EVIDENCE-CAMPAIGN-AUTH-001 — AUTHORIZED
          AUTH-open:
            S16-K-BASELINE-EVIDENCE-CAMPAIGN-AUTH-OPEN-001
+         Exact AUTH-open execution pin:
+           eb0ebd86f5d69378acc8142f63a6fa0b5a16d85e
          Exact governance parent:
            4f2c045717e2f8fe5b583173847a3bfa97046061
          Technical subject under measurement:
            40c6eb3824ac9f9c1cbc35c889e3e4110b229469
+         Freeze subject:
+           S16-K-BASELINE-EVIDENCE-FREEZE-001
          Branch: evidence/16k-baseline
          Manifest: docs/slice16k_baseline_evidence_campaign.md
-       16K-C → 16K-G: NOT YET AUTHORIZED
+         Freeze narrative: docs/slice16k_baseline_evidence.md
+         Evidence: docs/evidence/16k_baseline/
+         Fireground CUDA/cublasGemmEx:
+           OPEN / SEPARATE /
+           CHARACTERIZED BY BASELINE WHERE EVIDENCE SUPPORTS IT /
+           NOT FIXED
+       16K-C: NOT YET AUTHORIZED
+       16K-D: NOT YET AUTHORIZED
+       16K-E → 16K-G: NOT YET AUTHORIZED
        Main promotion: NOT AUTHORIZED
        Historical closeout disposition (inventory I-11): DEFERRED / NOT REQUIRED
          / NOT AUTHORIZED — preserved as provenance
@@ -1064,18 +1076,30 @@ SLICE 15  COMPLETE / ACCEPTED
          Fireground CUDA/cublasGemmEx runtime issue:
            OPEN / SEPARATE / NOT FIXED
          Branch: implementation/16k-b-ingestion-observability
-       16K baseline evidence: AUTHORIZED / IN PROGRESS
+       16K baseline evidence: FROZEN / PENDING INDEPENDENT REVIEW
          Campaign authority:
            S16-K-BASELINE-EVIDENCE-CAMPAIGN-AUTH-001 — AUTHORIZED
          AUTH-open:
            S16-K-BASELINE-EVIDENCE-CAMPAIGN-AUTH-OPEN-001
+         Exact AUTH-open execution pin:
+           eb0ebd86f5d69378acc8142f63a6fa0b5a16d85e
          Exact governance parent:
            4f2c045717e2f8fe5b583173847a3bfa97046061
          Technical subject under measurement:
            40c6eb3824ac9f9c1cbc35c889e3e4110b229469
+         Freeze subject:
+           S16-K-BASELINE-EVIDENCE-FREEZE-001
          Branch: evidence/16k-baseline
          Manifest: docs/slice16k_baseline_evidence_campaign.md
-       16K-C → 16K-G: NOT YET AUTHORIZED
+         Freeze narrative: docs/slice16k_baseline_evidence.md
+         Evidence: docs/evidence/16k_baseline/
+         Fireground CUDA/cublasGemmEx:
+           OPEN / SEPARATE /
+           CHARACTERIZED BY BASELINE WHERE EVIDENCE SUPPORTS IT /
+           NOT FIXED
+       16K-C: NOT YET AUTHORIZED
+       16K-D: NOT YET AUTHORIZED
+       16K-E → 16K-G: NOT YET AUTHORIZED
        Main promotion: NOT AUTHORIZED
        Historical closeout disposition (inventory I-11): DEFERRED / NOT REQUIRED
          / NOT AUTHORIZED — preserved as provenance; not rewritten
