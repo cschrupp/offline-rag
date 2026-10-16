@@ -51,15 +51,18 @@
 **R1:** CLOSED
 **16K-B dense-failure observability IR-002 acceptance-record authority:** `S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-IR-002-ACCEPTANCE-RECORD-AUTH-001` — AUTHORIZED
 **Exact acceptance-record parent:** `40c6eb3824ac9f9c1cbc35c889e3e4110b229469`
-**Intended Human technical acceptance subject:** `40c6eb3824ac9f9c1cbc35c889e3e4110b229469`
-**Fireground CUDA/cublasGemmEx runtime issue:** OPEN / SEPARATE FROM OBSERVABILITY REMEDIATION / NOT CLAIMED FIXED BY IR-002 ACCEPT
+**Exact IR-002 acceptance-record tip:** `9f9734efb7a534f054415b32c73c039ae59369e3`
+**16K-B Human technical acceptance:** `S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-HA-001` — ACCEPTED
+**Exact Human-accepted technical subject:** `40c6eb3824ac9f9c1cbc35c889e3e4110b229469`
+**16K-B HA-record authority:** `S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-HA-RECORD-AUTH-001` — AUTHORIZED
+**Exact HA-record parent:** `9f9734efb7a534f054415b32c73c039ae59369e3`
+**Fireground CUDA/cublasGemmEx runtime issue:** OPEN / SEPARATE / NOT FIXED BY 16K-B ACCEPTANCE
 **16K-B branch:** `implementation/16k-b-ingestion-observability`
 **Status:** DESIGN ACCEPTED / FROZEN
 **16K-A:** IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED
-**16K-B:** IMPLEMENTATION COMPLETE / POST-QUAL REMEDIATIONS INDEPENDENTLY ACCEPTED / DENSE-FAILURE OBSERVABILITY REMEDIATION INDEPENDENTLY ACCEPTED / NOT YET HUMAN-ACCEPTED
+**16K-B:** IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / HA RECORD PENDING INDEPENDENT REVIEW
 **16K-C → 16K-G:** NOT YET AUTHORIZED
 **Baseline evidence:** NOT YET AUTHORIZED / NOT ACCEPTED
-**Human technical acceptance (16K-B):** NOT YET ISSUED
 **Main promotion:** NOT AUTHORIZED
 **Frozen implementation order:** 16K-A → 16K-B → baseline evidence → 16K-C → 16K-D → 16K-E → 16K-F → 16K-G
 **Parent governance:** Slice 16 — COMPLETE / HUMAN ACCEPTED / CANONICAL
@@ -106,18 +109,23 @@ is AUTHORIZED from parent `6f61f18…`. Independent review
 at exact technical subject `40c6eb38…`; R1 CLOSED. Acceptance-record
 authority
 `S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-IR-002-ACCEPTANCE-RECORD-AUTH-001`
-is AUTHORIZED from that exact parent. Intended Human technical acceptance
-subject is `40c6eb38…` (the acceptance-record commit must not replace it).
-Fireground CUDA/cublasGemmEx runtime issue remains OPEN / SEPARATE / NOT
-CLAIMED FIXED BY IR-002 ACCEPT. Durable technical lineage:
-`91dba2e…` (IR-004 ACCEPT, historical) → `f4707b8…` (chunk-ID post-qual
-IR-001 ACCEPT) → `349de6a…` (lexical zero-term post-qual IR-001 ACCEPT) →
-`fbc8bb1…` (lexical IR-001 acceptance-record tip) → `6f61f18…`
-(dense-failure IR-001 REWORK REQUIRED R1) → `40c6eb38…` (dense-failure
-IR-002 ACCEPT; R1 CLOSED). Independent acceptance does not constitute
-Human acceptance, baseline-evidence acceptance, 16K-C→G authority, or
-main promotion. 16K-C→G, capacity expansion, CUDA optimization, UI work,
-OCR, Slice 17/18, 9G, and M7 closeout remain unauthorized.
+is AUTHORIZED from that exact parent; tip `9f9734ef…`. Human technical
+acceptance `S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-HA-001` —
+ACCEPTED against exact technical subject `40c6eb38…`. HA-record authority
+`S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-HA-RECORD-AUTH-001` is
+AUTHORIZED from parent `9f9734ef…`; the HA-record commit publishes HA-001
+only and must not replace `40c6eb38…` as the technical HA subject.
+Fireground CUDA/cublasGemmEx remains OPEN / SEPARATE / NOT FIXED BY 16K-B
+ACCEPTANCE. Durable technical lineage: `91dba2e…` (IR-004 ACCEPT,
+historical) → `f4707b8…` (chunk-ID post-qual IR-001 ACCEPT) → `349de6a…`
+(lexical zero-term post-qual IR-001 ACCEPT) → `fbc8bb1…` (lexical IR-001
+acceptance-record tip) → `6f61f18…` (dense-failure IR-001 REWORK REQUIRED
+R1) → `40c6eb38…` (exact technical subject; IR-002 ACCEPT; HA-001 ACCEPTED;
+R1 CLOSED) → `9f9734ef…` (IR-002 durable acceptance-record tip) →
+(this HA-record commit: durable publication of HA-001 only). Baseline
+evidence, 16K-C→G, main promotion remain unauthorized. 16K-C→G, capacity
+expansion, CUDA optimization, UI work, OCR, Slice 17/18, 9G, and M7
+closeout remain unauthorized.
 
 ---
 
@@ -732,9 +740,8 @@ Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
   HA record: S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-AUTH-001 — AUTHORIZED
   Exact Human-accepted technical subject: 1370b99327124045ad96005e829095683842c06f
   HA-record IR: S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-IR-001 — ACCEPT
-16K-B: IMPLEMENTATION COMPLETE / POST-QUAL REMEDIATIONS INDEPENDENTLY ACCEPTED /
-  DENSE-FAILURE OBSERVABILITY REMEDIATION INDEPENDENTLY ACCEPTED /
-  NOT YET HUMAN-ACCEPTED
+16K-B: IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED /
+  HA RECORD PENDING INDEPENDENT REVIEW
   Implementation authority:
     S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-AUTH-001 — AUTHORIZED
   Exact implementation base: 39e5e09363193b2315ada9e56cb3e1c14ba9377d
@@ -809,6 +816,17 @@ Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
     — AUTHORIZED
   Exact acceptance-record parent:
     40c6eb3824ac9f9c1cbc35c889e3e4110b229469
+  Exact IR-002 acceptance-record tip:
+    9f9734efb7a534f054415b32c73c039ae59369e3
+  Human technical acceptance:
+    S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-HA-001 — ACCEPTED
+  Exact Human-accepted technical subject:
+    40c6eb3824ac9f9c1cbc35c889e3e4110b229469
+  HA-record authority:
+    S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-HA-RECORD-AUTH-001
+    — AUTHORIZED
+  Exact HA-record parent:
+    9f9734efb7a534f054415b32c73c039ae59369e3
   Technical lineage (durable):
     91dba2e2885346ee595b920fd7dd02f671d2f7af
       — IR-004 ACCEPT (historical 16K-B subject)
@@ -821,16 +839,18 @@ Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
     → 6f61f18441c2348faa81a1852196b7d300a1c4da
       — dense-failure observability IR-001 REWORK REQUIRED (R1)
     → 40c6eb3824ac9f9c1cbc35c889e3e4110b229469
-      — dense-failure observability IR-002 ACCEPT; R1 CLOSED
-  Intended Human technical acceptance subject:
-    40c6eb3824ac9f9c1cbc35c889e3e4110b229469
+      — exact technical subject; IR-002 ACCEPT; HA-001 ACCEPTED; R1 CLOSED
+    → 9f9734efb7a534f054415b32c73c039ae59369e3
+      — IR-002 durable acceptance-record tip
+    → (this HA-record commit)
+      — durable publication of HA-001 only; not the technical HA subject
   Fireground CUDA/cublasGemmEx runtime issue:
-    OPEN / SEPARATE FROM OBSERVABILITY REMEDIATION /
-    NOT CLAIMED FIXED BY IR-002 ACCEPT
-  Human technical acceptance: NOT YET ISSUED
+    OPEN / SEPARATE /
+    NOT FIXED BY 16K-B ACCEPTANCE
   Branch: implementation/16k-b-ingestion-observability
 16K-C → 16K-G: NOT YET AUTHORIZED
 Baseline evidence: NOT YET AUTHORIZED / NOT ACCEPTED
+Main promotion: NOT AUTHORIZED
 Frozen order: 16K-A → 16K-B → baseline evidence → 16K-C → 16K-D → 16K-E → 16K-F → 16K-G
 Slice 16: COMPLETE / HUMAN ACCEPTED / CANONICAL
 Slice 17: NOT AUTHORIZED
@@ -840,6 +860,6 @@ M7 CLOSEOUT: NOT AUTHORIZED
 Does NOT authorize 16K-C→G / capacity / CUDA / UI
 Does NOT reopen Slice 16 closeout
 Does NOT authorize main promotion
-Does NOT constitute Human acceptance of 16K-B
+Does NOT claim Fireground CUDA fixed by 16K-B acceptance
 Outstanding separate operation: promote 3a7d8ff… onto origin/main (still at e21b3e6…)
 ```
