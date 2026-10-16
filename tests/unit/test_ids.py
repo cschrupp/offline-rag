@@ -86,3 +86,67 @@ def test_chunk_artifact_and_parent_child_ids() -> None:
         source_block_ids=["b1"],
         text="hello!",
     )
+
+
+def test_child_chunk_id_occurrence_zero_matches_legacy_payload() -> None:
+    """occurrence=0 must retain the exact pre-remediation child ID."""
+    cfg = chunk_config_hash({"strategy": "structure_aware", "child": {"max_tokens": 512}})
+    parent = "parent_abc"
+    kwargs = dict(
+        document_id="doc_1",
+        parent_chunk_id=parent,
+        chunk_cfg_hash=cfg,
+        source_block_ids=["b1"],
+        text="!",
+    )
+    legacy = child_chunk_id_from_parts(**kwargs)
+    assert child_chunk_id_from_parts(**kwargs, occurrence=0) == legacy
+    # Default argument is occurrence=0.
+    assert child_chunk_id_from_parts(**kwargs) == legacy
+
+
+def test_child_chunk_id_occurrence_disambiguates_deterministically() -> None:
+    cfg = chunk_config_hash({"strategy": "structure_aware", "child": {"max_tokens": 512}})
+    parent = "parent_abc"
+    base = child_chunk_id_from_parts(
+        "doc_1",
+        parent_chunk_id=parent,
+        chunk_cfg_hash=cfg,
+        source_block_ids=["b1"],
+        text="!",
+        occurrence=0,
+    )
+    second = child_chunk_id_from_parts(
+        "doc_1",
+        parent_chunk_id=parent,
+        chunk_cfg_hash=cfg,
+        source_block_ids=["b1"],
+        text="!",
+        occurrence=1,
+    )
+    third = child_chunk_id_from_parts(
+        "doc_1",
+        parent_chunk_id=parent,
+        chunk_cfg_hash=cfg,
+        source_block_ids=["b1"],
+        text="!",
+        occurrence=2,
+    )
+    assert len({base, second, third}) == 3
+    assert second == child_chunk_id_from_parts(
+        "doc_1",
+        parent_chunk_id=parent,
+        chunk_cfg_hash=cfg,
+        source_block_ids=["b1"],
+        text="!",
+        occurrence=1,
+    )
+    with pytest.raises(ValueError):
+        child_chunk_id_from_parts(
+            "doc_1",
+            parent_chunk_id=parent,
+            chunk_cfg_hash=cfg,
+            source_block_ids=["b1"],
+            text="!",
+            occurrence=-1,
+        )

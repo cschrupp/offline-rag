@@ -225,3 +225,128 @@ def test_config_hash_changes_artifact_id() -> None:
         chunk_artifact_id=chunk_artifact_id("parsed_1", cfg),
     )
     assert a.chunk_artifact_id != b.chunk_artifact_id
+
+
+def test_repeated_identical_split_units_get_unique_deterministic_child_ids() -> None:
+    """Same source block can emit repeated identical children without ID collision.
+
+    Sentence-boundary oversized splits of "! ! ! ..." produce multiple
+    children with identical (parent, source_block_ids, text). Occurrence 0
+    keeps the legacy ID; 1+ are disambiguated. Multiplicity is preserved.
+    """
+    from offline_rag.chunking.validation import validate_chunk_artifact
+    from offline_rag.core.ids import child_chunk_id_from_parts
+
+    # Force oversized path: FakeTokenCounter counts whitespace tokens.
+    # "! ! ! ..." yields many one-token sentences after sentence split.
+    bang_run = " ".join(["!"] * 12)
+    unique = "nozzle stream pattern foam"
+    parsed = _doc(
+        [
+            _block(order=0, text=bang_run, section_path=["S"]),
+            _block(order=1, text=unique, section_path=["S"]),
+        ]
+    )
+    chunker = _chunker(child_target=1, child_max=1, parent_max=200)
+    first = _run(parsed, chunker)
+    second = _run(parsed, chunker)
+
+    bang_children = [c for c in first.children if c.text.strip() == "!"]
+    assert len(bang_children) >= 3, "expected repeated identical split units"
+    # Multiplicity preserved (not silently dropped).
+    assert len(bang_children) == 12
+
+    ids = [c.chunk_id for c in first.children]
+    assert len(ids) == len(set(ids)), "duplicate child IDs after remediation"
+    assert [c.chunk_id for c in first.children] == [c.chunk_id for c in second.children]
+
+    # Contiguous order + symmetric neighbors.
+    assert [c.order for c in first.children] == list(range(len(first.children)))
+    for index, child in enumerate(first.children):
+        prev_id = first.children[index - 1].chunk_id if index > 0 else None
+        next_id = (
+            first.children[index + 1].chunk_id if index + 1 < len(first.children) else None
+        )
+        assert child.previous_chunk_id == prev_id
+        assert child.next_chunk_id == next_id
+
+    # Occurrence 0 retains exact legacy ID for the colliding identity basis.
+    parent_id = bang_children[0].parent_chunk_id
+    source_ids = bang_children[0].source_block_ids
+    run_cfg = chunk_config_hash({"strategy": "structure_aware", "child_max": 12})
+    legacy0 = child_chunk_id_from_parts(
+        "doc_1",
+        parent_chunk_id=parent_id,
+        chunk_cfg_hash=run_cfg,
+        source_block_ids=source_ids,
+        text="!",
+        occurrence=0,
+    )
+    assert bang_children[0].chunk_id == legacy0
+    assert bang_children[1].chunk_id == child_chunk_id_from_parts(
+        "doc_1",
+        parent_chunk_id=parent_id,
+        chunk_cfg_hash=run_cfg,
+        source_block_ids=source_ids,
+        text="!",
+        occurrence=1,
+    )
+    assert bang_children[1].chunk_id != bang_children[0].chunk_id
+    assert len({c.chunk_id for c in bang_children}) == len(bang_children)
+
+    # Non-colliding unique content keeps a single ID (occurrence 0 only).
+    unique_children = [c for c in first.children if "nozzle" in c.text]
+    assert unique_children
+    assert all(
+        c.chunk_id
+        == child_chunk_id_from_parts(
+            "doc_1",
+            parent_chunk_id=c.parent_chunk_id,
+            chunk_cfg_hash=run_cfg,
+            source_block_ids=c.source_block_ids,
+            text=c.text,
+            occurrence=0,
+        )
+        for c in unique_children
+    )
+
+    validate_chunk_artifact(
+        parents=first.parents,
+        children=first.children,
+        document_id="doc_1",
+        parent_child=True,
+        child_max_tokens=1,
+    )
+
+
+def test_non_colliding_fixture_ids_unchanged_under_occurrence_policy() -> None:
+    """Ordinary docs must keep pre-fix child IDs (all occurrence=0)."""
+    from offline_rag.core.ids import child_chunk_id_from_parts
+
+    parsed = _doc(
+        [
+            _block(order=0, text="Intro", content_type=ContentType.HEADING, section_path=["Intro"]),
+            _block(order=1, text="alpha beta gamma", section_path=["Intro"]),
+            _block(order=2, text="Methods", content_type=ContentType.HEADING, section_path=["Methods"]),
+            _block(order=3, text="delta epsilon zeta", section_path=["Methods"]),
+        ]
+    )
+    artifact = _run(parsed)
+    run_cfg = chunk_config_hash({"strategy": "structure_aware", "child_max": 12})
+    for child in artifact.children:
+        assert child.chunk_id == child_chunk_id_from_parts(
+            "doc_1",
+            parent_chunk_id=child.parent_chunk_id,
+            chunk_cfg_hash=run_cfg,
+            source_block_ids=child.source_block_ids,
+            text=child.text,
+            occurrence=0,
+        )
+        assert child.chunk_id != child_chunk_id_from_parts(
+            "doc_1",
+            parent_chunk_id=child.parent_chunk_id,
+            chunk_cfg_hash=run_cfg,
+            source_block_ids=child.source_block_ids,
+            text=child.text,
+            occurrence=1,
+        )

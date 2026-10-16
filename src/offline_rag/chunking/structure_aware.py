@@ -206,6 +206,10 @@ class StructureAwareChunker:
         children: list[Chunk] = []
         warnings: list[str] = []
         document_id = parsed.document.document_id
+        # Per-document counters keyed by the legacy (occurrence=0) identity
+        # basis. Occurrence numbering follows deterministic child emission
+        # order within this document.
+        child_occurrence_counts: dict[tuple[object, ...], int] = {}
 
         spans = _group_parent_spans(blocks, self.counter, self.budgets)
         for span in spans:
@@ -307,12 +311,26 @@ class StructureAwareChunker:
                 for block in unit_blocks:
                     if block.id not in source_ids:
                         source_ids.append(block.id)
+                parent_for_id = parent_id if self.budgets.parent_child else None
+                normalized_text = text.strip("\n")
+                identity_key = (
+                    document_id,
+                    parent_for_id or "",
+                    chunk_cfg_hash,
+                    STRUCTURE_AWARE_CHUNKER_VERSION,
+                    tuple(source_ids),
+                    normalized_text,
+                    "child",
+                )
+                occurrence = child_occurrence_counts.get(identity_key, 0)
+                child_occurrence_counts[identity_key] = occurrence + 1
                 child_id = child_chunk_id_from_parts(
                     document_id,
-                    parent_chunk_id=parent_id if self.budgets.parent_child else None,
+                    parent_chunk_id=parent_for_id,
                     chunk_cfg_hash=chunk_cfg_hash,
                     source_block_ids=source_ids,
                     text=text,
+                    occurrence=occurrence,
                 )
                 metadata = {}
                 if mode == "oversized_unsplittable":
@@ -322,7 +340,7 @@ class StructureAwareChunker:
                         chunk_id=child_id,
                         document_id=document_id,
                         kind=ChunkKind.CHILD,
-                        parent_chunk_id=parent_id if self.budgets.parent_child else None,
+                        parent_chunk_id=parent_for_id,
                         text=text,
                         page_start=page_start,
                         page_end=page_end,

@@ -29,11 +29,13 @@
 **Exact 16K-B rework-003 base / parent:** `2c0e7bf21c8c427ee99b1b9518342a8080596463`
 **16K-B independent review:** `S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-IR-004` — ACCEPT
 **16K-B IR-004 acceptance-record authority:** `S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-IR-004-ACCEPTANCE-RECORD-AUTH-001` — AUTHORIZED
-**Exact independently accepted 16K-B technical subject:** `91dba2e2885346ee595b920fd7dd02f671d2f7af`
+**Exact independently accepted 16K-B technical subject (IR-004 historical):** `91dba2e2885346ee595b920fd7dd02f671d2f7af`
+**16K-B post-qualification remediation authority:** `S16-K-B-POST-QUAL-CHUNK-ID-COLLISION-REMEDIATION-AUTH-001` — AUTHORIZED
+**Exact post-qual remediation parent:** `037a39531abfd5f5335151a946dbede776c5f492`
 **16K-B branch:** `implementation/16k-b-ingestion-observability`
 **Status:** DESIGN ACCEPTED / FROZEN
 **16K-A:** IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED
-**16K-B:** IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / NOT YET HUMAN-ACCEPTED
+**16K-B:** IMPLEMENTATION COMPLETE / IR-004 HISTORICALLY ACCEPTED / POST-QUAL REMEDIATION PENDING INDEPENDENT REVIEW / NOT YET HUMAN-ACCEPTED
 **16K-C → 16K-G:** NOT YET AUTHORIZED
 **Baseline evidence:** NOT YET AUTHORIZED / NOT ACCEPTED
 **Human technical acceptance (16K-B):** NOT YET ISSUED
@@ -53,14 +55,21 @@ for Slice-16 closeout remains correct historical provenance
 
 Human design acceptance freezes this design. **16K-A** managed-ingestion
 correctness is **IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN
-ACCEPTED** at subject `1370b993…`. **16K-B** ingestion observability is
-**IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / NOT YET HUMAN-ACCEPTED**
-at exact technical subject `91dba2e…` (IR-004 — ACCEPT). Prior lineage
-remains: IR-001 / REWORK-AUTH-001, IR-002 / REWORK-AUTH-002, IR-003 /
-REWORK-AUTH-003. Independent acceptance does not constitute Human
-acceptance, baseline-evidence acceptance, 16K-C→G authority, or main
-promotion. 16K-C→G, capacity expansion, CUDA optimization, UI work, OCR,
-Slice 17/18, 9G, and M7 closeout remain unauthorized.
+ACCEPTED** at subject `1370b993…`. **16K-B** ingestion observability received
+IR-004 — ACCEPT at exact technical subject `91dba2e…` (historical). Before
+Human acceptance, live SOURCE_ADD of `Andy_Nozzles.pdf` exposed a chunk-ID
+collision defect (`ChunkSetValidationError: duplicate child chunk IDs`).
+Post-qualification remediation
+`S16-K-B-POST-QUAL-CHUNK-ID-COLLISION-REMEDIATION-AUTH-001` is AUTHORIZED
+from parent `037a395…`. IR-004 remains valid historical review of `91dba2e…`,
+but `91dba2e…` is no longer the intended final HA technical subject; the
+remediation successor requires fresh independent review before Human
+acceptance. Prior lineage remains: IR-001 / REWORK-AUTH-001, IR-002 /
+REWORK-AUTH-002, IR-003 / REWORK-AUTH-003, IR-004 / ACCEPTANCE-RECORD.
+Independent acceptance does not constitute Human acceptance,
+baseline-evidence acceptance, 16K-C→G authority, or main promotion.
+16K-C→G, capacity expansion, CUDA optimization, UI work, OCR, Slice 17/18,
+9G, and M7 closeout remain unauthorized.
 
 ---
 
@@ -698,8 +707,12 @@ Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
     S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-IR-004 — ACCEPT
   IR-004 acceptance-record authority:
     S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-IR-004-ACCEPTANCE-RECORD-AUTH-001 — AUTHORIZED
-  Exact independently accepted technical subject:
+  Exact independently accepted technical subject (IR-004 historical):
     91dba2e2885346ee595b920fd7dd02f671d2f7af
+  Post-qualification remediation authority:
+    S16-K-B-POST-QUAL-CHUNK-ID-COLLISION-REMEDIATION-AUTH-001 — AUTHORIZED
+  Exact post-qual remediation parent:
+    037a39531abfd5f5335151a946dbede776c5f492
   Human technical acceptance: NOT YET ISSUED
   Branch: implementation/16k-b-ingestion-observability
 16K-C → 16K-G: NOT YET AUTHORIZED

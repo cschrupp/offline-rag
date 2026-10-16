@@ -291,8 +291,18 @@ def child_chunk_id_from_parts(
     source_block_ids: Sequence[str],
     text: str,
     chunker_version: str = STRUCTURE_AWARE_CHUNKER_VERSION,
+    occurrence: int = 0,
 ) -> str:
-    payload = {
+    """Deterministic child chunk ID.
+
+    ``occurrence`` disambiguates repeated children that share the same
+    canonical identity basis. ``occurrence=0`` (default) MUST serialize
+    exactly the historical payload so legacy IDs are preserved. Only
+    ``occurrence > 0`` adds an identity-bearing ``occurrence`` field.
+    """
+    if occurrence < 0:
+        raise ValueError("occurrence must be >= 0")
+    payload: dict[str, object] = {
         "document_id": document_id,
         "parent_chunk_id": parent_chunk_id or "",
         "chunk_config_hash": chunk_cfg_hash,
@@ -301,6 +311,8 @@ def child_chunk_id_from_parts(
         "text": text.strip("\n"),
         "kind": "child",
     }
+    if occurrence > 0:
+        payload["occurrence"] = occurrence
     encoded = json.dumps(
         payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
     )

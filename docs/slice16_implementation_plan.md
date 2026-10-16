@@ -119,7 +119,8 @@ GAP-16G-02:
     Branch: implementation/16k-a-managed-ingestion-correctness
     HA-record IR:
       S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-IR-001 — ACCEPT
-  16K-B: IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / NOT YET HUMAN-ACCEPTED
+  16K-B: IMPLEMENTATION COMPLETE / IR-004 HISTORICALLY ACCEPTED /
+    POST-QUAL REMEDIATION PENDING INDEPENDENT REVIEW / NOT YET HUMAN-ACCEPTED
     Implementation authority:
       S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-AUTH-001 — AUTHORIZED
     Exact implementation base:
@@ -146,8 +147,12 @@ GAP-16G-02:
       S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-IR-004 — ACCEPT
     IR-004 acceptance-record authority:
       S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-IR-004-ACCEPTANCE-RECORD-AUTH-001 — AUTHORIZED
-    Exact independently accepted technical subject:
+    Exact independently accepted technical subject (IR-004 historical):
       91dba2e2885346ee595b920fd7dd02f671d2f7af
+    Post-qualification remediation authority:
+      S16-K-B-POST-QUAL-CHUNK-ID-COLLISION-REMEDIATION-AUTH-001 — AUTHORIZED
+    Exact post-qual remediation parent:
+      037a39531abfd5f5335151a946dbede776c5f492
     Human technical acceptance: NOT YET ISSUED
     Branch: implementation/16k-b-ingestion-observability
   16K-C → 16K-G: NOT YET AUTHORIZED
@@ -399,7 +404,8 @@ Slice-16 closeout inventory: HUMAN ACCEPTED
     Branch: implementation/16k-a-managed-ingestion-correctness
     HA-record IR:
       S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-IR-001 — ACCEPT
-  16K-B: IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / NOT YET HUMAN-ACCEPTED
+  16K-B: IMPLEMENTATION COMPLETE / IR-004 HISTORICALLY ACCEPTED /
+    POST-QUAL REMEDIATION PENDING INDEPENDENT REVIEW / NOT YET HUMAN-ACCEPTED
     Implementation authority:
       S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-AUTH-001 — AUTHORIZED
     Exact implementation base:
@@ -426,8 +432,12 @@ Slice-16 closeout inventory: HUMAN ACCEPTED
       S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-IR-004 — ACCEPT
     IR-004 acceptance-record authority:
       S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-IR-004-ACCEPTANCE-RECORD-AUTH-001 — AUTHORIZED
-    Exact independently accepted technical subject:
+    Exact independently accepted technical subject (IR-004 historical):
       91dba2e2885346ee595b920fd7dd02f671d2f7af
+    Post-qualification remediation authority:
+      S16-K-B-POST-QUAL-CHUNK-ID-COLLISION-REMEDIATION-AUTH-001 — AUTHORIZED
+    Exact post-qual remediation parent:
+      037a39531abfd5f5335151a946dbede776c5f492
     Human technical acceptance: NOT YET ISSUED
     Branch: implementation/16k-b-ingestion-observability
   16K-C → 16K-G: NOT YET AUTHORIZED
