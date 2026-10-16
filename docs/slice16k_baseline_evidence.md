@@ -4,6 +4,9 @@
 **Campaign authority:** `S16-K-BASELINE-EVIDENCE-CAMPAIGN-AUTH-001`  
 **AUTH-open / execution pin:** `eb0ebd86f5d69378acc8142f63a6fa0b5a16d85e`  
 **Technical implementation measured:** `40c6eb3824ac9f9c1cbc35c889e3e4110b229469`  
+**Prior independent review:** `S16-K-BASELINE-EVIDENCE-FREEZE-IR-001` — REWORK REQUIRED (R1–R4)  
+**Rework authority:** `S16-K-BASELINE-EVIDENCE-FREEZE-REWORK-AUTH-001` — AUTHORIZED  
+**Exact rework parent:** `0d169ae62d620709b220e8ebc97b2932d64a843b`  
 **Disposition:** BASELINE EVIDENCE FROZEN / PENDING INDEPENDENT REVIEW  
 
 Campaign contract:
@@ -44,6 +47,11 @@ Aggregate manifest hash: `9864d642c45b485f175555dff229252fceea1b8143786918917976
 Member: `Fireground_Operational_Guides.pdf` / 6796067 bytes /
 `01bea4d628ffea01aab164535c81392a8b42b9a587f9b6295f302a9938f2f0c2`
 
+**Runtime config fingerprint:** `status: not_captured` (no contemporaneous
+effective-config hash recovered from campaign evidence/logs). Exact
+effective-runtime reproducibility is correspondingly limited. Static repository
+defaults are not a substitute.
+
 ---
 
 ## Nine acceptance questions
@@ -54,15 +62,21 @@ Member: `Fireground_Operational_Guides.pdf` / 6796067 bytes /
 
 - searchable children: **585**
 - uploaded raw bytes: **6,796,067**
-- total wall: **8,795 ms**
+- pipeline_total_ms (`metrics.stage_durations.total_ms`): **8,795**
+- durable_operation_wall_ms (`updated_at − created_at`): **≈ 10,227**
 - stage durations (ms): parse 93, chunk 44, dense_generation 106,
   dense_materialization 3,538, lexical 398, publication 64, finalization 20
 
 **Measured fact (B2, byte-identical replace):**
 
 - searchable children: **585** (unchanged membership)
-- total wall: **483 ms**
+- pipeline_total_ms: **483**
+- durable_operation_wall_ms: **≈ 599**
 - embeddings_generated **0** / embeddings_reused **585**
+
+Collector `timestamps.*` / `timing.collector_observed_*` values are evidence-
+harness observation times when terminal state was polled; they are **not**
+authoritative durable terminal timestamps (`timing.durable_terminal_updated_at`).
 
 **Derived:** In this campaign workspace, Fireground alone is a **585-child**
 workload (~6.8 MiB PDF). Historical Fireground attempts in the occupied
@@ -71,11 +85,12 @@ because other sources were already present (**historical evidence**, not B1).
 
 ### 2. Where is time spent?
 
-**Measured fact (B1):** Dense materialization dominated (3,538 ms of 8,795 ms).
-Dense generation was negligible (106 ms) because embeddings were reused.
-**Measured fact (B2):** Total 483 ms; dense_generation/materialization fields
-absent/null in metrics (full reuse path; no new dense generation stage cost
-recorded).
+**Measured fact (B1):** Dense materialization dominated (3,538 ms of 8,795 ms
+pipeline_total_ms). Dense generation was negligible (106 ms) because embeddings
+were reused.
+**Measured fact (B2):** pipeline_total_ms 483; dense_generation/materialization
+fields absent/null in metrics (full reuse path; no new dense generation stage
+cost recorded).
 
 **Unknown under this campaign:** input-token p50/p95/p99/max, per-batch max
 sequence length, first-batch vs steady-state encode timing for a
@@ -110,24 +125,29 @@ document-level artifacts each).
 | after B2 terminal | 5202 |
 
 **Measured fact:** API PID `1926194` continuous through B1→idle→B2.  
-**Measured fact:** `nvidia-smi` compute_apps never listed the API PID.  
+**Measured fact:** `api_pid_listed_in_nvidia_smi_compute_apps_after_idle` =
+**false** (and compute_apps never listed the API PID during the sequence).  
 **Measured fact:** side-process `torch.cuda.mem_get_info` free stayed
 ~7.45 GiB; API-process `memory_allocated`/`memory_reserved` were
 **unavailable** without in-process instrumentation (not authorized).
 
 **Derived:** Host GPU memory remained elevated and roughly stable across the
-15-minute idle window. This is **not** the same as proving the embedding model
-remained resident inside the API process.
+15-minute idle window. That is **not** equivalent to proving embedding-model
+residency inside the API process.
 
 ### 5. Does the accepted model remain resident after ingestion?
 
-**Measured fact:** Not observed as an API-attributed GPU resident process during
-this campaign sequence.
+**Status: not_established.**
+
+**Measured fact:** `embedding_model_resident_in_api_process` is **null** /
+`embedding_model_resident_status: not_established`. Absence from nvidia-smi
+compute_apps (especially under this WSL observation path) does **not** prove
+non-residency.
 
 **Derived:** Because B1/B2 reused all embeddings, the campaign did not force a
 full model-load / generate-heavy CUDA path. Persistent GPU residency previously
 seen on generate-heavy Fireground attempts remains an open observation for
-16K-D, not established by B1/B2 here.
+16K-D.
 
 ### 6. Is the current runtime stable across the bounded baseline sequence?
 
@@ -163,42 +183,61 @@ policy must separate transport/resource safety from workspace/search workload
 - historical partial-failure counters on CUDA-era dense failure (`wop_e6fa35…`)
 - later success on same bytes (`wop_861fc8…`)
 - campaign B1/B2 were reuse-dominated and did not reproduce generate-heavy CUDA
-  stress or API-attributed VRAM residency
-- host GPU memory stayed elevated during idle, but without API process
-  attribution
-- accepted config pins remain: Qwen3-Embedding-0.6B @
-  `97b0c614…`, plain-v1, dim 1024, batch 32, device auto→cuda observed in B1
-  `dense_execution`
+  stress or establish API-process model residency
+- host GPU memory stayed elevated during idle, without API PID attribution in
+  nvidia-smi compute_apps
+- accepted static pins remain: Qwen3-Embedding-0.6B @ `97b0c614…`, plain-v1,
+  dim 1024, batch 32, device auto→cuda observed in B1 `dense_execution` (dtype /
+  attention not resolved on reuse-only B1)
+
+**Evidence constraint (R4) — do not rewrite Q12:**
+
+Historical generate-heavy successful runs (`wop_11cdee8f…`, `wop_861fc8…`)
+reported:
+
+- device: `cuda`
+- dtype: `bfloat16`
+- attention_backend: `sdpa`
+- batch_size: `32`
+
+while the frozen 16K-D design text (§9.2) describes the current baseline as
+CUDA **FP32** / batch 32 before FP16 testing.
+
+**Disposition:** the FP32 premise is **not established** by this baseline and
+must be verified/reconciled before 16K-D chooses its controlled optimization
+sequence. This freeze does **not** select BF16/SDPA as the new baseline and
+does **not** rewrite Q12.
 
 **Constraint:** 16K-D must still address generate-heavy CUDA reliability and
-any residency/eviction policy using dedicated optimization authority; this
-baseline does not select FP16, batch changes, attention changes, or eviction.
+any residency/eviction policy using dedicated optimization authority.
 
 ### 9. What remains unknown?
 
 - generate-heavy cold embedding throughput (chunks/sec, tokens/sec, first-batch
   vs steady-state) for Fireground bytes when caches do not satisfy reuse
-- API-process torch allocator series (allocated/reserved) — requires authorized
-  in-process instrumentation or an approved measurement helper path that can
-  observe the server process
+- API-process torch allocator series (allocated/reserved)
 - whether embedding model weights remain mapped in the API process after
-  reuse-only operations
+  reuse-only operations (`not_established`)
+- contemporaneous effective **runtime_config_fingerprint** for the B1→B3
+  sequence (`not_captured`)
+- verified current default dtype/attention vs historical BF16/SDPA reports
 - reproduction probability of `cublasGemmEx` / `embedding_generation_failed`
   under controlled allocator pressure
 - beta usability threshold numbers (Q13) — intentionally not invented here
 
 ---
 
-## Current governance state after freeze
+## Current governance state after freeze (rework successor)
 
 - **16K-B:** COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / HA RECORD
   INDEPENDENTLY ACCEPTED
 - **16K baseline evidence:** FROZEN / PENDING INDEPENDENT REVIEW
+- **Historical IR:** `S16-K-BASELINE-EVIDENCE-FREEZE-IR-001` — REWORK REQUIRED
+  (R1–R4) — preserved as provenance against prior tip `0d169ae6…`
 - **16K-C / 16K-D / 16K-E→G:** NOT YET AUTHORIZED
-- **Fireground CUDA/cublasGemmEx:** OPEN / SEPARATE / CHARACTERIZED BY BASELINE
-  WHERE EVIDENCE SUPPORTS IT / NOT FIXED
+- **Fireground CUDA/cublasGemmEx:** OPEN / SEPARATE / NOT FIXED
 - **Main promotion:** NOT AUTHORIZED
 
 ---
 
-**STOP FOR INDEPENDENT S16-K-BASELINE-EVIDENCE-FREEZE-001 REVIEW.**
+**STOP FOR INDEPENDENT S16-K-BASELINE-EVIDENCE-FREEZE RE-REVIEW.**

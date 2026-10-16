@@ -99,6 +99,19 @@
   "record_kind": "measured_fact",
   "repository_sha_checked": "eb0ebd86f5d69378acc8142f63a6fa0b5a16d85e",
   "run_id": "B0",
+  "runtime_config_fingerprint": {
+    "process_continuity_fields_present": {
+      "api_pid": true,
+      "cuda_pytorch_versions": true,
+      "execution_pin": true,
+      "gpu_identity": true,
+      "process_start_timestamp": true,
+      "runtime_config_hash": false
+    },
+    "recovery_attempt": "No contemporaneous effective-config hash was found in B0 capture, campaign workspace artifacts, or the campaign API log.",
+    "reproducibility_note": "Exact effective-runtime reproducibility for the B1\u2192B3 sequence is limited. Static repository defaults recorded under config_pins_static must not be treated as a runtime fingerprint.",
+    "status": "not_captured"
+  },
   "technical_subject": "40c6eb3824ac9f9c1cbc35c889e3e4110b229469",
   "timestamp": "2026-10-16T22:54:10.112931Z",
   "versions": {

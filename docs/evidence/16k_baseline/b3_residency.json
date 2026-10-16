@@ -135,10 +135,11 @@
   "residency_observations": {
     "after_b1_gpu_used_mib": 5149,
     "after_b2_gpu_used_mib": 5202,
-    "api_process_gpu_present_after_idle": false,
-    "claim_boundary": "Host GPU memory remained elevated (~5.1\u20135.3 GiB used) across the 15-minute idle window; the API PID remained continuous. This does NOT establish embedding-model residency in the API process: nvidia-smi never attributed GPU memory to the API PID, and B1/B2 were fully embedding-reuse dominated.",
-    "embedding_model_resident_in_api_process": false,
+    "api_pid_listed_in_nvidia_smi_compute_apps_after_idle": false,
+    "claim_boundary": "Host GPU memory remained elevated (~5.1\u20135.3 GiB used) across the 15-minute idle window; the API PID remained continuous. Embedding-model residency in the API process is not_established: nvidia-smi did not list the API PID in compute_apps (WSL observation path), and in-process allocator state was unavailable. Absence from compute_apps is not proof of non-residency.",
+    "embedding_model_resident_in_api_process": null,
     "embedding_model_resident_observability": "not_observed_via_nvidia_smi_compute_apps; in-process torch allocator unavailable",
+    "embedding_model_resident_status": "not_established",
     "host_gpu_memory_idle_persistence_observed": true,
     "idle_T0_gpu_used_mib": 5157,
     "idle_T15_gpu_used_mib": 5258,
@@ -146,6 +147,11 @@
     "torch_allocator_note": "API-process torch.cuda.memory_allocated/reserved unavailable without in-process instrumentation (not authorized under this campaign)."
   },
   "run_id": "B3",
+  "runtime_config_fingerprint": {
+    "recovery_attempt": "Readonly search of campaign JSON evidence, campaign workspace durable records, and /tmp/seneca-16k-baseline.log found no contemporaneous effective runtime-configuration hash for PID 1926194 / B0\u2013B3.",
+    "reproducibility_note": "Exact effective-runtime reproducibility is correspondingly limited; static repository defaults and observed dense_execution fields are not a substitute for a contemporaneous runtime config fingerprint.",
+    "status": "not_captured"
+  },
   "sequence": [
     "pre_b1_cold",
     "B1",

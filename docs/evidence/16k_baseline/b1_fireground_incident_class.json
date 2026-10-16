@@ -144,6 +144,10 @@
   "process_continuity_ok": true,
   "record_kind": "measured_fact",
   "run_id": "B1",
+  "runtime_config_fingerprint": {
+    "see": "docs/evidence/16k_baseline/b0_pins.json#runtime_config_fingerprint",
+    "status": "not_captured"
+  },
   "status": "succeeded",
   "technical_subject": "40c6eb3824ac9f9c1cbc35c889e3e4110b229469",
   "terminal_operation": {
@@ -228,8 +232,22 @@
     "workspace_id": "ws_5cba280e8c3649e7babe980cc87b2566"
   },
   "timestamps": {
+    "collector_observed_started_at": "2026-10-16T22:57:55.777773Z",
+    "collector_observed_terminal_at": "2026-10-16T22:58:10.769771Z",
+    "semantic_note": "started_at/terminal_at are collector_observed_* aliases retained for audit continuity; prefer timing.* fields.",
     "started_at": "2026-10-16T22:57:55.777773Z",
     "terminal_at": "2026-10-16T22:58:10.769771Z"
+  },
+  "timing": {
+    "collector_observed_started_at": "2026-10-16T22:57:55.777773Z",
+    "collector_observed_terminal_at": "2026-10-16T22:58:10.769771Z",
+    "collector_timestamps_note": "Top-level timestamps.* are collector observation times when the evidence harness recorded start/terminal polling state; they are not authoritative durable operation terminal timestamps.",
+    "durable_created_at": "2026-10-16T22:57:55.765101Z",
+    "durable_operation_wall_derivation": "terminal_operation.updated_at - terminal_operation.created_at",
+    "durable_operation_wall_ms": 10227.378,
+    "durable_terminal_updated_at": "2026-10-16T22:58:05.992479Z",
+    "pipeline_total_ms": 8795,
+    "pipeline_total_ms_source": "metrics.stage_durations.total_ms"
   },
   "worklist": {
     "active_documents": [],

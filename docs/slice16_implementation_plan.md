@@ -248,17 +248,23 @@ GAP-16G-02:
       40c6eb3824ac9f9c1cbc35c889e3e4110b229469
     Freeze subject:
       S16-K-BASELINE-EVIDENCE-FREEZE-001
+    Independent review:
+      S16-K-BASELINE-EVIDENCE-FREEZE-IR-001 — REWORK REQUIRED (R1–R4)
+    Exact IR-001 subject:
+      0d169ae62d620709b220e8ebc97b2932d64a843b
+    Rework authority:
+      S16-K-BASELINE-EVIDENCE-FREEZE-REWORK-AUTH-001 — AUTHORIZED
+    Exact rework parent:
+      0d169ae62d620709b220e8ebc97b2932d64a843b
     Branch: evidence/16k-baseline
     Manifest: docs/slice16k_baseline_evidence_campaign.md
     Freeze narrative: docs/slice16k_baseline_evidence.md
     Evidence: docs/evidence/16k_baseline/
     Fireground CUDA/cublasGemmEx:
-      OPEN / SEPARATE /
-      CHARACTERIZED BY BASELINE WHERE EVIDENCE SUPPORTS IT /
-      NOT FIXED
-  16K-C: NOT YET AUTHORIZED
-  16K-D: NOT YET AUTHORIZED
-  16K-E → 16K-G: NOT YET AUTHORIZED
+      OPEN / SEPARATE / NOT FIXED
+  16K-C: NOT AUTHORIZED
+  16K-D: NOT AUTHORIZED
+  16K-E → 16K-G: NOT AUTHORIZED
   Main promotion: NOT AUTHORIZED
 16L: COMPLETE / ACCEPTED
   Authority: S16-L-EMBEDDING-AUTO-DEVICE-UX-AUTH-002
@@ -636,17 +642,23 @@ Slice-16 closeout inventory: HUMAN ACCEPTED
       40c6eb3824ac9f9c1cbc35c889e3e4110b229469
     Freeze subject:
       S16-K-BASELINE-EVIDENCE-FREEZE-001
+    Independent review:
+      S16-K-BASELINE-EVIDENCE-FREEZE-IR-001 — REWORK REQUIRED (R1–R4)
+    Exact IR-001 subject:
+      0d169ae62d620709b220e8ebc97b2932d64a843b
+    Rework authority:
+      S16-K-BASELINE-EVIDENCE-FREEZE-REWORK-AUTH-001 — AUTHORIZED
+    Exact rework parent:
+      0d169ae62d620709b220e8ebc97b2932d64a843b
     Branch: evidence/16k-baseline
     Manifest: docs/slice16k_baseline_evidence_campaign.md
     Freeze narrative: docs/slice16k_baseline_evidence.md
     Evidence: docs/evidence/16k_baseline/
     Fireground CUDA/cublasGemmEx:
-      OPEN / SEPARATE /
-      CHARACTERIZED BY BASELINE WHERE EVIDENCE SUPPORTS IT /
-      NOT FIXED
-  16K-C: NOT YET AUTHORIZED
-  16K-D: NOT YET AUTHORIZED
-  16K-E → 16K-G: NOT YET AUTHORIZED
+      OPEN / SEPARATE / NOT FIXED
+  16K-C: NOT AUTHORIZED
+  16K-D: NOT AUTHORIZED
+  16K-E → 16K-G: NOT AUTHORIZED
   Main promotion: NOT AUTHORIZED
   Does NOT reopen Slice 16 closeout
   Does NOT authorize main promotion

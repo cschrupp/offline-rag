@@ -7,7 +7,11 @@
 **Branch:** `evidence/16k-baseline`  
 **Campaign status:** EXECUTION COMPLETE / FROZEN / PENDING INDEPENDENT REVIEW  
 **Exact AUTH-open execution pin:** `eb0ebd86f5d69378acc8142f63a6fa0b5a16d85e`  
-**Freeze subject:** `S16-K-BASELINE-EVIDENCE-FREEZE-001` — published with this freeze tip  
+**Freeze subject:** `S16-K-BASELINE-EVIDENCE-FREEZE-001`  
+**Prior freeze tip (IR-001 subject):** `0d169ae62d620709b220e8ebc97b2932d64a843b`  
+**Independent review:** `S16-K-BASELINE-EVIDENCE-FREEZE-IR-001` — REWORK REQUIRED (R1–R4)  
+**Rework authority:** `S16-K-BASELINE-EVIDENCE-FREEZE-REWORK-AUTH-001` — AUTHORIZED  
+**Exact rework parent:** `0d169ae62d620709b220e8ebc97b2932d64a843b`  
 **Evidence paths:** `docs/evidence/16k_baseline/*.json`  
 **Freeze narrative:** `docs/slice16k_baseline_evidence.md`  
 
@@ -23,7 +27,15 @@ results narrative. Design charter remains
 - B1 operation: `wop_6ec49226e3034c5ebc5af2d2c63f5fe8` — succeeded
 - B2 operation: `wop_735d1d59a0994032a78cb4258494adb8` — succeeded
 - API PID continuity: `1926194` through B1 → idle → B2
-- Independent review: PENDING (`S16-K-BASELINE-EVIDENCE-FREEZE-001`)
+- IR-001 REWORK REQUIRED (R1–R4) against `0d169ae6…`; evidence/docs-only rework
+  successor is the candidate for re-review (no campaign rerun)
+
+### Rework preservation note
+
+Scientific measurements, operation IDs, hashes, identities, historical
+operations, and raw memory samples remain immutable. Rework corrects residency
+semantics, runtime_config_fingerprint provenance (`not_captured`), timing
+labels, and the BF16/SDPA vs FP32 evidence constraint only.
 
 ## 1. Purpose
 
