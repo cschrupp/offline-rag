@@ -46,11 +46,17 @@
 **16K-B post-qualification dense-failure observability IR:** `S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-IR-001` — REWORK REQUIRED (R1)
 **16K-B dense-failure observability rework authority:** `S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-REWORK-AUTH-001` — AUTHORIZED
 **Exact dense-failure observability rework parent:** `6f61f18441c2348faa81a1852196b7d300a1c4da`
-**16K-B dense-failure observability rework IR:** `S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-IR-002` — NOT YET ISSUED (STOP FOR INDEPENDENT REVIEW)
+**16K-B dense-failure observability IR-002:** `S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-IR-002` — ACCEPT
+**Exact independently accepted dense-failure observability technical subject:** `40c6eb3824ac9f9c1cbc35c889e3e4110b229469`
+**R1:** CLOSED
+**16K-B dense-failure observability IR-002 acceptance-record authority:** `S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-IR-002-ACCEPTANCE-RECORD-AUTH-001` — AUTHORIZED
+**Exact acceptance-record parent:** `40c6eb3824ac9f9c1cbc35c889e3e4110b229469`
+**Intended Human technical acceptance subject:** `40c6eb3824ac9f9c1cbc35c889e3e4110b229469`
+**Fireground CUDA/cublasGemmEx runtime issue:** OPEN / SEPARATE FROM OBSERVABILITY REMEDIATION / NOT CLAIMED FIXED BY IR-002 ACCEPT
 **16K-B branch:** `implementation/16k-b-ingestion-observability`
 **Status:** DESIGN ACCEPTED / FROZEN
 **16K-A:** IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED
-**16K-B:** IMPLEMENTATION COMPLETE / POST-QUAL REMEDIATIONS INDEPENDENTLY ACCEPTED / DENSE-FAILURE OBSERVABILITY REMEDIATION REWORK AWAITING IR / NOT YET HUMAN-ACCEPTED
+**16K-B:** IMPLEMENTATION COMPLETE / POST-QUAL REMEDIATIONS INDEPENDENTLY ACCEPTED / DENSE-FAILURE OBSERVABILITY REMEDIATION INDEPENDENTLY ACCEPTED / NOT YET HUMAN-ACCEPTED
 **16K-C → 16K-G:** NOT YET AUTHORIZED
 **Baseline evidence:** NOT YET AUTHORIZED / NOT ACCEPTED
 **Human technical acceptance (16K-B):** NOT YET ISSUED
@@ -93,21 +99,25 @@ false INDEXING→INDEXED projection). Remediation authority
 `S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-AUTH-001` is
 AUTHORIZED from parent `fbc8bb1…`. Independent review
 `S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-IR-001` —
-REWORK REQUIRED (R1: FAILED reports must preserve known dense-execution
-facts). Rework authority
+REWORK REQUIRED (R1). Rework authority
 `S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-REWORK-AUTH-001`
-is AUTHORIZED from parent `6f61f18…`. Rework IR-002 is NOT YET ISSUED —
-STOP FOR INDEPENDENT REVIEW. Durable technical lineage:
+is AUTHORIZED from parent `6f61f18…`. Independent review
+`S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-IR-002` — ACCEPT
+at exact technical subject `40c6eb38…`; R1 CLOSED. Acceptance-record
+authority
+`S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-IR-002-ACCEPTANCE-RECORD-AUTH-001`
+is AUTHORIZED from that exact parent. Intended Human technical acceptance
+subject is `40c6eb38…` (the acceptance-record commit must not replace it).
+Fireground CUDA/cublasGemmEx runtime issue remains OPEN / SEPARATE / NOT
+CLAIMED FIXED BY IR-002 ACCEPT. Durable technical lineage:
 `91dba2e…` (IR-004 ACCEPT, historical) → `f4707b8…` (chunk-ID post-qual
 IR-001 ACCEPT) → `349de6a…` (lexical zero-term post-qual IR-001 ACCEPT) →
-`fbc8bb1…` (lexical IR-001 acceptance-record tip). IR-004 remains valid
-historical review of `91dba2e…`; `349de6a…` remains the independently
-accepted lexical technical subject. Neither is the final 16K-B HA subject
-while this dense-failure observability corrective successor is required.
-Independent acceptance does not constitute Human acceptance,
-baseline-evidence acceptance, 16K-C→G authority, or main promotion.
-16K-C→G, capacity expansion, CUDA optimization, UI work, OCR, Slice 17/18,
-9G, and M7 closeout remain unauthorized.
+`fbc8bb1…` (lexical IR-001 acceptance-record tip) → `6f61f18…`
+(dense-failure IR-001 REWORK REQUIRED R1) → `40c6eb38…` (dense-failure
+IR-002 ACCEPT; R1 CLOSED). Independent acceptance does not constitute
+Human acceptance, baseline-evidence acceptance, 16K-C→G authority, or
+main promotion. 16K-C→G, capacity expansion, CUDA optimization, UI work,
+OCR, Slice 17/18, 9G, and M7 closeout remain unauthorized.
 
 ---
 
@@ -723,7 +733,8 @@ Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
   Exact Human-accepted technical subject: 1370b99327124045ad96005e829095683842c06f
   HA-record IR: S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-IR-001 — ACCEPT
 16K-B: IMPLEMENTATION COMPLETE / POST-QUAL REMEDIATIONS INDEPENDENTLY ACCEPTED /
-  DENSE-FAILURE OBSERVABILITY REMEDIATION REWORK AWAITING IR / NOT YET HUMAN-ACCEPTED
+  DENSE-FAILURE OBSERVABILITY REMEDIATION INDEPENDENTLY ACCEPTED /
+  NOT YET HUMAN-ACCEPTED
   Implementation authority:
     S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-AUTH-001 — AUTHORIZED
   Exact implementation base: 39e5e09363193b2315ada9e56cb3e1c14ba9377d
@@ -787,9 +798,17 @@ Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
     — AUTHORIZED
   Exact dense-failure observability rework parent:
     6f61f18441c2348faa81a1852196b7d300a1c4da
-  Dense-failure observability rework IR:
+  Dense-failure observability IR-002:
     S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-IR-002
-    — NOT YET ISSUED (STOP FOR INDEPENDENT REVIEW)
+    — ACCEPT
+  Exact independently accepted dense-failure observability technical subject:
+    40c6eb3824ac9f9c1cbc35c889e3e4110b229469
+  R1: CLOSED
+  Dense-failure observability IR-002 acceptance-record authority:
+    S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-IR-002-ACCEPTANCE-RECORD-AUTH-001
+    — AUTHORIZED
+  Exact acceptance-record parent:
+    40c6eb3824ac9f9c1cbc35c889e3e4110b229469
   Technical lineage (durable):
     91dba2e2885346ee595b920fd7dd02f671d2f7af
       — IR-004 ACCEPT (historical 16K-B subject)
@@ -801,6 +820,13 @@ Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
       — lexical zero-term IR-001 acceptance-record tip
     → 6f61f18441c2348faa81a1852196b7d300a1c4da
       — dense-failure observability IR-001 REWORK REQUIRED (R1)
+    → 40c6eb3824ac9f9c1cbc35c889e3e4110b229469
+      — dense-failure observability IR-002 ACCEPT; R1 CLOSED
+  Intended Human technical acceptance subject:
+    40c6eb3824ac9f9c1cbc35c889e3e4110b229469
+  Fireground CUDA/cublasGemmEx runtime issue:
+    OPEN / SEPARATE FROM OBSERVABILITY REMEDIATION /
+    NOT CLAIMED FIXED BY IR-002 ACCEPT
   Human technical acceptance: NOT YET ISSUED
   Branch: implementation/16k-b-ingestion-observability
 16K-C → 16K-G: NOT YET AUTHORIZED

@@ -551,7 +551,8 @@ SLICE 15  COMPLETE / ACCEPTED
          HA-record IR:
            S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-IR-001 — ACCEPT
        16K-B: IMPLEMENTATION COMPLETE / POST-QUAL REMEDIATIONS INDEPENDENTLY ACCEPTED /
-         DENSE-FAILURE OBSERVABILITY REMEDIATION REWORK AWAITING IR / NOT YET HUMAN-ACCEPTED
+         DENSE-FAILURE OBSERVABILITY REMEDIATION INDEPENDENTLY ACCEPTED /
+         NOT YET HUMAN-ACCEPTED
          Implementation authority:
            S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-AUTH-001 — AUTHORIZED
          Exact implementation base:
@@ -629,7 +630,15 @@ SLICE 15  COMPLETE / ACCEPTED
            6f61f18441c2348faa81a1852196b7d300a1c4da
          Dense-failure observability rework IR:
            S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-IR-002
-           — NOT YET ISSUED (STOP FOR INDEPENDENT REVIEW)
+           — ACCEPT
+         Exact independently accepted dense-failure observability technical subject:
+           40c6eb3824ac9f9c1cbc35c889e3e4110b229469
+         R1: CLOSED
+         Dense-failure observability IR-002 acceptance-record authority:
+           S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-IR-002-ACCEPTANCE-RECORD-AUTH-001
+           — AUTHORIZED
+         Exact acceptance-record parent:
+           40c6eb3824ac9f9c1cbc35c889e3e4110b229469
          Technical lineage (durable):
            91dba2e2885346ee595b920fd7dd02f671d2f7af
              — IR-004 ACCEPT (historical 16K-B subject)
@@ -641,6 +650,13 @@ SLICE 15  COMPLETE / ACCEPTED
              — lexical zero-term IR-001 acceptance-record tip
            → 6f61f18441c2348faa81a1852196b7d300a1c4da
              — dense-failure observability IR-001 REWORK REQUIRED (R1)
+           → 40c6eb3824ac9f9c1cbc35c889e3e4110b229469
+             — dense-failure observability IR-002 ACCEPT; R1 CLOSED
+         Intended Human technical acceptance subject:
+           40c6eb3824ac9f9c1cbc35c889e3e4110b229469
+         Fireground CUDA/cublasGemmEx runtime issue:
+           OPEN / SEPARATE FROM OBSERVABILITY REMEDIATION /
+           NOT CLAIMED FIXED BY IR-002 ACCEPT
          Human technical acceptance: NOT YET ISSUED
          Branch: implementation/16k-b-ingestion-observability
        16K-C → 16K-G: NOT YET AUTHORIZED
@@ -897,7 +913,8 @@ SLICE 15  COMPLETE / ACCEPTED
          HA-record IR:
            S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-IR-001 — ACCEPT
        16K-B: IMPLEMENTATION COMPLETE / POST-QUAL REMEDIATIONS INDEPENDENTLY ACCEPTED /
-         DENSE-FAILURE OBSERVABILITY REMEDIATION REWORK AWAITING IR / NOT YET HUMAN-ACCEPTED
+         DENSE-FAILURE OBSERVABILITY REMEDIATION INDEPENDENTLY ACCEPTED /
+         NOT YET HUMAN-ACCEPTED
          Implementation authority:
            S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-AUTH-001 — AUTHORIZED
          Exact implementation base:
@@ -975,7 +992,15 @@ SLICE 15  COMPLETE / ACCEPTED
            6f61f18441c2348faa81a1852196b7d300a1c4da
          Dense-failure observability rework IR:
            S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-IR-002
-           — NOT YET ISSUED (STOP FOR INDEPENDENT REVIEW)
+           — ACCEPT
+         Exact independently accepted dense-failure observability technical subject:
+           40c6eb3824ac9f9c1cbc35c889e3e4110b229469
+         R1: CLOSED
+         Dense-failure observability IR-002 acceptance-record authority:
+           S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-IR-002-ACCEPTANCE-RECORD-AUTH-001
+           — AUTHORIZED
+         Exact acceptance-record parent:
+           40c6eb3824ac9f9c1cbc35c889e3e4110b229469
          Technical lineage (durable):
            91dba2e2885346ee595b920fd7dd02f671d2f7af
              — IR-004 ACCEPT (historical 16K-B subject)
@@ -987,6 +1012,13 @@ SLICE 15  COMPLETE / ACCEPTED
              — lexical zero-term IR-001 acceptance-record tip
            → 6f61f18441c2348faa81a1852196b7d300a1c4da
              — dense-failure observability IR-001 REWORK REQUIRED (R1)
+           → 40c6eb3824ac9f9c1cbc35c889e3e4110b229469
+             — dense-failure observability IR-002 ACCEPT; R1 CLOSED
+         Intended Human technical acceptance subject:
+           40c6eb3824ac9f9c1cbc35c889e3e4110b229469
+         Fireground CUDA/cublasGemmEx runtime issue:
+           OPEN / SEPARATE FROM OBSERVABILITY REMEDIATION /
+           NOT CLAIMED FIXED BY IR-002 ACCEPT
          Human technical acceptance: NOT YET ISSUED
          Branch: implementation/16k-b-ingestion-observability
        16K-C → 16K-G: NOT YET AUTHORIZED
