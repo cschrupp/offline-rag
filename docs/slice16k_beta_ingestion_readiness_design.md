@@ -36,10 +36,14 @@
 **Exact chunk-ID collision remediation subject:** `f4707b828a85dcc538fc1510a52ed416d7a89935`
 **16K-B post-qualification lexical zero-term eligibility remediation authority:** `S16-K-B-POST-QUAL-LEXICAL-ZERO-TERM-ELIGIBILITY-REMEDIATION-AUTH-001` — AUTHORIZED
 **Exact lexical zero-term remediation parent:** `f4707b828a85dcc538fc1510a52ed416d7a89935`
+**16K-B post-qualification lexical zero-term eligibility IR:** `S16-K-B-POST-QUAL-LEXICAL-ZERO-TERM-ELIGIBILITY-REMEDIATION-IR-001` — ACCEPT
+**Exact independently accepted lexical zero-term remediation subject:** `349de6a55f0f362a42e646d946f0433cb33e6489`
+**16K-B lexical zero-term IR-001 acceptance-record authority:** `S16-K-B-POST-QUAL-LEXICAL-ZERO-TERM-ELIGIBILITY-REMEDIATION-IR-001-ACCEPTANCE-RECORD-AUTH-001` — AUTHORIZED
+**Exact acceptance-record parent:** `349de6a55f0f362a42e646d946f0433cb33e6489`
 **16K-B branch:** `implementation/16k-b-ingestion-observability`
 **Status:** DESIGN ACCEPTED / FROZEN
 **16K-A:** IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED
-**16K-B:** IMPLEMENTATION COMPLETE / IR-004 HISTORICALLY ACCEPTED / POST-QUAL CHUNK-ID IR-001 ACCEPT / POST-QUAL LEXICAL ZERO-TERM REMEDIATION PENDING INDEPENDENT REVIEW / NOT YET HUMAN-ACCEPTED
+**16K-B:** IMPLEMENTATION COMPLETE / POST-QUAL REMEDIATIONS INDEPENDENTLY ACCEPTED / NOT YET HUMAN-ACCEPTED
 **16K-C → 16K-G:** NOT YET AUTHORIZED
 **Baseline evidence:** NOT YET AUTHORIZED / NOT ACCEPTED
 **Human technical acceptance (16K-B):** NOT YET ISSUED
@@ -71,15 +75,20 @@ subject `f4707b8…`. A subsequent live lexical failure (zero-term children
 under technical-v1) authorized
 `S16-K-B-POST-QUAL-LEXICAL-ZERO-TERM-ELIGIBILITY-REMEDIATION-AUTH-001` from
 parent `f4707b8…` (always-on `exclude-zero-term-v1` searchable-universe
-policy + bounded `ManagedOperationLexicalFacts`). IR-004 remains valid
-historical review of `91dba2e…`, but `91dba2e…` is no longer the intended
-final HA technical subject; the remediation successor requires fresh
-independent review before Human acceptance. Prior lineage remains: IR-001 /
+policy + bounded `ManagedOperationLexicalFacts`). Independent review
+`S16-K-B-POST-QUAL-LEXICAL-ZERO-TERM-ELIGIBILITY-REMEDIATION-IR-001` — ACCEPT
+at exact subject `349de6a…`. Acceptance-record authority
+`S16-K-B-POST-QUAL-LEXICAL-ZERO-TERM-ELIGIBILITY-REMEDIATION-IR-001-ACCEPTANCE-RECORD-AUTH-001`
+is AUTHORIZED from that exact parent. Durable technical lineage:
+`91dba2e…` (IR-004 ACCEPT, historical) → `f4707b8…` (chunk-ID post-qual
+IR-001 ACCEPT) → `349de6a…` (lexical zero-term post-qual IR-001 ACCEPT).
+IR-004 remains valid historical review of `91dba2e…`; the intended final HA
+technical subject is now `349de6a…`. Prior lineage remains: IR-001 /
 REWORK-AUTH-001, IR-002 / REWORK-AUTH-002, IR-003 / REWORK-AUTH-003, IR-004 /
 ACCEPTANCE-RECORD, POST-QUAL CHUNK-ID IR-001 ACCEPT, POST-QUAL LEXICAL
-ZERO-TERM AUTH-001. Independent acceptance does not constitute Human
-acceptance, baseline-evidence acceptance, 16K-C→G authority, or main
-promotion.
+ZERO-TERM IR-001 ACCEPT / ACCEPTANCE-RECORD. Independent acceptance does not
+constitute Human acceptance, baseline-evidence acceptance, 16K-C→G authority,
+or main promotion.
 16K-C→G, capacity expansion, CUDA optimization, UI work, OCR, Slice 17/18,
 9G, and M7 closeout remain unauthorized.
 
@@ -696,7 +705,7 @@ Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
   HA record: S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-AUTH-001 — AUTHORIZED
   Exact Human-accepted technical subject: 1370b99327124045ad96005e829095683842c06f
   HA-record IR: S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-IR-001 — ACCEPT
-16K-B: IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / NOT YET HUMAN-ACCEPTED
+16K-B: IMPLEMENTATION COMPLETE / POST-QUAL REMEDIATIONS INDEPENDENTLY ACCEPTED / NOT YET HUMAN-ACCEPTED
   Implementation authority:
     S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-AUTH-001 — AUTHORIZED
   Exact implementation base: 39e5e09363193b2315ada9e56cb3e1c14ba9377d
@@ -734,6 +743,22 @@ Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
     — AUTHORIZED
   Exact lexical zero-term remediation parent:
     f4707b828a85dcc538fc1510a52ed416d7a89935
+  Post-qualification lexical zero-term eligibility IR:
+    S16-K-B-POST-QUAL-LEXICAL-ZERO-TERM-ELIGIBILITY-REMEDIATION-IR-001 — ACCEPT
+  Exact independently accepted lexical zero-term remediation subject:
+    349de6a55f0f362a42e646d946f0433cb33e6489
+  Lexical zero-term IR-001 acceptance-record authority:
+    S16-K-B-POST-QUAL-LEXICAL-ZERO-TERM-ELIGIBILITY-REMEDIATION-IR-001-ACCEPTANCE-RECORD-AUTH-001
+    — AUTHORIZED
+  Exact acceptance-record parent:
+    349de6a55f0f362a42e646d946f0433cb33e6489
+  Technical lineage (durable):
+    91dba2e2885346ee595b920fd7dd02f671d2f7af
+      — IR-004 ACCEPT (historical 16K-B subject)
+    → f4707b828a85dcc538fc1510a52ed416d7a89935
+      — post-qual chunk-ID remediation IR-001 ACCEPT
+    → 349de6a55f0f362a42e646d946f0433cb33e6489
+      — post-qual lexical zero-term remediation IR-001 ACCEPT
   Human technical acceptance: NOT YET ISSUED
   Branch: implementation/16k-b-ingestion-observability
 16K-C → 16K-G: NOT YET AUTHORIZED
