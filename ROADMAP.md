@@ -550,7 +550,8 @@ SLICE 15  COMPLETE / ACCEPTED
          Branch: implementation/16k-a-managed-ingestion-correctness
          HA-record IR:
            S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-IR-001 — ACCEPT
-       16K-B: IMPLEMENTATION AUTHORIZED / NOT YET ACCEPTED
+       16K-B: IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED /
+         NOT YET HUMAN-ACCEPTED
          Implementation authority:
            S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-AUTH-001 — AUTHORIZED
          Exact implementation base:
@@ -579,8 +580,17 @@ SLICE 15  COMPLETE / ACCEPTED
            — AUTHORIZED
          Exact rework-003 base / parent:
            2c0e7bf21c8c427ee99b1b9518342a8080596463
+         Independent review:
+           S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-IR-004 — ACCEPT
+         IR-004 acceptance-record authority:
+           S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-IR-004-ACCEPTANCE-RECORD-AUTH-001
+           — AUTHORIZED
+         Exact independently accepted technical subject:
+           91dba2e2885346ee595b920fd7dd02f671d2f7af
+         Human technical acceptance: NOT YET ISSUED
          Branch: implementation/16k-b-ingestion-observability
        16K-C → 16K-G: NOT YET AUTHORIZED
+       Baseline evidence: NOT YET AUTHORIZED / NOT ACCEPTED
        Historical closeout disposition (inventory I-11): DEFERRED / NOT REQUIRED
          / NOT AUTHORIZED — preserved as provenance
      16L COMPLETE / ACCEPTED
@@ -832,7 +842,8 @@ SLICE 15  COMPLETE / ACCEPTED
          Branch: implementation/16k-a-managed-ingestion-correctness
          HA-record IR:
            S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-IR-001 — ACCEPT
-       16K-B: IMPLEMENTATION AUTHORIZED / NOT YET ACCEPTED
+       16K-B: IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED /
+         NOT YET HUMAN-ACCEPTED
          Implementation authority:
            S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-AUTH-001 — AUTHORIZED
          Exact implementation base:
@@ -861,8 +872,17 @@ SLICE 15  COMPLETE / ACCEPTED
            — AUTHORIZED
          Exact rework-003 base / parent:
            2c0e7bf21c8c427ee99b1b9518342a8080596463
+         Independent review:
+           S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-IR-004 — ACCEPT
+         IR-004 acceptance-record authority:
+           S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-IR-004-ACCEPTANCE-RECORD-AUTH-001
+           — AUTHORIZED
+         Exact independently accepted technical subject:
+           91dba2e2885346ee595b920fd7dd02f671d2f7af
+         Human technical acceptance: NOT YET ISSUED
          Branch: implementation/16k-b-ingestion-observability
        16K-C → 16K-G: NOT YET AUTHORIZED
+       Baseline evidence: NOT YET AUTHORIZED / NOT ACCEPTED
        Historical closeout disposition (inventory I-11): DEFERRED / NOT REQUIRED
          / NOT AUTHORIZED — preserved as provenance; not rewritten
      Slice 16: COMPLETE / HUMAN ACCEPTED / CANONICAL

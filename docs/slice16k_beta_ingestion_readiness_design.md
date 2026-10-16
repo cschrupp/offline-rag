@@ -27,11 +27,17 @@
 **16K-B independent review:** `S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-IR-003` — REWORK REQUIRED (R3 orphan ownership)
 **16K-B rework authority:** `S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-REWORK-AUTH-003` — AUTHORIZED
 **Exact 16K-B rework-003 base / parent:** `2c0e7bf21c8c427ee99b1b9518342a8080596463`
+**16K-B independent review:** `S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-IR-004` — ACCEPT
+**16K-B IR-004 acceptance-record authority:** `S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-IR-004-ACCEPTANCE-RECORD-AUTH-001` — AUTHORIZED
+**Exact independently accepted 16K-B technical subject:** `91dba2e2885346ee595b920fd7dd02f671d2f7af`
 **16K-B branch:** `implementation/16k-b-ingestion-observability`
 **Status:** DESIGN ACCEPTED / FROZEN
 **16K-A:** IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED
-**16K-B:** IMPLEMENTATION AUTHORIZED / NOT YET ACCEPTED
+**16K-B:** IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / NOT YET HUMAN-ACCEPTED
 **16K-C → 16K-G:** NOT YET AUTHORIZED
+**Baseline evidence:** NOT YET AUTHORIZED / NOT ACCEPTED
+**Human technical acceptance (16K-B):** NOT YET ISSUED
+**Main promotion:** NOT AUTHORIZED
 **Frozen implementation order:** 16K-A → 16K-B → baseline evidence → 16K-C → 16K-D → 16K-E → 16K-F → 16K-G
 **Parent governance:** Slice 16 — COMPLETE / HUMAN ACCEPTED / CANONICAL
 **Product:** Seneca — Grounded knowledge workspace
@@ -48,13 +54,13 @@ for Slice-16 closeout remains correct historical provenance
 Human design acceptance freezes this design. **16K-A** managed-ingestion
 correctness is **IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN
 ACCEPTED** at subject `1370b993…`. **16K-B** ingestion observability is
-**IMPLEMENTATION AUTHORIZED / NOT YET ACCEPTED**; IR-001 required R1–R4 rework
-from base `85f01f4…` (R1/R2 closed at `533a07c…`); IR-002 required R3/R4a/R4b
-rework under REWORK-AUTH-002 from parent `533a07c…` (R4a/R4b + atomic freeze
-closed at `2c0e7bf…`); IR-003 required R3 orphan-ownership correction under
-REWORK-AUTH-003 from parent `2c0e7bf…`. 16K-C→G, capacity expansion, CUDA
-optimization, UI work, OCR, Slice 17/18, 9G, and M7 closeout remain
-unauthorized.
+**IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / NOT YET HUMAN-ACCEPTED**
+at exact technical subject `91dba2e…` (IR-004 — ACCEPT). Prior lineage
+remains: IR-001 / REWORK-AUTH-001, IR-002 / REWORK-AUTH-002, IR-003 /
+REWORK-AUTH-003. Independent acceptance does not constitute Human
+acceptance, baseline-evidence acceptance, 16K-C→G authority, or main
+promotion. 16K-C→G, capacity expansion, CUDA optimization, UI work, OCR,
+Slice 17/18, 9G, and M7 closeout remain unauthorized.
 
 ---
 
@@ -669,7 +675,7 @@ Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
   HA record: S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-AUTH-001 — AUTHORIZED
   Exact Human-accepted technical subject: 1370b99327124045ad96005e829095683842c06f
   HA-record IR: S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-IR-001 — ACCEPT
-16K-B: IMPLEMENTATION AUTHORIZED / NOT YET ACCEPTED
+16K-B: IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / NOT YET HUMAN-ACCEPTED
   Implementation authority:
     S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-AUTH-001 — AUTHORIZED
   Exact implementation base: 39e5e09363193b2315ada9e56cb3e1c14ba9377d
@@ -688,8 +694,16 @@ Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
   Rework authority:
     S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-REWORK-AUTH-003 — AUTHORIZED
   Exact rework-003 base / parent: 2c0e7bf21c8c427ee99b1b9518342a8080596463
+  Independent review:
+    S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-IR-004 — ACCEPT
+  IR-004 acceptance-record authority:
+    S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-IR-004-ACCEPTANCE-RECORD-AUTH-001 — AUTHORIZED
+  Exact independently accepted technical subject:
+    91dba2e2885346ee595b920fd7dd02f671d2f7af
+  Human technical acceptance: NOT YET ISSUED
   Branch: implementation/16k-b-ingestion-observability
 16K-C → 16K-G: NOT YET AUTHORIZED
+Baseline evidence: NOT YET AUTHORIZED / NOT ACCEPTED
 Frozen order: 16K-A → 16K-B → baseline evidence → 16K-C → 16K-D → 16K-E → 16K-F → 16K-G
 Slice 16: COMPLETE / HUMAN ACCEPTED / CANONICAL
 Slice 17: NOT AUTHORIZED
@@ -699,5 +713,6 @@ M7 CLOSEOUT: NOT AUTHORIZED
 Does NOT authorize 16K-C→G / capacity / CUDA / UI
 Does NOT reopen Slice 16 closeout
 Does NOT authorize main promotion
+Does NOT constitute Human acceptance of 16K-B
 Outstanding separate operation: promote 3a7d8ff… onto origin/main (still at e21b3e6…)
 ```
