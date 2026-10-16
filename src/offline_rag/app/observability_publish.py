@@ -21,7 +21,11 @@ from offline_rag.app.workspace.models import (
 from offline_rag.app.workspace.mutation_ops import ManagedOperationStore
 from offline_rag.core.observability import DocumentActivityEvent, DocumentPhaseEvent
 from offline_rag.domain.chunking import ChunkingReport, DocumentChunkStatus
-from offline_rag.domain.indexing import IndexingReport, LexicalIndexingReport
+from offline_rag.domain.indexing import (
+    IndexingReport,
+    IndexingStatus,
+    LexicalIndexingReport,
+)
 from offline_rag.domain.ingestion import FileIngestionStatus, IngestionReport
 
 
@@ -425,18 +429,24 @@ class DurableObservabilityPublisher:
                 "dense_materialization_ms": dense_mat_ms,
             }
         )
-        self._metrics = self._metrics.model_copy(
-            update={
-                "embeddings_generated": report.embeddings_generated,
-                "embeddings_reused": report.embeddings_reused,
-                "child_chunk_count": report.children_total or self._metrics.child_chunk_count,
-                "generated_chunks_per_sec": chunks_per_sec,
-                "model_input_tokens_per_sec": tokens_per_sec,
-                "dense_execution": execution,
-                "stage_durations": durations,
-            }
-        )
+        metric_updates: dict[str, Any] = {
+            "embeddings_generated": report.embeddings_generated,
+            "embeddings_reused": report.embeddings_reused,
+            "embeddings_failed": report.embeddings_failed,
+            "child_chunk_count": report.children_total or self._metrics.child_chunk_count,
+            "generated_chunks_per_sec": chunks_per_sec,
+            "model_input_tokens_per_sec": tokens_per_sec,
+            "dense_execution": execution,
+            "stage_durations": durations,
+        }
+        if report.status is IndexingStatus.FAILED and report.failure_classification:
+            metric_updates["dense_failure_classification"] = report.failure_classification
+        self._metrics = self._metrics.model_copy(update=metric_updates)
         self._active_ids = []
+        # FAILED must never project INDEXING → INDEXED. Retain last truthful
+        # non-success phase when document-level failure attribution is unknown.
+        if report.status not in {IndexingStatus.SUCCESS, IndexingStatus.NO_OP}:
+            return
         for doc_id, item in list(self._documents.items()):
             if item.phase is ManagedOperationDocumentPhase.INDEXING:
                 self._documents[doc_id] = item.model_copy(

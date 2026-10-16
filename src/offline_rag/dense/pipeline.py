@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from offline_rag.app.errors import AppError
 from offline_rag.chunking.persistence import (
@@ -41,6 +42,16 @@ from offline_rag.dense.config_hash import (
     build_index_config_hash,
 )
 from offline_rag.dense.embedder import Embedder, EmbedderError, make_embedder
+from offline_rag.dense.failure import (
+    DENSE_FAILURE_EMBEDDING_GENERATION,
+    DENSE_FAILURE_EMBEDDING_PERSISTENCE,
+    DENSE_FAILURE_MATERIALIZATION,
+    DENSE_FAILURE_PRECONDITION,
+    DENSE_FAILURE_STAGE,
+    DENSE_FAILURE_VALIDATION,
+    DenseStageError,
+    log_dense_failure,
+)
 from offline_rag.dense.persistence import (
     index_manifest_relpath,
     index_state_path,
@@ -83,6 +94,51 @@ from offline_rag.retrieval.ranking_text import (
 
 class IndexingError(RuntimeError):
     pass
+
+
+def _failed_report(
+    *,
+    run_id: str,
+    corpus_name: str,
+    started: datetime,
+    classification: str,
+    errors: list[str],
+    corpus_id: str | None = None,
+    chunk_set_id: str | None = None,
+    embedding_config_hash: str | None = None,
+    index_config_hash: str | None = None,
+    children_total: int = 0,
+    embeddings_generated: int = 0,
+    embeddings_reused: int = 0,
+    embeddings_failed: int = 0,
+    documents_total: int = 0,
+    index_id: str | None = None,
+    collection_name: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> IndexingReport:
+    completed = datetime.now(tz=UTC)
+    return IndexingReport(
+        run_id=run_id,
+        corpus_name=corpus_name,
+        corpus_id=corpus_id,
+        chunk_set_id=chunk_set_id,
+        embedding_config_hash=embedding_config_hash,
+        index_config_hash=index_config_hash,
+        status=IndexingStatus.FAILED,
+        started_at=started,
+        completed_at=completed,
+        duration_ms=int((completed - started).total_seconds() * 1000),
+        children_total=children_total,
+        embeddings_generated=embeddings_generated,
+        embeddings_reused=embeddings_reused,
+        embeddings_failed=embeddings_failed,
+        documents_total=documents_total,
+        index_id=index_id,
+        collection_name=collection_name,
+        failure_classification=classification,
+        errors=errors,
+        metadata=metadata or {},
+    )
 
 
 def make_embedding_text_builder(settings: AppSettings) -> EmbeddingTextBuilder:
@@ -209,7 +265,13 @@ def _ensure_embeddings(
             )
             emb_text = text_builder.build(inputs)
         except RankingTextError as exc:
-            raise IndexingError(str(exc)) from exc
+            raise DenseStageError(
+                str(exc),
+                classification=DENSE_FAILURE_VALIDATION,
+                embeddings_generated=generated,
+                embeddings_reused=reused,
+                embeddings_failed=failed,
+            ) from exc
         text_digest = embedding_text_hash(emb_text)
         emb_id = embedding_id_from_parts(
             chunk.chunk_id,
@@ -265,22 +327,42 @@ def _ensure_embeddings(
             report_document_activity(
                 on_document_activity, document_ids=(), stage="dense_batch"
             )
-            raise IndexingError(f"embedding generation failed: {exc}") from exc
+            raise DenseStageError(
+                f"embedding generation failed: {exc}",
+                classification=DENSE_FAILURE_EMBEDDING_GENERATION,
+                embeddings_generated=generated,
+                embeddings_reused=reused,
+                embeddings_failed=failed,
+            ) from exc
         if len(vectors) != len(batch):
             failed += len(batch)
             report_document_activity(
                 on_document_activity, document_ids=(), stage="dense_batch"
             )
-            raise IndexingError("embedder returned unexpected batch size")
-        for (chunk, chunk_artifact_id, emb_text, emb_id), vector in zip(batch, vectors, strict=True):
+            raise DenseStageError(
+                "embedder returned unexpected batch size",
+                classification=DENSE_FAILURE_EMBEDDING_GENERATION,
+                embeddings_generated=generated,
+                embeddings_reused=reused,
+                embeddings_failed=failed,
+            )
+        for (chunk, chunk_artifact_id, emb_text, emb_id), vector in zip(
+            batch, vectors, strict=True
+        ):
             if len(vector) != embedder.dimension:
                 failed += 1
                 report_document_activity(
                     on_document_activity, document_ids=(), stage="dense_batch"
                 )
-                raise IndexingError(
-                    f"embedding dimension mismatch for {chunk.chunk_id}: "
-                    f"{len(vector)} != {embedder.dimension}"
+                raise DenseStageError(
+                    (
+                        f"embedding dimension mismatch for {chunk.chunk_id}: "
+                        f"{len(vector)} != {embedder.dimension}"
+                    ),
+                    classification=DENSE_FAILURE_EMBEDDING_GENERATION,
+                    embeddings_generated=generated,
+                    embeddings_reused=reused,
+                    embeddings_failed=failed,
                 )
             artifact = EmbeddingArtifact(
                 embedding_id=emb_id,
@@ -295,7 +377,20 @@ def _ensure_embeddings(
                 adapter_contract=embedder.adapter_contract,
                 vector=list(vector),
             )
-            write_embedding_artifact(settings.paths.embeddings, artifact)
+            try:
+                write_embedding_artifact(settings.paths.embeddings, artifact)
+            except Exception as exc:
+                failed += 1
+                report_document_activity(
+                    on_document_activity, document_ids=(), stage="dense_batch"
+                )
+                raise DenseStageError(
+                    f"embedding artifact persistence failed: {exc}",
+                    classification=DENSE_FAILURE_EMBEDDING_PERSISTENCE,
+                    embeddings_generated=generated,
+                    embeddings_reused=reused,
+                    embeddings_failed=failed,
+                ) from exc
             generated += 1
             results.append((chunk, chunk_artifact_id, artifact))
         report_document_activity(
@@ -371,50 +466,64 @@ def run_indexing(
     owned_backend = backend is None
     backend_impl: DenseIndexBackend | None = None
 
+    # Partial facts retained across failure so FAILED reports stay informative.
+    corpus_id: str | None = None
+    chunk_set_id: str | None = None
+    emb_cfg_hash: str | None = None
+    idx_cfg_hash: str | None = None
+    index_id: str | None = None
+    collection_name: str | None = None
+    children_total = 0
+    documents_total = 0
+    embeddings_generated = 0
+    embeddings_reused = 0
+    embeddings_failed = 0
+    report_metadata: dict[str, Any] = {}
+
     try:
         corpus_path = corpus_state_path(settings.paths.corpora, name)
         if not corpus_path.exists():
-            completed = datetime.now(tz=UTC)
-            return IndexingReport(
+            return _failed_report(
                 run_id=run_id,
                 corpus_name=name,
-                status=IndexingStatus.FAILED,
-                started_at=started,
-                completed_at=completed,
-                duration_ms=int((completed - started).total_seconds() * 1000),
-                errors=[f"corpus '{name}' is not initialized; run offline-rag ingest first"],
+                started=started,
+                classification=DENSE_FAILURE_PRECONDITION,
+                errors=[
+                    f"corpus '{name}' is not initialized; run offline-rag ingest first"
+                ],
             )
 
         corpus_state = load_corpus_state(corpus_path)
+        corpus_id = corpus_state.current_corpus_id
         if corpus_state.corpus_name != name:
-            raise IndexingError("corpus state name mismatch")
+            raise DenseStageError(
+                "corpus state name mismatch",
+                classification=DENSE_FAILURE_PRECONDITION,
+            )
 
         chunk_path = chunk_state_path(settings.paths.corpora, name)
         if not chunk_path.exists():
-            completed = datetime.now(tz=UTC)
-            return IndexingReport(
+            return _failed_report(
                 run_id=run_id,
                 corpus_name=name,
-                corpus_id=corpus_state.current_corpus_id,
-                status=IndexingStatus.FAILED,
-                started_at=started,
-                completed_at=completed,
-                duration_ms=int((completed - started).total_seconds() * 1000),
-                errors=[f"corpus '{name}' has no chunk state; run offline-rag chunk first"],
+                started=started,
+                classification=DENSE_FAILURE_PRECONDITION,
+                corpus_id=corpus_id,
+                errors=[
+                    f"corpus '{name}' has no chunk state; run offline-rag chunk first"
+                ],
             )
 
         chunk_state = load_chunk_state(chunk_path)
+        chunk_set_id = chunk_state.current_chunk_set_id
         if chunk_state.source_corpus_id != corpus_state.current_corpus_id:
-            completed = datetime.now(tz=UTC)
-            return IndexingReport(
+            return _failed_report(
                 run_id=run_id,
                 corpus_name=name,
-                corpus_id=corpus_state.current_corpus_id,
-                chunk_set_id=chunk_state.current_chunk_set_id,
-                status=IndexingStatus.FAILED,
-                started_at=started,
-                completed_at=completed,
-                duration_ms=int((completed - started).total_seconds() * 1000),
+                started=started,
+                classification=DENSE_FAILURE_PRECONDITION,
+                corpus_id=corpus_id,
+                chunk_set_id=chunk_set_id,
                 errors=[
                     (
                         "ChunkState is stale relative to CorpusState; "
@@ -437,38 +546,42 @@ def run_indexing(
         try:
             eligible_jobs, excluded_jobs = filter_dense_searchable_children(jobs, settings)
         except DenseSearchableUnitsError as exc:
-            completed = datetime.now(tz=UTC)
-            return IndexingReport(
+            return _failed_report(
                 run_id=run_id,
                 corpus_name=name,
-                corpus_id=corpus_state.current_corpus_id,
-                chunk_set_id=chunk_state.current_chunk_set_id,
-                status=IndexingStatus.FAILED,
-                started_at=started,
-                completed_at=completed,
-                duration_ms=int((completed - started).total_seconds() * 1000),
+                started=started,
+                classification=DENSE_FAILURE_PRECONDITION,
+                corpus_id=corpus_id,
+                chunk_set_id=chunk_set_id,
+                embedding_config_hash=emb_cfg_hash,
+                index_config_hash=idx_cfg_hash,
+                index_id=index_id,
+                collection_name=collection_name,
                 errors=[str(exc)],
             )
         jobs = eligible_jobs
         children_total = len(jobs)
         excluded_heading_only_count = len(excluded_jobs)
         if children_total < 1:
-            completed = datetime.now(tz=UTC)
-            return IndexingReport(
+            return _failed_report(
                 run_id=run_id,
                 corpus_name=name,
-                corpus_id=corpus_state.current_corpus_id,
-                chunk_set_id=chunk_state.current_chunk_set_id,
-                status=IndexingStatus.FAILED,
-                started_at=started,
-                completed_at=completed,
-                duration_ms=int((completed - started).total_seconds() * 1000),
-                    errors=[
-                        (
-                            "dense searchable-unit policy excluded all children; "
-                            "refusing empty dense index"
-                        )
-                    ],
+                started=started,
+                classification=DENSE_FAILURE_PRECONDITION,
+                corpus_id=corpus_id,
+                chunk_set_id=chunk_set_id,
+                embedding_config_hash=emb_cfg_hash,
+                index_config_hash=idx_cfg_hash,
+                index_id=index_id,
+                collection_name=collection_name,
+                children_total=0,
+                documents_total=documents_total,
+                errors=[
+                    (
+                        "dense searchable-unit policy excluded all children; "
+                        "refusing empty dense index"
+                    )
+                ],
             )
 
         backend_impl = backend or QdrantLocalBackend(settings.paths.qdrant_storage)
@@ -564,11 +677,17 @@ def run_indexing(
         active_embedder = embedder or make_embedder(settings)
         text_builder = make_embedding_text_builder(settings)
         if embedder is None and active_embedder.dimension != settings.indexing.embedding.dimension:
-            raise EmbedderError("embedder dimension does not match settings")
+            raise DenseStageError(
+                "embedder dimension does not match settings",
+                classification=DENSE_FAILURE_EMBEDDING_GENERATION,
+            )
 
         manifest_path = settings.paths.manifests / Path(corpus_state.current_manifest).name
         if not manifest_path.exists():
-            raise IndexingError(f"missing corpus manifest: {corpus_state.current_manifest}")
+            raise DenseStageError(
+                f"missing corpus manifest: {corpus_state.current_manifest}",
+                classification=DENSE_FAILURE_PRECONDITION,
+            )
         corpus_manifest = load_corpus_manifest(manifest_path)
         source_names = {
             entry.document_id: entry.source_name for entry in corpus_manifest.documents
@@ -592,24 +711,30 @@ def run_indexing(
                 require=_requires_document_titles(text_builder),
             )
         except RankingTextError as exc:
-            raise IndexingError(str(exc)) from exc
+            raise DenseStageError(
+                str(exc),
+                classification=DENSE_FAILURE_VALIDATION,
+            ) from exc
 
         generation_started = datetime.now(tz=UTC)
-        rows, generated, reused, failed = _ensure_embeddings(
-            settings=settings,
-            jobs=jobs,
-            text_builder=text_builder,
-            embedder=active_embedder,
-            emb_cfg_hash=emb_cfg_hash,
-            document_titles=document_titles,
-            on_progress=on_progress,
-            on_document_activity=on_document_activity,
-            control_checkpoint=control_checkpoint,
+        rows, embeddings_generated, embeddings_reused, embeddings_failed = (
+            _ensure_embeddings(
+                settings=settings,
+                jobs=jobs,
+                text_builder=text_builder,
+                embedder=active_embedder,
+                emb_cfg_hash=emb_cfg_hash,
+                document_titles=document_titles,
+                on_progress=on_progress,
+                on_document_activity=on_document_activity,
+                control_checkpoint=control_checkpoint,
+            )
         )
         generation_completed = datetime.now(tz=UTC)
         dense_generation_ms = int(
             (generation_completed - generation_started).total_seconds() * 1000
         )
+        report_metadata["dense_generation_ms"] = dense_generation_ms
         report_progress(
             on_progress,
             step="materializing_dense_index",
@@ -618,7 +743,16 @@ def run_indexing(
             unit="chunks",
         )
         materialization_started = datetime.now(tz=UTC)
-        _validate_point_ids(rows)
+        try:
+            _validate_point_ids(rows)
+        except IndexingError as exc:
+            raise DenseStageError(
+                str(exc),
+                classification=DENSE_FAILURE_VALIDATION,
+                embeddings_generated=embeddings_generated,
+                embeddings_reused=embeddings_reused,
+                embeddings_failed=embeddings_failed,
+            ) from exc
 
         points: list[DensePointRecord] = [
             build_dense_point(
@@ -632,29 +766,50 @@ def run_indexing(
             for chunk, chunk_artifact_id, artifact in rows
         ]
 
-        # Incomplete/unpublished collection: delete and rebuild. Never mutate published.
-        if backend_impl.collection_exists(collection_name):
-            if published_complete:
-                raise IndexingError(
-                    f"published collection {collection_name} exists; refusing mutation"
-                )
-            backend_impl.delete_collection(collection_name)
+        try:
+            # Incomplete/unpublished collection: delete and rebuild. Never mutate published.
+            if backend_impl.collection_exists(collection_name):
+                if published_complete:
+                    raise DenseStageError(
+                        f"published collection {collection_name} exists; refusing mutation",
+                        classification=DENSE_FAILURE_VALIDATION,
+                        embeddings_generated=embeddings_generated,
+                        embeddings_reused=embeddings_reused,
+                        embeddings_failed=embeddings_failed,
+                    )
+                backend_impl.delete_collection(collection_name)
 
-        backend_impl.create_collection(
-            collection_name,
-            dimension=active_embedder.dimension,
-            metric=settings.indexing.metric,
-        )
-        backend_impl.upsert(collection_name, points)
-        actual_count = backend_impl.count(collection_name)
+            backend_impl.create_collection(
+                collection_name,
+                dimension=active_embedder.dimension,
+                metric=settings.indexing.metric,
+            )
+            backend_impl.upsert(collection_name, points)
+            actual_count = backend_impl.count(collection_name)
+        except DenseStageError:
+            raise
+        except Exception as exc:
+            raise DenseStageError(
+                f"dense materialization failed: {exc}",
+                classification=DENSE_FAILURE_MATERIALIZATION,
+                embeddings_generated=embeddings_generated,
+                embeddings_reused=embeddings_reused,
+                embeddings_failed=embeddings_failed,
+            ) from exc
+
         if actual_count != children_total:
             backend_impl.delete_collection(collection_name)
-            raise IndexingError(
-                f"collection count validation failed: {actual_count} != {children_total}"
+            raise DenseStageError(
+                f"collection count validation failed: {actual_count} != {children_total}",
+                classification=DENSE_FAILURE_VALIDATION,
+                embeddings_generated=embeddings_generated,
+                embeddings_reused=embeddings_reused,
+                embeddings_failed=embeddings_failed,
             )
         dense_materialization_ms = int(
             (datetime.now(tz=UTC) - materialization_started).total_seconds() * 1000
         )
+        report_metadata["dense_materialization_ms"] = dense_materialization_ms
         for document_id in sorted(document_ids):
             report_document_phase(
                 on_document_phase,
@@ -724,9 +879,9 @@ def run_indexing(
             completed_at=completed,
             duration_ms=int((completed - started).total_seconds() * 1000),
             children_total=children_total,
-            embeddings_generated=generated,
-            embeddings_reused=reused,
-            embeddings_failed=failed,
+            embeddings_generated=embeddings_generated,
+            embeddings_reused=embeddings_reused,
+            embeddings_failed=embeddings_failed,
             vectors_materialized=actual_count,
             documents_total=documents_total,
             index_id=index_id,
@@ -750,15 +905,38 @@ def run_indexing(
         # Cooperative control (cancel/shutdown) must remain authoritative.
         raise
     except Exception as exc:
-        completed = datetime.now(tz=UTC)
-        return IndexingReport(
+        classification = DENSE_FAILURE_STAGE
+        if isinstance(exc, DenseStageError):
+            classification = exc.classification
+            embeddings_generated = exc.embeddings_generated
+            embeddings_reused = exc.embeddings_reused
+            embeddings_failed = exc.embeddings_failed
+        elif isinstance(exc, EmbedderError):
+            classification = DENSE_FAILURE_EMBEDDING_GENERATION
+        log_dense_failure(
             run_id=run_id,
             corpus_name=name,
-            status=IndexingStatus.FAILED,
-            started_at=started,
-            completed_at=completed,
-            duration_ms=int((completed - started).total_seconds() * 1000),
+            classification=classification,
+            exc=exc,
+        )
+        return _failed_report(
+            run_id=run_id,
+            corpus_name=name,
+            started=started,
+            classification=classification,
             errors=[str(exc)],
+            corpus_id=corpus_id,
+            chunk_set_id=chunk_set_id,
+            embedding_config_hash=emb_cfg_hash,
+            index_config_hash=idx_cfg_hash,
+            children_total=children_total,
+            embeddings_generated=embeddings_generated,
+            embeddings_reused=embeddings_reused,
+            embeddings_failed=embeddings_failed,
+            documents_total=documents_total,
+            index_id=index_id,
+            collection_name=collection_name,
+            metadata=report_metadata,
         )
     finally:
         if owned_backend and backend_impl is not None:

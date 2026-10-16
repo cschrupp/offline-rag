@@ -551,7 +551,7 @@ SLICE 15  COMPLETE / ACCEPTED
          HA-record IR:
            S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-IR-001 — ACCEPT
        16K-B: IMPLEMENTATION COMPLETE / POST-QUAL REMEDIATIONS INDEPENDENTLY ACCEPTED /
-         NOT YET HUMAN-ACCEPTED
+         DENSE-FAILURE OBSERVABILITY REMEDIATION AWAITING IR / NOT YET HUMAN-ACCEPTED
          Implementation authority:
            S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-AUTH-001 — AUTHORIZED
          Exact implementation base:
@@ -610,6 +610,16 @@ SLICE 15  COMPLETE / ACCEPTED
            — AUTHORIZED
          Exact acceptance-record parent:
            349de6a55f0f362a42e646d946f0433cb33e6489
+         Exact lexical zero-term IR-001 acceptance-record tip:
+           fbc8bb17a51f800aaa8bcc030c163427d8dc1821
+         Post-qualification dense-failure observability remediation authority:
+           S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-AUTH-001
+           — AUTHORIZED
+         Exact dense-failure observability remediation parent:
+           fbc8bb17a51f800aaa8bcc030c163427d8dc1821
+         Post-qualification dense-failure observability IR:
+           S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-IR-001
+           — NOT YET ISSUED (STOP FOR INDEPENDENT REVIEW)
          Technical lineage (durable):
            91dba2e2885346ee595b920fd7dd02f671d2f7af
              — IR-004 ACCEPT (historical 16K-B subject)
@@ -617,6 +627,8 @@ SLICE 15  COMPLETE / ACCEPTED
              — post-qual chunk-ID remediation IR-001 ACCEPT
            → 349de6a55f0f362a42e646d946f0433cb33e6489
              — post-qual lexical zero-term remediation IR-001 ACCEPT
+           → fbc8bb17a51f800aaa8bcc030c163427d8dc1821
+             — lexical zero-term IR-001 acceptance-record tip
          Human technical acceptance: NOT YET ISSUED
          Branch: implementation/16k-b-ingestion-observability
        16K-C → 16K-G: NOT YET AUTHORIZED
@@ -873,7 +885,7 @@ SLICE 15  COMPLETE / ACCEPTED
          HA-record IR:
            S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-IR-001 — ACCEPT
        16K-B: IMPLEMENTATION COMPLETE / POST-QUAL REMEDIATIONS INDEPENDENTLY ACCEPTED /
-         NOT YET HUMAN-ACCEPTED
+         DENSE-FAILURE OBSERVABILITY REMEDIATION AWAITING IR / NOT YET HUMAN-ACCEPTED
          Implementation authority:
            S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-AUTH-001 — AUTHORIZED
          Exact implementation base:
@@ -932,6 +944,16 @@ SLICE 15  COMPLETE / ACCEPTED
            — AUTHORIZED
          Exact acceptance-record parent:
            349de6a55f0f362a42e646d946f0433cb33e6489
+         Exact lexical zero-term IR-001 acceptance-record tip:
+           fbc8bb17a51f800aaa8bcc030c163427d8dc1821
+         Post-qualification dense-failure observability remediation authority:
+           S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-AUTH-001
+           — AUTHORIZED
+         Exact dense-failure observability remediation parent:
+           fbc8bb17a51f800aaa8bcc030c163427d8dc1821
+         Post-qualification dense-failure observability IR:
+           S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-IR-001
+           — NOT YET ISSUED (STOP FOR INDEPENDENT REVIEW)
          Technical lineage (durable):
            91dba2e2885346ee595b920fd7dd02f671d2f7af
              — IR-004 ACCEPT (historical 16K-B subject)
@@ -939,6 +961,8 @@ SLICE 15  COMPLETE / ACCEPTED
              — post-qual chunk-ID remediation IR-001 ACCEPT
            → 349de6a55f0f362a42e646d946f0433cb33e6489
              — post-qual lexical zero-term remediation IR-001 ACCEPT
+           → fbc8bb17a51f800aaa8bcc030c163427d8dc1821
+             — lexical zero-term IR-001 acceptance-record tip
          Human technical acceptance: NOT YET ISSUED
          Branch: implementation/16k-b-ingestion-observability
        16K-C → 16K-G: NOT YET AUTHORIZED

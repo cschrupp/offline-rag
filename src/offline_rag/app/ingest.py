@@ -33,6 +33,7 @@ from offline_rag.dense.config_hash import (
     build_index_config_hash,
 )
 from offline_rag.dense.persistence import index_state_path, load_index_state
+from offline_rag.dense.failure import public_dense_failure_reason
 from offline_rag.dense.pipeline import run_indexing
 from offline_rag.domain.chunking import ChunkingReport, ChunkingStatus
 from offline_rag.domain.indexing import (
@@ -144,6 +145,19 @@ def _map_ingestion_failure(report: IngestionReport) -> AppError:
     return AppError(
         ErrorCode.DOCUMENT_INVALID,
         details=SafeErrorDetails(reason="document_unparseable"),
+    )
+
+
+def _map_dense_failure(report: IndexingReport) -> AppError:
+    """Map a failed dense IndexingReport to a bounded public AppError.
+
+    Uses a fixed trusted vocabulary from ``failure_classification``. Raw
+    ``report.errors`` / exception text must never enter SafeErrorDetails.
+    """
+    reason = public_dense_failure_reason(report.failure_classification)
+    return AppError(
+        ErrorCode.INGEST_FAILED,
+        details=SafeErrorDetails(stage="dense", reason=reason),
     )
 
 
@@ -356,10 +370,7 @@ def run_product_replace_ingest(
         )
         assert isinstance(index_report, IndexingReport)
         if index_report.status not in {IndexingStatus.SUCCESS, IndexingStatus.NO_OP}:
-            raise AppError(
-                ErrorCode.INGEST_FAILED,
-                details=SafeErrorDetails(stage="dense", reason="stage_failed"),
-            )
+            raise _map_dense_failure(index_report)
 
         lexical_report = _gated(
             "lexical",

@@ -171,6 +171,16 @@ GAP-16G-02:
       — AUTHORIZED
     Exact acceptance-record parent:
       349de6a55f0f362a42e646d946f0433cb33e6489
+    Exact lexical zero-term IR-001 acceptance-record tip:
+      fbc8bb17a51f800aaa8bcc030c163427d8dc1821
+    Post-qualification dense-failure observability remediation authority:
+      S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-AUTH-001
+      — AUTHORIZED
+    Exact dense-failure observability remediation parent:
+      fbc8bb17a51f800aaa8bcc030c163427d8dc1821
+    Post-qualification dense-failure observability IR:
+      S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-IR-001
+      — NOT YET ISSUED (STOP FOR INDEPENDENT REVIEW)
     Technical lineage (durable):
       91dba2e2885346ee595b920fd7dd02f671d2f7af
         — IR-004 ACCEPT (historical 16K-B subject)
@@ -178,6 +188,8 @@ GAP-16G-02:
         — post-qual chunk-ID remediation IR-001 ACCEPT
       → 349de6a55f0f362a42e646d946f0433cb33e6489
         — post-qual lexical zero-term remediation IR-001 ACCEPT
+      → fbc8bb17a51f800aaa8bcc030c163427d8dc1821
+        — lexical zero-term IR-001 acceptance-record tip
     Human technical acceptance: NOT YET ISSUED
     Branch: implementation/16k-b-ingestion-observability
   16K-C → 16K-G: NOT YET AUTHORIZED
@@ -481,6 +493,16 @@ Slice-16 closeout inventory: HUMAN ACCEPTED
       — AUTHORIZED
     Exact acceptance-record parent:
       349de6a55f0f362a42e646d946f0433cb33e6489
+    Exact lexical zero-term IR-001 acceptance-record tip:
+      fbc8bb17a51f800aaa8bcc030c163427d8dc1821
+    Post-qualification dense-failure observability remediation authority:
+      S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-AUTH-001
+      — AUTHORIZED
+    Exact dense-failure observability remediation parent:
+      fbc8bb17a51f800aaa8bcc030c163427d8dc1821
+    Post-qualification dense-failure observability IR:
+      S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-IR-001
+      — NOT YET ISSUED (STOP FOR INDEPENDENT REVIEW)
     Technical lineage (durable):
       91dba2e2885346ee595b920fd7dd02f671d2f7af
         — IR-004 ACCEPT (historical 16K-B subject)
@@ -488,6 +510,8 @@ Slice-16 closeout inventory: HUMAN ACCEPTED
         — post-qual chunk-ID remediation IR-001 ACCEPT
       → 349de6a55f0f362a42e646d946f0433cb33e6489
         — post-qual lexical zero-term remediation IR-001 ACCEPT
+      → fbc8bb17a51f800aaa8bcc030c163427d8dc1821
+        — lexical zero-term IR-001 acceptance-record tip
     Human technical acceptance: NOT YET ISSUED
     Branch: implementation/16k-b-ingestion-observability
   16K-C → 16K-G: NOT YET AUTHORIZED

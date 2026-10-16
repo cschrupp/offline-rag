@@ -121,6 +121,8 @@ class IndexingReport(BaseModel):
     index_id: NonEmptyStr | None = None
     collection_name: NonEmptyStr | None = None
     index_manifest_path: str | None = None
+    # Bounded dense failure sub-step (trusted vocabulary); None on success/legacy.
+    failure_classification: NonEmptyStr | None = None
     errors: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
 

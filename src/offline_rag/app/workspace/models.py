@@ -251,6 +251,9 @@ class ManagedOperationMetrics(BaseModel):
     chunk_artifacts_reused: int | None = Field(default=None, ge=0)
     embeddings_generated: int | None = Field(default=None, ge=0)
     embeddings_reused: int | None = Field(default=None, ge=0)
+    embeddings_failed: int | None = Field(default=None, ge=0)
+    # Trusted dense failure sub-step; absent/null on success and historical ops.
+    dense_failure_classification: str | None = Field(default=None, max_length=128)
     dense_execution: ManagedOperationDenseExecution | None = None
     generated_chunks_per_sec: float | None = Field(default=None, ge=0)
     model_input_tokens_per_sec: float | None = Field(default=None, ge=0)
