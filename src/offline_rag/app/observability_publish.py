@@ -11,6 +11,7 @@ from offline_rag.app.workspace.leases import WorkspaceMutationLease
 from offline_rag.app.workspace.models import (
     ManagedOperationDenseExecution,
     ManagedOperationDocumentPhase,
+    ManagedOperationLexicalFacts,
     ManagedOperationMetrics,
     ManagedOperationStageDurations,
     ManagedOperationWorklist,
@@ -446,7 +447,18 @@ class DurableObservabilityPublisher:
         durations = self._durations_model().model_copy(
             update={"lexical_ms": self._stage_ms.get("lexical", report.duration_ms)}
         )
-        self._metrics = self._metrics.model_copy(update={"stage_durations": durations})
+        updates: dict[str, Any] = {"stage_durations": durations}
+        # Project frozen searchable-universe facts when the report carries them
+        # (SUCCESS / NO_OP reuse). Historical ops keep lexical=None.
+        if report.searchable_units_contract is not None:
+            updates["lexical"] = ManagedOperationLexicalFacts(
+                searchable_units_contract=report.searchable_units_contract,
+                chunk_set_child_count=report.chunk_set_child_count,
+                zero_term_excluded_count=report.zero_term_excluded_count,
+                eligible_child_count=report.eligible_child_count,
+                indexed_child_count=report.indexed_child_count,
+            )
+        self._metrics = self._metrics.model_copy(update=updates)
 
     def _advance_all_ready_for(
         self,

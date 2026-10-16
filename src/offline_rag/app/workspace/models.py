@@ -217,6 +217,18 @@ class ManagedOperationStageDurations(BaseModel):
     total_ms: int | None = Field(default=None, ge=0)
 
 
+class ManagedOperationLexicalFacts(BaseModel):
+    """Bounded corpus-level lexical searchable-universe accounting."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    searchable_units_contract: str | None = Field(default=None, max_length=128)
+    chunk_set_child_count: int | None = Field(default=None, ge=0)
+    zero_term_excluded_count: int | None = Field(default=None, ge=0)
+    eligible_child_count: int | None = Field(default=None, ge=0)
+    indexed_child_count: int | None = Field(default=None, ge=0)
+
+
 class ManagedOperationMetrics(BaseModel):
     """Optional bounded durable metrics/diagnostics projection (16K-B).
 
@@ -243,6 +255,7 @@ class ManagedOperationMetrics(BaseModel):
     generated_chunks_per_sec: float | None = Field(default=None, ge=0)
     model_input_tokens_per_sec: float | None = Field(default=None, ge=0)
     stage_durations: ManagedOperationStageDurations | None = None
+    lexical: ManagedOperationLexicalFacts | None = None
     # ETA intentionally absent: 16K-B may expose measurements only.
 
 

@@ -32,10 +32,14 @@
 **Exact independently accepted 16K-B technical subject (IR-004 historical):** `91dba2e2885346ee595b920fd7dd02f671d2f7af`
 **16K-B post-qualification remediation authority:** `S16-K-B-POST-QUAL-CHUNK-ID-COLLISION-REMEDIATION-AUTH-001` — AUTHORIZED
 **Exact post-qual remediation parent:** `037a39531abfd5f5335151a946dbede776c5f492`
+**16K-B post-qualification chunk-ID collision IR:** `S16-K-B-POST-QUAL-CHUNK-ID-COLLISION-REMEDIATION-IR-001` — ACCEPT
+**Exact chunk-ID collision remediation subject:** `f4707b828a85dcc538fc1510a52ed416d7a89935`
+**16K-B post-qualification lexical zero-term eligibility remediation authority:** `S16-K-B-POST-QUAL-LEXICAL-ZERO-TERM-ELIGIBILITY-REMEDIATION-AUTH-001` — AUTHORIZED
+**Exact lexical zero-term remediation parent:** `f4707b828a85dcc538fc1510a52ed416d7a89935`
 **16K-B branch:** `implementation/16k-b-ingestion-observability`
 **Status:** DESIGN ACCEPTED / FROZEN
 **16K-A:** IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED
-**16K-B:** IMPLEMENTATION COMPLETE / IR-004 HISTORICALLY ACCEPTED / POST-QUAL REMEDIATION PENDING INDEPENDENT REVIEW / NOT YET HUMAN-ACCEPTED
+**16K-B:** IMPLEMENTATION COMPLETE / IR-004 HISTORICALLY ACCEPTED / POST-QUAL CHUNK-ID IR-001 ACCEPT / POST-QUAL LEXICAL ZERO-TERM REMEDIATION PENDING INDEPENDENT REVIEW / NOT YET HUMAN-ACCEPTED
 **16K-C → 16K-G:** NOT YET AUTHORIZED
 **Baseline evidence:** NOT YET AUTHORIZED / NOT ACCEPTED
 **Human technical acceptance (16K-B):** NOT YET ISSUED
@@ -61,13 +65,21 @@ Human acceptance, live SOURCE_ADD of `Andy_Nozzles.pdf` exposed a chunk-ID
 collision defect (`ChunkSetValidationError: duplicate child chunk IDs`).
 Post-qualification remediation
 `S16-K-B-POST-QUAL-CHUNK-ID-COLLISION-REMEDIATION-AUTH-001` is AUTHORIZED
-from parent `037a395…`. IR-004 remains valid historical review of `91dba2e…`,
-but `91dba2e…` is no longer the intended final HA technical subject; the
-remediation successor requires fresh independent review before Human
-acceptance. Prior lineage remains: IR-001 / REWORK-AUTH-001, IR-002 /
-REWORK-AUTH-002, IR-003 / REWORK-AUTH-003, IR-004 / ACCEPTANCE-RECORD.
-Independent acceptance does not constitute Human acceptance,
-baseline-evidence acceptance, 16K-C→G authority, or main promotion.
+from parent `037a395…`. Independent review
+`S16-K-B-POST-QUAL-CHUNK-ID-COLLISION-REMEDIATION-IR-001` — ACCEPT at exact
+subject `f4707b8…`. A subsequent live lexical failure (zero-term children
+under technical-v1) authorized
+`S16-K-B-POST-QUAL-LEXICAL-ZERO-TERM-ELIGIBILITY-REMEDIATION-AUTH-001` from
+parent `f4707b8…` (always-on `exclude-zero-term-v1` searchable-universe
+policy + bounded `ManagedOperationLexicalFacts`). IR-004 remains valid
+historical review of `91dba2e…`, but `91dba2e…` is no longer the intended
+final HA technical subject; the remediation successor requires fresh
+independent review before Human acceptance. Prior lineage remains: IR-001 /
+REWORK-AUTH-001, IR-002 / REWORK-AUTH-002, IR-003 / REWORK-AUTH-003, IR-004 /
+ACCEPTANCE-RECORD, POST-QUAL CHUNK-ID IR-001 ACCEPT, POST-QUAL LEXICAL
+ZERO-TERM AUTH-001. Independent acceptance does not constitute Human
+acceptance, baseline-evidence acceptance, 16K-C→G authority, or main
+promotion.
 16K-C→G, capacity expansion, CUDA optimization, UI work, OCR, Slice 17/18,
 9G, and M7 closeout remain unauthorized.
 
@@ -713,6 +725,15 @@ Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
     S16-K-B-POST-QUAL-CHUNK-ID-COLLISION-REMEDIATION-AUTH-001 — AUTHORIZED
   Exact post-qual remediation parent:
     037a39531abfd5f5335151a946dbede776c5f492
+  Post-qualification chunk-ID collision IR:
+    S16-K-B-POST-QUAL-CHUNK-ID-COLLISION-REMEDIATION-IR-001 — ACCEPT
+  Exact chunk-ID collision remediation subject:
+    f4707b828a85dcc538fc1510a52ed416d7a89935
+  Post-qualification lexical zero-term eligibility remediation authority:
+    S16-K-B-POST-QUAL-LEXICAL-ZERO-TERM-ELIGIBILITY-REMEDIATION-AUTH-001
+    — AUTHORIZED
+  Exact lexical zero-term remediation parent:
+    f4707b828a85dcc538fc1510a52ed416d7a89935
   Human technical acceptance: NOT YET ISSUED
   Branch: implementation/16k-b-ingestion-observability
 16K-C → 16K-G: NOT YET AUTHORIZED

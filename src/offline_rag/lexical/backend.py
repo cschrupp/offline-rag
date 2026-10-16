@@ -384,6 +384,12 @@ class LocalInvertedIndexBackend:
         row = self._doc_by_chunk.get(chunk_id)
         return dict(row) if row is not None else None
 
+    def indexed_chunk_ids(self) -> frozenset[str]:
+        """Return the exact chunk-ID membership of the open index."""
+        if self._metadata is None:
+            raise RuntimeError("lexical index is not open")
+        return frozenset(self._doc_by_chunk.keys())
+
     def close(self) -> None:
         self._lexical_index_id = None
         self._metadata = None

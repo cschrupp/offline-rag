@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pytest
 
+# Break dense↔app circular import before dense package init.
+from offline_rag.app.errors import AppError  # noqa: F401
 from offline_rag.chunking.pipeline import run_chunking
 from offline_rag.chunking.tokenize import FakeTokenCounter
 from offline_rag.config import ConfigError, load_settings
@@ -189,11 +191,19 @@ def test_lexical_index_noop_persist_and_retrieve(tmp_path: Path) -> None:
     first = run_lexical_indexing(settings=settings, corpus_name="default")
     assert first.status == IndexingStatus.SUCCESS
     assert first.lexical_index_id is not None
+    assert first.searchable_units_contract == "exclude-zero-term-v1"
+    assert first.zero_term_excluded_count == 0
+    assert first.eligible_child_count == first.indexed_child_count == first.chunk_set_child_count
     assert lexical_indexing_status_for_corpus(settings, "default") == "CURRENT"
 
     second = run_lexical_indexing(settings=settings, corpus_name="default")
     assert second.status == IndexingStatus.NO_OP
     assert second.lexical_index_id == first.lexical_index_id
+    assert second.searchable_units_contract == first.searchable_units_contract
+    assert second.chunk_set_child_count == first.chunk_set_child_count
+    assert second.zero_term_excluded_count == first.zero_term_excluded_count
+    assert second.eligible_child_count == first.eligible_child_count
+    assert second.indexed_child_count == first.indexed_child_count
 
     backend = LocalInvertedIndexBackend(settings.paths.lexical_indexes)
     backend.open(first.lexical_index_id)

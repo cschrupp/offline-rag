@@ -300,6 +300,11 @@ class LexicalIndexManifest(BaseModel):
     avgdl: Score
     physical_index_relpath: NonEmptyStr
     created_at: datetime
+    # exclude-zero-term-v1 searchable-universe accounting (None = pre-policy legacy).
+    searchable_units_contract: NonEmptyStr | None = None
+    chunk_set_child_count: NonNegativeInt | None = None
+    zero_term_excluded_count: NonNegativeInt | None = None
+    eligible_child_count: NonNegativeInt | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -338,6 +343,10 @@ class LexicalIndexingReport(BaseModel):
     vocabulary_size: NonNegativeInt = 0
     lexical_index_id: NonEmptyStr | None = None
     lexical_index_manifest_path: str | None = None
+    searchable_units_contract: NonEmptyStr | None = None
+    chunk_set_child_count: NonNegativeInt | None = None
+    zero_term_excluded_count: NonNegativeInt | None = None
+    eligible_child_count: NonNegativeInt | None = None
     errors: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
 

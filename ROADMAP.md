@@ -551,7 +551,8 @@ SLICE 15  COMPLETE / ACCEPTED
          HA-record IR:
            S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-IR-001 — ACCEPT
        16K-B: IMPLEMENTATION COMPLETE / IR-004 HISTORICALLY ACCEPTED /
-         POST-QUAL REMEDIATION PENDING INDEPENDENT REVIEW /
+         POST-QUAL CHUNK-ID IR-001 ACCEPT /
+         POST-QUAL LEXICAL ZERO-TERM REMEDIATION PENDING INDEPENDENT REVIEW /
          NOT YET HUMAN-ACCEPTED
          Implementation authority:
            S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-AUTH-001 — AUTHORIZED
@@ -593,6 +594,15 @@ SLICE 15  COMPLETE / ACCEPTED
            — AUTHORIZED
          Exact post-qual remediation parent:
            037a39531abfd5f5335151a946dbede776c5f492
+         Post-qualification chunk-ID collision IR:
+           S16-K-B-POST-QUAL-CHUNK-ID-COLLISION-REMEDIATION-IR-001 — ACCEPT
+         Exact chunk-ID collision remediation subject:
+           f4707b828a85dcc538fc1510a52ed416d7a89935
+         Post-qualification lexical zero-term eligibility remediation authority:
+           S16-K-B-POST-QUAL-LEXICAL-ZERO-TERM-ELIGIBILITY-REMEDIATION-AUTH-001
+           — AUTHORIZED
+         Exact lexical zero-term remediation parent:
+           f4707b828a85dcc538fc1510a52ed416d7a89935
          Human technical acceptance: NOT YET ISSUED
          Branch: implementation/16k-b-ingestion-observability
        16K-C → 16K-G: NOT YET AUTHORIZED
@@ -849,7 +859,8 @@ SLICE 15  COMPLETE / ACCEPTED
          HA-record IR:
            S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-IR-001 — ACCEPT
        16K-B: IMPLEMENTATION COMPLETE / IR-004 HISTORICALLY ACCEPTED /
-         POST-QUAL REMEDIATION PENDING INDEPENDENT REVIEW /
+         POST-QUAL CHUNK-ID IR-001 ACCEPT /
+         POST-QUAL LEXICAL ZERO-TERM REMEDIATION PENDING INDEPENDENT REVIEW /
          NOT YET HUMAN-ACCEPTED
          Implementation authority:
            S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-AUTH-001 — AUTHORIZED
@@ -891,6 +902,15 @@ SLICE 15  COMPLETE / ACCEPTED
            — AUTHORIZED
          Exact post-qual remediation parent:
            037a39531abfd5f5335151a946dbede776c5f492
+         Post-qualification chunk-ID collision IR:
+           S16-K-B-POST-QUAL-CHUNK-ID-COLLISION-REMEDIATION-IR-001 — ACCEPT
+         Exact chunk-ID collision remediation subject:
+           f4707b828a85dcc538fc1510a52ed416d7a89935
+         Post-qualification lexical zero-term eligibility remediation authority:
+           S16-K-B-POST-QUAL-LEXICAL-ZERO-TERM-ELIGIBILITY-REMEDIATION-AUTH-001
+           — AUTHORIZED
+         Exact lexical zero-term remediation parent:
+           f4707b828a85dcc538fc1510a52ed416d7a89935
          Human technical acceptance: NOT YET ISSUED
          Branch: implementation/16k-b-ingestion-observability
        16K-C → 16K-G: NOT YET AUTHORIZED

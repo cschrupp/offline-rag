@@ -13,7 +13,11 @@ from offline_rag.chunking.persistence import (
     load_chunk_state,
 )
 from offline_rag.config.models import AppSettings
-from offline_rag.core.ids import lexical_index_id, new_execution_id
+from offline_rag.core.ids import (
+    LEXICAL_EXCLUDE_ZERO_TERM_V1,
+    lexical_index_id,
+    new_execution_id,
+)
 from offline_rag.core.progress import ProgressReporter, report_progress
 from offline_rag.domain.documents import Chunk, ChunkKind
 from offline_rag.domain.indexing import (
@@ -43,6 +47,7 @@ from offline_rag.lexical.persistence import (
     write_lexical_index_manifest,
     write_lexical_index_state,
 )
+from offline_rag.lexical.searchable_units import analyze_and_classify
 from offline_rag.lexical.text import (
     LexicalTextBuilder,
     PlainLexicalTextBuilder,
@@ -57,6 +62,50 @@ from offline_rag.retrieval.ranking_text import (
 
 class LexicalIndexingError(RuntimeError):
     pass
+
+
+def _universe_reconciles(
+    *,
+    chunk_set_child_count: int,
+    zero_term_excluded_count: int,
+    eligible_child_count: int,
+    indexed_child_count: int | None = None,
+) -> bool:
+    if chunk_set_child_count != zero_term_excluded_count + eligible_child_count:
+        return False
+    if indexed_child_count is not None and eligible_child_count != indexed_child_count:
+        return False
+    return True
+
+
+def _manifest_has_exclude_zero_term_universe(manifest: LexicalIndexManifest) -> bool:
+    if manifest.searchable_units_contract != LEXICAL_EXCLUDE_ZERO_TERM_V1:
+        return False
+    if (
+        manifest.chunk_set_child_count is None
+        or manifest.zero_term_excluded_count is None
+        or manifest.eligible_child_count is None
+    ):
+        return False
+    return _universe_reconciles(
+        chunk_set_child_count=manifest.chunk_set_child_count,
+        zero_term_excluded_count=manifest.zero_term_excluded_count,
+        eligible_child_count=manifest.eligible_child_count,
+        indexed_child_count=manifest.indexed_child_count,
+    )
+
+
+def _report_universe_kwargs(manifest: LexicalIndexManifest) -> dict:
+    return {
+        "searchable_units_contract": manifest.searchable_units_contract,
+        "chunk_set_child_count": manifest.chunk_set_child_count,
+        "zero_term_excluded_count": manifest.zero_term_excluded_count,
+        "eligible_child_count": manifest.eligible_child_count,
+        "indexed_child_count": manifest.indexed_child_count,
+        "children_total": manifest.chunk_set_child_count
+        if manifest.chunk_set_child_count is not None
+        else manifest.indexed_child_count,
+    }
 
 
 def make_lexical_text_builder(settings: AppSettings) -> LexicalTextBuilder:
@@ -244,8 +293,7 @@ def run_lexical_indexing(
             chunk_set_id=chunk_state.current_chunk_set_id,
             chunk_manifest_name=chunk_state.current_chunk_manifest,
         )
-        children_total = len(jobs)
-        expected_chunk_ids = {chunk.chunk_id for chunk, _ in jobs}
+        chunk_set_child_count = len(jobs)
 
         backend_impl = backend or LocalInvertedIndexBackend(settings.paths.lexical_indexes)
         settings.paths.lexical_index_manifests.mkdir(parents=True, exist_ok=True)
@@ -259,13 +307,18 @@ def run_lexical_indexing(
             index_id,
         )
         physical_ok = backend_impl.index_exists(index_id) and backend_impl.validate(index_id)
+        universe_ok = (
+            existing_manifest is not None
+            and _manifest_has_exclude_zero_term_universe(existing_manifest)
+            and existing_manifest.chunk_set_child_count == chunk_set_child_count
+        )
         published_complete = (
             existing_manifest is not None
             and existing_manifest.lexical_index_id == index_id
             and existing_manifest.corpus_id == corpus_state.current_corpus_id
             and existing_manifest.chunk_set_id == chunk_state.current_chunk_set_id
             and existing_manifest.lexical_config_hash == lex_cfg_hash
-            and existing_manifest.indexed_child_count == children_total
+            and universe_ok
             and physical_ok
         )
 
@@ -278,7 +331,7 @@ def run_lexical_indexing(
             and existing_manifest is not None
             and existing_manifest.lexical_config_hash == lex_cfg_hash
             and existing_manifest.chunk_set_id == chunk_state.current_chunk_set_id
-            and existing_manifest.indexed_child_count == children_total
+            and universe_ok
             and physical_ok
         ):
             completed = datetime.now(tz=UTC)
@@ -292,12 +345,11 @@ def run_lexical_indexing(
                 started_at=started,
                 completed_at=completed,
                 duration_ms=int((completed - started).total_seconds() * 1000),
-                children_total=children_total,
-                indexed_child_count=children_total,
                 documents_total=documents_total,
                 vocabulary_size=existing_manifest.vocabulary_size,
                 lexical_index_id=index_id,
                 lexical_index_manifest_path=existing_state.current_lexical_index_manifest,
+                **_report_universe_kwargs(existing_manifest),
             )
 
         if published_complete:
@@ -311,6 +363,7 @@ def run_lexical_indexing(
                 lex_cfg_hash=lex_cfg_hash,
                 completed=completed,
             )
+            assert existing_manifest is not None
             return LexicalIndexingReport(
                 run_id=run_id,
                 corpus_name=name,
@@ -321,13 +374,12 @@ def run_lexical_indexing(
                 started_at=started,
                 completed_at=completed,
                 duration_ms=int((completed - started).total_seconds() * 1000),
-                children_total=children_total,
-                indexed_child_count=children_total,
                 documents_total=documents_total,
-                vocabulary_size=existing_manifest.vocabulary_size if existing_manifest else 0,
+                vocabulary_size=existing_manifest.vocabulary_size,
                 lexical_index_id=index_id,
                 lexical_index_manifest_path=state.current_lexical_index_manifest,
                 metadata={"reused_published_index": True},
+                **_report_universe_kwargs(existing_manifest),
             )
 
         text_builder = make_lexical_text_builder(settings)
@@ -353,12 +405,13 @@ def run_lexical_indexing(
             raise LexicalIndexingError(str(exc)) from exc
 
         analyzed: list[LexicalDocumentInput] = []
-        children_total = len(jobs)
+        excluded_ids: list[str] = []
+        processed = 0
         report_progress(
             on_progress,
             step="analyzing_lexical_chunks",
             current=0,
-            total=children_total if children_total > 0 else None,
+            total=chunk_set_child_count if chunk_set_child_count > 0 else None,
             unit="chunks",
         )
         for chunk, chunk_artifact_id in jobs:
@@ -371,31 +424,52 @@ def run_lexical_indexing(
                 lexical_text = text_builder.build(inputs)
             except RankingTextError as exc:
                 raise LexicalIndexingError(str(exc)) from exc
-            terms = analyzer.analyze(lexical_text)
-            if not terms:
-                raise LexicalIndexingError(
-                    f"zero-term child after analysis: {chunk.chunk_id}"
+            terms, classification = analyze_and_classify(analyzer, lexical_text)
+            processed += 1
+            if classification == "excluded":
+                excluded_ids.append(chunk.chunk_id)
+            else:
+                analyzed.append(
+                    LexicalDocumentInput(
+                        chunk_id=chunk.chunk_id,
+                        terms=terms,
+                        chunk_artifact_id=chunk_artifact_id,
+                        document_id=chunk.document_id,
+                    )
                 )
-            analyzed.append(
-                LexicalDocumentInput(
-                    chunk_id=chunk.chunk_id,
-                    terms=terms,
-                    chunk_artifact_id=chunk_artifact_id,
-                    document_id=chunk.document_id,
-                )
-            )
             report_progress(
                 on_progress,
                 step="analyzing_lexical_chunks",
-                current=len(analyzed),
-                total=children_total if children_total > 0 else None,
+                current=processed,
+                total=chunk_set_child_count if chunk_set_child_count > 0 else None,
                 unit="chunks",
             )
 
-        indexed_ids = {item.chunk_id for item in analyzed}
-        if indexed_ids != expected_chunk_ids:
+        zero_term_excluded_count = len(excluded_ids)
+        eligible_child_count = len(analyzed)
+        if not _universe_reconciles(
+            chunk_set_child_count=chunk_set_child_count,
+            zero_term_excluded_count=zero_term_excluded_count,
+            eligible_child_count=eligible_child_count,
+        ):
             raise LexicalIndexingError(
-                "lexical index universe mismatch vs active child chunk IDs"
+                "lexical searchable-universe accounting failed reconciliation"
+            )
+        if eligible_child_count < 1:
+            raise LexicalIndexingError(
+                "lexical searchable-unit policy excluded all children; "
+                "refusing empty lexical index"
+            )
+
+        eligible_ids = {item.chunk_id for item in analyzed}
+        chunk_set_ids = {chunk.chunk_id for chunk, _ in jobs}
+        if eligible_ids | set(excluded_ids) != chunk_set_ids:
+            raise LexicalIndexingError(
+                "lexical eligibility partition does not cover the chunk-set universe"
+            )
+        if eligible_ids & set(excluded_ids):
+            raise LexicalIndexingError(
+                "lexical eligibility partition has overlapping eligible/excluded IDs"
             )
 
         report_progress(
@@ -418,10 +492,29 @@ def run_lexical_indexing(
                 "text_contract": text_builder.contract_version,
                 "analyzer_strategy": analyzer.strategy,
                 "analyzer_contract": analyzer.contract_version,
+                "searchable_units_contract": LEXICAL_EXCLUDE_ZERO_TERM_V1,
+                "chunk_set_child_count": chunk_set_child_count,
+                "zero_term_excluded_count": zero_term_excluded_count,
+                "eligible_child_count": eligible_child_count,
             },
         )
         if not backend_impl.validate(index_id):
             raise LexicalIndexingError("built lexical index failed integrity validation")
+        indexed_child_count = int(metadata["indexed_child_count"])
+        if indexed_child_count != eligible_child_count:
+            raise LexicalIndexingError(
+                "lexical indexed_child_count does not match eligible_child_count"
+            )
+        # Exact backend membership == eligible ID set (not merely equal cardinality).
+        backend_impl.open(index_id)
+        try:
+            backend_ids = set(backend_impl.indexed_chunk_ids())
+        finally:
+            backend_impl.close()
+        if backend_ids != eligible_ids:
+            raise LexicalIndexingError(
+                "lexical backend membership does not equal eligible child-ID set"
+            )
 
         completed = datetime.now(tz=UTC)
         physical_relpath = f"lexical-indexes/{index_id}"
@@ -441,13 +534,17 @@ def run_lexical_indexing(
             bm25_query_tf=settings.lexical.bm25.query_tf,
             backend=settings.lexical.backend,
             backend_contract=settings.lexical.backend_contract,
-            expected_child_count=children_total,
-            indexed_child_count=int(metadata["indexed_child_count"]),
+            expected_child_count=eligible_child_count,
+            indexed_child_count=indexed_child_count,
             document_count=int(metadata["N"]),
             vocabulary_size=int(metadata["vocabulary_size"]),
             avgdl=float(metadata["avgdl"]),
             physical_index_relpath=physical_relpath,
             created_at=completed,
+            searchable_units_contract=LEXICAL_EXCLUDE_ZERO_TERM_V1,
+            chunk_set_child_count=chunk_set_child_count,
+            zero_term_excluded_count=zero_term_excluded_count,
+            eligible_child_count=eligible_child_count,
         )
         write_lexical_index_manifest(settings.paths.lexical_index_manifests, manifest)
         state = _publish_lexical_index_state(
@@ -470,12 +567,16 @@ def run_lexical_indexing(
             started_at=started,
             completed_at=completed,
             duration_ms=int((completed - started).total_seconds() * 1000),
-            children_total=children_total,
-            indexed_child_count=int(metadata["indexed_child_count"]),
+            children_total=chunk_set_child_count,
+            indexed_child_count=indexed_child_count,
             documents_total=documents_total,
             vocabulary_size=int(metadata["vocabulary_size"]),
             lexical_index_id=index_id,
             lexical_index_manifest_path=state.current_lexical_index_manifest,
+            searchable_units_contract=LEXICAL_EXCLUDE_ZERO_TERM_V1,
+            chunk_set_child_count=chunk_set_child_count,
+            zero_term_excluded_count=zero_term_excluded_count,
+            eligible_child_count=eligible_child_count,
         )
     except Exception as exc:  # noqa: BLE001
         completed = datetime.now(tz=UTC)
