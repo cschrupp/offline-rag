@@ -56,13 +56,21 @@
 **Exact Human-accepted technical subject:** `40c6eb3824ac9f9c1cbc35c889e3e4110b229469`
 **16K-B HA-record authority:** `S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-HA-RECORD-AUTH-001` — AUTHORIZED
 **Exact HA-record parent:** `9f9734efb7a534f054415b32c73c039ae59369e3`
-**Fireground CUDA/cublasGemmEx runtime issue:** OPEN / SEPARATE / NOT FIXED BY 16K-B ACCEPTANCE
+**16K-B HA-record IR:** `S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-HA-RECORD-IR-001` — ACCEPT
+**Exact accepted HA-record subject:** `4f2c045717e2f8fe5b583173847a3bfa97046061`
+**Fireground CUDA/cublasGemmEx runtime issue:** OPEN / SEPARATE / NOT FIXED
 **16K-B branch:** `implementation/16k-b-ingestion-observability`
 **Status:** DESIGN ACCEPTED / FROZEN
 **16K-A:** IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED
-**16K-B:** IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / HA RECORD PENDING INDEPENDENT REVIEW
+**16K-B:** COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / HA RECORD INDEPENDENTLY ACCEPTED
+**16K baseline evidence:** AUTHORIZED / IN PROGRESS
+**16K baseline campaign authority:** `S16-K-BASELINE-EVIDENCE-CAMPAIGN-AUTH-001` — AUTHORIZED
+**16K baseline AUTH-open:** `S16-K-BASELINE-EVIDENCE-CAMPAIGN-AUTH-OPEN-001`
+**Exact baseline governance parent:** `4f2c045717e2f8fe5b583173847a3bfa97046061`
+**Technical subject under measurement:** `40c6eb3824ac9f9c1cbc35c889e3e4110b229469`
+**16K baseline branch:** `evidence/16k-baseline`
+**16K baseline manifest:** `docs/slice16k_baseline_evidence_campaign.md`
 **16K-C → 16K-G:** NOT YET AUTHORIZED
-**Baseline evidence:** NOT YET AUTHORIZED / NOT ACCEPTED
 **Main promotion:** NOT AUTHORIZED
 **Frozen implementation order:** 16K-A → 16K-B → baseline evidence → 16K-C → 16K-D → 16K-E → 16K-F → 16K-G
 **Parent governance:** Slice 16 — COMPLETE / HUMAN ACCEPTED / CANONICAL
@@ -113,19 +121,24 @@ is AUTHORIZED from that exact parent; tip `9f9734ef…`. Human technical
 acceptance `S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-HA-001` —
 ACCEPTED against exact technical subject `40c6eb38…`. HA-record authority
 `S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-HA-RECORD-AUTH-001` is
-AUTHORIZED from parent `9f9734ef…`; the HA-record commit publishes HA-001
-only and must not replace `40c6eb38…` as the technical HA subject.
-Fireground CUDA/cublasGemmEx remains OPEN / SEPARATE / NOT FIXED BY 16K-B
-ACCEPTANCE. Durable technical lineage: `91dba2e…` (IR-004 ACCEPT,
+AUTHORIZED from parent `9f9734ef…`; the HA-record tip `4f2c0457…` publishes
+HA-001 only and must not replace `40c6eb38…` as the technical HA subject.
+HA-record IR
+`S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-HA-RECORD-IR-001` — ACCEPT
+at `4f2c0457…`. Baseline-evidence campaign authority
+`S16-K-BASELINE-EVIDENCE-CAMPAIGN-AUTH-001` is AUTHORIZED; AUTH-open
+`S16-K-BASELINE-EVIDENCE-CAMPAIGN-AUTH-OPEN-001` is published on branch
+`evidence/16k-baseline` from governance parent `4f2c0457…`, measuring
+technical subject `40c6eb38…`. Fireground CUDA/cublasGemmEx remains OPEN /
+SEPARATE / NOT FIXED. Durable technical lineage: `91dba2e…` (IR-004 ACCEPT,
 historical) → `f4707b8…` (chunk-ID post-qual IR-001 ACCEPT) → `349de6a…`
 (lexical zero-term post-qual IR-001 ACCEPT) → `fbc8bb1…` (lexical IR-001
 acceptance-record tip) → `6f61f18…` (dense-failure IR-001 REWORK REQUIRED
 R1) → `40c6eb38…` (exact technical subject; IR-002 ACCEPT; HA-001 ACCEPTED;
 R1 CLOSED) → `9f9734ef…` (IR-002 durable acceptance-record tip) →
-(this HA-record commit: durable publication of HA-001 only). Baseline
-evidence, 16K-C→G, main promotion remain unauthorized. 16K-C→G, capacity
+`4f2c0457…` (HA-record tip; HA-RECORD-IR-001 ACCEPT). 16K-C→G, capacity
 expansion, CUDA optimization, UI work, OCR, Slice 17/18, 9G, and M7
-closeout remain unauthorized.
+closeout remain unauthorized; main promotion remains unauthorized.
 
 ---
 
@@ -740,8 +753,8 @@ Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
   HA record: S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-AUTH-001 — AUTHORIZED
   Exact Human-accepted technical subject: 1370b99327124045ad96005e829095683842c06f
   HA-record IR: S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-IR-001 — ACCEPT
-16K-B: IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED /
-  HA RECORD PENDING INDEPENDENT REVIEW
+16K-B: COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED /
+  HA RECORD INDEPENDENTLY ACCEPTED
   Implementation authority:
     S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-AUTH-001 — AUTHORIZED
   Exact implementation base: 39e5e09363193b2315ada9e56cb3e1c14ba9377d
@@ -842,14 +855,28 @@ Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
       — exact technical subject; IR-002 ACCEPT; HA-001 ACCEPTED; R1 CLOSED
     → 9f9734efb7a534f054415b32c73c039ae59369e3
       — IR-002 durable acceptance-record tip
-    → (this HA-record commit)
-      — durable publication of HA-001 only; not the technical HA subject
+    → 4f2c045717e2f8fe5b583173847a3bfa97046061
+      — durable HA-record tip; HA-RECORD-IR-001 ACCEPT;
+        not the technical HA subject
+  HA-record IR:
+    S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-HA-RECORD-IR-001 — ACCEPT
+  Exact accepted HA-record subject:
+    4f2c045717e2f8fe5b583173847a3bfa97046061
   Fireground CUDA/cublasGemmEx runtime issue:
-    OPEN / SEPARATE /
-    NOT FIXED BY 16K-B ACCEPTANCE
+    OPEN / SEPARATE / NOT FIXED
   Branch: implementation/16k-b-ingestion-observability
+16K baseline evidence: AUTHORIZED / IN PROGRESS
+  Campaign authority:
+    S16-K-BASELINE-EVIDENCE-CAMPAIGN-AUTH-001 — AUTHORIZED
+  AUTH-open:
+    S16-K-BASELINE-EVIDENCE-CAMPAIGN-AUTH-OPEN-001
+  Exact governance parent:
+    4f2c045717e2f8fe5b583173847a3bfa97046061
+  Technical subject under measurement:
+    40c6eb3824ac9f9c1cbc35c889e3e4110b229469
+  Branch: evidence/16k-baseline
+  Manifest: docs/slice16k_baseline_evidence_campaign.md
 16K-C → 16K-G: NOT YET AUTHORIZED
-Baseline evidence: NOT YET AUTHORIZED / NOT ACCEPTED
 Main promotion: NOT AUTHORIZED
 Frozen order: 16K-A → 16K-B → baseline evidence → 16K-C → 16K-D → 16K-E → 16K-F → 16K-G
 Slice 16: COMPLETE / HUMAN ACCEPTED / CANONICAL
@@ -860,6 +887,6 @@ M7 CLOSEOUT: NOT AUTHORIZED
 Does NOT authorize 16K-C→G / capacity / CUDA / UI
 Does NOT reopen Slice 16 closeout
 Does NOT authorize main promotion
-Does NOT claim Fireground CUDA fixed by 16K-B acceptance
+Does NOT claim Fireground CUDA fixed
 Outstanding separate operation: promote 3a7d8ff… onto origin/main (still at e21b3e6…)
 ```

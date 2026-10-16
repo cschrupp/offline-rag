@@ -119,8 +119,8 @@ GAP-16G-02:
     Branch: implementation/16k-a-managed-ingestion-correctness
     HA-record IR:
       S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-IR-001 — ACCEPT
-  16K-B: IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED /
-    HA RECORD PENDING INDEPENDENT REVIEW
+  16K-B: COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED /
+    HA RECORD INDEPENDENTLY ACCEPTED
     Implementation authority:
       S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-AUTH-001 — AUTHORIZED
     Exact implementation base:
@@ -225,14 +225,28 @@ GAP-16G-02:
         — exact technical subject; IR-002 ACCEPT; HA-001 ACCEPTED; R1 CLOSED
       → 9f9734efb7a534f054415b32c73c039ae59369e3
         — IR-002 durable acceptance-record tip
-      → (this HA-record commit)
-        — durable publication of HA-001 only; not the technical HA subject
+      → 4f2c045717e2f8fe5b583173847a3bfa97046061
+        — durable HA-record tip; HA-RECORD-IR-001 ACCEPT;
+          not the technical HA subject
+    HA-record IR:
+      S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-HA-RECORD-IR-001 — ACCEPT
+    Exact accepted HA-record subject:
+      4f2c045717e2f8fe5b583173847a3bfa97046061
     Fireground CUDA/cublasGemmEx runtime issue:
-      OPEN / SEPARATE /
-      NOT FIXED BY 16K-B ACCEPTANCE
+      OPEN / SEPARATE / NOT FIXED
     Branch: implementation/16k-b-ingestion-observability
+  16K baseline evidence: AUTHORIZED / IN PROGRESS
+    Campaign authority:
+      S16-K-BASELINE-EVIDENCE-CAMPAIGN-AUTH-001 — AUTHORIZED
+    AUTH-open:
+      S16-K-BASELINE-EVIDENCE-CAMPAIGN-AUTH-OPEN-001
+    Exact governance parent:
+      4f2c045717e2f8fe5b583173847a3bfa97046061
+    Technical subject under measurement:
+      40c6eb3824ac9f9c1cbc35c889e3e4110b229469
+    Branch: evidence/16k-baseline
+    Manifest: docs/slice16k_baseline_evidence_campaign.md
   16K-C → 16K-G: NOT YET AUTHORIZED
-  Baseline evidence: NOT YET AUTHORIZED / NOT ACCEPTED
   Main promotion: NOT AUTHORIZED
 16L: COMPLETE / ACCEPTED
   Authority: S16-L-EMBEDDING-AUTO-DEVICE-UX-AUTH-002
@@ -481,8 +495,8 @@ Slice-16 closeout inventory: HUMAN ACCEPTED
     Branch: implementation/16k-a-managed-ingestion-correctness
     HA-record IR:
       S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-IR-001 — ACCEPT
-  16K-B: IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED /
-    HA RECORD PENDING INDEPENDENT REVIEW
+  16K-B: COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED /
+    HA RECORD INDEPENDENTLY ACCEPTED
     Implementation authority:
       S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-AUTH-001 — AUTHORIZED
     Exact implementation base:
@@ -587,14 +601,28 @@ Slice-16 closeout inventory: HUMAN ACCEPTED
         — exact technical subject; IR-002 ACCEPT; HA-001 ACCEPTED; R1 CLOSED
       → 9f9734efb7a534f054415b32c73c039ae59369e3
         — IR-002 durable acceptance-record tip
-      → (this HA-record commit)
-        — durable publication of HA-001 only; not the technical HA subject
+      → 4f2c045717e2f8fe5b583173847a3bfa97046061
+        — durable HA-record tip; HA-RECORD-IR-001 ACCEPT;
+          not the technical HA subject
+    HA-record IR:
+      S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-HA-RECORD-IR-001 — ACCEPT
+    Exact accepted HA-record subject:
+      4f2c045717e2f8fe5b583173847a3bfa97046061
     Fireground CUDA/cublasGemmEx runtime issue:
-      OPEN / SEPARATE /
-      NOT FIXED BY 16K-B ACCEPTANCE
+      OPEN / SEPARATE / NOT FIXED
     Branch: implementation/16k-b-ingestion-observability
+  16K baseline evidence: AUTHORIZED / IN PROGRESS
+    Campaign authority:
+      S16-K-BASELINE-EVIDENCE-CAMPAIGN-AUTH-001 — AUTHORIZED
+    AUTH-open:
+      S16-K-BASELINE-EVIDENCE-CAMPAIGN-AUTH-OPEN-001
+    Exact governance parent:
+      4f2c045717e2f8fe5b583173847a3bfa97046061
+    Technical subject under measurement:
+      40c6eb3824ac9f9c1cbc35c889e3e4110b229469
+    Branch: evidence/16k-baseline
+    Manifest: docs/slice16k_baseline_evidence_campaign.md
   16K-C → 16K-G: NOT YET AUTHORIZED
-  Baseline evidence: NOT YET AUTHORIZED / NOT ACCEPTED
   Main promotion: NOT AUTHORIZED
   Does NOT reopen Slice 16 closeout
   Does NOT authorize main promotion

@@ -1,0 +1,305 @@
+# Slice 16K — Baseline Evidence Campaign Manifest
+
+**Authority:** `S16-K-BASELINE-EVIDENCE-CAMPAIGN-AUTH-001` — AUTHORIZED  
+**AUTH-open:** `S16-K-BASELINE-EVIDENCE-CAMPAIGN-AUTH-OPEN-001`  
+**Governance parent:** `4f2c045717e2f8fe5b583173847a3bfa97046061`  
+**Technical subject under measurement:** `40c6eb3824ac9f9c1cbc35c889e3e4110b229469`  
+**Branch:** `evidence/16k-baseline`  
+**Campaign status:** AUTHORIZED / IN PROGRESS  
+**Execution pin:** this AUTH-open commit (repository SHA after publication)  
+**Freeze subject (future):** `S16-K-BASELINE-EVIDENCE-FREEZE-001` — NOT YET PUBLISHED  
+
+This document is the pre-execution measurement contract. It does **not** contain
+campaign run results. Design charter remains
+[`docs/slice16k_beta_ingestion_readiness_design.md`](slice16k_beta_ingestion_readiness_design.md)
+(Q3 / Q11 / Q12 / Q13 / §9.1). Those questions are **not** reopened here.
+
+## 1. Purpose
+
+Produce a durable, independently reviewable 16K baseline evidence subject that
+establishes present-system workload, performance, GPU-memory, reuse, and
+reliability characteristics **before** 16K-C changes capacity policy or 16K-D
+changes CUDA/dense execution.
+
+## 2. Frozen execution rule
+
+**Measure first. Do not improve while measuring.**
+
+The campaign may measure the accepted system and publish reproducible evidence.
+It may **not** change the system to improve the result.
+
+Canonical baseline must preserve the accepted runtime configuration, including:
+
+- embedding model + revision
+- embedding text contract = plain / plain-v1
+- embedding dimension
+- device policy
+- resolved CUDA path (when CUDA is selected)
+- dtype
+- batch size
+- attention path
+- chunking semantics
+- dense/lexical identities
+- Qdrant behavior
+- model-residency behavior (observe; do not correct)
+
+If the accepted system keeps the embedding model resident after use, the
+baseline observes that behavior rather than correcting it.
+
+**Forbidden in the canonical baseline run:** CUDA→CPU fallback, cache clearing,
+model unloading, reduced batch size, FP16, alternate attention, allocator
+tuning, `torch.cuda.empty_cache()`, or similar intervention.
+
+## 3. Static configuration pins (repository defaults under measurement)
+
+These are inherent repository/config defaults for the technical subject. Live
+resolved values are recorded in B0 / run JSON (not in this opening commit as
+runtime measurements).
+
+| Pin | Value |
+|---|---|
+| Embedding model_id | `Qwen/Qwen3-Embedding-0.6B` |
+| Embedding revision | `97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3` |
+| Embedding dimension | `1024` |
+| Indexing embedding text contract | `plain` / `plain-v1` |
+| Embedding batch_size (default) | `32` |
+| Embedding device policy (default) | `auto` |
+| Adapter contract | `sentence-transformers-v1` |
+
+## 4. B1 workload identity — B1-FIREGROUND-INCIDENT-CLASS-V1
+
+Exact Fireground incident-class workload previously exercised in the
+failed/successful source-add sequence. Source bytes remain **external/private**
+and are **not** committed to Git. Identity is by content hashes, not folder path.
+
+### 4.1 Member table (immutable)
+
+Member count: **1**
+
+Canonical member rows (already ordered by
+`(content_sha256, display_name, byte_size)`):
+
+```json
+[{"byte_size":6796067,"content_sha256":"01bea4d628ffea01aab164535c81392a8b42b9a587f9b6295f302a9938f2f0c2","display_name":"Fireground_Operational_Guides.pdf"}]
+```
+
+**Aggregate manifest hash** (SHA-256 of the UTF-8 canonical JSON array above,
+`sort_keys=true`, `separators=(",", ":")`, no whitespace):
+
+`9864d642c45b485f175555dff229252fceea1b81437869189179766508526070`
+
+### 4.2 Historical durable references
+
+| Field | Value |
+|---|---|
+| Historical workspace_id | `ws_fdd77b77611448eb93cdc239d2610281` |
+| Historical published source_id (post-success) | `src_b56617ebdc90460fbf0c46536d278275` |
+| Historical active_from_snapshot_id | `snap_3c4048d380b1f5db12a20f820082c1942ccaacc96e368dfb04c22aba5090a9c9` |
+| Historical failed op (observability-era CUDA dense failure) | `wop_e6fa35c221a94189a71df317edd28ca6` |
+| Historical prior failed op (same bytes; earlier dense failure) | `wop_b6133d6d172c43058f9d81edd566a4f3` |
+| Historical successful Fireground SOURCE_ADD | `wop_861fc8bfcfc34dd1a20f3badcccd630b` |
+| Adjacent successful SOURCE_ADD (different bytes; same session) | `wop_11cdee8f125a45c394bd5ae1accdcd2b` |
+| Expected incident-class searchable-child scale (historical) | Workspace `child_chunk_count` **3113** on failed Fireground attempts; **3208** on successful Fireground publish (workspace desired-set including this member). Fresh empty-workspace B1 child count is measured, not predetermined. |
+| Document identity | `doc_01bea4d628ffea01aab164535c81392a8b42b9a587f9b6295f302a9938f2f0c2` |
+
+Pre-open readonly inventory reconciled external bytes to the vault
+`content_hash` / historical ops above. Local folder paths are intentionally
+omitted from this document.
+
+### 4.3 B0 verification rule
+
+Before B1 starts, B0 recomputes count + member SHA-256 table + aggregate hash
+from the available external set and compares to this frozen definition.
+
+- **Exact match** → B1 may proceed.
+- **Any mismatch** (missing/extra member, size/hash change, aggregate mismatch)
+  → B1 MUST NOT START. Do not silently substitute. Stop for a bounded campaign
+  amendment selecting an explicitly non-identical equivalent labeled e.g.
+  `B1-INCIDENT-CLASS-EQUIVALENT-V1 — NOT BYTE-IDENTICAL TO HISTORICAL INCIDENT`.
+
+## 5. Run matrix
+
+### B0 — Environment / pin capture
+
+Record repository SHA (execution pin), technical subject, configuration hashes,
+model/revision, device, dtype, batch size, attention backend when observable,
+GPU identity/VRAM, software/runtime versions relevant to CUDA/PyTorch, starting
+workspace/snapshot state for the **new** campaign workspace (not yet created at
+AUTH-open), and as-found scientific artifact-cache reuse inventory where
+observable.
+
+B0 may inspect an as-found running process for pins but **must not** make
+residency claims from that process. B0 records B1 manifest verification result.
+
+### Pre-B1 cold restart
+
+One intentional API/server restart immediately before B1 to establish a known
+cold process state. Confirm embedding model not yet loaded; record pre-B1
+GPU/PyTorch memory. This is measurement preparation, not remediation.
+
+### B1 — Cold-process / fresh-workspace replay
+
+- Label: cold-process / fresh-workspace replay of B1-FIREGROUND-INCIDENT-CLASS-V1
+- Workspace: newly created under this campaign AUTH; EMPTY; active sources = 0;
+  current snapshot = null; no prior scientific mutation history except creation
+- Operation: `SOURCE_ADD` of the exact Fireground member set
+- Process/model: cold by controlled restart
+- Scientific artifact cache: **as-found, not cleared**
+- Generated/reused work: measured, not predetermined
+
+### Idle residency window (15 minutes)
+
+Same uninterrupted API PID. Samples:
+
+- **T0:** immediately after B1 terminal state
+- **T+5m:** short-term idle sample
+- **T+15m:** end-of-idle sample
+
+At each sample record: external GPU used/free; `torch.cuda.memory_allocated()`;
+`torch.cuda.memory_reserved()`; `torch.cuda.mem_get_info()`; embedding model
+loaded/resident state if safely observable; API PID; wall-clock timestamp;
+whether intervening query/background work occurred if practical.
+
+Claim boundary: “Model/allocator residency persisted for at least 15 minutes of
+observed application idleness.” Not an eviction-policy recommendation.
+
+### B2 — B2-WARM-REUSE-REPLACE-V1
+
+- Same workspace as B1
+- Target: Fireground logical source created/published by B1
+- Operation: `SOURCE_REPLACE` with byte-identical replacement (same content
+  SHA-256 / document identity)
+- Expected scientific membership: unchanged
+- Expected lineage change: same `source_id`; source version increments;
+  workspace revision advances; new operation ID / idempotency key
+- Verify active desired set equals expected membership before and after B2
+- If B2 unexpectedly generates scientific work instead of reusing it, record
+  that as evidence; do not modify the run to force reuse
+
+### B3 — Residency / continuity analysis (not a third ingest)
+
+Analysis over B1 → idle → B2 only. Answers whether model/allocator state
+persisted through 15 minutes of idleness, what changed when the second
+operation began, and whether the second operation remained stable.
+
+### Process continuity contract
+
+- One intentional cold restart immediately before B1
+- Thereafter one uninterrupted API process through B1, idle, B2, and B3
+- No server restart, no `torch.cuda.empty_cache()`, no explicit unload, no
+  device migration, no batch/config changes
+- Record at minimum: API/server PID, process start timestamp, repository SHA /
+  execution pin, runtime config hash, GPU identity, CUDA/PyTorch versions
+- If the process dies, restarts, reloads under a new PID, or CUDA state is
+  otherwise reset between B1 and B3: residency sequence is **invalidated**.
+  Do not splice measurements across processes. Rerun from a fresh cold start
+  or stop for review if the interruption is material evidence.
+
+## 6. Required measurements
+
+Authoritative list: design §9.1 / Q11. Capture where obtainable without
+modifying product behavior:
+
+- searchable children and document counts
+- generated/reused embeddings
+- input-token p50/p95/p99/max
+- oversized-unsplittable count
+- per-batch max sequence length
+- encode duration
+- embedding-artifact persistence duration
+- dense point construction duration
+- Qdrant materialization/upsert duration
+- parse / chunk / dense / lexical / publication / finalization / total durations
+- device, dtype, batch size, attention backend
+- chunks/sec and reliable model-input tokens/sec
+- first-batch versus steady-state timing
+- CUDA memory observations (see §5 idle + before/during/after B1 and B2)
+
+Distinguish `torch` allocated / reserved / `mem_get_info` free from external
+GPU used/free. Do not falsely equate WSL/Windows GPU reporting with PyTorch
+allocator state.
+
+## 7. Reliability evidence (historical)
+
+The freeze artifact must include already-observed Fireground history as
+**historical** evidence (not campaign-generated):
+
+- prior `cublasGemmEx` / dense failure with truthful partial counters
+  (`wop_e6fa35…`: embeddings_generated=384, embeddings_reused=2528,
+  embeddings_failed=32, classification=`embedding_generation_failed`)
+- prior related failure `wop_b6133…` (same bytes; earlier observability gap)
+- subsequent successful source addition `wop_11cdee8f…` (adjacent)
+- subsequent successful Fireground source addition `wop_861fc8…`
+- persistent GPU residency remains an observation target for the live campaign
+
+The baseline may conclude the failure appears intermittent/runtime-state
+dependent if evidence supports that formulation. It must **not** claim the CUDA
+root cause is solved.
+
+## 8. Permitted repository changes
+
+Production source is forbidden.
+
+Permitted under this campaign:
+
+- `docs/slice16k_beta_ingestion_readiness_design.md`
+- `docs/slice16_implementation_plan.md`
+- `ROADMAP.md`
+- this campaign manifest
+- `docs/slice16k_baseline_evidence.md` (freeze narrative; later)
+- `docs/evidence/16k_baseline/*.json` (later)
+
+A small benchmark-only / non-product helper may be added only if required to
+reproducibly collect measurements that cannot reasonably be captured otherwise.
+If used, it must live outside production `src/`; not be imported by product
+code; not alter runtime configuration; not unload models or clear CUDA caches;
+not mutate scientific results; and be obviously measurement-only.
+
+If meaningful measurement requires modifying `src/offline_rag/**`, **STOP** and
+request scope expansion.
+
+## 9. Evidence artifact paths (post-run)
+
+```
+docs/evidence/16k_baseline/b0_pins.json
+docs/evidence/16k_baseline/b1_fireground_incident_class.json
+docs/evidence/16k_baseline/b2_warm_reuse_replace.json
+docs/evidence/16k_baseline/b3_residency.json
+docs/evidence/16k_baseline/historical_reliability.json
+docs/slice16k_baseline_evidence.md
+```
+
+JSON files are machine-readable factual records, not prose conclusions.
+
+## 10. Explicitly forbidden
+
+This authority does **not** authorize:
+
+- 16K-C implementation / expanded production capacity
+- 16K-D optimization (FP16, batch-size changes, attention changes, GPU model
+  eviction/unloading policy, `empty_cache` policy, CUDA fallback/retry changes)
+- Fireground corrective implementation
+- 16K-E UI changes
+- 16K-F full beta-corpus acceptance
+- 16K-G
+- production code changes
+- main promotion
+
+## 11. Acceptance boundary / STOP
+
+Campaign ends with frozen evidence candidate
+`S16-K-BASELINE-EVIDENCE-FREEZE-001` answering, without prescribing fixes:
+
+1. What is the current workload cost?
+2. Where is time spent?
+3. How much embedding work is generated versus reused?
+4. What does CUDA memory do before, during, and after sequential operations?
+5. Does the accepted model remain resident after ingestion?
+6. Is the current runtime stable across the bounded baseline sequence?
+7. What evidence constrains 16K-C capacity design?
+8. What evidence constrains 16K-D optimization/reliability design?
+9. What remains unknown?
+
+Then: **STOP FOR INDEPENDENT S16-K-BASELINE-EVIDENCE-FREEZE-001 REVIEW.**
+
+No 16K-C or 16K-D authority is implied by completing the runs.
