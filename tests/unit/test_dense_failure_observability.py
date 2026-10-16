@@ -142,6 +142,26 @@ class _FailingEmbedder(FakeEmbedder):
         return super().embed_documents(texts)
 
 
+class _LoadedFailingEmbedder(FakeEmbedder):
+    """Embedder that already exposes loaded-model dtype/attention facts."""
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.resolved_device = "cuda"
+        self.device = "cuda"
+        self.load_calls = 0
+
+    def _load(self) -> object:
+        self.load_calls += 1
+        raise AssertionError("telemetry must not call _load()")
+
+    def observe_execution_facts(self) -> dict[str, str | None]:
+        return {"dtype": "bfloat16", "attention_backend": "sdpa"}
+
+    def embed_documents(self, texts: Sequence[str]) -> list[list[float]]:
+        raise RuntimeError("synthetic loaded-model embed boom")
+
+
 class _BoomUpsertBackend:
     def __init__(self) -> None:
         self._counts: dict[str, int] = {}
@@ -341,6 +361,133 @@ def test_validation_failure_distinct_from_materialization(tmp_path: Path) -> Non
     assert report.status is IndexingStatus.FAILED
     assert report.failure_classification == DENSE_FAILURE_VALIDATION
     assert report.embeddings_generated >= 1
+
+
+def test_first_uncached_batch_failure_preserves_dense_execution_facts(
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path, batch_size=32)
+    docs = tmp_path / "docs"
+    _prepare(
+        settings,
+        docs,
+        [
+            "Exec fact alpha covers continuous pressure rating 15000 psi.\n",
+            "Exec fact beta covers orifice diameter 0.25 inch under load.\n",
+        ],
+    )
+    failing = _FailingEmbedder(
+        dimension=8, normalize=True, fail_on_call=1, configured_device="cuda"
+    )
+    failing.resolved_device = "cuda"
+    failing.device = "cuda"
+    report = run_indexing(settings=settings, corpus_name="eng", embedder=failing)
+    assert report.status is IndexingStatus.FAILED
+    execution = report.metadata.get("dense_execution")
+    assert isinstance(execution, dict)
+    assert execution["device"] == "cuda"
+    assert execution["batch_size"] == 32
+    assert execution["embedding_dimension"] == 8
+    # FakeEmbedder has no loaded model → dtype/attention stay null.
+    assert execution["dtype"] is None
+    assert execution["attention_backend"] is None
+
+
+def test_failure_after_model_load_preserves_dtype_attention_without_loading(
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path, batch_size=16)
+    docs = tmp_path / "docs"
+    _prepare(
+        settings,
+        docs,
+        ["Loaded-model failure covers temperature rating 175 deg C.\n"],
+    )
+    failing = _LoadedFailingEmbedder(dimension=8, normalize=True)
+    report = run_indexing(settings=settings, corpus_name="eng", embedder=failing)
+    assert report.status is IndexingStatus.FAILED
+    execution = report.metadata.get("dense_execution")
+    assert isinstance(execution, dict)
+    assert execution["device"] == "cuda"
+    assert execution["batch_size"] == 16
+    assert execution["embedding_dimension"] == 8
+    assert execution["dtype"] == "bfloat16"
+    assert execution["attention_backend"] == "sdpa"
+    assert failing.load_calls == 0
+
+
+def test_precondition_failure_before_embedder_omits_dense_execution(
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path, batch_size=32)
+    report = run_indexing(
+        settings=settings,
+        corpus_name="missing",
+        embedder=FakeEmbedder(dimension=8, normalize=True),
+    )
+    assert report.status is IndexingStatus.FAILED
+    assert "dense_execution" not in report.metadata
+
+
+def test_failed_report_projects_dense_execution_into_managed_metrics(
+    tmp_path: Path,
+) -> None:
+    from offline_rag.app.observability_publish import DurableObservabilityPublisher
+
+    store = MagicMock()
+    pub = DurableObservabilityPublisher(
+        operations=store,
+        workspace_id="ws_exec",
+        operation_id="wop_exec",
+    )
+    pub.freeze_admission(
+        documents=[
+            ManagedOperationWorklistDocument(
+                document_id="doc_a",
+                display_name="a.md",
+                phase=ManagedOperationDocumentPhase.INDEXING,
+            )
+        ],
+        requested_document_count=1,
+        uploaded_raw_bytes=10,
+        pre_active_source_count=0,
+        post_active_source_count=1,
+    )
+    now = datetime.now(tz=UTC)
+    failed = IndexingReport(
+        run_id="index_exec",
+        corpus_name="eng",
+        status=IndexingStatus.FAILED,
+        started_at=now,
+        completed_at=now,
+        duration_ms=10,
+        children_total=100,
+        embeddings_generated=0,
+        embeddings_reused=50,
+        embeddings_failed=32,
+        failure_classification=DENSE_FAILURE_EMBEDDING_GENERATION,
+        metadata={
+            "dense_execution": {
+                "device": "cuda",
+                "dtype": "bfloat16",
+                "batch_size": 32,
+                "attention_backend": "sdpa",
+                "embedding_dimension": 1024,
+            }
+        },
+        errors=["internal only"],
+    )
+    pub.after_stage_report("dense", failed)
+    snap = pub.snapshot_metrics()
+    assert snap.dense_execution is not None
+    assert snap.dense_execution.device == "cuda"
+    assert snap.dense_execution.batch_size == 32
+    assert snap.dense_execution.embedding_dimension == 1024
+    assert snap.dense_execution.dtype == "bfloat16"
+    assert snap.dense_execution.attention_backend == "sdpa"
+    assert (
+        pub._documents["doc_a"].phase is ManagedOperationDocumentPhase.INDEXING
+    )
 
 
 def test_failed_report_does_not_project_indexing_to_indexed(tmp_path: Path) -> None:

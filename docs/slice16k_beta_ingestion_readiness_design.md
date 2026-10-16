@@ -43,11 +43,14 @@
 **Exact lexical zero-term IR-001 acceptance-record tip:** `fbc8bb17a51f800aaa8bcc030c163427d8dc1821`
 **16K-B post-qualification dense-failure observability remediation authority:** `S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-AUTH-001` — AUTHORIZED
 **Exact dense-failure observability remediation parent:** `fbc8bb17a51f800aaa8bcc030c163427d8dc1821`
-**16K-B post-qualification dense-failure observability IR:** `S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-IR-001` — NOT YET ISSUED (STOP FOR INDEPENDENT REVIEW)
+**16K-B post-qualification dense-failure observability IR:** `S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-IR-001` — REWORK REQUIRED (R1)
+**16K-B dense-failure observability rework authority:** `S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-REWORK-AUTH-001` — AUTHORIZED
+**Exact dense-failure observability rework parent:** `6f61f18441c2348faa81a1852196b7d300a1c4da`
+**16K-B dense-failure observability rework IR:** `S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-IR-002` — NOT YET ISSUED (STOP FOR INDEPENDENT REVIEW)
 **16K-B branch:** `implementation/16k-b-ingestion-observability`
 **Status:** DESIGN ACCEPTED / FROZEN
 **16K-A:** IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED
-**16K-B:** IMPLEMENTATION COMPLETE / POST-QUAL REMEDIATIONS INDEPENDENTLY ACCEPTED / DENSE-FAILURE OBSERVABILITY REMEDIATION AWAITING IR / NOT YET HUMAN-ACCEPTED
+**16K-B:** IMPLEMENTATION COMPLETE / POST-QUAL REMEDIATIONS INDEPENDENTLY ACCEPTED / DENSE-FAILURE OBSERVABILITY REMEDIATION REWORK AWAITING IR / NOT YET HUMAN-ACCEPTED
 **16K-C → 16K-G:** NOT YET AUTHORIZED
 **Baseline evidence:** NOT YET AUTHORIZED / NOT ACCEPTED
 **Human technical acceptance (16K-B):** NOT YET ISSUED
@@ -89,8 +92,12 @@ live Fireground SOURCE_ADD dense failure exposed three observability defects
 false INDEXING→INDEXED projection). Remediation authority
 `S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-AUTH-001` is
 AUTHORIZED from parent `fbc8bb1…`. Independent review
-`S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-IR-001` is
-NOT YET ISSUED — STOP FOR INDEPENDENT REVIEW. Durable technical lineage:
+`S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-IR-001` —
+REWORK REQUIRED (R1: FAILED reports must preserve known dense-execution
+facts). Rework authority
+`S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-REWORK-AUTH-001`
+is AUTHORIZED from parent `6f61f18…`. Rework IR-002 is NOT YET ISSUED —
+STOP FOR INDEPENDENT REVIEW. Durable technical lineage:
 `91dba2e…` (IR-004 ACCEPT, historical) → `f4707b8…` (chunk-ID post-qual
 IR-001 ACCEPT) → `349de6a…` (lexical zero-term post-qual IR-001 ACCEPT) →
 `fbc8bb1…` (lexical IR-001 acceptance-record tip). IR-004 remains valid
@@ -716,7 +723,7 @@ Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
   Exact Human-accepted technical subject: 1370b99327124045ad96005e829095683842c06f
   HA-record IR: S16-K-A-MANAGED-INGESTION-CORRECTNESS-HA-RECORD-IR-001 — ACCEPT
 16K-B: IMPLEMENTATION COMPLETE / POST-QUAL REMEDIATIONS INDEPENDENTLY ACCEPTED /
-  DENSE-FAILURE OBSERVABILITY REMEDIATION AWAITING IR / NOT YET HUMAN-ACCEPTED
+  DENSE-FAILURE OBSERVABILITY REMEDIATION REWORK AWAITING IR / NOT YET HUMAN-ACCEPTED
   Implementation authority:
     S16-K-B-INGESTION-OBSERVABILITY-IMPLEMENTATION-AUTH-001 — AUTHORIZED
   Exact implementation base: 39e5e09363193b2315ada9e56cb3e1c14ba9377d
@@ -772,6 +779,16 @@ Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
     fbc8bb17a51f800aaa8bcc030c163427d8dc1821
   Post-qualification dense-failure observability IR:
     S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-IR-001
+    — REWORK REQUIRED (R1)
+  Exact dense-failure observability IR-001 subject:
+    6f61f18441c2348faa81a1852196b7d300a1c4da
+  Dense-failure observability rework authority:
+    S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-REWORK-AUTH-001
+    — AUTHORIZED
+  Exact dense-failure observability rework parent:
+    6f61f18441c2348faa81a1852196b7d300a1c4da
+  Dense-failure observability rework IR:
+    S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-IR-002
     — NOT YET ISSUED (STOP FOR INDEPENDENT REVIEW)
   Technical lineage (durable):
     91dba2e2885346ee595b920fd7dd02f671d2f7af
@@ -782,6 +799,8 @@ Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
       — post-qual lexical zero-term remediation IR-001 ACCEPT
     → fbc8bb17a51f800aaa8bcc030c163427d8dc1821
       — lexical zero-term IR-001 acceptance-record tip
+    → 6f61f18441c2348faa81a1852196b7d300a1c4da
+      — dense-failure observability IR-001 REWORK REQUIRED (R1)
   Human technical acceptance: NOT YET ISSUED
   Branch: implementation/16k-b-ingestion-observability
 16K-C → 16K-G: NOT YET AUTHORIZED

@@ -180,6 +180,16 @@ GAP-16G-02:
       fbc8bb17a51f800aaa8bcc030c163427d8dc1821
     Post-qualification dense-failure observability IR:
       S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-IR-001
+      — REWORK REQUIRED (R1)
+    Exact dense-failure observability IR-001 subject:
+      6f61f18441c2348faa81a1852196b7d300a1c4da
+    Dense-failure observability rework authority:
+      S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-REWORK-AUTH-001
+      — AUTHORIZED
+    Exact dense-failure observability rework parent:
+      6f61f18441c2348faa81a1852196b7d300a1c4da
+    Dense-failure observability rework IR:
+      S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-IR-002
       — NOT YET ISSUED (STOP FOR INDEPENDENT REVIEW)
     Technical lineage (durable):
       91dba2e2885346ee595b920fd7dd02f671d2f7af
@@ -190,6 +200,8 @@ GAP-16G-02:
         — post-qual lexical zero-term remediation IR-001 ACCEPT
       → fbc8bb17a51f800aaa8bcc030c163427d8dc1821
         — lexical zero-term IR-001 acceptance-record tip
+      → 6f61f18441c2348faa81a1852196b7d300a1c4da
+        — dense-failure observability IR-001 REWORK REQUIRED (R1)
     Human technical acceptance: NOT YET ISSUED
     Branch: implementation/16k-b-ingestion-observability
   16K-C → 16K-G: NOT YET AUTHORIZED
@@ -502,6 +514,16 @@ Slice-16 closeout inventory: HUMAN ACCEPTED
       fbc8bb17a51f800aaa8bcc030c163427d8dc1821
     Post-qualification dense-failure observability IR:
       S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-IR-001
+      — REWORK REQUIRED (R1)
+    Exact dense-failure observability IR-001 subject:
+      6f61f18441c2348faa81a1852196b7d300a1c4da
+    Dense-failure observability rework authority:
+      S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-REWORK-AUTH-001
+      — AUTHORIZED
+    Exact dense-failure observability rework parent:
+      6f61f18441c2348faa81a1852196b7d300a1c4da
+    Dense-failure observability rework IR:
+      S16-K-B-POST-QUAL-DENSE-FAILURE-OBSERVABILITY-REMEDIATION-IR-002
       — NOT YET ISSUED (STOP FOR INDEPENDENT REVIEW)
     Technical lineage (durable):
       91dba2e2885346ee595b920fd7dd02f671d2f7af
@@ -512,6 +534,8 @@ Slice-16 closeout inventory: HUMAN ACCEPTED
         — post-qual lexical zero-term remediation IR-001 ACCEPT
       → fbc8bb17a51f800aaa8bcc030c163427d8dc1821
         — lexical zero-term IR-001 acceptance-record tip
+      → 6f61f18441c2348faa81a1852196b7d300a1c4da
+        — dense-failure observability IR-001 REWORK REQUIRED (R1)
     Human technical acceptance: NOT YET ISSUED
     Branch: implementation/16k-b-ingestion-observability
   16K-C → 16K-G: NOT YET AUTHORIZED

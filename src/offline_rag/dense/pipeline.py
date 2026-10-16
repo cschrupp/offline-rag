@@ -96,6 +96,36 @@ class IndexingError(RuntimeError):
     pass
 
 
+def _dense_execution_metadata(
+    embedder: Embedder,
+    *,
+    batch_size: int,
+) -> dict[str, Any]:
+    """Non-perturbing dense execution facts for SUCCESS and FAILED reports.
+
+    Captures resolved device, configured batch size, and embedding dimension
+    whenever an embedder exists. dtype/attention come only from the existing
+    non-loading observer (null when the model is not already loaded).
+    """
+    from offline_rag.dense.embedder import observe_embedder_execution_facts
+
+    dense_device = getattr(
+        embedder, "resolved_device", getattr(embedder, "device", None)
+    )
+    observed = observe_embedder_execution_facts(embedder)
+    dense_dtype = observed.get("dtype")
+    dense_attention = observed.get("attention_backend")
+    return {
+        "device": str(dense_device) if dense_device is not None else None,
+        "dtype": str(dense_dtype) if dense_dtype is not None else None,
+        "batch_size": int(batch_size),
+        "attention_backend": (
+            str(dense_attention) if dense_attention is not None else None
+        ),
+        "embedding_dimension": int(embedder.dimension),
+    }
+
+
 def _failed_report(
     *,
     run_id: str,
@@ -479,6 +509,7 @@ def run_indexing(
     embeddings_reused = 0
     embeddings_failed = 0
     report_metadata: dict[str, Any] = {}
+    active_embedder: Embedder | None = None
 
     try:
         corpus_path = corpus_state_path(settings.paths.corpora, name)
@@ -675,6 +706,12 @@ def run_indexing(
             )
 
         active_embedder = embedder or make_embedder(settings)
+        # Capture non-perturbing execution facts as soon as the embedder exists
+        # so FAILED reports retain device/batch/dimension (and loaded dtype).
+        report_metadata["dense_execution"] = _dense_execution_metadata(
+            active_embedder,
+            batch_size=settings.indexing.embedding.batch_size,
+        )
         text_builder = make_embedding_text_builder(settings)
         if embedder is None and active_embedder.dimension != settings.indexing.embedding.dimension:
             raise DenseStageError(
@@ -819,14 +856,10 @@ def run_indexing(
             )
 
         completed = datetime.now(tz=UTC)
-        from offline_rag.dense.embedder import observe_embedder_execution_facts
-
-        dense_device = getattr(
-            active_embedder, "resolved_device", getattr(active_embedder, "device", None)
+        dense_execution = _dense_execution_metadata(
+            active_embedder,
+            batch_size=settings.indexing.embedding.batch_size,
         )
-        observed = observe_embedder_execution_facts(active_embedder)
-        dense_dtype = observed.get("dtype")
-        dense_attention = observed.get("attention_backend")
         manifest = DenseIndexManifest(
             index_id=index_id,
             corpus_id=corpus_state.current_corpus_id,
@@ -890,15 +923,7 @@ def run_indexing(
             metadata={
                 "dense_generation_ms": dense_generation_ms,
                 "dense_materialization_ms": dense_materialization_ms,
-                "dense_execution": {
-                    "device": str(dense_device) if dense_device is not None else None,
-                    "dtype": str(dense_dtype) if dense_dtype is not None else None,
-                    "batch_size": int(settings.indexing.embedding.batch_size),
-                    "attention_backend": (
-                        str(dense_attention) if dense_attention is not None else None
-                    ),
-                    "embedding_dimension": int(active_embedder.dimension),
-                },
+                "dense_execution": dense_execution,
             },
         )
     except AppError:
@@ -913,6 +938,13 @@ def run_indexing(
             embeddings_failed = exc.embeddings_failed
         elif isinstance(exc, EmbedderError):
             classification = DENSE_FAILURE_EMBEDDING_GENERATION
+        # Refresh after a possible mid-run model load so dtype/attention, when
+        # already safely observable, survive on the FAILED report.
+        if active_embedder is not None:
+            report_metadata["dense_execution"] = _dense_execution_metadata(
+                active_embedder,
+                batch_size=settings.indexing.embedding.batch_size,
+            )
         log_dense_failure(
             run_id=run_id,
             corpus_name=name,
