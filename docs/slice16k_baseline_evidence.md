@@ -14,9 +14,15 @@
 **Regression:** workspace query/conversation HTTP 500 after retrieval-model initialization  
 **Diagnostic authority:** `S16-K-POST-BASELINE-LIVE-QUERY-REGRESSION-DIAGNOSTIC-AUTH-001` — AUTHORIZED  
 **Exact diagnostic parent:** `3abc3a6c0ef31cc255ea6de8796203d26700ec23`  
+**Observability remediation authority:** `S16-K-POST-BASELINE-GROUNDED-QUERY-FAILURE-OBSERVABILITY-REMEDIATION-AUTH-001` — AUTHORIZED  
+**Exact remediation parent:** `b65d1beda2ef8e19e59acebe498043b4188712c5`  
+**Remediation branch:** `implementation/16k-query-failure-observability`  
+**Remediation status:** AUTHORIZED / AUTH-OPEN  
+**Remediation scope:** durable `internal_failure` classification + server traceback log for grounded-query `internal_error`; public D08 / GET `/v1/trace/{id}` remain sanitized; no VRAM/device/CUDA behavioral fix  
 **Note:** Accepted B0–B3 evidence remains valid and is not rewritten. Downstream
 16K-C/D and Human acceptance of baseline evidence remain blocked while the live
-query regression is under diagnosis.  
+query regression is under diagnosis. The observability remediation does not
+release that hold and does not authorize constrained-VRAM reproduction.  
 
 Campaign contract:
 [`docs/slice16k_baseline_evidence_campaign.md`](slice16k_baseline_evidence_campaign.md)
@@ -245,9 +251,12 @@ any residency/eviction policy using dedicated optimization authority.
 - **Historical IR:** `S16-K-BASELINE-EVIDENCE-FREEZE-IR-001` — REWORK REQUIRED
   (R1–R4) — preserved as provenance against prior tip `0d169ae6…`
 - **Human disposition:** HELD — LIVE PRODUCT REGRESSION UNDER DIAGNOSIS
+- **Observability remediation:** `S16-K-POST-BASELINE-GROUNDED-QUERY-FAILURE-OBSERVABILITY-REMEDIATION-AUTH-001` — AUTHORIZED / AUTH-OPEN at parent `b65d1be…`
 - **16K-C / 16K-D / 16K-E→G:** NOT AUTHORIZED
 - **Fireground CUDA/cublasGemmEx:** OPEN / SEPARATE / NOT FIXED
 - **Main promotion:** NOT AUTHORIZED
 
 Accepted B0–B3 evidence remains valid. Human acceptance / downstream progression
-is held by the newly observed live query regression diagnostic.
+is held by the newly observed live query regression diagnostic. The next
+authorized product mutation closes only the grounded-query `internal_error`
+observability gap.

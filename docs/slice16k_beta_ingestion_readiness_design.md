@@ -82,6 +82,11 @@
 **Exact diagnostic parent:** `3abc3a6c0ef31cc255ea6de8796203d26700ec23`
 **16K baseline branch (accepted evidence tip):** `evidence/16k-baseline` @ `3abc3a6c…`
 **Diagnostic branch:** `diagnostic/16k-live-query-regression`
+**Observability remediation authority:** `S16-K-POST-BASELINE-GROUNDED-QUERY-FAILURE-OBSERVABILITY-REMEDIATION-AUTH-001` — AUTHORIZED
+**Exact remediation parent:** `b65d1beda2ef8e19e59acebe498043b4188712c5`
+**Remediation branch:** `implementation/16k-query-failure-observability`
+**Remediation status:** AUTHORIZED / AUTH-OPEN
+**Remediation scope:** durable `internal_failure` classification + server traceback log for grounded-query `internal_error`; public D08 / GET `/v1/trace/{id}` remain sanitized; no VRAM/device/CUDA behavioral fix
 **16K baseline manifest:** `docs/slice16k_baseline_evidence_campaign.md`
 **16K baseline freeze narrative:** `docs/slice16k_baseline_evidence.md`
 **Accepted B0–B3 evidence:** retained / not rewritten
@@ -918,7 +923,18 @@ Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
     — AUTHORIZED
   Exact diagnostic parent:
     3abc3a6c0ef31cc255ea6de8796203d26700ec23
-  Branch: diagnostic/16k-live-query-regression
+  Diagnostic branch: diagnostic/16k-live-query-regression
+  Observability remediation authority:
+    S16-K-POST-BASELINE-GROUNDED-QUERY-FAILURE-OBSERVABILITY-REMEDIATION-AUTH-001
+    — AUTHORIZED
+  Exact remediation parent:
+    b65d1beda2ef8e19e59acebe498043b4188712c5
+  Remediation branch: implementation/16k-query-failure-observability
+  Remediation status: AUTHORIZED / AUTH-OPEN
+  Remediation scope:
+    durable internal_failure + server traceback for grounded-query
+    internal_error; public D08 / GET /v1/trace/{id} sanitized;
+    no VRAM/device/CUDA behavioral fix
   Manifest: docs/slice16k_baseline_evidence_campaign.md
   Freeze narrative: docs/slice16k_baseline_evidence.md
   Evidence: docs/evidence/16k_baseline/
