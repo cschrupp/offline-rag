@@ -279,9 +279,21 @@ GAP-16G-02:
     Exact AUTH-open pin:
       0894a54bf5c8c8a06c0ec4821ebf3d804a92fc15
     Remediation branch: implementation/16k-query-failure-observability
-    Remediation status: COMPLETE / READY FOR INDEPENDENT REVIEW
-    Exact remediation review subject:
+    Independent review:
+      S16-K-POST-BASELINE-GROUNDED-QUERY-FAILURE-OBSERVABILITY-REMEDIATION-IR-001
+      — REWORK REQUIRED (R1–R4)
+    Exact IR-001 subject:
       9a8d30333bdc9fad800411b861bb05d2a038ea35
+    Exact IR-001 handoff tip:
+      0ac6cd298e02f69133559aa682ac796ba90abfc8
+    Rework authority:
+      S16-K-POST-BASELINE-GROUNDED-QUERY-FAILURE-OBSERVABILITY-REMEDIATION-REWORK-AUTH-001
+      — AUTHORIZED
+    Exact rework parent:
+      0ac6cd298e02f69133559aa682ac796ba90abfc8
+    Rework status: AUTHORIZED / AUTH-OPEN
+    Rework scope:
+      close IR-001 R1–R4 only; no VRAM/device/CUDA behavioral fix
     Remediation scope:
       durable internal_failure + server traceback for grounded-query
       internal_error; public D08 / GET /v1/trace/{id} sanitized;
@@ -706,9 +718,21 @@ Slice-16 closeout inventory: HUMAN ACCEPTED
     Exact AUTH-open pin:
       0894a54bf5c8c8a06c0ec4821ebf3d804a92fc15
     Remediation branch: implementation/16k-query-failure-observability
-    Remediation status: COMPLETE / READY FOR INDEPENDENT REVIEW
-    Exact remediation review subject:
+    Independent review:
+      S16-K-POST-BASELINE-GROUNDED-QUERY-FAILURE-OBSERVABILITY-REMEDIATION-IR-001
+      — REWORK REQUIRED (R1–R4)
+    Exact IR-001 subject:
       9a8d30333bdc9fad800411b861bb05d2a038ea35
+    Exact IR-001 handoff tip:
+      0ac6cd298e02f69133559aa682ac796ba90abfc8
+    Rework authority:
+      S16-K-POST-BASELINE-GROUNDED-QUERY-FAILURE-OBSERVABILITY-REMEDIATION-REWORK-AUTH-001
+      — AUTHORIZED
+    Exact rework parent:
+      0ac6cd298e02f69133559aa682ac796ba90abfc8
+    Rework status: AUTHORIZED / AUTH-OPEN
+    Rework scope:
+      close IR-001 R1–R4 only; no VRAM/device/CUDA behavioral fix
     Remediation scope:
       durable internal_failure + server traceback for grounded-query
       internal_error; public D08 / GET /v1/trace/{id} sanitized;
