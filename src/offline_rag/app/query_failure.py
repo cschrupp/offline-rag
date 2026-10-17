@@ -39,12 +39,13 @@ _STAGE_BY_TYPE: dict[type[BaseException], tuple[ProductTraceFailureStage, Produc
     GroundedGenerationError: ("generation", "generation_failure"),
     OpenAICompatibleGeneratorError: ("generation", "generation_failure"),
 }
-# Message markers inspected only in-process; never persisted as free text.
+# CUDA-specific message markers only (never bare host-memory phrases).
+# Inspected in-process; never persisted as free text.
 _CUDA_MESSAGE_MARKERS: tuple[tuple[ProductTraceCudaFailureClass, tuple[str, ...]], ...] = (
-    ("out_of_memory", ("out of memory", "cuda out of memory", "cuda oom")),
+    ("out_of_memory", ("cuda out of memory", "cuda oom")),
     ("cublas", ("cublasgemmex", "cublas")),
-    ("allocation", ("failed to allocate", "cuda malloc", "allocation failed")),
-    ("execution", ("device-side assert", "cuda error", "cuda runtime error")),
+    ("allocation", ("cuda malloc", "cuda error: out of memory")),
+    ("execution", ("device-side assert", "cuda runtime error", "cuda error")),
 )
 
 
@@ -83,14 +84,21 @@ def _iter_exception_chain(exc: BaseException) -> list[BaseException]:
 def _cuda_failure_from_exception(
     exc: BaseException,
 ) -> ProductTraceCudaFailureClass | None:
+    """Return a CUDA class only when CUDA-specific evidence is present."""
     type_name = type(exc).__name__
     module = (getattr(type(exc), "__module__", "") or "").lower()
-    if type_name == "OutOfMemoryError" or "outofmemory" in type_name.lower():
-        return "out_of_memory"
-    if "cuda" in module and type_name.endswith("Error"):
-        return "unknown_cuda"
+    # torch.cuda.OutOfMemoryError (and similar) live under a cuda module path.
+    if "cuda" in module:
+        if "outofmemory" in type_name.lower() or type_name == "OutOfMemoryError":
+            return "out_of_memory"
+        if type_name.endswith("Error") or type_name.endswith("Exception"):
+            return "unknown_cuda"
 
-    # Inspect message only to produce a bounded enum — never persist the text.
+    # Bare MemoryError / host OOM is not CUDA evidence.
+    if isinstance(exc, MemoryError):
+        return None
+
+    # Inspect message only for CUDA-/cuBLAS-specific markers — never persist text.
     try:
         message = str(exc).lower()
     except Exception:  # noqa: BLE001 - classification must not raise
@@ -99,8 +107,6 @@ def _cuda_failure_from_exception(
         for marker in markers:
             if marker in message:
                 return failure_class
-    if "cuda" in message:
-        return "unknown_cuda"
     return None
 
 

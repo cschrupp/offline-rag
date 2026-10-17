@@ -126,7 +126,14 @@ class HybridRerankContextAssembler:
         expand_t0 = time.perf_counter()
         store = self._structure(name)
         expander = ContextExpander(store=store, counter=counter, context=ctx)
-        expanded = expander.expand(list(upstream.candidates))
+        # Context-expansion boundary: preserve context_assembly stage for raw
+        # expander faults while keeping the original exception as cause.
+        try:
+            expanded = expander.expand(list(upstream.candidates))
+        except HybridRerankContextError:
+            raise
+        except Exception as exc:
+            raise HybridRerankContextError("context expansion failed") from exc
         if document_ids is not None:
             for unit in expanded.evidence_units:
                 if str(unit.document_id) not in document_ids:

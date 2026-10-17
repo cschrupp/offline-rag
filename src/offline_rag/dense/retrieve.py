@@ -135,13 +135,20 @@ class DenseRetriever:
         if self._backend is None:
             self._backend = QdrantLocalBackend(self.settings.paths.qdrant_storage)
 
-        query_vector = embedder.embed_query(query.strip())
-        hits = self._backend.search(
-            resolved_collection_name,
-            query_vector=query_vector,
-            top_k=k,
-            document_ids=document_ids,
-        )
+        # Live dense execution boundary: preserve DenseRetrievalError stage for
+        # raw embedder/backend faults while keeping original exception as cause.
+        try:
+            query_vector = embedder.embed_query(query.strip())
+            hits = self._backend.search(
+                resolved_collection_name,
+                query_vector=query_vector,
+                top_k=k,
+                document_ids=document_ids,
+            )
+        except DenseRetrievalError:
+            raise
+        except Exception as exc:
+            raise DenseRetrievalError("dense query execution failed") from exc
         hits = sorted(
             hits,
             key=lambda hit: (-hit.score, str(hit.payload.get("chunk_id") or "")),

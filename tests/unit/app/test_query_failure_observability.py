@@ -60,10 +60,13 @@ def test_classify_nested_rerank_chain_preserves_inner_stage() -> None:
 
 
 def test_classify_dense_cuda_oom_is_orthogonal() -> None:
-    class OutOfMemoryError(RuntimeError):
-        """Synthetic stand-in for torch.cuda.OutOfMemoryError."""
-
-    oom = OutOfMemoryError("CUDA out of memory")
+    # Synthetic torch.cuda.OutOfMemoryError (module path is CUDA-specific evidence).
+    oom_cls = type(
+        "OutOfMemoryError",
+        (RuntimeError,),
+        {"__module__": "torch.cuda"},
+    )
+    oom = oom_cls("CUDA out of memory")
     dense = DenseRetrievalError("embedding failed")
     dense.__cause__ = oom
     classified = classify_grounded_query_failure(dense, stage_breadcrumb="execution")
@@ -72,6 +75,25 @@ def test_classify_dense_cuda_oom_is_orthogonal() -> None:
     assert classified.cuda_related is True
     assert classified.cuda_failure_class == "out_of_memory"
     assert "CUDA out of memory" not in classified.model_dump_json()
+
+
+def test_classify_host_memory_error_is_not_cuda() -> None:
+    classified = classify_grounded_query_failure(
+        MemoryError("out of memory"),
+        stage_breadcrumb="execution",
+    )
+    assert classified.cuda_related is False
+    assert classified.cuda_failure_class is None
+    assert classified.failure_class == "unexpected_internal_failure"
+
+
+def test_classify_generic_allocation_phrase_is_not_cuda() -> None:
+    classified = classify_grounded_query_failure(
+        RuntimeError("failed to allocate"),
+        stage_breadcrumb="execution",
+    )
+    assert classified.cuda_related is False
+    assert classified.cuda_failure_class is None
 
 
 def test_classify_cublas_marker_without_stage_maps_cuda_runtime_failure() -> None:

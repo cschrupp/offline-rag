@@ -9,7 +9,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from offline_rag.app.errors import AppError, ErrorCode
 from offline_rag.config.models import AppSettings
@@ -161,6 +161,17 @@ class ProductTraceInternalFailure(BaseModel):
                 cleaned.append(item)
         return cleaned
 
+    @model_validator(mode="after")
+    def _cuda_related_matches_failure_class(self) -> ProductTraceInternalFailure:
+        if self.cuda_related:
+            if self.cuda_failure_class is None:
+                raise ValueError(
+                    "cuda_related true requires non-null cuda_failure_class"
+                )
+        elif self.cuda_failure_class is not None:
+            raise ValueError("cuda_related false requires cuda_failure_class is None")
+        return self
+
 
 class ProductQueryTrace(BaseModel):
     """Durable product-query audit record (D11).
@@ -199,6 +210,15 @@ class ProductQueryTrace(BaseModel):
         has_error = self.error_code is not None
         if has_status == has_error:
             raise ValueError("trace must have exactly one of status or error_code")
+        # Historical internal_error traces may omit internal_failure (None).
+        # When present, the object is only valid on the internal_error path.
+        if self.internal_failure is not None:
+            if self.status is not None:
+                raise ValueError("internal_failure requires status is None")
+            if self.error_code != "internal_error":
+                raise ValueError(
+                    "internal_failure requires error_code == 'internal_error'"
+                )
 
 
 class ProductTraceStore:
