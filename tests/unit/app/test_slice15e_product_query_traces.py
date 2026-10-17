@@ -448,13 +448,14 @@ def _patch_execute(
 
     def _fake(
         handle: SnapshotQueryRuntimeHandle,
-        question: str,
         *,
+        retrieval_question: str,
+        answer_intent: str,
         control: object | None = None,
         document_ids: object | None = None,
     ) -> GroundedAnswerResult:
-        del control, document_ids
-        captured["question"] = question
+        del control, document_ids, answer_intent
+        captured["question"] = retrieval_question
         captured["binding"] = handle.binding
         captured["handle"] = handle
         if isinstance(result, Exception):
@@ -712,12 +713,13 @@ def test_snapshot_pin_mid_flight_and_resolve_once(
 
     def product_execute(
         handle: SnapshotQueryRuntimeHandle,
-        question: str,
         *,
+        retrieval_question: str,
+        answer_intent: str,
         control: object | None = None,
         document_ids: object | None = None,
     ) -> GroundedAnswerResult:
-        del control, document_ids
+        del control, document_ids, answer_intent
         binding = handle.binding
         product_seen["dense_index_id"] = binding.dense_index_id
         product_seen["lexical_index_id"] = binding.lexical_index_id
@@ -745,7 +747,7 @@ def test_snapshot_pin_mid_flight_and_resolve_once(
             dense_index_id=binding.dense_index_id,
             lexical_index_id=binding.lexical_index_id,
             context_config_hash=binding.context_config_hash,
-            query=question,
+            query=retrieval_question,
         )
 
     monkeypatch.setattr(
@@ -1291,12 +1293,13 @@ def test_health_responsive_during_blocking_query(
 
     def blocking_execute(
         handle: SnapshotQueryRuntimeHandle,
-        question: str,
         *,
+        retrieval_question: str,
+        answer_intent: str,
         control: object | None = None,
         document_ids: object | None = None,
     ) -> GroundedAnswerResult:
-        del control, document_ids
+        del control, document_ids, answer_intent
         entered.set()
         assert block.wait(timeout=10)
         return _canned(
@@ -1304,7 +1307,7 @@ def test_health_responsive_during_blocking_query(
             dense_index_id=identity.dense_index_id,
             lexical_index_id=identity.lexical_index_id,
             context_config_hash=identity.context_config_hash,
-            query=question,
+            query=retrieval_question,
         )
 
     monkeypatch.setattr(
@@ -1411,19 +1414,20 @@ def test_same_snapshot_query_runtime_cache_reuse(
 
     def capture(
         handle: SnapshotQueryRuntimeHandle,
-        question: str,
         *,
+        retrieval_question: str,
+        answer_intent: str,
         control: object | None = None,
         document_ids: object | None = None,
     ) -> GroundedAnswerResult:
-        del control, document_ids
+        del control, document_ids, answer_intent
         lexical_ids.append(id(handle.lexical))
         return _canned(
             citations=[_citation()],
             dense_index_id=identity.dense_index_id,
             lexical_index_id=identity.lexical_index_id,
             context_config_hash=identity.context_config_hash,
-            query=question,
+            query=retrieval_question,
         )
 
     monkeypatch.setattr("offline_rag.app.query._execute_snapshot_query", capture)
@@ -1457,13 +1461,14 @@ def test_cache_n_to_n1_keeps_inflight_n_and_binds_new_entry(
 
     def execute(
         handle: SnapshotQueryRuntimeHandle,
-        question: str,
         *,
+        retrieval_question: str,
+        answer_intent: str,
         control: object | None = None,
         document_ids: object | None = None,
     ) -> GroundedAnswerResult:
-        del control, document_ids
-        if question == "inflight-n":
+        del control, document_ids, answer_intent
+        if retrieval_question == "inflight-n":
             seen["n_lexical"] = handle.lexical
             seen["n_snapshot"] = handle.binding.snapshot_id
             entered.set()
@@ -1474,7 +1479,7 @@ def test_cache_n_to_n1_keeps_inflight_n_and_binds_new_entry(
                 dense_index_id=handle.binding.dense_index_id,
                 lexical_index_id=handle.binding.lexical_index_id,
                 context_config_hash=handle.binding.context_config_hash,
-                query=question,
+                query=retrieval_question,
             )
         seen["n1_lexical"] = handle.lexical
         seen["n1_snapshot"] = handle.binding.snapshot_id
@@ -1483,7 +1488,7 @@ def test_cache_n_to_n1_keeps_inflight_n_and_binds_new_entry(
             dense_index_id=handle.binding.dense_index_id,
             lexical_index_id=handle.binding.lexical_index_id,
             context_config_hash=handle.binding.context_config_hash,
-            query=question,
+            query=retrieval_question,
         )
 
     monkeypatch.setattr("offline_rag.app.query._execute_snapshot_query", execute)
@@ -1551,12 +1556,13 @@ def test_query_runtime_cache_closes_owned_resources_on_shutdown(
 
     def execute(
         handle: SnapshotQueryRuntimeHandle,
-        question: str,
         *,
+        retrieval_question: str,
+        answer_intent: str,
         control: object | None = None,
         document_ids: object | None = None,
     ) -> GroundedAnswerResult:
-        del control, document_ids
+        del control, document_ids, answer_intent
         lexical = handle.lexical
         orig_close = lexical.close
 
@@ -1570,7 +1576,7 @@ def test_query_runtime_cache_closes_owned_resources_on_shutdown(
             dense_index_id=identity.dense_index_id,
             lexical_index_id=identity.lexical_index_id,
             context_config_hash=identity.context_config_hash,
-            query=question,
+            query=retrieval_question,
         )
 
     monkeypatch.setattr("offline_rag.app.query._execute_snapshot_query", execute)

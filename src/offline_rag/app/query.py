@@ -14,6 +14,12 @@ from offline_rag.app.query_binding import (
     SnapshotQueryBinding,
     build_snapshot_query_binding,
 )
+from offline_rag.app.query_failure import (
+    StageBreadcrumb,
+    classify_grounded_query_failure,
+    log_grounded_query_failure,
+    log_trace_persistence_failure,
+)
 from offline_rag.app.query_runtime import SnapshotQueryRuntimeHandle
 from offline_rag.app.runtime import ApplicationRuntime
 from offline_rag.app.snapshot import PRODUCT_MODE_GROUNDED_V1, CorpusReadSnapshot
@@ -21,6 +27,7 @@ from offline_rag.app.traces import (
     ProductQueryTrace,
     ProductTraceExecutionSummary,
     ProductTraceIdentitySummary,
+    ProductTraceInternalFailure,
     ProductTraceRequestSummary,
     ProductTraceSourceScope,
     ProductTraceStore,
@@ -344,13 +351,28 @@ def _identity_summary(
     )
 
 
-def _commit_terminal_trace(store: ProductTraceStore, record: ProductQueryTrace) -> None:
+def _commit_terminal_trace(
+    store: ProductTraceStore,
+    record: ProductQueryTrace,
+    *,
+    stage_breadcrumb: StageBreadcrumb,
+) -> None:
     """Persist terminal trace. Failure → internal_error without dangling trace_id."""
     try:
         store.commit(record)
-    except AppError:
-        raise AppError(ErrorCode.INTERNAL_ERROR)
+    except AppError as exc:
+        log_trace_persistence_failure(
+            trace_id=record.trace_id,
+            exc=exc,
+            stage_breadcrumb=stage_breadcrumb,
+        )
+        raise AppError(ErrorCode.INTERNAL_ERROR) from exc
     except Exception as exc:
+        log_trace_persistence_failure(
+            trace_id=record.trace_id,
+            exc=exc,
+            stage_breadcrumb=stage_breadcrumb,
+        )
         raise AppError(ErrorCode.INTERNAL_ERROR) from exc
 
 
@@ -419,6 +441,8 @@ def run_bound_snapshot_query(
 
         result: GroundedAnswerResult | None = None
         mapped_error: AppError | None = None
+        caught_fault: BaseException | None = None
+        stage_breadcrumb: StageBreadcrumb = "execution"
         try:
             if control is not None:
                 control.checkpoint("pre_execute")
@@ -431,6 +455,7 @@ def run_bound_snapshot_query(
             )
             if control is not None:
                 control.checkpoint("post_execute")
+            stage_breadcrumb = "projection"
             if control is not None:
                 control.checkpoint("pre_project")
             status, answer, citations, answer_blocks, abstention_reason = _project_success(
@@ -440,6 +465,7 @@ def run_bound_snapshot_query(
                 document_ids=document_ids,
             )
         except AppError as exc:
+            caught_fault = exc
             mapped_error = exc
             status = None
             answer = None
@@ -447,6 +473,7 @@ def run_bound_snapshot_query(
             answer_blocks = []
             abstention_reason = None
         except GroundedAnswerError as exc:
+            caught_fault = exc
             mapped_error = AppError(
                 ErrorCode.INTERNAL_ERROR,
                 details=SafeErrorDetails(reason="orchestration_fault"),
@@ -458,6 +485,7 @@ def run_bound_snapshot_query(
             answer_blocks = []
             abstention_reason = None
         except Exception as exc:  # noqa: BLE001 - map unexpected defects to D08
+            caught_fault = exc
             mapped_error = AppError(ErrorCode.INTERNAL_ERROR)
             mapped_error.__cause__ = exc
             status = None
@@ -467,6 +495,17 @@ def run_bound_snapshot_query(
             abstention_reason = None
 
         if mapped_error is not None:
+            internal_failure: ProductTraceInternalFailure | None = None
+            if mapped_error.code == ErrorCode.INTERNAL_ERROR and caught_fault is not None:
+                internal_failure = classify_grounded_query_failure(
+                    caught_fault,
+                    stage_breadcrumb=stage_breadcrumb,
+                )
+                log_grounded_query_failure(
+                    trace_id=trace_id,
+                    classification=internal_failure,
+                    exc=caught_fault,
+                )
             record = ProductQueryTrace(
                 trace_id=trace_id,
                 created_at=created_at,
@@ -478,8 +517,11 @@ def run_bound_snapshot_query(
                 status=None,
                 error_code=str(mapped_error.code),
                 execution=_execution_summary(result),
+                internal_failure=internal_failure,
             )
-            _commit_terminal_trace(store, record)
+            _commit_terminal_trace(
+                store, record, stage_breadcrumb=stage_breadcrumb
+            )
             raise AppError(
                 mapped_error.code,
                 message=mapped_error.message,
@@ -498,8 +540,9 @@ def run_bound_snapshot_query(
             status=status,
             error_code=None,
             execution=_execution_summary(result),
+            internal_failure=None,
         )
-        _commit_terminal_trace(store, record)
+        _commit_terminal_trace(store, record, stage_breadcrumb=stage_breadcrumb)
         return BoundSnapshotQueryOutcome(
             snapshot=snapshot,
             binding=binding,

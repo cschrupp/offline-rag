@@ -22,6 +22,52 @@ MAX_TRACE_AGE = timedelta(days=7)
 
 TerminalStatus = Literal["answered", "insufficient_evidence", "model_abstain"]
 
+ProductTraceFailureStage = Literal[
+    "dense_query",
+    "hybrid_retrieval",
+    "rerank",
+    "context_assembly",
+    "generation",
+    "projection",
+    "trace_persistence",
+    "unknown",
+]
+
+ProductTraceFailureClass = Literal[
+    "dense_query_failure",
+    "hybrid_retrieval_failure",
+    "reranker_failure",
+    "context_assembly_failure",
+    "generation_failure",
+    "projection_failure",
+    "trace_persistence_failure",
+    "cuda_runtime_failure",
+    "unexpected_internal_failure",
+]
+
+ProductTraceCudaFailureClass = Literal[
+    "out_of_memory",
+    "cublas",
+    "allocation",
+    "execution",
+    "unknown_cuda",
+]
+
+# Explicit GET /v1/trace/{id} allowlist — never include internal_failure.
+_PUBLIC_TRACE_KEYS: tuple[str, ...] = (
+    "schema_version",
+    "trace_id",
+    "created_at",
+    "corpus",
+    "snapshot_id",
+    "product_mode_id",
+    "request",
+    "identity",
+    "status",
+    "error_code",
+    "execution",
+)
+
 
 def allocate_trace_id() -> str:
     """Opaque execution identity — not a scientific identity."""
@@ -79,8 +125,50 @@ class ProductTraceExecutionSummary(BaseModel):
     total_latency_ms: int | None = None
 
 
+_EXCEPTION_TYPE_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,127}$")
+
+
+class ProductTraceInternalFailure(BaseModel):
+    """Bounded durable classification for grounded-query internal_error.
+
+    Internal-only: omitted from GET /v1/trace/{id} public projection.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    stage: ProductTraceFailureStage
+    failure_class: ProductTraceFailureClass
+    exception_type: str = Field(min_length=1, max_length=128)
+    causal_exception_types: list[str] = Field(default_factory=list, max_length=16)
+    cuda_related: bool = False
+    cuda_failure_class: ProductTraceCudaFailureClass | None = None
+
+    @field_validator("exception_type")
+    @classmethod
+    def _validate_exception_type(cls, value: str) -> str:
+        if not _EXCEPTION_TYPE_NAME_RE.fullmatch(value):
+            raise ValueError("invalid exception_type")
+        return value
+
+    @field_validator("causal_exception_types")
+    @classmethod
+    def _validate_causal_exception_types(cls, value: list[str]) -> list[str]:
+        cleaned: list[str] = []
+        for item in value:
+            if not isinstance(item, str) or not _EXCEPTION_TYPE_NAME_RE.fullmatch(item):
+                raise ValueError("invalid causal_exception_types entry")
+            if item not in cleaned:
+                cleaned.append(item)
+        return cleaned
+
+
 class ProductQueryTrace(BaseModel):
-    """Allowlisted durable audit projection for product query (D11)."""
+    """Durable product-query audit record (D11).
+
+    Public GET projection is an explicit allowlist via
+    ``ProductTraceStore.public_projection`` and never includes
+    ``internal_failure``.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -97,6 +185,7 @@ class ProductQueryTrace(BaseModel):
     execution: ProductTraceExecutionSummary = Field(
         default_factory=ProductTraceExecutionSummary
     )
+    internal_failure: ProductTraceInternalFailure | None = None
 
     @field_validator("trace_id")
     @classmethod
@@ -130,13 +219,17 @@ class ProductTraceStore:
         """Atomically persist a validated trace and enforce retention."""
         validated = ProductQueryTrace.model_validate(record.model_dump(mode="python"))
         path = self._path(validated.trace_id)
+        # Omit null internal_failure so successful/historical shapes stay lean.
+        exclude: set[str] | None = (
+            None if validated.internal_failure is not None else {"internal_failure"}
+        )
         with self._lock:
             self._root.mkdir(parents=True, exist_ok=True)
-            atomic_write_text(path, validated.model_dump_json())
+            atomic_write_text(path, validated.model_dump_json(exclude=exclude))
             self._enforce_retention_unlocked()
 
     def get(self, trace_id: str) -> ProductQueryTrace | None:
-        """Return a retained allowlisted trace, or None → trace_unknown."""
+        """Return a retained durable trace, or None → trace_unknown."""
         if not is_valid_trace_id(trace_id):
             return None
         path = self._path(trace_id)
@@ -154,8 +247,9 @@ class ProductTraceStore:
             return record
 
     def public_projection(self, record: ProductQueryTrace) -> dict[str, Any]:
-        """Allowlisted GET /v1/trace/{id} body."""
-        return record.model_dump(mode="json")
+        """Explicit allowlisted GET /v1/trace/{id} body (no internal_failure)."""
+        dumped = record.model_dump(mode="json")
+        return {key: dumped[key] for key in _PUBLIC_TRACE_KEYS}
 
     def _is_retained(self, record: ProductQueryTrace, *, now: datetime) -> bool:
         created = record.created_at
