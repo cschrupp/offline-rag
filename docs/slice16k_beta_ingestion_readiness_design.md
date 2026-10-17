@@ -99,7 +99,7 @@
 **Exact independently accepted technical subject:** `163078753eeda33959c9957cfad4e82876a7a5f5`
 **IR-002 acceptance-record authority:** `S16-K-POST-BASELINE-GROUNDED-QUERY-FAILURE-OBSERVABILITY-REMEDIATION-IR-002-ACCEPTANCE-RECORD-AUTH-001` — AUTHORIZED
 **Exact acceptance-record parent:** `17fc511b3ac12a1a7822ca012b7a6d2309f859bf`
-**Exact IR-002 acceptance-record tip:** PENDING_THIS_COMMIT
+**Exact IR-002 acceptance-record tip:** 6d1902c10ead7ee5a3b0ccfe640112c78ae0b9fd
 **Human acceptance of observability remediation:** NOT RECORDED under this authority
 **Note:** IR-002 ACCEPT closes the observability defect only; it does not identify the historical 500 root cause and does not establish dual-CUDA/VRAM pressure.
 **Rework scope:** close IR-001 R1–R4 only (dense/context cause-chain boundaries, CUDA marker tightening, durable `internal_failure` invariants); no VRAM/device/CUDA behavioral fix
@@ -982,7 +982,7 @@ Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
   Exact acceptance-record parent:
     17fc511b3ac12a1a7822ca012b7a6d2309f859bf
   Exact IR-002 acceptance-record tip:
-    PENDING_THIS_COMMIT
+    6d1902c10ead7ee5a3b0ccfe640112c78ae0b9fd
   Human acceptance of observability remediation:
     NOT RECORDED under this authority
   Rework scope:

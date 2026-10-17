@@ -750,7 +750,7 @@ SLICE 15  COMPLETE / ACCEPTED
          Exact acceptance-record parent:
            17fc511b3ac12a1a7822ca012b7a6d2309f859bf
          Exact IR-002 acceptance-record tip:
-           PENDING_THIS_COMMIT
+           6d1902c10ead7ee5a3b0ccfe640112c78ae0b9fd
          Human acceptance of observability remediation:
            NOT RECORDED under this authority
          Rework scope:
@@ -1223,7 +1223,7 @@ SLICE 15  COMPLETE / ACCEPTED
          Exact acceptance-record parent:
            17fc511b3ac12a1a7822ca012b7a6d2309f859bf
          Exact IR-002 acceptance-record tip:
-           PENDING_THIS_COMMIT
+           6d1902c10ead7ee5a3b0ccfe640112c78ae0b9fd
          Human acceptance of observability remediation:
            NOT RECORDED under this authority
          Rework scope:

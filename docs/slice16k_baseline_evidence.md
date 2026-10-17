@@ -31,7 +31,7 @@
 **Exact independently accepted technical subject:** `163078753eeda33959c9957cfad4e82876a7a5f5`  
 **IR-002 acceptance-record authority:** `S16-K-POST-BASELINE-GROUNDED-QUERY-FAILURE-OBSERVABILITY-REMEDIATION-IR-002-ACCEPTANCE-RECORD-AUTH-001` — AUTHORIZED  
 **Exact acceptance-record parent:** `17fc511b3ac12a1a7822ca012b7a6d2309f859bf`  
-**Exact IR-002 acceptance-record tip:** PENDING_THIS_COMMIT  
+**Exact IR-002 acceptance-record tip:** 6d1902c10ead7ee5a3b0ccfe640112c78ae0b9fd  
 **Human acceptance of observability remediation:** NOT RECORDED under this authority  
 **Rework scope:** close IR-001 R1–R4 only; no VRAM/device/CUDA behavioral fix  
 **Remediation scope:** durable `internal_failure` classification + server traceback log for grounded-query `internal_error`; public D08 / GET `/v1/trace/{id}` remain sanitized; no VRAM/device/CUDA behavioral fix  
