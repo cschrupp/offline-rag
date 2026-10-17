@@ -276,12 +276,19 @@ GAP-16G-02:
       — AUTHORIZED
     Exact remediation parent:
       b65d1beda2ef8e19e59acebe498043b4188712c5
+    Exact AUTH-open pin:
+      0894a54bf5c8c8a06c0ec4821ebf3d804a92fc15
     Remediation branch: implementation/16k-query-failure-observability
-    Remediation status: AUTHORIZED / AUTH-OPEN
+    Remediation status: COMPLETE / READY FOR INDEPENDENT REVIEW
+    Exact remediation review subject:
+      9a8d30333bdc9fad800411b861bb05d2a038ea35
     Remediation scope:
       durable internal_failure + server traceback for grounded-query
       internal_error; public D08 / GET /v1/trace/{id} sanitized;
       no VRAM/device/CUDA behavioral fix
+    Public projection:
+      GET /v1/trace/{id} allowlist excludes internal_failure
+    Device/VRAM/CUDA behavior: unchanged
     Manifest: docs/slice16k_baseline_evidence_campaign.md
     Freeze narrative: docs/slice16k_baseline_evidence.md
     Evidence: docs/evidence/16k_baseline/
@@ -696,12 +703,19 @@ Slice-16 closeout inventory: HUMAN ACCEPTED
       — AUTHORIZED
     Exact remediation parent:
       b65d1beda2ef8e19e59acebe498043b4188712c5
+    Exact AUTH-open pin:
+      0894a54bf5c8c8a06c0ec4821ebf3d804a92fc15
     Remediation branch: implementation/16k-query-failure-observability
-    Remediation status: AUTHORIZED / AUTH-OPEN
+    Remediation status: COMPLETE / READY FOR INDEPENDENT REVIEW
+    Exact remediation review subject:
+      9a8d30333bdc9fad800411b861bb05d2a038ea35
     Remediation scope:
       durable internal_failure + server traceback for grounded-query
       internal_error; public D08 / GET /v1/trace/{id} sanitized;
       no VRAM/device/CUDA behavioral fix
+    Public projection:
+      GET /v1/trace/{id} allowlist excludes internal_failure
+    Device/VRAM/CUDA behavior: unchanged
     Manifest: docs/slice16k_baseline_evidence_campaign.md
     Freeze narrative: docs/slice16k_baseline_evidence.md
     Evidence: docs/evidence/16k_baseline/

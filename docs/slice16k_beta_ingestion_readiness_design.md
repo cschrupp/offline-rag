@@ -84,9 +84,13 @@
 **Diagnostic branch:** `diagnostic/16k-live-query-regression`
 **Observability remediation authority:** `S16-K-POST-BASELINE-GROUNDED-QUERY-FAILURE-OBSERVABILITY-REMEDIATION-AUTH-001` — AUTHORIZED
 **Exact remediation parent:** `b65d1beda2ef8e19e59acebe498043b4188712c5`
+**Exact AUTH-open pin:** `0894a54bf5c8c8a06c0ec4821ebf3d804a92fc15`
 **Remediation branch:** `implementation/16k-query-failure-observability`
-**Remediation status:** AUTHORIZED / AUTH-OPEN
+**Remediation status:** COMPLETE / READY FOR INDEPENDENT REVIEW
+**Exact remediation review subject:** `9a8d30333bdc9fad800411b861bb05d2a038ea35`
 **Remediation scope:** durable `internal_failure` classification + server traceback log for grounded-query `internal_error`; public D08 / GET `/v1/trace/{id}` remain sanitized; no VRAM/device/CUDA behavioral fix
+**Public projection:** GET `/v1/trace/{id}` explicit allowlist excludes `internal_failure`
+**Device/VRAM/CUDA behavior:** unchanged under this authority
 **16K baseline manifest:** `docs/slice16k_baseline_evidence_campaign.md`
 **16K baseline freeze narrative:** `docs/slice16k_baseline_evidence.md`
 **Accepted B0–B3 evidence:** retained / not rewritten
@@ -929,12 +933,19 @@ Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
     — AUTHORIZED
   Exact remediation parent:
     b65d1beda2ef8e19e59acebe498043b4188712c5
+  Exact AUTH-open pin:
+    0894a54bf5c8c8a06c0ec4821ebf3d804a92fc15
   Remediation branch: implementation/16k-query-failure-observability
-  Remediation status: AUTHORIZED / AUTH-OPEN
+  Remediation status: COMPLETE / READY FOR INDEPENDENT REVIEW
+  Exact remediation review subject:
+    9a8d30333bdc9fad800411b861bb05d2a038ea35
   Remediation scope:
     durable internal_failure + server traceback for grounded-query
     internal_error; public D08 / GET /v1/trace/{id} sanitized;
     no VRAM/device/CUDA behavioral fix
+  Public projection:
+    GET /v1/trace/{id} allowlist excludes internal_failure
+  Device/VRAM/CUDA behavior: unchanged
   Manifest: docs/slice16k_baseline_evidence_campaign.md
   Freeze narrative: docs/slice16k_baseline_evidence.md
   Evidence: docs/evidence/16k_baseline/
