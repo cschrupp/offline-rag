@@ -91,7 +91,9 @@
 **Exact IR-001 handoff tip:** `0ac6cd298e02f69133559aa682ac796ba90abfc8`
 **Rework authority:** `S16-K-POST-BASELINE-GROUNDED-QUERY-FAILURE-OBSERVABILITY-REMEDIATION-REWORK-AUTH-001` — AUTHORIZED
 **Exact rework parent:** `0ac6cd298e02f69133559aa682ac796ba90abfc8`
-**Rework status:** AUTHORIZED / AUTH-OPEN
+**Rework status:** COMPLETE / READY FOR INDEPENDENT RE-REVIEW
+**Exact rework AUTH-open pin:** `ea763e5da7eb55dc08a58bb783c360c43e75f3cb`
+**Exact rework review subject:** `163078753eeda33959c9957cfad4e82876a7a5f5`
 **Rework scope:** close IR-001 R1–R4 only (dense/context cause-chain boundaries, CUDA marker tightening, durable `internal_failure` invariants); no VRAM/device/CUDA behavioral fix
 **Remediation scope:** durable `internal_failure` classification + server traceback log for grounded-query `internal_error`; public D08 / GET `/v1/trace/{id}` remain sanitized; no VRAM/device/CUDA behavioral fix
 **Public projection:** GET `/v1/trace/{id}` explicit allowlist excludes `internal_failure`
@@ -953,7 +955,11 @@ Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
     — AUTHORIZED
   Exact rework parent:
     0ac6cd298e02f69133559aa682ac796ba90abfc8
-  Rework status: AUTHORIZED / AUTH-OPEN
+  Rework status: COMPLETE / READY FOR INDEPENDENT RE-REVIEW
+  Exact rework AUTH-open pin:
+    ea763e5da7eb55dc08a58bb783c360c43e75f3cb
+  Exact rework review subject:
+    163078753eeda33959c9957cfad4e82876a7a5f5
   Rework scope:
     close IR-001 R1–R4 only; no VRAM/device/CUDA behavioral fix
   Remediation scope:

@@ -731,7 +731,11 @@ SLICE 15  COMPLETE / ACCEPTED
            — AUTHORIZED
          Exact rework parent:
            0ac6cd298e02f69133559aa682ac796ba90abfc8
-         Rework status: AUTHORIZED / AUTH-OPEN
+         Rework status: COMPLETE / READY FOR INDEPENDENT RE-REVIEW
+         Exact rework AUTH-open pin:
+           ea763e5da7eb55dc08a58bb783c360c43e75f3cb
+         Exact rework review subject:
+           163078753eeda33959c9957cfad4e82876a7a5f5
          Rework scope:
            close IR-001 R1–R4 only; no VRAM/device/CUDA behavioral fix
          Remediation scope:
@@ -1183,7 +1187,11 @@ SLICE 15  COMPLETE / ACCEPTED
            — AUTHORIZED
          Exact rework parent:
            0ac6cd298e02f69133559aa682ac796ba90abfc8
-         Rework status: AUTHORIZED / AUTH-OPEN
+         Rework status: COMPLETE / READY FOR INDEPENDENT RE-REVIEW
+         Exact rework AUTH-open pin:
+           ea763e5da7eb55dc08a58bb783c360c43e75f3cb
+         Exact rework review subject:
+           163078753eeda33959c9957cfad4e82876a7a5f5
          Rework scope:
            close IR-001 R1–R4 only; no VRAM/device/CUDA behavioral fix
          Remediation scope:
