@@ -23,17 +23,26 @@
 **Exact IR-001 handoff tip:** `0ac6cd298e02f69133559aa682ac796ba90abfc8`  
 **Rework authority:** `S16-K-POST-BASELINE-GROUNDED-QUERY-FAILURE-OBSERVABILITY-REMEDIATION-REWORK-AUTH-001` — AUTHORIZED  
 **Exact rework parent:** `0ac6cd298e02f69133559aa682ac796ba90abfc8`  
-**Rework status:** COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
 **Exact rework AUTH-open pin:** `ea763e5da7eb55dc08a58bb783c360c43e75f3cb`  
-**Exact rework review subject:** `163078753eeda33959c9957cfad4e82876a7a5f5`  
+**Exact rework review subject / technical subject:** `163078753eeda33959c9957cfad4e82876a7a5f5`  
+**Exact rework handoff tip:** `17fc511b3ac12a1a7822ca012b7a6d2309f859bf`  
+**Observability remediation:** IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED  
+**Independent review:** `S16-K-POST-BASELINE-GROUNDED-QUERY-FAILURE-OBSERVABILITY-REMEDIATION-IR-002` — ACCEPT  
+**Exact independently accepted technical subject:** `163078753eeda33959c9957cfad4e82876a7a5f5`  
+**IR-002 acceptance-record authority:** `S16-K-POST-BASELINE-GROUNDED-QUERY-FAILURE-OBSERVABILITY-REMEDIATION-IR-002-ACCEPTANCE-RECORD-AUTH-001` — AUTHORIZED  
+**Exact acceptance-record parent:** `17fc511b3ac12a1a7822ca012b7a6d2309f859bf`  
+**Exact IR-002 acceptance-record tip:** PENDING_THIS_COMMIT  
+**Human acceptance of observability remediation:** NOT RECORDED under this authority  
 **Rework scope:** close IR-001 R1–R4 only; no VRAM/device/CUDA behavioral fix  
 **Remediation scope:** durable `internal_failure` classification + server traceback log for grounded-query `internal_error`; public D08 / GET `/v1/trace/{id}` remain sanitized; no VRAM/device/CUDA behavioral fix  
 **Public projection:** GET `/v1/trace/{id}` explicit allowlist excludes `internal_failure`  
 **Device/VRAM/CUDA behavior:** unchanged under this authority  
 **Note:** Accepted B0–B3 evidence remains valid and is not rewritten. Downstream
 16K-C/D and Human acceptance of baseline evidence remain blocked while the live
-query regression is under diagnosis. The observability remediation does not
-release that hold and does not authorize constrained-VRAM reproduction.  
+query regression is under diagnosis. IR-002 ACCEPT closes the observability
+defect only; it does not identify the historical 500 root cause, does not
+establish dual-CUDA/VRAM pressure, and does not authorize constrained-VRAM
+reproduction.  
 
 Campaign contract:
 [`docs/slice16k_baseline_evidence_campaign.md`](slice16k_baseline_evidence_campaign.md)
@@ -262,11 +271,16 @@ any residency/eviction policy using dedicated optimization authority.
 - **Historical IR:** `S16-K-BASELINE-EVIDENCE-FREEZE-IR-001` — REWORK REQUIRED
   (R1–R4) — preserved as provenance against prior tip `0d169ae6…`
 - **Human disposition:** HELD — LIVE PRODUCT REGRESSION UNDER DIAGNOSIS
-- **Observability remediation IR-001:** REWORK REQUIRED (R1–R4) against `9a8d303…` / handoff `0ac6cd2…`
-- **Rework authority:** `S16-K-POST-BASELINE-GROUNDED-QUERY-FAILURE-OBSERVABILITY-REMEDIATION-REWORK-AUTH-001` — COMPLETE / READY FOR INDEPENDENT RE-REVIEW at `16307875…` (AUTH-open `ea763e5d…`)
+- **Observability remediation:** IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED
+  (`S16-K-POST-BASELINE-GROUNDED-QUERY-FAILURE-OBSERVABILITY-REMEDIATION-IR-002`
+  — ACCEPT at technical subject `1630787…`; handoff tip `17fc511…`;
+  acceptance-record under
+  `…-IR-002-ACCEPTANCE-RECORD-AUTH-001` from parent `17fc511…`)
+- **Human acceptance of observability remediation:** NOT RECORDED
 - **16K-C / 16K-D / 16K-E→G:** NOT AUTHORIZED
+- **Constrained-VRAM reproduction / M0–M2:** NOT AUTHORIZED
 - **Fireground CUDA/cublasGemmEx:** OPEN / SEPARATE / NOT FIXED
 - **Main promotion:** NOT AUTHORIZED
 
 Accepted B0–B3 evidence remains valid. Human acceptance / downstream progression
-is held by the live query regression diagnostic. Rework closes only IR-001 R1–R4.
+remains held. The historical 500 root cause remains unresolved.

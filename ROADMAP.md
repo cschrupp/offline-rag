@@ -731,11 +731,28 @@ SLICE 15  COMPLETE / ACCEPTED
            — AUTHORIZED
          Exact rework parent:
            0ac6cd298e02f69133559aa682ac796ba90abfc8
-         Rework status: COMPLETE / READY FOR INDEPENDENT RE-REVIEW
          Exact rework AUTH-open pin:
            ea763e5da7eb55dc08a58bb783c360c43e75f3cb
-         Exact rework review subject:
+         Exact rework review subject / technical subject:
            163078753eeda33959c9957cfad4e82876a7a5f5
+         Exact rework handoff tip:
+           17fc511b3ac12a1a7822ca012b7a6d2309f859bf
+         Observability remediation:
+           IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED
+         Independent review:
+           S16-K-POST-BASELINE-GROUNDED-QUERY-FAILURE-OBSERVABILITY-REMEDIATION-IR-002
+           — ACCEPT
+         Exact independently accepted technical subject:
+           163078753eeda33959c9957cfad4e82876a7a5f5
+         IR-002 acceptance-record authority:
+           S16-K-POST-BASELINE-GROUNDED-QUERY-FAILURE-OBSERVABILITY-REMEDIATION-IR-002-ACCEPTANCE-RECORD-AUTH-001
+           — AUTHORIZED
+         Exact acceptance-record parent:
+           17fc511b3ac12a1a7822ca012b7a6d2309f859bf
+         Exact IR-002 acceptance-record tip:
+           PENDING_THIS_COMMIT
+         Human acceptance of observability remediation:
+           NOT RECORDED under this authority
          Rework scope:
            close IR-001 R1–R4 only; no VRAM/device/CUDA behavioral fix
          Remediation scope:
@@ -1187,11 +1204,28 @@ SLICE 15  COMPLETE / ACCEPTED
            — AUTHORIZED
          Exact rework parent:
            0ac6cd298e02f69133559aa682ac796ba90abfc8
-         Rework status: COMPLETE / READY FOR INDEPENDENT RE-REVIEW
          Exact rework AUTH-open pin:
            ea763e5da7eb55dc08a58bb783c360c43e75f3cb
-         Exact rework review subject:
+         Exact rework review subject / technical subject:
            163078753eeda33959c9957cfad4e82876a7a5f5
+         Exact rework handoff tip:
+           17fc511b3ac12a1a7822ca012b7a6d2309f859bf
+         Observability remediation:
+           IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED
+         Independent review:
+           S16-K-POST-BASELINE-GROUNDED-QUERY-FAILURE-OBSERVABILITY-REMEDIATION-IR-002
+           — ACCEPT
+         Exact independently accepted technical subject:
+           163078753eeda33959c9957cfad4e82876a7a5f5
+         IR-002 acceptance-record authority:
+           S16-K-POST-BASELINE-GROUNDED-QUERY-FAILURE-OBSERVABILITY-REMEDIATION-IR-002-ACCEPTANCE-RECORD-AUTH-001
+           — AUTHORIZED
+         Exact acceptance-record parent:
+           17fc511b3ac12a1a7822ca012b7a6d2309f859bf
+         Exact IR-002 acceptance-record tip:
+           PENDING_THIS_COMMIT
+         Human acceptance of observability remediation:
+           NOT RECORDED under this authority
          Rework scope:
            close IR-001 R1–R4 only; no VRAM/device/CUDA behavioral fix
          Remediation scope:
