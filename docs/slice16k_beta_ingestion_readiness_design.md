@@ -63,7 +63,7 @@
 **Status:** DESIGN ACCEPTED / FROZEN
 **16K-A:** IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED
 **16K-B:** COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / HA RECORD INDEPENDENTLY ACCEPTED
-**16K baseline evidence:** FROZEN / PENDING INDEPENDENT REVIEW
+**16K baseline evidence:** FROZEN / INDEPENDENTLY ACCEPTED
 **16K baseline campaign authority:** `S16-K-BASELINE-EVIDENCE-CAMPAIGN-AUTH-001` — AUTHORIZED
 **16K baseline AUTH-open:** `S16-K-BASELINE-EVIDENCE-CAMPAIGN-AUTH-OPEN-001`
 **Exact AUTH-open execution pin:** `eb0ebd86f5d69378acc8142f63a6fa0b5a16d85e`
@@ -74,9 +74,17 @@
 **Exact IR-001 subject:** `0d169ae62d620709b220e8ebc97b2932d64a843b`
 **16K baseline freeze rework authority:** `S16-K-BASELINE-EVIDENCE-FREEZE-REWORK-AUTH-001` — AUTHORIZED
 **Exact rework parent:** `0d169ae62d620709b220e8ebc97b2932d64a843b`
-**16K baseline branch:** `evidence/16k-baseline`
+**16K baseline freeze IR-002:** `S16-K-BASELINE-EVIDENCE-FREEZE-IR-002` — ACCEPT
+**Exact independently accepted freeze subject:** `3abc3a6c0ef31cc255ea6de8796203d26700ec23`
+**Human disposition:** HELD — LIVE PRODUCT REGRESSION UNDER DIAGNOSIS
+**Regression:** workspace query/conversation HTTP 500 after retrieval-model initialization
+**Diagnostic authority:** `S16-K-POST-BASELINE-LIVE-QUERY-REGRESSION-DIAGNOSTIC-AUTH-001` — AUTHORIZED
+**Exact diagnostic parent:** `3abc3a6c0ef31cc255ea6de8796203d26700ec23`
+**16K baseline branch (accepted evidence tip):** `evidence/16k-baseline` @ `3abc3a6c…`
+**Diagnostic branch:** `diagnostic/16k-live-query-regression`
 **16K baseline manifest:** `docs/slice16k_baseline_evidence_campaign.md`
 **16K baseline freeze narrative:** `docs/slice16k_baseline_evidence.md`
+**Accepted B0–B3 evidence:** retained / not rewritten
 **Fireground CUDA/cublasGemmEx runtime issue:** OPEN / SEPARATE / NOT FIXED
 **16K-C:** NOT AUTHORIZED
 **16K-D:** NOT AUTHORIZED
@@ -875,7 +883,7 @@ Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
   Fireground CUDA/cublasGemmEx runtime issue:
     OPEN / SEPARATE / NOT FIXED
   Branch: implementation/16k-b-ingestion-observability
-16K baseline evidence: FROZEN / PENDING INDEPENDENT REVIEW
+16K baseline evidence: FROZEN / INDEPENDENTLY ACCEPTED
   Campaign authority:
     S16-K-BASELINE-EVIDENCE-CAMPAIGN-AUTH-001 — AUTHORIZED
   AUTH-open:
@@ -896,10 +904,25 @@ Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
     S16-K-BASELINE-EVIDENCE-FREEZE-REWORK-AUTH-001 — AUTHORIZED
   Exact rework parent:
     0d169ae62d620709b220e8ebc97b2932d64a843b
-  Branch: evidence/16k-baseline
+  Independent review:
+    S16-K-BASELINE-EVIDENCE-FREEZE-IR-002 — ACCEPT
+  Exact independently accepted freeze subject:
+    3abc3a6c0ef31cc255ea6de8796203d26700ec23
+  Human disposition:
+    HELD — LIVE PRODUCT REGRESSION UNDER DIAGNOSIS
+  Regression:
+    workspace query/conversation HTTP 500
+    after retrieval-model initialization
+  Diagnostic authority:
+    S16-K-POST-BASELINE-LIVE-QUERY-REGRESSION-DIAGNOSTIC-AUTH-001
+    — AUTHORIZED
+  Exact diagnostic parent:
+    3abc3a6c0ef31cc255ea6de8796203d26700ec23
+  Branch: diagnostic/16k-live-query-regression
   Manifest: docs/slice16k_baseline_evidence_campaign.md
   Freeze narrative: docs/slice16k_baseline_evidence.md
   Evidence: docs/evidence/16k_baseline/
+  Accepted B0–B3 evidence: retained / not rewritten
   Fireground CUDA/cublasGemmEx:
     OPEN / SEPARATE / NOT FIXED
 16K-C: NOT AUTHORIZED

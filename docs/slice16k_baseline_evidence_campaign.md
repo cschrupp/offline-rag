@@ -5,13 +5,20 @@
 **Governance parent:** `4f2c045717e2f8fe5b583173847a3bfa97046061`  
 **Technical subject under measurement:** `40c6eb3824ac9f9c1cbc35c889e3e4110b229469`  
 **Branch:** `evidence/16k-baseline`  
-**Campaign status:** EXECUTION COMPLETE / FROZEN / PENDING INDEPENDENT REVIEW  
+**Campaign status:** EXECUTION COMPLETE / FROZEN / INDEPENDENTLY ACCEPTED  
 **Exact AUTH-open execution pin:** `eb0ebd86f5d69378acc8142f63a6fa0b5a16d85e`  
 **Freeze subject:** `S16-K-BASELINE-EVIDENCE-FREEZE-001`  
 **Prior freeze tip (IR-001 subject):** `0d169ae62d620709b220e8ebc97b2932d64a843b`  
 **Independent review:** `S16-K-BASELINE-EVIDENCE-FREEZE-IR-001` — REWORK REQUIRED (R1–R4)  
 **Rework authority:** `S16-K-BASELINE-EVIDENCE-FREEZE-REWORK-AUTH-001` — AUTHORIZED  
 **Exact rework parent:** `0d169ae62d620709b220e8ebc97b2932d64a843b`  
+**Independent review:** `S16-K-BASELINE-EVIDENCE-FREEZE-IR-002` — ACCEPT  
+**Exact independently accepted freeze subject:** `3abc3a6c0ef31cc255ea6de8796203d26700ec23`  
+**Human disposition:** HELD — LIVE PRODUCT REGRESSION UNDER DIAGNOSIS  
+**Regression:** workspace query/conversation HTTP 500 after retrieval-model initialization  
+**Diagnostic authority:** `S16-K-POST-BASELINE-LIVE-QUERY-REGRESSION-DIAGNOSTIC-AUTH-001` — AUTHORIZED  
+**Exact diagnostic parent:** `3abc3a6c0ef31cc255ea6de8796203d26700ec23`  
+**Accepted B0–B3 evidence:** retained / not rewritten  
 **Evidence paths:** `docs/evidence/16k_baseline/*.json`  
 **Freeze narrative:** `docs/slice16k_baseline_evidence.md`  
 

@@ -7,7 +7,16 @@
 **Prior independent review:** `S16-K-BASELINE-EVIDENCE-FREEZE-IR-001` — REWORK REQUIRED (R1–R4)  
 **Rework authority:** `S16-K-BASELINE-EVIDENCE-FREEZE-REWORK-AUTH-001` — AUTHORIZED  
 **Exact rework parent:** `0d169ae62d620709b220e8ebc97b2932d64a843b`  
-**Disposition:** BASELINE EVIDENCE FROZEN / PENDING INDEPENDENT REVIEW  
+**Independent review:** `S16-K-BASELINE-EVIDENCE-FREEZE-IR-002` — ACCEPT  
+**Exact independently accepted freeze subject:** `3abc3a6c0ef31cc255ea6de8796203d26700ec23`  
+**Disposition:** BASELINE EVIDENCE FROZEN / INDEPENDENTLY ACCEPTED  
+**Human disposition:** HELD — LIVE PRODUCT REGRESSION UNDER DIAGNOSIS  
+**Regression:** workspace query/conversation HTTP 500 after retrieval-model initialization  
+**Diagnostic authority:** `S16-K-POST-BASELINE-LIVE-QUERY-REGRESSION-DIAGNOSTIC-AUTH-001` — AUTHORIZED  
+**Exact diagnostic parent:** `3abc3a6c0ef31cc255ea6de8796203d26700ec23`  
+**Note:** Accepted B0–B3 evidence remains valid and is not rewritten. Downstream
+16K-C/D and Human acceptance of baseline evidence remain blocked while the live
+query regression is under diagnosis.  
 
 Campaign contract:
 [`docs/slice16k_baseline_evidence_campaign.md`](slice16k_baseline_evidence_campaign.md)
@@ -227,17 +236,18 @@ any residency/eviction policy using dedicated optimization authority.
 
 ---
 
-## Current governance state after freeze (rework successor)
+## Current governance state
 
 - **16K-B:** COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / HA RECORD
   INDEPENDENTLY ACCEPTED
-- **16K baseline evidence:** FROZEN / PENDING INDEPENDENT REVIEW
+- **16K baseline evidence:** FROZEN / INDEPENDENTLY ACCEPTED
+  (`S16-K-BASELINE-EVIDENCE-FREEZE-IR-002` — ACCEPT at `3abc3a6c…`)
 - **Historical IR:** `S16-K-BASELINE-EVIDENCE-FREEZE-IR-001` — REWORK REQUIRED
   (R1–R4) — preserved as provenance against prior tip `0d169ae6…`
-- **16K-C / 16K-D / 16K-E→G:** NOT YET AUTHORIZED
+- **Human disposition:** HELD — LIVE PRODUCT REGRESSION UNDER DIAGNOSIS
+- **16K-C / 16K-D / 16K-E→G:** NOT AUTHORIZED
 - **Fireground CUDA/cublasGemmEx:** OPEN / SEPARATE / NOT FIXED
 - **Main promotion:** NOT AUTHORIZED
 
----
-
-**STOP FOR INDEPENDENT S16-K-BASELINE-EVIDENCE-FREEZE RE-REVIEW.**
+Accepted B0–B3 evidence remains valid. Human acceptance / downstream progression
+is held by the newly observed live query regression diagnostic.
