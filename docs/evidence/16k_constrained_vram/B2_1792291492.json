@@ -1,0 +1,106 @@
+{
+  "condition": "B2",
+  "band": "b2",
+  "git_sha": "ddc7250bee7aed848b4abfb6b83e06d8ec67ddcd",
+  "build_note": "instrumented observability subject 1630787 + docs through branch tip",
+  "workspace_id": "ws_fdd77b77611448eb93cdc239d2610281",
+  "workspace_revision_expected": 13,
+  "snapshot_id_expected": "snap_3c4048d380b1f5db12a20f820082c1942ccaacc96e368dfb04c22aba5090a9c9",
+  "question": "what is common valor?",
+  "question_sha256": "5cc5cd63e21ca648d9f2b9d9fb3d10de8cd534c3d399c10b94ee70238e617678",
+  "surface": "POST /v1/workspaces/{id}/conversation/turn",
+  "prior_turns": [],
+  "pre_request": {
+    "t": "2026-10-18T02:45:12.207889Z",
+    "gpu": {
+      "name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+      "total_mib": 8192,
+      "used_mib": 7494,
+      "free_mib": 494,
+      "compute_apps": []
+    },
+    "api_pid": 2303300,
+    "occupant": {
+      "pid": 2303387,
+      "allocated_mib": 11520,
+      "blocks": 45,
+      "in_band": true,
+      "band_mib": [
+        400,
+        800
+      ],
+      "memory": {
+        "total_mib": 8192,
+        "used_mib": 7480,
+        "free_mib": 508
+      },
+      "torch_cuda": "NVIDIA GeForce RTX 2080 Super with Max-Q Design"
+    },
+    "health_warmed_models": false,
+    "host_baseline_before_api": {
+      "name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+      "total_mib": 8192,
+      "used_mib": 3254,
+      "free_mib": 4734,
+      "compute_apps": []
+    },
+    "after_health": {
+      "name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+      "total_mib": 8192,
+      "used_mib": 4386,
+      "free_mib": 3602,
+      "compute_apps": []
+    }
+  },
+  "http_status": 200,
+  "response_headers": {
+    "date": "Sun, 18 Oct 2026 02:45:11 GMT",
+    "server": "uvicorn",
+    "content-length": "536",
+    "content-type": "application/json",
+    "Connection": "close"
+  },
+  "envelope": {
+    "workspace_id": "ws_fdd77b77611448eb93cdc239d2610281",
+    "workspace_revision": 13,
+    "snapshot_id": "snap_3c4048d380b1f5db12a20f820082c1942ccaacc96e368dfb04c22aba5090a9c9",
+    "product_mode_id": "grounded_v1",
+    "conversation_trace_id": "trace_567eb68e11724790a6c79a43f0a96dfc",
+    "query_trace_id": "trace_5f6be05b72854b469fc750e13091f958",
+    "status": "model_abstain",
+    "abstention_reason": "insufficient_support",
+    "question": "what is common valor?",
+    "retrieval_question": "what is common valor?",
+    "context_used": false,
+    "answer": null,
+    "answer_blocks": [],
+    "citations": []
+  },
+  "err_text": null,
+  "wall_s": 26.685183075023815,
+  "trace_id": "trace_5f6be05b72854b469fc750e13091f958",
+  "durable_trace_error_code": null,
+  "durable_trace_status": "model_abstain",
+  "durable_snapshot_id": "snap_3c4048d380b1f5db12a20f820082c1942ccaacc96e368dfb04c22aba5090a9c9",
+  "internal_failure": null,
+  "post_request": {
+    "t": "2026-10-18T02:45:39.002198Z",
+    "gpu": {
+      "name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+      "total_mib": 8192,
+      "used_mib": 7682,
+      "free_mib": 306,
+      "compute_apps": []
+    },
+    "wall_s": 26.685183075023815
+  },
+  "after_teardown": {
+    "name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+    "total_mib": 8192,
+    "used_mib": 1948,
+    "free_mib": 6040,
+    "compute_apps": []
+  },
+  "api_log": "/tmp/seneca-constrained-vram-B2.log",
+  "recorded_at": "2026-10-18T02:45:42.652501Z"
+}

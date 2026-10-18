@@ -1,0 +1,16 @@
+{
+  "pid": 2302424,
+  "allocated_mib": 2560,
+  "blocks": 10,
+  "in_band": true,
+  "band_mib": [
+    1500,
+    2000
+  ],
+  "memory": {
+    "total_mib": 8192,
+    "used_mib": 6076,
+    "free_mib": 1912
+  },
+  "torch_cuda": "NVIDIA GeForce RTX 2080 Super with Max-Q Design"
+}

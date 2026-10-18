@@ -1,0 +1,116 @@
+{
+  "authority": "S16-K-POST-BASELINE-CONSTRAINED-FREE-VRAM-REPRODUCTION-DIAGNOSTIC-AUTH-001",
+  "diagnostic_branch": "diagnostic/16k-constrained-free-vram-reproduction",
+  "auth_open_tip": "ddc7250bee7aed848b4abfb6b83e06d8ec67ddcd",
+  "technical_subject_instrumented": "163078753eeda33959c9957cfad4e82876a7a5f5",
+  "execution_git_sha": "ddc7250bee7aed848b4abfb6b83e06d8ec67ddcd",
+  "campaign_status": "EXECUTION COMPLETE / STOP FOR INDEPENDENT DIAGNOSTIC REVIEW",
+  "stopping_condition": "sequence_complete_without_reproducible_b1_cuda_class_failure",
+  "b1_repeat_executed": false,
+  "b1_repeat_reason_skipped": "B1 did not produce CUDA-class failure",
+  "scientific_binding": {
+    "workspace_id": "ws_fdd77b77611448eb93cdc239d2610281",
+    "workspace_revision": 13,
+    "snapshot_id": "snap_3c4048d380b1f5db12a20f820082c1942ccaacc96e368dfb04c22aba5090a9c9",
+    "question": "what is common valor?",
+    "surface": "POST /v1/workspaces/{id}/conversation/turn",
+    "prior_turns": []
+  },
+  "host": {
+    "gpu_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+    "driver_version": "595.71",
+    "torch": "2.14.0+cu130",
+    "torch_cuda": "13.0",
+    "total_vram_mib": 8192
+  },
+  "occupant_policy": {
+    "process": "scripts/diag_constrained_vram/cuda_occupant.py",
+    "seneca_imports": false,
+    "allocation": "CUDA tensors only",
+    "compute_stress": false,
+    "release": "process terminate",
+    "product_empty_cache": false
+  },
+  "governance_unchanged": {
+    "human_disposition": "HELD — LIVE PRODUCT REGRESSION UNDER DIAGNOSIS",
+    "M0_M2": "NOT AUTHORIZED",
+    "16K_C": "NOT AUTHORIZED",
+    "16K_D": "NOT AUTHORIZED",
+    "fireground_corrective_work": "NOT AUTHORIZED",
+    "device_cuda_policy_changes": "NOT AUTHORIZED",
+    "main_promotion": "NOT AUTHORIZED"
+  },
+  "runs": [
+    {
+      "condition": "C0",
+      "evidence": "C0_1792291310.json",
+      "band": "none",
+      "free_mib_pre_request": 1960,
+      "occupant": false,
+      "http_status": 200,
+      "trace_id": "trace_a19737c2586043439ad30cb320061a5e",
+      "durable_status": "model_abstain",
+      "internal_failure": null,
+      "cuda_class_failure": false,
+      "note": "Host residual placed free VRAM in the 1500–2000 MiB band even without occupant; recorded as measured independent variable."
+    },
+    {
+      "condition": "B1",
+      "evidence": "B1_1792291384.json",
+      "occupant_evidence": "B1_1792291384_occupant.json",
+      "band_mib": [1500, 2000],
+      "free_mib_pre_request": 1912,
+      "occupant_allocated_mib": 2560,
+      "http_status": 200,
+      "trace_id": "trace_cdf7ebf51ef54e53ae5b6b3044b833bf",
+      "durable_status": "model_abstain",
+      "internal_failure": null,
+      "cuda_class_failure": false
+    },
+    {
+      "condition": "C1",
+      "evidence": "C1_1792291439.json",
+      "band": "none",
+      "free_mib_pre_request": 4462,
+      "occupant": false,
+      "http_status": 200,
+      "trace_id": "trace_7aca796478fa4d8da065635a50d333e5",
+      "durable_status": "model_abstain",
+      "internal_failure": null,
+      "role": "recovery_control"
+    },
+    {
+      "condition": "B2",
+      "evidence": "B2_1792291492.json",
+      "occupant_evidence": "B2_1792291492_occupant.json",
+      "band_mib": [400, 800],
+      "free_mib_pre_request": 494,
+      "occupant_allocated_mib": 11520,
+      "http_status": 200,
+      "trace_id": "trace_5f6be05b72854b469fc750e13091f958",
+      "durable_status": "model_abstain",
+      "internal_failure": null,
+      "cuda_class_failure": false
+    },
+    {
+      "condition": "C2",
+      "evidence": "C2_1792291553.json",
+      "band": "none",
+      "free_mib_pre_request": 5898,
+      "occupant": false,
+      "http_status": 200,
+      "trace_id": "trace_16a8751bdd9745d897a6936088f1353d",
+      "durable_status": "model_abstain",
+      "internal_failure": null,
+      "role": "recovery_control"
+    }
+  ],
+  "outcome_summary": {
+    "historical_http_500_reproduced": false,
+    "cuda_class_failure_observed": false,
+    "reproducible_b1_cuda_class_failure": false,
+    "all_primary_surface_http_200": true,
+    "all_durable_status": "model_abstain",
+    "query_isolation_control_used": false
+  }
+}
