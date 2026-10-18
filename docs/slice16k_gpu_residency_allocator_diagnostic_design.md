@@ -4,6 +4,11 @@
 **Exact parent:** `bd450fd601e655fc03e9c7c929075aa9c3673e9c`  
 **Branch:** `design/16k-gpu-residency-allocator-diagnostic`  
 **Design status:** DESIGN COMPLETE / READY FOR INDEPENDENT DESIGN REVIEW  
+**GPU residency/allocator diagnostic design status:** DESIGN COMPLETE / INDEPENDENTLY ACCEPTED  
+**Independent design review:** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-DESIGN-IR-001` — ACCEPT  
+**Exact independently accepted design subject:** `2417e47fc2aef1d59c31f0307a0cdb222c56e618`  
+**Acceptance-record authority:** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-DESIGN-IR-001-ACCEPTANCE-RECORD-AUTH-001` — AUTHORIZED  
+**Exact acceptance-record parent:** `2417e47fc2aef1d59c31f0307a0cdb222c56e618`  
 **Mode:** design / disposition only — **experiment execution NOT AUTHORIZED** under this authority  
 
 **Human disposition:** HELD — LIVE PRODUCT REGRESSION UNDER DIAGNOSIS  
@@ -330,8 +335,9 @@ M0–M2 remains **NOT AUTHORIZED** until a separate authority exists.
 Under this design AUTH:
 
 1. AUTH-open on the five 16K ledgers + this design document.  
-2. Design status: **DESIGN COMPLETE / READY FOR INDEPENDENT DESIGN REVIEW**.  
-3. **STOP** — no runtime campaign.
+2. Design status (historical handoff): **DESIGN COMPLETE / READY FOR INDEPENDENT DESIGN REVIEW**.
+3. Live disposition: **DESIGN COMPLETE / INDEPENDENTLY ACCEPTED** (`S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-DESIGN-IR-001` — ACCEPT at `2417e47fc2aef1d59c31f0307a0cdb222c56e618`).  
+4. **STOP** — no runtime campaign.
 
 Future gates (separate authorities, not opened here):
 

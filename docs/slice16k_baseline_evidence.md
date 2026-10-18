@@ -54,6 +54,11 @@
 **Exact GPU residency design parent:** `bd450fd601e655fc03e9c7c929075aa9c3673e9c`  
 **Design branch:** `design/16k-gpu-residency-allocator-diagnostic`  
 **Design status:** DESIGN COMPLETE / READY FOR INDEPENDENT DESIGN REVIEW  
+**GPU residency/allocator diagnostic design status:** DESIGN COMPLETE / INDEPENDENTLY ACCEPTED  
+**Independent design review:** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-DESIGN-IR-001` — ACCEPT  
+**Exact independently accepted design subject:** `2417e47fc2aef1d59c31f0307a0cdb222c56e618`  
+**Acceptance-record authority:** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-DESIGN-IR-001-ACCEPTANCE-RECORD-AUTH-001` — AUTHORIZED  
+**Exact acceptance-record parent:** `2417e47fc2aef1d59c31f0307a0cdb222c56e618`  
 **Design document:** `docs/slice16k_gpu_residency_allocator_diagnostic_design.md`  
 **Design scope:** state/history-dependent residency + allocator hypotheses beyond static free-VRAM; execution NOT AUTHORIZED; M0–M2 / 16K-C/D / device-CUDA policy / fireground / main NOT AUTHORIZED  
 **Exact constrained-VRAM execution tip:** c921c954da25a2f61415707d2f5b54579bc48571  
@@ -313,7 +318,7 @@ any residency/eviction policy using dedicated optimization authority.
 - **Historical HTTP 500:** NOT REPRODUCED / ROOT CAUSE UNRESOLVED
 - **CUDA-class failure:** NOT OBSERVED
 - **M0–M2 eligibility gate:** NOT SATISFIED
-- **GPU residency/allocator diagnostic design:** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-DESIGN-AUTH-001` — DESIGN COMPLETE / READY FOR INDEPENDENT DESIGN REVIEW (parent `bd450fd…`; branch `design/16k-gpu-residency-allocator-diagnostic`; doc `docs/slice16k_gpu_residency_allocator_diagnostic_design.md`); execution NOT AUTHORIZED
+- **GPU residency/allocator diagnostic design:** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-DESIGN-AUTH-001` — DESIGN COMPLETE / INDEPENDENTLY ACCEPTED (`S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-DESIGN-IR-001` — ACCEPT at `2417e47…`; acceptance-record `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-DESIGN-IR-001-ACCEPTANCE-RECORD-AUTH-001` from parent `2417e47…`; historical READY handoff preserved in header; execution NOT AUTHORIZED)
 - **16K-C / 16K-D / 16K-E→G:** NOT AUTHORIZED
 - **Further constrained-VRAM reproduction:** NOT AUTHORIZED
 - **M0–M2:** NOT AUTHORIZED

@@ -122,6 +122,11 @@
 **Exact GPU residency design parent:** `bd450fd601e655fc03e9c7c929075aa9c3673e9c`
 **Design branch:** `design/16k-gpu-residency-allocator-diagnostic`
 **Design status:** DESIGN COMPLETE / READY FOR INDEPENDENT DESIGN REVIEW
+**GPU residency/allocator diagnostic design status:** DESIGN COMPLETE / INDEPENDENTLY ACCEPTED
+**Independent design review:** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-DESIGN-IR-001` — ACCEPT
+**Exact independently accepted design subject:** `2417e47fc2aef1d59c31f0307a0cdb222c56e618`
+**Acceptance-record authority:** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-DESIGN-IR-001-ACCEPTANCE-RECORD-AUTH-001` — AUTHORIZED
+**Exact acceptance-record parent:** `2417e47fc2aef1d59c31f0307a0cdb222c56e618`
 **Design document:** `docs/slice16k_gpu_residency_allocator_diagnostic_design.md`
 **Design scope:** state/history-dependent residency + allocator hypotheses beyond static free-VRAM; execution NOT AUTHORIZED; M0–M2 / 16K-C/D / device-CUDA policy / fireground / main NOT AUTHORIZED
 **Exact constrained-VRAM execution tip:** c921c954da25a2f61415707d2f5b54579bc48571
@@ -1050,6 +1055,17 @@ Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
     bd450fd601e655fc03e9c7c929075aa9c3673e9c
   Design branch: design/16k-gpu-residency-allocator-diagnostic
   Design status: DESIGN COMPLETE / READY FOR INDEPENDENT DESIGN REVIEW
+  GPU residency/allocator diagnostic design status: DESIGN COMPLETE / INDEPENDENTLY ACCEPTED
+  Independent design review:
+    S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-DESIGN-IR-001
+    — ACCEPT
+  Exact independently accepted design subject:
+    2417e47fc2aef1d59c31f0307a0cdb222c56e618
+  Acceptance-record authority:
+    S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-DESIGN-IR-001-ACCEPTANCE-RECORD-AUTH-001
+    — AUTHORIZED
+  Exact acceptance-record parent:
+    2417e47fc2aef1d59c31f0307a0cdb222c56e618
   Design document: docs/slice16k_gpu_residency_allocator_diagnostic_design.md
   Design scope:
     state/history-dependent residency + allocator hypotheses beyond static free-VRAM;

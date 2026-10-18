@@ -351,6 +351,17 @@ GAP-16G-02:
       bd450fd601e655fc03e9c7c929075aa9c3673e9c
     Design branch: design/16k-gpu-residency-allocator-diagnostic
     Design status: DESIGN COMPLETE / READY FOR INDEPENDENT DESIGN REVIEW
+    GPU residency/allocator diagnostic design status: DESIGN COMPLETE / INDEPENDENTLY ACCEPTED
+    Independent design review:
+      S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-DESIGN-IR-001
+      — ACCEPT
+    Exact independently accepted design subject:
+      2417e47fc2aef1d59c31f0307a0cdb222c56e618
+    Acceptance-record authority:
+      S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-DESIGN-IR-001-ACCEPTANCE-RECORD-AUTH-001
+      — AUTHORIZED
+    Exact acceptance-record parent:
+      2417e47fc2aef1d59c31f0307a0cdb222c56e618
     Design document: docs/slice16k_gpu_residency_allocator_diagnostic_design.md
     Design scope:
       state/history-dependent residency + allocator hypotheses beyond static free-VRAM;
@@ -859,6 +870,17 @@ Slice-16 closeout inventory: HUMAN ACCEPTED
       bd450fd601e655fc03e9c7c929075aa9c3673e9c
     Design branch: design/16k-gpu-residency-allocator-diagnostic
     Design status: DESIGN COMPLETE / READY FOR INDEPENDENT DESIGN REVIEW
+    GPU residency/allocator diagnostic design status: DESIGN COMPLETE / INDEPENDENTLY ACCEPTED
+    Independent design review:
+      S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-DESIGN-IR-001
+      — ACCEPT
+    Exact independently accepted design subject:
+      2417e47fc2aef1d59c31f0307a0cdb222c56e618
+    Acceptance-record authority:
+      S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-DESIGN-IR-001-ACCEPTANCE-RECORD-AUTH-001
+      — AUTHORIZED
+    Exact acceptance-record parent:
+      2417e47fc2aef1d59c31f0307a0cdb222c56e618
     Design document: docs/slice16k_gpu_residency_allocator_diagnostic_design.md
     Design scope:
       state/history-dependent residency + allocator hypotheses beyond static free-VRAM;
