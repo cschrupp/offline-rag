@@ -320,7 +320,7 @@ GAP-16G-02:
       98a5d1f6dceb6c51943c6888b39adb28926eb27f
     Diagnostic branch: diagnostic/16k-constrained-free-vram-reproduction
     Diagnostic status: EXECUTION COMPLETE / STOP FOR INDEPENDENT DIAGNOSTIC REVIEW
-    Exact constrained-VRAM execution tip: pending_commit
+    Exact constrained-VRAM execution tip: c921c954da25a2f61415707d2f5b54579bc48571
     Evidence path: docs/evidence/16k_constrained_vram/
     Campaign outcome: no CUDA-class failure at B1/B2; B1-repeat skipped; all primary turns HTTP 200 / model_abstain; historical 500 not reproduced
     Diagnostic scope:
@@ -793,7 +793,7 @@ Slice-16 closeout inventory: HUMAN ACCEPTED
       98a5d1f6dceb6c51943c6888b39adb28926eb27f
     Diagnostic branch: diagnostic/16k-constrained-free-vram-reproduction
     Diagnostic status: EXECUTION COMPLETE / STOP FOR INDEPENDENT DIAGNOSTIC REVIEW
-    Exact constrained-VRAM execution tip: pending_commit
+    Exact constrained-VRAM execution tip: c921c954da25a2f61415707d2f5b54579bc48571
     Evidence path: docs/evidence/16k_constrained_vram/
     Campaign outcome: no CUDA-class failure at B1/B2; B1-repeat skipped; all primary turns HTTP 200 / model_abstain; historical 500 not reproduced
     Diagnostic scope:

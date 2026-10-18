@@ -41,7 +41,7 @@
 **Exact constrained-VRAM diagnostic parent:** `98a5d1f6dceb6c51943c6888b39adb28926eb27f`  
 **Diagnostic branch:** `diagnostic/16k-constrained-free-vram-reproduction`  
 **Diagnostic status:** EXECUTION COMPLETE / STOP FOR INDEPENDENT DIAGNOSTIC REVIEW  
-**Exact constrained-VRAM execution tip:** pending_commit  
+**Exact constrained-VRAM execution tip:** c921c954da25a2f61415707d2f5b54579bc48571  
 **Evidence path:** `docs/evidence/16k_constrained_vram/`  
 **Campaign outcome:** no CUDA-class failure at B1 (free≈1912 MiB) or B2 (free≈494 MiB); B1-repeat skipped; all primary turns HTTP 200 / durable `model_abstain` / `internal_failure` null; historical 500 not reproduced  
 **Diagnostic scope:** controlled free-VRAM reproduction on instrumented build; external occupant only; M0–M2 NOT AUTHORIZED  
