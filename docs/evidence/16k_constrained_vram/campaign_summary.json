@@ -3,9 +3,24 @@
   "diagnostic_branch": "diagnostic/16k-constrained-free-vram-reproduction",
   "auth_open_tip": "ddc7250bee7aed848b4abfb6b83e06d8ec67ddcd",
   "technical_subject_instrumented": "163078753eeda33959c9957cfad4e82876a7a5f5",
-  "execution_git_sha": "c921c954da25a2f61415707d2f5b54579bc48571",
+  "execution_git_sha": "ddc7250bee7aed848b4abfb6b83e06d8ec67ddcd",
+  "execution_evidence_tip": "c921c954da25a2f61415707d2f5b54579bc48571",
   "execution_tip_pin": "d283d7fe20495c00e25fb0415664e42b217a6bf7",
   "campaign_status": "EXECUTION COMPLETE / STOP FOR INDEPENDENT DIAGNOSTIC REVIEW",
+  "scientific_diagnostic_execution": "EXECUTION COMPLETE / NO RERUN REQUIRED",
+  "independent_review": {
+    "id": "S16-K-POST-BASELINE-CONSTRAINED-FREE-VRAM-REPRODUCTION-DIAGNOSTIC-IR-001",
+    "disposition": "REWORK REQUIRED",
+    "findings": [
+      "R1",
+      "R2"
+    ]
+  },
+  "rework": {
+    "authority": "S16-K-POST-BASELINE-CONSTRAINED-FREE-VRAM-REPRODUCTION-DIAGNOSTIC-REWORK-AUTH-001",
+    "parent": "a71f4fe2202be0fd1f7a4460d0287e407eec953a",
+    "status": "COMPLETE / READY FOR INDEPENDENT RE-REVIEW"
+  },
   "stopping_condition": "sequence_complete_without_reproducible_b1_cuda_class_failure",
   "b1_repeat_executed": false,
   "b1_repeat_reason_skipped": "B1 did not produce CUDA-class failure",
@@ -34,6 +49,7 @@
   },
   "governance_unchanged": {
     "human_disposition": "HELD — LIVE PRODUCT REGRESSION UNDER DIAGNOSIS",
+    "further_constrained_vram_reproduction": "NOT AUTHORIZED",
     "M0_M2": "NOT AUTHORIZED",
     "16K_C": "NOT AUTHORIZED",
     "16K_D": "NOT AUTHORIZED",
@@ -59,7 +75,10 @@
       "condition": "B1",
       "evidence": "B1_1792291384.json",
       "occupant_evidence": "B1_1792291384_occupant.json",
-      "band_mib": [1500, 2000],
+      "band_mib": [
+        1500,
+        2000
+      ],
       "free_mib_pre_request": 1912,
       "occupant_allocated_mib": 2560,
       "http_status": 200,
@@ -84,7 +103,10 @@
       "condition": "B2",
       "evidence": "B2_1792291492.json",
       "occupant_evidence": "B2_1792291492_occupant.json",
-      "band_mib": [400, 800],
+      "band_mib": [
+        400,
+        800
+      ],
       "free_mib_pre_request": 494,
       "occupant_allocated_mib": 11520,
       "http_status": 200,
@@ -112,6 +134,7 @@
     "reproducible_b1_cuda_class_failure": false,
     "all_primary_surface_http_200": true,
     "all_durable_status": "model_abstain",
-    "query_isolation_control_used": false
+    "query_isolation_control_used": false,
+    "m0_m2_eligibility_gate": "NOT SATISFIED"
   }
 }

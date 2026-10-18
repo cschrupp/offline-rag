@@ -41,7 +41,7 @@
 **Constrained-VRAM diagnostic IR-001:** `S16-K-POST-BASELINE-CONSTRAINED-FREE-VRAM-REPRODUCTION-DIAGNOSTIC-IR-001` — REWORK REQUIRED (R1–R2)  
 **Constrained-VRAM rework authority:** `S16-K-POST-BASELINE-CONSTRAINED-FREE-VRAM-REPRODUCTION-DIAGNOSTIC-REWORK-AUTH-001` — AUTHORIZED  
 **Exact constrained-VRAM rework parent:** `a71f4fe2202be0fd1f7a4460d0287e407eec953a`  
-**Constrained-VRAM rework status:** AUTHORIZED / AUTH-OPEN  
+**Constrained-VRAM rework status:** COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
 **Exact constrained-VRAM execution tip:** c921c954da25a2f61415707d2f5b54579bc48571  
 **Evidence path:** `docs/evidence/16k_constrained_vram/`  
 **Campaign outcome:** no CUDA-class failure at B1 (free≈1912 MiB) or B2 (free≈494 MiB); B1-repeat skipped; all primary turns HTTP 200 / durable `model_abstain` / `internal_failure` null; historical 500 not reproduced  
@@ -293,9 +293,10 @@ any residency/eviction policy using dedicated optimization authority.
 - **Constrained-VRAM diagnostic:** `S16-K-POST-BASELINE-CONSTRAINED-FREE-VRAM-REPRODUCTION-DIAGNOSTIC-AUTH-001` — EXECUTION COMPLETE / STOP FOR INDEPENDENT DIAGNOSTIC REVIEW (parent `98a5d1f…`; AUTH-open `ddc7250…`; evidence `docs/evidence/16k_constrained_vram/`)
 - **Scientific diagnostic execution:** EXECUTION COMPLETE / NO RERUN REQUIRED
 - **Constrained-VRAM diagnostic IR-001:** `S16-K-POST-BASELINE-CONSTRAINED-FREE-VRAM-REPRODUCTION-DIAGNOSTIC-IR-001` — REWORK REQUIRED (R1–R2)
-- **Constrained-VRAM rework authority:** `S16-K-POST-BASELINE-CONSTRAINED-FREE-VRAM-REPRODUCTION-DIAGNOSTIC-REWORK-AUTH-001` — AUTHORIZED / AUTH-OPEN at parent `a71f4fe…`
+- **Constrained-VRAM rework authority:** `S16-K-POST-BASELINE-CONSTRAINED-FREE-VRAM-REPRODUCTION-DIAGNOSTIC-REWORK-AUTH-001` — AUTHORIZED; **Constrained-VRAM rework status:** COMPLETE / READY FOR INDEPENDENT RE-REVIEW (parent `a71f4fe…`; AUTH-open `c6466cf…`)
 - **16K-C / 16K-D / 16K-E→G:** NOT AUTHORIZED
-- **Constrained-VRAM reproduction / M0–M2:** NOT AUTHORIZED
+- **Further constrained-VRAM reproduction:** NOT AUTHORIZED
+- **M0–M2:** NOT AUTHORIZED
 - **Fireground CUDA/cublasGemmEx:** OPEN / SEPARATE / NOT FIXED
 - **Main promotion:** NOT AUTHORIZED
 

@@ -329,7 +329,7 @@ GAP-16G-02:
       — AUTHORIZED
     Exact constrained-VRAM rework parent:
       a71f4fe2202be0fd1f7a4460d0287e407eec953a
-    Constrained-VRAM rework status: AUTHORIZED / AUTH-OPEN
+    Constrained-VRAM rework status: COMPLETE / READY FOR INDEPENDENT RE-REVIEW
     Exact constrained-VRAM execution tip: c921c954da25a2f61415707d2f5b54579bc48571
     Evidence path: docs/evidence/16k_constrained_vram/
     Campaign outcome: no CUDA-class failure at B1/B2; B1-repeat skipped; all primary turns HTTP 200 / model_abstain; historical 500 not reproduced
@@ -812,7 +812,7 @@ Slice-16 closeout inventory: HUMAN ACCEPTED
       — AUTHORIZED
     Exact constrained-VRAM rework parent:
       a71f4fe2202be0fd1f7a4460d0287e407eec953a
-    Constrained-VRAM rework status: AUTHORIZED / AUTH-OPEN
+    Constrained-VRAM rework status: COMPLETE / READY FOR INDEPENDENT RE-REVIEW
     Exact constrained-VRAM execution tip: c921c954da25a2f61415707d2f5b54579bc48571
     Evidence path: docs/evidence/16k_constrained_vram/
     Campaign outcome: no CUDA-class failure at B1/B2; B1-repeat skipped; all primary turns HTTP 200 / model_abstain; historical 500 not reproduced

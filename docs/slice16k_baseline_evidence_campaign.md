@@ -45,7 +45,7 @@
 **Constrained-VRAM diagnostic IR-001:** `S16-K-POST-BASELINE-CONSTRAINED-FREE-VRAM-REPRODUCTION-DIAGNOSTIC-IR-001` — REWORK REQUIRED (R1–R2)  
 **Constrained-VRAM rework authority:** `S16-K-POST-BASELINE-CONSTRAINED-FREE-VRAM-REPRODUCTION-DIAGNOSTIC-REWORK-AUTH-001` — AUTHORIZED  
 **Exact constrained-VRAM rework parent:** `a71f4fe2202be0fd1f7a4460d0287e407eec953a`  
-**Constrained-VRAM rework status:** AUTHORIZED / AUTH-OPEN  
+**Constrained-VRAM rework status:** COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
 **Exact constrained-VRAM execution tip:** c921c954da25a2f61415707d2f5b54579bc48571  
 **Evidence path:** `docs/evidence/16k_constrained_vram/`  
 **Campaign outcome:** no CUDA-class failure at B1 (free≈1912 MiB) or B2 (free≈494 MiB); B1-repeat skipped; all primary turns HTTP 200 / durable `model_abstain` / `internal_failure` null; historical 500 not reproduced  
