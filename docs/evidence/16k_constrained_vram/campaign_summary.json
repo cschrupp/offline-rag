@@ -7,6 +7,7 @@
   "execution_evidence_tip": "c921c954da25a2f61415707d2f5b54579bc48571",
   "execution_tip_pin": "d283d7fe20495c00e25fb0415664e42b217a6bf7",
   "campaign_status": "EXECUTION COMPLETE / STOP FOR INDEPENDENT DIAGNOSTIC REVIEW",
+  "diagnostic_status": "EXECUTION COMPLETE / INDEPENDENTLY ACCEPTED",
   "scientific_diagnostic_execution": "EXECUTION COMPLETE / NO RERUN REQUIRED",
   "independent_review": {
     "id": "S16-K-POST-BASELINE-CONSTRAINED-FREE-VRAM-REPRODUCTION-DIAGNOSTIC-IR-001",
@@ -20,6 +21,11 @@
     "authority": "S16-K-POST-BASELINE-CONSTRAINED-FREE-VRAM-REPRODUCTION-DIAGNOSTIC-REWORK-AUTH-001",
     "parent": "a71f4fe2202be0fd1f7a4460d0287e407eec953a",
     "status": "COMPLETE / READY FOR INDEPENDENT RE-REVIEW"
+  },
+  "independent_acceptance": {
+    "id": "S16-K-POST-BASELINE-CONSTRAINED-FREE-VRAM-REPRODUCTION-DIAGNOSTIC-IR-002",
+    "disposition": "ACCEPT",
+    "accepted_subject": "7ad48b71dcdc096669399a4ea9b165cffa2d226b"
   },
   "stopping_condition": "sequence_complete_without_reproducible_b1_cuda_class_failure",
   "b1_repeat_executed": false,

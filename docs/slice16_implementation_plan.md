@@ -320,6 +320,7 @@ GAP-16G-02:
       98a5d1f6dceb6c51943c6888b39adb28926eb27f
     Diagnostic branch: diagnostic/16k-constrained-free-vram-reproduction
     Diagnostic status: EXECUTION COMPLETE / STOP FOR INDEPENDENT DIAGNOSTIC REVIEW
+    Constrained-VRAM diagnostic status: EXECUTION COMPLETE / INDEPENDENTLY ACCEPTED
     Scientific diagnostic execution: EXECUTION COMPLETE / NO RERUN REQUIRED
     Constrained-VRAM diagnostic IR-001:
       S16-K-POST-BASELINE-CONSTRAINED-FREE-VRAM-REPRODUCTION-DIAGNOSTIC-IR-001
@@ -329,7 +330,20 @@ GAP-16G-02:
       — AUTHORIZED
     Exact constrained-VRAM rework parent:
       a71f4fe2202be0fd1f7a4460d0287e407eec953a
-    Constrained-VRAM rework status: COMPLETE / READY FOR INDEPENDENT RE-REVIEW
+    Constrained-VRAM rework status: COMPLETE / INDEPENDENTLY ACCEPTED
+    Independent review:
+      S16-K-POST-BASELINE-CONSTRAINED-FREE-VRAM-REPRODUCTION-DIAGNOSTIC-IR-002
+      — ACCEPT
+    Exact independently accepted subject:
+      7ad48b71dcdc096669399a4ea9b165cffa2d226b
+    Acceptance-record authority:
+      S16-K-POST-BASELINE-CONSTRAINED-FREE-VRAM-REPRODUCTION-DIAGNOSTIC-IR-002-ACCEPTANCE-RECORD-AUTH-001
+      — AUTHORIZED
+    Exact acceptance-record parent:
+      7ad48b71dcdc096669399a4ea9b165cffa2d226b
+    Historical HTTP 500: NOT REPRODUCED / ROOT CAUSE UNRESOLVED
+    CUDA-class failure: NOT OBSERVED
+    M0–M2 eligibility gate: NOT SATISFIED
     Exact constrained-VRAM execution tip: c921c954da25a2f61415707d2f5b54579bc48571
     Evidence path: docs/evidence/16k_constrained_vram/
     Campaign outcome: no CUDA-class failure at B1/B2; B1-repeat skipped; all primary turns HTTP 200 / model_abstain; historical 500 not reproduced
@@ -803,6 +817,7 @@ Slice-16 closeout inventory: HUMAN ACCEPTED
       98a5d1f6dceb6c51943c6888b39adb28926eb27f
     Diagnostic branch: diagnostic/16k-constrained-free-vram-reproduction
     Diagnostic status: EXECUTION COMPLETE / STOP FOR INDEPENDENT DIAGNOSTIC REVIEW
+    Constrained-VRAM diagnostic status: EXECUTION COMPLETE / INDEPENDENTLY ACCEPTED
     Scientific diagnostic execution: EXECUTION COMPLETE / NO RERUN REQUIRED
     Constrained-VRAM diagnostic IR-001:
       S16-K-POST-BASELINE-CONSTRAINED-FREE-VRAM-REPRODUCTION-DIAGNOSTIC-IR-001
@@ -812,7 +827,20 @@ Slice-16 closeout inventory: HUMAN ACCEPTED
       — AUTHORIZED
     Exact constrained-VRAM rework parent:
       a71f4fe2202be0fd1f7a4460d0287e407eec953a
-    Constrained-VRAM rework status: COMPLETE / READY FOR INDEPENDENT RE-REVIEW
+    Constrained-VRAM rework status: COMPLETE / INDEPENDENTLY ACCEPTED
+    Independent review:
+      S16-K-POST-BASELINE-CONSTRAINED-FREE-VRAM-REPRODUCTION-DIAGNOSTIC-IR-002
+      — ACCEPT
+    Exact independently accepted subject:
+      7ad48b71dcdc096669399a4ea9b165cffa2d226b
+    Acceptance-record authority:
+      S16-K-POST-BASELINE-CONSTRAINED-FREE-VRAM-REPRODUCTION-DIAGNOSTIC-IR-002-ACCEPTANCE-RECORD-AUTH-001
+      — AUTHORIZED
+    Exact acceptance-record parent:
+      7ad48b71dcdc096669399a4ea9b165cffa2d226b
+    Historical HTTP 500: NOT REPRODUCED / ROOT CAUSE UNRESOLVED
+    CUDA-class failure: NOT OBSERVED
+    M0–M2 eligibility gate: NOT SATISFIED
     Exact constrained-VRAM execution tip: c921c954da25a2f61415707d2f5b54579bc48571
     Evidence path: docs/evidence/16k_constrained_vram/
     Campaign outcome: no CUDA-class failure at B1/B2; B1-repeat skipped; all primary turns HTTP 200 / model_abstain; historical 500 not reproduced
