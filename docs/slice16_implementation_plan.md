@@ -313,6 +313,16 @@ GAP-16G-02:
       6d1902c10ead7ee5a3b0ccfe640112c78ae0b9fd
     Human acceptance of observability remediation:
       NOT RECORDED under this authority
+    Constrained-VRAM diagnostic authority:
+      S16-K-POST-BASELINE-CONSTRAINED-FREE-VRAM-REPRODUCTION-DIAGNOSTIC-AUTH-001
+      — AUTHORIZED
+    Exact constrained-VRAM diagnostic parent:
+      98a5d1f6dceb6c51943c6888b39adb28926eb27f
+    Diagnostic branch: diagnostic/16k-constrained-free-vram-reproduction
+    Diagnostic status: AUTHORIZED / AUTH-OPEN
+    Diagnostic scope:
+      controlled free-VRAM reproduction on instrumented build;
+      external CUDA occupant only; M0–M2 NOT AUTHORIZED
     Rework scope:
       close IR-001 R1–R4 only; no VRAM/device/CUDA behavioral fix
     Remediation scope:
@@ -773,6 +783,16 @@ Slice-16 closeout inventory: HUMAN ACCEPTED
       6d1902c10ead7ee5a3b0ccfe640112c78ae0b9fd
     Human acceptance of observability remediation:
       NOT RECORDED under this authority
+    Constrained-VRAM diagnostic authority:
+      S16-K-POST-BASELINE-CONSTRAINED-FREE-VRAM-REPRODUCTION-DIAGNOSTIC-AUTH-001
+      — AUTHORIZED
+    Exact constrained-VRAM diagnostic parent:
+      98a5d1f6dceb6c51943c6888b39adb28926eb27f
+    Diagnostic branch: diagnostic/16k-constrained-free-vram-reproduction
+    Diagnostic status: AUTHORIZED / AUTH-OPEN
+    Diagnostic scope:
+      controlled free-VRAM reproduction on instrumented build;
+      external CUDA occupant only; M0–M2 NOT AUTHORIZED
     Rework scope:
       close IR-001 R1–R4 only; no VRAM/device/CUDA behavioral fix
     Remediation scope:

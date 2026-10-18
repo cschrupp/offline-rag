@@ -33,6 +33,11 @@
 **Exact acceptance-record parent:** `17fc511b3ac12a1a7822ca012b7a6d2309f859bf`  
 **Exact IR-002 acceptance-record tip:** 6d1902c10ead7ee5a3b0ccfe640112c78ae0b9fd  
 **Human acceptance of observability remediation:** NOT RECORDED under this authority  
+**Constrained-VRAM diagnostic authority:** `S16-K-POST-BASELINE-CONSTRAINED-FREE-VRAM-REPRODUCTION-DIAGNOSTIC-AUTH-001` — AUTHORIZED  
+**Exact constrained-VRAM diagnostic parent:** `98a5d1f6dceb6c51943c6888b39adb28926eb27f`  
+**Diagnostic branch:** `diagnostic/16k-constrained-free-vram-reproduction`  
+**Diagnostic status:** AUTHORIZED / AUTH-OPEN  
+**Diagnostic scope:** controlled free-VRAM reproduction on instrumented build; external occupant only; M0–M2 NOT AUTHORIZED  
 **Rework scope:** close IR-001 R1–R4 only; no VRAM/device/CUDA behavioral fix  
 **Remediation scope:** durable `internal_failure` classification + server traceback log for grounded-query `internal_error`; public D08 / GET `/v1/trace/{id}` remain sanitized; no VRAM/device/CUDA behavioral fix  
 **Public projection:** GET `/v1/trace/{id}` explicit allowlist excludes `internal_failure`  
@@ -277,6 +282,7 @@ any residency/eviction policy using dedicated optimization authority.
   acceptance-record under
   `…-IR-002-ACCEPTANCE-RECORD-AUTH-001` from parent `17fc511…`)
 - **Human acceptance of observability remediation:** NOT RECORDED
+- **Constrained-VRAM diagnostic:** `S16-K-POST-BASELINE-CONSTRAINED-FREE-VRAM-REPRODUCTION-DIAGNOSTIC-AUTH-001` — AUTHORIZED / AUTH-OPEN at parent `98a5d1f…`
 - **16K-C / 16K-D / 16K-E→G:** NOT AUTHORIZED
 - **Constrained-VRAM reproduction / M0–M2:** NOT AUTHORIZED
 - **Fireground CUDA/cublasGemmEx:** OPEN / SEPARATE / NOT FIXED
