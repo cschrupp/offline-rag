@@ -118,6 +118,12 @@
 **Historical HTTP 500:** NOT REPRODUCED / ROOT CAUSE UNRESOLVED
 **CUDA-class failure:** NOT OBSERVED
 **M0–M2 eligibility gate:** NOT SATISFIED
+**GPU residency/allocator diagnostic design authority:** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-DESIGN-AUTH-001` — AUTHORIZED
+**Exact GPU residency design parent:** `bd450fd601e655fc03e9c7c929075aa9c3673e9c`
+**Design branch:** `design/16k-gpu-residency-allocator-diagnostic`
+**Design status:** DESIGN COMPLETE / READY FOR INDEPENDENT DESIGN REVIEW
+**Design document:** `docs/slice16k_gpu_residency_allocator_diagnostic_design.md`
+**Design scope:** state/history-dependent residency + allocator hypotheses beyond static free-VRAM; execution NOT AUTHORIZED; M0–M2 / 16K-C/D / device-CUDA policy / fireground / main NOT AUTHORIZED
 **Exact constrained-VRAM execution tip:** c921c954da25a2f61415707d2f5b54579bc48571
 **Evidence path:** `docs/evidence/16k_constrained_vram/`
 **Campaign outcome:** no CUDA-class failure at B1 (free≈1912 MiB) or B2 (free≈494 MiB); B1-repeat skipped; all primary turns HTTP 200 / durable `model_abstain` / `internal_failure` null; historical 500 not reproduced
@@ -1037,6 +1043,17 @@ Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
   Historical HTTP 500: NOT REPRODUCED / ROOT CAUSE UNRESOLVED
   CUDA-class failure: NOT OBSERVED
   M0–M2 eligibility gate: NOT SATISFIED
+  GPU residency/allocator diagnostic design authority:
+    S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-DESIGN-AUTH-001
+    — AUTHORIZED
+  Exact GPU residency design parent:
+    bd450fd601e655fc03e9c7c929075aa9c3673e9c
+  Design branch: design/16k-gpu-residency-allocator-diagnostic
+  Design status: DESIGN COMPLETE / READY FOR INDEPENDENT DESIGN REVIEW
+  Design document: docs/slice16k_gpu_residency_allocator_diagnostic_design.md
+  Design scope:
+    state/history-dependent residency + allocator hypotheses beyond static free-VRAM;
+    execution NOT AUTHORIZED; M0–M2 / 16K-C/D / device-CUDA / fireground / main NOT AUTHORIZED
   Exact constrained-VRAM execution tip: c921c954da25a2f61415707d2f5b54579bc48571
   Evidence path: docs/evidence/16k_constrained_vram/
   Campaign outcome: no CUDA-class failure at B1/B2; B1-repeat skipped; all primary turns HTTP 200 / model_abstain; historical 500 not reproduced
