@@ -916,12 +916,23 @@ SLICE 15  COMPLETE / ACCEPTED
          S16-K-D-DENSE-CUDA-PROFILING-BASELINE-IMPLEMENTATION-AUTH-001
          — AUTHORIZED
        Exact 16K-D parent: 33a031b6a1bbda0b3b80fa96c8bff0fdfcece06f
+       Exact 16K-D implementation candidate (IR-001):
+         32e52024df47b9add7ce02675a1d40555ac55eae
+       16K-D independent review (IR-001):
+         S16-K-D-DENSE-CUDA-PROFILING-BASELINE-IR-001
+         — REWORK REQUIRED (F001) — preserved as provenance
+       16K-D rework authority:
+         S16-K-D-D0-BASELINE-EVIDENCE-PROVENANCE-REWORK-AUTH-001
+         — AUTHORIZED
+       Exact 16K-D rework subject:
+         32e52024df47b9add7ce02675a1d40555ac55eae
        16K-D branch: implementation/16k-d-dense-cuda-profiling
-       16K-D status: D0 BASELINE COMPLETE / READY FOR INDEPENDENT REVIEW
+       16K-D status: D0 BASELINE REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md
        16K-D evidence: docs/evidence/16k_d_dense_cuda/
        16K-D D0: instrumentation + cold baseline (native bf16/batch-32;
          FP32 harness force → CUBLAS_STATUS_EXECUTION_FAILED)
+       16K-D F001 rework: clean candidate-SHA evidence rerun only (no src/**)
        16K-E → 16K-G: NOT AUTHORIZED
        Main promotion: NOT AUTHORIZED
        Historical closeout disposition (inventory I-11): DEFERRED / NOT REQUIRED
@@ -1541,12 +1552,23 @@ SLICE 15  COMPLETE / ACCEPTED
          S16-K-D-DENSE-CUDA-PROFILING-BASELINE-IMPLEMENTATION-AUTH-001
          — AUTHORIZED
        Exact 16K-D parent: 33a031b6a1bbda0b3b80fa96c8bff0fdfcece06f
+       Exact 16K-D implementation candidate (IR-001):
+         32e52024df47b9add7ce02675a1d40555ac55eae
+       16K-D independent review (IR-001):
+         S16-K-D-DENSE-CUDA-PROFILING-BASELINE-IR-001
+         — REWORK REQUIRED (F001) — preserved as provenance
+       16K-D rework authority:
+         S16-K-D-D0-BASELINE-EVIDENCE-PROVENANCE-REWORK-AUTH-001
+         — AUTHORIZED
+       Exact 16K-D rework subject:
+         32e52024df47b9add7ce02675a1d40555ac55eae
        16K-D branch: implementation/16k-d-dense-cuda-profiling
-       16K-D status: D0 BASELINE COMPLETE / READY FOR INDEPENDENT REVIEW
+       16K-D status: D0 BASELINE REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md
        16K-D evidence: docs/evidence/16k_d_dense_cuda/
        16K-D D0: instrumentation + cold baseline (native bf16/batch-32;
          FP32 harness force → CUBLAS_STATUS_EXECUTION_FAILED)
+       16K-D F001 rework: clean candidate-SHA evidence rerun only (no src/**)
        16K-E → 16K-G: NOT AUTHORIZED
        Main promotion: NOT AUTHORIZED
        Historical closeout disposition (inventory I-11): DEFERRED / NOT REQUIRED

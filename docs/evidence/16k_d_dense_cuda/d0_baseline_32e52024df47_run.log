@@ -1,0 +1,12 @@
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights:  46%|████▌     | 143/310 [00:00<00:00, 1421.94it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 2009.19it/s]
+WROTE /home/user/projects/technical_rag/docs/evidence/16k_d_dense_cuda/d0_baseline_summary.json
+WROTE /home/user/projects/technical_rag/docs/evidence/16k_d_dense_cuda/d0_baseline_32e52024df47.json
+{
+  "status": "success",
+  "generated": 1296,
+  "reused": 0,
+  "wall_s": 1512.6869617789998,
+  "dtype": "bfloat16",
+  "batch_size": 32,
+  "device": "cuda"
+}

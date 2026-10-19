@@ -1,0 +1,36 @@
+{
+  "authority": "S16-K-D-D0-BASELINE-EVIDENCE-PROVENANCE-REWORK-AUTH-001",
+  "branch": "implementation/16k-d-dense-cuda-profiling",
+  "expected_candidate_sha": "32e52024df47b9add7ce02675a1d40555ac55eae",
+  "head": "32e52024df47b9add7ce02675a1d40555ac55eae",
+  "head_equals_candidate": true,
+  "no_src_changes_authorized": true,
+  "phase": "pre_execution",
+  "recorded_at": "2026-10-19T22:46:04.525379Z",
+  "source_sha256": {
+    "scripts/diag_16k_d_dense/run_d0_baseline.py": "372ee53b1cbd10dd281b45e6eeb04f4af4a98e48138e575e82322f3400a23ef3",
+    "src/offline_rag/dense/pipeline.py": "55d7d6c3e4300ce427856459920abdd610604d573a8b986abc88f30a8aa5b3c7",
+    "src/offline_rag/dense/profiling.py": "5383712c2be118d216f194d1a44dd6119c3b0e60ea16b113875d304a71606928"
+  },
+  "tracked_dirty_lines": [
+    "M uv.lock"
+  ],
+  "tracked_working_tree_clean": false,
+  "untracked_note": "Local runtime/data/node_modules untracked paths only; no tracked file differs from HEAD. Baseline uses isolated data/16k_d_d0_work.",
+  "untracked_paths_present": [
+    "data/16k_d_d0_work/",
+    "data/gold-lab/",
+    "data/locks/",
+    "data/staging/",
+    "data/traces/",
+    "data/workspaces/",
+    "node_modules/"
+  ],
+  "workload_sha256": {
+    "chunk_manifest": "de4ad6b5ab661ba74e8ab2ec5344aa41518fc1dd0e9d94eb08edfbc3073076c3",
+    "chunk_set_id": "chunkset_d0b1fee57392071172e54bb1f4b234965fa9993813319e39d52802eec07db65d",
+    "corpus_id": "corpus_3c74b057074e928cccf7da048c06db0cf6df63bbe546ec14c071604949f160e3",
+    "corpus_manifest": "69cefa61214e0e5e0a5eb71df01e323ede6f1807226181ef4134faeceb91b353",
+    "label": "D0-INCIDENT-1296-CHILD-V1"
+  }
+}

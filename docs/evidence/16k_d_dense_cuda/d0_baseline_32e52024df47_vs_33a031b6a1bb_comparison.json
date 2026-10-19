@@ -1,0 +1,103 @@
+{
+  "agreement": {
+    "child_count_same": true,
+    "dtype_batch_device_same": true,
+    "encode_ratio_new_over_hist": 0.7027963976232923,
+    "generated_reused_same": true,
+    "material_timing_disagreement": true,
+    "max_batch_encode_hist_s": 474.478935599,
+    "max_batch_encode_new_s": 97.05907315899911,
+    "note": "Do not average runs. Token/workload identity agree; wall/encode timing differs materially \u2014 IR must classify reproducibility.",
+    "token_stats_identical": true,
+    "wall_clock_ratio_new_over_hist": 0.7043491499218583,
+    "workload_identity_same": true
+  },
+  "authority": "S16-K-D-D0-BASELINE-EVIDENCE-PROVENANCE-REWORK-AUTH-001",
+  "candidate_rerun": {
+    "batch_encode_stats": {
+      "count": 41,
+      "max_s": 97.05907315899911,
+      "mean_s": 36.60466726499999,
+      "median_s": 15.926861764000023,
+      "min_s": 4.037860659999751,
+      "over_100s": 0,
+      "over_30s": 20,
+      "p95_s": 80.08990644499953,
+      "under_15s": 20
+    },
+    "batch_size": 32,
+    "classification": "authoritative_candidate_rerun",
+    "counts": {
+      "children_total": 1296,
+      "embeddings_failed": 0,
+      "embeddings_generated": 1296,
+      "embeddings_reused": 0,
+      "vectors_materialized": 1296
+    },
+    "dtype": "bfloat16",
+    "encode_total_ms": 1500791.357865,
+    "git_sha_field": "32e52024df47b9add7ce02675a1d40555ac55eae",
+    "path": "docs/evidence/16k_d_dense_cuda/d0_baseline_32e52024df47.json",
+    "peak_vram_bytes": 5874534912,
+    "source_sha256": {
+      "scripts/diag_16k_d_dense/run_d0_baseline.py": "372ee53b1cbd10dd281b45e6eeb04f4af4a98e48138e575e82322f3400a23ef3",
+      "src/offline_rag/dense/pipeline.py": "55d7d6c3e4300ce427856459920abdd610604d573a8b986abc88f30a8aa5b3c7",
+      "src/offline_rag/dense/profiling.py": "5383712c2be118d216f194d1a44dd6119c3b0e60ea16b113875d304a71606928"
+    },
+    "token_stats": {
+      "max": 581,
+      "p50": 382,
+      "p95": 480,
+      "p99": 499
+    },
+    "wall_clock_s": 1512.6869617789998
+  },
+  "contract": "d0-baseline-rerun-comparison-v1",
+  "explicitly_closed": [
+    "FP16 treatment execution",
+    "batch-size sweep",
+    "optimized attention treatment",
+    "persistence optimization",
+    "Qdrant optimization",
+    "default promotion",
+    "usability-threshold freeze",
+    "HTTP-500 GPU investigation reopen"
+  ],
+  "historical_run": {
+    "batch_encode_stats": {
+      "count": 41,
+      "max_s": 474.478935599,
+      "mean_s": 52.08431259578049,
+      "median_s": 49.069697889000054,
+      "min_s": 4.291800496000178,
+      "over_100s": 3,
+      "over_30s": 22,
+      "p95_s": 112.61093997300009,
+      "under_15s": 19
+    },
+    "batch_size": 32,
+    "classification": "historical_development_uncommitted_tree_run",
+    "counts": {
+      "children_total": 1296,
+      "embeddings_failed": 0,
+      "embeddings_generated": 1296,
+      "embeddings_reused": 0,
+      "vectors_materialized": 1296
+    },
+    "dtype": "bfloat16",
+    "encode_total_ms": 2135456.8164270003,
+    "git_sha_field": "33a031b6a1bbda0b3b80fa96c8bff0fdfcece06f",
+    "note": "Original IR-001 development evidence bytes preserved; not rewritten.",
+    "path": "docs/evidence/16k_d_dense_cuda/d0_baseline_33a031b6a1bb.json",
+    "peak_vram_bytes": 5874534912,
+    "retained_unmodified": true,
+    "token_stats": {
+      "max": 581,
+      "p50": 382,
+      "p95": 480,
+      "p99": 499
+    },
+    "wall_clock_s": 2147.637946247
+  },
+  "recorded_at": "2026-10-19T23:12:08.788164Z"
+}

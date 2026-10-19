@@ -1,0 +1,558 @@
+{
+  "authority": "S16-K-D-D0-BASELINE-EVIDENCE-PROVENANCE-REWORK-AUTH-001",
+  "batch_count": 41,
+  "batches": [
+    {
+      "batch_index": 0,
+      "encode_ms": 6467.2022200002175,
+      "item_count": 32,
+      "max_sequence_length": 491,
+      "model_input_token_count_sum": 10943,
+      "peak_vram_bytes_after": 4942636544,
+      "persistence_ms": 78.4280639991266
+    },
+    {
+      "batch_index": 1,
+      "encode_ms": 4963.663224000811,
+      "item_count": 32,
+      "max_sequence_length": 492,
+      "model_input_token_count_sum": 10800,
+      "peak_vram_bytes_after": 4960695296,
+      "persistence_ms": 66.35971200012136
+    },
+    {
+      "batch_index": 2,
+      "encode_ms": 4925.428554000064,
+      "item_count": 32,
+      "max_sequence_length": 487,
+      "model_input_token_count_sum": 10693,
+      "peak_vram_bytes_after": 4960695296,
+      "persistence_ms": 74.03788100236852
+    },
+    {
+      "batch_index": 3,
+      "encode_ms": 71821.76994199926,
+      "item_count": 32,
+      "max_sequence_length": 581,
+      "model_input_token_count_sum": 11261,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 78.64942500418692
+    },
+    {
+      "batch_index": 4,
+      "encode_ms": 9298.170990000472,
+      "item_count": 32,
+      "max_sequence_length": 489,
+      "model_input_token_count_sum": 10188,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 69.38770299802854
+    },
+    {
+      "batch_index": 5,
+      "encode_ms": 80089.90644499953,
+      "item_count": 32,
+      "max_sequence_length": 500,
+      "model_input_token_count_sum": 10009,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 71.5958810005759
+    },
+    {
+      "batch_index": 6,
+      "encode_ms": 7873.695610000141,
+      "item_count": 32,
+      "max_sequence_length": 483,
+      "model_input_token_count_sum": 8955,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 64.6722809988205
+    },
+    {
+      "batch_index": 7,
+      "encode_ms": 9165.373986000304,
+      "item_count": 32,
+      "max_sequence_length": 484,
+      "model_input_token_count_sum": 9738,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 70.81706900044082
+    },
+    {
+      "batch_index": 8,
+      "encode_ms": 72490.15652199977,
+      "item_count": 32,
+      "max_sequence_length": 513,
+      "model_input_token_count_sum": 10008,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 64.07378200219682
+    },
+    {
+      "batch_index": 9,
+      "encode_ms": 70124.5667989997,
+      "item_count": 32,
+      "max_sequence_length": 547,
+      "model_input_token_count_sum": 11353,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 66.94892599898594
+    },
+    {
+      "batch_index": 10,
+      "encode_ms": 7653.885326000818,
+      "item_count": 32,
+      "max_sequence_length": 463,
+      "model_input_token_count_sum": 10628,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 62.91761699867493
+    },
+    {
+      "batch_index": 11,
+      "encode_ms": 60644.8493150001,
+      "item_count": 32,
+      "max_sequence_length": 510,
+      "model_input_token_count_sum": 11218,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 72.02618599967536
+    },
+    {
+      "batch_index": 12,
+      "encode_ms": 10838.580651000484,
+      "item_count": 32,
+      "max_sequence_length": 487,
+      "model_input_token_count_sum": 9235,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 72.14778099842079
+    },
+    {
+      "batch_index": 13,
+      "encode_ms": 93340.17468999991,
+      "item_count": 32,
+      "max_sequence_length": 493,
+      "model_input_token_count_sum": 11317,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 76.06718200077012
+    },
+    {
+      "batch_index": 14,
+      "encode_ms": 97059.07315899912,
+      "item_count": 32,
+      "max_sequence_length": 495,
+      "model_input_token_count_sum": 10786,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 94.74361699631118
+    },
+    {
+      "batch_index": 15,
+      "encode_ms": 15926.861764000023,
+      "item_count": 32,
+      "max_sequence_length": 474,
+      "model_input_token_count_sum": 10779,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 73.44008199925156
+    },
+    {
+      "batch_index": 16,
+      "encode_ms": 67948.90460400074,
+      "item_count": 32,
+      "max_sequence_length": 493,
+      "model_input_token_count_sum": 10274,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 70.60520700724737
+    },
+    {
+      "batch_index": 17,
+      "encode_ms": 8859.757912000532,
+      "item_count": 32,
+      "max_sequence_length": 490,
+      "model_input_token_count_sum": 11341,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 62.77034400136472
+    },
+    {
+      "batch_index": 18,
+      "encode_ms": 8024.57392299948,
+      "item_count": 32,
+      "max_sequence_length": 480,
+      "model_input_token_count_sum": 10534,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 69.77111499691091
+    },
+    {
+      "batch_index": 19,
+      "encode_ms": 65433.32288000056,
+      "item_count": 32,
+      "max_sequence_length": 499,
+      "model_input_token_count_sum": 11177,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 66.45305399706558
+    },
+    {
+      "batch_index": 20,
+      "encode_ms": 8292.792516999725,
+      "item_count": 32,
+      "max_sequence_length": 484,
+      "model_input_token_count_sum": 11212,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 73.22700100121438
+    },
+    {
+      "batch_index": 21,
+      "encode_ms": 65118.29854500047,
+      "item_count": 32,
+      "max_sequence_length": 498,
+      "model_input_token_count_sum": 11166,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 72.08995400287677
+    },
+    {
+      "batch_index": 22,
+      "encode_ms": 53417.223551999996,
+      "item_count": 32,
+      "max_sequence_length": 504,
+      "model_input_token_count_sum": 10923,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 64.17128200246225
+    },
+    {
+      "batch_index": 23,
+      "encode_ms": 62218.8767990001,
+      "item_count": 32,
+      "max_sequence_length": 514,
+      "model_input_token_count_sum": 10041,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 62.42318499516841
+    },
+    {
+      "batch_index": 24,
+      "encode_ms": 56887.147145999734,
+      "item_count": 32,
+      "max_sequence_length": 495,
+      "model_input_token_count_sum": 10834,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 62.75537100282236
+    },
+    {
+      "batch_index": 25,
+      "encode_ms": 7912.49645500011,
+      "item_count": 32,
+      "max_sequence_length": 488,
+      "model_input_token_count_sum": 9985,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 76.20702700114634
+    },
+    {
+      "batch_index": 26,
+      "encode_ms": 56937.147439999535,
+      "item_count": 32,
+      "max_sequence_length": 498,
+      "model_input_token_count_sum": 10438,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 67.8228390033837
+    },
+    {
+      "batch_index": 27,
+      "encode_ms": 60179.95111300024,
+      "item_count": 32,
+      "max_sequence_length": 510,
+      "model_input_token_count_sum": 10932,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 69.07901700469665
+    },
+    {
+      "batch_index": 28,
+      "encode_ms": 7814.558205999674,
+      "item_count": 32,
+      "max_sequence_length": 485,
+      "model_input_token_count_sum": 9115,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 94.43142900181556
+    },
+    {
+      "batch_index": 29,
+      "encode_ms": 62877.4331149998,
+      "item_count": 32,
+      "max_sequence_length": 497,
+      "model_input_token_count_sum": 10425,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 70.85236000057193
+    },
+    {
+      "batch_index": 30,
+      "encode_ms": 9008.040106000408,
+      "item_count": 32,
+      "max_sequence_length": 481,
+      "model_input_token_count_sum": 10038,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 67.59665900062828
+    },
+    {
+      "batch_index": 31,
+      "encode_ms": 8403.157893999378,
+      "item_count": 32,
+      "max_sequence_length": 488,
+      "model_input_token_count_sum": 11355,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 72.07227399885596
+    },
+    {
+      "batch_index": 32,
+      "encode_ms": 8724.521868999545,
+      "item_count": 32,
+      "max_sequence_length": 475,
+      "model_input_token_count_sum": 10342,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 66.54725600128586
+    },
+    {
+      "batch_index": 33,
+      "encode_ms": 59320.40321000022,
+      "item_count": 32,
+      "max_sequence_length": 520,
+      "model_input_token_count_sum": 11168,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 64.54046000089875
+    },
+    {
+      "batch_index": 34,
+      "encode_ms": 67226.3246299999,
+      "item_count": 32,
+      "max_sequence_length": 495,
+      "model_input_token_count_sum": 11849,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 66.3221640024858
+    },
+    {
+      "batch_index": 35,
+      "encode_ms": 51695.565650999924,
+      "item_count": 32,
+      "max_sequence_length": 496,
+      "model_input_token_count_sum": 10498,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 65.16608099991572
+    },
+    {
+      "batch_index": 36,
+      "encode_ms": 8539.010816999507,
+      "item_count": 32,
+      "max_sequence_length": 488,
+      "model_input_token_count_sum": 11012,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 63.187678999383934
+    },
+    {
+      "batch_index": 37,
+      "encode_ms": 7844.391079999696,
+      "item_count": 32,
+      "max_sequence_length": 486,
+      "model_input_token_count_sum": 11035,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 70.38258199736447
+    },
+    {
+      "batch_index": 38,
+      "encode_ms": 54077.501886999926,
+      "item_count": 32,
+      "max_sequence_length": 500,
+      "model_input_token_count_sum": 10044,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 73.05328999973426
+    },
+    {
+      "batch_index": 39,
+      "encode_ms": 7308.736656999827,
+      "item_count": 32,
+      "max_sequence_length": 449,
+      "model_input_token_count_sum": 10305,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 67.70840000444878
+    },
+    {
+      "batch_index": 40,
+      "encode_ms": 4037.860659999751,
+      "item_count": 16,
+      "max_sequence_length": 502,
+      "model_input_token_count_sum": 4877,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 35.49884000040038
+    }
+  ],
+  "collection_name": "dense_e29c701572d7a0d4d46a9800a0a9104e69c8cd1468b73d01",
+  "counts": {
+    "children_total": 1296,
+    "embeddings_failed": 0,
+    "embeddings_generated": 1296,
+    "embeddings_reused": 0,
+    "vectors_materialized": 1296
+  },
+  "dense_profile_contract": "dense-cuda-profile-v1",
+  "dtype_lane": "native",
+  "embedding_model": {
+    "adapter_contract": "sentence-transformers-v1",
+    "dimension": 1024,
+    "embedding_config_hash": "embcfg_e7861b5986785eba0fb6725a3d1e40f2d461f33e2dcd66d2c75ad3875f9a5d3f",
+    "index_config_hash": "idxcfg_45b7b17026e085b4f721de7031819b3b72d99db3966e1b77fc9dcc8203d41862",
+    "model_id": "Qwen/Qwen3-Embedding-0.6B",
+    "normalize": true,
+    "revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3"
+  },
+  "evidence_authority": "S16-K-D-D0-BASELINE-EVIDENCE-PROVENANCE-REWORK-AUTH-001",
+  "executed_at": "2026-10-19T23:11:26.461441Z",
+  "execution_policy": {
+    "attention_backend": "sdpa",
+    "batch_size": 32,
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "dtype_force": {
+      "dtype_after": "bfloat16",
+      "dtype_before": "bfloat16",
+      "dtype_policy": "native_as_loaded",
+      "error": null,
+      "note": "Harness did not force dtype. Provisioned model config torch_dtype is bfloat16; this measures the executable current path on this host."
+    },
+    "embedding_dimension": 1024,
+    "note": "FP32 forced only inside this harness after model load; config/base.yaml and make_embedder defaults unchanged.",
+    "production_default_unchanged": true
+  },
+  "execution_tree_note": "Executed from clean tracked checkout of exact candidate 32e52024df47b9add7ce02675a1d40555ac55eae; source digests recorded pre/post; historical uncommitted-tree run retained separately.",
+  "explicitly_closed": [
+    "FP16 treatment execution",
+    "batch-size sweep",
+    "optimized attention treatment",
+    "persistence optimization",
+    "Qdrant optimization",
+    "default promotion",
+    "16K-E/F/G",
+    "Slice 17/18",
+    "main promotion",
+    "HTTP-500 GPU investigation reopen"
+  ],
+  "first_batch_versus_steady_state": {
+    "first_batch_encode_ms": 6467.2022200002175,
+    "steady_state_encode_mean_ms": 37358.103891124985
+  },
+  "fp32_force_attempt": {
+    "evidence": "docs/evidence/16k_d_dense_cuda/d0_fp32_force_FAILED_cublasSgemm.json",
+    "note": "Design \u00a79.2 lists CUDA FP32/batch-32 as step 1. On this host, harness-forced FP32 failed; measured baseline is native as-loaded dtype with batch_size=32.",
+    "result": "CUBLAS_STATUS_EXECUTION_FAILED on cublasSgemm"
+  },
+  "gate": "D0",
+  "git_sha": "32e52024df47b9add7ce02675a1d40555ac55eae",
+  "implementation_authority": "S16-K-D-DENSE-CUDA-PROFILING-BASELINE-IMPLEMENTATION-AUTH-001",
+  "index_id": "denseindex_e29c701572d7a0d4d46a9800a0a9104e69c8cd1468b73d01c4484ef41561b706",
+  "model_input_token_stats": {
+    "max": 581,
+    "p50": 382,
+    "p95": 480,
+    "p99": 499
+  },
+  "oversized_unsplittable_count": 0,
+  "parent_sha": "33a031b6a1bbda0b3b80fa96c8bff0fdfcece06f",
+  "peak_vram_bytes": 5874534912,
+  "peak_vram_error": null,
+  "peak_vram_status": "observed",
+  "per_batch_max_sequence_length": {
+    "max": 581,
+    "values": [
+      491,
+      492,
+      487,
+      581,
+      489,
+      500,
+      483,
+      484,
+      513,
+      547,
+      463,
+      510,
+      487,
+      493,
+      495,
+      474,
+      493,
+      490,
+      480,
+      499,
+      484,
+      498,
+      504,
+      514,
+      495,
+      488,
+      498,
+      510,
+      485,
+      497,
+      481,
+      488,
+      475,
+      520,
+      495,
+      496,
+      488,
+      486,
+      500,
+      449,
+      502
+    ]
+  },
+  "provenance": {
+    "classification": "authoritative_candidate_rerun",
+    "head_at_execution": "32e52024df47b9add7ce02675a1d40555ac55eae",
+    "historical_development_run": "docs/evidence/16k_d_dense_cuda/d0_baseline_33a031b6a1bb.json",
+    "provenance_post": "docs/evidence/16k_d_dense_cuda/d0_baseline_32e52024df47_provenance_post.json",
+    "provenance_pre": "docs/evidence/16k_d_dense_cuda/d0_baseline_32e52024df47_provenance_pre.json",
+    "reviewed_candidate_sha": "32e52024df47b9add7ce02675a1d40555ac55eae",
+    "rework_authority": "S16-K-D-D0-BASELINE-EVIDENCE-PROVENANCE-REWORK-AUTH-001",
+    "source_sha256": {
+      "scripts/diag_16k_d_dense/run_d0_baseline.py": "372ee53b1cbd10dd281b45e6eeb04f4af4a98e48138e575e82322f3400a23ef3",
+      "src/offline_rag/dense/pipeline.py": "55d7d6c3e4300ce427856459920abdd610604d573a8b986abc88f30a8aa5b3c7",
+      "src/offline_rag/dense/profiling.py": "5383712c2be118d216f194d1a44dd6119c3b0e60ea16b113875d304a71606928"
+    },
+    "tracked_subject_sources_byte_identical_pre_post": true
+  },
+  "runtime": {
+    "cuda_version": "13.0",
+    "gpu_memory_total_mib": 8191,
+    "gpu_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+    "nvidia_smi": "NVIDIA GeForce RTX 2080 Super with Max-Q Design, 8192 MiB, 595.71",
+    "nvidia_smi_error": null,
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "python": "3.14.5",
+    "torch_version": "2.14.0+cu130"
+  },
+  "searchable_units": {
+    "contract_version": "all-children-v1",
+    "strategy": "all_children"
+  },
+  "slice": "16K-D",
+  "status": "BASELINE_EXECUTED",
+  "throughput": {
+    "generated_chunks_per_sec_encode": 0.8635444182219089,
+    "model_input_tokens_per_sec_encode": 285.73658673651187
+  },
+  "timing": {
+    "dense_generation_ms": 1504718,
+    "dense_materialization_ms": 7370,
+    "profile_timing_ms": {
+      "dense_point_construction": 10.703482000280928,
+      "embedding_artifact_persistence_total": 2851.048059022105,
+      "encode_total": 1500791.357865,
+      "first_batch_encode": 6467.2022200002175,
+      "qdrant_materialization_upsert": 7355.959900000016,
+      "steady_state_encode_mean": 37358.103891124985
+    },
+    "report_duration_ms": 1512667,
+    "wall_clock_s": 1512.6869617789998
+  },
+  "tokenizer_error": null,
+  "tokenizer_status": "observed",
+  "unavailable_measurements": [],
+  "workload": {
+    "child_count": 1296,
+    "chunk_manifest_sha256": "de4ad6b5ab661ba74e8ab2ec5344aa41518fc1dd0e9d94eb08edfbc3073076c3",
+    "chunk_set_id": "chunkset_d0b1fee57392071172e54bb1f4b234965fa9993813319e39d52802eec07db65d",
+    "cold_or_warm": "cold",
+    "corpus_id": "corpus_3c74b057074e928cccf7da048c06db0cf6df63bbe546ec14c071604949f160e3",
+    "corpus_manifest_sha256": "69cefa61214e0e5e0a5eb71df01e323ede6f1807226181ef4134faeceb91b353",
+    "historical_dense_index_id": "denseindex_e29c701572d7a0d4d46a9800a0a9104e69c8cd1468b73d01c4484ef41561b706",
+    "label": "D0-INCIDENT-1296-CHILD-V1",
+    "note": "Isolated empty embeddings/ + qdrant/; no private document text in evidence."
+  }
+}
