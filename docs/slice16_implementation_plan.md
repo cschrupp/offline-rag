@@ -362,6 +362,15 @@ GAP-16G-02:
       — AUTHORIZED
     Exact acceptance-record parent:
       2417e47fc2aef1d59c31f0307a0cdb222c56e618
+    GPU residency/allocator diagnostic tooling authority:
+      S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-TOOLING-AUTH-001
+      — AUTHORIZED
+    Exact GPU residency tooling parent:
+      d501370aef96c953f4780d2048d11b91306ee856
+    Tooling branch: implementation/16k-gpu-residency-allocator-diagnostic-tooling
+    Tooling status: AUTHORIZED / AUTH-OPEN
+    Tooling document: docs/slice16k_gpu_residency_allocator_diagnostic_tooling.md
+    Tooling scope: env-gated in-process probe + runner; campaign execution NOT AUTHORIZED
     Design document: docs/slice16k_gpu_residency_allocator_diagnostic_design.md
     Design scope:
       state/history-dependent residency + allocator hypotheses beyond static free-VRAM;
@@ -881,6 +890,15 @@ Slice-16 closeout inventory: HUMAN ACCEPTED
       — AUTHORIZED
     Exact acceptance-record parent:
       2417e47fc2aef1d59c31f0307a0cdb222c56e618
+    GPU residency/allocator diagnostic tooling authority:
+      S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-TOOLING-AUTH-001
+      — AUTHORIZED
+    Exact GPU residency tooling parent:
+      d501370aef96c953f4780d2048d11b91306ee856
+    Tooling branch: implementation/16k-gpu-residency-allocator-diagnostic-tooling
+    Tooling status: AUTHORIZED / AUTH-OPEN
+    Tooling document: docs/slice16k_gpu_residency_allocator_diagnostic_tooling.md
+    Tooling scope: env-gated in-process probe + runner; campaign execution NOT AUTHORIZED
     Design document: docs/slice16k_gpu_residency_allocator_diagnostic_design.md
     Design scope:
       state/history-dependent residency + allocator hypotheses beyond static free-VRAM;

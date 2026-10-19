@@ -63,6 +63,12 @@
 **Exact independently accepted design subject:** `2417e47fc2aef1d59c31f0307a0cdb222c56e618`  
 **Acceptance-record authority:** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-DESIGN-IR-001-ACCEPTANCE-RECORD-AUTH-001` — AUTHORIZED  
 **Exact acceptance-record parent:** `2417e47fc2aef1d59c31f0307a0cdb222c56e618`  
+**GPU residency/allocator diagnostic tooling authority:** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-TOOLING-AUTH-001` — AUTHORIZED  
+**Exact GPU residency tooling parent:** `d501370aef96c953f4780d2048d11b91306ee856`  
+**Tooling branch:** `implementation/16k-gpu-residency-allocator-diagnostic-tooling`  
+**Tooling status:** AUTHORIZED / AUTH-OPEN  
+**Tooling document:** `docs/slice16k_gpu_residency_allocator_diagnostic_tooling.md`  
+**Tooling scope:** env-gated in-process probe + runner; campaign execution NOT AUTHORIZED  
 **Design document:** `docs/slice16k_gpu_residency_allocator_diagnostic_design.md`  
 **Design scope:** state/history-dependent residency + allocator hypotheses beyond static free-VRAM; execution NOT AUTHORIZED; M0–M2 / 16K-C/D / device-CUDA policy / fireground / main NOT AUTHORIZED  
 **Exact constrained-VRAM execution tip:** c921c954da25a2f61415707d2f5b54579bc48571  
