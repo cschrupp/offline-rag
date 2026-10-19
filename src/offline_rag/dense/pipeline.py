@@ -7,7 +7,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from offline_rag.app.errors import AppError
 from offline_rag.chunking.persistence import (
     chunk_artifact_path,
     chunk_state_path,
@@ -61,6 +60,14 @@ from offline_rag.dense.persistence import (
     write_index_state,
 )
 from offline_rag.dense.points import build_dense_point
+from offline_rag.dense.profiling import (
+    dense_profile_session,
+    get_dense_profile_collector,
+    observe_model_input_token_counts,
+    observe_peak_vram_bytes,
+    reset_peak_vram_stats,
+    timed_ms,
+)
 from offline_rag.dense.qdrant_local import QdrantLocalBackend
 from offline_rag.dense.searchable_units import (
     DenseSearchableUnitsError,
@@ -285,8 +292,12 @@ def _ensure_embeddings(
     results: list[tuple[Chunk, str, EmbeddingArtifact]] = []
     generated = reused = failed = 0
     pending_chunks: list[tuple[Chunk, str, str, str]] = []
+    profile = get_dense_profile_collector()
+    oversized_unsplittable = 0
 
     for chunk, chunk_artifact_id in jobs:
+        if bool((chunk.metadata or {}).get("oversized_unsplittable")):
+            oversized_unsplittable += 1
         try:
             inputs = ranking_inputs_for_chunk(
                 chunk_text=chunk.text,
@@ -326,6 +337,14 @@ def _ensure_embeddings(
             continue
         pending_chunks.append((chunk, chunk_artifact_id, emb_text, emb_id))
 
+    if profile is not None:
+        profile.oversized_unsplittable_count = oversized_unsplittable
+        profile.cold_or_warm = (
+            "cold"
+            if reused == 0 and pending_chunks
+            else ("warm" if not pending_chunks else "mixed")
+        )
+
     children_total = len(jobs)
     report_progress(
         on_progress,
@@ -336,7 +355,7 @@ def _ensure_embeddings(
     )
 
     batch_size = max(1, settings.indexing.embedding.batch_size)
-    for start in range(0, len(pending_chunks), batch_size):
+    for batch_index, start in enumerate(range(0, len(pending_chunks), batch_size)):
         # Authoritative cooperative control between interruptible dense batches.
         # Must not rely on progress callbacks (best-effort / exception-isolated).
         if control_checkpoint is not None:
@@ -350,8 +369,26 @@ def _ensure_embeddings(
             stage="dense_batch",
         )
         texts = [item[2] for item in batch]
+        # Observational token counts on the exact payloads about to be encoded.
+        # SentenceTransformersEmbedder may prefix document_instruction; mirror that.
+        encode_payloads = texts
+        doc_instruction = getattr(embedder, "document_instruction", None)
+        if isinstance(doc_instruction, str) and doc_instruction:
+            encode_payloads = [f"{doc_instruction}{text}" for text in texts]
+        token_counts: list[int] | None = None
+        max_seq: int | None = None
+        if profile is not None:
+            token_counts, max_seq = observe_model_input_token_counts(
+                embedder, encode_payloads, profile
+            )
+        encode_ms = 0.0
         try:
-            vectors = embedder.embed_documents(texts)
+            if profile is not None:
+                with timed_ms() as encode_bucket:
+                    vectors = embedder.embed_documents(texts)
+                encode_ms = encode_bucket[0]
+            else:
+                vectors = embedder.embed_documents(texts)
         except Exception as exc:
             failed += len(batch)
             report_document_activity(
@@ -376,6 +413,7 @@ def _ensure_embeddings(
                 embeddings_reused=reused,
                 embeddings_failed=failed,
             )
+        persist_ms = 0.0
         for (chunk, chunk_artifact_id, emb_text, emb_id), vector in zip(
             batch, vectors, strict=True
         ):
@@ -408,7 +446,12 @@ def _ensure_embeddings(
                 vector=list(vector),
             )
             try:
-                write_embedding_artifact(settings.paths.embeddings, artifact)
+                if profile is not None:
+                    with timed_ms() as persist_bucket:
+                        write_embedding_artifact(settings.paths.embeddings, artifact)
+                    persist_ms += persist_bucket[0]
+                else:
+                    write_embedding_artifact(settings.paths.embeddings, artifact)
             except Exception as exc:
                 failed += 1
                 report_document_activity(
@@ -423,6 +466,17 @@ def _ensure_embeddings(
                 ) from exc
             generated += 1
             results.append((chunk, chunk_artifact_id, artifact))
+        if profile is not None:
+            peak_after = observe_peak_vram_bytes(profile)
+            profile.record_batch(
+                batch_index=batch_index,
+                item_count=len(batch),
+                token_counts=token_counts,
+                max_sequence_length=max_seq,
+                encode_ms=encode_ms,
+                persistence_ms=persist_ms,
+                peak_vram_bytes_after=peak_after,
+            )
         report_document_activity(
             on_document_activity, document_ids=(), stage="dense_batch"
         )
@@ -433,6 +487,10 @@ def _ensure_embeddings(
             total=children_total if children_total > 0 else None,
             unit="chunks",
         )
+
+    if profile is not None:
+        profile.embeddings_generated = generated
+        profile.embeddings_reused = reused
 
     results.sort(key=lambda item: item[0].chunk_id)
     return results, generated, reused, failed
@@ -494,9 +552,43 @@ def run_indexing(
     run_id = new_execution_id(prefix="index")
     name = validate_corpus_name(corpus_name)
     owned_backend = backend is None
-    backend_impl: DenseIndexBackend | None = None
 
-    # Partial facts retained across failure so FAILED reports stay informative.
+    with dense_profile_session() as profile_session:
+        if profile_session is not None:
+            reset_peak_vram_stats()
+        return _run_indexing_inner(
+            settings=settings,
+            corpus_name=name,
+            embedder=embedder,
+            backend=backend,
+            on_progress=on_progress,
+            on_document_phase=on_document_phase,
+            on_document_activity=on_document_activity,
+            control_checkpoint=control_checkpoint,
+            started=started,
+            run_id=run_id,
+            owned_backend=owned_backend,
+            profile_session=profile_session,
+        )
+
+
+def _run_indexing_inner(
+    *,
+    settings: AppSettings,
+    corpus_name: str,
+    embedder: Embedder | None,
+    backend: DenseIndexBackend | None,
+    on_progress: ProgressReporter | None,
+    on_document_phase: ObservabilityReporter | None,
+    on_document_activity: ActivityReporter | None,
+    control_checkpoint: Callable[[str], None] | None,
+    started: datetime,
+    run_id: str,
+    owned_backend: bool,
+    profile_session: Any,
+) -> IndexingReport:
+    name = corpus_name
+    backend_impl: DenseIndexBackend | None = None
     corpus_id: str | None = None
     chunk_set_id: str | None = None
     emb_cfg_hash: str | None = None
@@ -791,38 +883,78 @@ def run_indexing(
                 embeddings_failed=embeddings_failed,
             ) from exc
 
-        points: list[DensePointRecord] = [
-            build_dense_point(
-                chunk,
-                vector=artifact.vector,
-                chunk_artifact_id=chunk_artifact_id,
-                chunk_set_id=chunk_state.current_chunk_set_id,
-                embedding_id=artifact.embedding_id,
-                index_id=index_id,
-            )
-            for chunk, chunk_artifact_id, artifact in rows
-        ]
+        if profile_session is not None:
+            with timed_ms() as point_bucket:
+                points = [
+                    build_dense_point(
+                        chunk,
+                        vector=artifact.vector,
+                        chunk_artifact_id=chunk_artifact_id,
+                        chunk_set_id=chunk_state.current_chunk_set_id,
+                        embedding_id=artifact.embedding_id,
+                        index_id=index_id,
+                    )
+                    for chunk, chunk_artifact_id, artifact in rows
+                ]
+            profile_session.point_construction_ms = point_bucket[0]
+        else:
+            points = [
+                build_dense_point(
+                    chunk,
+                    vector=artifact.vector,
+                    chunk_artifact_id=chunk_artifact_id,
+                    chunk_set_id=chunk_state.current_chunk_set_id,
+                    embedding_id=artifact.embedding_id,
+                    index_id=index_id,
+                )
+                for chunk, chunk_artifact_id, artifact in rows
+            ]
 
         try:
             # Incomplete/unpublished collection: delete and rebuild. Never mutate published.
-            if backend_impl.collection_exists(collection_name):
-                if published_complete:
-                    raise DenseStageError(
-                        f"published collection {collection_name} exists; refusing mutation",
-                        classification=DENSE_FAILURE_VALIDATION,
-                        embeddings_generated=embeddings_generated,
-                        embeddings_reused=embeddings_reused,
-                        embeddings_failed=embeddings_failed,
-                    )
-                backend_impl.delete_collection(collection_name)
+            if profile_session is not None:
+                with timed_ms() as qdrant_bucket:
+                    if backend_impl.collection_exists(collection_name):
+                        if published_complete:
+                            raise DenseStageError(
+                                (
+                                    f"published collection {collection_name} exists; "
+                                    "refusing mutation"
+                                ),
+                                classification=DENSE_FAILURE_VALIDATION,
+                                embeddings_generated=embeddings_generated,
+                                embeddings_reused=embeddings_reused,
+                                embeddings_failed=embeddings_failed,
+                            )
+                        backend_impl.delete_collection(collection_name)
 
-            backend_impl.create_collection(
-                collection_name,
-                dimension=active_embedder.dimension,
-                metric=settings.indexing.metric,
-            )
-            backend_impl.upsert(collection_name, points)
-            actual_count = backend_impl.count(collection_name)
+                    backend_impl.create_collection(
+                        collection_name,
+                        dimension=active_embedder.dimension,
+                        metric=settings.indexing.metric,
+                    )
+                    backend_impl.upsert(collection_name, points)
+                    actual_count = backend_impl.count(collection_name)
+                profile_session.qdrant_materialization_ms = qdrant_bucket[0]
+            else:
+                if backend_impl.collection_exists(collection_name):
+                    if published_complete:
+                        raise DenseStageError(
+                            f"published collection {collection_name} exists; refusing mutation",
+                            classification=DENSE_FAILURE_VALIDATION,
+                            embeddings_generated=embeddings_generated,
+                            embeddings_reused=embeddings_reused,
+                            embeddings_failed=embeddings_failed,
+                        )
+                    backend_impl.delete_collection(collection_name)
+
+                backend_impl.create_collection(
+                    collection_name,
+                    dimension=active_embedder.dimension,
+                    metric=settings.indexing.metric,
+                )
+                backend_impl.upsert(collection_name, points)
+                actual_count = backend_impl.count(collection_name)
         except DenseStageError:
             raise
         except Exception as exc:
@@ -900,6 +1032,21 @@ def run_indexing(
             completed=completed,
         )
 
+        success_metadata: dict[str, Any] = {
+            "dense_generation_ms": dense_generation_ms,
+            "dense_materialization_ms": dense_materialization_ms,
+            "dense_execution": dense_execution,
+        }
+        if profile_session is not None:
+            observe_peak_vram_bytes(profile_session)
+            profile_summary = profile_session.summarize()
+            success_metadata["dense_profile"] = profile_summary
+            token_rate = profile_summary.get("throughput", {}).get(
+                "model_input_tokens_per_sec_encode"
+            )
+            if isinstance(token_rate, (int, float)):
+                # Reuse the existing 16K-B aggregate slot when reliably measured.
+                success_metadata["model_input_tokens_per_sec"] = float(token_rate)
         return IndexingReport(
             run_id=run_id,
             corpus_name=name,
@@ -920,16 +1067,15 @@ def run_indexing(
             index_id=index_id,
             collection_name=collection_name,
             index_manifest_path=state.current_index_manifest,
-            metadata={
-                "dense_generation_ms": dense_generation_ms,
-                "dense_materialization_ms": dense_materialization_ms,
-                "dense_execution": dense_execution,
-            },
+            metadata=success_metadata,
         )
-    except AppError:
-        # Cooperative control (cancel/shutdown) must remain authoritative.
-        raise
     except Exception as exc:
+        # Cooperative control (cancel/shutdown) must remain authoritative.
+        # Lazy import avoids dense ↔ app circular import at module load.
+        from offline_rag.app.errors import AppError
+
+        if isinstance(exc, AppError):
+            raise
         classification = DENSE_FAILURE_STAGE
         if isinstance(exc, DenseStageError):
             classification = exc.classification

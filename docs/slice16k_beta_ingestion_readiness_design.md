@@ -186,7 +186,16 @@
 **Exact 16K-C acceptance-record parent:** `219c8551d208530ec93c5697ca5591ad52bfb228`
 **F001:** CLOSED
 **16K-C document:** `docs/slice16k_c_first_user_capacity_model.md`
-**16K-D:** NOT AUTHORIZED
+**16K-D authority:** `S16-K-D-DENSE-CUDA-PROFILING-BASELINE-IMPLEMENTATION-AUTH-001` — AUTHORIZED
+**Exact 16K-D parent:** `33a031b6a1bbda0b3b80fa96c8bff0fdfcece06f`
+**16K-D branch:** `implementation/16k-d-dense-cuda-profiling`
+**16K-D status:** D0 BASELINE COMPLETE / READY FOR INDEPENDENT REVIEW
+**16K-D document:** `docs/slice16k_d_dense_cuda_profiling.md`
+**16K-D evidence:** `docs/evidence/16k_d_dense_cuda/`
+**16K-D D0 scope:** observational instrumentation + cold ~1296-child baseline
+on executable current path (native bf16/batch-32 after FP32 harness force
+hit CUBLAS); FP16 / batch sweep / attention / persistence/Qdrant optimization /
+default promotion closed until IR accept + usability threshold freeze
 **16K-E → 16K-G:** NOT AUTHORIZED
 **Main promotion:** NOT AUTHORIZED
 **Frozen implementation order:** 16K-A → 16K-B → baseline evidence → 16K-C → 16K-D → 16K-E → 16K-F → 16K-G
@@ -1218,7 +1227,17 @@ Exact 16K-C acceptance-record parent:
   219c8551d208530ec93c5697ca5591ad52bfb228
 F001: CLOSED
 16K-C document: docs/slice16k_c_first_user_capacity_model.md
-16K-D: NOT AUTHORIZED
+16K-D authority:
+  S16-K-D-DENSE-CUDA-PROFILING-BASELINE-IMPLEMENTATION-AUTH-001 — AUTHORIZED
+Exact 16K-D parent: 33a031b6a1bbda0b3b80fa96c8bff0fdfcece06f
+16K-D branch: implementation/16k-d-dense-cuda-profiling
+16K-D status: D0 BASELINE COMPLETE / READY FOR INDEPENDENT REVIEW
+16K-D document: docs/slice16k_d_dense_cuda_profiling.md
+16K-D evidence: docs/evidence/16k_d_dense_cuda/
+16K-D D0: instrumentation + cold baseline (native bf16/batch-32;
+  FP32 harness force → CUBLAS_STATUS_EXECUTION_FAILED)
+16K-D closed until D0 IR accept + usability threshold freeze:
+  FP16 / batch sweep / attention / persistence/Qdrant opt / default promotion
 16K-E → 16K-G: NOT AUTHORIZED
 Main promotion: NOT AUTHORIZED
 Frozen order: 16K-A → 16K-B → baseline evidence → 16K-C → 16K-D → 16K-E → 16K-F → 16K-G
@@ -1227,7 +1246,7 @@ Slice 17: NOT AUTHORIZED
 Slice 18: NOT AUTHORIZED
 9G: DEFERRED / NOT AUTHORIZED
 M7 CLOSEOUT: NOT AUTHORIZED
-Does NOT authorize 16K-C→G / capacity / CUDA / UI
+Does NOT authorize 16K-E→G / default promotion / treatment execution
 Does NOT reopen Slice 16 closeout
 Does NOT authorize main promotion
 Does NOT claim Fireground CUDA fixed

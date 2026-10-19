@@ -1,0 +1,29 @@
+{
+  "authority": "S16-K-D-DENSE-CUDA-PROFILING-BASELINE-IMPLEMENTATION-AUTH-001",
+  "characterization": "Harness-forced FP32 after load failed on first encode with CUBLAS_STATUS_EXECUTION_FAILED (cublasSgemm). Same failure family as the open Fireground CUDA/cublasGemmEx issue. Free VRAM was ~6.8 GiB at process end; not treated as conclusive OOM. D0 cold baseline proceeds on native as-loaded dtype (provisioned torch_dtype=bfloat16).",
+  "dtype_lane": "fp32_force",
+  "errors": [
+    "embedding generation failed: CUDA error: CUBLAS_STATUS_EXECUTION_FAILED when calling `cublasSgemm( handle, opa, opb, m, n, k, &alpha, a, lda, b, ldb, &beta, c, ldc)`"
+  ],
+  "metadata": {
+    "dense_execution": {
+      "attention_backend": "sdpa",
+      "batch_size": 32,
+      "device": "cuda",
+      "dtype": "float32",
+      "embedding_dimension": 1024
+    }
+  },
+  "status": "failed",
+  "workload": {
+    "child_count": 1296,
+    "chunk_manifest_sha256": "de4ad6b5ab661ba74e8ab2ec5344aa41518fc1dd0e9d94eb08edfbc3073076c3",
+    "chunk_set_id": "chunkset_d0b1fee57392071172e54bb1f4b234965fa9993813319e39d52802eec07db65d",
+    "cold_or_warm": "cold",
+    "corpus_id": "corpus_3c74b057074e928cccf7da048c06db0cf6df63bbe546ec14c071604949f160e3",
+    "corpus_manifest_sha256": "69cefa61214e0e5e0a5eb71df01e323ede6f1807226181ef4134faeceb91b353",
+    "historical_dense_index_id": "denseindex_e29c701572d7a0d4d46a9800a0a9104e69c8cd1468b73d01c4484ef41561b706",
+    "label": "D0-INCIDENT-1296-CHILD-V1",
+    "note": "Isolated empty embeddings/ + qdrant/; no private document text in evidence."
+  }
+}

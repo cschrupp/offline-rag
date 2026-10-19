@@ -1,0 +1,95 @@
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights:  41%|████      | 126/310 [00:00<00:00, 1254.17it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 1823.84it/s]
+dense indexing failed run_id=index_37d55c0651ed4db98bc9ac3a6e468ec7 corpus=16k_d_d0_incident classification=embedding_generation_failed
+Traceback (most recent call last):
+  File "/home/user/projects/technical_rag/src/offline_rag/dense/pipeline.py", line 388, in _ensure_embeddings
+    vectors = embedder.embed_documents(texts)
+  File "/home/user/projects/technical_rag/src/offline_rag/dense/embedder.py", line 248, in embed_documents
+    vectors = model.encode(
+        list(payloads),
+    ...<3 lines>...
+        show_progress_bar=False,
+    )
+  File "/home/user/projects/technical_rag/.venv/lib/python3.14/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+    return func(*args, **kwargs)
+  File "/home/user/projects/technical_rag/.venv/lib/python3.14/site-packages/sentence_transformers/util/decorators.py", line 46, in wrapper
+    return func(*args, **kwargs)
+  File "/home/user/projects/technical_rag/.venv/lib/python3.14/site-packages/sentence_transformers/sentence_transformer/model.py", line 941, in encode
+    out_features = self(features, **kwargs)
+  File "/home/user/projects/technical_rag/.venv/lib/python3.14/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/user/projects/technical_rag/.venv/lib/python3.14/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/user/projects/technical_rag/.venv/lib/python3.14/site-packages/sentence_transformers/base/model.py", line 569, in forward
+    input = module(input, **module_kwargs)
+  File "/home/user/projects/technical_rag/.venv/lib/python3.14/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/user/projects/technical_rag/.venv/lib/python3.14/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/user/projects/technical_rag/.venv/lib/python3.14/site-packages/sentence_transformers/base/modules/transformer.py", line 1650, in forward
+    model_output = model_method(**filtered_kwargs)
+  File "/home/user/projects/technical_rag/.venv/lib/python3.14/site-packages/transformers/utils/generic.py", line 1068, in wrapper
+    output = func(self, *args, **kwargs)
+  File "/home/user/projects/technical_rag/.venv/lib/python3.14/site-packages/transformers/utils/output_capturing.py", line 286, in wrapper
+    outputs = func(self, *args, **kwargs)
+  File "/home/user/projects/technical_rag/.venv/lib/python3.14/site-packages/transformers/models/qwen3/modeling_qwen3.py", line 413, in forward
+    hidden_states = decoder_layer(
+        hidden_states,
+    ...<5 lines>...
+        **kwargs,
+    )
+  File "/home/user/projects/technical_rag/.venv/lib/python3.14/site-packages/transformers/modeling_layers.py", line 109, in __call__
+    return super().__call__(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/user/projects/technical_rag/.venv/lib/python3.14/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/user/projects/technical_rag/.venv/lib/python3.14/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/user/projects/technical_rag/.venv/lib/python3.14/site-packages/transformers/models/qwen3/modeling_qwen3.py", line 307, in forward
+    hidden_states, _ = self.self_attn(
+                       ~~~~~~~~~~~~~~^
+        hidden_states=hidden_states,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+        **kwargs,
+        ^^^^^^^^^
+    )
+    ^
+  File "/home/user/projects/technical_rag/.venv/lib/python3.14/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/user/projects/technical_rag/.venv/lib/python3.14/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/user/projects/technical_rag/.venv/lib/python3.14/site-packages/transformers/models/qwen3/modeling_qwen3.py", line 279, in forward
+    attn_output = self.o_proj(attn_output)
+  File "/home/user/projects/technical_rag/.venv/lib/python3.14/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/user/projects/technical_rag/.venv/lib/python3.14/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/user/projects/technical_rag/.venv/lib/python3.14/site-packages/torch/nn/modules/linear.py", line 134, in forward
+    return F.linear(input, self.weight, self.bias)
+           ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: CUDA error: CUBLAS_STATUS_EXECUTION_FAILED when calling `cublasSgemm( handle, opa, opb, m, n, k, &alpha, a, lda, b, ldb, &beta, c, ldc)`
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/user/projects/technical_rag/src/offline_rag/dense/pipeline.py", line 850, in _run_indexing_inner
+    _ensure_embeddings(
+    ~~~~~~~~~~~~~~~~~~^
+        settings=settings,
+        ^^^^^^^^^^^^^^^^^^
+    ...<7 lines>...
+        control_checkpoint=control_checkpoint,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/user/projects/technical_rag/src/offline_rag/dense/pipeline.py", line 397, in _ensure_embeddings
+    raise DenseStageError(
+    ...<5 lines>...
+    ) from exc
+offline_rag.dense.failure.DenseStageError: embedding generation failed: CUDA error: CUBLAS_STATUS_EXECUTION_FAILED when calling `cublasSgemm( handle, opa, opb, m, n, k, &alpha, a, lda, b, ldb, &beta, c, ldc)`
+ERROR: indexing status=failed errors=['embedding generation failed: CUDA error: CUBLAS_STATUS_EXECUTION_FAILED when calling `cublasSgemm( handle, opa, opb, m, n, k, &alpha, a, lda, b, ldb, &beta, c, ldc)`']
