@@ -131,6 +131,11 @@
 **Exact GPU residency tooling parent:** `d501370aef96c953f4780d2048d11b91306ee856`
 **Tooling branch:** `implementation/16k-gpu-residency-allocator-diagnostic-tooling`
 **Tooling status:** TOOLING IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT TOOLING REVIEW
+**GPU residency/allocator diagnostic tooling status:** TOOLING IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED
+**Independent tooling review:** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-TOOLING-IR-001` — ACCEPT
+**Exact independently accepted tooling subject:** `a26ea53f6ce32c6454d21a6d6af988d50299ae49`
+**Tooling acceptance-record authority:** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-TOOLING-IR-001-ACCEPTANCE-RECORD-AUTH-001` — AUTHORIZED
+**Exact tooling acceptance-record parent:** `a26ea53f6ce32c6454d21a6d6af988d50299ae49`
 **Tooling document:** `docs/slice16k_gpu_residency_allocator_diagnostic_tooling.md`
 **Tooling scope:** env-gated in-process probe + runner; campaign execution NOT AUTHORIZED
 **Design document:** `docs/slice16k_gpu_residency_allocator_diagnostic_design.md`
@@ -1079,6 +1084,17 @@ Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
     d501370aef96c953f4780d2048d11b91306ee856
   Tooling branch: implementation/16k-gpu-residency-allocator-diagnostic-tooling
   Tooling status: TOOLING IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT TOOLING REVIEW
+  GPU residency/allocator diagnostic tooling status: TOOLING IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED
+  Independent tooling review:
+    S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-TOOLING-IR-001
+    — ACCEPT
+  Exact independently accepted tooling subject:
+    a26ea53f6ce32c6454d21a6d6af988d50299ae49
+  Tooling acceptance-record authority:
+    S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-TOOLING-IR-001-ACCEPTANCE-RECORD-AUTH-001
+    — AUTHORIZED
+  Exact tooling acceptance-record parent:
+    a26ea53f6ce32c6454d21a6d6af988d50299ae49
   Tooling document: docs/slice16k_gpu_residency_allocator_diagnostic_tooling.md
   Tooling scope: env-gated in-process probe + runner; campaign execution NOT AUTHORIZED
   Design document: docs/slice16k_gpu_residency_allocator_diagnostic_design.md
