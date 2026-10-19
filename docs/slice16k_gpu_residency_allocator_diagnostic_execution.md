@@ -5,23 +5,32 @@
 **Branch:** `diagnostic/16k-gpu-residency-allocator`  
 **Historical execution handoff:** EXECUTION COMPLETE / STOP FOR INDEPENDENT DIAGNOSTIC REVIEW  
 **Execution subject:** `c9daa88fb80c63c7ce6106e8d73df1976aae09d4`  
-**Independent diagnostic review:** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-IR-001` — REWORK REQUIRED (F001: evidence not repository-visible)  
+**Independent diagnostic review (IR-001):** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-IR-001` — REWORK REQUIRED (F001: evidence not repository-visible) — preserved as provenance  
 **Evidence publication authority:** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-EVIDENCE-PUBLICATION-AUTH-001` — AUTHORIZED  
 **Exact evidence publication parent:** `c9daa88fb80c63c7ce6106e8d73df1976aae09d4`  
 **Evidence path:** `docs/evidence/16k_gpu_residency_allocator/`  
-**Reported scientific disposition:** NEGATIVE (independent acceptance WITHHELD pending re-review of published subject)  
-**M0–M2 eligibility (reported, not independently accepted):** NOT SATISFIED  
+**Exact independently accepted review/evidence subject:** `579d1fa1fdfcef8a34dbcc9d4fb21f287259aeb2`  
+**Independent diagnostic review (IR-002):** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-IR-002` — ACCEPT  
+**GPU residency/allocator diagnostic status:** EXECUTION COMPLETE / INDEPENDENTLY ACCEPTED  
+**Scientific disposition:** NEGATIVE / INDEPENDENTLY ACCEPTED  
+**M0–M2 eligibility gate:** NOT SATISFIED / INDEPENDENTLY ACCEPTED  
+**Acceptance-record authority:** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-IR-002-ACCEPTANCE-RECORD-AUTH-001` — AUTHORIZED  
+**Exact acceptance-record parent:** `579d1fa1fdfcef8a34dbcc9d4fb21f287259aeb2`  
+**Historical HTTP 500:** ROOT CAUSE UNRESOLVED  
+**Further GPU residency/allocator diagnostic tranche:** NOT IMPLIED / NOT AUTHORIZED  
 **Controlling design:** `docs/slice16k_gpu_residency_allocator_diagnostic_design.md` (accepted)  
 **Accepted tooling subject:** `a26ea53f6ce32c6454d21a6d6af988d50299ae49`  
 **Tooling acceptance-record parent:** `a04d8f6131553beed0585a3c877cfbc2641c1863`  
 
 **Human disposition:** HELD — LIVE PRODUCT REGRESSION UNDER DIAGNOSIS  
 
-This authority froze the scientific campaign contract. Historical execution under
-explicit go-ahead is reported complete at subject `c9daa88…`. IR-001 withheld
-acceptance solely for F001 (evidence not repository-visible). This publication
-authority publishes preserved evidence and the campaign orchestrator; **no
-scientific rerun** is authorized under it.
+Historical execution under explicit go-ahead completed at scientific checkout
+`c9daa88…`. IR-001 withheld acceptance solely for F001 (evidence not
+repository-visible); evidence publication closed that defect at `579d1fa…`.
+IR-002 ACCEPT independently accepts the published NEGATIVE scientific result and
+M0–M2 eligibility = NOT SATISFIED. This acceptance-record commit is docs-only;
+**no scientific rerun**, further GPU diagnostic tranche, M0–M2, 16K-C/D,
+device/CUDA policy, Fireground, or main promotion is authorized under it.
 
 ---
 

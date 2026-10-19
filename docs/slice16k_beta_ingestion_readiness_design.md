@@ -141,14 +141,21 @@
 **Execution branch:** `diagnostic/16k-gpu-residency-allocator`
 **Historical execution handoff:** EXECUTION COMPLETE / STOP FOR INDEPENDENT DIAGNOSTIC REVIEW
 **Execution subject:** `c9daa88fb80c63c7ce6106e8d73df1976aae09d4`
-**Independent diagnostic review:** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-IR-001` — REWORK REQUIRED (F001: evidence not repository-visible)
+**Independent diagnostic review (IR-001):** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-IR-001` — REWORK REQUIRED (F001: evidence not repository-visible) — preserved as provenance
 **Evidence publication authority:** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-EVIDENCE-PUBLICATION-AUTH-001` — AUTHORIZED
 **Exact evidence publication parent:** `c9daa88fb80c63c7ce6106e8d73df1976aae09d4`
 **Evidence path:** `docs/evidence/16k_gpu_residency_allocator/`
-**Reported scientific disposition:** NEGATIVE (independent acceptance WITHHELD pending re-review of published subject)
-**M0–M2 eligibility (reported, not independently accepted):** NOT SATISFIED
+**Exact independently accepted review/evidence subject:** `579d1fa1fdfcef8a34dbcc9d4fb21f287259aeb2`
+**Independent diagnostic review (IR-002):** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-IR-002` — ACCEPT
+**GPU residency/allocator diagnostic status:** EXECUTION COMPLETE / INDEPENDENTLY ACCEPTED
+**Scientific disposition:** NEGATIVE / INDEPENDENTLY ACCEPTED
+**M0–M2 eligibility gate:** NOT SATISFIED / INDEPENDENTLY ACCEPTED
+**Acceptance-record authority:** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-IR-002-ACCEPTANCE-RECORD-AUTH-001` — AUTHORIZED
+**Exact acceptance-record parent:** `579d1fa1fdfcef8a34dbcc9d4fb21f287259aeb2`
+**Historical HTTP 500 (GPU residency campaign):** ROOT CAUSE UNRESOLVED
+**Further GPU residency/allocator diagnostic tranche:** NOT IMPLIED / NOT AUTHORIZED
 **Execution document:** `docs/slice16k_gpu_residency_allocator_diagnostic_execution.md`
-**Execution scope:** frozen C0/H3/H1/H2/H4 matrix under accepted design+tooling; scientific rerun NOT AUTHORIZED under evidence-publication AUTH; M0–M2 / 16K-C/D / device-CUDA / fireground / main NOT AUTHORIZED
+**Execution scope:** frozen C0/H3/H1/H2/H4 matrix under accepted design+tooling; scientific rerun / further GPU diagnostic tranche NOT AUTHORIZED under acceptance-record AUTH; M0–M2 / 16K-C/D / device-CUDA / fireground / main NOT AUTHORIZED
 **Tooling document:** `docs/slice16k_gpu_residency_allocator_diagnostic_tooling.md`
 **Tooling scope:** env-gated in-process probe + runner; campaign execution NOT AUTHORIZED
 **Design document:** `docs/slice16k_gpu_residency_allocator_diagnostic_design.md`
@@ -1117,22 +1124,37 @@ Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
   Historical execution handoff:
     EXECUTION COMPLETE / STOP FOR INDEPENDENT DIAGNOSTIC REVIEW
   Execution subject: c9daa88fb80c63c7ce6106e8d73df1976aae09d4
-  Independent diagnostic review:
+  Independent diagnostic review (IR-001):
     S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-IR-001
     — REWORK REQUIRED (F001: evidence not repository-visible)
+    — preserved as provenance
   Evidence publication authority:
     S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-EVIDENCE-PUBLICATION-AUTH-001
     — AUTHORIZED
   Exact evidence publication parent:
     c9daa88fb80c63c7ce6106e8d73df1976aae09d4
   Evidence path: docs/evidence/16k_gpu_residency_allocator/
-  Reported scientific disposition:
-    NEGATIVE (independent acceptance WITHHELD pending re-review)
-  M0–M2 eligibility (reported, not independently accepted): NOT SATISFIED
+  Exact independently accepted review/evidence subject:
+    579d1fa1fdfcef8a34dbcc9d4fb21f287259aeb2
+  Independent diagnostic review (IR-002):
+    S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-IR-002
+    — ACCEPT
+  GPU residency/allocator diagnostic status:
+    EXECUTION COMPLETE / INDEPENDENTLY ACCEPTED
+  Scientific disposition: NEGATIVE / INDEPENDENTLY ACCEPTED
+  M0–M2 eligibility gate: NOT SATISFIED / INDEPENDENTLY ACCEPTED
+  Acceptance-record authority:
+    S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-IR-002-ACCEPTANCE-RECORD-AUTH-001
+    — AUTHORIZED
+  Exact acceptance-record parent:
+    579d1fa1fdfcef8a34dbcc9d4fb21f287259aeb2
+  Historical HTTP 500 (GPU residency campaign): ROOT CAUSE UNRESOLVED
+  Further GPU residency/allocator diagnostic tranche:
+    NOT IMPLIED / NOT AUTHORIZED
   Execution document: docs/slice16k_gpu_residency_allocator_diagnostic_execution.md
   Execution scope:
-    frozen C0/H3/H1/H2/H4 matrix; scientific rerun NOT AUTHORIZED under
-    evidence-publication AUTH;
+    frozen C0/H3/H1/H2/H4 matrix; scientific rerun / further GPU
+    diagnostic tranche NOT AUTHORIZED under acceptance-record AUTH;
     M0–M2 / 16K-C/D / device-CUDA / fireground / main NOT AUTHORIZED
   Tooling document: docs/slice16k_gpu_residency_allocator_diagnostic_tooling.md
   Tooling scope: env-gated in-process probe + runner; campaign execution NOT AUTHORIZED
