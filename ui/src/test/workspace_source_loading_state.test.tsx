@@ -337,7 +337,9 @@ describe("Workspace source-loading presentation", () => {
     const ctl = installWorkspaceMocks({ sourcesMode: "ok", sourceCount: 10 });
     renderApp("/workspaces/ws_1");
     expect(await screen.findByText("Active")).toBeInTheDocument();
-    expect(await screen.findByText(/10 \/ 32 sources/i)).toBeInTheDocument();
+    expect(
+      (await screen.findAllByText(/10 sources/i)).length,
+    ).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "doc-1.txt" })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "+ Add sources" })[0]).toBeEnabled();
     await user.type(screen.getByLabelText(/Ask a follow-up/i), "What is grounding?");
@@ -461,7 +463,11 @@ describe("Workspace source-loading presentation", () => {
   it("16 HTTP 200 + valid SourceListResponse → accepted ready", async () => {
     const ctl = installWorkspaceMocks({ sourcesMode: "ok", sourceCount: 10 });
     renderApp("/workspaces/ws_1");
-    expect(await screen.findByText(/10 \/ 32 sources/i)).toBeInTheDocument();
+    // 16K-C: unset workspace capacity does not invent a "/ 32" support claim.
+    expect(
+      (await screen.findAllByText(/10 sources/i)).length,
+    ).toBeGreaterThan(0);
+    expect(screen.queryByText(/10 \/ 32/i)).toBeNull();
     expect(screen.getByRole("button", { name: "doc-10.txt" })).toBeInTheDocument();
     ctl.mock.restore();
   });

@@ -29,9 +29,12 @@ export function shortenId(value: string | null | undefined, size = 12): string {
 }
 
 export type SourceCapacityLimits = {
-  maxActiveSources: number;
-  maxBytesPerFile: number;
-  maxDesiredActiveBytes: number;
+  /** Per HTTP upload request — transport envelope. */
+  maxFilesPerUploadRequest: number;
+  maxBytesPerUploadedFile: number;
+  maxBytesPerUploadRequest: number;
+  /** Workspace active-source ceiling when configured; null = unset. */
+  maxActiveSources: number | null;
 };
 
 export function activeSourceBytes(

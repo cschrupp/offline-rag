@@ -1,0 +1,310 @@
+"""16K-C — transport vs workspace/search capacity model proofs."""
+
+from __future__ import annotations
+
+from datetime import UTC, datetime
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from offline_rag.app.errors import AppError, ErrorCode
+from offline_rag.app.ingest_upload import spool_local_files
+from offline_rag.app.workspace.capacity import (
+    enforce_searchable_workload_capacity,
+    enforce_workspace_active_source_capacity,
+    validate_desired_set_integrity,
+)
+from offline_rag.app.workspace.models import SourceVersionRecord
+from offline_rag.app.workspace.publication_journal import PublicationMutationKind
+from offline_rag.app.workspace.projection import enforce_desired_set_limits
+from offline_rag.config.models import ApiSettings, AppSettings, PathSettings
+
+
+def _settings(tmp_path: Path, **api_overrides: object) -> AppSettings:
+    api = ApiSettings(**api_overrides)  # type: ignore[arg-type]
+    paths = PathSettings(
+        staging=tmp_path / "staging",
+        workspaces=tmp_path / "workspaces",
+        locks=tmp_path / "locks",
+        qdrant_storage=tmp_path / "qdrant",
+    )
+    for p in (
+        paths.staging,
+        paths.workspaces,
+        paths.locks,
+        paths.qdrant_storage,
+    ):
+        p.mkdir(parents=True, exist_ok=True)
+    return AppSettings(api=api, paths=paths)
+
+
+def _source(
+    source_id: str = "src_1",
+    *,
+    byte_size: int = 100,
+) -> SourceVersionRecord:
+    return SourceVersionRecord(
+        source_id=source_id,
+        version=1,
+        display_name=f"{source_id}.txt",
+        content_type="text/plain",
+        byte_size=byte_size,
+        content_hash="a" * 64,
+        document_id="d" * 64,
+        vault_object_id="obj_" + source_id,
+        active=True,
+        created_at=datetime(2020, 1, 1, tzinfo=UTC),
+        active_from_revision=1,
+        active_from_snapshot_id=None,
+    )
+
+
+def test_transport_defaults_unchanged() -> None:
+    api = ApiSettings()
+    assert api.max_files_per_ingest == 32
+    assert api.max_bytes_per_document == 26_214_400
+    assert api.max_total_upload_bytes == 104_857_600
+    assert api.max_active_sources_per_workspace is None
+    assert api.max_searchable_child_chunks_per_workspace is None
+
+
+def test_workspace_source_capacity_independent_of_transport(tmp_path: Path) -> None:
+    settings = _settings(tmp_path, max_active_sources_per_workspace=2)
+    desired = [_source("a"), _source("b"), _source("c")]
+    with pytest.raises(AppError) as exc:
+        enforce_workspace_active_source_capacity(
+            settings,
+            desired,
+            mutation_kind=PublicationMutationKind.SOURCE_ADD,
+        )
+    assert exc.value.code is ErrorCode.REQUEST_INVALID
+    assert exc.value.details is not None
+    assert exc.value.details["reason"] == "workspace_source_capacity_exceeded"
+
+
+def test_remove_not_blocked_by_source_capacity(tmp_path: Path) -> None:
+    settings = _settings(tmp_path, max_active_sources_per_workspace=1)
+    desired = [_source("a"), _source("b")]
+    enforce_workspace_active_source_capacity(
+        settings,
+        desired,
+        mutation_kind=PublicationMutationKind.SOURCE_REMOVE,
+    )
+
+
+def test_searchable_workload_capacity_fail_closed(tmp_path: Path) -> None:
+    settings = _settings(tmp_path, max_searchable_child_chunks_per_workspace=10)
+    with pytest.raises(AppError) as exc:
+        enforce_searchable_workload_capacity(
+            settings,
+            searchable_child_count=11,
+            mutation_kind=PublicationMutationKind.SOURCE_ADD,
+        )
+    assert exc.value.details is not None
+    assert exc.value.details["reason"] == "searchable_workload_capacity_exceeded"
+
+
+def test_remove_not_blocked_by_searchable_capacity(tmp_path: Path) -> None:
+    settings = _settings(tmp_path, max_searchable_child_chunks_per_workspace=1)
+    enforce_searchable_workload_capacity(
+        settings,
+        searchable_child_count=99,
+        mutation_kind=PublicationMutationKind.SOURCE_REMOVE,
+    )
+
+
+def test_unset_workspace_ceilings_do_not_invent_support_claim(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    enforce_workspace_active_source_capacity(
+        settings,
+        [_source(f"s{i}") for i in range(40)],
+        mutation_kind=PublicationMutationKind.SOURCE_ADD,
+    )
+    enforce_searchable_workload_capacity(
+        settings,
+        searchable_child_count=12_000,
+        mutation_kind=PublicationMutationKind.SOURCE_ADD,
+    )
+
+
+def test_reconstruction_skips_transport_on_desired_set(tmp_path: Path) -> None:
+    """Proof 7: vaulted aggregate may exceed one HTTP upload request."""
+    settings = _settings(
+        tmp_path,
+        max_files_per_ingest=2,
+        max_total_upload_bytes=150,
+        max_bytes_per_document=100,
+    )
+    desired = [
+        _source("a", byte_size=80),
+        _source("b", byte_size=80),
+        _source("c", byte_size=80),
+    ]
+    enforce_desired_set_limits(settings, desired)
+    validate_desired_set_integrity(desired)
+
+
+def test_spool_local_reconstruction_bypasses_request_envelope(tmp_path: Path) -> None:
+    settings = _settings(
+        tmp_path,
+        max_files_per_ingest=1,
+        max_total_upload_bytes=50,
+        max_bytes_per_document=40,
+    )
+    files_dir = tmp_path / "local"
+    files_dir.mkdir()
+    paths: list[tuple[Path, str]] = []
+    for i in range(3):
+        p = files_dir / f"f{i}.txt"
+        # Distinct bytes so document identity does not collide.
+        p.write_bytes((f"payload-{i}-").encode() + (b"x" * 60))
+        paths.append((p, p.name))
+
+    with pytest.raises(AppError) as transport_exc:
+        spool_local_files(
+            settings=settings,
+            corpus_name="manuals",
+            files=paths,
+            apply_transport_limits=True,
+        )
+    assert transport_exc.value.details is not None
+    assert transport_exc.value.details["reason"] == "too_many_files"
+
+    upload = spool_local_files(
+        settings=settings,
+        corpus_name="manuals",
+        files=paths,
+        apply_transport_limits=False,
+    )
+    assert len(upload.files) == 3
+
+
+def test_pre_dense_capacity_gate_runs_before_indexing(tmp_path: Path) -> None:
+    """Proof 4: over-cap child count fails before run_indexing."""
+    from offline_rag.app.ingest import run_product_replace_ingest
+    from offline_rag.domain.chunking import ChunkingReport, ChunkingStatus
+    from offline_rag.domain.ingestion import IngestionReport, IngestionStatus
+
+    settings = _settings(tmp_path, max_searchable_child_chunks_per_workspace=5)
+    runtime = MagicMock()
+    runtime.require_ready = MagicMock()
+    runtime.settings = settings
+    runtime.resources = SimpleNamespace(embedder=object(), qdrant=object())
+
+    upload = MagicMock()
+    upload.corpus_name = "manuals"
+    upload.files = [MagicMock(), MagicMock()]
+    upload.source_name_by_storage_name = MagicMock(return_value={})
+
+    now = datetime(2020, 1, 1, tzinfo=UTC)
+    chunk_report = ChunkingReport(
+        run_id="run_chunk",
+        corpus_name="manuals",
+        corpus_id="c" * 64,
+        status=ChunkingStatus.SUCCESS,
+        started_at=now,
+        completed_at=now,
+        duration_ms=1,
+        child_chunks=9,
+    )
+    ingest_report = IngestionReport(
+        run_id="run_ingest",
+        corpus_name="manuals",
+        status=IngestionStatus.SUCCESS,
+        started_at=now,
+        completed_at=now,
+        duration_ms=1,
+        corpus_id="c" * 64,
+    )
+
+    with (
+        patch(
+            "offline_rag.app.ingest._validate_document_identities",
+            return_value=None,
+        ),
+        patch(
+            "offline_rag.app.ingest._establish_candidate",
+            return_value=SimpleNamespace(
+                settings=settings,
+                sources_root=tmp_path,
+                stage_corpora_root=tmp_path,
+                candidate_root=tmp_path,
+            ),
+        ),
+        patch(
+            "offline_rag.app.ingest._source_inputs",
+            return_value=[object(), object()],
+        ),
+        patch("offline_rag.app.ingest.run_ingestion", return_value=ingest_report),
+        patch(
+            "offline_rag.app.ingest.load_corpus_state",
+            return_value=SimpleNamespace(
+                sources={
+                    "a": SimpleNamespace(document_id="d1"),
+                    "b": SimpleNamespace(document_id="d2"),
+                }
+            ),
+        ),
+        patch(
+            "offline_rag.app.ingest.corpus_state_path",
+            return_value=tmp_path / "cs",
+        ),
+        patch("offline_rag.app.ingest.run_chunking", return_value=chunk_report),
+        patch("offline_rag.app.ingest.run_indexing") as dense_mock,
+        patch(
+            "offline_rag.app.workspace.corpus_ownership.assert_authorized_workspace_corpus",
+            return_value=None,
+        ),
+    ):
+        lease = MagicMock()
+        lease.held = True
+        lease.corpus_name = "manuals"
+        with pytest.raises(AppError) as exc:
+            run_product_replace_ingest(
+                runtime,
+                upload,
+                corpus_lease=lease,
+                authorize_workspace_id="ws_test",
+                mutation_kind=PublicationMutationKind.SOURCE_ADD,
+            )
+        assert exc.value.details is not None
+        assert exc.value.details["reason"] == "searchable_workload_capacity_exceeded"
+        dense_mock.assert_not_called()
+
+
+def _capabilities_body(settings: AppSettings) -> dict:
+    from offline_rag.api.capabilities import get_capabilities
+
+    runtime = MagicMock()
+    runtime.require_ready = MagicMock()
+    runtime.settings = settings
+    runtime.resources = None
+    request = MagicMock()
+    request.app.state.runtime = runtime
+    return get_capabilities(request)
+
+
+def test_capabilities_separate_transport_and_workspace(tmp_path: Path) -> None:
+    settings = _settings(
+        tmp_path,
+        max_active_sources_per_workspace=7,
+        max_searchable_child_chunks_per_workspace=100,
+    )
+    body = _capabilities_body(settings)
+    assert body["transport_limits"]["max_files_per_upload_request"] == 32
+    assert body["transport_limits"]["max_bytes_per_uploaded_file"] == 26_214_400
+    assert body["transport_limits"]["max_bytes_per_upload_request"] == 104_857_600
+    assert body["workspace_capacity"]["max_active_sources"] == 7
+    assert body["workspace_capacity"]["max_searchable_child_chunks"] == 100
+    assert body["source_limits"]["max_active_sources"] == 7
+    assert body["source_limits"]["max_bytes_per_source"] == 26_214_400
+
+
+def test_capabilities_null_workspace_when_unset(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    body = _capabilities_body(settings)
+    assert body["workspace_capacity"]["max_active_sources"] is None
+    assert body["workspace_capacity"]["max_searchable_child_chunks"] is None
+    assert body["source_limits"]["max_active_sources"] is None

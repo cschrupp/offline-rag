@@ -62,8 +62,19 @@ export function capabilities(
       descriptor: "Grounded knowledge workspace",
       ...(partial.product ?? {}),
     },
+    transport_limits: {
+      max_files_per_upload_request: 32,
+      max_bytes_per_uploaded_file: 26_214_400,
+      max_bytes_per_upload_request: 104_857_600,
+      ...(partial.transport_limits ?? {}),
+    },
+    workspace_capacity: {
+      max_active_sources: null,
+      max_searchable_child_chunks: null,
+      ...(partial.workspace_capacity ?? {}),
+    },
     source_limits: {
-      max_active_sources: 32,
+      max_active_sources: null,
       max_bytes_per_source: 26_214_400,
       max_active_source_bytes: 104_857_600,
       ...(partial.source_limits ?? {}),

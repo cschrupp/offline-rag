@@ -122,8 +122,18 @@ export type Capabilities = {
     name: string;
     descriptor: string;
   };
+  transport_limits?: {
+    max_files_per_upload_request: number;
+    max_bytes_per_uploaded_file: number;
+    max_bytes_per_upload_request: number;
+  };
+  workspace_capacity?: {
+    max_active_sources: number | null;
+    max_searchable_child_chunks: number | null;
+  };
+  /** Legacy projection: bytes are transport; max_active_sources is workspace or null. */
   source_limits: {
-    max_active_sources: number;
+    max_active_sources: number | null;
     max_bytes_per_source: number;
     max_active_source_bytes: number;
   };

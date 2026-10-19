@@ -1079,6 +1079,17 @@ class WorkspaceLifecycleService:
             lease=lease,
         )
 
+        from offline_rag.app.workspace.capacity import (
+            enforce_workspace_active_source_capacity,
+        )
+
+        # 16K-C: workspace source capacity before vault rebuild / dense work.
+        enforce_workspace_active_source_capacity(
+            self.settings,
+            plan.desired,
+            mutation_kind=plan.mutation_kind,
+        )
+
         materialized = materialize_desired_sources(
             self.settings,
             workspace_id=workspace_id,
@@ -1086,10 +1097,12 @@ class WorkspaceLifecycleService:
             vault=self.vault,
         )
         try:
+            # Reconstruction must not reapply HTTP upload transport limits.
             upload = spool_local_files(
                 settings=self.settings,
                 corpus_name=record.backing_corpus_name,
                 files=materialized.spool_inputs(),
+                apply_transport_limits=False,
             )
         finally:
             materialized.cleanup()
@@ -1113,6 +1126,7 @@ class WorkspaceLifecycleService:
                     control=control,
                     corpus_lease=corpus_lease,
                     authorize_workspace_id=workspace_id,
+                    mutation_kind=plan.mutation_kind,
                 )
                 self.publication.mark_publication_observed(
                     workspace_id, ingested.snapshot_id, lease=lease

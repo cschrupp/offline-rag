@@ -73,10 +73,11 @@ export function SourceRail({
         <p className="muted capacity-summary" style={{ margin: 0 }}>
           {sourcePhase === "ready" && limits ? (
             <>
-              {sources.length} / {limits.maxActiveSources}
+              {limits.maxActiveSources != null
+                ? `${sources.length} / ${limits.maxActiveSources}`
+                : `${sources.length} sources`}
               <br />
-              {formatMiB(usedBytes)} / {formatMiB(limits.maxDesiredActiveBytes)}{" "}
-              MiB
+              {formatMiB(usedBytes)} MiB stored
             </>
           ) : sourcePhase === "ready" ? (
             <>
@@ -90,9 +91,11 @@ export function SourceRail({
             </>
           ) : sourcePhase === "empty" && limits ? (
             <>
-              0 / {limits.maxActiveSources}
+              {limits.maxActiveSources != null
+                ? `0 / ${limits.maxActiveSources}`
+                : "0 sources"}
               <br />
-              0.0 / {formatMiB(limits.maxDesiredActiveBytes)} MiB
+              0.0 MiB stored
             </>
           ) : (
             <>

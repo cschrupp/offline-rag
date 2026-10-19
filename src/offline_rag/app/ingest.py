@@ -205,6 +205,7 @@ def run_product_replace_ingest(
     control: OperationHandle | None = None,
     corpus_lease: CorpusMutationLease | None = None,
     authorize_workspace_id: str | None = None,
+    mutation_kind: object | None = None,
 ) -> ProductIngestResult:
     """Execute the post-spool full-replace ingest transaction.
 
@@ -351,6 +352,25 @@ def run_product_replace_ingest(
                 ErrorCode.INGEST_FAILED,
                 details=SafeErrorDetails(stage="chunk", reason="stage_failed"),
             )
+
+        # 16K-C: searchable-workload admission after chunking, before dense work.
+        from offline_rag.app.workspace.capacity import (
+            enforce_searchable_workload_capacity,
+        )
+        from offline_rag.app.workspace.publication_journal import (
+            PublicationMutationKind,
+        )
+
+        kind: PublicationMutationKind | None
+        if isinstance(mutation_kind, PublicationMutationKind):
+            kind = mutation_kind
+        else:
+            kind = None
+        enforce_searchable_workload_capacity(
+            runtime.settings,
+            searchable_child_count=int(chunk_report.child_chunks),
+            mutation_kind=kind,
+        )
 
         dense_checkpoint = (
             (lambda where: control.checkpoint(where)) if control is not None else None

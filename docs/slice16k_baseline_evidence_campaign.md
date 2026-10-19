@@ -90,8 +90,13 @@
 **Exact acceptance-record parent:** `579d1fa1fdfcef8a34dbcc9d4fb21f287259aeb2`  
 **Historical HTTP 500 (GPU residency campaign):** ROOT CAUSE UNRESOLVED  
 **Further GPU residency/allocator diagnostic tranche:** NOT IMPLIED / NOT AUTHORIZED  
+**16K-C authority:** `S16-K-C-FIRST-USER-CAPACITY-MODEL-IMPLEMENTATION-AUTH-001` — AUTHORIZED  
+**Exact 16K-C parent:** `f2741c105db48aea081b5282dc48e4b7f11fd6b6`  
+**16K-C branch:** `implementation/16k-c-first-user-capacity-model`  
+**16K-C status:** IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW  
+**16K-C document:** `docs/slice16k_c_first_user_capacity_model.md`  
 **Execution document:** `docs/slice16k_gpu_residency_allocator_diagnostic_execution.md`  
-**Execution scope:** frozen C0/H3/H1/H2/H4 matrix under accepted design+tooling; scientific rerun / further GPU diagnostic tranche NOT AUTHORIZED under acceptance-record AUTH; M0–M2 / 16K-C/D / device-CUDA / fireground / main NOT AUTHORIZED  
+**Execution scope:** frozen C0/H3/H1/H2/H4 matrix under accepted design+tooling; scientific rerun / further GPU diagnostic tranche NOT AUTHORIZED under acceptance-record AUTH; M0–M2 / device-CUDA / fireground / main NOT AUTHORIZED  
 **Tooling document:** `docs/slice16k_gpu_residency_allocator_diagnostic_tooling.md`  
 **Tooling scope:** env-gated in-process probe + runner; campaign execution NOT AUTHORIZED  
 **Design document:** `docs/slice16k_gpu_residency_allocator_diagnostic_design.md`  

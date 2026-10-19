@@ -195,6 +195,10 @@ describe("Slice 16D-A compact workspace", () => {
       if (call.url === "/v1/capabilities") {
         return jsonResponse(
           capabilities({
+            workspace_capacity: {
+              max_active_sources: 32,
+              max_searchable_child_chunks: null,
+            },
             source_limits: {
               max_active_sources: 32,
               max_bytes_per_source: 26_214_400,

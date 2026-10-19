@@ -6,9 +6,9 @@ from the raw-source vault, and feeds it through the existing full-replace ingest
 That is what makes supersession isolation (S16-D12) structural rather than a
 cleanup step: a removed or replaced version is simply absent from the candidate.
 
-Upload limits are enforced against the desired set, not the request delta. A
-single added file can push the workspace past the aggregate bound, and ingest
-would then fail after the user already paid for the upload.
+16K-C: HTTP upload transport limits are NOT reapplied to already-vaulted
+sources during internal reconstruction. Workspace active-source capacity is
+enforced separately (see ``capacity.py``) before materialization.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from offline_rag.app.errors import AppError, ErrorCode, SafeErrorDetails
+from offline_rag.app.workspace.capacity import validate_desired_set_integrity
 from offline_rag.app.workspace.models import SourceVersionRecord
 from offline_rag.app.workspace.vault import RawSourceVault, VaultObjectMeta
 from offline_rag.config.models import AppSettings
@@ -70,47 +70,13 @@ def upload_source_name(meta: VaultObjectMeta) -> str:
 def enforce_desired_set_limits(
     settings: AppSettings, desired: Sequence[SourceVersionRecord]
 ) -> None:
-    """Apply ``settings.api`` upload bounds to the whole desired active set."""
-    if not desired:
-        raise AppError(
-            ErrorCode.REQUEST_INVALID,
-            details=SafeErrorDetails(reason="zero_files"),
-        )
-    if len(desired) > settings.api.max_files_per_ingest:
-        raise AppError(
-            ErrorCode.REQUEST_INVALID,
-            details=SafeErrorDetails(reason="too_many_files"),
-        )
-    total = 0
-    for item in desired:
-        size = item.byte_size
-        if size is None:
-            raise AppError(
-                ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
-                details=SafeErrorDetails(
-                    source_id=item.source_id, reason="source_size_unknown"
-                ),
-            )
-        if size <= 0:
-            raise AppError(
-                ErrorCode.DOCUMENT_INVALID,
-                details=SafeErrorDetails(
-                    source_id=item.source_id, reason="empty_document"
-                ),
-            )
-        if size > settings.api.max_bytes_per_document:
-            raise AppError(
-                ErrorCode.DOCUMENT_INVALID,
-                details=SafeErrorDetails(
-                    source_id=item.source_id, reason="document_too_large"
-                ),
-            )
-        total += size
-    if total > settings.api.max_total_upload_bytes:
-        raise AppError(
-            ErrorCode.REQUEST_INVALID,
-            details=SafeErrorDetails(reason="upload_too_large"),
-        )
+    """Backward-compatible alias for desired-set integrity (not transport).
+
+    Historical name retained for imports. HTTP upload envelope checks must not
+    run here — see ``spool_workspace_multipart`` / ``spool_multipart_upload``.
+    """
+    del settings  # transport settings are intentionally unused on reconstruction
+    validate_desired_set_integrity(desired)
 
 
 def materialize_desired_sources(
@@ -125,8 +91,12 @@ def materialize_desired_sources(
 
     Unchanged sources are read back from local storage, so adding or removing one
     source never requires the browser to re-upload the others (S16-D10).
+
+    Does not apply HTTP transport limits to the reconstructed set (16K-C).
     """
-    enforce_desired_set_limits(settings, desired)
+    from offline_rag.app.errors import AppError, ErrorCode, SafeErrorDetails
+
+    validate_desired_set_integrity(desired)
     store = vault or RawSourceVault(settings.paths.workspaces)
     root = work_dir or (settings.paths.staging / f"wsproj_{uuid.uuid4().hex}")
     root.mkdir(parents=True, exist_ok=True)

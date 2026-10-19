@@ -479,11 +479,16 @@ def spool_local_files(
     settings: AppSettings,
     corpus_name: str,
     files: Sequence[tuple[Path, str]],
+    apply_transport_limits: bool = True,
 ) -> SpooledIngestUpload:
     """Copy local paths into the accepted product staging representation.
 
     CLI/local adapters use this instead of fabricating HTTP multipart. After
     return, mutation must proceed through ``run_product_replace_ingest``.
+
+    When ``apply_transport_limits`` is False (workspace reconstruction from the
+    vault), HTTP upload request-envelope checks are skipped (16K-C). Empty /
+    unsupported / identity checks still apply.
     """
     validated_corpus = validate_product_corpus_name(corpus_name)
     if not files:
@@ -491,7 +496,7 @@ def spool_local_files(
             ErrorCode.REQUEST_INVALID,
             details=SafeErrorDetails(reason="zero_files"),
         )
-    if len(files) > settings.api.max_files_per_ingest:
+    if apply_transport_limits and len(files) > settings.api.max_files_per_ingest:
         raise AppError(
             ErrorCode.REQUEST_INVALID,
             details=SafeErrorDetails(reason="too_many_files"),
@@ -534,12 +539,15 @@ def spool_local_files(
                     ErrorCode.DOCUMENT_INVALID,
                     details=SafeErrorDetails(reason="empty_document"),
                 )
-            if size > settings.api.max_bytes_per_document:
+            if apply_transport_limits and size > settings.api.max_bytes_per_document:
                 raise AppError(
                     ErrorCode.DOCUMENT_INVALID,
                     details=SafeErrorDetails(reason="document_too_large"),
                 )
-            if total_file_bytes + size > settings.api.max_total_upload_bytes:
+            if (
+                apply_transport_limits
+                and total_file_bytes + size > settings.api.max_total_upload_bytes
+            ):
                 raise AppError(
                     ErrorCode.REQUEST_INVALID,
                     details=SafeErrorDetails(reason="upload_too_large"),

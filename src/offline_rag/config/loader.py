@@ -73,6 +73,11 @@ _ENV_FIELD_MAP: dict[str, tuple[str, ...]] = {
     "MAX_FILES_PER_INGEST": ("api", "max_files_per_ingest"),
     "MAX_BYTES_PER_DOCUMENT": ("api", "max_bytes_per_document"),
     "MAX_TOTAL_UPLOAD_BYTES": ("api", "max_total_upload_bytes"),
+    "MAX_ACTIVE_SOURCES_PER_WORKSPACE": ("api", "max_active_sources_per_workspace"),
+    "MAX_SEARCHABLE_CHILD_CHUNKS_PER_WORKSPACE": (
+        "api",
+        "max_searchable_child_chunks_per_workspace",
+    ),
     "QUERY_DEADLINE_SECONDS": ("api", "query_deadline_seconds"),
     "INGEST_DEADLINE_SECONDS": ("api", "ingest_deadline_seconds"),
     "MAX_CONCURRENT_QUERY": ("api", "max_concurrent_query"),

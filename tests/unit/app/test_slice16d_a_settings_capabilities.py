@@ -284,7 +284,14 @@ def test_capabilities_active_only_no_secrets(tmp_path: Path) -> None:
         assert response.status_code == 200
         body = response.json()
         assert body["product"]["name"] == "Seneca"
-        assert body["source_limits"]["max_active_sources"] == 32
+        # 16K-C: transport vs workspace capacity are distinct; unset workspace
+        # ceilings project as null (no unmeasured support claim).
+        assert body["transport_limits"]["max_files_per_upload_request"] == 32
+        assert body["transport_limits"]["max_bytes_per_uploaded_file"] == 26_214_400
+        assert body["transport_limits"]["max_bytes_per_upload_request"] == 104_857_600
+        assert body["workspace_capacity"]["max_active_sources"] is None
+        assert body["workspace_capacity"]["max_searchable_child_chunks"] is None
+        assert body["source_limits"]["max_active_sources"] is None
         assert body["source_limits"]["max_bytes_per_source"] == 26_214_400
         assert body["source_limits"]["max_active_source_bytes"] == 104_857_600
         assert body["generation"]["model"] == settings.generation.model

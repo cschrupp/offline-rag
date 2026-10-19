@@ -448,7 +448,12 @@ GAP-16G-02:
     Accepted B0–B3 evidence: retained / not rewritten
     Fireground CUDA/cublasGemmEx:
       OPEN / SEPARATE / NOT FIXED
-  16K-C: NOT AUTHORIZED
+  16K-C authority:
+    S16-K-C-FIRST-USER-CAPACITY-MODEL-IMPLEMENTATION-AUTH-001 — AUTHORIZED
+  Exact 16K-C parent: f2741c105db48aea081b5282dc48e4b7f11fd6b6
+  16K-C branch: implementation/16k-c-first-user-capacity-model
+  16K-C status: IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
+  16K-C document: docs/slice16k_c_first_user_capacity_model.md
   16K-D: NOT AUTHORIZED
   16K-E → 16K-G: NOT AUTHORIZED
   Main promotion: NOT AUTHORIZED
@@ -1028,7 +1033,12 @@ Slice-16 closeout inventory: HUMAN ACCEPTED
     Accepted B0–B3 evidence: retained / not rewritten
     Fireground CUDA/cublasGemmEx:
       OPEN / SEPARATE / NOT FIXED
-  16K-C: NOT AUTHORIZED
+  16K-C authority:
+    S16-K-C-FIRST-USER-CAPACITY-MODEL-IMPLEMENTATION-AUTH-001 — AUTHORIZED
+  Exact 16K-C parent: f2741c105db48aea081b5282dc48e4b7f11fd6b6
+  16K-C branch: implementation/16k-c-first-user-capacity-model
+  16K-C status: IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
+  16K-C document: docs/slice16k_c_first_user_capacity_model.md
   16K-D: NOT AUTHORIZED
   16K-E → 16K-G: NOT AUTHORIZED
   Main promotion: NOT AUTHORIZED

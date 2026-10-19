@@ -53,13 +53,35 @@ def get_capabilities(request: Request) -> dict[str, Any]:
                 "selection_reason": None,
             }
         )
+    # 16K-C: transport envelope vs workspace/search capacity are distinct.
+    # Unset workspace ceilings project as null (no unmeasured support claim).
+    active_sources = api.max_active_sources_per_workspace
+    searchable_children = api.max_searchable_child_chunks_per_workspace
     return {
         "product": {
             "name": "Seneca",
             "descriptor": "Grounded knowledge workspace",
         },
+        "transport_limits": {
+            "max_files_per_upload_request": int(api.max_files_per_ingest),
+            "max_bytes_per_uploaded_file": int(api.max_bytes_per_document),
+            "max_bytes_per_upload_request": int(api.max_total_upload_bytes),
+        },
+        "workspace_capacity": {
+            "max_active_sources": (
+                int(active_sources) if active_sources is not None else None
+            ),
+            "max_searchable_child_chunks": (
+                int(searchable_children) if searchable_children is not None else None
+            ),
+        },
+        # Legacy projection kept for older clients: per-file / request-byte
+        # fields remain transport. max_active_sources is workspace capacity
+        # when configured; otherwise null (do not alias transport file count).
         "source_limits": {
-            "max_active_sources": int(api.max_files_per_ingest),
+            "max_active_sources": (
+                int(active_sources) if active_sources is not None else None
+            ),
             "max_bytes_per_source": int(api.max_bytes_per_document),
             "max_active_source_bytes": int(api.max_total_upload_bytes),
         },

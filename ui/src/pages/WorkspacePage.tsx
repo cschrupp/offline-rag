@@ -125,18 +125,36 @@ export type AddSourcesIntent = {
 
 function limitsFromCapabilities(
   caps: {
+    transport_limits?: {
+      max_files_per_upload_request: number;
+      max_bytes_per_uploaded_file: number;
+      max_bytes_per_upload_request: number;
+    };
+    workspace_capacity?: {
+      max_active_sources: number | null;
+      max_searchable_child_chunks: number | null;
+    };
     source_limits: {
-      max_active_sources: number;
+      max_active_sources: number | null;
       max_bytes_per_source: number;
       max_active_source_bytes: number;
     };
   } | undefined,
 ): SourceCapacityLimits | null {
   if (!caps) return null;
+  const transport = caps.transport_limits;
   return {
-    maxActiveSources: caps.source_limits.max_active_sources,
-    maxBytesPerFile: caps.source_limits.max_bytes_per_source,
-    maxDesiredActiveBytes: caps.source_limits.max_active_source_bytes,
+    maxFilesPerUploadRequest:
+      transport?.max_files_per_upload_request ?? 32,
+    maxBytesPerUploadedFile:
+      transport?.max_bytes_per_uploaded_file ??
+      caps.source_limits.max_bytes_per_source,
+    maxBytesPerUploadRequest:
+      transport?.max_bytes_per_upload_request ??
+      caps.source_limits.max_active_source_bytes,
+    maxActiveSources:
+      caps.workspace_capacity?.max_active_sources ??
+      caps.source_limits.max_active_sources,
   };
 }
 
@@ -918,18 +936,25 @@ export function WorkspacePage() {
       // Backend remains authoritative when capabilities are unavailable.
       return null;
     }
-    if (sources.length + files.length > limits.maxActiveSources) {
-      return `At most ${limits.maxActiveSources} active sources are allowed.`;
+    // Transport: one incoming upload request only.
+    if (files.length > limits.maxFilesPerUploadRequest) {
+      return `At most ${limits.maxFilesPerUploadRequest} files may be uploaded in one request.`;
     }
     for (const file of files) {
-      if (file.size > limits.maxBytesPerFile) {
-        return `${file.name} exceeds the ${formatMiB(limits.maxBytesPerFile)} MiB per-file limit.`;
+      if (file.size > limits.maxBytesPerUploadedFile) {
+        return `${file.name} exceeds the ${formatMiB(limits.maxBytesPerUploadedFile)} MiB per-file upload limit.`;
       }
     }
-    const existingBytes = activeSourceBytes(sources);
     const incomingBytes = files.reduce((sum, file) => sum + file.size, 0);
-    if (existingBytes + incomingBytes > limits.maxDesiredActiveBytes) {
-      return `Selected files would exceed the ${formatMiB(limits.maxDesiredActiveBytes)} MiB active-source budget.`;
+    if (incomingBytes > limits.maxBytesPerUploadRequest) {
+      return `Selected files exceed the ${formatMiB(limits.maxBytesPerUploadRequest)} MiB per-request upload limit.`;
+    }
+    // Workspace capacity: independent of request-byte envelope when configured.
+    if (
+      limits.maxActiveSources != null &&
+      sources.length + files.length > limits.maxActiveSources
+    ) {
+      return `At most ${limits.maxActiveSources} active sources are allowed in this workspace.`;
     }
     return null;
   }
@@ -1039,15 +1064,14 @@ export function WorkspacePage() {
     if (sourcePhase === "ready" && limits) {
       return (
         <>
-          {countLabel} · {formatMiB(usedBytes)} /{" "}
-          {formatMiB(limits.maxDesiredActiveBytes)} MiB
+          {countLabel} · {formatMiB(usedBytes)} MiB stored
         </>
       );
     }
     if (sourcePhase === "empty" && limits) {
       return (
         <>
-          {countLabel} · 0.0 / {formatMiB(limits.maxDesiredActiveBytes)} MiB
+          {countLabel} · 0.0 MiB stored
         </>
       );
     }
@@ -1560,7 +1584,7 @@ export function WorkspacePage() {
             />
             <p className="muted">
               {limits
-                ? `Maximum file size: ${formatMiB(limits.maxBytesPerFile)} MiB`
+                ? `Maximum upload file size: ${formatMiB(limits.maxBytesPerUploadedFile)} MiB`
                 : "Maximum file size: determined by the server"}
             </p>
           </div>
@@ -1737,9 +1761,9 @@ export function WorkspacePage() {
               setReplaceError("Choose exactly one file.");
               return;
             }
-            if (limits && replaceFile.size > limits.maxBytesPerFile) {
+            if (limits && replaceFile.size > limits.maxBytesPerUploadedFile) {
               setReplaceError(
-                `File exceeds the ${formatMiB(limits.maxBytesPerFile)} MiB per-file limit.`,
+                `File exceeds the ${formatMiB(limits.maxBytesPerUploadedFile)} MiB per-file upload limit.`,
               );
               return;
             }
@@ -1761,7 +1785,8 @@ export function WorkspacePage() {
             />
             {limits ? (
               <p className="muted">
-                Maximum file size: {formatMiB(limits.maxBytesPerFile)} MiB
+                Maximum upload file size:{" "}
+                {formatMiB(limits.maxBytesPerUploadedFile)} MiB
               </p>
             ) : null}
           </div>
