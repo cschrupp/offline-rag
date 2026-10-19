@@ -1,0 +1,111 @@
+{
+  "authority": "S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-EXECUTION-AUTH-001",
+  "execution_git_sha": "c9daa88fb80c63c7ce6106e8d73df1976aae09d4",
+  "accepted_tooling_subject": "a26ea53f6ce32c6454d21a6d6af988d50299ae49",
+  "tooling_acceptance_record_parent": "a04d8f6131553beed0585a3c877cfbc2641c1863",
+  "cells": [
+    {
+      "cell": "C0",
+      "role": "primary",
+      "run_id": "C0_primary_1792371033",
+      "status": "PRIMARY_COMPLETE",
+      "http_status": 200,
+      "candidate_positive": false,
+      "evidence_path": "/home/user/projects/technical_rag/docs/evidence/16k_gpu_residency_allocator/C0_primary_1792371033.json"
+    },
+    {
+      "cell": "H3-A",
+      "role": "primary",
+      "run_id": "H3-A_primary_1792371190",
+      "status": "PRIMARY_COMPLETE",
+      "http_status": 200,
+      "candidate_positive": false,
+      "evidence_path": "/home/user/projects/technical_rag/docs/evidence/16k_gpu_residency_allocator/H3-A_primary_1792371190.json"
+    },
+    {
+      "cell": "H3-B",
+      "role": "primary",
+      "run_id": "H3-B_primary_1792371224",
+      "status": "PRIMARY_COMPLETE",
+      "http_status": 200,
+      "candidate_positive": false,
+      "evidence_path": "/home/user/projects/technical_rag/docs/evidence/16k_gpu_residency_allocator/H3-B_primary_1792371224.json"
+    },
+    {
+      "cell": "H3-C",
+      "role": "primary",
+      "run_id": "H3-C_primary_1792371255",
+      "status": "PRIMARY_COMPLETE",
+      "http_status": 200,
+      "candidate_positive": false,
+      "evidence_path": "/home/user/projects/technical_rag/docs/evidence/16k_gpu_residency_allocator/H3-C_primary_1792371255.json"
+    },
+    {
+      "cell": "H3-D",
+      "role": "primary",
+      "run_id": "H3-D_primary_1792371287",
+      "status": "PRIMARY_COMPLETE",
+      "http_status": 200,
+      "candidate_positive": false,
+      "evidence_path": "/home/user/projects/technical_rag/docs/evidence/16k_gpu_residency_allocator/H3-D_primary_1792371287.json"
+    },
+    {
+      "cell": "H1-A",
+      "role": "primary",
+      "run_id": "H1-A_primary_1792371320",
+      "status": "PRIMARY_COMPLETE",
+      "http_status": 200,
+      "candidate_positive": false,
+      "evidence_path": "/home/user/projects/technical_rag/docs/evidence/16k_gpu_residency_allocator/H1-A_primary_1792371320.json"
+    },
+    {
+      "cell": "H1-B",
+      "role": "primary",
+      "run_id": "H1-B_primary_1792371355",
+      "status": "PRIMARY_COMPLETE",
+      "http_status": 200,
+      "candidate_positive": false,
+      "evidence_path": "/home/user/projects/technical_rag/docs/evidence/16k_gpu_residency_allocator/H1-B_primary_1792371355.json"
+    },
+    {
+      "cell": "H2-C",
+      "role": "primary",
+      "run_id": "H2-C_primary_1792371388",
+      "status": "PRIMARY_COMPLETE",
+      "http_status": 200,
+      "candidate_positive": false,
+      "evidence_path": "/home/user/projects/technical_rag/docs/evidence/16k_gpu_residency_allocator/H2-C_primary_1792371388.json"
+    },
+    {
+      "cell": "H2-A",
+      "role": "primary",
+      "run_id": "H2-A_primary_1792371419",
+      "status": "PRIMARY_COMPLETE",
+      "http_status": 200,
+      "candidate_positive": false,
+      "evidence_path": "/home/user/projects/technical_rag/docs/evidence/16k_gpu_residency_allocator/H2-A_primary_1792371419.json"
+    },
+    {
+      "cell": "H2-B",
+      "role": "primary",
+      "run_id": "H2-B_primary_1792371451",
+      "status": "PRIMARY_COMPLETE",
+      "http_status": 200,
+      "candidate_positive": false,
+      "evidence_path": "/home/user/projects/technical_rag/docs/evidence/16k_gpu_residency_allocator/H2-B_primary_1792371451.json"
+    },
+    {
+      "cell": "H4-A",
+      "role": "primary",
+      "run_id": "H4-A_primary_1792371482",
+      "status": "PRIMARY_COMPLETE",
+      "http_status": 200,
+      "candidate_positive": false,
+      "evidence_path": "/home/user/projects/technical_rag/docs/evidence/16k_gpu_residency_allocator/H4-A_primary_1792371482.json"
+    }
+  ],
+  "skipped": [],
+  "stopping_condition": "matrix_complete_without_reproduced_positive",
+  "scientific_disposition": "NEGATIVE",
+  "m0_m2_eligibility_gate": "NOT SATISFIED"
+}

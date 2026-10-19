@@ -1,0 +1,216 @@
+{
+  "cell": "H3-C",
+  "role": "primary",
+  "run_id": "H3-C_primary_1792371255",
+  "status": "PRIMARY_COMPLETE",
+  "conditioning_ops": [
+    "touch_embedder",
+    "touch_reranker"
+  ],
+  "action_results": [
+    {
+      "http_status": 200,
+      "payload": {
+        "ok": true,
+        "op": "touch_embedder"
+      },
+      "op": "touch_embedder"
+    },
+    {
+      "http_status": 200,
+      "payload": {
+        "ok": true,
+        "op": "touch_reranker"
+      },
+      "op": "touch_reranker"
+    }
+  ],
+  "h2_manipulation": {},
+  "pre_request_state": {
+    "api_pid": 2698709,
+    "probe_enabled": true,
+    "loaded_model_inventory": {
+      "embedder": true,
+      "reranker": true
+    },
+    "cuda_resident_model_inventory": {
+      "embedder": true,
+      "reranker": true
+    },
+    "diagnostic_load_action_sequence": [
+      {
+        "op": "touch_embedder",
+        "prior_model_use": true
+      },
+      {
+        "op": "touch_reranker",
+        "prior_model_use": true
+      }
+    ],
+    "allocator": {
+      "cuda_available": true,
+      "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+      "memory_allocated": 3471243776,
+      "memory_reserved": 3487563776,
+      "mem_get_info": {
+        "free_bytes": 1011490816,
+        "total_bytes": 8589606912,
+        "free_mib": 964,
+        "total_mib": 8191
+      },
+      "memory_stats": {
+        "allocated_bytes.all.current": 3471243776,
+        "reserved_bytes.all.current": 3487563776,
+        "active_bytes.all.current": 3471243776,
+        "inactive_split_bytes.all.current": 14222848,
+        "segment.all.current": 114,
+        "allocation.retry_count": null,
+        "num_alloc_retries": 0,
+        "num_ooms": 0
+      }
+    },
+    "held_diagnostic_allocation": {
+      "blocks": 0,
+      "meta": {}
+    }
+  },
+  "post_request_state": {
+    "api_pid": 2698709,
+    "probe_enabled": true,
+    "loaded_model_inventory": {
+      "embedder": true,
+      "reranker": true
+    },
+    "cuda_resident_model_inventory": {
+      "embedder": true,
+      "reranker": true
+    },
+    "diagnostic_load_action_sequence": [
+      {
+        "op": "touch_embedder",
+        "prior_model_use": true
+      },
+      {
+        "op": "touch_reranker",
+        "prior_model_use": true
+      }
+    ],
+    "allocator": {
+      "cuda_available": true,
+      "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+      "memory_allocated": 3471243776,
+      "memory_reserved": 3860856832,
+      "mem_get_info": {
+        "free_bytes": 638197760,
+        "total_bytes": 8589606912,
+        "free_mib": 608,
+        "total_mib": 8191
+      },
+      "memory_stats": {
+        "allocated_bytes.all.current": 3471243776,
+        "reserved_bytes.all.current": 3860856832,
+        "active_bytes.all.current": 3471243776,
+        "inactive_split_bytes.all.current": 14222848,
+        "segment.all.current": 122,
+        "allocation.retry_count": null,
+        "num_alloc_retries": 0,
+        "num_ooms": 0
+      }
+    },
+    "held_diagnostic_allocation": {
+      "blocks": 0,
+      "meta": {}
+    }
+  },
+  "api_pid": 2698706,
+  "probe_api_pid": 2698709,
+  "loaded_model_inventory": {
+    "embedder": true,
+    "reranker": true
+  },
+  "cuda_resident_model_inventory": {
+    "embedder": true,
+    "reranker": true
+  },
+  "allocator_pre": {
+    "cuda_available": true,
+    "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+    "memory_allocated": 3471243776,
+    "memory_reserved": 3487563776,
+    "mem_get_info": {
+      "free_bytes": 1011490816,
+      "total_bytes": 8589606912,
+      "free_mib": 964,
+      "total_mib": 8191
+    },
+    "memory_stats": {
+      "allocated_bytes.all.current": 3471243776,
+      "reserved_bytes.all.current": 3487563776,
+      "active_bytes.all.current": 3471243776,
+      "inactive_split_bytes.all.current": 14222848,
+      "segment.all.current": 114,
+      "allocation.retry_count": null,
+      "num_alloc_retries": 0,
+      "num_ooms": 0
+    }
+  },
+  "host_gpu_pre": {
+    "total_mib": 8192,
+    "used_mib": 7050,
+    "free_mib": 938,
+    "compute_apps": []
+  },
+  "host_gpu_post": {
+    "total_mib": 8192,
+    "used_mib": 7423,
+    "free_mib": 565,
+    "compute_apps": []
+  },
+  "occupant": null,
+  "http_status": 200,
+  "wall_s": 8.896487178979442,
+  "envelope_keys": [
+    "abstention_reason",
+    "answer",
+    "answer_blocks",
+    "citations",
+    "context_used",
+    "conversation_trace_id",
+    "product_mode_id",
+    "query_trace_id",
+    "question",
+    "retrieval_question",
+    "snapshot_id",
+    "status",
+    "workspace_id",
+    "workspace_revision"
+  ],
+  "trace_id": "trace_20ee54327e494de8b291358d9693e122",
+  "durable_trace_status": "model_abstain",
+  "durable_trace_error_code": null,
+  "durable_snapshot_id": "snap_3c4048d380b1f5db12a20f820082c1942ccaacc96e368dfb04c22aba5090a9c9",
+  "internal_failure": null,
+  "candidate_positive": false,
+  "execution_authority": "S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-EXECUTION-AUTH-001",
+  "execution_git_sha": "c9daa88fb80c63c7ce6106e8d73df1976aae09d4",
+  "accepted_tooling_subject": "a26ea53f6ce32c6454d21a6d6af988d50299ae49",
+  "tooling_acceptance_record_parent": "a04d8f6131553beed0585a3c877cfbc2641c1863",
+  "product_baseline": {
+    "product_behavior_baseline_ok": true,
+    "allowlist_paths": [
+      "src/offline_rag/api/app.py",
+      "src/offline_rag/api/diag_gpu.py",
+      "src/offline_rag/api/diag_gpu_probe.py"
+    ]
+  },
+  "binding": {
+    "binding_assert_ok": true,
+    "workspace_id": "ws_fdd77b77611448eb93cdc239d2610281",
+    "revision": 13,
+    "snapshot_id": "snap_3c4048d380b1f5db12a20f820082c1942ccaacc96e368dfb04c22aba5090a9c9"
+  },
+  "question": "what is common valor?",
+  "surface": "POST /v1/workspaces/{id}/conversation/turn",
+  "related": null,
+  "api_log": "/tmp/seneca-gpu-res-H3-C_primary_1792371255.log"
+}

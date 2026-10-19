@@ -3,17 +3,25 @@
 **Authority:** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-EXECUTION-AUTH-001` — AUTHORIZED  
 **Exact parent:** `a04d8f6131553beed0585a3c877cfbc2641c1863`  
 **Branch:** `diagnostic/16k-gpu-residency-allocator`  
-**Execution status:** AUTH-OPEN / EXECUTION NOT YET PERFORMED  
+**Historical execution handoff:** EXECUTION COMPLETE / STOP FOR INDEPENDENT DIAGNOSTIC REVIEW  
+**Execution subject:** `c9daa88fb80c63c7ce6106e8d73df1976aae09d4`  
+**Independent diagnostic review:** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-IR-001` — REWORK REQUIRED (F001: evidence not repository-visible)  
+**Evidence publication authority:** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-EVIDENCE-PUBLICATION-AUTH-001` — AUTHORIZED  
+**Exact evidence publication parent:** `c9daa88fb80c63c7ce6106e8d73df1976aae09d4`  
+**Evidence path:** `docs/evidence/16k_gpu_residency_allocator/`  
+**Reported scientific disposition:** NEGATIVE (independent acceptance WITHHELD pending re-review of published subject)  
+**M0–M2 eligibility (reported, not independently accepted):** NOT SATISFIED  
 **Controlling design:** `docs/slice16k_gpu_residency_allocator_diagnostic_design.md` (accepted)  
 **Accepted tooling subject:** `a26ea53f6ce32c6454d21a6d6af988d50299ae49`  
 **Tooling acceptance-record parent:** `a04d8f6131553beed0585a3c877cfbc2641c1863`  
 
 **Human disposition:** HELD — LIVE PRODUCT REGRESSION UNDER DIAGNOSIS  
 
-This authority freezes the scientific campaign contract. It does **not** by itself
-perform C0 or any matrix cell. Campaign runs require a subsequent explicit
-execution go-ahead under this AUTH (or an AUTH-open pin already covering that
-go-ahead). Until then: **no scientific runs**.
+This authority froze the scientific campaign contract. Historical execution under
+explicit go-ahead is reported complete at subject `c9daa88…`. IR-001 withheld
+acceptance solely for F001 (evidence not repository-visible). This publication
+authority publishes preserved evidence and the campaign orchestrator; **no
+scientific rerun** is authorized under it.
 
 ---
 
@@ -216,9 +224,14 @@ failure or ambiguity.
 
 ---
 
-## 11. Publication gate (this commit)
+## 11. Publication gate
 
-- AUTH-OPEN documented on five 16K ledgers + this execution contract.
-- **STOP before running C0.**
-- No scientific campaign starts until an explicit execution go-ahead under this
-  authority is recorded.
+**AUTH-open commit (historical):** documented on five 16K ledgers + this
+execution contract; STOP before C0 until explicit go-ahead.
+
+**Evidence-publication commit (this corrective authority):** preserve
+byte-for-byte campaign artifacts under
+`docs/evidence/16k_gpu_residency_allocator/`, publish
+`scripts/diag_gpu_residency/run_campaign.py`, and record IR-001 F001 rework /
+publication status. No scientific cell may be rerun under
+`…-EVIDENCE-PUBLICATION-AUTH-001`.

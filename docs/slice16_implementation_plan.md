@@ -386,10 +386,25 @@ GAP-16G-02:
     Exact GPU residency execution parent:
       a04d8f6131553beed0585a3c877cfbc2641c1863
     Execution branch: diagnostic/16k-gpu-residency-allocator
-    Execution status: AUTH-OPEN / EXECUTION NOT YET PERFORMED
+    Historical execution handoff:
+      EXECUTION COMPLETE / STOP FOR INDEPENDENT DIAGNOSTIC REVIEW
+    Execution subject: c9daa88fb80c63c7ce6106e8d73df1976aae09d4
+    Independent diagnostic review:
+      S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-IR-001
+      — REWORK REQUIRED (F001: evidence not repository-visible)
+    Evidence publication authority:
+      S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-EVIDENCE-PUBLICATION-AUTH-001
+      — AUTHORIZED
+    Exact evidence publication parent:
+      c9daa88fb80c63c7ce6106e8d73df1976aae09d4
+    Evidence path: docs/evidence/16k_gpu_residency_allocator/
+    Reported scientific disposition:
+      NEGATIVE (independent acceptance WITHHELD pending re-review)
+    M0–M2 eligibility (reported, not independently accepted): NOT SATISFIED
     Execution document: docs/slice16k_gpu_residency_allocator_diagnostic_execution.md
     Execution scope:
-      frozen C0/H3/H1/H2/H4 matrix; STOP before C0 until go-ahead;
+      frozen C0/H3/H1/H2/H4 matrix; scientific rerun NOT AUTHORIZED under
+      evidence-publication AUTH;
       M0–M2 / 16K-C/D / device-CUDA / fireground / main NOT AUTHORIZED
     Tooling document: docs/slice16k_gpu_residency_allocator_diagnostic_tooling.md
     Tooling scope: env-gated in-process probe + runner; campaign execution NOT AUTHORIZED
@@ -936,10 +951,25 @@ Slice-16 closeout inventory: HUMAN ACCEPTED
     Exact GPU residency execution parent:
       a04d8f6131553beed0585a3c877cfbc2641c1863
     Execution branch: diagnostic/16k-gpu-residency-allocator
-    Execution status: AUTH-OPEN / EXECUTION NOT YET PERFORMED
+    Historical execution handoff:
+      EXECUTION COMPLETE / STOP FOR INDEPENDENT DIAGNOSTIC REVIEW
+    Execution subject: c9daa88fb80c63c7ce6106e8d73df1976aae09d4
+    Independent diagnostic review:
+      S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-IR-001
+      — REWORK REQUIRED (F001: evidence not repository-visible)
+    Evidence publication authority:
+      S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-EVIDENCE-PUBLICATION-AUTH-001
+      — AUTHORIZED
+    Exact evidence publication parent:
+      c9daa88fb80c63c7ce6106e8d73df1976aae09d4
+    Evidence path: docs/evidence/16k_gpu_residency_allocator/
+    Reported scientific disposition:
+      NEGATIVE (independent acceptance WITHHELD pending re-review)
+    M0–M2 eligibility (reported, not independently accepted): NOT SATISFIED
     Execution document: docs/slice16k_gpu_residency_allocator_diagnostic_execution.md
     Execution scope:
-      frozen C0/H3/H1/H2/H4 matrix; STOP before C0 until go-ahead;
+      frozen C0/H3/H1/H2/H4 matrix; scientific rerun NOT AUTHORIZED under
+      evidence-publication AUTH;
       M0–M2 / 16K-C/D / device-CUDA / fireground / main NOT AUTHORIZED
     Tooling document: docs/slice16k_gpu_residency_allocator_diagnostic_tooling.md
     Tooling scope: env-gated in-process probe + runner; campaign execution NOT AUTHORIZED
