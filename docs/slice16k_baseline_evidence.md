@@ -68,6 +68,12 @@
 **Exact independently accepted tooling subject:** `a26ea53f6ce32c6454d21a6d6af988d50299ae49`  
 **Tooling acceptance-record authority:** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-TOOLING-IR-001-ACCEPTANCE-RECORD-AUTH-001` — AUTHORIZED  
 **Exact tooling acceptance-record parent:** `a26ea53f6ce32c6454d21a6d6af988d50299ae49`  
+**GPU residency/allocator diagnostic execution authority:** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-EXECUTION-AUTH-001` — AUTHORIZED  
+**Exact GPU residency execution parent:** `a04d8f6131553beed0585a3c877cfbc2641c1863`  
+**Execution branch:** `diagnostic/16k-gpu-residency-allocator`  
+**Execution status:** AUTH-OPEN / EXECUTION NOT YET PERFORMED  
+**Execution document:** `docs/slice16k_gpu_residency_allocator_diagnostic_execution.md`  
+**Execution scope:** frozen C0/H3/H1/H2/H4 matrix under accepted design+tooling; STOP before C0 until explicit execution go-ahead; M0–M2 / 16K-C/D / device-CUDA / fireground / main NOT AUTHORIZED  
 **Tooling document:** `docs/slice16k_gpu_residency_allocator_diagnostic_tooling.md`  
 **Tooling scope:** env-gated in-process probe + runner; campaign execution NOT AUTHORIZED  
 **Design document:** `docs/slice16k_gpu_residency_allocator_diagnostic_design.md`  
@@ -331,6 +337,7 @@ any residency/eviction policy using dedicated optimization authority.
 - **M0–M2 eligibility gate:** NOT SATISFIED
 - **GPU residency/allocator diagnostic design:** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-DESIGN-AUTH-001` — DESIGN COMPLETE / INDEPENDENTLY ACCEPTED (`S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-DESIGN-IR-001` — ACCEPT at `2417e47…`; acceptance-record `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-DESIGN-IR-001-ACCEPTANCE-RECORD-AUTH-001` from parent `2417e47…`; historical READY handoff preserved in header; execution NOT AUTHORIZED)
 - **GPU residency/allocator diagnostic tooling:** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-TOOLING-AUTH-001` — TOOLING IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED (`S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-TOOLING-IR-001` — ACCEPT at `a26ea53…`; acceptance-record `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-TOOLING-IR-001-ACCEPTANCE-RECORD-AUTH-001` from parent `a26ea53…`; historical READY handoff preserved in header; campaign execution NOT AUTHORIZED)
+- **GPU residency/allocator diagnostic execution:** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-EXECUTION-AUTH-001` — AUTH-OPEN / EXECUTION NOT YET PERFORMED (parent `a04d8f6…`; branch `diagnostic/16k-gpu-residency-allocator`; doc `docs/slice16k_gpu_residency_allocator_diagnostic_execution.md`); STOP before C0; M0–M2 / 16K-C/D / device-CUDA / fireground / main NOT AUTHORIZED
 - **16K-C / 16K-D / 16K-E→G:** NOT AUTHORIZED
 - **Further constrained-VRAM reproduction:** NOT AUTHORIZED
 - **M0–M2:** NOT AUTHORIZED

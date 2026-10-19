@@ -380,6 +380,17 @@ GAP-16G-02:
       — AUTHORIZED
     Exact tooling acceptance-record parent:
       a26ea53f6ce32c6454d21a6d6af988d50299ae49
+    GPU residency/allocator diagnostic execution authority:
+      S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-EXECUTION-AUTH-001
+      — AUTHORIZED
+    Exact GPU residency execution parent:
+      a04d8f6131553beed0585a3c877cfbc2641c1863
+    Execution branch: diagnostic/16k-gpu-residency-allocator
+    Execution status: AUTH-OPEN / EXECUTION NOT YET PERFORMED
+    Execution document: docs/slice16k_gpu_residency_allocator_diagnostic_execution.md
+    Execution scope:
+      frozen C0/H3/H1/H2/H4 matrix; STOP before C0 until go-ahead;
+      M0–M2 / 16K-C/D / device-CUDA / fireground / main NOT AUTHORIZED
     Tooling document: docs/slice16k_gpu_residency_allocator_diagnostic_tooling.md
     Tooling scope: env-gated in-process probe + runner; campaign execution NOT AUTHORIZED
     Design document: docs/slice16k_gpu_residency_allocator_diagnostic_design.md
@@ -919,6 +930,17 @@ Slice-16 closeout inventory: HUMAN ACCEPTED
       — AUTHORIZED
     Exact tooling acceptance-record parent:
       a26ea53f6ce32c6454d21a6d6af988d50299ae49
+    GPU residency/allocator diagnostic execution authority:
+      S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-EXECUTION-AUTH-001
+      — AUTHORIZED
+    Exact GPU residency execution parent:
+      a04d8f6131553beed0585a3c877cfbc2641c1863
+    Execution branch: diagnostic/16k-gpu-residency-allocator
+    Execution status: AUTH-OPEN / EXECUTION NOT YET PERFORMED
+    Execution document: docs/slice16k_gpu_residency_allocator_diagnostic_execution.md
+    Execution scope:
+      frozen C0/H3/H1/H2/H4 matrix; STOP before C0 until go-ahead;
+      M0–M2 / 16K-C/D / device-CUDA / fireground / main NOT AUTHORIZED
     Tooling document: docs/slice16k_gpu_residency_allocator_diagnostic_tooling.md
     Tooling scope: env-gated in-process probe + runner; campaign execution NOT AUTHORIZED
     Design document: docs/slice16k_gpu_residency_allocator_diagnostic_design.md
