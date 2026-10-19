@@ -893,14 +893,24 @@ SLICE 15  COMPLETE / ACCEPTED
          — AUTHORIZED
        Exact 16K-C parent: f2741c105db48aea081b5282dc48e4b7f11fd6b6
        16K-C branch: implementation/16k-c-first-user-capacity-model
-       16K-C status: IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT RE-REVIEW
-       16K-C independent review:
+       16K-C status: IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED
+       16K-C independent review (IR-001):
          S16-K-C-FIRST-USER-CAPACITY-MODEL-IMPLEMENTATION-IR-001
          — REWORK REQUIRED (F001) — preserved as provenance
        16K-C rework authority:
          S16-K-C-FIRST-USER-CAPACITY-MODEL-IMPLEMENTATION-REWORK-AUTH-001
          — AUTHORIZED
        Exact 16K-C rework parent: 40e5b096041805fb149516b6eb89c793f6519213
+       16K-C independent review (IR-002):
+         S16-K-C-FIRST-USER-CAPACITY-MODEL-IMPLEMENTATION-IR-002 — ACCEPT
+       Exact independently accepted 16K-C subject:
+         219c8551d208530ec93c5697ca5591ad52bfb228
+       16K-C acceptance-record authority:
+         S16-K-C-FIRST-USER-CAPACITY-MODEL-IMPLEMENTATION-IR-002-ACCEPTANCE-RECORD-AUTH-001
+         — AUTHORIZED
+       Exact 16K-C acceptance-record parent:
+         219c8551d208530ec93c5697ca5591ad52bfb228
+       F001: CLOSED
        16K-C document: docs/slice16k_c_first_user_capacity_model.md
        16K-D: NOT AUTHORIZED
        16K-E → 16K-G: NOT AUTHORIZED
@@ -1499,14 +1509,24 @@ SLICE 15  COMPLETE / ACCEPTED
          — AUTHORIZED
        Exact 16K-C parent: f2741c105db48aea081b5282dc48e4b7f11fd6b6
        16K-C branch: implementation/16k-c-first-user-capacity-model
-       16K-C status: IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT RE-REVIEW
-       16K-C independent review:
+       16K-C status: IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED
+       16K-C independent review (IR-001):
          S16-K-C-FIRST-USER-CAPACITY-MODEL-IMPLEMENTATION-IR-001
          — REWORK REQUIRED (F001) — preserved as provenance
        16K-C rework authority:
          S16-K-C-FIRST-USER-CAPACITY-MODEL-IMPLEMENTATION-REWORK-AUTH-001
          — AUTHORIZED
        Exact 16K-C rework parent: 40e5b096041805fb149516b6eb89c793f6519213
+       16K-C independent review (IR-002):
+         S16-K-C-FIRST-USER-CAPACITY-MODEL-IMPLEMENTATION-IR-002 — ACCEPT
+       Exact independently accepted 16K-C subject:
+         219c8551d208530ec93c5697ca5591ad52bfb228
+       16K-C acceptance-record authority:
+         S16-K-C-FIRST-USER-CAPACITY-MODEL-IMPLEMENTATION-IR-002-ACCEPTANCE-RECORD-AUTH-001
+         — AUTHORIZED
+       Exact 16K-C acceptance-record parent:
+         219c8551d208530ec93c5697ca5591ad52bfb228
+       F001: CLOSED
        16K-C document: docs/slice16k_c_first_user_capacity_model.md
        16K-D: NOT AUTHORIZED
        16K-E → 16K-G: NOT AUTHORIZED

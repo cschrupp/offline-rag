@@ -5,17 +5,18 @@
 **Branch:** `implementation/16k-c-first-user-capacity-model`  
 **Controlling design:** `docs/slice16k_beta_ingestion_readiness_design.md`  
 **Human-accepted design subject:** `0839b565cd60958141366048520236a71bf16fd0`  
-**Independent review:** `S16-K-C-FIRST-USER-CAPACITY-MODEL-IMPLEMENTATION-IR-001` — REWORK REQUIRED (F001)  
+**Historical independent review (IR-001):** `S16-K-C-FIRST-USER-CAPACITY-MODEL-IMPLEMENTATION-IR-001` — REWORK REQUIRED (F001) — preserved as provenance  
 **Rework authority:** `S16-K-C-FIRST-USER-CAPACITY-MODEL-IMPLEMENTATION-REWORK-AUTH-001` — AUTHORIZED  
 **Exact rework parent:** `40e5b096041805fb149516b6eb89c793f6519213`  
 **Historical IR-001 disposition:** IMPLEMENTATION COMPLETE / REWORK REQUIRED (F001)  
-**Status:** 16K-C IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
-
-**F001:** The per-workspace searchable-child ceiling applies only to workspace
-`SOURCE_ADD` / `SOURCE_REPLACE`. `SOURCE_REMOVE` is exempt.
-`mutation_kind=None` (ordinary `POST /v1/ingest`) must leave legacy ingest
-semantics unchanged and must not be constrained by
-`max_searchable_child_chunks_per_workspace`.
+**Independent review (IR-002):** `S16-K-C-FIRST-USER-CAPACITY-MODEL-IMPLEMENTATION-IR-002` — ACCEPT  
+**Exact independently accepted technical subject:** `219c8551d208530ec93c5697ca5591ad52bfb228`  
+**Acceptance-record authority:** `S16-K-C-FIRST-USER-CAPACITY-MODEL-IMPLEMENTATION-IR-002-ACCEPTANCE-RECORD-AUTH-001` — AUTHORIZED  
+**Exact acceptance-record parent:** `219c8551d208530ec93c5697ca5591ad52bfb228`  
+**Status:** 16K-C IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED  
+**F001:** CLOSED (searchable-child ceiling scoped to workspace Add/Replace only;
+ordinary `POST /v1/ingest` with `mutation_kind=None` remains unconstrained by
+`max_searchable_child_chunks_per_workspace`).
 
 ## Frozen separation
 
