@@ -368,7 +368,7 @@ GAP-16G-02:
     Exact GPU residency tooling parent:
       d501370aef96c953f4780d2048d11b91306ee856
     Tooling branch: implementation/16k-gpu-residency-allocator-diagnostic-tooling
-    Tooling status: AUTHORIZED / AUTH-OPEN
+    Tooling status: TOOLING IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT TOOLING REVIEW
     Tooling document: docs/slice16k_gpu_residency_allocator_diagnostic_tooling.md
     Tooling scope: env-gated in-process probe + runner; campaign execution NOT AUTHORIZED
     Design document: docs/slice16k_gpu_residency_allocator_diagnostic_design.md
@@ -896,7 +896,7 @@ Slice-16 closeout inventory: HUMAN ACCEPTED
     Exact GPU residency tooling parent:
       d501370aef96c953f4780d2048d11b91306ee856
     Tooling branch: implementation/16k-gpu-residency-allocator-diagnostic-tooling
-    Tooling status: AUTHORIZED / AUTH-OPEN
+    Tooling status: TOOLING IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT TOOLING REVIEW
     Tooling document: docs/slice16k_gpu_residency_allocator_diagnostic_tooling.md
     Tooling scope: env-gated in-process probe + runner; campaign execution NOT AUTHORIZED
     Design document: docs/slice16k_gpu_residency_allocator_diagnostic_design.md

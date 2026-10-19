@@ -1,0 +1,493 @@
+{
+  "authority": "S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-TOOLING-AUTH-001",
+  "git_sha": "f37f434008bf9e1bf2e311e26bef1016029b5b61",
+  "base_url": "http://127.0.0.1:8080",
+  "steps": [
+    {
+      "name": "g3_state",
+      "http_status": 200,
+      "payload": {
+        "api_pid": 2692687,
+        "probe_enabled": true,
+        "loaded_model_inventory": {
+          "embedder": false,
+          "reranker": false
+        },
+        "cuda_resident_model_inventory": {
+          "embedder": false,
+          "reranker": false
+        },
+        "diagnostic_load_action_sequence": [],
+        "allocator": {
+          "cuda_available": true,
+          "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+          "memory_allocated": 0,
+          "memory_reserved": 0,
+          "mem_get_info": {
+            "free_bytes": 7448035328,
+            "total_bytes": 8589606912,
+            "free_mib": 7103,
+            "total_mib": 8191
+          },
+          "memory_stats": {
+            "allocated_bytes.all.current": 0,
+            "reserved_bytes.all.current": 0,
+            "active_bytes.all.current": 0,
+            "inactive_split_bytes.all.current": 0,
+            "segment.all.current": 0,
+            "allocation.retry_count": null,
+            "num_alloc_retries": 0,
+            "num_ooms": 0
+          }
+        },
+        "held_diagnostic_allocation": {
+          "blocks": 0,
+          "meta": {}
+        }
+      }
+    },
+    {
+      "name": "g4_h2_reserve_gap",
+      "http_status": 200,
+      "payload": {
+        "ok": true,
+        "op": "h2_reserve_gap",
+        "before": {
+          "cuda_available": true,
+          "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+          "memory_allocated": 0,
+          "memory_reserved": 0,
+          "mem_get_info": {
+            "free_bytes": 7448035328,
+            "total_bytes": 8589606912,
+            "free_mib": 7103,
+            "total_mib": 8191
+          },
+          "memory_stats": {
+            "allocated_bytes.all.current": 0,
+            "reserved_bytes.all.current": 0,
+            "active_bytes.all.current": 0,
+            "inactive_split_bytes.all.current": 0,
+            "segment.all.current": 0,
+            "allocation.retry_count": null,
+            "num_alloc_retries": 0,
+            "num_ooms": 0
+          }
+        },
+        "after_alloc": {
+          "cuda_available": true,
+          "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+          "memory_allocated": 268435456,
+          "memory_reserved": 268435456,
+          "mem_get_info": {
+            "free_bytes": 7179599872,
+            "total_bytes": 8589606912,
+            "free_mib": 6847,
+            "total_mib": 8191
+          },
+          "memory_stats": {
+            "allocated_bytes.all.current": 268435456,
+            "reserved_bytes.all.current": 268435456,
+            "active_bytes.all.current": 268435456,
+            "inactive_split_bytes.all.current": 0,
+            "segment.all.current": 1,
+            "allocation.retry_count": null,
+            "num_alloc_retries": 0,
+            "num_ooms": 0
+          }
+        },
+        "after_release": {
+          "cuda_available": true,
+          "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+          "memory_allocated": 0,
+          "memory_reserved": 268435456,
+          "mem_get_info": {
+            "free_bytes": 7179599872,
+            "total_bytes": 8589606912,
+            "free_mib": 6847,
+            "total_mib": 8191
+          },
+          "memory_stats": {
+            "allocated_bytes.all.current": 0,
+            "reserved_bytes.all.current": 268435456,
+            "active_bytes.all.current": 0,
+            "inactive_split_bytes.all.current": 0,
+            "segment.all.current": 1,
+            "allocation.retry_count": null,
+            "num_alloc_retries": 0,
+            "num_ooms": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "g4_release",
+      "http_status": 200,
+      "payload": {
+        "ok": true,
+        "op": "release_h2",
+        "allocator": {
+          "cuda_available": true,
+          "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+          "memory_allocated": 0,
+          "memory_reserved": 268435456,
+          "mem_get_info": {
+            "free_bytes": 7179599872,
+            "total_bytes": 8589606912,
+            "free_mib": 6847,
+            "total_mib": 8191
+          },
+          "memory_stats": {
+            "allocated_bytes.all.current": 0,
+            "reserved_bytes.all.current": 268435456,
+            "active_bytes.all.current": 0,
+            "inactive_split_bytes.all.current": 0,
+            "segment.all.current": 1,
+            "allocation.retry_count": null,
+            "num_alloc_retries": 0,
+            "num_ooms": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "g5_h2_fragment",
+      "http_status": 200,
+      "payload": {
+        "ok": true,
+        "op": "h2_fragment",
+        "before": {
+          "cuda_available": true,
+          "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+          "memory_allocated": 0,
+          "memory_reserved": 268435456,
+          "mem_get_info": {
+            "free_bytes": 7179599872,
+            "total_bytes": 8589606912,
+            "free_mib": 6847,
+            "total_mib": 8191
+          },
+          "memory_stats": {
+            "allocated_bytes.all.current": 0,
+            "reserved_bytes.all.current": 268435456,
+            "active_bytes.all.current": 0,
+            "inactive_split_bytes.all.current": 0,
+            "segment.all.current": 1,
+            "allocation.retry_count": null,
+            "num_alloc_retries": 0,
+            "num_ooms": 0
+          }
+        },
+        "after": {
+          "cuda_available": true,
+          "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+          "memory_allocated": 67108864,
+          "memory_reserved": 268435456,
+          "mem_get_info": {
+            "free_bytes": 7179599872,
+            "total_bytes": 8589606912,
+            "free_mib": 6847,
+            "total_mib": 8191
+          },
+          "memory_stats": {
+            "allocated_bytes.all.current": 67108864,
+            "reserved_bytes.all.current": 268435456,
+            "active_bytes.all.current": 67108864,
+            "inactive_split_bytes.all.current": 201326592,
+            "segment.all.current": 1,
+            "allocation.retry_count": null,
+            "num_alloc_retries": 0,
+            "num_ooms": 0
+          }
+        },
+        "pattern": {
+          "prime_mib": 256,
+          "block_mib": 8,
+          "block_count": 16,
+          "retained_indices": [
+            0,
+            2,
+            4,
+            6,
+            8,
+            10,
+            12,
+            14
+          ],
+          "released_indices": [
+            1,
+            3,
+            5,
+            7,
+            9,
+            11,
+            13,
+            15
+          ],
+          "retained_live_mib": 64,
+          "empty_cache": false
+        }
+      }
+    },
+    {
+      "name": "g5_release",
+      "http_status": 200,
+      "payload": {
+        "ok": true,
+        "op": "release_h2",
+        "allocator": {
+          "cuda_available": true,
+          "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+          "memory_allocated": 0,
+          "memory_reserved": 268435456,
+          "mem_get_info": {
+            "free_bytes": 7179599872,
+            "total_bytes": 8589606912,
+            "free_mib": 6847,
+            "total_mib": 8191
+          },
+          "memory_stats": {
+            "allocated_bytes.all.current": 0,
+            "reserved_bytes.all.current": 268435456,
+            "active_bytes.all.current": 0,
+            "inactive_split_bytes.all.current": 0,
+            "segment.all.current": 1,
+            "allocation.retry_count": null,
+            "num_alloc_retries": 0,
+            "num_ooms": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "g6_load_embedder",
+      "http_status": 200,
+      "payload": {
+        "ok": true,
+        "op": "load_embedder"
+      }
+    },
+    {
+      "name": "g6_load_reranker",
+      "http_status": 200,
+      "payload": {
+        "ok": true,
+        "op": "load_reranker"
+      }
+    },
+    {
+      "name": "g6_state_ab",
+      "http_status": 200,
+      "payload": {
+        "api_pid": 2692687,
+        "probe_enabled": true,
+        "loaded_model_inventory": {
+          "embedder": true,
+          "reranker": true
+        },
+        "cuda_resident_model_inventory": {
+          "embedder": true,
+          "reranker": true
+        },
+        "diagnostic_load_action_sequence": [
+          {
+            "op": "h2_reserve_gap",
+            "before": {
+              "cuda_available": true,
+              "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+              "memory_allocated": 0,
+              "memory_reserved": 0,
+              "mem_get_info": {
+                "free_bytes": 7448035328,
+                "total_bytes": 8589606912,
+                "free_mib": 7103,
+                "total_mib": 8191
+              },
+              "memory_stats": {
+                "allocated_bytes.all.current": 0,
+                "reserved_bytes.all.current": 0,
+                "active_bytes.all.current": 0,
+                "inactive_split_bytes.all.current": 0,
+                "segment.all.current": 0,
+                "allocation.retry_count": null,
+                "num_alloc_retries": 0,
+                "num_ooms": 0
+              }
+            },
+            "after_alloc": {
+              "cuda_available": true,
+              "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+              "memory_allocated": 268435456,
+              "memory_reserved": 268435456,
+              "mem_get_info": {
+                "free_bytes": 7179599872,
+                "total_bytes": 8589606912,
+                "free_mib": 6847,
+                "total_mib": 8191
+              },
+              "memory_stats": {
+                "allocated_bytes.all.current": 268435456,
+                "reserved_bytes.all.current": 268435456,
+                "active_bytes.all.current": 268435456,
+                "inactive_split_bytes.all.current": 0,
+                "segment.all.current": 1,
+                "allocation.retry_count": null,
+                "num_alloc_retries": 0,
+                "num_ooms": 0
+              }
+            },
+            "after_release": {
+              "cuda_available": true,
+              "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+              "memory_allocated": 0,
+              "memory_reserved": 268435456,
+              "mem_get_info": {
+                "free_bytes": 7179599872,
+                "total_bytes": 8589606912,
+                "free_mib": 6847,
+                "total_mib": 8191
+              },
+              "memory_stats": {
+                "allocated_bytes.all.current": 0,
+                "reserved_bytes.all.current": 268435456,
+                "active_bytes.all.current": 0,
+                "inactive_split_bytes.all.current": 0,
+                "segment.all.current": 1,
+                "allocation.retry_count": null,
+                "num_alloc_retries": 0,
+                "num_ooms": 0
+              }
+            }
+          },
+          {
+            "op": "release_h2"
+          },
+          {
+            "op": "h2_fragment",
+            "before": {
+              "cuda_available": true,
+              "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+              "memory_allocated": 0,
+              "memory_reserved": 268435456,
+              "mem_get_info": {
+                "free_bytes": 7179599872,
+                "total_bytes": 8589606912,
+                "free_mib": 6847,
+                "total_mib": 8191
+              },
+              "memory_stats": {
+                "allocated_bytes.all.current": 0,
+                "reserved_bytes.all.current": 268435456,
+                "active_bytes.all.current": 0,
+                "inactive_split_bytes.all.current": 0,
+                "segment.all.current": 1,
+                "allocation.retry_count": null,
+                "num_alloc_retries": 0,
+                "num_ooms": 0
+              }
+            },
+            "after": {
+              "cuda_available": true,
+              "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+              "memory_allocated": 67108864,
+              "memory_reserved": 268435456,
+              "mem_get_info": {
+                "free_bytes": 7179599872,
+                "total_bytes": 8589606912,
+                "free_mib": 6847,
+                "total_mib": 8191
+              },
+              "memory_stats": {
+                "allocated_bytes.all.current": 67108864,
+                "reserved_bytes.all.current": 268435456,
+                "active_bytes.all.current": 67108864,
+                "inactive_split_bytes.all.current": 201326592,
+                "segment.all.current": 1,
+                "allocation.retry_count": null,
+                "num_alloc_retries": 0,
+                "num_ooms": 0
+              }
+            },
+            "pattern": {
+              "prime_mib": 256,
+              "block_mib": 8,
+              "block_count": 16,
+              "retained_indices": [
+                0,
+                2,
+                4,
+                6,
+                8,
+                10,
+                12,
+                14
+              ],
+              "released_indices": [
+                1,
+                3,
+                5,
+                7,
+                9,
+                11,
+                13,
+                15
+              ],
+              "retained_live_mib": 64,
+              "empty_cache": false
+            }
+          },
+          {
+            "op": "release_h2"
+          },
+          {
+            "op": "load_embedder",
+            "loaded": true
+          },
+          {
+            "op": "load_reranker",
+            "loaded": true
+          }
+        ],
+        "allocator": {
+          "cuda_available": true,
+          "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+          "memory_allocated": 3462724096,
+          "memory_reserved": 3481272320,
+          "mem_get_info": {
+            "free_bytes": 895127552,
+            "total_bytes": 8589606912,
+            "free_mib": 853,
+            "total_mib": 8191
+          },
+          "memory_stats": {
+            "allocated_bytes.all.current": 3462724096,
+            "reserved_bytes.all.current": 3481272320,
+            "active_bytes.all.current": 3462724096,
+            "inactive_split_bytes.all.current": 18548224,
+            "segment.all.current": 101,
+            "allocation.retry_count": null,
+            "num_alloc_retries": 0,
+            "num_ooms": 0
+          }
+        },
+        "held_diagnostic_allocation": {
+          "blocks": 0,
+          "meta": {
+            "last_primitive": "release_h2",
+            "empty_cache": false
+          }
+        }
+      }
+    }
+  ],
+  "load_sequence_ab": [
+    "h2_reserve_gap",
+    "release_h2",
+    "h2_fragment",
+    "release_h2",
+    "load_embedder",
+    "load_reranker"
+  ],
+  "workspace_ops_issued": [],
+  "status": "CAPABILITY_COMPLETE"
+}

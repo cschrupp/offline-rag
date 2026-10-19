@@ -1,0 +1,30 @@
+{
+  "behavioral_product_baseline": "163078753eeda33959c9957cfad4e82876a7a5f5",
+  "tooling_authority": "S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-TOOLING-AUTH-001",
+  "tooling_candidate": null,
+  "allowlisted_src_offline_rag_deltas": [
+    {
+      "path": "src/offline_rag/api/app.py",
+      "sha256": "64eb8a49a29359fdf7f28e404b56da3b3ba8cd402bf30b6af9ce5a099bb6ded7",
+      "classification": "diagnostic_instrumentation",
+      "rationale": "env-gated GPU diagnostic probe (TOOLING-AUTH-001)"
+    },
+    {
+      "path": "src/offline_rag/api/diag_gpu.py",
+      "sha256": "30abd75207eac1d7e8b7182ec933f67dc71c2c1139de0a544557e247c0c67f3e",
+      "classification": "diagnostic_instrumentation",
+      "rationale": "env-gated GPU diagnostic probe (TOOLING-AUTH-001)"
+    },
+    {
+      "path": "src/offline_rag/api/diag_gpu_probe.py",
+      "sha256": "9d8f866a8820b8c5bb4f27755024c7bfbbb1f82d79358084bcced8c7511cc3a4",
+      "classification": "diagnostic_instrumentation",
+      "rationale": "env-gated GPU diagnostic probe (TOOLING-AUTH-001)"
+    }
+  ],
+  "capability_evidence": [
+    "docs/evidence/16k_gpu_residency_allocator_tooling/capability_1792370107.json"
+  ],
+  "note": "Flag-off product-equivalent to baseline; probe only when OFFLINE_RAG_DIAG_GPU_PROBE=1; secret never logged",
+  "tooling_candidate_note": "Reported externally at STOP; not self-pinned"
+}

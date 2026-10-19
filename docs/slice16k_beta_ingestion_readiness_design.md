@@ -130,7 +130,7 @@
 **GPU residency/allocator diagnostic tooling authority:** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-TOOLING-AUTH-001` — AUTHORIZED
 **Exact GPU residency tooling parent:** `d501370aef96c953f4780d2048d11b91306ee856`
 **Tooling branch:** `implementation/16k-gpu-residency-allocator-diagnostic-tooling`
-**Tooling status:** AUTHORIZED / AUTH-OPEN
+**Tooling status:** TOOLING IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT TOOLING REVIEW
 **Tooling document:** `docs/slice16k_gpu_residency_allocator_diagnostic_tooling.md`
 **Tooling scope:** env-gated in-process probe + runner; campaign execution NOT AUTHORIZED
 **Design document:** `docs/slice16k_gpu_residency_allocator_diagnostic_design.md`
@@ -1078,7 +1078,7 @@ Exact rework base: 5c693c531ded432b10cf5f6ac19d558a1f4e9431
   Exact GPU residency tooling parent:
     d501370aef96c953f4780d2048d11b91306ee856
   Tooling branch: implementation/16k-gpu-residency-allocator-diagnostic-tooling
-  Tooling status: AUTHORIZED / AUTH-OPEN
+  Tooling status: TOOLING IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT TOOLING REVIEW
   Tooling document: docs/slice16k_gpu_residency_allocator_diagnostic_tooling.md
   Tooling scope: env-gated in-process probe + runner; campaign execution NOT AUTHORIZED
   Design document: docs/slice16k_gpu_residency_allocator_diagnostic_design.md

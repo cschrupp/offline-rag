@@ -3,7 +3,7 @@
 **Authority:** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-TOOLING-AUTH-001` — AUTHORIZED  
 **Exact parent:** `d501370aef96c953f4780d2048d11b91306ee856`  
 **Branch:** `implementation/16k-gpu-residency-allocator-diagnostic-tooling`  
-**Tooling status:** AUTHORIZED / AUTH-OPEN  
+**Tooling status:** TOOLING IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT TOOLING REVIEW  
 **Design parent (accepted):** `docs/slice16k_gpu_residency_allocator_diagnostic_design.md`  
 **Mode:** diagnostic tooling / instrumentation only — **campaign execution NOT AUTHORIZED**
 

@@ -8,8 +8,14 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from offline_rag.api.authoring_settings import router as authoring_settings_router
+from offline_rag.api.bind_policy import is_loopback_bind_host
 from offline_rag.api.capabilities import router as capabilities_router
 from offline_rag.api.compute_settings import router as compute_settings_router
+from offline_rag.api.diag_gpu_probe import (
+    DiagGpuSession,
+    probe_flag_enabled,
+    probe_token,
+)
 from offline_rag.api.documents import router as documents_router
 from offline_rag.api.errors import register_app_error_handler
 from offline_rag.api.frontend import mount_frontend
@@ -28,6 +34,30 @@ from offline_rag.app.runtime import (
 )
 from offline_rag.config import load_settings
 from offline_rag.config.models import AppSettings
+
+
+class DiagGpuProbeConfigError(RuntimeError):
+    """Startup failure when the diagnostic GPU probe is misconfigured."""
+
+
+def _mount_diag_gpu_probe_if_enabled(app: FastAPI, settings: AppSettings) -> None:
+    """Mount env-gated diag routes; fail closed when enabled but unsafe."""
+    if not probe_flag_enabled():
+        return
+    if not probe_token():
+        raise DiagGpuProbeConfigError(
+            "OFFLINE_RAG_DIAG_GPU_PROBE=1 requires "
+            "OFFLINE_RAG_DIAG_GPU_PROBE_TOKEN to be set"
+        )
+    if not is_loopback_bind_host(str(settings.api.http_host)):
+        raise DiagGpuProbeConfigError(
+            "OFFLINE_RAG_DIAG_GPU_PROBE=1 requires loopback HTTP bind "
+            f"(host={settings.api.http_host!r})"
+        )
+    from offline_rag.api.diag_gpu import router as diag_gpu_router
+
+    app.state.diag_gpu_session = DiagGpuSession()
+    app.include_router(diag_gpu_router)
 
 
 @asynccontextmanager
@@ -87,6 +117,7 @@ def create_app(
     app.include_router(workspaces_router)
     app.include_router(operations_router)
     app.include_router(gold_lab_router)
+    _mount_diag_gpu_probe_if_enabled(app, runtime.settings)
     # SPA fallback must be registered after API routers so /v1/* and /health*
     # retain backend semantics (including API 404s).
     mount_frontend(app)
