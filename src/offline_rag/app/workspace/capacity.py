@@ -65,11 +65,19 @@ def enforce_searchable_workload_capacity(
     """Fail closed after chunking when searchable children exceed the envelope.
 
     Must run before dense embedding / dense materialization.
-    Remove is never blocked by this ceiling.
+
+    Workspace-only (16K-C F001): applies solely to ``SOURCE_ADD`` /
+    ``SOURCE_REPLACE``. ``SOURCE_REMOVE`` is exempt. ``mutation_kind=None``
+    (ordinary ``POST /v1/ingest``) must leave legacy ingest semantics unchanged
+    and must not be constrained by this per-workspace ceiling.
+
     When ``max_searchable_child_chunks_per_workspace`` is unset, no ceiling
     is enforced (no unmeasured product support claim).
     """
-    if mutation_kind is PublicationMutationKind.SOURCE_REMOVE:
+    if mutation_kind not in {
+        PublicationMutationKind.SOURCE_ADD,
+        PublicationMutationKind.SOURCE_REPLACE,
+    }:
         return
     ceiling = settings.api.max_searchable_child_chunks_per_workspace
     if ceiling is None:

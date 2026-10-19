@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from offline_rag.app.errors import AppError, ErrorCode
+from offline_rag.app.errors import AppError, ErrorCode, SafeErrorDetails
 from offline_rag.app.ingest_upload import spool_local_files
 from offline_rag.app.workspace.capacity import (
     enforce_searchable_workload_capacity,
@@ -115,6 +115,32 @@ def test_remove_not_blocked_by_searchable_capacity(tmp_path: Path) -> None:
     )
 
 
+def test_f001_legacy_ingest_not_constrained_by_workspace_searchable_ceiling(
+    tmp_path: Path,
+) -> None:
+    """F001: mutation_kind=None must not apply per-workspace searchable ceiling."""
+    settings = _settings(tmp_path, max_searchable_child_chunks_per_workspace=1)
+    enforce_searchable_workload_capacity(
+        settings,
+        searchable_child_count=99,
+        mutation_kind=None,
+    )
+
+
+def test_searchable_workload_within_ceiling_allows_add(tmp_path: Path) -> None:
+    settings = _settings(tmp_path, max_searchable_child_chunks_per_workspace=10)
+    enforce_searchable_workload_capacity(
+        settings,
+        searchable_child_count=10,
+        mutation_kind=PublicationMutationKind.SOURCE_ADD,
+    )
+    enforce_searchable_workload_capacity(
+        settings,
+        searchable_child_count=10,
+        mutation_kind=PublicationMutationKind.SOURCE_REPLACE,
+    )
+
+
 def test_unset_workspace_ceilings_do_not_invent_support_claim(tmp_path: Path) -> None:
     settings = _settings(tmp_path)
     enforce_workspace_active_source_capacity(
@@ -181,13 +207,22 @@ def test_spool_local_reconstruction_bypasses_request_envelope(tmp_path: Path) ->
     assert len(upload.files) == 3
 
 
-def test_pre_dense_capacity_gate_runs_before_indexing(tmp_path: Path) -> None:
-    """Proof 4: over-cap child count fails before run_indexing."""
+def _drive_to_dense_gate(
+    tmp_path: Path,
+    *,
+    child_chunks: int,
+    ceiling: int,
+    mutation_kind: object | None,
+    authorize_workspace_id: str | None,
+) -> tuple[AppError | None, MagicMock]:
+    """Run ingest through chunk→capacity; dense raises a sentinel if reached."""
     from offline_rag.app.ingest import run_product_replace_ingest
     from offline_rag.domain.chunking import ChunkingReport, ChunkingStatus
     from offline_rag.domain.ingestion import IngestionReport, IngestionStatus
 
-    settings = _settings(tmp_path, max_searchable_child_chunks_per_workspace=5)
+    settings = _settings(
+        tmp_path, max_searchable_child_chunks_per_workspace=ceiling
+    )
     runtime = MagicMock()
     runtime.require_ready = MagicMock()
     runtime.settings = settings
@@ -207,7 +242,7 @@ def test_pre_dense_capacity_gate_runs_before_indexing(tmp_path: Path) -> None:
         started_at=now,
         completed_at=now,
         duration_ms=1,
-        child_chunks=9,
+        child_chunks=child_chunks,
     )
     ingest_report = IngestionReport(
         run_id="run_ingest",
@@ -219,6 +254,23 @@ def test_pre_dense_capacity_gate_runs_before_indexing(tmp_path: Path) -> None:
         corpus_id="c" * 64,
     )
 
+    dense_mock = MagicMock(
+        side_effect=AppError(
+            ErrorCode.INGEST_FAILED,
+            details=SafeErrorDetails(reason="dense_reached_after_capacity_gate"),
+        )
+    )
+    ownership = (
+        patch(
+            "offline_rag.app.workspace.corpus_ownership.assert_legacy_ingest_allowed",
+            return_value=None,
+        )
+        if authorize_workspace_id is None
+        else patch(
+            "offline_rag.app.workspace.corpus_ownership.assert_authorized_workspace_corpus",
+            return_value=None,
+        )
+    )
     with (
         patch(
             "offline_rag.app.ingest._validate_document_identities",
@@ -252,26 +304,80 @@ def test_pre_dense_capacity_gate_runs_before_indexing(tmp_path: Path) -> None:
             return_value=tmp_path / "cs",
         ),
         patch("offline_rag.app.ingest.run_chunking", return_value=chunk_report),
-        patch("offline_rag.app.ingest.run_indexing") as dense_mock,
-        patch(
-            "offline_rag.app.workspace.corpus_ownership.assert_authorized_workspace_corpus",
-            return_value=None,
-        ),
+        patch("offline_rag.app.ingest.run_indexing", dense_mock),
+        ownership,
     ):
         lease = MagicMock()
         lease.held = True
         lease.corpus_name = "manuals"
-        with pytest.raises(AppError) as exc:
-            run_product_replace_ingest(
-                runtime,
-                upload,
-                corpus_lease=lease,
-                authorize_workspace_id="ws_test",
-                mutation_kind=PublicationMutationKind.SOURCE_ADD,
-            )
-        assert exc.value.details is not None
-        assert exc.value.details["reason"] == "searchable_workload_capacity_exceeded"
-        dense_mock.assert_not_called()
+        kwargs: dict = {"corpus_lease": lease, "mutation_kind": mutation_kind}
+        if authorize_workspace_id is not None:
+            kwargs["authorize_workspace_id"] = authorize_workspace_id
+        try:
+            run_product_replace_ingest(runtime, upload, **kwargs)
+        except AppError as exc:
+            return exc, dense_mock
+    return None, dense_mock
+
+
+def test_pre_dense_capacity_gate_runs_before_indexing(tmp_path: Path) -> None:
+    """F001: workspace Add above searchable ceiling fails before dense."""
+    err, dense_mock = _drive_to_dense_gate(
+        tmp_path,
+        child_chunks=9,
+        ceiling=5,
+        mutation_kind=PublicationMutationKind.SOURCE_ADD,
+        authorize_workspace_id="ws_test",
+    )
+    assert err is not None
+    assert err.details is not None
+    assert err.details["reason"] == "searchable_workload_capacity_exceeded"
+    dense_mock.assert_not_called()
+
+
+def test_f001_workspace_replace_over_cap_fails_before_dense(tmp_path: Path) -> None:
+    err, dense_mock = _drive_to_dense_gate(
+        tmp_path,
+        child_chunks=9,
+        ceiling=5,
+        mutation_kind=PublicationMutationKind.SOURCE_REPLACE,
+        authorize_workspace_id="ws_test",
+    )
+    assert err is not None
+    assert err.details is not None
+    assert err.details["reason"] == "searchable_workload_capacity_exceeded"
+    dense_mock.assert_not_called()
+
+
+def test_f001_workspace_add_within_ceiling_reaches_dense(tmp_path: Path) -> None:
+    err, dense_mock = _drive_to_dense_gate(
+        tmp_path,
+        child_chunks=5,
+        ceiling=5,
+        mutation_kind=PublicationMutationKind.SOURCE_ADD,
+        authorize_workspace_id="ws_test",
+    )
+    assert err is not None
+    assert err.details is not None
+    assert err.details["reason"] == "dense_reached_after_capacity_gate"
+    dense_mock.assert_called_once()
+
+
+def test_f001_legacy_v1_ingest_ignores_workspace_searchable_ceiling(
+    tmp_path: Path,
+) -> None:
+    """F001: POST /v1/ingest path (mutation_kind=None) is not constrained."""
+    err, dense_mock = _drive_to_dense_gate(
+        tmp_path,
+        child_chunks=99,
+        ceiling=5,
+        mutation_kind=None,
+        authorize_workspace_id=None,
+    )
+    assert err is not None
+    assert err.details is not None
+    assert err.details["reason"] == "dense_reached_after_capacity_gate"
+    dense_mock.assert_called_once()
 
 
 def _capabilities_body(settings: AppSettings) -> dict:

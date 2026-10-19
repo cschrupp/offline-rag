@@ -359,7 +359,7 @@ any residency/eviction policy using dedicated optimization authority.
 - **Scientific disposition:** NEGATIVE / INDEPENDENTLY ACCEPTED
 - **M0–M2 eligibility gate:** NOT SATISFIED / INDEPENDENTLY ACCEPTED
 - **GPU residency/allocator IR-002 acceptance-record:** `S16-K-POST-BASELINE-GPU-RESIDENCY-ALLOCATOR-DIAGNOSTIC-IR-002-ACCEPTANCE-RECORD-AUTH-001` — AUTHORIZED from parent `579d1fa…`; further GPU diagnostic tranche NOT IMPLIED; M0–M2 / 16K-C/D / device-CUDA / fireground / main NOT AUTHORIZED
-- **16K-C:** `S16-K-C-FIRST-USER-CAPACITY-MODEL-IMPLEMENTATION-AUTH-001` — IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW (parent `f2741c1…`; branch `implementation/16k-c-first-user-capacity-model`; doc `docs/slice16k_c_first_user_capacity_model.md`)
+- **16K-C:** `S16-K-C-FIRST-USER-CAPACITY-MODEL-IMPLEMENTATION-AUTH-001` — IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT RE-REVIEW (parent `f2741c1…`; IR-001 REWORK REQUIRED F001 at `40e5b09…` preserved; rework AUTH-001 from `40e5b09…`; branch `implementation/16k-c-first-user-capacity-model`; doc `docs/slice16k_c_first_user_capacity_model.md`)
 - **16K-D / 16K-E→G:** NOT AUTHORIZED
 - **Further constrained-VRAM reproduction:** NOT AUTHORIZED
 - **M0–M2:** NOT AUTHORIZED
