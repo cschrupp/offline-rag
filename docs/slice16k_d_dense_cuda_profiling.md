@@ -48,9 +48,13 @@
 **D2 design IR-001:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-IR-001` — REWORK REQUIRED (F001–F004) — preserved  
 **D2 design rework authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-REWORK-AUTH-001` — AUTHORIZED  
 **Exact D2 design rework parent:** `80f4b09e0c85400d13c1f505a073cee6eab6f50b`  
+**D2 design F001–F004:** CLOSED  
+**D2 design IR-002:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-IR-002` — REWORK REQUIRED (F005–F006) — preserved  
+**D2 design rework-2 authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-REWORK2-AUTH-001` — AUTHORIZED  
+**Exact D2 design rework-2 parent:** `5da766959fa3557f9300fa3a3147f0bb4f3bd853`  
 **D2 design document:** `docs/slice16k_d_d2_practical_execution_optimization_design.md`  
 
-**Status:** D2 PRACTICAL EXECUTION OPTIMIZATION DESIGN REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
+**Status:** D2 PRACTICAL EXECUTION OPTIMIZATION DESIGN REWORK 2 COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
 **D0:** BASELINE COMPLETE / INDEPENDENTLY ACCEPTED  
 **D1:** COMPLETE / INDEPENDENTLY ACCEPTED (scientific program closed for product pivot)  
 **D1 tooling F001 / D1 analysis F001:** CLOSED  
@@ -129,19 +133,25 @@ requires it.
 
 Authoritative design: `docs/slice16k_d_d2_practical_execution_optimization_design.md`.
 
-Staged stop-conditional campaign (max 6 new full cold runs; likely 4):
+Staged stop-conditional campaign (normal 4; G1 screen-fail→G2 = 6; G1
+confirmation timing-fail→G2 = 7 absolute max; no discretionary eighth):
 
 - **G1:** CUDA FP16 / batch 32 (two cold screens);
 - **C0:** CPU · same Qwen · batch 32 · production path · no CUDA · no CPU tuning;
   observe/record effective dtype/backend/threads/RSS (not graded on 10/12 GPU proxy);
-- **G2:** CUDA FP16 / batch 16 — only under frozen mathematical screen or G1 valid
-  resource failure (high VRAM occupancy alone is not a G2 trigger);
+- **G2:** CUDA FP16 / batch 16 — only for G1 timing/variance failure or G1 valid
+  resource failure (not for G1 FP16 parity/correctness failure; high VRAM alone
+  is not a G2 trigger);
 - **Gx-3:** confirmation only when the two-run screen says the lane remains
-  mathematically eligible; then apply §9.4 three-run gate.
+  mathematically eligible; then apply timing/variance gate + separate parity gate.
 
 **Two-run screen (after both valid):** either >12 min, or both >10 min → no Gx-3
 for that lane (G1 → open G2 after C0; G2 → STOP GPU). Otherwise both ≤12 and at
 least one ≤10 → run Gx-3.
+
+**G2 eligibility:** G1 timing/variance or valid resource failure → G2 may open;
+G1 FP16 parity/correctness failure → STOP (G2 not opened). Any G2
+parity/correctness failure is terminal for D2.
 
 **Validity:** correct-identity CUDA OOM/resource exhaustion is a valid negative
 treatment result (G1 → G2 eligible; G2 → STOP), not an invalid/retry.

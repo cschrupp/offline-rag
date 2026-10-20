@@ -235,8 +235,12 @@
 **16K-D D2 design IR-001:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-IR-001` — REWORK REQUIRED (F001–F004) — preserved
 **16K-D D2 design rework authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-REWORK-AUTH-001` — AUTHORIZED
 **Exact 16K-D D2 design rework parent:** `80f4b09e0c85400d13c1f505a073cee6eab6f50b`
+**16K-D D2 design F001–F004:** CLOSED
+**16K-D D2 design IR-002:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-IR-002` — REWORK REQUIRED (F005–F006) — preserved
+**16K-D D2 design rework-2 authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-REWORK2-AUTH-001` — AUTHORIZED
+**Exact 16K-D D2 design rework-2 parent:** `5da766959fa3557f9300fa3a3147f0bb4f3bd853`
 **16K-D D2 design document:** `docs/slice16k_d_d2_practical_execution_optimization_design.md`
-**16K-D status:** D2 PRACTICAL EXECUTION OPTIMIZATION DESIGN REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
+**16K-D status:** D2 PRACTICAL EXECUTION OPTIMIZATION DESIGN REWORK 2 COMPLETE / READY FOR INDEPENDENT RE-REVIEW
 **16K-D D2:** DESIGN ONLY / EXECUTION NOT AUTHORIZED
 **16K-D program pivot:** scientific optimization → bounded product-engineering optimization
 **16K-D document:** `docs/slice16k_d_dense_cuda_profiling.md`
@@ -706,8 +710,12 @@ Detailed per-batch profiling belongs in benchmark/evidence artifacts.
 **D2 design IR-001:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-IR-001` — REWORK REQUIRED (F001–F004) — preserved  
 **D2 design rework authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-REWORK-AUTH-001` — AUTHORIZED  
 **Exact D2 design rework parent:** `80f4b09e0c85400d13c1f505a073cee6eab6f50b`  
+**D2 design F001–F004:** CLOSED  
+**D2 design IR-002:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-IR-002` — REWORK REQUIRED (F005–F006) — preserved  
+**D2 design rework-2 authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-REWORK2-AUTH-001` — AUTHORIZED  
+**Exact D2 design rework-2 parent:** `5da766959fa3557f9300fa3a3147f0bb4f3bd853`  
 **D2 design document:** `docs/slice16k_d_d2_practical_execution_optimization_design.md`  
-**Status:** D2 PRACTICAL EXECUTION OPTIMIZATION DESIGN REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
+**Status:** D2 PRACTICAL EXECUTION OPTIMIZATION DESIGN REWORK 2 COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
 (D2 execution NOT AUTHORIZED; program pivoted to product-engineering optimization)
 
 Current code path context (independently accepted D0): SentenceTransformers /
@@ -740,7 +748,7 @@ only as provenance.
 |------|----------|--------|
 | **D0** | Accepted baseline | native BF16 / batch 32 / SDPA — COMPLETE / INDEPENDENTLY ACCEPTED |
 | **D1** | Stall attribution | COMPLETE / INDEPENDENTLY ACCEPTED. Enough attribution for engineering decisions; root-cause investigation closed unless product decision reopens it. |
-| **D2** | Practical execution optimization | Controllable shippable variables only. Staged stop-conditional: G1 FP16/b32 → C0 CPU baseline (batch 32, no tuning; observe runtime facts) → G2 FP16/b16 only under frozen two-run mathematical screen or G1 valid resource failure → Gx-3 only when mathematically eligible. Clean D0 BF16/b32 = sole performance reference (D1 attribution-only). Correct-identity OOM = valid negative, not invalid/retry. Max 6 new full cold runs (likely 4). Design: `docs/slice16k_d_d2_practical_execution_optimization_design.md`. EXECUTION NOT AUTHORIZED under design AUTH. |
+| **D2** | Practical execution optimization | Controllable shippable variables only. Staged stop-conditional: G1 FP16/b32 → C0 CPU baseline (batch 32, no tuning; observe runtime facts) → G2 FP16/b16 only for G1 timing/variance or valid resource failure (not G1 FP16 parity failure) → Gx-3 only when mathematically eligible. Clean D0 BF16/b32 = sole performance reference (D1 attribution-only). Correct-identity OOM = valid negative, not invalid/retry. Budgets: 4 normal / 6 screen-fail→G2 / 7 absolute max (G1 confirmation timing-fail→G2); no discretionary eighth. Design: `docs/slice16k_d_d2_practical_execution_optimization_design.md`. EXECUTION NOT AUTHORIZED under design AUTH. |
 | **Later** | Evidence-triggered only | CPU/PyTorch tuning · model/runtime optimization · narrowly justified CUDA control · persistence/Qdrant if ≥10% wall. No automatic D3/D4/D5 mechanical campaign. |
 
 ### 9.3 Parity gate
@@ -1451,9 +1459,18 @@ Exact 16K-D D2 design parent:
   — AUTHORIZED
 Exact 16K-D D2 design rework parent:
   80f4b09e0c85400d13c1f505a073cee6eab6f50b
+16K-D D2 design F001–F004: CLOSED
+16K-D D2 design IR-002:
+  S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-IR-002
+  — REWORK REQUIRED (F005–F006) — preserved
+16K-D D2 design rework-2 authority:
+  S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-REWORK2-AUTH-001
+  — AUTHORIZED
+Exact 16K-D D2 design rework-2 parent:
+  5da766959fa3557f9300fa3a3147f0bb4f3bd853
 16K-D D2 design document:
   docs/slice16k_d_d2_practical_execution_optimization_design.md
-16K-D status: D2 PRACTICAL EXECUTION OPTIMIZATION DESIGN REWORK COMPLETE /
+16K-D status: D2 PRACTICAL EXECUTION OPTIMIZATION DESIGN REWORK 2 COMPLETE /
   READY FOR INDEPENDENT RE-REVIEW
 16K-D D2: DESIGN ONLY / EXECUTION NOT AUTHORIZED
 16K-D program pivot: scientific optimization →

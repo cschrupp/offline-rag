@@ -1014,9 +1014,18 @@ SLICE 15  COMPLETE / ACCEPTED
          — AUTHORIZED
        Exact 16K-D D2 design rework parent:
          80f4b09e0c85400d13c1f505a073cee6eab6f50b
+       16K-D D2 design F001–F004: CLOSED
+       16K-D D2 design IR-002:
+         S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-IR-002
+         — REWORK REQUIRED (F005–F006) — preserved
+       16K-D D2 design rework-2 authority:
+         S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-REWORK2-AUTH-001
+         — AUTHORIZED
+       Exact 16K-D D2 design rework-2 parent:
+         5da766959fa3557f9300fa3a3147f0bb4f3bd853
        16K-D D2 design document:
          docs/slice16k_d_d2_practical_execution_optimization_design.md
-       16K-D status: D2 PRACTICAL EXECUTION OPTIMIZATION DESIGN REWORK COMPLETE /
+       16K-D status: D2 PRACTICAL EXECUTION OPTIMIZATION DESIGN REWORK 2 COMPLETE /
          READY FOR INDEPENDENT RE-REVIEW
        16K-D D2: DESIGN ONLY / EXECUTION NOT AUTHORIZED
        16K-D program pivot: scientific optimization →
@@ -1754,9 +1763,18 @@ SLICE 15  COMPLETE / ACCEPTED
          — AUTHORIZED
        Exact 16K-D D2 design rework parent:
          80f4b09e0c85400d13c1f505a073cee6eab6f50b
+       16K-D D2 design F001–F004: CLOSED
+       16K-D D2 design IR-002:
+         S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-IR-002
+         — REWORK REQUIRED (F005–F006) — preserved
+       16K-D D2 design rework-2 authority:
+         S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-REWORK2-AUTH-001
+         — AUTHORIZED
+       Exact 16K-D D2 design rework-2 parent:
+         5da766959fa3557f9300fa3a3147f0bb4f3bd853
        16K-D D2 design document:
          docs/slice16k_d_d2_practical_execution_optimization_design.md
-       16K-D status: D2 PRACTICAL EXECUTION OPTIMIZATION DESIGN REWORK COMPLETE /
+       16K-D status: D2 PRACTICAL EXECUTION OPTIMIZATION DESIGN REWORK 2 COMPLETE /
          READY FOR INDEPENDENT RE-REVIEW
        16K-D D2: DESIGN ONLY / EXECUTION NOT AUTHORIZED
        16K-D program pivot: scientific optimization →

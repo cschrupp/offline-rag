@@ -6,6 +6,11 @@
 **Design IR-001:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-IR-001` — REWORK REQUIRED (F001–F004) — preserved  
 **Design rework authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-REWORK-AUTH-001` — AUTHORIZED  
 **Exact rework parent:** `80f4b09e0c85400d13c1f505a073cee6eab6f50b`  
+**F001–F004:** CLOSED  
+
+**Design IR-002:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-IR-002` — REWORK REQUIRED (F005–F006) — preserved  
+**Design rework-2 authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-REWORK2-AUTH-001` — AUTHORIZED  
+**Exact rework-2 parent:** `5da766959fa3557f9300fa3a3147f0bb4f3bd853`  
 
 **Branch:** `implementation/16k-d-dense-cuda-profiling`  
 **Status:** DESIGN ONLY / EXECUTION NOT AUTHORIZED  
@@ -144,12 +149,17 @@ performance comparison inadmissible.
 
 D2 is staged and stop-conditional, not an exhaustive matrix.
 
-Maximum intended campaign: **six** new full cold runs.  
-Likely success path: **four**.
+Campaign size (F005) — deterministic budgets, no discretionary eighth run:
+
+| Path | Full cold runs |
+|------|----------------|
+| Normal success (G1 screen + confirmation + parity) | **4** |
+| G1 early screen failure → G2 success | **6** |
+| G1 confirmation timing/variance failure → G2 success | **7** absolute maximum |
 
 Operator judgment phrases such as “clearly misses,” “appears to be the
 deployment candidate,” or VRAM being “sufficiently close to capacity” are
-**forbidden** as decision inputs. Decisions use §6.5 only.
+**forbidden** as decision inputs. Decisions use §6.5 / §6.7 only.
 
 ### 6.1 D2-G1 — CUDA FP16 / batch 32
 
@@ -211,8 +221,8 @@ Forbidden conclusion form: “Seneca is too slow on CPU.”
 
 ### 6.3 D2-G2 — CUDA FP16 / batch 16 — CONDITIONAL
 
-Opened only under the deterministic rule in §6.5 (or G1 valid resource failure
-per §6.6).
+Opened only under §6.5 / §6.6 / §6.7 when G2 is eligible. **Not** opened for
+G1 parity/correctness failure attributable to FP16 (§6.7 / §10).
 
 Change relative to G1: **batch 32 → batch 16**.  
 Keep: CUDA / FP16 / SDPA / same model.
@@ -222,9 +232,9 @@ Runs: **G2-1**, **G2-2** (cold).
 **Not** a general batch-size sweep. No batch 8/24/48/64/etc.
 
 **High VRAM occupancy alone is not an automatic G2 trigger.** If FP16/b32 is
-fast, stable, correct, and passes the final three-run gate, stop. Actual
-CUDA OOM/resource failure under correct identity remains a legitimate G2 trigger
-(§6.6).
+fast, stable, correct, and passes timing + parity, stop. Actual CUDA
+OOM/resource failure under correct identity remains a legitimate G2 trigger
+(§6.6). Batch-16 is **not** a retry for an FP16 semantic/parity failure.
 
 ### 6.4 GPU candidate confirmation (Gx-3)
 
@@ -233,14 +243,17 @@ exactly one additional cold run of that lane: **Gx-3**.
 
 The resulting three runs constitute the existing §9.4 confirmation set.
 
-**Final three-run GPU gate** (G1 or G2 after Gx-3):
+**Timing/variance confirmation gate** (G1 or G2 after Gx-3):
 
-- 3 valid cold runs (or valid negative resource classification per §6.6 does not
+- 3 valid cold runs (valid negative resource classification per §6.6 does not
   enter this gate as a success);
 - median wall ≤10 minutes;
 - no run >12 minutes;
-- generated=1296 / reused=0;
-- correctness/parity gate satisfied.
+- generated=1296 / reused=0.
+
+**Correctness/parity gate** is separate (§10 / §6.7). Both must succeed to
+select a GPU lane. Timing/variance failure and parity failure have different
+G2 consequences (§6.7).
 
 ### 6.5 Deterministic two-run screening rule (F001)
 
@@ -252,13 +265,11 @@ failures).
 
 | Condition | Decision |
 |-----------|----------|
-| Either run \(> 12\) min | G1 cannot satisfy final gate → do **C0**, then **G2** |
+| Either run \(> 12\) min | G1 cannot satisfy timing gate → do **C0**, then **G2** |
 | Both runs \(> 10\) min | A third run cannot produce a 3-run median ≤10 → do **C0**, then **G2** |
 | Both \(\le 12\) min **and** at least one \(\le 10\) min | G1 remains mathematically eligible → do **C0**, then **G1-3** |
 
-Then evaluate G1’s three runs with the final three-run gate in §6.4.
-If that gate fails → open G2 (if not already opened) under the same campaign
-rules; if G2 already exhausted or fails → STOP GPU optimization under D2.
+Then evaluate G1 under §6.7 (timing/variance vs parity).
 
 #### After G2-1 + G2-2
 
@@ -266,13 +277,19 @@ rules; if G2 already exhausted or fails → STOP GPU optimization under D2.
 |-----------|----------|
 | Either run \(> 12\) min | Do **not** run G2-3 → **STOP** GPU optimization under D2 |
 | Both runs \(> 10\) min | Do **not** run G2-3 → **STOP** GPU optimization under D2 |
-| Both \(\le 12\) min **and** at least one \(\le 10\) min | Run **G2-3**, then apply the final three-run gate |
+| Both \(\le 12\) min **and** at least one \(\le 10\) min | Run **G2-3**, then apply timing/variance gate + parity |
 
-If G1 succeeds the final three-run gate (+ parity), G2 is skipped.
+If G1 succeeds timing/variance **and** parity, G2 is skipped.
 
-**Normal success path:** `G1-1 → G1-2 → C0 → G1-3` (4 runs).  
-**If G1 fails screen / final gate and G2 succeeds:**  
-`G1-1 → G1-2 → C0 → G2-1 → G2-2 → G2-3` (6 runs).
+**Campaign paths (F005):**
+
+| Outcome path | Sequence | Runs |
+|--------------|----------|------|
+| Normal success | `G1-1 → G1-2 → C0 → G1-3` | **4** |
+| G1 early screen failure → G2 success | `G1-1 → G1-2 → C0 → G2-1 → G2-2 → G2-3` | **6** |
+| G1 confirmation timing/variance failure → G2 success | `G1-1 → G1-2 → C0 → G1-3 → G2-1 → G2-2 → G2-3` | **7** absolute max |
+
+No discretionary eighth run.
 
 ### 6.6 Resource failure vs invalidity (F002)
 
@@ -290,6 +307,32 @@ external interruption, incomplete evidence, or other infrastructure/process
 faults may be classified **invalid** and replaced under §15.
 
 An undesirable configuration **must not** be rerun until it happens to survive.
+
+### 6.7 Post-confirmation / G2 eligibility (F006)
+
+After G1-3 (or earlier when G1 never reaches confirmation), classify the G1
+outcome and apply exactly one transition:
+
+| G1 outcome | G2 |
+|------------|-----|
+| Timing/variance failure (two-run screen fail, or three-run median/variance fail) | **May open** |
+| Valid resource failure (§6.6) | **May open** |
+| Parity/correctness failure attributable to FP16 | **NOT opened** — **STOP** GPU optimization under D2 |
+
+Batch size 16 SHALL NOT be used as a retry for an FP16 semantic/parity failure
+unless a later design explicitly establishes a reason to test that hypothesis.
+
+After G2:
+
+| G2 outcome | Disposition |
+|------------|-------------|
+| Timing/variance success + parity success | Select FP16/b16; STOP GPU tuning |
+| Timing/variance failure (screen or confirmation) | **STOP** GPU optimization under D2 |
+| Valid resource failure | **STOP** GPU optimization under D2 |
+| Parity/correctness failure | **STOP** GPU optimization under D2 (terminal for D2) |
+
+A GPU lane is selected only when both timing/variance confirmation (§6.4) and
+parity/correctness (§10) succeed for that lane.
 
 ---
 
@@ -376,7 +419,9 @@ treatment execution** in the implementation/execution authority — not invented
 after seeing FP16 results.
 
 If FP16 materially changes retrieval behavior beyond the frozen parity boundary:
-**STOP.** Do not silently promote it as an execution-only change.
+**STOP** GPU optimization under D2. Do not silently promote it as an
+execution-only change. Do **not** open G2 as a retry (§6.7). Any G2
+parity/correctness failure is likewise terminal for D2.
 
 ---
 
@@ -411,11 +456,14 @@ benchmarks faster.
 
 ## 13. Decision rules
 
-**GPU** — apply §6.5 / §6.6 only (no discretionary language).
+**GPU** — apply §6.5 / §6.6 / §6.7 only (no discretionary language).
 
-- If G1 final three-run gate + parity succeed → select FP16/b32; STOP GPU tuning.
-- Else if G2 opened and G2 final three-run gate + parity succeed → select FP16/b16;
+- If G1 timing/variance confirmation + parity succeed → select FP16/b32;
   STOP GPU tuning.
+- Else if G1 failed on timing/variance or valid resource only, and G2 opened
+  and G2 timing/variance + parity succeed → select FP16/b16; STOP GPU tuning.
+- Else if G1 (or G2) parity/correctness failure attributable to FP16 → STOP
+  GPU optimization under D2 (G2 not opened from a G1 parity failure).
 - Else → STOP D2 GPU execution. Do not launch a blind parameter sweep.
   Open a new design based on the observed bottleneck.
 
@@ -432,12 +480,13 @@ materially justified.
 
 ## 14. Development-time budget
 
-Expected new full-corpus-proxy executions:
+Expected new full-corpus-proxy executions (F005):
 
-- best case: **4**
-- maximum under this design: **6**
+- normal success: **4**
+- G1 early screen failure → G2 success: **6**
+- G1 confirmation timing/variance failure → G2 success: **7** absolute maximum
 
-No discretionary “one more run.” No full combinatorial matrix. A treatment must
+No discretionary eighth run. No full combinatorial matrix. A treatment must
 be capable of changing a shipping decision.
 
 ---
@@ -507,7 +556,7 @@ execution · production/default changes · model changes · D3+ · 16K-E/F/G · 
 
 ## Next gate
 
-Independent design re-review of this rework. Separate implementation AUTH
-(execution still closed) may follow only after design IR ACCEPT. Retrieval-parity
-probe must be frozen in the later execution AUTH before the first FP16 treatment
-call.
+Independent design re-review of this rework-2 (F005–F006). Separate
+implementation AUTH (execution still closed) may follow only after design IR
+ACCEPT. Retrieval-parity probe must be frozen in the later execution AUTH before
+the first FP16 treatment call.
