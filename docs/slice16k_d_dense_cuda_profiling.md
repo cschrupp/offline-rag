@@ -39,17 +39,21 @@
 **D1 scientific IR-001:** `S16-K-D-D1-STALL-ATTRIBUTION-SCIENTIFIC-EXECUTION-IR-001` — REWORK REQUIRED (F001 analysis publication) — preserved  
 **D1 analysis publication rework authority:** `S16-K-D-D1-SCIENTIFIC-ANALYSIS-PUBLICATION-REWORK-AUTH-001` — AUTHORIZED  
 **Exact D1 analysis rework parent:** `4326586fe0ce3b7ca4c40ded743272d72ba53036`  
+**D1 scientific IR-002:** `S16-K-D-D1-STALL-ATTRIBUTION-SCIENTIFIC-EXECUTION-IR-002` — ACCEPT  
+**Exact independently accepted D1 analysis publication subject:** `7be6a2b5c7ca7b521f0c642d6a024a1e421d6636`  
+**D1 F001:** CLOSED  
 
-**Status:** D1 ANALYSIS PUBLICATION REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
+**D2 practical execution optimization design authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-AUTH-001` — AUTHORIZED  
+**Exact D2 design parent:** `7be6a2b5c7ca7b521f0c642d6a024a1e421d6636`  
+**D2 design document:** `docs/slice16k_d_d2_practical_execution_optimization_design.md`  
+
+**Status:** D2 PRACTICAL EXECUTION OPTIMIZATION DESIGN COMPLETE / READY FOR INDEPENDENT REVIEW  
 **D0:** BASELINE COMPLETE / INDEPENDENTLY ACCEPTED  
-**D1 tooling:** COMPLETE / INDEPENDENTLY ACCEPTED  
-**D1 tooling F001:** CLOSED  
-**Contract:** `dense-cuda-profile-v2`  
-**D1 scientific matrix:** FROZEN  
-**D1-A1 / D1-A2 / D1-B cells:** VALID (no rerun; sealed)  
-**D1 analysis:** `d1-frozen-analysis-v2` in `docs/evidence/16k_d_dense_cuda/d1/d1_analysis.json`  
-**D1 interpretation:** `docs/evidence/16k_d_dense_cuda/d1/d1_scientific_interpretation.md`  
-**D2:** scientifically eligible under controlled repeated-run design; execution NOT AUTHORIZED
+**D1:** COMPLETE / INDEPENDENTLY ACCEPTED (scientific program closed for product pivot)  
+**D1 tooling F001 / D1 analysis F001:** CLOSED  
+**Contract (attribution tooling):** `dense-cuda-profile-v2`  
+**D2:** DESIGN ONLY / EXECUTION NOT AUTHORIZED  
+**Program pivot:** scientific optimization → bounded product-engineering optimization
 
 ## Authoritative current lane (unchanged)
 
@@ -80,9 +84,14 @@ Reference host + cold `D0-INCIDENT-1296-CHILD-V1` (generated=1296, reused=0):
 The ~25.2 min clean D0 baseline **fails** the 10-minute proxy — as intended.
 The 10-minute gate is a screening target, not a linear scaling claim to 16K-F.
 
-## Reconciled treatment sequence (§9.2.2)
+## Treatment sequence
 
-`D0 (accepted) → D1 stall attribution → D2 BF16 vs FP16 → D3 batch sweep → D4 attention (conditional) → D5 persistence/Qdrant (if ≥10% wall)`
+**Practical sequence (frozen by D2 design):**  
+`D0 → D1 attribution → D2 practical execution optimization → decision`
+
+Historical mechanical sequence
+`D2 precision → D3 batch sweep → D4 attention → D5 persistence/Qdrant`:
+**SUPERSEDED**. Later work is evidence-triggered, not mechanically scheduled.
 
 Historical FP32→FP16→batch sequence: **SUPERSEDED** (provenance only).
 
@@ -104,28 +113,35 @@ wall-stop → rusage-after → CPU delta → CUDA end-event/synchronize. Thus
 Perturbation rule: CUDA event synchronize is diagnostic-gated only; disabled path
 unchanged; external GPU samples run outside the encode critical path.
 
-## D1 scientific matrix (frozen; execution NOT AUTHORIZED)
+## D1 scientific (independently accepted)
 
-Authoritative freeze: `docs/slice16k_d_d1_scientific_matrix_freeze.md`.
+Freeze: `docs/slice16k_d_d1_scientific_matrix_freeze.md`.  
+Evidence: `docs/evidence/16k_d_dense_cuda/d1/`.  
+Analysis: `d1-frozen-analysis-v2` + `d1_scientific_interpretation.md`.
 
-- **D1-A1 / D1-A2:** two independent cold full reproductions of
-  `D0-INCIDENT-1296-CHILD-V1` (`generated=1296` / `reused=0`); no A1 reuse for
-  A2; attribution-only (not §9.4 substitutes).
-- **D1-B cells:** `batch_index` 1, 14, 17, 13, 4, 6 (F1/S1/F2/S2/D1/D2), selected
-  solely from pre-D1 D0 runs; D1-A must not alter membership.
-- **D1-B order:** counterbalanced pair blocks P1/P2/P3; 6 measured encodes per
-  selected batch (36 total); one process / one model load; no warm-up on
-  selected batches.
-- Fail-closed identity derivation before any model call; frozen analysis and
-  validity/retry rules as in the freeze document.
+D1 SHALL NOT continue root-cause investigation unless a later product decision
+requires it.
 
-## Explicitly NOT AUTHORIZED
+## D2 practical execution optimization (design only)
 
-D1-A/B scientific execution · changing BF16 · changing batch 32 · changing
-SDPA · FP16/D2 · batch sweep/D3 · attention/D4 · persistence/Qdrant/D5 ·
-model/chunking/searchable-unit changes · production synchronization · CUDA
-cache-clearing/eviction policy · HTTP-500 investigation · threshold modification ·
-16K-E/F/G · main promotion.
+Authoritative design: `docs/slice16k_d_d2_practical_execution_optimization_design.md`.
+
+Staged stop-conditional campaign (max 6 new full cold runs; likely 4):
+
+- **G1:** CUDA FP16 / batch 32 (two cold screens);
+- **C0:** CPU production baseline (mandatory; not graded on 10/12-minute GPU proxy);
+- **G2:** CUDA FP16 / batch 16 — conditional if G1 inadequate;
+- **Gx-3:** one confirmation run of the GPU candidate for §9.4 three-run set.
+
+Reuse sealed BF16 D0/D1 evidence as reference. Lighter instrumentation than D1;
+no per-batch CUDA-event sync for curiosity. Retrieval-parity probe must be frozen
+in the execution AUTH before treatment runs.
+
+## Explicitly NOT AUTHORIZED under this design AUTH
+
+D2 harness · D2 executions · FP16/CPU calls · production/default changes ·
+model replacement · mechanical D3–D5 · attention experiments · persistence/Qdrant
+opt · HTTP-500 reopen · 16K-E/F/G · main.
 
 ## Evidence
 

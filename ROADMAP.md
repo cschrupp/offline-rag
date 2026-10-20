@@ -995,11 +995,24 @@ SLICE 15  COMPLETE / ACCEPTED
          — AUTHORIZED
        Exact 16K-D D1 analysis rework parent:
          4326586fe0ce3b7ca4c40ded743272d72ba53036
-       16K-D status: D1 ANALYSIS PUBLICATION REWORK COMPLETE /
-         READY FOR INDEPENDENT RE-REVIEW
-       16K-D D1-A1/A2/B cells: VALID (sealed; no rerun)
-       16K-D D2: scientifically eligible under controlled repeated-run
-         design; execution NOT AUTHORIZED
+       16K-D D1 scientific IR-002:
+         S16-K-D-D1-STALL-ATTRIBUTION-SCIENTIFIC-EXECUTION-IR-002 — ACCEPT
+       Exact independently accepted 16K-D D1 analysis publication subject:
+         7be6a2b5c7ca7b521f0c642d6a024a1e421d6636
+       16K-D D1 F001: CLOSED
+       16K-D D1: COMPLETE / INDEPENDENTLY ACCEPTED
+       16K-D D2 practical execution optimization design authority:
+         S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-AUTH-001
+         — AUTHORIZED
+       Exact 16K-D D2 design parent:
+         7be6a2b5c7ca7b521f0c642d6a024a1e421d6636
+       16K-D D2 design document:
+         docs/slice16k_d_d2_practical_execution_optimization_design.md
+       16K-D status: D2 PRACTICAL EXECUTION OPTIMIZATION DESIGN COMPLETE /
+         READY FOR INDEPENDENT REVIEW
+       16K-D D2: DESIGN ONLY / EXECUTION NOT AUTHORIZED
+       16K-D program pivot: scientific optimization →
+         bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md
        16K-D evidence: docs/evidence/16k_d_dense_cuda/
        16K-D D1 tooling evidence:
@@ -1009,13 +1022,13 @@ SLICE 15  COMPLETE / ACCEPTED
        16K-D authoritative current lane: CUDA / BF16 / batch 32 / SDPA
        16K-D frozen proxy usability (§9.4): median ≤10 min; no run >12 min;
          3 clean cold confirmations; 16K-F full-corpus ≤60 min
-       16K-D reconciled sequence (§9.2.2):
-         D0 → D1 stall attribution → D2 BF16 vs FP16 → D3 batch sweep →
-         D4 attention conditional → D5 persistence/Qdrant if ≥10% wall
-       16K-D closed under this scientific AUTH:
-         D2 FP16 execution / D3 batch sweep / D4 attention /
-         D5 persistence/Qdrant / default promotion / threshold changes /
-         production sync/cache / HTTP-500 reopen / 16K-E→G / main
+       16K-D practical sequence:
+         D0 → D1 attribution → D2 practical execution optimization → decision
+       16K-D mechanical D2→D3→D4→D5 sequence: SUPERSEDED
+       16K-D closed under this design AUTH:
+         D2 harness/execution / FP16/CPU calls / model replacement /
+         mechanical D3–D5 / production/default / threshold changes /
+         HTTP-500 reopen / 16K-E→G / main
        16K-E → 16K-G: NOT AUTHORIZED
        Main promotion: NOT AUTHORIZED
        Historical closeout disposition (inventory I-11): DEFERRED / NOT REQUIRED
@@ -1714,11 +1727,24 @@ SLICE 15  COMPLETE / ACCEPTED
          — AUTHORIZED
        Exact 16K-D D1 analysis rework parent:
          4326586fe0ce3b7ca4c40ded743272d72ba53036
-       16K-D status: D1 ANALYSIS PUBLICATION REWORK COMPLETE /
-         READY FOR INDEPENDENT RE-REVIEW
-       16K-D D1-A1/A2/B cells: VALID (sealed; no rerun)
-       16K-D D2: scientifically eligible under controlled repeated-run
-         design; execution NOT AUTHORIZED
+       16K-D D1 scientific IR-002:
+         S16-K-D-D1-STALL-ATTRIBUTION-SCIENTIFIC-EXECUTION-IR-002 — ACCEPT
+       Exact independently accepted 16K-D D1 analysis publication subject:
+         7be6a2b5c7ca7b521f0c642d6a024a1e421d6636
+       16K-D D1 F001: CLOSED
+       16K-D D1: COMPLETE / INDEPENDENTLY ACCEPTED
+       16K-D D2 practical execution optimization design authority:
+         S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-AUTH-001
+         — AUTHORIZED
+       Exact 16K-D D2 design parent:
+         7be6a2b5c7ca7b521f0c642d6a024a1e421d6636
+       16K-D D2 design document:
+         docs/slice16k_d_d2_practical_execution_optimization_design.md
+       16K-D status: D2 PRACTICAL EXECUTION OPTIMIZATION DESIGN COMPLETE /
+         READY FOR INDEPENDENT REVIEW
+       16K-D D2: DESIGN ONLY / EXECUTION NOT AUTHORIZED
+       16K-D program pivot: scientific optimization →
+         bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md
        16K-D evidence: docs/evidence/16k_d_dense_cuda/
        16K-D D1 tooling evidence:
@@ -1728,13 +1754,13 @@ SLICE 15  COMPLETE / ACCEPTED
        16K-D authoritative current lane: CUDA / BF16 / batch 32 / SDPA
        16K-D frozen proxy usability (§9.4): median ≤10 min; no run >12 min;
          3 clean cold confirmations; 16K-F full-corpus ≤60 min
-       16K-D reconciled sequence (§9.2.2):
-         D0 → D1 stall attribution → D2 BF16 vs FP16 → D3 batch sweep →
-         D4 attention conditional → D5 persistence/Qdrant if ≥10% wall
-       16K-D closed under this scientific AUTH:
-         D2 FP16 execution / D3 batch sweep / D4 attention /
-         D5 persistence/Qdrant / default promotion / threshold changes /
-         production sync/cache / HTTP-500 reopen / 16K-E→G / main
+       16K-D practical sequence:
+         D0 → D1 attribution → D2 practical execution optimization → decision
+       16K-D mechanical D2→D3→D4→D5 sequence: SUPERSEDED
+       16K-D closed under this design AUTH:
+         D2 harness/execution / FP16/CPU calls / model replacement /
+         mechanical D3–D5 / production/default / threshold changes /
+         HTTP-500 reopen / 16K-E→G / main
        16K-E → 16K-G: NOT AUTHORIZED
        Main promotion: NOT AUTHORIZED
        Historical closeout disposition (inventory I-11): DEFERRED / NOT REQUIRED

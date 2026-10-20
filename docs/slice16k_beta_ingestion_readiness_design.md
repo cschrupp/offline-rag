@@ -226,17 +226,25 @@
 **16K-D D1 scientific IR-001:** `S16-K-D-D1-STALL-ATTRIBUTION-SCIENTIFIC-EXECUTION-IR-001` — REWORK REQUIRED (F001 analysis) — preserved
 **16K-D D1 analysis publication rework authority:** `S16-K-D-D1-SCIENTIFIC-ANALYSIS-PUBLICATION-REWORK-AUTH-001` — AUTHORIZED
 **Exact 16K-D D1 analysis rework parent:** `4326586fe0ce3b7ca4c40ded743272d72ba53036`
-**16K-D status:** D1 ANALYSIS PUBLICATION REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
-**16K-D D1-A1/A2/B cells:** VALID (sealed; no rerun)
-**16K-D D2:** scientifically eligible under controlled repeated-run design; execution NOT AUTHORIZED
+**16K-D D1 scientific IR-002:** `S16-K-D-D1-STALL-ATTRIBUTION-SCIENTIFIC-EXECUTION-IR-002` — ACCEPT
+**Exact independently accepted 16K-D D1 analysis publication subject:** `7be6a2b5c7ca7b521f0c642d6a024a1e421d6636`
+**16K-D D1 F001:** CLOSED
+**16K-D D1:** COMPLETE / INDEPENDENTLY ACCEPTED
+**16K-D D2 practical execution optimization design authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-AUTH-001` — AUTHORIZED
+**Exact 16K-D D2 design parent:** `7be6a2b5c7ca7b521f0c642d6a024a1e421d6636`
+**16K-D D2 design document:** `docs/slice16k_d_d2_practical_execution_optimization_design.md`
+**16K-D status:** D2 PRACTICAL EXECUTION OPTIMIZATION DESIGN COMPLETE / READY FOR INDEPENDENT REVIEW
+**16K-D D2:** DESIGN ONLY / EXECUTION NOT AUTHORIZED
+**16K-D program pivot:** scientific optimization → bounded product-engineering optimization
 **16K-D document:** `docs/slice16k_d_dense_cuda_profiling.md`
 **16K-D evidence:** `docs/evidence/16k_d_dense_cuda/`
 **16K-D D1 tooling evidence:** `docs/evidence/16k_d_dense_cuda_tooling/`
+**16K-D D1 scientific evidence:** `docs/evidence/16k_d_dense_cuda/d1/`
 **16K-D authoritative current lane:** CUDA / BF16 / batch 32 / SDPA
 **16K-D frozen proxy usability (§9.4):** median wall ≤10 min; no confirmation run >12 min;
 3 clean cold confirmation runs; 16K-F full-corpus cold dense ≤60 min
-**16K-D reconciled sequence (§9.2.2):** D0 → D1 stall attribution → D2 BF16 vs FP16 →
-D3 batch sweep → D4 attention conditional → D5 persistence/Qdrant if ≥10% wall
+**16K-D practical sequence:** D0 → D1 attribution → D2 practical execution optimization → decision
+**16K-D mechanical D2→D3→D4→D5 sequence:** SUPERSEDED
 **16K-E → 16K-G:** NOT AUTHORIZED
 **Main promotion:** NOT AUTHORIZED
 **Frozen implementation order:** 16K-A → 16K-B → baseline evidence → 16K-C → 16K-D → 16K-E → 16K-F → 16K-G
@@ -687,15 +695,21 @@ Detailed per-batch profiling belongs in benchmark/evidence artifacts.
 **Exact D1 sealed cell evidence tip:** `4326586fe0ce3b7ca4c40ded743272d72ba53036`  
 **D1 scientific IR-001:** `S16-K-D-D1-STALL-ATTRIBUTION-SCIENTIFIC-EXECUTION-IR-001` — REWORK REQUIRED (F001 analysis) — preserved  
 **D1 analysis publication rework authority:** `S16-K-D-D1-SCIENTIFIC-ANALYSIS-PUBLICATION-REWORK-AUTH-001` — AUTHORIZED  
-**Status:** D1 ANALYSIS PUBLICATION REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
-(D2 scientifically eligible under controlled repeated-run design; D2+ execution NOT AUTHORIZED)
+**D1 scientific IR-002:** `S16-K-D-D1-STALL-ATTRIBUTION-SCIENTIFIC-EXECUTION-IR-002` — ACCEPT  
+**Exact independently accepted D1 analysis publication subject:** `7be6a2b5c7ca7b521f0c642d6a024a1e421d6636`  
+**D1 F001:** CLOSED  
+**D2 practical execution optimization design authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-AUTH-001` — AUTHORIZED  
+**Exact D2 design parent:** `7be6a2b5c7ca7b521f0c642d6a024a1e421d6636`  
+**D2 design document:** `docs/slice16k_d_d2_practical_execution_optimization_design.md`  
+**Status:** D2 PRACTICAL EXECUTION OPTIMIZATION DESIGN COMPLETE / READY FOR INDEPENDENT REVIEW  
+(D2 execution NOT AUTHORIZED; program pivoted to product-engineering optimization)
 
 Current code path context (independently accepted D0): SentenceTransformers /
 Qwen3-Embedding-0.6B, CUDA, **BF16**, batch size 32, **SDPA**, per-chunk JSON
 embedding artifacts, local Qdrant materialization. Reference host for thresholds:
 RTX 2080 Super Max-Q class as recorded in D0 evidence.
 
-#### 9.2.1 Historical sequence — SUPERSEDED
+#### 9.2.1 Historical sequences — SUPERSEDED
 
 The original frozen order assumed FP32 was the current production lane:
 
@@ -706,21 +720,22 @@ The original frozen order assumed FP32 was the current production lane:
 5–6. persistence / Qdrant only if material
 
 That premise is **falsified** by independently accepted D0 (native load is BF16 /
-batch 32 / SDPA). The superseded sequence is retained only as provenance; it MUST
-NOT authorize an “FP16 optimization next” mechanical open.
+batch 32 / SDPA).
 
-#### 9.2.2 Reconciled sequence (frozen)
+The later mechanical reconciliation sequence
+`D2 precision → D3 batch sweep → D4 attention → D5 persistence/Qdrant` is also
+**SUPERSEDED** by D2 practical execution optimization design
+(`S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-AUTH-001`). Both are retained
+only as provenance.
 
-One material variable at a time. Each Dx execution requires its own authority.
+#### 9.2.2 Practical sequence (frozen)
 
-| Gate | Scientific question | Notes |
-|------|---------------------|--------|
+| Gate | Question | Notes |
+|------|----------|--------|
 | **D0** | Accepted baseline | native BF16 / batch 32 / SDPA — COMPLETE / INDEPENDENTLY ACCEPTED |
-| **D1** | Stall attribution under unchanged D0 lane | No optimization variables. Explain fast/slow batch regimes; distinguish GPU compute vs host/WSL scheduling/sync and relevant CUDA/runtime state. Enough attribution for fair later comparisons; not required to prove ultimate root cause before D2 may ever proceed. Separate D1 execution AUTH. |
-| **D2** | Precision treatment | BF16 / batch32 / SDPA vs explicit FP16 / batch32 / SDPA. Only precision changes. FP16 remains scientifically relevant (Turing Tensor Core FP16 path). Parity (§9.3) required before FP16 may become the base lane for later optimization or promotion. |
-| **D3** | Batch-size sweep | On the best parity-eligible precision lane from D2. Exact batch cells frozen in later D3 execution design after D1/D2 evidence — not invented here. |
-| **D4** | Attention/backend — conditional | Only if D1–D3 show model execution remains materially dominant and a supported offline-compatible alternative to current SDPA exists. No attention experiment merely because it appeared in the original roadmap. |
-| **D5** | Persistence/Qdrant — conditional | Closed unless that component reaches **≥10% of dense wall time** in the optimized candidate lane. D0 measured seconds vs tens of minutes of encode. |
+| **D1** | Stall attribution | COMPLETE / INDEPENDENTLY ACCEPTED. Enough attribution for engineering decisions; root-cause investigation closed unless product decision reopens it. |
+| **D2** | Practical execution optimization | Controllable shippable variables only. Staged stop-conditional: G1 FP16/b32 → C0 CPU baseline → conditional G2 FP16/b16 → Gx-3 confirmation. Max 6 new full cold runs (likely 4). Design: `docs/slice16k_d_d2_practical_execution_optimization_design.md`. EXECUTION NOT AUTHORIZED under design AUTH. |
+| **Later** | Evidence-triggered only | CPU/PyTorch tuning · model/runtime optimization · narrowly justified CUDA control · persistence/Qdrant if ≥10% wall. No automatic D3/D4/D5 mechanical campaign. |
 
 ### 9.3 Parity gate
 
@@ -1411,11 +1426,24 @@ Exact 16K-D D1 sealed cell evidence tip:
   — AUTHORIZED
 Exact 16K-D D1 analysis rework parent:
   4326586fe0ce3b7ca4c40ded743272d72ba53036
-16K-D status: D1 ANALYSIS PUBLICATION REWORK COMPLETE /
-  READY FOR INDEPENDENT RE-REVIEW
-16K-D D1-A1/A2/B cells: VALID (sealed; no rerun)
-16K-D D2: scientifically eligible under controlled repeated-run
-  design; execution NOT AUTHORIZED
+16K-D D1 scientific IR-002:
+  S16-K-D-D1-STALL-ATTRIBUTION-SCIENTIFIC-EXECUTION-IR-002 — ACCEPT
+Exact independently accepted 16K-D D1 analysis publication subject:
+  7be6a2b5c7ca7b521f0c642d6a024a1e421d6636
+16K-D D1 F001: CLOSED
+16K-D D1: COMPLETE / INDEPENDENTLY ACCEPTED
+16K-D D2 practical execution optimization design authority:
+  S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-AUTH-001
+  — AUTHORIZED
+Exact 16K-D D2 design parent:
+  7be6a2b5c7ca7b521f0c642d6a024a1e421d6636
+16K-D D2 design document:
+  docs/slice16k_d_d2_practical_execution_optimization_design.md
+16K-D status: D2 PRACTICAL EXECUTION OPTIMIZATION DESIGN COMPLETE /
+  READY FOR INDEPENDENT REVIEW
+16K-D D2: DESIGN ONLY / EXECUTION NOT AUTHORIZED
+16K-D program pivot: scientific optimization →
+  bounded product-engineering optimization
 16K-D document: docs/slice16k_d_dense_cuda_profiling.md
 16K-D evidence: docs/evidence/16k_d_dense_cuda/
 16K-D D1 tooling evidence: docs/evidence/16k_d_dense_cuda_tooling/
@@ -1423,13 +1451,13 @@ Exact 16K-D D1 analysis rework parent:
 16K-D authoritative current lane: CUDA / BF16 / batch 32 / SDPA
 16K-D frozen proxy usability (§9.4): median ≤10 min; no run >12 min;
   3 clean cold confirmations; 16K-F full-corpus ≤60 min
-16K-D reconciled sequence (§9.2.2):
-  D0 → D1 stall attribution → D2 BF16 vs FP16 → D3 batch sweep →
-  D4 attention conditional → D5 persistence/Qdrant if ≥10% wall
-16K-D closed under reconciliation / this tooling AUTH (execution):
-  D1 scientific runs / FP16 treatment / batch sweep / attention /
-  persistence/Qdrant opt / default promotion / 16K-E→G / main /
-  HTTP-500 GPU investigation reopen
+16K-D practical sequence:
+  D0 → D1 attribution → D2 practical execution optimization → decision
+16K-D mechanical D2→D3→D4→D5 sequence: SUPERSEDED
+16K-D closed under this design AUTH:
+  D2 harness/execution / FP16/CPU calls / model replacement /
+  mechanical D3–D5 / production/default / threshold changes /
+  HTTP-500 reopen / 16K-E→G / main
 16K-E → 16K-G: NOT AUTHORIZED
 Main promotion: NOT AUTHORIZED
 Frozen order: 16K-A → 16K-B → baseline evidence → 16K-C → 16K-D → 16K-E → 16K-F → 16K-G
