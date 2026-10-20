@@ -188,19 +188,24 @@
 **16K-C document:** `docs/slice16k_c_first_user_capacity_model.md`
 **16K-D authority:** `S16-K-D-DENSE-CUDA-PROFILING-BASELINE-IMPLEMENTATION-AUTH-001` — AUTHORIZED
 **Exact 16K-D parent:** `33a031b6a1bbda0b3b80fa96c8bff0fdfcece06f`
-**Exact 16K-D implementation candidate (IR-001):** `32e52024df47b9add7ce02675a1d40555ac55eae`
+**Exact independently accepted 16K-D technical subject:** `32e52024df47b9add7ce02675a1d40555ac55eae`
+**Exact independently accepted 16K-D evidence subject:** `70abf3003ba37cd983772e084f9616fe3678a17a`
 **16K-D independent review (IR-001):** `S16-K-D-DENSE-CUDA-PROFILING-BASELINE-IR-001` — REWORK REQUIRED (F001) — preserved as provenance
 **16K-D rework authority:** `S16-K-D-D0-BASELINE-EVIDENCE-PROVENANCE-REWORK-AUTH-001` — AUTHORIZED
 **Exact 16K-D rework subject:** `32e52024df47b9add7ce02675a1d40555ac55eae`
+**16K-D independent review (IR-002):** `S16-K-D-DENSE-CUDA-PROFILING-BASELINE-IR-002` — ACCEPT
+**16K-D IR-002 acceptance-record authority:** `S16-K-D-DENSE-CUDA-PROFILING-BASELINE-IR-002-ACCEPTANCE-RECORD-AUTH-001` — AUTHORIZED
+**Exact 16K-D acceptance-record parent:** `70abf3003ba37cd983772e084f9616fe3678a17a`
 **16K-D branch:** `implementation/16k-d-dense-cuda-profiling`
-**16K-D status:** D0 BASELINE REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
+**16K-D status:** D0 BASELINE COMPLETE / INDEPENDENTLY ACCEPTED
+**16K-D F001:** CLOSED
 **16K-D document:** `docs/slice16k_d_dense_cuda_profiling.md`
 **16K-D evidence:** `docs/evidence/16k_d_dense_cuda/`
-**16K-D D0 scope:** observational instrumentation + cold ~1296-child baseline
-on executable current path (native bf16/batch-32 after FP32 harness force
-hit CUBLAS); F001 rework = clean candidate-SHA evidence rerun only (no `src/**`);
-FP16 / batch sweep / attention / persistence/Qdrant optimization /
-default promotion closed until IR accept + usability threshold freeze
+**16K-D authoritative current lane:** CUDA / BF16 / batch 32 / SDPA
+**16K-D D0 notes:** encode-dominant; timing variable (≈25.2 min clean run is not
+a deterministic constant); persistence/Qdrant optimization not justified by D0;
+FP32-current-baseline assumption falsified; §9.2 treatment-sequence reconciliation
+and usability-threshold freeze still pending / not authorized
 **16K-E → 16K-G:** NOT AUTHORIZED
 **Main promotion:** NOT AUTHORIZED
 **Frozen implementation order:** 16K-A → 16K-B → baseline evidence → 16K-C → 16K-D → 16K-E → 16K-F → 16K-G
@@ -1235,22 +1240,35 @@ F001: CLOSED
 16K-D authority:
   S16-K-D-DENSE-CUDA-PROFILING-BASELINE-IMPLEMENTATION-AUTH-001 — AUTHORIZED
 Exact 16K-D parent: 33a031b6a1bbda0b3b80fa96c8bff0fdfcece06f
-Exact 16K-D implementation candidate (IR-001):
+Exact independently accepted 16K-D technical subject:
   32e52024df47b9add7ce02675a1d40555ac55eae
+Exact independently accepted 16K-D evidence subject:
+  70abf3003ba37cd983772e084f9616fe3678a17a
 16K-D independent review (IR-001):
   S16-K-D-DENSE-CUDA-PROFILING-BASELINE-IR-001 — REWORK REQUIRED (F001)
+  — preserved as provenance
 16K-D rework authority:
   S16-K-D-D0-BASELINE-EVIDENCE-PROVENANCE-REWORK-AUTH-001 — AUTHORIZED
 Exact 16K-D rework subject: 32e52024df47b9add7ce02675a1d40555ac55eae
+16K-D independent review (IR-002):
+  S16-K-D-DENSE-CUDA-PROFILING-BASELINE-IR-002 — ACCEPT
+16K-D IR-002 acceptance-record authority:
+  S16-K-D-DENSE-CUDA-PROFILING-BASELINE-IR-002-ACCEPTANCE-RECORD-AUTH-001
+  — AUTHORIZED
+Exact 16K-D acceptance-record parent:
+  70abf3003ba37cd983772e084f9616fe3678a17a
 16K-D branch: implementation/16k-d-dense-cuda-profiling
-16K-D status: D0 BASELINE REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
+16K-D status: D0 BASELINE COMPLETE / INDEPENDENTLY ACCEPTED
+16K-D F001: CLOSED
 16K-D document: docs/slice16k_d_dense_cuda_profiling.md
 16K-D evidence: docs/evidence/16k_d_dense_cuda/
-16K-D D0: instrumentation + cold baseline (native bf16/batch-32;
-  FP32 harness force → CUBLAS_STATUS_EXECUTION_FAILED)
-16K-D F001 rework: clean candidate-SHA evidence rerun only (no src/**)
-16K-D closed until D0 IR accept + usability threshold freeze:
-  FP16 / batch sweep / attention / persistence/Qdrant opt / default promotion
+16K-D authoritative current lane: CUDA / BF16 / batch 32 / SDPA
+16K-D D0: encode-dominant; timing variable; persistence/Qdrant not justified;
+  FP32-current-baseline falsified; §9.2 reconciliation + usability threshold
+  freeze still pending / NOT AUTHORIZED
+16K-D closed under this acceptance-record:
+  BF16 batch sweep / attention / FP16 / persistence/Qdrant opt /
+  default promotion / usability-threshold freeze / treatment reconciliation
 16K-E → 16K-G: NOT AUTHORIZED
 Main promotion: NOT AUTHORIZED
 Frozen order: 16K-A → 16K-B → baseline evidence → 16K-C → 16K-D → 16K-E → 16K-F → 16K-G
