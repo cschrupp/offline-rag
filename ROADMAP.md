@@ -958,8 +958,21 @@ SLICE 15  COMPLETE / ACCEPTED
          — AUTHORIZED
        Exact 16K-D D1 tooling rework parent:
          9690ffb7b55502c8060563e94e3a8cf024c82360
-       16K-D status: D1 TOOLING REWORK COMPLETE /
-         READY FOR INDEPENDENT RE-REVIEW
+       16K-D D1 tooling IR-002:
+         S16-K-D-D1-STALL-ATTRIBUTION-DIAGNOSTIC-TOOLING-IR-002 — ACCEPT
+       16K-D D1 tooling IR-002 acceptance-record authority:
+         S16-K-D-D1-STALL-ATTRIBUTION-DIAGNOSTIC-TOOLING-IR-002-ACCEPTANCE-RECORD-AUTH-001
+         — AUTHORIZED
+       Exact 16K-D D1 tooling acceptance-record parent:
+         c98d878e2e1327e984e60ceb59e507b6965962fe
+       Exact independently accepted 16K-D D1 tooling technical subject:
+         433725952c15a2feed4b65986d03e254d08d1568
+       Exact independently accepted 16K-D D1 tooling evidence/docs subject:
+         c98d878e2e1327e984e60ceb59e507b6965962fe
+       16K-D D1 tooling: COMPLETE / INDEPENDENTLY ACCEPTED
+       16K-D D1 tooling F001: CLOSED
+       16K-D D1 tooling contract: dense-cuda-profile-v2
+       16K-D status: D1 TOOLING COMPLETE / INDEPENDENTLY ACCEPTED
        16K-D D1 scientific execution (D1-A / D1-B): NOT AUTHORIZED
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md
        16K-D evidence: docs/evidence/16k_d_dense_cuda/
@@ -1636,8 +1649,21 @@ SLICE 15  COMPLETE / ACCEPTED
          — AUTHORIZED
        Exact 16K-D D1 tooling rework parent:
          9690ffb7b55502c8060563e94e3a8cf024c82360
-       16K-D status: D1 TOOLING REWORK COMPLETE /
-         READY FOR INDEPENDENT RE-REVIEW
+       16K-D D1 tooling IR-002:
+         S16-K-D-D1-STALL-ATTRIBUTION-DIAGNOSTIC-TOOLING-IR-002 — ACCEPT
+       16K-D D1 tooling IR-002 acceptance-record authority:
+         S16-K-D-D1-STALL-ATTRIBUTION-DIAGNOSTIC-TOOLING-IR-002-ACCEPTANCE-RECORD-AUTH-001
+         — AUTHORIZED
+       Exact 16K-D D1 tooling acceptance-record parent:
+         c98d878e2e1327e984e60ceb59e507b6965962fe
+       Exact independently accepted 16K-D D1 tooling technical subject:
+         433725952c15a2feed4b65986d03e254d08d1568
+       Exact independently accepted 16K-D D1 tooling evidence/docs subject:
+         c98d878e2e1327e984e60ceb59e507b6965962fe
+       16K-D D1 tooling: COMPLETE / INDEPENDENTLY ACCEPTED
+       16K-D D1 tooling F001: CLOSED
+       16K-D D1 tooling contract: dense-cuda-profile-v2
+       16K-D status: D1 TOOLING COMPLETE / INDEPENDENTLY ACCEPTED
        16K-D D1 scientific execution (D1-A / D1-B): NOT AUTHORIZED
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md
        16K-D evidence: docs/evidence/16k_d_dense_cuda/

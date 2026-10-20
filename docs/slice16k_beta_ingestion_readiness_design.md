@@ -208,7 +208,15 @@
 **16K-D D1 tooling IR-001:** `S16-K-D-D1-STALL-ATTRIBUTION-DIAGNOSTIC-TOOLING-IR-001` — REWORK REQUIRED (F001) — preserved
 **16K-D D1 tooling rework authority:** `S16-K-D-D1-STALL-ATTRIBUTION-DIAGNOSTIC-TOOLING-REWORK-AUTH-001` — AUTHORIZED
 **Exact 16K-D D1 tooling rework parent:** `9690ffb7b55502c8060563e94e3a8cf024c82360`
-**16K-D status:** D1 TOOLING REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
+**16K-D D1 tooling IR-002:** `S16-K-D-D1-STALL-ATTRIBUTION-DIAGNOSTIC-TOOLING-IR-002` — ACCEPT
+**16K-D D1 tooling IR-002 acceptance-record authority:** `S16-K-D-D1-STALL-ATTRIBUTION-DIAGNOSTIC-TOOLING-IR-002-ACCEPTANCE-RECORD-AUTH-001` — AUTHORIZED
+**Exact 16K-D D1 tooling acceptance-record parent:** `c98d878e2e1327e984e60ceb59e507b6965962fe`
+**Exact independently accepted 16K-D D1 tooling technical subject:** `433725952c15a2feed4b65986d03e254d08d1568`
+**Exact independently accepted 16K-D D1 tooling evidence/docs subject:** `c98d878e2e1327e984e60ceb59e507b6965962fe`
+**16K-D D1 tooling:** COMPLETE / INDEPENDENTLY ACCEPTED
+**16K-D D1 tooling F001:** CLOSED
+**16K-D D1 tooling contract:** `dense-cuda-profile-v2`
+**16K-D status:** D1 TOOLING COMPLETE / INDEPENDENTLY ACCEPTED
 **16K-D D1 scientific execution (D1-A / D1-B):** NOT AUTHORIZED
 **16K-D document:** `docs/slice16k_d_dense_cuda_profiling.md`
 **16K-D evidence:** `docs/evidence/16k_d_dense_cuda/`
@@ -652,7 +660,14 @@ Detailed per-batch profiling belongs in benchmark/evidence artifacts.
 **D1 tooling IR-001:** `S16-K-D-D1-STALL-ATTRIBUTION-DIAGNOSTIC-TOOLING-IR-001` — REWORK REQUIRED (F001) — preserved  
 **D1 tooling rework authority:** `S16-K-D-D1-STALL-ATTRIBUTION-DIAGNOSTIC-TOOLING-REWORK-AUTH-001` — AUTHORIZED  
 **Exact D1 tooling rework parent:** `9690ffb7b55502c8060563e94e3a8cf024c82360`  
-**Status:** D1 TOOLING REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
+**D1 tooling IR-002:** `S16-K-D-D1-STALL-ATTRIBUTION-DIAGNOSTIC-TOOLING-IR-002` — ACCEPT  
+**D1 tooling IR-002 acceptance-record authority:** `S16-K-D-D1-STALL-ATTRIBUTION-DIAGNOSTIC-TOOLING-IR-002-ACCEPTANCE-RECORD-AUTH-001` — AUTHORIZED  
+**Exact D1 tooling acceptance-record parent:** `c98d878e2e1327e984e60ceb59e507b6965962fe`  
+**Exact independently accepted D1 tooling technical subject:** `433725952c15a2feed4b65986d03e254d08d1568`  
+**Exact independently accepted D1 tooling evidence/docs subject:** `c98d878e2e1327e984e60ceb59e507b6965962fe`  
+**D1 tooling F001:** CLOSED  
+**D1 tooling contract:** `dense-cuda-profile-v2`  
+**Status:** D1 TOOLING COMPLETE / INDEPENDENTLY ACCEPTED  
 (D1 scientific execution NOT AUTHORIZED; no treatment execution)
 
 Current code path context (independently accepted D0): SentenceTransformers /
@@ -1340,8 +1355,21 @@ Exact 16K-D D1 tooling parent:
   — AUTHORIZED
 Exact 16K-D D1 tooling rework parent:
   9690ffb7b55502c8060563e94e3a8cf024c82360
-16K-D status: D1 TOOLING REWORK COMPLETE /
-  READY FOR INDEPENDENT RE-REVIEW
+16K-D D1 tooling IR-002:
+  S16-K-D-D1-STALL-ATTRIBUTION-DIAGNOSTIC-TOOLING-IR-002 — ACCEPT
+16K-D D1 tooling IR-002 acceptance-record authority:
+  S16-K-D-D1-STALL-ATTRIBUTION-DIAGNOSTIC-TOOLING-IR-002-ACCEPTANCE-RECORD-AUTH-001
+  — AUTHORIZED
+Exact 16K-D D1 tooling acceptance-record parent:
+  c98d878e2e1327e984e60ceb59e507b6965962fe
+Exact independently accepted 16K-D D1 tooling technical subject:
+  433725952c15a2feed4b65986d03e254d08d1568
+Exact independently accepted 16K-D D1 tooling evidence/docs subject:
+  c98d878e2e1327e984e60ceb59e507b6965962fe
+16K-D D1 tooling: COMPLETE / INDEPENDENTLY ACCEPTED
+16K-D D1 tooling F001: CLOSED
+16K-D D1 tooling contract: dense-cuda-profile-v2
+16K-D status: D1 TOOLING COMPLETE / INDEPENDENTLY ACCEPTED
 16K-D D1 scientific execution (D1-A / D1-B): NOT AUTHORIZED
 16K-D document: docs/slice16k_d_dense_cuda_profiling.md
 16K-D evidence: docs/evidence/16k_d_dense_cuda/

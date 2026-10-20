@@ -18,13 +18,19 @@
 **D1 stall-attribution tooling authority:** `S16-K-D-D1-STALL-ATTRIBUTION-DIAGNOSTIC-TOOLING-AUTH-001` — AUTHORIZED  
 **Exact D1 tooling parent:** `4449f0053faf972726955db889e83ffcda8a2143`  
 
-**D1 tooling IR-001:** `S16-K-D-D1-STALL-ATTRIBUTION-DIAGNOSTIC-TOOLING-IR-001` — REWORK REQUIRED (F001) — preserved  
+**D1 tooling IR-001 (historical):** `S16-K-D-D1-STALL-ATTRIBUTION-DIAGNOSTIC-TOOLING-IR-001` — REWORK REQUIRED (F001) — preserved  
 **D1 tooling rework authority:** `S16-K-D-D1-STALL-ATTRIBUTION-DIAGNOSTIC-TOOLING-REWORK-AUTH-001` — AUTHORIZED  
 **Exact D1 tooling rework parent:** `9690ffb7b55502c8060563e94e3a8cf024c82360`  
+**D1 tooling IR-002:** `S16-K-D-D1-STALL-ATTRIBUTION-DIAGNOSTIC-TOOLING-IR-002` — ACCEPT  
+**D1 tooling IR-002 acceptance-record authority:** `S16-K-D-D1-STALL-ATTRIBUTION-DIAGNOSTIC-TOOLING-IR-002-ACCEPTANCE-RECORD-AUTH-001` — AUTHORIZED  
+**Exact D1 tooling acceptance-record parent:** `c98d878e2e1327e984e60ceb59e507b6965962fe`  
+**Exact independently accepted D1 tooling technical subject:** `433725952c15a2feed4b65986d03e254d08d1568`  
+**Exact independently accepted D1 tooling evidence/docs subject:** `c98d878e2e1327e984e60ceb59e507b6965962fe`  
 
-**Status:** D1 TOOLING REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
+**Status:** D1 TOOLING COMPLETE / INDEPENDENTLY ACCEPTED  
 **D0:** BASELINE COMPLETE / INDEPENDENTLY ACCEPTED  
-**D1 tooling F001:** process_cpu_delta interval misaligned with encode_ms — corrected under rework  
+**D1 tooling F001:** CLOSED  
+**Contract:** `dense-cuda-profile-v2`  
 **D1 scientific execution (D1-A / D1-B):** NOT AUTHORIZED  
 
 ## Authoritative current lane (unchanged)
@@ -62,7 +68,7 @@ The 10-minute gate is a screening target, not a linear scaling claim to 16K-F.
 
 Historical FP32→FP16→batch sequence: **SUPERSEDED** (provenance only).
 
-## D1 tooling (this authority)
+## D1 tooling (independently accepted)
 
 Contract: `dense-cuda-profile-v2` under env gate `OFFLINE_RAG_DIAG_DENSE_PROFILE=1`.
 
@@ -73,15 +79,18 @@ process CPU-time delta; voluntary/involuntary context-switch deltas; CUDA
 allocator allocated/reserved/peak; external nvidia-smi utilization / clocks /
 temperature / power / pstate / throttle reasons (null when unavailable).
 
+Interval contract: CUDA event setup → rusage-before → wall-start → encode →
+wall-stop → rusage-after → CPU delta → CUDA end-event/synchronize. Thus
+`encode_ms` and `process_cpu_delta` share the encode-body interval.
+
 Perturbation rule: CUDA event synchronize is diagnostic-gated only; disabled path
 unchanged; external GPU samples run outside the encode critical path.
 
-Supported (not executed here): D1-A full cold reproduction of
-`D0-INCIDENT-1296-CHILD-V1`; D1-B targeted paired replay of predetermined
-fast/slow/discordant batch identities (exact IDs + repetition frozen in later
-execution AUTH).
+Scientific D1-A / D1-B execution remains NOT AUTHORIZED. The next authority must
+freeze the complete D1-A → D1-B matrix (including predetermined D1-B batch
+identities and repetition count) before either family runs.
 
-## Explicitly NOT AUTHORIZED under this tooling authority
+## Explicitly NOT AUTHORIZED
 
 D1 scientific runs (D1-A/D1-B) · changing BF16 · changing batch 32 · changing
 SDPA · FP16/D2 · batch sweep/D3 · attention/D4 · persistence/Qdrant/D5 ·
