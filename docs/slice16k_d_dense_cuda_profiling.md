@@ -34,16 +34,22 @@
 **D1 scientific execution authority:** `S16-K-D-D1-STALL-ATTRIBUTION-SCIENTIFIC-EXECUTION-AUTH-001` — AUTHORIZED  
 **Exact D1 scientific execution parent:** `0ecf2f74e4d283f59ab932abbdaee6ebb821a5ac`  
 **Exact D1 scientific execution subject (harness tip):** `177620a3440c310759775dbf303420b80df7a05c`  
+**Exact sealed D1 cell evidence tip:** `4326586fe0ce3b7ca4c40ded743272d72ba53036`  
 
-**Status:** D1 SCIENTIFIC EXECUTION COMPLETE / READY FOR INDEPENDENT REVIEW  
+**D1 scientific IR-001:** `S16-K-D-D1-STALL-ATTRIBUTION-SCIENTIFIC-EXECUTION-IR-001` — REWORK REQUIRED (F001 analysis publication) — preserved  
+**D1 analysis publication rework authority:** `S16-K-D-D1-SCIENTIFIC-ANALYSIS-PUBLICATION-REWORK-AUTH-001` — AUTHORIZED  
+**Exact D1 analysis rework parent:** `4326586fe0ce3b7ca4c40ded743272d72ba53036`  
+
+**Status:** D1 ANALYSIS PUBLICATION REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
 **D0:** BASELINE COMPLETE / INDEPENDENTLY ACCEPTED  
 **D1 tooling:** COMPLETE / INDEPENDENTLY ACCEPTED  
 **D1 tooling F001:** CLOSED  
 **Contract:** `dense-cuda-profile-v2`  
 **D1 scientific matrix:** FROZEN  
-**D1-A1 / D1-A2:** CELL_VALID (`generated=1296` / `reused=0`, 41 batches)  
-**D1-B:** CELL_VALID (36/36 measured encodes)  
-**D1 analysis:** `docs/evidence/16k_d_dense_cuda/d1/d1_analysis.json`
+**D1-A1 / D1-A2 / D1-B cells:** VALID (no rerun; sealed)  
+**D1 analysis:** `d1-frozen-analysis-v2` in `docs/evidence/16k_d_dense_cuda/d1/d1_analysis.json`  
+**D1 interpretation:** `docs/evidence/16k_d_dense_cuda/d1/d1_scientific_interpretation.md`  
+**D2:** scientifically eligible under controlled repeated-run design; execution NOT AUTHORIZED
 
 ## Authoritative current lane (unchanged)
 
@@ -130,4 +136,5 @@ cache-clearing/eviction policy · HTTP-500 investigation · threshold modificati
 - D1 matrix freeze: `docs/slice16k_d_d1_scientific_matrix_freeze.md`
 - D1 scientific evidence: `docs/evidence/16k_d_dense_cuda/d1/`
   (`d1_preflight.json`, `d1_a1.json`, `d1_a2.json`, `d1_b.json`,
-  `d1_analysis.json`; preserved invalid: `d1_preflight_INVALID.json`)
+  `d1_analysis.json` v2, `d1_scientific_interpretation.md`;
+  preserved invalid: `d1_preflight_INVALID.json`)

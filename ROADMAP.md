@@ -985,10 +985,21 @@ SLICE 15  COMPLETE / ACCEPTED
          0ecf2f74e4d283f59ab932abbdaee6ebb821a5ac
        Exact 16K-D D1 scientific execution subject:
          177620a3440c310759775dbf303420b80df7a05c
-       16K-D status: D1 SCIENTIFIC EXECUTION COMPLETE /
-         READY FOR INDEPENDENT REVIEW
-       16K-D D1-A1/A2: CELL_VALID (1296/0, 41 batches)
-       16K-D D1-B: CELL_VALID (36/36)
+       Exact 16K-D D1 sealed cell evidence tip:
+         4326586fe0ce3b7ca4c40ded743272d72ba53036
+       16K-D D1 scientific IR-001:
+         S16-K-D-D1-STALL-ATTRIBUTION-SCIENTIFIC-EXECUTION-IR-001
+         — REWORK REQUIRED (F001 analysis) — preserved
+       16K-D D1 analysis publication rework authority:
+         S16-K-D-D1-SCIENTIFIC-ANALYSIS-PUBLICATION-REWORK-AUTH-001
+         — AUTHORIZED
+       Exact 16K-D D1 analysis rework parent:
+         4326586fe0ce3b7ca4c40ded743272d72ba53036
+       16K-D status: D1 ANALYSIS PUBLICATION REWORK COMPLETE /
+         READY FOR INDEPENDENT RE-REVIEW
+       16K-D D1-A1/A2/B cells: VALID (sealed; no rerun)
+       16K-D D2: scientifically eligible under controlled repeated-run
+         design; execution NOT AUTHORIZED
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md
        16K-D evidence: docs/evidence/16k_d_dense_cuda/
        16K-D D1 tooling evidence:
@@ -1002,9 +1013,9 @@ SLICE 15  COMPLETE / ACCEPTED
          D0 → D1 stall attribution → D2 BF16 vs FP16 → D3 batch sweep →
          D4 attention conditional → D5 persistence/Qdrant if ≥10% wall
        16K-D closed under this scientific AUTH:
-         D2 FP16 / D3 batch sweep / D4 attention / D5 persistence/Qdrant /
-         default promotion / threshold changes / production sync/cache /
-         HTTP-500 reopen / 16K-E→G / main
+         D2 FP16 execution / D3 batch sweep / D4 attention /
+         D5 persistence/Qdrant / default promotion / threshold changes /
+         production sync/cache / HTTP-500 reopen / 16K-E→G / main
        16K-E → 16K-G: NOT AUTHORIZED
        Main promotion: NOT AUTHORIZED
        Historical closeout disposition (inventory I-11): DEFERRED / NOT REQUIRED
@@ -1693,10 +1704,21 @@ SLICE 15  COMPLETE / ACCEPTED
          0ecf2f74e4d283f59ab932abbdaee6ebb821a5ac
        Exact 16K-D D1 scientific execution subject:
          177620a3440c310759775dbf303420b80df7a05c
-       16K-D status: D1 SCIENTIFIC EXECUTION COMPLETE /
-         READY FOR INDEPENDENT REVIEW
-       16K-D D1-A1/A2: CELL_VALID (1296/0, 41 batches)
-       16K-D D1-B: CELL_VALID (36/36)
+       Exact 16K-D D1 sealed cell evidence tip:
+         4326586fe0ce3b7ca4c40ded743272d72ba53036
+       16K-D D1 scientific IR-001:
+         S16-K-D-D1-STALL-ATTRIBUTION-SCIENTIFIC-EXECUTION-IR-001
+         — REWORK REQUIRED (F001 analysis) — preserved
+       16K-D D1 analysis publication rework authority:
+         S16-K-D-D1-SCIENTIFIC-ANALYSIS-PUBLICATION-REWORK-AUTH-001
+         — AUTHORIZED
+       Exact 16K-D D1 analysis rework parent:
+         4326586fe0ce3b7ca4c40ded743272d72ba53036
+       16K-D status: D1 ANALYSIS PUBLICATION REWORK COMPLETE /
+         READY FOR INDEPENDENT RE-REVIEW
+       16K-D D1-A1/A2/B cells: VALID (sealed; no rerun)
+       16K-D D2: scientifically eligible under controlled repeated-run
+         design; execution NOT AUTHORIZED
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md
        16K-D evidence: docs/evidence/16k_d_dense_cuda/
        16K-D D1 tooling evidence:
@@ -1710,9 +1732,9 @@ SLICE 15  COMPLETE / ACCEPTED
          D0 → D1 stall attribution → D2 BF16 vs FP16 → D3 batch sweep →
          D4 attention conditional → D5 persistence/Qdrant if ≥10% wall
        16K-D closed under this scientific AUTH:
-         D2 FP16 / D3 batch sweep / D4 attention / D5 persistence/Qdrant /
-         default promotion / threshold changes / production sync/cache /
-         HTTP-500 reopen / 16K-E→G / main
+         D2 FP16 execution / D3 batch sweep / D4 attention /
+         D5 persistence/Qdrant / default promotion / threshold changes /
+         production sync/cache / HTTP-500 reopen / 16K-E→G / main
        16K-E → 16K-G: NOT AUTHORIZED
        Main promotion: NOT AUTHORIZED
        Historical closeout disposition (inventory I-11): DEFERRED / NOT REQUIRED

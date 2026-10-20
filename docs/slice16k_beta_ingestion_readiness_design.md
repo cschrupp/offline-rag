@@ -222,9 +222,13 @@
 **16K-D D1 scientific execution authority:** `S16-K-D-D1-STALL-ATTRIBUTION-SCIENTIFIC-EXECUTION-AUTH-001` — AUTHORIZED
 **Exact 16K-D D1 scientific execution parent:** `0ecf2f74e4d283f59ab932abbdaee6ebb821a5ac`
 **Exact 16K-D D1 scientific execution subject:** `177620a3440c310759775dbf303420b80df7a05c`
-**16K-D status:** D1 SCIENTIFIC EXECUTION COMPLETE / READY FOR INDEPENDENT REVIEW
-**16K-D D1-A1/A2:** CELL_VALID (1296/0, 41 batches)
-**16K-D D1-B:** CELL_VALID (36/36)
+**Exact 16K-D D1 sealed cell evidence tip:** `4326586fe0ce3b7ca4c40ded743272d72ba53036`
+**16K-D D1 scientific IR-001:** `S16-K-D-D1-STALL-ATTRIBUTION-SCIENTIFIC-EXECUTION-IR-001` — REWORK REQUIRED (F001 analysis) — preserved
+**16K-D D1 analysis publication rework authority:** `S16-K-D-D1-SCIENTIFIC-ANALYSIS-PUBLICATION-REWORK-AUTH-001` — AUTHORIZED
+**Exact 16K-D D1 analysis rework parent:** `4326586fe0ce3b7ca4c40ded743272d72ba53036`
+**16K-D status:** D1 ANALYSIS PUBLICATION REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
+**16K-D D1-A1/A2/B cells:** VALID (sealed; no rerun)
+**16K-D D2:** scientifically eligible under controlled repeated-run design; execution NOT AUTHORIZED
 **16K-D document:** `docs/slice16k_d_dense_cuda_profiling.md`
 **16K-D evidence:** `docs/evidence/16k_d_dense_cuda/`
 **16K-D D1 tooling evidence:** `docs/evidence/16k_d_dense_cuda_tooling/`
@@ -680,8 +684,11 @@ Detailed per-batch profiling belongs in benchmark/evidence artifacts.
 **D1 scientific execution authority:** `S16-K-D-D1-STALL-ATTRIBUTION-SCIENTIFIC-EXECUTION-AUTH-001` — AUTHORIZED  
 **Exact D1 scientific execution parent:** `0ecf2f74e4d283f59ab932abbdaee6ebb821a5ac`  
 **Exact D1 scientific execution subject:** `177620a3440c310759775dbf303420b80df7a05c`  
-**Status:** D1 SCIENTIFIC EXECUTION COMPLETE / READY FOR INDEPENDENT REVIEW  
-(D2+ treatments NOT AUTHORIZED)
+**Exact D1 sealed cell evidence tip:** `4326586fe0ce3b7ca4c40ded743272d72ba53036`  
+**D1 scientific IR-001:** `S16-K-D-D1-STALL-ATTRIBUTION-SCIENTIFIC-EXECUTION-IR-001` — REWORK REQUIRED (F001 analysis) — preserved  
+**D1 analysis publication rework authority:** `S16-K-D-D1-SCIENTIFIC-ANALYSIS-PUBLICATION-REWORK-AUTH-001` — AUTHORIZED  
+**Status:** D1 ANALYSIS PUBLICATION REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
+(D2 scientifically eligible under controlled repeated-run design; D2+ execution NOT AUTHORIZED)
 
 Current code path context (independently accepted D0): SentenceTransformers /
 Qwen3-Embedding-0.6B, CUDA, **BF16**, batch size 32, **SDPA**, per-chunk JSON
@@ -1394,10 +1401,21 @@ Exact 16K-D D1 scientific execution parent:
   0ecf2f74e4d283f59ab932abbdaee6ebb821a5ac
 Exact 16K-D D1 scientific execution subject:
   177620a3440c310759775dbf303420b80df7a05c
-16K-D status: D1 SCIENTIFIC EXECUTION COMPLETE /
-  READY FOR INDEPENDENT REVIEW
-16K-D D1-A1/A2: CELL_VALID (1296/0, 41 batches)
-16K-D D1-B: CELL_VALID (36/36)
+Exact 16K-D D1 sealed cell evidence tip:
+  4326586fe0ce3b7ca4c40ded743272d72ba53036
+16K-D D1 scientific IR-001:
+  S16-K-D-D1-STALL-ATTRIBUTION-SCIENTIFIC-EXECUTION-IR-001
+  — REWORK REQUIRED (F001 analysis) — preserved
+16K-D D1 analysis publication rework authority:
+  S16-K-D-D1-SCIENTIFIC-ANALYSIS-PUBLICATION-REWORK-AUTH-001
+  — AUTHORIZED
+Exact 16K-D D1 analysis rework parent:
+  4326586fe0ce3b7ca4c40ded743272d72ba53036
+16K-D status: D1 ANALYSIS PUBLICATION REWORK COMPLETE /
+  READY FOR INDEPENDENT RE-REVIEW
+16K-D D1-A1/A2/B cells: VALID (sealed; no rerun)
+16K-D D2: scientifically eligible under controlled repeated-run
+  design; execution NOT AUTHORIZED
 16K-D document: docs/slice16k_d_dense_cuda_profiling.md
 16K-D evidence: docs/evidence/16k_d_dense_cuda/
 16K-D D1 tooling evidence: docs/evidence/16k_d_dense_cuda_tooling/
