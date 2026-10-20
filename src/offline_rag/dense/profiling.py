@@ -548,6 +548,11 @@ def profiled_encode_timing() -> Iterator[dict[str, Any]]:
 
     CUDA event synchronize runs only inside this diagnostic context so the
     production/disabled path never pays for forced sync.
+
+    Interval contract (F001): ``encode_ms`` and ``process_cpu_delta`` bracket
+    only the yielded encode body. CUDA event allocation/start-record and
+    end-event synchronize run outside that rusage/wall interval so diagnostic
+    setup cannot contaminate host-vs-device attribution.
     """
     result: dict[str, Any] = {
         "encode_ms": 0.0,
@@ -556,7 +561,6 @@ def profiled_encode_timing() -> Iterator[dict[str, Any]]:
         "encode_cuda_device_error": None,
         "process_cpu_delta": None,
     }
-    before_rusage = _process_rusage_snapshot()
     start_event = None
     end_event = None
     cuda_ok = False
@@ -572,6 +576,9 @@ def profiled_encode_timing() -> Iterator[dict[str, Any]]:
         result["encode_cuda_device_status"] = "unavailable"
         result["encode_cuda_device_error"] = f"{type(exc).__name__}: {exc}"
 
+    # Snapshot rusage only after CUDA diagnostic setup; wall and rusage share
+    # the same encode-body interval (before end-event synchronize).
+    before_rusage = _process_rusage_snapshot()
     wall_started = time.perf_counter()
     try:
         yield result

@@ -184,6 +184,87 @@ def test_profiled_encode_timing_explicit_when_no_cuda() -> None:
         assert timing["encode_cuda_device_error"]
 
 
+def test_process_cpu_delta_brackets_only_encode_body(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """F001: rusage interval must exclude CUDA event setup and end sync.
+
+    Sentinel-ordered boundaries — not loose wall-clock assertions — so a
+    regression that again includes profiler setup in process_cpu_delta fails.
+    """
+    import types
+
+    import offline_rag.dense.profiling as profiling
+
+    events: list[str] = []
+
+    class _FakeCudaEvent:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            events.append("event_create")
+
+        def record(self) -> None:
+            events.append("event_record")
+
+        def synchronize(self) -> None:
+            events.append("event_synchronize")
+
+        def elapsed_time(self, _other: object) -> float:
+            return 1.25
+
+    fake_cuda = types.SimpleNamespace(
+        is_available=lambda: True,
+        Event=_FakeCudaEvent,
+    )
+    fake_torch = types.SimpleNamespace(cuda=fake_cuda)
+    monkeypatch.setitem(__import__("sys").modules, "torch", fake_torch)
+
+    rusage_calls = 0
+
+    def _sentinel_rusage() -> dict:
+        nonlocal rusage_calls
+        events.append(f"rusage_{rusage_calls}")
+        # Distinct sentinels so delta proves which snapshots were used.
+        base_user = 10.0 if rusage_calls == 0 else 10.5
+        base_sys = 1.0 if rusage_calls == 0 else 1.25
+        base_vol = 100 if rusage_calls == 0 else 103
+        base_invol = 20 if rusage_calls == 0 else 21
+        rusage_calls += 1
+        return {
+            "status": "observed",
+            "error": None,
+            "user_time_s": base_user,
+            "system_time_s": base_sys,
+            "voluntary_context_switches": base_vol,
+            "involuntary_context_switches": base_invol,
+        }
+
+    monkeypatch.setattr(profiling, "_process_rusage_snapshot", _sentinel_rusage)
+
+    with profiling.profiled_encode_timing() as timing:
+        events.append("encode_body")
+
+    assert events == [
+        "event_create",
+        "event_create",
+        "event_record",
+        "rusage_0",
+        "encode_body",
+        "rusage_1",
+        "event_record",
+        "event_synchronize",
+    ]
+    delta = timing["process_cpu_delta"]
+    assert delta is not None
+    assert delta["status"] == "observed"
+    assert delta["user_time_s"] == pytest.approx(0.5)
+    assert delta["system_time_s"] == pytest.approx(0.25)
+    assert delta["cpu_time_s"] == pytest.approx(0.75)
+    assert delta["voluntary_context_switches"] == 3
+    assert delta["involuntary_context_switches"] == 1
+    assert timing["encode_cuda_device_status"] == "observed"
+    assert timing["encode_cuda_device_ms"] == pytest.approx(1.25)
+
+
 def test_external_gpu_sample_never_fabricates_values() -> None:
     sample = sample_external_gpu_state()
     assert sample["status"] in {"observed", "unavailable"}

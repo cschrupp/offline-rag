@@ -18,9 +18,13 @@
 **D1 stall-attribution tooling authority:** `S16-K-D-D1-STALL-ATTRIBUTION-DIAGNOSTIC-TOOLING-AUTH-001` — AUTHORIZED  
 **Exact D1 tooling parent:** `4449f0053faf972726955db889e83ffcda8a2143`  
 
-**Status:** D1 STALL-ATTRIBUTION TOOLING COMPLETE / READY FOR INDEPENDENT REVIEW  
+**D1 tooling IR-001:** `S16-K-D-D1-STALL-ATTRIBUTION-DIAGNOSTIC-TOOLING-IR-001` — REWORK REQUIRED (F001) — preserved  
+**D1 tooling rework authority:** `S16-K-D-D1-STALL-ATTRIBUTION-DIAGNOSTIC-TOOLING-REWORK-AUTH-001` — AUTHORIZED  
+**Exact D1 tooling rework parent:** `9690ffb7b55502c8060563e94e3a8cf024c82360`  
+
+**Status:** D1 TOOLING REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
 **D0:** BASELINE COMPLETE / INDEPENDENTLY ACCEPTED  
-**F001:** CLOSED  
+**D1 tooling F001:** process_cpu_delta interval misaligned with encode_ms — corrected under rework  
 **D1 scientific execution (D1-A / D1-B):** NOT AUTHORIZED  
 
 ## Authoritative current lane (unchanged)

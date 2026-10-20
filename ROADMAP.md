@@ -950,8 +950,16 @@ SLICE 15  COMPLETE / ACCEPTED
          — AUTHORIZED
        Exact 16K-D D1 tooling parent:
          4449f0053faf972726955db889e83ffcda8a2143
-       16K-D status: D1 STALL-ATTRIBUTION TOOLING COMPLETE /
-         READY FOR INDEPENDENT REVIEW
+       16K-D D1 tooling IR-001:
+         S16-K-D-D1-STALL-ATTRIBUTION-DIAGNOSTIC-TOOLING-IR-001
+         — REWORK REQUIRED (F001) — preserved
+       16K-D D1 tooling rework authority:
+         S16-K-D-D1-STALL-ATTRIBUTION-DIAGNOSTIC-TOOLING-REWORK-AUTH-001
+         — AUTHORIZED
+       Exact 16K-D D1 tooling rework parent:
+         9690ffb7b55502c8060563e94e3a8cf024c82360
+       16K-D status: D1 TOOLING REWORK COMPLETE /
+         READY FOR INDEPENDENT RE-REVIEW
        16K-D D1 scientific execution (D1-A / D1-B): NOT AUTHORIZED
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md
        16K-D evidence: docs/evidence/16k_d_dense_cuda/
@@ -1620,8 +1628,16 @@ SLICE 15  COMPLETE / ACCEPTED
          — AUTHORIZED
        Exact 16K-D D1 tooling parent:
          4449f0053faf972726955db889e83ffcda8a2143
-       16K-D status: D1 STALL-ATTRIBUTION TOOLING COMPLETE /
-         READY FOR INDEPENDENT REVIEW
+       16K-D D1 tooling IR-001:
+         S16-K-D-D1-STALL-ATTRIBUTION-DIAGNOSTIC-TOOLING-IR-001
+         — REWORK REQUIRED (F001) — preserved
+       16K-D D1 tooling rework authority:
+         S16-K-D-D1-STALL-ATTRIBUTION-DIAGNOSTIC-TOOLING-REWORK-AUTH-001
+         — AUTHORIZED
+       Exact 16K-D D1 tooling rework parent:
+         9690ffb7b55502c8060563e94e3a8cf024c82360
+       16K-D status: D1 TOOLING REWORK COMPLETE /
+         READY FOR INDEPENDENT RE-REVIEW
        16K-D D1 scientific execution (D1-A / D1-B): NOT AUTHORIZED
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md
        16K-D evidence: docs/evidence/16k_d_dense_cuda/
