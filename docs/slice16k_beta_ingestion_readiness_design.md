@@ -216,7 +216,10 @@
 **16K-D D1 tooling:** COMPLETE / INDEPENDENTLY ACCEPTED
 **16K-D D1 tooling F001:** CLOSED
 **16K-D D1 tooling contract:** `dense-cuda-profile-v2`
-**16K-D status:** D1 TOOLING COMPLETE / INDEPENDENTLY ACCEPTED
+**16K-D D1 scientific matrix freeze authority:** `S16-K-D-D1-SCIENTIFIC-MATRIX-FREEZE-AUTH-001` — AUTHORIZED
+**Exact 16K-D D1 matrix freeze parent:** `016e338bf2b848e30cd89c7ba6ace6e6f39d1139`
+**16K-D D1 matrix freeze document:** `docs/slice16k_d_d1_scientific_matrix_freeze.md`
+**16K-D status:** D1 SCIENTIFIC MATRIX FROZEN / STOP
 **16K-D D1 scientific execution (D1-A / D1-B):** NOT AUTHORIZED
 **16K-D document:** `docs/slice16k_d_dense_cuda_profiling.md`
 **16K-D evidence:** `docs/evidence/16k_d_dense_cuda/`
@@ -667,7 +670,10 @@ Detailed per-batch profiling belongs in benchmark/evidence artifacts.
 **Exact independently accepted D1 tooling evidence/docs subject:** `c98d878e2e1327e984e60ceb59e507b6965962fe`  
 **D1 tooling F001:** CLOSED  
 **D1 tooling contract:** `dense-cuda-profile-v2`  
-**Status:** D1 TOOLING COMPLETE / INDEPENDENTLY ACCEPTED  
+**D1 scientific matrix freeze authority:** `S16-K-D-D1-SCIENTIFIC-MATRIX-FREEZE-AUTH-001` — AUTHORIZED  
+**Exact D1 matrix freeze parent:** `016e338bf2b848e30cd89c7ba6ace6e6f39d1139`  
+**D1 matrix freeze document:** `docs/slice16k_d_d1_scientific_matrix_freeze.md`  
+**Status:** D1 SCIENTIFIC MATRIX FROZEN / STOP  
 (D1 scientific execution NOT AUTHORIZED; no treatment execution)
 
 Current code path context (independently accepted D0): SentenceTransformers /
@@ -1369,7 +1375,13 @@ Exact independently accepted 16K-D D1 tooling evidence/docs subject:
 16K-D D1 tooling: COMPLETE / INDEPENDENTLY ACCEPTED
 16K-D D1 tooling F001: CLOSED
 16K-D D1 tooling contract: dense-cuda-profile-v2
-16K-D status: D1 TOOLING COMPLETE / INDEPENDENTLY ACCEPTED
+16K-D D1 scientific matrix freeze authority:
+  S16-K-D-D1-SCIENTIFIC-MATRIX-FREEZE-AUTH-001 — AUTHORIZED
+Exact 16K-D D1 matrix freeze parent:
+  016e338bf2b848e30cd89c7ba6ace6e6f39d1139
+16K-D D1 matrix freeze document:
+  docs/slice16k_d_d1_scientific_matrix_freeze.md
+16K-D status: D1 SCIENTIFIC MATRIX FROZEN / STOP
 16K-D D1 scientific execution (D1-A / D1-B): NOT AUTHORIZED
 16K-D document: docs/slice16k_d_dense_cuda_profiling.md
 16K-D evidence: docs/evidence/16k_d_dense_cuda/

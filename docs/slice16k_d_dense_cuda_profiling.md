@@ -27,8 +27,13 @@
 **Exact independently accepted D1 tooling technical subject:** `433725952c15a2feed4b65986d03e254d08d1568`  
 **Exact independently accepted D1 tooling evidence/docs subject:** `c98d878e2e1327e984e60ceb59e507b6965962fe`  
 
-**Status:** D1 TOOLING COMPLETE / INDEPENDENTLY ACCEPTED  
+**D1 scientific matrix freeze authority:** `S16-K-D-D1-SCIENTIFIC-MATRIX-FREEZE-AUTH-001` — AUTHORIZED  
+**Exact D1 matrix freeze parent:** `016e338bf2b848e30cd89c7ba6ace6e6f39d1139`  
+**D1 matrix freeze document:** `docs/slice16k_d_d1_scientific_matrix_freeze.md`  
+
+**Status:** D1 SCIENTIFIC MATRIX FROZEN / STOP  
 **D0:** BASELINE COMPLETE / INDEPENDENTLY ACCEPTED  
+**D1 tooling:** COMPLETE / INDEPENDENTLY ACCEPTED  
 **D1 tooling F001:** CLOSED  
 **Contract:** `dense-cuda-profile-v2`  
 **D1 scientific execution (D1-A / D1-B):** NOT AUTHORIZED  
@@ -86,13 +91,24 @@ wall-stop → rusage-after → CPU delta → CUDA end-event/synchronize. Thus
 Perturbation rule: CUDA event synchronize is diagnostic-gated only; disabled path
 unchanged; external GPU samples run outside the encode critical path.
 
-Scientific D1-A / D1-B execution remains NOT AUTHORIZED. The next authority must
-freeze the complete D1-A → D1-B matrix (including predetermined D1-B batch
-identities and repetition count) before either family runs.
+## D1 scientific matrix (frozen; execution NOT AUTHORIZED)
+
+Authoritative freeze: `docs/slice16k_d_d1_scientific_matrix_freeze.md`.
+
+- **D1-A1 / D1-A2:** two independent cold full reproductions of
+  `D0-INCIDENT-1296-CHILD-V1` (`generated=1296` / `reused=0`); no A1 reuse for
+  A2; attribution-only (not §9.4 substitutes).
+- **D1-B cells:** `batch_index` 1, 14, 17, 13, 4, 6 (F1/S1/F2/S2/D1/D2), selected
+  solely from pre-D1 D0 runs; D1-A must not alter membership.
+- **D1-B order:** counterbalanced pair blocks P1/P2/P3; 6 measured encodes per
+  selected batch (36 total); one process / one model load; no warm-up on
+  selected batches.
+- Fail-closed identity derivation before any model call; frozen analysis and
+  validity/retry rules as in the freeze document.
 
 ## Explicitly NOT AUTHORIZED
 
-D1 scientific runs (D1-A/D1-B) · changing BF16 · changing batch 32 · changing
+D1-A/B scientific execution · changing BF16 · changing batch 32 · changing
 SDPA · FP16/D2 · batch sweep/D3 · attention/D4 · persistence/Qdrant/D5 ·
 model/chunking/searchable-unit changes · production synchronization · CUDA
 cache-clearing/eviction policy · HTTP-500 investigation · threshold modification ·
@@ -104,3 +120,4 @@ cache-clearing/eviction policy · HTTP-500 investigation · threshold modificati
   `d0_baseline_32e52024df47.json` (+ provenance / comparison artifacts).
 - D1 tooling capability (non-scientific):
   `docs/evidence/16k_d_dense_cuda_tooling/d1_tooling_capability.json`
+- D1 matrix freeze: `docs/slice16k_d_d1_scientific_matrix_freeze.md`
