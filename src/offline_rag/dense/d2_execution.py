@@ -19,9 +19,10 @@ from pathlib import Path
 from typing import Any
 
 from offline_rag.dense.d2_campaign import (
+    ABANDONED_CORPUS_ROOT_REL,
     ACCEPTED_DESIGN_SUBJECT,
     ALLOWED_CELLS,
-    CELL_SPECS,
+    CONFIRMATION_CELLS,
     CORPUS_NAME,
     EXECUTION_AUTHORIZED,
     EXPECTED_CHILD_COUNT,
@@ -29,12 +30,13 @@ from offline_rag.dense.d2_campaign import (
     EXPECTED_CHUNK_SET_ID,
     EXPECTED_CORPUS_ID,
     EXPECTED_CORPUS_MANIFEST_SHA256,
+    EXPECTED_EXECUTION_HEAD,
     EXPECTED_MODEL_ID,
     EXPECTED_MODEL_REVISION,
     EXPECTED_SEARCHABLE_UNITS_CONTRACT,
     EXPECTED_SEARCHABLE_UNITS_STRATEGY,
-    ABANDONED_CORPUS_ROOT_REL,
     IMPLEMENTATION_AUTH,
+    IMPLEMENTATION_REWORK2_AUTH,
     IMPLEMENTATION_REWORK_AUTH,
     WORKLOAD_LABEL,
     CellId,
@@ -42,6 +44,7 @@ from offline_rag.dense.d2_campaign import (
     CellSpec,
     assert_transition_allowed,
     cell_spec,
+    plan_next,
 )
 from offline_rag.dense.d2_observability import (
     capture_cpu_baseline_facts,
@@ -194,11 +197,88 @@ class PreflightResult:
     payload: dict[str, Any]
 
 
+def verify_prepared_workload_state(work_root: Path) -> dict[str, Any]:
+    """Verify the isolated corpus/chunk state that run_indexing will consume."""
+    corpus_state_path = work_root / "corpora" / CORPUS_NAME / "state.json"
+    chunk_state_path = (
+        work_root / "corpora" / CORPUS_NAME / "chunking" / "state.json"
+    )
+    result: dict[str, Any] = {
+        "corpus_state_exists": corpus_state_path.is_file(),
+        "chunk_state_exists": chunk_state_path.is_file(),
+        "current_corpus_id": None,
+        "current_chunk_set_id": None,
+        "current_manifest": None,
+        "current_chunk_manifest": None,
+        "issues": [],
+    }
+    issues: list[str] = []
+    if not corpus_state_path.is_file():
+        issues.append("prepared_corpus_state_missing")
+    else:
+        corpus_state = json.loads(corpus_state_path.read_text(encoding="utf-8"))
+        result["current_corpus_id"] = corpus_state.get("current_corpus_id")
+        result["current_manifest"] = corpus_state.get("current_manifest")
+        if corpus_state.get("current_corpus_id") != EXPECTED_CORPUS_ID:
+            issues.append(
+                f"prepared_corpus_id_mismatch:"
+                f"observed={corpus_state.get('current_corpus_id')}"
+            )
+        manifest_rel = corpus_state.get("current_manifest")
+        if isinstance(manifest_rel, str):
+            # Paths are relative to data root (work_root).
+            manifest_path = work_root / manifest_rel
+            if not manifest_path.is_file():
+                # Also accept manifests/<id>.json layout.
+                alt = work_root / "manifests" / f"{EXPECTED_CORPUS_ID}.json"
+                if not alt.is_file():
+                    issues.append("prepared_corpus_manifest_missing")
+                elif sha256_file(alt) != EXPECTED_CORPUS_MANIFEST_SHA256:
+                    issues.append("prepared_corpus_manifest_sha256_mismatch")
+            elif sha256_file(manifest_path) != EXPECTED_CORPUS_MANIFEST_SHA256:
+                issues.append("prepared_corpus_manifest_sha256_mismatch")
+        else:
+            issues.append("prepared_corpus_manifest_ref_missing")
+
+    if not chunk_state_path.is_file():
+        issues.append("prepared_chunk_state_missing")
+    else:
+        chunk_state = json.loads(chunk_state_path.read_text(encoding="utf-8"))
+        result["current_chunk_set_id"] = chunk_state.get("current_chunk_set_id")
+        result["current_chunk_manifest"] = chunk_state.get("current_chunk_manifest")
+        if chunk_state.get("current_chunk_set_id") != EXPECTED_CHUNK_SET_ID:
+            issues.append(
+                f"prepared_chunk_set_id_mismatch:"
+                f"observed={chunk_state.get('current_chunk_set_id')}"
+            )
+        if chunk_state.get("source_corpus_id") not in {None, EXPECTED_CORPUS_ID}:
+            issues.append(
+                f"prepared_chunk_source_corpus_mismatch:"
+                f"observed={chunk_state.get('source_corpus_id')}"
+            )
+        chunk_rel = chunk_state.get("current_chunk_manifest")
+        if isinstance(chunk_rel, str):
+            chunk_path = work_root / chunk_rel
+            alt = work_root / "chunk-manifests" / f"{EXPECTED_CHUNK_SET_ID}.json"
+            target = chunk_path if chunk_path.is_file() else alt
+            if not target.is_file():
+                issues.append("prepared_chunk_manifest_missing")
+            elif sha256_file(target) != EXPECTED_CHUNK_MANIFEST_SHA256:
+                issues.append("prepared_chunk_manifest_sha256_mismatch")
+        else:
+            issues.append("prepared_chunk_manifest_ref_missing")
+
+    result["issues"] = issues
+    return result
+
+
 def run_d2_preflight(
     *,
     cell_id: str | None = None,
     work_root: Path | None = None,
     require_design_subject: bool = False,
+    expected_execution_head: str | None = None,
+    require_execution_head: bool = False,
     repo_root: Path | None = None,
     prepare_tree: bool = False,
 ) -> PreflightResult:
@@ -211,9 +291,22 @@ def run_d2_preflight(
         issues.append(clean_detail)
     if require_design_subject and head != ACCEPTED_DESIGN_SUBJECT:
         issues.append(
-            f"execution_head_mismatch: head={head} "
+            f"design_subject_mismatch: head={head} "
             f"expected_design_subject={ACCEPTED_DESIGN_SUBJECT}"
         )
+
+    expected_head = (
+        expected_execution_head
+        if expected_execution_head is not None
+        else EXPECTED_EXECUTION_HEAD
+    )
+    if require_execution_head:
+        if expected_head is None:
+            issues.append("expected_execution_head_not_frozen")
+        elif head != expected_head:
+            issues.append(
+                f"execution_head_mismatch: head={head} expected={expected_head}"
+            )
 
     workload = observe_workload_identity(repo_root=root)
     if not workload["chunk_manifest_exists"]:
@@ -252,6 +345,7 @@ def run_d2_preflight(
         "embeddings_empty": None,
         "qdrant_empty": None,
     }
+    prepared_state: dict[str, Any] | None = None
     if isolation_root is not None:
         emb = isolation_root / "embeddings"
         qdr = isolation_root / "qdrant"
@@ -263,6 +357,8 @@ def run_d2_preflight(
             issues.append("isolated_embeddings_not_empty")
         if not qdr_empty:
             issues.append("isolated_qdrant_not_empty")
+        prepared_state = verify_prepared_workload_state(isolation_root)
+        issues.extend(str(i) for i in prepared_state.get("issues", []))
     else:
         issues.append("work_root_required_for_isolation_check")
 
@@ -365,8 +461,11 @@ def run_d2_preflight(
     payload = {
         "authority": IMPLEMENTATION_AUTH,
         "rework_authority": IMPLEMENTATION_REWORK_AUTH,
+        "rework2_authority": IMPLEMENTATION_REWORK2_AUTH,
         "accepted_design_subject": ACCEPTED_DESIGN_SUBJECT,
         "execution_head": head,
+        "expected_execution_head": expected_head,
+        "require_execution_head": require_execution_head,
         "require_design_subject": require_design_subject,
         "tracked_tree": clean_detail,
         "tracked_clean": clean,
@@ -383,6 +482,7 @@ def run_d2_preflight(
             "searchable_units_contract": EXPECTED_SEARCHABLE_UNITS_CONTRACT,
         },
         "workload_observed": workload,
+        "prepared_state": prepared_state,
         "effective_settings": effective,
         "runtime_facts": runtime_facts,
         "isolation": isolation,
@@ -405,53 +505,147 @@ def run_d2_preflight(
     return PreflightResult(ok=not issues, issues=tuple(issues), payload=payload)
 
 
-def _append_history(path: Path, result: CellResult) -> None:
-    items: list[dict[str, Any]] = []
-    if path.exists():
-        data = json.loads(path.read_text(encoding="utf-8"))
-        items = data if isinstance(data, list) else list(data.get("history", []))
-    items.append(asdict(result))
+def load_campaign_history(path: Path) -> list[CellResult]:
+    """Load history; missing file yields empty history (G1-1 only)."""
+    if not path.exists():
+        return []
+    data = json.loads(path.read_text(encoding="utf-8"))
+    items = data if isinstance(data, list) else list(data.get("history", []))
+    out: list[CellResult] = []
+    for item in items:
+        out.append(
+            CellResult(
+                cell_id=item["cell_id"],
+                validity=item["validity"],
+                wall_minutes=item.get("wall_minutes"),
+                parity_ok=item.get("parity_ok"),
+                correctness_ok=item.get("correctness_ok"),
+                assessment_evidence_digest=item.get("assessment_evidence_digest"),
+                assessment_evidence_path=item.get("assessment_evidence_path"),
+                assessment_recorded_at=item.get("assessment_recorded_at"),
+            )
+        )
+    return out
+
+
+def write_campaign_history(path: Path, history: list[CellResult]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(items, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps([asdict(r) for r in history], indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _append_history(path: Path, result: CellResult) -> None:
+    history = load_campaign_history(path)
+    history.append(result)
+    write_campaign_history(path, history)
+
+
+def record_confirmation_assessment(
+    *,
+    history_path: Path,
+    cell_id: str,
+    parity_ok: bool,
+    correctness_ok: bool,
+    evidence_digest: str,
+    evidence_path: str | None = None,
+) -> dict[str, Any]:
+    """Attach parity/correctness to an already-executed confirmation cell (F009)."""
+    if cell_id not in CONFIRMATION_CELLS:
+        raise ValueError(
+            f"assessment only allowed for confirmation cells {sorted(CONFIRMATION_CELLS)}; "
+            f"got {cell_id!r}"
+        )
+    if not isinstance(parity_ok, bool) or not isinstance(correctness_ok, bool):
+        raise ValueError("parity_ok and correctness_ok must be explicit booleans")
+    digest = str(evidence_digest).strip()
+    if not digest:
+        raise ValueError("assessment_evidence_digest is required")
+
+    history = load_campaign_history(history_path)
+    # Find latest valid execution of this confirmation cell without assessment.
+    target_index: int | None = None
+    for i in range(len(history) - 1, -1, -1):
+        item = history[i]
+        if item.cell_id != cell_id:
+            continue
+        if item.validity == "invalid":
+            continue
+        target_index = i
+        break
+    if target_index is None:
+        raise ValueError(f"no executed confirmation cell {cell_id!r} in history")
+
+    prior = history[target_index]
+    if prior.parity_ok is not None or prior.correctness_ok is not None:
+        raise ValueError(
+            f"confirmation cell {cell_id!r} already has assessment; refusing overwrite"
+        )
+
+    recorded_at = datetime.now(tz=UTC).isoformat().replace("+00:00", "Z")
+    updated = CellResult(
+        cell_id=prior.cell_id,
+        validity=prior.validity,
+        wall_minutes=prior.wall_minutes,
+        parity_ok=parity_ok,
+        correctness_ok=correctness_ok,
+        assessment_evidence_digest=digest,
+        assessment_evidence_path=evidence_path,
+        assessment_recorded_at=recorded_at,
+    )
+    history[target_index] = updated
+    write_campaign_history(history_path, history)
+    plan = plan_next(history)
+    return {
+        "status": "ASSESSMENT_RECORDED",
+        "cell_id": cell_id,
+        "parity_ok": parity_ok,
+        "correctness_ok": correctness_ok,
+        "assessment_evidence_digest": digest,
+        "assessment_evidence_path": evidence_path,
+        "assessment_recorded_at": recorded_at,
+        "plan": {
+            "terminal": plan.terminal,
+            "next_cell": plan.next_cell,
+            "reason": plan.reason,
+            "selected_lane": plan.selected_lane,
+            "g2_eligible": plan.g2_eligible,
+        },
+    }
 
 
 def execute_d2_cell_unlocked(
     *,
     cell_id: CellId | str,
     work_root: Path,
-    history_path: Path | None = None,
+    history_path: Path,
     evidence_dir: Path | None = None,
     repo_root: Path | None = None,
+    expected_execution_head: str | None = None,
 ) -> dict[str, Any]:
     """Real cold-cell executor (preflight → index → evidence → history).
 
     Callers must only invoke this when scientific execution is authorized.
     ``execute_d2_cell`` is the authority-gated public entrypoint.
+    ``history_path`` is mandatory: missing file means empty history (G1-1 only).
     """
     root = repo_root or _repo_root()
     if cell_id not in ALLOWED_CELLS:
         raise ValueError(f"unauthorized D2 cell: {cell_id!r}")
+    if history_path is None:
+        raise ValueError("history_path is required for D2 cell execution")
     spec = cell_spec(str(cell_id))
 
-    if history_path is not None and history_path.exists():
-        raw = json.loads(history_path.read_text(encoding="utf-8"))
-        items = raw if isinstance(raw, list) else raw.get("history", [])
-        history = [
-            CellResult(
-                cell_id=i["cell_id"],
-                validity=i["validity"],
-                wall_minutes=i.get("wall_minutes"),
-                parity_ok=i.get("parity_ok"),
-                correctness_ok=i.get("correctness_ok"),
-            )
-            for i in items
-        ]
-        assert_transition_allowed(history, str(cell_id))
+    history = load_campaign_history(history_path)
+    assert_transition_allowed(history, str(cell_id))
 
     preflight = run_d2_preflight(
         cell_id=str(cell_id),
         work_root=work_root,
         require_design_subject=False,
+        expected_execution_head=expected_execution_head,
+        require_execution_head=True,
         repo_root=root,
         prepare_tree=True,
     )
@@ -479,8 +673,10 @@ def execute_d2_cell_unlocked(
     wall_s: float | None = None
     validity = "invalid"
     report_payload: dict[str, Any] = {}
+    cpu_facts_before: dict[str, Any] = {}
     cpu_facts: dict[str, Any] = {}
     gpu_facts: dict[str, Any] = {}
+    practical_timing: dict[str, Any] | None = None
     try:
         embedder = make_embedder(settings)
         load = getattr(embedder, "_load", None)
@@ -494,7 +690,7 @@ def execute_d2_cell_unlocked(
                     f"pre-encode dtype not float16 after FP16 policy: {dtype!r}"
                 )
         if spec.device == "cpu":
-            cpu_facts = capture_cpu_baseline_facts(
+            cpu_facts_before = capture_cpu_baseline_facts(
                 embedder=embedder, batch_size=spec.batch_size
             )
         started = time.perf_counter()
@@ -505,8 +701,27 @@ def execute_d2_cell_unlocked(
         )
         wall_s = time.perf_counter() - started
         gpu_facts = capture_gpu_memory_facts()
+        if spec.device == "cpu":
+            cpu_facts = capture_cpu_baseline_facts(
+                embedder=embedder, batch_size=spec.batch_size
+            )
+            # Characterize completed C0 with post-run facts + CPU-time delta.
+            before_cpu = cpu_facts_before.get("process_cpu_time_s")
+            after_cpu = cpu_facts.get("process_cpu_time_s")
+            if isinstance(before_cpu, (int, float)) and isinstance(
+                after_cpu, (int, float)
+            ):
+                cpu_facts["process_cpu_time_delta_s"] = float(after_cpu) - float(
+                    before_cpu
+                )
+            cpu_facts["sampled"] = "after_run_indexing"
+            cpu_facts["before_snapshot"] = {
+                "process_cpu_time_s": before_cpu,
+                "peak_rss_bytes": cpu_facts_before.get("peak_rss_bytes"),
+            }
         meta = report.metadata or {}
         execution = meta.get("dense_execution") or {}
+        practical_timing = meta.get("practical_timing")
         report_payload = {
             "indexing_status": str(report.status),
             "errors": list(report.errors or []),
@@ -519,6 +734,7 @@ def execute_d2_cell_unlocked(
             "dense_materialization_ms": meta.get("dense_materialization_ms"),
             "duration_ms": report.duration_ms,
             "dense_execution": execution,
+            "practical_timing": practical_timing,
             "observed_dtype": observed.get("dtype"),
             "observed_attention": observed.get("attention_backend"),
         }
@@ -542,7 +758,7 @@ def execute_d2_cell_unlocked(
 
     wall_minutes = (wall_s / 60.0) if wall_s is not None else None
     # Parity/correctness unfrozen here; leave None so selection fails closed
-    # until execution AUTH freezes the probe and assesses both.
+    # until assessment recording (F009) after the later parity probe.
     cell_result = CellResult(
         cell_id=str(cell_id),  # type: ignore[arg-type]
         validity=validity,  # type: ignore[arg-type]
@@ -550,13 +766,18 @@ def execute_d2_cell_unlocked(
         parity_ok=None,
         correctness_ok=None,
     )
-    if history_path is not None:
-        _append_history(history_path, cell_result)
+    _append_history(history_path, cell_result)
 
     evidence = {
         "authority": IMPLEMENTATION_AUTH,
         "rework_authority": IMPLEMENTATION_REWORK_AUTH,
+        "rework2_authority": IMPLEMENTATION_REWORK2_AUTH,
         "accepted_design_subject": ACCEPTED_DESIGN_SUBJECT,
+        "expected_execution_head": (
+            expected_execution_head
+            if expected_execution_head is not None
+            else EXPECTED_EXECUTION_HEAD
+        ),
         "status": "CELL_EXECUTED",
         "cell": cell_id,
         "cell_spec": {
@@ -569,10 +790,12 @@ def execute_d2_cell_unlocked(
         "wall_minutes": wall_minutes,
         "result": asdict(cell_result),
         "report": report_payload,
+        "practical_timing": practical_timing,
         "cpu_facts": cpu_facts,
         "gpu_facts": gpu_facts,
         "preflight": preflight.payload,
         "parity_probe": parity_probe_surface_status(),
+        "history_path": str(history_path),
         "execution_head": git_sha(cwd=root),
         "recorded_at": datetime.now(tz=UTC).isoformat().replace("+00:00", "Z"),
         "executor_ready": True,
@@ -594,19 +817,23 @@ def execute_d2_cell(
     *,
     cell_id: CellId | str,
     work_root: Path,
-    history_path: Path | None = None,
+    history_path: Path,
     evidence_dir: Path | None = None,
     repo_root: Path | None = None,
+    expected_execution_head: str | None = None,
 ) -> dict[str, Any]:
     """Authority-gated cell entrypoint.
 
     Implements the full executor behind ``EXECUTION_AUTHORIZED``. While false,
     refuses without invoking encode/indexing.
     """
+    if history_path is None:
+        raise ValueError("history_path is required for D2 cell execution")
     if not EXECUTION_AUTHORIZED:
         return {
             "authority": IMPLEMENTATION_AUTH,
             "rework_authority": IMPLEMENTATION_REWORK_AUTH,
+            "rework2_authority": IMPLEMENTATION_REWORK2_AUTH,
             "accepted_design_subject": ACCEPTED_DESIGN_SUBJECT,
             "status": "EXECUTION_NOT_AUTHORIZED",
             "requested_cell": cell_id,
@@ -614,15 +841,21 @@ def execute_d2_cell(
             "note": (
                 "Cell executor machinery is implemented "
                 "(execute_d2_cell_unlocked) but locked. A later execution AUTH "
-                "must set EXECUTION_AUTHORIZED before the first G1 treatment."
+                "must set EXECUTION_AUTHORIZED and freeze EXPECTED_EXECUTION_HEAD "
+                "before the first G1 treatment."
             ),
             "executor_ready": True,
             "unlocked_entrypoint": (
                 "offline_rag.dense.d2_execution.execute_d2_cell_unlocked"
             ),
             "work_root": str(work_root),
-            "history_path": str(history_path) if history_path else None,
+            "history_path": str(history_path),
             "evidence_dir": str(evidence_dir) if evidence_dir else None,
+            "expected_execution_head": (
+                expected_execution_head
+                if expected_execution_head is not None
+                else EXPECTED_EXECUTION_HEAD
+            ),
         }
     return execute_d2_cell_unlocked(
         cell_id=cell_id,
@@ -630,6 +863,7 @@ def execute_d2_cell(
         history_path=history_path,
         evidence_dir=evidence_dir,
         repo_root=repo_root,
+        expected_execution_head=expected_execution_head,
     )
 
 
@@ -640,8 +874,12 @@ __all__ = [
     "execute_d2_cell_unlocked",
     "git_sha",
     "git_tracked_clean",
+    "load_campaign_history",
     "observe_workload_identity",
     "prepare_isolated_tree",
+    "record_confirmation_assessment",
     "run_d2_preflight",
     "sha256_file",
+    "verify_prepared_workload_state",
+    "write_campaign_history",
 ]

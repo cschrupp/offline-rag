@@ -26,9 +26,9 @@ from offline_rag.dense.d2_campaign import (  # noqa: E402
     CELL_SPECS,
     EXECUTION_AUTHORIZED,
     IMPLEMENTATION_AUTH,
+    IMPLEMENTATION_REWORK2_AUTH,
     IMPLEMENTATION_REWORK_AUTH,
     MAX_VALID_FULL_RUNS,
-    CellResult,
     assert_transition_allowed,
     cell_spec,
     grades_against_gpu_gate,
@@ -37,6 +37,8 @@ from offline_rag.dense.d2_campaign import (  # noqa: E402
 )
 from offline_rag.dense.d2_execution import (  # noqa: E402
     execute_d2_cell,
+    load_campaign_history,
+    record_confirmation_assessment,
     run_d2_preflight,
 )
 from offline_rag.dense.precision import (  # noqa: E402
@@ -53,30 +55,17 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
     print(f"WROTE {path}")
 
 
-def _parse_history(raw: str | None) -> list[CellResult]:
+def _parse_history(raw: str | None):
     if not raw:
         return []
-    path = Path(raw)
-    data = json.loads(path.read_text(encoding="utf-8"))
-    items = data if isinstance(data, list) else data.get("history", [])
-    out: list[CellResult] = []
-    for item in items:
-        out.append(
-            CellResult(
-                cell_id=item["cell_id"],
-                validity=item["validity"],
-                wall_minutes=item.get("wall_minutes"),
-                parity_ok=item.get("parity_ok"),
-                correctness_ok=item.get("correctness_ok"),
-            )
-        )
-    return out
+    return load_campaign_history(Path(raw))
 
 
 def cmd_list_cells(_: argparse.Namespace) -> int:
     payload = {
         "authority": IMPLEMENTATION_AUTH,
         "rework_authority": IMPLEMENTATION_REWORK_AUTH,
+        "rework2_authority": IMPLEMENTATION_REWORK2_AUTH,
         "accepted_design_subject": ACCEPTED_DESIGN_SUBJECT,
         "cells": {
             cid: {
@@ -101,6 +90,7 @@ def cmd_plan(args: argparse.Namespace) -> int:
     payload = {
         "authority": IMPLEMENTATION_AUTH,
         "rework_authority": IMPLEMENTATION_REWORK_AUTH,
+        "rework2_authority": IMPLEMENTATION_REWORK2_AUTH,
         "accepted_design_subject": ACCEPTED_DESIGN_SUBJECT,
         "execution_authorized": EXECUTION_AUTHORIZED,
         "history_len": len(history),
@@ -148,6 +138,8 @@ def cmd_preflight(args: argparse.Namespace) -> int:
         cell_id=args.cell,
         work_root=Path(args.work_root).resolve() if args.work_root else None,
         require_design_subject=bool(args.require_design_subject),
+        expected_execution_head=args.expected_execution_head,
+        require_execution_head=bool(args.require_execution_head),
         repo_root=ROOT,
         prepare_tree=bool(args.prepare_tree),
     )
@@ -187,7 +179,7 @@ def cmd_classify(args: argparse.Namespace) -> int:
 def cmd_execute(args: argparse.Namespace) -> int:
     """Gated execute entry — refuses while EXECUTION_AUTHORIZED is False."""
     work_root = Path(args.work_root).resolve()
-    history = Path(args.history).resolve() if args.history else None
+    history = Path(args.history).resolve()
     evidence = Path(args.evidence_dir).resolve() if args.evidence_dir else EVIDENCE_DIR
     payload = execute_d2_cell(
         cell_id=args.cell,
@@ -195,6 +187,7 @@ def cmd_execute(args: argparse.Namespace) -> int:
         history_path=history,
         evidence_dir=evidence,
         repo_root=ROOT,
+        expected_execution_head=args.expected_execution_head,
     )
     if args.out:
         _write_json(Path(args.out), payload)
@@ -205,6 +198,26 @@ def cmd_execute(args: argparse.Namespace) -> int:
         return 20
     if payload.get("status") == "PREFLIGHT_FAILED":
         return 10
+    return 0
+
+
+def cmd_assess(args: argparse.Namespace) -> int:
+    try:
+        payload = record_confirmation_assessment(
+            history_path=Path(args.history).resolve(),
+            cell_id=args.cell,
+            parity_ok=bool(args.parity_ok),
+            correctness_ok=bool(args.correctness_ok),
+            evidence_digest=args.evidence_digest,
+            evidence_path=args.evidence_path,
+        )
+    except ValueError as exc:
+        print(f"FAIL-CLOSED: {exc}", file=sys.stderr)
+        return 10
+    if args.out:
+        _write_json(Path(args.out), payload)
+    else:
+        print(json.dumps(payload, indent=2, sort_keys=True))
     return 0
 
 
@@ -243,6 +256,16 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Fail closed unless HEAD equals accepted design subject 8f96657…",
     )
+    p_pre.add_argument(
+        "--expected-execution-head",
+        default=None,
+        help="Exact execution HEAD to enforce (overrides module constant)",
+    )
+    p_pre.add_argument(
+        "--require-execution-head",
+        action="store_true",
+        help="Fail closed unless HEAD equals expected_execution_head / frozen constant",
+    )
     p_pre.set_defaults(func=cmd_preflight)
 
     p_cls = sub.add_parser("classify-failure", help="Classify treatment failure")
@@ -261,10 +284,40 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_ex.add_argument("--cell", required=True, choices=ALLOWED_CELLS)
     p_ex.add_argument("--work-root", required=True)
-    p_ex.add_argument("--history", help="Campaign history JSON path")
+    p_ex.add_argument(
+        "--history",
+        required=True,
+        help="Mandatory campaign history JSON path (created if missing)",
+    )
     p_ex.add_argument("--evidence-dir", help="Evidence output directory")
+    p_ex.add_argument(
+        "--expected-execution-head",
+        default=None,
+        help="Exact execution HEAD (defaults to EXPECTED_EXECUTION_HEAD constant)",
+    )
     p_ex.add_argument("--out")
     p_ex.set_defaults(func=cmd_execute)
+
+    p_as = sub.add_parser(
+        "assess-confirmation",
+        help="Record parity/correctness for G1-3/G2-3 without changing timing",
+    )
+    p_as.add_argument("--history", required=True)
+    p_as.add_argument("--cell", required=True, choices=("G1-3", "G2-3"))
+    def _parse_bool(value: str) -> bool:
+        text = value.strip().lower()
+        if text in {"true", "1", "yes"}:
+            return True
+        if text in {"false", "0", "no"}:
+            return False
+        raise argparse.ArgumentTypeError(f"expected boolean, got {value!r}")
+
+    p_as.add_argument("--parity-ok", required=True, type=_parse_bool)
+    p_as.add_argument("--correctness-ok", required=True, type=_parse_bool)
+    p_as.add_argument("--evidence-digest", required=True)
+    p_as.add_argument("--evidence-path")
+    p_as.add_argument("--out")
+    p_as.set_defaults(func=cmd_assess)
 
     return parser
 

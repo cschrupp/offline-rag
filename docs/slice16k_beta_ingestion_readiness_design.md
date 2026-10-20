@@ -244,12 +244,15 @@
 **Exact independently accepted 16K-D D2 design subject:** `8f96657d73b2213fb9b43557b001bc4c5a42188b`
 **16K-D D2 implementation authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-AUTH-001` — AUTHORIZED
 **Exact 16K-D D2 implementation parent:** `8f96657d73b2213fb9b43557b001bc4c5a42188b`
-**16K-D D2 implementation IR-001:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-IR-001` — REWORK REQUIRED (F001–F005) — preserved
-**16K-D D2 implementation rework authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-REWORK-AUTH-001` — AUTHORIZED
-**Exact 16K-D D2 implementation rework parent:** `b505c14ab8d0399b0cd5f6f7c796223ce5ccfe11`
-**16K-D D2 design document:** `docs/slice16k_d_d2_practical_execution_optimization_design.md`
-**16K-D status:** D2 PRACTICAL EXECUTION OPTIMIZATION IMPLEMENTATION REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
-**16K-D D2 design:** COMPLETE / INDEPENDENTLY ACCEPTED
+**16K-D D2 implementation IR-001:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-IR-001` — REWORK REQUIRED (F001–F005) — preserved  
+**16K-D D2 implementation rework authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-REWORK-AUTH-001` — AUTHORIZED  
+**Exact 16K-D D2 implementation rework parent:** `b505c14ab8d0399b0cd5f6f7c796223ce5ccfe11`  
+**16K-D D2 implementation F001–F005:** CLOSED  
+**16K-D D2 implementation rework-2 authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-REWORK2-AUTH-001` — AUTHORIZED  
+**Exact 16K-D D2 implementation rework-2 parent:** `a488fb393d5f194bea91e337a928335e76cbd45f`  
+**16K-D D2 design document:** `docs/slice16k_d_d2_practical_execution_optimization_design.md`  
+**16K-D status:** D2 PRACTICAL EXECUTION OPTIMIZATION IMPLEMENTATION REWORK 2 COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
+**16K-D D2 design:** COMPLETE / INDEPENDENTLY ACCEPTED  
 **16K-D D2:** IMPLEMENTATION ONLY / EXECUTION NOT AUTHORIZED
 **16K-D program pivot:** scientific optimization → bounded product-engineering optimization
 **16K-D document:** `docs/slice16k_d_dense_cuda_profiling.md`
@@ -731,8 +734,11 @@ Detailed per-batch profiling belongs in benchmark/evidence artifacts.
 **D2 implementation IR-001:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-IR-001` — REWORK REQUIRED (F001–F005) — preserved  
 **D2 implementation rework authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-REWORK-AUTH-001` — AUTHORIZED  
 **Exact D2 implementation rework parent:** `b505c14ab8d0399b0cd5f6f7c796223ce5ccfe11`  
+**D2 implementation F001–F005:** CLOSED  
+**D2 implementation rework-2 authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-REWORK2-AUTH-001` — AUTHORIZED  
+**Exact D2 implementation rework-2 parent:** `a488fb393d5f194bea91e337a928335e76cbd45f`  
 **D2 design document:** `docs/slice16k_d_d2_practical_execution_optimization_design.md`  
-**Status:** D2 PRACTICAL EXECUTION OPTIMIZATION IMPLEMENTATION REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
+**Status:** D2 PRACTICAL EXECUTION OPTIMIZATION IMPLEMENTATION REWORK 2 COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
 (D2 execution NOT AUTHORIZED; program pivoted to product-engineering optimization)
 
 Current code path context (independently accepted D0): SentenceTransformers /
@@ -1503,9 +1509,15 @@ Exact 16K-D D2 implementation parent:
   — AUTHORIZED
 Exact 16K-D D2 implementation rework parent:
   b505c14ab8d0399b0cd5f6f7c796223ce5ccfe11
+16K-D D2 implementation F001–F005: CLOSED
+16K-D D2 implementation rework-2 authority:
+  S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-REWORK2-AUTH-001
+  — AUTHORIZED
+Exact 16K-D D2 implementation rework-2 parent:
+  a488fb393d5f194bea91e337a928335e76cbd45f
 16K-D D2 design document:
   docs/slice16k_d_d2_practical_execution_optimization_design.md
-16K-D status: D2 PRACTICAL EXECUTION OPTIMIZATION IMPLEMENTATION REWORK COMPLETE /
+16K-D status: D2 PRACTICAL EXECUTION OPTIMIZATION IMPLEMENTATION REWORK 2 COMPLETE /
   READY FOR INDEPENDENT RE-REVIEW
 16K-D D2 design: COMPLETE / INDEPENDENTLY ACCEPTED
 16K-D D2: IMPLEMENTATION ONLY / EXECUTION NOT AUTHORIZED

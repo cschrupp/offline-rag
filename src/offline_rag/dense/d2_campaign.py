@@ -47,10 +47,18 @@ IMPLEMENTATION_AUTH = (
 IMPLEMENTATION_REWORK_AUTH = (
     "S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-REWORK-AUTH-001"
 )
+IMPLEMENTATION_REWORK2_AUTH = (
+    "S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-REWORK2-AUTH-001"
+)
 # Scientific / benchmark execution remains closed under this AUTH.
 # Cell executor machinery exists but must refuse until a later execution AUTH
 # flips this flag (or superseding authority sets it).
 EXECUTION_AUTHORIZED = False
+
+# Frozen by later execution AUTH before the first encode. None → fail closed.
+EXPECTED_EXECUTION_HEAD: str | None = None
+
+CONFIRMATION_CELLS: frozenset[CellId] = frozenset({"G1-3", "G2-3"})
 
 WORKLOAD_LABEL = "D0-INCIDENT-1296-CHILD-V1"
 CORPUS_NAME = "16k_d_d0_incident"
@@ -108,6 +116,10 @@ class CellResult:
     # Parity/correctness assessed for promotion decisions (None = not assessed).
     parity_ok: bool | None = None
     correctness_ok: bool | None = None
+    # Optional governed assessment provenance (F009).
+    assessment_evidence_digest: str | None = None
+    assessment_evidence_path: str | None = None
+    assessment_recorded_at: str | None = None
 
 
 @dataclass(frozen=True)
@@ -626,8 +638,11 @@ __all__ = [
     "EXPECTED_SEARCHABLE_UNITS_STRATEGY",
     "GPU_MEDIAN_GATE_MIN",
     "GPU_VARIANCE_GATE_MIN",
+    "CONFIRMATION_CELLS",
+    "EXPECTED_EXECUTION_HEAD",
     "IMPLEMENTATION_AUTH",
     "IMPLEMENTATION_REWORK_AUTH",
+    "IMPLEMENTATION_REWORK2_AUTH",
     "MAX_VALID_FULL_RUNS",
     "ValidityClass",
     "WORKLOAD_LABEL",

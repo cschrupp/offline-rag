@@ -13,12 +13,14 @@ from offline_rag.dense.d2_campaign import (
     EXPECTED_CHUNK_MANIFEST_SHA256,
     EXPECTED_CHILD_COUNT,
     EXPECTED_CORPUS_MANIFEST_SHA256,
+    CellResult,
 )
 from offline_rag.dense.d2_execution import (
     execute_d2_cell,
     execute_d2_cell_unlocked,
     observe_workload_identity,
     run_d2_preflight,
+    write_campaign_history,
 )
 from offline_rag.dense.embedder import EmbedderError
 from offline_rag.dense.precision import apply_fp16_after_load
@@ -75,7 +77,7 @@ def test_require_design_subject_enforces_head_match(tmp_path: Path) -> None:
         prepare_tree=True,
     )
     # Current tip is not the design subject after implementation commits.
-    assert any("execution_head_mismatch" in i for i in result.issues)
+    assert any("design_subject_mismatch" in i for i in result.issues)
     assert result.ok is False
     assert result.payload["require_design_subject"] is True
     assert result.payload["accepted_design_subject"] == ACCEPTED_DESIGN_SUBJECT
@@ -86,6 +88,7 @@ def test_execute_cell_locked_but_executor_ready(tmp_path: Path) -> None:
     payload = execute_d2_cell(
         cell_id="G1-1",
         work_root=tmp_path / "work",
+        history_path=tmp_path / "history.json",
         repo_root=REPO,
     )
     assert payload["status"] == "EXECUTION_NOT_AUTHORIZED"
@@ -128,6 +131,13 @@ def test_unlocked_executor_wires_indexing_and_history(
 
     work = tmp_path / "work"
     history = tmp_path / "history.json"
+    write_campaign_history(
+        history,
+        [
+            CellResult("G1-1", "valid", 9.0),
+            CellResult("G1-2", "valid", 9.0),
+        ],
+    )
     evidence = tmp_path / "evidence"
 
     class _Report:

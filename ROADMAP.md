@@ -1041,9 +1041,15 @@ SLICE 15  COMPLETE / ACCEPTED
          — AUTHORIZED
        Exact 16K-D D2 implementation rework parent:
          b505c14ab8d0399b0cd5f6f7c796223ce5ccfe11
+       16K-D D2 implementation F001–F005: CLOSED
+       16K-D D2 implementation rework-2 authority:
+         S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-REWORK2-AUTH-001
+         — AUTHORIZED
+       Exact 16K-D D2 implementation rework-2 parent:
+         a488fb393d5f194bea91e337a928335e76cbd45f
        16K-D D2 design document:
          docs/slice16k_d_d2_practical_execution_optimization_design.md
-       16K-D status: D2 PRACTICAL EXECUTION OPTIMIZATION IMPLEMENTATION REWORK COMPLETE /
+       16K-D status: D2 PRACTICAL EXECUTION OPTIMIZATION IMPLEMENTATION REWORK 2 COMPLETE /
          READY FOR INDEPENDENT RE-REVIEW
        16K-D D2 design: COMPLETE / INDEPENDENTLY ACCEPTED
        16K-D D2: IMPLEMENTATION ONLY / EXECUTION NOT AUTHORIZED
@@ -1810,9 +1816,15 @@ SLICE 15  COMPLETE / ACCEPTED
          — AUTHORIZED
        Exact 16K-D D2 implementation rework parent:
          b505c14ab8d0399b0cd5f6f7c796223ce5ccfe11
+       16K-D D2 implementation F001–F005: CLOSED
+       16K-D D2 implementation rework-2 authority:
+         S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-REWORK2-AUTH-001
+         — AUTHORIZED
+       Exact 16K-D D2 implementation rework-2 parent:
+         a488fb393d5f194bea91e337a928335e76cbd45f
        16K-D D2 design document:
          docs/slice16k_d_d2_practical_execution_optimization_design.md
-       16K-D status: D2 PRACTICAL EXECUTION OPTIMIZATION IMPLEMENTATION REWORK COMPLETE /
+       16K-D status: D2 PRACTICAL EXECUTION OPTIMIZATION IMPLEMENTATION REWORK 2 COMPLETE /
          READY FOR INDEPENDENT RE-REVIEW
        16K-D D2 design: COMPLETE / INDEPENDENTLY ACCEPTED
        16K-D D2: IMPLEMENTATION ONLY / EXECUTION NOT AUTHORIZED

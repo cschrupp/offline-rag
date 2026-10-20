@@ -60,10 +60,13 @@
 **D2 implementation IR-001:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-IR-001` — REWORK REQUIRED (F001–F005) — preserved  
 **D2 implementation rework authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-REWORK-AUTH-001` — AUTHORIZED  
 **Exact D2 implementation rework parent:** `b505c14ab8d0399b0cd5f6f7c796223ce5ccfe11`  
+**D2 implementation F001–F005:** CLOSED  
+**D2 implementation rework-2 authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-REWORK2-AUTH-001` — AUTHORIZED  
+**Exact D2 implementation rework-2 parent:** `a488fb393d5f194bea91e337a928335e76cbd45f`  
 **D2 design document:** `docs/slice16k_d_d2_practical_execution_optimization_design.md`  
 **D2 harness:** `scripts/diag_16k_d_dense/run_d2_campaign.py`  
 
-**Status:** D2 PRACTICAL EXECUTION OPTIMIZATION IMPLEMENTATION REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
+**Status:** D2 PRACTICAL EXECUTION OPTIMIZATION IMPLEMENTATION REWORK 2 COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
 **D0:** BASELINE COMPLETE / INDEPENDENTLY ACCEPTED  
 **D1:** COMPLETE / INDEPENDENTLY ACCEPTED (scientific program closed for product pivot)  
 **D1 tooling F001 / D1 analysis F001:** CLOSED  
@@ -144,17 +147,22 @@ requires it.
 Authoritative design: `docs/slice16k_d_d2_practical_execution_optimization_design.md`
 (IR-003 ACCEPT at `8f96657…`).
 
-**Implementation (this tranche + rework F001–F005):** explicit
-`indexing.embedding.precision` (`native`|`fp16`, default `native`; env
+**Implementation (this tranche + rework F001–F005 + rework-2 F006–F009):**
+explicit `indexing.embedding.precision` (`native`|`fp16`, default `native`; env
 `OFFLINE_RAG_EMBEDDING_PRECISION`); FP16 CUDA-only fail-closed; post-load /
 pre-encode conversion with observably verified float16 (no inferred success);
 precision/batch excluded from embcfg_/index identity; D2 state machine in
 `src/offline_rag/dense/d2_campaign.py` (parity+correctness both required True);
 fail-closed observed preflight + locked real cell executor in
-`src/offline_rag/dense/d2_execution.py`; harness
+`src/offline_rag/dense/d2_execution.py` (mandatory history + always
+`assert_transition_allowed`; `EXPECTED_EXECUTION_HEAD` fail-closed;
+prepared corpus/chunk state verification; practical timing
+encode/persist/point/qdrant/chunks/sec; governed
+`assess-confirmation` for G1-3/G2-3); harness
 `scripts/diag_16k_d_dense/run_d2_campaign.py` (`plan` / `preflight` /
-`validate-transition` / `classify-failure`; `execute-cell` calls gated
-`execute_d2_cell` while `EXECUTION_AUTHORIZED=False`).
+`validate-transition` / `classify-failure` / `assess-confirmation`;
+`execute-cell` requires `--history` and calls gated `execute_d2_cell` while
+`EXECUTION_AUTHORIZED=False`).
 
 Staged stop-conditional campaign (normal 4; G1 screen-fail→G2 = 6; G1
 confirmation timing-fail→G2 = 7 absolute max; no discretionary eighth):

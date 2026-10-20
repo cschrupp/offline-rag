@@ -21,10 +21,13 @@
 **Implementation IR-001:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-IR-001` — REWORK REQUIRED (F001–F005) — preserved  
 **Implementation rework authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-REWORK-AUTH-001` — AUTHORIZED  
 **Exact implementation rework parent:** `b505c14ab8d0399b0cd5f6f7c796223ce5ccfe11`  
+**Implementation IR-001 F001–F005:** CLOSED (rework)  
+**Implementation rework-2 authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-REWORK2-AUTH-001` — AUTHORIZED  
+**Exact implementation rework-2 parent:** `a488fb393d5f194bea91e337a928335e76cbd45f`  
 
 **Branch:** `implementation/16k-d-dense-cuda-profiling`  
 **Status:** D2 PRACTICAL EXECUTION OPTIMIZATION DESIGN COMPLETE / INDEPENDENTLY ACCEPTED  
-**D2 execution:** NOT AUTHORIZED (implementation rework; executor locked)
+**D2 execution:** NOT AUTHORIZED (implementation rework-2; executor locked)
 
 **Pivot:** 16K-D moves from a scientific optimization program to a bounded
 product-engineering optimization program.

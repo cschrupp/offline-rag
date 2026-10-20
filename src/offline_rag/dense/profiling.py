@@ -601,15 +601,48 @@ def profiled_encode_timing() -> Iterator[dict[str, Any]]:
             result["encode_cuda_device_error"] = "cuda_not_available"
 
 
+@dataclass
+class PracticalTimingCollector:
+    """Wall-clock component timers for D2 practical measurement (no CUDA sync)."""
+
+    encode_ms: float = 0.0
+    embedding_persistence_ms: float = 0.0
+    point_construction_ms: float = 0.0
+    qdrant_ms: float = 0.0
+
+
+_practical_var: ContextVar[PracticalTimingCollector | None] = ContextVar(
+    "dense_practical_timing", default=None
+)
+
+
+def get_practical_timing_collector() -> PracticalTimingCollector | None:
+    return _practical_var.get()
+
+
+@contextmanager
+def dense_practical_timing_session() -> Iterator[PracticalTimingCollector]:
+    """Always-on lightweight wall timers (production-representative)."""
+    collector = PracticalTimingCollector()
+    token: Token = _practical_var.set(collector)
+    try:
+        yield collector
+    finally:
+        _practical_var.reset(token)
+
+
 __all__ = [
     "DIAG_DENSE_PROFILE_ENV",
     "PROFILE_CONTRACT",
     "DenseBatchProfile",
     "DenseProfileCollector",
+    "PracticalTimingCollector",
     "batch_identity_digest",
+    "dense_practical_timing_session",
     "dense_profile_enabled",
     "dense_profile_session",
     "get_dense_profile_collector",
+    "get_practical_timing_collector",
     "observe_cuda_allocator_state",
     "observe_model_input_token_counts",
     "observe_peak_vram_bytes",

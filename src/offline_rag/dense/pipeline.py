@@ -61,8 +61,10 @@ from offline_rag.dense.persistence import (
 )
 from offline_rag.dense.points import build_dense_point
 from offline_rag.dense.profiling import (
+    dense_practical_timing_session,
     dense_profile_session,
     get_dense_profile_collector,
+    get_practical_timing_collector,
     observe_cuda_allocator_state,
     observe_model_input_token_counts,
     observe_peak_vram_bytes,
@@ -397,6 +399,7 @@ def _ensure_embeddings(
             # External GPU sample outside encode path (does not sync the model).
             gpu_before = sample_external_gpu_state()
         try:
+            practical = get_practical_timing_collector()
             if profile is not None:
                 with profiled_encode_timing() as encode_timing:
                     vectors = embedder.embed_documents(texts)
@@ -409,8 +412,14 @@ def _ensure_embeddings(
                 process_cpu_delta = encode_timing["process_cpu_delta"]
                 gpu_after = sample_external_gpu_state()
                 cuda_allocator_after = observe_cuda_allocator_state()
+                if practical is not None:
+                    practical.encode_ms += encode_ms
             else:
-                vectors = embedder.embed_documents(texts)
+                with timed_ms() as encode_bucket:
+                    vectors = embedder.embed_documents(texts)
+                encode_ms = float(encode_bucket[0])
+                if practical is not None:
+                    practical.encode_ms += encode_ms
         except Exception as exc:
             failed += len(batch)
             report_document_activity(
@@ -468,12 +477,12 @@ def _ensure_embeddings(
                 vector=list(vector),
             )
             try:
-                if profile is not None:
-                    with timed_ms() as persist_bucket:
-                        write_embedding_artifact(settings.paths.embeddings, artifact)
-                    persist_ms += persist_bucket[0]
-                else:
+                practical = get_practical_timing_collector()
+                with timed_ms() as persist_bucket:
                     write_embedding_artifact(settings.paths.embeddings, artifact)
+                persist_ms += persist_bucket[0]
+                if practical is not None:
+                    practical.embedding_persistence_ms += persist_bucket[0]
             except Exception as exc:
                 failed += 1
                 report_document_activity(
@@ -586,20 +595,22 @@ def run_indexing(
     with dense_profile_session() as profile_session:
         if profile_session is not None:
             reset_peak_vram_stats()
-        return _run_indexing_inner(
-            settings=settings,
-            corpus_name=name,
-            embedder=embedder,
-            backend=backend,
-            on_progress=on_progress,
-            on_document_phase=on_document_phase,
-            on_document_activity=on_document_activity,
-            control_checkpoint=control_checkpoint,
-            started=started,
-            run_id=run_id,
-            owned_backend=owned_backend,
-            profile_session=profile_session,
-        )
+        with dense_practical_timing_session() as practical_timing:
+            return _run_indexing_inner(
+                settings=settings,
+                corpus_name=name,
+                embedder=embedder,
+                backend=backend,
+                on_progress=on_progress,
+                on_document_phase=on_document_phase,
+                on_document_activity=on_document_activity,
+                control_checkpoint=control_checkpoint,
+                started=started,
+                run_id=run_id,
+                owned_backend=owned_backend,
+                profile_session=profile_session,
+                practical_timing=practical_timing,
+            )
 
 
 def _run_indexing_inner(
@@ -616,6 +627,7 @@ def _run_indexing_inner(
     run_id: str,
     owned_backend: bool,
     profile_session: Any,
+    practical_timing: Any = None,
 ) -> IndexingReport:
     name = corpus_name
     backend_impl: DenseIndexBackend | None = None
@@ -913,21 +925,7 @@ def _run_indexing_inner(
                 embeddings_failed=embeddings_failed,
             ) from exc
 
-        if profile_session is not None:
-            with timed_ms() as point_bucket:
-                points = [
-                    build_dense_point(
-                        chunk,
-                        vector=artifact.vector,
-                        chunk_artifact_id=chunk_artifact_id,
-                        chunk_set_id=chunk_state.current_chunk_set_id,
-                        embedding_id=artifact.embedding_id,
-                        index_id=index_id,
-                    )
-                    for chunk, chunk_artifact_id, artifact in rows
-                ]
-            profile_session.point_construction_ms = point_bucket[0]
-        else:
+        with timed_ms() as point_bucket:
             points = [
                 build_dense_point(
                     chunk,
@@ -939,38 +937,21 @@ def _run_indexing_inner(
                 )
                 for chunk, chunk_artifact_id, artifact in rows
             ]
+        if profile_session is not None:
+            profile_session.point_construction_ms = point_bucket[0]
+        if practical_timing is not None:
+            practical_timing.point_construction_ms += point_bucket[0]
 
         try:
             # Incomplete/unpublished collection: delete and rebuild. Never mutate published.
-            if profile_session is not None:
-                with timed_ms() as qdrant_bucket:
-                    if backend_impl.collection_exists(collection_name):
-                        if published_complete:
-                            raise DenseStageError(
-                                (
-                                    f"published collection {collection_name} exists; "
-                                    "refusing mutation"
-                                ),
-                                classification=DENSE_FAILURE_VALIDATION,
-                                embeddings_generated=embeddings_generated,
-                                embeddings_reused=embeddings_reused,
-                                embeddings_failed=embeddings_failed,
-                            )
-                        backend_impl.delete_collection(collection_name)
-
-                    backend_impl.create_collection(
-                        collection_name,
-                        dimension=active_embedder.dimension,
-                        metric=settings.indexing.metric,
-                    )
-                    backend_impl.upsert(collection_name, points)
-                    actual_count = backend_impl.count(collection_name)
-                profile_session.qdrant_materialization_ms = qdrant_bucket[0]
-            else:
+            with timed_ms() as qdrant_bucket:
                 if backend_impl.collection_exists(collection_name):
                     if published_complete:
                         raise DenseStageError(
-                            f"published collection {collection_name} exists; refusing mutation",
+                            (
+                                f"published collection {collection_name} exists; "
+                                "refusing mutation"
+                            ),
                             classification=DENSE_FAILURE_VALIDATION,
                             embeddings_generated=embeddings_generated,
                             embeddings_reused=embeddings_reused,
@@ -985,6 +966,10 @@ def _run_indexing_inner(
                 )
                 backend_impl.upsert(collection_name, points)
                 actual_count = backend_impl.count(collection_name)
+            if profile_session is not None:
+                profile_session.qdrant_materialization_ms = qdrant_bucket[0]
+            if practical_timing is not None:
+                practical_timing.qdrant_ms += qdrant_bucket[0]
         except DenseStageError:
             raise
         except Exception as exc:
@@ -1067,6 +1052,8 @@ def _run_indexing_inner(
             "dense_materialization_ms": dense_materialization_ms,
             "dense_execution": dense_execution,
         }
+        tokens_per_sec: float | None = None
+        tokens_status = "not_collected"
         if profile_session is not None:
             observe_peak_vram_bytes(profile_session)
             profile_summary = profile_session.summarize()
@@ -1077,6 +1064,25 @@ def _run_indexing_inner(
             if isinstance(token_rate, (int, float)):
                 # Reuse the existing 16K-B aggregate slot when reliably measured.
                 success_metadata["model_input_tokens_per_sec"] = float(token_rate)
+                tokens_per_sec = float(token_rate)
+                tokens_status = "observed"
+        if practical_timing is not None:
+            duration_s = max(
+                (completed - started).total_seconds(),
+                1e-9,
+            )
+            success_metadata["practical_timing"] = {
+                "encode_ms": float(practical_timing.encode_ms),
+                "embedding_persistence_ms": float(
+                    practical_timing.embedding_persistence_ms
+                ),
+                "point_construction_ms": float(practical_timing.point_construction_ms),
+                "qdrant_ms": float(practical_timing.qdrant_ms),
+                "wall_clock_ms": int(duration_s * 1000.0),
+                "chunks_per_sec": float(children_total) / duration_s,
+                "tokens_per_sec": tokens_per_sec,
+                "tokens_per_sec_status": tokens_status,
+            }
         return IndexingReport(
             run_id=run_id,
             corpus_name=name,
