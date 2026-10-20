@@ -2,23 +2,18 @@
 """16K-D D2 practical execution optimization harness.
 
 Authority: S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-AUTH-001
+Rework: S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-REWORK-AUTH-001
 Accepted design subject: 8f96657d73b2213fb9b43557b001bc4c5a42188b
 
-Scientific / benchmark cell execution is NOT AUTHORIZED under this AUTH.
-This harness encodes the frozen state machine, preflight, cell specs, and
-validity classification so a later execution AUTH can open G1-1 safely.
+Scientific / benchmark cell execution is NOT AUTHORIZED while
+EXECUTION_AUTHORIZED=False. The full cell executor is implemented and gated.
 """
 
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
-import os
-import platform
-import subprocess
 import sys
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -29,18 +24,10 @@ from offline_rag.dense.d2_campaign import (  # noqa: E402
     ACCEPTED_DESIGN_SUBJECT,
     ALLOWED_CELLS,
     CELL_SPECS,
-    DESIGN_DOC,
     EXECUTION_AUTHORIZED,
-    EXPECTED_CHILD_COUNT,
-    EXPECTED_CHUNK_MANIFEST_SHA256,
-    EXPECTED_CHUNK_SET_ID,
-    EXPECTED_CORPUS_ID,
-    EXPECTED_CORPUS_MANIFEST_SHA256,
-    EXPECTED_MODEL_ID,
-    EXPECTED_MODEL_REVISION,
     IMPLEMENTATION_AUTH,
+    IMPLEMENTATION_REWORK_AUTH,
     MAX_VALID_FULL_RUNS,
-    WORKLOAD_LABEL,
     CellResult,
     assert_transition_allowed,
     cell_spec,
@@ -48,8 +35,9 @@ from offline_rag.dense.d2_campaign import (  # noqa: E402
     plan_next,
     reject_vram_only_g2_open,
 )
-from offline_rag.dense.d2_observability import (  # noqa: E402
-    parity_probe_surface_status,
+from offline_rag.dense.d2_execution import (  # noqa: E402
+    execute_d2_cell,
+    run_d2_preflight,
 )
 from offline_rag.dense.precision import (  # noqa: E402
     classify_treatment_failure,
@@ -57,69 +45,6 @@ from offline_rag.dense.precision import (  # noqa: E402
 )
 
 EVIDENCE_DIR = ROOT / "docs/evidence/16k_d_dense_cuda/d2"
-SOURCE_PATHS = (
-    Path("scripts/diag_16k_d_dense/run_d2_campaign.py"),
-    Path("src/offline_rag/dense/d2_campaign.py"),
-    Path("src/offline_rag/dense/d2_observability.py"),
-    Path("src/offline_rag/dense/precision.py"),
-    Path("src/offline_rag/dense/embedder.py"),
-    Path("src/offline_rag/config/models.py"),
-)
-
-
-def _utc_now() -> str:
-    return datetime.now(tz=UTC).isoformat().replace("+00:00", "Z")
-
-
-def _sha256_file(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
-
-
-def git_sha() -> str:
-    return subprocess.check_output(
-        ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
-    ).strip()
-
-
-def git_tracked_clean() -> tuple[bool, str]:
-    out = subprocess.check_output(
-        ["git", "status", "--porcelain"], cwd=ROOT, text=True
-    )
-    dirty = [
-        line
-        for line in out.splitlines()
-        if line and not line.startswith("??") and not line.startswith("!!")
-    ]
-    if dirty:
-        return False, "tracked_working_tree_dirty: " + "; ".join(dirty[:20])
-    return True, "clean_tracked"
-
-
-def source_digests() -> dict[str, str]:
-    return {str(p): _sha256_file(ROOT / p) for p in SOURCE_PATHS}
-
-
-def capture_runtime() -> dict[str, Any]:
-    runtime: dict[str, Any] = {
-        "python": sys.version.split()[0],
-        "platform": platform.platform(),
-        "gpu_name": None,
-        "cuda_available": None,
-        "torch_version": None,
-        "torch_cuda_build": None,
-    }
-    try:
-        import torch
-
-        runtime["torch_version"] = str(torch.__version__)
-        build = getattr(getattr(torch, "version", None), "cuda", None)
-        runtime["torch_cuda_build"] = str(build) if build else None
-        runtime["cuda_available"] = bool(torch.cuda.is_available())
-        if runtime["cuda_available"]:
-            runtime["gpu_name"] = torch.cuda.get_device_name(0)
-    except Exception as exc:  # noqa: BLE001
-        runtime["torch_error"] = f"{type(exc).__name__}: {exc}"
-    return runtime
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -151,6 +76,7 @@ def _parse_history(raw: str | None) -> list[CellResult]:
 def cmd_list_cells(_: argparse.Namespace) -> int:
     payload = {
         "authority": IMPLEMENTATION_AUTH,
+        "rework_authority": IMPLEMENTATION_REWORK_AUTH,
         "accepted_design_subject": ACCEPTED_DESIGN_SUBJECT,
         "cells": {
             cid: {
@@ -163,6 +89,7 @@ def cmd_list_cells(_: argparse.Namespace) -> int:
         },
         "max_valid_full_runs": MAX_VALID_FULL_RUNS,
         "execution_authorized": EXECUTION_AUTHORIZED,
+        "executor_ready": True,
     }
     print(json.dumps(payload, indent=2, sort_keys=True))
     return 0
@@ -173,6 +100,7 @@ def cmd_plan(args: argparse.Namespace) -> int:
     plan = plan_next(history)
     payload = {
         "authority": IMPLEMENTATION_AUTH,
+        "rework_authority": IMPLEMENTATION_REWORK_AUTH,
         "accepted_design_subject": ACCEPTED_DESIGN_SUBJECT,
         "execution_authorized": EXECUTION_AUTHORIZED,
         "history_len": len(history),
@@ -216,65 +144,18 @@ def cmd_validate_transition(args: argparse.Namespace) -> int:
 
 
 def cmd_preflight(args: argparse.Namespace) -> int:
-    clean, clean_detail = git_tracked_clean()
-    head = git_sha()
-    issues: list[str] = []
-    if not clean:
-        issues.append(clean_detail)
-    if args.require_design_subject and head != ACCEPTED_DESIGN_SUBJECT:
-        # Implementation tranche tip will differ from design subject; record both.
-        pass
-    cell = args.cell
-    if cell is not None:
-        if cell not in ALLOWED_CELLS:
-            issues.append(f"unauthorized_cell:{cell}")
-        else:
-            spec = cell_spec(cell)
-            if spec.device == "cuda" and args.force_cpu_check:
-                issues.append("cell_requires_cuda")
-
-    payload = {
-        "authority": IMPLEMENTATION_AUTH,
-        "accepted_design_subject": ACCEPTED_DESIGN_SUBJECT,
-        "design_document": DESIGN_DOC,
-        "execution_head": head,
-        "tracked_tree": clean_detail,
-        "tracked_clean": clean,
-        "source_sha256": source_digests(),
-        "runtime": capture_runtime(),
-        "workload": {
-            "label": WORKLOAD_LABEL,
-            "searchable_children": EXPECTED_CHILD_COUNT,
-            "chunk_set_id": EXPECTED_CHUNK_SET_ID,
-            "corpus_id": EXPECTED_CORPUS_ID,
-            "chunk_manifest_sha256": EXPECTED_CHUNK_MANIFEST_SHA256,
-            "corpus_manifest_sha256": EXPECTED_CORPUS_MANIFEST_SHA256,
-            "model_id": EXPECTED_MODEL_ID,
-            "model_revision": EXPECTED_MODEL_REVISION,
-        },
-        "parity_probe": parity_probe_surface_status(),
-        "execution_authorized": EXECUTION_AUTHORIZED,
-        "cell": cell,
-        "cell_spec": (
-            {
-                "device": cell_spec(cell).device,
-                "precision": cell_spec(cell).precision,
-                "batch_size": cell_spec(cell).batch_size,
-            }
-            if cell in ALLOWED_CELLS
-            else None
-        ),
-        "strict_offline_required": True,
-        "isolated_empty_embedding_qdrant_required": True,
-        "issues": issues,
-        "status": "PREFLIGHT_OK" if not issues else "PREFLIGHT_FAILED",
-        "recorded_at": _utc_now(),
-    }
+    result = run_d2_preflight(
+        cell_id=args.cell,
+        work_root=Path(args.work_root).resolve() if args.work_root else None,
+        require_design_subject=bool(args.require_design_subject),
+        repo_root=ROOT,
+        prepare_tree=bool(args.prepare_tree),
+    )
     if args.out:
-        _write_json(Path(args.out), payload)
+        _write_json(Path(args.out), result.payload)
     else:
-        print(json.dumps(payload, indent=2, sort_keys=True))
-    return 0 if not issues else 10
+        print(json.dumps(result.payload, indent=2, sort_keys=True))
+    return 0 if result.ok else 10
 
 
 def cmd_classify(args: argparse.Namespace) -> int:
@@ -284,11 +165,7 @@ def cmd_classify(args: argparse.Namespace) -> int:
         except ValueError as exc:
             print(json.dumps({"ok": False, "error": str(exc)}, indent=2))
             return 10
-    exc: BaseException
-    if args.exception_text:
-        exc = RuntimeError(args.exception_text)
-    else:
-        exc = RuntimeError("unspecified")
+    exc: BaseException = RuntimeError(args.exception_text)
     validity = classify_treatment_failure(
         exc, identity_correct=not args.identity_incorrect
     )
@@ -308,31 +185,27 @@ def cmd_classify(args: argparse.Namespace) -> int:
 
 
 def cmd_execute(args: argparse.Namespace) -> int:
-    """Refuse scientific execution under implementation AUTH."""
-    if not EXECUTION_AUTHORIZED:
-        payload = {
-            "authority": IMPLEMENTATION_AUTH,
-            "accepted_design_subject": ACCEPTED_DESIGN_SUBJECT,
-            "status": "EXECUTION_NOT_AUTHORIZED",
-            "requested_cell": args.cell,
-            "note": (
-                "D2 cell execution (FP16/CPU/parity) is closed under "
-                "IMPLEMENTATION_AUTH. Freeze parity + open execution AUTH before "
-                "the first G1 call."
-            ),
-            "execution_authorized": False,
-            "env_precision": os.environ.get("OFFLINE_RAG_EMBEDDING_PRECISION"),
-            "env_batch_size": os.environ.get("OFFLINE_RAG_EMBEDDING_BATCH_SIZE"),
-            "env_device": os.environ.get("OFFLINE_RAG_EMBEDDING_DEVICE"),
-        }
-        if args.out:
-            _write_json(Path(args.out), payload)
-        else:
-            print(json.dumps(payload, indent=2, sort_keys=True))
+    """Gated execute entry — refuses while EXECUTION_AUTHORIZED is False."""
+    work_root = Path(args.work_root).resolve()
+    history = Path(args.history).resolve() if args.history else None
+    evidence = Path(args.evidence_dir).resolve() if args.evidence_dir else EVIDENCE_DIR
+    payload = execute_d2_cell(
+        cell_id=args.cell,
+        work_root=work_root,
+        history_path=history,
+        evidence_dir=evidence,
+        repo_root=ROOT,
+    )
+    if args.out:
+        _write_json(Path(args.out), payload)
+    else:
+        print(json.dumps(payload, indent=2, sort_keys=True))
+    if payload.get("status") == "EXECUTION_NOT_AUTHORIZED":
         print("FAIL-CLOSED: D2 scientific execution not authorized", file=sys.stderr)
         return 20
-    print("unreachable: EXECUTION_AUTHORIZED unexpectedly true", file=sys.stderr)
-    return 99
+    if payload.get("status") == "PREFLIGHT_FAILED":
+        return 10
+    return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -352,15 +225,24 @@ def build_parser() -> argparse.ArgumentParser:
     p_val.add_argument("--cell", required=True, choices=ALLOWED_CELLS)
     p_val.set_defaults(func=cmd_validate_transition)
 
-    p_pre = sub.add_parser("preflight", help="Fail-closed preflight surface")
+    p_pre = sub.add_parser("preflight", help="Fail-closed observed preflight")
     p_pre.add_argument("--cell", choices=ALLOWED_CELLS)
+    p_pre.add_argument(
+        "--work-root",
+        required=True,
+        help="Isolated data dir (prepared or to prepare)",
+    )
+    p_pre.add_argument(
+        "--prepare-tree",
+        action="store_true",
+        help="Create/reset isolated empty embeddings/qdrant tree before checks",
+    )
     p_pre.add_argument("--out")
     p_pre.add_argument(
         "--require-design-subject",
         action="store_true",
-        help="Reserved; implementation tip may differ from design subject",
+        help="Fail closed unless HEAD equals accepted design subject 8f96657…",
     )
-    p_pre.add_argument("--force-cpu-check", action="store_true")
     p_pre.set_defaults(func=cmd_preflight)
 
     p_cls = sub.add_parser("classify-failure", help="Classify treatment failure")
@@ -373,8 +255,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_cls.set_defaults(func=cmd_classify)
 
-    p_ex = sub.add_parser("execute-cell", help="Blocked under implementation AUTH")
+    p_ex = sub.add_parser(
+        "execute-cell",
+        help="Run frozen cell (locked while EXECUTION_AUTHORIZED=False)",
+    )
     p_ex.add_argument("--cell", required=True, choices=ALLOWED_CELLS)
+    p_ex.add_argument("--work-root", required=True)
+    p_ex.add_argument("--history", help="Campaign history JSON path")
+    p_ex.add_argument("--evidence-dir", help="Evidence output directory")
     p_ex.add_argument("--out")
     p_ex.set_defaults(func=cmd_execute)
 

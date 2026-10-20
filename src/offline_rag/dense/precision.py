@@ -72,8 +72,9 @@ def apply_fp16_after_load(model: object) -> dict[str, str | None]:
     """Convert a loaded SentenceTransformer model to FP16 once.
 
     Must be called after model construction and before the first encode.
+    Post-conversion dtype must be observably float16; never infer success.
     """
-    import torch
+    from offline_rag.dense.embedder import EmbedderError
 
     before: str | None = None
     after: str | None = None
@@ -89,8 +90,6 @@ def apply_fp16_after_load(model: object) -> dict[str, str | None]:
 
     half = getattr(model, "half", None)
     if not callable(half):
-        from offline_rag.dense.embedder import EmbedderError
-
         raise EmbedderError(
             "FP16 embedding execution was requested, but the loaded model does "
             "not expose half() for deterministic post-load conversion."
@@ -100,16 +99,28 @@ def apply_fp16_after_load(model: object) -> dict[str, str | None]:
     try:
         first = model[0] if len(model) else None  # type: ignore[index]
         auto_model = getattr(first, "auto_model", None)
-        if auto_model is not None:
-            param = next(auto_model.parameters(), None)
-            if param is not None:
-                after = str(param.dtype).removeprefix("torch.")
-    except Exception:  # noqa: BLE001
-        after = "float16" if torch.float16 else None
+        if auto_model is None:
+            raise EmbedderError(
+                "FP16 embedding conversion completed but post-conversion dtype "
+                f"could not be observed (missing auto_model; before={before!r})."
+            )
+        param = next(auto_model.parameters(), None)
+        if param is None:
+            raise EmbedderError(
+                "FP16 embedding conversion completed but post-conversion dtype "
+                f"could not be observed (no parameters; before={before!r})."
+            )
+        after = str(param.dtype).removeprefix("torch.")
+    except EmbedderError:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise EmbedderError(
+            "FP16 embedding conversion completed but post-conversion dtype "
+            f"could not be observed/verified (before={before!r}): "
+            f"{type(exc).__name__}: {exc}"
+        ) from exc
 
     if after not in {"float16", "torch.float16"}:
-        from offline_rag.dense.embedder import EmbedderError
-
         raise EmbedderError(
             "FP16 embedding conversion did not yield float16 parameters "
             f"(before={before!r}, after={after!r})."
@@ -118,23 +129,35 @@ def apply_fp16_after_load(model: object) -> dict[str, str | None]:
 
 
 def is_cuda_resource_exhaustion(exc: BaseException) -> bool:
-    """Heuristic: CUDA OOM / resource exhaustion under a correct-identity run."""
+    """True only for CUDA memory/resource exhaustion — not generic CUDA errors."""
     name = type(exc).__name__
+    name_l = name.lower()
+    msg = str(exc).lower()
     text = f"{name}: {exc}".lower()
-    needles = (
-        "out of memory",
-        "cuda out of memory",
-        "cudaerror",
-        "cudnn_status_alloc_failed",
-        "cublas_status_alloc_failed",
-        "resource exhausted",
-        "insufficient memory",
-    )
-    if any(n in text for n in needles):
+
+    # Class-name OOM (e.g. torch.cuda.OutOfMemoryError).
+    if "outofmemory" in name_l:
         return True
-    # PyTorch CUDA OOM class name variants.
-    if "outofmemory" in name.lower():
+
+    # Explicit allocator / memory exhaustion status codes.
+    if (
+        "cublas_status_alloc_failed" in text
+        or "cudnn_status_alloc_failed" in text
+    ):
         return True
+
+    if "resource exhausted" in msg or "insufficient memory" in msg:
+        return True
+
+    if "cuda out of memory" in msg:
+        return True
+
+    # Bare "out of memory" only with CUDA-flavored context (not generic CUDAError).
+    if "out of memory" in msg and (
+        "cuda" in name_l or "cuda" in msg or "cublas" in msg or "cudnn" in msg
+    ):
+        return True
+
     return False
 
 

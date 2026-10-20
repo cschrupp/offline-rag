@@ -44,10 +44,16 @@ DESIGN_DOC = "docs/slice16k_d_d2_practical_execution_optimization_design.md"
 IMPLEMENTATION_AUTH = (
     "S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-AUTH-001"
 )
+IMPLEMENTATION_REWORK_AUTH = (
+    "S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-REWORK-AUTH-001"
+)
 # Scientific / benchmark execution remains closed under this AUTH.
+# Cell executor machinery exists but must refuse until a later execution AUTH
+# flips this flag (or superseding authority sets it).
 EXECUTION_AUTHORIZED = False
 
 WORKLOAD_LABEL = "D0-INCIDENT-1296-CHILD-V1"
+CORPUS_NAME = "16k_d_d0_incident"
 EXPECTED_CHILD_COUNT = 1296
 EXPECTED_MODEL_ID = "Qwen/Qwen3-Embedding-0.6B"
 EXPECTED_MODEL_REVISION = "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3"
@@ -62,6 +68,13 @@ EXPECTED_CHUNK_MANIFEST_SHA256 = (
 )
 EXPECTED_CORPUS_MANIFEST_SHA256 = (
     "69cefa61214e0e5e0a5eb71df01e323ede6f1807226181ef4134faeceb91b353"
+)
+EXPECTED_SEARCHABLE_UNITS_STRATEGY = "all_children"
+EXPECTED_SEARCHABLE_UNITS_CONTRACT = "all-children-v1"
+ABANDONED_CORPUS_ROOT_REL = (
+    "data/corpora/wsc_fdd77b77611448eb93cdc239d2610281/abandoned"
+    "/20261016T003020Z-036695894ce04681a147718a8c9f6cad"
+    "/corpora/wsc_fdd77b77611448eb93cdc239d2610281"
 )
 
 
@@ -169,7 +182,8 @@ def _parity_failed(result: CellResult) -> bool:
 
 
 def _parity_passed(result: CellResult) -> bool:
-    return result.parity_ok is True and result.correctness_ok is not False
+    # Both must be explicitly assessed True; None (not assessed) fails closed.
+    return result.parity_ok is True and result.correctness_ok is True
 
 
 def _plan(
@@ -406,15 +420,14 @@ def plan_next(history: list[CellResult]) -> CampaignPlan:
                 # Timing/variance confirmation failure → G2 may open (7-run path).
                 open_g2_after_c0 = True
             else:
-                # Timing ok but parity not yet recorded → wait for assessment.
-                if g1_3.parity_ok is None:
-                    return _plan(
-                        terminal="stop_gpu",
-                        next_cell=None,
-                        reason="g1_parity_not_assessed_fail_closed",
-                        g2_eligible=False,
-                        history=history,
-                    )
+                # Timing ok but parity/correctness not fully assessed → fail closed.
+                return _plan(
+                    terminal="stop_gpu",
+                    next_cell=None,
+                    reason="g1_parity_or_correctness_not_assessed_fail_closed",
+                    g2_eligible=False,
+                    history=history,
+                )
 
     # --- G2 path ---
     if open_g2_after_c0 or g2_1 is not None or g2_2 is not None or g2_3 is not None:
@@ -557,7 +570,7 @@ def _plan_g2(
     return _plan(
         terminal="stop_gpu",
         next_cell=None,
-        reason="g2_parity_not_assessed_fail_closed",
+        reason="g2_parity_or_correctness_not_assessed_fail_closed",
         g2_eligible=True,
         history=history,
     )
@@ -590,9 +603,11 @@ def reject_vram_only_g2_open() -> None:
 
 
 __all__ = [
+    "ABANDONED_CORPUS_ROOT_REL",
     "ACCEPTED_DESIGN_SUBJECT",
     "ALLOWED_CELLS",
     "CELL_SPECS",
+    "CORPUS_NAME",
     "CampaignPlan",
     "CampaignTerminal",
     "CellId",
@@ -607,9 +622,12 @@ __all__ = [
     "EXPECTED_CORPUS_MANIFEST_SHA256",
     "EXPECTED_MODEL_ID",
     "EXPECTED_MODEL_REVISION",
+    "EXPECTED_SEARCHABLE_UNITS_CONTRACT",
+    "EXPECTED_SEARCHABLE_UNITS_STRATEGY",
     "GPU_MEDIAN_GATE_MIN",
     "GPU_VARIANCE_GATE_MIN",
     "IMPLEMENTATION_AUTH",
+    "IMPLEMENTATION_REWORK_AUTH",
     "MAX_VALID_FULL_RUNS",
     "ValidityClass",
     "WORKLOAD_LABEL",

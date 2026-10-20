@@ -71,6 +71,32 @@ def test_successful_g1_confirmation_selects_g1() -> None:
     assert plan.next_cell is None
 
 
+def test_missing_correctness_does_not_select_g1() -> None:
+    hist = [
+        R("G1-1", wall=9.0),
+        R("G1-2", wall=9.0),
+        R("C0", wall=40.0),
+        R("G1-3", wall=9.0, parity=True, correctness=None),
+    ]
+    plan = plan_next(hist)
+    assert plan.terminal == "stop_gpu"
+    assert plan.selected_lane is None
+    assert "not_assessed" in plan.reason
+
+
+def test_missing_parity_does_not_select_g1() -> None:
+    hist = [
+        R("G1-1", wall=9.0),
+        R("G1-2", wall=9.0),
+        R("C0", wall=40.0),
+        R("G1-3", wall=9.0, parity=None, correctness=True),
+    ]
+    plan = plan_next(hist)
+    assert plan.terminal == "stop_gpu"
+    assert plan.selected_lane is None
+    assert "not_assessed" in plan.reason
+
+
 def test_g1_confirmation_timing_failure_opens_g2_seven_run_ceiling() -> None:
     hist = [
         R("G1-1", wall=9.0),
@@ -223,6 +249,21 @@ def test_resource_exhaustion_classification() -> None:
     )
     other = RuntimeError("keyboard interrupt")
     assert classify_treatment_failure(other, identity_correct=True) == "invalid"
+
+
+def test_generic_cuda_errors_are_not_valid_resource_negatives() -> None:
+    class CUDAError(RuntimeError):
+        pass
+
+    illegal = CUDAError("illegal memory access")
+    invalid = CUDAError("invalid argument")
+    assert not is_cuda_resource_exhaustion(illegal)
+    assert not is_cuda_resource_exhaustion(invalid)
+    assert classify_treatment_failure(illegal, identity_correct=True) == "invalid"
+    assert classify_treatment_failure(invalid, identity_correct=True) == "invalid"
+
+    alloc = RuntimeError("CUBLAS_STATUS_ALLOC_FAILED")
+    assert is_cuda_resource_exhaustion(alloc)
 
 
 def test_fp16_cpu_fails_closed() -> None:
