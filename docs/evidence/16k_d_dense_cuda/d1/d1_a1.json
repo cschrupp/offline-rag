@@ -1,0 +1,3237 @@
+{
+  "accepted_tooling_subject": "433725952c15a2feed4b65986d03e254d08d1568",
+  "attribution_only_not_section_9_4_gate": true,
+  "authority": "S16-K-D-D1-STALL-ATTRIBUTION-SCIENTIFIC-EXECUTION-AUTH-001",
+  "batch_count": 41,
+  "batches": [
+    {
+      "aggregate_input_tokens": 10943,
+      "batch_identity_digest": "2e7127c5d5b1fe8f0575064a9529a145a0382cd61b8a2ed69a6c54c87055800d",
+      "batch_index": 0,
+      "chunk_ids_digest": "7ffdb0f4edb29495d239cb1a48a0d3e6c41df9d0c3a79d4e78dad42386e176b7",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 4942636544,
+        "reserved_bytes": 5458886656,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 13111.7978515625,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 12952.8671199987,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1800.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1800.0,
+          "power_draw_w": 55.93,
+          "pstate": "P0",
+          "temperature_c": 69.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 33.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 975.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 975.0,
+          "power_draw_w": 35.46,
+          "pstate": "P0",
+          "temperature_c": 65.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 6.0,
+          "utilization_memory_pct": 2.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 491,
+      "padded_token_workload": 15712,
+      "padding_fraction": 0.30352596741344195,
+      "peak_vram_bytes_after": 4942636544,
+      "persistence_ms": 82.0492250022653,
+      "process_cpu_delta": {
+        "cpu_time_s": 12.968888,
+        "error": null,
+        "involuntary_context_switches": 156,
+        "status": "observed",
+        "system_time_s": 6.315149,
+        "user_time_s": 6.653739,
+        "voluntary_context_switches": 963
+      },
+      "token_length_stats": {
+        "max": 491,
+        "median": 383,
+        "min": 46,
+        "p50": 383,
+        "p95": 480,
+        "p99": 488
+      },
+      "wall_minus_device_ms": -158.93073156379978
+    },
+    {
+      "aggregate_input_tokens": 10800,
+      "batch_identity_digest": "ab902b510a7029f6f88c88d590bcd0e3b826dc29f2cf230ca837617563ef8e73",
+      "batch_index": 1,
+      "chunk_ids_digest": "b6c69c95f2ed592c954e39f85a9c4abc06372ba33d0cf03a39e71dc2e725f6e4",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 4960695296,
+        "reserved_bytes": 6452936704,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 7503.75634765625,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 7515.967132003425,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1785.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1785.0,
+          "power_draw_w": 71.23,
+          "pstate": "P0",
+          "temperature_c": 71.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 32.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1800.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1800.0,
+          "power_draw_w": 55.7,
+          "pstate": "P0",
+          "temperature_c": 69.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 71.0,
+          "utilization_memory_pct": 24.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 492,
+      "padded_token_workload": 15744,
+      "padding_fraction": 0.3140243902439024,
+      "peak_vram_bytes_after": 4960695296,
+      "persistence_ms": 119.26108400439261,
+      "process_cpu_delta": {
+        "cpu_time_s": 7.501150000000001,
+        "error": null,
+        "involuntary_context_switches": 300,
+        "status": "observed",
+        "system_time_s": 3.015531000000001,
+        "user_time_s": 4.485619,
+        "voluntary_context_switches": 602
+      },
+      "token_length_stats": {
+        "max": 492,
+        "median": 380,
+        "min": 34,
+        "p50": 380,
+        "p95": 471,
+        "p99": 486
+      },
+      "wall_minus_device_ms": 12.210784347174922
+    },
+    {
+      "aggregate_input_tokens": 10693,
+      "batch_identity_digest": "3efff819d0a4788630e26ebd1ceadb4a599a94e7b2257cf148b45541c4a6770b",
+      "batch_index": 2,
+      "chunk_ids_digest": "0b13d12ecfcc1f9feb75ea646f9ac5f2eb92222a6b6e9ec05df3d8f86ef85373",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 4960695296,
+        "reserved_bytes": 6452936704,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 5908.5068359375,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 5928.6403139994945,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1785.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1785.0,
+          "power_draw_w": 56.62,
+          "pstate": "P0",
+          "temperature_c": 72.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 32.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1785.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1785.0,
+          "power_draw_w": 56.42,
+          "pstate": "P0",
+          "temperature_c": 71.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 32.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 487,
+      "padded_token_workload": 15584,
+      "padding_fraction": 0.3138475359342916,
+      "peak_vram_bytes_after": 4960695296,
+      "persistence_ms": 91.69992199895205,
+      "process_cpu_delta": {
+        "cpu_time_s": 5.981446,
+        "error": null,
+        "involuntary_context_switches": 1694,
+        "status": "observed",
+        "system_time_s": 2.0036579999999997,
+        "user_time_s": 3.9777880000000003,
+        "voluntary_context_switches": 388
+      },
+      "token_length_stats": {
+        "max": 487,
+        "median": 380,
+        "min": 8,
+        "p50": 380,
+        "p95": 481,
+        "p99": 486
+      },
+      "wall_minus_device_ms": 20.133478061994538
+    },
+    {
+      "aggregate_input_tokens": 11261,
+      "batch_identity_digest": "88b4636f7313db46f50f7d702d89bfa61d5b020c1e96167ed5c5b5789ba02d35",
+      "batch_index": 3,
+      "chunk_ids_digest": "964658ae85dabd6ba89bfa7dcbae7b7ba3b2b59ecc36e41de2b38c6fb6b60263",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 45576.234375,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 45244.28279700078,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1695.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 74.1,
+          "pstate": "P0",
+          "temperature_c": 77.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 4.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1785.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1785.0,
+          "power_draw_w": 56.86,
+          "pstate": "P0",
+          "temperature_c": 72.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 79.0,
+          "utilization_memory_pct": 26.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 581,
+      "padded_token_workload": 18592,
+      "padding_fraction": 0.3943093803786575,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 73.48291798916762,
+      "process_cpu_delta": {
+        "cpu_time_s": 45.515994000000006,
+        "error": null,
+        "involuntary_context_switches": 115,
+        "status": "observed",
+        "system_time_s": 16.752192,
+        "user_time_s": 28.763802000000002,
+        "voluntary_context_switches": 1310
+      },
+      "token_length_stats": {
+        "max": 581,
+        "median": 386,
+        "min": 4,
+        "p50": 386,
+        "p95": 500,
+        "p99": 560
+      },
+      "wall_minus_device_ms": -331.9515779992216
+    },
+    {
+      "aggregate_input_tokens": 10188,
+      "batch_identity_digest": "f12e1b6dd996fc6ff640084f4f38a9e2f0bf2de857554b14d9b47ca5d37d6e11",
+      "batch_index": 4,
+      "chunk_ids_digest": "24ba60939db470256a8bd05eace2d329d1a68d09869410be671a19f33e8f02a9",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 6245.416015625,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 6235.95860000205,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1560.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1560.0,
+          "power_draw_w": 86.69,
+          "pstate": "P0",
+          "temperature_c": 77.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 31.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1785.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1785.0,
+          "power_draw_w": 61.56,
+          "pstate": "P0",
+          "temperature_c": 77.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 4.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 489,
+      "padded_token_workload": 15648,
+      "padding_fraction": 0.3489263803680982,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 81.4226449947455,
+      "process_cpu_delta": {
+        "cpu_time_s": 6.291886000000005,
+        "error": null,
+        "involuntary_context_switches": 497,
+        "status": "observed",
+        "system_time_s": 2.1689580000000035,
+        "user_time_s": 4.122928000000002,
+        "voluntary_context_switches": 364
+      },
+      "token_length_stats": {
+        "max": 489,
+        "median": 370,
+        "min": 24,
+        "p50": 370,
+        "p95": 481,
+        "p99": 488
+      },
+      "wall_minus_device_ms": -9.457415622950066
+    },
+    {
+      "aggregate_input_tokens": 10009,
+      "batch_identity_digest": "7053811cb2b9abf0e8c240da3fbad2b9eec6f2306b1a26b4fd907a7bc34d537e",
+      "batch_index": 5,
+      "chunk_ids_digest": "f3204b42472515a31aee5a23e4fc8d79b27e9a68f12ec08040538826f5f32454",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 34836.96875,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 34742.31551400226,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1710.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1710.0,
+          "power_draw_w": 62.7,
+          "pstate": "P0",
+          "temperature_c": 79.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 2.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1785.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1785.0,
+          "power_draw_w": 61.37,
+          "pstate": "P0",
+          "temperature_c": 77.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 31.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 500,
+      "padded_token_workload": 16000,
+      "padding_fraction": 0.3744375,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 83.45712300797459,
+      "process_cpu_delta": {
+        "cpu_time_s": 34.899762,
+        "error": null,
+        "involuntary_context_switches": 1539,
+        "status": "observed",
+        "system_time_s": 12.419134,
+        "user_time_s": 22.480628000000003,
+        "voluntary_context_switches": 936
+      },
+      "token_length_stats": {
+        "max": 500,
+        "median": 378,
+        "min": 14,
+        "p50": 378,
+        "p95": 486,
+        "p99": 498
+      },
+      "wall_minus_device_ms": -94.65323599774274
+    },
+    {
+      "aggregate_input_tokens": 8955,
+      "batch_identity_digest": "48ad1c70dfa6b6e5008307059613021ade0c274debacb9a578917593dfb09623",
+      "batch_index": 6,
+      "chunk_ids_digest": "1b26a16ecf2947f813bbeff0cec7c812dfef74c5299e5f61cb1df38161483e9f",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 5900.08447265625,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 5875.537353000254,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1650.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1650.0,
+          "power_draw_w": 85.62,
+          "pstate": "P0",
+          "temperature_c": 79.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 30.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1785.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1785.0,
+          "power_draw_w": 58.49,
+          "pstate": "P0",
+          "temperature_c": 79.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 2.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 483,
+      "padded_token_workload": 15456,
+      "padding_fraction": 0.4206133540372671,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 80.12931998746353,
+      "process_cpu_delta": {
+        "cpu_time_s": 5.947679999999998,
+        "error": null,
+        "involuntary_context_switches": 78,
+        "status": "observed",
+        "system_time_s": 1.9123329999999967,
+        "user_time_s": 4.035347000000002,
+        "voluntary_context_switches": 522
+      },
+      "token_length_stats": {
+        "max": 483,
+        "median": 368,
+        "min": 5,
+        "p50": 368,
+        "p95": 432,
+        "p99": 471
+      },
+      "wall_minus_device_ms": -24.54711965599563
+    },
+    {
+      "aggregate_input_tokens": 9738,
+      "batch_identity_digest": "c63ca8345792fb7880cd0b96464dee6965ab974a9b54f7004765851a931622f4",
+      "batch_index": 7,
+      "chunk_ids_digest": "e2d2f6474279b8e4ccf912793df18c5d13b3df7ee27d95fded5634a60488193b",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 5902.2373046875,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 5837.169431000802,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1605.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1605.0,
+          "power_draw_w": 75.03,
+          "pstate": "P0",
+          "temperature_c": 79.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 30.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1785.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1785.0,
+          "power_draw_w": 61.06,
+          "pstate": "P0",
+          "temperature_c": 79.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 30.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 484,
+      "padded_token_workload": 15488,
+      "padding_fraction": 0.3712551652892562,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 75.54727000024286,
+      "process_cpu_delta": {
+        "cpu_time_s": 5.952405000000006,
+        "error": null,
+        "involuntary_context_switches": 95,
+        "status": "observed",
+        "system_time_s": 2.1066429999999983,
+        "user_time_s": 3.8457620000000077,
+        "voluntary_context_switches": 555
+      },
+      "token_length_stats": {
+        "max": 484,
+        "median": 372,
+        "min": 7,
+        "p50": 372,
+        "p95": 462,
+        "p99": 481
+      },
+      "wall_minus_device_ms": -65.06787368669757
+    },
+    {
+      "aggregate_input_tokens": 10008,
+      "batch_identity_digest": "4e2fe54cc1bdfaec822da6ce0cc2447ba4735fff041a47f9cae6ea22f6398ef7",
+      "batch_index": 8,
+      "chunk_ids_digest": "f2a73ccddd609158bd09c1c9c92d9582c171e579a294fd817f183020f9f5fccd",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 40155.28125,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 39535.43691499726,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1650.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1650.0,
+          "power_draw_w": 84.0,
+          "pstate": "P0",
+          "temperature_c": 80.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 3.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1785.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1785.0,
+          "power_draw_w": 60.22,
+          "pstate": "P0",
+          "temperature_c": 79.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 30.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 513,
+      "padded_token_workload": 16416,
+      "padding_fraction": 0.39035087719298245,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 83.60031999472994,
+      "process_cpu_delta": {
+        "cpu_time_s": 40.218548,
+        "error": null,
+        "involuntary_context_switches": 208,
+        "status": "observed",
+        "system_time_s": 14.045304000000002,
+        "user_time_s": 26.173243999999997,
+        "voluntary_context_switches": 1230
+      },
+      "token_length_stats": {
+        "max": 513,
+        "median": 377,
+        "min": 10,
+        "p50": 377,
+        "p95": 471,
+        "p99": 502
+      },
+      "wall_minus_device_ms": -619.8443350027374
+    },
+    {
+      "aggregate_input_tokens": 11353,
+      "batch_identity_digest": "af3b0610984be3faf8d5176291f51c45680c87f921b6242ee7c82fcd42b12eef",
+      "batch_index": 9,
+      "chunk_ids_digest": "3155ad6c401123d780f00e324a6eb6bb7548a3000272395cb0d319087bdaec40",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 44483.75,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 44408.66642400215,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1635.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1635.0,
+          "power_draw_w": 66.26,
+          "pstate": "P0",
+          "temperature_c": 81.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 3.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 63.63,
+          "pstate": "P0",
+          "temperature_c": 80.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 3.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 547,
+      "padded_token_workload": 17504,
+      "padding_fraction": 0.35140539305301643,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 69.03701000555884,
+      "process_cpu_delta": {
+        "cpu_time_s": 44.553262999999994,
+        "error": null,
+        "involuntary_context_switches": 369,
+        "status": "observed",
+        "system_time_s": 16.292375,
+        "user_time_s": 28.260887999999994,
+        "voluntary_context_switches": 1280
+      },
+      "token_length_stats": {
+        "max": 547,
+        "median": 388,
+        "min": 81,
+        "p50": 388,
+        "p95": 492,
+        "p99": 531
+      },
+      "wall_minus_device_ms": -75.08357599785086
+    },
+    {
+      "aggregate_input_tokens": 10628,
+      "batch_identity_digest": "4d3b5f59ed3144b1775a41de3ac620364db602a17a59e0b2c01df2505b5822dd",
+      "batch_index": 10,
+      "chunk_ids_digest": "48c932dc91a577b13c39640c8e3426dc3df23600e3dca4ad6fbc1faa6a81c7fc",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 5825.25830078125,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 5760.5033879990515,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1740.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1740.0,
+          "power_draw_w": 62.17,
+          "pstate": "P0",
+          "temperature_c": 80.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 31.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 58.76,
+          "pstate": "P0",
+          "temperature_c": 81.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 3.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 463,
+      "padded_token_workload": 14816,
+      "padding_fraction": 0.2826673866090713,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 67.5705470093817,
+      "process_cpu_delta": {
+        "cpu_time_s": 5.879057999999986,
+        "error": null,
+        "involuntary_context_switches": 11,
+        "status": "observed",
+        "system_time_s": 1.9788460000000043,
+        "user_time_s": 3.900211999999982,
+        "voluntary_context_switches": 520
+      },
+      "token_length_stats": {
+        "max": 463,
+        "median": 382,
+        "min": 27,
+        "p50": 382,
+        "p95": 443,
+        "p99": 458
+      },
+      "wall_minus_device_ms": -64.75491278219852
+    },
+    {
+      "aggregate_input_tokens": 11218,
+      "batch_identity_digest": "ee376ae65ca8b45ffb4594ea2f9d5986ae6d515a49d2d5e5cbb7ddd87184667a",
+      "batch_index": 11,
+      "chunk_ids_digest": "977764e40b9a83eef6245b1bfed7b446454629b0dbe303f1c25d7c3f2c350c47",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 37580.6484375,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 37335.04157299831,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1740.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1740.0,
+          "power_draw_w": 70.89,
+          "pstate": "P0",
+          "temperature_c": 82.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 9.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 62.16,
+          "pstate": "P0",
+          "temperature_c": 80.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 31.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 510,
+      "padded_token_workload": 16320,
+      "padding_fraction": 0.31262254901960784,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 80.82305497737252,
+      "process_cpu_delta": {
+        "cpu_time_s": 37.649078,
+        "error": null,
+        "involuntary_context_switches": 224,
+        "status": "observed",
+        "system_time_s": 13.695132000000001,
+        "user_time_s": 23.953946000000002,
+        "voluntary_context_switches": 1055
+      },
+      "token_length_stats": {
+        "max": 510,
+        "median": 386,
+        "min": 25,
+        "p50": 386,
+        "p95": 472,
+        "p99": 501
+      },
+      "wall_minus_device_ms": -245.60686450169305
+    },
+    {
+      "aggregate_input_tokens": 9235,
+      "batch_identity_digest": "fe99b636316f67fd94b080756a16ff7e30f3ec613c0c690395d8b04ffa7e8222",
+      "batch_index": 12,
+      "chunk_ids_digest": "719c4690813858b8fefa5f396b5f636680ac1f4250e152bafc560c8c6431383e",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 6230.63427734375,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 6277.1527969998715,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1560.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1560.0,
+          "power_draw_w": 84.49,
+          "pstate": "P0",
+          "temperature_c": 80.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 30.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 64.08,
+          "pstate": "P0",
+          "temperature_c": 82.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 9.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 487,
+      "padded_token_workload": 15584,
+      "padding_fraction": 0.40740503080082136,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 74.92738899600226,
+      "process_cpu_delta": {
+        "cpu_time_s": 6.285144999999972,
+        "error": null,
+        "involuntary_context_switches": 7,
+        "status": "observed",
+        "system_time_s": 2.060892999999993,
+        "user_time_s": 4.224251999999979,
+        "voluntary_context_switches": 461
+      },
+      "token_length_stats": {
+        "max": 487,
+        "median": 374,
+        "min": 20,
+        "p50": 374,
+        "p95": 467,
+        "p99": 481
+      },
+      "wall_minus_device_ms": 46.5185196561215
+    },
+    {
+      "aggregate_input_tokens": 11317,
+      "batch_identity_digest": "d43fb7f63ee03fe53566439552ab289fe5ebc927c1bcce7f3ca6ecb7dff32d50",
+      "batch_index": 13,
+      "chunk_ids_digest": "99ac9f92cdc691172d7bfc8b4f9ec19e1629b43d3c7c5b79a9fadc0c66400e98",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 40301.875,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 40143.79414999712,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1680.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1680.0,
+          "power_draw_w": 93.06,
+          "pstate": "P0",
+          "temperature_c": 81.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 9.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 63.31,
+          "pstate": "P0",
+          "temperature_c": 80.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 90.0,
+          "utilization_memory_pct": 28.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 493,
+      "padded_token_workload": 15776,
+      "padding_fraction": 0.282644523326572,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 68.02582199816243,
+      "process_cpu_delta": {
+        "cpu_time_s": 40.37424300000001,
+        "error": null,
+        "involuntary_context_switches": 163,
+        "status": "observed",
+        "system_time_s": 14.01198500000001,
+        "user_time_s": 26.362257999999997,
+        "voluntary_context_switches": 1174
+      },
+      "token_length_stats": {
+        "max": 493,
+        "median": 402,
+        "min": 44,
+        "p50": 402,
+        "p95": 455,
+        "p99": 486
+      },
+      "wall_minus_device_ms": -158.08085000287974
+    },
+    {
+      "aggregate_input_tokens": 10786,
+      "batch_identity_digest": "43d016e861f37026b0cebe7686bdfdb106ccc8c3e0741247b40f0519ab4e54c1",
+      "batch_index": 14,
+      "chunk_ids_digest": "cb3d5efb9230000021236443e113cd2fd823278d16f175385e77e360e55e7006",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 38934.92578125,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 38689.376808000816,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1560.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1560.0,
+          "power_draw_w": 90.23,
+          "pstate": "P0",
+          "temperature_c": 81.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 9.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 64.0,
+          "pstate": "P0",
+          "temperature_c": 81.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 93.0,
+          "utilization_memory_pct": 5.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 495,
+      "padded_token_workload": 15840,
+      "padding_fraction": 0.31906565656565655,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 62.19757200960885,
+      "process_cpu_delta": {
+        "cpu_time_s": 38.99700599999997,
+        "error": null,
+        "involuntary_context_switches": 246,
+        "status": "observed",
+        "system_time_s": 14.02315999999999,
+        "user_time_s": 24.97384599999998,
+        "voluntary_context_switches": 1146
+      },
+      "token_length_stats": {
+        "max": 495,
+        "median": 382,
+        "min": 9,
+        "p50": 382,
+        "p95": 463,
+        "p99": 486
+      },
+      "wall_minus_device_ms": -245.5489732491842
+    },
+    {
+      "aggregate_input_tokens": 10779,
+      "batch_identity_digest": "01b0372c074bb3147a123f1d54d009d71c8e9a17297557f62302c3c936be443a",
+      "batch_index": 15,
+      "chunk_ids_digest": "9f1c51738adf7a0cd300f7cca0f6ccadd70306242d030a2f0178b702b72b592d",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 5927.3125,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 5838.961280001968,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1620.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1620.0,
+          "power_draw_w": 73.89,
+          "pstate": "P0",
+          "temperature_c": 80.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 31.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 64.62,
+          "pstate": "P0",
+          "temperature_c": 81.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 9.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 474,
+      "padded_token_workload": 15168,
+      "padding_fraction": 0.2893591772151899,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 74.62049600144383,
+      "process_cpu_delta": {
+        "cpu_time_s": 5.973666999999992,
+        "error": null,
+        "involuntary_context_switches": 13,
+        "status": "observed",
+        "system_time_s": 2.11411600000001,
+        "user_time_s": 3.859550999999982,
+        "voluntary_context_switches": 507
+      },
+      "token_length_stats": {
+        "max": 474,
+        "median": 385,
+        "min": 66,
+        "p50": 385,
+        "p95": 454,
+        "p99": 472
+      },
+      "wall_minus_device_ms": -88.35121999803232
+    },
+    {
+      "aggregate_input_tokens": 10274,
+      "batch_identity_digest": "b1e9adf234b8719172e5526859b400e121045552e4c473efe0abdeb25f84b73b",
+      "batch_index": 16,
+      "chunk_ids_digest": "225237a5b8bd64ac5d3cdd82883934908d0ea4f5c2a208b546d0bdadd19ec6fb",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 57647.8671875,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 57401.42856700186,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1725.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1725.0,
+          "power_draw_w": 84.81,
+          "pstate": "P0",
+          "temperature_c": 83.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 3.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 63.31,
+          "pstate": "P0",
+          "temperature_c": 80.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 31.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 493,
+      "padded_token_workload": 15776,
+      "padding_fraction": 0.3487576064908722,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 73.61430599485175,
+      "process_cpu_delta": {
+        "cpu_time_s": 57.72300899999996,
+        "error": null,
+        "involuntary_context_switches": 156,
+        "status": "observed",
+        "system_time_s": 19.29215099999999,
+        "user_time_s": 38.43085799999997,
+        "voluntary_context_switches": 1545
+      },
+      "token_length_stats": {
+        "max": 493,
+        "median": 378,
+        "min": 19,
+        "p50": 378,
+        "p95": 448,
+        "p99": 485
+      },
+      "wall_minus_device_ms": -246.43862049814197
+    },
+    {
+      "aggregate_input_tokens": 11341,
+      "batch_identity_digest": "bfb659357403d05df272bea5415550f3ef186f84477428bab979b6c3b4ab9739",
+      "batch_index": 17,
+      "chunk_ids_digest": "c3ce0f22e2549be03bac57c6a9fd59b3500674ed98d155a94311569c8dfde083",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 8367.8720703125,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 8415.523944000597,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1695.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1695.0,
+          "power_draw_w": 66.67,
+          "pstate": "P0",
+          "temperature_c": 81.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 22.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 64.25,
+          "pstate": "P0",
+          "temperature_c": 83.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 84.0,
+          "utilization_memory_pct": 4.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 490,
+      "padded_token_workload": 15680,
+      "padding_fraction": 0.2767219387755102,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 68.38863501980086,
+      "process_cpu_delta": {
+        "cpu_time_s": 8.41674599999999,
+        "error": null,
+        "involuntary_context_switches": 11,
+        "status": "observed",
+        "system_time_s": 3.133421999999996,
+        "user_time_s": 5.283323999999993,
+        "voluntary_context_switches": 557
+      },
+      "token_length_stats": {
+        "max": 490,
+        "median": 392,
+        "min": 67,
+        "p50": 392,
+        "p95": 453,
+        "p99": 480
+      },
+      "wall_minus_device_ms": 47.65187368809711
+    },
+    {
+      "aggregate_input_tokens": 10534,
+      "batch_identity_digest": "ec629ad38f4980430fe25db50762cfa533765f9dd5cc0f033c1801e9ae06c490",
+      "batch_index": 18,
+      "chunk_ids_digest": "38aa827a454d84e8dd7e1fe9806f257d6e086bace4e74719a4d587032554b5d0",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 8208.447265625,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 8192.423413001961,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1740.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1740.0,
+          "power_draw_w": 66.85,
+          "pstate": "P0",
+          "temperature_c": 81.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 23.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 62.62,
+          "pstate": "P0",
+          "temperature_c": 81.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 22.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 480,
+      "padded_token_workload": 15360,
+      "padding_fraction": 0.31419270833333335,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 65.56368099336396,
+      "process_cpu_delta": {
+        "cpu_time_s": 8.255821999999995,
+        "error": null,
+        "involuntary_context_switches": 126,
+        "status": "observed",
+        "system_time_s": 2.826373000000018,
+        "user_time_s": 5.429448999999977,
+        "voluntary_context_switches": 592
+      },
+      "token_length_stats": {
+        "max": 480,
+        "median": 388,
+        "min": 19,
+        "p50": 388,
+        "p95": 478,
+        "p99": 480
+      },
+      "wall_minus_device_ms": -16.023852623038692
+    },
+    {
+      "aggregate_input_tokens": 11177,
+      "batch_identity_digest": "71dfaa5c099cd0ed4fd92e8bcb0e234d79e145e63d25de0ea59a80fbfdadb343",
+      "batch_index": 19,
+      "chunk_ids_digest": "9f9aa6c34cb46d39507335881d27670a2eabcab0e1b710cd8f848ba8cf557e89",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 67833.640625,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 67452.04595700125,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 59.92,
+          "pstate": "P0",
+          "temperature_c": 82.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 2.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 62.69,
+          "pstate": "P0",
+          "temperature_c": 81.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 23.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 499,
+      "padded_token_workload": 15968,
+      "padding_fraction": 0.3000375751503006,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 125.08248599988292,
+      "process_cpu_delta": {
+        "cpu_time_s": 67.91793799999999,
+        "error": null,
+        "involuntary_context_switches": 145,
+        "status": "observed",
+        "system_time_s": 24.08053000000001,
+        "user_time_s": 43.83740799999998,
+        "voluntary_context_switches": 1773
+      },
+      "token_length_stats": {
+        "max": 499,
+        "median": 390,
+        "min": 13,
+        "p50": 390,
+        "p95": 476,
+        "p99": 492
+      },
+      "wall_minus_device_ms": -381.5946679987537
+    },
+    {
+      "aggregate_input_tokens": 11212,
+      "batch_identity_digest": "1844ea6ac1d245ebf74e0c80a515a7fff9d2cb77ed93216a79737a12562d30d0",
+      "batch_index": 20,
+      "chunk_ids_digest": "fc5fe4da3bb02bf3e2906a48aca17ea5858f9f469069217f3822b1dc95f8fd67",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 8566.5419921875,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 8435.202511998796,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1740.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1740.0,
+          "power_draw_w": 79.97,
+          "pstate": "P0",
+          "temperature_c": 81.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 22.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 64.5,
+          "pstate": "P0",
+          "temperature_c": 82.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 67.0,
+          "utilization_memory_pct": 4.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 484,
+      "padded_token_workload": 15488,
+      "padding_fraction": 0.2760847107438017,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 79.0285000075528,
+      "process_cpu_delta": {
+        "cpu_time_s": 8.67346299999997,
+        "error": null,
+        "involuntary_context_switches": 79,
+        "status": "observed",
+        "system_time_s": 2.96555699999999,
+        "user_time_s": 5.70790599999998,
+        "voluntary_context_switches": 582
+      },
+      "token_length_stats": {
+        "max": 484,
+        "median": 385,
+        "min": 4,
+        "p50": 385,
+        "p95": 475,
+        "p99": 482
+      },
+      "wall_minus_device_ms": -131.33948018870433
+    },
+    {
+      "aggregate_input_tokens": 11166,
+      "batch_identity_digest": "c576977afed029e0837239e9423f95c7a37439e580955f7a5f099e454097980a",
+      "batch_index": 21,
+      "chunk_ids_digest": "c4a92b6a789a6985e1c754a50c253214a862040a796ee4044879684a573b480a",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 66887.3359375,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 66703.33970100182,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1755.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1755.0,
+          "power_draw_w": 73.92,
+          "pstate": "P0",
+          "temperature_c": 83.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 2.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 64.1,
+          "pstate": "P0",
+          "temperature_c": 81.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 22.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 498,
+      "padded_token_workload": 15936,
+      "padding_fraction": 0.2993222891566265,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 77.34092900136602,
+      "process_cpu_delta": {
+        "cpu_time_s": 66.97897400000002,
+        "error": null,
+        "involuntary_context_switches": 98,
+        "status": "observed",
+        "system_time_s": 24.249220000000008,
+        "user_time_s": 42.729754000000014,
+        "voluntary_context_switches": 1689
+      },
+      "token_length_stats": {
+        "max": 498,
+        "median": 390,
+        "min": 91,
+        "p50": 390,
+        "p95": 441,
+        "p99": 483
+      },
+      "wall_minus_device_ms": -183.9962364981766
+    },
+    {
+      "aggregate_input_tokens": 10923,
+      "batch_identity_digest": "e9d879f301eb15560ec4f3037b70c2f8a675b7cf4ba3ef94b99e543b957dfe97",
+      "batch_index": 22,
+      "chunk_ids_digest": "8366631f5abeb16b904206aa77eb3307343b468ed35e730fc037a7574448e5cd",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 62459.3046875,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 62163.94214100001,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1725.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1725.0,
+          "power_draw_w": 85.81,
+          "pstate": "P0",
+          "temperature_c": 82.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 2.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 65.04,
+          "pstate": "P0",
+          "temperature_c": 83.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 2.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 504,
+      "padded_token_workload": 16128,
+      "padding_fraction": 0.32273065476190477,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 89.04769400396617,
+      "process_cpu_delta": {
+        "cpu_time_s": 62.54348200000001,
+        "error": null,
+        "involuntary_context_switches": 143,
+        "status": "observed",
+        "system_time_s": 22.218556000000007,
+        "user_time_s": 40.324926000000005,
+        "voluntary_context_switches": 1639
+      },
+      "token_length_stats": {
+        "max": 504,
+        "median": 388,
+        "min": 12,
+        "p50": 388,
+        "p95": 474,
+        "p99": 497
+      },
+      "wall_minus_device_ms": -295.3625464999932
+    },
+    {
+      "aggregate_input_tokens": 10041,
+      "batch_identity_digest": "af3684a84a2d02aba7ebda84c5ad05525e2fd1d582f0046ec1654de7f76355d4",
+      "batch_index": 23,
+      "chunk_ids_digest": "e78816abbf8d4b3487102b3c7304d4219e54aa1a67ec3995b16bcbda96345300",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 93343.9375,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 92880.43639500029,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 67.91,
+          "pstate": "P0",
+          "temperature_c": 83.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 99.0,
+          "utilization_memory_pct": 3.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 64.72,
+          "pstate": "P0",
+          "temperature_c": 82.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 2.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 514,
+      "padded_token_workload": 16448,
+      "padding_fraction": 0.3895306420233463,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 116.7827809949813,
+      "process_cpu_delta": {
+        "cpu_time_s": 93.46630299999995,
+        "error": null,
+        "involuntary_context_switches": 588,
+        "status": "observed",
+        "system_time_s": 29.22556499999999,
+        "user_time_s": 64.24073799999996,
+        "voluntary_context_switches": 2196
+      },
+      "token_length_stats": {
+        "max": 514,
+        "median": 368,
+        "min": 63,
+        "p50": 368,
+        "p95": 457,
+        "p99": 499
+      },
+      "wall_minus_device_ms": -463.50110499971197
+    },
+    {
+      "aggregate_input_tokens": 10834,
+      "batch_identity_digest": "941aac30a83063bbb99e56edaf55d07aee8097877f19751e502ace34be55b654",
+      "batch_index": 24,
+      "chunk_ids_digest": "a57d71af20b63bbfa520c6b253fd42cf411be7cf848da54acae6a0e16197806f",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 89775.4296875,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 89617.99088100088,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1725.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1725.0,
+          "power_draw_w": 76.72,
+          "pstate": "P0",
+          "temperature_c": 83.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 2.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 64.59,
+          "pstate": "P0",
+          "temperature_c": 83.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 99.0,
+          "utilization_memory_pct": 3.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 495,
+      "padded_token_workload": 15840,
+      "padding_fraction": 0.3160353535353535,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 72.69075399744906,
+      "process_cpu_delta": {
+        "cpu_time_s": 90.189569,
+        "error": null,
+        "involuntary_context_switches": 535,
+        "status": "observed",
+        "system_time_s": 32.943092999999976,
+        "user_time_s": 57.24647600000003,
+        "voluntary_context_switches": 2174
+      },
+      "token_length_stats": {
+        "max": 495,
+        "median": 391,
+        "min": 4,
+        "p50": 391,
+        "p95": 482,
+        "p99": 493
+      },
+      "wall_minus_device_ms": -157.4388064991217
+    },
+    {
+      "aggregate_input_tokens": 9985,
+      "batch_identity_digest": "bbeee0e3d491e70de223cd5242bc07ea9d3d388a4e41d2e4e1a5ae19504bdc83",
+      "batch_index": 25,
+      "chunk_ids_digest": "276cae1c6b657de4a9738694e9b23b5b21c389680b8d5d3be82c65c4534d9568",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 8561.810546875,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 8457.292983002844,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1740.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1740.0,
+          "power_draw_w": 70.37,
+          "pstate": "P0",
+          "temperature_c": 82.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 24.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 65.7,
+          "pstate": "P0",
+          "temperature_c": 82.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 2.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 488,
+      "padded_token_workload": 15616,
+      "padding_fraction": 0.3605917008196722,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 82.4125110048044,
+      "process_cpu_delta": {
+        "cpu_time_s": 8.612418999999989,
+        "error": null,
+        "involuntary_context_switches": 96,
+        "status": "observed",
+        "system_time_s": 3.0813360000000216,
+        "user_time_s": 5.531082999999967,
+        "voluntary_context_switches": 529
+      },
+      "token_length_stats": {
+        "max": 488,
+        "median": 380,
+        "min": 13,
+        "p50": 380,
+        "p95": 482,
+        "p99": 486
+      },
+      "wall_minus_device_ms": -104.51756387215573
+    },
+    {
+      "aggregate_input_tokens": 10438,
+      "batch_identity_digest": "f31fb4e3e7bf30fcb8d56896022b13c884c9b3be2ad726dc76d051f4338a57d7",
+      "batch_index": 26,
+      "chunk_ids_digest": "02d6f6b16fa558de13df031f4ffcd8754ab831b67e013006329e876f61111154",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 58537.5234375,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 58247.19059999916,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 63.58,
+          "pstate": "P0",
+          "temperature_c": 83.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 2.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1620.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1620.0,
+          "power_draw_w": 56.37,
+          "pstate": "P0",
+          "temperature_c": 82.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 24.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 498,
+      "padded_token_workload": 15936,
+      "padding_fraction": 0.3450050200803213,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 110.10430099122459,
+      "process_cpu_delta": {
+        "cpu_time_s": 58.625687000000084,
+        "error": null,
+        "involuntary_context_switches": 211,
+        "status": "observed",
+        "system_time_s": 21.240589,
+        "user_time_s": 37.385098000000085,
+        "voluntary_context_switches": 1554
+      },
+      "token_length_stats": {
+        "max": 498,
+        "median": 378,
+        "min": 56,
+        "p50": 378,
+        "p95": 473,
+        "p99": 492
+      },
+      "wall_minus_device_ms": -290.3328375008423
+    },
+    {
+      "aggregate_input_tokens": 10932,
+      "batch_identity_digest": "0af4687374d3832f3734752af3c59a20dc6947aae9855cf1e0ec6c760cc8f0c2",
+      "batch_index": 27,
+      "chunk_ids_digest": "3ccfb092675f757829b0efc973e90d1f10e00b81f13899ad85015f5d071fba2b",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 60203.38671875,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 59553.10530400311,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1650.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1650.0,
+          "power_draw_w": 90.16,
+          "pstate": "P0",
+          "temperature_c": 83.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 2.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 64.68,
+          "pstate": "P0",
+          "temperature_c": 83.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 2.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 510,
+      "padded_token_workload": 16320,
+      "padding_fraction": 0.33014705882352946,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 87.74015399831114,
+      "process_cpu_delta": {
+        "cpu_time_s": 60.298310999999956,
+        "error": null,
+        "involuntary_context_switches": 1376,
+        "status": "observed",
+        "system_time_s": 21.185315000000003,
+        "user_time_s": 39.11299599999995,
+        "voluntary_context_switches": 1399
+      },
+      "token_length_stats": {
+        "max": 510,
+        "median": 383,
+        "min": 86,
+        "p50": 383,
+        "p95": 472,
+        "p99": 501
+      },
+      "wall_minus_device_ms": -650.2814147468889
+    },
+    {
+      "aggregate_input_tokens": 9115,
+      "batch_identity_digest": "174ef87b2116fdd5dfadd6df2a795a37bc9b26624d7f05e5dc693e40088b13a6",
+      "batch_index": 28,
+      "chunk_ids_digest": "7ad8853d16279ca70167f7644d96e3b807e7245378796158d79747bb6cb61e39",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 8369.923828125,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 8246.402557000692,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1665.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1665.0,
+          "power_draw_w": 66.52,
+          "pstate": "P0",
+          "temperature_c": 82.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 24.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 65.88,
+          "pstate": "P0",
+          "temperature_c": 83.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 2.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 485,
+      "padded_token_workload": 15520,
+      "padding_fraction": 0.41269329896907214,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 66.88181300705764,
+      "process_cpu_delta": {
+        "cpu_time_s": 8.414660000000026,
+        "error": null,
+        "involuntary_context_switches": 94,
+        "status": "observed",
+        "system_time_s": 3.027776000000017,
+        "user_time_s": 5.386884000000009,
+        "voluntary_context_switches": 560
+      },
+      "token_length_stats": {
+        "max": 485,
+        "median": 362,
+        "min": 40,
+        "p50": 362,
+        "p95": 455,
+        "p99": 483
+      },
+      "wall_minus_device_ms": -123.52127112430753
+    },
+    {
+      "aggregate_input_tokens": 10425,
+      "batch_identity_digest": "f9397ecd60ebaf0b42f2b081e81493867f46b64c8d804f14ee49c3c7d233eb7e",
+      "batch_index": 29,
+      "chunk_ids_digest": "1e3b506432f68dadfedb50a392019ecad45125c2f03b5fc156565a924df774b7",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 60781.15234375,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 60480.861773998186,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1710.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1710.0,
+          "power_draw_w": 65.68,
+          "pstate": "P0",
+          "temperature_c": 83.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 2.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 63.7,
+          "pstate": "P0",
+          "temperature_c": 82.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 24.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 497,
+      "padded_token_workload": 15904,
+      "padding_fraction": 0.34450452716297786,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 64.35327298459015,
+      "process_cpu_delta": {
+        "cpu_time_s": 60.865804000000026,
+        "error": null,
+        "involuntary_context_switches": 190,
+        "status": "observed",
+        "system_time_s": 21.47994300000005,
+        "user_time_s": 39.38586099999998,
+        "voluntary_context_switches": 1598
+      },
+      "token_length_stats": {
+        "max": 497,
+        "median": 396,
+        "min": 15,
+        "p50": 396,
+        "p95": 462,
+        "p99": 487
+      },
+      "wall_minus_device_ms": -300.2905697518145
+    },
+    {
+      "aggregate_input_tokens": 10038,
+      "batch_identity_digest": "5cf3215da9d639d0137c5af499d3bbe695b7f2961ed4836e066514af4563dde4",
+      "batch_index": 30,
+      "chunk_ids_digest": "5d167f01957175d8b0c69a27a195226c3c0600e5ddc72c503a87d1a07cbe1f3c",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 8285.2919921875,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 8367.674914999952,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1755.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1755.0,
+          "power_draw_w": 81.83,
+          "pstate": "P0",
+          "temperature_c": 82.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 22.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 64.39,
+          "pstate": "P0",
+          "temperature_c": 83.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 2.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 481,
+      "padded_token_workload": 15392,
+      "padding_fraction": 0.3478430353430353,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 72.694087994023,
+      "process_cpu_delta": {
+        "cpu_time_s": 8.336500999999942,
+        "error": null,
+        "involuntary_context_switches": 87,
+        "status": "observed",
+        "system_time_s": 2.76484499999998,
+        "user_time_s": 5.571655999999962,
+        "voluntary_context_switches": 593
+      },
+      "token_length_stats": {
+        "max": 481,
+        "median": 370,
+        "min": 32,
+        "p50": 370,
+        "p95": 473,
+        "p99": 480
+      },
+      "wall_minus_device_ms": 82.3829228124523
+    },
+    {
+      "aggregate_input_tokens": 11355,
+      "batch_identity_digest": "6235ba7c903c3d1a6b29540d745cc674aaa92cdf69c4b753031f57908e4797a8",
+      "batch_index": 31,
+      "chunk_ids_digest": "5b29e1485cd296403ca1bd2285780752368aeca159c18b91d7329398cffe1e73",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 8265.2236328125,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 8221.084272998269,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1620.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1620.0,
+          "power_draw_w": 73.05,
+          "pstate": "P0",
+          "temperature_c": 82.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 22.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 64.83,
+          "pstate": "P0",
+          "temperature_c": 82.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 22.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 488,
+      "padded_token_workload": 15616,
+      "padding_fraction": 0.2728611680327869,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 73.03941600548569,
+      "process_cpu_delta": {
+        "cpu_time_s": 8.318052000000023,
+        "error": null,
+        "involuntary_context_switches": 33,
+        "status": "observed",
+        "system_time_s": 3.001283000000001,
+        "user_time_s": 5.316769000000022,
+        "voluntary_context_switches": 538
+      },
+      "token_length_stats": {
+        "max": 488,
+        "median": 393,
+        "min": 60,
+        "p50": 393,
+        "p95": 467,
+        "p99": 484
+      },
+      "wall_minus_device_ms": -44.139359814231284
+    },
+    {
+      "aggregate_input_tokens": 10342,
+      "batch_identity_digest": "926b9995307cf5edf900001f731974413b0e073428218b702f7faeebf8a3b723",
+      "batch_index": 32,
+      "chunk_ids_digest": "fd487f767a6725dde9fc652d2b85dbb61d98ed6256f5b771a32a4363fb22ee5f",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 8967.197265625,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 8840.323845000967,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 82.89,
+          "pstate": "P0",
+          "temperature_c": 82.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 17.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 61.22,
+          "pstate": "P0",
+          "temperature_c": 82.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 22.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 475,
+      "padded_token_workload": 15200,
+      "padding_fraction": 0.3196052631578947,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 77.06064399462775,
+      "process_cpu_delta": {
+        "cpu_time_s": 9.017525000000035,
+        "error": null,
+        "involuntary_context_switches": 85,
+        "status": "observed",
+        "system_time_s": 3.158570999999995,
+        "user_time_s": 5.85895400000004,
+        "voluntary_context_switches": 551
+      },
+      "token_length_stats": {
+        "max": 475,
+        "median": 386,
+        "min": 14,
+        "p50": 386,
+        "p95": 447,
+        "p99": 468
+      },
+      "wall_minus_device_ms": -126.87342062403332
+    },
+    {
+      "aggregate_input_tokens": 11168,
+      "batch_identity_digest": "d7005f913df412f7be6030ded1a244352b6773292cd083f3da893e184c8a46fa",
+      "batch_index": 33,
+      "chunk_ids_digest": "f757f0ad186fc7b38224c6b22c86fe8fc1b2b6178d07f879466fb834d01cbda3",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 81354.1484375,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 81011.10619000247,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1650.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1650.0,
+          "power_draw_w": 61.26,
+          "pstate": "P0",
+          "temperature_c": 83.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 57.0,
+          "utilization_memory_pct": 3.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 64.97,
+          "pstate": "P0",
+          "temperature_c": 82.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 17.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 520,
+      "padded_token_workload": 16640,
+      "padding_fraction": 0.3288461538461539,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 73.57061500806594,
+      "process_cpu_delta": {
+        "cpu_time_s": 81.44803400000006,
+        "error": null,
+        "involuntary_context_switches": 293,
+        "status": "observed",
+        "system_time_s": 31.573139000000026,
+        "user_time_s": 49.87489500000004,
+        "voluntary_context_switches": 2038
+      },
+      "token_length_stats": {
+        "max": 520,
+        "median": 396,
+        "min": 62,
+        "p50": 396,
+        "p95": 494,
+        "p99": 513
+      },
+      "wall_minus_device_ms": -343.04224749753485
+    },
+    {
+      "aggregate_input_tokens": 11849,
+      "batch_identity_digest": "7281c6b459c40644c25fc30b61c3e2874a34d86a01b6a5334662776fb162fa3b",
+      "batch_index": 34,
+      "chunk_ids_digest": "ae5088a6f05272009d4eea837f5a12d4fb22281577b63298bf2cf9469335286a",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 94690.5234375,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 93840.11701499912,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1755.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1755.0,
+          "power_draw_w": 88.16,
+          "pstate": "P0",
+          "temperature_c": 82.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 86.0,
+          "utilization_memory_pct": 2.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 66.39,
+          "pstate": "P0",
+          "temperature_c": 83.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 57.0,
+          "utilization_memory_pct": 3.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 495,
+      "padded_token_workload": 15840,
+      "padding_fraction": 0.25195707070707074,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 117.93390099046519,
+      "process_cpu_delta": {
+        "cpu_time_s": 94.79274899999996,
+        "error": null,
+        "involuntary_context_switches": 356,
+        "status": "observed",
+        "system_time_s": 34.217082000000005,
+        "user_time_s": 60.57566699999995,
+        "voluntary_context_switches": 2255
+      },
+      "token_length_stats": {
+        "max": 495,
+        "median": 380,
+        "min": 14,
+        "p50": 380,
+        "p95": 481,
+        "p99": 491
+      },
+      "wall_minus_device_ms": -850.4064225008769
+    },
+    {
+      "aggregate_input_tokens": 10498,
+      "batch_identity_digest": "a869944d81227d18e790e344f08f43b074e310c7f56fe95ff60f295ba7ca2690",
+      "batch_index": 35,
+      "chunk_ids_digest": "aac5e4e38a6e3767b2c19034a807f8e294caf5fc694e8d70da36eaeb5a5dbdbf",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 89714.3984375,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 89276.07362399795,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 63.96,
+          "pstate": "P0",
+          "temperature_c": 83.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 7.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 64.53,
+          "pstate": "P0",
+          "temperature_c": 82.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 52.0,
+          "utilization_memory_pct": 5.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 496,
+      "padded_token_workload": 15872,
+      "padding_fraction": 0.33858366935483875,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 104.99749900554889,
+      "process_cpu_delta": {
+        "cpu_time_s": 89.85453599999994,
+        "error": null,
+        "involuntary_context_switches": 327,
+        "status": "observed",
+        "system_time_s": 27.59128899999996,
+        "user_time_s": 62.26324699999998,
+        "voluntary_context_switches": 2192
+      },
+      "token_length_stats": {
+        "max": 496,
+        "median": 382,
+        "min": 4,
+        "p50": 382,
+        "p95": 461,
+        "p99": 491
+      },
+      "wall_minus_device_ms": -438.3248135020549
+    },
+    {
+      "aggregate_input_tokens": 11012,
+      "batch_identity_digest": "b99afb4687af954484e8ada82eaa6cf59de665df9d67f9c860efdf62eef328bf",
+      "batch_index": 36,
+      "chunk_ids_digest": "96987b0b465013e0705a4b3b6211c8f1cc9ce5b9e84905b591b4a44d60bd87c7",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 8040.21337890625,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 7915.282108999236,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1710.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1710.0,
+          "power_draw_w": 84.5,
+          "pstate": "P0",
+          "temperature_c": 82.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 23.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 64.61,
+          "pstate": "P0",
+          "temperature_c": 83.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 73.0,
+          "utilization_memory_pct": 4.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 488,
+      "padded_token_workload": 15616,
+      "padding_fraction": 0.2948258196721312,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 72.67566600785358,
+      "process_cpu_delta": {
+        "cpu_time_s": 8.14207799999997,
+        "error": null,
+        "involuntary_context_switches": 190,
+        "status": "observed",
+        "system_time_s": 2.861256000000026,
+        "user_time_s": 5.280821999999944,
+        "voluntary_context_switches": 497
+      },
+      "token_length_stats": {
+        "max": 488,
+        "median": 392,
+        "min": 11,
+        "p50": 392,
+        "p95": 486,
+        "p99": 488
+      },
+      "wall_minus_device_ms": -124.93126990701421
+    },
+    {
+      "aggregate_input_tokens": 11035,
+      "batch_identity_digest": "fffe7338306ac214d16b72b530908629b44a44b4fb39cfcfb2fce0162cfa5271",
+      "batch_index": 37,
+      "chunk_ids_digest": "7e645190d34084a1751907fc97dd986e0cd8de7565b40618964dfcef11e97328",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 13509.7724609375,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 13586.461687998963,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1665.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1665.0,
+          "power_draw_w": 61.99,
+          "pstate": "P0",
+          "temperature_c": 82.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 15.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 64.27,
+          "pstate": "P0",
+          "temperature_c": 82.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 23.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 486,
+      "padded_token_workload": 15552,
+      "padding_fraction": 0.2904449588477366,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 79.50566100407741,
+      "process_cpu_delta": {
+        "cpu_time_s": 13.572265999999956,
+        "error": null,
+        "involuntary_context_switches": 46,
+        "status": "observed",
+        "system_time_s": 6.084192999999971,
+        "user_time_s": 7.488072999999986,
+        "voluntary_context_switches": 690
+      },
+      "token_length_stats": {
+        "max": 486,
+        "median": 386,
+        "min": 4,
+        "p50": 386,
+        "p95": 480,
+        "p99": 485
+      },
+      "wall_minus_device_ms": 76.68922706146259
+    },
+    {
+      "aggregate_input_tokens": 10044,
+      "batch_identity_digest": "b006b08acb052f885b34d0992e8479c50355d7fa934b862c1aec185ed1e15c89",
+      "batch_index": 38,
+      "chunk_ids_digest": "b4678f94518ffc0b2380f31e0d61d2888acbe1ac82adc3f6098beede883775d7",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 61272.3828125,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 60635.47431700135,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1710.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1710.0,
+          "power_draw_w": 71.28,
+          "pstate": "P0",
+          "temperature_c": 83.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 1.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 64.54,
+          "pstate": "P0",
+          "temperature_c": 82.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 15.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 500,
+      "padded_token_workload": 16000,
+      "padding_fraction": 0.37224999999999997,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 82.42075501038926,
+      "process_cpu_delta": {
+        "cpu_time_s": 61.349973999999975,
+        "error": null,
+        "involuntary_context_switches": 413,
+        "status": "observed",
+        "system_time_s": 25.022207999999978,
+        "user_time_s": 36.327766,
+        "voluntary_context_switches": 1541
+      },
+      "token_length_stats": {
+        "max": 500,
+        "median": 392,
+        "min": 10,
+        "p50": 392,
+        "p95": 474,
+        "p99": 494
+      },
+      "wall_minus_device_ms": -636.9084954986465
+    },
+    {
+      "aggregate_input_tokens": 10305,
+      "batch_identity_digest": "18eaa519bf10478aa0426cd4409e1d8b3aaa0ced2c0a3fa5479eb6cb27ac181b",
+      "batch_index": 39,
+      "chunk_ids_digest": "5ba52e267d98d32f8cf17a3be7ec3c3002b5e0052df80928cfb872a0bda68676",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 7260.8125,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 7136.535446999915,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1605.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1605.0,
+          "power_draw_w": 84.29,
+          "pstate": "P0",
+          "temperature_c": 82.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 23.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1485.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1485.0,
+          "power_draw_w": 52.26,
+          "pstate": "P0",
+          "temperature_c": 83.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 1.0
+        },
+        "status": "observed"
+      },
+      "item_count": 32,
+      "max_sequence_length": 449,
+      "padded_token_workload": 14368,
+      "padding_fraction": 0.28278118040089084,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 66.76376699033426,
+      "process_cpu_delta": {
+        "cpu_time_s": 7.326175999999975,
+        "error": null,
+        "involuntary_context_switches": 22,
+        "status": "observed",
+        "system_time_s": 2.3443530000000123,
+        "user_time_s": 4.981822999999963,
+        "voluntary_context_switches": 523
+      },
+      "token_length_stats": {
+        "max": 449,
+        "median": 374,
+        "min": 10,
+        "p50": 374,
+        "p95": 439,
+        "p99": 446
+      },
+      "wall_minus_device_ms": -124.27705300008529
+    },
+    {
+      "aggregate_input_tokens": 4877,
+      "batch_identity_digest": "f57615acc87113eaf99a970eb0df9a4ef715f7de34a32a085020ceaa9d4232d9",
+      "batch_index": 40,
+      "chunk_ids_digest": "c11c32b2ba57868717460bfe0805417982add866046a7f34e9d145625b1708d2",
+      "cuda_allocator_after": {
+        "allocated_bytes": 1200088064,
+        "error": null,
+        "peak_allocated_bytes": 5874534912,
+        "reserved_bytes": 7837057024,
+        "status": "observed"
+      },
+      "encode_cuda_device_error": null,
+      "encode_cuda_device_ms": 4073.017578125,
+      "encode_cuda_device_status": "observed",
+      "encode_ms": 4003.209580998373,
+      "gpu_external_after": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1710.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1710.0,
+          "power_draw_w": 83.15,
+          "pstate": "P0",
+          "temperature_c": 82.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 24.0
+        },
+        "status": "observed"
+      },
+      "gpu_external_before": {
+        "error": null,
+        "sample": {
+          "clock_graphics_mhz": 1770.0,
+          "clock_memory_mhz": 5500.0,
+          "clock_sm_mhz": 1770.0,
+          "power_draw_w": 64.76,
+          "pstate": "P0",
+          "temperature_c": 82.0,
+          "throttle_hw_slowdown": "Not Active",
+          "throttle_hw_thermal_slowdown": "Not Active",
+          "throttle_sw_power_cap": "Not Active",
+          "throttle_sw_thermal_slowdown": "Not Active",
+          "utilization_gpu_pct": 100.0,
+          "utilization_memory_pct": 23.0
+        },
+        "status": "observed"
+      },
+      "item_count": 16,
+      "max_sequence_length": 502,
+      "padded_token_workload": 8032,
+      "padding_fraction": 0.3928037848605578,
+      "peak_vram_bytes_after": 5874534912,
+      "persistence_ms": 31.298639987653587,
+      "process_cpu_delta": {
+        "cpu_time_s": 4.094429999999932,
+        "error": null,
+        "involuntary_context_switches": 17,
+        "status": "observed",
+        "system_time_s": 1.3548509999999965,
+        "user_time_s": 2.739578999999935,
+        "voluntary_context_switches": 310
+      },
+      "token_length_stats": {
+        "max": 502,
+        "median": 376,
+        "min": 5,
+        "p50": 376,
+        "p95": 502,
+        "p99": 502
+      },
+      "wall_minus_device_ms": -69.80799712662701
+    }
+  ],
+  "collection_name": "dense_e29c701572d7a0d4d46a9800a0a9104e69c8cd1468b73d01",
+  "counts": {
+    "children_total": 1296,
+    "embeddings_failed": 0,
+    "embeddings_generated": 1296,
+    "embeddings_reused": 0,
+    "vectors_materialized": 1296
+  },
+  "dense_execution": {
+    "attention_backend": "sdpa",
+    "batch_size": 32,
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "embedding_dimension": 1024
+  },
+  "dense_profile_contract": "dense-cuda-profile-v2",
+  "execution_facts": {
+    "attention_backend": "sdpa",
+    "dtype": "bfloat16"
+  },
+  "execution_head": "177620a3440c310759775dbf303420b80df7a05c",
+  "git_tracked": "clean_tracked",
+  "index_id": "denseindex_e29c701572d7a0d4d46a9800a0a9104e69c8cd1468b73d01c4484ef41561b706",
+  "matrix_document": "docs/slice16k_d_d1_scientific_matrix_freeze.md",
+  "matrix_parent": "0ecf2f74e4d283f59ab932abbdaee6ebb821a5ac",
+  "peak_vram_bytes": 5874534912,
+  "peak_vram_status": "observed",
+  "phase": "A1",
+  "recorded_at": "2026-10-20T03:33:41.635814Z",
+  "runtime": {
+    "cuda_version": "13.0",
+    "gpu_memory_total_mib": 8191,
+    "gpu_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+    "nvidia_smi": "NVIDIA GeForce RTX 2080 Super with Max-Q Design, 8192 MiB, 595.71",
+    "nvidia_smi_error": null,
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "python": "3.14.5",
+    "torch_version": "2.14.0+cu130"
+  },
+  "source_sha256": {
+    "scripts/diag_16k_d_dense/d1_common.py": "a909c86088c0d87df25e9ad01834ae0c2af4778b75fc7132a814a784398883c8",
+    "scripts/diag_16k_d_dense/run_d1_scientific.py": "b2deffd9807edb7c60495b3365fcce021b1a856dd059824a8869ae286dc4ac9b",
+    "src/offline_rag/dense/pipeline.py": "aba645eaaca69524a9524098cc9f6543ea6371ac56aa13f35ef3b1ef395b447f",
+    "src/offline_rag/dense/profiling.py": "6caa9755b8eb2331c809b8ff3d0aabe256c2d83a16acc7dd88dd1a3b5477e2c3"
+  },
+  "status": "CELL_VALID",
+  "timing": {
+    "dense_generation_ms": 1400764,
+    "dense_materialization_ms": 7549,
+    "note": "attribution_only_not_section_9_4_confirmation",
+    "profile_timing_ms": {
+      "dense_point_construction": 11.318953002046328,
+      "embedding_artifact_persistence_total": 3298.8441879751917,
+      "encode_total": 1381402.2013290124,
+      "first_batch_encode": 12952.8671199987,
+      "qdrant_materialization_upsert": 7655.075924998528,
+      "steady_state_encode_mean": 34211.23335522534
+    },
+    "report_duration_ms": 1409658,
+    "wall_clock_s": 1401.3486934419998
+  },
+  "tokenizer_status": "observed",
+  "workload": {
+    "child_count": 1296,
+    "chunk_manifest_sha256": "de4ad6b5ab661ba74e8ab2ec5344aa41518fc1dd0e9d94eb08edfbc3073076c3",
+    "chunk_set_id": "chunkset_d0b1fee57392071172e54bb1f4b234965fa9993813319e39d52802eec07db65d",
+    "cold_or_warm": "cold",
+    "corpus_id": "corpus_3c74b057074e928cccf7da048c06db0cf6df63bbe546ec14c071604949f160e3",
+    "corpus_manifest_sha256": "69cefa61214e0e5e0a5eb71df01e323ede6f1807226181ef4134faeceb91b353",
+    "historical_dense_index_id": "denseindex_e29c701572d7a0d4d46a9800a0a9104e69c8cd1468b73d01c4484ef41561b706",
+    "label": "D0-INCIDENT-1296-CHILD-V1"
+  }
+}

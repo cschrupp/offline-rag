@@ -221,8 +221,10 @@
 **16K-D D1 matrix freeze document:** `docs/slice16k_d_d1_scientific_matrix_freeze.md`
 **16K-D D1 scientific execution authority:** `S16-K-D-D1-STALL-ATTRIBUTION-SCIENTIFIC-EXECUTION-AUTH-001` — AUTHORIZED
 **Exact 16K-D D1 scientific execution parent:** `0ecf2f74e4d283f59ab932abbdaee6ebb821a5ac`
-**16K-D status:** D1 SCIENTIFIC EXECUTION AUTHORIZED / IN PROGRESS
-**16K-D D1 scientific sequence:** D1-A1 → D1-A2 → D1-B (fixed)
+**Exact 16K-D D1 scientific execution subject:** `177620a3440c310759775dbf303420b80df7a05c`
+**16K-D status:** D1 SCIENTIFIC EXECUTION COMPLETE / READY FOR INDEPENDENT REVIEW
+**16K-D D1-A1/A2:** CELL_VALID (1296/0, 41 batches)
+**16K-D D1-B:** CELL_VALID (36/36)
 **16K-D document:** `docs/slice16k_d_dense_cuda_profiling.md`
 **16K-D evidence:** `docs/evidence/16k_d_dense_cuda/`
 **16K-D D1 tooling evidence:** `docs/evidence/16k_d_dense_cuda_tooling/`
@@ -677,7 +679,8 @@ Detailed per-batch profiling belongs in benchmark/evidence artifacts.
 **D1 matrix freeze document:** `docs/slice16k_d_d1_scientific_matrix_freeze.md`  
 **D1 scientific execution authority:** `S16-K-D-D1-STALL-ATTRIBUTION-SCIENTIFIC-EXECUTION-AUTH-001` — AUTHORIZED  
 **Exact D1 scientific execution parent:** `0ecf2f74e4d283f59ab932abbdaee6ebb821a5ac`  
-**Status:** D1 SCIENTIFIC EXECUTION AUTHORIZED / IN PROGRESS  
+**Exact D1 scientific execution subject:** `177620a3440c310759775dbf303420b80df7a05c`  
+**Status:** D1 SCIENTIFIC EXECUTION COMPLETE / READY FOR INDEPENDENT REVIEW  
 (D2+ treatments NOT AUTHORIZED)
 
 Current code path context (independently accepted D0): SentenceTransformers /
@@ -1389,8 +1392,12 @@ Exact 16K-D D1 matrix freeze parent:
   S16-K-D-D1-STALL-ATTRIBUTION-SCIENTIFIC-EXECUTION-AUTH-001 — AUTHORIZED
 Exact 16K-D D1 scientific execution parent:
   0ecf2f74e4d283f59ab932abbdaee6ebb821a5ac
-16K-D status: D1 SCIENTIFIC EXECUTION AUTHORIZED / IN PROGRESS
-16K-D D1 scientific sequence: D1-A1 → D1-A2 → D1-B (fixed)
+Exact 16K-D D1 scientific execution subject:
+  177620a3440c310759775dbf303420b80df7a05c
+16K-D status: D1 SCIENTIFIC EXECUTION COMPLETE /
+  READY FOR INDEPENDENT REVIEW
+16K-D D1-A1/A2: CELL_VALID (1296/0, 41 batches)
+16K-D D1-B: CELL_VALID (36/36)
 16K-D document: docs/slice16k_d_dense_cuda_profiling.md
 16K-D evidence: docs/evidence/16k_d_dense_cuda/
 16K-D D1 tooling evidence: docs/evidence/16k_d_dense_cuda_tooling/

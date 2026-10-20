@@ -33,14 +33,17 @@
 
 **D1 scientific execution authority:** `S16-K-D-D1-STALL-ATTRIBUTION-SCIENTIFIC-EXECUTION-AUTH-001` — AUTHORIZED  
 **Exact D1 scientific execution parent:** `0ecf2f74e4d283f59ab932abbdaee6ebb821a5ac`  
+**Exact D1 scientific execution subject (harness tip):** `177620a3440c310759775dbf303420b80df7a05c`  
 
-**Status:** D1 SCIENTIFIC EXECUTION AUTHORIZED / IN PROGRESS  
+**Status:** D1 SCIENTIFIC EXECUTION COMPLETE / READY FOR INDEPENDENT REVIEW  
 **D0:** BASELINE COMPLETE / INDEPENDENTLY ACCEPTED  
 **D1 tooling:** COMPLETE / INDEPENDENTLY ACCEPTED  
 **D1 tooling F001:** CLOSED  
 **Contract:** `dense-cuda-profile-v2`  
 **D1 scientific matrix:** FROZEN  
-**D1 scientific execution sequence:** D1-A1 → D1-A2 → D1-B (fixed; no adaptive changes)
+**D1-A1 / D1-A2:** CELL_VALID (`generated=1296` / `reused=0`, 41 batches)  
+**D1-B:** CELL_VALID (36/36 measured encodes)  
+**D1 analysis:** `docs/evidence/16k_d_dense_cuda/d1/d1_analysis.json`
 
 ## Authoritative current lane (unchanged)
 
@@ -125,3 +128,6 @@ cache-clearing/eviction policy · HTTP-500 investigation · threshold modificati
 - D1 tooling capability (non-scientific):
   `docs/evidence/16k_d_dense_cuda_tooling/d1_tooling_capability.json`
 - D1 matrix freeze: `docs/slice16k_d_d1_scientific_matrix_freeze.md`
+- D1 scientific evidence: `docs/evidence/16k_d_dense_cuda/d1/`
+  (`d1_preflight.json`, `d1_a1.json`, `d1_a2.json`, `d1_b.json`,
+  `d1_analysis.json`; preserved invalid: `d1_preflight_INVALID.json`)

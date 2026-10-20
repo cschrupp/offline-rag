@@ -1,0 +1,30 @@
+{
+  "accepted_tooling_subject": "433725952c15a2feed4b65986d03e254d08d1568",
+  "attribution_only_not_section_9_4_gate": true,
+  "authority": "S16-K-D-D1-STALL-ATTRIBUTION-SCIENTIFIC-EXECUTION-AUTH-001",
+  "detail": {
+    "detail": "tracked_working_tree_dirty:  M uv.lock"
+  },
+  "execution_head": "177620a3440c310759775dbf303420b80df7a05c",
+  "invalid_reason": "tracked_working_tree_dirty",
+  "matrix_document": "docs/slice16k_d_d1_scientific_matrix_freeze.md",
+  "matrix_parent": "0ecf2f74e4d283f59ab932abbdaee6ebb821a5ac",
+  "recorded_at": "2026-10-20T03:09:13.421129Z",
+  "runtime": {
+    "cuda_version": "13.0",
+    "gpu_memory_total_mib": 8191,
+    "gpu_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+    "nvidia_smi": "NVIDIA GeForce RTX 2080 Super with Max-Q Design, 8192 MiB, 595.71",
+    "nvidia_smi_error": null,
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "python": "3.14.5",
+    "torch_version": "2.14.0+cu130"
+  },
+  "source_sha256": {
+    "scripts/diag_16k_d_dense/d1_common.py": "a909c86088c0d87df25e9ad01834ae0c2af4778b75fc7132a814a784398883c8",
+    "scripts/diag_16k_d_dense/run_d1_scientific.py": "b2deffd9807edb7c60495b3365fcce021b1a856dd059824a8869ae286dc4ac9b",
+    "src/offline_rag/dense/pipeline.py": "aba645eaaca69524a9524098cc9f6543ea6371ac56aa13f35ef3b1ef395b447f",
+    "src/offline_rag/dense/profiling.py": "6caa9755b8eb2331c809b8ff3d0aabe256c2d83a16acc7dd88dd1a3b5477e2c3"
+  },
+  "status": "INVALID_ATTEMPT"
+}

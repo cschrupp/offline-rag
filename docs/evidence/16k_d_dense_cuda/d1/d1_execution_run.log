@@ -1,0 +1,38 @@
+FAIL-CLOSED: tracked_working_tree_dirty
+WROTE /home/user/projects/technical_rag/docs/evidence/16k_d_dense_cuda/d1/d1_preflight_INVALID.json
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights:  34%|███▍      | 106/310 [00:00<00:00, 1039.83it/s]Loading weights:  84%|████████▍ | 261/310 [00:00<00:00, 1334.92it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 1470.22it/s]
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights:  42%|████▏     | 130/310 [00:00<00:00, 1296.23it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 1617.19it/s]
+WROTE /home/user/projects/technical_rag/docs/evidence/16k_d_dense_cuda/d1/d1_a1.json
+{
+  "phase": "A1",
+  "generated": 1296,
+  "reused": 0,
+  "wall_s": 1401.3486934419998,
+  "batch_count": 41
+}
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights:  45%|████▌     | 140/310 [00:00<00:00, 1399.22it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 1844.55it/s]
+WROTE /home/user/projects/technical_rag/docs/evidence/16k_d_dense_cuda/d1/d1_a2.json
+{
+  "phase": "A2",
+  "generated": 1296,
+  "reused": 0,
+  "wall_s": 1173.858568814001,
+  "batch_count": 41
+}
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights:  49%|████▉     | 152/310 [00:00<00:00, 1506.71it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 2007.15it/s]
+WROTE /home/user/projects/technical_rag/docs/evidence/16k_d_dense_cuda/d1/d1_b.json
+{
+  "phase": "B",
+  "encode_count": 36,
+  "status": "CELL_VALID"
+}
+WROTE /home/user/projects/technical_rag/docs/evidence/16k_d_dense_cuda/d1/d1_preflight.json
+=== launching fresh process phase=a1 ===
+=== launching fresh process phase=a2 ===
+=== launching fresh process phase=b ===
+WROTE /home/user/projects/technical_rag/docs/evidence/16k_d_dense_cuda/d1/d1_analysis.json
+{
+  "a1_a2_spearman": 0.8972125435540069,
+  "wall_device_pearson_a1": 0.9999891497524978,
+  "b_36": 36
+}

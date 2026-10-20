@@ -1,0 +1,354 @@
+{
+  "accepted_tooling_subject": "433725952c15a2feed4b65986d03e254d08d1568",
+  "attribution_only_not_section_9_4_gate": true,
+  "authority": "S16-K-D-D1-STALL-ATTRIBUTION-SCIENTIFIC-EXECUTION-AUTH-001",
+  "d1b_encode_schedule": [
+    {
+      "batch_index": 1,
+      "block": "P1",
+      "call_index": 0,
+      "cell": "F1",
+      "repetition": 1
+    },
+    {
+      "batch_index": 14,
+      "block": "P1",
+      "call_index": 1,
+      "cell": "S1",
+      "repetition": 1
+    },
+    {
+      "batch_index": 14,
+      "block": "P1",
+      "call_index": 2,
+      "cell": "S1",
+      "repetition": 2
+    },
+    {
+      "batch_index": 1,
+      "block": "P1",
+      "call_index": 3,
+      "cell": "F1",
+      "repetition": 2
+    },
+    {
+      "batch_index": 1,
+      "block": "P1",
+      "call_index": 4,
+      "cell": "F1",
+      "repetition": 3
+    },
+    {
+      "batch_index": 14,
+      "block": "P1",
+      "call_index": 5,
+      "cell": "S1",
+      "repetition": 3
+    },
+    {
+      "batch_index": 14,
+      "block": "P1",
+      "call_index": 6,
+      "cell": "S1",
+      "repetition": 4
+    },
+    {
+      "batch_index": 1,
+      "block": "P1",
+      "call_index": 7,
+      "cell": "F1",
+      "repetition": 4
+    },
+    {
+      "batch_index": 1,
+      "block": "P1",
+      "call_index": 8,
+      "cell": "F1",
+      "repetition": 5
+    },
+    {
+      "batch_index": 14,
+      "block": "P1",
+      "call_index": 9,
+      "cell": "S1",
+      "repetition": 5
+    },
+    {
+      "batch_index": 14,
+      "block": "P1",
+      "call_index": 10,
+      "cell": "S1",
+      "repetition": 6
+    },
+    {
+      "batch_index": 1,
+      "block": "P1",
+      "call_index": 11,
+      "cell": "F1",
+      "repetition": 6
+    },
+    {
+      "batch_index": 17,
+      "block": "P2",
+      "call_index": 12,
+      "cell": "F2",
+      "repetition": 1
+    },
+    {
+      "batch_index": 13,
+      "block": "P2",
+      "call_index": 13,
+      "cell": "S2",
+      "repetition": 1
+    },
+    {
+      "batch_index": 13,
+      "block": "P2",
+      "call_index": 14,
+      "cell": "S2",
+      "repetition": 2
+    },
+    {
+      "batch_index": 17,
+      "block": "P2",
+      "call_index": 15,
+      "cell": "F2",
+      "repetition": 2
+    },
+    {
+      "batch_index": 17,
+      "block": "P2",
+      "call_index": 16,
+      "cell": "F2",
+      "repetition": 3
+    },
+    {
+      "batch_index": 13,
+      "block": "P2",
+      "call_index": 17,
+      "cell": "S2",
+      "repetition": 3
+    },
+    {
+      "batch_index": 13,
+      "block": "P2",
+      "call_index": 18,
+      "cell": "S2",
+      "repetition": 4
+    },
+    {
+      "batch_index": 17,
+      "block": "P2",
+      "call_index": 19,
+      "cell": "F2",
+      "repetition": 4
+    },
+    {
+      "batch_index": 17,
+      "block": "P2",
+      "call_index": 20,
+      "cell": "F2",
+      "repetition": 5
+    },
+    {
+      "batch_index": 13,
+      "block": "P2",
+      "call_index": 21,
+      "cell": "S2",
+      "repetition": 5
+    },
+    {
+      "batch_index": 13,
+      "block": "P2",
+      "call_index": 22,
+      "cell": "S2",
+      "repetition": 6
+    },
+    {
+      "batch_index": 17,
+      "block": "P2",
+      "call_index": 23,
+      "cell": "F2",
+      "repetition": 6
+    },
+    {
+      "batch_index": 4,
+      "block": "P3",
+      "call_index": 24,
+      "cell": "D1",
+      "repetition": 1
+    },
+    {
+      "batch_index": 6,
+      "block": "P3",
+      "call_index": 25,
+      "cell": "D2",
+      "repetition": 1
+    },
+    {
+      "batch_index": 6,
+      "block": "P3",
+      "call_index": 26,
+      "cell": "D2",
+      "repetition": 2
+    },
+    {
+      "batch_index": 4,
+      "block": "P3",
+      "call_index": 27,
+      "cell": "D1",
+      "repetition": 2
+    },
+    {
+      "batch_index": 4,
+      "block": "P3",
+      "call_index": 28,
+      "cell": "D1",
+      "repetition": 3
+    },
+    {
+      "batch_index": 6,
+      "block": "P3",
+      "call_index": 29,
+      "cell": "D2",
+      "repetition": 3
+    },
+    {
+      "batch_index": 6,
+      "block": "P3",
+      "call_index": 30,
+      "cell": "D2",
+      "repetition": 4
+    },
+    {
+      "batch_index": 4,
+      "block": "P3",
+      "call_index": 31,
+      "cell": "D1",
+      "repetition": 4
+    },
+    {
+      "batch_index": 4,
+      "block": "P3",
+      "call_index": 32,
+      "cell": "D1",
+      "repetition": 5
+    },
+    {
+      "batch_index": 6,
+      "block": "P3",
+      "call_index": 33,
+      "cell": "D2",
+      "repetition": 5
+    },
+    {
+      "batch_index": 6,
+      "block": "P3",
+      "call_index": 34,
+      "cell": "D2",
+      "repetition": 6
+    },
+    {
+      "batch_index": 4,
+      "block": "P3",
+      "call_index": 35,
+      "cell": "D1",
+      "repetition": 6
+    }
+  ],
+  "d1b_selected_identities": [
+    {
+      "batch_identity_digest": "ab902b510a7029f6f88c88d590bcd0e3b826dc29f2cf230ca837617563ef8e73",
+      "batch_index": 1,
+      "cell": "F1",
+      "chunk_ids_digest": "b6c69c95f2ed592c954e39f85a9c4abc06372ba33d0cf03a39e71dc2e725f6e4",
+      "item_count": 32
+    },
+    {
+      "batch_identity_digest": "43d016e861f37026b0cebe7686bdfdb106ccc8c3e0741247b40f0519ab4e54c1",
+      "batch_index": 14,
+      "cell": "S1",
+      "chunk_ids_digest": "cb3d5efb9230000021236443e113cd2fd823278d16f175385e77e360e55e7006",
+      "item_count": 32
+    },
+    {
+      "batch_identity_digest": "bfb659357403d05df272bea5415550f3ef186f84477428bab979b6c3b4ab9739",
+      "batch_index": 17,
+      "cell": "F2",
+      "chunk_ids_digest": "c3ce0f22e2549be03bac57c6a9fd59b3500674ed98d155a94311569c8dfde083",
+      "item_count": 32
+    },
+    {
+      "batch_identity_digest": "d43fb7f63ee03fe53566439552ab289fe5ebc927c1bcce7f3ca6ecb7dff32d50",
+      "batch_index": 13,
+      "cell": "S2",
+      "chunk_ids_digest": "99ac9f92cdc691172d7bfc8b4f9ec19e1629b43d3c7c5b79a9fadc0c66400e98",
+      "item_count": 32
+    },
+    {
+      "batch_identity_digest": "f12e1b6dd996fc6ff640084f4f38a9e2f0bf2de857554b14d9b47ca5d37d6e11",
+      "batch_index": 4,
+      "cell": "D1",
+      "chunk_ids_digest": "24ba60939db470256a8bd05eace2d329d1a68d09869410be671a19f33e8f02a9",
+      "item_count": 32
+    },
+    {
+      "batch_identity_digest": "48ad1c70dfa6b6e5008307059613021ade0c274debacb9a578917593dfb09623",
+      "batch_index": 6,
+      "cell": "D2",
+      "chunk_ids_digest": "1b26a16ecf2947f813bbeff0cec7c812dfef74c5299e5f61cb1df38161483e9f",
+      "item_count": 32
+    }
+  ],
+  "execution_facts": {
+    "attention_backend": "sdpa",
+    "batch_size": 32,
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "model_id": "Qwen/Qwen3-Embedding-0.6B",
+    "profile_contract_expected": "dense-cuda-profile-v2",
+    "revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3"
+  },
+  "execution_head": "177620a3440c310759775dbf303420b80df7a05c",
+  "git_tracked": "clean_tracked",
+  "matrix_document": "docs/slice16k_d_d1_scientific_matrix_freeze.md",
+  "matrix_parent": "0ecf2f74e4d283f59ab932abbdaee6ebb821a5ac",
+  "note": "D1-B identities frozen before A1. Model load in preflight is not a measured scientific encode of selected batches.",
+  "phase": "preflight",
+  "reconstruction": {
+    "batch_count": 41,
+    "batch_size": 32,
+    "chunk_set_id": "chunkset_d0b1fee57392071172e54bb1f4b234965fa9993813319e39d52802eec07db65d",
+    "eligible_child_count": 1296,
+    "excluded_count": 0,
+    "sorting_contract": "chunk_id_ascending"
+  },
+  "recorded_at": "2026-10-20T03:09:58.798049Z",
+  "runtime": {
+    "cuda_version": "13.0",
+    "gpu_memory_total_mib": 8191,
+    "gpu_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+    "nvidia_smi": "NVIDIA GeForce RTX 2080 Super with Max-Q Design, 8192 MiB, 595.71",
+    "nvidia_smi_error": null,
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "python": "3.14.5",
+    "torch_version": "2.14.0+cu130"
+  },
+  "source_sha256": {
+    "scripts/diag_16k_d_dense/d1_common.py": "a909c86088c0d87df25e9ad01834ae0c2af4778b75fc7132a814a784398883c8",
+    "scripts/diag_16k_d_dense/run_d1_scientific.py": "b2deffd9807edb7c60495b3365fcce021b1a856dd059824a8869ae286dc4ac9b",
+    "src/offline_rag/dense/pipeline.py": "aba645eaaca69524a9524098cc9f6543ea6371ac56aa13f35ef3b1ef395b447f",
+    "src/offline_rag/dense/profiling.py": "6caa9755b8eb2331c809b8ff3d0aabe256c2d83a16acc7dd88dd1a3b5477e2c3"
+  },
+  "status": "PREFLIGHT_OK",
+  "workload": {
+    "child_count": 1296,
+    "chunk_manifest_sha256": "de4ad6b5ab661ba74e8ab2ec5344aa41518fc1dd0e9d94eb08edfbc3073076c3",
+    "chunk_set_id": "chunkset_d0b1fee57392071172e54bb1f4b234965fa9993813319e39d52802eec07db65d",
+    "cold_or_warm": "cold",
+    "corpus_id": "corpus_3c74b057074e928cccf7da048c06db0cf6df63bbe546ec14c071604949f160e3",
+    "corpus_manifest_sha256": "69cefa61214e0e5e0a5eb71df01e323ede6f1807226181ef4134faeceb91b353",
+    "historical_dense_index_id": "denseindex_e29c701572d7a0d4d46a9800a0a9104e69c8cd1468b73d01c4484ef41561b706",
+    "label": "D0-INCIDENT-1296-CHILD-V1"
+  }
+}
