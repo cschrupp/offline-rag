@@ -1006,10 +1006,18 @@ SLICE 15  COMPLETE / ACCEPTED
          — AUTHORIZED
        Exact 16K-D D2 design parent:
          7be6a2b5c7ca7b521f0c642d6a024a1e421d6636
+       16K-D D2 design IR-001:
+         S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-IR-001
+         — REWORK REQUIRED (F001–F004) — preserved
+       16K-D D2 design rework authority:
+         S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-REWORK-AUTH-001
+         — AUTHORIZED
+       Exact 16K-D D2 design rework parent:
+         80f4b09e0c85400d13c1f505a073cee6eab6f50b
        16K-D D2 design document:
          docs/slice16k_d_d2_practical_execution_optimization_design.md
-       16K-D status: D2 PRACTICAL EXECUTION OPTIMIZATION DESIGN COMPLETE /
-         READY FOR INDEPENDENT REVIEW
+       16K-D status: D2 PRACTICAL EXECUTION OPTIMIZATION DESIGN REWORK COMPLETE /
+         READY FOR INDEPENDENT RE-REVIEW
        16K-D D2: DESIGN ONLY / EXECUTION NOT AUTHORIZED
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
@@ -1738,10 +1746,18 @@ SLICE 15  COMPLETE / ACCEPTED
          — AUTHORIZED
        Exact 16K-D D2 design parent:
          7be6a2b5c7ca7b521f0c642d6a024a1e421d6636
+       16K-D D2 design IR-001:
+         S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-IR-001
+         — REWORK REQUIRED (F001–F004) — preserved
+       16K-D D2 design rework authority:
+         S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-REWORK-AUTH-001
+         — AUTHORIZED
+       Exact 16K-D D2 design rework parent:
+         80f4b09e0c85400d13c1f505a073cee6eab6f50b
        16K-D D2 design document:
          docs/slice16k_d_d2_practical_execution_optimization_design.md
-       16K-D status: D2 PRACTICAL EXECUTION OPTIMIZATION DESIGN COMPLETE /
-         READY FOR INDEPENDENT REVIEW
+       16K-D status: D2 PRACTICAL EXECUTION OPTIMIZATION DESIGN REWORK COMPLETE /
+         READY FOR INDEPENDENT RE-REVIEW
        16K-D D2: DESIGN ONLY / EXECUTION NOT AUTHORIZED
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization

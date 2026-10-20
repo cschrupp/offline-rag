@@ -45,9 +45,12 @@
 
 **D2 practical execution optimization design authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-AUTH-001` — AUTHORIZED  
 **Exact D2 design parent:** `7be6a2b5c7ca7b521f0c642d6a024a1e421d6636`  
+**D2 design IR-001:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-IR-001` — REWORK REQUIRED (F001–F004) — preserved  
+**D2 design rework authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-REWORK-AUTH-001` — AUTHORIZED  
+**Exact D2 design rework parent:** `80f4b09e0c85400d13c1f505a073cee6eab6f50b`  
 **D2 design document:** `docs/slice16k_d_d2_practical_execution_optimization_design.md`  
 
-**Status:** D2 PRACTICAL EXECUTION OPTIMIZATION DESIGN COMPLETE / READY FOR INDEPENDENT REVIEW  
+**Status:** D2 PRACTICAL EXECUTION OPTIMIZATION DESIGN REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
 **D0:** BASELINE COMPLETE / INDEPENDENTLY ACCEPTED  
 **D1:** COMPLETE / INDEPENDENTLY ACCEPTED (scientific program closed for product pivot)  
 **D1 tooling F001 / D1 analysis F001:** CLOSED  
@@ -129,13 +132,27 @@ Authoritative design: `docs/slice16k_d_d2_practical_execution_optimization_desig
 Staged stop-conditional campaign (max 6 new full cold runs; likely 4):
 
 - **G1:** CUDA FP16 / batch 32 (two cold screens);
-- **C0:** CPU production baseline (mandatory; not graded on 10/12-minute GPU proxy);
-- **G2:** CUDA FP16 / batch 16 — conditional if G1 inadequate;
-- **Gx-3:** one confirmation run of the GPU candidate for §9.4 three-run set.
+- **C0:** CPU · same Qwen · batch 32 · production path · no CUDA · no CPU tuning;
+  observe/record effective dtype/backend/threads/RSS (not graded on 10/12 GPU proxy);
+- **G2:** CUDA FP16 / batch 16 — only under frozen mathematical screen or G1 valid
+  resource failure (high VRAM occupancy alone is not a G2 trigger);
+- **Gx-3:** confirmation only when the two-run screen says the lane remains
+  mathematically eligible; then apply §9.4 three-run gate.
 
-Reuse sealed BF16 D0/D1 evidence as reference. Lighter instrumentation than D1;
-no per-batch CUDA-event sync for curiosity. Retrieval-parity probe must be frozen
-in the execution AUTH before treatment runs.
+**Two-run screen (after both valid):** either >12 min, or both >10 min → no Gx-3
+for that lane (G1 → open G2 after C0; G2 → STOP GPU). Otherwise both ≤12 and at
+least one ≤10 → run Gx-3.
+
+**Validity:** correct-identity CUDA OOM/resource exhaustion is a valid negative
+treatment result (G1 → G2 eligible; G2 → STOP), not an invalid/retry.
+
+**Performance reference:** accepted clean D0 BF16/b32 only. D0 historical and
+D1-A1/A2 are context/attribution only — not FP16 speedup controls, not D2
+pass/fail, not §9.4 confirmation members.
+
+Lighter instrumentation than D1; no per-batch CUDA-event sync for curiosity.
+Retrieval-parity probe must be frozen in the execution AUTH before the first
+FP16 treatment call.
 
 ## Explicitly NOT AUTHORIZED under this design AUTH
 

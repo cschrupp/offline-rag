@@ -1,7 +1,12 @@
 # 16K-D D2 — Practical Execution Optimization (Design)
 
 **Design authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-AUTH-001` — AUTHORIZED  
-**Exact parent:** `7be6a2b5c7ca7b521f0c642d6a024a1e421d6636`  
+**Exact original design parent:** `7be6a2b5c7ca7b521f0c642d6a024a1e421d6636`  
+
+**Design IR-001:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-IR-001` — REWORK REQUIRED (F001–F004) — preserved  
+**Design rework authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-REWORK-AUTH-001` — AUTHORIZED  
+**Exact rework parent:** `80f4b09e0c85400d13c1f505a073cee6eab6f50b`  
+
 **Branch:** `implementation/16k-d-dense-cuda-profiling`  
 **Status:** DESIGN ONLY / EXECUTION NOT AUTHORIZED  
 
@@ -38,8 +43,7 @@ D1 established enough attribution for engineering decisions:
 **D2 SHALL NOT** continue root-cause investigation unless a later product
 decision specifically requires it.
 
-No separate D1 acceptance-record commit is required; this design successor
-records IR-002 ACCEPT.
+No separate D1 acceptance-record commit is required; this design records IR-002 ACCEPT.
 
 ---
 
@@ -107,24 +111,32 @@ Unchanged: searchable-unit semantics · chunking semantics · strict offline beh
 
 ---
 
-## 5. Existing reference lane
+## 5. Reference evidence boundary (F003)
 
-Accepted reference lane:
+Accepted reference lane identity:
 
 **CUDA / native BF16 / batch 32 / SDPA**
 
 No new BF16/batch-32 baseline run is required merely to create another control.
 
-D2 may reuse sealed D0/D1 BF16 evidence as its reference distribution:
+### 5.1 Admissible uses of sealed evidence
 
-- D0 historical;
-- D0 clean;
-- D1-A1;
-- D1-A2.
+| Evidence | Admissible for performance comparison (§9.4 / FP16 speedup / D2 pass-fail) | Admissible for context only |
+|----------|-----------------------------------------------------------------------------|-----------------------------|
+| Accepted **clean D0** BF16/b32 production-path baseline | **Yes — authoritative performance reference** | Yes |
+| D0 historical | **No** | Yes — historical variability/context only |
+| D1-A1 / D1-A2 | **No** | Yes — attribution/context only |
+
+D1-A1/A2 synchronized diagnostic wall times **must not**:
+
+- calculate FP16 speedup;
+- act as production-performance controls;
+- pass/fail D2;
+- enter the §9.4 confirmation set.
 
 A new BF16/batch-32 run is permitted only if implementation review finds a
-material software/runtime identity drift that makes the sealed comparison
-inadmissible.
+material software/runtime identity drift that makes the sealed **clean D0**
+performance comparison inadmissible.
 
 ---
 
@@ -134,6 +146,10 @@ D2 is staged and stop-conditional, not an exhaustive matrix.
 
 Maximum intended campaign: **six** new full cold runs.  
 Likely success path: **four**.
+
+Operator judgment phrases such as “clearly misses,” “appears to be the
+deployment candidate,” or VRAM being “sufficiently close to capacity” are
+**forbidden** as decision inputs. Decisions use §6.5 only.
 
 ### 6.1 D2-G1 — CUDA FP16 / batch 32
 
@@ -151,18 +167,41 @@ Purpose: engineering screen whether a controllable precision change substantiall
 improves the production ingestion path on the reference Turing GPU — not a
 precision-mechanism study.
 
-### 6.2 D2-C0 — CPU production baseline
+### 6.2 D2-C0 — CPU production baseline (F004)
 
-After the initial two G1 runs, execute one complete CPU-only cold production-path
+After the initial two G1 runs (or after G1 terminates as a valid negative
+resource failure — see §6.6), execute one complete CPU-only cold production-path
 run:
 
-**C0** — CPU / current model / current production batch policy
+**C0** — frozen baseline:
 
-Requirements: CUDA unavailable/disabled to this process · same model/revision ·
-same 1296-child workload · fresh process · fresh embeddings · fresh Qdrant ·
+| Fact | Frozen value |
+|------|----------------|
+| Device | CPU · CUDA unavailable/disabled to this process |
+| Model / revision | same Qwen as §4 |
+| Batch size | **32** |
+| Path | production embedding / indexing / materialization path |
+| Tuning | **none** — no thread-count, precision, quantization, runtime, or batch-size optimization in C0 |
+
+Also: same 1296-child workload · fresh process · fresh embeddings · fresh Qdrant ·
 generated=1296 · reused=0.
 
 **C0 SHALL NOT** be graded against the CUDA 10/12-minute proxy threshold.
+
+If CPU dtype/backend are selected dynamically by current production code, C0
+**observes rather than alters** them and **must record**:
+
+- effective dtype;
+- effective attention/backend where meaningful;
+- batch size (must be 32);
+- PyTorch intra-op threads;
+- PyTorch inter-op threads;
+- CPU identity / logical / physical count;
+- process RSS / system RAM facts.
+
+If implementation discovers an existing CPU-specific production default that
+differs from this assumed baseline, it must **pin that fact before execution**,
+not silently tune it.
 
 Purpose: establish no-VRAM deployment behavior, total cold ingestion time, dense
 encode share, throughput, peak process/system memory where measurable,
@@ -172,46 +211,85 @@ Forbidden conclusion form: “Seneca is too slow on CPU.”
 
 ### 6.3 D2-G2 — CUDA FP16 / batch 16 — CONDITIONAL
 
-Opened automatically only if G1 does not provide a satisfactory GPU deployment
-candidate.
+Opened only under the deterministic rule in §6.5 (or G1 valid resource failure
+per §6.6).
 
 Change relative to G1: **batch 32 → batch 16**.  
 Keep: CUDA / FP16 / SDPA / same model.
 
 Runs: **G2-1**, **G2-2** (cold).
 
-Justified only by practical memory-pressure / robustness — **not** a general
-batch-size sweep. No batch 8/24/48/64/etc.
+**Not** a general batch-size sweep. No batch 8/24/48/64/etc.
 
-**G2 trigger** (any of):
+**High VRAM occupancy alone is not an automatic G2 trigger.** If FP16/b32 is
+fast, stable, correct, and passes the final three-run gate, stop. Actual
+CUDA OOM/resource failure under correct identity remains a legitimate G2 trigger
+(§6.6).
 
-- G1 clearly misses the existing GPU proxy target;
-- one of the two G1 runs exceeds the 12-minute variance guard;
-- G1 fails due to CUDA memory/resource behavior;
-- FP16/b32 remains sufficiently close to GPU memory capacity that batch-16 is
-  justified as a directly shippable robustness treatment.
+### 6.4 GPU candidate confirmation (Gx-3)
 
-A merely academically interesting difference does not justify G2.
-
-### 6.4 GPU candidate confirmation
-
-Screening uses two runs. Once either G1 or G2 appears to be the deployment
-candidate, execute exactly one additional cold run of that lane: **Gx-3**.
+When §6.5 says a lane remains mathematically eligible for confirmation, execute
+exactly one additional cold run of that lane: **Gx-3**.
 
 The resulting three runs constitute the existing §9.4 confirmation set.
 
-Final GPU candidate requirements:
+**Final three-run GPU gate** (G1 or G2 after Gx-3):
 
-- 3 valid cold runs;
+- 3 valid cold runs (or valid negative resource classification per §6.6 does not
+  enter this gate as a success);
 - median wall ≤10 minutes;
 - no run >12 minutes;
 - generated=1296 / reused=0;
 - correctness/parity gate satisfied.
 
-If G1 succeeds, G2 is skipped.
+### 6.5 Deterministic two-run screening rule (F001)
+
+Let wall times of the two screening runs be \(w_1, w_2\) in minutes.
+Apply only after both runs are **valid** under §6.6 / §15 (not invalid harness
+failures).
+
+#### After G1-1 + G1-2
+
+| Condition | Decision |
+|-----------|----------|
+| Either run \(> 12\) min | G1 cannot satisfy final gate → do **C0**, then **G2** |
+| Both runs \(> 10\) min | A third run cannot produce a 3-run median ≤10 → do **C0**, then **G2** |
+| Both \(\le 12\) min **and** at least one \(\le 10\) min | G1 remains mathematically eligible → do **C0**, then **G1-3** |
+
+Then evaluate G1’s three runs with the final three-run gate in §6.4.
+If that gate fails → open G2 (if not already opened) under the same campaign
+rules; if G2 already exhausted or fails → STOP GPU optimization under D2.
+
+#### After G2-1 + G2-2
+
+| Condition | Decision |
+|-----------|----------|
+| Either run \(> 12\) min | Do **not** run G2-3 → **STOP** GPU optimization under D2 |
+| Both runs \(> 10\) min | Do **not** run G2-3 → **STOP** GPU optimization under D2 |
+| Both \(\le 12\) min **and** at least one \(\le 10\) min | Run **G2-3**, then apply the final three-run gate |
+
+If G1 succeeds the final three-run gate (+ parity), G2 is skipped.
 
 **Normal success path:** `G1-1 → G1-2 → C0 → G1-3` (4 runs).  
-**If G1 fails and G2 succeeds:** `G1-1 → G1-2 → C0 → G2-1 → G2-2 → G2-3` (6 runs).
+**If G1 fails screen / final gate and G2 succeeds:**  
+`G1-1 → G1-2 → C0 → G2-1 → G2-2 → G2-3` (6 runs).
+
+### 6.6 Resource failure vs invalidity (F002)
+
+A CUDA OOM / resource exhaustion occurring under the **correct frozen**
+workload, device, precision, batch size, and software identity is a
+**VALID NEGATIVE TREATMENT RESULT**, not an invalid run.
+
+Therefore:
+
+- **G1** valid resource failure → **G2 eligible** (after C0 in campaign order);
+- **G2** valid resource failure → **GPU optimization stops** under D2.
+
+Only failures attributable to harness defect, wrong identity, dirty tracked tree,
+external interruption, incomplete evidence, or other infrastructure/process
+faults may be classified **invalid** and replaced under §15.
+
+An undesirable configuration **must not** be rerun until it happens to survive.
 
 ---
 
@@ -250,13 +328,15 @@ persistence · point/materialization · Qdrant · generated/reused/failed ·
 vectors materialized · chunks/sec · model-input tokens/sec where available
 without expensive synchronization · device · dtype · batch size · attention
 backend · model ID/revision · execution HEAD · workload hashes ·
-runtime/software identity.
+runtime/software identity · validity classification
+(`valid` / `valid_negative_resource` / `invalid`).
 
 **GPU (safe):** peak CUDA allocated · peak CUDA reserved · total VRAM ·
 terminal CUDA/OOM/resource error if any.
 
-**CPU (safe):** peak process RSS · logical/physical CPU facts · effective
-PyTorch thread configuration · process CPU time · system RAM facts.
+**CPU (safe) — required for C0:** peak process RSS · logical/physical CPU facts ·
+effective PyTorch intra-op / inter-op threads · process CPU time · system RAM
+facts · observed effective dtype / attention-backend where meaningful.
 
 **Prohibition:** D2 SHALL NOT enable D1’s per-batch CUDA-event synchronization
 merely for curiosity. D1 established that diagnostic sync is attribution tooling,
@@ -266,7 +346,8 @@ not a production performance measurement.
 
 ## 9. Memory interpretation
 
-`nvidia-smi` VRAM occupancy alone SHALL NOT be treated as proof of CPU spillover.
+`nvidia-smi` VRAM occupancy alone SHALL NOT be treated as proof of CPU spillover
+and SHALL NOT by itself open G2.
 
 Record controllable memory facts (PyTorch peak allocated/reserved, device total,
 process/system RAM where feasible). The engineering question is whether a
@@ -330,21 +411,22 @@ benchmarks faster.
 
 ## 13. Decision rules
 
-**GPU**
+**GPU** — apply §6.5 / §6.6 only (no discretionary language).
 
-- If FP16/b32 satisfies three-run 10/12-minute gate + parity → select FP16/b32;
+- If G1 final three-run gate + parity succeed → select FP16/b32; STOP GPU tuning.
+- Else if G2 opened and G2 final three-run gate + parity succeed → select FP16/b16;
   STOP GPU tuning.
-- Else test FP16/b16. If that satisfies gate + parity → select FP16/b16; STOP.
-- If neither → STOP D2 GPU execution. Do not launch a blind parameter sweep.
+- Else → STOP D2 GPU execution. Do not launch a blind parameter sweep.
   Open a new design based on the observed bottleneck.
 
 **CPU**
 
 C0 always produces a valid deployment benchmark if correctness and resource
-safety hold. Elapsed time is reported, not converted into a binary
-“Seneca CPU pass/fail.” After C0 choose one of: no immediate CPU optimization ·
-narrow PyTorch/runtime tuning design · model/runtime optimization design ·
-other component optimization only if materially justified.
+safety hold (and is not a GPU resource-failure case). Elapsed time is reported,
+not converted into a binary “Seneca CPU pass/fail.” After C0 choose one of:
+no immediate CPU optimization · narrow PyTorch/runtime tuning design ·
+model/runtime optimization design · other component optimization only if
+materially justified.
 
 ---
 
@@ -360,15 +442,32 @@ be capable of changing a shipping decision.
 
 ---
 
-## 15. Evidence / provenance
+## 15. Evidence / provenance / validity
 
 Preserve: exact design parent · implementation/harness subject · clean tracked
 preflight · workload identity · model/revision · runtime identity · execution
 configuration · source hashes · run order · validity status · measured results.
 
-Invalid attempts preserved. Replace only for objective invalidity (identity
-mismatch, dirty tracked tree, wrong device/dtype/batch, workload mismatch,
-harness/tool failure, process failure, incomplete evidence).
+### 15.1 Invalid (replaceable)
+
+Classify **invalid** and preserve, then replace, only for objective
+infrastructure/identity faults:
+
+- identity mismatch;
+- dirty tracked tree;
+- wrong device / dtype / batch relative to the frozen cell;
+- workload mismatch;
+- harness/tool failure;
+- external interruption / incomplete evidence;
+- process failure **not** attributable to a correct-identity CUDA
+  OOM/resource exhaustion under the frozen treatment.
+
+### 15.2 Valid negative treatment (not replaceable as retry)
+
+Correct-identity CUDA OOM/resource exhaustion → **valid negative treatment
+result** (§6.6). Preserve; do not discretionary-rerun.
+
+### 15.3 Valid scientific/engineering outcomes
 
 Slow and fast results are both valid. No discretionary rerun.
 
@@ -408,6 +507,7 @@ execution · production/default changes · model changes · D3+ · 16K-E/F/G · 
 
 ## Next gate
 
-Independent design IR of this document. Separate implementation/execution AUTH
-required before any D2 run. Retrieval-parity probe must be frozen in that
-execution AUTH before treatment execution.
+Independent design re-review of this rework. Separate implementation AUTH
+(execution still closed) may follow only after design IR ACCEPT. Retrieval-parity
+probe must be frozen in the later execution AUTH before the first FP16 treatment
+call.
