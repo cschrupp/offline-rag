@@ -199,13 +199,16 @@
 **16K-D branch:** `implementation/16k-d-dense-cuda-profiling`
 **16K-D status:** D0 BASELINE COMPLETE / INDEPENDENTLY ACCEPTED
 **16K-D F001:** CLOSED
+**16K-D experimental-plan reconciliation authority:** `S16-K-D-EXPERIMENTAL-PLAN-RECONCILIATION-AUTH-001` — AUTHORIZED
+**Exact 16K-D reconciliation parent:** `c801401a486c6ecd425840649fdd6f6893c50f18`
+**16K-D experimental plan:** RECONCILED (docs-only; treatment execution NOT AUTHORIZED)
 **16K-D document:** `docs/slice16k_d_dense_cuda_profiling.md`
 **16K-D evidence:** `docs/evidence/16k_d_dense_cuda/`
 **16K-D authoritative current lane:** CUDA / BF16 / batch 32 / SDPA
-**16K-D D0 notes:** encode-dominant; timing variable (≈25.2 min clean run is not
-a deterministic constant); persistence/Qdrant optimization not justified by D0;
-FP32-current-baseline assumption falsified; §9.2 treatment-sequence reconciliation
-and usability-threshold freeze still pending / not authorized
+**16K-D frozen proxy usability (§9.4):** median wall ≤10 min; no confirmation run >12 min;
+3 clean cold confirmation runs; 16K-F full-corpus cold dense ≤60 min
+**16K-D reconciled sequence (§9.2.2):** D0 → D1 stall attribution → D2 BF16 vs FP16 →
+D3 batch sweep → D4 attention conditional → D5 persistence/Qdrant if ≥10% wall
 **16K-E → 16K-G:** NOT AUTHORIZED
 **Main promotion:** NOT AUTHORIZED
 **Frozen implementation order:** 16K-A → 16K-B → baseline evidence → 16K-C → 16K-D → 16K-E → 16K-F → 16K-G
@@ -420,7 +423,7 @@ OCR implementation remains explicitly out of scope for 16K.
 | Q10 | Queue mutability | Pre-submit staging is mutable: append, remove-one, clear-all, inspect count/bytes. After 202 admission / frozen idempotency fingerprint, worklist is inspectable but **immutable** in 16K — no per-item in-flight removal. |
 | Q11 | Performance instrumentation | 16K-B/D baseline measures listed in §9 before optimization. Detailed per-batch profiles belong in benchmark/evidence artifacts, not necessarily every durable op record. |
 | Q12 | CUDA optimization + parity | Order: instrumented baseline → FP16 → batch sweep → optimized attention if supported → persistence/Qdrant only if warranted. Any precision/attention change that alters numerical vectors MUST pass a retrieval/index **parity gate** before default; if retrieval-semantic, identity treatment MUST be revised explicitly. |
-| Q13 | Performance acceptance | No invented numerical SLO in this design. 16K-B establishes baseline; a beta usability threshold MUST be frozen before 16K-D results are accepted. Qualitative fixed requirement: multi-hour dense indexing for the primary beta corpus is not acceptable. |
+| Q13 | Performance acceptance | Historical design text deferred numeric SLOs until after baseline. **Frozen by** `S16-K-D-EXPERIMENTAL-PLAN-RECONCILIATION-AUTH-001` after independently accepted D0 (§9.2 / §9.4). Qualitative fixed requirement preserved: multi-hour dense indexing for the primary beta corpus is not acceptable. |
 | Q14 | Slice 17 handoff | Slice 17 remains Regression CI and unopened. 16K-G hands deterministic contracts only. Real CUDA throughput is NOT automatically a generic CI gate. |
 
 ---
@@ -633,23 +636,41 @@ Detailed per-batch profiling belongs in benchmark/evidence artifacts.
 
 ### 9.2 Controlled optimization sequence
 
-Current code path context: SentenceTransformers / Qwen3-Embedding-0.6B, CUDA,
-batch size 32, per-chunk JSON embedding artifacts, local Qdrant materialization.
+**Reconciliation authority:** `S16-K-D-EXPERIMENTAL-PLAN-RECONCILIATION-AUTH-001`  
+**Exact reconciliation parent:** `c801401a486c6ecd425840649fdd6f6893c50f18`  
+**Status:** 16K-D EXPERIMENTAL PLAN RECONCILED (docs-only; no treatment execution)
 
-Frozen order (one material variable at a time):
+Current code path context (independently accepted D0): SentenceTransformers /
+Qwen3-Embedding-0.6B, CUDA, **BF16**, batch size 32, **SDPA**, per-chunk JSON
+embedding artifacts, local Qdrant materialization. Reference host for thresholds:
+RTX 2080 Super Max-Q class as recorded in D0 evidence.
 
-1. current CUDA **FP32** / batch 32 baseline (instrumented)
-2. CUDA **FP16** / batch 32
-3. FP16 **batch-size sweep**
-4. compatible **optimized attention** path if operationally reliable
-5. artifact-persistence optimization **only if** profiling shows material cost
-6. Qdrant batching/materialization optimization **only if** profiling shows
-   material cost
+#### 9.2.1 Historical sequence — SUPERSEDED
 
-Investigate whether slow throughput is driven by FP32 execution, suboptimal
-batch sizing, long-tail / oversized child sequences, attention implementation,
-per-vector artifact serialization/fsync/atomic-write overhead, Python point
-construction, and/or Qdrant local materialization.
+The original frozen order assumed FP32 was the current production lane:
+
+1. current CUDA FP32 / batch 32 baseline (instrumented)
+2. CUDA FP16 / batch 32
+3. FP16 batch-size sweep
+4. optimized attention if reliable
+5–6. persistence / Qdrant only if material
+
+That premise is **falsified** by independently accepted D0 (native load is BF16 /
+batch 32 / SDPA). The superseded sequence is retained only as provenance; it MUST
+NOT authorize an “FP16 optimization next” mechanical open.
+
+#### 9.2.2 Reconciled sequence (frozen)
+
+One material variable at a time. Each Dx execution requires its own authority.
+
+| Gate | Scientific question | Notes |
+|------|---------------------|--------|
+| **D0** | Accepted baseline | native BF16 / batch 32 / SDPA — COMPLETE / INDEPENDENTLY ACCEPTED |
+| **D1** | Stall attribution under unchanged D0 lane | No optimization variables. Explain fast/slow batch regimes; distinguish GPU compute vs host/WSL scheduling/sync and relevant CUDA/runtime state. Enough attribution for fair later comparisons; not required to prove ultimate root cause before D2 may ever proceed. Separate D1 execution AUTH. |
+| **D2** | Precision treatment | BF16 / batch32 / SDPA vs explicit FP16 / batch32 / SDPA. Only precision changes. FP16 remains scientifically relevant (Turing Tensor Core FP16 path). Parity (§9.3) required before FP16 may become the base lane for later optimization or promotion. |
+| **D3** | Batch-size sweep | On the best parity-eligible precision lane from D2. Exact batch cells frozen in later D3 execution design after D1/D2 evidence — not invented here. |
+| **D4** | Attention/backend — conditional | Only if D1–D3 show model execution remains materially dominant and a supported offline-compatible alternative to current SDPA exists. No attention experiment merely because it appeared in the original roadmap. |
+| **D5** | Persistence/Qdrant — conditional | Closed unless that component reaches **≥10% of dense wall time** in the optimized candidate lane. D0 measured seconds vs tens of minutes of encode. |
 
 ### 9.3 Parity gate
 
@@ -663,8 +684,33 @@ MUST be revised explicitly rather than silently reusing incompatible embedding
 identities.
 
 Optimization MUST preserve strict offline behavior. No optimization is accepted
-without the 16K-B baseline. A beta usability threshold MUST be frozen before
-16K-D optimization results are accepted (Q13).
+without the 16K-B baseline and the independently accepted 16K-D D0 baseline.
+Meeting the §9.4 proxy time gate alone does **not** authorize production/default
+promotion or 16K-F acceptance.
+
+### 9.4 Frozen beta usability thresholds (Q13)
+
+Frozen under `S16-K-D-EXPERIMENTAL-PLAN-RECONCILIATION-AUTH-001` for the
+reference host and cold `D0-INCIDENT-1296-CHILD-V1` proxy (generated=1296,
+reused=0):
+
+| Gate | Frozen threshold |
+|------|------------------|
+| D0 proxy workload | 1,296 searchable children; cold; generated=1,296, reused=0 |
+| Final candidate repeatability | 3 clean cold confirmation runs |
+| Proxy usability | median wall **≤ 10 min** |
+| Variance guard | no confirmation run **> 12 min** |
+| Correctness | no indexing / retrieval / parity regression |
+| Full beta corpus (16K-F) | primary ~7.5–8k-child cold dense phase **≤ 60 min** on the reference host |
+
+The 10-minute proxy is a **screening / optimization target**, not a claim that
+1,296→~8,000 children scales linearly. The 60-minute full-corpus requirement
+MUST be demonstrated directly under 16K-F.
+
+The accepted native D0 baseline (≈25.2 min clean; ≈35.8 min historical
+development) **fails** the proxy usability target — as intended. Success is
+not defined around the observed baseline. Multi-hour dense indexing for the
+primary beta corpus remains unacceptable.
 
 ---
 
@@ -1260,15 +1306,23 @@ Exact 16K-D acceptance-record parent:
 16K-D branch: implementation/16k-d-dense-cuda-profiling
 16K-D status: D0 BASELINE COMPLETE / INDEPENDENTLY ACCEPTED
 16K-D F001: CLOSED
+16K-D experimental-plan reconciliation authority:
+  S16-K-D-EXPERIMENTAL-PLAN-RECONCILIATION-AUTH-001 — AUTHORIZED
+Exact 16K-D reconciliation parent:
+  c801401a486c6ecd425840649fdd6f6893c50f18
+16K-D experimental plan: RECONCILED (docs-only)
 16K-D document: docs/slice16k_d_dense_cuda_profiling.md
 16K-D evidence: docs/evidence/16k_d_dense_cuda/
 16K-D authoritative current lane: CUDA / BF16 / batch 32 / SDPA
-16K-D D0: encode-dominant; timing variable; persistence/Qdrant not justified;
-  FP32-current-baseline falsified; §9.2 reconciliation + usability threshold
-  freeze still pending / NOT AUTHORIZED
-16K-D closed under this acceptance-record:
-  BF16 batch sweep / attention / FP16 / persistence/Qdrant opt /
-  default promotion / usability-threshold freeze / treatment reconciliation
+16K-D frozen proxy usability (§9.4): median ≤10 min; no run >12 min;
+  3 clean cold confirmations; 16K-F full-corpus ≤60 min
+16K-D reconciled sequence (§9.2.2):
+  D0 → D1 stall attribution → D2 BF16 vs FP16 → D3 batch sweep →
+  D4 attention conditional → D5 persistence/Qdrant if ≥10% wall
+16K-D closed under this reconciliation (execution):
+  D1 diagnostic execution / FP16 treatment / batch sweep / attention /
+  persistence/Qdrant opt / default promotion / 16K-E→G / main /
+  HTTP-500 GPU investigation reopen
 16K-E → 16K-G: NOT AUTHORIZED
 Main promotion: NOT AUTHORIZED
 Frozen order: 16K-A → 16K-B → baseline evidence → 16K-C → 16K-D → 16K-E → 16K-F → 16K-G

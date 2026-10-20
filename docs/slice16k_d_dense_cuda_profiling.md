@@ -1,62 +1,63 @@
-# Slice 16K-D — Dense / CUDA profiling (D0 baseline)
+# Slice 16K-D — Dense / CUDA profiling
 
 **Implementation authority:** `S16-K-D-DENSE-CUDA-PROFILING-BASELINE-IMPLEMENTATION-AUTH-001` — AUTHORIZED  
-**Exact implementation parent:** `33a031b6a1bbda0b3b80fa96c8bff0fdfcece06f`  
 **Exact independently accepted technical subject:** `32e52024df47b9add7ce02675a1d40555ac55eae`  
 **Exact independently accepted evidence subject:** `70abf3003ba37cd983772e084f9616fe3678a17a`  
 **Branch:** `implementation/16k-d-dense-cuda-profiling`  
 **Controlling design:** `docs/slice16k_beta_ingestion_readiness_design.md` §9  
-**Human-accepted design subject:** `0839b565cd60958141366048520236a71bf16fd0`  
 
-**Historical independent review (IR-001):** `S16-K-D-DENSE-CUDA-PROFILING-BASELINE-IR-001` — REWORK REQUIRED (F001) — preserved as provenance  
-**Rework authority:** `S16-K-D-D0-BASELINE-EVIDENCE-PROVENANCE-REWORK-AUTH-001` — AUTHORIZED  
-**Exact rework technical execution subject:** `32e52024df47b9add7ce02675a1d40555ac55eae`  
-**Independent review (IR-002):** `S16-K-D-DENSE-CUDA-PROFILING-BASELINE-IR-002` — ACCEPT  
+**Historical IR-001:** `S16-K-D-DENSE-CUDA-PROFILING-BASELINE-IR-001` — REWORK REQUIRED (F001) — preserved  
+**IR-002:** `S16-K-D-DENSE-CUDA-PROFILING-BASELINE-IR-002` — ACCEPT  
 **Acceptance-record authority:** `S16-K-D-DENSE-CUDA-PROFILING-BASELINE-IR-002-ACCEPTANCE-RECORD-AUTH-001` — AUTHORIZED  
-**Exact acceptance-record parent:** `70abf3003ba37cd983772e084f9616fe3678a17a`  
+**Exact acceptance-record parent / tip (pre-reconciliation):** `70abf30…` / `c801401a486c6ecd425840649fdd6f6893c50f18`  
 
-**Status:** 16K-D D0 BASELINE COMPLETE / INDEPENDENTLY ACCEPTED  
-**F001:** CLOSED (clean candidate-SHA evidence rerun; no `src/**` changes)
+**Experimental-plan reconciliation authority:** `S16-K-D-EXPERIMENTAL-PLAN-RECONCILIATION-AUTH-001` — AUTHORIZED  
+**Exact reconciliation parent:** `c801401a486c6ecd425840649fdd6f6893c50f18`  
 
-## Accepted D0 scientific conclusions
+**Status:** 16K-D EXPERIMENTAL PLAN RECONCILED / STOP  
+**D0:** BASELINE COMPLETE / INDEPENDENTLY ACCEPTED  
+**F001:** CLOSED  
 
-1. **Authoritative current lane:** CUDA / BF16 / batch 32 / SDPA (Qwen3-Embedding-0.6B).
-2. **FP32-as-current-baseline assumption:** FALSIFIED (native load is BF16).
-3. **Bottleneck:** model encode dominates (~99% of dense runtime on the clean run).
-4. **Persistence / Qdrant optimization:** NOT JUSTIFIED by D0 (seconds vs ~25 min encode).
-5. **Timing variability:** encode latency is highly variable / intermittently stalls;
-   the clean-run wall ≈ 25.2 min is **not** a deterministic constant (historical
-   development run ≈ 35.8 min); accepted finding is the two-regime stall
-   phenomenon, not a fixed wall-clock SLO.
-6. **Sequence length alone** does not obviously explain stalls.
+## Authoritative current lane (D0)
 
-Primary workload: cold `D0-INCIDENT-1296-CHILD-V1` (`chunkset_d0b1fee…` /
-`corpus_3c74b057…`); identity-only in repository evidence.
+CUDA / **BF16** / batch **32** / **SDPA** — Qwen3-Embedding-0.6B.
 
-## Instrumentation (accepted)
+Accepted D0 findings: encode-dominant (~99%); persistence/Qdrant negligible;
+highly variable batch encode latency (stalls); sequence length alone does not
+explain stalls; FP32-as-current-baseline assumption falsified.
 
-- Env gate: `OFFLINE_RAG_DIAG_DENSE_PROFILE=1`
-- Module: `src/offline_rag/dense/profiling.py`
-- Hooks: `src/offline_rag/dense/pipeline.py`
-- Harness: `scripts/diag_16k_d_dense/run_d0_baseline.py`
+## Frozen beta usability thresholds (§9.4)
 
-## Evidence
+Reference host + cold `D0-INCIDENT-1296-CHILD-V1` (generated=1296, reused=0):
 
-`docs/evidence/16k_d_dense_cuda/`
+| Gate | Threshold |
+|------|-----------|
+| Proxy usability | median wall ≤ **10 min** |
+| Variance guard | no confirmation run > **12 min** |
+| Repeatability | **3** clean cold confirmation runs |
+| Correctness | no indexing / retrieval / parity regression |
+| 16K-F full corpus | primary ~7.5–8k-child cold dense ≤ **60 min** |
 
-| Artifact | Role |
-|----------|------|
-| `d0_baseline_32e52024df47.json` | Authoritative clean candidate-SHA rerun |
-| `d0_baseline_32e52024df47_provenance_pre.json` / `_post.json` | Source digests + HEAD binding |
-| `d0_baseline_32e52024df47_vs_33a031b6a1bb_comparison.json` | Historical vs clean (do not average) |
-| `d0_baseline_33a031b6a1bb.json` | Historical development run; retained unmodified |
-| `d0_fp32_force_FAILED_cublasSgemm.json` | Development diagnostic only (not an accepted FP32 experiment) |
+The ~25.2 min clean D0 baseline **fails** the 10-minute proxy — as intended.
+The 10-minute gate is a screening target, not a linear scaling claim to 16K-F.
 
-## Explicitly still closed
+## Reconciled treatment sequence (§9.2.2)
 
-BF16 batch sweep · attention/backend treatments · any FP16 experiment ·
-persistence/Qdrant optimization · default promotion · usability-threshold freeze ·
-§9.2 treatment-sequence reconciliation · 16K-E/F/G · main · HTTP-500 reopen.
+`D0 (accepted) → D1 stall attribution → D2 BF16 vs FP16 → D3 batch sweep → D4 attention (conditional) → D5 persistence/Qdrant (if ≥10% wall)`
 
-Treatment-sequence reconciliation and beta usability-threshold freeze require a
-**separate** authority after this acceptance-record tip.
+Historical FP32→FP16→batch sequence: **SUPERSEDED** (provenance only).
+
+## Explicitly NOT AUTHORIZED under this reconciliation
+
+D1 diagnostic execution · FP16 treatment · batch sweep · attention changes ·
+persistence/Qdrant optimization · production/default changes · 16K-E/F/G ·
+Slice 17/18 · main · HTTP-500 GPU investigation reopen.
+
+**Next substantive authority parent:** this reconciliation tip.  
+**Next gate:** D1 — native BF16/batch-32/SDPA stall-attribution diagnostic
+(separate execution AUTH).
+
+## Evidence (D0)
+
+`docs/evidence/16k_d_dense_cuda/` — authoritative clean rerun
+`d0_baseline_32e52024df47.json` (+ provenance / comparison artifacts).
