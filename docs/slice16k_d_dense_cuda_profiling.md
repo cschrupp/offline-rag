@@ -52,14 +52,21 @@
 **D2 design IR-002:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-IR-002` — REWORK REQUIRED (F005–F006) — preserved  
 **D2 design rework-2 authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-REWORK2-AUTH-001` — AUTHORIZED  
 **Exact D2 design rework-2 parent:** `5da766959fa3557f9300fa3a3147f0bb4f3bd853`  
+**D2 design F005–F006:** CLOSED  
+**D2 design IR-003:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-IR-003` — ACCEPT  
+**Exact independently accepted D2 design subject:** `8f96657d73b2213fb9b43557b001bc4c5a42188b`  
+**D2 implementation authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-AUTH-001` — AUTHORIZED  
+**Exact D2 implementation parent:** `8f96657d73b2213fb9b43557b001bc4c5a42188b`  
 **D2 design document:** `docs/slice16k_d_d2_practical_execution_optimization_design.md`  
+**D2 harness:** `scripts/diag_16k_d_dense/run_d2_campaign.py`  
 
-**Status:** D2 PRACTICAL EXECUTION OPTIMIZATION DESIGN REWORK 2 COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
+**Status:** D2 PRACTICAL EXECUTION OPTIMIZATION IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW  
 **D0:** BASELINE COMPLETE / INDEPENDENTLY ACCEPTED  
 **D1:** COMPLETE / INDEPENDENTLY ACCEPTED (scientific program closed for product pivot)  
 **D1 tooling F001 / D1 analysis F001:** CLOSED  
 **Contract (attribution tooling):** `dense-cuda-profile-v2`  
-**D2:** DESIGN ONLY / EXECUTION NOT AUTHORIZED  
+**D2 design:** COMPLETE / INDEPENDENTLY ACCEPTED  
+**D2:** IMPLEMENTATION ONLY / EXECUTION NOT AUTHORIZED  
 **Program pivot:** scientific optimization → bounded product-engineering optimization
 
 ## Authoritative current lane (unchanged)
@@ -129,9 +136,19 @@ Analysis: `d1-frozen-analysis-v2` + `d1_scientific_interpretation.md`.
 D1 SHALL NOT continue root-cause investigation unless a later product decision
 requires it.
 
-## D2 practical execution optimization (design only)
+## D2 practical execution optimization
 
-Authoritative design: `docs/slice16k_d_d2_practical_execution_optimization_design.md`.
+Authoritative design: `docs/slice16k_d_d2_practical_execution_optimization_design.md`
+(IR-003 ACCEPT at `8f96657…`).
+
+**Implementation (this tranche):** explicit `indexing.embedding.precision`
+(`native`|`fp16`, default `native`; env `OFFLINE_RAG_EMBEDDING_PRECISION`);
+FP16 CUDA-only fail-closed; post-load / pre-encode conversion; precision/batch
+excluded from embcfg_/index identity; D2 state machine in
+`src/offline_rag/dense/d2_campaign.py`; harness
+`scripts/diag_16k_d_dense/run_d2_campaign.py` (`plan` / `preflight` /
+`validate-transition` / `classify-failure`; `execute-cell` refuse-closed while
+`EXECUTION_AUTHORIZED=False`).
 
 Staged stop-conditional campaign (normal 4; G1 screen-fail→G2 = 6; G1
 confirmation timing-fail→G2 = 7 absolute max; no discretionary eighth):
@@ -153,22 +170,22 @@ least one ≤10 → run Gx-3.
 G1 FP16 parity/correctness failure → STOP (G2 not opened). Any G2
 parity/correctness failure is terminal for D2.
 
-**Validity:** correct-identity CUDA OOM/resource exhaustion is a valid negative
-treatment result (G1 → G2 eligible; G2 → STOP), not an invalid/retry.
+**Validity:** `valid` · `valid_negative_resource` · `invalid`. Correct-identity
+CUDA OOM/resource exhaustion is valid negative (not auto-retry).
 
 **Performance reference:** accepted clean D0 BF16/b32 only. D0 historical and
 D1-A1/A2 are context/attribution only — not FP16 speedup controls, not D2
 pass/fail, not §9.4 confirmation members.
 
 Lighter instrumentation than D1; no per-batch CUDA-event sync for curiosity.
-Retrieval-parity probe must be frozen in the execution AUTH before the first
-FP16 treatment call.
+Retrieval-parity probe inputs/thresholds remain unfrozen until execution AUTH.
 
-## Explicitly NOT AUTHORIZED under this design AUTH
+## Explicitly NOT AUTHORIZED under this implementation AUTH
 
-D2 harness · D2 executions · FP16/CPU calls · production/default changes ·
-model replacement · mechanical D3–D5 · attention experiments · persistence/Qdrant
-opt · HTTP-500 reopen · 16K-E/F/G · main.
+D2 scientific/benchmark cell execution · FP16 model runs · CPU benchmark runs ·
+parity execution · production default switch · model replacement · mechanical
+D3–D5 · attention experiments · persistence/Qdrant opt · HTTP-500 reopen ·
+16K-E/F/G · main.
 
 ## Evidence
 

@@ -94,6 +94,8 @@ indexing:
     adapter_contract: sentence-transformers-v1
     batch_size: 32
     device: auto
+    # Execution policy only (not in embcfg_/index identity). Default native.
+    precision: native
 
 lexical:
   enabled: true

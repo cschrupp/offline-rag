@@ -81,12 +81,18 @@ class FakeEmbedder:
         normalize: bool = True,
         query_text_contract: str = RAW_QUERY_V1,
         configured_device: str = "auto",
+        configured_precision: str = "native",
     ) -> None:
         if dimension <= 0:
             raise ValueError("dimension must be positive")
         if query_text_contract != RAW_QUERY_V1:
             raise EmbedderError(
                 f"FakeEmbedder only supports {RAW_QUERY_V1}; got {query_text_contract}"
+            )
+        if str(configured_precision).strip().lower() != "native":
+            raise EmbedderError(
+                "FakeEmbedder only supports precision='native' "
+                f"(got {configured_precision!r})"
             )
         self.dimension = dimension
         self.normalize = normalize
@@ -95,6 +101,9 @@ class FakeEmbedder:
         self.configured_device = configured_device
         self.resolved_device = "test"
         self.device = "test"
+        self.configured_precision = "native"
+        self.resolved_precision = "native"
+        self.precision_selection_reason = "native_default"
         self.cuda_available: bool | None = None
         self.torch_cuda_build: str | None = None
         self.device_selection_reason = "test_backend"
@@ -139,11 +148,24 @@ class SentenceTransformersEmbedder:
         cuda_available: bool = False,
         torch_cuda_build: str | None = None,
         device_selection_reason: str = "explicit_cpu",
+        configured_precision: str = "native",
+        resolved_precision: str = "native",
+        precision_selection_reason: str = "native_default",
     ) -> None:
         if device not in {"cpu", "cuda"}:
             raise EmbedderError(
                 f"SentenceTransformersEmbedder requires resolved device "
                 f"'cpu' or 'cuda'; got {device!r}"
+            )
+        if resolved_precision not in {"native", "fp16"}:
+            raise EmbedderError(
+                f"SentenceTransformersEmbedder requires resolved precision "
+                f"'native' or 'fp16'; got {resolved_precision!r}"
+            )
+        if resolved_precision == "fp16" and device != "cuda":
+            raise EmbedderError(
+                "FP16 embedding execution requires resolved device 'cuda' "
+                f"(got {device!r})."
             )
         self.model_path = Path(model_path).expanduser().resolve()
         self.model_id = model_id
@@ -156,11 +178,16 @@ class SentenceTransformersEmbedder:
         self.cuda_available = cuda_available
         self.torch_cuda_build = torch_cuda_build
         self.device_selection_reason = device_selection_reason
+        self.configured_precision = configured_precision
+        self.resolved_precision = resolved_precision
+        self.precision_selection_reason = precision_selection_reason
         self.batch_size = batch_size
         self.query_instruction = query_instruction
         self.document_instruction = document_instruction
         self.query_text_contract = query_text_contract
         self._model = None
+        self._precision_applied = False
+        self._precision_conversion: dict[str, str | None] | None = None
         if (
             query_text_contract == MODEL_QUERY_PROMPT_V1
             and query_instruction is not None
@@ -182,12 +209,19 @@ class SentenceTransformersEmbedder:
             return self._model
         from sentence_transformers import SentenceTransformer
 
-        self._model = SentenceTransformer(
+        from offline_rag.dense.precision import apply_fp16_after_load
+
+        model = SentenceTransformer(
             str(self.model_path),
             device=self.device,
             trust_remote_code=False,
             local_files_only=True,
         )
+        if self.resolved_precision == "fp16":
+            # Deterministic once: post-load, pre-encode.
+            self._precision_conversion = apply_fp16_after_load(model)
+            self._precision_applied = True
+        self._model = model
         return self._model
 
     def _require_model_query_prompt(self, model) -> None:
@@ -294,10 +328,12 @@ class EmbedderError(RuntimeError):
 def make_embedder(settings: AppSettings) -> Embedder:
     """Construct the configured embedder (fake never silently substitutes).
 
-    Resolves embedding device policy once at construction. SentenceTransformer
-    never receives ``device="auto"``.
+    Resolves embedding device and precision policy once at construction.
+    SentenceTransformer never receives ``device="auto"``. FP16 conversion, when
+    requested, occurs once after model load and before encode.
     """
     from offline_rag.dense.device import resolve_embedding_device
+    from offline_rag.dense.precision import resolve_embedding_precision
 
     emb = settings.indexing.embedding
     query = settings.dense.query_text
@@ -316,11 +352,16 @@ def make_embedder(settings: AppSettings) -> Embedder:
             normalize=emb.normalize,
             query_text_contract=query_contract,
             configured_device=str(emb.device),
+            configured_precision=str(emb.precision),
         )
     if emb.implementation != "sentence_transformers":
         raise EmbedderError(f"unsupported embedding implementation: {emb.implementation}")
 
     resolution = resolve_embedding_device(emb.device)
+    precision = resolve_embedding_precision(
+        emb.precision,
+        resolved_device=resolution.resolved_device,
+    )
     model_dir = resolve_embedding_model_dir(
         embedding_artifacts_root=settings.paths.embedding_artifacts,
         model_path=settings.dense.model_path,
@@ -341,6 +382,9 @@ def make_embedder(settings: AppSettings) -> Embedder:
         cuda_available=resolution.cuda_available,
         torch_cuda_build=resolution.torch_cuda_build,
         device_selection_reason=resolution.selection_reason,
+        configured_precision=precision.configured_precision,
+        resolved_precision=precision.resolved_precision,
+        precision_selection_reason=precision.selection_reason,
     )
 
 
@@ -351,6 +395,11 @@ def embedder_runtime_view(embedder: object) -> dict[str, object | None]:
     return {
         "configured_device": configured,
         "active_device": resolved,
+        "configured_precision": getattr(embedder, "configured_precision", None),
+        "resolved_precision": getattr(embedder, "resolved_precision", None),
+        "precision_selection_reason": getattr(
+            embedder, "precision_selection_reason", None
+        ),
         "cuda_available": getattr(embedder, "cuda_available", None),
         "torch_cuda_build": getattr(embedder, "torch_cuda_build", None),
         "selection_reason": getattr(embedder, "device_selection_reason", None),

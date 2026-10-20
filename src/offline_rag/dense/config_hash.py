@@ -28,6 +28,11 @@ def build_embedding_config_hash(settings: AppSettings | IndexingSettings) -> str
 
     Query-side representation (``dense.query_text``) is intentionally excluded so
     query-contract changes do not invalidate immutable document indexes.
+
+    Non-semantic execution policy fields are intentionally excluded, including
+    ``device``, ``precision``, and ``batch_size`` (provisional for D2; precision
+    remains excluded from identity until a future redesign if FP16 proves
+    retrieval-semantic).
     """
     indexing = settings.indexing if isinstance(settings, AppSettings) else settings
     text = indexing.embedding_text

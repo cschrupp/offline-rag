@@ -11,9 +11,17 @@
 **Design IR-002:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-IR-002` — REWORK REQUIRED (F005–F006) — preserved  
 **Design rework-2 authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-REWORK2-AUTH-001` — AUTHORIZED  
 **Exact rework-2 parent:** `5da766959fa3557f9300fa3a3147f0bb4f3bd853`  
+**F005–F006:** CLOSED  
+
+**Design IR-003:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-IR-003` — ACCEPT  
+**Exact independently accepted design subject:** `8f96657d73b2213fb9b43557b001bc4c5a42188b`  
+
+**Implementation authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-AUTH-001` — AUTHORIZED  
+**Exact implementation parent:** `8f96657d73b2213fb9b43557b001bc4c5a42188b`  
 
 **Branch:** `implementation/16k-d-dense-cuda-profiling`  
-**Status:** DESIGN ONLY / EXECUTION NOT AUTHORIZED  
+**Status:** D2 PRACTICAL EXECUTION OPTIMIZATION DESIGN COMPLETE / INDEPENDENTLY ACCEPTED  
+**D2 execution:** NOT AUTHORIZED (implementation tranche only)
 
 **Pivot:** 16K-D moves from a scientific optimization program to a bounded
 product-engineering optimization program.
@@ -547,16 +555,20 @@ optimizing for its own sake.
 
 ---
 
-## 17. Explicitly OUT of this design AUTH
+## 17. Explicitly OUT of this design AUTH / execution boundary
 
-D2 harness implementation · D2 executions · FP16 calls · CPU benchmark
-execution · production/default changes · model changes · D3+ · 16K-E/F/G · main.
+Historical design AUTH excluded harness implementation. That exclusion is
+superseded by `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-AUTH-001`
+for implementation-only work.
+
+Still OUT until a later execution AUTH: D2 scientific/benchmark cell execution ·
+FP16 treatment calls · CPU benchmark execution · parity execution ·
+production/default changes · model changes · D3+ · 16K-E/F/G · main.
 
 ---
 
 ## Next gate
 
-Independent design re-review of this rework-2 (F005–F006). Separate
-implementation AUTH (execution still closed) may follow only after design IR
-ACCEPT. Retrieval-parity probe must be frozen in the later execution AUTH before
-the first FP16 treatment call.
+Design IR-003 ACCEPT recorded. Implementation AUTH is open with execution still
+closed. After implementation IR ACCEPT, freeze the retrieval-parity contract and
+open execution AUTH before the first FP16 treatment call.

@@ -1023,11 +1023,22 @@ SLICE 15  COMPLETE / ACCEPTED
          — AUTHORIZED
        Exact 16K-D D2 design rework-2 parent:
          5da766959fa3557f9300fa3a3147f0bb4f3bd853
+       16K-D D2 design F005–F006: CLOSED
+       16K-D D2 design IR-003:
+         S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-IR-003 — ACCEPT
+       Exact independently accepted 16K-D D2 design subject:
+         8f96657d73b2213fb9b43557b001bc4c5a42188b
+       16K-D D2 implementation authority:
+         S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-AUTH-001
+         — AUTHORIZED
+       Exact 16K-D D2 implementation parent:
+         8f96657d73b2213fb9b43557b001bc4c5a42188b
        16K-D D2 design document:
          docs/slice16k_d_d2_practical_execution_optimization_design.md
-       16K-D status: D2 PRACTICAL EXECUTION OPTIMIZATION DESIGN REWORK 2 COMPLETE /
-         READY FOR INDEPENDENT RE-REVIEW
-       16K-D D2: DESIGN ONLY / EXECUTION NOT AUTHORIZED
+       16K-D status: D2 PRACTICAL EXECUTION OPTIMIZATION IMPLEMENTATION COMPLETE /
+         READY FOR INDEPENDENT REVIEW
+       16K-D D2 design: COMPLETE / INDEPENDENTLY ACCEPTED
+       16K-D D2: IMPLEMENTATION ONLY / EXECUTION NOT AUTHORIZED
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md
@@ -1042,9 +1053,10 @@ SLICE 15  COMPLETE / ACCEPTED
        16K-D practical sequence:
          D0 → D1 attribution → D2 practical execution optimization → decision
        16K-D mechanical D2→D3→D4→D5 sequence: SUPERSEDED
-       16K-D closed under this design AUTH:
-         D2 harness/execution / FP16/CPU calls / model replacement /
-         mechanical D3–D5 / production/default / threshold changes /
+       16K-D closed under this implementation AUTH:
+         D2 scientific/benchmark execution / FP16/CPU/parity runs /
+         production default switch / model replacement /
+         mechanical D3–D5 / threshold changes /
          HTTP-500 reopen / 16K-E→G / main
        16K-E → 16K-G: NOT AUTHORIZED
        Main promotion: NOT AUTHORIZED
@@ -1772,11 +1784,22 @@ SLICE 15  COMPLETE / ACCEPTED
          — AUTHORIZED
        Exact 16K-D D2 design rework-2 parent:
          5da766959fa3557f9300fa3a3147f0bb4f3bd853
+       16K-D D2 design F005–F006: CLOSED
+       16K-D D2 design IR-003:
+         S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DESIGN-IR-003 — ACCEPT
+       Exact independently accepted 16K-D D2 design subject:
+         8f96657d73b2213fb9b43557b001bc4c5a42188b
+       16K-D D2 implementation authority:
+         S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-AUTH-001
+         — AUTHORIZED
+       Exact 16K-D D2 implementation parent:
+         8f96657d73b2213fb9b43557b001bc4c5a42188b
        16K-D D2 design document:
          docs/slice16k_d_d2_practical_execution_optimization_design.md
-       16K-D status: D2 PRACTICAL EXECUTION OPTIMIZATION DESIGN REWORK 2 COMPLETE /
-         READY FOR INDEPENDENT RE-REVIEW
-       16K-D D2: DESIGN ONLY / EXECUTION NOT AUTHORIZED
+       16K-D status: D2 PRACTICAL EXECUTION OPTIMIZATION IMPLEMENTATION COMPLETE /
+         READY FOR INDEPENDENT REVIEW
+       16K-D D2 design: COMPLETE / INDEPENDENTLY ACCEPTED
+       16K-D D2: IMPLEMENTATION ONLY / EXECUTION NOT AUTHORIZED
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md
@@ -1791,9 +1814,10 @@ SLICE 15  COMPLETE / ACCEPTED
        16K-D practical sequence:
          D0 → D1 attribution → D2 practical execution optimization → decision
        16K-D mechanical D2→D3→D4→D5 sequence: SUPERSEDED
-       16K-D closed under this design AUTH:
-         D2 harness/execution / FP16/CPU calls / model replacement /
-         mechanical D3–D5 / production/default / threshold changes /
+       16K-D closed under this implementation AUTH:
+         D2 scientific/benchmark execution / FP16/CPU/parity runs /
+         production default switch / model replacement /
+         mechanical D3–D5 / threshold changes /
          HTTP-500 reopen / 16K-E→G / main
        16K-E → 16K-G: NOT AUTHORIZED
        Main promotion: NOT AUTHORIZED

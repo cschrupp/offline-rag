@@ -241,6 +241,8 @@ class DenseSearchableUnitsSettings(BaseModel):
 
 
 EmbeddingDevicePolicy = Literal["auto", "cpu", "cuda"]
+# Execution policy only — never participates in embedding/index identity hashes.
+EmbeddingPrecisionPolicy = Literal["native", "fp16"]
 
 
 class EmbeddingModelSettings(BaseModel):
@@ -255,6 +257,9 @@ class EmbeddingModelSettings(BaseModel):
     batch_size: PositiveInt = 32
     # Execution policy only — never participates in embedding/index identity hashes.
     device: EmbeddingDevicePolicy = "auto"
+    # Execution policy only — default native preserves current production behavior.
+    # fp16 is CUDA-only and fails closed on CPU (no silent fallback).
+    precision: EmbeddingPrecisionPolicy = "native"
     query_instruction: str | None = None
     document_instruction: str | None = None
 
