@@ -12,29 +12,29 @@
       "reserved_bytes": 0,
       "status": "observed"
     },
-    "encode_cuda_device_ms": 0.19251200556755066,
+    "encode_cuda_device_ms": 0.16595199704170227,
     "encode_cuda_device_status": "observed",
-    "encode_ms": 0.06230200051504653,
+    "encode_ms": 0.06076999852666631,
     "gpu_external_after_sample": {
       "clock_graphics_mhz": 975.0,
       "clock_memory_mhz": 5500.0,
       "clock_sm_mhz": 975.0,
-      "power_draw_w": 34.37,
+      "power_draw_w": 35.56,
       "pstate": "P0",
-      "temperature_c": 64.0,
+      "temperature_c": 61.0,
       "throttle_hw_slowdown": "Not Active",
       "throttle_hw_thermal_slowdown": "Not Active",
       "throttle_sw_power_cap": "Not Active",
       "throttle_sw_thermal_slowdown": "Not Active",
-      "utilization_gpu_pct": 4.0,
-      "utilization_memory_pct": 1.0
+      "utilization_gpu_pct": 10.0,
+      "utilization_memory_pct": 4.0
     },
     "gpu_external_after_status": "observed",
     "gpu_external_before_status": "observed",
     "item_count": 2,
     "optional_cuda_matmul_timing": {
-      "encode_cuda_device_ms": 89.57132720947266,
-      "encode_ms": 89.67297500021232,
+      "encode_cuda_device_ms": 87.74246215820312,
+      "encode_ms": 87.0426959991164,
       "error": null,
       "process_cpu_delta_status": "observed",
       "status": "observed"
@@ -42,13 +42,13 @@
     "padded_token_workload": 8,
     "padding_fraction": 0.0,
     "process_cpu_delta": {
-      "cpu_time_s": 3.092719,
+      "cpu_time_s": 7.60000000000205e-05,
       "error": null,
-      "involuntary_context_switches": 108,
+      "involuntary_context_switches": 0,
       "status": "observed",
-      "system_time_s": 0.351077,
-      "user_time_s": 2.741642,
-      "voluntary_context_switches": 650
+      "system_time_s": 8.999999999981245e-06,
+      "user_time_s": 6.700000000003925e-05,
+      "voluntary_context_switches": 0
     },
     "token_length_stats": {
       "max": 4,
@@ -59,7 +59,7 @@
       "p99": 4
     }
   },
-  "git_sha": "0756dbff5378006122b38f3755bde58dda5d2817",
+  "git_sha": "433725952c15a2feed4b65986d03e254d08d1568",
   "notes": [
     "FakeEmbedder path proves host-wall + process CPU deltas without model CUDA work.",
     "nvidia-smi external sample runs outside encode; may be observed or unavailable.",
@@ -67,6 +67,6 @@
     "Unavailable metrics remain explicit null/unavailable \u2014 never fabricated.",
     "Scientific D1-A/D1-B campaign remains NOT AUTHORIZED under this tooling AUTH."
   ],
-  "recorded_at": "2026-10-20T00:27:53.049330Z",
+  "recorded_at": "2026-10-20T00:42:24.721511Z",
   "scientific_execution": "NOT_AUTHORIZED"
 }
