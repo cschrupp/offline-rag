@@ -31,12 +31,16 @@
 **Exact D1 matrix freeze parent:** `016e338bf2b848e30cd89c7ba6ace6e6f39d1139`  
 **D1 matrix freeze document:** `docs/slice16k_d_d1_scientific_matrix_freeze.md`  
 
-**Status:** D1 SCIENTIFIC MATRIX FROZEN / STOP  
+**D1 scientific execution authority:** `S16-K-D-D1-STALL-ATTRIBUTION-SCIENTIFIC-EXECUTION-AUTH-001` — AUTHORIZED  
+**Exact D1 scientific execution parent:** `0ecf2f74e4d283f59ab932abbdaee6ebb821a5ac`  
+
+**Status:** D1 SCIENTIFIC EXECUTION AUTHORIZED / IN PROGRESS  
 **D0:** BASELINE COMPLETE / INDEPENDENTLY ACCEPTED  
 **D1 tooling:** COMPLETE / INDEPENDENTLY ACCEPTED  
 **D1 tooling F001:** CLOSED  
 **Contract:** `dense-cuda-profile-v2`  
-**D1 scientific execution (D1-A / D1-B):** NOT AUTHORIZED  
+**D1 scientific matrix:** FROZEN  
+**D1 scientific execution sequence:** D1-A1 → D1-A2 → D1-B (fixed; no adaptive changes)
 
 ## Authoritative current lane (unchanged)
 
