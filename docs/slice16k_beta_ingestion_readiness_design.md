@@ -201,9 +201,15 @@
 **16K-D F001:** CLOSED
 **16K-D experimental-plan reconciliation authority:** `S16-K-D-EXPERIMENTAL-PLAN-RECONCILIATION-AUTH-001` — AUTHORIZED
 **Exact 16K-D reconciliation parent:** `c801401a486c6ecd425840649fdd6f6893c50f18`
+**Exact 16K-D reconciliation tip / D1 tooling parent:** `4449f0053faf972726955db889e83ffcda8a2143`
 **16K-D experimental plan:** RECONCILED (docs-only; treatment execution NOT AUTHORIZED)
+**16K-D D1 stall-attribution tooling authority:** `S16-K-D-D1-STALL-ATTRIBUTION-DIAGNOSTIC-TOOLING-AUTH-001` — AUTHORIZED
+**Exact 16K-D D1 tooling parent:** `4449f0053faf972726955db889e83ffcda8a2143`
+**16K-D status:** D1 STALL-ATTRIBUTION TOOLING COMPLETE / READY FOR INDEPENDENT REVIEW
+**16K-D D1 scientific execution (D1-A / D1-B):** NOT AUTHORIZED
 **16K-D document:** `docs/slice16k_d_dense_cuda_profiling.md`
 **16K-D evidence:** `docs/evidence/16k_d_dense_cuda/`
+**16K-D D1 tooling evidence:** `docs/evidence/16k_d_dense_cuda_tooling/`
 **16K-D authoritative current lane:** CUDA / BF16 / batch 32 / SDPA
 **16K-D frozen proxy usability (§9.4):** median wall ≤10 min; no confirmation run >12 min;
 3 clean cold confirmation runs; 16K-F full-corpus cold dense ≤60 min
@@ -638,7 +644,10 @@ Detailed per-batch profiling belongs in benchmark/evidence artifacts.
 
 **Reconciliation authority:** `S16-K-D-EXPERIMENTAL-PLAN-RECONCILIATION-AUTH-001`  
 **Exact reconciliation parent:** `c801401a486c6ecd425840649fdd6f6893c50f18`  
-**Status:** 16K-D EXPERIMENTAL PLAN RECONCILED (docs-only; no treatment execution)
+**Exact reconciliation tip / D1 tooling parent:** `4449f0053faf972726955db889e83ffcda8a2143`  
+**D1 stall-attribution tooling authority:** `S16-K-D-D1-STALL-ATTRIBUTION-DIAGNOSTIC-TOOLING-AUTH-001` — AUTHORIZED  
+**Status:** D1 STALL-ATTRIBUTION TOOLING COMPLETE / READY FOR INDEPENDENT REVIEW  
+(D1 scientific execution NOT AUTHORIZED; no treatment execution)
 
 Current code path context (independently accepted D0): SentenceTransformers /
 Qwen3-Embedding-0.6B, CUDA, **BF16**, batch size 32, **SDPA**, per-chunk JSON
@@ -1304,23 +1313,33 @@ Exact 16K-D rework subject: 32e52024df47b9add7ce02675a1d40555ac55eae
 Exact 16K-D acceptance-record parent:
   70abf3003ba37cd983772e084f9616fe3678a17a
 16K-D branch: implementation/16k-d-dense-cuda-profiling
-16K-D status: D0 BASELINE COMPLETE / INDEPENDENTLY ACCEPTED
+16K-D D0: BASELINE COMPLETE / INDEPENDENTLY ACCEPTED
 16K-D F001: CLOSED
 16K-D experimental-plan reconciliation authority:
   S16-K-D-EXPERIMENTAL-PLAN-RECONCILIATION-AUTH-001 — AUTHORIZED
 Exact 16K-D reconciliation parent:
   c801401a486c6ecd425840649fdd6f6893c50f18
+Exact 16K-D reconciliation tip / D1 tooling parent:
+  4449f0053faf972726955db889e83ffcda8a2143
 16K-D experimental plan: RECONCILED (docs-only)
+16K-D D1 stall-attribution tooling authority:
+  S16-K-D-D1-STALL-ATTRIBUTION-DIAGNOSTIC-TOOLING-AUTH-001 — AUTHORIZED
+Exact 16K-D D1 tooling parent:
+  4449f0053faf972726955db889e83ffcda8a2143
+16K-D status: D1 STALL-ATTRIBUTION TOOLING COMPLETE /
+  READY FOR INDEPENDENT REVIEW
+16K-D D1 scientific execution (D1-A / D1-B): NOT AUTHORIZED
 16K-D document: docs/slice16k_d_dense_cuda_profiling.md
 16K-D evidence: docs/evidence/16k_d_dense_cuda/
+16K-D D1 tooling evidence: docs/evidence/16k_d_dense_cuda_tooling/
 16K-D authoritative current lane: CUDA / BF16 / batch 32 / SDPA
 16K-D frozen proxy usability (§9.4): median ≤10 min; no run >12 min;
   3 clean cold confirmations; 16K-F full-corpus ≤60 min
 16K-D reconciled sequence (§9.2.2):
   D0 → D1 stall attribution → D2 BF16 vs FP16 → D3 batch sweep →
   D4 attention conditional → D5 persistence/Qdrant if ≥10% wall
-16K-D closed under this reconciliation (execution):
-  D1 diagnostic execution / FP16 treatment / batch sweep / attention /
+16K-D closed under reconciliation / this tooling AUTH (execution):
+  D1 scientific runs / FP16 treatment / batch sweep / attention /
   persistence/Qdrant opt / default promotion / 16K-E→G / main /
   HTTP-500 GPU investigation reopen
 16K-E → 16K-G: NOT AUTHORIZED

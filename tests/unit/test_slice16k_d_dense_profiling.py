@@ -231,7 +231,7 @@ def test_profile_env_introduces_no_network(
         embedder=FakeEmbedder(dimension=8),
     )
     assert report.status is IndexingStatus.SUCCESS
-    assert report.metadata["dense_profile"]["contract"] == "dense-cuda-profile-v1"
+    assert report.metadata["dense_profile"]["contract"] == "dense-cuda-profile-v2"
 
 
 def test_fake_embedder_tokenizer_unavailable_is_explicit(

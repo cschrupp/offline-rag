@@ -1,0 +1,72 @@
+{
+  "authority": "S16-K-D-D1-STALL-ATTRIBUTION-DIAGNOSTIC-TOOLING-AUTH-001",
+  "contract": "dense-cuda-profile-v2",
+  "demo": {
+    "aggregate_input_tokens": 8,
+    "batch_identity_digest": "0fdedaeabd01057dd472d4116baaf9f9a8c9cb515b2b67d01dc35f5c7a2c7cd4",
+    "chunk_ids_digest": "2a25d5c43b9f3fa88cf2bff24a581552c17d863cd7a829999bca180b30c468c1",
+    "cuda_allocator_after": {
+      "allocated_bytes": 0,
+      "error": null,
+      "peak_allocated_bytes": 0,
+      "reserved_bytes": 0,
+      "status": "observed"
+    },
+    "encode_cuda_device_ms": 0.1833920031785965,
+    "encode_cuda_device_status": "observed",
+    "encode_ms": 0.07813199954398442,
+    "gpu_external_after_sample": {
+      "clock_graphics_mhz": 975.0,
+      "clock_memory_mhz": 5500.0,
+      "clock_sm_mhz": 975.0,
+      "power_draw_w": 34.47,
+      "pstate": "P0",
+      "temperature_c": 64.0,
+      "throttle_hw_slowdown": "Not Active",
+      "throttle_hw_thermal_slowdown": "Not Active",
+      "throttle_sw_power_cap": "Not Active",
+      "throttle_sw_thermal_slowdown": "Not Active",
+      "utilization_gpu_pct": 3.0,
+      "utilization_memory_pct": 1.0
+    },
+    "gpu_external_after_status": "observed",
+    "gpu_external_before_status": "observed",
+    "item_count": 2,
+    "optional_cuda_matmul_timing": {
+      "encode_cuda_device_ms": 95.90393829345703,
+      "encode_ms": 96.12532199935231,
+      "error": null,
+      "process_cpu_delta_status": "observed",
+      "status": "observed"
+    },
+    "padded_token_workload": 8,
+    "padding_fraction": 0.0,
+    "process_cpu_delta": {
+      "cpu_time_s": 3.137752,
+      "error": null,
+      "involuntary_context_switches": 87,
+      "status": "observed",
+      "system_time_s": 0.356935,
+      "user_time_s": 2.780817,
+      "voluntary_context_switches": 649
+    },
+    "token_length_stats": {
+      "max": 4,
+      "median": 4,
+      "min": 4,
+      "p50": 4,
+      "p95": 4,
+      "p99": 4
+    }
+  },
+  "git_sha": "4449f0053faf972726955db889e83ffcda8a2143",
+  "notes": [
+    "FakeEmbedder path proves host-wall + process CPU deltas without model CUDA work.",
+    "nvidia-smi external sample runs outside encode; may be observed or unavailable.",
+    "optional_cuda_matmul_timing proves CUDA-event device timing when a GPU is present.",
+    "Unavailable metrics remain explicit null/unavailable \u2014 never fabricated.",
+    "Scientific D1-A/D1-B campaign remains NOT AUTHORIZED under this tooling AUTH."
+  ],
+  "recorded_at": "2026-10-20T00:27:15.762238Z",
+  "scientific_execution": "NOT_AUTHORIZED"
+}

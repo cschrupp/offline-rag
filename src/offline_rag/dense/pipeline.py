@@ -63,9 +63,12 @@ from offline_rag.dense.points import build_dense_point
 from offline_rag.dense.profiling import (
     dense_profile_session,
     get_dense_profile_collector,
+    observe_cuda_allocator_state,
     observe_model_input_token_counts,
     observe_peak_vram_bytes,
+    profiled_encode_timing,
     reset_peak_vram_stats,
+    sample_external_gpu_state,
     timed_ms,
 )
 from offline_rag.dense.qdrant_local import QdrantLocalBackend
@@ -377,16 +380,35 @@ def _ensure_embeddings(
             encode_payloads = [f"{doc_instruction}{text}" for text in texts]
         token_counts: list[int] | None = None
         max_seq: int | None = None
+        encode_ms = 0.0
+        encode_cuda_device_ms: float | None = None
+        encode_cuda_device_status = "not_attempted"
+        encode_cuda_device_error: str | None = None
+        process_cpu_delta: dict[str, Any] | None = None
+        gpu_before: dict[str, Any] | None = None
+        gpu_after: dict[str, Any] | None = None
+        cuda_allocator_after: dict[str, Any] | None = None
+        batch_chunk_ids: list[str] | None = None
         if profile is not None:
             token_counts, max_seq = observe_model_input_token_counts(
                 embedder, encode_payloads, profile
             )
-        encode_ms = 0.0
+            batch_chunk_ids = [item[0].chunk_id for item in batch]
+            # External GPU sample outside encode path (does not sync the model).
+            gpu_before = sample_external_gpu_state()
         try:
             if profile is not None:
-                with timed_ms() as encode_bucket:
+                with profiled_encode_timing() as encode_timing:
                     vectors = embedder.embed_documents(texts)
-                encode_ms = encode_bucket[0]
+                encode_ms = float(encode_timing["encode_ms"])
+                encode_cuda_device_ms = encode_timing["encode_cuda_device_ms"]
+                encode_cuda_device_status = str(
+                    encode_timing["encode_cuda_device_status"]
+                )
+                encode_cuda_device_error = encode_timing["encode_cuda_device_error"]
+                process_cpu_delta = encode_timing["process_cpu_delta"]
+                gpu_after = sample_external_gpu_state()
+                cuda_allocator_after = observe_cuda_allocator_state()
             else:
                 vectors = embedder.embed_documents(texts)
         except Exception as exc:
@@ -476,6 +498,14 @@ def _ensure_embeddings(
                 encode_ms=encode_ms,
                 persistence_ms=persist_ms,
                 peak_vram_bytes_after=peak_after,
+                chunk_ids=batch_chunk_ids,
+                encode_cuda_device_ms=encode_cuda_device_ms,
+                encode_cuda_device_status=encode_cuda_device_status,
+                encode_cuda_device_error=encode_cuda_device_error,
+                process_cpu_delta=process_cpu_delta,
+                cuda_allocator_after=cuda_allocator_after,
+                gpu_external_before=gpu_before,
+                gpu_external_after=gpu_after,
             )
         report_document_activity(
             on_document_activity, document_ids=(), stage="dense_batch"
