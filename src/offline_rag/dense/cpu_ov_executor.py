@@ -496,11 +496,11 @@ def export_openvino_model(
     export_method: list[str] = ["sentence_transformers_openvino_backend"]
 
     if weight_format == "fp16":
-        from optimum.intel import OVConfig
-
-        # Storage/export dtype — distinct from INFERENCE_PRECISION_HINT.
-        model_kwargs["ov_config"] = OVConfig(dtype="fp16")
-        export_method.append("optimum_OVConfig_dtype_fp16")
+        # Sentence Transformers forwards model_kwargs["ov_config"] as an OpenVINO
+        # *runtime* dict or JSON path — not optimum.intel.OVConfig. Passing OVConfig
+        # raises TypeError. FP16 *IR storage* is established after save via
+        # ov.save_model(..., compress_to_fp16=True) below (fail-closed by inspection).
+        export_method.append("openvino_compress_to_fp16_after_export")
     elif weight_format == "int8":
         try:
             from optimum.intel import OVWeightQuantizationConfig
