@@ -2,11 +2,13 @@
 
 **Experiment:** `16K-D-CPU-ONNX-01`  
 **Implementation authority:** `S16-K-D-POST-CPUOV-CPU-ONNX-FEASIBILITY-IMPLEMENTATION-AUTH-001`  
+**Rework authority:** `S16-K-D-POST-CPUOV-CPU-ONNX-FEASIBILITY-IMPLEMENTATION-REWORK-AUTH-001`  
 **Exact parent:** `e5af0a78f25696a720de79a02777ea3836351fb1`  
+**Rework parent:** `c17ac13ee05dec1c476455c29dc4600bfb2b1071`  
 **Branch:** `implementation/16k-d-cpu-onnx-feasibility`  
 **Work class:** HARNESS / FEASIBILITY IMPLEMENTATION ONLY  
 
-**Status:** POST-CPU-OV CPU ONNX FEASIBILITY HARNESS IMPLEMENTATION (execution locked)  
+**Status:** POST-CPU-OV CPU ONNX FEASIBILITY HARNESS REWORK (F001–F003; execution locked)  
 
 **Predecessor:** CPU-OV-01 STOP after INT8 128-screen TOO_SLOW (~39.75 min projected)  
 **Further scientific execution:** NOT AUTHORIZED (`EXECUTION_AUTHORIZED=False`)
@@ -94,6 +96,11 @@ main promotion.
 3. Projected full-corpus minutes are never confirmation evidence.
 4. Thresholds are frozen constants.
 5. ONNX INT8 identity is fail-closed via `observed_ONNX_INT8_quantization`
-   (graph/initializers/ops), never request label or filename.
-6. Final ≤25-minute gate uses measured `full_wall_minutes` + exact 1296 counts
+   (`verified` requires INT8/UINT8 weight initializers; quantization ops are
+   supporting evidence only), never request label or filename (F002).
+6. QINT8 derivative requires the exact accepted FP32 Stage-0 tree SHA before
+   copy/quantization (F001).
+7. Screen requires the exact accepted QINT8 candidate tree SHA before encode and
+   after encode (F003).
+8. Final ≤25-minute gate uses measured `full_wall_minutes` + exact 1296 counts
    (when a later AUTH unlocks full confirm).

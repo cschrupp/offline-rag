@@ -1106,9 +1106,13 @@ SLICE 15  COMPLETE / ACCEPTED
        16K-D CPU-ONNX-01 document:
          docs/slice16k_d_cpu_onnx_feasibility.md
        16K-D CPU-ONNX-01 status: POST-CPU-OV ONNX FEASIBILITY HARNESS
-         IMPLEMENTATION (execution locked; no scientific run under AUTH-001)
+         IMPLEMENTATION + REWORK-AUTH-001 (F001–F003; execution locked)
+       16K-D CPU-ONNX-01 IR-001: REWORK REQUIRED at c17ac13; rework parent c17ac13
        16K-D CPU-ONNX-01 candidate: ST/ONNX CPUExecutionProvider QINT8 AVX2
          (FP32 ONNX provenance source only; one dynamic INT8 screen)
+       16K-D CPU-ONNX-01 F001: QINT8 requires exact FP32 source tree SHA
+       16K-D CPU-ONNX-01 F002: verified requires INT8/UINT8 initializers
+       16K-D CPU-ONNX-01 F003: screen enforces candidate tree SHA before/after
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md
@@ -1937,9 +1941,13 @@ SLICE 15  COMPLETE / ACCEPTED
        16K-D CPU-ONNX-01 document:
          docs/slice16k_d_cpu_onnx_feasibility.md
        16K-D CPU-ONNX-01 status: POST-CPU-OV ONNX FEASIBILITY HARNESS
-         IMPLEMENTATION (execution locked; no scientific run under AUTH-001)
+         IMPLEMENTATION + REWORK-AUTH-001 (F001–F003; execution locked)
+       16K-D CPU-ONNX-01 IR-001: REWORK REQUIRED at c17ac13; rework parent c17ac13
        16K-D CPU-ONNX-01 candidate: ST/ONNX CPUExecutionProvider QINT8 AVX2
          (FP32 ONNX provenance source only; one dynamic INT8 screen)
+       16K-D CPU-ONNX-01 F001: QINT8 requires exact FP32 source tree SHA
+       16K-D CPU-ONNX-01 F002: verified requires INT8/UINT8 initializers
+       16K-D CPU-ONNX-01 F003: screen enforces candidate tree SHA before/after
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md

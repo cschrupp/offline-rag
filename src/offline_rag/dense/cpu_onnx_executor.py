@@ -226,7 +226,9 @@ def inspect_onnx_quantization(onnx_path: Path) -> dict[str, Any]:
             quant_op_types[name] = quant_op_types.get(name, 0) + 1
 
     integer_weights = int8_initializers + uint8_initializers
-    verified = integer_weights > 0 or quant_ops > 0
+    # F002: verified requires demonstrable INT8/UINT8 weight initializers.
+    # Quantization operators are supporting evidence only — never sufficient alone.
+    verified = integer_weights > 0
     return {
         "onnx_path": str(onnx_path),
         "bytes": onnx_path.stat().st_size,
@@ -245,7 +247,8 @@ def inspect_onnx_quantization(onnx_path: Path) -> dict[str, Any]:
             "quantization_op_count": quant_ops,
             "authority": IMPLEMENTATION_AUTH,
             "note": (
-                "verified from ONNX graph initializers/ops only; "
+                "verified iff INT8/UINT8 initializers are present; "
+                "quantization ops are supporting evidence only; "
                 "never from request label or filename"
             ),
         },
@@ -263,8 +266,15 @@ def assert_requested_onnx_quantization(
         if not oc.get("verified"):
             raise ValueError(
                 "requested_weight_format=qint8_avx2 but "
-                "observed_ONNX_INT8_quantization is not verified; "
-                "refusing filename/label-only INT8 claims"
+                "observed_ONNX_INT8_quantization is not verified "
+                "(requires demonstrable INT8/UINT8 weight initializers; "
+                "quantization ops alone are insufficient); "
+                "refusing filename/label/op-only INT8 claims"
+            )
+        if not oc.get("demonstrable_integer_initializers"):
+            raise ValueError(
+                "requested_weight_format=qint8_avx2 but no demonstrable "
+                "INT8/UINT8 weight initializers were observed"
             )
 
 
@@ -390,18 +400,13 @@ def materialize_qint8_avx2_derivative(
     *,
     source_export_dir: Path,
     export_dir: Path,
-    expected_source_tree_sha256: str | None = None,
+    expected_source_tree_sha256: str,
 ) -> dict[str, Any]:
-    """Derive AVX2 dynamic QINT8 ONNX from an accepted FP32 ST/ONNX export."""
-    from sentence_transformers import SentenceTransformer
+    """Derive AVX2 dynamic QINT8 ONNX from an accepted FP32 ST/ONNX export.
 
-    try:
-        from sentence_transformers.backend import export_dynamic_quantized_onnx_model
-    except ImportError:  # pragma: no cover - older ST layout
-        from sentence_transformers import (  # type: ignore[attr-defined]
-            export_dynamic_quantized_onnx_model,
-        )
-
+    F001: ``expected_source_tree_sha256`` is mandatory. Wrong/missing SHA fails
+    before copy or quantization.
+    """
     source = Path(source_export_dir).resolve()
     dest = Path(export_dir).resolve()
     if source == dest:
@@ -411,14 +416,20 @@ def materialize_qint8_avx2_derivative(
     if dest.exists():
         raise FileExistsError(f"QINT8 export dir already exists: {dest}")
 
+    expected = str(expected_source_tree_sha256 or "").strip()
+    if not expected:
+        raise ValueError(
+            "expected_source_tree_sha256 is required for QINT8 AVX2 derivative "
+            "(accepted FP32 Stage-0 export tree SHA); refusing unpinned source"
+        )
+
+    # Fail closed on identity before any ST import, copy, or quantization.
     source_tree = hash_export_tree(source)
-    if expected_source_tree_sha256 is not None:
-        if source_tree.get("tree_sha256") != expected_source_tree_sha256:
-            raise ValueError(
-                "ONNX QINT8 source tree SHA256 mismatch: "
-                f"observed={source_tree.get('tree_sha256')} "
-                f"expected={expected_source_tree_sha256}"
-            )
+    if source_tree.get("tree_sha256") != expected:
+        raise ValueError(
+            "ONNX QINT8 source tree SHA256 mismatch: "
+            f"observed={source_tree.get('tree_sha256')} expected={expected}"
+        )
     source_identity = build_onnx_precision_identity(
         requested_weight_format="fp32",
         export_dir=source,
@@ -426,6 +437,15 @@ def materialize_qint8_avx2_derivative(
     if source_identity["observed_ONNX_INT8_quantization"].get("verified"):
         raise ValueError(
             "ONNX QINT8 source already appears quantized; refusing stacked quantize"
+        )
+
+    from sentence_transformers import SentenceTransformer
+
+    try:
+        from sentence_transformers.backend import export_dynamic_quantized_onnx_model
+    except ImportError:  # pragma: no cover - older ST layout
+        from sentence_transformers import (  # type: ignore[attr-defined]
+            export_dynamic_quantized_onnx_model,
         )
 
     shutil.copytree(source, dest)
@@ -806,7 +826,7 @@ def execute_export_qint8_avx2(
     export_dir: Path,
     source_export_dir: Path,
     model_dir: Path,
-    expected_source_tree_sha256: str | None = None,
+    expected_source_tree_sha256: str,
     repo_root: Path | None = None,
     evidence_dir: Path | None = None,
 ) -> dict[str, Any]:
@@ -850,8 +870,17 @@ def execute_screen(
     *,
     export_dir: Path,
     repo_root: Path,
+    expected_candidate_tree_sha256: str,
     evidence_dir: Path | None = None,
 ) -> dict[str, Any]:
+    """128-child screen against an immutable QINT8 candidate tree (F003)."""
+    expected = str(expected_candidate_tree_sha256 or "").strip()
+    if not expected:
+        raise ValueError(
+            "expected_candidate_tree_sha256 is required for screen "
+            "(accepted QINT8 Stage-0B candidate tree SHA)"
+        )
+
     children_by_id = load_children_by_id(repo_root=repo_root)
     selected_ids = select_screen_chunk_ids(sorted(children_by_id.keys()))
     digest = sha256_text("\n".join(selected_ids))
@@ -865,6 +894,11 @@ def execute_screen(
     texts = [t for _, _, t in rows]
 
     tree_before = hash_export_tree(export_dir)
+    if tree_before.get("tree_sha256") != expected:
+        raise ValueError(
+            "QINT8 candidate tree SHA256 mismatch before screen: "
+            f"observed={tree_before.get('tree_sha256')} expected={expected}"
+        )
     model, precision_identity = load_onnx_st_model(
         model_or_export_dir=export_dir,
         weight_format="qint8_avx2",
@@ -888,6 +922,11 @@ def execute_screen(
         if len(vec) != EXPECTED_DIMENSION or not _finite(vec):
             raise RuntimeError("screen vector validation failed")
     tree_after = hash_export_tree(export_dir)
+    if tree_after.get("tree_sha256") != expected:
+        raise ValueError(
+            "QINT8 candidate tree mutated during screen: "
+            f"before={expected} after={tree_after.get('tree_sha256')}"
+        )
     chunks_per_sec = float(len(texts)) / encode_s if encode_s > 0 else float("inf")
     projected = project_full_minutes(chunks_per_sec)
     payload = {
@@ -911,6 +950,7 @@ def execute_screen(
         "ort_inter_op_threads": FROZEN_ORT_INTER_OP_THREADS,
         "provider": FROZEN_ONNX_PROVIDER,
         "export_dir": str(export_dir),
+        "expected_candidate_tree_sha256": expected,
         "candidate_tree_sha256_before": tree_before.get("tree_sha256"),
         "candidate_tree_sha256_after": tree_after.get("tree_sha256"),
         "cpu_host_runtime_before": cpu_before,

@@ -341,11 +341,13 @@ def _write_minimal_onnx(
     y = helper.make_tensor_value_info("Y", TensorProto.FLOAT, [1, 2])
     nodes = [helper.make_node("Identity", ["X"], ["Y"])]
     if with_quant_ops:
-        # Add QuantizeLinear / DequantizeLinear markers even if not executable.
+        # Op markers only: float scale/zp so no INT8/UINT8 weight initializers.
         scale = numpy_helper.from_array(
             np.array([0.1], dtype=np.float32), name="scale"
         )
-        zp = numpy_helper.from_array(np.array([0], dtype=np.int8), name="zp")
+        zp = numpy_helper.from_array(
+            np.array([0.0], dtype=np.float32), name="zp"
+        )
         initializers = [weights, scale, zp]
         nodes = [
             helper.make_node(
@@ -480,10 +482,194 @@ def test_unlocked_screen_delegates_to_executor() -> None:
         out = harness.run_screen(
             history=history,
             export_dir=REPO / "data" / "16k_d_cpu_onnx_work" / "exports" / "qint8",
+            expected_candidate_tree_sha256="a" * 64,
             repo_root=REPO,
         )
     assert out["status"] == "ok"
     mocked.assert_called_once()
+    assert mocked.call_args.kwargs["expected_candidate_tree_sha256"] == "a" * 64
+
+
+def test_f001_qint8_requires_source_tree_sha(tmp_path: Path) -> None:
+    """F001: missing/wrong FP32 source SHA fails before copy/quantization."""
+    from offline_rag.dense.cpu_onnx_executor import materialize_qint8_avx2_derivative
+
+    source = tmp_path / "fp32"
+    dest = tmp_path / "qint8"
+    source.mkdir()
+    _write_minimal_onnx(source / "model.onnx", with_int8_initializer=False)
+
+    with pytest.raises(ValueError, match="expected_source_tree_sha256 is required"):
+        materialize_qint8_avx2_derivative(
+            source_export_dir=source,
+            export_dir=dest,
+            expected_source_tree_sha256="",
+        )
+    assert not dest.exists()
+
+    with pytest.raises(ValueError, match="source tree SHA256 mismatch"):
+        materialize_qint8_avx2_derivative(
+            source_export_dir=source,
+            export_dir=dest,
+            expected_source_tree_sha256="0" * 64,
+        )
+    assert not dest.exists()
+
+
+def test_f001_unlocked_harness_requires_source_sha() -> None:
+    import offline_rag.dense.cpu_onnx_feasibility as feas
+    import offline_rag.dense.cpu_onnx_harness as harness
+
+    history = [StageResult(stage_id="export_fp32", ok=True)]
+    with (
+        patch.object(feas, "EXECUTION_AUTHORIZED", True),
+        patch.object(harness, "EXECUTION_AUTHORIZED", True),
+        patch.object(
+            harness,
+            "resolve_local_pinned_model_dir",
+            return_value=Path("/tmp/model"),
+        ),
+    ):
+        with pytest.raises(ValueError, match="expected_source_tree_sha256 is required"):
+            harness.run_export_qint8_avx2(
+                history=history,
+                export_dir=REPO / "data" / "16k_d_cpu_onnx_work" / "exports" / "qint8",
+                source_export_dir=REPO
+                / "data"
+                / "16k_d_cpu_onnx_work"
+                / "exports"
+                / "fp32",
+                expected_source_tree_sha256=None,
+                repo_root=REPO,
+            )
+
+
+def test_f002_quant_ops_alone_do_not_verify(tmp_path: Path) -> None:
+    """F002: QuantizeLinear/DequantizeLinear without INT8/UINT8 weights ≠ verified."""
+    from offline_rag.dense.cpu_onnx_executor import (
+        assert_requested_onnx_quantization,
+        inspect_onnx_quantization,
+    )
+
+    path = tmp_path / "ops_only.onnx"
+    _write_minimal_onnx(
+        path, with_int8_initializer=False, with_quant_ops=True
+    )
+    obs = inspect_onnx_quantization(path)
+    oc = obs["observed_ONNX_INT8_quantization"]
+    assert oc["demonstrable_quantization_ops"] is True
+    assert oc["quantization_op_count"] >= 1
+    assert oc["demonstrable_integer_initializers"] is False
+    assert oc["verified"] is False
+    with pytest.raises(ValueError, match="not verified|INT8/UINT8"):
+        assert_requested_onnx_quantization(
+            requested_weight_format="qint8_avx2",
+            observed_ONNX_INT8_quantization=oc,
+        )
+
+
+def test_f003_screen_enforces_candidate_tree_immutability(tmp_path: Path) -> None:
+    """F003: expected SHA required; mismatch before/after encode fails closed."""
+    from offline_rag.dense import cpu_onnx_executor as ex
+    from offline_rag.dense.cpu_onnx_feasibility import (
+        EXPECTED_SCREEN_CHUNK_IDS_DIGEST,
+    )
+    from offline_rag.dense.cpu_onnx_harness import hash_export_tree
+
+    export_dir = tmp_path / "qint8"
+    export_dir.mkdir()
+    _write_minimal_onnx(export_dir / "model_qint8_avx2.onnx", with_int8_initializer=True)
+    tree = hash_export_tree(export_dir)
+    good_sha = str(tree["tree_sha256"])
+
+    with pytest.raises(ValueError, match="expected_candidate_tree_sha256 is required"):
+        ex.execute_screen(
+            export_dir=export_dir,
+            repo_root=REPO,
+            expected_candidate_tree_sha256="",
+        )
+
+    with pytest.raises(ValueError, match="mismatch before screen"):
+        ex.execute_screen(
+            export_dir=export_dir,
+            repo_root=REPO,
+            expected_candidate_tree_sha256="0" * 64,
+        )
+
+    good_tree = {"tree_sha256": good_sha, "files": [], "file_count": 0}
+    mutated_tree = {"tree_sha256": "f" * 64, "files": [], "file_count": 0}
+    hash_calls = {"n": 0}
+
+    def _hash(_path: Path) -> dict:
+        hash_calls["n"] += 1
+        return good_tree if hash_calls["n"] == 1 else mutated_tree
+
+    with (
+        patch(
+            "offline_rag.dense.cpu_onnx_executor.hash_export_tree",
+            side_effect=_hash,
+        ),
+        patch.object(ex, "load_children_by_id", return_value={"id0": object()}),
+        patch(
+            "offline_rag.dense.cpu_onnx_executor.select_screen_chunk_ids",
+            return_value=["id0"] * 128,
+        ),
+        patch(
+            "offline_rag.dense.cpu_onnx_executor.sha256_text",
+            return_value=EXPECTED_SCREEN_CHUNK_IDS_DIGEST,
+        ),
+        patch.object(
+            ex,
+            "document_embedding_texts",
+            return_value=[("id0", "h", "text")] * 128,
+        ),
+        patch.object(
+            ex,
+            "load_onnx_st_model",
+            return_value=(
+                object(),
+                {"observed_ONNX_INT8_quantization": {"verified": True}},
+            ),
+        ),
+        patch.object(
+            ex, "resolve_production_query_contract", return_value="raw-query-v1"
+        ),
+        patch.object(ex, "capture_cpu_host_runtime_facts", return_value={}),
+        patch.object(
+            ex.OnnxSTEmbedder,
+            "embed_documents",
+            return_value=[[0.0] * 1024] * 128,
+        ),
+    ):
+        with pytest.raises(ValueError, match="mutated during screen"):
+            ex.execute_screen(
+                export_dir=export_dir,
+                repo_root=REPO,
+                expected_candidate_tree_sha256=good_sha,
+            )
+
+
+def test_f003_unlocked_harness_requires_candidate_sha() -> None:
+    import offline_rag.dense.cpu_onnx_feasibility as feas
+    import offline_rag.dense.cpu_onnx_harness as harness
+
+    history = [
+        StageResult(stage_id="export_fp32", ok=True),
+        StageResult(stage_id="export_qint8_avx2", ok=True),
+    ]
+    with (
+        patch.object(feas, "EXECUTION_AUTHORIZED", True),
+        patch.object(harness, "EXECUTION_AUTHORIZED", True),
+    ):
+        with pytest.raises(
+            ValueError, match="expected_candidate_tree_sha256 is required"
+        ):
+            harness.run_screen(
+                history=history,
+                export_dir=REPO / "data" / "16k_d_cpu_onnx_work" / "exports" / "qint8",
+                expected_candidate_tree_sha256=None,
+                repo_root=REPO,
+            )
 
 
 def _load_cpu_onnx_cli():

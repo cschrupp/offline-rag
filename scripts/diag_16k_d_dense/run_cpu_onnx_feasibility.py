@@ -118,6 +118,9 @@ def cmd_screen(args: argparse.Namespace) -> int:
     payload = run_screen(
         history=history,
         export_dir=Path(args.export_dir),
+        expected_candidate_tree_sha256=getattr(
+            args, "expected_candidate_tree_sha256", None
+        ),
         repo_root=ROOT,
     )
     _print(payload, args.out)
@@ -181,7 +184,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_ex8.add_argument(
         "--expected-source-tree-sha256",
-        help="Optional fail-closed SHA256 of the FP32 source export tree",
+        help=(
+            "Required when unlocked: exact SHA256 of the accepted FP32 Stage-0 "
+            "export tree (F001)"
+        ),
     )
     p_ex8.add_argument("--out")
     p_ex8.set_defaults(func=cmd_export_qint8)
@@ -192,6 +198,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--export-dir",
         required=True,
         help="Local ONNX QINT8 export directory (required when execution unlocks)",
+    )
+    p_sc.add_argument(
+        "--expected-candidate-tree-sha256",
+        help=(
+            "Required when unlocked: exact SHA256 of the accepted QINT8 candidate "
+            "tree; verified before and after encode (F003)"
+        ),
     )
     p_sc.add_argument("--out")
     p_sc.set_defaults(func=cmd_screen)

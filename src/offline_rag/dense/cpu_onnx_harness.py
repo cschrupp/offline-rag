@@ -39,10 +39,12 @@ from offline_rag.dense.cpu_onnx_feasibility import (
     FROZEN_ORT_INTRA_OP_THREADS,
     FROZEN_QINT8_TARGET,
     IMPLEMENTATION_AUTH,
+    IMPLEMENTATION_REWORK_AUTH,
     PARITY_CONTRACT_ID,
     PARITY_DOC_COUNT,
     PARITY_QUERY_COUNT,
     PARITY_THRESHOLDS,
+    REWORK_PARENT,
     SCREEN_CHILD_COUNT,
     WORKLOAD_LABEL,
     StageResult,
@@ -251,7 +253,9 @@ def _locked_payload(
     plan = plan_next(history)
     body: dict[str, Any] = {
         "authority": IMPLEMENTATION_AUTH,
+        "rework_authority": IMPLEMENTATION_REWORK_AUTH,
         "exact_parent": EXACT_PARENT,
+        "rework_parent": REWORK_PARENT,
         "experiment_id": EXPERIMENT_ID,
         "design_doc": DESIGN_DOC,
         "status": "EXECUTION_NOT_AUTHORIZED",
@@ -399,9 +403,11 @@ def run_export_qint8_avx2(
                 "expected_source_tree_sha256": expected_source_tree_sha256,
                 "quantization_target": FROZEN_QINT8_TARGET,
                 "quantization_identity": (
-                    "observed_ONNX_INT8_quantization from graph/initializers/ops; "
-                    "never from avx2 label or _qint8 filename"
+                    "observed_ONNX_INT8_quantization.verified requires "
+                    "INT8/UINT8 weight initializers; quantization ops are "
+                    "supporting evidence only; never from avx2 label or filename"
                 ),
+                "source_tree_sha_required": True,
                 "local_model_preflight_ok": local_ok,
                 "local_model_identity": identity,
                 "local_model_preflight_error": local_error,
@@ -413,6 +419,12 @@ def run_export_qint8_avx2(
         raise ValueError(
             "source_export_dir is required for QINT8 AVX2 derivative materialization"
         )
+    expected = str(expected_source_tree_sha256 or "").strip()
+    if not expected:
+        raise ValueError(
+            "expected_source_tree_sha256 is required for QINT8 AVX2 derivative "
+            "(accepted FP32 Stage-0 export tree SHA); refusing unpinned source"
+        )
     from offline_rag.dense import cpu_onnx_executor as ex
 
     model_dir = resolve_local_pinned_model_dir(repo_root=repo_root)
@@ -420,7 +432,7 @@ def run_export_qint8_avx2(
         export_dir=export_dir,
         source_export_dir=source_export_dir,
         model_dir=model_dir,
-        expected_source_tree_sha256=expected_source_tree_sha256,
+        expected_source_tree_sha256=expected,
         repo_root=repo_root or _repo_root(),
         evidence_dir=evidence_dir or _default_evidence_dir(repo_root),
     )
@@ -430,6 +442,7 @@ def run_screen(
     *,
     history: list[StageResult],
     export_dir: Path | None = None,
+    expected_candidate_tree_sha256: str | None = None,
     repo_root: Path | None = None,
     evidence_dir: Path | None = None,
 ) -> dict[str, Any]:
@@ -447,17 +460,26 @@ def run_screen(
                 "screen_chunk_ids_digest": sha256_text("\n".join(selected)),
                 "screen_child_count": len(selected),
                 "chunk_manifest_sha256": EXPECTED_CHUNK_MANIFEST_SHA256,
+                "expected_candidate_tree_sha256": expected_candidate_tree_sha256,
+                "candidate_tree_sha_required": True,
                 "executor_ready": True,
             },
         )
     require_execution_unlocked()
     if export_dir is None:
         raise ValueError("export_dir is required when execution is unlocked")
+    expected = str(expected_candidate_tree_sha256 or "").strip()
+    if not expected:
+        raise ValueError(
+            "expected_candidate_tree_sha256 is required for screen "
+            "(accepted QINT8 Stage-0B candidate tree SHA)"
+        )
     from offline_rag.dense import cpu_onnx_executor as ex
 
     return ex.execute_screen(
         export_dir=export_dir,
         repo_root=repo_root or _repo_root(),
+        expected_candidate_tree_sha256=expected,
         evidence_dir=evidence_dir or _default_evidence_dir(repo_root),
     )
 
