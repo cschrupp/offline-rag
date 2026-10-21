@@ -1098,6 +1098,17 @@ SLICE 15  COMPLETE / ACCEPTED
          under INT8-128-SCREEN-EXECUTION-AUTH-001; CPU-OV-01 STOP
        16K-D CPU-OV-01 execution: CLOSED after INT8 screen TOO_SLOW
          (parity / full / production routing closed)
+       16K-D CPU-ONNX-01 authority:
+         S16-K-D-POST-CPUOV-CPU-ONNX-FEASIBILITY-IMPLEMENTATION-AUTH-001
+       16K-D CPU-ONNX-01 exact parent:
+         e5af0a78f25696a720de79a02777ea3836351fb1
+       16K-D CPU-ONNX-01 branch: implementation/16k-d-cpu-onnx-feasibility
+       16K-D CPU-ONNX-01 document:
+         docs/slice16k_d_cpu_onnx_feasibility.md
+       16K-D CPU-ONNX-01 status: POST-CPU-OV ONNX FEASIBILITY HARNESS
+         IMPLEMENTATION (execution locked; no scientific run under AUTH-001)
+       16K-D CPU-ONNX-01 candidate: ST/ONNX CPUExecutionProvider QINT8 AVX2
+         (FP32 ONNX provenance source only; one dynamic INT8 screen)
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md
@@ -1918,6 +1929,17 @@ SLICE 15  COMPLETE / ACCEPTED
          under INT8-128-SCREEN-EXECUTION-AUTH-001; CPU-OV-01 STOP
        16K-D CPU-OV-01 execution: CLOSED after INT8 screen TOO_SLOW
          (parity / full / production routing closed)
+       16K-D CPU-ONNX-01 authority:
+         S16-K-D-POST-CPUOV-CPU-ONNX-FEASIBILITY-IMPLEMENTATION-AUTH-001
+       16K-D CPU-ONNX-01 exact parent:
+         e5af0a78f25696a720de79a02777ea3836351fb1
+       16K-D CPU-ONNX-01 branch: implementation/16k-d-cpu-onnx-feasibility
+       16K-D CPU-ONNX-01 document:
+         docs/slice16k_d_cpu_onnx_feasibility.md
+       16K-D CPU-ONNX-01 status: POST-CPU-OV ONNX FEASIBILITY HARNESS
+         IMPLEMENTATION (execution locked; no scientific run under AUTH-001)
+       16K-D CPU-ONNX-01 candidate: ST/ONNX CPUExecutionProvider QINT8 AVX2
+         (FP32 ONNX provenance source only; one dynamic INT8 screen)
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md
