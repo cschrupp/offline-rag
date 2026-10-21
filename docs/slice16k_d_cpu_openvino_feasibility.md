@@ -8,12 +8,16 @@
 **Branch:** `implementation/16k-d-cpu-openvino-feasibility`  
 **Work class:** HARNESS / FEASIBILITY IMPLEMENTATION REWORK3 (F008 precision identity)  
 
-**Status:** POST-D2 CPU OPENVINO FEASIBILITY HARNESS IMPLEMENTATION REWORK3 COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
+**Status:** POST-D2 CPU OPENVINO FEASIBILITY HARNESS IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED  
 
-**Stage-0 execution:** PASS under `…-STAGE0-EXECUTION-AUTH-001` at `eea4c97…`  
-**Stage-0 IR storage (inspected):** FP32 (`openvino_model.bin` 2,383,106,573 bytes; 0 f16 / 680 f32 Constants) — compatibility PASS stands; not OV-FP16 storage  
+**Accepted implementation subject:** `769116132ed91543732db9f80503e539fb66b234` (IR-004 ACCEPT)  
+**Follow-up tip (OVConfig/ST integration fix):** `22ef4994cef2d55d618c8a260f241e62a05de5e7`  
+
+**Stage-0 (historical):** PASS under `…-STAGE0-EXECUTION-AUTH-001` at `eea4c97…`  
+**Stage-0 IR storage (inspected):** FP32 — compatibility PASS stands; not OV-FP16 storage  
+**FP16 materialization at 7691161:** FAIL (`TypeError`: ST `ov_config` rejects `OVConfig` object) — evidence recorded; retry requires subject pin at `22ef499…`  
 **D2 predecessor:** CAMPAIGN COMPLETE / G1 SELECTED  
-**Further execution:** NOT AUTHORIZED (`EXECUTION_AUTHORIZED=False`; no screen/parity/full)  
+**Further execution:** NOT AUTHORIZED beyond authorized FP16 materialization (`EXECUTION_AUTHORIZED=False`; no screen/parity/full)  
 
 ---
 
