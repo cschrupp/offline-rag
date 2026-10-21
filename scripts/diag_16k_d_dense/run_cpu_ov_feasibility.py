@@ -27,6 +27,7 @@ from offline_rag.dense.cpu_ov_feasibility import (  # noqa: E402
 from offline_rag.dense.cpu_ov_harness import (  # noqa: E402
     environment_fingerprint,
     run_export_compat,
+    run_export_int8,
     run_full_confirm,
     run_parity,
     run_screen,
@@ -48,6 +49,11 @@ def _load_history(path: str | None) -> list[StageResult]:
                 projected_full_minutes=item.get("projected_full_minutes"),
                 parity_ok=item.get("parity_ok"),
                 full_wall_minutes=item.get("full_wall_minutes"),
+                embeddings_generated=item.get("embeddings_generated"),
+                embeddings_reused=item.get("embeddings_reused"),
+                embeddings_failed=item.get("embeddings_failed"),
+                vectors_materialized=item.get("vectors_materialized"),
+                dimension=item.get("dimension"),
                 notes=item.get("notes"),
             )
         )
@@ -84,7 +90,19 @@ def cmd_export(args: argparse.Namespace) -> int:
     payload = run_export_compat(
         history=history,
         export_dir=Path(args.export_dir),
-        weight_format=args.weight_format,
+        weight_format="fp16",
+        allow_download=False,
+        repo_root=ROOT,
+    )
+    _print(payload, args.out)
+    return 20 if payload.get("status") == "EXECUTION_NOT_AUTHORIZED" else 0
+
+
+def cmd_export_int8(args: argparse.Namespace) -> int:
+    history = _load_history(args.history)
+    payload = run_export_int8(
+        history=history,
+        export_dir=Path(args.export_dir),
         allow_download=False,
         repo_root=ROOT,
     )
@@ -137,12 +155,20 @@ def build_parser() -> argparse.ArgumentParser:
     p_plan.add_argument("--out")
     p_plan.set_defaults(func=cmd_plan)
 
-    p_ex = sub.add_parser("export-compat", help="Stage-0 (locked)")
+    p_ex = sub.add_parser("export-compat", help="Stage-0 FP16-only (locked)")
     p_ex.add_argument("--history")
     p_ex.add_argument("--export-dir", required=True)
-    p_ex.add_argument("--weight-format", choices=("fp16", "int8"), default="fp16")
     p_ex.add_argument("--out")
     p_ex.set_defaults(func=cmd_export)
+
+    p_ex8 = sub.add_parser(
+        "export-int8",
+        help="Conditional INT8 export after planner opens INT8 (locked)",
+    )
+    p_ex8.add_argument("--history", required=True)
+    p_ex8.add_argument("--export-dir", required=True)
+    p_ex8.add_argument("--out")
+    p_ex8.set_defaults(func=cmd_export_int8)
 
     p_sc = sub.add_parser("screen", help="128-child screen (locked)")
     p_sc.add_argument("--history", required=True)

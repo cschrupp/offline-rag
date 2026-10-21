@@ -16,6 +16,7 @@ work path (for example `data/16k_d_cpu_ov_work/exports/`).
 ## Execution
 
 Scientific OpenVINO export/screen/parity/full runs remain **NOT AUTHORIZED**
-under `S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-AUTH-001`.
+under the harness / rework authorities
+(`…-IMPLEMENTATION-AUTH-001` / `…-IMPLEMENTATION-REWORK-AUTH-001`).
 Use the repository harness CLI from the main checkout; it refuses while
-`EXECUTION_AUTHORIZED=False`.
+`EXECUTION_AUTHORIZED=False`. Executor code is present for a later execution AUTH.

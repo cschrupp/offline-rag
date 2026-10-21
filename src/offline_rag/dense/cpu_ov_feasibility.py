@@ -1,7 +1,8 @@
 """16K-D CPU-OV-01 same-model OpenVINO CPU feasibility — frozen planner.
 
 Authority: S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-AUTH-001
-Parent: 137bd65a9c0c11fd7989e9c72857730ba21e3191
+Rework: S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-REWORK-AUTH-001
+Rework parent: 47a28d008ae8494b4d928c850126c09ddaa38925
 
 Pure decision ladder. Scientific / benchmark OpenVINO execution is not
 authorized while ``EXECUTION_AUTHORIZED`` is False.
@@ -17,12 +18,16 @@ from typing import Any, Literal
 IMPLEMENTATION_AUTH = (
     "S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-AUTH-001"
 )
+IMPLEMENTATION_REWORK_AUTH = (
+    "S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-REWORK-AUTH-001"
+)
 EXACT_PARENT = "137bd65a9c0c11fd7989e9c72857730ba21e3191"
+REWORK_PARENT = "47a28d008ae8494b4d928c850126c09ddaa38925"
 DESIGN_DOC = "docs/slice16k_d_cpu_openvino_feasibility.md"
 EXPERIMENT_ID = "16K-D-CPU-OV-01"
 PARITY_CONTRACT_ID = "d2-retrieval-parity-v1"
 
-# Scientific execution remains closed under the harness AUTH.
+# Scientific execution remains closed under the harness AUTH / rework AUTH.
 EXECUTION_AUTHORIZED = False
 
 EXPECTED_MODEL_ID = "Qwen/Qwen3-Embedding-0.6B"
@@ -41,6 +46,9 @@ PARITY_DOC_COUNT = 64
 PARITY_QUERY_COUNT = 16
 EXPECTED_CHUNK_SET_ID = (
     "chunkset_d0b1fee57392071172e54bb1f4b234965fa9993813319e39d52802eec07db65d"
+)
+EXPECTED_CHUNK_MANIFEST_SHA256 = (
+    "de4ad6b5ab661ba74e8ab2ec5344aa41518fc1dd0e9d94eb08edfbc3073076c3"
 )
 
 # D2 C0 reference (encoding throughput after load) — not a pass/fail oracle.
@@ -68,9 +76,10 @@ PARITY_THRESHOLDS: dict[str, float] = {
 
 WeightFormat = Literal["fp16", "int8"]
 StageId = Literal[
-    "export_compat",
+    "export_compat",  # Stage-0 FP16-only
     "screen_fp16",
     "parity_fp16",
+    "export_int8",  # conditional INT8 preparation (F004)
     "screen_int8",
     "parity_int8",
     "full_confirm",
@@ -88,6 +97,7 @@ NextAction = Literal[
     "run_export_compat",
     "run_screen_fp16",
     "run_parity_fp16",
+    "run_export_int8",
     "run_screen_int8",
     "run_parity_int8",
     "run_full_confirm",
@@ -106,8 +116,13 @@ class StageResult:
     projected_full_minutes: float | None = None
     # Parity assessment (explicit bools only; None = not assessed).
     parity_ok: bool | None = None
-    # Full-run wall (minutes); never filled from a projection.
+    # Full-run measured wall (minutes); never filled from a projection.
     full_wall_minutes: float | None = None
+    embeddings_generated: int | None = None
+    embeddings_reused: int | None = None
+    embeddings_failed: int | None = None
+    vectors_materialized: int | None = None
+    dimension: int | None = None
     notes: str | None = None
 
 
@@ -186,6 +201,65 @@ def _require_screen_fields(result: StageResult) -> None:
         )
 
 
+def full_confirm_passes(result: StageResult) -> bool:
+    """Frozen ≤25-minute feasibility gate + exact 1296 confirmation counts (F003).
+
+    Screen projections (``projected_full_minutes``) never satisfy this gate.
+    """
+    if result.stage_id != "full_confirm":
+        return False
+    if not result.ok:
+        return False
+    if result.full_wall_minutes is None:
+        return False
+    if float(result.full_wall_minutes) > FEASIBLE_MAX_MIN:
+        return False
+    if result.embeddings_generated != EXPECTED_CHILD_COUNT:
+        return False
+    if result.embeddings_reused != 0:
+        return False
+    if result.embeddings_failed != 0:
+        return False
+    if result.vectors_materialized != EXPECTED_CHILD_COUNT:
+        return False
+    if result.dimension != EXPECTED_DIMENSION:
+        return False
+    return True
+
+
+def _require_int8_export_then_screen(
+    history: list[StageResult],
+    *,
+    reason_export: str,
+    reason_screen: str,
+) -> FeasibilityPlan | None:
+    """INT8 preparation is conditional — export_int8 before screen_int8 (F004)."""
+    export_int8 = _latest(history, "export_int8")
+    if export_int8 is None:
+        return FeasibilityPlan(
+            terminal="awaiting_stage",
+            next_action="run_export_int8",
+            reason=reason_export,
+            int8_eligible=True,
+        )
+    if not export_int8.ok:
+        return FeasibilityPlan(
+            terminal="stop_incompatible",
+            next_action="none",
+            reason="export_int8_failed",
+            int8_eligible=True,
+        )
+    screen_int8 = _latest(history, "screen_int8")
+    if screen_int8 is None:
+        return FeasibilityPlan(
+            terminal="awaiting_stage",
+            next_action="run_screen_int8",
+            reason=reason_screen,
+            int8_eligible=True,
+        )
+    return None
+
+
 def plan_next(history: list[StageResult]) -> FeasibilityPlan:
     """Deterministic next action from completed stage results."""
     export = _latest(history, "export_compat")
@@ -249,7 +323,7 @@ def plan_next(history: list[StageResult]) -> FeasibilityPlan:
                 full_confirm_eligible=True,
                 int8_eligible=False,
             )
-        if full.ok:
+        if full_confirm_passes(full):
             return FeasibilityPlan(
                 terminal="select_ov_fp16",
                 next_action="none",
@@ -258,27 +332,41 @@ def plan_next(history: list[StageResult]) -> FeasibilityPlan:
                 full_confirm_eligible=True,
                 int8_eligible=False,
             )
+        reason = (
+            "fp16_full_confirm_exceeds_25_min"
+            if (
+                full.full_wall_minutes is not None
+                and float(full.full_wall_minutes) > FEASIBLE_MAX_MIN
+            )
+            else "fp16_full_confirm_failed"
+        )
+        terminal: Terminal = (
+            "stop_too_slow"
+            if reason == "fp16_full_confirm_exceeds_25_min"
+            else "stop_incompatible"
+        )
         return FeasibilityPlan(
-            terminal="stop_incompatible",
+            terminal=terminal,
             next_action="none",
-            reason="fp16_full_confirm_failed",
+            reason=reason,
             selected_candidate="fp16",
             int8_eligible=False,
         )
 
     if fp16_class == "too_slow":
-        # Do not full-run FP16; do not require FP16 parity; open INT8 screen.
+        # Do not full-run FP16; do not require FP16 parity; open INT8 export then screen.
+        pending = _require_int8_export_then_screen(
+            history,
+            reason_export="fp16_too_slow_open_int8_export",
+            reason_screen="fp16_too_slow_int8_exported_run_screen",
+        )
+        if pending is not None:
+            return pending
         screen_int8 = _latest(history, "screen_int8")
-        if screen_int8 is None:
-            return FeasibilityPlan(
-                terminal="awaiting_stage",
-                next_action="run_screen_int8",
-                reason="fp16_too_slow_open_int8_screen",
-                int8_eligible=True,
-            )
+        assert screen_int8 is not None
         return _plan_int8_branch(history, screen_int8, require_choose_faster=False)
 
-    # viable 15–25: need FP16 parity, then INT8 screen, then choose faster passer.
+    # viable 15–25: need FP16 parity, then INT8 export+screen, then choose faster passer.
     if parity_fp16 is None:
         return FeasibilityPlan(
             terminal="awaiting_stage",
@@ -294,14 +382,15 @@ def plan_next(history: list[StageResult]) -> FeasibilityPlan:
             int8_eligible=False,
         )
 
+    pending = _require_int8_export_then_screen(
+        history,
+        reason_export="fp16_viable_parity_pass_export_int8",
+        reason_screen="fp16_viable_int8_exported_run_screen",
+    )
+    if pending is not None:
+        return pending
     screen_int8 = _latest(history, "screen_int8")
-    if screen_int8 is None:
-        return FeasibilityPlan(
-            terminal="awaiting_stage",
-            next_action="run_screen_int8",
-            reason="fp16_viable_parity_pass_screen_int8",
-            int8_eligible=True,
-        )
+    assert screen_int8 is not None
     return _plan_int8_branch(
         history,
         screen_int8,
@@ -374,22 +463,33 @@ def _plan_int8_branch(
             full_confirm_eligible=True,
             int8_eligible=True,
         )
-    if full.ok:
-        terminal: Terminal = (
+    if full_confirm_passes(full):
+        terminal_sel: Terminal = (
             "select_ov_fp16" if selected == "fp16" else "select_ov_int8"
         )
         return FeasibilityPlan(
-            terminal=terminal,
+            terminal=terminal_sel,
             next_action="none",
             reason=f"{selected}_full_confirm_ok",
             selected_candidate=selected,
             full_confirm_eligible=True,
             int8_eligible=True,
         )
+    reason = (
+        f"{selected}_full_confirm_exceeds_25_min"
+        if (
+            full.full_wall_minutes is not None
+            and float(full.full_wall_minutes) > FEASIBLE_MAX_MIN
+        )
+        else f"{selected}_full_confirm_failed"
+    )
+    terminal_fail: Terminal = (
+        "stop_too_slow" if "exceeds_25_min" in reason else "stop_incompatible"
+    )
     return FeasibilityPlan(
-        terminal="stop_incompatible",
+        terminal=terminal_fail,
         next_action="none",
-        reason=f"{selected}_full_confirm_failed",
+        reason=reason,
         selected_candidate=selected,
         int8_eligible=True,
     )
@@ -465,6 +565,7 @@ __all__ = [
     "EXACT_PARENT",
     "EXECUTION_AUTHORIZED",
     "EXPECTED_CHILD_COUNT",
+    "EXPECTED_CHUNK_MANIFEST_SHA256",
     "EXPECTED_CHUNK_SET_ID",
     "EXPECTED_DIMENSION",
     "EXPECTED_MODEL_ID",
@@ -477,10 +578,12 @@ __all__ = [
     "FROZEN_NORMALIZE",
     "FeasibilityPlan",
     "IMPLEMENTATION_AUTH",
+    "IMPLEMENTATION_REWORK_AUTH",
     "PARITY_CONTRACT_ID",
     "PARITY_DOC_COUNT",
     "PARITY_QUERY_COUNT",
     "PARITY_THRESHOLDS",
+    "REWORK_PARENT",
     "SCREEN_CHILD_COUNT",
     "SCREEN_EXCELLENT_MAX_MIN",
     "SCREEN_VIABLE_MAX_MIN",
@@ -489,6 +592,7 @@ __all__ = [
     "assert_frozen_runtime_knobs",
     "assert_transition_allowed",
     "classify_screen_projection",
+    "full_confirm_passes",
     "parity_thresholds_pass",
     "plan_next",
     "plan_to_dict",
