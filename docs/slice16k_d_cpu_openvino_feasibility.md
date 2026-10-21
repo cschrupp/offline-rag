@@ -2,15 +2,13 @@
 
 **Experiment:** `16K-D CPU-OV-01 — SAME-MODEL OPENVINO CPU FEASIBILITY`  
 **Implementation authority:** `S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-AUTH-001`  
-**Rework6 authority:** `S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-REWORK6-AUTH-001` — AUTHORIZED  
+**Rework6 / IR-007:** ACCEPT — accepted harness subject `f7aedf33359f77eea2c6130e8a968b21e22a5b33`  
 **Exact rework6 parent:** `85714169e610331c551cb37d02325b246cb1c0f2`  
-**IR-006:** REWORK REQUIRED on `8571416…` (F010 CLOSED; F011 OPEN → closed by this rework)  
-**Accepted harness subject (IR-005):** `f9bed0af0d2fa045690c8050ba8f585fc8a0165f`  
 **Underlying implementation base:** `eea4c976a351fbb41d1cd3efc1337198813c2e22`  
 **Branch:** `implementation/16k-d-cpu-openvino-feasibility`  
-**Work class:** HARNESS / FEASIBILITY IMPLEMENTATION REWORK6 (F011 INT8 source provenance)  
+**Work class:** HARNESS / FEASIBILITY (F010+F011 CLOSED)  
 
-**Status:** POST-D2 CPU OPENVINO FEASIBILITY HARNESS IMPLEMENTATION REWORK6 COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
+**Status:** POST-D2 CPU OPENVINO FEASIBILITY HARNESS IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED  
 
 **Accepted implementation subject (IR-004):** `769116132ed91543732db9f80503e539fb66b234`  
 **Follow-up tip (OVConfig/ST integration fix):** `22ef4994cef2d55d618c8a260f241e62a05de5e7`  
@@ -24,10 +22,12 @@
 **FP16 lowmem AUTH-001:** ABORTED / IMPLEMENTATION EXECUTION DEFECT — F009 — not a scientific FAIL  
 **F009:** CLOSED (IR-005)  
 **FP16 lowmem AUTH-002:** PASS — IR-001 ACCEPT — candidate tree `c1ebe0b8435ce8d32526875822f933f5f96999d7c44d13698c0b6b8a91d3f252` (`exports/fp16_lowmem_v2`; IR=fp16; observed CPU inference=fp32)  
-**FP16 128-screen AUTH-001:** PASS / **TOO_SLOW** — IR-001 ACCEPT — ~0.459 chunks/s; projected ~47.1 min (>25); FP16 parity/full CLOSED; INT8 preparation OPEN  
-**Candidate description:** OpenVINO CPU / FP16 IR storage / observed CPU inference precision FP32  
+**FP16 128-screen AUTH-001:** PASS / **TOO_SLOW** — IR-001 ACCEPT — ~0.459 chunks/s; projected ~47.1 min (>25); FP16 parity/full CLOSED  
+**INT8 Stage-0 AUTH-001:** PASS — candidate tree `465cef758981ab3beab5958f8004c0017603b11fd6d5c2a555e404f27fb2314d` (`exports/int8_asym_v1`; IR=int8; u8=394; BIN≈597 MB; observed CPU inference=fp32; NNCF 3.4.0 INT8_ASYM)  
+**FP16 candidate description:** OpenVINO CPU / FP16 IR storage / observed CPU inference precision FP32  
+**INT8 candidate description:** OpenVINO CPU / Qwen3-Embedding-0.6B / NNCF INT8_ASYM weight compression  
 **D2 predecessor:** CAMPAIGN COMPLETE / G1 SELECTED  
-**Further execution:** NOT AUTHORIZED (INT8 materialization/screen / parity / full / production / main closed; `EXECUTION_AUTHORIZED=False`)  
+**Further execution:** NOT AUTHORIZED (INT8 128-screen / parity / full / production / main closed; `EXECUTION_AUTHORIZED=False`)  
 
 ---
 
@@ -139,5 +139,5 @@ tuning · batch sweep · production dependency promotion · main.
 | F007 missing CPU host facts | `capture_cpu_host_runtime_facts()` on screen/full evidence |
 | F008 precision identity | Separate requested / observed IR / observed CPU inference; FP16 via post-export `compress_to_fp16`; no label-derived dtype |
 | F009 unsafe in-place IR compress | CLOSED (IR-005): distinct same-FS temp IR → validate non-zero + fp16 → replace; never `save_model` onto the source path |
-| F010 INT8 identity not fail-closed | CLOSED (IR-006 partial): `observed_INT8_weight_compression` from i8/u8 + NNCF `INT8_ASYM`; refuse fp16/fp32 when requested=int8 |
-| F011 INT8 source provenance | INT8 derivative source must hash to frozen Stage-0 FP32 tree `7e48d6d9…` and inspect as known FP32 IR before NNCF; source re-hashed unchanged afterward |
+| F010 INT8 identity not fail-closed | CLOSED: `observed_INT8_weight_compression` from i8/u8 + NNCF `INT8_ASYM`; refuse fp16/fp32 when requested=int8 |
+| F011 INT8 source provenance | CLOSED (IR-007): source must be frozen Stage-0 FP32 tree `7e48d6d9…` + known FP32 IR form before NNCF; source unchanged afterward |
