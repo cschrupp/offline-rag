@@ -24,6 +24,7 @@ from typing import Any, Callable, Sequence
 from offline_rag.core.ids import (
     MODEL_QUERY_PROMPT_V1,
     PLAIN_EMBEDDING_TEXT_CONTRACT,
+    SENTENCE_TRANSFORMERS_ADAPTER_CONTRACT,
     embedding_text_hash,
 )
 from offline_rag.dense.cpu_ov_feasibility import (
@@ -35,6 +36,7 @@ from offline_rag.dense.cpu_ov_feasibility import (
     EXPERIMENT_ID,
     FROZEN_BATCH_SIZE,
     FROZEN_NORMALIZE,
+    IMPLEMENTATION_REWORK2_AUTH,
     IMPLEMENTATION_REWORK_AUTH,
     PARITY_CONTRACT_ID,
     PARITY_THRESHOLDS,
@@ -59,6 +61,119 @@ from offline_rag.retrieval.ranking_text import ranking_inputs_for_chunk
 
 EncodeFn = Callable[[Sequence[str]], list[list[float]]]
 QueryEncodeFn = Callable[[str], list[float]]
+
+
+class OpenVinoSTEmbedder:
+    """Embedder protocol adapter over a SentenceTransformer OpenVINO model.
+
+    Injected into ``run_indexing`` for production-like full confirmation (F006).
+    """
+
+    adapter_contract = SENTENCE_TRANSFORMERS_ADAPTER_CONTRACT
+
+    def __init__(
+        self,
+        model: Any,
+        *,
+        weight_format: WeightFormat,
+        query_text_contract: str,
+        batch_size: int = FROZEN_BATCH_SIZE,
+        normalize: bool = FROZEN_NORMALIZE,
+    ) -> None:
+        self._model = model
+        self.model_id = EXPECTED_MODEL_ID
+        self.model_revision = EXPECTED_MODEL_REVISION
+        self.dimension = EXPECTED_DIMENSION
+        self.normalize = normalize
+        self.batch_size = batch_size
+        self.query_text_contract = query_text_contract
+        self.weight_format = weight_format
+        self.device = "cpu"
+        self.resolved_device = "cpu"
+        self.configured_device = "cpu"
+        self.configured_precision = weight_format
+        self.resolved_precision = weight_format
+        self.precision_selection_reason = "cpu_ov_export"
+        self.device_selection_reason = "cpu_ov_feasibility"
+        self.cuda_available = False
+        self.torch_cuda_build = None
+
+    def embed_documents(self, texts: Sequence[str]) -> list[list[float]]:
+        return _st_encode_documents(
+            self._model,
+            texts,
+            batch_size=self.batch_size,
+            normalize=self.normalize,
+        )
+
+    def embed_query(self, text: str) -> list[float]:
+        return _st_encode_query(
+            self._model,
+            text,
+            query_text_contract=self.query_text_contract,
+            normalize=self.normalize,
+        )
+
+    def observe_execution_facts(self) -> dict[str, str | None]:
+        return {
+            "dtype": f"openvino_{self.weight_format}",
+            "attention_backend": "openvino",
+        }
+
+
+def capture_cpu_host_runtime_facts(
+    *,
+    embedder: Any | None = None,
+    batch_size: int | None = FROZEN_BATCH_SIZE,
+) -> dict[str, Any]:
+    """Observational CPU/host facts for screen/full evidence (F007; no tuning)."""
+    from offline_rag.dense.d2_observability import capture_cpu_baseline_facts
+
+    facts = capture_cpu_baseline_facts(embedder=embedder, batch_size=batch_size)
+    facts["cpu_model_name"] = None
+    facts["cpu_architecture"] = None
+    facts["cpu_vendor"] = None
+    facts["hypervisor_vendor"] = None
+    facts["virtualization_type"] = None
+    facts["cpu_sockets"] = None
+    facts["threads_per_core"] = None
+    facts["cores_per_socket"] = None
+    try:
+        import subprocess
+
+        out = subprocess.check_output(
+            ["lscpu"], text=True, stderr=subprocess.DEVNULL
+        )
+        mapping = {
+            "Model name": "cpu_model_name",
+            "Architecture": "cpu_architecture",
+            "Vendor ID": "cpu_vendor",
+            "Hypervisor vendor": "hypervisor_vendor",
+            "Virtualization type": "virtualization_type",
+            "Socket(s)": "cpu_sockets",
+            "Thread(s) per core": "threads_per_core",
+            "Core(s) per socket": "cores_per_socket",
+            "CPU(s)": "cpu_logical_count_lscpu",
+        }
+        for line in out.splitlines():
+            if ":" not in line:
+                continue
+            key, _, val = line.partition(":")
+            key = key.strip()
+            if key in mapping:
+                facts[mapping[key]] = val.strip()
+        # Prefer lscpu physical derivation when psutil absent.
+        if facts.get("cpu_physical_count") is None:
+            try:
+                cores = int(facts.get("cores_per_socket") or 0)
+                sockets = int(facts.get("cpu_sockets") or 0)
+                if cores > 0 and sockets > 0:
+                    facts["cpu_physical_count"] = cores * sockets
+            except (TypeError, ValueError):
+                pass
+    except Exception as exc:  # noqa: BLE001
+        facts["lscpu_error"] = f"{type(exc).__name__}: {exc}"
+    return facts
 
 
 def _utc_now() -> str:
@@ -477,9 +592,21 @@ def execute_screen(
         model_or_export_dir=export_dir,
         weight_format=weight_format,
     )
+    query_contract = resolve_production_query_contract()
+    embedder = OpenVinoSTEmbedder(
+        model,
+        weight_format=weight_format,
+        query_text_contract=query_contract,
+    )
+    cpu_before = capture_cpu_host_runtime_facts(
+        embedder=embedder, batch_size=FROZEN_BATCH_SIZE
+    )
     started = time.perf_counter()
-    vectors = _st_encode_documents(model, texts)
+    vectors = embedder.embed_documents(texts)
     encode_s = time.perf_counter() - started
+    cpu_after = capture_cpu_host_runtime_facts(
+        embedder=embedder, batch_size=FROZEN_BATCH_SIZE
+    )
     if len(vectors) != len(texts):
         raise RuntimeError("screen encode length mismatch")
     for vec in vectors:
@@ -494,6 +621,7 @@ def execute_screen(
         "stage_id": stage_id,
         "ok": True,
         "authority": IMPLEMENTATION_REWORK_AUTH,
+        "rework2_authority": IMPLEMENTATION_REWORK2_AUTH,
         "experiment_id": EXPERIMENT_ID,
         "weight_format": weight_format,
         "screen_child_count": len(texts),
@@ -509,6 +637,8 @@ def execute_screen(
         "document_embedding_text_digests": [
             {"chunk_id": cid, "embedding_text_sha256": th} for cid, th, _ in rows
         ],
+        "cpu_host_runtime_before": cpu_before,
+        "cpu_host_runtime_after": cpu_after,
         "environment": _environment_fingerprint(),
         "recorded_at": _utc_now(),
         "note": "projected_full_minutes is screening only; not confirmation evidence",
@@ -712,68 +842,116 @@ def execute_full_confirm(
     weight_format: WeightFormat,
     repo_root: Path,
     evidence_dir: Path | None = None,
+    work_root: Path | None = None,
 ) -> dict[str, Any]:
-    children_by_id = load_children_by_id(repo_root=repo_root)
-    if len(children_by_id) != EXPECTED_CHILD_COUNT:
-        raise RuntimeError(
-            f"expected {EXPECTED_CHILD_COUNT} children, got {len(children_by_id)}"
-        )
-    # Deterministic encode order: sha256(chunk_id) ascending.
-    ordered_ids = sorted(children_by_id.keys(), key=sha256_text)
-    chunks = [children_by_id[cid] for cid in ordered_ids]
-    rows = document_embedding_texts(chunks)
-    texts = [t for _, _, t in rows]
+    """Production-like 1296 confirmation via isolated ``run_indexing`` (F006).
 
+    Injects the OpenVINO ST embedder into Seneca's dense indexing path on a
+    cold isolated tree. Counts and practical_timing come from indexing output —
+    not a synthesized encode-only benchmark.
+    """
+    from offline_rag.config import load_settings
+    from offline_rag.dense.d2_campaign import CORPUS_NAME
+    from offline_rag.dense.d2_execution import prepare_isolated_tree
+    from offline_rag.dense.pipeline import run_indexing
+    from offline_rag.domain.indexing import IndexingStatus
+
+    isolation = work_root or (
+        repo_root / "data" / "16k_d_cpu_ov_work" / f"full_confirm_{weight_format}"
+    )
+    prepare_isolated_tree(isolation, repo_root=repo_root)
+
+    environ = dict(os.environ)
+    environ["OFFLINE_RAG_DATA_DIR"] = str(isolation.resolve())
+    environ["OFFLINE_RAG_EMBEDDING_DEVICE"] = "cpu"
+    environ["OFFLINE_RAG_EMBEDDING_BATCH_SIZE"] = str(FROZEN_BATCH_SIZE)
+    environ.pop("OFFLINE_RAG_DIAG_DENSE_PROFILE", None)
+
+    settings = load_settings(environ=environ)
     model = load_openvino_st_model(
         model_or_export_dir=export_dir,
         weight_format=weight_format,
     )
+    query_contract = resolve_production_query_contract()
+    embedder = OpenVinoSTEmbedder(
+        model,
+        weight_format=weight_format,
+        query_text_contract=query_contract,
+    )
+    cpu_before = capture_cpu_host_runtime_facts(
+        embedder=embedder, batch_size=FROZEN_BATCH_SIZE
+    )
     started = time.perf_counter()
-    vectors = _st_encode_documents(model, texts)
+    report = run_indexing(
+        settings=settings,
+        corpus_name=CORPUS_NAME,
+        embedder=embedder,
+    )
     wall_s = time.perf_counter() - started
-    if len(vectors) != EXPECTED_CHILD_COUNT:
-        raise RuntimeError("full confirm encode length mismatch")
+    cpu_after = capture_cpu_host_runtime_facts(
+        embedder=embedder, batch_size=FROZEN_BATCH_SIZE
+    )
 
-    failed = 0
-    for vec in vectors:
-        if len(vec) != EXPECTED_DIMENSION or not _finite(vec):
-            failed += 1
-    generated = EXPECTED_CHILD_COUNT
-    reused = 0
-    vectors_materialized = EXPECTED_CHILD_COUNT - failed
+    meta = report.metadata or {}
+    practical_timing = meta.get("practical_timing")
+    execution = meta.get("dense_execution") or {}
+    dimension = int(
+        execution.get("embedding_dimension")
+        or getattr(embedder, "dimension", EXPECTED_DIMENSION)
+    )
+    generated = int(report.embeddings_generated)
+    reused = int(report.embeddings_reused)
+    failed = int(report.embeddings_failed)
+    vectors_materialized = int(report.vectors_materialized)
     full_wall_minutes = wall_s / 60.0
-    ok = failed == 0 and vectors_materialized == EXPECTED_CHILD_COUNT
+    ok = (
+        report.status is IndexingStatus.SUCCESS
+        and generated == EXPECTED_CHILD_COUNT
+        and reused == 0
+        and failed == 0
+        and vectors_materialized == EXPECTED_CHILD_COUNT
+        and dimension == EXPECTED_DIMENSION
+    )
 
     payload = {
         "status": "ok" if ok else "failed",
         "stage_id": "full_confirm",
         "ok": ok,
         "authority": IMPLEMENTATION_REWORK_AUTH,
+        "rework2_authority": IMPLEMENTATION_REWORK2_AUTH,
         "experiment_id": EXPERIMENT_ID,
         "selected_candidate": weight_format,
+        "confirmation_mode": "production_indexing_isolated_cold_tree",
         "workload": WORKLOAD_LABEL,
         "chunk_set_id": EXPECTED_CHUNK_SET_ID,
+        "corpus_name": CORPUS_NAME,
+        "work_root": str(isolation),
+        "indexing_status": str(report.status),
         "embeddings_generated": generated,
         "embeddings_reused": reused,
         "embeddings_failed": failed,
         "vectors_materialized": vectors_materialized,
-        "dimension": EXPECTED_DIMENSION,
+        "children_total": int(report.children_total),
+        "dimension": dimension,
         "full_wall_minutes": full_wall_minutes,
-        "encode_wall_s": wall_s,
+        "wall_clock_s": wall_s,
+        "duration_ms": report.duration_ms,
+        "practical_timing": practical_timing,
+        "dense_execution": execution,
         "projected_full_minutes": None,
         "batch_size": FROZEN_BATCH_SIZE,
         "normalize": FROZEN_NORMALIZE,
         "export_dir": str(export_dir),
-        "document_embedding_text_digests_sha256": hashlib.sha256(
-            json.dumps(
-                [{"chunk_id": cid, "embedding_text_sha256": th} for cid, th, _ in rows],
-                sort_keys=True,
-                separators=(",", ":"),
-            ).encode("utf-8")
-        ).hexdigest(),
+        "query_text_contract": query_contract,
+        "cpu_host_runtime_before": cpu_before,
+        "cpu_host_runtime_after": cpu_after,
         "environment": _environment_fingerprint(),
         "recorded_at": _utc_now(),
-        "note": "Measured wall only; projections are never confirmation evidence.",
+        "note": (
+            "Production-like confirmation via run_indexing on an isolated cold "
+            "tree with OpenVINO embedder injected. Counts and practical_timing "
+            "are indexing outputs; projections are never confirmation evidence."
+        ),
     }
     return _maybe_write_evidence(
         payload,
@@ -828,6 +1006,8 @@ def _maybe_write_evidence(
 
 
 __all__ = [
+    "OpenVinoSTEmbedder",
+    "capture_cpu_host_runtime_facts",
     "document_embedding_texts",
     "execute_export_compat",
     "execute_export_int8",

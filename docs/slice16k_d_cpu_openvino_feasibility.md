@@ -2,15 +2,17 @@
 
 **Experiment:** `16K-D CPU-OV-01 — SAME-MODEL OPENVINO CPU FEASIBILITY`  
 **Implementation authority:** `S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-AUTH-001`  
-**Rework authority:** `S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-REWORK-AUTH-001` — AUTHORIZED  
-**Exact rework parent:** `47a28d008ae8494b4d928c850126c09ddaa38925`  
+**Rework2 authority:** `S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-REWORK2-AUTH-002` — AUTHORIZED  
+**Exact rework2 parent:** `50906c4665a3d1d73fe9693207bcf1a0d82a65d5` (Stage-0 evidence tip)  
+**Underlying implementation base:** `eea4c976a351fbb41d1cd3efc1337198813c2e22`  
 **Branch:** `implementation/16k-d-cpu-openvino-feasibility`  
-**Work class:** HARNESS / FEASIBILITY IMPLEMENTATION REWORK  
+**Work class:** HARNESS / FEASIBILITY IMPLEMENTATION REWORK2  
 
-**Status:** POST-D2 CPU OPENVINO FEASIBILITY HARNESS IMPLEMENTATION REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
+**Status:** POST-D2 CPU OPENVINO FEASIBILITY HARNESS IMPLEMENTATION REWORK2 COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
 
+**Stage-0 execution:** PASS under `…-STAGE0-EXECUTION-AUTH-001` at `eea4c97…`  
 **D2 predecessor:** CAMPAIGN COMPLETE / G1 SELECTED  
-**Execution:** NOT AUTHORIZED (`EXECUTION_AUTHORIZED=False`)  
+**Further execution:** NOT AUTHORIZED (`EXECUTION_AUTHORIZED=False`; no screen/parity/full)  
 
 ---
 
@@ -109,7 +111,7 @@ tuning · batch sweep · production dependency promotion · main.
 5. Stage-0 is FP16-only; INT8 conversion requires planner eligibility.
 6. Final ≤25-minute gate uses measured `full_wall_minutes` + exact 1296 counts.
 
-## 9. Rework findings closed (IR-001)
+## 9. Rework findings closed (IR-001 / IR-002)
 
 | Finding | Closure |
 |---------|---------|
@@ -117,3 +119,6 @@ tuning · batch sweep · production dependency promotion · main.
 | F002 weak provenance | `require_embedding_artifacts` + manifest SHA256 `de4ad6b5…` |
 | F003 unused ≤25 gate | `full_confirm_passes()` wired into `plan_next` |
 | F004 INT8 at Stage 0 | Stage-0 FP16-only; conditional `export_int8` stage |
+| F005 CLI missing export-dir | `--export-dir` required/passed for screen/parity/full-confirm |
+| F006 encode-only full confirm | `execute_full_confirm` uses isolated `run_indexing` + OV embedder inject |
+| F007 missing CPU host facts | `capture_cpu_host_runtime_facts()` on screen/full evidence |

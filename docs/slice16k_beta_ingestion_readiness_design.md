@@ -265,11 +265,13 @@
 **16K-D D2 implementation:** COMPLETE / INDEPENDENTLY ACCEPTED  
 **16K-D D2 campaign:** COMPLETE / G1 SELECTED  
 **16K-D D2 selected GPU candidate:** CUDA / FP16 / batch 32 (production default unchanged)  
-**16K-D CPU-OV-01 authority:** `S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-REWORK-AUTH-001` — AUTHORIZED  
-**Exact 16K-D CPU-OV-01 rework parent:** `47a28d008ae8494b4d928c850126c09ddaa38925`  
+**16K-D CPU-OV-01 authority:** `S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-REWORK2-AUTH-002` — AUTHORIZED  
+**Exact 16K-D CPU-OV-01 rework2 parent:** `50906c4665a3d1d73fe9693207bcf1a0d82a65d5`  
+**Underlying implementation base:** `eea4c976a351fbb41d1cd3efc1337198813c2e22`  
 **16K-D CPU-OV-01 document:** `docs/slice16k_d_cpu_openvino_feasibility.md`  
-**16K-D CPU-OV-01 status:** POST-D2 CPU OPENVINO FEASIBILITY HARNESS IMPLEMENTATION REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
-**16K-D CPU-OV-01 execution:** NOT AUTHORIZED
+**16K-D CPU-OV-01 status:** POST-D2 CPU OPENVINO FEASIBILITY HARNESS IMPLEMENTATION REWORK2 COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
+**16K-D CPU-OV-01 Stage-0:** PASS at `eea4c97…` under `…-STAGE0-EXECUTION-AUTH-001`  
+**16K-D CPU-OV-01 execution:** NOT AUTHORIZED beyond Stage-0
 **16K-D program pivot:** scientific optimization → bounded product-engineering optimization
 **16K-D document:** `docs/slice16k_d_dense_cuda_profiling.md`
 **16K-D evidence:** `docs/evidence/16k_d_dense_cuda/`

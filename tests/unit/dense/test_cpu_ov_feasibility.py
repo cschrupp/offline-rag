@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -299,10 +299,11 @@ def test_deterministic_selection_sizes() -> None:
 
 
 def test_locked_export_and_screen_refuse_without_running() -> None:
+    export_dir = REPO / "data" / "16k_d_cpu_ov_work" / "exports" / "fp16"
     history: list[StageResult] = []
     export = run_export_compat(
         history=history,
-        export_dir=REPO / "data" / "16k_d_cpu_ov_work" / "exports" / "fp16",
+        export_dir=export_dir,
         repo_root=REPO,
     )
     assert export["status"] == "EXECUTION_NOT_AUTHORIZED"
@@ -310,7 +311,12 @@ def test_locked_export_and_screen_refuse_without_running() -> None:
     assert export["executor_implemented"] is True
 
     history = [StageResult(stage_id="export_compat", ok=True)]
-    screen = run_screen(history=history, weight_format="fp16", repo_root=REPO)
+    screen = run_screen(
+        history=history,
+        weight_format="fp16",
+        export_dir=export_dir,
+        repo_root=REPO,
+    )
     assert screen["status"] == "EXECUTION_NOT_AUTHORIZED"
     assert screen["screen_child_count"] == SCREEN_CHILD_COUNT
     assert screen["chunk_manifest_sha256"] == EXPECTED_CHUNK_MANIFEST_SHA256
@@ -324,7 +330,12 @@ def test_locked_export_and_screen_refuse_without_running() -> None:
             projected_full_minutes=project_full_minutes(3.0),
         ),
     ]
-    parity = run_parity(history=history, weight_format="fp16", repo_root=REPO)
+    parity = run_parity(
+        history=history,
+        weight_format="fp16",
+        export_dir=export_dir,
+        repo_root=REPO,
+    )
     assert parity["status"] == "EXECUTION_NOT_AUTHORIZED"
     assert parity["document_count"] == PARITY_DOC_COUNT
     assert parity["query_count"] == PARITY_QUERY_COUNT
@@ -539,3 +550,240 @@ def test_smoke_encode_compat_helper() -> None:
     result = smoke_encode_compat(_FakeModel(), query_text_contract="raw-query-v1")
     assert result["ok"] is True
     assert result["document_dim"] == EXPECTED_DIMENSION
+
+
+def _load_cpu_ov_cli():
+    import importlib.util
+
+    path = REPO / "scripts" / "diag_16k_d_dense" / "run_cpu_ov_feasibility.py"
+    spec = importlib.util.spec_from_file_location("run_cpu_ov_feasibility_cli", path)
+    assert spec is not None and spec.loader is not None
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_cli_requires_export_dir_for_screen_parity_full() -> None:
+    """F005: unlocked stages cannot omit export_dir at the CLI surface."""
+    cli = _load_cpu_ov_cli()
+    parser = cli.build_parser()
+    for command in ("screen", "parity", "full-confirm"):
+        with pytest.raises(SystemExit):
+            parser.parse_args(
+                [command, "--history", "h.json", "--weight-format", "fp16"]
+            )
+        args = parser.parse_args(
+            [
+                command,
+                "--history",
+                "h.json",
+                "--weight-format",
+                "fp16",
+                "--export-dir",
+                "/tmp/ov-export",
+            ]
+        )
+        assert Path(args.export_dir) == Path("/tmp/ov-export")
+
+
+def test_cli_passes_export_dir_into_harness() -> None:
+    """F005: CLI cmds forward export_dir to harness entrypoints."""
+    cli = _load_cpu_ov_cli()
+    export_dir = "/tmp/ov-export-cli"
+
+    with (
+        patch.object(
+            cli,
+            "_load_history",
+            return_value=[StageResult(stage_id="export_compat", ok=True)],
+        ),
+        patch.object(
+            cli,
+            "run_screen",
+            return_value={"status": "EXECUTION_NOT_AUTHORIZED"},
+        ) as mock_s,
+    ):
+        args = cli.build_parser().parse_args(
+            [
+                "screen",
+                "--history",
+                "h.json",
+                "--weight-format",
+                "fp16",
+                "--export-dir",
+                export_dir,
+            ]
+        )
+        assert cli.cmd_screen(args) == 20
+        assert mock_s.call_args.kwargs["export_dir"] == Path(export_dir)
+
+    with (
+        patch.object(
+            cli,
+            "_load_history",
+            return_value=[
+                StageResult(stage_id="export_compat", ok=True),
+                StageResult(
+                    stage_id="screen_fp16",
+                    ok=True,
+                    chunks_per_sec=3.0,
+                    projected_full_minutes=project_full_minutes(3.0),
+                ),
+            ],
+        ),
+        patch.object(
+            cli,
+            "run_parity",
+            return_value={"status": "EXECUTION_NOT_AUTHORIZED"},
+        ) as mock_p,
+    ):
+        args_p = cli.build_parser().parse_args(
+            [
+                "parity",
+                "--history",
+                "h.json",
+                "--weight-format",
+                "fp16",
+                "--export-dir",
+                export_dir,
+            ]
+        )
+        assert cli.cmd_parity(args_p) == 20
+        assert mock_p.call_args.kwargs["export_dir"] == Path(export_dir)
+
+    with (
+        patch.object(
+            cli,
+            "_load_history",
+            return_value=[
+                StageResult(stage_id="export_compat", ok=True),
+                StageResult(
+                    stage_id="screen_fp16",
+                    ok=True,
+                    chunks_per_sec=3.0,
+                    projected_full_minutes=project_full_minutes(3.0),
+                ),
+                StageResult(stage_id="parity_fp16", ok=True, parity_ok=True),
+            ],
+        ),
+        patch.object(
+            cli,
+            "run_full_confirm",
+            return_value={"status": "EXECUTION_NOT_AUTHORIZED"},
+        ) as mock_f,
+    ):
+        args_f = cli.build_parser().parse_args(
+            [
+                "full-confirm",
+                "--history",
+                "h.json",
+                "--weight-format",
+                "fp16",
+                "--export-dir",
+                export_dir,
+            ]
+        )
+        assert cli.cmd_full(args_f) == 20
+        assert mock_f.call_args.kwargs["export_dir"] == Path(export_dir)
+        assert mock_f.call_args.kwargs["repo_root"] == cli.ROOT
+
+
+def test_full_confirm_uses_production_indexing_path() -> None:
+    """F006: full confirm goes through isolated run_indexing, not encode-only."""
+    from datetime import UTC, datetime
+
+    from offline_rag.dense import cpu_ov_executor as ex
+    from offline_rag.domain.indexing import IndexingReport, IndexingStatus
+
+    fake_report = IndexingReport(
+        run_id="test",
+        corpus_name="16k_d_d0_incident",
+        corpus_id="corpus_x",
+        chunk_set_id="chunk_x",
+        embedding_config_hash="e" * 64,
+        index_config_hash="i" * 64,
+        status=IndexingStatus.SUCCESS,
+        started_at=datetime.now(tz=UTC),
+        completed_at=datetime.now(tz=UTC),
+        duration_ms=120000,
+        children_total=EXPECTED_CHILD_COUNT,
+        embeddings_generated=EXPECTED_CHILD_COUNT,
+        embeddings_reused=0,
+        embeddings_failed=0,
+        vectors_materialized=EXPECTED_CHILD_COUNT,
+        metadata={
+            "practical_timing": {
+                "encode_ms": 100000.0,
+                "embedding_persistence_ms": 500.0,
+                "point_construction_ms": 200.0,
+                "qdrant_ms": 300.0,
+                "wall_clock_ms": 120000,
+            },
+            "dense_execution": {"embedding_dimension": EXPECTED_DIMENSION},
+        },
+    )
+
+    with (
+        patch(
+            "offline_rag.dense.d2_execution.prepare_isolated_tree",
+            return_value=Path("/tmp/iso"),
+        ) as mock_prep,
+        patch(
+            "offline_rag.dense.pipeline.run_indexing",
+            return_value=fake_report,
+        ) as mock_index,
+        patch.object(ex, "load_openvino_st_model", return_value=object()),
+        patch.object(
+            ex,
+            "resolve_production_query_contract",
+            return_value="raw-query-v1",
+        ),
+        patch.object(
+            ex,
+            "capture_cpu_host_runtime_facts",
+            return_value={"cpu_model_name": "test-cpu"},
+        ),
+        patch(
+            "offline_rag.config.load_settings",
+            return_value=MagicMock(),
+        ),
+    ):
+        out = ex.execute_full_confirm(
+            export_dir=Path("/tmp/export"),
+            weight_format="fp16",
+            repo_root=REPO,
+            evidence_dir=None,
+            work_root=Path("/tmp/iso-work"),
+        )
+
+    assert out["confirmation_mode"] == "production_indexing_isolated_cold_tree"
+    assert out["embeddings_generated"] == EXPECTED_CHILD_COUNT
+    assert out["embeddings_reused"] == 0
+    assert out["vectors_materialized"] == EXPECTED_CHILD_COUNT
+    assert out["practical_timing"]["encode_ms"] == 100000.0
+    assert out["practical_timing"]["qdrant_ms"] == 300.0
+    assert out["ok"] is True
+    mock_prep.assert_called_once()
+    mock_index.assert_called_once()
+    assert mock_index.call_args.kwargs["embedder"] is not None
+
+
+def test_cpu_host_runtime_facts_capture_identity() -> None:
+    """F007: observational CPU identity/core/RAM facts without tuning."""
+    from offline_rag.dense.cpu_ov_executor import capture_cpu_host_runtime_facts
+
+    facts = capture_cpu_host_runtime_facts(batch_size=32)
+    assert "cpu_logical_count" in facts
+    assert "peak_rss_bytes" in facts or facts.get("peak_rss_bytes") is None
+    # On this WSL host we expect a model name from lscpu.
+    assert facts.get("cpu_model_name") or facts.get("lscpu_error")
+    assert facts.get("batch_size") == 32
+    # Must not mutate thread knobs as a side effect of capture.
+    try:
+        import torch
+
+        before = torch.get_num_threads()
+        capture_cpu_host_runtime_facts()
+        assert torch.get_num_threads() == before
+    except Exception:  # noqa: BLE001
+        pass

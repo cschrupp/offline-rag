@@ -115,6 +115,7 @@ def cmd_screen(args: argparse.Namespace) -> int:
     payload = run_screen(
         history=history,
         weight_format=args.weight_format,
+        export_dir=Path(args.export_dir),
         repo_root=ROOT,
     )
     _print(payload, args.out)
@@ -126,6 +127,7 @@ def cmd_parity(args: argparse.Namespace) -> int:
     payload = run_parity(
         history=history,
         weight_format=args.weight_format,
+        export_dir=Path(args.export_dir),
         repo_root=ROOT,
     )
     _print(payload, args.out)
@@ -138,6 +140,8 @@ def cmd_full(args: argparse.Namespace) -> int:
         payload = run_full_confirm(
             history=history,
             selected_candidate=args.weight_format,
+            export_dir=Path(args.export_dir),
+            repo_root=ROOT,
         )
     except ValueError as exc:
         print(f"FAIL-CLOSED: {exc}", file=sys.stderr)
@@ -173,18 +177,33 @@ def build_parser() -> argparse.ArgumentParser:
     p_sc = sub.add_parser("screen", help="128-child screen (locked)")
     p_sc.add_argument("--history", required=True)
     p_sc.add_argument("--weight-format", choices=("fp16", "int8"), required=True)
+    p_sc.add_argument(
+        "--export-dir",
+        required=True,
+        help="Local OpenVINO export directory (required when execution unlocks)",
+    )
     p_sc.add_argument("--out")
     p_sc.set_defaults(func=cmd_screen)
 
     p_pa = sub.add_parser("parity", help="d2-retrieval-parity-v1 reuse (locked)")
     p_pa.add_argument("--history", required=True)
     p_pa.add_argument("--weight-format", choices=("fp16", "int8"), required=True)
+    p_pa.add_argument(
+        "--export-dir",
+        required=True,
+        help="Local OpenVINO export directory (required when execution unlocks)",
+    )
     p_pa.add_argument("--out")
     p_pa.set_defaults(func=cmd_parity)
 
     p_fu = sub.add_parser("full-confirm", help="1296 confirmation (locked + eligibility)")
     p_fu.add_argument("--history", required=True)
     p_fu.add_argument("--weight-format", choices=("fp16", "int8"), required=True)
+    p_fu.add_argument(
+        "--export-dir",
+        required=True,
+        help="Local OpenVINO export directory (required when execution unlocks)",
+    )
     p_fu.add_argument("--out")
     p_fu.set_defaults(func=cmd_full)
 

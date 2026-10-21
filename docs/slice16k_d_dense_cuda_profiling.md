@@ -84,12 +84,14 @@
 **D2 design:** COMPLETE / INDEPENDENTLY ACCEPTED  
 **D2 implementation:** COMPLETE / INDEPENDENTLY ACCEPTED  
 **D2 campaign:** COMPLETE / G1 SELECTED  
-**CPU-OV-01 authority:** `S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-REWORK-AUTH-001` — AUTHORIZED  
-**Exact CPU-OV-01 rework parent:** `47a28d008ae8494b4d928c850126c09ddaa38925`  
+**CPU-OV-01 authority:** `S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-REWORK2-AUTH-002` — AUTHORIZED  
+**Exact CPU-OV-01 rework2 parent:** `50906c4665a3d1d73fe9693207bcf1a0d82a65d5`  
+**Underlying implementation base:** `eea4c976a351fbb41d1cd3efc1337198813c2e22`  
 **CPU-OV-01 branch:** `implementation/16k-d-cpu-openvino-feasibility`  
 **CPU-OV-01 document:** `docs/slice16k_d_cpu_openvino_feasibility.md`  
-**CPU-OV-01 status:** POST-D2 CPU OPENVINO FEASIBILITY HARNESS IMPLEMENTATION REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
-**CPU-OV-01 execution:** NOT AUTHORIZED (executor implemented; screens/parity/full run closed)  
+**CPU-OV-01 status:** POST-D2 CPU OPENVINO FEASIBILITY HARNESS IMPLEMENTATION REWORK2 COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
+**CPU-OV-01 Stage-0:** PASS at `eea4c97…` under `…-STAGE0-EXECUTION-AUTH-001`  
+**CPU-OV-01 execution:** NOT AUTHORIZED beyond Stage-0 (screens/parity/full run closed)  
 **Program pivot:** scientific optimization → bounded product-engineering optimization
 
 ### D2 campaign outcome (frozen)
