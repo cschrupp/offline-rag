@@ -84,6 +84,12 @@
 **D2 design:** COMPLETE / INDEPENDENTLY ACCEPTED  
 **D2 implementation:** COMPLETE / INDEPENDENTLY ACCEPTED  
 **D2 campaign:** COMPLETE / G1 SELECTED  
+**CPU-OV-01 authority:** `S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-AUTH-001` — AUTHORIZED  
+**Exact CPU-OV-01 parent:** `137bd65a9c0c11fd7989e9c72857730ba21e3191`  
+**CPU-OV-01 branch:** `implementation/16k-d-cpu-openvino-feasibility`  
+**CPU-OV-01 document:** `docs/slice16k_d_cpu_openvino_feasibility.md`  
+**CPU-OV-01 status:** POST-D2 CPU OPENVINO FEASIBILITY HARNESS IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW  
+**CPU-OV-01 execution:** NOT AUTHORIZED (harness only; screens/parity/full run closed)  
 **Program pivot:** scientific optimization → bounded product-engineering optimization
 
 ### D2 campaign outcome (frozen)

@@ -1,0 +1,21 @@
+[project]
+name = "seneca-16k-d-cpu-openvino-feasibility"
+version = "0.0.0"
+description = "Isolated dependency environment for 16K-D CPU-OV-01 (not production)."
+requires-python = ">=3.14,<3.15"
+dependencies = [
+    # Feasibility-only; must not be promoted into Seneca production pyproject.
+    "openvino>=2025.0.0",
+    "optimum-intel>=1.22.0",
+    "sentence-transformers>=2.7.0",
+    "transformers>=4.51.0",
+    "numpy",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+]
+
+[tool.uv]
+package = false

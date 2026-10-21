@@ -1077,6 +1077,18 @@ SLICE 15  COMPLETE / ACCEPTED
        16K-D D2 parity: d2-retrieval-parity-v1 PASS under EXECUTION-AUTH-001
        16K-D D2 production default: UNCHANGED (CUDA / BF16 / batch 32)
        16K-D D2 further execution: NOT AUTHORIZED under decision-boundary freeze
+       16K-D CPU-OV-01 authority:
+         S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-AUTH-001
+         — AUTHORIZED
+       Exact 16K-D CPU-OV-01 parent:
+         137bd65a9c0c11fd7989e9c72857730ba21e3191
+       16K-D CPU-OV-01 branch: implementation/16k-d-cpu-openvino-feasibility
+       16K-D CPU-OV-01 document:
+         docs/slice16k_d_cpu_openvino_feasibility.md
+       16K-D CPU-OV-01 status: POST-D2 CPU OPENVINO FEASIBILITY HARNESS
+         IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
+       16K-D CPU-OV-01 execution: NOT AUTHORIZED
+         (screens / parity / full run / production routing closed)
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md
@@ -1876,6 +1888,18 @@ SLICE 15  COMPLETE / ACCEPTED
        16K-D D2 parity: d2-retrieval-parity-v1 PASS under EXECUTION-AUTH-001
        16K-D D2 production default: UNCHANGED (CUDA / BF16 / batch 32)
        16K-D D2 further execution: NOT AUTHORIZED under decision-boundary freeze
+       16K-D CPU-OV-01 authority:
+         S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-AUTH-001
+         — AUTHORIZED
+       Exact 16K-D CPU-OV-01 parent:
+         137bd65a9c0c11fd7989e9c72857730ba21e3191
+       16K-D CPU-OV-01 branch: implementation/16k-d-cpu-openvino-feasibility
+       16K-D CPU-OV-01 document:
+         docs/slice16k_d_cpu_openvino_feasibility.md
+       16K-D CPU-OV-01 status: POST-D2 CPU OPENVINO FEASIBILITY HARNESS
+         IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
+       16K-D CPU-OV-01 execution: NOT AUTHORIZED
+         (screens / parity / full run / production routing closed)
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md
