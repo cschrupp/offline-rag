@@ -1,0 +1,267 @@
+{
+  "accepted_harness_subject": "f9bed0af0d2fa045690c8050ba8f585fc8a0165f",
+  "authority": "S16-K-D-POST-D2-CPU-OPENVINO-FP16-LOWMEM-STAGE0-EXECUTION-AUTH-002",
+  "bin_bytes": 1191553417,
+  "candidate_description": "OpenVINO CPU / FP16 IR storage / observed inference precision = 'fp32'",
+  "code_root": "/home/user/projects/technical_rag",
+  "cpu_runtime_after": {
+    "code_root": "/home/user/projects/technical_rag",
+    "cpu_count_os": 16,
+    "data_root": "/home/user/projects/technical_rag",
+    "lscpu": {
+      "Architecture": "x86_64",
+      "CPU(s)": "16",
+      "Core(s) per socket": "8",
+      "Hypervisor vendor": "Microsoft",
+      "Model name": "Intel(R) Core(TM) i9-10885H CPU @ 2.40GHz",
+      "Socket(s)": "1",
+      "Thread(s) per core": "2",
+      "Vendor ID": "GenuineIntel",
+      "Virtualization type": "full"
+    },
+    "peak_rss_kib_self": 6050748,
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "processor": "x86_64",
+    "python_executable": "/home/user/projects/technical_rag/experiments/16k_d_cpu_openvino/.venv/bin/python"
+  },
+  "cpu_runtime_before": {
+    "code_root": "/home/user/projects/technical_rag",
+    "cpu_count_os": 16,
+    "data_root": "/home/user/projects/technical_rag",
+    "lscpu": {
+      "Architecture": "x86_64",
+      "CPU(s)": "16",
+      "Core(s) per socket": "8",
+      "Hypervisor vendor": "Microsoft",
+      "Model name": "Intel(R) Core(TM) i9-10885H CPU @ 2.40GHz",
+      "Socket(s)": "1",
+      "Thread(s) per core": "2",
+      "Vendor ID": "GenuineIntel",
+      "Virtualization type": "full"
+    },
+    "peak_rss_kib_self": 2368700,
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "processor": "x86_64",
+    "python_executable": "/home/user/projects/technical_rag/experiments/16k_d_cpu_openvino/.venv/bin/python"
+  },
+  "data_root": "/home/user/projects/technical_rag",
+  "disposition": "PASS",
+  "error": null,
+  "execution_authorized_flag_unchanged": true,
+  "execution_subject": "f9bed0af0d2fa045690c8050ba8f585fc8a0165f",
+  "experiment_id": "16K-D-CPU-OV-01",
+  "export_dir": "/home/user/projects/technical_rag/data/16k_d_cpu_ov_work/exports/fp16_lowmem_v2",
+  "export_tree": {
+    "export_dir": "/home/user/projects/technical_rag/data/16k_d_cpu_ov_work/exports/fp16_lowmem_v2",
+    "file_count": 15,
+    "files": [
+      {
+        "bytes": 96,
+        "relative_path": "1_Pooling/config.json",
+        "sha256": "d14d11ecbd53b0fc9e817992a5a7a76f462daf6f080e375f2dceadc8a4eff165"
+      },
+      {
+        "bytes": 17237,
+        "relative_path": "README.md",
+        "sha256": "c34d9b7e5a267ad3fdd13227a253686bc90844ff4744a2a6a86c7c905e3d06f3"
+      },
+      {
+        "bytes": 707,
+        "relative_path": "added_tokens.json",
+        "sha256": "c0284b582e14987fbd3d5a2cb2bd139084371ed9acbae488829a1c900833c680"
+      },
+      {
+        "bytes": 4116,
+        "relative_path": "chat_template.jinja",
+        "sha256": "87a2728cb8dc9fe424d624542f6060ec05a1d285ebbec578bb078900e33396b5"
+      },
+      {
+        "bytes": 1360,
+        "relative_path": "config.json",
+        "sha256": "770ae06483be04a06d1fc505c3b396af5e128e230cef4a0939bb1b82e714ff6f"
+      },
+      {
+        "bytes": 376,
+        "relative_path": "config_sentence_transformers.json",
+        "sha256": "d6fa5f4953813d822fc92440066170fcb8233d7c99517881561e1ba6d1ddc565"
+      },
+      {
+        "bytes": 1671853,
+        "relative_path": "merges.txt",
+        "sha256": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5"
+      },
+      {
+        "bytes": 429,
+        "relative_path": "modules.json",
+        "sha256": "fa7d796a215e1b2416773062891923b191fc5a4849bc44e322997433c90f459c"
+      },
+      {
+        "bytes": 1191553417,
+        "relative_path": "openvino/openvino_model.bin",
+        "sha256": "a37898a94846db50ce19bcaa3e2b493eb5dcd584dc634bc6a4882638dafefe7c"
+      },
+      {
+        "bytes": 2156361,
+        "relative_path": "openvino/openvino_model.xml",
+        "sha256": "47ca7f8b478c9223e8e75ecc164dff8e43f465806f542316876803203394d9e7"
+      },
+      {
+        "bytes": 241,
+        "relative_path": "sentence_bert_config.json",
+        "sha256": "3084164002c0bca01b0259c5327123803fce32e660a57feb93184ffead186fc8"
+      },
+      {
+        "bytes": 613,
+        "relative_path": "special_tokens_map.json",
+        "sha256": "76862e765266b85aa9459767e33cbaf13970f327a0e88d1c65846c2ddd3a1ecd"
+      },
+      {
+        "bytes": 11423705,
+        "relative_path": "tokenizer.json",
+        "sha256": "def76fb086971c7867b829c23a26261e38d9d74e02139253b38aeb9df8b4b50a"
+      },
+      {
+        "bytes": 5403,
+        "relative_path": "tokenizer_config.json",
+        "sha256": "74d803b3a11db6df1baf2cd41236636618674621fc6310dbcc2f4c44c70c6783"
+      },
+      {
+        "bytes": 2776833,
+        "relative_path": "vocab.json",
+        "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+      }
+    ],
+    "tree_sha256": "c1ebe0b8435ce8d32526875822f933f5f96999d7c44d13698c0b6b8a91d3f252"
+  },
+  "export_tree_sha256": "c1ebe0b8435ce8d32526875822f933f5f96999d7c44d13698c0b6b8a91d3f252",
+  "fp16_storage_compression_applied": true,
+  "historical_fp32_export_dir": "/home/user/projects/technical_rag/data/16k_d_cpu_ov_work/exports/fp16",
+  "historical_fp32_export_tree_sha256": "7e48d6d9f9b839c4dee427340857e239c33258ee80b3cf2bb9df1476569e1e00",
+  "implementation_ir_accept": "S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-IR-005",
+  "ir_f16_constant_count": 539,
+  "ir_f32_constant_count": 141,
+  "local_model_identity": {
+    "artifact_id": "art_15d9460c207a3a251ba76e4863d7106634252db858ccc3624987e65b13250f77",
+    "config_exists": true,
+    "expected_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+    "model_dir": "/home/user/projects/technical_rag/models/embeddings/qwen3-embedding-0.6b",
+    "model_id": "Qwen/Qwen3-Embedding-0.6B",
+    "readiness": "ready",
+    "resolved_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3"
+  },
+  "no_export_openvino_model_path": true,
+  "no_fresh_hf_st_export": true,
+  "no_torch_optimum_tracing": true,
+  "note": "Derivative FP16 materialization from immutable Stage-0 ST/OpenVINO FP32 export via Rework4 non-aliasing compress. Synthetic smoke only; frozen corpus not encoded. Historical FP32 export must remain 7e48d6d9.... observed_CPU_inference_precision is observational, not a pass gate. No private/source text included.",
+  "observed_CPU_inference_precision": "fp32",
+  "observed_IR_weight_precision": "fp16",
+  "package_versions": {
+    "openvino": "2026.4.1",
+    "optimum": "2.1.0",
+    "optimum-intel": "1.27.0",
+    "sentence-transformers": "5.7.0",
+    "torch": "2.14.1"
+  },
+  "pass_gates": {
+    "candidate_dir_is_fp16_lowmem_v2": true,
+    "compress_applied": true,
+    "did_not_reuse_failed_dirs": true,
+    "execution_subject_match": true,
+    "export_tree_hashed": true,
+    "model_identity_exact": true,
+    "no_st_reexport": true,
+    "observed_IR_weight_precision_fp16": true,
+    "requested_weight_format_fp16": true,
+    "smoke_document_dim_1024": true,
+    "smoke_ok": true,
+    "smoke_query_dim_1024": true,
+    "source_tree_post_hash_match": true,
+    "source_tree_pre_hash_match": true
+  },
+  "post_compress_ir_inspection": {
+    "bin_bytes": 1191553417,
+    "bin_path": "/home/user/projects/technical_rag/data/16k_d_cpu_ov_work/exports/fp16_lowmem_v2/openvino/openvino_model.bin",
+    "f16_constant_count": 539,
+    "f32_constant_count": 141,
+    "inspection_method": "xml_element_type_scan+openvino_constant_crosscheck",
+    "observed_IR_weight_precision": "fp16",
+    "openvino_constant_element_type_counts": {
+      "<Type: 'char'>": 1,
+      "<Type: 'float16'>": 539,
+      "<Type: 'float32'>": 141,
+      "<Type: 'int32_t'>": 178,
+      "<Type: 'int64_t'>": 784
+    },
+    "xml_element_type_counts": {
+      "element_type=\"f16\"": 539,
+      "element_type=\"f32\"": 141
+    },
+    "xml_path": "/home/user/projects/technical_rag/data/16k_d_cpu_ov_work/exports/fp16_lowmem_v2/openvino/openvino_model.xml"
+  },
+  "pre_compress_ir_inspection": {
+    "bin_bytes": 2383106573,
+    "bin_path": "/home/user/projects/technical_rag/data/16k_d_cpu_ov_work/exports/fp16_lowmem_v2/openvino/openvino_model.bin",
+    "f16_constant_count": 0,
+    "f32_constant_count": 680,
+    "inspection_method": "xml_element_type_scan+openvino_constant_crosscheck",
+    "observed_IR_weight_precision": "fp32",
+    "openvino_constant_element_type_counts": {
+      "<Type: 'char'>": 1,
+      "<Type: 'float32'>": 680,
+      "<Type: 'int32_t'>": 178,
+      "<Type: 'int64_t'>": 784
+    },
+    "xml_element_type_counts": {
+      "element_type=\"f16\"": 0,
+      "element_type=\"f32\"": 680
+    },
+    "xml_path": "/home/user/projects/technical_rag/data/16k_d_cpu_ov_work/exports/fp16_lowmem_v2/openvino/openvino_model.xml"
+  },
+  "precision_identity": {
+    "authority": "S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-REWORK3-AUTH-001",
+    "cpu_inference_inspection": {
+      "inference_precision_hint_raw": "<Type: 'float32'>",
+      "observed_CPU_inference_precision": "fp32",
+      "requested_inference_precision_hint": "f16"
+    },
+    "ir_inspection": {
+      "bin_bytes": 1191553417,
+      "bin_path": "/home/user/projects/technical_rag/data/16k_d_cpu_ov_work/exports/fp16_lowmem_v2/openvino/openvino_model.bin",
+      "f16_constant_count": 539,
+      "f32_constant_count": 141,
+      "inspection_method": "xml_element_type_scan+openvino_constant_crosscheck",
+      "observed_IR_weight_precision": "fp16",
+      "openvino_constant_element_type_counts": {
+        "<Type: 'char'>": 1,
+        "<Type: 'float16'>": 539,
+        "<Type: 'float32'>": 141,
+        "<Type: 'int32_t'>": 178,
+        "<Type: 'int64_t'>": 784
+      },
+      "xml_element_type_counts": {
+        "element_type=\"f16\"": 539,
+        "element_type=\"f32\"": 141
+      },
+      "xml_path": "/home/user/projects/technical_rag/data/16k_d_cpu_ov_work/exports/fp16_lowmem_v2/openvino/openvino_model.xml"
+    },
+    "observed_CPU_inference_precision": "fp32",
+    "observed_IR_weight_precision": "fp16",
+    "requested_weight_format": "fp16"
+  },
+  "query_text_contract": "raw-query-v1",
+  "recorded_at": "2026-10-21T17:23:54.573862Z",
+  "requested_weight_format": "fp16",
+  "smoke": {
+    "document_dim": 1024,
+    "issues": [],
+    "ok": true,
+    "query_dim": 1024,
+    "query_text_contract": "raw-query-v1"
+  },
+  "source_tree_sha256_after": "7e48d6d9f9b839c4dee427340857e239c33258ee80b3cf2bb9df1476569e1e00",
+  "source_tree_sha256_before": "7e48d6d9f9b839c4dee427340857e239c33258ee80b3cf2bb9df1476569e1e00",
+  "stage": "fp16_candidate_materialization_lowmem_v2",
+  "transformation": "independent_copy_of_st_openvino_export + rework4_non_aliasing_ov_save_model_compress_to_fp16",
+  "wall_clock_s": 28.307725611000023,
+  "work_class": "FP16 DERIVATIVE MATERIALIZATION + COMPATIBILITY ONLY"
+}

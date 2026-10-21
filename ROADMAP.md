@@ -1088,10 +1088,12 @@ SLICE 15  COMPLETE / ACCEPTED
        16K-D CPU-OV-01 document:
          docs/slice16k_d_cpu_openvino_feasibility.md
        16K-D CPU-OV-01 status: POST-D2 CPU OPENVINO FEASIBILITY HARNESS
-         IMPLEMENTATION REWORK4 COMPLETE / READY FOR INDEPENDENT RE-REVIEW
+         IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED (IR-005 at f9bed0a)
        16K-D CPU-OV-01 Stage-0: PASS at eea4c97 under STAGE0-EXECUTION-AUTH-001
          (IR storage inspected as FP32; not OV-FP16 storage)
-       16K-D CPU-OV-01 execution: NOT AUTHORIZED beyond Stage-0
+       16K-D CPU-OV-01 FP16 derivative: PASS under LOWMEM-STAGE0-EXECUTION-AUTH-002
+         (tree c1ebe0b8…; IR=fp16; observed CPU inference=fp32)
+       16K-D CPU-OV-01 execution: NOT AUTHORIZED beyond FP16 materialization
          (screens / parity / full run / production routing closed)
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
@@ -1903,10 +1905,12 @@ SLICE 15  COMPLETE / ACCEPTED
        16K-D CPU-OV-01 document:
          docs/slice16k_d_cpu_openvino_feasibility.md
        16K-D CPU-OV-01 status: POST-D2 CPU OPENVINO FEASIBILITY HARNESS
-         IMPLEMENTATION REWORK4 COMPLETE / READY FOR INDEPENDENT RE-REVIEW
+         IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED (IR-005 at f9bed0a)
        16K-D CPU-OV-01 Stage-0: PASS at eea4c97 under STAGE0-EXECUTION-AUTH-001
          (IR storage inspected as FP32; not OV-FP16 storage)
-       16K-D CPU-OV-01 execution: NOT AUTHORIZED beyond Stage-0
+       16K-D CPU-OV-01 FP16 derivative: PASS under LOWMEM-STAGE0-EXECUTION-AUTH-002
+         (tree c1ebe0b8…; IR=fp16; observed CPU inference=fp32)
+       16K-D CPU-OV-01 execution: NOT AUTHORIZED beyond FP16 materialization
          (screens / parity / full run / production routing closed)
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
