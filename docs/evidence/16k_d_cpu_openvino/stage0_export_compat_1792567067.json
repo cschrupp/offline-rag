@@ -1,0 +1,163 @@
+{
+  "authority": "S16-K-D-POST-D2-CPU-OPENVINO-STAGE0-EXECUTION-AUTH-001",
+  "branch": "implementation/16k-d-cpu-openvino-feasibility",
+  "cpu_runtime_after": {
+    "cpu_count_os": 16,
+    "lscpu": {
+      "Architecture": "x86_64",
+      "CPU(s)": "16",
+      "Core(s) per socket": "8",
+      "Hypervisor vendor": "Microsoft",
+      "Model name": "Intel(R) Core(TM) i9-10885H CPU @ 2.40GHz",
+      "Socket(s)": "1",
+      "Thread(s) per core": "2",
+      "Vendor ID": "GenuineIntel",
+      "Virtualization type": "full"
+    },
+    "mem_total_kib": 32722572,
+    "peak_rss_kib_self": 10582612,
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "processor": "x86_64",
+    "python_executable": "/home/user/projects/technical_rag/experiments/16k_d_cpu_openvino/.venv/bin/python"
+  },
+  "cpu_runtime_before": {
+    "cpu_count_os": 16,
+    "lscpu": {
+      "Architecture": "x86_64",
+      "CPU(s)": "16",
+      "Core(s) per socket": "8",
+      "Hypervisor vendor": "Microsoft",
+      "Model name": "Intel(R) Core(TM) i9-10885H CPU @ 2.40GHz",
+      "Socket(s)": "1",
+      "Thread(s) per core": "2",
+      "Vendor ID": "GenuineIntel",
+      "Virtualization type": "full"
+    },
+    "mem_total_kib": 32722572,
+    "peak_rss_kib_self": 58556,
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "processor": "x86_64",
+    "python_executable": "/home/user/projects/technical_rag/experiments/16k_d_cpu_openvino/.venv/bin/python"
+  },
+  "disposition": "PASS",
+  "entrypoint": "offline_rag.dense.cpu_ov_executor.execute_export_compat",
+  "error": null,
+  "execution_authorized_flag_unchanged": true,
+  "execution_subject": "eea4c976a351fbb41d1cd3efc1337198813c2e22",
+  "executor_environment": {
+    "openvino": "2026.4.1-22982-e213a147257-releases/2026/4",
+    "optimum": "present_unknown_version",
+    "optimum_intel": null,
+    "python": "3.14.5",
+    "sentence_transformers": "5.7.0"
+  },
+  "executor_result_status": "ok",
+  "experiment_id": "16K-D-CPU-OV-01",
+  "export_dir": "/home/user/projects/technical_rag/data/16k_d_cpu_ov_work/exports/fp16",
+  "export_tree": {
+    "export_dir": "/home/user/projects/technical_rag/data/16k_d_cpu_ov_work/exports/fp16",
+    "file_count": 15,
+    "files": [
+      {
+        "bytes": 96,
+        "relative_path": "1_Pooling/config.json",
+        "sha256": "d14d11ecbd53b0fc9e817992a5a7a76f462daf6f080e375f2dceadc8a4eff165"
+      },
+      {
+        "bytes": 17237,
+        "relative_path": "README.md",
+        "sha256": "c34d9b7e5a267ad3fdd13227a253686bc90844ff4744a2a6a86c7c905e3d06f3"
+      },
+      {
+        "bytes": 707,
+        "relative_path": "added_tokens.json",
+        "sha256": "c0284b582e14987fbd3d5a2cb2bd139084371ed9acbae488829a1c900833c680"
+      },
+      {
+        "bytes": 4116,
+        "relative_path": "chat_template.jinja",
+        "sha256": "87a2728cb8dc9fe424d624542f6060ec05a1d285ebbec578bb078900e33396b5"
+      },
+      {
+        "bytes": 1360,
+        "relative_path": "config.json",
+        "sha256": "770ae06483be04a06d1fc505c3b396af5e128e230cef4a0939bb1b82e714ff6f"
+      },
+      {
+        "bytes": 376,
+        "relative_path": "config_sentence_transformers.json",
+        "sha256": "d6fa5f4953813d822fc92440066170fcb8233d7c99517881561e1ba6d1ddc565"
+      },
+      {
+        "bytes": 1671853,
+        "relative_path": "merges.txt",
+        "sha256": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5"
+      },
+      {
+        "bytes": 429,
+        "relative_path": "modules.json",
+        "sha256": "fa7d796a215e1b2416773062891923b191fc5a4849bc44e322997433c90f459c"
+      },
+      {
+        "bytes": 2383106573,
+        "relative_path": "openvino/openvino_model.bin",
+        "sha256": "d7a441184fb98176144ebe5392ec3e68a8cbbe4748f90b4d88e2defa483be11e"
+      },
+      {
+        "bytes": 1844593,
+        "relative_path": "openvino/openvino_model.xml",
+        "sha256": "9acbe1d0465e51ff48444d86661b11e9ce0d7da47b0a5ad67cc9b38c674248a2"
+      },
+      {
+        "bytes": 241,
+        "relative_path": "sentence_bert_config.json",
+        "sha256": "3084164002c0bca01b0259c5327123803fce32e660a57feb93184ffead186fc8"
+      },
+      {
+        "bytes": 613,
+        "relative_path": "special_tokens_map.json",
+        "sha256": "76862e765266b85aa9459767e33cbaf13970f327a0e88d1c65846c2ddd3a1ecd"
+      },
+      {
+        "bytes": 11423705,
+        "relative_path": "tokenizer.json",
+        "sha256": "def76fb086971c7867b829c23a26261e38d9d74e02139253b38aeb9df8b4b50a"
+      },
+      {
+        "bytes": 5403,
+        "relative_path": "tokenizer_config.json",
+        "sha256": "74d803b3a11db6df1baf2cd41236636618674621fc6310dbcc2f4c44c70c6783"
+      },
+      {
+        "bytes": 2776833,
+        "relative_path": "vocab.json",
+        "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+      }
+    ],
+    "tree_sha256": "7e48d6d9f9b839c4dee427340857e239c33258ee80b3cf2bb9df1476569e1e00"
+  },
+  "export_tree_sha256": "7e48d6d9f9b839c4dee427340857e239c33258ee80b3cf2bb9df1476569e1e00",
+  "local_model_identity": {
+    "artifact_id": "art_15d9460c207a3a251ba76e4863d7106634252db858ccc3624987e65b13250f77",
+    "config_exists": true,
+    "expected_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+    "model_dir": "/home/user/projects/technical_rag/models/embeddings/qwen3-embedding-0.6b",
+    "model_id": "Qwen/Qwen3-Embedding-0.6B",
+    "readiness": "ready",
+    "resolved_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3"
+  },
+  "note": "Synthetic Stage-0 smoke only; frozen 1296-child workload not encoded. F005\u2013F007 remain open under REWORK2-AUTH-001. No private/source text included.",
+  "parent": "47a28d008ae8494b4d928c850126c09ddaa38925",
+  "recorded_at": "2026-10-21T07:17:47.825292Z",
+  "smoke": {
+    "document_dim": 1024,
+    "issues": [],
+    "ok": true,
+    "query_dim": 1024,
+    "query_text_contract": "raw-query-v1"
+  },
+  "stage": "export_compat",
+  "wall_clock_s": 62.8213649889949,
+  "weight_format": "fp16",
+  "work_class": "STAGE-0 COMPATIBILITY EXECUTION ONLY"
+}
