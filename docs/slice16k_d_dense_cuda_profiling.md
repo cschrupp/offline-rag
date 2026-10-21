@@ -63,21 +63,48 @@
 **D2 implementation F001–F005:** CLOSED  
 **D2 implementation rework-2 authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-REWORK2-AUTH-001` — AUTHORIZED  
 **Exact D2 implementation rework-2 parent:** `a488fb393d5f194bea91e337a928335e76cbd45f`  
+**D2 implementation IR-003:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-IR-003` — ACCEPT  
+**Exact independently accepted D2 implementation subject:** `d4ef50dd0b4203e3d5e63858cafe678c73502475`  
+**D2 execution authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-EXECUTION-AUTH-001` — AUTHORIZED (executed)  
+**D2 decision-boundary freeze authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DECISION-BOUNDARY-FREEZE-AUTH-001` — AUTHORIZED  
+**Exact D2 decision-boundary freeze parent:** `d4ef50dd0b4203e3d5e63858cafe678c73502475`  
 **D2 design document:** `docs/slice16k_d_d2_practical_execution_optimization_design.md`  
 **D2 harness:** `scripts/diag_16k_d_dense/run_d2_campaign.py`  
+**D2 evidence:** `docs/evidence/16k_d_dense_cuda/d2/`  
+**D2 decision freeze ledger:** `docs/evidence/16k_d_dense_cuda/d2/d2_decision_boundary_freeze.json`  
 
-**Status:** D2 PRACTICAL EXECUTION OPTIMIZATION IMPLEMENTATION REWORK 2 COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
+**Status:** D2 PRACTICAL EXECUTION OPTIMIZATION: CAMPAIGN COMPLETE / G1 SELECTED / READY FOR INDEPENDENT REVIEW  
 **D0:** BASELINE COMPLETE / INDEPENDENTLY ACCEPTED  
 **D1:** COMPLETE / INDEPENDENTLY ACCEPTED (scientific program closed for product pivot)  
 **D1 tooling F001 / D1 analysis F001:** CLOSED  
 **Contract (attribution tooling):** `dense-cuda-profile-v2`  
 **D2 design:** COMPLETE / INDEPENDENTLY ACCEPTED  
-**D2:** IMPLEMENTATION ONLY / EXECUTION NOT AUTHORIZED  
+**D2 implementation:** COMPLETE / INDEPENDENTLY ACCEPTED  
+**D2 campaign:** COMPLETE / G1 SELECTED  
 **Program pivot:** scientific optimization → bounded product-engineering optimization
 
-## Authoritative current lane (unchanged)
+### D2 campaign outcome (frozen)
+
+| Cell | Lane | Wall | Outcome |
+|------|------|------|---------|
+| G1-1 | CUDA FP16 / b32 | 1.17 min | VALID |
+| G1-2 | CUDA FP16 / b32 | 1.47 min | VALID |
+| C0 | CPU native/BF16 / b32 | 231.1 min | VALID baseline |
+| G1-3 | CUDA FP16 / b32 | 1.109 min | VALID |
+
+G1 timing: median **1.17 min** · max **1.47 min** · ≤10 / ≤12 gates **PASS**.  
+Parity `d2-retrieval-parity-v1`: **PASS** (SHA256 `d117be126e5b8206acdc95327efca3c3a56eae6663afadaaa10d06960bb7df96`).  
+Planner: `select_g1` / `g1_timing_and_parity_success`. G2 not opened.
+
+**Selected D2 GPU deployment candidate:** CUDA / **FP16** / batch **32**.  
+**Interpretation:** Further CUDA optimization is not justified under D2; G1 exceeds the usability target by a large margin while satisfying frozen parity and correctness gates.  
+**C0:** characterizes the current CPU lane at ~231.1 min for the frozen workload; it does **not** establish that Seneca is intrinsically unsuitable for CPU execution.  
+**Production default promotion:** NOT AUTHORIZED in this freeze (selection ≠ promotion).
+
+## Authoritative current production lane (unchanged)
 
 CUDA / **BF16** / batch **32** / **SDPA** — Qwen3-Embedding-0.6B.
+(Production default remains BF16 until a separate promotion decision.)
 
 Accepted D0 findings: encode-dominant (~99%); persistence/Qdrant negligible;
 highly variable batch encode latency (stalls); sequence length alone does not

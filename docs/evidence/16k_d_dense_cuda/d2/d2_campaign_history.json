@@ -1,0 +1,42 @@
+[
+  {
+    "assessment_evidence_digest": null,
+    "assessment_evidence_path": null,
+    "assessment_recorded_at": null,
+    "cell_id": "G1-1",
+    "correctness_ok": null,
+    "parity_ok": null,
+    "validity": "valid",
+    "wall_minutes": 1.1700188985334534
+  },
+  {
+    "assessment_evidence_digest": null,
+    "assessment_evidence_path": null,
+    "assessment_recorded_at": null,
+    "cell_id": "G1-2",
+    "correctness_ok": null,
+    "parity_ok": null,
+    "validity": "valid",
+    "wall_minutes": 1.4735220839832133
+  },
+  {
+    "assessment_evidence_digest": null,
+    "assessment_evidence_path": null,
+    "assessment_recorded_at": null,
+    "cell_id": "C0",
+    "correctness_ok": null,
+    "parity_ok": null,
+    "validity": "valid",
+    "wall_minutes": 231.06513355945015
+  },
+  {
+    "assessment_evidence_digest": "d117be126e5b8206acdc95327efca3c3a56eae6663afadaaa10d06960bb7df96",
+    "assessment_evidence_path": "/home/user/projects/technical_rag/docs/evidence/16k_d_dense_cuda/d2/d2_retrieval_parity_v1_1792555359.json",
+    "assessment_recorded_at": "2026-10-21T04:05:38.781420Z",
+    "cell_id": "G1-3",
+    "correctness_ok": true,
+    "parity_ok": true,
+    "validity": "valid",
+    "wall_minutes": 1.1086222106498704
+  }
+]

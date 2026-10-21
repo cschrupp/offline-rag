@@ -1,0 +1,168 @@
+{
+  "accepted_design_subject": "8f96657d73b2213fb9b43557b001bc4c5a42188b",
+  "authority": "S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-AUTH-001",
+  "cell": "G1-3",
+  "cell_spec": {
+    "batch_size": 32,
+    "device": "cuda",
+    "precision": "fp16"
+  },
+  "cpu_facts": {},
+  "execution_head": "d4ef50dd0b4203e3d5e63858cafe678c73502475",
+  "executor_ready": true,
+  "expected_execution_head": "d4ef50dd0b4203e3d5e63858cafe678c73502475",
+  "gpu_facts": {
+    "peak_allocated_bytes": 3841909760,
+    "peak_reserved_bytes": 4664066048,
+    "total_vram_bytes": null
+  },
+  "history_path": "/home/user/projects/technical_rag/data/16k_d_d2_campaign/history.json",
+  "parity_probe": {
+    "execution_authorized": false,
+    "note": "Retrieval-parity probe inputs and acceptance thresholds must be frozen under the later execution authority before the first FP16 treatment call.",
+    "status": "not_frozen"
+  },
+  "practical_timing": {
+    "chunks_per_sec": 19.137783773758315,
+    "embedding_persistence_ms": 2940.315086816554,
+    "encode_ms": 54829.34786300757,
+    "point_construction_ms": 12.46392801112961,
+    "qdrant_ms": 7757.894340000348,
+    "tokens_per_sec": null,
+    "tokens_per_sec_status": "not_collected",
+    "wall_clock_ms": 67719
+  },
+  "preflight": {
+    "accepted_design_subject": "8f96657d73b2213fb9b43557b001bc4c5a42188b",
+    "authority": "S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-AUTH-001",
+    "cell": "G1-3",
+    "cell_spec": {
+      "batch_size": 32,
+      "device": "cuda",
+      "precision": "fp16"
+    },
+    "effective_settings": {
+      "batch_size": 32,
+      "configured_device": "cuda",
+      "configured_precision": "fp16",
+      "model_id": "Qwen/Qwen3-Embedding-0.6B",
+      "model_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+      "searchable_units_contract": "all-children-v1",
+      "searchable_units_strategy": "all_children",
+      "strict_offline": true
+    },
+    "execution_authorized": false,
+    "execution_head": "d4ef50dd0b4203e3d5e63858cafe678c73502475",
+    "expected_execution_head": "d4ef50dd0b4203e3d5e63858cafe678c73502475",
+    "isolation": {
+      "embeddings_empty": true,
+      "qdrant_empty": true,
+      "work_root": "/home/user/projects/technical_rag/data/16k_d_d2_campaign/g1_3_work"
+    },
+    "issues": [],
+    "parity_probe": {
+      "execution_authorized": false,
+      "note": "Retrieval-parity probe inputs and acceptance thresholds must be frozen under the later execution authority before the first FP16 treatment call.",
+      "status": "not_frozen"
+    },
+    "prepared_state": {
+      "chunk_state_exists": true,
+      "corpus_state_exists": true,
+      "current_chunk_manifest": "chunk-manifests/chunkset_d0b1fee57392071172e54bb1f4b234965fa9993813319e39d52802eec07db65d.json",
+      "current_chunk_set_id": "chunkset_d0b1fee57392071172e54bb1f4b234965fa9993813319e39d52802eec07db65d",
+      "current_corpus_id": "corpus_3c74b057074e928cccf7da048c06db0cf6df63bbe546ec14c071604949f160e3",
+      "current_manifest": "manifests/corpus_3c74b057074e928cccf7da048c06db0cf6df63bbe546ec14c071604949f160e3.json",
+      "issues": []
+    },
+    "recorded_at": "2026-10-21T03:56:38.397164Z",
+    "require_design_subject": false,
+    "require_execution_head": true,
+    "rework2_authority": "S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-REWORK2-AUTH-001",
+    "rework_authority": "S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-REWORK-AUTH-001",
+    "runtime_facts": {
+      "cuda_available": true,
+      "device_selection_reason": "explicit_cuda",
+      "precision_selection_reason": "explicit_fp16_cuda",
+      "resolved_device": "cuda",
+      "resolved_precision": "fp16"
+    },
+    "status": "PREFLIGHT_OK",
+    "tracked_clean": true,
+    "tracked_tree": "clean_tracked",
+    "workload_expected": {
+      "chunk_manifest_sha256": "de4ad6b5ab661ba74e8ab2ec5344aa41518fc1dd0e9d94eb08edfbc3073076c3",
+      "chunk_set_id": "chunkset_d0b1fee57392071172e54bb1f4b234965fa9993813319e39d52802eec07db65d",
+      "corpus_id": "corpus_3c74b057074e928cccf7da048c06db0cf6df63bbe546ec14c071604949f160e3",
+      "corpus_manifest_sha256": "69cefa61214e0e5e0a5eb71df01e323ede6f1807226181ef4134faeceb91b353",
+      "label": "D0-INCIDENT-1296-CHILD-V1",
+      "model_id": "Qwen/Qwen3-Embedding-0.6B",
+      "model_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+      "searchable_children": 1296,
+      "searchable_units_contract": "all-children-v1",
+      "searchable_units_strategy": "all_children"
+    },
+    "workload_observed": {
+      "child_count": 1296,
+      "chunk_manifest_declared_chunk_set_id": "chunkset_d0b1fee57392071172e54bb1f4b234965fa9993813319e39d52802eec07db65d",
+      "chunk_manifest_declared_corpus_id": "corpus_3c74b057074e928cccf7da048c06db0cf6df63bbe546ec14c071604949f160e3",
+      "chunk_manifest_exists": true,
+      "chunk_manifest_path": "/home/user/projects/technical_rag/data/chunk-manifests/chunkset_d0b1fee57392071172e54bb1f4b234965fa9993813319e39d52802eec07db65d.json",
+      "chunk_manifest_sha256": "de4ad6b5ab661ba74e8ab2ec5344aa41518fc1dd0e9d94eb08edfbc3073076c3",
+      "chunk_set_id": "chunkset_d0b1fee57392071172e54bb1f4b234965fa9993813319e39d52802eec07db65d",
+      "corpus_id": "corpus_3c74b057074e928cccf7da048c06db0cf6df63bbe546ec14c071604949f160e3",
+      "corpus_manifest_declared_corpus_id": "corpus_3c74b057074e928cccf7da048c06db0cf6df63bbe546ec14c071604949f160e3",
+      "corpus_manifest_exists": true,
+      "corpus_manifest_path": "/home/user/projects/technical_rag/data/manifests/corpus_3c74b057074e928cccf7da048c06db0cf6df63bbe546ec14c071604949f160e3.json",
+      "corpus_manifest_sha256": "69cefa61214e0e5e0a5eb71df01e323ede6f1807226181ef4134faeceb91b353",
+      "label": "D0-INCIDENT-1296-CHILD-V1"
+    }
+  },
+  "recorded_at": "2026-10-21T03:57:56.641008Z",
+  "report": {
+    "children_total": 1296,
+    "dense_execution": {
+      "attention_backend": "sdpa",
+      "batch_size": 32,
+      "device": "cuda",
+      "dtype": "float16",
+      "embedding_dimension": 1024
+    },
+    "dense_generation_ms": 59176,
+    "dense_materialization_ms": 7774,
+    "duration_ms": 67719,
+    "embeddings_failed": 0,
+    "embeddings_generated": 1296,
+    "embeddings_reused": 0,
+    "errors": [],
+    "indexing_status": "success",
+    "observed_attention": "sdpa",
+    "observed_dtype": "float16",
+    "practical_timing": {
+      "chunks_per_sec": 19.137783773758315,
+      "embedding_persistence_ms": 2940.315086816554,
+      "encode_ms": 54829.34786300757,
+      "point_construction_ms": 12.46392801112961,
+      "qdrant_ms": 7757.894340000348,
+      "tokens_per_sec": null,
+      "tokens_per_sec_status": "not_collected",
+      "wall_clock_ms": 67719
+    },
+    "vectors_materialized": 1296
+  },
+  "result": {
+    "assessment_evidence_digest": null,
+    "assessment_evidence_path": null,
+    "assessment_recorded_at": null,
+    "cell_id": "G1-3",
+    "correctness_ok": null,
+    "parity_ok": null,
+    "validity": "valid",
+    "wall_minutes": 1.1086222106498704
+  },
+  "rework2_authority": "S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-REWORK2-AUTH-001",
+  "rework_authority": "S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-REWORK-AUTH-001",
+  "status": "CELL_EXECUTED",
+  "validity": "valid",
+  "wall_clock_s": 66.51733263899223,
+  "wall_minutes": 1.1086222106498704
+}

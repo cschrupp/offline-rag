@@ -1,0 +1,16 @@
+{
+  "assessment_evidence_digest": "d117be126e5b8206acdc95327efca3c3a56eae6663afadaaa10d06960bb7df96",
+  "assessment_evidence_path": "/home/user/projects/technical_rag/docs/evidence/16k_d_dense_cuda/d2/d2_retrieval_parity_v1_1792555359.json",
+  "assessment_recorded_at": "2026-10-21T04:05:38.781420Z",
+  "cell_id": "G1-3",
+  "correctness_ok": true,
+  "parity_ok": true,
+  "plan": {
+    "g2_eligible": false,
+    "next_cell": null,
+    "reason": "g1_timing_and_parity_success",
+    "selected_lane": "G1",
+    "terminal": "select_g1"
+  },
+  "status": "ASSESSMENT_RECORDED"
+}

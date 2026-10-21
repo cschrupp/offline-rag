@@ -1047,12 +1047,27 @@ SLICE 15  COMPLETE / ACCEPTED
          — AUTHORIZED
        Exact 16K-D D2 implementation rework-2 parent:
          a488fb393d5f194bea91e337a928335e76cbd45f
+       16K-D D2 implementation IR-003:
+         S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-IR-003
+         — ACCEPT
+       Exact independently accepted 16K-D D2 implementation subject:
+         d4ef50dd0b4203e3d5e63858cafe678c73502475
+       16K-D D2 decision-boundary freeze authority:
+         S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DECISION-BOUNDARY-FREEZE-AUTH-001
+         — AUTHORIZED
+       Exact 16K-D D2 decision-boundary freeze parent:
+         d4ef50dd0b4203e3d5e63858cafe678c73502475
        16K-D D2 design document:
          docs/slice16k_d_d2_practical_execution_optimization_design.md
-       16K-D status: D2 PRACTICAL EXECUTION OPTIMIZATION IMPLEMENTATION REWORK 2 COMPLETE /
-         READY FOR INDEPENDENT RE-REVIEW
+       16K-D D2 evidence: docs/evidence/16k_d_dense_cuda/d2/
+       16K-D status: D2 PRACTICAL EXECUTION OPTIMIZATION: CAMPAIGN COMPLETE /
+         G1 SELECTED / READY FOR INDEPENDENT REVIEW
        16K-D D2 design: COMPLETE / INDEPENDENTLY ACCEPTED
-       16K-D D2: IMPLEMENTATION ONLY / EXECUTION NOT AUTHORIZED
+       16K-D D2 implementation: COMPLETE / INDEPENDENTLY ACCEPTED
+       16K-D D2 campaign: COMPLETE / G1 SELECTED
+       16K-D D2 selected GPU candidate: CUDA / FP16 / batch 32
+       16K-D D2 production default: UNCHANGED (CUDA / BF16 / batch 32)
+       16K-D D2 further execution: NOT AUTHORIZED under decision-boundary freeze
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md
@@ -1822,12 +1837,27 @@ SLICE 15  COMPLETE / ACCEPTED
          — AUTHORIZED
        Exact 16K-D D2 implementation rework-2 parent:
          a488fb393d5f194bea91e337a928335e76cbd45f
+       16K-D D2 implementation IR-003:
+         S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-IR-003
+         — ACCEPT
+       Exact independently accepted 16K-D D2 implementation subject:
+         d4ef50dd0b4203e3d5e63858cafe678c73502475
+       16K-D D2 decision-boundary freeze authority:
+         S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DECISION-BOUNDARY-FREEZE-AUTH-001
+         — AUTHORIZED
+       Exact 16K-D D2 decision-boundary freeze parent:
+         d4ef50dd0b4203e3d5e63858cafe678c73502475
        16K-D D2 design document:
          docs/slice16k_d_d2_practical_execution_optimization_design.md
-       16K-D status: D2 PRACTICAL EXECUTION OPTIMIZATION IMPLEMENTATION REWORK 2 COMPLETE /
-         READY FOR INDEPENDENT RE-REVIEW
+       16K-D D2 evidence: docs/evidence/16k_d_dense_cuda/d2/
+       16K-D status: D2 PRACTICAL EXECUTION OPTIMIZATION: CAMPAIGN COMPLETE /
+         G1 SELECTED / READY FOR INDEPENDENT REVIEW
        16K-D D2 design: COMPLETE / INDEPENDENTLY ACCEPTED
-       16K-D D2: IMPLEMENTATION ONLY / EXECUTION NOT AUTHORIZED
+       16K-D D2 implementation: COMPLETE / INDEPENDENTLY ACCEPTED
+       16K-D D2 campaign: COMPLETE / G1 SELECTED
+       16K-D D2 selected GPU candidate: CUDA / FP16 / batch 32
+       16K-D D2 production default: UNCHANGED (CUDA / BF16 / batch 32)
+       16K-D D2 further execution: NOT AUTHORIZED under decision-boundary freeze
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md

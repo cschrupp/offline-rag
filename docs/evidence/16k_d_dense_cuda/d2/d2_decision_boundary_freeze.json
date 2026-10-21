@@ -1,0 +1,175 @@
+{
+  "accepted_design_subject": "8f96657d73b2213fb9b43557b001bc4c5a42188b",
+  "accepted_implementation_subject": "d4ef50dd0b4203e3d5e63858cafe678c73502475",
+  "assessment": {
+    "assessment_artifact": {
+      "bytes": 572,
+      "path": "docs/evidence/16k_d_dense_cuda/d2/d2_g1_3_assessment.json",
+      "sha256": "871897274c70cb18d8c90993cd0593bcab83620b6319a78539edc7e068d82604"
+    },
+    "correctness_ok": true,
+    "dimension": 1024,
+    "failed": 0,
+    "generated": 1296,
+    "parity_ok": true,
+    "reused": 0,
+    "vectors_materialized": 1296
+  },
+  "authority": "S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DECISION-BOUNDARY-FREEZE-AUTH-001",
+  "branch": "implementation/16k-d-dense-cuda-profiling",
+  "campaign_cells": [
+    {
+      "cell": "G1-1",
+      "evidence": {
+        "bytes": 7359,
+        "path": "docs/evidence/16k_d_dense_cuda/d2/d2_g1_1_1792537391.json",
+        "sha256": "7095a65aefeb66db4e76a85c43574346b238eba997b85da7af6b5f8892a22b95"
+      },
+      "lane": "CUDA FP16 / b32",
+      "outcome": "VALID",
+      "wall_minutes": 1.1700188985334534
+    },
+    {
+      "cell": "G1-2",
+      "evidence": {
+        "bytes": 7360,
+        "path": "docs/evidence/16k_d_dense_cuda/d2/d2_g1_2_1792537774.json",
+        "sha256": "f8fb764acd7d92ec582723533ede46c85f20cca50416ab6be3b2da9121abfb36"
+      },
+      "lane": "CUDA FP16 / b32",
+      "outcome": "VALID",
+      "wall_minutes": 1.4735220839832133
+    },
+    {
+      "cell": "C0",
+      "evidence": {
+        "bytes": 8025,
+        "path": "docs/evidence/16k_d_dense_cuda/d2/d2_c0_1792551826.json",
+        "sha256": "bff4f8cdb3204cb2df462dd3a912b82b189fd1796d11b3b777890eed1a8ea937"
+      },
+      "lane": "CPU native/BF16 / b32",
+      "outcome": "VALID baseline",
+      "wall_minutes": 231.06513355945015
+    },
+    {
+      "cell": "G1-3",
+      "evidence": {
+        "bytes": 7359,
+        "path": "docs/evidence/16k_d_dense_cuda/d2/d2_g1_3_1792555076.json",
+        "sha256": "4f43c7883de39df1a7efd7dfdd99b95fa8a8f6437f801b0137ed42196c0f39fc"
+      },
+      "lane": "CUDA FP16 / b32",
+      "outcome": "VALID",
+      "wall_minutes": 1.1086222106498704
+    }
+  ],
+  "closed_under_this_freeze": [
+    "further D2 execution",
+    "G2 execution",
+    "production FP16 default promotion",
+    "CPU tuning",
+    "model changes",
+    "D3+",
+    "16K-E/F/G",
+    "main"
+  ],
+  "evidence_inventory": {
+    "c0": {
+      "bytes": 8025,
+      "path": "docs/evidence/16k_d_dense_cuda/d2/d2_c0_1792551826.json",
+      "sha256": "bff4f8cdb3204cb2df462dd3a912b82b189fd1796d11b3b777890eed1a8ea937"
+    },
+    "campaign_history": {
+      "bytes": 1236,
+      "path": "docs/evidence/16k_d_dense_cuda/d2/d2_campaign_history.json",
+      "sha256": "a2996728b86d1ca90ddffae3267d885212156c172536f91bd5afe8aae77404c8"
+    },
+    "g1_1": {
+      "bytes": 7359,
+      "path": "docs/evidence/16k_d_dense_cuda/d2/d2_g1_1_1792537391.json",
+      "sha256": "7095a65aefeb66db4e76a85c43574346b238eba997b85da7af6b5f8892a22b95"
+    },
+    "g1_2": {
+      "bytes": 7360,
+      "path": "docs/evidence/16k_d_dense_cuda/d2/d2_g1_2_1792537774.json",
+      "sha256": "f8fb764acd7d92ec582723533ede46c85f20cca50416ab6be3b2da9121abfb36"
+    },
+    "g1_3": {
+      "bytes": 7359,
+      "path": "docs/evidence/16k_d_dense_cuda/d2/d2_g1_3_1792555076.json",
+      "sha256": "4f43c7883de39df1a7efd7dfdd99b95fa8a8f6437f801b0137ed42196c0f39fc"
+    },
+    "g1_3_assessment": {
+      "bytes": 572,
+      "path": "docs/evidence/16k_d_dense_cuda/d2/d2_g1_3_assessment.json",
+      "sha256": "871897274c70cb18d8c90993cd0593bcab83620b6319a78539edc7e068d82604"
+    },
+    "parity_v1": {
+      "bytes": 65974,
+      "path": "docs/evidence/16k_d_dense_cuda/d2/d2_retrieval_parity_v1_1792555359.json",
+      "sha256": "d117be126e5b8206acdc95327efca3c3a56eae6663afadaaa10d06960bb7df96"
+    }
+  },
+  "exact_parent": "d4ef50dd0b4203e3d5e63858cafe678c73502475",
+  "execution_authority": "S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-EXECUTION-AUTH-001",
+  "g1_timing": {
+    "maximum_gate": "PASS",
+    "maximum_gate_minutes": 12.0,
+    "maximum_minutes": 1.4735220839832133,
+    "median_gate": "PASS",
+    "median_gate_minutes": 10.0,
+    "median_minutes": 1.1700188985334534,
+    "walls_minutes": [
+      1.1700188985334534,
+      1.4735220839832133,
+      1.1086222106498704
+    ]
+  },
+  "implementation_ir_003": "S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-IR-003 \u2014 ACCEPT",
+  "interpretation": {
+    "c0_meaning": "C0 characterizes the current CPU execution lane at approximately 231.1 minutes for the frozen workload. It does not establish that Seneca is intrinsically unsuitable for CPU execution.",
+    "further_cuda_optimization": "Further CUDA optimization is not justified under D2 because G1 exceeds the existing usability target by a large margin while satisfying the frozen retrieval-parity and correctness gates.",
+    "selected_candidate": "G1 \u2014 CUDA / FP16 / batch 32 is the selected D2 GPU deployment candidate."
+  },
+  "parity": {
+    "contract_id": "d2-retrieval-parity-v1",
+    "disposition": "PASS",
+    "evidence_path": "docs/evidence/16k_d_dense_cuda/d2/d2_retrieval_parity_v1_1792555359.json",
+    "evidence_sha256": "d117be126e5b8206acdc95327efca3c3a56eae6663afadaaa10d06960bb7df96",
+    "frozen_metrics": {
+      "mean_top10_set_overlap": 0.99375,
+      "median_document_vector_cosine": 0.999886,
+      "median_query_vector_cosine": 0.999901,
+      "min_document_vector_cosine": 0.99983,
+      "min_query_vector_cosine": 0.999849,
+      "min_top10_set_overlap": 0.9,
+      "top1_agreement": "16/16"
+    }
+  },
+  "planner": {
+    "campaign_history": {
+      "bytes": 1236,
+      "path": "docs/evidence/16k_d_dense_cuda/d2/d2_campaign_history.json",
+      "sha256": "a2996728b86d1ca90ddffae3267d885212156c172536f91bd5afe8aae77404c8"
+    },
+    "g2_opened": false,
+    "reason": "g1_timing_and_parity_success",
+    "selected_lane": "G1",
+    "terminal": "select_g1"
+  },
+  "production_default_unchanged": {
+    "current_production_lane": "CUDA / BF16 / batch 32 / SDPA",
+    "note": "Production default remains CUDA/BF16/batch32 until a separate promotion decision. Selection != promotion."
+  },
+  "selected_deployment_candidate": {
+    "attention": "sdpa",
+    "batch_size": 32,
+    "device": "cuda",
+    "model_id": "Qwen/Qwen3-Embedding-0.6B",
+    "model_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+    "precision": "fp16"
+  },
+  "selected_lane": "G1",
+  "status": "16K-D D2 PRACTICAL EXECUTION OPTIMIZATION: CAMPAIGN COMPLETE / G1 SELECTED / READY FOR INDEPENDENT REVIEW",
+  "work_class": "EVIDENCE + STATUS ONLY"
+}

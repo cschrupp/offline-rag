@@ -24,10 +24,18 @@
 **Implementation IR-001 F001–F005:** CLOSED (rework)  
 **Implementation rework-2 authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-REWORK2-AUTH-001` — AUTHORIZED  
 **Exact implementation rework-2 parent:** `a488fb393d5f194bea91e337a928335e76cbd45f`  
+**Implementation IR-003:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-IMPLEMENTATION-IR-003` — ACCEPT  
+**Exact independently accepted implementation subject:** `d4ef50dd0b4203e3d5e63858cafe678c73502475`  
+**Execution authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-EXECUTION-AUTH-001` — AUTHORIZED (campaign executed)  
+**Decision-boundary freeze authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DECISION-BOUNDARY-FREEZE-AUTH-001` — AUTHORIZED  
+**Exact decision-boundary freeze parent:** `d4ef50dd0b4203e3d5e63858cafe678c73502475`  
 
 **Branch:** `implementation/16k-d-dense-cuda-profiling`  
 **Status:** D2 PRACTICAL EXECUTION OPTIMIZATION DESIGN COMPLETE / INDEPENDENTLY ACCEPTED  
-**D2 execution:** NOT AUTHORIZED (implementation rework-2; executor locked)
+**D2 campaign:** COMPLETE / G1 SELECTED / READY FOR INDEPENDENT REVIEW  
+**Selected D2 GPU deployment candidate:** CUDA / FP16 / batch 32 (selection ≠ production promotion)  
+**Production default:** unchanged (CUDA / BF16 / batch 32) until a separate promotion decision  
+**D2 further execution:** NOT AUTHORIZED under this freeze
 
 **Pivot:** 16K-D moves from a scientific optimization program to a bounded
 product-engineering optimization program.
