@@ -10,6 +10,8 @@ dependencies = [
     "sentence-transformers>=2.7.0",
     # transformers 5.x removed transformers.onnx; optimum-intel still needs 4.x.
     "transformers>=4.51.0,<5",
+    # NNCF weight compression for derivative INT8_ASYM (F010); not production.
+    "nncf>=2.14.0",
     "numpy",
 ]
 

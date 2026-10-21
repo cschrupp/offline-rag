@@ -2,15 +2,14 @@
 
 **Experiment:** `16K-D CPU-OV-01 — SAME-MODEL OPENVINO CPU FEASIBILITY`  
 **Implementation authority:** `S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-AUTH-001`  
-**Rework4 authority:** `S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-REWORK4-AUTH-001`  
-**Independent review:** `S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-IR-005` — ACCEPT  
-**Exact rework4 parent:** `0a6900345b7d66a5213fe20700e84a418232e2cd`  
-**Accepted harness subject:** `f9bed0af0d2fa045690c8050ba8f585fc8a0165f`  
+**Rework5 authority:** `S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-REWORK5-AUTH-001` — AUTHORIZED  
+**Exact rework5 parent:** `b267542bdebc1c6ef0de3b7d9e1bcdfbdaa45912`  
+**Accepted harness subject (IR-005):** `f9bed0af0d2fa045690c8050ba8f585fc8a0165f`  
 **Underlying implementation base:** `eea4c976a351fbb41d1cd3efc1337198813c2e22`  
 **Branch:** `implementation/16k-d-cpu-openvino-feasibility`  
-**Work class:** HARNESS / FEASIBILITY (F009 CLOSED)  
+**Work class:** HARNESS / FEASIBILITY IMPLEMENTATION REWORK5 (F010 INT8 identity)  
 
-**Status:** POST-D2 CPU OPENVINO FEASIBILITY HARNESS IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED  
+**Status:** POST-D2 CPU OPENVINO FEASIBILITY HARNESS IMPLEMENTATION REWORK5 COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
 
 **Accepted implementation subject (IR-004):** `769116132ed91543732db9f80503e539fb66b234`  
 **Follow-up tip (OVConfig/ST integration fix):** `22ef4994cef2d55d618c8a260f241e62a05de5e7`  
@@ -24,10 +23,10 @@
 **FP16 lowmem AUTH-001:** ABORTED / IMPLEMENTATION EXECUTION DEFECT — F009 — not a scientific FAIL  
 **F009:** CLOSED (IR-005)  
 **FP16 lowmem AUTH-002:** PASS — IR-001 ACCEPT — candidate tree `c1ebe0b8435ce8d32526875822f933f5f96999d7c44d13698c0b6b8a91d3f252` (`exports/fp16_lowmem_v2`; IR=fp16; observed CPU inference=fp32)  
-**FP16 128-screen AUTH-001:** PASS / **TOO_SLOW** — ~0.459 chunks/s; projected ~47.1 min (>25); next possible gate = INT8 preparation (FP16 parity/full closed)  
+**FP16 128-screen AUTH-001:** PASS / **TOO_SLOW** — IR-001 ACCEPT — ~0.459 chunks/s; projected ~47.1 min (>25); FP16 parity/full CLOSED; INT8 preparation OPEN  
 **Candidate description:** OpenVINO CPU / FP16 IR storage / observed CPU inference precision FP32  
 **D2 predecessor:** CAMPAIGN COMPLETE / G1 SELECTED  
-**Further execution:** NOT AUTHORIZED (FP16 parity / INT8 / full / production / main closed; `EXECUTION_AUTHORIZED=False`)  
+**Further execution:** NOT AUTHORIZED (INT8 materialization/screen / parity / full / production / main closed; `EXECUTION_AUTHORIZED=False`)  
 
 ---
 
@@ -139,3 +138,4 @@ tuning · batch sweep · production dependency promotion · main.
 | F007 missing CPU host facts | `capture_cpu_host_runtime_facts()` on screen/full evidence |
 | F008 precision identity | Separate requested / observed IR / observed CPU inference; FP16 via post-export `compress_to_fp16`; no label-derived dtype |
 | F009 unsafe in-place IR compress | CLOSED (IR-005): distinct same-FS temp IR → validate non-zero + fp16 → replace; never `save_model` onto the source path |
+| F010 INT8 identity not fail-closed | `observed_INT8_weight_compression` from i8/u8 Constant evidence + NNCF `INT8_ASYM` provenance; refuse fp16/fp32 IR when requested=int8; derivative no-retrace materialization path |

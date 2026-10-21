@@ -829,6 +829,44 @@ def test_assert_requested_ir_precision_fail_closed() -> None:
         )
 
 
+def test_assert_requested_int8_rejects_fp_ir_without_integer_weights() -> None:
+    """F010: request label int8 must not accept fp16/fp32 IR."""
+    from offline_rag.dense.cpu_ov_executor import assert_requested_ir_precision
+
+    with pytest.raises(ValueError, match="not verified"):
+        assert_requested_ir_precision(
+            requested_weight_format="int8",
+            observed_IR_weight_precision="fp32",
+            observed_INT8_weight_compression={
+                "verified": False,
+                "i8_constant_count": 0,
+                "u8_constant_count": 0,
+            },
+        )
+    with pytest.raises(ValueError, match="not verified"):
+        assert_requested_ir_precision(
+            requested_weight_format="int8",
+            observed_IR_weight_precision="fp16",
+            observed_INT8_weight_compression={"verified": False},
+        )
+
+
+def test_assert_requested_int8_requires_verified_compression_identity() -> None:
+    """F010: INT8 load/screen requires verified integer-weight compression."""
+    from offline_rag.dense.cpu_ov_executor import assert_requested_ir_precision
+
+    assert_requested_ir_precision(
+        requested_weight_format="int8",
+        observed_IR_weight_precision="int8",
+        observed_INT8_weight_compression={
+            "verified": True,
+            "i8_constant_count": 40,
+            "u8_constant_count": 10,
+            "compression_mode": "INT8_ASYM",
+        },
+    )
+
+
 def test_observe_execution_facts_does_not_invent_fp16_from_request() -> None:
     """F008: dtype must not be invented from requested weight_format label."""
     from offline_rag.dense.cpu_ov_executor import OpenVinoSTEmbedder
@@ -996,3 +1034,167 @@ def test_compress_fp16_leaves_source_untouched_when_temp_invalid(
     assert source_xml.read_bytes() == before_xml
     assert source_bin.read_bytes() == before_bin
     assert list(src_dir.glob("ov_fp16_compress_*")) == []
+
+
+def test_classify_ir_int8_takes_precedence_over_float_residuals() -> None:
+    """F010: i8/u8 constants classify IR as int8 even with float residuals."""
+    from offline_rag.dense.cpu_ov_executor import classify_ir_weight_precision
+
+    assert (
+        classify_ir_weight_precision(
+            f16_constant_count=0,
+            f32_constant_count=140,
+            i8_constant_count=50,
+            u8_constant_count=10,
+        )
+        == "int8"
+    )
+
+
+def test_inspect_xml_counts_i8_u8_constants(tmp_path: Path) -> None:
+    """F010: IR inspector records i8/u8 element types alongside f16/f32."""
+    from offline_rag.dense.cpu_ov_executor import inspect_openvino_ir_weight_precision
+
+    xml = tmp_path / "openvino_model.xml"
+    xml.write_text(
+        '<?xml?><net>'
+        '<const element_type="i8"/>'
+        '<const element_type="i8"/>'
+        '<const element_type="u8"/>'
+        '<const element_type="f32"/>'
+        '<const element_type="f16"/>'
+        "</net>\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "openvino_model.bin").write_bytes(b"x")
+    ir = inspect_openvino_ir_weight_precision(xml)
+    assert ir["i8_constant_count"] == 2
+    assert ir["u8_constant_count"] == 1
+    assert ir["f32_constant_count"] == 1
+    assert ir["f16_constant_count"] == 1
+    assert ir["observed_IR_weight_precision"] == "int8"
+
+
+def test_observed_int8_compression_never_inferred_from_request() -> None:
+    """F010: verified flag comes only from integer Constant presence."""
+    from offline_rag.dense.cpu_ov_executor import build_observed_int8_weight_compression
+
+    oc = build_observed_int8_weight_compression(
+        {
+            "i8_constant_count": 0,
+            "u8_constant_count": 0,
+            "f16_constant_count": 0,
+            "f32_constant_count": 680,
+        },
+        compression_mode="INT8_ASYM",
+    )
+    assert oc["verified"] is False
+    assert oc["demonstrable_integer_weight_constants"] is False
+
+    oc2 = build_observed_int8_weight_compression(
+        {
+            "i8_constant_count": 12,
+            "u8_constant_count": 0,
+            "f16_constant_count": 0,
+            "f32_constant_count": 40,
+        },
+        compression_mode="INT8_ASYM",
+        nncf_version="2.99.0",
+        transformation="nncf.compress_weights/CompressWeightsMode.INT8_ASYM",
+    )
+    assert oc2["verified"] is True
+    assert oc2["compression_mode"] == "INT8_ASYM"
+    assert oc2["nncf_version"] == "2.99.0"
+
+
+def test_int8_compress_never_aliases_source_destination(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """F010: NNCF INT8 save destination must not alias the source IR pair."""
+    from offline_rag.dense import cpu_ov_executor as ex
+
+    src_dir = tmp_path / "candidate" / "openvino"
+    src_dir.mkdir(parents=True)
+    source_xml = src_dir / "openvino_model.xml"
+    source_bin = src_dir / "openvino_model.bin"
+    source_xml.write_text('<net><c element_type="f32"/></net>\n', encoding="utf-8")
+    source_bin.write_bytes(b"FP32-SOURCE")
+    saved_to: list[Path] = []
+
+    class _FakeCore:
+        def read_model(self, path: str) -> object:
+            assert Path(path).resolve() == source_xml.resolve()
+            return object()
+
+    class _CompressMode:
+        INT8_ASYM = "INT8_ASYM"
+
+    def _fake_compress_weights(model: object, mode: object = None) -> object:
+        del model
+        assert mode == _CompressMode.INT8_ASYM
+        return object()
+
+    def _fake_save_model(model: object, path: str, compress_to_fp16: bool = False) -> None:
+        del model, compress_to_fp16
+        dest_xml = Path(path).resolve()
+        dest_bin = dest_xml.with_suffix(".bin")
+        saved_to.append(dest_xml)
+        assert dest_xml != source_xml.resolve()
+        assert dest_bin != source_bin.resolve()
+        dest_xml.write_text(
+            '<net><c element_type="i8"/><c element_type="f32"/></net>\n',
+            encoding="utf-8",
+        )
+        dest_bin.write_bytes(b"INT8-TEMP")
+
+    def _fake_inspect(xml_path: Path) -> dict:
+        text = Path(xml_path).read_text(encoding="utf-8")
+        return {
+            "observed_IR_weight_precision": "int8",
+            "i8_constant_count": text.count('element_type="i8"'),
+            "u8_constant_count": text.count('element_type="u8"'),
+            "f16_constant_count": text.count('element_type="f16"'),
+            "f32_constant_count": text.count('element_type="f32"'),
+            "bin_bytes": Path(xml_path).with_suffix(".bin").stat().st_size,
+        }
+
+    import types
+
+    fake_ov = types.ModuleType("openvino")
+    fake_ov.Core = _FakeCore  # type: ignore[attr-defined]
+    fake_ov.save_model = _fake_save_model  # type: ignore[attr-defined]
+    fake_nncf = types.ModuleType("nncf")
+    fake_nncf.CompressWeightsMode = _CompressMode  # type: ignore[attr-defined]
+    fake_nncf.compress_weights = _fake_compress_weights  # type: ignore[attr-defined]
+    monkeypatch.setitem(__import__("sys").modules, "openvino", fake_ov)
+    monkeypatch.setitem(__import__("sys").modules, "nncf", fake_nncf)
+    monkeypatch.setattr(ex, "inspect_openvino_ir_weight_precision", _fake_inspect)
+
+    import importlib.metadata as md
+
+    real_version = md.version
+
+    def _fake_version(name: str) -> str:
+        if name == "nncf":
+            return "2.99.0-test"
+        return real_version(name)
+
+    monkeypatch.setattr(md, "version", _fake_version)
+
+    meta = ex._compress_openvino_weights_int8_asym(source_xml)
+    assert saved_to and saved_to[0] != source_xml.resolve()
+    assert meta["compression_mode"] == "INT8_ASYM"
+    assert meta["nncf_version"] == "2.99.0-test"
+    assert meta["observed_INT8_weight_compression"]["verified"] is True
+    assert source_xml.read_text(encoding="utf-8").count('element_type="i8"') == 1
+    assert list(src_dir.glob("ov_int8_compress_*")) == []
+
+
+def test_materialize_int8_requires_distinct_source_and_dest(tmp_path: Path) -> None:
+    """F010: derivative materialization refuses source==dest."""
+    from offline_rag.dense.cpu_ov_executor import materialize_int8_derivative_export
+
+    src = tmp_path / "src"
+    src.mkdir()
+    with pytest.raises(ValueError, match="must differ"):
+        materialize_int8_derivative_export(source_export_dir=src, export_dir=src)

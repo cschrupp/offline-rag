@@ -357,12 +357,13 @@ def run_export_int8(
     *,
     history: list[StageResult],
     export_dir: Path,
+    source_export_dir: Path | None = None,
     allow_download: bool = False,
     repo_root: Path | None = None,
     evidence_dir: Path | None = None,
     calibration_texts: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Conditional INT8 preparation — only after planner opens INT8 (F004)."""
+    """Conditional INT8 preparation — only after planner opens INT8 (F004/F010)."""
     assert_transition_allowed(history, "run_export_int8")
     assert_frozen_runtime_knobs(
         batch_size=FROZEN_BATCH_SIZE,
@@ -388,6 +389,10 @@ def run_export_int8(
             extra={
                 "weight_format": "int8",
                 "export_dir": str(export_dir),
+                "source_export_dir": str(source_export_dir)
+                if source_export_dir is not None
+                else None,
+                "int8_path": "nncf_compress_weights_int8_asym_derivative",
                 "local_model_preflight_ok": local_ok,
                 "local_model_identity": identity,
                 "local_model_preflight_error": local_error,
@@ -395,12 +400,17 @@ def run_export_int8(
             },
         )
     require_execution_unlocked()
+    if source_export_dir is None:
+        raise ValueError(
+            "source_export_dir is required for derivative INT8 materialization (F010)"
+        )
     from offline_rag.dense import cpu_ov_executor as ex
 
     model_dir = resolve_local_pinned_model_dir(repo_root=repo_root)
     return ex.execute_export_int8(
         export_dir=export_dir,
         model_dir=model_dir,
+        source_export_dir=source_export_dir,
         calibration_texts=calibration_texts,
         repo_root=repo_root or _repo_root(),
         evidence_dir=evidence_dir or _default_evidence_dir(repo_root),

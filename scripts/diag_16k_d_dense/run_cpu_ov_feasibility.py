@@ -103,6 +103,9 @@ def cmd_export_int8(args: argparse.Namespace) -> int:
     payload = run_export_int8(
         history=history,
         export_dir=Path(args.export_dir),
+        source_export_dir=Path(args.source_export_dir)
+        if getattr(args, "source_export_dir", None)
+        else None,
         allow_download=False,
         repo_root=ROOT,
     )
@@ -167,10 +170,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_ex8 = sub.add_parser(
         "export-int8",
-        help="Conditional INT8 export after planner opens INT8 (locked)",
+        help="Conditional INT8 derivative export after planner opens INT8 (locked)",
     )
     p_ex8.add_argument("--history", required=True)
     p_ex8.add_argument("--export-dir", required=True)
+    p_ex8.add_argument(
+        "--source-export-dir",
+        help="Immutable ST/OpenVINO FP32 export used as NNCF INT8_ASYM source (F010)",
+    )
     p_ex8.add_argument("--out")
     p_ex8.set_defaults(func=cmd_export_int8)
 

@@ -40,7 +40,9 @@ from offline_rag.dense.cpu_ov_feasibility import (
     FROZEN_NORMALIZE,
     IMPLEMENTATION_REWORK2_AUTH,
     IMPLEMENTATION_REWORK3_AUTH,
+    IMPLEMENTATION_REWORK5_AUTH,
     IMPLEMENTATION_REWORK_AUTH,
+    NNCF_INT8_ASYM_MODE,
     PARITY_CONTRACT_ID,
     PARITY_THRESHOLDS,
     WORKLOAD_LABEL,
@@ -302,8 +304,17 @@ def classify_ir_weight_precision(
     *,
     f16_constant_count: int,
     f32_constant_count: int,
+    i8_constant_count: int = 0,
+    u8_constant_count: int = 0,
 ) -> str:
-    """Classify IR storage precision from Constant element-type counts (F008)."""
+    """Classify IR storage precision from Constant element-type counts (F008/F010).
+
+    Integer-compressed weights (i8/u8) take precedence over float residual
+    classification. Residual float constants after NNCF are expected and do not
+    negate an int8 weight-compression observation.
+    """
+    if i8_constant_count > 0 or u8_constant_count > 0:
+        return "int8"
     if f16_constant_count <= 0 and f32_constant_count <= 0:
         return "unknown"
     if f16_constant_count <= 0 and f32_constant_count > 0:
@@ -317,10 +328,11 @@ def classify_ir_weight_precision(
 
 
 def inspect_openvino_ir_weight_precision(xml_path: Path) -> dict[str, Any]:
-    """Observe IR/storage weight precision from the exported artifact (F008).
+    """Observe IR/storage weight precision from the exported artifact (F008/F010).
 
     Primary signal is IR XML ``element_type`` counts (no OpenVINO import required).
-    When OpenVINO is importable, Constant-op counts are recorded as a cross-check.
+    Counts include f16, f32, i8, and u8. When OpenVINO is importable, Constant-op
+    counts are recorded as a cross-check.
     """
     if not xml_path.is_file():
         raise FileNotFoundError(f"IR XML missing: {xml_path}")
@@ -328,9 +340,13 @@ def inspect_openvino_ir_weight_precision(xml_path: Path) -> dict[str, Any]:
     text = xml_path.read_text(encoding="utf-8", errors="replace")
     f16 = text.count('element_type="f16"')
     f32 = text.count('element_type="f32"')
+    i8 = text.count('element_type="i8"')
+    u8 = text.count('element_type="u8"')
     counts: dict[str, int] = {
         'element_type="f16"': f16,
         'element_type="f32"': f32,
+        'element_type="i8"': i8,
+        'element_type="u8"': u8,
     }
     method = "xml_element_type_scan"
     ov_constant_counts: dict[str, int] | None = None
@@ -351,7 +367,10 @@ def inspect_openvino_ir_weight_precision(xml_path: Path) -> dict[str, Any]:
         ov_constant_counts = None
 
     observed = classify_ir_weight_precision(
-        f16_constant_count=f16, f32_constant_count=f32
+        f16_constant_count=f16,
+        f32_constant_count=f32,
+        i8_constant_count=i8,
+        u8_constant_count=u8,
     )
     return {
         "xml_path": str(xml_path),
@@ -362,7 +381,39 @@ def inspect_openvino_ir_weight_precision(xml_path: Path) -> dict[str, Any]:
         "openvino_constant_element_type_counts": ov_constant_counts,
         "f16_constant_count": f16,
         "f32_constant_count": f32,
+        "i8_constant_count": i8,
+        "u8_constant_count": u8,
         "observed_IR_weight_precision": observed,
+    }
+
+
+def build_observed_int8_weight_compression(
+    ir_inspection: dict[str, Any],
+    *,
+    compression_mode: str | None = None,
+    nncf_version: str | None = None,
+    transformation: str | None = None,
+) -> dict[str, Any]:
+    """Explicit INT8 weight-compression identity (F010). Never inferred from request."""
+    i8 = int(ir_inspection.get("i8_constant_count") or 0)
+    u8 = int(ir_inspection.get("u8_constant_count") or 0)
+    demonstrable = (i8 + u8) > 0
+    return {
+        "verified": demonstrable,
+        "demonstrable_integer_weight_constants": demonstrable,
+        "i8_constant_count": i8,
+        "u8_constant_count": u8,
+        "f16_constant_count": int(ir_inspection.get("f16_constant_count") or 0),
+        "f32_constant_count": int(ir_inspection.get("f32_constant_count") or 0),
+        "compression_mode": compression_mode,
+        "nncf_version": nncf_version,
+        "transformation": transformation,
+        "authority": IMPLEMENTATION_REWORK5_AUTH,
+        "note": (
+            "verified means demonstrable i8/u8 Constant weights in the IR; "
+            "residual float constants (scales/zero-points/unsupported layers) "
+            "are expected and do not alone establish INT8 identity"
+        ),
     }
 
 
@@ -415,6 +466,9 @@ def build_precision_identity(
     requested_weight_format: WeightFormat,
     export_dir: Path,
     inference_precision_hint: str | None = None,
+    int8_compression_mode: str | None = None,
+    int8_nncf_version: str | None = None,
+    int8_transformation: str | None = None,
 ) -> dict[str, Any]:
     """Assemble requested vs observed IR vs observed CPU inference precision."""
     xml_path = find_openvino_ir_xml(export_dir)
@@ -423,15 +477,24 @@ def build_precision_identity(
         xml_path,
         inference_precision_hint=inference_precision_hint,
     )
+    int8_identity = build_observed_int8_weight_compression(
+        ir,
+        compression_mode=int8_compression_mode,
+        nncf_version=int8_nncf_version,
+        transformation=int8_transformation,
+    )
     identity = {
         "requested_weight_format": requested_weight_format,
         "observed_IR_weight_precision": ir["observed_IR_weight_precision"],
         "observed_CPU_inference_precision": cpu.get(
             "observed_CPU_inference_precision"
         ),
+        "observed_INT8_weight_compression": int8_identity,
         "ir_inspection": ir,
         "cpu_inference_inspection": cpu,
-        "authority": IMPLEMENTATION_REWORK3_AUTH,
+        "authority": IMPLEMENTATION_REWORK5_AUTH
+        if requested_weight_format == "int8"
+        else IMPLEMENTATION_REWORK3_AUTH,
     }
     return identity
 
@@ -440,20 +503,30 @@ def assert_requested_ir_precision(
     *,
     requested_weight_format: WeightFormat,
     observed_IR_weight_precision: str,
+    observed_INT8_weight_compression: dict[str, Any] | None = None,
 ) -> None:
-    """Fail closed: requested fp16 must not silently accept FP32 IR (F008)."""
+    """Fail closed precision identity (F008 fp16 / F010 int8).
+
+    Never treats the request label as proof of IR/storage transformation.
+    """
     if requested_weight_format == "fp16" and observed_IR_weight_precision != "fp16":
         raise ValueError(
             "requested_weight_format=fp16 but observed_IR_weight_precision="
             f"{observed_IR_weight_precision!r}; refusing to label FP32 IR as OV-FP16"
         )
-    if requested_weight_format == "int8" and observed_IR_weight_precision not in {
-        "int8",
-        "fp16",
-        "fp32",
-    }:
-        # INT8 path still records observation; strict int8 element typing varies.
-        return
+    if requested_weight_format == "int8":
+        oc = observed_INT8_weight_compression or {}
+        if not oc.get("verified"):
+            raise ValueError(
+                "requested_weight_format=int8 but observed_INT8_weight_compression "
+                "is not verified (no demonstrable i8/u8 Constant weights in IR); "
+                "refusing to accept fp16/fp32 IR as INT8"
+            )
+        if observed_IR_weight_precision != "int8":
+            raise ValueError(
+                "requested_weight_format=int8 but observed_IR_weight_precision="
+                f"{observed_IR_weight_precision!r}; refusing unlabeled INT8 candidate"
+            )
 
 
 def _compress_openvino_ir_to_fp16(xml_path: Path) -> Path:
@@ -511,6 +584,133 @@ def _compress_openvino_ir_to_fp16(xml_path: Path) -> Path:
         return source_xml
     finally:
         shutil.rmtree(tmp_root, ignore_errors=True)
+
+
+def _compress_openvino_weights_int8_asym(xml_path: Path) -> dict[str, Any]:
+    """NNCF INT8_ASYM weight compression with non-aliasing save (F009/F010).
+
+    Reads the source IR, compresses in memory, writes a distinct same-FS temp
+    IR pair, validates demonstrable i8/u8 weights, then replaces the candidate.
+    """
+    import openvino as ov
+    from importlib.metadata import version as pkg_version
+    from nncf import CompressWeightsMode, compress_weights
+
+    source_xml = Path(xml_path).resolve()
+    source_bin = source_xml.with_suffix(".bin")
+    if not source_xml.is_file():
+        raise FileNotFoundError(f"OpenVINO IR xml missing: {source_xml}")
+    if not source_bin.is_file():
+        raise FileNotFoundError(f"OpenVINO IR bin missing: {source_bin}")
+
+    nncf_version = pkg_version("nncf")
+    tmp_root = Path(
+        tempfile.mkdtemp(prefix="ov_int8_compress_", dir=str(source_xml.parent))
+    )
+    tmp_xml = (tmp_root / source_xml.name).resolve()
+    tmp_bin = tmp_xml.with_suffix(".bin")
+    if tmp_xml == source_xml or tmp_bin == source_bin:
+        shutil.rmtree(tmp_root, ignore_errors=True)
+        raise RuntimeError(
+            "F010: INT8 compress destination aliases source IR path "
+            f"(source={source_xml}, dest={tmp_xml})"
+        )
+
+    try:
+        core = ov.Core()
+        model = core.read_model(str(source_xml))
+        compressed = compress_weights(model, mode=CompressWeightsMode.INT8_ASYM)
+        ov.save_model(compressed, str(tmp_xml))
+
+        if not tmp_xml.is_file() or tmp_xml.stat().st_size <= 0:
+            raise RuntimeError(f"F010: INT8 IR xml missing or empty: {tmp_xml}")
+        if not tmp_bin.is_file() or tmp_bin.stat().st_size <= 0:
+            raise RuntimeError(f"F010: INT8 IR bin missing or empty: {tmp_bin}")
+
+        ir = inspect_openvino_ir_weight_precision(tmp_xml)
+        oc = build_observed_int8_weight_compression(
+            ir,
+            compression_mode=NNCF_INT8_ASYM_MODE,
+            nncf_version=nncf_version,
+            transformation="nncf.compress_weights/CompressWeightsMode.INT8_ASYM",
+        )
+        if not oc["verified"]:
+            raise RuntimeError(
+                "F010: temporary INT8 IR lacks demonstrable i8/u8 Constant weights: "
+                f"i8={oc['i8_constant_count']} u8={oc['u8_constant_count']}"
+            )
+
+        os.replace(tmp_xml, source_xml)
+        os.replace(tmp_bin, source_bin)
+        return {
+            "xml_path": str(source_xml),
+            "compression_mode": NNCF_INT8_ASYM_MODE,
+            "nncf_version": nncf_version,
+            "transformation": "nncf.compress_weights/CompressWeightsMode.INT8_ASYM",
+            "post_compress_ir_inspection": ir,
+            "observed_INT8_weight_compression": oc,
+        }
+    finally:
+        shutil.rmtree(tmp_root, ignore_errors=True)
+
+
+def materialize_int8_derivative_export(
+    *,
+    source_export_dir: Path,
+    export_dir: Path,
+) -> dict[str, Any]:
+    """Copy a validated ST/OpenVINO export and apply NNCF INT8_ASYM (no retrace)."""
+    source = Path(source_export_dir).resolve()
+    dest = Path(export_dir).resolve()
+    if source == dest:
+        raise ValueError("F010: source_export_dir must differ from export_dir")
+    if not source.is_dir():
+        raise FileNotFoundError(f"source export missing: {source}")
+    if dest.exists():
+        raise FileExistsError(f"INT8 export dir already exists: {dest}")
+
+    shutil.copytree(source, dest)
+    xml_path = find_openvino_ir_xml(dest)
+    pre_ir = inspect_openvino_ir_weight_precision(xml_path)
+    compress_meta = _compress_openvino_weights_int8_asym(xml_path)
+    precision_identity = build_precision_identity(
+        requested_weight_format="int8",
+        export_dir=dest,
+        int8_compression_mode=str(compress_meta["compression_mode"]),
+        int8_nncf_version=str(compress_meta["nncf_version"]),
+        int8_transformation=str(compress_meta["transformation"]),
+    )
+    assert_requested_ir_precision(
+        requested_weight_format="int8",
+        observed_IR_weight_precision=str(
+            precision_identity["observed_IR_weight_precision"]
+        ),
+        observed_INT8_weight_compression=precision_identity[
+            "observed_INT8_weight_compression"
+        ],
+    )
+    tree = hash_export_tree(dest)
+    return {
+        "requested_weight_format": "int8",
+        "weight_format": "int8",
+        "source_export_dir": str(source),
+        "export_dir": str(dest),
+        "export_method": [
+            "derivative_copy_st_openvino_export",
+            "nncf_compress_weights_int8_asym",
+        ],
+        "quantization": "nncf_compress_weights_int8_asym",
+        "nncf_compression_mode": compress_meta["compression_mode"],
+        "nncf_version": compress_meta["nncf_version"],
+        "pre_compress_ir_inspection": pre_ir,
+        "compress_meta": compress_meta,
+        "precision_identity": precision_identity,
+        "export_tree": tree,
+        "backend": "openvino",
+        "device": "cpu",
+        "no_torch_optimum_tracing": True,
+        "authority": IMPLEMENTATION_REWORK5_AUTH,
+    }
 
 
 def export_openvino_model(
@@ -610,6 +810,9 @@ def export_openvino_model(
         observed_IR_weight_precision=str(
             precision_identity["observed_IR_weight_precision"]
         ),
+        observed_INT8_weight_compression=precision_identity.get(
+            "observed_INT8_weight_compression"
+        ),
     )
 
     tree = hash_export_tree(export_dir)
@@ -636,7 +839,7 @@ def load_openvino_st_model(
     weight_format: WeightFormat,
     require_ir_match: bool = True,
 ) -> tuple[Any, dict[str, Any]]:
-    """Load ST OpenVINO backend and return (model, precision_identity) (F008)."""
+    """Load ST OpenVINO backend and return (model, precision_identity) (F008/F010)."""
     from sentence_transformers import SentenceTransformer
 
     precision_identity = build_precision_identity(
@@ -649,6 +852,9 @@ def load_openvino_st_model(
             requested_weight_format=weight_format,
             observed_IR_weight_precision=str(
                 precision_identity["observed_IR_weight_precision"]
+            ),
+            observed_INT8_weight_compression=precision_identity.get(
+                "observed_INT8_weight_compression"
             ),
         )
 
@@ -840,21 +1046,27 @@ def execute_export_int8(
     *,
     export_dir: Path,
     model_dir: Path,
+    source_export_dir: Path,
     calibration_texts: Sequence[str] | None = None,
     repo_root: Path | None = None,
     evidence_dir: Path | None = None,
 ) -> dict[str, Any]:
+    """Derivative INT8 materialization from a validated ST/OpenVINO export (F010).
+
+    Does not retrace Hugging Face / Sentence Transformers. ``calibration_texts``
+    is accepted for API compatibility but unused for data-free INT8_ASYM.
+    """
+    del calibration_texts  # data-free NNCF INT8_ASYM; retained for call-site compat
     identity = verify_local_model_identity(model_dir)
-    export_meta = export_openvino_model(
-        model_dir=model_dir,
+    export_meta = materialize_int8_derivative_export(
+        source_export_dir=source_export_dir,
         export_dir=export_dir,
-        weight_format="int8",
-        calibration_texts=calibration_texts,
     )
+    # Fail-closed INT8 identity is mandatory before smoke/screen/parity/full load.
     model, precision_identity = load_openvino_st_model(
         model_or_export_dir=export_dir,
         weight_format="int8",
-        require_ir_match=False,
+        require_ir_match=True,
     )
     query_contract = resolve_production_query_contract()
     smoke = smoke_encode_compat(model, query_text_contract=query_contract)
@@ -862,18 +1074,27 @@ def execute_export_int8(
         "status": "ok" if smoke["ok"] else "failed",
         "stage_id": "export_int8",
         "ok": bool(smoke["ok"]),
-        "authority": IMPLEMENTATION_REWORK_AUTH,
+        "authority": IMPLEMENTATION_REWORK5_AUTH,
         "rework3_authority": IMPLEMENTATION_REWORK3_AUTH,
+        "rework5_authority": IMPLEMENTATION_REWORK5_AUTH,
         "experiment_id": EXPERIMENT_ID,
         "requested_weight_format": "int8",
         "weight_format": "int8",
         "precision_identity": precision_identity,
+        "observed_INT8_weight_compression": precision_identity.get(
+            "observed_INT8_weight_compression"
+        ),
         "local_model_identity": identity,
+        "source_export_dir": str(source_export_dir),
         "export": export_meta,
         "smoke": smoke,
         "environment": _environment_fingerprint(),
         "recorded_at": _utc_now(),
         "repo_root": str(repo_root) if repo_root else None,
+        "note": (
+            "Derivative NNCF CompressWeightsMode.INT8_ASYM from immutable "
+            "ST/OpenVINO export; no HF/ST retrace"
+        ),
     }
     return _maybe_write_evidence(
         payload,
@@ -1292,16 +1513,23 @@ def _environment_fingerprint() -> dict[str, Any]:
         "openvino": None,
         "optimum": None,
         "optimum_intel": None,
+        "nncf": None,
     }
     for mod_name, key in (
         ("sentence_transformers", "sentence_transformers"),
         ("openvino", "openvino"),
         ("optimum", "optimum"),
         ("optimum_intel", "optimum_intel"),
+        ("nncf", "nncf"),
     ):
         try:
-            mod = __import__(mod_name)
-            versions[key] = getattr(mod, "__version__", "present_unknown_version")
+            if mod_name == "nncf":
+                from importlib.metadata import version as pkg_version
+
+                versions[key] = pkg_version("nncf")
+            else:
+                mod = __import__(mod_name)
+                versions[key] = getattr(mod, "__version__", "present_unknown_version")
         except Exception:  # noqa: BLE001
             versions[key] = None
     return versions
@@ -1328,6 +1556,7 @@ def _maybe_write_evidence(
 __all__ = [
     "OpenVinoSTEmbedder",
     "assert_requested_ir_precision",
+    "build_observed_int8_weight_compression",
     "build_precision_identity",
     "capture_cpu_host_runtime_facts",
     "classify_ir_weight_precision",
@@ -1343,5 +1572,6 @@ __all__ = [
     "inspect_openvino_ir_weight_precision",
     "load_children_by_id",
     "load_openvino_st_model",
+    "materialize_int8_derivative_export",
     "smoke_encode_compat",
 ]
