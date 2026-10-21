@@ -37,6 +37,7 @@ from offline_rag.dense.cpu_ov_feasibility import (
     FROZEN_BATCH_SIZE,
     FROZEN_NORMALIZE,
     IMPLEMENTATION_REWORK2_AUTH,
+    IMPLEMENTATION_REWORK3_AUTH,
     IMPLEMENTATION_REWORK_AUTH,
     PARITY_CONTRACT_ID,
     PARITY_THRESHOLDS,
@@ -79,6 +80,7 @@ class OpenVinoSTEmbedder:
         query_text_contract: str,
         batch_size: int = FROZEN_BATCH_SIZE,
         normalize: bool = FROZEN_NORMALIZE,
+        precision_identity: dict[str, Any] | None = None,
     ) -> None:
         self._model = model
         self.model_id = EXPECTED_MODEL_ID
@@ -88,12 +90,18 @@ class OpenVinoSTEmbedder:
         self.batch_size = batch_size
         self.query_text_contract = query_text_contract
         self.weight_format = weight_format
+        self.requested_weight_format = weight_format
+        self.precision_identity = dict(precision_identity or {})
         self.device = "cpu"
         self.resolved_device = "cpu"
         self.configured_device = "cpu"
+        # Configured = request; resolved = observed IR when known (F008).
         self.configured_precision = weight_format
-        self.resolved_precision = weight_format
-        self.precision_selection_reason = "cpu_ov_export"
+        observed_ir = self.precision_identity.get("observed_IR_weight_precision")
+        self.resolved_precision = (
+            observed_ir if isinstance(observed_ir, str) else None
+        )
+        self.precision_selection_reason = "cpu_ov_export_observed"
         self.device_selection_reason = "cpu_ov_feasibility"
         self.cuda_available = False
         self.torch_cuda_build = None
@@ -115,9 +123,24 @@ class OpenVinoSTEmbedder:
         )
 
     def observe_execution_facts(self) -> dict[str, str | None]:
+        """Return observed precision only — never invent from requested label (F008)."""
+        observed_ir = self.precision_identity.get("observed_IR_weight_precision")
+        observed_inf = self.precision_identity.get(
+            "observed_CPU_inference_precision"
+        )
+        dtype: str | None = None
+        if isinstance(observed_ir, str):
+            dtype = f"openvino_ir_{observed_ir}"
         return {
-            "dtype": f"openvino_{self.weight_format}",
+            "dtype": dtype,
             "attention_backend": "openvino",
+            "requested_weight_format": str(self.requested_weight_format),
+            "observed_IR_weight_precision": (
+                observed_ir if isinstance(observed_ir, str) else None
+            ),
+            "observed_CPU_inference_precision": (
+                observed_inf if isinstance(observed_inf, str) else None
+            ),
         }
 
 
@@ -258,6 +281,190 @@ def document_embedding_texts(chunks: Sequence[Chunk]) -> list[tuple[str, str, st
     return rows
 
 
+def find_openvino_ir_xml(export_dir: Path) -> Path:
+    """Locate the primary OpenVINO IR XML under an ST export tree."""
+    candidates = [
+        export_dir / "openvino" / "openvino_model.xml",
+        export_dir / "openvino_model.xml",
+    ]
+    for path in candidates:
+        if path.is_file():
+            return path
+    matches = sorted(export_dir.rglob("openvino_model*.xml"))
+    if not matches:
+        raise FileNotFoundError(f"no OpenVINO IR XML under {export_dir}")
+    return matches[0]
+
+
+def classify_ir_weight_precision(
+    *,
+    f16_constant_count: int,
+    f32_constant_count: int,
+) -> str:
+    """Classify IR storage precision from Constant element-type counts (F008)."""
+    if f16_constant_count <= 0 and f32_constant_count <= 0:
+        return "unknown"
+    if f16_constant_count <= 0 and f32_constant_count > 0:
+        return "fp32"
+    if f16_constant_count > 0 and f32_constant_count <= 0:
+        return "fp16"
+    # Residual f32 constants are common after FP16 compression; majority wins.
+    if f16_constant_count >= f32_constant_count:
+        return "fp16"
+    return "fp32"
+
+
+def inspect_openvino_ir_weight_precision(xml_path: Path) -> dict[str, Any]:
+    """Observe IR/storage weight precision from the exported artifact (F008).
+
+    Primary signal is IR XML ``element_type`` counts (no OpenVINO import required).
+    When OpenVINO is importable, Constant-op counts are recorded as a cross-check.
+    """
+    if not xml_path.is_file():
+        raise FileNotFoundError(f"IR XML missing: {xml_path}")
+    bin_path = xml_path.with_suffix(".bin")
+    text = xml_path.read_text(encoding="utf-8", errors="replace")
+    f16 = text.count('element_type="f16"')
+    f32 = text.count('element_type="f32"')
+    counts: dict[str, int] = {
+        'element_type="f16"': f16,
+        'element_type="f32"': f32,
+    }
+    method = "xml_element_type_scan"
+    ov_constant_counts: dict[str, int] | None = None
+    try:
+        import openvino as ov
+
+        core = ov.Core()
+        model = core.read_model(str(xml_path))
+        ov_constant_counts = {}
+        for op in model.get_ordered_ops():
+            if op.get_type_name() != "Constant":
+                continue
+            for out in op.outputs():
+                key = str(out.get_element_type())
+                ov_constant_counts[key] = ov_constant_counts.get(key, 0) + 1
+        method = "xml_element_type_scan+openvino_constant_crosscheck"
+    except Exception:  # noqa: BLE001
+        ov_constant_counts = None
+
+    observed = classify_ir_weight_precision(
+        f16_constant_count=f16, f32_constant_count=f32
+    )
+    return {
+        "xml_path": str(xml_path),
+        "bin_path": str(bin_path) if bin_path.is_file() else None,
+        "bin_bytes": bin_path.stat().st_size if bin_path.is_file() else None,
+        "inspection_method": method,
+        "xml_element_type_counts": counts,
+        "openvino_constant_element_type_counts": ov_constant_counts,
+        "f16_constant_count": f16,
+        "f32_constant_count": f32,
+        "observed_IR_weight_precision": observed,
+    }
+
+
+def inspect_compiled_cpu_inference_precision(
+    xml_path: Path,
+    *,
+    inference_precision_hint: str | None = None,
+) -> dict[str, Any]:
+    """Observe compiled CPU inference precision when OpenVINO exposes it (F008)."""
+    import openvino as ov
+
+    core = ov.Core()
+    model = core.read_model(str(xml_path))
+    config: dict[str, Any] = {}
+    if inference_precision_hint:
+        config["INFERENCE_PRECISION_HINT"] = inference_precision_hint
+    compiled = core.compile_model(model, "CPU", config) if config else core.compile_model(
+        model, "CPU"
+    )
+    observed: str | None = None
+    raw: str | None = None
+    try:
+        value = compiled.get_property("INFERENCE_PRECISION_HINT")
+        raw = str(value)
+        lowered = raw.lower().replace(" ", "")
+        if "f16" in lowered or "float16" in lowered:
+            observed = "fp16"
+        elif "bf16" in lowered:
+            observed = "bf16"
+        elif "f32" in lowered or "float32" in lowered:
+            observed = "fp32"
+        else:
+            observed = raw
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "observed_CPU_inference_precision": None,
+            "inference_precision_hint_raw": None,
+            "inference_precision_error": f"{type(exc).__name__}: {exc}",
+            "requested_inference_precision_hint": inference_precision_hint,
+        }
+    return {
+        "observed_CPU_inference_precision": observed,
+        "inference_precision_hint_raw": raw,
+        "requested_inference_precision_hint": inference_precision_hint,
+    }
+
+
+def build_precision_identity(
+    *,
+    requested_weight_format: WeightFormat,
+    export_dir: Path,
+    inference_precision_hint: str | None = None,
+) -> dict[str, Any]:
+    """Assemble requested vs observed IR vs observed CPU inference precision."""
+    xml_path = find_openvino_ir_xml(export_dir)
+    ir = inspect_openvino_ir_weight_precision(xml_path)
+    cpu = inspect_compiled_cpu_inference_precision(
+        xml_path,
+        inference_precision_hint=inference_precision_hint,
+    )
+    identity = {
+        "requested_weight_format": requested_weight_format,
+        "observed_IR_weight_precision": ir["observed_IR_weight_precision"],
+        "observed_CPU_inference_precision": cpu.get(
+            "observed_CPU_inference_precision"
+        ),
+        "ir_inspection": ir,
+        "cpu_inference_inspection": cpu,
+        "authority": IMPLEMENTATION_REWORK3_AUTH,
+    }
+    return identity
+
+
+def assert_requested_ir_precision(
+    *,
+    requested_weight_format: WeightFormat,
+    observed_IR_weight_precision: str,
+) -> None:
+    """Fail closed: requested fp16 must not silently accept FP32 IR (F008)."""
+    if requested_weight_format == "fp16" and observed_IR_weight_precision != "fp16":
+        raise ValueError(
+            "requested_weight_format=fp16 but observed_IR_weight_precision="
+            f"{observed_IR_weight_precision!r}; refusing to label FP32 IR as OV-FP16"
+        )
+    if requested_weight_format == "int8" and observed_IR_weight_precision not in {
+        "int8",
+        "fp16",
+        "fp32",
+    }:
+        # INT8 path still records observation; strict int8 element typing varies.
+        return
+
+
+def _compress_openvino_ir_to_fp16(xml_path: Path) -> Path:
+    """Rewrite IR weights with OpenVINO compress_to_fp16 storage transform."""
+    import openvino as ov
+
+    core = ov.Core()
+    model = core.read_model(str(xml_path))
+    # Overwrite in place — same basename expected by ST openvino backend.
+    ov.save_model(model, str(xml_path), compress_to_fp16=True)
+    return xml_path
+
+
 def export_openvino_model(
     *,
     model_dir: Path,
@@ -268,7 +475,11 @@ def export_openvino_model(
     """Export local pinned checkpoint to OpenVINO via Sentence Transformers.
 
     Pooling/normalization remain on the ST path after reload — this does not
-    ship raw token-embedding XML alone as the encode surface.
+    ship raw token-embedding export alone as the encode surface.
+
+    For ``fp16``, Optimum ``OVConfig(dtype="fp16")`` is requested and the saved
+    IR is verified (and FP16-compressed via ``ov.save_model`` if needed).
+    ``INFERENCE_PRECISION_HINT`` alone is never treated as proof of FP16 IR.
     """
     from sentence_transformers import SentenceTransformer
 
@@ -282,20 +493,24 @@ def export_openvino_model(
 
     model_kwargs: dict[str, Any] = {"export": True}
     quant_note: str | None = None
+    export_method: list[str] = ["sentence_transformers_openvino_backend"]
 
     if weight_format == "fp16":
-        # Prefer export-time FP16 weights when optimum-intel supports it.
-        model_kwargs["ov_config"] = {"INFERENCE_PRECISION_HINT": "f16"}
-        # Newer optimum-intel may accept weight_format on export; harmless if ignored.
-        model_kwargs["weight_format"] = "fp16"
+        from optimum.intel import OVConfig
+
+        # Storage/export dtype — distinct from INFERENCE_PRECISION_HINT.
+        model_kwargs["ov_config"] = OVConfig(dtype="fp16")
+        export_method.append("optimum_OVConfig_dtype_fp16")
     elif weight_format == "int8":
         try:
             from optimum.intel import OVWeightQuantizationConfig
 
             model_kwargs["quantization_config"] = OVWeightQuantizationConfig(bits=8)
             quant_note = "ov_weight_quantization_int8"
+            export_method.append("ov_weight_quantization_int8")
         except Exception:  # noqa: BLE001
             quant_note = "static_quantized_openvino_fallback"
+            export_method.append("static_quantized_openvino_fallback")
 
     model = SentenceTransformer(
         str(model_dir),
@@ -310,16 +525,12 @@ def export_openvino_model(
     if weight_format == "int8" and quant_note == "static_quantized_openvino_fallback":
         from sentence_transformers import export_static_quantized_openvino_model
 
-        # Prefer weight-only path; static quant fallback must not pull Hub when
-        # local calibration texts are provided (ST versions vary).
         kwargs: dict[str, Any] = {
             "model": model,
             "quantization_config": None,
             "model_name_or_path": str(export_dir),
         }
         if calibration_texts:
-            # Best-effort local calibration; ignored if the installed ST build
-            # does not accept these kwargs.
             kwargs["dataset_name"] = None
         try:
             export_static_quantized_openvino_model(**kwargs)
@@ -330,12 +541,41 @@ def export_openvino_model(
                 model_name_or_path=str(export_dir),
             )
 
+    xml_path = find_openvino_ir_xml(export_dir)
+    pre_ir = inspect_openvino_ir_weight_precision(xml_path)
+    compressed = False
+    if (
+        weight_format == "fp16"
+        and pre_ir["observed_IR_weight_precision"] != "fp16"
+    ):
+        _compress_openvino_ir_to_fp16(xml_path)
+        compressed = True
+        export_method.append("openvino_save_model_compress_to_fp16")
+
+    precision_identity = build_precision_identity(
+        requested_weight_format=weight_format,
+        export_dir=export_dir,
+        inference_precision_hint="f16" if weight_format == "fp16" else None,
+    )
+    assert_requested_ir_precision(
+        requested_weight_format=weight_format,
+        observed_IR_weight_precision=str(
+            precision_identity["observed_IR_weight_precision"]
+        ),
+    )
+
     tree = hash_export_tree(export_dir)
     return {
+        "requested_weight_format": weight_format,
+        # Backward-compatible alias — means requested, not observed.
         "weight_format": weight_format,
         "model_dir": str(model_dir),
         "export_dir": str(export_dir),
         "quantization": quant_note,
+        "export_method": export_method,
+        "fp16_storage_compression_applied": compressed,
+        "precision_identity": precision_identity,
+        "pre_compress_ir_inspection": pre_ir,
         "export_tree": tree,
         "backend": "openvino",
         "device": "cpu",
@@ -346,13 +586,26 @@ def load_openvino_st_model(
     *,
     model_or_export_dir: Path,
     weight_format: WeightFormat,
-) -> Any:
-    """Load SentenceTransformer OpenVINO backend from a local export/model dir."""
+    require_ir_match: bool = True,
+) -> tuple[Any, dict[str, Any]]:
+    """Load ST OpenVINO backend and return (model, precision_identity) (F008)."""
     from sentence_transformers import SentenceTransformer
+
+    precision_identity = build_precision_identity(
+        requested_weight_format=weight_format,
+        export_dir=model_or_export_dir,
+        inference_precision_hint="f16" if weight_format == "fp16" else None,
+    )
+    if require_ir_match:
+        assert_requested_ir_precision(
+            requested_weight_format=weight_format,
+            observed_IR_weight_precision=str(
+                precision_identity["observed_IR_weight_precision"]
+            ),
+        )
 
     model_kwargs: dict[str, Any] = {}
     if weight_format == "int8":
-        # Prefer quantized XML when present.
         candidates = [
             "openvino/openvino_model_qint8_quantized.xml",
             "openvino_model_qint8_quantized.xml",
@@ -375,7 +628,8 @@ def load_openvino_st_model(
     }
     if model_kwargs:
         kwargs["model_kwargs"] = model_kwargs
-    return SentenceTransformer(str(model_or_export_dir), **kwargs)
+    model = SentenceTransformer(str(model_or_export_dir), **kwargs)
+    return model, precision_identity
 
 
 def _st_encode_documents(
@@ -504,7 +758,7 @@ def execute_export_compat(
         export_dir=export_dir,
         weight_format="fp16",
     )
-    model = load_openvino_st_model(
+    model, precision_identity = load_openvino_st_model(
         model_or_export_dir=export_dir,
         weight_format="fp16",
     )
@@ -515,8 +769,11 @@ def execute_export_compat(
         "stage_id": "export_compat",
         "ok": bool(smoke["ok"]),
         "authority": IMPLEMENTATION_REWORK_AUTH,
+        "rework3_authority": IMPLEMENTATION_REWORK3_AUTH,
         "experiment_id": EXPERIMENT_ID,
+        "requested_weight_format": "fp16",
         "weight_format": "fp16",
+        "precision_identity": precision_identity,
         "local_model_identity": identity,
         "export": export_meta,
         "smoke": smoke,
@@ -546,9 +803,10 @@ def execute_export_int8(
         weight_format="int8",
         calibration_texts=calibration_texts,
     )
-    model = load_openvino_st_model(
+    model, precision_identity = load_openvino_st_model(
         model_or_export_dir=export_dir,
         weight_format="int8",
+        require_ir_match=False,
     )
     query_contract = resolve_production_query_contract()
     smoke = smoke_encode_compat(model, query_text_contract=query_contract)
@@ -557,8 +815,11 @@ def execute_export_int8(
         "stage_id": "export_int8",
         "ok": bool(smoke["ok"]),
         "authority": IMPLEMENTATION_REWORK_AUTH,
+        "rework3_authority": IMPLEMENTATION_REWORK3_AUTH,
         "experiment_id": EXPERIMENT_ID,
+        "requested_weight_format": "int8",
         "weight_format": "int8",
+        "precision_identity": precision_identity,
         "local_model_identity": identity,
         "export": export_meta,
         "smoke": smoke,
@@ -588,7 +849,7 @@ def execute_screen(
     rows = document_embedding_texts(chunks)
     texts = [t for _, _, t in rows]
 
-    model = load_openvino_st_model(
+    model, precision_identity = load_openvino_st_model(
         model_or_export_dir=export_dir,
         weight_format=weight_format,
     )
@@ -597,6 +858,7 @@ def execute_screen(
         model,
         weight_format=weight_format,
         query_text_contract=query_contract,
+        precision_identity=precision_identity,
     )
     cpu_before = capture_cpu_host_runtime_facts(
         embedder=embedder, batch_size=FROZEN_BATCH_SIZE
@@ -622,7 +884,10 @@ def execute_screen(
         "ok": True,
         "authority": IMPLEMENTATION_REWORK_AUTH,
         "rework2_authority": IMPLEMENTATION_REWORK2_AUTH,
+        "rework3_authority": IMPLEMENTATION_REWORK3_AUTH,
         "experiment_id": EXPERIMENT_ID,
+        "requested_weight_format": weight_format,
+        "precision_identity": precision_identity,
         "weight_format": weight_format,
         "screen_child_count": len(texts),
         "screen_chunk_ids_digest": sha256_text("\n".join(selected_ids)),
@@ -715,7 +980,7 @@ def execute_parity(
         for chunk in queries
     }
 
-    cand_model = load_openvino_st_model(
+    cand_model, precision_identity = load_openvino_st_model(
         model_or_export_dir=export_dir,
         weight_format=weight_format,
     )
@@ -795,8 +1060,11 @@ def execute_parity(
         "ok": True,  # stage completed; parity_ok is the semantic gate
         "parity_ok": parity_ok,
         "authority": IMPLEMENTATION_REWORK_AUTH,
+        "rework3_authority": IMPLEMENTATION_REWORK3_AUTH,
         "experiment_id": EXPERIMENT_ID,
         "parity_contract": PARITY_CONTRACT_ID,
+        "requested_weight_format": weight_format,
+        "precision_identity": precision_identity,
         "weight_format": weight_format,
         "thresholds": PARITY_THRESHOLDS,
         "metrics": metrics,
@@ -868,7 +1136,7 @@ def execute_full_confirm(
     environ.pop("OFFLINE_RAG_DIAG_DENSE_PROFILE", None)
 
     settings = load_settings(environ=environ)
-    model = load_openvino_st_model(
+    model, precision_identity = load_openvino_st_model(
         model_or_export_dir=export_dir,
         weight_format=weight_format,
     )
@@ -877,6 +1145,7 @@ def execute_full_confirm(
         model,
         weight_format=weight_format,
         query_text_contract=query_contract,
+        precision_identity=precision_identity,
     )
     cpu_before = capture_cpu_host_runtime_facts(
         embedder=embedder, batch_size=FROZEN_BATCH_SIZE
@@ -919,8 +1188,11 @@ def execute_full_confirm(
         "ok": ok,
         "authority": IMPLEMENTATION_REWORK_AUTH,
         "rework2_authority": IMPLEMENTATION_REWORK2_AUTH,
+        "rework3_authority": IMPLEMENTATION_REWORK3_AUTH,
         "experiment_id": EXPERIMENT_ID,
         "selected_candidate": weight_format,
+        "requested_weight_format": weight_format,
+        "precision_identity": precision_identity,
         "confirmation_mode": "production_indexing_isolated_cold_tree",
         "workload": WORKLOAD_LABEL,
         "chunk_set_id": EXPECTED_CHUNK_SET_ID,
@@ -1007,7 +1279,10 @@ def _maybe_write_evidence(
 
 __all__ = [
     "OpenVinoSTEmbedder",
+    "assert_requested_ir_precision",
+    "build_precision_identity",
     "capture_cpu_host_runtime_facts",
+    "classify_ir_weight_precision",
     "document_embedding_texts",
     "execute_export_compat",
     "execute_export_int8",
@@ -1015,6 +1290,9 @@ __all__ = [
     "execute_parity",
     "execute_screen",
     "export_openvino_model",
+    "find_openvino_ir_xml",
+    "inspect_compiled_cpu_inference_precision",
+    "inspect_openvino_ir_weight_precision",
     "load_children_by_id",
     "load_openvino_st_model",
     "smoke_encode_compat",

@@ -732,7 +732,18 @@ def test_full_confirm_uses_production_indexing_path() -> None:
             "offline_rag.dense.pipeline.run_indexing",
             return_value=fake_report,
         ) as mock_index,
-        patch.object(ex, "load_openvino_st_model", return_value=object()),
+        patch.object(
+            ex,
+            "load_openvino_st_model",
+            return_value=(
+                object(),
+                {
+                    "requested_weight_format": "fp16",
+                    "observed_IR_weight_precision": "fp16",
+                    "observed_CPU_inference_precision": "fp32",
+                },
+            ),
+        ),
         patch.object(
             ex,
             "resolve_production_query_contract",
@@ -787,3 +798,95 @@ def test_cpu_host_runtime_facts_capture_identity() -> None:
         assert torch.get_num_threads() == before
     except Exception:  # noqa: BLE001
         pass
+
+
+def test_classify_ir_weight_precision() -> None:
+    from offline_rag.dense.cpu_ov_executor import classify_ir_weight_precision
+
+    assert classify_ir_weight_precision(f16_constant_count=0, f32_constant_count=680) == (
+        "fp32"
+    )
+    assert classify_ir_weight_precision(f16_constant_count=539, f32_constant_count=141) == (
+        "fp16"
+    )
+    assert classify_ir_weight_precision(f16_constant_count=10, f32_constant_count=0) == (
+        "fp16"
+    )
+    assert classify_ir_weight_precision(f16_constant_count=0, f32_constant_count=0) == (
+        "unknown"
+    )
+
+
+def test_assert_requested_ir_precision_fail_closed() -> None:
+    from offline_rag.dense.cpu_ov_executor import assert_requested_ir_precision
+
+    assert_requested_ir_precision(
+        requested_weight_format="fp16", observed_IR_weight_precision="fp16"
+    )
+    with pytest.raises(ValueError, match="refusing to label FP32"):
+        assert_requested_ir_precision(
+            requested_weight_format="fp16", observed_IR_weight_precision="fp32"
+        )
+
+
+def test_observe_execution_facts_does_not_invent_fp16_from_request() -> None:
+    """F008: dtype must not be invented from requested weight_format label."""
+    from offline_rag.dense.cpu_ov_executor import OpenVinoSTEmbedder
+
+    emb = OpenVinoSTEmbedder(
+        object(),
+        weight_format="fp16",
+        query_text_contract="raw-query-v1",
+        precision_identity={},
+    )
+    facts = emb.observe_execution_facts()
+    assert facts["dtype"] is None
+    assert facts["requested_weight_format"] == "fp16"
+    assert facts["observed_IR_weight_precision"] is None
+
+    emb2 = OpenVinoSTEmbedder(
+        object(),
+        weight_format="fp16",
+        query_text_contract="raw-query-v1",
+        precision_identity={
+            "observed_IR_weight_precision": "fp16",
+            "observed_CPU_inference_precision": "fp32",
+        },
+    )
+    facts2 = emb2.observe_execution_facts()
+    assert facts2["dtype"] == "openvino_ir_fp16"
+    assert facts2["observed_CPU_inference_precision"] == "fp32"
+    assert "openvino_fp16" not in str(facts2["dtype"])
+
+
+def test_stage0_export_artifact_is_observed_fp32_storage() -> None:
+    """F008: existing Stage-0 export is FP32 IR storage (inspection only)."""
+    from offline_rag.dense.cpu_ov_executor import (
+        find_openvino_ir_xml,
+        inspect_openvino_ir_weight_precision,
+    )
+
+    export_dir = REPO / "data" / "16k_d_cpu_ov_work" / "exports" / "fp16"
+    if not export_dir.is_dir():
+        pytest.skip("Stage-0 local export not present")
+    ir = inspect_openvino_ir_weight_precision(find_openvino_ir_xml(export_dir))
+    assert ir["observed_IR_weight_precision"] == "fp32"
+    assert ir["f16_constant_count"] == 0
+    assert ir["f32_constant_count"] > 0
+    assert ir["bin_bytes"] == 2383106573
+
+
+def test_compress_to_fp16_probe_classifies_fp16() -> None:
+    """F008: OpenVINO compress_to_fp16 produces inspectable FP16 IR storage."""
+    from offline_rag.dense.cpu_ov_executor import inspect_openvino_ir_weight_precision
+
+    probe = (
+        REPO / "data" / "16k_d_cpu_ov_work" / "exports" / "_fp16_probe" / "openvino_model.xml"
+    )
+    if not probe.is_file():
+        pytest.skip("local FP16 compress probe not present")
+    ir = inspect_openvino_ir_weight_precision(probe)
+    assert ir["observed_IR_weight_precision"] == "fp16"
+    assert ir["f16_constant_count"] > ir["f32_constant_count"]
+    assert ir["bin_bytes"] is not None
+    assert ir["bin_bytes"] < 2383106573

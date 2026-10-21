@@ -2,15 +2,16 @@
 
 **Experiment:** `16K-D CPU-OV-01 — SAME-MODEL OPENVINO CPU FEASIBILITY`  
 **Implementation authority:** `S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-AUTH-001`  
-**Rework2 authority:** `S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-REWORK2-AUTH-002` — AUTHORIZED  
-**Exact rework2 parent:** `50906c4665a3d1d73fe9693207bcf1a0d82a65d5` (Stage-0 evidence tip)  
+**Rework3 authority:** `S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-REWORK3-AUTH-001` — AUTHORIZED  
+**Exact rework3 parent:** `f48a626749c5a33f45a3949f833dba8cdca04ec6`  
 **Underlying implementation base:** `eea4c976a351fbb41d1cd3efc1337198813c2e22`  
 **Branch:** `implementation/16k-d-cpu-openvino-feasibility`  
-**Work class:** HARNESS / FEASIBILITY IMPLEMENTATION REWORK2  
+**Work class:** HARNESS / FEASIBILITY IMPLEMENTATION REWORK3 (F008 precision identity)  
 
-**Status:** POST-D2 CPU OPENVINO FEASIBILITY HARNESS IMPLEMENTATION REWORK2 COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
+**Status:** POST-D2 CPU OPENVINO FEASIBILITY HARNESS IMPLEMENTATION REWORK3 COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
 
 **Stage-0 execution:** PASS under `…-STAGE0-EXECUTION-AUTH-001` at `eea4c97…`  
+**Stage-0 IR storage (inspected):** FP32 (`openvino_model.bin` 2,383,106,573 bytes; 0 f16 / 680 f32 Constants) — compatibility PASS stands; not OV-FP16 storage  
 **D2 predecessor:** CAMPAIGN COMPLETE / G1 SELECTED  
 **Further execution:** NOT AUTHORIZED (`EXECUTION_AUTHORIZED=False`; no screen/parity/full)  
 
@@ -122,3 +123,4 @@ tuning · batch sweep · production dependency promotion · main.
 | F005 CLI missing export-dir | `--export-dir` required/passed for screen/parity/full-confirm |
 | F006 encode-only full confirm | `execute_full_confirm` uses isolated `run_indexing` + OV embedder inject |
 | F007 missing CPU host facts | `capture_cpu_host_runtime_facts()` on screen/full evidence |
+| F008 precision identity | Separate requested / observed IR / observed CPU inference; FP16 export via `OVConfig(dtype=fp16)` + `compress_to_fp16`; no label-derived dtype |
