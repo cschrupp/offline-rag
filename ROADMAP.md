@@ -1057,15 +1057,24 @@ SLICE 15  COMPLETE / ACCEPTED
          — AUTHORIZED
        Exact 16K-D D2 decision-boundary freeze parent:
          d4ef50dd0b4203e3d5e63858cafe678c73502475
+       16K-D D2 decision-boundary freeze IR-001:
+         S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DECISION-BOUNDARY-FREEZE-IR-001
+         — REWORK REQUIRED (F001) — preserved
+       16K-D D2 decision-boundary freeze rework authority:
+         S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DECISION-BOUNDARY-FREEZE-REWORK-AUTH-001
+         — AUTHORIZED
+       Exact 16K-D D2 decision-boundary freeze rework parent:
+         9fb5f1441127bacaa596aef115c9b4b97cb649a2
        16K-D D2 design document:
          docs/slice16k_d_d2_practical_execution_optimization_design.md
        16K-D D2 evidence: docs/evidence/16k_d_dense_cuda/d2/
-       16K-D status: D2 PRACTICAL EXECUTION OPTIMIZATION: CAMPAIGN COMPLETE /
-         G1 SELECTED / READY FOR INDEPENDENT REVIEW
+       16K-D status: D2 PRACTICAL EXECUTION OPTIMIZATION DECISION-BOUNDARY
+         FREEZE REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
        16K-D D2 design: COMPLETE / INDEPENDENTLY ACCEPTED
        16K-D D2 implementation: COMPLETE / INDEPENDENTLY ACCEPTED
-       16K-D D2 campaign: COMPLETE / G1 SELECTED
+       16K-D D2 campaign: COMPLETE / G1 SELECTED / execution campaign CLOSED
        16K-D D2 selected GPU candidate: CUDA / FP16 / batch 32
+       16K-D D2 parity: d2-retrieval-parity-v1 PASS under EXECUTION-AUTH-001
        16K-D D2 production default: UNCHANGED (CUDA / BF16 / batch 32)
        16K-D D2 further execution: NOT AUTHORIZED under decision-boundary freeze
        16K-D program pivot: scientific optimization →
@@ -1847,15 +1856,24 @@ SLICE 15  COMPLETE / ACCEPTED
          — AUTHORIZED
        Exact 16K-D D2 decision-boundary freeze parent:
          d4ef50dd0b4203e3d5e63858cafe678c73502475
+       16K-D D2 decision-boundary freeze IR-001:
+         S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DECISION-BOUNDARY-FREEZE-IR-001
+         — REWORK REQUIRED (F001) — preserved
+       16K-D D2 decision-boundary freeze rework authority:
+         S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DECISION-BOUNDARY-FREEZE-REWORK-AUTH-001
+         — AUTHORIZED
+       Exact 16K-D D2 decision-boundary freeze rework parent:
+         9fb5f1441127bacaa596aef115c9b4b97cb649a2
        16K-D D2 design document:
          docs/slice16k_d_d2_practical_execution_optimization_design.md
        16K-D D2 evidence: docs/evidence/16k_d_dense_cuda/d2/
-       16K-D status: D2 PRACTICAL EXECUTION OPTIMIZATION: CAMPAIGN COMPLETE /
-         G1 SELECTED / READY FOR INDEPENDENT REVIEW
+       16K-D status: D2 PRACTICAL EXECUTION OPTIMIZATION DECISION-BOUNDARY
+         FREEZE REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
        16K-D D2 design: COMPLETE / INDEPENDENTLY ACCEPTED
        16K-D D2 implementation: COMPLETE / INDEPENDENTLY ACCEPTED
-       16K-D D2 campaign: COMPLETE / G1 SELECTED
+       16K-D D2 campaign: COMPLETE / G1 SELECTED / execution campaign CLOSED
        16K-D D2 selected GPU candidate: CUDA / FP16 / batch 32
+       16K-D D2 parity: d2-retrieval-parity-v1 PASS under EXECUTION-AUTH-001
        16K-D D2 production default: UNCHANGED (CUDA / BF16 / batch 32)
        16K-D D2 further execution: NOT AUTHORIZED under decision-boundary freeze
        16K-D program pivot: scientific optimization →

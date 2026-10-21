@@ -29,11 +29,16 @@
 **Execution authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-EXECUTION-AUTH-001` — AUTHORIZED (campaign executed)  
 **Decision-boundary freeze authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DECISION-BOUNDARY-FREEZE-AUTH-001` — AUTHORIZED  
 **Exact decision-boundary freeze parent:** `d4ef50dd0b4203e3d5e63858cafe678c73502475`  
+**Decision-boundary freeze IR-001:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DECISION-BOUNDARY-FREEZE-IR-001` — REWORK REQUIRED (F001) — preserved  
+**Decision-boundary freeze rework authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DECISION-BOUNDARY-FREEZE-REWORK-AUTH-001` — AUTHORIZED  
+**Exact decision-boundary freeze rework parent:** `9fb5f1441127bacaa596aef115c9b4b97cb649a2`  
 
 **Branch:** `implementation/16k-d-dense-cuda-profiling`  
 **Status:** D2 PRACTICAL EXECUTION OPTIMIZATION DESIGN COMPLETE / INDEPENDENTLY ACCEPTED  
-**D2 campaign:** COMPLETE / G1 SELECTED / READY FOR INDEPENDENT REVIEW  
+**D2 campaign:** COMPLETE / G1 SELECTED / execution campaign CLOSED  
+**Decision-boundary freeze:** REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
 **Selected D2 GPU deployment candidate:** CUDA / FP16 / batch 32 (selection ≠ production promotion)  
+**Parity:** `d2-retrieval-parity-v1` frozen+executed under EXECUTION-AUTH-001 — PASS  
 **Production default:** unchanged (CUDA / BF16 / batch 32) until a separate promotion decision  
 **D2 further execution:** NOT AUTHORIZED under this freeze
 

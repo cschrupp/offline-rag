@@ -68,12 +68,15 @@
 **D2 execution authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-EXECUTION-AUTH-001` — AUTHORIZED (executed)  
 **D2 decision-boundary freeze authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DECISION-BOUNDARY-FREEZE-AUTH-001` — AUTHORIZED  
 **Exact D2 decision-boundary freeze parent:** `d4ef50dd0b4203e3d5e63858cafe678c73502475`  
+**D2 decision-boundary freeze IR-001:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DECISION-BOUNDARY-FREEZE-IR-001` — REWORK REQUIRED (F001) — preserved  
+**D2 decision-boundary freeze rework authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DECISION-BOUNDARY-FREEZE-REWORK-AUTH-001` — AUTHORIZED  
+**Exact D2 decision-boundary freeze rework parent:** `9fb5f1441127bacaa596aef115c9b4b97cb649a2`  
 **D2 design document:** `docs/slice16k_d_d2_practical_execution_optimization_design.md`  
 **D2 harness:** `scripts/diag_16k_d_dense/run_d2_campaign.py`  
 **D2 evidence:** `docs/evidence/16k_d_dense_cuda/d2/`  
 **D2 decision freeze ledger:** `docs/evidence/16k_d_dense_cuda/d2/d2_decision_boundary_freeze.json`  
 
-**Status:** D2 PRACTICAL EXECUTION OPTIMIZATION: CAMPAIGN COMPLETE / G1 SELECTED / READY FOR INDEPENDENT REVIEW  
+**Status:** D2 PRACTICAL EXECUTION OPTIMIZATION DECISION-BOUNDARY FREEZE REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
 **D0:** BASELINE COMPLETE / INDEPENDENTLY ACCEPTED  
 **D1:** COMPLETE / INDEPENDENTLY ACCEPTED (scientific program closed for product pivot)  
 **D1 tooling F001 / D1 analysis F001:** CLOSED  
@@ -219,14 +222,28 @@ D1-A1/A2 are context/attribution only — not FP16 speedup controls, not D2
 pass/fail, not §9.4 confirmation members.
 
 Lighter instrumentation than D1; no per-batch CUDA-event sync for curiosity.
-Retrieval-parity probe inputs/thresholds remain unfrozen until execution AUTH.
 
-## Explicitly NOT AUTHORIZED under this implementation AUTH
+**Parity contract (current):** `d2-retrieval-parity-v1` was frozen and executed
+under `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-EXECUTION-AUTH-001` and
+**PASSED**. Evidence:
+`docs/evidence/16k_d_dense_cuda/d2/d2_retrieval_parity_v1_1792555359.json`
+(SHA256 `d117be126e5b8206acdc95327efca3c3a56eae6663afadaaa10d06960bb7df96`).
 
-D2 scientific/benchmark cell execution · FP16 model runs · CPU benchmark runs ·
-parity execution · production default switch · model replacement · mechanical
-D3–D5 · attention experiments · persistence/Qdrant opt · HTTP-500 reopen ·
-16K-E/F/G · main.
+### Historical note — pre-execution implementation AUTH (provenance only)
+
+Under the original implementation AUTH, before
+`…-EXECUTION-AUTH-001`, the following were correctly closed: D2 scientific /
+benchmark cell execution · FP16 model runs · CPU benchmark runs · parity
+execution. That pre-execution closure is **historical**. The execution campaign
+has since completed; those runs are no longer “not yet authorized.”
+
+## Explicitly NOT AUTHORIZED now (post-campaign / decision-boundary freeze)
+
+Further D2 cell execution · G2 · production FP16 default promotion · model
+replacement · mechanical D3–D5 · attention experiments · persistence/Qdrant opt ·
+HTTP-500 reopen · 16K-E/F/G · main.
+
+(Selection of G1 as deployment *candidate* ≠ production default promotion.)
 
 ## Evidence
 
@@ -239,3 +256,4 @@ D3–D5 · attention experiments · persistence/Qdrant opt · HTTP-500 reopen ·
   (`d1_preflight.json`, `d1_a1.json`, `d1_a2.json`, `d1_b.json`,
   `d1_analysis.json` v2, `d1_scientific_interpretation.md`;
   preserved invalid: `d1_preflight_INVALID.json`)
+- D2 campaign + parity + freeze ledger: `docs/evidence/16k_d_dense_cuda/d2/`

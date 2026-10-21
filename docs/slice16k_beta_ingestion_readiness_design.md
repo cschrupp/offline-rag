@@ -255,9 +255,12 @@
 **16K-D D2 execution authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-EXECUTION-AUTH-001` — AUTHORIZED (executed)  
 **16K-D D2 decision-boundary freeze authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DECISION-BOUNDARY-FREEZE-AUTH-001` — AUTHORIZED  
 **Exact 16K-D D2 decision-boundary freeze parent:** `d4ef50dd0b4203e3d5e63858cafe678c73502475`  
+**16K-D D2 decision-boundary freeze IR-001:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DECISION-BOUNDARY-FREEZE-IR-001` — REWORK REQUIRED (F001) — preserved  
+**16K-D D2 decision-boundary freeze rework authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DECISION-BOUNDARY-FREEZE-REWORK-AUTH-001` — AUTHORIZED  
+**Exact 16K-D D2 decision-boundary freeze rework parent:** `9fb5f1441127bacaa596aef115c9b4b97cb649a2`  
 **16K-D D2 design document:** `docs/slice16k_d_d2_practical_execution_optimization_design.md`  
 **16K-D D2 evidence:** `docs/evidence/16k_d_dense_cuda/d2/`  
-**16K-D status:** D2 PRACTICAL EXECUTION OPTIMIZATION: CAMPAIGN COMPLETE / G1 SELECTED / READY FOR INDEPENDENT REVIEW  
+**16K-D status:** D2 PRACTICAL EXECUTION OPTIMIZATION DECISION-BOUNDARY FREEZE REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
 **16K-D D2 design:** COMPLETE / INDEPENDENTLY ACCEPTED  
 **16K-D D2 implementation:** COMPLETE / INDEPENDENTLY ACCEPTED  
 **16K-D D2 campaign:** COMPLETE / G1 SELECTED  
@@ -749,10 +752,13 @@ Detailed per-batch profiling belongs in benchmark/evidence artifacts.
 **Exact independently accepted D2 implementation subject:** `d4ef50dd0b4203e3d5e63858cafe678c73502475`  
 **D2 decision-boundary freeze authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DECISION-BOUNDARY-FREEZE-AUTH-001` — AUTHORIZED  
 **Exact D2 decision-boundary freeze parent:** `d4ef50dd0b4203e3d5e63858cafe678c73502475`  
+**D2 decision-boundary freeze IR-001:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DECISION-BOUNDARY-FREEZE-IR-001` — REWORK REQUIRED (F001) — preserved  
+**D2 decision-boundary freeze rework authority:** `S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DECISION-BOUNDARY-FREEZE-REWORK-AUTH-001` — AUTHORIZED  
+**Exact D2 decision-boundary freeze rework parent:** `9fb5f1441127bacaa596aef115c9b4b97cb649a2`  
 **D2 design document:** `docs/slice16k_d_d2_practical_execution_optimization_design.md`  
 **D2 evidence:** `docs/evidence/16k_d_dense_cuda/d2/`  
-**Status:** D2 PRACTICAL EXECUTION OPTIMIZATION: CAMPAIGN COMPLETE / G1 SELECTED / READY FOR INDEPENDENT REVIEW  
-(G1 = CUDA/FP16/b32 selected candidate; production default unchanged; further D2 execution NOT AUTHORIZED)
+**Status:** D2 PRACTICAL EXECUTION OPTIMIZATION DECISION-BOUNDARY FREEZE REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
+(G1 = CUDA/FP16/b32 selected candidate; campaign CLOSED; production default promotion still separate/unauthorized)
 
 Current code path context (independently accepted D0): SentenceTransformers /
 Qwen3-Embedding-0.6B, CUDA, **BF16**, batch size 32, **SDPA**, per-chunk JSON
@@ -784,7 +790,7 @@ only as provenance.
 |------|----------|--------|
 | **D0** | Accepted baseline | native BF16 / batch 32 / SDPA — COMPLETE / INDEPENDENTLY ACCEPTED |
 | **D1** | Stall attribution | COMPLETE / INDEPENDENTLY ACCEPTED. Enough attribution for engineering decisions; root-cause investigation closed unless product decision reopens it. |
-| **D2** | Practical execution optimization | Controllable shippable variables only. Staged stop-conditional: G1 FP16/b32 → C0 CPU baseline (batch 32, no tuning; observe runtime facts) → G2 FP16/b16 only for G1 timing/variance or valid resource failure (not G1 FP16 parity failure) → Gx-3 only when mathematically eligible. Clean D0 BF16/b32 = sole performance reference (D1 attribution-only). Correct-identity OOM = valid negative, not invalid/retry. Budgets: 4 normal / 6 screen-fail→G2 / 7 absolute max (G1 confirmation timing-fail→G2); no discretionary eighth. Design IR-003 ACCEPT at `8f96657…`. Implementation AUTH open (precision policy + harness + state machine); EXECUTION NOT AUTHORIZED. Design: `docs/slice16k_d_d2_practical_execution_optimization_design.md`. |
+| **D2** | Practical execution optimization | **CAMPAIGN COMPLETE / G1 SELECTED.** Controllable shippable variables only. Executed staged stop-conditional: G1 FP16/b32 (1.17 / 1.47 / 1.109 min; timing gates PASS) → C0 CPU baseline (~231.1 min; encode-dominant) → G1-3 confirmation → `d2-retrieval-parity-v1` PASS → `select_g1`. G2 not opened. Design IR-003 ACCEPT at `8f96657…`; implementation IR-003 ACCEPT at `d4ef50d…`; execution under `…-EXECUTION-AUTH-001`; decision-boundary freeze at `9fb5f14…`. Evidence: `docs/evidence/16k_d_dense_cuda/d2/`. Execution campaign **CLOSED**. Production FP16 default promotion remains a **separate** unauthorized decision. Design: `docs/slice16k_d_d2_practical_execution_optimization_design.md`. |
 | **Later** | Evidence-triggered only | CPU/PyTorch tuning · model/runtime optimization · narrowly justified CUDA control · persistence/Qdrant if ≥10% wall. No automatic D3/D4/D5 mechanical campaign. |
 
 ### 9.3 Parity gate
@@ -1537,15 +1543,24 @@ Exact independently accepted 16K-D D2 implementation subject:
   — AUTHORIZED
 Exact 16K-D D2 decision-boundary freeze parent:
   d4ef50dd0b4203e3d5e63858cafe678c73502475
+16K-D D2 decision-boundary freeze IR-001:
+  S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DECISION-BOUNDARY-FREEZE-IR-001
+  — REWORK REQUIRED (F001) — preserved
+16K-D D2 decision-boundary freeze rework authority:
+  S16-K-D-D2-PRACTICAL-EXECUTION-OPTIMIZATION-DECISION-BOUNDARY-FREEZE-REWORK-AUTH-001
+  — AUTHORIZED
+Exact 16K-D D2 decision-boundary freeze rework parent:
+  9fb5f1441127bacaa596aef115c9b4b97cb649a2
 16K-D D2 design document:
   docs/slice16k_d_d2_practical_execution_optimization_design.md
 16K-D D2 evidence: docs/evidence/16k_d_dense_cuda/d2/
-16K-D status: D2 PRACTICAL EXECUTION OPTIMIZATION: CAMPAIGN COMPLETE /
-  G1 SELECTED / READY FOR INDEPENDENT REVIEW
+16K-D status: D2 PRACTICAL EXECUTION OPTIMIZATION DECISION-BOUNDARY FREEZE
+  REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
 16K-D D2 design: COMPLETE / INDEPENDENTLY ACCEPTED
 16K-D D2 implementation: COMPLETE / INDEPENDENTLY ACCEPTED
-16K-D D2 campaign: COMPLETE / G1 SELECTED
+16K-D D2 campaign: COMPLETE / G1 SELECTED / execution campaign CLOSED
 16K-D D2 selected GPU candidate: CUDA / FP16 / batch 32
+16K-D D2 parity: d2-retrieval-parity-v1 PASS under EXECUTION-AUTH-001
 16K-D D2 production default: UNCHANGED (CUDA / BF16 / batch 32)
 16K-D program pivot: scientific optimization →
   bounded product-engineering optimization
@@ -1559,9 +1574,12 @@ Exact 16K-D D2 decision-boundary freeze parent:
 16K-D practical sequence:
   D0 → D1 attribution → D2 practical execution optimization → decision
 16K-D mechanical D2→D3→D4→D5 sequence: SUPERSEDED
-16K-D closed under this implementation AUTH:
-  D2 scientific/benchmark execution / FP16/CPU/parity runs /
-  production default switch / model replacement /
+16K-D D2 campaign: COMPLETE / G1 SELECTED / execution campaign CLOSED
+16K-D D2 selected GPU candidate: CUDA / FP16 / batch 32
+16K-D D2 parity: d2-retrieval-parity-v1 PASS under EXECUTION-AUTH-001
+16K-D D2 further cell execution: NOT AUTHORIZED (campaign terminal)
+16K-D still closed / separate:
+  production FP16 default promotion / model replacement /
   mechanical D3–D5 / threshold changes /
   HTTP-500 reopen / 16K-E→G / main
 16K-E → 16K-G: NOT AUTHORIZED
@@ -1572,7 +1590,7 @@ Slice 17: NOT AUTHORIZED
 Slice 18: NOT AUTHORIZED
 9G: DEFERRED / NOT AUTHORIZED
 M7 CLOSEOUT: NOT AUTHORIZED
-Does NOT authorize 16K-E→G / default promotion / treatment execution
+Does NOT authorize 16K-E→G / default promotion
 Does NOT reopen Slice 16 closeout
 Does NOT authorize main promotion
 Does NOT claim Fireground CUDA fixed
