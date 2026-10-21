@@ -84,12 +84,12 @@
 **D2 design:** COMPLETE / INDEPENDENTLY ACCEPTED  
 **D2 implementation:** COMPLETE / INDEPENDENTLY ACCEPTED  
 **D2 campaign:** COMPLETE / G1 SELECTED  
-**CPU-OV-01 authority:** `S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-REWORK5-AUTH-001` — AUTHORIZED  
-**Exact CPU-OV-01 rework5 parent:** `b267542bdebc1c6ef0de3b7d9e1bcdfbdaa45912`  
+**CPU-OV-01 authority:** `S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-REWORK6-AUTH-001` — AUTHORIZED  
+**Exact CPU-OV-01 rework6 parent:** `85714169e610331c551cb37d02325b246cb1c0f2`  
 **Underlying implementation base:** `eea4c976a351fbb41d1cd3efc1337198813c2e22`  
 **CPU-OV-01 branch:** `implementation/16k-d-cpu-openvino-feasibility`  
 **CPU-OV-01 document:** `docs/slice16k_d_cpu_openvino_feasibility.md`  
-**CPU-OV-01 status:** POST-D2 CPU OPENVINO FEASIBILITY HARNESS IMPLEMENTATION REWORK5 COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
+**CPU-OV-01 status:** POST-D2 CPU OPENVINO FEASIBILITY HARNESS IMPLEMENTATION REWORK6 COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
 **CPU-OV-01 Stage-0:** PASS at `eea4c97…` (IR storage inspected FP32; not OV-FP16 storage)  
 **CPU-OV-01 execution:** NOT AUTHORIZED beyond Stage-0 (screens/parity/full run closed)  
 **Program pivot:** scientific optimization → bounded product-engineering optimization

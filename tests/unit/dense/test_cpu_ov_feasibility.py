@@ -1198,3 +1198,169 @@ def test_materialize_int8_requires_distinct_source_and_dest(tmp_path: Path) -> N
     src.mkdir()
     with pytest.raises(ValueError, match="must differ"):
         materialize_int8_derivative_export(source_export_dir=src, export_dir=src)
+
+
+def test_assert_int8_source_rejects_wrong_tree_hash(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """F011: wrong source_export_dir tree SHA fails before NNCF."""
+    from offline_rag.dense import cpu_ov_executor as ex
+    from offline_rag.dense.cpu_ov_feasibility import EXPECTED_INT8_SOURCE_EXPORT_TREE_SHA256
+
+    src = tmp_path / "wrong_export"
+    src.mkdir()
+    (src / "openvino").mkdir()
+    xml = src / "openvino" / "openvino_model.xml"
+    xml.write_text('<net><c element_type="f32"/></net>\n', encoding="utf-8")
+    (src / "openvino" / "openvino_model.bin").write_bytes(b"not-the-frozen-bin")
+
+    monkeypatch.setattr(
+        ex,
+        "hash_export_tree",
+        lambda _p: {"tree_sha256": "deadbeef" * 8},
+    )
+    with pytest.raises(ValueError, match="tree SHA256 mismatch"):
+        ex.assert_int8_source_export_identity(src)
+    assert EXPECTED_INT8_SOURCE_EXPORT_TREE_SHA256.startswith("7e48d6d9")
+
+
+def test_assert_int8_source_rejects_non_fp32_ir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """F011: source must inspect as frozen FP32 Stage-0 IR form."""
+    from offline_rag.dense import cpu_ov_executor as ex
+    from offline_rag.dense.cpu_ov_feasibility import EXPECTED_INT8_SOURCE_EXPORT_TREE_SHA256
+
+    src = tmp_path / "fp16_looking"
+    (src / "openvino").mkdir(parents=True)
+    xml = src / "openvino" / "openvino_model.xml"
+    xml.write_text('<net><c element_type="f16"/></net>\n', encoding="utf-8")
+    (src / "openvino" / "openvino_model.bin").write_bytes(b"x" * 100)
+
+    monkeypatch.setattr(
+        ex,
+        "hash_export_tree",
+        lambda _p: {"tree_sha256": EXPECTED_INT8_SOURCE_EXPORT_TREE_SHA256},
+    )
+    monkeypatch.setattr(
+        ex,
+        "inspect_openvino_ir_weight_precision",
+        lambda _xml: {
+            "observed_IR_weight_precision": "fp16",
+            "bin_bytes": 100,
+            "f16_constant_count": 1,
+            "f32_constant_count": 0,
+            "i8_constant_count": 0,
+            "u8_constant_count": 0,
+        },
+    )
+    with pytest.raises(ValueError, match="not the frozen FP32"):
+        ex.assert_int8_source_export_identity(src)
+
+
+def test_materialize_int8_fails_before_nncf_on_bad_source(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """F011: materialize must not invoke compress_weights on wrong source."""
+    from offline_rag.dense import cpu_ov_executor as ex
+
+    src = tmp_path / "src"
+    dest = tmp_path / "dest"
+    src.mkdir()
+    called = {"compress": False}
+
+    def _boom(_xml: Path) -> dict:
+        called["compress"] = True
+        raise AssertionError("nncf compress must not run")
+
+    monkeypatch.setattr(
+        ex,
+        "assert_int8_source_export_identity",
+        lambda _p: (_ for _ in ()).throw(ValueError("F011: tree SHA256 mismatch")),
+    )
+    monkeypatch.setattr(ex, "_compress_openvino_weights_int8_asym", _boom)
+    with pytest.raises(ValueError, match="tree SHA256 mismatch"):
+        ex.materialize_int8_derivative_export(source_export_dir=src, export_dir=dest)
+    assert called["compress"] is False
+    assert not dest.exists()
+
+
+def test_materialize_int8_requires_source_unchanged_after(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """F011: source tree must still match frozen SHA after derivative transform."""
+    from offline_rag.dense import cpu_ov_executor as ex
+    from offline_rag.dense.cpu_ov_feasibility import EXPECTED_INT8_SOURCE_EXPORT_TREE_SHA256
+
+    src = tmp_path / "src"
+    dest = tmp_path / "dest"
+    (src / "openvino").mkdir(parents=True)
+    (src / "openvino" / "openvino_model.xml").write_text(
+        '<net><c element_type="f32"/></net>\n', encoding="utf-8"
+    )
+    (src / "openvino" / "openvino_model.bin").write_bytes(b"SRC")
+
+    identity = {
+        "source_export_dir": str(src.resolve()),
+        "source_tree_sha256": EXPECTED_INT8_SOURCE_EXPORT_TREE_SHA256,
+        "expected_source_tree_sha256": EXPECTED_INT8_SOURCE_EXPORT_TREE_SHA256,
+        "source_tree": {"tree_sha256": EXPECTED_INT8_SOURCE_EXPORT_TREE_SHA256},
+        "source_ir_inspection": {
+            "observed_IR_weight_precision": "fp32",
+            "bin_bytes": 2383106573,
+            "f16_constant_count": 0,
+            "f32_constant_count": 680,
+        },
+        "authority": "rework6",
+    }
+    monkeypatch.setattr(
+        "offline_rag.dense.cpu_ov_executor.assert_int8_source_export_identity",
+        lambda _p: identity,
+    )
+    monkeypatch.setattr(
+        "offline_rag.dense.cpu_ov_executor._compress_openvino_weights_int8_asym",
+        lambda _xml: {
+            "compression_mode": "INT8_ASYM",
+            "nncf_version": "2.99.0-test",
+            "transformation": "nncf.compress_weights/CompressWeightsMode.INT8_ASYM",
+            "post_compress_ir_inspection": {
+                "observed_IR_weight_precision": "int8",
+                "i8_constant_count": 10,
+                "u8_constant_count": 0,
+                "f16_constant_count": 0,
+                "f32_constant_count": 5,
+            },
+            "observed_INT8_weight_compression": {"verified": True},
+        },
+    )
+    monkeypatch.setattr(
+        "offline_rag.dense.cpu_ov_executor.inspect_openvino_ir_weight_precision",
+        lambda _xml: {
+            "observed_IR_weight_precision": "int8",
+            "i8_constant_count": 10,
+            "u8_constant_count": 0,
+            "f16_constant_count": 0,
+            "f32_constant_count": 5,
+            "bin_bytes": 100,
+        },
+    )
+    monkeypatch.setattr(
+        "offline_rag.dense.cpu_ov_executor.build_precision_identity",
+        lambda **_k: {
+            "observed_IR_weight_precision": "int8",
+            "observed_INT8_weight_compression": {"verified": True},
+        },
+    )
+    monkeypatch.setattr(
+        "offline_rag.dense.cpu_ov_executor.assert_requested_ir_precision",
+        lambda **_k: None,
+    )
+    mutated = "mutated" + ("0" * 57)
+    assert mutated != EXPECTED_INT8_SOURCE_EXPORT_TREE_SHA256
+    monkeypatch.setattr(
+        "offline_rag.dense.cpu_ov_executor.hash_export_tree",
+        lambda _p: {"tree_sha256": mutated},
+    )
+
+    with pytest.raises(RuntimeError, match="mutated during derivative"):
+        ex.materialize_int8_derivative_export(source_export_dir=src, export_dir=dest)

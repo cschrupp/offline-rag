@@ -33,6 +33,11 @@ from offline_rag.dense.cpu_ov_feasibility import (
     EXPECTED_CHILD_COUNT,
     EXPECTED_CHUNK_SET_ID,
     EXPECTED_DIMENSION,
+    EXPECTED_INT8_SOURCE_BIN_BYTES,
+    EXPECTED_INT8_SOURCE_EXPORT_TREE_SHA256,
+    EXPECTED_INT8_SOURCE_F16_CONSTANT_COUNT,
+    EXPECTED_INT8_SOURCE_F32_CONSTANT_COUNT,
+    EXPECTED_INT8_SOURCE_IR_WEIGHT_PRECISION,
     EXPECTED_MODEL_ID,
     EXPECTED_MODEL_REVISION,
     EXPERIMENT_ID,
@@ -41,6 +46,7 @@ from offline_rag.dense.cpu_ov_feasibility import (
     IMPLEMENTATION_REWORK2_AUTH,
     IMPLEMENTATION_REWORK3_AUTH,
     IMPLEMENTATION_REWORK5_AUTH,
+    IMPLEMENTATION_REWORK6_AUTH,
     IMPLEMENTATION_REWORK_AUTH,
     NNCF_INT8_ASYM_MODE,
     PARITY_CONTRACT_ID,
@@ -654,20 +660,84 @@ def _compress_openvino_weights_int8_asym(xml_path: Path) -> dict[str, Any]:
         shutil.rmtree(tmp_root, ignore_errors=True)
 
 
+def assert_int8_source_export_identity(
+    source_export_dir: Path,
+) -> dict[str, Any]:
+    """Fail closed: INT8 derivative source must be the frozen FP32 Stage-0 tree (F011).
+
+    Runs before any copy or ``nncf.compress_weights`` call.
+    """
+    source = Path(source_export_dir).resolve()
+    if not source.is_dir():
+        raise FileNotFoundError(f"source export missing: {source}")
+    source_tree = hash_export_tree(source)
+    observed_sha = source_tree.get("tree_sha256")
+    if observed_sha != EXPECTED_INT8_SOURCE_EXPORT_TREE_SHA256:
+        raise ValueError(
+            "F011: INT8 source_export_dir tree SHA256 mismatch: "
+            f"observed={observed_sha} "
+            f"expected={EXPECTED_INT8_SOURCE_EXPORT_TREE_SHA256}; "
+            "refusing unrelated ST/OpenVINO export as same-model INT8 source"
+        )
+    xml_path = find_openvino_ir_xml(source)
+    source_ir = inspect_openvino_ir_weight_precision(xml_path)
+    if (
+        source_ir.get("observed_IR_weight_precision")
+        != EXPECTED_INT8_SOURCE_IR_WEIGHT_PRECISION
+    ):
+        raise ValueError(
+            "F011: INT8 source IR is not the frozen FP32 Stage-0 form: "
+            f"observed_IR_weight_precision="
+            f"{source_ir.get('observed_IR_weight_precision')!r} "
+            f"expected={EXPECTED_INT8_SOURCE_IR_WEIGHT_PRECISION!r}"
+        )
+    if source_ir.get("bin_bytes") != EXPECTED_INT8_SOURCE_BIN_BYTES:
+        raise ValueError(
+            "F011: INT8 source IR bin_bytes mismatch: "
+            f"observed={source_ir.get('bin_bytes')} "
+            f"expected={EXPECTED_INT8_SOURCE_BIN_BYTES}"
+        )
+    if source_ir.get("f16_constant_count") != EXPECTED_INT8_SOURCE_F16_CONSTANT_COUNT:
+        raise ValueError(
+            "F011: INT8 source IR f16_constant_count mismatch: "
+            f"observed={source_ir.get('f16_constant_count')} "
+            f"expected={EXPECTED_INT8_SOURCE_F16_CONSTANT_COUNT}"
+        )
+    if source_ir.get("f32_constant_count") != EXPECTED_INT8_SOURCE_F32_CONSTANT_COUNT:
+        raise ValueError(
+            "F011: INT8 source IR f32_constant_count mismatch: "
+            f"observed={source_ir.get('f32_constant_count')} "
+            f"expected={EXPECTED_INT8_SOURCE_F32_CONSTANT_COUNT}"
+        )
+    return {
+        "source_export_dir": str(source),
+        "source_tree_sha256": observed_sha,
+        "expected_source_tree_sha256": EXPECTED_INT8_SOURCE_EXPORT_TREE_SHA256,
+        "source_tree": source_tree,
+        "source_ir_inspection": source_ir,
+        "authority": IMPLEMENTATION_REWORK6_AUTH,
+    }
+
+
 def materialize_int8_derivative_export(
     *,
     source_export_dir: Path,
     export_dir: Path,
 ) -> dict[str, Any]:
-    """Copy a validated ST/OpenVINO export and apply NNCF INT8_ASYM (no retrace)."""
+    """Copy the frozen FP32 ST/OpenVINO export and apply NNCF INT8_ASYM (no retrace).
+
+    F011: source tree must match ``EXPECTED_INT8_SOURCE_EXPORT_TREE_SHA256`` and
+    remain unchanged after the derivative transform.
+    """
     source = Path(source_export_dir).resolve()
     dest = Path(export_dir).resolve()
     if source == dest:
         raise ValueError("F010: source_export_dir must differ from export_dir")
-    if not source.is_dir():
-        raise FileNotFoundError(f"source export missing: {source}")
     if dest.exists():
         raise FileExistsError(f"INT8 export dir already exists: {dest}")
+
+    # Provenance gate BEFORE copy and BEFORE nncf.compress_weights (F011).
+    source_identity = assert_int8_source_export_identity(source)
 
     shutil.copytree(source, dest)
     xml_path = find_openvino_ir_xml(dest)
@@ -689,6 +759,13 @@ def materialize_int8_derivative_export(
             "observed_INT8_weight_compression"
         ],
     )
+    source_tree_after = hash_export_tree(source)
+    if source_tree_after.get("tree_sha256") != EXPECTED_INT8_SOURCE_EXPORT_TREE_SHA256:
+        raise RuntimeError(
+            "F011: INT8 source export mutated during derivative materialization: "
+            f"after={source_tree_after.get('tree_sha256')} "
+            f"expected={EXPECTED_INT8_SOURCE_EXPORT_TREE_SHA256}"
+        )
     tree = hash_export_tree(dest)
     return {
         "requested_weight_format": "int8",
@@ -702,6 +779,10 @@ def materialize_int8_derivative_export(
         "quantization": "nncf_compress_weights_int8_asym",
         "nncf_compression_mode": compress_meta["compression_mode"],
         "nncf_version": compress_meta["nncf_version"],
+        "source_export_identity": source_identity,
+        "source_tree_sha256_before": source_identity["source_tree_sha256"],
+        "source_tree_sha256_after": source_tree_after.get("tree_sha256"),
+        "source_tree_unchanged": True,
         "pre_compress_ir_inspection": pre_ir,
         "compress_meta": compress_meta,
         "precision_identity": precision_identity,
@@ -709,7 +790,7 @@ def materialize_int8_derivative_export(
         "backend": "openvino",
         "device": "cpu",
         "no_torch_optimum_tracing": True,
-        "authority": IMPLEMENTATION_REWORK5_AUTH,
+        "authority": IMPLEMENTATION_REWORK6_AUTH,
     }
 
 
@@ -1051,10 +1132,11 @@ def execute_export_int8(
     repo_root: Path | None = None,
     evidence_dir: Path | None = None,
 ) -> dict[str, Any]:
-    """Derivative INT8 materialization from a validated ST/OpenVINO export (F010).
+    """Derivative INT8 materialization from the frozen FP32 Stage-0 export (F010/F011).
 
     Does not retrace Hugging Face / Sentence Transformers. ``calibration_texts``
     is accepted for API compatibility but unused for data-free INT8_ASYM.
+    Source tree must be exactly ``EXPECTED_INT8_SOURCE_EXPORT_TREE_SHA256``.
     """
     del calibration_texts  # data-free NNCF INT8_ASYM; retained for call-site compat
     identity = verify_local_model_identity(model_dir)
@@ -1074,9 +1156,10 @@ def execute_export_int8(
         "status": "ok" if smoke["ok"] else "failed",
         "stage_id": "export_int8",
         "ok": bool(smoke["ok"]),
-        "authority": IMPLEMENTATION_REWORK5_AUTH,
+        "authority": IMPLEMENTATION_REWORK6_AUTH,
         "rework3_authority": IMPLEMENTATION_REWORK3_AUTH,
         "rework5_authority": IMPLEMENTATION_REWORK5_AUTH,
+        "rework6_authority": IMPLEMENTATION_REWORK6_AUTH,
         "experiment_id": EXPERIMENT_ID,
         "requested_weight_format": "int8",
         "weight_format": "int8",
@@ -1086,6 +1169,13 @@ def execute_export_int8(
         ),
         "local_model_identity": identity,
         "source_export_dir": str(source_export_dir),
+        "source_export_identity": export_meta.get("source_export_identity"),
+        "source_tree_sha256_before": export_meta.get("source_tree_sha256_before"),
+        "source_tree_sha256_after": export_meta.get("source_tree_sha256_after"),
+        "source_tree_unchanged": export_meta.get("source_tree_unchanged"),
+        "expected_int8_source_export_tree_sha256": (
+            EXPECTED_INT8_SOURCE_EXPORT_TREE_SHA256
+        ),
         "export": export_meta,
         "smoke": smoke,
         "environment": _environment_fingerprint(),
@@ -1093,7 +1183,8 @@ def execute_export_int8(
         "repo_root": str(repo_root) if repo_root else None,
         "note": (
             "Derivative NNCF CompressWeightsMode.INT8_ASYM from immutable "
-            "ST/OpenVINO export; no HF/ST retrace"
+            f"Stage-0 FP32 ST/OpenVINO export tree "
+            f"{EXPECTED_INT8_SOURCE_EXPORT_TREE_SHA256}; no HF/ST retrace"
         ),
     }
     return _maybe_write_evidence(
@@ -1555,6 +1646,7 @@ def _maybe_write_evidence(
 
 __all__ = [
     "OpenVinoSTEmbedder",
+    "assert_int8_source_export_identity",
     "assert_requested_ir_precision",
     "build_observed_int8_weight_compression",
     "build_precision_identity",

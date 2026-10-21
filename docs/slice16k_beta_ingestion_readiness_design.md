@@ -265,11 +265,11 @@
 **16K-D D2 implementation:** COMPLETE / INDEPENDENTLY ACCEPTED  
 **16K-D D2 campaign:** COMPLETE / G1 SELECTED  
 **16K-D D2 selected GPU candidate:** CUDA / FP16 / batch 32 (production default unchanged)  
-**16K-D CPU-OV-01 authority:** `S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-REWORK5-AUTH-001` — AUTHORIZED  
-**Exact 16K-D CPU-OV-01 rework5 parent:** `b267542bdebc1c6ef0de3b7d9e1bcdfbdaa45912`  
+**16K-D CPU-OV-01 authority:** `S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-REWORK6-AUTH-001` — AUTHORIZED  
+**Exact 16K-D CPU-OV-01 rework6 parent:** `85714169e610331c551cb37d02325b246cb1c0f2`  
 **Underlying implementation base:** `eea4c976a351fbb41d1cd3efc1337198813c2e22`  
 **16K-D CPU-OV-01 document:** `docs/slice16k_d_cpu_openvino_feasibility.md`  
-**16K-D CPU-OV-01 status:** POST-D2 CPU OPENVINO FEASIBILITY HARNESS IMPLEMENTATION REWORK5 COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
+**16K-D CPU-OV-01 status:** POST-D2 CPU OPENVINO FEASIBILITY HARNESS IMPLEMENTATION REWORK6 COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
 **16K-D CPU-OV-01 Stage-0:** PASS at `eea4c97…` (IR storage inspected FP32; not OV-FP16 storage)  
 **16K-D CPU-OV-01 execution:** NOT AUTHORIZED beyond Stage-0
 **16K-D program pivot:** scientific optimization → bounded product-engineering optimization

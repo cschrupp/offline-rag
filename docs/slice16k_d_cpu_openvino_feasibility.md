@@ -2,14 +2,15 @@
 
 **Experiment:** `16K-D CPU-OV-01 — SAME-MODEL OPENVINO CPU FEASIBILITY`  
 **Implementation authority:** `S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-AUTH-001`  
-**Rework5 authority:** `S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-REWORK5-AUTH-001` — AUTHORIZED  
-**Exact rework5 parent:** `b267542bdebc1c6ef0de3b7d9e1bcdfbdaa45912`  
+**Rework6 authority:** `S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-REWORK6-AUTH-001` — AUTHORIZED  
+**Exact rework6 parent:** `85714169e610331c551cb37d02325b246cb1c0f2`  
+**IR-006:** REWORK REQUIRED on `8571416…` (F010 CLOSED; F011 OPEN → closed by this rework)  
 **Accepted harness subject (IR-005):** `f9bed0af0d2fa045690c8050ba8f585fc8a0165f`  
 **Underlying implementation base:** `eea4c976a351fbb41d1cd3efc1337198813c2e22`  
 **Branch:** `implementation/16k-d-cpu-openvino-feasibility`  
-**Work class:** HARNESS / FEASIBILITY IMPLEMENTATION REWORK5 (F010 INT8 identity)  
+**Work class:** HARNESS / FEASIBILITY IMPLEMENTATION REWORK6 (F011 INT8 source provenance)  
 
-**Status:** POST-D2 CPU OPENVINO FEASIBILITY HARNESS IMPLEMENTATION REWORK5 COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
+**Status:** POST-D2 CPU OPENVINO FEASIBILITY HARNESS IMPLEMENTATION REWORK6 COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
 
 **Accepted implementation subject (IR-004):** `769116132ed91543732db9f80503e539fb66b234`  
 **Follow-up tip (OVConfig/ST integration fix):** `22ef4994cef2d55d618c8a260f241e62a05de5e7`  
@@ -138,4 +139,5 @@ tuning · batch sweep · production dependency promotion · main.
 | F007 missing CPU host facts | `capture_cpu_host_runtime_facts()` on screen/full evidence |
 | F008 precision identity | Separate requested / observed IR / observed CPU inference; FP16 via post-export `compress_to_fp16`; no label-derived dtype |
 | F009 unsafe in-place IR compress | CLOSED (IR-005): distinct same-FS temp IR → validate non-zero + fp16 → replace; never `save_model` onto the source path |
-| F010 INT8 identity not fail-closed | `observed_INT8_weight_compression` from i8/u8 Constant evidence + NNCF `INT8_ASYM` provenance; refuse fp16/fp32 IR when requested=int8; derivative no-retrace materialization path |
+| F010 INT8 identity not fail-closed | CLOSED (IR-006 partial): `observed_INT8_weight_compression` from i8/u8 + NNCF `INT8_ASYM`; refuse fp16/fp32 when requested=int8 |
+| F011 INT8 source provenance | INT8 derivative source must hash to frozen Stage-0 FP32 tree `7e48d6d9…` and inspect as known FP32 IR before NNCF; source re-hashed unchanged afterward |

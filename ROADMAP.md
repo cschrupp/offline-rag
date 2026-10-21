@@ -1078,17 +1078,17 @@ SLICE 15  COMPLETE / ACCEPTED
        16K-D D2 production default: UNCHANGED (CUDA / BF16 / batch 32)
        16K-D D2 further execution: NOT AUTHORIZED under decision-boundary freeze
        16K-D CPU-OV-01 authority:
-         S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-REWORK5-AUTH-001
-         — AUTHORIZED (rework5 / F010 INT8 identity fail-closed)
-       Exact 16K-D CPU-OV-01 rework5 parent:
-         b267542bdebc1c6ef0de3b7d9e1bcdfbdaa45912
+         S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-REWORK6-AUTH-001
+         — AUTHORIZED (rework6 / F011 INT8 source provenance)
+       Exact 16K-D CPU-OV-01 rework6 parent:
+         85714169e610331c551cb37d02325b246cb1c0f2
        Underlying implementation base:
          eea4c976a351fbb41d1cd3efc1337198813c2e22
        16K-D CPU-OV-01 branch: implementation/16k-d-cpu-openvino-feasibility
        16K-D CPU-OV-01 document:
          docs/slice16k_d_cpu_openvino_feasibility.md
        16K-D CPU-OV-01 status: POST-D2 CPU OPENVINO FEASIBILITY HARNESS
-         IMPLEMENTATION REWORK5 COMPLETE / READY FOR INDEPENDENT RE-REVIEW
+         IMPLEMENTATION REWORK6 COMPLETE / READY FOR INDEPENDENT RE-REVIEW
        16K-D CPU-OV-01 Stage-0: PASS at eea4c97 under STAGE0-EXECUTION-AUTH-001
          (IR storage inspected as FP32; not OV-FP16 storage)
        16K-D CPU-OV-01 FP16 derivative: PASS under LOWMEM-STAGE0-EXECUTION-AUTH-002
@@ -1897,17 +1897,17 @@ SLICE 15  COMPLETE / ACCEPTED
        16K-D D2 production default: UNCHANGED (CUDA / BF16 / batch 32)
        16K-D D2 further execution: NOT AUTHORIZED under decision-boundary freeze
        16K-D CPU-OV-01 authority:
-         S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-REWORK5-AUTH-001
-         — AUTHORIZED (rework5 / F010 INT8 identity fail-closed)
-       Exact 16K-D CPU-OV-01 rework5 parent:
-         b267542bdebc1c6ef0de3b7d9e1bcdfbdaa45912
+         S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-REWORK6-AUTH-001
+         — AUTHORIZED (rework6 / F011 INT8 source provenance)
+       Exact 16K-D CPU-OV-01 rework6 parent:
+         85714169e610331c551cb37d02325b246cb1c0f2
        Underlying implementation base:
          eea4c976a351fbb41d1cd3efc1337198813c2e22
        16K-D CPU-OV-01 branch: implementation/16k-d-cpu-openvino-feasibility
        16K-D CPU-OV-01 document:
          docs/slice16k_d_cpu_openvino_feasibility.md
        16K-D CPU-OV-01 status: POST-D2 CPU OPENVINO FEASIBILITY HARNESS
-         IMPLEMENTATION REWORK5 COMPLETE / READY FOR INDEPENDENT RE-REVIEW
+         IMPLEMENTATION REWORK6 COMPLETE / READY FOR INDEPENDENT RE-REVIEW
        16K-D CPU-OV-01 Stage-0: PASS at eea4c97 under STAGE0-EXECUTION-AUTH-001
          (IR storage inspected as FP32; not OV-FP16 storage)
        16K-D CPU-OV-01 FP16 derivative: PASS under LOWMEM-STAGE0-EXECUTION-AUTH-002
