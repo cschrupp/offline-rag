@@ -1094,8 +1094,10 @@ SLICE 15  COMPLETE / ACCEPTED
          under FP16-128-SCREEN-EXECUTION-AUTH-001
        16K-D CPU-OV-01 INT8 Stage-0: PASS under INT8-STAGE0-EXECUTION-AUTH-001
          (tree 465cef75…; IR=int8; NNCF INT8_ASYM; observed CPU inference=fp32)
-       16K-D CPU-OV-01 execution: NOT AUTHORIZED beyond INT8 Stage-0
-         (INT8 screen / parity / full / production routing closed)
+       16K-D CPU-OV-01 INT8 128-screen: PASS / TOO_SLOW (~39.75 min projected)
+         under INT8-128-SCREEN-EXECUTION-AUTH-001; CPU-OV-01 STOP
+       16K-D CPU-OV-01 execution: CLOSED after INT8 screen TOO_SLOW
+         (parity / full / production routing closed)
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md
@@ -1912,8 +1914,10 @@ SLICE 15  COMPLETE / ACCEPTED
          under FP16-128-SCREEN-EXECUTION-AUTH-001
        16K-D CPU-OV-01 INT8 Stage-0: PASS under INT8-STAGE0-EXECUTION-AUTH-001
          (tree 465cef75…; IR=int8; NNCF INT8_ASYM; observed CPU inference=fp32)
-       16K-D CPU-OV-01 execution: NOT AUTHORIZED beyond INT8 Stage-0
-         (INT8 screen / parity / full / production routing closed)
+       16K-D CPU-OV-01 INT8 128-screen: PASS / TOO_SLOW (~39.75 min projected)
+         under INT8-128-SCREEN-EXECUTION-AUTH-001; CPU-OV-01 STOP
+       16K-D CPU-OV-01 execution: CLOSED after INT8 screen TOO_SLOW
+         (parity / full / production routing closed)
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md

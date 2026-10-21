@@ -23,11 +23,12 @@
 **F009:** CLOSED (IR-005)  
 **FP16 lowmem AUTH-002:** PASS — IR-001 ACCEPT — candidate tree `c1ebe0b8435ce8d32526875822f933f5f96999d7c44d13698c0b6b8a91d3f252` (`exports/fp16_lowmem_v2`; IR=fp16; observed CPU inference=fp32)  
 **FP16 128-screen AUTH-001:** PASS / **TOO_SLOW** — IR-001 ACCEPT — ~0.459 chunks/s; projected ~47.1 min (>25); FP16 parity/full CLOSED  
-**INT8 Stage-0 AUTH-001:** PASS — candidate tree `465cef758981ab3beab5958f8004c0017603b11fd6d5c2a555e404f27fb2314d` (`exports/int8_asym_v1`; IR=int8; u8=394; BIN≈597 MB; observed CPU inference=fp32; NNCF 3.4.0 INT8_ASYM)  
+**INT8 Stage-0 AUTH-001:** PASS — IR-001 ACCEPT — candidate tree `465cef758981ab3beab5958f8004c0017603b11fd6d5c2a555e404f27fb2314d` (`exports/int8_asym_v1`; IR=int8; u8=394; BIN≈597 MB; observed CPU inference=fp32; NNCF 3.4.0 INT8_ASYM)  
+**INT8 128-screen AUTH-001:** PASS / **TOO_SLOW** — ~0.543 chunks/s; projected ~39.75 min (>25); **CPU-OV-01 STOP** (no INT8 parity / no full confirmation)  
 **FP16 candidate description:** OpenVINO CPU / FP16 IR storage / observed CPU inference precision FP32  
 **INT8 candidate description:** OpenVINO CPU / Qwen3-Embedding-0.6B / NNCF INT8_ASYM weight compression  
 **D2 predecessor:** CAMPAIGN COMPLETE / G1 SELECTED  
-**Further execution:** NOT AUTHORIZED (INT8 128-screen / parity / full / production / main closed; `EXECUTION_AUTHORIZED=False`)  
+**Further execution:** NOT AUTHORIZED (CPU-OV-01 speed budget exhausted; parity / full / production / main closed; `EXECUTION_AUTHORIZED=False`)  
 
 ---
 
