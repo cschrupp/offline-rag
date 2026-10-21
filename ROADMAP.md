@@ -1093,8 +1093,10 @@ SLICE 15  COMPLETE / ACCEPTED
          (IR storage inspected as FP32; not OV-FP16 storage)
        16K-D CPU-OV-01 FP16 derivative: PASS under LOWMEM-STAGE0-EXECUTION-AUTH-002
          (tree c1ebe0b8…; IR=fp16; observed CPU inference=fp32)
-       16K-D CPU-OV-01 execution: NOT AUTHORIZED beyond FP16 materialization
-         (screens / parity / full run / production routing closed)
+       16K-D CPU-OV-01 FP16 128-screen: PASS / TOO_SLOW (~47.1 min projected)
+         under FP16-128-SCREEN-EXECUTION-AUTH-001; INT8 prep next possible
+       16K-D CPU-OV-01 execution: NOT AUTHORIZED beyond 128-screen
+         (parity / INT8 / full / production routing closed)
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md
@@ -1910,8 +1912,10 @@ SLICE 15  COMPLETE / ACCEPTED
          (IR storage inspected as FP32; not OV-FP16 storage)
        16K-D CPU-OV-01 FP16 derivative: PASS under LOWMEM-STAGE0-EXECUTION-AUTH-002
          (tree c1ebe0b8…; IR=fp16; observed CPU inference=fp32)
-       16K-D CPU-OV-01 execution: NOT AUTHORIZED beyond FP16 materialization
-         (screens / parity / full run / production routing closed)
+       16K-D CPU-OV-01 FP16 128-screen: PASS / TOO_SLOW (~47.1 min projected)
+         under FP16-128-SCREEN-EXECUTION-AUTH-001; INT8 prep next possible
+       16K-D CPU-OV-01 execution: NOT AUTHORIZED beyond 128-screen
+         (parity / INT8 / full / production routing closed)
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md

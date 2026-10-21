@@ -23,9 +23,11 @@
 **FP16 ST re-export AUTH-002:** ABORTED / ENVIRONMENTAL (SIGBUS on fresh ST save)  
 **FP16 lowmem AUTH-001:** ABORTED / IMPLEMENTATION EXECUTION DEFECT — F009 — not a scientific FAIL  
 **F009:** CLOSED (IR-005)  
-**FP16 lowmem AUTH-002:** PASS — derivative candidate tree `c1ebe0b8435ce8d32526875822f933f5f96999d7c44d13698c0b6b8a91d3f252` (`exports/fp16_lowmem_v2`; IR=fp16; observed CPU inference=fp32)  
+**FP16 lowmem AUTH-002:** PASS — IR-001 ACCEPT — candidate tree `c1ebe0b8435ce8d32526875822f933f5f96999d7c44d13698c0b6b8a91d3f252` (`exports/fp16_lowmem_v2`; IR=fp16; observed CPU inference=fp32)  
+**FP16 128-screen AUTH-001:** PASS / **TOO_SLOW** — ~0.459 chunks/s; projected ~47.1 min (>25); next possible gate = INT8 preparation (FP16 parity/full closed)  
+**Candidate description:** OpenVINO CPU / FP16 IR storage / observed CPU inference precision FP32  
 **D2 predecessor:** CAMPAIGN COMPLETE / G1 SELECTED  
-**Further execution:** NOT AUTHORIZED (128-child screen / parity / full / INT8 / production / main closed; `EXECUTION_AUTHORIZED=False`)  
+**Further execution:** NOT AUTHORIZED (FP16 parity / INT8 / full / production / main closed; `EXECUTION_AUTHORIZED=False`)  
 
 ---
 
