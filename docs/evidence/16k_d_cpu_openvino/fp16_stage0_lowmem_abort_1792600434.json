@@ -1,0 +1,28 @@
+{
+  "authority": "S16-K-D-POST-D2-CPU-OPENVINO-FP16-LOWMEM-STAGE0-EXECUTION-AUTH-001",
+  "disposition": "ABORTED / IMPLEMENTATION EXECUTION DEFECT — F009",
+  "disposition_supersedes": "ABORTED / ENVIRONMENTAL EXECUTION FAILURE",
+  "execution_subject": "22ef4994cef2d55d618c8a260f241e62a05de5e7",
+  "experiment_id": "16K-D-CPU-OV-01",
+  "failure_locus": "ov.save_model(..., compress_to_fp16=True) onto the same path as Core.read_model source IR (in-place alias)",
+  "finding": "F009",
+  "finding_status": "OPEN_AT_EXECUTION / CLOSED_BY_REWORK4",
+  "note": "Copy of immutable Stage-0 FP32 export succeeded and pre-compress IR inspect reported fp32. In-place compress_to_fp16 then SIGBUS with zero-byte xml/bin — consistent with truncating the mapped source .bin during save. Distinct /tmp destination compress had previously succeeded. Not a scientific FAIL. Historical source 7e48d6d9... remained untouched. Rework4 removes the aliasing helper.",
+  "partial_bin_bytes": 0,
+  "partial_candidate_dir": "data/16k_d_cpu_ov_work/exports/fp16_lowmem",
+  "partial_xml_bytes": 0,
+  "pre_compress_observation": {
+    "bin_bytes": 2383106573,
+    "f16_constant_count": 0,
+    "f32_constant_count": 680,
+    "observed_IR_weight_precision": "fp32"
+  },
+  "prior_authority_aborted": "S16-K-D-POST-D2-CPU-OPENVINO-FP16-STAGE0-EXECUTION-AUTH-002",
+  "recorded_at": "2026-10-21T16:33:54.804588Z",
+  "disposition_corrected_at": "2026-10-21T16:40:00.000000Z",
+  "scientific_result": "NOT_A_SCIENTIFIC_FAIL",
+  "signal": "SIGBUS exit_code=135",
+  "source_tree_sha256_required": "7e48d6d9f9b839c4dee427340857e239c33258ee80b3cf2bb9df1476569e1e00",
+  "stage": "fp16_candidate_materialization_lowmem",
+  "stop_rule": "Authority required immediate STOP on compress bus error; no retry under AUTH-001."
+}

@@ -890,3 +890,109 @@ def test_compress_to_fp16_probe_classifies_fp16() -> None:
     assert ir["f16_constant_count"] > ir["f32_constant_count"]
     assert ir["bin_bytes"] is not None
     assert ir["bin_bytes"] < 2383106573
+
+
+def test_compress_fp16_never_aliases_source_destination(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """F009: save_model destination must not resolve to the source IR pair."""
+    from offline_rag.dense import cpu_ov_executor as ex
+
+    src_dir = tmp_path / "candidate" / "openvino"
+    src_dir.mkdir(parents=True)
+    source_xml = src_dir / "openvino_model.xml"
+    source_bin = src_dir / "openvino_model.bin"
+    source_xml.write_text("<net name='src'/>\n", encoding="utf-8")
+    source_bin.write_bytes(b"FP32-WEIGHTS-SOURCE")
+    source_xml_before = source_xml.read_bytes()
+    source_bin_before = source_bin.read_bytes()
+
+    saved_to: list[Path] = []
+
+    class _FakeCore:
+        def read_model(self, path: str) -> object:
+            assert Path(path).resolve() == source_xml.resolve()
+            return object()
+
+    def _fake_save_model(model: object, path: str, compress_to_fp16: bool = False) -> None:
+        del model
+        assert compress_to_fp16 is True
+        dest_xml = Path(path).resolve()
+        dest_bin = dest_xml.with_suffix(".bin")
+        saved_to.append(dest_xml)
+        assert dest_xml != source_xml.resolve()
+        assert dest_bin != source_bin.resolve()
+        dest_xml.parent.mkdir(parents=True, exist_ok=True)
+        dest_xml.write_text("<net name='fp16'/>\n", encoding="utf-8")
+        dest_bin.write_bytes(b"FP16-WEIGHTS-TEMP")
+
+    def _fake_inspect(xml_path: Path) -> dict:
+        resolved = Path(xml_path).resolve()
+        assert resolved != source_xml.resolve()
+        return {
+            "observed_IR_weight_precision": "fp16",
+            "f16_constant_count": 10,
+            "f32_constant_count": 1,
+            "bin_bytes": resolved.with_suffix(".bin").stat().st_size,
+        }
+
+    fake_ov = type(
+        "ov",
+        (),
+        {"Core": _FakeCore, "save_model": staticmethod(_fake_save_model)},
+    )
+    monkeypatch.setitem(__import__("sys").modules, "openvino", fake_ov)
+    monkeypatch.setattr(ex, "inspect_openvino_ir_weight_precision", _fake_inspect)
+
+    out = ex._compress_openvino_ir_to_fp16(source_xml)
+    assert out.resolve() == source_xml.resolve()
+    assert saved_to, "save_model was not called"
+    assert saved_to[0] != source_xml.resolve()
+    assert source_xml.read_bytes() == b"<net name='fp16'/>\n"
+    assert source_bin.read_bytes() == b"FP16-WEIGHTS-TEMP"
+    # Temporary directory cleaned; only candidate IR remains under openvino/.
+    assert list(src_dir.glob("ov_fp16_compress_*")) == []
+    assert source_xml_before != source_xml.read_bytes()
+    assert source_bin_before != source_bin.read_bytes()
+
+
+def test_compress_fp16_leaves_source_untouched_when_temp_invalid(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """F009: failed temporary IR must not replace the candidate pair."""
+    from offline_rag.dense import cpu_ov_executor as ex
+
+    src_dir = tmp_path / "candidate" / "openvino"
+    src_dir.mkdir(parents=True)
+    source_xml = src_dir / "openvino_model.xml"
+    source_bin = src_dir / "openvino_model.bin"
+    source_xml.write_text("<net name='src'/>\n", encoding="utf-8")
+    source_bin.write_bytes(b"FP32-WEIGHTS-SOURCE")
+    before_xml = source_xml.read_bytes()
+    before_bin = source_bin.read_bytes()
+
+    class _FakeCore:
+        def read_model(self, path: str) -> object:
+            del path
+            return object()
+
+    def _fake_save_model(model: object, path: str, compress_to_fp16: bool = False) -> None:
+        del model, compress_to_fp16
+        dest_xml = Path(path)
+        dest_xml.parent.mkdir(parents=True, exist_ok=True)
+        dest_xml.write_bytes(b"")  # empty → fail closed
+        dest_xml.with_suffix(".bin").write_bytes(b"")
+
+    fake_ov = type(
+        "ov",
+        (),
+        {"Core": _FakeCore, "save_model": staticmethod(_fake_save_model)},
+    )
+    monkeypatch.setitem(__import__("sys").modules, "openvino", fake_ov)
+
+    with pytest.raises(RuntimeError, match="empty"):
+        ex._compress_openvino_ir_to_fp16(source_xml)
+
+    assert source_xml.read_bytes() == before_xml
+    assert source_bin.read_bytes() == before_bin
+    assert list(src_dir.glob("ov_fp16_compress_*")) == []

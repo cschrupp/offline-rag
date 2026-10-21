@@ -15,7 +15,9 @@ import hashlib
 import json
 import math
 import os
+import shutil
 import statistics
+import tempfile
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -455,14 +457,60 @@ def assert_requested_ir_precision(
 
 
 def _compress_openvino_ir_to_fp16(xml_path: Path) -> Path:
-    """Rewrite IR weights with OpenVINO compress_to_fp16 storage transform."""
+    """Rewrite IR weights with OpenVINO compress_to_fp16 (F009: no in-place alias).
+
+    ``read_model`` keeps the source ``.bin`` mapped; ``save_model`` must write a
+    distinct temporary IR pair on the same filesystem, validate FP16 storage,
+    then replace the candidate pair. Never save onto the source path.
+    """
     import openvino as ov
 
-    core = ov.Core()
-    model = core.read_model(str(xml_path))
-    # Overwrite in place — same basename expected by ST openvino backend.
-    ov.save_model(model, str(xml_path), compress_to_fp16=True)
-    return xml_path
+    source_xml = Path(xml_path).resolve()
+    source_bin = source_xml.with_suffix(".bin")
+    if not source_xml.is_file():
+        raise FileNotFoundError(f"OpenVINO IR xml missing: {source_xml}")
+    if not source_bin.is_file():
+        raise FileNotFoundError(f"OpenVINO IR bin missing: {source_bin}")
+
+    tmp_root = Path(
+        tempfile.mkdtemp(prefix="ov_fp16_compress_", dir=str(source_xml.parent))
+    )
+    tmp_xml = (tmp_root / source_xml.name).resolve()
+    tmp_bin = tmp_xml.with_suffix(".bin")
+    if tmp_xml == source_xml or tmp_bin == source_bin:
+        shutil.rmtree(tmp_root, ignore_errors=True)
+        raise RuntimeError(
+            "F009: compress destination aliases source IR path "
+            f"(source={source_xml}, dest={tmp_xml})"
+        )
+
+    try:
+        core = ov.Core()
+        model = core.read_model(str(source_xml))
+        ov.save_model(model, str(tmp_xml), compress_to_fp16=True)
+
+        if not tmp_xml.is_file() or tmp_xml.stat().st_size <= 0:
+            raise RuntimeError(
+                f"F009: compressed IR xml missing or empty: {tmp_xml}"
+            )
+        if not tmp_bin.is_file() or tmp_bin.stat().st_size <= 0:
+            raise RuntimeError(
+                f"F009: compressed IR bin missing or empty: {tmp_bin}"
+            )
+
+        ir = inspect_openvino_ir_weight_precision(tmp_xml)
+        if ir.get("observed_IR_weight_precision") != "fp16":
+            raise RuntimeError(
+                "F009: temporary compressed IR is not fp16 storage: "
+                f"{ir.get('observed_IR_weight_precision')!r}"
+            )
+
+        # Install only after validation — atomic replace on same filesystem.
+        os.replace(tmp_xml, source_xml)
+        os.replace(tmp_bin, source_bin)
+        return source_xml
+    finally:
+        shutil.rmtree(tmp_root, ignore_errors=True)
 
 
 def export_openvino_model(

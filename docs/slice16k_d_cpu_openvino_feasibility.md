@@ -2,20 +2,24 @@
 
 **Experiment:** `16K-D CPU-OV-01 — SAME-MODEL OPENVINO CPU FEASIBILITY`  
 **Implementation authority:** `S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-AUTH-001`  
-**Rework3 authority:** `S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-REWORK3-AUTH-001` — AUTHORIZED  
-**Exact rework3 parent:** `f48a626749c5a33f45a3949f833dba8cdca04ec6`  
+**Rework4 authority:** `S16-K-D-POST-D2-CPU-OPENVINO-FEASIBILITY-IMPLEMENTATION-REWORK4-AUTH-001` — AUTHORIZED  
+**Exact rework4 parent:** `0a6900345b7d66a5213fe20700e84a418232e2cd`  
 **Underlying implementation base:** `eea4c976a351fbb41d1cd3efc1337198813c2e22`  
 **Branch:** `implementation/16k-d-cpu-openvino-feasibility`  
-**Work class:** HARNESS / FEASIBILITY IMPLEMENTATION REWORK3 (F008 precision identity)  
+**Work class:** HARNESS / FEASIBILITY IMPLEMENTATION REWORK4 (F009 non-aliasing FP16 IR compress)  
 
-**Status:** POST-D2 CPU OPENVINO FEASIBILITY HARNESS IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED  
+**Status:** POST-D2 CPU OPENVINO FEASIBILITY HARNESS IMPLEMENTATION REWORK4 COMPLETE / READY FOR INDEPENDENT RE-REVIEW  
 
 **Accepted implementation subject:** `769116132ed91543732db9f80503e539fb66b234` (IR-004 ACCEPT)  
 **Follow-up tip (OVConfig/ST integration fix):** `22ef4994cef2d55d618c8a260f241e62a05de5e7`  
+**Evidence tip (AUTH-001 FAIL record):** `0a6900345b7d66a5213fe20700e84a418232e2cd`  
 
 **Stage-0 (historical):** PASS under `…-STAGE0-EXECUTION-AUTH-001` at `eea4c97…`  
 **Stage-0 IR storage (inspected):** FP32 — compatibility PASS stands; not OV-FP16 storage  
-**FP16 materialization at 7691161:** FAIL (`TypeError`: ST `ov_config` rejects `OVConfig` object) — evidence recorded; retry requires subject pin at `22ef499…`  
+**Historical Stage-0 export tree:** `7e48d6d9f9b839c4dee427340857e239c33258ee80b3cf2bb9df1476569e1e00`  
+**FP16 materialization at 7691161:** FAIL (`TypeError`: ST `ov_config` rejects `OVConfig` object) — evidence recorded  
+**FP16 ST re-export AUTH-002:** ABORTED / ENVIRONMENTAL (SIGBUS on fresh ST save)  
+**FP16 lowmem AUTH-001:** ABORTED / IMPLEMENTATION EXECUTION DEFECT — F009 (in-place `save_model` alias) — not a scientific FAIL  
 **D2 predecessor:** CAMPAIGN COMPLETE / G1 SELECTED  
 **Further execution:** NOT AUTHORIZED beyond authorized FP16 materialization (`EXECUTION_AUTHORIZED=False`; no screen/parity/full)  
 
@@ -127,4 +131,5 @@ tuning · batch sweep · production dependency promotion · main.
 | F005 CLI missing export-dir | `--export-dir` required/passed for screen/parity/full-confirm |
 | F006 encode-only full confirm | `execute_full_confirm` uses isolated `run_indexing` + OV embedder inject |
 | F007 missing CPU host facts | `capture_cpu_host_runtime_facts()` on screen/full evidence |
-| F008 precision identity | Separate requested / observed IR / observed CPU inference; FP16 export via `OVConfig(dtype=fp16)` + `compress_to_fp16`; no label-derived dtype |
+| F008 precision identity | Separate requested / observed IR / observed CPU inference; FP16 via post-export `compress_to_fp16`; no label-derived dtype |
+| F009 unsafe in-place IR compress | `_compress_openvino_ir_to_fp16` writes a distinct same-FS temp IR, validates non-zero + `observed_IR_weight_precision=fp16`, then replaces; never `save_model` onto the source path |
