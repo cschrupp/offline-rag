@@ -1,11 +1,14 @@
 """CPU-GGUF-01 llama.cpp Q8_0 feasibility harness (execution-locked).
 
 Authority: S16-K-D-POST-CPUONNX-CPU-GGUF-FEASIBILITY-IMPLEMENTATION-AUTH-001
+Rework: S16-K-D-POST-CPUONNX-CPU-GGUF-FEASIBILITY-IMPLEMENTATION-REWORK-AUTH-001
 
 Implements Stage-0 artifact/runtime compat, 128-child screen, and
 d2-retrieval-parity-v1 scaffolding behind ``EXECUTION_AUTHORIZED``. While False,
 scientific entrypoints refuse without launching llama-server or touching the
 sample workload. When True, entrypoints delegate to ``cpu_gguf_executor``.
+
+F001: screen/parity require ``expected_llama_server_sha256`` from Stage-0.
 """
 
 from __future__ import annotations
@@ -43,10 +46,12 @@ from offline_rag.dense.cpu_gguf_feasibility import (
     FROZEN_THREADS,
     FROZEN_THREADS_BATCH,
     IMPLEMENTATION_AUTH,
+    IMPLEMENTATION_REWORK_AUTH,
     PARITY_CONTRACT_ID,
     PARITY_DOC_COUNT,
     PARITY_QUERY_COUNT,
     PARITY_THRESHOLDS,
+    REWORK_PARENT,
     SCREEN_CHILD_COUNT,
     WORKLOAD_LABEL,
     StageResult,
@@ -59,6 +64,7 @@ from offline_rag.dense.cpu_gguf_feasibility import (
 )
 from offline_rag.dense.cpu_gguf_server import (
     probe_llama_server_binary,
+    require_llama_server_sha256,
     verify_official_gguf,
 )
 
@@ -189,6 +195,7 @@ def preflight_gguf_and_binary(
                 "absolute_path": identity.absolute_path,
                 "binary_sha256": identity.binary_sha256,
                 "version_output": identity.version_output[:500],
+                "version_exit_code": identity.version_exit_code,
                 "cpu_architecture": identity.cpu_architecture,
             }
         except Exception as exc:  # noqa: BLE001
@@ -211,7 +218,9 @@ def _locked_payload(
     plan = plan_next(history)
     body: dict[str, Any] = {
         "authority": IMPLEMENTATION_AUTH,
+        "rework_authority": IMPLEMENTATION_REWORK_AUTH,
         "exact_parent": EXACT_PARENT,
+        "rework_parent": REWORK_PARENT,
         "experiment_id": EXPERIMENT_ID,
         "design_doc": DESIGN_DOC,
         "status": "EXECUTION_NOT_AUTHORIZED",
@@ -333,11 +342,22 @@ def run_stage0_compat(
     )
 
 
+def _require_runtime_pin_arg(expected_llama_server_sha256: str | None) -> str:
+    expected = str(expected_llama_server_sha256 or "").strip().lower()
+    if not expected:
+        raise ValueError(
+            "expected_llama_server_sha256 is required "
+            "(accepted Stage-0 llama-server binary SHA); refusing unpinned runtime"
+        )
+    return expected
+
+
 def run_screen(
     *,
     history: list[StageResult],
     gguf_path: Path | None = None,
     llama_server_path: Path | None = None,
+    expected_llama_server_sha256: str | None = None,
     repo_root: Path | None = None,
     evidence_dir: Path | None = None,
 ) -> dict[str, Any]:
@@ -356,6 +376,17 @@ def run_screen(
                 "chunk_manifest_sha256": EXPECTED_CHUNK_MANIFEST_SHA256,
                 "application_request_batch": FROZEN_BATCH_SIZE,
                 "expected_request_count": SCREEN_CHILD_COUNT // FROZEN_BATCH_SIZE,
+                "expected_llama_server_sha256": (
+                    str(expected_llama_server_sha256).strip().lower()
+                    if expected_llama_server_sha256
+                    else None
+                ),
+                "expected_llama_server_sha256_required": True,
+                "runtime_pin_note": (
+                    "When unlocked, screen refuses launch unless "
+                    "expected_llama_server_sha256 matches the accepted Stage-0 "
+                    "llama-server binary SHA (F001)."
+                ),
                 "preflight": preflight_gguf_and_binary(
                     gguf_path=gguf_path,
                     llama_server_path=llama_server_path,
@@ -368,11 +399,18 @@ def run_screen(
         raise ValueError(
             "gguf_path and llama_server_path are required when execution is unlocked"
         )
+    expected = _require_runtime_pin_arg(expected_llama_server_sha256)
+    # Fail closed before any server launch / scientific work.
+    require_llama_server_sha256(
+        Path(llama_server_path),
+        expected_llama_server_sha256=expected,
+    )
     from offline_rag.dense import cpu_gguf_executor as ex
 
     return ex.execute_screen(
         gguf_path=Path(gguf_path),
         llama_server_path=Path(llama_server_path),
+        expected_llama_server_sha256=expected,
         repo_root=repo_root or _repo_root(),
         evidence_dir=evidence_dir or _default_evidence_dir(repo_root),
     )
@@ -383,6 +421,7 @@ def run_parity(
     history: list[StageResult],
     gguf_path: Path | None = None,
     llama_server_path: Path | None = None,
+    expected_llama_server_sha256: str | None = None,
     repo_root: Path | None = None,
     evidence_dir: Path | None = None,
 ) -> dict[str, Any]:
@@ -404,6 +443,17 @@ def run_parity(
                 "chunk_manifest_sha256": EXPECTED_CHUNK_MANIFEST_SHA256,
                 "reference_lane": "cuda/fp16/batch32 (D2 G1 selected candidate)",
                 "candidate_lane": "llama_cpp/cpu/q8_0/pooling_last/batch32",
+                "expected_llama_server_sha256": (
+                    str(expected_llama_server_sha256).strip().lower()
+                    if expected_llama_server_sha256
+                    else None
+                ),
+                "expected_llama_server_sha256_required": True,
+                "runtime_pin_note": (
+                    "When unlocked, parity refuses launch unless "
+                    "expected_llama_server_sha256 matches the accepted Stage-0 "
+                    "llama-server binary SHA (F001)."
+                ),
                 "preflight": preflight_gguf_and_binary(
                     gguf_path=gguf_path,
                     llama_server_path=llama_server_path,
@@ -416,11 +466,17 @@ def run_parity(
         raise ValueError(
             "gguf_path and llama_server_path are required when execution is unlocked"
         )
+    expected = _require_runtime_pin_arg(expected_llama_server_sha256)
+    require_llama_server_sha256(
+        Path(llama_server_path),
+        expected_llama_server_sha256=expected,
+    )
     from offline_rag.dense import cpu_gguf_executor as ex
 
     return ex.execute_parity(
         gguf_path=Path(gguf_path),
         llama_server_path=Path(llama_server_path),
+        expected_llama_server_sha256=expected,
         repo_root=repo_root or _repo_root(),
         evidence_dir=evidence_dir or _default_evidence_dir(repo_root),
     )

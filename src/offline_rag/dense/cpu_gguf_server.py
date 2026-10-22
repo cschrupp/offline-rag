@@ -1,16 +1,23 @@
 """Local llama-server subprocess manager for CPU-GGUF-01.
 
 Authority: S16-K-D-POST-CPUONNX-CPU-GGUF-FEASIBILITY-IMPLEMENTATION-AUTH-001
+Rework: S16-K-D-POST-CPUONNX-CPU-GGUF-FEASIBILITY-IMPLEMENTATION-REWORK-AUTH-001
 
 Does not download artifacts. Requires pre-existing pinned llama-server binary
 and exact Q8_0 GGUF path with SHA verification before launch.
+
+F001: screen/parity pin expected_llama_server_sha256 before launch.
+F002: file-backed stdout/stderr (never unread PIPE).
+F003: --version probe is fail-closed with recorded exit code.
 """
 
 from __future__ import annotations
 
 import hashlib
+import platform
 import socket
 import subprocess
+import tempfile
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -29,12 +36,15 @@ from offline_rag.dense.cpu_gguf_feasibility import (
     FROZEN_THREADS_BATCH,
 )
 
+_LOG_TAIL_CHARS = 4000
+
 
 @dataclass(frozen=True)
 class LlamaServerIdentity:
     absolute_path: str
     binary_sha256: str
     version_output: str
+    version_exit_code: int
     cpu_architecture: str
 
 
@@ -63,6 +73,8 @@ class LlamaServerLaunchRecord:
     model_path: str
     binary: LlamaServerIdentity
     gguf: GgufArtifactIdentity
+    stdout_log_path: str
+    stderr_log_path: str
 
 
 def sha256_file(path: Path, *, chunk_size: int = 1024 * 1024) -> str:
@@ -98,6 +110,7 @@ def verify_official_gguf(path: Path) -> GgufArtifactIdentity:
 
 
 def probe_llama_server_binary(path: Path) -> LlamaServerIdentity:
+    """Fail-closed binary identity: SHA256 + successful nonempty --version."""
     if not path.is_file():
         raise FileNotFoundError(f"llama-server not found: {path}")
     resolved = path.resolve()
@@ -110,20 +123,51 @@ def probe_llama_server_binary(path: Path) -> LlamaServerIdentity:
             check=False,
             timeout=30,
         )
-        version_output = (
-            (completed.stdout or "") + (completed.stderr or "")
-        ).strip()
     except Exception as exc:  # noqa: BLE001
-        version_output = f"<version probe failed: {exc}>"
-    # uname -m via Python
-    import platform
+        raise RuntimeError(
+            f"llama-server --version probe failed with exception: {exc}"
+        ) from exc
+
+    version_output = ((completed.stdout or "") + (completed.stderr or "")).strip()
+    if completed.returncode != 0:
+        raise RuntimeError(
+            "llama-server --version exited non-zero: "
+            f"code={completed.returncode} output={version_output[:500]!r}"
+        )
+    if not version_output:
+        raise RuntimeError(
+            "llama-server --version produced empty stdout/stderr "
+            f"(exit={completed.returncode})"
+        )
 
     return LlamaServerIdentity(
         absolute_path=str(resolved),
         binary_sha256=digest.lower(),
         version_output=version_output[:4000],
+        version_exit_code=int(completed.returncode),
         cpu_architecture=platform.machine(),
     )
+
+
+def require_llama_server_sha256(
+    path: Path,
+    *,
+    expected_llama_server_sha256: str,
+) -> LlamaServerIdentity:
+    """Fail closed before launch if binary SHA does not match Stage-0 pin."""
+    expected = str(expected_llama_server_sha256 or "").strip().lower()
+    if not expected:
+        raise ValueError(
+            "expected_llama_server_sha256 is required "
+            "(accepted Stage-0 llama-server binary SHA)"
+        )
+    identity = probe_llama_server_binary(path)
+    if identity.binary_sha256 != expected:
+        raise ValueError(
+            "llama-server binary SHA mismatch: "
+            f"got {identity.binary_sha256} expected {expected}"
+        )
+    return identity
 
 
 def _pick_free_port() -> int:
@@ -168,6 +212,18 @@ def build_llama_server_command(
     ]
 
 
+def _read_tail(path: Path | None, *, max_chars: int = _LOG_TAIL_CHARS) -> str:
+    if path is None or not path.is_file():
+        return ""
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except Exception as exc:  # noqa: BLE001
+        return f"<log read failed: {exc}>"
+    if len(text) <= max_chars:
+        return text
+    return text[-max_chars:]
+
+
 class LlamaServerProcess:
     """Manage a local llama-server subprocess for embedding experiments."""
 
@@ -182,6 +238,8 @@ class LlamaServerProcess:
         threads_batch: int = FROZEN_THREADS_BATCH,
         ready_timeout_s: float = 300.0,
         poll_interval_s: float = 0.5,
+        log_dir: Path | None = None,
+        expected_llama_server_sha256: str | None = None,
     ) -> None:
         self.binary_path = Path(binary_path)
         self.gguf_path = Path(gguf_path)
@@ -191,10 +249,19 @@ class LlamaServerProcess:
         self.threads_batch = int(threads_batch)
         self.ready_timeout_s = float(ready_timeout_s)
         self.poll_interval_s = float(poll_interval_s)
+        self._log_dir_arg = Path(log_dir) if log_dir is not None else None
+        self.expected_llama_server_sha256 = (
+            str(expected_llama_server_sha256).strip().lower()
+            if expected_llama_server_sha256 is not None
+            else None
+        )
         self._proc: subprocess.Popen[str] | None = None
         self.launch_record: LlamaServerLaunchRecord | None = None
-        self.stdout_log: list[str] = []
-        self.stderr_log: list[str] = []
+        self.log_dir: Path | None = None
+        self.stdout_path: Path | None = None
+        self.stderr_path: Path | None = None
+        self._stdout_fh: Any | None = None
+        self._stderr_fh: Any | None = None
 
     @property
     def base_url(self) -> str:
@@ -204,7 +271,13 @@ class LlamaServerProcess:
         if self._proc is not None:
             raise RuntimeError("llama-server already started")
 
-        binary = probe_llama_server_binary(self.binary_path)
+        if self.expected_llama_server_sha256 is not None:
+            binary = require_llama_server_sha256(
+                self.binary_path,
+                expected_llama_server_sha256=self.expected_llama_server_sha256,
+            )
+        else:
+            binary = probe_llama_server_binary(self.binary_path)
         gguf = verify_official_gguf(self.gguf_path)
         command = build_llama_server_command(
             binary=self.binary_path,
@@ -219,10 +292,20 @@ class LlamaServerProcess:
         if "--n-gpu-layers" not in command or "0" not in command:
             raise RuntimeError("fail-closed: --n-gpu-layers 0 missing from command")
 
+        if self._log_dir_arg is not None:
+            self.log_dir = self._log_dir_arg
+            self.log_dir.mkdir(parents=True, exist_ok=True)
+        else:
+            self.log_dir = Path(tempfile.mkdtemp(prefix="cpu_gguf_llama_"))
+        self.stdout_path = self.log_dir / "llama-server.stdout.log"
+        self.stderr_path = self.log_dir / "llama-server.stderr.log"
+        self._stdout_fh = self.stdout_path.open("w", encoding="utf-8")
+        self._stderr_fh = self.stderr_path.open("w", encoding="utf-8")
+
         self._proc = subprocess.Popen(
             command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stdout=self._stdout_fh,
+            stderr=self._stderr_fh,
             text=True,
         )
         record = LlamaServerLaunchRecord(
@@ -239,9 +322,16 @@ class LlamaServerProcess:
             model_path=gguf.path,
             binary=binary,
             gguf=gguf,
+            stdout_log_path=str(self.stdout_path),
+            stderr_log_path=str(self.stderr_path),
         )
         self.launch_record = record
-        self.wait_until_ready()
+        try:
+            self.wait_until_ready()
+        except Exception:
+            # Preserve log tails for startup failures before re-raising.
+            self.flush_logs()
+            raise
         return record
 
     def wait_until_ready(self) -> None:
@@ -252,11 +342,12 @@ class LlamaServerProcess:
         with httpx.Client(timeout=2.0) as client:
             while time.monotonic() < deadline:
                 if self._proc.poll() is not None:
-                    self._drain_pipes()
+                    diag = self.log_diagnostics()
                     raise RuntimeError(
                         "llama-server exited before ready: "
                         f"code={self._proc.returncode} "
-                        f"stderr={''.join(self.stderr_log)[-2000:]}"
+                        f"stderr_tail={diag.get('stderr_tail', '')[-2000:]!r} "
+                        f"stderr_log={diag.get('stderr_log_path')}"
                     )
                 try:
                     response = client.get(f"{self.base_url}/health")
@@ -266,13 +357,34 @@ class LlamaServerProcess:
                 except Exception as exc:  # noqa: BLE001
                     last_error = str(exc)
                 time.sleep(self.poll_interval_s)
+        diag = self.log_diagnostics()
         raise TimeoutError(
             f"llama-server not ready within {self.ready_timeout_s}s "
-            f"(last_error={last_error})"
+            f"(last_error={last_error}; "
+            f"stderr_tail={diag.get('stderr_tail', '')[-1000:]!r}; "
+            f"stderr_log={diag.get('stderr_log_path')})"
         )
+
+    def flush_logs(self) -> None:
+        for fh in (self._stdout_fh, self._stderr_fh):
+            if fh is not None:
+                try:
+                    fh.flush()
+                except Exception:  # noqa: BLE001
+                    pass
+
+    def log_diagnostics(self) -> dict[str, Any]:
+        self.flush_logs()
+        return {
+            "stdout_log_path": str(self.stdout_path) if self.stdout_path else None,
+            "stderr_log_path": str(self.stderr_path) if self.stderr_path else None,
+            "stdout_tail": _read_tail(self.stdout_path),
+            "stderr_tail": _read_tail(self.stderr_path),
+        }
 
     def stop(self, *, timeout_s: float = 30.0) -> int | None:
         if self._proc is None:
+            self._close_log_handles()
             return None
         proc = self._proc
         if proc.poll() is None:
@@ -282,28 +394,21 @@ class LlamaServerProcess:
             except subprocess.TimeoutExpired:
                 proc.kill()
                 proc.wait(timeout=timeout_s)
-        self._drain_pipes()
+        self.flush_logs()
         code = proc.returncode
         self._proc = None
+        self._close_log_handles()
         return code
 
-    def _drain_pipes(self) -> None:
-        if self._proc is None:
-            return
-        if self._proc.stdout is not None:
-            try:
-                out = self._proc.stdout.read()
-                if out:
-                    self.stdout_log.append(out)
-            except Exception:  # noqa: BLE001
-                pass
-        if self._proc.stderr is not None:
-            try:
-                err = self._proc.stderr.read()
-                if err:
-                    self.stderr_log.append(err)
-            except Exception:  # noqa: BLE001
-                pass
+    def _close_log_handles(self) -> None:
+        for attr in ("_stdout_fh", "_stderr_fh"):
+            fh = getattr(self, attr)
+            if fh is not None:
+                try:
+                    fh.close()
+                except Exception:  # noqa: BLE001
+                    pass
+                setattr(self, attr, None)
 
     def launch_record_dict(self) -> dict[str, Any]:
         if self.launch_record is None:
@@ -318,6 +423,7 @@ __all__ = [
     "LlamaServerProcess",
     "build_llama_server_command",
     "probe_llama_server_binary",
+    "require_llama_server_sha256",
     "sha256_file",
     "verify_official_gguf",
 ]

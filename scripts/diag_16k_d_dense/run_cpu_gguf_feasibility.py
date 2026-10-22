@@ -103,6 +103,9 @@ def cmd_screen(args: argparse.Namespace) -> int:
         history=history,
         gguf_path=Path(args.gguf) if args.gguf else None,
         llama_server_path=Path(args.llama_server) if args.llama_server else None,
+        expected_llama_server_sha256=getattr(
+            args, "expected_llama_server_sha256", None
+        ),
         repo_root=ROOT,
     )
     _print(payload, args.out)
@@ -115,6 +118,9 @@ def cmd_parity(args: argparse.Namespace) -> int:
         history=history,
         gguf_path=Path(args.gguf) if args.gguf else None,
         llama_server_path=Path(args.llama_server) if args.llama_server else None,
+        expected_llama_server_sha256=getattr(
+            args, "expected_llama_server_sha256", None
+        ),
         repo_root=ROOT,
     )
     _print(payload, args.out)
@@ -164,6 +170,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_sc.add_argument("--history", required=True)
     p_sc.add_argument("--gguf", help="Local pinned Q8_0 GGUF path")
     p_sc.add_argument("--llama-server", help="Local llama-server binary path")
+    p_sc.add_argument(
+        "--expected-llama-server-sha256",
+        help=(
+            "Required when unlocked: accepted Stage-0 llama-server binary SHA256 "
+            "(F001 runtime pin)"
+        ),
+    )
     p_sc.add_argument("--out")
     p_sc.set_defaults(func=cmd_screen)
 
@@ -171,6 +184,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_pa.add_argument("--history", required=True)
     p_pa.add_argument("--gguf", help="Local pinned Q8_0 GGUF path")
     p_pa.add_argument("--llama-server", help="Local llama-server binary path")
+    p_pa.add_argument(
+        "--expected-llama-server-sha256",
+        help=(
+            "Required when unlocked: accepted Stage-0 llama-server binary SHA256 "
+            "(F001 runtime pin)"
+        ),
+    )
     p_pa.add_argument("--out")
     p_pa.set_defaults(func=cmd_parity)
 

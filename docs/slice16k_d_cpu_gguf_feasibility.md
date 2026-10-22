@@ -2,11 +2,13 @@
 
 **Experiment:** `16K-D-CPU-GGUF-01`  
 **Implementation authority:** `S16-K-D-POST-CPUONNX-CPU-GGUF-FEASIBILITY-IMPLEMENTATION-AUTH-001`  
+**Rework authority:** `S16-K-D-POST-CPUONNX-CPU-GGUF-FEASIBILITY-IMPLEMENTATION-REWORK-AUTH-001`  
 **Exact parent:** `5fca0844878b1c73ce23e75a7dee9023b4730a9f`  
+**Rework parent:** `3cb62330abd168a00a1ff67459f8af3aa3ed27da`  
 **Branch:** `implementation/16k-d-cpu-gguf-feasibility`  
 **Work class:** HARNESS / FEASIBILITY IMPLEMENTATION ONLY  
 
-**Status:** HARNESS IMPLEMENTATION CANDIDATE (awaiting independent review)  
+**Status:** HARNESS REWORK CANDIDATE (F001–F003; awaiting independent review)  
 
 **Predecessor:** CPU-ONNX-01 CLOSED / INSUFFICIENT PERFORMANCE after QINT8
 128-screen TOO_SLOW (~35.60 min projected; required ≤25).  
@@ -44,9 +46,15 @@ to make CPU fallback practical, without materially changing retrieval behavior?
 | Screen rule | ≤25 min projected → parity; >25 → STOP → model-change territory |
 
 No Hub download during scientific execution. llama-server binary is externally
-supplied and recorded (path, SHA256, `--version`, arch, command line).  
+supplied and recorded (path, SHA256, `--version` exit 0 + nonempty output,
+`version_exit_code`, arch, command line).  
+**F001:** Stage-0 exposes `accepted_llama_server_sha256`; screen/parity require
+`expected_llama_server_sha256` and fail closed before launch on missing/wrong pin.  
+**F002:** llama-server stdout/stderr are file-backed (never unread PIPE).  
+**F003:** `--version` probe is fail-closed.  
 Batch/ubatch remain runtime defaults (not frozen to Qwen example `-ub 8192`).  
-No Seneca ONNX `position_ids` patch — llama.cpp owns token positions.
+No Seneca ONNX `position_ids` patch — llama.cpp owns token positions.  
+Binary SHA is **not** a static experiment constant until Stage-0 accepts it.
 
 ## 3. Stop-conditional ladder
 

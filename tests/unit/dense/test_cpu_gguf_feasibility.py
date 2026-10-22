@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -45,7 +46,10 @@ from offline_rag.dense.cpu_gguf_harness import (
     sha256_text,
 )
 from offline_rag.dense.cpu_gguf_server import (
+    LlamaServerProcess,
     build_llama_server_command,
+    probe_llama_server_binary,
+    require_llama_server_sha256,
     verify_official_gguf,
 )
 
@@ -332,3 +336,138 @@ def test_gguf_pin_constant_matches_authority() -> None:
 
 def test_sha256_text_stable() -> None:
     assert sha256_text("abc") == hashlib.sha256(b"abc").hexdigest()
+
+
+def test_screen_locked_documents_runtime_pin_requirement() -> None:
+    history = [StageResult(stage_id="stage0_compat", ok=True)]
+    payload = run_screen(
+        history=history,
+        repo_root=REPO,
+        expected_llama_server_sha256="abc123",
+    )
+    assert payload["status"] == "EXECUTION_NOT_AUTHORIZED"
+    assert payload["expected_llama_server_sha256_required"] is True
+    assert payload["expected_llama_server_sha256"] == "abc123"
+
+
+def test_f001_unlocked_screen_requires_runtime_pin() -> None:
+    import offline_rag.dense.cpu_gguf_harness as harness
+
+    history = [StageResult(stage_id="stage0_compat", ok=True)]
+    with patch.object(harness, "EXECUTION_AUTHORIZED", True):
+        with pytest.raises(ValueError, match="expected_llama_server_sha256"):
+            harness.run_screen(
+                history=history,
+                gguf_path=Path("/tmp/missing.gguf"),
+                llama_server_path=Path("/tmp/missing-llama-server"),
+                repo_root=REPO,
+            )
+
+
+def test_f001_require_llama_server_sha256_mismatch(tmp_path: Path) -> None:
+    binary = tmp_path / "llama-server"
+    binary.write_text(
+        "#!/bin/sh\necho 'version test'\nexit 0\n",
+        encoding="utf-8",
+    )
+    binary.chmod(0o755)
+    identity = probe_llama_server_binary(binary)
+    assert identity.version_exit_code == 0
+    assert "version test" in identity.version_output
+    with pytest.raises(ValueError, match="binary SHA mismatch"):
+        require_llama_server_sha256(
+            binary,
+            expected_llama_server_sha256="0" * 64,
+        )
+    matched = require_llama_server_sha256(
+        binary,
+        expected_llama_server_sha256=identity.binary_sha256,
+    )
+    assert matched.binary_sha256 == identity.binary_sha256
+
+
+def test_f003_version_probe_fail_closed_nonzero(tmp_path: Path) -> None:
+    binary = tmp_path / "llama-server"
+    binary.write_text("#!/bin/sh\necho boom >&2\nexit 2\n", encoding="utf-8")
+    binary.chmod(0o755)
+    with pytest.raises(RuntimeError, match="non-zero"):
+        probe_llama_server_binary(binary)
+
+
+def test_f003_version_probe_fail_closed_empty(tmp_path: Path) -> None:
+    binary = tmp_path / "llama-server"
+    binary.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    binary.chmod(0o755)
+    with pytest.raises(RuntimeError, match="empty"):
+        probe_llama_server_binary(binary)
+
+
+def test_f002_server_uses_file_backed_logs_not_pipes(tmp_path: Path) -> None:
+    binary = tmp_path / "llama-server"
+    binary.write_text(
+        "#!/bin/sh\necho 'version ok'\nexit 0\n",
+        encoding="utf-8",
+    )
+    binary.chmod(0o755)
+    gguf = tmp_path / "Qwen3-Embedding-0.6B-Q8_0.gguf"
+    # Bypass GGUF SHA by patching verify_official_gguf
+    log_dir = tmp_path / "logs"
+    server = LlamaServerProcess(
+        binary_path=binary,
+        gguf_path=gguf,
+        log_dir=log_dir,
+        ready_timeout_s=0.2,
+        poll_interval_s=0.05,
+    )
+
+    fake_gguf = MagicMock()
+    fake_gguf.path = str(gguf)
+    fake_proc = MagicMock()
+    fake_proc.poll.return_value = None
+    fake_proc.returncode = None
+
+    captured: dict[str, Any] = {}
+
+    real_popen = __import__("subprocess").Popen
+
+    def fake_popen(cmd, **kwargs):  # type: ignore[no-untyped-def]
+        # Only assert file-backed I/O for the long-lived server launch.
+        if "--embeddings" in cmd:
+            captured["kwargs"] = kwargs
+            import subprocess as sp
+
+            assert kwargs.get("stdout") is not None
+            assert kwargs.get("stderr") is not None
+            assert kwargs["stdout"] is not sp.PIPE
+            assert kwargs["stderr"] is not sp.PIPE
+            assert hasattr(kwargs["stdout"], "write")
+            assert hasattr(kwargs["stderr"], "write")
+            return fake_proc
+        return real_popen(cmd, **kwargs)
+
+    with (
+        patch(
+            "offline_rag.dense.cpu_gguf_server.verify_official_gguf",
+            return_value=fake_gguf,
+        ),
+        patch("offline_rag.dense.cpu_gguf_server.subprocess.Popen", side_effect=fake_popen),
+        patch.object(server, "wait_until_ready", return_value=None),
+    ):
+        record = server.start()
+
+    assert (log_dir / "llama-server.stdout.log").is_file()
+    assert (log_dir / "llama-server.stderr.log").is_file()
+    assert record.stdout_log_path.endswith("llama-server.stdout.log")
+    assert record.stderr_log_path.endswith("llama-server.stderr.log")
+    diag = server.log_diagnostics()
+    assert diag["stdout_log_path"]
+    assert diag["stderr_log_path"]
+    server.stop()
+
+
+def test_f001_missing_expected_sha_helper() -> None:
+    with pytest.raises(ValueError, match="expected_llama_server_sha256"):
+        require_llama_server_sha256(
+            Path("/tmp/does-not-matter"),
+            expected_llama_server_sha256="  ",
+        )

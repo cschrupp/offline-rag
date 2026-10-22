@@ -1,7 +1,9 @@
 """16K-D CPU-GGUF-01 llama.cpp Q8_0 CPU feasibility — frozen planner.
 
 Authority: S16-K-D-POST-CPUONNX-CPU-GGUF-FEASIBILITY-IMPLEMENTATION-AUTH-001
+Rework: S16-K-D-POST-CPUONNX-CPU-GGUF-FEASIBILITY-IMPLEMENTATION-REWORK-AUTH-001
 Exact parent: 5fca0844878b1c73ce23e75a7dee9023b4730a9f
+Rework parent: 3cb62330abd168a00a1ff67459f8af3aa3ed27da
 
 Pure decision ladder. Scientific / benchmark llama.cpp execution is not
 authorized while ``EXECUTION_AUTHORIZED`` is False.
@@ -15,7 +17,11 @@ from typing import Any, Literal
 IMPLEMENTATION_AUTH = (
     "S16-K-D-POST-CPUONNX-CPU-GGUF-FEASIBILITY-IMPLEMENTATION-AUTH-001"
 )
+IMPLEMENTATION_REWORK_AUTH = (
+    "S16-K-D-POST-CPUONNX-CPU-GGUF-FEASIBILITY-IMPLEMENTATION-REWORK-AUTH-001"
+)
 EXACT_PARENT = "5fca0844878b1c73ce23e75a7dee9023b4730a9f"
+REWORK_PARENT = "3cb62330abd168a00a1ff67459f8af3aa3ed27da"
 DESIGN_DOC = "docs/slice16k_d_cpu_gguf_feasibility.md"
 EXPERIMENT_ID = "16K-D-CPU-GGUF-01"
 PARITY_CONTRACT_ID = "d2-retrieval-parity-v1"
@@ -360,10 +366,12 @@ __all__ = [
     "FROZEN_THREADS_BATCH",
     "FeasibilityPlan",
     "IMPLEMENTATION_AUTH",
+    "IMPLEMENTATION_REWORK_AUTH",
     "PARITY_CONTRACT_ID",
     "PARITY_DOC_COUNT",
     "PARITY_QUERY_COUNT",
     "PARITY_THRESHOLDS",
+    "REWORK_PARENT",
     "SCREEN_CHILD_COUNT",
     "SCREEN_VIABLE_MAX_MIN",
     "StageResult",

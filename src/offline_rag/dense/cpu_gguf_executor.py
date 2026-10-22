@@ -1,12 +1,15 @@
 """CPU-GGUF-01 llama.cpp scientific executor (callable only when unlocked).
 
 Authority: S16-K-D-POST-CPUONNX-CPU-GGUF-FEASIBILITY-IMPLEMENTATION-AUTH-001
+Rework: S16-K-D-POST-CPUONNX-CPU-GGUF-FEASIBILITY-IMPLEMENTATION-REWORK-AUTH-001
 
 Implements Stage-0 llama-server smoke, 128-child screen timing, and
 d2-retrieval-parity-v1 scaffolding against CUDA FP16 reference.
 
 Must not be invoked while ``EXECUTION_AUTHORIZED`` is False.
 Does not download GGUF or llama-server; requires pre-existing pinned locals.
+
+F001: screen/parity require expected_llama_server_sha256 before launch.
 """
 
 from __future__ import annotations
@@ -40,6 +43,7 @@ from offline_rag.dense.cpu_gguf_feasibility import (
     FROZEN_THREADS,
     FROZEN_THREADS_BATCH,
     IMPLEMENTATION_AUTH,
+    IMPLEMENTATION_REWORK_AUTH,
     PARITY_CONTRACT_ID,
     PARITY_THRESHOLDS,
     parity_thresholds_pass,
@@ -51,7 +55,10 @@ from offline_rag.dense.cpu_gguf_harness import (
     select_screen_chunk_ids,
     sha256_text,
 )
-from offline_rag.dense.cpu_gguf_server import LlamaServerProcess
+from offline_rag.dense.cpu_gguf_server import (
+    LlamaServerProcess,
+    require_llama_server_sha256,
+)
 from offline_rag.dense.text import PlainEmbeddingTextBuilder
 from offline_rag.domain.documents import Chunk
 from offline_rag.retrieval.ranking_text import ranking_inputs_for_chunk
@@ -232,19 +239,25 @@ def execute_stage0_compat(
     evidence_dir: Path | None = None,
 ) -> dict[str, Any]:
     refuse_hub_substitution(local_gguf_exists=gguf_path.is_file(), allow_download=False)
+    log_dir = None
+    if evidence_dir is not None:
+        log_dir = Path(evidence_dir) / "llama_server_logs" / "stage0_compat"
     server = LlamaServerProcess(
         binary_path=llama_server_path,
         gguf_path=gguf_path,
         threads=FROZEN_THREADS,
         threads_batch=FROZEN_THREADS_BATCH,
+        log_dir=log_dir,
     )
     launch = None
     smoke: dict[str, Any] | None = None
     stop_code: int | None = None
     ok = False
     error: str | None = None
+    accepted_sha: str | None = None
     try:
         launch = server.start()
+        accepted_sha = launch.binary.binary_sha256
         if launch.n_gpu_layers != FROZEN_N_GPU_LAYERS:
             raise RuntimeError(
                 f"n_gpu_layers {launch.n_gpu_layers} != {FROZEN_N_GPU_LAYERS}"
@@ -255,20 +268,42 @@ def execute_stage0_compat(
         with LlamaCppEmbeddingClient(base_url=server.base_url) as client:
             smoke = smoke_encode(client, query_text_contract=query_contract)
         ok = bool(smoke and smoke.get("ok"))
+        if not ok:
+            accepted_sha = None
     except Exception as exc:  # noqa: BLE001
         error = f"{type(exc).__name__}: {exc}"
         ok = False
+        accepted_sha = None
     finally:
         stop_code = server.stop()
+
+    # On success, accepted_sha is the runtime pin for screen/parity authorities.
+    if ok and launch is not None:
+        accepted_sha = launch.binary.binary_sha256
 
     payload: dict[str, Any] = {
         "status": "ok" if ok else "failed",
         "stage_id": "stage0_compat",
         "ok": ok,
         "authority": IMPLEMENTATION_AUTH,
+        "rework_authority": IMPLEMENTATION_REWORK_AUTH,
         "experiment_id": EXPERIMENT_ID,
         "quant": FROZEN_QUANT,
+        # F001: prominent Stage-0 runtime pin for subsequent authorities.
+        "accepted_llama_server_sha256": accepted_sha,
+        "accepted_llama_server_identity": (
+            {
+                "absolute_path": launch.binary.absolute_path,
+                "binary_sha256": launch.binary.binary_sha256,
+                "version_output": launch.binary.version_output,
+                "version_exit_code": launch.binary.version_exit_code,
+                "cpu_architecture": launch.binary.cpu_architecture,
+            }
+            if ok and launch is not None
+            else None
+        ),
         "launch": server.launch_record_dict(),
+        "server_logs": server.log_diagnostics(),
         "smoke": smoke,
         "server_stop_code": stop_code,
         "error": error,
@@ -277,6 +312,7 @@ def execute_stage0_compat(
         "repo_root": str(repo_root) if repo_root else None,
         "note": (
             "Stage-0 only: artifact SHA + llama-server identity + synthetic smoke. "
+            "accepted_llama_server_sha256 is the runtime pin for screen/parity. "
             "No corpus screen."
         ),
     }
@@ -287,11 +323,17 @@ def execute_screen(
     *,
     gguf_path: Path,
     llama_server_path: Path,
+    expected_llama_server_sha256: str,
     repo_root: Path,
     evidence_dir: Path | None = None,
 ) -> dict[str, Any]:
     """128-child screen; model load is outside the timed encode region."""
     refuse_hub_substitution(local_gguf_exists=gguf_path.is_file(), allow_download=False)
+    # F001: pin before any corpus load / server launch.
+    require_llama_server_sha256(
+        Path(llama_server_path),
+        expected_llama_server_sha256=expected_llama_server_sha256,
+    )
     children_by_id = load_children_by_id(repo_root=repo_root)
     selected_ids = select_screen_chunk_ids(sorted(children_by_id.keys()))
     digest = sha256_text("\n".join(selected_ids))
@@ -309,11 +351,16 @@ def execute_screen(
     if len(texts) % FROZEN_BATCH_SIZE != 0:
         raise RuntimeError("screen size must be divisible by frozen batch size")
 
+    log_dir = None
+    if evidence_dir is not None:
+        log_dir = Path(evidence_dir) / "llama_server_logs" / "screen_q8_0"
     server = LlamaServerProcess(
         binary_path=llama_server_path,
         gguf_path=gguf_path,
         threads=FROZEN_THREADS,
         threads_batch=FROZEN_THREADS_BATCH,
+        log_dir=log_dir,
+        expected_llama_server_sha256=expected_llama_server_sha256,
     )
     encode_s: float | None = None
     vectors: list[list[float]] = []
@@ -351,6 +398,7 @@ def execute_screen(
         "stage_id": "screen_q8_0",
         "ok": True,
         "authority": IMPLEMENTATION_AUTH,
+        "rework_authority": IMPLEMENTATION_REWORK_AUTH,
         "experiment_id": EXPERIMENT_ID,
         "quant": FROZEN_QUANT,
         "pooling": FROZEN_POOLING,
@@ -361,6 +409,7 @@ def execute_screen(
         "application_request_count": expected_requests,
         "screen_child_count": len(texts),
         "screen_chunk_ids_digest": digest,
+        "expected_llama_server_sha256": str(expected_llama_server_sha256).lower(),
         "encode_wall_s": encode_s,
         "chunks_per_sec": chunks_per_sec,
         "projected_full_minutes": projected,
@@ -369,6 +418,7 @@ def execute_screen(
         "normalize": FROZEN_NORMALIZE,
         "query_text_contract": resolve_gguf_query_contract(),
         "launch": server.launch_record_dict(),
+        "server_logs": server.log_diagnostics(),
         "server_stop_code": stop_code,
         "cpu_host_runtime_before": cpu_before,
         "cpu_host_runtime_after": cpu_after,
@@ -383,6 +433,7 @@ def execute_parity(
     *,
     gguf_path: Path,
     llama_server_path: Path,
+    expected_llama_server_sha256: str,
     repo_root: Path,
     evidence_dir: Path | None = None,
     reference_embedder: Any | None = None,
@@ -390,6 +441,10 @@ def execute_parity(
 ) -> dict[str, Any]:
     """d2-retrieval-parity-v1 scaffolding against CUDA FP16 reference."""
     refuse_hub_substitution(local_gguf_exists=gguf_path.is_file(), allow_download=False)
+    require_llama_server_sha256(
+        Path(llama_server_path),
+        expected_llama_server_sha256=expected_llama_server_sha256,
+    )
     children_by_id = load_children_by_id(repo_root=repo_root)
     all_ids = sorted(children_by_id.keys())
     doc_ids, query_ids = select_parity_populations(all_ids)
@@ -431,11 +486,16 @@ def execute_parity(
         for chunk in queries
     }
 
+    log_dir = None
+    if evidence_dir is not None:
+        log_dir = Path(evidence_dir) / "llama_server_logs" / "parity_q8_0"
     server = LlamaServerProcess(
         binary_path=llama_server_path,
         gguf_path=gguf_path,
         threads=FROZEN_THREADS,
         threads_batch=FROZEN_THREADS_BATCH,
+        log_dir=log_dir,
+        expected_llama_server_sha256=expected_llama_server_sha256,
     )
     cand_docs: dict[str, list[float]] = {}
     cand_queries: dict[str, list[float]] = {}
@@ -504,17 +564,20 @@ def execute_parity(
         "ok": ok,
         "parity_ok": ok,
         "authority": IMPLEMENTATION_AUTH,
+        "rework_authority": IMPLEMENTATION_REWORK_AUTH,
         "experiment_id": EXPERIMENT_ID,
         "parity_contract": PARITY_CONTRACT_ID,
         "parity_thresholds": PARITY_THRESHOLDS,
         "metrics": metrics,
         "quant": FROZEN_QUANT,
         "pooling": FROZEN_POOLING,
+        "expected_llama_server_sha256": str(expected_llama_server_sha256).lower(),
         "query_text_contract": query_contract,
         "reference_facts": reference_facts,
         "document_count": len(doc_ids),
         "query_count": len(query_ids),
         "launch": server.launch_record_dict(),
+        "server_logs": server.log_diagnostics(),
         "server_stop_code": stop_code,
         "environment": _environment_fingerprint(),
         "recorded_at": _utc_now(),

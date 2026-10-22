@@ -1135,10 +1135,11 @@ SLICE 15  COMPLETE / ACCEPTED
        16K-D CPU-GGUF-01 branch: implementation/16k-d-cpu-gguf-feasibility
        16K-D CPU-GGUF-01 document:
          docs/slice16k_d_cpu_gguf_feasibility.md
-       16K-D CPU-GGUF-01 status: HARNESS IMPLEMENTATION CANDIDATE
-         (EXECUTION_AUTHORIZED=False; Stage-0 / screen / parity locked)
+       16K-D CPU-GGUF-01 status: HARNESS REWORK CANDIDATE (F001–F003)
+         under REWORK-AUTH-001; parent 3cb6233…; EXECUTION_AUTHORIZED=False
        16K-D CPU-GGUF-01 candidate: llama-server CPU Q8_0 official GGUF
-         (pooling=last; n-gpu-layers=0; threads 8/8; batch 32; raw-query-v1)
+         (pooling=last; n-gpu-layers=0; threads 8/8; batch 32; raw-query-v1;
+          Stage-0 binary SHA pin required for screen/parity)
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md
@@ -1996,10 +1997,11 @@ SLICE 15  COMPLETE / ACCEPTED
        16K-D CPU-GGUF-01 branch: implementation/16k-d-cpu-gguf-feasibility
        16K-D CPU-GGUF-01 document:
          docs/slice16k_d_cpu_gguf_feasibility.md
-       16K-D CPU-GGUF-01 status: HARNESS IMPLEMENTATION CANDIDATE
-         (EXECUTION_AUTHORIZED=False; Stage-0 / screen / parity locked)
+       16K-D CPU-GGUF-01 status: HARNESS REWORK CANDIDATE (F001–F003)
+         under REWORK-AUTH-001; parent 3cb6233…; EXECUTION_AUTHORIZED=False
        16K-D CPU-GGUF-01 candidate: llama-server CPU Q8_0 official GGUF
-         (pooling=last; n-gpu-layers=0; threads 8/8; batch 32; raw-query-v1)
+         (pooling=last; n-gpu-layers=0; threads 8/8; batch 32; raw-query-v1;
+          Stage-0 binary SHA pin required for screen/parity)
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md
