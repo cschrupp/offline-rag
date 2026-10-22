@@ -1,0 +1,202 @@
+{
+  "authority": "S16-K-D-POST-QWENCPU-ONNX-FP32-GPUFP16-PARITY-DIAGNOSTIC-AUTH-001",
+  "candidate": {
+    "backend": "ONNX Runtime",
+    "batch": 32,
+    "candidate_tree_immutable": true,
+    "candidate_tree_sha256_after": "3e1b23a7293cf599bc34d1d9875e5c4ecde45bf12fcd300a6cb66794b5bc4345",
+    "candidate_tree_sha256_before": "3e1b23a7293cf599bc34d1d9875e5c4ecde45bf12fcd300a6cb66794b5bc4345",
+    "dimension": 1024,
+    "expected_candidate_tree_sha256": "3e1b23a7293cf599bc34d1d9875e5c4ecde45bf12fcd300a6cb66794b5bc4345",
+    "external_data_sha256": "a585477de21c0a89e021dd64f4d3be34483eb4aaed7ae93fc047e3edf74545da",
+    "load": {
+      "function": "load_onnx_st_model",
+      "require_quant_match": false,
+      "weight_format": "fp32"
+    },
+    "model_id": "Qwen/Qwen3-Embedding-0.6B",
+    "model_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+    "normalize": true,
+    "path": "data/16k_d_cpu_onnx_work/exports/fp32_v1/",
+    "position_ids_compat": {
+      "adapter_installed": true,
+      "authority": "S16-K-D-POST-CPUOV-CPU-ONNX-POSITION-IDS-COMPAT-IMPLEMENTATION-AUTH-001",
+      "dtype": "int64",
+      "graph_requires_position_ids": true,
+      "note": "injects torch.arange(seq).unsqueeze(0).expand(batch,-1) when required and absent; never attention_mask.cumsum",
+      "overwrites_supplied_position_ids": false,
+      "required_onnx_inputs": [
+        "input_ids",
+        "attention_mask",
+        "position_ids"
+      ],
+      "semantics": "qwen3_direct_forward_zero_based_arange",
+      "shape_policy": "batch_x_sequence",
+      "source": "generated_by_seneca_adapter"
+    },
+    "precision": "FP32",
+    "primary_graph": "onnx/model.onnx",
+    "primary_graph_sha256": "6135c5388da771b2072db0698a4ff558f78f4479ab8160721d43c077767707e9",
+    "provider": "CPUExecutionProvider",
+    "query_contract": "raw-query-v1"
+  },
+  "decision_branch": "FP32_ONNX_PASSES \u2014 QINT8 rejected as cause; ONNX export not ruled out; next=FP32 128-screen (not authorized here)",
+  "disposition": "PASS",
+  "encode_wall_s": 178.6408244080012,
+  "environment": {
+    "onnx": "1.23.2",
+    "onnxruntime": "1.31.0",
+    "optimum": "2.1.0",
+    "python": "3.14.5",
+    "sentence-transformers": "6.0.1",
+    "transformers": "4.57.6"
+  },
+  "execution_subject": "f36aaa73b72463d57b008e6c8ece77fe089fb015",
+  "gate_results": {
+    "mean_top10_set_overlap": true,
+    "median_document_vector_cosine": true,
+    "median_query_vector_cosine": true,
+    "min_document_vector_cosine": true,
+    "min_query_vector_cosine": true,
+    "min_top10_set_overlap": true,
+    "top1_agreement": true
+  },
+  "ir_context": "S16-K-D-POST-QWENCPU-ONNX-GPUFP16-PARITY-EXECUTION-IR-001 ACCEPT / QINT8 PARITY FAIL",
+  "metrics": {
+    "mean_top10_set_overlap": 1.0,
+    "median_document_vector_cosine": 0.999998212735219,
+    "median_query_vector_cosine": 0.9999982699370334,
+    "min_document_vector_cosine": 0.9999974338173977,
+    "min_query_vector_cosine": 0.999997666212008,
+    "min_top10_set_overlap": 1.0,
+    "top1_agreement": 16
+  },
+  "note": "Bounded diagnostic only: FP32 ONNX candidate substituted for QINT8. CPU-ONNX planner/production unmodified. No timing gate. Thresholds frozen; not loosened after result.",
+  "ok": true,
+  "parity_ok": true,
+  "parity_thresholds": {
+    "mean_top10_set_overlap": 0.95,
+    "median_document_vector_cosine": 0.999,
+    "median_query_vector_cosine": 0.999,
+    "min_document_vector_cosine": 0.995,
+    "min_query_vector_cosine": 0.995,
+    "min_top10_set_overlap": 0.8,
+    "top1_agreement_min": 15,
+    "top1_agreement_of": 16
+  },
+  "population": {
+    "document_count": 64,
+    "document_ids_digest_sha256": "f94e64f213ddb1d362b44cfcd754a8b5e7ad590d6dd45f16e6b448cc618e280b",
+    "parity_contract": "d2-retrieval-parity-v1",
+    "query_count": 16,
+    "query_ids_digest_sha256": "9d1bf665faa970a3c4ff0de13473bc313334a1808a0d01d190eb429953db71a5"
+  },
+  "precision_identity": {
+    "authority": "S16-K-D-POST-CPUOV-CPU-ONNX-FEASIBILITY-IMPLEMENTATION-AUTH-001",
+    "loaded_onnx_file_name": "onnx/model.onnx",
+    "loaded_onnx_path": "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/fp32_v1/onnx/model.onnx",
+    "observed_ONNX_INT8_quantization": {
+      "authority": "S16-K-D-POST-CPUOV-CPU-ONNX-FEASIBILITY-IMPLEMENTATION-AUTH-001",
+      "demonstrable_integer_initializers": false,
+      "demonstrable_quantization_ops": false,
+      "int8_initializer_count": 0,
+      "note": "verified iff INT8/UINT8 initializers are present; quantization ops are supporting evidence only; never from request label or filename",
+      "quantization_op_count": 0,
+      "uint8_initializer_count": 0,
+      "verified": false
+    },
+    "onnx_files": [
+      "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/fp32_v1/onnx/model.onnx"
+    ],
+    "onnx_inspections": [
+      {
+        "bytes": 1265182,
+        "float_initializer_count": 310,
+        "inspection_method": "onnx_protobuf_initializer_and_op_scan",
+        "int8_initializer_count": 0,
+        "observed_ONNX_INT8_quantization": {
+          "authority": "S16-K-D-POST-CPUOV-CPU-ONNX-FEASIBILITY-IMPLEMENTATION-AUTH-001",
+          "demonstrable_integer_initializers": false,
+          "demonstrable_quantization_ops": false,
+          "int8_initializer_count": 0,
+          "note": "verified iff INT8/UINT8 initializers are present; quantization ops are supporting evidence only; never from request label or filename",
+          "quantization_op_count": 0,
+          "uint8_initializer_count": 0,
+          "verified": false
+        },
+        "onnx_path": "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/fp32_v1/onnx/model.onnx",
+        "other_initializer_count": 0,
+        "quantization_op_count": 0,
+        "quantization_op_types": {},
+        "uint8_initializer_count": 0
+      }
+    ],
+    "position_ids_compat": {
+      "adapter_installed": true,
+      "authority": "S16-K-D-POST-CPUOV-CPU-ONNX-POSITION-IDS-COMPAT-IMPLEMENTATION-AUTH-001",
+      "dtype": "int64",
+      "graph_requires_position_ids": true,
+      "note": "injects torch.arange(seq).unsqueeze(0).expand(batch,-1) when required and absent; never attention_mask.cumsum",
+      "overwrites_supplied_position_ids": false,
+      "required_onnx_inputs": [
+        "input_ids",
+        "attention_mask",
+        "position_ids"
+      ],
+      "semantics": "qwen3_direct_forward_zero_based_arange",
+      "shape_policy": "batch_x_sequence",
+      "source": "generated_by_seneca_adapter"
+    },
+    "primary_onnx_path": "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/fp32_v1/onnx/model.onnx",
+    "requested_weight_format": "fp32",
+    "selected_onnx_file_name": "onnx/model.onnx",
+    "selected_onnx_path": "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/fp32_v1/onnx/model.onnx"
+  },
+  "recorded_at": "2026-10-22T03:00:12.358348Z",
+  "reference": {
+    "backend": "PyTorch / Sentence Transformers",
+    "batch": 32,
+    "cuda_observed": true,
+    "device_requested": "cuda",
+    "dimension": 1024,
+    "document_contract": "plain-v1",
+    "executor_reference_facts": {
+      "attention_backend": "sdpa",
+      "dtype": "float16"
+    },
+    "fp16_observed": true,
+    "model_id": "Qwen/Qwen3-Embedding-0.6B",
+    "model_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+    "normalize": true,
+    "precision_requested": "fp16",
+    "query_contract": "raw-query-v1",
+    "reference_runtime_gate_ok": true,
+    "supplemental_runtime_probe": {
+      "configured_device": "cuda",
+      "configured_precision": "fp16",
+      "device_selection_reason": "explicit_cuda",
+      "dimension": 1024,
+      "model_id": "Qwen/Qwen3-Embedding-0.6B",
+      "model_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+      "observe_embedder_execution_facts": {
+        "attention_backend": "sdpa",
+        "dtype": "float16"
+      },
+      "param_device": "cuda:0",
+      "param_dtype": "torch.float16",
+      "precision_conversion": {
+        "dtype_after": "float16",
+        "dtype_before": "float32"
+      },
+      "precision_selection_reason": "explicit_fp16_cuda",
+      "resolved_device": "cuda",
+      "resolved_precision": "fp16",
+      "st_device": "cuda:0"
+    }
+  },
+  "status": "ok",
+  "timing_gate": null,
+  "work_class": "SAME-MODEL FP32-ONNX vs CUDA-FP16 VECTOR-SPACE DIAGNOSTIC",
+  "work_evidence_path": "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/evidence/parity_fp32_vs_cuda_fp16_1792638012.json",
+  "work_evidence_sha256": "94d2d23b5df532b106c995baa14ee0fe5499a6a25a018c2a3674eb9bc77ee605"
+}

@@ -44,12 +44,26 @@ planner parity / full confirmation remain closed. Next path was llama.cpp Q8_0.
 **POST-QWENCPU ONNX↔GPU-FP16 parity AUTH-001:** FAIL — direct `execute_parity()`
 (subject `49b9753…`); candidate tree `dd2a07f3…` immutable; reference CUDA+FP16
 observed; D2 gates fail (median doc cos ~0.754 ≪ 0.999; Top1 16/16; mean Top10
-0.70). Thresholds not loosened. Shared-index ONNX CPU architecture NOT selected.
-Evidence: `docs/evidence/16k_d_cpu_onnx/onnx_qint8_gpu_fp16_parity_fail_1792636983.json`.
+0.70). Thresholds not loosened. Shared-index ONNX **QINT8** architecture NOT
+selected. Evidence:
+`docs/evidence/16k_d_cpu_onnx/onnx_qint8_gpu_fp16_parity_fail_1792636983.json`.
+
+**IR-001:** ACCEPT / QINT8 PARITY FAIL — reject broader claim that ONNX cannot
+share the PyTorch vector space; this result condemns the QINT8 AVX2 derivative
+only.
+
+**POST-QWENCPU FP32-ONNX↔GPU-FP16 diagnostic AUTH-001:** PASS — bounded wrapper
+loads accepted FP32 tree `3e1b23a7…` via `load_onnx_st_model(..., weight_format=
+"fp32", require_quant_match=False)`; CUDA+FP16 observed; all D2 gates pass
+(median doc/query cos ~0.999998; Top1 16/16; Top10 1.0). QINT8 is the cause;
+ONNX export/inference semantics are not ruled out. Next: FP32 128-screen —
+**not authorized here**. Evidence:
+`docs/evidence/16k_d_cpu_onnx/onnx_fp32_gpu_fp16_parity_pass_1792638012.json`.
 
 **Predecessor:** CPU-OV-01 STOP after INT8 128-screen TOO_SLOW (~39.75 min projected)  
-**Still closed:** full 1296 ONNX · production backend routing · default promotion ·
-main (`EXECUTION_AUTHORIZED=False` on planner).
+**Still closed:** FP32 128-screen · full 1296 ONNX · production backend routing ·
+default promotion · main · alternate embedding model
+(`EXECUTION_AUTHORIZED=False` on planner).
 
 ---
 

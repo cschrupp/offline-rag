@@ -1134,8 +1134,17 @@ SLICE 15  COMPLETE / ACCEPTED
           CUDA+FP16 observed; median doc cos ~0.754 ≪ 0.999; Top1 16/16;
           thresholds not loosened; shared-index ONNX CPU architecture NOT selected)
          evidence: docs/evidence/16k_d_cpu_onnx/onnx_qint8_gpu_fp16_parity_fail_1792636983.json
-       16K-D still closed: full 1296 ONNX · production backend routing ·
-         default promotion · main
+       16K-D POST-QWENCPU QINT8 parity IR-001: ACCEPT / QINT8 PARITY FAIL
+         (reject broader “ONNX cannot share PyTorch space”; QINT8 only)
+       16K-D POST-QWENCPU FP32-ONNX↔GPU-FP16 diagnostic: PASS under
+         S16-K-D-POST-QWENCPU-ONNX-FP32-GPUFP16-PARITY-DIAGNOSTIC-AUTH-001
+         (subject f36aaa7…; tree 3e1b23a7… immutable; CUDA+FP16 observed;
+          median doc/query cos ~0.999998; Top1 16/16; Top10 1.0;
+          QINT8 rejected as cause; ONNX export not ruled out;
+          next=FP32 128-screen — NOT AUTHORIZED here)
+         evidence: docs/evidence/16k_d_cpu_onnx/onnx_fp32_gpu_fp16_parity_pass_1792638012.json
+       16K-D still closed: FP32 128-screen · full 1296 ONNX · production
+         backend routing · default promotion · main · alternate embedding model
        16K-D CPU-GGUF-01 authority:
          S16-K-D-POST-CPUONNX-CPU-GGUF-FEASIBILITY-IMPLEMENTATION-AUTH-001
        16K-D CPU-GGUF-01 exact parent:
@@ -2018,8 +2027,17 @@ SLICE 15  COMPLETE / ACCEPTED
           CUDA+FP16 observed; median doc cos ~0.754 ≪ 0.999; Top1 16/16;
           thresholds not loosened; shared-index ONNX CPU architecture NOT selected)
          evidence: docs/evidence/16k_d_cpu_onnx/onnx_qint8_gpu_fp16_parity_fail_1792636983.json
-       16K-D still closed: full 1296 ONNX · production backend routing ·
-         default promotion · main
+       16K-D POST-QWENCPU QINT8 parity IR-001: ACCEPT / QINT8 PARITY FAIL
+         (reject broader “ONNX cannot share PyTorch space”; QINT8 only)
+       16K-D POST-QWENCPU FP32-ONNX↔GPU-FP16 diagnostic: PASS under
+         S16-K-D-POST-QWENCPU-ONNX-FP32-GPUFP16-PARITY-DIAGNOSTIC-AUTH-001
+         (subject f36aaa7…; tree 3e1b23a7… immutable; CUDA+FP16 observed;
+          median doc/query cos ~0.999998; Top1 16/16; Top10 1.0;
+          QINT8 rejected as cause; ONNX export not ruled out;
+          next=FP32 128-screen — NOT AUTHORIZED here)
+         evidence: docs/evidence/16k_d_cpu_onnx/onnx_fp32_gpu_fp16_parity_pass_1792638012.json
+       16K-D still closed: FP32 128-screen · full 1296 ONNX · production
+         backend routing · default promotion · main · alternate embedding model
        16K-D CPU-GGUF-01 authority:
          S16-K-D-POST-CPUONNX-CPU-GGUF-FEASIBILITY-IMPLEMENTATION-AUTH-001
        16K-D CPU-GGUF-01 exact parent:
