@@ -2,7 +2,9 @@
   "authority": "S16-K-D-DUAL-BACKEND-P1-QUALIFIED-RUNTIME-SUBSTRATE-IMPLEMENTATION-AUTH-001",
   "authorized_parent": "36cd5fbbdbfa1ccd8493f1a8178c7e4cea4e92d8",
   "branch": "implementation/16k-d-dual-backend-p1-runtime-substrate",
-  "disposition": "COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / HA RECORD PENDING INDEPENDENT REVIEW",
+  "disposition": "COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / HA RECORD INDEPENDENTLY ACCEPTED",
+  "ha_record_ir": "ACCEPT",
+  "ha_record_tip_at_ir": "bdecd52891309c2c2e4ddee7d3c74174ad606290",
   "downstream_authorities": {
     "campaigns": "NOT_AUTHORIZED",
     "main": "NOT_AUTHORIZED",

@@ -1150,7 +1150,7 @@ SLICE 15  COMPLETE / ACCEPTED
           normalized 1024-d; full-1296 confirmation eligible — NOT run)
          evidence: docs/evidence/16k_d_cpu_onnx/onnx_fp32_128_screen_pass_1792638543.json
        16K-D DUAL-BACKEND P1: COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED /
-         HA RECORD PENDING INDEPENDENT REVIEW
+         HA RECORD INDEPENDENTLY ACCEPTED
          Implementation authority:
            S16-K-D-DUAL-BACKEND-P1-QUALIFIED-RUNTIME-SUBSTRATE-IMPLEMENTATION-AUTH-001
          Human acceptance:
@@ -2075,7 +2075,7 @@ SLICE 15  COMPLETE / ACCEPTED
           normalized 1024-d; full-1296 confirmation eligible — NOT run)
          evidence: docs/evidence/16k_d_cpu_onnx/onnx_fp32_128_screen_pass_1792638543.json
        16K-D DUAL-BACKEND P1: COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED /
-         HA RECORD PENDING INDEPENDENT REVIEW
+         HA RECORD INDEPENDENTLY ACCEPTED
          Implementation authority:
            S16-K-D-DUAL-BACKEND-P1-QUALIFIED-RUNTIME-SUBSTRATE-IMPLEMENTATION-AUTH-001
          Human acceptance:
