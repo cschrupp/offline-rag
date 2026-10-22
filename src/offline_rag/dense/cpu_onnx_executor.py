@@ -42,8 +42,10 @@ from offline_rag.dense.cpu_onnx_feasibility import (
     FROZEN_ORT_INTRA_OP_THREADS,
     FROZEN_QINT8_TARGET,
     IMPLEMENTATION_AUTH,
+    IMPLEMENTATION_POSITION_IDS_COMPAT_AUTH,
     PARITY_CONTRACT_ID,
     PARITY_THRESHOLDS,
+    POSITION_IDS_COMPAT_SEMANTICS,
     WeightFormat,
     parity_thresholds_pass,
     project_full_minutes,
@@ -120,6 +122,183 @@ def _st_onnx_model_kwargs(
 
 def _relative_onnx_file_name(export_dir: Path, onnx_path: Path) -> str:
     return str(onnx_path.resolve().relative_to(export_dir.resolve())).replace("\\", "/")
+
+
+def onnx_graph_input_names(onnx_path: Path) -> list[str]:
+    """Return ONNX graph external input names (excludes initializers)."""
+    import onnx
+
+    if not onnx_path.is_file():
+        raise FileNotFoundError(f"ONNX model missing: {onnx_path}")
+    # load_external_data=False: inspect graph contract without touching .onnx_data.
+    model = onnx.load(str(onnx_path), load_external_data=False)
+    initializer_names = {init.name for init in model.graph.initializer}
+    return [
+        inp.name for inp in model.graph.input if inp.name not in initializer_names
+    ]
+
+
+def onnx_graph_requires_position_ids(onnx_path: Path) -> bool:
+    """True iff the loaded ONNX graph declares a ``position_ids`` input."""
+    return "position_ids" in set(onnx_graph_input_names(onnx_path))
+
+
+def build_qwen3_direct_forward_position_ids(input_ids: Any) -> Any:
+    """Build position_ids matching Qwen3Model.forward when position_ids is None.
+
+    Uses zero-based ``arange(seq_len)`` expanded to ``[batch, seq]``.
+    Must NOT use attention_mask.cumsum (generation-helper semantics).
+    """
+    import torch
+
+    if input_ids is None:
+        raise ValueError(
+            "position_ids compat requires input_ids; refusing to guess positions"
+        )
+    if not isinstance(input_ids, torch.Tensor):
+        raise ValueError(
+            f"position_ids compat requires torch.Tensor input_ids, got {type(input_ids)}"
+        )
+    if input_ids.ndim != 2:
+        raise ValueError(
+            "position_ids compat requires rank-2 input_ids [batch, sequence]; "
+            f"got shape={tuple(input_ids.shape)}"
+        )
+    batch_size, sequence_length = int(input_ids.shape[0]), int(input_ids.shape[1])
+    if batch_size < 1 or sequence_length < 1:
+        raise ValueError(
+            "position_ids compat requires positive batch and sequence dimensions; "
+            f"got shape=({batch_size}, {sequence_length})"
+        )
+    return (
+        torch.arange(
+            sequence_length,
+            dtype=torch.long,
+            device=input_ids.device,
+        )
+        .unsqueeze(0)
+        .expand(batch_size, -1)
+        .contiguous()
+    )
+
+
+def apply_seneca_onnx_position_ids_compat(
+    features: dict[str, Any],
+    *,
+    required_onnx_inputs: Sequence[str] | set[str],
+) -> dict[str, Any]:
+    """Inject position_ids into encode features when the ONNX graph requires them.
+
+    Input-contract driven (never model-name driven). Does not mutate input_ids or
+    attention_mask. Does not overwrite a valid supplied position_ids.
+    """
+    required = set(required_onnx_inputs)
+    if "position_ids" not in required:
+        return features
+
+    out = dict(features)
+    supplied = out.get("position_ids")
+    input_ids = out.get("input_ids")
+
+    if supplied is not None:
+        import torch
+
+        if not isinstance(supplied, torch.Tensor):
+            raise ValueError(
+                "supplied position_ids must be a torch.Tensor when present"
+            )
+        if input_ids is None or not isinstance(input_ids, torch.Tensor):
+            raise ValueError(
+                "supplied position_ids present but input_ids missing/invalid; "
+                "refusing shape check"
+            )
+        if input_ids.ndim != 2:
+            raise ValueError(
+                "input_ids must be rank-2 to validate supplied position_ids; "
+                f"got shape={tuple(input_ids.shape)}"
+            )
+        expected = (int(input_ids.shape[0]), int(input_ids.shape[1]))
+        observed = tuple(int(x) for x in supplied.shape)
+        if observed != expected:
+            raise ValueError(
+                "supplied position_ids shape incompatible with input_ids: "
+                f"position_ids={observed} input_ids={expected}"
+            )
+        # Preserve exactly (do not cast/replace).
+        return out
+
+    generated = build_qwen3_direct_forward_position_ids(input_ids)
+    out["position_ids"] = generated
+    return out
+
+
+def _resolve_st_ort_feature_model(st_model: Any) -> Any:
+    """Locate the Optimum ORT model inside a SentenceTransformer ONNX stack."""
+    module0 = st_model[0]
+    for attr in ("auto_model", "model", "_model"):
+        cand = getattr(module0, attr, None)
+        if cand is not None and hasattr(cand, "forward"):
+            return cand
+    raise RuntimeError(
+        "unable to locate ORT/transformers model on SentenceTransformer[0] "
+        f"for position_ids compat (type={type(module0)!r})"
+    )
+
+
+def install_seneca_onnx_position_ids_compat(
+    st_model: Any,
+    *,
+    onnx_path: Path,
+) -> dict[str, Any]:
+    """Wrap ORT forward so required position_ids are injected from input_ids.
+
+    No-op when the ONNX graph does not declare position_ids. Does not touch the
+    ONNX artifact bytes.
+    """
+    required_inputs = onnx_graph_input_names(onnx_path)
+    requires = "position_ids" in set(required_inputs)
+    record: dict[str, Any] = {
+        "graph_requires_position_ids": requires,
+        "required_onnx_inputs": list(required_inputs),
+        "source": None,
+        "semantics": POSITION_IDS_COMPAT_SEMANTICS,
+        "dtype": "int64",
+        "shape_policy": "batch_x_sequence",
+        "overwrites_supplied_position_ids": False,
+        "authority": IMPLEMENTATION_POSITION_IDS_COMPAT_AUTH,
+        "adapter_installed": False,
+        "note": (
+            "injects torch.arange(seq).unsqueeze(0).expand(batch,-1) when required "
+            "and absent; never attention_mask.cumsum"
+        ),
+    }
+    if not requires:
+        record["source"] = "noop_graph_does_not_require_position_ids"
+        return record
+
+    ort_model = _resolve_st_ort_feature_model(st_model)
+    if getattr(ort_model, "_seneca_onnx_position_ids_compat", False):
+        record["source"] = "generated_by_seneca_adapter"
+        record["adapter_installed"] = True
+        record["already_installed"] = True
+        return record
+
+    original_forward = ort_model.forward
+
+    def _forward_with_position_ids_compat(*args: Any, **kwargs: Any) -> Any:
+        features = dict(kwargs)
+        patched = apply_seneca_onnx_position_ids_compat(
+            features,
+            required_onnx_inputs=required_inputs,
+        )
+        return original_forward(*args, **patched)
+
+    ort_model.forward = _forward_with_position_ids_compat  # type: ignore[method-assign]
+    ort_model._seneca_onnx_position_ids_compat = True
+    ort_model._seneca_onnx_position_ids_required_inputs = list(required_inputs)
+    record["source"] = "generated_by_seneca_adapter"
+    record["adapter_installed"] = True
+    return record
 
 
 def select_onnx_artifact_for_weight_format(
@@ -535,9 +714,14 @@ def load_onnx_st_model(
         local_files_only=True,
         model_kwargs=_st_onnx_model_kwargs(export=False, file_name=file_name),
     )
+    position_ids_compat = install_seneca_onnx_position_ids_compat(
+        model,
+        onnx_path=selected_path,
+    )
     precision_identity = dict(precision_identity)
     precision_identity["loaded_onnx_path"] = str(selected_path)
     precision_identity["loaded_onnx_file_name"] = file_name
+    precision_identity["position_ids_compat"] = position_ids_compat
     return model, precision_identity
 
 
@@ -1095,8 +1279,10 @@ def execute_parity(
 
 __all__ = [
     "OnnxSTEmbedder",
+    "apply_seneca_onnx_position_ids_compat",
     "assert_requested_onnx_quantization",
     "build_onnx_precision_identity",
+    "build_qwen3_direct_forward_position_ids",
     "capture_cpu_host_runtime_facts",
     "execute_export_fp32",
     "execute_export_qint8_avx2",
@@ -1104,8 +1290,11 @@ __all__ = [
     "execute_screen",
     "export_onnx_fp32",
     "inspect_onnx_quantization",
+    "install_seneca_onnx_position_ids_compat",
     "load_onnx_st_model",
     "materialize_qint8_avx2_derivative",
+    "onnx_graph_input_names",
+    "onnx_graph_requires_position_ids",
     "select_onnx_artifact_for_weight_format",
     "smoke_encode_compat",
 ]

@@ -15,14 +15,17 @@ from offline_rag.dense.cpu_onnx_feasibility import (
     EXPECTED_CHILD_COUNT,
     EXPECTED_CHUNK_MANIFEST_SHA256,
     EXPECTED_DIMENSION,
+    EXPECTED_FP32_STAGE0_EXPORT_TREE_SHA256,
     EXPECTED_SCREEN_CHUNK_IDS_DIGEST,
     FEASIBLE_MAX_MIN,
     FROZEN_BATCH_SIZE,
     FROZEN_ORT_INTER_OP_THREADS,
     FROZEN_ORT_INTRA_OP_THREADS,
     FROZEN_QINT8_TARGET,
+    IMPLEMENTATION_POSITION_IDS_COMPAT_AUTH,
     PARITY_DOC_COUNT,
     PARITY_QUERY_COUNT,
+    POSITION_IDS_COMPAT_SEMANTICS,
     SCREEN_CHILD_COUNT,
     StageResult,
     assert_frozen_runtime_knobs,
@@ -706,3 +709,242 @@ def test_cli_export_fp32_locked(tmp_path: Path) -> None:
     assert rc == 20
     payload = json.loads(out.read_text(encoding="utf-8"))
     assert payload["status"] == "EXECUTION_NOT_AUTHORIZED"
+
+
+# --- POSITION_IDS compat (AUTH-001): pure construction; no Qwen/ONNX scientific run ---
+
+
+def test_position_ids_compat_auth_constants() -> None:
+    assert EXECUTION_AUTHORIZED is False
+    assert (
+        IMPLEMENTATION_POSITION_IDS_COMPAT_AUTH
+        == "S16-K-D-POST-CPUOV-CPU-ONNX-POSITION-IDS-COMPAT-IMPLEMENTATION-AUTH-001"
+    )
+    assert POSITION_IDS_COMPAT_SEMANTICS == "qwen3_direct_forward_zero_based_arange"
+    assert EXPECTED_FP32_STAGE0_EXPORT_TREE_SHA256.startswith("3e1b23a7")
+
+
+def test_position_ids_single_batch_zero_based_arange() -> None:
+    torch = pytest.importorskip("torch")
+    from offline_rag.dense.cpu_onnx_executor import (
+        build_qwen3_direct_forward_position_ids,
+    )
+
+    input_ids = torch.tensor([[10, 20, 30, 40]], dtype=torch.long)
+    pos = build_qwen3_direct_forward_position_ids(input_ids)
+    assert pos.dtype == torch.long
+    assert pos.shape == (1, 4)
+    assert pos.tolist() == [[0, 1, 2, 3]]
+
+
+def test_position_ids_batched_identical_rows() -> None:
+    torch = pytest.importorskip("torch")
+    from offline_rag.dense.cpu_onnx_executor import (
+        build_qwen3_direct_forward_position_ids,
+    )
+
+    input_ids = torch.tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=torch.long)
+    pos = build_qwen3_direct_forward_position_ids(input_ids)
+    assert pos.shape == (3, 3)
+    assert pos.tolist() == [[0, 1, 2], [0, 1, 2], [0, 1, 2]]
+
+
+def test_position_ids_not_attention_mask_cumsum() -> None:
+    """Protect against generation-style cumsum semantics.
+
+    attention_mask=[0,0,1,1] must still yield [0,1,2,3], not [0,0,0,1].
+    """
+    torch = pytest.importorskip("torch")
+    from offline_rag.dense.cpu_onnx_executor import (
+        apply_seneca_onnx_position_ids_compat,
+        build_qwen3_direct_forward_position_ids,
+    )
+
+    attention_mask = torch.tensor([[0, 0, 1, 1]], dtype=torch.long)
+    input_ids = torch.tensor([[9, 9, 9, 9]], dtype=torch.long)
+    # Generation-style (FORBIDDEN for this adapter):
+    generation_style = attention_mask.long().cumsum(-1) - 1
+    generation_style = generation_style.masked_fill(attention_mask == 0, 0)
+    assert generation_style.tolist() == [[0, 0, 0, 1]]
+
+    authorized = build_qwen3_direct_forward_position_ids(input_ids)
+    assert authorized.tolist() == [[0, 1, 2, 3]]
+
+    features = apply_seneca_onnx_position_ids_compat(
+        {"input_ids": input_ids, "attention_mask": attention_mask},
+        required_onnx_inputs=["input_ids", "attention_mask", "position_ids"],
+    )
+    assert features["position_ids"].tolist() == [[0, 1, 2, 3]]
+    assert features["attention_mask"].tolist() == [[0, 0, 1, 1]]
+    assert features["input_ids"].tolist() == [[9, 9, 9, 9]]
+
+
+def test_position_ids_padding_does_not_alter_positions() -> None:
+    torch = pytest.importorskip("torch")
+    from offline_rag.dense.cpu_onnx_executor import apply_seneca_onnx_position_ids_compat
+
+    input_ids = torch.tensor([[1, 2, 3, 4]], dtype=torch.long)
+    left_pad = torch.tensor([[0, 0, 1, 1]], dtype=torch.long)
+    right_pad = torch.tensor([[1, 1, 0, 0]], dtype=torch.long)
+    required = ["input_ids", "attention_mask", "position_ids"]
+
+    left = apply_seneca_onnx_position_ids_compat(
+        {"input_ids": input_ids, "attention_mask": left_pad},
+        required_onnx_inputs=required,
+    )
+    right = apply_seneca_onnx_position_ids_compat(
+        {"input_ids": input_ids.clone(), "attention_mask": right_pad},
+        required_onnx_inputs=required,
+    )
+    assert left["position_ids"].tolist() == right["position_ids"].tolist() == [
+        [0, 1, 2, 3]
+    ]
+
+
+def test_position_ids_preserves_valid_supplied() -> None:
+    torch = pytest.importorskip("torch")
+    from offline_rag.dense.cpu_onnx_executor import apply_seneca_onnx_position_ids_compat
+
+    input_ids = torch.tensor([[1, 2, 3]], dtype=torch.long)
+    supplied = torch.tensor([[5, 6, 7]], dtype=torch.long)
+    out = apply_seneca_onnx_position_ids_compat(
+        {
+            "input_ids": input_ids,
+            "attention_mask": torch.ones_like(input_ids),
+            "position_ids": supplied,
+        },
+        required_onnx_inputs=["input_ids", "attention_mask", "position_ids"],
+    )
+    assert out["position_ids"] is supplied
+    assert out["position_ids"].tolist() == [[5, 6, 7]]
+
+
+def test_position_ids_noop_when_graph_does_not_require() -> None:
+    torch = pytest.importorskip("torch")
+    from offline_rag.dense.cpu_onnx_executor import apply_seneca_onnx_position_ids_compat
+
+    features = {
+        "input_ids": torch.tensor([[1, 2]], dtype=torch.long),
+        "attention_mask": torch.tensor([[1, 1]], dtype=torch.long),
+    }
+    out = apply_seneca_onnx_position_ids_compat(
+        features,
+        required_onnx_inputs=["input_ids", "attention_mask"],
+    )
+    assert "position_ids" not in out
+    assert out["input_ids"].tolist() == [[1, 2]]
+
+
+def test_position_ids_fail_closed_missing_input_ids() -> None:
+    torch = pytest.importorskip("torch")
+    from offline_rag.dense.cpu_onnx_executor import apply_seneca_onnx_position_ids_compat
+
+    with pytest.raises(ValueError, match="requires input_ids"):
+        apply_seneca_onnx_position_ids_compat(
+            {"attention_mask": torch.tensor([[1, 1]], dtype=torch.long)},
+            required_onnx_inputs=["input_ids", "attention_mask", "position_ids"],
+        )
+
+
+def test_position_ids_fail_closed_rank_mismatch() -> None:
+    torch = pytest.importorskip("torch")
+    from offline_rag.dense.cpu_onnx_executor import (
+        apply_seneca_onnx_position_ids_compat,
+        build_qwen3_direct_forward_position_ids,
+    )
+
+    with pytest.raises(ValueError, match="rank-2"):
+        build_qwen3_direct_forward_position_ids(torch.tensor([1, 2, 3], dtype=torch.long))
+    with pytest.raises(ValueError, match="rank-2"):
+        apply_seneca_onnx_position_ids_compat(
+            {"input_ids": torch.tensor([1, 2, 3], dtype=torch.long)},
+            required_onnx_inputs=["input_ids", "position_ids"],
+        )
+
+
+def test_position_ids_fail_closed_incompatible_supplied_shape() -> None:
+    torch = pytest.importorskip("torch")
+    from offline_rag.dense.cpu_onnx_executor import apply_seneca_onnx_position_ids_compat
+
+    with pytest.raises(ValueError, match="incompatible"):
+        apply_seneca_onnx_position_ids_compat(
+            {
+                "input_ids": torch.tensor([[1, 2, 3]], dtype=torch.long),
+                "position_ids": torch.tensor([[0, 1]], dtype=torch.long),
+            },
+            required_onnx_inputs=["input_ids", "position_ids"],
+        )
+
+
+def test_position_ids_dtype_long_ort_compatible() -> None:
+    torch = pytest.importorskip("torch")
+    from offline_rag.dense.cpu_onnx_executor import (
+        apply_seneca_onnx_position_ids_compat,
+        build_qwen3_direct_forward_position_ids,
+    )
+
+    input_ids = torch.tensor([[1, 2]], dtype=torch.long)
+    pos = build_qwen3_direct_forward_position_ids(input_ids)
+    assert pos.dtype == torch.long
+    assert pos.numpy().dtype.name == "int64"
+    out = apply_seneca_onnx_position_ids_compat(
+        {"input_ids": input_ids},
+        required_onnx_inputs=["input_ids", "position_ids"],
+    )
+    assert out["position_ids"].dtype == torch.long
+
+
+def test_position_ids_does_not_modify_input_ids_or_attention_mask() -> None:
+    torch = pytest.importorskip("torch")
+    from offline_rag.dense.cpu_onnx_executor import apply_seneca_onnx_position_ids_compat
+
+    input_ids = torch.tensor([[3, 4, 5]], dtype=torch.long)
+    attention_mask = torch.tensor([[1, 0, 1]], dtype=torch.long)
+    input_ids_before = input_ids.clone()
+    attention_before = attention_mask.clone()
+    out = apply_seneca_onnx_position_ids_compat(
+        {"input_ids": input_ids, "attention_mask": attention_mask},
+        required_onnx_inputs=["input_ids", "attention_mask", "position_ids"],
+    )
+    assert torch.equal(out["input_ids"], input_ids_before)
+    assert torch.equal(out["attention_mask"], attention_before)
+    assert out["input_ids"] is input_ids
+    assert out["attention_mask"] is attention_mask
+
+
+def test_position_ids_graph_detection_from_onnx(tmp_path: Path) -> None:
+    from offline_rag.dense.cpu_onnx_executor import (
+        onnx_graph_input_names,
+        onnx_graph_requires_position_ids,
+    )
+
+    path = tmp_path / "with_pos.onnx"
+    _write_minimal_onnx(path, with_int8_initializer=False)
+    # Minimal Identity graph has only X — not position_ids.
+    assert onnx_graph_requires_position_ids(path) is False
+    assert "position_ids" not in onnx_graph_input_names(path)
+
+
+def test_position_ids_compat_does_not_touch_fp32_export_tree() -> None:
+    """Compat code must not mutate the immutable Stage-0A FP32 tree bytes."""
+    from offline_rag.dense.cpu_onnx_harness import hash_export_tree
+    from offline_rag.dense.cpu_onnx_executor import apply_seneca_onnx_position_ids_compat
+
+    torch = pytest.importorskip("torch")
+    export = REPO / "data" / "16k_d_cpu_onnx_work" / "exports" / "fp32_v1"
+    if not export.is_dir():
+        pytest.skip("Stage-0A FP32 export tree not present locally")
+    before = hash_export_tree(export)
+    assert before["tree_sha256"] == EXPECTED_FP32_STAGE0_EXPORT_TREE_SHA256
+
+    apply_seneca_onnx_position_ids_compat(
+        {
+            "input_ids": torch.tensor([[1, 2, 3, 4]], dtype=torch.long),
+            "attention_mask": torch.tensor([[0, 0, 1, 1]], dtype=torch.long),
+        },
+        required_onnx_inputs=["input_ids", "attention_mask", "position_ids"],
+    )
+    after = hash_export_tree(export)
+    assert after["tree_sha256"] == before["tree_sha256"] == (
+        EXPECTED_FP32_STAGE0_EXPORT_TREE_SHA256
+    )

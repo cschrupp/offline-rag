@@ -1115,6 +1115,9 @@ SLICE 15  COMPLETE / ACCEPTED
          (export tree 3e1b23a7…; smoke FAIL: ONNX position_ids not provided by ST)
          evidence: docs/evidence/16k_d_cpu_onnx/fp32_stage0_fail_1792627284.json
        16K-D CPU-ONNX-01 Stage-0A: STOP FOR REVIEW (QINT8+ closed)
+       16K-D CPU-ONNX-01 POSITION_IDS COMPAT: IMPLEMENTATION under
+         …-POSITION-IDS-COMPAT-IMPLEMENTATION-AUTH-001 (parent 276736fe…;
+         arange semantics; no scientific smoke; tree 3e1b23a7… immutable)
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md
@@ -1952,6 +1955,9 @@ SLICE 15  COMPLETE / ACCEPTED
          (export tree 3e1b23a7…; smoke FAIL: ONNX position_ids not provided by ST)
          evidence: docs/evidence/16k_d_cpu_onnx/fp32_stage0_fail_1792627284.json
        16K-D CPU-ONNX-01 Stage-0A: STOP FOR REVIEW (QINT8+ closed)
+       16K-D CPU-ONNX-01 POSITION_IDS COMPAT: IMPLEMENTATION under
+         …-POSITION-IDS-COMPAT-IMPLEMENTATION-AUTH-001 (parent 276736fe…;
+         arange semantics; no scientific smoke; tree 3e1b23a7… immutable)
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md

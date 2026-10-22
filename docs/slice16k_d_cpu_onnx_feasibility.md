@@ -17,6 +17,12 @@ graph exposes `position_ids`; ST/`ORTModelForFeatureExtraction` supplies only
 `input_ids` + `attention_mask`). Evidence:
 `docs/evidence/16k_d_cpu_onnx/fp32_stage0_fail_1792627284.json`.
 
+**POSITION_IDS COMPAT AUTH-001:** implementation of Seneca ONNX adapter that
+injects `position_ids = arange(seq).unsqueeze(0).expand(batch,-1)` when the
+loaded ONNX input contract requires it (Qwen3 direct-forward semantics; **not**
+`attention_mask.cumsum`). Immutable FP32 tree `3e1b23a7…` must remain untouched.
+No scientific smoke under this authority — Stage-0A RETRY is a later AUTH.
+
 **Predecessor:** CPU-OV-01 STOP after INT8 128-screen TOO_SLOW (~39.75 min projected)  
 **Further scientific execution:** NOT AUTHORIZED (`EXECUTION_AUTHORIZED=False`);
 QINT8 / screen / parity / full closed until Stage 0A PASS disposition.
@@ -112,3 +118,6 @@ main promotion.
    after encode (F003).
 8. Final ≤25-minute gate uses measured `full_wall_minutes` + exact 1296 counts
    (when a later AUTH unlocks full confirm).
+9. When the loaded ONNX graph requires `position_ids`, Seneca injects
+   zero-based `arange(seq)` expanded to `[batch, seq]` (Qwen3 direct-forward);
+   never `attention_mask.cumsum`; never mutate the immutable FP32 export tree.
