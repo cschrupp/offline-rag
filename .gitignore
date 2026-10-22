@@ -82,3 +82,6 @@ Thumbs.db
 deploy/certs/*.crt
 deploy/certs/*.pem
 deploy/wheelhouse/
+
+# CPU-GGUF-01 local provisioned binaries (not scientific evidence)
+data/16k_d_cpu_gguf_work/

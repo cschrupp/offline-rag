@@ -1,0 +1,36 @@
+{
+  "authority": "S16-K-D-POST-CPUONNX-CPU-GGUF-STAGE0-ASSET-PROVISIONING-AUTH-001",
+  "embedding_calls": 0,
+  "gguf": {
+    "bytes": 639150016,
+    "expected_sha256": "a0e820fb3f8f448d3582862f9161bfaf58a63f89b46353f061e017597655821c",
+    "filename": "Qwen3-Embedding-0.6B-Q8_0.gguf",
+    "path": "/home/user/projects/technical_rag/data/16k_d_cpu_gguf_work/assets/Qwen3-Embedding-0.6B-Q8_0.gguf",
+    "relative_path": "data/16k_d_cpu_gguf_work/assets/Qwen3-Embedding-0.6B-Q8_0.gguf",
+    "repo": "Qwen/Qwen3-Embedding-0.6B-GGUF",
+    "revision": "71a379860247873620c83349673f4bcbdbc24922",
+    "sha256": "a0e820fb3f8f448d3582862f9161bfaf58a63f89b46353f061e017597655821c",
+    "verified": true
+  },
+  "llama_cpp": {
+    "archive_bytes": 22331049,
+    "archive_path": "/home/user/projects/technical_rag/data/16k_d_cpu_gguf_work/assets/llama-b11803-bin-ubuntu-x64.tar.gz",
+    "archive_relative_path": "data/16k_d_cpu_gguf_work/assets/llama-b11803-bin-ubuntu-x64.tar.gz",
+    "archive_sha256": "2c718373086c9eda54d1e994cd5197aa079a4247e3dc4ec9edee8254cee08746",
+    "file_identity": "ELF 64-bit LSB pie executable, x86-64, version 1 (GNU/Linux), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, BuildID[sha1]=1bdaa43e41541065362210bc0f8c7be841174bd3, for GNU/Linux 3.2.0, not stripped",
+    "llama_server_absolute_path": "/home/user/projects/technical_rag/data/16k_d_cpu_gguf_work/assets/llama-b11803/llama-b11803/llama-server",
+    "llama_server_bytes": 17864,
+    "llama_server_relative_path": "data/16k_d_cpu_gguf_work/assets/llama-b11803/llama-b11803/llama-server",
+    "llama_server_sha256": "750e13aba6d7929c85ea0e7a41e68fb03187ae875884b64a145aad405fb7ca3a",
+    "platform_asset": "Ubuntu x64 CPU",
+    "release": "b11803",
+    "upstream_commit": "a37cc46",
+    "version_exit_code": 0,
+    "version_output": "version: 0.7.0-dev (build 11803, commit a37cc4610)\nbuilt with GNU 11.4.0 for Linux x86_64",
+    "viable_llama_server_count": 1
+  },
+  "recorded_at": "2026-10-22T02:15:39Z",
+  "repository_baseline": "0242841b67f3a6c417b49b2578a70f1a837ad932",
+  "scientific_server_startups": 0,
+  "work_class": "LOCAL ASSET PROVISIONING / NO SCIENTIFIC EXECUTION"
+}
