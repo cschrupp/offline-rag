@@ -1149,9 +1149,15 @@ SLICE 15  COMPLETE / ACCEPTED
           encode ~288.5 s; projected ~48.68 min ≤50; 128/128 finite
           normalized 1024-d; full-1296 confirmation eligible — NOT run)
          evidence: docs/evidence/16k_d_cpu_onnx/onnx_fp32_128_screen_pass_1792638543.json
-       16K-D still closed: full 1296 FP32 confirmation · production routing ·
-         UI implementation · default promotion · main · alternate models ·
-         further quantization
+       16K-D DUAL-BACKEND P1: IMPLEMENTATION CANDIDATE under
+         S16-K-D-DUAL-BACKEND-P1-QUALIFIED-RUNTIME-SUBSTRATE-IMPLEMENTATION-AUTH-001
+         (R2 scope; parent 36cd5fb…; branch implementation/16k-d-dual-backend-p1-runtime-substrate;
+          qualified runtime substrate + package onnx_fp32_v1 qualification;
+          bounded real-model smoke PASS; P2/P3/P4 still closed)
+         smoke: docs/evidence/16k_d_dual_backend_p1/bounded_real_model_smoke_pass.json
+       16K-D still closed: full 1296 FP32 confirmation · P2 product surfaces ·
+         P3 provisioning · P4 acceptance · UI · default promotion · main ·
+         alternate models · further quantization
        16K-D CPU-GGUF-01 authority:
          S16-K-D-POST-CPUONNX-CPU-GGUF-FEASIBILITY-IMPLEMENTATION-AUTH-001
        16K-D CPU-GGUF-01 exact parent:
@@ -2049,9 +2055,15 @@ SLICE 15  COMPLETE / ACCEPTED
           encode ~288.5 s; projected ~48.68 min ≤50; 128/128 finite
           normalized 1024-d; full-1296 confirmation eligible — NOT run)
          evidence: docs/evidence/16k_d_cpu_onnx/onnx_fp32_128_screen_pass_1792638543.json
-       16K-D still closed: full 1296 FP32 confirmation · production routing ·
-         UI implementation · default promotion · main · alternate models ·
-         further quantization
+       16K-D DUAL-BACKEND P1: IMPLEMENTATION CANDIDATE under
+         S16-K-D-DUAL-BACKEND-P1-QUALIFIED-RUNTIME-SUBSTRATE-IMPLEMENTATION-AUTH-001
+         (R2 scope; parent 36cd5fb…; branch implementation/16k-d-dual-backend-p1-runtime-substrate;
+          qualified runtime substrate + package onnx_fp32_v1 qualification;
+          bounded real-model smoke PASS; P2/P3/P4 still closed)
+         smoke: docs/evidence/16k_d_dual_backend_p1/bounded_real_model_smoke_pass.json
+       16K-D still closed: full 1296 FP32 confirmation · P2 product surfaces ·
+         P3 provisioning · P4 acceptance · UI · default promotion · main ·
+         alternate models · further quantization
        16K-D CPU-GGUF-01 authority:
          S16-K-D-POST-CPUONNX-CPU-GGUF-FEASIBILITY-IMPLEMENTATION-AUTH-001
        16K-D CPU-GGUF-01 exact parent:

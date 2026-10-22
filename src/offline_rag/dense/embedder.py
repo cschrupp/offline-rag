@@ -328,12 +328,16 @@ class EmbedderError(RuntimeError):
 def make_embedder(settings: AppSettings) -> Embedder:
     """Construct the configured embedder (fake never silently substitutes).
 
-    Resolves embedding device and precision policy once at construction.
-    SentenceTransformer never receives ``device="auto"``. FP16 conversion, when
-    requested, occurs once after model load and before encode.
+    For production Qwen / sentence_transformers settings, resolves a qualified
+    dual-backend execution profile, validates the selected representation, and
+    returns a ``QualifiedEmbeddingRuntime`` in UNLOADED state (no heavy load).
     """
-    from offline_rag.dense.device import resolve_embedding_device
-    from offline_rag.dense.precision import resolve_embedding_precision
+    from offline_rag.dense.embedding_artifacts import (
+        RepresentationReadiness,
+        inspect_selected_representation,
+    )
+    from offline_rag.dense.embedding_runtime import QualifiedEmbeddingRuntime
+    from offline_rag.dense.execution_profile import resolve_qualified_embedding_profile
 
     emb = settings.indexing.embedding
     query = settings.dense.query_text
@@ -355,36 +359,63 @@ def make_embedder(settings: AppSettings) -> Embedder:
             configured_precision=str(emb.precision),
         )
     if emb.implementation != "sentence_transformers":
-        raise EmbedderError(f"unsupported embedding implementation: {emb.implementation}")
+        raise EmbedderError(
+            f"unsupported embedding implementation: {emb.implementation}"
+        )
 
-    resolution = resolve_embedding_device(emb.device)
-    precision = resolve_embedding_precision(
+    # P1: query/document instruction strings are frozen null for qualified Qwen.
+    if emb.query_instruction is not None or emb.document_instruction is not None:
+        raise EmbedderError(
+            "qualified dual-backend embedding requires query_instruction=null and "
+            "document_instruction=null"
+        )
+    if query_contract != RAW_QUERY_V1:
+        raise EmbedderError(
+            f"qualified dual-backend P1 only authorizes {RAW_QUERY_V1}; "
+            f"got {query_contract}"
+        )
+
+    profile_resolution = resolve_qualified_embedding_profile(
+        emb.device,
         emb.precision,
-        resolved_device=resolution.resolved_device,
     )
     model_dir = resolve_embedding_model_dir(
         embedding_artifacts_root=settings.paths.embedding_artifacts,
         model_path=settings.dense.model_path,
     )
-    return SentenceTransformersEmbedder(
-        model_path=model_dir,
+    representation = inspect_selected_representation(
+        model_dir,
+        profile_resolution.profile.representation_id,
+        expected_model_id=emb.model_id,
+        expected_revision=emb.revision,
+        expected_dimension=emb.dimension,
+    )
+    if representation.readiness != RepresentationReadiness.READY:
+        raise EmbedderError(
+            "selected embedding representation is not READY for profile "
+            f"{profile_resolution.profile.profile_id}: "
+            f"representation={profile_resolution.profile.representation_id} "
+            f"readiness={representation.readiness.value} "
+            f"reason={representation.reason}"
+        )
+    # Attach status onto resolution for observability without mutating frozen profile.
+    profile_resolution = profile_resolution.__class__(
+        configured_device=profile_resolution.configured_device,
+        configured_precision=profile_resolution.configured_precision,
+        profile=profile_resolution.profile,
+        selection_reason=profile_resolution.selection_reason,
+        cuda_available=profile_resolution.cuda_available,
+        torch_cuda_build=profile_resolution.torch_cuda_build,
+        selected_representation_status=representation.readiness.value,
+    )
+    return QualifiedEmbeddingRuntime(
+        profile_resolution=profile_resolution,
+        representation=representation,
         model_id=emb.model_id,
         model_revision=emb.revision,
         dimension=emb.dimension,
         normalize=emb.normalize,
-        device=resolution.resolved_device,
-        batch_size=emb.batch_size,
-        query_instruction=emb.query_instruction,
-        document_instruction=emb.document_instruction,
-        expected_dimension=emb.dimension,
         query_text_contract=query_contract,
-        configured_device=resolution.configured_device,
-        cuda_available=resolution.cuda_available,
-        torch_cuda_build=resolution.torch_cuda_build,
-        device_selection_reason=resolution.selection_reason,
-        configured_precision=precision.configured_precision,
-        resolved_precision=precision.resolved_precision,
-        precision_selection_reason=precision.selection_reason,
     )
 
 
@@ -403,6 +434,9 @@ def embedder_runtime_view(embedder: object) -> dict[str, object | None]:
         "cuda_available": getattr(embedder, "cuda_available", None),
         "torch_cuda_build": getattr(embedder, "torch_cuda_build", None),
         "selection_reason": getattr(embedder, "device_selection_reason", None),
+        "profile_id": getattr(embedder, "profile_id", None),
+        "representation_id": getattr(embedder, "representation_id", None),
+        "runtime_state": str(getattr(embedder, "state", None) or "") or None,
     }
 
 

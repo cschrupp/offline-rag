@@ -1,0 +1,19 @@
+{
+  "accepted_tree_immutable": true,
+  "accepted_tree_sha256": "3e1b23a7293cf599bc34d1d9875e5c4ecde45bf12fcd300a6cb66794b5bc4345",
+  "all_finite": true,
+  "all_normalized": true,
+  "authority": "S16-K-D-DUAL-BACKEND-P1-QUALIFIED-RUNTIME-SUBSTRATE-IMPLEMENTATION-AUTH-001",
+  "dimension": 1024,
+  "disposition": "PASS",
+  "document_count": 2,
+  "position_ids_compat_installed": true,
+  "profile_id": "cpu_onnx_fp32_v1",
+  "provider": "CPUExecutionProvider",
+  "provider_model_calls": 1,
+  "query_count": 2,
+  "representation_id": "onnx_fp32_v1",
+  "runtime_transitions": "UNLOADED -> READY",
+  "scientific_campaign_calls": 0,
+  "smoke": "bounded_real_model_onnx_fp32_v1"
+}

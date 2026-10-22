@@ -102,14 +102,24 @@ def test_explicit_cuda_unavailable_fails_closed() -> None:
 
 
 def test_sentence_transformer_never_receives_auto(tmp_path: Path) -> None:
+    """P1: make_embedder returns QualifiedEmbeddingRuntime; profile device is cuda/cpu."""
+    from offline_rag.dense.embedding_artifacts import (
+        RepresentationInspection,
+        RepresentationReadiness,
+        RepresentationReasonCode,
+    )
+    from offline_rag.dense.embedding_runtime import QualifiedEmbeddingRuntime
+    from offline_rag.dense.execution_profile import (
+        CUDA_FP16_V1,
+        EmbeddingProfileResolution,
+    )
+
     settings = _settings(tmp_path, implementation="sentence_transformers", device="auto")
-    # Avoid real artifact / model load: patch resolution + constructor capture.
     captured: dict[str, str] = {}
 
     class CapturingST(SentenceTransformersEmbedder):
         def __init__(self, **kwargs):  # type: ignore[no-untyped-def]
             captured["device"] = kwargs["device"]
-            # Skip parent artifact checks by not calling super fully.
             self.device = kwargs["device"]
             self.resolved_device = kwargs["device"]
             self.configured_device = kwargs["configured_device"]
@@ -131,15 +141,24 @@ def test_sentence_transformer_never_receives_auto(tmp_path: Path) -> None:
         def embed_query(self, text):  # type: ignore[no-untyped-def]
             return [0.0] * self.dimension
 
+    ready = RepresentationInspection(
+        representation_id="torch_st_v1",
+        readiness=RepresentationReadiness.READY,
+        reason_code=RepresentationReasonCode.OK,
+        reason="ok",
+        root=tmp_path,
+        instance_path=tmp_path,
+    )
     with (
         patch(
-            "offline_rag.dense.device.resolve_embedding_device",
-            return_value=MagicMock(
+            "offline_rag.dense.execution_profile.resolve_qualified_embedding_profile",
+            return_value=EmbeddingProfileResolution(
                 configured_device="auto",
-                resolved_device="cuda",
+                configured_precision="native",
+                profile=CUDA_FP16_V1,
+                selection_reason="auto_cuda_fp16",
                 cuda_available=True,
                 torch_cuda_build="12.8",
-                selection_reason="cuda_available",
             ),
         ),
         patch(
@@ -147,13 +166,21 @@ def test_sentence_transformer_never_receives_auto(tmp_path: Path) -> None:
             return_value=tmp_path,
         ),
         patch(
+            "offline_rag.dense.embedding_artifacts.inspect_representation",
+            return_value=ready,
+        ),
+        patch(
             "offline_rag.dense.embedder.SentenceTransformersEmbedder",
             CapturingST,
         ),
     ):
         emb = make_embedder(settings)
+        assert isinstance(emb, QualifiedEmbeddingRuntime)
+        assert emb.device == "cuda"
+        assert emb.state.value == "UNLOADED"
+        # Heavy load constructs backend with concrete device, never "auto".
+        _ = emb.embed_query("q")
     assert captured["device"] == "cuda"
-    assert emb.device == "cuda"  # type: ignore[attr-defined]
 
 
 def test_no_mid_run_cpu_fallback() -> None:
@@ -502,23 +529,21 @@ def test_runtime_auto_unavailable_cuda_starts_ready(tmp_path: Path) -> None:
         update={"indexing": settings.indexing.model_copy(update={"embedding": emb})}
     )
 
-    class _StubST:
-        def __init__(self, **kwargs):  # type: ignore[no-untyped-def]
-            self.device = kwargs["device"]
-            self.resolved_device = kwargs["device"]
-            self.configured_device = kwargs["configured_device"]
-            self.cuda_available = kwargs["cuda_available"]
-            self.torch_cuda_build = kwargs["torch_cuda_build"]
-            self.device_selection_reason = kwargs["device_selection_reason"]
-            self.model_id = kwargs["model_id"]
-            self.model_revision = kwargs["model_revision"]
-            self.dimension = kwargs["dimension"]
-            self.normalize = kwargs["normalize"]
-            self.adapter_contract = "sentence-transformers-v1"
-            self.query_text_contract = "raw-query-v1"
+    from offline_rag.dense.embedding_artifacts import (
+        RepresentationInspection,
+        RepresentationReadiness,
+        RepresentationReasonCode,
+    )
 
-        def close(self) -> None:
-            return None
+    ready_onnx = RepresentationInspection(
+        representation_id="onnx_fp32_v1",
+        readiness=RepresentationReadiness.READY,
+        reason_code=RepresentationReasonCode.OK,
+        reason="ok",
+        root=tmp_path,
+        instance_path=tmp_path,
+        graph_file_name="onnx/model.onnx",
+    )
 
     runtime = ApplicationRuntime(
         settings=settings,
@@ -531,7 +556,7 @@ def test_runtime_auto_unavailable_cuda_starts_ready(tmp_path: Path) -> None:
     )
     with (
         patch(
-            "offline_rag.dense.device.probe_torch_cuda",
+            "offline_rag.dense.execution_profile.probe_torch_cuda",
             return_value=(False, "12.8", False),
         ),
         patch(
@@ -539,12 +564,14 @@ def test_runtime_auto_unavailable_cuda_starts_ready(tmp_path: Path) -> None:
             return_value=tmp_path,
         ),
         patch(
-            "offline_rag.dense.embedder.SentenceTransformersEmbedder",
-            _StubST,
+            "offline_rag.dense.embedding_artifacts.inspect_representation",
+            return_value=ready_onnx,
         ),
     ):
         runtime.start()
     assert runtime.state is RuntimeState.READY
     assert runtime.is_ready is True
     assert runtime.resources is not None
+    # P1: AUTO without CUDA selects cpu_onnx_fp32_v1 (UNLOADED until first encode).
     assert runtime.resources.embedder.device == "cpu"  # type: ignore[union-attr]
+    assert getattr(runtime.resources.embedder, "profile_id", None) == "cpu_onnx_fp32_v1"
