@@ -1140,11 +1140,18 @@ SLICE 15  COMPLETE / ACCEPTED
          S16-K-D-POST-QWENCPU-ONNX-FP32-GPUFP16-PARITY-DIAGNOSTIC-AUTH-001
          (subject f36aaa7…; tree 3e1b23a7… immutable; CUDA+FP16 observed;
           median doc/query cos ~0.999998; Top1 16/16; Top10 1.0;
-          QINT8 rejected as cause; ONNX export not ruled out;
-          next=FP32 128-screen — NOT AUTHORIZED here)
+          QINT8 rejected as cause; ONNX export not ruled out)
          evidence: docs/evidence/16k_d_cpu_onnx/onnx_fp32_gpu_fp16_parity_pass_1792638012.json
-       16K-D still closed: FP32 128-screen · full 1296 ONNX · production
-         backend routing · default promotion · main · alternate embedding model
+       16K-D POST-QWENCPU FP32 parity IR-001: ACCEPT (tip 374692f…)
+       16K-D POST-QWENCPU FP32 128-screen: PRODUCT-PRACTICAL under
+         S16-K-D-POST-QWENCPU-ONNX-FP32-128-SCREEN-EXECUTION-AUTH-001
+         (subject 374692f…; tree 3e1b23a7… immutable; ~0.444 chunks/s;
+          encode ~288.5 s; projected ~48.68 min ≤50; 128/128 finite
+          normalized 1024-d; full-1296 confirmation eligible — NOT run)
+         evidence: docs/evidence/16k_d_cpu_onnx/onnx_fp32_128_screen_pass_1792638543.json
+       16K-D still closed: full 1296 FP32 confirmation · production routing ·
+         UI implementation · default promotion · main · alternate models ·
+         further quantization
        16K-D CPU-GGUF-01 authority:
          S16-K-D-POST-CPUONNX-CPU-GGUF-FEASIBILITY-IMPLEMENTATION-AUTH-001
        16K-D CPU-GGUF-01 exact parent:
@@ -2033,11 +2040,18 @@ SLICE 15  COMPLETE / ACCEPTED
          S16-K-D-POST-QWENCPU-ONNX-FP32-GPUFP16-PARITY-DIAGNOSTIC-AUTH-001
          (subject f36aaa7…; tree 3e1b23a7… immutable; CUDA+FP16 observed;
           median doc/query cos ~0.999998; Top1 16/16; Top10 1.0;
-          QINT8 rejected as cause; ONNX export not ruled out;
-          next=FP32 128-screen — NOT AUTHORIZED here)
+          QINT8 rejected as cause; ONNX export not ruled out)
          evidence: docs/evidence/16k_d_cpu_onnx/onnx_fp32_gpu_fp16_parity_pass_1792638012.json
-       16K-D still closed: FP32 128-screen · full 1296 ONNX · production
-         backend routing · default promotion · main · alternate embedding model
+       16K-D POST-QWENCPU FP32 parity IR-001: ACCEPT (tip 374692f…)
+       16K-D POST-QWENCPU FP32 128-screen: PRODUCT-PRACTICAL under
+         S16-K-D-POST-QWENCPU-ONNX-FP32-128-SCREEN-EXECUTION-AUTH-001
+         (subject 374692f…; tree 3e1b23a7… immutable; ~0.444 chunks/s;
+          encode ~288.5 s; projected ~48.68 min ≤50; 128/128 finite
+          normalized 1024-d; full-1296 confirmation eligible — NOT run)
+         evidence: docs/evidence/16k_d_cpu_onnx/onnx_fp32_128_screen_pass_1792638543.json
+       16K-D still closed: full 1296 FP32 confirmation · production routing ·
+         UI implementation · default promotion · main · alternate models ·
+         further quantization
        16K-D CPU-GGUF-01 authority:
          S16-K-D-POST-CPUONNX-CPU-GGUF-FEASIBILITY-IMPLEMENTATION-AUTH-001
        16K-D CPU-GGUF-01 exact parent:

@@ -56,14 +56,24 @@ only.
 loads accepted FP32 tree `3e1b23a7…` via `load_onnx_st_model(..., weight_format=
 "fp32", require_quant_match=False)`; CUDA+FP16 observed; all D2 gates pass
 (median doc/query cos ~0.999998; Top1 16/16; Top10 1.0). QINT8 is the cause;
-ONNX export/inference semantics are not ruled out. Next: FP32 128-screen —
-**not authorized here**. Evidence:
+ONNX export/inference semantics preserved. Evidence:
 `docs/evidence/16k_d_cpu_onnx/onnx_fp32_gpu_fp16_parity_pass_1792638012.json`.
 
+**FP32 parity IR-001:** ACCEPT — canonical
+`QWEN FP32 ONNX ↔ PYTORCH CUDA FP16 VECTOR-SPACE PARITY — COMPLETE /
+INDEPENDENTLY ACCEPTED` (tip `374692f…`).
+
+**POST-QWENCPU FP32 128-screen AUTH-001:** **PRODUCT-PRACTICAL** — subject
+`374692f…`; tree `3e1b23a7…` immutable; digest
+`9dfda07f…`; encode ~288.5 s; ~0.444 chunks/s; projected ~48.68 min (≤50
+product usability gate); 128/128 finite normalized 1024-d. Full-1296
+confirmation eligible but **not authorized/run**. No second parity required.
+Evidence: `docs/evidence/16k_d_cpu_onnx/onnx_fp32_128_screen_pass_1792638543.json`.
+
 **Predecessor:** CPU-OV-01 STOP after INT8 128-screen TOO_SLOW (~39.75 min projected)  
-**Still closed:** FP32 128-screen · full 1296 ONNX · production backend routing ·
-default promotion · main · alternate embedding model
-(`EXECUTION_AUTHORIZED=False` on planner).
+**Still closed:** full 1296 FP32 confirmation · production backend routing ·
+UI implementation · default promotion · main · alternate embedding models ·
+further quantization (`EXECUTION_AUTHORIZED=False` on planner).
 
 ---
 

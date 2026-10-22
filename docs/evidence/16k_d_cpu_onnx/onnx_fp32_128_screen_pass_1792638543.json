@@ -1,0 +1,185 @@
+{
+  "authority": "S16-K-D-POST-QWENCPU-ONNX-FP32-128-SCREEN-EXECUTION-AUTH-001",
+  "candidate": {
+    "backend": "ONNX Runtime",
+    "batch": 32,
+    "candidate_tree_immutable": true,
+    "candidate_tree_sha256_after": "3e1b23a7293cf599bc34d1d9875e5c4ecde45bf12fcd300a6cb66794b5bc4345",
+    "candidate_tree_sha256_before": "3e1b23a7293cf599bc34d1d9875e5c4ecde45bf12fcd300a6cb66794b5bc4345",
+    "dimension": 1024,
+    "document_contract": "plain-v1",
+    "expected_candidate_tree_sha256": "3e1b23a7293cf599bc34d1d9875e5c4ecde45bf12fcd300a6cb66794b5bc4345",
+    "external_data_sha256": "a585477de21c0a89e021dd64f4d3be34483eb4aaed7ae93fc047e3edf74545da",
+    "load": {
+      "function": "load_onnx_st_model",
+      "loaded_before_timer": true,
+      "require_quant_match": false,
+      "weight_format": "fp32"
+    },
+    "model_id": "Qwen/Qwen3-Embedding-0.6B",
+    "model_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+    "normalize": true,
+    "ort_inter_op_threads": 1,
+    "ort_intra_op_threads": 8,
+    "path": "data/16k_d_cpu_onnx_work/exports/fp32_v1/",
+    "position_ids_compat": {
+      "adapter_installed": true,
+      "authority": "S16-K-D-POST-CPUOV-CPU-ONNX-POSITION-IDS-COMPAT-IMPLEMENTATION-AUTH-001",
+      "dtype": "int64",
+      "graph_requires_position_ids": true,
+      "note": "injects torch.arange(seq).unsqueeze(0).expand(batch,-1) when required and absent; never attention_mask.cumsum",
+      "overwrites_supplied_position_ids": false,
+      "required_onnx_inputs": [
+        "input_ids",
+        "attention_mask",
+        "position_ids"
+      ],
+      "semantics": "qwen3_direct_forward_zero_based_arange",
+      "shape_policy": "batch_x_sequence",
+      "source": "generated_by_seneca_adapter"
+    },
+    "precision": "FP32",
+    "primary_graph": "onnx/model.onnx",
+    "primary_graph_sha256": "6135c5388da771b2072db0698a4ff558f78f4479ab8160721d43c077767707e9",
+    "provider": "CPUExecutionProvider",
+    "query_contract": "raw-query-v1"
+  },
+  "cpu_host_runtime_after": {
+    "Architecture": "x86_64",
+    "CPU(s)": "16",
+    "Model name": "Intel(R) Core(TM) i9-10885H CPU @ 2.40GHz",
+    "Vendor ID": "GenuineIntel",
+    "cpu_count_os": 16,
+    "ort_inter_op_threads": 1,
+    "ort_intra_op_threads": 8,
+    "peak_rss_bytes": 6270537728,
+    "provider": "CPUExecutionProvider"
+  },
+  "cpu_host_runtime_before": {
+    "Architecture": "x86_64",
+    "CPU(s)": "16",
+    "Model name": "Intel(R) Core(TM) i9-10885H CPU @ 2.40GHz",
+    "Vendor ID": "GenuineIntel",
+    "cpu_count_os": 16,
+    "ort_inter_op_threads": 1,
+    "ort_intra_op_threads": 8,
+    "peak_rss_bytes": 3443343360,
+    "provider": "CPUExecutionProvider"
+  },
+  "disposition": "PRODUCT-PRACTICAL",
+  "environment": {
+    "onnx": "1.23.2",
+    "onnxruntime": "1.31.0",
+    "optimum": "2.1.0",
+    "python": "3.14.5",
+    "sentence-transformers": "6.0.1",
+    "transformers": "4.57.6"
+  },
+  "execution_subject": "374692f7b62b487cbc45654f28667054ae23df3b",
+  "ir_context": "S16-K-D-POST-QWENCPU-ONNX-FP32-GPUFP16-PARITY-DIAGNOSTIC-IR-001 ACCEPT",
+  "metrics": {
+    "all_vectors_finite": true,
+    "all_vectors_normalized": true,
+    "chunks_per_sec": 0.44370244307203216,
+    "dimension": 1024,
+    "encode_wall_s": 288.4816209569981,
+    "peak_rss_after_bytes": 6270537728,
+    "peak_rss_before_bytes": 3443343360,
+    "peak_rss_bytes": 6270537728,
+    "projected_full_minutes": 48.68127353649343,
+    "vector_count": 128
+  },
+  "note": "No re-export; no artifact mutation. No second parity after screen. Projection is not confirmation wall-time.",
+  "ok": true,
+  "precision_identity": {
+    "authority": "S16-K-D-POST-CPUOV-CPU-ONNX-FEASIBILITY-IMPLEMENTATION-AUTH-001",
+    "loaded_onnx_file_name": "onnx/model.onnx",
+    "loaded_onnx_path": "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/fp32_v1/onnx/model.onnx",
+    "observed_ONNX_INT8_quantization": {
+      "authority": "S16-K-D-POST-CPUOV-CPU-ONNX-FEASIBILITY-IMPLEMENTATION-AUTH-001",
+      "demonstrable_integer_initializers": false,
+      "demonstrable_quantization_ops": false,
+      "int8_initializer_count": 0,
+      "note": "verified iff INT8/UINT8 initializers are present; quantization ops are supporting evidence only; never from request label or filename",
+      "quantization_op_count": 0,
+      "uint8_initializer_count": 0,
+      "verified": false
+    },
+    "onnx_files": [
+      "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/fp32_v1/onnx/model.onnx"
+    ],
+    "onnx_inspections": [
+      {
+        "bytes": 1265182,
+        "float_initializer_count": 310,
+        "inspection_method": "onnx_protobuf_initializer_and_op_scan",
+        "int8_initializer_count": 0,
+        "observed_ONNX_INT8_quantization": {
+          "authority": "S16-K-D-POST-CPUOV-CPU-ONNX-FEASIBILITY-IMPLEMENTATION-AUTH-001",
+          "demonstrable_integer_initializers": false,
+          "demonstrable_quantization_ops": false,
+          "int8_initializer_count": 0,
+          "note": "verified iff INT8/UINT8 initializers are present; quantization ops are supporting evidence only; never from request label or filename",
+          "quantization_op_count": 0,
+          "uint8_initializer_count": 0,
+          "verified": false
+        },
+        "onnx_path": "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/fp32_v1/onnx/model.onnx",
+        "other_initializer_count": 0,
+        "quantization_op_count": 0,
+        "quantization_op_types": {},
+        "uint8_initializer_count": 0
+      }
+    ],
+    "position_ids_compat": {
+      "adapter_installed": true,
+      "authority": "S16-K-D-POST-CPUOV-CPU-ONNX-POSITION-IDS-COMPAT-IMPLEMENTATION-AUTH-001",
+      "dtype": "int64",
+      "graph_requires_position_ids": true,
+      "note": "injects torch.arange(seq).unsqueeze(0).expand(batch,-1) when required and absent; never attention_mask.cumsum",
+      "overwrites_supplied_position_ids": false,
+      "required_onnx_inputs": [
+        "input_ids",
+        "attention_mask",
+        "position_ids"
+      ],
+      "semantics": "qwen3_direct_forward_zero_based_arange",
+      "shape_policy": "batch_x_sequence",
+      "source": "generated_by_seneca_adapter"
+    },
+    "primary_onnx_path": "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/fp32_v1/onnx/model.onnx",
+    "requested_weight_format": "fp32",
+    "selected_onnx_file_name": "onnx/model.onnx",
+    "selected_onnx_path": "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/fp32_v1/onnx/model.onnx"
+  },
+  "product_gate": {
+    "full_confirm_eligible": true,
+    "product_practical_max_minutes": 50.0,
+    "projected_full_minutes": 48.68127353649343,
+    "result": "pass",
+    "rule": "projected_full_minutes <= 50.0 \u2192 PRODUCT-PRACTICAL; else STOP FOR REVIEW"
+  },
+  "product_gate_ok": true,
+  "recorded_at": "2026-10-22T03:09:03.711250Z",
+  "status": "ok",
+  "still_closed": [
+    "full 1296 FP32 confirmation",
+    "production routing",
+    "UI implementation",
+    "main",
+    "alternate embedding models",
+    "further quantization experiments"
+  ],
+  "timing_gate_note": "Revised product usability threshold (50 min); not the old 25-min veto",
+  "work_class": "FP32 ONNX 128-SCREEN PRODUCT USABILITY",
+  "work_evidence_path": "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/evidence/screen_fp32_128_1792638543.json",
+  "work_evidence_sha256": "b1c3df83e1cc4af5b8203037459cf96a2b45033b8343ca24156019ca1c0c9307",
+  "workload": {
+    "children": 1296,
+    "chunk_manifest_sha256": "de4ad6b5ab661ba74e8ab2ec5344aa41518fc1dd0e9d94eb08edfbc3073076c3",
+    "corpus_warmup_before_timer": false,
+    "name": "D0-INCIDENT-1296-CHILD-V1",
+    "screen_child_count": 128,
+    "screen_chunk_ids_digest": "9dfda07f0b0801eaa413c741450b48595e1d702c2bca728862b8e20848c64807"
+  }
+}
