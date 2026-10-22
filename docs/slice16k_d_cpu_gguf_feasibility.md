@@ -8,7 +8,14 @@
 **Branch:** `implementation/16k-d-cpu-gguf-feasibility`  
 **Work class:** HARNESS / FEASIBILITY IMPLEMENTATION ONLY  
 
-**Status:** HARNESS REWORK CANDIDATE (F001–F003; awaiting independent review)  
+**Status:** STAGE-0 PASS / Q8_0 128-SCREEN PASS·TOO_SLOW — CPU-GGUF-01 CLOSED
+
+**Q8_0 128-screen AUTH-001:** PASS / **TOO_SLOW** — ~0.633 chunks/s;
+encode wall ~202.1 s; projected ~34.10 min (>25). Evidence:
+`docs/evidence/16k_d_cpu_gguf/q8_0_128_screen_too_slow_1792636108.json`.
+
+**CPU-GGUF-01 scientific outcome:** STOP — no GGUF parity / full confirmation.
+Next: model-change territory (not authorized here).  
 
 **Predecessor:** CPU-ONNX-01 CLOSED / INSUFFICIENT PERFORMANCE after QINT8
 128-screen TOO_SLOW (~35.60 min projected; required ≤25).  

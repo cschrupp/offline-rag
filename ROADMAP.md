@@ -1149,6 +1149,11 @@ SLICE 15  COMPLETE / ACCEPTED
          (subject 6e5537b…; accepted llama-server SHA 750e13ab…;
           smoke dim=1024 finite normalized raw-query-v1; n_gpu_layers=0);
          evidence: docs/evidence/16k_d_cpu_gguf/stage0_compat_auth002_1792635589.json
+       16K-D CPU-GGUF-01 Q8_0 128-screen: PASS / TOO_SLOW (~34.10 min projected;
+         ~0.633 chunks/s; encode ~202.1 s) under Q8-128-SCREEN-EXECUTION-AUTH-001
+         evidence: docs/evidence/16k_d_cpu_gguf/q8_0_128_screen_too_slow_1792636108.json
+       16K-D CPU-GGUF-01 execution: CLOSED after Q8_0 screen TOO_SLOW
+         (parity / full / production routing closed; next=model-change territory)
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md
@@ -2020,6 +2025,11 @@ SLICE 15  COMPLETE / ACCEPTED
          (subject 6e5537b…; accepted llama-server SHA 750e13ab…;
           smoke dim=1024 finite normalized raw-query-v1; n_gpu_layers=0);
          evidence: docs/evidence/16k_d_cpu_gguf/stage0_compat_auth002_1792635589.json
+       16K-D CPU-GGUF-01 Q8_0 128-screen: PASS / TOO_SLOW (~34.10 min projected;
+         ~0.633 chunks/s; encode ~202.1 s) under Q8-128-SCREEN-EXECUTION-AUTH-001
+         evidence: docs/evidence/16k_d_cpu_gguf/q8_0_128_screen_too_slow_1792636108.json
+       16K-D CPU-GGUF-01 execution: CLOSED after Q8_0 screen TOO_SLOW
+         (parity / full / production routing closed; next=model-change territory)
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md
