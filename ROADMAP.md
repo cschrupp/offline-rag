@@ -1145,6 +1145,10 @@ SLICE 15  COMPLETE / ACCEPTED
          GGUF a0e820fb…; llama-server b11803 SHA 750e13ab…;
          evidence: docs/evidence/16k_d_cpu_gguf/asset_provisioning_1792635339.json;
          scientific startups=0
+       16K-D CPU-GGUF-01 Stage-0 compat: PASS under STAGE0-COMPAT-EXECUTION-AUTH-002
+         (subject 6e5537b…; accepted llama-server SHA 750e13ab…;
+          smoke dim=1024 finite normalized raw-query-v1; n_gpu_layers=0);
+         evidence: docs/evidence/16k_d_cpu_gguf/stage0_compat_auth002_1792635589.json
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md
@@ -2012,6 +2016,10 @@ SLICE 15  COMPLETE / ACCEPTED
          GGUF a0e820fb…; llama-server b11803 SHA 750e13ab…;
          evidence: docs/evidence/16k_d_cpu_gguf/asset_provisioning_1792635339.json;
          scientific startups=0
+       16K-D CPU-GGUF-01 Stage-0 compat: PASS under STAGE0-COMPAT-EXECUTION-AUTH-002
+         (subject 6e5537b…; accepted llama-server SHA 750e13ab…;
+          smoke dim=1024 finite normalized raw-query-v1; n_gpu_layers=0);
+         evidence: docs/evidence/16k_d_cpu_gguf/stage0_compat_auth002_1792635589.json
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md
