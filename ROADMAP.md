@@ -1128,6 +1128,17 @@ SLICE 15  COMPLETE / ACCEPTED
          evidence: docs/evidence/16k_d_cpu_onnx/qint8_128_screen_too_slow_1792631554.json
        16K-D CPU-ONNX-01 execution: CLOSED after QINT8 screen TOO_SLOW
          (parity / full / production routing closed; next=llama.cpp Q8_0)
+       16K-D CPU-GGUF-01 authority:
+         S16-K-D-POST-CPUONNX-CPU-GGUF-FEASIBILITY-IMPLEMENTATION-AUTH-001
+       16K-D CPU-GGUF-01 exact parent:
+         5fca0844878b1c73ce23e75a7dee9023b4730a9f
+       16K-D CPU-GGUF-01 branch: implementation/16k-d-cpu-gguf-feasibility
+       16K-D CPU-GGUF-01 document:
+         docs/slice16k_d_cpu_gguf_feasibility.md
+       16K-D CPU-GGUF-01 status: HARNESS IMPLEMENTATION CANDIDATE
+         (EXECUTION_AUTHORIZED=False; Stage-0 / screen / parity locked)
+       16K-D CPU-GGUF-01 candidate: llama-server CPU Q8_0 official GGUF
+         (pooling=last; n-gpu-layers=0; threads 8/8; batch 32; raw-query-v1)
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md
@@ -1978,6 +1989,17 @@ SLICE 15  COMPLETE / ACCEPTED
          evidence: docs/evidence/16k_d_cpu_onnx/qint8_128_screen_too_slow_1792631554.json
        16K-D CPU-ONNX-01 execution: CLOSED after QINT8 screen TOO_SLOW
          (parity / full / production routing closed; next=llama.cpp Q8_0)
+       16K-D CPU-GGUF-01 authority:
+         S16-K-D-POST-CPUONNX-CPU-GGUF-FEASIBILITY-IMPLEMENTATION-AUTH-001
+       16K-D CPU-GGUF-01 exact parent:
+         5fca0844878b1c73ce23e75a7dee9023b4730a9f
+       16K-D CPU-GGUF-01 branch: implementation/16k-d-cpu-gguf-feasibility
+       16K-D CPU-GGUF-01 document:
+         docs/slice16k_d_cpu_gguf_feasibility.md
+       16K-D CPU-GGUF-01 status: HARNESS IMPLEMENTATION CANDIDATE
+         (EXECUTION_AUTHORIZED=False; Stage-0 / screen / parity locked)
+       16K-D CPU-GGUF-01 candidate: llama-server CPU Q8_0 official GGUF
+         (pooling=last; n-gpu-layers=0; threads 8/8; batch 32; raw-query-v1)
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md
