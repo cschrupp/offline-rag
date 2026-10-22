@@ -1149,16 +1149,31 @@ SLICE 15  COMPLETE / ACCEPTED
           encode ~288.5 s; projected ~48.68 min ≤50; 128/128 finite
           normalized 1024-d; full-1296 confirmation eligible — NOT run)
          evidence: docs/evidence/16k_d_cpu_onnx/onnx_fp32_128_screen_pass_1792638543.json
-       16K-D DUAL-BACKEND P1: IR REQUEST-CHANGES REWORK CANDIDATE under
-         S16-K-D-DUAL-BACKEND-P1-QUALIFIED-RUNTIME-SUBSTRATE-IMPLEMENTATION-AUTH-001
-         (R2 scope; parent 36cd5fb…; prior tip 8d52710…; branch
-          implementation/16k-d-dual-backend-p1-runtime-substrate;
-          F001 logical-identity bind · F002 installed-manifest trust ·
-          F003 metadata-driven ONNX inputs (no production import onnx) ·
-          F004 fair parent↔candidate failset PREEXISTING×33;
-          bounded real-model smoke PASS; P2/P3/P4 still closed)
+       16K-D DUAL-BACKEND P1: COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED /
+         HA RECORD PENDING INDEPENDENT REVIEW
+         Implementation authority:
+           S16-K-D-DUAL-BACKEND-P1-QUALIFIED-RUNTIME-SUBSTRATE-IMPLEMENTATION-AUTH-001
+         Human acceptance:
+           S16-K-D-DUAL-BACKEND-P1-QUALIFIED-RUNTIME-SUBSTRATE-IMPLEMENTATION-HA-001
+           — ACCEPTED
+         Exact Human-accepted technical subject:
+           fae82b2455cfdd0d1622065904a35895372740b6
+         Authorized parent:
+           36cd5fbbdbfa1ccd8493f1a8178c7e4cea4e92d8
+         HA-record authority:
+           S16-K-D-DUAL-BACKEND-P1-QUALIFIED-RUNTIME-SUBSTRATE-IMPLEMENTATION-HA-RECORD-AUTH-001
+           — AUTHORIZED
+         Exact HA-record parent:
+           fae82b2455cfdd0d1622065904a35895372740b6
+         Branch: implementation/16k-d-dual-backend-p1-runtime-substrate
+         F001–F004: CLOSED / PASS
+         Qualification resource: COMPLETE + VERIFIED
+         Bounded real-model smoke: PASS
+         Regression disposition: 33/33 PREEXISTING; zero P1-specific regressions
          smoke: docs/evidence/16k_d_dual_backend_p1/bounded_real_model_smoke_pass.json
          f004: docs/evidence/16k_d_dual_backend_p1/f004_fair_disposition_summary.json
+         ha: docs/evidence/16k_d_dual_backend_p1/p1_human_acceptance_ha001.json
+         Downstream (P2/P3/P4/campaigns/main/merge/promotion): NOT AUTHORIZED
        16K-D still closed: full 1296 FP32 confirmation · P2 product surfaces ·
          P3 provisioning · P4 acceptance · UI · default promotion · main ·
          alternate models · further quantization
@@ -2059,16 +2074,31 @@ SLICE 15  COMPLETE / ACCEPTED
           encode ~288.5 s; projected ~48.68 min ≤50; 128/128 finite
           normalized 1024-d; full-1296 confirmation eligible — NOT run)
          evidence: docs/evidence/16k_d_cpu_onnx/onnx_fp32_128_screen_pass_1792638543.json
-       16K-D DUAL-BACKEND P1: IR REQUEST-CHANGES REWORK CANDIDATE under
-         S16-K-D-DUAL-BACKEND-P1-QUALIFIED-RUNTIME-SUBSTRATE-IMPLEMENTATION-AUTH-001
-         (R2 scope; parent 36cd5fb…; prior tip 8d52710…; branch
-          implementation/16k-d-dual-backend-p1-runtime-substrate;
-          F001 logical-identity bind · F002 installed-manifest trust ·
-          F003 metadata-driven ONNX inputs (no production import onnx) ·
-          F004 fair parent↔candidate failset PREEXISTING×33;
-          bounded real-model smoke PASS; P2/P3/P4 still closed)
+       16K-D DUAL-BACKEND P1: COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED /
+         HA RECORD PENDING INDEPENDENT REVIEW
+         Implementation authority:
+           S16-K-D-DUAL-BACKEND-P1-QUALIFIED-RUNTIME-SUBSTRATE-IMPLEMENTATION-AUTH-001
+         Human acceptance:
+           S16-K-D-DUAL-BACKEND-P1-QUALIFIED-RUNTIME-SUBSTRATE-IMPLEMENTATION-HA-001
+           — ACCEPTED
+         Exact Human-accepted technical subject:
+           fae82b2455cfdd0d1622065904a35895372740b6
+         Authorized parent:
+           36cd5fbbdbfa1ccd8493f1a8178c7e4cea4e92d8
+         HA-record authority:
+           S16-K-D-DUAL-BACKEND-P1-QUALIFIED-RUNTIME-SUBSTRATE-IMPLEMENTATION-HA-RECORD-AUTH-001
+           — AUTHORIZED
+         Exact HA-record parent:
+           fae82b2455cfdd0d1622065904a35895372740b6
+         Branch: implementation/16k-d-dual-backend-p1-runtime-substrate
+         F001–F004: CLOSED / PASS
+         Qualification resource: COMPLETE + VERIFIED
+         Bounded real-model smoke: PASS
+         Regression disposition: 33/33 PREEXISTING; zero P1-specific regressions
          smoke: docs/evidence/16k_d_dual_backend_p1/bounded_real_model_smoke_pass.json
          f004: docs/evidence/16k_d_dual_backend_p1/f004_fair_disposition_summary.json
+         ha: docs/evidence/16k_d_dual_backend_p1/p1_human_acceptance_ha001.json
+         Downstream (P2/P3/P4/campaigns/main/merge/promotion): NOT AUTHORIZED
        16K-D still closed: full 1296 FP32 confirmation · P2 product surfaces ·
          P3 provisioning · P4 acceptance · UI · default promotion · main ·
          alternate models · further quantization

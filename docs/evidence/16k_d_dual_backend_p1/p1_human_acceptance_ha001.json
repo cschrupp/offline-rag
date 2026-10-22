@@ -1,0 +1,23 @@
+{
+  "authority": "S16-K-D-DUAL-BACKEND-P1-QUALIFIED-RUNTIME-SUBSTRATE-IMPLEMENTATION-AUTH-001",
+  "authorized_parent": "36cd5fbbdbfa1ccd8493f1a8178c7e4cea4e92d8",
+  "branch": "implementation/16k-d-dual-backend-p1-runtime-substrate",
+  "disposition": "COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / HA RECORD PENDING INDEPENDENT REVIEW",
+  "downstream_authorities": {
+    "campaigns": "NOT_AUTHORIZED",
+    "main": "NOT_AUTHORIZED",
+    "merge": "NOT_AUTHORIZED",
+    "p2": "NOT_AUTHORIZED",
+    "p3": "NOT_AUTHORIZED",
+    "p4": "NOT_AUTHORIZED",
+    "promotion": "NOT_AUTHORIZED"
+  },
+  "ha_id": "S16-K-D-DUAL-BACKEND-P1-QUALIFIED-RUNTIME-SUBSTRATE-IMPLEMENTATION-HA-001",
+  "ha_record_authority": "S16-K-D-DUAL-BACKEND-P1-QUALIFIED-RUNTIME-SUBSTRATE-IMPLEMENTATION-HA-RECORD-AUTH-001",
+  "ha_record_parent": "fae82b2455cfdd0d1622065904a35895372740b6",
+  "ha_record_role": "governance_evidence_only_must_not_replace_technical_subject",
+  "human_acceptance": "ACCEPTED",
+  "note": "Governance metadata only. Does not reinterpret P1 technical results or add new technical claims. Creating this record does not open P2/P3/P4, campaigns, main, merge, or promotion.",
+  "record_kind": "p1_human_acceptance_ha001",
+  "technical_subject": "fae82b2455cfdd0d1622065904a35895372740b6"
+}
