@@ -1111,13 +1111,15 @@ SLICE 15  COMPLETE / ACCEPTED
        16K-D CPU-ONNX-01 candidate: ST/ONNX CPUExecutionProvider QINT8 AVX2
          (FP32 ONNX provenance source only; one dynamic INT8 screen)
        16K-D CPU-ONNX-01 F001–F003: CLOSED under REWORK-AUTH-001
-       16K-D CPU-ONNX-01 Stage-0A: FAIL under FP32-STAGE0-EXECUTION-AUTH-001
-         (export tree 3e1b23a7…; smoke FAIL: ONNX position_ids not provided by ST)
+       16K-D CPU-ONNX-01 Stage-0A: historical FAIL under FP32-STAGE0-EXECUTION-AUTH-001
+         (export 3e1b23a7…; smoke FAIL position_ids)
          evidence: docs/evidence/16k_d_cpu_onnx/fp32_stage0_fail_1792627284.json
-       16K-D CPU-ONNX-01 Stage-0A: STOP FOR REVIEW (QINT8+ closed)
-       16K-D CPU-ONNX-01 POSITION_IDS COMPAT: IMPLEMENTATION under
-         …-POSITION-IDS-COMPAT-IMPLEMENTATION-AUTH-001 (parent 276736fe…;
-         arange semantics; no scientific smoke; tree 3e1b23a7… immutable)
+       16K-D CPU-ONNX-01 POSITION_IDS COMPAT: IR-001 ACCEPT at f6c3c62…
+       16K-D CPU-ONNX-01 Stage-0A RETRY: PASS under FP32-STAGE0-RETRY-EXECUTION-AUTH-001
+         (tree 3e1b23a7… unchanged; smoke PASS; raw-query-v1; dim 1024)
+         evidence: docs/evidence/16k_d_cpu_onnx/fp32_stage0_retry_pass_1792628295.json
+       16K-D CPU-ONNX-01 accepted FP32 source tree (F001 pin): 3e1b23a7…
+       16K-D CPU-ONNX-01 next: QINT8 AVX2 derivative NOT YET AUTHORIZED
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md
@@ -1951,13 +1953,15 @@ SLICE 15  COMPLETE / ACCEPTED
        16K-D CPU-ONNX-01 candidate: ST/ONNX CPUExecutionProvider QINT8 AVX2
          (FP32 ONNX provenance source only; one dynamic INT8 screen)
        16K-D CPU-ONNX-01 F001–F003: CLOSED under REWORK-AUTH-001
-       16K-D CPU-ONNX-01 Stage-0A: FAIL under FP32-STAGE0-EXECUTION-AUTH-001
-         (export tree 3e1b23a7…; smoke FAIL: ONNX position_ids not provided by ST)
+       16K-D CPU-ONNX-01 Stage-0A: historical FAIL under FP32-STAGE0-EXECUTION-AUTH-001
+         (export 3e1b23a7…; smoke FAIL position_ids)
          evidence: docs/evidence/16k_d_cpu_onnx/fp32_stage0_fail_1792627284.json
-       16K-D CPU-ONNX-01 Stage-0A: STOP FOR REVIEW (QINT8+ closed)
-       16K-D CPU-ONNX-01 POSITION_IDS COMPAT: IMPLEMENTATION under
-         …-POSITION-IDS-COMPAT-IMPLEMENTATION-AUTH-001 (parent 276736fe…;
-         arange semantics; no scientific smoke; tree 3e1b23a7… immutable)
+       16K-D CPU-ONNX-01 POSITION_IDS COMPAT: IR-001 ACCEPT at f6c3c62…
+       16K-D CPU-ONNX-01 Stage-0A RETRY: PASS under FP32-STAGE0-RETRY-EXECUTION-AUTH-001
+         (tree 3e1b23a7… unchanged; smoke PASS; raw-query-v1; dim 1024)
+         evidence: docs/evidence/16k_d_cpu_onnx/fp32_stage0_retry_pass_1792628295.json
+       16K-D CPU-ONNX-01 accepted FP32 source tree (F001 pin): 3e1b23a7…
+       16K-D CPU-ONNX-01 next: QINT8 AVX2 derivative NOT YET AUTHORIZED
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md

@@ -10,22 +10,24 @@
 
 **Status:** HARNESS IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED (IR-002 at `7d8efb6…`)  
 
-**Stage 0A AUTH-001:** FAIL / STOP FOR REVIEW — FP32 ONNX export tree materialised
-(`exports/fp32_v1`, tree `3e1b23a7…`) but synthetic smoke FAIL:
-`Input position_ids is required by model but not provided` (Qwen3-Embedding ONNX
-graph exposes `position_ids`; ST/`ORTModelForFeatureExtraction` supplies only
-`input_ids` + `attention_mask`). Evidence:
+**Stage 0A AUTH-001 (historical):** FAIL — export OK (`3e1b23a7…`); smoke FAIL
+missing `position_ids`. Evidence:
 `docs/evidence/16k_d_cpu_onnx/fp32_stage0_fail_1792627284.json`.
 
-**POSITION_IDS COMPAT AUTH-001:** implementation of Seneca ONNX adapter that
-injects `position_ids = arange(seq).unsqueeze(0).expand(batch,-1)` when the
-loaded ONNX input contract requires it (Qwen3 direct-forward semantics; **not**
-`attention_mask.cumsum`). Immutable FP32 tree `3e1b23a7…` must remain untouched.
-No scientific smoke under this authority — Stage-0A RETRY is a later AUTH.
+**POSITION_IDS COMPAT:** IR-001 ACCEPT at `f6c3c62…` (arange direct-forward;
+immutable tree untouched).
+
+**Stage 0A RETRY AUTH-001:** PASS — load existing `fp32_v1` + compat + synthetic
+smoke; tree before=after=`3e1b23a7…`; dim 1024; finite; normalize; `raw-query-v1`.
+Evidence: `docs/evidence/16k_d_cpu_onnx/fp32_stage0_retry_pass_1792628295.json`.
+
+**Accepted FP32 Stage-0 source tree (F001 pin):**
+`3e1b23a7293cf599bc34d1d9875e5c4ecde45bf12fcd300a6cb66794b5bc4345`
 
 **Predecessor:** CPU-OV-01 STOP after INT8 128-screen TOO_SLOW (~39.75 min projected)  
 **Further scientific execution:** NOT AUTHORIZED (`EXECUTION_AUTHORIZED=False`);
-QINT8 / screen / parity / full closed until Stage 0A PASS disposition.
+next gate (later AUTH): QINT8 AVX2 derivative + smoke pinned to `3e1b23a7…`.
+Screen / parity / full remain closed.
 
 ---
 
