@@ -1123,7 +1123,11 @@ SLICE 15  COMPLETE / ACCEPTED
          (source 3e1b23a7… unchanged; candidate dd2a07f3…; u8=394; smoke PASS)
          evidence: docs/evidence/16k_d_cpu_onnx/qint8_stage0_pass_1792629730.json
        16K-D CPU-ONNX-01 accepted QINT8 candidate tree: dd2a07f3…
-       16K-D CPU-ONNX-01 next: 128-child QINT8 screen NOT YET AUTHORIZED
+       16K-D CPU-ONNX-01 QINT8 128-screen: PASS / TOO_SLOW (~35.60 min projected;
+         ~0.607 chunks/s; encode ~210.9 s) under QINT8-128-SCREEN-EXECUTION-AUTH-001
+         evidence: docs/evidence/16k_d_cpu_onnx/qint8_128_screen_too_slow_1792631554.json
+       16K-D CPU-ONNX-01 execution: CLOSED after QINT8 screen TOO_SLOW
+         (parity / full / production routing closed; next=llama.cpp Q8_0)
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md
@@ -1969,7 +1973,11 @@ SLICE 15  COMPLETE / ACCEPTED
          (source 3e1b23a7… unchanged; candidate dd2a07f3…; u8=394; smoke PASS)
          evidence: docs/evidence/16k_d_cpu_onnx/qint8_stage0_pass_1792629730.json
        16K-D CPU-ONNX-01 accepted QINT8 candidate tree: dd2a07f3…
-       16K-D CPU-ONNX-01 next: 128-child QINT8 screen NOT YET AUTHORIZED
+       16K-D CPU-ONNX-01 QINT8 128-screen: PASS / TOO_SLOW (~35.60 min projected;
+         ~0.607 chunks/s; encode ~210.9 s) under QINT8-128-SCREEN-EXECUTION-AUTH-001
+         evidence: docs/evidence/16k_d_cpu_onnx/qint8_128_screen_too_slow_1792631554.json
+       16K-D CPU-ONNX-01 execution: CLOSED after QINT8 screen TOO_SLOW
+         (parity / full / production routing closed; next=llama.cpp Q8_0)
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md

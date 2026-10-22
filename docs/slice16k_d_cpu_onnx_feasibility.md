@@ -33,10 +33,17 @@ FP32 tree; source unchanged; `observed_ONNX_INT8_quantization.verified=true`
 `dd2a07f39f383ddd73ee163a082f1a92f846529264543894a5beaad30fcb8092`
 (`exports/qint8_avx2_v1/`)
 
+**QINT8 128-screen AUTH-001:** PASS / **TOO_SLOW** — ~0.607 chunks/s;
+encode wall ~210.9 s; projected ~35.60 min (>25). Candidate tree unchanged
+`dd2a07f3…`. Evidence:
+`docs/evidence/16k_d_cpu_onnx/qint8_128_screen_too_slow_1792631554.json`.
+
+**CPU-ONNX-01 scientific outcome:** STOP — no ONNX parity / full confirmation.
+Next candidate path: llama.cpp Q8_0 (not authorized here).
+
 **Predecessor:** CPU-OV-01 STOP after INT8 128-screen TOO_SLOW (~39.75 min projected)  
-**Further scientific execution:** NOT AUTHORIZED (`EXECUTION_AUTHORIZED=False`);
-next gate (later AUTH): one 128-child QINT8 speed screen on `dd2a07f3…`.
-Parity / full remain closed until screen ≤25 min projected.
+**Further ONNX execution:** NOT AUTHORIZED (`EXECUTION_AUTHORIZED=False`);
+parity / full / production / main closed.
 
 ---
 
