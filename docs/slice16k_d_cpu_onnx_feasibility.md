@@ -24,10 +24,19 @@ Evidence: `docs/evidence/16k_d_cpu_onnx/fp32_stage0_retry_pass_1792628295.json`.
 **Accepted FP32 Stage-0 source tree (F001 pin):**
 `3e1b23a7293cf599bc34d1d9875e5c4ecde45bf12fcd300a6cb66794b5bc4345`
 
+**Stage 0B QINT8 AUTH-001:** PASS — AVX2 dynamic QINT8 derivative from accepted
+FP32 tree; source unchanged; `observed_ONNX_INT8_quantization.verified=true`
+(u8 initializers=394); smoke PASS. Evidence:
+`docs/evidence/16k_d_cpu_onnx/qint8_stage0_pass_1792629730.json`.
+
+**Accepted QINT8 candidate tree (screen pin):**
+`dd2a07f39f383ddd73ee163a082f1a92f846529264543894a5beaad30fcb8092`
+(`exports/qint8_avx2_v1/`)
+
 **Predecessor:** CPU-OV-01 STOP after INT8 128-screen TOO_SLOW (~39.75 min projected)  
 **Further scientific execution:** NOT AUTHORIZED (`EXECUTION_AUTHORIZED=False`);
-next gate (later AUTH): QINT8 AVX2 derivative + smoke pinned to `3e1b23a7…`.
-Screen / parity / full remain closed.
+next gate (later AUTH): one 128-child QINT8 speed screen on `dd2a07f3…`.
+Parity / full remain closed until screen ≤25 min projected.
 
 ---
 

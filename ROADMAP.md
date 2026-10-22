@@ -1119,7 +1119,11 @@ SLICE 15  COMPLETE / ACCEPTED
          (tree 3e1b23a7… unchanged; smoke PASS; raw-query-v1; dim 1024)
          evidence: docs/evidence/16k_d_cpu_onnx/fp32_stage0_retry_pass_1792628295.json
        16K-D CPU-ONNX-01 accepted FP32 source tree (F001 pin): 3e1b23a7…
-       16K-D CPU-ONNX-01 next: QINT8 AVX2 derivative NOT YET AUTHORIZED
+       16K-D CPU-ONNX-01 Stage-0B QINT8: PASS under QINT8-STAGE0-EXECUTION-AUTH-001
+         (source 3e1b23a7… unchanged; candidate dd2a07f3…; u8=394; smoke PASS)
+         evidence: docs/evidence/16k_d_cpu_onnx/qint8_stage0_pass_1792629730.json
+       16K-D CPU-ONNX-01 accepted QINT8 candidate tree: dd2a07f3…
+       16K-D CPU-ONNX-01 next: 128-child QINT8 screen NOT YET AUTHORIZED
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md
@@ -1961,7 +1965,11 @@ SLICE 15  COMPLETE / ACCEPTED
          (tree 3e1b23a7… unchanged; smoke PASS; raw-query-v1; dim 1024)
          evidence: docs/evidence/16k_d_cpu_onnx/fp32_stage0_retry_pass_1792628295.json
        16K-D CPU-ONNX-01 accepted FP32 source tree (F001 pin): 3e1b23a7…
-       16K-D CPU-ONNX-01 next: QINT8 AVX2 derivative NOT YET AUTHORIZED
+       16K-D CPU-ONNX-01 Stage-0B QINT8: PASS under QINT8-STAGE0-EXECUTION-AUTH-001
+         (source 3e1b23a7… unchanged; candidate dd2a07f3…; u8=394; smoke PASS)
+         evidence: docs/evidence/16k_d_cpu_onnx/qint8_stage0_pass_1792629730.json
+       16K-D CPU-ONNX-01 accepted QINT8 candidate tree: dd2a07f3…
+       16K-D CPU-ONNX-01 next: 128-child QINT8 screen NOT YET AUTHORIZED
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md

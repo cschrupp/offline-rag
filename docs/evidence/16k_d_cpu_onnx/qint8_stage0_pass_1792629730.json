@@ -1,0 +1,783 @@
+{
+  "authority": "S16-K-D-POST-CPUOV-CPU-ONNX-QINT8-STAGE0-EXECUTION-AUTH-001",
+  "backend": "onnx",
+  "disposition": "PASS",
+  "environment": {
+    "executor_environment": {
+      "onnx": "1.23.2",
+      "onnxruntime": "1.31.0",
+      "optimum": "2.1.0",
+      "python": "3.14.5",
+      "sentence-transformers": "5.7.0",
+      "transformers": "4.57.6"
+    },
+    "python": "3.14.5",
+    "python_executable": "/home/user/projects/technical_rag/experiments/16k_d_cpu_onnx/.venv/bin/python",
+    "versions": {
+      "onnx": "1.23.2",
+      "onnxruntime": "1.31.0",
+      "optimum": "2.1.0",
+      "optimum-onnx": "0.1.0",
+      "sentence-transformers": "5.7.0",
+      "torch": "2.14.1+cpu",
+      "transformers": "4.57.6"
+    }
+  },
+  "execution_subject": "f6c3c628d7f4a383cd391400397c5f9b0b46979f",
+  "executor_result_status": "ok",
+  "expected_source_tree_sha256": "3e1b23a7293cf599bc34d1d9875e5c4ecde45bf12fcd300a6cb66794b5bc4345",
+  "export": {
+    "authority": "S16-K-D-POST-CPUOV-CPU-ONNX-FEASIBILITY-IMPLEMENTATION-AUTH-001",
+    "backend": "onnx",
+    "device": "cpu",
+    "export_dir": "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/qint8_avx2_v1",
+    "export_method": [
+      "derivative_copy_st_onnx_export",
+      "export_dynamic_quantized_onnx_model_avx2"
+    ],
+    "export_tree": {
+      "export_dir": "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/qint8_avx2_v1",
+      "file_count": 16,
+      "files": [
+        {
+          "bytes": 96,
+          "relative_path": "1_Pooling/config.json",
+          "sha256": "d14d11ecbd53b0fc9e817992a5a7a76f462daf6f080e375f2dceadc8a4eff165"
+        },
+        {
+          "bytes": 17237,
+          "relative_path": "README.md",
+          "sha256": "c34d9b7e5a267ad3fdd13227a253686bc90844ff4744a2a6a86c7c905e3d06f3"
+        },
+        {
+          "bytes": 707,
+          "relative_path": "added_tokens.json",
+          "sha256": "c0284b582e14987fbd3d5a2cb2bd139084371ed9acbae488829a1c900833c680"
+        },
+        {
+          "bytes": 4116,
+          "relative_path": "chat_template.jinja",
+          "sha256": "87a2728cb8dc9fe424d624542f6060ec05a1d285ebbec578bb078900e33396b5"
+        },
+        {
+          "bytes": 1360,
+          "relative_path": "config.json",
+          "sha256": "770ae06483be04a06d1fc505c3b396af5e128e230cef4a0939bb1b82e714ff6f"
+        },
+        {
+          "bytes": 374,
+          "relative_path": "config_sentence_transformers.json",
+          "sha256": "7571f36246bb077ce11fd6925392a9d90f1d059358b7dd3e63a3f4ee812a9758"
+        },
+        {
+          "bytes": 1671853,
+          "relative_path": "merges.txt",
+          "sha256": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5"
+        },
+        {
+          "bytes": 429,
+          "relative_path": "modules.json",
+          "sha256": "fa7d796a215e1b2416773062891923b191fc5a4849bc44e322997433c90f459c"
+        },
+        {
+          "bytes": 1265182,
+          "relative_path": "onnx/model.onnx",
+          "sha256": "6135c5388da771b2072db0698a4ff558f78f4479ab8160721d43c077767707e9"
+        },
+        {
+          "bytes": 2383106304,
+          "relative_path": "onnx/model.onnx_data",
+          "sha256": "a585477de21c0a89e021dd64f4d3be34483eb4aaed7ae93fc047e3edf74545da"
+        },
+        {
+          "bytes": 600055629,
+          "relative_path": "onnx/model_quint8_avx2.onnx",
+          "sha256": "d24ff0280f60ccf895b73e59660c825500115d986f1bef950ffffe88e2f52477"
+        },
+        {
+          "bytes": 241,
+          "relative_path": "sentence_bert_config.json",
+          "sha256": "3084164002c0bca01b0259c5327123803fce32e660a57feb93184ffead186fc8"
+        },
+        {
+          "bytes": 613,
+          "relative_path": "special_tokens_map.json",
+          "sha256": "76862e765266b85aa9459767e33cbaf13970f327a0e88d1c65846c2ddd3a1ecd"
+        },
+        {
+          "bytes": 11423705,
+          "relative_path": "tokenizer.json",
+          "sha256": "def76fb086971c7867b829c23a26261e38d9d74e02139253b38aeb9df8b4b50a"
+        },
+        {
+          "bytes": 5403,
+          "relative_path": "tokenizer_config.json",
+          "sha256": "74d803b3a11db6df1baf2cd41236636618674621fc6310dbcc2f4c44c70c6783"
+        },
+        {
+          "bytes": 2776833,
+          "relative_path": "vocab.json",
+          "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+        }
+      ],
+      "tree_sha256": "dd2a07f39f383ddd73ee163a082f1a92f846529264543894a5beaad30fcb8092"
+    },
+    "no_hf_redownload": true,
+    "precision_identity": {
+      "authority": "S16-K-D-POST-CPUOV-CPU-ONNX-FEASIBILITY-IMPLEMENTATION-AUTH-001",
+      "observed_ONNX_INT8_quantization": {
+        "authority": "S16-K-D-POST-CPUOV-CPU-ONNX-FEASIBILITY-IMPLEMENTATION-AUTH-001",
+        "demonstrable_integer_initializers": true,
+        "demonstrable_quantization_ops": true,
+        "int8_initializer_count": 0,
+        "note": "verified iff INT8/UINT8 initializers are present; quantization ops are supporting evidence only; never from request label or filename",
+        "quantization_op_count": 480,
+        "quantization_target": "avx2",
+        "transformation": "sentence_transformers.backend.export_dynamic_quantized_onnx_model/quantization_config=avx2",
+        "uint8_initializer_count": 394,
+        "verified": true
+      },
+      "onnx_files": [
+        "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/qint8_avx2_v1/onnx/model.onnx",
+        "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/qint8_avx2_v1/onnx/model_quint8_avx2.onnx"
+      ],
+      "onnx_inspections": [
+        {
+          "bytes": 1265182,
+          "float_initializer_count": 310,
+          "inspection_method": "onnx_protobuf_initializer_and_op_scan",
+          "int8_initializer_count": 0,
+          "observed_ONNX_INT8_quantization": {
+            "authority": "S16-K-D-POST-CPUOV-CPU-ONNX-FEASIBILITY-IMPLEMENTATION-AUTH-001",
+            "demonstrable_integer_initializers": false,
+            "demonstrable_quantization_ops": false,
+            "int8_initializer_count": 0,
+            "note": "verified iff INT8/UINT8 initializers are present; quantization ops are supporting evidence only; never from request label or filename",
+            "quantization_op_count": 0,
+            "uint8_initializer_count": 0,
+            "verified": false
+          },
+          "onnx_path": "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/qint8_avx2_v1/onnx/model.onnx",
+          "other_initializer_count": 0,
+          "quantization_op_count": 0,
+          "quantization_op_types": {},
+          "uint8_initializer_count": 0
+        },
+        {
+          "bytes": 600055629,
+          "float_initializer_count": 310,
+          "inspection_method": "onnx_protobuf_initializer_and_op_scan",
+          "int8_initializer_count": 0,
+          "observed_ONNX_INT8_quantization": {
+            "authority": "S16-K-D-POST-CPUOV-CPU-ONNX-FEASIBILITY-IMPLEMENTATION-AUTH-001",
+            "demonstrable_integer_initializers": true,
+            "demonstrable_quantization_ops": true,
+            "int8_initializer_count": 0,
+            "note": "verified iff INT8/UINT8 initializers are present; quantization ops are supporting evidence only; never from request label or filename",
+            "quantization_op_count": 480,
+            "uint8_initializer_count": 394,
+            "verified": true
+          },
+          "onnx_path": "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/qint8_avx2_v1/onnx/model_quint8_avx2.onnx",
+          "other_initializer_count": 0,
+          "quantization_op_count": 480,
+          "quantization_op_types": {
+            "DequantizeLinear": 1,
+            "DynamicQuantizeLinear": 226,
+            "MatMulInteger": 253
+          },
+          "uint8_initializer_count": 394
+        }
+      ],
+      "primary_onnx_path": "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/qint8_avx2_v1/onnx/model_quint8_avx2.onnx",
+      "requested_weight_format": "qint8_avx2"
+    },
+    "provider": "CPUExecutionProvider",
+    "quantization_target": "avx2",
+    "requested_weight_format": "qint8_avx2",
+    "source_export_dir": "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/fp32_v1",
+    "source_export_tree": {
+      "export_dir": "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/fp32_v1",
+      "file_count": 15,
+      "files": [
+        {
+          "bytes": 96,
+          "relative_path": "1_Pooling/config.json",
+          "sha256": "d14d11ecbd53b0fc9e817992a5a7a76f462daf6f080e375f2dceadc8a4eff165"
+        },
+        {
+          "bytes": 17237,
+          "relative_path": "README.md",
+          "sha256": "c34d9b7e5a267ad3fdd13227a253686bc90844ff4744a2a6a86c7c905e3d06f3"
+        },
+        {
+          "bytes": 707,
+          "relative_path": "added_tokens.json",
+          "sha256": "c0284b582e14987fbd3d5a2cb2bd139084371ed9acbae488829a1c900833c680"
+        },
+        {
+          "bytes": 4116,
+          "relative_path": "chat_template.jinja",
+          "sha256": "87a2728cb8dc9fe424d624542f6060ec05a1d285ebbec578bb078900e33396b5"
+        },
+        {
+          "bytes": 1360,
+          "relative_path": "config.json",
+          "sha256": "770ae06483be04a06d1fc505c3b396af5e128e230cef4a0939bb1b82e714ff6f"
+        },
+        {
+          "bytes": 374,
+          "relative_path": "config_sentence_transformers.json",
+          "sha256": "7571f36246bb077ce11fd6925392a9d90f1d059358b7dd3e63a3f4ee812a9758"
+        },
+        {
+          "bytes": 1671853,
+          "relative_path": "merges.txt",
+          "sha256": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5"
+        },
+        {
+          "bytes": 429,
+          "relative_path": "modules.json",
+          "sha256": "fa7d796a215e1b2416773062891923b191fc5a4849bc44e322997433c90f459c"
+        },
+        {
+          "bytes": 1265182,
+          "relative_path": "onnx/model.onnx",
+          "sha256": "6135c5388da771b2072db0698a4ff558f78f4479ab8160721d43c077767707e9"
+        },
+        {
+          "bytes": 2383106304,
+          "relative_path": "onnx/model.onnx_data",
+          "sha256": "a585477de21c0a89e021dd64f4d3be34483eb4aaed7ae93fc047e3edf74545da"
+        },
+        {
+          "bytes": 241,
+          "relative_path": "sentence_bert_config.json",
+          "sha256": "3084164002c0bca01b0259c5327123803fce32e660a57feb93184ffead186fc8"
+        },
+        {
+          "bytes": 613,
+          "relative_path": "special_tokens_map.json",
+          "sha256": "76862e765266b85aa9459767e33cbaf13970f327a0e88d1c65846c2ddd3a1ecd"
+        },
+        {
+          "bytes": 11423705,
+          "relative_path": "tokenizer.json",
+          "sha256": "def76fb086971c7867b829c23a26261e38d9d74e02139253b38aeb9df8b4b50a"
+        },
+        {
+          "bytes": 5403,
+          "relative_path": "tokenizer_config.json",
+          "sha256": "74d803b3a11db6df1baf2cd41236636618674621fc6310dbcc2f4c44c70c6783"
+        },
+        {
+          "bytes": 2776833,
+          "relative_path": "vocab.json",
+          "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+        }
+      ],
+      "tree_sha256": "3e1b23a7293cf599bc34d1d9875e5c4ecde45bf12fcd300a6cb66794b5bc4345"
+    },
+    "source_precision_identity": {
+      "authority": "S16-K-D-POST-CPUOV-CPU-ONNX-FEASIBILITY-IMPLEMENTATION-AUTH-001",
+      "observed_ONNX_INT8_quantization": {
+        "authority": "S16-K-D-POST-CPUOV-CPU-ONNX-FEASIBILITY-IMPLEMENTATION-AUTH-001",
+        "demonstrable_integer_initializers": false,
+        "demonstrable_quantization_ops": false,
+        "int8_initializer_count": 0,
+        "note": "verified iff INT8/UINT8 initializers are present; quantization ops are supporting evidence only; never from request label or filename",
+        "quantization_op_count": 0,
+        "uint8_initializer_count": 0,
+        "verified": false
+      },
+      "onnx_files": [
+        "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/fp32_v1/onnx/model.onnx"
+      ],
+      "onnx_inspections": [
+        {
+          "bytes": 1265182,
+          "float_initializer_count": 310,
+          "inspection_method": "onnx_protobuf_initializer_and_op_scan",
+          "int8_initializer_count": 0,
+          "observed_ONNX_INT8_quantization": {
+            "authority": "S16-K-D-POST-CPUOV-CPU-ONNX-FEASIBILITY-IMPLEMENTATION-AUTH-001",
+            "demonstrable_integer_initializers": false,
+            "demonstrable_quantization_ops": false,
+            "int8_initializer_count": 0,
+            "note": "verified iff INT8/UINT8 initializers are present; quantization ops are supporting evidence only; never from request label or filename",
+            "quantization_op_count": 0,
+            "uint8_initializer_count": 0,
+            "verified": false
+          },
+          "onnx_path": "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/fp32_v1/onnx/model.onnx",
+          "other_initializer_count": 0,
+          "quantization_op_count": 0,
+          "quantization_op_types": {},
+          "uint8_initializer_count": 0
+        }
+      ],
+      "primary_onnx_path": "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/fp32_v1/onnx/model.onnx",
+      "requested_weight_format": "fp32"
+    },
+    "source_tree_sha256_after": "3e1b23a7293cf599bc34d1d9875e5c4ecde45bf12fcd300a6cb66794b5bc4345",
+    "source_tree_sha256_before": "3e1b23a7293cf599bc34d1d9875e5c4ecde45bf12fcd300a6cb66794b5bc4345",
+    "weight_format": "qint8_avx2"
+  },
+  "export_dir": "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/qint8_avx2_v1",
+  "float_initializer_count": 310,
+  "gates": {
+    "candidate_tree_present": true,
+    "compat_adapter_installed": true,
+    "compat_requires_true": true,
+    "compat_semantics": true,
+    "compat_source": true,
+    "demonstrable_integer_initializers": true,
+    "document_dim_1024": true,
+    "execution_locked": true,
+    "executor_ok": true,
+    "int8_verified": true,
+    "no_hub": true,
+    "provider_cpu": true,
+    "quantization_target_avx2": true,
+    "query_contract_raw_query_v1": true,
+    "query_dim_1024": true,
+    "smoke_ok": true,
+    "source_after_match": true,
+    "source_before_match": true,
+    "source_unchanged": true
+  },
+  "hf_hub_offline": "1",
+  "int8_initializer_count": 0,
+  "model_id": "Qwen/Qwen3-Embedding-0.6B",
+  "model_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+  "no_hub_substitution": true,
+  "note": "QINT8 AVX2 derivative + synthetic smoke only; no 128-screen; candidate tree SHA is the immutable input for a later screen AUTH",
+  "observed_ONNX_INT8_quantization": {
+    "authority": "S16-K-D-POST-CPUOV-CPU-ONNX-FEASIBILITY-IMPLEMENTATION-AUTH-001",
+    "demonstrable_integer_initializers": true,
+    "demonstrable_quantization_ops": true,
+    "int8_initializer_count": 0,
+    "note": "verified iff INT8/UINT8 initializers are present; quantization ops are supporting evidence only; never from request label or filename",
+    "quantization_op_count": 480,
+    "quantization_target": "avx2",
+    "uint8_initializer_count": 394,
+    "verified": true
+  },
+  "ok": true,
+  "onnx_graph_inputs": [
+    "input_ids",
+    "attention_mask",
+    "position_ids"
+  ],
+  "ort_inter_op_threads": 1,
+  "ort_intra_op_threads": 8,
+  "position_ids_compat": {
+    "adapter_installed": true,
+    "authority": "S16-K-D-POST-CPUOV-CPU-ONNX-POSITION-IDS-COMPAT-IMPLEMENTATION-AUTH-001",
+    "dtype": "int64",
+    "graph_requires_position_ids": true,
+    "note": "injects torch.arange(seq).unsqueeze(0).expand(batch,-1) when required and absent; never attention_mask.cumsum",
+    "overwrites_supplied_position_ids": false,
+    "required_onnx_inputs": [
+      "input_ids",
+      "attention_mask",
+      "position_ids"
+    ],
+    "semantics": "qwen3_direct_forward_zero_based_arange",
+    "shape_policy": "batch_x_sequence",
+    "source": "generated_by_seneca_adapter"
+  },
+  "precision_identity": {
+    "authority": "S16-K-D-POST-CPUOV-CPU-ONNX-FEASIBILITY-IMPLEMENTATION-AUTH-001",
+    "loaded_onnx_file_name": "onnx/model_quint8_avx2.onnx",
+    "loaded_onnx_path": "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/qint8_avx2_v1/onnx/model_quint8_avx2.onnx",
+    "observed_ONNX_INT8_quantization": {
+      "authority": "S16-K-D-POST-CPUOV-CPU-ONNX-FEASIBILITY-IMPLEMENTATION-AUTH-001",
+      "demonstrable_integer_initializers": true,
+      "demonstrable_quantization_ops": true,
+      "int8_initializer_count": 0,
+      "note": "verified iff INT8/UINT8 initializers are present; quantization ops are supporting evidence only; never from request label or filename",
+      "quantization_op_count": 480,
+      "quantization_target": "avx2",
+      "uint8_initializer_count": 394,
+      "verified": true
+    },
+    "onnx_files": [
+      "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/qint8_avx2_v1/onnx/model.onnx",
+      "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/qint8_avx2_v1/onnx/model_quint8_avx2.onnx"
+    ],
+    "onnx_inspections": [
+      {
+        "bytes": 1265182,
+        "float_initializer_count": 310,
+        "inspection_method": "onnx_protobuf_initializer_and_op_scan",
+        "int8_initializer_count": 0,
+        "observed_ONNX_INT8_quantization": {
+          "authority": "S16-K-D-POST-CPUOV-CPU-ONNX-FEASIBILITY-IMPLEMENTATION-AUTH-001",
+          "demonstrable_integer_initializers": false,
+          "demonstrable_quantization_ops": false,
+          "int8_initializer_count": 0,
+          "note": "verified iff INT8/UINT8 initializers are present; quantization ops are supporting evidence only; never from request label or filename",
+          "quantization_op_count": 0,
+          "uint8_initializer_count": 0,
+          "verified": false
+        },
+        "onnx_path": "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/qint8_avx2_v1/onnx/model.onnx",
+        "other_initializer_count": 0,
+        "quantization_op_count": 0,
+        "quantization_op_types": {},
+        "uint8_initializer_count": 0
+      },
+      {
+        "bytes": 600055629,
+        "float_initializer_count": 310,
+        "inspection_method": "onnx_protobuf_initializer_and_op_scan",
+        "int8_initializer_count": 0,
+        "observed_ONNX_INT8_quantization": {
+          "authority": "S16-K-D-POST-CPUOV-CPU-ONNX-FEASIBILITY-IMPLEMENTATION-AUTH-001",
+          "demonstrable_integer_initializers": true,
+          "demonstrable_quantization_ops": true,
+          "int8_initializer_count": 0,
+          "note": "verified iff INT8/UINT8 initializers are present; quantization ops are supporting evidence only; never from request label or filename",
+          "quantization_op_count": 480,
+          "uint8_initializer_count": 394,
+          "verified": true
+        },
+        "onnx_path": "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/qint8_avx2_v1/onnx/model_quint8_avx2.onnx",
+        "other_initializer_count": 0,
+        "quantization_op_count": 480,
+        "quantization_op_types": {
+          "DequantizeLinear": 1,
+          "DynamicQuantizeLinear": 226,
+          "MatMulInteger": 253
+        },
+        "uint8_initializer_count": 394
+      }
+    ],
+    "position_ids_compat": {
+      "adapter_installed": true,
+      "authority": "S16-K-D-POST-CPUOV-CPU-ONNX-POSITION-IDS-COMPAT-IMPLEMENTATION-AUTH-001",
+      "dtype": "int64",
+      "graph_requires_position_ids": true,
+      "note": "injects torch.arange(seq).unsqueeze(0).expand(batch,-1) when required and absent; never attention_mask.cumsum",
+      "overwrites_supplied_position_ids": false,
+      "required_onnx_inputs": [
+        "input_ids",
+        "attention_mask",
+        "position_ids"
+      ],
+      "semantics": "qwen3_direct_forward_zero_based_arange",
+      "shape_policy": "batch_x_sequence",
+      "source": "generated_by_seneca_adapter"
+    },
+    "primary_onnx_path": "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/qint8_avx2_v1/onnx/model_quint8_avx2.onnx",
+    "requested_weight_format": "qint8_avx2",
+    "selected_onnx_file_name": "onnx/model_quint8_avx2.onnx",
+    "selected_onnx_path": "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/qint8_avx2_v1/onnx/model_quint8_avx2.onnx"
+  },
+  "provider": "CPUExecutionProvider",
+  "qint8_candidate_tree": {
+    "export_dir": "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/qint8_avx2_v1",
+    "file_count": 16,
+    "files": [
+      {
+        "bytes": 96,
+        "relative_path": "1_Pooling/config.json",
+        "sha256": "d14d11ecbd53b0fc9e817992a5a7a76f462daf6f080e375f2dceadc8a4eff165"
+      },
+      {
+        "bytes": 17237,
+        "relative_path": "README.md",
+        "sha256": "c34d9b7e5a267ad3fdd13227a253686bc90844ff4744a2a6a86c7c905e3d06f3"
+      },
+      {
+        "bytes": 707,
+        "relative_path": "added_tokens.json",
+        "sha256": "c0284b582e14987fbd3d5a2cb2bd139084371ed9acbae488829a1c900833c680"
+      },
+      {
+        "bytes": 4116,
+        "relative_path": "chat_template.jinja",
+        "sha256": "87a2728cb8dc9fe424d624542f6060ec05a1d285ebbec578bb078900e33396b5"
+      },
+      {
+        "bytes": 1360,
+        "relative_path": "config.json",
+        "sha256": "770ae06483be04a06d1fc505c3b396af5e128e230cef4a0939bb1b82e714ff6f"
+      },
+      {
+        "bytes": 374,
+        "relative_path": "config_sentence_transformers.json",
+        "sha256": "7571f36246bb077ce11fd6925392a9d90f1d059358b7dd3e63a3f4ee812a9758"
+      },
+      {
+        "bytes": 1671853,
+        "relative_path": "merges.txt",
+        "sha256": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5"
+      },
+      {
+        "bytes": 429,
+        "relative_path": "modules.json",
+        "sha256": "fa7d796a215e1b2416773062891923b191fc5a4849bc44e322997433c90f459c"
+      },
+      {
+        "bytes": 1265182,
+        "relative_path": "onnx/model.onnx",
+        "sha256": "6135c5388da771b2072db0698a4ff558f78f4479ab8160721d43c077767707e9"
+      },
+      {
+        "bytes": 2383106304,
+        "relative_path": "onnx/model.onnx_data",
+        "sha256": "a585477de21c0a89e021dd64f4d3be34483eb4aaed7ae93fc047e3edf74545da"
+      },
+      {
+        "bytes": 600055629,
+        "relative_path": "onnx/model_quint8_avx2.onnx",
+        "sha256": "d24ff0280f60ccf895b73e59660c825500115d986f1bef950ffffe88e2f52477"
+      },
+      {
+        "bytes": 241,
+        "relative_path": "sentence_bert_config.json",
+        "sha256": "3084164002c0bca01b0259c5327123803fce32e660a57feb93184ffead186fc8"
+      },
+      {
+        "bytes": 613,
+        "relative_path": "special_tokens_map.json",
+        "sha256": "76862e765266b85aa9459767e33cbaf13970f327a0e88d1c65846c2ddd3a1ecd"
+      },
+      {
+        "bytes": 11423705,
+        "relative_path": "tokenizer.json",
+        "sha256": "def76fb086971c7867b829c23a26261e38d9d74e02139253b38aeb9df8b4b50a"
+      },
+      {
+        "bytes": 5403,
+        "relative_path": "tokenizer_config.json",
+        "sha256": "74d803b3a11db6df1baf2cd41236636618674621fc6310dbcc2f4c44c70c6783"
+      },
+      {
+        "bytes": 2776833,
+        "relative_path": "vocab.json",
+        "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+      }
+    ],
+    "tree_sha256": "dd2a07f39f383ddd73ee163a082f1a92f846529264543894a5beaad30fcb8092"
+  },
+  "qint8_candidate_tree_sha256": "dd2a07f39f383ddd73ee163a082f1a92f846529264543894a5beaad30fcb8092",
+  "quantization_op_count": 480,
+  "quantization_op_types": {
+    "DequantizeLinear": 1,
+    "DynamicQuantizeLinear": 226,
+    "MatMulInteger": 253
+  },
+  "quantization_target": "avx2",
+  "recorded_at": "2026-10-22T00:42:10.653499Z",
+  "recorded_head": "6f934c33270ae2d16a341a01ad5810e5d84fa91e",
+  "runtime_error": null,
+  "selected_qint8_onnx_inspection": {
+    "bytes": 600055629,
+    "float_initializer_count": 310,
+    "inspection_method": "onnx_protobuf_initializer_and_op_scan",
+    "int8_initializer_count": 0,
+    "observed_ONNX_INT8_quantization": {
+      "authority": "S16-K-D-POST-CPUOV-CPU-ONNX-FEASIBILITY-IMPLEMENTATION-AUTH-001",
+      "demonstrable_integer_initializers": true,
+      "demonstrable_quantization_ops": true,
+      "int8_initializer_count": 0,
+      "note": "verified iff INT8/UINT8 initializers are present; quantization ops are supporting evidence only; never from request label or filename",
+      "quantization_op_count": 480,
+      "uint8_initializer_count": 394,
+      "verified": true
+    },
+    "onnx_path": "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/qint8_avx2_v1/onnx/model_quint8_avx2.onnx",
+    "other_initializer_count": 0,
+    "quantization_op_count": 480,
+    "quantization_op_types": {
+      "DequantizeLinear": 1,
+      "DynamicQuantizeLinear": 226,
+      "MatMulInteger": 253
+    },
+    "uint8_initializer_count": 394
+  },
+  "selected_qint8_onnx_path": "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/qint8_avx2_v1/onnx/model_quint8_avx2.onnx",
+  "smoke": {
+    "document_dim": 1024,
+    "issues": [],
+    "ok": true,
+    "query_dim": 1024,
+    "query_text_contract": "raw-query-v1"
+  },
+  "source_export_dir": "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/fp32_v1",
+  "source_export_tree_after": {
+    "export_dir": "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/fp32_v1",
+    "file_count": 15,
+    "files": [
+      {
+        "bytes": 96,
+        "relative_path": "1_Pooling/config.json",
+        "sha256": "d14d11ecbd53b0fc9e817992a5a7a76f462daf6f080e375f2dceadc8a4eff165"
+      },
+      {
+        "bytes": 17237,
+        "relative_path": "README.md",
+        "sha256": "c34d9b7e5a267ad3fdd13227a253686bc90844ff4744a2a6a86c7c905e3d06f3"
+      },
+      {
+        "bytes": 707,
+        "relative_path": "added_tokens.json",
+        "sha256": "c0284b582e14987fbd3d5a2cb2bd139084371ed9acbae488829a1c900833c680"
+      },
+      {
+        "bytes": 4116,
+        "relative_path": "chat_template.jinja",
+        "sha256": "87a2728cb8dc9fe424d624542f6060ec05a1d285ebbec578bb078900e33396b5"
+      },
+      {
+        "bytes": 1360,
+        "relative_path": "config.json",
+        "sha256": "770ae06483be04a06d1fc505c3b396af5e128e230cef4a0939bb1b82e714ff6f"
+      },
+      {
+        "bytes": 374,
+        "relative_path": "config_sentence_transformers.json",
+        "sha256": "7571f36246bb077ce11fd6925392a9d90f1d059358b7dd3e63a3f4ee812a9758"
+      },
+      {
+        "bytes": 1671853,
+        "relative_path": "merges.txt",
+        "sha256": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5"
+      },
+      {
+        "bytes": 429,
+        "relative_path": "modules.json",
+        "sha256": "fa7d796a215e1b2416773062891923b191fc5a4849bc44e322997433c90f459c"
+      },
+      {
+        "bytes": 1265182,
+        "relative_path": "onnx/model.onnx",
+        "sha256": "6135c5388da771b2072db0698a4ff558f78f4479ab8160721d43c077767707e9"
+      },
+      {
+        "bytes": 2383106304,
+        "relative_path": "onnx/model.onnx_data",
+        "sha256": "a585477de21c0a89e021dd64f4d3be34483eb4aaed7ae93fc047e3edf74545da"
+      },
+      {
+        "bytes": 241,
+        "relative_path": "sentence_bert_config.json",
+        "sha256": "3084164002c0bca01b0259c5327123803fce32e660a57feb93184ffead186fc8"
+      },
+      {
+        "bytes": 613,
+        "relative_path": "special_tokens_map.json",
+        "sha256": "76862e765266b85aa9459767e33cbaf13970f327a0e88d1c65846c2ddd3a1ecd"
+      },
+      {
+        "bytes": 11423705,
+        "relative_path": "tokenizer.json",
+        "sha256": "def76fb086971c7867b829c23a26261e38d9d74e02139253b38aeb9df8b4b50a"
+      },
+      {
+        "bytes": 5403,
+        "relative_path": "tokenizer_config.json",
+        "sha256": "74d803b3a11db6df1baf2cd41236636618674621fc6310dbcc2f4c44c70c6783"
+      },
+      {
+        "bytes": 2776833,
+        "relative_path": "vocab.json",
+        "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+      }
+    ],
+    "tree_sha256": "3e1b23a7293cf599bc34d1d9875e5c4ecde45bf12fcd300a6cb66794b5bc4345"
+  },
+  "source_export_tree_before": {
+    "export_dir": "/home/user/projects/technical_rag/data/16k_d_cpu_onnx_work/exports/fp32_v1",
+    "file_count": 15,
+    "files": [
+      {
+        "bytes": 96,
+        "relative_path": "1_Pooling/config.json",
+        "sha256": "d14d11ecbd53b0fc9e817992a5a7a76f462daf6f080e375f2dceadc8a4eff165"
+      },
+      {
+        "bytes": 17237,
+        "relative_path": "README.md",
+        "sha256": "c34d9b7e5a267ad3fdd13227a253686bc90844ff4744a2a6a86c7c905e3d06f3"
+      },
+      {
+        "bytes": 707,
+        "relative_path": "added_tokens.json",
+        "sha256": "c0284b582e14987fbd3d5a2cb2bd139084371ed9acbae488829a1c900833c680"
+      },
+      {
+        "bytes": 4116,
+        "relative_path": "chat_template.jinja",
+        "sha256": "87a2728cb8dc9fe424d624542f6060ec05a1d285ebbec578bb078900e33396b5"
+      },
+      {
+        "bytes": 1360,
+        "relative_path": "config.json",
+        "sha256": "770ae06483be04a06d1fc505c3b396af5e128e230cef4a0939bb1b82e714ff6f"
+      },
+      {
+        "bytes": 374,
+        "relative_path": "config_sentence_transformers.json",
+        "sha256": "7571f36246bb077ce11fd6925392a9d90f1d059358b7dd3e63a3f4ee812a9758"
+      },
+      {
+        "bytes": 1671853,
+        "relative_path": "merges.txt",
+        "sha256": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5"
+      },
+      {
+        "bytes": 429,
+        "relative_path": "modules.json",
+        "sha256": "fa7d796a215e1b2416773062891923b191fc5a4849bc44e322997433c90f459c"
+      },
+      {
+        "bytes": 1265182,
+        "relative_path": "onnx/model.onnx",
+        "sha256": "6135c5388da771b2072db0698a4ff558f78f4479ab8160721d43c077767707e9"
+      },
+      {
+        "bytes": 2383106304,
+        "relative_path": "onnx/model.onnx_data",
+        "sha256": "a585477de21c0a89e021dd64f4d3be34483eb4aaed7ae93fc047e3edf74545da"
+      },
+      {
+        "bytes": 241,
+        "relative_path": "sentence_bert_config.json",
+        "sha256": "3084164002c0bca01b0259c5327123803fce32e660a57feb93184ffead186fc8"
+      },
+      {
+        "bytes": 613,
+        "relative_path": "special_tokens_map.json",
+        "sha256": "76862e765266b85aa9459767e33cbaf13970f327a0e88d1c65846c2ddd3a1ecd"
+      },
+      {
+        "bytes": 11423705,
+        "relative_path": "tokenizer.json",
+        "sha256": "def76fb086971c7867b829c23a26261e38d9d74e02139253b38aeb9df8b4b50a"
+      },
+      {
+        "bytes": 5403,
+        "relative_path": "tokenizer_config.json",
+        "sha256": "74d803b3a11db6df1baf2cd41236636618674621fc6310dbcc2f4c44c70c6783"
+      },
+      {
+        "bytes": 2776833,
+        "relative_path": "vocab.json",
+        "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+      }
+    ],
+    "tree_sha256": "3e1b23a7293cf599bc34d1d9875e5c4ecde45bf12fcd300a6cb66794b5bc4345"
+  },
+  "source_tree_sha256_after": "3e1b23a7293cf599bc34d1d9875e5c4ecde45bf12fcd300a6cb66794b5bc4345",
+  "source_tree_sha256_before": "3e1b23a7293cf599bc34d1d9875e5c4ecde45bf12fcd300a6cb66794b5bc4345",
+  "stage0a_ir_accept": "S16-K-D-POST-CPUOV-CPU-ONNX-FP32-STAGE0-RETRY-EXECUTION-IR-001",
+  "stage_id": "export_qint8_avx2",
+  "stop_for_review": false,
+  "transformers_offline": "1",
+  "uint8_initializer_count": 394,
+  "wall_s": 198.665200473999
+}
