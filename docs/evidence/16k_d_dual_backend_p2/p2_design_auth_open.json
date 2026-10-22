@@ -1,0 +1,20 @@
+{
+  "authority": "S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-DESIGN-AUTH-001",
+  "branch": "design/16k-d-dual-backend-p2-product-api-ui-integration",
+  "design_document": "docs/slice16k_d_dual_backend_p2_product_api_ui_integration_design.md",
+  "design_open_parent": "7563ce0736307dd3bf303289b6d0a25bce79c4f9",
+  "disposition": "P2 DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED",
+  "downstream_authorities": {
+    "campaigns": "NOT_AUTHORIZED",
+    "main": "NOT_AUTHORIZED",
+    "merge": "NOT_AUTHORIZED",
+    "p2_implementation": "NOT_AUTHORIZED",
+    "p3": "NOT_AUTHORIZED",
+    "p4": "NOT_AUTHORIZED",
+    "promotion": "NOT_AUTHORIZED"
+  },
+  "inherited_p1_technical_subject": "fae82b2455cfdd0d1622065904a35895372740b6",
+  "note": "Governance metadata only. Opens design-only authority for architecture-conformance product/API/UI integration contracts. Does not reopen P1 architecture/science and does not authorize P2 implementation.",
+  "posture": "architecture_conformance_integration_design",
+  "record_kind": "p2_design_auth_open"
+}
