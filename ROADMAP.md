@@ -1105,14 +1105,16 @@ SLICE 15  COMPLETE / ACCEPTED
        16K-D CPU-ONNX-01 branch: implementation/16k-d-cpu-onnx-feasibility
        16K-D CPU-ONNX-01 document:
          docs/slice16k_d_cpu_onnx_feasibility.md
-       16K-D CPU-ONNX-01 status: POST-CPU-OV ONNX FEASIBILITY HARNESS
-         IMPLEMENTATION + REWORK-AUTH-001 (F001–F003; execution locked)
-       16K-D CPU-ONNX-01 IR-001: REWORK REQUIRED at c17ac13; rework parent c17ac13
+       16K-D CPU-ONNX-01 status: HARNESS COMPLETE / INDEPENDENTLY ACCEPTED
+         (IR-002 at 7d8efb6…)
+       16K-D CPU-ONNX-01 IR-001: REWORK REQUIRED at c17ac13 (closed by IR-002)
        16K-D CPU-ONNX-01 candidate: ST/ONNX CPUExecutionProvider QINT8 AVX2
          (FP32 ONNX provenance source only; one dynamic INT8 screen)
-       16K-D CPU-ONNX-01 F001: QINT8 requires exact FP32 source tree SHA
-       16K-D CPU-ONNX-01 F002: verified requires INT8/UINT8 initializers
-       16K-D CPU-ONNX-01 F003: screen enforces candidate tree SHA before/after
+       16K-D CPU-ONNX-01 F001–F003: CLOSED under REWORK-AUTH-001
+       16K-D CPU-ONNX-01 Stage-0A: FAIL under FP32-STAGE0-EXECUTION-AUTH-001
+         (export tree 3e1b23a7…; smoke FAIL: ONNX position_ids not provided by ST)
+         evidence: docs/evidence/16k_d_cpu_onnx/fp32_stage0_fail_1792627284.json
+       16K-D CPU-ONNX-01 Stage-0A: STOP FOR REVIEW (QINT8+ closed)
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md
@@ -1940,14 +1942,16 @@ SLICE 15  COMPLETE / ACCEPTED
        16K-D CPU-ONNX-01 branch: implementation/16k-d-cpu-onnx-feasibility
        16K-D CPU-ONNX-01 document:
          docs/slice16k_d_cpu_onnx_feasibility.md
-       16K-D CPU-ONNX-01 status: POST-CPU-OV ONNX FEASIBILITY HARNESS
-         IMPLEMENTATION + REWORK-AUTH-001 (F001–F003; execution locked)
-       16K-D CPU-ONNX-01 IR-001: REWORK REQUIRED at c17ac13; rework parent c17ac13
+       16K-D CPU-ONNX-01 status: HARNESS COMPLETE / INDEPENDENTLY ACCEPTED
+         (IR-002 at 7d8efb6…)
+       16K-D CPU-ONNX-01 IR-001: REWORK REQUIRED at c17ac13 (closed by IR-002)
        16K-D CPU-ONNX-01 candidate: ST/ONNX CPUExecutionProvider QINT8 AVX2
          (FP32 ONNX provenance source only; one dynamic INT8 screen)
-       16K-D CPU-ONNX-01 F001: QINT8 requires exact FP32 source tree SHA
-       16K-D CPU-ONNX-01 F002: verified requires INT8/UINT8 initializers
-       16K-D CPU-ONNX-01 F003: screen enforces candidate tree SHA before/after
+       16K-D CPU-ONNX-01 F001–F003: CLOSED under REWORK-AUTH-001
+       16K-D CPU-ONNX-01 Stage-0A: FAIL under FP32-STAGE0-EXECUTION-AUTH-001
+         (export tree 3e1b23a7…; smoke FAIL: ONNX position_ids not provided by ST)
+         evidence: docs/evidence/16k_d_cpu_onnx/fp32_stage0_fail_1792627284.json
+       16K-D CPU-ONNX-01 Stage-0A: STOP FOR REVIEW (QINT8+ closed)
        16K-D program pivot: scientific optimization →
          bounded product-engineering optimization
        16K-D document: docs/slice16k_d_dense_cuda_profiling.md

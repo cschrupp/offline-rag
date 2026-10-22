@@ -8,10 +8,18 @@
 **Branch:** `implementation/16k-d-cpu-onnx-feasibility`  
 **Work class:** HARNESS / FEASIBILITY IMPLEMENTATION ONLY  
 
-**Status:** POST-CPU-OV CPU ONNX FEASIBILITY HARNESS REWORK (F001–F003; execution locked)  
+**Status:** HARNESS IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED (IR-002 at `7d8efb6…`)  
+
+**Stage 0A AUTH-001:** FAIL / STOP FOR REVIEW — FP32 ONNX export tree materialised
+(`exports/fp32_v1`, tree `3e1b23a7…`) but synthetic smoke FAIL:
+`Input position_ids is required by model but not provided` (Qwen3-Embedding ONNX
+graph exposes `position_ids`; ST/`ORTModelForFeatureExtraction` supplies only
+`input_ids` + `attention_mask`). Evidence:
+`docs/evidence/16k_d_cpu_onnx/fp32_stage0_fail_1792627284.json`.
 
 **Predecessor:** CPU-OV-01 STOP after INT8 128-screen TOO_SLOW (~39.75 min projected)  
-**Further scientific execution:** NOT AUTHORIZED (`EXECUTION_AUTHORIZED=False`)
+**Further scientific execution:** NOT AUTHORIZED (`EXECUTION_AUTHORIZED=False`);
+QINT8 / screen / parity / full closed until Stage 0A PASS disposition.
 
 ---
 
