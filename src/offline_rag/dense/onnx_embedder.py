@@ -43,16 +43,6 @@ def _vector_norm(vec: Sequence[float]) -> float:
     return math.sqrt(sum(float(x) * float(x) for x in vec))
 
 
-def onnx_graph_input_names(onnx_path: Path) -> list[str]:
-    import onnx
-
-    if not onnx_path.is_file():
-        raise FileNotFoundError(f"ONNX model missing: {onnx_path}")
-    model = onnx.load(str(onnx_path), load_external_data=False)
-    initializer_names = {init.name for init in model.graph.initializer}
-    return [inp.name for inp in model.graph.input if inp.name not in initializer_names]
-
-
 def build_qwen3_direct_forward_position_ids(input_ids: Any) -> Any:
     """Zero-based arange expanded to [batch, seq]; never attention_mask.cumsum."""
     import torch
@@ -142,9 +132,13 @@ def _resolve_st_ort_feature_model(st_model: Any) -> Any:
 def install_seneca_onnx_position_ids_compat(
     st_model: Any,
     *,
-    onnx_path: Path,
+    required_onnx_inputs: Sequence[str],
 ) -> dict[str, Any]:
-    required_inputs = onnx_graph_input_names(onnx_path)
+    """Install position_ids compat from package-owned runtime_contract metadata.
+
+    Does not import ``onnx`` or parse the graph at product runtime (F003).
+    """
+    required_inputs = [str(x) for x in required_onnx_inputs]
     requires = "position_ids" in set(required_inputs)
     record: dict[str, Any] = {
         "graph_requires_position_ids": requires,
@@ -157,11 +151,12 @@ def install_seneca_onnx_position_ids_compat(
         "adapter_installed": False,
         "note": (
             "injects torch.arange(seq).unsqueeze(0).expand(batch,-1) when required "
-            "and absent; never attention_mask.cumsum"
+            "and absent; never attention_mask.cumsum; driven by package "
+            "runtime_contract.required_onnx_inputs (no production graph parse)"
         ),
     }
     if not requires:
-        record["source"] = "noop_graph_does_not_require_position_ids"
+        record["source"] = "noop_contract_does_not_require_position_ids"
         return record
 
     ort_model = _resolve_st_ort_feature_model(st_model)
@@ -238,6 +233,18 @@ class SentenceTransformersOnnxEmbedder:
         self.resolved_precision = "fp32"
         self.provider = FROZEN_ONNX_PROVIDER
         self.graph_file_name = representation.graph_file_name or "onnx/model.onnx"
+        contract = (
+            dict(representation.qualification_spec.runtime_contract)
+            if representation.qualification_spec is not None
+            else {}
+        )
+        required_inputs = contract.get("required_onnx_inputs")
+        if not isinstance(required_inputs, list) or not required_inputs:
+            raise OnnxEmbedderError(
+                "onnx representation missing package runtime_contract."
+                "required_onnx_inputs"
+            )
+        self.required_onnx_inputs = tuple(str(x) for x in required_inputs)
         self._model: Any | None = None
         self.position_ids_compat: dict[str, Any] | None = None
 
@@ -263,7 +270,7 @@ class SentenceTransformersOnnxEmbedder:
         )
         self.position_ids_compat = install_seneca_onnx_position_ids_compat(
             model,
-            onnx_path=onnx_path,
+            required_onnx_inputs=self.required_onnx_inputs,
         )
         self._model = model
         return self._model
@@ -319,5 +326,4 @@ __all__ = [
     "apply_seneca_onnx_position_ids_compat",
     "build_qwen3_direct_forward_position_ids",
     "install_seneca_onnx_position_ids_compat",
-    "onnx_graph_input_names",
 ]

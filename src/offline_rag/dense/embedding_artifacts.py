@@ -178,6 +178,13 @@ def parse_bundle_manifest(payload: MappingLike) -> dict[str, str]:
 
 
 def parse_installed_representation_manifest(payload: MappingLike) -> dict[str, Any]:
+    """Parse Round-11 installed representation manifest (installation state).
+
+    Minimal required fields for onnx_fp32_v1 (R2 §7.6):
+    representation_id, model_id, model_revision, expected_dimension,
+    runtime_family, qualification_id, required_files, file_digests,
+    runtime_contract.
+    """
     schema = str(
         payload.get("installed_representation_schema")
         or payload.get("schema")
@@ -189,12 +196,22 @@ def parse_installed_representation_manifest(payload: MappingLike) -> dict[str, A
         "representation_id",
         "model_id",
         "model_revision",
+        "expected_dimension",
         "runtime_family",
+        "qualification_id",
+        "required_files",
         "file_digests",
+        "runtime_contract",
     )
     for key in required:
         if key not in payload:
             raise ValueError(f"installed representation manifest missing {key}")
+    if not isinstance(payload["required_files"], list):
+        raise TypeError("installed required_files must be a list")
+    if not isinstance(payload["file_digests"], dict):
+        raise TypeError("installed file_digests must be an object")
+    if not isinstance(payload["runtime_contract"], dict):
+        raise TypeError("installed runtime_contract must be an object")
     return dict(payload)
 
 
@@ -241,58 +258,165 @@ def _validate_onnx_instance_against_qualification(
     instance_path: Path,
     root: Path,
     installed_manifest: dict[str, Any] | None,
+    expected_model_id: str,
+    expected_revision: str,
+    expected_dimension: int,
 ) -> RepresentationInspection:
     spec = load_package_qualification_spec("onnx_fp32_v1")
-    if installed_manifest is not None:
-        if str(installed_manifest.get("representation_id")) != "onnx_fp32_v1":
+
+    # F001: active logical identity must match package qualification authority.
+    if expected_model_id != spec.model_id:
+        return _invalid(
+            representation_id="onnx_fp32_v1",
+            root=root,
+            reason_code=RepresentationReasonCode.QUALIFICATION_MISMATCH,
+            reason=(
+                "configured model_id does not match package qualification: "
+                f"configured={expected_model_id!r} qualified={spec.model_id!r}"
+            ),
+            instance_path=instance_path,
+            qualification_spec=spec,
+            installed_manifest=installed_manifest,
+        )
+    if expected_revision != spec.model_revision:
+        return _invalid(
+            representation_id="onnx_fp32_v1",
+            root=root,
+            reason_code=RepresentationReasonCode.QUALIFICATION_MISMATCH,
+            reason=(
+                "configured model_revision does not match package qualification: "
+                f"configured={expected_revision!r} "
+                f"qualified={spec.model_revision!r}"
+            ),
+            instance_path=instance_path,
+            qualification_spec=spec,
+            installed_manifest=installed_manifest,
+        )
+    if int(expected_dimension) != int(spec.expected_dimension):
+        return _invalid(
+            representation_id="onnx_fp32_v1",
+            root=root,
+            reason_code=RepresentationReasonCode.QUALIFICATION_MISMATCH,
+            reason=(
+                "configured dimension does not match package qualification: "
+                f"configured={expected_dimension!r} "
+                f"qualified={spec.expected_dimension!r}"
+            ),
+            instance_path=instance_path,
+            qualification_spec=spec,
+            installed_manifest=installed_manifest,
+        )
+
+    # F002: bundle-managed onnx_fp32_v1 requires a parsed installed manifest.
+    if installed_manifest is None:
+        return _invalid(
+            representation_id="onnx_fp32_v1",
+            root=root,
+            reason_code=RepresentationReasonCode.INSTALLED_MANIFEST_INVALID,
+            reason="installed representation manifest missing for onnx_fp32_v1",
+            instance_path=instance_path,
+            qualification_spec=spec,
+            installed_manifest=None,
+        )
+
+    if str(installed_manifest.get("representation_id")) != "onnx_fp32_v1":
+        return _invalid(
+            representation_id="onnx_fp32_v1",
+            root=root,
+            reason_code=RepresentationReasonCode.QUALIFICATION_MISMATCH,
+            reason="installed representation_id mismatch",
+            instance_path=instance_path,
+            qualification_spec=spec,
+            installed_manifest=installed_manifest,
+        )
+    if str(installed_manifest.get("qualification_id")) != "onnx_fp32_v1":
+        return _invalid(
+            representation_id="onnx_fp32_v1",
+            root=root,
+            reason_code=RepresentationReasonCode.QUALIFICATION_MISMATCH,
+            reason="installed qualification_id mismatch vs onnx_fp32_v1",
+            instance_path=instance_path,
+            qualification_spec=spec,
+            installed_manifest=installed_manifest,
+        )
+    if str(installed_manifest.get("model_id")) != spec.model_id:
+        return _invalid(
+            representation_id="onnx_fp32_v1",
+            root=root,
+            reason_code=RepresentationReasonCode.QUALIFICATION_MISMATCH,
+            reason="installed model_id mismatch vs qualification",
+            instance_path=instance_path,
+            qualification_spec=spec,
+            installed_manifest=installed_manifest,
+        )
+    if str(installed_manifest.get("model_revision")) != spec.model_revision:
+        return _invalid(
+            representation_id="onnx_fp32_v1",
+            root=root,
+            reason_code=RepresentationReasonCode.QUALIFICATION_MISMATCH,
+            reason="installed model_revision mismatch vs qualification",
+            instance_path=instance_path,
+            qualification_spec=spec,
+            installed_manifest=installed_manifest,
+        )
+    if int(installed_manifest.get("expected_dimension", -1)) != int(
+        spec.expected_dimension
+    ):
+        return _invalid(
+            representation_id="onnx_fp32_v1",
+            root=root,
+            reason_code=RepresentationReasonCode.QUALIFICATION_MISMATCH,
+            reason="installed expected_dimension mismatch vs qualification",
+            instance_path=instance_path,
+            qualification_spec=spec,
+            installed_manifest=installed_manifest,
+        )
+    if str(installed_manifest.get("runtime_family")) != spec.runtime_family:
+        return _invalid(
+            representation_id="onnx_fp32_v1",
+            root=root,
+            reason_code=RepresentationReasonCode.QUALIFICATION_MISMATCH,
+            reason="installed runtime_family mismatch vs qualification",
+            instance_path=instance_path,
+            qualification_spec=spec,
+            installed_manifest=installed_manifest,
+        )
+
+    installed_required = tuple(
+        str(x) for x in list(installed_manifest.get("required_files") or [])
+    )
+    if set(installed_required) != set(spec.required_files):
+        return _invalid(
+            representation_id="onnx_fp32_v1",
+            root=root,
+            reason_code=RepresentationReasonCode.QUALIFICATION_MISMATCH,
+            reason="installed required_files inventory mismatch vs qualification",
+            instance_path=instance_path,
+            qualification_spec=spec,
+            installed_manifest=installed_manifest,
+        )
+
+    installed_contract = dict(installed_manifest.get("runtime_contract") or {})
+    package_contract = dict(spec.runtime_contract)
+    for key, expected in package_contract.items():
+        if key not in installed_contract or installed_contract[key] != expected:
             return _invalid(
                 representation_id="onnx_fp32_v1",
                 root=root,
-                reason_code=RepresentationReasonCode.QUALIFICATION_MISMATCH,
-                reason="installed representation_id mismatch",
-                instance_path=instance_path,
-                qualification_spec=spec,
-                installed_manifest=installed_manifest,
-            )
-        if str(installed_manifest.get("model_id")) != spec.model_id:
-            return _invalid(
-                representation_id="onnx_fp32_v1",
-                root=root,
-                reason_code=RepresentationReasonCode.QUALIFICATION_MISMATCH,
-                reason="installed model_id mismatch vs qualification",
-                instance_path=instance_path,
-                qualification_spec=spec,
-                installed_manifest=installed_manifest,
-            )
-        if str(installed_manifest.get("model_revision")) != spec.model_revision:
-            return _invalid(
-                representation_id="onnx_fp32_v1",
-                root=root,
-                reason_code=RepresentationReasonCode.QUALIFICATION_MISMATCH,
-                reason="installed model_revision mismatch vs qualification",
-                instance_path=instance_path,
-                qualification_spec=spec,
-                installed_manifest=installed_manifest,
-            )
-        if str(installed_manifest.get("runtime_family")) != spec.runtime_family:
-            return _invalid(
-                representation_id="onnx_fp32_v1",
-                root=root,
-                reason_code=RepresentationReasonCode.QUALIFICATION_MISMATCH,
-                reason="installed runtime_family mismatch vs qualification",
+                reason_code=RepresentationReasonCode.RUNTIME_CONTRACT_MISMATCH,
+                reason=(
+                    f"installed runtime_contract mismatch vs qualification "
+                    f"for key {key!r}"
+                ),
                 instance_path=instance_path,
                 qualification_spec=spec,
                 installed_manifest=installed_manifest,
             )
 
-    installed_digests = (
-        {
-            str(k): str(v)
-            for k, v in dict(installed_manifest.get("file_digests") or {}).items()
-        }
-        if installed_manifest is not None
-        else {}
-    )
+    installed_digests = {
+        str(k): str(v)
+        for k, v in dict(installed_manifest.get("file_digests") or {}).items()
+    }
 
     for rel in spec.required_files:
         path = instance_path / rel
@@ -318,7 +442,17 @@ def _validate_onnx_instance_against_qualification(
                 qualification_spec=spec,
                 installed_manifest=installed_manifest,
             )
-        if rel in installed_digests and installed_digests[rel] != expected:
+        if rel not in installed_digests:
+            return _invalid(
+                representation_id="onnx_fp32_v1",
+                root=root,
+                reason_code=RepresentationReasonCode.INSTALLED_DIGEST_DISAGREES,
+                reason=f"installed manifest missing digest for required file {rel}",
+                instance_path=instance_path,
+                qualification_spec=spec,
+                installed_manifest=installed_manifest,
+            )
+        if installed_digests[rel] != expected:
             return _invalid(
                 representation_id="onnx_fp32_v1",
                 root=root,
@@ -331,7 +465,7 @@ def _validate_onnx_instance_against_qualification(
                 qualification_spec=spec,
                 installed_manifest=installed_manifest,
             )
-        if rel in installed_digests and installed_digests[rel] != actual:
+        if installed_digests[rel] != actual:
             return _invalid(
                 representation_id="onnx_fp32_v1",
                 root=root,
@@ -343,31 +477,30 @@ def _validate_onnx_instance_against_qualification(
             )
 
     # Installed manifest cannot self-authorize extra unknown bytes as trusted.
-    if installed_manifest is not None:
-        for rel, digest in installed_digests.items():
-            if rel not in spec.expected_file_digests:
-                return _invalid(
-                    representation_id="onnx_fp32_v1",
-                    root=root,
-                    reason_code=RepresentationReasonCode.INSTALLED_DIGEST_DISAGREES,
-                    reason=(
-                        "installed manifest lists file not present in package "
-                        f"qualification authority: {rel}"
-                    ),
-                    instance_path=instance_path,
-                    qualification_spec=spec,
-                    installed_manifest=installed_manifest,
-                )
-            if digest != spec.expected_file_digests[rel]:
-                return _invalid(
-                    representation_id="onnx_fp32_v1",
-                    root=root,
-                    reason_code=RepresentationReasonCode.INSTALLED_DIGEST_DISAGREES,
-                    reason=f"installed manifest cannot self-authorize {rel}",
-                    instance_path=instance_path,
-                    qualification_spec=spec,
-                    installed_manifest=installed_manifest,
-                )
+    for rel, digest in installed_digests.items():
+        if rel not in spec.expected_file_digests:
+            return _invalid(
+                representation_id="onnx_fp32_v1",
+                root=root,
+                reason_code=RepresentationReasonCode.INSTALLED_DIGEST_DISAGREES,
+                reason=(
+                    "installed manifest lists file not present in package "
+                    f"qualification authority: {rel}"
+                ),
+                instance_path=instance_path,
+                qualification_spec=spec,
+                installed_manifest=installed_manifest,
+            )
+        if digest != spec.expected_file_digests[rel]:
+            return _invalid(
+                representation_id="onnx_fp32_v1",
+                root=root,
+                reason_code=RepresentationReasonCode.INSTALLED_DIGEST_DISAGREES,
+                reason=f"installed manifest cannot self-authorize {rel}",
+                instance_path=instance_path,
+                qualification_spec=spec,
+                installed_manifest=installed_manifest,
+            )
 
     contract = spec.runtime_contract
     graph_name = str(contract.get("graph_file_name") or "onnx/model.onnx")
@@ -377,6 +510,17 @@ def _validate_onnx_instance_against_qualification(
             root=root,
             reason_code=RepresentationReasonCode.RUNTIME_CONTRACT_MISMATCH,
             reason="qualification runtime provider mismatch",
+            instance_path=instance_path,
+            qualification_spec=spec,
+            installed_manifest=installed_manifest,
+        )
+    required_inputs = contract.get("required_onnx_inputs")
+    if not isinstance(required_inputs, list) or not required_inputs:
+        return _invalid(
+            representation_id="onnx_fp32_v1",
+            root=root,
+            reason_code=RepresentationReasonCode.RUNTIME_CONTRACT_MISMATCH,
+            reason="qualification runtime_contract missing required_onnx_inputs",
             instance_path=instance_path,
             qualification_spec=spec,
             installed_manifest=installed_manifest,
@@ -475,10 +619,24 @@ def inspect_representation(
                         instance_path=instance_path,
                     )
             if representation_id == "onnx_fp32_v1":
+                if installed is None:
+                    return _invalid(
+                        representation_id="onnx_fp32_v1",
+                        root=root,
+                        reason_code=RepresentationReasonCode.INSTALLED_MANIFEST_INVALID,
+                        reason=(
+                            "installed representation manifest missing for "
+                            "bundle-managed onnx_fp32_v1"
+                        ),
+                        instance_path=instance_path,
+                    )
                 return _validate_onnx_instance_against_qualification(
                     instance_path=instance_path,
                     root=root,
                     installed_manifest=installed,
+                    expected_model_id=expected_model_id,
+                    expected_revision=expected_revision,
+                    expected_dimension=expected_dimension,
                 )
             # torch via bundle instance: require legacy-equivalent identity files
             status = validate_embedding_artifacts(

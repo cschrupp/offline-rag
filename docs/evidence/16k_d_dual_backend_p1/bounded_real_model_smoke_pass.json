@@ -13,6 +13,12 @@
   "provider_model_calls": 1,
   "query_count": 2,
   "representation_id": "onnx_fp32_v1",
+  "required_onnx_inputs_from_metadata": [
+    "input_ids",
+    "attention_mask",
+    "position_ids"
+  ],
+  "rework": "IR-REQUEST-CHANGES F001-F003",
   "runtime_transitions": "UNLOADED -> READY",
   "scientific_campaign_calls": 0,
   "smoke": "bounded_real_model_onnx_fp32_v1"

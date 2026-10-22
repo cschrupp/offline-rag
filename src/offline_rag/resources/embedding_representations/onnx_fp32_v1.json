@@ -59,7 +59,12 @@
     "position_ids_semantics": "qwen3_direct_forward_zero_based_arange",
     "precision": "fp32",
     "provider": "CPUExecutionProvider",
-    "query_contract": "raw-query-v1"
+    "query_contract": "raw-query-v1",
+    "required_onnx_inputs": [
+      "input_ids",
+      "attention_mask",
+      "position_ids"
+    ]
   },
   "runtime_family": "sentence_transformers_onnx",
   "source_kind": "accepted_scientific_export_tree",

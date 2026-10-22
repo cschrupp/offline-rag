@@ -5,10 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
+# Path used by test_no_production_onnx_graph_import
 import pytest
 import torch
 
 from offline_rag.dense.embedding_artifacts import (
+    QUALIFICATION_SCHEMA,
+    QualifiedEmbeddingRepresentationSpec,
     RepresentationInspection,
     RepresentationReadiness,
     RepresentationReasonCode,
@@ -22,6 +25,45 @@ from offline_rag.dense.onnx_embedder import (
     apply_seneca_onnx_position_ids_compat,
     build_qwen3_direct_forward_position_ids,
 )
+
+
+def _spec() -> QualifiedEmbeddingRepresentationSpec:
+    return QualifiedEmbeddingRepresentationSpec(
+        qualification_schema=QUALIFICATION_SCHEMA,
+        representation_id="onnx_fp32_v1",
+        model_id="Qwen/Qwen3-Embedding-0.6B",
+        model_revision="97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+        expected_dimension=1024,
+        runtime_family="sentence_transformers_onnx",
+        source_kind="test",
+        source_repo_id="Qwen/Qwen3-Embedding-0.6B",
+        source_revision="97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+        required_files=("onnx/model.onnx",),
+        expected_file_digests={"onnx/model.onnx": "0" * 64},
+        runtime_contract={
+            "provider": "CPUExecutionProvider",
+            "graph_file_name": "onnx/model.onnx",
+            "required_onnx_inputs": [
+                "input_ids",
+                "attention_mask",
+                "position_ids",
+            ],
+        },
+        qualification_evidence={},
+    )
+
+
+def _rep(tmp_path: Path) -> RepresentationInspection:
+    return RepresentationInspection(
+        representation_id="onnx_fp32_v1",
+        readiness=RepresentationReadiness.READY,
+        reason_code=RepresentationReasonCode.OK,
+        reason="ok",
+        root=tmp_path,
+        instance_path=tmp_path,
+        graph_file_name="onnx/model.onnx",
+        qualification_spec=_spec(),
+    )
 
 
 def test_position_ids_injected_when_absent() -> None:
@@ -78,26 +120,23 @@ def test_load_kwargs_and_validation(
         "sentence_transformers.SentenceTransformer",
         FakeST,
     )
+    captured_compat: dict[str, object] = {}
+
+    def _fake_compat(model, *, required_onnx_inputs):  # type: ignore[no-untyped-def]
+        captured_compat["required_onnx_inputs"] = list(required_onnx_inputs)
+        return {"adapter_installed": True}
+
     monkeypatch.setattr(
         "offline_rag.dense.onnx_embedder.install_seneca_onnx_position_ids_compat",
-        lambda model, onnx_path: {"adapter_installed": True},
+        _fake_compat,
     )
     # Ensure constants match contract
     assert FROZEN_ORT_INTRA_OP_THREADS == 8
     assert FROZEN_ORT_INTER_OP_THREADS == 1
     assert FROZEN_ONNX_PROVIDER == "CPUExecutionProvider"
 
-    rep = RepresentationInspection(
-        representation_id="onnx_fp32_v1",
-        readiness=RepresentationReadiness.READY,
-        reason_code=RepresentationReasonCode.OK,
-        reason="ok",
-        root=tmp_path,
-        instance_path=tmp_path,
-        graph_file_name="onnx/model.onnx",
-    )
     emb = SentenceTransformersOnnxEmbedder(
-        representation=rep,
+        representation=_rep(tmp_path),
         model_id="Qwen/Qwen3-Embedding-0.6B",
         model_revision="97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
     )
@@ -119,6 +158,23 @@ def test_load_kwargs_and_validation(
     assert model_kwargs["file_name"] == "onnx/model.onnx"
     assert model_kwargs["session_options"].intra_op_num_threads == 8
     assert model_kwargs["session_options"].inter_op_num_threads == 1
+    assert captured_compat["required_onnx_inputs"] == [
+        "input_ids",
+        "attention_mask",
+        "position_ids",
+    ]
+
+
+def test_no_production_onnx_graph_import() -> None:
+    import offline_rag.dense.onnx_embedder as mod
+
+    assert not hasattr(mod, "onnx_graph_input_names")
+    source = Path(mod.__file__).read_text(encoding="utf-8")
+    assert "import onnx\n" not in source
+    assert "import onnx " not in source
+    assert "from onnx " not in source
+    assert "onnx.load" not in source
+    # onnxruntime remains allowed for SessionOptions / CPUExecutionProvider.
 
 
 def test_wrong_dimension_and_nonfinite(
@@ -145,15 +201,7 @@ def test_wrong_dimension_and_nonfinite(
         lambda *a, **k: {},
     )
     emb = SentenceTransformersOnnxEmbedder(
-        representation=RepresentationInspection(
-            representation_id="onnx_fp32_v1",
-            readiness=RepresentationReadiness.READY,
-            reason_code=RepresentationReasonCode.OK,
-            reason="ok",
-            root=tmp_path,
-            instance_path=tmp_path,
-            graph_file_name="onnx/model.onnx",
-        ),
+        representation=_rep(tmp_path),
         model_id="m",
         model_revision="r",
     )
@@ -168,15 +216,7 @@ def test_wrong_dimension_and_nonfinite(
 
     monkeypatch.setattr("sentence_transformers.SentenceTransformer", NanST)
     emb2 = SentenceTransformersOnnxEmbedder(
-        representation=RepresentationInspection(
-            representation_id="onnx_fp32_v1",
-            readiness=RepresentationReadiness.READY,
-            reason_code=RepresentationReasonCode.OK,
-            reason="ok",
-            root=tmp_path,
-            instance_path=tmp_path,
-            graph_file_name="onnx/model.onnx",
-        ),
+        representation=_rep(tmp_path),
         model_id="m",
         model_revision="r",
     )

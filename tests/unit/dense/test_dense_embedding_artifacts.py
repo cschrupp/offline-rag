@@ -24,6 +24,14 @@ from offline_rag.dense.embedding_artifacts import (
 )
 from offline_rag.dense.provision import EMBEDDING_MANIFEST_NAME
 
+_RUNTIME_CONTRACT = {
+    "provider": "CPUExecutionProvider",
+    "graph_file_name": "onnx/model.onnx",
+    "ort_intra_op_threads": 8,
+    "ort_inter_op_threads": 1,
+    "required_onnx_inputs": ["input_ids", "attention_mask", "position_ids"],
+}
+
 
 def _write(path: Path, data: bytes | str) -> str:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -45,15 +53,27 @@ def _tiny_spec(files: dict[str, str]) -> QualifiedEmbeddingRepresentationSpec:
         source_revision="97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
         required_files=tuple(sorted(files)),
         expected_file_digests=dict(files),
-        runtime_contract={
-            "provider": "CPUExecutionProvider",
-            "graph_file_name": "onnx/model.onnx",
-            "ort_intra_op_threads": 8,
-            "ort_inter_op_threads": 1,
-        },
+        runtime_contract=dict(_RUNTIME_CONTRACT),
         qualification_evidence={"test": True},
         historical_qualification_tree_sha256=None,
     )
+
+
+def _installed_payload(files: dict[str, str], **overrides: object) -> dict:
+    payload: dict = {
+        "installed_representation_schema": INSTALLED_REPRESENTATION_SCHEMA,
+        "representation_id": "onnx_fp32_v1",
+        "model_id": "Qwen/Qwen3-Embedding-0.6B",
+        "model_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+        "expected_dimension": 1024,
+        "runtime_family": "sentence_transformers_onnx",
+        "qualification_id": "onnx_fp32_v1",
+        "required_files": sorted(files),
+        "file_digests": files,
+        "runtime_contract": dict(_RUNTIME_CONTRACT),
+    }
+    payload.update(overrides)
+    return payload
 
 
 def test_package_owned_onnx_spec_parses() -> None:
@@ -74,6 +94,11 @@ def test_package_owned_onnx_spec_parses() -> None:
         == "3e1b23a7293cf599bc34d1d9875e5c4ecde45bf12fcd300a6cb66794b5bc4345"
     )
     assert len(spec.required_files) >= 10
+    assert spec.runtime_contract["required_onnx_inputs"] == [
+        "input_ids",
+        "attention_mask",
+        "position_ids",
+    ]
 
 
 def test_legacy_torch_ready_onnx_absent(
@@ -81,7 +106,6 @@ def test_legacy_torch_ready_onnx_absent(
 ) -> None:
     root = tmp_path / "qwen"
     root.mkdir()
-    # Minimal fake legacy validation via monkeypatch
     from offline_rag.dense import embedding_artifacts as art
     from offline_rag.dense.provision import EmbeddingArtifactStatus, EmbeddingReadiness
 
@@ -124,16 +148,7 @@ def test_bundle_pointer_selects_instance_and_ignores_orphan(
         encoding="utf-8",
     )
     (good / REPRESENTATION_MANIFEST_NAME).write_text(
-        json.dumps(
-            {
-                "installed_representation_schema": INSTALLED_REPRESENTATION_SCHEMA,
-                "representation_id": "onnx_fp32_v1",
-                "model_id": "Qwen/Qwen3-Embedding-0.6B",
-                "model_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
-                "runtime_family": "sentence_transformers_onnx",
-                "file_digests": files,
-            }
-        ),
+        json.dumps(_installed_payload(files)),
         encoding="utf-8",
     )
     monkeypatch.setattr(
@@ -143,7 +158,111 @@ def test_bundle_pointer_selects_instance_and_ignores_orphan(
     result = inspect_representation(root, "onnx_fp32_v1")
     assert result.readiness == RepresentationReadiness.READY
     assert result.instance_path == good.resolve()
-    assert orphan.exists()  # orphan remains on disk but unused
+    assert orphan.exists()
+
+
+def test_missing_installed_manifest_is_invalid(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    files = {"onnx/model.onnx": "x", "config.json": "y"}
+    root = tmp_path / "qwen"
+    inst = root / "representations" / "onnx_fp32_v1" / "inst"
+    files = {
+        "onnx/model.onnx": _write(inst / "onnx/model.onnx", b"graph"),
+        "config.json": _write(inst / "config.json", b"{}"),
+    }
+    (root / BUNDLE_MANIFEST_NAME).write_text(
+        json.dumps(
+            {
+                "bundle_schema": BUNDLE_SCHEMA,
+                "representations": {"onnx_fp32_v1": str(inst.relative_to(root))},
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "offline_rag.dense.embedding_artifacts.load_package_qualification_spec",
+        lambda _rid: _tiny_spec(files),
+    )
+    result = inspect_representation(root, "onnx_fp32_v1")
+    assert result.readiness == RepresentationReadiness.INVALID
+    assert result.reason_code == RepresentationReasonCode.INSTALLED_MANIFEST_INVALID
+
+
+def test_runtime_contract_mismatch_is_invalid(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = tmp_path / "qwen"
+    inst = root / "representations" / "onnx_fp32_v1" / "inst"
+    files = {
+        "onnx/model.onnx": _write(inst / "onnx/model.onnx", b"graph"),
+        "config.json": _write(inst / "config.json", b"{}"),
+    }
+    (root / BUNDLE_MANIFEST_NAME).write_text(
+        json.dumps(
+            {
+                "bundle_schema": BUNDLE_SCHEMA,
+                "representations": {"onnx_fp32_v1": str(inst.relative_to(root))},
+            }
+        ),
+        encoding="utf-8",
+    )
+    bad_contract = dict(_RUNTIME_CONTRACT)
+    bad_contract["provider"] = "CUDAExecutionProvider"
+    (inst / REPRESENTATION_MANIFEST_NAME).write_text(
+        json.dumps(_installed_payload(files, runtime_contract=bad_contract)),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "offline_rag.dense.embedding_artifacts.load_package_qualification_spec",
+        lambda _rid: _tiny_spec(files),
+    )
+    result = inspect_representation(root, "onnx_fp32_v1")
+    assert result.readiness == RepresentationReadiness.INVALID
+    assert result.reason_code == RepresentationReasonCode.RUNTIME_CONTRACT_MISMATCH
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "needle"),
+    [
+        ({"expected_model_id": "Other/Model"}, "model_id"),
+        ({"expected_revision": "deadbeef"}, "model_revision"),
+        ({"expected_dimension": 768}, "dimension"),
+    ],
+)
+def test_configured_logical_identity_must_match_qualification(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    kwargs: dict,
+    needle: str,
+) -> None:
+    root = tmp_path / "qwen"
+    inst = root / "representations" / "onnx_fp32_v1" / "inst"
+    files = {
+        "onnx/model.onnx": _write(inst / "onnx/model.onnx", b"graph"),
+        "config.json": _write(inst / "config.json", b"{}"),
+    }
+    (root / BUNDLE_MANIFEST_NAME).write_text(
+        json.dumps(
+            {
+                "bundle_schema": BUNDLE_SCHEMA,
+                "representations": {"onnx_fp32_v1": str(inst.relative_to(root))},
+            }
+        ),
+        encoding="utf-8",
+    )
+    (inst / REPRESENTATION_MANIFEST_NAME).write_text(
+        json.dumps(_installed_payload(files)),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "offline_rag.dense.embedding_artifacts.load_package_qualification_spec",
+        lambda _rid: _tiny_spec(files),
+    )
+    result = inspect_representation(root, "onnx_fp32_v1", **kwargs)
+    assert result.readiness == RepresentationReadiness.INVALID
+    assert result.reason_code == RepresentationReasonCode.QUALIFICATION_MISMATCH
+    assert needle in result.reason
 
 
 def test_qualification_mismatch_and_digest_failures(
@@ -167,16 +286,7 @@ def test_qualification_mismatch_and_digest_failures(
         encoding="utf-8",
     )
     (inst / REPRESENTATION_MANIFEST_NAME).write_text(
-        json.dumps(
-            {
-                "installed_representation_schema": INSTALLED_REPRESENTATION_SCHEMA,
-                "representation_id": "onnx_fp32_v1",
-                "model_id": "Qwen/Qwen3-Embedding-0.6B",
-                "model_revision": "wrong-revision",
-                "runtime_family": "sentence_transformers_onnx",
-                "file_digests": files,
-            }
-        ),
+        json.dumps(_installed_payload(files, model_revision="wrong-revision")),
         encoding="utf-8",
     )
     monkeypatch.setattr(
@@ -187,18 +297,8 @@ def test_qualification_mismatch_and_digest_failures(
     assert bad_rev.readiness == RepresentationReadiness.INVALID
     assert bad_rev.reason_code == RepresentationReasonCode.QUALIFICATION_MISMATCH
 
-    # Fix revision; break local digest vs package authority
     (inst / REPRESENTATION_MANIFEST_NAME).write_text(
-        json.dumps(
-            {
-                "installed_representation_schema": INSTALLED_REPRESENTATION_SCHEMA,
-                "representation_id": "onnx_fp32_v1",
-                "model_id": "Qwen/Qwen3-Embedding-0.6B",
-                "model_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
-                "runtime_family": "sentence_transformers_onnx",
-                "file_digests": files,
-            }
-        ),
+        json.dumps(_installed_payload(files)),
         encoding="utf-8",
     )
     wrong = dict(files)
@@ -232,14 +332,7 @@ def test_installed_manifest_cannot_self_authorize(
     )
     (inst / REPRESENTATION_MANIFEST_NAME).write_text(
         json.dumps(
-            {
-                "installed_representation_schema": INSTALLED_REPRESENTATION_SCHEMA,
-                "representation_id": "onnx_fp32_v1",
-                "model_id": "Qwen/Qwen3-Embedding-0.6B",
-                "model_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
-                "runtime_family": "sentence_transformers_onnx",
-                "file_digests": {**files, "evil.bin": extra},
-            }
+            _installed_payload(files, file_digests={**files, "evil.bin": extra})
         ),
         encoding="utf-8",
     )

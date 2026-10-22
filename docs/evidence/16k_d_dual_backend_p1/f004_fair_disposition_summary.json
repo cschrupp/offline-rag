@@ -1,0 +1,11 @@
+{
+  "method": "Re-run exact repaired-candidate failure nodeids under identical cwd/fixtures; swap only PYTHONPATH to parent worktree src vs candidate src",
+  "parent_sha": "36cd5fbbdbfa1ccd8493f1a8178c7e4cea4e92d8",
+  "repaired_working_tree_basis": "8d527101cf3e79a8c012233c918020aa41dcf0d5 + F001-F003 rework (uncommitted at evidence time)",
+  "candidate_full_suite": "1858 passed, 33 failed (full_pytest_repaired_candidate.txt)",
+  "failset_size": 33,
+  "only_parent": [],
+  "only_candidate": [],
+  "disposition": "COMPLETE \u2014 all 33 failures identical parent\u2194candidate under fair comparison; zero candidate-specific regressions",
+  "prior_unfair_note": "Parent worktree-only runs skipped tiktoken-provisioned tests; those SKIP\u2192FAIL contrasts were environmental, not P1 code"
+}

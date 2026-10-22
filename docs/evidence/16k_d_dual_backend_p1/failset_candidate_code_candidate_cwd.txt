@@ -1,0 +1,91 @@
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF                                        [100%]
+=============================== warnings summary ===============================
+.venv/lib/python3.14/site-packages/fastapi/testclient.py:1
+  /home/user/projects/technical_rag/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+tests/unit/app/test_slice15h_integration_closeout.py::test_query_overload_fail_fast
+  /home/user/projects/technical_rag/.venv/lib/python3.14/site-packages/_pytest/threadexception.py:58: PytestUnhandledThreadExceptionWarning: Exception in thread Thread-13 (_hold)
+  
+  Traceback (most recent call last):
+    File "/home/user/projects/technical_rag/src/offline_rag/app/query.py", line 449, in run_bound_snapshot_query
+      result = _execute_snapshot_query(
+          handle,
+      ...<3 lines>...
+          document_ids=document_ids,
+      )
+  TypeError: test_query_overload_fail_fast.<locals>._blocking() got an unexpected keyword argument 'retrieval_question'
+  
+  The above exception was the direct cause of the following exception:
+  
+  offline_rag.app.errors.AppError: Internal application error
+  
+  The above exception was the direct cause of the following exception:
+  
+  Traceback (most recent call last):
+    File "/home/user/.local/share/uv/python/cpython-3.14.5-linux-x86_64-gnu/lib/python3.14/threading.py", line 1082, in _bootstrap_inner
+      self._context.run(self.run)
+      ~~~~~~~~~~~~~~~~~^^^^^^^^^^
+    File "/home/user/.local/share/uv/python/cpython-3.14.5-linux-x86_64-gnu/lib/python3.14/threading.py", line 1024, in run
+      self._target(*self._args, **self._kwargs)
+      ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/home/user/projects/technical_rag/tests/unit/app/test_slice15h_integration_closeout.py", line 788, in _hold
+      run_product_query(
+      ~~~~~~~~~~~~~~~~~^
+          runtime,
+          ^^^^^^^^
+      ...<2 lines>...
+          control=op,
+          ^^^^^^^^^^^
+      )
+      ^
+    File "/home/user/projects/technical_rag/src/offline_rag/app/query.py", line 583, in run_product_query
+      outcome = run_bound_snapshot_query(
+          runtime, snapshot=snapshot, question=normalized, control=control
+      )
+    File "/home/user/projects/technical_rag/src/offline_rag/app/query.py", line 525, in run_bound_snapshot_query
+      raise AppError(
+      ...<3 lines>...
+      ) from mapped_error
+  offline_rag.app.errors.AppError: Internal application error
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnhandledThreadExceptionWarning(msg))
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/unit/app/test_slice15a_foundation.py::test_d08_catalog_complete_and_mapped
+FAILED tests/unit/app/test_slice15e_product_query_traces.py::test_query_reuses_process_scoped_resources
+FAILED tests/unit/app/test_slice15f_admission_deadlines_shutdown.py::test_query_overload_and_independent_capacity_classes
+FAILED tests/unit/app/test_slice15f_admission_deadlines_shutdown.py::test_cancel_keeps_capacity_until_worker_ends
+FAILED tests/unit/app/test_slice15f_admission_deadlines_shutdown.py::test_short_deadline_maps_to_request_timeout
+FAILED tests/unit/app/test_slice15f_admission_deadlines_shutdown.py::test_generation_timeout_when_deadline_not_expired
+FAILED tests/unit/app/test_slice15f_admission_deadlines_shutdown.py::test_query_disconnect_records_request_cancelled
+FAILED tests/unit/app/test_slice15f_admission_deadlines_shutdown.py::test_grace_expiry_does_not_fabricate_request_timeout
+FAILED tests/unit/app/test_slice15f_admission_deadlines_shutdown.py::test_health_live_responsive_during_drain_and_held_query
+FAILED tests/unit/app/test_slice15f_admission_deadlines_shutdown.py::test_product_query_passes_control_checkpoint_into_orchestrator
+FAILED tests/unit/app/test_slice15h_integration_closeout.py::test_complete_product_path_replace_and_read_during_ingest
+FAILED tests/unit/app/test_slice15h_integration_closeout.py::test_openapi_exact_product_path_set
+FAILED tests/unit/app/test_slice15h_integration_closeout.py::test_d08_closeout_evidence_matrix_complete
+FAILED tests/unit/app/test_slice15h_integration_closeout.py::test_secret_non_leakage_in_health_errors_traces
+FAILED tests/unit/app/test_slice15h_integration_closeout.py::test_query_overload_fail_fast
+FAILED tests/unit/app/test_slice16b_integrity_rework.py::test_f7_failure_recovery_holds_corpus_lease
+FAILED tests/unit/app/test_slice16b_integrity_rework.py::test_f12_pipeline_supersession_isolation
+FAILED tests/unit/app/test_slice16b_rework_hardening.py::test_f6_supersession_old_marker_absent
+FAILED tests/unit/app/test_slice16b_rework_hardening.py::test_f6_batch_add_remove_without_reupload
+FAILED tests/unit/app/test_slice16f_a_gold_lab_foundation.py::test_nonscope_surfaces
+FAILED tests/unit/test_grounded_generation.py::test_unauthorized_endpoint_not_probed
+FAILED tests/unit/test_lexical_exclude_zero_term_v1.py::test_managed_operation_metrics_lexical_projection_and_legacy_null
+FAILED tests/unit/test_performance14_level_c_preflight.py::test_reranker_model_path_missing_fails
+FAILED tests/unit/test_slice12b_recovery_runtime.py::test_non_empty_initial_skips_rewrite_and_second_retrieval
+FAILED tests/unit/test_slice12b_recovery_runtime.py::test_disabled_recovery_skips_rewrite_on_empty
+FAILED tests/unit/test_slice12b_recovery_runtime.py::test_enabled_empty_recovers_and_generates_with_original_query
+FAILED tests/unit/test_slice12b_recovery_runtime.py::test_noop_rewrite_accepted
+FAILED tests/unit/test_slice12b_recovery_runtime.py::test_persistent_insufficiency_after_recovery
+FAILED tests/unit/test_slice12b_recovery_runtime.py::test_rewrite_failure_no_recovery_retrieval
+FAILED tests/unit/test_slice12b_recovery_runtime.py::test_recovered_context_latency_used_in_generation_provenance
+FAILED tests/unit/test_slice12b_recovery_runtime.py::test_recovery_execution_failure_no_retry
+FAILED tests/unit/test_slice12b_recovery_runtime.py::test_lineage_mismatch_fails_closed
+FAILED tests/unit/test_slice13b_authoritative_wiring.py::test_authoritative_pin_mismatch_fails_preflight_without_q3_writes
+33 failed, 2 warnings in 69.05s (0:01:09)
