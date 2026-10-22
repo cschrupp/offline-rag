@@ -1127,7 +1127,15 @@ SLICE 15  COMPLETE / ACCEPTED
          ~0.607 chunks/s; encode ~210.9 s) under QINT8-128-SCREEN-EXECUTION-AUTH-001
          evidence: docs/evidence/16k_d_cpu_onnx/qint8_128_screen_too_slow_1792631554.json
        16K-D CPU-ONNX-01 execution: CLOSED after QINT8 screen TOO_SLOW
-         (parity / full / production routing closed; next=llama.cpp Q8_0)
+         (planner parity / full / production routing closed; next was llama.cpp Q8_0)
+       16K-D POST-QWENCPU ONNX↔GPU-FP16 parity: FAIL under
+         S16-K-D-POST-QWENCPU-ONNX-GPUFP16-PARITY-EXECUTION-AUTH-001
+         (subject 49b9753…; direct execute_parity(); tree dd2a07f3… immutable;
+          CUDA+FP16 observed; median doc cos ~0.754 ≪ 0.999; Top1 16/16;
+          thresholds not loosened; shared-index ONNX CPU architecture NOT selected)
+         evidence: docs/evidence/16k_d_cpu_onnx/onnx_qint8_gpu_fp16_parity_fail_1792636983.json
+       16K-D still closed: full 1296 ONNX · production backend routing ·
+         default promotion · main
        16K-D CPU-GGUF-01 authority:
          S16-K-D-POST-CPUONNX-CPU-GGUF-FEASIBILITY-IMPLEMENTATION-AUTH-001
        16K-D CPU-GGUF-01 exact parent:
@@ -2003,7 +2011,15 @@ SLICE 15  COMPLETE / ACCEPTED
          ~0.607 chunks/s; encode ~210.9 s) under QINT8-128-SCREEN-EXECUTION-AUTH-001
          evidence: docs/evidence/16k_d_cpu_onnx/qint8_128_screen_too_slow_1792631554.json
        16K-D CPU-ONNX-01 execution: CLOSED after QINT8 screen TOO_SLOW
-         (parity / full / production routing closed; next=llama.cpp Q8_0)
+         (planner parity / full / production routing closed; next was llama.cpp Q8_0)
+       16K-D POST-QWENCPU ONNX↔GPU-FP16 parity: FAIL under
+         S16-K-D-POST-QWENCPU-ONNX-GPUFP16-PARITY-EXECUTION-AUTH-001
+         (subject 49b9753…; direct execute_parity(); tree dd2a07f3… immutable;
+          CUDA+FP16 observed; median doc cos ~0.754 ≪ 0.999; Top1 16/16;
+          thresholds not loosened; shared-index ONNX CPU architecture NOT selected)
+         evidence: docs/evidence/16k_d_cpu_onnx/onnx_qint8_gpu_fp16_parity_fail_1792636983.json
+       16K-D still closed: full 1296 ONNX · production backend routing ·
+         default promotion · main
        16K-D CPU-GGUF-01 authority:
          S16-K-D-POST-CPUONNX-CPU-GGUF-FEASIBILITY-IMPLEMENTATION-AUTH-001
        16K-D CPU-GGUF-01 exact parent:

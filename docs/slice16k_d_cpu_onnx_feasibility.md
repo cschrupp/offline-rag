@@ -38,12 +38,18 @@ encode wall ~210.9 s; projected ~35.60 min (>25). Candidate tree unchanged
 `dd2a07f3…`. Evidence:
 `docs/evidence/16k_d_cpu_onnx/qint8_128_screen_too_slow_1792631554.json`.
 
-**CPU-ONNX-01 scientific outcome:** STOP — no ONNX parity / full confirmation.
-Next candidate path: llama.cpp Q8_0 (not authorized here).
+**CPU-ONNX-01 scientific outcome (planner):** STOP after QINT8 screen TOO_SLOW —
+planner parity / full confirmation remain closed. Next path was llama.cpp Q8_0.
+
+**POST-QWENCPU ONNX↔GPU-FP16 parity AUTH-001:** FAIL — direct `execute_parity()`
+(subject `49b9753…`); candidate tree `dd2a07f3…` immutable; reference CUDA+FP16
+observed; D2 gates fail (median doc cos ~0.754 ≪ 0.999; Top1 16/16; mean Top10
+0.70). Thresholds not loosened. Shared-index ONNX CPU architecture NOT selected.
+Evidence: `docs/evidence/16k_d_cpu_onnx/onnx_qint8_gpu_fp16_parity_fail_1792636983.json`.
 
 **Predecessor:** CPU-OV-01 STOP after INT8 128-screen TOO_SLOW (~39.75 min projected)  
-**Further ONNX execution:** NOT AUTHORIZED (`EXECUTION_AUTHORIZED=False`);
-parity / full / production / main closed.
+**Still closed:** full 1296 ONNX · production backend routing · default promotion ·
+main (`EXECUTION_AUTHORIZED=False` on planner).
 
 ---
 
