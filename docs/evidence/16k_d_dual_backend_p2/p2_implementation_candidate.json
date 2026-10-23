@@ -4,43 +4,17 @@
   "authority": "S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-IMPLEMENTATION-REANCHOR-RESUME-AUTH-001",
   "authorized_parent": "0da27594f0b8589c0cfa995bf97097e03f6accf8",
   "bounded_cpu_confirmation": {
-    "accepted_corrective_subject": "0da27594f0b8589c0cfa995bf97097e03f6accf8",
-    "accepted_design_subject": "b913265bc9e127888ec9cfc69701fbe2b0c221fd",
-    "api_did_not_load_backend_before_encode": true,
-    "app_ready_embedding_unloaded": true,
-    "authority": "S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-IMPLEMENTATION-REANCHOR-RESUME-AUTH-001",
-    "capabilities_unloaded_projection": true,
-    "compute_settings_unloaded_projection": true,
     "confirmation": "bounded_real_cpu_product",
-    "disposition": "PASS_STARTUP_API_HOST_ENCODE_BLOCKED",
-    "host_note": "SentenceTransformers ONNX backend import fails on this host: optimum\u2192transformers get_parameter_dtype ImportError under transformers 5.17.0. P2 product wiring verified through READY/UNLOADED + settings/capabilities; encode requires host env repair outside P2 AUTH.",
-    "implementation_parent": "0da27594f0b8589c0cfa995bf97097e03f6accf8",
-    "original_p1_subject": "fae82b2455cfdd0d1622065904a35895372740b6",
-    "post_ready_api_projection": false,
+    "disposition": "PASS",
+    "evidence": "docs/evidence/16k_d_dual_backend_p2/bounded_real_cpu_product_ready_pass.json",
     "profile_id": "cpu_onnx_fp32_v1",
-    "real_encode": "BLOCKED",
-    "real_encode_error": "QualifiedEmbeddingRuntimeError: qualified embedding execution failed: ImportError: cannot import name 'get_parameter_dtype' from 'transformers.modeling_utils'",
+    "real_encode": "PASS",
     "representation_id": "onnx_fp32_v1",
-    "scientific_campaign_calls": 0,
-    "startup": "PASS"
+    "runtime_transitions": "UNLOADED -> LOADING -> READY",
+    "scientific_campaign_calls": 0
   },
   "branch": "implementation/16k-d-dual-backend-p2-product-api-ui-integration",
-  "candidate_tip": "a4ba3a65c53dc5fe286d9fba5dba32dedf61fb6c",
-  "changed_paths": [
-    "src/offline_rag/app/runtime.py",
-    "src/offline_rag/api/compute_settings.py",
-    "src/offline_rag/api/capabilities.py",
-    "src/offline_rag/app/observability_publish.py",
-    "src/offline_rag/app/workspace/models.py",
-    "src/offline_rag/cli.py",
-    "ui/src/api/types.ts",
-    "ui/src/pages/SettingsPage.tsx",
-    "tests/unit/app/test_slice16k_d_p2_dual_backend_product_integration.py",
-    "ui/src/test/slice16l_compute_settings_ux.test.tsx",
-    "ROADMAP.md",
-    "docs/evidence/16k_d_dual_backend_p2/p2_implementation_auth001.json",
-    "docs/evidence/16k_d_dual_backend_p2/p2_implementation_candidate.json"
-  ],
+  "current_disposition": "IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW",
   "d15_layers": {
     "A": "PASS",
     "B": "PASS",
@@ -52,11 +26,11 @@
   },
   "deterministic_tests": [
     "tests/unit/app/test_slice16k_d_p2_dual_backend_product_integration.py",
-    "tests/unit/app/test_slice16l_embedding_auto_device.py",
-    "tests/unit/app/test_slice16d_a_settings_capabilities.py",
-    "ui/src/test/slice16l_compute_settings_ux.test.tsx"
+    "tests/unit/dense/test_dense_embedding_runtime.py",
+    "tests/unit/dense/test_dense_onnx_embedder.py",
+    "tests/unit/dense/test_cpu_onnx_feasibility.py"
   ],
-  "disposition": "P2 IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW",
+  "disposition_historical_implementation_handoff": "P2 IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW",
   "downstream": {
     "campaigns": "NOT_AUTHORIZED",
     "main": "NOT_AUTHORIZED",
@@ -65,9 +39,11 @@
     "p4": "NOT_AUTHORIZED",
     "promotion": "NOT_AUTHORIZED"
   },
-  "material_limitations": [
-    "Bounded real CPU encode blocked on this host by transformers/optimum ImportError (get_parameter_dtype); startup + UNLOADED API projection PASS on real onnx_fp32_v1 package."
-  ],
+  "historical_implementation_candidate_tip": "a4d2d98097dc1db5f6ce3b74c69a51cdf2472d39",
+  "historical_implementation_subject": "a4ba3a65c53dc5fe286d9fba5dba32dedf61fb6c",
+  "ir001_rework_evidence": "docs/evidence/16k_d_dual_backend_p2/p2_ir001_rework_candidate.json",
+  "material_limitations": [],
   "original_p1_subject": "fae82b2455cfdd0d1622065904a35895372740b6",
-  "record_kind": "p2_implementation_candidate"
+  "record_kind": "p2_implementation_candidate",
+  "rework_note": "IR-001 F001/F002 closed by promoting shared st_onnx_runtime core; production dependency envelope pinned to transformers 4.x + compatible hub; bounded real CPU product encode reaches READY."
 }

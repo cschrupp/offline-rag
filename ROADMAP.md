@@ -1177,7 +1177,12 @@ SLICE 15  COMPLETE / ACCEPTED
            NOT AUTHORIZED
        16K-D DUAL-BACKEND P2: DESIGN COMPLETE / INDEPENDENTLY ACCEPTED /
          HUMAN ACCEPTED / HA RECORD INDEPENDENTLY ACCEPTED
-         P2 IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
+         Historical implementation handoff:
+           P2 IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
+           (tip a4d2d980…)
+         Current disposition:
+           IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
+           (shared st_onnx_runtime core; F001/F002 corrective)
          Implementation authority:
            S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-IMPLEMENTATION-REANCHOR-RESUME-AUTH-001
          Implementation parent (accepted P1 corrective technical subject):
@@ -1195,11 +1200,12 @@ SLICE 15  COMPLETE / ACCEPTED
            docs/evidence/16k_d_dual_backend_p2/p2_design_human_acceptance_ha001.json
            docs/evidence/16k_d_dual_backend_p2/p2_implementation_auth001.json
            docs/evidence/16k_d_dual_backend_p2/p2_implementation_candidate.json
+           docs/evidence/16k_d_dual_backend_p2/p2_ir001_rework_candidate.json
+           docs/evidence/16k_d_dual_backend_p2/bounded_real_cpu_product_ready_pass.json
          Decision ledger: D01–D18 INHERITED / FROZEN
-         Posture: architecture-conformance product/API/UI integration
-         Material limitation: bounded real CPU encode blocked on this host by
-           transformers/optimum ImportError (get_parameter_dtype); startup +
-           UNLOADED settings/capabilities projection PASS on real ONNX package
+         Posture: architecture-conformance product/API/UI integration;
+           one shared ST/ONNX physical core; thin product + scientific adapters
+         Bounded real CPU product encode: PASS (UNLOADED→LOADING→READY)
          Downstream (P3/P4/campaigns/main/merge/promotion):
            NOT AUTHORIZED
        16K-D still closed: full 1296 FP32 confirmation ·
@@ -2130,7 +2136,12 @@ SLICE 15  COMPLETE / ACCEPTED
            NOT AUTHORIZED
        16K-D DUAL-BACKEND P2: DESIGN COMPLETE / INDEPENDENTLY ACCEPTED /
          HUMAN ACCEPTED / HA RECORD INDEPENDENTLY ACCEPTED
-         P2 IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
+         Historical implementation handoff:
+           P2 IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
+           (tip a4d2d980…)
+         Current disposition:
+           IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
+           (shared st_onnx_runtime core; F001/F002 corrective)
          Implementation authority:
            S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-IMPLEMENTATION-REANCHOR-RESUME-AUTH-001
          Implementation parent (accepted P1 corrective technical subject):
@@ -2148,11 +2159,12 @@ SLICE 15  COMPLETE / ACCEPTED
            docs/evidence/16k_d_dual_backend_p2/p2_design_human_acceptance_ha001.json
            docs/evidence/16k_d_dual_backend_p2/p2_implementation_auth001.json
            docs/evidence/16k_d_dual_backend_p2/p2_implementation_candidate.json
+           docs/evidence/16k_d_dual_backend_p2/p2_ir001_rework_candidate.json
+           docs/evidence/16k_d_dual_backend_p2/bounded_real_cpu_product_ready_pass.json
          Decision ledger: D01–D18 INHERITED / FROZEN
-         Posture: architecture-conformance product/API/UI integration
-         Material limitation: bounded real CPU encode blocked on this host by
-           transformers/optimum ImportError (get_parameter_dtype); startup +
-           UNLOADED settings/capabilities projection PASS on real ONNX package
+         Posture: architecture-conformance product/API/UI integration;
+           one shared ST/ONNX physical core; thin product + scientific adapters
+         Bounded real CPU product encode: PASS (UNLOADED→LOADING→READY)
          Downstream (P3/P4/campaigns/main/merge/promotion):
            NOT AUTHORIZED
        16K-D still closed: full 1296 FP32 confirmation ·

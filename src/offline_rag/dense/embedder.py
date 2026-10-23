@@ -204,6 +204,10 @@ class SentenceTransformersEmbedder:
             expected_dimension=expected_dimension or dimension,
         )
 
+    def ensure_initialized(self):
+        """Materialize the SentenceTransformer model (heavy init). Idempotent."""
+        return self._load()
+
     def _load(self):
         if self._model is not None:
             return self._model

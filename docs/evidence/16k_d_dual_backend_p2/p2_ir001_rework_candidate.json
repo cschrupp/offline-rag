@@ -1,0 +1,90 @@
+{
+  "accepted_corrective_subject": "0da27594f0b8589c0cfa995bf97097e03f6accf8",
+  "accepted_design_subject": "b913265bc9e127888ec9cfc69701fbe2b0c221fd",
+  "architecture_freeze": {
+    "adapters": [
+      "src/offline_rag/dense/onnx_embedder.py",
+      "src/offline_rag/dense/cpu_onnx_executor.py"
+    ],
+    "heavy_init_lifecycle": "UNLOADED -> LOADING -> ST/ORT construction -> READY",
+    "production_required_inputs": "package_owned_runtime_contract.required_onnx_inputs",
+    "scientific_required_inputs": "experiment_graph_inspection_then_same_core",
+    "shared_core": "src/offline_rag/dense/st_onnx_runtime.py",
+    "single_physical_construct_path": true
+  },
+  "authority": "S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-IMPLEMENTATION-REANCHOR-RESUME-AUTH-001",
+  "authorized_parent": "0da27594f0b8589c0cfa995bf97097e03f6accf8",
+  "bounded_cpu_confirmation": {
+    "confirmation": "bounded_real_cpu_product",
+    "disposition": "PASS",
+    "evidence": "docs/evidence/16k_d_dual_backend_p2/bounded_real_cpu_product_ready_pass.json",
+    "profile_id": "cpu_onnx_fp32_v1",
+    "real_encode": "PASS",
+    "representation_id": "onnx_fp32_v1",
+    "runtime_transitions": "UNLOADED -> LOADING -> READY"
+  },
+  "branch": "implementation/16k-d-dual-backend-p2-product-api-ui-integration",
+  "changed_paths": [
+    "src/offline_rag/dense/st_onnx_runtime.py",
+    "src/offline_rag/dense/onnx_embedder.py",
+    "src/offline_rag/dense/cpu_onnx_executor.py",
+    "src/offline_rag/dense/embedding_runtime.py",
+    "src/offline_rag/dense/embedder.py",
+    "pyproject.toml",
+    "uv.lock",
+    "tests/unit/dense/test_dense_embedding_runtime.py",
+    "tests/unit/dense/test_dense_onnx_embedder.py",
+    "ROADMAP.md",
+    "docs/evidence/16k_d_dual_backend_p2/bounded_real_cpu_product_ready_pass.json",
+    "docs/evidence/16k_d_dual_backend_p2/p2_ir001_rework_candidate.json",
+    "docs/evidence/16k_d_dual_backend_p2/p2_implementation_candidate.json"
+  ],
+  "dependency_envelope": {
+    "huggingface-hub": ">=0.34.0,<1 (locked 0.36.2)",
+    "onnxruntime": ">=1.19.0 (locked 1.31.0)",
+    "optimum": ">=1.23.0,<2.2 (locked 2.1.0)",
+    "optimum-onnx": ">=0.1.0 (locked 0.1.0)",
+    "sentence-transformers": "locked 5.7.0",
+    "transformers": ">=4.51.0,<5 (locked 4.57.6)"
+  },
+  "disposition": "IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW",
+  "downstream": {
+    "campaigns": "NOT_AUTHORIZED",
+    "main": "NOT_AUTHORIZED",
+    "merge": "NOT_AUTHORIZED",
+    "p3": "NOT_AUTHORIZED",
+    "p4": "NOT_AUTHORIZED",
+    "promotion": "NOT_AUTHORIZED",
+    "scientific_rerun": "NOT_AUTHORIZED"
+  },
+  "historical_p2_implementation_handoff": {
+    "candidate_tip": "a4d2d98097dc1db5f6ce3b74c69a51cdf2472d39",
+    "disposition": "P2 IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW",
+    "impl_subject": "a4ba3a65c53dc5fe286d9fba5dba32dedf61fb6c"
+  },
+  "ir001_findings_addressed": {
+    "F001": "QualifiedEmbeddingRuntime LOADING materializes ST/ORT via ensure_initialized before READY; post-READY failures remain EXECUTION",
+    "F002": "production pins transformers>=4.51.0,<5 with huggingface-hub>=0.34,<1; shared core is sole ST/ONNX construct path"
+  },
+  "original_p1_subject": "fae82b2455cfdd0d1622065904a35895372740b6",
+  "prior_candidate_tip": "a4d2d98097dc1db5f6ce3b74c69a51cdf2472d39",
+  "proofs": {
+    "p1_initialization_vs_execution": "tests/unit/dense/test_dense_embedding_runtime.py PASS",
+    "p2_deterministic_suite": "tests/unit/app/test_slice16k_d_p2_dual_backend_product_integration.py PASS",
+    "real_cpu_product_ready": "docs/evidence/16k_d_dual_backend_p2/bounded_real_cpu_product_ready_pass.json PASS",
+    "shared_core_regression": "tests/unit/dense/test_dense_onnx_embedder.py + test_cpu_onnx_feasibility.py PASS (77 focused)"
+  },
+  "record_kind": "p2_ir001_rework_candidate",
+  "starting_sha": "a4d2d98097dc1db5f6ce3b74c69a51cdf2472d39",
+  "unauthorized_remaining": [
+    "P3",
+    "P4",
+    "campaigns",
+    "main",
+    "merge",
+    "promotion",
+    "HA/status-flip",
+    "alternate ONNX backend",
+    "quantization/parity/1296 performance campaigns"
+  ]
+}

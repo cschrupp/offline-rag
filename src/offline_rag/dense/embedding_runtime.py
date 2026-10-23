@@ -151,6 +151,9 @@ class QualifiedEmbeddingRuntime:
                     backend = self._backend_factory()
                 else:
                     backend = self._default_construct_backend()
+                # Heavy model/session materialization belongs in LOADING.
+                # Lightweight wrapper construction alone must not flip READY.
+                self._materialize_backend(backend)
                 self._backend = backend
                 self._state = RuntimeState.READY
                 return backend
@@ -162,6 +165,21 @@ class QualifiedEmbeddingRuntime:
                 raise QualifiedEmbeddingRuntimeError(
                     f"qualified embedding backend initialization failed: {self._failure}"
                 ) from exc
+
+    @staticmethod
+    def _materialize_backend(backend: Any) -> None:
+        """Run the backend's heavy initialization while still LOADING.
+
+        Prefers an explicit ``ensure_initialized`` hook; falls back to ``_load``
+        for the accepted ST/ONNX backends. Backends with no heavy phase are no-ops.
+        """
+        ensure = getattr(backend, "ensure_initialized", None)
+        if callable(ensure):
+            ensure()
+            return
+        load = getattr(backend, "_load", None)
+        if callable(load):
+            load()
 
     def _default_construct_backend(self) -> Any:
         profile = self.profile

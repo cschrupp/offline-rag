@@ -127,7 +127,7 @@ def test_load_kwargs_and_validation(
         return {"adapter_installed": True}
 
     monkeypatch.setattr(
-        "offline_rag.dense.onnx_embedder.install_seneca_onnx_position_ids_compat",
+        "offline_rag.dense.st_onnx_runtime.install_seneca_onnx_position_ids_compat",
         _fake_compat,
     )
     # Ensure constants match contract
@@ -167,14 +167,28 @@ def test_load_kwargs_and_validation(
 
 def test_no_production_onnx_graph_import() -> None:
     import offline_rag.dense.onnx_embedder as mod
+    import offline_rag.dense.st_onnx_runtime as core
 
     assert not hasattr(mod, "onnx_graph_input_names")
-    source = Path(mod.__file__).read_text(encoding="utf-8")
-    assert "import onnx\n" not in source
-    assert "import onnx " not in source
-    assert "from onnx " not in source
-    assert "onnx.load" not in source
+    for path in (Path(mod.__file__), Path(core.__file__)):
+        source = path.read_text(encoding="utf-8")
+        assert "import onnx\n" not in source
+        assert "import onnx " not in source
+        assert "from onnx " not in source
+        assert "onnx.load" not in source
     # onnxruntime remains allowed for SessionOptions / CPUExecutionProvider.
+
+
+def test_single_physical_st_onnx_construct_path() -> None:
+    """Acceptance oracle: exactly one SentenceTransformer(backend=onnx) site."""
+    dense = Path(__file__).resolve().parents[3] / "src" / "offline_rag" / "dense"
+    sites = sorted(
+        str(p.relative_to(dense.parent.parent.parent))
+        for p in dense.rglob("*.py")
+        if 'backend="onnx"' in p.read_text(encoding="utf-8")
+        or "backend='onnx'" in p.read_text(encoding="utf-8")
+    )
+    assert sites == ["src/offline_rag/dense/st_onnx_runtime.py"]
 
 
 def test_wrong_dimension_and_nonfinite(
@@ -197,7 +211,7 @@ def test_wrong_dimension_and_nonfinite(
 
     monkeypatch.setattr("sentence_transformers.SentenceTransformer", FakeST)
     monkeypatch.setattr(
-        "offline_rag.dense.onnx_embedder.install_seneca_onnx_position_ids_compat",
+        "offline_rag.dense.st_onnx_runtime.install_seneca_onnx_position_ids_compat",
         lambda *a, **k: {},
     )
     emb = SentenceTransformersOnnxEmbedder(

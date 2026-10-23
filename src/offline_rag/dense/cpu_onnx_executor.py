@@ -17,9 +17,10 @@ import math
 import os
 import shutil
 import time
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 from offline_rag.core.ids import (
     MODEL_QUERY_PROMPT_V1,
@@ -28,7 +29,6 @@ from offline_rag.core.ids import (
     embedding_text_hash,
 )
 from offline_rag.dense.cpu_onnx_feasibility import (
-    EXPECTED_CHILD_COUNT,
     EXPECTED_CHUNK_SET_ID,
     EXPECTED_DIMENSION,
     EXPECTED_MODEL_ID,
@@ -60,6 +60,23 @@ from offline_rag.dense.cpu_onnx_harness import (
 )
 from offline_rag.dense.provision import require_embedding_artifacts
 from offline_rag.dense.query_text import MODEL_QUERY_PROMPT_NAME
+from offline_rag.dense.st_onnx_runtime import (
+    apply_seneca_onnx_position_ids_compat,
+    build_qwen3_direct_forward_position_ids,
+    create_st_onnx_model,
+)
+from offline_rag.dense.st_onnx_runtime import (
+    encode_documents as _shared_encode_documents,
+)
+from offline_rag.dense.st_onnx_runtime import (
+    encode_query as _shared_encode_query,
+)
+from offline_rag.dense.st_onnx_runtime import (
+    install_seneca_onnx_position_ids_compat as _shared_install_position_ids_compat,
+)
+from offline_rag.dense.st_onnx_runtime import (
+    st_onnx_model_kwargs as _shared_st_onnx_model_kwargs,
+)
 from offline_rag.dense.text import PlainEmbeddingTextBuilder
 from offline_rag.domain.documents import Chunk
 from offline_rag.retrieval.ranking_text import ranking_inputs_for_chunk
@@ -95,29 +112,13 @@ def _cosine(a: Sequence[float], b: Sequence[float]) -> float:
     return float(dot / (na * nb))
 
 
-def _ort_session_options() -> Any:
-    import onnxruntime as ort
-
-    so = ort.SessionOptions()
-    so.intra_op_num_threads = FROZEN_ORT_INTRA_OP_THREADS
-    so.inter_op_num_threads = FROZEN_ORT_INTER_OP_THREADS
-    return so
-
-
 def _st_onnx_model_kwargs(
     *,
     export: bool = False,
     file_name: str | None = None,
 ) -> dict[str, Any]:
-    kwargs: dict[str, Any] = {
-        "provider": FROZEN_ONNX_PROVIDER,
-        "session_options": _ort_session_options(),
-    }
-    if export:
-        kwargs["export"] = True
-    if file_name is not None:
-        kwargs["file_name"] = file_name
-    return kwargs
+    """Scientific adapter: shared ST/ONNX model_kwargs (+ optional export)."""
+    return _shared_st_onnx_model_kwargs(file_name=file_name, export=export)
 
 
 def _relative_onnx_file_name(export_dir: Path, onnx_path: Path) -> str:
@@ -125,7 +126,7 @@ def _relative_onnx_file_name(export_dir: Path, onnx_path: Path) -> str:
 
 
 def onnx_graph_input_names(onnx_path: Path) -> list[str]:
-    """Return ONNX graph external input names (excludes initializers)."""
+    """Scientific graph inspection: ONNX external input names (excludes initializers)."""
     import onnx
 
     if not onnx_path.is_file():
@@ -143,161 +144,23 @@ def onnx_graph_requires_position_ids(onnx_path: Path) -> bool:
     return "position_ids" in set(onnx_graph_input_names(onnx_path))
 
 
-def build_qwen3_direct_forward_position_ids(input_ids: Any) -> Any:
-    """Build position_ids matching Qwen3Model.forward when position_ids is None.
-
-    Uses zero-based ``arange(seq_len)`` expanded to ``[batch, seq]``.
-    Must NOT use attention_mask.cumsum (generation-helper semantics).
-    """
-    import torch
-
-    if input_ids is None:
-        raise ValueError(
-            "position_ids compat requires input_ids; refusing to guess positions"
-        )
-    if not isinstance(input_ids, torch.Tensor):
-        raise ValueError(
-            f"position_ids compat requires torch.Tensor input_ids, got {type(input_ids)}"
-        )
-    if input_ids.ndim != 2:
-        raise ValueError(
-            "position_ids compat requires rank-2 input_ids [batch, sequence]; "
-            f"got shape={tuple(input_ids.shape)}"
-        )
-    batch_size, sequence_length = int(input_ids.shape[0]), int(input_ids.shape[1])
-    if batch_size < 1 or sequence_length < 1:
-        raise ValueError(
-            "position_ids compat requires positive batch and sequence dimensions; "
-            f"got shape=({batch_size}, {sequence_length})"
-        )
-    return (
-        torch.arange(
-            sequence_length,
-            dtype=torch.long,
-            device=input_ids.device,
-        )
-        .unsqueeze(0)
-        .expand(batch_size, -1)
-        .contiguous()
-    )
-
-
-def apply_seneca_onnx_position_ids_compat(
-    features: dict[str, Any],
-    *,
-    required_onnx_inputs: Sequence[str] | set[str],
-) -> dict[str, Any]:
-    """Inject position_ids into encode features when the ONNX graph requires them.
-
-    Input-contract driven (never model-name driven). Does not mutate input_ids or
-    attention_mask. Does not overwrite a valid supplied position_ids.
-    """
-    required = set(required_onnx_inputs)
-    if "position_ids" not in required:
-        return features
-
-    out = dict(features)
-    supplied = out.get("position_ids")
-    input_ids = out.get("input_ids")
-
-    if supplied is not None:
-        import torch
-
-        if not isinstance(supplied, torch.Tensor):
-            raise ValueError(
-                "supplied position_ids must be a torch.Tensor when present"
-            )
-        if input_ids is None or not isinstance(input_ids, torch.Tensor):
-            raise ValueError(
-                "supplied position_ids present but input_ids missing/invalid; "
-                "refusing shape check"
-            )
-        if input_ids.ndim != 2:
-            raise ValueError(
-                "input_ids must be rank-2 to validate supplied position_ids; "
-                f"got shape={tuple(input_ids.shape)}"
-            )
-        expected = (int(input_ids.shape[0]), int(input_ids.shape[1]))
-        observed = tuple(int(x) for x in supplied.shape)
-        if observed != expected:
-            raise ValueError(
-                "supplied position_ids shape incompatible with input_ids: "
-                f"position_ids={observed} input_ids={expected}"
-            )
-        # Preserve exactly (do not cast/replace).
-        return out
-
-    generated = build_qwen3_direct_forward_position_ids(input_ids)
-    out["position_ids"] = generated
-    return out
-
-
-def _resolve_st_ort_feature_model(st_model: Any) -> Any:
-    """Locate the Optimum ORT model inside a SentenceTransformer ONNX stack."""
-    module0 = st_model[0]
-    for attr in ("auto_model", "model", "_model"):
-        cand = getattr(module0, attr, None)
-        if cand is not None and hasattr(cand, "forward"):
-            return cand
-    raise RuntimeError(
-        "unable to locate ORT/transformers model on SentenceTransformer[0] "
-        f"for position_ids compat (type={type(module0)!r})"
-    )
-
-
 def install_seneca_onnx_position_ids_compat(
     st_model: Any,
     *,
     onnx_path: Path,
 ) -> dict[str, Any]:
-    """Wrap ORT forward so required position_ids are injected from input_ids.
-
-    No-op when the ONNX graph does not declare position_ids. Does not touch the
-    ONNX artifact bytes.
-    """
+    """Scientific adapter: inspect graph, then install via shared execution core."""
     required_inputs = onnx_graph_input_names(onnx_path)
-    requires = "position_ids" in set(required_inputs)
-    record: dict[str, Any] = {
-        "graph_requires_position_ids": requires,
-        "required_onnx_inputs": list(required_inputs),
-        "source": None,
-        "semantics": POSITION_IDS_COMPAT_SEMANTICS,
-        "dtype": "int64",
-        "shape_policy": "batch_x_sequence",
-        "overwrites_supplied_position_ids": False,
-        "authority": IMPLEMENTATION_POSITION_IDS_COMPAT_AUTH,
-        "adapter_installed": False,
-        "note": (
-            "injects torch.arange(seq).unsqueeze(0).expand(batch,-1) when required "
-            "and absent; never attention_mask.cumsum"
-        ),
-    }
-    if not requires:
+    record = _shared_install_position_ids_compat(
+        st_model,
+        required_onnx_inputs=required_inputs,
+    )
+    # Preserve experiment-facing metadata fields.
+    record = dict(record)
+    record["semantics"] = POSITION_IDS_COMPAT_SEMANTICS
+    record["authority"] = IMPLEMENTATION_POSITION_IDS_COMPAT_AUTH
+    if record.get("source") == "noop_contract_does_not_require_position_ids":
         record["source"] = "noop_graph_does_not_require_position_ids"
-        return record
-
-    ort_model = _resolve_st_ort_feature_model(st_model)
-    if getattr(ort_model, "_seneca_onnx_position_ids_compat", False):
-        record["source"] = "generated_by_seneca_adapter"
-        record["adapter_installed"] = True
-        record["already_installed"] = True
-        return record
-
-    original_forward = ort_model.forward
-
-    def _forward_with_position_ids_compat(*args: Any, **kwargs: Any) -> Any:
-        features = dict(kwargs)
-        patched = apply_seneca_onnx_position_ids_compat(
-            features,
-            required_onnx_inputs=required_inputs,
-        )
-        return original_forward(*args, **patched)
-
-    ort_model.forward = _forward_with_position_ids_compat  # type: ignore[method-assign]
-    ort_model._seneca_onnx_position_ids_compat = True
-    ort_model._seneca_onnx_position_ids_required_inputs = list(required_inputs)
-    record["source"] = "generated_by_seneca_adapter"
-    record["adapter_installed"] = True
     return record
 
 
@@ -527,8 +390,6 @@ def export_onnx_fp32(
     export_dir: Path,
 ) -> dict[str, Any]:
     """Export local pinned checkpoint to ST ONNX (FP32 provenance artifact)."""
-    from sentence_transformers import SentenceTransformer
-
     require_embedding_artifacts(
         model_dir,
         expected_model_id=EXPECTED_MODEL_ID,
@@ -539,13 +400,13 @@ def export_onnx_fp32(
         raise FileExistsError(f"export dir already exists: {export_dir}")
     export_dir.mkdir(parents=True, exist_ok=False)
 
-    model = SentenceTransformer(
-        str(model_dir),
-        backend="onnx",
-        device="cpu",
-        trust_remote_code=False,
-        local_files_only=True,
-        model_kwargs=_st_onnx_model_kwargs(export=True),
+    # Export uses the shared ST/ONNX constructor (export=True); position_ids
+    # contract is installed after load/encode paths, not during export save.
+    model, _compat = create_st_onnx_model(
+        model_dir,
+        file_name="onnx/model.onnx",
+        required_onnx_inputs=[],
+        export=True,
     )
     model.save_pretrained(str(export_dir))
     identity = build_onnx_precision_identity(
@@ -618,8 +479,6 @@ def materialize_qint8_avx2_derivative(
             "ONNX QINT8 source already appears quantized; refusing stacked quantize"
         )
 
-    from sentence_transformers import SentenceTransformer
-
     try:
         from sentence_transformers.backend import export_dynamic_quantized_onnx_model
     except ImportError:  # pragma: no cover - older ST layout
@@ -628,13 +487,12 @@ def materialize_qint8_avx2_derivative(
         )
 
     shutil.copytree(source, dest)
-    model = SentenceTransformer(
-        str(dest),
-        backend="onnx",
-        device="cpu",
-        trust_remote_code=False,
-        local_files_only=True,
-        model_kwargs=_st_onnx_model_kwargs(export=False),
+    # Reload via shared core before ST quantization helper mutates the tree.
+    fp32_graph = dest / "onnx" / "model.onnx"
+    model, _compat = create_st_onnx_model(
+        dest,
+        file_name="onnx/model.onnx",
+        required_onnx_inputs=onnx_graph_input_names(fp32_graph),
     )
     # Write quantized ONNX beside the copied ST tree (non-aliasing via ST helper).
     export_dynamic_quantized_onnx_model(
@@ -692,8 +550,7 @@ def load_onnx_st_model(
     weight_format: WeightFormat,
     require_quant_match: bool = True,
 ) -> tuple[Any, dict[str, Any]]:
-    from sentence_transformers import SentenceTransformer
-
+    """Scientific adapter: select artifact, then construct via shared ST/ONNX core."""
     selected_path, precision_identity = select_onnx_artifact_for_weight_format(
         export_dir=model_or_export_dir,
         weight_format=weight_format,
@@ -706,18 +563,22 @@ def load_onnx_st_model(
             ],
         )
     file_name = precision_identity["selected_onnx_file_name"]
-    model = SentenceTransformer(
-        str(model_or_export_dir),
-        backend="onnx",
-        device="cpu",
-        trust_remote_code=False,
-        local_files_only=True,
-        model_kwargs=_st_onnx_model_kwargs(export=False, file_name=file_name),
+    # Graph inspection remains scientific; shared core receives the contract.
+    required_inputs = onnx_graph_input_names(selected_path)
+    model, position_ids_compat = create_st_onnx_model(
+        model_or_export_dir,
+        file_name=file_name,
+        required_onnx_inputs=required_inputs,
     )
-    position_ids_compat = install_seneca_onnx_position_ids_compat(
-        model,
-        onnx_path=selected_path,
-    )
+    # Preserve experiment metadata fields on the compat record.
+    position_ids_compat = dict(position_ids_compat)
+    position_ids_compat["semantics"] = POSITION_IDS_COMPAT_SEMANTICS
+    position_ids_compat["authority"] = IMPLEMENTATION_POSITION_IDS_COMPAT_AUTH
+    if (
+        position_ids_compat.get("source")
+        == "noop_contract_does_not_require_position_ids"
+    ):
+        position_ids_compat["source"] = "noop_graph_does_not_require_position_ids"
     precision_identity = dict(precision_identity)
     precision_identity["loaded_onnx_path"] = str(selected_path)
     precision_identity["loaded_onnx_file_name"] = file_name
@@ -726,49 +587,29 @@ def load_onnx_st_model(
 
 
 def _st_encode_documents(model: Any, texts: Sequence[str]) -> list[list[float]]:
-    if not texts:
-        return []
-    vectors = model.encode(
-        list(texts),
+    return _shared_encode_documents(
+        model,
+        texts,
         batch_size=FROZEN_BATCH_SIZE,
-        normalize_embeddings=FROZEN_NORMALIZE,
-        convert_to_numpy=True,
-        show_progress_bar=False,
+        normalize=FROZEN_NORMALIZE,
     )
-    out: list[list[float]] = []
-    for row in vectors:
-        vec = [float(x) for x in row.tolist()]
-        if FROZEN_NORMALIZE:
-            vec = _normalize_vector(vec)
-        out.append(vec)
-    return out
 
 
 def _st_encode_query(model: Any, text: str, *, query_text_contract: str) -> list[float]:
+    prompt_name = None
     if query_text_contract == MODEL_QUERY_PROMPT_V1:
         prompts = getattr(model, "prompts", None)
         if not isinstance(prompts, dict) or MODEL_QUERY_PROMPT_NAME not in prompts:
             raise RuntimeError(
                 f"{MODEL_QUERY_PROMPT_V1} requires prompts[{MODEL_QUERY_PROMPT_NAME!r}]"
             )
-        vector = model.encode(
-            text,
-            prompt_name=MODEL_QUERY_PROMPT_NAME,
-            normalize_embeddings=FROZEN_NORMALIZE,
-            convert_to_numpy=True,
-            show_progress_bar=False,
-        )
-    else:
-        vector = model.encode(
-            text,
-            normalize_embeddings=FROZEN_NORMALIZE,
-            convert_to_numpy=True,
-            show_progress_bar=False,
-        )
-    vec = [float(x) for x in vector.tolist()]
-    if FROZEN_NORMALIZE:
-        vec = _normalize_vector(vec)
-    return vec
+        prompt_name = MODEL_QUERY_PROMPT_NAME
+    return _shared_encode_query(
+        model,
+        text,
+        normalize=FROZEN_NORMALIZE,
+        prompt_name=prompt_name,
+    )
 
 
 def resolve_production_query_contract() -> str:
@@ -1167,7 +1008,10 @@ def execute_parity(
 
     if reference_embedder is None:
         from offline_rag.config import load_settings
-        from offline_rag.dense.embedder import make_embedder, observe_embedder_execution_facts
+        from offline_rag.dense.embedder import (
+            make_embedder,
+            observe_embedder_execution_facts,
+        )
 
         environ = dict(os.environ)
         environ["OFFLINE_RAG_EMBEDDING_DEVICE"] = "cuda"

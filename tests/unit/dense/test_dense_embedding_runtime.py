@@ -164,6 +164,61 @@ def test_init_failure_is_terminal() -> None:
     assert rt.backend_factory_calls == 1
 
 
+def test_deferred_heavy_init_failure_is_initialization() -> None:
+    """IR-001 F001: heavy materialization after wrapper construct stays INITIALIZATION."""
+
+    class DeferredHeavyBackend:
+        def __init__(self) -> None:
+            self.materialized = False
+
+        def ensure_initialized(self) -> None:
+            raise RuntimeError("heavy session construct failed")
+
+        def embed_query(self, text):  # type: ignore[no-untyped-def]
+            raise AssertionError("encode must not run after init failure")
+
+        def embed_documents(self, texts):  # type: ignore[no-untyped-def]
+            raise AssertionError("encode must not run after init failure")
+
+        def release(self) -> None:
+            return None
+
+    rt = _runtime(DeferredHeavyBackend)
+    with pytest.raises(QualifiedEmbeddingRuntimeError, match="initialization failed"):
+        rt.embed_query("q")
+    assert rt.state is RuntimeState.FAILED
+    assert rt.failure_kind is RuntimeFailureKind.INITIALIZATION
+    assert "heavy session construct failed" in (rt.failure_reason or "")
+
+
+def test_exec_failure_after_successful_heavy_init() -> None:
+    """IR-001 F001: only post-READY encode failures are EXECUTION."""
+
+    class HeavyThenExecFail:
+        def __init__(self) -> None:
+            self.ready = False
+
+        def ensure_initialized(self) -> None:
+            self.ready = True
+
+        def embed_query(self, text):  # type: ignore[no-untyped-def]
+            assert self.ready
+            raise RuntimeError("encode boom")
+
+        def embed_documents(self, texts):  # type: ignore[no-untyped-def]
+            assert self.ready
+            raise RuntimeError("encode boom")
+
+        def release(self) -> None:
+            return None
+
+    rt = _runtime(HeavyThenExecFail)
+    with pytest.raises(QualifiedEmbeddingRuntimeError, match="execution failed"):
+        rt.embed_query("q")
+    assert rt.state is RuntimeState.FAILED
+    assert rt.failure_kind is RuntimeFailureKind.EXECUTION
+
+
 def test_exec_failure_is_terminal() -> None:
     """C4 + C5: execution failure classification is typed and immutable."""
     rt = _runtime(lambda: _FakeBackend(fail_exec=True))

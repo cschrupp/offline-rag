@@ -1,0 +1,32 @@
+{
+  "accepted_tree_immutable": true,
+  "accepted_tree_sha256": "3e1b23a7293cf599bc34d1d9875e5c4ecde45bf12fcd300a6cb66794b5bc4345",
+  "all_finite": true,
+  "all_normalized": true,
+  "authority": "S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-IMPLEMENTATION-REANCHOR-RESUME-AUTH-001",
+  "confirmation": "bounded_real_cpu_product",
+  "corrective": "shared_st_onnx_runtime_core",
+  "dependency_envelope": {
+    "huggingface_hub": "0.36.2",
+    "onnxruntime": "1.31.0",
+    "sentence_transformers": "5.7.0",
+    "transformers": "4.57.6"
+  },
+  "dimension": 1024,
+  "disposition": "PASS",
+  "document_count": 2,
+  "position_ids_compat_installed": true,
+  "profile_id": "cpu_onnx_fp32_v1",
+  "provider": "CPUExecutionProvider",
+  "provider_model_calls": 1,
+  "query_count": 2,
+  "representation_id": "onnx_fp32_v1",
+  "required_onnx_inputs_from_metadata": [
+    "input_ids",
+    "attention_mask",
+    "position_ids"
+  ],
+  "runtime_transitions": "UNLOADED -> LOADING -> READY",
+  "scientific_campaign_calls": 0,
+  "single_st_onnx_construct_path": "src/offline_rag/dense/st_onnx_runtime.py"
+}
