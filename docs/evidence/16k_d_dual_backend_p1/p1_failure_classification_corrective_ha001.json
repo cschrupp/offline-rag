@@ -8,8 +8,12 @@
     "public_property": "failure_kind"
   },
   "corrective_subject_role": "narrow accepted P1 substrate correction for deterministic terminal failure classification",
-  "disposition": "P1 FAILURE-CLASSIFICATION CORRECTIVE COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / HA RECORD PENDING INDEPENDENT REVIEW",
+  "disposition": "P1 FAILURE-CLASSIFICATION CORRECTIVE COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / HA RECORD INDEPENDENTLY ACCEPTED",
   "does_not_replace_original_p1_subject": true,
+  "ha_record_ir": "ACCEPT",
+  "ha_record_tip_at_ir": "f1b39d2a067596993d5d05cc1853abaa41e4fa24",
+  "ha_status_flip_authority": "S16-K-D-DUAL-BACKEND-P1-FAILURE-CLASSIFICATION-CORRECTIVE-HA-STATUS-FLIP-AUTH-001",
+  "ha_status_flip_parent": "f1b39d2a067596993d5d05cc1853abaa41e4fa24",
   "downstream_authorities": {
     "campaigns": "NOT_AUTHORIZED",
     "main": "NOT_AUTHORIZED",
