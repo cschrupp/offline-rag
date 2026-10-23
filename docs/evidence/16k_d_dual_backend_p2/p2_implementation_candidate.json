@@ -25,7 +25,7 @@
     "startup": "PASS"
   },
   "branch": "implementation/16k-d-dual-backend-p2-product-api-ui-integration",
-  "candidate_tip": "PENDING_COMMIT",
+  "candidate_tip": "a4ba3a65c53dc5fe286d9fba5dba32dedf61fb6c",
   "changed_paths": [
     "src/offline_rag/app/runtime.py",
     "src/offline_rag/api/compute_settings.py",
