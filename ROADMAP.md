@@ -1175,19 +1175,27 @@ SLICE 15  COMPLETE / ACCEPTED
          ha: docs/evidence/16k_d_dual_backend_p1/p1_human_acceptance_ha001.json
          Downstream implementation (P2/P3/P4/campaigns/main/merge/promotion):
            NOT AUTHORIZED
-       16K-D DUAL-BACKEND P2: DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED
+       16K-D DUAL-BACKEND P2: DESIGN COMPLETE / READY FOR INDEPENDENT DESIGN REVIEW
+         P2 IMPLEMENTATION NOT AUTHORIZED
          Design authority:
            S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-DESIGN-AUTH-001
+         Design-completion publication authority:
+           S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-DESIGN-COMPLETE-PUBLISH-AUTH-001
          Exact design-open parent:
            7563ce0736307dd3bf303289b6d0a25bce79c4f9
+         Exact design-open tip / completion parent:
+           c621b3cecd17b94fa9b0767f193dca810c6283cb
          Inherited P1 technical subject:
            fae82b2455cfdd0d1622065904a35895372740b6
          Branch: design/16k-d-dual-backend-p2-product-api-ui-integration
          Design document:
            docs/slice16k_d_dual_backend_p2_product_api_ui_integration_design.md
-         Evidence pin:
+         Evidence:
            docs/evidence/16k_d_dual_backend_p2/p2_design_auth_open.json
+           docs/evidence/16k_d_dual_backend_p2/p2_design_complete.json
+         Decision ledger: D01–D18 INHERITED / FROZEN
          Posture: architecture-conformance integration design (not new architecture)
+         Downstream (P3/P4/campaigns/main/merge/promotion): NOT AUTHORIZED
        16K-D still closed: full 1296 FP32 confirmation · P2 implementation ·
          P3 provisioning · P4 acceptance · default promotion · main ·
          alternate models · further quantization
@@ -2114,19 +2122,27 @@ SLICE 15  COMPLETE / ACCEPTED
          ha: docs/evidence/16k_d_dual_backend_p1/p1_human_acceptance_ha001.json
          Downstream implementation (P2/P3/P4/campaigns/main/merge/promotion):
            NOT AUTHORIZED
-       16K-D DUAL-BACKEND P2: DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED
+       16K-D DUAL-BACKEND P2: DESIGN COMPLETE / READY FOR INDEPENDENT DESIGN REVIEW
+         P2 IMPLEMENTATION NOT AUTHORIZED
          Design authority:
            S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-DESIGN-AUTH-001
+         Design-completion publication authority:
+           S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-DESIGN-COMPLETE-PUBLISH-AUTH-001
          Exact design-open parent:
            7563ce0736307dd3bf303289b6d0a25bce79c4f9
+         Exact design-open tip / completion parent:
+           c621b3cecd17b94fa9b0767f193dca810c6283cb
          Inherited P1 technical subject:
            fae82b2455cfdd0d1622065904a35895372740b6
          Branch: design/16k-d-dual-backend-p2-product-api-ui-integration
          Design document:
            docs/slice16k_d_dual_backend_p2_product_api_ui_integration_design.md
-         Evidence pin:
+         Evidence:
            docs/evidence/16k_d_dual_backend_p2/p2_design_auth_open.json
+           docs/evidence/16k_d_dual_backend_p2/p2_design_complete.json
+         Decision ledger: D01–D18 INHERITED / FROZEN
          Posture: architecture-conformance integration design (not new architecture)
+         Downstream (P3/P4/campaigns/main/merge/promotion): NOT AUTHORIZED
        16K-D still closed: full 1296 FP32 confirmation · P2 implementation ·
          P3 provisioning · P4 acceptance · default promotion · main ·
          alternate models · further quantization
