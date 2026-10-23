@@ -27,7 +27,8 @@
   "design_open_tip": "c621b3cecd17b94fa9b0767f193dca810c6283cb",
   "design_complete_tip_ir001_subject": "38dc365c90c21ddaae4e98570b7bc79c1f3c199b",
   "design_completion_parent": "c621b3cecd17b94fa9b0767f193dca810c6283cb",
-  "disposition": "P2 DESIGN IR-001 REQUEST CHANGES / NARROW REWORK CANDIDATE / READY FOR INDEPENDENT DESIGN IR-002",
+  "design_subject_ir002_accepted": "b913265bc9e127888ec9cfc69701fbe2b0c221fd",
+  "disposition": "P2 DESIGN COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / HA RECORD PENDING INDEPENDENT REVIEW",
   "downstream_authorities": {
     "campaigns": "NOT_AUTHORIZED",
     "main": "NOT_AUTHORIZED",
@@ -37,6 +38,7 @@
     "p4": "NOT_AUTHORIZED",
     "promotion": "NOT_AUTHORIZED"
   },
+  "ha_record": "docs/evidence/16k_d_dual_backend_p2/p2_design_human_acceptance_ha001.json",
   "inherited_p1_technical_subject": "fae82b2455cfdd0d1622065904a35895372740b6",
   "ir001": {
     "disposition": "REQUEST_CHANGES",
@@ -44,9 +46,13 @@
     "f002": "normalize_D16_full_path_forms_clarification_only",
     "subject": "38dc365c90c21ddaae4e98570b7bc79c1f3c199b"
   },
-  "note": "Governance metadata only. IR-001 narrow docs rework restores the complete frozen D15 Layer A–G acceptance matrix into the canonical design document and normalizes D16 path notation. No new architecture decisions. No implementation AUTH.",
+  "ir002": {
+    "disposition": "ACCEPT",
+    "subject": "b913265bc9e127888ec9cfc69701fbe2b0c221fd"
+  },
+  "note": "Governance metadata only. Design subject remains b913265…. HA publication is recorded in p2_design_human_acceptance_ha001.json and must not replace that design subject. P2 implementation remains NOT_AUTHORIZED.",
   "posture": "architecture_conformance_integration_design",
   "record_kind": "p2_design_complete",
   "rework_parent": "38dc365c90c21ddaae4e98570b7bc79c1f3c199b",
-  "status": "IR001_REQUEST_CHANGES_NARROW_REWORK_READY_FOR_IR002"
+  "status": "COMPLETE_INDEPENDENTLY_ACCEPTED_HUMAN_ACCEPTED_HA_RECORD_PENDING_REVIEW"
 }

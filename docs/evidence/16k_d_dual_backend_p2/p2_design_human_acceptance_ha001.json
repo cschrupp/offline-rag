@@ -1,0 +1,29 @@
+{
+  "authority": "S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-DESIGN-AUTH-001",
+  "branch": "design/16k-d-dual-backend-p2-product-api-ui-integration",
+  "decision_ledger": "D01-D18_INHERITED_FROZEN",
+  "design_document": "docs/slice16k_d_dual_backend_p2_product_api_ui_integration_design.md",
+  "design_subject": "b913265bc9e127888ec9cfc69701fbe2b0c221fd",
+  "disposition": "P2 DESIGN COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / HA RECORD PENDING INDEPENDENT REVIEW",
+  "downstream_authorities": {
+    "campaigns": "NOT_AUTHORIZED",
+    "main": "NOT_AUTHORIZED",
+    "merge": "NOT_AUTHORIZED",
+    "p2_implementation": "NOT_AUTHORIZED",
+    "p3": "NOT_AUTHORIZED",
+    "p4": "NOT_AUTHORIZED",
+    "promotion": "NOT_AUTHORIZED"
+  },
+  "ha_id": "S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-DESIGN-HA-001",
+  "ha_record_authority": "S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-DESIGN-HA-RECORD-AUTH-001",
+  "ha_record_parent": "b913265bc9e127888ec9cfc69701fbe2b0c221fd",
+  "ha_record_role": "governance_evidence_only_must_not_replace_design_subject",
+  "human_acceptance": "ACCEPTED",
+  "inherited_p1_technical_subject": "fae82b2455cfdd0d1622065904a35895372740b6",
+  "ir002": {
+    "disposition": "ACCEPT",
+    "subject": "b913265bc9e127888ec9cfc69701fbe2b0c221fd"
+  },
+  "note": "Governance metadata only. Records Design IR-002 ACCEPT and Human design acceptance HA-001 against exact design subject b913265…. HA-record tip must not replace that design subject. Does not authorize P2 implementation, P3, P4, campaigns, main, merge, or promotion.",
+  "record_kind": "p2_design_human_acceptance_ha001"
+}
