@@ -1,0 +1,35 @@
+{
+  "accepted_corrective_subject": "0da27594f0b8589c0cfa995bf97097e03f6accf8",
+  "authorized_parent": "da2352d772e97b4819a9bd5ffad8f7222ab04848",
+  "branch": "implementation/16k-d-dual-backend-p1-failure-classification-corrective",
+  "corrective_authority": "S16-K-D-DUAL-BACKEND-P1-FAILURE-CLASSIFICATION-CORRECTIVE-IMPLEMENTATION-AUTH-001",
+  "corrective_contract": {
+    "RuntimeFailureKind": ["initialization", "execution"],
+    "public_property": "failure_kind"
+  },
+  "corrective_subject_role": "narrow accepted P1 substrate correction for deterministic terminal failure classification",
+  "disposition": "P1 FAILURE-CLASSIFICATION CORRECTIVE COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / HA RECORD PENDING INDEPENDENT REVIEW",
+  "does_not_replace_original_p1_subject": true,
+  "downstream_authorities": {
+    "campaigns": "NOT_AUTHORIZED",
+    "main": "NOT_AUTHORIZED",
+    "merge": "NOT_AUTHORIZED",
+    "p2_implementation": "BLOCKED_NOT_RESUMED",
+    "p3": "NOT_AUTHORIZED",
+    "p4": "NOT_AUTHORIZED",
+    "promotion": "NOT_AUTHORIZED"
+  },
+  "ha_id": "S16-K-D-DUAL-BACKEND-P1-FAILURE-CLASSIFICATION-CORRECTIVE-IMPLEMENTATION-HA-001",
+  "ha_record_authority": "S16-K-D-DUAL-BACKEND-P1-FAILURE-CLASSIFICATION-CORRECTIVE-IMPLEMENTATION-HA-RECORD-AUTH-001",
+  "ha_record_parent": "0da27594f0b8589c0cfa995bf97097e03f6accf8",
+  "ha_record_role": "governance_evidence_only_must_not_replace_corrective_or_original_p1_subject",
+  "human_acceptance": "ACCEPTED",
+  "independent_ir": {
+    "disposition": "ACCEPT",
+    "id": "IR-001",
+    "subject": "0da27594f0b8589c0cfa995bf97097e03f6accf8"
+  },
+  "note": "Governance metadata only. Human acceptance of the typed failure_kind corrective. Makes a later P2 re-anchor eligible; does not resume P2 implementation. Does not replace original P1 substrate fae82b2….",
+  "original_accepted_p1_subject": "fae82b2455cfdd0d1622065904a35895372740b6",
+  "record_kind": "p1_failure_classification_corrective_human_acceptance_ha001"
+}

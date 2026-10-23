@@ -1175,9 +1175,35 @@ SLICE 15  COMPLETE / ACCEPTED
          ha: docs/evidence/16k_d_dual_backend_p1/p1_human_acceptance_ha001.json
          Downstream implementation (P2/P3/P4/campaigns/main/merge/promotion):
            NOT AUTHORIZED
+       16K-D DUAL-BACKEND P1 FAILURE-CLASSIFICATION CORRECTIVE:
+         COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED /
+         HA RECORD PENDING INDEPENDENT REVIEW
+         Corrective authority:
+           S16-K-D-DUAL-BACKEND-P1-FAILURE-CLASSIFICATION-CORRECTIVE-IMPLEMENTATION-AUTH-001
+         IR-001: ACCEPT
+         Human acceptance:
+           S16-K-D-DUAL-BACKEND-P1-FAILURE-CLASSIFICATION-CORRECTIVE-IMPLEMENTATION-HA-001
+           — ACCEPTED
+         Accepted corrective subject:
+           0da27594f0b8589c0cfa995bf97097e03f6accf8
+         Original P1 substrate subject:
+           fae82b2455cfdd0d1622065904a35895372740b6
+         Authorized parent:
+           da2352d772e97b4819a9bd5ffad8f7222ab04848
+         HA-record authority:
+           S16-K-D-DUAL-BACKEND-P1-FAILURE-CLASSIFICATION-CORRECTIVE-IMPLEMENTATION-HA-RECORD-AUTH-001
+           — AUTHORIZED
+         Exact HA-record parent:
+           0da27594f0b8589c0cfa995bf97097e03f6accf8
+         Branch: implementation/16k-d-dual-backend-p1-failure-classification-corrective
+         Corrective contract:
+           RuntimeFailureKind = initialization | execution
+         Evidence:
+           docs/evidence/16k_d_dual_backend_p1/p1_failure_classification_corrective_ha001.json
+         Note: supplements P1 substrate; does not replace fae82b2…
        16K-D DUAL-BACKEND P2: DESIGN COMPLETE / INDEPENDENTLY ACCEPTED /
          HUMAN ACCEPTED / HA RECORD INDEPENDENTLY ACCEPTED
-         P2 IMPLEMENTATION NOT AUTHORIZED
+         P2 IMPLEMENTATION BLOCKED / NOT RESUMED
          Design authority:
            S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-DESIGN-AUTH-001
          Design IR-002: ACCEPT
@@ -1204,6 +1230,7 @@ SLICE 15  COMPLETE / ACCEPTED
          Posture: architecture-conformance integration design (not new architecture)
          Downstream (P2 implementation/P3/P4/campaigns/main/merge/promotion):
            NOT AUTHORIZED
+         Note: P1 corrective HA makes P2 re-anchor eligible; does not resume P2
        16K-D still closed: full 1296 FP32 confirmation · P2 implementation ·
          P3 provisioning · P4 acceptance · default promotion · main ·
          alternate models · further quantization
@@ -2130,9 +2157,35 @@ SLICE 15  COMPLETE / ACCEPTED
          ha: docs/evidence/16k_d_dual_backend_p1/p1_human_acceptance_ha001.json
          Downstream implementation (P2/P3/P4/campaigns/main/merge/promotion):
            NOT AUTHORIZED
+       16K-D DUAL-BACKEND P1 FAILURE-CLASSIFICATION CORRECTIVE:
+         COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED /
+         HA RECORD PENDING INDEPENDENT REVIEW
+         Corrective authority:
+           S16-K-D-DUAL-BACKEND-P1-FAILURE-CLASSIFICATION-CORRECTIVE-IMPLEMENTATION-AUTH-001
+         IR-001: ACCEPT
+         Human acceptance:
+           S16-K-D-DUAL-BACKEND-P1-FAILURE-CLASSIFICATION-CORRECTIVE-IMPLEMENTATION-HA-001
+           — ACCEPTED
+         Accepted corrective subject:
+           0da27594f0b8589c0cfa995bf97097e03f6accf8
+         Original P1 substrate subject:
+           fae82b2455cfdd0d1622065904a35895372740b6
+         Authorized parent:
+           da2352d772e97b4819a9bd5ffad8f7222ab04848
+         HA-record authority:
+           S16-K-D-DUAL-BACKEND-P1-FAILURE-CLASSIFICATION-CORRECTIVE-IMPLEMENTATION-HA-RECORD-AUTH-001
+           — AUTHORIZED
+         Exact HA-record parent:
+           0da27594f0b8589c0cfa995bf97097e03f6accf8
+         Branch: implementation/16k-d-dual-backend-p1-failure-classification-corrective
+         Corrective contract:
+           RuntimeFailureKind = initialization | execution
+         Evidence:
+           docs/evidence/16k_d_dual_backend_p1/p1_failure_classification_corrective_ha001.json
+         Note: supplements P1 substrate; does not replace fae82b2…
        16K-D DUAL-BACKEND P2: DESIGN COMPLETE / INDEPENDENTLY ACCEPTED /
          HUMAN ACCEPTED / HA RECORD INDEPENDENTLY ACCEPTED
-         P2 IMPLEMENTATION NOT AUTHORIZED
+         P2 IMPLEMENTATION BLOCKED / NOT RESUMED
          Design authority:
            S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-DESIGN-AUTH-001
          Design IR-002: ACCEPT
@@ -2159,6 +2212,7 @@ SLICE 15  COMPLETE / ACCEPTED
          Posture: architecture-conformance integration design (not new architecture)
          Downstream (P2 implementation/P3/P4/campaigns/main/merge/promotion):
            NOT AUTHORIZED
+         Note: P1 corrective HA makes P2 re-anchor eligible; does not resume P2
        16K-D still closed: full 1296 FP32 confirmation · P2 implementation ·
          P3 provisioning · P4 acceptance · default promotion · main ·
          alternate models · further quantization
