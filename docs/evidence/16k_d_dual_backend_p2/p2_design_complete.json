@@ -25,8 +25,9 @@
   "design_document": "docs/slice16k_d_dual_backend_p2_product_api_ui_integration_design.md",
   "design_open_parent": "7563ce0736307dd3bf303289b6d0a25bce79c4f9",
   "design_open_tip": "c621b3cecd17b94fa9b0767f193dca810c6283cb",
+  "design_complete_tip_ir001_subject": "38dc365c90c21ddaae4e98570b7bc79c1f3c199b",
   "design_completion_parent": "c621b3cecd17b94fa9b0767f193dca810c6283cb",
-  "disposition": "P2 DESIGN COMPLETE / READY FOR INDEPENDENT DESIGN REVIEW",
+  "disposition": "P2 DESIGN IR-001 REQUEST CHANGES / NARROW REWORK CANDIDATE / READY FOR INDEPENDENT DESIGN IR-002",
   "downstream_authorities": {
     "campaigns": "NOT_AUTHORIZED",
     "main": "NOT_AUTHORIZED",
@@ -37,8 +38,15 @@
     "promotion": "NOT_AUTHORIZED"
   },
   "inherited_p1_technical_subject": "fae82b2455cfdd0d1622065904a35895372740b6",
-  "note": "Governance metadata only. Publishes frozen D01–D18 architecture-conformance integration design for independent design IR. Creates no implementation AUTH and does not open P3/P4/campaigns/main.",
+  "ir001": {
+    "disposition": "REQUEST_CHANGES",
+    "f001": "restore_durable_D15_layer_A_G_matrix",
+    "f002": "normalize_D16_full_path_forms_clarification_only",
+    "subject": "38dc365c90c21ddaae4e98570b7bc79c1f3c199b"
+  },
+  "note": "Governance metadata only. IR-001 narrow docs rework restores the complete frozen D15 Layer A–G acceptance matrix into the canonical design document and normalizes D16 path notation. No new architecture decisions. No implementation AUTH.",
   "posture": "architecture_conformance_integration_design",
   "record_kind": "p2_design_complete",
-  "status": "COMPLETE_READY_FOR_INDEPENDENT_DESIGN_REVIEW"
+  "rework_parent": "38dc365c90c21ddaae4e98570b7bc79c1f3c199b",
+  "status": "IR001_REQUEST_CHANGES_NARROW_REWORK_READY_FOR_IR002"
 }

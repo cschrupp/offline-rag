@@ -1175,7 +1175,8 @@ SLICE 15  COMPLETE / ACCEPTED
          ha: docs/evidence/16k_d_dual_backend_p1/p1_human_acceptance_ha001.json
          Downstream implementation (P2/P3/P4/campaigns/main/merge/promotion):
            NOT AUTHORIZED
-       16K-D DUAL-BACKEND P2: DESIGN COMPLETE / READY FOR INDEPENDENT DESIGN REVIEW
+       16K-D DUAL-BACKEND P2: DESIGN IR-001 REQUEST CHANGES / NARROW REWORK
+         CANDIDATE / READY FOR INDEPENDENT DESIGN IR-002
          P2 IMPLEMENTATION NOT AUTHORIZED
          Design authority:
            S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-DESIGN-AUTH-001
@@ -1183,8 +1184,10 @@ SLICE 15  COMPLETE / ACCEPTED
            S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-DESIGN-COMPLETE-PUBLISH-AUTH-001
          Exact design-open parent:
            7563ce0736307dd3bf303289b6d0a25bce79c4f9
-         Exact design-open tip / completion parent:
-           c621b3cecd17b94fa9b0767f193dca810c6283cb
+         Exact design-complete tip / IR-001 subject:
+           38dc365c90c21ddaae4e98570b7bc79c1f3c199b
+         Exact IR-001 rework parent:
+           38dc365c90c21ddaae4e98570b7bc79c1f3c199b
          Inherited P1 technical subject:
            fae82b2455cfdd0d1622065904a35895372740b6
          Branch: design/16k-d-dual-backend-p2-product-api-ui-integration
@@ -1193,7 +1196,9 @@ SLICE 15  COMPLETE / ACCEPTED
          Evidence:
            docs/evidence/16k_d_dual_backend_p2/p2_design_auth_open.json
            docs/evidence/16k_d_dual_backend_p2/p2_design_complete.json
-         Decision ledger: D01–D18 INHERITED / FROZEN
+         IR-001: REQUEST CHANGES — F001 restore durable D15 A–G matrix;
+           F002 D16 full-path clarification (no new architecture)
+         Decision ledger: D01–D18 INHERITED / FROZEN (semantics unchanged)
          Posture: architecture-conformance integration design (not new architecture)
          Downstream (P3/P4/campaigns/main/merge/promotion): NOT AUTHORIZED
        16K-D still closed: full 1296 FP32 confirmation · P2 implementation ·
@@ -2122,7 +2127,8 @@ SLICE 15  COMPLETE / ACCEPTED
          ha: docs/evidence/16k_d_dual_backend_p1/p1_human_acceptance_ha001.json
          Downstream implementation (P2/P3/P4/campaigns/main/merge/promotion):
            NOT AUTHORIZED
-       16K-D DUAL-BACKEND P2: DESIGN COMPLETE / READY FOR INDEPENDENT DESIGN REVIEW
+       16K-D DUAL-BACKEND P2: DESIGN IR-001 REQUEST CHANGES / NARROW REWORK
+         CANDIDATE / READY FOR INDEPENDENT DESIGN IR-002
          P2 IMPLEMENTATION NOT AUTHORIZED
          Design authority:
            S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-DESIGN-AUTH-001
@@ -2130,8 +2136,10 @@ SLICE 15  COMPLETE / ACCEPTED
            S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-DESIGN-COMPLETE-PUBLISH-AUTH-001
          Exact design-open parent:
            7563ce0736307dd3bf303289b6d0a25bce79c4f9
-         Exact design-open tip / completion parent:
-           c621b3cecd17b94fa9b0767f193dca810c6283cb
+         Exact design-complete tip / IR-001 subject:
+           38dc365c90c21ddaae4e98570b7bc79c1f3c199b
+         Exact IR-001 rework parent:
+           38dc365c90c21ddaae4e98570b7bc79c1f3c199b
          Inherited P1 technical subject:
            fae82b2455cfdd0d1622065904a35895372740b6
          Branch: design/16k-d-dual-backend-p2-product-api-ui-integration
@@ -2140,7 +2148,9 @@ SLICE 15  COMPLETE / ACCEPTED
          Evidence:
            docs/evidence/16k_d_dual_backend_p2/p2_design_auth_open.json
            docs/evidence/16k_d_dual_backend_p2/p2_design_complete.json
-         Decision ledger: D01–D18 INHERITED / FROZEN
+         IR-001: REQUEST CHANGES — F001 restore durable D15 A–G matrix;
+           F002 D16 full-path clarification (no new architecture)
+         Decision ledger: D01–D18 INHERITED / FROZEN (semantics unchanged)
          Posture: architecture-conformance integration design (not new architecture)
          Downstream (P3/P4/campaigns/main/merge/promotion): NOT AUTHORIZED
        16K-D still closed: full 1296 FP32 confirmation · P2 implementation ·

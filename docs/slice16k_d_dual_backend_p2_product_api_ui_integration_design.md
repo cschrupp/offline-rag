@@ -6,8 +6,9 @@
 **Exact design-open tip:** `c621b3cecd17b94fa9b0767f193dca810c6283cb`
 **Exact design-completion publication parent:** `c621b3cecd17b94fa9b0767f193dca810c6283cb`
 **Branch:** `design/16k-d-dual-backend-p2-product-api-ui-integration`
-**Status:** P2 DESIGN COMPLETE / READY FOR INDEPENDENT DESIGN REVIEW
+**Status:** P2 DESIGN IR-001 REQUEST CHANGES / NARROW REWORK CANDIDATE / READY FOR INDEPENDENT DESIGN IR-002
 **Implementation:** NOT AUTHORIZED
+**Addresses:** Design IR-001 F001 (restore durable D15 Layer A–G matrix); F002 clarification (D16 full path forms) — no new architecture decisions
 
 **Inherited P1 implementation authority:** `S16-K-D-DUAL-BACKEND-P1-QUALIFIED-RUNTIME-SUBSTRATE-IMPLEMENTATION-AUTH-001`
 **Inherited P1 Human acceptance:** `S16-K-D-DUAL-BACKEND-P1-QUALIFIED-RUNTIME-SUBSTRATE-IMPLEMENTATION-HA-001` — ACCEPTED
@@ -303,19 +304,120 @@ effective configuration
 
 ### D15 — Test strategy and deterministic acceptance matrix — INHERITED / FROZEN
 
-- Prefer deterministic unit/integration around accepted P1 resolver/lifecycle; do not reopen science/parity/quantization/performance campaigns.
-- Layers A–G as frozen by Human (ApplicationRuntime; Compute Settings; Capabilities; Doctor; provenance/compatibility; security/offline; API/UI compatibility).
-- Bounded real-product confirmation required for implementation IR (not a science campaign): minimum CPU path `startup READY/UNLOADED → one real embedding-dependent op → READY` + truthful settings/capabilities. CUDA confirmation host-conditional; deterministic CUDA-path unit/integration may suffice for CPU-only review hosts.
-- Not in P2 acceptance: ONNX↔CUDA parity reruns; full 1296 campaign; throughput optimization; alternate models; quantization studies; cross-profile interoperability promotion (P4/science).
-- Final checklist: one shared process runtime; exact resolver semantics; selected static fail-closed; no inactive poisoning; lazy heavy load; terminal dynamic failure; no hot-switch/fallback/reconstruct; restart-only policy; additive API/UI; read-only artifact behavior; no P3 pulled forward; unchanged logical identity; bounded confirmation PASS.
+P2 implementation acceptance is driven primarily by deterministic unit/integration tests around the already accepted P1 resolver/lifecycle boundary. P2 must not reopen embedding science, parity, quantization, or performance campaigns.
+
+#### D15 Layer A–G deterministic acceptance matrix (normative)
+
+This matrix is the durable, self-contained acceptance contract. Future implementers and independent reviewers must be able to evaluate it from this document alone.
+
+**Layer A — ApplicationRuntime / lifecycle**
+
+1. Exactly one qualified runtime is constructed per successful process startup.
+2. Static selected-representation failure leaves app `NOT_READY` / `startup_failed` / `resources=none`.
+3. Successful startup leaves app `READY` and embedder `UNLOADED`.
+4. First-use initialization/execution failure leaves app `READY` and embedder terminal `FAILED`.
+5. Query/ingest consumers receive the exact same embedder object (identity/borrow proof).
+6. Snapshot/query-runtime teardown does not close the process-owned embedder (non-ownership proof).
+7. Process shutdown drains workers before `ProcessResources.close()` releases the embedder.
+
+**Layer B — Compute Settings API**
+
+1. GET reports active process truth plus cached candidate availability.
+2. CPU/CUDA/AUTO availability follows D04 exactly.
+3. Unavailable/unauthorized selections return `SETTINGS_INVALID` with bounded reasons and no write.
+4. Valid changed policy becomes pending with `restart_required=true`; same-as-active does not create spurious pending.
+5. Env lock remains enforced.
+6. A `FAILED` embedding runtime does not prevent GET/PUT.
+7. Settings requests never heavy-load a backend or hot-switch the active profile.
+
+**Layer C — Capabilities**
+
+1. Existing capabilities contract remains backward compatible.
+2. New embedding facts are additive, process-owned, and compact.
+3. `FAILED` may be reported truthfully.
+4. Pending next-start settings do not masquerade as active state.
+5. Capabilities requests perform no backend load, re-resolution, or representation rehash.
+
+**Layer D — Doctor**
+
+1. Correctly reports legacy Torch-only, dual-ready, ONNX absent/invalid, Torch absent/invalid, and CUDA/probe states using bounded safe reasons.
+2. No downloads, mutation, network access, repair, re-export, or heavy model/session construction.
+
+**Layer E — Managed-operation provenance / compatibility**
+
+1. Historical records without new execution fields remain valid.
+2. New optional profile/representation/backend/provider/precision fields serialize and round-trip correctly.
+3. Observability fields do not alter embedding/index/collection identity.
+4. Provenance collection / telemetry observation itself must not cause backend loading.
+
+**Layer F — Security / offline regression**
+
+1. No new product path writes `/models`, downloads artifacts, phones home, exposes filesystem paths/raw exceptions, bypasses env locks, or weakens settings atomicity.
+
+**Layer G — API / UI compatibility**
+
+1. Existing request bodies remain valid; no required new fields; existing response fields retain meaning.
+2. TypeScript DTO changes are additive.
+3. UI exposes only Auto/CPU/GPU policy controls and read-only runtime detail; no profile/provider/precision editor or switch-now action.
+
+#### Bounded real-product confirmation (unchanged)
+
+Required before P2 implementation can be independently accepted; not a new scientific campaign.
+
+Minimum CPU confirmation:
+
+```text
+fresh process → startup succeeds → app READY / embedding UNLOADED
+  → one real embedding-dependent product operation → embedding READY
+```
+
+Then verify that Compute Settings and capabilities report the actual active CPU/ONNX profile and lifecycle state correctly.
+
+CUDA product confirmation is conditional on suitable host availability and should not block a CPU-capable review environment if deterministic CUDA-path tests already cover the contract. If a CUDA host is available, a bounded equivalent confirmation is desirable.
+
+#### Explicitly not part of P2 acceptance
+
+- ONNX↔CUDA vector parity reruns
+- full 1,296-chunk performance campaign
+- throughput optimization
+- alternate-model experiments
+- quantization studies
+- cross-profile interoperability promotion
+
+Those remain inherited science/P4 territory.
+
+#### Final P2 acceptance checklist
+
+Prove at minimum: one process-owned shared runtime; exact resolver semantics; selected static representation fail-closed; no inactive-representation poisoning; lazy heavy load; terminal dynamic failure; no hot switching/fallback/reconstruction; restart-only policy application; additive API/UI compatibility; read-only P2 artifact behavior; no P3 capability pulled forward; unchanged logical embedding/index identity; bounded real-product confirmation PASS; Layers A–G PASS.
 
 ### D16 — Exact P2 implementation surface — INHERITED / FROZEN
 
-- Allowed universe (touch only as required for D01–D15): `app/runtime.py`; `api/compute_settings.py`; `app/compute_product_settings.py` (preferably unchanged; no schema migration); `api/capabilities.py`; `app/observability_publish.py` + related provenance models for optional additive dense facts; doctor + current CLI exposure (read-only); `app/query_runtime.py` only to preserve/prove borrow-only; `ui/src/api/types.ts` + existing Compute Settings UI only.
-- Consume, do not redesign P1: `execution_profile.py`, `embedding_runtime.py`, `embedding_artifacts.py`, `onnx_embedder.py`, package qualification resources. P1 changes out of scope by default; genuine P1 defects stop for separately authorized P1 correction — not silent fold into P2.
-- Outside P2: provisioning/download/install/package; `/models` mutation; science/parity/performance harnesses; P3/P4 implementation; 16K-E progress/worklist/ETA UI; new settings pages; health-contract redesign; `/health/ready` reinterpretation around embedding; backend/profile/provider/precision editors; new recovery/fallback machinery.
-- D16 = **maximum allowed surface**, not expected diff. Future implementation AUTH must enumerate intended paths; candidate must provide exact changed-file list for IR.
-- Review rule: **Any changed production path outside the D16 universe is presumptively scope violation unless separately authorized before implementation.**
+A future P2 implementation authority may touch only the following areas, and only where required to implement D01–D15:
+
+- `src/offline_rag/app/runtime.py` — integrate the accepted P1 runtime into `ProcessResources`, construct the startup availability snapshot, preserve existing application lifecycle ordering.
+- `src/offline_rag/api/compute_settings.py` — additive runtime/availability DTOs, bounded reasons, candidate validation through the shared resolver, existing pending/restart semantics.
+- `src/offline_rag/app/compute_product_settings.py` — preferably unchanged; only narrowly scoped compatibility work if implementation proves necessary. No schema migration.
+- `src/offline_rag/api/capabilities.py` — compact additive projection of active process-owned embedding facts.
+- `src/offline_rag/app/observability_publish.py` and directly related managed-operation/workspace provenance models — only for optional additive dense execution provenance.
+- Existing doctor implementation/projection, such as `src/offline_rag/doctor.py` and its current CLI exposure — read-only representation/CUDA observability only. Any exact doctor/CLI projection path to be modified must be enumerated in the future implementation AUTH before modification.
+- `src/offline_rag/app/query_runtime.py` — only if needed to preserve or prove the borrow-only/shared-object invariant; no independent resolver or embedder lifecycle.
+- `ui/src/api/types.ts` plus the existing Compute Settings UI surface only — additive DTO support and D07 UX.
+
+P1 substrate is consumed, not redesigned (out of scope by default):
+
+- `src/offline_rag/dense/execution_profile.py`
+- `src/offline_rag/dense/embedding_runtime.py`
+- `src/offline_rag/dense/embedding_artifacts.py`
+- `src/offline_rag/dense/onnx_embedder.py`
+- package qualification resources under `src/offline_rag/resources/embedding_representations/`
+
+If implementation discovers a genuine P1 defect, stop and handle through a separately authorized P1 corrective path rather than silently folding it into P2.
+
+Explicitly outside P2: provisioning/download/install/package code; model acquisition or `/models` mutation; scientific/parity/performance harnesses; P3/P4 implementation; 16K-E progress/worklist/ETA UI; new settings pages; health-contract redesign; `/health/ready` reinterpretation around embedding state; backend/profile/provider/precision editors; new recovery/fallback machinery.
+
+D16 freezes the **maximum allowed surface**, not the expected diff. The implementation authority must still enumerate its exact intended paths, and the final candidate must provide an exact changed-file list for IR.
+
+Review rule: **Any changed production path outside the D16 universe is presumptively scope violation unless separately authorized before implementation.**
 
 ### D17 — Explicit exclusions for P3 / P4 / campaigns / main — INHERITED / FROZEN
 
@@ -386,7 +488,9 @@ A P2 implementation must conform to:
 
 ### 6.6 Deterministic acceptance matrix and confirmation (D15)
 
-Future implementation IR must satisfy Layers A–G as frozen in D15, plus bounded real-product CPU confirmation:
+Future implementation IR must satisfy the **complete normative Layer A–G matrix recorded under D15** (above) — not merely the layer names. That D15 matrix is incorporated here by reference as the self-contained acceptance gate; do not reconstruct it by inferring across unrelated design sections.
+
+Additionally require the bounded real-product CPU confirmation as frozen under D15:
 
 ```text
 fresh process → app READY / embedding UNLOADED
@@ -394,8 +498,7 @@ fresh process → app READY / embedding UNLOADED
   → Compute Settings / capabilities report truthful active CPU/ONNX state
 ```
 
-CUDA host confirmation is conditional. Science/parity/1296/throughput/alternate-model/quantization/P4 interoperability are **not** P2 acceptance.
-
+CUDA host confirmation is conditional per D15. Science/parity/1296/throughput/alternate-model/quantization/P4 interoperability are **not** P2 acceptance.
 ### 6.7 Implementation surface and exclusions (D16, D17)
 
 1. Changed production paths must lie within the D16 universe; exact AUTH path list required; out-of-universe changes are presumptive scope violations.
@@ -404,7 +507,7 @@ CUDA host confirmation is conditional. Science/parity/1296/throughput/alternate-
 
 ### 6.8 Review gates (D18)
 
-1. This publication: **P2 DESIGN COMPLETE / READY FOR INDEPENDENT DESIGN REVIEW**.
+1. Design IR-001 subject `38dc365c…` disposition: **REQUEST CHANGES**. This narrow rework restores the durable D15 A–G matrix and D16 path notation; candidate is **READY FOR INDEPENDENT DESIGN IR-002**.
 2. Design IR ACCEPT ≠ implementation authorization.
 3. Implementation requires separate explicit AUTH, then independent implementation IR, then Human acceptance — still without opening successors.
 
@@ -429,4 +532,6 @@ Design IR ACCEPT likewise does not authorize those actions.
 | Event | Subject / tip | Note |
 |---|---|---|
 | DESIGN OPEN | tip `c621b3ce…` (parent `7563ce0…`) | Authority opened; ledger initially OPEN; implementation NOT AUTHORIZED |
-| DESIGN COMPLETE PUBLICATION | parent `c621b3ce…` | D01–D18 INHERITED/FROZEN; READY FOR INDEPENDENT DESIGN REVIEW; implementation NOT AUTHORIZED |
+| DESIGN COMPLETE PUBLICATION | tip `38dc365c…` (parent `c621b3ce…`) | D01–D18 INHERITED/FROZEN; READY FOR INDEPENDENT DESIGN REVIEW; implementation NOT AUTHORIZED |
+| DESIGN IR-001 | subject `38dc365c…` | REQUEST CHANGES — F001 D15 matrix compression; F002 D16 path notation clarification |
+| DESIGN IR-001 NARROW REWORK | parent `38dc365c…` | Restore durable D15 A–G matrix; normalize D16 full paths; READY FOR IR-002; implementation NOT AUTHORIZED |
