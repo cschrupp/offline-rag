@@ -14,6 +14,7 @@
     "scientific_campaign_calls": 0
   },
   "branch": "implementation/16k-d-dual-backend-p2-product-api-ui-integration",
+  "candidate_tip": "07ce117b9d94b9372244004386351c577c725fc6",
   "current_disposition": "IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW",
   "d15_layers": {
     "A": "PASS",
@@ -45,5 +46,6 @@
   "material_limitations": [],
   "original_p1_subject": "fae82b2455cfdd0d1622065904a35895372740b6",
   "record_kind": "p2_implementation_candidate",
-  "rework_note": "IR-001 F001/F002 closed by promoting shared st_onnx_runtime core; production dependency envelope pinned to transformers 4.x + compatible hub; bounded real CPU product encode reaches READY."
+  "rework_note": "IR-001 F001/F002 closed by promoting shared st_onnx_runtime core; production dependency envelope pinned to transformers 4.x + compatible hub; bounded real CPU product encode reaches READY.",
+  "rework_subject": "07ce117b9d94b9372244004386351c577c725fc6"
 }

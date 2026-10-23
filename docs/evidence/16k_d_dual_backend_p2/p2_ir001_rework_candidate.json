@@ -24,6 +24,7 @@
     "runtime_transitions": "UNLOADED -> LOADING -> READY"
   },
   "branch": "implementation/16k-d-dual-backend-p2-product-api-ui-integration",
+  "candidate_tip": "07ce117b9d94b9372244004386351c577c725fc6",
   "changed_paths": [
     "src/offline_rag/dense/st_onnx_runtime.py",
     "src/offline_rag/dense/onnx_embedder.py",
@@ -75,6 +76,7 @@
     "shared_core_regression": "tests/unit/dense/test_dense_onnx_embedder.py + test_cpu_onnx_feasibility.py PASS (77 focused)"
   },
   "record_kind": "p2_ir001_rework_candidate",
+  "rework_subject": "07ce117b9d94b9372244004386351c577c725fc6",
   "starting_sha": "a4d2d98097dc1db5f6ce3b74c69a51cdf2472d39",
   "unauthorized_remaining": [
     "P3",
