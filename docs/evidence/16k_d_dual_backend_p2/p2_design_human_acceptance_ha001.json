@@ -4,7 +4,11 @@
   "decision_ledger": "D01-D18_INHERITED_FROZEN",
   "design_document": "docs/slice16k_d_dual_backend_p2_product_api_ui_integration_design.md",
   "design_subject": "b913265bc9e127888ec9cfc69701fbe2b0c221fd",
-  "disposition": "P2 DESIGN COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / HA RECORD PENDING INDEPENDENT REVIEW",
+  "disposition": "P2 DESIGN COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / HA RECORD INDEPENDENTLY ACCEPTED",
+  "ha_record_ir": "ACCEPT",
+  "ha_record_tip_at_ir": "4668a2d0452728eb2bd1f23a10d4dee8e66ce986",
+  "ha_status_flip_authority": "S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-DESIGN-HA-STATUS-FLIP-AUTH-001",
+  "ha_status_flip_parent": "4668a2d0452728eb2bd1f23a10d4dee8e66ce986",
   "downstream_authorities": {
     "campaigns": "NOT_AUTHORIZED",
     "main": "NOT_AUTHORIZED",

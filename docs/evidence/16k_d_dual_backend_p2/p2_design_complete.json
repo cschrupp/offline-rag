@@ -28,7 +28,11 @@
   "design_complete_tip_ir001_subject": "38dc365c90c21ddaae4e98570b7bc79c1f3c199b",
   "design_completion_parent": "c621b3cecd17b94fa9b0767f193dca810c6283cb",
   "design_subject_ir002_accepted": "b913265bc9e127888ec9cfc69701fbe2b0c221fd",
-  "disposition": "P2 DESIGN COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / HA RECORD PENDING INDEPENDENT REVIEW",
+  "disposition": "P2 DESIGN COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / HA RECORD INDEPENDENTLY ACCEPTED",
+  "ha_record_ir": "ACCEPT",
+  "ha_record_tip_at_ir": "4668a2d0452728eb2bd1f23a10d4dee8e66ce986",
+  "ha_status_flip_authority": "S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-DESIGN-HA-STATUS-FLIP-AUTH-001",
+  "ha_status_flip_parent": "4668a2d0452728eb2bd1f23a10d4dee8e66ce986",
   "downstream_authorities": {
     "campaigns": "NOT_AUTHORIZED",
     "main": "NOT_AUTHORIZED",
@@ -54,5 +58,5 @@
   "posture": "architecture_conformance_integration_design",
   "record_kind": "p2_design_complete",
   "rework_parent": "38dc365c90c21ddaae4e98570b7bc79c1f3c199b",
-  "status": "COMPLETE_INDEPENDENTLY_ACCEPTED_HUMAN_ACCEPTED_HA_RECORD_PENDING_REVIEW"
+  "status": "COMPLETE_INDEPENDENTLY_ACCEPTED_HUMAN_ACCEPTED_HA_RECORD_INDEPENDENTLY_ACCEPTED"
 }
