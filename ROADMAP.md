@@ -1177,34 +1177,32 @@ SLICE 15  COMPLETE / ACCEPTED
            NOT AUTHORIZED
        16K-D DUAL-BACKEND P2: DESIGN COMPLETE / INDEPENDENTLY ACCEPTED /
          HUMAN ACCEPTED / HA RECORD INDEPENDENTLY ACCEPTED
-         P2 IMPLEMENTATION NOT AUTHORIZED
-         Design authority:
-           S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-DESIGN-AUTH-001
-         Design IR-002: ACCEPT
-         Exact Human-accepted design subject:
+         P2 IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
+         Implementation authority:
+           S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-IMPLEMENTATION-REANCHOR-RESUME-AUTH-001
+         Implementation parent (accepted P1 corrective technical subject):
+           0da27594f0b8589c0cfa995bf97097e03f6accf8
+         Exact Human-accepted design subject (immutable):
            b913265bc9e127888ec9cfc69701fbe2b0c221fd
-         Human acceptance:
-           S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-DESIGN-HA-001
-           — ACCEPTED
-         HA-record authority:
-           S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-DESIGN-HA-RECORD-AUTH-001
-           — AUTHORIZED
-         Exact HA-record parent:
-           b913265bc9e127888ec9cfc69701fbe2b0c221fd
-         Inherited P1 technical subject:
+         Original accepted P1 substrate:
            fae82b2455cfdd0d1622065904a35895372740b6
-         Branch: design/16k-d-dual-backend-p2-product-api-ui-integration
+         Branch: implementation/16k-d-dual-backend-p2-product-api-ui-integration
          Design document:
            docs/slice16k_d_dual_backend_p2_product_api_ui_integration_design.md
          Evidence:
            docs/evidence/16k_d_dual_backend_p2/p2_design_auth_open.json
            docs/evidence/16k_d_dual_backend_p2/p2_design_complete.json
            docs/evidence/16k_d_dual_backend_p2/p2_design_human_acceptance_ha001.json
+           docs/evidence/16k_d_dual_backend_p2/p2_implementation_auth001.json
+           docs/evidence/16k_d_dual_backend_p2/p2_implementation_candidate.json
          Decision ledger: D01–D18 INHERITED / FROZEN
-         Posture: architecture-conformance integration design (not new architecture)
-         Downstream (P2 implementation/P3/P4/campaigns/main/merge/promotion):
+         Posture: architecture-conformance product/API/UI integration
+         Material limitation: bounded real CPU encode blocked on this host by
+           transformers/optimum ImportError (get_parameter_dtype); startup +
+           UNLOADED settings/capabilities projection PASS on real ONNX package
+         Downstream (P3/P4/campaigns/main/merge/promotion):
            NOT AUTHORIZED
-       16K-D still closed: full 1296 FP32 confirmation · P2 implementation ·
+       16K-D still closed: full 1296 FP32 confirmation ·
          P3 provisioning · P4 acceptance · default promotion · main ·
          alternate models · further quantization
        16K-D CPU-GGUF-01 authority:
@@ -2132,34 +2130,32 @@ SLICE 15  COMPLETE / ACCEPTED
            NOT AUTHORIZED
        16K-D DUAL-BACKEND P2: DESIGN COMPLETE / INDEPENDENTLY ACCEPTED /
          HUMAN ACCEPTED / HA RECORD INDEPENDENTLY ACCEPTED
-         P2 IMPLEMENTATION NOT AUTHORIZED
-         Design authority:
-           S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-DESIGN-AUTH-001
-         Design IR-002: ACCEPT
-         Exact Human-accepted design subject:
+         P2 IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
+         Implementation authority:
+           S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-IMPLEMENTATION-REANCHOR-RESUME-AUTH-001
+         Implementation parent (accepted P1 corrective technical subject):
+           0da27594f0b8589c0cfa995bf97097e03f6accf8
+         Exact Human-accepted design subject (immutable):
            b913265bc9e127888ec9cfc69701fbe2b0c221fd
-         Human acceptance:
-           S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-DESIGN-HA-001
-           — ACCEPTED
-         HA-record authority:
-           S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-DESIGN-HA-RECORD-AUTH-001
-           — AUTHORIZED
-         Exact HA-record parent:
-           b913265bc9e127888ec9cfc69701fbe2b0c221fd
-         Inherited P1 technical subject:
+         Original accepted P1 substrate:
            fae82b2455cfdd0d1622065904a35895372740b6
-         Branch: design/16k-d-dual-backend-p2-product-api-ui-integration
+         Branch: implementation/16k-d-dual-backend-p2-product-api-ui-integration
          Design document:
            docs/slice16k_d_dual_backend_p2_product_api_ui_integration_design.md
          Evidence:
            docs/evidence/16k_d_dual_backend_p2/p2_design_auth_open.json
            docs/evidence/16k_d_dual_backend_p2/p2_design_complete.json
            docs/evidence/16k_d_dual_backend_p2/p2_design_human_acceptance_ha001.json
+           docs/evidence/16k_d_dual_backend_p2/p2_implementation_auth001.json
+           docs/evidence/16k_d_dual_backend_p2/p2_implementation_candidate.json
          Decision ledger: D01–D18 INHERITED / FROZEN
-         Posture: architecture-conformance integration design (not new architecture)
-         Downstream (P2 implementation/P3/P4/campaigns/main/merge/promotion):
+         Posture: architecture-conformance product/API/UI integration
+         Material limitation: bounded real CPU encode blocked on this host by
+           transformers/optimum ImportError (get_parameter_dtype); startup +
+           UNLOADED settings/capabilities projection PASS on real ONNX package
+         Downstream (P3/P4/campaigns/main/merge/promotion):
            NOT AUTHORIZED
-       16K-D still closed: full 1296 FP32 confirmation · P2 implementation ·
+       16K-D still closed: full 1296 FP32 confirmation ·
          P3 provisioning · P4 acceptance · default promotion · main ·
          alternate models · further quantization
        16K-D CPU-GGUF-01 authority:

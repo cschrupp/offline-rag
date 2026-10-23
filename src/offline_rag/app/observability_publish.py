@@ -530,18 +530,42 @@ def dense_execution_from_runtime(
     embedder: Any,
     batch_size: int | None,
 ) -> ManagedOperationDenseExecution:
-    """Capture observed dense execution facts from the live embedder/settings."""
+    """Capture observed dense execution facts from the live embedder/settings.
+
+    Must not load the embedding backend. UNLOADED runtimes report only facts
+    already bound on the process-owned object.
+    """
     from offline_rag.dense.embedder import observe_embedder_execution_facts
 
     device = getattr(embedder, "resolved_device", None) or getattr(embedder, "device", None)
     observed = observe_embedder_execution_facts(embedder)
     dimension = getattr(embedder, "dimension", None)
+    profile = getattr(embedder, "profile", None)
+    backend = getattr(profile, "backend_family", None) if profile is not None else None
+    provider = getattr(profile, "provider", None) if profile is not None else None
     return ManagedOperationDenseExecution(
         device=str(device) if device is not None else None,
         dtype=observed.get("dtype"),
         batch_size=batch_size,
         attention_backend=observed.get("attention_backend"),
         embedding_dimension=int(dimension) if isinstance(dimension, int) else None,
+        profile_id=(
+            str(getattr(embedder, "profile_id", None))
+            if getattr(embedder, "profile_id", None) is not None
+            else None
+        ),
+        representation_id=(
+            str(getattr(embedder, "representation_id", None))
+            if getattr(embedder, "representation_id", None) is not None
+            else None
+        ),
+        backend=str(backend) if backend is not None else None,
+        provider=str(provider) if provider is not None else None,
+        resolved_precision=(
+            str(getattr(embedder, "resolved_precision", None))
+            if getattr(embedder, "resolved_precision", None) is not None
+            else None
+        ),
     )
 
 

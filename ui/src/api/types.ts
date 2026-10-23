@@ -180,11 +180,29 @@ export type ComputeRuntimeView = {
   cuda_available: boolean | null;
   torch_cuda_build: string | null;
   selection_reason: string | null;
+  configured_device?: string | null;
+  configured_precision?: string | null;
+  resolved_device?: string | null;
+  resolved_precision?: string | null;
+  profile_id?: string | null;
+  representation_id?: string | null;
+  embedding_state?: string | null;
+  backend?: string | null;
+  provider?: string | null;
+  model?: string | null;
+  model_revision?: string | null;
+  embedding_dimension?: number | null;
+  failure_reason?: string | null;
+};
+
+export type ComputeAvailabilityEntry = {
+  available: boolean;
+  reason?: string | null;
 };
 
 export type ComputeAvailability = {
-  auto: { available: boolean };
-  cpu: { available: boolean };
+  auto: ComputeAvailabilityEntry;
+  cpu: ComputeAvailabilityEntry;
   cuda: { available: boolean; reason: string | null };
 };
 

@@ -1926,6 +1926,64 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         if settings.project.strict_offline:
             errors.append(f"Embedding artifacts not ready: {emb_status.reason}")
 
+    # P2: read-only dual-representation + CUDA observability (no load / mutate / network).
+    try:
+        from offline_rag.dense.device import probe_torch_cuda
+        from offline_rag.dense.embedding_artifacts import inspect_representation
+
+        torch_insp = inspect_representation(
+            embedding_dir,
+            "torch_st_v1",
+            expected_model_id=settings.indexing.embedding.model_id,
+            expected_revision=settings.indexing.embedding.revision,
+            expected_dimension=settings.indexing.embedding.dimension,
+        )
+        onnx_insp = inspect_representation(
+            embedding_dir,
+            "onnx_fp32_v1",
+            expected_model_id=settings.indexing.embedding.model_id,
+            expected_revision=settings.indexing.embedding.revision,
+            expected_dimension=settings.indexing.embedding.dimension,
+        )
+        torch_ready = str(torch_insp.readiness.value).upper()
+        onnx_ready = str(onnx_insp.readiness.value).upper()
+        notes.append(f"Representation torch_st_v1       {torch_ready}")
+        if torch_ready != "READY":
+            notes.append(
+                f"  bounded_reason                 "
+                f"{'representation_invalid' if torch_ready == 'INVALID' else 'representation_absent'}"
+            )
+        notes.append(f"Representation onnx_fp32_v1      {onnx_ready}")
+        if onnx_ready != "READY":
+            notes.append(
+                f"  bounded_reason                 "
+                f"{'representation_invalid' if onnx_ready == 'INVALID' else 'representation_absent'}"
+            )
+        if torch_ready == "READY" and onnx_ready == "READY":
+            notes.append("Dual-backend representations     dual-ready")
+        elif torch_ready == "READY":
+            notes.append("Dual-backend representations     torch-only")
+        elif onnx_ready == "READY":
+            notes.append("Dual-backend representations     onnx-only")
+        else:
+            notes.append("Dual-backend representations     none-ready")
+        cuda_available, torch_cuda_build, probe_raised = probe_torch_cuda()
+        if probe_raised:
+            notes.append("CUDA probe                       FAIL (cuda_probe_failed)")
+        elif cuda_available:
+            notes.append(
+                f"CUDA probe                       PASS (build={torch_cuda_build})"
+            )
+        elif torch_cuda_build is None:
+            notes.append("CUDA probe                       UNAVAILABLE (pytorch_cpu_only)")
+        else:
+            notes.append(
+                f"CUDA probe                       UNAVAILABLE "
+                f"(cuda_device_unavailable; build={torch_cuda_build})"
+            )
+    except Exception as exc:  # noqa: BLE001 — doctor must remain non-fatal for extras
+        notes.append(f"Dual-backend doctor projection    SKIP ({type(exc).__name__})")
+
     state_file = corpus_state_path(settings.paths.corpora, corpus_name)
     notes.append(f"Corpus name                     {corpus_name}")
     notes.append(f"State path                      {state_file}")

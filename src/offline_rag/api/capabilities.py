@@ -6,8 +6,8 @@ from typing import Any
 
 from fastapi import APIRouter, Request
 
+from offline_rag.api.compute_settings import project_embedding_runtime_dto
 from offline_rag.app.runtime import ApplicationRuntime
-from offline_rag.dense.embedder import embedder_runtime_view
 from offline_rag.gold_authoring.readiness import evaluate_authoring_readiness
 
 router = APIRouter(tags=["capabilities"])
@@ -33,17 +33,30 @@ def get_capabilities(request: Request) -> dict[str, Any]:
         "configured_device": str(emb.device),
         "batch_size": int(emb.batch_size),
     }
-    # ACTIVE device authority is the process-owned embedder — never recompute here.
+    # ACTIVE process-owned embedder only — never re-resolve, re-probe, or load.
     if runtime.resources is not None and runtime.resources.embedder is not None:
-        view = embedder_runtime_view(runtime.resources.embedder)
+        projected = project_embedding_runtime_dto(runtime.resources.embedder)
         embedding_block.update(
             {
-                "active_device": view["active_device"],
-                "cuda_available": view["cuda_available"],
-                "torch_cuda_build": view["torch_cuda_build"],
-                "selection_reason": view["selection_reason"],
+                "active_device": projected["active_device"],
+                "cuda_available": projected["cuda_available"],
+                "torch_cuda_build": projected["torch_cuda_build"],
+                "selection_reason": projected["selection_reason"],
+                "configured_precision": projected["configured_precision"],
+                "resolved_precision": projected["resolved_precision"],
+                "profile_id": projected["profile_id"],
+                "representation_id": projected["representation_id"],
+                "embedding_state": projected["embedding_state"],
+                "backend": projected["backend"],
+                "provider": projected["provider"],
+                "model_revision": projected["model_revision"],
+                "embedding_dimension": projected["embedding_dimension"],
+                "failure_reason": projected["failure_reason"],
             }
         )
+        # Prefer live model id when present (qualified runtime).
+        if projected.get("model"):
+            embedding_block["model"] = projected["model"]
     else:
         embedding_block.update(
             {
@@ -51,6 +64,16 @@ def get_capabilities(request: Request) -> dict[str, Any]:
                 "cuda_available": None,
                 "torch_cuda_build": None,
                 "selection_reason": None,
+                "configured_precision": None,
+                "resolved_precision": None,
+                "profile_id": None,
+                "representation_id": None,
+                "embedding_state": None,
+                "backend": None,
+                "provider": None,
+                "model_revision": None,
+                "embedding_dimension": None,
+                "failure_reason": None,
             }
         )
     # 16K-C: transport envelope vs workspace/search capacity are distinct.

@@ -200,6 +200,12 @@ class ManagedOperationDenseExecution(BaseModel):
     batch_size: int | None = Field(default=None, gt=0)
     attention_backend: str | None = Field(default=None, max_length=128)
     embedding_dimension: int | None = Field(default=None, gt=0)
+    # Optional additive P2 observational fields (historical records omit them).
+    profile_id: str | None = Field(default=None, max_length=64)
+    representation_id: str | None = Field(default=None, max_length=64)
+    backend: str | None = Field(default=None, max_length=128)
+    provider: str | None = Field(default=None, max_length=128)
+    resolved_precision: str | None = Field(default=None, max_length=32)
 
 
 class ManagedOperationStageDurations(BaseModel):

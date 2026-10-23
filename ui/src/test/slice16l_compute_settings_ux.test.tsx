@@ -167,7 +167,23 @@ describe("Slice 16L Compute settings UX", () => {
   });
 
   it("shows active CUDA witness and Auto policy", async () => {
-    const mock = installSettingsMocks(computeState());
+    const mock = installSettingsMocks(
+      computeState({
+        runtime: {
+          active_device: "cuda",
+          cuda_available: true,
+          torch_cuda_build: "12.8",
+          selection_reason: "auto_cuda_fp16",
+          embedding_state: "UNLOADED",
+          profile_id: "cuda_fp16_v1",
+          representation_id: "torch_st_v1",
+          backend: "sentence_transformers_torch",
+          provider: null,
+          resolved_precision: "fp16",
+          model_revision: "rev",
+        },
+      }),
+    );
     renderApp("/settings?section=compute");
     expect(
       await screen.findByRole("heading", { name: "Embedding acceleration" }),
@@ -175,10 +191,41 @@ describe("Slice 16L Compute settings UX", () => {
     expect(screen.getByTestId("compute-active-device")).toHaveTextContent(
       "GPU (CUDA)",
     );
+    expect(screen.getByTestId("compute-embedding-state")).toHaveTextContent(
+      /model not loaded yet/i,
+    );
+    expect(screen.getByTestId("compute-runtime-details")).toHaveTextContent(
+      /cuda_fp16_v1/,
+    );
     expect(screen.getByText(/Configured policy:\s*Auto/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/does not silently fall back/i),
+    ).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /Auto/i })).toBeEnabled();
     expect(screen.getByRole("radio", { name: /^CPU/i })).toBeEnabled();
     expect(screen.getByRole("radio", { name: /GPU \(CUDA\)/i })).toBeEnabled();
+    mock.restore();
+  });
+
+  it("disables Auto when selected profile unavailable", async () => {
+    const mock = installSettingsMocks(
+      computeState({
+        availability: {
+          auto: {
+            available: false,
+            reason: "auto_selected_profile_unavailable",
+          },
+          cpu: { available: true },
+          cuda: { available: false, reason: "representation_absent" },
+        },
+      }),
+    );
+    renderApp("/settings?section=compute");
+    await screen.findByRole("heading", { name: "Embedding acceleration" });
+    expect(screen.getByRole("radio", { name: /Auto/i })).toBeDisabled();
+    expect(
+      screen.getByText(/cannot select an available embedding profile/i),
+    ).toBeInTheDocument();
     mock.restore();
   });
 

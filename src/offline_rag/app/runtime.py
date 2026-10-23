@@ -7,7 +7,7 @@ import os
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 
 from offline_rag.app.candidate_recovery import recover_abandoned_candidates
 from offline_rag.app.capacity import CapacityGate
@@ -21,6 +21,149 @@ from offline_rag.app.startup_validation import validate_global_startup_requireme
 from offline_rag.config.models import AppSettings
 
 ResourceFactory = Callable[[AppSettings], Any]
+
+RepresentationReadinessLiteral = Literal["ABSENT", "INVALID", "READY"]
+
+
+@dataclass(frozen=True)
+class RepresentationAvailabilityFact:
+    """Bounded readiness for one installed representation (D13 snapshot)."""
+
+    readiness: RepresentationReadinessLiteral
+    bounded_reason: str | None
+
+
+@dataclass(frozen=True)
+class EmbeddingAvailabilitySnapshot:
+    """Process-lifetime, read-only next-start availability facts (D04/D10).
+
+    Built once after successful embedder construction. Never re-probes CUDA or
+    rehashes representation trees on settings/capabilities requests.
+    """
+
+    cuda_available: bool
+    torch_cuda_build: str | None
+    cuda_probe_failed: bool
+    selected_profile_id: str | None
+    selected_representation_id: str | None
+    torch_st_v1: RepresentationAvailabilityFact
+    onnx_fp32_v1: RepresentationAvailabilityFact
+    qualified: bool
+
+
+def _bounded_rep_reason(readiness: RepresentationReadinessLiteral) -> str | None:
+    if readiness == "ABSENT":
+        return "representation_absent"
+    if readiness == "INVALID":
+        return "representation_invalid"
+    return None
+
+
+def _readiness_literal(value: object) -> RepresentationReadinessLiteral:
+    text = str(getattr(value, "value", value) or "").upper()
+    if text == "READY":
+        return "READY"
+    if text == "INVALID":
+        return "INVALID"
+    return "ABSENT"
+
+
+def build_embedding_availability_snapshot(
+    settings: AppSettings, embedder: Any
+) -> EmbeddingAvailabilitySnapshot:
+    """Construct the immutable startup availability snapshot (P2 D10/D13)."""
+    from offline_rag.dense.embedding_runtime import QualifiedEmbeddingRuntime
+
+    selection_reason = str(
+        getattr(embedder, "device_selection_reason", None)
+        or getattr(embedder, "precision_selection_reason", None)
+        or ""
+    )
+    cuda_raw = getattr(embedder, "cuda_available", None)
+    torch_cuda_build = getattr(embedder, "torch_cuda_build", None)
+    if isinstance(torch_cuda_build, str) or torch_cuda_build is None:
+        build = torch_cuda_build
+    else:
+        build = str(torch_cuda_build)
+
+    cuda_probe_failed = selection_reason.endswith("cuda_probe_failed") or (
+        selection_reason == "cuda_probe_failed"
+    )
+    cuda_available = bool(cuda_raw) and not cuda_probe_failed
+
+    if isinstance(embedder, QualifiedEmbeddingRuntime):
+        selected_rep = embedder.representation
+        selected_id = str(embedder.representation_id)
+        selected_readiness = _readiness_literal(selected_rep.readiness)
+        if selected_id == "torch_st_v1":
+            torch_fact = RepresentationAvailabilityFact(
+                readiness=selected_readiness,
+                bounded_reason=_bounded_rep_reason(selected_readiness),
+            )
+            inactive = _inspect_inactive_representation(
+                settings, representation_id="onnx_fp32_v1"
+            )
+            onnx_fact = inactive
+        else:
+            onnx_fact = RepresentationAvailabilityFact(
+                readiness=selected_readiness,
+                bounded_reason=_bounded_rep_reason(selected_readiness),
+            )
+            inactive = _inspect_inactive_representation(
+                settings, representation_id="torch_st_v1"
+            )
+            torch_fact = inactive
+        return EmbeddingAvailabilitySnapshot(
+            cuda_available=cuda_available,
+            torch_cuda_build=build,
+            cuda_probe_failed=cuda_probe_failed,
+            selected_profile_id=str(embedder.profile_id),
+            selected_representation_id=selected_id,
+            torch_st_v1=torch_fact,
+            onnx_fp32_v1=onnx_fact,
+            qualified=True,
+        )
+
+    # Non-qualified (e.g. FakeEmbedder): preserve pre-P2 availability posture —
+    # both representations treated READY so auto/cpu stay eligible; CUDA follows
+    # the process embedder witness only.
+    ready = RepresentationAvailabilityFact(readiness="READY", bounded_reason=None)
+    return EmbeddingAvailabilitySnapshot(
+        cuda_available=cuda_available,
+        torch_cuda_build=build,
+        cuda_probe_failed=cuda_probe_failed,
+        selected_profile_id=getattr(embedder, "profile_id", None),
+        selected_representation_id=getattr(embedder, "representation_id", None),
+        torch_st_v1=ready,
+        onnx_fp32_v1=ready,
+        qualified=False,
+    )
+
+
+def _inspect_inactive_representation(
+    settings: AppSettings, *, representation_id: Literal["torch_st_v1", "onnx_fp32_v1"]
+) -> RepresentationAvailabilityFact:
+    """Read-only inspect of the non-selected representation (D13)."""
+    from offline_rag.dense.embedding_artifacts import inspect_representation
+    from offline_rag.dense.provision import resolve_embedding_model_dir
+
+    emb = settings.indexing.embedding
+    model_dir = resolve_embedding_model_dir(
+        embedding_artifacts_root=settings.paths.embedding_artifacts,
+        model_path=settings.dense.model_path,
+    )
+    inspection = inspect_representation(
+        model_dir,
+        representation_id,
+        expected_model_id=emb.model_id,
+        expected_revision=emb.revision,
+        expected_dimension=emb.dimension,
+    )
+    readiness = _readiness_literal(inspection.readiness)
+    return RepresentationAvailabilityFact(
+        readiness=readiness,
+        bounded_reason=_bounded_rep_reason(readiness),
+    )
 
 
 class RuntimeState(StrEnum):
@@ -119,6 +262,9 @@ class ApplicationRuntime:
     product_ingest_hooks: ProductIngestHooks | None = None
     state: RuntimeState = field(default=RuntimeState.NOT_STARTED, init=False)
     resources: ProcessResources | None = field(default=None, init=False)
+    embedding_availability: EmbeddingAvailabilitySnapshot | None = field(
+        default=None, init=False
+    )
     failure_reason: str | None = field(default=None, init=False)
     construction_counts: ConstructionCounters = field(
         default_factory=ConstructionCounters, init=False
@@ -258,6 +404,10 @@ class ApplicationRuntime:
                 generator_client=generator_client,
                 qdrant=qdrant,
             )
+            # D10: freeze next-start availability once; never rehash/reprobe per request.
+            self.embedding_availability = build_embedding_availability_snapshot(
+                self.settings, embedder
+            )
             self._publication = ProductPublicationRegistry(self.settings, qdrant=qdrant)
             self._query_runtimes = QueryRuntimeCache(
                 settings=self.settings,
@@ -283,6 +433,7 @@ class ApplicationRuntime:
                 if callable(close):
                     close()
             self.resources = None
+            self.embedding_availability = None
             self._publication = None
             if self._query_runtimes is not None:
                 self._query_runtimes.close()
@@ -335,6 +486,7 @@ class ApplicationRuntime:
             if self.resources is not None:
                 self.resources.close()
                 self.resources = None
+            self.embedding_availability = None
             self._publication = None
             self.state = RuntimeState.STOPPED
             return True

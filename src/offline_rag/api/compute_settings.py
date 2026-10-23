@@ -1,4 +1,4 @@
-"""Seneca Compute Settings API (Slice 16L)."""
+"""Seneca Compute Settings API (Slice 16L / 16K-D P2)."""
 
 from __future__ import annotations
 
@@ -16,9 +16,14 @@ from offline_rag.app.compute_product_settings import (
     write_product_compute_settings,
 )
 from offline_rag.app.errors import AppError, ErrorCode, SafeErrorDetails
-from offline_rag.app.runtime import ApplicationRuntime
+from offline_rag.app.runtime import (
+    ApplicationRuntime,
+    EmbeddingAvailabilitySnapshot,
+)
 from offline_rag.dense.device import cuda_availability_reason
-from offline_rag.dense.embedder import embedder_runtime_view
+from offline_rag.dense.embedder import EmbedderError, embedder_runtime_view
+from offline_rag.dense.embedding_runtime import RuntimeFailureKind
+from offline_rag.dense.execution_profile import resolve_qualified_embedding_profile
 
 router = APIRouter(tags=["settings"])
 
@@ -29,6 +34,60 @@ def _runtime(request: Request) -> ApplicationRuntime:
     return request.app.state.runtime
 
 
+def _product_failure_reason(embedder: object) -> str | None:
+    """Map typed P1 failure_kind to bounded D05 product reasons (no string parse)."""
+    kind = getattr(embedder, "failure_kind", None)
+    if kind is RuntimeFailureKind.INITIALIZATION or kind == RuntimeFailureKind.INITIALIZATION:
+        return "runtime_initialization_failed"
+    if kind is RuntimeFailureKind.EXECUTION or kind == RuntimeFailureKind.EXECUTION:
+        return "runtime_execution_failed"
+    return None
+
+
+def _backend_provider(embedder: object) -> tuple[str | None, str | None]:
+    profile = getattr(embedder, "profile", None)
+    if profile is None:
+        return None, None
+    backend = getattr(profile, "backend_family", None)
+    provider = getattr(profile, "provider", None)
+    return (
+        str(backend) if backend is not None else None,
+        str(provider) if provider is not None else None,
+    )
+
+
+def project_embedding_runtime_dto(embedder: object) -> dict[str, Any]:
+    """Additive process-owned embedding runtime projection (D03)."""
+    view = embedder_runtime_view(embedder)
+    backend, provider = _backend_provider(embedder)
+    state = view.get("runtime_state")
+    embedding_state = str(state) if state else None
+    model = getattr(embedder, "model_id", None)
+    revision = getattr(embedder, "model_revision", None)
+    dimension = getattr(embedder, "dimension", None)
+    return {
+        # Legacy 16L fields retained.
+        "active_device": view.get("active_device"),
+        "cuda_available": view.get("cuda_available"),
+        "torch_cuda_build": view.get("torch_cuda_build"),
+        "selection_reason": view.get("selection_reason"),
+        # Additive P2 facts.
+        "configured_device": view.get("configured_device"),
+        "configured_precision": view.get("configured_precision"),
+        "resolved_device": view.get("active_device"),
+        "resolved_precision": view.get("resolved_precision"),
+        "profile_id": view.get("profile_id"),
+        "representation_id": view.get("representation_id"),
+        "embedding_state": embedding_state,
+        "backend": backend,
+        "provider": provider,
+        "model": str(model) if model is not None else None,
+        "model_revision": str(revision) if revision is not None else None,
+        "embedding_dimension": int(dimension) if isinstance(dimension, int) else None,
+        "failure_reason": _product_failure_reason(embedder),
+    }
+
+
 def _runtime_block(runtime: ApplicationRuntime) -> dict[str, Any]:
     runtime.require_ready()
     if runtime.resources is None or runtime.resources.embedder is None:
@@ -36,36 +95,108 @@ def _runtime_block(runtime: ApplicationRuntime) -> dict[str, Any]:
             ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
             details=SafeErrorDetails(reason="embedder_unavailable"),
         )
-    view = embedder_runtime_view(runtime.resources.embedder)
-    return {
-        "active_device": view["active_device"],
-        "cuda_available": view["cuda_available"],
-        "torch_cuda_build": view["torch_cuda_build"],
-        "selection_reason": view["selection_reason"],
-    }
+    return project_embedding_runtime_dto(runtime.resources.embedder)
 
 
-def _availability(runtime_view: dict[str, Any]) -> dict[str, Any]:
-    cuda_available = runtime_view.get("cuda_available")
-    reason = cuda_availability_reason(
-        cuda_available=cuda_available if isinstance(cuda_available, bool) else None,
-        torch_cuda_build=(
-            str(runtime_view["torch_cuda_build"])
-            if runtime_view.get("torch_cuda_build") is not None
-            else None
-        ),
-        selection_reason=(
-            str(runtime_view["selection_reason"])
-            if runtime_view.get("selection_reason") is not None
-            else None
-        ),
+def _frozen_probe(snapshot: EmbeddingAvailabilitySnapshot):
+    def probe() -> tuple[bool, str | None, bool]:
+        if snapshot.cuda_probe_failed:
+            return False, snapshot.torch_cuda_build, True
+        return snapshot.cuda_available, snapshot.torch_cuda_build, False
+
+    return probe
+
+
+def _rep_fact(snapshot: EmbeddingAvailabilitySnapshot, representation_id: str):
+    if representation_id == "torch_st_v1":
+        return snapshot.torch_st_v1
+    return snapshot.onnx_fp32_v1
+
+
+def evaluate_device_candidate(
+    *,
+    snapshot: EmbeddingAvailabilitySnapshot,
+    device_policy: str,
+    precision: str,
+) -> tuple[bool, str | None]:
+    """Next-start eligibility using frozen probe + cached readiness (D04)."""
+    if not snapshot.qualified:
+        # Legacy/fake path: auto/cpu always available; CUDA follows witness.
+        if device_policy in {"auto", "cpu"}:
+            return True, None
+        if snapshot.cuda_available and not snapshot.cuda_probe_failed:
+            return True, None
+        reason = cuda_availability_reason(
+            cuda_available=snapshot.cuda_available if not snapshot.cuda_probe_failed else False,
+            torch_cuda_build=snapshot.torch_cuda_build,
+            selection_reason=(
+                "cuda_probe_failed" if snapshot.cuda_probe_failed else None
+            ),
+        )
+        return False, reason or "cuda_unavailable"
+
+    try:
+        resolution = resolve_qualified_embedding_profile(
+            device_policy,
+            precision,
+            probe=_frozen_probe(snapshot),
+        )
+    except EmbedderError as exc:
+        message = str(exc).lower()
+        if "fp16" in message and ("cpu" in message or "auto" in message):
+            return False, "precision_requires_cuda"
+        if snapshot.cuda_probe_failed:
+            return False, "cuda_probe_failed"
+        reason = cuda_availability_reason(
+            cuda_available=False,
+            torch_cuda_build=snapshot.torch_cuda_build,
+            selection_reason=None,
+        )
+        return False, reason or "cuda_unavailable"
+    except ValueError:
+        return False, "settings_invalid"
+
+    fact = _rep_fact(snapshot, resolution.profile.representation_id)
+    if fact.readiness == "READY":
+        return True, None
+    if device_policy == "auto":
+        return False, "auto_selected_profile_unavailable"
+    return False, fact.bounded_reason or "representation_absent"
+
+
+def _availability(
+    runtime: ApplicationRuntime,
+) -> dict[str, Any]:
+    snapshot = runtime.embedding_availability
+    if snapshot is None:
+        # Should not happen while READY; fail closed to cuda-unavailable posture.
+        return {
+            "auto": {"available": False, "reason": "availability_snapshot_missing"},
+            "cpu": {"available": False, "reason": "availability_snapshot_missing"},
+            "cuda": {"available": False, "reason": "availability_snapshot_missing"},
+        }
+    precision = str(runtime.settings.indexing.embedding.precision)
+    auto_ok, auto_reason = evaluate_device_candidate(
+        snapshot=snapshot, device_policy="auto", precision=precision
+    )
+    cpu_ok, cpu_reason = evaluate_device_candidate(
+        snapshot=snapshot, device_policy="cpu", precision=precision
+    )
+    cuda_ok, cuda_reason = evaluate_device_candidate(
+        snapshot=snapshot, device_policy="cuda", precision=precision
     )
     return {
-        "auto": {"available": True},
-        "cpu": {"available": True},
+        "auto": {
+            "available": auto_ok,
+            **({"reason": auto_reason} if not auto_ok and auto_reason else {}),
+        },
+        "cpu": {
+            "available": cpu_ok,
+            **({"reason": cpu_reason} if not cpu_ok and cpu_reason else {}),
+        },
         "cuda": {
-            "available": cuda_available is True,
-            "reason": reason,
+            "available": cuda_ok,
+            "reason": None if cuda_ok else cuda_reason,
         },
     }
 
@@ -82,6 +213,16 @@ def _pending_view(
     if pending_device == active_device:
         return None
     return {"embedding_device": pending_device}
+
+
+def _require_snapshot(runtime: ApplicationRuntime) -> EmbeddingAvailabilitySnapshot:
+    snapshot = runtime.embedding_availability
+    if snapshot is None:
+        raise AppError(
+            ErrorCode.SETTINGS_INVALID,
+            details=SafeErrorDetails(reason="availability_snapshot_missing"),
+        )
+    return snapshot
 
 
 @router.get("/v1/settings/compute")
@@ -108,7 +249,7 @@ def get_compute_settings(request: Request) -> dict[str, Any]:
         "restart_required": pending is not None,
         "locks": locks,
         "runtime": runtime_view,
-        "availability": _availability(runtime_view),
+        "availability": _availability(runtime),
     }
 
 
@@ -118,34 +259,22 @@ class ComputeSaveRequest(BaseModel):
     embedding_device: EmbeddingDevicePolicy
 
 
-def _assert_cuda_save_allowed(runtime: ApplicationRuntime) -> None:
-    """Reject explicit CUDA when the ACTIVE process-owned embedder cannot use it."""
-    if runtime.resources is None or runtime.resources.embedder is None:
-        raise AppError(
-            ErrorCode.SETTINGS_INVALID,
-            details=SafeErrorDetails(reason="cuda_unavailable"),
-        )
-    view = embedder_runtime_view(runtime.resources.embedder)
-    if view.get("cuda_available") is True:
-        return
-    reason = cuda_availability_reason(
-        cuda_available=view.get("cuda_available")
-        if isinstance(view.get("cuda_available"), bool)
-        else None,
-        torch_cuda_build=(
-            str(view["torch_cuda_build"])
-            if view.get("torch_cuda_build") is not None
-            else None
-        ),
-        selection_reason=(
-            str(view["selection_reason"])
-            if view.get("selection_reason") is not None
-            else None
-        ),
+def _assert_candidate_save_allowed(
+    runtime: ApplicationRuntime, device_policy: EmbeddingDevicePolicy
+) -> None:
+    """Reject unavailable/unauthorized next-start policies (D04); no write side effects."""
+    snapshot = _require_snapshot(runtime)
+    precision = str(runtime.settings.indexing.embedding.precision)
+    ok, reason = evaluate_device_candidate(
+        snapshot=snapshot,
+        device_policy=device_policy,
+        precision=precision,
     )
+    if ok:
+        return
     raise AppError(
         ErrorCode.SETTINGS_INVALID,
-        details=SafeErrorDetails(reason=reason or "cuda_unavailable"),
+        details=SafeErrorDetails(reason=reason or "settings_invalid"),
     )
 
 
@@ -164,8 +293,7 @@ def save_compute_settings(
                 field="embedding_device", reason="operator_locked"
             ),
         )
-    if body.embedding_device == "cuda":
-        _assert_cuda_save_allowed(runtime)
+    _assert_candidate_save_allowed(runtime, body.embedding_device)
     record = SenecaComputeSettingsFile(
         compute=SenecaComputeBody(embedding_device=body.embedding_device)
     )
@@ -182,5 +310,5 @@ def save_compute_settings(
         "pending": pending,
         "locks": locks,
         "runtime": runtime_view,
-        "availability": _availability(runtime_view),
+        "availability": _availability(runtime),
     }

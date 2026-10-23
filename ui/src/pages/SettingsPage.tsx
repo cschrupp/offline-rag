@@ -56,7 +56,45 @@ function cudaUnavailableCopy(reason: string | null | undefined): string {
   if (reason === "cuda_probe_failed") {
     return "Seneca could not verify CUDA availability in this runtime.";
   }
+  if (reason === "representation_absent") {
+    return "The GPU embedding representation is not installed.";
+  }
+  if (reason === "representation_invalid") {
+    return "The GPU embedding representation is installed but not valid.";
+  }
+  if (reason === "auto_selected_profile_unavailable") {
+    return "The embedding profile Auto would select is not available.";
+  }
+  if (reason === "precision_requires_cuda") {
+    return "This precision setting requires CUDA.";
+  }
   return "GPU acceleration is unavailable in this Seneca installation.";
+}
+
+function embeddingStateLabel(state: string | null | undefined): string {
+  if (state === "UNLOADED") return "Available · model not loaded yet";
+  if (state === "LOADING") return "Loading embedding model";
+  if (state === "READY") return "Ready";
+  if (state === "FAILED") return "Embedding unavailable until restart";
+  if (state === "CLOSED") return "Closed";
+  return state ?? "Unknown";
+}
+
+function candidateUnavailableCopy(reason: string | null | undefined): string {
+  if (!reason) return "This option is not available for the next start.";
+  if (reason === "auto_selected_profile_unavailable") {
+    return "Auto cannot select an available embedding profile on this host.";
+  }
+  if (reason === "representation_absent") {
+    return "Required embedding representation is not installed.";
+  }
+  if (reason === "representation_invalid") {
+    return "Required embedding representation is invalid.";
+  }
+  if (reason === "precision_requires_cuda") {
+    return "Current precision requires CUDA.";
+  }
+  return cudaUnavailableCopy(reason);
 }
 
 type GenerationFormProps = {
@@ -567,6 +605,8 @@ function ComputeSettingsForm({ state }: ComputeFormProps) {
   const queryClient = useQueryClient();
   const view = state.pending ?? state.active;
   const locked = Boolean(state.locks.embedding_device);
+  const autoAvailable = Boolean(state.availability.auto.available);
+  const cpuAvailable = Boolean(state.availability.cpu.available);
   const cudaAvailable = Boolean(state.availability.cuda.available);
   const [policy, setPolicy] = useState<EmbeddingDevicePolicy>(
     view.embedding_device,
@@ -624,6 +664,16 @@ function ComputeSettingsForm({ state }: ComputeFormProps) {
           <br />
           {activeDeviceLabel(state.runtime.active_device)}
         </p>
+        <p
+          className="muted"
+          style={{ margin: 0 }}
+          data-testid="compute-embedding-state"
+        >
+          Embedding status: {embeddingStateLabel(state.runtime.embedding_state)}
+          {state.runtime.failure_reason
+            ? ` (${state.runtime.failure_reason})`
+            : ""}
+        </p>
         <p className="muted" style={{ margin: 0 }}>
           Configured policy: {policyLabel(state.active.embedding_device)}
           {state.pending
@@ -633,6 +683,12 @@ function ComputeSettingsForm({ state }: ComputeFormProps) {
         <p className="muted" style={{ margin: 0 }}>
           PyTorch build: {pytorchLabel}
         </p>
+        {state.runtime.embedding_state === "FAILED" ? (
+          <p className="error-box" role="status">
+            Embedding is unavailable until Seneca restarts. Settings and other
+            application controls remain available.
+          </p>
+        ) : null}
 
         <form className="stack" onSubmit={onSubmit} style={{ marginTop: "1rem" }}>
           <fieldset
@@ -658,14 +714,21 @@ function ComputeSettingsForm({ state }: ComputeFormProps) {
                     name="embedding-device"
                     value="auto"
                     checked={policy === "auto"}
-                    disabled={locked}
+                    disabled={locked || !autoAvailable}
                     onChange={() => setPolicy("auto")}
                   />
                   Auto <span className="muted">(Recommended)</span>
                 </span>
                 <span className="muted">
-                  Use GPU when CUDA is available; otherwise use CPU.
+                  Resolve the next-start embedding profile from host CUDA and
+                  installed representations. Auto does not silently fall back
+                  when its selected profile is unavailable.
                 </span>
+                {!autoAvailable ? (
+                  <span className="muted">
+                    {candidateUnavailableCopy(state.availability.auto.reason)}
+                  </span>
+                ) : null}
               </label>
 
               <label className="stack" style={{ gap: "0.15rem" }}>
@@ -675,12 +738,17 @@ function ComputeSettingsForm({ state }: ComputeFormProps) {
                     name="embedding-device"
                     value="cpu"
                     checked={policy === "cpu"}
-                    disabled={locked}
+                    disabled={locked || !cpuAvailable}
                     onChange={() => setPolicy("cpu")}
                   />
                   CPU
                 </span>
                 <span className="muted">Always use CPU for embedding.</span>
+                {!cpuAvailable ? (
+                  <span className="muted">
+                    {candidateUnavailableCopy(state.availability.cpu.reason)}
+                  </span>
+                ) : null}
               </label>
 
               <label className="stack" style={{ gap: "0.15rem" }}>
@@ -725,6 +793,37 @@ function ComputeSettingsForm({ state }: ComputeFormProps) {
             </Button>
           </div>
         </form>
+
+        {(state.runtime.profile_id ||
+          state.runtime.representation_id ||
+          state.runtime.backend) && (
+          <div
+            className="stack"
+            style={{ marginTop: "1rem" }}
+            data-testid="compute-runtime-details"
+          >
+            <p style={{ margin: 0 }}>
+              <strong>Runtime details</strong>
+            </p>
+            <p className="muted" style={{ margin: 0 }}>
+              Profile: {state.runtime.profile_id ?? "—"}
+              {" · "}
+              Representation: {state.runtime.representation_id ?? "—"}
+            </p>
+            <p className="muted" style={{ margin: 0 }}>
+              Backend: {state.runtime.backend ?? "—"}
+              {" · "}
+              Provider: {state.runtime.provider ?? "—"}
+              {" · "}
+              Precision: {state.runtime.resolved_precision ?? "—"}
+            </p>
+            <p className="muted" style={{ margin: 0 }}>
+              Model revision: {state.runtime.model_revision ?? "—"}
+              {" · "}
+              Selection: {state.runtime.selection_reason ?? "—"}
+            </p>
+          </div>
+        )}
       </Card>
     </div>
   );

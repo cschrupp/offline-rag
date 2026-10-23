@@ -1,0 +1,18 @@
+{
+  "accepted_corrective_subject": "0da27594f0b8589c0cfa995bf97097e03f6accf8",
+  "accepted_design_subject": "b913265bc9e127888ec9cfc69701fbe2b0c221fd",
+  "authority": "S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-IMPLEMENTATION-REANCHOR-RESUME-AUTH-001",
+  "authorized_parent": "0da27594f0b8589c0cfa995bf97097e03f6accf8",
+  "branch": "implementation/16k-d-dual-backend-p2-product-api-ui-integration",
+  "downstream": {
+    "campaigns": "NOT_AUTHORIZED",
+    "main": "NOT_AUTHORIZED",
+    "merge": "NOT_AUTHORIZED",
+    "p3": "NOT_AUTHORIZED",
+    "p4": "NOT_AUTHORIZED",
+    "promotion": "NOT_AUTHORIZED"
+  },
+  "original_p1_subject": "fae82b2455cfdd0d1622065904a35895372740b6",
+  "prior_authority_superseded_for_resume": "S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-IMPLEMENTATION-AUTH-001",
+  "scope": "D01-D18 architecture-conformance product/API/UI integration"
+}
