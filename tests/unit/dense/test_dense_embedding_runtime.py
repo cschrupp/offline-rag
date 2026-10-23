@@ -16,6 +16,7 @@ from offline_rag.dense.embedding_artifacts import (
 from offline_rag.dense.embedding_runtime import (
     QualifiedEmbeddingRuntime,
     QualifiedEmbeddingRuntimeError,
+    RuntimeFailureKind,
     RuntimeState,
 )
 from offline_rag.dense.execution_profile import (
@@ -85,6 +86,7 @@ def _runtime(factory) -> QualifiedEmbeddingRuntime:  # type: ignore[no-untyped-d
 
 
 def test_construction_unloaded_and_observe_does_not_load() -> None:
+    """C1 + C7: clean construction; reading classification is passive."""
     calls = {"n": 0}
 
     def factory():
@@ -93,16 +95,24 @@ def test_construction_unloaded_and_observe_does_not_load() -> None:
 
     rt = _runtime(factory)
     assert rt.state is RuntimeState.UNLOADED
+    assert rt.failure_kind is None
+    assert rt.failure_reason is None
     assert rt.observe_execution_facts() == {"dtype": None, "attention_backend": None}
+    assert rt.state is RuntimeState.UNLOADED
+    assert rt.failure_kind is None
+    assert rt.failure_reason is None
     assert calls["n"] == 0
     assert rt.backend_factory_calls == 0
 
 
 def test_first_call_loads_ready() -> None:
+    """C2: successful load leaves failure_kind None."""
     rt = _runtime(lambda: _FakeBackend())
     out = rt.embed_query("q")
     assert len(out) == 8
     assert rt.state is RuntimeState.READY
+    assert rt.failure_kind is None
+    assert rt.failure_reason is None
     assert rt.backend_factory_calls == 1
 
 
@@ -136,35 +146,69 @@ def test_concurrent_first_calls_single_factory() -> None:
     assert len(results) == 2
     assert rt.backend_factory_calls == 1
     assert rt.state is RuntimeState.READY
+    assert rt.failure_kind is None
 
 
 def test_init_failure_is_terminal() -> None:
+    """C3 + C5: initialization failure classification is typed and immutable."""
     rt = _runtime(lambda: _FakeBackend(fail_init=True))
     with pytest.raises(QualifiedEmbeddingRuntimeError, match="initialization failed"):
         rt.embed_query("q")
     assert rt.state is RuntimeState.FAILED
+    assert rt.failure_kind is RuntimeFailureKind.INITIALIZATION
+    assert rt.failure_reason is not None
     with pytest.raises(QualifiedEmbeddingRuntimeError, match="FAILED"):
         rt.embed_query("q")
+    assert rt.state is RuntimeState.FAILED
+    assert rt.failure_kind is RuntimeFailureKind.INITIALIZATION
     assert rt.backend_factory_calls == 1
 
 
 def test_exec_failure_is_terminal() -> None:
+    """C4 + C5: execution failure classification is typed and immutable."""
     rt = _runtime(lambda: _FakeBackend(fail_exec=True))
     with pytest.raises(QualifiedEmbeddingRuntimeError, match="execution failed"):
         rt.embed_query("q")
     assert rt.state is RuntimeState.FAILED
+    assert rt.failure_kind is RuntimeFailureKind.EXECUTION
+    assert rt.failure_reason is not None
     with pytest.raises(QualifiedEmbeddingRuntimeError, match="FAILED"):
         rt.embed_documents(["a"])
+    assert rt.state is RuntimeState.FAILED
+    assert rt.failure_kind is RuntimeFailureKind.EXECUTION
     assert rt.backend_factory_calls == 1
 
 
 def test_caller_validation_does_not_poison() -> None:
+    """C6: caller validation must not set failure_kind or FAILED."""
     rt = _runtime(lambda: _FakeBackend())
     with pytest.raises(TypeError):
         rt.embed_query(123)  # type: ignore[arg-type]
     assert rt.state is RuntimeState.UNLOADED
+    assert rt.failure_kind is None
+    assert rt.failure_reason is None
+    with pytest.raises(TypeError):
+        rt.embed_documents("not-a-sequence")  # type: ignore[arg-type]
+    assert rt.state is RuntimeState.UNLOADED
+    assert rt.failure_kind is None
     assert rt.embed_query("ok")
     assert rt.state is RuntimeState.READY
+    assert rt.failure_kind is None
+    with pytest.raises(TypeError):
+        rt.embed_documents(["ok", 1])  # type: ignore[list-item]
+    assert rt.state is RuntimeState.READY
+    assert rt.failure_kind is None
+
+
+def test_close_does_not_manufacture_failure_kind() -> None:
+    rt = _runtime(lambda: _FakeBackend())
+    rt.embed_query("q")
+    rt.close()
+    assert rt.state is RuntimeState.CLOSED
+    assert rt.failure_kind is None
+    with pytest.raises(QualifiedEmbeddingRuntimeError, match="CLOSED"):
+        rt.embed_query("q")
+    assert rt.failure_kind is None
 
 
 def test_close_is_terminal() -> None:

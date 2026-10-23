@@ -22,6 +22,17 @@ class RuntimeState(StrEnum):
     CLOSED = "CLOSED"
 
 
+class RuntimeFailureKind(StrEnum):
+    """Typed discriminator for terminal FAILED transitions only.
+
+    Answers which accepted runtime transition failed. Does not classify
+    CUDA/OOM/provider/user-input/retryability.
+    """
+
+    INITIALIZATION = "initialization"
+    EXECUTION = "execution"
+
+
 class QualifiedEmbeddingRuntimeError(RuntimeError):
     """Terminal or construction failure for the qualified runtime."""
 
@@ -68,6 +79,7 @@ class QualifiedEmbeddingRuntime:
         self._state = RuntimeState.UNLOADED
         self._backend: Any | None = None
         self._failure: str | None = None
+        self._failure_kind: RuntimeFailureKind | None = None
         self._init_lock = threading.Lock()
         self._backend_factory_calls = 0
         self._backend_factory = backend_factory
@@ -83,6 +95,10 @@ class QualifiedEmbeddingRuntime:
     @property
     def failure_reason(self) -> str | None:
         return self._failure
+
+    @property
+    def failure_kind(self) -> RuntimeFailureKind | None:
+        return self._failure_kind
 
     def observe_execution_facts(self) -> dict[str, str | None]:
         """Observability must not load the backend."""
@@ -140,6 +156,7 @@ class QualifiedEmbeddingRuntime:
                 return backend
             except Exception as exc:
                 self._failure = f"{type(exc).__name__}: {exc}"
+                self._failure_kind = RuntimeFailureKind.INITIALIZATION
                 self._backend = None
                 self._state = RuntimeState.FAILED
                 raise QualifiedEmbeddingRuntimeError(
@@ -226,7 +243,11 @@ class QualifiedEmbeddingRuntime:
         with self._init_lock:
             if self._state is RuntimeState.CLOSED:
                 return
+            # Terminal classification is immutable once FAILED.
+            if self._state is RuntimeState.FAILED:
+                return
             self._failure = f"{type(exc).__name__}: {exc}"
+            self._failure_kind = RuntimeFailureKind.EXECUTION
             release = getattr(self._backend, "release", None)
             if callable(release):
                 try:
@@ -251,5 +272,6 @@ class QualifiedEmbeddingRuntime:
 __all__ = [
     "QualifiedEmbeddingRuntime",
     "QualifiedEmbeddingRuntimeError",
+    "RuntimeFailureKind",
     "RuntimeState",
 ]
