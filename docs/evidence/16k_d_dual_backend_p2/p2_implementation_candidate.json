@@ -1,6 +1,7 @@
 {
   "accepted_corrective_subject": "0da27594f0b8589c0cfa995bf97097e03f6accf8",
   "accepted_design_subject": "b913265bc9e127888ec9cfc69701fbe2b0c221fd",
+  "accepted_technical_subject": "07ce117b9d94b9372244004386351c577c725fc6",
   "authority": "S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-IMPLEMENTATION-REANCHOR-RESUME-AUTH-001",
   "authorized_parent": "0da27594f0b8589c0cfa995bf97097e03f6accf8",
   "bounded_cpu_confirmation": {
@@ -14,8 +15,8 @@
     "scientific_campaign_calls": 0
   },
   "branch": "implementation/16k-d-dual-backend-p2-product-api-ui-integration",
-  "candidate_tip": "07ce117b9d94b9372244004386351c577c725fc6",
-  "current_disposition": "IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW",
+  "candidate_tip": "963fe51e3e7b1cf522280679185c294b4c537f8c",
+  "current_disposition": "P2 IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACKNOWLEDGED / CLOSED",
   "d15_layers": {
     "A": "PASS",
     "B": "PASS",
@@ -32,6 +33,7 @@
     "tests/unit/dense/test_cpu_onnx_feasibility.py"
   ],
   "disposition_historical_implementation_handoff": "P2 IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW",
+  "disposition_historical_ir001_rework_handoff": "IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW",
   "downstream": {
     "campaigns": "NOT_AUTHORIZED",
     "main": "NOT_AUTHORIZED",
@@ -40,12 +42,27 @@
     "p4": "NOT_AUTHORIZED",
     "promotion": "NOT_AUTHORIZED"
   },
+  "findings": {
+    "F001": "CLOSED",
+    "F002": "CLOSED"
+  },
   "historical_implementation_candidate_tip": "a4d2d98097dc1db5f6ce3b74c69a51cdf2472d39",
   "historical_implementation_subject": "a4ba3a65c53dc5fe286d9fba5dba32dedf61fb6c",
+  "human_acknowledgment": {
+    "closeout": "single_human_acknowledgment",
+    "ha_record": "NOT_USED",
+    "ha_review": "NOT_USED",
+    "status_flip_chain": "NOT_USED"
+  },
   "ir001_rework_evidence": "docs/evidence/16k_d_dual_backend_p2/p2_ir001_rework_candidate.json",
+  "ir002": {
+    "disposition": "ACCEPT",
+    "evidence_pinning_tip": "963fe51e3e7b1cf522280679185c294b4c537f8c",
+    "ir001_starting_point": "a4d2d98097dc1db5f6ce3b74c69a51cdf2472d39",
+    "rework_technical_subject": "07ce117b9d94b9372244004386351c577c725fc6"
+  },
   "material_limitations": [],
   "original_p1_subject": "fae82b2455cfdd0d1622065904a35895372740b6",
   "record_kind": "p2_implementation_candidate",
-  "rework_note": "IR-001 F001/F002 closed by promoting shared st_onnx_runtime core; production dependency envelope pinned to transformers 4.x + compatible hub; bounded real CPU product encode reaches READY.",
   "rework_subject": "07ce117b9d94b9372244004386351c577c725fc6"
 }

@@ -24,7 +24,8 @@
     "runtime_transitions": "UNLOADED -> LOADING -> READY"
   },
   "branch": "implementation/16k-d-dual-backend-p2-product-api-ui-integration",
-  "candidate_tip": "07ce117b9d94b9372244004386351c577c725fc6",
+  "candidate_tip": "963fe51e3e7b1cf522280679185c294b4c537f8c",
+  "current_disposition": "P2 IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACKNOWLEDGED / CLOSED",
   "changed_paths": [
     "src/offline_rag/dense/st_onnx_runtime.py",
     "src/offline_rag/dense/onnx_embedder.py",
@@ -49,6 +50,16 @@
     "transformers": ">=4.51.0,<5 (locked 4.57.6)"
   },
   "disposition": "IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW",
+  "disposition_historical_rework_handoff": "IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW",
+  "ir002": {
+    "disposition": "ACCEPT",
+    "evidence_pinning_tip": "963fe51e3e7b1cf522280679185c294b4c537f8c",
+    "findings": {
+      "F001": "CLOSED",
+      "F002": "CLOSED"
+    },
+    "rework_technical_subject": "07ce117b9d94b9372244004386351c577c725fc6"
+  },
   "downstream": {
     "campaigns": "NOT_AUTHORIZED",
     "main": "NOT_AUTHORIZED",

@@ -1177,12 +1177,18 @@ SLICE 15  COMPLETE / ACCEPTED
            NOT AUTHORIZED
        16K-D DUAL-BACKEND P2: DESIGN COMPLETE / INDEPENDENTLY ACCEPTED /
          HUMAN ACCEPTED / HA RECORD INDEPENDENTLY ACCEPTED
+         P2 IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED /
+           HUMAN ACKNOWLEDGED / CLOSED
          Historical implementation handoff:
            P2 IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
            (tip a4d2d980…)
-         Current disposition:
+         Historical IR-001 rework handoff:
            IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
-           (shared st_onnx_runtime core; F001/F002 corrective)
+         IR-002: ACCEPT (F001 CLOSED; F002 CLOSED)
+         Exact accepted corrective technical subject:
+           07ce117b9d94b9372244004386351c577c725fc6
+         Evidence/pinning tip:
+           963fe51e3e7b1cf522280679185c294b4c537f8c
          Implementation authority:
            S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-IMPLEMENTATION-REANCHOR-RESUME-AUTH-001
          Implementation parent (accepted P1 corrective technical subject):
@@ -1206,8 +1212,11 @@ SLICE 15  COMPLETE / ACCEPTED
          Posture: architecture-conformance product/API/UI integration;
            one shared ST/ONNX physical core; thin product + scientific adapters
          Bounded real CPU product encode: PASS (UNLOADED→LOADING→READY)
+         Closeout: single Human acknowledgment (no HA-record / HA-review /
+           status-flip chain)
          Downstream (P3/P4/campaigns/main/merge/promotion):
            NOT AUTHORIZED
+         P3: separate later Human authorization required; not opened by P2 close
        16K-D still closed: full 1296 FP32 confirmation ·
          P3 provisioning · P4 acceptance · default promotion · main ·
          alternate models · further quantization
@@ -2136,12 +2145,18 @@ SLICE 15  COMPLETE / ACCEPTED
            NOT AUTHORIZED
        16K-D DUAL-BACKEND P2: DESIGN COMPLETE / INDEPENDENTLY ACCEPTED /
          HUMAN ACCEPTED / HA RECORD INDEPENDENTLY ACCEPTED
+         P2 IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED /
+           HUMAN ACKNOWLEDGED / CLOSED
          Historical implementation handoff:
            P2 IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
            (tip a4d2d980…)
-         Current disposition:
+         Historical IR-001 rework handoff:
            IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
-           (shared st_onnx_runtime core; F001/F002 corrective)
+         IR-002: ACCEPT (F001 CLOSED; F002 CLOSED)
+         Exact accepted corrective technical subject:
+           07ce117b9d94b9372244004386351c577c725fc6
+         Evidence/pinning tip:
+           963fe51e3e7b1cf522280679185c294b4c537f8c
          Implementation authority:
            S16-K-D-DUAL-BACKEND-P2-PRODUCT-API-UI-INTEGRATION-IMPLEMENTATION-REANCHOR-RESUME-AUTH-001
          Implementation parent (accepted P1 corrective technical subject):
@@ -2165,8 +2180,11 @@ SLICE 15  COMPLETE / ACCEPTED
          Posture: architecture-conformance product/API/UI integration;
            one shared ST/ONNX physical core; thin product + scientific adapters
          Bounded real CPU product encode: PASS (UNLOADED→LOADING→READY)
+         Closeout: single Human acknowledgment (no HA-record / HA-review /
+           status-flip chain)
          Downstream (P3/P4/campaigns/main/merge/promotion):
            NOT AUTHORIZED
+         P3: separate later Human authorization required; not opened by P2 close
        16K-D still closed: full 1296 FP32 confirmation ·
          P3 provisioning · P4 acceptance · default promotion · main ·
          alternate models · further quantization
