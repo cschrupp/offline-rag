@@ -615,3 +615,336 @@ def test_stale_legacy_ignored_when_bundle_selects_instance(
     assert torch.instance_path != dest
     again = provision_embedding_representations(dest, representations="torch_st_v1")
     assert again.status is ProvisioningStatus.ALREADY_PROVISIONED
+
+
+# --- IR-001 narrow durability / compatibility regressions ---
+
+
+def test_f001_fail_before_bundle_replace_no_rollback(
+    tmp_path: Path, tiny_onnx: tuple[Path, Any]
+) -> None:
+    src, _ = tiny_onnx
+    dest = tmp_path / "model"
+    dest.mkdir()
+    _make_torch_tree(dest)
+    assert (
+        provision_embedding_representations(
+            dest, representations="onnx_fp32_v1", onnx_source=src
+        ).status
+        is ProvisioningStatus.READY
+    )
+    before = (dest / BUNDLE_MANIFEST_NAME).read_bytes()
+
+    report = provision_embedding_representations(
+        dest,
+        representations="onnx_fp32_v1",
+        force=True,
+        onnx_source=src,
+        test_hooks={
+            "fail_before_bundle_replace": lambda: (_ for _ in ()).throw(
+                RuntimeError("pre-replace")
+            )
+        },
+    )
+    assert report.status is ProvisioningStatus.FAILED
+    assert report.metadata.get("rollback", {}).get("attempted") is False
+    assert report.metadata.get("bundle_publication_state") == "not_replaced"
+    assert (dest / BUNDLE_MANIFEST_NAME).read_bytes() == before
+
+
+def test_f001_fail_after_replace_via_fsync_triggers_rollback(
+    tmp_path: Path, tiny_onnx: tuple[Path, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import offline_rag.dense.embedding_bundle_provision as emb
+
+    src, _ = tiny_onnx
+    dest = tmp_path / "model"
+    dest.mkdir()
+    _make_torch_tree(dest)
+    assert (
+        provision_embedding_representations(
+            dest, representations="onnx_fp32_v1", onnx_source=src
+        ).status
+        is ProvisioningStatus.READY
+    )
+    before = (dest / BUNDLE_MANIFEST_NAME).read_bytes()
+
+    orig = emb._fsync_file
+    seen = {"bundle": 0}
+
+    def flaky(path: Path) -> None:  # type: ignore[no-untyped-def]
+        if path.name == BUNDLE_MANIFEST_NAME:
+            seen["bundle"] += 1
+            # First fsync after os.replace of the forward publication.
+            if seen["bundle"] == 1:
+                raise OSError("injected post-replace file fsync failure")
+        return orig(path)
+
+    monkeypatch.setattr(emb, "_fsync_file", flaky)
+    report = provision_embedding_representations(
+        dest,
+        representations="onnx_fp32_v1",
+        force=True,
+        onnx_source=src,
+    )
+    assert report.status is ProvisioningStatus.FAILED
+    assert report.metadata.get("rollback", {}).get("ok") is True
+    assert report.metadata.get("bundle_publication_state") in {
+        "replaced_not_confirmed_durable",
+        "replaced_durable",
+    }
+    assert (dest / BUNDLE_MANIFEST_NAME).read_bytes() == before
+
+
+def test_f001_fail_after_dir_fsync_triggers_rollback(
+    tmp_path: Path, tiny_onnx: tuple[Path, Any]
+) -> None:
+    src, _ = tiny_onnx
+    dest = tmp_path / "model"
+    dest.mkdir()
+    _make_torch_tree(dest)
+    assert (
+        provision_embedding_representations(
+            dest, representations="onnx_fp32_v1", onnx_source=src
+        ).status
+        is ProvisioningStatus.READY
+    )
+    before = (dest / BUNDLE_MANIFEST_NAME).read_bytes()
+    report = provision_embedding_representations(
+        dest,
+        representations="onnx_fp32_v1",
+        force=True,
+        onnx_source=src,
+        test_hooks={
+            "fail_after_bundle_dir_fsync": lambda: (_ for _ in ()).throw(
+                RuntimeError("post-dir-fsync")
+            )
+        },
+    )
+    assert report.status is ProvisioningStatus.FAILED
+    assert report.metadata.get("rollback", {}).get("ok") is True
+    assert report.metadata["bundle_publication_state"] == "replaced_durable"
+    assert (dest / BUNDLE_MANIFEST_NAME).read_bytes() == before
+
+
+def test_f002_torch_regular_files_persisted(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    dest = tmp_path / "model"
+    dest.mkdir()
+    persisted: list[str] = []
+
+    def fake_download(*, repo_id, revision, local_dir):  # type: ignore[no-untyped-def]
+        _make_torch_tree(Path(local_dir))
+
+    monkeypatch.setattr("huggingface_hub.snapshot_download", fake_download)
+    report = provision_embedding_representations(
+        dest,
+        representations="torch_st_v1",
+        force=True,
+        test_hooks={
+            "fail_after_torch_file_persist": lambda rel: persisted.append(rel),
+        },
+    )
+    assert report.status is ProvisioningStatus.READY
+    assert report.metadata["torch_files_persisted"] >= 4
+    # Regular weight + required files + manifest must appear in persist pass.
+    assert any(name.endswith("model.safetensors") or name == "model.safetensors" for name in persisted)
+    assert EMBEDDING_MANIFEST_NAME in persisted
+    assert "config.json" in persisted
+
+
+def test_f003_multilevel_destination_ancestry(tmp_path: Path) -> None:
+    import offline_rag.dense.embedding_bundle_provision as emb
+
+    dest = tmp_path / "a" / "b" / "c" / "model"
+    root = emb._durable_mkdir_ancestry(dest)
+    assert root == dest.resolve()
+    assert dest.is_dir()
+    assert (tmp_path / "a").is_dir()
+    assert (tmp_path / "a" / "b").is_dir()
+    assert (tmp_path / "a" / "b" / "c").is_dir()
+
+
+def test_f003_ancestry_symlink_escape_rejected(tmp_path: Path) -> None:
+    import offline_rag.dense.embedding_bundle_provision as emb
+    from offline_rag.dense.embedding_bundle_provision import BundleProvisionError
+
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    base = tmp_path / "base"
+    base.mkdir()
+    link = base / "escape"
+    link.symlink_to(outside)
+    with pytest.raises(BundleProvisionError, match="symlink escapes"):
+        emb._durable_mkdir_ancestry(link / "model")
+
+
+def test_f004_manifest_path_not_bundle(
+    tmp_path: Path, tiny_onnx: tuple[Path, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    src, _ = tiny_onnx
+    dest = tmp_path / "model"
+    dest.mkdir()
+    _make_torch_tree(dest)
+
+    # Legacy torch no-op
+    noop = provision_embedding_model(dest)
+    assert noop.status is ProvisioningStatus.ALREADY_PROVISIONED
+    assert noop.manifest_path is not None
+    assert noop.manifest_path.endswith(EMBEDDING_MANIFEST_NAME)
+    assert BUNDLE_MANIFEST_NAME not in Path(noop.manifest_path).name
+
+    # ONNX-only install (adopts legacy torch)
+    onnx_rep = provision_embedding_representations(
+        dest, representations="onnx_fp32_v1", onnx_source=src
+    )
+    assert onnx_rep.status is ProvisioningStatus.READY
+    assert onnx_rep.manifest_path is not None
+    assert onnx_rep.manifest_path.endswith(EMBEDDING_MANIFEST_NAME)
+    assert onnx_rep.metadata["bundle_manifest"].endswith(BUNDLE_MANIFEST_NAME)
+
+    def fake_download(*, repo_id, revision, local_dir):  # type: ignore[no-untyped-def]
+        _make_torch_tree(Path(local_dir))
+
+    monkeypatch.setattr("huggingface_hub.snapshot_download", fake_download)
+    torch_rep = provision_embedding_representations(
+        dest, representations="torch_st_v1", force=True
+    )
+    assert torch_rep.status is ProvisioningStatus.READY
+    assert torch_rep.manifest_path is not None
+    assert torch_rep.manifest_path.endswith(EMBEDDING_MANIFEST_NAME)
+    assert "representations/torch_st_v1/" in torch_rep.manifest_path.replace("\\", "/")
+
+    all_rep = provision_embedding_representations(
+        dest, representations="all", force=True, onnx_source=src
+    )
+    assert all_rep.status is ProvisioningStatus.READY
+    assert all_rep.manifest_path is not None
+    assert all_rep.manifest_path.endswith(EMBEDDING_MANIFEST_NAME)
+    assert all_rep.metadata["bundle_manifest"].endswith(BUNDLE_MANIFEST_NAME)
+
+
+def test_f005_both_ready_all_without_onnx_source(
+    tmp_path: Path, tiny_onnx: tuple[Path, Any]
+) -> None:
+    src, _ = tiny_onnx
+    dest = tmp_path / "model"
+    dest.mkdir()
+    _make_torch_tree(dest)
+    assert (
+        provision_embedding_representations(
+            dest, representations="onnx_fp32_v1", onnx_source=src
+        ).status
+        is ProvisioningStatus.READY
+    )
+    again = provision_embedding_representations(dest, representations="all")
+    assert again.status is ProvisioningStatus.ALREADY_PROVISIONED
+    assert again.metadata["bundle_changed"] is False
+
+
+def test_f005_forward_publication_count_exact(
+    tmp_path: Path, tiny_onnx: tuple[Path, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    src, _ = tiny_onnx
+    dest = tmp_path / "model"
+
+    def fake_download(*, repo_id, revision, local_dir):  # type: ignore[no-untyped-def]
+        _make_torch_tree(Path(local_dir))
+
+    monkeypatch.setattr("huggingface_hub.snapshot_download", fake_download)
+    report = provision_embedding_representations(
+        dest, representations="all", onnx_source=src
+    )
+    assert report.status is ProvisioningStatus.READY
+    assert report.metadata["bundle_changed"] is True
+    # Exactly one forward selection transition
+    assert report.metadata.get("bundle_publication_state") == "replaced_durable"
+
+
+def test_f005_rollback_to_previous_absence(
+    tmp_path: Path, tiny_onnx: tuple[Path, Any]
+) -> None:
+    src, _ = tiny_onnx
+    dest = tmp_path / "model"
+    dest.mkdir()
+    _make_torch_tree(dest)
+    assert not (dest / BUNDLE_MANIFEST_NAME).exists()
+    report = provision_embedding_representations(
+        dest,
+        representations="onnx_fp32_v1",
+        onnx_source=src,
+        test_hooks={
+            "fail_after_post_publish_validation": lambda: (_ for _ in ()).throw(
+                __import__(
+                    "offline_rag.dense.embedding_bundle_provision", fromlist=["BundleProvisionError"]
+                ).BundleProvisionError(
+                    "post_publish_validation_failed", "injected"
+                )
+            )
+        },
+    )
+    assert report.status is ProvisioningStatus.FAILED
+    assert report.metadata.get("rollback", {}).get("ok") is True
+    assert report.metadata.get("rollback", {}).get("restored") == "absent"
+    assert not (dest / BUNDLE_MANIFEST_NAME).exists()
+
+
+def test_f005_rollback_persistence_failure(
+    tmp_path: Path, tiny_onnx: tuple[Path, Any]
+) -> None:
+    src, _ = tiny_onnx
+    dest = tmp_path / "model"
+    dest.mkdir()
+    _make_torch_tree(dest)
+    assert (
+        provision_embedding_representations(
+            dest, representations="onnx_fp32_v1", onnx_source=src
+        ).status
+        is ProvisioningStatus.READY
+    )
+    from offline_rag.dense.embedding_bundle_provision import (
+        OUTCOME_POST_PUBLISH_VALIDATION_FAILED,
+        OUTCOME_ROLLBACK_FAILED,
+        BundleProvisionError,
+    )
+
+    report = provision_embedding_representations(
+        dest,
+        representations="onnx_fp32_v1",
+        force=True,
+        onnx_source=src,
+        test_hooks={
+            "fail_after_post_publish_validation": lambda: (_ for _ in ()).throw(
+                BundleProvisionError(OUTCOME_POST_PUBLISH_VALIDATION_FAILED, "x")
+            ),
+            "fail_after_rollback_dir_fsync": lambda: (_ for _ in ()).throw(
+                RuntimeError("rollback dir fsync")
+            ),
+        },
+    )
+    assert report.status is ProvisioningStatus.FAILED
+    assert report.metadata["outcome_code"] == OUTCOME_ROLLBACK_FAILED
+    assert "final_observed_state" in report.metadata
+
+
+def test_f005_bundle_tmp_persist_hook(
+    tmp_path: Path, tiny_onnx: tuple[Path, Any]
+) -> None:
+    src, _ = tiny_onnx
+    dest = tmp_path / "model"
+    dest.mkdir()
+    _make_torch_tree(dest)
+    report = provision_embedding_representations(
+        dest,
+        representations="onnx_fp32_v1",
+        onnx_source=src,
+        test_hooks={
+            "fail_before_bundle_tmp_fsync_done": lambda: (_ for _ in ()).throw(
+                RuntimeError("tmp persist")
+            )
+        },
+    )
+    assert report.status is ProvisioningStatus.FAILED
+    assert report.metadata.get("rollback", {}).get("attempted") is False
+    assert not (dest / BUNDLE_MANIFEST_NAME).exists()

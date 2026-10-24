@@ -1,5 +1,5 @@
 {
-  "accepted_design_disposition": "P3 DESIGN COMPLETE / INDEPENDENTLY ACCEPTED \u2014 IR-002",
+  "accepted_design_disposition": "P3 DESIGN COMPLETE / INDEPENDENTLY ACCEPTED — IR-002",
   "accepted_p2_technical_subject": "07ce117b9d94b9372244004386351c577c725fc6",
   "authority": "S16-K-D-DUAL-BACKEND-P3-PROVISIONING-ACQUISITION-IMPLEMENTATION-AUTH-001",
   "authorized_parent": "3b213b0c0ec915c041069e5c99f3149acbf1cd6b",
@@ -8,20 +8,7 @@
     "evidence": "docs/evidence/16k_d_dual_backend_p3/p3_bounded_real_provisioning_pass.json"
   },
   "branch": "implementation/16k-d-dual-backend-p3-provisioning-acquisition",
-  "candidate_tip": "79ea783bc859d144b99af570197058255c0457b5",
-  "changed_paths": [
-    "src/offline_rag/dense/provision.py",
-    "src/offline_rag/dense/embedding_bundle_provision.py",
-    "src/offline_rag/cli.py",
-    "tests/unit/dense/test_embedding_bundle_provision.py",
-    "tests/unit/test_cli.py",
-    "docs/model_provisioning.md",
-    "docs/slice16k_d_dual_backend_p3_provisioning_acquisition_design.md",
-    "docs/evidence/16k_d_dual_backend_p3/p3_implementation_auth001.json",
-    "docs/evidence/16k_d_dual_backend_p3/p3_bounded_real_provisioning_pass.json",
-    "docs/evidence/16k_d_dual_backend_p3/p3_implementation_candidate.json",
-    "ROADMAP.md"
-  ],
+  "current_disposition": "P3 IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW",
   "design_acceptance_matrix": {
     "all_transaction": "PASS",
     "bounded_real_provisioning": "PASS",
@@ -35,19 +22,16 @@
     "qualification_authority": "PASS",
     "rollback": "PASS"
   },
-  "disposition": "P3 IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW",
-  "full_pytest": {
-    "candidate": "33 failed, 1900 passed, 1 skipped",
-    "fair_parent_same_cwd_failset": "33 failed (identical failset; zero P3-specific regressions)",
-    "note": "uv build --wheel PASS; full sdist omitted due to host workspace data/ clutter outside authorized paths"
+  "disposition_historical_implementation_handoff": "P3 IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW",
+  "historical_implementation_subject": "7b94bd4d3ce7997093fd4e4d8e272a4314c76a13",
+  "ir001_findings": {
+    "F001": "CLOSED",
+    "F002": "CLOSED",
+    "F003": "CLOSED",
+    "F004": "CLOSED",
+    "F005": "CLOSED"
   },
-  "implementation_subject": "7b94bd4d3ce7997093fd4e4d8e272a4314c76a13",
-  "proofs": {
-    "cli": "tests/unit/test_cli.py PASS",
-    "focused_p3": "tests/unit/dense/test_embedding_bundle_provision.py 19 PASS",
-    "p1_artifacts": "tests/unit/dense/test_dense_embedding_artifacts.py PASS",
-    "p2_product": "tests/unit/app/test_slice16k_d_p2_dual_backend_product_integration.py PASS"
-  },
+  "ir001_rework_evidence": "docs/evidence/16k_d_dual_backend_p3/p3_ir001_rework_candidate.json",
   "record_kind": "p3_implementation_candidate",
   "unauthorized_remaining": [
     "P4",

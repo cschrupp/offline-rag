@@ -1,0 +1,61 @@
+{
+  "authority": "S16-K-D-DUAL-BACKEND-P3-PROVISIONING-ACQUISITION-IMPLEMENTATION-AUTH-001",
+  "authorized_parent": "3b213b0c0ec915c041069e5c99f3149acbf1cd6b",
+  "bounded_real_provisioning": {
+    "disposition": "PASS",
+    "evidence": "docs/evidence/16k_d_dual_backend_p3/p3_bounded_real_provisioning_pass.json",
+    "rerun": true
+  },
+  "branch": "implementation/16k-d-dual-backend-p3-provisioning-acquisition",
+  "changed_paths": [
+    "src/offline_rag/dense/embedding_bundle_provision.py",
+    "tests/unit/dense/test_embedding_bundle_provision.py",
+    "docs/evidence/16k_d_dual_backend_p3/p3_bounded_real_provisioning_pass.json",
+    "docs/evidence/16k_d_dual_backend_p3/p3_implementation_candidate.json",
+    "docs/evidence/16k_d_dual_backend_p3/p3_ir001_rework_candidate.json",
+    "ROADMAP.md"
+  ],
+  "disposition": "P3 IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW",
+  "findings": {
+    "F001": "CLOSED",
+    "F002": "CLOSED",
+    "F003": "CLOSED",
+    "F004": "CLOSED",
+    "F005": "CLOSED"
+  },
+  "fault_injection_cases": [
+    "fail_before_bundle_replace_no_rollback",
+    "fail_after_replace_via_fsync_triggers_rollback",
+    "fail_after_dir_fsync_triggers_rollback",
+    "torch_regular_files_persisted",
+    "multilevel_destination_ancestry",
+    "ancestry_symlink_escape_rejected",
+    "manifest_path_not_bundle",
+    "both_ready_all_without_onnx_source",
+    "forward_publication_count_exact",
+    "rollback_to_previous_absence",
+    "rollback_persistence_failure",
+    "bundle_tmp_persist_hook",
+    "prior_partial_failure_no_selection_change",
+    "prior_post_publish_validation_rollback",
+    "prior_rollback_failure_code",
+    "prior_concurrent_writer_lock"
+  ],
+  "fault_injection_count": 16,
+  "ir001_starting_subject": "7b94bd4d3ce7997093fd4e4d8e272a4314c76a13",
+  "prior_candidate_tip": "5c68bdd80f7f18ef60173efb2c56418be8d9cacb",
+  "proofs": {
+    "cli": "PASS",
+    "focused_p3": "31 PASS",
+    "p1_artifacts": "PASS",
+    "p2_product": "PASS"
+  },
+  "record_kind": "p3_ir001_rework_candidate",
+  "unauthorized_remaining": [
+    "P4",
+    "campaigns",
+    "main",
+    "merge",
+    "promotion"
+  ]
+}

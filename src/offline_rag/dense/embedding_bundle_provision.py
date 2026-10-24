@@ -29,6 +29,7 @@ from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from enum import StrEnum
 from pathlib import Path
 from typing import Any, Literal
 
@@ -106,12 +107,26 @@ class _PreviousBundleState:
     bytes: bytes | None = None
 
 
+class BundlePublicationState(StrEnum):
+    """Selection-transition state for forward bundle publication (F001)."""
+
+    NOT_REPLACED = "not_replaced"
+    REPLACED_NOT_CONFIRMED_DURABLE = "replaced_not_confirmed_durable"
+    REPLACED_DURABLE = "replaced_durable"
+
+
 @dataclass
 class _TxCounters:
     bundle_publications: int = 0
     onnx_files_copied: int = 0
     files_downloaded: int = 0
+    torch_files_persisted: int = 0
+    bundle_publication_state: BundlePublicationState = BundlePublicationState.NOT_REPLACED
     hooks: dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def selection_may_be_live(self) -> bool:
+        return self.bundle_publication_state is not BundlePublicationState.NOT_REPLACED
 
 
 def normalize_representation_request(
@@ -137,18 +152,94 @@ def normalize_representation_request(
     return out
 
 
-def _canonical_model_root(destination: Path) -> Path:
-    dest = Path(destination).expanduser()
+def _reject_escaping_ancestry_symlinks(dest: Path) -> None:
+    """Reject destination chains that redirect outside their parent via symlink."""
+    prefixes: list[Path] = []
+    cur = dest
+    while True:
+        prefixes.append(cur)
+        if cur.parent == cur:
+            break
+        cur = cur.parent
+    for prefix in reversed(prefixes):
+        if not prefix.exists() or not prefix.is_symlink():
+            continue
+        parent_real = prefix.parent.resolve(strict=True)
+        target_real = prefix.resolve(strict=True)
+        try:
+            target_real.relative_to(parent_real)
+        except ValueError as exc:
+            raise BundleProvisionError(
+                OUTCOME_WRITE_FAILED,
+                f"destination ancestry symlink escapes base: {prefix}",
+            ) from exc
+
+
+def _durable_mkdir_ancestry(path: Path) -> Path:
+    """Create ``path`` and missing parents; fsync each containing directory (F003).
+
+    Each newly created directory entry is persisted by syncing its parent.
+    Rejects ancestry that resolves through a symlink escaping its parent.
+    """
+    dest = Path(path).expanduser()
+    _reject_escaping_ancestry_symlinks(dest)
     if dest.exists():
+        if not dest.is_dir():
+            raise BundleProvisionError(
+                OUTCOME_WRITE_FAILED, f"model root exists but is not a directory: {dest}"
+            )
         return dest.resolve(strict=True)
-    parent = dest.parent
-    if not parent.exists():
-        parent.mkdir(parents=True, exist_ok=True)
-        _fsync_dir(parent)
-    # Create empty root so resolve is stable, then lock/transaction owns it.
-    dest.mkdir(parents=True, exist_ok=True)
-    _fsync_dir(dest.parent)
+
+    existing = dest
+    while not existing.exists() and existing != existing.parent:
+        existing = existing.parent
+    if not existing.exists():
+        raise BundleProvisionError(
+            OUTCOME_WRITE_FAILED,
+            f"cannot locate existing ancestor for model root: {dest}",
+        )
+    try:
+        existing_real = existing.resolve(strict=True)
+    except OSError as exc:
+        raise BundleProvisionError(
+            OUTCOME_WRITE_FAILED, f"cannot resolve existing ancestor: {existing}"
+        ) from exc
+
+    try:
+        rel = dest.relative_to(existing)
+    except ValueError as exc:
+        raise BundleProvisionError(
+            OUTCOME_WRITE_FAILED,
+            f"model root is not under existing ancestor {existing}: {dest}",
+        ) from exc
+    if ".." in rel.parts:
+        raise BundleProvisionError(
+            OUTCOME_WRITE_FAILED, f"unsafe model-root relative ancestry: {rel}"
+        )
+
+    cursor = existing
+    for part in rel.parts:
+        nxt = cursor / part
+        if nxt.exists():
+            if nxt.is_symlink():
+                resolved = nxt.resolve(strict=True)
+                try:
+                    resolved.relative_to(existing_real)
+                except ValueError as exc:
+                    raise BundleProvisionError(
+                        OUTCOME_WRITE_FAILED,
+                        f"destination ancestry symlink escapes base: {nxt}",
+                    ) from exc
+            cursor = nxt
+            continue
+        nxt.mkdir(exist_ok=True)
+        _fsync_dir(cursor)  # persist the new directory entry in its parent
+        cursor = nxt
     return dest.resolve(strict=True)
+
+
+def _canonical_model_root(destination: Path) -> Path:
+    return _durable_mkdir_ancestry(Path(destination).expanduser())
 
 
 def _assert_physically_inside(root: Path, path: Path) -> Path:
@@ -344,13 +435,44 @@ def _durable_publish_directory(staging: Path, final: Path, *, root: Path) -> Non
     _fsync_dir(final.parent)
 
 
-def _durable_replace_file(tmp_path: Path, final_path: Path, *, root: Path) -> None:
+def _durable_replace_file(
+    tmp_path: Path,
+    final_path: Path,
+    *,
+    root: Path,
+    counters: _TxCounters | None = None,
+    mark_bundle_selection: bool = False,
+) -> None:
+    """Atomic replace with optional selection-transition tracking (F001).
+
+    Once ``os.replace`` succeeds, ``counters.bundle_publication_state`` advances
+    to ``REPLACED_NOT_CONFIRMED_DURABLE`` before file/directory fsync. Any
+    subsequent failure must be treated as a possible live forward publication.
+    """
+    hooks = counters.hooks if counters is not None else {}
     _assert_physically_inside(root, tmp_path)
     _assert_physically_inside(root, final_path)
     _fsync_file(tmp_path)
     os.replace(tmp_path, final_path)
+    if mark_bundle_selection and counters is not None:
+        counters.bundle_publication_state = (
+            BundlePublicationState.REPLACED_NOT_CONFIRMED_DURABLE
+        )
+        counters.bundle_publications += 1
+        fail_after_replace = hooks.get("fail_after_bundle_replace")
+        if callable(fail_after_replace):
+            fail_after_replace()
     _fsync_file(final_path)
+    if mark_bundle_selection and counters is not None:
+        fail_after_file = hooks.get("fail_after_bundle_file_fsync")
+        if callable(fail_after_file):
+            fail_after_file()
     _fsync_dir(final_path.parent)
+    if mark_bundle_selection and counters is not None:
+        counters.bundle_publication_state = BundlePublicationState.REPLACED_DURABLE
+        fail_after_dir = hooks.get("fail_after_bundle_dir_fsync")
+        if callable(fail_after_dir):
+            fail_after_dir()
 
 
 @contextmanager
@@ -491,6 +613,42 @@ def _write_torch_manifest(
     return artifact_id, len(digests)
 
 
+def _persist_staging_tree(
+    staging: Path, *, root: Path, hooks: Mapping[str, Any]
+) -> int:
+    """Fsync every regular file and directory under staging (F002)."""
+    fail = hooks.get("fail_before_torch_persist")
+    if callable(fail):
+        fail()
+    files_persisted = 0
+    for path in sorted(staging.rglob("*"), key=lambda p: len(p.parts), reverse=True):
+        _assert_physically_inside(root, path)
+        if path.is_symlink():
+            raise BundleProvisionError(
+                OUTCOME_WRITE_FAILED,
+                f"staged tree still contains symlink before publish: {path}",
+            )
+        if path.is_file():
+            st = path.stat()
+            if not stat.S_ISREG(st.st_mode):
+                raise BundleProvisionError(
+                    OUTCOME_WRITE_FAILED,
+                    f"staged tree contains non-regular file: {path}",
+                )
+            _fsync_file(path)
+            files_persisted += 1
+            fail_file = hooks.get("fail_after_torch_file_persist")
+            if callable(fail_file):
+                fail_file(str(path.relative_to(staging)))
+        elif path.is_dir():
+            _fsync_dir(path)
+    _fsync_dir(staging)
+    fail_done = hooks.get("fail_after_torch_persist")
+    if callable(fail_done):
+        fail_done()
+    return files_persisted
+
+
 def _acquire_torch_into_staging(
     staging: Path,
     *,
@@ -498,8 +656,9 @@ def _acquire_torch_into_staging(
     revision: str,
     expected_dimension: int,
     root: Path,
-    hooks: Mapping[str, Any],
+    counters: _TxCounters,
 ) -> tuple[str, int]:
+    hooks = counters.hooks
     _durable_mkdir(staging, root=root)
     fail = hooks.get("fail_before_torch_download")
     if callable(fail):
@@ -507,7 +666,7 @@ def _acquire_torch_into_staging(
     from huggingface_hub import snapshot_download
 
     snapshot_download(repo_id=model_id, revision=revision, local_dir=str(staging))
-    # Ensure downloaded files are regular files under root (HF may use symlinks).
+    # Materialize HF symlinks to independent regular files under the model root.
     for path in staging.rglob("*"):
         if path.is_symlink():
             target = path.resolve(strict=True)
@@ -525,6 +684,10 @@ def _acquire_torch_into_staging(
         revision=revision,
         expected_dimension=expected_dimension,
         root=root,
+    )
+    # F002: persist every regular file P3 intends to publish (HF does not own this).
+    counters.torch_files_persisted = _persist_staging_tree(
+        staging, root=root, hooks=hooks
     )
     fail_v = hooks.get("fail_after_torch_stage_validate_setup")
     if callable(fail_v):
@@ -638,21 +801,25 @@ def _publish_bundle(
             os.fsync(handle.fileno())
         fail_persist = hooks.get("fail_before_bundle_tmp_fsync_done")
         if callable(fail_persist):
-            # file already fsynced above; hook for replace failure injection
-            pass
+            fail_persist()
         fail_replace = hooks.get("fail_before_bundle_replace")
         if callable(fail_replace):
             fail_replace()
-        _durable_replace_file(tmp_path, final, root=model_root)
-        fail_dir = hooks.get("fail_after_bundle_dir_fsync")
-        if callable(fail_dir):
-            fail_dir()
-        counters.bundle_publications += 1
+        # Selection becomes potentially live at os.replace inside this helper.
+        _durable_replace_file(
+            tmp_path,
+            final,
+            root=model_root,
+            counters=counters,
+            mark_bundle_selection=True,
+        )
     except BundleProvisionError:
-        tmp_path.unlink(missing_ok=True)
+        if not counters.selection_may_be_live:
+            tmp_path.unlink(missing_ok=True)
         raise
     except Exception as exc:
-        tmp_path.unlink(missing_ok=True)
+        if not counters.selection_may_be_live:
+            tmp_path.unlink(missing_ok=True)
         raise BundleProvisionError(
             OUTCOME_PUBLISH_FAILED, f"bundle publish failed: {exc}"
         ) from exc
@@ -725,6 +892,26 @@ def _action_outcome(action: str) -> str:
     if action == "replace":
         return OUTCOME_REPLACED
     return OUTCOME_INSTALLED
+
+
+def _legacy_torch_manifest_path(
+    model_root: Path, resulting_pointers: Mapping[str, str]
+) -> str | None:
+    """Frozen EmbeddingProvisionReport.manifest_path semantics (F004).
+
+    Identifies an applicable Torch ``offline-rag-embedding.json`` when present.
+    Never silently redefined as the bundle manifest path.
+    """
+    pointer = resulting_pointers.get("torch_st_v1")
+    if pointer == ".":
+        path = embedding_manifest_path(model_root)
+        return str(path) if path.is_file() else None
+    if pointer:
+        path = model_root / pointer / EMBEDDING_MANIFEST_NAME
+        return str(path) if path.is_file() else None
+    # Legacy root / no bundle torch pointer yet.
+    path = embedding_manifest_path(model_root)
+    return str(path) if path.is_file() else None
 
 
 def provision_embedding_representations(
@@ -949,12 +1136,9 @@ def _run_transaction(
             resolved_revision=revision,
             destination=str(model_root),
             artifact_id=None,
-            manifest_path=str(embedding_manifest_path(model_root))
-            if (model_root / EMBEDDING_MANIFEST_NAME).is_file()
-            else (
-                str(bundle_manifest_path(model_root))
-                if previous.kind == "present_valid"
-                else None
+            manifest_path=_legacy_torch_manifest_path(
+                model_root,
+                _current_pointers(model_root) if previous.kind == "present_valid" else {},
             ),
             files_downloaded=0,
             metadata=metadata,
@@ -1011,7 +1195,7 @@ def _run_transaction(
                     revision=revision,
                     expected_dimension=expected_dimension,
                     root=model_root,
-                    hooks=counters.hooks,
+                    counters=counters,
                 )
                 counters.files_downloaded += n_files
                 artifact_id = art_id
@@ -1138,6 +1322,8 @@ def _run_transaction(
             else:
                 metadata["outcome_code"] = OUTCOME_ADOPTED_LEGACY
 
+        metadata["bundle_publication_state"] = counters.bundle_publication_state.value
+        metadata["torch_files_persisted"] = counters.torch_files_persisted
         return EmbeddingProvisionReport(
             status=ProvisioningStatus.READY,
             model_id=model_id,
@@ -1145,7 +1331,7 @@ def _run_transaction(
             resolved_revision=revision,
             destination=str(model_root),
             artifact_id=artifact_id,
-            manifest_path=str(bundle_manifest_path(model_root)),
+            manifest_path=_legacy_torch_manifest_path(model_root, resulting),
             files_downloaded=counters.files_downloaded,
             metadata=metadata,
         )
@@ -1154,15 +1340,15 @@ def _run_transaction(
             exc = raw_exc
         else:
             exc = BundleProvisionError(OUTCOME_WRITE_FAILED, str(raw_exc))
-        if counters.bundle_publications >= 1 and exc.outcome_code in {
-            OUTCOME_POST_PUBLISH_VALIDATION_FAILED,
-        }:
+        # F001: any failure after os.replace must attempt recovery.
+        if counters.selection_may_be_live:
             try:
                 _restore_previous_bundle(model_root, previous, counters=counters)
                 metadata["rollback"] = {
                     "attempted": True,
                     "restored": previous.kind,
                     "ok": True,
+                    "publication_state": counters.bundle_publication_state.value,
                 }
             except BundleProvisionError as rollback_exc:
                 metadata["rollback"] = {
@@ -1212,13 +1398,14 @@ def _run_transaction(
                     "reason": insp.reason,
                 }
             metadata["final_observed_state"] = observed
-        elif counters.bundle_publications == 0:
+        elif not counters.selection_may_be_live:
             metadata["rollback"] = {
                 "attempted": False,
                 "reason": "no_forward_bundle_publication",
             }
         metadata["outcome_code"] = exc.outcome_code
         metadata["onnx_files_copied"] = counters.onnx_files_copied
+        metadata["bundle_publication_state"] = counters.bundle_publication_state.value
         metadata["bundle_changed"] = False
         if staging_root.exists():
             shutil.rmtree(staging_root, ignore_errors=True)
