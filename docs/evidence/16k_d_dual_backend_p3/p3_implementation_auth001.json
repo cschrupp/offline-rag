@@ -1,0 +1,52 @@
+{
+  "accepted_design": "P3 Dual-Backend Provisioning & Acquisition Design — Revision 001",
+  "accepted_design_disposition": "P3 DESIGN COMPLETE / INDEPENDENTLY ACCEPTED — IR-002",
+  "accepted_p2_technical_subject": "07ce117b9d94b9372244004386351c577c725fc6",
+  "authority": "S16-K-D-DUAL-BACKEND-P3-PROVISIONING-ACQUISITION-IMPLEMENTATION-AUTH-001",
+  "authorized_parent": "3b213b0c0ec915c041069e5c99f3149acbf1cd6b",
+  "authorized_paths": [
+    "src/offline_rag/dense/provision.py",
+    "src/offline_rag/dense/embedding_bundle_provision.py",
+    "src/offline_rag/cli.py",
+    "tests/unit/dense/test_embedding_bundle_provision.py",
+    "tests/unit/dense/test_dense_embedding_artifacts.py",
+    "tests/unit/test_cli.py",
+    "docs/model_provisioning.md",
+    "docs/slice16k_d_dual_backend_p3_provisioning_acquisition_design.md",
+    "docs/evidence/16k_d_dual_backend_p3/p3_implementation_auth001.json",
+    "docs/evidence/16k_d_dual_backend_p3/p3_bounded_real_provisioning_pass.json",
+    "docs/evidence/16k_d_dual_backend_p3/p3_implementation_candidate.json",
+    "ROADMAP.md"
+  ],
+  "branch": "implementation/16k-d-dual-backend-p3-provisioning-acquisition",
+  "exclusions": [
+    "src/offline_rag/dense/embedding_artifacts.py",
+    "src/offline_rag/dense/execution_profile.py",
+    "src/offline_rag/dense/embedding_runtime.py",
+    "src/offline_rag/dense/onnx_embedder.py",
+    "src/offline_rag/dense/st_onnx_runtime.py",
+    "src/offline_rag/resources/embedding_representations/onnx_fp32_v1.json",
+    "src/offline_rag/app/runtime.py",
+    "src/offline_rag/api/compute_settings.py",
+    "src/offline_rag/api/capabilities.py",
+    "ui/**",
+    "pyproject.toml",
+    "uv.lock"
+  ],
+  "p2_closeout_parent": "3b213b0c0ec915c041069e5c99f3149acbf1cd6b",
+  "record_kind": "p3_implementation_auth001",
+  "unauthorized": [
+    "P4",
+    "scientific_campaigns",
+    "parity_reruns",
+    "full_1296_confirmation",
+    "quantization",
+    "alternate_models",
+    "alternate_representations",
+    "new_onnx_export",
+    "main",
+    "merge",
+    "release",
+    "promotion"
+  ]
+}

@@ -438,6 +438,8 @@ def cmd_provision_embedding(args: argparse.Namespace) -> int:
         revision=settings.indexing.embedding.revision,
         expected_dimension=settings.indexing.embedding.dimension,
         force=bool(args.force),
+        representation=getattr(args, "representation", None),
+        onnx_source=getattr(args, "onnx_source", None),
     )
 
     if args.json:
@@ -1981,7 +1983,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
                 f"CUDA probe                       UNAVAILABLE "
                 f"(cuda_device_unavailable; build={torch_cuda_build})"
             )
-    except Exception as exc:  # noqa: BLE001 — doctor must remain non-fatal for extras
+    except Exception as exc:
         notes.append(f"Dual-backend doctor projection    SKIP ({type(exc).__name__})")
 
     state_file = corpus_state_path(settings.paths.corpora, corpus_name)
@@ -2459,13 +2461,31 @@ def build_parser() -> argparse.ArgumentParser:
     provision_sub = provision.add_subparsers(dest="provision_command", required=True)
     provision_embedding = provision_sub.add_parser(
         "embedding",
-        help="Download/pin the local dense embedding model",
+        help="Provision local dense embedding representations (torch / onnx)",
     )
     _add_config_argument(provision_embedding)
     provision_embedding.add_argument(
+        "--representation",
+        choices=("torch_st_v1", "onnx_fp32_v1", "all"),
+        default=None,
+        help=(
+            "Representation to provision. Omitted defaults to torch_st_v1. "
+            "Use 'all' for an all-or-nothing torch+onnx transaction."
+        ),
+    )
+    provision_embedding.add_argument(
+        "--onnx-source",
+        type=Path,
+        default=None,
+        help=(
+            "Local directory containing already-qualified onnx_fp32_v1 bytes "
+            "(required for onnx install/replace; source path has no authority)"
+        ),
+    )
+    provision_embedding.add_argument(
         "--force",
         action="store_true",
-        help="Re-download even when artifacts already validate as READY",
+        help="Replace READY representations through the safe P3 transaction",
     )
     provision_embedding.add_argument("--json", action="store_true", help="Emit EmbeddingProvisionReport JSON")
     provision_embedding.set_defaults(func=cmd_provision_embedding)

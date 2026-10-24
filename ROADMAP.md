@@ -1215,10 +1215,27 @@ SLICE 15  COMPLETE / ACCEPTED
          Closeout: single Human acknowledgment (no HA-record / HA-review /
            status-flip chain)
          Downstream (P3/P4/campaigns/main/merge/promotion):
-           NOT AUTHORIZED
+           NOT AUTHORIZED at P2 close; P3 later authorized separately
          P3: separate later Human authorization required; not opened by P2 close
+       16K-D DUAL-BACKEND P3: DESIGN COMPLETE / INDEPENDENTLY ACCEPTED (IR-002)
+         P3 IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
+         Implementation authority:
+           S16-K-D-DUAL-BACKEND-P3-PROVISIONING-ACQUISITION-IMPLEMENTATION-AUTH-001
+         Implementation parent:
+           3b213b0c0ec915c041069e5c99f3149acbf1cd6b
+         Inherited accepted P2 technical subject:
+           07ce117b9d94b9372244004386351c577c725fc6
+         Branch: implementation/16k-d-dual-backend-p3-provisioning-acquisition
+         Design document:
+           docs/slice16k_d_dual_backend_p3_provisioning_acquisition_design.md
+         Evidence:
+           docs/evidence/16k_d_dual_backend_p3/p3_implementation_auth001.json
+           docs/evidence/16k_d_dual_backend_p3/p3_implementation_candidate.json
+           docs/evidence/16k_d_dual_backend_p3/p3_bounded_real_provisioning_pass.json
+         Bounded real provisioning confirmation: PASS
+         Downstream (P4/campaigns/main/merge/promotion): NOT AUTHORIZED
        16K-D still closed: full 1296 FP32 confirmation ·
-         P3 provisioning · P4 acceptance · default promotion · main ·
+         P4 acceptance · default promotion · main ·
          alternate models · further quantization
        16K-D CPU-GGUF-01 authority:
          S16-K-D-POST-CPUONNX-CPU-GGUF-FEASIBILITY-IMPLEMENTATION-AUTH-001
@@ -2183,10 +2200,27 @@ SLICE 15  COMPLETE / ACCEPTED
          Closeout: single Human acknowledgment (no HA-record / HA-review /
            status-flip chain)
          Downstream (P3/P4/campaigns/main/merge/promotion):
-           NOT AUTHORIZED
+           NOT AUTHORIZED at P2 close; P3 later authorized separately
          P3: separate later Human authorization required; not opened by P2 close
+       16K-D DUAL-BACKEND P3: DESIGN COMPLETE / INDEPENDENTLY ACCEPTED (IR-002)
+         P3 IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
+         Implementation authority:
+           S16-K-D-DUAL-BACKEND-P3-PROVISIONING-ACQUISITION-IMPLEMENTATION-AUTH-001
+         Implementation parent:
+           3b213b0c0ec915c041069e5c99f3149acbf1cd6b
+         Inherited accepted P2 technical subject:
+           07ce117b9d94b9372244004386351c577c725fc6
+         Branch: implementation/16k-d-dual-backend-p3-provisioning-acquisition
+         Design document:
+           docs/slice16k_d_dual_backend_p3_provisioning_acquisition_design.md
+         Evidence:
+           docs/evidence/16k_d_dual_backend_p3/p3_implementation_auth001.json
+           docs/evidence/16k_d_dual_backend_p3/p3_implementation_candidate.json
+           docs/evidence/16k_d_dual_backend_p3/p3_bounded_real_provisioning_pass.json
+         Bounded real provisioning confirmation: PASS
+         Downstream (P4/campaigns/main/merge/promotion): NOT AUTHORIZED
        16K-D still closed: full 1296 FP32 confirmation ·
-         P3 provisioning · P4 acceptance · default promotion · main ·
+         P4 acceptance · default promotion · main ·
          alternate models · further quantization
        16K-D CPU-GGUF-01 authority:
          S16-K-D-POST-CPUONNX-CPU-GGUF-FEASIBILITY-IMPLEMENTATION-AUTH-001

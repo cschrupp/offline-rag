@@ -1,0 +1,23 @@
+{
+  "accepted_onnx_historical_tree_sha256": "3e1b23a7293cf599bc34d1d9875e5c4ecde45bf12fcd300a6cb66794b5bc4345",
+  "authority": "S16-K-D-DUAL-BACKEND-P3-PROVISIONING-ACQUISITION-IMPLEMENTATION-AUTH-001",
+  "bundle_changed": true,
+  "bundle_publication_count": 1,
+  "confirmation": "bounded_real_provisioning",
+  "disposition": "PASS",
+  "installed_onnx_required_file_digest_verification": "PASS",
+  "model_provider_calls": 0,
+  "network_calls_for_onnx": 0,
+  "outcome_code": "installed",
+  "post_state_onnx_readiness": "ready",
+  "post_state_torch_readiness": "ready",
+  "pre_state_onnx_readiness": "absent",
+  "pre_state_torch_readiness": "ready",
+  "repeat_bundle_changed": false,
+  "repeat_invocation_status": "already_provisioned",
+  "requested_representation": "onnx_fp32_v1",
+  "scientific_campaign_calls": 0,
+  "scratch_target_classification": "temporary_local_posix_filesystem",
+  "source_identity": "repo_relative:data/16k_d_cpu_onnx_work/exports/fp32_v1",
+  "source_tree_unchanged": true
+}

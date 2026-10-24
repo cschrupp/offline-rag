@@ -24,6 +24,8 @@ def test_root_help() -> None:
         (["chunk", "--help"], "chunk"),
         (["chunk", "inspect", "--help"], "chunk inspect"),
         (["provision", "embedding", "--help"], "provision embedding"),
+        (["provision", "embedding", "--help"], "--representation"),
+        (["provision", "embedding", "--help"], "--onnx-source"),
         (["provision", "reranker", "--help"], "provision reranker"),
         (["index", "--help"], "index"),
         (["index", "inspect", "--help"], "index inspect"),

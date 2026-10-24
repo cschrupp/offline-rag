@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-import shutil
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
 from typing import Any
@@ -21,9 +19,7 @@ from offline_rag.core.ids import (
 from offline_rag.domain.indexing import (
     EmbeddingModelManifest,
     EmbeddingProvisionReport,
-    ProvisioningStatus,
 )
-from offline_rag.ingestion.io import atomic_write_text
 
 EMBEDDING_MANIFEST_NAME = "offline-rag-embedding.json"
 DEFAULT_EMBEDDING_DIR_NAME = "qwen3-embedding-0.6b"
@@ -73,7 +69,10 @@ class EmbeddingArtifactStatus:
 
 
 def default_embedding_model_dir(embedding_artifacts_root: Path) -> Path:
-    return Path(embedding_artifacts_root).expanduser().resolve() / DEFAULT_EMBEDDING_DIR_NAME
+    return (
+        Path(embedding_artifacts_root).expanduser().resolve()
+        / DEFAULT_EMBEDDING_DIR_NAME
+    )
 
 
 def embedding_manifest_path(model_dir: Path) -> Path:
@@ -109,8 +108,7 @@ def _collect_file_digests(model_dir: Path, *, required: list[str]) -> dict[str, 
     weight = _find_weight_file(model_dir)
     if weight is None:
         raise FileNotFoundError(
-            "missing model weights "
-            f"(expected one of: {', '.join(_WEIGHT_CANDIDATES)})"
+            f"missing model weights (expected one of: {', '.join(_WEIGHT_CANDIDATES)})"
         )
     digests[weight.name] = _sha256_file(weight)
     return digests
@@ -139,14 +137,20 @@ def validate_embedding_artifacts(
     """Return ABSENT / INVALID / READY for a local embedding model directory."""
     resolved = Path(model_dir).expanduser().resolve()
     if not resolved.exists():
-        return EmbeddingArtifactStatus(resolved, EmbeddingReadiness.ABSENT, "directory missing")
+        return EmbeddingArtifactStatus(
+            resolved, EmbeddingReadiness.ABSENT, "directory missing"
+        )
     if not resolved.is_dir():
-        return EmbeddingArtifactStatus(resolved, EmbeddingReadiness.INVALID, "path is not a directory")
+        return EmbeddingArtifactStatus(
+            resolved, EmbeddingReadiness.INVALID, "path is not a directory"
+        )
 
     manifest_file = embedding_manifest_path(resolved)
     if not manifest_file.exists():
         if not any(resolved.iterdir()):
-            return EmbeddingArtifactStatus(resolved, EmbeddingReadiness.ABSENT, "directory is empty")
+            return EmbeddingArtifactStatus(
+                resolved, EmbeddingReadiness.ABSENT, "directory is empty"
+            )
         return EmbeddingArtifactStatus(
             resolved,
             EmbeddingReadiness.INVALID,
@@ -170,7 +174,10 @@ def validate_embedding_artifacts(
             EmbeddingReadiness.INVALID,
             f"manifest model_id mismatch: {manifest.model_id}",
         )
-    if manifest.requested_revision != expected_revision and manifest.resolved_revision != expected_revision:
+    if (
+        manifest.requested_revision != expected_revision
+        and manifest.resolved_revision != expected_revision
+    ):
         return EmbeddingArtifactStatus(
             resolved,
             EmbeddingReadiness.INVALID,
@@ -190,7 +197,9 @@ def validate_embedding_artifacts(
         )
 
     try:
-        digests = _collect_file_digests(resolved, required=list(REQUIRED_EMBEDDING_FILES))
+        digests = _collect_file_digests(
+            resolved, required=list(REQUIRED_EMBEDDING_FILES)
+        )
     except FileNotFoundError as exc:
         return EmbeddingArtifactStatus(resolved, EmbeddingReadiness.INVALID, str(exc))
 
@@ -244,100 +253,28 @@ def provision_embedding_model(
     revision: str = QWEN3_EMBEDDING_PINNED_REVISION,
     expected_dimension: int = DEFAULT_EXPECTED_DIMENSION,
     force: bool = False,
+    representation: str | list[str] | None = None,
+    onnx_source: Path | str | None = None,
 ) -> EmbeddingProvisionReport:
-    """Download a pinned HF snapshot into ``destination`` via staging publish."""
-    dest = Path(destination).expanduser().resolve()
-    if not force:
-        status = validate_embedding_artifacts(
-            dest,
-            expected_model_id=model_id,
-            expected_revision=revision,
-            expected_dimension=expected_dimension,
-        )
-        if status.readiness == EmbeddingReadiness.READY and status.manifest is not None:
-            return EmbeddingProvisionReport(
-                status=ProvisioningStatus.ALREADY_PROVISIONED,
-                model_id=model_id,
-                requested_revision=revision,
-                resolved_revision=status.manifest.resolved_revision,
-                destination=str(dest),
-                artifact_id=status.manifest.artifact_id,
-                manifest_path=str(embedding_manifest_path(dest)),
-                files_downloaded=0,
-                metadata={"readiness": EmbeddingReadiness.READY.value},
-            )
+    """Provision embedding representations via the P3 bundle-aware writer.
 
-    staging = dest.parent / f".staging-{dest.name}"
-    if staging.exists():
-        shutil.rmtree(staging)
-    staging.mkdir(parents=True, exist_ok=True)
+    Omitted ``representation`` defaults to ``torch_st_v1`` (backward compatible).
+    All CLI / script routes must converge here — no whole-root destructive
+    replacement of a bundle-managed model root.
+    """
+    from offline_rag.dense.embedding_bundle_provision import (
+        provision_embedding_model as _bundle_provision,
+    )
 
-    try:
-        from huggingface_hub import snapshot_download
-
-        snapshot_download(
-            repo_id=model_id,
-            revision=revision,
-            local_dir=str(staging),
-        )
-        digests = _collect_file_digests(staging, required=list(REQUIRED_EMBEDDING_FILES))
-        artifact_id = _artifact_id_from_digests(
-            model_id=model_id,
-            revision=revision,
-            digests=digests,
-        )
-        now = datetime.now(tz=UTC)
-        manifest = EmbeddingModelManifest(
-            model_id=model_id,
-            requested_revision=revision,
-            resolved_revision=revision,
-            expected_dimension=expected_dimension,
-            artifact_contract=QWEN3_EMBEDDING_ARTIFACT_CONTRACT,
-            provisioned_at=now,
-            required_files=list(REQUIRED_EMBEDDING_FILES),
-            file_digests=digests,
-            artifact_id=artifact_id,
-            metadata={"source": "huggingface_hub.snapshot_download"},
-        )
-        atomic_write_text(embedding_manifest_path(staging), manifest.model_dump_json())
-
-        # Validate staged tree before publish.
-        staged_status = validate_embedding_artifacts(
-            staging,
-            expected_model_id=model_id,
-            expected_revision=revision,
-            expected_dimension=expected_dimension,
-        )
-        if staged_status.readiness != EmbeddingReadiness.READY:
-            raise RuntimeError(f"staged embedding artifact invalid: {staged_status.reason}")
-
-        if dest.exists():
-            shutil.rmtree(dest)
-        staging.rename(dest)
-
-        return EmbeddingProvisionReport(
-            status=ProvisioningStatus.READY,
-            model_id=model_id,
-            requested_revision=revision,
-            resolved_revision=revision,
-            destination=str(dest),
-            artifact_id=artifact_id,
-            manifest_path=str(embedding_manifest_path(dest)),
-            files_downloaded=len(digests),
-            metadata={"readiness": EmbeddingReadiness.READY.value},
-        )
-    except Exception as exc:
-        if staging.exists():
-            shutil.rmtree(staging, ignore_errors=True)
-        return EmbeddingProvisionReport(
-            status=ProvisioningStatus.FAILED,
-            model_id=model_id,
-            requested_revision=revision,
-            resolved_revision=None,
-            destination=str(dest),
-            errors=[str(exc)],
-            metadata={"readiness": EmbeddingReadiness.INVALID.value},
-        )
+    return _bundle_provision(
+        destination,
+        model_id=model_id,
+        revision=revision,
+        expected_dimension=expected_dimension,
+        force=force,
+        representation=representation,
+        onnx_source=onnx_source,
+    )
 
 
 def resolve_embedding_model_dir(
