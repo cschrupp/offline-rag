@@ -5,7 +5,7 @@
   "authority": "S16-K-D-DUAL-BACKEND-P4-PRODUCT-ACCEPTANCE-DEFAULT-POLICY-IMPLEMENTATION-AUTH-001",
   "authorized_parent": "9d80480f3e3be6b6a8e31a8272596defb4fccfa6",
   "branch": "implementation/16k-d-dual-backend-p4-product-acceptance",
-  "candidate_tip": "3bc0803005aa1cbbaabd500eaeeec6f5f70cacfc",
+  "candidate_tip": "aa10c2fe3a98b68cb0727abcf3ac99ebb08cb3b5",
   "changed_paths": [
     "tests/unit/app/test_slice16k_d_p4_dual_backend_acceptance.py",
     "scripts/diag_16k_d_dense/run_p4_dual_backend_acceptance.py",
@@ -44,7 +44,7 @@
   },
   "evidence_chain": "docs/evidence/16k_d_dual_backend_p4/p4_evidence_chain.json",
   "full1296_confirmed": false,
-  "implementation_subject": "3bc0803005aa1cbbaabd500eaeeec6f5f70cacfc",
+  "implementation_subject": "aa10c2fe3a98b68cb0727abcf3ac99ebb08cb3b5",
   "ir001_rework": {
     "evidence": "docs/evidence/16k_d_dual_backend_p4/p4_ir001_rework_candidate.json",
     "findings": [
@@ -78,7 +78,7 @@
   },
   "record_kind": "p4_implementation_candidate",
   "scientific_campaign_calls": 0,
-  "technical_subject": "3bc0803005aa1cbbaabd500eaeeec6f5f70cacfc",
+  "technical_subject": "aa10c2fe3a98b68cb0727abcf3ac99ebb08cb3b5",
   "unauthorized_remaining": [
     "campaigns",
     "main",

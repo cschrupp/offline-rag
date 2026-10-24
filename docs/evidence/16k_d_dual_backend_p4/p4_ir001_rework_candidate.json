@@ -3,7 +3,7 @@
   "authority": "S16-K-D-DUAL-BACKEND-P4-PRODUCT-ACCEPTANCE-DEFAULT-POLICY-IMPLEMENTATION-AUTH-001",
   "authorized_parent": "9d80480f3e3be6b6a8e31a8272596defb4fccfa6",
   "branch": "implementation/16k-d-dual-backend-p4-product-acceptance",
-  "candidate_tip": "PENDING_PIN",
+  "candidate_tip": "aa10c2fe3a98b68cb0727abcf3ac99ebb08cb3b5",
   "changed_paths": [
     "tests/unit/app/test_slice16k_d_p4_dual_backend_acceptance.py",
     "scripts/diag_16k_d_dense/run_p4_dual_backend_acceptance.py",
@@ -23,7 +23,7 @@
     "F003": "CLOSED \u2014 exact 33 candidate fail nodeids reproduced on parent; 32 reproduce; 1 explained non-P4 cwd pollution; p4_regression_delta=0"
   },
   "full1296_confirmed": false,
-  "implementation_subject": "PENDING_COMMIT",
+  "implementation_subject": "aa10c2fe3a98b68cb0727abcf3ac99ebb08cb3b5",
   "ir001_disposition": "REWORK REQUIRED \u2014 NARROW ACCEPTANCE-HARNESS CORRECTIVE",
   "parity_rerun_calls": 0,
   "prior_evidence_tip": "dc5e6f3d65f1bb19ca060d813b94f668d9a8e2d7",
@@ -60,7 +60,7 @@
   "record_kind": "p4_ir001_rework_candidate",
   "recorded_at": "2026-10-24T21:00:26.088933+00:00",
   "scientific_campaign_calls": 0,
-  "technical_subject": "PENDING_COMMIT",
+  "technical_subject": "aa10c2fe3a98b68cb0727abcf3ac99ebb08cb3b5",
   "unauthorized_remaining": [
     "campaigns",
     "main",
