@@ -16,13 +16,6 @@
     "ROADMAP.md"
   ],
   "disposition": "P3 IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW",
-  "findings": {
-    "F001": "CLOSED",
-    "F002": "CLOSED",
-    "F003": "CLOSED",
-    "F004": "CLOSED",
-    "F005": "CLOSED"
-  },
   "fault_injection_cases": [
     "fail_before_bundle_replace_no_rollback",
     "fail_after_replace_via_fsync_triggers_rollback",
@@ -42,6 +35,14 @@
     "prior_concurrent_writer_lock"
   ],
   "fault_injection_count": 16,
+  "findings": {
+    "F001": "CLOSED",
+    "F002": "CLOSED",
+    "F003": "CLOSED",
+    "F004": "CLOSED",
+    "F005": "CLOSED"
+  },
+  "implementation_subject": "75bb16978676a53d151324099a886e23ed2566a8",
   "ir001_starting_subject": "7b94bd4d3ce7997093fd4e4d8e272a4314c76a13",
   "prior_candidate_tip": "5c68bdd80f7f18ef60173efb2c56418be8d9cacb",
   "proofs": {
@@ -51,6 +52,7 @@
     "p2_product": "PASS"
   },
   "record_kind": "p3_ir001_rework_candidate",
+  "rework_subject": "75bb16978676a53d151324099a886e23ed2566a8",
   "unauthorized_remaining": [
     "P4",
     "campaigns",

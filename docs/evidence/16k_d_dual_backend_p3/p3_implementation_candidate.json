@@ -1,5 +1,5 @@
 {
-  "accepted_design_disposition": "P3 DESIGN COMPLETE / INDEPENDENTLY ACCEPTED — IR-002",
+  "accepted_design_disposition": "P3 DESIGN COMPLETE / INDEPENDENTLY ACCEPTED \u2014 IR-002",
   "accepted_p2_technical_subject": "07ce117b9d94b9372244004386351c577c725fc6",
   "authority": "S16-K-D-DUAL-BACKEND-P3-PROVISIONING-ACQUISITION-IMPLEMENTATION-AUTH-001",
   "authorized_parent": "3b213b0c0ec915c041069e5c99f3149acbf1cd6b",
@@ -24,6 +24,7 @@
   },
   "disposition_historical_implementation_handoff": "P3 IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW",
   "historical_implementation_subject": "7b94bd4d3ce7997093fd4e4d8e272a4314c76a13",
+  "implementation_subject": "75bb16978676a53d151324099a886e23ed2566a8",
   "ir001_findings": {
     "F001": "CLOSED",
     "F002": "CLOSED",
@@ -33,6 +34,7 @@
   },
   "ir001_rework_evidence": "docs/evidence/16k_d_dual_backend_p3/p3_ir001_rework_candidate.json",
   "record_kind": "p3_implementation_candidate",
+  "rework_subject": "75bb16978676a53d151324099a886e23ed2566a8",
   "unauthorized_remaining": [
     "P4",
     "campaigns",
