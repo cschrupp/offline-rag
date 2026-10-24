@@ -7,6 +7,7 @@
     "rerun": true
   },
   "branch": "implementation/16k-d-dual-backend-p3-provisioning-acquisition",
+  "candidate_tip": "8fa2254557b7416347470ddfa2b5b13d0b8d73f2",
   "changed_paths": [
     "src/offline_rag/dense/embedding_bundle_provision.py",
     "tests/unit/dense/test_embedding_bundle_provision.py",

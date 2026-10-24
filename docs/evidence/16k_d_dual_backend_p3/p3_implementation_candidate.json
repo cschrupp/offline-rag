@@ -8,6 +8,7 @@
     "evidence": "docs/evidence/16k_d_dual_backend_p3/p3_bounded_real_provisioning_pass.json"
   },
   "branch": "implementation/16k-d-dual-backend-p3-provisioning-acquisition",
+  "candidate_tip": "8fa2254557b7416347470ddfa2b5b13d0b8d73f2",
   "current_disposition": "P3 IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW",
   "design_acceptance_matrix": {
     "all_transaction": "PASS",
