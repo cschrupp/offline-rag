@@ -15,7 +15,8 @@
     "docs/evidence/16k_d_dual_backend_p3/p3_ir002_rework_candidate.json",
     "ROADMAP.md"
   ],
-  "disposition": "P3 IR-002 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW",
+  "current_disposition": "P3 IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACKNOWLEDGED / CLOSED",
+  "disposition_historical_ir002_rework_handoff": "P3 IR-002 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW",
   "findings": {
     "F001": "CLOSED",
     "F002": "CLOSED",
@@ -24,9 +25,18 @@
     "F005": "CLOSED",
     "F006": "CLOSED"
   },
+  "human_acknowledgment": {
+    "closeout": "single_human_acknowledgment",
+    "ha_record": "NOT_USED",
+    "ha_review": "NOT_USED",
+    "status_flip_chain": "NOT_USED"
+  },
   "implementation_subject": "af6fa904b4309cb37a2204823347940bde70dcba",
   "ir001_subject": "75bb16978676a53d151324099a886e23ed2566a8",
   "ir001_tip": "8fa2254557b7416347470ddfa2b5b13d0b8d73f2",
+  "ir003": {
+    "disposition": "ACCEPT"
+  },
   "prior_branch_tip": "c58181b3f6f627c5c0ea37fd19a0d20f41035d80",
   "proofs": {
     "cli": "PASS",

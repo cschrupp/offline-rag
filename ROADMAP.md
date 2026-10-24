@@ -1218,15 +1218,20 @@ SLICE 15  COMPLETE / ACCEPTED
            NOT AUTHORIZED at P2 close; P3 later authorized separately
          P3: separate later Human authorization required; not opened by P2 close
        16K-D DUAL-BACKEND P3: DESIGN COMPLETE / INDEPENDENTLY ACCEPTED (IR-002)
+         P3 IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED /
+           HUMAN ACKNOWLEDGED / CLOSED
          Historical implementation handoff:
            P3 IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
            (subject 7b94bd4…; tip 5c68bdd…)
          Historical IR-001 rework handoff:
            P3 IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
            (F001–F005 CLOSED at 75bb169…)
-         Current disposition:
+         Historical IR-002 rework handoff:
            P3 IR-002 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
-           (F006 public containment failure-report corrective)
+           (F006 CLOSED at af6fa90…)
+         IR-003: ACCEPT (F001–F006 CLOSED)
+         Exact accepted technical subject:
+           af6fa904b4309cb37a2204823347940bde70dcba
          Implementation authority:
            S16-K-D-DUAL-BACKEND-P3-PROVISIONING-ACQUISITION-IMPLEMENTATION-AUTH-001
          Implementation parent:
@@ -1243,7 +1248,10 @@ SLICE 15  COMPLETE / ACCEPTED
            docs/evidence/16k_d_dual_backend_p3/p3_ir002_rework_candidate.json
            docs/evidence/16k_d_dual_backend_p3/p3_bounded_real_provisioning_pass.json
          Bounded real provisioning confirmation: PASS (rerun after IR-001; not required for F006)
+         Closeout: single Human acknowledgment (no HA-record / HA-review /
+           status-flip chain)
          Downstream (P4/campaigns/main/merge/promotion): NOT AUTHORIZED
+         P4: separate later Human authorization required; not opened by P3 close
        16K-D still closed: full 1296 FP32 confirmation ·
          P4 acceptance · default promotion · main ·
          alternate models · further quantization
@@ -2213,15 +2221,20 @@ SLICE 15  COMPLETE / ACCEPTED
            NOT AUTHORIZED at P2 close; P3 later authorized separately
          P3: separate later Human authorization required; not opened by P2 close
        16K-D DUAL-BACKEND P3: DESIGN COMPLETE / INDEPENDENTLY ACCEPTED (IR-002)
+         P3 IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED /
+           HUMAN ACKNOWLEDGED / CLOSED
          Historical implementation handoff:
            P3 IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
            (subject 7b94bd4…; tip 5c68bdd…)
          Historical IR-001 rework handoff:
            P3 IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
            (F001–F005 CLOSED at 75bb169…)
-         Current disposition:
+         Historical IR-002 rework handoff:
            P3 IR-002 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
-           (F006 public containment failure-report corrective)
+           (F006 CLOSED at af6fa90…)
+         IR-003: ACCEPT (F001–F006 CLOSED)
+         Exact accepted technical subject:
+           af6fa904b4309cb37a2204823347940bde70dcba
          Implementation authority:
            S16-K-D-DUAL-BACKEND-P3-PROVISIONING-ACQUISITION-IMPLEMENTATION-AUTH-001
          Implementation parent:
@@ -2238,7 +2251,10 @@ SLICE 15  COMPLETE / ACCEPTED
            docs/evidence/16k_d_dual_backend_p3/p3_ir002_rework_candidate.json
            docs/evidence/16k_d_dual_backend_p3/p3_bounded_real_provisioning_pass.json
          Bounded real provisioning confirmation: PASS (rerun after IR-001; not required for F006)
+         Closeout: single Human acknowledgment (no HA-record / HA-review /
+           status-flip chain)
          Downstream (P4/campaigns/main/merge/promotion): NOT AUTHORIZED
+         P4: separate later Human authorization required; not opened by P3 close
        16K-D still closed: full 1296 FP32 confirmation ·
          P4 acceptance · default promotion · main ·
          alternate models · further quantization
