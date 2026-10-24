@@ -1,5 +1,5 @@
 {
-  "accepted_design_disposition": "P4 DESIGN COMPLETE / INDEPENDENTLY ACCEPTED — IR-001",
+  "accepted_design_disposition": "P4 DESIGN COMPLETE / INDEPENDENTLY ACCEPTED \u2014 IR-001",
   "accepted_p2_technical_subject": "07ce117b9d94b9372244004386351c577c725fc6",
   "accepted_p3_technical_subject": "af6fa904b4309cb37a2204823347940bde70dcba",
   "allowed_paths": [
@@ -16,6 +16,7 @@
   "authority": "S16-K-D-DUAL-BACKEND-P4-PRODUCT-ACCEPTANCE-DEFAULT-POLICY-IMPLEMENTATION-AUTH-001",
   "authorized_parent": "9d80480f3e3be6b6a8e31a8272596defb4fccfa6",
   "branch": "implementation/16k-d-dual-backend-p4-product-acceptance",
+  "candidate_tip": "3bc0803005aa1cbbaabd500eaeeec6f5f70cacfc",
   "exclusions": [
     "production_source_modification",
     "config/base.yaml_modification",
@@ -35,7 +36,9 @@
     "ha_review": "NOT_USED",
     "status_flip_chain": "NOT_USED"
   },
+  "implementation_subject": "3bc0803005aa1cbbaabd500eaeeec6f5f70cacfc",
   "real_cuda_gate_required": true,
   "record_kind": "p4_implementation_auth001",
-  "scope": "P4 implementation and bounded P4 acceptance execution only"
+  "scope": "P4 implementation and bounded P4 acceptance execution only",
+  "technical_subject": "3bc0803005aa1cbbaabd500eaeeec6f5f70cacfc"
 }
