@@ -1,0 +1,74 @@
+{
+  "accepted_design_disposition": "P4 DESIGN COMPLETE / INDEPENDENTLY ACCEPTED \u2014 IR-001",
+  "authority": "S16-K-D-DUAL-BACKEND-P4-PRODUCT-ACCEPTANCE-DEFAULT-POLICY-IMPLEMENTATION-AUTH-001",
+  "authorized_parent": "9d80480f3e3be6b6a8e31a8272596defb4fccfa6",
+  "branch": "implementation/16k-d-dual-backend-p4-product-acceptance",
+  "candidate_tip": "PENDING_PIN",
+  "changed_paths": [
+    "tests/unit/app/test_slice16k_d_p4_dual_backend_acceptance.py",
+    "scripts/diag_16k_d_dense/run_p4_dual_backend_acceptance.py",
+    "docs/slice16k_d_dual_backend_p4_product_acceptance_design.md",
+    "docs/evidence/16k_d_dual_backend_p4/p4_implementation_auth001.json",
+    "docs/evidence/16k_d_dual_backend_p4/p4_evidence_chain.json",
+    "docs/evidence/16k_d_dual_backend_p4/p4_cross_profile_product_smoke.json",
+    "docs/evidence/16k_d_dual_backend_p4/p4_implementation_candidate.json",
+    "docs/evidence/16k_d_dual_backend_p4/p4_ir001_rework_candidate.json",
+    "docs/evidence/16k_d_dual_backend_p4/p4_full_suite_failset_attribution.json",
+    "ROADMAP.md"
+  ],
+  "current_disposition": "P4 IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW",
+  "findings_closed": {
+    "F001": "CLOSED \u2014 require existing dual-READY --model-root; no assemble/copy/bundle write; no /tmp search",
+    "F002": "CLOSED \u2014 each index/query phase runs in a fresh OS process via --mode phase subprocess; PIDs recorded and distinct",
+    "F003": "CLOSED \u2014 exact 33 candidate fail nodeids reproduced on parent; 32 reproduce; 1 explained non-P4 cwd pollution; p4_regression_delta=0"
+  },
+  "full1296_confirmed": false,
+  "implementation_subject": "PENDING_COMMIT",
+  "ir001_disposition": "REWORK REQUIRED \u2014 NARROW ACCEPTANCE-HARNESS CORRECTIVE",
+  "parity_rerun_calls": 0,
+  "prior_evidence_tip": "dc5e6f3d65f1bb19ca060d813b94f668d9a8e2d7",
+  "prior_technical_subject": "3bc0803005aa1cbbaabd500eaeeec6f5f70cacfc",
+  "production_source_modified": false,
+  "proofs": {
+    "corrected_real_cross_process_smoke": "PASS",
+    "existing_dual_ready_root_preflight": "PASS",
+    "failset_attribution": "docs/evidence/16k_d_dual_backend_p4/p4_full_suite_failset_attribution.json",
+    "focused_p4_and_related": "103 PASS",
+    "full_suite_candidate": "1926 passed / 33 failed / 1 skipped",
+    "model_root_mutated": false,
+    "p1_p2_p3_related_in_focused_suite": "included (execution_profile, embedding_artifacts, embedding_runtime, onnx_embedder, identity, bundle_provision, p2 product, p4 acceptance)",
+    "parent_exact_33_reproduction": "32 failed / 1 passed (explained non-P4)",
+    "ruff": "PASS",
+    "wheel_build": "PASS"
+  },
+  "provisioning_calls": 0,
+  "real_smoke": {
+    "direction_a_pids_example": {
+      "distinct": true,
+      "index": 709221,
+      "query": 709624
+    },
+    "direction_b_pids_example": {
+      "distinct": true,
+      "index": 709954,
+      "query": 710309
+    },
+    "disposition": "PASS",
+    "evidence": "docs/evidence/16k_d_dual_backend_p4/p4_cross_profile_product_smoke.json",
+    "model_root": "/tmp/p4_ir001_p3_dual_ready"
+  },
+  "record_kind": "p4_ir001_rework_candidate",
+  "recorded_at": "2026-10-24T21:00:26.088933+00:00",
+  "scientific_campaign_calls": 0,
+  "technical_subject": "PENDING_COMMIT",
+  "unauthorized_remaining": [
+    "campaigns",
+    "main",
+    "merge",
+    "release",
+    "promotion",
+    "full_1296",
+    "new_provisioning_under_p4",
+    "parity_rerun"
+  ]
+}

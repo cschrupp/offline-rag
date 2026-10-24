@@ -11,12 +11,15 @@
     "docs/evidence/16k_d_dual_backend_p4/p4_cross_profile_product_smoke.json",
     "docs/evidence/16k_d_dual_backend_p4/p4_implementation_candidate.json",
     "docs/model_provisioning.md",
-    "ROADMAP.md"
+    "ROADMAP.md",
+    "docs/evidence/16k_d_dual_backend_p4/p4_ir001_rework_candidate.json",
+    "docs/evidence/16k_d_dual_backend_p4/p4_full_suite_failset_attribution.json"
   ],
   "authority": "S16-K-D-DUAL-BACKEND-P4-PRODUCT-ACCEPTANCE-DEFAULT-POLICY-IMPLEMENTATION-AUTH-001",
   "authorized_parent": "9d80480f3e3be6b6a8e31a8272596defb4fccfa6",
   "branch": "implementation/16k-d-dual-backend-p4-product-acceptance",
   "candidate_tip": "3bc0803005aa1cbbaabd500eaeeec6f5f70cacfc",
+  "current_disposition": "P4 IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW",
   "exclusions": [
     "production_source_modification",
     "config/base.yaml_modification",
@@ -37,6 +40,14 @@
     "status_flip_chain": "NOT_USED"
   },
   "implementation_subject": "3bc0803005aa1cbbaabd500eaeeec6f5f70cacfc",
+  "ir001_rework": {
+    "evidence": "docs/evidence/16k_d_dual_backend_p4/p4_ir001_rework_candidate.json",
+    "findings": [
+      "F001",
+      "F002",
+      "F003"
+    ]
+  },
   "real_cuda_gate_required": true,
   "record_kind": "p4_implementation_auth001",
   "scope": "P4 implementation and bounded P4 acceptance execution only",

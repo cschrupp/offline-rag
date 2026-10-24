@@ -1253,7 +1253,11 @@ SLICE 15  COMPLETE / ACCEPTED
          Downstream (P4/campaigns/main/merge/promotion):
            P4 later authorized separately; campaigns/main/merge/promotion closed
        16K-D DUAL-BACKEND P4: DESIGN COMPLETE / INDEPENDENTLY ACCEPTED (IR-001)
-         P4 IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
+         Historical IR-001 implementation handoff:
+           P4 IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
+         Current disposition:
+           P4 IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
+         IR-001 findings closed in harness corrective: F001–F003
          Implementation authority:
            S16-K-D-DUAL-BACKEND-P4-PRODUCT-ACCEPTANCE-DEFAULT-POLICY-IMPLEMENTATION-AUTH-001
          Implementation parent:
@@ -1270,7 +1274,11 @@ SLICE 15  COMPLETE / ACCEPTED
            docs/evidence/16k_d_dual_backend_p4/p4_evidence_chain.json
            docs/evidence/16k_d_dual_backend_p4/p4_cross_profile_product_smoke.json
            docs/evidence/16k_d_dual_backend_p4/p4_implementation_candidate.json
-         Real cross-profile product smoke: PASS
+           docs/evidence/16k_d_dual_backend_p4/p4_ir001_rework_candidate.json
+           docs/evidence/16k_d_dual_backend_p4/p4_full_suite_failset_attribution.json
+         Corrected real cross-process product smoke: PASS
+         Existing dual-READY model root preflight: PASS
+         Model-root mutation: false
          Full1296: NOT RUN / NOT CONFIRMED
          Downstream (campaigns/main/merge/release/promotion): NOT AUTHORIZED
        16K-D still closed: full 1296 FP32 confirmation ·
@@ -2277,7 +2285,11 @@ SLICE 15  COMPLETE / ACCEPTED
          Downstream (P4/campaigns/main/merge/promotion):
            P4 later authorized separately; campaigns/main/merge/promotion closed
        16K-D DUAL-BACKEND P4: DESIGN COMPLETE / INDEPENDENTLY ACCEPTED (IR-001)
-         P4 IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
+         Historical IR-001 implementation handoff:
+           P4 IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
+         Current disposition:
+           P4 IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
+         IR-001 findings closed in harness corrective: F001–F003
          Implementation authority:
            S16-K-D-DUAL-BACKEND-P4-PRODUCT-ACCEPTANCE-DEFAULT-POLICY-IMPLEMENTATION-AUTH-001
          Implementation parent:
@@ -2294,7 +2306,11 @@ SLICE 15  COMPLETE / ACCEPTED
            docs/evidence/16k_d_dual_backend_p4/p4_evidence_chain.json
            docs/evidence/16k_d_dual_backend_p4/p4_cross_profile_product_smoke.json
            docs/evidence/16k_d_dual_backend_p4/p4_implementation_candidate.json
-         Real cross-profile product smoke: PASS
+           docs/evidence/16k_d_dual_backend_p4/p4_ir001_rework_candidate.json
+           docs/evidence/16k_d_dual_backend_p4/p4_full_suite_failset_attribution.json
+         Corrected real cross-process product smoke: PASS
+         Existing dual-READY model root preflight: PASS
+         Model-root mutation: false
          Full1296: NOT RUN / NOT CONFIRMED
          Downstream (campaigns/main/merge/release/promotion): NOT AUTHORIZED
        16K-D still closed: full 1296 FP32 confirmation ·

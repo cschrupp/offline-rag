@@ -5,8 +5,8 @@ Authority:
   S16-K-D-DUAL-BACKEND-P4-PRODUCT-ACCEPTANCE-DEFAULT-POLICY-IMPLEMENTATION-AUTH-001
 
 Does not modify production code, provision models, download artifacts, or rerun
-scientific campaigns. Assembles a scratch dual-READY model root from already
-qualified local Torch + ONNX trees for the interoperability gate only.
+scientific campaigns. Requires an existing P3-provisioned dual-READY ``--model-root``
+and executes each index/query phase in a fresh OS process.
 """
 
 from __future__ import annotations
@@ -17,11 +17,12 @@ import json
 import math
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import time
 import traceback
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -31,8 +32,8 @@ EVIDENCE_DIR = REPO / "docs" / "evidence" / "16k_d_dual_backend_p4"
 SMOKE_PATH = EVIDENCE_DIR / "p4_cross_profile_product_smoke.json"
 CHAIN_PATH = EVIDENCE_DIR / "p4_evidence_chain.json"
 BASE_YAML = REPO / "config" / "base.yaml"
-TORCH_SRC = REPO / "models" / "embeddings" / "qwen3-embedding-0.6b"
 ACCEPTED_ONNX_TREE = "3e1b23a7293cf599bc34d1d9875e5c4ecde45bf12fcd300a6cb66794b5bc4345"
+SCRIPT_PATH = Path(__file__).resolve()
 
 AUTHORITY = (
     "S16-K-D-DUAL-BACKEND-P4-PRODUCT-ACCEPTANCE-DEFAULT-POLICY-IMPLEMENTATION-AUTH-001"
@@ -133,81 +134,61 @@ def validate_evidence_chain() -> dict[str, Any]:
     return chain
 
 
-def find_ready_onnx_instance() -> Path:
-    from offline_rag.dense.embedding_artifacts import inspect_representation
-
-    for root, dirs, files in os.walk("/tmp"):
-        depth = root.count(os.sep)
-        if depth > 8:
-            dirs.clear()
-            continue
-        dirs[:] = [d for d in dirs if not d.startswith(".") and d not in {"uv-cache", "node_modules"}]
-        if "offline-rag-embedding-bundle.json" not in files:
-            continue
-        p = Path(root)
-        try:
-            inspection = inspect_representation(p, "onnx_fp32_v1")
-        except (OSError, ValueError, TypeError, RuntimeError):
-            continue
-        if _readiness_value(inspection) != "ready":
-            continue
-        inst = inspection.instance_path
-        if inst is not None and Path(inst).is_dir():
-            return Path(inst)
-    # Fall back to scientific export if a prior P2 confirm tree is gone — still need
-    # an installed representation manifest. Prefer already-qualified instances only.
-    raise P4NotEligible(
-        "qualified onnx_fp32_v1 READY instance not found under /tmp "
-        "(P3-owned provisioning required beforehand; P4 does not provision)"
+def model_root_identity(model_root: Path) -> dict[str, Any]:
+    """Read-only identity of an existing model root (no mutation)."""
+    from offline_rag.dense.embedding_artifacts import (
+        BUNDLE_MANIFEST_NAME,
+        inspect_representation,
     )
 
+    root = Path(model_root).expanduser().resolve()
+    bundle = root / BUNDLE_MANIFEST_NAME
+    torch_i = inspect_representation(root, "torch_st_v1")
+    onnx_i = inspect_representation(root, "onnx_fp32_v1")
+    files: list[str] = []
+    digests: dict[str, str] = {}
+    for path in sorted(root.rglob("*")):
+        if path.is_file():
+            rel = str(path.relative_to(root))
+            files.append(rel)
+            digests[rel] = _sha256_file(path)
+    return {
+        "model_root": str(root),
+        "bundle_present": bundle.is_file(),
+        "bundle_sha256": _sha256_file(bundle) if bundle.is_file() else None,
+        "torch_readiness": _readiness_value(torch_i),
+        "onnx_readiness": _readiness_value(onnx_i),
+        "torch_instance_path": (
+            str(torch_i.instance_path) if torch_i.instance_path is not None else None
+        ),
+        "onnx_instance_path": (
+            str(onnx_i.instance_path) if onnx_i.instance_path is not None else None
+        ),
+        "file_count": len(files),
+        "sorted_relative_paths": files,
+        "sha256_by_path": digests,
+        "tree_digest": _sha256_text("\n".join(f"{k}:{digests[k]}" for k in files)),
+    }
 
-def assemble_dual_model_root(dest: Path) -> Path:
-    """Scratch dual-READY root from qualified local trees (not P3 provisioning)."""
-    from offline_rag.dense.embedding_artifacts import inspect_representation
 
-    if dest.is_dir():
-        torch_i = inspect_representation(dest, "torch_st_v1")
-        onnx_i = inspect_representation(dest, "onnx_fp32_v1")
-        if _readiness_value(torch_i) == "ready" and _readiness_value(onnx_i) == "ready":
-            return dest
-
-    if not TORCH_SRC.is_dir():
-        raise P4NotEligible(f"qualified torch source missing: {TORCH_SRC}")
-    onnx_inst = find_ready_onnx_instance()
-    if dest.exists():
-        shutil.rmtree(dest)
-    dest.mkdir(parents=True)
-    for item in TORCH_SRC.iterdir():
-        if item.name == ".cache":
-            continue
-        target = dest / item.name
-        if item.is_dir():
-            shutil.copytree(item, target, symlinks=False)
-        else:
-            shutil.copy2(item, target)
-    rel = Path("nxt/onnx_fp32_v1") / onnx_inst.name
-    target_inst = dest / rel
-    target_inst.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(onnx_inst, target_inst, symlinks=False)
-    (dest / "offline-rag-embedding-bundle.json").write_text(
-        json.dumps(
-            {
-                "bundle_schema": "seneca-embedding-bundle-v1",
-                "representations": {"onnx_fp32_v1": str(rel).replace("\\", "/")},
-            },
-            indent=2,
+def require_existing_dual_ready_model_root(model_root: Path) -> dict[str, Any]:
+    """Fail closed unless both representations are already READY (P3-owned)."""
+    root = Path(model_root).expanduser().resolve()
+    if not root.is_dir():
+        raise P4NotEligible(f"model root missing or not a directory: {root}")
+    identity = model_root_identity(root)
+    missing: list[str] = []
+    if identity["torch_readiness"] != "ready":
+        missing.append(f"torch_st_v1={identity['torch_readiness']}")
+    if identity["onnx_readiness"] != "ready":
+        missing.append(f"onnx_fp32_v1={identity['onnx_readiness']}")
+    if missing:
+        raise P4NotEligible(
+            "existing dual-READY model root required before P4; "
+            f"missing READY representations: {', '.join(missing)}. "
+            "P3 owns provisioning; P4 does not assemble or install models."
         )
-        + "\n",
-        encoding="utf-8",
-    )
-    torch_i = inspect_representation(dest, "torch_st_v1")
-    onnx_i = inspect_representation(dest, "onnx_fp32_v1")
-    if _readiness_value(torch_i) != "ready":
-        raise P4NotEligible(f"torch_st_v1 not READY after assembly: {torch_i.reason}")
-    if _readiness_value(onnx_i) != "ready":
-        raise P4NotEligible(f"onnx_fp32_v1 not READY after assembly: {onnx_i.reason}")
-    return dest
+    return identity
 
 
 def preflight_cuda() -> dict[str, Any]:
@@ -471,6 +452,7 @@ def index_manifest_identity(settings: Any, corpus: str = "p4") -> dict[str, Any]
 class PhaseResult:
     device: str
     role: str
+    pid: int
     runtime_facts: dict[str, Any]
     identities: dict[str, str]
     index_identity: dict[str, Any] | None
@@ -579,6 +561,7 @@ def run_index_phase(
 
     runtime.shutdown()
     return PhaseResult(
+        pid=os.getpid(),
         device=device,
         role="index",
         runtime_facts=facts,
@@ -707,6 +690,7 @@ def run_query_phase(
 
     runtime.shutdown()
     return PhaseResult(
+        pid=os.getpid(),
         device=device,
         role="query",
         runtime_facts=facts,
@@ -727,6 +711,9 @@ def run_query_phase(
 
 def direction_record(index_phase: PhaseResult, query_phase: PhaseResult) -> dict[str, Any]:
     return {
+        "index_process_pid": index_phase.pid,
+        "query_process_pid": query_phase.pid,
+        "processes_distinct": index_phase.pid != query_phase.pid,
         "index_profile": index_phase.runtime_facts["profile_id"],
         "query_profile": query_phase.runtime_facts["profile_id"],
         "actual_index_runtime_facts": index_phase.runtime_facts,
@@ -761,26 +748,78 @@ def direction_record(index_phase: PhaseResult, query_phase: PhaseResult) -> dict
     }
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
+
+def phase_result_from_dict(payload: dict[str, Any]) -> PhaseResult:
+    return PhaseResult(**payload)
+
+
+def run_phase_subprocess(
+    *,
+    phase: str,
+    device: str,
+    work: Path,
+    model_root: Path,
+    phase_out: Path,
+    prior_json: Path | None = None,
+    prepare: bool = False,
+) -> tuple[int, dict[str, Any]]:
+    cmd = [
+        "uv",
+        "run",
+        "python",
+        str(SCRIPT_PATH),
+        "--mode",
+        "phase",
+        "--phase",
+        phase,
+        "--device",
+        device,
         "--work-root",
-        type=Path,
-        default=None,
-        help="Optional durable work root (default: temp under /tmp)",
-    )
-    args = parser.parse_args()
-    EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
+        str(work),
+        "--model-root",
+        str(model_root),
+        "--phase-out",
+        str(phase_out),
+    ]
+    if prepare:
+        cmd.append("--prepare")
+    if prior_json is not None:
+        cmd.extend(["--prior-json", str(prior_json)])
+    proc = subprocess.run(cmd, cwd=str(REPO), check=False)
+    if proc.returncode != 0:
+        raise P4ArchitectureBlocked(
+            f"phase subprocess failed phase={phase} device={device} "
+            f"exit={proc.returncode} out={phase_out}"
+        )
+    payload = json.loads(phase_out.read_text(encoding="utf-8"))
+    return int(payload["pid"]), payload
 
-    try:
-        chain = validate_evidence_chain()
-        cuda_facts = preflight_cuda()
-        work_root = args.work_root or Path(tempfile.mkdtemp(prefix="p4_acceptance_"))
-        work_root = work_root.resolve()
-        work_root.mkdir(parents=True, exist_ok=True)
-        model_root = assemble_dual_model_root(work_root / "dual_model_root")
 
-        queries = [
+def run_phase_mode(args: argparse.Namespace) -> int:
+    model_root = Path(args.model_root).resolve()
+    require_existing_dual_ready_model_root(model_root)
+    work = Path(args.work_root).resolve()
+    work.mkdir(parents=True, exist_ok=True)
+    phase_out = Path(args.phase_out).resolve()
+    phase_out.parent.mkdir(parents=True, exist_ok=True)
+
+    if args.phase == "index":
+        docs = work / "docs"
+        if args.prepare:
+            fixture_docs(docs)
+        result = run_index_phase(
+            work=work,
+            device=args.device,
+            model_root=model_root,
+            docs_dir=docs,
+            prepare=bool(args.prepare),
+        )
+    elif args.phase == "query":
+        if not args.prior_json:
+            raise P4ArchitectureBlocked("query phase requires --prior-json")
+        prior_payload = json.loads(Path(args.prior_json).read_text(encoding="utf-8"))
+        prior = phase_result_from_dict(prior_payload["phase"])
+        queries = prior_payload.get("queries") or [
             "sensor temperature rating",
             "maximum pressure continuous",
             "valve seal PTFE",
@@ -790,99 +829,249 @@ def main() -> int:
             "bearing lubrication hours",
             "filter micron hydraulic",
         ]
-        if len(queries) > 8:
-            raise RuntimeError("query budget exceeded")
-
-        # Direction A: CUDA index → CPU query
-        work_a = work_root / "direction_a"
-        docs_a = work_a / "docs"
-        fixture_digest, doc_count = fixture_docs(docs_a)
-        index_a = run_index_phase(
-            work=work_a, device="cuda", model_root=model_root, docs_dir=docs_a, prepare=True
-        )
-        if index_a.inventory["point_count"] > 16:
-            raise P4ArchitectureBlocked(
-                f"fixture exceeded 16 child points: {index_a.inventory['point_count']}"
-            )
-        query_a = run_query_phase(
-            work=work_a,
-            device="cpu",
+        result = run_query_phase(
+            work=work,
+            device=args.device,
             model_root=model_root,
             queries=queries,
-            prior=index_a,
+            prior=prior,
         )
-        direction_a = direction_record(index_a, query_a)
+    else:
+        raise P4ArchitectureBlocked(f"unknown phase: {args.phase}")
 
-        # Direction B: CPU index → CUDA query (separate namespace)
-        work_b = work_root / "direction_b"
-        docs_b = work_b / "docs"
-        fixture_docs(docs_b)
-        index_b = run_index_phase(
-            work=work_b, device="cpu", model_root=model_root, docs_dir=docs_b, prepare=True
+    payload = {
+        "pid": result.pid,
+        "phase": asdict(result),
+        "queries": [
+            "sensor temperature rating",
+            "maximum pressure continuous",
+            "valve seal PTFE",
+            "pump flow gallons",
+            "cable insulation class",
+            "enclosure IP66",
+            "bearing lubrication hours",
+            "filter micron hydraulic",
+        ],
+    }
+    phase_out.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    print(json.dumps({"phase": args.phase, "device": args.device, "pid": result.pid}))
+    return 0
+
+
+def run_orchestrator(args: argparse.Namespace) -> int:
+    chain = validate_evidence_chain()
+    cuda_facts = preflight_cuda()
+    model_root = Path(args.model_root).resolve()
+    model_pre = require_existing_dual_ready_model_root(model_root)
+
+    work_root = Path(args.work_root) if args.work_root else Path(tempfile.mkdtemp(prefix="p4_acceptance_"))
+    work_root = work_root.resolve()
+    work_root.mkdir(parents=True, exist_ok=True)
+    scratch = work_root / "phase_evidence"
+    scratch.mkdir(parents=True, exist_ok=True)
+
+    queries = [
+        "sensor temperature rating",
+        "maximum pressure continuous",
+        "valve seal PTFE",
+        "pump flow gallons",
+        "cable insulation class",
+        "enclosure IP66",
+        "bearing lubrication hours",
+        "filter micron hydraulic",
+    ]
+
+    # Direction A: CUDA index process -> CPU query process
+    work_a = work_root / "direction_a"
+    docs_a = work_a / "docs"
+    fixture_digest, doc_count = fixture_docs(docs_a)
+    index_a_out = scratch / "a_index.json"
+    query_a_out = scratch / "a_query.json"
+    pid_a_index, payload_a_index = run_phase_subprocess(
+        phase="index",
+        device="cuda",
+        work=work_a,
+        model_root=model_root,
+        phase_out=index_a_out,
+        prepare=True,
+    )
+    index_a = phase_result_from_dict(payload_a_index["phase"])
+    if index_a.inventory["point_count"] > 16:
+        raise P4ArchitectureBlocked(
+            f"fixture exceeded 16 child points: {index_a.inventory['point_count']}"
         )
-        if index_b.inventory["point_count"] > 16:
-            raise P4ArchitectureBlocked(
-                f"fixture exceeded 16 child points: {index_b.inventory['point_count']}"
+    # Persist queries into prior for query subprocess
+    payload_a_index["queries"] = queries
+    index_a_out.write_text(json.dumps(payload_a_index, indent=2, sort_keys=True) + "\n")
+    pid_a_query, payload_a_query = run_phase_subprocess(
+        phase="query",
+        device="cpu",
+        work=work_a,
+        model_root=model_root,
+        phase_out=query_a_out,
+        prior_json=index_a_out,
+    )
+    query_a = phase_result_from_dict(payload_a_query["phase"])
+    if pid_a_index == pid_a_query:
+        raise P4ArchitectureBlocked("direction A index/query PIDs are not distinct")
+    direction_a = direction_record(index_a, query_a)
+
+    # Direction B: CPU index process -> CUDA query process
+    work_b = work_root / "direction_b"
+    docs_b = work_b / "docs"
+    fixture_docs(docs_b)
+    index_b_out = scratch / "b_index.json"
+    query_b_out = scratch / "b_query.json"
+    pid_b_index, payload_b_index = run_phase_subprocess(
+        phase="index",
+        device="cpu",
+        work=work_b,
+        model_root=model_root,
+        phase_out=index_b_out,
+        prepare=True,
+    )
+    index_b = phase_result_from_dict(payload_b_index["phase"])
+    if index_b.inventory["point_count"] > 16:
+        raise P4ArchitectureBlocked(
+            f"fixture exceeded 16 child points: {index_b.inventory['point_count']}"
+        )
+    payload_b_index["queries"] = queries
+    index_b_out.write_text(json.dumps(payload_b_index, indent=2, sort_keys=True) + "\n")
+    pid_b_query, payload_b_query = run_phase_subprocess(
+        phase="query",
+        device="cuda",
+        work=work_b,
+        model_root=model_root,
+        phase_out=query_b_out,
+        prior_json=index_b_out,
+    )
+    query_b = phase_result_from_dict(payload_b_query["phase"])
+    if pid_b_index == pid_b_query:
+        raise P4ArchitectureBlocked("direction B index/query PIDs are not distinct")
+    direction_b = direction_record(index_b, query_b)
+
+    model_post = model_root_identity(model_root)
+    mutated = model_pre["tree_digest"] != model_post["tree_digest"]
+    if mutated:
+        raise P4ArchitectureBlocked("model root mutated during P4 smoke")
+
+    smoke = {
+        "authority": AUTHORITY,
+        "parent": PARENT,
+        "recorded_at": datetime.now(tz=UTC).isoformat(),
+        "work_root": str(work_root),
+        "model_root": str(model_root),
+        "model_root_pre_identity": {
+            k: model_pre[k]
+            for k in (
+                "model_root",
+                "bundle_present",
+                "bundle_sha256",
+                "torch_readiness",
+                "onnx_readiness",
+                "torch_instance_path",
+                "onnx_instance_path",
+                "file_count",
+                "tree_digest",
             )
-        query_b = run_query_phase(
-            work=work_b,
-            device="cuda",
-            model_root=model_root,
-            queries=queries,
-            prior=index_b,
-        )
-        direction_b = direction_record(index_b, query_b)
+        },
+        "model_root_post_identity": {
+            k: model_post[k]
+            for k in (
+                "model_root",
+                "bundle_present",
+                "bundle_sha256",
+                "torch_readiness",
+                "onnx_readiness",
+                "torch_instance_path",
+                "onnx_instance_path",
+                "file_count",
+                "tree_digest",
+            )
+        },
+        "model_root_mutated": False,
+        "fixture_digest": fixture_digest,
+        "fixture_document_count": doc_count,
+        "fixture_child_point_count_direction_a": direction_a["point_count_before"],
+        "fixture_child_point_count_direction_b": direction_b["point_count_before"],
+        "query_count": len(queries),
+        "accepted_p1_original_subject": "fae82b2455cfdd0d1622065904a35895372740b6",
+        "accepted_p1_corrective_subject": "0da27594f0b8589c0cfa995bf97097e03f6accf8",
+        "accepted_p2_subject": "07ce117b9d94b9372244004386351c577c725fc6",
+        "accepted_p3_subject": "af6fa904b4309cb37a2204823347940bde70dcba",
+        "accepted_onnx_tree": ACCEPTED_ONNX_TREE,
+        "accepted_parity_evidence": (
+            "docs/evidence/16k_d_cpu_onnx/onnx_fp32_gpu_fp16_parity_pass_1792638012.json"
+        ),
+        "accepted_cpu_screen_evidence": (
+            "docs/evidence/16k_d_cpu_onnx/onnx_fp32_128_screen_pass_1792638543.json"
+        ),
+        "default_device_policy": "auto",
+        "default_precision_policy": "native",
+        "cuda_preflight": cuda_facts,
+        "evidence_chain_disposition": chain["disposition"],
+        "direction_a": direction_a,
+        "direction_b": direction_b,
+        "full1296_confirmed": False,
+        "scientific_campaign_calls": 0,
+        "parity_rerun_calls": 0,
+        "provisioning_calls": 0,
+        "declarations": {
+            "dual_backend_product_acceptance": "PASS",
+            "default_policy": "AUTO/native — PRODUCT-QUALIFIED",
+            "auto_cuda_lane": "cuda_fp16_v1 — PREFERRED WHEN CUDA USABLE",
+            "auto_cpu_lane": (
+                "cpu_onnx_fp32_v1 — SUPPORTED STARTUP FALLBACK WHEN CUDA UNAVAILABLE"
+            ),
+            "explicit_cpu": "SUPPORTED",
+            "explicit_cuda": "SUPPORTED WHEN CUDA USABLE",
+            "shared_logical_index": "QUALIFIED",
+            "runtime_failover": "NOT SUPPORTED / NOT AUTHORIZED",
+            "full1296_cpu_confirmation": "NOT RUN / NOT CLAIMED",
+        },
+        "disposition": "PASS",
+        "corrective": "IR-001_F001_F002_F003",
+    }
+    SMOKE_PATH.write_text(json.dumps(smoke, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    print(json.dumps({"disposition": "PASS", "smoke": str(SMOKE_PATH)}, indent=2))
+    return 0
 
-        smoke = {
-            "authority": AUTHORITY,
-            "parent": PARENT,
-            "recorded_at": datetime.now(tz=UTC).isoformat(),
-            "work_root": str(work_root),
-            "model_root": str(model_root),
-            "fixture_digest": fixture_digest,
-            "fixture_document_count": doc_count,
-            "fixture_child_point_count_direction_a": direction_a["point_count_before"],
-            "fixture_child_point_count_direction_b": direction_b["point_count_before"],
-            "query_count": len(queries),
-            "accepted_p1_original_subject": "fae82b2455cfdd0d1622065904a35895372740b6",
-            "accepted_p1_corrective_subject": "0da27594f0b8589c0cfa995bf97097e03f6accf8",
-            "accepted_p2_subject": "07ce117b9d94b9372244004386351c577c725fc6",
-            "accepted_p3_subject": "af6fa904b4309cb37a2204823347940bde70dcba",
-            "accepted_onnx_tree": ACCEPTED_ONNX_TREE,
-            "accepted_parity_evidence": (
-                "docs/evidence/16k_d_cpu_onnx/onnx_fp32_gpu_fp16_parity_pass_1792638012.json"
-            ),
-            "accepted_cpu_screen_evidence": (
-                "docs/evidence/16k_d_cpu_onnx/onnx_fp32_128_screen_pass_1792638543.json"
-            ),
-            "default_device_policy": "auto",
-            "default_precision_policy": "native",
-            "cuda_preflight": cuda_facts,
-            "evidence_chain_disposition": chain["disposition"],
-            "direction_a": direction_a,
-            "direction_b": direction_b,
-            "full1296_confirmed": False,
-            "scientific_campaign_calls": 0,
-            "parity_rerun_calls": 0,
-            "provisioning_calls": 0,
-            "declarations": {
-                "dual_backend_product_acceptance": "PASS",
-                "default_policy": "AUTO/native — PRODUCT-QUALIFIED",
-                "auto_cuda_lane": "cuda_fp16_v1 — PREFERRED WHEN CUDA USABLE",
-                "auto_cpu_lane": (
-                    "cpu_onnx_fp32_v1 — SUPPORTED STARTUP FALLBACK WHEN CUDA UNAVAILABLE"
-                ),
-                "explicit_cpu": "SUPPORTED",
-                "explicit_cuda": "SUPPORTED WHEN CUDA USABLE",
-                "shared_logical_index": "QUALIFIED",
-                "runtime_failover": "NOT SUPPORTED / NOT AUTHORIZED",
-                "full1296_cpu_confirmation": "NOT RUN / NOT CLAIMED",
-            },
-            "disposition": "PASS",
-        }
-        SMOKE_PATH.write_text(json.dumps(smoke, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        print(json.dumps({"disposition": "PASS", "smoke": str(SMOKE_PATH)}, indent=2))
-        return 0
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--mode",
+        choices=("orchestrate", "phase"),
+        default="orchestrate",
+        help="orchestrate=cross-process smoke; phase=single OS-process phase worker",
+    )
+    parser.add_argument(
+        "--model-root",
+        type=Path,
+        required=True,
+        help="Existing P3-provisioned dual-READY model root (read-only for P4)",
+    )
+    parser.add_argument("--work-root", type=Path, default=None)
+    parser.add_argument("--phase", choices=("index", "query"), default=None)
+    parser.add_argument("--device", choices=("cuda", "cpu"), default=None)
+    parser.add_argument("--phase-out", type=Path, default=None)
+    parser.add_argument("--prior-json", type=Path, default=None)
+    parser.add_argument(
+        "--prepare",
+        action="store_true",
+        help="Index phase only: ingest/chunk fixture before indexing",
+    )
+    args = parser.parse_args()
+    EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
+
+    try:
+        if args.mode == "phase":
+            if not args.phase or not args.device or not args.work_root or not args.phase_out:
+                raise P4ArchitectureBlocked(
+                    "phase mode requires --phase --device --work-root --phase-out"
+                )
+            return run_phase_mode(args)
+        return run_orchestrator(args)
     except P4NotEligible as exc:
         payload = {
             "terminal": "P4_NOT_ELIGIBLE_ENVIRONMENT",

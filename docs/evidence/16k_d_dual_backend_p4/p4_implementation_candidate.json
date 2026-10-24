@@ -14,9 +14,11 @@
     "docs/evidence/16k_d_dual_backend_p4/p4_evidence_chain.json",
     "docs/evidence/16k_d_dual_backend_p4/p4_cross_profile_product_smoke.json",
     "docs/evidence/16k_d_dual_backend_p4/p4_implementation_candidate.json",
+    "docs/evidence/16k_d_dual_backend_p4/p4_ir001_rework_candidate.json",
+    "docs/evidence/16k_d_dual_backend_p4/p4_full_suite_failset_attribution.json",
     "ROADMAP.md"
   ],
-  "current_disposition": "P4 IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW",
+  "current_disposition": "P4 IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW",
   "declarations": {
     "auto_cpu_lane": "cpu_onnx_fp32_v1 \u2014 SUPPORTED STARTUP FALLBACK WHEN CUDA UNAVAILABLE",
     "auto_cuda_lane": "cuda_fp16_v1 \u2014 PREFERRED WHEN CUDA USABLE",
@@ -43,22 +45,36 @@
   "evidence_chain": "docs/evidence/16k_d_dual_backend_p4/p4_evidence_chain.json",
   "full1296_confirmed": false,
   "implementation_subject": "3bc0803005aa1cbbaabd500eaeeec6f5f70cacfc",
+  "ir001_rework": {
+    "evidence": "docs/evidence/16k_d_dual_backend_p4/p4_ir001_rework_candidate.json",
+    "findings": [
+      "F001",
+      "F002",
+      "F003"
+    ]
+  },
   "parity_rerun_calls": 0,
   "production_source_modified": false,
   "proofs": {
+    "corrected_real_cross_process_smoke": "PASS",
+    "existing_dual_ready_root_preflight": "PASS",
+    "failset_attribution": "docs/evidence/16k_d_dual_backend_p4/p4_full_suite_failset_attribution.json",
     "focused_p4_and_related": "103 PASS",
     "full_suite_candidate": "1926 passed / 33 failed / 1 skipped",
-    "full_suite_note": "Candidate failset has 33 failures; none in authorized P4 changed paths. Fair parent worktree comparison was skip-skewed (442 skipped) when models linking was incomplete; 14 overlapping failures confirmed on parent for the shared subset previously. Do not claim identical failset.",
-    "real_smoke": "PASS",
+    "model_root_mutated": false,
+    "p1_p2_p3_related_in_focused_suite": "included (execution_profile, embedding_artifacts, embedding_runtime, onnx_embedder, identity, bundle_provision, p2 product, p4 acceptance)",
+    "parent_exact_33_reproduction": "32 failed / 1 passed (explained non-P4)",
     "ruff": "PASS",
     "wheel_build": "PASS"
   },
   "provisioning_calls": 0,
   "real_smoke": {
-    "direction_a": "cuda_fp16_v1 index -> cpu_onnx_fp32_v1 query",
-    "direction_b": "cpu_onnx_fp32_v1 index -> cuda_fp16_v1 query",
+    "direction_a": "cuda_fp16_v1 index proc -> cpu_onnx_fp32_v1 query proc",
+    "direction_b": "cpu_onnx_fp32_v1 index proc -> cuda_fp16_v1 query proc",
     "disposition": "PASS",
-    "evidence": "docs/evidence/16k_d_dual_backend_p4/p4_cross_profile_product_smoke.json"
+    "evidence": "docs/evidence/16k_d_dual_backend_p4/p4_cross_profile_product_smoke.json",
+    "model_root_mutated": false,
+    "processes_cross_os_boundary": true
   },
   "record_kind": "p4_implementation_candidate",
   "scientific_campaign_calls": 0,
