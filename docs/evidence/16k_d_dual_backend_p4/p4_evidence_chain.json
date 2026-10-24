@@ -1,0 +1,70 @@
+{
+  "authority": "S16-K-D-DUAL-BACKEND-P4-PRODUCT-ACCEPTANCE-DEFAULT-POLICY-IMPLEMENTATION-AUTH-001",
+  "authorized_parent": "9d80480f3e3be6b6a8e31a8272596defb4fccfa6",
+  "disposition": "PASS",
+  "p4_evidence_newly_generated": [
+    "docs/evidence/16k_d_dual_backend_p4/p4_cross_profile_product_smoke.json",
+    "docs/evidence/16k_d_dual_backend_p4/p4_implementation_candidate.json"
+  ],
+  "product_runtime_evidence_consumed": [
+    {
+      "accepted_tree_sha256": "3e1b23a7293cf599bc34d1d9875e5c4ecde45bf12fcd300a6cb66794b5bc4345",
+      "expected_disposition": "PASS",
+      "kind": "p2_bounded_real_cpu_product",
+      "observed_disposition": "PASS",
+      "path": "docs/evidence/16k_d_dual_backend_p2/bounded_real_cpu_product_ready_pass.json",
+      "profile_id": "cpu_onnx_fp32_v1",
+      "representation_id": "onnx_fp32_v1",
+      "sha256": "3e8c0a41e86b5be1d17792c5f5aeea43f38fe19d06e02423c235f7d28e18fe75"
+    }
+  ],
+  "provisioning_evidence_consumed": [
+    {
+      "accepted_p3_technical_subject": "af6fa904b4309cb37a2204823347940bde70dcba",
+      "bundle_publication_count": 1,
+      "expected_disposition": "PASS",
+      "findings": "F001-F006 CLOSED",
+      "kind": "p3_bounded_real_provisioning",
+      "observed_disposition": "PASS",
+      "path": "docs/evidence/16k_d_dual_backend_p3/p3_bounded_real_provisioning_pass.json",
+      "post_state_onnx_readiness": "ready",
+      "post_state_torch_readiness": "ready",
+      "sha256": "8baa3fc912b21a52f5e4f4ec7d98185566af1d5c624f3267cf057b9f2d19d25e"
+    }
+  ],
+  "record_kind": "p4_evidence_chain",
+  "scientific_evidence_consumed": [
+    {
+      "accepted_onnx_tree_sha256": "3e1b23a7293cf599bc34d1d9875e5c4ecde45bf12fcd300a6cb66794b5bc4345",
+      "expected_disposition": "PASS",
+      "kind": "onnx_fp32_gpu_fp16_parity",
+      "note": "Semantic/vector-space compatibility established independently; not rerun by P4",
+      "observed_disposition": "PASS",
+      "path": "docs/evidence/16k_d_cpu_onnx/onnx_fp32_gpu_fp16_parity_pass_1792638012.json",
+      "sha256": "043e291e9c8dbcabe3cb11ef1775956fbd196c1cc44d12f69ea2919a96e48448"
+    },
+    {
+      "accepted_onnx_tree_sha256": "3e1b23a7293cf599bc34d1d9875e5c4ecde45bf12fcd300a6cb66794b5bc4345",
+      "expected_disposition": "PRODUCT-PRACTICAL",
+      "full1296_confirmed": false,
+      "kind": "onnx_fp32_128_screen",
+      "note": "48.68 min remains a projection; not claimed as full workload confirmation",
+      "observed_disposition": "PRODUCT-PRACTICAL",
+      "path": "docs/evidence/16k_d_cpu_onnx/onnx_fp32_128_screen_pass_1792638543.json",
+      "projected_full_minutes": 48.68127353649343,
+      "sha256": "00c8b06cb1d8f683dead15a585ef4d5c772b50b8cbb5c3f9a4f4d7c060403389"
+    }
+  ],
+  "subjects": {
+    "accepted_onnx_fp32_tree_sha256": "3e1b23a7293cf599bc34d1d9875e5c4ecde45bf12fcd300a6cb66794b5bc4345",
+    "p1_failure_classification_corrective": "0da27594f0b8589c0cfa995bf97097e03f6accf8",
+    "p1_original_runtime_substrate": "fae82b2455cfdd0d1622065904a35895372740b6",
+    "p2_accepted_technical_subject": "07ce117b9d94b9372244004386351c577c725fc6",
+    "p3_accepted_technical_subject": "af6fa904b4309cb37a2204823347940bde70dcba",
+    "p3_closeout_parent": "9d80480f3e3be6b6a8e31a8272596defb4fccfa6"
+  },
+  "validation": {
+    "embedded_identities_checked": true,
+    "filename_only_trust": false
+  }
+}

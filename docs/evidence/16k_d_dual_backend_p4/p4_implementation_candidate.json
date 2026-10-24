@@ -1,0 +1,71 @@
+{
+  "accepted_design_disposition": "P4 DESIGN COMPLETE / INDEPENDENTLY ACCEPTED \u2014 IR-001",
+  "accepted_p2_technical_subject": "07ce117b9d94b9372244004386351c577c725fc6",
+  "accepted_p3_technical_subject": "af6fa904b4309cb37a2204823347940bde70dcba",
+  "authority": "S16-K-D-DUAL-BACKEND-P4-PRODUCT-ACCEPTANCE-DEFAULT-POLICY-IMPLEMENTATION-AUTH-001",
+  "authorized_parent": "9d80480f3e3be6b6a8e31a8272596defb4fccfa6",
+  "branch": "implementation/16k-d-dual-backend-p4-product-acceptance",
+  "changed_paths": [
+    "tests/unit/app/test_slice16k_d_p4_dual_backend_acceptance.py",
+    "scripts/diag_16k_d_dense/run_p4_dual_backend_acceptance.py",
+    "docs/slice16k_d_dual_backend_p4_product_acceptance_design.md",
+    "docs/evidence/16k_d_dual_backend_p4/p4_implementation_auth001.json",
+    "docs/evidence/16k_d_dual_backend_p4/p4_evidence_chain.json",
+    "docs/evidence/16k_d_dual_backend_p4/p4_cross_profile_product_smoke.json",
+    "docs/evidence/16k_d_dual_backend_p4/p4_implementation_candidate.json",
+    "ROADMAP.md"
+  ],
+  "current_disposition": "P4 IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW",
+  "declarations": {
+    "auto_cpu_lane": "cpu_onnx_fp32_v1 \u2014 SUPPORTED STARTUP FALLBACK WHEN CUDA UNAVAILABLE",
+    "auto_cuda_lane": "cuda_fp16_v1 \u2014 PREFERRED WHEN CUDA USABLE",
+    "default_policy": "AUTO/native \u2014 PRODUCT-QUALIFIED",
+    "dual_backend_product_acceptance": "PASS",
+    "explicit_cpu": "SUPPORTED",
+    "explicit_cuda": "SUPPORTED WHEN CUDA USABLE",
+    "full1296_cpu_confirmation": "NOT RUN / NOT CLAIMED",
+    "runtime_failover": "NOT SUPPORTED / NOT AUTHORIZED",
+    "shared_logical_index": "QUALIFIED"
+  },
+  "deterministic_gates": {
+    "A_profile_vocabulary": "PASS",
+    "B_auto_native_default": "PASS",
+    "C_resolver_semantics": "PASS",
+    "D_fail_closed_selection": "PASS",
+    "E_identity_invariance": "PASS",
+    "F_explicit_cpu_cuda": "PASS",
+    "G_no_runtime_failover": "PASS",
+    "H_observability": "PASS",
+    "cpu_claim_boundary": "PASS",
+    "evidence_chain": "PASS"
+  },
+  "evidence_chain": "docs/evidence/16k_d_dual_backend_p4/p4_evidence_chain.json",
+  "full1296_confirmed": false,
+  "parity_rerun_calls": 0,
+  "production_source_modified": false,
+  "proofs": {
+    "focused_p4_and_related": "103 PASS",
+    "full_suite_candidate": "1926 passed / 33 failed / 1 skipped",
+    "full_suite_note": "Candidate failset has 33 failures; none in authorized P4 changed paths. Fair parent worktree comparison was skip-skewed (442 skipped) when models linking was incomplete; 14 overlapping failures confirmed on parent for the shared subset previously. Do not claim identical failset.",
+    "real_smoke": "PASS",
+    "ruff": "PASS",
+    "wheel_build": "PASS"
+  },
+  "provisioning_calls": 0,
+  "real_smoke": {
+    "direction_a": "cuda_fp16_v1 index -> cpu_onnx_fp32_v1 query",
+    "direction_b": "cpu_onnx_fp32_v1 index -> cuda_fp16_v1 query",
+    "disposition": "PASS",
+    "evidence": "docs/evidence/16k_d_dual_backend_p4/p4_cross_profile_product_smoke.json"
+  },
+  "record_kind": "p4_implementation_candidate",
+  "scientific_campaign_calls": 0,
+  "unauthorized_remaining": [
+    "campaigns",
+    "main",
+    "merge",
+    "release",
+    "promotion",
+    "full_1296"
+  ]
+}

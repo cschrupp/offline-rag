@@ -1,0 +1,41 @@
+{
+  "accepted_design_disposition": "P4 DESIGN COMPLETE / INDEPENDENTLY ACCEPTED — IR-001",
+  "accepted_p2_technical_subject": "07ce117b9d94b9372244004386351c577c725fc6",
+  "accepted_p3_technical_subject": "af6fa904b4309cb37a2204823347940bde70dcba",
+  "allowed_paths": [
+    "tests/unit/app/test_slice16k_d_p4_dual_backend_acceptance.py",
+    "scripts/diag_16k_d_dense/run_p4_dual_backend_acceptance.py",
+    "docs/slice16k_d_dual_backend_p4_product_acceptance_design.md",
+    "docs/evidence/16k_d_dual_backend_p4/p4_implementation_auth001.json",
+    "docs/evidence/16k_d_dual_backend_p4/p4_evidence_chain.json",
+    "docs/evidence/16k_d_dual_backend_p4/p4_cross_profile_product_smoke.json",
+    "docs/evidence/16k_d_dual_backend_p4/p4_implementation_candidate.json",
+    "docs/model_provisioning.md",
+    "ROADMAP.md"
+  ],
+  "authority": "S16-K-D-DUAL-BACKEND-P4-PRODUCT-ACCEPTANCE-DEFAULT-POLICY-IMPLEMENTATION-AUTH-001",
+  "authorized_parent": "9d80480f3e3be6b6a8e31a8272596defb4fccfa6",
+  "branch": "implementation/16k-d-dual-backend-p4-product-acceptance",
+  "exclusions": [
+    "production_source_modification",
+    "config/base.yaml_modification",
+    "full_1296_campaign",
+    "new_parity_campaign",
+    "new_performance_campaign",
+    "provisioning_calls",
+    "model_download",
+    "main",
+    "merge",
+    "release",
+    "promotion"
+  ],
+  "human_acknowledgment": {
+    "closeout": "single_human_acknowledgment",
+    "ha_record": "NOT_USED",
+    "ha_review": "NOT_USED",
+    "status_flip_chain": "NOT_USED"
+  },
+  "real_cuda_gate_required": true,
+  "record_kind": "p4_implementation_auth001",
+  "scope": "P4 implementation and bounded P4 acceptance execution only"
+}

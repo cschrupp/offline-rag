@@ -1250,10 +1250,31 @@ SLICE 15  COMPLETE / ACCEPTED
          Bounded real provisioning confirmation: PASS (rerun after IR-001; not required for F006)
          Closeout: single Human acknowledgment (no HA-record / HA-review /
            status-flip chain)
-         Downstream (P4/campaigns/main/merge/promotion): NOT AUTHORIZED
-         P4: separate later Human authorization required; not opened by P3 close
+         Downstream (P4/campaigns/main/merge/promotion):
+           P4 later authorized separately; campaigns/main/merge/promotion closed
+       16K-D DUAL-BACKEND P4: DESIGN COMPLETE / INDEPENDENTLY ACCEPTED (IR-001)
+         P4 IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
+         Implementation authority:
+           S16-K-D-DUAL-BACKEND-P4-PRODUCT-ACCEPTANCE-DEFAULT-POLICY-IMPLEMENTATION-AUTH-001
+         Implementation parent:
+           9d80480f3e3be6b6a8e31a8272596defb4fccfa6
+         Accepted P3 technical subject:
+           af6fa904b4309cb37a2204823347940bde70dcba
+         Accepted P2 technical subject:
+           07ce117b9d94b9372244004386351c577c725fc6
+         Branch: implementation/16k-d-dual-backend-p4-product-acceptance
+         Design document:
+           docs/slice16k_d_dual_backend_p4_product_acceptance_design.md
+         Evidence:
+           docs/evidence/16k_d_dual_backend_p4/p4_implementation_auth001.json
+           docs/evidence/16k_d_dual_backend_p4/p4_evidence_chain.json
+           docs/evidence/16k_d_dual_backend_p4/p4_cross_profile_product_smoke.json
+           docs/evidence/16k_d_dual_backend_p4/p4_implementation_candidate.json
+         Real cross-profile product smoke: PASS
+         Full1296: NOT RUN / NOT CONFIRMED
+         Downstream (campaigns/main/merge/release/promotion): NOT AUTHORIZED
        16K-D still closed: full 1296 FP32 confirmation ·
-         P4 acceptance · default promotion · main ·
+         default promotion · main ·
          alternate models · further quantization
        16K-D CPU-GGUF-01 authority:
          S16-K-D-POST-CPUONNX-CPU-GGUF-FEASIBILITY-IMPLEMENTATION-AUTH-001
@@ -2253,10 +2274,31 @@ SLICE 15  COMPLETE / ACCEPTED
          Bounded real provisioning confirmation: PASS (rerun after IR-001; not required for F006)
          Closeout: single Human acknowledgment (no HA-record / HA-review /
            status-flip chain)
-         Downstream (P4/campaigns/main/merge/promotion): NOT AUTHORIZED
-         P4: separate later Human authorization required; not opened by P3 close
+         Downstream (P4/campaigns/main/merge/promotion):
+           P4 later authorized separately; campaigns/main/merge/promotion closed
+       16K-D DUAL-BACKEND P4: DESIGN COMPLETE / INDEPENDENTLY ACCEPTED (IR-001)
+         P4 IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
+         Implementation authority:
+           S16-K-D-DUAL-BACKEND-P4-PRODUCT-ACCEPTANCE-DEFAULT-POLICY-IMPLEMENTATION-AUTH-001
+         Implementation parent:
+           9d80480f3e3be6b6a8e31a8272596defb4fccfa6
+         Accepted P3 technical subject:
+           af6fa904b4309cb37a2204823347940bde70dcba
+         Accepted P2 technical subject:
+           07ce117b9d94b9372244004386351c577c725fc6
+         Branch: implementation/16k-d-dual-backend-p4-product-acceptance
+         Design document:
+           docs/slice16k_d_dual_backend_p4_product_acceptance_design.md
+         Evidence:
+           docs/evidence/16k_d_dual_backend_p4/p4_implementation_auth001.json
+           docs/evidence/16k_d_dual_backend_p4/p4_evidence_chain.json
+           docs/evidence/16k_d_dual_backend_p4/p4_cross_profile_product_smoke.json
+           docs/evidence/16k_d_dual_backend_p4/p4_implementation_candidate.json
+         Real cross-profile product smoke: PASS
+         Full1296: NOT RUN / NOT CONFIRMED
+         Downstream (campaigns/main/merge/release/promotion): NOT AUTHORIZED
        16K-D still closed: full 1296 FP32 confirmation ·
-         P4 acceptance · default promotion · main ·
+         default promotion · main ·
          alternate models · further quantization
        16K-D CPU-GGUF-01 authority:
          S16-K-D-POST-CPUONNX-CPU-GGUF-FEASIBILITY-IMPLEMENTATION-AUTH-001

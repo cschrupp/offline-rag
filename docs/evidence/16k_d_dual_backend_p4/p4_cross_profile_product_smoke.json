@@ -1,0 +1,395 @@
+{
+  "accepted_cpu_screen_evidence": "docs/evidence/16k_d_cpu_onnx/onnx_fp32_128_screen_pass_1792638543.json",
+  "accepted_onnx_tree": "3e1b23a7293cf599bc34d1d9875e5c4ecde45bf12fcd300a6cb66794b5bc4345",
+  "accepted_p1_corrective_subject": "0da27594f0b8589c0cfa995bf97097e03f6accf8",
+  "accepted_p1_original_subject": "fae82b2455cfdd0d1622065904a35895372740b6",
+  "accepted_p2_subject": "07ce117b9d94b9372244004386351c577c725fc6",
+  "accepted_p3_subject": "af6fa904b4309cb37a2204823347940bde70dcba",
+  "accepted_parity_evidence": "docs/evidence/16k_d_cpu_onnx/onnx_fp32_gpu_fp16_parity_pass_1792638012.json",
+  "authority": "S16-K-D-DUAL-BACKEND-P4-PRODUCT-ACCEPTANCE-DEFAULT-POLICY-IMPLEMENTATION-AUTH-001",
+  "cuda_preflight": {
+    "device_count": 1,
+    "probe_cuda_available": true,
+    "probe_raised": false,
+    "torch_cuda_build": "13.0",
+    "torch_cuda_is_available": true
+  },
+  "declarations": {
+    "auto_cpu_lane": "cpu_onnx_fp32_v1 \u2014 SUPPORTED STARTUP FALLBACK WHEN CUDA UNAVAILABLE",
+    "auto_cuda_lane": "cuda_fp16_v1 \u2014 PREFERRED WHEN CUDA USABLE",
+    "default_policy": "AUTO/native \u2014 PRODUCT-QUALIFIED",
+    "dual_backend_product_acceptance": "PASS",
+    "explicit_cpu": "SUPPORTED",
+    "explicit_cuda": "SUPPORTED WHEN CUDA USABLE",
+    "full1296_cpu_confirmation": "NOT RUN / NOT CLAIMED",
+    "runtime_failover": "NOT SUPPORTED / NOT AUTHORIZED",
+    "shared_logical_index": "QUALIFIED"
+  },
+  "default_device_policy": "auto",
+  "default_precision_policy": "native",
+  "direction_a": {
+    "actual_index_runtime_facts": {
+      "backend_family": "sentence_transformers_torch",
+      "batch_size": 32,
+      "configured_device": "cuda",
+      "configured_precision": "native",
+      "dimension": 1024,
+      "embedding_state": "READY",
+      "model_id": "Qwen/Qwen3-Embedding-0.6B",
+      "model_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+      "profile_id": "cuda_fp16_v1",
+      "provider": null,
+      "representation_id": "torch_st_v1",
+      "resolved_device": "cuda",
+      "resolved_precision": "fp16",
+      "selection_reason": "explicit_cuda_fp16"
+    },
+    "actual_query_runtime_facts": {
+      "backend_family": "sentence_transformers_onnx",
+      "batch_size": 32,
+      "configured_device": "cpu",
+      "configured_precision": "native",
+      "dimension": 1024,
+      "embedding_state": "READY",
+      "model_id": "Qwen/Qwen3-Embedding-0.6B",
+      "model_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+      "profile_id": "cpu_onnx_fp32_v1",
+      "provider": "CPUExecutionProvider",
+      "representation_id": "onnx_fp32_v1",
+      "resolved_device": "cpu",
+      "resolved_precision": "fp32",
+      "selection_reason": "explicit_cpu_onnx_fp32"
+    },
+    "collection_after": "dense_bdcef64e443b4977aed3bb127505be19ea762cdf42164744",
+    "collection_before": "dense_bdcef64e443b4977aed3bb127505be19ea762cdf42164744",
+    "dense_retrieval_config_hash_at_index": "denseretrievecfg_ad08969fbb02e1c6ae353c5bf5b8deee18802a0a249da65d6795c39a0ce5719d",
+    "dense_retrieval_config_hash_at_query": "denseretrievecfg_ad08969fbb02e1c6ae353c5bf5b8deee18802a0a249da65d6795c39a0ce5719d",
+    "document_embedding_inventory_after": {
+      "file_count": 8,
+      "sha256_by_path": {
+        "emb_24386c7d61e1977b36273bec90b67436a6ce4562c2aed8469cecd26c16610aad.json": "9a51b5f319bf401eddeb989af17afd761ef165d6bfa8fbbd20406514c4aa0fcd",
+        "emb_2a04968022282d091b9f11922dae6d1a1d17068fd18bf11df468f8b4a6a6d453.json": "5fac6b93d165ee3acde9d2b8c6161941d3fc787b52dece468a409926304e7568",
+        "emb_493e1f92e019394647078c421ed4135d06dd10da6f11b53ce6496185a80031b8.json": "fdd82311ad7eed9416d82daa17172ef00e1c669023a6e6c749bf068f09695c81",
+        "emb_516583ab843d31326d4752f6b396c68500e030ca6eda19eb81261ae9570effe5.json": "6564d2580ac36988114e42a3edd75fc9df4ff91b1f2e36cdad4344251de77275",
+        "emb_7ec23ca23ce90aa71670c0406c6c7b7d300f8b2e544254627dbdabae6204a18f.json": "f84085bfeb094f3ca9b98b7554b18e7c2e20479094159d82df87b91b08b60312",
+        "emb_9978e43a9dd5540265be115a139b5282a6683609d71086763cec7178780f3277.json": "b7a9e19b594cf6f4d623f97928f2782bf57b1fd5f3513d7ad4a5f275cbd36fc3",
+        "emb_a9e69fd54d913a7c9174b2eeccd8288755edc2e808e57d2a5f4df6cead14f48e.json": "c6d3d5bd58c7e781a526268cedc6ebda5b8ca62e47566a0a48c442ee3bb060b7",
+        "emb_ac624ce3ee345d38072a12a34d1bdd133ba595f9d8e69117921a576014e190a4.json": "72a8a58f439cbbccad9da5ec16e9f8337a0a075d1efef0c9a2f89ed00210f907"
+      },
+      "sorted_relative_paths": [
+        "emb_24386c7d61e1977b36273bec90b67436a6ce4562c2aed8469cecd26c16610aad.json",
+        "emb_2a04968022282d091b9f11922dae6d1a1d17068fd18bf11df468f8b4a6a6d453.json",
+        "emb_493e1f92e019394647078c421ed4135d06dd10da6f11b53ce6496185a80031b8.json",
+        "emb_516583ab843d31326d4752f6b396c68500e030ca6eda19eb81261ae9570effe5.json",
+        "emb_7ec23ca23ce90aa71670c0406c6c7b7d300f8b2e544254627dbdabae6204a18f.json",
+        "emb_9978e43a9dd5540265be115a139b5282a6683609d71086763cec7178780f3277.json",
+        "emb_a9e69fd54d913a7c9174b2eeccd8288755edc2e808e57d2a5f4df6cead14f48e.json",
+        "emb_ac624ce3ee345d38072a12a34d1bdd133ba595f9d8e69117921a576014e190a4.json"
+      ]
+    },
+    "document_embedding_inventory_before": {
+      "file_count": 8,
+      "sha256_by_path": {
+        "emb_24386c7d61e1977b36273bec90b67436a6ce4562c2aed8469cecd26c16610aad.json": "9a51b5f319bf401eddeb989af17afd761ef165d6bfa8fbbd20406514c4aa0fcd",
+        "emb_2a04968022282d091b9f11922dae6d1a1d17068fd18bf11df468f8b4a6a6d453.json": "5fac6b93d165ee3acde9d2b8c6161941d3fc787b52dece468a409926304e7568",
+        "emb_493e1f92e019394647078c421ed4135d06dd10da6f11b53ce6496185a80031b8.json": "fdd82311ad7eed9416d82daa17172ef00e1c669023a6e6c749bf068f09695c81",
+        "emb_516583ab843d31326d4752f6b396c68500e030ca6eda19eb81261ae9570effe5.json": "6564d2580ac36988114e42a3edd75fc9df4ff91b1f2e36cdad4344251de77275",
+        "emb_7ec23ca23ce90aa71670c0406c6c7b7d300f8b2e544254627dbdabae6204a18f.json": "f84085bfeb094f3ca9b98b7554b18e7c2e20479094159d82df87b91b08b60312",
+        "emb_9978e43a9dd5540265be115a139b5282a6683609d71086763cec7178780f3277.json": "b7a9e19b594cf6f4d623f97928f2782bf57b1fd5f3513d7ad4a5f275cbd36fc3",
+        "emb_a9e69fd54d913a7c9174b2eeccd8288755edc2e808e57d2a5f4df6cead14f48e.json": "c6d3d5bd58c7e781a526268cedc6ebda5b8ca62e47566a0a48c442ee3bb060b7",
+        "emb_ac624ce3ee345d38072a12a34d1bdd133ba595f9d8e69117921a576014e190a4.json": "72a8a58f439cbbccad9da5ec16e9f8337a0a075d1efef0c9a2f89ed00210f907"
+      },
+      "sorted_relative_paths": [
+        "emb_24386c7d61e1977b36273bec90b67436a6ce4562c2aed8469cecd26c16610aad.json",
+        "emb_2a04968022282d091b9f11922dae6d1a1d17068fd18bf11df468f8b4a6a6d453.json",
+        "emb_493e1f92e019394647078c421ed4135d06dd10da6f11b53ce6496185a80031b8.json",
+        "emb_516583ab843d31326d4752f6b396c68500e030ca6eda19eb81261ae9570effe5.json",
+        "emb_7ec23ca23ce90aa71670c0406c6c7b7d300f8b2e544254627dbdabae6204a18f.json",
+        "emb_9978e43a9dd5540265be115a139b5282a6683609d71086763cec7178780f3277.json",
+        "emb_a9e69fd54d913a7c9174b2eeccd8288755edc2e808e57d2a5f4df6cead14f48e.json",
+        "emb_ac624ce3ee345d38072a12a34d1bdd133ba595f9d8e69117921a576014e190a4.json"
+      ]
+    },
+    "document_reembedding_observed": false,
+    "embedding_config_hash_at_index": "embcfg_e7861b5986785eba0fb6725a3d1e40f2d461f33e2dcd66d2c75ad3875f9a5d3f",
+    "embedding_config_hash_at_query": "embcfg_e7861b5986785eba0fb6725a3d1e40f2d461f33e2dcd66d2c75ad3875f9a5d3f",
+    "index_config_hash_at_index": "idxcfg_45b7b17026e085b4f721de7031819b3b72d99db3966e1b77fc9dcc8203d41862",
+    "index_config_hash_at_query": "idxcfg_45b7b17026e085b4f721de7031819b3b72d99db3966e1b77fc9dcc8203d41862",
+    "index_elapsed_s": 22.944979537001927,
+    "index_id_after": "denseindex_bdcef64e443b4977aed3bb127505be19ea762cdf421647440fc008b5e2fa6706",
+    "index_id_before": "denseindex_bdcef64e443b4977aed3bb127505be19ea762cdf421647440fc008b5e2fa6706",
+    "index_profile": "cuda_fp16_v1",
+    "index_transitions": "UNLOADED -> LOADING -> READY",
+    "point_count_after": 8,
+    "point_count_before": 8,
+    "query_elapsed_s": 13.273729019012535,
+    "query_profile": "cpu_onnx_fp32_v1",
+    "query_transitions": "UNLOADED -> LOADING -> READY",
+    "reindex_observed": false,
+    "retrieval": {
+      "candidate_count_total": 40,
+      "finite_scores": true,
+      "queries": [
+        {
+          "candidate_count": 5,
+          "index_id": "denseindex_bdcef64e443b4977aed3bb127505be19ea762cdf421647440fc008b5e2fa6706",
+          "query": "sensor temperature rating",
+          "top_score": 0.7614095575733693
+        },
+        {
+          "candidate_count": 5,
+          "index_id": "denseindex_bdcef64e443b4977aed3bb127505be19ea762cdf421647440fc008b5e2fa6706",
+          "query": "maximum pressure continuous",
+          "top_score": 0.7441648712458643
+        },
+        {
+          "candidate_count": 5,
+          "index_id": "denseindex_bdcef64e443b4977aed3bb127505be19ea762cdf421647440fc008b5e2fa6706",
+          "query": "valve seal PTFE",
+          "top_score": 0.7802434400512537
+        },
+        {
+          "candidate_count": 5,
+          "index_id": "denseindex_bdcef64e443b4977aed3bb127505be19ea762cdf421647440fc008b5e2fa6706",
+          "query": "pump flow gallons",
+          "top_score": 0.6888721571544596
+        },
+        {
+          "candidate_count": 5,
+          "index_id": "denseindex_bdcef64e443b4977aed3bb127505be19ea762cdf421647440fc008b5e2fa6706",
+          "query": "cable insulation class",
+          "top_score": 0.7837702988833113
+        },
+        {
+          "candidate_count": 5,
+          "index_id": "denseindex_bdcef64e443b4977aed3bb127505be19ea762cdf421647440fc008b5e2fa6706",
+          "query": "enclosure IP66",
+          "top_score": 0.7822086603620253
+        },
+        {
+          "candidate_count": 5,
+          "index_id": "denseindex_bdcef64e443b4977aed3bb127505be19ea762cdf421647440fc008b5e2fa6706",
+          "query": "bearing lubrication hours",
+          "top_score": 0.7933186755764012
+        },
+        {
+          "candidate_count": 5,
+          "index_id": "denseindex_bdcef64e443b4977aed3bb127505be19ea762cdf421647440fc008b5e2fa6706",
+          "query": "filter micron hydraulic",
+          "top_score": 0.7428495232450242
+        }
+      ],
+      "status": "ok"
+    },
+    "sorted_point_ids_after": [
+      "44c16e54-fa09-5357-afd9-06ff79ae3587",
+      "4b79287b-97e4-5cc9-b435-036d57aae1a2",
+      "7a5c1802-d91e-5bd3-b57a-e1be12ce9de3",
+      "aa8d0e7c-710e-547d-aa90-560f1328cb8b",
+      "cbb7b83a-c9e8-5361-9e48-aa7581da48a8",
+      "e5edf77d-41bb-5e4d-b9a3-ccf20fee7517",
+      "eee32f6d-8e65-553b-b126-9657f2da6398",
+      "fd4fb005-c7b0-5d89-81cc-0315e267d26f"
+    ],
+    "sorted_point_ids_before": [
+      "44c16e54-fa09-5357-afd9-06ff79ae3587",
+      "4b79287b-97e4-5cc9-b435-036d57aae1a2",
+      "7a5c1802-d91e-5bd3-b57a-e1be12ce9de3",
+      "aa8d0e7c-710e-547d-aa90-560f1328cb8b",
+      "cbb7b83a-c9e8-5361-9e48-aa7581da48a8",
+      "e5edf77d-41bb-5e4d-b9a3-ccf20fee7517",
+      "eee32f6d-8e65-553b-b126-9657f2da6398",
+      "fd4fb005-c7b0-5d89-81cc-0315e267d26f"
+    ]
+  },
+  "direction_b": {
+    "actual_index_runtime_facts": {
+      "backend_family": "sentence_transformers_onnx",
+      "batch_size": 32,
+      "configured_device": "cpu",
+      "configured_precision": "native",
+      "dimension": 1024,
+      "embedding_state": "READY",
+      "model_id": "Qwen/Qwen3-Embedding-0.6B",
+      "model_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+      "profile_id": "cpu_onnx_fp32_v1",
+      "provider": "CPUExecutionProvider",
+      "representation_id": "onnx_fp32_v1",
+      "resolved_device": "cpu",
+      "resolved_precision": "fp32",
+      "selection_reason": "explicit_cpu_onnx_fp32"
+    },
+    "actual_query_runtime_facts": {
+      "backend_family": "sentence_transformers_torch",
+      "batch_size": 32,
+      "configured_device": "cuda",
+      "configured_precision": "native",
+      "dimension": 1024,
+      "embedding_state": "READY",
+      "model_id": "Qwen/Qwen3-Embedding-0.6B",
+      "model_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+      "profile_id": "cuda_fp16_v1",
+      "provider": null,
+      "representation_id": "torch_st_v1",
+      "resolved_device": "cuda",
+      "resolved_precision": "fp16",
+      "selection_reason": "explicit_cuda_fp16"
+    },
+    "collection_after": "dense_bdcef64e443b4977aed3bb127505be19ea762cdf42164744",
+    "collection_before": "dense_bdcef64e443b4977aed3bb127505be19ea762cdf42164744",
+    "dense_retrieval_config_hash_at_index": "denseretrievecfg_ad08969fbb02e1c6ae353c5bf5b8deee18802a0a249da65d6795c39a0ce5719d",
+    "dense_retrieval_config_hash_at_query": "denseretrievecfg_ad08969fbb02e1c6ae353c5bf5b8deee18802a0a249da65d6795c39a0ce5719d",
+    "document_embedding_inventory_after": {
+      "file_count": 8,
+      "sha256_by_path": {
+        "emb_24386c7d61e1977b36273bec90b67436a6ce4562c2aed8469cecd26c16610aad.json": "3c8ac6e3e3ff35ba1e6d614bb1117976e17b66c13f53c36104d1c106725178e4",
+        "emb_2a04968022282d091b9f11922dae6d1a1d17068fd18bf11df468f8b4a6a6d453.json": "d8273da385bd38b4d443be401383c088ac028c12331425ab46fd1bc52ca23979",
+        "emb_493e1f92e019394647078c421ed4135d06dd10da6f11b53ce6496185a80031b8.json": "7b7b76f47541ff929ed3f6516c0b525e66098f56887c829831afa7c011ef3106",
+        "emb_516583ab843d31326d4752f6b396c68500e030ca6eda19eb81261ae9570effe5.json": "c35a9b0924ae02589bd925c7d62b776dc92218583b76a87f32a9301b3d7c3e2c",
+        "emb_7ec23ca23ce90aa71670c0406c6c7b7d300f8b2e544254627dbdabae6204a18f.json": "52ecf3ecac7763cd792c63c97a404d06af40f876d4eb6dcbd6ddd3a3b62b3f16",
+        "emb_9978e43a9dd5540265be115a139b5282a6683609d71086763cec7178780f3277.json": "4dc923d17676be4e9e16a9b627dbd1a299347d666df4231b5a84f881caca6560",
+        "emb_a9e69fd54d913a7c9174b2eeccd8288755edc2e808e57d2a5f4df6cead14f48e.json": "31ed654fc9b53a96afad11006e261da7efb1a4f6d0d13ce2411a5c935a85dc39",
+        "emb_ac624ce3ee345d38072a12a34d1bdd133ba595f9d8e69117921a576014e190a4.json": "f4360d3059e457049a9f6636c402bd52f8ce8b5837e2a852ec743dd103f8355c"
+      },
+      "sorted_relative_paths": [
+        "emb_24386c7d61e1977b36273bec90b67436a6ce4562c2aed8469cecd26c16610aad.json",
+        "emb_2a04968022282d091b9f11922dae6d1a1d17068fd18bf11df468f8b4a6a6d453.json",
+        "emb_493e1f92e019394647078c421ed4135d06dd10da6f11b53ce6496185a80031b8.json",
+        "emb_516583ab843d31326d4752f6b396c68500e030ca6eda19eb81261ae9570effe5.json",
+        "emb_7ec23ca23ce90aa71670c0406c6c7b7d300f8b2e544254627dbdabae6204a18f.json",
+        "emb_9978e43a9dd5540265be115a139b5282a6683609d71086763cec7178780f3277.json",
+        "emb_a9e69fd54d913a7c9174b2eeccd8288755edc2e808e57d2a5f4df6cead14f48e.json",
+        "emb_ac624ce3ee345d38072a12a34d1bdd133ba595f9d8e69117921a576014e190a4.json"
+      ]
+    },
+    "document_embedding_inventory_before": {
+      "file_count": 8,
+      "sha256_by_path": {
+        "emb_24386c7d61e1977b36273bec90b67436a6ce4562c2aed8469cecd26c16610aad.json": "3c8ac6e3e3ff35ba1e6d614bb1117976e17b66c13f53c36104d1c106725178e4",
+        "emb_2a04968022282d091b9f11922dae6d1a1d17068fd18bf11df468f8b4a6a6d453.json": "d8273da385bd38b4d443be401383c088ac028c12331425ab46fd1bc52ca23979",
+        "emb_493e1f92e019394647078c421ed4135d06dd10da6f11b53ce6496185a80031b8.json": "7b7b76f47541ff929ed3f6516c0b525e66098f56887c829831afa7c011ef3106",
+        "emb_516583ab843d31326d4752f6b396c68500e030ca6eda19eb81261ae9570effe5.json": "c35a9b0924ae02589bd925c7d62b776dc92218583b76a87f32a9301b3d7c3e2c",
+        "emb_7ec23ca23ce90aa71670c0406c6c7b7d300f8b2e544254627dbdabae6204a18f.json": "52ecf3ecac7763cd792c63c97a404d06af40f876d4eb6dcbd6ddd3a3b62b3f16",
+        "emb_9978e43a9dd5540265be115a139b5282a6683609d71086763cec7178780f3277.json": "4dc923d17676be4e9e16a9b627dbd1a299347d666df4231b5a84f881caca6560",
+        "emb_a9e69fd54d913a7c9174b2eeccd8288755edc2e808e57d2a5f4df6cead14f48e.json": "31ed654fc9b53a96afad11006e261da7efb1a4f6d0d13ce2411a5c935a85dc39",
+        "emb_ac624ce3ee345d38072a12a34d1bdd133ba595f9d8e69117921a576014e190a4.json": "f4360d3059e457049a9f6636c402bd52f8ce8b5837e2a852ec743dd103f8355c"
+      },
+      "sorted_relative_paths": [
+        "emb_24386c7d61e1977b36273bec90b67436a6ce4562c2aed8469cecd26c16610aad.json",
+        "emb_2a04968022282d091b9f11922dae6d1a1d17068fd18bf11df468f8b4a6a6d453.json",
+        "emb_493e1f92e019394647078c421ed4135d06dd10da6f11b53ce6496185a80031b8.json",
+        "emb_516583ab843d31326d4752f6b396c68500e030ca6eda19eb81261ae9570effe5.json",
+        "emb_7ec23ca23ce90aa71670c0406c6c7b7d300f8b2e544254627dbdabae6204a18f.json",
+        "emb_9978e43a9dd5540265be115a139b5282a6683609d71086763cec7178780f3277.json",
+        "emb_a9e69fd54d913a7c9174b2eeccd8288755edc2e808e57d2a5f4df6cead14f48e.json",
+        "emb_ac624ce3ee345d38072a12a34d1bdd133ba595f9d8e69117921a576014e190a4.json"
+      ]
+    },
+    "document_reembedding_observed": false,
+    "embedding_config_hash_at_index": "embcfg_e7861b5986785eba0fb6725a3d1e40f2d461f33e2dcd66d2c75ad3875f9a5d3f",
+    "embedding_config_hash_at_query": "embcfg_e7861b5986785eba0fb6725a3d1e40f2d461f33e2dcd66d2c75ad3875f9a5d3f",
+    "index_config_hash_at_index": "idxcfg_45b7b17026e085b4f721de7031819b3b72d99db3966e1b77fc9dcc8203d41862",
+    "index_config_hash_at_query": "idxcfg_45b7b17026e085b4f721de7031819b3b72d99db3966e1b77fc9dcc8203d41862",
+    "index_elapsed_s": 16.60556099099631,
+    "index_id_after": "denseindex_bdcef64e443b4977aed3bb127505be19ea762cdf421647440fc008b5e2fa6706",
+    "index_id_before": "denseindex_bdcef64e443b4977aed3bb127505be19ea762cdf421647440fc008b5e2fa6706",
+    "index_profile": "cpu_onnx_fp32_v1",
+    "index_transitions": "UNLOADED -> LOADING -> READY",
+    "point_count_after": 8,
+    "point_count_before": 8,
+    "query_elapsed_s": 15.861888205996365,
+    "query_profile": "cuda_fp16_v1",
+    "query_transitions": "UNLOADED -> LOADING -> READY",
+    "reindex_observed": false,
+    "retrieval": {
+      "candidate_count_total": 40,
+      "finite_scores": true,
+      "queries": [
+        {
+          "candidate_count": 5,
+          "index_id": "denseindex_bdcef64e443b4977aed3bb127505be19ea762cdf421647440fc008b5e2fa6706",
+          "query": "sensor temperature rating",
+          "top_score": 0.7616073244087385
+        },
+        {
+          "candidate_count": 5,
+          "index_id": "denseindex_bdcef64e443b4977aed3bb127505be19ea762cdf421647440fc008b5e2fa6706",
+          "query": "maximum pressure continuous",
+          "top_score": 0.7441358084048382
+        },
+        {
+          "candidate_count": 5,
+          "index_id": "denseindex_bdcef64e443b4977aed3bb127505be19ea762cdf421647440fc008b5e2fa6706",
+          "query": "valve seal PTFE",
+          "top_score": 0.7804237676019016
+        },
+        {
+          "candidate_count": 5,
+          "index_id": "denseindex_bdcef64e443b4977aed3bb127505be19ea762cdf421647440fc008b5e2fa6706",
+          "query": "pump flow gallons",
+          "top_score": 0.6888734329779702
+        },
+        {
+          "candidate_count": 5,
+          "index_id": "denseindex_bdcef64e443b4977aed3bb127505be19ea762cdf421647440fc008b5e2fa6706",
+          "query": "cable insulation class",
+          "top_score": 0.783851969189898
+        },
+        {
+          "candidate_count": 5,
+          "index_id": "denseindex_bdcef64e443b4977aed3bb127505be19ea762cdf421647440fc008b5e2fa6706",
+          "query": "enclosure IP66",
+          "top_score": 0.7819365752330668
+        },
+        {
+          "candidate_count": 5,
+          "index_id": "denseindex_bdcef64e443b4977aed3bb127505be19ea762cdf421647440fc008b5e2fa6706",
+          "query": "bearing lubrication hours",
+          "top_score": 0.7931334198963647
+        },
+        {
+          "candidate_count": 5,
+          "index_id": "denseindex_bdcef64e443b4977aed3bb127505be19ea762cdf421647440fc008b5e2fa6706",
+          "query": "filter micron hydraulic",
+          "top_score": 0.7424559059080678
+        }
+      ],
+      "status": "ok"
+    },
+    "sorted_point_ids_after": [
+      "44c16e54-fa09-5357-afd9-06ff79ae3587",
+      "4b79287b-97e4-5cc9-b435-036d57aae1a2",
+      "7a5c1802-d91e-5bd3-b57a-e1be12ce9de3",
+      "aa8d0e7c-710e-547d-aa90-560f1328cb8b",
+      "cbb7b83a-c9e8-5361-9e48-aa7581da48a8",
+      "e5edf77d-41bb-5e4d-b9a3-ccf20fee7517",
+      "eee32f6d-8e65-553b-b126-9657f2da6398",
+      "fd4fb005-c7b0-5d89-81cc-0315e267d26f"
+    ],
+    "sorted_point_ids_before": [
+      "44c16e54-fa09-5357-afd9-06ff79ae3587",
+      "4b79287b-97e4-5cc9-b435-036d57aae1a2",
+      "7a5c1802-d91e-5bd3-b57a-e1be12ce9de3",
+      "aa8d0e7c-710e-547d-aa90-560f1328cb8b",
+      "cbb7b83a-c9e8-5361-9e48-aa7581da48a8",
+      "e5edf77d-41bb-5e4d-b9a3-ccf20fee7517",
+      "eee32f6d-8e65-553b-b126-9657f2da6398",
+      "fd4fb005-c7b0-5d89-81cc-0315e267d26f"
+    ]
+  },
+  "disposition": "PASS",
+  "evidence_chain_disposition": "PASS",
+  "fixture_child_point_count_direction_a": 8,
+  "fixture_child_point_count_direction_b": 8,
+  "fixture_digest": "1d69e0fc5e6f56e1c9e790bb18134e5189c8497fb48d2947b71ad709726ed944",
+  "fixture_document_count": 8,
+  "full1296_confirmed": false,
+  "model_root": "/tmp/p4_acceptance_run1/dual_model_root",
+  "parent": "9d80480f3e3be6b6a8e31a8272596defb4fccfa6",
+  "parity_rerun_calls": 0,
+  "provisioning_calls": 0,
+  "query_count": 8,
+  "recorded_at": "2026-10-24T20:17:50.539578+00:00",
+  "scientific_campaign_calls": 0,
+  "work_root": "/tmp/p4_acceptance_run1"
+}
