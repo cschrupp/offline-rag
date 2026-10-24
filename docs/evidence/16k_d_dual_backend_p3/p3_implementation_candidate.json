@@ -1,5 +1,5 @@
 {
-  "accepted_design_disposition": "P3 DESIGN COMPLETE / INDEPENDENTLY ACCEPTED — IR-002",
+  "accepted_design_disposition": "P3 DESIGN COMPLETE / INDEPENDENTLY ACCEPTED \u2014 IR-002",
   "accepted_p2_technical_subject": "07ce117b9d94b9372244004386351c577c725fc6",
   "authority": "S16-K-D-DUAL-BACKEND-P3-PROVISIONING-ACQUISITION-IMPLEMENTATION-AUTH-001",
   "authorized_parent": "3b213b0c0ec915c041069e5c99f3149acbf1cd6b",
@@ -8,6 +8,7 @@
     "evidence": "docs/evidence/16k_d_dual_backend_p3/p3_bounded_real_provisioning_pass.json"
   },
   "branch": "implementation/16k-d-dual-backend-p3-provisioning-acquisition",
+  "candidate_tip": "7b94bd4d3ce7997093fd4e4d8e272a4314c76a13",
   "changed_paths": [
     "src/offline_rag/dense/provision.py",
     "src/offline_rag/dense/embedding_bundle_provision.py",
@@ -40,6 +41,7 @@
     "fair_parent_same_cwd_failset": "33 failed (identical failset; zero P3-specific regressions)",
     "note": "uv build --wheel PASS; full sdist omitted due to host workspace data/ clutter outside authorized paths"
   },
+  "implementation_subject": "7b94bd4d3ce7997093fd4e4d8e272a4314c76a13",
   "proofs": {
     "cli": "tests/unit/test_cli.py PASS",
     "focused_p3": "tests/unit/dense/test_embedding_bundle_provision.py 19 PASS",
