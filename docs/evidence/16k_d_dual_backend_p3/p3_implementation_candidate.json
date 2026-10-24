@@ -8,7 +8,7 @@
     "evidence": "docs/evidence/16k_d_dual_backend_p3/p3_bounded_real_provisioning_pass.json"
   },
   "branch": "implementation/16k-d-dual-backend-p3-provisioning-acquisition",
-  "candidate_tip": "7b94bd4d3ce7997093fd4e4d8e272a4314c76a13",
+  "candidate_tip": "79ea783bc859d144b99af570197058255c0457b5",
   "changed_paths": [
     "src/offline_rag/dense/provision.py",
     "src/offline_rag/dense/embedding_bundle_provision.py",

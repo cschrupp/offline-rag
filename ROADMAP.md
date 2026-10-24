@@ -1232,6 +1232,10 @@ SLICE 15  COMPLETE / ACCEPTED
            docs/evidence/16k_d_dual_backend_p3/p3_implementation_auth001.json
            docs/evidence/16k_d_dual_backend_p3/p3_implementation_candidate.json
            docs/evidence/16k_d_dual_backend_p3/p3_bounded_real_provisioning_pass.json
+         Exact implementation subject:
+           7b94bd4d3ce7997093fd4e4d8e272a4314c76a13
+         Candidate tip:
+           79ea783bc859d144b99af570197058255c0457b5
          Bounded real provisioning confirmation: PASS
          Downstream (P4/campaigns/main/merge/promotion): NOT AUTHORIZED
        16K-D still closed: full 1296 FP32 confirmation ·
@@ -2217,6 +2221,10 @@ SLICE 15  COMPLETE / ACCEPTED
            docs/evidence/16k_d_dual_backend_p3/p3_implementation_auth001.json
            docs/evidence/16k_d_dual_backend_p3/p3_implementation_candidate.json
            docs/evidence/16k_d_dual_backend_p3/p3_bounded_real_provisioning_pass.json
+         Exact implementation subject:
+           7b94bd4d3ce7997093fd4e4d8e272a4314c76a13
+         Candidate tip:
+           79ea783bc859d144b99af570197058255c0457b5
          Bounded real provisioning confirmation: PASS
          Downstream (P4/campaigns/main/merge/promotion): NOT AUTHORIZED
        16K-D still closed: full 1296 FP32 confirmation ·
