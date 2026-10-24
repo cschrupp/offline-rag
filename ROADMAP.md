@@ -1221,9 +1221,12 @@ SLICE 15  COMPLETE / ACCEPTED
          Historical implementation handoff:
            P3 IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
            (subject 7b94bd4…; tip 5c68bdd…)
-         Current disposition:
+         Historical IR-001 rework handoff:
            P3 IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
-           (F001–F005 durability/compatibility corrective)
+           (F001–F005 CLOSED at 75bb169…)
+         Current disposition:
+           P3 IR-002 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
+           (F006 public containment failure-report corrective)
          Implementation authority:
            S16-K-D-DUAL-BACKEND-P3-PROVISIONING-ACQUISITION-IMPLEMENTATION-AUTH-001
          Implementation parent:
@@ -1237,8 +1240,9 @@ SLICE 15  COMPLETE / ACCEPTED
            docs/evidence/16k_d_dual_backend_p3/p3_implementation_auth001.json
            docs/evidence/16k_d_dual_backend_p3/p3_implementation_candidate.json
            docs/evidence/16k_d_dual_backend_p3/p3_ir001_rework_candidate.json
+           docs/evidence/16k_d_dual_backend_p3/p3_ir002_rework_candidate.json
            docs/evidence/16k_d_dual_backend_p3/p3_bounded_real_provisioning_pass.json
-         Bounded real provisioning confirmation: PASS (rerun after IR-001)
+         Bounded real provisioning confirmation: PASS (rerun after IR-001; not required for F006)
          Downstream (P4/campaigns/main/merge/promotion): NOT AUTHORIZED
        16K-D still closed: full 1296 FP32 confirmation ·
          P4 acceptance · default promotion · main ·
@@ -2212,9 +2216,12 @@ SLICE 15  COMPLETE / ACCEPTED
          Historical implementation handoff:
            P3 IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
            (subject 7b94bd4…; tip 5c68bdd…)
-         Current disposition:
+         Historical IR-001 rework handoff:
            P3 IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
-           (F001–F005 durability/compatibility corrective)
+           (F001–F005 CLOSED at 75bb169…)
+         Current disposition:
+           P3 IR-002 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
+           (F006 public containment failure-report corrective)
          Implementation authority:
            S16-K-D-DUAL-BACKEND-P3-PROVISIONING-ACQUISITION-IMPLEMENTATION-AUTH-001
          Implementation parent:
@@ -2228,8 +2235,9 @@ SLICE 15  COMPLETE / ACCEPTED
            docs/evidence/16k_d_dual_backend_p3/p3_implementation_auth001.json
            docs/evidence/16k_d_dual_backend_p3/p3_implementation_candidate.json
            docs/evidence/16k_d_dual_backend_p3/p3_ir001_rework_candidate.json
+           docs/evidence/16k_d_dual_backend_p3/p3_ir002_rework_candidate.json
            docs/evidence/16k_d_dual_backend_p3/p3_bounded_real_provisioning_pass.json
-         Bounded real provisioning confirmation: PASS (rerun after IR-001)
+         Bounded real provisioning confirmation: PASS (rerun after IR-001; not required for F006)
          Downstream (P4/campaigns/main/merge/promotion): NOT AUTHORIZED
        16K-D still closed: full 1296 FP32 confirmation ·
          P4 acceptance · default promotion · main ·

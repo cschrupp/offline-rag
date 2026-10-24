@@ -32,6 +32,7 @@ from offline_rag.dense.embedding_bundle_provision import (
     OUTCOME_POST_PUBLISH_VALIDATION_FAILED,
     OUTCOME_ROLLBACK_FAILED,
     OUTCOME_SOURCE_REQUIRED,
+    OUTCOME_WRITE_FAILED,
     normalize_representation_request,
     provision_embedding_representations,
 )
@@ -948,3 +949,71 @@ def test_f005_bundle_tmp_persist_hook(
     assert report.status is ProvisioningStatus.FAILED
     assert report.metadata.get("rollback", {}).get("attempted") is False
     assert not (dest / BUNDLE_MANIFEST_NAME).exists()
+
+
+def _escaping_destination(tmp_path: Path) -> Path:
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    base = tmp_path / "base"
+    base.mkdir()
+    link = base / "escape"
+    link.symlink_to(outside)
+    return link / "model"
+
+
+def test_f006_public_api_ancestry_escape_returns_failed_report(
+    tmp_path: Path,
+) -> None:
+    dest = _escaping_destination(tmp_path)
+    before = {p.name for p in (tmp_path / "base").iterdir()}
+    report = provision_embedding_representations(dest, representations="torch_st_v1")
+    assert report.status is ProvisioningStatus.FAILED
+    assert report.metadata["outcome_code"] == OUTCOME_WRITE_FAILED
+    assert any("symlink escapes" in err for err in report.errors)
+    assert {p.name for p in (tmp_path / "base").iterdir()} == before
+    assert not dest.exists()
+    # Public wrapper must behave identically.
+    wrapped = provision_embedding_model(dest)
+    assert wrapped.status is ProvisioningStatus.FAILED
+    assert wrapped.metadata["outcome_code"] == OUTCOME_WRITE_FAILED
+
+
+def test_f006_cli_ancestry_escape_json_no_traceback(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from argparse import Namespace
+    from types import SimpleNamespace
+
+    from offline_rag.cli import cmd_provision_embedding
+
+    dest = _escaping_destination(tmp_path)
+    settings = SimpleNamespace(
+        logging=SimpleNamespace(level="WARNING", structured=False),
+        paths=SimpleNamespace(embedding_artifacts=tmp_path / "artifacts"),
+        dense=SimpleNamespace(model_path=dest),
+        indexing=SimpleNamespace(
+            embedding=SimpleNamespace(
+                model_id=QWEN3_EMBEDDING_MODEL_ID,
+                revision=QWEN3_EMBEDDING_PINNED_REVISION,
+                dimension=1024,
+            )
+        ),
+    )
+    monkeypatch.setattr("offline_rag.cli._load_settings", lambda _args: settings)
+    monkeypatch.setattr(
+        "offline_rag.cli.resolve_embedding_model_dir",
+        lambda **_kwargs: dest,
+    )
+    code = cmd_provision_embedding(
+        Namespace(force=False, json=True, representation=None, onnx_source=None)
+    )
+    captured = capsys.readouterr()
+    assert code == 1
+    assert "Traceback" not in captured.err
+    assert "Traceback" not in captured.out
+    payload = json.loads(captured.out)
+    assert payload["status"] == "failed"
+    assert payload["metadata"]["outcome_code"] == OUTCOME_WRITE_FAILED
+    assert not dest.exists()

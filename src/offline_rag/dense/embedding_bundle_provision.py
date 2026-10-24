@@ -942,7 +942,12 @@ def provision_embedding_representations(
 
     try:
         model_root = _canonical_model_root(dest)
-    except OSError as exc:
+    except (BundleProvisionError, OSError) as exc:
+        outcome = (
+            exc.outcome_code
+            if isinstance(exc, BundleProvisionError)
+            else OUTCOME_WRITE_FAILED
+        )
         return EmbeddingProvisionReport(
             status=ProvisioningStatus.FAILED,
             model_id=model_id,
@@ -951,7 +956,7 @@ def provision_embedding_representations(
             errors=[str(exc)],
             metadata={
                 **metadata,
-                "outcome_code": OUTCOME_WRITE_FAILED,
+                "outcome_code": outcome,
             },
         )
 
