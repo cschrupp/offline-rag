@@ -1262,10 +1262,18 @@ SLICE 15  COMPLETE / ACCEPTED
            P4 HUMAN UAT FOLLOW-UP COMPLETE / READY FOR REVIEW
          Historical UAT IR-001 disposition:
            REWORK REQUIRED — NARROW FINAL CORRECTIVE (F001, F002)
-         Current disposition:
+         Historical UAT IR-001 rework handoff:
            P4 HUMAN UAT IR-001 REWORK COMPLETE / READY FOR RE-REVIEW
-         Human closeout: WITHHELD until UAT IR-001 re-review acceptance
+         UAT IR-002: ACCEPT (F001–F002 CLOSED)
+         Current disposition:
+           P4 IMPLEMENTATION + HUMAN UAT COMPLETE / INDEPENDENTLY ACCEPTED /
+             HUMAN ACKNOWLEDGED / CLOSED
+         Human closeout: ACKNOWLEDGED (single Human acknowledgment; no HA chain)
          UAT corrective branch: implementation/p4-human-uat-corrective
+         Accepted UAT corrective technical subject:
+           6d3689d03eb5a6e84d38d3ff7281e001e1caeb1a
+         UAT IR-002 evidence tip:
+           be1091c941171964579f9f543a4e08a1b1e8a662
          UAT evidence:
            docs/evidence/p4_human_uat/p4_human_uat_followup.json
            docs/evidence/p4_human_uat/full_suite_failset_attribution.json
@@ -1273,6 +1281,9 @@ SLICE 15  COMPLETE / ACCEPTED
            docs/evidence/p4_human_uat/canonical_cpu_cuda_index_reuse.json
            docs/design/large_source_capacity_followup.md
          UAT IR-001 F001/F002: CLOSED (anaphoric fallback; capacity-note wording)
+         Large-source capacity:
+           CAPACITY_DESIGN_READY — DEFERRED TO SEPARATE FUTURE TRANCHE
+           (25 MiB/file · 100 MiB/request unchanged; implementation NOT AUTHORIZED)
          Implementation authority:
            S16-K-D-DUAL-BACKEND-P4-PRODUCT-ACCEPTANCE-DEFAULT-POLICY-IMPLEMENTATION-AUTH-001
          Implementation parent:
@@ -2311,10 +2322,18 @@ SLICE 15  COMPLETE / ACCEPTED
            P4 HUMAN UAT FOLLOW-UP COMPLETE / READY FOR REVIEW
          Historical UAT IR-001 disposition:
            REWORK REQUIRED — NARROW FINAL CORRECTIVE (F001, F002)
-         Current disposition:
+         Historical UAT IR-001 rework handoff:
            P4 HUMAN UAT IR-001 REWORK COMPLETE / READY FOR RE-REVIEW
-         Human closeout: WITHHELD until UAT IR-001 re-review acceptance
+         UAT IR-002: ACCEPT (F001–F002 CLOSED)
+         Current disposition:
+           P4 IMPLEMENTATION + HUMAN UAT COMPLETE / INDEPENDENTLY ACCEPTED /
+             HUMAN ACKNOWLEDGED / CLOSED
+         Human closeout: ACKNOWLEDGED (single Human acknowledgment; no HA chain)
          UAT corrective branch: implementation/p4-human-uat-corrective
+         Accepted UAT corrective technical subject:
+           6d3689d03eb5a6e84d38d3ff7281e001e1caeb1a
+         UAT IR-002 evidence tip:
+           be1091c941171964579f9f543a4e08a1b1e8a662
          UAT evidence:
            docs/evidence/p4_human_uat/p4_human_uat_followup.json
            docs/evidence/p4_human_uat/full_suite_failset_attribution.json
@@ -2322,6 +2341,9 @@ SLICE 15  COMPLETE / ACCEPTED
            docs/evidence/p4_human_uat/canonical_cpu_cuda_index_reuse.json
            docs/design/large_source_capacity_followup.md
          UAT IR-001 F001/F002: CLOSED (anaphoric fallback; capacity-note wording)
+         Large-source capacity:
+           CAPACITY_DESIGN_READY — DEFERRED TO SEPARATE FUTURE TRANCHE
+           (25 MiB/file · 100 MiB/request unchanged; implementation NOT AUTHORIZED)
          Implementation authority:
            S16-K-D-DUAL-BACKEND-P4-PRODUCT-ACCEPTANCE-DEFAULT-POLICY-IMPLEMENTATION-AUTH-001
          Implementation parent:

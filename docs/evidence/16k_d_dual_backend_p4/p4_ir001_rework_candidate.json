@@ -16,7 +16,19 @@
     "docs/evidence/16k_d_dual_backend_p4/p4_full_suite_failset_attribution.json",
     "ROADMAP.md"
   ],
-  "current_disposition": "P4 IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW",
+  "current_disposition": "P4 IMPLEMENTATION + HUMAN UAT COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACKNOWLEDGED / CLOSED",
+  "disposition_historical_ir001_rework_handoff": "P4 IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW",
+  "human_acknowledgment": {
+    "closeout": "single_human_acknowledgment",
+    "ha_record": "NOT_USED",
+    "ha_review": "NOT_USED",
+    "status_flip_chain": "NOT_USED"
+  },
+  "uat_closeout": {
+    "accepted_uat_technical_subject": "6d3689d03eb5a6e84d38d3ff7281e001e1caeb1a",
+    "evidence_tip": "be1091c941171964579f9f543a4e08a1b1e8a662",
+    "ir002": "ACCEPT"
+  },
   "findings_closed": {
     "F001": "CLOSED \u2014 require existing dual-READY --model-root; no assemble/copy/bundle write; no /tmp search",
     "F002": "CLOSED \u2014 each index/query phase runs in a fresh OS process via --mode phase subprocess; PIDs recorded and distinct",

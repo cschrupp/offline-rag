@@ -18,7 +18,21 @@
     "docs/evidence/16k_d_dual_backend_p4/p4_full_suite_failset_attribution.json",
     "ROADMAP.md"
   ],
-  "current_disposition": "P4 IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW",
+  "current_disposition": "P4 IMPLEMENTATION + HUMAN UAT COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACKNOWLEDGED / CLOSED",
+  "disposition_historical_ir001_rework_handoff": "P4 IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW",
+  "human_acknowledgment": {
+    "closeout": "single_human_acknowledgment",
+    "ha_record": "NOT_USED",
+    "ha_review": "NOT_USED",
+    "status_flip_chain": "NOT_USED"
+  },
+  "uat_closeout": {
+    "accepted_uat_technical_subject": "6d3689d03eb5a6e84d38d3ff7281e001e1caeb1a",
+    "evidence": "docs/evidence/p4_human_uat/p4_human_uat_followup.json",
+    "evidence_tip": "be1091c941171964579f9f543a4e08a1b1e8a662",
+    "ir002": "ACCEPT",
+    "large_source_capacity": "CAPACITY_DESIGN_READY \u2014 DEFERRED TO SEPARATE FUTURE TRANCHE"
+  },
   "declarations": {
     "auto_cpu_lane": "cpu_onnx_fp32_v1 \u2014 SUPPORTED STARTUP FALLBACK WHEN CUDA UNAVAILABLE",
     "auto_cuda_lane": "cuda_fp16_v1 \u2014 PREFERRED WHEN CUDA USABLE",

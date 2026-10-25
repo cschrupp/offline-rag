@@ -1,24 +1,42 @@
 {
-  "authority": "P4-HUMAN-UAT-IR-001-REWORK",
+  "authority": "P4-HUMAN-UAT-CLOSEOUT-HUMAN-ACKNOWLEDGMENT",
   "base": "8ed2d9060ac506e96602161083057a3f9a4c4543",
   "branch": "implementation/p4-human-uat-corrective",
+  "candidate_tip": "6d3689d03eb5a6e84d38d3ff7281e001e1caeb1a",
   "corrected": {
     "F001_deterministic_followup_anaphoric_only": "CLOSED",
     "F002_large_source_memory_model_wording": "CLOSED",
     "conversational_followup_resolution": "PASS",
     "duplicate_document_message": "PASS"
   },
-  "current_disposition": "P4 HUMAN UAT IR-001 REWORK COMPLETE / READY FOR RE-REVIEW",
+  "current_disposition": "P4 IMPLEMENTATION + HUMAN UAT COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACKNOWLEDGED / CLOSED",
   "deferred_design": {
-    "large_source_capacity": "CAPACITY_DESIGN_READY",
+    "large_source_capacity": "CAPACITY_DESIGN_READY \u2014 DEFERRED TO SEPARATE FUTURE TRANCHE",
     "note": "docs/design/large_source_capacity_followup.md",
-    "safe_limit_increase_proven": false
+    "safe_limit_increase_proven": false,
+    "limits_unchanged": {
+      "max_bytes_per_document": "25 MiB",
+      "max_total_upload_bytes": "100 MiB"
+    },
+    "capacity_implementation": "NOT_AUTHORIZED"
   },
+  "evidence_tip": "be1091c941171964579f9f543a4e08a1b1e8a662",
   "full1296_confirmed": false,
   "historical_uat_handoff": "P4 HUMAN UAT FOLLOW-UP COMPLETE / READY FOR REVIEW",
+  "historical_uat_ir001_rework_handoff": "P4 HUMAN UAT IR-001 REWORK COMPLETE / READY FOR RE-REVIEW",
+  "human_acknowledgment": {
+    "closeout": "single_human_acknowledgment",
+    "ha_record": "NOT_USED",
+    "ha_review": "NOT_USED",
+    "status_flip_chain": "NOT_USED"
+  },
+  "ir002": {
+    "disposition": "ACCEPT",
+    "statement": "P4 HUMAN UAT COMPLETE / INDEPENDENTLY ACCEPTED \u2014 IR-002 / HUMAN ACKNOWLEDGED / CLOSED"
+  },
   "large_source_limit_changed": false,
   "p4_architecture_changed": false,
-  "record_kind": "p4_human_uat_ir001_rework",
+  "record_kind": "p4_human_uat_closeout",
   "remaining_blockers": [],
   "resolved_observations": {
     "cpu_representation_missing": "CLOSED \u2014 MISSING PRODUCT REPRESENTATION, NOT UI DEFECT",
@@ -33,14 +51,14 @@
   "scientific_campaign_calls": 0,
   "technical_subject": "6d3689d03eb5a6e84d38d3ff7281e001e1caeb1a",
   "unauthorized_remaining": [
-    "p4_human_closeout",
     "campaigns",
     "main",
     "merge",
     "release",
     "promotion",
     "full_1296",
-    "large_source_limit_increase"
+    "large_source_limit_increase",
+    "capacity_implementation"
   ],
   "validation": {
     "conversation_tests": "31 PASS",
@@ -60,6 +78,5 @@
       "cpu": "docs/evidence/p4_human_uat/canonical_cpu_runtime_verification.json",
       "interop": "docs/evidence/p4_human_uat/canonical_cpu_cuda_index_reuse.json"
     }
-  },
-  "candidate_tip": "6d3689d03eb5a6e84d38d3ff7281e001e1caeb1a"
+  }
 }

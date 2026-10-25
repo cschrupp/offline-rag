@@ -19,7 +19,15 @@
   "authorized_parent": "9d80480f3e3be6b6a8e31a8272596defb4fccfa6",
   "branch": "implementation/16k-d-dual-backend-p4-product-acceptance",
   "candidate_tip": "aa10c2fe3a98b68cb0727abcf3ac99ebb08cb3b5",
-  "current_disposition": "P4 IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW",
+  "current_disposition": "P4 IMPLEMENTATION + HUMAN UAT COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACKNOWLEDGED / CLOSED",
+  "disposition_historical_ir001_rework_handoff": "P4 IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW",
+  "uat_closeout": {
+    "accepted_uat_technical_subject": "6d3689d03eb5a6e84d38d3ff7281e001e1caeb1a",
+    "evidence": "docs/evidence/p4_human_uat/p4_human_uat_followup.json",
+    "evidence_tip": "be1091c941171964579f9f543a4e08a1b1e8a662",
+    "ir002": "ACCEPT",
+    "large_source_capacity": "CAPACITY_DESIGN_READY \u2014 DEFERRED TO SEPARATE FUTURE TRANCHE"
+  },
   "exclusions": [
     "production_source_modification",
     "config/base.yaml_modification",
