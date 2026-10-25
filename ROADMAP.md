@@ -582,13 +582,18 @@ SLICE 15  COMPLETE / ACCEPTED
            Scope:
              bounded-memory projection + streaming spool_local_files + SOURCE_ADD put_path migration
            L3:
-             AUTHORIZED / IN PROGRESS
+             IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED — IR-002
            Authority:
              S16-K-LARGE-SOURCE-CAPACITY-L3-IMPLEMENTATION-AUTH-001
            Implementation base:
              41c874aa41f31a1e995b1345cdf430cd1c18f204
+           Historical IR-001 disposition:
+             REWORK REQUIRED — NARROW TRUSTED-IDENTITY CONSISTENCY CORRECTIVE
+           Accepted L3 technical subject:
+             ece9acfb4884b7be1f4d1a7495e78b78eb5f8302
            Scope:
              parser/ingestion path-contract migration; product identity reuse; PDF path parsing
+           PDF ≥512 MiB qualification: NOT RUN
            L4: NOT AUTHORIZED
            Limit increase: NOT AUTHORIZED
            (25 MiB/file · 100 MiB/request unchanged)
