@@ -1,10 +1,12 @@
 # Large-source capacity architecture
 
-Authority: `S16-K-LARGE-SOURCE-CAPACITY-DESIGN-AUTH-001`  
-Canonical base: `f5c9423c471162923b3bbbfe804687db27551745`  
-Branch: `design/16k-large-source-capacity`  
-Disposition: **DESIGN COMPLETE / READY FOR INDEPENDENT REVIEW**  
+Authority: `S16-K-LARGE-SOURCE-CAPACITY-DESIGN-AUTH-001`
+Canonical base: `f5c9423c471162923b3bbbfe804687db27551745`
+Branch: `design/16k-large-source-capacity`
+Disposition: **DESIGN IR-001 REWORK COMPLETE / READY FOR RE-REVIEW**
 (not accepted; implementation **NOT AUTHORIZED**)
+
+Historical IR-001: REWORK REQUIRED (F001–F003) — preserved as provenance.
 
 ## Provenance
 
@@ -12,14 +14,18 @@ Prior feasibility note (immutable):
 [`docs/design/large_source_capacity_followup.md`](large_source_capacity_followup.md)
 — terminal `CAPACITY_DESIGN_READY`; `SAFE_LIMIT_INCREASE_PROVEN = false`.
 
-Motivating Human-UAT case: ~227 MiB technical handbook rejected under current
-supported envelope:
+Motivating Human-UAT case: ~227 MiB technical **PDF** handbook rejected under
+current supported envelope:
 
 - `api.max_bytes_per_document` = **25 MiB** (`26_214_400`)
 - `api.max_total_upload_bytes` = **100 MiB** (`104_857_600`)
 
 Future **qualification target** (not a product claim):
-**≥512 MiB per individual technical source**.
+**≥512 MiB per individual technical PDF / Docling source**.
+
+TXT / Markdown retain the current supported envelope until their native
+streaming parser contracts are separately designed and qualified. Per-media
+limits may differ.
 
 This document freezes the implementation-ready architecture and the evidence
 required before any limit raise. It does **not** authorize implementation,
@@ -238,9 +244,9 @@ Prefer:
 Pipeline discovery should carry established identity into parse rather than
 re-deriving from a full buffer.
 
-### D06 — Parser interface
+### D06 — Parser interface and media qualification scope
 
-Migrate `PdfParser` / text / markdown contracts from:
+Migrate parser contracts from:
 
 ```text
 parse(path, *, source_bytes: bytes, document_id: str)
@@ -260,14 +266,40 @@ parse(
 - Docling continues to read **path** only.
 - `ParsedDocument` / downstream `Document.content_hash` meaning unchanged
   (hex SHA-256 of canonical source bytes).
-- TXT/Markdown: read from path in bounded fashion **or** stream into parser
-  without retaining a second full buffer beyond what the parser itself needs;
-  identity/`content_hash` still come from D01, not from re-hashing ad hoc.
-- Same core identity semantics across media types — no PDF-only shortcut that
-  diverges from `doc_<sha256>`.
+- Core identity remains `doc_<sha256>` for **all** media types (no
+  filename-based identity). That does **not** imply every media type is
+  qualified to the same byte ceiling.
+
+**Frozen media policy (F003):**
+
+| Media | This tranche |
+|---|---|
+| **PDF / Docling** | Initial **≥512 MiB** qualification target; L5 campaign is PDF capacity qualification |
+| **TXT / Markdown** | Retain **current** supported envelope (25 MiB/source under product limits) until a **separate** native streaming-parser design + qualification; removing `source_bytes` alone is **not** sufficient (decode-to-full-`str` would still be ~\(S\) RAM) |
+
+If a future uniform ≥512 MiB claim for TXT/Markdown is desired, that work must
+specify bounded-memory native algorithms with an accurate bound such as
+\(O(\text{stream buffer} + \text{largest logical block})\), not a false claim of
+strict \(O(B)\). Markdown fence/table/list spanning makes that a distinct design.
 
 Compatibility shim: temporary wrapper accepting `source_bytes` for tests may
 exist during L3 migration, then removed before L5.
+
+### Identity binding invariant (explicit)
+
+Across L1–L3, integrity remains a content-hash chain — not filename/size/mtime:
+
+```text
+bytes entering spool
+  → hash while writing
+  → declared document identity
+  → vault verifies bytes while copying
+  → reconstructed/local spool re-establishes or verifies identity
+  → parser consumes the exact staged path associated with that identity
+```
+
+Cheap metadata checks may skip unnecessary work; they must **not** become the
+sole integrity proof at a trust boundary.
 
 ---
 
@@ -346,10 +378,13 @@ Future campaign authority (separate): measure before any supported claim.
 | 25 MiB | control (current ceiling) |
 | ~100 MiB | near mid |
 | ~250 MiB | near motivating UAT class |
-| ~512 MiB | design target |
+| ~512 MiB PDF | PDF / Docling design target |
 
-Prefer generated/safe PDF fixtures; include ≥1 representative real technical
-handbook when locally available (e.g. ~227 MiB UAT case).
+Prefer generated/safe **PDF** fixtures; include ≥1 representative real
+technical handbook when locally available (e.g. ~227 MiB UAT PDF).
+
+L5 is explicitly a **PDF capacity qualification** campaign. It does not by
+itself authorize TXT/Markdown beyond the current envelope.
 
 ### Record per run
 
@@ -357,13 +392,15 @@ handbook when locally available (e.g. ~227 MiB UAT case).
 - parser-stage peak RSS where observable;
 - elapsed parse time; total ingest time;
 - temporary disk peak; final disk growth;
+- **measured disk amplification** vs known lower-bound copies (feeds D07 L6);
 - source count; page count; chunk count;
+- media type (PDF for this campaign);
 - backend/profile (`cpu_onnx_fp32_v1` / `cuda_fp16_v1` as applicable);
 - terminal managed-operation result.
 
-### Pass criterion for a supported claim
+### Pass criterion for a supported PDF claim
 
-A size \(S^*\) may be claimed only if, on representative hardware:
+A PDF size \(S^*\) may be claimed only if, on representative hardware:
 
 - no Seneca-owned stage retains an \(S^*\)-sized Python `bytes` outside
   unavoidable third-party parser internals;
@@ -380,53 +417,116 @@ This design authority **does not** run the campaign.
 
 Do **not** ship incoherent pairs such as `512 MiB/file` with `100 MiB/request`.
 
-Separate knobs (names illustrative; final values only after L5/L6):
+### Existing taxonomy (16K-C — preserve)
 
-| Concept | Role | Current |
+**TRANSPORT** (HTTP request / resource-safety; apply to incoming uploads):
+
+| Control | Role | Current |
 |---|---|---|
-| `max_bytes_per_source` | individual durable source | 25 MiB |
-| `max_bytes_per_http_request` | multipart request envelope | 100 MiB |
-| `max_active_source_bytes` | searchable-workload / workspace aggregate | today conflated with request total in capabilities — must be split |
-| `max_active_source_count` | cardinality guard | existing file-count limits |
-| `max_searchable_child_chunks` | post-parse workload (16K-C) | retain 16K-C model |
-| temporary disk admission | preflight reserve | new (D07) |
+| `max_files_per_ingest` | HTTP request cardinality | 32 |
+| `max_bytes_per_document` | max bytes per uploaded file/source | 25 MiB |
+| `max_total_upload_bytes` | max bytes per HTTP request envelope | 100 MiB |
 
-Preserve 16K-C distinction: **transport capacity ≠ searchable-workload
-capacity**. Reconstruction from vault must not re-apply HTTP request limits
+These are **not** workspace searchable-workload ceilings.
+`max_total_upload_bytes` must remain strictly an HTTP request-envelope limit.
+Nothing needs to be “split” out of it.
+
+**WORKSPACE** (searchable-workload; optional unless set):
+
+| Control | Role | Current |
+|---|---|---|
+| `max_active_sources_per_workspace` | optional active-source **count** ceiling | unset (`None`) |
+| `max_searchable_child_chunks_per_workspace` | post-parse chunk workload (16K-C) | unset (`None`) |
+
+`max_files_per_ingest` and `max_active_sources_per_workspace` are **not**
+interchangeable (request cardinality ≠ workspace cardinality).
+
+Reconstruction from vault must not re-apply HTTP transport limits
 (`apply_transport_limits=False` path already exists).
 
-Candidate ranges for later qualification (non-binding):
+### Prospective controls (this tranche — not claimed yet)
 
-- per-source target band: 256–512 MiB after L5 evidence;
+| Control | Role | Status |
+|---|---|---|
+| `max_active_source_bytes_per_workspace` | optional aggregate **byte** ceiling over active sources | **NEW** — currently absent / unset / unsupported as a numeric product claim |
+| temporary disk admission | resource admission (D07) | new; evidence-backed rule only after L5 |
+
+Recommended future model:
+
+```text
+TRANSPORT
+  max_files_per_ingest
+  max_bytes_per_document / per-source
+  max_total_upload_bytes
+
+WORKSPACE
+  max_active_sources_per_workspace
+  max_active_source_bytes_per_workspace   # new prospective
+  max_searchable_child_chunks_per_workspace
+
+RESOURCE ADMISSION
+  temporary disk known-lower-bound guard (+ measured supported envelope post-L5)
+```
+
+Candidate ranges for later **PDF** qualification (non-binding):
+
+- per-source PDF target band: 256–512 MiB after L5 evidence;
 - per-request ≥ per-source for single-file handbook upload;
-- workspace aggregate set from disk + RSS evidence, not from per-source alone.
+- workspace aggregate byte ceiling set from disk + RSS evidence when introduced.
 
 ---
 
 ## 10. Disk-space admission (D07)
 
-**Decision D07 — conservative disk preflight before expensive reconstruction.**
+**Decision D07 — two-tier disk admission; no unmeasured “conservative \(k\)”.**
 
-When estimated bytes needed exceed available space on the relevant filesystem:
+Separate **known lower-bound admission** from **measured supported-envelope
+admission**. Do **not** freeze an arbitrary multiplier such as \(k \ge 3\) as
+implementation truth (an unmeasured \(k\) can be either too tight or falsely
+permissive).
 
-- fail closed before vault/projection/candidate build when estimate is known;
-- if size cannot be safely estimated, proceed only with explicit degraded
-  policy **or** fail closed (prefer fail closed for large declared sizes).
-
-Estimate (conservative, unmeasured multiplier \(k\) until L5):
+### Before L5 (and as earliest safe guard)
 
 ```text
-need ≈ k * (S_new + A_active) + fixed_index_slop
+known_required_bytes =
+    exact bytes for copies/staging the architecture can account for
+    (e.g. new source S_new, projection copies of known sizes, declared spool)
+  + explicitly known fixed reserve (constant overhead only)
+
+if free_bytes < known_required_bytes:
+    reject — definitely insufficient disk
+else:
+    preflight does NOT claim sufficient capacity for the full
+    parser/candidate/index path
 ```
 
-Filesystems that matter: staging, workspaces (vault), and any corpus/index
-roots under `settings.paths`.
+Optional **provisional operational reserve** may be configured for ops
+ergonomics; it must be labeled **provisional**, not a proven conservative
+bound, and must not be used to assert “disk OK for 512 MiB PDF ingest.”
 
-User-facing error: stable code (e.g. `storage_insufficient`) with message that
-does not leak absolute paths; retryable after freeing disk.
+If size cannot be accounted as a known lower bound, prefer fail-closed for
+large declared sources rather than inventing amplification.
 
-Do not claim an exact \(k\) without measurement; design default \(k \ge 3\) as
-a conservative placeholder for implementation, revised by L5.
+Filesystems that matter: staging, workspaces (vault), and corpus/index roots
+under `settings.paths`.
+
+User-facing error: stable code (e.g. `storage_insufficient`) without leaking
+absolute paths; retryable after freeing disk.
+
+### After L5
+
+A **measured** amplification model plus an explicit safety margin may become
+the supported admission rule activated in L6. Until then, passing lower-bound
+preflight never implies the product envelope is proven.
+
+### Slice placement
+
+| Slice | D07 role |
+|---|---|
+| L1–L3 | Optional: definite-insufficiency guard using **exact known bytes only** |
+| **L4** | Capacity instrumentation + disk-admission **measurement hooks** |
+| **L5** | Measure actual amplification / temp-disk peak |
+| **L6** | Activate evidence-backed product disk admission (+ any new workspace byte ceiling exposure) |
 
 ---
 
@@ -488,12 +588,12 @@ Large-size support must not weaken validation or duplicate-identity checks.
 
 | Slice | Outcome | Leaves repo |
 |---|---|---|
-| **L1** | Streaming identity + path-based vault primitives (`*_from_path`, `put_path`, verify) with golden hash tests | Coherent; product limits unchanged; old byte APIs remain |
+| **L1** | Streaming identity + path-based vault primitives (`*_from_path`, `put_path`, verify) with golden hash tests; optional known-byte disk insufficiency guard only | Coherent; product limits unchanged; old byte APIs remain |
 | **L2** | Bounded-memory projection + `spool_local_files` streaming; lifecycle ADD uses `put_path` | Coherent; still ≤25 MiB product ceiling |
-| **L3** | Parser/ingestion path contract migration; remove pipeline/`_validate` whole-file reads for identity | Coherent; science unchanged |
-| **L4** | Instrumentation + qualification harness (RSS, disk, timings) | Harness only; no limit raise |
-| **L5** | Bounded real capacity qualification (25/100/250/512) | Evidence packet; still no product claim until Human accept |
-| **L6** | Product limit selection + capabilities/UI exposure | Only after L5 accept |
+| **L3** | Parser/ingestion path contract migration (PDF path+hash primary); remove pipeline/`_validate` whole-file reads for identity; TXT/MD may migrate interface without raising their envelope | Coherent; science unchanged |
+| **L4** | Capacity instrumentation + qualification harness (RSS, disk, timings) + **disk-admission measurement hooks** | Harness only; no limit raise |
+| **L5** | Bounded real **PDF** capacity qualification (25/100/250/512) | Evidence packet; still no product claim until Human accept |
+| **L6** | Product limit selection + capabilities/UI exposure; activate **evidence-backed** disk admission; optional `max_active_source_bytes_per_workspace` if justified | Only after L5 accept |
 
 Each slice independently reviewable. L1–L3 are not microscopic
 function-by-function chores; they are vertical slices of the data path.
@@ -504,15 +604,15 @@ function-by-function chores; they are vertical slices of the data path.
 
 | # | Question | Design answer |
 |---|---|---|
-| 1 | Can a 512 MiB source reach the parser without Seneca allocating a 512 MiB `bytes` outside unavoidable third-party parser internals? | **Yes**, under D01–D06 (Seneca stages \(O(B)\); \(D(S)\) remains Docling’s). |
-| 2 | Canonical document identity unchanged? | **Yes** — same SHA-256 / `doc_<hex>` (D01). |
+| 1 | Can a 512 MiB source reach the parser without Seneca allocating a 512 MiB `bytes` outside unavoidable third-party parser internals? | **Yes — for PDF** under this tranche (D01–D06 + Docling path read; \(D(S)\) remains Docling’s). **Not claimed** for TXT/Markdown at ≥512 MiB in this design. |
+| 2 | Canonical document identity unchanged? | **Yes** — same SHA-256 / `doc_<hex>` (D01) for all media. |
 | 3 | Workspace reconstruction without whole-file RAM? | **Yes** — streamed/`copyfile` projection (D03). |
 | 4 | Duplicate detection preserved? | **Yes** — same `document_id` set semantics at spool/plan. |
 | 5 | Full-replace publication preserved? | **Yes** (D00). |
 | 6 | Failure atomicity preserved? | **Yes** — meta-after-integrity; journal publish rules; spool quarantine. |
-| 7 | Temporary-disk behavior modeled? | **Yes** (§7, D07). |
-| 8 | Reproducible measurement before new limit claim? | **Yes** (§8); not executed here. |
-| 9 | Per-file / request / workspace limits separated? | **Yes** (§9); values TBD post-L5. |
+| 7 | Temporary-disk behavior modeled? | **Yes** (§7, D07 known lower-bound vs measured envelope). |
+| 8 | Reproducible measurement before new limit claim? | **Yes** (§8 PDF campaign); not executed here. |
+| 9 | Per-file / request / workspace limits separated? | **Yes** (§9 transport vs workspace vs resource admission); new workspace byte ceiling prospective only. |
 | 10 | Bounded slices without redesigning retrieval science? | **Yes** (§14). |
 
 ### Unresolved design questions
@@ -523,9 +623,10 @@ Open **implementation/measurement** items (explicitly deferred, not design
 blockers):
 
 - exact copy buffer default \(B\);
-- exact disk preflight multiplier \(k\) after L5;
-- final numeric product limits after L5/L6;
-- whether optional reflink is worth enabling on Linux workspaces.
+- measured disk amplification model + safety margin after L5 (for L6 admission);
+- final numeric product limits after L5/L6 (PDF first);
+- whether optional reflink is worth enabling on Linux workspaces;
+- future TXT/Markdown streaming-parser design if those media need ≥512 MiB.
 
 ---
 
@@ -553,5 +654,5 @@ This design does **not** permit:
 | D03 | Streamed projection copy; reflink optional non-required |
 | D04 | Streaming `spool_local_files` |
 | D05 | Reuse spool/vault identity; no validate `read_bytes` |
-| D06 | Path + `(document_id, content_hash)` parser contract |
-| D07 | Conservative disk preflight before heavy rebuild |
+| D06 | Path + `(document_id, content_hash)` parser contract; **≥512 MiB qualification is PDF/Docling-first**; TXT/MD keep current envelope |
+| D07 | Known lower-bound disk insufficiency guard now; measured supported-envelope admission only after L5 → L6; **no unmeasured \(k\)** |

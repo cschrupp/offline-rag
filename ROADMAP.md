@@ -553,6 +553,13 @@ SLICE 15  COMPLETE / ACCEPTED
              f5c9423c471162923b3bbbfe804687db27551745
            Branch: design/16k-large-source-capacity
            Design: docs/design/large_source_capacity_architecture.md
+           Historical design handoff:
+             DESIGN COMPLETE / READY FOR INDEPENDENT REVIEW
+           Historical IR-001 disposition:
+             REWORK REQUIRED — NARROW DESIGN CORRECTIVE (F001–F003)
+           Current design disposition:
+             DESIGN IR-001 REWORK COMPLETE / READY FOR RE-REVIEW
+           Initial ≥512 MiB qualification media: PDF / Docling
            Prior feasibility (provenance):
              docs/design/large_source_capacity_followup.md
              CAPACITY_DESIGN_READY
@@ -1333,6 +1340,11 @@ SLICE 15  COMPLETE / ACCEPTED
              f5c9423c471162923b3bbbfe804687db27551745
            Branch: design/16k-large-source-capacity
            Design: docs/design/large_source_capacity_architecture.md
+           Historical IR-001 disposition:
+             REWORK REQUIRED — NARROW DESIGN CORRECTIVE (F001–F003)
+           Current design disposition:
+             DESIGN IR-001 REWORK COMPLETE / READY FOR RE-REVIEW
+           Initial ≥512 MiB qualification media: PDF / Docling
            Prior feasibility (provenance):
              docs/design/large_source_capacity_followup.md
            Implementation / limit increase: NOT AUTHORIZED
@@ -1663,6 +1675,13 @@ SLICE 15  COMPLETE / ACCEPTED
              f5c9423c471162923b3bbbfe804687db27551745
            Branch: design/16k-large-source-capacity
            Design: docs/design/large_source_capacity_architecture.md
+           Historical design handoff:
+             DESIGN COMPLETE / READY FOR INDEPENDENT REVIEW
+           Historical IR-001 disposition:
+             REWORK REQUIRED — NARROW DESIGN CORRECTIVE (F001–F003)
+           Current design disposition:
+             DESIGN IR-001 REWORK COMPLETE / READY FOR RE-REVIEW
+           Initial ≥512 MiB qualification media: PDF / Docling
            Prior feasibility (provenance):
              docs/design/large_source_capacity_followup.md
              CAPACITY_DESIGN_READY
@@ -2443,6 +2462,11 @@ SLICE 15  COMPLETE / ACCEPTED
              f5c9423c471162923b3bbbfe804687db27551745
            Branch: design/16k-large-source-capacity
            Design: docs/design/large_source_capacity_architecture.md
+           Historical IR-001 disposition:
+             REWORK REQUIRED — NARROW DESIGN CORRECTIVE (F001–F003)
+           Current design disposition:
+             DESIGN IR-001 REWORK COMPLETE / READY FOR RE-REVIEW
+           Initial ≥512 MiB qualification media: PDF / Docling
            Prior feasibility (provenance):
              docs/design/large_source_capacity_followup.md
            Implementation / limit increase: NOT AUTHORIZED
