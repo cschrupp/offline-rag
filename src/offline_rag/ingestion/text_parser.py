@@ -28,7 +28,16 @@ class TextParser:
     name = "text"
     version = TEXT_PARSER_VERSION
 
-    def parse(self, path: Path, *, source_bytes: bytes, document_id: str) -> ParsedDocument:
+    def parse(
+        self,
+        path: Path,
+        *,
+        document_id: str,
+        content_hash: str | None = None,
+        source_bytes: bytes | None = None,
+    ) -> ParsedDocument:
+        if source_bytes is None:
+            source_bytes = path.read_bytes()
         text, used_fallback = decode_text(source_bytes)
         warnings: list[ParseWarning] = []
         if used_fallback:
@@ -91,7 +100,7 @@ class TextParser:
             source_uri=path.name,
             title=path.stem,
             mime_type="text/plain",
-            content_hash=content_hash_from_bytes(source_bytes),
+            content_hash=content_hash or content_hash_from_bytes(source_bytes),
             ingested_at=datetime(1970, 1, 1, tzinfo=UTC),
             parser_version=self.version,
             metadata={"parser_name": self.name},

@@ -23,7 +23,14 @@ class DocumentParser(Protocol):
     name: str
     version: str
 
-    def parse(self, path: Path, *, source_bytes: bytes, document_id: str) -> ParsedDocument:
+    def parse(
+        self,
+        path: Path,
+        *,
+        document_id: str,
+        content_hash: str | None = None,
+        source_bytes: bytes | None = None,
+    ) -> ParsedDocument:
         """Parse source bytes into a project-owned ParsedDocument."""
 
 

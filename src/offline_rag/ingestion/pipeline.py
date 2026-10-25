@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
 from offline_rag.config.models import AppSettings
 from offline_rag.core.ids import (
     PARSER_SCHEMA_VERSION,
-    content_hash_from_bytes,
+    content_hash_from_path,
     corpus_id_from_entries,
-    document_id_from_bytes,
     new_execution_id,
     parse_config_hash,
     parsed_artifact_id,
@@ -52,6 +52,14 @@ from offline_rag.ingestion.persistence import (
 from offline_rag.ingestion.text_parser import TextParser
 
 ParserFactory = Callable[[], object]
+
+
+@dataclass(frozen=True)
+class SourceIdentity:
+    """Canonical source identity supplied by a trusted product spool."""
+
+    document_id: str
+    content_hash: str
 
 
 class IngestionError(RuntimeError):
@@ -152,6 +160,7 @@ def run_ingestion(
     recursive: bool = False,
     root: Path | None = None,
     source_name_by_path: Mapping[str, str] | None = None,
+    trusted_identities: Mapping[str, SourceIdentity] | None = None,
     on_progress: ProgressReporter | None = None,
     on_document_phase: ObservabilityReporter | None = None,
 ) -> IngestionReport:
@@ -224,19 +233,25 @@ def run_ingestion(
         doc_id: str | None = None
         try:
             try:
-                source_bytes = source.absolute_path.read_bytes()
+                if trusted_identities is not None:
+                    identity = trusted_identities.get(source.source_path)
+                    if identity is None:
+                        raise InternalIngestionError("trusted source identity missing")
+                    doc_id = identity.document_id
+                    content_hash = identity.content_hash
+                else:
+                    content_hash = content_hash_from_path(source.absolute_path)
+                    doc_id = f"doc_{content_hash}"
+            except ValueError as exc:
+                raise DocumentIngestionError("source file is empty") from exc
             except OSError as exc:
                 raise InternalIngestionError("source read failed") from exc
-            if not source_bytes:
-                raise DocumentIngestionError("source file is empty")
-            doc_id = document_id_from_bytes(source_bytes)
             report_document_phase(
                 on_document_phase,
                 document_id=doc_id,
                 source_name=source.source_name,
                 phase="parsing",
             )
-            content_hash = content_hash_from_bytes(source_bytes)
             try:
                 parser_name, parser_version, parser, ocr_enabled = _parser_for_media(
                     source.media_type, settings
@@ -267,11 +282,25 @@ def run_ingestion(
                 reused_count += 1
             else:
                 try:
-                    parsed = parser.parse(
-                        source.absolute_path,
-                        source_bytes=source_bytes,
-                        document_id=doc_id,
-                    )
+                    if isinstance(parser, DoclingPdfParser):
+                        parsed = parser.parse(
+                            source.absolute_path,
+                            document_id=doc_id,
+                            content_hash=content_hash,
+                        )
+                    else:
+                        try:
+                            source_bytes = source.absolute_path.read_bytes()
+                        except OSError as exc:
+                            raise InternalIngestionError("source read failed") from exc
+                        if not source_bytes:
+                            raise DocumentIngestionError("source file is empty")
+                        parsed = parser.parse(
+                            source.absolute_path,
+                            document_id=doc_id,
+                            content_hash=content_hash,
+                            source_bytes=source_bytes,
+                        )
                 except DocumentParseError as exc:
                     raise DocumentIngestionError("document parse failed") from exc
                 except DocumentIngestionError:

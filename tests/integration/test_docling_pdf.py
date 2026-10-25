@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from offline_rag.config import load_settings
-from offline_rag.core.ids import document_id_from_bytes
+from offline_rag.core.ids import content_hash_from_path, document_id_from_path
 from offline_rag.domain.blocks import ContentType, ParsedDocument
 from offline_rag.ingestion.docling_artifacts import validate_docling_artifacts
 from offline_rag.ingestion.docling_parser import DoclingPdfParser
@@ -33,14 +33,14 @@ def test_docling_born_digital_pdf_parse() -> None:
         "Run: uv run python scripts/provision_docling.py"
     )
 
-    raw = PDF.read_bytes()
-    doc_id = document_id_from_bytes(raw)
+    content_hash = content_hash_from_path(PDF)
+    doc_id = document_id_from_path(PDF)
     parser = DoclingPdfParser(
         artifacts_path=ARTIFACTS,
         strict_offline=True,
         ocr_enabled=False,
     )
-    parsed = parser.parse(PDF, source_bytes=raw, document_id=doc_id)
+    parsed = parser.parse(PDF, content_hash=content_hash, document_id=doc_id)
     assert isinstance(parsed, ParsedDocument)
     assert parsed.parser_name == "docling_pdf"
     assert parsed.document.document_id == doc_id

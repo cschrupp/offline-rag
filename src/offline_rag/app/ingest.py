@@ -32,7 +32,6 @@ from offline_rag.chunking.pipeline import run_chunking
 from offline_rag.chunking.tokenize import TiktokenTokenCounter
 from offline_rag.config.models import AppSettings
 from offline_rag.context.config_hash import build_context_config_hash
-from offline_rag.core.ids import document_id_from_bytes
 from offline_rag.dense.config_hash import (
     build_embedding_config_hash,
     build_index_config_hash,
@@ -49,7 +48,7 @@ from offline_rag.domain.indexing import (
 from offline_rag.domain.ingestion import IngestionReport, IngestionStatus
 from offline_rag.hybrid.config_hash import build_fusion_config_hash
 from offline_rag.ingestion.persistence import corpus_state_path, load_corpus_state
-from offline_rag.ingestion.pipeline import run_ingestion
+from offline_rag.ingestion.pipeline import SourceIdentity, run_ingestion
 from offline_rag.lexical.config_hash import build_lexical_config_hash
 from offline_rag.lexical.persistence import (
     lexical_index_state_path,
@@ -81,15 +80,33 @@ def _candidate_settings(base: AppSettings, stage_corpora_root: Path) -> AppSetti
     return base.model_copy(update={"paths": paths})
 
 
-def _validate_document_identities(upload: SpooledIngestUpload) -> None:
-    """Reject ambiguous canonical document identity before mutation."""
+def _validate_document_identities(
+    upload: SpooledIngestUpload,
+) -> dict[str, SourceIdentity]:
+    """Reject ambiguous identities and return the trusted spool identity map."""
     seen: dict[str, str] = {}
+    identities: dict[str, SourceIdentity] = {}
     for item in upload.files:
-        doc_id = document_id_from_bytes(item.absolute_path.read_bytes())
+        doc_id = item.document_id
         prior = seen.get(doc_id)
         if prior is not None:
             raise document_identity_conflict_error(document_id=doc_id)
         seen[doc_id] = item.source_name
+        content_hash = doc_id.removeprefix("doc_")
+        if (
+            len(content_hash) != 64
+            or any(character not in "0123456789abcdef" for character in content_hash)
+            or not doc_id.startswith("doc_")
+        ):
+            raise AppError(
+                ErrorCode.INGEST_FAILED,
+                details=SafeErrorDetails(reason="invalid_document_identity"),
+            )
+        identities[item.storage_name] = SourceIdentity(
+            document_id=doc_id,
+            content_hash=content_hash,
+        )
+    return identities
 
 
 def _establish_candidate(
@@ -244,7 +261,7 @@ def run_product_replace_ingest(
             workspace_id=authorize_workspace_id,
         )
 
-    _validate_document_identities(upload)
+    trusted_identities = _validate_document_identities(upload)
 
     owned_lease: CorpusMutationLease | None = None
     if corpus_lease is not None:
@@ -313,6 +330,7 @@ def run_product_replace_ingest(
                 recursive=False,
                 root=candidate.sources_root,
                 source_name_by_path=source_names,
+                trusted_identities=trusted_identities,
                 on_progress=progress,
                 on_document_phase=document_phase,
             ),

@@ -8,7 +8,6 @@ from pathlib import Path
 from offline_rag.core.ids import (
     DOCLING_PDF_PARSER_VERSION,
     block_id_from_parts,
-    content_hash_from_bytes,
     parse_config_hash,
     parsed_artifact_id,
 )
@@ -65,9 +64,15 @@ class DoclingPdfParser:
             self._converter = self._build_converter()
         return self._converter
 
-    def parse(self, path: Path, *, source_bytes: bytes, document_id: str) -> ParsedDocument:
-        # Ensure bytes identity matches on-disk path by writing is not required;
-        # Docling reads the path. Callers must ensure path content matches bytes.
+    def parse(
+        self,
+        path: Path,
+        *,
+        document_id: str,
+        content_hash: str,
+    ) -> ParsedDocument:
+        # Docling reads the path directly. The supplied digest is the trusted
+        # source identity in the product path.
         # Converter construction / artifact faults propagate as unexpected runtime
         # errors (internal). Only typed conversion/input failures become
         # DocumentParseError (document_invalid).
@@ -222,7 +227,7 @@ class DoclingPdfParser:
             source_uri=path.name,
             title=path.stem,
             mime_type="application/pdf",
-            content_hash=content_hash_from_bytes(source_bytes),
+            content_hash=content_hash,
             ingested_at=datetime(1970, 1, 1, tzinfo=UTC),
             parser_version=self.version,
             metadata={
