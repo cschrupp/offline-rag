@@ -31,7 +31,7 @@
     "observed_case": "summarize this talk after single firefighting topic"
   },
   "scientific_campaign_calls": 0,
-  "technical_subject": "PENDING_COMMIT",
+  "technical_subject": "6d3689d03eb5a6e84d38d3ff7281e001e1caeb1a",
   "unauthorized_remaining": [
     "p4_human_closeout",
     "campaigns",
@@ -60,5 +60,6 @@
       "cpu": "docs/evidence/p4_human_uat/canonical_cpu_runtime_verification.json",
       "interop": "docs/evidence/p4_human_uat/canonical_cpu_cuda_index_reuse.json"
     }
-  }
+  },
+  "candidate_tip": "6d3689d03eb5a6e84d38d3ff7281e001e1caeb1a"
 }
