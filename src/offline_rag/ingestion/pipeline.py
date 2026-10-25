@@ -235,10 +235,24 @@ def run_ingestion(
             try:
                 if trusted_identities is not None:
                     identity = trusted_identities.get(source.source_path)
-                    if identity is None:
-                        raise InternalIngestionError("trusted source identity missing")
+                    if not isinstance(identity, SourceIdentity):
+                        raise InternalIngestionError(
+                            "trusted source identity missing"
+                        )
                     doc_id = identity.document_id
                     content_hash = identity.content_hash
+                    if (
+                        not isinstance(content_hash, str)
+                        or len(content_hash) != 64
+                        or any(
+                            character not in "0123456789abcdef"
+                            for character in content_hash
+                        )
+                        or doc_id != f"doc_{content_hash}"
+                    ):
+                        raise InternalIngestionError(
+                            "trusted source identity inconsistent"
+                        )
                 else:
                     content_hash = content_hash_from_path(source.absolute_path)
                     doc_id = f"doc_{content_hash}"

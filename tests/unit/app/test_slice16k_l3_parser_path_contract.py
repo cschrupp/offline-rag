@@ -88,3 +88,41 @@ def test_trusted_pipeline_identity_skips_path_rehash(
     assert report.status == IngestionStatus.SUCCESS
     assert report.files_parsed == 1
     assert report.files[0].document_id == f"doc_{digest}"
+
+
+@pytest.mark.parametrize(
+    ("document_id", "content_hash"),
+    [
+        ("doc_" + "a" * 64, "b" * 64),
+        ("doc_" + "a" * 63 + "G", "a" * 64),
+    ],
+)
+def test_trusted_identity_inconsistency_fails_closed(
+    tmp_path: Path, document_id: str, content_hash: str
+) -> None:
+    source = tmp_path / "source.txt"
+    source.write_text("trusted identity failure\n", encoding="utf-8")
+    settings = load_settings(yaml_paths=[], environ={}).model_copy(
+        update={
+            "paths": load_settings(yaml_paths=[], environ={}).paths.model_copy(
+                update={
+                    "processed": tmp_path / "processed",
+                    "manifests": tmp_path / "manifests",
+                    "corpora": tmp_path / "corpora",
+                }
+            )
+        }
+    )
+    report = pipeline.run_ingestion(
+        settings=settings,
+        inputs=[source],
+        corpus_name="docs",
+        trusted_identities={
+            source.name: pipeline.SourceIdentity(
+                document_id=document_id, content_hash=content_hash
+            )
+        },
+    )
+    assert report.status == IngestionStatus.FAILED
+    assert report.metadata["failure_class"] == "internal"
+    assert not (tmp_path / "corpora" / "docs" / "state.json").exists()
