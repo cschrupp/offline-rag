@@ -1,0 +1,51 @@
+{
+  "evidence_contract": "large-source-capacity-evidence-v1",
+  "campaign": "S16-K-LARGE-SOURCE-CAPACITY-L5-PDF-QUALIFICATION-EXECUTION-AUTH-001",
+  "accepted_l4_subject": "4024ed04130681d757abcd4fb4abf6f302259db1",
+  "fixtures": [
+    {
+      "cell_id": "Q25",
+      "label": "Norman Fire Officer's Handbook of Tactics 4th Edition pages 1-75",
+      "fixture_kind": "derived_real_document",
+      "filename": "norman_q25.pdf",
+      "sanitized_identifier": "norman_fire_officers_handbook_4th_edition_pages_1_75",
+      "sha256": "ff360b3bca78aba4b3852a484a3ba4c5c0bb8aa439f5421a5d3450e60e21fa16",
+      "byte_size": 22430312,
+      "media_type": "application/pdf",
+      "derivation": "mutool merge page subset 1-75 from real technical handbook data/raw/pdfs/Norman_4th.pdf; no byte padding"
+    },
+    {
+      "cell_id": "Q100",
+      "label": "Norman Fire Officer's Handbook of Tactics 4th Edition pages 1-250",
+      "fixture_kind": "derived_real_document",
+      "filename": "norman_q100.pdf",
+      "sanitized_identifier": "norman_fire_officers_handbook_4th_edition_pages_1_250",
+      "sha256": "109fa209213e9d9bbaf01e30d254658653edca625aea8702153dcb900d6795f0",
+      "byte_size": 96152520,
+      "media_type": "application/pdf",
+      "derivation": "mutool merge page subset 1-250 from real technical handbook data/raw/pdfs/Norman_4th.pdf; no byte padding"
+    },
+    {
+      "cell_id": "Q250",
+      "label": "Norman Fire Officer's Handbook of Tactics 4th Edition",
+      "fixture_kind": "real_technical_document",
+      "filename": "Norman_4th.pdf",
+      "sanitized_identifier": "norman_fire_officers_handbook_4th_edition",
+      "sha256": "af9ea69d3a61d91a05770d6e1696ce0aeb589482173a23c39bd4f5c6884660fe",
+      "byte_size": 284502054,
+      "media_type": "application/pdf",
+      "derivation": "original real technical handbook already present at data/raw/pdfs/Norman_4th.pdf"
+    },
+    {
+      "cell_id": "Q512",
+      "label": "Norman Fire Officer's Handbook of Tactics 4th Edition two-volume page expansion",
+      "fixture_kind": "derived_real_document",
+      "filename": "norman_q512.pdf",
+      "sanitized_identifier": "norman_fire_officers_handbook_4th_edition_two_volume_page_expansion",
+      "sha256": "b6dab1cf3c34e00b22aa5333dfd15f7e58572b4dc411a88696c75b1042d7a16b",
+      "byte_size": 569005126,
+      "media_type": "application/pdf",
+      "derivation": "mutool merge of the complete 654-page real technical handbook twice; valid PDF page expansion, no byte padding"
+    }
+  ]
+}

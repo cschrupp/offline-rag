@@ -595,7 +595,7 @@ SLICE 15  COMPLETE / ACCEPTED
              parser/ingestion path-contract migration; product identity reuse; PDF path parsing
            PDF ≥512 MiB qualification: NOT RUN
            L4:
-             IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT RE-REVIEW
+             IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED — IR-003
            Authority:
              S16-K-LARGE-SOURCE-CAPACITY-L4-INSTRUMENTATION-HARNESS-IMPLEMENTATION-AUTH-001
            Implementation base:
@@ -614,7 +614,17 @@ SLICE 15  COMPLETE / ACCEPTED
              REWORK REQUIRED — VERY NARROW F002 PROFILE-EXECUTION CORRECTIVE
            IR-002 corrective base:
              a846c9cda8d88838972b4e17fdf5d7c3300c2d26
-           L5: NOT AUTHORIZED
+           Accepted L4 technical subject:
+             4024ed04130681d757abcd4fb4abf6f302259db1
+           L5:
+             PDF QUALIFICATION EXECUTION AUTHORIZED / IN PROGRESS
+           Authority:
+             S16-K-LARGE-SOURCE-CAPACITY-L5-PDF-QUALIFICATION-EXECUTION-AUTH-001
+           Execution base:
+             4024ed04130681d757abcd4fb4abf6f302259db1
+           Scope:
+             progressive full-product PDF capacity qualification at Q25 / Q100 / Q250 / Q512 under accepted CPU/CUDA execution profiles
+           L6: NOT AUTHORIZED
            Limit increase: NOT AUTHORIZED
            (25 MiB/file · 100 MiB/request unchanged)
        16K-E → 16K-G:
