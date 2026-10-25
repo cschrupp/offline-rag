@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pytest
 
+from offline_rag.dense.embedder import FakeEmbedder
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from scripts.diag_large_source_capacity import common, run_capacity_harness
@@ -131,6 +133,77 @@ def test_harness_limits_are_isolated_from_product_defaults(tmp_path: Path) -> No
     assert defaults.api.max_total_upload_bytes == 100 * 1024 * 1024
     assert overridden.api.max_bytes_per_document == 512 * 1024 * 1024
     assert overridden.api.max_total_upload_bytes == 1024 * 1024 * 1024
+
+
+def test_capability_mode_uses_fake_embedder(tmp_path: Path) -> None:
+    settings = run_capacity_harness._settings(
+        tmp_path / "capability", max_document=None, max_total=None
+    )
+
+    runtime, resolved = run_capacity_harness._build_runtime(settings)
+
+    assert resolved is None
+    assert isinstance(runtime.factories.embedder(settings), FakeEmbedder)
+
+
+@pytest.mark.parametrize(
+    ("profile", "device", "precision"),
+    [
+        ("cpu_onnx_fp32_v1", "cpu", "native"),
+        ("cuda_fp16_v1", "cuda", "fp16"),
+    ],
+)
+def test_qualification_mode_supplies_profile_policy(
+    tmp_path: Path, profile: str, device: str, precision: str
+) -> None:
+    settings = run_capacity_harness._settings(
+        tmp_path / profile, max_document=None, max_total=None
+    )
+    captured: dict[str, object] = {}
+
+    class _Witness:
+        profile_id = profile
+
+        def close(self) -> None:
+            return None
+
+    def factory(configured: object) -> _Witness:
+        embedding = configured.indexing.embedding  # type: ignore[attr-defined]
+        captured["implementation"] = embedding.implementation
+        captured["device"] = embedding.device
+        captured["precision"] = embedding.precision
+        return _Witness()
+
+    _runtime, resolved = run_capacity_harness._build_runtime(
+        settings,
+        mode="qualification",
+        profile=profile,
+        embedder_factory=factory,
+    )
+
+    assert resolved == profile
+    assert captured == {
+        "implementation": "sentence_transformers",
+        "device": device,
+        "precision": precision,
+    }
+
+
+def test_qualification_profile_mismatch_fails_closed(tmp_path: Path) -> None:
+    settings = run_capacity_harness._settings(
+        tmp_path / "mismatch", max_document=None, max_total=None
+    )
+
+    class _WrongWitness:
+        profile_id = "cuda_fp16_v1"
+
+    with pytest.raises(run_capacity_harness.QualificationPreconditionError):
+        run_capacity_harness._build_runtime(
+            settings,
+            mode="qualification",
+            profile="cpu_onnx_fp32_v1",
+            embedder_factory=lambda _configured: _WrongWitness(),
+        )
 
 
 def test_fixture_identity_contains_digest_without_source_text(tmp_path: Path) -> None:

@@ -76,11 +76,33 @@ PDF_FIXTURE = (
 )
 APPROVED_ENDPOINT = "http://127.0.0.1:11434/v1"
 APPROVED_MODEL = "local-test-model"
+PROFILE_IDS = ("cpu_onnx_fp32_v1", "cuda_fp16_v1")
 
 
 class _Closeable:
     def close(self) -> None:
         return None
+
+
+class QualificationPreconditionError(RuntimeError):
+    """Qualification cannot proceed unless the requested profile is witnessed."""
+
+
+def _profile_settings(settings: AppSettings, profile: str) -> AppSettings:
+    if profile not in PROFILE_IDS:
+        raise ValueError(f"unsupported embedding profile: {profile}")
+    if profile == "cpu_onnx_fp32_v1":
+        policy = {"device": "cpu", "precision": "native"}
+    else:
+        policy = {"device": "cuda", "precision": "fp16"}
+    embedding = settings.indexing.embedding.model_copy(
+        update={"implementation": "sentence_transformers", **policy}
+    )
+    return settings.model_copy(
+        update={
+            "indexing": settings.indexing.model_copy(update={"embedding": embedding})
+        }
+    )
 
 
 def _settings(
@@ -117,14 +139,42 @@ def _settings(
     return settings
 
 
-def _runtime(settings: AppSettings) -> ApplicationRuntime:
-    embedder = FakeEmbedder(dimension=8, normalize=True)
+def _build_runtime(
+    settings: AppSettings,
+    *,
+    mode: str = "capability_smoke",
+    profile: str = "cpu_onnx_fp32_v1",
+    embedder_factory: Any | None = None,
+) -> tuple[ApplicationRuntime, str | None]:
+    runtime_settings = settings
+    if mode == "capability_smoke":
+        embedder = FakeEmbedder(dimension=8, normalize=True)
+        resolved_profile_id = None
+    elif mode == "qualification":
+        configured = _profile_settings(settings, profile)
+        runtime_settings = configured
+        if embedder_factory is None:
+            from offline_rag.dense.embedder import make_embedder
+
+            embedder_factory = make_embedder
+        embedder = embedder_factory(configured)
+        resolved_profile_id = getattr(embedder, "profile_id", None)
+        if resolved_profile_id != profile:
+            close = getattr(embedder, "close", None)
+            if callable(close):
+                close()
+            raise QualificationPreconditionError(
+                "qualification profile mismatch: "
+                f"requested={profile!r} resolved={resolved_profile_id!r}"
+            )
+    else:
+        raise ValueError(f"unsupported harness mode: {mode}")
 
     def _qdrant(current: AppSettings) -> QdrantLocalBackend:
         return QdrantLocalBackend(current.paths.qdrant_storage)
 
-    return ApplicationRuntime(
-        settings=settings,
+    runtime = ApplicationRuntime(
+        settings=runtime_settings,
         factories=ResourceFactories(
             embedder=lambda _settings: embedder,
             reranker=lambda _settings: None,
@@ -132,6 +182,12 @@ def _runtime(settings: AppSettings) -> ApplicationRuntime:
             qdrant=_qdrant,
         ),
     )
+    return runtime, resolved_profile_id
+
+
+def _runtime(settings: AppSettings) -> ApplicationRuntime:
+    """Build the capability-smoke runtime (legacy test helper)."""
+    return _build_runtime(settings)[0]
 
 
 def _roots(settings: AppSettings) -> dict[str, Path]:
@@ -179,6 +235,9 @@ def _run_workspace_source_add(
     settings: AppSettings,
     source: Path,
     tracker: StageTracker,
+    *,
+    mode: str,
+    profile: str,
 ) -> dict[str, Any]:
     """Execute one real workspace SOURCE_ADD lifecycle operation.
 
@@ -187,7 +246,8 @@ def _run_workspace_source_add(
     object, and a polling thread keeps stage labels live while the synchronous
     managed worker performs the product operation.
     """
-    runtime = _runtime(settings)
+    runtime, resolved_profile_id = _build_runtime(settings, mode=mode, profile=profile)
+    effective_settings = runtime.settings
     runtime.start()
     lifecycle = runtime.workspace_lifecycle
     record = lifecycle.create_workspace(
@@ -197,7 +257,7 @@ def _run_workspace_source_add(
     )
     tracker.set_stage("preparing")
     upload = spool_local_files(
-        settings=settings,
+        settings=effective_settings,
         corpus_name="l4-smoke",
         files=[(source, source.name)],
         apply_transport_limits=True,
@@ -225,7 +285,7 @@ def _run_workspace_source_add(
 
     thread = threading.Thread(target=worker, name="l4-workspace-source-add")
     thread.start()
-    operation_store = ManagedOperationStore(settings)
+    operation_store = ManagedOperationStore(effective_settings)
     operation_id: str | None = None
     while thread.is_alive():
         records = operation_store.list_for_workspace(record.workspace_id)
@@ -245,7 +305,7 @@ def _run_workspace_source_add(
             raise failure[0]
         raise RuntimeError("workspace SOURCE_ADD produced no managed operation")
     operation = operation_view(final_record)
-    final_workspace = WorkspaceStore(settings).get(record.workspace_id)
+    final_workspace = WorkspaceStore(effective_settings).get(record.workspace_id)
     sources = {
         "workspace_id": record.workspace_id,
         "revision": final_workspace.revision,
@@ -263,6 +323,7 @@ def _run_workspace_source_add(
                 "transport": "workspace_lifecycle_equivalent",
             },
             "operation": operation,
+            "resolved_profile_id": resolved_profile_id,
             "workspace": workspace_view(final_workspace),
             "sources": sources,
         }
@@ -336,7 +397,13 @@ def run_smoke(
             sampler.start()
 
         try:
-            product = _run_workspace_source_add(settings, source, tracker)
+            product = _run_workspace_source_add(
+                settings,
+                source,
+                tracker,
+                mode=mode,
+                profile=profile,
+            )
         finally:
             elapsed = time.perf_counter() - started
             if instrumentation_enabled:
@@ -373,6 +440,7 @@ def run_smoke(
         operation = product.get("operation", {})
         workspace = product.get("workspace", {})
         sources = product.get("sources", {"sources": []})
+        resolved_profile_id = product.get("resolved_profile_id")
         post_active_bytes = _active_source_bytes(sources)
         operation_status = str(operation.get("status") or "failed")
         evidence = {
@@ -398,14 +466,16 @@ def run_smoke(
             },
             "execution_profile": {
                 "requested_profile_id": profile,
-                "resolved_profile_id": profile,
+                "resolved_profile_id": resolved_profile_id,
                 "execution_mode": mode,
                 "embedding_execution": (
                     "FakeEmbedder(dimension=8) capability smoke"
                     if mode == "capability_smoke"
-                    else "profile-selected qualification lane"
+                    else "qualified_product_runtime"
                 ),
-                "profile_selection_ready_for_l5": True,
+                "qualification_profile_verified": (
+                    mode == "qualification" and resolved_profile_id == profile
+                ),
             },
             "configuration": {
                 "strict_offline": settings.project.strict_offline,

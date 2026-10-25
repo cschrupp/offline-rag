@@ -609,7 +609,11 @@ SLICE 15  COMPLETE / ACCEPTED
              F002 execution-profile-ready harness contract CLOSED
              F003 parser phase elapsed timing CLOSED
            Corrective candidate:
-             READY FOR INDEPENDENT RE-REVIEW
+             IR-001 ACCEPTED; F002 PROFILE-EXECUTION CORRECTIVE COMPLETE / READY FOR RE-REVIEW
+           Historical IR-002 disposition:
+             REWORK REQUIRED — VERY NARROW F002 PROFILE-EXECUTION CORRECTIVE
+           IR-002 corrective base:
+             a846c9cda8d88838972b4e17fdf5d7c3300c2d26
            L5: NOT AUTHORIZED
            Limit increase: NOT AUTHORIZED
            (25 MiB/file · 100 MiB/request unchanged)
