@@ -559,11 +559,20 @@ SLICE 15  COMPLETE / ACCEPTED
              REWORK REQUIRED — NARROW DESIGN CORRECTIVE (F001–F003)
            Current design disposition:
              DESIGN IR-001 REWORK COMPLETE / READY FOR RE-REVIEW
+           LARGE-SOURCE CAPACITY L1 IMPLEMENTATION:
+             AUTHORIZED / IN PROGRESS
+           Authority:
+             S16-K-LARGE-SOURCE-CAPACITY-L1-IMPLEMENTATION-AUTH-001
+           Implementation base:
+             c3405e6bd8ac06b2a24f1ac64dd53cbce399f86b
+           Scope:
+             streaming/path identity + path-based vault primitives
            Initial ≥512 MiB qualification media: PDF / Docling
            Prior feasibility (provenance):
              docs/design/large_source_capacity_followup.md
              CAPACITY_DESIGN_READY
-           Implementation: NOT AUTHORIZED
+           L1 implementation: AUTHORIZED / IN PROGRESS
+           L2: NOT AUTHORIZED
            Limit increase: NOT AUTHORIZED
            (25 MiB/file · 100 MiB/request unchanged)
        16K-E → 16K-G:

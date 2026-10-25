@@ -11,6 +11,7 @@ import hashlib
 import json
 import uuid
 from collections.abc import Mapping, Sequence
+from pathlib import Path
 from typing import Any
 
 PARSER_SCHEMA_VERSION = "offline-rag-parsed-v1"
@@ -86,6 +87,34 @@ def content_hash_from_bytes(content: bytes) -> str:
 def document_id_from_bytes(content: bytes) -> str:
     """Return ``doc_<sha256>`` derived from canonical source bytes."""
     return f"doc_{content_hash_from_bytes(content)}"
+
+
+def _validate_chunk_size(chunk_size: int) -> int:
+    if chunk_size <= 0:
+        raise ValueError("chunk_size must be positive")
+    return chunk_size
+
+
+def content_hash_from_path(path: Path, *, chunk_size: int = 1024 * 1024) -> str:
+    """Return the SHA-256 of a non-empty file using bounded memory."""
+    size = _validate_chunk_size(chunk_size)
+    digest = hashlib.sha256()
+    total = 0
+    with Path(path).open("rb") as handle:
+        while True:
+            chunk = handle.read(size)
+            if not chunk:
+                break
+            digest.update(chunk)
+            total += len(chunk)
+    if total == 0:
+        raise ValueError("content bytes must be non-empty")
+    return digest.hexdigest()
+
+
+def document_id_from_path(path: Path, *, chunk_size: int = 1024 * 1024) -> str:
+    """Return ``doc_<sha256>`` for a non-empty file using bounded memory."""
+    return f"doc_{content_hash_from_path(path, chunk_size=chunk_size)}"
 
 
 def chunk_id_from_parts(

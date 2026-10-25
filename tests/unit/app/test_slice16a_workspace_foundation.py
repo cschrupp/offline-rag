@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import shutil
 from datetime import UTC, datetime
 from pathlib import Path
@@ -451,6 +452,55 @@ def test_raw_vault_store_load_and_path_safety(tmp_path: Path) -> None:
     with pytest.raises(AppError) as abs_name:
         vault.put_bytes(ws.workspace_id, b"x", display_name="/tmp/x.pdf")
     assert abs_name.value.code is ErrorCode.REQUEST_INVALID
+
+
+def test_raw_vault_path_copy_integrity_and_verification(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    store = WorkspaceStore(settings)
+    vault = RawSourceVault(settings.paths.workspaces)
+    ws = store.create(new_empty_workspace(title="Vault path"))
+    payload = bytes(range(256)) * 4097
+    source = tmp_path / "input.bin"
+    source.write_bytes(payload)
+
+    expected = hashlib.sha256(payload).hexdigest()
+    meta = vault.put_path(
+        ws.workspace_id,
+        source,
+        display_name="input.bin",
+        expected_content_hash=expected,
+    )
+    assert meta.byte_size == len(payload)
+    assert vault.object_path(ws.workspace_id, meta.object_id).name == meta.object_id
+    assert vault.verify_object(ws.workspace_id, meta.object_id) == meta
+    assert vault.load_bytes(ws.workspace_id, meta.object_id) == payload
+
+    with pytest.raises(AppError) as mismatch:
+        vault.put_path(
+            ws.workspace_id,
+            source,
+            display_name="bad.bin",
+            expected_content_hash="0" * 64,
+        )
+    assert mismatch.value.code is ErrorCode.WORKSPACE_STATE_UNAVAILABLE
+
+    object_path = vault.object_path(ws.workspace_id, meta.object_id)
+    object_path.write_bytes(b"corrupt")
+    with pytest.raises(AppError) as corrupt:
+        vault.verify_object(ws.workspace_id, meta.object_id)
+    assert corrupt.value.code is ErrorCode.WORKSPACE_STATE_UNAVAILABLE
+
+
+def test_raw_vault_path_copy_rejects_empty_source(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    store = WorkspaceStore(settings)
+    vault = RawSourceVault(settings.paths.workspaces)
+    ws = store.create(new_empty_workspace(title="Empty path"))
+    source = tmp_path / "empty.bin"
+    source.write_bytes(b"")
+    with pytest.raises(AppError) as empty:
+        vault.put_path(ws.workspace_id, source, display_name="empty.bin")
+    assert empty.value.code is ErrorCode.REQUEST_INVALID
 
 
 # --- 6. Operation / idempotency ---

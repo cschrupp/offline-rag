@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import re
+import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -145,6 +147,147 @@ class RawSourceVault:
                 ),
             )
         atomic_write_text(meta_path, meta.model_dump_json())
+        return meta
+
+    def put_path(
+        self,
+        workspace_id: str,
+        source_path: Path,
+        *,
+        display_name: str,
+        content_type: str | None = None,
+        object_id: str | None = None,
+        expected_content_hash: str | None = None,
+    ) -> VaultObjectMeta:
+        """Copy a local file into the vault while hashing incrementally."""
+        display = _validate_display_name(display_name)
+        oid = object_id or new_vault_object_id()
+        if not _OBJECT_ID_RE.fullmatch(oid):
+            raise AppError(
+                ErrorCode.REQUEST_INVALID,
+                details=SafeErrorDetails(reason="invalid_vault_object_id"),
+            )
+        source = Path(source_path)
+        if not source.is_file():
+            raise AppError(
+                ErrorCode.REQUEST_INVALID,
+                details=SafeErrorDetails(reason="source_file_unavailable"),
+            )
+        obj_path = self._object_path(workspace_id, oid)
+        meta_path = self._meta_path(workspace_id, oid)
+        if obj_path.exists() or meta_path.exists():
+            raise AppError(
+                ErrorCode.WORKSPACE_CONFLICT,
+                details=SafeErrorDetails(
+                    workspace_id=workspace_id, reason="vault_object_exists"
+                ),
+            )
+        obj_path.parent.mkdir(parents=True, exist_ok=True)
+        meta_path.parent.mkdir(parents=True, exist_ok=True)
+        fd, temporary_name = tempfile.mkstemp(
+            prefix=f".{oid}.", suffix=".tmp", dir=obj_path.parent
+        )
+        temporary = Path(temporary_name)
+        digest = hashlib.sha256()
+        byte_size = 0
+        promoted = False
+        try:
+            try:
+                source_handle = source.open("rb")
+            except Exception:
+                os.close(fd)
+                raise
+            with source_handle, os.fdopen(fd, "wb") as target:
+                while True:
+                    chunk = source_handle.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    target.write(chunk)
+                    digest.update(chunk)
+                    byte_size += len(chunk)
+                target.flush()
+                os.fsync(target.fileno())
+            if byte_size == 0:
+                raise ValueError("content bytes must be non-empty")
+            content_hash = digest.hexdigest()
+            if expected_content_hash is not None and content_hash != expected_content_hash:
+                raise AppError(
+                    ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                    details=SafeErrorDetails(
+                        workspace_id=workspace_id, reason="expected_content_hash_mismatch"
+                    ),
+                )
+            meta = VaultObjectMeta(
+                object_id=oid,
+                workspace_id=workspace_id,
+                display_name=display,
+                content_type=content_type,
+                byte_size=byte_size,
+                content_hash=content_hash,
+                created_at=datetime.now(tz=UTC),
+            )
+            # A hard link publishes without replacing a concurrent object.
+            os.link(temporary, obj_path)
+            promoted = True
+            temporary.unlink(missing_ok=True)
+            try:
+                atomic_write_text(meta_path, meta.model_dump_json())
+            except Exception:
+                obj_path.unlink(missing_ok=True)
+                raise
+            return meta
+        except AppError:
+            temporary.unlink(missing_ok=True)
+            raise
+        except (OSError, ValueError) as exc:
+            temporary.unlink(missing_ok=True)
+            if promoted and obj_path.exists() and not meta_path.exists():
+                obj_path.unlink(missing_ok=True)
+            if isinstance(exc, ValueError) and str(exc) == "content bytes must be non-empty":
+                raise AppError(
+                    ErrorCode.REQUEST_INVALID,
+                    details=SafeErrorDetails(reason="empty_source_file"),
+                ) from exc
+            raise AppError(
+                ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                details=SafeErrorDetails(
+                    workspace_id=workspace_id, reason="vault_path_copy_failed"
+                ),
+            ) from exc
+
+    def object_path(self, workspace_id: str, object_id: str) -> Path:
+        """Return the server-owned path for a valid, committed vault object."""
+        self.get_meta(workspace_id, object_id)
+        path = self._object_path(workspace_id, object_id)
+        if not path.is_file():
+            raise AppError(
+                ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                details=SafeErrorDetails(
+                    workspace_id=workspace_id, reason="vault_object_missing"
+                ),
+            )
+        return path
+
+    def verify_object(self, workspace_id: str, object_id: str) -> VaultObjectMeta:
+        """Verify stored bytes against authoritative metadata without loading them."""
+        meta = self.get_meta(workspace_id, object_id)
+        path = self.object_path(workspace_id, object_id)
+        digest = hashlib.sha256()
+        byte_size = 0
+        with path.open("rb") as handle:
+            while True:
+                chunk = handle.read(1024 * 1024)
+                if not chunk:
+                    break
+                digest.update(chunk)
+                byte_size += len(chunk)
+        if byte_size != meta.byte_size or digest.hexdigest() != meta.content_hash:
+            raise AppError(
+                ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                details=SafeErrorDetails(
+                    workspace_id=workspace_id, reason="vault_object_integrity_mismatch"
+                ),
+            )
         return meta
 
     def get_meta(self, workspace_id: str, object_id: str) -> VaultObjectMeta:

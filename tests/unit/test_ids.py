@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from offline_rag.core.ids import (
@@ -11,7 +13,10 @@ from offline_rag.core.ids import (
     chunk_artifact_id,
     chunk_config_hash,
     chunk_id_from_parts,
+    content_hash_from_bytes,
+    content_hash_from_path,
     document_id_from_bytes,
+    document_id_from_path,
     new_execution_id,
     parent_chunk_id_from_parts,
 )
@@ -30,6 +35,40 @@ def test_document_id_changes_with_content() -> None:
 def test_document_id_rejects_empty_bytes() -> None:
     with pytest.raises(ValueError):
         document_id_from_bytes(b"")
+
+
+@pytest.mark.parametrize("size", [1, 8, 17, 32])
+def test_path_identity_matches_byte_identity(tmp_path: Path, size: int) -> None:
+    payload = bytes(range(256)) * ((size + 255) // 256)
+    payload = payload[:size]
+    path = tmp_path / "source.bin"
+    path.write_bytes(payload)
+    assert content_hash_from_path(path, chunk_size=8) == content_hash_from_bytes(payload)
+    assert document_id_from_path(path, chunk_size=8) == document_id_from_bytes(payload)
+
+
+def test_path_identity_rejects_empty_and_invalid_chunk_size(tmp_path: Path) -> None:
+    path = tmp_path / "empty.bin"
+    path.write_bytes(b"")
+    with pytest.raises(ValueError):
+        content_hash_from_path(path)
+    with pytest.raises(ValueError):
+        content_hash_from_path(path, chunk_size=0)
+    path.write_bytes(b"x")
+    with pytest.raises(ValueError):
+        document_id_from_path(path, chunk_size=-1)
+
+
+def test_path_identity_does_not_read_entire_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    path = tmp_path / "streamed.bin"
+    payload = b"streamed" * 16
+    path.write_bytes(payload)
+
+    def fail_read_bytes(_path: Path) -> bytes:
+        raise AssertionError("path identity must stream through open/read")
+
+    monkeypatch.setattr(Path, "read_bytes", fail_read_bytes)
+    assert content_hash_from_path(path, chunk_size=3) == content_hash_from_bytes(payload)
 
 
 def test_chunk_id_deterministic_and_sensitive() -> None:
@@ -92,13 +131,13 @@ def test_child_chunk_id_occurrence_zero_matches_legacy_payload() -> None:
     """occurrence=0 must retain the exact pre-remediation child ID."""
     cfg = chunk_config_hash({"strategy": "structure_aware", "child": {"max_tokens": 512}})
     parent = "parent_abc"
-    kwargs = dict(
-        document_id="doc_1",
-        parent_chunk_id=parent,
-        chunk_cfg_hash=cfg,
-        source_block_ids=["b1"],
-        text="!",
-    )
+    kwargs = {
+        "document_id": "doc_1",
+        "parent_chunk_id": parent,
+        "chunk_cfg_hash": cfg,
+        "source_block_ids": ["b1"],
+        "text": "!",
+    }
     legacy = child_chunk_id_from_parts(**kwargs)
     assert child_chunk_id_from_parts(**kwargs, occurrence=0) == legacy
     # Default argument is occurrence=0.
