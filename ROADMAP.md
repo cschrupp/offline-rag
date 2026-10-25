@@ -594,7 +594,15 @@ SLICE 15  COMPLETE / ACCEPTED
            Scope:
              parser/ingestion path-contract migration; product identity reuse; PDF path parsing
            PDF ≥512 MiB qualification: NOT RUN
-           L4: NOT AUTHORIZED
+           L4:
+             AUTHORIZED / IN PROGRESS
+           Authority:
+             S16-K-LARGE-SOURCE-CAPACITY-L4-INSTRUMENTATION-HARNESS-IMPLEMENTATION-AUTH-001
+           Implementation base:
+             4687614170db92b99e94d59828fbd6c6c5a046e4
+           Scope:
+             RSS/CPU/GPU/disk/timing instrumentation + reproducible PDF qualification harness + disk-amplification measurement hooks
+           L5: NOT AUTHORIZED
            Limit increase: NOT AUTHORIZED
            (25 MiB/file · 100 MiB/request unchanged)
        16K-E → 16K-G:
