@@ -19,6 +19,7 @@ from offline_rag.api.app import create_app
 from offline_rag.app.conversation.prior_turns import (
     MAX_PRIOR_PAIRS,
     MAX_PRIOR_TEXT_CHARS,
+    PriorTurn,
     validate_prior_turns,
 )
 from offline_rag.app.conversation.resolver import (
@@ -26,6 +27,7 @@ from offline_rag.app.conversation.resolver import (
     build_resolver_user_payload,
     parse_resolver_content,
     resolve_conversation_context,
+    try_deterministic_followup_resolve,
 )
 from offline_rag.app.conversation.traces import ConversationTraceStore
 from offline_rag.app.conversation.turn import run_conversation_turn
@@ -306,6 +308,130 @@ def test_resolver_exact_json_only_fail_closed() -> None:
         result = parse_resolver_content(malformed)
         assert result.outcome == "clarification_required", malformed
         assert result.retrieval_question is None
+
+
+def test_deterministic_summary_followup_resolves_single_topic() -> None:
+    prior = (
+        PriorTurn(role="user", text="How do I fight the fire?"),
+        PriorTurn(role="assistant", text="Use coordinated hose lines."),
+    )
+    result = try_deterministic_followup_resolve(
+        prior_turns=prior,
+        current_question="can you make me a summary of this talk?",
+    )
+    assert result is not None
+    assert result.outcome == "resolved"
+    assert result.context_used is True
+    assert result.retrieval_question is not None
+    assert "fight the fire" in result.retrieval_question.lower()
+
+
+def test_deterministic_simplify_followup_resolves() -> None:
+    prior = (
+        PriorTurn(role="user", text="Explain ladder placement."),
+        PriorTurn(role="assistant", text="Place the ladder at a safe angle."),
+    )
+    result = try_deterministic_followup_resolve(
+        prior_turns=prior,
+        current_question="Can you explain that more simply?",
+    )
+    assert result is not None
+    assert result.outcome == "resolved"
+    assert "ladder placement" in (result.retrieval_question or "").lower()
+
+
+def test_deterministic_ambiguous_multi_topic_stays_none() -> None:
+    prior = (
+        PriorTurn(role="user", text="What is a MAYDAY?"),
+        PriorTurn(role="assistant", text="A distress call."),
+        PriorTurn(role="user", text="Explain ladder placement."),
+        PriorTurn(role="assistant", text="Safe angle and heel."),
+    )
+    result = try_deterministic_followup_resolve(
+        prior_turns=prior,
+        current_question="Summarize that.",
+    )
+    assert result is None
+
+
+def test_summary_followup_model_empty_uses_deterministic_fallback(
+    tmp_path: Path,
+) -> None:
+    with _conversation_client(tmp_path) as (client, runtime, captures, _gen):
+        wid, alpha_sid, _, _ = _seed_workspace(client)
+
+        def _empty_resolver(request):
+            contract = (request.metadata or {}).get("prompt_contract")
+            blob = "\n".join(message.content for message in request.messages)
+            if contract == CONVERSATION_CONTEXT_RESOLVER_V1:
+                return json.dumps({"retrieval_question": "", "context_used": True})
+            handles = re.findall(r"\[EVIDENCE (E[1-9][0-9]*)\]", blob)
+            unique = list(dict.fromkeys(handles))
+            assert unique, "grounded generation requires evidence handles"
+            return json.dumps(
+                {
+                    "abstain": False,
+                    "blocks": [
+                        {
+                            "text": f"Grounded summary citing {ALPHA_SCOPE_MARKER}.",
+                            "evidence_handles": [unique[0]],
+                        }
+                    ],
+                    "abstention_reason": None,
+                }
+            )
+
+        runtime.resources.generator_client._response_fn = _empty_resolver  # type: ignore[attr-defined]
+        captures["assemble_queries"].clear()
+        resp = client.post(
+            f"/v1/workspaces/{wid}/conversation/turn",
+            json={
+                "question": "can you make me a summary of this talk?",
+                "source_ids": [alpha_sid],
+                "prior_turns": [
+                    {"role": "user", "text": "How do I fight the fire?"},
+                    {"role": "assistant", "text": "Coordinated hose lines and ventilation."},
+                ],
+            },
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["status"] == "answered"
+        assert data["retrieval_question"]
+        assert "fight the fire" in data["retrieval_question"].lower()
+        assert captures["assemble_queries"], "grounded query must execute"
+
+
+def test_ambiguous_summarize_that_still_clarifies(tmp_path: Path) -> None:
+    with _conversation_client(tmp_path) as (client, runtime, captures, _gen):
+        wid, alpha_sid, _, _ = _seed_workspace(client)
+
+        def _empty_resolver(request):
+            contract = (request.metadata or {}).get("prompt_contract")
+            if contract == CONVERSATION_CONTEXT_RESOLVER_V1:
+                return json.dumps({"retrieval_question": "", "context_used": True})
+            raise AssertionError("grounded generator must not run")
+
+        runtime.resources.generator_client._response_fn = _empty_resolver  # type: ignore[attr-defined]
+        captures["assemble_queries"].clear()
+        resp = client.post(
+            f"/v1/workspaces/{wid}/conversation/turn",
+            json={
+                "question": "Summarize that.",
+                "source_ids": [alpha_sid],
+                "prior_turns": [
+                    {"role": "user", "text": "What is a MAYDAY?"},
+                    {"role": "assistant", "text": "A distress call."},
+                    {"role": "user", "text": "Explain ladder placement."},
+                    {"role": "assistant", "text": "Safe angle and heel."},
+                ],
+            },
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["status"] == "clarification_required"
+        assert data["abstention_reason"] == "ambiguous_request"
+        assert captures["assemble_queries"] == []
 
 
 def test_malformed_prior_against_unready_runtime_is_request_invalid(

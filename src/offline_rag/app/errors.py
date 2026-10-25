@@ -97,6 +97,10 @@ class ErrorSpec:
     default_message: str
 
 
+DOCUMENT_ALREADY_PRESENT_MESSAGE = (
+    "This document is already present in this workspace."
+)
+
 ERROR_CATALOG: dict[ErrorCode, ErrorSpec] = {
     ErrorCode.REQUEST_INVALID: ErrorSpec(422, False, "Request validation failed"),
     ErrorCode.DOCUMENT_INVALID: ErrorSpec(422, False, "Submitted document is invalid"),
@@ -364,3 +368,20 @@ class AppError(Exception):
 
 def error_response_from_app_error(error: AppError) -> ErrorResponse:
     return error.to_error_response()
+
+
+def document_identity_conflict_error(
+    *,
+    document_id: str | None = None,
+    workspace_id: str | None = None,
+) -> AppError:
+    """Bounded product error for duplicate canonical document identity."""
+    return AppError(
+        ErrorCode.DOCUMENT_INVALID,
+        DOCUMENT_ALREADY_PRESENT_MESSAGE,
+        details=SafeErrorDetails(
+            reason="document_identity_conflict",
+            document_id=document_id,
+            workspace_id=workspace_id,
+        ),
+    )

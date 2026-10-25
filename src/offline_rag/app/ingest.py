@@ -10,7 +10,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from offline_rag.app.candidate_recovery import candidates_dir
-from offline_rag.app.errors import AppError, ErrorCode, SafeErrorDetails
+from offline_rag.app.errors import (
+    AppError,
+    ErrorCode,
+    SafeErrorDetails,
+    document_identity_conflict_error,
+)
 from offline_rag.app.ingest_hooks import ProductIngestHooks
 from offline_rag.app.ingest_upload import SpooledIngestUpload, cleanup_staging
 from offline_rag.app.leases import CorpusMutationLease
@@ -32,8 +37,8 @@ from offline_rag.dense.config_hash import (
     build_embedding_config_hash,
     build_index_config_hash,
 )
-from offline_rag.dense.persistence import index_state_path, load_index_state
 from offline_rag.dense.failure import public_dense_failure_reason
+from offline_rag.dense.persistence import index_state_path, load_index_state
 from offline_rag.dense.pipeline import run_indexing
 from offline_rag.domain.chunking import ChunkingReport, ChunkingStatus
 from offline_rag.domain.indexing import (
@@ -83,10 +88,7 @@ def _validate_document_identities(upload: SpooledIngestUpload) -> None:
         doc_id = document_id_from_bytes(item.absolute_path.read_bytes())
         prior = seen.get(doc_id)
         if prior is not None:
-            raise AppError(
-                ErrorCode.DOCUMENT_INVALID,
-                details=SafeErrorDetails(reason="document_identity_conflict"),
-            )
+            raise document_identity_conflict_error(document_id=doc_id)
         seen[doc_id] = item.source_name
 
 
@@ -128,7 +130,7 @@ def _run_stage(hooks: ProductIngestHooks | None, name: str, fn: Callable[[], obj
     if hooks is not None and hooks.after_stage_report is not None:
         try:
             hooks.after_stage_report(name, result)
-        except Exception:  # noqa: BLE001 — observability must not escape
+        except Exception:
             pass
     if hooks is not None and hooks.after_stage is not None:
         hooks.after_stage(name)
@@ -332,10 +334,7 @@ def run_product_replace_ingest(
             entry.document_id for entry in corpus_state.sources.values()
         ]
         if len(doc_ids) != len(set(doc_ids)):
-            raise AppError(
-                ErrorCode.DOCUMENT_INVALID,
-                details=SafeErrorDetails(reason="document_identity_conflict"),
-            )
+            raise document_identity_conflict_error()
 
         chunk_report = _gated(
             "chunk",

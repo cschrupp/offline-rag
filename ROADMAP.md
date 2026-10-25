@@ -1255,9 +1255,18 @@ SLICE 15  COMPLETE / ACCEPTED
        16K-D DUAL-BACKEND P4: DESIGN COMPLETE / INDEPENDENTLY ACCEPTED (IR-001)
          Historical IR-001 implementation handoff:
            P4 IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
+         Historical IR-002 disposition:
+           P4 IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED — IR-002
+           (subject aa10c2fe3a98b68cb0727abcf3ac99ebb08cb3b5; tip 77f1db445f043d3093688b6133d84e49d0ee2b3a)
          Current disposition:
-           P4 IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
-         IR-001 findings closed in harness corrective: F001–F003
+           P4 HUMAN UAT FOLLOW-UP COMPLETE / READY FOR REVIEW
+         Human closeout: WITHHELD until UAT follow-up acceptance
+         UAT corrective branch: implementation/p4-human-uat-corrective
+         UAT evidence:
+           docs/evidence/p4_human_uat/p4_human_uat_followup.json
+           docs/evidence/p4_human_uat/canonical_cpu_runtime_verification.json
+           docs/evidence/p4_human_uat/canonical_cpu_cuda_index_reuse.json
+           docs/design/large_source_capacity_followup.md
          Implementation authority:
            S16-K-D-DUAL-BACKEND-P4-PRODUCT-ACCEPTANCE-DEFAULT-POLICY-IMPLEMENTATION-AUTH-001
          Implementation parent:
@@ -1266,6 +1275,8 @@ SLICE 15  COMPLETE / ACCEPTED
            af6fa904b4309cb37a2204823347940bde70dcba
          Accepted P2 technical subject:
            07ce117b9d94b9372244004386351c577c725fc6
+         Accepted P4 technical subject:
+           aa10c2fe3a98b68cb0727abcf3ac99ebb08cb3b5
          Branch: implementation/16k-d-dual-backend-p4-product-acceptance
          Design document:
            docs/slice16k_d_dual_backend_p4_product_acceptance_design.md
@@ -2287,9 +2298,18 @@ SLICE 15  COMPLETE / ACCEPTED
        16K-D DUAL-BACKEND P4: DESIGN COMPLETE / INDEPENDENTLY ACCEPTED (IR-001)
          Historical IR-001 implementation handoff:
            P4 IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
+         Historical IR-002 disposition:
+           P4 IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED — IR-002
+           (subject aa10c2fe3a98b68cb0727abcf3ac99ebb08cb3b5; tip 77f1db445f043d3093688b6133d84e49d0ee2b3a)
          Current disposition:
-           P4 IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
-         IR-001 findings closed in harness corrective: F001–F003
+           P4 HUMAN UAT FOLLOW-UP COMPLETE / READY FOR REVIEW
+         Human closeout: WITHHELD until UAT follow-up acceptance
+         UAT corrective branch: implementation/p4-human-uat-corrective
+         UAT evidence:
+           docs/evidence/p4_human_uat/p4_human_uat_followup.json
+           docs/evidence/p4_human_uat/canonical_cpu_runtime_verification.json
+           docs/evidence/p4_human_uat/canonical_cpu_cuda_index_reuse.json
+           docs/design/large_source_capacity_followup.md
          Implementation authority:
            S16-K-D-DUAL-BACKEND-P4-PRODUCT-ACCEPTANCE-DEFAULT-POLICY-IMPLEMENTATION-AUTH-001
          Implementation parent:
@@ -2298,6 +2318,8 @@ SLICE 15  COMPLETE / ACCEPTED
            af6fa904b4309cb37a2204823347940bde70dcba
          Accepted P2 technical subject:
            07ce117b9d94b9372244004386351c577c725fc6
+         Accepted P4 technical subject:
+           aa10c2fe3a98b68cb0727abcf3ac99ebb08cb3b5
          Branch: implementation/16k-d-dual-backend-p4-product-acceptance
          Design document:
            docs/slice16k_d_dual_backend_p4_product_acceptance_design.md

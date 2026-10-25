@@ -26,13 +26,18 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from offline_rag.app.errors import AppError, ErrorCode, SafeErrorDetails
+from offline_rag.app.errors import (
+    AppError,
+    ErrorCode,
+    SafeErrorDetails,
+    document_identity_conflict_error,
+)
 from offline_rag.app.ingest import run_product_replace_ingest
 from offline_rag.app.ingest_hooks import ProductIngestHooks
 from offline_rag.app.ingest_upload import spool_local_files
 from offline_rag.app.leases import CorpusMutationLease
-from offline_rag.app.operations import OperationHandle
 from offline_rag.app.observability_publish import DurableObservabilityPublisher
+from offline_rag.app.operations import OperationHandle
 from offline_rag.app.progress_publish import DurableProgressPublisher
 from offline_rag.app.workspace.create_idempotency import WorkspaceCreateCatalog
 from offline_rag.app.workspace.history import SourceHistoryStore
@@ -881,10 +886,35 @@ class WorkspaceLifecycleService:
     def _plan_add(
         self, record: WorkspaceRecord, uploads: Sequence[SourceUpload]
     ) -> _MutationPlan:
+        """Plan SOURCE_ADD with early duplicate-identity rejection.
+
+        Canonical document identity is checked against active workspace sources
+        and within the same multi-file request before vaulting / full-replace
+        ingest, so duplicates do not trigger parse/chunk/embed/index rebuild.
+        """
+        active_document_ids = {
+            item.document_id
+            for item in self._active_sources(record)
+            if item.document_id
+        }
+        pending_document_ids: set[str] = set()
+        # Pre-compute identities so conflicts fail before any vault write.
+        prepared: list[tuple[SourceUpload, str]] = []
+        for upload in uploads:
+            data = upload.load_bytes()
+            document_id = document_id_for_content(data)
+            if document_id in active_document_ids or document_id in pending_document_ids:
+                raise document_identity_conflict_error(
+                    document_id=document_id,
+                    workspace_id=record.workspace_id,
+                )
+            pending_document_ids.add(document_id)
+            prepared.append((upload, document_id))
+
         appended: list[SourceVersionRef] = []
         added: list[SourceVersionRecord] = []
         primary_id: str | None = None
-        for upload in uploads:
+        for upload, _document_id in prepared:
             source_id = new_source_id()
             if primary_id is None:
                 primary_id = source_id

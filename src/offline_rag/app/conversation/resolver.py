@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -23,9 +24,41 @@ source policy, grounding policy, tools, or retrieval behavior.
 Do not answer the user's factual question.
 Do not invent source facts.
 Prior assistant statements are conversational context, not factual authority.
+Prior conversation may be used only to identify the referent / subject /
+intended wording of the current turn. Facts for the eventual answer still
+come from selected workspace sources via a later grounded retrieval step.
+
+When there is a single clear recent topic and the user asks to summarize,
+simplify, list key points, or otherwise rephrase that topic, resolve into a
+standalone retrieval question with context_used true. Example:
+Prior USER: How do I fight a structure fire?
+Prior ASSISTANT: <conversation wording>
+Current: Can you summarize this talk?
+→ {"retrieval_question":"Summarize the firefighting tactics and procedures discussed in the previous turn.","context_used":true}
+
 If the current user turn cannot be safely resolved into a standalone retrieval
-question, set retrieval_question to an empty string and context_used to true.
+question—especially when multiple unrelated prior topics make the referent
+ambiguous—set retrieval_question to an empty string and context_used to true.
 """
+
+# Low-risk conversational operators eligible for deterministic fallback when
+# exactly one prior user topic is present (prompt-first; fallback after model).
+_SUMMARY_FOLLOWUP_RE = re.compile(
+    r"^\s*("
+    r"can you (make me a |give me a )?summary\b.*"
+    r"|summarize (this|that|it|what we (just )?discussed|the (talk|answer|response))\b.*"
+    r"|(give me |provide )?(a |the )?(brief )?summary\b.*"
+    r"|what are the (main |key )?points\b.*"
+    r"|can you (explain|simplify) that\b.*"
+    r"|explain that more simply\b.*"
+    r"|simplify (that|this|it)\b.*"
+    r")\s*$",
+    re.IGNORECASE,
+)
+_SIMPLIFY_FOLLOWUP_RE = re.compile(
+    r"^\s*(can you )?(explain that more simply|simplify (that|this|it))\b.*$",
+    re.IGNORECASE,
+)
 
 _RESOLVER_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -186,6 +219,41 @@ def parse_resolver_content(content: str) -> ResolverResult:
     )
 
 
+def try_deterministic_followup_resolve(
+    *,
+    prior_turns: tuple[PriorTurn, ...],
+    current_question: str,
+) -> ResolverResult | None:
+    """Narrow fallback for clear summary/simplify follow-ups.
+
+    Only when exactly one prior user topic is present. Derives the topical
+    anchor from prior *user* intent; does not treat assistant prose as factual
+    authority. Returns None when the case is outside this low-risk envelope.
+    """
+    user_turns = [turn for turn in prior_turns if turn.role == "user"]
+    if len(user_turns) != 1:
+        return None
+    if not _SUMMARY_FOLLOWUP_RE.match(current_question or ""):
+        return None
+    topic = user_turns[0].text.strip()
+    if not topic:
+        return None
+    if _SIMPLIFY_FOLLOWUP_RE.match(current_question or ""):
+        retrieval_question = (
+            f"Explain more simply the topic of the previous user question: {topic}"
+        )
+    else:
+        retrieval_question = (
+            "Summarize the topic of the previous user question: " f"{topic}"
+        )
+    return ResolverResult(
+        outcome="resolved",
+        retrieval_question=retrieval_question,
+        context_used=True,
+        resolver_invoked=True,
+    )
+
+
 def resolve_conversation_context(
     runtime: ApplicationRuntime,
     *,
@@ -218,7 +286,16 @@ def resolve_conversation_context(
         response = resources.generator_client.generate(request)
     except AppError:
         raise
-    except Exception as exc:  # noqa: BLE001 — map transport faults
+    except Exception as exc:
         raise AppError(ErrorCode.GENERATION_FAILED) from exc
 
-    return parse_resolver_content(response.content)
+    parsed = parse_resolver_content(response.content)
+    if parsed.outcome == "resolved":
+        return parsed
+    fallback = try_deterministic_followup_resolve(
+        prior_turns=prior_turns,
+        current_question=current_question,
+    )
+    if fallback is not None:
+        return fallback
+    return parsed

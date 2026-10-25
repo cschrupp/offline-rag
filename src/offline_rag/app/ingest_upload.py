@@ -12,7 +12,12 @@ from pathlib import Path
 from python_multipart.multipart import MultipartParser, parse_options_header
 
 from offline_rag.app.corpus import validate_product_corpus_name
-from offline_rag.app.errors import AppError, ErrorCode, SafeErrorDetails
+from offline_rag.app.errors import (
+    AppError,
+    ErrorCode,
+    SafeErrorDetails,
+    document_identity_conflict_error,
+)
 from offline_rag.config.models import AppSettings
 from offline_rag.core.ids import document_id_from_bytes
 from offline_rag.ingestion.base import SUPPORTED_EXTENSIONS
@@ -209,18 +214,12 @@ async def spool_multipart_upload(
             document_id = f"doc_{self.digest.hexdigest()}"
             if document_id in seen_document_ids:
                 self.path.unlink(missing_ok=True)
-                raise AppError(
-                    ErrorCode.DOCUMENT_INVALID,
-                    details=SafeErrorDetails(reason="document_identity_conflict"),
-                )
+                raise document_identity_conflict_error(document_id=document_id)
             storage_name = f"{document_id}{self.extension}"
             final_path = files_root / storage_name
             if final_path.exists():
                 self.path.unlink(missing_ok=True)
-                raise AppError(
-                    ErrorCode.DOCUMENT_INVALID,
-                    details=SafeErrorDetails(reason="document_identity_conflict"),
-                )
+                raise document_identity_conflict_error(document_id=document_id)
             self.path.rename(final_path)
             seen_document_ids.add(document_id)
             return SpooledUploadFile(
@@ -555,17 +554,11 @@ def spool_local_files(
 
             document_id = document_id_from_bytes(raw)
             if document_id in seen_document_ids:
-                raise AppError(
-                    ErrorCode.DOCUMENT_INVALID,
-                    details=SafeErrorDetails(reason="document_identity_conflict"),
-                )
+                raise document_identity_conflict_error(document_id=document_id)
             storage_name = f"{document_id}{extension}"
             final_path = files_root / storage_name
             if final_path.exists():
-                raise AppError(
-                    ErrorCode.DOCUMENT_INVALID,
-                    details=SafeErrorDetails(reason="document_identity_conflict"),
-                )
+                raise document_identity_conflict_error(document_id=document_id)
             final_path.write_bytes(raw)
             seen_document_ids.add(document_id)
             total_file_bytes += size

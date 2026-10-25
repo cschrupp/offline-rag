@@ -1,0 +1,80 @@
+{
+  "authority": "P4-HUMAN-UAT-FOLLOWUP",
+  "canonical_model_root": "/home/user/projects/technical_rag/models/embeddings/qwen3-embedding-0.6b",
+  "configured_policy": {
+    "device": "cpu",
+    "precision": "native"
+  },
+  "disposition": "PASS",
+  "operation_used": "ApplicationRuntime product embedder.embed_query (QualifiedEmbeddingRuntime)",
+  "recorded_at": "2026-10-25T01:51:07.142334+00:00",
+  "representation_readiness": {
+    "onnx_fp32_v1": {
+      "instance_path": "/home/user/projects/technical_rag/models/embeddings/qwen3-embedding-0.6b/representations/onnx_fp32_v1/onnx_fp32_v1-453eb254b2cd9dc6-0ec64d20",
+      "readiness": "ready",
+      "reason": "ok",
+      "representation_id": "onnx_fp32_v1"
+    },
+    "torch_st_v1": {
+      "instance_path": "/home/user/projects/technical_rag/models/embeddings/qwen3-embedding-0.6b",
+      "readiness": "ready",
+      "reason": "ok",
+      "representation_id": "torch_st_v1"
+    }
+  },
+  "required_facts": {
+    "active_device": "cpu",
+    "backend": "sentence_transformers_onnx",
+    "configured_device": "cpu",
+    "profile_id": "cpu_onnx_fp32_v1",
+    "provider": "CPUExecutionProvider",
+    "representation_id": "onnx_fp32_v1",
+    "resolved_precision": "fp32",
+    "selection_reason": "explicit_cpu_onnx_fp32"
+  },
+  "state_after_embedding": {
+    "embedding_state": "READY",
+    "runtime_dto": {
+      "active_device": "cpu",
+      "backend": "sentence_transformers_onnx",
+      "configured_device": "cpu",
+      "configured_precision": "native",
+      "cuda_available": true,
+      "embedding_dimension": 1024,
+      "embedding_state": "READY",
+      "failure_reason": null,
+      "model": "Qwen/Qwen3-Embedding-0.6B",
+      "model_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+      "profile_id": "cpu_onnx_fp32_v1",
+      "provider": "CPUExecutionProvider",
+      "representation_id": "onnx_fp32_v1",
+      "resolved_device": "cpu",
+      "resolved_precision": "fp32",
+      "selection_reason": "explicit_cpu_onnx_fp32",
+      "torch_cuda_build": "13.0"
+    },
+    "vector_dim": 1024
+  },
+  "state_before_embedding": {
+    "embedding_state": "UNLOADED",
+    "runtime_dto": {
+      "active_device": "cpu",
+      "backend": "sentence_transformers_onnx",
+      "configured_device": "cpu",
+      "configured_precision": "native",
+      "cuda_available": true,
+      "embedding_dimension": 1024,
+      "embedding_state": "UNLOADED",
+      "failure_reason": null,
+      "model": "Qwen/Qwen3-Embedding-0.6B",
+      "model_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+      "profile_id": "cpu_onnx_fp32_v1",
+      "provider": "CPUExecutionProvider",
+      "representation_id": "onnx_fp32_v1",
+      "resolved_device": "cpu",
+      "resolved_precision": "fp32",
+      "selection_reason": "explicit_cpu_onnx_fp32",
+      "torch_cuda_build": "13.0"
+    }
+  }
+}

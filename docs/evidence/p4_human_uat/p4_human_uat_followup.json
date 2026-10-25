@@ -1,0 +1,58 @@
+{
+  "authority": "P4-HUMAN-UAT-FOLLOWUP",
+  "base": "77f1db445f043d3093688b6133d84e49d0ee2b3a",
+  "branch": "implementation/p4-human-uat-corrective",
+  "corrected": {
+    "conversational_followup_resolution": "PASS",
+    "duplicate_document_message": "PASS"
+  },
+  "current_disposition": "P4 HUMAN UAT FOLLOW-UP COMPLETE / READY FOR REVIEW",
+  "deferred_design": {
+    "large_source_capacity": "CAPACITY_DESIGN_READY",
+    "note": "docs/design/large_source_capacity_followup.md"
+  },
+  "full1296_confirmed": false,
+  "p4_architecture_changed": false,
+  "record_kind": "p4_human_uat_followup",
+  "remaining_blockers": [],
+  "resolved_observations": {
+    "cpu_representation_missing": "CLOSED \u2014 MISSING PRODUCT REPRESENTATION, NOT UI DEFECT",
+    "dual_ui_transport_issue": "CLOSED \u2014 LOCAL DEVELOPMENT ENVIRONMENT"
+  },
+  "resolver_diagnostic": {
+    "classification": "R1",
+    "meaning": "Resolver returned valid schema with empty retrieval_question / context_used true (over-conservative policy). Deterministic low-risk fallback + prompt examples close the observed summary follow-up without relaxing grounding.",
+    "observed_case": "summarize this talk after single firefighting topic"
+  },
+  "scientific_campaign_calls": 0,
+  "technical_subject": "PENDING_COMMIT",
+  "unauthorized_remaining": [
+    "p4_human_closeout",
+    "campaigns",
+    "main",
+    "merge",
+    "release",
+    "promotion",
+    "full_1296",
+    "large_source_limit_increase"
+  ],
+  "validation": {
+    "failset_attribution": "docs/evidence/p4_human_uat/full_suite_failset_attribution.json",
+    "focused_p4_p2_p3_conversation_workspace": "181 PASS",
+    "full_suite_candidate": "1936 passed / 33 failed / 1 skipped",
+    "parent_exact_33_reproduction": "33/33 reproduced; regression_delta=0",
+    "ruff_touched_surfaces": "PASS",
+    "ui_duplicate_message_vitest": "3 PASS",
+    "wheel_build": "PASS"
+  },
+  "verified": {
+    "CPUExecutionProvider": "PASS",
+    "canonical_cpu_route": "PASS",
+    "canonical_same_index_cpu_cuda_reuse": "PASS",
+    "cpu_embedding_ready_after_real_use": "PASS",
+    "evidence": {
+      "cpu": "docs/evidence/p4_human_uat/canonical_cpu_runtime_verification.json",
+      "interop": "docs/evidence/p4_human_uat/canonical_cpu_cuda_index_reuse.json"
+    }
+  }
+}

@@ -62,8 +62,30 @@ export function parseErrorEnvelope(
   });
 }
 
+const DOCUMENT_ALREADY_PRESENT_MESSAGE =
+  "This document is already present in this workspace.";
+
+/** Map known safe error details.reason values to product copy. */
+export function messageForDocumentInvalidReason(
+  reason: unknown,
+): string | null {
+  if (typeof reason !== "string" || !reason.trim()) {
+    return null;
+  }
+  if (reason.trim() === "document_identity_conflict") {
+    return DOCUMENT_ALREADY_PRESENT_MESSAGE;
+  }
+  return null;
+}
+
 export function userFacingErrorMessage(error: unknown): string {
   if (isApiError(error)) {
+    if (error.code === "document_invalid") {
+      const mapped = messageForDocumentInvalidReason(error.details?.reason);
+      if (mapped) {
+        return mapped;
+      }
+    }
     switch (error.code) {
       case "workspace_conflict":
         return "This workspace changed since you last loaded it. Review the updated state, then submit again.";

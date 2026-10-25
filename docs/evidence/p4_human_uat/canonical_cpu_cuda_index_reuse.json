@@ -1,0 +1,66 @@
+{
+  "authority": "P4-HUMAN-UAT-FOLLOWUP",
+  "canonical_model_root": "/home/user/projects/technical_rag/models/embeddings/qwen3-embedding-0.6b",
+  "disposition": "PASS",
+  "document_reembedding_observed": false,
+  "profiles_observed": [
+    "cpu_onnx_fp32_v1",
+    "cuda_fp16_v1",
+    "cpu_onnx_fp32_v1"
+  ],
+  "recorded_at": "2026-10-25T01:59:43.042677+00:00",
+  "reindex_observed": false,
+  "same_snapshot_across_restarts": true,
+  "sequence": [
+    {
+      "phase": "cpu_query",
+      "query_body_status": "answered",
+      "query_error": null,
+      "query_http_ok": true,
+      "query_http_status": null,
+      "query_succeeded": true,
+      "runtime": {
+        "backend": "sentence_transformers_onnx",
+        "embedding_state": "UNLOADED",
+        "profile_id": "cpu_onnx_fp32_v1",
+        "provider": "CPUExecutionProvider",
+        "representation_id": "onnx_fp32_v1",
+        "selection_reason": "explicit_cpu_onnx_fp32"
+      },
+      "snapshot_id": "snap_32fd0ad3356ec3dc09534776d4f50a1a94ddd2d01e8c7cdb6afc66e36368b71a"
+    },
+    {
+      "phase": "cuda_query_after_restart",
+      "query_body_status": "answered",
+      "query_error": null,
+      "query_succeeded": true,
+      "runtime": {
+        "backend": "sentence_transformers_torch",
+        "embedding_state": "UNLOADED",
+        "profile_id": "cuda_fp16_v1",
+        "provider": null,
+        "representation_id": "torch_st_v1",
+        "selection_reason": "explicit_cuda_fp16"
+      },
+      "snapshot_id": "snap_32fd0ad3356ec3dc09534776d4f50a1a94ddd2d01e8c7cdb6afc66e36368b71a"
+    },
+    {
+      "phase": "cpu_query_after_restart",
+      "query_body_status": "answered",
+      "query_error": null,
+      "query_succeeded": true,
+      "runtime": {
+        "backend": "sentence_transformers_onnx",
+        "embedding_state": "UNLOADED",
+        "profile_id": "cpu_onnx_fp32_v1",
+        "provider": "CPUExecutionProvider",
+        "representation_id": "onnx_fp32_v1",
+        "selection_reason": "explicit_cpu_onnx_fp32"
+      },
+      "snapshot_id": "snap_32fd0ad3356ec3dc09534776d4f50a1a94ddd2d01e8c7cdb6afc66e36368b71a"
+    }
+  ],
+  "source_count": 16,
+  "workspace_id": "ws_fdd77b77611448eb93cdc239d2610281",
+  "workspace_title": "Richs docs"
+}
