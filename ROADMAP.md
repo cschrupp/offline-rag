@@ -595,13 +595,21 @@ SLICE 15  COMPLETE / ACCEPTED
              parser/ingestion path-contract migration; product identity reuse; PDF path parsing
            PDF ≥512 MiB qualification: NOT RUN
            L4:
-             AUTHORIZED / IN PROGRESS
+             IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT RE-REVIEW
            Authority:
              S16-K-LARGE-SOURCE-CAPACITY-L4-INSTRUMENTATION-HARNESS-IMPLEMENTATION-AUTH-001
            Implementation base:
-             4687614170db92b99e94d59828fbd6c6c5a046e4
+             deb36d844f14893b4372c6605685ed5d5437611c
            Scope:
-             RSS/CPU/GPU/disk/timing instrumentation + reproducible PDF qualification harness + disk-amplification measurement hooks
+             RSS/CPU/GPU/disk/timing instrumentation + full-product SOURCE_ADD capability lane + reproducible PDF qualification harness + disk-amplification measurement hooks
+           Historical IR-001 disposition:
+             REWORK REQUIRED — BOUNDED QUALIFICATION-HARNESS CORRECTIVE
+           Corrective status:
+             F001 full-product qualification lane CLOSED
+             F002 execution-profile-ready harness contract CLOSED
+             F003 parser phase elapsed timing CLOSED
+           Corrective candidate:
+             READY FOR INDEPENDENT RE-REVIEW
            L5: NOT AUTHORIZED
            Limit increase: NOT AUTHORIZED
            (25 MiB/file · 100 MiB/request unchanged)

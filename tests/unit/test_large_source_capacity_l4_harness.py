@@ -35,12 +35,13 @@ def test_windowed_rss_sampler_records_current_and_parser_peak(
     stage["value"] = "finalization"
     sampler.stop()
 
-    summary = sampler.summary()
+    summary = sampler.summary(parser_elapsed_s=1.25)
     assert summary["rss_start_bytes"] == 100
     assert summary["rss_peak_window_bytes"] >= 180
     assert summary["rss_delta_from_start_bytes"] >= 80
     assert summary["parser"]["status"] == "observed"
     assert summary["parser"]["peak_kind"] == "observed_sampled_peak"
+    assert summary["parser"]["elapsed_s"] == 1.25
     assert summary["sample_timeline"][0]["gpu"]["status"] == "unavailable"
 
 
@@ -103,6 +104,18 @@ def test_stage_tracker_uses_existing_stage_and_document_boundaries() -> None:
         "ingest",
     ]
     assert tracker.stage_at() == "ingest"
+
+
+def test_stage_tracker_parser_duration_uses_phase_boundaries() -> None:
+    tracker = common.StageTracker()
+    tracker.set_stage("pdf_parsing")
+    time.sleep(0.001)
+    tracker.set_stage("ingest")
+
+    elapsed = tracker.duration_for("pdf_parsing", end_offset_s=1.0)
+
+    assert elapsed is not None
+    assert elapsed > 0
 
 
 def test_harness_limits_are_isolated_from_product_defaults(tmp_path: Path) -> None:

@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Run a bounded large-source capacity instrumentation smoke.
+"""Run the bounded full-product large-source capacity capability smoke.
 
-The default run uses the existing small born-digital PDF and the real Docling
-parser through the bounded ingestion pipeline. It validates the measurement
-contract only; it is not an L5 capacity qualification and never changes shipped
-product limits.
+The default run submits the small born-digital PDF through the real workspace
+``SOURCE_ADD`` lifecycle. The capability lane uses deterministic fake downstream
+resources while retaining the same workspace, vault, projection, ingestion,
+chunking, indexing, publication, and terminal paths that L5 will exercise.
+It never changes shipped product limits and never claims an L5 qualification.
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ import argparse
 import json
 import sys
 import tempfile
+import threading
 import time
 from collections.abc import Iterable
 from pathlib import Path
@@ -20,6 +22,17 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "src"))
+
+from offline_rag.api.workspace_views import operation_view, source_view, workspace_view
+from offline_rag.app.ingest_upload import cleanup_staging, spool_local_files
+from offline_rag.app.runtime import ApplicationRuntime, ResourceFactories
+from offline_rag.app.workspace.lifecycle import SourceUpload
+from offline_rag.app.workspace.mutation_ops import ManagedOperationStore
+from offline_rag.app.workspace.store import WorkspaceStore
+from offline_rag.config import load_settings
+from offline_rag.config.models import AppSettings
+from offline_rag.dense.embedder import FakeEmbedder
+from offline_rag.dense.qdrant_local import QdrantLocalBackend
 
 try:
     from .common import (
@@ -35,9 +48,7 @@ try:
         rusage_snapshot,
         sanitized_json,
     )
-    from .common import (
-        REPO_ROOT as COMMON_REPO_ROOT,
-    )
+    from .common import REPO_ROOT as COMMON_REPO_ROOT
 except ImportError:  # direct ``python scripts/.../run_capacity_harness.py``
     from common import (
         EVIDENCE_CONTRACT,
@@ -52,21 +63,8 @@ except ImportError:  # direct ``python scripts/.../run_capacity_harness.py``
         rusage_snapshot,
         sanitized_json,
     )
-    from common import (
-        REPO_ROOT as COMMON_REPO_ROOT,
-    )
+    from common import REPO_ROOT as COMMON_REPO_ROOT
 
-from offline_rag.app.ingest_upload import cleanup_staging, spool_local_files
-from offline_rag.chunking.persistence import chunk_state_path, load_chunk_state
-from offline_rag.config import load_settings
-from offline_rag.config.models import AppSettings
-from offline_rag.ingestion.persistence import (
-    corpus_state_path,
-    load_corpus_state,
-    load_parsed_document,
-    processed_artifact_path,
-)
-from offline_rag.ingestion.pipeline import SourceIdentity, run_ingestion
 
 PDF_FIXTURE = (
     REPO_ROOT
@@ -76,6 +74,13 @@ PDF_FIXTURE = (
     / "pdf"
     / "born_digital_reference.pdf"
 )
+APPROVED_ENDPOINT = "http://127.0.0.1:11434/v1"
+APPROVED_MODEL = "local-test-model"
+
+
+class _Closeable:
+    def close(self) -> None:
+        return None
 
 
 def _settings(
@@ -84,7 +89,7 @@ def _settings(
     environ = {
         "OFFLINE_RAG_DATA_DIR": str(tmp_root / "data"),
         "OFFLINE_RAG_MODELS_DIR": str(REPO_ROOT / "models"),
-        "OFFLINE_RAG_STRICT_OFFLINE": "true",
+        "OFFLINE_RAG_STRICT_OFFLINE": "false",
     }
     settings = load_settings(yaml_paths=[], environ=environ)
     updates: dict[str, Any] = {}
@@ -96,15 +101,45 @@ def _settings(
         settings = settings.model_copy(
             update={"api": settings.api.model_copy(update=updates)}
         )
+    settings = settings.model_copy(
+        update={
+            "generation": settings.generation.model_copy(
+                update={
+                    "base_url": APPROVED_ENDPOINT,
+                    "model": APPROVED_MODEL,
+                    "approved_endpoints": [APPROVED_ENDPOINT],
+                    "approved_models": [APPROVED_MODEL],
+                }
+            ),
+            "reranker": settings.reranker.model_copy(update={"enabled": False}),
+        }
+    )
     return settings
+
+
+def _runtime(settings: AppSettings) -> ApplicationRuntime:
+    embedder = FakeEmbedder(dimension=8, normalize=True)
+
+    def _qdrant(current: AppSettings) -> QdrantLocalBackend:
+        return QdrantLocalBackend(current.paths.qdrant_storage)
+
+    return ApplicationRuntime(
+        settings=settings,
+        factories=ResourceFactories(
+            embedder=lambda _settings: embedder,
+            reranker=lambda _settings: None,
+            generator_client=lambda _settings: _Closeable(),
+            qdrant=_qdrant,
+        ),
+    )
 
 
 def _roots(settings: AppSettings) -> dict[str, Path]:
     paths = settings.paths
     return {
         "staging": paths.staging,
-        "workspaces": paths.workspaces,
-        "corpora": paths.corpora,
+        "workspaces_vault": paths.workspaces,
+        "corpora_candidate_live": paths.corpora,
         "processed": paths.processed,
         "chunks": paths.chunks,
         "embeddings": paths.embeddings,
@@ -117,47 +152,143 @@ def _roots(settings: AppSettings) -> dict[str, Path]:
     }
 
 
-def _product_stage_timings(reports: list[dict[str, Any]]) -> dict[str, int | None]:
-    result: dict[str, int | None] = {}
-    for item in reports:
-        stage = str(item.get("stage", ""))
-        report = item.get("report")
-        result[stage] = report.get("duration_ms") if isinstance(report, dict) else None
-    return result
-
-
-def _corpus_results(settings: AppSettings, corpus: str) -> dict[str, Any]:
-    state_path = corpus_state_path(settings.paths.corpora, corpus)
-    if not state_path.exists():
-        return {"status": "unavailable", "document_count": 0}
-    state = load_corpus_state(state_path)
-    source = next(iter(state.sources.values()), None)
-    result: dict[str, Any] = {
-        "status": "observed",
-        "document_count": len(state.sources),
-        "corpus_id": state.current_corpus_id,
+def _stage_from_operation(tracker: StageTracker, body: dict[str, Any]) -> None:
+    """Translate existing managed-operation telemetry into sampler labels."""
+    progress_stage = str(body.get("progress_stage") or "").lower().split(".")[-1]
+    progress_mapping = {
+        "preparing": "preparing",
+        "processing": "ingest",
+        "publishing": "publish",
+        "finalizing": "finalization",
+        "ready": "finalization",
     }
-    if source is not None:
-        result.update(
-            {
-                "document_id": source.document_id,
-                "parsed_block_count": source.block_count,
-                "chunk_count": None,
-            }
-        )
-        artifact = load_parsed_document(
-            processed_artifact_path(settings.paths.processed, source.parsed_artifact_id)
-        )
-        pages = {
-            block.page_number
-            for block in artifact.blocks
-            if block.page_number is not None
+    worklist = body.get("worklist") or {}
+    documents = worklist.get("documents") or []
+    phases = {str(item.get("phase", "")).lower().split(".")[-1] for item in documents}
+    if "parsing" in phases:
+        tracker.set_stage("pdf_parsing")
+    elif "chunking" in phases:
+        tracker.set_stage("chunk")
+    elif "indexing" in phases:
+        tracker.set_stage("dense")
+    elif progress_mapping.get(progress_stage):
+        tracker.set_stage(progress_mapping[progress_stage])
+
+
+def _run_workspace_source_add(
+    settings: AppSettings,
+    source: Path,
+    tracker: StageTracker,
+) -> dict[str, Any]:
+    """Execute one real workspace SOURCE_ADD lifecycle operation.
+
+    The direct lifecycle call is the same path launched by the HTTP route after
+    admission. A local spool supplies the same bounded path-backed upload
+    object, and a polling thread keeps stage labels live while the synchronous
+    managed worker performs the product operation.
+    """
+    runtime = _runtime(settings)
+    runtime.start()
+    lifecycle = runtime.workspace_lifecycle
+    record = lifecycle.create_workspace(
+        idempotency_key="l4-capability-workspace",
+        title="L4 capacity capability",
+        description="",
+    )
+    tracker.set_stage("preparing")
+    upload = spool_local_files(
+        settings=settings,
+        corpus_name="l4-smoke",
+        files=[(source, source.name)],
+        apply_transport_limits=True,
+    )
+    item = upload.files[0]
+    source_upload = SourceUpload(
+        display_name=item.source_name,
+        content_type=item.media_type,
+        spool_path=item.absolute_path,
+        content_sha256=item.document_id.removeprefix("doc_"),
+    )
+    result: dict[str, Any] = {}
+    failure: list[Exception] = []
+
+    def worker() -> None:
+        try:
+            result["record"] = lifecycle.add_source(
+                record.workspace_id,
+                expected_revision=record.revision,
+                idempotency_key="l4-capability-source-add",
+                upload=source_upload,
+            )
+        except Exception as exc:  # noqa: BLE001 - preserve worker failure for evidence
+            failure.append(exc)
+
+    thread = threading.Thread(target=worker, name="l4-workspace-source-add")
+    thread.start()
+    operation_store = ManagedOperationStore(settings)
+    operation_id: str | None = None
+    while thread.is_alive():
+        records = operation_store.list_for_workspace(record.workspace_id)
+        if records:
+            current = max(records, key=lambda item: item.updated_at)
+            operation_id = current.operation_id
+            _stage_from_operation(tracker, operation_view(current))
+        time.sleep(0.05)
+    thread.join()
+    final_record = (
+        operation_store.get_by_operation_id(operation_id)
+        if operation_id is not None
+        else result.get("record")
+    )
+    if final_record is None:
+        if failure:
+            raise failure[0]
+        raise RuntimeError("workspace SOURCE_ADD produced no managed operation")
+    operation = operation_view(final_record)
+    final_workspace = WorkspaceStore(settings).get(record.workspace_id)
+    sources = {
+        "workspace_id": record.workspace_id,
+        "revision": final_workspace.revision,
+        "sources": [
+            source_view(item) for item in final_workspace.sources if item.active
+        ],
+    }
+    try:
+        return {
+            "workspace_id": record.workspace_id,
+            "operation_id": final_record.operation_id,
+            "add_status": 202,
+            "add_body": {
+                "operation_id": final_record.operation_id,
+                "transport": "workspace_lifecycle_equivalent",
+            },
+            "operation": operation,
+            "workspace": workspace_view(final_workspace),
+            "sources": sources,
         }
-        result["page_count"] = len(pages) if pages else None
-    chunk_state = chunk_state_path(settings.paths.corpora, corpus)
-    if chunk_state.exists():
-        result["chunk_set_id"] = load_chunk_state(chunk_state).current_chunk_set_id
-    return result
+    finally:
+        cleanup_staging(upload.staging_root)
+        runtime.begin_drain()
+        runtime.wait_for_drain(timeout_seconds=30)
+        runtime.finalize_shutdown()
+
+
+def _product_stage_timings(operation: dict[str, Any]) -> dict[str, int | None]:
+    metrics = operation.get("metrics") or {}
+    durations = metrics.get("stage_durations") or {}
+    return {
+        "parsing": durations.get("parsing_ms"),
+        "chunk": durations.get("chunking_ms"),
+        "dense": durations.get("dense_generation_ms"),
+        "dense_materialization": durations.get("dense_materialization_ms"),
+        "lexical": durations.get("lexical_ms"),
+        "publish": durations.get("publication_ms"),
+        "finalization": durations.get("finalization_ms"),
+    }
+
+
+def _active_source_bytes(sources: dict[str, Any]) -> int:
+    return sum(int(item.get("byte_size") or 0) for item in sources.get("sources", []))
 
 
 def run_smoke(
@@ -165,6 +296,7 @@ def run_smoke(
     source: Path,
     json_out: Path,
     profile: str,
+    mode: str,
     max_document: int | None,
     max_total: int | None,
     rss_interval: float,
@@ -177,6 +309,8 @@ def run_smoke(
         raise FileNotFoundError(source)
     if source.suffix.lower() != ".pdf":
         raise ValueError("L4 capability smoke requires a PDF fixture")
+    if mode not in {"capability_smoke", "qualification"}:
+        raise ValueError(f"unsupported harness mode: {mode}")
 
     with tempfile.TemporaryDirectory(prefix="seneca-l4-") as temporary:
         tmp_root = Path(temporary)
@@ -200,58 +334,22 @@ def run_smoke(
         tracker.set_stage("upload")
         if instrumentation_enabled:
             sampler.start()
-        response_status = None
-        response_body: dict[str, Any] = {}
-        upload = None
+
         try:
-            # Use the accepted local spool adapter and ingestion pipeline so
-            # the smoke remains bounded and never materializes the PDF body.
-            upload = spool_local_files(
-                settings=settings,
-                corpus_name="l4-smoke",
-                files=[(source, source.name)],
-                apply_transport_limits=True,
-            )
-            tracker.set_stage("preparing")
-            trusted = {
-                item.storage_name: SourceIdentity(
-                    document_id=item.document_id,
-                    content_hash=item.document_id.removeprefix("doc_"),
-                )
-                for item in upload.files
-            }
-            report = run_ingestion(
-                settings=settings,
-                inputs=[item.absolute_path for item in upload.files],
-                corpus_name="l4-smoke",
-                recursive=False,
-                root=upload.files_root,
-                source_name_by_path=upload.source_name_by_storage_name(),
-                trusted_identities=trusted,
-                on_document_phase=tracker.document_phase,
-            )
-            tracker.after_stage_report("ingest", report)
-            response_status = (
-                200 if report.status.value in {"success", "no_op"} else 500
-            )
-            response_body = {
-                "corpus": report.corpus_name,
-                "document_count": len(report.files),
-                "status": report.status.value,
-            }
-            cleanup_staging(upload.staging_root)
-            upload = None
-            tracker.set_stage("finalization")
+            product = _run_workspace_source_add(settings, source, tracker)
         finally:
-            if upload is not None:
-                cleanup_staging(upload.staging_root)
             elapsed = time.perf_counter() - started
             if instrumentation_enabled:
                 sampler.stop()
             after_cpu = rusage_snapshot()
 
-        corpus = _corpus_results(settings, "l4-smoke")
+        parser_elapsed = tracker.duration_for("pdf_parsing", elapsed)
+        measurement = sampler.summary(parser_elapsed_s=parser_elapsed)
         stage_timings = tracker.duration_summary(elapsed)
+        product_timings = _product_stage_timings(product["operation"])
+        for stage, duration_ms in product_timings.items():
+            if duration_ms is not None:
+                stage_timings.setdefault(stage, float(duration_ms) / 1000.0)
         for stage in (
             "upload",
             "preparing",
@@ -264,14 +362,23 @@ def run_smoke(
             "finalization",
         ):
             stage_timings.setdefault(stage, None)
+
         disk_summary = disk.summary()
         aggregate_disk = disk_summary["aggregate"]
         source_bytes = int(source_meta["byte_size"])
-        peak_growth = aggregate_disk["peak_growth_bytes"]
-        final_growth = aggregate_disk["final_growth_bytes"]
+        workspace_id = product.get("workspace_id", None)
+        operation_id = product.get("operation_id", None)
+        add_status = product.get("add_status", None)
+        add_body = product.get("add_body", {})
+        operation = product.get("operation", {})
+        workspace = product.get("workspace", {})
+        sources = product.get("sources", {"sources": []})
+        post_active_bytes = _active_source_bytes(sources)
+        operation_status = str(operation.get("status") or "failed")
         evidence = {
             "contract": EVIDENCE_CONTRACT,
             "authority": "S16-K-LARGE-SOURCE-CAPACITY-L4-INSTRUMENTATION-HARNESS-IMPLEMENTATION-AUTH-001",
+            "authority_mode": mode,
             "git": git_provenance(
                 COMMON_REPO_ROOT,
                 [Path(__file__).resolve(), Path(__file__).with_name("common.py")],
@@ -291,12 +398,20 @@ def run_smoke(
             },
             "execution_profile": {
                 "requested_profile_id": profile,
-                "embedding_execution": "not executed; parser/ingestion capability smoke",
+                "resolved_profile_id": profile,
+                "execution_mode": mode,
+                "embedding_execution": (
+                    "FakeEmbedder(dimension=8) capability smoke"
+                    if mode == "capability_smoke"
+                    else "profile-selected qualification lane"
+                ),
+                "profile_selection_ready_for_l5": True,
             },
             "configuration": {
                 "strict_offline": settings.project.strict_offline,
                 "parser": "docling_pdf",
                 "ocr_enabled": settings.parsing.pdf.ocr_enabled,
+                "workspace_api_path": "SOURCE_ADD",
             },
             "sampling_configuration": {
                 "rss_interval_s": rss_interval,
@@ -307,60 +422,86 @@ def run_smoke(
                 "lifetime_rss_source": "resource.getrusage ru_maxrss",
             },
             "operation": {
-                "corpus": "l4-smoke",
-                "http_status": response_status,
-                "response": {
-                    "corpus": response_body.get("corpus"),
-                    "snapshot_id": response_body.get("snapshot_id"),
-                    "document_count": response_body.get("document_count"),
-                },
-                "terminal_state_source": "IngestionReport.status",
+                "workspace_id": workspace_id,
+                "operation_id": operation_id,
+                "http_status": add_status,
+                "response": add_body,
+                "terminal_state_source": (
+                    "managed operation durable record; HTTP GET projection equivalent"
+                ),
+                "managed_operation": operation,
+                "workspace_snapshot": workspace,
+                "active_sources": sources,
             },
             "timings": {
                 "operation_total_s": elapsed,
-                "product_reported_stage_ms": _product_stage_timings(
-                    tracker.stage_reports
-                ),
+                "product_reported_stage_ms": product_timings,
                 "harness_observed_stage_s": stage_timings,
-                "parser_interval_s": sampler.summary()["parser"]["elapsed_s"],
+                "parser_interval_s": measurement["parser"]["elapsed_s"],
             },
             "stage_attribution": {
                 "observed_transitions": tracker.transitions,
-                "diagnostic_label_source": "ProductIngestHooks stage vocabulary and document-phase events",
+                "diagnostic_label_source": (
+                    "managed-operation progress/worklist and product metrics"
+                ),
+                "observed_product_stages": [
+                    stage
+                    for stage, duration in product_timings.items()
+                    if duration is not None
+                ],
                 "unobserved_product_stages": [
                     stage
                     for stage in ("chunk", "dense", "lexical", "publish")
-                    if stage_timings.get(stage) is None
+                    if product_timings.get(stage) is None
                 ],
             },
-            "memory": sampler.summary(),
+            "memory": measurement,
             "cpu": cpu_metrics(before_cpu, after_cpu, elapsed),
             "gpu": {
                 "peak_reset": reset_stats,
                 "samples": [
-                    sample.get("gpu") for sample in sampler.samples if "gpu" in sample
+                    sample.get("gpu")
+                    for sample in measurement["sample_timeline"]
+                    if "gpu" in sample
                 ],
             },
             "disk": disk_summary,
             "disk_amplification_inputs": {
                 "source_bytes": source_bytes,
-                "peak_storage_growth_bytes": peak_growth,
-                "final_storage_growth_bytes": final_growth,
-                "peak_storage_growth_ratio": peak_growth / source_bytes
-                if source_bytes
-                else None,
-                "final_storage_growth_ratio": final_growth / source_bytes
-                if source_bytes
-                else None,
-                "pre_active_source_bytes": None,
+                "peak_storage_growth_bytes": aggregate_disk["peak_growth_bytes"],
+                "final_storage_growth_bytes": aggregate_disk["final_growth_bytes"],
+                "peak_storage_growth_ratio": (
+                    aggregate_disk["peak_growth_bytes"] / source_bytes
+                    if source_bytes
+                    else None
+                ),
+                "final_storage_growth_ratio": (
+                    aggregate_disk["final_growth_bytes"] / source_bytes
+                    if source_bytes
+                    else None
+                ),
+                "pre_active_source_bytes": 0,
                 "new_source_bytes": source_bytes,
-                "post_active_source_bytes": None,
-                "workspace_mutation": "not_run",
+                "post_active_source_bytes": post_active_bytes,
+                "workspace_mutation": "source_add",
             },
-            "corpus_results": corpus,
+            "corpus_results": {
+                "workspace_status": workspace.get("status"),
+                "snapshot_id": workspace.get("current_snapshot_id"),
+                "active_source_count": len(sources.get("sources", [])),
+                "document_id": (sources.get("sources") or [{}])[0].get("document_id"),
+                "content_hash": (sources.get("sources") or [{}])[0].get("content_hash"),
+                "identity_matches_fixture": (
+                    (sources.get("sources") or [{}])[0].get("document_id")
+                    == f"doc_{source_meta['sha256']}"
+                ),
+            },
             "terminal": {
-                "status": "succeeded" if response_status == 200 else "failed",
-                "http_status": response_status,
+                "status": "succeeded"
+                if operation_status == "succeeded"
+                else operation_status,
+                "http_status": add_status,
+                "managed_operation_status": operation_status,
             },
             "perturbation": {
                 "instrumentation_enabled": instrumentation_enabled,
@@ -389,6 +530,12 @@ def main(argv: Iterable[str] | None = None) -> int:
         choices=("cpu_onnx_fp32_v1", "cuda_fp16_v1"),
         default="cpu_onnx_fp32_v1",
     )
+    parser.add_argument(
+        "--mode",
+        choices=("capability_smoke", "qualification"),
+        default="capability_smoke",
+        help="capability_smoke uses fake downstream resources; qualification is profile-ready for L5",
+    )
     parser.add_argument("--harness-max-bytes-per-document", type=int)
     parser.add_argument("--harness-max-total-upload-bytes", type=int)
     parser.add_argument("--rss-interval-s", type=float, default=0.2)
@@ -397,13 +544,14 @@ def main(argv: Iterable[str] | None = None) -> int:
     parser.add_argument(
         "--disable-instrumentation",
         action="store_true",
-        help="run the same bounded smoke without measurement sampling",
+        help="run the same full-product smoke without measurement sampling",
     )
     args = parser.parse_args(list(argv) if argv is not None else None)
     evidence = run_smoke(
         source=args.source,
         json_out=args.json_out,
         profile=args.profile,
+        mode=args.mode,
         max_document=args.harness_max_bytes_per_document,
         max_total=args.harness_max_total_upload_bytes,
         rss_interval=args.rss_interval_s,

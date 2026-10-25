@@ -240,6 +240,10 @@ class StageTracker:
             result[current] = 0.0
         return result
 
+    def duration_for(self, stage: str, end_offset_s: float) -> float | None:
+        """Return the harness-observed duration for one stage boundary."""
+        return self.duration_summary(end_offset_s).get(stage)
+
 
 @dataclass
 class DiskUsageTracker:
@@ -443,7 +447,7 @@ class ProcessSampler:
             elif force:
                 self.samples[-1] = sample
 
-    def summary(self) -> dict[str, Any]:
+    def summary(self, *, parser_elapsed_s: float | None = None) -> dict[str, Any]:
         with self._lock:
             samples = list(self.samples)
         parser_samples = [
@@ -456,7 +460,6 @@ class ProcessSampler:
             for sample in parser_samples
             if sample.get("rss_bytes") is not None
         ]
-        parser_offsets = [sample["monotonic_offset_s"] for sample in parser_samples]
         parser_start = parser_rss[0] if parser_rss else None
         parser_peak = max(parser_rss) if parser_rss else None
         return {
@@ -477,11 +480,7 @@ class ProcessSampler:
                 "rss_delta_bytes": parser_peak - parser_start
                 if parser_peak is not None and parser_start is not None
                 else None,
-                "elapsed_s": (
-                    max(parser_offsets) - min(parser_offsets)
-                    if parser_offsets
-                    else None
-                ),
+                "elapsed_s": parser_elapsed_s,
                 "peak_kind": "observed_sampled_peak" if parser_samples else None,
                 "sample_count": len(parser_samples),
             },
