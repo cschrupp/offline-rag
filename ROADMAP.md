@@ -519,9 +519,38 @@ SLICE 15  COMPLETE / ACCEPTED
        Authority: S16-I-MANAGED-OP-PROGRESS-AUTH-001
        Exact accepted candidate: a3e65ce4bfa698f49e3aa21c4c5a7ddb0ea356a5
        Managed-operation progress telemetry
-     16J PAUSED
-       Seneca public-surface branding cleanup
-     16K DESIGN ACCEPTED / FROZEN
+     16J FINAL BRANDING: COMPLETE / HUMAN ACCEPTED / CANONICAL
+       Exact Human-accepted technical subject:
+         8208f86e3c4bb2508d35048ceb0ba9033f3de2ef
+       Main promotion: COMPLETE
+       (detailed 16J lineage retained later in this ROADMAP)
+     16K: POST-CLOSEOUT PROGRAM PARTIALLY EXECUTED
+       16K-A:
+         IMPLEMENTATION COMPLETE /
+         INDEPENDENTLY ACCEPTED /
+         HUMAN ACCEPTED
+       16K-B:
+         COMPLETE /
+         INDEPENDENTLY ACCEPTED /
+         HUMAN ACCEPTED
+       16K-C:
+         IMPLEMENTATION COMPLETE /
+         INDEPENDENTLY ACCEPTED
+       16K-D:
+         DUAL-BACKEND P1–P4 COMPLETE
+         P4 IMPLEMENTATION + HUMAN UAT COMPLETE /
+           INDEPENDENTLY ACCEPTED /
+           HUMAN ACKNOWLEDGED / CLOSED
+         Accepted UAT technical subject:
+           6d3689d03eb5a6e84d38d3ff7281e001e1caeb1a
+         P4 closeout bookkeeping tip:
+           9581a05378cba2c2b723755e05c6f6a1c9c085f7
+         Large-source capacity:
+           CAPACITY_DESIGN_READY — DEFERRED
+           implementation NOT AUTHORIZED
+       16K-E → 16K-G:
+         NOT AUTHORIZED
+       Design disposition (historical / frozen design authority):
        Design-open: S16-K-BETA-INGESTION-READINESS-DESIGN-OPEN-AUTH-001 — AUTHORIZED
        Rework: S16-K-BETA-INGESTION-READINESS-DESIGN-REWORK-AUTH-001 — AUTHORIZED
          (addresses DESIGN-OPEN-IR-001 R1–R5)
@@ -1173,8 +1202,12 @@ SLICE 15  COMPLETE / ACCEPTED
          smoke: docs/evidence/16k_d_dual_backend_p1/bounded_real_model_smoke_pass.json
          f004: docs/evidence/16k_d_dual_backend_p1/f004_fair_disposition_summary.json
          ha: docs/evidence/16k_d_dual_backend_p1/p1_human_acceptance_ha001.json
-         Downstream implementation (P2/P3/P4/campaigns/main/merge/promotion):
-           NOT AUTHORIZED
+         Downstream status at P1 close:
+           P2/P3/P4/campaigns/main/merge/promotion:
+             NOT AUTHORIZED
+         Later disposition:
+           P2, P3 and P4 were separately authorized and completed;
+           campaigns/main/merge/release/promotion remain NOT AUTHORIZED
        16K-D DUAL-BACKEND P2: DESIGN COMPLETE / INDEPENDENTLY ACCEPTED /
          HUMAN ACCEPTED / HA RECORD INDEPENDENTLY ACCEPTED
          P2 IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED /
@@ -1581,7 +1614,33 @@ SLICE 15  COMPLETE / ACCEPTED
          (provenance only)
        Scope: docs/governance only; no product code; no 16K/9G/17/18
      9G DEFERRED / NOT AUTHORIZED
-     16K: DESIGN ACCEPTED / FROZEN
+     16K: POST-CLOSEOUT PROGRAM PARTIALLY EXECUTED
+       16K-A:
+         IMPLEMENTATION COMPLETE /
+         INDEPENDENTLY ACCEPTED /
+         HUMAN ACCEPTED
+       16K-B:
+         COMPLETE /
+         INDEPENDENTLY ACCEPTED /
+         HUMAN ACCEPTED
+       16K-C:
+         IMPLEMENTATION COMPLETE /
+         INDEPENDENTLY ACCEPTED
+       16K-D:
+         DUAL-BACKEND P1–P4 COMPLETE
+         P4 IMPLEMENTATION + HUMAN UAT COMPLETE /
+           INDEPENDENTLY ACCEPTED /
+           HUMAN ACKNOWLEDGED / CLOSED
+         Accepted UAT technical subject:
+           6d3689d03eb5a6e84d38d3ff7281e001e1caeb1a
+         P4 closeout bookkeeping tip:
+           9581a05378cba2c2b723755e05c6f6a1c9c085f7
+         Large-source capacity:
+           CAPACITY_DESIGN_READY — DEFERRED
+           implementation NOT AUTHORIZED
+       16K-E → 16K-G:
+         NOT AUTHORIZED
+       Design disposition (historical / frozen design authority):
        Design-open: S16-K-BETA-INGESTION-READINESS-DESIGN-OPEN-AUTH-001 — AUTHORIZED
        Rework: S16-K-BETA-INGESTION-READINESS-DESIGN-REWORK-AUTH-001 — AUTHORIZED
          (addresses DESIGN-OPEN-IR-001 R1–R5)
@@ -2233,8 +2292,12 @@ SLICE 15  COMPLETE / ACCEPTED
          smoke: docs/evidence/16k_d_dual_backend_p1/bounded_real_model_smoke_pass.json
          f004: docs/evidence/16k_d_dual_backend_p1/f004_fair_disposition_summary.json
          ha: docs/evidence/16k_d_dual_backend_p1/p1_human_acceptance_ha001.json
-         Downstream implementation (P2/P3/P4/campaigns/main/merge/promotion):
-           NOT AUTHORIZED
+         Downstream status at P1 close:
+           P2/P3/P4/campaigns/main/merge/promotion:
+             NOT AUTHORIZED
+         Later disposition:
+           P2, P3 and P4 were separately authorized and completed;
+           campaigns/main/merge/release/promotion remain NOT AUTHORIZED
        16K-D DUAL-BACKEND P2: DESIGN COMPLETE / INDEPENDENTLY ACCEPTED /
          HUMAN ACCEPTED / HA RECORD INDEPENDENTLY ACCEPTED
          P2 IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED /
