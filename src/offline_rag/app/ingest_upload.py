@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import shutil
+import tempfile
 import uuid
 from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass, field
@@ -19,7 +21,6 @@ from offline_rag.app.errors import (
     document_identity_conflict_error,
 )
 from offline_rag.config.models import AppSettings
-from offline_rag.core.ids import document_id_from_bytes
 from offline_rag.ingestion.base import SUPPORTED_EXTENSIONS
 
 _ALLOWED_FIELDS = frozenset({"corpus", "files"})
@@ -531,35 +532,64 @@ def spool_local_files(
                     details=SafeErrorDetails(reason="unsupported_source_type"),
                 )
 
-            raw = path.read_bytes()
-            size = len(raw)
-            if size == 0:
-                raise AppError(
-                    ErrorCode.DOCUMENT_INVALID,
-                    details=SafeErrorDetails(reason="empty_document"),
-                )
-            if apply_transport_limits and size > settings.api.max_bytes_per_document:
-                raise AppError(
-                    ErrorCode.DOCUMENT_INVALID,
-                    details=SafeErrorDetails(reason="document_too_large"),
-                )
-            if (
-                apply_transport_limits
-                and total_file_bytes + size > settings.api.max_total_upload_bytes
-            ):
-                raise AppError(
-                    ErrorCode.REQUEST_INVALID,
-                    details=SafeErrorDetails(reason="upload_too_large"),
-                )
+            fd, temporary_name = tempfile.mkstemp(
+                prefix=f".{uuid.uuid4().hex}.", suffix=extension, dir=files_root
+            )
+            temporary = Path(temporary_name)
+            digest = hashlib.sha256()
+            size = 0
+            try:
+                try:
+                    source = path.open("rb")
+                except Exception:
+                    os.close(fd)
+                    raise
+                with source, os.fdopen(fd, "wb") as target:
+                    while True:
+                        chunk = source.read(1024 * 1024)
+                        if not chunk:
+                            break
+                        next_size = size + len(chunk)
+                        if apply_transport_limits and next_size > settings.api.max_bytes_per_document:
+                            raise AppError(
+                                ErrorCode.DOCUMENT_INVALID,
+                                details=SafeErrorDetails(reason="document_too_large"),
+                            )
+                        if (
+                            apply_transport_limits
+                            and total_file_bytes + next_size > settings.api.max_total_upload_bytes
+                        ):
+                            raise AppError(
+                                ErrorCode.REQUEST_INVALID,
+                                details=SafeErrorDetails(reason="upload_too_large"),
+                            )
+                        target.write(chunk)
+                        digest.update(chunk)
+                        size = next_size
+                    target.flush()
+                    os.fsync(target.fileno())
+                if size == 0:
+                    raise AppError(
+                        ErrorCode.DOCUMENT_INVALID,
+                        details=SafeErrorDetails(reason="empty_document"),
+                    )
+            except Exception:
+                temporary.unlink(missing_ok=True)
+                raise
 
-            document_id = document_id_from_bytes(raw)
+            document_id = f"doc_{digest.hexdigest()}"
             if document_id in seen_document_ids:
+                temporary.unlink(missing_ok=True)
                 raise document_identity_conflict_error(document_id=document_id)
             storage_name = f"{document_id}{extension}"
             final_path = files_root / storage_name
             if final_path.exists():
+                temporary.unlink(missing_ok=True)
                 raise document_identity_conflict_error(document_id=document_id)
-            final_path.write_bytes(raw)
+            try:
+                os.link(temporary, final_path)
+            finally:
+                temporary.unlink(missing_ok=True)
             seen_document_ids.add(document_id)
             total_file_bytes += size
             spooled.append(

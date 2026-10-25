@@ -75,6 +75,7 @@ from offline_rag.app.workspace.store import WorkspaceStore
 from offline_rag.app.workspace.sync_journal import SyncMutationCoordinator
 from offline_rag.app.workspace.vault import RawSourceVault
 from offline_rag.config.models import AppSettings
+from offline_rag.core.ids import content_hash_from_path
 from offline_rag.core.progress import report_progress
 from offline_rag.ingestion.base import SUPPORTED_EXTENSIONS
 
@@ -109,6 +110,16 @@ class SourceUpload:
     def digest(self) -> str:
         if self.content_sha256 is not None:
             return self.content_sha256
+        if self.spool_path is not None:
+            try:
+                return content_hash_from_path(self.spool_path)
+            except OSError as exc:
+                raise AppError(
+                    ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                    details=SafeErrorDetails(reason="upload_spool_missing"),
+                ) from exc
+        if self.content is not None:
+            return content_sha256_hex(self.content)
         return content_sha256_hex(self.load_bytes())
 
     def load_bytes(self) -> bytes:
@@ -857,15 +868,28 @@ class WorkspaceLifecycleService:
         source_id: str,
         version: int,
         upload: SourceUpload,
+        expected_content_hash: str | None = None,
+        use_path: bool = False,
     ) -> SourceVersionRecord:
         """Persist raw bytes and build the lineage event for this version."""
-        data = upload.load_bytes()
-        meta = self.vault.put_bytes(
-            record.workspace_id,
-            data,
-            display_name=upload.display_name,
-            content_type=upload.content_type,
-        )
+        if use_path and upload.spool_path is not None:
+            meta = self.vault.put_path(
+                record.workspace_id,
+                upload.spool_path,
+                display_name=upload.display_name,
+                content_type=upload.content_type,
+                expected_content_hash=expected_content_hash,
+            )
+            document_id = f"doc_{meta.content_hash}"
+        else:
+            data = upload.load_bytes()
+            meta = self.vault.put_bytes(
+                record.workspace_id,
+                data,
+                display_name=upload.display_name,
+                content_type=upload.content_type,
+            )
+            document_id = document_id_for_content(data)
         return SourceVersionRecord(
             source_id=source_id,
             version=version,
@@ -873,7 +897,7 @@ class WorkspaceLifecycleService:
             content_type=meta.content_type,
             byte_size=meta.byte_size,
             content_hash=meta.content_hash,
-            document_id=document_id_for_content(data),
+            document_id=document_id,
             vault_object_id=meta.object_id,
             active=True,
             created_at=utc_now(),
@@ -899,28 +923,33 @@ class WorkspaceLifecycleService:
         }
         pending_document_ids: set[str] = set()
         # Pre-compute identities so conflicts fail before any vault write.
-        prepared: list[tuple[SourceUpload, str]] = []
+        prepared: list[tuple[SourceUpload, str, str]] = []
         for upload in uploads:
-            data = upload.load_bytes()
-            document_id = document_id_for_content(data)
+            content_hash = upload.digest()
+            document_id = f"doc_{content_hash}"
             if document_id in active_document_ids or document_id in pending_document_ids:
                 raise document_identity_conflict_error(
                     document_id=document_id,
                     workspace_id=record.workspace_id,
                 )
             pending_document_ids.add(document_id)
-            prepared.append((upload, document_id))
+            prepared.append((upload, content_hash, document_id))
 
         appended: list[SourceVersionRef] = []
         added: list[SourceVersionRecord] = []
         primary_id: str | None = None
-        for upload, _document_id in prepared:
+        for upload, content_hash, _document_id in prepared:
             source_id = new_source_id()
             if primary_id is None:
                 primary_id = source_id
             added.append(
                 self._vault_source_version(
-                    record, source_id=source_id, version=1, upload=upload
+                    record,
+                    source_id=source_id,
+                    version=1,
+                    upload=upload,
+                    expected_content_hash=content_hash,
+                    use_path=True,
                 )
             )
             appended.append(SourceVersionRef(source_id=source_id, version=1))
@@ -1799,7 +1828,7 @@ class WorkspaceLifecycleService:
         if observability is not None:
             try:
                 observability.complete_failed_lifecycle()
-            except Exception:  # noqa: BLE001 — must not block FAILED terminalization
+            except Exception:  # noqa: BLE001, S110 — must not block FAILED terminalization
                 pass
         recovery_note: str | None = None
         try:

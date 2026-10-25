@@ -562,19 +562,24 @@ SLICE 15  COMPLETE / ACCEPTED
            Accepted design technical subject:
              c3405e6bd8ac06b2a24f1ac64dd53cbce399f86b
            LARGE-SOURCE CAPACITY L1 IMPLEMENTATION:
-             AUTHORIZED / IN PROGRESS
+             IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED — IR-002
            Authority:
              S16-K-LARGE-SOURCE-CAPACITY-L1-IMPLEMENTATION-AUTH-001
            Implementation base:
-             c3405e6bd8ac06b2a24f1ac64dd53cbce399f86b
-           Scope:
-             streaming/path identity + path-based vault primitives
+             d676778a0529aa58d79601b40bce61ba5b0df7fa
            Initial ≥512 MiB qualification media: PDF / Docling
            Prior feasibility (provenance):
              docs/design/large_source_capacity_followup.md
              CAPACITY_DESIGN_READY
-           L1 implementation: AUTHORIZED / IN PROGRESS
-           L2: NOT AUTHORIZED
+           L2:
+             AUTHORIZED / IN PROGRESS
+           Authority:
+             S16-K-LARGE-SOURCE-CAPACITY-L2-IMPLEMENTATION-AUTH-001
+           Implementation base:
+             d676778a0529aa58d79601b40bce61ba5b0df7fa
+           Scope:
+             bounded-memory projection + streaming spool_local_files + SOURCE_ADD put_path migration
+           L3: NOT AUTHORIZED
            Limit increase: NOT AUTHORIZED
            (25 MiB/file · 100 MiB/request unchanged)
        16K-E → 16K-G:

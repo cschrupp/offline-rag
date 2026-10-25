@@ -104,8 +104,7 @@ def materialize_desired_sources(
     materialized: list[MaterializedSource] = []
     try:
         for item in desired:
-            meta = store.get_meta(workspace_id, item.vault_object_id)
-            data = store.load_bytes(workspace_id, item.vault_object_id)
+            meta = store.verify_object(workspace_id, item.vault_object_id)
             if item.content_hash is not None and item.content_hash != meta.content_hash:
                 raise AppError(
                     ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
@@ -119,14 +118,14 @@ def materialize_desired_sources(
             # Physical scratch name is server-generated; the display/upload name
             # is carried separately as metadata only.
             path = root / f"{item.source_id}_v{item.version}{Path(source_name).suffix}"
-            path.write_bytes(data)
+            shutil.copyfile(store.object_path(workspace_id, item.vault_object_id), path)
             materialized.append(
                 MaterializedSource(
                     source_id=item.source_id,
                     version=item.version,
                     path=path,
                     source_name=source_name,
-                    byte_size=len(data),
+                    byte_size=meta.byte_size,
                 )
             )
     except Exception:
