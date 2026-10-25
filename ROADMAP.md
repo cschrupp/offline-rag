@@ -546,8 +546,19 @@ SLICE 15  COMPLETE / ACCEPTED
          P4 closeout bookkeeping tip:
            9581a05378cba2c2b723755e05c6f6a1c9c085f7
          Large-source capacity:
-           CAPACITY_DESIGN_READY — DEFERRED
-           implementation NOT AUTHORIZED
+           LARGE-SOURCE CAPACITY DESIGN TRANCHE:
+             OPEN / DESIGN AUTHORIZED
+           Authority: S16-K-LARGE-SOURCE-CAPACITY-DESIGN-AUTH-001
+           Canonical base:
+             f5c9423c471162923b3bbbfe804687db27551745
+           Branch: design/16k-large-source-capacity
+           Design: docs/design/large_source_capacity_architecture.md
+           Prior feasibility (provenance):
+             docs/design/large_source_capacity_followup.md
+             CAPACITY_DESIGN_READY
+           Implementation: NOT AUTHORIZED
+           Limit increase: NOT AUTHORIZED
+           (25 MiB/file · 100 MiB/request unchanged)
        16K-E → 16K-G:
          NOT AUTHORIZED
        Design disposition (historical / frozen design authority):
@@ -1315,8 +1326,17 @@ SLICE 15  COMPLETE / ACCEPTED
            docs/design/large_source_capacity_followup.md
          UAT IR-001 F001/F002: CLOSED (anaphoric fallback; capacity-note wording)
          Large-source capacity:
-           CAPACITY_DESIGN_READY — DEFERRED TO SEPARATE FUTURE TRANCHE
-           (25 MiB/file · 100 MiB/request unchanged; implementation NOT AUTHORIZED)
+           LARGE-SOURCE CAPACITY DESIGN TRANCHE:
+             OPEN / DESIGN AUTHORIZED
+           Authority: S16-K-LARGE-SOURCE-CAPACITY-DESIGN-AUTH-001
+           Canonical base:
+             f5c9423c471162923b3bbbfe804687db27551745
+           Branch: design/16k-large-source-capacity
+           Design: docs/design/large_source_capacity_architecture.md
+           Prior feasibility (provenance):
+             docs/design/large_source_capacity_followup.md
+           Implementation / limit increase: NOT AUTHORIZED
+           (25 MiB/file · 100 MiB/request unchanged)
          Implementation authority:
            S16-K-D-DUAL-BACKEND-P4-PRODUCT-ACCEPTANCE-DEFAULT-POLICY-IMPLEMENTATION-AUTH-001
          Implementation parent:
@@ -1636,8 +1656,19 @@ SLICE 15  COMPLETE / ACCEPTED
          P4 closeout bookkeeping tip:
            9581a05378cba2c2b723755e05c6f6a1c9c085f7
          Large-source capacity:
-           CAPACITY_DESIGN_READY — DEFERRED
-           implementation NOT AUTHORIZED
+           LARGE-SOURCE CAPACITY DESIGN TRANCHE:
+             OPEN / DESIGN AUTHORIZED
+           Authority: S16-K-LARGE-SOURCE-CAPACITY-DESIGN-AUTH-001
+           Canonical base:
+             f5c9423c471162923b3bbbfe804687db27551745
+           Branch: design/16k-large-source-capacity
+           Design: docs/design/large_source_capacity_architecture.md
+           Prior feasibility (provenance):
+             docs/design/large_source_capacity_followup.md
+             CAPACITY_DESIGN_READY
+           Implementation: NOT AUTHORIZED
+           Limit increase: NOT AUTHORIZED
+           (25 MiB/file · 100 MiB/request unchanged)
        16K-E → 16K-G:
          NOT AUTHORIZED
        Design disposition (historical / frozen design authority):
@@ -2405,8 +2436,17 @@ SLICE 15  COMPLETE / ACCEPTED
            docs/design/large_source_capacity_followup.md
          UAT IR-001 F001/F002: CLOSED (anaphoric fallback; capacity-note wording)
          Large-source capacity:
-           CAPACITY_DESIGN_READY — DEFERRED TO SEPARATE FUTURE TRANCHE
-           (25 MiB/file · 100 MiB/request unchanged; implementation NOT AUTHORIZED)
+           LARGE-SOURCE CAPACITY DESIGN TRANCHE:
+             OPEN / DESIGN AUTHORIZED
+           Authority: S16-K-LARGE-SOURCE-CAPACITY-DESIGN-AUTH-001
+           Canonical base:
+             f5c9423c471162923b3bbbfe804687db27551745
+           Branch: design/16k-large-source-capacity
+           Design: docs/design/large_source_capacity_architecture.md
+           Prior feasibility (provenance):
+             docs/design/large_source_capacity_followup.md
+           Implementation / limit increase: NOT AUTHORIZED
+           (25 MiB/file · 100 MiB/request unchanged)
          Implementation authority:
            S16-K-D-DUAL-BACKEND-P4-PRODUCT-ACCEPTANCE-DEFAULT-POLICY-IMPLEMENTATION-AUTH-001
          Implementation parent:
