@@ -471,7 +471,18 @@ GAP-16G-02:
     219c8551d208530ec93c5697ca5591ad52bfb228
   F001: CLOSED
   16K-C document: docs/slice16k_c_first_user_capacity_model.md
-  16K-D: NOT AUTHORIZED
+  16K-D:
+    DUAL-BACKEND P1–P4 COMPLETE
+    P4 IMPLEMENTATION + HUMAN UAT COMPLETE /
+      INDEPENDENTLY ACCEPTED /
+      HUMAN ACKNOWLEDGED / CLOSED
+    Accepted UAT technical subject:
+      6d3689d03eb5a6e84d38d3ff7281e001e1caeb1a
+    Closeout bookkeeping tip:
+      9581a05378cba2c2b723755e05c6f6a1c9c085f7
+    Large-source capacity:
+      CAPACITY_DESIGN_READY — DEFERRED
+      implementation NOT AUTHORIZED
   16K-E → 16K-G: NOT AUTHORIZED
   Main promotion: NOT AUTHORIZED
 16L: COMPLETE / ACCEPTED
@@ -1073,7 +1084,18 @@ Slice-16 closeout inventory: HUMAN ACCEPTED
     219c8551d208530ec93c5697ca5591ad52bfb228
   F001: CLOSED
   16K-C document: docs/slice16k_c_first_user_capacity_model.md
-  16K-D: NOT AUTHORIZED
+  16K-D:
+    DUAL-BACKEND P1–P4 COMPLETE
+    P4 IMPLEMENTATION + HUMAN UAT COMPLETE /
+      INDEPENDENTLY ACCEPTED /
+      HUMAN ACKNOWLEDGED / CLOSED
+    Accepted UAT technical subject:
+      6d3689d03eb5a6e84d38d3ff7281e001e1caeb1a
+    Closeout bookkeeping tip:
+      9581a05378cba2c2b723755e05c6f6a1c9c085f7
+    Large-source capacity:
+      CAPACITY_DESIGN_READY — DEFERRED
+      implementation NOT AUTHORIZED
   16K-E → 16K-G: NOT AUTHORIZED
   Main promotion: NOT AUTHORIZED
   Does NOT reopen Slice 16 closeout
@@ -1088,7 +1110,9 @@ BASELINE: 1610f9282d1edbd4dfc8ae76d7644a1b9ea4e75e
 This plan decomposes Slice 16 into sequential phase gates. Plan acceptance does
 **NOT** authorize execution. Coding still requires explicit per-phase
 implementation authorization. 16A, 16B, and 16C have been separately authorized,
-implemented, reviewed, and **ACCEPTED**. Later phases remain gated.
+implemented, reviewed, and **ACCEPTED**. 16K-D has since been separately
+authorized and completed through the closed dual-backend P4/UAT tranche.
+Subsequent implementation remains explicitly gated; **16K-E→G** remain gated.
 
 Locked design authority: [`docs/slice16_design_authority.md`](slice16_design_authority.md)
 (S16-D01 … S16-D35) at AUTHORITY SHA

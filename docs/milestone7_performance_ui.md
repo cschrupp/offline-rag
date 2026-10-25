@@ -109,8 +109,13 @@ SLICE 16: DESIGN INTERVIEW COMPLETE
            16F COMPLETE / ACCEPTED / SEALED
              FINAL TIP f25f8358aead7fcfe161fff388012cec23b5a573
              CLOSEOUT: docs/slice16f_closeout.md
-           16G–16H NOT AUTHORIZED
-           Slice 16 overall IN PROGRESS / NOT COMPLETE
+           16G IMPLEMENTATION COMPLETE / ACCEPTED
+           16H COMPLETE / ACCEPTED
+           SLICE 16 COMPLETE / HUMAN ACCEPTED / CANONICAL
+           16K post-closeout program partially executed;
+             16K-A/B/C and 16K-D dual-backend through P4 completed
+             to recorded states; 16K-E→G remain not authorized
+             (oracle: ROADMAP.md)
   Authority: docs/slice16_design_authority.md
   Plan: docs/slice16_implementation_plan.md
   Historical pre-design frame: docs/slice16_portfolio_ui.md
@@ -950,8 +955,13 @@ SLICE 16: DESIGN INTERVIEW COMPLETE
            16F COMPLETE / ACCEPTED / SEALED
              FINAL TIP f25f8358aead7fcfe161fff388012cec23b5a573
              CLOSEOUT: docs/slice16f_closeout.md
-           16G–16H NOT AUTHORIZED
-           Slice 16 overall IN PROGRESS / NOT COMPLETE
+           16G IMPLEMENTATION COMPLETE / ACCEPTED
+           16H COMPLETE / ACCEPTED
+           SLICE 16 COMPLETE / HUMAN ACCEPTED / CANONICAL
+           16K post-closeout program partially executed;
+             16K-A/B/C and 16K-D dual-backend through P4 completed
+             to recorded states; 16K-E→G remain not authorized
+             (oracle: ROADMAP.md)
 SLICE 17: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
 SLICE 18: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
 
@@ -975,9 +985,12 @@ source-loading remediation `9dd2b008ebf9feee279dc6d0e58fafb006288ee5`; tip
 `9cd5528ab6c6e22d2dca55aca221b65eac50269e`). **16F** is **COMPLETE /
 ACCEPTED / SEALED** at
 `f25f8358aead7fcfe161fff388012cec23b5a573` (closeout
-`docs/slice16f_closeout.md`). → separate later-phase authorization
-(**16G–16H**, Slice 17, Slice 18, M7 closeout). Slice 14 and Slice 15 are
-closed.
+`docs/slice16f_closeout.md`). **16G** is **IMPLEMENTATION COMPLETE / ACCEPTED**;
+**16H** is **COMPLETE / ACCEPTED**. Slice 16 is **COMPLETE / HUMAN ACCEPTED /
+CANONICAL**. Slice 14 and Slice 15 are closed. Remaining Milestone-7 gates that
+are still **NOT AUTHORIZED**: Slice 17, Slice 18, and M7 closeout. 16K is a
+post-closeout program (partially executed through dual-backend P4; 16K-E→G
+remain not authorized — oracle `ROADMAP.md`).
 Slice 16 design is **ACCEPTED / LOCKED**. Amendment A2 is **ACCEPTED / LOCKED /
 SEALED**. **16A**, **16B**, **16C**, **16D-A**, and **16D-B2** are **COMPLETE /
 ACCEPTED**. B1 foundation remediation is **ACCEPTED / SEALED** (implementation
@@ -985,6 +998,5 @@ ACCEPTED**. B1 foundation remediation is **ACCEPTED / SEALED** (implementation
 `b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90`). Legacy B1 product UX remains
 **PRODUCT ACCEPTANCE WITHHELD**. **16D-B2** is **COMPLETE / ACCEPTED /
 SEALED** at `baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`. **16D-B3** is **COMPLETE / ACCEPTED / SEALED** at `9c178ffb033cde41849379fc914f321697ff8691`
-(A3 **ACCEPTED / LOCKED / SEALED**). **16G–16H**, Slice 17, Slice 18, and M7
-closeout remain **NOT AUTHORIZED**. Slice 16 overall is **IN PROGRESS / NOT
-COMPLETE**.
+(A3 **ACCEPTED / LOCKED / SEALED**). Slice 17, Slice 18, and M7 closeout remain
+**NOT AUTHORIZED**.

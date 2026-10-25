@@ -76,7 +76,14 @@ Independent review: 16H-IR-003 — ACCEPT
 Human acceptance: 16H-HA-001 — ACCEPTED
 Exact Human-accepted subject: 01a4a984d438d5bb7c4e3d0fa2f5bb908e0b4a10
 9G: DEFERRED / NOT AUTHORIZED
-16K: DEFERRED / NOT REQUIRED / NOT AUTHORIZED
+16K:
+  POST-SLICE-16 / NOT REQUIRED FOR ORIGINAL SLICE-16 CLOSEOUT
+  16K-A/B completed to Human-accepted state
+  16K-C independently accepted
+  16K-D dual-backend P1–P4 completed;
+    P4 implementation + Human UAT independently accepted /
+    Human acknowledged / CLOSED
+  16K-E→G NOT AUTHORIZED
 Slice 16: COMPLETE / HUMAN ACCEPTED / CANONICAL
 Final Slice-16 closeout: HUMAN ACCEPTED / CANONICAL
   Authority: S16-FINAL-CLOSEOUT-AUTH-001 — AUTHORIZED

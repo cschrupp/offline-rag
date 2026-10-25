@@ -329,7 +329,7 @@ cd ui && npm test && npm run lint && npm run typecheck && npm run build
 | Canonical main promotion | **COMPLETE / EXECUTED** (`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-AUTH-001` — EXECUTED; pure FF `168af70…` → `feab2b2…`; 0/0) |
 | Post-promotion record | **COMPLETE / HUMAN ACCEPTED / CANONICAL** (`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-IR-001` — ACCEPT; `S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-HA-001` — ACCEPTED; subject `76caab2…`; HA tip `e21b3e6…`) |
 | Second main promotion (HA tip) | **COMPLETE / EXECUTED** (`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-HA-MAIN-PROMOTION-AUTH-001` — EXECUTED; pure FF `feab2b2…` → `e21b3e6…`; 0/0) |
-| 16K | **DESIGN ACCEPTED / FROZEN** (`S16-K-BETA-INGESTION-READINESS-DESIGN-HA-001` — ACCEPTED; subject `0839b565…`; [`docs/slice16k_beta_ingestion_readiness_design.md`](docs/slice16k_beta_ingestion_readiness_design.md); 16K-A **IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED** at `1370b993…`; 16K-B **IMPLEMENTATION AUTHORIZED / NOT YET ACCEPTED** (IR-001 R1–R4 rework from `85f01f4…`); 16K-C→G **NOT YET AUTHORIZED**; post-closeout; does not reopen Slice 16) |
+| 16K | **POST-CLOSEOUT PROGRAM ACTIVE / PARTIALLY EXECUTED** — 16K-A/B **COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED**; 16K-C **IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED** (`219c8551…`); 16K-D dual-backend **P1–P4 complete** (P4 **IMPLEMENTATION + HUMAN UAT COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACKNOWLEDGED / CLOSED**; UAT subject `6d3689d03eb5a6e84d38d3ff7281e001e1caeb1a`; closeout tip `9581a053…`); 16K-E→G **NOT AUTHORIZED**; qualified dual-backend embeddings (CUDA Torch FP16 + CPU ONNX FP32; restart-time profile selection; no live hot failover); does not reopen Slice 16 — [`ROADMAP.md`](ROADMAP.md) |
 | Slice 17 / 18 | **NOT AUTHORIZED** |
 | M7 closeout | **NOT AUTHORIZED** |
 
@@ -356,7 +356,7 @@ Still deferred / not authorized as product deliverables:
 - cloud inference in the strict-offline core
 - enterprise auth / RBAC
 - distributed Qdrant / GraphRAG / multi-agent swarms
-- 16K-C→G implementation (design accepted/frozen; 16K-A complete/accepted; 16K-B implementation authorized / not yet accepted)
+- 16K-E→G implementation (16K-A/B/C and 16K-D dual-backend P1–P4 already completed to recorded acceptance states; large-source capacity implementation remains deferred)
 
 ## Scope boundaries
 
