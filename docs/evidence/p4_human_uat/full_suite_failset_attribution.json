@@ -1,6 +1,6 @@
 {
-  "authority": "P4-HUMAN-UAT-FOLLOWUP",
-  "base": "77f1db445f043d3093688b6133d84e49d0ee2b3a",
+  "authority": "P4-HUMAN-UAT-IR-001-REWORK",
+  "base": "8ed2d9060ac506e96602161083057a3f9a4c4543",
   "candidate_fail_count": 33,
   "candidate_failing_node_ids": [
     "tests/unit/app/test_slice15a_foundation.py::test_d08_catalog_complete_and_mapped",
@@ -37,11 +37,11 @@
     "tests/unit/test_slice12b_recovery_runtime.py::test_rewrite_failure_no_recovery_retrieval",
     "tests/unit/test_slice13b_authoritative_wiring.py::test_authoritative_pin_mismatch_fails_preflight_without_q3_writes"
   ],
-  "candidate_full_suite_summary": "1936 passed / 33 failed / 1 skipped",
+  "candidate_full_suite_summary": "1939 passed / 33 failed / 1 skipped",
   "candidate_only_count": 0,
   "candidate_only_failures": [],
   "disposition": "PASS_ZERO_REGRESSION_DELTA",
-  "method": "Exact 33 candidate failing node IDs re-executed against parent tip 77f1db4 with PYTHONPATH=parent/src from the candidate checkout (shared models/assets).",
+  "method": "Exact 33 candidate failing node IDs re-executed against accepted UAT technical subject 8ed2d90 with PYTHONPATH=parent/src from the candidate checkout (shared models/assets).",
   "p4_human_uat_regression_delta": 0,
   "parent_reproduced_fail_count": 33,
   "parent_reproduction_summary": "33 failed / 0 passed of the exact 33 nodeids",

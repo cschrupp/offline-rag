@@ -41,22 +41,29 @@ question—especially when multiple unrelated prior topics make the referent
 ambiguous—set retrieval_question to an empty string and context_used to true.
 """
 
-# Low-risk conversational operators eligible for deterministic fallback when
-# exactly one prior user topic is present (prompt-first; fallback after model).
+# Low-risk *anaphoric/deictic* operators only. Explicit new topical objects
+# (e.g. "summarize NFPA 1410") must NOT match — clarification is safer than
+# silently substituting the previous user topic after resolver failure.
 _SUMMARY_FOLLOWUP_RE = re.compile(
     r"^\s*("
-    r"can you (make me a |give me a )?summary\b.*"
-    r"|summarize (this|that|it|what we (just )?discussed|the (talk|answer|response))\b.*"
-    r"|(give me |provide )?(a |the )?(brief )?summary\b.*"
-    r"|what are the (main |key )?points\b.*"
-    r"|can you (explain|simplify) that\b.*"
-    r"|explain that more simply\b.*"
-    r"|simplify (that|this|it)\b.*"
-    r")\s*$",
+    r"(can you )?(please )?(make me a |give me a |provide (a |the )?)?"
+    r"(brief )?summary"
+    r"( of (this|that|it|this talk|the (previous )?(answer|response|talk)"
+    r"|what we (just )?discussed))?"
+    r"|"
+    r"(can you )?summarize"
+    r" (this|that|it|this talk|the (previous )?(answer|response|talk)"
+    r"|what we (just )?discussed)"
+    r"|"
+    r"what are the (main|key) points"
+    r"|"
+    r"(can you )?(explain that more simply|simplify (this|that|it))"
+    r")\s*[?.!]?\s*$",
     re.IGNORECASE,
 )
 _SIMPLIFY_FOLLOWUP_RE = re.compile(
-    r"^\s*(can you )?(explain that more simply|simplify (that|this|it))\b.*$",
+    r"^\s*(can you )?(explain that more simply|simplify (this|that|it))"
+    r"\s*[?.!]?\s*$",
     re.IGNORECASE,
 )
 
@@ -224,11 +231,14 @@ def try_deterministic_followup_resolve(
     prior_turns: tuple[PriorTurn, ...],
     current_question: str,
 ) -> ResolverResult | None:
-    """Narrow fallback for clear summary/simplify follow-ups.
+    """Narrow fallback for clear *referential* summary/simplify follow-ups.
 
-    Only when exactly one prior user topic is present. Derives the topical
-    anchor from prior *user* intent; does not treat assistant prose as factual
-    authority. Returns None when the case is outside this low-risk envelope.
+    Only when exactly one prior user topic is present **and** the current turn
+    is anaphoric/deictic (this/that/it/what we discussed), not an explicit new
+    topical object. Derives the topical anchor from prior *user* intent; does
+    not treat assistant prose as factual authority. Returns None outside this
+    low-risk envelope so resolver failure yields clarification rather than
+    silent intent substitution.
     """
     user_turns = [turn for turn in prior_turns if turn.role == "user"]
     if len(user_turns) != 1:

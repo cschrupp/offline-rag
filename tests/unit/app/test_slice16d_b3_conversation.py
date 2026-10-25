@@ -354,6 +354,53 @@ def test_deterministic_ambiguous_multi_topic_stays_none() -> None:
     assert result is None
 
 
+def test_deterministic_explicit_new_topic_summary_does_not_fallback() -> None:
+    """Standalone topical object must not silently reuse the prior topic."""
+    prior = (
+        PriorTurn(role="user", text="How do I fight the fire?"),
+        PriorTurn(role="assistant", text="Use coordinated hose lines."),
+    )
+    for current in (
+        "Summarize NFPA 1410.",
+        "What are the main points of ladder placement?",
+        "Give me a summary of the new document?",
+        "explain fireground ventilation more simply",
+    ):
+        result = try_deterministic_followup_resolve(
+            prior_turns=prior,
+            current_question=current,
+        )
+        assert result is None, current
+
+
+def test_deterministic_bare_main_points_activates_with_single_topic() -> None:
+    prior = (
+        PriorTurn(role="user", text="How do I fight the fire?"),
+        PriorTurn(role="assistant", text="Use coordinated hose lines."),
+    )
+    result = try_deterministic_followup_resolve(
+        prior_turns=prior,
+        current_question="What are the main points?",
+    )
+    assert result is not None
+    assert result.outcome == "resolved"
+    assert "fight the fire" in (result.retrieval_question or "").lower()
+
+
+def test_deterministic_give_me_summary_of_this_talk_activates() -> None:
+    prior = (
+        PriorTurn(role="user", text="How do I fight the fire?"),
+        PriorTurn(role="assistant", text="Use coordinated hose lines."),
+    )
+    result = try_deterministic_followup_resolve(
+        prior_turns=prior,
+        current_question="Give me a summary of this talk.",
+    )
+    assert result is not None
+    assert result.outcome == "resolved"
+    assert "fight the fire" in (result.retrieval_question or "").lower()
+
+
 def test_summary_followup_model_empty_uses_deterministic_fallback(
     tmp_path: Path,
 ) -> None:

@@ -32,20 +32,26 @@ Observed UAT: a ~227 MiB technical PDF is correctly rejected by the UI before up
 
 ### 2. How many simultaneous copies of a PDF can exist?
 
-For a workspace SOURCE_ADD on a large existing workspace, peak concurrent logical copies can include:
+For a workspace SOURCE_ADD on a large existing workspace, durable/disk copies can include:
 
-1. Durable vault object (disk)
-2. Spool/staging file (disk; upload path)
-3. In-memory `bytes` from `load_bytes` during plan/vault
-4. In-memory `bytes` again during `materialize_desired_sources` for **every** active source (full-replace)
-5. Scratch file rewrite of those bytes (disk)
-6. In-memory `source_bytes` again in `run_ingestion` / Docling path
+1. Upload spool/staging file
+2. Vault object
+3. Projection scratch files for **all** desired active sources (full-replace rewrite)
+4. Candidate/stage corpora tree used by ingest
+5. Published corpus/index artifacts
 
-So for one large add into a workspace with \(N\) active sources, the architecture may hold **O(N)** full source bodies in memory across the materialization loop (sequentially per source, but still whole-file), plus an additional whole-file buffer in the parser stage for the source currently being parsed.
+**Peak RAM vs aggregate work (important distinction):**
+
+- `materialize_desired_sources()` loops sequentially: `data = load_bytes(...)` → `path.write_bytes(data)` → retain metadata only. It does **not** retain every source's `data` buffer simultaneously.
+- Therefore **I/O, disk materialization, and wall-clock work** scale with aggregate workspace bytes \(A\).
+- **Peak RAM in that loop** is closer to the size of the largest source currently being copied (plus interpreter/copy overhead), not \(O(N)\) simultaneous full bodies.
+- Later stages (plan/vault `load_bytes`, ingestion `read_bytes`, Seneca's Docling wrapper buffers) can still place **at least one whole-file \(S\)-sized Python `bytes` buffer** in memory for the source currently being processed, in addition to an unmeasured parser working set \(D(S)\).
 
 ### 3. Does Docling require bytes and path simultaneously?
 
-Yes. `DoclingPdfParser.parse(path, *, source_bytes, document_id)` documents that Docling **reads the path**, while callers must also supply matching `source_bytes` for identity/hash. Callers currently satisfy this by reading the full file into memory first (`ingestion/pipeline.py`).
+**Seneca's current interface does.** `DoclingPdfParser.parse(path, *, source_bytes, document_id)` requires both a path and `source_bytes`. Docling itself is invoked using the **path**; callers currently also supply matching `source_bytes` for identity/hash and therefore read the full file into memory first (`ingestion/pipeline.py`).
+
+That is a **Seneca refactoring opportunity** (stream/hash + path-only parse), not evidence that Docling itself necessarily requires a second in-memory copy.
 
 ### 4. Can document identity/content hash be streamed?
 
@@ -58,20 +64,24 @@ Not with the current APIs. `RawSourceVault.load_bytes` and `materialize_desired_
 
 ### 6. What happens when a workspace already has many sources and one large source is added?
 
-SOURCE_ADD rebuilds the **entire desired active set** through Slice-15 full-replace ingest (`lifecycle` rule 2). Every prior source is re-materialized from the vault into scratch and re-fed to the ingest pipeline. Cost and peak memory therefore scale with **aggregate workspace source bytes**, not only the newly uploaded file.
+SOURCE_ADD rebuilds the **entire desired active set** through Slice-15 full-replace ingest (`lifecycle` rule 2). Every prior source is re-materialized from the vault into scratch and re-fed to the ingest pipeline. **Disk I/O and end-to-end work** therefore scale with **aggregate workspace source bytes**, not only the newly uploaded file. Peak RAM remains dominated by whole-file buffers for the source currently being copied/parsed, plus unmeasured \(D(S)\), not by retaining all \(N\) bodies at once.
 
-### 7. Expected peak RAM (order-of-magnitude, current architecture)
+### 7. Expected peak RAM (code-supported bounds; unmeasured)
 
-Assumptions: one large new source of size \(S\); workspace aggregate active bytes \(A\); sequential materialization; Docling may add its own working set \(D(S)\) (not measured here).
+Let \(S\) be the source currently being processed. From the code paths above:
 
-| Source size \(S\) | Conservative peak (ingestion process) |
+- At least one whole-file \(S\)-sized Python `bytes` buffer is present in several **sequential** stages (`load_bytes` / `read_bytes` / `source_bytes`).
+- Docling adds an **unmeasured** parser working set \(D(S)\).
+- Peak RAM for 100 / 250 / 512 MiB inputs has **not** been benchmarked in this follow-up.
+
+| Source size \(S\) | Claim under current architecture |
 |---|---|
-| 25 MiB | ~1–3×\(S\) plus \(D(S)\) plus smaller per-source buffers while scanning \(A\) |
-| 100 MiB | similar multiple; often **>300 MiB** process growth before Docling |
-| 250 MiB | often **>0.75–1.5 GiB** class risk once Docling + scratch + vault buffers overlap |
-| 512 MiB | **not supportable** as a product claim under current whole-file RAM paths |
+| 25 MiB | Current supported product ceiling (unchanged) |
+| 100 MiB | Whole-file buffers exist; \(D(S)\) unknown; **not** proven safe to raise limits |
+| 250 MiB | Same; unsupported as a product claim without measurement + streaming refactor |
+| 512 MiB | **Not supportable** as a product claim under current whole-file RAM paths |
 
-These are engineering bounds from code shape, not lab measurements. They are sufficient to reject a blind limit bump.
+These code-supported unknowns are sufficient to reject a blind limit bump. They are **not** laboratory peak-RAM measurements.
 
 ### 8. Disk amplification during staging/candidate/publication
 

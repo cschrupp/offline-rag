@@ -1,20 +1,24 @@
 {
-  "authority": "P4-HUMAN-UAT-FOLLOWUP",
-  "base": "77f1db445f043d3093688b6133d84e49d0ee2b3a",
+  "authority": "P4-HUMAN-UAT-IR-001-REWORK",
+  "base": "8ed2d9060ac506e96602161083057a3f9a4c4543",
   "branch": "implementation/p4-human-uat-corrective",
-  "candidate_tip": "8ed2d9060ac506e96602161083057a3f9a4c4543",
   "corrected": {
+    "F001_deterministic_followup_anaphoric_only": "CLOSED",
+    "F002_large_source_memory_model_wording": "CLOSED",
     "conversational_followup_resolution": "PASS",
     "duplicate_document_message": "PASS"
   },
-  "current_disposition": "P4 HUMAN UAT FOLLOW-UP COMPLETE / READY FOR REVIEW",
+  "current_disposition": "P4 HUMAN UAT IR-001 REWORK COMPLETE / READY FOR RE-REVIEW",
   "deferred_design": {
     "large_source_capacity": "CAPACITY_DESIGN_READY",
-    "note": "docs/design/large_source_capacity_followup.md"
+    "note": "docs/design/large_source_capacity_followup.md",
+    "safe_limit_increase_proven": false
   },
   "full1296_confirmed": false,
+  "historical_uat_handoff": "P4 HUMAN UAT FOLLOW-UP COMPLETE / READY FOR REVIEW",
+  "large_source_limit_changed": false,
   "p4_architecture_changed": false,
-  "record_kind": "p4_human_uat_followup",
+  "record_kind": "p4_human_uat_ir001_rework",
   "remaining_blockers": [],
   "resolved_observations": {
     "cpu_representation_missing": "CLOSED \u2014 MISSING PRODUCT REPRESENTATION, NOT UI DEFECT",
@@ -22,11 +26,12 @@
   },
   "resolver_diagnostic": {
     "classification": "R1",
+    "f001_correction": "Deterministic fallback narrowed to anaphoric/deictic summary/simplify forms only; explicit new topical objects do not activate fallback.",
     "meaning": "Resolver returned valid schema with empty retrieval_question / context_used true (over-conservative policy). Deterministic low-risk fallback + prompt examples close the observed summary follow-up without relaxing grounding.",
     "observed_case": "summarize this talk after single firefighting topic"
   },
   "scientific_campaign_calls": 0,
-  "technical_subject": "8ed2d9060ac506e96602161083057a3f9a4c4543",
+  "technical_subject": "PENDING_COMMIT",
   "unauthorized_remaining": [
     "p4_human_closeout",
     "campaigns",
@@ -38,13 +43,13 @@
     "large_source_limit_increase"
   ],
   "validation": {
+    "conversation_tests": "31 PASS",
     "failset_attribution": "docs/evidence/p4_human_uat/full_suite_failset_attribution.json",
-    "focused_p4_p2_p3_conversation_workspace": "181 PASS",
-    "full_suite_candidate": "1936 passed / 33 failed / 1 skipped",
-    "parent_exact_33_reproduction": "33/33 reproduced; regression_delta=0",
+    "focused_p4_p2_p3_conversation_workspace": "184 PASS",
+    "full_suite_candidate": "1939 passed / 33 failed / 1 skipped",
+    "parent_exact_33_reproduction": "33/33 reproduced vs 8ed2d90; regression_delta=0",
     "ruff_touched_surfaces": "PASS",
-    "ui_duplicate_message_vitest": "3 PASS",
-    "wheel_build": "PASS"
+    "ui_duplicate_message_vitest": "3 PASS"
   },
   "verified": {
     "CPUExecutionProvider": "PASS",
