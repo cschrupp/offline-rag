@@ -4,6 +4,8 @@ Authority: `S16-K-LARGE-SOURCE-CAPACITY-L5-PDF-QUALIFICATION-EXECUTION-AUTH-001`
 
 Accepted L4 subject: `4024ed04130681d757abcd4fb4abf6f302259db1`
 
+Campaign freeze subject: `32107a1b5c96b1435e50a23ca61078e9d6939af4`
+
 Execution branch: `qualification/16k-large-source-capacity-l5-pdf`
 
 Fixture manifest: `docs/evidence/large_source_capacity/l5/l5_fixture_manifest.json`

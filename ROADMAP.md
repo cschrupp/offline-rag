@@ -622,6 +622,8 @@ SLICE 15  COMPLETE / ACCEPTED
              S16-K-LARGE-SOURCE-CAPACITY-L5-PDF-QUALIFICATION-EXECUTION-AUTH-001
            Execution base:
              4024ed04130681d757abcd4fb4abf6f302259db1
+           Campaign freeze subject:
+             32107a1b5c96b1435e50a23ca61078e9d6939af4
            Scope:
              progressive full-product PDF capacity qualification at Q25 / Q100 / Q250 / Q512 under accepted CPU/CUDA execution profiles
            L6: NOT AUTHORIZED
