@@ -558,7 +558,9 @@ SLICE 15  COMPLETE / ACCEPTED
            Historical IR-001 disposition:
              REWORK REQUIRED — NARROW DESIGN CORRECTIVE (F001–F003)
            Current design disposition:
-             DESIGN IR-001 REWORK COMPLETE / READY FOR RE-REVIEW
+             DESIGN COMPLETE / INDEPENDENTLY ACCEPTED — IR-002
+           Accepted design technical subject:
+             c3405e6bd8ac06b2a24f1ac64dd53cbce399f86b
            LARGE-SOURCE CAPACITY L1 IMPLEMENTATION:
              AUTHORIZED / IN PROGRESS
            Authority:

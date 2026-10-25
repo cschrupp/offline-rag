@@ -484,6 +484,78 @@ def test_raw_vault_path_copy_integrity_and_verification(tmp_path: Path) -> None:
         )
     assert mismatch.value.code is ErrorCode.WORKSPACE_STATE_UNAVAILABLE
 
+
+def test_raw_vault_path_and_bytes_have_equivalent_metadata(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    store = WorkspaceStore(settings)
+    vault = RawSourceVault(settings.paths.workspaces)
+    ws = store.create(new_empty_workspace(title="Vault equivalence"))
+    payload = b"equivalent-vault-payload" * 128
+    source = tmp_path / "equivalent.bin"
+    source.write_bytes(payload)
+
+    byte_meta = vault.put_bytes(ws.workspace_id, payload, display_name="bytes.bin")
+    path_meta = vault.put_path(ws.workspace_id, source, display_name="path.bin")
+    assert path_meta.content_hash == byte_meta.content_hash
+    assert path_meta.byte_size == byte_meta.byte_size
+    assert path_meta.object_id != byte_meta.object_id
+
+
+def test_raw_vault_expected_hash_failure_leaves_no_committed_object(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    store = WorkspaceStore(settings)
+    vault = RawSourceVault(settings.paths.workspaces)
+    ws = store.create(new_empty_workspace(title="Vault hash binding"))
+    source = tmp_path / "bound.bin"
+    source.write_bytes(b"bound-payload")
+    object_id = "vobj_" + "a" * 32
+
+    with pytest.raises(AppError):
+        vault.put_path(
+            ws.workspace_id,
+            source,
+            display_name="bound.bin",
+            object_id=object_id,
+            expected_content_hash="0" * 64,
+        )
+    object_path = settings.paths.workspaces / ws.workspace_id / "vault" / "objects" / object_id
+    meta_path = settings.paths.workspaces / ws.workspace_id / "vault" / "meta" / f"{object_id}.json"
+    assert not object_path.exists()
+    assert not meta_path.exists()
+
+
+def test_raw_vault_path_operations_are_streamed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    settings = _settings(tmp_path)
+    store = WorkspaceStore(settings)
+    vault = RawSourceVault(settings.paths.workspaces)
+    ws = store.create(new_empty_workspace(title="Vault streaming"))
+    source = tmp_path / "streamed.bin"
+    source.write_bytes(b"streamed-vault-payload" * 256)
+
+    def fail_read_bytes(_path: Path) -> bytes:
+        raise AssertionError("vault path operations must stream through open/read")
+
+    monkeypatch.setattr(Path, "read_bytes", fail_read_bytes)
+    meta = vault.put_path(ws.workspace_id, source, display_name="streamed.bin")
+    assert vault.verify_object(ws.workspace_id, meta.object_id) == meta
+
+
+def test_raw_vault_verify_object_checks_byte_size_independently(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    store = WorkspaceStore(settings)
+    vault = RawSourceVault(settings.paths.workspaces)
+    ws = store.create(new_empty_workspace(title="Vault size"))
+    meta = vault.put_bytes(ws.workspace_id, b"size-check", display_name="size.bin")
+    meta_path = settings.paths.workspaces / ws.workspace_id / "vault" / "meta" / f"{meta.object_id}.json"
+    meta_path.write_text(
+        meta.model_copy(update={"byte_size": meta.byte_size + 1}).model_dump_json(),
+        encoding="utf-8",
+    )
+    with pytest.raises(AppError) as mismatch:
+        vault.verify_object(ws.workspace_id, meta.object_id)
+    assert mismatch.value.code is ErrorCode.WORKSPACE_STATE_UNAVAILABLE
+    assert mismatch.value.details["reason"] == "vault_object_integrity_mismatch"
+
     object_path = vault.object_path(ws.workspace_id, meta.object_id)
     object_path.write_bytes(b"corrupt")
     with pytest.raises(AppError) as corrupt:
