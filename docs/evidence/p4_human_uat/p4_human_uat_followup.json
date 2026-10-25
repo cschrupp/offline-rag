@@ -2,6 +2,7 @@
   "authority": "P4-HUMAN-UAT-FOLLOWUP",
   "base": "77f1db445f043d3093688b6133d84e49d0ee2b3a",
   "branch": "implementation/p4-human-uat-corrective",
+  "candidate_tip": "8ed2d9060ac506e96602161083057a3f9a4c4543",
   "corrected": {
     "conversational_followup_resolution": "PASS",
     "duplicate_document_message": "PASS"
@@ -25,7 +26,7 @@
     "observed_case": "summarize this talk after single firefighting topic"
   },
   "scientific_campaign_calls": 0,
-  "technical_subject": "PENDING_COMMIT",
+  "technical_subject": "8ed2d9060ac506e96602161083057a3f9a4c4543",
   "unauthorized_remaining": [
     "p4_human_closeout",
     "campaigns",
