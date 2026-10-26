@@ -640,7 +640,16 @@ SLICE 15  COMPLETE / ACCEPTED
              docs/evidence/large_source_capacity/l5/l5_campaign_summary.json
            Campaign assessment:
              docs/evidence/large_source_capacity/l5/L5_QUALIFICATION_ASSESSMENT.md
-           L6: NOT AUTHORIZED
+           L6:
+             PRODUCT POLICY DESIGN COMPLETE / READY FOR INDEPENDENT REVIEW
+           L6 design authority:
+             S16-K-LARGE-SOURCE-CAPACITY-L6-PRODUCT-LIMIT-RESOURCE-ADMISSION-DESIGN-AUTH-001
+           L6 design base:
+             4adc1f024a078c19192485cbabfc420c462eb01a
+           L6 design:
+             docs/design/large_source_capacity_l6_product_policy.md
+           L6 implementation:
+             NOT AUTHORIZED
            Limit increase: NOT AUTHORIZED
            (25 MiB/file · 100 MiB/request unchanged)
        16K-E → 16K-G:
