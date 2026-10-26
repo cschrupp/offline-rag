@@ -1,0 +1,7 @@
+{
+  "profile_id": "cuda_fp16_v1",
+  "disposition": "PROFILE_NOT_EVALUABLE",
+  "reason": "CUDA embedding execution was requested, but CUDA is unavailable.",
+  "workload_started": false,
+  "evidence_contract": "large-source-capacity-evidence-v1"
+}

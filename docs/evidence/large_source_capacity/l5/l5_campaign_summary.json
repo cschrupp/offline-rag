@@ -1,0 +1,372 @@
+{
+  "accepted_l4_subject": "4024ed04130681d757abcd4fb4abf6f302259db1",
+  "assessment": {
+    "cpu_ceiling": "Q100 class confirmed",
+    "cuda_status": "PROFILE_NOT_EVALUABLE",
+    "l6": "NOT AUTHORIZED",
+    "q250_interpretation": "host termination without conclusive OOM forensics; not a measured capacity failure",
+    "q512": "not run under progressive stop rule"
+  },
+  "branch": "qualification/16k-large-source-capacity-l5-pdf",
+  "campaign": "S16-K-LARGE-SOURCE-CAPACITY-L5-PDF-QUALIFICATION-EXECUTION-AUTH-001",
+  "campaign_freeze_subject": "70cea558bd0e8f35fb23057b9ee2c1a4ab89a450",
+  "campaign_terminal": "PROFILE_PARTIAL_QUALIFICATION",
+  "duplicate_identity_check": {
+    "active_source_count_after": 1,
+    "content_hash": "ff360b3bca78aba4b3852a484a3ba4c5c0bb8aa439f5421a5d3450e60e21fa16",
+    "document_id": "doc_ff360b3bca78aba4b3852a484a3ba4c5c0bb8aa439f5421a5d3450e60e21fa16",
+    "erroneous_second_publication": false,
+    "evidence_file": "duplicate_identity_check.json",
+    "first_add_status": "succeeded",
+    "profile": "cpu_onnx_fp32_v1",
+    "resolved_profile_id": "cpu_onnx_fp32_v1",
+    "second_add_error": {
+      "code": "document_invalid",
+      "details": {
+        "document_id": "doc_ff360b3bca78aba4b3852a484a3ba4c5c0bb8aa439f5421a5d3450e60e21fa16",
+        "reason": "document_identity_conflict",
+        "workspace_id": "ws_139022d09cf946dfb89561f715b470ce"
+      },
+      "message": "This document is already present in this workspace."
+    },
+    "single_active_source_preserved": true
+  },
+  "evidence_contract": "large-source-capacity-evidence-v1",
+  "fixture_manifest": "l5_fixture_manifest.json",
+  "production_limits": {
+    "max_bytes_per_document": 26214400,
+    "max_total_upload_bytes": 104857600
+  },
+  "production_limits_changed": false,
+  "profiles": {
+    "cpu_onnx_fp32_v1": {
+      "Q100": {
+        "active_source_bytes": 96152520,
+        "active_source_count": 1,
+        "cpu": {
+          "cpu_equivalent_pct": 645.9514316493705,
+          "cpu_system_s": 315.242452,
+          "cpu_total_s": 9924.316654,
+          "cpu_user_s": 9609.074202,
+          "involuntary_context_switches": 29553,
+          "logical_cpu_count": 16,
+          "physical_cpu_count": 8,
+          "status": "observed",
+          "voluntary_context_switches": 204295,
+          "wall_s": 1536.387438395992
+        },
+        "disk": {
+          "aggregate": {
+            "baseline_bytes": 0,
+            "final_bytes": 217280406,
+            "final_growth_bytes": 217280406,
+            "peak_growth_bytes": 384614776,
+            "peak_observed_bytes": 384614776
+          },
+          "final_storage_growth_bytes": 217280406,
+          "final_storage_growth_ratio": 2.259747388835987,
+          "free_bytes_after": 736356147200,
+          "free_bytes_before": 736557477888,
+          "minimum_free_bytes_observed": 736130027520,
+          "peak_storage_growth_bytes": 384614776,
+          "peak_storage_growth_ratio": 4.000048839073589
+        },
+        "disposition": "VALID_PASS",
+        "document_id": "doc_109fa209213e9d9bbaf01e30d254658653edca625aea8702153dcb900d6795f0",
+        "evidence_file": "cells/cpu_onnx_fp32_v1_Q100.json",
+        "fixture_byte_size": 96152520,
+        "fixture_sha256": "109fa209213e9d9bbaf01e30d254658653edca625aea8702153dcb900d6795f0",
+        "git_sha": "70cea558bd0e8f35fb23057b9ee2c1a4ab89a450",
+        "identity_matches_fixture": true,
+        "managed_operation_status": "succeeded",
+        "memory": {
+          "parser_elapsed_s": 376.06893453901284,
+          "parser_rss_delta_bytes": 5928603648,
+          "parser_rss_peak_bytes": 6593409024,
+          "parser_rss_start_bytes": 664805376,
+          "parser_sample_count": 1843,
+          "rss_delta_from_start_bytes": 14633512960,
+          "rss_peak_window_bytes": 15223230464,
+          "rss_start_bytes": 589717504,
+          "ru_maxrss_lifetime_bytes": 15270625280
+        },
+        "product_work": {
+          "child_chunk_count": 460,
+          "embeddings_generated": 460,
+          "embeddings_reused": 0,
+          "lexical": {
+            "chunk_set_child_count": 460,
+            "eligible_child_count": 460,
+            "indexed_child_count": 460,
+            "searchable_units_contract": "exclude-zero-term-v1",
+            "zero_term_excluded_count": 0
+          },
+          "page_count": {
+            "source": "derived_from_frozen_valid_pdf_fixture",
+            "value": 250
+          },
+          "parsed_block_count": null,
+          "stage_durations": {
+            "chunking_ms": 1183,
+            "dense_generation_ms": 1179295,
+            "dense_materialization_ms": 2793,
+            "finalization_ms": 36,
+            "lexical_ms": 765,
+            "parsing_ms": 376103,
+            "publication_ms": 762,
+            "total_ms": 1526601
+          }
+        },
+        "qualification_profile_verified": true,
+        "requested_profile_id": "cpu_onnx_fp32_v1",
+        "resolved_profile_id": "cpu_onnx_fp32_v1",
+        "workspace_status": "active"
+      },
+      "Q25": {
+        "active_source_bytes": 22430312,
+        "active_source_count": 1,
+        "cpu": {
+          "cpu_equivalent_pct": 546.6725312233314,
+          "cpu_system_s": 214.37466600000002,
+          "cpu_total_s": 5084.1245229999995,
+          "cpu_user_s": 4869.749857,
+          "involuntary_context_switches": 604876,
+          "logical_cpu_count": 16,
+          "physical_cpu_count": 8,
+          "status": "observed",
+          "voluntary_context_switches": 102427,
+          "wall_s": 930.0128015619994
+        },
+        "disk": {
+          "aggregate": {
+            "baseline_bytes": 0,
+            "final_bytes": 53113391,
+            "final_growth_bytes": 53113391,
+            "peak_growth_bytes": 75543456,
+            "peak_observed_bytes": 75543456
+          },
+          "final_storage_growth_bytes": 53113391,
+          "final_storage_growth_ratio": 2.3679292111496264,
+          "free_bytes_after": 736513171456,
+          "free_bytes_before": 736512339968,
+          "minimum_free_bytes_observed": 736368132096,
+          "peak_storage_growth_bytes": 75543456,
+          "peak_storage_growth_ratio": 3.3679181992653513
+        },
+        "disposition": "VALID_PASS",
+        "document_id": "doc_ff360b3bca78aba4b3852a484a3ba4c5c0bb8aa439f5421a5d3450e60e21fa16",
+        "evidence_file": "cells/cpu_onnx_fp32_v1_Q25.json",
+        "fixture_byte_size": 22430312,
+        "fixture_sha256": "ff360b3bca78aba4b3852a484a3ba4c5c0bb8aa439f5421a5d3450e60e21fa16",
+        "git_sha": "70cea558bd0e8f35fb23057b9ee2c1a4ab89a450",
+        "identity_matches_fixture": true,
+        "managed_operation_status": "succeeded",
+        "memory": {
+          "parser_elapsed_s": 171.60911854999722,
+          "parser_rss_delta_bytes": 3360391168,
+          "parser_rss_peak_bytes": 4025581568,
+          "parser_rss_start_bytes": 665190400,
+          "parser_sample_count": 826,
+          "rss_delta_from_start_bytes": 8578007040,
+          "rss_peak_window_bytes": 9167990784,
+          "rss_start_bytes": 589983744,
+          "ru_maxrss_lifetime_bytes": 9199017984
+        },
+        "product_work": {
+          "child_chunk_count": 154,
+          "embeddings_generated": 154,
+          "embeddings_reused": 0,
+          "lexical": {
+            "chunk_set_child_count": 154,
+            "eligible_child_count": 154,
+            "indexed_child_count": 154,
+            "searchable_units_contract": "exclude-zero-term-v1",
+            "zero_term_excluded_count": 0
+          },
+          "page_count": {
+            "source": "derived_from_frozen_valid_pdf_fixture",
+            "value": 75
+          },
+          "parsed_block_count": null,
+          "stage_durations": {
+            "chunking_ms": 1427,
+            "dense_generation_ms": 754232,
+            "dense_materialization_ms": 5426,
+            "finalization_ms": 188,
+            "lexical_ms": 2293,
+            "parsing_ms": 171660,
+            "publication_ms": 213,
+            "total_ms": 916167
+          }
+        },
+        "qualification_profile_verified": true,
+        "requested_profile_id": "cpu_onnx_fp32_v1",
+        "resolved_profile_id": "cpu_onnx_fp32_v1",
+        "workspace_status": "active"
+      },
+      "Q250": {
+        "disposition": "INVALID_EVIDENCE",
+        "evidence_file": null,
+        "fixture_byte_size": 284502054,
+        "fixture_sha256": "af9ea69d3a61d91a05770d6e1696ce0aeb589482173a23c39bd4f5c6884660fe",
+        "forensic_oom_evidence": false,
+        "partial_stderr_log": "partial_q250/cpu_onnx_fp32_v1_Q250.stderr.log",
+        "partial_stderr_sha256": "6fae064f68e0947cab3d971a27275c4d320dea508dc3a85976fef8b199b69bba",
+        "partial_stdout_log": "partial_q250/cpu_onnx_fp32_v1_Q250.stdout.log",
+        "partial_stdout_sha256": "905498f20c67311ca4f9dfa98a0a137a228bc91db25247a7f6c1fa890f98372c",
+        "q512_disposition": "NOT_RUN_PROGRESSIVE_STOP",
+        "reason": "HOST_TERMINATED"
+      },
+      "Q512": {
+        "disposition": "NOT_RUN_PROGRESSIVE_STOP"
+      },
+      "confirmation": {
+        "active_source_bytes": 96152520,
+        "active_source_count": 1,
+        "cpu": {
+          "cpu_equivalent_pct": 652.7750678145495,
+          "cpu_system_s": 359.75171,
+          "cpu_total_s": 11390.682517,
+          "cpu_user_s": 11030.930806999999,
+          "involuntary_context_switches": 195402,
+          "logical_cpu_count": 16,
+          "physical_cpu_count": 8,
+          "status": "observed",
+          "voluntary_context_switches": 227891,
+          "wall_s": 1744.9628637220012
+        },
+        "disk": {
+          "aggregate": {
+            "baseline_bytes": 0,
+            "final_bytes": 217280406,
+            "final_growth_bytes": 217280406,
+            "peak_growth_bytes": 313430370,
+            "peak_observed_bytes": 313430370
+          },
+          "final_storage_growth_bytes": 217280406,
+          "final_storage_growth_ratio": 2.259747388835987,
+          "free_bytes_after": 732816580608,
+          "free_bytes_before": 734674874368,
+          "minimum_free_bytes_observed": 732603318272,
+          "peak_storage_growth_bytes": 313430370,
+          "peak_storage_growth_ratio": 3.259720806069357
+        },
+        "disposition": "VALID_PASS",
+        "document_id": "doc_109fa209213e9d9bbaf01e30d254658653edca625aea8702153dcb900d6795f0",
+        "evidence_file": "cells/cpu_onnx_fp32_v1_Q100_CONFIRM.json",
+        "fixture_byte_size": 96152520,
+        "fixture_sha256": "109fa209213e9d9bbaf01e30d254658653edca625aea8702153dcb900d6795f0",
+        "git_sha": "70cea558bd0e8f35fb23057b9ee2c1a4ab89a450",
+        "identity_matches_fixture": true,
+        "managed_operation_status": "succeeded",
+        "memory": {
+          "parser_elapsed_s": 391.48106428599567,
+          "parser_rss_delta_bytes": 5963493376,
+          "parser_rss_peak_bytes": 6600499200,
+          "parser_rss_start_bytes": 637005824,
+          "parser_sample_count": 1912,
+          "rss_delta_from_start_bytes": 14923505664,
+          "rss_peak_window_bytes": 15510642688,
+          "rss_start_bytes": 587137024,
+          "ru_maxrss_lifetime_bytes": 15620493312
+        },
+        "product_work": {
+          "child_chunk_count": 460,
+          "embeddings_generated": 460,
+          "embeddings_reused": 0,
+          "lexical": {
+            "chunk_set_child_count": 460,
+            "eligible_child_count": 460,
+            "indexed_child_count": 460,
+            "searchable_units_contract": "exclude-zero-term-v1",
+            "zero_term_excluded_count": 0
+          },
+          "page_count": {
+            "source": "derived_from_frozen_valid_pdf_fixture",
+            "value": 250
+          },
+          "parsed_block_count": null,
+          "stage_durations": {
+            "chunking_ms": 1413,
+            "dense_generation_ms": 1390068,
+            "dense_materialization_ms": 2826,
+            "finalization_ms": 21,
+            "lexical_ms": 1226,
+            "parsing_ms": 391500,
+            "publication_ms": 122,
+            "total_ms": 1733510
+          }
+        },
+        "qualification_profile_verified": true,
+        "requested_profile_id": "cpu_onnx_fp32_v1",
+        "resolved_profile_id": "cpu_onnx_fp32_v1",
+        "workspace_status": "active"
+      },
+      "first_attempted_nonpassing_class": "Q250",
+      "largest_confirmed_class": "Q100",
+      "largest_passing_class": "Q100",
+      "measured_envelope": {
+        "chunk_count_by_size": {
+          "Q100": 460,
+          "Q25": 154
+        },
+        "final_disk_amplification_by_size": {
+          "Q100": 2.259747388835987,
+          "Q25": 2.3679292111496264
+        },
+        "parser_peak_rss_by_size": {
+          "Q100": 6593409024,
+          "Q25": 4025581568
+        },
+        "parser_time_s_by_size": {
+          "Q100": 376.06893453901284,
+          "Q25": 171.60911854999722
+        },
+        "peak_disk_amplification_by_size": {
+          "Q100": 4.000048839073589,
+          "Q25": 3.3679181992653513
+        },
+        "peak_rss_by_size": {
+          "Q100": 15223230464,
+          "Q25": 9167990784
+        },
+        "total_time_s_by_size": {
+          "Q100": 1536.387438395992,
+          "Q25": 930.0128015619994
+        }
+      },
+      "preflight": {
+        "disposition": "PASS",
+        "evidence_file": "preflight/cpu_onnx_fp32_v1.json"
+      }
+    },
+    "cuda_fp16_v1": {
+      "Q100": {
+        "disposition": "NOT_RUN_PROFILE_NOT_EVALUABLE"
+      },
+      "Q25": {
+        "disposition": "NOT_RUN_PROFILE_NOT_EVALUABLE"
+      },
+      "Q250": {
+        "disposition": "NOT_RUN_PROFILE_NOT_EVALUABLE"
+      },
+      "Q512": {
+        "disposition": "NOT_RUN_PROFILE_NOT_EVALUABLE"
+      },
+      "confirmation": {
+        "disposition": "NOT_RUN_PROFILE_NOT_EVALUABLE"
+      },
+      "first_attempted_nonpassing_class": null,
+      "largest_confirmed_class": null,
+      "largest_passing_class": null,
+      "preflight": {
+        "disposition": "PROFILE_NOT_EVALUABLE",
+        "evidence_contract": "large-source-capacity-evidence-v1",
+        "profile_id": "cuda_fp16_v1",
+        "reason": "CUDA embedding execution was requested, but CUDA is unavailable.",
+        "workload_started": false
+      }
+    }
+  },
+  "tracked_execution_subject_changed_during_campaign": false
+}

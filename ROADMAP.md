@@ -617,15 +617,29 @@ SLICE 15  COMPLETE / ACCEPTED
            Accepted L4 technical subject:
              4024ed04130681d757abcd4fb4abf6f302259db1
            L5:
-             PDF QUALIFICATION EXECUTION AUTHORIZED / IN PROGRESS
+             PDF QUALIFICATION COMPLETE / READY FOR INDEPENDENT REVIEW
            Authority:
              S16-K-LARGE-SOURCE-CAPACITY-L5-PDF-QUALIFICATION-EXECUTION-AUTH-001
            Execution base:
              4024ed04130681d757abcd4fb4abf6f302259db1
-           Campaign freeze subject:
-             32107a1b5c96b1435e50a23ca61078e9d6939af4
            Scope:
              progressive full-product PDF capacity qualification at Q25 / Q100 / Q250 / Q512 under accepted CPU/CUDA execution profiles
+           Campaign freeze subject:
+             70cea558bd0e8f35fb23057b9ee2c1a4ab89a450
+           Campaign terminal:
+             PROFILE_PARTIAL_QUALIFICATION
+           CPU lane:
+             Q25 PASS; Q100 PASS; Q100-CONFIRM PASS; Q250 INVALID_EVIDENCE / HOST_TERMINATED; Q512 NOT RUN
+           CPU largest confirmed class:
+             Q100
+           CUDA lane:
+             PROFILE_NOT_EVALUABLE — CUDA unavailable on qualification host
+           Fixture manifest:
+             docs/evidence/large_source_capacity/l5/l5_fixture_manifest.json
+           Campaign summary:
+             docs/evidence/large_source_capacity/l5/l5_campaign_summary.json
+           Campaign assessment:
+             docs/evidence/large_source_capacity/l5/L5_QUALIFICATION_ASSESSMENT.md
            L6: NOT AUTHORIZED
            Limit increase: NOT AUTHORIZED
            (25 MiB/file · 100 MiB/request unchanged)

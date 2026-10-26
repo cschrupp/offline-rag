@@ -1,0 +1,133 @@
+{
+  "duplicate_expected_reason": "document_identity_conflict",
+  "duplicate_preserved_single_active_source": true,
+  "final_active_sources": [
+    {
+      "active_from_revision": 2,
+      "active_from_snapshot_id": "snap_078698f342e5cb878bc74faa42acd04b1a560edc72d01bf8b64441a31fec4b76",
+      "byte_size": 22430312,
+      "content_hash": "ff360b3bca78aba4b3852a484a3ba4c5c0bb8aa439f5421a5d3450e60e21fa16",
+      "content_type": "application/pdf",
+      "created_at": "2026-10-26T03:19:34.206259Z",
+      "display_name": "first.pdf",
+      "document_id": "doc_ff360b3bca78aba4b3852a484a3ba4c5c0bb8aa439f5421a5d3450e60e21fa16",
+      "source_id": "src_dab5f89de0d9409dabc8e2dbf8dca3be",
+      "version": 1
+    }
+  ],
+  "final_workspace": {
+    "created_at": "2026-10-26T03:19:33.676558Z",
+    "current_snapshot_id": "snap_078698f342e5cb878bc74faa42acd04b1a560edc72d01bf8b64441a31fec4b76",
+    "description": "",
+    "revision": 2,
+    "source_count": 1,
+    "status": "active",
+    "title": "L5 duplicate identity check",
+    "updated_at": "2026-10-26T03:29:19.993393Z",
+    "workspace_id": "ws_139022d09cf946dfb89561f715b470ce"
+  },
+  "first_operation": {
+    "created_at": "2026-10-26T03:19:34.009622Z",
+    "error": null,
+    "expected_revision": 1,
+    "kind": "source_add",
+    "metrics": {
+      "child_chunk_count": 154,
+      "chunk_artifacts_generated": 1,
+      "chunk_artifacts_reused": 0,
+      "dense_execution": {
+        "batch_size": 32,
+        "device": "cpu",
+        "embedding_dimension": 1024
+      },
+      "embeddings_failed": 0,
+      "embeddings_generated": 154,
+      "embeddings_reused": 0,
+      "generated_chunks_per_sec": 0.329482242190843,
+      "lexical": {
+        "chunk_set_child_count": 154,
+        "eligible_child_count": 154,
+        "indexed_child_count": 154,
+        "searchable_units_contract": "exclude-zero-term-v1",
+        "zero_term_excluded_count": 0
+      },
+      "oversized_unsplittable_count": 0,
+      "parsed_artifacts_generated": 1,
+      "parsed_artifacts_reused": 0,
+      "parsed_searchable_document_count": 1,
+      "post_active_source_count": 1,
+      "pre_active_source_count": 0,
+      "requested_document_count": 1,
+      "stage_durations": {
+        "chunking_ms": 382,
+        "dense_generation_ms": 467400,
+        "dense_materialization_ms": 863,
+        "finalization_ms": 25,
+        "lexical_ms": 386,
+        "parsing_ms": 110332,
+        "publication_ms": 51,
+        "total_ms": 560429
+      }
+    },
+    "operation_id": "wop_a1d0424df2fe4fc7973b1d1f25c105d6",
+    "progress": {
+      "current": 0,
+      "started_at": "2026-10-26T03:29:19.989083Z",
+      "step": "finalizing",
+      "total": null,
+      "unit": "documents"
+    },
+    "progress_stage": "ready",
+    "result": {
+      "snapshot_id": "snap_078698f342e5cb878bc74faa42acd04b1a560edc72d01bf8b64441a31fec4b76",
+      "source_id": "src_dab5f89de0d9409dabc8e2dbf8dca3be",
+      "source_ids": [
+        "src_dab5f89de0d9409dabc8e2dbf8dca3be"
+      ],
+      "source_version": 1,
+      "workspace_revision": 2,
+      "workspace_status": "active"
+    },
+    "status": "succeeded",
+    "updated_at": "2026-10-26T03:29:20.010036Z",
+    "worklist": {
+      "active_documents": [],
+      "completed_count": 1,
+      "documents": [
+        {
+          "child_chunk_count": 154,
+          "display_name": "first.pdf",
+          "document_id": "doc_ff360b3bca78aba4b3852a484a3ba4c5c0bb8aa439f5421a5d3450e60e21fa16",
+          "phase": "indexed"
+        }
+      ],
+      "pending_count": 0,
+      "remaining_count": 0,
+      "total_document_count": 1
+    },
+    "workspace_id": "ws_139022d09cf946dfb89561f715b470ce"
+  },
+  "first_workspace": {
+    "created_at": "2026-10-26T03:19:33.676558Z",
+    "current_snapshot_id": "snap_078698f342e5cb878bc74faa42acd04b1a560edc72d01bf8b64441a31fec4b76",
+    "description": "",
+    "revision": 2,
+    "source_count": 1,
+    "status": "active",
+    "title": "L5 duplicate identity check",
+    "updated_at": "2026-10-26T03:29:19.993393Z",
+    "workspace_id": "ws_139022d09cf946dfb89561f715b470ce"
+  },
+  "requested_profile_id": "cpu_onnx_fp32_v1",
+  "resolved_profile_id": "cpu_onnx_fp32_v1",
+  "second_error": {
+    "code": "document_invalid",
+    "details": {
+      "document_id": "doc_ff360b3bca78aba4b3852a484a3ba4c5c0bb8aa439f5421a5d3450e60e21fa16",
+      "reason": "document_identity_conflict",
+      "workspace_id": "ws_139022d09cf946dfb89561f715b470ce"
+    },
+    "message": "This document is already present in this workspace."
+  },
+  "second_operation": null
+}
