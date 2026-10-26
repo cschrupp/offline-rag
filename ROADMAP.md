@@ -648,6 +648,12 @@ SLICE 15  COMPLETE / ACCEPTED
              4adc1f024a078c19192485cbabfc420c462eb01a
            L6 design:
              docs/design/large_source_capacity_l6_product_policy.md
+           L6 independent review IR-001:
+             REWORK REQUIRED — NARROW DESIGN CORRECTIVE
+           L6 corrective base:
+             6476d286e2278292cc5b8f0aac1a6d0692969985
+           L6 corrective state:
+             REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
            L6 implementation:
              NOT AUTHORIZED
            Limit increase: NOT AUTHORIZED

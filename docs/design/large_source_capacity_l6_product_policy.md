@@ -3,7 +3,7 @@
 **Authority:** `S16-K-LARGE-SOURCE-CAPACITY-L6-PRODUCT-LIMIT-RESOURCE-ADMISSION-DESIGN-AUTH-001`
 **Design base:** `4adc1f024a078c19192485cbabfc420c462eb01a`
 **Accepted predecessor:** L5 PDF qualification, independently accepted
-**Status:** `LARGE-SOURCE CAPACITY L6 PRODUCT POLICY DESIGN COMPLETE / READY FOR INDEPENDENT REVIEW`
+**Status:** `LARGE-SOURCE CAPACITY L6 PRODUCT POLICY IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW`
 
 This is a design-only tranche. It does not change production settings, APIs,
 UI behavior, or resource admission, and it does not authorize another PDF
@@ -57,15 +57,35 @@ The implementation will apply these gates in this order:
    bypass HTTP request limits.
 3. Build the exact desired active source set for the mutation and sum its
    stored `byte_size` values.
-4. Apply the workspace active-byte gate, disk gate, host/profile gate, and
+4. Derive whether the desired set requires large-PDF execution, then apply the
+   workspace active-byte gate, disk gate, and any relevant host/profile gate;
    only then begin vault projection and Docling work.
+
+The resource predicate is defined over the complete post-mutation desired set,
+not only the incoming file:
+
+```text
+large_pdf_execution_required = any(
+    source.media_type == "application/pdf"
+    and source.byte_size > 25 MiB
+    for source in post_mutation_desired_set
+)
+```
+
+This predicate is true when an already-active large PDF will be reconstructed
+because of an unrelated add, replacement, or removal. When it is true, the
+active profile, host-memory, and `MemAvailable` gates below apply before
+reconstruction. Removing the last large PDF makes the predicate false.
 
 For `SOURCE_ADD` and `SOURCE_REPLACE`, the desired post-mutation sum must not
 exceed 90 MiB. The incoming replacement is included in that exact sum. For
 `SOURCE_REMOVE`, the active-byte ceiling is not applied: removal must remain
 available from an oversized legacy workspace so the user can return below the
-supported envelope. Removal still uses the post-mutation value for disk
-admission and fails atomically if storage cannot support the reconstruction.
+supported envelope. A removal that leaves a non-empty desired set still uses
+the post-mutation value for reconstruction disk admission and fails atomically
+if storage cannot support the reconstruction. A removal that produces an empty
+desired set uses the existing empty-workspace transition and does not require
+the reconstruction-specific 5× envelope or its 1 GiB reserve.
 
 An existing workspace that is already above 90 MiB remains readable and
 queryable. New additions or replacements that leave it above 90 MiB fail
@@ -78,10 +98,11 @@ publication state on an admission failure.
 Disk admission is an operational envelope backed by the maximum observed L5
 amplification plus an explicit reserve. It is not an upper-bound proof.
 
-Let `A` be the exact post-mutation active raw-source byte sum. For each
-filesystem containing a mutable Seneca path used by the operation (staging,
-workspace vault, corpus/candidate, chunk, embedding, lexical, manifest, or
-Qdrant roots), calculate:
+For a reconstruction-required mutation with a non-empty desired set, let `A`
+be the exact post-mutation active raw-source byte sum. For each filesystem
+containing a mutable Seneca path used by the operation (staging, workspace
+vault, corpus/candidate, chunk, embedding, lexical, manifest, or Qdrant
+roots), calculate:
 
 ```text
 required_free_bytes(fs) = max(known_lower_bound_bytes(fs), 5 * A) + 1 GiB
@@ -100,6 +121,11 @@ files, and filesystem activity; it is an explicit operational reserve rather
 than a claim derived from L5. The rule uses post-mutation `A`, so a removal
 reduces the target and does not inherit the incoming request size.
 
+For an empty desired set, the existing empty-workspace transition performs
+only its established minimal journal/state writes. It does not apply this
+large-source reconstruction formula. This keeps final-source removal possible
+when less than 1 GiB is free.
+
 The check runs before vault writes, projection, parser execution, or dense
 embedding. It reports no absolute filesystem paths.
 
@@ -112,16 +138,19 @@ qualified_profile: cpu_onnx_fp32_v1
 cuda_large_pdf_claim: none
 ```
 
-Normal CUDA behavior remains unchanged for ordinary supported documents. A
-PDF larger than the generic 25 MiB limit requires the qualified CPU profile;
-if another profile is active, admission fails closed before reconstruction.
+Normal CUDA behavior remains unchanged for ordinary supported documents. When
+`large_pdf_execution_required` is true, the active profile must be the
+qualified CPU profile; if another profile is active, admission fails closed
+before reconstruction. The same desired-set predicate controls the memory
+gate, so a small incoming TXT cannot bypass resource admission while an
+already-active large PDF is reconstructed.
 
 The supported host tier is **32 GB-class**, defined operationally as
 `MemTotal >= 32,000,000,000` bytes. The 33,507,905,536-byte L5 host meets
 that class; the policy does not claim that a machine with only the measured
 14.45 GiB process peak is sufficient.
 
-Before a large-PDF mutation, require:
+When `large_pdf_execution_required` is true, require:
 
 ```text
 MemAvailable >= 19,388,303,360 bytes
@@ -129,16 +158,18 @@ MemAvailable >= 19,388,303,360 bytes
 
 This is `ceil(1.25 × 15,510,642,688)`, a 25% operational margin over the
 largest observed whole-window Q100 confirmation peak. It is an admission
-margin, not a universal memory bound. If physical memory, `MemAvailable`, or
-the platform memory source cannot be read reliably, a PDF above 25 MiB is
-rejected with `large_pdf_host_memory_insufficient`; ordinary <=25 MiB
-document behavior is unchanged.
+margin, not a universal memory bound. When the predicate is true, if physical
+memory, `MemAvailable`, or the platform memory source cannot be read reliably,
+the mutation is rejected with `large_pdf_host_memory_insufficient`; ordinary
+mutations whose desired set contains no >25 MiB PDF are unchanged.
 
 ## Capabilities contract
 
-`GET /v1/capabilities` remains the active/effective runtime authority. The
-implementation adds structured fields without exposing experimental Q250/Q512
-claims:
+`GET /v1/capabilities` reports both the product policy and the current
+runtime's ability to use that policy. It must not advertise a currently usable
+90 MiB limit when the active profile or host cannot pass the large-PDF gates.
+The implementation adds structured fields without exposing experimental
+Q250/Q512 claims:
 
 ```json
 {
@@ -154,23 +185,31 @@ claims:
   },
   "source_limits": {
     "max_bytes_per_source": 26214400,
-    "max_pdf_bytes_per_source": 94371840,
-    "max_active_source_bytes": 94371840
+    "max_active_source_bytes": 104857600
   },
   "large_pdf": {
-    "supported": true,
-    "max_bytes": 94371840,
+    "policy_supported": true,
+    "policy_max_bytes": 94371840,
     "qualified_profile": "cpu_onnx_fp32_v1",
-    "reference_host_memory_bytes": 33507905536
+    "reference_host_memory_bytes": 33507905536,
+    "runtime_eligible": true,
+    "effective_max_bytes": 94371840,
+    "unavailable_reason": null
   }
 }
 ```
 
-`transport_limits` is authoritative for request validation. The structured
-workspace field is authoritative for aggregate active bytes. The existing
-`source_limits.max_active_source_bytes` key is retained as a compatibility
-alias but corrected to the workspace meaning; clients must stop using it as a
-request-envelope fallback. The UI will consume the structured fields.
+`transport_limits` is authoritative for request validation. The new
+`workspace_capacity.max_active_source_bytes` field is authoritative for the
+aggregate active-byte ceiling. The existing
+`source_limits.max_active_source_bytes` field retains its current request-
+envelope alias semantics (`max_total_upload_bytes = 100 MiB`) and is
+deprecated; its meaning is not silently changed. The new large-PDF fields
+are runtime-effective: when the active profile or host fails the gate,
+`runtime_eligible` is false, `effective_max_bytes` is 25 MiB, and
+`unavailable_reason` is one of `profile_not_qualified`,
+`host_memory_insufficient`, or `memory_telemetry_unavailable`. The UI uses
+`large_pdf.effective_max_bytes` and the structured workspace field.
 
 ## UI behavior
 
@@ -237,11 +276,14 @@ Required deterministic validation:
 - TXT/Markdown above 25 MiB remain rejected.
 - Requests above 100 MiB remain rejected.
 - Desired active bytes above 90 MiB fail before vault projection/Docling.
+- An unrelated mutation that reconstructs an active >25 MiB PDF applies the
+  desired-set profile and memory gates; removing the last large PDF does not.
 - `SOURCE_REMOVE` from an oversized legacy workspace remains possible.
-- Disk admission uses post-mutation bytes and the exact 5× + 1 GiB rule.
+- Non-empty reconstruction uses post-mutation bytes and the exact 5× + 1 GiB
+  rule; the empty-workspace transition bypasses that reconstruction reserve.
 - Missing free space or memory fails before parser execution with stable reasons.
-- Capabilities expose media-specific, request, workspace, profile, and host
-  fields without CUDA/Q250/Q512 overclaiming.
+- Capabilities separate policy fields from runtime eligibility, preserve the
+  old request-envelope alias, and expose workspace capacity canonically.
 - UI copy and client checks match capabilities; server checks remain decisive.
 - Existing ordinary profile behavior and production limits outside this policy
   remain unchanged.
@@ -253,14 +295,14 @@ large PDF fixture and no Q25/Q100/Q250/Q512 rerun is authorized or required.
 
 ```yaml
 large_source_capacity: L6
-terminal: LARGE-SOURCE CAPACITY L6 PRODUCT POLICY DESIGN COMPLETE / READY FOR INDEPENDENT REVIEW
+terminal: LARGE-SOURCE CAPACITY L6 PRODUCT POLICY IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
 authority: S16-K-LARGE-SOURCE-CAPACITY-L6-PRODUCT-LIMIT-RESOURCE-ADMISSION-DESIGN-AUTH-001
-base: 4adc1f024a078c19192485cbabfc420c462eb01a
+base: 6476d286e2278292cc5b8f0aac1a6d0692969985
 pdf_limit_bytes: 94371840
 non_pdf_limit_bytes: 26214400
 request_limit_bytes: 104857600
 workspace_active_source_limit_bytes: 94371840
-disk_rule: max(known_lower_bound, 5 * post_active_source_bytes) + 1073741824
+disk_rule: max(known_lower_bound, 5 * A) + 1073741824 for reconstruction-required non-empty desired sets
 memory_rule: MemTotal >= 32000000000 and MemAvailable >= 19388303360
 qualified_profile: cpu_onnx_fp32_v1
 cuda_large_pdf_claim: NONE
