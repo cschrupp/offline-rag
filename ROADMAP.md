@@ -679,9 +679,18 @@ SLICE 15  COMPLETE / ACCEPTED
            L6 accepted implementation subject:
              c4c0f7677783fa40b7b656bc96d8c0f2de0a9923
            L6 implementation current disposition:
-             COMPLETE / INDEPENDENTLY ACCEPTED
-           L6 Human acceptance / promotion:
-             NOT RECORDED
+             COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / PROMOTED / CLOSED
+           L6 Human acceptance:
+             S16-K-LARGE-SOURCE-CAPACITY-L6-HUMAN-ACCEPTANCE-PROMOTION-AUTH-001
+             — ACCEPTED
+           L6 independent acceptance basis:
+             IR-003 — ACCEPT
+           L6 IR-003 governance record:
+             a737e36d47c845b7557399ca956a838cd19086ec
+           L6 promotion:
+             COMPLETE / EXECUTED — PURE FAST-FORWARD
+           L6 promotion authority:
+             S16-K-LARGE-SOURCE-CAPACITY-L6-HUMAN-ACCEPTANCE-PROMOTION-AUTH-001
            Limit policy implementation:
              PDF 90 MiB · non-PDF 25 MiB · request 100 MiB · workspace raw-source 90 MiB
        16K-E → 16K-G:
