@@ -654,8 +654,12 @@ SLICE 15  COMPLETE / ACCEPTED
              6476d286e2278292cc5b8f0aac1a6d0692969985
            L6 corrective state:
              REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
+           L6 independent review IR-002:
+             ACCEPTED
+           L6 accepted design subject:
+             87f56ec07ccf710089eb52b7a3d7efa42ac60799
            L6 implementation:
-             NOT AUTHORIZED
+             NOT HUMAN-AUTHORIZED
            Limit increase: NOT AUTHORIZED
            (25 MiB/file · 100 MiB/request unchanged)
        16K-E → 16K-G:
