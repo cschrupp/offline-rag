@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import shutil
 from datetime import UTC, datetime
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -14,6 +17,7 @@ from offline_rag.app.ingest_upload import spool_local_files
 from offline_rag.app.workspace.lifecycle import SourceUpload, WorkspaceLifecycleService
 from offline_rag.app.workspace.models import SourceVersionRecord, new_empty_workspace
 from offline_rag.app.workspace.projection import materialize_desired_sources
+from offline_rag.app.workspace.upload_spool import spool_workspace_multipart
 from offline_rag.app.workspace.vault import RawSourceVault
 from offline_rag.config.models import ApiSettings, AppSettings, PathSettings
 from offline_rag.core.ids import document_id_from_bytes
@@ -29,6 +33,35 @@ def _settings(tmp_path: Path, **api_overrides: object) -> AppSettings:
     for path in (paths.staging, paths.workspaces, paths.locks, paths.qdrant_storage):
         path.mkdir(parents=True, exist_ok=True)
     return AppSettings(api=ApiSettings(**api_overrides), paths=paths)  # type: ignore[arg-type]
+
+
+def _workspace_multipart(
+    filename: str, payload: bytes, content_type: str | None
+) -> tuple[bytes, bytes]:
+    boundary = b"----l6-workspace"
+    headers = [
+        b'Content-Disposition: form-data; name="files"; filename="'
+        + filename.encode()
+        + b'"'
+    ]
+    if content_type is not None:
+        headers.append(b"Content-Type: " + content_type.encode())
+    body = (
+        b"--"
+        + boundary
+        + b"\r\n"
+        + b"\r\n".join(headers)
+        + b"\r\n\r\n"
+        + payload
+        + b"\r\n--"
+        + boundary
+        + b"--\r\n"
+    )
+    return body, boundary
+
+
+async def _chunks(payload: bytes):
+    yield payload
 
 
 def test_projection_verifies_and_copies_without_byte_apis(
@@ -187,6 +220,116 @@ def test_path_backed_source_add_uses_put_path_without_load_bytes(
     plan = service._plan_add(record, [upload])
     assert plan.desired[0].document_id == document_id_from_bytes(payload)
     assert plan.desired[0].content_hash == hashlib.sha256(payload).hexdigest()
+
+
+def test_path_backed_source_replace_uses_put_path_without_load_bytes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    settings = _settings(tmp_path)
+    vault = RawSourceVault(settings.paths.workspaces)
+    workspace_id = "ws_" + "f" * 32
+    record = new_empty_workspace(title="L2", workspace_id=workspace_id)
+    source_id = "src_" + "1" * 32
+    record = record.model_copy(
+        update={
+            "sources": [
+                SourceVersionRecord(
+                    source_id=source_id,
+                    version=1,
+                    display_name="old.txt",
+                    content_type="text/plain",
+                    byte_size=3,
+                    content_hash="a" * 64,
+                    document_id="doc_" + "a" * 64,
+                    vault_object_id="obj_old",
+                    created_at=datetime.now(tz=UTC),
+                    active_from_revision=1,
+                )
+            ]
+        }
+    )
+    replacement = tmp_path / "replacement.txt"
+    replacement.write_bytes(b"replacement-path")
+    upload = SourceUpload(
+        display_name=replacement.name,
+        spool_path=replacement,
+        content_sha256=hashlib.sha256(replacement.read_bytes()).hexdigest(),
+    )
+    service = object.__new__(WorkspaceLifecycleService)
+    service.vault = vault
+    service.history = SimpleNamespace(next_version=lambda *_args: 2)
+    plan = service._plan_replace(record, source_id, upload)
+    assert plan.pending_vault_writes[0].upload.spool_path == replacement
+
+    def fail_read_bytes(_path: Path) -> bytes:
+        raise AssertionError("path-backed SOURCE_REPLACE must not load whole bytes")
+
+    monkeypatch.setattr(Path, "read_bytes", fail_read_bytes)
+    persisted = service._persist_pending_vault_writes(record, plan)
+    assert persisted.desired[0].content_hash == upload.content_sha256
+
+
+def test_workspace_spool_uses_extension_media_type_for_limits(tmp_path: Path) -> None:
+    settings = _settings(
+        tmp_path,
+        max_bytes_per_document=8,
+        max_pdf_bytes_per_document=16,
+    )
+    spoofed_body, boundary = _workspace_multipart(
+        "notes.txt", b"123456789", "application/pdf"
+    )
+    with pytest.raises(AppError) as spoofed:
+        asyncio.run(
+            spool_workspace_multipart(
+                settings=settings,
+                boundary=boundary,
+                body_chunks=_chunks(spoofed_body),
+                allow_multiple=False,
+            )
+        )
+    assert spoofed.value.details["reason"] == "source_file_too_large"
+
+    pdf_body, boundary = _workspace_multipart("handbook.pdf", b"123456789", None)
+    upload = asyncio.run(
+        spool_workspace_multipart(
+            settings=settings,
+            boundary=boundary,
+            body_chunks=_chunks(pdf_body),
+            allow_multiple=False,
+        )
+    )
+    try:
+        assert upload.files[0].content_type == "application/pdf"
+    finally:
+        upload.cleanup()
+
+
+def test_resource_rejection_happens_before_vault_write(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    settings = _settings(tmp_path, max_active_source_bytes_per_workspace=4)
+    record = new_empty_workspace(title="L6", workspace_id="ws_" + "9" * 32)
+    source = tmp_path / "large.txt"
+    source.write_bytes(b"12345")
+    service = object.__new__(WorkspaceLifecycleService)
+    service.settings = settings
+    service.runtime = SimpleNamespace(resources=None)
+    service.vault = MagicMock()
+    plan = service._plan_add(
+        record,
+        [SourceUpload(display_name=source.name, spool_path=source)],
+    )
+    with pytest.raises(AppError) as exc:
+        service._execute_publication(
+            record,
+            operation_id="op_1",
+            plan=plan,
+            lease=None,
+            control=None,
+        )
+    assert exc.value.details["reason"] == "workspace_source_bytes_exceeded"
+    service.vault.put_path.assert_not_called()
+    service.vault.put_bytes.assert_not_called()
 
 
 def test_spool_duplicate_batch_cleans_entire_staging_root(tmp_path: Path) -> None:

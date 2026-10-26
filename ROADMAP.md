@@ -659,13 +659,17 @@ SLICE 15  COMPLETE / ACCEPTED
            L6 accepted design subject:
              87f56ec07ccf710089eb52b7a3d7efa42ac60799
            L6 implementation:
-             COMPLETE / READY FOR INDEPENDENT REVIEW
+             IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
            L6 implementation authority:
              S16-K-LARGE-SOURCE-CAPACITY-L6-PRODUCT-POLICY-IMPLEMENTATION-AUTH-001
            L6 implementation base:
              cf2027ef9538d1324e17ef4bddf3bfe1d0d0d5bd
            L6 implementation result:
              docs/evidence/large_source_capacity/l6/L6_IMPLEMENTATION_RESULT.md
+           L6 implementation independent review IR-001:
+             REWORK REQUIRED — NARROW IMPLEMENTATION CORRECTIVE
+           L6 IR-001 corrective base:
+             0688af96490047980683a7ca3eaa9d979a4db6cc
            Limit policy implementation:
              PDF 90 MiB · non-PDF 25 MiB · request 100 MiB · workspace raw-source 90 MiB
        16K-E → 16K-G:

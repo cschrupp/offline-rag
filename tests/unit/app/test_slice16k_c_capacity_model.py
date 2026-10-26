@@ -102,13 +102,28 @@ def test_remove_not_blocked_by_source_capacity(tmp_path: Path) -> None:
 
 def test_workspace_source_bytes_uses_complete_desired_set(tmp_path: Path) -> None:
     settings = _settings(tmp_path, max_active_source_bytes_per_workspace=100)
-    enforce_workspace_active_source_bytes(settings, [_source("a", byte_size=60)])
+    enforce_workspace_active_source_bytes(
+        settings,
+        [_source("a", byte_size=60)],
+        mutation_kind=PublicationMutationKind.SOURCE_ADD,
+    )
     with pytest.raises(AppError) as exc:
         enforce_workspace_active_source_bytes(
-            settings, [_source("a", byte_size=60), _source("b", byte_size=41)]
+            settings,
+            [_source("a", byte_size=60), _source("b", byte_size=41)],
+            mutation_kind=PublicationMutationKind.SOURCE_ADD,
         )
     assert exc.value.details is not None
     assert exc.value.details["reason"] == "workspace_source_bytes_exceeded"
+
+
+def test_source_remove_can_reduce_oversized_legacy_workspace(tmp_path: Path) -> None:
+    settings = _settings(tmp_path, max_active_source_bytes_per_workspace=100)
+    enforce_workspace_active_source_bytes(
+        settings,
+        [_source("remaining", byte_size=130)],
+        mutation_kind=PublicationMutationKind.SOURCE_REMOVE,
+    )
 
 
 def test_pdf_transport_uses_pdf_limit(tmp_path: Path) -> None:

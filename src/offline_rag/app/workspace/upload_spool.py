@@ -215,11 +215,10 @@ async def spool_workspace_multipart(
                 )
             )
             return
-        ctype = current_headers.get(b"content-type")
         current_filename = basename
-        current_type = (
-            ctype.decode("latin-1", errors="replace") if ctype is not None else None
-        )
+        # The validated extension is the authoritative media classification.
+        # Client MIME headers remain transport metadata and cannot change policy.
+        current_type = SUPPORTED_EXTENSIONS[suffix]
         if len(files) >= max_files:
             _fail(
                 AppError(

@@ -94,9 +94,11 @@ def large_pdf_runtime_eligibility(
 def enforce_workspace_active_source_bytes(
     settings: AppSettings,
     desired: Sequence[SourceVersionRecord],
+    *,
+    mutation_kind: PublicationMutationKind = PublicationMutationKind.SOURCE_ADD,
 ) -> None:
     """Enforce the complete post-mutation raw-byte workspace ceiling."""
-    if not desired:
+    if mutation_kind is PublicationMutationKind.SOURCE_REMOVE or not desired:
         return
     ceiling = int(settings.api.max_active_source_bytes_per_workspace)
     observed = desired_active_source_bytes(desired)

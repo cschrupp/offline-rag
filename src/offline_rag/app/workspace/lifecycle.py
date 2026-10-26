@@ -22,7 +22,7 @@ no queue behind it (S16-D15).
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -157,6 +157,15 @@ class _MutationPlan:
     lineage: LineageDelta
     source_id: str
     source_version: int | None
+    pending_vault_writes: tuple[_PendingVaultWrite, ...] = ()
+
+
+@dataclass(frozen=True)
+class _PendingVaultWrite:
+    source_id: str
+    version: int
+    upload: SourceUpload
+    expected_content_hash: str
 
 
 def _conflict(workspace_id: str, reason: str) -> AppError:
@@ -910,6 +919,77 @@ class WorkspaceLifecycleService:
             active_from_snapshot_id=None,
         )
 
+    def _prospective_source_version(
+        self,
+        record: WorkspaceRecord,
+        *,
+        source_id: str,
+        version: int,
+        upload: SourceUpload,
+        content_hash: str,
+    ) -> SourceVersionRecord:
+        """Build desired-set metadata before any durable vault write."""
+        content_type = upload.content_type
+        if content_type is None:
+            content_type = SUPPORTED_EXTENSIONS.get(
+                Path(upload.display_name).suffix.lower()
+            )
+        if upload.spool_path is not None:
+            try:
+                byte_size = upload.spool_path.stat().st_size
+            except OSError as exc:
+                raise AppError(
+                    ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+                    details=SafeErrorDetails(reason="upload_spool_missing"),
+                ) from exc
+        elif upload.content is not None:
+            byte_size = len(upload.content)
+        else:
+            raise AppError(
+                ErrorCode.REQUEST_INVALID,
+                details=SafeErrorDetails(reason="upload_bytes_missing"),
+            )
+        return SourceVersionRecord(
+            source_id=source_id,
+            version=version,
+            display_name=upload.display_name,
+            content_type=content_type,
+            byte_size=byte_size,
+            content_hash=content_hash,
+            document_id=f"doc_{content_hash}",
+            vault_object_id=f"planned_{source_id}",
+            active=True,
+            created_at=utc_now(),
+            active_from_revision=advance_revision(record.revision),
+            active_from_snapshot_id=None,
+        )
+
+    def _persist_pending_vault_writes(
+        self,
+        record: WorkspaceRecord,
+        plan: _MutationPlan,
+    ) -> _MutationPlan:
+        """Persist admitted uploads and replace prospective records with vault metadata."""
+        if not plan.pending_vault_writes:
+            return plan
+        persisted_by_source: dict[str, SourceVersionRecord] = {}
+        for pending in plan.pending_vault_writes:
+            persisted_by_source[pending.source_id] = self._vault_source_version(
+                record,
+                source_id=pending.source_id,
+                version=pending.version,
+                upload=pending.upload,
+                expected_content_hash=pending.expected_content_hash,
+                use_path=pending.upload.spool_path is not None,
+            )
+        return replace(
+            plan,
+            desired=[
+                persisted_by_source.get(item.source_id, item)
+                for item in plan.desired
+            ],
+        )
+
     def _plan_add(
         self, record: WorkspaceRecord, uploads: Sequence[SourceUpload]
     ) -> _MutationPlan:
@@ -946,13 +1026,12 @@ class WorkspaceLifecycleService:
             if primary_id is None:
                 primary_id = source_id
             added.append(
-                self._vault_source_version(
+                self._prospective_source_version(
                     record,
                     source_id=source_id,
                     version=1,
                     upload=upload,
-                    expected_content_hash=content_hash,
-                    use_path=True,
+                    content_hash=content_hash,
                 )
             )
             appended.append(SourceVersionRef(source_id=source_id, version=1))
@@ -963,6 +1042,19 @@ class WorkspaceLifecycleService:
             lineage=LineageDelta(appended=appended),
             source_id=primary_id,
             source_version=1,
+            pending_vault_writes=tuple(
+                _PendingVaultWrite(
+                    source_id=source_id,
+                    version=1,
+                    upload=upload,
+                    expected_content_hash=content_hash,
+                )
+                for (upload, content_hash, _document_id), source_id in zip(
+                    prepared,
+                    [item.source_id for item in added],
+                    strict=True,
+                )
+            ),
         )
 
     def _plan_replace(
@@ -975,8 +1067,13 @@ class WorkspaceLifecycleService:
             current.version + 1,
             self.history.next_version(record.workspace_id, source_id),
         )
-        replacement = self._vault_source_version(
-            record, source_id=source_id, version=next_version, upload=upload
+        content_hash = upload.digest()
+        replacement = self._prospective_source_version(
+            record,
+            source_id=source_id,
+            version=next_version,
+            upload=upload,
+            content_hash=content_hash,
         )
         remaining = [
             item for item in self._active_sources(record) if item.source_id != source_id
@@ -992,6 +1089,14 @@ class WorkspaceLifecycleService:
             ),
             source_id=source_id,
             source_version=next_version,
+            pending_vault_writes=(
+                _PendingVaultWrite(
+                    source_id=source_id,
+                    version=next_version,
+                    upload=upload,
+                    expected_content_hash=content_hash,
+                ),
+            ),
         )
 
     def _plan_remove(self, record: WorkspaceRecord, source_id: str) -> _MutationPlan:
@@ -1117,6 +1222,36 @@ class WorkspaceLifecycleService:
         lease: WorkspaceMutationLease,
         control: OperationHandle | None,
     ) -> ManagedOperationRecord:
+        from offline_rag.app.workspace.capacity import (
+            enforce_large_pdf_runtime,
+            enforce_reconstruction_disk_capacity,
+            enforce_workspace_active_source_bytes,
+            enforce_workspace_active_source_capacity,
+            validate_desired_set_integrity,
+        )
+
+        # Admit the complete prospective desired set before any vault write.
+        enforce_workspace_active_source_capacity(
+            self.settings,
+            plan.desired,
+            mutation_kind=plan.mutation_kind,
+        )
+        validate_desired_set_integrity(plan.desired)
+        enforce_workspace_active_source_bytes(
+            self.settings,
+            plan.desired,
+            mutation_kind=plan.mutation_kind,
+        )
+        embedder = getattr(getattr(self.runtime, "resources", None), "embedder", None)
+        profile_id = getattr(embedder, "profile_id", None)
+        enforce_large_pdf_runtime(
+            self.settings,
+            plan.desired,
+            profile_id=profile_id,
+        )
+        enforce_reconstruction_disk_capacity(self.settings, plan.desired)
+
+        plan = self._persist_pending_vault_writes(record, plan)
         workspace_id = record.workspace_id
         self.publication.begin(
             workspace_id,
@@ -1140,31 +1275,6 @@ class WorkspaceLifecycleService:
             operation_id=operation_id,
             lease=lease,
         )
-
-        from offline_rag.app.workspace.capacity import (
-            enforce_large_pdf_runtime,
-            enforce_reconstruction_disk_capacity,
-            enforce_workspace_active_source_bytes,
-            enforce_workspace_active_source_capacity,
-            validate_desired_set_integrity,
-        )
-
-        # 16K-C: workspace source capacity before vault rebuild / dense work.
-        enforce_workspace_active_source_capacity(
-            self.settings,
-            plan.desired,
-            mutation_kind=plan.mutation_kind,
-        )
-        validate_desired_set_integrity(plan.desired)
-        enforce_workspace_active_source_bytes(self.settings, plan.desired)
-        embedder = getattr(getattr(self.runtime, "resources", None), "embedder", None)
-        profile_id = getattr(embedder, "profile_id", None)
-        enforce_large_pdf_runtime(
-            self.settings,
-            plan.desired,
-            profile_id=profile_id,
-        )
-        enforce_reconstruction_disk_capacity(self.settings, plan.desired)
 
         materialized = materialize_desired_sources(
             self.settings,

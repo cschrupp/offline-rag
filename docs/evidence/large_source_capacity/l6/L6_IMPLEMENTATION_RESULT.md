@@ -7,6 +7,7 @@
 - Accepted design subject: `87f56ec07ccf710089eb52b7a3d7efa42ac60799`
 - Branch: `implementation/16k-large-source-capacity-l6-product-policy`
 - Candidate identity: the containing implementation commit (this artifact does not self-reference its own SHA)
+- Corrective review base: `0688af96490047980683a7ca3eaa9d979a4db6cc`
 
 ## Implemented policy
 
@@ -29,6 +30,15 @@
 - Workspace UI validation and copy consume the effective PDF limit and workspace raw-byte ceiling.
 - No parser, ingestion, scientific qualification, or L5 evidence bytes were changed.
 
+## IR-001 corrective implementation
+
+The narrow corrective closes all four independent-review findings:
+
+- `SOURCE_REMOVE` is exempt from the aggregate workspace-byte ceiling while retaining integrity, runtime, and reconstruction-disk admission for non-empty desired sets.
+- Workspace multipart admission derives media type from the validated filename extension; client MIME headers cannot grant the PDF allowance.
+- Desired-set resource admission now runs before any vault write, so byte, profile/memory, and disk rejection cannot create durable raw-source objects.
+- Path-backed replacements use `put_path` with the established content hash; the whole-file `load_bytes` path remains only for bounded in-memory callers.
+
 ## Admission and error semantics
 
 Admission order is desired-set integrity, active-source count, active raw-source bytes, large-PDF profile/memory eligibility, and reconstruction disk reserve, followed by projection/spooling and the existing full-replace ingest. Removal to an empty desired set continues through the empty-transition path without reconstruction-specific admission. Stable reasons are `source_file_too_large`, `request_too_large`, `workspace_source_bytes_exceeded`, `large_pdf_profile_not_qualified`, `large_pdf_host_memory_insufficient`, and `storage_insufficient`.
@@ -37,7 +47,7 @@ Admission order is desired-set integrity, active-source count, active raw-source
 
 - `uv run pytest -q tests/unit/app/test_slice16k_c_capacity_model.py tests/unit/app/test_slice16k_l2_bounded_workspace_path.py tests/unit/app/test_slice16d_a_settings_capabilities.py -k 'not capabilities_endpoint and not capabilities'` — **25 passed** (one existing Starlette deprecation warning).
 - `uv run pytest -q tests/unit/app/test_slice16k_c_capacity_model.py` — **20 passed**.
-- `uv run pytest -q tests/unit/app/test_slice16k_l2_bounded_workspace_path.py` — **7 passed**.
+- `uv run pytest -q tests/unit/app/test_slice16k_l2_bounded_workspace_path.py` — **9 passed**.
 - `uv run pytest -q tests/unit/app/test_slice15a_foundation.py -k 'settings or defaults'` — **1 passed**.
 - Ruff on all changed Python sources/tests — **passed**.
 - `git diff --check` — **passed**.
@@ -45,6 +55,7 @@ Admission order is desired-set integrity, active-source count, active raw-source
 - Full frontend `npm run typecheck` remains blocked by one pre-existing unrelated cast error in `src/test/p4_human_uat_duplicate_message.test.ts`; no L6 file is involved.
 - Full frontend `npm run lint` remains blocked by four pre-existing React hook errors in Gold Lab files; no L6 file is involved.
 - The existing capabilities endpoint integration test did not complete within the bounded local run because its pre-existing runtime/TestClient setup remains long-running; no scientific or qualification execution was performed.
+- Corrective focused suites after IR-001 changes: **31 passed** across capacity and bounded workspace path tests, including removal recovery, MIME classification, pre-vault rejection, and path-backed replacement regressions.
 
 ## Scientific and product boundary
 
@@ -57,6 +68,6 @@ Admission order is desired-set integrity, active-source count, active raw-source
 
 ## Review readiness
 
-The bounded implementation is complete and ready for independent review. The final candidate commit contains this canonical result artifact and the ROADMAP pointer. Tracked working-tree status is expected to be clean after the final commit.
+The bounded corrective implementation is complete and ready for independent re-review. The final candidate commit contains this canonical result artifact and the ROADMAP pointer. Tracked working-tree status is expected to be clean after the final commit.
 
-`LARGE-SOURCE CAPACITY L6 PRODUCT POLICY IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW`
+`LARGE-SOURCE CAPACITY L6 PRODUCT POLICY IR-001 IMPLEMENTATION REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW`
