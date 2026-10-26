@@ -130,6 +130,17 @@ export type Capabilities = {
   workspace_capacity?: {
     max_active_sources: number | null;
     max_searchable_child_chunks: number | null;
+    max_active_source_bytes?: number;
+  };
+  large_pdf?: {
+    policy_supported: boolean;
+    policy_max_bytes: number;
+    qualified_profile: string;
+    reference_host_memory_bytes: number;
+    reference_host_available_memory_bytes: number;
+    runtime_eligible: boolean;
+    effective_max_bytes: number;
+    unavailable_reason: string | null;
   };
   /** Legacy projection: bytes are transport; max_active_sources is workspace or null. */
   source_limits: {

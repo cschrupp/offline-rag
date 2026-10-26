@@ -133,6 +133,11 @@ function limitsFromCapabilities(
     workspace_capacity?: {
       max_active_sources: number | null;
       max_searchable_child_chunks: number | null;
+      max_active_source_bytes?: number;
+    };
+    large_pdf?: {
+      effective_max_bytes: number;
+      runtime_eligible: boolean;
     };
     source_limits: {
       max_active_sources: number | null;
@@ -149,12 +154,20 @@ function limitsFromCapabilities(
     maxBytesPerUploadedFile:
       transport?.max_bytes_per_uploaded_file ??
       caps.source_limits.max_bytes_per_source,
+    maxBytesPerPdfSource:
+      caps.large_pdf?.effective_max_bytes ??
+      transport?.max_bytes_per_uploaded_file ??
+      caps.source_limits.max_bytes_per_source,
     maxBytesPerUploadRequest:
       transport?.max_bytes_per_upload_request ??
       caps.source_limits.max_active_source_bytes,
     maxActiveSources:
       caps.workspace_capacity?.max_active_sources ??
       caps.source_limits.max_active_sources,
+    maxActiveSourceBytes:
+      caps.workspace_capacity?.max_active_source_bytes ??
+      caps.source_limits.max_active_source_bytes,
+    largePdfRuntimeEligible: caps.large_pdf?.runtime_eligible ?? false,
   };
 }
 
@@ -941,13 +954,20 @@ export function WorkspacePage() {
       return `At most ${limits.maxFilesPerUploadRequest} files may be uploaded in one request.`;
     }
     for (const file of files) {
-      if (file.size > limits.maxBytesPerUploadedFile) {
-        return `${file.name} exceeds the ${formatMiB(limits.maxBytesPerUploadedFile)} MiB per-file upload limit.`;
+      const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+      const fileLimit = isPdf
+        ? limits.maxBytesPerPdfSource
+        : limits.maxBytesPerUploadedFile;
+      if (file.size > fileLimit) {
+        return `${file.name} exceeds the ${formatMiB(fileLimit)} MiB per-file upload limit.`;
       }
     }
     const incomingBytes = files.reduce((sum, file) => sum + file.size, 0);
     if (incomingBytes > limits.maxBytesPerUploadRequest) {
       return `Selected files exceed the ${formatMiB(limits.maxBytesPerUploadRequest)} MiB per-request upload limit.`;
+    }
+    if (usedBytes + incomingBytes > limits.maxActiveSourceBytes) {
+      return `Selected files exceed the ${formatMiB(limits.maxActiveSourceBytes)} MiB workspace source limit.`;
     }
     // Workspace capacity: independent of request-byte envelope when configured.
     if (
@@ -1584,7 +1604,7 @@ export function WorkspacePage() {
             />
             <p className="muted">
               {limits
-                ? `Maximum upload file size: ${formatMiB(limits.maxBytesPerUploadedFile)} MiB`
+                ? `Maximum upload file size: ${formatMiB(limits.maxBytesPerPdfSource)} MiB for PDF, ${formatMiB(limits.maxBytesPerUploadedFile)} MiB for other files`
                 : "Maximum file size: determined by the server"}
             </p>
           </div>
@@ -1761,9 +1781,25 @@ export function WorkspacePage() {
               setReplaceError("Choose exactly one file.");
               return;
             }
-            if (limits && replaceFile.size > limits.maxBytesPerUploadedFile) {
+            const replaceIsPdf =
+              replaceFile.type === "application/pdf" || /\.pdf$/i.test(replaceFile.name);
+            const replaceLimit = replaceIsPdf
+              ? limits?.maxBytesPerPdfSource
+              : limits?.maxBytesPerUploadedFile;
+            if (replaceLimit != null && replaceFile.size > replaceLimit) {
               setReplaceError(
-                `File exceeds the ${formatMiB(limits.maxBytesPerUploadedFile)} MiB per-file upload limit.`,
+                `File exceeds the ${formatMiB(replaceLimit)} MiB per-file upload limit.`,
+              );
+              return;
+            }
+            if (
+              limits &&
+              replaceTarget &&
+              usedBytes - replaceTarget.byte_size + replaceFile.size >
+                limits.maxActiveSourceBytes
+            ) {
+              setReplaceError(
+                `Replacement exceeds the ${formatMiB(limits.maxActiveSourceBytes)} MiB workspace source limit.`,
               );
               return;
             }
@@ -1786,7 +1822,7 @@ export function WorkspacePage() {
             {limits ? (
               <p className="muted">
                 Maximum upload file size:{" "}
-                {formatMiB(limits.maxBytesPerUploadedFile)} MiB
+                {formatMiB(limits.maxBytesPerPdfSource)} MiB for PDF, {formatMiB(limits.maxBytesPerUploadedFile)} MiB for other files
               </p>
             ) : null}
           </div>

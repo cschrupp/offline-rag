@@ -39,7 +39,9 @@ api:
   # Transport / resource safety (HTTP upload request envelope).
   max_files_per_ingest: 32
   max_bytes_per_document: 26214400
+  max_pdf_bytes_per_document: 94371840
   max_total_upload_bytes: 104857600
+  max_active_source_bytes_per_workspace: 94371840
   # Workspace / search workload ceilings (16K-C). Unset = no product-supported
   # numeric claim yet; configure via env/product settings for tests/benchmarks.
   # max_active_sources_per_workspace: null

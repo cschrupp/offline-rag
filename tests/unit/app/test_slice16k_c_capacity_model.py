@@ -10,15 +10,19 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from offline_rag.app.errors import AppError, ErrorCode, SafeErrorDetails
-from offline_rag.app.ingest_upload import spool_local_files
+from offline_rag.app.ingest_upload import cleanup_staging, spool_local_files
 from offline_rag.app.workspace.capacity import (
+    enforce_large_pdf_runtime,
+    enforce_reconstruction_disk_capacity,
     enforce_searchable_workload_capacity,
+    enforce_workspace_active_source_bytes,
     enforce_workspace_active_source_capacity,
+    large_pdf_runtime_eligibility,
     validate_desired_set_integrity,
 )
 from offline_rag.app.workspace.models import SourceVersionRecord
-from offline_rag.app.workspace.publication_journal import PublicationMutationKind
 from offline_rag.app.workspace.projection import enforce_desired_set_limits
+from offline_rag.app.workspace.publication_journal import PublicationMutationKind
 from offline_rag.config.models import ApiSettings, AppSettings, PathSettings
 
 
@@ -65,7 +69,9 @@ def test_transport_defaults_unchanged() -> None:
     api = ApiSettings()
     assert api.max_files_per_ingest == 32
     assert api.max_bytes_per_document == 26_214_400
+    assert api.max_pdf_bytes_per_document == 94_371_840
     assert api.max_total_upload_bytes == 104_857_600
+    assert api.max_active_source_bytes_per_workspace == 94_371_840
     assert api.max_active_sources_per_workspace is None
     assert api.max_searchable_child_chunks_per_workspace is None
 
@@ -91,6 +97,64 @@ def test_remove_not_blocked_by_source_capacity(tmp_path: Path) -> None:
         settings,
         desired,
         mutation_kind=PublicationMutationKind.SOURCE_REMOVE,
+    )
+
+
+def test_workspace_source_bytes_uses_complete_desired_set(tmp_path: Path) -> None:
+    settings = _settings(tmp_path, max_active_source_bytes_per_workspace=100)
+    enforce_workspace_active_source_bytes(settings, [_source("a", byte_size=60)])
+    with pytest.raises(AppError) as exc:
+        enforce_workspace_active_source_bytes(
+            settings, [_source("a", byte_size=60), _source("b", byte_size=41)]
+        )
+    assert exc.value.details is not None
+    assert exc.value.details["reason"] == "workspace_source_bytes_exceeded"
+
+
+def test_pdf_transport_uses_pdf_limit(tmp_path: Path) -> None:
+    settings = _settings(
+        tmp_path,
+        max_bytes_per_document=8,
+        max_pdf_bytes_per_document=16,
+    )
+    pdf = tmp_path / "manual.pdf"
+    pdf.write_bytes(b"123456789")
+    upload = spool_local_files(
+        settings=settings,
+        corpus_name="manuals",
+        files=[(pdf, pdf.name)],
+    )
+    assert upload.files[0].size_bytes == 9
+    cleanup_staging(upload.staging_root)
+
+
+def test_large_pdf_runtime_requires_qualified_profile_and_memory() -> None:
+    settings = AppSettings()
+    assert large_pdf_runtime_eligibility(
+        settings,
+        profile_id="cuda_fp16_v1",
+        memory=(64_000_000_000, 64_000_000_000),
+    ) == (False, "profile_not_qualified")
+    assert large_pdf_runtime_eligibility(
+        settings,
+        profile_id="cpu_onnx_fp32_v1",
+        memory=(32_000_000_000, 1),
+    ) == (False, "host_memory_insufficient")
+
+
+def test_large_pdf_admission_and_empty_disk_transition(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    pdf = _source("pdf", byte_size=26_214_401).model_copy(
+        update={"content_type": "application/pdf"}
+    )
+    with pytest.raises(AppError) as exc:
+        enforce_large_pdf_runtime(settings, [pdf], profile_id="cuda_fp16_v1")
+    assert exc.value.details is not None
+    assert exc.value.details["reason"] == "large_pdf_profile_not_qualified"
+    enforce_reconstruction_disk_capacity(
+        settings,
+        [],
+        disk_usage=lambda _path: type("Usage", (), {"free": 0})(),
     )
 
 
@@ -404,6 +468,9 @@ def test_capabilities_separate_transport_and_workspace(tmp_path: Path) -> None:
     assert body["transport_limits"]["max_bytes_per_upload_request"] == 104_857_600
     assert body["workspace_capacity"]["max_active_sources"] == 7
     assert body["workspace_capacity"]["max_searchable_child_chunks"] == 100
+    assert body["workspace_capacity"]["max_active_source_bytes"] == 94_371_840
+    assert body["large_pdf"]["effective_max_bytes"] == 26_214_400
+    assert body["large_pdf"]["runtime_eligible"] is False
     assert body["source_limits"]["max_active_sources"] == 7
     assert body["source_limits"]["max_bytes_per_source"] == 26_214_400
 
@@ -413,4 +480,5 @@ def test_capabilities_null_workspace_when_unset(tmp_path: Path) -> None:
     body = _capabilities_body(settings)
     assert body["workspace_capacity"]["max_active_sources"] is None
     assert body["workspace_capacity"]["max_searchable_child_chunks"] is None
+    assert body["workspace_capacity"]["max_active_source_bytes"] == 94_371_840
     assert body["source_limits"]["max_active_sources"] is None

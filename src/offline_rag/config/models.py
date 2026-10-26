@@ -67,12 +67,14 @@ class ApiSettings(BaseModel):
 
     Transport / resource safety (HTTP upload request envelope):
     ``max_files_per_ingest``, ``max_bytes_per_document``,
-    ``max_total_upload_bytes``. These apply to incoming upload requests only.
+    ``max_pdf_bytes_per_document``, ``max_total_upload_bytes``. These apply to
+    incoming upload requests only.
 
     Workspace / search workload capacity (16K-C):
     ``max_active_sources_per_workspace``,
-    ``max_searchable_child_chunks_per_workspace``. Optional; unset means no
-    product-supported ceiling is claimed yet (evidence-driven under 16K-F).
+    ``max_active_source_bytes_per_workspace``,
+    ``max_searchable_child_chunks_per_workspace``. Count/search ceilings remain
+    optional; the byte ceiling is the accepted 90 MiB workspace envelope.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -81,7 +83,9 @@ class ApiSettings(BaseModel):
     # Transport / resource safety — per incoming upload request.
     max_files_per_ingest: PositiveInt = 32
     max_bytes_per_document: PositiveInt = 26_214_400
+    max_pdf_bytes_per_document: PositiveInt = 94_371_840
     max_total_upload_bytes: PositiveInt = 104_857_600
+    max_active_source_bytes_per_workspace: PositiveInt = 94_371_840
     # Workspace / search workload — independent of HTTP request envelope.
     max_active_sources_per_workspace: PositiveInt | None = None
     max_searchable_child_chunks_per_workspace: PositiveInt | None = None

@@ -117,7 +117,9 @@ def test_base_yaml_exposes_capacity_defaults() -> None:
     api = payload["api"]
     assert api["max_files_per_ingest"] == 32
     assert api["max_bytes_per_document"] == 26_214_400
+    assert api["max_pdf_bytes_per_document"] == 94_371_840
     assert api["max_total_upload_bytes"] == 104_857_600
+    assert api["max_active_source_bytes_per_workspace"] == 94_371_840
     assert payload["paths"]["product_settings"] == "data/settings"
 
 
@@ -128,12 +130,16 @@ def test_env_capacity_overrides(tmp_path: Path) -> None:
             "OFFLINE_RAG_DATA_DIR": str(tmp_path / "data"),
             "OFFLINE_RAG_MAX_FILES_PER_INGEST": "7",
             "OFFLINE_RAG_MAX_BYTES_PER_DOCUMENT": "1048576",
+            "OFFLINE_RAG_MAX_PDF_BYTES_PER_DOCUMENT": "8388608",
             "OFFLINE_RAG_MAX_TOTAL_UPLOAD_BYTES": "2097152",
+            "OFFLINE_RAG_MAX_ACTIVE_SOURCE_BYTES_PER_WORKSPACE": "16777216",
         },
     )
     assert settings.api.max_files_per_ingest == 7
     assert settings.api.max_bytes_per_document == 1_048_576
+    assert settings.api.max_pdf_bytes_per_document == 8_388_608
     assert settings.api.max_total_upload_bytes == 2_097_152
+    assert settings.api.max_active_source_bytes_per_workspace == 16_777_216
 
 
 def test_product_settings_precede_yaml_but_lose_to_env(tmp_path: Path) -> None:

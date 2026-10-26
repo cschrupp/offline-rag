@@ -19,6 +19,7 @@ from python_multipart.multipart import MultipartParser, parse_options_header
 
 from offline_rag.app.errors import AppError, ErrorCode, SafeErrorDetails
 from offline_rag.app.ingest_upload import client_basename
+from offline_rag.app.source_limits import source_limit_bytes
 from offline_rag.config.models import AppSettings
 from offline_rag.ingestion.base import SUPPORTED_EXTENSIONS
 from offline_rag.ingestion.io import atomic_write_text
@@ -87,7 +88,6 @@ async def spool_workspace_multipart(
     files_root.mkdir(parents=True, exist_ok=True)
 
     max_files = int(settings.api.max_files_per_ingest)
-    max_doc = int(settings.api.max_bytes_per_document)
     max_total = int(settings.api.max_total_upload_bytes)
 
     files: list[SpooledWorkspaceFile] = []
@@ -113,17 +113,17 @@ async def spool_workspace_multipart(
 
         def write(self, data: bytes) -> None:
             nonlocal total_file_bytes
-            remaining_doc = max_doc - self.size
+            remaining_doc = source_limit_bytes(settings, self.media_type) - self.size
             if remaining_doc <= 0 or len(data) > remaining_doc:
                 raise AppError(
                     ErrorCode.DOCUMENT_INVALID,
-                    details=SafeErrorDetails(reason="document_too_large"),
+                    details=SafeErrorDetails(reason="source_file_too_large"),
                 )
             remaining_total = max_total - total_file_bytes
             if len(data) > remaining_total:
                 raise AppError(
                     ErrorCode.REQUEST_INVALID,
-                    details=SafeErrorDetails(reason="upload_too_large"),
+                    details=SafeErrorDetails(reason="request_too_large"),
                 )
             self.handle.write(data)
             self.digest.update(data)

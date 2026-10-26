@@ -872,12 +872,15 @@ class WorkspaceLifecycleService:
         use_path: bool = False,
     ) -> SourceVersionRecord:
         """Persist raw bytes and build the lineage event for this version."""
+        content_type = upload.content_type
+        if content_type is None:
+            content_type = SUPPORTED_EXTENSIONS.get(Path(upload.display_name).suffix.lower())
         if use_path and upload.spool_path is not None:
             meta = self.vault.put_path(
                 record.workspace_id,
                 upload.spool_path,
                 display_name=upload.display_name,
-                content_type=upload.content_type,
+                content_type=content_type,
                 expected_content_hash=expected_content_hash,
             )
             document_id = f"doc_{meta.content_hash}"
@@ -887,7 +890,7 @@ class WorkspaceLifecycleService:
                 record.workspace_id,
                 data,
                 display_name=upload.display_name,
-                content_type=upload.content_type,
+                content_type=content_type,
             )
             document_id = document_id_for_content(data)
         return SourceVersionRecord(
@@ -1139,7 +1142,11 @@ class WorkspaceLifecycleService:
         )
 
         from offline_rag.app.workspace.capacity import (
+            enforce_large_pdf_runtime,
+            enforce_reconstruction_disk_capacity,
+            enforce_workspace_active_source_bytes,
             enforce_workspace_active_source_capacity,
+            validate_desired_set_integrity,
         )
 
         # 16K-C: workspace source capacity before vault rebuild / dense work.
@@ -1148,6 +1155,16 @@ class WorkspaceLifecycleService:
             plan.desired,
             mutation_kind=plan.mutation_kind,
         )
+        validate_desired_set_integrity(plan.desired)
+        enforce_workspace_active_source_bytes(self.settings, plan.desired)
+        embedder = getattr(getattr(self.runtime, "resources", None), "embedder", None)
+        profile_id = getattr(embedder, "profile_id", None)
+        enforce_large_pdf_runtime(
+            self.settings,
+            plan.desired,
+            profile_id=profile_id,
+        )
+        enforce_reconstruction_disk_capacity(self.settings, plan.desired)
 
         materialized = materialize_desired_sources(
             self.settings,

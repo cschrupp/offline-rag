@@ -71,7 +71,19 @@ export function capabilities(
     workspace_capacity: {
       max_active_sources: null,
       max_searchable_child_chunks: null,
+      max_active_source_bytes: 94_371_840,
       ...(partial.workspace_capacity ?? {}),
+    },
+    large_pdf: {
+      policy_supported: true,
+      policy_max_bytes: 94_371_840,
+      qualified_profile: "cpu_onnx_fp32_v1",
+      reference_host_memory_bytes: 32_000_000_000,
+      reference_host_available_memory_bytes: 19_388_303_360,
+      runtime_eligible: false,
+      effective_max_bytes: 26_214_400,
+      unavailable_reason: "profile_not_qualified",
+      ...(partial.large_pdf ?? {}),
     },
     source_limits: {
       max_active_sources: null,

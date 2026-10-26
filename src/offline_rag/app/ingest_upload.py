@@ -20,6 +20,7 @@ from offline_rag.app.errors import (
     SafeErrorDetails,
     document_identity_conflict_error,
 )
+from offline_rag.app.source_limits import source_limit_bytes
 from offline_rag.config.models import AppSettings
 from offline_rag.ingestion.base import SUPPORTED_EXTENSIONS
 
@@ -187,17 +188,17 @@ async def spool_multipart_upload(
 
         def write(self, data: bytes) -> None:
             nonlocal total_file_bytes
-            remaining_doc = settings.api.max_bytes_per_document - self.size
+            remaining_doc = source_limit_bytes(settings, self.media_type) - self.size
             if remaining_doc <= 0 or len(data) > remaining_doc:
                 raise AppError(
                     ErrorCode.DOCUMENT_INVALID,
-                    details=SafeErrorDetails(reason="document_too_large"),
+                    details=SafeErrorDetails(reason="source_file_too_large"),
                 )
             remaining_total = settings.api.max_total_upload_bytes - total_file_bytes
             if len(data) > remaining_total:
                 raise AppError(
                     ErrorCode.REQUEST_INVALID,
-                    details=SafeErrorDetails(reason="upload_too_large"),
+                    details=SafeErrorDetails(reason="request_too_large"),
                 )
             self.handle.write(data)
             self.digest.update(data)
@@ -550,18 +551,22 @@ def spool_local_files(
                         if not chunk:
                             break
                         next_size = size + len(chunk)
-                        if apply_transport_limits and next_size > settings.api.max_bytes_per_document:
+                        media_type = SUPPORTED_EXTENSIONS[extension]
+                        if (
+                            apply_transport_limits
+                            and next_size > source_limit_bytes(settings, media_type)
+                        ):
                             raise AppError(
                                 ErrorCode.DOCUMENT_INVALID,
-                                details=SafeErrorDetails(reason="document_too_large"),
+                                details=SafeErrorDetails(reason="source_file_too_large"),
                             )
                         if (
                             apply_transport_limits
-                            and total_file_bytes + next_size > settings.api.max_total_upload_bytes
+                            and total_file_bytes + len(chunk) > settings.api.max_total_upload_bytes
                         ):
                             raise AppError(
                                 ErrorCode.REQUEST_INVALID,
-                                details=SafeErrorDetails(reason="upload_too_large"),
+                                details=SafeErrorDetails(reason="request_too_large"),
                             )
                         target.write(chunk)
                         digest.update(chunk)

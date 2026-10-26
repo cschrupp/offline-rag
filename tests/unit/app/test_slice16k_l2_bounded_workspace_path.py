@@ -216,7 +216,7 @@ def test_spool_local_files_enforces_streamed_transport_limits(tmp_path: Path) ->
     large.write_bytes(b"123456789")
     with pytest.raises(AppError) as per_file:
         spool_local_files(settings=settings, corpus_name="manuals", files=[(large, large.name)])
-    assert per_file.value.details["reason"] == "document_too_large"
+    assert per_file.value.details["reason"] == "source_file_too_large"
     assert not list(settings.paths.staging.iterdir())
 
     first = tmp_path / "first.txt"
@@ -229,5 +229,5 @@ def test_spool_local_files_enforces_streamed_transport_limits(tmp_path: Path) ->
             corpus_name="manuals",
             files=[(first, first.name), (second, second.name)],
         )
-    assert aggregate.value.details["reason"] == "upload_too_large"
+    assert aggregate.value.details["reason"] == "request_too_large"
     assert not list(settings.paths.staging.iterdir())

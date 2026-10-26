@@ -32,9 +32,12 @@ export type SourceCapacityLimits = {
   /** Per HTTP upload request — transport envelope. */
   maxFilesPerUploadRequest: number;
   maxBytesPerUploadedFile: number;
+  maxBytesPerPdfSource: number;
   maxBytesPerUploadRequest: number;
   /** Workspace active-source ceiling when configured; null = unset. */
   maxActiveSources: number | null;
+  maxActiveSourceBytes: number;
+  largePdfRuntimeEligible: boolean;
 };
 
 export function activeSourceBytes(

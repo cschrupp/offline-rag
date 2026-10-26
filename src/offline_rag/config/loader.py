@@ -74,7 +74,12 @@ _ENV_FIELD_MAP: dict[str, tuple[str, ...]] = {
     "MAX_QUESTION_CHARS": ("api", "max_question_chars"),
     "MAX_FILES_PER_INGEST": ("api", "max_files_per_ingest"),
     "MAX_BYTES_PER_DOCUMENT": ("api", "max_bytes_per_document"),
+    "MAX_PDF_BYTES_PER_DOCUMENT": ("api", "max_pdf_bytes_per_document"),
     "MAX_TOTAL_UPLOAD_BYTES": ("api", "max_total_upload_bytes"),
+    "MAX_ACTIVE_SOURCE_BYTES_PER_WORKSPACE": (
+        "api",
+        "max_active_source_bytes_per_workspace",
+    ),
     "MAX_ACTIVE_SOURCES_PER_WORKSPACE": ("api", "max_active_sources_per_workspace"),
     "MAX_SEARCHABLE_CHILD_CHUNKS_PER_WORKSPACE": (
         "api",

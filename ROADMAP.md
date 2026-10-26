@@ -659,9 +659,15 @@ SLICE 15  COMPLETE / ACCEPTED
            L6 accepted design subject:
              87f56ec07ccf710089eb52b7a3d7efa42ac60799
            L6 implementation:
-             NOT HUMAN-AUTHORIZED
-           Limit increase: NOT AUTHORIZED
-           (25 MiB/file · 100 MiB/request unchanged)
+             COMPLETE / READY FOR INDEPENDENT REVIEW
+           L6 implementation authority:
+             S16-K-LARGE-SOURCE-CAPACITY-L6-PRODUCT-POLICY-IMPLEMENTATION-AUTH-001
+           L6 implementation base:
+             cf2027ef9538d1324e17ef4bddf3bfe1d0d0d5bd
+           L6 implementation result:
+             docs/evidence/large_source_capacity/l6/L6_IMPLEMENTATION_RESULT.md
+           Limit policy implementation:
+             PDF 90 MiB · non-PDF 25 MiB · request 100 MiB · workspace raw-source 90 MiB
        16K-E → 16K-G:
          NOT AUTHORIZED
        Design disposition (historical / frozen design authority):

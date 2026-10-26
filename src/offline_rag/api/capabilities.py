@@ -8,6 +8,12 @@ from fastapi import APIRouter, Request
 
 from offline_rag.api.compute_settings import project_embedding_runtime_dto
 from offline_rag.app.runtime import ApplicationRuntime
+from offline_rag.app.workspace.capacity import (
+    LARGE_PDF_QUALIFIED_PROFILE_ID,
+    LARGE_PDF_REFERENCE_MEM_AVAILABLE_BYTES,
+    LARGE_PDF_REFERENCE_MEM_TOTAL_BYTES,
+    large_pdf_runtime_eligibility,
+)
 from offline_rag.gold_authoring.readiness import evaluate_authoring_readiness
 
 router = APIRouter(tags=["capabilities"])
@@ -76,6 +82,10 @@ def get_capabilities(request: Request) -> dict[str, Any]:
                 "failure_reason": None,
             }
         )
+    active_profile_id = embedding_block.get("profile_id")
+    large_pdf_eligible, large_pdf_reason = large_pdf_runtime_eligibility(
+        settings, profile_id=active_profile_id
+    )
     # 16K-C: transport envelope vs workspace/search capacity are distinct.
     # Unset workspace ceilings project as null (no unmeasured support claim).
     active_sources = api.max_active_sources_per_workspace
@@ -97,6 +107,21 @@ def get_capabilities(request: Request) -> dict[str, Any]:
             "max_searchable_child_chunks": (
                 int(searchable_children) if searchable_children is not None else None
             ),
+            "max_active_source_bytes": int(api.max_active_source_bytes_per_workspace),
+        },
+        "large_pdf": {
+            "policy_supported": True,
+            "policy_max_bytes": int(api.max_pdf_bytes_per_document),
+            "qualified_profile": LARGE_PDF_QUALIFIED_PROFILE_ID,
+            "reference_host_memory_bytes": LARGE_PDF_REFERENCE_MEM_TOTAL_BYTES,
+            "reference_host_available_memory_bytes": LARGE_PDF_REFERENCE_MEM_AVAILABLE_BYTES,
+            "runtime_eligible": large_pdf_eligible,
+            "effective_max_bytes": int(
+                api.max_pdf_bytes_per_document
+                if large_pdf_eligible
+                else api.max_bytes_per_document
+            ),
+            "unavailable_reason": large_pdf_reason,
         },
         # Legacy projection kept for older clients: per-file / request-byte
         # fields remain transport. max_active_sources is workspace capacity
