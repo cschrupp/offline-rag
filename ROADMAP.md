@@ -545,9 +545,9 @@ SLICE 15  COMPLETE / ACCEPTED
            6d3689d03eb5a6e84d38d3ff7281e001e1caeb1a
          P4 closeout bookkeeping tip:
            9581a05378cba2c2b723755e05c6f6a1c9c085f7
-         Large-source capacity:
-           LARGE-SOURCE CAPACITY DESIGN TRANCHE:
-             OPEN / DESIGN AUTHORIZED
+           Large-source capacity:
+             LARGE-SOURCE CAPACITY L1–L6:
+               COMPLETE / HUMAN ACCEPTED / PROMOTED / CLOSED
            Authority: S16-K-LARGE-SOURCE-CAPACITY-DESIGN-AUTH-001
            Canonical base:
              f5c9423c471162923b3bbbfe804687db27551745
