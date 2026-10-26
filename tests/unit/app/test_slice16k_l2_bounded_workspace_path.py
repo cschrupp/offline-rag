@@ -12,7 +12,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from offline_rag.app.errors import AppError, ErrorCode
+import offline_rag.app.workspace.capacity as capacity_module
+from offline_rag.app.errors import AppError, ErrorCode, SafeErrorDetails
 from offline_rag.app.ingest_upload import spool_local_files
 from offline_rag.app.workspace.lifecycle import SourceUpload, WorkspaceLifecycleService
 from offline_rag.app.workspace.models import SourceVersionRecord, new_empty_workspace
@@ -328,6 +329,115 @@ def test_resource_rejection_happens_before_vault_write(
             control=None,
         )
     assert exc.value.details["reason"] == "workspace_source_bytes_exceeded"
+    service.vault.put_path.assert_not_called()
+    service.vault.put_bytes.assert_not_called()
+
+
+def _pre_vault_service(
+    tmp_path: Path,
+    *,
+    filename: str,
+    payload: bytes,
+    profile_id: str | None,
+    **api_overrides: object,
+) -> tuple[WorkspaceLifecycleService, object]:
+    settings = _settings(tmp_path, **api_overrides)
+    record = new_empty_workspace(title="L6", workspace_id="ws_" + "8" * 32)
+    source = tmp_path / filename
+    source.write_bytes(payload)
+    service = object.__new__(WorkspaceLifecycleService)
+    service.settings = settings
+    service.runtime = SimpleNamespace(
+        resources=SimpleNamespace(
+            embedder=(SimpleNamespace(profile_id=profile_id) if profile_id else None)
+        )
+    )
+    service.vault = MagicMock()
+    plan = service._plan_add(
+        record,
+        [SourceUpload(display_name=filename, spool_path=source)],
+    )
+    return service, plan
+
+
+def test_large_pdf_profile_rejection_precedes_vault_write(tmp_path: Path) -> None:
+    service, plan = _pre_vault_service(
+        tmp_path,
+        filename="handbook.pdf",
+        payload=b"12345",
+        profile_id="cuda_fp16_v1",
+        max_bytes_per_document=4,
+        max_pdf_bytes_per_document=16,
+        max_active_source_bytes_per_workspace=100,
+    )
+    with pytest.raises(AppError) as exc:
+        service._execute_publication(
+            new_empty_workspace(title="L6", workspace_id="ws_" + "8" * 32),
+            operation_id="op_profile",
+            plan=plan,
+            lease=None,
+            control=None,
+        )
+    assert exc.value.details["reason"] == "large_pdf_profile_not_qualified"
+    service.vault.put_path.assert_not_called()
+    service.vault.put_bytes.assert_not_called()
+
+
+def test_large_pdf_memory_rejection_precedes_vault_write(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    service, plan = _pre_vault_service(
+        tmp_path,
+        filename="handbook.pdf",
+        payload=b"12345",
+        profile_id="cpu_onnx_fp32_v1",
+        max_bytes_per_document=4,
+        max_pdf_bytes_per_document=16,
+        max_active_source_bytes_per_workspace=100,
+    )
+    monkeypatch.setattr(capacity_module, "_memory_telemetry", lambda: (32_000_000_000, 1))
+    with pytest.raises(AppError) as exc:
+        service._execute_publication(
+            new_empty_workspace(title="L6", workspace_id="ws_" + "8" * 32),
+            operation_id="op_memory",
+            plan=plan,
+            lease=None,
+            control=None,
+        )
+    assert exc.value.details["reason"] == "large_pdf_host_memory_insufficient"
+    service.vault.put_path.assert_not_called()
+    service.vault.put_bytes.assert_not_called()
+
+
+def test_disk_rejection_precedes_vault_write(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    service, plan = _pre_vault_service(
+        tmp_path,
+        filename="notes.txt",
+        payload=b"12345",
+        profile_id=None,
+        max_bytes_per_document=16,
+        max_active_source_bytes_per_workspace=100,
+    )
+    def reject_disk(*_args: object, **_kwargs: object) -> None:
+        raise AppError(
+            ErrorCode.SERVICE_OVERLOADED,
+            details=SafeErrorDetails(reason="storage_insufficient"),
+        )
+
+    monkeypatch.setattr(
+        capacity_module, "enforce_reconstruction_disk_capacity", reject_disk
+    )
+    with pytest.raises(AppError) as exc:
+        service._execute_publication(
+            new_empty_workspace(title="L6", workspace_id="ws_" + "8" * 32),
+            operation_id="op_disk",
+            plan=plan,
+            lease=None,
+            control=None,
+        )
+    assert exc.value.details["reason"] == "storage_insufficient"
     service.vault.put_path.assert_not_called()
     service.vault.put_bytes.assert_not_called()
 

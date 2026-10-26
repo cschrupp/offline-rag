@@ -670,6 +670,10 @@ SLICE 15  COMPLETE / ACCEPTED
              REWORK REQUIRED — NARROW IMPLEMENTATION CORRECTIVE
            L6 IR-001 corrective base:
              0688af96490047980683a7ca3eaa9d979a4db6cc
+           L6 implementation independent review IR-002:
+             REWORK REQUIRED — TEST-ONLY VALIDATION CORRECTIVE
+           L6 IR-002 validation state:
+             COMPLETE / READY FOR INDEPENDENT RE-REVIEW
            Limit policy implementation:
              PDF 90 MiB · non-PDF 25 MiB · request 100 MiB · workspace raw-source 90 MiB
        16K-E → 16K-G:

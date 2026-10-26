@@ -55,7 +55,8 @@ Admission order is desired-set integrity, active-source count, active raw-source
 - Full frontend `npm run typecheck` remains blocked by one pre-existing unrelated cast error in `src/test/p4_human_uat_duplicate_message.test.ts`; no L6 file is involved.
 - Full frontend `npm run lint` remains blocked by four pre-existing React hook errors in Gold Lab files; no L6 file is involved.
 - The existing capabilities endpoint integration test did not complete within the bounded local run because its pre-existing runtime/TestClient setup remains long-running; no scientific or qualification execution was performed.
-- Corrective focused suites after IR-001 changes: **31 passed** across capacity and bounded workspace path tests, including removal recovery, MIME classification, pre-vault rejection, and path-backed replacement regressions.
+- Corrective focused suites after IR-002 changes: **32 passed** in the affected combined run (21 capacity tests and 13 bounded workspace path tests individually), including removal recovery, MIME classification, profile rejection, memory rejection, disk rejection, pre-vault ordering, and path-backed replacement regressions.
+- The three lifecycle-level pre-vault rejection proofs each assert both `vault.put_path` and `vault.put_bytes` were not called.
 
 ## Scientific and product boundary
 
@@ -70,4 +71,4 @@ Admission order is desired-set integrity, active-source count, active raw-source
 
 The bounded corrective implementation is complete and ready for independent re-review. The final candidate commit contains this canonical result artifact and the ROADMAP pointer. Tracked working-tree status is expected to be clean after the final commit.
 
-`LARGE-SOURCE CAPACITY L6 PRODUCT POLICY IR-001 IMPLEMENTATION REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW`
+`LARGE-SOURCE CAPACITY L6 PRODUCT POLICY IR-002 VALIDATION REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW`
