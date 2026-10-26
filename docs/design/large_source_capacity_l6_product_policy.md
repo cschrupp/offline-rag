@@ -1,8 +1,8 @@
 # Large-source capacity L6 product policy design
 
-**Authority:** `S16-K-LARGE-SOURCE-CAPACITY-L6-PRODUCT-LIMIT-RESOURCE-ADMISSION-DESIGN-AUTH-001`  
-**Design base:** `4adc1f024a078c19192485cbabfc420c462eb01a`  
-**Accepted predecessor:** L5 PDF qualification, independently accepted  
+**Authority:** `S16-K-LARGE-SOURCE-CAPACITY-L6-PRODUCT-LIMIT-RESOURCE-ADMISSION-DESIGN-AUTH-001`
+**Design base:** `4adc1f024a078c19192485cbabfc420c462eb01a`
+**Accepted predecessor:** L5 PDF qualification, independently accepted
 **Status:** `LARGE-SOURCE CAPACITY L6 PRODUCT POLICY DESIGN COMPLETE / READY FOR INDEPENDENT REVIEW`
 
 This is a design-only tranche. It does not change production settings, APIs,
