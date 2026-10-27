@@ -756,7 +756,7 @@ SLICE 15  COMPLETE / ACCEPTED
            Promotion:
              NOT AUTHORIZED
            DOCLING PARSER-STACK CORRECTIVE:
-             IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
+             INDEPENDENTLY ACCEPTED — IR-002 / HUMAN ACCEPTED
            Parser corrective authority:
              DOCLING PARSER-STACK CORRECTIVE
            Original dependency corrective base:
@@ -769,6 +769,14 @@ SLICE 15  COMPLETE / ACCEPTED
              d97e2dc421328443c4d4678b3af19d706e392437
            IR-001 findings R1/R2:
              CLOSED — PDF parser stack is identity-bearing and persisted
+           Independent re-review IR-002:
+             ACCEPT — no blocking findings
+           Accepted technical subject:
+             d97e2dc421328443c4d4678b3af19d706e392437
+           Independent review governance tip:
+             36167366f70a47c02b35c2f7ef056ff92c75df07
+           Human acceptance:
+             ACCEPTED
            PDF parser contract:
              offline-rag-docling-pdf-v2
            Resolved parser provenance:
