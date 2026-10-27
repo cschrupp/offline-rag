@@ -712,7 +712,7 @@ SLICE 15  COMPLETE / ACCEPTED
            Limit policy implementation:
              PDF 90 MiB · non-PDF 25 MiB · request 100 MiB · workspace raw-source 90 MiB
            POST-L6 CUDA PROFILE-AWARE PRODUCT POLICY:
-             DESIGN AUTHORIZED
+             DESIGN IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
            Design authority:
              S16-K-LARGE-SOURCE-CAPACITY-POST-L6-CUDA-PRODUCT-POLICY-DESIGN-AUTH-001
            Design base:
@@ -1509,7 +1509,7 @@ SLICE 15  COMPLETE / ACCEPTED
            CUDA evidence subject:
              9fcec2109e92bbd11749a6fd91a8430af6110bb4
            Post-L6 CUDA profile-aware product policy:
-             DESIGN AUTHORIZED
+             DESIGN IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
            Design authority:
              S16-K-LARGE-SOURCE-CAPACITY-POST-L6-CUDA-PRODUCT-POLICY-DESIGN-AUTH-001
            Design base:
@@ -1520,7 +1520,7 @@ SLICE 15  COMPLETE / ACCEPTED
              docs/design/large_source_capacity_post_l6_cuda_product_policy.md
            Production policy:
              unchanged until separate implementation acceptance
-           (25 MiB/file · 100 MiB/request unchanged)
+           PDF 90 MiB · non-PDF 25 MiB · request 100 MiB · workspace raw-source 90 MiB
          Implementation authority:
            S16-K-D-DUAL-BACKEND-P4-PRODUCT-ACCEPTANCE-DEFAULT-POLICY-IMPLEMENTATION-AUTH-001
          Implementation parent:
@@ -1864,7 +1864,7 @@ SLICE 15  COMPLETE / ACCEPTED
            CUDA evidence subject:
              9fcec2109e92bbd11749a6fd91a8430af6110bb4
            Post-L6 CUDA profile-aware product policy:
-             DESIGN AUTHORIZED
+             DESIGN IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
            Design authority:
              S16-K-LARGE-SOURCE-CAPACITY-POST-L6-CUDA-PRODUCT-POLICY-DESIGN-AUTH-001
            Design base:
@@ -1875,7 +1875,7 @@ SLICE 15  COMPLETE / ACCEPTED
              docs/design/large_source_capacity_post_l6_cuda_product_policy.md
            Production policy:
              unchanged until separate implementation acceptance
-           (25 MiB/file · 100 MiB/request unchanged)
+           PDF 90 MiB · non-PDF 25 MiB · request 100 MiB · workspace raw-source 90 MiB
        16K-E → 16K-G:
          NOT AUTHORIZED
        Design disposition (historical / frozen design authority):
@@ -2664,7 +2664,7 @@ SLICE 15  COMPLETE / ACCEPTED
            CUDA evidence subject:
              9fcec2109e92bbd11749a6fd91a8430af6110bb4
            Post-L6 CUDA profile-aware product policy:
-             DESIGN AUTHORIZED
+             DESIGN IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
            Design authority:
              S16-K-LARGE-SOURCE-CAPACITY-POST-L6-CUDA-PRODUCT-POLICY-DESIGN-AUTH-001
            Design base:
@@ -2675,7 +2675,7 @@ SLICE 15  COMPLETE / ACCEPTED
              docs/design/large_source_capacity_post_l6_cuda_product_policy.md
            Production policy:
              unchanged until separate implementation acceptance
-           (25 MiB/file · 100 MiB/request unchanged)
+           PDF 90 MiB · non-PDF 25 MiB · request 100 MiB · workspace raw-source 90 MiB
          Implementation authority:
            S16-K-D-DUAL-BACKEND-P4-PRODUCT-ACCEPTANCE-DEFAULT-POLICY-IMPLEMENTATION-AUTH-001
          Implementation parent:

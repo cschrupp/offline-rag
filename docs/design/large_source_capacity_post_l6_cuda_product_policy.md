@@ -5,7 +5,7 @@
 **Accepted CUDA evidence:** `9fcec2109e92bbd11749a6fd91a8430af6110bb4`
 **Accepted L6 implementation:** `c4c0f7677783fa40b7b656bc96d8c0f2de0a9923`
 **Canonical L6 promotion tip:** `df14ef6924fce32c6621e6b5f0b30fbe4cc7c870`
-**Status:** `POST-L6 CUDA PROFILE-AWARE PRODUCT POLICY — DESIGN COMPLETE / READY FOR INDEPENDENT REVIEW`
+**Status:** `POST-L6 CUDA PROFILE-AWARE PRODUCT POLICY — DESIGN IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW`
 
 This is a design-only tranche. It defines how the independently accepted CUDA
 qualification joins the existing CPU large-PDF policy. It does not change
@@ -122,6 +122,21 @@ host gate failed: large_pdf_host_memory_insufficient
 CUDA capacity failed: large_pdf_gpu_memory_insufficient
 ```
 
+Internal diagnostics retain the source of the failure even when the public
+response is intentionally collapsed:
+
+```yaml
+HOST_MEMORY_TELEMETRY_UNAVAILABLE: memory_telemetry_unavailable
+CUDA_MEMORY_TELEMETRY_UNAVAILABLE: memory_telemetry_unavailable
+```
+
+CUDA telemetry observation for admission and capabilities must use a bounded
+telemetry seam associated with the already-resolved active CUDA profile/device.
+It must not call `QualifiedEmbeddingRuntime._ensure_ready()`, materialize the
+embedding backend, trigger model inference, transition `UNLOADED` to
+`LOADING` or `READY`, reconstruct the runtime, or switch profiles. Capability
+observation is therefore safe while the qualified runtime remains unloaded.
+
 Resource failures use `service_overloaded` / HTTP 503 where they are
 retryable. Profile and policy failures remain non-retryable request errors.
 
@@ -181,15 +196,31 @@ large-PDF resource admission.
 
 ### D12 — Admission ordering
 
-For a mutation requiring reconstruction, apply gates in this order:
+Separate incoming transport admission from reconstruction admission:
 
-1. establish and validate the complete desired set;
-2. enforce request, file, per-source, and workspace-byte limits;
+**A. Incoming transport/spool admission** validates only the new request:
+
+1. request file count;
+2. request total bytes;
+3. incoming media-specific per-source bytes while spooling;
+4. authoritative server media classification.
+
+**B. Post-mutation reconstruction admission** then evaluates the complete
+prospective vaulted desired set:
+
+1. establish desired-set identity, integrity, and count;
+2. enforce the workspace active raw-source byte ceiling;
 3. verify the active profile is in `qualified_profiles`;
 4. apply that profile's host-memory gate;
 5. if CUDA is active, apply total-VRAM and effective-capacity gates;
 6. apply the existing reconstruction disk rule;
-7. only then write to the vault, project, parse, index, and publish.
+7. only then persist/project the vaulted desired set, parse, index, and publish.
+
+HTTP request-envelope limits are not reapplied to internal reconstruction of
+the complete vaulted desired set. The reconstruction phase operates on the
+already admitted durable sources and uses the desired-set and workspace gates
+above. Existing `SOURCE_REMOVE` and empty-workspace exceptions remain
+unchanged.
 
 All rejection paths are atomic with respect to durable source and publication
 state. `SOURCE_REMOVE` from an oversized legacy workspace remains available;
@@ -253,6 +284,11 @@ memory_telemetry_unavailable: service_overloaded / 503
 storage_insufficient: service_overloaded / 503
 ```
 
+The internal telemetry attribution remains distinct as
+`HOST_MEMORY_TELEMETRY_UNAVAILABLE` or
+`CUDA_MEMORY_TELEMETRY_UNAVAILABLE`, even when both map to the public
+`memory_telemetry_unavailable` reason.
+
 No absolute filesystem paths, driver dumps, or memory inventories are
 returned. Existing aliases remain migration-compatible.
 
@@ -304,9 +340,9 @@ limits.
 
 ```yaml
 terminal: POST-L6 CUDA PROFILE-AWARE PRODUCT POLICY
-status: DESIGN COMPLETE / READY FOR INDEPENDENT REVIEW
+status: DESIGN IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
 authority: S16-K-LARGE-SOURCE-CAPACITY-POST-L6-CUDA-PRODUCT-POLICY-DESIGN-AUTH-001
-base: 649292e06520bb5cd03f40b5fc1395fad8c8ff9e
+ir001_base: c2edbce770b3aaaead6e2887dd2ac72e32053f7c
 accepted_cuda_evidence: 9fcec2109e92bbd11749a6fd91a8430af6110bb4
 production_behavior_changed: false
 scientific_executions: NONE
