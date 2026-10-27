@@ -711,6 +711,16 @@ SLICE 15  COMPLETE / ACCEPTED
              UNCHANGED / NOT AUTHORIZED BY THIS REVIEW
            Limit policy implementation:
              PDF 90 MiB · non-PDF 25 MiB · request 100 MiB · workspace raw-source 90 MiB
+           POST-L6 CUDA PROFILE-AWARE PRODUCT POLICY:
+             DESIGN AUTHORIZED
+           Design authority:
+             S16-K-LARGE-SOURCE-CAPACITY-POST-L6-CUDA-PRODUCT-POLICY-DESIGN-AUTH-001
+           Design base:
+             649292e06520bb5cd03f40b5fc1395fad8c8ff9e
+           Design branch:
+             design/16k-large-source-capacity-post-l6-cuda-product-policy
+           Design:
+             docs/design/large_source_capacity_post_l6_cuda_product_policy.md
        16K-E → 16K-G:
          NOT AUTHORIZED
        Design disposition (historical / frozen design authority):
@@ -1478,8 +1488,8 @@ SLICE 15  COMPLETE / ACCEPTED
            docs/design/large_source_capacity_followup.md
          UAT IR-001 F001/F002: CLOSED (anaphoric fallback; capacity-note wording)
          Large-source capacity:
-           LARGE-SOURCE CAPACITY DESIGN TRANCHE:
-             OPEN / DESIGN AUTHORIZED
+           LARGE-SOURCE CAPACITY L1–L6:
+             COMPLETE / HUMAN ACCEPTED / PROMOTED / CLOSED
            Authority: S16-K-LARGE-SOURCE-CAPACITY-DESIGN-AUTH-001
            Canonical base:
              f5c9423c471162923b3bbbfe804687db27551745
@@ -1487,12 +1497,29 @@ SLICE 15  COMPLETE / ACCEPTED
            Design: docs/design/large_source_capacity_architecture.md
            Historical IR-001 disposition:
              REWORK REQUIRED — NARROW DESIGN CORRECTIVE (F001–F003)
-           Current design disposition:
-             DESIGN IR-001 REWORK COMPLETE / READY FOR RE-REVIEW
+           Historical design disposition:
+             DESIGN COMPLETE / INDEPENDENTLY ACCEPTED — IR-002
            Initial ≥512 MiB qualification media: PDF / Docling
            Prior feasibility (provenance):
              docs/design/large_source_capacity_followup.md
-           Implementation / limit increase: NOT AUTHORIZED
+           L1–L6 implementation and limit policy:
+             COMPLETE / HUMAN ACCEPTED / PROMOTED / CLOSED
+           Post-L6 CUDA 90 MiB qualification:
+             COMPLETE / INDEPENDENTLY ACCEPTED — IR-001
+           CUDA evidence subject:
+             9fcec2109e92bbd11749a6fd91a8430af6110bb4
+           Post-L6 CUDA profile-aware product policy:
+             DESIGN AUTHORIZED
+           Design authority:
+             S16-K-LARGE-SOURCE-CAPACITY-POST-L6-CUDA-PRODUCT-POLICY-DESIGN-AUTH-001
+           Design base:
+             649292e06520bb5cd03f40b5fc1395fad8c8ff9e
+           Design branch:
+             design/16k-large-source-capacity-post-l6-cuda-product-policy
+           Design:
+             docs/design/large_source_capacity_post_l6_cuda_product_policy.md
+           Production policy:
+             unchanged until separate implementation acceptance
            (25 MiB/file · 100 MiB/request unchanged)
          Implementation authority:
            S16-K-D-DUAL-BACKEND-P4-PRODUCT-ACCEPTANCE-DEFAULT-POLICY-IMPLEMENTATION-AUTH-001
@@ -1813,8 +1840,8 @@ SLICE 15  COMPLETE / ACCEPTED
          P4 closeout bookkeeping tip:
            9581a05378cba2c2b723755e05c6f6a1c9c085f7
          Large-source capacity:
-           LARGE-SOURCE CAPACITY DESIGN TRANCHE:
-             OPEN / DESIGN AUTHORIZED
+           LARGE-SOURCE CAPACITY L1–L6:
+             COMPLETE / HUMAN ACCEPTED / PROMOTED / CLOSED
            Authority: S16-K-LARGE-SOURCE-CAPACITY-DESIGN-AUTH-001
            Canonical base:
              f5c9423c471162923b3bbbfe804687db27551745
@@ -1824,14 +1851,30 @@ SLICE 15  COMPLETE / ACCEPTED
              DESIGN COMPLETE / READY FOR INDEPENDENT REVIEW
            Historical IR-001 disposition:
              REWORK REQUIRED — NARROW DESIGN CORRECTIVE (F001–F003)
-           Current design disposition:
-             DESIGN IR-001 REWORK COMPLETE / READY FOR RE-REVIEW
+           Historical design disposition:
+             DESIGN COMPLETE / INDEPENDENTLY ACCEPTED — IR-002
            Initial ≥512 MiB qualification media: PDF / Docling
            Prior feasibility (provenance):
              docs/design/large_source_capacity_followup.md
              CAPACITY_DESIGN_READY
-           Implementation: NOT AUTHORIZED
-           Limit increase: NOT AUTHORIZED
+           L1–L6 implementation and limit policy:
+             COMPLETE / HUMAN ACCEPTED / PROMOTED / CLOSED
+           Post-L6 CUDA 90 MiB qualification:
+             COMPLETE / INDEPENDENTLY ACCEPTED — IR-001
+           CUDA evidence subject:
+             9fcec2109e92bbd11749a6fd91a8430af6110bb4
+           Post-L6 CUDA profile-aware product policy:
+             DESIGN AUTHORIZED
+           Design authority:
+             S16-K-LARGE-SOURCE-CAPACITY-POST-L6-CUDA-PRODUCT-POLICY-DESIGN-AUTH-001
+           Design base:
+             649292e06520bb5cd03f40b5fc1395fad8c8ff9e
+           Design branch:
+             design/16k-large-source-capacity-post-l6-cuda-product-policy
+           Design:
+             docs/design/large_source_capacity_post_l6_cuda_product_policy.md
+           Production policy:
+             unchanged until separate implementation acceptance
            (25 MiB/file · 100 MiB/request unchanged)
        16K-E → 16K-G:
          NOT AUTHORIZED
@@ -2600,8 +2643,8 @@ SLICE 15  COMPLETE / ACCEPTED
            docs/design/large_source_capacity_followup.md
          UAT IR-001 F001/F002: CLOSED (anaphoric fallback; capacity-note wording)
          Large-source capacity:
-           LARGE-SOURCE CAPACITY DESIGN TRANCHE:
-             OPEN / DESIGN AUTHORIZED
+           LARGE-SOURCE CAPACITY L1–L6:
+             COMPLETE / HUMAN ACCEPTED / PROMOTED / CLOSED
            Authority: S16-K-LARGE-SOURCE-CAPACITY-DESIGN-AUTH-001
            Canonical base:
              f5c9423c471162923b3bbbfe804687db27551745
@@ -2609,12 +2652,29 @@ SLICE 15  COMPLETE / ACCEPTED
            Design: docs/design/large_source_capacity_architecture.md
            Historical IR-001 disposition:
              REWORK REQUIRED — NARROW DESIGN CORRECTIVE (F001–F003)
-           Current design disposition:
-             DESIGN IR-001 REWORK COMPLETE / READY FOR RE-REVIEW
+           Historical design disposition:
+             DESIGN COMPLETE / INDEPENDENTLY ACCEPTED — IR-002
            Initial ≥512 MiB qualification media: PDF / Docling
            Prior feasibility (provenance):
              docs/design/large_source_capacity_followup.md
-           Implementation / limit increase: NOT AUTHORIZED
+           L1–L6 implementation and limit policy:
+             COMPLETE / HUMAN ACCEPTED / PROMOTED / CLOSED
+           Post-L6 CUDA 90 MiB qualification:
+             COMPLETE / INDEPENDENTLY ACCEPTED — IR-001
+           CUDA evidence subject:
+             9fcec2109e92bbd11749a6fd91a8430af6110bb4
+           Post-L6 CUDA profile-aware product policy:
+             DESIGN AUTHORIZED
+           Design authority:
+             S16-K-LARGE-SOURCE-CAPACITY-POST-L6-CUDA-PRODUCT-POLICY-DESIGN-AUTH-001
+           Design base:
+             649292e06520bb5cd03f40b5fc1395fad8c8ff9e
+           Design branch:
+             design/16k-large-source-capacity-post-l6-cuda-product-policy
+           Design:
+             docs/design/large_source_capacity_post_l6_cuda_product_policy.md
+           Production policy:
+             unchanged until separate implementation acceptance
            (25 MiB/file · 100 MiB/request unchanged)
          Implementation authority:
            S16-K-D-DUAL-BACKEND-P4-PRODUCT-ACCEPTANCE-DEFAULT-POLICY-IMPLEMENTATION-AUTH-001
