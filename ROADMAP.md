@@ -755,6 +755,32 @@ SLICE 15  COMPLETE / ACCEPTED
              NONE
            Promotion:
              NOT AUTHORIZED
+           DOCLING PARSER-STACK CORRECTIVE:
+             IMPLEMENTATION + QUALIFICATION COMPLETE / READY FOR INDEPENDENT REVIEW
+           Parser corrective authority:
+             DOCLING PARSER-STACK CORRECTIVE
+           Parser corrective base:
+             d9ddc4cd54b3b3966bfae28044439378ddee031f
+           Parser corrective implementation candidate:
+             739c393d4fada86814ae8c2c309925b81d88e4fd
+           Dependency change:
+             docling-parse 7.18.0 -> 7.23.1 · docling-core 2.95.0 -> 2.104.0
+           Frozen dependencies:
+             docling 2.126.0 · torch/CUDA unchanged · pypdfium2 5.13.0
+           Canonical Shupe parser:
+             PASS twice · 884 blocks · zero warnings · deterministic result
+           Live Shupe Add Sources:
+             PASS · operation succeeded · workspace 16 -> 17 · CUDA fp16
+           Regression suite:
+             16 passed · live retrieval answered · health ready 200
+           Result:
+             docs/evidence/large_source_capacity/parser_stack_corrective/IMPLEMENTATION_RESULT.md
+           Capacity policy / product limits:
+             UNCHANGED
+           L5 evidence / scientific capacity execution:
+             UNCHANGED / NONE
+           Promotion:
+             NOT AUTHORIZED
            Design branch:
              design/16k-large-source-capacity-post-l6-cuda-product-policy
            Design:
