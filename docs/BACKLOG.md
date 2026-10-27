@@ -1,7 +1,7 @@
 # Seneca engineering backlog and deferred registry
 
-**Status:** LIVE PLANNING / NON-AUTHORIZING  
-**Canonical reference:** `main` at `7ca0c2332dbaf524fe777317cdd1aede7a795633`  
+**Status:** LIVE PLANNING / NON-AUTHORIZING\
+**Canonical reference:** `main` at `7ca0c2332dbaf524fe777317cdd1aede7a795633`\
 **Updated:** 2026-10-27
 
 This document is the live queue for work that remains after the Human-accepted
@@ -31,8 +31,8 @@ Slice 17. It does **not** reopen the original Slice 16 closeout.
 
 ### S16K-R01 — Post-L6 governance reconciliation
 
-**Priority:** P0  
-**Status:** OPEN / DOCUMENTATION + GOVERNANCE ONLY  
+**Priority:** P0\
+**Status:** OPEN / DOCUMENTATION + GOVERNANCE ONLY\
 **Implementation authority:** NOT IMPLIED
 
 The post-L6 CUDA profile-aware policy and workspace raw-byte corrective are now
@@ -62,8 +62,8 @@ no unverified ACCEPT / HA claim is introduced
 
 ### S16K-R02 — 16K-C Human-disposition normalization
 
-**Priority:** P0  
-**Status:** OPEN / GOVERNANCE ONLY  
+**Priority:** P0\
+**Status:** OPEN / GOVERNANCE ONLY\
 **Technical subject:** `219c8551d208530ec93c5697ca5591ad52bfb228`
 
 16K-C is recorded as `IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED` with
@@ -81,8 +81,8 @@ No implementation change is authorized by this item.
 
 ### S16K-R03 — Fireground CUDA / historical HTTP-500 disposition
 
-**Priority:** P0  
-**Status:** OPEN / SEPARATE RUNTIME RELIABILITY RESIDUAL  
+**Priority:** P0\
+**Status:** OPEN / SEPARATE RUNTIME RELIABILITY RESIDUAL\
 **Execution authority:** NOT YET AUTHORIZED
 
 Canonical 16K evidence still records:
@@ -121,8 +121,8 @@ reproduce.
 
 ### 16K-E — Ingestion worklist / progress / metrics UX
 
-**Priority:** P0  
-**Status:** PLANNED / ACCEPTED DESIGN EXISTS / IMPLEMENTATION NOT AUTHORIZED  
+**Priority:** P0\
+**Status:** PLANNED / ACCEPTED DESIGN EXISTS / IMPLEMENTATION NOT AUTHORIZED\
 **Design:** `docs/slice16k_beta_ingestion_readiness_design.md` §10
 
 Current product code contains useful partial substrate from 16I, including
@@ -150,8 +150,8 @@ separate 16K-E authority.
 
 ### 16K-F — Real beta-corpus acceptance
 
-**Priority:** P0  
-**Status:** PLANNED / ACCEPTED DESIGN EXISTS / EXECUTION NOT AUTHORIZED  
+**Priority:** P0\
+**Status:** PLANNED / ACCEPTED DESIGN EXISTS / EXECUTION NOT AUTHORIZED\
 **Design:** `docs/slice16k_beta_ingestion_readiness_design.md` §11
 
 The successful 64 MiB Shupe ingestion is valuable evidence, but it is not the
@@ -176,8 +176,8 @@ reproducible without committing private source bytes.
 
 ### 16K-G — Slice-17 regression handoff
 
-**Priority:** P0  
-**Status:** PLANNED / ACCEPTED DESIGN EXISTS / NOT AUTHORIZED  
+**Priority:** P0\
+**Status:** PLANNED / ACCEPTED DESIGN EXISTS / NOT AUTHORIZED\
 **Design:** `docs/slice16k_beta_ingestion_readiness_design.md` §12
 
 Produce the bounded handoff that separates:
@@ -202,7 +202,7 @@ sequence unless a later authority explicitly moves them there.
 
 ### ROBUST-01 — Native PDF parser process isolation
 
-**Priority:** P1  
+**Priority:** P1\
 **Status:** REGISTERED / DESIGN NOT OPEN / IMPLEMENTATION NOT AUTHORIZED
 
 The `docling-parse` 7.23.1 upgrade closes the known Shupe crash fixture, but a
@@ -223,7 +223,7 @@ Recommended timing: before public/release hardening, but it need not block
 
 ### CI-BASELINE-01 — Repository-wide green-baseline normalization
 
-**Priority:** P1  
+**Priority:** P1\
 **Status:** DEFER TO SLICE 17 DESIGN
 
 Slice 16 explicitly did not claim a fully green repository baseline. Slice 17
@@ -233,7 +233,7 @@ performance observations into new SLOs.
 
 ### REL-01 — Container image size / CPU-CUDA release variants
 
-**Priority:** P1 before Slice 18 public release  
+**Priority:** P1 before Slice 18 public release\
 **Status:** OPEN GITHUB ISSUE #1 / DEFERRED FROM CURRENT ACCEPTANCE
 
 Current issue: approximately 10.3 GB reference image; investigate multi-stage
@@ -245,7 +245,7 @@ explicitly dispositioned before the portfolio release package is finalized.
 
 ### REL-02 — Portfolio release / public claims package
 
-**Priority:** downstream  
+**Priority:** downstream\
 **Status:** SLICE 18 / DESIGN NOT OPEN / NOT AUTHORIZED
 
 Includes `PORTFOLIO_DEMO.md`, polished public documentation, architecture/demo
@@ -256,7 +256,7 @@ reproducible install/run guidance. Claims must remain backed by accepted evidenc
 
 ### POST-M7-01 — Answer-level user feedback / continuous evaluation
 
-**Status:** PLANNING REGISTERED / DESIGN NOT OPEN / IMPLEMENTATION NOT AUTHORIZED  
+**Status:** PLANNING REGISTERED / DESIGN NOT OPEN / IMPLEMENTATION NOT AUTHORIZED\
 **Source:** `docs/slice16g_gap_registry_addendum.md`
 
 Keep observational thumbs/reason feedback separate from Gold, benchmark truth,
