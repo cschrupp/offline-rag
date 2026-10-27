@@ -32,12 +32,12 @@ Slice 17. It does **not** reopen the original Slice 16 closeout.
 ### S16K-R01 — Post-L6 governance reconciliation
 
 **Priority:** P0\
-**Status:** INDEPENDENTLY ACCEPTED — IR-001 / HUMAN ACCEPTANCE PENDING\
+**Status:** CLOSED — INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED\
 **Implementation authority:** NOT IMPLIED
 
 **Reconciliation subject:** `d60e253ce28eb5227983a53ec70a221b8dfdc28c`\
 **Independent review:** `S16K-R01 IR-001 — ACCEPT`\
-**Human acceptance:** PENDING
+**Human acceptance:** ACCEPTED
 
 The post-L6 CUDA profile-aware policy and workspace raw-byte corrective are
 ancestors of canonical `main`. That establishes canonical code presence, but it
@@ -67,15 +67,20 @@ verification posture. The reviewer noted that the candidate had been committed
 to `main` before review; this governance record is a successor commit and does
 not treat that sequence as prior acceptance.
 
-Required work:
+Human acceptance was granted for the exact reconciliation subject above. This
+acceptance closes R01 only; it does not accept the underlying CUDA policy or
+raw-byte implementation tranches. This successor commit records the acceptance
+and closure.
 
-- identify the exact technical subjects and any existing IR / Human dispositions
+Completed reconciliation scope:
+
+- identified the exact technical subjects and repository-recorded IR / Human dispositions
   for the post-L6 CUDA product-policy implementation;
-- identify the exact technical subject and any existing IR / Human disposition
+- identified the exact technical subject and repository-recorded IR / Human disposition
   for the workspace raw-byte corrective;
-- reconcile `ROADMAP.md`, `README.md`, and other live projections;
-- preserve historical implementation-result text as historical provenance;
-- do not alter L5 evidence, capacity measurements, or product-limit semantics.
+- reconciled `ROADMAP.md`, `README.md`, and `docs/BACKLOG.md`;
+- preserved historical implementation-result text as provenance;
+- left L5 evidence, capacity measurements, and product-limit semantics unchanged.
 
 Exit condition:
 
@@ -84,13 +89,14 @@ live governance projection is internally consistent
 +
 no unverified ACCEPT / HA claim is introduced
 +
-Human acceptance recorded for the exact reconciliation subject
+IR-001 ACCEPT and Human acceptance recorded for the exact reconciliation subject
 ```
 
 ### S16K-R02 — 16K-C Human-disposition normalization
 
 **Priority:** P0\
 **Status:** OPEN / GOVERNANCE ONLY\
+**Execution state:** NOT STARTED\
 **Technical subject:** `219c8551d208530ec93c5697ca5591ad52bfb228`
 
 16K-C is recorded as `IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED` with

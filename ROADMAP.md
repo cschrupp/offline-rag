@@ -775,9 +775,9 @@ SLICE 15  COMPLETE / ACCEPTED
            S16K-R01 independent review:
              IR-001 — ACCEPT (F001–F006 CLOSED)
            S16K-R01 Human acceptance:
-             PENDING — exact subject d60e253ce28eb5227983a53ec70a221b8dfdc28c
+             ACCEPTED — exact subject d60e253ce28eb5227983a53ec70a221b8dfdc28c
            S16K-R01 current terminal:
-             INDEPENDENTLY ACCEPTED / HUMAN ACCEPTANCE PENDING
+             HUMAN ACCEPTED / CLOSED — governance-only reconciliation
            DOCLING PARSER-STACK CORRECTIVE:
              INDEPENDENTLY ACCEPTED — IR-002 / HUMAN ACCEPTED
            Parser corrective authority:
