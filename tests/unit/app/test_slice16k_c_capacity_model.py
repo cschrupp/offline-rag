@@ -225,6 +225,20 @@ def test_cuda_telemetry_unavailable_fails_closed(
     ) == (False, "memory_telemetry_unavailable")
 
 
+def test_malformed_cuda_telemetry_fails_closed() -> None:
+    settings = AppSettings()
+    assert large_pdf_runtime_eligibility(
+        settings,
+        profile_id="cuda_fp16_v1",
+        memory=(32_000_000_000, CUDA_LARGE_PDF_REFERENCE_MEM_AVAILABLE_BYTES),
+        cuda_memory=CudaMemoryTelemetry(
+            total_bytes=CUDA_LARGE_PDF_MIN_TOTAL_VRAM_BYTES,
+            free_bytes=CUDA_LARGE_PDF_MIN_TOTAL_VRAM_BYTES + 1,
+            current_process_reserved_bytes=0,
+        ),
+    ) == (False, "memory_telemetry_unavailable")
+
+
 def test_host_and_cuda_telemetry_failures_keep_internal_attribution(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

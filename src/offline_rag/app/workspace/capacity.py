@@ -168,6 +168,17 @@ def _large_pdf_runtime_eligibility(
                 CUDA_MEMORY_TELEMETRY_UNAVAILABLE,
             )
         if (
+            cuda_observed.total_bytes < 0
+            or cuda_observed.free_bytes < 0
+            or cuda_observed.current_process_reserved_bytes < 0
+            or cuda_observed.free_bytes > cuda_observed.total_bytes
+        ):
+            return _LargePdfEligibility(
+                False,
+                "memory_telemetry_unavailable",
+                CUDA_MEMORY_TELEMETRY_UNAVAILABLE,
+            )
+        if (
             cuda_observed.total_bytes < CUDA_LARGE_PDF_MIN_TOTAL_VRAM_BYTES
             or cuda_observed.effective_capacity_bytes
             < CUDA_LARGE_PDF_MIN_EFFECTIVE_CAPACITY_BYTES
