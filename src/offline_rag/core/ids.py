@@ -17,7 +17,7 @@ from typing import Any
 PARSER_SCHEMA_VERSION = "offline-rag-parsed-v1"
 TEXT_PARSER_VERSION = "offline-rag-text-v1"
 MARKDOWN_PARSER_VERSION = "offline-rag-markdown-v1"
-DOCLING_PDF_PARSER_VERSION = "offline-rag-docling-pdf-v1"
+DOCLING_PDF_PARSER_VERSION = "offline-rag-docling-pdf-v2"
 STRUCTURE_AWARE_CHUNKER_VERSION = "structure-aware-chunker-v1"
 TIKTOKEN_TOKENIZER_CONTRACT = "tiktoken-cl100k-v1"
 PLAIN_EMBEDDING_TEXT_CONTRACT = "plain-v1"

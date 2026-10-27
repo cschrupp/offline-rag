@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from importlib.metadata import version as distribution_version
 from pathlib import Path
 
 from offline_rag.core.ids import (
@@ -63,6 +64,28 @@ class DoclingPdfParser:
         if self._converter is None:
             self._converter = self._build_converter()
         return self._converter
+
+    def parser_stack_provenance(self) -> dict[str, str | bool]:
+        """Return identity-bearing versions and policy for the active PDF stack."""
+        return {
+            "backend_identity": (
+                "docling.backend.docling_parse_backend."
+                "ThreadedDoclingParseDocumentBackend"
+            ),
+            "docling_version": distribution_version("docling"),
+            "docling_core_version": distribution_version("docling-core"),
+            "docling_parse_version": distribution_version("docling-parse"),
+            "ocr_enabled": self.ocr_enabled,
+        }
+
+    def parse_config_hash(self) -> str:
+        """Return the PDF parse identity including the resolved native stack."""
+        return parse_config_hash(
+            parser_name=self.name,
+            parser_version=self.version,
+            ocr_enabled=self.ocr_enabled,
+            extra=self.parser_stack_provenance(),
+        )
 
     def parse(
         self,
@@ -214,14 +237,9 @@ class DoclingPdfParser:
                 )
             )
 
-        cfg_hash = parse_config_hash(
-            parser_name=self.name,
-            parser_version=self.version,
-            ocr_enabled=self.ocr_enabled,
-        )
+        stack_provenance = self.parser_stack_provenance()
+        cfg_hash = self.parse_config_hash()
         artifact_id = parsed_artifact_id(document_id, cfg_hash)
-        import docling
-
         document = Document(
             document_id=document_id,
             source_uri=path.name,
@@ -232,8 +250,9 @@ class DoclingPdfParser:
             parser_version=self.version,
             metadata={
                 "parser_name": self.name,
-                "docling_version": getattr(docling, "__version__", "unknown"),
+                "docling_version": stack_provenance["docling_version"],
                 "ocr_enabled": self.ocr_enabled,
+                "parser_stack": stack_provenance,
             },
         )
         return ParsedDocument(
@@ -244,5 +263,8 @@ class DoclingPdfParser:
             warnings=warnings,
             parsed_artifact_id=artifact_id,
             parse_config_hash=cfg_hash,
-            metadata={"docling_version": getattr(docling, "__version__", "unknown")},
+            metadata={
+                "docling_version": stack_provenance["docling_version"],
+                "parser_stack": stack_provenance,
+            },
         )

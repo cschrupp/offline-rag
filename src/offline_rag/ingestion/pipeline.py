@@ -277,11 +277,14 @@ def run_ingestion(
                     pdf_parser = parser
                 parser = pdf_parser
 
-            cfg_hash = parse_config_hash(
-                parser_name=parser_name,
-                parser_version=parser_version,
-                ocr_enabled=ocr_enabled,
-            )
+            if isinstance(parser, DoclingPdfParser):
+                cfg_hash = parser.parse_config_hash()
+            else:
+                cfg_hash = parse_config_hash(
+                    parser_name=parser_name,
+                    parser_version=parser_version,
+                    ocr_enabled=ocr_enabled,
+                )
             artifact_id = parsed_artifact_id(doc_id, cfg_hash)
 
             reused = try_load_reusable_artifact(
@@ -598,16 +601,27 @@ def run_ingestion(
         for doc in documents
     ]
 
+    parser_environment: dict[str, object] = {
+        "parser_schema_version": PARSER_SCHEMA_VERSION,
+        "ocr_enabled": settings.parsing.pdf.ocr_enabled,
+    }
+    if any(
+        entry.source_media_type == "application/pdf"
+        for entry in candidate_sources.values()
+    ):
+        parser_environment["docling_pdf"] = DoclingPdfParser(
+            artifacts_path=settings.paths.docling_artifacts,
+            strict_offline=settings.project.strict_offline,
+            ocr_enabled=settings.parsing.pdf.ocr_enabled,
+        ).parser_stack_provenance()
+
     manifest = CorpusManifest(
         corpus_id=corpus_id,
         corpus_hash=corpus_id,
         created_at=completed,
         config_hash=corpus_parse_hash,
         documents=documents,
-        parser_environment={
-            "parser_schema_version": PARSER_SCHEMA_VERSION,
-            "ocr_enabled": settings.parsing.pdf.ocr_enabled,
-        },
+        parser_environment=parser_environment,
     )
     manifest_path = write_corpus_manifest(settings.paths.manifests, manifest)
     relative_manifest = f"manifests/{manifest_path.name}"

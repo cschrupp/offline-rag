@@ -44,6 +44,24 @@ def test_docling_born_digital_pdf_parse() -> None:
     assert isinstance(parsed, ParsedDocument)
     assert parsed.parser_name == "docling_pdf"
     assert parsed.document.document_id == doc_id
+    stack = parsed.metadata["parser_stack"]
+    assert stack["backend_identity"] == (
+        "docling.backend.docling_parse_backend."
+        "ThreadedDoclingParseDocumentBackend"
+    )
+    assert stack["docling_version"] == "2.126.0"
+    assert stack["docling_core_version"] == "2.104.0"
+    assert stack["docling_parse_version"] == "7.23.1"
+    assert stack["ocr_enabled"] is False
+
+    repeated = DoclingPdfParser(
+        artifacts_path=ARTIFACTS,
+        strict_offline=True,
+        ocr_enabled=False,
+    ).parse(PDF, content_hash=content_hash, document_id=doc_id)
+    assert repeated.parse_config_hash == parsed.parse_config_hash
+    assert repeated.parsed_artifact_id == parsed.parsed_artifact_id
+    assert repeated.model_dump_json() == parsed.model_dump_json()
 
     text_blob = "\n".join(block.text for block in parsed.blocks)
     assert "OFFLINERAG_FIXTURE_PAGE_1" in text_blob
@@ -101,3 +119,19 @@ def test_ingest_pdf_via_pipeline(tmp_path: Path) -> None:
     assert report.status.value in {"success", "no_op"}
     assert report.files_failed == 0
     assert report.corpus_id
+    from offline_rag.ingestion.persistence import load_corpus_manifest
+
+    assert report.manifest_path is not None
+    manifest = load_corpus_manifest(
+        settings.paths.manifests / Path(report.manifest_path).name
+    )
+    assert manifest.parser_environment["docling_pdf"] == {
+        "backend_identity": (
+            "docling.backend.docling_parse_backend."
+            "ThreadedDoclingParseDocumentBackend"
+        ),
+        "docling_version": "2.126.0",
+        "docling_core_version": "2.104.0",
+        "docling_parse_version": "7.23.1",
+        "ocr_enabled": False,
+    }
