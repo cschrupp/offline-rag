@@ -160,6 +160,16 @@ the OCR setting. Parsed-document metadata and PDF corpus `parser_environment`
 persist the same provenance. TXT and Markdown parser versions and hash inputs
 are unchanged.
 
+For the exact Shupe source, the identity changes from the previously recorded
+v1 values to these v2 values under the same resolved dependency stack:
+
+```yaml
+v1_parse_config_hash: cfg_6ed29345aabcb41fa426b8ea5a8e42c073acebf24aded022a927eaf69dfdb5c9
+v2_parse_config_hash: cfg_2b13aaf5076a70a1f25b969422c704b2ecfc610b4987d7a19deb1d40617fe059
+v1_parsed_artifact_id: parsed_fac9a48885932a8b4984ebe6609068c90a4d5e46e6bd39bac7aa6d89c66265e3
+v2_parsed_artifact_id: parsed_62648d55da9721893b3b4936f4681089587f70379f631e727393f201938ced6c
+```
+
 The known 2 MiB regression output was replayed through persistence with its
 captured old and new parser blocks. The old 2,679-block v1 artifact and new
 2,641-block v2 artifact receive distinct IDs; the old artifact is not reusable
