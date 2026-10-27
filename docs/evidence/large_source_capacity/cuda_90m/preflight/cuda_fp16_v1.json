@@ -1,0 +1,3652 @@
+{
+  "authority": "S16-K-LARGE-SOURCE-CAPACITY-L4-INSTRUMENTATION-HARNESS-IMPLEMENTATION-AUTH-001",
+  "authority_mode": "qualification",
+  "configuration": {
+    "ocr_enabled": false,
+    "parser": "docling_pdf",
+    "strict_offline": false,
+    "workspace_api_path": "SOURCE_ADD"
+  },
+  "contract": "large-source-capacity-evidence-v1",
+  "corpus_results": {
+    "active_source_count": 1,
+    "content_hash": "d81dc0d89641eb0cad9176051865e1ef13e8ee77f926f3f157e935eac08cfcbf",
+    "document_id": "doc_d81dc0d89641eb0cad9176051865e1ef13e8ee77f926f3f157e935eac08cfcbf",
+    "identity_matches_fixture": true,
+    "snapshot_id": "snap_9f353a0078851bd6a4d3c4884ff2374a02079b83b5b7413357e182c412e10149",
+    "workspace_status": "active"
+  },
+  "cpu": {
+    "cpu_equivalent_pct": 125.69528552968782,
+    "cpu_system_s": 7.3230640000000005,
+    "cpu_total_s": 30.985024000000003,
+    "cpu_user_s": 23.66196,
+    "involuntary_context_switches": 2547,
+    "logical_cpu_count": 16,
+    "physical_cpu_count": 8,
+    "status": "observed",
+    "voluntary_context_switches": 9246,
+    "wall_s": 24.650903865986038
+  },
+  "disk": {
+    "aggregate": {
+      "baseline_bytes": 0,
+      "final_bytes": 86277,
+      "final_growth_bytes": 86277,
+      "peak_growth_bytes": 86277,
+      "peak_observed_bytes": 86277
+    },
+    "free_bytes_after": 726420234240,
+    "free_bytes_before": 726421266432,
+    "free_bytes_peak_consumption": 1032192,
+    "minimum_free_bytes_observed": 726420234240,
+    "roots": {
+      "chunk_manifests": {
+        "baseline_bytes": 0,
+        "final_bytes": 1071,
+        "final_growth_bytes": 1071,
+        "peak_growth_bytes": 1071,
+        "peak_observed_bytes": 1071
+      },
+      "chunks": {
+        "baseline_bytes": 0,
+        "final_bytes": 6051,
+        "final_growth_bytes": 6051,
+        "peak_growth_bytes": 6051,
+        "peak_observed_bytes": 6051
+      },
+      "corpora_candidate_live": {
+        "baseline_bytes": 0,
+        "final_bytes": 7090,
+        "final_growth_bytes": 7090,
+        "peak_growth_bytes": 7090,
+        "peak_observed_bytes": 7090
+      },
+      "embeddings": {
+        "baseline_bytes": 0,
+        "final_bytes": 22379,
+        "final_growth_bytes": 22379,
+        "peak_growth_bytes": 22379,
+        "peak_observed_bytes": 22379
+      },
+      "index_manifests": {
+        "baseline_bytes": 0,
+        "final_bytes": 1208,
+        "final_growth_bytes": 1208,
+        "peak_growth_bytes": 1208,
+        "peak_observed_bytes": 1208
+      },
+      "lexical_index_manifests": {
+        "baseline_bytes": 0,
+        "final_bytes": 1154,
+        "final_growth_bytes": 1154,
+        "peak_growth_bytes": 1154,
+        "peak_observed_bytes": 1154
+      },
+      "lexical_indexes": {
+        "baseline_bytes": 0,
+        "final_bytes": 9639,
+        "final_growth_bytes": 9639,
+        "peak_growth_bytes": 9639,
+        "peak_observed_bytes": 9639
+      },
+      "manifests": {
+        "baseline_bytes": 0,
+        "final_bytes": 1346,
+        "final_growth_bytes": 1346,
+        "peak_growth_bytes": 1346,
+        "peak_observed_bytes": 1346
+      },
+      "processed": {
+        "baseline_bytes": 0,
+        "final_bytes": 7761,
+        "final_growth_bytes": 7761,
+        "peak_growth_bytes": 7761,
+        "peak_observed_bytes": 7761
+      },
+      "qdrant": {
+        "baseline_bytes": 0,
+        "final_bytes": 21081,
+        "final_growth_bytes": 21081,
+        "peak_growth_bytes": 21081,
+        "peak_observed_bytes": 21081
+      },
+      "staging": {
+        "baseline_bytes": 0,
+        "final_bytes": 0,
+        "final_growth_bytes": 0,
+        "peak_growth_bytes": 2178,
+        "peak_observed_bytes": 2178
+      },
+      "workspaces_vault": {
+        "baseline_bytes": 0,
+        "final_bytes": 7497,
+        "final_growth_bytes": 7497,
+        "peak_growth_bytes": 7497,
+        "peak_observed_bytes": 7497
+      }
+    }
+  },
+  "disk_amplification_inputs": {
+    "final_storage_growth_bytes": 86277,
+    "final_storage_growth_ratio": 39.612947658402206,
+    "new_source_bytes": 2178,
+    "peak_storage_growth_bytes": 86277,
+    "peak_storage_growth_ratio": 39.612947658402206,
+    "post_active_source_bytes": 2178,
+    "pre_active_source_bytes": 0,
+    "source_bytes": 2178,
+    "workspace_mutation": "source_add"
+  },
+  "execution_profile": {
+    "embedding_execution": "qualified_product_runtime",
+    "execution_mode": "qualification",
+    "qualification_profile_verified": true,
+    "requested_profile_id": "cuda_fp16_v1",
+    "resolved_profile_id": "cuda_fp16_v1"
+  },
+  "git": {
+    "exact_git_sha": "70cea558bd0e8f35fb23057b9ee2c1a4ab89a450",
+    "harness_source_sha256": {
+      "scripts/diag_large_source_capacity/common.py": "4ad9a7451e524644fcf86be23d3188dd4bccfb7e1aebfb496dd05714bc587235",
+      "scripts/diag_large_source_capacity/run_capacity_harness.py": "848178dd5be6538f88403fd2b8f1d3e989278da9142b6f433e27037c9339aef8"
+    },
+    "timestamp_utc": "2026-10-27T00:51:02.633882+00:00",
+    "tracked_worktree_clean": true,
+    "tracked_worktree_status": null
+  },
+  "gpu": {
+    "peak_reset": {
+      "action": "reset_peak_memory_stats",
+      "status": "observed"
+    },
+    "samples": [
+      {
+        "allocator": {
+          "cuda_available": true,
+          "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+          "mem_get_info": {
+            "free_bytes": 7448035328,
+            "free_mib": 7103,
+            "total_bytes": 8589606912,
+            "total_mib": 8191
+          },
+          "memory_allocated": 0,
+          "memory_reserved": 0,
+          "memory_stats": {
+            "active_bytes.all.current": 0,
+            "allocated_bytes.all.current": 0,
+            "allocation.retry_count": null,
+            "inactive_split_bytes.all.current": 0,
+            "num_alloc_retries": 0,
+            "num_ooms": 0,
+            "reserved_bytes.all.current": 0,
+            "segment.all.current": 0
+          }
+        },
+        "external": {
+          "error": null,
+          "sample": {
+            "clock_graphics_mhz": 975.0,
+            "clock_memory_mhz": 5500.0,
+            "clock_sm_mhz": 975.0,
+            "power_draw_w": 35.09,
+            "pstate": "P0",
+            "temperature_c": 63.0,
+            "throttle_hw_slowdown": "Not Active",
+            "throttle_hw_thermal_slowdown": "Not Active",
+            "throttle_sw_power_cap": "Not Active",
+            "throttle_sw_thermal_slowdown": "Not Active",
+            "utilization_gpu_pct": 5.0,
+            "utilization_memory_pct": 3.0
+          },
+          "status": "observed"
+        },
+        "status": "observed"
+      },
+      {
+        "allocator": {
+          "cuda_available": true,
+          "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+          "mem_get_info": {
+            "free_bytes": 7448035328,
+            "free_mib": 7103,
+            "total_bytes": 8589606912,
+            "total_mib": 8191
+          },
+          "memory_allocated": 0,
+          "memory_reserved": 0,
+          "memory_stats": {
+            "active_bytes.all.current": 0,
+            "allocated_bytes.all.current": 0,
+            "allocation.retry_count": null,
+            "inactive_split_bytes.all.current": 0,
+            "num_alloc_retries": 0,
+            "num_ooms": 0,
+            "reserved_bytes.all.current": 0,
+            "segment.all.current": 0
+          }
+        },
+        "external": {
+          "error": null,
+          "sample": {
+            "clock_graphics_mhz": 975.0,
+            "clock_memory_mhz": 5500.0,
+            "clock_sm_mhz": 975.0,
+            "power_draw_w": 34.91,
+            "pstate": "P0",
+            "temperature_c": 63.0,
+            "throttle_hw_slowdown": "Not Active",
+            "throttle_hw_thermal_slowdown": "Not Active",
+            "throttle_sw_power_cap": "Not Active",
+            "throttle_sw_thermal_slowdown": "Not Active",
+            "utilization_gpu_pct": 6.0,
+            "utilization_memory_pct": 2.0
+          },
+          "status": "observed"
+        },
+        "status": "observed"
+      },
+      {
+        "allocator": {
+          "cuda_available": true,
+          "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+          "mem_get_info": {
+            "free_bytes": 7448035328,
+            "free_mib": 7103,
+            "total_bytes": 8589606912,
+            "total_mib": 8191
+          },
+          "memory_allocated": 0,
+          "memory_reserved": 0,
+          "memory_stats": {
+            "active_bytes.all.current": 0,
+            "allocated_bytes.all.current": 0,
+            "allocation.retry_count": null,
+            "inactive_split_bytes.all.current": 0,
+            "num_alloc_retries": 0,
+            "num_ooms": 0,
+            "reserved_bytes.all.current": 0,
+            "segment.all.current": 0
+          }
+        },
+        "external": {
+          "error": null,
+          "sample": {
+            "clock_graphics_mhz": 975.0,
+            "clock_memory_mhz": 5500.0,
+            "clock_sm_mhz": 975.0,
+            "power_draw_w": 35.4,
+            "pstate": "P0",
+            "temperature_c": 63.0,
+            "throttle_hw_slowdown": "Not Active",
+            "throttle_hw_thermal_slowdown": "Not Active",
+            "throttle_sw_power_cap": "Not Active",
+            "throttle_sw_thermal_slowdown": "Not Active",
+            "utilization_gpu_pct": 1.0,
+            "utilization_memory_pct": 2.0
+          },
+          "status": "observed"
+        },
+        "status": "observed"
+      },
+      {
+        "allocator": {
+          "cuda_available": true,
+          "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+          "mem_get_info": {
+            "free_bytes": 7448035328,
+            "free_mib": 7103,
+            "total_bytes": 8589606912,
+            "total_mib": 8191
+          },
+          "memory_allocated": 0,
+          "memory_reserved": 0,
+          "memory_stats": {
+            "active_bytes.all.current": 0,
+            "allocated_bytes.all.current": 0,
+            "allocation.retry_count": null,
+            "inactive_split_bytes.all.current": 0,
+            "num_alloc_retries": 0,
+            "num_ooms": 0,
+            "reserved_bytes.all.current": 0,
+            "segment.all.current": 0
+          }
+        },
+        "external": {
+          "error": null,
+          "sample": {
+            "clock_graphics_mhz": 975.0,
+            "clock_memory_mhz": 5500.0,
+            "clock_sm_mhz": 975.0,
+            "power_draw_w": 34.82,
+            "pstate": "P0",
+            "temperature_c": 63.0,
+            "throttle_hw_slowdown": "Not Active",
+            "throttle_hw_thermal_slowdown": "Not Active",
+            "throttle_sw_power_cap": "Not Active",
+            "throttle_sw_thermal_slowdown": "Not Active",
+            "utilization_gpu_pct": 3.0,
+            "utilization_memory_pct": 3.0
+          },
+          "status": "observed"
+        },
+        "status": "observed"
+      },
+      {
+        "allocator": {
+          "cuda_available": true,
+          "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+          "mem_get_info": {
+            "free_bytes": 7448035328,
+            "free_mib": 7103,
+            "total_bytes": 8589606912,
+            "total_mib": 8191
+          },
+          "memory_allocated": 0,
+          "memory_reserved": 0,
+          "memory_stats": {
+            "active_bytes.all.current": 0,
+            "allocated_bytes.all.current": 0,
+            "allocation.retry_count": null,
+            "inactive_split_bytes.all.current": 0,
+            "num_alloc_retries": 0,
+            "num_ooms": 0,
+            "reserved_bytes.all.current": 0,
+            "segment.all.current": 0
+          }
+        },
+        "external": {
+          "error": null,
+          "sample": {
+            "clock_graphics_mhz": 975.0,
+            "clock_memory_mhz": 5500.0,
+            "clock_sm_mhz": 975.0,
+            "power_draw_w": 35.47,
+            "pstate": "P0",
+            "temperature_c": 64.0,
+            "throttle_hw_slowdown": "Not Active",
+            "throttle_hw_thermal_slowdown": "Not Active",
+            "throttle_sw_power_cap": "Not Active",
+            "throttle_sw_thermal_slowdown": "Not Active",
+            "utilization_gpu_pct": 2.0,
+            "utilization_memory_pct": 2.0
+          },
+          "status": "observed"
+        },
+        "status": "observed"
+      },
+      {
+        "allocator": {
+          "cuda_available": true,
+          "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+          "mem_get_info": {
+            "free_bytes": 7448035328,
+            "free_mib": 7103,
+            "total_bytes": 8589606912,
+            "total_mib": 8191
+          },
+          "memory_allocated": 0,
+          "memory_reserved": 0,
+          "memory_stats": {
+            "active_bytes.all.current": 0,
+            "allocated_bytes.all.current": 0,
+            "allocation.retry_count": null,
+            "inactive_split_bytes.all.current": 0,
+            "num_alloc_retries": 0,
+            "num_ooms": 0,
+            "reserved_bytes.all.current": 0,
+            "segment.all.current": 0
+          }
+        },
+        "external": {
+          "error": null,
+          "sample": {
+            "clock_graphics_mhz": 975.0,
+            "clock_memory_mhz": 5500.0,
+            "clock_sm_mhz": 975.0,
+            "power_draw_w": 35.04,
+            "pstate": "P0",
+            "temperature_c": 64.0,
+            "throttle_hw_slowdown": "Not Active",
+            "throttle_hw_thermal_slowdown": "Not Active",
+            "throttle_sw_power_cap": "Not Active",
+            "throttle_sw_thermal_slowdown": "Not Active",
+            "utilization_gpu_pct": 5.0,
+            "utilization_memory_pct": 3.0
+          },
+          "status": "observed"
+        },
+        "status": "observed"
+      },
+      {
+        "allocator": {
+          "cuda_available": true,
+          "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+          "mem_get_info": {
+            "free_bytes": 7448035328,
+            "free_mib": 7103,
+            "total_bytes": 8589606912,
+            "total_mib": 8191
+          },
+          "memory_allocated": 0,
+          "memory_reserved": 0,
+          "memory_stats": {
+            "active_bytes.all.current": 0,
+            "allocated_bytes.all.current": 0,
+            "allocation.retry_count": null,
+            "inactive_split_bytes.all.current": 0,
+            "num_alloc_retries": 0,
+            "num_ooms": 0,
+            "reserved_bytes.all.current": 0,
+            "segment.all.current": 0
+          }
+        },
+        "external": {
+          "error": null,
+          "sample": {
+            "clock_graphics_mhz": 975.0,
+            "clock_memory_mhz": 5500.0,
+            "clock_sm_mhz": 975.0,
+            "power_draw_w": 35.13,
+            "pstate": "P0",
+            "temperature_c": 64.0,
+            "throttle_hw_slowdown": "Not Active",
+            "throttle_hw_thermal_slowdown": "Not Active",
+            "throttle_sw_power_cap": "Not Active",
+            "throttle_sw_thermal_slowdown": "Not Active",
+            "utilization_gpu_pct": 4.0,
+            "utilization_memory_pct": 3.0
+          },
+          "status": "observed"
+        },
+        "status": "observed"
+      },
+      {
+        "allocator": {
+          "cuda_available": true,
+          "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+          "mem_get_info": {
+            "free_bytes": 7448035328,
+            "free_mib": 7103,
+            "total_bytes": 8589606912,
+            "total_mib": 8191
+          },
+          "memory_allocated": 0,
+          "memory_reserved": 0,
+          "memory_stats": {
+            "active_bytes.all.current": 0,
+            "allocated_bytes.all.current": 0,
+            "allocation.retry_count": null,
+            "inactive_split_bytes.all.current": 0,
+            "num_alloc_retries": 0,
+            "num_ooms": 0,
+            "reserved_bytes.all.current": 0,
+            "segment.all.current": 0
+          }
+        },
+        "external": {
+          "error": null,
+          "sample": {
+            "clock_graphics_mhz": 975.0,
+            "clock_memory_mhz": 5500.0,
+            "clock_sm_mhz": 975.0,
+            "power_draw_w": 35.06,
+            "pstate": "P0",
+            "temperature_c": 64.0,
+            "throttle_hw_slowdown": "Not Active",
+            "throttle_hw_thermal_slowdown": "Not Active",
+            "throttle_sw_power_cap": "Not Active",
+            "throttle_sw_thermal_slowdown": "Not Active",
+            "utilization_gpu_pct": 3.0,
+            "utilization_memory_pct": 2.0
+          },
+          "status": "observed"
+        },
+        "status": "observed"
+      },
+      {
+        "allocator": {
+          "cuda_available": true,
+          "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+          "mem_get_info": {
+            "free_bytes": 7448035328,
+            "free_mib": 7103,
+            "total_bytes": 8589606912,
+            "total_mib": 8191
+          },
+          "memory_allocated": 0,
+          "memory_reserved": 0,
+          "memory_stats": {
+            "active_bytes.all.current": 0,
+            "allocated_bytes.all.current": 0,
+            "allocation.retry_count": null,
+            "inactive_split_bytes.all.current": 0,
+            "num_alloc_retries": 0,
+            "num_ooms": 0,
+            "reserved_bytes.all.current": 0,
+            "segment.all.current": 0
+          }
+        },
+        "external": {
+          "error": null,
+          "sample": {
+            "clock_graphics_mhz": 975.0,
+            "clock_memory_mhz": 5500.0,
+            "clock_sm_mhz": 975.0,
+            "power_draw_w": 35.11,
+            "pstate": "P0",
+            "temperature_c": 64.0,
+            "throttle_hw_slowdown": "Not Active",
+            "throttle_hw_thermal_slowdown": "Not Active",
+            "throttle_sw_power_cap": "Not Active",
+            "throttle_sw_thermal_slowdown": "Not Active",
+            "utilization_gpu_pct": 5.0,
+            "utilization_memory_pct": 3.0
+          },
+          "status": "observed"
+        },
+        "status": "observed"
+      },
+      {
+        "allocator": {
+          "cuda_available": true,
+          "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+          "mem_get_info": {
+            "free_bytes": 7448035328,
+            "free_mib": 7103,
+            "total_bytes": 8589606912,
+            "total_mib": 8191
+          },
+          "memory_allocated": 0,
+          "memory_reserved": 0,
+          "memory_stats": {
+            "active_bytes.all.current": 0,
+            "allocated_bytes.all.current": 0,
+            "allocation.retry_count": null,
+            "inactive_split_bytes.all.current": 0,
+            "num_alloc_retries": 0,
+            "num_ooms": 0,
+            "reserved_bytes.all.current": 0,
+            "segment.all.current": 0
+          }
+        },
+        "external": {
+          "error": null,
+          "sample": {
+            "clock_graphics_mhz": 975.0,
+            "clock_memory_mhz": 5500.0,
+            "clock_sm_mhz": 975.0,
+            "power_draw_w": 35.51,
+            "pstate": "P0",
+            "temperature_c": 64.0,
+            "throttle_hw_slowdown": "Not Active",
+            "throttle_hw_thermal_slowdown": "Not Active",
+            "throttle_sw_power_cap": "Not Active",
+            "throttle_sw_thermal_slowdown": "Not Active",
+            "utilization_gpu_pct": 6.0,
+            "utilization_memory_pct": 3.0
+          },
+          "status": "observed"
+        },
+        "status": "observed"
+      },
+      {
+        "allocator": {
+          "cuda_available": true,
+          "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+          "mem_get_info": {
+            "free_bytes": 7448035328,
+            "free_mib": 7103,
+            "total_bytes": 8589606912,
+            "total_mib": 8191
+          },
+          "memory_allocated": 0,
+          "memory_reserved": 0,
+          "memory_stats": {
+            "active_bytes.all.current": 0,
+            "allocated_bytes.all.current": 0,
+            "allocation.retry_count": null,
+            "inactive_split_bytes.all.current": 0,
+            "num_alloc_retries": 0,
+            "num_ooms": 0,
+            "reserved_bytes.all.current": 0,
+            "segment.all.current": 0
+          }
+        },
+        "external": {
+          "error": null,
+          "sample": {
+            "clock_graphics_mhz": 975.0,
+            "clock_memory_mhz": 5500.0,
+            "clock_sm_mhz": 975.0,
+            "power_draw_w": 35.61,
+            "pstate": "P0",
+            "temperature_c": 64.0,
+            "throttle_hw_slowdown": "Not Active",
+            "throttle_hw_thermal_slowdown": "Not Active",
+            "throttle_sw_power_cap": "Not Active",
+            "throttle_sw_thermal_slowdown": "Not Active",
+            "utilization_gpu_pct": 5.0,
+            "utilization_memory_pct": 3.0
+          },
+          "status": "observed"
+        },
+        "status": "observed"
+      },
+      {
+        "allocator": {
+          "cuda_available": true,
+          "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+          "mem_get_info": {
+            "free_bytes": 7448035328,
+            "free_mib": 7103,
+            "total_bytes": 8589606912,
+            "total_mib": 8191
+          },
+          "memory_allocated": 0,
+          "memory_reserved": 0,
+          "memory_stats": {
+            "active_bytes.all.current": 0,
+            "allocated_bytes.all.current": 0,
+            "allocation.retry_count": null,
+            "inactive_split_bytes.all.current": 0,
+            "num_alloc_retries": 0,
+            "num_ooms": 0,
+            "reserved_bytes.all.current": 0,
+            "segment.all.current": 0
+          }
+        },
+        "external": {
+          "error": null,
+          "sample": {
+            "clock_graphics_mhz": 975.0,
+            "clock_memory_mhz": 5500.0,
+            "clock_sm_mhz": 975.0,
+            "power_draw_w": 35.21,
+            "pstate": "P0",
+            "temperature_c": 64.0,
+            "throttle_hw_slowdown": "Not Active",
+            "throttle_hw_thermal_slowdown": "Not Active",
+            "throttle_sw_power_cap": "Not Active",
+            "throttle_sw_thermal_slowdown": "Not Active",
+            "utilization_gpu_pct": 4.0,
+            "utilization_memory_pct": 3.0
+          },
+          "status": "observed"
+        },
+        "status": "observed"
+      },
+      {
+        "allocator": {
+          "cuda_available": true,
+          "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+          "mem_get_info": {
+            "free_bytes": 7448035328,
+            "free_mib": 7103,
+            "total_bytes": 8589606912,
+            "total_mib": 8191
+          },
+          "memory_allocated": 0,
+          "memory_reserved": 0,
+          "memory_stats": {
+            "active_bytes.all.current": 0,
+            "allocated_bytes.all.current": 0,
+            "allocation.retry_count": null,
+            "inactive_split_bytes.all.current": 0,
+            "num_alloc_retries": 0,
+            "num_ooms": 0,
+            "reserved_bytes.all.current": 0,
+            "segment.all.current": 0
+          }
+        },
+        "external": {
+          "error": null,
+          "sample": {
+            "clock_graphics_mhz": 975.0,
+            "clock_memory_mhz": 5500.0,
+            "clock_sm_mhz": 975.0,
+            "power_draw_w": 35.4,
+            "pstate": "P0",
+            "temperature_c": 64.0,
+            "throttle_hw_slowdown": "Not Active",
+            "throttle_hw_thermal_slowdown": "Not Active",
+            "throttle_sw_power_cap": "Not Active",
+            "throttle_sw_thermal_slowdown": "Not Active",
+            "utilization_gpu_pct": 6.0,
+            "utilization_memory_pct": 4.0
+          },
+          "status": "observed"
+        },
+        "status": "observed"
+      },
+      {
+        "allocator": {
+          "cuda_available": true,
+          "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+          "mem_get_info": {
+            "free_bytes": 7257194496,
+            "free_mib": 6921,
+            "total_bytes": 8589606912,
+            "total_mib": 8191
+          },
+          "memory_allocated": 185911296,
+          "memory_reserved": 190840832,
+          "memory_stats": {
+            "active_bytes.all.current": 185911296,
+            "allocated_bytes.all.current": 185911296,
+            "allocation.retry_count": null,
+            "inactive_split_bytes.all.current": 4929536,
+            "num_alloc_retries": 0,
+            "num_ooms": 0,
+            "reserved_bytes.all.current": 190840832,
+            "segment.all.current": 37
+          }
+        },
+        "external": {
+          "error": null,
+          "sample": {
+            "clock_graphics_mhz": 975.0,
+            "clock_memory_mhz": 5500.0,
+            "clock_sm_mhz": 975.0,
+            "power_draw_w": 34.87,
+            "pstate": "P0",
+            "temperature_c": 64.0,
+            "throttle_hw_slowdown": "Not Active",
+            "throttle_hw_thermal_slowdown": "Not Active",
+            "throttle_sw_power_cap": "Not Active",
+            "throttle_sw_thermal_slowdown": "Not Active",
+            "utilization_gpu_pct": 9.0,
+            "utilization_memory_pct": 5.0
+          },
+          "status": "observed"
+        },
+        "status": "observed"
+      },
+      {
+        "allocator": {
+          "cuda_available": true,
+          "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+          "mem_get_info": {
+            "free_bytes": 6695157760,
+            "free_mib": 6385,
+            "total_bytes": 8589606912,
+            "total_mib": 8191
+          },
+          "memory_allocated": 449877504,
+          "memory_reserved": 731906048,
+          "memory_stats": {
+            "active_bytes.all.current": 449877504,
+            "allocated_bytes.all.current": 449877504,
+            "allocation.retry_count": null,
+            "inactive_split_bytes.all.current": 24078848,
+            "num_alloc_retries": 0,
+            "num_ooms": 0,
+            "reserved_bytes.all.current": 731906048,
+            "segment.all.current": 85
+          }
+        },
+        "external": {
+          "error": null,
+          "sample": {
+            "clock_graphics_mhz": 975.0,
+            "clock_memory_mhz": 5500.0,
+            "clock_sm_mhz": 975.0,
+            "power_draw_w": 43.59,
+            "pstate": "P0",
+            "temperature_c": 64.0,
+            "throttle_hw_slowdown": "Not Active",
+            "throttle_hw_thermal_slowdown": "Not Active",
+            "throttle_sw_power_cap": "Not Active",
+            "throttle_sw_thermal_slowdown": "Not Active",
+            "utilization_gpu_pct": 14.0,
+            "utilization_memory_pct": 2.0
+          },
+          "status": "observed"
+        },
+        "status": "observed"
+      },
+      {
+        "allocator": {
+          "cuda_available": true,
+          "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+          "mem_get_info": {
+            "free_bytes": 6474956800,
+            "free_mib": 6175,
+            "total_bytes": 8589606912,
+            "total_mib": 8191
+          },
+          "memory_allocated": 398246912,
+          "memory_reserved": 941621248,
+          "memory_stats": {
+            "active_bytes.all.current": 398246912,
+            "allocated_bytes.all.current": 398246912,
+            "allocation.retry_count": null,
+            "inactive_split_bytes.all.current": 27474944,
+            "num_alloc_retries": 0,
+            "num_ooms": 0,
+            "reserved_bytes.all.current": 941621248,
+            "segment.all.current": 89
+          }
+        },
+        "external": {
+          "error": null,
+          "sample": {
+            "clock_graphics_mhz": 1695.0,
+            "clock_memory_mhz": 5500.0,
+            "clock_sm_mhz": 1695.0,
+            "power_draw_w": 50.31,
+            "pstate": "P0",
+            "temperature_c": 65.0,
+            "throttle_hw_slowdown": "Not Active",
+            "throttle_hw_thermal_slowdown": "Not Active",
+            "throttle_sw_power_cap": "Not Active",
+            "throttle_sw_thermal_slowdown": "Not Active",
+            "utilization_gpu_pct": 13.0,
+            "utilization_memory_pct": 5.0
+          },
+          "status": "observed"
+        },
+        "status": "observed"
+      },
+      {
+        "allocator": {
+          "cuda_available": true,
+          "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+          "mem_get_info": {
+            "free_bytes": 6474956800,
+            "free_mib": 6175,
+            "total_bytes": 8589606912,
+            "total_mib": 8191
+          },
+          "memory_allocated": 398246912,
+          "memory_reserved": 941621248,
+          "memory_stats": {
+            "active_bytes.all.current": 398246912,
+            "allocated_bytes.all.current": 398246912,
+            "allocation.retry_count": null,
+            "inactive_split_bytes.all.current": 27474944,
+            "num_alloc_retries": 0,
+            "num_ooms": 0,
+            "reserved_bytes.all.current": 941621248,
+            "segment.all.current": 89
+          }
+        },
+        "external": {
+          "error": null,
+          "sample": {
+            "clock_graphics_mhz": 1695.0,
+            "clock_memory_mhz": 5500.0,
+            "clock_sm_mhz": 1695.0,
+            "power_draw_w": 49.1,
+            "pstate": "P0",
+            "temperature_c": 65.0,
+            "throttle_hw_slowdown": "Not Active",
+            "throttle_hw_thermal_slowdown": "Not Active",
+            "throttle_sw_power_cap": "Not Active",
+            "throttle_sw_thermal_slowdown": "Not Active",
+            "utilization_gpu_pct": 19.0,
+            "utilization_memory_pct": 10.0
+          },
+          "status": "observed"
+        },
+        "status": "observed"
+      },
+      {
+        "allocator": {
+          "cuda_available": true,
+          "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+          "mem_get_info": {
+            "free_bytes": 6474956800,
+            "free_mib": 6175,
+            "total_bytes": 8589606912,
+            "total_mib": 8191
+          },
+          "memory_allocated": 398246912,
+          "memory_reserved": 941621248,
+          "memory_stats": {
+            "active_bytes.all.current": 398246912,
+            "allocated_bytes.all.current": 398246912,
+            "allocation.retry_count": null,
+            "inactive_split_bytes.all.current": 27474944,
+            "num_alloc_retries": 0,
+            "num_ooms": 0,
+            "reserved_bytes.all.current": 941621248,
+            "segment.all.current": 89
+          }
+        },
+        "external": {
+          "error": null,
+          "sample": {
+            "clock_graphics_mhz": 975.0,
+            "clock_memory_mhz": 5500.0,
+            "clock_sm_mhz": 975.0,
+            "power_draw_w": 35.5,
+            "pstate": "P0",
+            "temperature_c": 65.0,
+            "throttle_hw_slowdown": "Not Active",
+            "throttle_hw_thermal_slowdown": "Not Active",
+            "throttle_sw_power_cap": "Not Active",
+            "throttle_sw_thermal_slowdown": "Not Active",
+            "utilization_gpu_pct": 3.0,
+            "utilization_memory_pct": 3.0
+          },
+          "status": "observed"
+        },
+        "status": "observed"
+      },
+      {
+        "allocator": {
+          "cuda_available": true,
+          "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+          "mem_get_info": {
+            "free_bytes": 6474956800,
+            "free_mib": 6175,
+            "total_bytes": 8589606912,
+            "total_mib": 8191
+          },
+          "memory_allocated": 398246912,
+          "memory_reserved": 941621248,
+          "memory_stats": {
+            "active_bytes.all.current": 398246912,
+            "allocated_bytes.all.current": 398246912,
+            "allocation.retry_count": null,
+            "inactive_split_bytes.all.current": 27474944,
+            "num_alloc_retries": 0,
+            "num_ooms": 0,
+            "reserved_bytes.all.current": 941621248,
+            "segment.all.current": 89
+          }
+        },
+        "external": {
+          "error": null,
+          "sample": {
+            "clock_graphics_mhz": 975.0,
+            "clock_memory_mhz": 5500.0,
+            "clock_sm_mhz": 975.0,
+            "power_draw_w": 35.4,
+            "pstate": "P0",
+            "temperature_c": 65.0,
+            "throttle_hw_slowdown": "Not Active",
+            "throttle_hw_thermal_slowdown": "Not Active",
+            "throttle_sw_power_cap": "Not Active",
+            "throttle_sw_thermal_slowdown": "Not Active",
+            "utilization_gpu_pct": 0.0,
+            "utilization_memory_pct": 2.0
+          },
+          "status": "observed"
+        },
+        "status": "observed"
+      },
+      {
+        "allocator": {
+          "cuda_available": true,
+          "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+          "mem_get_info": {
+            "free_bytes": 5793382400,
+            "free_mib": 5525,
+            "total_bytes": 8589606912,
+            "total_mib": 8191
+          },
+          "memory_allocated": 1560623104,
+          "memory_reserved": 1623195648,
+          "memory_stats": {
+            "active_bytes.all.current": 1560623104,
+            "allocated_bytes.all.current": 1560623104,
+            "allocation.retry_count": null,
+            "inactive_split_bytes.all.current": 33212416,
+            "num_alloc_retries": 0,
+            "num_ooms": 0,
+            "reserved_bytes.all.current": 1623195648,
+            "segment.all.current": 94
+          }
+        },
+        "external": {
+          "error": null,
+          "sample": {
+            "clock_graphics_mhz": 1500.0,
+            "clock_memory_mhz": 5500.0,
+            "clock_sm_mhz": 1500.0,
+            "power_draw_w": 41.85,
+            "pstate": "P0",
+            "temperature_c": 65.0,
+            "throttle_hw_slowdown": "Not Active",
+            "throttle_hw_thermal_slowdown": "Not Active",
+            "throttle_sw_power_cap": "Not Active",
+            "throttle_sw_thermal_slowdown": "Not Active",
+            "utilization_gpu_pct": 14.0,
+            "utilization_memory_pct": 3.0
+          },
+          "status": "observed"
+        },
+        "status": "observed"
+      },
+      {
+        "allocator": {
+          "cuda_available": true,
+          "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+          "mem_get_info": {
+            "free_bytes": 510521344,
+            "free_mib": 486,
+            "total_bytes": 8589606912,
+            "total_mib": 8191
+          },
+          "memory_allocated": 1590865408,
+          "memory_reserved": 3160408064,
+          "memory_stats": {
+            "active_bytes.all.current": 1590865408,
+            "allocated_bytes.all.current": 1590865408,
+            "allocation.retry_count": null,
+            "inactive_split_bytes.all.current": 286085632,
+            "num_alloc_retries": 0,
+            "num_ooms": 0,
+            "reserved_bytes.all.current": 3160408064,
+            "segment.all.current": 173
+          }
+        },
+        "external": {
+          "error": null,
+          "sample": {
+            "clock_graphics_mhz": 1500.0,
+            "clock_memory_mhz": 5500.0,
+            "clock_sm_mhz": 1500.0,
+            "power_draw_w": 43.63,
+            "pstate": "P0",
+            "temperature_c": 65.0,
+            "throttle_hw_slowdown": "Not Active",
+            "throttle_hw_thermal_slowdown": "Not Active",
+            "throttle_sw_power_cap": "Not Active",
+            "throttle_sw_thermal_slowdown": "Not Active",
+            "utilization_gpu_pct": 34.0,
+            "utilization_memory_pct": 4.0
+          },
+          "status": "observed"
+        },
+        "status": "observed"
+      },
+      {
+        "allocator": {
+          "cuda_available": true,
+          "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+          "mem_get_info": {
+            "free_bytes": 4256169984,
+            "free_mib": 4059,
+            "total_bytes": 8589606912,
+            "total_mib": 8191
+          },
+          "memory_allocated": 1591444992,
+          "memory_reserved": 3160408064,
+          "memory_stats": {
+            "active_bytes.all.current": 1591444992,
+            "allocated_bytes.all.current": 1591444992,
+            "allocation.retry_count": null,
+            "inactive_split_bytes.all.current": 285506048,
+            "num_alloc_retries": 0,
+            "num_ooms": 0,
+            "reserved_bytes.all.current": 3160408064,
+            "segment.all.current": 173
+          }
+        },
+        "external": {
+          "error": null,
+          "sample": {
+            "clock_graphics_mhz": 975.0,
+            "clock_memory_mhz": 5500.0,
+            "clock_sm_mhz": 975.0,
+            "power_draw_w": 35.73,
+            "pstate": "P0",
+            "temperature_c": 65.0,
+            "throttle_hw_slowdown": "Not Active",
+            "throttle_hw_thermal_slowdown": "Not Active",
+            "throttle_sw_power_cap": "Not Active",
+            "throttle_sw_thermal_slowdown": "Not Active",
+            "utilization_gpu_pct": 9.0,
+            "utilization_memory_pct": 4.0
+          },
+          "status": "observed"
+        },
+        "status": "observed"
+      },
+      {
+        "allocator": {
+          "cuda_available": true,
+          "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+          "mem_get_info": {
+            "free_bytes": 4245684224,
+            "free_mib": 4049,
+            "total_bytes": 8589606912,
+            "total_mib": 8191
+          },
+          "memory_allocated": 1590863360,
+          "memory_reserved": 3168796672,
+          "memory_stats": {
+            "active_bytes.all.current": 1590863360,
+            "allocated_bytes.all.current": 1590863360,
+            "allocation.retry_count": null,
+            "inactive_split_bytes.all.current": 286087680,
+            "num_alloc_retries": 0,
+            "num_ooms": 0,
+            "reserved_bytes.all.current": 3168796672,
+            "segment.all.current": 177
+          }
+        },
+        "external": {
+          "error": null,
+          "sample": {
+            "clock_graphics_mhz": 975.0,
+            "clock_memory_mhz": 5500.0,
+            "clock_sm_mhz": 975.0,
+            "power_draw_w": 35.64,
+            "pstate": "P0",
+            "temperature_c": 65.0,
+            "throttle_hw_slowdown": "Not Active",
+            "throttle_hw_thermal_slowdown": "Not Active",
+            "throttle_sw_power_cap": "Not Active",
+            "throttle_sw_thermal_slowdown": "Not Active",
+            "utilization_gpu_pct": 9.0,
+            "utilization_memory_pct": 3.0
+          },
+          "status": "observed"
+        },
+        "status": "observed"
+      }
+    ]
+  },
+  "harness_effective_limits": {
+    "max_bytes_per_document": 26214400,
+    "max_files_per_ingest": 32,
+    "max_total_upload_bytes": 104857600,
+    "override_isolated_to_harness": false
+  },
+  "machine": {
+    "cpu_identity": "x86_64",
+    "cuda_version": "13.0",
+    "kernel": "6.18.33.2-microsoft-standard-WSL2",
+    "logical_cpu_count": 16,
+    "machine": "x86_64",
+    "os": "Linux",
+    "physical_cpu_count": 8,
+    "physical_ram_bytes": 33507905536,
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "python_version": "3.14.5",
+    "torch_version": "2.14.0+cu130"
+  },
+  "memory": {
+    "parser": {
+      "elapsed_s": 7.732654554012697,
+      "peak_kind": "observed_sampled_peak",
+      "rss_delta_bytes": 1426223104,
+      "rss_peak_bytes": 2194857984,
+      "rss_start_bytes": 768634880,
+      "sample_count": 31,
+      "status": "observed"
+    },
+    "rss_current_bytes": 3003658240,
+    "rss_delta_from_start_bytes": 3979231232,
+    "rss_peak_window_bytes": 4581056512,
+    "rss_start_bytes": 601825280,
+    "ru_maxrss_lifetime_bytes": 5655777280,
+    "sample_timeline": [
+      {
+        "disk": {
+          "free_bytes": 726421000192,
+          "roots": {
+            "__aggregate__": 0,
+            "chunk_manifests": 0,
+            "chunks": 0,
+            "corpora_candidate_live": 0,
+            "embeddings": 0,
+            "index_manifests": 0,
+            "lexical_index_manifests": 0,
+            "lexical_indexes": 0,
+            "manifests": 0,
+            "processed": 0,
+            "qdrant": 0,
+            "staging": 0,
+            "workspaces_vault": 0
+          }
+        },
+        "gpu": {
+          "allocator": {
+            "cuda_available": true,
+            "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+            "mem_get_info": {
+              "free_bytes": 7448035328,
+              "free_mib": 7103,
+              "total_bytes": 8589606912,
+              "total_mib": 8191
+            },
+            "memory_allocated": 0,
+            "memory_reserved": 0,
+            "memory_stats": {
+              "active_bytes.all.current": 0,
+              "allocated_bytes.all.current": 0,
+              "allocation.retry_count": null,
+              "inactive_split_bytes.all.current": 0,
+              "num_alloc_retries": 0,
+              "num_ooms": 0,
+              "reserved_bytes.all.current": 0,
+              "segment.all.current": 0
+            }
+          },
+          "external": {
+            "error": null,
+            "sample": {
+              "clock_graphics_mhz": 975.0,
+              "clock_memory_mhz": 5500.0,
+              "clock_sm_mhz": 975.0,
+              "power_draw_w": 35.09,
+              "pstate": "P0",
+              "temperature_c": 63.0,
+              "throttle_hw_slowdown": "Not Active",
+              "throttle_hw_thermal_slowdown": "Not Active",
+              "throttle_sw_power_cap": "Not Active",
+              "throttle_sw_thermal_slowdown": "Not Active",
+              "utilization_gpu_pct": 5.0,
+              "utilization_memory_pct": 3.0
+            },
+            "status": "observed"
+          },
+          "status": "observed"
+        },
+        "monotonic_offset_s": 8.225964847952127e-06,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 0.37870699999999996,
+        "process_cpu_user_s": 3.907762,
+        "rss_bytes": 601825280,
+        "system_available_ram_bytes": 25672986624
+      },
+      {
+        "monotonic_offset_s": 0.5355919289868325,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 0.4688,
+        "process_cpu_user_s": 4.119632,
+        "rss_bytes": 695447552,
+        "system_available_ram_bytes": 25648234496
+      },
+      {
+        "monotonic_offset_s": 0.7359540909528732,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 0.5061019999999999,
+        "process_cpu_user_s": 4.28943,
+        "rss_bytes": 695451648,
+        "system_available_ram_bytes": 25655361536
+      },
+      {
+        "monotonic_offset_s": 0.9363039629533887,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 0.555837,
+        "process_cpu_user_s": 4.446697,
+        "rss_bytes": 695451648,
+        "system_available_ram_bytes": 25664155648
+      },
+      {
+        "disk": {
+          "free_bytes": 726421000192,
+          "roots": {
+            "__aggregate__": 0,
+            "chunk_manifests": 0,
+            "chunks": 0,
+            "corpora_candidate_live": 0,
+            "embeddings": 0,
+            "index_manifests": 0,
+            "lexical_index_manifests": 0,
+            "lexical_indexes": 0,
+            "manifests": 0,
+            "processed": 0,
+            "qdrant": 0,
+            "staging": 0,
+            "workspaces_vault": 0
+          }
+        },
+        "gpu": {
+          "allocator": {
+            "cuda_available": true,
+            "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+            "mem_get_info": {
+              "free_bytes": 7448035328,
+              "free_mib": 7103,
+              "total_bytes": 8589606912,
+              "total_mib": 8191
+            },
+            "memory_allocated": 0,
+            "memory_reserved": 0,
+            "memory_stats": {
+              "active_bytes.all.current": 0,
+              "allocated_bytes.all.current": 0,
+              "allocation.retry_count": null,
+              "inactive_split_bytes.all.current": 0,
+              "num_alloc_retries": 0,
+              "num_ooms": 0,
+              "reserved_bytes.all.current": 0,
+              "segment.all.current": 0
+            }
+          },
+          "external": {
+            "error": null,
+            "sample": {
+              "clock_graphics_mhz": 975.0,
+              "clock_memory_mhz": 5500.0,
+              "clock_sm_mhz": 975.0,
+              "power_draw_w": 34.91,
+              "pstate": "P0",
+              "temperature_c": 63.0,
+              "throttle_hw_slowdown": "Not Active",
+              "throttle_hw_thermal_slowdown": "Not Active",
+              "throttle_sw_power_cap": "Not Active",
+              "throttle_sw_thermal_slowdown": "Not Active",
+              "utilization_gpu_pct": 6.0,
+              "utilization_memory_pct": 2.0
+            },
+            "status": "observed"
+          },
+          "status": "observed"
+        },
+        "monotonic_offset_s": 1.1366016779793426,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 0.580691,
+        "process_cpu_user_s": 4.628939,
+        "rss_bytes": 695451648,
+        "system_available_ram_bytes": 25665093632
+      },
+      {
+        "monotonic_offset_s": 1.4520573539775796,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 0.614185,
+        "process_cpu_user_s": 4.925936,
+        "rss_bytes": 695570432,
+        "system_available_ram_bytes": 25688686592
+      },
+      {
+        "monotonic_offset_s": 1.65257782995468,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 0.6549499999999999,
+        "process_cpu_user_s": 5.09037,
+        "rss_bytes": 695574528,
+        "system_available_ram_bytes": 25722142720
+      },
+      {
+        "monotonic_offset_s": 1.852813999983482,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 0.7005239999999999,
+        "process_cpu_user_s": 5.25186,
+        "rss_bytes": 695574528,
+        "system_available_ram_bytes": 25720221696
+      },
+      {
+        "monotonic_offset_s": 2.0531445179949515,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 0.7295079999999999,
+        "process_cpu_user_s": 5.429864,
+        "rss_bytes": 695574528,
+        "system_available_ram_bytes": 25721790464
+      },
+      {
+        "disk": {
+          "free_bytes": 726421000192,
+          "roots": {
+            "__aggregate__": 0,
+            "chunk_manifests": 0,
+            "chunks": 0,
+            "corpora_candidate_live": 0,
+            "embeddings": 0,
+            "index_manifests": 0,
+            "lexical_index_manifests": 0,
+            "lexical_indexes": 0,
+            "manifests": 0,
+            "processed": 0,
+            "qdrant": 0,
+            "staging": 0,
+            "workspaces_vault": 0
+          }
+        },
+        "gpu": {
+          "allocator": {
+            "cuda_available": true,
+            "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+            "mem_get_info": {
+              "free_bytes": 7448035328,
+              "free_mib": 7103,
+              "total_bytes": 8589606912,
+              "total_mib": 8191
+            },
+            "memory_allocated": 0,
+            "memory_reserved": 0,
+            "memory_stats": {
+              "active_bytes.all.current": 0,
+              "allocated_bytes.all.current": 0,
+              "allocation.retry_count": null,
+              "inactive_split_bytes.all.current": 0,
+              "num_alloc_retries": 0,
+              "num_ooms": 0,
+              "reserved_bytes.all.current": 0,
+              "segment.all.current": 0
+            }
+          },
+          "external": {
+            "error": null,
+            "sample": {
+              "clock_graphics_mhz": 975.0,
+              "clock_memory_mhz": 5500.0,
+              "clock_sm_mhz": 975.0,
+              "power_draw_w": 35.4,
+              "pstate": "P0",
+              "temperature_c": 63.0,
+              "throttle_hw_slowdown": "Not Active",
+              "throttle_hw_thermal_slowdown": "Not Active",
+              "throttle_sw_power_cap": "Not Active",
+              "throttle_sw_thermal_slowdown": "Not Active",
+              "utilization_gpu_pct": 1.0,
+              "utilization_memory_pct": 2.0
+            },
+            "status": "observed"
+          },
+          "status": "observed"
+        },
+        "monotonic_offset_s": 2.2534475549473427,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 0.7667919999999999,
+        "process_cpu_user_s": 5.599654,
+        "rss_bytes": 695574528,
+        "system_available_ram_bytes": 25726115840
+      },
+      {
+        "monotonic_offset_s": 2.563415095966775,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 0.8042429999999999,
+        "process_cpu_user_s": 5.8867329999999995,
+        "rss_bytes": 695595008,
+        "system_available_ram_bytes": 25730605056
+      },
+      {
+        "monotonic_offset_s": 2.7638861219747923,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 0.845687,
+        "process_cpu_user_s": 6.052468,
+        "rss_bytes": 695595008,
+        "system_available_ram_bytes": 25729957888
+      },
+      {
+        "monotonic_offset_s": 2.9642423819750547,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 0.920279,
+        "process_cpu_user_s": 6.184942,
+        "rss_bytes": 695595008,
+        "system_available_ram_bytes": 25730412544
+      },
+      {
+        "monotonic_offset_s": 3.16969331598375,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 1.015418,
+        "process_cpu_user_s": 6.324604,
+        "rss_bytes": 711794688,
+        "system_available_ram_bytes": 25711497216
+      },
+      {
+        "disk": {
+          "free_bytes": 726420815872,
+          "roots": {
+            "__aggregate__": 0,
+            "chunk_manifests": 0,
+            "chunks": 0,
+            "corpora_candidate_live": 0,
+            "embeddings": 0,
+            "index_manifests": 0,
+            "lexical_index_manifests": 0,
+            "lexical_indexes": 0,
+            "manifests": 0,
+            "processed": 0,
+            "qdrant": 0,
+            "staging": 0,
+            "workspaces_vault": 0
+          }
+        },
+        "gpu": {
+          "allocator": {
+            "cuda_available": true,
+            "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+            "mem_get_info": {
+              "free_bytes": 7448035328,
+              "free_mib": 7103,
+              "total_bytes": 8589606912,
+              "total_mib": 8191
+            },
+            "memory_allocated": 0,
+            "memory_reserved": 0,
+            "memory_stats": {
+              "active_bytes.all.current": 0,
+              "allocated_bytes.all.current": 0,
+              "allocation.retry_count": null,
+              "inactive_split_bytes.all.current": 0,
+              "num_alloc_retries": 0,
+              "num_ooms": 0,
+              "reserved_bytes.all.current": 0,
+              "segment.all.current": 0
+            }
+          },
+          "external": {
+            "error": null,
+            "sample": {
+              "clock_graphics_mhz": 975.0,
+              "clock_memory_mhz": 5500.0,
+              "clock_sm_mhz": 975.0,
+              "power_draw_w": 34.82,
+              "pstate": "P0",
+              "temperature_c": 63.0,
+              "throttle_hw_slowdown": "Not Active",
+              "throttle_hw_thermal_slowdown": "Not Active",
+              "throttle_sw_power_cap": "Not Active",
+              "throttle_sw_thermal_slowdown": "Not Active",
+              "utilization_gpu_pct": 3.0,
+              "utilization_memory_pct": 3.0
+            },
+            "status": "observed"
+          },
+          "status": "observed"
+        },
+        "monotonic_offset_s": 3.3907748999772593,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 1.068728,
+        "process_cpu_user_s": 6.474504,
+        "rss_bytes": 738295808,
+        "system_available_ram_bytes": 25696546816
+      },
+      {
+        "monotonic_offset_s": 3.698184748995118,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 1.147661,
+        "process_cpu_user_s": 6.711952,
+        "rss_bytes": 738295808,
+        "system_available_ram_bytes": 25715994624
+      },
+      {
+        "monotonic_offset_s": 3.898543136951048,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 1.159485,
+        "process_cpu_user_s": 6.9072189999999996,
+        "rss_bytes": 738295808,
+        "system_available_ram_bytes": 25653600256
+      },
+      {
+        "monotonic_offset_s": 4.09887936594896,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 1.221593,
+        "process_cpu_user_s": 7.052116,
+        "rss_bytes": 738295808,
+        "system_available_ram_bytes": 25720807424
+      },
+      {
+        "monotonic_offset_s": 4.299172918952536,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 1.242426,
+        "process_cpu_user_s": 7.239203,
+        "rss_bytes": 738295808,
+        "system_available_ram_bytes": 25718104064
+      },
+      {
+        "disk": {
+          "free_bytes": 726420815872,
+          "roots": {
+            "__aggregate__": 0,
+            "chunk_manifests": 0,
+            "chunks": 0,
+            "corpora_candidate_live": 0,
+            "embeddings": 0,
+            "index_manifests": 0,
+            "lexical_index_manifests": 0,
+            "lexical_indexes": 0,
+            "manifests": 0,
+            "processed": 0,
+            "qdrant": 0,
+            "staging": 0,
+            "workspaces_vault": 0
+          }
+        },
+        "gpu": {
+          "allocator": {
+            "cuda_available": true,
+            "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+            "mem_get_info": {
+              "free_bytes": 7448035328,
+              "free_mib": 7103,
+              "total_bytes": 8589606912,
+              "total_mib": 8191
+            },
+            "memory_allocated": 0,
+            "memory_reserved": 0,
+            "memory_stats": {
+              "active_bytes.all.current": 0,
+              "allocated_bytes.all.current": 0,
+              "allocation.retry_count": null,
+              "inactive_split_bytes.all.current": 0,
+              "num_alloc_retries": 0,
+              "num_ooms": 0,
+              "reserved_bytes.all.current": 0,
+              "segment.all.current": 0
+            }
+          },
+          "external": {
+            "error": null,
+            "sample": {
+              "clock_graphics_mhz": 975.0,
+              "clock_memory_mhz": 5500.0,
+              "clock_sm_mhz": 975.0,
+              "power_draw_w": 35.47,
+              "pstate": "P0",
+              "temperature_c": 64.0,
+              "throttle_hw_slowdown": "Not Active",
+              "throttle_hw_thermal_slowdown": "Not Active",
+              "throttle_sw_power_cap": "Not Active",
+              "throttle_sw_thermal_slowdown": "Not Active",
+              "utilization_gpu_pct": 2.0,
+              "utilization_memory_pct": 2.0
+            },
+            "status": "observed"
+          },
+          "status": "observed"
+        },
+        "monotonic_offset_s": 4.499658267945051,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 1.275429,
+        "process_cpu_user_s": 7.412398,
+        "rss_bytes": 738295808,
+        "system_available_ram_bytes": 25717727232
+      },
+      {
+        "monotonic_offset_s": 4.803831301978789,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 1.337742,
+        "process_cpu_user_s": 7.666136,
+        "rss_bytes": 738304000,
+        "system_available_ram_bytes": 25820999680
+      },
+      {
+        "monotonic_offset_s": 5.004186883976217,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 1.379426,
+        "process_cpu_user_s": 7.833318,
+        "rss_bytes": 738304000,
+        "system_available_ram_bytes": 25820635136
+      },
+      {
+        "monotonic_offset_s": 5.2047241010004655,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 1.412239,
+        "process_cpu_user_s": 8.005448,
+        "rss_bytes": 738304000,
+        "system_available_ram_bytes": 25815154688
+      },
+      {
+        "monotonic_offset_s": 5.405104552977718,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 1.4412449999999999,
+        "process_cpu_user_s": 8.183624,
+        "rss_bytes": 738304000,
+        "system_available_ram_bytes": 25824153600
+      },
+      {
+        "disk": {
+          "free_bytes": 726420815872,
+          "roots": {
+            "__aggregate__": 0,
+            "chunk_manifests": 0,
+            "chunks": 0,
+            "corpora_candidate_live": 0,
+            "embeddings": 0,
+            "index_manifests": 0,
+            "lexical_index_manifests": 0,
+            "lexical_indexes": 0,
+            "manifests": 0,
+            "processed": 0,
+            "qdrant": 0,
+            "staging": 0,
+            "workspaces_vault": 0
+          }
+        },
+        "gpu": {
+          "allocator": {
+            "cuda_available": true,
+            "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+            "mem_get_info": {
+              "free_bytes": 7448035328,
+              "free_mib": 7103,
+              "total_bytes": 8589606912,
+              "total_mib": 8191
+            },
+            "memory_allocated": 0,
+            "memory_reserved": 0,
+            "memory_stats": {
+              "active_bytes.all.current": 0,
+              "allocated_bytes.all.current": 0,
+              "allocation.retry_count": null,
+              "inactive_split_bytes.all.current": 0,
+              "num_alloc_retries": 0,
+              "num_ooms": 0,
+              "reserved_bytes.all.current": 0,
+              "segment.all.current": 0
+            }
+          },
+          "external": {
+            "error": null,
+            "sample": {
+              "clock_graphics_mhz": 975.0,
+              "clock_memory_mhz": 5500.0,
+              "clock_sm_mhz": 975.0,
+              "power_draw_w": 35.04,
+              "pstate": "P0",
+              "temperature_c": 64.0,
+              "throttle_hw_slowdown": "Not Active",
+              "throttle_hw_thermal_slowdown": "Not Active",
+              "throttle_sw_power_cap": "Not Active",
+              "throttle_sw_thermal_slowdown": "Not Active",
+              "utilization_gpu_pct": 5.0,
+              "utilization_memory_pct": 3.0
+            },
+            "status": "observed"
+          },
+          "status": "observed"
+        },
+        "monotonic_offset_s": 5.605525936989579,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 1.470226,
+        "process_cpu_user_s": 8.361655,
+        "rss_bytes": 738304000,
+        "system_available_ram_bytes": 25820741632
+      },
+      {
+        "monotonic_offset_s": 5.932553166989237,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 1.53609,
+        "process_cpu_user_s": 8.636884,
+        "rss_bytes": 738308096,
+        "system_available_ram_bytes": 25813721088
+      },
+      {
+        "monotonic_offset_s": 6.132858268974815,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 1.552683,
+        "process_cpu_user_s": 8.827525,
+        "rss_bytes": 738308096,
+        "system_available_ram_bytes": 25813823488
+      },
+      {
+        "monotonic_offset_s": 6.333158055960666,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 1.614838,
+        "process_cpu_user_s": 8.972703,
+        "rss_bytes": 738308096,
+        "system_available_ram_bytes": 25813544960
+      },
+      {
+        "monotonic_offset_s": 6.533471661969088,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 1.6811289999999999,
+        "process_cpu_user_s": 9.113711,
+        "rss_bytes": 738308096,
+        "system_available_ram_bytes": 25805926400
+      },
+      {
+        "disk": {
+          "free_bytes": 726420811776,
+          "roots": {
+            "__aggregate__": 0,
+            "chunk_manifests": 0,
+            "chunks": 0,
+            "corpora_candidate_live": 0,
+            "embeddings": 0,
+            "index_manifests": 0,
+            "lexical_index_manifests": 0,
+            "lexical_indexes": 0,
+            "manifests": 0,
+            "processed": 0,
+            "qdrant": 0,
+            "staging": 0,
+            "workspaces_vault": 0
+          }
+        },
+        "gpu": {
+          "allocator": {
+            "cuda_available": true,
+            "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+            "mem_get_info": {
+              "free_bytes": 7448035328,
+              "free_mib": 7103,
+              "total_bytes": 8589606912,
+              "total_mib": 8191
+            },
+            "memory_allocated": 0,
+            "memory_reserved": 0,
+            "memory_stats": {
+              "active_bytes.all.current": 0,
+              "allocated_bytes.all.current": 0,
+              "allocation.retry_count": null,
+              "inactive_split_bytes.all.current": 0,
+              "num_alloc_retries": 0,
+              "num_ooms": 0,
+              "reserved_bytes.all.current": 0,
+              "segment.all.current": 0
+            }
+          },
+          "external": {
+            "error": null,
+            "sample": {
+              "clock_graphics_mhz": 975.0,
+              "clock_memory_mhz": 5500.0,
+              "clock_sm_mhz": 975.0,
+              "power_draw_w": 35.13,
+              "pstate": "P0",
+              "temperature_c": 64.0,
+              "throttle_hw_slowdown": "Not Active",
+              "throttle_hw_thermal_slowdown": "Not Active",
+              "throttle_sw_power_cap": "Not Active",
+              "throttle_sw_thermal_slowdown": "Not Active",
+              "utilization_gpu_pct": 4.0,
+              "utilization_memory_pct": 3.0
+            },
+            "status": "observed"
+          },
+          "status": "observed"
+        },
+        "monotonic_offset_s": 6.733820447989274,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 1.710168,
+        "process_cpu_user_s": 9.292051,
+        "rss_bytes": 738308096,
+        "system_available_ram_bytes": 25802547200
+      },
+      {
+        "monotonic_offset_s": 7.04384386196034,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 1.7553839999999998,
+        "process_cpu_user_s": 9.571812,
+        "rss_bytes": 738308096,
+        "system_available_ram_bytes": 25799122944
+      },
+      {
+        "monotonic_offset_s": 7.244098804949317,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 1.7968259999999998,
+        "process_cpu_user_s": 9.737638,
+        "rss_bytes": 738308096,
+        "system_available_ram_bytes": 25800646656
+      },
+      {
+        "monotonic_offset_s": 7.444429130991921,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 1.846563,
+        "process_cpu_user_s": 9.89526,
+        "rss_bytes": 738308096,
+        "system_available_ram_bytes": 25800654848
+      },
+      {
+        "monotonic_offset_s": 7.644721861986909,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 1.9004249999999998,
+        "process_cpu_user_s": 10.048654,
+        "rss_bytes": 738308096,
+        "system_available_ram_bytes": 25795670016
+      },
+      {
+        "disk": {
+          "free_bytes": 726420811776,
+          "roots": {
+            "__aggregate__": 0,
+            "chunk_manifests": 0,
+            "chunks": 0,
+            "corpora_candidate_live": 0,
+            "embeddings": 0,
+            "index_manifests": 0,
+            "lexical_index_manifests": 0,
+            "lexical_indexes": 0,
+            "manifests": 0,
+            "processed": 0,
+            "qdrant": 0,
+            "staging": 0,
+            "workspaces_vault": 0
+          }
+        },
+        "gpu": {
+          "allocator": {
+            "cuda_available": true,
+            "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+            "mem_get_info": {
+              "free_bytes": 7448035328,
+              "free_mib": 7103,
+              "total_bytes": 8589606912,
+              "total_mib": 8191
+            },
+            "memory_allocated": 0,
+            "memory_reserved": 0,
+            "memory_stats": {
+              "active_bytes.all.current": 0,
+              "allocated_bytes.all.current": 0,
+              "allocation.retry_count": null,
+              "inactive_split_bytes.all.current": 0,
+              "num_alloc_retries": 0,
+              "num_ooms": 0,
+              "reserved_bytes.all.current": 0,
+              "segment.all.current": 0
+            }
+          },
+          "external": {
+            "error": null,
+            "sample": {
+              "clock_graphics_mhz": 975.0,
+              "clock_memory_mhz": 5500.0,
+              "clock_sm_mhz": 975.0,
+              "power_draw_w": 35.06,
+              "pstate": "P0",
+              "temperature_c": 64.0,
+              "throttle_hw_slowdown": "Not Active",
+              "throttle_hw_thermal_slowdown": "Not Active",
+              "throttle_sw_power_cap": "Not Active",
+              "throttle_sw_thermal_slowdown": "Not Active",
+              "utilization_gpu_pct": 3.0,
+              "utilization_memory_pct": 2.0
+            },
+            "status": "observed"
+          },
+          "status": "observed"
+        },
+        "monotonic_offset_s": 7.844972069957294,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 1.937761,
+        "process_cpu_user_s": 10.218794,
+        "rss_bytes": 738308096,
+        "system_available_ram_bytes": 25799028736
+      },
+      {
+        "monotonic_offset_s": 8.154010178986937,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 2.008435,
+        "process_cpu_user_s": 10.468713,
+        "rss_bytes": 738308096,
+        "system_available_ram_bytes": 25799364608
+      },
+      {
+        "monotonic_offset_s": 8.35446778795449,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 2.04096,
+        "process_cpu_user_s": 10.647769,
+        "rss_bytes": 738308096,
+        "system_available_ram_bytes": 25814401024
+      },
+      {
+        "monotonic_offset_s": 8.554973333957605,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 2.094876,
+        "process_cpu_user_s": 10.801445,
+        "rss_bytes": 738308096,
+        "system_available_ram_bytes": 25811738624
+      },
+      {
+        "monotonic_offset_s": 8.755609157960862,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 2.119949,
+        "process_cpu_user_s": 10.984812999999999,
+        "rss_bytes": 738308096,
+        "system_available_ram_bytes": 25806897152
+      },
+      {
+        "disk": {
+          "free_bytes": 726420418560,
+          "roots": {
+            "__aggregate__": 11363,
+            "chunk_manifests": 0,
+            "chunks": 0,
+            "corpora_candidate_live": 2178,
+            "embeddings": 0,
+            "index_manifests": 0,
+            "lexical_index_manifests": 0,
+            "lexical_indexes": 0,
+            "manifests": 0,
+            "processed": 0,
+            "qdrant": 0,
+            "staging": 2178,
+            "workspaces_vault": 7007
+          }
+        },
+        "gpu": {
+          "allocator": {
+            "cuda_available": true,
+            "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+            "mem_get_info": {
+              "free_bytes": 7448035328,
+              "free_mib": 7103,
+              "total_bytes": 8589606912,
+              "total_mib": 8191
+            },
+            "memory_allocated": 0,
+            "memory_reserved": 0,
+            "memory_stats": {
+              "active_bytes.all.current": 0,
+              "allocated_bytes.all.current": 0,
+              "allocation.retry_count": null,
+              "inactive_split_bytes.all.current": 0,
+              "num_alloc_retries": 0,
+              "num_ooms": 0,
+              "reserved_bytes.all.current": 0,
+              "segment.all.current": 0
+            }
+          },
+          "external": {
+            "error": null,
+            "sample": {
+              "clock_graphics_mhz": 975.0,
+              "clock_memory_mhz": 5500.0,
+              "clock_sm_mhz": 975.0,
+              "power_draw_w": 35.11,
+              "pstate": "P0",
+              "temperature_c": 64.0,
+              "throttle_hw_slowdown": "Not Active",
+              "throttle_hw_thermal_slowdown": "Not Active",
+              "throttle_sw_power_cap": "Not Active",
+              "throttle_sw_thermal_slowdown": "Not Active",
+              "utilization_gpu_pct": 5.0,
+              "utilization_memory_pct": 3.0
+            },
+            "status": "observed"
+          },
+          "status": "observed"
+        },
+        "monotonic_offset_s": 8.956176652980503,
+        "observed_stage": "upload",
+        "process_cpu_system_s": 2.153417,
+        "process_cpu_user_s": 11.156359,
+        "rss_bytes": 738308096,
+        "system_available_ram_bytes": 25806778368
+      },
+      {
+        "monotonic_offset_s": 9.367973995977081,
+        "observed_stage": "pdf_parsing",
+        "process_cpu_system_s": 3.5322,
+        "process_cpu_user_s": 11.665944,
+        "rss_bytes": 768634880,
+        "system_available_ram_bytes": 25791250432
+      },
+      {
+        "monotonic_offset_s": 9.571597334987018,
+        "observed_stage": "pdf_parsing",
+        "process_cpu_system_s": 3.569731,
+        "process_cpu_user_s": 11.833154,
+        "rss_bytes": 803782656,
+        "system_available_ram_bytes": 25759293440
+      },
+      {
+        "monotonic_offset_s": 9.851051389996428,
+        "observed_stage": "pdf_parsing",
+        "process_cpu_system_s": 3.575709,
+        "process_cpu_user_s": 12.111138,
+        "rss_bytes": 816525312,
+        "system_available_ram_bytes": 25751986176
+      },
+      {
+        "disk": {
+          "free_bytes": 726420418560,
+          "roots": {
+            "__aggregate__": 11363,
+            "chunk_manifests": 0,
+            "chunks": 0,
+            "corpora_candidate_live": 2178,
+            "embeddings": 0,
+            "index_manifests": 0,
+            "lexical_index_manifests": 0,
+            "lexical_indexes": 0,
+            "manifests": 0,
+            "processed": 0,
+            "qdrant": 0,
+            "staging": 2178,
+            "workspaces_vault": 7007
+          }
+        },
+        "gpu": {
+          "allocator": {
+            "cuda_available": true,
+            "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+            "mem_get_info": {
+              "free_bytes": 7448035328,
+              "free_mib": 7103,
+              "total_bytes": 8589606912,
+              "total_mib": 8191
+            },
+            "memory_allocated": 0,
+            "memory_reserved": 0,
+            "memory_stats": {
+              "active_bytes.all.current": 0,
+              "allocated_bytes.all.current": 0,
+              "allocation.retry_count": null,
+              "inactive_split_bytes.all.current": 0,
+              "num_alloc_retries": 0,
+              "num_ooms": 0,
+              "reserved_bytes.all.current": 0,
+              "segment.all.current": 0
+            }
+          },
+          "external": {
+            "error": null,
+            "sample": {
+              "clock_graphics_mhz": 975.0,
+              "clock_memory_mhz": 5500.0,
+              "clock_sm_mhz": 975.0,
+              "power_draw_w": 35.51,
+              "pstate": "P0",
+              "temperature_c": 64.0,
+              "throttle_hw_slowdown": "Not Active",
+              "throttle_hw_thermal_slowdown": "Not Active",
+              "throttle_sw_power_cap": "Not Active",
+              "throttle_sw_thermal_slowdown": "Not Active",
+              "utilization_gpu_pct": 6.0,
+              "utilization_memory_pct": 3.0
+            },
+            "status": "observed"
+          },
+          "status": "observed"
+        },
+        "monotonic_offset_s": 10.057690077985171,
+        "observed_stage": "pdf_parsing",
+        "process_cpu_system_s": 3.61304,
+        "process_cpu_user_s": 12.28602,
+        "rss_bytes": 836669440,
+        "system_available_ram_bytes": 25728679936
+      },
+      {
+        "monotonic_offset_s": 10.39963821094716,
+        "observed_stage": "pdf_parsing",
+        "process_cpu_system_s": 3.653726,
+        "process_cpu_user_s": 12.609352,
+        "rss_bytes": 869249024,
+        "system_available_ram_bytes": 25674895360
+      },
+      {
+        "monotonic_offset_s": 10.605273135995958,
+        "observed_stage": "pdf_parsing",
+        "process_cpu_system_s": 3.670066,
+        "process_cpu_user_s": 12.80109,
+        "rss_bytes": 879529984,
+        "system_available_ram_bytes": 25662824448
+      },
+      {
+        "monotonic_offset_s": 10.808122824993916,
+        "observed_stage": "pdf_parsing",
+        "process_cpu_system_s": 3.689533,
+        "process_cpu_user_s": 12.989005,
+        "rss_bytes": 884711424,
+        "system_available_ram_bytes": 25656299520
+      },
+      {
+        "monotonic_offset_s": 11.016804991988465,
+        "observed_stage": "pdf_parsing",
+        "process_cpu_system_s": 3.715095,
+        "process_cpu_user_s": 13.160254,
+        "rss_bytes": 897425408,
+        "system_available_ram_bytes": 25648779264
+      },
+      {
+        "disk": {
+          "free_bytes": 726420418560,
+          "roots": {
+            "__aggregate__": 11363,
+            "chunk_manifests": 0,
+            "chunks": 0,
+            "corpora_candidate_live": 2178,
+            "embeddings": 0,
+            "index_manifests": 0,
+            "lexical_index_manifests": 0,
+            "lexical_indexes": 0,
+            "manifests": 0,
+            "processed": 0,
+            "qdrant": 0,
+            "staging": 2178,
+            "workspaces_vault": 7007
+          }
+        },
+        "gpu": {
+          "allocator": {
+            "cuda_available": true,
+            "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+            "mem_get_info": {
+              "free_bytes": 7448035328,
+              "free_mib": 7103,
+              "total_bytes": 8589606912,
+              "total_mib": 8191
+            },
+            "memory_allocated": 0,
+            "memory_reserved": 0,
+            "memory_stats": {
+              "active_bytes.all.current": 0,
+              "allocated_bytes.all.current": 0,
+              "allocation.retry_count": null,
+              "inactive_split_bytes.all.current": 0,
+              "num_alloc_retries": 0,
+              "num_ooms": 0,
+              "reserved_bytes.all.current": 0,
+              "segment.all.current": 0
+            }
+          },
+          "external": {
+            "error": null,
+            "sample": {
+              "clock_graphics_mhz": 975.0,
+              "clock_memory_mhz": 5500.0,
+              "clock_sm_mhz": 975.0,
+              "power_draw_w": 35.61,
+              "pstate": "P0",
+              "temperature_c": 64.0,
+              "throttle_hw_slowdown": "Not Active",
+              "throttle_hw_thermal_slowdown": "Not Active",
+              "throttle_sw_power_cap": "Not Active",
+              "throttle_sw_thermal_slowdown": "Not Active",
+              "utilization_gpu_pct": 5.0,
+              "utilization_memory_pct": 3.0
+            },
+            "status": "observed"
+          },
+          "status": "observed"
+        },
+        "monotonic_offset_s": 11.225391479965765,
+        "observed_stage": "pdf_parsing",
+        "process_cpu_system_s": 3.74305,
+        "process_cpu_user_s": 13.296022,
+        "rss_bytes": 911568896,
+        "system_available_ram_bytes": 25633411072
+      },
+      {
+        "monotonic_offset_s": 11.57655739999609,
+        "observed_stage": "pdf_parsing",
+        "process_cpu_system_s": 3.7606539999999997,
+        "process_cpu_user_s": 13.598794999999999,
+        "rss_bytes": 925597696,
+        "system_available_ram_bytes": 25630498816
+      },
+      {
+        "monotonic_offset_s": 11.778679345967248,
+        "observed_stage": "pdf_parsing",
+        "process_cpu_system_s": 3.827398,
+        "process_cpu_user_s": 15.297031,
+        "rss_bytes": 944541696,
+        "system_available_ram_bytes": 25624596480
+      },
+      {
+        "monotonic_offset_s": 12.098133070976473,
+        "observed_stage": "pdf_parsing",
+        "process_cpu_system_s": 3.852012,
+        "process_cpu_user_s": 15.529605,
+        "rss_bytes": 954089472,
+        "system_available_ram_bytes": 25621110784
+      },
+      {
+        "disk": {
+          "free_bytes": 726420414464,
+          "roots": {
+            "__aggregate__": 11363,
+            "chunk_manifests": 0,
+            "chunks": 0,
+            "corpora_candidate_live": 2178,
+            "embeddings": 0,
+            "index_manifests": 0,
+            "lexical_index_manifests": 0,
+            "lexical_indexes": 0,
+            "manifests": 0,
+            "processed": 0,
+            "qdrant": 0,
+            "staging": 2178,
+            "workspaces_vault": 7007
+          }
+        },
+        "gpu": {
+          "allocator": {
+            "cuda_available": true,
+            "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+            "mem_get_info": {
+              "free_bytes": 7448035328,
+              "free_mib": 7103,
+              "total_bytes": 8589606912,
+              "total_mib": 8191
+            },
+            "memory_allocated": 0,
+            "memory_reserved": 0,
+            "memory_stats": {
+              "active_bytes.all.current": 0,
+              "allocated_bytes.all.current": 0,
+              "allocation.retry_count": null,
+              "inactive_split_bytes.all.current": 0,
+              "num_alloc_retries": 0,
+              "num_ooms": 0,
+              "reserved_bytes.all.current": 0,
+              "segment.all.current": 0
+            }
+          },
+          "external": {
+            "error": null,
+            "sample": {
+              "clock_graphics_mhz": 975.0,
+              "clock_memory_mhz": 5500.0,
+              "clock_sm_mhz": 975.0,
+              "power_draw_w": 35.21,
+              "pstate": "P0",
+              "temperature_c": 64.0,
+              "throttle_hw_slowdown": "Not Active",
+              "throttle_hw_thermal_slowdown": "Not Active",
+              "throttle_sw_power_cap": "Not Active",
+              "throttle_sw_thermal_slowdown": "Not Active",
+              "utilization_gpu_pct": 4.0,
+              "utilization_memory_pct": 3.0
+            },
+            "status": "observed"
+          },
+          "status": "observed"
+        },
+        "monotonic_offset_s": 12.301460286951624,
+        "observed_stage": "pdf_parsing",
+        "process_cpu_system_s": 3.868092,
+        "process_cpu_user_s": 15.715434,
+        "rss_bytes": 956977152,
+        "system_available_ram_bytes": 25620480000
+      },
+      {
+        "monotonic_offset_s": 12.662910576967988,
+        "observed_stage": "pdf_parsing",
+        "process_cpu_system_s": 3.904715,
+        "process_cpu_user_s": 16.05877,
+        "rss_bytes": 1053224960,
+        "system_available_ram_bytes": 25584287744
+      },
+      {
+        "monotonic_offset_s": 12.865562528953888,
+        "observed_stage": "pdf_parsing",
+        "process_cpu_system_s": 3.933833,
+        "process_cpu_user_s": 16.242251,
+        "rss_bytes": 1066962944,
+        "system_available_ram_bytes": 25574014976
+      },
+      {
+        "monotonic_offset_s": 13.06864842097275,
+        "observed_stage": "pdf_parsing",
+        "process_cpu_system_s": 3.967194,
+        "process_cpu_user_s": 16.417567,
+        "rss_bytes": 1087172608,
+        "system_available_ram_bytes": 25556021248
+      },
+      {
+        "monotonic_offset_s": 13.26970658695791,
+        "observed_stage": "pdf_parsing",
+        "process_cpu_system_s": 3.99565,
+        "process_cpu_user_s": 16.598284,
+        "rss_bytes": 1109671936,
+        "system_available_ram_bytes": 25534992384
+      },
+      {
+        "disk": {
+          "free_bytes": 726420410368,
+          "roots": {
+            "__aggregate__": 11363,
+            "chunk_manifests": 0,
+            "chunks": 0,
+            "corpora_candidate_live": 2178,
+            "embeddings": 0,
+            "index_manifests": 0,
+            "lexical_index_manifests": 0,
+            "lexical_indexes": 0,
+            "manifests": 0,
+            "processed": 0,
+            "qdrant": 0,
+            "staging": 2178,
+            "workspaces_vault": 7007
+          }
+        },
+        "gpu": {
+          "allocator": {
+            "cuda_available": true,
+            "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+            "mem_get_info": {
+              "free_bytes": 7448035328,
+              "free_mib": 7103,
+              "total_bytes": 8589606912,
+              "total_mib": 8191
+            },
+            "memory_allocated": 0,
+            "memory_reserved": 0,
+            "memory_stats": {
+              "active_bytes.all.current": 0,
+              "allocated_bytes.all.current": 0,
+              "allocation.retry_count": null,
+              "inactive_split_bytes.all.current": 0,
+              "num_alloc_retries": 0,
+              "num_ooms": 0,
+              "reserved_bytes.all.current": 0,
+              "segment.all.current": 0
+            }
+          },
+          "external": {
+            "error": null,
+            "sample": {
+              "clock_graphics_mhz": 975.0,
+              "clock_memory_mhz": 5500.0,
+              "clock_sm_mhz": 975.0,
+              "power_draw_w": 35.4,
+              "pstate": "P0",
+              "temperature_c": 64.0,
+              "throttle_hw_slowdown": "Not Active",
+              "throttle_hw_thermal_slowdown": "Not Active",
+              "throttle_sw_power_cap": "Not Active",
+              "throttle_sw_thermal_slowdown": "Not Active",
+              "utilization_gpu_pct": 6.0,
+              "utilization_memory_pct": 4.0
+            },
+            "status": "observed"
+          },
+          "status": "observed"
+        },
+        "monotonic_offset_s": 13.639826295955572,
+        "observed_stage": "pdf_parsing",
+        "process_cpu_system_s": 4.01231,
+        "process_cpu_user_s": 16.96646,
+        "rss_bytes": 1125642240,
+        "system_available_ram_bytes": 25523605504
+      },
+      {
+        "monotonic_offset_s": 13.973545271961484,
+        "observed_stage": "pdf_parsing",
+        "process_cpu_system_s": 4.071552,
+        "process_cpu_user_s": 17.253831,
+        "rss_bytes": 1151406080,
+        "system_available_ram_bytes": 25512189952
+      },
+      {
+        "monotonic_offset_s": 14.174053758964874,
+        "observed_stage": "pdf_parsing",
+        "process_cpu_system_s": 4.104516,
+        "process_cpu_user_s": 17.4065,
+        "rss_bytes": 1164107776,
+        "system_available_ram_bytes": 25504288768
+      },
+      {
+        "monotonic_offset_s": 14.374972616962623,
+        "observed_stage": "pdf_parsing",
+        "process_cpu_system_s": 4.154198,
+        "process_cpu_user_s": 17.500399,
+        "rss_bytes": 1176997888,
+        "system_available_ram_bytes": 25498865664
+      },
+      {
+        "monotonic_offset_s": 14.575448843999766,
+        "observed_stage": "pdf_parsing",
+        "process_cpu_system_s": 4.213456,
+        "process_cpu_user_s": 17.628668,
+        "rss_bytes": 1188589568,
+        "system_available_ram_bytes": 25473544192
+      },
+      {
+        "disk": {
+          "free_bytes": 726420410368,
+          "roots": {
+            "__aggregate__": 11363,
+            "chunk_manifests": 0,
+            "chunks": 0,
+            "corpora_candidate_live": 2178,
+            "embeddings": 0,
+            "index_manifests": 0,
+            "lexical_index_manifests": 0,
+            "lexical_indexes": 0,
+            "manifests": 0,
+            "processed": 0,
+            "qdrant": 0,
+            "staging": 2178,
+            "workspaces_vault": 7007
+          }
+        },
+        "gpu": {
+          "allocator": {
+            "cuda_available": true,
+            "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+            "mem_get_info": {
+              "free_bytes": 7257194496,
+              "free_mib": 6921,
+              "total_bytes": 8589606912,
+              "total_mib": 8191
+            },
+            "memory_allocated": 185911296,
+            "memory_reserved": 190840832,
+            "memory_stats": {
+              "active_bytes.all.current": 185911296,
+              "allocated_bytes.all.current": 185911296,
+              "allocation.retry_count": null,
+              "inactive_split_bytes.all.current": 4929536,
+              "num_alloc_retries": 0,
+              "num_ooms": 0,
+              "reserved_bytes.all.current": 190840832,
+              "segment.all.current": 37
+            }
+          },
+          "external": {
+            "error": null,
+            "sample": {
+              "clock_graphics_mhz": 975.0,
+              "clock_memory_mhz": 5500.0,
+              "clock_sm_mhz": 975.0,
+              "power_draw_w": 34.87,
+              "pstate": "P0",
+              "temperature_c": 64.0,
+              "throttle_hw_slowdown": "Not Active",
+              "throttle_hw_thermal_slowdown": "Not Active",
+              "throttle_sw_power_cap": "Not Active",
+              "throttle_sw_thermal_slowdown": "Not Active",
+              "utilization_gpu_pct": 9.0,
+              "utilization_memory_pct": 5.0
+            },
+            "status": "observed"
+          },
+          "status": "observed"
+        },
+        "monotonic_offset_s": 14.775726956955623,
+        "observed_stage": "pdf_parsing",
+        "process_cpu_system_s": 4.312414,
+        "process_cpu_user_s": 18.011656,
+        "rss_bytes": 1334239232,
+        "system_available_ram_bytes": 25324314624
+      },
+      {
+        "monotonic_offset_s": 15.094852993963286,
+        "observed_stage": "pdf_parsing",
+        "process_cpu_system_s": 4.382064,
+        "process_cpu_user_s": 18.218842,
+        "rss_bytes": 1463312384,
+        "system_available_ram_bytes": 25294647296
+      },
+      {
+        "monotonic_offset_s": 15.29517382895574,
+        "observed_stage": "pdf_parsing",
+        "process_cpu_system_s": 4.449777,
+        "process_cpu_user_s": 18.351151,
+        "rss_bytes": 1416617984,
+        "system_available_ram_bytes": 25256697856
+      },
+      {
+        "monotonic_offset_s": 15.495496602961794,
+        "observed_stage": "pdf_parsing",
+        "process_cpu_system_s": 4.513342,
+        "process_cpu_user_s": 18.388002,
+        "rss_bytes": 1494323200,
+        "system_available_ram_bytes": 25236492288
+      },
+      {
+        "monotonic_offset_s": 15.695850860967766,
+        "observed_stage": "pdf_parsing",
+        "process_cpu_system_s": 4.596483,
+        "process_cpu_user_s": 18.427756,
+        "rss_bytes": 1568825344,
+        "system_available_ram_bytes": 25211396096
+      },
+      {
+        "disk": {
+          "free_bytes": 726420410368,
+          "roots": {
+            "__aggregate__": 11363,
+            "chunk_manifests": 0,
+            "chunks": 0,
+            "corpora_candidate_live": 2178,
+            "embeddings": 0,
+            "index_manifests": 0,
+            "lexical_index_manifests": 0,
+            "lexical_indexes": 0,
+            "manifests": 0,
+            "processed": 0,
+            "qdrant": 0,
+            "staging": 2178,
+            "workspaces_vault": 7007
+          }
+        },
+        "gpu": {
+          "allocator": {
+            "cuda_available": true,
+            "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+            "mem_get_info": {
+              "free_bytes": 6695157760,
+              "free_mib": 6385,
+              "total_bytes": 8589606912,
+              "total_mib": 8191
+            },
+            "memory_allocated": 449877504,
+            "memory_reserved": 731906048,
+            "memory_stats": {
+              "active_bytes.all.current": 449877504,
+              "allocated_bytes.all.current": 449877504,
+              "allocation.retry_count": null,
+              "inactive_split_bytes.all.current": 24078848,
+              "num_alloc_retries": 0,
+              "num_ooms": 0,
+              "reserved_bytes.all.current": 731906048,
+              "segment.all.current": 85
+            }
+          },
+          "external": {
+            "error": null,
+            "sample": {
+              "clock_graphics_mhz": 975.0,
+              "clock_memory_mhz": 5500.0,
+              "clock_sm_mhz": 975.0,
+              "power_draw_w": 43.59,
+              "pstate": "P0",
+              "temperature_c": 64.0,
+              "throttle_hw_slowdown": "Not Active",
+              "throttle_hw_thermal_slowdown": "Not Active",
+              "throttle_sw_power_cap": "Not Active",
+              "throttle_sw_thermal_slowdown": "Not Active",
+              "utilization_gpu_pct": 14.0,
+              "utilization_memory_pct": 2.0
+            },
+            "status": "observed"
+          },
+          "status": "observed"
+        },
+        "monotonic_offset_s": 15.896587589988485,
+        "observed_stage": "pdf_parsing",
+        "process_cpu_system_s": 4.676446,
+        "process_cpu_user_s": 18.50919,
+        "rss_bytes": 1703215104,
+        "system_available_ram_bytes": 25079603200
+      },
+      {
+        "monotonic_offset_s": 16.22055738797644,
+        "observed_stage": "pdf_parsing",
+        "process_cpu_system_s": 4.81264,
+        "process_cpu_user_s": 18.665185,
+        "rss_bytes": 1977712640,
+        "system_available_ram_bytes": 24838565888
+      },
+      {
+        "monotonic_offset_s": 16.420930440945085,
+        "observed_stage": "pdf_parsing",
+        "process_cpu_system_s": 4.91209,
+        "process_cpu_user_s": 18.766277,
+        "rss_bytes": 2186633216,
+        "system_available_ram_bytes": 24628559872
+      },
+      {
+        "monotonic_offset_s": 16.62133187794825,
+        "observed_stage": "pdf_parsing",
+        "process_cpu_system_s": 4.947899,
+        "process_cpu_user_s": 18.930731,
+        "rss_bytes": 2194857984,
+        "system_available_ram_bytes": 24622587904
+      },
+      {
+        "monotonic_offset_s": 16.82215046894271,
+        "observed_stage": "dense",
+        "process_cpu_system_s": 4.972798,
+        "process_cpu_user_s": 19.05961,
+        "rss_bytes": 2195673088,
+        "system_available_ram_bytes": 24615432192
+      },
+      {
+        "disk": {
+          "free_bytes": 726420369408,
+          "roots": {
+            "__aggregate__": 29523,
+            "chunk_manifests": 1071,
+            "chunks": 6051,
+            "corpora_candidate_live": 4127,
+            "embeddings": 0,
+            "index_manifests": 0,
+            "lexical_index_manifests": 0,
+            "lexical_indexes": 0,
+            "manifests": 1346,
+            "processed": 7761,
+            "qdrant": 0,
+            "staging": 2178,
+            "workspaces_vault": 6989
+          }
+        },
+        "gpu": {
+          "allocator": {
+            "cuda_available": true,
+            "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+            "mem_get_info": {
+              "free_bytes": 6474956800,
+              "free_mib": 6175,
+              "total_bytes": 8589606912,
+              "total_mib": 8191
+            },
+            "memory_allocated": 398246912,
+            "memory_reserved": 941621248,
+            "memory_stats": {
+              "active_bytes.all.current": 398246912,
+              "allocated_bytes.all.current": 398246912,
+              "allocation.retry_count": null,
+              "inactive_split_bytes.all.current": 27474944,
+              "num_alloc_retries": 0,
+              "num_ooms": 0,
+              "reserved_bytes.all.current": 941621248,
+              "segment.all.current": 89
+            }
+          },
+          "external": {
+            "error": null,
+            "sample": {
+              "clock_graphics_mhz": 1695.0,
+              "clock_memory_mhz": 5500.0,
+              "clock_sm_mhz": 1695.0,
+              "power_draw_w": 50.31,
+              "pstate": "P0",
+              "temperature_c": 65.0,
+              "throttle_hw_slowdown": "Not Active",
+              "throttle_hw_thermal_slowdown": "Not Active",
+              "throttle_sw_power_cap": "Not Active",
+              "throttle_sw_thermal_slowdown": "Not Active",
+              "utilization_gpu_pct": 13.0,
+              "utilization_memory_pct": 5.0
+            },
+            "status": "observed"
+          },
+          "status": "observed"
+        },
+        "monotonic_offset_s": 17.023405780957546,
+        "observed_stage": "dense",
+        "process_cpu_system_s": 4.989527,
+        "process_cpu_user_s": 19.251886,
+        "rss_bytes": 2208309248,
+        "system_available_ram_bytes": 24598568960
+      },
+      {
+        "monotonic_offset_s": 17.595510327955708,
+        "observed_stage": "dense",
+        "process_cpu_system_s": 5.031566,
+        "process_cpu_user_s": 19.79222,
+        "rss_bytes": 2217037824,
+        "system_available_ram_bytes": 24571404288
+      },
+      {
+        "monotonic_offset_s": 17.795847922971006,
+        "observed_stage": "dense",
+        "process_cpu_system_s": 5.043249,
+        "process_cpu_user_s": 19.989302,
+        "rss_bytes": 2217041920,
+        "system_available_ram_bytes": 24569753600
+      },
+      {
+        "monotonic_offset_s": 17.99610472295899,
+        "observed_stage": "dense",
+        "process_cpu_system_s": 5.047324,
+        "process_cpu_user_s": 20.193473,
+        "rss_bytes": 2217041920,
+        "system_available_ram_bytes": 24569749504
+      },
+      {
+        "disk": {
+          "free_bytes": 726420361216,
+          "roots": {
+            "__aggregate__": 29789,
+            "chunk_manifests": 1071,
+            "chunks": 6051,
+            "corpora_candidate_live": 4127,
+            "embeddings": 0,
+            "index_manifests": 0,
+            "lexical_index_manifests": 0,
+            "lexical_indexes": 0,
+            "manifests": 1346,
+            "processed": 7761,
+            "qdrant": 47,
+            "staging": 2178,
+            "workspaces_vault": 7208
+          }
+        },
+        "gpu": {
+          "allocator": {
+            "cuda_available": true,
+            "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+            "mem_get_info": {
+              "free_bytes": 6474956800,
+              "free_mib": 6175,
+              "total_bytes": 8589606912,
+              "total_mib": 8191
+            },
+            "memory_allocated": 398246912,
+            "memory_reserved": 941621248,
+            "memory_stats": {
+              "active_bytes.all.current": 398246912,
+              "allocated_bytes.all.current": 398246912,
+              "allocation.retry_count": null,
+              "inactive_split_bytes.all.current": 27474944,
+              "num_alloc_retries": 0,
+              "num_ooms": 0,
+              "reserved_bytes.all.current": 941621248,
+              "segment.all.current": 89
+            }
+          },
+          "external": {
+            "error": null,
+            "sample": {
+              "clock_graphics_mhz": 1695.0,
+              "clock_memory_mhz": 5500.0,
+              "clock_sm_mhz": 1695.0,
+              "power_draw_w": 49.1,
+              "pstate": "P0",
+              "temperature_c": 65.0,
+              "throttle_hw_slowdown": "Not Active",
+              "throttle_hw_thermal_slowdown": "Not Active",
+              "throttle_sw_power_cap": "Not Active",
+              "throttle_sw_thermal_slowdown": "Not Active",
+              "utilization_gpu_pct": 19.0,
+              "utilization_memory_pct": 10.0
+            },
+            "status": "observed"
+          },
+          "status": "observed"
+        },
+        "monotonic_offset_s": 18.196394945960492,
+        "observed_stage": "dense",
+        "process_cpu_system_s": 5.054828,
+        "process_cpu_user_s": 20.394624,
+        "rss_bytes": 2217046016,
+        "system_available_ram_bytes": 24569683968
+      },
+      {
+        "monotonic_offset_s": 18.494194639963098,
+        "observed_stage": "dense",
+        "process_cpu_system_s": 5.07546,
+        "process_cpu_user_s": 20.685838,
+        "rss_bytes": 2217086976,
+        "system_available_ram_bytes": 24569049088
+      },
+      {
+        "monotonic_offset_s": 18.69447168696206,
+        "observed_stage": "dense",
+        "process_cpu_system_s": 5.087123,
+        "process_cpu_user_s": 20.886837,
+        "rss_bytes": 2217086976,
+        "system_available_ram_bytes": 24568803328
+      },
+      {
+        "monotonic_offset_s": 18.894924371968955,
+        "observed_stage": "dense",
+        "process_cpu_system_s": 5.103011,
+        "process_cpu_user_s": 21.079653,
+        "rss_bytes": 2217086976,
+        "system_available_ram_bytes": 24569327616
+      },
+      {
+        "monotonic_offset_s": 19.09524346399121,
+        "observed_stage": "dense",
+        "process_cpu_system_s": 5.107158,
+        "process_cpu_user_s": 21.283998,
+        "rss_bytes": 2217086976,
+        "system_available_ram_bytes": 24569458688
+      },
+      {
+        "disk": {
+          "free_bytes": 726420361216,
+          "roots": {
+            "__aggregate__": 29789,
+            "chunk_manifests": 1071,
+            "chunks": 6051,
+            "corpora_candidate_live": 4127,
+            "embeddings": 0,
+            "index_manifests": 0,
+            "lexical_index_manifests": 0,
+            "lexical_indexes": 0,
+            "manifests": 1346,
+            "processed": 7761,
+            "qdrant": 47,
+            "staging": 2178,
+            "workspaces_vault": 7208
+          }
+        },
+        "gpu": {
+          "allocator": {
+            "cuda_available": true,
+            "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+            "mem_get_info": {
+              "free_bytes": 6474956800,
+              "free_mib": 6175,
+              "total_bytes": 8589606912,
+              "total_mib": 8191
+            },
+            "memory_allocated": 398246912,
+            "memory_reserved": 941621248,
+            "memory_stats": {
+              "active_bytes.all.current": 398246912,
+              "allocated_bytes.all.current": 398246912,
+              "allocation.retry_count": null,
+              "inactive_split_bytes.all.current": 27474944,
+              "num_alloc_retries": 0,
+              "num_ooms": 0,
+              "reserved_bytes.all.current": 941621248,
+              "segment.all.current": 89
+            }
+          },
+          "external": {
+            "error": null,
+            "sample": {
+              "clock_graphics_mhz": 975.0,
+              "clock_memory_mhz": 5500.0,
+              "clock_sm_mhz": 975.0,
+              "power_draw_w": 35.5,
+              "pstate": "P0",
+              "temperature_c": 65.0,
+              "throttle_hw_slowdown": "Not Active",
+              "throttle_hw_thermal_slowdown": "Not Active",
+              "throttle_sw_power_cap": "Not Active",
+              "throttle_sw_thermal_slowdown": "Not Active",
+              "utilization_gpu_pct": 3.0,
+              "utilization_memory_pct": 3.0
+            },
+            "status": "observed"
+          },
+          "status": "observed"
+        },
+        "monotonic_offset_s": 19.295578927965835,
+        "observed_stage": "dense",
+        "process_cpu_system_s": 5.115727,
+        "process_cpu_user_s": 21.485219999999998,
+        "rss_bytes": 2217086976,
+        "system_available_ram_bytes": 24569196544
+      },
+      {
+        "monotonic_offset_s": 19.601047029951587,
+        "observed_stage": "dense",
+        "process_cpu_system_s": 5.144296,
+        "process_cpu_user_s": 21.774602,
+        "rss_bytes": 2217099264,
+        "system_available_ram_bytes": 24571576320
+      },
+      {
+        "monotonic_offset_s": 19.692302402982023,
+        "observed_stage": "dense",
+        "process_cpu_system_s": 5.148509,
+        "process_cpu_user_s": 21.866562,
+        "rss_bytes": 2217099264,
+        "system_available_ram_bytes": 24573939712
+      },
+      {
+        "monotonic_offset_s": 19.895896523958072,
+        "observed_stage": "dense",
+        "process_cpu_system_s": 5.157409,
+        "process_cpu_user_s": 22.073379,
+        "rss_bytes": 2222755840,
+        "system_available_ram_bytes": 24560652288
+      },
+      {
+        "monotonic_offset_s": 20.09837752598105,
+        "observed_stage": "dense",
+        "process_cpu_system_s": 5.789246,
+        "process_cpu_user_s": 22.39064,
+        "rss_bytes": 3265089536,
+        "system_available_ram_bytes": 23924273152
+      },
+      {
+        "disk": {
+          "free_bytes": 726420353024,
+          "roots": {
+            "__aggregate__": 29789,
+            "chunk_manifests": 1071,
+            "chunks": 6051,
+            "corpora_candidate_live": 4127,
+            "embeddings": 0,
+            "index_manifests": 0,
+            "lexical_index_manifests": 0,
+            "lexical_indexes": 0,
+            "manifests": 1346,
+            "processed": 7761,
+            "qdrant": 47,
+            "staging": 2178,
+            "workspaces_vault": 7208
+          }
+        },
+        "gpu": {
+          "allocator": {
+            "cuda_available": true,
+            "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+            "mem_get_info": {
+              "free_bytes": 6474956800,
+              "free_mib": 6175,
+              "total_bytes": 8589606912,
+              "total_mib": 8191
+            },
+            "memory_allocated": 398246912,
+            "memory_reserved": 941621248,
+            "memory_stats": {
+              "active_bytes.all.current": 398246912,
+              "allocated_bytes.all.current": 398246912,
+              "allocation.retry_count": null,
+              "inactive_split_bytes.all.current": 27474944,
+              "num_alloc_retries": 0,
+              "num_ooms": 0,
+              "reserved_bytes.all.current": 941621248,
+              "segment.all.current": 89
+            }
+          },
+          "external": {
+            "error": null,
+            "sample": {
+              "clock_graphics_mhz": 975.0,
+              "clock_memory_mhz": 5500.0,
+              "clock_sm_mhz": 975.0,
+              "power_draw_w": 35.4,
+              "pstate": "P0",
+              "temperature_c": 65.0,
+              "throttle_hw_slowdown": "Not Active",
+              "throttle_hw_thermal_slowdown": "Not Active",
+              "throttle_sw_power_cap": "Not Active",
+              "throttle_sw_thermal_slowdown": "Not Active",
+              "utilization_gpu_pct": 0.0,
+              "utilization_memory_pct": 2.0
+            },
+            "status": "observed"
+          },
+          "status": "observed"
+        },
+        "monotonic_offset_s": 20.299163371964823,
+        "observed_stage": "dense",
+        "process_cpu_system_s": 6.314152,
+        "process_cpu_user_s": 23.118617,
+        "rss_bytes": 4211048448,
+        "system_available_ram_bytes": 23300702208
+      },
+      {
+        "monotonic_offset_s": 20.95187193894526,
+        "observed_stage": "dense",
+        "process_cpu_system_s": 7.276568,
+        "process_cpu_user_s": 24.693709,
+        "rss_bytes": 4581056512,
+        "system_available_ram_bytes": 22232768512
+      },
+      {
+        "monotonic_offset_s": 21.15339608595241,
+        "observed_stage": "dense",
+        "process_cpu_system_s": 7.276569,
+        "process_cpu_user_s": 24.895358,
+        "rss_bytes": 4581056512,
+        "system_available_ram_bytes": 22232571904
+      },
+      {
+        "disk": {
+          "free_bytes": 726420353024,
+          "roots": {
+            "__aggregate__": 29789,
+            "chunk_manifests": 1071,
+            "chunks": 6051,
+            "corpora_candidate_live": 4127,
+            "embeddings": 0,
+            "index_manifests": 0,
+            "lexical_index_manifests": 0,
+            "lexical_indexes": 0,
+            "manifests": 1346,
+            "processed": 7761,
+            "qdrant": 47,
+            "staging": 2178,
+            "workspaces_vault": 7208
+          }
+        },
+        "gpu": {
+          "allocator": {
+            "cuda_available": true,
+            "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+            "mem_get_info": {
+              "free_bytes": 5793382400,
+              "free_mib": 5525,
+              "total_bytes": 8589606912,
+              "total_mib": 8191
+            },
+            "memory_allocated": 1560623104,
+            "memory_reserved": 1623195648,
+            "memory_stats": {
+              "active_bytes.all.current": 1560623104,
+              "allocated_bytes.all.current": 1560623104,
+              "allocation.retry_count": null,
+              "inactive_split_bytes.all.current": 33212416,
+              "num_alloc_retries": 0,
+              "num_ooms": 0,
+              "reserved_bytes.all.current": 1623195648,
+              "segment.all.current": 94
+            }
+          },
+          "external": {
+            "error": null,
+            "sample": {
+              "clock_graphics_mhz": 1500.0,
+              "clock_memory_mhz": 5500.0,
+              "clock_sm_mhz": 1500.0,
+              "power_draw_w": 41.85,
+              "pstate": "P0",
+              "temperature_c": 65.0,
+              "throttle_hw_slowdown": "Not Active",
+              "throttle_hw_thermal_slowdown": "Not Active",
+              "throttle_sw_power_cap": "Not Active",
+              "throttle_sw_thermal_slowdown": "Not Active",
+              "utilization_gpu_pct": 14.0,
+              "utilization_memory_pct": 3.0
+            },
+            "status": "observed"
+          },
+          "status": "observed"
+        },
+        "monotonic_offset_s": 21.35374123795191,
+        "observed_stage": "dense",
+        "process_cpu_system_s": 7.322974,
+        "process_cpu_user_s": 25.057977,
+        "rss_bytes": 3733254144,
+        "system_available_ram_bytes": 23064334336
+      },
+      {
+        "monotonic_offset_s": 21.676973121997435,
+        "observed_stage": "dense",
+        "process_cpu_system_s": 7.341912,
+        "process_cpu_user_s": 25.334593,
+        "rss_bytes": 3368230912,
+        "system_available_ram_bytes": 23432511488
+      },
+      {
+        "monotonic_offset_s": 21.87741786398692,
+        "observed_stage": "dense",
+        "process_cpu_system_s": 7.349215,
+        "process_cpu_user_s": 25.530825,
+        "rss_bytes": 3254947840,
+        "system_available_ram_bytes": 23539666944
+      },
+      {
+        "monotonic_offset_s": 22.07779378897976,
+        "observed_stage": "dense",
+        "process_cpu_system_s": 7.36101,
+        "process_cpu_user_s": 25.719844,
+        "rss_bytes": 3066142720,
+        "system_available_ram_bytes": 23720615936
+      },
+      {
+        "monotonic_offset_s": 22.27813932998106,
+        "observed_stage": "dense",
+        "process_cpu_system_s": 7.361368,
+        "process_cpu_user_s": 25.783516,
+        "rss_bytes": 2990620672,
+        "system_available_ram_bytes": 23802359808
+      },
+      {
+        "disk": {
+          "free_bytes": 726420353024,
+          "roots": {
+            "__aggregate__": 29789,
+            "chunk_manifests": 1071,
+            "chunks": 6051,
+            "corpora_candidate_live": 4127,
+            "embeddings": 0,
+            "index_manifests": 0,
+            "lexical_index_manifests": 0,
+            "lexical_indexes": 0,
+            "manifests": 1346,
+            "processed": 7761,
+            "qdrant": 47,
+            "staging": 2178,
+            "workspaces_vault": 7208
+          }
+        },
+        "gpu": {
+          "allocator": {
+            "cuda_available": true,
+            "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+            "mem_get_info": {
+              "free_bytes": 510521344,
+              "free_mib": 486,
+              "total_bytes": 8589606912,
+              "total_mib": 8191
+            },
+            "memory_allocated": 1590865408,
+            "memory_reserved": 3160408064,
+            "memory_stats": {
+              "active_bytes.all.current": 1590865408,
+              "allocated_bytes.all.current": 1590865408,
+              "allocation.retry_count": null,
+              "inactive_split_bytes.all.current": 286085632,
+              "num_alloc_retries": 0,
+              "num_ooms": 0,
+              "reserved_bytes.all.current": 3160408064,
+              "segment.all.current": 173
+            }
+          },
+          "external": {
+            "error": null,
+            "sample": {
+              "clock_graphics_mhz": 1500.0,
+              "clock_memory_mhz": 5500.0,
+              "clock_sm_mhz": 1500.0,
+              "power_draw_w": 43.63,
+              "pstate": "P0",
+              "temperature_c": 65.0,
+              "throttle_hw_slowdown": "Not Active",
+              "throttle_hw_thermal_slowdown": "Not Active",
+              "throttle_sw_power_cap": "Not Active",
+              "throttle_sw_thermal_slowdown": "Not Active",
+              "utilization_gpu_pct": 34.0,
+              "utilization_memory_pct": 4.0
+            },
+            "status": "observed"
+          },
+          "status": "observed"
+        },
+        "monotonic_offset_s": 22.47854495095089,
+        "observed_stage": "dense",
+        "process_cpu_system_s": 7.375459,
+        "process_cpu_user_s": 25.886907,
+        "rss_bytes": 2991185920,
+        "system_available_ram_bytes": 23661608960
+      },
+      {
+        "monotonic_offset_s": 22.85380158998305,
+        "observed_stage": "dense",
+        "process_cpu_system_s": 7.381077,
+        "process_cpu_user_s": 26.241521,
+        "rss_bytes": 2991677440,
+        "system_available_ram_bytes": 23782027264
+      },
+      {
+        "monotonic_offset_s": 23.05415808199905,
+        "observed_stage": "dense",
+        "process_cpu_system_s": 7.396006,
+        "process_cpu_user_s": 26.289516,
+        "rss_bytes": 2993860608,
+        "system_available_ram_bytes": 23758704640
+      },
+      {
+        "monotonic_offset_s": 23.254497324989643,
+        "observed_stage": "dense",
+        "process_cpu_system_s": 7.419871,
+        "process_cpu_user_s": 26.476964,
+        "rss_bytes": 2993864704,
+        "system_available_ram_bytes": 23753519104
+      },
+      {
+        "monotonic_offset_s": 23.454936956986785,
+        "observed_stage": "dense",
+        "process_cpu_system_s": 7.434461,
+        "process_cpu_user_s": 26.6651,
+        "rss_bytes": 2993864704,
+        "system_available_ram_bytes": 23750443008
+      },
+      {
+        "disk": {
+          "free_bytes": 726420353024,
+          "roots": {
+            "__aggregate__": 29789,
+            "chunk_manifests": 1071,
+            "chunks": 6051,
+            "corpora_candidate_live": 4127,
+            "embeddings": 0,
+            "index_manifests": 0,
+            "lexical_index_manifests": 0,
+            "lexical_indexes": 0,
+            "manifests": 1346,
+            "processed": 7761,
+            "qdrant": 47,
+            "staging": 2178,
+            "workspaces_vault": 7208
+          }
+        },
+        "gpu": {
+          "allocator": {
+            "cuda_available": true,
+            "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+            "mem_get_info": {
+              "free_bytes": 4256169984,
+              "free_mib": 4059,
+              "total_bytes": 8589606912,
+              "total_mib": 8191
+            },
+            "memory_allocated": 1591444992,
+            "memory_reserved": 3160408064,
+            "memory_stats": {
+              "active_bytes.all.current": 1591444992,
+              "allocated_bytes.all.current": 1591444992,
+              "allocation.retry_count": null,
+              "inactive_split_bytes.all.current": 285506048,
+              "num_alloc_retries": 0,
+              "num_ooms": 0,
+              "reserved_bytes.all.current": 3160408064,
+              "segment.all.current": 173
+            }
+          },
+          "external": {
+            "error": null,
+            "sample": {
+              "clock_graphics_mhz": 975.0,
+              "clock_memory_mhz": 5500.0,
+              "clock_sm_mhz": 975.0,
+              "power_draw_w": 35.73,
+              "pstate": "P0",
+              "temperature_c": 65.0,
+              "throttle_hw_slowdown": "Not Active",
+              "throttle_hw_thermal_slowdown": "Not Active",
+              "throttle_sw_power_cap": "Not Active",
+              "throttle_sw_thermal_slowdown": "Not Active",
+              "utilization_gpu_pct": 9.0,
+              "utilization_memory_pct": 4.0
+            },
+            "status": "observed"
+          },
+          "status": "observed"
+        },
+        "monotonic_offset_s": 23.655273680982646,
+        "observed_stage": "dense",
+        "process_cpu_system_s": 7.487887,
+        "process_cpu_user_s": 26.820855,
+        "rss_bytes": 2993864704,
+        "system_available_ram_bytes": 23745597440
+      },
+      {
+        "monotonic_offset_s": 23.971935012959875,
+        "observed_stage": "dense",
+        "process_cpu_system_s": 7.566939,
+        "process_cpu_user_s": 27.074676,
+        "rss_bytes": 2993893376,
+        "system_available_ram_bytes": 23741820928
+      },
+      {
+        "monotonic_offset_s": 24.17246166296536,
+        "observed_stage": "dense",
+        "process_cpu_system_s": 7.637188,
+        "process_cpu_user_s": 27.214498,
+        "rss_bytes": 2993893376,
+        "system_available_ram_bytes": 23742484480
+      },
+      {
+        "monotonic_offset_s": 24.37291679996997,
+        "observed_stage": "dense",
+        "process_cpu_system_s": 7.674754,
+        "process_cpu_user_s": 27.356385,
+        "rss_bytes": 2995924992,
+        "system_available_ram_bytes": 23757873152
+      },
+      {
+        "monotonic_offset_s": 24.57339364197105,
+        "observed_stage": "dense",
+        "process_cpu_system_s": 7.697393,
+        "process_cpu_user_s": 27.491878,
+        "rss_bytes": 3003621376,
+        "system_available_ram_bytes": 23623761920
+      },
+      {
+        "disk": {
+          "free_bytes": 726420234240,
+          "roots": {
+            "__aggregate__": 86277,
+            "chunk_manifests": 1071,
+            "chunks": 6051,
+            "corpora_candidate_live": 7090,
+            "embeddings": 22379,
+            "index_manifests": 1208,
+            "lexical_index_manifests": 1154,
+            "lexical_indexes": 9639,
+            "manifests": 1346,
+            "processed": 7761,
+            "qdrant": 21081,
+            "staging": 0,
+            "workspaces_vault": 7497
+          }
+        },
+        "gpu": {
+          "allocator": {
+            "cuda_available": true,
+            "device_name": "NVIDIA GeForce RTX 2080 Super with Max-Q Design",
+            "mem_get_info": {
+              "free_bytes": 4245684224,
+              "free_mib": 4049,
+              "total_bytes": 8589606912,
+              "total_mib": 8191
+            },
+            "memory_allocated": 1590863360,
+            "memory_reserved": 3168796672,
+            "memory_stats": {
+              "active_bytes.all.current": 1590863360,
+              "allocated_bytes.all.current": 1590863360,
+              "allocation.retry_count": null,
+              "inactive_split_bytes.all.current": 286087680,
+              "num_alloc_retries": 0,
+              "num_ooms": 0,
+              "reserved_bytes.all.current": 3168796672,
+              "segment.all.current": 177
+            }
+          },
+          "external": {
+            "error": null,
+            "sample": {
+              "clock_graphics_mhz": 975.0,
+              "clock_memory_mhz": 5500.0,
+              "clock_sm_mhz": 975.0,
+              "power_draw_w": 35.64,
+              "pstate": "P0",
+              "temperature_c": 65.0,
+              "throttle_hw_slowdown": "Not Active",
+              "throttle_hw_thermal_slowdown": "Not Active",
+              "throttle_sw_power_cap": "Not Active",
+              "throttle_sw_thermal_slowdown": "Not Active",
+              "utilization_gpu_pct": 9.0,
+              "utilization_memory_pct": 3.0
+            },
+            "status": "observed"
+          },
+          "status": "observed"
+        },
+        "monotonic_offset_s": 24.651068803970702,
+        "observed_stage": "finalization",
+        "process_cpu_system_s": 7.697395,
+        "process_cpu_user_s": 27.50751,
+        "rss_bytes": 3003658240,
+        "system_available_ram_bytes": 23757844480
+      }
+    ]
+  },
+  "operation": {
+    "active_sources": {
+      "revision": 2,
+      "sources": [
+        {
+          "active_from_revision": 2,
+          "active_from_snapshot_id": "snap_9f353a0078851bd6a4d3c4884ff2374a02079b83b5b7413357e182c412e10149",
+          "byte_size": 2178,
+          "content_hash": "d81dc0d89641eb0cad9176051865e1ef13e8ee77f926f3f157e935eac08cfcbf",
+          "content_type": "application/pdf",
+          "created_at": "2026-10-27T00:50:45.806855Z",
+          "display_name": "born_digital_reference.pdf",
+          "document_id": "doc_d81dc0d89641eb0cad9176051865e1ef13e8ee77f926f3f157e935eac08cfcbf",
+          "source_id": "src_c703f083f057403f8304d997a9e3324a",
+          "version": 1
+        }
+      ],
+      "workspace_id": "ws_fd2fbdd29dc94d4b8db598d3435db820"
+    },
+    "http_status": 202,
+    "managed_operation": {
+      "created_at": "2026-10-27T00:50:45.789931Z",
+      "error": null,
+      "expected_revision": 1,
+      "kind": "source_add",
+      "metrics": {
+        "child_chunk_count": 1,
+        "chunk_artifacts_generated": 1,
+        "chunk_artifacts_reused": 0,
+        "dense_execution": {
+          "attention_backend": "sdpa",
+          "batch_size": 32,
+          "device": "cuda",
+          "dtype": "float16",
+          "embedding_dimension": 1024
+        },
+        "embeddings_failed": 0,
+        "embeddings_generated": 1,
+        "embeddings_reused": 0,
+        "generated_chunks_per_sec": 0.12394645513138325,
+        "lexical": {
+          "chunk_set_child_count": 1,
+          "eligible_child_count": 1,
+          "indexed_child_count": 1,
+          "searchable_units_contract": "exclude-zero-term-v1",
+          "zero_term_excluded_count": 0
+        },
+        "oversized_unsplittable_count": 0,
+        "parsed_artifacts_generated": 1,
+        "parsed_artifacts_reused": 0,
+        "parsed_searchable_document_count": 1,
+        "post_active_source_count": 1,
+        "pre_active_source_count": 0,
+        "requested_document_count": 1,
+        "stage_durations": {
+          "chunking_ms": 32,
+          "dense_generation_ms": 8068,
+          "dense_materialization_ms": 21,
+          "finalization_ms": 20,
+          "lexical_ms": 19,
+          "parsing_ms": 7744,
+          "publication_ms": 10,
+          "total_ms": 15603
+        }
+      },
+      "operation_id": "wop_5e5a485161d147f1b6e890fb775fd7b8",
+      "progress": {
+        "current": 0,
+        "started_at": "2026-10-27T00:51:02.388500Z",
+        "step": "finalizing",
+        "total": null,
+        "unit": "documents"
+      },
+      "progress_stage": "ready",
+      "result": {
+        "snapshot_id": "snap_9f353a0078851bd6a4d3c4884ff2374a02079b83b5b7413357e182c412e10149",
+        "source_id": "src_c703f083f057403f8304d997a9e3324a",
+        "source_ids": [
+          "src_c703f083f057403f8304d997a9e3324a"
+        ],
+        "source_version": 1,
+        "workspace_revision": 2,
+        "workspace_status": "active"
+      },
+      "status": "succeeded",
+      "updated_at": "2026-10-27T00:51:02.407760Z",
+      "worklist": {
+        "active_documents": [],
+        "completed_count": 1,
+        "documents": [
+          {
+            "child_chunk_count": 1,
+            "display_name": "born_digital_reference.pdf",
+            "document_id": "doc_d81dc0d89641eb0cad9176051865e1ef13e8ee77f926f3f157e935eac08cfcbf",
+            "phase": "indexed"
+          }
+        ],
+        "pending_count": 0,
+        "remaining_count": 0,
+        "total_document_count": 1
+      },
+      "workspace_id": "ws_fd2fbdd29dc94d4b8db598d3435db820"
+    },
+    "operation_id": "wop_5e5a485161d147f1b6e890fb775fd7b8",
+    "response": {
+      "operation_id": "wop_5e5a485161d147f1b6e890fb775fd7b8",
+      "transport": "workspace_lifecycle_equivalent"
+    },
+    "terminal_state_source": "managed operation durable record; HTTP GET projection equivalent",
+    "workspace_id": "ws_fd2fbdd29dc94d4b8db598d3435db820",
+    "workspace_snapshot": {
+      "created_at": "2026-10-27T00:50:45.784084Z",
+      "current_snapshot_id": "snap_9f353a0078851bd6a4d3c4884ff2374a02079b83b5b7413357e182c412e10149",
+      "description": "",
+      "revision": 2,
+      "source_count": 1,
+      "status": "active",
+      "title": "L4 capacity capability",
+      "updated_at": "2026-10-27T00:51:02.392920Z",
+      "workspace_id": "ws_fd2fbdd29dc94d4b8db598d3435db820"
+    }
+  },
+  "perturbation": {
+    "instrumentation_enabled": true,
+    "note": "Sampling is observational and its cadence is recorded; no zero-overhead claim is made."
+  },
+  "product_defaults": {
+    "max_bytes_per_document": 26214400,
+    "max_files_per_ingest": 32,
+    "max_total_upload_bytes": 104857600
+  },
+  "sampling_configuration": {
+    "disk_interval_s": 1.0,
+    "external_gpu_sampling": true,
+    "gpu_interval_s": 1.0,
+    "lifetime_rss_source": "resource.getrusage ru_maxrss",
+    "rss_interval_s": 0.2,
+    "rss_source": "/proc/self/status VmRSS"
+  },
+  "source": {
+    "byte_size": 2178,
+    "identifier": "born_digital_reference.pdf",
+    "label": "born_digital_reference",
+    "media_type": "application/pdf",
+    "role": "l4_capability_smoke",
+    "sha256": "d81dc0d89641eb0cad9176051865e1ef13e8ee77f926f3f157e935eac08cfcbf"
+  },
+  "stage_attribution": {
+    "diagnostic_label_source": "managed-operation progress/worklist and product metrics",
+    "observed_product_stages": [
+      "parsing",
+      "chunk",
+      "dense",
+      "dense_materialization",
+      "lexical",
+      "publish",
+      "finalization"
+    ],
+    "observed_transitions": [
+      {
+        "offset_s": 1.4111751230084337,
+        "stage": "upload"
+      },
+      {
+        "offset_s": 10.385897338972427,
+        "stage": "preparing"
+      },
+      {
+        "offset_s": 10.442784993967507,
+        "stage": "pdf_parsing"
+      },
+      {
+        "offset_s": 18.175439547980204,
+        "stage": "ingest"
+      },
+      {
+        "offset_s": 18.226077332976274,
+        "stage": "dense"
+      },
+      {
+        "offset_s": 26.01058809697861,
+        "stage": "finalization"
+      }
+    ],
+    "unobserved_product_stages": []
+  },
+  "terminal": {
+    "http_status": 202,
+    "managed_operation_status": "succeeded",
+    "status": "succeeded"
+  },
+  "timings": {
+    "harness_observed_stage_s": {
+      "chunk": 0.032,
+      "dense": 7.784510764002334,
+      "dense_materialization": 0.021,
+      "finalization": 0.0,
+      "ingest": 0.05063778499606997,
+      "lexical": 0.019,
+      "parsing": 7.744,
+      "pdf_parsing": 7.732654554012697,
+      "preparing": 0.056887654995080084,
+      "publish": 0.01,
+      "upload": 8.974722215963993
+    },
+    "operation_total_s": 24.650903865986038,
+    "parser_interval_s": 7.732654554012697,
+    "product_reported_stage_ms": {
+      "chunk": 32,
+      "dense": 8068,
+      "dense_materialization": 21,
+      "finalization": 20,
+      "lexical": 19,
+      "parsing": 7744,
+      "publish": 10
+    }
+  }
+}

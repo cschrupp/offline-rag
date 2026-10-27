@@ -1,0 +1,31 @@
+{
+  "evidence_contract": "large-source-capacity-evidence-v1",
+  "campaign": "S16-K-LARGE-SOURCE-CAPACITY-POST-L6-CUDA-90M-PDF-QUALIFICATION-EXECUTION-AUTH-001",
+  "governance_base": "df14ef6924fce32c6621e6b5f0b30fbe4cc7c870",
+  "scientific_execution_pin": "70cea558bd0e8f35fb23057b9ee2c1a4ab89a450",
+  "fixtures": [
+    {
+      "cell_id": "Q25",
+      "filename": "norman_q25.pdf",
+      "byte_size": 22430312,
+      "sha256": "ff360b3bca78aba4b3852a484a3ba4c5c0bb8aa439f5421a5d3450e60e21fa16",
+      "media_type": "application/pdf",
+      "derivation": "mutool merge page subset 1-75 from data/raw/pdfs/Norman_4th.pdf; no byte padding",
+      "execution_evidence": "cells/cuda_fp16_v1_Q25.json"
+    },
+    {
+      "cell_id": "Q100",
+      "filename": "norman_q100.pdf",
+      "byte_size": 96152520,
+      "sha256": "109fa209213e9d9bbaf01e30d254658653edca625aea8702153dcb900d6795f0",
+      "media_type": "application/pdf",
+      "derivation": "mutool merge page subset 1-250 from data/raw/pdfs/Norman_4th.pdf; no byte padding",
+      "execution_evidence": "cells/cuda_fp16_v1_Q100.json"
+    }
+  ],
+  "source_provenance": {
+    "path": "data/raw/pdfs/Norman_4th.pdf",
+    "byte_size": 284502054,
+    "sha256": "af9ea69d3a61d91a05770d6e1696ce0aeb589482173a23c39bd4f5c6884660fe"
+  }
+}
