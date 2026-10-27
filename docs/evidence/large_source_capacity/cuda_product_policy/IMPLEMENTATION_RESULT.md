@@ -3,7 +3,7 @@
 **Authority:** `S16-K-LARGE-SOURCE-CAPACITY-POST-L6-CUDA-PRODUCT-POLICY-IMPLEMENTATION-AUTH-001`
 **Accepted design subject:** `cf29d42b4163ca24f6734b1c1ecba1bedc24d97e`
 **Implementation branch:** `implementation/16k-large-source-capacity-post-l6-cuda-product-policy`
-**Implementation candidate:** `c811b70c8f4a2f65b0f0a8b9f7c4e1b0f0f6f9a7`
+**Implementation candidate:** `5e08fb710113ab2289254192be7a680898a8ca96`
 
 The implementation candidate is the production-and-test commit that precedes
 this durable result record. Its exact commit identity is recorded above for

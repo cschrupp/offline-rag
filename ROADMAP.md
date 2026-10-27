@@ -726,7 +726,7 @@ SLICE 15  COMPLETE / ACCEPTED
            Implementation:
              COMPLETE / CUDA PRODUCT SMOKE BLOCKED
            Implementation candidate:
-             c811b70c8f4a2f65b0f0a8b9f7c4e1b0f0f6f9a7
+             5e08fb710113ab2289254192be7a680898a8ca96
            Implementation branch:
              implementation/16k-large-source-capacity-post-l6-cuda-product-policy
            Result:
