@@ -329,9 +329,11 @@ cd ui && npm test && npm run lint && npm run typecheck && npm run build
 | Canonical main promotion | **COMPLETE / EXECUTED** (`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-AUTH-001` — EXECUTED; pure FF `168af70…` → `feab2b2…`; 0/0) |
 | Post-promotion record | **COMPLETE / HUMAN ACCEPTED / CANONICAL** (`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-IR-001` — ACCEPT; `S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-HA-001` — ACCEPTED; subject `76caab2…`; HA tip `e21b3e6…`) |
 | Second main promotion (HA tip) | **COMPLETE / EXECUTED** (`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-HA-MAIN-PROMOTION-AUTH-001` — EXECUTED; pure FF `feab2b2…` → `e21b3e6…`; 0/0) |
-| 16K | **POST-CLOSEOUT PROGRAM ACTIVE / PARTIALLY EXECUTED** — 16K-A/B **COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED**; 16K-C **IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED** (`219c8551…`); 16K-D dual-backend **P1–P4 complete** (P4 **IMPLEMENTATION + HUMAN UAT COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACKNOWLEDGED / CLOSED**; UAT subject `6d3689d03eb5a6e84d38d3ff7281e001e1caeb1a`; closeout tip `9581a053…`); 16K-E→G **NOT AUTHORIZED**; qualified dual-backend embeddings (CUDA Torch FP16 + CPU ONNX FP32; restart-time profile selection; no live hot failover); does not reopen Slice 16 — [`ROADMAP.md`](ROADMAP.md) |
+| 16K | **POST-CLOSEOUT PROGRAM ACTIVE / PARTIALLY EXECUTED** — 16K-A/B **COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED**; 16K-C **IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED** (`219c8551…`; Human-disposition reconciliation tracked); 16K-D dual-backend **P1–P4 complete**; large-source **L1–L6 COMPLETE / HUMAN ACCEPTED / PROMOTED / CLOSED**; post-L6 CUDA/raw-byte/parser work is present on canonical `main`, with the parser corrective **PROMOTED / CLOSED** at `7ca0c233…`; 16K-E→G remain **NOT AUTHORIZED**. Active residual queue: [`docs/BACKLOG.md`](docs/BACKLOG.md). |
 | Slice 17 / 18 | **NOT AUTHORIZED** |
 | M7 closeout | **NOT AUTHORIZED** |
+
+Live post-closeout backlog: [`docs/BACKLOG.md`](docs/BACKLOG.md).
 
 Detailed SHAs and evidence: [`ROADMAP.md`](ROADMAP.md),
 [`docs/slice16_closeout_inventory.md`](docs/slice16_closeout_inventory.md),
@@ -356,7 +358,7 @@ Still deferred / not authorized as product deliverables:
 - cloud inference in the strict-offline core
 - enterprise auth / RBAC
 - distributed Qdrant / GraphRAG / multi-agent swarms
-- 16K-E→G implementation (16K-A/B/C and 16K-D dual-backend P1–P4 already completed to recorded acceptance states; large-source capacity implementation remains deferred)
+- 16K-E→G implementation; current residual ordering and separate robustness/release debt are tracked in [`docs/BACKLOG.md`](docs/BACKLOG.md)
 
 ## Scope boundaries
 

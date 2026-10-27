@@ -113,8 +113,10 @@ SLICE 16: DESIGN INTERVIEW COMPLETE
            16H COMPLETE / ACCEPTED
            SLICE 16 COMPLETE / HUMAN ACCEPTED / CANONICAL
            16K post-closeout program partially executed;
-             16K-A/B/C and 16K-D dual-backend through P4 completed
-             to recorded states; 16K-E→G remain not authorized
+             16K-A/B/C and 16K-D dual-backend through P4 completed to recorded states;
+             large-source L1–L6 completed / promoted / closed;
+             post-L6 parser corrective promoted / closed on canonical main;
+             16K-E→G remain not authorized; residual queue: docs/BACKLOG.md
              (oracle: ROADMAP.md)
   Authority: docs/slice16_design_authority.md
   Plan: docs/slice16_implementation_plan.md
@@ -959,8 +961,10 @@ SLICE 16: DESIGN INTERVIEW COMPLETE
            16H COMPLETE / ACCEPTED
            SLICE 16 COMPLETE / HUMAN ACCEPTED / CANONICAL
            16K post-closeout program partially executed;
-             16K-A/B/C and 16K-D dual-backend through P4 completed
-             to recorded states; 16K-E→G remain not authorized
+             16K-A/B/C and 16K-D dual-backend through P4 completed to recorded states;
+             large-source L1–L6 completed / promoted / closed;
+             post-L6 parser corrective promoted / closed on canonical main;
+             16K-E→G remain not authorized; residual queue: docs/BACKLOG.md
              (oracle: ROADMAP.md)
 SLICE 17: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
 SLICE 18: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
@@ -989,8 +993,10 @@ ACCEPTED / SEALED** at
 **16H** is **COMPLETE / ACCEPTED**. Slice 16 is **COMPLETE / HUMAN ACCEPTED /
 CANONICAL**. Slice 14 and Slice 15 are closed. Remaining Milestone-7 gates that
 are still **NOT AUTHORIZED**: Slice 17, Slice 18, and M7 closeout. 16K is a
-post-closeout program (partially executed through dual-backend P4; 16K-E→G
-remain not authorized — oracle `ROADMAP.md`).
+post-closeout program: A/B/C and dual-backend P1–P4 are at their recorded
+acceptance states; large-source L1–L6 and the parser corrective are closed;
+16K-E→G remain not authorized. Active residuals are tracked in
+`docs/BACKLOG.md` (oracle `ROADMAP.md`).
 Slice 16 design is **ACCEPTED / LOCKED**. Amendment A2 is **ACCEPTED / LOCKED /
 SEALED**. **16A**, **16B**, **16C**, **16D-A**, and **16D-B2** are **COMPLETE /
 ACCEPTED**. B1 foundation remediation is **ACCEPTED / SEALED** (implementation

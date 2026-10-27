@@ -83,7 +83,11 @@ Exact Human-accepted subject: 01a4a984d438d5bb7c4e3d0fa2f5bb908e0b4a10
   16K-D dual-backend P1–P4 completed;
     P4 implementation + Human UAT independently accepted /
     Human acknowledged / CLOSED
+  large-source L1–L6 COMPLETE / HUMAN ACCEPTED / PROMOTED / CLOSED
+  post-L6 CUDA/raw-byte/parser chain is present on canonical main
+  parser corrective PROMOTED / CLOSED at 7ca0c2332dbaf524fe777317cdd1aede7a795633
   16K-E→G NOT AUTHORIZED
+  active residual queue: docs/BACKLOG.md
 Slice 16: COMPLETE / HUMAN ACCEPTED / CANONICAL
 Final Slice-16 closeout: HUMAN ACCEPTED / CANONICAL
   Authority: S16-FINAL-CLOSEOUT-AUTH-001 — AUTHORIZED
@@ -139,6 +143,10 @@ Final Slice-16 closeout: HUMAN ACCEPTED / CANONICAL
 Slice 17: NOT AUTHORIZED
 Slice 18: NOT AUTHORIZED
 M7 closeout: NOT AUTHORIZED
+Active post-closeout backlog: docs/BACKLOG.md
+Current repository main after post-16K corrective promotion:
+  7ca0c2332dbaf524fe777317cdd1aede7a795633
+Historical Slice-16 promotion lineage above remains preserved as provenance.
 ALLOW_PRODUCTION:
   Question Check: ALLOW_PRODUCTION
     Human disposition: S16-N-A-QC-PRESENTATION-HA-001 — ACCEPTED

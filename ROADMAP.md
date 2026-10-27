@@ -724,7 +724,7 @@ SLICE 15  COMPLETE / ACCEPTED
            Implementation authority:
              S16-K-LARGE-SOURCE-CAPACITY-POST-L6-CUDA-PRODUCT-POLICY-IMPLEMENTATION-AUTH-001
            Implementation:
-             COMPLETE / READY FOR INDEPENDENT REVIEW
+             COMPLETE / PRESENT ON CANONICAL MAIN / GOVERNANCE DISPOSITION RECONCILIATION PENDING
            Implementation candidate:
              5e08fb710113ab2289254192be7a680898a8ca96
            Implementation branch:
@@ -734,7 +734,7 @@ SLICE 15  COMPLETE / ACCEPTED
            Bounded CUDA capabilities smoke:
              PASS — AUTO → cuda_fp16_v1 · 90 MiB effective PDF · UNLOADED preserved
            POST-L6 WORKSPACE RAW-BYTE CEILING CORRECTIVE:
-             IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
+             IMPLEMENTATION COMPLETE / PRESENT ON CANONICAL MAIN / GOVERNANCE DISPOSITION RECONCILIATION PENDING
            Corrective design authority:
              S16-K-LARGE-SOURCE-CAPACITY-POST-L6-WORKSPACE-RAW-BYTE-CEILING-CORRECTIVE-DESIGN-AUTH-001
            Corrective implementation authority:
@@ -754,7 +754,7 @@ SLICE 15  COMPLETE / ACCEPTED
            Scientific executions:
              NONE
            Promotion:
-             NOT AUTHORIZED
+             EXECUTED AS ANCESTOR OF LATER FAST-FORWARD TO MAIN; DEDICATED GOVERNANCE RECONCILIATION PENDING
            DOCLING PARSER-STACK CORRECTIVE:
              INDEPENDENTLY ACCEPTED — IR-002 / HUMAN ACCEPTED
            Parser corrective authority:
@@ -813,6 +813,19 @@ SLICE 15  COMPLETE / ACCEPTED
              docs/design/large_source_capacity_post_l6_cuda_product_policy.md
        16K-E → 16K-G:
          NOT AUTHORIZED
+       Active post-closeout backlog:
+         docs/BACKLOG.md
+       Preferred residual completion order (planning only; does not grant authority):
+         S16K-R01 — post-L6 governance reconciliation
+         → S16K-R02 — 16K-C Human-disposition normalization
+         → S16K-R03 — Fireground CUDA current-main disposition
+         → 16K-E — ingestion worklist / progress UX
+         → 16K-F — real beta-corpus acceptance
+         → 16K-G — Slice-17 regression handoff
+       Native parser process isolation:
+         REGISTERED SEPARATE ROBUSTNESS BACKLOG / NOT AUTHORIZED
+       Slice 17 design-open planning dependency:
+         REQUEST ONLY AFTER 16K-G HANDOFF; CURRENTLY NOT AUTHORIZED
        Design disposition (historical / frozen design authority):
        Design-open: S16-K-BETA-INGESTION-READINESS-DESIGN-OPEN-AUTH-001 — AUTHORIZED
        Rework: S16-K-BETA-INGESTION-READINESS-DESIGN-REWORK-AUTH-001 — AUTHORIZED
@@ -1968,6 +1981,19 @@ SLICE 15  COMPLETE / ACCEPTED
            PDF 90 MiB · non-PDF 25 MiB · request 100 MiB · workspace raw-source 90 MiB
        16K-E → 16K-G:
          NOT AUTHORIZED
+       Active post-closeout backlog:
+         docs/BACKLOG.md
+       Preferred residual completion order (planning only; does not grant authority):
+         S16K-R01 — post-L6 governance reconciliation
+         → S16K-R02 — 16K-C Human-disposition normalization
+         → S16K-R03 — Fireground CUDA current-main disposition
+         → 16K-E — ingestion worklist / progress UX
+         → 16K-F — real beta-corpus acceptance
+         → 16K-G — Slice-17 regression handoff
+       Native parser process isolation:
+         REGISTERED SEPARATE ROBUSTNESS BACKLOG / NOT AUTHORIZED
+       Slice 17 design-open planning dependency:
+         REQUEST ONLY AFTER 16K-G HANDOFF; CURRENTLY NOT AUTHORIZED
        Design disposition (historical / frozen design authority):
        Design-open: S16-K-BETA-INGESTION-READINESS-DESIGN-OPEN-AUTH-001 — AUTHORIZED
        Rework: S16-K-BETA-INGESTION-READINESS-DESIGN-REWORK-AUTH-001 — AUTHORIZED

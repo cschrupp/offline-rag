@@ -481,10 +481,13 @@ GAP-16G-02:
     Closeout bookkeeping tip:
       9581a05378cba2c2b723755e05c6f6a1c9c085f7
     Large-source capacity:
-      CAPACITY_DESIGN_READY — DEFERRED
-      implementation NOT AUTHORIZED
+      L1–L6 COMPLETE / HUMAN ACCEPTED / PROMOTED / CLOSED
+      post-L6 CUDA/raw-byte/parser chain present on canonical main
+      parser corrective PROMOTED / CLOSED at 7ca0c2332dbaf524fe777317cdd1aede7a795633
+      CUDA/raw-byte governance reconciliation tracked in docs/BACKLOG.md
   16K-E → 16K-G: NOT AUTHORIZED
-  Main promotion: NOT AUTHORIZED
+  Active residual queue: docs/BACKLOG.md
+  16K overall closeout / remaining-tranche promotion: NOT AUTHORIZED
 16L: COMPLETE / ACCEPTED
   Authority: S16-L-EMBEDDING-AUTO-DEVICE-UX-AUTH-002
   Exact accepted subject: 88fadc7c3e8e70c4886cbff0c7863cccc63ef14a
@@ -1094,10 +1097,13 @@ Slice-16 closeout inventory: HUMAN ACCEPTED
     Closeout bookkeeping tip:
       9581a05378cba2c2b723755e05c6f6a1c9c085f7
     Large-source capacity:
-      CAPACITY_DESIGN_READY — DEFERRED
-      implementation NOT AUTHORIZED
+      L1–L6 COMPLETE / HUMAN ACCEPTED / PROMOTED / CLOSED
+      post-L6 CUDA/raw-byte/parser chain present on canonical main
+      parser corrective PROMOTED / CLOSED at 7ca0c2332dbaf524fe777317cdd1aede7a795633
+      CUDA/raw-byte governance reconciliation tracked in docs/BACKLOG.md
   16K-E → 16K-G: NOT AUTHORIZED
-  Main promotion: NOT AUTHORIZED
+  Active residual queue: docs/BACKLOG.md
+  16K overall closeout / remaining-tranche promotion: NOT AUTHORIZED
   Does NOT reopen Slice 16 closeout
   Does NOT authorize main promotion
 SLICE 16: COMPLETE / HUMAN ACCEPTED / CANONICAL
