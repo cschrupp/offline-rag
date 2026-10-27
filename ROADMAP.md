@@ -724,13 +724,15 @@ SLICE 15  COMPLETE / ACCEPTED
            Implementation authority:
              S16-K-LARGE-SOURCE-CAPACITY-POST-L6-CUDA-PRODUCT-POLICY-IMPLEMENTATION-AUTH-001
            Implementation:
-             COMPLETE / CUDA PRODUCT SMOKE BLOCKED
+             COMPLETE / READY FOR INDEPENDENT REVIEW
            Implementation candidate:
              5e08fb710113ab2289254192be7a680898a8ca96
            Implementation branch:
              implementation/16k-large-source-capacity-post-l6-cuda-product-policy
            Result:
              docs/evidence/large_source_capacity/cuda_product_policy/IMPLEMENTATION_RESULT.md
+           Bounded CUDA capabilities smoke:
+             PASS — AUTO → cuda_fp16_v1 · 90 MiB effective PDF · UNLOADED preserved
            Design branch:
              design/16k-large-source-capacity-post-l6-cuda-product-policy
            Design:

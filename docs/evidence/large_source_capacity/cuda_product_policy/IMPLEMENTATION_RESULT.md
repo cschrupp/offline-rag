@@ -48,7 +48,7 @@ commit. No L5 or CUDA qualification evidence files changed.
 ## Validation
 
 ```text
-43 passed — focused capacity and bounded workspace lifecycle suites
+44 passed — focused capacity and bounded workspace lifecycle suites
 Ruff — PASS
 git diff --check — PASS
 ```
@@ -60,20 +60,29 @@ pre-vault lifecycle rejection/acceptance ordering.
 
 ## Bounded real-product CUDA smoke
 
-The required real CUDA smoke was attempted in this execution environment but
-could not be completed:
+The bounded smoke was executed against the running host Seneca server through
+`GET /v1/capabilities` and repeated twice. Both responses reported:
 
-```text
-torch.cuda.is_available(): False
-torch CUDA build: 13.0
-Seneca server: startup completed, but loopback binding was unavailable
+```yaml
+configured_device: auto
+active_device: cuda
+profile_id: cuda_fp16_v1
+selection_reason: auto_cuda_fp16
+resolved_precision: fp16
+embedding_state: UNLOADED
+large_pdf.policy_supported: true
+large_pdf.qualified_profiles:
+  - cpu_onnx_fp32_v1
+  - cuda_fp16_v1
+large_pdf.runtime_eligible: true
+large_pdf.effective_max_bytes: 94371840
+large_pdf.unavailable_reason: null
 ```
 
-Therefore the normal `AUTO -> cuda_fp16_v1` capability projection has not been
-claimed as a real-host smoke result here. No synthetic CUDA smoke is promoted
-to scientific or product evidence. A qualified CUDA host/server must execute
-the bounded smoke before this implementation can be declared
-`READY_FOR_INDEPENDENT_REVIEW` under the implementation authority.
+The repeated capability call preserved `embedding_state: UNLOADED`, proving
+that capability observation did not materialize the embedding backend. This
+was a product capability smoke only; no PDF ingestion and no scientific
+qualification cell ran.
 
 ## Scientific and policy boundaries
 
@@ -91,7 +100,7 @@ hot switching/fallback added: NO
 
 ```yaml
 POST-L6 CUDA PROFILE-AWARE PRODUCT POLICY
-IMPLEMENTATION COMPLETE / CUDA PRODUCT SMOKE BLOCKED
-reason: no CUDA runtime or reachable bound Seneca server in this environment
-independent_review: NOT YET READY
+IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
+capabilities_smoke: PASS
+unloaded_runtime_preserved: PASS
 ```
