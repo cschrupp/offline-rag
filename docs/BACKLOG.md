@@ -32,8 +32,12 @@ Slice 17. It does **not** reopen the original Slice 16 closeout.
 ### S16K-R01 — Post-L6 governance reconciliation
 
 **Priority:** P0\
-**Status:** DOCUMENTATION RECONCILIATION COMPLETE / READY FOR INDEPENDENT REVIEW\
+**Status:** INDEPENDENTLY ACCEPTED — IR-001 / HUMAN ACCEPTANCE PENDING\
 **Implementation authority:** NOT IMPLIED
+
+**Reconciliation subject:** `d60e253ce28eb5227983a53ec70a221b8dfdc28c`\
+**Independent review:** `S16K-R01 IR-001 — ACCEPT`\
+**Human acceptance:** PENDING
 
 The post-L6 CUDA profile-aware policy and workspace raw-byte corrective are
 ancestors of canonical `main`. That establishes canonical code presence, but it
@@ -56,6 +60,13 @@ acceptance reported in conversation remains explicitly distinguished from a
 durable Git disposition. Existing implementation-result and historical
 ROADMAP entries remain unchanged as provenance.
 
+IR-001 accepted the reconciliation subject with findings F001–F006 closed.
+The review confirmed scope purity, both lineages, the later parser-promotion
+boundary, historical provenance preservation, and the documentation-only
+verification posture. The reviewer noted that the candidate had been committed
+to `main` before review; this governance record is a successor commit and does
+not treat that sequence as prior acceptance.
+
 Required work:
 
 - identify the exact technical subjects and any existing IR / Human dispositions
@@ -72,8 +83,8 @@ Exit condition:
 live governance projection is internally consistent
 +
 no unverified ACCEPT / HA claim is introduced
-
-candidate submitted for independent review
++
+Human acceptance recorded for the exact reconciliation subject
 ```
 
 ### S16K-R02 — 16K-C Human-disposition normalization
