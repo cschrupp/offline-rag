@@ -9,6 +9,7 @@ authors = [
 requires-python = ">=3.14,<3.15"
 dependencies = [
     "docling>=2.126.0",
+    "docling-parse==7.23.1",
     "fastapi>=0.142.2",
     "httpx>=0.28.1",
     # transformers 4.x (required for Optimum ONNX) needs huggingface-hub <1.
@@ -69,4 +70,3 @@ ignore = ["E501"]
 "src/offline_rag/dense/provision.py" = ["BLE001"]
 "src/offline_rag/rerank/provision.py" = ["BLE001"]
 "scripts/*" = ["T20"]
-
