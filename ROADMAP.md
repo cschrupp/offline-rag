@@ -798,7 +798,15 @@ SLICE 15  COMPLETE / ACCEPTED
            L5 evidence / scientific capacity execution:
              UNCHANGED / NONE
            Promotion:
-             NOT AUTHORIZED
+             COMPLETE / EXECUTED — PURE FAST-FORWARD
+           Promotion source / accepted governance tip:
+             f6c9beb77894be3ec58f818e041ccd17259ee906
+           Canonical main before promotion:
+             df14ef6924fce32c6621e6b5f0b30fbe4cc7c870
+           Canonical main fast-forward tip:
+             f6c9beb77894be3ec58f818e041ccd17259ee906
+           Parser-stack corrective terminal:
+             PROMOTED / CLOSED
            Design branch:
              design/16k-large-source-capacity-post-l6-cuda-product-policy
            Design:
