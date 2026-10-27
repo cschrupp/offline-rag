@@ -712,11 +712,25 @@ SLICE 15  COMPLETE / ACCEPTED
            Limit policy implementation:
              PDF 90 MiB · non-PDF 25 MiB · request 100 MiB · workspace raw-source 90 MiB
            POST-L6 CUDA PROFILE-AWARE PRODUCT POLICY:
-             DESIGN IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
+             DESIGN INDEPENDENTLY ACCEPTED — IR-002
            Design authority:
              S16-K-LARGE-SOURCE-CAPACITY-POST-L6-CUDA-PRODUCT-POLICY-DESIGN-AUTH-001
            Design base:
              649292e06520bb5cd03f40b5fc1395fad8c8ff9e
+           Accepted design subject:
+             cf29d42b4163ca24f6734b1c1ecba1bedc24d97e
+           Human design acceptance:
+             ACCEPTED
+           Implementation authority:
+             S16-K-LARGE-SOURCE-CAPACITY-POST-L6-CUDA-PRODUCT-POLICY-IMPLEMENTATION-AUTH-001
+           Implementation:
+             COMPLETE / CUDA PRODUCT SMOKE BLOCKED
+           Implementation candidate:
+             c811b70c8f4a2f65b0f0a8b9f7c4e1b0f0f6f9a7
+           Implementation branch:
+             implementation/16k-large-source-capacity-post-l6-cuda-product-policy
+           Result:
+             docs/evidence/large_source_capacity/cuda_product_policy/IMPLEMENTATION_RESULT.md
            Design branch:
              design/16k-large-source-capacity-post-l6-cuda-product-policy
            Design:
