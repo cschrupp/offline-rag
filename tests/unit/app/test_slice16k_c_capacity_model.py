@@ -76,7 +76,7 @@ def test_transport_defaults_unchanged() -> None:
     assert api.max_bytes_per_document == 26_214_400
     assert api.max_pdf_bytes_per_document == 94_371_840
     assert api.max_total_upload_bytes == 104_857_600
-    assert api.max_active_source_bytes_per_workspace == 94_371_840
+    assert api.max_active_source_bytes_per_workspace is None
     assert api.max_active_sources_per_workspace is None
     assert api.max_searchable_child_chunks_per_workspace is None
 
@@ -120,6 +120,46 @@ def test_workspace_source_bytes_uses_complete_desired_set(tmp_path: Path) -> Non
         )
     assert exc.value.details is not None
     assert exc.value.details["reason"] == "workspace_source_bytes_exceeded"
+
+
+def test_default_workspace_source_bytes_are_unbounded_by_unqualified_aggregate(
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path)
+    desired = [_source(f"text_{index}", byte_size=20 * 1024 * 1024) for index in range(10)]
+    pdf = _source("pdf", byte_size=64 * 1024 * 1024)
+    desired.append(
+        pdf.model_copy(
+            update={"display_name": "large.pdf", "content_type": "application/pdf"}
+        )
+    )
+    enforce_workspace_active_source_bytes(
+        settings,
+        desired,
+        mutation_kind=PublicationMutationKind.SOURCE_ADD,
+    )
+
+
+def test_reconstruction_disk_admission_retains_aggregate_storage_bound(
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path)
+    active_bytes = 10 * 20 * 1024 * 1024 + 64 * 1024 * 1024
+    desired = [_source("bulk", byte_size=active_bytes)]
+    required = 5 * active_bytes + 1_073_741_824
+    enforce_reconstruction_disk_capacity(
+        settings,
+        desired,
+        disk_usage=lambda _path: type("Usage", (), {"free": required})(),
+    )
+    with pytest.raises(AppError) as exc:
+        enforce_reconstruction_disk_capacity(
+            settings,
+            desired,
+            disk_usage=lambda _path: type("Usage", (), {"free": required - 1})(),
+        )
+    assert exc.value.details is not None
+    assert exc.value.details["reason"] == "storage_insufficient"
 
 
 def test_source_remove_can_reduce_oversized_legacy_workspace(tmp_path: Path) -> None:
@@ -589,7 +629,7 @@ def test_capabilities_separate_transport_and_workspace(tmp_path: Path) -> None:
     assert body["transport_limits"]["max_bytes_per_upload_request"] == 104_857_600
     assert body["workspace_capacity"]["max_active_sources"] == 7
     assert body["workspace_capacity"]["max_searchable_child_chunks"] == 100
-    assert body["workspace_capacity"]["max_active_source_bytes"] == 94_371_840
+    assert body["workspace_capacity"]["max_active_source_bytes"] is None
     assert body["large_pdf"]["effective_max_bytes"] == 26_214_400
     assert body["large_pdf"]["runtime_eligible"] is False
     assert body["large_pdf"]["qualified_profiles"] == [
@@ -598,6 +638,7 @@ def test_capabilities_separate_transport_and_workspace(tmp_path: Path) -> None:
     ]
     assert body["source_limits"]["max_active_sources"] == 7
     assert body["source_limits"]["max_bytes_per_source"] == 26_214_400
+    assert body["source_limits"]["max_active_source_bytes"] == 104_857_600
 
 
 def test_capabilities_null_workspace_when_unset(tmp_path: Path) -> None:
@@ -605,7 +646,7 @@ def test_capabilities_null_workspace_when_unset(tmp_path: Path) -> None:
     body = _capabilities_body(settings)
     assert body["workspace_capacity"]["max_active_sources"] is None
     assert body["workspace_capacity"]["max_searchable_child_chunks"] is None
-    assert body["workspace_capacity"]["max_active_source_bytes"] == 94_371_840
+    assert body["workspace_capacity"]["max_active_source_bytes"] is None
     assert body["source_limits"]["max_active_sources"] is None
 
 

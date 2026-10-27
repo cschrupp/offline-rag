@@ -119,7 +119,7 @@ def test_base_yaml_exposes_capacity_defaults() -> None:
     assert api["max_bytes_per_document"] == 26_214_400
     assert api["max_pdf_bytes_per_document"] == 94_371_840
     assert api["max_total_upload_bytes"] == 104_857_600
-    assert api["max_active_source_bytes_per_workspace"] == 94_371_840
+    assert api["max_active_source_bytes_per_workspace"] is None
     assert payload["paths"]["product_settings"] == "data/settings"
 
 

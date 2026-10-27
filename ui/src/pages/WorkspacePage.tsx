@@ -133,7 +133,7 @@ function limitsFromCapabilities(
     workspace_capacity?: {
       max_active_sources: number | null;
       max_searchable_child_chunks: number | null;
-      max_active_source_bytes?: number;
+      max_active_source_bytes?: number | null;
     };
     large_pdf?: {
       effective_max_bytes: number;
@@ -165,8 +165,7 @@ function limitsFromCapabilities(
       caps.workspace_capacity?.max_active_sources ??
       caps.source_limits.max_active_sources,
     maxActiveSourceBytes:
-      caps.workspace_capacity?.max_active_source_bytes ??
-      caps.source_limits.max_active_source_bytes,
+      caps.workspace_capacity?.max_active_source_bytes ?? null,
     largePdfRuntimeEligible: caps.large_pdf?.runtime_eligible ?? false,
   };
 }
@@ -966,7 +965,10 @@ export function WorkspacePage() {
     if (incomingBytes > limits.maxBytesPerUploadRequest) {
       return `Selected files exceed the ${formatMiB(limits.maxBytesPerUploadRequest)} MiB per-request upload limit.`;
     }
-    if (usedBytes + incomingBytes > limits.maxActiveSourceBytes) {
+    if (
+      limits.maxActiveSourceBytes != null &&
+      usedBytes + incomingBytes > limits.maxActiveSourceBytes
+    ) {
       return `Selected files exceed the ${formatMiB(limits.maxActiveSourceBytes)} MiB workspace source limit.`;
     }
     // Workspace capacity: independent of request-byte envelope when configured.
@@ -1793,7 +1795,7 @@ export function WorkspacePage() {
               return;
             }
             if (
-              limits &&
+              limits?.maxActiveSourceBytes != null &&
               replaceTarget &&
               usedBytes - replaceTarget.byte_size + replaceFile.size >
                 limits.maxActiveSourceBytes

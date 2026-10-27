@@ -104,3 +104,39 @@ IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
 capabilities_smoke: PASS
 unloaded_runtime_preserved: PASS
 ```
+
+## Post-L6 workspace raw-byte ceiling corrective
+
+**Corrective design authority:**
+`S16-K-LARGE-SOURCE-CAPACITY-POST-L6-WORKSPACE-RAW-BYTE-CEILING-CORRECTIVE-DESIGN-AUTH-001`
+
+**Corrective implementation authority:**
+`S16-K-LARGE-SOURCE-CAPACITY-POST-L6-WORKSPACE-RAW-BYTE-CEILING-CORRECTIVE-IMPLEMENTATION-AUTH-001`
+
+**Corrective base:** `83971b9fa74409cffb5a3a7b772a699f687eb132`
+
+**Corrective implementation candidate:** `PENDING — PINNED IN FOLLOW-UP GOVERNANCE COMMIT`
+
+The beta default `api.max_active_source_bytes_per_workspace` is now null.
+Aggregate active raw bytes remain storage/resource information used by the
+reconstruction disk rule `max(known_lower_bound, 5 × A) + 1 GiB`; they are not
+an unqualified searchable-workspace capacity ceiling. Explicit numeric
+workspace byte settings remain supported for controlled tests and deployments.
+
+Capabilities project the workspace byte field as nullable, preserve the legacy
+100 MiB request alias, and the UI applies aggregate Add/Replace checks only
+when the workspace field is numeric. PDF/non-PDF/request limits, CPU/CUDA
+gates, AUTO behavior, publication semantics, and all L5/CUDA evidence remain
+unchanged.
+
+Corrective validation:
+
+```text
+Python focused corrective regressions: PASS
+UI Shupe oversized-workspace regression: PASS
+Scientific executions: NONE
+Promotion: NOT AUTHORIZED
+```
+
+**Corrective terminal:**
+`IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW`

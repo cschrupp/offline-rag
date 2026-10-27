@@ -41,7 +41,9 @@ api:
   max_bytes_per_document: 26214400
   max_pdf_bytes_per_document: 94371840
   max_total_upload_bytes: 104857600
-  max_active_source_bytes_per_workspace: 94371840
+  # Aggregate raw bytes are storage/resource information, not a scientific
+  # workspace capacity claim. Leave unset until 16K-F evidence establishes one.
+  max_active_source_bytes_per_workspace: null
   # Workspace / search workload ceilings (16K-C). Unset = no product-supported
   # numeric claim yet; configure via env/product settings for tests/benchmarks.
   # max_active_sources_per_workspace: null

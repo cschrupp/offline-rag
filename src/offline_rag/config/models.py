@@ -73,8 +73,8 @@ class ApiSettings(BaseModel):
     Workspace / search workload capacity (16K-C):
     ``max_active_sources_per_workspace``,
     ``max_active_source_bytes_per_workspace``,
-    ``max_searchable_child_chunks_per_workspace``. Count/search ceilings remain
-    optional; the byte ceiling is the accepted 90 MiB workspace envelope.
+    ``max_searchable_child_chunks_per_workspace``. These remain optional until
+    evidence establishes a numeric searchable-workspace support envelope.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -85,7 +85,7 @@ class ApiSettings(BaseModel):
     max_bytes_per_document: PositiveInt = 26_214_400
     max_pdf_bytes_per_document: PositiveInt = 94_371_840
     max_total_upload_bytes: PositiveInt = 104_857_600
-    max_active_source_bytes_per_workspace: PositiveInt = 94_371_840
+    max_active_source_bytes_per_workspace: PositiveInt | None = None
     # Workspace / search workload — independent of HTTP request envelope.
     max_active_sources_per_workspace: PositiveInt | None = None
     max_searchable_child_chunks_per_workspace: PositiveInt | None = None

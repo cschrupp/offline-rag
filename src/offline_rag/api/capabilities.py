@@ -119,7 +119,11 @@ def get_capabilities(request: Request) -> dict[str, Any]:
             "max_searchable_child_chunks": (
                 int(searchable_children) if searchable_children is not None else None
             ),
-            "max_active_source_bytes": int(api.max_active_source_bytes_per_workspace),
+            "max_active_source_bytes": (
+                int(api.max_active_source_bytes_per_workspace)
+                if api.max_active_source_bytes_per_workspace is not None
+                else None
+            ),
         },
         "large_pdf": {
             "policy_supported": True,

@@ -216,7 +216,10 @@ def enforce_workspace_active_source_bytes(
     """Enforce the complete post-mutation raw-byte workspace ceiling."""
     if mutation_kind is PublicationMutationKind.SOURCE_REMOVE or not desired:
         return
-    ceiling = int(settings.api.max_active_source_bytes_per_workspace)
+    configured_ceiling = settings.api.max_active_source_bytes_per_workspace
+    if configured_ceiling is None:
+        return
+    ceiling = int(configured_ceiling)
     observed = desired_active_source_bytes(desired)
     if observed > ceiling:
         raise AppError(

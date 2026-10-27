@@ -36,7 +36,7 @@ export type SourceCapacityLimits = {
   maxBytesPerUploadRequest: number;
   /** Workspace active-source ceiling when configured; null = unset. */
   maxActiveSources: number | null;
-  maxActiveSourceBytes: number;
+  maxActiveSourceBytes: number | null;
   largePdfRuntimeEligible: boolean;
 };
 

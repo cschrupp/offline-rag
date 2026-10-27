@@ -709,7 +709,7 @@ SLICE 15  COMPLETE / ACCEPTED
              NOT RUN
            CUDA production admission:
              UNCHANGED / NOT AUTHORIZED BY THIS REVIEW
-           Limit policy implementation:
+           Limit policy implementation baseline (superseded by corrective below):
              PDF 90 MiB · non-PDF 25 MiB · request 100 MiB · workspace raw-source 90 MiB
            POST-L6 CUDA PROFILE-AWARE PRODUCT POLICY:
              DESIGN INDEPENDENTLY ACCEPTED — IR-002
@@ -733,6 +733,28 @@ SLICE 15  COMPLETE / ACCEPTED
              docs/evidence/large_source_capacity/cuda_product_policy/IMPLEMENTATION_RESULT.md
            Bounded CUDA capabilities smoke:
              PASS — AUTO → cuda_fp16_v1 · 90 MiB effective PDF · UNLOADED preserved
+           POST-L6 WORKSPACE RAW-BYTE CEILING CORRECTIVE:
+             IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
+           Corrective design authority:
+             S16-K-LARGE-SOURCE-CAPACITY-POST-L6-WORKSPACE-RAW-BYTE-CEILING-CORRECTIVE-DESIGN-AUTH-001
+           Corrective implementation authority:
+             S16-K-LARGE-SOURCE-CAPACITY-POST-L6-WORKSPACE-RAW-BYTE-CEILING-CORRECTIVE-IMPLEMENTATION-AUTH-001
+           Corrective base:
+             83971b9fa74409cffb5a3a7b772a699f687eb132
+           Corrective implementation candidate:
+             PENDING — PINNED IN FOLLOW-UP GOVERNANCE COMMIT
+           Corrected default:
+             max_active_source_bytes_per_workspace = null
+           Aggregate raw bytes:
+             RETAINED FOR RECONSTRUCTION DISK ADMISSION ONLY
+           Corrective record:
+             docs/design/large_source_capacity_post_l6_workspace_raw_bytes_corrective.md
+           Corrective result:
+             docs/evidence/large_source_capacity/cuda_product_policy/IMPLEMENTATION_RESULT.md
+           Scientific executions:
+             NONE
+           Promotion:
+             NOT AUTHORIZED
            Design branch:
              design/16k-large-source-capacity-post-l6-cuda-product-policy
            Design:

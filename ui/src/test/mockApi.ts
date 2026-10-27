@@ -71,7 +71,7 @@ export function capabilities(
     workspace_capacity: {
       max_active_sources: null,
       max_searchable_child_chunks: null,
-      max_active_source_bytes: 94_371_840,
+      max_active_source_bytes: null,
       ...(partial.workspace_capacity ?? {}),
     },
     large_pdf: {

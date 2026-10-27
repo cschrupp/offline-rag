@@ -130,7 +130,7 @@ export type Capabilities = {
   workspace_capacity?: {
     max_active_sources: number | null;
     max_searchable_child_chunks: number | null;
-    max_active_source_bytes?: number;
+    max_active_source_bytes?: number | null;
   };
   large_pdf?: {
     policy_supported: boolean;

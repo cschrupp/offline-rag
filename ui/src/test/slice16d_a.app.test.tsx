@@ -188,6 +188,103 @@ describe("Slice 16D-A Settings", () => {
 });
 
 describe("Slice 16D-A compact workspace", () => {
+  it("does not reject a qualified PDF because an unqualified aggregate exceeds 90 MiB", async () => {
+    const user = userEvent.setup();
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/v1/capabilities") {
+        return jsonResponse(
+          capabilities({
+            workspace_capacity: {
+              max_active_sources: null,
+              max_searchable_child_chunks: null,
+              max_active_source_bytes: null,
+            },
+            large_pdf: {
+              policy_supported: true,
+              policy_max_bytes: 94_371_840,
+              qualified_profile: "cpu_onnx_fp32_v1",
+              reference_host_memory_bytes: 32_000_000_000,
+              reference_host_available_memory_bytes: 19_388_303_360,
+              runtime_eligible: true,
+              effective_max_bytes: 94_371_840,
+              unavailable_reason: null,
+            },
+          }),
+        );
+      }
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces/ws_1" && call.method === "GET") {
+        return jsonResponse(
+          workspace({
+            workspace_id: "ws_1",
+            title: "Shupe Desk",
+            revision: 4,
+            source_count: 1,
+            status: "active",
+          }),
+        );
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources" && call.method === "GET") {
+        return jsonResponse({
+          workspace_id: "ws_1",
+          revision: 4,
+          sources: [
+            source({
+              source_id: "src_shupe",
+              display_name: "The Book of Shupe.pdf",
+              byte_size: 120 * 1024 * 1024,
+            }),
+          ],
+        });
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources" && call.method === "POST") {
+        return jsonResponse(
+          operation({
+            operation_id: "op_shupe",
+            status: "pending",
+            expected_revision: 4,
+          }),
+          { status: 202 },
+        );
+      }
+      if (call.url === "/v1/operations/op_shupe") {
+        return jsonResponse(
+          operation({
+            operation_id: "op_shupe",
+            status: "pending",
+            expected_revision: 4,
+          }),
+        );
+      }
+      if (call.url === "/v1/workspaces") return jsonResponse([]);
+      return errorResponse("not_found", "x", 404);
+    });
+
+    renderApp("/workspaces/ws_1");
+    await user.click(
+      (await screen.findAllByRole("button", { name: "+ Add sources" }))[0]!,
+    );
+    const dialog = await screen.findByRole("dialog", { name: /add sources/i });
+    const shupe = new File(["x"], "the_book_of_shupe.pdf", {
+      type: "application/pdf",
+    });
+    Object.defineProperty(shupe, "size", { value: 64 * 1024 * 1024 });
+    await user.upload(within(dialog).getByLabelText(/source files/i), shupe);
+    await user.click(
+      within(dialog).getByRole("button", { name: /^add sources$/i }),
+    );
+    await waitFor(() => {
+      expect(
+        mock.calls.some(
+          (call) =>
+            call.url === "/v1/workspaces/ws_1/sources" &&
+            call.method === "POST",
+        ),
+      ).toBe(true);
+    });
+    mock.restore();
+  });
+
   it("shows capabilities-driven capacity and overflow source actions", async () => {
     expect(formatSource).not.toMatch(/SOURCE_LIMITS\s*=/);
     const user = userEvent.setup();
