@@ -692,19 +692,23 @@ SLICE 15  COMPLETE / ACCEPTED
            L6 promotion authority:
              S16-K-LARGE-SOURCE-CAPACITY-L6-HUMAN-ACCEPTANCE-PROMOTION-AUTH-001
            Post-L6 CUDA 90 MiB PDF qualification:
-             EXECUTION COMPLETE / READY FOR INDEPENDENT REVIEW
+             EXECUTION COMPLETE / INDEPENDENTLY ACCEPTED — IR-001
            Post-L6 CUDA qualification authority:
              S16-K-LARGE-SOURCE-CAPACITY-POST-L6-CUDA-90M-PDF-QUALIFICATION-EXECUTION-AUTH-001
+           Post-L6 CUDA independent review IR-001:
+             ACCEPTED
+           Post-L6 CUDA accepted evidence subject:
+             9fcec2109e92bbd11749a6fd91a8430af6110bb4
            CUDA qualification execution pin:
              70cea558bd0e8f35fb23057b9ee2c1a4ab89a450
            CUDA qualification campaign terminal:
-             CUDA_90M_QUALIFIED — INDEPENDENT REVIEW REQUIRED
+             CUDA_90M_QUALIFIED — INDEPENDENTLY ACCEPTED
            CUDA cells:
              PREFLIGHT PASS · Q25 VALID_PASS · Q100 VALID_PASS · Q100-CONFIRM VALID_PASS
            CUDA Q250 / Q512:
              NOT RUN
            CUDA production admission:
-             UNCHANGED / NOT AUTHORIZED BY THIS EXECUTION
+             UNCHANGED / NOT AUTHORIZED BY THIS REVIEW
            Limit policy implementation:
              PDF 90 MiB · non-PDF 25 MiB · request 100 MiB · workspace raw-source 90 MiB
        16K-E → 16K-G:
