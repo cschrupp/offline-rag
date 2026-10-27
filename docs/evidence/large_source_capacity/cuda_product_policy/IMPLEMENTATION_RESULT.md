@@ -115,7 +115,7 @@ unloaded_runtime_preserved: PASS
 
 **Corrective base:** `83971b9fa74409cffb5a3a7b772a699f687eb132`
 
-**Corrective implementation candidate:** `PENDING — PINNED IN FOLLOW-UP GOVERNANCE COMMIT`
+**Corrective implementation candidate:** `736af75aebb09526993264e5ee7344d384b4e64f`
 
 The beta default `api.max_active_source_bytes_per_workspace` is now null.
 Aggregate active raw bytes remain storage/resource information used by the

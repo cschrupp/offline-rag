@@ -742,7 +742,7 @@ SLICE 15  COMPLETE / ACCEPTED
            Corrective base:
              83971b9fa74409cffb5a3a7b772a699f687eb132
            Corrective implementation candidate:
-             PENDING — PINNED IN FOLLOW-UP GOVERNANCE COMMIT
+             736af75aebb09526993264e5ee7344d384b4e64f
            Corrected default:
              max_active_source_bytes_per_workspace = null
            Aggregate raw bytes:
