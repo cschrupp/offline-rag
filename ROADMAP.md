@@ -724,17 +724,23 @@ SLICE 15  COMPLETE / ACCEPTED
            Implementation authority:
              S16-K-LARGE-SOURCE-CAPACITY-POST-L6-CUDA-PRODUCT-POLICY-IMPLEMENTATION-AUTH-001
            Implementation:
-             COMPLETE / PRESENT ON CANONICAL MAIN / GOVERNANCE DISPOSITION RECONCILIATION PENDING
+             COMPLETE / PRESENT ON CANONICAL MAIN
            Implementation candidate:
              5e08fb710113ab2289254192be7a680898a8ca96
            Implementation branch:
              implementation/16k-large-source-capacity-post-l6-cuda-product-policy
            Result:
              docs/evidence/large_source_capacity/cuda_product_policy/IMPLEMENTATION_RESULT.md
+           Result terminal:
+             IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
+           Dedicated implementation IR / Human acceptance:
+             NOT FOUND IN REPOSITORY HISTORY
+           Tranche-specific promotion authority / closeout:
+             NOT FOUND; candidate is present as an ancestor of canonical main
            Bounded CUDA capabilities smoke:
              PASS — AUTO → cuda_fp16_v1 · 90 MiB effective PDF · UNLOADED preserved
            POST-L6 WORKSPACE RAW-BYTE CEILING CORRECTIVE:
-             IMPLEMENTATION COMPLETE / PRESENT ON CANONICAL MAIN / GOVERNANCE DISPOSITION RECONCILIATION PENDING
+             IMPLEMENTATION COMPLETE / PRESENT ON CANONICAL MAIN
            Corrective design authority:
              S16-K-LARGE-SOURCE-CAPACITY-POST-L6-WORKSPACE-RAW-BYTE-CEILING-CORRECTIVE-DESIGN-AUTH-001
            Corrective implementation authority:
@@ -751,10 +757,21 @@ SLICE 15  COMPLETE / ACCEPTED
              docs/design/large_source_capacity_post_l6_workspace_raw_bytes_corrective.md
            Corrective result:
              docs/evidence/large_source_capacity/cuda_product_policy/IMPLEMENTATION_RESULT.md
+           Corrective result terminal:
+             IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
+           Independent review:
+             ACCEPT REPORTED IN PRIOR CONVERSATION; NO DEDICATED REPOSITORY IR RECORD FOUND
+           Human acceptance:
+             NOT FOUND IN REPOSITORY HISTORY
            Scientific executions:
              NONE
-           Promotion:
-             EXECUTED AS ANCESTOR OF LATER FAST-FORWARD TO MAIN; DEDICATED GOVERNANCE RECONCILIATION PENDING
+           Historical promotion disposition:
+             NOT AUTHORIZED IN CORRECTIVE RESULT
+           Current canonical presence:
+             ANCESTOR OF MAIN VIA LATER PARSER-STACK FAST-FORWARD; NOT A
+             RETROACTIVE TRANCHE-SPECIFIC PROMOTION OR ACCEPTANCE RECORD
+           Current governance projection:
+             RECONCILIATION CANDIDATE READY FOR INDEPENDENT REVIEW
            DOCLING PARSER-STACK CORRECTIVE:
              INDEPENDENTLY ACCEPTED — IR-002 / HUMAN ACCEPTED
            Parser corrective authority:

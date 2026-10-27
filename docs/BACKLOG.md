@@ -32,15 +32,29 @@ Slice 17. It does **not** reopen the original Slice 16 closeout.
 ### S16K-R01 — Post-L6 governance reconciliation
 
 **Priority:** P0\
-**Status:** OPEN / DOCUMENTATION + GOVERNANCE ONLY\
+**Status:** DOCUMENTATION RECONCILIATION COMPLETE / READY FOR INDEPENDENT REVIEW\
 **Implementation authority:** NOT IMPLIED
 
-The post-L6 CUDA profile-aware policy and workspace raw-byte corrective are now
-ancestors of canonical `main`, but live documentation still contains their
-pre-promotion terminals (`READY FOR INDEPENDENT REVIEW` / `PROMOTION NOT
-AUTHORIZED`). The parser corrective has an explicit IR-002 / Human acceptance /
-promotion closeout; the preceding CUDA/raw-byte tranches need their exact
-recorded review/acceptance disposition reconciled without inventing acceptance.
+The post-L6 CUDA profile-aware policy and workspace raw-byte corrective are
+ancestors of canonical `main`. That establishes canonical code presence, but it
+does not establish dedicated Human acceptance or tranche-specific promotion.
+The parser corrective has a separate, explicit IR-002 / Human acceptance /
+promotion closeout; that later fast-forward carried these earlier commits as
+ancestors and does not retroactively close their acceptance gates.
+
+History and live evidence were checked for this reconciliation candidate:
+
+| Tranche | Technical subject / result tip | Repository-recorded disposition | Canonical / promotion history |
+|---|---|---|---|
+| Post-L6 CUDA profile-aware product policy | Candidate `5e08fb710113ab2289254192be7a680898a8ca96`; smoke/result tip `83971b9fa74409cffb5a3a7b772a699f687eb132` | `IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW`; no dedicated implementation IR or Human acceptance record was found | Ancestor of `main`; no tranche-specific promotion authority or closeout record found |
+| Workspace raw-byte ceiling corrective | Candidate `736af75aebb09526993264e5ee7344d384b4e64f`; governance pin `d9ddc4cd54b3b3966bfae28044439378ddee031f` | `IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW`; the earlier result says promotion was not authorized. No dedicated repository IR or Human acceptance record was found. An earlier review acceptance is reported in this conversation, but is not durably recorded in the reachable repository history. | Ancestor of `main` through the later parser-stack fast-forward; this does not replace the earlier “promotion not authorized” record or create tranche-specific promotion authority |
+
+Accordingly, the candidate records implementation and canonical presence for
+both tranches, but does not claim repository-verified independent acceptance,
+Human acceptance, or dedicated promotion for either. The raw-byte review
+acceptance reported in conversation remains explicitly distinguished from a
+durable Git disposition. Existing implementation-result and historical
+ROADMAP entries remain unchanged as provenance.
 
 Required work:
 
@@ -58,6 +72,8 @@ Exit condition:
 live governance projection is internally consistent
 +
 no unverified ACCEPT / HA claim is introduced
+
+candidate submitted for independent review
 ```
 
 ### S16K-R02 — 16K-C Human-disposition normalization
