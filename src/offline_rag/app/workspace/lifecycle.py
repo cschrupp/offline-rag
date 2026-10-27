@@ -1244,10 +1244,14 @@ class WorkspaceLifecycleService:
         )
         embedder = getattr(getattr(self.runtime, "resources", None), "embedder", None)
         profile_id = getattr(embedder, "profile_id", None)
+        cuda_device = getattr(embedder, "resolved_device", None) or getattr(
+            embedder, "device", None
+        )
         enforce_large_pdf_runtime(
             self.settings,
             plan.desired,
             profile_id=profile_id,
+            cuda_device=cuda_device,
         )
         enforce_reconstruction_disk_capacity(self.settings, plan.desired)
 

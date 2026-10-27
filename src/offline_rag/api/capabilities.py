@@ -10,6 +10,7 @@ from offline_rag.api.compute_settings import project_embedding_runtime_dto
 from offline_rag.app.runtime import ApplicationRuntime
 from offline_rag.app.workspace.capacity import (
     LARGE_PDF_QUALIFIED_PROFILE_ID,
+    LARGE_PDF_QUALIFIED_PROFILE_IDS,
     LARGE_PDF_REFERENCE_MEM_AVAILABLE_BYTES,
     LARGE_PDF_REFERENCE_MEM_TOTAL_BYTES,
     large_pdf_runtime_eligibility,
@@ -83,8 +84,19 @@ def get_capabilities(request: Request) -> dict[str, Any]:
             }
         )
     active_profile_id = embedding_block.get("profile_id")
+    active_embedder = (
+        runtime.resources.embedder
+        if runtime.resources is not None
+        else None
+    )
+    active_cuda_device = (
+        getattr(active_embedder, "resolved_device", None)
+        or getattr(active_embedder, "device", None)
+    )
     large_pdf_eligible, large_pdf_reason = large_pdf_runtime_eligibility(
-        settings, profile_id=active_profile_id
+        settings,
+        profile_id=active_profile_id,
+        cuda_device=active_cuda_device,
     )
     # 16K-C: transport envelope vs workspace/search capacity are distinct.
     # Unset workspace ceilings project as null (no unmeasured support claim).
@@ -113,6 +125,7 @@ def get_capabilities(request: Request) -> dict[str, Any]:
             "policy_supported": True,
             "policy_max_bytes": int(api.max_pdf_bytes_per_document),
             "qualified_profile": LARGE_PDF_QUALIFIED_PROFILE_ID,
+            "qualified_profiles": list(LARGE_PDF_QUALIFIED_PROFILE_IDS),
             "reference_host_memory_bytes": LARGE_PDF_REFERENCE_MEM_TOTAL_BYTES,
             "reference_host_available_memory_bytes": LARGE_PDF_REFERENCE_MEM_AVAILABLE_BYTES,
             "runtime_eligible": large_pdf_eligible,

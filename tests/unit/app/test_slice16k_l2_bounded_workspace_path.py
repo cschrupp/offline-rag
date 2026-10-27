@@ -365,7 +365,7 @@ def test_large_pdf_profile_rejection_precedes_vault_write(tmp_path: Path) -> Non
         tmp_path,
         filename="handbook.pdf",
         payload=b"12345",
-        profile_id="cuda_fp16_v1",
+        profile_id="unsupported_profile",
         max_bytes_per_document=4,
         max_pdf_bytes_per_document=16,
         max_active_source_bytes_per_workspace=100,
@@ -381,6 +381,111 @@ def test_large_pdf_profile_rejection_precedes_vault_write(tmp_path: Path) -> Non
     assert exc.value.details["reason"] == "large_pdf_profile_not_qualified"
     service.vault.put_path.assert_not_called()
     service.vault.put_bytes.assert_not_called()
+
+
+def test_cuda_large_pdf_host_memory_rejection_precedes_vault_write(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    service, plan = _pre_vault_service(
+        tmp_path,
+        filename="handbook.pdf",
+        payload=b"12345",
+        profile_id="cuda_fp16_v1",
+        max_bytes_per_document=4,
+        max_pdf_bytes_per_document=16,
+        max_active_source_bytes_per_workspace=100,
+    )
+    monkeypatch.setattr(
+        capacity_module, "_memory_telemetry", lambda: (32_000_000_000, 1)
+    )
+    with pytest.raises(AppError) as exc:
+        service._execute_publication(
+            new_empty_workspace(title="L6", workspace_id="ws_" + "8" * 32),
+            operation_id="op_cuda_memory",
+            plan=plan,
+            lease=None,
+            control=None,
+        )
+    assert exc.value.details["reason"] == "large_pdf_host_memory_insufficient"
+    service.vault.put_path.assert_not_called()
+    service.vault.put_bytes.assert_not_called()
+
+
+def test_cuda_large_pdf_vram_rejection_precedes_vault_write(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    service, plan = _pre_vault_service(
+        tmp_path,
+        filename="handbook.pdf",
+        payload=b"12345",
+        profile_id="cuda_fp16_v1",
+        max_bytes_per_document=4,
+        max_pdf_bytes_per_document=16,
+        max_active_source_bytes_per_workspace=100,
+    )
+    monkeypatch.setattr(
+        capacity_module,
+        "_memory_telemetry",
+        lambda: (32_000_000_000, 20_000_000_000),
+    )
+    monkeypatch.setattr(capacity_module, "_cuda_memory_telemetry", lambda _device: None)
+    with pytest.raises(AppError) as exc:
+        service._execute_publication(
+            new_empty_workspace(title="L6", workspace_id="ws_" + "8" * 32),
+            operation_id="op_cuda_vram",
+            plan=plan,
+            lease=None,
+            control=None,
+        )
+    assert exc.value.details["reason"] == "memory_telemetry_unavailable"
+    service.vault.put_path.assert_not_called()
+    service.vault.put_bytes.assert_not_called()
+
+
+def test_cuda_large_pdf_admission_reaches_vault_stage(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    service, plan = _pre_vault_service(
+        tmp_path,
+        filename="handbook.pdf",
+        payload=b"12345",
+        profile_id="cuda_fp16_v1",
+        max_bytes_per_document=4,
+        max_pdf_bytes_per_document=16,
+        max_active_source_bytes_per_workspace=100,
+    )
+    monkeypatch.setattr(
+        capacity_module,
+        "_memory_telemetry",
+        lambda: (32_000_000_000, 20_000_000_000),
+    )
+    monkeypatch.setattr(
+        capacity_module,
+        "_cuda_memory_telemetry",
+        lambda _device: capacity_module.CudaMemoryTelemetry(
+            total_bytes=capacity_module.CUDA_LARGE_PDF_MIN_TOTAL_VRAM_BYTES,
+            free_bytes=capacity_module.CUDA_LARGE_PDF_MIN_EFFECTIVE_CAPACITY_BYTES,
+            current_process_reserved_bytes=0,
+        ),
+    )
+    monkeypatch.setattr(capacity_module, "enforce_reconstruction_disk_capacity", lambda *a, **k: None)
+    reached = False
+
+    def persist(*_args: object, **_kwargs: object) -> object:
+        nonlocal reached
+        reached = True
+        raise RuntimeError("vault stage reached")
+
+    monkeypatch.setattr(service, "_persist_pending_vault_writes", persist)
+    with pytest.raises(RuntimeError, match="vault stage reached"):
+        service._execute_publication(
+            new_empty_workspace(title="L6", workspace_id="ws_" + "8" * 32),
+            operation_id="op_cuda_success",
+            plan=plan,
+            lease=None,
+            control=None,
+        )
+    assert reached is True
 
 
 def test_large_pdf_memory_rejection_precedes_vault_write(

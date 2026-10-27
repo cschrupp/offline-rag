@@ -9,9 +9,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+import offline_rag.app.workspace.capacity as capacity_module
 from offline_rag.app.errors import AppError, ErrorCode, SafeErrorDetails
 from offline_rag.app.ingest_upload import cleanup_staging, spool_local_files
 from offline_rag.app.workspace.capacity import (
+    CUDA_LARGE_PDF_MIN_EFFECTIVE_CAPACITY_BYTES,
+    CUDA_LARGE_PDF_MIN_TOTAL_VRAM_BYTES,
+    CUDA_LARGE_PDF_REFERENCE_MEM_AVAILABLE_BYTES,
+    CudaMemoryTelemetry,
     enforce_large_pdf_runtime,
     enforce_reconstruction_disk_capacity,
     enforce_searchable_workload_capacity,
@@ -147,7 +152,7 @@ def test_large_pdf_runtime_requires_qualified_profile_and_memory() -> None:
     settings = AppSettings()
     assert large_pdf_runtime_eligibility(
         settings,
-        profile_id="cuda_fp16_v1",
+        profile_id="other_profile",
         memory=(64_000_000_000, 64_000_000_000),
     ) == (False, "profile_not_qualified")
     assert large_pdf_runtime_eligibility(
@@ -157,13 +162,98 @@ def test_large_pdf_runtime_requires_qualified_profile_and_memory() -> None:
     ) == (False, "host_memory_insufficient")
 
 
+def test_cuda_large_pdf_runtime_uses_profile_specific_host_and_vram_gates() -> None:
+    settings = AppSettings()
+    exact_cuda = CudaMemoryTelemetry(
+        total_bytes=CUDA_LARGE_PDF_MIN_TOTAL_VRAM_BYTES,
+        free_bytes=CUDA_LARGE_PDF_MIN_EFFECTIVE_CAPACITY_BYTES - 123,
+        current_process_reserved_bytes=123,
+    )
+    assert large_pdf_runtime_eligibility(
+        settings,
+        profile_id="cuda_fp16_v1",
+        memory=(32_000_000_000, CUDA_LARGE_PDF_REFERENCE_MEM_AVAILABLE_BYTES),
+        cuda_memory=exact_cuda,
+    ) == (True, None)
+    assert large_pdf_runtime_eligibility(
+        settings,
+        profile_id="cuda_fp16_v1",
+        memory=(32_000_000_000, CUDA_LARGE_PDF_REFERENCE_MEM_AVAILABLE_BYTES - 1),
+        cuda_memory=exact_cuda,
+    ) == (False, "host_memory_insufficient")
+    assert large_pdf_runtime_eligibility(
+        settings,
+        profile_id="cuda_fp16_v1",
+        memory=(32_000_000_000, CUDA_LARGE_PDF_REFERENCE_MEM_AVAILABLE_BYTES),
+        cuda_memory=CudaMemoryTelemetry(
+            total_bytes=CUDA_LARGE_PDF_MIN_TOTAL_VRAM_BYTES - 1,
+            free_bytes=CUDA_LARGE_PDF_MIN_EFFECTIVE_CAPACITY_BYTES,
+            current_process_reserved_bytes=0,
+        ),
+    ) == (False, "large_pdf_gpu_memory_insufficient")
+    assert large_pdf_runtime_eligibility(
+        settings,
+        profile_id="cuda_fp16_v1",
+        memory=(32_000_000_000, CUDA_LARGE_PDF_REFERENCE_MEM_AVAILABLE_BYTES),
+        cuda_memory=CudaMemoryTelemetry(
+            total_bytes=CUDA_LARGE_PDF_MIN_TOTAL_VRAM_BYTES,
+            free_bytes=CUDA_LARGE_PDF_MIN_EFFECTIVE_CAPACITY_BYTES - 1,
+            current_process_reserved_bytes=0,
+        ),
+    ) == (False, "large_pdf_gpu_memory_insufficient")
+
+
+def test_cuda_effective_capacity_includes_current_process_reservation_once() -> None:
+    telemetry = CudaMemoryTelemetry(
+        total_bytes=CUDA_LARGE_PDF_MIN_TOTAL_VRAM_BYTES,
+        free_bytes=CUDA_LARGE_PDF_MIN_EFFECTIVE_CAPACITY_BYTES - 1,
+        current_process_reserved_bytes=1,
+    )
+    assert telemetry.effective_capacity_bytes == CUDA_LARGE_PDF_MIN_EFFECTIVE_CAPACITY_BYTES
+
+
+def test_cuda_telemetry_unavailable_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = AppSettings()
+    monkeypatch.setattr(capacity_module, "_cuda_memory_telemetry", lambda _device: None)
+    assert large_pdf_runtime_eligibility(
+        settings,
+        profile_id="cuda_fp16_v1",
+        memory=(32_000_000_000, CUDA_LARGE_PDF_REFERENCE_MEM_AVAILABLE_BYTES),
+        cuda_memory=None,
+    ) == (False, "memory_telemetry_unavailable")
+
+
+def test_host_and_cuda_telemetry_failures_keep_internal_attribution(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = AppSettings()
+    monkeypatch.setattr(capacity_module, "_memory_telemetry", lambda: None)
+    host = capacity_module._large_pdf_runtime_eligibility(
+        settings, profile_id="cpu_onnx_fp32_v1"
+    )
+    assert host.diagnostic_reason == "HOST_MEMORY_TELEMETRY_UNAVAILABLE"
+
+    monkeypatch.setattr(
+        capacity_module,
+        "_memory_telemetry",
+        lambda: (32_000_000_000, CUDA_LARGE_PDF_REFERENCE_MEM_AVAILABLE_BYTES),
+    )
+    monkeypatch.setattr(capacity_module, "_cuda_memory_telemetry", lambda _device: None)
+    cuda = capacity_module._large_pdf_runtime_eligibility(
+        settings, profile_id="cuda_fp16_v1"
+    )
+    assert cuda.diagnostic_reason == "CUDA_MEMORY_TELEMETRY_UNAVAILABLE"
+
+
 def test_large_pdf_admission_and_empty_disk_transition(tmp_path: Path) -> None:
     settings = _settings(tmp_path)
     pdf = _source("pdf", byte_size=26_214_401).model_copy(
         update={"content_type": "application/pdf"}
     )
     with pytest.raises(AppError) as exc:
-        enforce_large_pdf_runtime(settings, [pdf], profile_id="cuda_fp16_v1")
+        enforce_large_pdf_runtime(settings, [pdf], profile_id="unsupported_profile")
     assert exc.value.details is not None
     assert exc.value.details["reason"] == "large_pdf_profile_not_qualified"
     enforce_reconstruction_disk_capacity(
@@ -459,13 +549,15 @@ def test_f001_legacy_v1_ingest_ignores_workspace_searchable_ceiling(
     dense_mock.assert_called_once()
 
 
-def _capabilities_body(settings: AppSettings) -> dict:
+def _capabilities_body(settings: AppSettings, embedder: object | None = None) -> dict:
     from offline_rag.api.capabilities import get_capabilities
 
     runtime = MagicMock()
     runtime.require_ready = MagicMock()
     runtime.settings = settings
-    runtime.resources = None
+    runtime.resources = (
+        SimpleNamespace(embedder=embedder) if embedder is not None else None
+    )
     request = MagicMock()
     request.app.state.runtime = runtime
     return get_capabilities(request)
@@ -486,6 +578,10 @@ def test_capabilities_separate_transport_and_workspace(tmp_path: Path) -> None:
     assert body["workspace_capacity"]["max_active_source_bytes"] == 94_371_840
     assert body["large_pdf"]["effective_max_bytes"] == 26_214_400
     assert body["large_pdf"]["runtime_eligible"] is False
+    assert body["large_pdf"]["qualified_profiles"] == [
+        "cpu_onnx_fp32_v1",
+        "cuda_fp16_v1",
+    ]
     assert body["source_limits"]["max_active_sources"] == 7
     assert body["source_limits"]["max_bytes_per_source"] == 26_214_400
 
@@ -497,3 +593,75 @@ def test_capabilities_null_workspace_when_unset(tmp_path: Path) -> None:
     assert body["workspace_capacity"]["max_searchable_child_chunks"] is None
     assert body["workspace_capacity"]["max_active_source_bytes"] == 94_371_840
     assert body["source_limits"]["max_active_sources"] is None
+
+
+def test_capabilities_reports_eligible_cuda_without_loading_runtime(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    settings = _settings(tmp_path)
+    embedder = SimpleNamespace(
+        profile_id="cuda_fp16_v1",
+        resolved_device="cuda",
+        device="cuda",
+        configured_device="auto",
+        configured_precision="native",
+        resolved_precision="fp16",
+        cuda_available=True,
+        torch_cuda_build="12.1",
+        device_selection_reason="auto_cuda_fp16",
+        representation_id="torch_st_v1",
+        state="UNLOADED",
+        backend_factory_calls=0,
+    )
+    monkeypatch.setattr(
+        capacity_module,
+        "_memory_telemetry",
+        lambda: (32_000_000_000, CUDA_LARGE_PDF_REFERENCE_MEM_AVAILABLE_BYTES),
+    )
+    monkeypatch.setattr(
+        capacity_module,
+        "_cuda_memory_telemetry",
+        lambda _device: CudaMemoryTelemetry(
+            total_bytes=CUDA_LARGE_PDF_MIN_TOTAL_VRAM_BYTES,
+            free_bytes=CUDA_LARGE_PDF_MIN_EFFECTIVE_CAPACITY_BYTES,
+            current_process_reserved_bytes=0,
+        ),
+    )
+    body = _capabilities_body(settings, embedder)
+    assert body["embedding"]["configured_device"] == "auto"
+    assert body["embedding"]["active_device"] == "cuda"
+    assert body["embedding"]["profile_id"] == "cuda_fp16_v1"
+    assert body["large_pdf"]["runtime_eligible"] is True
+    assert body["large_pdf"]["effective_max_bytes"] == 94_371_840
+    assert body["large_pdf"]["unavailable_reason"] is None
+    assert embedder.state == "UNLOADED"
+    assert embedder.backend_factory_calls == 0
+
+
+def test_capabilities_cuda_resource_failure_projects_25_mib(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    settings = _settings(tmp_path)
+    embedder = SimpleNamespace(
+        profile_id="cuda_fp16_v1",
+        resolved_device="cuda",
+        device="cuda",
+        configured_device="auto",
+        configured_precision="native",
+        resolved_precision="fp16",
+        cuda_available=True,
+        torch_cuda_build="12.1",
+        device_selection_reason="auto_cuda_fp16",
+        representation_id="torch_st_v1",
+        state="UNLOADED",
+    )
+    monkeypatch.setattr(
+        capacity_module,
+        "_memory_telemetry",
+        lambda: (32_000_000_000, CUDA_LARGE_PDF_REFERENCE_MEM_AVAILABLE_BYTES),
+    )
+    monkeypatch.setattr(capacity_module, "_cuda_memory_telemetry", lambda _device: None)
+    body = _capabilities_body(settings, embedder)
+    assert body["large_pdf"]["runtime_eligible"] is False
+    assert body["large_pdf"]["effective_max_bytes"] == 26_214_400
+    assert body["large_pdf"]["unavailable_reason"] == "memory_telemetry_unavailable"
