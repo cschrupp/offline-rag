@@ -756,23 +756,33 @@ SLICE 15  COMPLETE / ACCEPTED
            Promotion:
              NOT AUTHORIZED
            DOCLING PARSER-STACK CORRECTIVE:
-             IMPLEMENTATION + QUALIFICATION COMPLETE / READY FOR INDEPENDENT REVIEW
+             IR-001 REWORK COMPLETE / READY FOR INDEPENDENT RE-REVIEW
            Parser corrective authority:
              DOCLING PARSER-STACK CORRECTIVE
-           Parser corrective base:
+           Original dependency corrective base:
              d9ddc4cd54b3b3966bfae28044439378ddee031f
-           Parser corrective implementation candidate:
+           Original dependency corrective candidate (IR-001 rework required):
              739c393d4fada86814ae8c2c309925b81d88e4fd
+           IR-001 corrective base:
+             32c04ae5a44b25cbb700f08f8d9f400c8270d82a
+           IR-001 corrective implementation candidate:
+             d97e2dc421328443c4d4678b3af19d706e392437
+           IR-001 findings R1/R2:
+             CLOSED — PDF parser stack is identity-bearing and persisted
+           PDF parser contract:
+             offline-rag-docling-pdf-v2
+           Resolved parser provenance:
+             Docling · Docling Core · Docling Parse · backend · OCR policy
            Dependency change:
              docling-parse 7.18.0 -> 7.23.1 · docling-core 2.95.0 -> 2.104.0
            Frozen dependencies:
              docling 2.126.0 · torch/CUDA unchanged · pypdfium2 5.13.0
-           Canonical Shupe parser:
+           Canonical Shupe parser (pre-identity amendment):
              PASS twice · 884 blocks · zero warnings · deterministic result
            Live Shupe Add Sources:
              PASS · operation succeeded · workspace 16 -> 17 · CUDA fp16
            Regression suite:
-             16 passed · live retrieval answered · health ready 200
+             15 passed · identity tests rerun 3/3 · live retrieval answered · health ready 200
            Result:
              docs/evidence/large_source_capacity/parser_stack_corrective/IMPLEMENTATION_RESULT.md
            Capacity policy / product limits:

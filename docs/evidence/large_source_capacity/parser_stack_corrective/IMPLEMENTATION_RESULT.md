@@ -143,3 +143,76 @@ DOCLING PARSER-STACK CORRECTIVE
 IMPLEMENTATION + QUALIFICATION COMPLETE
 READY FOR INDEPENDENT REVIEW
 ```
+
+## IR-001 narrow rework — parser identity and provenance
+
+Independent review IR-001 accepted the dependency upgrade, Shupe crash fix,
+and live product gate, and required the parser stack to participate in cache
+identity. The original candidate `739c393d4fada86814ae8c2c309925b81d88e4fd`
+is retained as historical provenance and is not the current candidate.
+
+The corrective is based on governance tip
+`32c04ae5a44b25cbb700f08f8d9f400c8270d82a` and changes the PDF parser
+contract to `offline-rag-docling-pdf-v2`. The parser configuration hash now
+includes the resolved distribution versions for Docling, Docling Core, and
+Docling Parse, the actual default threaded Docling Parse backend identity, and
+the OCR setting. Parsed-document metadata and PDF corpus `parser_environment`
+persist the same provenance. TXT and Markdown parser versions and hash inputs
+are unchanged.
+
+The known 2 MiB regression output was replayed through persistence with its
+captured old and new parser blocks. The old 2,679-block v1 artifact and new
+2,641-block v2 artifact receive distinct IDs; the old artifact is not reusable
+under the v2 identity, and the new 2,641-block artifact persists and reloads:
+
+```yaml
+old_parsed_artifact_id: parsed_c22ee61f66c4f0bfee351d041149e3e1a6c4af132964bd918bbb38ac83222f33
+new_parsed_artifact_id: parsed_be0cac4e558ddd7e21d609ae5c5304bbf8d4532477b23cd2df3488286ff2337d
+old_blocks: 2679
+new_blocks: 2641
+old_artifact_reused_by_new_identity: false
+new_artifact_persisted_and_reloaded: true
+new_artifact_sha256: art_175eb801ebcb8a52976c9c41862eb25a2c2cb9e2026edf29cf013dc3d8a8508f
+```
+
+The deterministic PDF fixture test parses twice under the v2 identity and
+compares serialized output. The integration suite verifies the parser-stack
+metadata in both the parsed document and corpus manifest. The identity unit
+suite verifies a v1 cache miss, distinct artifact IDs, successful v2
+persist/reload, and unchanged TXT/Markdown identity.
+
+Corrective validation:
+
+```text
+15 passed — parser, ingestion, Docling-artifact, path-contract, and text/Markdown suite (including identity tests)
+3 passed — identity tests rerun after the 2,679/2,641-block persistence case was added
+Ruff on all changed Python files — PASS
+git diff --check — PASS
+```
+
+The exact Shupe source had already parsed twice successfully on this resolved
+dependency stack before the identity-only amendment. The amendment does not
+change conversion or block normalization. A fresh standalone Shupe parse
+attempt after the amendment did not produce a terminal result in the available
+run window and is not claimed as a new pass. The prior successful parser runs
+and live Add Sources gate remain valid evidence for the unchanged conversion
+path; the v2 identity is verified directly from the same resolved package
+metadata.
+
+```yaml
+IR-001 finding R1 — parser stack not identity-bearing: CLOSED
+IR-001 finding R2 — persisted parser provenance insufficient: CLOSED
+capacity policy / product limits: UNCHANGED
+L5 evidence: UNCHANGED
+promotion: NOT AUTHORIZED
+```
+
+Current implementation candidate:
+`d97e2dc421328443c4d4678b3af19d706e392437`.
+
+Current terminal:
+
+```yaml
+DOCLING PARSER-STACK CORRECTIVE
+IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT RE-REVIEW
+```
