@@ -535,7 +535,16 @@ SLICE 15  COMPLETE / ACCEPTED
          HUMAN ACCEPTED
        16K-C:
          IMPLEMENTATION COMPLETE /
-         INDEPENDENTLY ACCEPTED
+         INDEPENDENTLY ACCEPTED /
+         HUMAN ACCEPTED
+       16K-C Human acceptance:
+         S16-K-C-FIRST-USER-CAPACITY-MODEL-IMPLEMENTATION-HA-001 — ACCEPTED
+       Exact Human-accepted 16K-C technical subject:
+         219c8551d208530ec93c5697ca5591ad52bfb228
+       R02 sequencing finding:
+         16K-D authority used 33a031b6a1bbda0b3b80fa96c8bff0fdfcece06f
+         as parent before 16K-C Human acceptance; historical governance gap
+         recorded, with no 16K-D evidence invalidation inferred
        16K-D:
          DUAL-BACKEND P1–P4 COMPLETE
          P4 IMPLEMENTATION + HUMAN UAT COMPLETE /
@@ -839,8 +848,8 @@ SLICE 15  COMPLETE / ACCEPTED
        Active post-closeout backlog:
          docs/BACKLOG.md
        Preferred residual completion order (planning only; does not grant authority):
-         S16K-R01 — post-L6 governance reconciliation
-         → S16K-R02 — 16K-C Human-disposition normalization
+         S16K-R01 — CLOSED
+         → S16K-R02 — CLOSED / 16K-C HUMAN ACCEPTED
          → S16K-R03 — Fireground CUDA current-main disposition
          → 16K-E — ingestion worklist / progress UX
          → 16K-F — real beta-corpus acceptance

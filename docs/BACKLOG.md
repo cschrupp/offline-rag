@@ -14,11 +14,11 @@ backlog item exists.
 
 ## 1. Active residual completion queue
 
-The preferred order is:
+Completed governance reconciliations precede the remaining active queue:
 
 ```text
-S16K-R01 governance reconciliation
-    -> S16K-R02 16K-C Human-disposition normalization
+S16K-R01 CLOSED — post-L6 governance reconciliation
+    -> S16K-R02 CLOSED — 16K-C Human-disposition normalization
     -> S16K-R03 Fireground CUDA current-main disposition
     -> 16K-E ingestion worklist / progress UX
     -> 16K-F real beta-corpus acceptance
@@ -95,22 +95,26 @@ IR-001 ACCEPT and Human acceptance recorded for the exact reconciliation subject
 ### S16K-R02 — 16K-C Human-disposition normalization
 
 **Priority:** P0\
-**Status:** OPEN / GOVERNANCE ONLY\
-**Execution state:** NOT STARTED\
+**Status:** CLOSED — HUMAN ACCEPTED / SEQUENCING GAP RECORDED\
+**Authority:** `S16-K-C-FIRST-USER-CAPACITY-MODEL-IMPLEMENTATION-HA-001`\
 **Technical subject:** `219c8551d208530ec93c5697ca5591ad52bfb228`
 
-16K-C is recorded as `IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED` with
-IR-002 `ACCEPT`, but the canonical ledger does not record a Human technical
-acceptance comparable to 16K-A/B.
+16K-C implementation is complete and independently accepted by IR-002. Human
+acceptance is now recorded for the exact technical subject above under the
+bounded HA authority. This closes the missing 16K-C Human gate.
 
-Required decision:
+Historical sequence finding:
 
-- either record the already-existing Human acceptance if durable evidence exists;
-- or explicitly record that independent acceptance was intentionally terminal
-  for 16K-C and no separate HA gate is required;
-- otherwise request a bounded Human acceptance gate before 16K closure.
+- 16K-C IR-002 acceptance-record successor:
+  `33a031b6a1bbda0b3b80fa96c8bff0fdfcece06f`
+- 16K-D was subsequently authorized with that commit as its exact parent.
+- Therefore, 16K-D proceeded before 16K-C's required Human acceptance was
+  durably closed. This is a historical sequencing governance gap.
+- The later 16K-C acceptance does not rewrite that sequence and does not by
+  itself invalidate independently accepted 16K-D evidence.
 
-No implementation change is authorized by this item.
+This R02 closure is documentation-only. It authorizes no implementation,
+scientific execution, additional 16K-D work, or 16K-E/F/G tranche.
 
 ### S16K-R03 — Fireground CUDA / historical HTTP-500 disposition
 
