@@ -16,6 +16,11 @@ const GOLD_BOOTSTRAP_CODE_FALLBACKS: Record<string, string> = {
 const GENERIC_GOLD_BOOTSTRAP_FAILURE =
   "Gold Lab could not complete baseline creation. No baseline was published.";
 
+export function isCudaMemoryExhaustedFailure(operation: Operation): boolean {
+  const reason = operation.error?.details?.reason;
+  return typeof reason === "string" && reason === "cuda_memory_exhausted";
+}
+
 /**
  * Product-facing failure copy for a durable managed operation card.
  * Gold baseline bootstrap never surfaces raw codes, reason identifiers, or
@@ -29,6 +34,10 @@ export function managedOperationFailureMessage(operation: Operation): string {
 
   if (String(operation.kind) === "gold_lab_baseline_bootstrap") {
     return goldBootstrapOperationFailureMessage(error);
+  }
+
+  if (isCudaMemoryExhaustedFailure(operation)) {
+    return "GPU memory was exhausted while building semantic search.";
   }
 
   const code = String(error.code ?? "")

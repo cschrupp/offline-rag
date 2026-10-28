@@ -11,6 +11,7 @@ from typing import Any
 from offline_rag.core.ids import SENTENCE_TRANSFORMERS_ADAPTER_CONTRACT
 from offline_rag.dense.embedding_artifacts import RepresentationInspection
 from offline_rag.dense.execution_profile import EmbeddingProfileResolution
+from offline_rag.dense.failure import CudaMemoryExhaustedError
 from offline_rag.dense.onnx_embedder import SentenceTransformersOnnxEmbedder
 
 
@@ -75,6 +76,8 @@ class QualifiedEmbeddingRuntime:
         self.profile_id = self.profile.profile_id
         self.representation_id = self.profile.representation_id
         self.batch_size = self.profile.batch_size
+        self.configured_batch_size = self.profile.batch_size
+        self.effective_batch_size = self.profile.batch_size
 
         self._state = RuntimeState.UNLOADED
         self._backend: Any | None = None
@@ -234,14 +237,28 @@ class QualifiedEmbeddingRuntime:
                 raise TypeError("embed_documents requires string texts")
         backend = self._ensure_ready()
         try:
-            return backend.embed_documents(texts)
+            vectors = backend.embed_documents(texts)
+            self._remember_effective_batch_size(backend)
+            return vectors
+        except CudaMemoryExhaustedError as exc:
+            self._remember_effective_batch_size(backend)
+            self._mark_failed(exc)
+            raise
         except QualifiedEmbeddingRuntimeError:
             raise
         except Exception as exc:
+            self._remember_effective_batch_size(backend)
             self._mark_failed(exc)
             raise QualifiedEmbeddingRuntimeError(
                 f"qualified embedding execution failed: {self._failure}"
             ) from exc
+
+    def _remember_effective_batch_size(self, backend: Any) -> None:
+        effective = getattr(backend, "effective_batch_size", None)
+        if effective is None:
+            effective = getattr(backend, "batch_size", None)
+        if isinstance(effective, int) and effective > 0:
+            self.effective_batch_size = effective
 
     def embed_query(self, text: str) -> list[float]:
         if not isinstance(text, str):
@@ -264,6 +281,8 @@ class QualifiedEmbeddingRuntime:
             # Terminal classification is immutable once FAILED.
             if self._state is RuntimeState.FAILED:
                 return
+            if self._backend is not None:
+                self._remember_effective_batch_size(self._backend)
             self._failure = f"{type(exc).__name__}: {exc}"
             self._failure_kind = RuntimeFailureKind.EXECUTION
             release = getattr(self._backend, "release", None)

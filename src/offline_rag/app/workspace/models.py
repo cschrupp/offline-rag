@@ -5,9 +5,9 @@ from __future__ import annotations
 import hashlib
 import json
 import uuid
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from enum import StrEnum
-from collections.abc import Sequence
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -198,6 +198,7 @@ class ManagedOperationDenseExecution(BaseModel):
     device: str | None = Field(default=None, max_length=64)
     dtype: str | None = Field(default=None, max_length=64)
     batch_size: int | None = Field(default=None, gt=0)
+    configured_batch_size: int | None = Field(default=None, gt=0)
     attention_backend: str | None = Field(default=None, max_length=128)
     embedding_dimension: int | None = Field(default=None, gt=0)
     # Optional additive P2 observational fields (historical records omit them).

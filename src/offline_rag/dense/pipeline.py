@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from contextlib import nullcontext
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -31,7 +32,7 @@ from offline_rag.core.observability import (
     report_document_phase,
 )
 from offline_rag.core.progress import ProgressReporter, report_progress
-from offline_rag.dense.backend import DenseIndexBackend, DensePointRecord
+from offline_rag.dense.backend import DenseIndexBackend
 from offline_rag.dense.cache import (
     try_load_reusable_embedding_artifact,
     write_embedding_artifact,
@@ -42,12 +43,14 @@ from offline_rag.dense.config_hash import (
 )
 from offline_rag.dense.embedder import Embedder, EmbedderError, make_embedder
 from offline_rag.dense.failure import (
+    DENSE_FAILURE_CUDA_MEMORY_EXHAUSTED,
     DENSE_FAILURE_EMBEDDING_GENERATION,
     DENSE_FAILURE_EMBEDDING_PERSISTENCE,
     DENSE_FAILURE_MATERIALIZATION,
     DENSE_FAILURE_PRECONDITION,
     DENSE_FAILURE_STAGE,
     DENSE_FAILURE_VALIDATION,
+    CudaMemoryExhaustedError,
     DenseStageError,
     log_dense_failure,
 )
@@ -61,6 +64,7 @@ from offline_rag.dense.persistence import (
 )
 from offline_rag.dense.points import build_dense_point
 from offline_rag.dense.profiling import (
+    dense_encode_batch_context,
     dense_practical_timing_session,
     dense_profile_session,
     get_dense_profile_collector,
@@ -115,9 +119,9 @@ def _dense_execution_metadata(
 ) -> dict[str, Any]:
     """Non-perturbing dense execution facts for SUCCESS and FAILED reports.
 
-    Captures resolved device, configured batch size, and embedding dimension
-    whenever an embedder exists. dtype/attention come only from the existing
-    non-loading observer (null when the model is not already loaded).
+    Captures resolved device, configured/effective batch sizes, and embedding
+    dimension whenever an embedder exists. dtype/attention come only from the
+    existing non-loading observer (null when the model is not already loaded).
     """
     from offline_rag.dense.embedder import observe_embedder_execution_facts
 
@@ -127,14 +131,29 @@ def _dense_execution_metadata(
     observed = observe_embedder_execution_facts(embedder)
     dense_dtype = observed.get("dtype")
     dense_attention = observed.get("attention_backend")
+    configured_batch = getattr(embedder, "configured_batch_size", batch_size)
+    effective_batch = getattr(embedder, "effective_batch_size", None)
+    if effective_batch is None:
+        effective_batch = getattr(embedder, "batch_size", batch_size)
+    if not isinstance(configured_batch, int) or configured_batch <= 0:
+        configured_batch = batch_size
+    if not isinstance(effective_batch, int) or effective_batch <= 0:
+        effective_batch = batch_size
+    profile = getattr(embedder, "profile", None)
     return {
         "device": str(dense_device) if dense_device is not None else None,
         "dtype": str(dense_dtype) if dense_dtype is not None else None,
-        "batch_size": int(batch_size),
+        "configured_batch_size": int(configured_batch),
+        "batch_size": int(effective_batch),
         "attention_backend": (
             str(dense_attention) if dense_attention is not None else None
         ),
         "embedding_dimension": int(embedder.dimension),
+        "profile_id": getattr(embedder, "profile_id", None),
+        "representation_id": getattr(embedder, "representation_id", None),
+        "backend": getattr(profile, "backend_family", None),
+        "provider": getattr(profile, "provider", None),
+        "resolved_precision": getattr(embedder, "resolved_precision", None),
     }
 
 
@@ -398,36 +417,51 @@ def _ensure_embeddings(
             batch_chunk_ids = [item[0].chunk_id for item in batch]
             # External GPU sample outside encode path (does not sync the model).
             gpu_before = sample_external_gpu_state()
+        attempt_context = (
+            dense_encode_batch_context(
+                batch_index=batch_index,
+                item_count=len(batch),
+                token_counts=token_counts,
+                max_sequence_length=max_seq,
+                chunk_ids=batch_chunk_ids or [],
+            )
+            if profile is not None
+            else nullcontext()
+        )
         try:
             practical = get_practical_timing_collector()
-            if profile is not None:
-                with profiled_encode_timing() as encode_timing:
-                    vectors = embedder.embed_documents(texts)
-                encode_ms = float(encode_timing["encode_ms"])
-                encode_cuda_device_ms = encode_timing["encode_cuda_device_ms"]
-                encode_cuda_device_status = str(
-                    encode_timing["encode_cuda_device_status"]
-                )
-                encode_cuda_device_error = encode_timing["encode_cuda_device_error"]
-                process_cpu_delta = encode_timing["process_cpu_delta"]
-                gpu_after = sample_external_gpu_state()
-                cuda_allocator_after = observe_cuda_allocator_state()
-                if practical is not None:
-                    practical.encode_ms += encode_ms
-            else:
-                with timed_ms() as encode_bucket:
-                    vectors = embedder.embed_documents(texts)
-                encode_ms = float(encode_bucket[0])
-                if practical is not None:
-                    practical.encode_ms += encode_ms
+            with attempt_context:
+                if profile is not None:
+                    with profiled_encode_timing() as encode_timing:
+                        vectors = embedder.embed_documents(texts)
+                    encode_ms = float(encode_timing["encode_ms"])
+                    encode_cuda_device_ms = encode_timing["encode_cuda_device_ms"]
+                    encode_cuda_device_status = str(
+                        encode_timing["encode_cuda_device_status"]
+                    )
+                    encode_cuda_device_error = encode_timing["encode_cuda_device_error"]
+                    process_cpu_delta = encode_timing["process_cpu_delta"]
+                    gpu_after = sample_external_gpu_state()
+                    cuda_allocator_after = observe_cuda_allocator_state()
+                else:
+                    with timed_ms() as encode_bucket:
+                        vectors = embedder.embed_documents(texts)
+                    encode_ms = float(encode_bucket[0])
+            if practical is not None:
+                practical.encode_ms += encode_ms
         except Exception as exc:
             failed += len(batch)
             report_document_activity(
                 on_document_activity, document_ids=(), stage="dense_batch"
             )
+            classification = (
+                DENSE_FAILURE_CUDA_MEMORY_EXHAUSTED
+                if isinstance(exc, CudaMemoryExhaustedError)
+                else DENSE_FAILURE_EMBEDDING_GENERATION
+            )
             raise DenseStageError(
                 f"embedding generation failed: {exc}",
-                classification=DENSE_FAILURE_EMBEDDING_GENERATION,
+                classification=classification,
                 embeddings_generated=generated,
                 embeddings_reused=reused,
                 embeddings_failed=failed,
@@ -1127,6 +1161,9 @@ def _run_indexing_inner(
                 active_embedder,
                 batch_size=settings.indexing.embedding.batch_size,
             )
+        if profile_session is not None:
+            observe_peak_vram_bytes(profile_session)
+            report_metadata["dense_profile"] = profile_session.summarize()
         log_dense_failure(
             run_id=run_id,
             corpus_name=name,

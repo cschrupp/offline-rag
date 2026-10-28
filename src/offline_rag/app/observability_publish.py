@@ -28,7 +28,6 @@ from offline_rag.domain.indexing import (
 )
 from offline_rag.domain.ingestion import FileIngestionStatus, IngestionReport
 
-
 _PHASE_RANK = {
     ManagedOperationDocumentPhase.PENDING: 0,
     ManagedOperationDocumentPhase.PARSING: 1,
@@ -416,12 +415,27 @@ class DurableObservabilityPublisher:
         execution = self._metrics.dense_execution
         raw_exec = report.metadata.get("dense_execution")
         if isinstance(raw_exec, dict):
-            execution = ManagedOperationDenseExecution(
-                device=raw_exec.get("device"),
-                dtype=raw_exec.get("dtype"),
-                batch_size=raw_exec.get("batch_size"),
-                attention_backend=raw_exec.get("attention_backend"),
-                embedding_dimension=raw_exec.get("embedding_dimension"),
+            updates = {
+                key: raw_exec[key]
+                for key in (
+                    "device",
+                    "dtype",
+                    "batch_size",
+                    "configured_batch_size",
+                    "attention_backend",
+                    "embedding_dimension",
+                    "profile_id",
+                    "representation_id",
+                    "backend",
+                    "provider",
+                    "resolved_precision",
+                )
+                if key in raw_exec
+            }
+            execution = (
+                execution.model_copy(update=updates)
+                if execution is not None
+                else ManagedOperationDenseExecution.model_validate(updates)
             )
         durations = self._durations_model().model_copy(
             update={
@@ -543,10 +557,15 @@ def dense_execution_from_runtime(
     profile = getattr(embedder, "profile", None)
     backend = getattr(profile, "backend_family", None) if profile is not None else None
     provider = getattr(profile, "provider", None) if profile is not None else None
+    configured_batch_size = getattr(embedder, "configured_batch_size", batch_size)
+    effective_batch_size = getattr(embedder, "effective_batch_size", None)
+    if effective_batch_size is None:
+        effective_batch_size = getattr(embedder, "batch_size", batch_size)
     return ManagedOperationDenseExecution(
         device=str(device) if device is not None else None,
         dtype=observed.get("dtype"),
-        batch_size=batch_size,
+        batch_size=effective_batch_size,
+        configured_batch_size=configured_batch_size,
         attention_backend=observed.get("attention_backend"),
         embedding_dimension=int(dimension) if isinstance(dimension, int) else None,
         profile_id=(

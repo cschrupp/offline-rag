@@ -13,6 +13,7 @@ from typing import Final
 logger = logging.getLogger(__name__)
 
 DENSE_FAILURE_EMBEDDING_GENERATION: Final = "embedding_generation_failed"
+DENSE_FAILURE_CUDA_MEMORY_EXHAUSTED: Final = "cuda_memory_exhausted"
 DENSE_FAILURE_EMBEDDING_PERSISTENCE: Final = "embedding_artifact_persistence_failed"
 DENSE_FAILURE_MATERIALIZATION: Final = "dense_materialization_failed"
 DENSE_FAILURE_VALIDATION: Final = "dense_validation_failed"
@@ -22,6 +23,7 @@ DENSE_FAILURE_STAGE: Final = "dense_stage_failed"
 DENSE_FAILURE_PUBLIC_REASONS: Final = frozenset(
     {
         DENSE_FAILURE_EMBEDDING_GENERATION,
+        DENSE_FAILURE_CUDA_MEMORY_EXHAUSTED,
         DENSE_FAILURE_EMBEDDING_PERSISTENCE,
         DENSE_FAILURE_MATERIALIZATION,
         DENSE_FAILURE_VALIDATION,
@@ -29,6 +31,56 @@ DENSE_FAILURE_PUBLIC_REASONS: Final = frozenset(
         DENSE_FAILURE_STAGE,
     }
 )
+
+
+class CudaMemoryExhaustedError(RuntimeError):
+    """Bounded terminal signal after the authorized CUDA batch ladder fails."""
+
+    def __init__(
+        self,
+        *,
+        configured_batch_size: int,
+        final_batch_size: int,
+    ) -> None:
+        super().__init__("CUDA embedding memory exhausted after bounded batch recovery")
+        self.configured_batch_size = configured_batch_size
+        self.final_batch_size = final_batch_size
+
+
+def is_cuda_oom_error(exc: BaseException) -> bool:
+    """Recognize specific CUDA allocation exhaustion, including wrapped causes."""
+    pending: list[BaseException] = [exc]
+    seen: set[int] = set()
+    markers = (
+        "cuda error: out of memory",
+        "cuda out of memory",
+        "cuda_error_out_of_memory",
+        "cudaerrormemoryallocation",
+    )
+    while pending:
+        current = pending.pop()
+        if id(current) in seen:
+            continue
+        seen.add(id(current))
+
+        current_type = type(current)
+        if (
+            current_type.__name__ == "OutOfMemoryError"
+            and current_type.__module__.startswith("torch")
+        ):
+            return True
+        try:
+            message = str(current).lower()
+        except Exception:  # noqa: BLE001 — malformed exception text is not evidence
+            message = ""
+        if any(marker in message for marker in markers):
+            return True
+
+        if current.__cause__ is not None:
+            pending.append(current.__cause__)
+        if current.__context__ is not None:
+            pending.append(current.__context__)
+    return False
 
 
 class DenseStageError(RuntimeError):

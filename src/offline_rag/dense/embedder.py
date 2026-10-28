@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import gc
 import hashlib
 import math
+import time
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Protocol
@@ -14,6 +16,7 @@ from offline_rag.core.ids import (
     RAW_QUERY_V1,
     SENTENCE_TRANSFORMERS_ADAPTER_CONTRACT,
 )
+from offline_rag.dense.failure import CudaMemoryExhaustedError, is_cuda_oom_error
 from offline_rag.dense.provision import (
     require_embedding_artifacts,
     resolve_embedding_model_dir,
@@ -129,6 +132,7 @@ class SentenceTransformersEmbedder:
     """Load SentenceTransformers exclusively from a provisioned local directory."""
 
     adapter_contract = SENTENCE_TRANSFORMERS_ADAPTER_CONTRACT
+    CUDA_OOM_BATCH_LADDER = (32, 16, 8, 4)
 
     def __init__(
         self,
@@ -181,6 +185,8 @@ class SentenceTransformersEmbedder:
         self.configured_precision = configured_precision
         self.resolved_precision = resolved_precision
         self.precision_selection_reason = precision_selection_reason
+        self.configured_batch_size = batch_size
+        self.effective_batch_size = batch_size
         self.batch_size = batch_size
         self.query_instruction = query_instruction
         self.document_instruction = document_instruction
@@ -283,14 +289,141 @@ class SentenceTransformersEmbedder:
             for text in texts
         ]
         model = self._load()
-        vectors = model.encode(
-            list(payloads),
-            batch_size=self.batch_size,
-            normalize_embeddings=self.normalize,
-            convert_to_numpy=True,
-            show_progress_bar=False,
+        encode_payloads = list(payloads)
+        batch_ladder = self._cuda_oom_batch_ladder()
+        for attempt_index, attempt_batch_size in enumerate(batch_ladder):
+            self.effective_batch_size = attempt_batch_size
+            self.batch_size = attempt_batch_size
+            collector, batch_context = self._diagnostic_encode_context()
+            diagnostics_before = (
+                self._cuda_attempt_snapshot() if collector is not None else None
+            )
+            attempt_started = time.perf_counter()
+            try:
+                vectors = model.encode(
+                    encode_payloads,
+                    batch_size=attempt_batch_size,
+                    normalize_embeddings=self.normalize,
+                    convert_to_numpy=True,
+                    show_progress_bar=False,
+                )
+            except Exception as exc:
+                elapsed_ms = (time.perf_counter() - attempt_started) * 1000.0
+                is_cuda_oom = self.device == "cuda" and is_cuda_oom_error(exc)
+                next_batch_size = (
+                    batch_ladder[attempt_index + 1]
+                    if is_cuda_oom and attempt_index + 1 < len(batch_ladder)
+                    else None
+                )
+                cleanup_status = None
+                diagnostics_after_cleanup = None
+                if next_batch_size is not None:
+                    cleanup_status = "succeeded" if cleanup_cuda_after_oom(exc) else "failed"
+                    diagnostics_after_cleanup = (
+                        self._cuda_attempt_snapshot()
+                        if collector is not None
+                        else None
+                    )
+                self._record_cuda_attempt(
+                    collector=collector,
+                    batch_context=batch_context,
+                    batch_size=attempt_batch_size,
+                    elapsed_ms=elapsed_ms,
+                    outcome="cuda_oom" if is_cuda_oom else "other_failure",
+                    next_batch_size=next_batch_size,
+                    before=diagnostics_before,
+                    after_cleanup=diagnostics_after_cleanup,
+                    cleanup_status=cleanup_status,
+                )
+                if not is_cuda_oom:
+                    raise
+                if next_batch_size is None:
+                    raise CudaMemoryExhaustedError(
+                        configured_batch_size=self.configured_batch_size,
+                        final_batch_size=attempt_batch_size,
+                    ) from exc
+                self.effective_batch_size = next_batch_size
+                self.batch_size = next_batch_size
+                continue
+
+            elapsed_ms = (time.perf_counter() - attempt_started) * 1000.0
+            self._record_cuda_attempt(
+                collector=collector,
+                batch_context=batch_context,
+                batch_size=attempt_batch_size,
+                elapsed_ms=elapsed_ms,
+                outcome="success",
+                next_batch_size=None,
+                before=diagnostics_before,
+                after_cleanup=None,
+                cleanup_status=None,
+            )
+            return [self._coerce_vector(row.tolist()) for row in vectors]
+
+        raise AssertionError("CUDA OOM batch ladder ended without an encode result")
+
+    def _cuda_oom_batch_ladder(self) -> tuple[int, ...]:
+        if self.device != "cuda":
+            return (self.configured_batch_size,)
+        current_batch_size = self.effective_batch_size
+        try:
+            start = self.CUDA_OOM_BATCH_LADDER.index(current_batch_size)
+        except ValueError:
+            return (current_batch_size,)
+        return self.CUDA_OOM_BATCH_LADDER[start:]
+
+    @staticmethod
+    def _diagnostic_encode_context():
+        from offline_rag.dense.profiling import (
+            get_dense_encode_batch_context,
+            get_dense_profile_collector,
         )
-        return [self._coerce_vector(row.tolist()) for row in vectors]
+
+        return get_dense_profile_collector(), get_dense_encode_batch_context()
+
+    @staticmethod
+    def _cuda_attempt_snapshot() -> dict[str, object]:
+        from offline_rag.dense.profiling import (
+            observe_cuda_allocator_state,
+            observe_cuda_global_memory_state,
+            sample_external_gpu_state,
+        )
+
+        return {
+            "allocator": observe_cuda_allocator_state(),
+            "global_memory": observe_cuda_global_memory_state(),
+            "external_gpu": sample_external_gpu_state(),
+        }
+
+    @staticmethod
+    def _record_cuda_attempt(
+        *,
+        collector,
+        batch_context,
+        batch_size: int,
+        elapsed_ms: float,
+        outcome: str,
+        next_batch_size: int | None,
+        before: dict[str, object] | None,
+        after_cleanup: dict[str, object] | None,
+        cleanup_status: str | None,
+    ) -> None:
+        if collector is None or batch_context is None:
+            return
+        collector.record_encode_attempt(
+            batch_context=batch_context,
+            effective_batch_size=batch_size,
+            elapsed_ms=elapsed_ms,
+            outcome=outcome,
+            next_effective_batch_size=next_batch_size,
+            cuda_allocator_before=(before or {}).get("allocator"),
+            cuda_memory_before=(before or {}).get("global_memory"),
+            external_gpu_before=(before or {}).get("external_gpu"),
+            cleanup_status=cleanup_status,
+            cuda_allocator_after_cleanup=(after_cleanup or {}).get("allocator"),
+            cuda_memory_after_cleanup=(after_cleanup or {}).get("global_memory"),
+            external_gpu_after=(after_cleanup or {}).get("external_gpu"),
+        )
 
     def embed_query(self, text: str) -> list[float]:
         model = self._load()
@@ -327,6 +460,36 @@ class SentenceTransformersEmbedder:
 
 class EmbedderError(RuntimeError):
     pass
+
+
+def cleanup_cuda_after_oom(exc: BaseException | None = None) -> bool:
+    """Release attempt-local traceback references and unused CUDA cache best-effort."""
+    pending = [exc] if exc is not None else []
+    seen: set[int] = set()
+    while pending:
+        current = pending.pop()
+        if id(current) in seen:
+            continue
+        seen.add(id(current))
+        current.__traceback__ = None
+        if current.__cause__ is not None:
+            pending.append(current.__cause__)
+        if current.__context__ is not None:
+            pending.append(current.__context__)
+
+    succeeded = True
+    try:
+        gc.collect()
+    except Exception:  # noqa: BLE001 — cleanup failure must not replace OOM
+        succeeded = False
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except Exception:  # noqa: BLE001 — cleanup failure must not replace OOM
+        succeeded = False
+    return succeeded
 
 
 def make_embedder(settings: AppSettings) -> Embedder:

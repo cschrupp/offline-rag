@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Badge } from "./Badge";
 import { Button } from "./Button";
-import { managedOperationFailureMessage } from "../features/operations/operationErrorMessages";
+import {
+  isCudaMemoryExhaustedFailure,
+  managedOperationFailureMessage,
+} from "../features/operations/operationErrorMessages";
 import {
   operationStatusLabel,
   progressStageLabel,
@@ -307,6 +311,13 @@ export function OperationProgress({
         ? "CPU"
         : executionDevice
     : null;
+  const configuredBatchSize = denseExecution?.configured_batch_size;
+  const effectiveBatchSize = denseExecution?.batch_size;
+  const cudaBatchReduced =
+    executionDevice?.toLowerCase() === "cuda" &&
+    configuredBatchSize != null &&
+    effectiveBatchSize != null &&
+    effectiveBatchSize < configuredBatchSize;
   const generated = metrics?.embeddings_generated;
   const reused = metrics?.embeddings_reused;
   const compactEmbeddingCounts =
@@ -329,6 +340,12 @@ export function OperationProgress({
       <div className="row" style={{ justifyContent: "space-between" }}>
         <div className="row">
           <Badge tone={tone} label={statusText} />
+          {operation.status === "succeeded" && cudaBatchReduced ? (
+            <Badge
+              tone="warning"
+              label={`GPU memory constrained · batch reduced to ${formatCount(effectiveBatchSize)}`}
+            />
+          ) : null}
           <strong>{label ?? "Operation"}</strong>
         </div>
         {terminal && onDismiss ? (
@@ -399,7 +416,22 @@ export function OperationProgress({
           {formatRate(throughput)} new passages/s
         </p>
       ) : null}
-      {operation.status === "failed" && operation.error ? (
+      {operation.status === "failed" &&
+      operation.error &&
+      isCudaMemoryExhaustedFailure(operation) ? (
+        <div className="error-box" role="alert" data-testid="operation-cuda-memory-error">
+          <p style={{ margin: 0 }}>{managedOperationFailureMessage(operation)}</p>
+          <p style={{ margin: 0 }}>
+            No new sources were published. Close other GPU applications or local
+            servers and restart Seneca before retrying, or choose CPU for the next
+            start.
+          </p>
+          <Link to="/settings?section=compute">Open Compute settings</Link>
+        </div>
+      ) : null}
+      {operation.status === "failed" &&
+      operation.error &&
+      !isCudaMemoryExhaustedFailure(operation) ? (
         <p className="error-box" role="alert">
           {managedOperationFailureMessage(operation)}
         </p>
@@ -492,7 +524,8 @@ export function OperationProgress({
                 [
                   ["Device", denseExecution.device],
                   ["Data type", denseExecution.dtype],
-                  ["Batch size", denseExecution.batch_size],
+                  ["Effective batch", denseExecution.batch_size],
+                  ["Configured batch", denseExecution.configured_batch_size],
                   ["Attention backend", denseExecution.attention_backend],
                   ["Embedding dimension", denseExecution.embedding_dimension],
                   ["Profile", denseExecution.profile_id],

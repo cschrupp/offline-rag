@@ -16,10 +16,11 @@ import resource
 import statistics
 import subprocess
 import time
+from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar, Token
 from dataclasses import dataclass, field
-from typing import Any, Iterator
+from typing import Any
 
 DIAG_DENSE_PROFILE_ENV = "OFFLINE_RAG_DIAG_DENSE_PROFILE"
 PROFILE_CONTRACT = "dense-cuda-profile-v2"
@@ -189,6 +190,7 @@ def observe_cuda_allocator_state() -> dict[str, Any]:
             "allocated_bytes": int(torch.cuda.memory_allocated()),
             "reserved_bytes": int(torch.cuda.memory_reserved()),
             "peak_allocated_bytes": int(torch.cuda.max_memory_allocated()),
+            "peak_reserved_bytes": int(torch.cuda.max_memory_reserved()),
         }
     except Exception as exc:  # noqa: BLE001
         return {
@@ -197,7 +199,99 @@ def observe_cuda_allocator_state() -> dict[str, Any]:
             "allocated_bytes": None,
             "reserved_bytes": None,
             "peak_allocated_bytes": None,
+            "peak_reserved_bytes": None,
         }
+
+
+def observe_cuda_global_memory_state() -> dict[str, Any]:
+    """Best-effort device-wide free/total memory from the active CUDA runtime."""
+    try:
+        import torch
+
+        if not torch.cuda.is_available():
+            return {
+                "status": "unavailable",
+                "error": "cuda_not_available",
+                "free_bytes": None,
+                "total_bytes": None,
+            }
+        free_bytes, total_bytes = torch.cuda.mem_get_info()
+        return {
+            "status": "observed",
+            "error": None,
+            "free_bytes": int(free_bytes),
+            "total_bytes": int(total_bytes),
+        }
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "status": "unavailable",
+            "error": f"{type(exc).__name__}: {exc}",
+            "free_bytes": None,
+            "total_bytes": None,
+        }
+
+
+@dataclass(frozen=True)
+class DenseEncodeBatchContext:
+    """Private-text-free identity and token facts for one logical outer batch."""
+
+    batch_index: int
+    item_count: int
+    batch_identity_digest: str | None
+    chunk_ids_digest: str | None
+    token_length_stats: dict[str, int | None] | None
+    aggregate_input_tokens: int | None
+    padded_token_workload: int | None
+    padding_fraction: float | None
+
+
+_encode_batch_context_var: ContextVar[DenseEncodeBatchContext | None] = ContextVar(
+    "dense_encode_batch_context", default=None
+)
+
+
+def get_dense_encode_batch_context() -> DenseEncodeBatchContext | None:
+    return _encode_batch_context_var.get()
+
+
+@contextmanager
+def dense_encode_batch_context(
+    *,
+    batch_index: int,
+    item_count: int,
+    token_counts: list[int] | None,
+    max_sequence_length: int | None,
+    chunk_ids: list[str],
+) -> Iterator[DenseEncodeBatchContext]:
+    counts = list(token_counts or [])
+    aggregate = sum(counts) if counts else None
+    padded = None
+    padding_fraction = None
+    if item_count > 0 and max_sequence_length is not None and max_sequence_length > 0:
+        padded = int(item_count * max_sequence_length)
+        if aggregate is not None:
+            padding_fraction = 1.0 - (float(aggregate) / float(padded))
+    chunk_digest = batch_identity_digest(chunk_ids) if chunk_ids else None
+    identity = None
+    if chunk_digest is not None:
+        identity = hashlib.sha256(
+            f"{batch_index}:{item_count}:{chunk_digest}".encode()
+        ).hexdigest()
+    context = DenseEncodeBatchContext(
+        batch_index=batch_index,
+        item_count=item_count,
+        batch_identity_digest=identity,
+        chunk_ids_digest=chunk_digest,
+        token_length_stats=_token_distribution(counts) if counts else None,
+        aggregate_input_tokens=aggregate,
+        padded_token_workload=padded,
+        padding_fraction=padding_fraction,
+    )
+    token = _encode_batch_context_var.set(context)
+    try:
+        yield context
+    finally:
+        _encode_batch_context_var.reset(token)
 
 
 @dataclass
@@ -234,6 +328,7 @@ class DenseProfileCollector:
     embeddings_generated: int = 0
     embeddings_reused: int = 0
     batches: list[DenseBatchProfile] = field(default_factory=list)
+    encode_attempts: list[dict[str, Any]] = field(default_factory=list)
     encode_ms_total: float = 0.0
     persistence_ms_total: float = 0.0
     point_construction_ms: float | None = None
@@ -247,6 +342,47 @@ class DenseProfileCollector:
     steady_state_encode_ms_mean: float | None = None
     stall_attribution_tooling: bool = True
     _token_counts: list[int] = field(default_factory=list)
+
+    def record_encode_attempt(
+        self,
+        *,
+        batch_context: DenseEncodeBatchContext,
+        effective_batch_size: int,
+        elapsed_ms: float,
+        outcome: str,
+        next_effective_batch_size: int | None,
+        cuda_allocator_before: dict[str, Any] | None,
+        cuda_memory_before: dict[str, Any] | None,
+        external_gpu_before: dict[str, Any] | None,
+        cleanup_status: str | None,
+        cuda_allocator_after_cleanup: dict[str, Any] | None,
+        cuda_memory_after_cleanup: dict[str, Any] | None,
+        external_gpu_after: dict[str, Any] | None,
+    ) -> None:
+        """Store bounded attempt facts without embedding text or exception text."""
+        self.encode_attempts.append(
+            {
+                "logical_outer_batch_index": batch_context.batch_index,
+                "logical_item_count": batch_context.item_count,
+                "effective_batch_size": effective_batch_size,
+                "batch_identity_digest": batch_context.batch_identity_digest,
+                "chunk_ids_digest": batch_context.chunk_ids_digest,
+                "token_length_stats": batch_context.token_length_stats,
+                "aggregate_input_tokens": batch_context.aggregate_input_tokens,
+                "padded_token_workload": batch_context.padded_token_workload,
+                "padding_fraction": batch_context.padding_fraction,
+                "encode_ms": elapsed_ms,
+                "outcome": outcome,
+                "next_effective_batch_size": next_effective_batch_size,
+                "cuda_allocator_before": cuda_allocator_before,
+                "cuda_memory_before": cuda_memory_before,
+                "external_gpu_before": external_gpu_before,
+                "cleanup_status": cleanup_status,
+                "cuda_allocator_after_cleanup": cuda_allocator_after_cleanup,
+                "cuda_memory_after_cleanup": cuda_memory_after_cleanup,
+                "external_gpu_after": external_gpu_after,
+            }
+        )
 
     def record_batch(
         self,
@@ -379,6 +515,7 @@ class DenseProfileCollector:
             "peak_vram_status": self.peak_vram_status,
             "peak_vram_error": self.peak_vram_error,
             "batches": [self._batch_dict(b) for b in self.batches],
+            "encode_attempts": list(self.encode_attempts),
         }
 
     @staticmethod
@@ -635,15 +772,19 @@ __all__ = [
     "DIAG_DENSE_PROFILE_ENV",
     "PROFILE_CONTRACT",
     "DenseBatchProfile",
+    "DenseEncodeBatchContext",
     "DenseProfileCollector",
     "PracticalTimingCollector",
     "batch_identity_digest",
+    "dense_encode_batch_context",
     "dense_practical_timing_session",
     "dense_profile_enabled",
     "dense_profile_session",
+    "get_dense_encode_batch_context",
     "get_dense_profile_collector",
     "get_practical_timing_collector",
     "observe_cuda_allocator_state",
+    "observe_cuda_global_memory_state",
     "observe_model_input_token_counts",
     "observe_peak_vram_bytes",
     "profiled_encode_timing",

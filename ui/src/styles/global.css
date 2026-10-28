@@ -500,7 +500,8 @@ a.btn:hover {
 }
 
 .badge-busy,
-.badge-empty {
+.badge-empty,
+.badge-warning {
   background: #fff7e6;
   color: var(--brass);
   border-color: #f0d59a;

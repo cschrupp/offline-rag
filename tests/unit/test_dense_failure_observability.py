@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -30,10 +31,12 @@ from offline_rag.dense.config_hash import (
 )
 from offline_rag.dense.embedder import FakeEmbedder
 from offline_rag.dense.failure import (
+    DENSE_FAILURE_CUDA_MEMORY_EXHAUSTED,
     DENSE_FAILURE_EMBEDDING_GENERATION,
     DENSE_FAILURE_EMBEDDING_PERSISTENCE,
     DENSE_FAILURE_MATERIALIZATION,
     DENSE_FAILURE_VALIDATION,
+    CudaMemoryExhaustedError,
 )
 from offline_rag.dense.pipeline import run_indexing
 from offline_rag.domain.indexing import IndexingReport, IndexingStatus
@@ -470,7 +473,8 @@ def test_failed_report_projects_dense_execution_into_managed_metrics(
             "dense_execution": {
                 "device": "cuda",
                 "dtype": "bfloat16",
-                "batch_size": 32,
+                "configured_batch_size": 32,
+                "batch_size": 4,
                 "attention_backend": "sdpa",
                 "embedding_dimension": 1024,
             }
@@ -481,7 +485,8 @@ def test_failed_report_projects_dense_execution_into_managed_metrics(
     snap = pub.snapshot_metrics()
     assert snap.dense_execution is not None
     assert snap.dense_execution.device == "cuda"
-    assert snap.dense_execution.batch_size == 32
+    assert snap.dense_execution.configured_batch_size == 32
+    assert snap.dense_execution.batch_size == 4
     assert snap.dense_execution.embedding_dimension == 1024
     assert snap.dense_execution.dtype == "bfloat16"
     assert snap.dense_execution.attention_backend == "sdpa"
@@ -693,3 +698,152 @@ def test_fireground_shape_synthetic_counters_and_phases() -> None:
     assert public.details is not None
     assert public.details["reason"] == DENSE_FAILURE_EMBEDDING_GENERATION
     assert "cuda" not in str(public.details)
+
+
+def test_success_report_preserves_configured_and_effective_adaptive_batches(
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path, batch_size=32)
+    docs = tmp_path / "docs"
+    _prepare(
+        settings,
+        docs,
+        ["Adaptive recovery report keeps its effective batch size."],
+    )
+
+    class AdaptedCudaEmbedder(FakeEmbedder):
+        configured_batch_size = 32
+        effective_batch_size = 16
+        profile_id = "cuda_fp16_v1"
+
+        def __init__(self) -> None:
+            super().__init__(dimension=8, normalize=True, configured_device="auto")
+            self.resolved_device = "cuda"
+            self.device = "cuda"
+
+    report = run_indexing(
+        settings=settings,
+        corpus_name="eng",
+        embedder=AdaptedCudaEmbedder(),
+    )
+
+    assert report.status is IndexingStatus.SUCCESS
+    assert report.embeddings_generated > 0
+    assert report.metadata["dense_execution"]["configured_batch_size"] == 32
+    assert report.metadata["dense_execution"]["batch_size"] == 16
+
+
+def test_cuda_memory_exhaustion_is_safe_and_failed_profile_is_retained(
+    tmp_path: Path, monkeypatch
+) -> None:
+    from offline_rag.dense.profiling import (
+        get_dense_encode_batch_context,
+        get_dense_profile_collector,
+    )
+
+    settings = _settings(tmp_path, batch_size=32)
+    docs = tmp_path / "docs"
+    _prepare(
+        settings,
+        docs,
+        ["Failure profile document contains enough text for a searchable passage."],
+    )
+
+    class ExhaustedCudaEmbedder(FakeEmbedder):
+        configured_batch_size = 32
+        effective_batch_size = 4
+        profile_id = "cuda_fp16_v1"
+        representation_id = "torch_st_v1"
+        resolved_precision = "fp16"
+
+        def __init__(self) -> None:
+            super().__init__(dimension=8, normalize=True, configured_device="auto")
+            self.resolved_device = "cuda"
+            self.device = "cuda"
+
+        def embed_documents(self, texts: Sequence[str]) -> list[list[float]]:
+            collector = get_dense_profile_collector()
+            context = get_dense_encode_batch_context()
+            assert collector is not None and context is not None
+            collector.record_encode_attempt(
+                batch_context=context,
+                effective_batch_size=4,
+                elapsed_ms=12.0,
+                outcome="cuda_oom",
+                next_effective_batch_size=None,
+                cuda_allocator_before={"allocated_bytes": 100, "reserved_bytes": 200},
+                cuda_memory_before={"free_bytes": 300, "total_bytes": 400},
+                external_gpu_before={"status": "observed"},
+                cleanup_status=None,
+                cuda_allocator_after_cleanup=None,
+                cuda_memory_after_cleanup=None,
+                external_gpu_after=None,
+            )
+            raise CudaMemoryExhaustedError(
+                configured_batch_size=32,
+                final_batch_size=4,
+            )
+
+    @contextmanager
+    def fake_encode_timing():
+        yield {
+            "encode_ms": 12.0,
+            "encode_cuda_device_ms": None,
+            "encode_cuda_device_status": "unavailable",
+            "encode_cuda_device_error": None,
+            "process_cpu_delta": None,
+        }
+
+    monkeypatch.setenv("OFFLINE_RAG_DIAG_DENSE_PROFILE", "1")
+    monkeypatch.setattr("offline_rag.dense.pipeline.reset_peak_vram_stats", lambda: None)
+    monkeypatch.setattr(
+        "offline_rag.dense.pipeline.observe_model_input_token_counts",
+        lambda embedder, texts, profile: ([3 for _ in texts], 3),
+    )
+    monkeypatch.setattr(
+        "offline_rag.dense.pipeline.profiled_encode_timing", fake_encode_timing
+    )
+    monkeypatch.setattr(
+        "offline_rag.dense.pipeline.sample_external_gpu_state",
+        lambda: {"status": "observed"},
+    )
+    monkeypatch.setattr(
+        "offline_rag.dense.pipeline.observe_cuda_allocator_state",
+        lambda: {"status": "observed"},
+    )
+    monkeypatch.setattr(
+        "offline_rag.dense.pipeline.observe_peak_vram_bytes", lambda profile: None
+    )
+
+    report = run_indexing(
+        settings=settings,
+        corpus_name="eng",
+        embedder=ExhaustedCudaEmbedder(),
+    )
+
+    assert report.status is IndexingStatus.FAILED
+    assert report.failure_classification == DENSE_FAILURE_CUDA_MEMORY_EXHAUSTED
+    assert report.embeddings_generated == 0
+    assert report.embeddings_failed > 0
+    assert list(settings.paths.index_manifests.iterdir()) == []
+    assert list(settings.paths.embeddings.iterdir()) == []
+    assert report.metadata["dense_execution"]["configured_batch_size"] == 32
+    assert report.metadata["dense_execution"]["batch_size"] == 4
+    attempts = report.metadata["dense_profile"]["encode_attempts"]
+    assert len(attempts) == 1
+    assert attempts[0]["outcome"] == "cuda_oom"
+    assert attempts[0]["effective_batch_size"] == 4
+    public = _map_dense_failure(report)
+    assert public.code.value == "ingest_failed"
+    assert public.details == {
+        "stage": "dense",
+        "reason": DENSE_FAILURE_CUDA_MEMORY_EXHAUSTED,
+    }
+    serialized_public = str(public.to_error_response().model_dump())
+    for private_detail in (
+        "CUDA_ERROR_OUT_OF_MEMORY",
+        "cuMemcpyDtoHAsync_v2",
+        "torch.AcceleratorError",
+        "model_path",
+    ):
+        assert private_detail not in serialized_public

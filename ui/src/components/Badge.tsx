@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-type Tone = "ready" | "busy" | "empty" | "error";
+type Tone = "ready" | "busy" | "empty" | "error" | "warning";
 
 type Props = {
   tone: Tone;

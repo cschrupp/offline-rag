@@ -133,6 +133,7 @@ export type OperationDenseExecution = {
   device?: string | null;
   dtype?: string | null;
   batch_size?: number | null;
+  configured_batch_size?: number | null;
   attention_backend?: string | null;
   embedding_dimension?: number | null;
   profile_id?: string | null;
