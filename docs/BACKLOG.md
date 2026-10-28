@@ -2,7 +2,7 @@
 
 **Status:** LIVE PLANNING / NON-AUTHORIZING\
 **Canonical reference:** `main` at `7ca0c2332dbaf524fe777317cdd1aede7a795633`\
-**Updated:** 2026-10-27
+**Updated:** 2026-10-28
 
 This document is the live queue for work that remains after the Human-accepted
 Slice 16 closeout and the post-L6 parser-stack corrective.
@@ -19,7 +19,7 @@ Completed governance reconciliations precede the remaining active queue:
 ```text
 S16K-R01 CLOSED — post-L6 governance reconciliation
     -> S16K-R02 CLOSED — 16K-C Human-disposition normalization
-    -> S16K-R03 Fireground CUDA current-main disposition
+    -> S16K-R03 CLOSED — bounded Fireground CUDA current-main disposition
     -> 16K-E ingestion worklist / progress UX
     -> 16K-F real beta-corpus acceptance
     -> 16K-G Slice-17 regression handoff
@@ -119,19 +119,32 @@ scientific execution, additional 16K-D work, or 16K-E/F/G tranche.
 ### S16K-R03 — Fireground CUDA / historical HTTP-500 disposition
 
 **Priority:** P0\
-**Status:** OPEN / SEPARATE RUNTIME RELIABILITY RESIDUAL\
-**Execution authority:** NOT YET AUTHORIZED
+**Status:** CLOSED — IR-001 ACCEPT / HUMAN ACCEPTED\
+**Execution authority:** `S16K-R03-FIREGROUND-CUDA-CURRENT-MAIN-DISPOSITION-AUTH-001`
 
-Canonical 16K evidence still records:
+The bounded current-main campaign completed and was accepted:
 
 ```text
-Fireground CUDA/cublasGemmEx runtime issue: OPEN / SEPARATE / NOT FIXED
-Historical GPU-residency HTTP 500 root cause: UNRESOLVED
+Accepted subject: d7e85fe4aa68520ebc6e1879996b60461655eede
+Independent review: S16K-R03 IR-001 — ACCEPT
+Human acceptance: ACCEPTED
+Scientific terminal: NOT_REPRODUCED
+Original root cause: NOT ESTABLISHED
+Historical bug identified or proven fixed: NO
+Current beta blocker: NO
+Promotion: NOT AUTHORIZED
 ```
 
-The constrained-free-VRAM campaign did not reproduce the historical failure,
-and later CUDA qualification/product work succeeded, but the Fireground
-residual itself was never given a current-main terminal disposition.
+The exact campaign results and limitations are preserved in
+`docs/evidence/16k_r03_fireground_cuda/R03_CAMPAIGN_DISPOSITION.md` and
+`docs/evidence/16k_r03_fireground_cuda/r03_campaign_evidence.json`. The
+governance closeout is recorded in
+`docs/evidence/16k_r03_fireground_cuda/R03_CLOSURE.md`.
+
+The earlier constrained-free-VRAM campaign did not reproduce the historical
+failure, and later CUDA qualification/product work succeeded. Those results
+alone did not disposition the Fireground residual; the accepted R03 campaign
+now supplies its bounded current-main terminal.
 
 Known Fireground fixture provenance:
 
@@ -141,17 +154,13 @@ bytes: 6,796,067
 sha256: 01bea4d628ffea01aab164535c81392a8b42b9a587f9b6295f302a9938f2f0c2
 ```
 
-Next action should be a bounded current-main reproduction/disposition exercise,
-not an open-ended optimization campaign.
+This closes the historical residual as a bounded non-reproduction on the
+current qualified runtime. It does not establish the historical root cause or
+authorize a CUDA/product corrective. 16K-E remains the next planned item and
+requires its own authority.
 
-Allowed terminals for a future authorized exercise:
-
-```text
-REPRODUCED -> open a narrowly attributed corrective
-NOT_REPRODUCED -> record bounded non-reproduction and assess whether current
-                  qualified runtime evidence supersedes the old residual
-INCONCLUSIVE -> keep OPEN with exact reason
-```
+Any future reopening would require separate authority and new evidence; it
+must preserve this accepted NOT_REPRODUCED disposition as historical state.
 
 Do not claim the historical defect was "fixed" merely because it does not
 reproduce.

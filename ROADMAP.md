@@ -850,7 +850,7 @@ SLICE 15  COMPLETE / ACCEPTED
        Preferred residual completion order (planning only; does not grant authority):
          S16K-R01 — CLOSED
          → S16K-R02 — CLOSED / 16K-C HUMAN ACCEPTED
-         → S16K-R03 — Fireground CUDA current-main disposition
+         → S16K-R03 — CLOSED / NOT_REPRODUCED; root cause not established (docs/evidence/16k_r03_fireground_cuda/R03_CLOSURE.md)
          → 16K-E — ingestion worklist / progress UX
          → 16K-F — real beta-corpus acceptance
          → 16K-G — Slice-17 regression handoff
@@ -2018,7 +2018,7 @@ SLICE 15  COMPLETE / ACCEPTED
        Preferred residual completion order (planning only; does not grant authority):
          S16K-R01 — post-L6 governance reconciliation
          → S16K-R02 — 16K-C Human-disposition normalization
-         → S16K-R03 — Fireground CUDA current-main disposition
+         → S16K-R03 — CLOSED / NOT_REPRODUCED; root cause not established (docs/evidence/16k_r03_fireground_cuda/R03_CLOSURE.md)
          → 16K-E — ingestion worklist / progress UX
          → 16K-F — real beta-corpus acceptance
          → 16K-G — Slice-17 regression handoff
