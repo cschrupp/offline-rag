@@ -1,0 +1,277 @@
+{
+  "schema": "s16k-r03-fireground-cuda-evidence-v1",
+  "authority": "S16K-R03-FIREGROUND-CUDA-CURRENT-MAIN-DISPOSITION-AUTH-001",
+  "authorized_base": "b7997115b1e14ee840f2abda5bac6ced9e758e3b",
+  "branch": "diagnostic/16k-r03-fireground-current-main-disposition",
+  "fixture": {
+    "name": "Fireground_Operational_Guides.pdf",
+    "byte_size": 6796067,
+    "sha256": "01bea4d628ffea01aab164535c81392a8b42b9a587f9b6295f302a9938f2f0c2",
+    "identity_verified_before_runs": true
+  },
+  "runtime_preflight": {
+    "captured_before_r03_a": true,
+    "git_sha": "b7997115b1e14ee840f2abda5bac6ced9e758e3b",
+    "tracked_worktree_clean": true,
+    "python": "3.14.5",
+    "torch": "2.14.0+cu130",
+    "cuda_build": "13.0",
+    "cuda_available": true,
+    "gpu_model": "NVIDIA GeForce RTX 2080 SUPER with Max-Q Design",
+    "gpu_vram_mib": 8192,
+    "nvidia_driver": "595.71",
+    "configured_device": "auto",
+    "active_device": "cuda",
+    "embedding_profile_id": "cuda_fp16_v1",
+    "selection_reason": "auto_cuda_fp16",
+    "resolved_precision": "fp16",
+    "embedding_state_before_ingestion": "unloaded",
+    "large_pdf_runtime_eligible": true,
+    "embedding_model": "Qwen3-Embedding-0.6B",
+    "embedding_model_revision": {
+      "reported_prefix": "97b0...",
+      "full_revision": "NOT_OBSERVABLE"
+    },
+    "embedding_dimension": 1024,
+    "configured_batch_size": 32,
+    "attention_backend_observed": "sdpa",
+    "generation_model": "qwen3.6-35b-a3b",
+    "generation_endpoint": "approved local endpoint; credential omitted"
+  },
+  "population_baseline": {
+    "isolated_campaign_data_roots": true,
+    "baseline_workspace_revision": 3,
+    "pre_fireground_source_count": 12,
+    "pre_fireground_searchable_children": 2643,
+    "fireground_document_identity_present_before_cells": false,
+    "baseline_setup": "11 historical source files were reconstructed with the current parser (2043 searchable children); a deterministic synthetic text corpus supplied 600 additional child chunks. This approximated the authorized 2.5k-3.2k occupied-workspace target; it is not a byte-for-byte reconstruction of the historical corpus.",
+    "baseline_embeddings_generated_during_setup": 600,
+    "baseline_embeddings_reused_during_setup": 2043,
+    "baseline_setup_failures": 0
+  },
+  "cells": {
+    "R03-A": {
+      "validity": "VALID",
+      "terminal": "PASS",
+      "operation_id": "wop_c190763d3ffc4329b41262fcf5a06b97",
+      "pre_active_sources": 0,
+      "post_active_sources": 1,
+      "searchable_children": 584,
+      "embeddings_generated": 584,
+      "embeddings_reused": 0,
+      "embeddings_failed": 0,
+      "dense_execution": {
+        "device": "cuda",
+        "dtype": "float16",
+        "batch_size": 32,
+        "attention_backend": "sdpa",
+        "embedding_dimension": 1024
+      },
+      "stage_durations_ms": {
+        "parsing": 41500,
+        "chunking": 1121,
+        "dense_generation": 53247,
+        "dense_materialization": 4987,
+        "lexical": 559,
+        "publication": 590,
+        "finalization": 34,
+        "total": 100938
+      },
+      "workspace_revision": "1 -> 2",
+      "source_publication": "succeeded",
+      "api_health": "HTTP 200 before, during query, and after ingestion",
+      "api_process_survived_ingestion": true,
+      "cold_fireground_embedding_state": "confirmed by 584 generated / 0 reused"
+    },
+    "R03-B": {
+      "validity": "VALID",
+      "terminal": "PASS",
+      "operation_id": "wop_5e56af92ceeb429a99a0c4a2a2a20a70",
+      "pre_active_sources": 12,
+      "pre_searchable_children": 2643,
+      "post_active_sources": 13,
+      "post_searchable_children": 3227,
+      "fireground_searchable_children": 584,
+      "embeddings_generated": 584,
+      "embeddings_reused": 2643,
+      "embeddings_failed": 0,
+      "dense_execution": {
+        "device": "cuda",
+        "dtype": "float16",
+        "batch_size": 32,
+        "attention_backend": "sdpa",
+        "embedding_dimension": 1024
+      },
+      "stage_durations_ms": {
+        "parsing": 47675,
+        "chunking": 1428,
+        "dense_generation": 30286,
+        "dense_materialization": 18695,
+        "lexical": 3550,
+        "publication": 617,
+        "finalization": 31,
+        "total": 102428
+      },
+      "source_publication": "succeeded",
+      "api_health_after_ingestion": 200,
+      "api_process_survived_ingestion": true,
+      "cold_fireground_embedding_state": "confirmed by 584 generated; the 2643 reused embeddings belonged to the pre-populated workspace"
+    },
+    "R03-C1": {
+      "validity": "VALID",
+      "terminal": "PASS",
+      "operation_id": "wop_8c0c658040b14074add822e0bca7ec4c",
+      "pre_active_sources": 12,
+      "pre_searchable_children": 2643,
+      "post_active_sources": 13,
+      "post_searchable_children": 3227,
+      "embeddings_generated": 584,
+      "embeddings_reused": 2643,
+      "embeddings_failed": 0,
+      "dense_execution": {
+        "device": "cuda",
+        "dtype": "float16",
+        "batch_size": 32,
+        "attention_backend": "sdpa",
+        "embedding_dimension": 1024
+      },
+      "stage_durations_ms": {
+        "parsing": 42476,
+        "chunking": 1330,
+        "dense_generation": 68938,
+        "dense_materialization": 17072,
+        "lexical": 2984,
+        "publication": 603,
+        "finalization": 23,
+        "total": 132239
+      },
+      "source_publication": "succeeded",
+      "api_health_samples": "all 15 samples HTTP 200",
+      "api_process_survived_ingestion_and_query": true,
+      "cold_fireground_embedding_state": "confirmed by 584 generated; the 2643 reused embeddings belonged to the pre-populated workspace"
+    },
+    "R03-C2": {
+      "validity": "VALID",
+      "terminal": "PASS",
+      "operation_id": "wop_13905a2299af4624923ca2ede233cff7",
+      "pre_active_sources": 12,
+      "pre_searchable_children": 2643,
+      "post_active_sources": 13,
+      "post_searchable_children": 3227,
+      "embeddings_generated": 584,
+      "embeddings_reused": 2643,
+      "embeddings_failed": 0,
+      "dense_execution": {
+        "device": "cuda",
+        "dtype": "float16",
+        "batch_size": 32,
+        "attention_backend": "sdpa",
+        "embedding_dimension": 1024
+      },
+      "stage_durations_ms": {
+        "parsing": 52672,
+        "chunking": 1374,
+        "dense_generation": 29824,
+        "dense_materialization": 17030,
+        "lexical": 2765,
+        "publication": 631,
+        "finalization": 28,
+        "total": 106634
+      },
+      "source_publication": "succeeded",
+      "api_health_samples": "all 12 samples HTTP 200",
+      "api_process_survived_ingestion": true,
+      "cold_fireground_embedding_state": "confirmed by 584 generated; the 2643 reused embeddings belonged to the pre-populated workspace"
+    },
+    "R03-C3": {
+      "validity": "VALID",
+      "terminal": "PASS",
+      "operation_id": "wop_8d9e27a918be464a9b744f74f781394a",
+      "pre_active_sources": 12,
+      "pre_searchable_children": 2643,
+      "post_active_sources": 13,
+      "post_searchable_children": 3227,
+      "embeddings_generated": 584,
+      "embeddings_reused": 2643,
+      "embeddings_failed": 0,
+      "dense_execution": {
+        "device": "cuda",
+        "dtype": "float16",
+        "batch_size": 32,
+        "attention_backend": "sdpa",
+        "embedding_dimension": 1024
+      },
+      "stage_durations_ms": {
+        "parsing": 44410,
+        "chunking": 1720,
+        "dense_generation": 36364,
+        "dense_materialization": 23413,
+        "lexical": 3132,
+        "publication": 651,
+        "finalization": 30,
+        "total": 112833
+      },
+      "source_publication": "succeeded",
+      "api_health_samples": "all 13 samples HTTP 200",
+      "api_process_survived_ingestion": true,
+      "cold_fireground_embedding_state": "confirmed by 584 generated; the 2643 reused embeddings belonged to the pre-populated workspace"
+    }
+  },
+  "R03-Q": {
+    "validity": "VALID",
+    "http_status": 200,
+    "same_live_api_process_after_successful_generate_heavy_ingestion": true,
+    "question": "According to the Fireground Operational Guides, what should the first-arriving officer establish and communicate on arrival at a working incident?",
+    "application_status": "answered",
+    "citation_count": 2,
+    "answer_text_committed": false,
+    "api_process_continued": true,
+    "health_after_query": 200,
+    "retrieval_path": "reached; source-restricted grounded answer with citations"
+  },
+  "campaign_control_attempts_not_counted": [
+    {
+      "cell": "R03-A preliminary monitor attempt",
+      "disposition": "NOT_COUNTED",
+      "reason": "Initial monitoring crossed isolated process/network namespaces and was misread as API unavailability. A separate controlled R03-A retry produced the counted valid pass. The preliminary persisted operation is not used for terminal classification."
+    },
+    {
+      "cell": "R03-C1 preliminary attempt",
+      "disposition": "INVALID_CAMPAIGN_CONTROL",
+      "reason": "The poller initially treated transient API state 'preparing' as terminal and stopped before ingestion. Polling was corrected and C1 was rerun from a pristine baseline."
+    }
+  ],
+  "host_diagnostics": {
+    "kernel_ring_buffer_searched_for": [
+      "segfault",
+      "oom",
+      "out of memory",
+      "killed process",
+      "NVRM Xid",
+      "CUDA fault"
+    ],
+    "oom_or_killed_process_record_found": false,
+    "nvidia_fault_record_found": false,
+    "r03_api_cuda_failure_record_found": false,
+    "unrelated_kernel_entry": "A weston/libwayland-server segfault is present in the ring buffer; no evidence ties it to any R03 API process. All counted API processes completed ingestion and exited cleanly after controlled shutdown."
+  },
+  "terminal": {
+    "disposition": "NOT_REPRODUCED",
+    "historical_fireground_cuda_failure": "NOT REPRODUCED ON CURRENT QUALIFIED RUNTIME",
+    "original_root_cause": "NOT ESTABLISHED",
+    "current_product_disposition": "CURRENT-MAIN EXACT-FIXTURE BOUNDED NON-REPRODUCTION PLUS LATER QUALIFIED CUDA EVIDENCE",
+    "active_beta_blocker": "NO, SUBJECT TO INDEPENDENT REVIEW AND HUMAN ACCEPTANCE",
+    "claim_historical_bug_identified_and_fixed": false,
+    "valid_generate_heavy_ingestions": 5,
+    "r03_query_reproduced_http_500": false
+  },
+  "scope": {
+    "production_code_changed": false,
+    "product_policy_changed": false,
+    "capacity_limits_changed": false,
+    "scientific_scope_expanded": false,
+    "internet_used": false,
+    "user_corpus_modified": false,
+    "raw_fixture_or_private_source_bytes_committed": false
+  }
+}
