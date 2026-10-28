@@ -81,3 +81,12 @@ Corrective validation:
 - `git diff --check` — **passed**.
 
 No live host preflight was repeated. The real incident workload remains unexecuted; independent re-review is the next gate.
+
+## Human acceptance
+
+- Decision: **ACCEPTED**.
+- Accepted implementation subject: `469bb8a3b137c279b1dcfa8bcef8cb8c7fbeaf40`.
+- Independent basis: `S16K-R04-IMPLEMENTATION-IR-002` — **ACCEPT**.
+- Scope: the R04 implementation only.
+- Live Well Logging execution: **NOT AUTHORIZED by this acceptance record**; it requires a separate bounded execution authority.
+- Promotion: **NOT AUTHORIZED**.
