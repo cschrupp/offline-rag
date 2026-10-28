@@ -111,6 +111,10 @@ import {
   formatTimestamp,
   type SourceCapacityLimits,
 } from "../features/workspaces/format";
+import {
+  appendUniqueFiles,
+  validateUploadSelection,
+} from "../features/workspaces/uploadStaging";
 
 type PendingPhase = "idle" | "uploading" | "operation" | "terminal_error";
 
@@ -942,43 +946,13 @@ export function WorkspacePage() {
     queueMicrotask(action);
   }
 
-  function validateSelectedFiles(files: File[]): string | null {
-    if (files.length === 0) return "Select at least one file.";
-    if (!limits) {
-      // Backend remains authoritative when capabilities are unavailable.
-      return null;
-    }
-    // Transport: one incoming upload request only.
-    if (files.length > limits.maxFilesPerUploadRequest) {
-      return `At most ${limits.maxFilesPerUploadRequest} files may be uploaded in one request.`;
-    }
-    for (const file of files) {
-      const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
-      const fileLimit = isPdf
-        ? limits.maxBytesPerPdfSource
-        : limits.maxBytesPerUploadedFile;
-      if (file.size > fileLimit) {
-        return `${file.name} exceeds the ${formatMiB(fileLimit)} MiB per-file upload limit.`;
-      }
-    }
-    const incomingBytes = files.reduce((sum, file) => sum + file.size, 0);
-    if (incomingBytes > limits.maxBytesPerUploadRequest) {
-      return `Selected files exceed the ${formatMiB(limits.maxBytesPerUploadRequest)} MiB per-request upload limit.`;
-    }
-    if (
-      limits.maxActiveSourceBytes != null &&
-      usedBytes + incomingBytes > limits.maxActiveSourceBytes
-    ) {
-      return `Selected files exceed the ${formatMiB(limits.maxActiveSourceBytes)} MiB workspace source limit.`;
-    }
-    // Workspace capacity: independent of request-byte envelope when configured.
-    if (
-      limits.maxActiveSources != null &&
-      sources.length + files.length > limits.maxActiveSources
-    ) {
-      return `At most ${limits.maxActiveSources} active sources are allowed in this workspace.`;
-    }
-    return null;
+  function validateStagedUpload(files: File[]) {
+    return validateUploadSelection({
+      files,
+      limits,
+      existingSourceCount: sources.length,
+      existingSourceBytes: activeSourceBytes(sources),
+    });
   }
 
   function onAddSubmit(event: FormEvent) {
@@ -999,9 +973,11 @@ export function WorkspacePage() {
       // Unresolved ambiguous intent must be retried or explicitly abandoned.
       return;
     }
-    const validation = validateSelectedFiles(selectedFiles);
-    if (validation) {
-      setAddError(validation);
+    const validation = validateStagedUpload(selectedFiles);
+    if (
+      validation.fileErrors.some(Boolean) ||
+      validation.aggregateErrors.length > 0
+    ) {
       return;
     }
     const fingerprint = fingerprintAddSources({
@@ -1037,6 +1013,10 @@ export function WorkspacePage() {
   }
 
   const usedBytes = activeSourceBytes(sources);
+  const displayedFiles = addSourcesIntent?.files ?? selectedFiles;
+  const stagedValidation = addSourcesIntent
+    ? null
+    : validateStagedUpload(selectedFiles);
   const finalSourceWarning =
     removeTarget && sources.length === 1
       ? "Removing the final source will leave this workspace empty and retire its current searchable knowledge. Historical artifacts may remain locally."
@@ -1053,7 +1033,12 @@ export function WorkspacePage() {
     busyForMutations ||
     addCancelReconciling ||
     !addSourcesAllowed ||
-    selectedFiles.length === 0;
+    selectedFiles.length === 0 ||
+    Boolean(
+      stagedValidation &&
+        (stagedValidation.fileErrors.some(Boolean) ||
+          stagedValidation.aggregateErrors.length > 0),
+    );
   const addRetrySafelyDisabled =
     busyForMutations || addCancelReconciling || !addSourcesAllowed;
   const existingMutationSubmitDisabled =
@@ -1595,12 +1580,19 @@ export function WorkspacePage() {
                 addCancelReconciling
               }
               onChange={(event) => {
-                const files = Array.from(event.target.files ?? []);
+                const input = event.currentTarget;
+                const files = Array.from(input.files ?? []);
+                input.value = "";
+                if (files.length === 0) return;
                 if (addAmbiguous && addSourcesIntent) {
-                  // Explicit abandonment — new selection must not reuse old key.
+                  // A changed selection explicitly abandons the ambiguous intent.
                   abandonAddSourcesIntent();
+                  setSelectedFiles(appendUniqueFiles([], files));
+                } else {
+                  setSelectedFiles((current) =>
+                    appendUniqueFiles(current, files),
+                  );
                 }
-                setSelectedFiles(files);
                 setAddError(null);
               }}
             />
@@ -1610,24 +1602,71 @@ export function WorkspacePage() {
                 : "Maximum file size: determined by the server"}
             </p>
           </div>
-          {(addSourcesIntent?.files ?? selectedFiles).length > 0 ? (
+          {displayedFiles.length > 0 ? (
             <>
-              <p className="muted" style={{ margin: 0 }}>
-                {(() => {
-                  const files = addSourcesIntent?.files ?? selectedFiles;
-                  const label = files.length === 1 ? "file" : "files";
-                  return `Selected: ${files.length} ${label} · ${formatBytes(
-                    files.reduce((sum, file) => sum + file.size, 0),
-                  )}`;
-                })()}
-              </p>
-              <ul>
-                {(addSourcesIntent?.files ?? selectedFiles).map((file) => (
-                  <li key={`${file.name}-${file.size}-${file.lastModified}`}>
-                    {file.name} · {formatBytes(file.size)}
-                  </li>
-                ))}
+              <div className="row" style={{ justifyContent: "space-between" }}>
+                <p className="muted" style={{ margin: 0 }}>
+                  Selected: {displayedFiles.length} {displayedFiles.length === 1 ? "file" : "files"} ·{" "}
+                  {formatBytes(
+                    displayedFiles.reduce((sum, file) => sum + file.size, 0),
+                  )} (raw upload bytes)
+                </p>
+                {!addSourcesIntent ? (
+                  <Button
+                    variant="secondary"
+                    type="button"
+                    onClick={() => {
+                      setSelectedFiles([]);
+                      setAddError(null);
+                      addIntent.current.reset();
+                      setAddFileInputKey((key) => key + 1);
+                    }}
+                  >
+                    Clear all
+                  </Button>
+                ) : null}
+              </div>
+              <ul aria-label="Selected upload files">
+                {displayedFiles.map((file, index) => {
+                  const fileError = stagedValidation?.fileErrors[index] ?? null;
+                  return (
+                    <li key={`${file.name}-${file.size}-${file.lastModified}-${file.type}`}>
+                      <div className="row" style={{ justifyContent: "space-between" }}>
+                        <span>
+                          {file.name} · {formatBytes(file.size)}
+                        </span>
+                        {!addSourcesIntent ? (
+                          <Button
+                            variant="secondary"
+                            type="button"
+                            aria-label={`Remove ${file.name}`}
+                            onClick={() => {
+                              setSelectedFiles((current) =>
+                                current.filter((_, itemIndex) => itemIndex !== index),
+                              );
+                              setAddError(null);
+                              addIntent.current.reset();
+                              setAddFileInputKey((key) => key + 1);
+                            }}
+                          >
+                            Remove
+                          </Button>
+                        ) : null}
+                      </div>
+                      {fileError ? (
+                        <p className="error-box" role="alert">
+                          {fileError}
+                        </p>
+                      ) : null}
+                    </li>
+                  );
+                })}
               </ul>
+              {stagedValidation?.aggregateErrors.map((message) => (
+                <p className="error-box" role="alert" key={message}>
+                  {message}
+                </p>
+              ))}
             </>
           ) : null}
           {pendingPhase === "uploading" || addMutation.isPending ? (

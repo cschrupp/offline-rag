@@ -99,6 +99,91 @@ export type OperationProgressTelemetry = {
   started_at: string;
 };
 
+export type OperationWorklistPhase =
+  | "pending"
+  | "parsing"
+  | "parsed"
+  | "chunking"
+  | "chunked"
+  | "indexing"
+  | "indexed"
+  | "removed"
+  | "failed"
+  | "requires_ocr";
+
+export type OperationWorklistDocument = {
+  document_id: string;
+  display_name: string;
+  phase: OperationWorklistPhase;
+  child_chunk_count?: number | null;
+  embeddings_generated?: number | null;
+  embeddings_reused?: number | null;
+};
+
+export type OperationWorklist = {
+  total_document_count: number;
+  pending_count: number;
+  completed_count?: number | null;
+  remaining_count?: number | null;
+  documents: OperationWorklistDocument[];
+  active_documents: OperationWorklistDocument[];
+};
+
+export type OperationDenseExecution = {
+  device?: string | null;
+  dtype?: string | null;
+  batch_size?: number | null;
+  attention_backend?: string | null;
+  embedding_dimension?: number | null;
+  profile_id?: string | null;
+  representation_id?: string | null;
+  backend?: string | null;
+  provider?: string | null;
+  resolved_precision?: string | null;
+};
+
+export type OperationStageDurations = {
+  parsing_ms?: number | null;
+  chunking_ms?: number | null;
+  dense_generation_ms?: number | null;
+  dense_materialization_ms?: number | null;
+  lexical_ms?: number | null;
+  publication_ms?: number | null;
+  finalization_ms?: number | null;
+  total_ms?: number | null;
+};
+
+export type OperationLexicalFacts = {
+  searchable_units_contract?: string | null;
+  chunk_set_child_count?: number | null;
+  zero_term_excluded_count?: number | null;
+  eligible_child_count?: number | null;
+  indexed_child_count?: number | null;
+};
+
+export type OperationMetrics = {
+  requested_document_count?: number | null;
+  pre_active_source_count?: number | null;
+  post_active_source_count?: number | null;
+  uploaded_raw_bytes?: number | null;
+  parsed_searchable_document_count?: number | null;
+  child_chunk_count?: number | null;
+  oversized_unsplittable_count?: number | null;
+  parsed_artifacts_generated?: number | null;
+  parsed_artifacts_reused?: number | null;
+  chunk_artifacts_generated?: number | null;
+  chunk_artifacts_reused?: number | null;
+  embeddings_generated?: number | null;
+  embeddings_reused?: number | null;
+  embeddings_failed?: number | null;
+  dense_failure_classification?: string | null;
+  dense_execution?: OperationDenseExecution | null;
+  generated_chunks_per_sec?: number | null;
+  model_input_tokens_per_sec?: number | null;
+  stage_durations?: OperationStageDurations | null;
+  lexical?: OperationLexicalFacts | null;
+};
+
 export type Operation = {
   operation_id: string;
   kind: OperationKind | string;
@@ -107,6 +192,8 @@ export type Operation = {
   status: OperationStatus | string;
   progress_stage: ProgressStage | string | null;
   progress?: OperationProgressTelemetry | null;
+  metrics?: OperationMetrics | null;
+  worklist?: OperationWorklist | null;
   created_at: string;
   updated_at: string;
   result: Record<string, unknown> | null;
