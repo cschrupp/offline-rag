@@ -66,3 +66,18 @@ Validation used deterministic OOM mocks. The real incident workload and any CUDA
 ## Review readiness
 
 Implementation and deterministic validation are complete for the bounded R04 scope. This artifact and the candidate commit are the durable review handoff. Stop for independent review; do not retry the incident workload or promote this branch.
+
+## IR-001 narrow corrective — F001
+
+The dense profiler now synchronizes its generated/reused totals incrementally: after every reusable embedding artifact is recognized and after every generated artifact is successfully persisted. A failure during a later batch therefore retains counters matching the completed work in the authoritative `IndexingReport`; the failed batch is not counted as generated.
+
+Failure-path regressions cover both cache reuse followed by an OOM on the first pending batch and a completed generated batch followed by a later OOM. They assert counter equality, retained completed-batch and encode-attempt evidence, derived throughput when generated work exists, and absence of private source text in the profile.
+
+Corrective validation:
+
+- `uv run pytest -q tests/unit/test_dense_failure_observability.py tests/unit/dense/test_cuda_oom_recovery.py` — **30 passed**.
+- `npx vitest run src/test/slice16k_e_ingestion_worklist.test.tsx src/test/slice16k_r04_cuda_oom.test.tsx` — **14 passed across 2 files**.
+- Ruff for `src/offline_rag/dense/pipeline.py` and `tests/unit/test_dense_failure_observability.py` — **passed**.
+- `git diff --check` — **passed**.
+
+No live host preflight was repeated. The real incident workload remains unexecuted; independent re-review is the next gate.

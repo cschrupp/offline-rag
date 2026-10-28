@@ -357,6 +357,8 @@ def _ensure_embeddings(
         )
         if cached is not None:
             reused += 1
+            if profile is not None:
+                profile.embeddings_reused = reused
             results.append((chunk, chunk_artifact_id, cached))
             continue
         pending_chunks.append((chunk, chunk_artifact_id, emb_text, emb_id))
@@ -530,6 +532,9 @@ def _ensure_embeddings(
                     embeddings_failed=failed,
                 ) from exc
             generated += 1
+            if profile is not None:
+                profile.embeddings_generated = generated
+                profile.embeddings_reused = reused
             results.append((chunk, chunk_artifact_id, artifact))
         if profile is not None:
             peak_after = observe_peak_vram_bytes(profile)

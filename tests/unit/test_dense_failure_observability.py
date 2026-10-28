@@ -39,6 +39,11 @@ from offline_rag.dense.failure import (
     CudaMemoryExhaustedError,
 )
 from offline_rag.dense.pipeline import run_indexing
+from offline_rag.dense.profiling import (
+    DenseEncodeBatchContext,
+    get_dense_encode_batch_context,
+    get_dense_profile_collector,
+)
 from offline_rag.domain.indexing import IndexingReport, IndexingStatus
 from offline_rag.ingestion.pipeline import run_ingestion
 
@@ -143,6 +148,103 @@ class _FailingEmbedder(FakeEmbedder):
                 f"synthetic embed boom {self.secret_marker} texts={list(texts)[:1]}"
             )
         return super().embed_documents(texts)
+
+
+class _ProfiledCudaFailureEmbedder(FakeEmbedder):
+    """Record synthetic CUDA attempt facts and fail after a chosen call count."""
+
+    configured_batch_size = 32
+    profile_id = "cuda_fp16_v1"
+    representation_id = "torch_st_v1"
+    resolved_precision = "fp16"
+
+    def __init__(self, *, successful_calls: int = 0) -> None:
+        super().__init__(dimension=8, normalize=True, configured_device="auto")
+        self.successful_calls = successful_calls
+        self.effective_batch_size = 32
+        self.resolved_device = "cuda"
+        self.device = "cuda"
+        self.calls = 0
+
+    @staticmethod
+    def _record_attempt(
+        context: DenseEncodeBatchContext,
+        *,
+        effective_batch_size: int,
+        outcome: str,
+        next_batch_size: int | None = None,
+    ) -> None:
+        collector = get_dense_profile_collector()
+        assert collector is not None
+        collector.record_encode_attempt(
+            batch_context=context,
+            effective_batch_size=effective_batch_size,
+            elapsed_ms=1.0,
+            outcome=outcome,
+            next_effective_batch_size=next_batch_size,
+            cuda_allocator_before={"status": "observed"},
+            cuda_memory_before={"status": "observed"},
+            external_gpu_before={"status": "observed"},
+            cleanup_status=None,
+            cuda_allocator_after_cleanup=None,
+            cuda_memory_after_cleanup=None,
+            external_gpu_after=None,
+        )
+
+    def embed_documents(self, texts: Sequence[str]) -> list[list[float]]:
+        context = get_dense_encode_batch_context()
+        assert context is not None
+        self.calls += 1
+        if self.calls > self.successful_calls:
+            self.effective_batch_size = 4
+            self._record_attempt(
+                context,
+                effective_batch_size=4,
+                outcome="cuda_oom",
+            )
+            raise CudaMemoryExhaustedError(
+                configured_batch_size=32,
+                final_batch_size=4,
+            )
+        self._record_attempt(
+            context,
+            effective_batch_size=32,
+            outcome="success",
+        )
+        return super().embed_documents(texts)
+
+
+def _enable_dense_profile_for_test(monkeypatch: pytest.MonkeyPatch) -> None:
+    @contextmanager
+    def encode_timing():
+        yield {
+            "encode_ms": 1.0,
+            "encode_cuda_device_ms": None,
+            "encode_cuda_device_status": "unavailable",
+            "encode_cuda_device_error": None,
+            "process_cpu_delta": None,
+        }
+
+    monkeypatch.setenv("OFFLINE_RAG_DIAG_DENSE_PROFILE", "1")
+    monkeypatch.setattr("offline_rag.dense.pipeline.reset_peak_vram_stats", lambda: None)
+    monkeypatch.setattr(
+        "offline_rag.dense.pipeline.observe_model_input_token_counts",
+        lambda _embedder, texts, _collector: ([4 for _ in texts], 4),
+    )
+    monkeypatch.setattr(
+        "offline_rag.dense.pipeline.profiled_encode_timing", encode_timing
+    )
+    monkeypatch.setattr(
+        "offline_rag.dense.pipeline.sample_external_gpu_state",
+        lambda: {"status": "observed"},
+    )
+    monkeypatch.setattr(
+        "offline_rag.dense.pipeline.observe_cuda_allocator_state",
+        lambda: {"status": "observed"},
+    )
+    monkeypatch.setattr(
+        "offline_rag.dense.pipeline.observe_peak_vram_bytes", lambda _profile: None
+    )
 
 
 class _LoadedFailingEmbedder(FakeEmbedder):
@@ -847,3 +949,77 @@ def test_cuda_memory_exhaustion_is_safe_and_failed_profile_is_retained(
         "model_path",
     ):
         assert private_detail not in serialized_public
+
+
+def test_failed_profile_reuse_total_matches_report_before_first_oom(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    settings = _settings(tmp_path, batch_size=2)
+    docs = tmp_path / "docs"
+    texts = [
+        f"Cached document {i} describes a pressure rating {1000 + i} psi.\n"
+        for i in range(6)
+    ]
+    _prepare(settings, docs, texts)
+    initial = run_indexing(
+        settings=settings,
+        corpus_name="eng",
+        embedder=FakeEmbedder(dimension=8, normalize=True),
+    )
+    assert initial.status is IndexingStatus.SUCCESS
+    expected_reused = initial.children_total
+
+    (docs / "new_private_source.txt").write_text(
+        "R04_PRIVATE_SOURCE_TEXT should never appear in the dense profile.\n",
+        encoding="utf-8",
+    )
+    run_ingestion(settings=settings, inputs=[docs], corpus_name="eng", recursive=False)
+    run_chunking(settings=settings, corpus_name="eng", token_counter=FakeTokenCounter())
+    _enable_dense_profile_for_test(monkeypatch)
+
+    report = run_indexing(
+        settings=settings,
+        corpus_name="eng",
+        embedder=_ProfiledCudaFailureEmbedder(),
+    )
+
+    profile = report.metadata["dense_profile"]
+    assert report.status is IndexingStatus.FAILED
+    assert report.embeddings_reused == expected_reused
+    assert report.embeddings_generated == 0
+    assert profile["embeddings_reused"] == report.embeddings_reused
+    assert profile["embeddings_generated"] == report.embeddings_generated
+    assert profile["encode_attempts"][0]["outcome"] == "cuda_oom"
+    assert "R04_PRIVATE_SOURCE_TEXT" not in repr(profile)
+
+
+def test_failed_profile_generated_total_matches_report_after_completed_batch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    settings = _settings(tmp_path, batch_size=2)
+    docs = tmp_path / "docs"
+    texts = [
+        f"Batch source {i} describes sensor calibration offset {i}.{i} units.\n"
+        for i in range(5)
+    ]
+    _prepare(settings, docs, texts)
+    _enable_dense_profile_for_test(monkeypatch)
+
+    report = run_indexing(
+        settings=settings,
+        corpus_name="eng",
+        embedder=_ProfiledCudaFailureEmbedder(successful_calls=1),
+    )
+
+    profile = report.metadata["dense_profile"]
+    assert report.status is IndexingStatus.FAILED
+    assert report.embeddings_generated == 2
+    assert profile["embeddings_generated"] == report.embeddings_generated
+    assert profile["embeddings_reused"] == report.embeddings_reused == 0
+    assert len(profile["batches"]) == 1
+    assert [attempt["outcome"] for attempt in profile["encode_attempts"]] == [
+        "success",
+        "cuda_oom",
+    ]
+    assert profile["throughput"]["generated_chunks_per_sec_encode"] > 0
+    assert "Batch source" not in repr(profile)
