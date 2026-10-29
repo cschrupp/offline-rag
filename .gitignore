@@ -85,3 +85,4 @@ deploy/wheelhouse/
 
 # CPU-GGUF-01 local provisioned binaries (not scientific evidence)
 data/16k_d_cpu_gguf_work/
+artifacts/diag_16k_r04_embedding_memory/
