@@ -8,10 +8,10 @@ and supporting history.
 
 ### Beta delivery path
 
-- [ ] **CURRENT —** independently review the bounded CUDA embedding-memory
-  corrective and decide whether further recovery work is needed. CPU fallback
-  remains on hold while this candidate is reviewed.
-- [ ] Verify representative small, medium, and large PDF ingestion end to end.
+- [x] R04 CUDA embedding corrective accepted and promoted; formal M0–M5
+  qualification is not required for beta delivery.
+- [ ] **CURRENT —** verify representative small, medium, and large PDF
+  ingestion end to end.
 - [ ] Verify retrieval, citations, persistence, restart, and failure recovery.
 - [ ] Complete Slice 16F beta functionality.
 - [ ] Complete Slice 16G beta functionality.
@@ -44,10 +44,12 @@ and supporting history.
   Well Logging `SOURCE_ADD`, publication, retrieval citations, and readiness.
 - [x] Independent review disposition received: **ACCEPT** for candidate
   `3d7718fc8ba150fe95d22afe1b0d721438ea3698`.
-- [ ] **CURRENT —** Human acceptance and promotion decision for the accepted
-  production corrective. No formal M0–M5 qualification is claimed.
-- [ ] Remaining formal M0–M5 qualification is not a beta delivery prerequisite;
-  run it only if a specific product decision requires it.
+- [x] Human acceptance: technical corrective `3d7718fc8ba150fe95d22afe1b0d721438ea3698`.
+- [x] Fast-forward promotion: `main` to `b98866e7f14b9c9717a5cdfb41f253412752788c`.
+
+R04 terminal: production blocker resolved and closed. CPU fallback is deferred
+and on hold. Formal M0–M5 completion is backlog only, not a beta delivery gate;
+reopen R04 only if production behavior fails again.
 
 Both M0 runs reached model load and failed at the fixed-32 encode with
 `CUDA_OOM`. The repeat began with approximately **6.2 GiB free**; GPU usage
