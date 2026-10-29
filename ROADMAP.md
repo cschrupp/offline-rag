@@ -52,7 +52,11 @@ approved envelope.
 - [x] Materialize immutable finite cell-spec catalog and authority against
   `feff974696682d287d277d7264ac1e4d46100e00` (293 exact specs).
 - [x] Verify strict-offline local model bundle and execution environment.
-- [ ] **CURRENT — fresh pre-M0 host/GPU process preflight**.
+- [x] Fresh pre-M0 host/GPU process preflight; GPU process ownership recorded
+  as `NOT_OBSERVABLE`.
+- [x] M0 replicate-1 launch attempted; stopped before claim/model load on a
+  non-OOM `ImportError`.
+- [ ] **CURRENT — execution halted under the frozen non-OOM stop rule; no retry**.
 - [ ] M0 baseline characterization — three fresh-process replicates.
 - [ ] M1 cache treatment — only if M0 establishes applicability.
 - [ ] M2 direct-FP16 materialization — three fresh-process replicates.
@@ -67,14 +71,13 @@ approved envelope.
 - [ ] Separately decide whether to authorize a production change and/or full
   Well Logging retry.
 
-Current execution state: workload freeze is complete and its exact manifest
-hash is reverified. Scientific cells consumed: **0**. The accepted corrective
-is now the execution implementation subject. A 293-spec finite authority is
-materialized and the local strict-offline model bundle is READY. The fresh
-host/GPU process preflight is pending immediately before M0. M0–M5, Qwen/model
-execution, CUDA execution, CPU ONNX reference, production change, and Well
-Logging retry remain **NOT STARTED**. The original Initial Human GO remains in
-force.
+Current execution state: the frozen workload and authority bindings are
+verified. The M0 replicate-1 launcher failed before writing a claim or loading
+model weights (`CELL_FAILED: ImportError`). The campaign stop rule applies;
+there was no retry. Scientific cells consumed: **0**. M0 has no valid evidence,
+and M1–M5, CPU ONNX reference, production change, and Well Logging retry remain
+**NOT STARTED**. No further scientific execution is authorized by this stopped
+attempt.
 
 ## Milestone 0 — Design complete
 

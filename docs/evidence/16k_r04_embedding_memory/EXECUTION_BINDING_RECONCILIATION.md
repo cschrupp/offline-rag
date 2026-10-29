@@ -98,12 +98,62 @@ environment_record_sha256:
   7b630dcc8794cd3a34e0b3e2455b847c10073cd218ce875b0ca09553ac136037
 ```
 
-The fresh host/process/GPU preflight remains pending immediately before M0.
+The fresh host/process/GPU preflight completed immediately before the M0
+replicate-1 launch:
+
+```yaml
+preflight_path:
+  artifacts/diag_16k_r04_embedding_memory/execution_001/preflight_002.json
+preflight_sha256:
+  1c9eb9938505a8334c3def4f239486aa7a1e82935519104f5918d0a87c54deaf
+gpu_memory_mib: {total: 8192, used: 6313, free: 1675}
+gpu_process_ownership: NOT_OBSERVABLE
+known_seneca_repo_api_generation_processes: 0
+preflight_flags: [GPU_PROCESS_ATTRIBUTION_UNAVAILABLE]
+```
+
+## M0 replicate-1 launch stop
+
+One executor launch was attempted using the pre-authorized M0 replicate-1 spec.
+The process returned `CELL_FAILED: ImportError` before writing a single-use
+claim or any cell output. The launch was invoked by file path, leaving
+`__package__` unset; the runtime fallback imports top-level `campaign`, whose
+imports are package-relative. This invocation-path diagnosis is supported by
+the command form, import layout, and absence of claim/evidence files.
+
+The failed launch is governed by the accepted campaign's non-OOM execution
+error stop rule:
+
+```yaml
+launch_attempt_record:
+  artifacts/diag_16k_r04_embedding_memory/execution_001/launch_attempt_001.json
+launch_attempt_record_sha256:
+  163ca17bf3e4777dc671c620374c3f197720c34aaaea9dc7a2d4027c626db1aa
+
+M0_replicate_1:
+  launch_attempted: true
+  claim_created: false
+  raw_cell_evidence: NONE
+  vectors: NONE
+  allocator_snapshot: NONE
+  model_weights_loaded: false
+  cuda_scientific_execution: false
+  scientific_cell_consumed: false
+
+campaign_terminal:
+  STOPPED_NON_OOM_EXECUTION_ERROR
+  retry: FORBIDDEN_BY_CURRENT_PLAN
+```
+
+No M0 retry or later cell was started. The detached executor remained pinned at
+`feff974696682d287d277d7264ac1e4d46100e00`. Any further campaign action must
+resolve this stop under a separate explicit disposition; the existing plan's
+no-retry rule was not bypassed.
 
 At reconciliation time:
 
 ```yaml
-M0: NOT_STARTED
+M0: LAUNCH_ATTEMPT_FAILED_BEFORE_CLAIM
 M1_M5: NOT_STARTED
 scientific_cells_consumed: 0
 model_execution: NONE
