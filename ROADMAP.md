@@ -34,10 +34,10 @@ approved envelope.
   baseline-backend admission issue.
 - [x] F010 corrective: derive the baseline SDPA backend from
   profiler operators and admit only eligible non-baseline alternatives.
-- [ ] **CURRENT — Independent re-review** of the F010 corrective.
-- [ ] Materialize the integrated execution plan and conditional M0–M5 authority
-  envelope.
-- [ ] **INITIAL HUMAN GO** for that integrated bounded campaign.
+- [x] Independent implementation re-review — IR-004 ACCEPT; F010 closed.
+- [x] Materialize the [integrated execution plan](docs/s16k_r04_integrated_execution_plan.md)
+  and conditional M0–M5 authority envelope.
+- [ ] **CURRENT — INITIAL HUMAN GO** for the committed integrated plan.
 - [ ] CPU-only workload freeze; classify `EXACT_INCIDENT_BATCH` or
   `INCIDENT_ADJACENT_SUBSTITUTE`.
 - [ ] M0 baseline characterization — three fresh-process replicates.
