@@ -12,8 +12,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from scripts.diag_16k_r04_embedding_memory.campaign import (
     _active_condition,
+    _eligible_sdpa_backends,
     _m3_opening_supported,
     _m4_opening_supported,
+    _observed_baseline_sdpa_backend,
     _qualified_treatments,
     authorize_cell_start,
 )
@@ -526,6 +528,139 @@ def test_sdpa_observer_preserves_arguments_and_records_eligibility() -> None:
     }
 
 
+@pytest.mark.parametrize(
+    ("baseline_operator", "eligible_by_call", "expected_alternatives"),
+    [
+        (
+            "aten::_scaled_dot_product_attention_math",
+            {"MATH": True},
+            set(),
+        ),
+        (
+            "aten::_scaled_dot_product_attention_math",
+            {"MATH": True, "EFFICIENT_ATTENTION": True},
+            {"EFFICIENT_ATTENTION"},
+        ),
+        (
+            "aten::_scaled_dot_product_efficient_attention",
+            {"EFFICIENT_ATTENTION": True, "FLASH_ATTENTION": True},
+            {"FLASH_ATTENTION"},
+        ),
+        (
+            "aten::_scaled_dot_product_efficient_attention",
+            {"EFFICIENT_ATTENTION": True},
+            set(),
+        ),
+        ("aten::scaled_dot_product_attention", {"FLASH_ATTENTION": True}, set()),
+    ],
+)
+def test_m3_uses_observed_baseline_to_derive_only_alternate_backends(
+    baseline_operator: str,
+    eligible_by_call: dict[str, bool],
+    expected_alternatives: set[str],
+) -> None:
+    completed = [
+        {
+            "claim": {"cell_id": "M3_PROFILE", "replicate": 1},
+            "reduced": {
+                "full_workload_complete": True,
+                "profiler_operators": [baseline_operator],
+                "sdpa_observation": {
+                    "calls": [{"eligible_backends": eligible_by_call}]
+                },
+            },
+        }
+    ]
+
+    baseline = _observed_baseline_sdpa_backend(completed)
+    alternatives = _eligible_sdpa_backends(completed)
+
+    assert alternatives == expected_alternatives
+    if baseline == "UNKNOWN":
+        assert alternatives == set()
+    else:
+        assert baseline not in alternatives
+
+
+def test_m3_eligible_backend_must_be_supported_for_every_observed_call() -> None:
+    completed = [
+        {
+            "claim": {"cell_id": "M3_PROFILE", "replicate": 1},
+            "reduced": {
+                "full_workload_complete": True,
+                "profiler_operators": ["aten::_scaled_dot_product_flash_attention"],
+                "sdpa_observation": {
+                    "calls": [
+                        {
+                            "eligible_backends": {
+                                "FLASH_ATTENTION": True,
+                                "EFFICIENT_ATTENTION": True,
+                            }
+                        },
+                        {
+                            "eligible_backends": {
+                                "FLASH_ATTENTION": True,
+                                "EFFICIENT_ATTENTION": False,
+                            }
+                        },
+                    ]
+                },
+            },
+        }
+    ]
+
+    assert _eligible_sdpa_backends(completed) == set()
+
+
+def test_m3_rejects_the_observed_baseline_as_a_proposed_treatment() -> None:
+    completed = [
+        {
+            "claim": {"cell_id": "M3_PROFILE", "replicate": 1},
+            "reduced": {
+                "full_workload_complete": True,
+                "profiler_operators": ["aten::_scaled_dot_product_efficient_attention"],
+                "sdpa_observation": {
+                    "calls": [
+                        {
+                            "eligible_backends": {
+                                "EFFICIENT_ATTENTION": True,
+                                "FLASH_ATTENTION": True,
+                            }
+                        }
+                    ]
+                },
+            },
+        }
+    ]
+
+    baseline = _observed_baseline_sdpa_backend(completed)
+    proposed_treatment = "EFFICIENT_ATTENTION"
+
+    assert baseline == proposed_treatment
+    assert proposed_treatment not in _eligible_sdpa_backends(completed)
+
+
+def test_m3_ambiguous_profiled_baseline_fails_closed() -> None:
+    completed = [
+        {
+            "claim": {"cell_id": "M3_PROFILE", "replicate": 1},
+            "reduced": {
+                "full_workload_complete": True,
+                "profiler_operators": [
+                    "aten::_scaled_dot_product_efficient_attention",
+                    "aten::_scaled_dot_product_flash_attention",
+                ],
+                "sdpa_observation": {
+                    "calls": [{"eligible_backends": {"FLASH_ATTENTION": True}}]
+                },
+            },
+        }
+    ]
+
+    assert _observed_baseline_sdpa_backend(completed) == "UNKNOWN"
+    assert _eligible_sdpa_backends(completed) == set()
+
+
 def test_cell_spec_rejects_treatments_outside_frozen_single_variable_scope() -> None:
     common = {
         "workload_sha256": "a" * 64,
@@ -949,6 +1084,7 @@ def test_accelerator_error_cuda_oom_survives_redaction_and_claim_finalization(
             "status": "FAILED",
             "failure_classification": failure_classification(failure),
             "exception": safe_exception_summary(failure),
+            "profiler_operators": ["aten::_scaled_dot_product_attention_math"],
             "oom_diagnostics": {
                 "snapshot_written": False,
                 "oom_event_observed": False,
@@ -976,6 +1112,7 @@ def test_accelerator_error_cuda_oom_survives_redaction_and_claim_finalization(
         workload=workload,
     )
     assert reduced["status"] == "OOM"
+    assert reduced["profiler_operators"] == ["aten::_scaled_dot_product_attention_math"]
     assert reduced["gate_facts"]["forward_oom_observed"] is True
     assert reduced["valid"] is False
     assert reduced["validity_reasons"]["resource_evidence"] is False

@@ -30,8 +30,11 @@ approved envelope.
   `2ad161e2b3bb266a531fbd3adb9a4ea061eb142c`).
 - [x] Finalize the harness corrective: F008 OOM classification, accepted
   `ACTIVE_CONTROLS`, M3/M4 applicability, and M5 admission.
-- [ ] **CURRENT — Independent implementation review** of the final harness
-  corrective; resolve bounded findings and re-review within this scope.
+- [x] Independent implementation review — IR-003; F010 identified a narrow M3
+  baseline-backend admission issue.
+- [x] F010 corrective: derive the baseline SDPA backend from
+  profiler operators and admit only eligible non-baseline alternatives.
+- [ ] **CURRENT — Independent re-review** of the F010 corrective.
 - [ ] Materialize the integrated execution plan and conditional M0–M5 authority
   envelope.
 - [ ] **INITIAL HUMAN GO** for that integrated bounded campaign.

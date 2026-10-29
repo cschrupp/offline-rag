@@ -412,6 +412,7 @@ def reduce_cell_evidence(
         "cache_observation": payload.get("cache_observation"),
         "gate_facts": gate_facts,
         "model_facts": payload.get("model_facts"),
+        "profiler_operators": payload.get("profiler_operators"),
         "token_metrics": payload.get("token_metrics"),
         "sdpa_observation": payload.get("sdpa_observation"),
     }

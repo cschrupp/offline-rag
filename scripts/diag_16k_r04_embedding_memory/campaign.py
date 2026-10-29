@@ -393,17 +393,56 @@ def _m4_opening_supported(completed: list[dict[str, Any]]) -> bool:
     )
 
 
+def _observed_baseline_sdpa_backend(completed: list[dict[str, Any]]) -> str:
+    profile = _runs_for(completed, "M3_PROFILE")
+    if len(profile) != 1 or not profile[0]["reduced"].get("full_workload_complete"):
+        return "UNKNOWN"
+    operators = profile[0]["reduced"].get("profiler_operators")
+    if not isinstance(operators, list):
+        return "UNKNOWN"
+
+    operator_backend_markers = {
+        "FLASH_ATTENTION": ("_scaled_dot_product_flash_attention",),
+        "EFFICIENT_ATTENTION": ("_scaled_dot_product_efficient_attention",),
+        "CUDNN_ATTENTION": ("_scaled_dot_product_cudnn_attention",),
+        "MATH": (
+            "_scaled_dot_product_attention_math",
+            "_scaled_dot_product_math_attention",
+        ),
+    }
+    observed = {
+        backend
+        for operator in operators
+        if isinstance(operator, str)
+        for backend, markers in operator_backend_markers.items()
+        if any(marker in operator for marker in markers)
+    }
+    return next(iter(observed)) if len(observed) == 1 else "UNKNOWN"
+
+
 def _eligible_sdpa_backends(completed: list[dict[str, Any]]) -> set[str]:
     profile = _runs_for(completed, "M3_PROFILE")
     if len(profile) != 1 or not profile[0]["reduced"].get("full_workload_complete"):
         return set()
+    baseline_backend = _observed_baseline_sdpa_backend(completed)
+    if baseline_backend == "UNKNOWN":
+        return set()
+
     calls = (profile[0]["reduced"].get("sdpa_observation") or {}).get("calls", [])
-    return {
-        backend
+    if not calls:
+        return set()
+    eligible_by_call = [
+        {
+            backend
+            for backend, eligible in call.get("eligible_backends", {}).items()
+            if eligible is True
+        }
         for call in calls
-        for backend, eligible in call.get("eligible_backends", {}).items()
-        if eligible is True and backend != "MATH"
-    }
+    ]
+    if any(not backends for backends in eligible_by_call):
+        return set()
+    eligible_for_all_calls = set.intersection(*eligible_by_call)
+    return eligible_for_all_calls - {baseline_backend}
 
 
 def _m3_treatment_completed(
@@ -413,6 +452,8 @@ def _m3_treatment_completed(
         return True
     profile = _runs_for(completed, "M3_PROFILE")
     if len(profile) != 1 or not profile[0]["reduced"].get("full_workload_complete"):
+        return False
+    if _observed_baseline_sdpa_backend(completed) == "UNKNOWN":
         return False
     eligible = _eligible_sdpa_backends(completed)
     if not eligible:
@@ -558,6 +599,8 @@ def authorize_cell_start(
             or not profile[0]["reduced"].get("full_workload_complete")
         ):
             raise PermissionError("M3 treatment requires completed profiler evidence")
+        if _observed_baseline_sdpa_backend(completed) == "UNKNOWN":
+            raise PermissionError("BASELINE_ATTENTION_BACKEND_UNRESOLVED")
         backends = _eligible_sdpa_backends(completed)
         treatments = _runs_for(completed, "M3_A") if cell_id == "M3_B" else []
         if not backends or (
