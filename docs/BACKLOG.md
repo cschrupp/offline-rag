@@ -1,7 +1,7 @@
 # Seneca engineering backlog and deferred registry
 
 **Status:** LIVE PLANNING / NON-AUTHORIZING\
-**Canonical reference:** `main` at `7ca0c2332dbaf524fe777317cdd1aede7a795633`\
+**Canonical reference:** `main` at `b7997115b1e14ee840f2abda5bac6ced9e758e3b`\
 **Updated:** 2026-10-27
 
 This document is the live queue for work that remains after the Human-accepted

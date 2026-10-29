@@ -847,6 +847,19 @@ SLICE 15  COMPLETE / ACCEPTED
          NOT AUTHORIZED
        Active post-closeout backlog:
          docs/BACKLOG.md
+       S16K-R04 Qwen embedding-memory contract:
+         DESIGN COMPLETE / IR-003 ACCEPT / HUMAN ACCEPTED
+         Exact design subject: beecfd56fb5c085fabcca0131f0af7e67923836f
+         Diagnostic-harness implementation:
+           AUTHORIZED — BOUNDED IMPLEMENTATION ONLY
+         Implementation authority:
+           S16-K-R04-EMBEDDING-MEMORY-DIAGNOSTIC-HARNESS-IMPLEMENTATION-AUTH-001
+         Authority record:
+           docs/evidence/16k_r04_embedding_memory/IMPLEMENTATION_AUTHORITY.md
+         Scientific execution / model / CUDA / CPU ONNX:
+           NOT AUTHORIZED — separate authority required
+         Well Logging retry / production changes / promotion:
+           NOT AUTHORIZED
        Preferred residual completion order (planning only; does not grant authority):
          S16K-R01 — CLOSED
          → S16K-R02 — CLOSED / 16K-C HUMAN ACCEPTED
