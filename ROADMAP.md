@@ -49,8 +49,10 @@ approved envelope.
 - [x] Reconcile execution implementation binding to the accepted corrective;
   preserve the original Initial Human GO and scientific scope.
 - [x] Verify preserved workload manifest SHA-256 before reuse.
-- [ ] **CURRENT — materialize immutable finite cell-spec catalog and authority**.
-- [ ] Fresh pre-M0 host/GPU preflight.
+- [x] Materialize immutable finite cell-spec catalog and authority against
+  `feff974696682d287d277d7264ac1e4d46100e00` (293 exact specs).
+- [x] Verify strict-offline local model bundle and execution environment.
+- [ ] **CURRENT — fresh pre-M0 host/GPU process preflight**.
 - [ ] M0 baseline characterization — three fresh-process replicates.
 - [ ] M1 cache treatment — only if M0 establishes applicability.
 - [ ] M2 direct-FP16 materialization — three fresh-process replicates.
@@ -67,10 +69,12 @@ approved envelope.
 
 Current execution state: workload freeze is complete and its exact manifest
 hash is reverified. Scientific cells consumed: **0**. The accepted corrective
-is now the execution implementation subject; finite authority materialization
-and a fresh pre-M0 preflight are pending. M0–M5, Qwen/model execution, CUDA
-execution, CPU ONNX reference, production change, and Well Logging retry remain
-**NOT STARTED**. The original Initial Human GO remains in force.
+is now the execution implementation subject. A 293-spec finite authority is
+materialized and the local strict-offline model bundle is READY. The fresh
+host/GPU process preflight is pending immediately before M0. M0–M5, Qwen/model
+execution, CUDA execution, CPU ONNX reference, production change, and Well
+Logging retry remain **NOT STARTED**. The original Initial Human GO remains in
+force.
 
 ## Milestone 0 — Design complete
 

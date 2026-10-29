@@ -46,6 +46,60 @@ regenerated. No authority was reused from the prior implementation subject.
 The finite execution authority must be materialized against
 `feff974696682d287d277d7264ac1e4d46100e00` before M0.
 
+## Pre-M0 materialization
+
+The finite catalog and authority were generated and verified without importing
+PyTorch, Transformers, SentenceTransformers, loading Qwen, or initializing
+CUDA:
+
+```yaml
+authority_path:
+  artifacts/diag_16k_r04_embedding_memory/execution_001/authority_001.json
+authority_sha256:
+  02c6723af2d764570c40d19b8637b7fd4ab913e8f0c1822e2ad47a953f18c9b5
+catalog_index_sha256:
+  cc794cc1414ecf84cf9e66553d1cc4e99d17321574f80ce40aba67ba3188c66c
+spec_count: 293
+specs_by_cell:
+  M0: 3
+  M1: 3
+  M2: 6
+  M3_PROFILE: 4
+  M3_A: 48
+  M3_B: 48
+  M4: 60
+  M5: 120
+  CPU_ONNX_REFERENCE: 1
+authority_implementation_subject:
+  feff974696682d287d277d7264ac1e4d46100e00
+authority_workload_sha256:
+  e4ea6d13f5c0d5dcd0c1783afc86dde8c88d7957d586fd9f2f4ddf0c96001453
+```
+
+Every canonical spec file was rehashed and checked against the finite exact
+allowlist. Single-variant slots use the legacy singleton form; conditional
+slots use lists. All variants use the frozen model revision and workload
+digest. No authority file is committed or modified after M0 starts.
+
+The local environment check also passed before the transient GPU preflight:
+
+```yaml
+python: 3.14.5
+torch_distribution: 2.14.0
+torch_cuda_build: "13.0"
+transformers: 4.57.6
+sentence_transformers: 5.7.0
+host_mem_total_bytes: 33507905536
+host_mem_available_bytes: 24974704640
+model_bundle_readiness: READY
+model_revision: 97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3
+strict_offline: true
+environment_record_sha256:
+  7b630dcc8794cd3a34e0b3e2455b847c10073cd218ce875b0ca09553ac136037
+```
+
+The fresh host/process/GPU preflight remains pending immediately before M0.
+
 At reconciliation time:
 
 ```yaml
