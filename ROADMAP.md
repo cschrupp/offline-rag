@@ -44,9 +44,12 @@ approved envelope.
 - [x] Pre-M0 host/GPU preflight captured; GPU process ownership recorded as
   `NOT_OBSERVABLE`.
 - [x] Pre-M0 finite-authority cardinality blocker identified; no cell started.
-- [ ] **CURRENT — finite conditional cell-spec authority corrective**.
-- [ ] Independent corrective review.
-- [ ] Rebind integrated execution authority to corrected harness.
+- [x] Finite conditional cell-spec authority corrective — IR-001 ACCEPT;
+  F011 closed (`feff974696682d287d277d7264ac1e4d46100e00`).
+- [x] Reconcile execution implementation binding to the accepted corrective;
+  preserve the original Initial Human GO and scientific scope.
+- [x] Verify preserved workload manifest SHA-256 before reuse.
+- [ ] **CURRENT — materialize immutable finite cell-spec catalog and authority**.
 - [ ] Fresh pre-M0 host/GPU preflight.
 - [ ] M0 baseline characterization — three fresh-process replicates.
 - [ ] M1 cache treatment — only if M0 establishes applicability.
@@ -62,11 +65,12 @@ approved envelope.
 - [ ] Separately decide whether to authorize a production change and/or full
   Well Logging retry.
 
-Current execution state: workload freeze is complete. Scientific cells consumed:
-**0**. M0–M5, Qwen/model execution, CUDA execution, CPU ONNX reference,
-production change, and Well Logging retry remain **NOT STARTED**; the accepted
-Initial Human GO remains in force after the bounded authority corrective and
-new independent review.
+Current execution state: workload freeze is complete and its exact manifest
+hash is reverified. Scientific cells consumed: **0**. The accepted corrective
+is now the execution implementation subject; finite authority materialization
+and a fresh pre-M0 preflight are pending. M0–M5, Qwen/model execution, CUDA
+execution, CPU ONNX reference, production change, and Well Logging retry remain
+**NOT STARTED**. The original Initial Human GO remains in force.
 
 ## Milestone 0 — Design complete
 
