@@ -153,5 +153,13 @@ independent_review_readiness:
   implementation: COMPLETE
   tests_and_static_checks: PASS
   durable_result: COMMITTED IN SUCCESSOR HANDOFF COMMIT
-  remote_branch: PUSH AND EXACT-HEAD VERIFICATION REQUIRED
+  remote_branch: PUSHED / EXACT HEAD VERIFIED
+  verified_handoff_commit: 1e5624ae01675bf711e6bd8e113c196b91b9ca62
+```
+
+The exact remote verification command was:
+
+```text
+git ls-remote origin refs/heads/implementation/16k-r04-embedding-memory-diagnostic-harness
+1e5624ae01675bf711e6bd8e113c196b91b9ca62  refs/heads/implementation/16k-r04-embedding-memory-diagnostic-harness
 ```
