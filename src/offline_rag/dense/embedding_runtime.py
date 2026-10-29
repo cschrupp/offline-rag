@@ -78,6 +78,8 @@ class QualifiedEmbeddingRuntime:
         self.batch_size = self.profile.batch_size
         self.configured_batch_size = self.profile.batch_size
         self.effective_batch_size = self.profile.batch_size
+        self.last_execution_batch_sizes: list[int] | None = None
+        self.last_execution_padded_token_workload: int | None = None
 
         self._state = RuntimeState.UNLOADED
         self._backend: Any | None = None
@@ -239,6 +241,12 @@ class QualifiedEmbeddingRuntime:
         try:
             vectors = backend.embed_documents(texts)
             self._remember_effective_batch_size(backend)
+            self.last_execution_batch_sizes = getattr(
+                backend, "last_execution_batch_sizes", None
+            )
+            self.last_execution_padded_token_workload = getattr(
+                backend, "last_execution_padded_token_workload", None
+            )
             return vectors
         except CudaMemoryExhaustedError as exc:
             self._remember_effective_batch_size(backend)

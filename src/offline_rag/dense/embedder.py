@@ -8,7 +8,7 @@ import math
 import time
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
 from offline_rag.config.models import AppSettings
 from offline_rag.core.ids import (
@@ -194,6 +194,8 @@ class SentenceTransformersEmbedder:
         self._model = None
         self._precision_applied = False
         self._precision_conversion: dict[str, str | None] | None = None
+        self.last_execution_batch_sizes: list[int] | None = None
+        self.last_execution_padded_token_workload: int | None = None
         if (
             query_text_contract == MODEL_QUERY_PROMPT_V1
             and query_instruction is not None
@@ -217,22 +219,154 @@ class SentenceTransformersEmbedder:
     def _load(self):
         if self._model is not None:
             return self._model
+        import torch
         from sentence_transformers import SentenceTransformer
 
-        from offline_rag.dense.precision import apply_fp16_after_load
+        model_kwargs: dict[str, object] = {}
+        config_kwargs: dict[str, object] = {}
+        if self.device == "cuda":
+            config_kwargs["use_cache"] = False
+        if self.resolved_precision == "fp16":
+            model_kwargs["torch_dtype"] = torch.float16
 
         model = SentenceTransformer(
             str(self.model_path),
             device=self.device,
+            model_kwargs=model_kwargs,
+            config_kwargs=config_kwargs,
             trust_remote_code=False,
             local_files_only=True,
         )
+        self._verify_loaded_model(model)
         if self.resolved_precision == "fp16":
-            # Deterministic once: post-load, pre-encode.
-            self._precision_conversion = apply_fp16_after_load(model)
+            # Parameters were materialized in FP16 by the model loader.
+            self._precision_conversion = None
             self._precision_applied = True
         self._model = model
         return self._model
+
+    def _verify_loaded_model(self, model: object) -> None:
+        """Fail closed when CUDA cache or requested parameter dtype is wrong."""
+        if self.device != "cuda" and self.resolved_precision != "fp16":
+            return
+        try:
+            import torch
+
+            first = model[0] if len(model) else None  # type: ignore[index]
+            auto_model = getattr(first, "auto_model", None)
+            if auto_model is None:
+                raise EmbedderError(
+                    "loaded embedding model does not expose its transformer model"
+                )
+            config = getattr(auto_model, "config", None)
+            if (
+                self.device == "cuda"
+                and getattr(config, "use_cache", None) is not False
+            ):
+                raise EmbedderError(
+                    "CUDA embedding model did not disable the generation KV cache"
+                )
+            parameter = next(auto_model.parameters(), None)
+            if parameter is None:
+                raise EmbedderError("loaded embedding model has no parameters")
+            if self.resolved_precision == "fp16" and parameter.dtype != torch.float16:
+                raise EmbedderError(
+                    "direct FP16 model loading did not produce float16 parameters"
+                )
+        except EmbedderError:
+            raise
+        except Exception as exc:
+            raise EmbedderError(
+                "unable to verify embedding model cache/dtype settings"
+            ) from exc
+
+    @staticmethod
+    def _tokenizer_and_max_length(model: object) -> tuple[Any, int]:
+        """Return the SentenceTransformers tokenizer and active truncation bound."""
+        try:
+            first = model[0]  # type: ignore[index]
+        except Exception as exc:
+            raise EmbedderError(
+                "CUDA token batching requires model module access"
+            ) from exc
+        tokenizer = getattr(first, "tokenizer", None)
+        if tokenizer is None:
+            tokenizer = getattr(model, "tokenizer", None)
+        max_length = getattr(model, "max_seq_length", None)
+        if not isinstance(max_length, int) or max_length <= 0:
+            config = getattr(getattr(first, "auto_model", None), "config", None)
+            max_length = getattr(config, "max_position_embeddings", None)
+        if tokenizer is None or not isinstance(max_length, int) or max_length <= 0:
+            raise EmbedderError(
+                "CUDA token batching requires a tokenizer and finite max sequence length"
+            )
+        return tokenizer, max_length
+
+    def _partition_cuda_payloads(
+        self, model: object, payloads: list[str], *, batch_limit: int
+    ) -> tuple[list[list[str]], list[int], int]:
+        """Greedily partition in input order under the frozen padded-token rule."""
+        tokenizer, max_length = self._tokenizer_and_max_length(model)
+        token_counts: list[int] = []
+        for text in payloads:
+            encoded = tokenizer(
+                text,
+                add_special_tokens=True,
+                truncation=True,
+                max_length=max_length,
+                padding=False,
+                return_attention_mask=False,
+            )
+            input_ids = (
+                encoded.get("input_ids")
+                if isinstance(encoded, dict)
+                else getattr(encoded, "input_ids", None)
+            )
+            if input_ids is None:
+                raise EmbedderError("tokenizer returned no input_ids for CUDA batching")
+            if input_ids and isinstance(input_ids[0], (list, tuple)):
+                count = len(input_ids[0])
+            else:
+                count = len(input_ids)
+            if count <= 0:
+                raise EmbedderError("tokenizer returned an empty CUDA batch sequence")
+            token_counts.append(count)
+
+        ordered_counts = sorted(token_counts)
+        p95_rank = max(1, math.ceil(0.95 * len(ordered_counts)))
+        padded_token_budget = batch_limit * ordered_counts[p95_rank - 1]
+        partitions: list[list[str]] = []
+        partition_counts: list[list[int]] = []
+        current_texts: list[str] = []
+        current_counts: list[int] = []
+        current_max = 0
+        for text, count in zip(payloads, token_counts, strict=True):
+            next_max = max(current_max, count)
+            if current_texts and (
+                len(current_texts) >= batch_limit
+                or (len(current_texts) + 1) * next_max > padded_token_budget
+            ):
+                partitions.append(current_texts)
+                partition_counts.append(current_counts)
+                current_texts = []
+                current_counts = []
+                current_max = 0
+                next_max = count
+            current_texts.append(text)
+            current_counts.append(count)
+            current_max = next_max
+        if current_texts:
+            partitions.append(current_texts)
+            partition_counts.append(current_counts)
+
+        if len(partitions) == 1:
+            partitions[0] = payloads
+
+        batch_sizes = [len(partition) for partition in partitions]
+        actual_padded_tokens = sum(
+            len(counts) * max(counts) for counts in partition_counts
+        )
+        return partitions, batch_sizes, actual_padded_tokens
 
     def _require_model_query_prompt(self, model) -> None:
         prompts = getattr(model, "prompts", None)
@@ -284,6 +418,8 @@ class SentenceTransformersEmbedder:
     def embed_documents(self, texts: Sequence[str]) -> list[list[float]]:
         if not texts:
             return []
+        self.last_execution_batch_sizes = None
+        self.last_execution_padded_token_workload = None
         payloads = [
             f"{self.document_instruction}{text}" if self.document_instruction else text
             for text in texts
@@ -294,19 +430,34 @@ class SentenceTransformersEmbedder:
         for attempt_index, attempt_batch_size in enumerate(batch_ladder):
             self.effective_batch_size = attempt_batch_size
             self.batch_size = attempt_batch_size
+            if self.device == "cuda":
+                execution_batches, execution_batch_sizes, padded_token_workload = (
+                    self._partition_cuda_payloads(
+                        model, encode_payloads, batch_limit=attempt_batch_size
+                    )
+                )
+            else:
+                execution_batches = [encode_payloads]
+                execution_batch_sizes = [min(len(encode_payloads), attempt_batch_size)]
+                padded_token_workload = None
             collector, batch_context = self._diagnostic_encode_context()
             diagnostics_before = (
                 self._cuda_attempt_snapshot() if collector is not None else None
             )
             attempt_started = time.perf_counter()
             try:
-                vectors = model.encode(
-                    encode_payloads,
-                    batch_size=attempt_batch_size,
-                    normalize_embeddings=self.normalize,
-                    convert_to_numpy=True,
-                    show_progress_bar=False,
-                )
+                vectors = []
+                for execution_batch, _execution_batch_size in zip(
+                    execution_batches, execution_batch_sizes, strict=True
+                ):
+                    batch_vectors = model.encode(
+                        execution_batch,
+                        batch_size=attempt_batch_size,
+                        normalize_embeddings=self.normalize,
+                        convert_to_numpy=True,
+                        show_progress_bar=False,
+                    )
+                    vectors.extend(batch_vectors)
             except Exception as exc:
                 elapsed_ms = (time.perf_counter() - attempt_started) * 1000.0
                 is_cuda_oom = self.device == "cuda" and is_cuda_oom_error(exc)
@@ -318,11 +469,11 @@ class SentenceTransformersEmbedder:
                 cleanup_status = None
                 diagnostics_after_cleanup = None
                 if next_batch_size is not None:
-                    cleanup_status = "succeeded" if cleanup_cuda_after_oom(exc) else "failed"
+                    cleanup_status = (
+                        "succeeded" if cleanup_cuda_after_oom(exc) else "failed"
+                    )
                     diagnostics_after_cleanup = (
-                        self._cuda_attempt_snapshot()
-                        if collector is not None
-                        else None
+                        self._cuda_attempt_snapshot() if collector is not None else None
                     )
                 self._record_cuda_attempt(
                     collector=collector,
@@ -334,6 +485,8 @@ class SentenceTransformersEmbedder:
                     before=diagnostics_before,
                     after_cleanup=diagnostics_after_cleanup,
                     cleanup_status=cleanup_status,
+                    execution_batch_sizes=execution_batch_sizes,
+                    execution_padded_token_workload=padded_token_workload,
                 )
                 if not is_cuda_oom:
                     raise
@@ -357,7 +510,11 @@ class SentenceTransformersEmbedder:
                 before=diagnostics_before,
                 after_cleanup=None,
                 cleanup_status=None,
+                execution_batch_sizes=execution_batch_sizes,
+                execution_padded_token_workload=padded_token_workload,
             )
+            self.last_execution_batch_sizes = execution_batch_sizes
+            self.last_execution_padded_token_workload = padded_token_workload
             return [self._coerce_vector(row.tolist()) for row in vectors]
 
         raise AssertionError("CUDA OOM batch ladder ended without an encode result")
@@ -407,6 +564,8 @@ class SentenceTransformersEmbedder:
         before: dict[str, object] | None,
         after_cleanup: dict[str, object] | None,
         cleanup_status: str | None,
+        execution_batch_sizes: list[int],
+        execution_padded_token_workload: int | None,
     ) -> None:
         if collector is None or batch_context is None:
             return
@@ -423,6 +582,8 @@ class SentenceTransformersEmbedder:
             cuda_allocator_after_cleanup=(after_cleanup or {}).get("allocator"),
             cuda_memory_after_cleanup=(after_cleanup or {}).get("global_memory"),
             external_gpu_after=(after_cleanup or {}).get("external_gpu"),
+            execution_batch_sizes=execution_batch_sizes,
+            execution_padded_token_workload=execution_padded_token_workload,
         )
 
     def embed_query(self, text: str) -> list[float]:

@@ -309,6 +309,8 @@ class DenseBatchProfile:
     token_length_stats: dict[str, int | None] | None = None
     aggregate_input_tokens: int | None = None
     padded_token_workload: int | None = None
+    execution_batch_sizes: list[int] | None = None
+    execution_padded_token_workload: int | None = None
     padding_fraction: float | None = None
     encode_cuda_device_ms: float | None = None
     encode_cuda_device_status: str = "not_attempted"
@@ -358,6 +360,8 @@ class DenseProfileCollector:
         cuda_allocator_after_cleanup: dict[str, Any] | None,
         cuda_memory_after_cleanup: dict[str, Any] | None,
         external_gpu_after: dict[str, Any] | None,
+        execution_batch_sizes: list[int] | None = None,
+        execution_padded_token_workload: int | None = None,
     ) -> None:
         """Store bounded attempt facts without embedding text or exception text."""
         self.encode_attempts.append(
@@ -371,6 +375,12 @@ class DenseProfileCollector:
                 "aggregate_input_tokens": batch_context.aggregate_input_tokens,
                 "padded_token_workload": batch_context.padded_token_workload,
                 "padding_fraction": batch_context.padding_fraction,
+                "execution_batch_sizes": (
+                    list(execution_batch_sizes)
+                    if execution_batch_sizes is not None
+                    else None
+                ),
+                "execution_padded_token_workload": execution_padded_token_workload,
                 "encode_ms": elapsed_ms,
                 "outcome": outcome,
                 "next_effective_batch_size": next_effective_batch_size,
@@ -402,6 +412,8 @@ class DenseProfileCollector:
         cuda_allocator_after: dict[str, Any] | None = None,
         gpu_external_before: dict[str, Any] | None = None,
         gpu_external_after: dict[str, Any] | None = None,
+        execution_batch_sizes: list[int] | None = None,
+        execution_padded_token_workload: int | None = None,
     ) -> None:
         counts = list(token_counts or [])
         self._token_counts.extend(counts)
@@ -445,6 +457,12 @@ class DenseProfileCollector:
                 token_length_stats=token_stats,
                 aggregate_input_tokens=aggregate,
                 padded_token_workload=padded,
+                execution_batch_sizes=(
+                    list(execution_batch_sizes)
+                    if execution_batch_sizes is not None
+                    else None
+                ),
+                execution_padded_token_workload=execution_padded_token_workload,
                 padding_fraction=padding_fraction,
                 encode_cuda_device_ms=encode_cuda_device_ms,
                 encode_cuda_device_status=encode_cuda_device_status,
@@ -531,6 +549,8 @@ class DenseProfileCollector:
             if b.aggregate_input_tokens is not None
             else sum(b.model_input_token_counts),
             "padded_token_workload": b.padded_token_workload,
+            "execution_batch_sizes": b.execution_batch_sizes,
+            "execution_padded_token_workload": b.execution_padded_token_workload,
             "padding_fraction": b.padding_fraction,
             "encode_ms": b.encode_ms,
             "encode_cuda_device_ms": b.encode_cuda_device_ms,

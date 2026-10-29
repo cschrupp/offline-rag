@@ -554,6 +554,12 @@ def _ensure_embeddings(
                 cuda_allocator_after=cuda_allocator_after,
                 gpu_external_before=gpu_before,
                 gpu_external_after=gpu_after,
+                execution_batch_sizes=getattr(
+                    embedder, "last_execution_batch_sizes", None
+                ),
+                execution_padded_token_workload=getattr(
+                    embedder, "last_execution_padded_token_workload", None
+                ),
             )
         report_document_activity(
             on_document_activity, document_ids=(), stage="dense_batch"

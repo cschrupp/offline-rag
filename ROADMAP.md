@@ -1,83 +1,90 @@
 # Roadmap
 
-## Current operational checklist — Slice 16K / R04 embedding-memory campaign
+## Current objective — Deliver a functioning Seneca beta
 
-This is the human-facing current-progress view. Update it after every completed
-R04 task or review cycle. [`docs/BACKLOG.md`](docs/BACKLOG.md) retains supporting
-detail and history.
+Optimize for reliable product delivery under the available development time
+and operating cost. [`docs/BACKLOG.md`](docs/BACKLOG.md) retains deferred work
+and supporting history.
 
-Human gates for this bounded program:
+### Beta delivery path
 
-1. **Initial Human GO** after the integrated execution plan and authority
-   envelope are materialized.
-2. **Final Human acceptance** after the complete campaign and consolidated
-   independent review.
+- [ ] **CURRENT —** independently review the bounded CUDA embedding-memory
+  corrective and decide whether further recovery work is needed. CPU fallback
+  remains on hold while this candidate is reviewed.
+- [ ] Verify representative small, medium, and large PDF ingestion end to end.
+- [ ] Verify retrieval, citations, persistence, restart, and failure recovery.
+- [ ] Complete Slice 16F beta functionality.
+- [ ] Complete Slice 16G beta functionality.
+- [ ] Run end-to-end beta QA and fix release-blocking defects.
+- [ ] Human beta acceptance and release.
 
-Independent reviews within the approved scope are operational controls. An
-`ACCEPT` continues within the authority; bounded `REWORK` is corrected and
-re-reviewed without another Human gate. Return to the Human only for a material
-scope, risk, cost, scientific-rule, or production-behavior change outside the
-approved envelope.
+### R04 status — investigation no longer gates beta delivery
 
-### R04 to-do
+- [x] Reproduce CUDA batch-recovery exhaustion on the Well Logging workload.
+- [x] Accept the bounded M0–M5 diagnostic design and implementation.
+- [x] Start M0-r1 on the frozen 32-item `INCIDENT_ADJACENT_SUBSTITUTE`
+  workload; the fixed-32 encode reached a CUDA allocation failure.
+- [x] Preserve M0-r1 evidence and allocator snapshot locally; do not retry the
+  original claim.
+- [x] Run the existing R04 harness and CUDA recovery/runtime regression suites:
+  **82 passed**.
+- [x] Repeat the exact M0-r1 workload once under a separate user-directed run
+  ID; preserve the original claim and evidence.
+- [x] Screen M1 with `use_cache=false` at fixed batch 32: full 32 document and
+  16 query vectors returned.
+- [x] Screen M4 token partitions with cache enabled and all other baseline
+  controls held: full vectors returned.
+- [x] Quick M2 direct-FP16 screen: load peak/time materially improved; encode
+  peak effectively unchanged; retrieval parity screen passed.
+- [x] Quick M3 profiler screen: efficient SDPA is the only eligible backend;
+  no alternate-backend run admitted.
+- [x] Combined no-cache + token-partition + direct-FP16 candidate screen passed
+  with expected vectors and lower measured encode peak.
+- [x] Implement the bounded CUDA embedding corrective and verify the actual
+  Well Logging `SOURCE_ADD`, publication, retrieval citations, and readiness.
+- [ ] **CURRENT —** independent review and Human disposition of this production
+  corrective. No formal M0–M5 qualification is claimed.
+- [ ] Remaining formal M0–M5 qualification is not a beta delivery prerequisite;
+  run it only if a specific product decision requires it.
 
-- [x] Reproduce the current Well Logging CUDA OOM on the accepted CUDA profile.
-- [x] Confirm adaptive `32 → 16 → 8 → 4` recovery exhausts on the incident workload.
-- [x] Complete the M0–M5 embedding-memory design.
-- [x] Independently review and Human-accept the embedding-memory design.
-- [x] Define and accept Amendment 001 for M3/M4 applicability and M5 admission
-  (`7a2a4427e76a6c675df1e833deb4b6dce0fadb83`; Human-acceptance record
-  `2ad161e2b3bb266a531fbd3adb9a4ea061eb142c`).
-- [x] Finalize the harness corrective: F008 OOM classification, accepted
-  `ACTIVE_CONTROLS`, M3/M4 applicability, and M5 admission.
-- [x] Independent implementation review — IR-003; F010 identified a narrow M3
-  baseline-backend admission issue.
-- [x] F010 corrective: derive the baseline SDPA backend from
-  profiler operators and admit only eligible non-baseline alternatives.
-- [x] Independent implementation re-review — IR-004 ACCEPT; F010 closed.
-- [x] Materialize the [integrated execution plan](docs/s16k_r04_integrated_execution_plan.md)
-  and conditional M0–M5 authority envelope.
-- [x] Initial Human GO for the committed integrated plan; conditional R04
-  execution envelope opened.
-- [x] CPU-only workload freeze — `INCIDENT_ADJACENT_SUBSTITUTE`; 32-item
-  workload identity frozen locally.
-- [x] Pre-M0 host/GPU preflight captured; GPU process ownership recorded as
-  `NOT_OBSERVABLE`.
-- [x] Pre-M0 finite-authority cardinality blocker identified; no cell started.
-- [x] Finite conditional cell-spec authority corrective — IR-001 ACCEPT;
-  F011 closed (`feff974696682d287d277d7264ac1e4d46100e00`).
-- [x] Reconcile execution implementation binding to the accepted corrective;
-  preserve the original Initial Human GO and scientific scope.
-- [x] Verify preserved workload manifest SHA-256 before reuse.
-- [x] Materialize immutable finite cell-spec catalog and authority against
-  `feff974696682d287d277d7264ac1e4d46100e00` (293 exact specs).
-- [x] Verify strict-offline local model bundle and execution environment.
-- [x] Fresh pre-M0 host/GPU process preflight; GPU process ownership recorded
-  as `NOT_OBSERVABLE`.
-- [x] M0 replicate-1 launch attempted; stopped before claim/model load on a
-  non-OOM `ImportError`.
-- [ ] **CURRENT — execution halted under the frozen non-OOM stop rule; no retry**.
-- [ ] M0 baseline characterization — three fresh-process replicates.
-- [ ] M1 cache treatment — only if M0 establishes applicability.
-- [ ] M2 direct-FP16 materialization — three fresh-process replicates.
-- [ ] M3 native-SDPA characterization/treatments — only if its accepted gate opens.
-- [ ] M4 token-budget batching — only if its accepted gate opens.
-- [ ] M5 selected-candidate confirmation — only if a treatment is
-  `SUPPORTED` and `QUALIFIED`.
-- [ ] Consolidated analysis: mechanisms, resource diagnosis, candidate
-  disposition, limitations, and recommended production change, if any.
-- [ ] General independent final review of the complete R04 campaign.
-- [ ] **FINAL HUMAN ACCEPTANCE**.
-- [ ] Separately decide whether to authorize a production change and/or full
-  Well Logging retry.
+Both M0 runs reached model load and failed at the fixed-32 encode with
+`CUDA_OOM`. The repeat began with approximately **6.2 GiB free**; GPU usage
+rose to approximately **7.94 GiB** before failure. This makes pre-existing GPU
+occupancy alone an insufficient explanation, while still leaving exact
+allocator/driver attribution unknown. Both allocator classifications remain
+inconclusive: required OOM-event metrics were not captured. The reducer also
+rejects the frozen workload's `embedding_artifact_text_sha256` tagged digest
+format, so both claims remain `CLAIMED`; neither evidence file is valid campaign
+progression evidence. Original and repeated raw evidence/snapshots and claims
+are preserved under ignored local `artifacts/diag_16k_r04_embedding_memory/`
+data.
 
-Current execution state: the frozen workload and authority bindings are
-verified. The M0 replicate-1 launcher failed before writing a claim or loading
-model weights (`CELL_FAILED: ImportError`). The campaign stop rule applies;
-there was no retry. Scientific cells consumed: **0**. M0 has no valid evidence,
-and M1–M5, CPU ONNX reference, production change, and Well Logging retry remain
-**NOT STARTED**. No further scientific execution is authorized by this stopped
-attempt.
+Two exploratory screens then isolated useful mechanisms on the exact frozen
+workload. M1 (`use_cache=false`, otherwise fixed batch-32 controls) succeeded
+with 32 document and 16 query vectors and observed zero cache construction or
+updates. M4 (token-budget partitions, while retaining cache-enabled baseline
+controls) also succeeded with 32 document and 16 query vectors. Both screens
+produced the same ordered vector digest. The deterministic M4 partitioner
+reduces padded tokens from 39,776 to 26,924 (32.3%). The local Qwen config has
+28 layers, 8 KV heads, and head width 128; an FP16 KV cache at batch 32 and
+sequence length 1,243 is approximately 4.25 GiB by tensor-size calculation,
+falling to about 2.88 GiB at the M4 padded-token total. These estimates explain
+why cache use and padding are credible contributors, but the M0 forward peak
+is right-censored and allocator event capture is missing. Therefore neither
+mechanism is formally classified as the sole cause. The M1/M4 runs are
+diagnostic screens, not three-replicate campaign qualifications.
+
+The quick screens show that cache disablement and token-budget partitioning
+each allow the frozen diagnostic workload to complete independently; the
+combined candidate reduced encode peak allocation further. Direct FP16 reduces
+model-load memory, not fixed-batch encode peak. The observed attention backend
+has no eligible alternative. The single live Well Logging operation then
+succeeded, published workspace revision 3, and returned cited retrieval.
+These results support the bounded corrective but do not formally establish a
+general CUDA capacity limit or an exclusive OOM root cause. Earlier campaign
+claims remain invalid for progression because of the workload-digest mismatch
+and incomplete M0 OOM allocation evidence. See
+[`docs/evidence/16k_r04_embedding_memory/QUICK_SCREEN_AND_PRODUCTION_CORRECTIVE_RESULT.md`](docs/evidence/16k_r04_embedding_memory/QUICK_SCREEN_AND_PRODUCTION_CORRECTIVE_RESULT.md).
 
 ## Milestone 0 — Design complete
 

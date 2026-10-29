@@ -116,6 +116,18 @@ def test_first_call_loads_ready() -> None:
     assert rt.backend_factory_calls == 1
 
 
+def test_execution_batch_facts_are_exposed_through_qualified_runtime() -> None:
+    backend = _FakeBackend()
+    backend.last_execution_batch_sizes = [20, 3, 9]
+    backend.last_execution_padded_token_workload = 121
+    rt = _runtime(lambda: backend)
+
+    assert rt.embed_documents(["a", "b"])
+
+    assert rt.last_execution_batch_sizes == [20, 3, 9]
+    assert rt.last_execution_padded_token_workload == 121
+
+
 def test_concurrent_first_calls_single_factory() -> None:
     barrier = threading.Barrier(2)
     started = threading.Event()
