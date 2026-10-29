@@ -334,6 +334,9 @@ def reduce_cell_evidence(
         "initial_device_free_bytes": initial_free,
         "external_device_used_bytes": external_used,
         "target_peak_bytes": target_peak,
+        "forward_peak_bytes": stage_by_name.get("after_encode_success", {}).get(
+            "peak_allocated_bytes"
+        ),
         "load_device_peak_bytes": load_device_peak,
         "load_peak_allocated_bytes": load_peak_allocated,
         "load_peak_reserved_bytes": load_peak_reserved,

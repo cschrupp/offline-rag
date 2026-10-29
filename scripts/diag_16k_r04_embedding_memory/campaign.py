@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import statistics
 from pathlib import Path
 from typing import Any
 
 from .contract import (
+    MATERIAL_MEMORY_FLOOR_BYTES,
     evaluate_mechanism_pairs,
     evaluate_parity,
     evaluate_production_candidate,
+    greedy_token_partitions,
 )
 from .evidence import effective_controls_from_spec, reduce_authorized_cell_evidence
 
@@ -215,6 +218,75 @@ def _qualified_treatments(
     return qualified
 
 
+def _m3_opening_supported(completed: list[dict[str, Any]]) -> bool:
+    """Open attention characterization only when forward memory remains material."""
+    runs = _runs_for(completed, "M2")
+    if not _three_valid_runs(runs, full_success=True):
+        return False
+    peaks = [item["reduced"].get("forward_peak_bytes") for item in runs]
+    if any(not isinstance(peak, int) for peak in peaks):
+        return False
+    return statistics.median(peaks) >= MATERIAL_MEMORY_FLOOR_BYTES
+
+
+def _m4_opening_supported(completed: list[dict[str, Any]]) -> bool:
+    """Open token batching only when frozen lengths exceed the fixed-batch budget."""
+    runs = _runs_for(completed, "M2")
+    if not _three_valid_runs(runs, full_success=True):
+        return False
+    metrics = runs[0]["reduced"].get("token_metrics")
+    counts = metrics.get("token_counts") if isinstance(metrics, dict) else None
+    if not isinstance(counts, list) or len(counts) != 32:
+        return False
+    if any(
+        not isinstance(value, int) or isinstance(value, bool) or value <= 0
+        for value in counts
+    ):
+        return False
+    ordered = sorted(counts)
+    p95 = ordered[30]
+    if (
+        len(
+            {
+                tuple(item["reduced"].get("token_metrics", {}).get("token_counts", []))
+                for item in runs
+            }
+        )
+        != 1
+    ):
+        return False
+    partitions = greedy_token_partitions(counts)
+    fixed_padded_tokens = len(counts) * max(counts)
+    budget = len(counts) * p95
+    return (
+        partitions is not None and len(partitions) > 1 and fixed_padded_tokens > budget
+    )
+
+
+def _eligible_sdpa_backends(completed: list[dict[str, Any]]) -> set[str]:
+    profile = _runs_for(completed, "M3_PROFILE")
+    if len(profile) != 1 or not profile[0]["reduced"].get("full_workload_complete"):
+        return set()
+    calls = (profile[0]["reduced"].get("sdpa_observation") or {}).get("calls", [])
+    return {
+        backend
+        for call in calls
+        for backend, eligible in call.get("eligible_backends", {}).items()
+        if eligible is True and backend != "MATH"
+    }
+
+
+def _m3_treatment_completed(completed: list[dict[str, Any]]) -> bool:
+    if not _m3_opening_supported(completed):
+        return True
+    profile = _runs_for(completed, "M3_PROFILE")
+    if len(profile) != 1 or not profile[0]["reduced"].get("full_workload_complete"):
+        return False
+    if not _eligible_sdpa_backends(completed):
+        return True
+    return _three_valid_runs(_runs_for(completed, "M3_A"), full_success=True)
+
+
 def authorize_cell_start(
     *,
     claims_dir: Path,
@@ -310,6 +382,10 @@ def authorize_cell_start(
     if not _three_valid_runs(m2, full_success=True):
         raise PermissionError("three successful M2 cells are required")
     if cell_id == "M3_PROFILE":
+        if not _m3_opening_supported(completed):
+            raise PermissionError(
+                "M3 is not opened by material M2 forward-memory evidence"
+            )
         if requested_replicate != 1:
             raise PermissionError("M3 profiler characterization is one process")
         expected_controls = {
@@ -321,22 +397,27 @@ def authorize_cell_start(
         return
     if cell_id in {"M3_A", "M3_B"}:
         profile = _runs_for(completed, "M3_PROFILE")
-        if len(profile) != 1 or not profile[0]["reduced"]["valid"]:
+        if (
+            not _m3_opening_supported(completed)
+            or len(profile) != 1
+            or not profile[0]["reduced"].get("full_workload_complete")
+        ):
             raise PermissionError("M3 treatment requires completed profiler evidence")
-        eligible = (profile[0]["reduced"].get("sdpa_observation") or {}).get(
-            "calls", []
-        )
-        backends = {
-            backend
-            for call in eligible
-            for backend, is_eligible in call.get("eligible_backends", {}).items()
-            if is_eligible is True and backend != "MATH"
-        }
+        backends = _eligible_sdpa_backends(completed)
         treatments = _runs_for(completed, "M3_A") if cell_id == "M3_B" else []
-        if not backends or (cell_id == "M3_B" and len(treatments) != 3):
+        if not backends or (
+            cell_id == "M3_B" and not _three_valid_runs(treatments, full_success=True)
+        ):
             raise PermissionError(
                 "M3 treatment is not supported by observed eligibility"
             )
+        if cell_id == "M3_B":
+            selected_a = treatments[0]["reduced"]["effective_controls"].get(
+                "attention_backend"
+            )
+            backends.discard(selected_a)
+            if not backends:
+                raise PermissionError("M3_B has no second eligible backend")
         if requested_replicate != len(_runs_for(completed, cell_id)) + 1:
             raise PermissionError("M3 treatment replicates must follow evidence order")
         expected_controls = dict(active_controls)
@@ -351,7 +432,13 @@ def authorize_cell_start(
         return
     if cell_id == "M4":
         profile = _runs_for(completed, "M3_PROFILE")
-        if len(profile) != 1:
+        if not _m4_opening_supported(completed):
+            raise PermissionError(
+                "M4 is not opened by the frozen token-budget evidence"
+            )
+        if not _m3_treatment_completed(completed):
+            raise PermissionError("M4 requires the opened M3 path to be resolved")
+        if _m3_opening_supported(completed) and len(profile) != 1:
             raise PermissionError("M4 requires the M3 applicability observation")
         expected_controls = dict(active_controls)
         expected_controls["batch_strategy"] = "m4_partitions"
@@ -364,6 +451,12 @@ def authorize_cell_start(
         if requested_replicate != len(m5) + 1:
             raise PermissionError("M5 replicates must follow evidence order")
         if requested_replicate == 1:
+            if not _m3_treatment_completed(completed):
+                raise PermissionError("M5 requires the opened M3 path to be resolved")
+            if _m4_opening_supported(completed) and not _three_valid_runs(
+                _runs_for(completed, "M4"), full_success=True
+            ):
+                raise PermissionError("M5 requires the opened M4 path to be resolved")
             settings = requested_spec.get("selected_candidate_settings")
             if not isinstance(settings, dict):
                 raise PermissionError("M5 requires frozen selected candidate settings")

@@ -10,7 +10,11 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from scripts.diag_16k_r04_embedding_memory.campaign import authorize_cell_start
+from scripts.diag_16k_r04_embedding_memory.campaign import (
+    _m3_opening_supported,
+    _m4_opening_supported,
+    authorize_cell_start,
+)
 from scripts.diag_16k_r04_embedding_memory.cell_executor import (
     _encode_queries,
     _validate_cell_spec,
@@ -970,3 +974,28 @@ def test_pair_evaluator_rejects_runtime_or_device_identity_mismatch() -> None:
     )
     assert result["mechanism"] == "INCONCLUSIVE"
     assert result["reason"] == "campaign_identity_mismatch"
+
+
+def test_m3_and_m4_openings_are_derived_from_prior_raw_measurement_facts() -> None:
+    m2_runs = [
+        {
+            "claim": {"cell_id": "M2", "replicate": replicate},
+            "reduced": {
+                "valid": True,
+                "status": "SUCCESS",
+                "full_workload_complete": True,
+                "correctness_ok": True,
+                "forward_peak_bytes": 300 * 1024 * 1024,
+                "token_metrics": {
+                    "token_counts": [5] * 31 + [150],
+                },
+            },
+        }
+        for replicate in (1, 2, 3)
+    ]
+    assert _m3_opening_supported(m2_runs)
+    assert _m4_opening_supported(m2_runs)
+
+    for item in m2_runs:
+        item["reduced"]["forward_peak_bytes"] = 200 * 1024 * 1024
+    assert not _m3_opening_supported(m2_runs)
