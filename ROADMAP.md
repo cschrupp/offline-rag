@@ -42,8 +42,10 @@ and supporting history.
   with expected vectors and lower measured encode peak.
 - [x] Implement the bounded CUDA embedding corrective and verify the actual
   Well Logging `SOURCE_ADD`, publication, retrieval citations, and readiness.
-- [ ] **CURRENT —** independent review and Human disposition of this production
-  corrective. No formal M0–M5 qualification is claimed.
+- [x] Independent review disposition received: **ACCEPT** for candidate
+  `3d7718fc8ba150fe95d22afe1b0d721438ea3698`.
+- [ ] **CURRENT —** Human acceptance and promotion decision for the accepted
+  production corrective. No formal M0–M5 qualification is claimed.
 - [ ] Remaining formal M0–M5 qualification is not a beta delivery prerequisite;
   run it only if a specific product decision requires it.
 

@@ -128,3 +128,12 @@ Changed paths in this candidate:
 The implementation is ready for independent review. The focused validation and
 the bounded real-workload check are complete. No promotion or CPU fallback is
 authorized by this handoff.
+
+## Subsequent independent review disposition
+
+The attached independent-review disposition dated 2026-10-29 records
+`ACCEPT` for technical candidate
+`3d7718fc8ba150fe95d22afe1b0d721438ea3698`, covering the implementation,
+OOM-recovery compatibility, validation, and live Well Logging result described
+above. The report did not assign an IR identifier. Human acceptance and
+promotion remain separate gates and are pending.
