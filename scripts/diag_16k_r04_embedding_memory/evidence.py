@@ -196,6 +196,27 @@ def reduce_cell_evidence(
     )
     load_stage = stage_by_name.get(load_stage_name)
     load_phase_complete = bool(load_stage and load_stage.get("status") == "observed")
+    before_encode_stage = stage_by_name.get("before_encode")
+    encode_phase_reached = bool(
+        before_encode_stage and before_encode_stage.get("status") == "observed"
+    )
+    forward_phase_complete = bool(
+        stage_by_name.get("after_encode_success", {}).get("status") == "observed"
+    )
+    forward_base_allocated = (
+        before_encode_stage.get("allocated_bytes") if encode_phase_reached else None
+    )
+    forward_peak_allocated = (
+        stage_by_name.get("after_encode_success", {}).get("peak_allocated_bytes")
+        if forward_phase_complete
+        else None
+    )
+    forward_incremental_allocated = (
+        max(0, forward_peak_allocated - forward_base_allocated)
+        if isinstance(forward_peak_allocated, int)
+        and isinstance(forward_base_allocated, int)
+        else None
+    )
     load_device_peak = None
     if load_stage is not None:
         load_end = load_stage.get("monotonic_seconds") if load_stage else None
@@ -218,11 +239,36 @@ def reduce_cell_evidence(
 
     vector_facts = _vector_facts(payload)
     encode_result = payload.get("encode_result", {})
-    success = payload.get("status") == "SUCCESS"
-    oom_type = str((payload.get("exception") or {}).get("type", "")).lower()
-    oom_observed = "outofmemory" in oom_type or "cudamemoryexhausted" in oom_type
-    result_status = (
-        "SUCCESS" if success else "OOM" if oom_observed else "NON_OOM_FAILURE"
+    failure_class = payload.get("failure_classification")
+    exception = payload.get("exception")
+    status = payload.get("status")
+    encode_status = encode_result.get("status")
+    failure_classification_valid = (
+        failure_class == "NONE"
+        and status == "SUCCESS"
+        and encode_status == "SUCCESS"
+        and exception is None
+    ) or (
+        failure_class in {"CUDA_OOM", "NON_OOM_FAILURE", "DEADLINE"}
+        and status == "FAILED"
+        and encode_status == "FAILED"
+        and isinstance(exception, dict)
+    )
+    if failure_classification_valid:
+        result_status = {
+            "NONE": "SUCCESS",
+            "CUDA_OOM": "OOM",
+            "NON_OOM_FAILURE": "NON_OOM_FAILURE",
+            "DEADLINE": "DEADLINE",
+        }[failure_class]
+    else:
+        result_status = "NON_OOM_FAILURE"
+    success = result_status == "SUCCESS"
+    forward_oom_observed = bool(
+        result_status == "OOM"
+        and load_phase_complete
+        and encode_phase_reached
+        and not forward_phase_complete
     )
     correctness_ok = (
         vector_facts["correct"]
@@ -263,6 +309,7 @@ def reduce_cell_evidence(
         identity_valid
         and versions_valid
         and device_valid
+        and failure_classification_valid
         and result_status in {"SUCCESS", "OOM"}
         and resource_evidence_valid
         and completion_evidence_valid
@@ -294,6 +341,11 @@ def reduce_cell_evidence(
         "status": result_status,
         "target_phase_complete": target_phase_complete,
         "load_phase_complete": load_phase_complete,
+        "encode_phase_reached": encode_phase_reached,
+        "forward_phase_complete": forward_phase_complete,
+        "forward_oom_observed": forward_oom_observed,
+        "forward_base_allocated_bytes": forward_base_allocated,
+        "forward_incremental_allocated_bytes": forward_incremental_allocated,
         "full_workload_complete": full_workload_complete,
         "correctness_ok": correctness_ok,
         "cache_config_known": cache_config_known,
@@ -324,6 +376,7 @@ def reduce_cell_evidence(
             "resource_evidence": resource_evidence_valid,
             "completion_evidence": completion_evidence_valid,
             "result_status": result_status,
+            "failure_classification": failure_classification_valid,
         },
         "status": result_status,
         "target_stage": target_stage_name,
@@ -334,9 +387,9 @@ def reduce_cell_evidence(
         "initial_device_free_bytes": initial_free,
         "external_device_used_bytes": external_used,
         "target_peak_bytes": target_peak,
-        "forward_peak_bytes": stage_by_name.get("after_encode_success", {}).get(
-            "peak_allocated_bytes"
-        ),
+        "forward_peak_bytes": forward_peak_allocated,
+        "forward_base_allocated_bytes": forward_base_allocated,
+        "forward_incremental_allocated_bytes": forward_incremental_allocated,
         "load_device_peak_bytes": load_device_peak,
         "load_peak_allocated_bytes": load_peak_allocated,
         "load_peak_reserved_bytes": load_peak_reserved,

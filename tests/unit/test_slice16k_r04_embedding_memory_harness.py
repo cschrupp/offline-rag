@@ -11,8 +11,10 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from scripts.diag_16k_r04_embedding_memory.campaign import (
+    _active_condition,
     _m3_opening_supported,
     _m4_opening_supported,
+    _qualified_treatments,
     authorize_cell_start,
 )
 from scripts.diag_16k_r04_embedding_memory.cell_executor import (
@@ -30,6 +32,7 @@ from scripts.diag_16k_r04_embedding_memory.contract import (
     evaluate_parity,
     evaluate_production_candidate,
     greedy_token_partitions,
+    safe_exception_summary,
 )
 from scripts.diag_16k_r04_embedding_memory.evidence import (
     reduce_authorized_cell_evidence,
@@ -42,7 +45,10 @@ from scripts.diag_16k_r04_embedding_memory.runtime import (
     CacheActivationObserver,
     SDPABackendObserver,
     claim_single_cell_process,
+    complete_cell_process_claim,
     effective_cell_deadline_seconds,
+    failure_classification,
+    is_cuda_oom,
     safe_cell_evidence,
     verify_execution_authority,
 )
@@ -153,8 +159,12 @@ def test_effective_deadline_caps_final_cell_by_wall_and_cumulative_remainder() -
 
 def test_runtime_module_import_remains_lazy_for_torch_and_transformers() -> None:
     script = (
-        "import sys; "
-        "import scripts.diag_16k_r04_embedding_memory.runtime; "
+        "import importlib, sys; "
+        "modules = ("
+        "'campaign', 'cell_executor', 'contract', 'cpu_reference', 'evidence', "
+        "'freeze_workload', 'runtime', 'analyze'); "
+        "[importlib.import_module('scripts.diag_16k_r04_embedding_memory.' + name) "
+        "for name in modules]; "
         "assert 'torch' not in sys.modules; "
         "assert 'transformers' not in sys.modules; "
         "assert 'sentence_transformers' not in sys.modules"
@@ -302,6 +312,7 @@ def test_cell_evidence_serializer_rejects_private_text_and_unknown_fields() -> N
         "schema": "cell-v1",
         "cell_id": "M0",
         "status": "SUCCESS",
+        "failure_classification": "NONE",
     }
     assert safe_cell_evidence(safe, private_texts=["sensitive phrase"]) is safe
     with pytest.raises(ValueError, match="private text"):
@@ -868,6 +879,20 @@ def _write_valid_raw_cell(
                 "monotonic_seconds": 1.0,
             },
             {
+                "stage": "after_post_load_half",
+                "status": "observed",
+                "allocated_bytes": 1_000_000_000,
+                "peak_allocated_bytes": 1_200_000_000,
+                "peak_reserved_bytes": 1_300_000_000,
+                "monotonic_seconds": 1.5,
+            },
+            {
+                "stage": "before_encode",
+                "status": "observed",
+                "allocated_bytes": 1_000_000_000,
+                "monotonic_seconds": 2.0,
+            },
+            {
                 "stage": "after_encode_success",
                 "status": "observed",
                 "peak_allocated_bytes": 2_000_000_000,
@@ -897,10 +922,190 @@ def _write_valid_raw_cell(
         },
         "model_facts": {"config_states": [{"use_cache": True}]},
         "status": "SUCCESS",
+        "failure_classification": "NONE",
     }
     evidence_path = tmp_path / f"cell-{cell_id}-{replicate}.json"
     evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
     return evidence_path, spec_path, authority, workload
+
+
+def test_accelerator_error_cuda_oom_survives_redaction_and_claim_finalization(
+    tmp_path: Path,
+) -> None:
+    import hashlib
+
+    class AcceleratorError(RuntimeError):
+        pass
+
+    private_exception_text = "CUDA error: out of memory while embedding private text"
+    failure = AcceleratorError(private_exception_text)
+    assert is_cuda_oom(failure)
+    assert failure_classification(failure) == "CUDA_OOM"
+
+    evidence_path, spec_path, authority, workload = _write_valid_raw_cell(tmp_path)
+    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    evidence.update(
+        {
+            "status": "FAILED",
+            "failure_classification": failure_classification(failure),
+            "exception": safe_exception_summary(failure),
+            "oom_diagnostics": {
+                "snapshot_written": False,
+                "oom_event_observed": False,
+                "classification": {"status": "INCONCLUSIVE"},
+            },
+        }
+    )
+    evidence["stage_snapshots"] = [
+        stage
+        for stage in evidence["stage_snapshots"]
+        if stage["stage"] != "after_encode_success"
+    ]
+    evidence["encode_result"]["status"] = "FAILED"
+    safe = safe_cell_evidence(evidence)
+    serialized_evidence = json.dumps(safe)
+    assert private_exception_text not in serialized_evidence
+    assert safe["failure_classification"] == "CUDA_OOM"
+    assert safe["exception"]["message"] == "REDACTED"
+    evidence_path.write_text(json.dumps(safe, sort_keys=True) + "\n", encoding="utf-8")
+
+    reduced = reduce_authorized_cell_evidence(
+        evidence_path=evidence_path,
+        cell_spec_path=spec_path,
+        authority=authority,
+        workload=workload,
+    )
+    assert reduced["status"] == "OOM"
+    assert reduced["gate_facts"]["forward_oom_observed"] is True
+    assert reduced["valid"] is False
+    assert reduced["validity_reasons"]["resource_evidence"] is False
+
+    spec_bytes = spec_path.read_bytes()
+    spec_digest = hashlib.sha256(spec_bytes).hexdigest()
+    authority["cell_spec_sha256"]["M0"]["1"] = spec_digest
+    authority_path = tmp_path / "authority.json"
+    authority_path.write_text(json.dumps(authority), encoding="utf-8")
+    workload_path = tmp_path / "workload.json"
+    workload_path.write_text(json.dumps(workload), encoding="utf-8")
+    claim = claim_single_cell_process(
+        authority_path=authority_path,
+        campaign_id="synthetic-accelerator-oom",
+        cell_id="M0",
+        replicate=1,
+        spec_sha256=spec_digest,
+        spec_path=spec_path,
+        workload_path=workload_path,
+        authority=authority,
+        workload=workload,
+        cell_spec=json.loads(spec_bytes),
+        implementation_subject="candidate",
+    )
+    complete_cell_process_claim(
+        claim,
+        duration_seconds=0.01,
+        result_status="OOM",
+        evidence_path=evidence_path,
+    )
+    finalized = json.loads(claim.path.read_text(encoding="utf-8"))
+    assert finalized["status"] == "COMPLETED"
+    assert finalized["result_status"] == "OOM"
+    assert finalized["evidence_validity"] is False
+
+
+def test_raw_reducer_marks_forward_oom_only_after_load_and_encode_entry(
+    tmp_path: Path,
+) -> None:
+    evidence_path, spec_path, authority, workload = _write_valid_raw_cell(tmp_path)
+    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    evidence["status"] = "FAILED"
+    evidence["failure_classification"] = "CUDA_OOM"
+    evidence["exception"] = {"type": "AcceleratorError", "message": "REDACTED"}
+    evidence["encode_result"]["status"] = "FAILED"
+    evidence["stage_snapshots"] = [
+        stage
+        for stage in evidence["stage_snapshots"]
+        if stage["stage"] != "after_encode_success"
+    ]
+    evidence["oom_diagnostics"] = {
+        "snapshot_written": True,
+        "oom_event_observed": True,
+        "classification": {"status": "INCONCLUSIVE"},
+    }
+    evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+    reduced_forward_oom = reduce_authorized_cell_evidence(
+        evidence_path=evidence_path,
+        cell_spec_path=spec_path,
+        authority=authority,
+        workload=workload,
+    )
+    assert reduced_forward_oom["status"] == "OOM"
+    assert reduced_forward_oom["valid"] is True
+    assert reduced_forward_oom["gate_facts"]["forward_oom_observed"] is True
+
+    evidence["stage_snapshots"] = [
+        stage
+        for stage in evidence["stage_snapshots"]
+        if stage["stage"] != "before_encode"
+    ]
+    evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+    reduced_before_encode = reduce_authorized_cell_evidence(
+        evidence_path=evidence_path,
+        cell_spec_path=spec_path,
+        authority=authority,
+        workload=workload,
+    )
+    assert reduced_before_encode["status"] == "OOM"
+    assert reduced_before_encode["gate_facts"]["forward_oom_observed"] is False
+
+
+def test_non_oom_failure_evidence_stops_campaign_progression(tmp_path: Path) -> None:
+    import hashlib
+
+    from scripts.diag_16k_r04_embedding_memory.campaign import _load_completed_claims
+
+    evidence_path, spec_path, authority, workload = _write_valid_raw_cell(tmp_path)
+    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    evidence["status"] = "FAILED"
+    evidence["failure_classification"] = "NON_OOM_FAILURE"
+    evidence["exception"] = {"type": "RuntimeError", "message": "REDACTED"}
+    evidence["encode_result"]["status"] = "FAILED"
+    evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+    reduced = reduce_authorized_cell_evidence(
+        evidence_path=evidence_path,
+        cell_spec_path=spec_path,
+        authority=authority,
+        workload=workload,
+    )
+    assert reduced["status"] == "NON_OOM_FAILURE"
+    assert reduced["valid"] is False
+
+    claims_dir = tmp_path / "claims"
+    claims_dir.mkdir()
+    claim = {
+        "status": "COMPLETED",
+        "cell_id": "M0",
+        "replicate": 1,
+        "implementation_subject": "candidate",
+        "workload_sha256": workload["workload_sha256"],
+        "evidence_path": str(evidence_path),
+        "evidence_sha256": hashlib.sha256(evidence_path.read_bytes()).hexdigest(),
+        "evidence_validity": False,
+    }
+    (claims_dir / "M0-replicate-1.json").write_text(json.dumps(claim), encoding="utf-8")
+    with pytest.raises(PermissionError, match="invalid prior evidence stops"):
+        _load_completed_claims(
+            claims_dir=claims_dir,
+            authority=authority,
+            workload=workload,
+            implementation_subject="candidate",
+        )
+
+
+def _mark_m0_cache_unactivated(rows: list[dict[str, object]]) -> None:
+    for row in rows:
+        facts = row["reduced"]["gate_facts"]
+        facts["cache_config_enabled"] = False
+        facts["cache_activation_witness"] = False
 
 
 def test_raw_cell_reducer_binds_authority_and_derives_cache_witness(
@@ -976,26 +1181,500 @@ def test_pair_evaluator_rejects_runtime_or_device_identity_mismatch() -> None:
     assert result["reason"] == "campaign_identity_mismatch"
 
 
-def test_m3_and_m4_openings_are_derived_from_prior_raw_measurement_facts() -> None:
-    m2_runs = [
-        {
-            "claim": {"cell_id": "M2", "replicate": replicate},
-            "reduced": {
-                "valid": True,
-                "status": "SUCCESS",
-                "full_workload_complete": True,
-                "correctness_ok": True,
-                "forward_peak_bytes": 300 * 1024 * 1024,
-                "token_metrics": {
-                    "token_counts": [5] * 31 + [150],
-                },
+def _synthetic_campaign_condition(
+    cell_id: str,
+    controls: dict[str, object],
+    *,
+    target_peak_bytes: int = 2_000_000_000,
+    load_peak_bytes: int = 1_500_000_000,
+    forward_peaks: list[int | None] | None = None,
+    forward_bases: list[int | None] | None = None,
+    statuses: list[str] | None = None,
+    forward_ooms: list[bool] | None = None,
+    token_counts: list[int] | None = None,
+    valid: bool = True,
+) -> list[dict[str, object]]:
+    unit = [1.0] + [0.0] * 1023
+    vectors = {"documents": [unit] * 32, "queries": [unit] * 16}
+    forward_peaks = forward_peaks or [4_000_000_000] * 3
+    forward_bases = forward_bases or [1_000_000_000] * 3
+    statuses = statuses or ["SUCCESS"] * 3
+    forward_ooms = forward_ooms or [False] * 3
+    token_counts = token_counts or [10] * 32
+    rows: list[dict[str, object]] = []
+    for replicate in (1, 2, 3):
+        run_controls = {
+            "dtype_mode": "post_load_half",
+            "disable_cache": False,
+            "attention_backend": None,
+            "batch_strategy": "fixed32",
+            "profiler_characterization": False,
+            **controls,
+        }
+        is_m1 = cell_id == "M1"
+        reduced = {
+            "cell_id": cell_id,
+            "replicate": replicate,
+            "valid": valid,
+            "status": statuses[replicate - 1],
+            "target_phase_complete": statuses[replicate - 1] == "SUCCESS",
+            "load_phase_complete": True,
+            "encode_phase_reached": True,
+            "forward_phase_complete": statuses[replicate - 1] == "SUCCESS",
+            "full_workload_complete": statuses[replicate - 1] == "SUCCESS",
+            "correctness_ok": statuses[replicate - 1] == "SUCCESS",
+            "forward_peak_bytes": forward_peaks[replicate - 1],
+            "forward_base_allocated_bytes": forward_bases[replicate - 1],
+            "forward_incremental_allocated_bytes": (
+                max(0, forward_peaks[replicate - 1] - forward_bases[replicate - 1])
+                if forward_peaks[replicate - 1] is not None
+                and forward_bases[replicate - 1] is not None
+                else None
+            ),
+            "target_peak_bytes": target_peak_bytes,
+            "load_device_peak_bytes": load_peak_bytes,
+            "load_peak_allocated_bytes": 1_000_000_000,
+            "load_peak_reserved_bytes": 1_100_000_000,
+            "initial_device_free_bytes": 6_000_000_000,
+            "external_device_used_bytes": 100_000_000,
+            "encode_wall_ms": 100.0,
+            "implementation_subject": "candidate",
+            "workload_sha256": "w" * 64,
+            "model_revision": EXPECTED_MODEL_REVISION,
+            "runtime_versions": {"torch": "synthetic"},
+            "device_identity": {"device_name": "synthetic-gpu"},
+            "effective_controls": run_controls,
+            "vectors": vectors if statuses[replicate - 1] == "SUCCESS" else None,
+            "token_metrics": {"token_counts": list(token_counts)},
+            "gate_facts": {
+                "valid": valid,
+                "status": statuses[replicate - 1],
+                "target_phase_complete": statuses[replicate - 1] == "SUCCESS",
+                "load_phase_complete": True,
+                "encode_phase_reached": True,
+                "forward_phase_complete": statuses[replicate - 1] == "SUCCESS",
+                "forward_oom_observed": forward_ooms[replicate - 1],
+                "forward_base_allocated_bytes": forward_bases[replicate - 1],
+                "forward_incremental_allocated_bytes": (
+                    max(0, forward_peaks[replicate - 1] - forward_bases[replicate - 1])
+                    if forward_peaks[replicate - 1] is not None
+                    and forward_bases[replicate - 1] is not None
+                    else None
+                ),
+                "full_workload_complete": statuses[replicate - 1] == "SUCCESS",
+                "correctness_ok": statuses[replicate - 1] == "SUCCESS",
+                "cache_config_known": True,
+                "cache_config_enabled": not (
+                    is_m1 and bool(run_controls["disable_cache"])
+                ),
+                "cache_activation_witness": not (
+                    is_m1 and bool(run_controls["disable_cache"])
+                ),
+                "effective_controls": run_controls,
+                "token_metrics": {"token_counts": list(token_counts)},
             },
         }
-        for replicate in (1, 2, 3)
-    ]
-    assert _m3_opening_supported(m2_runs)
-    assert _m4_opening_supported(m2_runs)
+        rows.append(
+            {
+                "claim": {"cell_id": cell_id, "replicate": replicate},
+                "reduced": reduced,
+            }
+        )
+    return rows
 
-    for item in m2_runs:
-        item["reduced"]["forward_peak_bytes"] = 200 * 1024 * 1024
-    assert not _m3_opening_supported(m2_runs)
+
+def test_m3_successful_forward_applicability_uses_incremental_active_state() -> None:
+    mib = 1024 * 1024
+    m0_controls = {
+        "dtype_mode": "post_load_half",
+        "disable_cache": False,
+        "attention_backend": None,
+        "batch_strategy": "fixed32",
+    }
+    above = _synthetic_campaign_condition(
+        "M0",
+        m0_controls,
+        forward_peaks=[4_000 * mib] * 3,
+        forward_bases=[3_700 * mib] * 3,
+    )
+    assert _m3_opening_supported(above)
+
+    below = _synthetic_campaign_condition(
+        "M0",
+        m0_controls,
+        forward_peaks=[4_000 * mib] * 3,
+        forward_bases=[3_750 * mib] * 3,
+    )
+    assert not _m3_opening_supported(below)
+
+    one_high_only = _synthetic_campaign_condition(
+        "M0",
+        m0_controls,
+        forward_peaks=[4_000 * mib] * 3,
+        forward_bases=[3_700 * mib, 3_800 * mib, 3_800 * mib],
+    )
+    assert not _m3_opening_supported(one_high_only)
+
+    two_of_three = _synthetic_campaign_condition(
+        "M0",
+        m0_controls,
+        forward_peaks=[4_000 * mib] * 3,
+        forward_bases=[3_700 * mib, 3_700 * mib, 3_800 * mib],
+    )
+    assert _m3_opening_supported(two_of_three)
+
+
+def test_m3_oom_applicability_requires_two_forward_ooms_after_encode_entry() -> None:
+    controls = {
+        "dtype_mode": "post_load_half",
+        "disable_cache": False,
+        "attention_backend": None,
+        "batch_strategy": "fixed32",
+    }
+    two_forward_ooms = _synthetic_campaign_condition(
+        "M0",
+        controls,
+        statuses=["OOM", "OOM", "SUCCESS"],
+        forward_ooms=[True, True, False],
+        forward_peaks=[None, None, 4_000_000_000],
+        forward_bases=[None, None, 1_000_000_000],
+    )
+    assert _m3_opening_supported(two_forward_ooms)
+
+    one_forward_oom = _synthetic_campaign_condition(
+        "M0",
+        controls,
+        statuses=["OOM", "SUCCESS", "SUCCESS"],
+        forward_ooms=[True, False, False],
+        forward_peaks=[None, 4_000_000_000, 4_000_000_000],
+        forward_bases=[None, 1_000_000_000, 1_000_000_000],
+    )
+    assert not _m3_opening_supported(one_forward_oom)
+
+    oom_before_encode = _synthetic_campaign_condition(
+        "M0",
+        controls,
+        statuses=["OOM", "SUCCESS", "SUCCESS"],
+        forward_ooms=[False, False, False],
+        forward_peaks=[None, 4_000_000_000, 4_000_000_000],
+        forward_bases=[None, 1_000_000_000, 1_000_000_000],
+    )
+    assert not _m3_opening_supported(oom_before_encode)
+
+    non_oom_failure = _synthetic_campaign_condition(
+        "M0",
+        controls,
+        statuses=["NON_OOM_FAILURE", "SUCCESS", "SUCCESS"],
+        valid=False,
+    )
+    assert not _m3_opening_supported(non_oom_failure)
+
+
+def test_m3_uses_active_controls_instead_of_unqualified_m2_measurements() -> None:
+    mib = 1024 * 1024
+    m0_controls = {
+        "dtype_mode": "post_load_half",
+        "disable_cache": False,
+        "attention_backend": None,
+        "batch_strategy": "fixed32",
+    }
+    m0 = _synthetic_campaign_condition(
+        "M0",
+        m0_controls,
+        target_peak_bytes=2_000 * mib,
+        load_peak_bytes=1_500 * mib,
+        forward_peaks=[4_000 * mib] * 3,
+        forward_bases=[3_900 * mib] * 3,
+    )
+    m2 = _synthetic_campaign_condition(
+        "M2",
+        {**m0_controls, "dtype_mode": "direct_fp16"},
+        target_peak_bytes=2_000 * mib,
+        load_peak_bytes=1_500 * mib,
+        forward_peaks=[4_000 * mib] * 3,
+        forward_bases=[3_000 * mib] * 3,
+    )
+    active = _active_condition([*m0, *m2], through="M2")
+    assert active is not None
+    active_cell, active_controls, active_runs = active
+    assert active_cell == "M0"
+    assert active_controls == m0_controls
+    assert active_runs == m0
+    assert not _m3_opening_supported([*m0, *m2])
+
+
+def test_active_controls_advance_only_for_supported_qualified_treatments() -> None:
+    mib = 1024 * 1024
+    m0_controls = {
+        "dtype_mode": "post_load_half",
+        "disable_cache": False,
+        "attention_backend": None,
+        "batch_strategy": "fixed32",
+    }
+    m0 = _synthetic_campaign_condition(
+        "M0",
+        m0_controls,
+        target_peak_bytes=2_000 * mib,
+        load_peak_bytes=2_000 * mib,
+    )
+    m1_controls = {**m0_controls, "disable_cache": True}
+    m1 = _synthetic_campaign_condition(
+        "M1",
+        m1_controls,
+        target_peak_bytes=1_400 * mib,
+        load_peak_bytes=2_000 * mib,
+    )
+    active_after_m1 = _active_condition([*m0, *m1], through="M1")
+    assert active_after_m1 is not None
+    assert active_after_m1[0] == "M1"
+    assert active_after_m1[1] == m1_controls
+
+    rejected_m1 = _synthetic_campaign_condition(
+        "M1",
+        m1_controls,
+        target_peak_bytes=2_000 * mib,
+        load_peak_bytes=2_000 * mib,
+    )
+    active_after_rejected_m1 = _active_condition([*m0, *rejected_m1], through="M1")
+    assert active_after_rejected_m1 is not None
+    assert active_after_rejected_m1[0] == "M0"
+    assert active_after_rejected_m1[1] == m0_controls
+
+    m2_controls = {**m1_controls, "dtype_mode": "direct_fp16"}
+    m2 = _synthetic_campaign_condition(
+        "M2",
+        m2_controls,
+        target_peak_bytes=1_400 * mib,
+        load_peak_bytes=1_400 * mib,
+    )
+    active_after_m2 = _active_condition([*m0, *m1, *m2], through="M2")
+    assert active_after_m2 is not None
+    assert active_after_m2[0] == "M2"
+    assert active_after_m2[1] == m2_controls
+
+    rejected_m2 = _synthetic_campaign_condition(
+        "M2",
+        m2_controls,
+        target_peak_bytes=1_400 * mib,
+        load_peak_bytes=2_000 * mib,
+    )
+    active_after_rejected_m2 = _active_condition([*m0, *m1, *rejected_m2], through="M2")
+    assert active_after_rejected_m2 is not None
+    assert active_after_rejected_m2[0] == "M1"
+    assert active_after_rejected_m2[1] == m1_controls
+
+
+def test_multiple_qualified_m3_alternatives_fail_closed() -> None:
+    mib = 1024 * 1024
+    m0_controls = {
+        "dtype_mode": "post_load_half",
+        "disable_cache": False,
+        "attention_backend": None,
+        "batch_strategy": "fixed32",
+    }
+    m0 = _synthetic_campaign_condition(
+        "M0", m0_controls, target_peak_bytes=2_000 * mib, load_peak_bytes=2_000 * mib
+    )
+    m1_controls = {**m0_controls, "disable_cache": True}
+    m1 = _synthetic_campaign_condition(
+        "M1", m1_controls, target_peak_bytes=1_500 * mib, load_peak_bytes=2_000 * mib
+    )
+    m2_controls = {**m1_controls, "dtype_mode": "direct_fp16"}
+    m2 = _synthetic_campaign_condition(
+        "M2", m2_controls, target_peak_bytes=1_400 * mib, load_peak_bytes=1_500 * mib
+    )
+    m3_a = _synthetic_campaign_condition(
+        "M3_A",
+        {**m2_controls, "attention_backend": "SDPA_A"},
+        target_peak_bytes=1_000 * mib,
+    )
+    m3_b = _synthetic_campaign_condition(
+        "M3_B",
+        {**m2_controls, "attention_backend": "SDPA_B"},
+        target_peak_bytes=1_000 * mib,
+    )
+    with pytest.raises(PermissionError, match="multiple qualified M3 alternatives"):
+        _qualified_treatments([*m0, *m1, *m2, *m3_a, *m3_b], through="M3")
+
+
+def test_m5_requires_a_qualified_candidate_and_resolved_applicable_stages(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from scripts.diag_16k_r04_embedding_memory import campaign
+
+    mib = 1024 * 1024
+    m0_controls = {
+        "dtype_mode": "post_load_half",
+        "disable_cache": False,
+        "attention_backend": None,
+        "batch_strategy": "fixed32",
+    }
+    m0 = _synthetic_campaign_condition(
+        "M0",
+        m0_controls,
+        target_peak_bytes=2_000 * mib,
+        load_peak_bytes=2_000 * mib,
+        forward_peaks=[4_000 * mib] * 3,
+        forward_bases=[3_900 * mib] * 3,
+    )
+    m1_controls = {**m0_controls, "disable_cache": True}
+    m1 = _synthetic_campaign_condition(
+        "M1",
+        m1_controls,
+        target_peak_bytes=1_400 * mib,
+        load_peak_bytes=2_000 * mib,
+        forward_peaks=[4_000 * mib] * 3,
+        forward_bases=[3_900 * mib] * 3,
+    )
+    m2_controls = {**m1_controls, "dtype_mode": "direct_fp16"}
+    m2 = _synthetic_campaign_condition(
+        "M2",
+        m2_controls,
+        target_peak_bytes=1_400 * mib,
+        load_peak_bytes=2_000 * mib,
+        forward_peaks=[4_000 * mib] * 3,
+        forward_bases=[3_900 * mib] * 3,
+    )
+    completed = [*m0, *m1, *m2]
+    monkeypatch.setattr(campaign, "_load_completed_claims", lambda **_kwargs: completed)
+    authority = {"cell_spec_sha256": {}}
+    workload = {"workload_sha256": "w" * 64}
+    exact_m5 = {
+        "cell_id": "M5",
+        "replicate": 1,
+        "selected_candidate_settings": m1_controls,
+    }
+    authorize_cell_start(
+        claims_dir=Path("/unused"),
+        requested_replicate=1,
+        requested_spec=exact_m5,
+        authority=authority,
+        workload=workload,
+        implementation_subject="candidate",
+    )
+    with pytest.raises(PermissionError, match="final evidence-derived ACTIVE_CONTROLS"):
+        authorize_cell_start(
+            claims_dir=Path("/unused"),
+            requested_replicate=1,
+            requested_spec={
+                **exact_m5,
+                "selected_candidate_settings": m0_controls,
+            },
+            authority=authority,
+            workload=workload,
+            implementation_subject="candidate",
+        )
+
+    no_qualified_m0 = _synthetic_campaign_condition(
+        "M0",
+        m0_controls,
+        forward_peaks=[4_000 * mib] * 3,
+        forward_bases=[3_900 * mib] * 3,
+    )
+    _mark_m0_cache_unactivated(no_qualified_m0)
+    no_qualified_m2 = _synthetic_campaign_condition(
+        "M2",
+        {**m0_controls, "dtype_mode": "direct_fp16"},
+        target_peak_bytes=2_000 * mib,
+        load_peak_bytes=2_000 * mib,
+        forward_peaks=[4_000 * mib] * 3,
+        forward_bases=[3_900 * mib] * 3,
+    )
+    completed[:] = [*no_qualified_m0, *no_qualified_m2]
+    with pytest.raises(PermissionError, match="without a qualified treatment"):
+        authorize_cell_start(
+            claims_dir=Path("/unused"),
+            requested_replicate=1,
+            requested_spec={
+                "cell_id": "M5",
+                "replicate": 1,
+                "selected_candidate_settings": m0_controls,
+            },
+            authority=authority,
+            workload=workload,
+            implementation_subject="candidate",
+        )
+
+    active_oom_m0 = _synthetic_campaign_condition(
+        "M0",
+        m0_controls,
+        statuses=["OOM", "OOM", "SUCCESS"],
+        forward_ooms=[True, True, False],
+        forward_peaks=[None, None, 4_000 * mib],
+        forward_bases=[None, None, 3_000 * mib],
+    )
+    _mark_m0_cache_unactivated(active_oom_m0)
+    completed[:] = [*active_oom_m0, *no_qualified_m2]
+    with pytest.raises(PermissionError, match="opened M3 path to be resolved"):
+        authorize_cell_start(
+            claims_dir=Path("/unused"),
+            requested_replicate=1,
+            requested_spec={
+                "cell_id": "M5",
+                "replicate": 1,
+                "selected_candidate_settings": m0_controls,
+            },
+            authority=authority,
+            workload=workload,
+            implementation_subject="candidate",
+        )
+
+    m4_applicable_m0 = _synthetic_campaign_condition(
+        "M0",
+        m0_controls,
+        token_counts=[10] * 31 + [100],
+        forward_peaks=[4_000 * mib] * 3,
+        forward_bases=[3_900 * mib] * 3,
+    )
+    _mark_m0_cache_unactivated(m4_applicable_m0)
+    completed[:] = [*m4_applicable_m0, *no_qualified_m2]
+    with pytest.raises(PermissionError, match="opened M4 path to be resolved"):
+        authorize_cell_start(
+            claims_dir=Path("/unused"),
+            requested_replicate=1,
+            requested_spec={
+                "cell_id": "M5",
+                "replicate": 1,
+                "selected_candidate_settings": m0_controls,
+            },
+            authority=authority,
+            workload=workload,
+            implementation_subject="candidate",
+        )
+
+
+def test_m4_uses_frozen_token_padding_savings_proxy() -> None:
+    controls = {
+        "dtype_mode": "post_load_half",
+        "disable_cache": False,
+        "attention_backend": None,
+        "batch_strategy": "fixed32",
+    }
+    substantial_shape = [10] * 31 + [100]
+    opens = _synthetic_campaign_condition(
+        "M0", controls, token_counts=substantial_shape
+    )
+    assert _m4_opening_supported(opens)
+    assert "mechanism" not in opens[0]["reduced"]
+
+    mismatched = _synthetic_campaign_condition(
+        "M0", controls, token_counts=substantial_shape
+    )
+    mismatched[2]["reduced"]["token_metrics"]["token_counts"][0] = 11
+    mismatched[2]["reduced"]["gate_facts"]["token_metrics"]["token_counts"][0] = 11
+    assert not _m4_opening_supported(mismatched)
+
+    single_partition = _synthetic_campaign_condition(
+        "M0", controls, token_counts=[10] * 32
+    )
+    assert not _m4_opening_supported(single_partition)
+
+    below_five_percent = _synthetic_campaign_condition(
+        "M0", controls, token_counts=[100] * 31 + [101]
+    )
+    assert not _m4_opening_supported(below_five_percent)
+
+    oversized = _synthetic_campaign_condition(
+        "M0", controls, token_counts=[10] * 31 + [1_000]
+    )
+    assert not _m4_opening_supported(oversized)

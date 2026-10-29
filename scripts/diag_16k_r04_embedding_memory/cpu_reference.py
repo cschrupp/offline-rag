@@ -236,6 +236,7 @@ def run_reference(
             },
             "duration_seconds": duration,
             "status": "SUCCESS",
+            "failure_classification": "NONE",
         },
         private_texts=texts,
     )

@@ -10,6 +10,7 @@ from typing import Any
 
 from .contract import (
     MATERIAL_MEMORY_FLOOR_BYTES,
+    MATERIAL_MEMORY_FRACTION,
     evaluate_mechanism_pairs,
     evaluate_parity,
     evaluate_production_candidate,
@@ -89,6 +90,214 @@ def _three_valid_runs(runs: list[dict[str, Any]], *, full_success: bool) -> bool
     return True
 
 
+def _controls_without_profiler(run: dict[str, Any]) -> dict[str, Any]:
+    controls = dict(run["reduced"]["effective_controls"])
+    controls.pop("profiler_characterization", None)
+    return controls
+
+
+def _condition_controls(
+    runs: list[dict[str, Any]], *, cell_id: str
+) -> dict[str, Any] | None:
+    if not runs:
+        return None
+    controls = _controls_without_profiler(runs[0])
+    if any(_controls_without_profiler(run) != controls for run in runs):
+        raise PermissionError(f"{cell_id} replicate controls are inconsistent")
+    return controls
+
+
+def _reference_run(completed: list[dict[str, Any]]) -> dict[str, Any] | None:
+    references = _runs_for(completed, "M0")
+    reference = next(
+        (
+            item["reduced"]
+            for item in references
+            if item["reduced"].get("vectors") is not None
+            and item["reduced"].get("correctness_ok")
+        ),
+        None,
+    )
+    if reference is not None:
+        return reference
+    cpu_runs = _runs_for(completed, "CPU_ONNX_REFERENCE")
+    if len(cpu_runs) == 1 and cpu_runs[0]["reduced"].get("correctness_ok"):
+        return cpu_runs[0]["reduced"]
+    return None
+
+
+def _qualified_candidate(
+    *,
+    cell_id: str,
+    target_peak_key: str,
+    baseline_items: list[dict[str, Any]],
+    treatment_items: list[dict[str, Any]],
+    reference: dict[str, Any] | None,
+) -> tuple[str, dict[str, Any]] | None:
+    if not _three_valid_runs(treatment_items, full_success=True):
+        return None
+    if reference is None:
+        return None
+    baseline_runs = [item["reduced"] for item in baseline_items]
+    treatment_runs = [item["reduced"] for item in treatment_items]
+    if cell_id == "M2":
+        baseline_runs = [
+            {**run, "target_phase_complete": run["load_phase_complete"]}
+            for run in baseline_runs
+        ]
+    mechanism = evaluate_mechanism_pairs(
+        baseline_runs=baseline_runs,
+        treatment_runs=treatment_runs,
+        target_peak_key=target_peak_key,
+    )
+    try:
+        parity_results = [
+            evaluate_parity(
+                reference_documents=reference["vectors"]["documents"],
+                candidate_documents=run["vectors"]["documents"],
+                reference_queries=reference["vectors"]["queries"],
+                candidate_queries=run["vectors"]["queries"],
+            )
+            for run in treatment_runs
+        ]
+    except KeyError, TypeError, ValueError:
+        return None
+    candidate = evaluate_production_candidate(
+        mechanism=mechanism,
+        baseline_runs=baseline_runs,
+        treatment_runs=treatment_runs,
+        parity_results=parity_results,
+        other_peak_keys=(
+            ("load_peak_allocated_bytes", "load_peak_reserved_bytes")
+            if cell_id == "M2"
+            else ()
+        ),
+    )
+    if (
+        mechanism.get("mechanism") != "SUPPORTED"
+        or candidate.get("candidate") != "QUALIFIED"
+    ):
+        return None
+    controls = _controls_without_profiler(treatment_items[0])
+    return cell_id, controls
+
+
+def _qualified_treatments(
+    completed: list[dict[str, Any]], *, through: str = "M4"
+) -> list[tuple[str, dict[str, Any]]]:
+    """Derive cumulative active controls only from supported qualified cells."""
+    stage_order = {"M1": 1, "M2": 2, "M3": 3, "M4": 4}
+    if through not in stage_order.values() and through not in stage_order:
+        raise ValueError("unknown accepted-treatment boundary")
+    limit = stage_order.get(through, through)
+    qualified: list[tuple[str, dict[str, Any]]] = []
+    references = _runs_for(completed, "M0")
+    if not _three_valid_runs(references, full_success=False):
+        return qualified
+    reference = _reference_run(completed)
+
+    if limit >= stage_order["M1"]:
+        m1 = _runs_for(completed, "M1")
+        m1_controls = _condition_controls(m1, cell_id="M1")
+        baseline_controls = _condition_controls(references, cell_id="M0")
+        if (
+            m1_controls is not None
+            and baseline_controls is not None
+            and _three_valid_runs(m1, full_success=True)
+            and all(
+                not run["reduced"]["gate_facts"]["cache_config_enabled"]
+                and not run["reduced"]["gate_facts"]["cache_activation_witness"]
+                for run in m1
+            )
+        ):
+            accepted = _qualified_candidate(
+                cell_id="M1",
+                target_peak_key="target_peak_bytes",
+                baseline_items=references,
+                treatment_items=m1,
+                reference=reference,
+            )
+            if accepted is not None:
+                qualified.append(accepted)
+
+    if limit >= stage_order["M2"]:
+        m2 = _runs_for(completed, "M2")
+        if _three_valid_runs(m2, full_success=True):
+            m2_baseline = _runs_for(completed, "M1") if qualified else references
+            accepted = _qualified_candidate(
+                cell_id="M2",
+                target_peak_key="load_device_peak_bytes",
+                baseline_items=m2_baseline,
+                treatment_items=m2,
+                reference=reference,
+            )
+            if accepted is not None:
+                qualified.append(accepted)
+
+    if limit >= stage_order["M3"]:
+        m3_a = _runs_for(completed, "M3_A")
+        m3_b = _runs_for(completed, "M3_B")
+        if m3_b and not _three_valid_runs(m3_a, full_success=True):
+            raise PermissionError("M3_B cannot precede a completed M3_A condition")
+        pre_m3 = _qualified_treatments(completed, through="M2")
+        m3_baseline_cell = pre_m3[-1][0] if pre_m3 else "M0"
+        m3_baseline = _runs_for(completed, m3_baseline_cell)
+        m3_candidates = [
+            candidate
+            for cell_id, runs in (("M3_A", m3_a), ("M3_B", m3_b))
+            if (
+                candidate := _qualified_candidate(
+                    cell_id=cell_id,
+                    target_peak_key="target_peak_bytes",
+                    baseline_items=m3_baseline,
+                    treatment_items=runs,
+                    reference=reference,
+                )
+            )
+            is not None
+        ]
+        if len(m3_candidates) > 1:
+            raise PermissionError(
+                "multiple qualified M3 alternatives make ACTIVE_CONTROLS ambiguous"
+            )
+        qualified.extend(m3_candidates)
+
+    if limit >= stage_order["M4"]:
+        m4 = _runs_for(completed, "M4")
+        if _three_valid_runs(m4, full_success=True):
+            m4_baseline_cell = qualified[-1][0] if qualified else "M0"
+            accepted = _qualified_candidate(
+                cell_id="M4",
+                target_peak_key="target_peak_bytes",
+                baseline_items=_runs_for(completed, m4_baseline_cell),
+                treatment_items=m4,
+                reference=reference,
+            )
+            if accepted is not None:
+                qualified.append(accepted)
+    return qualified
+
+
+def _active_condition(
+    completed: list[dict[str, Any]], *, through: str
+) -> tuple[str, dict[str, Any], list[dict[str, Any]]] | None:
+    """Return the three runs matching controls accepted through one stage."""
+    baseline = _runs_for(completed, "M0")
+    if not _three_valid_runs(baseline, full_success=False):
+        return None
+    active_cell = "M0"
+    active_controls = _condition_controls(baseline, cell_id="M0")
+    if active_controls is None:
+        return None
+    accepted = _qualified_treatments(completed, through=through)
+    if accepted:
+        active_cell, active_controls = accepted[-1]
+    active_runs = _runs_for(completed, active_cell)
+    if _condition_controls(active_runs, cell_id=active_cell) != active_controls:
+        raise PermissionError("ACTIVE_CONTROLS do not match their raw replicate set")
+    return active_cell, active_controls, active_runs
+
+
 def _cache_state(completed: list[dict[str, Any]]) -> str:
     m0 = _runs_for(completed, "M0")
     if not _three_valid_runs(m0, full_success=False):
@@ -98,168 +307,89 @@ def _cache_state(completed: list[dict[str, Any]]) -> str:
         return "INCONCLUSIVE"
     if not any(fact["cache_config_enabled"] for fact in facts):
         return "DISABLED_BY_BASELINE"
-    if any(fact["cache_activation_witness"] for fact in facts):
-        m1 = _runs_for(completed, "M1")
-        if not _three_valid_runs(m1, full_success=True):
-            return "M1_REQUIRED_OR_FAILED"
-        m1_facts = [item["reduced"]["gate_facts"] for item in m1]
-        if not all(not fact["cache_config_enabled"] for fact in m1_facts):
-            return "M1_FAILED_CACHE_DISABLE"
-        if not all(not fact["cache_activation_witness"] for fact in m1_facts):
-            return "M1_FAILED_CACHE_REMAINS_ACTIVE"
-        if any(
-            cell_id == "M1" for cell_id, _settings in _qualified_treatments(completed)
-        ):
-            return "DISABLED_BY_M1"
-        return "BASELINE_CACHE_RETAINED"
-    return "BASELINE_CACHE_UNACTIVATED"
-
-
-def _qualified_treatments(
-    completed: list[dict[str, Any]],
-) -> list[tuple[str, dict[str, Any]]]:
-    qualified: list[tuple[str, dict[str, Any]]] = []
-    target_cells = {
-        "M1": "target_peak_bytes",
-        "M2": "load_device_peak_bytes",
-        "M3_A": "target_peak_bytes",
-        "M3_B": "target_peak_bytes",
-        "M4": "target_peak_bytes",
-    }
-    references = _runs_for(completed, "M0")
-    if not _three_valid_runs(references, full_success=False):
-        return qualified
-    reference_run = next(
-        (
-            item["reduced"]
-            for item in references
-            if item["reduced"].get("vectors") is not None
-            and item["reduced"].get("correctness_ok")
-        ),
-        None,
-    )
-    if reference_run is None:
-        cpu_runs = _runs_for(completed, "CPU_ONNX_REFERENCE")
-        if len(cpu_runs) == 1 and cpu_runs[0]["reduced"].get("correctness_ok"):
-            reference_run = cpu_runs[0]["reduced"]
-    if reference_run is None:
-        return qualified
-
-    for cell_id, target_peak_key in target_cells.items():
-        treatment_items = _runs_for(completed, cell_id)
-        if not _three_valid_runs(treatment_items, full_success=True):
-            continue
-        prior_accepted = next(
-            (
-                settings
-                for prior_cell, settings in reversed(qualified)
-                if prior_cell != cell_id
-            ),
-            None,
-        )
-        baseline_items = references
-        if cell_id == "M2" and any(
-            prior_cell == "M1" for prior_cell, _settings in qualified
-        ):
-            baseline_items = _runs_for(completed, "M1")
-        elif cell_id in {"M3_A", "M3_B", "M4"} and prior_accepted is not None:
-            prior_cell = next(
-                prior_cell
-                for prior_cell, settings in reversed(qualified)
-                if settings is prior_accepted
-            )
-            baseline_items = _runs_for(completed, prior_cell)
-        baseline_runs = [item["reduced"] for item in baseline_items]
-        treatment_runs = [item["reduced"] for item in treatment_items]
-        if cell_id == "M2":
-            baseline_runs = [
-                {
-                    **run,
-                    "target_phase_complete": run["load_phase_complete"],
-                }
-                for run in baseline_runs
-            ]
-        mechanism = evaluate_mechanism_pairs(
-            baseline_runs=baseline_runs,
-            treatment_runs=treatment_runs,
-            target_peak_key=target_peak_key,
-        )
-        parity_results = []
-        try:
-            for run in treatment_runs:
-                parity_results.append(
-                    evaluate_parity(
-                        reference_documents=reference_run["vectors"]["documents"],
-                        candidate_documents=run["vectors"]["documents"],
-                        reference_queries=reference_run["vectors"]["queries"],
-                        candidate_queries=run["vectors"]["queries"],
-                    )
-                )
-        except KeyError, TypeError, ValueError:
-            continue
-        candidate = evaluate_production_candidate(
-            mechanism=mechanism,
-            baseline_runs=baseline_runs,
-            treatment_runs=treatment_runs,
-            parity_results=parity_results,
-            other_peak_keys=(
-                ("load_peak_allocated_bytes", "load_peak_reserved_bytes")
-                if cell_id == "M2"
-                else ()
-            ),
-        )
-        if candidate.get("candidate") != "QUALIFIED":
-            continue
-        controls = dict(treatment_runs[0]["effective_controls"])
-        controls.pop("profiler_characterization", None)
-        merged = dict(prior_accepted or {})
-        merged.update(controls)
-        qualified.append((cell_id, merged))
-    return qualified
+    if not any(fact["cache_activation_witness"] for fact in facts):
+        return "BASELINE_CACHE_UNACTIVATED"
+    m1 = _runs_for(completed, "M1")
+    if not _three_valid_runs(m1, full_success=False):
+        return "M1_REQUIRED_OR_FAILED"
+    if any(
+        cell_id == "M1" for cell_id, _ in _qualified_treatments(completed, through="M1")
+    ):
+        return "DISABLED_BY_M1"
+    return "BASELINE_CACHE_RETAINED"
 
 
 def _m3_opening_supported(completed: list[dict[str, Any]]) -> bool:
-    """Open attention characterization only when forward memory remains material."""
-    runs = _runs_for(completed, "M2")
-    if not _three_valid_runs(runs, full_success=True):
+    """Apply Amendment 001 to the accepted active-state forward evidence."""
+    active = _active_condition(completed, through="M2")
+    if active is None:
         return False
-    peaks = [item["reduced"].get("forward_peak_bytes") for item in runs]
-    if any(not isinstance(peak, int) for peak in peaks):
+    _active_cell, _controls, runs = active
+    if not _three_valid_runs(runs, full_success=False):
         return False
-    return statistics.median(peaks) >= MATERIAL_MEMORY_FLOOR_BYTES
+    forward_peaks = [run["reduced"].get("forward_peak_bytes") for run in runs]
+    increments = [
+        run["reduced"].get("forward_incremental_allocated_bytes") for run in runs
+    ]
+    if all(
+        isinstance(peak, int)
+        and not isinstance(peak, bool)
+        and isinstance(increment, int)
+        and not isinstance(increment, bool)
+        for peak, increment in zip(forward_peaks, increments, strict=True)
+    ):
+        threshold = max(
+            MATERIAL_MEMORY_FLOOR_BYTES,
+            statistics.median(forward_peaks) * MATERIAL_MEMORY_FRACTION,
+        )
+        successful_forward_trigger = (
+            statistics.median(increments) >= threshold
+            and sum(increment >= threshold for increment in increments) >= 2
+        )
+        if successful_forward_trigger:
+            return True
+    forward_ooms = sum(
+        run["reduced"]["gate_facts"].get("forward_oom_observed") is True for run in runs
+    )
+    return forward_ooms >= 2
 
 
 def _m4_opening_supported(completed: list[dict[str, Any]]) -> bool:
-    """Open token batching only when frozen lengths exceed the fixed-batch budget."""
-    runs = _runs_for(completed, "M2")
-    if not _three_valid_runs(runs, full_success=True):
+    """Apply Amendment 001's token-padding applicability proxy to active state."""
+    active = _active_condition(completed, through="M3")
+    if active is None:
         return False
-    metrics = runs[0]["reduced"].get("token_metrics")
-    counts = metrics.get("token_counts") if isinstance(metrics, dict) else None
-    if not isinstance(counts, list) or len(counts) != 32:
+    _active_cell, _controls, runs = active
+    if not _three_valid_runs(runs, full_success=False):
         return False
+    token_count_lists = [
+        (run["reduced"].get("token_metrics") or {}).get("token_counts") for run in runs
+    ]
     if any(
-        not isinstance(value, int) or isinstance(value, bool) or value <= 0
-        for value in counts
-    ):
-        return False
-    ordered = sorted(counts)
-    p95 = ordered[30]
-    if (
-        len(
-            {
-                tuple(item["reduced"].get("token_metrics", {}).get("token_counts", []))
-                for item in runs
-            }
+        not isinstance(counts, list)
+        or len(counts) != 32
+        or any(
+            not isinstance(count, int) or isinstance(count, bool) or count <= 0
+            for count in counts
         )
-        != 1
+        for counts in token_count_lists
     ):
         return False
+    if any(counts != token_count_lists[0] for counts in token_count_lists[1:]):
+        return False
+    counts = token_count_lists[0]
     partitions = greedy_token_partitions(counts)
-    fixed_padded_tokens = len(counts) * max(counts)
-    budget = len(counts) * p95
+    if partitions is None or len(partitions) <= 1:
+        return False
+    fixed_padded = len(counts) * max(counts)
+    partitioned_padded = sum(
+        len(partition) * max(counts[index] for index in partition)
+        for partition in partitions
+    )
+    savings_fraction = (fixed_padded - partitioned_padded) / fixed_padded
     return (
-        partitions is not None and len(partitions) > 1 and fixed_padded_tokens > budget
+        partitioned_padded < fixed_padded
+        and savings_fraction >= MATERIAL_MEMORY_FRACTION
     )
 
 
@@ -276,15 +406,41 @@ def _eligible_sdpa_backends(completed: list[dict[str, Any]]) -> set[str]:
     }
 
 
-def _m3_treatment_completed(completed: list[dict[str, Any]]) -> bool:
+def _m3_treatment_completed(
+    completed: list[dict[str, Any]], authority: dict[str, Any]
+) -> bool:
     if not _m3_opening_supported(completed):
         return True
     profile = _runs_for(completed, "M3_PROFILE")
     if len(profile) != 1 or not profile[0]["reduced"].get("full_workload_complete"):
         return False
-    if not _eligible_sdpa_backends(completed):
+    eligible = _eligible_sdpa_backends(completed)
+    if not eligible:
         return True
-    return _three_valid_runs(_runs_for(completed, "M3_A"), full_success=True)
+    bound_specs = authority.get("cell_spec_sha256")
+    bound_cells = (
+        {
+            cell_id
+            for cell_id, replicate_specs in bound_specs.items()
+            if isinstance(replicate_specs, dict) and replicate_specs
+        }
+        if isinstance(bound_specs, dict)
+        else set()
+    )
+    if "M3_A" not in bound_cells:
+        return False
+    m3_a = _runs_for(completed, "M3_A")
+    if not _three_valid_runs(m3_a, full_success=True):
+        return False
+    selected_a = m3_a[0]["reduced"]["effective_controls"].get("attention_backend")
+    remaining = eligible - {selected_a}
+    if "M3_B" not in bound_cells or not remaining:
+        return True
+    m3_b = _runs_for(completed, "M3_B")
+    if not _three_valid_runs(m3_b, full_success=True):
+        return False
+    selected_b = m3_b[0]["reduced"]["effective_controls"].get("attention_backend")
+    return selected_b in remaining
 
 
 def authorize_cell_start(
@@ -354,15 +510,10 @@ def authorize_cell_start(
     }:
         raise PermissionError("accepted cache state is not derivable from raw evidence")
 
-    baseline_items = _runs_for(completed, "M0")
-    if not baseline_items:
-        raise PermissionError("M0 baseline evidence is absent")
-    baseline_controls = dict(baseline_items[0]["reduced"]["effective_controls"])
-    baseline_controls.pop("profiler_characterization", None)
-    active_controls = dict(baseline_controls)
-    qualified_treatments = _qualified_treatments(completed)
-    if qualified_treatments:
-        active_controls.update(qualified_treatments[-1][1])
+    active_before_m2 = _active_condition(completed, through="M1")
+    if active_before_m2 is None:
+        raise PermissionError("M0 active controls are not derivable")
+    _active_cell, active_controls, _active_runs = active_before_m2
 
     m2 = _runs_for(completed, "M2")
     if cell_id == "M2":
@@ -379,15 +530,19 @@ def authorize_cell_start(
             )
         return
 
-    if not _three_valid_runs(m2, full_success=True):
-        raise PermissionError("three successful M2 cells are required")
+    if not _three_valid_runs(m2, full_success=False):
+        raise PermissionError("three valid M2 cells are required before later stages")
     if cell_id == "M3_PROFILE":
         if not _m3_opening_supported(completed):
             raise PermissionError(
-                "M3 is not opened by material M2 forward-memory evidence"
+                "M3 applicability is not supported by active-state forward evidence"
             )
         if requested_replicate != 1:
             raise PermissionError("M3 profiler characterization is one process")
+        active_before_m3 = _active_condition(completed, through="M2")
+        if active_before_m3 is None:
+            raise PermissionError("M3 active controls are not derivable")
+        _active_cell, active_controls, _active_runs = active_before_m3
         expected_controls = {
             **active_controls,
             "profiler_characterization": True,
@@ -420,7 +575,10 @@ def authorize_cell_start(
                 raise PermissionError("M3_B has no second eligible backend")
         if requested_replicate != len(_runs_for(completed, cell_id)) + 1:
             raise PermissionError("M3 treatment replicates must follow evidence order")
-        expected_controls = dict(active_controls)
+        active_before_m3 = _active_condition(completed, through="M2")
+        if active_before_m3 is None:
+            raise PermissionError("M3 active controls are not derivable")
+        _active_cell, expected_controls, _active_runs = active_before_m3
         if requested_controls.get("attention_backend") not in backends:
             raise PermissionError("M3 backend is not supported by observed eligibility")
         expected_controls["attention_backend"] = requested_controls["attention_backend"]
@@ -436,11 +594,14 @@ def authorize_cell_start(
             raise PermissionError(
                 "M4 is not opened by the frozen token-budget evidence"
             )
-        if not _m3_treatment_completed(completed):
+        if not _m3_treatment_completed(completed, authority):
             raise PermissionError("M4 requires the opened M3 path to be resolved")
         if _m3_opening_supported(completed) and len(profile) != 1:
             raise PermissionError("M4 requires the M3 applicability observation")
-        expected_controls = dict(active_controls)
+        active_before_m4 = _active_condition(completed, through="M3")
+        if active_before_m4 is None:
+            raise PermissionError("M4 active controls are not derivable")
+        _active_cell, expected_controls, _active_runs = active_before_m4
         expected_controls["batch_strategy"] = "m4_partitions"
         expected_controls["profiler_characterization"] = False
         if requested_controls != expected_controls:
@@ -451,7 +612,7 @@ def authorize_cell_start(
         if requested_replicate != len(m5) + 1:
             raise PermissionError("M5 replicates must follow evidence order")
         if requested_replicate == 1:
-            if not _m3_treatment_completed(completed):
+            if not _m3_treatment_completed(completed, authority):
                 raise PermissionError("M5 requires the opened M3 path to be resolved")
             if _m4_opening_supported(completed) and not _three_valid_runs(
                 _runs_for(completed, "M4"), full_success=True
@@ -460,10 +621,14 @@ def authorize_cell_start(
             settings = requested_spec.get("selected_candidate_settings")
             if not isinstance(settings, dict):
                 raise PermissionError("M5 requires frozen selected candidate settings")
-            eligible = _qualified_treatments(completed)
-            if not eligible or eligible[-1][1] != settings:
+            eligible = _qualified_treatments(completed, through="M4")
+            if not eligible:
                 raise PermissionError(
-                    "M5 settings do not match a raw-evidence-qualified treatment"
+                    "M5 is not applicable without a qualified treatment"
+                )
+            if eligible[-1][1] != settings:
+                raise PermissionError(
+                    "M5 settings do not match final evidence-derived ACTIVE_CONTROLS"
                 )
         return
     raise PermissionError("requested campaign cell has no evidence-derived gate")

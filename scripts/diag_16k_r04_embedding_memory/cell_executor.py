@@ -41,6 +41,7 @@ if __package__:
         claim_single_cell_process,
         complete_cell_process_claim,
         cuda_stage_snapshot,
+        failure_classification,
         is_cuda_oom,
         model_runtime_facts,
         parse_requested_allocation_bytes,
@@ -68,6 +69,7 @@ else:
         claim_single_cell_process,
         complete_cell_process_claim,
         cuda_stage_snapshot,
+        failure_classification,
         is_cuda_oom,
         model_runtime_facts,
         parse_requested_allocation_bytes,
@@ -803,6 +805,8 @@ def run_cell(
         device_samples=sampler_rows,
         baseline_stage=stages[0] if stages else None,
     )
+    failure_class = failure_classification(failure)
+    exception_summary = safe_exception_summary(failure) if failure is not None else None
     result = {
         "schema": "seneca-16k-r04-embedding-memory-cell-v1",
         "authority": authorized["authority"],
@@ -847,7 +851,8 @@ def run_cell(
             "oom_time_memory_sample": oom_sample,
             "classification": oom_classification,
         },
-        "exception": safe_exception_summary(failure) if failure is not None else None,
+        "exception": exception_summary,
+        "failure_classification": failure_class,
         "profiler_operators": profiler_operators,
         "duration_seconds": duration,
         "status": "SUCCESS" if failure is None else "FAILED",
@@ -862,9 +867,13 @@ def run_cell(
         claim_path,
         duration_seconds=duration,
         result_status=(
-            "OOM"
-            if failure is not None and is_cuda_oom(failure)
-            else str(safe["status"])
+            "SUCCESS"
+            if failure_class == "NONE"
+            else "OOM"
+            if failure_class == "CUDA_OOM"
+            else "DEADLINE"
+            if failure_class == "DEADLINE"
+            else "FAILED"
         ),
         evidence_path=output_path,
     )

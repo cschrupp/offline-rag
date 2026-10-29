@@ -1,5 +1,59 @@
 # Roadmap
 
+## Current operational checklist — Slice 16K / R04 embedding-memory campaign
+
+This is the human-facing current-progress view. Update it after every completed
+R04 task or review cycle. [`docs/BACKLOG.md`](docs/BACKLOG.md) retains supporting
+detail and history.
+
+Human gates for this bounded program:
+
+1. **Initial Human GO** after the integrated execution plan and authority
+   envelope are materialized.
+2. **Final Human acceptance** after the complete campaign and consolidated
+   independent review.
+
+Independent reviews within the approved scope are operational controls. An
+`ACCEPT` continues within the authority; bounded `REWORK` is corrected and
+re-reviewed without another Human gate. Return to the Human only for a material
+scope, risk, cost, scientific-rule, or production-behavior change outside the
+approved envelope.
+
+### R04 to-do
+
+- [x] Reproduce the current Well Logging CUDA OOM on the accepted CUDA profile.
+- [x] Confirm adaptive `32 → 16 → 8 → 4` recovery exhausts on the incident workload.
+- [x] Complete the M0–M5 embedding-memory design.
+- [x] Independently review and Human-accept the embedding-memory design.
+- [x] Define and accept Amendment 001 for M3/M4 applicability and M5 admission
+  (`7a2a4427e76a6c675df1e833deb4b6dce0fadb83`; Human-acceptance record
+  `2ad161e2b3bb266a531fbd3adb9a4ea061eb142c`).
+- [x] Finalize the harness corrective: F008 OOM classification, accepted
+  `ACTIVE_CONTROLS`, M3/M4 applicability, and M5 admission.
+- [ ] **CURRENT — Independent implementation review** of the final harness
+  corrective; resolve bounded findings and re-review within this scope.
+- [ ] Materialize the integrated execution plan and conditional M0–M5 authority
+  envelope.
+- [ ] **INITIAL HUMAN GO** for that integrated bounded campaign.
+- [ ] CPU-only workload freeze; classify `EXACT_INCIDENT_BATCH` or
+  `INCIDENT_ADJACENT_SUBSTITUTE`.
+- [ ] M0 baseline characterization — three fresh-process replicates.
+- [ ] M1 cache treatment — only if M0 establishes applicability.
+- [ ] M2 direct-FP16 materialization — three fresh-process replicates.
+- [ ] M3 native-SDPA characterization/treatments — only if its accepted gate opens.
+- [ ] M4 token-budget batching — only if its accepted gate opens.
+- [ ] M5 selected-candidate confirmation — only if a treatment is
+  `SUPPORTED` and `QUALIFIED`.
+- [ ] Consolidated analysis: mechanisms, resource diagnosis, candidate
+  disposition, limitations, and recommended production change, if any.
+- [ ] General independent final review of the complete R04 campaign.
+- [ ] **FINAL HUMAN ACCEPTANCE**.
+- [ ] Separately decide whether to authorize a production change and/or full
+  Well Logging retry.
+
+Current execution state: workload freeze, model/CUDA cells, CPU ONNX reference,
+production change, and Well Logging retry remain **NOT AUTHORIZED**.
+
 ## Milestone 0 — Design complete
 
 - [x] Product definition

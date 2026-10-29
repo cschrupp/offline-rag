@@ -725,6 +725,17 @@ def is_cuda_oom(exc: BaseException) -> bool:
     return _is_cuda_oom(exc)
 
 
+def failure_classification(exc: BaseException | None) -> str:
+    """Return a bounded failure class before exception details are redacted."""
+    if exc is None:
+        return "NONE"
+    if is_cuda_oom(exc):
+        return "CUDA_OOM"
+    if isinstance(exc, TimeoutError):
+        return "DEADLINE"
+    return "NON_OOM_FAILURE"
+
+
 class CacheActivationObserver:
     """Observe cache boundary facts while delegating every call unchanged."""
 
@@ -1009,6 +1020,7 @@ def safe_cell_evidence(
         "encode_result",
         "oom_diagnostics",
         "exception",
+        "failure_classification",
         "profiler_operators",
         "duration_seconds",
         "status",
