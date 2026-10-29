@@ -84,3 +84,85 @@ terminal: READY_FOR_INDEPENDENT_RE_REVIEW
 ```
 
 Independent review is the next step. Workload freeze and all scientific execution remain unauthorized until the integrated execution plan receives the program's Initial Human GO. No production implementation, production promotion, or Well Logging retry is authorized by this harness corrective.
+
+## Subsequent corrective — finite conditional cell-spec authority
+
+This section records a later, bounded pre-M0 corrective. The historical
+implementation and execution states above are preserved as contemporaneous
+provenance; this section is the current handoff for the authority-cardinality
+corrective.
+
+```yaml
+corrective_authority:
+  S16K-R04-FINITE-CONDITIONAL-SPEC-AUTHORITY-CORRECTIVE-001
+
+starting_execution_plan_commit:
+  d972379d6851c1416cd9ff52b62d89f286b11f94
+
+accepted_technical_parent:
+  f69a56cd1a251b83d2b0cda0a02bb4714e2fda0a
+
+branch:
+  implementation/16k-r04-finite-conditional-spec-authority
+
+technical_candidate:
+  feff974696682d287d277d7264ac1e4d46100e00
+
+corrective_scope:
+  shared_exact_hash_allowlist_parser: IMPLEMENTED
+  legacy_singleton_hash: SUPPORTED
+  finite_exact_hash_list: SUPPORTED
+  malformed_hash_authority: REJECTED
+  execution_membership: ENFORCED
+  evidence_membership: ENFORCED
+  M3_required_replicate_availability: VALIDATED
+  evidence_derived_campaign_admission: UNCHANGED
+  claim_identity: SINGLE_ACTUAL_SPEC_HASH
+  authority_mutation: NONE
+
+frozen_workload:
+  retained_without_refreeze: true
+  workload_kind: INCIDENT_ADJACENT_SUBSTITUTE
+  item_count: 32
+  workload_sha256: e4ea6d13f5c0d5dcd0c1783afc86dde8c88d7957d586fd9f2f4ddf0c96001453
+  manifest_sha256: 276f8ea3e920933f8c06a55cc800efe66b1dba14b2c796346b00a1ebf11abb90
+
+pre_m0_preflight:
+  historical_only: true
+  sha256: c579827d5770b9c72aea320fd681e78878e89609e09741c06258e8fdef2f84ca
+  gpu_memory_mib: {total: 8192, used: 6173, free: 1815}
+  gpu_process_ownership: NOT_OBSERVABLE
+  seneca_repo_api_generation_processes: 0
+  fresh_preflight_required_before_m0: true
+
+scientific_state:
+  cells_consumed: 0
+  M0_M5: NOT_STARTED
+  model_execution: NONE
+  cuda_execution: NONE
+  cpu_onnx_reference: NONE
+  workload_refrozen: false
+  execution_authority_regenerated: false
+
+validation:
+  focused_harness_pytest: 58 passed
+  ruff_check: PASS
+  ruff_format: PASS
+  compileall: PASS
+  fresh_process_lazy_import_check: PASS
+  git_diff_check: PASS
+
+terminal:
+  STOP_BEFORE_M0
+  READY_FOR_INDEPENDENT_REVIEW
+```
+
+The technical candidate changes only `ROADMAP.md`, the shared diagnostic
+contract, runtime authority validation, evidence reduction, campaign M3
+availability validation, and the focused harness tests. No production files,
+dependencies, workload artifacts, authority files, or scientific results were
+changed. The pre-existing untracked user data remains untouched. Independent
+corrective review is the next gate. After acceptance, the existing Initial
+Human GO remains the execution authorization; regenerate the finite authority
+against the accepted corrective subject, verify the preserved workload hash,
+rerun transient host/GPU preflight, then continue at M0.
