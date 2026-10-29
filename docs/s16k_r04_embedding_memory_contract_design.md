@@ -201,12 +201,23 @@ Any candidate that violates parity is rejected, even if it saves memory. OOM is 
 
 For each condition, compare three valid paired repetitions using the median; require the direction of the stated memory effect in at least two of three pairs. Mark comparisons inconclusive if pair headroom differs by more than 256 MiB or external device usage changes by more than 256 MiB between paired stage windows.
 
-Maintain two independent result axes for every H-KV/H-DTYPE/H-ATTN/H-TOKEN treatment:
+Maintain two independent result axes for every H-KV/H-DTYPE/H-ATTN/H-TOKEN treatment. First apply this target-phase comparability gate: the baseline and treatment must both reach the complete registered measurement boundary for the mechanism. This design defines no partial-forward substitute boundary.
+
+| Mechanism | Complete comparable target phase |
+|---|---|
+| H-KV | The full fixed 32-text `model.encode` call returns all 32 normalized vectors and the CUDA work is synchronized in both conditions. |
+| H-DTYPE | Model construction/materialization completes in both conditions; the model is in its final registered dtype and load-stage memory has been captured. A later forward OOM does not censor this completed load-phase measurement. |
+| H-ATTN | The full fixed 32-text `model.encode` call returns all 32 normalized vectors and the CUDA work is synchronized in both conditions. |
+| H-TOKEN | Every frozen partition of the same 32 texts completes, all 32 vectors are returned in original identity order, and CUDA work is synchronized in both conditions. |
+
+If either side OOMs before its mechanism's complete target phase, its observed peak is right-censored. Record the OOM as valid negative resource evidence and retain its allocator/device diagnostics, but set that mechanism's quantitative disposition to `INCONCLUSIVE`; do not call the smaller truncated peak a memory improvement or use it to falsify the mechanism. A completed H-DTYPE load measurement remains comparable even if a later, separate forward phase OOMs.
+
+The two axes are:
 
 1. **Mechanism disposition:** `SUPPORTED`, `FALSIFIED`, `INCONCLUSIVE`, or `NOT_APPLICABLE`, based only on valid mechanism-specific memory evidence and the predeclared materiality threshold. Parity, performance, and production usability do not alter this causal disposition. Thus a material memory reduction with failed parity is still mechanism `SUPPORTED`.
 2. **Production-candidate disposition:** `QUALIFIED`, `REJECTED_PARITY`, `REJECTED_PERFORMANCE`, `REJECTED_CORRECTNESS`, `REJECTED_RESOURCE`, or `INCONCLUSIVE`, based on correctness, parity, repeatable successful operation, performance, and production constraints. A treatment can be mechanism-supported and production-rejected.
 
-A material effect is a reduction of at least `max(256 MiB, 5% of the paired baseline peak)` in the registered target peak, with the median reduction meeting that threshold and the direction present in at least two of three valid pairs. No other primary peak measure may worsen by more than 256 MiB. Median encode wall time may not regress by more than 10%. The three-run/repeatability and parity requirements apply to **candidate qualification**, not to whether a measured mechanism had a memory effect. These thresholds apply to the specific mechanism:
+A material effect is a reduction of at least `max(256 MiB, 5% of the paired baseline peak)` in the registered target peak, with the median reduction meeting that threshold and the direction present in at least two of three valid, target-phase-comparable pairs. No other primary peak measure may worsen by more than 256 MiB. Median encode wall time may not regress by more than 10%. The three-run/repeatability and parity requirements apply to **candidate qualification**, not to whether a measured mechanism had a memory effect. These thresholds apply to the specific mechanism:
 
 - H-KV: first-forward `max_memory_allocated`; also report reserved and device-wide peaks.
 - H-DTYPE: device-wide load-stage peak and allocator load-stage peak, separately; a lower post-load steady state alone is insufficient.
@@ -240,9 +251,9 @@ Allocator fragmentation, live working-set pressure, device headroom shortage, an
 #### Candidate decision
 
 1. A configured-state predicate may be mechanism `NOT_APPLICABLE` (for example, M0 proves caching disabled).
-2. Mechanism `SUPPORTED` requires the stated material memory effect on valid matched observations, regardless of output parity, latency, or whether all treatment runs returned vectors. Mechanism `FALSIFIED` requires valid matched observations that fail to meet the memory threshold; missing/inadequate observations are `INCONCLUSIVE`.
-3. Candidate `QUALIFIED` requires all three treatment runs to complete successfully, pass correctness and §11 parity, meet the material memory threshold, have no other primary peak regress beyond the bound, and have median latency regression ≤10%.
-4. If a treatment is mechanism-supported but parity fails, candidate is `REJECTED_PARITY`; if memory improves but latency fails, `REJECTED_PERFORMANCE`; if execution or vector correctness fails, `REJECTED_CORRECTNESS` or `REJECTED_RESOURCE` as applicable. These do not change mechanism disposition.
+2. Mechanism `SUPPORTED` or `FALSIFIED` requires three valid matched pairs that all pass the mechanism-specific target-phase comparability gate. `SUPPORTED` means the material memory threshold is met; `FALSIFIED` means comparable completed observations fail to meet it. Fewer than three comparable pairs, or any target-phase OOM in a required pair, makes the quantitative mechanism disposition `INCONCLUSIVE`.
+3. Candidate `QUALIFIED` requires all three treatment runs to complete the full frozen workload successfully, pass correctness and §11 parity, have a comparable completed target-phase baseline for the memory threshold, meet that threshold, have no other primary peak regress beyond the bound, and have median latency regression ≤10%.
+4. If a treatment has a comparable, mechanism-supported memory effect but parity fails, candidate is `REJECTED_PARITY`; if memory improves but latency fails, `REJECTED_PERFORMANCE`; if execution or vector correctness fails, `REJECTED_CORRECTNESS`. If any treatment run OOMs before completing the full frozen workload, candidate is `REJECTED_RESOURCE`, even when an earlier mechanism-specific phase (such as H-DTYPE loading) completed and supports a memory effect. If the baseline target phase is censored so no valid comparison exists, candidate is `INCONCLUSIVE`. An OOM before a mechanism's own target boundary makes that mechanism `INCONCLUSIVE`; an OOM after a completed H-DTYPE load boundary does not erase its load-phase disposition. These candidate outcomes do not alter an otherwise comparable mechanism disposition.
 5. An exact-identity OOM is valid resource evidence and never triggers retry below the registered batch. Snapshot immediately. Non-OOM errors, process crashes, identity mismatch, or incomplete evidence make the affected causal comparison invalid/inconclusive and stop downstream treatments.
 6. M5 may select only a mechanism-`SUPPORTED`, candidate-`QUALIFIED` treatment. Stop after M5. No result becomes production behavior without later implementation authority and independent review.
 
