@@ -60,6 +60,63 @@ CUDA_CELL_CAPS = {
 }
 
 
+def authorized_cell_spec_hashes(
+    authority: dict[str, Any], *, cell_id: str, replicate: int
+) -> frozenset[str]:
+    """Return exact pre-authorized spec hashes for one cell replicate.
+
+    Legacy singleton hashes remain supported. New authorities may provide a
+    finite JSON list of hashes when a cell has mutually exclusive controls.
+    Missing cell or replicate slots have no authority; malformed present slots
+    fail closed.
+    """
+    if not isinstance(authority, dict):
+        raise TypeError("execution authority must be an object")
+    if not isinstance(cell_id, str):
+        raise TypeError("cell ID must be a string")
+    if not cell_id:
+        raise ValueError("cell ID must be a non-empty string")
+    if not isinstance(replicate, int) or isinstance(replicate, bool):
+        raise TypeError("replicate must be an integer")
+
+    catalog = authority.get("cell_spec_sha256")
+    if not isinstance(catalog, dict):
+        raise TypeError("execution authority cell-spec catalog must be an object")
+    replicate_key = str(replicate)
+    normalized: dict[tuple[str, str], frozenset[str]] = {}
+    for authority_cell_id, cell_catalog in catalog.items():
+        if not isinstance(authority_cell_id, str) or not authority_cell_id:
+            raise TypeError("cell-spec catalog keys must be non-empty strings")
+        if not isinstance(cell_catalog, dict):
+            raise TypeError("cell-spec replicate catalog must be an object")
+        for authority_replicate, value in cell_catalog.items():
+            if not isinstance(authority_replicate, str):
+                raise TypeError("cell-spec replicate keys must be strings")
+            if authority_replicate not in {"1", "2", "3"}:
+                raise ValueError("cell-spec replicate keys must be strings from 1 to 3")
+            if isinstance(value, str):
+                hashes = [value]
+            elif isinstance(value, list):
+                if not value:
+                    raise ValueError("cell-spec hash list must not be empty")
+                if any(not isinstance(item, str) for item in value):
+                    raise TypeError("cell-spec hash list must contain only strings")
+                if len(set(value)) != len(value):
+                    raise ValueError("cell-spec hash list must not contain duplicates")
+                hashes = value
+            else:
+                raise TypeError("cell-spec hash entry must be a hash or non-empty list")
+
+            if any(
+                len(digest) != 64
+                or any(character not in "0123456789abcdef" for character in digest)
+                for digest in hashes
+            ):
+                raise ValueError("cell-spec hashes must be lowercase SHA-256 hex")
+            normalized[(authority_cell_id, authority_replicate)] = frozenset(hashes)
+    return normalized.get((cell_id, replicate_key), frozenset())
+
+
 @dataclass(frozen=True)
 class FrozenItem:
     """Non-sensitive identity for one exact embedding input."""

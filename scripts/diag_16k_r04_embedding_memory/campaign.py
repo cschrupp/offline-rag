@@ -11,6 +11,7 @@ from typing import Any
 from .contract import (
     MATERIAL_MEMORY_FLOOR_BYTES,
     MATERIAL_MEMORY_FRACTION,
+    authorized_cell_spec_hashes,
     evaluate_mechanism_pairs,
     evaluate_parity,
     evaluate_production_candidate,
@@ -445,6 +446,16 @@ def _eligible_sdpa_backends(completed: list[dict[str, Any]]) -> set[str]:
     return eligible_for_all_calls - {baseline_backend}
 
 
+def _has_authorized_replicates(
+    authority: dict[str, Any], *, cell_id: str, replicate_count: int
+) -> bool:
+    """Return whether every required replicate has a valid exact spec hash."""
+    return all(
+        authorized_cell_spec_hashes(authority, cell_id=cell_id, replicate=replicate)
+        for replicate in range(1, replicate_count + 1)
+    )
+
+
 def _m3_treatment_completed(
     completed: list[dict[str, Any]], authority: dict[str, Any]
 ) -> bool:
@@ -458,25 +469,17 @@ def _m3_treatment_completed(
     eligible = _eligible_sdpa_backends(completed)
     if not eligible:
         return True
-    bound_specs = authority.get("cell_spec_sha256")
-    bound_cells = (
-        {
-            cell_id
-            for cell_id, replicate_specs in bound_specs.items()
-            if isinstance(replicate_specs, dict) and replicate_specs
-        }
-        if isinstance(bound_specs, dict)
-        else set()
-    )
-    if "M3_A" not in bound_cells:
+    if not _has_authorized_replicates(authority, cell_id="M3_A", replicate_count=3):
         return False
     m3_a = _runs_for(completed, "M3_A")
     if not _three_valid_runs(m3_a, full_success=True):
         return False
     selected_a = m3_a[0]["reduced"]["effective_controls"].get("attention_backend")
     remaining = eligible - {selected_a}
-    if "M3_B" not in bound_cells or not remaining:
+    if not remaining:
         return True
+    if not _has_authorized_replicates(authority, cell_id="M3_B", replicate_count=3):
+        return False
     m3_b = _runs_for(completed, "M3_B")
     if not _three_valid_runs(m3_b, full_success=True):
         return False

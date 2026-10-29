@@ -16,6 +16,7 @@ from .contract import (
     VECTOR_DIMENSION,
     VECTOR_NORM_TOLERANCE,
     FrozenItem,
+    authorized_cell_spec_hashes,
     workload_digest,
 )
 from .contract import (
@@ -457,13 +458,15 @@ def reduce_authorized_cell_evidence(
     spec_digest = hashlib.sha256(spec_bytes).hexdigest()
     cell_id = spec.get("cell_id")
     replicate = spec.get("replicate")
-    hashes = authority.get("cell_spec_sha256", {})
-    expected = (
-        hashes.get(cell_id, {}).get(str(replicate))
-        if isinstance(hashes, dict)
-        else None
-    )
-    if expected != spec_digest:
+    if not isinstance(cell_id, str) or not isinstance(replicate, int):
+        raise TypeError("cell spec identity is invalid")
+    try:
+        allowed_hashes = authorized_cell_spec_hashes(
+            authority, cell_id=cell_id, replicate=replicate
+        )
+    except (TypeError, ValueError) as exc:
+        raise ValueError("authority cell-spec hash allowlist is invalid") from exc
+    if spec_digest not in allowed_hashes:
         raise ValueError("cell spec is not bound to this authority")
     _verify_workload_manifest(workload)
     implementation = authority.get("implementation_subject")

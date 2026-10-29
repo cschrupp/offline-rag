@@ -30,6 +30,7 @@ if __package__:
         ACCEPTED_DESIGN_SUBJECT,
         MAX_CAMPAIGN_SECONDS,
         MAX_CELL_SECONDS,
+        authorized_cell_spec_hashes,
         enforce_cell_budget,
     )
 else:
@@ -37,6 +38,7 @@ else:
         ACCEPTED_DESIGN_SUBJECT,
         MAX_CAMPAIGN_SECONDS,
         MAX_CELL_SECONDS,
+        authorized_cell_spec_hashes,
         enforce_cell_budget,
     )
 
@@ -104,16 +106,17 @@ def verify_execution_authority(
     cells = payload.get("allowed_cells")
     if not isinstance(cells, list) or cell_id not in cells:
         raise PermissionError("requested cell is not in the execution authority")
-    spec_hashes = payload.get("cell_spec_sha256")
-    cell_hashes = spec_hashes.get(cell_id) if isinstance(spec_hashes, dict) else None
-    expected_hash = (
-        cell_hashes.get(str(replicate)) if isinstance(cell_hashes, dict) else None
-    )
-    if not isinstance(expected_hash, str) or not re.fullmatch(
-        r"[0-9a-f]{64}", expected_hash
-    ):
+    try:
+        allowed_hashes = authorized_cell_spec_hashes(
+            payload, cell_id=cell_id, replicate=replicate
+        )
+    except (TypeError, ValueError) as exc:
+        raise PermissionError(
+            "execution authority has an invalid cell-spec hash"
+        ) from exc
+    if not allowed_hashes:
         raise PermissionError("authority lacks the exact cell/replicate spec hash")
-    if cell_spec_sha256 != expected_hash:
+    if cell_spec_sha256 not in allowed_hashes:
         raise PermissionError("cell spec hash does not match exact replicate authority")
     if payload.get("human_authorization") != "ACCEPTED":
         raise PermissionError("Human execution authorization is absent")

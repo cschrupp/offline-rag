@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from scripts.diag_16k_r04_embedding_memory.campaign import (
     _active_condition,
     _eligible_sdpa_backends,
+    _has_authorized_replicates,
     _m3_opening_supported,
     _m4_opening_supported,
     _observed_baseline_sdpa_backend,
@@ -27,6 +28,7 @@ from scripts.diag_16k_r04_embedding_memory.contract import (
     ACCEPTED_DESIGN_SUBJECT,
     EXPECTED_MODEL_REVISION,
     FrozenItem,
+    authorized_cell_spec_hashes,
     build_workload_manifest,
     classify_oom_diagnostics,
     enforce_cell_budget,
@@ -881,6 +883,265 @@ def test_execution_authority_binds_spec_hash_to_cell_and_replicate(
             replicate=4,
             cell_spec_sha256="a" * 64,
         )
+
+
+def test_authorized_cell_spec_hashes_supports_legacy_and_finite_sets() -> None:
+    first = "a" * 64
+    second = "b" * 64
+    legacy = {"cell_spec_sha256": {"M0": {"1": first}}}
+    finite = {"cell_spec_sha256": {"M2": {"1": [first, second]}}}
+
+    assert authorized_cell_spec_hashes(legacy, cell_id="M0", replicate=1) == {first}
+    assert authorized_cell_spec_hashes(finite, cell_id="M2", replicate=1) == {
+        first,
+        second,
+    }
+    assert authorized_cell_spec_hashes(finite, cell_id="M2", replicate=2) == set()
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        [],
+        ["a" * 64, "a" * 64],
+        ["bad"],
+        [123],
+        [["a" * 64]],
+        {"hash": "a" * 64},
+        None,
+        "A" * 64,
+        "a" * 63,
+        "a" * 65,
+        "g" * 64,
+        True,
+    ],
+)
+def test_authorized_cell_spec_hashes_rejects_malformed_entries(value: object) -> None:
+    authority = {"cell_spec_sha256": {"M2": {"1": value}}}
+    with pytest.raises((TypeError, ValueError)):
+        authorized_cell_spec_hashes(authority, cell_id="M2", replicate=1)
+
+
+def test_m3_availability_requires_valid_hashes_for_every_replicate() -> None:
+    authority = {
+        "cell_spec_sha256": {
+            "M3_A": {
+                "1": ["a" * 64],
+                "2": ["b" * 64],
+                "3": ["c" * 64],
+            }
+        }
+    }
+    assert _has_authorized_replicates(authority, cell_id="M3_A", replicate_count=3)
+    invalid_authority = {
+        "cell_spec_sha256": {
+            **authority["cell_spec_sha256"],
+            "M3_B": {"1": []},
+        }
+    }
+    with pytest.raises(ValueError, match="must not be empty"):
+        _has_authorized_replicates(invalid_authority, cell_id="M3_B", replicate_count=3)
+    assert not _has_authorized_replicates(
+        {"cell_spec_sha256": {"M3_B": {"1": ["a" * 64]}}},
+        cell_id="M3_B",
+        replicate_count=3,
+    )
+
+
+def test_execution_authority_accepts_only_exact_finite_spec_variants(
+    tmp_path: Path,
+) -> None:
+    from scripts.diag_16k_r04_embedding_memory.contract import ACCEPTED_DESIGN_SUBJECT
+
+    first = "a" * 64
+    second = "b" * 64
+    path = tmp_path / "authority.json"
+    path.write_text(
+        json.dumps(
+            {
+                "execution_authorized": True,
+                "authority": "S16-K-R04-EMBEDDING-MEMORY-SCIENTIFIC-EXECUTION-AUTH-001",
+                "allow_model_execution": True,
+                "accepted_design_subject": ACCEPTED_DESIGN_SUBJECT,
+                "implementation_subject": "candidate",
+                "allowed_cells": ["M2"],
+                "cell_spec_sha256": {"M2": {"1": [first, second]}},
+                "human_authorization": "ACCEPTED",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    for digest in (first, second):
+        verify_execution_authority(
+            path,
+            current_commit="candidate",
+            cell_id="M2",
+            replicate=1,
+            cell_spec_sha256=digest,
+        )
+    with pytest.raises(PermissionError, match="does not match"):
+        verify_execution_authority(
+            path,
+            current_commit="candidate",
+            cell_id="M2",
+            replicate=1,
+            cell_spec_sha256="c" * 64,
+        )
+
+
+def test_evidence_reducer_binds_one_actual_spec_from_finite_allowlist(
+    tmp_path: Path,
+) -> None:
+    import hashlib
+
+    evidence_path, first_spec_path, authority, workload = _write_valid_raw_cell(
+        tmp_path
+    )
+    first_hash = hashlib.sha256(first_spec_path.read_bytes()).hexdigest()
+    first_spec = json.loads(first_spec_path.read_text(encoding="utf-8"))
+    second_spec = {**first_spec, "dtype_mode": "post_load_half"}
+    second_spec_path = tmp_path / "spec-M0-1-explicit-default.json"
+    second_spec_path.write_text(
+        json.dumps(second_spec, sort_keys=True, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    second_hash = hashlib.sha256(second_spec_path.read_bytes()).hexdigest()
+    authority["cell_spec_sha256"]["M0"]["1"] = [first_hash, second_hash]
+
+    reduced_first = reduce_authorized_cell_evidence(
+        evidence_path=evidence_path,
+        cell_spec_path=first_spec_path,
+        authority=authority,
+        workload=workload,
+    )
+    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    evidence["cell_spec_sha256"] = second_hash
+    evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+    reduced_second = reduce_authorized_cell_evidence(
+        evidence_path=evidence_path,
+        cell_spec_path=second_spec_path,
+        authority=authority,
+        workload=workload,
+    )
+
+    assert reduced_first["cell_spec_sha256"] == first_hash
+    assert reduced_second["cell_spec_sha256"] == second_hash
+    unapproved_spec = {**first_spec, "disable_cache": False}
+    unapproved_path = tmp_path / "spec-M0-1-unapproved.json"
+    unapproved_path.write_text(
+        json.dumps(unapproved_spec, sort_keys=True, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="not bound"):
+        reduce_authorized_cell_evidence(
+            evidence_path=evidence_path,
+            cell_spec_path=unapproved_path,
+            authority=authority,
+            workload=workload,
+        )
+
+
+def test_pre_authorized_m2_variant_still_requires_campaign_admission(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    import hashlib
+
+    from scripts.diag_16k_r04_embedding_memory import campaign
+
+    mib = 1024 * 1024
+    workload_sha = "w" * 64
+    m0_controls = {
+        "dtype_mode": "post_load_half",
+        "disable_cache": False,
+        "attention_backend": None,
+        "batch_strategy": "fixed32",
+    }
+    m1_controls = {**m0_controls, "disable_cache": True}
+    completed = [
+        *_synthetic_campaign_condition(
+            "M0",
+            m0_controls,
+            target_peak_bytes=2_000 * mib,
+            load_peak_bytes=1_500 * mib,
+        ),
+        *_synthetic_campaign_condition(
+            "M1",
+            m1_controls,
+            target_peak_bytes=1_400 * mib,
+            load_peak_bytes=1_500 * mib,
+        ),
+    ]
+    for row in completed:
+        row["reduced"]["workload_sha256"] = workload_sha
+    monkeypatch.setattr(campaign, "_load_completed_claims", lambda **_kwargs: completed)
+
+    def m2_spec(disable_cache: bool) -> dict[str, object]:
+        return {
+            "cell_id": "M2",
+            "replicate": 1,
+            "workload_sha256": workload_sha,
+            "expected_model_revision": EXPECTED_MODEL_REVISION,
+            "dtype_mode": "direct_fp16",
+            "disable_cache": disable_cache,
+            "attention_backend": None,
+            "batch_strategy": "fixed32",
+            "profiler_characterization": False,
+        }
+
+    retained = m2_spec(False)
+    disabled = m2_spec(True)
+    retained_hash = hashlib.sha256(
+        json.dumps(retained, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    disabled_hash = hashlib.sha256(
+        json.dumps(disabled, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    authority = {
+        "execution_authorized": True,
+        "authority": "S16-K-R04-EMBEDDING-MEMORY-SCIENTIFIC-EXECUTION-AUTH-001",
+        "allow_model_execution": True,
+        "accepted_design_subject": ACCEPTED_DESIGN_SUBJECT,
+        "implementation_subject": "candidate",
+        "allowed_cells": ["M2"],
+        "cell_spec_sha256": {
+            "M2": {"1": [retained_hash, disabled_hash]},
+        },
+        "human_authorization": "ACCEPTED",
+    }
+    authority_path = tmp_path / "authority.json"
+    authority_path.write_text(json.dumps(authority), encoding="utf-8")
+
+    for spec, digest in ((retained, retained_hash), (disabled, disabled_hash)):
+        verify_execution_authority(
+            authority_path,
+            current_commit="candidate",
+            cell_id="M2",
+            replicate=1,
+            cell_spec_sha256=digest,
+        )
+        if spec is disabled:
+            authorize_cell_start(
+                claims_dir=tmp_path / "claims",
+                requested_replicate=1,
+                requested_spec=spec,
+                authority=authority,
+                workload={"workload_sha256": workload_sha},
+                implementation_subject="candidate",
+            )
+        else:
+            with pytest.raises(
+                PermissionError, match="preserve the accepted prior state"
+            ):
+                authorize_cell_start(
+                    claims_dir=tmp_path / "claims",
+                    requested_replicate=1,
+                    requested_spec=spec,
+                    authority=authority,
+                    workload={"workload_sha256": workload_sha},
+                    implementation_subject="candidate",
+                )
 
 
 def test_sdpa_observer_does_not_introspect_c_bound_callable(

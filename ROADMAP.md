@@ -37,9 +37,17 @@ approved envelope.
 - [x] Independent implementation re-review — IR-004 ACCEPT; F010 closed.
 - [x] Materialize the [integrated execution plan](docs/s16k_r04_integrated_execution_plan.md)
   and conditional M0–M5 authority envelope.
-- [ ] **CURRENT — INITIAL HUMAN GO** for the committed integrated plan.
-- [ ] CPU-only workload freeze; classify `EXACT_INCIDENT_BATCH` or
-  `INCIDENT_ADJACENT_SUBSTITUTE`.
+- [x] Initial Human GO for the committed integrated plan; conditional R04
+  execution envelope opened.
+- [x] CPU-only workload freeze — `INCIDENT_ADJACENT_SUBSTITUTE`; 32-item
+  workload identity frozen locally.
+- [x] Pre-M0 host/GPU preflight captured; GPU process ownership recorded as
+  `NOT_OBSERVABLE`.
+- [x] Pre-M0 finite-authority cardinality blocker identified; no cell started.
+- [ ] **CURRENT — finite conditional cell-spec authority corrective**.
+- [ ] Independent corrective review.
+- [ ] Rebind integrated execution authority to corrected harness.
+- [ ] Fresh pre-M0 host/GPU preflight.
 - [ ] M0 baseline characterization — three fresh-process replicates.
 - [ ] M1 cache treatment — only if M0 establishes applicability.
 - [ ] M2 direct-FP16 materialization — three fresh-process replicates.
@@ -54,8 +62,11 @@ approved envelope.
 - [ ] Separately decide whether to authorize a production change and/or full
   Well Logging retry.
 
-Current execution state: workload freeze, model/CUDA cells, CPU ONNX reference,
-production change, and Well Logging retry remain **NOT AUTHORIZED**.
+Current execution state: workload freeze is complete. Scientific cells consumed:
+**0**. M0–M5, Qwen/model execution, CUDA execution, CPU ONNX reference,
+production change, and Well Logging retry remain **NOT STARTED**; the accepted
+Initial Human GO remains in force after the bounded authority corrective and
+new independent review.
 
 ## Milestone 0 — Design complete
 
