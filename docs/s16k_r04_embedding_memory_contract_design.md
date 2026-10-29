@@ -82,7 +82,7 @@ These sources motivate measurements; none establishes a result on Seneca's workl
 |---|---|---|
 | Library stack | ST 5.7.0 / Transformers 4.57.6 / PyTorch 2.14.0 installed | Exact runtime versions and CUDA build/device capability in the diagnostic process |
 | Module/model | Bundle says ST Transformer → Pooling → Normalize; feature-extraction mapping is expected to load Qwen3 base model | Actual first-module and underlying HF model classes |
-| KV cache | Bundle config `use_cache=true`; pinned source has no explicit ST override | Loaded config and nested config values; `use_cache` passed to forward; whether non-null cache/past object is returned |
+| KV cache | Bundle config `use_cache=true`; pinned source has no explicit ST override | Loaded config and nested config values; effective cache state at the actual embedding forward; cache construction/update witnesses, including on a failed forward |
 | Precision | Seneca applies `.half()` after ST construction; bundle config declares BF16 | Parameter dtype counts before/after precision stage; initialization and transfer peaks |
 | Attention | Qwen3 supports SDPA; no Seneca attention kwarg is set | Configured `_attn_implementation` and profiler-visible implementation/kernel names |
 | Sequence length | Tokenizer config says 131,072; ST 5.7 caps it to model `max_position_embeddings` (32,768) unless overridden | Actual `model.max_seq_length`, tokenizer model max, padding side, truncation and padded batch shapes |
@@ -110,7 +110,7 @@ An observed configuration value alone does not establish material memory contrib
 | ID | Frozen decision |
 |---|---|
 | D01 | M0 emits the runtime contract below; loaded values and actual forward evidence take precedence over source defaults. |
-| D02 | KV cache is first. M1 runs only when M0 sees loaded cache enabled and a cache object produced. If cache is disabled or no object is produced, M1 is `NOT_APPLICABLE`; no artificial A/B is run. |
+| D02 | KV cache is first. M1 runs when loaded config is enabled and M0 has any authoritative cache-activation witness: resolved forward argument true, `DynamicCache` construction attempted, cache update attempted, or successful non-null cache return. A later M0 OOM does not erase an earlier activation witness. `NOT_APPLICABLE` requires an observed embedding forward establishing cache-disabled execution or no cache instantiation/use; failure before the forward/cache boundary is `INCONCLUSIVE`. |
 | D03 | M2 compares existing load-then-`.half()` with direct `torch_dtype=torch.float16`; it changes materialization only. Cache/attention/tokenization/pooling/normalization/model revision remain as frozen by preceding accepted state. |
 | D04 | Inference mode, eval mode, disabled autograd, no hidden-state/attention collection, and no logits are inherited expectations to verify, not production changes. Cache output is separately observed. |
 | D05 | Actual Qwen tokenization and batch shapes are measured on exact embedding strings; Seneca tokenizer counts do not stand in for them. |
@@ -118,7 +118,7 @@ An observed configuration value alone does not establish material memory contrib
 | D07 | Every cell records allocator stats at each stage; on OOM it captures bounded allocator history/snapshot diagnostic-only, and verifies the OOM event is present when supported. |
 | D08 | Every cell records device total/used/free and visible process data. If process ownership is unavailable, record `NOT_OBSERVABLE`; do not infer a process owner. |
 | D09 | Freeze one exact 32-item first-pending batch from Run 001 if reconstructable from local provisioned/cached artifacts. Freeze ordered IDs and digest before CUDA; never store private text. If exact order/cache state cannot be reproduced, use the explicitly labeled deterministic incident-adjacent substitute described in §8; do not call it exact incident reproduction. |
-| D10 | Staged, conditional M0–M5 sequence; at most three valid fresh-process replicates per condition, at most two eligible M3 treatments, at most 21 measured cells, one cell at a time, 15-minute per-cell cap and 4-hour total cap. No within-cell retry. |
+| D10 | Staged, conditional M0–M5 sequence; at most three valid fresh-process replicates per condition, one M3 profiler-characterization cell, at most two eligible M3 treatment conditions, at most 22 CUDA measured cells total, and at most one separately counted CPU ONNX parity-reference process. Maximum total process executions is 23. One at a time, 15-minute per CUDA cell cap and 4-hour total cap. No within-cell retry. |
 | D11 | Reuse `d2-retrieval-parity-v1` thresholds from accepted D2 evidence; no weaker threshold. OOM before vector output requires the CPU ONNX profile as offline parity reference for this exact batch under separate execution authority; this is not runtime fallback. |
 | D12 | A candidate must pass all correctness/parity requirements, meet a predeclared memory improvement threshold, and stay within the latency bound. Metrics and rules are in §9 and §12. |
 | D13 | Select the smallest semantically neutral candidate in hierarchy: cache state, direct FP16 load, supported native attention, then token-budget batching. Choose no candidate if none passes. |
@@ -142,7 +142,7 @@ All text stays local and untracked. The manifest includes ordered IDs, per-item 
 
 ## 9. Measurement contract
 
-Each cell is one fresh diagnostic process, one model materialization, one frozen workload execution, and no adaptive batch retries. It invokes the same pinned SentenceTransformer bundle and encoding options as Seneca, but bypasses the R04 retry loop so an OOM is observed at the registered batch rather than being hidden by fallback attempts. The production ladder is unchanged.
+Each cell is one fresh diagnostic process, one model materialization, one frozen workload execution, and no adaptive batch retries. It invokes the same pinned SentenceTransformer bundle and encoding options as Seneca, but bypasses the R04 retry loop so an OOM is observed at the registered batch rather than being hidden by fallback attempts. The production ladder is unchanged. A temporary diagnostic observer may wrap the Qwen forward/cache boundary to record effective cache activation and `DynamicCache` construction/update attempts; it must not modify model inputs, outputs, or cache semantics and must emit no text or tensor contents.
 
 Capture versions, GPU/device/driver, process attribution, configuration, and runtime facts listed under D01. At each stage—before load; immediately after ST construction; after `.half()` for the current path or direct materialization for M2; immediately before encode; after successful encode; and after cleanup—record:
 
@@ -163,11 +163,11 @@ Each valid trial uses a fresh process and the exact same 32 text items. Run up t
 
 ### M0 — current-runtime characterization
 
-No treatment. Load and execute current path as frozen. Observe loaded `use_cache`, cache outputs, actual parameter dtype, precision conversion stages, max sequence length/padding, inference/eval/grad state, configured attention and profiler-observed kernels, allocator/device memory, and output vectors. M0 is mandatory and must precede any treatment. If M0 succeeds, its vectors are the exact-workload baseline. If M0 OOMs, capture the OOM evidence and use D11's offline CPU ONNX reference for parity in later treatment cells.
+No treatment. Load and execute current path as frozen. Observe loaded `use_cache`, the effective cache state at the actual model-forward boundary, cache construction/update attempts, cache outputs when returned, actual parameter dtype, precision conversion stages, max sequence length/padding, inference/eval/grad state, configured attention and profiler-observed kernels, allocator/device memory, and output vectors. M0 is mandatory and must precede any treatment. If M0 succeeds, its vectors are the exact-workload baseline. If M0 OOMs, capture the OOM evidence and use D11's offline CPU ONNX reference for parity in later treatment cells.
 
 ### M1 — KV-cache treatment
 
-Run only if M0 shows both loaded cache enabled and a non-null cache object produced. Change only `use_cache: true → false`, passed via the pinned ST `config_kwargs` before underlying model construction. Verify top-level and nested config state is false, the model call receives the intended state, and no cache object is returned. If M0 cache is false or no cache is produced, mark `NOT_APPLICABLE` and proceed to M2. Do not change dtype, batch, attention, text, tokenizer, pooling, normalization, or revision.
+Run if M0 shows loaded cache enabled and any authoritative runtime activation witness, even if the forward later OOMs and returns no output object. A witness is: effective forward argument true; `DynamicCache` construction attempted; cache update attempted; or successful forward returning non-null cache. Change only `use_cache: true → false`, passed via the pinned ST `config_kwargs` before underlying model construction. Verify top-level and nested config state is false, the effective model-forward state is false, and no cache construction/update occurs. If M0 establishes cache disabled at the forward or no cache instantiation/use, mark `NOT_APPLICABLE` and proceed to M2. If M0 fails before the model forward/cache boundary and no activation witness exists, mark cache disposition `INCONCLUSIVE`, not `NOT_APPLICABLE`. Do not change dtype, batch, attention, text, tokenizer, pooling, normalization, or revision.
 
 ### M2 — direct FP16 materialization
 
@@ -201,20 +201,50 @@ Any candidate that violates parity is rejected, even if it saves memory. OOM is 
 
 For each condition, compare three valid paired repetitions using the median; require the direction of the stated memory effect in at least two of three pairs. Mark comparisons inconclusive if pair headroom differs by more than 256 MiB or external device usage changes by more than 256 MiB between paired stage windows.
 
-A treatment is a **material memory improvement** only when its registered target peak falls by at least `max(256 MiB, 5% of the paired baseline peak)` and the median reduction meets that same threshold. No other primary peak measure may worsen by more than 256 MiB. Median encode wall time may not regress by more than 10%. Every successful run must pass §11. These thresholds apply to the specific mechanism:
+Maintain two independent result axes for every H-KV/H-DTYPE/H-ATTN/H-TOKEN treatment:
+
+1. **Mechanism disposition:** `SUPPORTED`, `FALSIFIED`, `INCONCLUSIVE`, or `NOT_APPLICABLE`, based only on valid mechanism-specific memory evidence and the predeclared materiality threshold. Parity, performance, and production usability do not alter this causal disposition. Thus a material memory reduction with failed parity is still mechanism `SUPPORTED`.
+2. **Production-candidate disposition:** `QUALIFIED`, `REJECTED_PARITY`, `REJECTED_PERFORMANCE`, `REJECTED_CORRECTNESS`, `REJECTED_RESOURCE`, or `INCONCLUSIVE`, based on correctness, parity, repeatable successful operation, performance, and production constraints. A treatment can be mechanism-supported and production-rejected.
+
+A material effect is a reduction of at least `max(256 MiB, 5% of the paired baseline peak)` in the registered target peak, with the median reduction meeting that threshold and the direction present in at least two of three valid pairs. No other primary peak measure may worsen by more than 256 MiB. Median encode wall time may not regress by more than 10%. The three-run/repeatability and parity requirements apply to **candidate qualification**, not to whether a measured mechanism had a memory effect. These thresholds apply to the specific mechanism:
 
 - H-KV: first-forward `max_memory_allocated`; also report reserved and device-wide peaks.
 - H-DTYPE: device-wide load-stage peak and allocator load-stage peak, separately; a lower post-load steady state alone is insufficient.
 - H-ATTN: first-forward allocated peak; report reserved/device-wide peaks and actual kernel.
 - H-TOKEN: first-forward allocated peak and max padded-token workload.
 
-Candidate decision:
+#### H-ALLOCATOR and H-EXTERNAL disposition rules
 
-1. A configured-state predicate may be `NOT_APPLICABLE` (for example, cache already disabled).
-2. A measured treatment is `SUPPORTED` only if all three runs succeed, parity passes in all runs, memory reduction meets the threshold, no other peak regresses beyond the bound, and latency regression is ≤10%.
-3. It is `FALSIFIED` if the intended state was applied and matched trials fail the material-improvement threshold or parity. It is `INCONCLUSIVE` if environment matching, evidence capture, or repeatability gates fail.
-4. An OOM cell is a valid negative resource outcome when workload/config/device identity is exact; it never triggers retry below the registered batch. On OOM, snapshot immediately. Non-OOM errors, process crashes, identity mismatch, or parity failure terminate the sequence as invalid for the causal question.
-5. Stop after M5. No result from M0–M5 becomes production behavior without later implementation authority and independent review.
+For each OOM, record the requested allocation size `Q` from the allocator OOM event where available; record the allocator snapshot at failure; sample `mem_get_info()` immediately in the exception path with timestamp and delay; and capture device-wide used/free/total and PyTorch allocated/reserved at the same stage. `mem_get_info()` is considered an OOM-time sample only if obtained within 250 ms of catching the OOM. Do not infer allocator state or external ownership from `nvidia-smi` alone.
+
+Let `F` be device free bytes in that OOM-time sample, `R` PyTorch reserved bytes, `A` PyTorch allocated bytes, `D` device-wide used bytes, `T` total device bytes, `G=max(0,D-R)` the approximate non-PyTorch/device-wide gap, and `B` the sum of snapshot free/inactive allocator blocks that are eligible for reuse. Let `L` be the largest such individual reusable block. Thresholds for this diagnostic classification are frozen at:
+
+- material non-PyTorch/device-wide gap `G* = max(512 MiB, 10% of T)`;
+- material allocator split-free pool `S* = max(256 MiB, 20% of R)`;
+- headroom guard `H* = 256 MiB`.
+
+Outcomes are independent flags; multiple may be supported at once:
+
+| Outcome | Mechanical rule |
+|---|---|
+| `INSUFFICIENT_DEVICE_HEADROOM` | Valid OOM with known `Q`, valid OOM-time `F`, and `F+B < Q`. This says the observed device plus reusable allocator headroom was insufficient for the failed request; it does not identify the cause of that shortage. |
+| `PYTORCH_LIVE_WORKING_SET_PRESSURE` | Valid OOM with known `Q`; `A+Q > T-G-H*`; `F+B < Q`; and allocator fragmentation is not supported by the rule below. This supports a live PyTorch tensor working set that leaves inadequate physical headroom after the measured non-PyTorch gap. |
+| `ALLOCATOR_FRAGMENTATION_SUPPORTED` | Snapshot contains the OOM request `Q`; `B ≥ Q`, `L < Q`, and snapshot inactive split bytes are at least `S*`. This requires enough aggregate reusable bytes but no individual eligible block large enough, with a materially split pool. |
+| `ALLOCATOR_FRAGMENTATION_NOT_ESTABLISHED` | Snapshot is complete and includes the OOM event, but the fragmentation rule is false. This means evidence did not establish fragmentation; it is not a claim that fragmentation never occurs. |
+| `EXTERNAL_OR_NON_PYTORCH_MEMORY_PRESSURE_SUPPORTED` | OOM with `F < Q+H*` and either (a) a visible non-Seneca process accounts for at least `G*` device bytes, or (b) `G ≥ G*` and that gap was present at pre-model baseline or grew by at least `G*` during the cell while PyTorch `R` changed by less than `H*`. If process owners are unavailable, record pressure `SUPPORTED` only under (b) and owner `NOT_OBSERVABLE`. |
+| `EXTERNAL_PRESSURE_NOT_ESTABLISHED` | Valid paired device observations and process-list collection exist; neither external-pressure rule is met. This is not proof that no external allocation exists. |
+| `INCONCLUSIVE` | Any required `Q`, OOM-time free-memory sample, snapshot/OOM event, or paired external observation is missing/invalid; record which metric is unavailable. Do not force a root-cause label. |
+
+Allocator fragmentation, live working-set pressure, device headroom shortage, and external/non-PyTorch pressure may coexist. `G` is an accounting gap, not an owner identity. Under WDDM/WSL, a large `G` without observable PIDs is reported as non-PyTorch/device-wide pressure with owner `NOT_OBSERVABLE`, never assigned to a named process. A no-OOM successful cell reports the same raw metrics but has no OOM-cause disposition.
+
+#### Candidate decision
+
+1. A configured-state predicate may be mechanism `NOT_APPLICABLE` (for example, M0 proves caching disabled).
+2. Mechanism `SUPPORTED` requires the stated material memory effect on valid matched observations, regardless of output parity, latency, or whether all treatment runs returned vectors. Mechanism `FALSIFIED` requires valid matched observations that fail to meet the memory threshold; missing/inadequate observations are `INCONCLUSIVE`.
+3. Candidate `QUALIFIED` requires all three treatment runs to complete successfully, pass correctness and §11 parity, meet the material memory threshold, have no other primary peak regress beyond the bound, and have median latency regression ≤10%.
+4. If a treatment is mechanism-supported but parity fails, candidate is `REJECTED_PARITY`; if memory improves but latency fails, `REJECTED_PERFORMANCE`; if execution or vector correctness fails, `REJECTED_CORRECTNESS` or `REJECTED_RESOURCE` as applicable. These do not change mechanism disposition.
+5. An exact-identity OOM is valid resource evidence and never triggers retry below the registered batch. Snapshot immediately. Non-OOM errors, process crashes, identity mismatch, or incomplete evidence make the affected causal comparison invalid/inconclusive and stop downstream treatments.
+6. M5 may select only a mechanism-`SUPPORTED`, candidate-`QUALIFIED` treatment. Stop after M5. No result becomes production behavior without later implementation authority and independent review.
 
 ## 13. Stop conditions
 
@@ -228,11 +258,30 @@ Candidate decision:
 
 Two qualified OOM cells may be followed only by the next pre-registered single-variable treatment if its targeted phase can plausibly address the observed stage and all preflight conditions still hold. Otherwise stop. This keeps the sequence conditional while preventing an unbounded retry campaign.
 
+#### Maximum cell accounting
+
+The 22-cell CUDA campaign cap includes the one M3 profiler-characterization forward as a cell. Maximum arithmetic is fixed as:
+
+```text
+M0 baseline                         3
+M1 treatment                       3
+M2 treatment                       3
+M3 profiler characterization       1
+M3 eligible treatment A             3
+M3 eligible treatment B             3
+M4 treatment                       3
+M5 confirmation                    3
+                                   --
+maximum                            22
+```
+
+Conditions skipped as `NOT_APPLICABLE` or closed by a stop condition consume no cell. If M0 OOMs, one CPU ONNX parity-reference process may run once under later execution authority; it is not a CUDA measured cell or runtime fallback. Therefore the absolute campaign cap is 22 CUDA measured cells plus one CPU reference process, at most 23 model-process executions total. No execution beyond these caps is authorized by this design.
+
 ## 14. Candidate-selection logic
 
 Select at most one candidate per mechanism and cumulatively preserve only earlier candidates that passed. Prefer, in order:
 
-1. disable a cache only if M0 proves it is actually produced and M1 materially improves forward memory;
+1. disable a cache only if M0 proves it is activated or used and M1 materially improves forward memory;
 2. direct FP16 materialization only if M2 lowers initialization peak materially and does not regress forward/steady memory;
 3. an eligible native attention path only if M3 shows actual execution and material memory improvement;
 4. token-budget batching only if M4 meets the same memory/parity/performance rules.
@@ -295,7 +344,9 @@ S16K-R04:
 
   sequence: M0_M1_M2_M3_M4_M5_CONDITIONAL
   parity: D2_RETRIEVAL_PARITY_V1_THRESHOLDS
-  max_measured_cells: 21
+  max_cuda_measured_cells: 22
+  max_cpu_onnx_reference_processes: 1
+  max_total_model_process_executions: 23
   implementation: NOT_AUTHORIZED
   cuda_or_model_execution: NOT_AUTHORIZED
   well_logging_retry: NOT_AUTHORIZED
