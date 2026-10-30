@@ -10,13 +10,16 @@ and supporting history.
 
 - [x] R04 CUDA embedding corrective accepted and promoted; formal M0–M5
   qualification is not required for beta delivery.
-- [ ] **CURRENT —** verify representative small, medium, and large PDF
-  ingestion end to end.
-- [ ] Verify retrieval, citations, persistence, restart, and failure recovery.
+- [x] Representative small / medium / large PDF ingestion QA — Human accepted:
+  ingestion, publication, retrieval, and citations passed; no R04 regression
+  observed and CPU fallback was not required for these workloads.
+- [ ] **CURRENT —** verify persistence, restart, and failure recovery.
 - [ ] Complete Slice 16F beta functionality.
 - [ ] Complete Slice 16G beta functionality.
-- [ ] Run end-to-end beta QA and fix release-blocking defects.
-- [ ] Human beta acceptance and release.
+- [ ] End-to-end beta QA.
+- [ ] Fix release-blocking defects.
+- [ ] Human beta acceptance.
+- [ ] RELEASE.
 
 ### R04 status — investigation no longer gates beta delivery
 
