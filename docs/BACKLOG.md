@@ -235,42 +235,69 @@ Slice 17 design-open should be requested only after this handoff is complete.
 ## 2. Separate robustness / release backlog
 
 These items are real work but are **not** part of the mandatory 16K-E->F->G
-sequence unless a later authority explicitly moves them there.
+sequence unless a later authority explicitly moves them there. BETA-HARDEN-01
+is a P0 beta blocker and takes priority before beta acceptance.
 
-### UX-01 — Source-add worklist distinguishes new work from existing workspace sources
+### BETA-HARDEN-01 — Large-PDF admission and failed-operation recovery
 
-**Priority:** P1 before beta acceptance\
-**Status:** REGISTERED / SMALL UX CORRECTIVE
+**Priority:** P0 — beta blocker\
+**Status:** REGISTERED / BOUNDED CORRECTIVE
 
-When a user adds one new source, the managed operation correctly rebuilds the
-searchable workspace from the full active-source set. The current worklist UI,
-however, initializes every participating source as `Pending`, which makes
-existing sources look as though they are being newly uploaded or fully
-reprocessed.
+A valid `SOURCE_ADD` can fail before ingestion because the large-PDF CUDA
+pre-admission check requires at least `7,156,531,200` bytes of effective GPU
+capacity (about 7.16 GB decimal). Retries under unchanged host conditions then
+receive the same admission rejection. Separately, the failed-operation tray
+retains terminal cards after their operation references have been removed from
+local storage.
 
-Target behavior:
+The backend releases the workspace mutation lease and operation-capacity handle
+in `finally`; the observed retry loop is caused by the admission policy and UI
+state reconciliation, not a permanently poisoned CUDA runtime.
 
-- make newly requested sources visually primary during `SOURCE_ADD`;
-- distinguish existing workspace sources from newly added sources;
-- communicate that existing parsed, chunk, and embedding artifacts are reused
-  where available, without implying full reprocessing;
-- keep the complete workspace rebuild worklist available under **Details** for
-  observability;
-- do not change indexing, cache identity, publication, or rebuild semantics.
+Corrective scope:
 
-Suggested presentation:
+- remove or revise the obsolete large-PDF CUDA pre-admission threshold so a
+  valid PDF of at most 90 MiB is not rejected solely by that gate;
+- retain upload limits: PDF 90 MiB; other supported text files 25 MiB;
+- rely on the corrected CUDA embedding path (`use_cache=false`, token-aware
+  batching, direct FP16, and bounded CUDA OOM recovery);
+- preserve atomic publication and safe terminal failure on genuine runtime OOM;
+- keep CPU fallback deferred;
+- consume detached `run_in_executor()` future exceptions so managed failures do
+  not emit `Future exception was never retrieved`;
+- make `ActiveOperationsBootstrap` remove terminal operations from rendered
+  state when their active-operation references are forgotten;
+- prevent failed operation cards from accumulating after reconciliation or
+  dismissal;
+- return source mutation controls to a usable state after an operation fails;
+- improve capacity-error copy if any legitimate admission rejection remains.
+
+The user-facing upload-limit copy for both Add Source and Replace Source is:
 
 ```text
-Adding 1 source
-BAUER-000764.pdf · Reading
-
-Workspace update
-16 existing sources · artifacts reused where available
+Maximum upload file size: 90 MiB for PDF, 25 MiB for other text files
 ```
 
-**Acceptance target:** adding one source no longer presents all previously
-active sources as ordinary `Pending` uploads/work items, while the detailed
-operation view remains truthful about the full workspace rebuild.
+Indexing, cache identity, publication, and workspace rebuild semantics remain
+unchanged.
+
+Acceptance target:
+
+1. Trigger a controlled failed `SOURCE_ADD`.
+2. Verify the previously published workspace remains intact.
+3. Verify the mutation lease and operation-capacity handle are released.
+4. Verify the failed operation is surfaced once.
+5. After terminal reconciliation or dismissal, verify its card neither remains
+   nor reappears.
+6. Verify Add / Replace controls are usable again without restarting Seneca.
+7. Verify a subsequent valid `SOURCE_ADD` succeeds in the same process.
+8. Verify no `Future exception was never retrieved` warning is emitted.
+9. Verify a valid PDF larger than 25 MiB and at most 90 MiB is not rejected
+   solely by the obsolete CUDA pre-admission threshold.
+10. Verify genuine CUDA exhaustion still fails safely without partial
+    publication.
+
+Registration does not grant implementation authority.
 
 ### ROBUST-01 — Native PDF parser process isolation
 
