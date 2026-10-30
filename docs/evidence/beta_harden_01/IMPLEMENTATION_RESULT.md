@@ -3,11 +3,31 @@
 ## Authority and subject
 
 - Work item: `BETA-HARDEN-01 — Large-PDF admission and failed-operation recovery`
+- Authorization: user-authorized bounded implementation GO for BETA-HARDEN-01.
 - Starting canonical `main`: `c6d1b41165a22bd8d80af437543daf3a6e51e798`
 - Implementation branch: `implementation/beta-harden-01-large-pdf-recovery`
 - Technical implementation commit: `7ebf56796779449090fb85b4a0ac6c944c01f1f1`
 - Independent review: pending
 - Human acceptance / promotion: not authorized
+- Additional implementation/result commits: `d0735d6ae0321b7f842c81c2a6aae4c2ff9d8a6b` (durable evidence and live projection)
+
+## Changed paths
+
+```text
+src/offline_rag/api/workspaces.py
+src/offline_rag/app/workspace/capacity.py
+tests/unit/app/test_slice16b_workspace_api.py
+tests/unit/app/test_slice16k_c_capacity_model.py
+tests/unit/app/test_slice16k_l2_bounded_workspace_path.py
+ui/src/features/operations/ActiveOperationsBootstrap.tsx
+ui/src/pages/WorkspacePage.tsx
+ui/src/test/slice16d_a.app.test.tsx
+ui/src/test/slice16h_integration_acceptance.test.tsx
+ROADMAP.md
+docs/BACKLOG.md
+docs/evidence/beta_harden_01/IMPLEMENTATION_RESULT.md
+docs/evidence/beta_harden_01/live_recovery_evidence.json
+```
 
 ## Changes
 
@@ -17,6 +37,8 @@
 - Synchronized active-operation tray state with stored locators while retaining a terminal card until dismissal, as required by the existing operation-tray contract. Dismissal removes the locator and rendered item; later sync does not restore it.
 - Updated Add and Replace limit copy to say “other text files.”
 - No CPU fallback, indexing/rebuild change, publication change, or R04 research was introduced.
+- No migrations, configuration, capabilities schema, API schema, or admission ordering changes were made. The existing stable error classifications and atomic publication semantics remain in force.
+- Product limits before/after: PDF 90 MiB; other supported text files 25 MiB; request 100 MiB — unchanged.
 
 ## Live recovery execution
 
@@ -31,17 +53,20 @@ The API log contained the detached worker’s safe `AppError` classification and
 
 The live sequence validates a managed failure followed by a valid large-PDF recovery add. It did not deliberately force a real CUDA OOM; OOM classification/recovery remains covered by the existing deterministic CUDA recovery tests, and publication code was not changed.
 
+Scientific campaign executions: **NONE**.
+
 ## Validation
 
-- `pytest` capacity + bounded workspace path suites: **46 passed**.
-- Dense failure observability + CUDA OOM recovery + detached-Future test: **33 passed**.
-- Focused UI operation/recovery suites: **40 passed**.
-- Targeted Ruff check: **passed**.
-- Targeted ESLint on changed UI files: **passed**.
-- `git diff --check`: **passed**.
-- Full `tests/unit/app/test_slice16b_workspace_api.py` run exceeded its 45-second bounded run; its focused detached-Future test passed and the live managed-operation flow passed.
-- Repository-wide UI lint and TypeScript checks still report existing errors in untouched Gold Lab and test-fixture files; targeted checks for changed UI files passed.
-- `ruff format --check` reports pre-existing formatting differences in these legacy files; no broad formatting pass was applied.
+- `.venv/bin/pytest -q tests/unit/app/test_slice16k_c_capacity_model.py tests/unit/app/test_slice16k_l2_bounded_workspace_path.py` — **46 passed**.
+- `.venv/bin/pytest -q tests/unit/app/test_slice16b_workspace_api.py::test_detached_worker_exception_is_retrieved_without_logging_private_message tests/unit/test_dense_failure_observability.py tests/unit/dense/test_cuda_oom_recovery.py` — **33 passed**.
+- `cd ui && npm test -- --run src/test/slice16d_a.app.test.tsx src/test/slice16h_integration_acceptance.test.tsx src/test/slice16_gold_operations_ux.test.tsx` — **40 passed**.
+- `cd ui && npx eslint src/features/operations/ActiveOperationsBootstrap.tsx src/pages/WorkspacePage.tsx src/test/slice16h_integration_acceptance.test.tsx src/test/slice16d_a.app.test.tsx` — **passed**.
+- `.venv/bin/ruff check src/offline_rag/api/workspaces.py src/offline_rag/app/workspace/capacity.py tests/unit/app/test_slice16b_workspace_api.py tests/unit/app/test_slice16k_c_capacity_model.py tests/unit/app/test_slice16k_l2_bounded_workspace_path.py` — **passed**.
+- `git diff --check` — **passed**.
+- `timeout 45s .venv/bin/pytest -q tests/unit/app/test_slice16b_workspace_api.py` — timed out (exit 124); its focused detached-Future test passed and the live managed-operation flow passed.
+- `cd ui && npm run lint` — existing failures: 4 errors and 2 warnings, all in untouched Gold Lab files.
+- `cd ui && npm run typecheck` — existing errors in untouched `p4_human_uat_duplicate_message.test.ts` and `slice16k_r04_cuda_oom.test.tsx`; targeted ESLint and all focused UI tests passed.
+- `.venv/bin/ruff format --check` on the five changed Python paths reports pre-existing formatting differences in legacy sections; no broad formatting pass was applied.
 
 ## Limits and remaining gates
 
@@ -49,3 +74,4 @@ The live sequence validates a managed failure followed by a valid large-PDF reco
 - No scientific campaign was run. No deliberate GPU OOM was induced.
 - The test workspace `ws_65dee968958340cfb0a671eebfabc44f` is isolated and remains available for inspection.
 - Candidate is ready for independent review. Human acceptance and promotion remain pending and unauthorized.
+- Tracked worktree is clean; unrelated pre-existing untracked artifacts and local data were left untouched.
