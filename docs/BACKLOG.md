@@ -237,6 +237,41 @@ Slice 17 design-open should be requested only after this handoff is complete.
 These items are real work but are **not** part of the mandatory 16K-E->F->G
 sequence unless a later authority explicitly moves them there.
 
+### UX-01 — Source-add worklist distinguishes new work from existing workspace sources
+
+**Priority:** P1 before beta acceptance\
+**Status:** REGISTERED / SMALL UX CORRECTIVE
+
+When a user adds one new source, the managed operation correctly rebuilds the
+searchable workspace from the full active-source set. The current worklist UI,
+however, initializes every participating source as `Pending`, which makes
+existing sources look as though they are being newly uploaded or fully
+reprocessed.
+
+Target behavior:
+
+- make newly requested sources visually primary during `SOURCE_ADD`;
+- distinguish existing workspace sources from newly added sources;
+- communicate that existing parsed, chunk, and embedding artifacts are reused
+  where available, without implying full reprocessing;
+- keep the complete workspace rebuild worklist available under **Details** for
+  observability;
+- do not change indexing, cache identity, publication, or rebuild semantics.
+
+Suggested presentation:
+
+```text
+Adding 1 source
+BAUER-000764.pdf · Reading
+
+Workspace update
+16 existing sources · artifacts reused where available
+```
+
+**Acceptance target:** adding one source no longer presents all previously
+active sources as ordinary `Pending` uploads/work items, while the detailed
+operation view remains truthful about the full workspace rebuild.
+
 ### ROBUST-01 — Native PDF parser process isolation
 
 **Priority:** P1\
