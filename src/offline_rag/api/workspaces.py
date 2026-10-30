@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import re
 from typing import Any
 from urllib.parse import quote
@@ -16,6 +17,7 @@ from offline_rag.api.workspace_views import (
     source_view,
     workspace_view,
 )
+from offline_rag.app.conversation import run_conversation_turn
 from offline_rag.app.errors import (
     AppError,
     ErrorCode,
@@ -24,7 +26,6 @@ from offline_rag.app.errors import (
 )
 from offline_rag.app.ingest_upload import validate_ingest_http_envelope
 from offline_rag.app.operations import OperationHandle
-from offline_rag.app.conversation import run_conversation_turn
 from offline_rag.app.query import MAX_QUESTION_CHARS, run_workspace_query
 from offline_rag.app.runtime import ApplicationRuntime
 from offline_rag.app.workspace.etag import format_etag, parse_if_match
@@ -43,6 +44,7 @@ from offline_rag.app.workspace.upload_spool import (
 )
 
 router = APIRouter(tags=["workspaces"])
+logger = logging.getLogger(__name__)
 
 _SAFE_FILENAME_RE = re.compile(r"[^A-Za-z0-9._-]+")
 
@@ -112,6 +114,23 @@ def _accepted_operation_response(operation: Any) -> JSONResponse:
     if operation.expected_revision is not None:
         response.headers["ETag"] = format_etag(operation.expected_revision)
     return response
+
+
+def _consume_detached_worker_result(
+    future: asyncio.Future[Any], *, operation_id: str
+) -> None:
+    """Retrieve detached worker exceptions already recorded by the lifecycle."""
+    try:
+        error = future.exception()
+    except asyncio.CancelledError:
+        return
+    if error is not None:
+        logger.warning(
+            "Detached managed operation worker failed after terminalization "
+            "(operation_id=%s, exception_type=%s)",
+            operation_id,
+            type(error).__name__,
+        )
 
 
 class WorkspaceCreateRequest(BaseModel):
@@ -286,7 +305,12 @@ async def _launch_scientific_mutation(
                 spool.cleanup()
 
     # Detached: disconnect must not cancel capacity ownership.
-    loop.run_in_executor(None, _worker)
+    worker_future = loop.run_in_executor(None, _worker)
+    worker_future.add_done_callback(
+        lambda future: _consume_detached_worker_result(
+            future, operation_id=operation.operation_id
+        )
+    )
     # Re-read so the 202 body reflects durable state after reservation.
     ops = ManagedOperationStore(runtime.settings)
     fresh = ops.get(workspace_id, operation.operation_id)

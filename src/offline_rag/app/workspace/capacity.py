@@ -37,7 +37,6 @@ LARGE_PDF_REFERENCE_MEM_TOTAL_BYTES = 32_000_000_000
 LARGE_PDF_REFERENCE_MEM_AVAILABLE_BYTES = 19_388_303_360
 CUDA_LARGE_PDF_REFERENCE_MEM_AVAILABLE_BYTES = 12_998_318_080
 CUDA_LARGE_PDF_MIN_TOTAL_VRAM_BYTES = 8_000_000_000
-CUDA_LARGE_PDF_MIN_EFFECTIVE_CAPACITY_BYTES = 7_156_531_200
 DISK_RESERVE_BYTES = 1_073_741_824
 DISK_AMPLIFICATION_FACTOR = 5
 
@@ -178,11 +177,7 @@ def _large_pdf_runtime_eligibility(
                 "memory_telemetry_unavailable",
                 CUDA_MEMORY_TELEMETRY_UNAVAILABLE,
             )
-        if (
-            cuda_observed.total_bytes < CUDA_LARGE_PDF_MIN_TOTAL_VRAM_BYTES
-            or cuda_observed.effective_capacity_bytes
-            < CUDA_LARGE_PDF_MIN_EFFECTIVE_CAPACITY_BYTES
-        ):
+        if cuda_observed.total_bytes < CUDA_LARGE_PDF_MIN_TOTAL_VRAM_BYTES:
             return _LargePdfEligibility(False, "large_pdf_gpu_memory_insufficient")
 
     return _LargePdfEligibility(True, None)

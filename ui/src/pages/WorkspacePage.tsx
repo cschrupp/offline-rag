@@ -1598,7 +1598,7 @@ export function WorkspacePage() {
             />
             <p className="muted">
               {limits
-                ? `Maximum upload file size: ${formatMiB(limits.maxBytesPerPdfSource)} MiB for PDF, ${formatMiB(limits.maxBytesPerUploadedFile)} MiB for other files`
+                ? `Maximum upload file size: ${formatMiB(limits.maxBytesPerPdfSource)} MiB for PDF, ${formatMiB(limits.maxBytesPerUploadedFile)} MiB for other text files`
                 : "Maximum file size: determined by the server"}
             </p>
           </div>
@@ -1863,7 +1863,7 @@ export function WorkspacePage() {
             {limits ? (
               <p className="muted">
                 Maximum upload file size:{" "}
-                {formatMiB(limits.maxBytesPerPdfSource)} MiB for PDF, {formatMiB(limits.maxBytesPerUploadedFile)} MiB for other files
+                {formatMiB(limits.maxBytesPerPdfSource)} MiB for PDF, {formatMiB(limits.maxBytesPerUploadedFile)} MiB for other text files
               </p>
             ) : null}
           </div>

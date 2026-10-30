@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import shutil
 import time
 from collections.abc import Iterator
@@ -12,6 +13,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from offline_rag.api.app import create_app
+from offline_rag.api.workspaces import _consume_detached_worker_result
 from offline_rag.app.runtime import ApplicationRuntime, ResourceFactories
 from offline_rag.config import load_settings
 from offline_rag.config.models import AppSettings
@@ -278,3 +280,18 @@ def test_slice15_health_still_ok(tmp_path: Path) -> None:
     with _client(tmp_path) as client:
         health = client.get("/health")
         assert health.status_code == 200
+
+
+def test_detached_worker_exception_is_retrieved_without_logging_private_message(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    async def exercise_callback() -> None:
+        future: asyncio.Future[None] = asyncio.get_running_loop().create_future()
+        future.set_exception(RuntimeError("private source details"))
+        _consume_detached_worker_result(future, operation_id="op_failed")
+
+    asyncio.run(exercise_callback())
+
+    assert "operation_id=op_failed" in caplog.text
+    assert "exception_type=RuntimeError" in caplog.text
+    assert "private source details" not in caplog.text

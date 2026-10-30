@@ -464,7 +464,7 @@ def test_cuda_large_pdf_admission_reaches_vault_stage(
         "_cuda_memory_telemetry",
         lambda _device: capacity_module.CudaMemoryTelemetry(
             total_bytes=capacity_module.CUDA_LARGE_PDF_MIN_TOTAL_VRAM_BYTES,
-            free_bytes=capacity_module.CUDA_LARGE_PDF_MIN_EFFECTIVE_CAPACITY_BYTES,
+            free_bytes=1,
             current_process_reserved_bytes=0,
         ),
     )

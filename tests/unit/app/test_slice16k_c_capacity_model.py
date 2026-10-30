@@ -13,7 +13,6 @@ import offline_rag.app.workspace.capacity as capacity_module
 from offline_rag.app.errors import AppError, ErrorCode, SafeErrorDetails
 from offline_rag.app.ingest_upload import cleanup_staging, spool_local_files
 from offline_rag.app.workspace.capacity import (
-    CUDA_LARGE_PDF_MIN_EFFECTIVE_CAPACITY_BYTES,
     CUDA_LARGE_PDF_MIN_TOTAL_VRAM_BYTES,
     CUDA_LARGE_PDF_REFERENCE_MEM_AVAILABLE_BYTES,
     CudaMemoryTelemetry,
@@ -206,7 +205,7 @@ def test_cuda_large_pdf_runtime_uses_profile_specific_host_and_vram_gates() -> N
     settings = AppSettings()
     exact_cuda = CudaMemoryTelemetry(
         total_bytes=CUDA_LARGE_PDF_MIN_TOTAL_VRAM_BYTES,
-        free_bytes=CUDA_LARGE_PDF_MIN_EFFECTIVE_CAPACITY_BYTES - 123,
+        free_bytes=1,
         current_process_reserved_bytes=123,
     )
     assert large_pdf_runtime_eligibility(
@@ -227,7 +226,7 @@ def test_cuda_large_pdf_runtime_uses_profile_specific_host_and_vram_gates() -> N
         memory=(32_000_000_000, CUDA_LARGE_PDF_REFERENCE_MEM_AVAILABLE_BYTES),
         cuda_memory=CudaMemoryTelemetry(
             total_bytes=CUDA_LARGE_PDF_MIN_TOTAL_VRAM_BYTES - 1,
-            free_bytes=CUDA_LARGE_PDF_MIN_EFFECTIVE_CAPACITY_BYTES,
+            free_bytes=1,
             current_process_reserved_bytes=0,
         ),
     ) == (False, "large_pdf_gpu_memory_insufficient")
@@ -237,19 +236,24 @@ def test_cuda_large_pdf_runtime_uses_profile_specific_host_and_vram_gates() -> N
         memory=(32_000_000_000, CUDA_LARGE_PDF_REFERENCE_MEM_AVAILABLE_BYTES),
         cuda_memory=CudaMemoryTelemetry(
             total_bytes=CUDA_LARGE_PDF_MIN_TOTAL_VRAM_BYTES,
-            free_bytes=CUDA_LARGE_PDF_MIN_EFFECTIVE_CAPACITY_BYTES - 1,
+            free_bytes=1,
             current_process_reserved_bytes=0,
         ),
-    ) == (False, "large_pdf_gpu_memory_insufficient")
+    ) == (True, None)
 
 
-def test_cuda_effective_capacity_includes_current_process_reservation_once() -> None:
+def test_cuda_transient_free_capacity_does_not_preempt_qualified_runtime() -> None:
     telemetry = CudaMemoryTelemetry(
         total_bytes=CUDA_LARGE_PDF_MIN_TOTAL_VRAM_BYTES,
-        free_bytes=CUDA_LARGE_PDF_MIN_EFFECTIVE_CAPACITY_BYTES - 1,
-        current_process_reserved_bytes=1,
+        free_bytes=1,
+        current_process_reserved_bytes=0,
     )
-    assert telemetry.effective_capacity_bytes == CUDA_LARGE_PDF_MIN_EFFECTIVE_CAPACITY_BYTES
+    assert large_pdf_runtime_eligibility(
+        AppSettings(),
+        profile_id="cuda_fp16_v1",
+        memory=(32_000_000_000, CUDA_LARGE_PDF_REFERENCE_MEM_AVAILABLE_BYTES),
+        cuda_memory=telemetry,
+    ) == (True, None)
 
 
 def test_cuda_telemetry_unavailable_fails_closed(
@@ -678,7 +682,7 @@ def test_capabilities_reports_eligible_cuda_without_loading_runtime(
         "_cuda_memory_telemetry",
         lambda _device: CudaMemoryTelemetry(
             total_bytes=CUDA_LARGE_PDF_MIN_TOTAL_VRAM_BYTES,
-            free_bytes=CUDA_LARGE_PDF_MIN_EFFECTIVE_CAPACITY_BYTES,
+            free_bytes=1,
             current_process_reserved_bytes=0,
         ),
     )

@@ -376,7 +376,16 @@ describe("Slice 16D-A FAILED/INTERRUPTED operation UX (F5)", () => {
     localStorage.removeItem(ACTIVE_OPERATIONS_KEY);
     let opCalls = 0;
     const mock = installFetchMock(async (call) => {
-      if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
+      if (call.url === "/v1/capabilities") {
+        return jsonResponse(
+          capabilities({
+            large_pdf: {
+              runtime_eligible: true,
+              effective_max_bytes: 94_371_840,
+            },
+          }),
+        );
+      }
       if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
       if (call.url === "/v1/workspaces/ws_1" && call.method === "GET") {
         return jsonResponse(
@@ -429,6 +438,11 @@ describe("Slice 16D-A FAILED/INTERRUPTED operation UX (F5)", () => {
     const addButtons = screen.getAllByRole("button", { name: "+ Add sources" });
     await user.click(addButtons[0]);
     const dialog = await screen.findByRole("dialog", { name: /add sources/i });
+    expect(
+      within(dialog).getByText(
+        /Maximum upload file size: 90 MiB for PDF, 25 MiB for other text files/i,
+      ),
+    ).toBeInTheDocument();
     const fileInput = within(dialog).getByLabelText(/source files/i);
     const file = new File(["pump"], "pump.txt", { type: "text/plain" });
     await user.upload(fileInput, file);
@@ -438,6 +452,10 @@ describe("Slice 16D-A FAILED/INTERRUPTED operation UX (F5)", () => {
     expect(screen.getByText("Ingest failed before bootstrap")).toBeInTheDocument();
     expect(screen.queryByText("ingest_failed")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Dismiss" })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getAllByRole("button", { name: "+ Add sources" })[0])
+        .toBeEnabled();
+    });
     // Must not collapse to a bare compact "failed · Add sources" status line.
     expect(screen.queryByText(/^failed · Add sources$/i)).not.toBeInTheDocument();
     expect(opCalls).toBeGreaterThan(0);
@@ -448,7 +466,16 @@ describe("Slice 16D-A FAILED/INTERRUPTED operation UX (F5)", () => {
     const user = userEvent.setup();
     localStorage.removeItem(ACTIVE_OPERATIONS_KEY);
     const mock = installFetchMock(async (call) => {
-      if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
+      if (call.url === "/v1/capabilities") {
+        return jsonResponse(
+          capabilities({
+            large_pdf: {
+              runtime_eligible: true,
+              effective_max_bytes: 94_371_840,
+            },
+          }),
+        );
+      }
       if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
       if (call.url === "/v1/workspaces/ws_1" && call.method === "GET") {
         return jsonResponse(
@@ -505,6 +532,11 @@ describe("Slice 16D-A FAILED/INTERRUPTED operation UX (F5)", () => {
       screen.getByRole("menuitem", { name: "Replace current version" }),
     );
     const dialog = await screen.findByRole("dialog", { name: /replace/i });
+    expect(
+      within(dialog).getByText(
+        /Maximum upload file size: 90 MiB for PDF, 25 MiB for other text files/i,
+      ),
+    ).toBeInTheDocument();
     const fileInput = within(dialog).getByLabelText(/file/i);
     await user.upload(
       fileInput,
@@ -515,6 +547,20 @@ describe("Slice 16D-A FAILED/INTERRUPTED operation UX (F5)", () => {
     expect(
       screen.getByText(/processing was interrupted\. you may retry/i),
     ).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Actions for manual.pdf" }),
+    );
+    await user.click(
+      screen.getByRole("menuitem", { name: "Replace current version" }),
+    );
+    const retryDialog = await screen.findByRole("dialog", { name: /replace/i });
+    await user.upload(
+      within(retryDialog).getByLabelText(/file/i),
+      new File(["v3"], "manual_v3.pdf", { type: "application/pdf" }),
+    );
+    expect(
+      within(retryDialog).getByRole("button", { name: /replace/i }),
+    ).toBeEnabled();
     mock.restore();
   });
 });

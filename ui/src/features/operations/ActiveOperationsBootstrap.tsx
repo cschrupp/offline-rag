@@ -17,6 +17,7 @@ import {
 
 type SurfacedItem = {
   ref: ActiveOperationRef;
+  terminal: boolean;
 };
 
 /**
@@ -25,7 +26,7 @@ type SurfacedItem = {
  */
 export function ActiveOperationsBootstrap() {
   const [items, setItems] = useState<SurfacedItem[]>(() =>
-    loadActiveOperations().map((ref) => ({ ref })),
+    loadActiveOperations().map((ref) => ({ ref, terminal: false })),
   );
 
   useEffect(() => {
@@ -68,6 +69,13 @@ export function ActiveOperationsBootstrap() {
               );
             }}
             onTerminalSurfaced={() => {
+              setItems((current) =>
+                current.map((entry) =>
+                  entry.ref.operation_id === item.ref.operation_id
+                    ? { ...entry, terminal: true }
+                    : entry,
+                ),
+              );
               forgetActiveOperation(item.ref.operation_id);
             }}
           />
@@ -81,13 +89,19 @@ function mergeRefs(
   current: SurfacedItem[],
   stored: ActiveOperationRef[],
 ): SurfacedItem[] {
-  const byId = new Map(current.map((item) => [item.ref.operation_id, item]));
-  for (const ref of stored) {
-    if (!byId.has(ref.operation_id)) {
-      byId.set(ref.operation_id, { ref });
+  const currentById = new Map(
+    current.map((item) => [item.ref.operation_id, item]),
+  );
+  const merged = stored.map(
+    (ref) => currentById.get(ref.operation_id) ?? { ref, terminal: false },
+  );
+  const storedIds = new Set(stored.map((ref) => ref.operation_id));
+  for (const item of current) {
+    if (item.terminal && !storedIds.has(item.ref.operation_id)) {
+      merged.push(item);
     }
   }
-  return Array.from(byId.values());
+  return merged;
 }
 
 function ResumedOperationCard({

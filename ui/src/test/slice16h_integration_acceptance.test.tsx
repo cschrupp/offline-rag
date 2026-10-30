@@ -15,6 +15,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { APPROVED_PRESENTATIONS_V1 } from "../features/goldLab/policy/approvedPresentations.v1";
 import {
   ACTIVE_OPERATIONS_KEY,
+  forgetActiveOperation,
   rememberActiveOperation,
 } from "../features/operations/activeOperations";
 import {
@@ -311,10 +312,17 @@ describe("16H-F — managed-operation recovery UX", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Add sources")).toBeInTheDocument();
     expect(screen.getByText(/Status:\s*Running/i)).toBeInTheDocument();
+    forgetActiveOperation("wop_resume_1");
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("operation-progress-wop_resume_1"),
+      ).not.toBeInTheDocument();
+    });
     mock.restore();
   });
 
-  it("failed operation remains visible and is not presented as success", async () => {
+  it("failed operation remains visible once and is pruned after dismissal", async () => {
+    const user = userEvent.setup();
     rememberActiveOperation({
       operation_id: "wop_fail_1",
       workspace_id: "ws_1",
@@ -346,6 +354,22 @@ describe("16H-F — managed-operation recovery UX", () => {
     renderApp("/");
     expect(await screen.findByText("Failed")).toBeInTheDocument();
     expect(screen.queryByText("Succeeded")).not.toBeInTheDocument();
+    expect(screen.getByTestId("operation-progress-wop_fail_1")).toBeInTheDocument();
+    expect(JSON.parse(localStorage.getItem(ACTIVE_OPERATIONS_KEY) ?? "[]"))
+      .toHaveLength(0);
+    await user.click(screen.getByRole("button", { name: "Dismiss" }));
+    await waitFor(() => {
+      expect(screen.queryByTestId("operation-progress-wop_fail_1"))
+        .not.toBeInTheDocument();
+    });
+    expect(JSON.parse(localStorage.getItem(ACTIVE_OPERATIONS_KEY) ?? "[]"))
+      .toHaveLength(0);
+    // A later storage sync must not resurrect a forgotten terminal card.
+    forgetActiveOperation("wop_fail_1");
+    await waitFor(() => {
+      expect(screen.queryByTestId("operation-progress-wop_fail_1"))
+        .not.toBeInTheDocument();
+    });
     mock.restore();
   });
 
