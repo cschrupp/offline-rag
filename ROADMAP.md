@@ -13,8 +13,11 @@ and supporting history.
 - [x] Representative small / medium / large PDF ingestion QA — Human accepted:
   ingestion, publication, retrieval, and citations passed; no R04 regression
   observed and CPU fallback was not required for these workloads.
-- [ ] **CURRENT —** open and execute the bounded BETA-HARDEN-01 corrective for
-  large-PDF admission and failed-operation recovery.
+- [x] Implement BETA-HARDEN-01 large-PDF admission and failed-operation
+  recovery. Result: [`docs/evidence/beta_harden_01/IMPLEMENTATION_RESULT.md`](docs/evidence/beta_harden_01/IMPLEMENTATION_RESULT.md).
+- [ ] **CURRENT —** independent review of BETA-HARDEN-01 technical subject
+  `7ebf56796779449090fb85b4a0ac6c944c01f1f1`; Human acceptance and promotion
+  remain pending.
 - [ ] Resume persistence, restart, and failure-recovery QA after the corrective.
 - [ ] Complete Slice 16F beta functionality.
 - [ ] Complete Slice 16G beta functionality.

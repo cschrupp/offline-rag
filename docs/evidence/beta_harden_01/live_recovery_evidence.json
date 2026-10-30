@@ -1,0 +1,43 @@
+{
+  "schema": "beta-harden-01-live-recovery-v1",
+  "execution_date": "2026-10-30",
+  "server": {
+    "readiness_http_status": 200,
+    "readiness_body": {
+      "status": "ready"
+    },
+    "embedding_profile": "cuda_fp16_v1",
+    "large_pdf_effective_max_bytes": 94371840,
+    "same_api_process_for_all_mutations": true
+  },
+  "workspace_id": "ws_65dee968958340cfb0a671eebfabc44f",
+  "baseline": {
+    "operation_id": "wop_a87dcd859dac4138a066b0f2b4d39b19",
+    "status": "succeeded",
+    "revision_after": 2,
+    "source_count_after": 1
+  },
+  "controlled_failure": {
+    "operation_id": "wop_f05a2a7c791944ddb20d151d80abe761",
+    "status": "failed",
+    "error_code": "document_invalid",
+    "safe_reason": "document_identity_conflict",
+    "revision_after": 2,
+    "source_count_after": 1,
+    "workspace_status_after": "active"
+  },
+  "recovery_add": {
+    "operation_id": "wop_54820bb54502434db8fbc9120c2147d4",
+    "status": "succeeded",
+    "revision_after": 3,
+    "source_count_after": 2,
+    "source": {
+      "display_name": "the_book_of_shupe.pdf",
+      "byte_size": 67199839,
+      "sha256": "1f22131a12fccfd0f5ecca9d6e84e7a4314720eeb2abef602be7ebe9932f7c54"
+    }
+  },
+  "future_exception_warning": false,
+  "detached_worker_failure_log": "safe operation id and exception type only",
+  "preexisting_workspace_mutated": false
+}
