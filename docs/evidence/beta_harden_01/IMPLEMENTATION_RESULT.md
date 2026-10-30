@@ -7,8 +7,9 @@
 - Starting canonical `main`: `c6d1b41165a22bd8d80af437543daf3a6e51e798`
 - Implementation branch: `implementation/beta-harden-01-large-pdf-recovery`
 - Technical implementation commit: `7ebf56796779449090fb85b4a0ac6c944c01f1f1`
-- Independent review: pending
-- Human acceptance / promotion: not authorized
+- Independent review: IR-001 — ACCEPT (review handoff tip `793ef6d75388052d3790864b218acdcb3953ffd5`)
+- Human acceptance: ACCEPTED for technical subject `7ebf56796779449090fb85b4a0ac6c944c01f1f1`.
+- Promotion: pure fast-forward from `c6d1b41165a22bd8d80af437543daf3a6e51e798` to `793ef6d75388052d3790864b218acdcb3953ffd5`.
 - Additional implementation/result commits: `d0735d6ae0321b7f842c81c2a6aae4c2ff9d8a6b` (durable evidence and live projection)
 
 ## Changed paths
@@ -73,5 +74,5 @@ Scientific campaign executions: **NONE**.
 - Production limits and accepted profile policy remain unchanged except removal of the transient free-VRAM preflight threshold.
 - No scientific campaign was run. No deliberate GPU OOM was induced.
 - The test workspace `ws_65dee968958340cfb0a671eebfabc44f` is isolated and remains available for inspection.
-- Candidate is ready for independent review. Human acceptance and promotion remain pending and unauthorized.
+- BETA-HARDEN-01 is closed. The closeout projection is documentation-only; no additional production code or scientific execution occurred.
 - Tracked worktree is clean; unrelated pre-existing untracked artifacts and local data were left untouched.

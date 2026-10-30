@@ -241,10 +241,12 @@ is a P0 beta blocker and takes priority before beta acceptance.
 ### BETA-HARDEN-01 — Large-PDF admission and failed-operation recovery
 
 **Priority:** P0 — beta blocker\
-**Status:** IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
+**Status:** CLOSED / HUMAN ACCEPTED / PROMOTED
 
 Technical implementation subject: `7ebf56796779449090fb85b4a0ac6c944c01f1f1`.
 Durable result: [`docs/evidence/beta_harden_01/IMPLEMENTATION_RESULT.md`](evidence/beta_harden_01/IMPLEMENTATION_RESULT.md).
+Independent review: IR-001 — ACCEPT. Human acceptance: ACCEPTED.
+Fast-forward promotion tip: `793ef6d75388052d3790864b218acdcb3953ffd5`.
 
 A valid `SOURCE_ADD` can fail before ingestion because the large-PDF CUDA
 pre-admission check requires at least `7,156,531,200` bytes of effective GPU

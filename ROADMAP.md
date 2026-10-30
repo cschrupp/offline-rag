@@ -15,10 +15,10 @@ and supporting history.
   observed and CPU fallback was not required for these workloads.
 - [x] Implement BETA-HARDEN-01 large-PDF admission and failed-operation
   recovery. Result: [`docs/evidence/beta_harden_01/IMPLEMENTATION_RESULT.md`](docs/evidence/beta_harden_01/IMPLEMENTATION_RESULT.md).
-- [ ] **CURRENT —** independent review of BETA-HARDEN-01 technical subject
-  `7ebf56796779449090fb85b4a0ac6c944c01f1f1`; Human acceptance and promotion
-  remain pending.
-- [ ] Resume persistence, restart, and failure-recovery QA after the corrective.
+- [x] Independent review IR-001 and Human acceptance of technical subject
+  `7ebf56796779449090fb85b4a0ac6c944c01f1f1`; promoted by fast-forward at
+  `793ef6d75388052d3790864b218acdcb3953ffd5`.
+- [ ] **CURRENT —** Resume persistence, restart, and failure-recovery QA.
 - [ ] Complete Slice 16F beta functionality.
 - [ ] Complete Slice 16G beta functionality.
 - [ ] End-to-end beta QA.
