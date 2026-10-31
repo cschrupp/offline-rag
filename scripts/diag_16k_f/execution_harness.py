@@ -45,6 +45,8 @@ CACHE_DIR_NAMES = (
 WARM_CACHE_DIR_NAMES = ("processed", "chunks", "embeddings")
 TERMINAL_STATUSES = {"succeeded", "failed", "interrupted"}
 DEFAULT_CELL_WATCHDOG_SECONDS = 6 * 60 * 60
+PRIMARY_CORPUS_MANIFEST_SCHEMA = "16k-f-primary-corpus-manifest-v1"
+EXPECTED_PRIMARY_DOCUMENTS = 39
 
 
 class HarnessError(ValueError):
@@ -1000,6 +1002,7 @@ def run_full_cold_warm_pair(
         raise HarnessError("paired evidence outputs must use distinct paths")
     if any(path.exists() for path in output_paths):
         raise HarnessError("refusing to overwrite existing 16K-F evidence")
+    _require_full_primary_manifest(manifest_path)
 
     pair_run_id = f"16kf-pair-{uuid.uuid4().hex}"
     cold = run_cell(
@@ -1047,6 +1050,41 @@ def run_full_cold_warm_pair(
     comparison["cold_evidence_sha256"] = cold_evidence_sha256
     _write_evidence(comparison_output_path, comparison)
     return comparison
+
+
+def _require_full_primary_manifest(manifest_path: Path) -> None:
+    """Reject proxy/single-source manifests before a full-corpus pair starts."""
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if not isinstance(manifest, dict):
+        raise HarnessError("full-corpus pair requires a primary corpus manifest")
+    if manifest.get("schema") != PRIMARY_CORPUS_MANIFEST_SCHEMA:
+        raise HarnessError("full-corpus pair requires a primary corpus manifest")
+    _verify_manifest_hash(manifest)
+
+    primary_sources = manifest.get("primary_sources")
+    if (
+        manifest.get("primary_document_count") != EXPECTED_PRIMARY_DOCUMENTS
+        or not isinstance(primary_sources, list)
+        or len(primary_sources) != EXPECTED_PRIMARY_DOCUMENTS
+    ):
+        raise HarnessError("full-corpus manifest must select exactly 39 primaries")
+
+    logical_document_ids: set[str] = set()
+    for source in primary_sources:
+        if not isinstance(source, dict):
+            raise HarnessError("full-corpus primary source row is malformed")
+        logical_document_id = source.get("logical_document_id")
+        if (
+            source.get("role") != "primary"
+            or source.get("text_bearing") is not True
+            or not isinstance(logical_document_id, str)
+            or not logical_document_id
+            or logical_document_id in logical_document_ids
+        ):
+            raise HarnessError(
+                "full-corpus manifest must select 39 unique primary logical documents"
+            )
+        logical_document_ids.add(logical_document_id)
 
 
 def revision_source_count(client: httpx.Client, workspace_id: str) -> int:

@@ -625,6 +625,39 @@ def test_full_pair_runs_cold_then_warm_on_same_root_and_links_evidence(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    corpus = tmp_path / "corpus"
+    corpus.mkdir()
+    primary_sources = []
+    for index in range(39):
+        filename = f"primary-{index:02d}.txt"
+        content = f"synthetic primary source {index}".encode()
+        (corpus / filename).write_bytes(content)
+        primary_sources.append(
+            {
+                "relative_path": filename,
+                "byte_size": len(content),
+                "media_type": "text/plain",
+                "sha256": hashlib.sha256(content).hexdigest(),
+                "logical_document_id": f"logical-{index:02d}",
+                "role": "primary",
+                "text_bearing": True,
+            }
+        )
+    manifest = {
+        "schema": "16k-f-primary-corpus-manifest-v1",
+        "primary_document_count": 39,
+        "primary_sources": primary_sources,
+    }
+    manifest["manifest_sha256"] = hashlib.sha256(
+        json.dumps(
+            manifest,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode()
+    ).hexdigest()
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
     calls: list[dict[str, object]] = []
 
     def fake_run_cell(**kwargs: object) -> dict[str, object]:
@@ -664,8 +697,8 @@ def test_full_pair_runs_cold_then_warm_on_same_root_and_links_evidence(
     comparison_output = tmp_path / "comparison.json"
     comparison = execution_harness.run_full_cold_warm_pair(
         base_url="http://seneca.test",
-        corpus_root=tmp_path / "corpus",
-        manifest_path=tmp_path / "manifest.json",
+        corpus_root=corpus,
+        manifest_path=manifest_path,
         query_deck_path=tmp_path / "queries.json",
         data_root=data_root,
         authority="synthetic-only",
@@ -684,6 +717,49 @@ def test_full_pair_runs_cold_then_warm_on_same_root_and_links_evidence(
     assert comparison["cold_evidence_sha256"] == cold_evidence_hash
     assert comparison["same_data_root"] is True
     assert comparison["warm_follows_cold_evidence"] is True
+
+
+@pytest.mark.parametrize("manifest_kind", ["single-source", "proxy"])
+def test_full_pair_rejects_non_primary_manifest_before_api_execution(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    manifest_kind: str,
+) -> None:
+    corpus = tmp_path / "corpus"
+    corpus.mkdir()
+    source = corpus / "synthetic.txt"
+    source.write_bytes(b"synthetic source")
+    if manifest_kind == "single-source":
+        manifest = build_single_source_manifest(
+            corpus,
+            inventory_directory(corpus),
+            relative_path=source.name,
+            text_bearing_confirmed=True,
+        )
+    else:
+        manifest = {
+            "schema_version": "offline-rag-corpus-manifest-v1",
+            "documents": [{"source_path": source.name}],
+        }
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    def unexpected_api_run(**_: object) -> dict[str, object]:
+        pytest.fail("full-pair manifest guard must run before either cell")
+
+    monkeypatch.setattr(execution_harness, "run_cell", unexpected_api_run)
+    with pytest.raises(HarnessError, match="requires a primary corpus manifest"):
+        execution_harness.run_full_cold_warm_pair(
+            base_url="http://seneca.test",
+            corpus_root=corpus,
+            manifest_path=manifest_path,
+            query_deck_path=tmp_path / "queries.json",
+            data_root=tmp_path / "data",
+            authority="synthetic-only",
+            cold_output_path=tmp_path / "cold.json",
+            warm_output_path=tmp_path / "warm.json",
+            comparison_output_path=tmp_path / "comparison.json",
+        )
 
 
 def test_query_validation_rejects_abstention_and_unmapped_citation() -> None:

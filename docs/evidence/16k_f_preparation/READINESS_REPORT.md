@@ -47,11 +47,14 @@ The preparation tooling is content-free with respect to document bodies:
   metrics, and citation counts. It omits source text, query text, answers,
   filenames, and per-document worklist contents.
 - `run-full-pair` runs full-corpus cold and warm cells consecutively against the
-  same data root. Warm evidence binds to the exact SHA-256 of completed cold
-  evidence. Comparison verifies matching manifest/source identities, expected
-  source count, data-root identity, pair sequence, completion state, and
-  timestamps. It reports observed generated-work and timing reductions without
-  imposing an unfrozen materiality threshold.
+  same data root. Before either cell starts, it requires the primary-corpus
+  manifest schema, exactly 39 primary rows, and 39 unique text-bearing primary
+  logical-document IDs; the single-cell runner remains available for proxy and
+  single-source manifests. Warm evidence binds to the exact SHA-256 of
+  completed cold evidence. Comparison verifies matching manifest/source
+  identities, expected source count, data-root identity, pair sequence,
+  completion state, and timestamps. It reports observed generated-work and
+  timing reductions without imposing an unfrozen materiality threshold.
 - The live runner requires both `--execute-real-corpus` and an explicit
   authority string. No invocation with those flags was made.
 
@@ -143,7 +146,7 @@ added to this repository.
 ## Validation performed
 
 ```text
-14 synthetic preparation / API-harness tests: PASS
+16 synthetic preparation / API-harness tests: PASS
 Ruff check on preparation tooling and focused tests: PASS
 Ruff format on preparation tooling and focused tests: PASS
 CLI help construction for runner, run-cell, and run-full-pair: PASS
