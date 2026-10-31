@@ -1,8 +1,8 @@
 # Seneca engineering backlog and deferred registry
 
 **Status:** LIVE PLANNING / NON-AUTHORIZING\
-**Canonical reference:** `main` at `7ca0c2332dbaf524fe777317cdd1aede7a795633`\
-**Updated:** 2026-10-27
+**Canonical reference:** `main` (see Git for current tip)\
+**Updated:** 2026-10-31
 
 This document is the live queue for work that remains after the Human-accepted
 Slice 16 closeout and the post-L6 parser-stack corrective.
@@ -304,6 +304,27 @@ Acceptance target:
 
 The bounded implementation was separately authorized. This status grants no
 Human acceptance, promotion, or authority for downstream beta work.
+
+### TEST-STARTUP-01 — Diagnose managed-operation TestClient startup hang
+
+**Priority:** P2\
+**Status:** REGISTERED / NON-BLOCKING TO BETA
+
+Selected managed-operation recovery tests can wait indefinitely while entering
+`fastapi.testclient.TestClient`. A faulthandler trace shows the test thread
+waiting for the AnyIO portal startup handshake; it does not identify which
+application startup activity is responsible. The focused recovery-test batch
+and isolated cases timed out without an assertion failure.
+
+The same process-recovery behavior passed through a live API restart: a
+non-terminal source-add was interrupted during PDF parsing, startup marked it
+`INTERRUPTED`, the prior publication remained intact, and a subsequent source
+add succeeded in the recovered process. Therefore this test-infrastructure
+issue does not currently block beta.
+
+Next action: diagnose the `TestClient` lifespan/startup wait and restore
+bounded automated coverage for managed-operation restart recovery. Do not
+reopen product recovery semantics unless new live evidence fails.
 
 ### ROBUST-01 — Native PDF parser process isolation
 

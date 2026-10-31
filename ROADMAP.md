@@ -18,8 +18,10 @@ and supporting history.
 - [x] Independent review IR-001 and Human acceptance of technical subject
   `7ebf56796779449090fb85b4a0ac6c944c01f1f1`; promoted by fast-forward at
   `793ef6d75388052d3790864b218acdcb3953ffd5`.
-- [ ] **CURRENT —** Resume persistence, restart, and failure-recovery QA.
-- [ ] Complete Slice 16F beta functionality.
+- [x] Persistence / restart / failure-recovery QA — real interrupted-operation
+  restart and post-recovery mutation passed; see
+  [`docs/evidence/beta_persistence_recovery/RESULT.md`](docs/evidence/beta_persistence_recovery/RESULT.md).
+- [ ] **CURRENT —** Complete Slice 16F beta functionality.
 - [ ] Complete Slice 16G beta functionality.
 - [ ] End-to-end beta QA.
 - [ ] Fix release-blocking defects.
