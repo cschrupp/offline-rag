@@ -12,11 +12,13 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import sys
 import time
 import uuid
 from contextlib import ExitStack
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -42,6 +44,7 @@ CACHE_DIR_NAMES = (
 )
 WARM_CACHE_DIR_NAMES = ("processed", "chunks", "embeddings")
 TERMINAL_STATUSES = {"succeeded", "failed", "interrupted"}
+DEFAULT_CELL_WATCHDOG_SECONDS = 6 * 60 * 60
 
 
 class HarnessError(ValueError):
@@ -478,14 +481,72 @@ def _sum_operation_metrics(operations: list[dict[str, Any]]) -> dict[str, Any]:
     return totals
 
 
-def compare_cold_warm(cold: dict[str, Any], warm: dict[str, Any]) -> dict[str, Any]:
+def compare_cold_warm(
+    cold: dict[str, Any],
+    warm: dict[str, Any],
+    *,
+    cold_evidence_sha256: str,
+) -> dict[str, Any]:
     """Compare paired full-corpus cells without imposing an unfrozen materiality
     threshold. The result reports reductions; reviewers apply accepted criteria.
     """
     if cold.get("source_identity_sha256") != warm.get("source_identity_sha256"):
         raise HarnessError("cold and warm source identities do not match")
+    if (
+        not isinstance(cold.get("source_identity_sha256"), str)
+        or not cold["source_identity_sha256"]
+    ):
+        raise HarnessError("paired cells lack source identity")
+    if cold.get("manifest_sha256") != warm.get("manifest_sha256"):
+        raise HarnessError("cold and warm manifests do not match")
+    if not isinstance(cold.get("manifest_sha256"), str) or not cold["manifest_sha256"]:
+        raise HarnessError("paired cells lack manifest identity")
+    if cold.get("source_count_expected") != warm.get("source_count_expected"):
+        raise HarnessError("cold and warm source counts do not match")
+    if (
+        not isinstance(cold.get("source_count_expected"), int)
+        or cold["source_count_expected"] <= 0
+    ):
+        raise HarnessError("paired cells lack a valid expected source count")
+    if (
+        cold.get("campaign_status") != "COMPLETE"
+        or warm.get("campaign_status") != "COMPLETE"
+    ):
+        raise HarnessError("paired cells must both be complete")
     if cold.get("cache_state") != "cold" or warm.get("cache_state") != "warm":
         raise HarnessError("paired cache states must be cold then warm")
+    if not cold.get("pair_run_id") or cold.get("pair_run_id") != warm.get(
+        "pair_run_id"
+    ):
+        raise HarnessError("cold and warm cells are not from the same pair run")
+    if cold.get("pair_sequence") != 1 or warm.get("pair_sequence") != 2:
+        raise HarnessError("cold and warm cells are not in immediate pair order")
+    data_root_id = cold.get("data_root_id")
+    if (
+        not isinstance(data_root_id, str)
+        or len(data_root_id) != 64
+        or data_root_id != warm.get("data_root_id")
+    ):
+        raise HarnessError("cold and warm cells used different data roots")
+    if (
+        not isinstance(cold_evidence_sha256, str)
+        or len(cold_evidence_sha256) != 64
+        or any(
+            character not in "0123456789abcdef" for character in cold_evidence_sha256
+        )
+    ):
+        raise HarnessError("cold evidence hash is invalid")
+    if warm.get("predecessor_evidence_sha256") != cold_evidence_sha256:
+        raise HarnessError("warm cell does not reference the exact cold evidence")
+    try:
+        cold_completed = datetime.fromisoformat(cold["completed_at"])
+        warm_started = datetime.fromisoformat(warm["started_at"])
+    except (AttributeError, KeyError, TypeError, ValueError) as exc:
+        raise HarnessError("paired cells lack valid ordering timestamps") from exc
+    if cold_completed.tzinfo is None or warm_started.tzinfo is None:
+        raise HarnessError("paired cell timestamps must include a timezone")
+    if warm_started < cold_completed:
+        raise HarnessError("warm cell started before cold cell completed")
     cold_totals = cold.get("aggregate_metrics")
     warm_totals = warm.get("aggregate_metrics")
     if not isinstance(cold_totals, dict) or not isinstance(warm_totals, dict):
@@ -522,6 +583,10 @@ def compare_cold_warm(cold: dict[str, Any], warm: dict[str, Any]) -> dict[str, A
         "source_identity_sha256": cold["source_identity_sha256"],
         "cold_cell_id": cold.get("cell_id"),
         "warm_cell_id": warm.get("cell_id"),
+        "same_data_root": True,
+        "warm_follows_cold_evidence": True,
+        "cold_completed_at": cold["completed_at"],
+        "warm_started_at": warm["started_at"],
         "reductions": reductions,
         "materiality_disposition": "REVIEW_AGAINST_ACCEPTED_CRITERIA",
     }
@@ -536,11 +601,101 @@ def _nested_metric(metrics: dict[str, Any], dotted_path: str) -> Any:
     return value
 
 
+def _utc_now() -> str:
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+
+
+def _data_root_id(data_root: Path) -> str:
+    return hashlib.sha256(str(data_root.resolve()).encode("utf-8")).hexdigest()
+
+
+def _validate_query_result(
+    result: dict[str, Any],
+    active_sources: list[dict[str, Any]],
+    *,
+    expected_revision: int,
+    expected_snapshot_id: str,
+) -> dict[str, Any]:
+    """Require a grounded answer whose citations map to published sources."""
+    if result.get("status") != "answered":
+        raise HarnessError("query did not return a grounded answered status")
+    answer = result.get("answer")
+    if not isinstance(answer, str) or not answer.strip():
+        raise HarnessError("grounded query response omitted its answer")
+    if result.get("workspace_revision") != expected_revision:
+        raise HarnessError("query result is bound to a different workspace revision")
+    if result.get("snapshot_id") != expected_snapshot_id:
+        raise HarnessError("query result is bound to a different published snapshot")
+    source_docs = {
+        source.get("source_id"): source.get("document_id")
+        for source in active_sources
+        if isinstance(source.get("source_id"), str)
+        and isinstance(source.get("document_id"), str)
+    }
+    citations = result.get("citations")
+    if not isinstance(citations, list) or not citations:
+        raise HarnessError("grounded query response has no citations")
+    citation_refs: set[str] = set()
+    for citation in citations:
+        if not isinstance(citation, dict):
+            raise HarnessError("query citation is malformed")
+        source_id = citation.get("source_id")
+        if not isinstance(source_id, str) or source_id not in source_docs:
+            raise HarnessError("query citation does not map to an active source")
+        if citation.get("document_id") != source_docs[source_id]:
+            raise HarnessError("query citation document does not match its source")
+        for field in ("evidence_unit_id", "source_chunk_id"):
+            if not isinstance(citation.get(field), str) or not citation[field]:
+                raise HarnessError("query citation lacks stable evidence identity")
+        if citation.get("kind") not in {"parent", "child"}:
+            raise HarnessError("query citation has an invalid evidence kind")
+        if (
+            not isinstance(citation.get("excerpt"), str)
+            or not citation["excerpt"].strip()
+        ):
+            raise HarnessError("query citation lacks a useful excerpt")
+        citation_ref = citation.get("citation_ref")
+        if not isinstance(citation_ref, str) or not citation_ref:
+            raise HarnessError("query citation lacks its public reference")
+        if citation_ref in citation_refs:
+            raise HarnessError("query response repeats a citation reference")
+        citation_refs.add(citation_ref)
+
+    answer_blocks = result.get("answer_blocks")
+    if not isinstance(answer_blocks, list) or not answer_blocks:
+        raise HarnessError("grounded query response has no answer blocks")
+    for block in answer_blocks:
+        if not isinstance(block, dict):
+            raise HarnessError("query answer block is malformed")
+        if not isinstance(block.get("text"), str) or not block["text"].strip():
+            raise HarnessError("query answer block is empty")
+        references = block.get("citation_refs")
+        if (
+            not isinstance(references, list)
+            or not references
+            or any(not isinstance(reference, str) for reference in references)
+            or not set(references).issubset(citation_refs)
+        ):
+            raise HarnessError("answer block lacks valid citation references")
+    return {
+        "status": "answered",
+        "citation_count": len(citations),
+        "answer_block_count": len(answer_blocks),
+        "valid_source_mappings": True,
+        "valid_answer_block_references": True,
+    }
+
+
 def _write_evidence(path: Path, evidence: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(evidence, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
+    temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+    try:
+        temporary.write_text(
+            json.dumps(evidence, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def run_cell(
@@ -555,28 +710,66 @@ def run_cell(
     authority: str,
     output_path: Path,
     poll_seconds: float = 2.0,
+    cell_watchdog_seconds: int = DEFAULT_CELL_WATCHDOG_SECONDS,
+    pair_run_id: str | None = None,
+    pair_sequence: int | None = None,
+    predecessor_evidence_sha256: str | None = None,
     client: httpx.Client | None = None,
+    reconnect_client_factory: Any = None,
 ) -> dict[str, Any]:
     """Execute one source-set cell via durable workspace API operations."""
-    check_cache_state(data_root, cache_state)
-    sources, manifest_hash = load_sources(corpus_root, manifest_path)
-    batches = batch_sources(sources)
-    query_deck = json.loads(query_deck_path.read_text(encoding="utf-8"))
-    questions = query_deck.get("questions")
-    if not isinstance(questions, list) or not questions:
-        raise HarnessError("query deck must contain at least one question")
-
+    if output_path.exists():
+        raise HarnessError("refusing to overwrite existing 16K-F evidence")
+    started_at = _utc_now()
+    evidence: dict[str, Any] = {
+        "schema": "16k-f-cell-evidence-v1",
+        "cell_id": cell_id,
+        "execution_authority": authority,
+        "cache_state": cache_state,
+        "data_root_id": _data_root_id(data_root),
+        "pair_run_id": pair_run_id,
+        "pair_sequence": pair_sequence,
+        "predecessor_evidence_sha256": predecessor_evidence_sha256,
+        "started_at": started_at,
+        "operational_watchdog_seconds": cell_watchdog_seconds,
+        "watchdog_semantics": "safety_stop_only_no_operation_cancellation",
+        "campaign_status": "PREPARING",
+        "operations": [],
+        "queries": [],
+    }
     own_client = client is None
-    active_client = client or httpx.Client(
-        base_url=base_url.rstrip("/"),
-        timeout=httpx.Timeout(connect=10, read=60, write=3600, pool=10),
-    )
-    if own_client:
-        active_client.base_url = httpx.URL(base_url.rstrip("/"))
-
     start_time = time.monotonic()
-    operations: list[dict[str, Any]] = []
+    campaign_deadline = start_time + cell_watchdog_seconds
+    active_client: httpx.Client | None = None
     try:
+        if poll_seconds <= 0:
+            raise HarnessError("poll interval must be positive")
+        if cell_watchdog_seconds <= 0:
+            raise HarnessError("cell watchdog must be positive")
+        check_cache_state(data_root, cache_state)
+        sources, manifest_hash = load_sources(corpus_root, manifest_path)
+        batches = batch_sources(sources)
+        query_deck = json.loads(query_deck_path.read_text(encoding="utf-8"))
+        questions = query_deck.get("questions")
+        if not isinstance(questions, list) or not questions:
+            raise HarnessError("query deck must contain at least one question")
+        evidence.update(
+            {
+                "manifest_sha256": manifest_hash,
+                "source_count_expected": len(sources),
+                "source_identity_sha256": hashlib.sha256(
+                    "\n".join(sorted(item.sha256 for item in sources)).encode("ascii")
+                ).hexdigest(),
+                "upload_batch_count": len(batches),
+                "campaign_status": "RUNNING",
+            }
+        )
+        _write_evidence(output_path, evidence)
+
+        active_client = client or httpx.Client(
+            base_url=base_url.rstrip("/"),
+            timeout=httpx.Timeout(connect=10, read=60, write=3600, pool=10),
+        )
         ready = active_client.get("/health/ready")
         ready.raise_for_status()
         capability_response = active_client.get("/v1/capabilities")
@@ -600,6 +793,11 @@ def run_cell(
         persisted_record = json.loads(persisted_workspace.read_text(encoding="utf-8"))
         if persisted_record.get("workspace_id") != workspace_id:
             raise HarnessError("declared data root contains a mismatched workspace")
+        evidence["workspace"] = {
+            "workspace_id": workspace_id,
+            "initial_revision": revision,
+        }
+        _write_evidence(output_path, evidence)
 
         for batch_number, batch in enumerate(batches, start=1):
             headers = {
@@ -630,18 +828,60 @@ def run_cell(
             if not isinstance(operation_id, str):
                 raise HarnessError("accepted SOURCE_ADD omitted operation_id")
 
+            operation_slot = {
+                "operation_id": operation_id,
+                "batch_number": batch_number,
+                "status": "pending",
+                "reconnect_verified": False,
+            }
+            evidence["operations"].append(operation_slot)
+            _write_evidence(output_path, evidence)
             while True:
                 active_client.get("/health/ready").raise_for_status()
                 current = active_client.get(f"/v1/operations/{operation_id}")
                 current.raise_for_status()
                 operation = current.json()
                 status = operation.get("status")
+                operation_slot.update(_safe_operation(operation))
+                operation_slot["batch_number"] = batch_number
+                _write_evidence(output_path, evidence)
                 if status in TERMINAL_STATUSES:
                     break
+                if time.monotonic() >= campaign_deadline:
+                    operation_slot["watchdog_expired"] = True
+                    _write_evidence(output_path, evidence)
+                    raise HarnessError(
+                        "operation watchdog expired; no cancellation sent"
+                    )
                 time.sleep(poll_seconds)
 
-            safe = _safe_operation(operation)
-            operations.append(safe)
+            reconnect_client = (
+                reconnect_client_factory()
+                if reconnect_client_factory is not None
+                else httpx.Client(
+                    base_url=base_url.rstrip("/"),
+                    timeout=httpx.Timeout(connect=10, read=60, write=60, pool=10),
+                )
+            )
+            try:
+                refreshed = reconnect_client.get(f"/v1/operations/{operation_id}")
+                refreshed.raise_for_status()
+                refreshed_operation = refreshed.json()
+            finally:
+                reconnect_client.close()
+            if (
+                refreshed_operation.get("status") != status
+                or refreshed_operation.get("worklist") != operation.get("worklist")
+                or refreshed_operation.get("result") != operation.get("result")
+            ):
+                raise HarnessError(
+                    "fresh-connection operation read changed terminal worklist/result"
+                )
+            operation_slot["reconnect_verified"] = True
+            operation_slot["reconnect_worklist_sha256"] = hashlib.sha256(
+                _canonical_json(operation.get("worklist"))
+            ).hexdigest()
+            _write_evidence(output_path, evidence)
             if status != "succeeded":
                 raise HarnessError(f"managed operation ended as {status}")
             revision = int(operation["result"]["workspace_revision"])
@@ -671,7 +911,6 @@ def run_cell(
         if len(active_sources) != len(sources):
             raise HarnessError("published source count does not match manifest")
 
-        queries = []
         for item in questions:
             query_id = item.get("query_id")
             question = item.get("question")
@@ -684,48 +923,130 @@ def run_cell(
             )
             query_response.raise_for_status()
             result = query_response.json()
-            queries.append(
-                {
-                    "query_id": query_id,
-                    "question_sha256": hashlib.sha256(
-                        question.encode("utf-8")
-                    ).hexdigest(),
-                    "status": result.get("status"),
-                    "workspace_revision": result.get("workspace_revision"),
-                    "snapshot_id": result.get("snapshot_id"),
-                    "citation_count": len(result.get("citations", [])),
-                }
+            query_summary = {
+                "query_id": query_id,
+                "question_sha256": hashlib.sha256(question.encode("utf-8")).hexdigest(),
+                "status": result.get("status"),
+                "workspace_revision": result.get("workspace_revision"),
+                "snapshot_id": result.get("snapshot_id"),
+                "citation_count": len(result.get("citations", []))
+                if isinstance(result.get("citations"), list)
+                else None,
+                "validation_status": "PENDING",
+            }
+            evidence["queries"].append(query_summary)
+            _write_evidence(output_path, evidence)
+            validation = _validate_query_result(
+                result,
+                active_sources,
+                expected_revision=int(final_workspace["revision"]),
+                expected_snapshot_id=str(final_workspace["current_snapshot_id"]),
             )
+            query_summary.update(validation)
+            query_summary["validation_status"] = "PASS"
+            _write_evidence(output_path, evidence)
 
-        evidence = {
-            "schema": "16k-f-cell-evidence-v1",
-            "cell_id": cell_id,
-            "execution_authority": authority,
-            "cache_state": cache_state,
-            "manifest_sha256": manifest_hash,
-            "source_count_expected": len(sources),
-            "source_count_published": len(active_sources),
-            "source_identity_sha256": hashlib.sha256(
-                "\n".join(sorted(item.sha256 for item in sources)).encode("ascii")
-            ).hexdigest(),
-            "workspace": {
-                "workspace_id": workspace_id,
-                "revision": final_workspace["revision"],
-                "snapshot_id": final_workspace["current_snapshot_id"],
-                "source_count": final_workspace["source_count"],
-            },
-            "elapsed_seconds": round(time.monotonic() - start_time, 3),
-            "upload_batch_count": len(batches),
-            "capabilities": capability_summary,
-            "operations": operations,
-            "aggregate_metrics": _sum_operation_metrics(operations),
-            "queries": queries,
-        }
+        completed_at = _utc_now()
+        evidence.update(
+            {
+                "campaign_status": "COMPLETE",
+                "source_count_published": len(active_sources),
+                "workspace": {
+                    "workspace_id": workspace_id,
+                    "revision": final_workspace["revision"],
+                    "snapshot_id": final_workspace["current_snapshot_id"],
+                    "source_count": final_workspace["source_count"],
+                },
+                "completed_at": completed_at,
+                "elapsed_seconds": round(time.monotonic() - start_time, 3),
+                "capabilities": capability_summary,
+                "aggregate_metrics": _sum_operation_metrics(evidence["operations"]),
+            }
+        )
         _write_evidence(output_path, evidence)
         return evidence
+    except Exception as exc:
+        evidence["campaign_status"] = "FAILED"
+        evidence["failure_type"] = type(exc).__name__
+        evidence["completed_at"] = _utc_now()
+        evidence["elapsed_seconds"] = round(time.monotonic() - start_time, 3)
+        evidence["aggregate_metrics"] = _sum_operation_metrics(evidence["operations"])
+        _write_evidence(output_path, evidence)
+        raise
     finally:
-        if own_client:
+        if own_client and active_client is not None:
             active_client.close()
+
+
+def run_full_cold_warm_pair(
+    *,
+    base_url: str,
+    corpus_root: Path,
+    manifest_path: Path,
+    query_deck_path: Path,
+    data_root: Path,
+    authority: str,
+    cold_output_path: Path,
+    warm_output_path: Path,
+    comparison_output_path: Path,
+    poll_seconds: float = 2.0,
+    cell_watchdog_seconds: int = DEFAULT_CELL_WATCHDOG_SECONDS,
+    client: httpx.Client | None = None,
+    reconnect_client_factory: Any = None,
+) -> dict[str, Any]:
+    """Run the full-corpus cold and warm cells consecutively against one cache root."""
+    output_paths = (cold_output_path, warm_output_path, comparison_output_path)
+    if len({path.resolve() for path in output_paths}) != len(output_paths):
+        raise HarnessError("paired evidence outputs must use distinct paths")
+    if any(path.exists() for path in output_paths):
+        raise HarnessError("refusing to overwrite existing 16K-F evidence")
+
+    pair_run_id = f"16kf-pair-{uuid.uuid4().hex}"
+    cold = run_cell(
+        base_url=base_url,
+        corpus_root=corpus_root,
+        manifest_path=manifest_path,
+        query_deck_path=query_deck_path,
+        data_root=data_root,
+        cache_state="cold",
+        cell_id="full-primary-cold",
+        authority=authority,
+        output_path=cold_output_path,
+        poll_seconds=poll_seconds,
+        cell_watchdog_seconds=cell_watchdog_seconds,
+        pair_run_id=pair_run_id,
+        pair_sequence=1,
+        client=client,
+        reconnect_client_factory=reconnect_client_factory,
+    )
+    cold_evidence_sha256 = hashlib.sha256(cold_output_path.read_bytes()).hexdigest()
+    warm = run_cell(
+        base_url=base_url,
+        corpus_root=corpus_root,
+        manifest_path=manifest_path,
+        query_deck_path=query_deck_path,
+        data_root=data_root,
+        cache_state="warm",
+        cell_id="full-primary-warm",
+        authority=authority,
+        output_path=warm_output_path,
+        poll_seconds=poll_seconds,
+        cell_watchdog_seconds=cell_watchdog_seconds,
+        pair_run_id=pair_run_id,
+        pair_sequence=2,
+        predecessor_evidence_sha256=cold_evidence_sha256,
+        client=client,
+        reconnect_client_factory=reconnect_client_factory,
+    )
+    comparison = compare_cold_warm(
+        cold,
+        warm,
+        cold_evidence_sha256=cold_evidence_sha256,
+    )
+    comparison["pair_run_id"] = pair_run_id
+    comparison["cold_evidence_sha256"] = cold_evidence_sha256
+    _write_evidence(comparison_output_path, comparison)
+    return comparison
 
 
 def revision_source_count(client: httpx.Client, workspace_id: str) -> int:
@@ -747,8 +1068,30 @@ def _parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--cell-id", required=True)
     run_parser.add_argument("--output", required=True, type=Path)
     run_parser.add_argument("--poll-seconds", type=float, default=2.0)
+    run_parser.add_argument(
+        "--cell-watchdog-seconds",
+        type=int,
+        default=DEFAULT_CELL_WATCHDOG_SECONDS,
+    )
     run_parser.add_argument("--execute-real-corpus", action="store_true")
     run_parser.add_argument("--authority")
+    pair_parser = subparsers.add_parser("run-full-pair")
+    pair_parser.add_argument("--base-url", required=True)
+    pair_parser.add_argument("--corpus-dir", required=True, type=Path)
+    pair_parser.add_argument("--manifest", required=True, type=Path)
+    pair_parser.add_argument("--query-deck", required=True, type=Path)
+    pair_parser.add_argument("--data-root", required=True, type=Path)
+    pair_parser.add_argument("--cold-output", required=True, type=Path)
+    pair_parser.add_argument("--warm-output", required=True, type=Path)
+    pair_parser.add_argument("--comparison-output", required=True, type=Path)
+    pair_parser.add_argument("--poll-seconds", type=float, default=2.0)
+    pair_parser.add_argument(
+        "--cell-watchdog-seconds",
+        type=int,
+        default=DEFAULT_CELL_WATCHDOG_SECONDS,
+    )
+    pair_parser.add_argument("--execute-real-corpus", action="store_true")
+    pair_parser.add_argument("--authority")
     compare_parser = subparsers.add_parser("compare")
     compare_parser.add_argument("--cold", required=True, type=Path)
     compare_parser.add_argument("--warm", required=True, type=Path)
@@ -762,7 +1105,12 @@ def main(argv: list[str] | None = None) -> int:
         try:
             cold = json.loads(args.cold.read_text(encoding="utf-8"))
             warm = json.loads(args.warm.read_text(encoding="utf-8"))
-            comparison = compare_cold_warm(cold, warm)
+            cold_sha = hashlib.sha256(args.cold.read_bytes()).hexdigest()
+            comparison = compare_cold_warm(
+                cold,
+                warm,
+                cold_evidence_sha256=cold_sha,
+            )
             _write_evidence(args.output, comparison)
             print(json.dumps(comparison, sort_keys=True))
             return 0
@@ -770,6 +1118,33 @@ def main(argv: list[str] | None = None) -> int:
             print(
                 f"16K-F comparison failed: {type(exc).__name__}: {exc}", file=sys.stderr
             )
+            return 2
+    if args.command == "run-full-pair":
+        if not args.execute_real_corpus or not args.authority:
+            print(
+                "real corpus execution requires --execute-real-corpus and an "
+                "explicit execution authority",
+                file=sys.stderr,
+            )
+            return 2
+        try:
+            comparison = run_full_cold_warm_pair(
+                base_url=args.base_url,
+                corpus_root=args.corpus_dir,
+                manifest_path=args.manifest,
+                query_deck_path=args.query_deck,
+                data_root=args.data_root,
+                authority=args.authority,
+                cold_output_path=args.cold_output,
+                warm_output_path=args.warm_output,
+                comparison_output_path=args.comparison_output,
+                poll_seconds=args.poll_seconds,
+                cell_watchdog_seconds=args.cell_watchdog_seconds,
+            )
+            print(json.dumps(comparison, sort_keys=True))
+            return 0
+        except (OSError, httpx.HTTPError, json.JSONDecodeError, HarnessError) as exc:
+            print(f"16K-F pair failed: {type(exc).__name__}: {exc}", file=sys.stderr)
             return 2
     if args.command != "run-cell":
         _parser().print_help()
@@ -793,6 +1168,7 @@ def main(argv: list[str] | None = None) -> int:
             authority=args.authority,
             output_path=args.output,
             poll_seconds=args.poll_seconds,
+            cell_watchdog_seconds=args.cell_watchdog_seconds,
         )
         print(
             json.dumps(

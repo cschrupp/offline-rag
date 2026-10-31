@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -9,9 +10,11 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from scripts.diag_16k_f import execution_harness
 from scripts.diag_16k_f.execution_harness import (
     HarnessError,
     SourceFile,
+    _validate_query_result,
     batch_sources,
     check_cache_state,
     compare_cold_warm,
@@ -270,6 +273,8 @@ def test_synthetic_api_cell_records_sanitized_durable_evidence(
     output = tmp_path / "evidence.json"
     data_root = tmp_path / "isolated-data"
     data_root.mkdir()
+    active_data_root = data_root
+    operation_status = "succeeded"
     requests: list[httpx.Request] = []
 
     def respond(request: httpx.Request) -> httpx.Response:
@@ -298,7 +303,7 @@ def test_synthetic_api_cell_records_sanitized_durable_evidence(
                 },
             )
         if request.url.path == "/v1/workspaces" and request.method == "POST":
-            workspace_dir = data_root / "workspaces" / "ws_synthetic"
+            workspace_dir = active_data_root / "workspaces" / "ws_synthetic"
             workspace_dir.mkdir(parents=True)
             (workspace_dir / "workspace.json").write_text(
                 json.dumps({"workspace_id": "ws_synthetic"})
@@ -318,7 +323,7 @@ def test_synthetic_api_cell_records_sanitized_durable_evidence(
                 json={
                     "operation_id": "op_synthetic",
                     "kind": "source_add",
-                    "status": "succeeded",
+                    "status": operation_status,
                     "progress_stage": "ready",
                     "progress": None,
                     "metrics": {
@@ -356,8 +361,12 @@ def test_synthetic_api_cell_records_sanitized_durable_evidence(
                         "workspace_status": "active",
                         "snapshot_id": "snap_synthetic",
                         "source_count": 1,
-                    },
-                    "error": None,
+                    }
+                    if operation_status == "succeeded"
+                    else None,
+                    "error": None
+                    if operation_status == "succeeded"
+                    else {"code": "internal_error", "retryable": False},
                 },
             )
         if (
@@ -366,7 +375,14 @@ def test_synthetic_api_cell_records_sanitized_durable_evidence(
         ):
             return httpx.Response(
                 200,
-                json={"sources": [{"source_id": "src_synthetic"}]},
+                json={
+                    "sources": [
+                        {
+                            "source_id": "src_synthetic",
+                            "document_id": "doc_synthetic",
+                        }
+                    ]
+                },
             )
         if request.url.path == "/v1/workspaces/ws_synthetic":
             return httpx.Response(
@@ -385,7 +401,20 @@ def test_synthetic_api_cell_records_sanitized_durable_evidence(
                     "status": "answered",
                     "workspace_revision": 2,
                     "snapshot_id": "snap_synthetic",
-                    "citations": [{}],
+                    "citations": [
+                        {
+                            "source_id": "src_synthetic",
+                            "document_id": "doc_synthetic",
+                            "evidence_unit_id": "ev_synthetic",
+                            "source_chunk_id": "chunk_synthetic",
+                            "kind": "child",
+                            "citation_ref": "c1",
+                            "excerpt": "synthetic citation excerpt",
+                        }
+                    ],
+                    "answer_blocks": [
+                        {"text": "Synthetic claim", "citation_refs": ["c1"]}
+                    ],
                     "answer": "private answer",
                 },
             )
@@ -406,12 +435,18 @@ def test_synthetic_api_cell_records_sanitized_durable_evidence(
         authority="synthetic-only",
         output_path=output,
         client=client,
+        reconnect_client_factory=lambda: httpx.Client(
+            base_url="http://seneca.test",
+            transport=httpx.MockTransport(respond),
+        ),
     )
     serialized = output.read_text()
 
     assert evidence["source_count_published"] == 1
     assert evidence["operations"][0]["status"] == "succeeded"
+    assert evidence["operations"][0]["reconnect_verified"] is True
     assert evidence["queries"][0]["citation_count"] == 1
+    assert evidence["queries"][0]["validation_status"] == "PASS"
     assert evidence["aggregate_metrics"]["embeddings_generated"] == 1
     assert "private synthetic source body" not in serialized
     assert "private question" not in serialized
@@ -424,14 +459,74 @@ def test_synthetic_api_cell_records_sanitized_durable_evidence(
     )
     assert add_request.headers["if-match"] == '"1"'
 
+    active_data_root = tmp_path / "failed-data"
+    active_data_root.mkdir()
+    operation_status = "failed"
+    failed_output = tmp_path / "failed-evidence.json"
+    with pytest.raises(HarnessError, match="ended as failed"):
+        run_cell(
+            base_url="http://seneca.test",
+            corpus_root=corpus,
+            manifest_path=manifest_path,
+            query_deck_path=query_deck,
+            data_root=active_data_root,
+            cache_state="cold",
+            cell_id="synthetic-failure",
+            authority="synthetic-only",
+            output_path=failed_output,
+            client=client,
+            reconnect_client_factory=lambda: httpx.Client(
+                base_url="http://seneca.test",
+                transport=httpx.MockTransport(respond),
+            ),
+        )
+    failed_evidence = json.loads(failed_output.read_text())
+    assert failed_evidence["campaign_status"] == "FAILED"
+    assert failed_evidence["operations"][0]["status"] == "failed"
+    assert "private synthetic source body" not in failed_output.read_text()
+
+    active_data_root = tmp_path / "watchdog-data"
+    active_data_root.mkdir()
+    operation_status = "running"
+    watchdog_output = tmp_path / "watchdog-evidence.json"
+    with pytest.raises(HarnessError, match="watchdog expired"):
+        run_cell(
+            base_url="http://seneca.test",
+            corpus_root=corpus,
+            manifest_path=manifest_path,
+            query_deck_path=query_deck,
+            data_root=active_data_root,
+            cache_state="cold",
+            cell_id="synthetic-watchdog",
+            authority="synthetic-only",
+            output_path=watchdog_output,
+            poll_seconds=0.01,
+            cell_watchdog_seconds=1,
+            client=client,
+            reconnect_client_factory=lambda: httpx.Client(
+                base_url="http://seneca.test",
+                transport=httpx.MockTransport(respond),
+            ),
+        )
+    watchdog_evidence = json.loads(watchdog_output.read_text())
+    assert watchdog_evidence["campaign_status"] == "FAILED"
+    assert watchdog_evidence["operations"][0]["watchdog_expired"] is True
+    assert watchdog_evidence["watchdog_semantics"] == (
+        "safety_stop_only_no_operation_cancellation"
+    )
+    assert not any(request.method == "DELETE" for request in requests)
+
     client.close()
 
 
 def test_cold_warm_comparison_requires_same_source_identity() -> None:
     cold = {
+        "campaign_status": "COMPLETE",
         "cache_state": "cold",
         "cell_id": "full-cold",
         "source_identity_sha256": "a" * 64,
+        "manifest_sha256": "b" * 64,
+        "source_count_expected": 39,
         "aggregate_metrics": {
             "embeddings_generated": 100,
             "parsed_artifacts_generated": 10,
@@ -440,9 +535,12 @@ def test_cold_warm_comparison_requires_same_source_identity() -> None:
         },
     }
     warm = {
+        "campaign_status": "COMPLETE",
         "cache_state": "warm",
         "cell_id": "full-warm",
         "source_identity_sha256": "a" * 64,
+        "manifest_sha256": "b" * 64,
+        "source_count_expected": 39,
         "aggregate_metrics": {
             "embeddings_generated": 0,
             "parsed_artifacts_generated": 0,
@@ -451,10 +549,184 @@ def test_cold_warm_comparison_requires_same_source_identity() -> None:
         },
     }
 
-    report = compare_cold_warm(cold, warm)
+    cold_bytes_hash = hashlib.sha256(b"cold evidence").hexdigest()
+    cold.update(
+        {
+            "pair_run_id": "pair-1",
+            "pair_sequence": 1,
+            "data_root_id": hashlib.sha256(b"root-1").hexdigest(),
+            "completed_at": "2026-10-31T10:00:00Z",
+            "manifest_sha256": "b" * 64,
+            "source_count_expected": 39,
+            "campaign_status": "COMPLETE",
+        }
+    )
+    warm.update(
+        {
+            "pair_run_id": "pair-1",
+            "pair_sequence": 2,
+            "data_root_id": hashlib.sha256(b"root-1").hexdigest(),
+            "started_at": "2026-10-31T10:00:01Z",
+            "predecessor_evidence_sha256": cold_bytes_hash,
+            "manifest_sha256": "b" * 64,
+            "source_count_expected": 39,
+            "campaign_status": "COMPLETE",
+        }
+    )
+    report = compare_cold_warm(
+        cold,
+        warm,
+        cold_evidence_sha256=cold_bytes_hash,
+    )
 
     assert report["reductions"]["embeddings_generated"]["fractional_reduction"] == 1
     assert report["materiality_disposition"] == "REVIEW_AGAINST_ACCEPTED_CRITERIA"
     warm["source_identity_sha256"] = "b" * 64
     with pytest.raises(HarnessError, match="source identities do not match"):
-        compare_cold_warm(cold, warm)
+        compare_cold_warm(
+            cold,
+            warm,
+            cold_evidence_sha256=cold_bytes_hash,
+        )
+
+
+def test_cold_warm_comparison_requires_same_cache_root() -> None:
+    cold = {
+        "campaign_status": "COMPLETE",
+        "cache_state": "cold",
+        "pair_run_id": "pair-1",
+        "pair_sequence": 1,
+        "data_root_id": hashlib.sha256(b"root-1").hexdigest(),
+        "completed_at": "2026-10-31T10:00:00Z",
+        "source_identity_sha256": "a" * 64,
+        "manifest_sha256": "b" * 64,
+        "source_count_expected": 39,
+        "aggregate_metrics": {},
+    }
+    cold_hash = hashlib.sha256(b"cold").hexdigest()
+    warm = {
+        "campaign_status": "COMPLETE",
+        "cache_state": "warm",
+        "pair_run_id": "pair-1",
+        "pair_sequence": 2,
+        "data_root_id": hashlib.sha256(b"root-2").hexdigest(),
+        "started_at": "2026-10-31T10:00:01Z",
+        "predecessor_evidence_sha256": cold_hash,
+        "source_identity_sha256": "a" * 64,
+        "manifest_sha256": "b" * 64,
+        "source_count_expected": 39,
+        "aggregate_metrics": {},
+    }
+    with pytest.raises(HarnessError, match="different data roots"):
+        compare_cold_warm(cold, warm, cold_evidence_sha256=cold_hash)
+
+
+def test_full_pair_runs_cold_then_warm_on_same_root_and_links_evidence(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[dict[str, object]] = []
+
+    def fake_run_cell(**kwargs: object) -> dict[str, object]:
+        calls.append(kwargs)
+        sequence = kwargs["pair_sequence"]
+        completed_at = "2026-10-31T10:00:00+00:00"
+        evidence = {
+            "schema": "16k-f-cell-evidence-v1",
+            "campaign_status": "COMPLETE",
+            "cell_id": kwargs["cell_id"],
+            "cache_state": kwargs["cache_state"],
+            "source_identity_sha256": "a" * 64,
+            "manifest_sha256": "b" * 64,
+            "source_count_expected": 39,
+            "pair_run_id": kwargs["pair_run_id"],
+            "pair_sequence": sequence,
+            "data_root_id": hashlib.sha256(
+                str(Path(kwargs["data_root"]).resolve()).encode()
+            ).hexdigest(),
+            "aggregate_metrics": {},
+            "completed_at": completed_at,
+        }
+        if sequence == 2:
+            evidence["started_at"] = "2026-10-31T10:00:01+00:00"
+            evidence["predecessor_evidence_sha256"] = kwargs[
+                "predecessor_evidence_sha256"
+            ]
+        output_path = Path(kwargs["output_path"])
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(json.dumps(evidence), encoding="utf-8")
+        return evidence
+
+    monkeypatch.setattr(execution_harness, "run_cell", fake_run_cell)
+    data_root = tmp_path / "same-data-root"
+    cold_output = tmp_path / "cold.json"
+    warm_output = tmp_path / "warm.json"
+    comparison_output = tmp_path / "comparison.json"
+    comparison = execution_harness.run_full_cold_warm_pair(
+        base_url="http://seneca.test",
+        corpus_root=tmp_path / "corpus",
+        manifest_path=tmp_path / "manifest.json",
+        query_deck_path=tmp_path / "queries.json",
+        data_root=data_root,
+        authority="synthetic-only",
+        cold_output_path=cold_output,
+        warm_output_path=warm_output,
+        comparison_output_path=comparison_output,
+    )
+
+    cold_evidence_hash = hashlib.sha256(cold_output.read_bytes()).hexdigest()
+    assert [call["cache_state"] for call in calls] == ["cold", "warm"]
+    assert all(call["data_root"] == data_root for call in calls)
+    assert calls[0]["pair_run_id"] == calls[1]["pair_run_id"]
+    assert calls[0]["pair_sequence"] == 1
+    assert calls[1]["pair_sequence"] == 2
+    assert calls[1]["predecessor_evidence_sha256"] == cold_evidence_hash
+    assert comparison["cold_evidence_sha256"] == cold_evidence_hash
+    assert comparison["same_data_root"] is True
+    assert comparison["warm_follows_cold_evidence"] is True
+
+
+def test_query_validation_rejects_abstention_and_unmapped_citation() -> None:
+    active_sources = [{"source_id": "src-1", "document_id": "doc-1"}]
+    valid = {
+        "status": "answered",
+        "answer": "Synthetic grounded answer.",
+        "citations": [
+            {
+                "source_id": "src-1",
+                "document_id": "doc-1",
+                "evidence_unit_id": "ev-1",
+                "source_chunk_id": "chunk-1",
+                "kind": "child",
+                "citation_ref": "c1",
+                "excerpt": "synthetic excerpt",
+            }
+        ],
+        "answer_blocks": [{"text": "Synthetic claim", "citation_refs": ["c1"]}],
+    }
+    valid.update({"workspace_revision": 2, "snapshot_id": "snap-1"})
+    assert _validate_query_result(
+        valid,
+        active_sources,
+        expected_revision=2,
+        expected_snapshot_id="snap-1",
+    )["valid_source_mappings"]
+
+    abstention = {**valid, "status": "model_abstain", "citations": []}
+    with pytest.raises(HarnessError, match="grounded answered status"):
+        _validate_query_result(
+            abstention,
+            active_sources,
+            expected_revision=2,
+            expected_snapshot_id="snap-1",
+        )
+
+    unmapped = json.loads(json.dumps(valid))
+    unmapped["citations"][0]["source_id"] = "src-unknown"
+    with pytest.raises(HarnessError, match="does not map to an active source"):
+        _validate_query_result(
+            unmapped,
+            active_sources,
+            expected_revision=2,
+            expected_snapshot_id="snap-1",
+        )

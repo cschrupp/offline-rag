@@ -27,17 +27,30 @@ The preparation tooling is content-free with respect to document bodies:
   manifest only after explicit text-bearing confirmation. It reports
   `NO_CONFIGURED_CEILING` when the workspace byte ceiling is null; the utility
   no longer invents a 90 MiB aggregate ceiling.
-- `scripts/diag_16k_f/execution_harness.py` is an explicit-authority, one-cell
-  API runner. It verifies manifest and source hashes, batches streamed uploads
-  to the active 32-file / 100 MiB request envelope, verifies the declared cold
+- `scripts/diag_16k_f/execution_harness.py` provides explicit-authority cell
+  and paired cold/warm API runners. It verifies manifest and source hashes,
+  batches streamed uploads to the active 32-file / 100 MiB request envelope,
+  verifies the declared cold
   or warm data root, checks the runtime workspace was persisted under that
-  root, polls durable operations, validates worklist/source counts and stage
-  metrics, verifies final publication, and runs a private query deck.
+  root, polls durable operations, then uses a fresh HTTP client to verify the
+  terminal operation and its worklist/result again. It validates
+  worklist/source counts and stage metrics, verifies final publication, and
+  runs a private query deck. Each query must return an answered response bound
+  to the final revision and snapshot, with citations mapped to active sources
+  and answer-block references mapped to those citations.
+- Every cell writes atomic evidence checkpoints during execution and writes a
+  failure record on ordinary exceptions, including partial operation metrics.
+  A six-hour per-cell operational watchdog bounds polling and stops the harness
+  without cancelling a still-running managed operation; it is not a scientific
+  acceptance deadline.
 - Structured evidence records identities, counts, statuses, timings, stage
   metrics, and citation counts. It omits source text, query text, answers,
   filenames, and per-document worklist contents.
-- `compare` pairs cold/warm evidence only when the exact source identity digest
-  matches. It reports observed generated-work and timing reductions without
+- `run-full-pair` runs full-corpus cold and warm cells consecutively against the
+  same data root. Warm evidence binds to the exact SHA-256 of completed cold
+  evidence. Comparison verifies matching manifest/source identities, expected
+  source count, data-root identity, pair sequence, completion state, and
+  timestamps. It reports observed generated-work and timing reductions without
   imposing an unfrozen materiality threshold.
 - The live runner requires both `--execute-real-corpus` and an explicit
   authority string. No invocation with those flags was made.
@@ -130,16 +143,20 @@ added to this repository.
 ## Validation performed
 
 ```text
-11 synthetic preparation / API-harness tests: PASS
+14 synthetic preparation / API-harness tests: PASS
 Ruff check on preparation tooling and focused tests: PASS
 Ruff format on preparation tooling and focused tests: PASS
+CLI help construction for runner, run-cell, and run-full-pair: PASS
 git diff --check: PASS
 ```
 
-The synthetic API test exercises create → streamed `SOURCE_ADD` → fresh GET
-polling of the durable operation → publication/source-count checks → query and
-content-free evidence serialization. It is harness validation only and is not
-16K-F or model/CUDA execution evidence.
+Synthetic tests cover query abstention/invalid citation rejection, create →
+streamed `SOURCE_ADD` → fresh GET polling and reconnect verification of the
+durable operation/worklist → publication/source-count checks → grounded query
+validation and content-free evidence serialization. They also cover atomic
+failure evidence, watchdog expiry without cancellation, and paired cold/warm
+root/order/hash linkage. This is harness validation only and is not 16K-F or
+model/CUDA execution evidence.
 
 The canonical API capability endpoint could not be contacted from the sandbox
 (`Operation not permitted`); configuration defaults and current repository
