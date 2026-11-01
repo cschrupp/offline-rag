@@ -18,15 +18,22 @@ from scripts.diag_16k_f.execution_harness import (
     batch_sources,
     check_cache_state,
     compare_cold_warm,
+    load_sources,
     run_cell,
     validate_capabilities,
 )
 from scripts.diag_16k_f.prepare_corpus import (
+    DUPLICATE_STATUS,
+    ELIGIBLE_STATUS,
+    OCR_STATUS,
+    OVERSIZE_STATUS,
     PreparationError,
     build_primary_manifest,
+    build_replacement_acceptance_manifest,
     build_single_source_manifest,
     inventory_directory,
     summarize_manifest,
+    validate_replacement_manifest,
 )
 
 
@@ -187,6 +194,101 @@ def test_manifest_excludes_source_text_and_is_deterministic(tmp_path: Path) -> N
     serialized = json.dumps(manifest_a, sort_keys=True)
     assert "private synthetic body" not in serialized
     assert manifest_a["manifest_sha256"] == manifest_b["manifest_sha256"]
+
+
+def test_replacement_manifest_keeps_all_paths_and_derives_eligible_population(
+    tmp_path: Path,
+) -> None:
+    corpus = tmp_path / "corpus"
+    corpus.mkdir()
+    first = corpus / "a.txt"
+    first.write_bytes(b"first eligible text")
+    (corpus / "a-copy.txt").write_bytes(first.read_bytes())
+    second = corpus / "b.md"
+    second.write_bytes(b"second eligible text")
+    scan = corpus / "scan.pdf"
+    scan.write_bytes(b"pdf bytes without native text")
+    native_pdf = corpus / "native.pdf"
+    native_pdf.write_bytes(b"pdf bytes with native text")
+    inventory = inventory_directory(corpus)
+    hashes = {row["relative_path"]: row["sha256"] for row in inventory["files"]}
+
+    manifest = build_replacement_acceptance_manifest(
+        corpus,
+        inventory,
+        {
+            hashes["scan.pdf"]: {"classification": "NO_NATIVE_TEXT"},
+            hashes["native.pdf"]: {"classification": "NATIVE_TEXT_ALL_PAGES"},
+        },
+    )
+    eligible = validate_replacement_manifest(manifest)
+
+    assert manifest["population_counts"]["admission_and_robustness_paths"] == 5
+    assert manifest["population_counts"]["distinct_byte_identities"] == 4
+    assert manifest["population_counts"][ELIGIBLE_STATUS] == 3
+    assert manifest["population_counts"][OCR_STATUS] == 1
+    assert manifest["population_counts"][OVERSIZE_STATUS] == 0
+    assert manifest["population_counts"][DUPLICATE_STATUS] == 1
+    assert {row["relative_path"] for row in eligible} == {
+        "a-copy.txt",
+        "b.md",
+        "native.pdf",
+    }
+    assert len(manifest["representations"]) == 5
+    scenarios = {
+        row["scenario_id"]: row for row in manifest["robustness_matrix"]["scenarios"]
+    }
+    assert scenarios["individual_ocr_required_ingestion"]["case_count"] == 1
+    assert scenarios["exact_duplicate_rejection"]["case_count"] == 1
+    assert scenarios["mixed_valid_ocr_required_atomic_rejection"]["case_count"] == 1
+    assert scenarios["mixed_valid_duplicate_atomic_rejection"]["case_count"] == 1
+    assert scenarios["valid_retry_after_rejection"]["case_count"] == 1
+    assert manifest["robustness_matrix"]["execution_status"] == "PREPARED_NOT_EXECUTED"
+    assert "first eligible text" not in json.dumps(manifest)
+    assert (
+        manifest["workload_comparability"][
+            "comparable_to_historical_39_primary_threshold_population"
+        ]
+        is False
+    )
+
+    manifest_path = tmp_path / "replacement.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    scan.write_bytes(b"changed after manifest freeze")
+    with pytest.raises(HarnessError, match="corpus path changed"):
+        load_sources(corpus, manifest_path)
+
+    manifest_path = tmp_path / "replacement.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    scan.write_bytes(b"changed after manifest freeze")
+    with pytest.raises(HarnessError, match="corpus path changed"):
+        load_sources(corpus, manifest_path)
+
+
+def test_replacement_manifest_classifies_over_limit_without_dropping_path(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from scripts.diag_16k_f import prepare_corpus
+
+    monkeypatch.setattr(prepare_corpus, "MAX_PDF_BYTES", 10)
+    corpus = tmp_path / "corpus"
+    corpus.mkdir()
+    oversized = corpus / "oversized.pdf"
+    oversized.write_bytes(b"eleven bytes")
+    inventory = inventory_directory(corpus)
+
+    manifest = build_replacement_acceptance_manifest(corpus, inventory, {})
+
+    assert manifest["population_counts"]["admission_and_robustness_paths"] == 1
+    assert manifest["population_counts"][OVERSIZE_STATUS] == 1
+    assert manifest["expected_rejection_cases"]["oversized"] == [
+        {
+            "relative_path": "oversized.pdf",
+            "sha256": hashlib.sha256(b"eleven bytes").hexdigest(),
+        }
+    ]
+    assert manifest["successful_ingestion_population"]["source_count"] == 0
 
 
 def test_manifest_rejects_missing_source_and_wrong_ocr_classification(
@@ -760,6 +862,113 @@ def test_full_pair_rejects_non_primary_manifest_before_api_execution(
             warm_output_path=tmp_path / "warm.json",
             comparison_output_path=tmp_path / "comparison.json",
         )
+
+
+def test_full_pair_accepts_verified_replacement_manifest_exact_count(
+    tmp_path: Path,
+) -> None:
+    corpus = tmp_path / "corpus"
+    corpus.mkdir()
+    paths = []
+    for name, content in (
+        ("a.txt", b"eligible source a"),
+        ("b.md", b"eligible source b"),
+    ):
+        path = corpus / name
+        path.write_bytes(content)
+        paths.append(path)
+    inventory = inventory_directory(corpus)
+    manifest = build_replacement_acceptance_manifest(corpus, inventory, {})
+    manifest_path = tmp_path / "replacement.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    sources, manifest_hash = load_sources(corpus, manifest_path)
+
+    assert len(sources) == 2
+    assert manifest_hash == manifest["manifest_sha256"]
+    execution_harness._require_full_primary_manifest(manifest_path)
+
+    changed = json.loads(json.dumps(manifest))
+    changed["successful_ingestion_population"]["source_count"] = 39
+    body = {key: value for key, value in changed.items() if key != "manifest_sha256"}
+    changed["manifest_sha256"] = hashlib.sha256(
+        json.dumps(
+            body,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+    manifest_path.write_text(json.dumps(changed), encoding="utf-8")
+
+    with pytest.raises(HarnessError, match="source count is inconsistent"):
+        execution_harness._require_full_primary_manifest(manifest_path)
+
+
+def test_full_pair_runs_replacement_population_without_fixed_39_guard(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    corpus = tmp_path / "corpus"
+    corpus.mkdir()
+    for name, content in (
+        ("a.txt", b"eligible source a"),
+        ("b.md", b"eligible source b"),
+    ):
+        (corpus / name).write_bytes(content)
+    manifest = build_replacement_acceptance_manifest(
+        corpus,
+        inventory_directory(corpus),
+        {},
+    )
+    manifest_path = tmp_path / "replacement.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    source_count = manifest["successful_ingestion_population"]["source_count"]
+    calls: list[dict[str, object]] = []
+
+    def fake_run_cell(**kwargs: object) -> dict[str, object]:
+        calls.append(kwargs)
+        sequence = kwargs["pair_sequence"]
+        evidence: dict[str, object] = {
+            "campaign_status": "COMPLETE",
+            "cell_id": kwargs["cell_id"],
+            "cache_state": kwargs["cache_state"],
+            "source_identity_sha256": "a" * 64,
+            "manifest_sha256": manifest["manifest_sha256"],
+            "source_count_expected": source_count,
+            "pair_run_id": kwargs["pair_run_id"],
+            "pair_sequence": sequence,
+            "data_root_id": hashlib.sha256(
+                str(Path(kwargs["data_root"]).resolve()).encode()
+            ).hexdigest(),
+            "aggregate_metrics": {},
+            "completed_at": "2026-10-31T10:00:00+00:00",
+        }
+        if sequence == 2:
+            evidence["started_at"] = "2026-10-31T10:00:01+00:00"
+            evidence["predecessor_evidence_sha256"] = kwargs[
+                "predecessor_evidence_sha256"
+            ]
+        output_path = Path(kwargs["output_path"])
+        output_path.write_text(json.dumps(evidence), encoding="utf-8")
+        return evidence
+
+    monkeypatch.setattr(execution_harness, "run_cell", fake_run_cell)
+    result = execution_harness.run_full_cold_warm_pair(
+        base_url="http://seneca.test",
+        corpus_root=corpus,
+        manifest_path=manifest_path,
+        query_deck_path=tmp_path / "queries.json",
+        data_root=tmp_path / "data",
+        authority="synthetic-only",
+        cold_output_path=tmp_path / "cold.json",
+        warm_output_path=tmp_path / "warm.json",
+        comparison_output_path=tmp_path / "comparison.json",
+    )
+
+    assert source_count == 2
+    assert len(calls) == 2
+    assert result["same_data_root"] is True
 
 
 def test_query_validation_rejects_abstention_and_unmapped_citation() -> None:

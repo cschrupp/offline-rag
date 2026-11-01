@@ -23,6 +23,12 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+from scripts.diag_16k_f.prepare_corpus import (
+    REPLACEMENT_MANIFEST_SCHEMA,
+    PreparationError,
+    validate_replacement_manifest,
+    verify_replacement_manifest_files,
+)
 
 MiB = 1024 * 1024
 MAX_FILES_PER_REQUEST = 32
@@ -93,6 +99,11 @@ def _manifest_source_rows(manifest: dict[str, Any]) -> list[dict[str, Any]]:
         if manifest.get("primary_document_count") != 39:
             raise HarnessError("primary corpus manifest must include 39 documents")
         rows = manifest.get("primary_sources")
+    elif manifest.get("schema") == REPLACEMENT_MANIFEST_SCHEMA:
+        try:
+            rows = validate_replacement_manifest(manifest)
+        except PreparationError as exc:
+            raise HarnessError(str(exc)) from exc
     elif manifest.get("schema") == "16k-f-single-source-manifest-v1":
         if manifest.get("source_count") != 1:
             raise HarnessError("single-source manifest must contain exactly one source")
@@ -123,6 +134,11 @@ def load_sources(
         _verify_manifest_hash(manifest)
 
     root = corpus_root.resolve(strict=True)
+    if manifest.get("schema") == REPLACEMENT_MANIFEST_SCHEMA:
+        try:
+            verify_replacement_manifest_files(root, manifest)
+        except PreparationError as exc:
+            raise HarnessError(str(exc)) from exc
     inventory: dict[str, list[Path]] = {}
     hash_index: dict[str, list[Path]] | None = None
     sources: list[SourceFile] = []
@@ -755,6 +771,21 @@ def run_cell(
         questions = query_deck.get("questions")
         if not isinstance(questions, list) or not questions:
             raise HarnessError("query deck must contain at least one question")
+        manifest_data = json.loads(manifest_path.read_text(encoding="utf-8"))
+        if manifest_data.get("schema") == REPLACEMENT_MANIFEST_SCHEMA:
+            if query_deck.get("corpus_candidate_sha256") != manifest_hash:
+                raise HarnessError(
+                    "query deck is not bound to the replacement manifest"
+                )
+            active_hashes = {source.sha256 for source in sources}
+            if any(
+                not isinstance(question, dict)
+                or question.get("target_source_sha256") not in active_hashes
+                for question in questions
+            ):
+                raise HarnessError(
+                    "replacement query deck targets a source outside the eligible population"
+                )
         evidence.update(
             {
                 "manifest_sha256": manifest_hash,
@@ -766,6 +797,11 @@ def run_cell(
                 "campaign_status": "RUNNING",
             }
         )
+        if manifest_data.get("schema") == REPLACEMENT_MANIFEST_SCHEMA:
+            evidence["workload_comparability"] = manifest_data["workload_comparability"]
+            evidence["threshold_measurement_disposition"] = (
+                "NOT_COMPARABLE_TO_HISTORICAL_39_PRIMARY_THRESHOLD_POPULATION"
+            )
         _write_evidence(output_path, evidence)
 
         active_client = client or httpx.Client(
@@ -1053,10 +1089,25 @@ def run_full_cold_warm_pair(
 
 
 def _require_full_primary_manifest(manifest_path: Path) -> None:
-    """Reject proxy/single-source manifests before a full-corpus pair starts."""
+    """Reject unsupported manifests before a full-corpus pair starts.
+
+    Historical primary manifests retain their fixed 39-document contract.
+    The replacement acceptance manifest carries and validates its own exact
+    source count and complete all-path population.
+    """
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if not isinstance(manifest, dict):
         raise HarnessError("full-corpus pair requires a primary corpus manifest")
+    if manifest.get("schema") == REPLACEMENT_MANIFEST_SCHEMA:
+        _verify_manifest_hash(manifest)
+        try:
+            validate_replacement_manifest(manifest)
+        except PreparationError as exc:
+            raise HarnessError(str(exc)) from exc
+        population = manifest["successful_ingestion_population"]
+        if population["source_count"] <= 0:
+            raise HarnessError("replacement manifest has no eligible ingestion sources")
+        return
     if manifest.get("schema") != PRIMARY_CORPUS_MANIFEST_SCHEMA:
         raise HarnessError("full-corpus pair requires a primary corpus manifest")
     _verify_manifest_hash(manifest)
