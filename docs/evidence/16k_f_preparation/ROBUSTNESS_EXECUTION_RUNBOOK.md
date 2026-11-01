@@ -169,6 +169,7 @@ done
   validate-robustness-matrix \
   --manifest "$PRIVATE_MANIFEST" \
   --query-deck "$PRIVATE_QUERY_DECK" \
+  --cold-evidence "$PRIVATE_EVIDENCE/full-cold.json" \
   --query-evidence "$PRIVATE_EVIDENCE/full-warm.json" \
   --approved-manifest-sha256 "$APPROVED_MANIFEST_SHA256" \
   --approved-query-deck-file-sha256 "$APPROVED_QUERY_DECK_FILE_SHA256" \
@@ -178,8 +179,12 @@ done
 
 This command requires exact one-to-one coverage of every expected rejection
 case from the manifest, all three mixed-case retries, and passing grounded
-queries tied to the same manifest, query deck, and eligible-source count. Only
-its `campaign_status: PASS` is a complete robustness-matrix disposition; a
+queries tied by question hash to the approved deck. It requires the full
+published source identity/count and verifies that the warm cell follows the
+exact cold evidence in the same pair, data root, and order. Each query must
+record an answered status, citations, answer blocks, valid source mappings,
+valid answer-block references, and the published revision/snapshot. Only its
+`campaign_status: PASS` is a complete robustness-matrix disposition; a
 collection of individual case passes is insufficient.
 
 ## Markdown coverage and measurement scope

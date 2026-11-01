@@ -126,6 +126,16 @@ suite. An isolated `TestClient` run of that API path hung during lifespan
 startup and was stopped after 30 seconds, consistent with the registered
 `TEST-STARTUP-01`; this preparation does not claim that API smoke as passing.
 
+The complete robustness-matrix validator requires both the cold and warm cell
+records. It verifies their exact pair ID/order, data-root identity, cold
+evidence digest, manifest/deck pins, published source identity/count, and
+published workspace source count. For each approved query it checks the exact
+question SHA-256 and requires answered status, positive citation and answer
+block counts, valid source mappings, valid answer-block references, and the
+same published revision/snapshot. Synthetic negative coverage rejects
+missing citation evidence, changed question hashes, wrong published source
+identity, and a broken cold-to-warm evidence link.
+
 ## Proposed execution matrix after Human acceptance
 
 1. Re-run the accepted 1,296-child cold proxy cell.

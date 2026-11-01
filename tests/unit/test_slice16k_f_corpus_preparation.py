@@ -1344,46 +1344,161 @@ def test_robustness_matrix_requires_complete_cases_retries_and_queries(
     )
     query_deck = {
         "corpus_candidate_sha256": manifest["manifest_sha256"],
-        "questions": [{"query_id": "q1"}, {"query_id": "q2"}],
+        "questions": [
+            {"query_id": "q1", "question": "What is source one?"},
+            {"query_id": "q2", "question": "What is source two?"},
+        ],
     }
-    query_evidence = {
+    sources = manifest["successful_ingestion_population"]["sources"]
+    source_identity = hashlib.sha256(
+        "\n".join(sorted(row["sha256"] for row in sources)).encode("ascii")
+    ).hexdigest()
+    pair_run_id = "synthetic-pair-1"
+    data_root_id = "a" * 64
+    cold_evidence = {
         "schema": "16k-f-cell-evidence-v1",
+        "cell_id": "full-primary-cold",
+        "cache_state": "cold",
         "campaign_status": "COMPLETE",
         "manifest_sha256": manifest["manifest_sha256"],
-        "source_count_expected": manifest["successful_ingestion_population"][
-            "source_count"
-        ],
+        "source_count_expected": len(sources),
+        "source_count_published": len(sources),
+        "source_identity_sha256": source_identity,
         "execution_artifact_pins": {
             "manifest_sha256": manifest["manifest_sha256"],
             "query_deck_file_sha256": query_sha,
         },
-        "queries": [
-            {"query_id": "q1", "validation_status": "PASS"},
-            {"query_id": "q2", "validation_status": "PASS"},
-        ],
+        "pair_run_id": pair_run_id,
+        "pair_sequence": 1,
+        "data_root_id": data_root_id,
+        "completed_at": "2026-10-31T10:00:00+00:00",
+        "workspace": {"source_count": len(sources)},
+        "aggregate_metrics": {},
     }
+    cold_evidence_sha256 = hashlib.sha256(
+        (json.dumps(cold_evidence, indent=2, sort_keys=True) + "\n").encode("utf-8")
+    ).hexdigest()
+    query_evidence = {
+        "schema": "16k-f-cell-evidence-v1",
+        "cell_id": "full-primary-warm",
+        "cache_state": "warm",
+        "campaign_status": "COMPLETE",
+        "manifest_sha256": manifest["manifest_sha256"],
+        "source_count_expected": len(sources),
+        "source_count_published": len(sources),
+        "source_identity_sha256": source_identity,
+        "pair_run_id": pair_run_id,
+        "pair_sequence": 2,
+        "data_root_id": data_root_id,
+        "started_at": "2026-10-31T10:00:01+00:00",
+        "predecessor_evidence_sha256": cold_evidence_sha256,
+        "aggregate_metrics": {},
+        "workspace": {
+            "revision": 2,
+            "snapshot_id": "synthetic-snapshot",
+            "source_count": len(sources),
+        },
+        "execution_artifact_pins": {
+            "manifest_sha256": manifest["manifest_sha256"],
+            "query_deck_file_sha256": query_sha,
+        },
+        "queries": [],
+    }
+    for question in query_deck["questions"]:
+        query_evidence["queries"].append(
+            {
+                "query_id": question["query_id"],
+                "question_sha256": hashlib.sha256(
+                    question["question"].encode("utf-8")
+                ).hexdigest(),
+                "status": "answered",
+                "workspace_revision": 2,
+                "snapshot_id": "synthetic-snapshot",
+                "citation_count": 1,
+                "answer_block_count": 1,
+                "valid_source_mappings": True,
+                "valid_answer_block_references": True,
+                "validation_status": "PASS",
+            }
+        )
 
     with pytest.raises(HarnessError, match="coverage is incomplete"):
         validate_robustness_matrix_evidence(
             case_records[:-1],
             manifest,
             query_deck,
+            cold_evidence,
             query_evidence,
             query_deck_file_sha256=query_sha,
+            cold_evidence_sha256=cold_evidence_sha256,
         )
 
     summary = validate_robustness_matrix_evidence(
         case_records,
         manifest,
         query_deck,
+        cold_evidence,
         query_evidence,
         query_deck_file_sha256=query_sha,
+        cold_evidence_sha256=cold_evidence_sha256,
     )
 
     assert summary["campaign_status"] == "PASS"
     assert summary["case_count"] == 6
     assert summary["mixed_cases_with_successful_retry"] == 3
     assert summary["grounded_queries_passed"] == 2
+
+    missing_citations = json.loads(json.dumps(query_evidence))
+    del missing_citations["queries"][0]["citation_count"]
+    with pytest.raises(HarnessError, match="grounded-answer validation"):
+        validate_robustness_matrix_evidence(
+            case_records,
+            manifest,
+            query_deck,
+            cold_evidence,
+            missing_citations,
+            query_deck_file_sha256=query_sha,
+            cold_evidence_sha256=cold_evidence_sha256,
+        )
+
+    mismatched_question = json.loads(json.dumps(query_evidence))
+    mismatched_question["queries"][0]["question_sha256"] = "e" * 64
+    with pytest.raises(HarnessError, match="question hash differs"):
+        validate_robustness_matrix_evidence(
+            case_records,
+            manifest,
+            query_deck,
+            cold_evidence,
+            mismatched_question,
+            query_deck_file_sha256=query_sha,
+            cold_evidence_sha256=cold_evidence_sha256,
+        )
+
+    wrong_source = json.loads(json.dumps(query_evidence))
+    wrong_source["source_identity_sha256"] = "f" * 64
+    with pytest.raises(HarnessError, match="post-publication query evidence"):
+        validate_robustness_matrix_evidence(
+            case_records,
+            manifest,
+            query_deck,
+            cold_evidence,
+            wrong_source,
+            query_deck_file_sha256=query_sha,
+            cold_evidence_sha256=cold_evidence_sha256,
+        )
+
+    wrong_pair = json.loads(json.dumps(query_evidence))
+    wrong_pair["predecessor_evidence_sha256"] = "0" * 64
+    with pytest.raises(HarnessError, match="exact cold evidence"):
+        validate_robustness_matrix_evidence(
+            case_records,
+            manifest,
+            query_deck,
+            cold_evidence,
+            wrong_pair,
+            query_deck_file_sha256=query_sha,
+            cold_evidence_sha256=cold_evidence_sha256,
+        )
 
 
 def test_markdown_parser_acceptance_smoke(tmp_path: Path) -> None:

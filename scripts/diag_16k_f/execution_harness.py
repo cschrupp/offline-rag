@@ -924,11 +924,13 @@ def validate_robustness_matrix_evidence(
     case_records: list[dict[str, Any]],
     manifest: dict[str, Any],
     query_deck: dict[str, Any],
+    cold_evidence: dict[str, Any],
     query_evidence: dict[str, Any],
     *,
     query_deck_file_sha256: str,
+    cold_evidence_sha256: str,
 ) -> dict[str, Any]:
-    """Require complete manifest-case coverage and a passing grounded-query cell."""
+    """Require complete cases and grounded queries from the exact warm pair."""
     if query_deck_file_sha256 != PREPARED_REPLACEMENT_QUERY_DECK_FILE_SHA256:
         raise HarnessError("robustness query-deck digest is not the prepared baseline")
     expected_specs = _expected_robustness_case_specs(manifest)
@@ -950,12 +952,26 @@ def validate_robustness_matrix_evidence(
         raise HarnessError("query deck is not bound to the approved manifest")
     questions = query_deck.get("questions")
     queries = query_evidence.get("queries")
+    expected_sources = manifest["successful_ingestion_population"]["sources"]
+    expected_source_count = len(expected_sources)
+    expected_source_identity = hashlib.sha256(
+        "\n".join(sorted(row["sha256"] for row in expected_sources)).encode("ascii")
+    ).hexdigest()
+    workspace = query_evidence.get("workspace")
     if (
         query_evidence.get("schema") != "16k-f-cell-evidence-v1"
+        or query_evidence.get("cell_id") != "full-primary-warm"
+        or query_evidence.get("cache_state") != "warm"
         or query_evidence.get("campaign_status") != "COMPLETE"
         or query_evidence.get("manifest_sha256") != manifest_sha256
-        or query_evidence.get("source_count_expected")
-        != len(manifest["successful_ingestion_population"]["sources"])
+        or query_evidence.get("source_count_expected") != expected_source_count
+        or query_evidence.get("source_count_published") != expected_source_count
+        or query_evidence.get("source_identity_sha256") != expected_source_identity
+        or not isinstance(workspace, dict)
+        or workspace.get("source_count") != expected_source_count
+        or not isinstance(workspace.get("revision"), int)
+        or not isinstance(workspace.get("snapshot_id"), str)
+        or not workspace["snapshot_id"]
         or query_evidence.get("execution_artifact_pins")
         != {
             "manifest_sha256": manifest_sha256,
@@ -968,25 +984,80 @@ def validate_robustness_matrix_evidence(
         raise HarnessError(
             "post-publication query evidence is incomplete or mismatched"
         )
-    expected_query_ids = {
-        question.get("query_id")
-        for question in questions
-        if isinstance(question, dict) and isinstance(question.get("query_id"), str)
-    }
-    actual_query_ids = {
-        query.get("query_id")
-        for query in queries
-        if isinstance(query, dict) and isinstance(query.get("query_id"), str)
-    }
+    if not isinstance(cold_evidence, dict):
+        raise HarnessError("cold-cell evidence must be an object")
     if (
-        len(expected_query_ids) != len(questions)
-        or actual_query_ids != expected_query_ids
-        or any(
-            not isinstance(query, dict) or query.get("validation_status") != "PASS"
-            for query in queries
-        )
+        cold_evidence.get("schema") != "16k-f-cell-evidence-v1"
+        or cold_evidence.get("cache_state") != "cold"
+        or cold_evidence.get("campaign_status") != "COMPLETE"
+        or cold_evidence.get("manifest_sha256") != manifest_sha256
+        or cold_evidence.get("source_count_expected") != expected_source_count
+        or cold_evidence.get("source_count_published") != expected_source_count
+        or cold_evidence.get("source_identity_sha256") != expected_source_identity
+        or not isinstance(cold_evidence.get("workspace"), dict)
+        or cold_evidence["workspace"].get("source_count") != expected_source_count
+        or cold_evidence.get("execution_artifact_pins")
+        != query_evidence.get("execution_artifact_pins")
     ):
+        raise HarnessError("cold-cell evidence is incomplete or mismatched")
+    comparison = compare_cold_warm(
+        cold_evidence,
+        query_evidence,
+        cold_evidence_sha256=cold_evidence_sha256,
+    )
+    if (
+        cold_evidence.get("cell_id") != "full-primary-cold"
+        or cold_evidence.get("pair_sequence") != 1
+        or query_evidence.get("pair_sequence") != 2
+        or not comparison.get("same_data_root")
+        or not comparison.get("warm_follows_cold_evidence")
+    ):
+        raise HarnessError("cold/warm provenance is incomplete or mismatched")
+
+    expected_queries: dict[str, str] = {}
+    for question in questions if isinstance(questions, list) else []:
+        if (
+            not isinstance(question, dict)
+            or not isinstance(question.get("query_id"), str)
+            or not isinstance(question.get("question"), str)
+            or not question["question"].strip()
+        ):
+            raise HarnessError("approved query deck contains a malformed question")
+        query_id = question["query_id"]
+        if query_id in expected_queries:
+            raise HarnessError("approved query deck contains duplicate query IDs")
+        expected_queries[query_id] = hashlib.sha256(
+            question["question"].encode("utf-8")
+        ).hexdigest()
+    actual_queries: dict[str, dict[str, Any]] = {}
+    for query in queries if isinstance(queries, list) else []:
+        if not isinstance(query, dict) or not isinstance(query.get("query_id"), str):
+            raise HarnessError("post-publication query evidence is malformed")
+        query_id = query["query_id"]
+        if query_id in actual_queries:
+            raise HarnessError("post-publication query evidence has duplicate IDs")
+        actual_queries[query_id] = query
+    if set(actual_queries) != set(expected_queries):
         raise HarnessError("post-publication query validation did not fully pass")
+    for query_id, question_sha256 in expected_queries.items():
+        query = actual_queries[query_id]
+        if query.get("question_sha256") != question_sha256:
+            raise HarnessError(
+                "post-publication question hash differs from approved deck"
+            )
+        if (
+            query.get("validation_status") != "PASS"
+            or query.get("status") != "answered"
+            or not isinstance(query.get("citation_count"), int)
+            or query["citation_count"] <= 0
+            or not isinstance(query.get("answer_block_count"), int)
+            or query["answer_block_count"] <= 0
+            or query.get("valid_source_mappings") is not True
+            or query.get("valid_answer_block_references") is not True
+            or query.get("workspace_revision") != workspace["revision"]
+            or query.get("snapshot_id") != workspace["snapshot_id"]
+        ):
+            raise HarnessError("grounded-answer validation evidence is incomplete")
 
     mixed_scenario_ids = {
         "mixed_valid_oversized_atomic_rejection",
@@ -1031,6 +1102,11 @@ def validate_robustness_matrix_evidence(
         "schema": "16k-f-robustness-matrix-summary-v1",
         "manifest_sha256": manifest_sha256,
         "query_deck_file_sha256": query_deck_file_sha256,
+        "source_identity_sha256": expected_source_identity,
+        "source_count_published": expected_source_count,
+        "warm_snapshot_id": workspace["snapshot_id"],
+        "pair_run_id": query_evidence["pair_run_id"],
+        "cold_evidence_sha256": cold_evidence_sha256,
         "case_count": len(summaries),
         "case_coverage": coverage,
         "mixed_cases_with_successful_retry": successful_mixed_retries,
@@ -1650,6 +1726,7 @@ def _parser() -> argparse.ArgumentParser:
     matrix_parser = subparsers.add_parser("validate-robustness-matrix")
     matrix_parser.add_argument("--manifest", required=True, type=Path)
     matrix_parser.add_argument("--query-deck", required=True, type=Path)
+    matrix_parser.add_argument("--cold-evidence", required=True, type=Path)
     matrix_parser.add_argument("--query-evidence", required=True, type=Path)
     matrix_parser.add_argument("--case", action="append", required=True, type=Path)
     matrix_parser.add_argument("--approved-manifest-sha256", required=True)
@@ -1700,15 +1777,23 @@ def main(argv: list[str] | None = None) -> int:
             if any(not isinstance(record, dict) for record in case_records):
                 raise HarnessError("robustness case evidence must be JSON objects")
             query_deck = json.loads(args.query_deck.read_text(encoding="utf-8"))
+            cold_evidence_bytes = args.cold_evidence.read_bytes()
+            cold_evidence = json.loads(cold_evidence_bytes)
             query_evidence = json.loads(args.query_evidence.read_text(encoding="utf-8"))
-            if not isinstance(query_deck, dict) or not isinstance(query_evidence, dict):
+            if (
+                not isinstance(query_deck, dict)
+                or not isinstance(cold_evidence, dict)
+                or not isinstance(query_evidence, dict)
+            ):
                 raise HarnessError("query evidence inputs must be JSON objects")
             summary = validate_robustness_matrix_evidence(
                 case_records,
                 manifest,
                 query_deck,
+                cold_evidence,
                 query_evidence,
                 query_deck_file_sha256=pins["query_deck_file_sha256"],
+                cold_evidence_sha256=hashlib.sha256(cold_evidence_bytes).hexdigest(),
             )
             _write_evidence(args.output, summary)
             print(json.dumps(summary, sort_keys=True))
