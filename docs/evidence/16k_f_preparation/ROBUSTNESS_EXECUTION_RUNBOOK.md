@@ -144,11 +144,13 @@ sanitized summaries together with API logs before declaring a case passed.
 ## Markdown coverage and measurement scope
 
 The frozen 52-path replacement population contains 37 PDFs, one TXT, and zero
-Markdown files. A synthetic managed `SOURCE_ADD` Markdown smoke test covers
-the parser/API path separately; it does not add a source to the replacement
-manifest, cold/warm source count, or scientific workload. Beta reporting must
-continue to say that real-corpus Markdown ingestion was not demonstrated by
-the replacement corpus.
+Markdown files. The focused preparation suite includes a synthetic parser-only
+Markdown smoke; it does not cover a managed `SOURCE_ADD` or add a source to the
+replacement manifest, cold/warm source count, or scientific workload. A
+separate API smoke attempt stalled during `TestClient` lifespan startup and
+was stopped after 30 seconds. Beta reporting must continue to say that
+real-corpus Markdown ingestion was not demonstrated by the replacement
+corpus.
 
 No expected-rejection operation is included in cold/warm totals. The
 38-source replacement measurements remain explicitly non-comparable to the
