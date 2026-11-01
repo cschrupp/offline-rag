@@ -8,7 +8,8 @@ corpus execution, scientific qualification, or acceptance of the replacement
 dataset.
 
 ```yaml
-preparation_revision: COMPLETE / READY FOR HUMAN DATASET REVIEW
+preparation_revision: COMPLETE / READY FOR INDEPENDENT REVIEW
+replacement_baseline_and_amendment_human_acceptance: PENDING
 real_corpus_ingestion: NONE
 OCR_execution: NONE
 scientific_or_CUDA_execution: NONE
@@ -92,12 +93,34 @@ cold/warm workload totals. Cold/warm provenance, streamed batching, durable
 operation reconnect checks, truthful metrics, and grounded post-publication
 queries remain in place.
 
+Replacement cold/warm execution requires both prepared artifact digests from
+the later execution authority. The runner verifies them before its first API
+request and records them in cell evidence. The prepared canonical manifest
+SHA-256 is
+`4d6d32c42d50e6753378d6f8dacc42b5fa0d3d18bdbdc4a9d4b4b3dfb000c92b`; the
+query-deck file-byte SHA-256 is
+`f10da5270a440004de8cac9db7d3e4836f46a87613f4f2d8124b58479d0f717a`.
+
 The private manifest prepares individual oversized, OCR-required, and exact
 duplicate cases, plus mixed valid/invalid atomicity scenarios, safe error
 reporting checks, retries, and a successful subsequent valid mutation. Their
 outcomes are not asserted before execution. Expected rejection is a successful
 robustness result when it is understandable, preserves the workspace, and does
 not block a later valid mutation.
+
+`ROBUSTNESS_EXECUTION_RUNBOOK.md` provides the bounded real-API sequence and
+structured private evidence schema for these scenarios. A local validator
+checks the expected safe rejection, unchanged publication and readiness, and
+the required successful retry after mixed-batch rejection. Synthetic tests
+cover those evidence invariants; no live rejection or retry was run during
+preparation.
+
+The replacement population has 37 PDFs, one TXT, and no Markdown. The focused
+preparation suite includes a deterministic synthetic Markdown parser smoke;
+pre-existing managed Markdown `SOURCE_ADD` tests remain in the broader API
+suite. An isolated `TestClient` run of that API path hung during lifespan
+startup and was stopped after 30 seconds, consistent with the registered
+`TEST-STARTUP-01`; this preparation does not claim that API smoke as passing.
 
 ## Proposed execution matrix after Human acceptance
 
@@ -122,23 +145,28 @@ must not be represented as met by non-comparable workload results.
 
 ```text
 .venv/bin/pytest -q tests/unit/test_slice16k_f_corpus_preparation.py
-  20 passed
+  26 passed
 
 .venv/bin/ruff check scripts/diag_16k_f/prepare_corpus.py \
   scripts/diag_16k_f/execution_harness.py \
   tests/unit/test_slice16k_f_corpus_preparation.py
-  PASS
+  PASS; all checks passed
 
 .venv/bin/ruff format --check scripts/diag_16k_f/prepare_corpus.py \
   scripts/diag_16k_f/execution_harness.py \
   tests/unit/test_slice16k_f_corpus_preparation.py
-  PASS
+  PASS; three files already formatted
 
 prepare_corpus --help / execution_harness --help
-  PASS; replacement-manifest and run-full-pair commands visible
+  PASS; run-full-pair and validate-robustness-evidence commands visible
 
 execution_harness.load_sources(data/raw, replacement manifest)
-  PASS; all 52 paths reverified; 38 eligible sources loaded
+  PASS; prepared artifact pins matched, all 52 paths reverified, and 38
+  eligible sources loaded
+
+isolated supplemental Markdown API TestClient smoke attempt
+  STOPPED after 30 seconds waiting in application lifespan startup; no
+  assertion result; consistent with registered TEST-STARTUP-01
 
 git diff --check
   PASS
@@ -157,6 +185,9 @@ contexts, or run a scientific campaign.
 3. A separate bounded real-corpus execution authority.
 4. Execution-time verification of the dedicated API/data root, active
    capabilities, disk headroom, and exact corpus hashes.
+
+Real Markdown ingestion remains unproven by the 52-path corpus. The parser
+smoke is supplemental and does not resolve `TEST-STARTUP-01`.
 
 No production-policy change, OCR implementation, real-corpus ingestion,
 scientific execution, or promotion is authorized by this preparation revision.

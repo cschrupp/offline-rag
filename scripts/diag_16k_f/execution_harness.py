@@ -53,6 +53,12 @@ TERMINAL_STATUSES = {"succeeded", "failed", "interrupted"}
 DEFAULT_CELL_WATCHDOG_SECONDS = 6 * 60 * 60
 PRIMARY_CORPUS_MANIFEST_SCHEMA = "16k-f-primary-corpus-manifest-v1"
 EXPECTED_PRIMARY_DOCUMENTS = 39
+PREPARED_REPLACEMENT_MANIFEST_SHA256 = (
+    "4d6d32c42d50e6753378d6f8dacc42b5fa0d3d18bdbdc4a9d4b4b3dfb000c92b"
+)
+PREPARED_REPLACEMENT_QUERY_DECK_FILE_SHA256 = (
+    "f10da5270a440004de8cac9db7d3e4836f46a87613f4f2d8124b58479d0f717a"
+)
 
 
 class HarnessError(ValueError):
@@ -211,6 +217,45 @@ def load_sources(
     if not isinstance(manifest_hash, str):
         manifest_hash = hashlib.sha256(manifest_bytes).hexdigest()
     return sources, manifest_hash
+
+
+def verify_replacement_execution_artifact_pins(
+    manifest_path: Path,
+    query_deck_path: Path,
+    *,
+    approved_manifest_sha256: str | None,
+    approved_query_deck_file_sha256: str | None,
+) -> dict[str, str]:
+    """Require the prepared replacement bytes and authority pins before execution."""
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        query_deck = json.loads(query_deck_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise HarnessError("replacement manifest or query deck is unreadable") from exc
+    if (
+        not isinstance(manifest, dict)
+        or manifest.get("schema") != REPLACEMENT_MANIFEST_SCHEMA
+    ):
+        raise HarnessError("artifact pinning applies only to replacement manifests")
+    if not isinstance(query_deck, dict):
+        raise HarnessError("replacement query deck must be a JSON object")
+    _verify_manifest_hash(manifest)
+    manifest_sha256 = manifest["manifest_sha256"]
+    query_deck_sha256 = _sha256_path(query_deck_path)
+    if manifest_sha256 != PREPARED_REPLACEMENT_MANIFEST_SHA256:
+        raise HarnessError("replacement manifest differs from the prepared baseline")
+    if query_deck_sha256 != PREPARED_REPLACEMENT_QUERY_DECK_FILE_SHA256:
+        raise HarnessError("replacement query deck differs from the prepared baseline")
+    if approved_manifest_sha256 != manifest_sha256:
+        raise HarnessError("execution authority manifest digest does not match")
+    if approved_query_deck_file_sha256 != query_deck_sha256:
+        raise HarnessError("execution authority query-deck digest does not match")
+    if query_deck.get("corpus_candidate_sha256") != manifest_sha256:
+        raise HarnessError("query deck is not bound to the replacement manifest")
+    return {
+        "manifest_sha256": manifest_sha256,
+        "query_deck_file_sha256": query_deck_sha256,
+    }
 
 
 def _media_type_for_path(path: Path) -> str:
@@ -610,6 +655,137 @@ def compare_cold_warm(
     }
 
 
+def validate_robustness_case_evidence(record: dict[str, Any]) -> dict[str, Any]:
+    """Validate sanitized manual/API evidence for one expected rejection case."""
+    if record.get("schema") != "16k-f-robustness-case-evidence-v1":
+        raise HarnessError("unsupported robustness evidence schema")
+    category = record.get("expected_failure_category")
+    allowed_reasons = {
+        "oversized": {"source_file_too_large"},
+        "ocr_required": {
+            "ocr_required",
+            "ocr_required_while_ocr_disabled",
+            "zero_searchable_text",
+        },
+        "duplicate": {"document_identity_conflict"},
+    }
+    if category not in allowed_reasons:
+        raise HarnessError("robustness evidence failure category is invalid")
+    case_id = record.get("case_id")
+    if not isinstance(case_id, str) or not case_id.strip():
+        raise HarnessError("robustness evidence case ID is invalid")
+
+    input_hashes = record.get("input_source_sha256s")
+    if (
+        not isinstance(input_hashes, list)
+        or not input_hashes
+        or any(
+            not isinstance(digest, str)
+            or len(digest) != 64
+            or any(char not in "0123456789abcdef" for char in digest)
+            for digest in input_hashes
+        )
+    ):
+        raise HarnessError("robustness evidence source identities are invalid")
+
+    before = record.get("before")
+    after = record.get("after")
+    if not isinstance(before, dict) or not isinstance(after, dict):
+        raise HarnessError("robustness evidence lacks pre/post workspace state")
+    for state in (before, after):
+        if (
+            type(state.get("revision")) is not int
+            or state["revision"] < 1
+            or type(state.get("source_count")) is not int
+            or state["source_count"] < 0
+            or not isinstance(state.get("snapshot_id"), str)
+            or not isinstance(state.get("source_identity_sha256"), str)
+            or len(state["source_identity_sha256"]) != 64
+            or any(
+                char not in "0123456789abcdef"
+                for char in state["source_identity_sha256"]
+            )
+        ):
+            raise HarnessError("robustness workspace-state record is invalid")
+    if any(
+        before[field] != after[field]
+        for field in (
+            "revision",
+            "snapshot_id",
+            "source_count",
+            "source_identity_sha256",
+        )
+    ):
+        raise HarnessError("rejected mutation changed the published workspace")
+    if record.get("readiness_http_status") != 200:
+        raise HarnessError("API readiness did not remain healthy after rejection")
+
+    rejection = record.get("rejection")
+    if not isinstance(rejection, dict):
+        raise HarnessError("robustness evidence lacks rejection outcome")
+    http_status = rejection.get("http_status")
+    operation_status = rejection.get("operation_status")
+    if not (
+        type(http_status) is int
+        and 400 <= http_status < 500
+        and operation_status is None
+    ) and not (
+        type(http_status) is int and http_status == 202 and operation_status == "failed"
+    ):
+        raise HarnessError(
+            "request was not rejected at admission or managed-operation stage"
+        )
+    if rejection.get("safe_error_code") not in {"document_invalid", "request_invalid"}:
+        raise HarnessError("rejection did not expose an expected safe error code")
+    observed_reason = rejection.get("reason")
+    if observed_reason not in allowed_reasons[category]:
+        raise HarnessError("rejection reason does not match the expected category")
+
+    retry = record.get("retry")
+    retry_required = record.get("retry_required") is True
+    if retry_required:
+        if not isinstance(retry, dict) or retry.get("status") != "succeeded":
+            raise HarnessError("valid subsequent retry did not succeed")
+        if retry.get("readiness_http_status") != 200:
+            raise HarnessError("API readiness failed after valid retry")
+        if (
+            type(retry.get("revision")) is not int
+            or retry["revision"] != before["revision"] + 1
+        ):
+            raise HarnessError("successful retry did not advance exactly one revision")
+        if (
+            type(retry.get("source_count")) is not int
+            or retry["source_count"] != before["source_count"] + 1
+        ):
+            raise HarnessError("successful retry published an unexpected source count")
+        retry_identity = retry.get("source_identity_sha256")
+        if (
+            not isinstance(retry_identity, str)
+            or len(retry_identity) != 64
+            or any(char not in "0123456789abcdef" for char in retry_identity)
+            or retry_identity == before["source_identity_sha256"]
+        ):
+            raise HarnessError("successful retry did not change source identity")
+    elif retry is not None:
+        raise HarnessError("unexpected retry evidence for a case without a retry")
+
+    return {
+        "schema": "16k-f-robustness-case-summary-v1",
+        "case_id": case_id,
+        "expected_failure_category": category,
+        "input_source_count": len(input_hashes),
+        "rejection_http_status": http_status,
+        "operation_status": operation_status,
+        "safe_error_code": rejection["safe_error_code"],
+        "reason": observed_reason,
+        "publication_unchanged": True,
+        "readiness_http_status": 200,
+        "retry_status": retry.get("status") if retry_required else None,
+        "retry_revision": retry.get("revision") if retry_required else None,
+        "validation_status": "PASS",
+    }
+
+
 def _nested_metric(metrics: dict[str, Any], dotted_path: str) -> Any:
     value: Any = metrics
     for segment in dotted_path.split("."):
@@ -729,6 +905,8 @@ def run_cell(
     output_path: Path,
     poll_seconds: float = 2.0,
     cell_watchdog_seconds: int = DEFAULT_CELL_WATCHDOG_SECONDS,
+    approved_manifest_sha256: str | None = None,
+    approved_query_deck_file_sha256: str | None = None,
     pair_run_id: str | None = None,
     pair_sequence: int | None = None,
     predecessor_evidence_sha256: str | None = None,
@@ -772,7 +950,14 @@ def run_cell(
         if not isinstance(questions, list) or not questions:
             raise HarnessError("query deck must contain at least one question")
         manifest_data = json.loads(manifest_path.read_text(encoding="utf-8"))
+        execution_artifact_pins: dict[str, str] | None = None
         if manifest_data.get("schema") == REPLACEMENT_MANIFEST_SCHEMA:
+            execution_artifact_pins = verify_replacement_execution_artifact_pins(
+                manifest_path,
+                query_deck_path,
+                approved_manifest_sha256=approved_manifest_sha256,
+                approved_query_deck_file_sha256=approved_query_deck_file_sha256,
+            )
             if query_deck.get("corpus_candidate_sha256") != manifest_hash:
                 raise HarnessError(
                     "query deck is not bound to the replacement manifest"
@@ -802,6 +987,7 @@ def run_cell(
             evidence["threshold_measurement_disposition"] = (
                 "NOT_COMPARABLE_TO_HISTORICAL_39_PRIMARY_THRESHOLD_POPULATION"
             )
+            evidence["execution_artifact_pins"] = execution_artifact_pins
         _write_evidence(output_path, evidence)
 
         active_client = client or httpx.Client(
@@ -1029,6 +1215,8 @@ def run_full_cold_warm_pair(
     comparison_output_path: Path,
     poll_seconds: float = 2.0,
     cell_watchdog_seconds: int = DEFAULT_CELL_WATCHDOG_SECONDS,
+    approved_manifest_sha256: str | None = None,
+    approved_query_deck_file_sha256: str | None = None,
     client: httpx.Client | None = None,
     reconnect_client_factory: Any = None,
 ) -> dict[str, Any]:
@@ -1039,6 +1227,14 @@ def run_full_cold_warm_pair(
     if any(path.exists() for path in output_paths):
         raise HarnessError("refusing to overwrite existing 16K-F evidence")
     _require_full_primary_manifest(manifest_path)
+    manifest_data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if manifest_data.get("schema") == REPLACEMENT_MANIFEST_SCHEMA:
+        verify_replacement_execution_artifact_pins(
+            manifest_path,
+            query_deck_path,
+            approved_manifest_sha256=approved_manifest_sha256,
+            approved_query_deck_file_sha256=approved_query_deck_file_sha256,
+        )
 
     pair_run_id = f"16kf-pair-{uuid.uuid4().hex}"
     cold = run_cell(
@@ -1053,6 +1249,8 @@ def run_full_cold_warm_pair(
         output_path=cold_output_path,
         poll_seconds=poll_seconds,
         cell_watchdog_seconds=cell_watchdog_seconds,
+        approved_manifest_sha256=approved_manifest_sha256,
+        approved_query_deck_file_sha256=approved_query_deck_file_sha256,
         pair_run_id=pair_run_id,
         pair_sequence=1,
         client=client,
@@ -1071,6 +1269,8 @@ def run_full_cold_warm_pair(
         output_path=warm_output_path,
         poll_seconds=poll_seconds,
         cell_watchdog_seconds=cell_watchdog_seconds,
+        approved_manifest_sha256=approved_manifest_sha256,
+        approved_query_deck_file_sha256=approved_query_deck_file_sha256,
         pair_run_id=pair_run_id,
         pair_sequence=2,
         predecessor_evidence_sha256=cold_evidence_sha256,
@@ -1157,6 +1357,8 @@ def _parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--cell-id", required=True)
     run_parser.add_argument("--output", required=True, type=Path)
     run_parser.add_argument("--poll-seconds", type=float, default=2.0)
+    run_parser.add_argument("--approved-manifest-sha256")
+    run_parser.add_argument("--approved-query-deck-file-sha256")
     run_parser.add_argument(
         "--cell-watchdog-seconds",
         type=int,
@@ -1174,6 +1376,8 @@ def _parser() -> argparse.ArgumentParser:
     pair_parser.add_argument("--warm-output", required=True, type=Path)
     pair_parser.add_argument("--comparison-output", required=True, type=Path)
     pair_parser.add_argument("--poll-seconds", type=float, default=2.0)
+    pair_parser.add_argument("--approved-manifest-sha256")
+    pair_parser.add_argument("--approved-query-deck-file-sha256")
     pair_parser.add_argument(
         "--cell-watchdog-seconds",
         type=int,
@@ -1185,11 +1389,29 @@ def _parser() -> argparse.ArgumentParser:
     compare_parser.add_argument("--cold", required=True, type=Path)
     compare_parser.add_argument("--warm", required=True, type=Path)
     compare_parser.add_argument("--output", required=True, type=Path)
+    robustness_parser = subparsers.add_parser("validate-robustness-evidence")
+    robustness_parser.add_argument("--input", required=True, type=Path)
+    robustness_parser.add_argument("--output", required=True, type=Path)
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
+    if args.command == "validate-robustness-evidence":
+        try:
+            record = json.loads(args.input.read_text(encoding="utf-8"))
+            if not isinstance(record, dict):
+                raise HarnessError("robustness evidence must be a JSON object")
+            summary = validate_robustness_case_evidence(record)
+            _write_evidence(args.output, summary)
+            print(json.dumps(summary, sort_keys=True))
+            return 0
+        except (OSError, json.JSONDecodeError, HarnessError) as exc:
+            print(
+                f"16K-F robustness evidence failed: {type(exc).__name__}: {exc}",
+                file=sys.stderr,
+            )
+            return 2
     if args.command == "compare":
         try:
             cold = json.loads(args.cold.read_text(encoding="utf-8"))
@@ -1229,6 +1451,8 @@ def main(argv: list[str] | None = None) -> int:
                 comparison_output_path=args.comparison_output,
                 poll_seconds=args.poll_seconds,
                 cell_watchdog_seconds=args.cell_watchdog_seconds,
+                approved_manifest_sha256=args.approved_manifest_sha256,
+                approved_query_deck_file_sha256=args.approved_query_deck_file_sha256,
             )
             print(json.dumps(comparison, sort_keys=True))
             return 0
@@ -1258,6 +1482,8 @@ def main(argv: list[str] | None = None) -> int:
             output_path=args.output,
             poll_seconds=args.poll_seconds,
             cell_watchdog_seconds=args.cell_watchdog_seconds,
+            approved_manifest_sha256=args.approved_manifest_sha256,
+            approved_query_deck_file_sha256=args.approved_query_deck_file_sha256,
         )
         print(
             json.dumps(

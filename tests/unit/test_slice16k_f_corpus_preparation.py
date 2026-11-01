@@ -21,6 +21,7 @@ from scripts.diag_16k_f.execution_harness import (
     load_sources,
     run_cell,
     validate_capabilities,
+    validate_robustness_case_evidence,
 )
 from scripts.diag_16k_f.prepare_corpus import (
     DUPLICATE_STATUS,
@@ -924,6 +925,34 @@ def test_full_pair_runs_replacement_population_without_fixed_39_guard(
     manifest_path = tmp_path / "replacement.json"
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
     source_count = manifest["successful_ingestion_population"]["source_count"]
+    eligible_hash = manifest["successful_ingestion_population"]["sources"][0]["sha256"]
+    query_deck_path = tmp_path / "queries.json"
+    query_deck_path.write_text(
+        json.dumps(
+            {
+                "corpus_candidate_sha256": manifest["manifest_sha256"],
+                "questions": [
+                    {
+                        "query_id": "synthetic-q1",
+                        "question": "synthetic question",
+                        "target_source_sha256": eligible_hash,
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    query_deck_sha256 = hashlib.sha256(query_deck_path.read_bytes()).hexdigest()
+    monkeypatch.setattr(
+        execution_harness,
+        "PREPARED_REPLACEMENT_MANIFEST_SHA256",
+        manifest["manifest_sha256"],
+    )
+    monkeypatch.setattr(
+        execution_harness,
+        "PREPARED_REPLACEMENT_QUERY_DECK_FILE_SHA256",
+        query_deck_sha256,
+    )
     calls: list[dict[str, object]] = []
 
     def fake_run_cell(**kwargs: object) -> dict[str, object]:
@@ -958,9 +987,11 @@ def test_full_pair_runs_replacement_population_without_fixed_39_guard(
         base_url="http://seneca.test",
         corpus_root=corpus,
         manifest_path=manifest_path,
-        query_deck_path=tmp_path / "queries.json",
+        query_deck_path=query_deck_path,
         data_root=tmp_path / "data",
         authority="synthetic-only",
+        approved_manifest_sha256=manifest["manifest_sha256"],
+        approved_query_deck_file_sha256=query_deck_sha256,
         cold_output_path=tmp_path / "cold.json",
         warm_output_path=tmp_path / "warm.json",
         comparison_output_path=tmp_path / "comparison.json",
@@ -969,6 +1000,228 @@ def test_full_pair_runs_replacement_population_without_fixed_39_guard(
     assert source_count == 2
     assert len(calls) == 2
     assert result["same_data_root"] is True
+
+
+def test_replacement_artifacts_must_match_prepared_and_authority_digests(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    corpus = tmp_path / "corpus"
+    corpus.mkdir()
+    source = corpus / "candidate.txt"
+    source.write_bytes(b"eligible source")
+    manifest = build_replacement_acceptance_manifest(
+        corpus,
+        inventory_directory(corpus),
+        {},
+    )
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    query_deck_path = tmp_path / "queries.json"
+    query_deck = {
+        "corpus_candidate_sha256": manifest["manifest_sha256"],
+        "questions": [
+            {
+                "query_id": "q1",
+                "question": "synthetic question",
+                "target_source_sha256": manifest["successful_ingestion_population"][
+                    "sources"
+                ][0]["sha256"],
+            }
+        ],
+    }
+    query_deck_path.write_text(json.dumps(query_deck), encoding="utf-8")
+    deck_sha = hashlib.sha256(query_deck_path.read_bytes()).hexdigest()
+    monkeypatch.setattr(
+        execution_harness,
+        "PREPARED_REPLACEMENT_MANIFEST_SHA256",
+        manifest["manifest_sha256"],
+    )
+    monkeypatch.setattr(
+        execution_harness,
+        "PREPARED_REPLACEMENT_QUERY_DECK_FILE_SHA256",
+        deck_sha,
+    )
+
+    pins = execution_harness.verify_replacement_execution_artifact_pins(
+        manifest_path,
+        query_deck_path,
+        approved_manifest_sha256=manifest["manifest_sha256"],
+        approved_query_deck_file_sha256=deck_sha,
+    )
+    assert pins == {
+        "manifest_sha256": manifest["manifest_sha256"],
+        "query_deck_file_sha256": deck_sha,
+    }
+
+    with pytest.raises(HarnessError, match="authority manifest digest"):
+        execution_harness.verify_replacement_execution_artifact_pins(
+            manifest_path,
+            query_deck_path,
+            approved_manifest_sha256="0" * 64,
+            approved_query_deck_file_sha256=deck_sha,
+        )
+
+    query_deck["questions"][0]["question"] = "changed question"
+    query_deck_path.write_text(json.dumps(query_deck), encoding="utf-8")
+    with pytest.raises(HarnessError, match="query deck differs"):
+        execution_harness.verify_replacement_execution_artifact_pins(
+            manifest_path,
+            query_deck_path,
+            approved_manifest_sha256=manifest["manifest_sha256"],
+            approved_query_deck_file_sha256=deck_sha,
+        )
+
+
+def test_replacement_pin_mismatch_stops_before_api_request(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    corpus = tmp_path / "corpus"
+    corpus.mkdir()
+    source = corpus / "eligible.txt"
+    source.write_bytes(b"eligible source")
+    manifest = build_replacement_acceptance_manifest(
+        corpus,
+        inventory_directory(corpus),
+        {},
+    )
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    query_deck_path = tmp_path / "queries.json"
+    query_deck_path.write_text(
+        json.dumps(
+            {
+                "corpus_candidate_sha256": manifest["manifest_sha256"],
+                "questions": [
+                    {
+                        "query_id": "q1",
+                        "question": "synthetic question",
+                        "target_source_sha256": manifest[
+                            "successful_ingestion_population"
+                        ]["sources"][0]["sha256"],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    deck_sha = hashlib.sha256(query_deck_path.read_bytes()).hexdigest()
+    monkeypatch.setattr(
+        execution_harness,
+        "PREPARED_REPLACEMENT_MANIFEST_SHA256",
+        manifest["manifest_sha256"],
+    )
+    monkeypatch.setattr(
+        execution_harness,
+        "PREPARED_REPLACEMENT_QUERY_DECK_FILE_SHA256",
+        deck_sha,
+    )
+
+    class UnexpectedApiClient:
+        def get(self, *_: object, **__: object) -> object:
+            pytest.fail("artifact pin mismatch must stop before API access")
+
+        def post(self, *_: object, **__: object) -> object:
+            pytest.fail("artifact pin mismatch must stop before API mutation")
+
+    output_path = tmp_path / "evidence.json"
+    with pytest.raises(HarnessError, match="authority manifest digest"):
+        run_cell(
+            base_url="http://seneca.test",
+            corpus_root=corpus,
+            manifest_path=manifest_path,
+            query_deck_path=query_deck_path,
+            data_root=tmp_path / "data",
+            cache_state="cold",
+            cell_id="synthetic-pin-check",
+            authority="synthetic-only",
+            approved_manifest_sha256="0" * 64,
+            approved_query_deck_file_sha256=deck_sha,
+            output_path=output_path,
+            client=UnexpectedApiClient(),  # type: ignore[arg-type]
+        )
+    failure_evidence = json.loads(output_path.read_text(encoding="utf-8"))
+    assert failure_evidence["campaign_status"] == "FAILED"
+    assert failure_evidence["failure_type"] == "HarnessError"
+
+
+@pytest.mark.parametrize(
+    ("category", "reason", "http_status", "operation_status", "retry_required"),
+    [
+        ("oversized", "source_file_too_large", 413, None, False),
+        ("ocr_required", "ocr_required", 202, "failed", True),
+        ("duplicate", "document_identity_conflict", 422, None, False),
+    ],
+)
+def test_robustness_evidence_checks_rejection_atomicity_and_retry(
+    category: str,
+    reason: str,
+    http_status: int,
+    operation_status: str | None,
+    retry_required: bool,
+) -> None:
+    before = {
+        "revision": 4,
+        "snapshot_id": "snap-before",
+        "source_count": 2,
+        "source_identity_sha256": "a" * 64,
+    }
+    record: dict[str, object] = {
+        "schema": "16k-f-robustness-case-evidence-v1",
+        "case_id": f"synthetic-{category}",
+        "expected_failure_category": category,
+        "input_source_sha256s": ["b" * 64],
+        "before": before,
+        "rejection": {
+            "http_status": http_status,
+            "operation_status": operation_status,
+            "safe_error_code": "document_invalid",
+            "reason": reason,
+        },
+        "after": dict(before),
+        "readiness_http_status": 200,
+        "retry_required": retry_required,
+        "retry": {
+            "status": "succeeded",
+            "revision": 5,
+            "snapshot_id": "snap-after-retry",
+            "source_count": 3,
+            "source_identity_sha256": "c" * 64,
+            "readiness_http_status": 200,
+        }
+        if retry_required
+        else None,
+    }
+
+    summary = validate_robustness_case_evidence(record)
+
+    assert summary["publication_unchanged"] is True
+    assert summary["validation_status"] == "PASS"
+    assert summary["retry_status"] == ("succeeded" if retry_required else None)
+
+    changed_state = json.loads(json.dumps(record))
+    changed_state["after"]["revision"] = before["revision"] + 1
+    with pytest.raises(HarnessError, match="changed the published workspace"):
+        validate_robustness_case_evidence(changed_state)
+
+
+def test_markdown_parser_acceptance_smoke(tmp_path: Path) -> None:
+    from offline_rag.core.ids import document_id_from_bytes
+    from offline_rag.domain.blocks import ContentType
+    from offline_rag.ingestion.markdown_parser import MarkdownParser
+
+    raw = b"# Incident Plan\n\nStage the rescue line before entry.\n"
+    path = tmp_path / "incident-plan.md"
+    path.write_bytes(raw)
+    parsed = MarkdownParser().parse(
+        path,
+        source_bytes=raw,
+        document_id=document_id_from_bytes(raw),
+    )
+
+    assert any(block.content_type == ContentType.HEADING for block in parsed.blocks)
+    assert any("rescue line" in block.text for block in parsed.blocks)
 
 
 def test_query_validation_rejects_abstention_and_unmapped_citation() -> None:

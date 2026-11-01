@@ -125,6 +125,16 @@ from cold/warm workload totals. The harness binds query evidence to the exact
 manifest, validates every one of the 52 source paths against that manifest,
 and uses the manifest-derived source count for the full pair.
 
+[`ROBUSTNESS_EXECUTION_RUNBOOK.md`](ROBUSTNESS_EXECUTION_RUNBOOK.md) specifies
+the real-API rejection/mixed-batch/retry sequence and its sanitized structured
+evidence. It supplements this proposed matrix without changing its source
+population or the accepted historical design. A synthetic Markdown parser
+smoke is supplemental format coverage only; because the 52-path corpus
+contains no Markdown, it does not claim real-corpus Markdown acceptance.
+Existing managed Markdown `SOURCE_ADD` tests remain in the API suite; an
+isolated `TestClient` startup hang prevented this preparation pass from
+claiming their execution result.
+
 ## Measurement interpretation
 
 The accepted design's historical 60-minute dense-phase threshold and all other
@@ -175,7 +185,7 @@ replacement_dataset:
   mechanically_prepared: true
   manifest_hash_verified: true
   human_acceptance: PENDING
-synthetic_harness_validation: REQUIRED_BEFORE_REVIEW
+synthetic_harness_validation: COMPLETE
 real_corpus_execution: NOT_AUTHORIZED
 scientific_execution: NOT_AUTHORIZED
 production_or_policy_change: NONE
