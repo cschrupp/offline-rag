@@ -2,14 +2,15 @@
 
 ## Current disposition
 
-This is a bounded preparation revision under the user's authorization for the
-**Minimum Beta Dataset and Robustness Preparation**. It does not claim real
-corpus execution, scientific qualification, or acceptance of the replacement
-dataset.
+This is the Human-accepted bounded preparation revision for the **Minimum Beta
+Dataset and Robustness Preparation**. It does not claim real-corpus execution,
+scientific qualification, or empirical acceptance of ingestion results.
 
 ```yaml
-preparation_revision: COMPLETE / READY FOR INDEPENDENT REVIEW
-replacement_baseline_and_amendment_human_acceptance: PENDING
+preparation_revision: COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED
+accepted_technical_subject: 52e740579259e82181fdbbb3c0335c7e0320e3ee
+independent_review: S16K-F-PREP-IR-005_ACCEPT
+replacement_baseline_and_amendment_human_acceptance: ACCEPTED
 real_corpus_ingestion: NONE
 OCR_execution: NONE
 scientific_or_CUDA_execution: NONE
@@ -23,7 +24,7 @@ The work is on `prep/16k-f-corpus-acceptance`, based on Human-accepted
 preparation tip `7c8edee2c3ef85aa8d31722e2a6c8d7ce512b5bc`. The accepted 16K-F
 design remains `0839b565cd60958141366048520236a71bf16fd0`. The original
 45-representation / 39-primary specification remains intact as historical
-provenance. The proposed replacement dataset is documented separately in
+provenance. The accepted replacement dataset is documented separately in
 [`CORPUS_BASELINE_AMENDMENT_001.md`](CORPUS_BASELINE_AMENDMENT_001.md).
 
 ## Verified replacement population
@@ -138,7 +139,7 @@ references, and the same published revision/snapshot. Synthetic negative
 coverage rejects missing citation evidence, changed question hashes, wrong
 published source identity, and a broken cold-to-warm evidence link.
 
-## Proposed execution matrix after Human acceptance
+## Proposed execution matrix — awaiting separate execution authority
 
 1. Re-run the accepted 1,296-child cold proxy cell.
 2. Run the manifest-confirmed largest eligible text-bearing source, rechecking
@@ -192,13 +193,11 @@ contexts, or run a scientific campaign.
 
 ## Remaining gates
 
-1. Human review and acceptance of the exact replacement manifest baseline,
-   private query deck, and
-   [`CORPUS_BASELINE_AMENDMENT_001.md`](CORPUS_BASELINE_AMENDMENT_001.md).
-2. Independent review of the preparation revision.
-3. A separate bounded real-corpus execution authority.
-4. Execution-time verification of the dedicated API/data root, active
-   capabilities, disk headroom, and exact corpus hashes.
+1. A separate bounded real-corpus execution authority covering the matrix
+   above.
+2. At execution time, verify the dedicated API/data root, active capabilities,
+   disk headroom, and exact corpus and query-deck hashes against the accepted
+   values.
 
 Real Markdown ingestion remains unproven by the 52-path corpus. The parser
 smoke is supplemental and does not resolve `TEST-STARTUP-01`.

@@ -1,16 +1,16 @@
 # 16K-F Replacement Dataset Amendment 001
 
-**Status:** `PREPARED — HUMAN ACCEPTANCE PENDING`
+**Status:** `HUMAN ACCEPTED — EXECUTION AUTHORITY PENDING`
 
 **Scope:** replacement corpus identity and bounded robustness matrix only
 **Real-corpus execution:** `NOT AUTHORIZED`
 
 ## Purpose and provenance
 
-This amendment proposes a replacement execution dataset from the currently
-available supported-format corpus. It supplements the accepted 16K-F design's
-§11 dataset for the upcoming beta acceptance run. It does not edit that accepted
-design or rewrite its historical corpus record.
+This amendment defines the accepted replacement execution dataset from the
+currently available supported-format corpus. It supplements the accepted
+16K-F design's §11 dataset for the upcoming beta acceptance run. It does not
+edit that accepted design or rewrite its historical corpus record.
 
 The original specification remains preserved as historical provenance:
 
@@ -154,7 +154,7 @@ manifest, and query deck. Their cache reuse and timing results are valid for
 this replacement workload, but they do not by themselves satisfy or waive the
 historical workload threshold.
 
-## Proposed execution matrix after Human acceptance
+## Proposed execution matrix — separate execution authority required
 
 This is a proposed plan, not execution authority:
 
@@ -184,7 +184,9 @@ comparison valid.
 replacement_dataset:
   mechanically_prepared: true
   manifest_hash_verified: true
-  human_acceptance: PENDING
+  human_acceptance: ACCEPTED
+  accepted_technical_subject: 52e740579259e82181fdbbb3c0335c7e0320e3ee
+  independent_review: S16K-F-PREP-IR-005_ACCEPT
 synthetic_harness_validation: COMPLETE
 real_corpus_execution: NOT_AUTHORIZED
 scientific_execution: NOT_AUTHORIZED
@@ -192,5 +194,5 @@ production_or_policy_change: NONE
 promotion: NOT_AUTHORIZED
 ```
 
-Human acceptance of this exact replacement baseline and amendment is required
-before a separate bounded authority for the proposed real-corpus matrix.
+The exact replacement baseline and amendment are Human-accepted. A separate
+bounded authority is still required before the proposed real-corpus matrix.
