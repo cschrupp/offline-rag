@@ -22,6 +22,7 @@ from scripts.diag_16k_f.execution_harness import (
     run_cell,
     validate_capabilities,
     validate_robustness_case_evidence,
+    validate_robustness_matrix_evidence,
 )
 from scripts.diag_16k_f.prepare_corpus import (
     DUPLICATE_STATUS,
@@ -1146,21 +1147,87 @@ def test_replacement_pin_mismatch_stops_before_api_request(
     assert failure_evidence["failure_type"] == "HarnessError"
 
 
-@pytest.mark.parametrize(
-    ("category", "reason", "http_status", "operation_status", "retry_required"),
-    [
-        ("oversized", "source_file_too_large", 413, None, False),
-        ("ocr_required", "ocr_required", 202, "failed", True),
-        ("duplicate", "document_identity_conflict", 422, None, False),
-    ],
-)
-def test_robustness_evidence_checks_rejection_atomicity_and_retry(
-    category: str,
-    reason: str,
-    http_status: int,
-    operation_status: str | None,
-    retry_required: bool,
-) -> None:
+def _synthetic_robustness_manifest(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> dict[str, object]:
+    from scripts.diag_16k_f import prepare_corpus
+
+    monkeypatch.setattr(prepare_corpus, "MAX_PDF_BYTES", 16)
+    corpus = tmp_path / "robustness-corpus"
+    corpus.mkdir()
+    eligible = corpus / "a.txt"
+    eligible.write_bytes(b"eligible source a")
+    (corpus / "a-copy.txt").write_bytes(eligible.read_bytes())
+    (corpus / "b.md").write_bytes(b"eligible source b")
+    (corpus / "scan.pdf").write_bytes(b"synthetic scan")
+    (corpus / "oversized.pdf").write_bytes(b"more than sixteen bytes")
+    inventory = inventory_directory(corpus)
+    scan_hash = next(
+        row["sha256"]
+        for row in inventory["files"]
+        if row["relative_path"] == "scan.pdf"
+    )
+    manifest = build_replacement_acceptance_manifest(
+        corpus,
+        inventory,
+        {scan_hash: {"classification": "NO_NATIVE_TEXT"}},
+    )
+    monkeypatch.setattr(
+        execution_harness,
+        "PREPARED_REPLACEMENT_MANIFEST_SHA256",
+        manifest["manifest_sha256"],
+    )
+    return manifest
+
+
+def _synthetic_robustness_case(
+    manifest: dict[str, object],
+    scenario_id: str,
+    ordinal: int = 1,
+    *,
+    include_retry: bool = True,
+) -> dict[str, object]:
+    scenarios = {
+        row["scenario_id"]: row for row in manifest["robustness_matrix"]["scenarios"]
+    }
+    dispositions = {
+        "individual_oversized_admission": (OVERSIZE_STATUS, "oversized"),
+        "individual_ocr_required_ingestion": (OCR_STATUS, "ocr_required"),
+        "exact_duplicate_rejection": (DUPLICATE_STATUS, "duplicate"),
+    }
+    retry_scenarios = {
+        "mixed_valid_oversized_atomic_rejection": ("oversized", "invalid_sha256"),
+        "mixed_valid_ocr_required_atomic_rejection": ("ocr_required", "invalid_sha256"),
+        "mixed_valid_duplicate_atomic_rejection": ("duplicate", "duplicate_sha256"),
+    }
+    if scenario_id in dispositions:
+        disposition, category = dispositions[scenario_id]
+        matched = [
+            row
+            for row in manifest["representations"]
+            if row["disposition"] == disposition
+        ]
+        input_hashes = [matched[ordinal - 1]["sha256"]]
+        reason = {
+            "oversized": "source_file_too_large",
+            "ocr_required": "ocr_required",
+            "duplicate": "document_identity_conflict",
+        }[category]
+        http_status = 413 if category == "oversized" else 422
+        operation_status = None
+    else:
+        category, rejected_hash_key = retry_scenarios[scenario_id]
+        scenario = scenarios[scenario_id]
+        input_hashes = [scenario["valid_sha256"], scenario[rejected_hash_key]]
+        reason = {
+            "oversized": "source_file_too_large",
+            "ocr_required": "ocr_required",
+            "duplicate": "document_identity_conflict",
+        }[category]
+        http_status = 422 if category == "duplicate" else 413
+        operation_status = None
+
     before = {
         "revision": 4,
         "snapshot_id": "snap-before",
@@ -1169,9 +1236,12 @@ def test_robustness_evidence_checks_rejection_atomicity_and_retry(
     }
     record: dict[str, object] = {
         "schema": "16k-f-robustness-case-evidence-v1",
-        "case_id": f"synthetic-{category}",
+        "manifest_sha256": manifest["manifest_sha256"],
+        "scenario_id": scenario_id,
+        "case_ordinal": ordinal,
+        "case_id": f"{scenario_id}:{ordinal:03d}",
         "expected_failure_category": category,
-        "input_source_sha256s": ["b" * 64],
+        "input_source_sha256s": input_hashes,
         "before": before,
         "rejection": {
             "http_status": http_status,
@@ -1181,29 +1251,139 @@ def test_robustness_evidence_checks_rejection_atomicity_and_retry(
         },
         "after": dict(before),
         "readiness_http_status": 200,
-        "retry_required": retry_required,
-        "retry": {
+    }
+    if scenario_id in retry_scenarios and include_retry:
+        valid_hash = scenarios[scenario_id]["valid_sha256"]
+        record["retry"] = {
             "status": "succeeded",
             "revision": 5,
             "snapshot_id": "snap-after-retry",
             "source_count": 3,
             "source_identity_sha256": "c" * 64,
             "readiness_http_status": 200,
+            "source_sha256": valid_hash,
         }
-        if retry_required
-        else None,
-    }
+    else:
+        record["retry"] = None
+    return record
 
-    summary = validate_robustness_case_evidence(record)
+
+def test_robustness_case_is_bound_to_manifest_scenario_and_inputs(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manifest = _synthetic_robustness_manifest(tmp_path, monkeypatch)
+    record = _synthetic_robustness_case(
+        manifest, "mixed_valid_ocr_required_atomic_rejection"
+    )
+
+    summary = validate_robustness_case_evidence(record, manifest)
 
     assert summary["publication_unchanged"] is True
     assert summary["validation_status"] == "PASS"
-    assert summary["retry_status"] == ("succeeded" if retry_required else None)
+    assert summary["campaign_status"] == "NOT_EVALUATED"
 
-    changed_state = json.loads(json.dumps(record))
-    changed_state["after"]["revision"] = before["revision"] + 1
-    with pytest.raises(HarnessError, match="changed the published workspace"):
-        validate_robustness_case_evidence(changed_state)
+    changed_identity = json.loads(json.dumps(record))
+    changed_identity["input_source_sha256s"][0] = "f" * 64
+    with pytest.raises(HarnessError, match="identities differ from the manifest"):
+        validate_robustness_case_evidence(changed_identity, manifest)
+
+    arbitrary_id = json.loads(json.dumps(record))
+    arbitrary_id["case_id"] = "arbitrary-case"
+    with pytest.raises(HarnessError, match="not present in the approved manifest"):
+        validate_robustness_case_evidence(arbitrary_id, manifest)
+
+
+@pytest.mark.parametrize(
+    "scenario_id",
+    [
+        "mixed_valid_oversized_atomic_rejection",
+        "mixed_valid_ocr_required_atomic_rejection",
+        "mixed_valid_duplicate_atomic_rejection",
+    ],
+)
+def test_each_mixed_case_requires_manifest_derived_retry(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    scenario_id: str,
+) -> None:
+    manifest = _synthetic_robustness_manifest(tmp_path, monkeypatch)
+    record = _synthetic_robustness_case(manifest, scenario_id, include_retry=False)
+    record["retry_required"] = False
+
+    with pytest.raises(HarnessError, match="retry requirement is derived"):
+        validate_robustness_case_evidence(record, manifest)
+
+    del record["retry_required"]
+    with pytest.raises(HarnessError, match="valid subsequent retry did not succeed"):
+        validate_robustness_case_evidence(record, manifest)
+
+
+def test_robustness_matrix_requires_complete_cases_retries_and_queries(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manifest = _synthetic_robustness_manifest(tmp_path, monkeypatch)
+    scenario_ids = [
+        "individual_oversized_admission",
+        "individual_ocr_required_ingestion",
+        "exact_duplicate_rejection",
+        "mixed_valid_oversized_atomic_rejection",
+        "mixed_valid_ocr_required_atomic_rejection",
+        "mixed_valid_duplicate_atomic_rejection",
+    ]
+    case_records = [
+        _synthetic_robustness_case(manifest, scenario_id)
+        for scenario_id in scenario_ids
+    ]
+    query_sha = "d" * 64
+    monkeypatch.setattr(
+        execution_harness,
+        "PREPARED_REPLACEMENT_QUERY_DECK_FILE_SHA256",
+        query_sha,
+    )
+    query_deck = {
+        "corpus_candidate_sha256": manifest["manifest_sha256"],
+        "questions": [{"query_id": "q1"}, {"query_id": "q2"}],
+    }
+    query_evidence = {
+        "schema": "16k-f-cell-evidence-v1",
+        "campaign_status": "COMPLETE",
+        "manifest_sha256": manifest["manifest_sha256"],
+        "source_count_expected": manifest["successful_ingestion_population"][
+            "source_count"
+        ],
+        "execution_artifact_pins": {
+            "manifest_sha256": manifest["manifest_sha256"],
+            "query_deck_file_sha256": query_sha,
+        },
+        "queries": [
+            {"query_id": "q1", "validation_status": "PASS"},
+            {"query_id": "q2", "validation_status": "PASS"},
+        ],
+    }
+
+    with pytest.raises(HarnessError, match="coverage is incomplete"):
+        validate_robustness_matrix_evidence(
+            case_records[:-1],
+            manifest,
+            query_deck,
+            query_evidence,
+            query_deck_file_sha256=query_sha,
+        )
+
+    summary = validate_robustness_matrix_evidence(
+        case_records,
+        manifest,
+        query_deck,
+        query_evidence,
+        query_deck_file_sha256=query_sha,
+    )
+
+    assert summary["campaign_status"] == "PASS"
+    assert summary["case_count"] == 6
+    assert summary["mixed_cases_with_successful_retry"] == 3
+    assert summary["grounded_queries_passed"] == 2
 
 
 def test_markdown_parser_acceptance_smoke(tmp_path: Path) -> None:

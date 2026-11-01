@@ -45,6 +45,12 @@ filenames. The replacement manifest retains all 52 paths: 3 oversized PDFs,
 3 OCR-required PDFs, and 8 additional paths that duplicate an eligible byte
 identity. The 38-source cold/warm population remains separate.
 
+For each individual path, assign a one-based ordinal within that scenario's
+manifest-ordered rows. Use `scenario_id:NNN` as its `case_id`; mixed scenarios
+use ordinal `001`. The validator derives these IDs and input hashes from the
+pinned manifest, so do not invent case IDs or copy identities from another
+scenario.
+
 For every rejection case:
 
 1. Record workspace state immediately before the mutation.
@@ -89,7 +95,10 @@ Write one private JSON record per expected-rejection case using this schema:
 ```json
 {
   "schema": "16k-f-robustness-case-evidence-v1",
-  "case_id": "manifest scenario ID plus private case ordinal",
+  "manifest_sha256": "exact approved canonical manifest SHA-256",
+  "scenario_id": "exact manifest scenario ID",
+  "case_ordinal": 1,
+  "case_id": "scenario_id:001",
   "expected_failure_category": "oversized | ocr_required | duplicate",
   "input_source_sha256s": ["lowercase SHA-256 values only"],
   "before": {
@@ -111,16 +120,18 @@ Write one private JSON record per expected-rejection case using this schema:
     "source_identity_sha256": "same digest"
   },
   "readiness_http_status": 200,
-  "retry_required": false,
   "retry": null
 }
 ```
 
 For a 202 managed rejection, set `operation_status` to its terminal status and
-record its sanitized public error code and reason. For each mixed rejection,
-set `retry_required` to `true` and add `retry` with `status`, `revision`,
-`snapshot_id`, `source_count`, `source_identity_sha256`, and
-`readiness_http_status` from the subsequent valid source-add.
+record its sanitized public error code and reason. The validator derives
+mandatory retry behavior from the scenario ID; do not include a
+`retry_required` field. Each of the three mixed scenarios must include `retry`
+with `status`, `revision`, `snapshot_id`, `source_count`,
+`source_identity_sha256`, `readiness_http_status`, and `source_sha256` from the
+subsequent valid source-add. The retry source identity must match the
+manifest's `valid_retry_after_rejection` identity.
 
 The source identity digest is SHA-256 over the UTF-8 bytes of sorted active
 `document_id:content_hash` pairs joined by a single newline, with no trailing
@@ -133,13 +144,43 @@ Validate each record and emit a sanitized summary:
 .venv/bin/python -m scripts.diag_16k_f.execution_harness \
   validate-robustness-evidence \
   --input "$PRIVATE_EVIDENCE/case.json" \
+  --manifest "$PRIVATE_MANIFEST" \
+  --approved-manifest-sha256 "$APPROVED_MANIFEST_SHA256" \
   --output "$PRIVATE_EVIDENCE/case-summary.json"
 ```
 
 The validator fails if a rejection changes publication state, readiness is
-not 200, the public error is not in the expected category, or a required retry
-does not succeed with exactly one revision/source increase. Review the
-sanitized summaries together with API logs before declaring a case passed.
+not 200, scenario ID/ordinal/input hashes differ from the approved manifest,
+the public error is not in the expected category, or a manifest-required retry
+does not succeed with exactly one revision/source increase. A case summary
+has `campaign_status: NOT_EVALUATED`; it is not a matrix acceptance.
+
+After collecting all per-case records and the successful full-pair warm-cell
+evidence containing the post-publication query validations, validate complete
+coverage once:
+
+```bash
+CASE_ARGS=()
+for record in "$PRIVATE_EVIDENCE"/cases/*.json; do
+  CASE_ARGS+=(--case "$record")
+done
+
+.venv/bin/python -m scripts.diag_16k_f.execution_harness \
+  validate-robustness-matrix \
+  --manifest "$PRIVATE_MANIFEST" \
+  --query-deck "$PRIVATE_QUERY_DECK" \
+  --query-evidence "$PRIVATE_EVIDENCE/full-warm.json" \
+  --approved-manifest-sha256 "$APPROVED_MANIFEST_SHA256" \
+  --approved-query-deck-file-sha256 "$APPROVED_QUERY_DECK_FILE_SHA256" \
+  "${CASE_ARGS[@]}" \
+  --output "$PRIVATE_EVIDENCE/robustness-matrix-summary.json"
+```
+
+This command requires exact one-to-one coverage of every expected rejection
+case from the manifest, all three mixed-case retries, and passing grounded
+queries tied to the same manifest, query deck, and eligible-source count. Only
+its `campaign_status: PASS` is a complete robustness-matrix disposition; a
+collection of individual case passes is insufficient.
 
 ## Markdown coverage and measurement scope
 

@@ -109,11 +109,15 @@ robustness result when it is understandable, preserves the workspace, and does
 not block a later valid mutation.
 
 `ROBUSTNESS_EXECUTION_RUNBOOK.md` provides the bounded real-API sequence and
-structured private evidence schema for these scenarios. A local validator
-checks the expected safe rejection, unchanged publication and readiness, and
-the required successful retry after mixed-batch rejection. Synthetic tests
-cover those evidence invariants; no live rejection or retry was run during
-preparation.
+structured private evidence schema for these scenarios. Case validation binds
+scenario IDs, ordinals, and exact input hashes to the pinned manifest, derives
+retry requirements from scenario type, and leaves case status at
+`NOT_EVALUATED` for campaign completion. The matrix validator requires exact
+coverage of every rejection case, retries for all three mixed scenarios, and
+passing grounded queries bound to the same manifest/deck before returning
+campaign `PASS`. Synthetic tests cover missing retries, unapproved identities,
+arbitrary IDs, incomplete coverage, and full synthetic matrix acceptance. No
+live rejection or retry was run during preparation.
 
 The replacement population has 37 PDFs, one TXT, and no Markdown. The focused
 preparation suite includes a deterministic synthetic Markdown parser smoke;
@@ -145,20 +149,18 @@ must not be represented as met by non-comparable workload results.
 
 ```text
 .venv/bin/pytest -q tests/unit/test_slice16k_f_corpus_preparation.py
-  26 passed
+  28 passed
 
-.venv/bin/ruff check scripts/diag_16k_f/prepare_corpus.py \
-  scripts/diag_16k_f/execution_harness.py \
+.venv/bin/ruff check scripts/diag_16k_f/execution_harness.py \
   tests/unit/test_slice16k_f_corpus_preparation.py
   PASS; all checks passed
 
-.venv/bin/ruff format --check scripts/diag_16k_f/prepare_corpus.py \
-  scripts/diag_16k_f/execution_harness.py \
+.venv/bin/ruff format --check scripts/diag_16k_f/execution_harness.py \
   tests/unit/test_slice16k_f_corpus_preparation.py
-  PASS; three files already formatted
+  PASS; two files already formatted
 
-prepare_corpus --help / execution_harness --help
-  PASS; run-full-pair and validate-robustness-evidence commands visible
+execution_harness validator CLI help
+  PASS; per-case and complete-matrix commands visible
 
 execution_harness.load_sources(data/raw, replacement manifest)
   PASS; prepared artifact pins matched, all 52 paths reverified, and 38

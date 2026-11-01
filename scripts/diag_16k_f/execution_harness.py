@@ -24,6 +24,9 @@ from typing import Any
 
 import httpx
 from scripts.diag_16k_f.prepare_corpus import (
+    DUPLICATE_STATUS,
+    OCR_STATUS,
+    OVERSIZE_STATUS,
     REPLACEMENT_MANIFEST_SCHEMA,
     PreparationError,
     validate_replacement_manifest,
@@ -655,11 +658,137 @@ def compare_cold_warm(
     }
 
 
-def validate_robustness_case_evidence(record: dict[str, Any]) -> dict[str, Any]:
-    """Validate sanitized manual/API evidence for one expected rejection case."""
+def _expected_robustness_case_specs(
+    manifest: dict[str, Any],
+) -> dict[str, dict[str, Any]]:
+    """Derive every rejection case and retry rule from the approved manifest."""
+    if manifest.get("manifest_sha256") != PREPARED_REPLACEMENT_MANIFEST_SHA256:
+        raise HarnessError("robustness evidence manifest is not the prepared baseline")
+    try:
+        validate_replacement_manifest(manifest)
+    except PreparationError as exc:
+        raise HarnessError(str(exc)) from exc
+
+    scenario_rows = manifest["robustness_matrix"]["scenarios"]
+    scenarios = {row["scenario_id"]: row for row in scenario_rows}
+    representations = manifest["representations"]
+    specs: dict[str, dict[str, Any]] = {}
+
+    individual_scenarios = (
+        (
+            "individual_oversized_admission",
+            OVERSIZE_STATUS,
+            "oversized",
+        ),
+        (
+            "individual_ocr_required_ingestion",
+            OCR_STATUS,
+            "ocr_required",
+        ),
+        (
+            "exact_duplicate_rejection",
+            DUPLICATE_STATUS,
+            "duplicate",
+        ),
+    )
+    for scenario_id, disposition, category in individual_scenarios:
+        rows = [row for row in representations if row["disposition"] == disposition]
+        if len(rows) != scenarios[scenario_id]["case_count"]:
+            raise HarnessError("manifest robustness case count is inconsistent")
+        for ordinal, row in enumerate(rows, start=1):
+            case_id = f"{scenario_id}:{ordinal:03d}"
+            specs[case_id] = {
+                "scenario_id": scenario_id,
+                "case_ordinal": ordinal,
+                "category": category,
+                "input_sha256s": [row["sha256"]],
+                "retry_required": False,
+                "retry_source_sha256": None,
+            }
+
+    mixed_scenarios = (
+        ("mixed_valid_oversized_atomic_rejection", "oversized", "invalid_sha256"),
+        ("mixed_valid_ocr_required_atomic_rejection", "ocr_required", "invalid_sha256"),
+        ("mixed_valid_duplicate_atomic_rejection", "duplicate", "duplicate_sha256"),
+    )
+    retry_scenario = scenarios["valid_retry_after_rejection"]
+    for scenario_id, category, rejected_hash_key in mixed_scenarios:
+        scenario = scenarios[scenario_id]
+        if scenario.get("case_count") != 1:
+            raise HarnessError("manifest mixed-batch scenario must contain one case")
+        valid_hash = scenario.get("valid_sha256")
+        rejected_hash = scenario.get(rejected_hash_key)
+        retry_hash = retry_scenario.get("source_sha256")
+        if (
+            not isinstance(valid_hash, str)
+            or valid_hash != retry_hash
+            or not isinstance(rejected_hash, str)
+            or valid_hash == rejected_hash
+        ):
+            raise HarnessError("manifest mixed-batch identities are inconsistent")
+        case_id = f"{scenario_id}:001"
+        specs[case_id] = {
+            "scenario_id": scenario_id,
+            "case_ordinal": 1,
+            "category": category,
+            "input_sha256s": [valid_hash, rejected_hash],
+            "retry_required": True,
+            "retry_source_sha256": retry_hash,
+        }
+
+    return specs
+
+
+def load_approved_replacement_manifest(
+    manifest_path: Path,
+    *,
+    approved_manifest_sha256: str | None,
+) -> dict[str, Any]:
+    """Load and verify the exact prepared manifest and execution-authority pin."""
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise HarnessError("replacement manifest is unreadable") from exc
+    if not isinstance(manifest, dict):
+        raise HarnessError("replacement manifest must be a JSON object")
+    try:
+        validate_replacement_manifest(manifest)
+    except PreparationError as exc:
+        raise HarnessError(str(exc)) from exc
+    digest = manifest.get("manifest_sha256")
+    if digest != PREPARED_REPLACEMENT_MANIFEST_SHA256:
+        raise HarnessError("replacement manifest differs from the prepared baseline")
+    if approved_manifest_sha256 != digest:
+        raise HarnessError("execution authority manifest digest does not match")
+    return manifest
+
+
+def validate_robustness_case_evidence(
+    record: dict[str, Any], manifest: dict[str, Any]
+) -> dict[str, Any]:
+    """Validate one private rejection record against its manifest-derived case."""
     if record.get("schema") != "16k-f-robustness-case-evidence-v1":
         raise HarnessError("unsupported robustness evidence schema")
-    category = record.get("expected_failure_category")
+    if record.get("manifest_sha256") != manifest.get("manifest_sha256"):
+        raise HarnessError("robustness case is not bound to the approved manifest")
+    if "retry_required" in record:
+        raise HarnessError("retry requirement is derived from the manifest scenario")
+    expected_cases = _expected_robustness_case_specs(manifest)
+    case_id = record.get("case_id")
+    if not isinstance(case_id, str):
+        raise HarnessError("robustness case ID is invalid")
+    expected = expected_cases.get(case_id)
+    if expected is None:
+        raise HarnessError("robustness case ID is not present in the approved manifest")
+    if (
+        record.get("scenario_id") != expected["scenario_id"]
+        or type(record.get("case_ordinal")) is not int
+        or record.get("case_ordinal") != expected["case_ordinal"]
+    ):
+        raise HarnessError("robustness case ID does not match its manifest scenario")
+    category = expected["category"]
+    if record.get("expected_failure_category") != category:
+        raise HarnessError("robustness category differs from the manifest scenario")
     allowed_reasons = {
         "oversized": {"source_file_too_large"},
         "ocr_required": {
@@ -671,9 +800,6 @@ def validate_robustness_case_evidence(record: dict[str, Any]) -> dict[str, Any]:
     }
     if category not in allowed_reasons:
         raise HarnessError("robustness evidence failure category is invalid")
-    case_id = record.get("case_id")
-    if not isinstance(case_id, str) or not case_id.strip():
-        raise HarnessError("robustness evidence case ID is invalid")
 
     input_hashes = record.get("input_source_sha256s")
     if (
@@ -687,6 +813,8 @@ def validate_robustness_case_evidence(record: dict[str, Any]) -> dict[str, Any]:
         )
     ):
         raise HarnessError("robustness evidence source identities are invalid")
+    if sorted(input_hashes) != sorted(expected["input_sha256s"]):
+        raise HarnessError("robustness input identities differ from the manifest case")
 
     before = record.get("before")
     after = record.get("after")
@@ -742,7 +870,7 @@ def validate_robustness_case_evidence(record: dict[str, Any]) -> dict[str, Any]:
         raise HarnessError("rejection reason does not match the expected category")
 
     retry = record.get("retry")
-    retry_required = record.get("retry_required") is True
+    retry_required = expected["retry_required"]
     if retry_required:
         if not isinstance(retry, dict) or retry.get("status") != "succeeded":
             raise HarnessError("valid subsequent retry did not succeed")
@@ -766,12 +894,17 @@ def validate_robustness_case_evidence(record: dict[str, Any]) -> dict[str, Any]:
             or retry_identity == before["source_identity_sha256"]
         ):
             raise HarnessError("successful retry did not change source identity")
+        if retry.get("source_sha256") != expected["retry_source_sha256"]:
+            raise HarnessError("successful retry source differs from the manifest")
+        if retry.get("snapshot_id") == before["snapshot_id"]:
+            raise HarnessError("successful retry did not publish a new snapshot")
     elif retry is not None:
         raise HarnessError("unexpected retry evidence for a case without a retry")
 
     return {
         "schema": "16k-f-robustness-case-summary-v1",
         "case_id": case_id,
+        "scenario_id": expected["scenario_id"],
         "expected_failure_category": category,
         "input_source_count": len(input_hashes),
         "rejection_http_status": http_status,
@@ -783,6 +916,126 @@ def validate_robustness_case_evidence(record: dict[str, Any]) -> dict[str, Any]:
         "retry_status": retry.get("status") if retry_required else None,
         "retry_revision": retry.get("revision") if retry_required else None,
         "validation_status": "PASS",
+        "campaign_status": "NOT_EVALUATED",
+    }
+
+
+def validate_robustness_matrix_evidence(
+    case_records: list[dict[str, Any]],
+    manifest: dict[str, Any],
+    query_deck: dict[str, Any],
+    query_evidence: dict[str, Any],
+    *,
+    query_deck_file_sha256: str,
+) -> dict[str, Any]:
+    """Require complete manifest-case coverage and a passing grounded-query cell."""
+    if query_deck_file_sha256 != PREPARED_REPLACEMENT_QUERY_DECK_FILE_SHA256:
+        raise HarnessError("robustness query-deck digest is not the prepared baseline")
+    expected_specs = _expected_robustness_case_specs(manifest)
+    summaries = [
+        validate_robustness_case_evidence(row, manifest) for row in case_records
+    ]
+    observed_ids = [row["case_id"] for row in summaries]
+    if len(observed_ids) != len(set(observed_ids)):
+        raise HarnessError("robustness matrix contains duplicate case evidence")
+    if set(observed_ids) != set(expected_specs):
+        missing = sorted(set(expected_specs) - set(observed_ids))
+        extra = sorted(set(observed_ids) - set(expected_specs))
+        raise HarnessError(
+            f"robustness matrix coverage is incomplete (missing={len(missing)}, extra={len(extra)})"
+        )
+
+    manifest_sha256 = manifest["manifest_sha256"]
+    if query_deck.get("corpus_candidate_sha256") != manifest_sha256:
+        raise HarnessError("query deck is not bound to the approved manifest")
+    questions = query_deck.get("questions")
+    queries = query_evidence.get("queries")
+    if (
+        query_evidence.get("schema") != "16k-f-cell-evidence-v1"
+        or query_evidence.get("campaign_status") != "COMPLETE"
+        or query_evidence.get("manifest_sha256") != manifest_sha256
+        or query_evidence.get("source_count_expected")
+        != len(manifest["successful_ingestion_population"]["sources"])
+        or query_evidence.get("execution_artifact_pins")
+        != {
+            "manifest_sha256": manifest_sha256,
+            "query_deck_file_sha256": query_deck_file_sha256,
+        }
+        or not isinstance(questions, list)
+        or not isinstance(queries, list)
+        or len(queries) != len(questions)
+    ):
+        raise HarnessError(
+            "post-publication query evidence is incomplete or mismatched"
+        )
+    expected_query_ids = {
+        question.get("query_id")
+        for question in questions
+        if isinstance(question, dict) and isinstance(question.get("query_id"), str)
+    }
+    actual_query_ids = {
+        query.get("query_id")
+        for query in queries
+        if isinstance(query, dict) and isinstance(query.get("query_id"), str)
+    }
+    if (
+        len(expected_query_ids) != len(questions)
+        or actual_query_ids != expected_query_ids
+        or any(
+            not isinstance(query, dict) or query.get("validation_status") != "PASS"
+            for query in queries
+        )
+    ):
+        raise HarnessError("post-publication query validation did not fully pass")
+
+    mixed_scenario_ids = {
+        "mixed_valid_oversized_atomic_rejection",
+        "mixed_valid_ocr_required_atomic_rejection",
+        "mixed_valid_duplicate_atomic_rejection",
+    }
+    successful_mixed_retries = sum(
+        summary["scenario_id"] in mixed_scenario_ids
+        and summary["retry_status"] == "succeeded"
+        for summary in summaries
+    )
+    if successful_mixed_retries != len(mixed_scenario_ids):
+        raise HarnessError("robustness matrix lacks a successful retry per mixed case")
+
+    scenario_counts = {
+        row["scenario_id"]: row["case_count"]
+        for row in manifest["robustness_matrix"]["scenarios"]
+    }
+    observed_scenario_counts: dict[str, int] = {}
+    for summary in summaries:
+        scenario_id = summary["scenario_id"]
+        observed_scenario_counts[scenario_id] = (
+            observed_scenario_counts.get(scenario_id, 0) + 1
+        )
+    coverage = {}
+    for scenario_id, count in scenario_counts.items():
+        if scenario_id in {
+            "valid_retry_after_rejection",
+            "post_publication_grounded_query",
+        }:
+            observed_count = 1
+        else:
+            observed_count = observed_scenario_counts.get(scenario_id, 0)
+        if count != observed_count:
+            raise HarnessError("robustness scenario count differs from the manifest")
+        coverage[scenario_id] = {
+            "expected_case_count": count,
+            "validated_case_count": observed_count,
+            "status": "PASS",
+        }
+    return {
+        "schema": "16k-f-robustness-matrix-summary-v1",
+        "manifest_sha256": manifest_sha256,
+        "query_deck_file_sha256": query_deck_file_sha256,
+        "case_count": len(summaries),
+        "case_coverage": coverage,
+        "mixed_cases_with_successful_retry": successful_mixed_retries,
+        "grounded_queries_passed": len(queries),
+        "campaign_status": "PASS",
     }
 
 
@@ -1391,7 +1644,17 @@ def _parser() -> argparse.ArgumentParser:
     compare_parser.add_argument("--output", required=True, type=Path)
     robustness_parser = subparsers.add_parser("validate-robustness-evidence")
     robustness_parser.add_argument("--input", required=True, type=Path)
+    robustness_parser.add_argument("--manifest", required=True, type=Path)
+    robustness_parser.add_argument("--approved-manifest-sha256", required=True)
     robustness_parser.add_argument("--output", required=True, type=Path)
+    matrix_parser = subparsers.add_parser("validate-robustness-matrix")
+    matrix_parser.add_argument("--manifest", required=True, type=Path)
+    matrix_parser.add_argument("--query-deck", required=True, type=Path)
+    matrix_parser.add_argument("--query-evidence", required=True, type=Path)
+    matrix_parser.add_argument("--case", action="append", required=True, type=Path)
+    matrix_parser.add_argument("--approved-manifest-sha256", required=True)
+    matrix_parser.add_argument("--approved-query-deck-file-sha256", required=True)
+    matrix_parser.add_argument("--output", required=True, type=Path)
     return parser
 
 
@@ -1402,13 +1665,57 @@ def main(argv: list[str] | None = None) -> int:
             record = json.loads(args.input.read_text(encoding="utf-8"))
             if not isinstance(record, dict):
                 raise HarnessError("robustness evidence must be a JSON object")
-            summary = validate_robustness_case_evidence(record)
+            manifest = load_approved_replacement_manifest(
+                args.manifest,
+                approved_manifest_sha256=args.approved_manifest_sha256,
+            )
+            summary = validate_robustness_case_evidence(record, manifest)
             _write_evidence(args.output, summary)
             print(json.dumps(summary, sort_keys=True))
             return 0
         except (OSError, json.JSONDecodeError, HarnessError) as exc:
             print(
                 f"16K-F robustness evidence failed: {type(exc).__name__}: {exc}",
+                file=sys.stderr,
+            )
+            return 2
+    if args.command == "validate-robustness-matrix":
+        try:
+            if args.output.exists():
+                raise HarnessError("refusing to overwrite robustness matrix summary")
+            manifest = load_approved_replacement_manifest(
+                args.manifest,
+                approved_manifest_sha256=args.approved_manifest_sha256,
+            )
+            pins = verify_replacement_execution_artifact_pins(
+                args.manifest,
+                args.query_deck,
+                approved_manifest_sha256=args.approved_manifest_sha256,
+                approved_query_deck_file_sha256=(args.approved_query_deck_file_sha256),
+            )
+            case_records = [
+                json.loads(case_path.read_text(encoding="utf-8"))
+                for case_path in args.case
+            ]
+            if any(not isinstance(record, dict) for record in case_records):
+                raise HarnessError("robustness case evidence must be JSON objects")
+            query_deck = json.loads(args.query_deck.read_text(encoding="utf-8"))
+            query_evidence = json.loads(args.query_evidence.read_text(encoding="utf-8"))
+            if not isinstance(query_deck, dict) or not isinstance(query_evidence, dict):
+                raise HarnessError("query evidence inputs must be JSON objects")
+            summary = validate_robustness_matrix_evidence(
+                case_records,
+                manifest,
+                query_deck,
+                query_evidence,
+                query_deck_file_sha256=pins["query_deck_file_sha256"],
+            )
+            _write_evidence(args.output, summary)
+            print(json.dumps(summary, sort_keys=True))
+            return 0
+        except (OSError, json.JSONDecodeError, HarnessError) as exc:
+            print(
+                f"16K-F robustness matrix failed: {type(exc).__name__}: {exc}",
                 file=sys.stderr,
             )
             return 2
