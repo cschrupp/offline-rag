@@ -66,6 +66,9 @@ successful_ingestion_population:
   txt: 1
   markdown: 0
   unique_raw_source_bytes: 261345436
+largest_eligible_source:
+  byte_size: 67199839
+  sha256: 1f22131a12fccfd0f5ecca9d6e84e7a4314720eeb2abef602be7ebe9932f7c54
 ```
 
 The count is derived from the verified manifest, not forced to 39:
@@ -146,14 +149,19 @@ historical workload threshold.
 This is a proposed plan, not execution authority:
 
 1. Re-run the accepted 1,296-child cold proxy cell.
-2. Run the largest eligible text-bearing source cell (identified from the
-   verified manifest at execution preflight).
+2. Run the manifest-confirmed largest eligible text-bearing source cell
+   (67,199,839 bytes; revalidate its hash at execution preflight).
 3. Run all individual rejection cases above, mixed atomicity cases, and
    same-process valid retries.
 4. Run the exact 38-source replacement cold corpus.
 5. Immediately repeat the same 38-source corpus warm against the same data
    root and exact manifest.
 6. Run the private grounded-query deck against the final published revision.
+
+The full 38-source population partitions into three request-bounded upload
+batches under the unchanged request envelope. Each is a sequential
+`SOURCE_ADD` and therefore a full workspace reconstruction; retain
+per-operation metrics and label any aggregate as a sum across those rebuilds.
 
 The 38-source measurement must be labelled non-comparable to the historical
 39-primary threshold population. A separate report must preserve the frozen

@@ -39,6 +39,8 @@ no_native_text_pdf_paths: 3
 exact_duplicate_path_excess: 8
 eligible_deduplicated_sources: 38
 eligible_source_bytes: 261345436
+largest_eligible_source_bytes: 67199839
+largest_eligible_source_sha256: 1f22131a12fccfd0f5ecca9d6e84e7a4314720eeb2abef602be7ebe9932f7c54
 ```
 
 Private local artifacts:
@@ -58,6 +60,11 @@ query_deck:
 The 38 eligible sources comprise 37 PDFs and one TXT. Each query target is
 verified to be in that set. The private corpus inventory and query text are not
 committed.
+
+The largest eligible source is 67,199,839 bytes. The eligible population
+partitions into three request-bounded upload batches (19, 9, and 10 files).
+Each batch rebuilds the workspace; operation metrics must remain separate, and
+aggregates must be labelled as sums across those rebuilds.
 
 ## Harness changes
 
@@ -95,8 +102,8 @@ not block a later valid mutation.
 ## Proposed execution matrix after Human acceptance
 
 1. Re-run the accepted 1,296-child cold proxy cell.
-2. Run the largest eligible text-bearing source, confirmed from the replacement
-   manifest at execution preflight.
+2. Run the manifest-confirmed largest eligible text-bearing source, rechecking
+   its exact hash at execution preflight.
 3. Exercise all three oversized paths, all three OCR-required paths, and all
    eight exact-duplicate paths. Include mixed valid/oversized,
    valid/OCR-required, and valid/duplicate mutations; verify no partial
