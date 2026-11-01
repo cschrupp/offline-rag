@@ -967,6 +967,8 @@ def validate_robustness_matrix_evidence(
         or query_evidence.get("source_count_expected") != expected_source_count
         or query_evidence.get("source_count_published") != expected_source_count
         or query_evidence.get("source_identity_sha256") != expected_source_identity
+        or query_evidence.get("published_source_identity_sha256")
+        != expected_source_identity
         or not isinstance(workspace, dict)
         or workspace.get("source_count") != expected_source_count
         or not isinstance(workspace.get("revision"), int)
@@ -994,6 +996,8 @@ def validate_robustness_matrix_evidence(
         or cold_evidence.get("source_count_expected") != expected_source_count
         or cold_evidence.get("source_count_published") != expected_source_count
         or cold_evidence.get("source_identity_sha256") != expected_source_identity
+        or cold_evidence.get("published_source_identity_sha256")
+        != expected_source_identity
         or not isinstance(cold_evidence.get("workspace"), dict)
         or cold_evidence["workspace"].get("source_count") != expected_source_count
         or cold_evidence.get("execution_artifact_pins")
@@ -1463,6 +1467,28 @@ def run_cell(
         active_sources = sources_response.json()["sources"]
         if len(active_sources) != len(sources):
             raise HarnessError("published source count does not match manifest")
+        expected_source_hashes = {source.sha256 for source in sources}
+        published_source_hashes = [
+            source.get("content_hash")
+            for source in active_sources
+            if isinstance(source, dict)
+        ]
+        if (
+            len(published_source_hashes) != len(active_sources)
+            or any(
+                not isinstance(content_hash, str)
+                or len(content_hash) != 64
+                or any(
+                    character not in "0123456789abcdef" for character in content_hash
+                )
+                for content_hash in published_source_hashes
+            )
+            or set(published_source_hashes) != expected_source_hashes
+        ):
+            raise HarnessError("published source identities do not match the manifest")
+        published_source_identity_sha256 = hashlib.sha256(
+            "\n".join(sorted(published_source_hashes)).encode("ascii")
+        ).hexdigest()
 
         for item in questions:
             query_id = item.get("query_id")
@@ -1504,6 +1530,7 @@ def run_cell(
             {
                 "campaign_status": "COMPLETE",
                 "source_count_published": len(active_sources),
+                "published_source_identity_sha256": published_source_identity_sha256,
                 "workspace": {
                     "workspace_id": workspace_id,
                     "revision": final_workspace["revision"],

@@ -129,12 +129,14 @@ startup and was stopped after 30 seconds, consistent with the registered
 The complete robustness-matrix validator requires both the cold and warm cell
 records. It verifies their exact pair ID/order, data-root identity, cold
 evidence digest, manifest/deck pins, published source identity/count, and
-published workspace source count. For each approved query it checks the exact
-question SHA-256 and requires answered status, positive citation and answer
-block counts, valid source mappings, valid answer-block references, and the
-same published revision/snapshot. Synthetic negative coverage rejects
-missing citation evidence, changed question hashes, wrong published source
-identity, and a broken cold-to-warm evidence link.
+published workspace source count. Each cell's observed API `content_hash` set
+must exactly match the manifest set before query validation; the observed
+identity digest is recorded in cell evidence. For each approved query it
+checks the exact question SHA-256 and requires answered status, positive
+citation and answer-block counts, valid source mappings, valid answer-block
+references, and the same published revision/snapshot. Synthetic negative
+coverage rejects missing citation evidence, changed question hashes, wrong
+published source identity, and a broken cold-to-warm evidence link.
 
 ## Proposed execution matrix after Human acceptance
 

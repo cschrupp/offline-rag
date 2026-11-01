@@ -379,6 +379,7 @@ def test_synthetic_api_cell_records_sanitized_durable_evidence(
     data_root.mkdir()
     active_data_root = data_root
     operation_status = "succeeded"
+    published_content_hash = [hashlib.sha256(source.read_bytes()).hexdigest()]
     requests: list[httpx.Request] = []
 
     def respond(request: httpx.Request) -> httpx.Response:
@@ -484,6 +485,7 @@ def test_synthetic_api_cell_records_sanitized_durable_evidence(
                         {
                             "source_id": "src_synthetic",
                             "document_id": "doc_synthetic",
+                            "content_hash": published_content_hash[0],
                         }
                     ]
                 },
@@ -547,6 +549,10 @@ def test_synthetic_api_cell_records_sanitized_durable_evidence(
     serialized = output.read_text()
 
     assert evidence["source_count_published"] == 1
+    assert (
+        evidence["published_source_identity_sha256"]
+        == hashlib.sha256(published_content_hash[0].encode("ascii")).hexdigest()
+    )
     assert evidence["operations"][0]["status"] == "succeeded"
     assert evidence["operations"][0]["reconnect_verified"] is True
     assert evidence["queries"][0]["citation_count"] == 1
@@ -562,6 +568,32 @@ def test_synthetic_api_cell_records_sanitized_durable_evidence(
         and request.method == "POST"
     )
     assert add_request.headers["if-match"] == '"1"'
+
+    published_content_hash[0] = "f" * 64
+    identity_mismatch_output = tmp_path / "identity-mismatch-evidence.json"
+    active_data_root = tmp_path / "identity-mismatch-data"
+    active_data_root.mkdir()
+    with pytest.raises(HarnessError, match="published source identities"):
+        run_cell(
+            base_url="http://seneca.test",
+            corpus_root=corpus,
+            manifest_path=manifest_path,
+            query_deck_path=query_deck,
+            data_root=active_data_root,
+            cache_state="cold",
+            cell_id="synthetic-source-identity-mismatch",
+            authority="synthetic-only",
+            output_path=identity_mismatch_output,
+            client=client,
+            reconnect_client_factory=lambda: httpx.Client(
+                base_url="http://seneca.test",
+                transport=httpx.MockTransport(respond),
+            ),
+        )
+    identity_mismatch_evidence = json.loads(identity_mismatch_output.read_text())
+    assert identity_mismatch_evidence["source_count_expected"] == 1
+    assert "source_count_published" not in identity_mismatch_evidence
+    published_content_hash[0] = hashlib.sha256(source.read_bytes()).hexdigest()
 
     active_data_root = tmp_path / "failed-data"
     active_data_root.mkdir()
@@ -1364,6 +1396,7 @@ def test_robustness_matrix_requires_complete_cases_retries_and_queries(
         "source_count_expected": len(sources),
         "source_count_published": len(sources),
         "source_identity_sha256": source_identity,
+        "published_source_identity_sha256": source_identity,
         "execution_artifact_pins": {
             "manifest_sha256": manifest["manifest_sha256"],
             "query_deck_file_sha256": query_sha,
@@ -1387,6 +1420,7 @@ def test_robustness_matrix_requires_complete_cases_retries_and_queries(
         "source_count_expected": len(sources),
         "source_count_published": len(sources),
         "source_identity_sha256": source_identity,
+        "published_source_identity_sha256": source_identity,
         "pair_run_id": pair_run_id,
         "pair_sequence": 2,
         "data_root_id": data_root_id,
