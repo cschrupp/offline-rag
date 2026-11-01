@@ -129,7 +129,9 @@ must not be represented as met by non-comparable workload results.
   tests/unit/test_slice16k_f_corpus_preparation.py
   PASS
 
-.venv/bin/ruff format --check <same three paths>
+.venv/bin/ruff format --check scripts/diag_16k_f/prepare_corpus.py \
+  scripts/diag_16k_f/execution_harness.py \
+  tests/unit/test_slice16k_f_corpus_preparation.py
   PASS
 
 prepare_corpus --help / execution_harness --help
