@@ -17,6 +17,9 @@ promotion_authorized: false
 The canonical preparation base is `7c85a9b14cd1d96a16caca971135fe8f7c978e08`.
 The work is on `prep/16k-f-corpus-acceptance`. The accepted 16K-F design remains
 `0839b565cd60958141366048520236a71bf16fd0`; it was not changed.
+Human acceptance of the preparation candidate is recorded in
+[`HUMAN_ACCEPTANCE.md`](HUMAN_ACCEPTANCE.md). It does not authorize real-corpus
+execution or promotion.
 
 ## Prepared harness
 
