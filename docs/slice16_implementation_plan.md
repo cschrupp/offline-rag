@@ -1167,6 +1167,43 @@ SLICE 18: NOT AUTHORIZED
 M7 CLOSEOUT: NOT AUTHORIZED
 ```
 
+## 16K-F scoped beta campaign closeout — 2026-11-02
+
+```yaml
+16K_F:
+  status: COMPLETE / HUMAN ACCEPTED — SCOPED BETA
+  replacement_corpus: 38 eligible deduplicated sources
+  run_002_evidence: ACCEPTED_DESCRIPTIVE
+  robustness_matrix: PASS_17_OF_17
+  cold_warm_grounded_queries: PASS_5_OF_5_EACH
+  largest_eligible_pdf: ACCEPTED
+  managed_markdown_smoke: ACCEPTED
+  1296_child_proxy: ACCEPTED_SINGLE_RUN
+
+historical_39_primary_benchmark:
+  status: RETIRED_FOR_CURRENT_BETA / NOT_EVALUATED
+  disposition: HUMAN_APPROVED_EXCEPTION
+  frozen_requirement_and_provenance: PRESERVED_UNCHANGED
+  pass_or_fail_claim: NONE
+
+human_campaign_closeout:
+  scope: GOVERNANCE_AND_DOCUMENTATION_ONLY
+  evidence_index: docs/evidence/16k_f_execution/RUN_002_EVIDENCE_INDEX.md
+  closeout: docs/evidence/16k_f_execution/16K_F_HUMAN_CAMPAIGN_CLOSEOUT.md
+
+promotion_to_main: NOT_AUTHORIZED
+16K_G_regression_handoff: NOT_AUTHORIZED
+GPU_RESIDENCY_01: OPEN / SEPARATE OWNER
+TEST_STARTUP_01: OPEN / NON_BLOCKING / SEPARATE OWNER
+```
+
+This current-state entry does not alter the accepted 16K-F design or its
+historical 60-minute criterion. It records the Human-approved scoped beta
+exception because the original corpus population cannot be reliably
+reconstructed. The run_002 measurements remain descriptive for the accepted
+replacement corpus and do not establish performance against the retired
+historical population.
+
 ---
 
 ## Phase order

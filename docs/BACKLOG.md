@@ -2,7 +2,7 @@
 
 **Status:** LIVE PLANNING / NON-AUTHORIZING\
 **Canonical reference:** `main` (see Git for current tip)\
-**Updated:** 2026-10-31
+**Updated:** 2026-11-02
 
 This document is the live queue for work that remains after the Human-accepted
 Slice 16 closeout and the post-L6 parser-stack corrective.
@@ -12,22 +12,44 @@ tranche still requires its normal design / implementation / execution authority.
 Historical accepted or sealed evidence is not rewritten merely because a later
 backlog item exists.
 
-## 1. Active residual completion queue
+## 1. Current disposition and active queue
 
-Completed governance reconciliations precede the remaining active queue:
+### Completed before the remaining beta gates
 
 ```text
-S16K-R01 CLOSED — post-L6 governance reconciliation
-    -> S16K-R02 CLOSED — 16K-C Human-disposition normalization
-    -> S16K-R03 Fireground CUDA current-main disposition
-    -> 16K-E ingestion worklist / progress UX
-    -> 16K-F real beta-corpus acceptance
-    -> 16K-G Slice-17 regression handoff
-    -> request Slice 17 design-open authority
+S16K-R01 — CLOSED / HUMAN ACCEPTED
+S16K-R02 — CLOSED / 16K-C HUMAN ACCEPTED
+S16K-R03 — CLOSED / NOT_REPRODUCED; historical root cause not established
+16K-E    — CLOSED / HUMAN ACCEPTED
+16K-F    — COMPLETE / HUMAN ACCEPTED — SCOPED BETA
 ```
 
-This queue completes the already accepted 16K design sequence before opening
-Slice 17. It does **not** reopen the original Slice 16 closeout.
+16K-F accepted the run_002 replacement-corpus evidence for scoped beta use.
+The historical 39-primary / approximately 7.5–8k-child, 60-minute cold
+dense-phase benchmark is `RETIRED_FOR_CURRENT_BETA / NOT_EVALUATED /
+HUMAN_APPROVED_EXCEPTION`. Its frozen requirement and provenance are
+preserved; run_002 is not comparable evidence and is not reported as a pass or
+failure for that benchmark. See
+[`docs/evidence/16k_f_execution/16K_F_HUMAN_CAMPAIGN_CLOSEOUT.md`](evidence/16k_f_execution/16K_F_HUMAN_CAMPAIGN_CLOSEOUT.md)
+and its linked sanitized `RUN_002_EVIDENCE_INDEX.md`.
+
+### Remaining beta path
+
+```text
+16K-F accepted closeout
+    -> promotion through normal mainline review/authorization (NOT AUTHORIZED)
+    -> 16K-G regression and CI handoff (NOT AUTHORIZED)
+    -> request Slice 17 design-open authority after the handoff
+```
+
+Original Slice 16G is already accepted; 16K-G names the separate regression
+handoff and must not be confused with that completed slice. The post-16K-F
+closeout does not authorize promotion or 16K-G work.
+
+## 2. Historical queue snapshot
+
+The following entries preserve planning and governance context from earlier
+stages. Their live status is superseded by the current disposition above.
 
 ### S16K-R01 — Post-L6 governance reconciliation
 
@@ -119,19 +141,19 @@ scientific execution, additional 16K-D work, or 16K-E/F/G tranche.
 ### S16K-R03 — Fireground CUDA / historical HTTP-500 disposition
 
 **Priority:** P0\
-**Status:** OPEN / SEPARATE RUNTIME RELIABILITY RESIDUAL\
-**Execution authority:** NOT YET AUTHORIZED
+**Status:** CLOSED — BOUNDED `NOT_REPRODUCED`\
+**Accepted subject:** `d7e85fe4aa68520ebc6e1879996b60461655eede`\
+**Historical root cause / fix:** NOT ESTABLISHED
 
-Canonical 16K evidence still records:
+The bounded current-main disposition did not reproduce the historical
+Fireground CUDA/cublasGemmEx failure. This closes the R03 investigation with a
+bounded `NOT_REPRODUCED` result; it does not claim the historical defect was
+identified or fixed. The approximate-populated-corpus limitation remains part
+of the result. Production code was not changed, and promotion was not
+authorized.
 
-```text
-Fireground CUDA/cublasGemmEx runtime issue: OPEN / SEPARATE / NOT FIXED
-Historical GPU-residency HTTP 500 root cause: UNRESOLVED
-```
-
-The constrained-free-VRAM campaign did not reproduce the historical failure,
-and later CUDA qualification/product work succeeded, but the Fireground
-residual itself was never given a current-main terminal disposition.
+The following fixture details are retained as provenance for the historical
+incident, not as evidence that a current defect remains open:
 
 Known Fireground fixture provenance:
 
@@ -141,75 +163,35 @@ bytes: 6,796,067
 sha256: 01bea4d628ffea01aab164535c81392a8b42b9a587f9b6295f302a9938f2f0c2
 ```
 
-Next action should be a bounded current-main reproduction/disposition exercise,
-not an open-ended optimization campaign.
-
-Allowed terminals for a future authorized exercise:
-
-```text
-REPRODUCED -> open a narrowly attributed corrective
-NOT_REPRODUCED -> record bounded non-reproduction and assess whether current
-                  qualified runtime evidence supersedes the old residual
-INCONCLUSIVE -> keep OPEN with exact reason
-```
-
-Do not claim the historical defect was "fixed" merely because it does not
-reproduce.
-
 ### 16K-E — Ingestion worklist / progress / metrics UX
 
 **Priority:** P0\
-**Status:** PLANNED / ACCEPTED DESIGN EXISTS / IMPLEMENTATION NOT AUTHORIZED\
-**Design:** `docs/slice16k_beta_ingestion_readiness_design.md` §10
+**Status:** CLOSED — COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED\
+**Accepted technical subject:** `37883b7a90d5f5b73077aa72d478e5b9c38b1b52`\
+**Closure evidence:** [`16K_E_CLOSURE.md`](evidence/16k_e_ingestion_worklist_progress/16K_E_CLOSURE.md)
 
-Current product code contains useful partial substrate from 16I, including
-fine-grained durable progress, but the accepted 16K-E product surface is not
-complete.
-
-Observed gaps on current `main` include:
-
-- Add Sources file-picker changes replace the current selection rather than
-  supporting append-more-files behavior;
-- no per-file pre-submit Remove control;
-- no Clear All control;
-- public operation DTO exposes basic progress but not the durable worklist / rich
-  operation metrics envisioned by 16K-E;
-- operation presentation does not expose the remaining-document worklist/queue;
-- no truthful active-document-set presentation for multi-document dense batches;
-- generated/reused embedding counts, throughput, ETA, and technical execution
-  details are not presented as designed where available/meaningful.
-
-Reuse 16I contracts rather than creating a parallel progress architecture.
-In-flight per-item removal remains explicitly out of scope.
-
-Exit target: implementation candidate ready for independent review under a
-separate 16K-E authority.
+The accepted implementation reuses the 16I / 16K-B operation architecture and
+delivers the bounded ingestion worklist, progress, metrics, terminal summary,
+and refresh/reconnect presentation. Historical planning notes describing
+pre-implementation gaps are superseded by the closure record. No authority for
+16K-F or 16K-G follows from 16K-E acceptance.
 
 ### 16K-F — Real beta-corpus acceptance
 
 **Priority:** P0\
-**Status:** PLANNED / ACCEPTED DESIGN EXISTS / EXECUTION NOT AUTHORIZED\
-**Design:** `docs/slice16k_beta_ingestion_readiness_design.md` §11
+**Status:** COMPLETE / HUMAN ACCEPTED — SCOPED BETA\
+**Closeout:** [`16K_F_HUMAN_CAMPAIGN_CLOSEOUT.md`](evidence/16k_f_execution/16K_F_HUMAN_CAMPAIGN_CLOSEOUT.md)\
+**Sanitized evidence index:** [`RUN_002_EVIDENCE_INDEX.md`](evidence/16k_f_execution/RUN_002_EVIDENCE_INDEX.md)
 
-The successful 64 MiB Shupe ingestion is valuable evidence, but it is not the
-formal 16K-F acceptance matrix.
-
-The accepted design requires structured evidence for at least:
-
-1. representative ~1.3k-child cold workload;
-2. largest legitimate text-bearing beta document / representation required for
-   transport-vs-workload validation;
-3. complete primary deduplicated non-OCR beta corpus, cold;
-4. immediate warm-cache repeat of the same primary corpus.
-
-Required checks include durable-operation lifetime semantics, atomic
-publication, correct final source count, reconnect/recovery behavior, truthful
-generated/reused counters and stage metrics, successful retrieval/query after
-publication, material cache reuse on warm repeat, and the frozen full-corpus
-usability requirement.
-
-Private corpus content must remain external; evidence should be structured and
-reproducible without committing private source bytes.
+Human acceptance covers the 38-source replacement-corpus cold/warm evidence,
+17/17 robustness cases, grounded retrieval, largest eligible PDF, managed
+Markdown smoke, and the single 1,296-child proxy. Metrics are descriptive for
+the replacement workload. The original 39-primary / approximately 7.5–8k-child
+60-minute cold dense-phase benchmark is `RETIRED_FOR_CURRENT_BETA / NOT
+EVALUATED / HUMAN_APPROVED_EXCEPTION`: its exact population could not be
+reconstructed reliably. The frozen criterion remains in historical design
+authority but is no longer an active acceptance gate for this beta. It is not
+reported as passed or failed.
 
 ### 16K-G — Slice-17 regression handoff
 
@@ -232,7 +214,7 @@ Real CUDA throughput is not automatically a generic CI gate.
 
 Slice 17 design-open should be requested only after this handoff is complete.
 
-## 2. Separate robustness / release backlog
+## 3. Separate robustness / release backlog
 
 These items are real work but are **not** part of the mandatory 16K-E->F->G
 sequence unless a later authority explicitly moves them there. BETA-HARDEN-01
@@ -419,7 +401,7 @@ Includes `PORTFOLIO_DEMO.md`, polished public documentation, architecture/demo
 media, benchmark methodology, limitations, hardware/runtime profiles, and
 reproducible install/run guidance. Claims must remain backed by accepted evidence.
 
-## 3. Registered later candidates
+## 4. Registered later candidates
 
 ### POST-M7-01 — Answer-level user feedback / continuous evaluation
 
@@ -436,7 +418,7 @@ automatic training data, and automatic regression-fixture promotion.
 Do not resume merely because Gold Lab exists. Resume when the target corpus is
 substantially complete/stable and publication-quality benchmarking is approaching.
 
-## 4. Explicitly deferred / do not reopen by default
+## 5. Explicitly deferred / do not reopen by default
 
 The following are **not** active queue items merely because they remain open or
 historically unimplemented:
@@ -461,12 +443,14 @@ historically unimplemented:
 Reopen any of these only when new evidence or a new product objective justifies
 its own design/authority.
 
-## 5. Downstream roadmap after active residuals
+## 6. Downstream roadmap after active residuals
 
 ```text
-finish active 16K residual queue
+16K-F scoped beta closeout accepted
         ->
-16K-G regression handoff
+promotion through normal mainline review / authorization (not authorized)
+        ->
+16K-G regression handoff (not authorized)
         ->
 Slice 17 — Regression CI
         ->

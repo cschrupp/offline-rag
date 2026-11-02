@@ -21,8 +21,19 @@ and supporting history.
 - [x] Persistence / restart / failure-recovery QA — real interrupted-operation
   restart and post-recovery mutation passed; see
   [`docs/evidence/beta_persistence_recovery/RESULT.md`](docs/evidence/beta_persistence_recovery/RESULT.md).
-- [ ] **CURRENT —** Complete Slice 16F beta functionality.
-- [ ] Complete Slice 16G beta functionality.
+- [x] 16K-F replacement-corpus acceptance — **COMPLETE / HUMAN ACCEPTED —
+  SCOPED BETA**. The accepted evidence covers 38-source cold/warm ingestion,
+  robustness, grounded queries, the largest eligible PDF, managed Markdown,
+  and the 1,296-child proxy. See
+  [`docs/evidence/16k_f_execution/16K_F_HUMAN_CAMPAIGN_CLOSEOUT.md`](docs/evidence/16k_f_execution/16K_F_HUMAN_CAMPAIGN_CLOSEOUT.md).
+- [x] Historical 39-primary / 60-minute benchmark — **RETIRED FOR CURRENT
+  BETA / NOT EVALUATED / HUMAN-APPROVED EXCEPTION**. The frozen requirement is
+  preserved; it is not reported as passed or failed.
+- [ ] **NEXT GATE —** Promote the accepted 16K-F branch through the normal
+  mainline review and authorization process. Promotion is not authorized by
+  this closeout.
+- [ ] 16K-G regression and CI handoff — **NOT AUTHORIZED**. This is distinct
+  from original Slice 16G, which is complete.
 - [ ] End-to-end beta QA.
 - [ ] Fix release-blocking defects.
 - [ ] Human beta acceptance.

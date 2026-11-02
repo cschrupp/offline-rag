@@ -1,6 +1,34 @@
 # 16K-F Preparation Readiness Report
 
-## Current disposition
+## Current terminal — scoped beta closeout
+
+The preparation work below is retained as a record of what was ready before
+real-corpus execution. It is superseded as the current 16K-F status by the
+Human campaign closeout and sanitized run_002 evidence index:
+[`../16k_f_execution/16K_F_HUMAN_CAMPAIGN_CLOSEOUT.md`](../16k_f_execution/16K_F_HUMAN_CAMPAIGN_CLOSEOUT.md).
+
+```yaml
+preparation_candidate: 52e740579259e82181fdbbb3c0335c7e0320e3ee
+preparation_human_acceptance_record: 895870cb5ff12a7ffdf438759a3070dd224f4daf
+run_002_replacement_corpus_evidence: ACCEPTED_DESCRIPTIVE
+robustness_matrix: PASS_17_OF_17
+grounded_queries: PASS_5_OF_5_COLD_AND_WARM
+largest_eligible_pdf_and_managed_markdown: PASS
+proxy_1296_children: PASS_SINGLE_RUN
+historical_39_primary_60_minute_benchmark:
+  RETIRED_FOR_CURRENT_BETA / NOT_EVALUATED / HUMAN_APPROVED_EXCEPTION
+historical_requirement: PRESERVED_UNCHANGED
+16K_F: COMPLETE / HUMAN ACCEPTED — SCOPED BETA
+promotion: NOT_AUTHORIZED
+16K_G: NOT_AUTHORIZED
+```
+
+The retired benchmark is not reported as passed or failed. The run_002
+replacement population is not comparable to the historical curator-selected
+39-primary workload. `run_001` and `run_002` evidence files remain unchanged.
+`GPU-RESIDENCY-01` and `TEST-STARTUP-01` remain separately registered.
+
+## Preparation revision disposition at completion
 
 This is the Human-accepted bounded preparation revision for the **Minimum Beta
 Dataset and Robustness Preparation**. It does not claim real-corpus execution,
@@ -191,7 +219,7 @@ These are synthetic preparation and harness checks only. They do not invoke
 the API, ingest real sources, perform OCR, load embedding models, create CUDA
 contexts, or run a scientific campaign.
 
-## Remaining gates
+## Preparation-time gates (subsequently superseded)
 
 1. A separate bounded real-corpus execution authority covering the matrix
    above.
