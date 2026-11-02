@@ -21,14 +21,16 @@ and supporting history.
 - [x] Persistence / restart / failure-recovery QA — real interrupted-operation
   restart and post-recovery mutation passed; see
   [`docs/evidence/beta_persistence_recovery/RESULT.md`](docs/evidence/beta_persistence_recovery/RESULT.md).
-- [x] 16K-F replacement-corpus acceptance — **COMPLETE / HUMAN ACCEPTED —
-  SCOPED BETA**. The accepted evidence covers 38-source cold/warm ingestion,
-  robustness, grounded queries, the largest eligible PDF, managed Markdown,
-  and the 1,296-child proxy. See
-  [`docs/evidence/16k_f_execution/16K_F_HUMAN_CAMPAIGN_CLOSEOUT.md`](docs/evidence/16k_f_execution/16K_F_HUMAN_CAMPAIGN_CLOSEOUT.md).
-- [x] Historical 39-primary / 60-minute benchmark — **RETIRED FOR CURRENT
-  BETA / NOT EVALUATED / HUMAN-APPROVED EXCEPTION**. The frozen requirement is
-  preserved; it is not reported as passed or failed.
+- [x] 16K-F empirical characterization on the available beta corpus —
+  **ACCEPTED DESCRIPTIVE**; functional campaign acceptance is **COMPLETE / HUMAN
+  ACCEPTED — SCOPED BETA**. The verified 38-source cold/warm results and
+  supplemental cells are summarized in
+  [`RUN_002_EVIDENCE_INDEX.md`](docs/evidence/16k_f_execution/RUN_002_EVIDENCE_INDEX.md).
+- Historical 39-primary / 60-minute figure: an earlier planning objective
+  based on estimates and a separate 1,296-child incident, not a calibrated
+  full-corpus performance standard. Its workload is no longer reproducible;
+  it remains historical and is not an active beta gate. It was neither met nor
+  failed by the replacement-corpus measurements.
 - [ ] **NEXT GATE —** Promote the accepted 16K-F branch through the normal
   mainline review and authorization process. Promotion is not authorized by
   this closeout.
@@ -38,6 +40,12 @@ and supporting history.
 - [ ] Fix release-blocking defects.
 - [ ] Human beta acceptance.
 - [ ] RELEASE.
+
+The historical 16K design and its originally frozen numerical objectives are
+preserved in the detailed roadmap records below. The current interpretation
+and available-corpus measurements are summarized above and in the linked
+run_002 evidence index; historical values are not active beta performance
+gates.
 
 ### R04 status — investigation no longer gates beta delivery
 

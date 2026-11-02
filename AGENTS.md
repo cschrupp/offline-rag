@@ -327,6 +327,18 @@ A successful lower-level check does not automatically authorize the next phase.
 
 Absence of a failure is not evidence of authorization.
 
+### Benchmark provenance and baseline evolution
+
+Distinguish an aspirational performance target from an empirically calibrated
+acceptance threshold. For numerical benchmarks, record the workload
+population, measurement method, hardware/runtime context, and evidence that
+supports the comparison. Do not promote a single-case observation or estimated
+workload into a general performance guarantee without appropriate
+justification. When a dataset or its assumptions evolve, preserve the
+historical baseline and explicitly identify the active evaluation scope.
+Never claim an unsuccessful test passed, and do not treat a superseded planning
+assumption as a permanent release blocker.
+
 ## 10A. Historical provenance versus current state
 
 Do not overwrite historical workflow state merely to express the current disposition.

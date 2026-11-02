@@ -18,19 +18,19 @@ This acceptance is scoped to the available beta corpus. It does not convert
 the replacement workload into a comparable version of the historical
 39-primary benchmark.
 
-## Historical benchmark exception
+## Historical campaign disposition
 
 The original corpus included intermediate representations produced during PDF
 compression, text extraction, and other experiments. The exact original
 39-primary population can no longer be reliably reconstructed. The Human
-therefore approves retiring the original approximately 7,500–8,000-child,
+therefore approved retiring the original approximately 7,500–8,000-child,
 60-minute cold dense-phase benchmark as a current-beta gate:
 
 ```yaml
 historical_39_primary_benchmark:
   disposition: RETIRED_FOR_CURRENT_BETA
   result: NOT_EVALUATED
-  exception: HUMAN_APPROVED
+  historical_decision_label: HUMAN_APPROVED_EXCEPTION
   pass_or_fail_claim: NONE
   frozen_requirement_and_provenance: PRESERVED_UNCHANGED
 ```
@@ -39,6 +39,31 @@ The run_002 replacement-corpus measurements do not satisfy, waive, or fail the
 historical threshold. In particular, the aggregate cold operation duration is
 not the frozen dense-phase metric. The historical design and evidence remain
 unchanged.
+
+## Methodological clarification — 2026-11-02
+
+This dated clarification refines the interpretation of the historical target;
+it does not change the original Human acceptance or the observed campaign
+results. The 39-primary and 7,500–8,000-child figures were estimates for a
+changing set of representations, not a verified, stable corpus manifest. The
+60-minute value was a legitimate engineering usability objective, but it was
+not empirically calibrated as an upper bound on that complete estimated
+workload before being frozen.
+
+The initial empirical basis was the separate 1,296-child D0 incident, not a
+complete 39-primary corpus run. The design explicitly warned that linear
+extrapolation to approximately 8,000 children was not justified and required
+direct full-corpus measurement. D0, the original design, and their historical
+threshold wording are preserved unchanged.
+
+Run_002 is the current accepted empirical baseline for the verified available
+38-source corpus. Its results are descriptive for that workload. The corpus
+change and loss of the exact historical roster—not an unfavorable observed
+60-minute result—make the old number an unsuitable current-beta comparator.
+This clarification claims neither that the original objective was met nor
+that the replacement corpus met a newly defined numerical threshold. No
+current full-corpus latency SLO is established. The 16K-F functional
+acceptance remains **COMPLETE / HUMAN ACCEPTED — SCOPED BETA**.
 
 ## Accepted campaign results
 

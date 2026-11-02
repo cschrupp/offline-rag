@@ -1181,10 +1181,13 @@ M7 CLOSEOUT: NOT AUTHORIZED
   1296_child_proxy: ACCEPTED_SINGLE_RUN
 
 historical_39_primary_benchmark:
-  status: RETIRED_FOR_CURRENT_BETA / NOT_EVALUATED
-  disposition: HUMAN_APPROVED_EXCEPTION
+  status: SUPERSEDED_AS_CURRENT_CORPUS_COMPARATOR / NOT_EVALUATED
+  provenance: PRELIMINARY_PLANNING_OBJECTIVE_BASED_ON_ESTIMATES
   frozen_requirement_and_provenance: PRESERVED_UNCHANGED
   pass_or_fail_claim: NONE
+
+current_performance_status: EMPIRICALLY_CHARACTERIZED / ACCEPTED_DESCRIPTIVE
+current_full_corpus_latency_slo: NONE_ESTABLISHED
 
 human_campaign_closeout:
   scope: GOVERNANCE_AND_DOCUMENTATION_ONLY
@@ -1197,12 +1200,20 @@ GPU_RESIDENCY_01: OPEN / SEPARATE OWNER
 TEST_STARTUP_01: OPEN / NON_BLOCKING / SEPARATE OWNER
 ```
 
-This current-state entry does not alter the accepted 16K-F design or its
-historical 60-minute criterion. It records the Human-approved scoped beta
-exception because the original corpus population cannot be reliably
-reconstructed. The run_002 measurements remain descriptive for the accepted
-replacement corpus and do not establish performance against the retired
-historical population.
+The historical 60-minute figure was a legitimate usability planning objective,
+but was not empirically calibrated against a verified, stable 39-primary
+population. The accepted 16K design warned against linear extrapolation from
+the separate 1,296-child D0 incident. This status entry preserves that design
+and its historical objective while recording the current empirical baseline
+for the available 38-source corpus. No result is claimed for the historical
+objective, and no new numerical SLO is introduced. See the performance
+provenance subsection in
+[`docs/evidence/16k_f_execution/RUN_002_EVIDENCE_INDEX.md`](evidence/16k_f_execution/RUN_002_EVIDENCE_INDEX.md).
+
+Methodological lesson: a frozen design objective is not automatically an
+empirically validated benchmark. When its dataset or assumptions change,
+preserve the historical baseline and evaluate the product against a verified
+contemporary workload.
 
 ---
 

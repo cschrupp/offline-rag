@@ -24,12 +24,15 @@ S16K-R03 — CLOSED / NOT_REPRODUCED; historical root cause not established
 16K-F    — COMPLETE / HUMAN ACCEPTED — SCOPED BETA
 ```
 
-16K-F accepted the run_002 replacement-corpus evidence for scoped beta use.
-The historical 39-primary / approximately 7.5–8k-child, 60-minute cold
-dense-phase benchmark is `RETIRED_FOR_CURRENT_BETA / NOT_EVALUATED /
-HUMAN_APPROVED_EXCEPTION`. Its frozen requirement and provenance are
-preserved; run_002 is not comparable evidence and is not reported as a pass or
-failure for that benchmark. See
+16K-F functional acceptance is complete. Performance on the available
+replacement corpus is **EMPIRICALLY_CHARACTERIZED / ACCEPTED_DESCRIPTIVE**;
+there is no outstanding full-corpus performance gate for the current beta.
+The original 39-primary / approximately 7.5–8k-child, 60-minute figure was a
+preliminary engineering usability objective based on estimated workload size,
+not an empirically calibrated full-corpus threshold. The exact historical
+population is no longer reproducible. Preserve its original specification as
+historical provenance; it is superseded as the current-corpus comparator and
+was neither met nor failed by run_002. See
 [`docs/evidence/16k_f_execution/16K_F_HUMAN_CAMPAIGN_CLOSEOUT.md`](evidence/16k_f_execution/16K_F_HUMAN_CAMPAIGN_CLOSEOUT.md)
 and its linked sanitized `RUN_002_EVIDENCE_INDEX.md`.
 
@@ -173,25 +176,29 @@ sha256: 01bea4d628ffea01aab164535c81392a8b42b9a587f9b6295f302a9938f2f0c2
 The accepted implementation reuses the 16I / 16K-B operation architecture and
 delivers the bounded ingestion worklist, progress, metrics, terminal summary,
 and refresh/reconnect presentation. Historical planning notes describing
-pre-implementation gaps are superseded by the closure record. No authority for
-16K-F or 16K-G follows from 16K-E acceptance.
+pre-implementation gaps are superseded by the closure record. 16K-F has since
+closed as scoped beta acceptance. 16K-G remains a separate, unauthorized
+regression-handoff item after the mainline promotion gate.
 
 ### 16K-F — Real beta-corpus acceptance
 
 **Priority:** P0\
-**Status:** COMPLETE / HUMAN ACCEPTED — SCOPED BETA\
+**Functional acceptance:** COMPLETE / HUMAN ACCEPTED — SCOPED BETA\
+**Performance status:** EMPIRICALLY CHARACTERIZED / ACCEPTED DESCRIPTIVE\
+**Active full-corpus latency SLO:** NONE ESTABLISHED\
 **Closeout:** [`16K_F_HUMAN_CAMPAIGN_CLOSEOUT.md`](evidence/16k_f_execution/16K_F_HUMAN_CAMPAIGN_CLOSEOUT.md)\
 **Sanitized evidence index:** [`RUN_002_EVIDENCE_INDEX.md`](evidence/16k_f_execution/RUN_002_EVIDENCE_INDEX.md)
 
 Human acceptance covers the 38-source replacement-corpus cold/warm evidence,
 17/17 robustness cases, grounded retrieval, largest eligible PDF, managed
 Markdown smoke, and the single 1,296-child proxy. Metrics are descriptive for
-the replacement workload. The original 39-primary / approximately 7.5–8k-child
-60-minute cold dense-phase benchmark is `RETIRED_FOR_CURRENT_BETA / NOT
-EVALUATED / HUMAN_APPROVED_EXCEPTION`: its exact population could not be
-reconstructed reliably. The frozen criterion remains in historical design
-authority but is no longer an active acceptance gate for this beta. It is not
-reported as passed or failed.
+the replacement workload. The original 39-primary / approximately 7.5–8k-child,
+60-minute figure was a preliminary planning objective; the estimated corpus
+was not a verified, permanently reproducible roster, and its full-corpus
+performance was not empirically calibrated. The original design itself
+cautioned against linear extrapolation from the 1,296-child incident. Preserve
+that design and its objective as historical provenance. It is not an active
+acceptance gate, and no pass/fail claim is made against it.
 
 ### 16K-G — Slice-17 regression handoff
 

@@ -221,6 +221,36 @@ configuration promotion. Full provenance:
 
 Do **not** merge 14C retrieval-path latency with Level-C end-to-end latency.
 
+## Seneca ingestion performance evidence (16K-F)
+
+The current empirical ingestion baseline uses the verified available beta
+corpus: 38 deduplicated sources (37 PDFs and one TXT), drawn from 52 paths and
+44 byte identities. The accepted cold/warm campaign completed publication and
+5/5 grounded queries in each cell. Full-cell elapsed time was approximately
+66.09 minutes cold and 5.14 minutes warm. Summed managed-operation time across
+three sequential cold rebuilds was 3,759,581 ms, compared with 56,615 ms warm
+(98.49% aggregate operation-time reduction). Those operation sums exclude
+some full-cell activities; counters and timings are interpreted in the
+sanitized evidence index.
+
+This is empirical characterization of the available corpus, not a general
+latency guarantee or numerical SLO. The earlier 60-minute full-corpus figure
+came from a planning estimate of a changing corpus and a separate 1,296-child
+incident; that complete estimated workload was never empirically calibrated
+as a benchmark. The design warned against linear extrapolation from the proxy.
+The historical objective was neither demonstrated as met nor failed by the
+replacement-corpus run. No current full-corpus latency SLO is established.
+The cold/warm campaign included 17/17 passing robustness cases; supplemental
+largest-PDF and managed-Markdown ingestion/retrieval checks also passed.
+
+The run_002 records identify the active `cuda_fp16_v1` profile but do not
+record the physical GPU model, so these measurements are not presented as a
+GPU-specific performance guarantee. See the [sanitized 16K-F evidence
+index](docs/evidence/16k_f_execution/RUN_002_EVIDENCE_INDEX.md) for workload,
+methodology, exact artifact hashes, limits, and provenance, and the [initial
+D0 incident record](docs/evidence/16k_d_dense_cuda/d0_baseline_summary.json)
+for the measured proxy and its recorded hardware.
+
 ## Repository map
 
 ```text

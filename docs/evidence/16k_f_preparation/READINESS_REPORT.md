@@ -10,23 +10,41 @@ Human campaign closeout and sanitized run_002 evidence index:
 ```yaml
 preparation_candidate: 52e740579259e82181fdbbb3c0335c7e0320e3ee
 preparation_human_acceptance_record: 895870cb5ff12a7ffdf438759a3070dd224f4daf
+current_performance_status: EMPIRICALLY_CHARACTERIZED / ACCEPTED_DESCRIPTIVE
 run_002_replacement_corpus_evidence: ACCEPTED_DESCRIPTIVE
+run_002_metrics:
+  cold_operation_total_ms: 3759581
+  cold_full_cell_elapsed_minutes: 66.09
+  warm_operation_total_ms: 56615
+  warm_full_cell_elapsed_minutes: 5.14
+  aggregate_operation_time_reduction_percent: 98.49
 robustness_matrix: PASS_17_OF_17
 grounded_queries: PASS_5_OF_5_COLD_AND_WARM
 largest_eligible_pdf_and_managed_markdown: PASS
 proxy_1296_children: PASS_SINGLE_RUN
 historical_39_primary_60_minute_benchmark:
-  RETIRED_FOR_CURRENT_BETA / NOT_EVALUATED / HUMAN_APPROVED_EXCEPTION
+  status: SUPERSEDED_AS_CURRENT_CORPUS_COMPARATOR
+  result: NOT_EVALUATED
+  no_pass_or_fail_claim: true
 historical_requirement: PRESERVED_UNCHANGED
+current_full_corpus_latency_slo: NONE_ESTABLISHED
 16K_F: COMPLETE / HUMAN ACCEPTED — SCOPED BETA
 promotion: NOT_AUTHORIZED
 16K_G: NOT_AUTHORIZED
 ```
 
-The retired benchmark is not reported as passed or failed. The run_002
-replacement population is not comparable to the historical curator-selected
+The historical 60-minute full-corpus objective is not reported as passed or
+failed. The separate D0 run exceeded the 10-minute proxy objective for its
+1,296-child incident workload. The run_002 replacement population is not
+comparable to the historical curator-selected
 39-primary workload. `run_001` and `run_002` evidence files remain unchanged.
 `GPU-RESIDENCY-01` and `TEST-STARTUP-01` remain separately registered.
+The original 60-minute figure was an engineering planning objective based on
+estimated corpus size, not an empirically calibrated full-corpus upper bound.
+There is no active full-corpus latency SLO. The dated methodological
+clarification is recorded in
+[`../16k_f_execution/16K_F_HUMAN_CAMPAIGN_CLOSEOUT.md`](../16k_f_execution/16K_F_HUMAN_CAMPAIGN_CLOSEOUT.md#methodological-clarification--2026-11-02)
+and the run_002 evidence index's performance-provenance section.
 
 ## Preparation revision disposition at completion
 
