@@ -131,8 +131,9 @@ def _reject_empty_ocr_required_pdf(parsed: ParsedDocument) -> None:
     )
     if ocr_required and not parsed.blocks:
         raise OCRRequiredIngestionError(
-            "PDF contains no extractable text. Enable OCR in Parsing settings "
-            "and retry."
+            "This PDF contains no extractable text. OCR is not enabled in this "
+            "installation. Convert the PDF to a searchable document using an "
+            "OCR tool, then upload it again."
         )
 
 

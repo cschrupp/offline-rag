@@ -51,7 +51,7 @@ describe("P4 human-UAT duplicate document messaging", () => {
 
   it("explains how to recover from an OCR-required source failure", () => {
     const expected =
-      "This PDF has no extractable text. Enable OCR in Parsing settings and retry.";
+      "This PDF contains no extractable text. OCR is not enabled in this installation. Convert the PDF to a searchable document using an OCR tool, then upload it again.";
     expect(messageForDocumentInvalidReason("ocr_required")).toBe(expected);
     const operation = {
       kind: "source_add",

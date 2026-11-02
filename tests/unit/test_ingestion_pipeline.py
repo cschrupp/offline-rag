@@ -196,7 +196,7 @@ def test_empty_ocr_required_pdf_rejects_mixed_batch_atomically(
     error = _map_ingestion_failure(report)
     assert error.code.value == "document_invalid"
     assert error.details["reason"] == "ocr_required"
-    assert "enable ocr" in failed_pdf.error.lower()
+    assert "ocr tool" in failed_pdf.error.lower()
     assert state_path.read_bytes() == state_before
 
 

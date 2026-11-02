@@ -76,7 +76,7 @@ export function messageForDocumentInvalidReason(
     return DOCUMENT_ALREADY_PRESENT_MESSAGE;
   }
   if (reason.trim() === "ocr_required") {
-    return "This PDF has no extractable text. Enable OCR in Parsing settings and retry.";
+    return "This PDF contains no extractable text. OCR is not enabled in this installation. Convert the PDF to a searchable document using an OCR tool, then upload it again.";
   }
   return null;
 }
