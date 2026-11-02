@@ -40,6 +40,10 @@ function formatMiB(bytes: number): string {
   return (bytes / (1024 * 1024)).toFixed(bytes < 10 * 1024 * 1024 ? 1 : 0);
 }
 
+export function oversizedPdfUploadMessage(limitBytes: number): string {
+  return `This PDF exceeds the maximum allowed size of ${formatMiB(limitBytes)} MiB. Compress or optimize the PDF, or split it into smaller PDFs, then upload it again. Preserve searchable text when possible.`;
+}
+
 /** Validate upload envelopes without attempting to duplicate parser checks. */
 export function validateUploadSelection(params: {
   files: File[];
@@ -61,6 +65,7 @@ export function validateUploadSelection(params: {
       ? limits.maxBytesPerPdfSource
       : limits.maxBytesPerUploadedFile;
     if (file.size > limit) {
+      if (isPdf) return oversizedPdfUploadMessage(limit);
       return `${file.name} exceeds the ${formatMiB(limit)} MiB per-file upload limit.`;
     }
     return null;
@@ -80,7 +85,7 @@ export function validateUploadSelection(params: {
     const incomingBytes = files.reduce((sum, file) => sum + file.size, 0);
     if (incomingBytes > limits.maxBytesPerUploadRequest) {
       aggregateErrors.push(
-        `Selected files exceed the ${formatMiB(limits.maxBytesPerUploadRequest)} MiB per-request upload limit.`,
+        `Selected files exceed the ${formatMiB(limits.maxBytesPerUploadRequest)} MiB per-request upload limit. Upload fewer files at a time.`,
       );
     }
     if (

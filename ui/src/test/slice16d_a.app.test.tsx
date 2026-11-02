@@ -380,8 +380,14 @@ describe("Slice 16D-A FAILED/INTERRUPTED operation UX (F5)", () => {
         return jsonResponse(
           capabilities({
             large_pdf: {
+              policy_supported: true,
+              policy_max_bytes: 94_371_840,
+              qualified_profile: "cpu_onnx_fp32_v1",
+              reference_host_memory_bytes: 32_000_000_000,
+              reference_host_available_memory_bytes: 19_388_303_360,
               runtime_eligible: true,
-              effective_max_bytes: 94_371_840,
+              effective_max_bytes: 4 * 1024 * 1024,
+              unavailable_reason: null,
             },
           }),
         );
@@ -440,7 +446,7 @@ describe("Slice 16D-A FAILED/INTERRUPTED operation UX (F5)", () => {
     const dialog = await screen.findByRole("dialog", { name: /add sources/i });
     expect(
       within(dialog).getByText(
-        /Maximum upload file size: 90 MiB for PDF, 25 MiB for other text files/i,
+        /Maximum upload file size: 4\.0 MiB for PDF, 25 MiB for other text files/i,
       ),
     ).toBeInTheDocument();
     const fileInput = within(dialog).getByLabelText(/source files/i);
@@ -470,8 +476,14 @@ describe("Slice 16D-A FAILED/INTERRUPTED operation UX (F5)", () => {
         return jsonResponse(
           capabilities({
             large_pdf: {
+              policy_supported: true,
+              policy_max_bytes: 94_371_840,
+              qualified_profile: "cpu_onnx_fp32_v1",
+              reference_host_memory_bytes: 32_000_000_000,
+              reference_host_available_memory_bytes: 19_388_303_360,
               runtime_eligible: true,
-              effective_max_bytes: 94_371_840,
+              effective_max_bytes: 4 * 1024 * 1024,
+              unavailable_reason: null,
             },
           }),
         );
@@ -534,10 +546,23 @@ describe("Slice 16D-A FAILED/INTERRUPTED operation UX (F5)", () => {
     const dialog = await screen.findByRole("dialog", { name: /replace/i });
     expect(
       within(dialog).getByText(
-        /Maximum upload file size: 90 MiB for PDF, 25 MiB for other text files/i,
+        /Maximum upload file size: 4\.0 MiB for PDF, 25 MiB for other text files/i,
       ),
     ).toBeInTheDocument();
     const fileInput = within(dialog).getByLabelText(/file/i);
+    await user.upload(
+      fileInput,
+      new File([new Uint8Array(4 * 1024 * 1024 + 1)], "manual_large.pdf", {
+        type: "application/pdf",
+      }),
+    );
+    await user.click(within(dialog).getByRole("button", { name: /replace/i }));
+    expect(
+      within(dialog).getByText(
+        "This PDF exceeds the maximum allowed size of 4.0 MiB. Compress or optimize the PDF, or split it into smaller PDFs, then upload it again. Preserve searchable text when possible.",
+      ),
+    ).toBeInTheDocument();
+
     await user.upload(
       fileInput,
       new File(["v2"], "manual_v2.pdf", { type: "application/pdf" }),

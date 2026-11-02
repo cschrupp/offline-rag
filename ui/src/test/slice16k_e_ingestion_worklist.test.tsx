@@ -8,6 +8,7 @@ import type {
 } from "../api/types";
 import {
   appendUniqueFiles,
+  oversizedPdfUploadMessage,
   validateUploadSelection,
 } from "../features/workspaces/uploadStaging";
 import {
@@ -69,13 +70,13 @@ describe("16K-E pre-submit staging", () => {
       existingSourceBytes: 8 * 1024 * 1024,
     });
 
-    expect(result.fileErrors[0]).toMatch(/manual\.pdf exceeds the 4\.0 MiB/);
+    expect(result.fileErrors[0]).toBe(oversizedPdfUploadMessage(4 * 1024 * 1024));
     expect(result.fileErrors[1]).toBeNull();
     expect(result.aggregateErrors).toContain(
       "At most 1 file may be uploaded in one request.",
     );
     expect(result.aggregateErrors).toContain(
-      "Selected files exceed the 10 MiB per-request upload limit.",
+      "Selected files exceed the 10 MiB per-request upload limit. Upload fewer files at a time.",
     );
     expect(result.aggregateErrors).toContain(
       "Selected files exceed the 12 MiB workspace source limit.",
@@ -87,7 +88,22 @@ describe("16K-E pre-submit staging", () => {
     let submittedNames: string[] = [];
     let submittedKey: string | null = null;
     const mock = installFetchMock(async (call) => {
-      if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
+      if (call.url === "/v1/capabilities") {
+        return jsonResponse(
+          capabilities({
+            large_pdf: {
+              policy_supported: true,
+              policy_max_bytes: 94_371_840,
+              qualified_profile: "cpu_onnx_fp32_v1",
+              reference_host_memory_bytes: 32_000_000_000,
+              reference_host_available_memory_bytes: 19_388_303_360,
+              effective_max_bytes: 4 * 1024 * 1024,
+              runtime_eligible: true,
+              unavailable_reason: null,
+            },
+          }),
+        );
+      }
       if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
       if (call.url === "/v1/workspaces/ws_1" && call.method === "GET") {
         return jsonResponse(
@@ -123,7 +139,24 @@ describe("16K-E pre-submit staging", () => {
     renderApp("/workspaces/ws_1");
     await user.click((await screen.findAllByRole("button", { name: "+ Add sources" }))[0]!);
     const dialog = await screen.findByRole("dialog", { name: /add sources/i });
-    const input = within(dialog).getByLabelText(/source files/i);
+    let input = within(dialog).getByLabelText(/source files/i);
+    const oversizedPdf = new File(
+      [new Uint8Array(4 * 1024 * 1024 + 1)],
+      "manual.pdf",
+      { type: "application/pdf" },
+    );
+    await user.upload(input, oversizedPdf);
+    expect(
+      within(dialog).getByText(
+        "This PDF exceeds the maximum allowed size of 4.0 MiB. Compress or optimize the PDF, or split it into smaller PDFs, then upload it again. Preserve searchable text when possible.",
+      ),
+    ).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Remove manual.pdf" }));
+    await waitFor(() =>
+      expect(within(dialog).queryByLabelText("Selected upload files")).toBeNull(),
+    );
+    input = within(dialog).getByLabelText(/source files/i);
+
     const a = file("a.txt", "alpha", "text/plain");
     const b = file("b.txt", "bravo", "text/plain");
     await user.upload(input, a);

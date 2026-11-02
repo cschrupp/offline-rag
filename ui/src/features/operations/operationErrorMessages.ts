@@ -1,5 +1,8 @@
 import type { Operation } from "../../api/types";
-import { messageForDocumentInvalidReason } from "../../api/errors";
+import {
+  messageForDocumentInvalidReason,
+  messageForUploadSizeReason,
+} from "../../api/errors";
 import { messageForGoldSafeReason } from "../goldLab/errors/goldLabErrors";
 
 const GOLD_BOOTSTRAP_CODE_FALLBACKS: Record<string, string> = {
@@ -43,6 +46,8 @@ export function managedOperationFailureMessage(operation: Operation): string {
   const code = String(error.code ?? "")
     .trim()
     .toLowerCase();
+  const uploadSizeMessage = messageForUploadSizeReason(error.details?.reason);
+  if (uploadSizeMessage) return uploadSizeMessage;
   if (code === "document_invalid") {
     const mapped = messageForDocumentInvalidReason(error.details?.reason);
     if (mapped) {

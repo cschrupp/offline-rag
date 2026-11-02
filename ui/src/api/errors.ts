@@ -81,8 +81,22 @@ export function messageForDocumentInvalidReason(
   return null;
 }
 
+export function messageForUploadSizeReason(reason: unknown): string | null {
+  if (reason === "source_file_too_large") {
+    return "A file exceeds its per-file upload limit. Reduce it to the limit shown above. For PDFs, compress or optimize them, or split them into smaller PDFs while preserving searchable text when possible.";
+  }
+  if (reason === "request_too_large") {
+    return "This upload request exceeds the combined size limit. Upload fewer files at a time.";
+  }
+  return null;
+}
+
 export function userFacingErrorMessage(error: unknown): string {
   if (isApiError(error)) {
+    const uploadSizeMessage = messageForUploadSizeReason(
+      error.details?.reason,
+    );
+    if (uploadSizeMessage) return uploadSizeMessage;
     if (error.code === "document_invalid") {
       const mapped = messageForDocumentInvalidReason(error.details?.reason);
       if (mapped) {

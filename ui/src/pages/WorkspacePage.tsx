@@ -113,6 +113,7 @@ import {
 } from "../features/workspaces/format";
 import {
   appendUniqueFiles,
+  oversizedPdfUploadMessage,
   validateUploadSelection,
 } from "../features/workspaces/uploadStaging";
 
@@ -1829,7 +1830,9 @@ export function WorkspacePage() {
               : limits?.maxBytesPerUploadedFile;
             if (replaceLimit != null && replaceFile.size > replaceLimit) {
               setReplaceError(
-                `File exceeds the ${formatMiB(replaceLimit)} MiB per-file upload limit.`,
+                replaceIsPdf
+                  ? oversizedPdfUploadMessage(replaceLimit)
+                  : `File exceeds the ${formatMiB(replaceLimit)} MiB per-file upload limit.`,
               );
               return;
             }
