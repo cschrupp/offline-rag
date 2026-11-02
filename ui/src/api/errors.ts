@@ -75,6 +75,9 @@ export function messageForDocumentInvalidReason(
   if (reason.trim() === "document_identity_conflict") {
     return DOCUMENT_ALREADY_PRESENT_MESSAGE;
   }
+  if (reason.trim() === "ocr_required") {
+    return "This PDF has no extractable text. Enable OCR in Parsing settings and retry.";
+  }
   return null;
 }
 

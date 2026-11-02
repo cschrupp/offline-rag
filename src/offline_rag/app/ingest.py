@@ -161,6 +161,11 @@ def _map_ingestion_failure(report: IngestionReport) -> AppError:
             ErrorCode.INGEST_FAILED,
             details=SafeErrorDetails(reason="internal_ingest_failure"),
         )
+    if report.metadata.get("failure_reason") == "ocr_required":
+        return AppError(
+            ErrorCode.DOCUMENT_INVALID,
+            details=SafeErrorDetails(reason="ocr_required"),
+        )
     return AppError(
         ErrorCode.DOCUMENT_INVALID,
         details=SafeErrorDetails(reason="document_unparseable"),

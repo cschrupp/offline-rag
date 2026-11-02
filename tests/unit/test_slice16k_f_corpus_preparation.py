@@ -14,6 +14,7 @@ from scripts.diag_16k_f import execution_harness
 from scripts.diag_16k_f.execution_harness import (
     HarnessError,
     SourceFile,
+    _validate_operation_metrics,
     _validate_query_result,
     batch_sources,
     check_cache_state,
@@ -1596,4 +1597,85 @@ def test_query_validation_rejects_abstention_and_unmapped_citation() -> None:
             active_sources,
             expected_revision=2,
             expected_snapshot_id="snap-1",
+        )
+
+
+def _operation_metrics_for_timing_validation() -> dict[str, object]:
+    return {
+        "post_active_source_count": 38,
+        "requested_document_count": 38,
+        "uploaded_raw_bytes": 1_000,
+        "child_chunk_count": 900,
+        "parsed_artifacts_generated": 0,
+        "parsed_artifacts_reused": 38,
+        "chunk_artifacts_generated": 0,
+        "chunk_artifacts_reused": 900,
+        "embeddings_generated": 0,
+        "embeddings_reused": 900,
+        "embeddings_failed": 0,
+        "stage_durations": {
+            "parsing_ms": 10,
+            "chunking_ms": 10,
+            "dense_generation_ms": None,
+            "dense_materialization_ms": None,
+            "lexical_ms": 10,
+            "publication_ms": 10,
+            "finalization_ms": 10,
+            "total_ms": 60,
+        },
+    }
+
+
+def test_operation_metrics_accept_reuse_only_missing_dense_durations() -> None:
+    operation = {"metrics": _operation_metrics_for_timing_validation()}
+    stage_durations = operation["metrics"]["stage_durations"]
+    stage_durations.pop("dense_generation_ms")
+    stage_durations.pop("dense_materialization_ms")
+    _validate_operation_metrics(
+        operation,
+        expected_source_count=38,
+        expected_requested_document_count=38,
+        expected_uploaded_raw_bytes=1_000,
+    )
+    assert "dense_generation_ms" not in stage_durations
+    assert "dense_materialization_ms" not in stage_durations
+
+
+def test_operation_metrics_require_dense_durations_when_embeddings_generated() -> None:
+    metrics = _operation_metrics_for_timing_validation()
+    metrics["embeddings_generated"] = 1
+    operation = {"metrics": metrics}
+    with pytest.raises(HarnessError, match="dense_generation_ms"):
+        _validate_operation_metrics(
+            operation,
+            expected_source_count=38,
+            expected_requested_document_count=38,
+            expected_uploaded_raw_bytes=1_000,
+        )
+
+
+def test_operation_metrics_still_require_non_dense_stage_durations() -> None:
+    metrics = _operation_metrics_for_timing_validation()
+    metrics["stage_durations"]["parsing_ms"] = None
+    operation = {"metrics": metrics}
+    with pytest.raises(HarnessError, match="stage durations"):
+        _validate_operation_metrics(
+            operation,
+            expected_source_count=38,
+            expected_requested_document_count=38,
+            expected_uploaded_raw_bytes=1_000,
+        )
+
+
+def test_operation_metrics_require_proof_of_embedding_reuse() -> None:
+    metrics = _operation_metrics_for_timing_validation()
+    metrics["embeddings_reused"] = 0
+    metrics["stage_durations"].pop("dense_generation_ms")
+    operation = {"metrics": metrics}
+    with pytest.raises(HarnessError, match="dense_generation_ms"):
+        _validate_operation_metrics(
+            operation,
+            expected_source_count=38,
+            expected_requested_document_count=38,
+            expected_uploaded_raw_bytes=1_000,
         )

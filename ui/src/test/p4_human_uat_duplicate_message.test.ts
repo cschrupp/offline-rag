@@ -48,4 +48,20 @@ describe("P4 human-UAT duplicate document messaging", () => {
       "This document is already present in this workspace.",
     );
   });
+
+  it("explains how to recover from an OCR-required source failure", () => {
+    const expected =
+      "This PDF has no extractable text. Enable OCR in Parsing settings and retry.";
+    expect(messageForDocumentInvalidReason("ocr_required")).toBe(expected);
+    const operation = {
+      kind: "source_add",
+      status: "failed",
+      error: {
+        code: "document_invalid",
+        message: "Submitted document is invalid",
+        details: { reason: "ocr_required" },
+      },
+    } as Operation;
+    expect(managedOperationFailureMessage(operation)).toBe(expected);
+  });
 });

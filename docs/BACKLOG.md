@@ -238,6 +238,47 @@ These items are real work but are **not** part of the mandatory 16K-E->F->G
 sequence unless a later authority explicitly moves them there. BETA-HARDEN-01
 is a P0 beta blocker and takes priority before beta acceptance.
 
+### GPU-RESIDENCY-01 — CUDA model residency and memory release policy
+
+**Priority:** P1 — reliability / resource-lifecycle follow-up\
+**Status:** REGISTERED / POLICY OPTIONS NOT SELECTED\
+**Implementation authority:** NONE
+
+This reconciles the existing GPU-residency diagnostic work and R03 residual;
+it does not claim a new diagnosis or duplicate the historical HTTP-500
+reproduction task. The accepted constrained-free-VRAM and residency/allocator
+campaigns did not reproduce the historical failure. The accepted residency
+campaign was negative and did not satisfy the M0–M2 eligibility gate. API
+process embedding-model tensor residency remains `not_established`; host-level
+GPU memory could not be attributed to the API PID in the WSL observation path.
+
+Keep these resource states distinct:
+
+- **Model-weight residency:** live CUDA tensors retained by the model object.
+- **PyTorch allocator cache:** process-local reserved blocks, including blocks
+  not currently allocated to live tensors; `empty_cache()` does not release
+  live model weights.
+- **External/device ownership:** driver-reported memory held by other processes
+  or device/runtime allocations not attributable to Seneca's model tensors.
+
+Options for a future bounded product-policy decision:
+
+1. **Resident:** retain the process-scoped model after first use; favors low
+   repeat latency and current lifecycle simplicity, with sustained GPU memory
+   occupancy.
+2. **Idle eviction:** release model references after a frozen idle interval;
+   could reduce live weight residency but adds reload latency and requires
+   race-safe coordination with active work. Allocator-reserved memory may remain
+   until separately released, and external memory is unaffected.
+3. **Worker isolation:** host embedding in a separate process and terminate or
+   recycle that worker to release its process-owned CUDA context and tensors;
+   strengthens ownership boundaries at additional process and handoff cost.
+
+No option is selected. A future authority must choose and measure the desired
+latency/resource tradeoff before implementing unload, allocator, or model
+selection behavior. This item does not authorize `empty_cache()`, model
+unloading, device migration, worker isolation, or changes to runtime lifecycle.
+
 ### BETA-HARDEN-01 — Large-PDF admission and failed-operation recovery
 
 **Priority:** P0 — beta blocker\

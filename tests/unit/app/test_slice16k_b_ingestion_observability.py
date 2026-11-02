@@ -32,8 +32,11 @@ from offline_rag.config import load_settings
 from offline_rag.config.models import AppSettings
 from offline_rag.dense.embedder import FakeEmbedder
 from offline_rag.dense.qdrant_local import QdrantLocalBackend
+from offline_rag.domain.blocks import ParsedDocument, ParseWarning, WarningCategory
+from offline_rag.domain.documents import Document
 from offline_rag.generation.fake import FakeGenerator
 from offline_rag.ingestion.docling_artifacts import write_provisioning_manifest
+from offline_rag.ingestion.docling_parser import DoclingPdfParser
 from offline_rag.rerank.fake import FakeReranker
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -379,6 +382,76 @@ def test_successful_add_persists_bounded_metrics_and_worklist(tmp_path: Path) ->
             assert "documents" not in again["progress"]
 
 
+def test_mixed_valid_and_empty_ocr_pdf_add_fails_without_publication_change(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    with _client(tmp_path) as (client, _runtime):
+        wid = _create(client)["workspace_id"]
+        initial = _add_sources(
+            client,
+            wid,
+            files=[("existing.txt", b"Existing searchable source content.")],
+            key="ocr-atomic-seed",
+            rev=1,
+        )
+        assert _wait(client, initial["operation_id"])["status"] == "succeeded"
+        before_workspace = client.get(f"/v1/workspaces/{wid}").json()
+        before_sources = client.get(f"/v1/workspaces/{wid}/sources").json()["sources"]
+
+        def parse_empty_pdf(
+            self: DoclingPdfParser,
+            path: Path,
+            *,
+            document_id: str,
+            content_hash: str,
+        ) -> ParsedDocument:
+            return ParsedDocument(
+                document=Document(
+                    document_id=document_id,
+                    source_uri=path.name,
+                    title=path.stem,
+                    mime_type="application/pdf",
+                    content_hash=content_hash,
+                    ingested_at=datetime(1970, 1, 1, tzinfo=UTC),
+                    parser_version="synthetic",
+                ),
+                parser_name="docling_pdf",
+                parser_version="synthetic",
+                warnings=[
+                    ParseWarning(
+                        category=WarningCategory.OCR_REQUIRED,
+                        message="OCR is disabled.",
+                        source_path=path.name,
+                    )
+                ],
+            )
+
+        monkeypatch.setattr(DoclingPdfParser, "parse_config_hash", lambda _self: "a" * 64)
+        monkeypatch.setattr(DoclingPdfParser, "parse", parse_empty_pdf)
+        failed = _add_sources(
+            client,
+            wid,
+            files=[
+                ("valid-new.txt", b"This valid text would otherwise be added."),
+                ("scanned.pdf", b"%PDF synthetic scanned input"),
+            ],
+            key="ocr-atomic-mixed",
+            rev=2,
+        )
+        terminal = _wait(client, failed["operation_id"])
+
+        assert terminal["status"] == "failed"
+        assert terminal["error"]["code"] == "document_invalid"
+        assert terminal["error"]["details"]["reason"] == "ocr_required"
+        after_workspace = client.get(f"/v1/workspaces/{wid}").json()
+        after_sources = client.get(f"/v1/workspaces/{wid}/sources").json()["sources"]
+        assert after_workspace["revision"] == before_workspace["revision"] == 2
+        assert after_workspace["current_snapshot_id"] == before_workspace[
+            "current_snapshot_id"
+        ]
+        assert after_sources == before_sources
+
+
 def test_dense_active_documents_follow_exact_batch_membership(tmp_path: Path) -> None:
     """R2: activity tracks batch membership, not the full indexing-ready set."""
     from offline_rag.app.observability_publish import DurableObservabilityPublisher
@@ -699,7 +772,10 @@ def test_r3_worklist_durable_on_202_before_worker(tmp_path: Path) -> None:
 
 
 def test_r4_fake_embedder_execution_facts_are_truthfully_unavailable() -> None:
-    from offline_rag.dense.embedder import FakeEmbedder, observe_embedder_execution_facts
+    from offline_rag.dense.embedder import (
+        FakeEmbedder,
+        observe_embedder_execution_facts,
+    )
 
     embedder = FakeEmbedder(dimension=8)
     facts = observe_embedder_execution_facts(embedder)

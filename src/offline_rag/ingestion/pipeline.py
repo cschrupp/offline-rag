@@ -18,7 +18,7 @@ from offline_rag.core.ids import (
 )
 from offline_rag.core.observability import ObservabilityReporter, report_document_phase
 from offline_rag.core.progress import ProgressReporter, report_progress
-from offline_rag.domain.blocks import ParsedDocument
+from offline_rag.domain.blocks import ParsedDocument, WarningCategory
 from offline_rag.domain.corpus import (
     CorpusDocumentEntry,
     CorpusManifest,
@@ -70,6 +70,10 @@ class DocumentIngestionError(IngestionError):
     """Supplied document cannot be accepted (client/document fault)."""
 
 
+class OCRRequiredIngestionError(DocumentIngestionError):
+    """PDF has no parsed content while OCR is disabled by policy."""
+
+
 class InternalIngestionError(IngestionError):
     """Internal persistence/runtime failure during ingestion."""
 
@@ -118,6 +122,18 @@ def _source_entry_from_parsed(
         processed_artifact_hash=artifact_hash,
         warnings_count=len(parsed.warnings),
     )
+
+
+def _reject_empty_ocr_required_pdf(parsed: ParsedDocument) -> None:
+    """Reject OCR-only PDFs without rejecting short or partial text output."""
+    ocr_required = any(
+        warning.category is WarningCategory.OCR_REQUIRED for warning in parsed.warnings
+    )
+    if ocr_required and not parsed.blocks:
+        raise OCRRequiredIngestionError(
+            "PDF contains no extractable text. Enable OCR in Parsing settings "
+            "and retry."
+        )
 
 
 def _states_equivalent(left: CorpusState, right: CorpusState) -> bool:
@@ -295,6 +311,7 @@ def run_ingestion(
             )
             if reused is not None:
                 parsed, artifact_hash = reused
+                _reject_empty_ocr_required_pdf(parsed)
                 status = FileIngestionStatus.REUSED
                 reused_count += 1
             else:
@@ -333,6 +350,7 @@ def run_ingestion(
                         "parse_config_hash": cfg_hash,
                     }
                 )
+                _reject_empty_ocr_required_pdf(parsed)
                 try:
                     _, artifact_hash = write_parsed_document(
                         settings.paths.processed, parsed
@@ -409,7 +427,14 @@ def run_ingestion(
                     document_id=doc_id,
                     duration_ms=duration,
                     error=str(exc),
-                    metadata={"failure_class": "document"},
+                    metadata={
+                        "failure_class": "document",
+                        **(
+                            {"failure_reason": "ocr_required"}
+                            if isinstance(exc, OCRRequiredIngestionError)
+                            else {}
+                        ),
+                    },
                 )
             )
             if doc_id is not None:
@@ -500,7 +525,17 @@ def run_ingestion(
             unsupported_files_skipped=skipped,
             files=file_results,
             errors=["one or more sources failed; active corpus state was not updated"],
-            metadata={"failure_class": failure_class},
+            metadata={
+                "failure_class": failure_class,
+                **(
+                    {"failure_reason": "ocr_required"}
+                    if any(
+                        item.metadata.get("failure_reason") == "ocr_required"
+                        for item in file_results
+                    )
+                    else {}
+                ),
+            },
         )
 
     # Build full-corpus snapshot from candidate_sources.

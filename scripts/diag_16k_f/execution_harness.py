@@ -461,27 +461,7 @@ def _validate_operation_metrics(
         )
     if metrics.get("uploaded_raw_bytes") != expected_uploaded_raw_bytes:
         raise HarnessError("operation metrics report incorrect uploaded raw bytes")
-    stage_durations = metrics.get("stage_durations")
-    required_stages = (
-        "parsing_ms",
-        "chunking_ms",
-        "dense_generation_ms",
-        "dense_materialization_ms",
-        "lexical_ms",
-        "publication_ms",
-        "finalization_ms",
-        "total_ms",
-    )
-    if not isinstance(stage_durations, dict) or any(
-        type(stage_durations.get(field)) is not int or stage_durations[field] < 0
-        for field in required_stages
-    ):
-        raise HarnessError("terminal operation omitted stage durations")
-    if stage_durations["total_ms"] < max(
-        stage_durations[field] for field in required_stages if field != "total_ms"
-    ):
-        raise HarnessError("stage duration exceeds total operation duration")
-    for field in (
+    metric_counters = (
         "requested_document_count",
         "uploaded_raw_bytes",
         "child_chunk_count",
@@ -492,10 +472,49 @@ def _validate_operation_metrics(
         "embeddings_generated",
         "embeddings_reused",
         "embeddings_failed",
-    ):
+    )
+    for field in metric_counters:
         value = metrics.get(field)
         if value is not None and (type(value) is not int or value < 0):
             raise HarnessError(f"operation metric {field} is invalid")
+
+    stage_durations = metrics.get("stage_durations")
+    required_stages = (
+        "parsing_ms",
+        "chunking_ms",
+        "lexical_ms",
+        "publication_ms",
+        "finalization_ms",
+        "total_ms",
+    )
+    if not isinstance(stage_durations, dict) or any(
+        type(stage_durations.get(field)) is not int or stage_durations[field] < 0
+        for field in required_stages
+    ):
+        raise HarnessError("terminal operation omitted stage durations")
+    dense_stages = ("dense_generation_ms", "dense_materialization_ms")
+    embeddings_generated = metrics.get("embeddings_generated")
+    embeddings_reused = metrics.get("embeddings_reused")
+    dense_reuse_only = (
+        embeddings_generated == 0
+        and type(embeddings_reused) is int
+        and embeddings_reused > 0
+    )
+    for field in dense_stages:
+        value = stage_durations.get(field)
+        if value is None and dense_reuse_only:
+            continue
+        if type(value) is not int or value < 0:
+            raise HarnessError(f"terminal operation omitted stage duration {field}")
+
+    observed_stage_durations = [stage_durations[field] for field in required_stages[:-1]]
+    observed_stage_durations.extend(
+        stage_durations[field]
+        for field in dense_stages
+        if type(stage_durations.get(field)) is int
+    )
+    if stage_durations["total_ms"] < max(observed_stage_durations):
+        raise HarnessError("stage duration exceeds total operation duration")
 
 
 def _sum_operation_metrics(operations: list[dict[str, Any]]) -> dict[str, Any]:
