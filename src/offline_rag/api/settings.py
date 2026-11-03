@@ -38,6 +38,14 @@ def _runtime(request: Request) -> ApplicationRuntime:
     return request.app.state.runtime
 
 
+def _generation_locks(settings: AppSettings) -> dict[str, bool]:
+    """Report fields controlled by deployment or explicit config overrides."""
+    return generation_field_locks(
+        os.environ,
+        programmatic_override_fields=settings._explicit_generation_override_fields,
+    )
+
+
 def _public_generation_view(gen: GenerationSettings) -> dict[str, Any]:
     return {
         "enabled": bool(gen.enabled),
@@ -121,7 +129,7 @@ def get_generation_settings(request: Request) -> dict[str, Any]:
     runtime = _runtime(request)
     runtime.require_ready()
     settings = runtime.settings
-    locks = generation_field_locks(os.environ)
+    locks = _generation_locks(settings)
     try:
         product = read_product_generation_settings(settings.paths.product_settings)
     except ValueError as exc:
@@ -255,7 +263,7 @@ def probe_generation_settings(
     runtime = _runtime(request)
     runtime.require_ready()
     settings = runtime.settings
-    locks = generation_field_locks(os.environ)
+    locks = _generation_locks(settings)
     # Operator locks still apply to prospective probe values that differ.
     _assert_unlocked(
         locks,
@@ -372,7 +380,7 @@ def save_generation_settings(
     runtime = _runtime(request)
     runtime.require_ready()
     settings = runtime.settings
-    locks = generation_field_locks(os.environ)
+    locks = _generation_locks(settings)
     _assert_unlocked(
         locks,
         {

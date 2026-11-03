@@ -30,16 +30,21 @@ The implementation adds `OFFLINE_RAG_GENERATION_SETTINGS_MODE`, defaulting to
 environment fields only. The existing Settings API and UI are reused. In user
 mode, generation fields are editable; keep/set/clear API-key behavior remains
 secret-safe, and persisted clear suppresses a bootstrap key after restart.
-Compose passes the mode through, while retaining `operator` as its fallback.
+Explicit generation overrides are retained as private, non-serialized metadata.
+The API locks those fields—including model or endpoint selection when only its
+approval list is overridden—so Pending does not promise a value that an
+explicit override will replace after restart. Compose passes the mode through,
+while retaining `operator` as its fallback.
 
 ### Changed files
 
 - `.env.example`, `deploy/docker-compose.example.yml` — document and pass the
   mode.
 - `src/offline_rag/app/product_settings.py` — validate the mode and report
-  field locks according to ownership.
-- `src/offline_rag/config/loader.py` — implement generation-only bootstrap
-  precedence while preserving other configuration precedence.
+  field locks according to ownership and explicit overrides.
+- `src/offline_rag/config/loader.py`, `src/offline_rag/config/models.py` —
+  implement generation-only bootstrap precedence and retain private metadata
+  identifying explicit generation overrides.
 - `src/offline_rag/api/settings.py` — retain the effective key for a `keep`
   connection probe without persisting a bootstrap key.
 - `tests/unit/app/test_slice16d_a_settings_capabilities.py` — cover default,
@@ -53,8 +58,12 @@ Compose passes the mode through, while retaining `operator` as its fallback.
 
 ### Validation
 
-- Backend settings/config tests: **35 passed, 17 skipped**. The skips require
-  provisioned tokenizer assets. A Starlette deprecation warning was reported.
+- Backend settings/config tests after corrective: **37 passed, 16 skipped**.
+  The named `test_user_mode_bootstrap_save_restart_and_api_key_actions` passed
+  independently using the actual Settings endpoint functions, a fake ready
+  runtime, temporary configuration, and no provisioned tokenizer/model assets.
+  Other skips still require tokenizer assets. A Starlette deprecation warning
+  was reported.
 - Focused Settings UI tests: **17 passed**.
 - Targeted ESLint: **passed**.
 - Ruff lint: **passed** after automatic import/order fixes.
@@ -72,6 +81,8 @@ Compose passes the mode through, while retaining `operator` as its fallback.
 
 A live Settings save/restart smoke was not run because it would modify the
 user's active installation settings. Automated API tests use temporary
-configuration directories and fake probes. No private data or credentials
-were accessed. No production promotion, Slice 17 work, Gold Lab changes,
-compute ownership changes, or runtime hot swap is included.
+configuration directories and fake probes; the focused API tests call the
+route handlers directly because the unrelated TestClient lifespan startup
+hang remains tracked separately. No private data or credentials were
+accessed. No production promotion, Slice 17 work, Gold Lab changes, compute
+ownership changes, or runtime hot swap is included.

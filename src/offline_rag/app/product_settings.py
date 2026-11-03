@@ -286,29 +286,36 @@ GENERATION_ENV_LOCKS: dict[str, str] = {
 
 def generation_field_locks(
     environ: Mapping[str, str] | None = None,
+    *,
+    programmatic_override_fields: set[str] | frozenset[str] = frozenset(),
 ) -> dict[str, bool]:
-    """Return which generation Settings fields are operator-locked by env."""
+    """Return generation fields controlled by deployment or programmatic config."""
     env = environ if environ is not None else os.environ
     if generation_settings_mode(env) == "user":
-        return {
+        locks = {
             "enabled": False,
             "base_url": False,
             "model": False,
             "timeout_seconds": False,
             "api_key": False,
         }
-    locks = {
-        "enabled": False,
-        "base_url": bool(env.get("OFFLINE_RAG_LLM_BASE_URL")),
-        "model": bool(env.get("OFFLINE_RAG_LLM_MODEL")),
-        "timeout_seconds": bool(env.get("OFFLINE_RAG_LLM_TIMEOUT_SECONDS")),
-        "api_key": bool(env.get("OFFLINE_RAG_LLM_API_KEY")),
-    }
-    # Approval-list env locks imply product cannot rewrite approvals via save.
-    if env.get("OFFLINE_RAG_APPROVED_LLM_ENDPOINTS"):
-        locks["base_url"] = True
-    if env.get("OFFLINE_RAG_APPROVED_LLM_MODELS"):
-        locks["model"] = True
+    else:
+        locks = {
+            "enabled": False,
+            "base_url": bool(env.get("OFFLINE_RAG_LLM_BASE_URL")),
+            "model": bool(env.get("OFFLINE_RAG_LLM_MODEL")),
+            "timeout_seconds": bool(env.get("OFFLINE_RAG_LLM_TIMEOUT_SECONDS")),
+            "api_key": bool(env.get("OFFLINE_RAG_LLM_API_KEY")),
+        }
+        # Approval-list env locks imply product cannot rewrite approvals via save.
+        if env.get("OFFLINE_RAG_APPROVED_LLM_ENDPOINTS"):
+            locks["base_url"] = True
+        if env.get("OFFLINE_RAG_APPROVED_LLM_MODELS"):
+            locks["model"] = True
+
+    for field in programmatic_override_fields:
+        if field in locks:
+            locks[field] = True
     return locks
 
 

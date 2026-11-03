@@ -25,6 +25,16 @@ from offline_rag.domain.evaluation import ExperimentConfig
 
 ENV_PREFIX = "OFFLINE_RAG_"
 
+_GENERATION_OVERRIDE_LOCK_MAP: dict[str, str] = {
+    "enabled": "enabled",
+    "base_url": "base_url",
+    "approved_endpoints": "base_url",
+    "model": "model",
+    "approved_models": "model",
+    "timeout_seconds": "timeout_seconds",
+    "api_key": "api_key",
+}
+
 # Nested field paths for direct environment overrides.
 _ENV_FIELD_MAP: dict[str, tuple[str, ...]] = {
     "STRICT_OFFLINE": ("project", "strict_offline"),
@@ -405,9 +415,19 @@ def load_settings(
         payload = _deep_merge(payload, override_payload)
 
     try:
-        return AppSettings.model_validate(payload)
+        settings = AppSettings.model_validate(payload)
     except ValidationError as exc:
         raise ConfigError(f"invalid configuration: {exc}") from exc
+
+    if isinstance(overrides, Mapping):
+        generation_overrides = overrides.get("generation")
+        if isinstance(generation_overrides, Mapping):
+            settings._explicit_generation_override_fields = frozenset(
+                _GENERATION_OVERRIDE_LOCK_MAP[field]
+                for field in generation_overrides
+                if field in _GENERATION_OVERRIDE_LOCK_MAP
+            )
+    return settings
 
 
 def experiment_config_from_settings(settings: AppSettings) -> ExperimentConfig | None:

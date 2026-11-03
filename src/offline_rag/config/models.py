@@ -9,7 +9,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    PrivateAttr,
+    field_validator,
+    model_validator,
+)
 
 from offline_rag.core.ids import (
     BGE_RERANKER_MODEL_ID,
@@ -765,6 +772,10 @@ class AppSettings(BaseModel):
     """Validated application settings loaded by the config loader."""
 
     model_config = ConfigDict(extra="forbid")
+
+    _explicit_generation_override_fields: frozenset[str] = PrivateAttr(
+        default_factory=frozenset
+    )
 
     project: ProjectSettings = Field(default_factory=ProjectSettings)
     paths: PathSettings = Field(default_factory=PathSettings)

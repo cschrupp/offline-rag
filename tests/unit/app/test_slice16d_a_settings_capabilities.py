@@ -10,12 +10,21 @@ from unittest.mock import patch
 import pytest
 import yaml
 from fastapi.testclient import TestClient
+from starlette.requests import Request
 
 from offline_rag.api.app import create_app
+from offline_rag.api.settings import (
+    GenerationProbeRequest,
+    GenerationSaveRequest,
+    get_generation_settings,
+    probe_generation_settings,
+    save_generation_settings,
+)
 from offline_rag.app.endpoint_policy import (
     EndpointPolicyError,
     validate_endpoint_network_policy,
 )
+from offline_rag.app.errors import AppError, ErrorCode
 from offline_rag.app.product_settings import (
     SenecaGenerationBody,
     SenecaGenerationSettingsFile,
@@ -25,7 +34,11 @@ from offline_rag.app.product_settings import (
     read_product_generation_settings,
     write_product_generation_settings,
 )
-from offline_rag.app.runtime import ApplicationRuntime, ResourceFactories
+from offline_rag.app.runtime import (
+    ApplicationRuntime,
+    ResourceFactories,
+    RuntimeState,
+)
 from offline_rag.config import ConfigError, load_settings
 from offline_rag.config.models import AppSettings
 from offline_rag.dense.embedder import FakeEmbedder
@@ -93,6 +106,21 @@ def _settings(
     return settings
 
 
+def _settings_for_settings_api(
+    tmp_path: Path,
+    *,
+    environ: dict[str, str],
+    overrides: dict[str, object] | None = None,
+) -> AppSettings:
+    """Build Settings API inputs without provisioned model assets."""
+    settings = load_settings(
+        yaml_paths=[BASE_YAML], environ=environ, overrides=overrides
+    )
+    return settings.model_copy(
+        update={"reranker": settings.reranker.model_copy(update={"enabled": False})}
+    )
+
+
 def _runtime(settings: AppSettings) -> ApplicationRuntime:
     embedder = FakeEmbedder(dimension=8, normalize=True)
 
@@ -112,6 +140,24 @@ def _runtime(settings: AppSettings) -> ApplicationRuntime:
 
 def _client(settings: AppSettings) -> TestClient:
     return TestClient(create_app(runtime=_runtime(settings)))
+
+
+def _settings_api_request(settings: AppSettings) -> tuple[ApplicationRuntime, Request]:
+    """Build a ready fake runtime request without app startup or model assets."""
+    runtime = _runtime(settings)
+    runtime.state = RuntimeState.READY
+    app = create_app(runtime=runtime)
+    request = Request(
+        {
+            "type": "http",
+            "app": app,
+            "method": "GET",
+            "path": "/v1/settings/generation",
+            "headers": [],
+            "query_string": b"",
+        }
+    )
+    return runtime, request
 
 
 def test_base_yaml_exposes_capacity_defaults() -> None:
@@ -1247,6 +1293,12 @@ def test_generation_settings_mode_defaults_to_operator_and_rejects_unknown() -> 
     user_env = {**env, "OFFLINE_RAG_GENERATION_SETTINGS_MODE": "user"}
     assert generation_settings_mode(user_env) == "user"
     assert not any(generation_field_locks(user_env).values())
+    assert (
+        generation_field_locks(user_env, programmatic_override_fields={"model"})[
+            "model"
+        ]
+        is True
+    )
 
     with pytest.raises(ConfigError, match="OFFLINE_RAG_GENERATION_SETTINGS_MODE"):
         load_settings(
@@ -1276,7 +1328,7 @@ def test_user_mode_bootstrap_save_restart_and_api_key_actions(
     }
     monkeypatch.setenv("OFFLINE_RAG_GENERATION_SETTINGS_MODE", "user")
 
-    settings = _settings(tmp_path, environ=env)
+    settings = _settings_for_settings_api(tmp_path, environ=env)
     generation = settings.generation.model_copy(
         update={
             "enabled": True,
@@ -1300,45 +1352,41 @@ def test_user_mode_bootstrap_save_restart_and_api_key_actions(
             ok=True, reason="ok", available_models=(next_model,)
         )
 
-    with (
-        patch(
-            "offline_rag.api.settings.OpenAICompatibleGenerator.probe",
-            _recording_probe,
-        ),
-        _client(settings) as client,
+    _, request = _settings_api_request(settings)
+    with patch(
+        "offline_rag.api.settings.OpenAICompatibleGenerator.probe",
+        _recording_probe,
     ):
-        initial = client.get("/v1/settings/generation").json()
+        initial = get_generation_settings(request)
         assert initial["active"]["base_url"] == bootstrap_endpoint
         assert initial["active"]["model"] == bootstrap_model
         assert initial["active"]["timeout_seconds"] == 333
         assert initial["active"]["api_key_configured"] is True
         assert not any(initial["locks"].values())
 
-        probe = client.post(
-            "/v1/settings/generation/probe",
-            json={
-                "enabled": True,
-                "base_url": next_endpoint,
-                "model": next_model,
-                "timeout_seconds": 45,
-                "api_key_action": "keep",
-            },
+        probe = probe_generation_settings(
+            request,
+            GenerationProbeRequest(
+                enabled=True,
+                base_url=next_endpoint,
+                model=next_model,
+                timeout_seconds=45,
+                api_key_action="keep",
+            ),
         )
-        assert probe.status_code == 200
-        assert probe.json()["ok"] is True
+        assert probe["ok"] is True
 
-        save = client.put(
-            "/v1/settings/generation",
-            json={
-                "enabled": True,
-                "base_url": next_endpoint,
-                "model": next_model,
-                "timeout_seconds": 45,
-                "api_key_action": "keep",
-            },
+        save = save_generation_settings(
+            request,
+            GenerationSaveRequest(
+                enabled=True,
+                base_url=next_endpoint,
+                model=next_model,
+                timeout_seconds=45,
+                api_key_action="keep",
+            ),
         )
-        assert save.status_code == 200, save.text
-        saved = save.json()
+        saved = save
         assert saved["restart_required"] is True
         assert saved["active"]["base_url"] == bootstrap_endpoint
         assert saved["pending"]["base_url"] == next_endpoint
@@ -1355,40 +1403,38 @@ def test_user_mode_bootstrap_save_restart_and_api_key_actions(
         assert settings_path.stat().st_mode & 0o777 == 0o600
         assert settings.api.max_files_per_ingest == 7
 
-        set_key = client.put(
-            "/v1/settings/generation",
-            json={
-                "enabled": True,
-                "base_url": next_endpoint,
-                "model": next_model,
-                "timeout_seconds": 45,
-                "api_key": "user-owned-secret-for-test",
-                "api_key_action": "set",
-            },
+        set_key = save_generation_settings(
+            request,
+            GenerationSaveRequest(
+                enabled=True,
+                base_url=next_endpoint,
+                model=next_model,
+                timeout_seconds=45,
+                api_key="user-owned-secret-for-test",
+                api_key_action="set",
+            ),
         )
-        assert set_key.status_code == 200, set_key.text
-        assert "user-owned-secret-for-test" not in set_key.text
-        get_after_set = client.get("/v1/settings/generation")
-        assert "user-owned-secret-for-test" not in get_after_set.text
-        assert "api_key" not in get_after_set.json()["active"]
+        assert "user-owned-secret-for-test" not in json.dumps(set_key)
+        get_after_set = get_generation_settings(request)
+        assert "user-owned-secret-for-test" not in json.dumps(get_after_set)
+        assert "api_key" not in get_after_set["active"]
 
         raw_after_set = json.loads(settings_path.read_text(encoding="utf-8"))
         assert raw_after_set["generation"]["api_key"] == "user-owned-secret-for-test"
         reloaded_after_set = load_settings(yaml_paths=[BASE_YAML], environ=env)
         assert reloaded_after_set.generation.api_key == "user-owned-secret-for-test"
 
-        clear_key = client.put(
-            "/v1/settings/generation",
-            json={
-                "enabled": True,
-                "base_url": next_endpoint,
-                "model": next_model,
-                "timeout_seconds": 45,
-                "api_key_action": "clear",
-            },
+        clear_key = save_generation_settings(
+            request,
+            GenerationSaveRequest(
+                enabled=True,
+                base_url=next_endpoint,
+                model=next_model,
+                timeout_seconds=45,
+                api_key_action="clear",
+            ),
         )
-        assert clear_key.status_code == 200, clear_key.text
-        assert clear_key.json()["pending"]["api_key_configured"] is False
+        assert clear_key["pending"]["api_key_configured"] is False
         raw_after_clear = json.loads(settings_path.read_text(encoding="utf-8"))
         assert raw_after_clear["generation"]["api_key"] is None
 
@@ -1465,6 +1511,107 @@ def test_user_mode_activates_previously_shadowed_settings_without_data_loss(
     assert stored is not None
     assert stored.generation.base_url == prior_endpoint
     assert stored.generation.model == prior_model
+
+
+def test_user_mode_locks_programmatic_generation_overrides_and_reports_pending_truthfully(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bootstrap_endpoint = "http://127.0.0.1:11434/v1"
+    selected_endpoint = "http://127.0.0.1:11436/v1"
+    programmatic_model = "programmatic-model"
+    environ = {
+        "OFFLINE_RAG_GENERATION_SETTINGS_MODE": "user",
+        "OFFLINE_RAG_DATA_DIR": str(tmp_path / "data"),
+        "OFFLINE_RAG_MODELS_DIR": str(tmp_path / "models"),
+        "OFFLINE_RAG_STRICT_OFFLINE": "true",
+        "OFFLINE_RAG_LLM_BASE_URL": bootstrap_endpoint,
+        "OFFLINE_RAG_LLM_MODEL": "bootstrap-model",
+        "OFFLINE_RAG_APPROVED_LLM_ENDPOINTS": bootstrap_endpoint,
+        "OFFLINE_RAG_APPROVED_LLM_MODELS": "bootstrap-model",
+    }
+    monkeypatch.setenv("OFFLINE_RAG_GENERATION_SETTINGS_MODE", "user")
+    settings = _settings_for_settings_api(
+        tmp_path,
+        environ=environ,
+        overrides={
+            "generation": {
+                "enabled": True,
+                "model": programmatic_model,
+                "approved_models": [programmatic_model],
+                "timeout_seconds": 77,
+            }
+        },
+    )
+    assert settings._explicit_generation_override_fields == frozenset(
+        {"enabled", "model", "timeout_seconds"}
+    )
+    assert "_explicit_generation_override_fields" not in settings.model_dump()
+    approval_only = load_settings(
+        yaml_paths=[BASE_YAML],
+        environ=environ,
+        overrides={"generation": {"approved_models": [programmatic_model]}},
+    )
+    assert approval_only._explicit_generation_override_fields == frozenset({"model"})
+
+    def _successful_probe(self):  # type: ignore[no-untyped-def]
+        return GeneratorProbeResult(
+            ok=True, reason="ok", available_models=(programmatic_model,)
+        )
+
+    _, request = _settings_api_request(settings)
+    with patch(
+        "offline_rag.api.settings.OpenAICompatibleGenerator.probe",
+        _successful_probe,
+    ):
+        initial = get_generation_settings(request)
+        assert initial["locks"]["model"] is True
+        assert initial["locks"]["timeout_seconds"] is True
+        assert initial["locks"]["base_url"] is False
+        assert initial["active"]["model"] == programmatic_model
+
+        with pytest.raises(AppError) as error:
+            save_generation_settings(
+                request,
+                GenerationSaveRequest(
+                    enabled=True,
+                    base_url=selected_endpoint,
+                    model="user-selected-model",
+                    timeout_seconds=120,
+                    api_key_action="keep",
+                ),
+            )
+        assert error.value.code is ErrorCode.SETTINGS_LOCKED
+
+        saved = save_generation_settings(
+            request,
+            GenerationSaveRequest(
+                enabled=True,
+                base_url=selected_endpoint,
+                model=programmatic_model,
+                timeout_seconds=77,
+                api_key_action="keep",
+            ),
+        )
+        pending = saved["pending"]
+        assert pending["base_url"] == selected_endpoint
+        assert pending["model"] == programmatic_model
+        assert pending["timeout_seconds"] == 77
+
+    restarted = load_settings(
+        yaml_paths=[BASE_YAML],
+        environ=environ,
+        overrides={
+            "generation": {
+                "enabled": True,
+                "model": programmatic_model,
+                "approved_models": [programmatic_model],
+                "timeout_seconds": 77,
+            }
+        },
+    )
+    assert restarted.generation.base_url == selected_endpoint
+    assert restarted.generation.model == programmatic_model
+    assert restarted.generation.timeout_seconds == 77
 
 
 def test_user_mode_keeps_strict_offline_policy_for_saved_endpoint(
