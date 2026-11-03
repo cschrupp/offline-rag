@@ -359,7 +359,7 @@ cd ui && npm test && npm run lint && npm run typecheck && npm run build
 | Canonical main promotion | **COMPLETE / EXECUTED** (`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-AUTH-001` — EXECUTED; pure FF `168af70…` → `feab2b2…`; 0/0) |
 | Post-promotion record | **COMPLETE / HUMAN ACCEPTED / CANONICAL** (`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-IR-001` — ACCEPT; `S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-HA-001` — ACCEPTED; subject `76caab2…`; HA tip `e21b3e6…`) |
 | Second main promotion (HA tip) | **COMPLETE / EXECUTED** (`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-HA-MAIN-PROMOTION-AUTH-001` — EXECUTED; pure FF `feab2b2…` → `e21b3e6…`; 0/0) |
-| 16K | **POST-CLOSEOUT PROGRAM ACTIVE / PARTIALLY EXECUTED** — 16K-A/B **COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED**; 16K-C **IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED** (`219c8551…`; S16-K-C-FIRST-USER-CAPACITY-MODEL-IMPLEMENTATION-HA-001); R01/R02 governance reconciliations **CLOSED**; 16K-D dual-backend **P1–P4 complete**; large-source **L1–L6 COMPLETE / HUMAN ACCEPTED / PROMOTED / CLOSED**; post-L6 CUDA and raw-byte implementations are canonical ancestors, with dedicated IR/Human acceptance and tranche-specific promotion not established in repository records; the parser corrective alone is **PROMOTED / CLOSED** at `7ca0c233…`. R02 records the historical 16K-D-before-C-HA sequencing gap without invalidating D evidence; 16K-E→G remain **NOT AUTHORIZED**. Active residual queue: [`docs/BACKLOG.md`](docs/BACKLOG.md). |
+| 16K | **POST-CLOSEOUT PROGRAM ACTIVE / PARTIALLY EXECUTED** — 16K-A/B **COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED**; 16K-C **IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED** (`219c8551…`; S16-K-C-FIRST-USER-CAPACITY-MODEL-IMPLEMENTATION-HA-001); R01/R02 governance reconciliations **CLOSED**; 16K-D dual-backend **P1–P4 complete**; large-source **L1–L6 COMPLETE / HUMAN ACCEPTED / PROMOTED / CLOSED**; post-L6 CUDA and raw-byte implementations are canonical ancestors, with dedicated IR/Human acceptance and tranche-specific promotion not established in repository records; the parser corrective alone is **PROMOTED / CLOSED** at `7ca0c233…`. R02 records the historical 16K-D-before-C-HA sequencing gap without invalidating D evidence. **16K-E COMPLETE / HUMAN ACCEPTED; 16K-F COMPLETE / HUMAN ACCEPTED — SCOPED BETA** (see [run_002 evidence](docs/evidence/16k_f_execution/RUN_002_EVIDENCE_INDEX.md)); **16K-G regression handoff NOT AUTHORIZED**. Active residual queue: [`docs/BACKLOG.md`](docs/BACKLOG.md). |
 | Slice 17 / 18 | **NOT AUTHORIZED** |
 | M7 closeout | **NOT AUTHORIZED** |
 
@@ -388,7 +388,7 @@ Still deferred / not authorized as product deliverables:
 - cloud inference in the strict-offline core
 - enterprise auth / RBAC
 - distributed Qdrant / GraphRAG / multi-agent swarms
-- 16K-E→G implementation; current residual ordering and separate robustness/release debt are tracked in [`docs/BACKLOG.md`](docs/BACKLOG.md)
+- 16K-G regression/CI handoff remains unauthorized; 16K-E and 16K-F are complete as scoped in [`docs/BACKLOG.md`](docs/BACKLOG.md)
 
 ## Scope boundaries
 
