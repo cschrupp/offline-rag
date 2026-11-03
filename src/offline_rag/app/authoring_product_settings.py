@@ -30,8 +30,25 @@ SETTINGS_FILENAME = "seneca-authoring.json"
 
 ApiKeyAction = Literal["keep", "set", "clear"]
 NetworkPolicy = Literal["localhost_only", "private_network"]
+AuthoringSettingsMode = Literal["operator", "user"]
 
 _LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1", "host.docker.internal"})
+
+
+def authoring_settings_mode(
+    environ: Mapping[str, str] | None = None,
+) -> AuthoringSettingsMode:
+    """Return the Gold Lab authoring settings ownership mode."""
+    env = environ if environ is not None else os.environ
+    raw_mode = env.get("OFFLINE_RAG_AUTHORING_SETTINGS_MODE", "operator")
+    mode = raw_mode.strip().lower()
+    if mode not in {"operator", "user"}:
+        raise ValueError(
+            "invalid OFFLINE_RAG_AUTHORING_SETTINGS_MODE; expected 'operator' or 'user'"
+        )
+    if mode == "user":
+        return "user"
+    return "operator"
 
 
 class SenecaAuthoringBody(BaseModel):
@@ -270,27 +287,57 @@ def build_validated_authoring_product_record(
 
 def authoring_field_locks(
     environ: Mapping[str, str] | None = None,
+    *,
+    programmatic_override_fields: set[str] | frozenset[str] = frozenset(),
 ) -> dict[str, bool]:
-    """Return which authoring Settings fields are operator-locked by env.
+    """Return authoring Settings fields controlled by deployment or overrides.
 
     For ``OFFLINE_RAG_AUTHORING_API_KEY``, variable *presence* is authority —
     including an empty value, which means operator-controlled explicit no-key.
-    Absence of the variable leaves product Settings free to keep/set/clear.
+    In user mode, environment fields are first-run bootstrap values and do not
+    lock controls. Explicit programmatic overrides lock matching fields in both
+    modes.
     """
     env = environ if environ is not None else os.environ
-    locks = {
-        "enabled": bool(env.get("OFFLINE_RAG_AUTHORING_ENABLED")),
-        "base_url": bool(env.get("OFFLINE_RAG_AUTHORING_BASE_URL")),
-        "model": bool(env.get("OFFLINE_RAG_AUTHORING_MODEL")),
-        "timeout_seconds": bool(env.get("OFFLINE_RAG_AUTHORING_TIMEOUT_SECONDS")),
-        # Presence semantics: empty string is still operator-owned.
-        "api_key": "OFFLINE_RAG_AUTHORING_API_KEY" in env,
-        "network_policy": bool(env.get("OFFLINE_RAG_AUTHORING_NETWORK_POLICY")),
+    mode = authoring_settings_mode(env)
+    if mode == "user":
+        locks = {
+            "enabled": False,
+            "base_url": False,
+            "model": False,
+            "timeout_seconds": False,
+            "api_key": False,
+            "network_policy": False,
+        }
+    else:
+        locks = {
+            "enabled": bool(env.get("OFFLINE_RAG_AUTHORING_ENABLED")),
+            "base_url": bool(env.get("OFFLINE_RAG_AUTHORING_BASE_URL")),
+            "model": bool(env.get("OFFLINE_RAG_AUTHORING_MODEL")),
+            "timeout_seconds": bool(env.get("OFFLINE_RAG_AUTHORING_TIMEOUT_SECONDS")),
+            # Presence semantics: empty string is still operator-owned.
+            "api_key": "OFFLINE_RAG_AUTHORING_API_KEY" in env,
+            "network_policy": bool(env.get("OFFLINE_RAG_AUTHORING_NETWORK_POLICY")),
+        }
+        if env.get("OFFLINE_RAG_AUTHORING_APPROVED_ENDPOINTS"):
+            locks["base_url"] = True
+        if env.get("OFFLINE_RAG_AUTHORING_APPROVED_MODELS"):
+            locks["model"] = True
+
+    override_lock_map = {
+        "enabled": "enabled",
+        "base_url": "base_url",
+        "approved_endpoints": "base_url",
+        "model": "model",
+        "approved_models": "model",
+        "timeout_seconds": "timeout_seconds",
+        "api_key": "api_key",
+        "network_policy": "network_policy",
     }
-    if env.get("OFFLINE_RAG_AUTHORING_APPROVED_ENDPOINTS"):
-        locks["base_url"] = True
-    if env.get("OFFLINE_RAG_AUTHORING_APPROVED_MODELS"):
-        locks["model"] = True
+    for field in programmatic_override_fields:
+        locked_field = override_lock_map.get(field)
+        if locked_field is not None:
+            locks[locked_field] = True
     return locks
 
 
@@ -298,6 +345,7 @@ __all__ = [
     "SCHEMA_VERSION",
     "SETTINGS_FILENAME",
     "ApiKeyAction",
+    "AuthoringSettingsMode",
     "NetworkPolicy",
     "SenecaAuthoringBody",
     "SenecaAuthoringSettingsFile",
@@ -305,6 +353,7 @@ __all__ = [
     "authoring_field_locks",
     "authoring_overlay_from_product_settings",
     "authoring_product_settings_path",
+    "authoring_settings_mode",
     "build_validated_authoring_product_record",
     "infer_authoring_network_policy",
     "read_product_authoring_settings",

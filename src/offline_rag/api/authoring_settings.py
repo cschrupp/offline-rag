@@ -42,6 +42,14 @@ def _runtime(request: Request) -> ApplicationRuntime:
     return request.app.state.runtime
 
 
+def _authoring_locks(settings: AppSettings) -> dict[str, bool]:
+    """Return fields controlled by deployment mode or explicit overrides."""
+    return authoring_field_locks(
+        os.environ,
+        programmatic_override_fields=settings._explicit_authoring_override_fields,
+    )
+
+
 def _public_authoring_view(auth: AuthoringSettings) -> dict[str, Any]:
     return {
         "enabled": bool(auth.enabled),
@@ -137,7 +145,7 @@ def get_authoring_settings(request: Request) -> dict[str, Any]:
     runtime = _runtime(request)
     runtime.require_ready()
     settings = runtime.settings
-    locks = authoring_field_locks(os.environ)
+    locks = _authoring_locks(settings)
     try:
         product = read_product_authoring_settings(settings.paths.product_settings)
     except ValueError as exc:
@@ -321,7 +329,7 @@ def probe_authoring_settings(
     runtime = _runtime(request)
     runtime.require_ready()
     settings = runtime.settings
-    locks = authoring_field_locks(os.environ)
+    locks = _authoring_locks(settings)
     _assert_unlocked(
         locks,
         {
@@ -411,7 +419,7 @@ def save_authoring_settings(
     runtime = _runtime(request)
     runtime.require_ready()
     settings = runtime.settings
-    locks = authoring_field_locks(os.environ)
+    locks = _authoring_locks(settings)
     _assert_unlocked(
         locks,
         {

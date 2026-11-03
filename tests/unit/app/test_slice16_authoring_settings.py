@@ -8,23 +8,31 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
+from starlette.requests import Request
 
 from offline_rag.api.app import create_app
+from offline_rag.api.authoring_settings import (
+    AuthoringSaveRequest,
+    get_authoring_settings,
+    save_authoring_settings,
+)
 from offline_rag.app.authoring_product_settings import (
     SenecaAuthoringBody,
     SenecaAuthoringSettingsFile,
     authoring_field_locks,
     authoring_overlay_from_product_settings,
+    authoring_settings_mode,
     build_validated_authoring_product_record,
     infer_authoring_network_policy,
     read_product_authoring_settings,
     write_product_authoring_settings,
 )
-from offline_rag.app.runtime import ApplicationRuntime, ResourceFactories
-from offline_rag.config import load_settings
+from offline_rag.app.runtime import ApplicationRuntime, ResourceFactories, RuntimeState
+from offline_rag.config import ConfigError, load_settings
 from offline_rag.config.models import AppSettings
 from offline_rag.dense.embedder import FakeEmbedder
 from offline_rag.dense.qdrant_local import QdrantLocalBackend
+from offline_rag.gold_authoring.adapter import OpenAICompatibleAuthoringAdapter
 from offline_rag.gold_authoring.readiness import evaluate_authoring_readiness
 from offline_rag.ingestion.docling_artifacts import write_provisioning_manifest
 
@@ -104,6 +112,23 @@ def _runtime(settings: AppSettings) -> ApplicationRuntime:
 
 def _client(settings: AppSettings) -> TestClient:
     return TestClient(create_app(runtime=_runtime(settings)))
+
+
+def _settings_api_request(settings: AppSettings) -> Request:
+    """Build a ready fake-runtime request without app startup or model assets."""
+    runtime = _runtime(settings)
+    runtime.state = RuntimeState.READY
+    app = create_app(runtime=runtime)
+    return Request(
+        {
+            "type": "http",
+            "app": app,
+            "method": "GET",
+            "path": "/v1/settings/authoring",
+            "headers": [],
+            "query_string": b"",
+        }
+    )
 
 
 def test_infer_network_policy() -> None:
@@ -206,6 +231,210 @@ def test_authoring_field_locks() -> None:
     assert locks["network_policy"] is True
     assert locks["api_key"] is True
     assert locks["timeout_seconds"] is True
+
+
+def test_authoring_settings_mode_defaults_to_operator_and_rejects_unknown() -> None:
+    env = {
+        "OFFLINE_RAG_AUTHORING_ENABLED": "true",
+        "OFFLINE_RAG_AUTHORING_BASE_URL": APPROVED_ENDPOINT,
+        "OFFLINE_RAG_AUTHORING_APPROVED_ENDPOINTS": APPROVED_ENDPOINT,
+    }
+    assert authoring_settings_mode({}) == "operator"
+    assert authoring_settings_mode(env) == "operator"
+    assert authoring_field_locks(env)["base_url"] is True
+
+    user_env = {**env, "OFFLINE_RAG_AUTHORING_SETTINGS_MODE": "user"}
+    assert authoring_settings_mode(user_env) == "user"
+    assert not any(authoring_field_locks(user_env).values())
+    user_locks = authoring_field_locks(
+        user_env, programmatic_override_fields={"approved_endpoints"}
+    )
+    assert user_locks["base_url"] is True
+
+    with pytest.raises(ValueError, match="OFFLINE_RAG_AUTHORING_SETTINGS_MODE"):
+        authoring_settings_mode({"OFFLINE_RAG_AUTHORING_SETTINGS_MODE": "hybrid"})
+    with pytest.raises(ValueError, match="OFFLINE_RAG_AUTHORING_SETTINGS_MODE"):
+        authoring_field_locks({"OFFLINE_RAG_AUTHORING_SETTINGS_MODE": "hybrid"})
+
+    with pytest.raises(ConfigError, match="OFFLINE_RAG_AUTHORING_SETTINGS_MODE"):
+        load_settings(
+            yaml_paths=[BASE_YAML],
+            environ={"OFFLINE_RAG_AUTHORING_SETTINGS_MODE": "hybrid"},
+        )
+
+
+def test_authoring_user_mode_bootstrap_save_restart_and_key_actions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bootstrap_endpoint = "http://127.0.0.1:11434/v1"
+    selected_endpoint = "http://127.0.0.1:11436/v1"
+    bootstrap_model = "bootstrap-authoring-model"
+    selected_model = "user-authoring-model"
+    bootstrap_key = "authoring-bootstrap-secret-for-test"
+    user_key = "user-owned-authoring-secret-for-test"
+    env = {
+        "OFFLINE_RAG_AUTHORING_SETTINGS_MODE": "user",
+        "OFFLINE_RAG_DATA_DIR": str(tmp_path / "data"),
+        "OFFLINE_RAG_STRICT_OFFLINE": "true",
+        "OFFLINE_RAG_AUTHORING_ENABLED": "true",
+        "OFFLINE_RAG_AUTHORING_BASE_URL": bootstrap_endpoint,
+        "OFFLINE_RAG_AUTHORING_MODEL": bootstrap_model,
+        "OFFLINE_RAG_AUTHORING_APPROVED_ENDPOINTS": bootstrap_endpoint,
+        "OFFLINE_RAG_AUTHORING_APPROVED_MODELS": bootstrap_model,
+        "OFFLINE_RAG_AUTHORING_NETWORK_POLICY": "localhost_only",
+        "OFFLINE_RAG_AUTHORING_TIMEOUT_SECONDS": "240",
+        "OFFLINE_RAG_AUTHORING_API_KEY": bootstrap_key,
+        # Not exposed by this Settings UI, so these keep their environment
+        # ownership even while the editable connection fields use user mode.
+        "OFFLINE_RAG_AUTHORING_TEMPERATURE": "0.25",
+        "OFFLINE_RAG_AUTHORING_MAX_OUTPUT_TOKENS": "1500",
+    }
+    for key in (
+        "OFFLINE_RAG_AUTHORING_ENABLED",
+        "OFFLINE_RAG_AUTHORING_BASE_URL",
+        "OFFLINE_RAG_AUTHORING_MODEL",
+        "OFFLINE_RAG_AUTHORING_APPROVED_ENDPOINTS",
+        "OFFLINE_RAG_AUTHORING_APPROVED_MODELS",
+        "OFFLINE_RAG_AUTHORING_NETWORK_POLICY",
+        "OFFLINE_RAG_AUTHORING_TIMEOUT_SECONDS",
+        "OFFLINE_RAG_AUTHORING_API_KEY",
+        "OFFLINE_RAG_AUTHORING_TEMPERATURE",
+        "OFFLINE_RAG_AUTHORING_MAX_OUTPUT_TOKENS",
+    ):
+        monkeypatch.delenv(key, raising=False)
+    for key, value in env.items():
+        monkeypatch.setenv(key, value)
+
+    settings = load_settings(yaml_paths=[BASE_YAML], environ=env)
+    assert settings.authoring.enabled is True
+    assert settings.authoring.base_url == bootstrap_endpoint
+    assert settings.authoring.model == bootstrap_model
+    assert settings.authoring.approved_endpoints == [bootstrap_endpoint]
+    assert settings.authoring.approved_models == [bootstrap_model]
+    assert settings.authoring.timeout_seconds == 240
+    assert settings.authoring.api_key == bootstrap_key
+    assert settings.authoring.network_policy == "localhost_only"
+    assert settings.authoring.temperature == 0.25
+    assert settings.authoring.max_output_tokens == 1500
+    assert not any(authoring_field_locks(env).values())
+
+    request = _settings_api_request(settings)
+    monkeypatch.setattr(
+        "offline_rag.api.authoring_settings._probe_models",
+        lambda **_kwargs: {
+            "ok": True,
+            "reason": "ok",
+            "available_models": [selected_model],
+        },
+    )
+    initial = get_authoring_settings(request)
+    assert initial["active"]["model"] == bootstrap_model
+    assert not any(initial["locks"].values())
+
+    save = save_authoring_settings(
+        request,
+        AuthoringSaveRequest(
+            enabled=True,
+            base_url=selected_endpoint,
+            model=selected_model,
+            timeout_seconds=180,
+            api_key_action="keep",
+        ),
+    )
+    assert save["saved"] is True
+    assert save["restart_required"] is True
+    assert save["pending"]["base_url"] == selected_endpoint
+    assert save["pending"]["model"] == selected_model
+    assert save["pending"]["api_key_configured"] is True
+
+    settings_path = settings.paths.product_settings / "seneca-authoring.json"
+    raw = json.loads(settings_path.read_text(encoding="utf-8"))
+    assert raw["authoring"]["base_url"] == selected_endpoint
+    assert raw["authoring"]["model"] == selected_model
+    assert "api_key" not in raw["authoring"]
+
+    restarted = load_settings(yaml_paths=[BASE_YAML], environ=env)
+    assert restarted.authoring.base_url == selected_endpoint
+    assert restarted.authoring.model == selected_model
+    assert restarted.authoring.approved_endpoints == [selected_endpoint]
+    assert restarted.authoring.approved_models == [selected_model]
+    assert restarted.authoring.timeout_seconds == 180
+    assert restarted.authoring.api_key == bootstrap_key
+    assert restarted.authoring.network_policy == "localhost_only"
+    readiness = evaluate_authoring_readiness(restarted)
+    assert readiness.ready is True
+    authoring_client = MagicMock()
+    completion_response = MagicMock()
+    completion_response.is_redirect = False
+    completion_response.status_code = 200
+    completion_response.json.return_value = {
+        "choices": [{"message": {"content": '{"ok": true}'}}]
+    }
+    authoring_client.post.return_value = completion_response
+    adapter = OpenAICompatibleAuthoringAdapter(restarted, client=authoring_client)
+    assert adapter.base_url == selected_endpoint
+    proposal = adapter.propose(system_prompt="system", user_content="seed")
+    assert proposal == '{"ok": true}'
+    call = authoring_client.post.call_args
+    assert call.args[0] == f"{selected_endpoint}/chat/completions"
+    assert call.kwargs["json"]["model"] == selected_model
+
+    for action, key, expected in (
+        ("set", user_key, user_key),
+        ("clear", None, None),
+    ):
+        save_authoring_settings(
+            request,
+            AuthoringSaveRequest(
+                enabled=True,
+                base_url=selected_endpoint,
+                model=selected_model,
+                timeout_seconds=180,
+                api_key=key,
+                api_key_action=action,
+            ),
+        )
+        restarted = load_settings(yaml_paths=[BASE_YAML], environ=env)
+        assert restarted.authoring.api_key == expected
+        if key is not None:
+            assert key not in json.dumps(get_authoring_settings(request))
+
+
+def test_authoring_user_mode_programmatic_overrides_lock_controls(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env = {
+        "OFFLINE_RAG_AUTHORING_SETTINGS_MODE": "user",
+        "OFFLINE_RAG_DATA_DIR": str(tmp_path / "data"),
+        "OFFLINE_RAG_AUTHORING_BASE_URL": APPROVED_ENDPOINT,
+        "OFFLINE_RAG_AUTHORING_MODEL": "bootstrap-model",
+    }
+    settings = load_settings(
+        yaml_paths=[BASE_YAML],
+        environ=env,
+        overrides={
+            "authoring": {
+                "approved_models": ["programmatic-model"],
+                "model": "programmatic-model",
+            }
+        },
+    )
+    assert settings._explicit_authoring_override_fields == frozenset(
+        {"approved_models", "model"}
+    )
+    assert "_explicit_authoring_override_fields" not in settings.model_dump()
+    locks = authoring_field_locks(
+        env,
+        programmatic_override_fields=settings._explicit_authoring_override_fields,
+    )
+    assert locks["model"] is True
+    assert locks["base_url"] is False
+    request = _settings_api_request(settings)
+    for key, value in env.items():
+        monkeypatch.setenv(key, value)
+    response = get_authoring_settings(request)
+    assert response["locks"]["model"] is True
+    assert response["active"]["model"] == "programmatic-model"
 
 
 def test_authoring_api_key_env_presence_authority(tmp_path: Path) -> None:

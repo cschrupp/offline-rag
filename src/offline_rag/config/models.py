@@ -776,6 +776,9 @@ class AppSettings(BaseModel):
     _explicit_generation_override_fields: frozenset[str] = PrivateAttr(
         default_factory=frozenset
     )
+    _explicit_authoring_override_fields: frozenset[str] = PrivateAttr(
+        default_factory=frozenset
+    )
 
     project: ProjectSettings = Field(default_factory=ProjectSettings)
     paths: PathSettings = Field(default_factory=PathSettings)

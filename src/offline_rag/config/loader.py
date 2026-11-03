@@ -7,6 +7,10 @@ Precedence (later wins):
 Generation Settings mode ``user`` reverses only generation ownership:
   defaults < YAML < generation environment bootstrap < product settings
   < explicit programmatic overrides
+
+Authoring Settings mode ``user`` applies the same precedence to authoring fields
+owned by the Gold Lab Settings API. Other authoring environment overrides remain
+operator-controlled.
 """
 
 from __future__ import annotations
@@ -34,6 +38,19 @@ _GENERATION_OVERRIDE_LOCK_MAP: dict[str, str] = {
     "timeout_seconds": "timeout_seconds",
     "api_key": "api_key",
 }
+
+_AUTHORING_OVERRIDE_LOCK_MAP: dict[str, str] = {
+    "enabled": "enabled",
+    "base_url": "base_url",
+    "approved_endpoints": "base_url",
+    "model": "model",
+    "approved_models": "model",
+    "api_key": "api_key",
+    "network_policy": "network_policy",
+    "timeout_seconds": "timeout_seconds",
+}
+
+_AUTHORING_PRODUCT_SETTING_FIELDS = frozenset(_AUTHORING_OVERRIDE_LOCK_MAP)
 
 # Nested field paths for direct environment overrides.
 _ENV_FIELD_MAP: dict[str, tuple[str, ...]] = {
@@ -341,6 +358,7 @@ def load_settings(
     # product endpoint so tampered public endpoints fail closed under policy.
     from offline_rag.app.authoring_product_settings import (
         authoring_overlay_from_product_settings,
+        authoring_settings_mode,
     )
     from offline_rag.app.compute_product_settings import (
         compute_overlay_from_product_settings,
@@ -353,6 +371,10 @@ def load_settings(
 
     try:
         generation_mode = generation_settings_mode(env)
+    except ValueError as exc:
+        raise ConfigError(str(exc)) from exc
+    try:
+        authoring_mode = authoring_settings_mode(env)
     except ValueError as exc:
         raise ConfigError(str(exc)) from exc
 
@@ -376,6 +398,23 @@ def load_settings(
         environment_generation = env_payload.pop("generation", None)
         if isinstance(environment_generation, dict):
             payload = _deep_merge(payload, {"generation": environment_generation})
+
+    if authoring_mode == "user":
+        # Editable authoring environment fields seed first-run config. The
+        # product overlay later takes precedence after a save. Provider,
+        # adapter, and generation parameters outside the Settings UI remain
+        # operator-owned environment overrides.
+        environment_authoring = env_payload.get("authoring")
+        if isinstance(environment_authoring, dict):
+            authoring_bootstrap = {
+                field: environment_authoring.pop(field)
+                for field in tuple(environment_authoring)
+                if field in _AUTHORING_PRODUCT_SETTING_FIELDS
+            }
+            if not environment_authoring:
+                env_payload.pop("authoring", None)
+            if authoring_bootstrap:
+                payload = _deep_merge(payload, {"authoring": authoring_bootstrap})
 
     product_dir = resolve_product_settings_dir(payload, environ=env)
     try:
@@ -426,6 +465,13 @@ def load_settings(
                 _GENERATION_OVERRIDE_LOCK_MAP[field]
                 for field in generation_overrides
                 if field in _GENERATION_OVERRIDE_LOCK_MAP
+            )
+        authoring_overrides = overrides.get("authoring")
+        if isinstance(authoring_overrides, Mapping):
+            settings._explicit_authoring_override_fields = frozenset(
+                field
+                for field in authoring_overrides
+                if field in _AUTHORING_OVERRIDE_LOCK_MAP
             )
     return settings
 
