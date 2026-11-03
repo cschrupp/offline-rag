@@ -20,10 +20,19 @@ offline endpoint validation and API-key secrecy remain in force.
 
 ## Implementation result
 
-**Authority:** BETA-SETTINGS-01 bounded implementation authorization  
-**Starting subject:** `8db8fe7d2595d176cd7dd159303aaed05e2c8ae5`  
-**Branch:** `implementation/beta-settings-01-user-generation`  
-**Candidate status:** implementation complete; ready for independent review
+**Authority:** BETA-SETTINGS-01 bounded implementation authorization
+
+**Starting subject:** `8db8fe7d2595d176cd7dd159303aaed05e2c8ae5`
+
+**Branch:** `implementation/beta-settings-01-user-generation`
+
+**Accepted technical subject:** `3841e70db09b7fd12512a2502729a27512cad446`
+
+**Independent review:** IR-002 — ACCEPT; F001 and F002 CLOSED
+
+**Human acceptance:** ACCEPTED
+
+**Promotion:** COMPLETE — pure fast-forward to `main`
 
 The implementation adds `OFFLINE_RAG_GENERATION_SETTINGS_MODE`, defaulting to
 `operator`, and applies user-mode bootstrap precedence to generation
@@ -84,5 +93,5 @@ user's active installation settings. Automated API tests use temporary
 configuration directories and fake probes; the focused API tests call the
 route handlers directly because the unrelated TestClient lifespan startup
 hang remains tracked separately. No private data or credentials were
-accessed. No production promotion, Slice 17 work, Gold Lab changes, compute
-ownership changes, or runtime hot swap is included.
+accessed. No runtime hot swap, Gold Lab changes, or compute ownership changes
+are included. Slice 17 remains unauthorized.

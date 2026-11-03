@@ -229,7 +229,8 @@ remains a separate authorization gate; this closeout does not authorize it.
 ### BETA-SETTINGS-01 — User-editable generation configuration
 
 **Priority:** P1 before beta acceptance\
-**Status:** IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW\
+**Status:** COMPLETE / HUMAN ACCEPTED / PROMOTED\
+**Accepted technical subject:** `3841e70db09b7fd12512a2502729a27512cad446`\
 **Implementation memory:** [`beta_settings_01_user_generation_configuration.md`](beta_settings_01_user_generation_configuration.md)
 
 Introduce deployment-selected `operator` and `user` ownership modes for
