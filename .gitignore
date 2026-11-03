@@ -77,6 +77,10 @@ eval/reports/*
 .idea/
 .DS_Store
 Thumbs.db
+*:Zone.Identifier
+
+# Local JavaScript dependencies
+/node_modules/
 
 # Local build-host TLS interception CAs (never commit)
 deploy/certs/*.crt
@@ -85,4 +89,17 @@ deploy/wheelhouse/
 
 # CPU-GGUF-01 local provisioned binaries (not scientific evidence)
 data/16k_d_cpu_gguf_work/
-artifacts/diag_16k_r04_embedding_memory/
+
+# Local experimental work directories and product runtime state
+data/16k_d_*/
+data/16k_f_preparation/
+data/gold-lab/
+data/locks/
+data/settings/
+data/staging/
+data/traces/
+data/workspaces/
+
+# Local raw run outputs. Sanitized, reviewable evidence belongs under
+# docs/evidence; retain these files on disk without treating them as source.
+/artifacts/
