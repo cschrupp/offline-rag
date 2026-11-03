@@ -40,14 +40,14 @@ and its linked sanitized `RUN_002_EVIDENCE_INDEX.md`.
 
 ```text
 16K-F accepted closeout
-    -> promotion through normal mainline review/authorization (NOT AUTHORIZED)
-    -> 16K-G regression and CI handoff (NOT AUTHORIZED)
-    -> request Slice 17 design-open authority after the handoff
+    -> promoted by pure fast-forward to main at eb1b3ba0415e05bf91d5e9e6171e087eedd473a9
+    -> 16K-G regression and CI handoff (candidate ready for independent review)
+    -> request Slice 17 design-open authority only after 16K-G acceptance
 ```
 
 Original Slice 16G is already accepted; 16K-G names the separate regression
-handoff and must not be confused with that completed slice. The post-16K-F
-closeout does not authorize promotion or 16K-G work.
+handoff and must not be confused with that completed slice. The 16K-F
+lineage is now promoted; this handoff does not authorize Slice 17.
 
 ## 2. Historical queue snapshot
 
@@ -177,8 +177,8 @@ The accepted implementation reuses the 16I / 16K-B operation architecture and
 delivers the bounded ingestion worklist, progress, metrics, terminal summary,
 and refresh/reconnect presentation. Historical planning notes describing
 pre-implementation gaps are superseded by the closure record. 16K-F has since
-closed as scoped beta acceptance. 16K-G remains a separate, unauthorized
-regression-handoff item after the mainline promotion gate.
+closed as scoped beta acceptance and is promoted to `main`. 16K-G is the
+current separate regression-handoff tranche; Slice 17 remains unopened.
 
 ### 16K-F — Real beta-corpus acceptance
 
@@ -203,7 +203,8 @@ acceptance gate, and no pass/fail claim is made against it.
 ### 16K-G — Slice-17 regression handoff
 
 **Priority:** P0\
-**Status:** PLANNED / ACCEPTED DESIGN EXISTS / NOT AUTHORIZED\
+**Status:** IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW\
+**Handoff:** [`16K_G_REGRESSION_HANDOFF.md`](evidence/16k_g_regression_handoff/16K_G_REGRESSION_HANDOFF.md)\
 **Design:** `docs/slice16k_beta_ingestion_readiness_design.md` §12
 
 Produce the bounded handoff that separates:
@@ -219,7 +220,8 @@ idempotency, cache identity, and atomic publication.
 
 Real CUDA throughput is not automatically a generic CI gate.
 
-Slice 17 design-open should be requested only after this handoff is complete.
+Slice 17 design-open should be requested only after independent review and
+Human acceptance of this handoff. The handoff itself does not authorize Slice 17.
 
 ## 3. Separate robustness / release backlog
 
@@ -453,13 +455,13 @@ its own design/authority.
 ## 6. Downstream roadmap after active residuals
 
 ```text
-16K-F scoped beta closeout accepted
+16K-F scoped beta closeout accepted and promoted to main
         ->
-promotion through normal mainline review / authorization (not authorized)
+16K-G regression handoff (candidate ready for independent review)
         ->
-16K-G regression handoff (not authorized)
+request Slice 17 design-open authority after 16K-G acceptance
         ->
-Slice 17 — Regression CI
+Slice 17 — Regression CI (not authorized)
         ->
 Slice 18 — Portfolio Release Package
         ->

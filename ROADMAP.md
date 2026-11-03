@@ -31,11 +31,11 @@ and supporting history.
   full-corpus performance standard. Its workload is no longer reproducible;
   it remains historical and is not an active beta gate. It was neither met nor
   failed by the replacement-corpus measurements.
-- [ ] **NEXT GATE —** Promote the accepted 16K-F branch through the normal
-  mainline review and authorization process. Promotion is not authorized by
-  this closeout.
-- [ ] 16K-G regression and CI handoff — **NOT AUTHORIZED**. This is distinct
-  from original Slice 16G, which is complete.
+- [x] 16K-F accepted preparation and scoped beta lineage promoted by pure
+  fast-forward to `main` at `eb1b3ba0415e05bf91d5e9e6171e087eedd473a9`.
+- [ ] **CURRENT —** 16K-G regression and CI handoff; candidate is ready for
+  independent review. This is distinct from original Slice 16G, which is
+  complete.
 - [ ] End-to-end beta QA.
 - [ ] Fix release-blocking defects.
 - [ ] Human beta acceptance.

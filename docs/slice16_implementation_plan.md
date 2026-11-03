@@ -2022,3 +2022,17 @@ HUMAN ACCEPTED / CANONICAL** (`S16-FINAL-CLOSEOUT-IR-001` — ACCEPT;
 `S16-FINAL-CLOSEOUT-HA-001` — ACCEPTED; exact subject `c4ba1e7…`;
 technical residual verdict **CLEAR**; canonical main promotion
 **COMPLETE / EXECUTED** at `feab2b2…`).
+
+
+## 16K-G regression/CI handoff — 2026-11-03
+
+The accepted 16K-F lineage was promoted to canonical `main` at
+`eb1b3ba0415e05bf91d5e9e6171e087eedd473a9`. Under the bounded 16K-G
+authorization, the regression/CI handoff is prepared at
+[`docs/evidence/16k_g_regression_handoff/16K_G_REGRESSION_HANDOFF.md`](evidence/16k_g_regression_handoff/16K_G_REGRESSION_HANDOFF.md).
+It maps the deterministic operation, recovery, worklist, metrics, progress,
+capacity, OCR, idempotency, and publication contracts to existing tests, and
+separates physical CUDA/host qualification from generic CI.
+
+16K-G: IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
+Slice 17: NOT AUTHORIZED
