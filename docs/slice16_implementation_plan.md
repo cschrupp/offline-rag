@@ -2036,3 +2036,15 @@ separates physical CUDA/host qualification from generic CI.
 
 16K-G: IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
 Slice 17: NOT AUTHORIZED
+
+
+## 16K-G Human acceptance — 2026-11-03
+
+Human acceptance is recorded for technical subject
+`7de798850febff22a1a548b9e2795b07ba0ea81d`, based on
+`S16K-G-REGRESSION-HANDOFF-IR-002` (ACCEPT; F001 CLOSED). The bounded
+tranche is complete; its durable closeout is
+[`docs/evidence/16k_g_regression_handoff/16K_G_CLOSEOUT.md`](evidence/16k_g_regression_handoff/16K_G_CLOSEOUT.md).
+
+Slice 17 design-open and implementation remain NOT AUTHORIZED. Promotion of the
+16K-G documentation branch is not authorized by this acceptance.

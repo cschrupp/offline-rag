@@ -41,8 +41,8 @@ and its linked sanitized `RUN_002_EVIDENCE_INDEX.md`.
 ```text
 16K-F accepted closeout
     -> promoted by pure fast-forward to main at eb1b3ba0415e05bf91d5e9e6171e087eedd473a9
-    -> 16K-G regression and CI handoff (candidate ready for independent review)
-    -> request Slice 17 design-open authority only after 16K-G acceptance
+    -> 16K-G regression/CI handoff COMPLETE / HUMAN ACCEPTED
+    -> Slice 17 design-open authority remains NOT AUTHORIZED
 ```
 
 Original Slice 16G is already accepted; 16K-G names the separate regression
@@ -203,7 +203,9 @@ acceptance gate, and no pass/fail claim is made against it.
 ### 16K-G — Slice-17 regression handoff
 
 **Priority:** P0\
-**Status:** IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW\
+**Status:** COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED\
+**Accepted subject:** `7de798850febff22a1a548b9e2795b07ba0ea81d`\
+**Closeout:** [`16K_G_CLOSEOUT.md`](evidence/16k_g_regression_handoff/16K_G_CLOSEOUT.md)\
 **Handoff:** [`16K_G_REGRESSION_HANDOFF.md`](evidence/16k_g_regression_handoff/16K_G_REGRESSION_HANDOFF.md)\
 **Design:** `docs/slice16k_beta_ingestion_readiness_design.md` §12
 
@@ -220,8 +222,8 @@ idempotency, cache identity, and atomic publication.
 
 Real CUDA throughput is not automatically a generic CI gate.
 
-Slice 17 design-open should be requested only after independent review and
-Human acceptance of this handoff. The handoff itself does not authorize Slice 17.
+The handoff is independently reviewed and Human accepted. Slice 17 design-open
+remains a separate authorization gate; this closeout does not authorize it.
 
 ## 3. Separate robustness / release backlog
 
