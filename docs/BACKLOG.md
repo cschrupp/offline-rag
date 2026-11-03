@@ -42,6 +42,7 @@ and its linked sanitized `RUN_002_EVIDENCE_INDEX.md`.
 16K-F accepted closeout
     -> promoted by pure fast-forward to main at eb1b3ba0415e05bf91d5e9e6171e087eedd473a9
     -> 16K-G regression/CI handoff COMPLETE / HUMAN ACCEPTED
+    -> BETA-SETTINGS-01 user-editable generation configuration
     -> Slice 17 design-open authority remains NOT AUTHORIZED
 ```
 
@@ -224,6 +225,21 @@ Real CUDA throughput is not automatically a generic CI gate.
 
 The handoff is independently reviewed and Human accepted. Slice 17 design-open
 remains a separate authorization gate; this closeout does not authorize it.
+
+### BETA-SETTINGS-01 — User-editable generation configuration
+
+**Priority:** P1 before beta acceptance\
+**Status:** IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW\
+**Implementation memory:** [`beta_settings_01_user_generation_configuration.md`](beta_settings_01_user_generation_configuration.md)
+
+Introduce deployment-selected `operator` and `user` ownership modes for
+existing generation Settings. Operator mode remains the default and preserves
+environment locks. User mode treats generation environment values as bootstrap
+configuration and lets persisted product Settings take precedence after save.
+The change is limited to generation configuration and preserves restart-before-
+activation, strict-offline endpoint validation, API-key safety, and existing
+operator deployments. Gold Lab gaming, conversational fluency, and Slice 17
+remain separate.
 
 ## 3. Separate robustness / release backlog
 

@@ -35,6 +35,8 @@ and supporting history.
   fast-forward to `main` at `eb1b3ba0415e05bf91d5e9e6171e087eedd473a9`.
 - [x] 16K-G regression and CI handoff — independently reviewed and Human
   accepted; see [`16K_G_CLOSEOUT.md`](docs/evidence/16k_g_regression_handoff/16K_G_CLOSEOUT.md).
+- [ ] **CURRENT — BETA-SETTINGS-01** user-editable generation configuration;
+  bounded implementation candidate ready for independent review.
 - [ ] Slice 17 design-open — **NOT AUTHORIZED**. This is distinct from
   original Slice 16G, which is complete.
 - [ ] End-to-end beta QA.

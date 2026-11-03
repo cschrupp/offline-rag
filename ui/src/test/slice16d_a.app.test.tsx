@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -183,6 +183,94 @@ describe("Slice 16D-A Settings", () => {
     expect(await screen.findByText(/Restart required/i)).toBeInTheDocument();
     expect(screen.getByText(/pending-model/i)).toBeInTheDocument();
     expect(screen.getByText(/active-model/)).toBeInTheDocument();
+    mock.restore();
+  });
+
+  it("keeps generation controls editable and saves pending settings in user mode", async () => {
+    const user = userEvent.setup();
+    const pending = {
+      enabled: true,
+      provider: "openai_compatible",
+      base_url: "http://127.0.0.1:11435/v1",
+      model: "settings-model",
+      timeout_seconds: 45,
+      api_key_configured: true,
+    };
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces") return jsonResponse([]);
+      if (call.url === "/v1/settings/generation" && call.method === "GET") {
+        return jsonResponse(
+          generationSettings({
+            locks: {
+              enabled: false,
+              base_url: false,
+              model: false,
+              timeout_seconds: false,
+              api_key: false,
+            },
+          }),
+        );
+      }
+      if (call.url === "/v1/settings/generation/probe") {
+        return jsonResponse({
+          ok: true,
+          reason: "ok",
+          available_models: ["settings-model"],
+        });
+      }
+      if (call.url === "/v1/settings/generation" && call.method === "PUT") {
+        return jsonResponse({
+          saved: true,
+          restart_required: true,
+          active: generationSettings().active,
+          pending,
+        });
+      }
+      if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
+      return errorResponse("not_found", "x", 404);
+    });
+
+    renderApp("/settings");
+    const endpoint = await screen.findByLabelText(/^Endpoint$/i);
+    const model = screen.getByLabelText(/^Model$/i);
+    const timeout = screen.getByLabelText(/^Timeout seconds$/i);
+    expect(endpoint).toBeEnabled();
+    expect(model).toBeEnabled();
+    expect(timeout).toBeEnabled();
+
+    await user.clear(endpoint);
+    await user.type(endpoint, "http://127.0.0.1:11435/v1");
+    await user.clear(model);
+    await user.type(model, "settings-model");
+    fireEvent.change(timeout, { target: { value: "45" } });
+    await user.click(screen.getByRole("button", { name: "Test connection" }));
+    expect(await screen.findByText(/Connected/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Save settings" }));
+    await waitFor(() => {
+      expect(
+        mock.calls.some(
+          (call) =>
+            call.url === "/v1/settings/generation" && call.method === "PUT",
+        ),
+      ).toBe(true);
+    });
+    const saveCall = mock.calls.find(
+      (call) =>
+        call.url === "/v1/settings/generation" && call.method === "PUT",
+    );
+    expect(saveCall).toBeDefined();
+    const payload = JSON.parse(String(saveCall?.body ?? "{}")) as {
+      base_url: string;
+      model: string;
+      timeout_seconds: number;
+    };
+    expect(payload).toMatchObject({
+      base_url: "http://127.0.0.1:11435/v1",
+      model: "settings-model",
+      timeout_seconds: 45,
+    });
     mock.restore();
   });
 });

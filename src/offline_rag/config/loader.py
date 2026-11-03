@@ -3,6 +3,10 @@
 Precedence (later wins):
   built-in defaults < YAML < Seneca product settings (generation / authoring /
   compute) < environment/operator overrides < explicit programmatic overrides
+
+Generation Settings mode ``user`` reverses only generation ownership:
+  defaults < YAML < generation environment bootstrap < product settings
+  < explicit programmatic overrides
 """
 
 from __future__ import annotations
@@ -333,8 +337,14 @@ def load_settings(
     )
     from offline_rag.app.product_settings import (
         generation_overlay_from_product_settings,
+        generation_settings_mode,
         resolve_product_settings_dir,
     )
+
+    try:
+        generation_mode = generation_settings_mode(env)
+    except ValueError as exc:
+        raise ConfigError(str(exc)) from exc
 
     strict_offline = bool(
         (payload.get("project") or {}).get("strict_offline", True)
@@ -346,6 +356,16 @@ def load_settings(
         parsed_strict = _parse_env_value(env_strict)
         if isinstance(parsed_strict, bool):
             strict_offline = parsed_strict
+
+    env_payload = env_overrides(env)
+    _coerce_list_env_fields(env_payload)
+    _reject_legacy_sparse_config(env_payload)
+    if generation_mode == "user":
+        # Environment generation values seed first-run settings. A persisted
+        # product selection then owns generation fields on subsequent starts.
+        environment_generation = env_payload.pop("generation", None)
+        if isinstance(environment_generation, dict):
+            payload = _deep_merge(payload, {"generation": environment_generation})
 
     product_dir = resolve_product_settings_dir(payload, environ=env)
     try:
@@ -373,9 +393,6 @@ def load_settings(
     if compute_overlay:
         payload = _deep_merge(payload, compute_overlay)
 
-    env_payload = env_overrides(env)
-    _coerce_list_env_fields(env_payload)
-    _reject_legacy_sparse_config(env_payload)
     payload = _deep_merge(payload, env_payload)
     models_dir = env.get(f"{ENV_PREFIX}MODELS_DIR")
     if models_dir:

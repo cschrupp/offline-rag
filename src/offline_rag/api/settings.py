@@ -416,8 +416,10 @@ def save_generation_settings(
             resolved_key = existing_key
             manage_api_key = True
         else:
-            # Leave YAML key authority intact; omit api_key from product file.
-            resolved_key = None
+            # Keep the current effective key for the connection probe, but do
+            # not persist it: the product file omits api_key so the bootstrap
+            # environment/YAML value remains authoritative in user mode.
+            resolved_key = settings.generation.api_key
             manage_api_key = False
     else:
         resolved_key = _resolve_api_key_for_write(

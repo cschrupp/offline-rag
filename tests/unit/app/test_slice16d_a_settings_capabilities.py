@@ -19,7 +19,9 @@ from offline_rag.app.endpoint_policy import (
 from offline_rag.app.product_settings import (
     SenecaGenerationBody,
     SenecaGenerationSettingsFile,
+    generation_field_locks,
     generation_overlay_from_product_settings,
+    generation_settings_mode,
     read_product_generation_settings,
     write_product_generation_settings,
 )
@@ -1230,3 +1232,260 @@ def test_f10_probe_keep_honors_explicit_product_api_key_clear(tmp_path: Path) ->
     assert captured_keys
     assert all(key is None for key in captured_keys)
     assert "yaml-secret" not in captured_keys
+
+
+def test_generation_settings_mode_defaults_to_operator_and_rejects_unknown() -> None:
+    env = {
+        "OFFLINE_RAG_LLM_BASE_URL": "http://127.0.0.1:11434/v1",
+        "OFFLINE_RAG_LLM_MODEL": "operator-model",
+    }
+    assert generation_settings_mode({}) == "operator"
+    assert generation_settings_mode(env) == "operator"
+    assert generation_field_locks(env)["base_url"] is True
+    assert generation_field_locks(env)["model"] is True
+
+    user_env = {**env, "OFFLINE_RAG_GENERATION_SETTINGS_MODE": "user"}
+    assert generation_settings_mode(user_env) == "user"
+    assert not any(generation_field_locks(user_env).values())
+
+    with pytest.raises(ConfigError, match="OFFLINE_RAG_GENERATION_SETTINGS_MODE"):
+        load_settings(
+            yaml_paths=[BASE_YAML],
+            environ={"OFFLINE_RAG_GENERATION_SETTINGS_MODE": "hybrid"},
+        )
+
+
+def test_user_mode_bootstrap_save_restart_and_api_key_actions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bootstrap_endpoint = "http://127.0.0.1:11435/v1"
+    bootstrap_model = "bootstrap-model"
+    bootstrap_key = "bootstrap-secret-for-test"
+    env = {
+        "OFFLINE_RAG_GENERATION_SETTINGS_MODE": "user",
+        "OFFLINE_RAG_DATA_DIR": str(tmp_path / "data"),
+        "OFFLINE_RAG_MODELS_DIR": str(tmp_path / "models"),
+        "OFFLINE_RAG_STRICT_OFFLINE": "true",
+        "OFFLINE_RAG_LLM_BASE_URL": bootstrap_endpoint,
+        "OFFLINE_RAG_LLM_MODEL": bootstrap_model,
+        "OFFLINE_RAG_LLM_TIMEOUT_SECONDS": "333",
+        "OFFLINE_RAG_APPROVED_LLM_ENDPOINTS": bootstrap_endpoint,
+        "OFFLINE_RAG_APPROVED_LLM_MODELS": bootstrap_model,
+        "OFFLINE_RAG_LLM_API_KEY": bootstrap_key,
+        "OFFLINE_RAG_MAX_FILES_PER_INGEST": "7",
+    }
+    monkeypatch.setenv("OFFLINE_RAG_GENERATION_SETTINGS_MODE", "user")
+
+    settings = _settings(tmp_path, environ=env)
+    generation = settings.generation.model_copy(
+        update={
+            "enabled": True,
+            "base_url": bootstrap_endpoint,
+            "model": bootstrap_model,
+            "timeout_seconds": 333,
+            "api_key": bootstrap_key,
+            "approved_endpoints": [bootstrap_endpoint],
+            "approved_models": [bootstrap_model],
+        }
+    )
+    settings = settings.model_copy(update={"generation": generation})
+
+    next_endpoint = "http://127.0.0.1:11436/v1"
+    next_model = "settings-selected-model"
+    probed_keys: list[str | None] = []
+
+    def _recording_probe(self):  # type: ignore[no-untyped-def]
+        probed_keys.append(self.settings.generation.api_key)
+        return GeneratorProbeResult(
+            ok=True, reason="ok", available_models=(next_model,)
+        )
+
+    with (
+        patch(
+            "offline_rag.api.settings.OpenAICompatibleGenerator.probe",
+            _recording_probe,
+        ),
+        _client(settings) as client,
+    ):
+        initial = client.get("/v1/settings/generation").json()
+        assert initial["active"]["base_url"] == bootstrap_endpoint
+        assert initial["active"]["model"] == bootstrap_model
+        assert initial["active"]["timeout_seconds"] == 333
+        assert initial["active"]["api_key_configured"] is True
+        assert not any(initial["locks"].values())
+
+        probe = client.post(
+            "/v1/settings/generation/probe",
+            json={
+                "enabled": True,
+                "base_url": next_endpoint,
+                "model": next_model,
+                "timeout_seconds": 45,
+                "api_key_action": "keep",
+            },
+        )
+        assert probe.status_code == 200
+        assert probe.json()["ok"] is True
+
+        save = client.put(
+            "/v1/settings/generation",
+            json={
+                "enabled": True,
+                "base_url": next_endpoint,
+                "model": next_model,
+                "timeout_seconds": 45,
+                "api_key_action": "keep",
+            },
+        )
+        assert save.status_code == 200, save.text
+        saved = save.json()
+        assert saved["restart_required"] is True
+        assert saved["active"]["base_url"] == bootstrap_endpoint
+        assert saved["pending"]["base_url"] == next_endpoint
+        assert saved["pending"]["model"] == next_model
+        assert saved["pending"]["timeout_seconds"] == 45
+        assert saved["pending"]["api_key_configured"] is True
+
+        settings_path = settings.paths.product_settings / "seneca-generation.json"
+        raw = json.loads(settings_path.read_text(encoding="utf-8"))
+        assert raw["generation"]["base_url"] == next_endpoint
+        assert raw["generation"]["model"] == next_model
+        assert raw["generation"]["timeout_seconds"] == 45
+        assert "api_key" not in raw["generation"]
+        assert settings_path.stat().st_mode & 0o777 == 0o600
+        assert settings.api.max_files_per_ingest == 7
+
+        set_key = client.put(
+            "/v1/settings/generation",
+            json={
+                "enabled": True,
+                "base_url": next_endpoint,
+                "model": next_model,
+                "timeout_seconds": 45,
+                "api_key": "user-owned-secret-for-test",
+                "api_key_action": "set",
+            },
+        )
+        assert set_key.status_code == 200, set_key.text
+        assert "user-owned-secret-for-test" not in set_key.text
+        get_after_set = client.get("/v1/settings/generation")
+        assert "user-owned-secret-for-test" not in get_after_set.text
+        assert "api_key" not in get_after_set.json()["active"]
+
+        raw_after_set = json.loads(settings_path.read_text(encoding="utf-8"))
+        assert raw_after_set["generation"]["api_key"] == "user-owned-secret-for-test"
+        reloaded_after_set = load_settings(yaml_paths=[BASE_YAML], environ=env)
+        assert reloaded_after_set.generation.api_key == "user-owned-secret-for-test"
+
+        clear_key = client.put(
+            "/v1/settings/generation",
+            json={
+                "enabled": True,
+                "base_url": next_endpoint,
+                "model": next_model,
+                "timeout_seconds": 45,
+                "api_key_action": "clear",
+            },
+        )
+        assert clear_key.status_code == 200, clear_key.text
+        assert clear_key.json()["pending"]["api_key_configured"] is False
+        raw_after_clear = json.loads(settings_path.read_text(encoding="utf-8"))
+        assert raw_after_clear["generation"]["api_key"] is None
+
+    assert probed_keys[:2] == [bootstrap_key, bootstrap_key]
+    assert "user-owned-secret-for-test" in probed_keys
+    assert probed_keys[-1] is None
+
+    restarted = load_settings(yaml_paths=[BASE_YAML], environ=env)
+    assert restarted.generation.base_url == next_endpoint
+    assert restarted.generation.model == next_model
+    assert restarted.generation.timeout_seconds == 45
+    assert restarted.generation.approved_endpoints == [next_endpoint]
+    assert restarted.generation.approved_models == [next_model]
+    assert restarted.generation.api_key is None
+    assert restarted.api.max_files_per_ingest == 7
+
+
+def test_user_mode_activates_previously_shadowed_settings_without_data_loss(
+    tmp_path: Path,
+) -> None:
+    data_dir = tmp_path / "data"
+    product_root = data_dir / "settings"
+    prior_endpoint = "http://127.0.0.1:11437/v1"
+    prior_model = "previous-settings-model"
+    write_product_generation_settings(
+        product_root,
+        SenecaGenerationSettingsFile(
+            generation=SenecaGenerationBody(
+                enabled=True,
+                base_url=prior_endpoint,
+                model=prior_model,
+                timeout_seconds=91,
+            )
+        ),
+    )
+    env = {
+        "OFFLINE_RAG_GENERATION_SETTINGS_MODE": "operator",
+        "OFFLINE_RAG_DATA_DIR": str(data_dir),
+        "OFFLINE_RAG_STRICT_OFFLINE": "true",
+        "OFFLINE_RAG_LLM_BASE_URL": APPROVED_ENDPOINT,
+        "OFFLINE_RAG_LLM_MODEL": "operator-model",
+        "OFFLINE_RAG_APPROVED_LLM_ENDPOINTS": APPROVED_ENDPOINT,
+        "OFFLINE_RAG_APPROVED_LLM_MODELS": "operator-model",
+    }
+
+    operator_settings = load_settings(yaml_paths=[BASE_YAML], environ=env)
+    assert operator_settings.generation.base_url == APPROVED_ENDPOINT
+    assert operator_settings.generation.model == "operator-model"
+
+    user_settings = load_settings(
+        yaml_paths=[BASE_YAML],
+        environ={**env, "OFFLINE_RAG_GENERATION_SETTINGS_MODE": "user"},
+    )
+    assert user_settings.generation.base_url == prior_endpoint
+    assert user_settings.generation.model == prior_model
+    assert user_settings.generation.timeout_seconds == 91
+    assert user_settings.generation.approved_endpoints == [prior_endpoint]
+    assert user_settings.generation.approved_models == [prior_model]
+
+    explicit = load_settings(
+        yaml_paths=[BASE_YAML],
+        environ={**env, "OFFLINE_RAG_GENERATION_SETTINGS_MODE": "user"},
+        overrides={
+            "generation": {
+                "model": "programmatic-override",
+                "approved_models": ["programmatic-override"],
+            }
+        },
+    )
+    assert explicit.generation.model == "programmatic-override"
+    assert explicit.generation.approved_models == ["programmatic-override"]
+
+    stored = read_product_generation_settings(product_root)
+    assert stored is not None
+    assert stored.generation.base_url == prior_endpoint
+    assert stored.generation.model == prior_model
+
+
+def test_user_mode_keeps_strict_offline_policy_for_saved_endpoint(
+    tmp_path: Path,
+) -> None:
+    data_dir = tmp_path / "data"
+    write_product_generation_settings(
+        data_dir / "settings",
+        SenecaGenerationSettingsFile(
+            generation=SenecaGenerationBody(
+                base_url="https://api.openai.com/v1",
+                model="public-model",
+            )
+        ),
+    )
+    with pytest.raises(ConfigError, match="endpoint_policy|public_endpoint"):
+        load_settings(
+            yaml_paths=[BASE_YAML],
+            environ={
+                "OFFLINE_RAG_GENERATION_SETTINGS_MODE": "user",
+                "OFFLINE_RAG_DATA_DIR": str(data_dir),
+                "OFFLINE_RAG_STRICT_OFFLINE": "true",
+            },
+        )

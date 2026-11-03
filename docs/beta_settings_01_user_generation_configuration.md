@@ -1,0 +1,77 @@
+# BETA-SETTINGS-01 — User-editable generation configuration
+
+## Decision
+
+Generation configuration has an explicit deployment-owned mode:
+
+- `operator` is the backward-compatible default. Environment values remain
+  authoritative and corresponding Settings controls stay locked.
+- `user` treats generation environment values as first-run bootstrap values.
+  Saved generation Settings take precedence after restart. Explicit
+  programmatic overrides remain highest priority.
+
+The ownership switch applies only to generation configuration. Other
+environment and product-setting precedence remains unchanged. Saved changes
+remain pending until restart; no runtime hot swap was introduced.
+
+User mode is intended for trusted local installations. Exposing the
+unauthenticated Settings API to untrusted network clients is unsafe. Strict
+offline endpoint validation and API-key secrecy remain in force.
+
+## Implementation result
+
+**Authority:** BETA-SETTINGS-01 bounded implementation authorization  
+**Starting subject:** `8db8fe7d2595d176cd7dd159303aaed05e2c8ae5`  
+**Branch:** `implementation/beta-settings-01-user-generation`  
+**Candidate status:** implementation complete; ready for independent review
+
+The implementation adds `OFFLINE_RAG_GENERATION_SETTINGS_MODE`, defaulting to
+`operator`, and applies user-mode bootstrap precedence to generation
+environment fields only. The existing Settings API and UI are reused. In user
+mode, generation fields are editable; keep/set/clear API-key behavior remains
+secret-safe, and persisted clear suppresses a bootstrap key after restart.
+Compose passes the mode through, while retaining `operator` as its fallback.
+
+### Changed files
+
+- `.env.example`, `deploy/docker-compose.example.yml` — document and pass the
+  mode.
+- `src/offline_rag/app/product_settings.py` — validate the mode and report
+  field locks according to ownership.
+- `src/offline_rag/config/loader.py` — implement generation-only bootstrap
+  precedence while preserving other configuration precedence.
+- `src/offline_rag/api/settings.py` — retain the effective key for a `keep`
+  connection probe without persisting a bootstrap key.
+- `tests/unit/app/test_slice16d_a_settings_capabilities.py` — cover default,
+  user/operator precedence, API-key actions, restart, strict-offline behavior,
+  pending state, and unrelated environment settings.
+- `ui/src/test/slice16d_a.app.test.tsx` — cover editable fields, connection
+  probe, and save in user mode.
+- `README.md`, `ROADMAP.md`, `docs/BACKLOG.md` — register the bounded slice and
+  its review status.
+- This file — preserve the concise decision and implementation record.
+
+### Validation
+
+- Backend settings/config tests: **35 passed, 17 skipped**. The skips require
+  provisioned tokenizer assets. A Starlette deprecation warning was reported.
+- Focused Settings UI tests: **17 passed**.
+- Targeted ESLint: **passed**.
+- Ruff lint: **passed** after automatic import/order fixes.
+- `git diff --check`: **passed**.
+- Full UI typecheck remains blocked by existing errors in the unchanged
+  `ui/src/test/slice16k_r04_cuda_oom.test.tsx` (`operation_id` and `retryable`
+  fields missing from test fixtures).
+- Ruff formatting check reports pre-existing formatting drift in
+  `src/offline_rag/api/settings.py`, `src/offline_rag/app/product_settings.py`,
+  and `tests/unit/app/test_slice16d_a_settings_capabilities.py`. The new
+  loader logic and added test block are formatted; no unrelated reformatting
+  was applied.
+
+### Limitations and boundaries
+
+A live Settings save/restart smoke was not run because it would modify the
+user's active installation settings. Automated API tests use temporary
+configuration directories and fake probes. No private data or credentials
+were accessed. No production promotion, Slice 17 work, Gold Lab changes,
+compute ownership changes, or runtime hot swap is included.
