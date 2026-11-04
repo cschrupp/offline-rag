@@ -1,7 +1,7 @@
 # BETA-GAME-02B — Game identity, visual polish, and contribution rail
 
-**Status:** BOUNDED IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW  
-**Branch:** `implementation/beta-game-02b-visual-polish`  
+**Status:** BOUNDED IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
+**Branch:** `implementation/beta-game-02b-visual-polish`
 **Base:** canonical `main` at `5518e37a190b573a4658c2374acea88b525bebe9`
 
 ## Objective and boundaries

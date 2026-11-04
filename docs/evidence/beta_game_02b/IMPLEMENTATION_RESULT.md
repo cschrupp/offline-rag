@@ -1,7 +1,7 @@
 # BETA-GAME-02B Implementation Result
 
-**Status:** IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW  
-**Base:** `5518e37a190b573a4658c2374acea88b525bebe9`  
+**Status:** IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
+**Base:** `5518e37a190b573a4658c2374acea88b525bebe9`
 **Branch:** `implementation/beta-game-02b-visual-polish`
 
 ## Scope delivered
