@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Zap, CircleMinus, BookOpen, Crosshair } from "lucide-react";
 import { Button } from "../../../../components/Button";
 import type {
   AbsoluteRelevanceTaskDetail,
@@ -12,10 +13,30 @@ const RELEVANCE_OPTIONS: Array<{
   value: GoldRelevance;
   label: string;
   shortcut: string;
+  description: string;
+  icon: typeof CircleMinus;
 }> = [
-  { value: 0, label: "Irrelevant", shortcut: "0" },
-  { value: 1, label: "Supporting evidence", shortcut: "1" },
-  { value: 2, label: "Direct evidence", shortcut: "2" },
+  {
+    value: 0,
+    label: "Irrelevant",
+    shortcut: "0",
+    description: "The passage does not help answer the question.",
+    icon: CircleMinus,
+  },
+  {
+    value: 1,
+    label: "Supporting evidence",
+    shortcut: "1",
+    description: "The passage adds useful context but does not establish the answer.",
+    icon: BookOpen,
+  },
+  {
+    value: 2,
+    label: "Direct evidence",
+    shortcut: "2",
+    description: "The passage directly states or demonstrates the requested fact.",
+    icon: Crosshair,
+  },
 ];
 
 export type RapidFirePresentationProps = {
@@ -92,12 +113,15 @@ export function RapidFirePresentation({
 
   return (
     <div className="stack gold-lab-game" data-testid="rapid-fire-presentation">
-      <header className="stack" style={{ gap: "0.35rem" }}>
-        <h2>Rapid Fire</h2>
-        <p className="muted" style={{ margin: 0 }}>
-          Keyboard shortcuts: 0 Irrelevant · 1 Supporting evidence · 2 Direct
-          evidence
-        </p>
+      <header className="gold-game-heading rapid-fire-heading">
+        <span className="gold-game-heading-icon" aria-hidden="true">
+          <Zap size={22} />
+        </span>
+        <div>
+          <p className="quick-play-eyebrow">EVIDENCE JUDGMENT</p>
+          <h2>Rapid Fire</h2>
+          <p className="muted">Use 0, 1, or 2 on your keyboard when focus is outside an editable field.</p>
+        </div>
       </header>
 
       <section aria-labelledby="gold-rf-query-heading">
@@ -131,16 +155,26 @@ export function RapidFirePresentation({
 
       <fieldset className="gold-lab-fieldset" disabled={locked}>
         <legend>Relevance judgment</legend>
-        <div className="row gold-lab-radio-row">
+        <div className="gold-lab-radio-row rapid-fire-options">
           {RELEVANCE_OPTIONS.map((option) => (
             <Button
               key={option.value}
-              variant="secondary"
+              className={`rapid-fire-option rapid-fire-option-${option.value}`}
+              variant={task.current_result?.relevance === option.value ? "primary" : "secondary"}
               disabled={locked}
               onClick={() => onCommit(option.value)}
               aria-keyshortcuts={option.shortcut}
+              aria-label={`${option.shortcut} — ${option.label}`}
+              aria-describedby={`rapid-fire-option-${option.value}-description`}
             >
-              {option.shortcut} — {option.label}
+              <span className="rapid-fire-option-number">{option.shortcut}</span>
+              <span className="rapid-fire-option-icon" aria-hidden="true"><option.icon size={19} /></span>
+              <span className="rapid-fire-option-copy">
+                <strong>{option.label}</strong>
+                <span id={`rapid-fire-option-${option.value}-description`}>
+                  {option.description}
+                </span>
+              </span>
             </Button>
           ))}
         </div>

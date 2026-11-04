@@ -1,4 +1,10 @@
-import { createContext, useContext, type Dispatch, type SetStateAction } from "react";
+import {
+  createContext,
+  useContext,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from "react";
 
 export type GoldLabGuideKey =
   | "quick_play_ready"
@@ -31,11 +37,15 @@ export type GoldLabGuideKey =
 type GuideContextValue = {
   guideKey: GoldLabGuideKey;
   setGuideKey: Dispatch<SetStateAction<GoldLabGuideKey>>;
+  quickPlayContribution: ReactNode;
+  setQuickPlayContribution: Dispatch<SetStateAction<ReactNode>>;
 };
 
 const NOOP_GUIDE_CONTEXT: GuideContextValue = {
   guideKey: "advanced_home",
   setGuideKey: () => undefined,
+  quickPlayContribution: null,
+  setQuickPlayContribution: () => undefined,
 };
 
 export const GoldLabGuideContext = createContext<GuideContextValue | null>(null);

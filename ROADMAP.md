@@ -45,9 +45,13 @@ and supporting history.
 - [x] **BETA-GOLD-POOL-01 — Qualified query-prompt support for Gold pooling** —
   independently accepted and promoted to canonical `main` at
   `4ea5c92a9082621f167e8fcd2a64d085534633f9`.
-- [ ] **BETA-GAME-02 — Game experience, contextual help, and accessible gameplay** —
-  authorized / active on `implementation/beta-game-02-experience`. The contextual
-  How to play guide is a core requirement. No new games or scientific changes.
+- [x] **BETA-GAME-02 — Game experience, contextual help, and accessible gameplay** —
+  Human accepted and promoted to canonical `main` at
+  `5518e37a190b573a4658c2374acea88b525bebe9`.
+- [ ] **BETA-GAME-02B — Game identity, visual polish, and contribution rail** —
+  bounded frontend implementation authorized / active on
+  `implementation/beta-game-02b-visual-polish`; no new games or scientific
+  changes.
 - [ ] Slice 17 design-open — **NOT AUTHORIZED**. This is distinct from
   original Slice 16G, which is complete.
 - [ ] End-to-end beta QA.

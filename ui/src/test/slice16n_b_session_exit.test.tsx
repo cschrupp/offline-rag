@@ -1,6 +1,6 @@
 import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GoldWorkSession } from "../features/goldLab/work/GoldWorkSession";
 import { goldCampaign, goldTask } from "./goldLabFixtures";
 import {
@@ -15,6 +15,10 @@ afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   sessionStorage.clear();
+});
+
+beforeEach(() => {
+  localStorage.clear();
 });
 
 const source = {
@@ -610,9 +614,9 @@ describe("16N-B session exit and completion", () => {
     expect(await screen.findByTestId("expert-session-complete")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Session complete" })).toBeInTheDocument();
     expect(
-      within(screen.getByRole("complementary", { name: "How to play" })).getByText(
-        /There are no more eligible tasks in this work session/,
-      ),
+      await within(
+        screen.getByRole("complementary", { name: "How to play" }),
+      ).findByText(/There are no more eligible tasks in this work session/),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/campaign may still have more Gold work/i),

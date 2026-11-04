@@ -245,6 +245,38 @@ const GUIDE_CONTENT: Record<GoldLabGuideKey, GuideContent> = {
   },
 };
 
+const GUIDE_RAIL_STORAGE_KEY = "offline-rag.gold-lab.guide-rail-expanded.v1";
+const CONTRIBUTION_RAIL_STORAGE_KEY =
+  "offline-rag.gold-lab.quick-play-contribution-rail-expanded.v1";
+const MOBILE_GUIDE_STORAGE_KEY = "offline-rag.gold-lab.mobile-guide-expanded.v1";
+const MOBILE_CONTRIBUTION_STORAGE_KEY =
+  "offline-rag.gold-lab.mobile-contribution-expanded.v1";
+
+function readGuideRailExpanded(): boolean {
+  try {
+    return localStorage.getItem(GUIDE_RAIL_STORAGE_KEY) !== "false";
+  } catch {
+    return true;
+  }
+}
+
+function readContributionRailExpanded(): boolean {
+  try {
+    return localStorage.getItem(CONTRIBUTION_RAIL_STORAGE_KEY) !== "false";
+  } catch {
+    return true;
+  }
+}
+
+function readStoredBoolean(key: string, fallback: boolean): boolean {
+  try {
+    const value = localStorage.getItem(key);
+    return value === null ? fallback : value === "true";
+  } catch {
+    return fallback;
+  }
+}
+
 function guideKeyForPath(pathname: string): GoldLabGuideKey {
   const routePath = pathname.replace(/\/+$/, "") || "/";
   if (routePath === "/gold-lab") return "quick_play_ready";
@@ -283,28 +315,193 @@ function GuideText({ content }: { content: GuideContent }) {
 export function GoldLabGuideLayout({
   guideKey,
   children,
+  quickPlayContribution,
+  guideExpanded,
+  onGuideExpandedChange,
+  contributionExpanded,
+  onContributionExpandedChange,
+  mobileGuideExpanded = false,
+  onMobileGuideExpandedChange,
+  mobileContributionExpanded = false,
+  onMobileContributionExpandedChange,
+  isQuickPlay = false,
 }: {
   guideKey: GoldLabGuideKey;
   children: ReactNode;
+  quickPlayContribution?: ReactNode;
+  guideExpanded?: boolean;
+  onGuideExpandedChange?: (expanded: boolean) => void;
+  contributionExpanded?: boolean;
+  onContributionExpandedChange?: (expanded: boolean) => void;
+  mobileGuideExpanded?: boolean;
+  onMobileGuideExpandedChange?: (expanded: boolean) => void;
+  mobileContributionExpanded?: boolean;
+  onMobileContributionExpandedChange?: (expanded: boolean) => void;
+  isQuickPlay?: boolean;
 }) {
   const id = useId();
   const content = GUIDE_CONTENT[guideKey];
+  const guideIsExpanded = guideExpanded ?? true;
+  const contributionIsExpanded = contributionExpanded ?? true;
+  const setGuideExpanded = onGuideExpandedChange ?? (() => undefined);
+  const setContributionExpanded =
+    onContributionExpandedChange ?? (() => undefined);
+  const setMobileGuideExpanded =
+    onMobileGuideExpandedChange ?? (() => undefined);
+  const setMobileContributionExpanded =
+    onMobileContributionExpandedChange ?? (() => undefined);
 
   return (
-    <div className="gold-lab-guide-layout">
-      <details className="gold-lab-guide-mobile">
-        <summary>How to play / What do I do here?</summary>
-        <section aria-label="Gold Lab instructions">
-          <GuideText content={content} />
-        </section>
-      </details>
-      <div className="gold-lab-guide-main">{children}</div>
+    <div
+      className={[
+        "gold-lab-guide-layout",
+        isQuickPlay ? "gold-lab-guide-layout-quick-play" : "",
+        isQuickPlay && !quickPlayContribution ? "quick-play-rail-loading" : "",
+        guideIsExpanded ? "guide-rail-expanded" : "guide-rail-collapsed",
+        contributionIsExpanded
+          ? "contribution-rail-expanded"
+          : "contribution-rail-collapsed",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      {isQuickPlay ? (
+        <aside
+          className="gold-lab-contribution-rail"
+          aria-label="Contribution"
+        >
+          {contributionIsExpanded ? (
+            <>
+              <div className="gold-lab-rail-heading">
+                <span className="gold-lab-rail-title">Your contribution</span>
+                <button
+                  type="button"
+                  className="gold-lab-rail-toggle"
+                  aria-expanded={true}
+                  aria-controls={`${id}-contribution-content`}
+                  aria-label="Collapse Contribution"
+                  onClick={() => setContributionExpanded(false)}
+                >
+                  «
+                </button>
+              </div>
+              <div id={`${id}-contribution-content`}>
+                {quickPlayContribution}
+              </div>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="gold-lab-rail-toggle gold-lab-rail-toggle-collapsed"
+                aria-expanded={false}
+                aria-controls={`${id}-contribution-content`}
+                aria-label="Expand Contribution"
+                onClick={() => setContributionExpanded(true)}
+              >
+                Contribution
+              </button>
+              <div id={`${id}-contribution-content`} hidden>
+                {quickPlayContribution}
+              </div>
+            </>
+          )}
+        </aside>
+      ) : null}
+      <div className="gold-lab-guide-main">
+        {isQuickPlay ? (
+          <button
+            type="button"
+            className="gold-lab-rail-mobile-toggle"
+            aria-expanded={mobileContributionExpanded}
+            aria-controls={`${id}-mobile-contribution`}
+            onClick={() =>
+              setMobileContributionExpanded(!mobileContributionExpanded)
+            }
+          >
+            Your contribution
+          </button>
+        ) : null}
+        {isQuickPlay && mobileContributionExpanded ? (
+          <section
+            className="gold-lab-guide-mobile-content"
+            id={`${id}-mobile-contribution`}
+            aria-label="Quick Play contribution"
+          >
+            {quickPlayContribution}
+          </section>
+        ) : isQuickPlay ? (
+          <section
+            className="gold-lab-guide-mobile-content"
+            id={`${id}-mobile-contribution`}
+            aria-label="Quick Play contribution"
+            hidden
+          >
+            {quickPlayContribution}
+          </section>
+        ) : null}
+        <details
+          className="gold-lab-guide-mobile"
+          open={mobileGuideExpanded}
+          onToggle={(event) => {
+            const expanded = event.currentTarget.open;
+            if (expanded !== mobileGuideExpanded) {
+              setMobileGuideExpanded(expanded);
+            }
+          }}
+        >
+          <summary>
+            {isQuickPlay ? "How to play" : "How to play / What do I do here?"}
+          </summary>
+          <section
+            aria-label="Gold Lab instructions"
+            id={`${id}-mobile-content`}
+          >
+            <GuideText content={content} />
+          </section>
+        </details>
+        {children}
+      </div>
       <aside
         className="gold-lab-guide-desktop"
-        aria-labelledby={`${id}-heading`}
+        aria-label="How to play"
       >
-        <h2 id={`${id}-heading`}>How to play</h2>
-        <GuideText content={content} />
+        {guideIsExpanded ? (
+          <>
+            <div className="gold-lab-rail-heading">
+              <h2 id={`${id}-heading`}>How to play</h2>
+              <button
+                type="button"
+                className="gold-lab-rail-toggle"
+                aria-expanded={true}
+                aria-controls={`${id}-guide-content`}
+                aria-label="Collapse How to play"
+                onClick={() => setGuideExpanded(false)}
+              >
+                «
+              </button>
+            </div>
+            <div id={`${id}-guide-content`}>
+              <GuideText content={content} />
+            </div>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="gold-lab-rail-toggle gold-lab-rail-toggle-collapsed"
+              aria-expanded={false}
+              aria-controls={`${id}-guide-content`}
+              aria-label="Expand How to play"
+              onClick={() => setGuideExpanded(true)}
+            >
+              How to play
+            </button>
+            <div id={`${id}-guide-content`} hidden>
+              <GuideText content={content} />
+            </div>
+          </>
+        )}
       </aside>
     </div>
   );
@@ -312,6 +509,16 @@ export function GoldLabGuideLayout({
 
 export function GoldLabGuideRoute() {
   const location = useLocation();
+  const [quickPlayContribution, setQuickPlayContribution] = useState<ReactNode>(null);
+  const [guideExpanded, setGuideExpanded] = useState(readGuideRailExpanded);
+  const [contributionExpanded, setContributionExpanded] = useState(
+    readContributionRailExpanded,
+  );
+  const [mobileGuideExpanded, setMobileGuideExpanded] = useState(() =>
+    readStoredBoolean(MOBILE_GUIDE_STORAGE_KEY, false),
+  );
+  const [mobileContributionExpanded, setMobileContributionExpanded] =
+    useState(() => readStoredBoolean(MOBILE_CONTRIBUTION_STORAGE_KEY, false));
   const [override, setOverride] = useState<{
     locationKey: string;
     guideKey: GoldLabGuideKey;
@@ -339,13 +546,69 @@ export function GoldLabGuideRoute() {
     [location.key, location.pathname],
   );
   const value = useMemo(
-    () => ({ guideKey, setGuideKey }),
-    [guideKey, setGuideKey],
+    () => ({
+      guideKey,
+      setGuideKey,
+      quickPlayContribution,
+      setQuickPlayContribution,
+    }),
+    [guideKey, setGuideKey, quickPlayContribution],
   );
+
+  function updateGuideExpanded(expanded: boolean) {
+    setGuideExpanded(expanded);
+    try {
+      localStorage.setItem(GUIDE_RAIL_STORAGE_KEY, String(expanded));
+    } catch {
+      // The guide remains usable when browser storage is unavailable.
+    }
+  }
+
+  function updateContributionExpanded(expanded: boolean) {
+    setContributionExpanded(expanded);
+    try {
+      localStorage.setItem(CONTRIBUTION_RAIL_STORAGE_KEY, String(expanded));
+    } catch {
+      // The contribution rail remains usable when browser storage is unavailable.
+    }
+  }
+
+  function updateStoredBoolean(
+    key: string,
+    setter: Dispatch<SetStateAction<boolean>>,
+    expanded: boolean,
+  ) {
+    setter(expanded);
+    try {
+      localStorage.setItem(key, String(expanded));
+    } catch {
+      // Mobile disclosures remain operable when browser storage is unavailable.
+    }
+  }
 
   return (
     <GoldLabGuideContext.Provider value={value}>
-      <GoldLabGuideLayout guideKey={guideKey}>
+      <GoldLabGuideLayout
+        guideKey={guideKey}
+        quickPlayContribution={quickPlayContribution}
+        guideExpanded={guideExpanded}
+        onGuideExpandedChange={updateGuideExpanded}
+        contributionExpanded={contributionExpanded}
+        onContributionExpandedChange={updateContributionExpanded}
+        mobileGuideExpanded={mobileGuideExpanded}
+        onMobileGuideExpandedChange={(expanded) =>
+          updateStoredBoolean(MOBILE_GUIDE_STORAGE_KEY, setMobileGuideExpanded, expanded)
+        }
+        mobileContributionExpanded={mobileContributionExpanded}
+        onMobileContributionExpandedChange={(expanded) =>
+          updateStoredBoolean(
+            MOBILE_CONTRIBUTION_STORAGE_KEY,
+            setMobileContributionExpanded,
+            expanded,
+          )
+        }
+        isQuickPlay={location.pathname === "/gold-lab"}
+      >
         <Outlet />
       </GoldLabGuideLayout>
     </GoldLabGuideContext.Provider>

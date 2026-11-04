@@ -1941,6 +1941,27 @@ button.snapshot-badge {
   margin-inline: auto;
 }
 
+.gold-lab-guide-layout:not(.gold-lab-guide-layout-quick-play).guide-rail-collapsed {
+  grid-template-columns: minmax(0, 1fr) var(--rail-collapsed-width);
+}
+
+.gold-lab-guide-layout-quick-play {
+  grid-template-columns: minmax(12rem, 15rem) minmax(0, 1fr) minmax(14rem, 17rem);
+  max-width: 88rem;
+}
+
+.gold-lab-guide-layout-quick-play.contribution-rail-collapsed {
+  grid-template-columns: var(--rail-collapsed-width) minmax(0, 1fr) minmax(14rem, 17rem);
+}
+
+.gold-lab-guide-layout-quick-play.guide-rail-collapsed {
+  grid-template-columns: minmax(12rem, 15rem) minmax(0, 1fr) var(--rail-collapsed-width);
+}
+
+.gold-lab-guide-layout-quick-play.contribution-rail-collapsed.guide-rail-collapsed {
+  grid-template-columns: var(--rail-collapsed-width) minmax(0, 1fr) var(--rail-collapsed-width);
+}
+
 .gold-lab-guide-main {
   min-width: 0;
   grid-column: 1;
@@ -1957,6 +1978,100 @@ button.snapshot-badge {
   border-radius: var(--radius);
   background: var(--color-panel);
   color: var(--text);
+}
+
+.gold-lab-contribution-rail {
+  position: sticky;
+  top: var(--space-4);
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+  box-shadow: var(--shadow);
+}
+
+.gold-lab-guide-layout-quick-play .gold-lab-guide-main {
+  grid-column: 2;
+}
+
+.gold-lab-guide-layout-quick-play .gold-lab-guide-desktop {
+  grid-column: 3;
+}
+
+.gold-lab-guide-layout-quick-play .gold-lab-guide-mobile-content {
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+}
+
+.gold-lab-rail-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.gold-lab-rail-heading h2,
+.gold-lab-rail-title {
+  margin: 0;
+  color: var(--navy);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.gold-lab-rail-toggle {
+  display: inline-flex;
+  min-width: var(--target);
+  min-height: var(--target);
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--white);
+  color: var(--navy);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.gold-lab-rail-toggle:focus-visible,
+.gold-lab-rail-mobile-toggle:focus-visible,
+.gold-lab-guide-mobile-toggle:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.gold-lab-rail-toggle-collapsed {
+  min-height: 7rem;
+  width: 100%;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+
+.gold-lab-rail-mobile-toggle,
+.gold-lab-guide-mobile-toggle,
+.gold-lab-guide-mobile-content {
+  display: none;
+}
+
+.gold-lab-guide-layout-quick-play .gold-lab-contribution-rail > div[id],
+.gold-lab-guide-layout-quick-play .gold-lab-guide-desktop > div[id] {
+  min-width: 0;
+}
+
+.gold-lab-guide-layout-quick-play.guide-rail-collapsed .gold-lab-guide-desktop,
+.gold-lab-guide-layout-quick-play.contribution-rail-collapsed .gold-lab-contribution-rail,
+.gold-lab-guide-layout:not(.gold-lab-guide-layout-quick-play).guide-rail-collapsed .gold-lab-guide-desktop {
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: var(--space-2);
 }
 
 .gold-lab-guide-desktop h2 {
@@ -2031,6 +2146,25 @@ button.snapshot-badge {
   }
 }
 
+@media (max-width: 82rem) {
+  .gold-lab-guide-layout-quick-play {
+    grid-template-columns: minmax(10rem, 13rem) minmax(0, 1fr);
+    max-width: 75rem;
+  }
+
+  .gold-lab-guide-layout-quick-play.contribution-rail-collapsed {
+    grid-template-columns: var(--rail-collapsed-width) minmax(0, 1fr);
+  }
+
+  .gold-lab-guide-layout-quick-play .gold-lab-guide-desktop {
+    display: none;
+  }
+
+  .gold-lab-guide-layout-quick-play .gold-lab-guide-mobile {
+    display: block;
+  }
+}
+
 @media (max-width: 64rem) {
   .gold-lab-guide-layout {
     display: flex;
@@ -2052,6 +2186,48 @@ button.snapshot-badge {
   .gold-lab-guide-desktop {
     display: none;
   }
+
+  .gold-lab-guide-layout-quick-play {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .gold-lab-guide-layout-quick-play .gold-lab-contribution-rail {
+    display: none;
+  }
+
+  .gold-lab-guide-layout-quick-play .gold-lab-guide-main {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .gold-lab-guide-layout-quick-play .gold-lab-guide-main > * {
+    width: 100%;
+  }
+
+  .gold-lab-guide-layout-quick-play .gold-lab-rail-mobile-toggle,
+  .gold-lab-guide-layout-quick-play .gold-lab-guide-mobile {
+    display: block;
+  }
+
+  .gold-lab-guide-layout-quick-play .gold-lab-guide-mobile-content {
+    display: block;
+  }
+
+  .gold-lab-guide-layout-quick-play .gold-lab-rail-mobile-toggle {
+    min-height: var(--target);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-panel);
+    color: var(--navy);
+    font: inherit;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+  }
+
 }
 
 .gold-lab-list {
@@ -2169,14 +2345,371 @@ button.snapshot-badge {
   overflow-wrap: anywhere;
   font-family: inherit;
   font-size: 0.95rem;
-  line-height: 1.45;
+  line-height: 1.6;
   max-height: 24rem;
   overflow: auto;
+}
+
+.gold-lab-source {
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+}
+
+.gold-lab-source > h3 {
+  color: var(--navy);
+}
+
+.gold-lab-source .gold-lab-meta {
+  color: var(--muted);
+  font-size: 0.83rem;
 }
 
 .gold-lab-game h2,
 .gold-lab-game h3 {
   margin: 0 0 0.35rem;
+}
+
+.quick-play-page {
+  width: 100%;
+  max-width: none;
+  gap: var(--space-4);
+}
+
+.quick-play-header,
+.quick-play-activities-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.quick-play-header h1,
+.quick-play-activities-heading h2 {
+  margin: 0;
+  color: var(--navy);
+}
+
+.quick-play-header p:not(.quick-play-eyebrow) {
+  margin: var(--space-2) 0 0;
+}
+
+.quick-play-eyebrow {
+  margin: 0 0 var(--space-1);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+}
+
+.quick-play-workspace-card {
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+}
+
+.quick-play-workspace-meta {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.quick-play-main {
+  min-width: 0;
+}
+
+.quick-play-activities {
+  gap: var(--space-3);
+}
+
+.quick-play-recommended {
+  color: var(--slate);
+  font-size: 0.875rem;
+}
+
+.quick-play-game-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--radius) + 2px);
+  background: var(--color-panel);
+  box-shadow: var(--shadow);
+}
+
+.quick-play-game-card:first-of-type {
+  border-top: 3px solid var(--action);
+}
+
+.quick-play-game-card:last-of-type {
+  border-top: 3px solid var(--brass);
+}
+
+.quick-play-game-icon,
+.gold-game-heading-icon {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: #eaf1ff;
+  color: var(--action);
+}
+
+.quick-play-game-card:last-of-type .quick-play-game-icon,
+.rapid-fire-heading .gold-game-heading-icon {
+  background: #fbf4df;
+  color: var(--brass);
+}
+
+.quick-play-game-copy {
+  min-width: 0;
+}
+
+.quick-play-game-copy h3 {
+  margin: 0;
+  color: var(--navy);
+  font-size: 1.05rem;
+}
+
+.quick-play-game-copy p {
+  margin: var(--space-1) 0 0;
+  overflow-wrap: anywhere;
+}
+
+.quick-play-game-count {
+  color: var(--slate);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.quick-play-game-unavailable {
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.quick-play-deck-card {
+  padding: var(--space-5);
+}
+
+.quick-play-footer {
+  padding-top: var(--space-2);
+}
+
+.quick-play-contribution-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  color: var(--action);
+}
+
+.quick-play-contribution-heading h2 {
+  margin: 0;
+  color: var(--navy);
+  font-size: 1rem;
+}
+
+.quick-play-contribution-heading p {
+  margin: var(--space-1) 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+.quick-play-contribution-score {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: var(--space-4) 0;
+  color: var(--navy);
+  font-size: 2.1rem;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.quick-play-contribution-score span {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.quick-play-contribution-metrics {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.quick-play-contribution-metrics > div {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+}
+
+.quick-play-contribution-metrics dt {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--slate);
+  font-size: 0.78rem;
+}
+
+.quick-play-contribution-metrics dd {
+  margin: 0;
+  color: var(--navy);
+  font-weight: 700;
+}
+
+.quick-play-contribution-note {
+  margin: var(--space-3) 0 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.quick-play-contribution-error {
+  margin-top: var(--space-3);
+  gap: var(--space-2);
+  font-size: 0.85rem;
+}
+
+.link-button {
+  width: fit-content;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--action);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.gold-game-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.gold-game-heading h2 {
+  margin: 0;
+  color: var(--navy);
+}
+
+.gold-game-heading .quick-play-eyebrow {
+  margin-bottom: var(--space-1);
+}
+
+.question-check-question {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--action);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+}
+
+.question-check-question h3 {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.question-check-question-text {
+  margin: var(--space-2) 0 var(--space-3);
+  color: var(--navy);
+  font-size: 1.2rem;
+  font-weight: 650;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.question-check-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.question-check-tags span {
+  max-width: 100%;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--slate);
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+.question-check-actions {
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.question-check-actions .btn {
+  display: inline-flex;
+  min-height: var(--target);
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.rapid-fire-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.rapid-fire-option.btn {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 6rem;
+  padding: var(--space-3);
+  text-align: left;
+  white-space: normal;
+}
+
+.rapid-fire-option-number {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.rapid-fire-option-icon {
+  display: inline-flex;
+}
+
+.rapid-fire-option-copy {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.rapid-fire-option-copy strong {
+  line-height: 1.25;
+}
+
+.rapid-fire-option-copy > span {
+  color: inherit;
+  font-size: 0.78rem;
+  font-weight: 400;
+  line-height: 1.35;
+  opacity: 0.9;
+}
+
+.gold-lab-meta dd {
+  overflow-wrap: anywhere;
 }
 
 .gold-lab-after-action {
@@ -2480,5 +3013,30 @@ button.snapshot-badge {
 
   .welcome-art-image {
     object-position: center top;
+  }
+}
+
+@media (max-width: 48rem) {
+  .quick-play-game-card {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: var(--space-3);
+  }
+
+  .quick-play-game-action {
+    grid-column: 1 / -1;
+  }
+
+  .quick-play-game-action .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .rapid-fire-options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rapid-fire-option.btn {
+    min-height: var(--target);
   }
 }

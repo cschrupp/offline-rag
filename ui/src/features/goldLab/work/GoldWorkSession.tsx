@@ -219,6 +219,9 @@ export function GoldWorkSession({
         queryClient.invalidateQueries({
           queryKey: goldLabQueryKeys.tasks(pending.campaignId, listFilters),
         }),
+        queryClient.invalidateQueries({
+          queryKey: goldLabQueryKeys.contribution(pending.campaignId),
+        }),
       ]);
     },
     onError: (error) => {

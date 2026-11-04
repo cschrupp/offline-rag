@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
+import { BookOpenCheck, Zap } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { getOperation, listWorkspaces } from "../api/client";
 import { OperationProgress } from "../components/OperationProgress";
@@ -20,6 +21,7 @@ import {
   rememberActiveOperation,
 } from "../features/operations/activeOperations";
 import { userFacingErrorMessage } from "../api/errors";
+import { QuickPlayContributionRail } from "../features/goldLab/quickPlay/QuickPlayContributionRail";
 
 const QUICK_PLAY_WORKSPACE_KEY = "offline-rag.quick-play.workspace.v1";
 
@@ -57,10 +59,65 @@ function actionLabel(status: QuickPlayState["status"]): string {
   }
 }
 
+function QuickPlayGameCard({
+  gameId,
+  campaignId,
+  workspaceId,
+  pendingCount,
+  available,
+  recommended,
+}: {
+  gameId: "question_check" | "rapid_fire";
+  campaignId: string;
+  workspaceId: string;
+  pendingCount: number;
+  available: boolean;
+  recommended: boolean;
+}) {
+  const questionCheck = gameId === "question_check";
+  const Icon = questionCheck ? BookOpenCheck : Zap;
+  const title = questionCheck ? "Question Check" : "Rapid Fire";
+  const description = questionCheck
+    ? "Review whether proposed questions are clear and supported."
+    : "Judge how strongly each passage supports a question.";
+  const countLabel = questionCheck
+    ? `${pendingCount.toLocaleString()} questions remaining`
+    : `${pendingCount.toLocaleString()} evidence judgments available`;
+
+  return (
+    <article className="quick-play-game-card" aria-label={title}>
+      <div className="quick-play-game-icon" aria-hidden="true">
+        <Icon size={23} strokeWidth={2.1} />
+      </div>
+      <div className="quick-play-game-copy">
+        <h3>{title}</h3>
+        <p>{description}</p>
+        <p className="quick-play-game-count">{countLabel}</p>
+      </div>
+      <div className="quick-play-game-action">
+        {available && pendingCount > 0 ? (
+          <Button
+            variant={recommended ? "primary" : "secondary"}
+            to={gamePath(campaignId, gameId, workspaceId)}
+          >
+            {recommended
+              ? `Resume Play · ${title}`
+              : `Start ${title} · ${pendingCount.toLocaleString()}`}
+          </Button>
+        ) : (
+          <span className="quick-play-game-unavailable">
+            {pendingCount === 0 ? "Complete" : "Unavailable"}
+          </span>
+        )}
+      </div>
+    </article>
+  );
+}
+
 export function GoldLabQuickPlayPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
-  const { setGuideKey } = useGoldLabGuide();
+  const { setGuideKey, setQuickPlayContribution } = useGoldLabGuide();
   const autoContinueProject = useRef<string | null>(null);
   const workspaceId = searchParams.get("workspace") ?? "";
 
@@ -106,6 +163,7 @@ export function GoldLabQuickPlayPage() {
         ? 1500
         : false,
   });
+  const campaignId = state?.campaign_id;
 
   const prepareMutation = useMutation({
     mutationFn: (action: "start" | "replenish") =>
@@ -128,6 +186,16 @@ export function GoldLabQuickPlayPage() {
       autoContinueProject.current = null;
     },
   });
+
+  useEffect(() => {
+    setQuickPlayContribution(
+      <QuickPlayContributionRail
+        workspaceTitle={selectedWorkspace?.title ?? null}
+        campaignId={campaignId}
+      />,
+    );
+    return () => setQuickPlayContribution(null);
+  }, [campaignId, selectedWorkspace?.title, setQuickPlayContribution]);
 
   useEffect(() => {
     let nextGuide: GoldLabGuideKey = "quick_play_ready";
@@ -193,6 +261,15 @@ export function GoldLabQuickPlayPage() {
 
   function selectWorkspace(nextWorkspaceId: string) {
     autoContinueProject.current = null;
+    setQuickPlayContribution(
+      <QuickPlayContributionRail
+        workspaceTitle={
+          workspaces.find((workspace) => workspace.workspace_id === nextWorkspaceId)
+            ?.title ?? null
+        }
+        campaignId={undefined}
+      />,
+    );
     if (nextWorkspaceId) {
       localStorage.setItem(QUICK_PLAY_WORKSPACE_KEY, nextWorkspaceId);
       setSearchParams({ workspace: nextWorkspaceId }, { replace: true });
@@ -209,19 +286,18 @@ export function GoldLabQuickPlayPage() {
 
   const operation = operationQuery.data;
   const availableGames = state?.available_games ?? [];
-  const campaignId = state?.campaign_id;
   const nextGame = availableGames.find(
     (game) => game.game_id === state?.next_game,
   );
 
   return (
     <div className="stack gold-lab-page quick-play-page">
-      <header className="row gold-lab-card-header">
+      <header className="quick-play-header">
         <div>
+          <p className="quick-play-eyebrow">EXPERT CONTRIBUTION</p>
           <h1>Quick Play</h1>
           <p className="muted">
-            Review proposed questions and judge their evidence. Your
-            contributions are saved as you play.
+            Help improve Seneca by reviewing proposed questions and evidence.
           </p>
         </div>
         <Button variant="secondary" to="/gold-lab/advanced">
@@ -229,7 +305,7 @@ export function GoldLabQuickPlayPage() {
         </Button>
       </header>
 
-      <Card className="stack">
+      <Card className="stack quick-play-workspace-card">
         <label htmlFor="quick-play-workspace">
           <strong>Workspace</strong>
         </label>
@@ -250,7 +326,10 @@ export function GoldLabQuickPlayPage() {
           >
             <option value="">Choose a workspace</option>
             {workspaces.map((workspace) => (
-              <option key={workspace.workspace_id} value={workspace.workspace_id}>
+            <option
+              key={workspace.workspace_id}
+              value={workspace.workspace_id}
+            >
                 {workspace.title}
                 {workspace.current_snapshot_id ? "" : " · No published sources"}
               </option>
@@ -258,195 +337,210 @@ export function GoldLabQuickPlayPage() {
           </select>
         ) : null}
         {selectedWorkspace ? (
-          <p className="muted">
+          <p className="muted quick-play-workspace-meta">
             {selectedWorkspace.source_count.toLocaleString()} active{" "}
             {selectedWorkspace.source_count === 1 ? "source" : "sources"}
           </p>
         ) : null}
       </Card>
 
-      {!workspaceId ? (
-        <Card>
-          <p>Select a workspace to check for an activity deck.</p>
-        </Card>
-      ) : null}
-      {stateQuery.isLoading && workspaceId ? <Card>Checking your deck…</Card> : null}
-      {stateQuery.isError ? (
-        <Card>
-          <p className="error-box" role="alert">
-            {userFacingErrorMessage(stateQuery.error)}
-          </p>
-          <Button variant="secondary" onClick={() => void stateQuery.refetch()}>
-            Check again
-          </Button>
-        </Card>
-      ) : null}
-      {state?.status === "not_ready" ? (
-        <Card>
-          <h2>Publish workspace sources first</h2>
-          <p>This workspace has no published source snapshot to play from.</p>
-          <Button variant="secondary" to={`/workspaces/${workspaceId}`}>
-            Open workspace
-          </Button>
-        </Card>
-      ) : null}
-      {state?.status === "blocked" ? (
-        <Card>
-          <h2>Deck unavailable</h2>
-          <p>
-            This deck cannot accept more judgments. Your existing work is
-            preserved; contact an administrator to review the campaign.
-          </p>
-        </Card>
-      ) : null}
-      {state?.status === "empty_population" ? (
-        <Card>
-          <h2>No suitable source text yet</h2>
-          <p>
-            Quick Play needs published source chunks with readable text. Add
-            or update workspace sources, publish the workspace, then try again.
-          </p>
-          <Button variant="secondary" to={`/workspaces/${workspaceId}`}>
-            Open workspace
-          </Button>
-        </Card>
-      ) : null}
-      {state?.status === "generating" ? (
-        <section className="stack" aria-live="polite">
-          <h2>Generating your activity deck</h2>
-          {operation ? (
-            <OperationProgress
-              phase="operation"
-              operation={operation}
-              label="Generating activity deck"
-              successMessage="Your activity deck is ready."
-            />
-          ) : (
-            <Card>Recovering generation progress…</Card>
-          )}
-        </section>
-      ) : null}
-      {state?.status === "generation_failed" ? (
-        <Card className="stack">
-          <h2>Deck generation did not finish</h2>
-          {operation ? (
-            <OperationProgress
-              phase="operation"
-              operation={operation}
-              label="Activity deck generation"
-            />
-          ) : (
-            <p role="alert">
-              {state.operation?.failure_summary ??
-                "Generation stopped. Your existing workspace and contributions are unchanged."}
+      <section className="quick-play-main" aria-label="Quick Play activities">
+        {!workspaceId ? (
+          <Card>
+            <p>Select a workspace to check for an activity deck.</p>
+          </Card>
+        ) : null}
+        {stateQuery.isLoading && workspaceId ? (
+          <Card>Checking your deck…</Card>
+        ) : null}
+        {stateQuery.isError ? (
+          <Card className="stack">
+            <p className="error-box" role="alert">
+              {userFacingErrorMessage(stateQuery.error)}
             </p>
-          )}
-          <Button
-            onClick={prepareCurrentDeck}
-            disabled={prepareMutation.isPending}
-          >
-            Retry generation
-          </Button>
-        </Card>
-      ) : null}
-      {state &&
-      ["needs_generation", "baseline_available", "campaign_ready"].includes(
-        state.status,
-      ) ? (
-        <Card className="stack">
-          <h2>
-            {state.status === "needs_generation"
-              ? "Create an activity deck"
-              : state.status === "baseline_available"
-                ? "A reusable deck is available"
-                : "Opening your deck"}
-          </h2>
-          <p>
-            Quick Play selects improvement-oriented cases from this published
-            workspace. It is for expert review, not a representative benchmark.
-          </p>
-          {state.status !== "campaign_ready" ? (
             <Button
-              onClick={prepareCurrentDeck}
-              disabled={
-                prepareMutation.isPending ||
-                !selectedWorkspace?.current_snapshot_id
-              }
+              variant="secondary"
+              onClick={() => void stateQuery.refetch()}
             >
-              {prepareMutation.isPending ? "Preparing…" : actionLabel(state.status)}
+              Check again
             </Button>
-          ) : prepareMutation.isError ? (
+          </Card>
+        ) : null}
+        {state?.status === "not_ready" ? (
+          <Card className="stack">
+            <h2>Publish workspace sources first</h2>
+            <p>This workspace has no published source snapshot to play from.</p>
+            <Button
+              variant="secondary"
+              to={`/workspaces/${workspaceId}`}
+            >
+              Open workspace
+            </Button>
+          </Card>
+        ) : null}
+        {state?.status === "blocked" ? (
+          <Card className="stack">
+            <h2>Deck unavailable</h2>
+            <p>
+              This deck cannot accept more judgments. Your existing work is
+              preserved; contact an administrator to review the campaign.
+            </p>
+          </Card>
+        ) : null}
+        {state?.status === "empty_population" ? (
+          <Card className="stack">
+            <h2>No suitable source text yet</h2>
+            <p>
+              Quick Play needs published source chunks with readable text. Add
+              or update workspace sources, publish the workspace, then try
+              again.
+            </p>
+            <Button
+              variant="secondary"
+              to={`/workspaces/${workspaceId}`}
+            >
+              Open workspace
+            </Button>
+          </Card>
+        ) : null}
+        {state?.status === "generating" ? (
+          <section className="stack quick-play-state" aria-live="polite">
+            <h2>Generating your activity deck</h2>
+            {operation ? (
+              <OperationProgress
+                phase="operation"
+                operation={operation}
+                label="Generating activity deck"
+                successMessage="Your activity deck is ready."
+              />
+            ) : (
+              <Card>Recovering generation progress…</Card>
+            )}
+          </section>
+        ) : null}
+        {state?.status === "generation_failed" ? (
+          <Card className="stack">
+            <h2>Deck generation did not finish</h2>
+            {operation ? (
+              <OperationProgress
+                phase="operation"
+                operation={operation}
+                label="Activity deck generation"
+              />
+            ) : (
+              <p role="alert">
+                {state.operation?.failure_summary ??
+                  "Generation stopped. Your existing workspace and contributions are unchanged."}
+              </p>
+            )}
             <Button
               onClick={prepareCurrentDeck}
               disabled={prepareMutation.isPending}
             >
-              Retry deck setup
+              Retry generation
             </Button>
-          ) : (
-            <p aria-live="polite">Preparing the playable deck…</p>
-          )}
-          {prepareMutation.isError ? (
-            <p className="error-box" role="alert">
-              {userFacingErrorMessage(prepareMutation.error)}
-              {" "}
-              Retry to reconcile the saved deck state.
+          </Card>
+        ) : null}
+        {state &&
+        ["needs_generation", "baseline_available", "campaign_ready"].includes(
+          state.status,
+        ) ? (
+          <Card className="stack quick-play-deck-card">
+            <h2>
+              {state.status === "needs_generation"
+                ? "Create an activity deck"
+                : state.status === "baseline_available"
+                  ? "Your activity deck is ready"
+                  : "Opening your deck"}
+            </h2>
+            <p>
+              Quick Play selects improvement-oriented cases from this
+              published workspace. It is for expert review, not a representative
+              benchmark.
             </p>
-          ) : null}
-        </Card>
-      ) : null}
-      {state?.status === "playable" && campaignId ? (
-        <Card className="stack">
-          <h2>Your deck is ready</h2>
-          <p>
-            {state.question_check_pending ?? 0} questions to review ·{" "}
-            {state.rapid_fire_pending ?? 0} evidence judgments available
-          </p>
-          <div className="row">
-            {nextGame ? (
+            {state.status !== "campaign_ready" ? (
               <Button
-                to={gamePath(campaignId, nextGame.game_id, workspaceId)}
+                onClick={prepareCurrentDeck}
+                disabled={
+                  prepareMutation.isPending ||
+                  !selectedWorkspace?.current_snapshot_id
+                }
               >
-                Resume Play · {nextGame.label}
+                {prepareMutation.isPending
+                  ? "Preparing…"
+                  : actionLabel(state.status)}
               </Button>
+            ) : prepareMutation.isError ? (
+              <Button
+                onClick={prepareCurrentDeck}
+                disabled={prepareMutation.isPending}
+              >
+                Retry deck setup
+              </Button>
+            ) : (
+              <p aria-live="polite">Preparing the playable deck…</p>
+            )}
+            {prepareMutation.isError ? (
+              <p className="error-box" role="alert">
+                {userFacingErrorMessage(prepareMutation.error)} Retry to
+                reconcile the saved deck state.
+              </p>
             ) : null}
-          </div>
-          {availableGames.length > 1 ? (
-            <div className="stack">
-              <h3>Play another available game</h3>
-              <div className="row">
-                {availableGames
-                  .filter((game) => game.game_id !== nextGame?.game_id)
-                  .map((game) => (
-                    <Button
-                      key={game.game_id}
-                      variant="secondary"
-                      to={gamePath(campaignId, game.game_id, workspaceId)}
-                    >
-                      {game.label} · {game.pending_count}
-                    </Button>
-                  ))}
+          </Card>
+        ) : null}
+        {state?.status === "playable" && campaignId ? (
+          <section className="stack quick-play-activities">
+            <header className="quick-play-activities-heading">
+              <div>
+                <p className="quick-play-eyebrow">YOUR CURRENT DECK</p>
+                <h2>Choose an activity</h2>
               </div>
-            </div>
-          ) : null}
-        </Card>
-      ) : null}
-      {state?.status === "complete" ? (
-        <Card className="stack">
-          <h2>This deck is complete</h2>
-          <p>
-            Existing judgments remain saved. Replenishing creates another
-            activity set without replacing your completed work.
-          </p>
-          <Button
-            onClick={prepareCurrentDeck}
-            disabled={prepareMutation.isPending}
-          >
-            {prepareMutation.isPending ? "Preparing…" : "Replenish deck"}
-          </Button>
-        </Card>
-      ) : null}
-
-      <footer>
+              {nextGame ? (
+                <span className="quick-play-recommended">
+                  Suggested next: {nextGame.label}
+                </span>
+              ) : null}
+            </header>
+            <QuickPlayGameCard
+              gameId="question_check"
+              campaignId={campaignId}
+              workspaceId={workspaceId}
+              pendingCount={state.question_check_pending ?? 0}
+              available={availableGames.some(
+                (game) => game.game_id === "question_check",
+              )}
+              recommended={nextGame?.game_id === "question_check"}
+            />
+            <QuickPlayGameCard
+              gameId="rapid_fire"
+              campaignId={campaignId}
+              workspaceId={workspaceId}
+              pendingCount={state.rapid_fire_pending ?? 0}
+              available={availableGames.some(
+                (game) => game.game_id === "rapid_fire",
+              )}
+              recommended={nextGame?.game_id === "rapid_fire"}
+            />
+          </section>
+        ) : null}
+        {state?.status === "complete" ? (
+          <Card className="stack quick-play-deck-card">
+            <p className="quick-play-eyebrow">DECK COMPLETE</p>
+            <h2>Your review is complete</h2>
+            <p>
+              Existing judgments remain saved. Replenishing creates another
+              activity set without replacing your completed work.
+            </p>
+            <Button
+              onClick={prepareCurrentDeck}
+              disabled={prepareMutation.isPending}
+            >
+              {prepareMutation.isPending ? "Preparing…" : "Replenish deck"}
+            </Button>
+          </Card>
+        ) : null}
+      </section>
+      <footer className="quick-play-footer">
         <Link to="/gold-lab/advanced">Open Advanced Gold Lab</Link>
       </footer>
     </div>

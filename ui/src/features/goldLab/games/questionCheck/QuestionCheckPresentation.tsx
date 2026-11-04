@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
+import { Check, ClipboardCheck, Pencil, X } from "lucide-react";
 import { Button } from "../../../../components/Button";
 import { TextArea, TextInput } from "../../../../components/Field";
 import type { QuestionCheckTaskDetail } from "../../types";
@@ -126,25 +127,26 @@ export function QuestionCheckPresentation({
 
   return (
     <div className="stack gold-lab-game" data-testid="question-check-presentation">
-      <header>
-        <h2>Question Check</h2>
+      <header className="gold-game-heading question-check-heading">
+        <span className="gold-game-heading-icon" aria-hidden="true">
+          <ClipboardCheck size={22} />
+        </span>
+        <div>
+          <p className="quick-play-eyebrow">QUESTION REVIEW</p>
+          <h2>Question Check</h2>
+        </div>
       </header>
 
-      <section aria-labelledby="gold-qc-proposal-heading">
+      <section
+        className="question-check-question"
+        aria-labelledby="gold-qc-proposal-heading"
+      >
         <h3 id="gold-qc-proposal-heading">Proposed question</h3>
-        <p>{presentation.proposed_query}</p>
-        {presentation.proposed_category ? (
-          <p className="muted">Category: {presentation.proposed_category}</p>
-        ) : (
-          <p className="muted">Category: none</p>
-        )}
-        {presentation.proposed_tags.length > 0 ? (
-          <p className="muted">
-            Tags: {presentation.proposed_tags.join(", ")}
-          </p>
-        ) : (
-          <p className="muted">Tags: none</p>
-        )}
+        <p className="question-check-question-text">{presentation.proposed_query}</p>
+        <div className="question-check-tags">
+          <span>{presentation.proposed_category ?? "Uncategorized"}</span>
+          {presentation.proposed_tags.map((tag) => <span key={tag}>{tag}</span>)}
+        </div>
       </section>
 
       {presentation.source ? (
@@ -164,11 +166,12 @@ export function QuestionCheckPresentation({
         </p>
       ) : null}
 
-      <div className="row" style={{ flexWrap: "wrap" }}>
+      <div className="row question-check-actions">
         <Button
           disabled={locked}
           onClick={() => onCommit({ decision: "accept" })}
         >
+          <Check size={17} aria-hidden="true" />
           Accept
         </Button>
         <Button
@@ -176,6 +179,7 @@ export function QuestionCheckPresentation({
           disabled={locked}
           onClick={() => seedEdit()}
         >
+          <Pencil size={16} aria-hidden="true" />
           Edit
         </Button>
         <Button
@@ -183,6 +187,7 @@ export function QuestionCheckPresentation({
           disabled={locked}
           onClick={() => onCommit({ decision: "reject" })}
         >
+          <X size={17} aria-hidden="true" />
           Reject
         </Button>
       </div>

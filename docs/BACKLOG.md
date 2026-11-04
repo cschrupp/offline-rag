@@ -24,7 +24,8 @@ S16K-R03 — CLOSED / NOT_REPRODUCED; historical root cause not established
 16K-F    — COMPLETE / HUMAN ACCEPTED — SCOPED BETA
 BETA-GAME-01 — COMPLETE / HUMAN ACCEPTED / PROMOTED
 BETA-GOLD-POOL-01 — COMPLETE / INDEPENDENTLY ACCEPTED / PROMOTED
-BETA-GAME-02 — ACTIVE / BOUNDED IMPLEMENTATION AUTHORIZED
+BETA-GAME-02 — COMPLETE / HUMAN ACCEPTED / PROMOTED
+BETA-GAME-02B — ACTIVE / BOUNDED FRONTEND IMPLEMENTATION AUTHORIZED
 ```
 
 16K-F functional acceptance is complete. Performance on the available
@@ -49,7 +50,9 @@ and its linked sanitized `RUN_002_EVIDENCE_INDEX.md`.
     -> BETA-SETTINGS-02 user-editable Gold Lab Authoring configuration COMPLETE /
        ACCEPTED / PROMOTED at 6ff215702056b5708547cdc3a275aad08b0d75dc
     -> BETA-GAME-01 Quick Play and BETA-GOLD-POOL-01 complete / promoted
-    -> BETA-GAME-02 contextual guidance and accessible game experience
+    -> BETA-GAME-02 contextual guidance and accessible game experience COMPLETE /
+       HUMAN ACCEPTED / PROMOTED at 5518e37a190b573a4658c2374acea88b525bebe9
+    -> BETA-GAME-02B game identity, visual polish and contribution rail
        (authorized / implementation active)
     -> Slice 17 design-open authority remains NOT AUTHORIZED
 ```
@@ -107,6 +110,23 @@ contracts. No new games, scientific changes, or Slice 17 work are authorized.
 See [`docs/beta_game_02_experience.md`](beta_game_02_experience.md) and the
 user-reported beta QA record at
 [`BETA_QA_LIVE_2026-11-04.md`](evidence/beta_game_02/BETA_QA_LIVE_2026-11-04.md).
+
+### BETA-GAME-02B — Game identity, visual polish, and contribution rail
+
+**Priority:** P1 beta UX improvement
+**Status:** BOUNDED IMPLEMENTATION AUTHORIZED / ACTIVE
+**Branch:** `implementation/beta-game-02b-visual-polish`
+**Base:** canonical `main` at `5518e37a190b573a4658c2374acea88b525bebe9`
+
+Improve Quick Play with distinctive Question Check and Rapid Fire activity
+cards, an independently collapsible contribution rail, and the accepted
+contextual guide rail. Reuse the existing `gold-contribution-v1` API as the
+only score authority. Refine the two game presentations and source-reading
+ergonomics without changing game semantics, Gold scoring, judgment mutations,
+or production eligibility. No new games, backend changes, or Slice 17 work.
+The scoped handoff is preserved in the implementation memory and result record
+under `docs/beta_game_02b_visual_polish.md` and
+`docs/evidence/beta_game_02b/IMPLEMENTATION_RESULT.md`.
 
 ## 2. Historical queue snapshot
 
