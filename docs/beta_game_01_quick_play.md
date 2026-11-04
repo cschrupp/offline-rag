@@ -1,7 +1,8 @@
 # BETA-GAME-01 — Quick Play implementation memory
 
-**State:** IR-002 accepted for `d7ea776`; snapshot-count cache corrective
-pending independent review. Human acceptance is pending.
+**State:** COMPLETE / HUMAN ACCEPTED / PROMOTED. The accepted Quick Play
+implementation is present on canonical `main`; BETA-GAME-02 adds presentation
+and contextual guidance without reopening its lifecycle behavior.
 
 **Branch:** `implementation/beta-game-01-quick-play`
 

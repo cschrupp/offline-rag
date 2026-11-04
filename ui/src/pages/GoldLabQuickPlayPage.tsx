@@ -11,6 +11,8 @@ import {
   prepareQuickPlay,
   type QuickPlayState,
 } from "../features/goldLab/api/quickPlay";
+import type { GoldLabGuideKey } from "../features/goldLab/guide/GoldLabGuideContext";
+import { useGoldLabGuide } from "../features/goldLab/guide/GoldLabGuideContext";
 import { goldLabQueryKeys } from "../features/goldLab/queryKeys";
 import {
   forgetActiveOperation,
@@ -58,6 +60,7 @@ function actionLabel(status: QuickPlayState["status"]): string {
 export function GoldLabQuickPlayPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
+  const { setGuideKey } = useGoldLabGuide();
   const autoContinueProject = useRef<string | null>(null);
   const workspaceId = searchParams.get("workspace") ?? "";
 
@@ -125,6 +128,40 @@ export function GoldLabQuickPlayPage() {
       autoContinueProject.current = null;
     },
   });
+
+  useEffect(() => {
+    let nextGuide: GoldLabGuideKey = "quick_play_ready";
+    if (stateQuery.isError || prepareMutation.isError) {
+      nextGuide = "quick_play_error";
+    } else if (stateQuery.isLoading && workspaceId) {
+      nextGuide = "quick_play_loading";
+    } else if (prepareMutation.isPending || state?.status === "generating") {
+      nextGuide = "quick_play_generating";
+    } else if (
+      state?.status === "not_ready" ||
+      state?.status === "empty_population"
+    ) {
+      nextGuide = "quick_play_empty";
+    } else if (
+      state?.status === "blocked" ||
+      state?.status === "generation_failed"
+    ) {
+      nextGuide = "quick_play_error";
+    } else if (state?.status === "playable") {
+      nextGuide = "quick_play_playable";
+    } else if (state?.status === "complete") {
+      nextGuide = "quick_play_complete";
+    }
+    setGuideKey(nextGuide);
+  }, [
+    prepareMutation.isError,
+    prepareMutation.isPending,
+    setGuideKey,
+    state?.status,
+    stateQuery.isLoading,
+    stateQuery.isError,
+    workspaceId,
+  ]);
   const prepareDeck = prepareMutation.mutate;
 
   useEffect(() => {

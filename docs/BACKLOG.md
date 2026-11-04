@@ -22,8 +22,9 @@ S16K-R02 — CLOSED / 16K-C HUMAN ACCEPTED
 S16K-R03 — CLOSED / NOT_REPRODUCED; historical root cause not established
 16K-E    — CLOSED / HUMAN ACCEPTED
 16K-F    — COMPLETE / HUMAN ACCEPTED — SCOPED BETA
-BETA-GAME-01 — ACTIVE / IMPLEMENTATION AUTHORIZED
-BETA-GOLD-POOL-01 — ACTIVE / BOUNDED IMPLEMENTATION AUTHORIZED
+BETA-GAME-01 — COMPLETE / HUMAN ACCEPTED / PROMOTED
+BETA-GOLD-POOL-01 — COMPLETE / INDEPENDENTLY ACCEPTED / PROMOTED
+BETA-GAME-02 — ACTIVE / BOUNDED IMPLEMENTATION AUTHORIZED
 ```
 
 16K-F functional acceptance is complete. Performance on the available
@@ -47,8 +48,8 @@ and its linked sanitized `RUN_002_EVIDENCE_INDEX.md`.
     -> BETA-SETTINGS-01 user-editable generation configuration
     -> BETA-SETTINGS-02 user-editable Gold Lab Authoring configuration COMPLETE /
        ACCEPTED / PROMOTED at 6ff215702056b5708547cdc3a275aad08b0d75dc
-    -> BETA-GAME-01 Quick Play implementation (authorized / active)
-    -> BETA-GOLD-POOL-01 qualified query-prompt support for Gold pooling
+    -> BETA-GAME-01 Quick Play and BETA-GOLD-POOL-01 complete / promoted
+    -> BETA-GAME-02 contextual guidance and accessible game experience
        (authorized / implementation active)
     -> Slice 17 design-open authority remains NOT AUTHORIZED
 ```
@@ -60,7 +61,7 @@ lineage is now promoted; this handoff does not authorize Slice 17.
 ### BETA-GAME-01 — Quick Play and reusable activity decks
 
 **Priority:** P1 before beta acceptance\
-**Status:** IMPLEMENTATION AUTHORIZED / ACTIVE\
+**Status:** COMPLETE / HUMAN ACCEPTED / PROMOTED\
 **Branch:** `implementation/beta-game-01-quick-play`
 
 Provide a workspace-centered expert workflow over existing Gold Lab projects,
@@ -76,7 +77,7 @@ NOT AUTHORIZED.
 ### BETA-GOLD-POOL-01 — Qualified query-prompt support for Gold pooling
 
 **Priority:** P0 beta blocker
-**Status:** BOUNDED IMPLEMENTATION AUTHORIZED / ACTIVE
+**Status:** COMPLETE / INDEPENDENTLY ACCEPTED / PROMOTED
 **Branch:** `implementation/beta-gold-pool-01-query-prompt`
 
 Restore the existing Gold six-arm `dense-model-query-prompt-v1` path on the
@@ -87,7 +88,25 @@ query-contract amendment, production-adapter/factory/local-pooling regressions,
 and privacy-safe failure diagnostics. The consumed failed Quick Play operation
 is historical evidence and is not retried by this work.
 
-This authority does not permit campaign reruns, promotion, or Slice 17 work.
+The implementation was accepted at `4ea5c92a9082621f167e8fcd2a64d085534633f9`
+and promoted by fast-forward. Physical CUDA execution remains unverified; no
+live Quick Play retry or Slice 17 work is implied.
+
+### BETA-GAME-02 — Game experience and contextual help
+
+**Priority:** P1 before beta acceptance\
+**Status:** BOUNDED IMPLEMENTATION AUTHORIZED / ACTIVE\
+**Branch:** `implementation/beta-game-02-experience`
+
+Provide a context-sensitive How to play guide on every Gold Lab screen,
+including Quick Play, production Question Check and Rapid Fire, completion
+states, and Advanced Gold Lab. Keep instructions concise, responsive, keyboard
+accessible, neutral about correctness, and free of withheld Gold metadata.
+Preserve all existing game, mutation, persistence, and production-eligibility
+contracts. No new games, scientific changes, or Slice 17 work are authorized.
+See [`docs/beta_game_02_experience.md`](beta_game_02_experience.md) and the
+user-reported beta QA record at
+[`BETA_QA_LIVE_2026-11-04.md`](evidence/beta_game_02/BETA_QA_LIVE_2026-11-04.md).
 
 ## 2. Historical queue snapshot
 

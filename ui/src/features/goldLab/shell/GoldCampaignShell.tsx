@@ -27,7 +27,6 @@ import {
 import type { GoldCampaign } from "../types";
 import { GoldCampaignAdvanced } from "./GoldCampaignAdvanced";
 import { GoldContinueAction } from "./GoldContinueAction";
-import { GoldGuide } from "./GoldGuide";
 import { GoldWorkCard } from "./GoldWorkCard";
 import { GoldWorkflowProgress } from "./GoldWorkflowProgress";
 import {
@@ -273,8 +272,6 @@ export function GoldCampaignShell({ campaign }: Props) {
 
       {tasksQuery.isSuccess ? (
         <>
-          {!closed ? <GoldGuide state={expertState} /> : null}
-
           <GoldWorkflowProgress state={expertState} />
 
           <GoldContinueAction

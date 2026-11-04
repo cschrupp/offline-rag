@@ -35,6 +35,8 @@ import {
   type I2ExpertGame,
 } from "../policy/presentations";
 import { goldLabQueryKeys } from "../queryKeys";
+import { useGoldLabGuide } from "../guide/GoldLabGuideContext";
+import type { GoldLabGuideKey } from "../guide/GoldLabGuideContext";
 import {
   applySessionConfig,
   parseSessionConfig,
@@ -96,6 +98,7 @@ export function GoldWorkSession({
   campaignClosed,
 }: Props) {
   const queryClient = useQueryClient();
+  const { setGuideKey } = useGoldLabGuide();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const session = parseSessionConfig(searchParams);
@@ -390,6 +393,59 @@ export function GoldWorkSession({
   const boundedWorkload = session.workload !== "until_stop";
   const sessionTitle =
     game === "question_check" ? "Question Check" : "Rapid Fire";
+
+  useEffect(() => {
+    let guideKey: GoldLabGuideKey =
+      game === "question_check"
+        ? "question_check_active"
+        : "rapid_fire_active";
+    if (afterAction) {
+      guideKey =
+        game === "question_check"
+          ? "question_check_saved"
+          : "rapid_fire_saved";
+    } else if (mutation.isPending) {
+      guideKey =
+        game === "question_check"
+          ? "question_check_saving"
+          : "rapid_fire_saving";
+    } else if (
+      ambiguous ||
+      mutationBlocked ||
+      errorMessage ||
+      tasksQuery.isError ||
+      taskQuery.isError
+    ) {
+      guideKey = "session_error";
+    } else if (campaignClosed) {
+      guideKey = "session_closed";
+    } else if (
+      tasksQuery.isLoading ||
+      (tasksQuery.isSuccess && !windowState) ||
+      taskQuery.isLoading
+    ) {
+      guideKey = "session_preparing";
+    } else if (!currentWorkTaskId) {
+      guideKey = "session_complete";
+    }
+    setGuideKey(guideKey);
+  }, [
+    afterAction,
+    ambiguous,
+    campaignClosed,
+    currentWorkTaskId,
+    errorMessage,
+    game,
+    mutationBlocked,
+    mutation.isPending,
+    setGuideKey,
+    taskQuery.isError,
+    taskQuery.isLoading,
+    tasksQuery.isError,
+    tasksQuery.isLoading,
+    tasksQuery.isSuccess,
+    windowState,
+  ]);
 
   function leaveToCampaign() {
     void navigate(returnHref);

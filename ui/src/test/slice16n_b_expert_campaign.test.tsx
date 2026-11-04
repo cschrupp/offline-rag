@@ -6,9 +6,6 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { APPROVED_PRESENTATIONS_V1 } from "../features/goldLab/policy/approvedPresentations.v1";
 import { deriveExpertCampaignState } from "../features/goldLab/shell/deriveExpertCampaignState";
-import {
-  GOLD_GUIDE_DISMISSED_KEY,
-} from "../features/goldLab/shell/goldGuideStorage";
 import { goldCampaign, goldTask } from "./goldLabFixtures";
 import { errorResponse, installFetchMock, jsonResponse } from "./mockApi";
 import { renderApp } from "./render";
@@ -404,30 +401,20 @@ describe("16N-B expert-first campaign", () => {
     mock.restore();
   });
 
-  it("B-GUIDE-01/02/03: Guide opens first visit; dismiss uses sessionStorage only", async () => {
+  it("B-GUIDE-01/02/03: campaign help is contextual and available by disclosure", async () => {
     const user = userEvent.setup();
     const mock = installCampaignTasks([]);
-    expect(sessionStorage.getItem(GOLD_GUIDE_DISMISSED_KEY)).toBeNull();
-    expect(localStorage.getItem(GOLD_GUIDE_DISMISSED_KEY)).toBeNull();
-
     renderApp("/gold-lab/campaigns/camp_1");
-    expect(await screen.findByTestId("gold-guide")).toBeInTheDocument();
-    await user.click(
-      screen.getByRole("button", {
-        name: /Dismiss Gold Guide for this browser session/i,
-      }),
-    );
-    expect(screen.queryByTestId("gold-guide")).not.toBeInTheDocument();
-    expect(sessionStorage.getItem(GOLD_GUIDE_DISMISSED_KEY)).toBe("1");
-    expect(localStorage.getItem(GOLD_GUIDE_DISMISSED_KEY)).toBeNull();
-
-    cleanup();
-    renderApp("/gold-lab/campaigns/camp_1");
-    await screen.findByTestId("gold-workflow-progress");
-    expect(screen.queryByTestId("gold-guide")).not.toBeInTheDocument();
+    expect(await screen.findByTestId("gold-workflow-progress")).toBeInTheDocument();
+    const guide = screen.getByRole("complementary", { name: "How to play" });
     expect(
-      screen.getByRole("button", { name: /Show Gold Guide/i }),
+      within(guide).getByText(/campaign groups expert review work/i),
     ).toBeInTheDocument();
+
+    const disclosure = screen.getByText("How to play / What do I do here?");
+    expect(disclosure.closest("details")).not.toHaveAttribute("open");
+    await user.click(disclosure);
+    expect(disclosure.closest("details")).toHaveAttribute("open");
     mock.restore();
   });
 

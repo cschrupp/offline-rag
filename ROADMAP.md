@@ -39,14 +39,15 @@ and supporting history.
   accepted and promoted by pure fast-forward at `3841e70…`.
 - [x] **BETA-SETTINGS-02** user-editable Gold Lab Authoring configuration —
   independently accepted and present on canonical `main` at `6ff2157…`.
-- [ ] **BETA-GAME-01 — Quick Play and reusable activity decks** — AUTHORIZED /
-  ACTIVE on `implementation/beta-game-01-quick-play`; implementation candidate
-  pending independent review. Production play remains limited to Question Check
-  and Rapid Fire.
-- [ ] **BETA-GOLD-POOL-01 — Qualified query-prompt support for Gold pooling** —
-  bounded implementation authorized and active on
-  `implementation/beta-gold-pool-01-query-prompt`; no live Quick Play retry or
-  promotion is authorized by this work.
+- [x] **BETA-GAME-01 — Quick Play and reusable activity decks** — accepted and
+  promoted to canonical `main` at `2bca470bdcec35c6733fe54150f11363ba888bcf`.
+  Production play remains limited to Question Check and Rapid Fire.
+- [x] **BETA-GOLD-POOL-01 — Qualified query-prompt support for Gold pooling** —
+  independently accepted and promoted to canonical `main` at
+  `4ea5c92a9082621f167e8fcd2a64d085534633f9`.
+- [ ] **BETA-GAME-02 — Game experience, contextual help, and accessible gameplay** —
+  authorized / active on `implementation/beta-game-02-experience`. The contextual
+  How to play guide is a core requirement. No new games or scientific changes.
 - [ ] Slice 17 design-open — **NOT AUTHORIZED**. This is distinct from
   original Slice 16G, which is complete.
 - [ ] End-to-end beta QA.

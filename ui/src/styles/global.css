@@ -1931,6 +1931,129 @@ button.snapshot-badge {
   max-width: min(56rem, 100%);
 }
 
+.gold-lab-guide-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 56rem) minmax(16.25rem, 19rem);
+  align-items: start;
+  gap: var(--space-5);
+  width: 100%;
+  max-width: 78rem;
+  margin-inline: auto;
+}
+
+.gold-lab-guide-main {
+  min-width: 0;
+  grid-column: 1;
+}
+
+.gold-lab-guide-desktop {
+  position: sticky;
+  top: var(--space-4);
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+  color: var(--text);
+}
+
+.gold-lab-guide-desktop h2 {
+  margin: 0 0 var(--space-3);
+  font-size: 1.1rem;
+}
+
+.gold-lab-guide-content h3 {
+  margin: var(--space-3) 0 var(--space-1);
+  font-size: 0.9rem;
+}
+
+.gold-lab-guide-content h3:first-child {
+  margin-top: 0;
+}
+
+.gold-lab-guide-content p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.gold-lab-guide-content ol {
+  margin: 0;
+  padding-inline-start: 1.25rem;
+}
+
+.gold-lab-guide-content li + li {
+  margin-top: var(--space-2);
+}
+
+.gold-lab-guide-tip {
+  margin-top: var(--space-3) !important;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+  color: var(--slate);
+}
+
+.gold-lab-guide-mobile {
+  display: none;
+}
+
+.gold-lab-guide-mobile summary {
+  min-height: var(--target);
+  display: flex;
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--navy);
+  background: var(--color-panel);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.gold-lab-guide-mobile summary:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.gold-lab-guide-mobile[open] > section {
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+}
+
+@media (max-width: 72rem) {
+  .gold-lab-guide-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(15rem, 18rem);
+    gap: var(--space-4);
+  }
+}
+
+@media (max-width: 64rem) {
+  .gold-lab-guide-layout {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .gold-lab-guide-mobile {
+    display: block;
+    width: 100%;
+    order: 0;
+  }
+
+  .gold-lab-guide-main {
+    width: 100%;
+    order: 1;
+  }
+
+  .gold-lab-guide-desktop {
+    display: none;
+  }
+}
+
 .gold-lab-list {
   list-style: none;
   margin: 0;
@@ -2175,15 +2298,6 @@ button.snapshot-badge {
 
 .gold-lab-work-card h3 {
   margin-bottom: 0.25rem;
-}
-
-.gold-lab-guide-steps {
-  margin: 0.5rem 0;
-  padding-left: 1.2rem;
-}
-
-.gold-lab-guide-steps li[aria-current="step"] {
-  font-weight: 600;
 }
 
 .gold-lab-workflow-ladder {

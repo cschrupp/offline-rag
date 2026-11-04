@@ -1,11 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Operation, Workspace } from "../api/types";
 import { GoldLabQuickPlayPage } from "../pages/GoldLabQuickPlayPage";
 import type { QuickPlayState } from "../features/goldLab/api/quickPlay";
+import { GoldLabGuideRoute } from "../features/goldLab/guide/GoldLabGuide";
 
 const workspace: Workspace = {
   workspace_id: "ws_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -96,7 +97,9 @@ function renderPage(initialState: QuickPlayState, withWorkspaceParam = true) {
         ]}
       >
         <Routes>
-          <Route path="/gold-lab" element={<GoldLabQuickPlayPage />} />
+          <Route element={<GoldLabGuideRoute />}>
+            <Route path="/gold-lab" element={<GoldLabQuickPlayPage />} />
+          </Route>
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -121,9 +124,19 @@ describe("BETA-GAME-01 Quick Play", () => {
     expect(
       await screen.findByRole("heading", { name: "Create an activity deck" }),
     ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("complementary", { name: "How to play" })).getByText(
+        /Create a small activity deck/,
+      ),
+    ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Generate deck" }));
 
     expect(await screen.findByRole("heading", { name: "Generating your activity deck" })).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("complementary", { name: "How to play" })).getByText(
+        /proposing questions and gathering candidate passages/,
+      ),
+    ).toBeInTheDocument();
     expect(requests.some((request) => request.init?.method === "POST")).toBe(true);
     expect((await screen.findAllByText(/proposing/i)).length).toBeGreaterThan(0);
   });
@@ -159,6 +172,11 @@ describe("BETA-GAME-01 Quick Play", () => {
 
     expect(
       await screen.findByRole("link", { name: "Resume Play · Rapid Fire" }),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("complementary", { name: "How to play" })).getByText(
+        /Choose an available activity/,
+      ),
     ).toBeInTheDocument();
   });
 

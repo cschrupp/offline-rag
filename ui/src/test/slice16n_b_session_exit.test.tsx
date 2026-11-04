@@ -1,4 +1,4 @@
-import { cleanup, screen, waitFor } from "@testing-library/react";
+import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GoldWorkSession } from "../features/goldLab/work/GoldWorkSession";
@@ -157,8 +157,14 @@ describe("16N-B session exit and completion", () => {
       "/gold-lab/campaigns/camp_1/work?game=question_check&workload=until_stop&task=q1",
     );
     expect(await screen.findByTestId("end-session")).toBeInTheDocument();
+    await screen.findByTestId("question-check-presentation");
     expect(
       screen.getByRole("button", { name: /End Question Check session/i }),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("complementary", { name: "How to play" })).getByText(
+        /You are evaluating the question, not answering it/,
+      ),
     ).toBeInTheDocument();
     mock.restore();
   });
@@ -180,8 +186,14 @@ describe("16N-B session exit and completion", () => {
       "/gold-lab/campaigns/camp_1/work?game=rapid_fire&workload=until_stop&task=t1",
     );
     expect(await screen.findByTestId("end-session")).toBeInTheDocument();
+    await screen.findByTestId("rapid-fire-presentation");
     expect(
       screen.getByRole("button", { name: /End Rapid Fire session/i }),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("complementary", { name: "How to play" })).getByText(
+        /Judge how strongly this passage supports the question/,
+      ),
     ).toBeInTheDocument();
     mock.restore();
   });
@@ -589,9 +601,19 @@ describe("16N-B session exit and completion", () => {
     await screen.findByTestId("rapid-fire-presentation");
     await user.click(screen.getByRole("button", { name: /0 — Irrelevant/i }));
     expect(await screen.findByText(/Judgment recorded/i)).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("complementary", { name: "How to play" })).getByText(
+        /Your relevance judgment was recorded/,
+      ),
+    ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^Next task$/i }));
     expect(await screen.findByTestId("expert-session-complete")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Session complete" })).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("complementary", { name: "How to play" })).getByText(
+        /There are no more eligible tasks in this work session/,
+      ),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(/campaign may still have more Gold work/i),
     ).toBeInTheDocument();

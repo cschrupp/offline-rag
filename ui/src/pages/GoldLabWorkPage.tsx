@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Button } from "../components/Button";
@@ -16,8 +17,10 @@ import { parseSessionConfig } from "../features/goldLab/state/sessionConfig";
 import { ChunkDuelWorkSession } from "../features/goldLab/work/ChunkDuelWorkSession";
 import { EvidenceSweepWorkSession } from "../features/goldLab/work/EvidenceSweepWorkSession";
 import { GoldWorkSession } from "../features/goldLab/work/GoldWorkSession";
+import { useGoldLabGuide } from "../features/goldLab/guide/GoldLabGuideContext";
 
 export function GoldLabWorkPage() {
+  const { setGuideKey } = useGoldLabGuide();
   const { campaignId = "" } = useParams();
   const [searchParams] = useSearchParams();
   const session = parseSessionConfig(searchParams);
@@ -37,6 +40,21 @@ export function GoldLabWorkPage() {
     queryFn: ({ signal }) => getGoldCampaign(campaignId, signal),
     enabled: Boolean(campaignId),
   });
+
+  useEffect(() => {
+    if (!campaignId || campaignQuery.isError) {
+      setGuideKey("session_error");
+      return;
+    }
+    if (!isExpertWorkGame(session.game)) {
+      setGuideKey("unavailable_game");
+      return;
+    }
+    const candidate = candidatePresentationForGame(session.game);
+    if (!isAllowProduction(candidate.gameId, candidate.presentationId)) {
+      setGuideKey("unavailable_game");
+    }
+  }, [campaignId, campaignQuery.isError, session.game, setGuideKey]);
 
   if (!campaignId) {
     return (
