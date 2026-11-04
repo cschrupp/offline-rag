@@ -16,6 +16,17 @@ Contribution data is keyed to the selected campaign, cleared immediately when
 the workspace selection changes, and invalidated after a successful judgment.
 No continuous score polling was added.
 
+## Independent review corrections
+
+- Mobile contribution content explicitly retains `display: none` when its
+  `hidden` attribute is present, even under the mobile layout's display rule.
+- The intermediate-width layout now maps all four contribution/guide rail
+  expanded/collapsed combinations to two grid tracks. Only a collapsed
+  contribution rail uses the narrow left track at that width.
+- Regression coverage verifies hidden-panel visibility under a competing
+  mobile display rule and checks the wide/intermediate track rules for all
+  four rail combinations.
+
 ## Changed paths
 
 - `ROADMAP.md`
@@ -37,7 +48,7 @@ No continuous score polling was added.
 
 - Focused Quick Play, contextual guide, contribution, Question Check,
   Rapid Fire, presentation review, expert campaign, and session-exit tests:
-  **81 passed across 9 files**.
+  **83 passed across 9 files**.
 - Targeted ESLint over changed TSX and tests: **PASS**.
 - Vite production bundle (`npx vite build`): **PASS**. Vite emitted its
   existing large-chunk advisory (>500 kB).

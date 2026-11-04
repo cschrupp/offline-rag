@@ -2156,6 +2156,14 @@ button.snapshot-badge {
     grid-template-columns: var(--rail-collapsed-width) minmax(0, 1fr);
   }
 
+  .gold-lab-guide-layout-quick-play.guide-rail-collapsed {
+    grid-template-columns: minmax(10rem, 13rem) minmax(0, 1fr);
+  }
+
+  .gold-lab-guide-layout-quick-play.contribution-rail-collapsed.guide-rail-collapsed {
+    grid-template-columns: var(--rail-collapsed-width) minmax(0, 1fr);
+  }
+
   .gold-lab-guide-layout-quick-play .gold-lab-guide-desktop {
     display: none;
   }
@@ -2213,6 +2221,10 @@ button.snapshot-badge {
 
   .gold-lab-guide-layout-quick-play .gold-lab-guide-mobile-content {
     display: block;
+  }
+
+  .gold-lab-guide-layout-quick-play .gold-lab-guide-mobile-content[hidden] {
+    display: none;
   }
 
   .gold-lab-guide-layout-quick-play .gold-lab-rail-mobile-toggle {

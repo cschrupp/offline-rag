@@ -7,6 +7,7 @@ import type { Workspace } from "../api/types";
 import type { QuickPlayState } from "../features/goldLab/api/quickPlay";
 import { GoldLabGuideRoute } from "../features/goldLab/guide/GoldLabGuide";
 import { GoldLabQuickPlayPage } from "../pages/GoldLabQuickPlayPage";
+import "../styles/global.css";
 
 const workspaceA: Workspace = {
   workspace_id: "ws_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -135,6 +136,32 @@ function contributionRail() {
   return within(screen.getByRole("complementary", { name: "Contribution" }));
 }
 
+function quickPlayGridRules(mediaCondition: string | null) {
+  const rules: Array<{ selector: string; columns: string }> = [];
+
+  function visit(ruleList: CSSRuleList, currentMedia: string | null = null) {
+    for (const rule of Array.from(ruleList)) {
+      if (rule instanceof CSSMediaRule) {
+        visit(rule.cssRules, rule.conditionText);
+      } else if (
+        rule instanceof CSSStyleRule &&
+        currentMedia === mediaCondition &&
+        rule.style.gridTemplateColumns
+      ) {
+        rules.push({
+          selector: rule.selectorText,
+          columns: rule.style.gridTemplateColumns,
+        });
+      }
+    }
+  }
+
+  for (const sheet of Array.from(document.styleSheets)) {
+    visit(sheet.cssRules);
+  }
+  return rules;
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
   localStorage.clear();
@@ -240,6 +267,15 @@ describe("BETA-GAME-02B Quick Play presentation", () => {
     const user = userEvent.setup();
     renderQuickPlay();
 
+    const mobileLayoutRules = document.createElement("style");
+    mobileLayoutRules.textContent = `
+      .gold-lab-guide-layout-quick-play .gold-lab-rail-mobile-toggle,
+      .gold-lab-guide-layout-quick-play .gold-lab-guide-mobile {
+        display: block;
+      }
+    `;
+    document.head.append(mobileLayoutRules);
+
     const contributionDisclosure = screen.getByRole("button", {
       name: "Your contribution",
     });
@@ -257,6 +293,53 @@ describe("BETA-GAME-02B Quick Play presentation", () => {
     expect(
       localStorage.getItem("offline-rag.gold-lab.mobile-guide-expanded.v1"),
     ).toBe("true");
+    mobileLayoutRules.remove();
+  });
+
+  it("keeps a collapsed mobile contribution panel visually hidden", async () => {
+    renderQuickPlay();
+    await screen.findByRole("article", { name: /Question Check/ });
+
+    const hiddenContribution = document.querySelector<HTMLElement>(
+      ".gold-lab-guide-mobile-content[hidden]",
+    );
+    expect(hiddenContribution).not.toBeNull();
+
+    const competingMobileRule = document.createElement("style");
+    competingMobileRule.textContent =
+      ".gold-lab-guide-layout-quick-play .gold-lab-guide-mobile-content { display: block; }";
+    document.head.append(competingMobileRule);
+
+    expect(hiddenContribution).not.toBeVisible();
+    competingMobileRule.remove();
+  });
+
+  it("defines correct wide and intermediate grid tracks for all rail states", () => {
+    const wideRules = quickPlayGridRules(null);
+    const intermediateRules = quickPlayGridRules("(max-width: 82rem)");
+    const baseSelector = ".gold-lab-guide-layout-quick-play";
+    const contributionCollapsed = `${baseSelector}.contribution-rail-collapsed`;
+    const guideCollapsed = `${baseSelector}.guide-rail-collapsed`;
+    const bothCollapsed = `${contributionCollapsed}.guide-rail-collapsed`;
+    const expectedWide = new Map([
+      [baseSelector, "minmax(12rem, 15rem) minmax(0, 1fr) minmax(14rem, 17rem)"],
+      [contributionCollapsed, "var(--rail-collapsed-width) minmax(0, 1fr) minmax(14rem, 17rem)"],
+      [guideCollapsed, "minmax(12rem, 15rem) minmax(0, 1fr) var(--rail-collapsed-width)"],
+      [bothCollapsed, "var(--rail-collapsed-width) minmax(0, 1fr) var(--rail-collapsed-width)"],
+    ]);
+    const expectedIntermediate = new Map([
+      [baseSelector, "minmax(10rem, 13rem) minmax(0, 1fr)"],
+      [contributionCollapsed, "var(--rail-collapsed-width) minmax(0, 1fr)"],
+      [guideCollapsed, "minmax(10rem, 13rem) minmax(0, 1fr)"],
+      [bothCollapsed, "var(--rail-collapsed-width) minmax(0, 1fr)"],
+    ]);
+
+    for (const [selector, columns] of expectedWide) {
+      expect(wideRules).toContainEqual({ selector, columns });
+    }
+    for (const [selector, columns] of expectedIntermediate) {
+      expect(intermediateRules).toContainEqual({ selector, columns });
+    }
   });
 
   it("keeps the current deck contribution unavailable without a campaign", async () => {
