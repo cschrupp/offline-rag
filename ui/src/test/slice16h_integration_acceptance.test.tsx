@@ -144,7 +144,12 @@ describe("16H-A/K — cross-surface shell integration", () => {
     expect(await screen.findByRole("heading", { name: /Settings/i })).toBeInTheDocument();
 
     await user.click(within(nav).getByRole("link", { name: /^Gold Lab$/i }));
-    expect(await screen.findByRole("heading", { name: /Gold Lab/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Quick Play" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Advanced Gold Lab" }),
+    ).toBeInTheDocument();
     mock.restore();
   });
 

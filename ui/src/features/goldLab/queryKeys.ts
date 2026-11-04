@@ -13,6 +13,8 @@ function stableFilters(filters?: GoldTaskListFilters): string {
 export const goldLabQueryKeys = {
   all: ["gold-lab"] as const,
   projects: ["gold-lab", "projects"] as const,
+  quickPlay: (workspaceId: string) =>
+    ["gold-lab", "quick-play", workspaceId] as const,
   project: (projectId: string) => ["gold-lab", "project", projectId] as const,
   baselines: (projectId: string) =>
     ["gold-lab", "baselines", projectId] as const,

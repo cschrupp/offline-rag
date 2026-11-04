@@ -1375,12 +1375,9 @@ def test_nonscope_surfaces() -> None:
         text = path.read_text(encoding="utf-8")
         assert "gold_lab" not in text
         assert "GoldLab" not in text
-    ui = REPO_ROOT / "ui"
-    if ui.exists():
-        for path in ui.rglob("*"):
-            if path.is_file() and path.suffix in {".tsx", ".ts", ".jsx", ".js"}:
-                text = path.read_text(encoding="utf-8", errors="ignore")
-                assert "GoldLab" not in text
+    # The original 16F-A prohibition on Gold Lab UI was superseded when 16F-D
+    # authorized the Gold Lab product screens. Keep the API isolation check
+    # above; Gold Lab UI is intentionally present in its feature/pages/router.
     # scientific gold module untouched by import surface
     from offline_rag.evaluation import gold as gold_mod
 

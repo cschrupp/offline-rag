@@ -37,6 +37,12 @@ and supporting history.
   accepted; see [`16K_G_CLOSEOUT.md`](docs/evidence/16k_g_regression_handoff/16K_G_CLOSEOUT.md).
 - [x] **BETA-SETTINGS-01** user-editable generation configuration — Human
   accepted and promoted by pure fast-forward at `3841e70…`.
+- [x] **BETA-SETTINGS-02** user-editable Gold Lab Authoring configuration —
+  independently accepted and present on canonical `main` at `6ff2157…`.
+- [ ] **BETA-GAME-01 — Quick Play and reusable activity decks** — AUTHORIZED /
+  ACTIVE on `implementation/beta-game-01-quick-play`; implementation candidate
+  pending independent review. Production play remains limited to Question Check
+  and Rapid Fire.
 - [ ] Slice 17 design-open — **NOT AUTHORIZED**. This is distinct from
   original Slice 16G, which is complete.
 - [ ] End-to-end beta QA.

@@ -6,6 +6,7 @@ import { GoldLabCalibrationPage } from "../pages/GoldLabCalibrationPage";
 import { GoldLabCampaignPage } from "../pages/GoldLabCampaignPage";
 import { GoldLabContributionPage } from "../pages/GoldLabContributionPage";
 import { GoldLabPage } from "../pages/GoldLabPage";
+import { GoldLabQuickPlayPage } from "../pages/GoldLabQuickPlayPage";
 import { GoldLabPresentationReviewPage } from "../pages/GoldLabPresentationReviewPage";
 import { GoldLabProjectPage } from "../pages/GoldLabProjectPage";
 import { GoldLabTrainingPage } from "../pages/GoldLabTrainingPage";
@@ -26,7 +27,8 @@ export function AppRouter() {
         <Route index element={<RootEntryGate />} />
         <Route path="workspaces" element={<WorkspaceLibraryPage />} />
         <Route path="workspaces/:workspaceId" element={<WorkspacePage />} />
-        <Route path="gold-lab" element={<GoldLabPage />} />
+        <Route path="gold-lab" element={<GoldLabQuickPlayPage />} />
+        <Route path="gold-lab/advanced" element={<GoldLabPage />} />
         <Route
           path="gold-lab/projects/:projectId"
           element={<GoldLabProjectPage />}

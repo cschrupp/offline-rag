@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, Strict, field_validator
 from offline_rag.api.workspace_views import operation_view
 from offline_rag.app.errors import AppError, ErrorCode, SafeErrorDetails
 from offline_rag.app.gold_lab.application import GoldLabApplicationService
+from offline_rag.app.gold_lab.quick_play import QuickPlayAction, QuickPlayService
 from offline_rag.app.runtime import ApplicationRuntime
 
 router = APIRouter(prefix="/v1/gold-lab", tags=["gold-lab"])
@@ -51,6 +52,12 @@ class ProjectCreateRequest(BaseModel):
     title: str = Field(min_length=1)
     description: str = ""
     project_type: Literal["benchmark", "improvement"]
+
+
+class QuickPlayPrepareRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    action: Literal["start", "replenish"]
 
 
 class HardCallRequest(BaseModel):
@@ -133,6 +140,39 @@ class PreferenceRequest(BaseModel):
 @router.get("/projects")
 def list_projects(request: Request, workspace_id: str | None = None) -> dict[str, Any]:
     return _gold(request).list_projects(workspace_id=workspace_id)
+
+
+@router.get("/quick-play/workspaces/{workspace_id}")
+def quick_play_state(request: Request, workspace_id: str) -> dict[str, Any]:
+    """Read the current Quick Play deck state without mutating Gold Lab."""
+    runtime = _runtime(request)
+    runtime.require_ready()
+    return QuickPlayService(runtime).get_state(workspace_id)
+
+
+@router.post("/quick-play/workspaces/{workspace_id}/prepare", response_model=None)
+def prepare_quick_play(
+    request: Request,
+    workspace_id: str,
+    body: QuickPlayPrepareRequest,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+) -> dict[str, Any] | JSONResponse:
+    """Start or reconcile Quick Play using existing Gold Lab operations."""
+    key = _require_idempotency_key(idempotency_key)
+    runtime = _runtime(request)
+    runtime.require_ready()
+    action: QuickPlayAction = body.action
+    result = QuickPlayService(runtime).prepare(
+        workspace_id,
+        action=action,
+        idempotency_key=key,
+    )
+    operation = result.get("operation")
+    if result.get("status") == "generating" and operation:
+        response = JSONResponse(content=result, status_code=202)
+        response.headers["Location"] = f"/v1/operations/{operation['operation_id']}"
+        return response
+    return result
 
 
 @router.post("/projects", status_code=201)

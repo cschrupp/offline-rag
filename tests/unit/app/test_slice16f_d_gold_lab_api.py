@@ -80,6 +80,11 @@ EXPECTED_ROUTES = {
     ),
 }
 
+ADDITIVE_QUICK_PLAY_ROUTES = {
+    ("GET", "/v1/gold-lab/quick-play/workspaces/{workspace_id}"),
+    ("POST", "/v1/gold-lab/quick-play/workspaces/{workspace_id}/prepare"),
+}
+
 
 class _Closeable:
     def close(self) -> None:
@@ -244,7 +249,7 @@ def test_exact_route_surface() -> None:
             if method in {"HEAD", "OPTIONS"}:
                 continue
             found.add((method, path))
-    assert found == EXPECTED_ROUTES
+    assert found == EXPECTED_ROUTES | ADDITIVE_QUICK_PLAY_ROUTES
 
 
 def test_router_before_spa_and_runtime_lazy(tmp_path: Path) -> None:

@@ -361,6 +361,8 @@ cd ui && npm test && npm run lint && npm run typecheck && npm run build
 | Second main promotion (HA tip) | **COMPLETE / EXECUTED** (`S16-FINAL-CLOSEOUT-MAIN-PROMOTION-RECORD-HA-MAIN-PROMOTION-AUTH-001` — EXECUTED; pure FF `feab2b2…` → `e21b3e6…`; 0/0) |
 | 16K | **POST-CLOSEOUT PROGRAM ACTIVE / PARTIALLY EXECUTED** — 16K-A/B **COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED**; 16K-C **IMPLEMENTATION COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED** (`219c8551…`; S16-K-C-FIRST-USER-CAPACITY-MODEL-IMPLEMENTATION-HA-001); R01/R02 governance reconciliations **CLOSED**; 16K-D dual-backend **P1–P4 complete**; large-source **L1–L6 COMPLETE / HUMAN ACCEPTED / PROMOTED / CLOSED**; post-L6 CUDA and raw-byte implementations are canonical ancestors, with dedicated IR/Human acceptance and tranche-specific promotion not established in repository records; the parser corrective alone is **PROMOTED / CLOSED** at `7ca0c233…`. R02 records the historical 16K-D-before-C-HA sequencing gap without invalidating D evidence. **16K-E COMPLETE / HUMAN ACCEPTED; 16K-F COMPLETE / HUMAN ACCEPTED — SCOPED BETA** (see [run_002 evidence](docs/evidence/16k_f_execution/RUN_002_EVIDENCE_INDEX.md)); **16K-G regression/CI handoff COMPLETE / HUMAN ACCEPTED** (see [closeout](docs/evidence/16k_g_regression_handoff/16K_G_CLOSEOUT.md)). Active residual queue: [`docs/BACKLOG.md`](docs/BACKLOG.md). |
 | BETA-SETTINGS-01 | **COMPLETE / HUMAN ACCEPTED / PROMOTED** (`3841e70…`) |
+| BETA-SETTINGS-02 | **COMPLETE / INDEPENDENTLY ACCEPTED / PROMOTED** (`6ff2157…`) |
+| BETA-GAME-01 | **ACTIVE / IMPLEMENTATION AUTHORIZED** — Quick Play and reusable activity decks |
 | Slice 17 / 18 | **NOT AUTHORIZED** |
 | M7 closeout | **NOT AUTHORIZED** |
 
@@ -379,7 +381,9 @@ Detailed SHAs and evidence: [`ROADMAP.md`](ROADMAP.md),
 Gold Lab **backend/data-plane** APIs and **games / expert-entry UI** are
 **accepted** under 16G / 16N. Production presentation eligibility currently
 includes **Question Check** and **Rapid Fire** only; **Evidence Sweep** and
-**Chunk Duel** remain **NOT APPROVED**.
+**Chunk Duel** remain **NOT APPROVED**. BETA-GAME-01 is building a simpler
+workspace-first entry over that accepted system; its implementation is active
+on a separate branch and is not yet accepted or promoted.
 
 Still deferred / not authorized as product deliverables:
 

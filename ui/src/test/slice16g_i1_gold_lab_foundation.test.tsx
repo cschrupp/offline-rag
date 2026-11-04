@@ -277,7 +277,11 @@ describe("16G-I1 navigation and routing", () => {
 
     await user.click(within(nav).getByRole("link", { name: /^Gold Lab$/i }));
     expect(
-      await screen.findByRole("heading", { name: "Gold Lab" }),
+      await screen.findByRole("heading", { name: "Quick Play" }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("link", { name: "Advanced Gold Lab" }));
+    expect(
+      await screen.findByRole("heading", { name: "Advanced Gold Lab" }),
     ).toBeInTheDocument();
 
     const toggle = screen.getByRole("button", { name: "Menu" });
@@ -351,7 +355,7 @@ describe("16G-I1 project list and create", () => {
         }),
       ],
     });
-    renderApp("/gold-lab");
+    renderApp("/gold-lab/advanced");
     expect(await screen.findByText("Bench A")).toBeInTheDocument();
     expect(screen.getByText("Improve B")).toBeInTheDocument();
     expect(screen.getAllByText("Benchmark").length).toBeGreaterThan(0);
@@ -361,7 +365,7 @@ describe("16G-I1 project list and create", () => {
     cleanup();
 
     const empty = installGoldLabMocks({ projects: [] });
-    renderApp("/gold-lab");
+    renderApp("/gold-lab/advanced");
     expect(
       await screen.findByRole("heading", { name: "No Gold projects yet" }),
     ).toBeInTheDocument();
@@ -374,7 +378,7 @@ describe("16G-I1 project list and create", () => {
       workspaces: [usableWorkspace()],
       projects: [],
     });
-    renderApp("/gold-lab");
+    renderApp("/gold-lab/advanced");
     await screen.findByLabelText("Workspace");
     await user.selectOptions(screen.getByLabelText("Workspace"), "ws_1");
     await user.type(screen.getByLabelText("Title"), "New Gold");
@@ -416,7 +420,7 @@ describe("16G-I1 project list and create", () => {
       }
       return jsonResponse({ error: { code: "not_found", message: "x" } }, { status: 404 });
     });
-    renderApp("/gold-lab");
+    renderApp("/gold-lab/advanced");
     await user.selectOptions(await screen.findByLabelText("Workspace"), "ws_1");
     await user.type(screen.getByLabelText("Title"), "Broken");
     await user.click(screen.getByRole("button", { name: "Create project" }));
@@ -749,7 +753,7 @@ describe("16G-I1 campaign shell, close, session, scientific boundary", () => {
     const { mock } = installGoldLabMocks({
       workspaces: [usableWorkspace()],
     });
-    renderApp("/gold-lab");
+    renderApp("/gold-lab/advanced");
     expect(await screen.findByLabelText(/Benchmark/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Improvement/i)).toBeInTheDocument();
 

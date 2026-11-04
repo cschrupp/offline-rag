@@ -2,7 +2,7 @@
 
 **Status:** LIVE PLANNING / NON-AUTHORIZING\
 **Canonical reference:** `main` (see Git for current tip)\
-**Updated:** 2026-11-02
+**Updated:** 2026-11-04
 
 This document is the live queue for work that remains after the Human-accepted
 Slice 16 closeout and the post-L6 parser-stack corrective.
@@ -22,6 +22,7 @@ S16K-R02 — CLOSED / 16K-C HUMAN ACCEPTED
 S16K-R03 — CLOSED / NOT_REPRODUCED; historical root cause not established
 16K-E    — CLOSED / HUMAN ACCEPTED
 16K-F    — COMPLETE / HUMAN ACCEPTED — SCOPED BETA
+BETA-GAME-01 — ACTIVE / IMPLEMENTATION AUTHORIZED
 ```
 
 16K-F functional acceptance is complete. Performance on the available
@@ -43,12 +44,31 @@ and its linked sanitized `RUN_002_EVIDENCE_INDEX.md`.
     -> promoted by pure fast-forward to main at eb1b3ba0415e05bf91d5e9e6171e087eedd473a9
     -> 16K-G regression/CI handoff COMPLETE / HUMAN ACCEPTED
     -> BETA-SETTINGS-01 user-editable generation configuration
+    -> BETA-SETTINGS-02 user-editable Gold Lab Authoring configuration COMPLETE /
+       ACCEPTED / PROMOTED at 6ff215702056b5708547cdc3a275aad08b0d75dc
+    -> BETA-GAME-01 Quick Play implementation (authorized / active)
     -> Slice 17 design-open authority remains NOT AUTHORIZED
 ```
 
 Original Slice 16G is already accepted; 16K-G names the separate regression
 handoff and must not be confused with that completed slice. The 16K-F
 lineage is now promoted; this handoff does not authorize Slice 17.
+
+### BETA-GAME-01 — Quick Play and reusable activity decks
+
+**Priority:** P1 before beta acceptance\
+**Status:** IMPLEMENTATION AUTHORIZED / ACTIVE\
+**Branch:** `implementation/beta-game-01-quick-play`
+
+Provide a workspace-centered expert workflow over existing Gold Lab projects,
+baselines, campaigns, tasks, managed operations, and append-only judgments.
+Deck identity is bound to the published snapshot, corpus/chunk-set identities,
+and versioned generation/selection policies. Selection is improvement-oriented;
+Quick Play is not a representative benchmark. Production play is limited to
+Question Check and Rapid Fire. Keep administrative project/campaign management
+available under Advanced Gold Lab. Do not change Gold scientific semantics,
+publication authority, relevance scale, or ledger guarantees. Slice 17 remains
+NOT AUTHORIZED.
 
 ## 2. Historical queue snapshot
 
@@ -239,8 +259,8 @@ environment locks. User mode treats generation environment values as bootstrap
 configuration and lets persisted product Settings take precedence after save.
 The change is limited to generation configuration and preserves restart-before-
 activation, strict-offline endpoint validation, API-key safety, and existing
-operator deployments. Gold Lab gaming, conversational fluency, and Slice 17
-remain separate.
+operator deployments. BETA-GAME-01 is separately authorized; conversational
+fluency and Slice 17 remain separate.
 
 ## 3. Separate robustness / release backlog
 
