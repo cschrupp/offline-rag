@@ -128,6 +128,17 @@ describe("BETA-GAME-01 Quick Play", () => {
     expect((await screen.findAllByText(/proposing/i)).length).toBeGreaterThan(0);
   });
 
+  it("explains when the workspace has no suitable source chunks", async () => {
+    renderPage(state("empty_population", { reason: "no_eligible_source_chunks" }));
+
+    expect(
+      await screen.findByRole("heading", { name: "No suitable source text yet" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/needs published source chunks with readable text/i),
+    ).toBeInTheDocument();
+  });
+
   it("remembers the workspace so returning users can resume directly", async () => {
     localStorage.setItem(
       "offline-rag.quick-play.workspace.v1",
@@ -170,7 +181,7 @@ describe("BETA-GAME-01 Quick Play", () => {
     });
     expect(resume).toHaveAttribute(
       "href",
-      "/gold-lab/campaigns/goldcamp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/work?game=question_check",
+      "/gold-lab/campaigns/goldcamp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/work?game=question_check&return_to=quick_play&quick_play_workspace=ws_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     );
     expect(screen.getByRole("link", { name: /Rapid Fire · 3/ })).toBeInTheDocument();
     expect(requests.some((request) => request.init?.method === "POST")).toBe(false);

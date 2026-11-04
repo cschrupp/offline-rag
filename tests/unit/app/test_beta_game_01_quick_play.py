@@ -8,6 +8,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 _APP_TEST_DIR = Path(__file__).resolve().parent
 if str(_APP_TEST_DIR) not in sys.path:
     sys.path.insert(0, str(_APP_TEST_DIR))
@@ -142,8 +144,42 @@ def test_quick_play_concurrent_setup_reuses_one_improvement_campaign(
     )
     assert quick_play.get_state(workspace_id)["status"] == "complete"
 
-    # Replenishment uses an unused baseline and leaves the completed campaign
-    # and its judgments in place.
+    # Replenishment remains visible while a new baseline is being generated;
+    # the previously completed campaign and its judgments remain untouched.
+    old_campaign_id = state["campaign_id"]
+    pending_operation = SimpleNamespace(
+        operation_id="wop_quickplay_replenish",
+        kind=ManagedOperationKind.GOLD_LAB_BASELINE_BOOTSTRAP,
+        workspace_id=workspace_id,
+        bootstrap_authority=SimpleNamespace(
+            project_id=state["project_id"],
+            authoring_run_id="authorrun_16fd_replenished",
+        ),
+        status=ManagedOperationStatus.PENDING,
+        created_at=datetime.now(UTC),
+        progress_stage=None,
+        failure_summary=None,
+        result=None,
+    )
+    runtime_ops = quick_play.operations
+    operations: list[SimpleNamespace] = []
+    runtime_ops.list_for_workspace = lambda _workspace_id: operations
+    started: list[int] = []
+
+    def start_replenishment(**kwargs):
+        started.append(kwargs["proposal_count"])
+        operations.append(pending_operation)
+        return pending_operation
+
+    quick_play.gold.start_baseline_bootstrap = start_replenishment
+    replenished = quick_play.prepare(
+        workspace_id,
+        action="replenish",
+        idempotency_key="quick-play-replenish-1",
+    )
+    assert replenished["status"] == "generating"
+    assert quick_play.get_state(workspace_id)["status"] == "generating"
+
     _write_baseline(
         runtime.settings,
         _baseline(
@@ -154,7 +190,8 @@ def test_quick_play_concurrent_setup_reuses_one_improvement_campaign(
             authoring_run_id="authorrun_16fd_replenished",
         ),
     )
-    old_campaign_id = state["campaign_id"]
+    pending_operation.status = ManagedOperationStatus.SUCCEEDED
+    assert quick_play.get_state(workspace_id)["status"] == "campaign_ready"
     replenished = quick_play.prepare(
         workspace_id,
         action="replenish",
@@ -162,6 +199,7 @@ def test_quick_play_concurrent_setup_reuses_one_improvement_campaign(
     )
     assert replenished["status"] == "playable"
     assert replenished["campaign_id"] != old_campaign_id
+    assert started == [2]
     assert (
         GoldLabStore(runtime.settings).get_campaign(old_campaign_id).campaign_id
         == old_campaign_id
@@ -186,8 +224,9 @@ def test_quick_play_new_snapshot_identity_does_not_rebind_old_campaign(
         snapshot = original_resolve(corpus_name, snapshot_id)
         return SimpleNamespace(
             identity=SimpleNamespace(
-                corpus_id=snapshot.identity.corpus_id,
-                chunk_set_id="chunkset_changed_publication",
+                corpus_id="corpus_changed_publication",
+                chunk_set_id=chunk_set_id,
+                corpus_manifest=snapshot.identity.corpus_manifest,
             )
         )
 
@@ -199,6 +238,78 @@ def test_quick_play_new_snapshot_identity_does_not_rebind_old_campaign(
     old_campaign = GoldLabStore(runtime.settings).get_campaign(old_campaign_id)
     assert old_campaign.snapshot_id == workspace.current_snapshot_id
     assert old_campaign.chunk_set_id == chunk_set_id
+
+
+@pytest.mark.parametrize(
+    ("population_size", "expected_count"),
+    [(12, 12), (20, 20), (24, 20)],
+)
+def test_quick_play_generation_count_is_bounded_by_population(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    population_size: int,
+    expected_count: int,
+) -> None:
+    import offline_rag.app.gold_lab.quick_play as quick_play_module
+
+    runtime, workspace, _ = _runtime_fixture(tmp_path, with_baseline=False)
+    monkeypatch.setattr(
+        quick_play_module,
+        "load_chunk_set_snapshot",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            chunks=[object() for _ in range(population_size)]
+        ),
+    )
+    monkeypatch.setattr(
+        quick_play_module, "build_eligible_population", lambda chunks: chunks
+    )
+    service = QuickPlayService(runtime)
+    identity, blocked = service._identity(workspace.workspace_id)
+    assert identity is not None and blocked is None
+    assert identity.proposal_count == expected_count
+
+    requested_counts: list[int] = []
+    operation = SimpleNamespace(
+        operation_id="wop_quickplay_capacity",
+        status=ManagedOperationStatus.PENDING,
+        progress_stage=None,
+        failure_summary=None,
+        result=None,
+    )
+
+    def start_baseline_bootstrap(**kwargs):
+        requested_counts.append(kwargs["proposal_count"])
+        return operation
+
+    service.gold.start_baseline_bootstrap = start_baseline_bootstrap
+    state = service.prepare(
+        workspace.workspace_id,
+        action="start",
+        idempotency_key=f"quick-play-capacity-{population_size}",
+    )
+
+    assert state["status"] == "generating"
+    assert requested_counts == [expected_count]
+
+
+def test_quick_play_empty_eligible_population_has_clear_state(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import offline_rag.app.gold_lab.quick_play as quick_play_module
+
+    runtime, workspace, _ = _runtime_fixture(tmp_path, with_baseline=False)
+    monkeypatch.setattr(
+        quick_play_module,
+        "load_chunk_set_snapshot",
+        lambda *_args, **_kwargs: SimpleNamespace(chunks=[]),
+    )
+    service = QuickPlayService(runtime)
+
+    state = service.get_state(workspace.workspace_id)
+
+    assert state["status"] == "empty_population"
+    assert state["reason"] == "no_eligible_source_chunks"
+    assert state["project_id"] is None
 
 
 def test_quick_play_failed_generation_is_visible_and_retry_is_explicit(

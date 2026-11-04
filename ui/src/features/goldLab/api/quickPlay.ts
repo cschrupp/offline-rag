@@ -23,6 +23,7 @@ export type QuickPlayState = {
     | "campaign_ready"
     | "playable"
     | "complete"
+    | "empty_population"
     | "blocked";
   reason?: string;
   operation?: {

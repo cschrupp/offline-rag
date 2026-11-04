@@ -93,12 +93,15 @@ function installWorkReads(options: {
   game: "question_check" | "rapid_fire";
   tasks: ReturnType<typeof goldTask>[];
   details: Record<string, Record<string, unknown>>;
+  workspaces?: Array<Record<string, unknown>>;
   onPost?: (call: FetchCall) => Response | Promise<Response>;
 }) {
   const campaign = goldCampaign({ campaign_id: "camp_1" });
   return installFetchMock(async (call) => {
     if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
-    if (call.url === "/v1/workspaces") return jsonResponse([]);
+    if (call.url === "/v1/workspaces") {
+      return jsonResponse(options.workspaces ?? []);
+    }
     if (call.url === "/v1/gold-lab/campaigns/camp_1") {
       return jsonResponse(campaign);
     }
@@ -224,6 +227,45 @@ describe("16N-B session exit and completion", () => {
     await user.click(screen.getByTestId("end-session"));
     expect(await screen.findByRole("heading", { name: "Campaign" })).toBeInTheDocument();
     expect(posts).toBe(1);
+    mock.restore();
+  });
+
+  it("returns Quick Play sessions to their selected workspace", async () => {
+    const user = userEvent.setup();
+    const mock = installWorkReads({
+      game: "rapid_fire",
+      workspaces: [
+        {
+          workspace_id: "ws_123",
+          title: "Quick Play workspace",
+          description: "",
+          revision: 1,
+          status: "active",
+          current_snapshot_id: "snap_123",
+          source_count: 1,
+          created_at: "2026-01-01T00:00:00Z",
+          updated_at: "2026-01-01T00:00:00Z",
+        },
+      ],
+      tasks: [
+        goldTask({
+          task_id: "t1",
+          task_kind: "absolute_relevance",
+          active: true,
+          state: "pending",
+        }),
+      ],
+      details: { t1: absoluteDetail("t1") },
+    });
+    renderApp(
+      "/gold-lab/campaigns/camp_1/work?game=rapid_fire&workload=until_stop&task=t1&return_to=quick_play&quick_play_workspace=ws_123",
+    );
+    await screen.findByTestId("rapid-fire-presentation");
+
+    await user.click(screen.getByTestId("end-session"));
+
+    expect(await screen.findByRole("heading", { name: "Quick Play" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Workspace")).toHaveValue("ws_123");
     mock.restore();
   });
 

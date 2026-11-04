@@ -1,13 +1,15 @@
 import { Button } from "../../../components/Button";
 
 type Props = {
-  campaignId: string;
   boundedWorkload: boolean;
+  returnHref: string;
+  returnLabel: string;
 };
 
 export function ExpertSessionComplete({
-  campaignId,
   boundedWorkload,
+  returnHref,
+  returnLabel,
 }: Props) {
   return (
     <section className="card" data-testid="expert-session-complete">
@@ -17,9 +19,7 @@ export function ExpertSessionComplete({
           ? "This work session has no remaining tasks. The campaign may still have more Gold work."
           : "No more eligible tasks remain in this work session."}
       </p>
-      <Button to={`/gold-lab/campaigns/${campaignId}`}>
-        Return to campaign
-      </Button>
+      <Button to={returnHref}>{returnLabel}</Button>
     </section>
   );
 }

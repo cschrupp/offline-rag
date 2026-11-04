@@ -99,6 +99,16 @@ export function GoldWorkSession({
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const session = parseSessionConfig(searchParams);
+  const quickPlayWorkspaceId = searchParams.get("quick_play_workspace");
+  const returnToQuickPlay =
+    searchParams.get("return_to") === "quick_play" &&
+    Boolean(quickPlayWorkspaceId);
+  const returnHref = returnToQuickPlay
+    ? `/gold-lab?workspace=${encodeURIComponent(quickPlayWorkspaceId ?? "")}`
+    : `/gold-lab/campaigns/${campaignId}`;
+  const returnLabel = returnToQuickPlay
+    ? "Return to Quick Play"
+    : "Return to campaign";
   const presentation = candidatePresentationForGame(game);
   const expectedKind = taskKindForGame(game);
 
@@ -382,7 +392,7 @@ export function GoldWorkSession({
     game === "question_check" ? "Question Check" : "Rapid Fire";
 
   function leaveToCampaign() {
-    void navigate(`/gold-lab/campaigns/${campaignId}`);
+    void navigate(returnHref);
   }
 
   function onEndSession() {
@@ -445,8 +455,9 @@ export function GoldWorkSession({
   if (!currentWorkTaskId) {
     return (
       <ExpertSessionComplete
-        campaignId={campaignId}
         boundedWorkload={boundedWorkload}
+        returnHref={returnHref}
+        returnLabel={returnLabel}
       />
     );
   }
@@ -458,7 +469,7 @@ export function GoldWorkSession({
         <p className="muted" role="status">
           This campaign is closed. New expert judgments cannot be started.
         </p>
-        <Link to={`/gold-lab/campaigns/${campaignId}`}>Back to campaign</Link>
+        <Link to={returnHref}>{returnLabel}</Link>
       </Card>
     );
   }

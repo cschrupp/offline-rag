@@ -25,8 +25,17 @@ function newIdempotencyKey(): string {
   return `quick-play-${crypto.randomUUID()}`;
 }
 
-function gamePath(campaignId: string, game: string): string {
-  return `/gold-lab/campaigns/${encodeURIComponent(campaignId)}/work?game=${game}`;
+function gamePath(
+  campaignId: string,
+  game: string,
+  workspaceId: string,
+): string {
+  const params = new URLSearchParams({
+    game,
+    return_to: "quick_play",
+    quick_play_workspace: workspaceId,
+  });
+  return `/gold-lab/campaigns/${encodeURIComponent(campaignId)}/work?${params.toString()}`;
 }
 
 function actionLabel(status: QuickPlayState["status"]): string {
@@ -253,6 +262,18 @@ export function GoldLabQuickPlayPage() {
           </p>
         </Card>
       ) : null}
+      {state?.status === "empty_population" ? (
+        <Card>
+          <h2>No suitable source text yet</h2>
+          <p>
+            Quick Play needs published source chunks with readable text. Add
+            or update workspace sources, publish the workspace, then try again.
+          </p>
+          <Button variant="secondary" to={`/workspaces/${workspaceId}`}>
+            Open workspace
+          </Button>
+        </Card>
+      ) : null}
       {state?.status === "generating" ? (
         <section className="stack" aria-live="polite">
           <h2>Generating your activity deck</h2>
@@ -345,7 +366,9 @@ export function GoldLabQuickPlayPage() {
           </p>
           <div className="row">
             {nextGame ? (
-              <Button to={gamePath(campaignId, nextGame.game_id)}>
+              <Button
+                to={gamePath(campaignId, nextGame.game_id, workspaceId)}
+              >
                 Resume Play · {nextGame.label}
               </Button>
             ) : null}
@@ -360,7 +383,7 @@ export function GoldLabQuickPlayPage() {
                     <Button
                       key={game.game_id}
                       variant="secondary"
-                      to={gamePath(campaignId, game.game_id)}
+                      to={gamePath(campaignId, game.game_id, workspaceId)}
                     >
                       {game.label} · {game.pending_count}
                     </Button>

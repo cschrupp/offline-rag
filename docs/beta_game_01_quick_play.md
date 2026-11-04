@@ -1,6 +1,6 @@
 # BETA-GAME-01 — Quick Play implementation memory
 
-**State:** implementation authorized; candidate pending independent review.
+**State:** IR-001 rework corrected; corrective candidate pending independent review.
 
 **Branch:** `implementation/beta-game-01-quick-play`
 
@@ -22,6 +22,11 @@ snapshot ID, corpus ID, chunk-set ID, baseline-generation version, proposal
 configuration, and the fingerprint of the versioned improvement selection
 policy. A publication change therefore creates a new Quick Play identity; old
 campaigns and judgments stay bound to their original snapshot.
+
+The proposal target is 20, capped at the count of eligible child chunks in the
+captured immutable chunk set. The effective count is part of the deterministic
+identity. If the population is empty, Quick Play returns `empty_population`
+without creating a project or requesting generation.
 
 The additive `GET /v1/gold-lab/quick-play/workspaces/{workspace_id}` route is
 read-only. `POST .../prepare` accepts `start` or explicit `replenish` plus the
@@ -46,7 +51,20 @@ only for a user-requested retry after a terminal failure.
   activation rules.
 - `complete`: no active pending approved-game tasks remain; replenishment is
   explicit and creates additional work without deleting prior judgments.
+- `empty_population`: the published chunk set contains no eligible proposal
+  seeds; the UI directs the expert back to the workspace to add readable text.
 - `blocked` / `not_ready`: no game is presented as playable.
+
+After completion, Quick Play checks for an unused baseline and relevant
+generation operations before returning the prior campaign's `complete` state.
+This keeps replenishment visible across a refresh while the next baseline is
+being generated.
+
+Quick Play-launched Question Check and Rapid Fire sessions carry the workspace
+return destination in the work URL. Ending those sessions returns to that
+workspace's Quick Play page; Advanced Gold Lab sessions retain the campaign
+destination. Existing unsaved-edit and unresolved-mutation protections remain
+in `GoldWorkSession`.
 
 No Gold dataset schema, selection semantics, judgment scale, publication
 authority, retrieval behavior, or ledger contract is changed by this slice.

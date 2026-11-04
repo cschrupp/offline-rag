@@ -37,6 +37,8 @@ from offline_rag.app.workspace.models import (
 )
 from offline_rag.app.workspace.mutation_ops import ManagedOperationStore
 from offline_rag.core.ids import canonical_config_hash
+from offline_rag.gold_authoring.chunk_access import load_chunk_set_snapshot
+from offline_rag.gold_authoring.sampling import build_eligible_population
 
 QuickPlayAction = Literal["start", "replenish"]
 
@@ -69,6 +71,8 @@ class _QuickPlayIdentity:
     corpus_name: str
     corpus_id: str
     chunk_set_id: str
+    eligible_chunk_count: int
+    proposal_count: int
     fingerprint: str
     project_id: str
 
@@ -91,6 +95,12 @@ class QuickPlayService:
 
         project = self._get_project(identity.project_id)
         base = self._base_view(identity, project)
+        if identity.eligible_chunk_count == 0:
+            return {
+                **base,
+                "status": "empty_population",
+                "reason": "no_eligible_source_chunks",
+            }
         if project is None:
             return {**base, "status": "needs_generation"}
         if project.status is GoldProjectStatus.ARCHIVED:
@@ -118,31 +128,6 @@ class QuickPlayService:
                     "status": "playable",
                     "campaign_id": campaign.campaign_id,
                 }
-
-        if matching:
-            latest = matching[0]
-            if latest.status is GoldCampaignStatus.CLOSED:
-                task_state = self._task_state(latest)
-                if not task_state["available_games"]:
-                    return {
-                        **base,
-                        **task_state,
-                        "status": "complete",
-                        "campaign_id": latest.campaign_id,
-                    }
-                return {
-                    **base,
-                    **task_state,
-                    "status": "blocked",
-                    "campaign_id": latest.campaign_id,
-                    "reason": "campaign_closed_with_no_playable_tasks",
-                }
-            return {
-                **base,
-                **self._task_state(latest),
-                "status": "complete",
-                "campaign_id": latest.campaign_id,
-            }
 
         baselines = self.gold.list_baselines(project.project_id)["baselines"]
         used_baselines = {item.baseline_authoring_run_id for item in campaigns}
@@ -201,6 +186,31 @@ class QuickPlayService:
                 "operation": self._operation_summary(workspace_operation),
             }
 
+        if matching:
+            latest = matching[0]
+            if latest.status is GoldCampaignStatus.CLOSED:
+                task_state = self._task_state(latest)
+                if not task_state["available_games"]:
+                    return {
+                        **base,
+                        **task_state,
+                        "status": "complete",
+                        "campaign_id": latest.campaign_id,
+                    }
+                return {
+                    **base,
+                    **task_state,
+                    "status": "blocked",
+                    "campaign_id": latest.campaign_id,
+                    "reason": "campaign_closed_with_no_playable_tasks",
+                }
+            return {
+                **base,
+                **self._task_state(latest),
+                "status": "complete",
+                "campaign_id": latest.campaign_id,
+            }
+
         return {**base, "status": "needs_generation"}
 
     def prepare(
@@ -218,7 +228,13 @@ class QuickPlayService:
             )
 
         state = self.get_state(workspace_id)
-        if state["status"] in {"blocked", "not_ready", "playable", "generating"}:
+        if state["status"] in {
+            "blocked",
+            "not_ready",
+            "empty_population",
+            "playable",
+            "generating",
+        }:
             return state
         if state["status"] == "complete" and action == "start":
             return state
@@ -256,7 +272,7 @@ class QuickPlayService:
         try:
             operation = self.gold.start_baseline_bootstrap(
                 project_id=project.project_id,
-                proposal_count=QUICK_PLAY_PROPOSAL_COUNT,
+                proposal_count=identity.proposal_count,
                 prelabel_enabled=QUICK_PLAY_PRELABEL_ENABLED,
                 idempotency_key=idempotency_key,
             )
@@ -310,6 +326,25 @@ class QuickPlayService:
             project_type=GoldProjectType.IMPROVEMENT,
             parameters=QUICK_PLAY_SELECTION_PARAMETERS,
         )
+        try:
+            chunk_snapshot = load_chunk_set_snapshot(
+                self.runtime.settings,
+                corpus_name=workspace.backing_corpus_name,
+                corpus_id=snapshot.identity.corpus_id,
+                chunk_set_id=snapshot.identity.chunk_set_id,
+                corpus_manifest_name=snapshot.identity.corpus_manifest,
+            )
+            eligible_chunk_count = len(build_eligible_population(chunk_snapshot.chunks))
+        except Exception as exc:
+            raise AppError(
+                ErrorCode.SNAPSHOT_UNAVAILABLE,
+                details=SafeErrorDetails(
+                    workspace_id=workspace_id,
+                    snapshot_id=workspace.current_snapshot_id,
+                    reason="quick_play_chunk_population_unavailable",
+                ),
+            ) from exc
+        proposal_count = min(QUICK_PLAY_PROPOSAL_COUNT, eligible_chunk_count)
         identity_payload = {
             "schema": "quick-play-identity-v1",
             "workspace_id": workspace_id,
@@ -317,7 +352,7 @@ class QuickPlayService:
             "corpus_id": snapshot.identity.corpus_id,
             "chunk_set_id": snapshot.identity.chunk_set_id,
             "generation_version": QUICK_PLAY_GENERATION_VERSION,
-            "proposal_count": QUICK_PLAY_PROPOSAL_COUNT,
+            "proposal_count": proposal_count,
             "prelabel_enabled": QUICK_PLAY_PRELABEL_ENABLED,
             "selection_policy_id": policy.selection_policy_id,
             "selection_policy_fingerprint": policy.selection_policy_fingerprint,
@@ -333,6 +368,8 @@ class QuickPlayService:
                 corpus_name=workspace.backing_corpus_name,
                 corpus_id=snapshot.identity.corpus_id,
                 chunk_set_id=snapshot.identity.chunk_set_id,
+                eligible_chunk_count=eligible_chunk_count,
+                proposal_count=proposal_count,
                 fingerprint=fingerprint,
                 project_id=project_id,
             ),
@@ -613,6 +650,7 @@ class QuickPlayService:
             "workspace_revision": identity.revision,
             "snapshot_id": identity.snapshot_id,
             "identity_fingerprint": identity.fingerprint,
+            "proposal_count": identity.proposal_count,
             "project_id": project.project_id if project is not None else None,
         }
 

@@ -21,6 +21,16 @@ export function GoldLabWorkPage() {
   const { campaignId = "" } = useParams();
   const [searchParams] = useSearchParams();
   const session = parseSessionConfig(searchParams);
+  const quickPlayWorkspaceId = searchParams.get("quick_play_workspace");
+  const returnToQuickPlay =
+    searchParams.get("return_to") === "quick_play" &&
+    Boolean(quickPlayWorkspaceId);
+  const returnHref = returnToQuickPlay
+    ? `/gold-lab?workspace=${encodeURIComponent(quickPlayWorkspaceId ?? "")}`
+    : `/gold-lab/campaigns/${campaignId}`;
+  const returnLabel = returnToQuickPlay
+    ? "Return to Quick Play"
+    : "Return to campaign";
 
   const campaignQuery = useQuery({
     queryKey: goldLabQueryKeys.campaign(campaignId),
@@ -69,7 +79,7 @@ export function GoldLabWorkPage() {
         <p className="error-box" role="alert">
           Unsupported game selection.
         </p>
-        <Link to={`/gold-lab/campaigns/${campaignId}`}>Back to campaign</Link>
+        <Link to={returnHref}>{returnLabel}</Link>
       </Card>
     );
   }
@@ -79,7 +89,7 @@ export function GoldLabWorkPage() {
     return (
       <div className="stack gold-lab-page">
         <p className="muted">
-          <Link to={`/gold-lab/campaigns/${campaignId}`}>Back to campaign</Link>
+          <Link to={returnHref}>{returnLabel}</Link>
         </p>
         <Card>
           <h1>Expert work</h1>
