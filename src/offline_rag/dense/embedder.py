@@ -171,6 +171,10 @@ class SentenceTransformersEmbedder:
                 "FP16 embedding execution requires resolved device 'cuda' "
                 f"(got {device!r})."
             )
+        if query_text_contract not in {RAW_QUERY_V1, MODEL_QUERY_PROMPT_V1}:
+            raise EmbedderError(
+                f"unsupported dense query-text contract: {query_text_contract}"
+            )
         self.model_path = Path(model_path).expanduser().resolve()
         self.model_id = model_id
         self.model_revision = model_revision
@@ -369,19 +373,15 @@ class SentenceTransformersEmbedder:
         return partitions, batch_sizes, actual_padded_tokens
 
     def _require_model_query_prompt(self, model) -> None:
-        prompts = getattr(model, "prompts", None)
-        if not isinstance(prompts, dict) or MODEL_QUERY_PROMPT_NAME not in prompts:
+        from offline_rag.dense.query_text import require_registered_query_prompt
+
+        try:
+            require_registered_query_prompt(model)
+        except (TypeError, ValueError) as exc:
             raise EmbedderError(
                 f"{MODEL_QUERY_PROMPT_V1} requires the provisioned embedding model "
-                f"to expose prompts[{MODEL_QUERY_PROMPT_NAME!r}]; none found "
-                f"(model_id={self.model_id})"
-            )
-        value = prompts[MODEL_QUERY_PROMPT_NAME]
-        if not isinstance(value, str):
-            raise EmbedderError(
-                f"{MODEL_QUERY_PROMPT_V1}: prompts[{MODEL_QUERY_PROMPT_NAME!r}] "
-                f"must be a string (got {type(value).__name__})"
-            )
+                f"to expose a non-empty prompts[{MODEL_QUERY_PROMPT_NAME!r}]"
+            ) from exc
 
     def observe_execution_facts(self) -> dict[str, str | None]:
         """Introspect dtype/attention only when the model is already loaded.
@@ -697,12 +697,6 @@ def make_embedder(settings: AppSettings) -> Embedder:
             "qualified dual-backend embedding requires query_instruction=null and "
             "document_instruction=null"
         )
-    if query_contract != RAW_QUERY_V1:
-        raise EmbedderError(
-            f"qualified dual-backend P1 only authorizes {RAW_QUERY_V1}; "
-            f"got {query_contract}"
-        )
-
     profile_resolution = resolve_qualified_embedding_profile(
         emb.device,
         emb.precision,

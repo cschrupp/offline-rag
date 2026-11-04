@@ -713,3 +713,75 @@ def test_k_settings_arm_h_shared_contract() -> None:
     s = AppSettings()
     derived = settings_arm_h(s)
     assert derived.indexing.searchable_units.strategy == "exclude_heading_only"
+
+
+def test_query_prompt_pool_arm_returns_reviewable_local_candidates(
+    tmp_path: Path,
+) -> None:
+    """Exercise the six real local retrieval arms, including query-prompt dense."""
+    from test_gap16g_02_baseline_bootstrap import _reviewable_run
+
+    from offline_rag.core.ids import MODEL_QUERY_PROMPT_V1, RAW_QUERY_V1
+    from offline_rag.dense.query_text import resolve_query_text_contract
+    from offline_rag.gold_authoring.contracts import (
+        RETRIEVER_DENSE_MODEL_QUERY_PROMPT_V1,
+    )
+    from offline_rag.gold_authoring.persist import serialize_authoring_run_bytes
+    from offline_rag.gold_authoring.pool import run_gold_pool
+    from offline_rag.gold_authoring.pooling_models import PoolCaseStatus
+
+    settings = _pooling_ready_settings(tmp_path)
+    _snap_id, corpus_id, chunk_set_id, _ = _publish_real_qdrant_pooling_ready(
+        settings, include_arm_h=True
+    )
+    run = _reviewable_run(
+        corpus_id=corpus_id,
+        chunk_set_id=chunk_set_id,
+        authoring_run_id="authorrun_" + ("d" * 56),
+    )
+    run = run.model_copy(
+        update={
+            "cases": [case.model_copy(update={"candidates": []}) for case in run.cases],
+            "pool_successful_case_count": 0,
+        }
+    )
+    path = tmp_path / "authoring-run.json"
+    path.write_bytes(serialize_authoring_run_bytes(run))
+    requested_contracts: list[str] = []
+
+    class LocalQueryEmbedder:
+        """Deterministic local vector adapter compatible with both query contracts."""
+
+        def __init__(self) -> None:
+            self._raw = FakeEmbedder(dimension=8, normalize=True)
+
+        def embed_query(self, text: str) -> list[float]:
+            return self._raw._embed_one(text)
+
+    def local_embedder(settings_arg: AppSettings) -> LocalQueryEmbedder:
+        contract = resolve_query_text_contract(
+            strategy=settings_arg.dense.query_text.strategy,
+            contract_version=settings_arg.dense.query_text.contract_version,
+        )
+        requested_contracts.append(contract)
+        return LocalQueryEmbedder()
+
+    with patch(
+        "offline_rag.gold_authoring.pool_arms.make_embedder",
+        side_effect=local_embedder,
+    ):
+        result = run_gold_pool(settings, run_path=path, force=True)
+
+    assert result.exit_code == 0
+    assert result.run is not None
+    assert result.run.pool_successful_case_count == 1
+    assert result.run.pool_failed_case_count == 0
+    assert result.run.pool_outcomes[0].status is PoolCaseStatus.SUCCEEDED
+    assert len(result.run.cases[0].candidates) > 0
+    assert any(
+        hit.retriever == RETRIEVER_DENSE_MODEL_QUERY_PROMPT_V1
+        for candidate in result.run.cases[0].candidates
+        for hit in candidate.retrieval_hits
+    )
+    assert RAW_QUERY_V1 in requested_contracts
+    assert MODEL_QUERY_PROMPT_V1 in requested_contracts

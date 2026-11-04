@@ -7,7 +7,10 @@ from typing import Protocol
 
 from offline_rag.config.models import AppSettings
 from offline_rag.core.ids import dense_point_uuid
-from offline_rag.dense.embedder import make_embedder
+from offline_rag.dense.embedder import EmbedderError, make_embedder
+from offline_rag.dense.embedding_runtime import QualifiedEmbeddingRuntimeError
+from offline_rag.dense.failure import CudaMemoryExhaustedError
+from offline_rag.dense.onnx_embedder import OnnxEmbedderError
 from offline_rag.dense.persistence import try_load_index_manifest
 from offline_rag.dense.qdrant_local import QdrantLocalBackend
 from offline_rag.dense.resolver import resolve_child_chunk
@@ -26,7 +29,12 @@ from offline_rag.gold_authoring.pool_contract import (
     settings_query_prompt,
 )
 from offline_rag.gold_authoring.pool_preflight import ResolvedPoolingArtifacts
-from offline_rag.gold_authoring.pooling_models import PoolFailureReason, RetrievalHit
+from offline_rag.gold_authoring.pooling_models import (
+    PoolExceptionCategory,
+    PoolFailureReason,
+    PoolFailureStage,
+    RetrievalHit,
+)
 from offline_rag.hybrid.fusion import RankedBranchHit, ReciprocalRankFusion
 from offline_rag.lexical.backend import LocalInvertedIndexBackend
 from offline_rag.lexical.pipeline import make_lexical_analyzer
@@ -42,10 +50,65 @@ class ArmExecutionError(RuntimeError):
         *,
         reason: PoolFailureReason,
         retriever: str | None = None,
+        stage: PoolFailureStage = PoolFailureStage.RETRIEVER_EXECUTION,
+        exception_category: PoolExceptionCategory | None = None,
     ) -> None:
         super().__init__(message)
         self.reason = reason
         self.retriever = retriever
+        self.stage = stage
+        self.exception_category = exception_category
+
+
+def _safe_exception_category(exc: BaseException) -> PoolExceptionCategory:
+    """Map internal errors to bounded diagnostic categories, never raw text."""
+    pending = [exc]
+    seen: set[int] = set()
+    while pending:
+        current = pending.pop()
+        if id(current) in seen:
+            continue
+        seen.add(id(current))
+        if isinstance(current, CudaMemoryExhaustedError):
+            return PoolExceptionCategory.CUDA_MEMORY_EXHAUSTED
+        if isinstance(
+            current,
+            (EmbedderError, OnnxEmbedderError, QualifiedEmbeddingRuntimeError),
+        ):
+            return PoolExceptionCategory.EMBEDDING_ERROR
+        if isinstance(current, FileNotFoundError):
+            return PoolExceptionCategory.ARTIFACT_MISSING
+        if isinstance(current, (ValueError, TypeError)):
+            return PoolExceptionCategory.INVALID_INPUT
+        if isinstance(current, OSError):
+            return PoolExceptionCategory.STORAGE_ERROR
+        if current.__cause__ is not None:
+            pending.append(current.__cause__)
+        if current.__context__ is not None:
+            pending.append(current.__context__)
+    return PoolExceptionCategory.UNEXPECTED_ERROR
+
+
+def _bind_arm_failure(
+    exc: ArmExecutionError,
+    *,
+    retriever: str,
+    default_reason: PoolFailureReason,
+    safe_message: str,
+) -> ArmExecutionError:
+    """Attach the arm identity while retaining bounded diagnostic fields."""
+    reason = (
+        default_reason
+        if exc.reason is PoolFailureReason.RETRIEVER_ERROR
+        else exc.reason
+    )
+    return ArmExecutionError(
+        safe_message,
+        reason=reason,
+        retriever=retriever,
+        stage=exc.stage,
+        exception_category=exc.exception_category,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -127,16 +190,50 @@ class HistoricalPoolArmExecutor:
         manifest = try_load_index_manifest(settings.paths.index_manifests, index_id)
         if manifest is None:
             raise ArmExecutionError(
-                f"dense index missing: {index_id}",
+                "dense index manifest is missing",
                 reason=PoolFailureReason.RETRIEVER_ERROR,
+                stage=PoolFailureStage.INDEX_PREFLIGHT,
+                exception_category=PoolExceptionCategory.ARTIFACT_MISSING,
             )
         if self._qdrant is None:
-            self._qdrant = QdrantLocalBackend(settings.paths.qdrant_storage)
-        embedder = make_embedder(settings)
-        vector = embedder.embed_query(query.strip())
-        hits = self._qdrant.search(
-            manifest.collection_name, query_vector=vector, top_k=top_k
-        )
+            try:
+                self._qdrant = QdrantLocalBackend(settings.paths.qdrant_storage)
+            except Exception as exc:
+                raise ArmExecutionError(
+                    "dense vector storage could not be opened",
+                    reason=PoolFailureReason.RETRIEVER_ERROR,
+                    stage=PoolFailureStage.VECTOR_SEARCH,
+                    exception_category=_safe_exception_category(exc),
+                ) from exc
+        try:
+            embedder = make_embedder(settings)
+        except Exception as exc:
+            raise ArmExecutionError(
+                "dense embedding runtime initialization failed",
+                reason=PoolFailureReason.RETRIEVER_ERROR,
+                stage=PoolFailureStage.EMBEDDING_RUNTIME_INITIALIZATION,
+                exception_category=_safe_exception_category(exc),
+            ) from exc
+        try:
+            vector = embedder.embed_query(query.strip())
+        except Exception as exc:
+            raise ArmExecutionError(
+                "dense query embedding failed",
+                reason=PoolFailureReason.RETRIEVER_ERROR,
+                stage=PoolFailureStage.QUERY_EMBEDDING,
+                exception_category=_safe_exception_category(exc),
+            ) from exc
+        try:
+            hits = self._qdrant.search(
+                manifest.collection_name, query_vector=vector, top_k=top_k
+            )
+        except Exception as exc:
+            raise ArmExecutionError(
+                "dense vector search failed",
+                reason=PoolFailureReason.RETRIEVER_ERROR,
+                stage=PoolFailureStage.VECTOR_SEARCH,
+                exception_category=_safe_exception_category(exc),
+            ) from exc
         out: list[ArmHit] = []
         for i, hit in enumerate(hits, start=1):
             payload = hit.payload if isinstance(hit.payload, dict) else {}
@@ -146,6 +243,8 @@ class HistoricalPoolArmExecutor:
                 raise ArmExecutionError(
                     "dense search hit missing chunk identity",
                     reason=PoolFailureReason.CANDIDATE_IDENTITY_INVALID,
+                    stage=PoolFailureStage.CANDIDATE_IDENTITY,
+                    exception_category=PoolExceptionCategory.INVALID_CANDIDATE,
                 )
             chunk = resolve_child_chunk(
                 settings.paths.chunks,
@@ -155,8 +254,10 @@ class HistoricalPoolArmExecutor:
             expected_point = dense_point_uuid(chunk_id)
             if hit.point_id != expected_point:
                 raise ArmExecutionError(
-                    f"point ID mismatch for {chunk_id}",
+                    "dense search point identity does not match the chunk",
                     reason=PoolFailureReason.CANDIDATE_IDENTITY_INVALID,
+                    stage=PoolFailureStage.CANDIDATE_IDENTITY,
+                    exception_category=PoolExceptionCategory.INVALID_CANDIDATE,
                 )
             out.append(
                 ArmHit(
@@ -196,9 +297,11 @@ class HistoricalPoolArmExecutor:
             )
         except Exception as exc:
             raise ArmExecutionError(
-                str(exc),
+                "lexical retrieval failed",
                 reason=PoolFailureReason.LEXICAL_RETRIEVAL_FAILED,
                 retriever=RETRIEVER_LEXICAL_PLAIN_V1,
+                stage=PoolFailureStage.RETRIEVER_EXECUTION,
+                exception_category=_safe_exception_category(exc),
             ) from exc
 
         try:
@@ -208,13 +311,20 @@ class HistoricalPoolArmExecutor:
                 top_k=depths[RETRIEVER_DENSE_PLAIN_V1],
                 settings=self.settings,
             )
-        except ArmExecutionError:
-            raise
+        except ArmExecutionError as exc:
+            raise _bind_arm_failure(
+                exc,
+                retriever=RETRIEVER_DENSE_PLAIN_V1,
+                default_reason=PoolFailureReason.DENSE_BASELINE_FAILED,
+                safe_message="dense baseline retrieval failed",
+            ) from exc
         except Exception as exc:
             raise ArmExecutionError(
-                str(exc),
+                "dense baseline retrieval failed",
                 reason=PoolFailureReason.DENSE_BASELINE_FAILED,
                 retriever=RETRIEVER_DENSE_PLAIN_V1,
+                stage=PoolFailureStage.RETRIEVER_EXECUTION,
+                exception_category=_safe_exception_category(exc),
             ) from exc
 
         try:
@@ -224,13 +334,20 @@ class HistoricalPoolArmExecutor:
                 top_k=depths[RETRIEVER_DENSE_MODEL_QUERY_PROMPT_V1],
                 settings=settings_query_prompt(self.settings),
             )
-        except ArmExecutionError:
-            raise
+        except ArmExecutionError as exc:
+            raise _bind_arm_failure(
+                exc,
+                retriever=RETRIEVER_DENSE_MODEL_QUERY_PROMPT_V1,
+                default_reason=PoolFailureReason.DENSE_QUERY_PROMPT_FAILED,
+                safe_message="dense query-prompt retrieval failed",
+            ) from exc
         except Exception as exc:
             raise ArmExecutionError(
-                str(exc),
+                "dense query-prompt retrieval failed",
                 reason=PoolFailureReason.DENSE_QUERY_PROMPT_FAILED,
                 retriever=RETRIEVER_DENSE_MODEL_QUERY_PROMPT_V1,
+                stage=PoolFailureStage.RETRIEVER_EXECUTION,
+                exception_category=_safe_exception_category(exc),
             ) from exc
 
         try:
@@ -240,13 +357,20 @@ class HistoricalPoolArmExecutor:
                 top_k=depths[RETRIEVER_DENSE_ARM_H_V1],
                 settings=settings_arm_h(self.settings),
             )
-        except ArmExecutionError:
-            raise
+        except ArmExecutionError as exc:
+            raise _bind_arm_failure(
+                exc,
+                retriever=RETRIEVER_DENSE_ARM_H_V1,
+                default_reason=PoolFailureReason.DENSE_ARM_H_FAILED,
+                safe_message="dense Arm H retrieval failed",
+            ) from exc
         except Exception as exc:
             raise ArmExecutionError(
-                str(exc),
+                "dense Arm H retrieval failed",
                 reason=PoolFailureReason.DENSE_ARM_H_FAILED,
                 retriever=RETRIEVER_DENSE_ARM_H_V1,
+                stage=PoolFailureStage.RETRIEVER_EXECUTION,
+                exception_category=_safe_exception_category(exc),
             ) from exc
 
         try:
@@ -275,9 +399,11 @@ class HistoricalPoolArmExecutor:
             ]
         except Exception as exc:
             raise ArmExecutionError(
-                str(exc),
+                "hybrid reciprocal-rank fusion failed",
                 reason=PoolFailureReason.HYBRID_RRF_FAILED,
                 retriever=RETRIEVER_HYBRID_RRF_V1,
+                stage=PoolFailureStage.HYBRID_FUSION,
+                exception_category=_safe_exception_category(exc),
             ) from exc
 
         try:
@@ -299,9 +425,11 @@ class HistoricalPoolArmExecutor:
                     )
                 except Exception as exc:
                     raise ArmExecutionError(
-                        f"missing passage text for rerank chunk {hit.chunk_id}: {exc}",
+                        "rerank candidate passage text is unavailable",
                         reason=PoolFailureReason.HYBRID_RERANK_FAILED,
                         retriever=RETRIEVER_HYBRID_RERANK_V1,
+                        stage=PoolFailureStage.CANDIDATE_PROVENANCE,
+                        exception_category=_safe_exception_category(exc),
                     ) from exc
             pairs = [
                 RerankerPair(
@@ -326,13 +454,20 @@ class HistoricalPoolArmExecutor:
                 )
                 for i, (hit, score) in enumerate(top_n, start=1)
             ]
-        except ArmExecutionError:
-            raise
+        except ArmExecutionError as exc:
+            raise _bind_arm_failure(
+                exc,
+                retriever=RETRIEVER_HYBRID_RERANK_V1,
+                default_reason=PoolFailureReason.HYBRID_RERANK_FAILED,
+                safe_message="hybrid reranking failed",
+            ) from exc
         except Exception as exc:
             raise ArmExecutionError(
-                str(exc),
+                "hybrid reranking failed",
                 reason=PoolFailureReason.HYBRID_RERANK_FAILED,
                 retriever=RETRIEVER_HYBRID_RERANK_V1,
+                stage=PoolFailureStage.RERANK,
+                exception_category=_safe_exception_category(exc),
             ) from exc
 
         return {

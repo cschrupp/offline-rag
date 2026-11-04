@@ -9,6 +9,7 @@ from types import SimpleNamespace
 import pytest
 import torch
 
+from offline_rag.core.ids import MODEL_QUERY_PROMPT_V1
 from offline_rag.dense.embedding_artifacts import (
     QUALIFICATION_SCHEMA,
     QualifiedEmbeddingRepresentationSpec,
@@ -25,6 +26,7 @@ from offline_rag.dense.onnx_embedder import (
     apply_seneca_onnx_position_ids_compat,
     build_qwen3_direct_forward_position_ids,
 )
+from offline_rag.dense.query_text import MODEL_QUERY_PROMPT_NAME
 
 
 def _spec() -> QualifiedEmbeddingRepresentationSpec:
@@ -163,6 +165,86 @@ def test_load_kwargs_and_validation(
         "attention_mask",
         "position_ids",
     ]
+
+
+@pytest.mark.parametrize(
+    "prompt_value", ["Query: ", " Instruct: retrieve relevant passages"]
+)
+def test_query_prompt_uses_registered_prompt_name(
+    tmp_path: Path, prompt_value: str
+) -> None:
+    import numpy as np
+
+    class FakeModel:
+        def __init__(self) -> None:
+            self.prompts = {MODEL_QUERY_PROMPT_NAME: prompt_value}
+            self.calls: list[dict[str, object]] = []
+
+        def encode(self, text: str, **kwargs):  # type: ignore[no-untyped-def]
+            self.calls.append({"text": text, **kwargs})
+            return np.ones(1024, dtype=np.float32)
+
+    model = FakeModel()
+    embedder = SentenceTransformersOnnxEmbedder(
+        representation=_rep(tmp_path),
+        model_id="Qwen/Qwen3-Embedding-0.6B",
+        model_revision="97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+        query_text_contract=MODEL_QUERY_PROMPT_V1,
+    )
+    embedder._model = model
+
+    vector = embedder.embed_query("Where is the pressure gauge?")
+
+    assert len(vector) == 1024
+    assert model.calls[0]["text"] == "Where is the pressure gauge?"
+    assert model.calls[0]["prompt_name"] == MODEL_QUERY_PROMPT_NAME
+    assert model.calls[0]["normalize_embeddings"] is True
+
+
+@pytest.mark.parametrize("prompts", [None, {}, {"query": "  "}, {"query": 7}])
+def test_query_prompt_fails_closed_when_registry_invalid(
+    tmp_path: Path, prompts: object
+) -> None:
+    import numpy as np
+
+    class FakeModel:
+        prompts: object
+
+        def __init__(self) -> None:
+            self.prompts = prompts
+
+        def encode(self, text: str, **kwargs):  # type: ignore[no-untyped-def]
+            return np.ones(1024, dtype=np.float32)
+
+    embedder = SentenceTransformersOnnxEmbedder(
+        representation=_rep(tmp_path),
+        model_id="Qwen/Qwen3-Embedding-0.6B",
+        model_revision="97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+        query_text_contract=MODEL_QUERY_PROMPT_V1,
+    )
+    embedder._model = FakeModel()
+
+    with pytest.raises(OnnxEmbedderError, match="non-empty registered"):
+        embedder.embed_query("private query must not appear in errors")
+
+
+def test_query_prompt_never_falls_back_to_raw_query(tmp_path: Path) -> None:
+    class FakeModel:
+        def __init__(self) -> None:
+            self.prompts: dict[str, str] = {}
+
+        def encode(self, text: str, **kwargs):  # type: ignore[no-untyped-def]
+            pytest.fail("invalid prompt must fail before encode")
+
+    embedder = SentenceTransformersOnnxEmbedder(
+        representation=_rep(tmp_path),
+        model_id="Qwen/Qwen3-Embedding-0.6B",
+        model_revision="97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+        query_text_contract=MODEL_QUERY_PROMPT_V1,
+    )
+    embedder._model = FakeModel()
+    with pytest.raises(OnnxEmbedderError):
+        embedder.embed_query("query")
 
 
 def test_no_production_onnx_graph_import() -> None:

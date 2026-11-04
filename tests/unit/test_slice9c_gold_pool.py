@@ -34,17 +34,26 @@ from offline_rag.gold_authoring.models import (
 )
 from offline_rag.gold_authoring.persist import load_authoring_run, write_authoring_run
 from offline_rag.gold_authoring.pool import PoolPreRunError, run_gold_pool
-from offline_rag.gold_authoring.pool_arms import ArmExecutionError, ArmHit, HistoricalPoolArmExecutor
+from offline_rag.gold_authoring.pool_arms import (
+    ArmExecutionError,
+    ArmHit,
+    HistoricalPoolArmExecutor,
+)
 from offline_rag.gold_authoring.pool_preflight import (
     PoolPreflightError,
     ResolvedPoolingArtifacts,
     preflight_pooling_artifacts,
 )
-from offline_rag.gold_authoring.pool_union import order_pool_candidates, union_candidates
+from offline_rag.gold_authoring.pool_union import (
+    order_pool_candidates,
+    union_candidates,
+)
 from offline_rag.gold_authoring.pooling_models import (
     PoolCandidate,
     PoolCaseStatus,
+    PoolExceptionCategory,
     PoolFailureReason,
+    PoolFailureStage,
     PoolingProvenance,
     RetrievalHit,
 )
@@ -782,3 +791,63 @@ def test_historical_executor_uses_locked_depths() -> None:
     assert len(results[RETRIEVER_HYBRID_RRF_V1]) <= 50
     assert len(results[RETRIEVER_HYBRID_RERANK_V1]) <= 20
     assert set(results) == set(POOLING_RETRIEVER_IDS)
+
+
+def test_pool_failure_diagnostics_are_bounded_and_useful() -> None:
+    from offline_rag.gold_authoring.pool import _pool_one_case
+
+    private_query = "PRIVATE_QUERY_MARKER_do_not_persist"
+    private_error = "PRIVATE_DOCUMENT_MARKER credential=secret-token"
+    case = SilverCase(
+        draft_case_id="draft_failure_diagnostic",
+        proposed_query=private_query,
+        proposed_category="ops",
+        proposed_tags=[],
+        source_seed=SourceSeed(chunk_id="seed_1", document_id="doc_a"),
+    )
+
+    class FailingExecutor:
+        def execute_all(self, *, query: str, artifacts):  # type: ignore[no-untyped-def]
+            raise ArmExecutionError(
+                private_error,
+                reason=PoolFailureReason.DENSE_QUERY_PROMPT_FAILED,
+                retriever=RETRIEVER_DENSE_MODEL_QUERY_PROMPT_V1,
+                stage=PoolFailureStage.QUERY_EMBEDDING,
+                exception_category=PoolExceptionCategory.EMBEDDING_ERROR,
+            )
+
+    _candidates, outcome = _pool_one_case(
+        case,
+        executor=FailingExecutor(),
+        artifacts=_artifacts(),
+        children={},
+        source_name_by_document_id={},
+    )
+
+    payload = outcome.model_dump(mode="json")
+    serialized = json.dumps(payload)
+    assert outcome.failure_reason is PoolFailureReason.DENSE_QUERY_PROMPT_FAILED
+    assert outcome.failed_retriever == RETRIEVER_DENSE_MODEL_QUERY_PROMPT_V1
+    assert outcome.failure_stage is PoolFailureStage.QUERY_EMBEDDING
+    assert outcome.exception_category is PoolExceptionCategory.EMBEDDING_ERROR
+    assert private_query not in serialized
+    assert private_error not in serialized
+    assert "secret-token" not in serialized
+
+
+def test_embedding_failure_category_unwraps_runtime_error_safely() -> None:
+    from offline_rag.dense.embedder import EmbedderError
+    from offline_rag.dense.embedding_runtime import QualifiedEmbeddingRuntimeError
+    from offline_rag.gold_authoring.pool_arms import _safe_exception_category
+
+    try:
+        try:
+            raise EmbedderError("PRIVATE_QUERY and document text")
+        except EmbedderError as cause:
+            raise QualifiedEmbeddingRuntimeError("backend initialization failed") from cause
+    except QualifiedEmbeddingRuntimeError as exc:
+        category = _safe_exception_category(exc)
+
+    assert category is PoolExceptionCategory.EMBEDDING_ERROR
+    assert "PRIVATE_QUERY" not in str(category)
+    assert "document text" not in str(category)

@@ -46,7 +46,11 @@ Package additions under `src/offline_rag/gold_authoring/`:
 | Hybrid RRF | `hybrid-rrf-v1` | 50 |
 | Hybrid-rerank | `hybrid-rerank-v1` (reranked output) | 20 |
 
-Experimental arms (`model-query-prompt-v1`, Arm H) remain **candidate generators only** — not production defaults.
+`model-query-prompt-v1` and Arm H remain candidate generators only, not
+production defaults. The query-prompt arm executes through the qualified
+CUDA FP16 or CPU ONNX FP32 runtime using the provisioned model's registered
+`query` prompt; a missing or invalid prompt fails that case without raw-query
+fallback. The default retrieval configuration remains `raw-query-v1`.
 
 ## CLI
 
@@ -75,6 +79,9 @@ offline-rag gold pool \
 - Candidate identity = child `chunk_id`
 - Exact historical `run.chunk_set_id` for all corpus-derived artifacts
 - Complete six-arm success or no pool for that case
+- Failure records include the failed retriever, bounded stage, and bounded
+  exception category; query/document text and unrestricted exception strings
+  are not persisted
 - No seed injection, neighborhood expansion, index builds, or CURRENT fallback
 - No candidate body text in the authoring artifact
 - Pool order = inspection order only (not 9D judging order)

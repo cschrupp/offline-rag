@@ -23,6 +23,7 @@ S16K-R03 — CLOSED / NOT_REPRODUCED; historical root cause not established
 16K-E    — CLOSED / HUMAN ACCEPTED
 16K-F    — COMPLETE / HUMAN ACCEPTED — SCOPED BETA
 BETA-GAME-01 — ACTIVE / IMPLEMENTATION AUTHORIZED
+BETA-GOLD-POOL-01 — ACTIVE / BOUNDED IMPLEMENTATION AUTHORIZED
 ```
 
 16K-F functional acceptance is complete. Performance on the available
@@ -47,6 +48,8 @@ and its linked sanitized `RUN_002_EVIDENCE_INDEX.md`.
     -> BETA-SETTINGS-02 user-editable Gold Lab Authoring configuration COMPLETE /
        ACCEPTED / PROMOTED at 6ff215702056b5708547cdc3a275aad08b0d75dc
     -> BETA-GAME-01 Quick Play implementation (authorized / active)
+    -> BETA-GOLD-POOL-01 qualified query-prompt support for Gold pooling
+       (authorized / implementation active)
     -> Slice 17 design-open authority remains NOT AUTHORIZED
 ```
 
@@ -69,6 +72,22 @@ Question Check and Rapid Fire. Keep administrative project/campaign management
 available under Advanced Gold Lab. Do not change Gold scientific semantics,
 publication authority, relevance scale, or ledger guarantees. Slice 17 remains
 NOT AUTHORIZED.
+
+### BETA-GOLD-POOL-01 — Qualified query-prompt support for Gold pooling
+
+**Priority:** P0 beta blocker
+**Status:** BOUNDED IMPLEMENTATION AUTHORIZED / ACTIVE
+**Branch:** `implementation/beta-gold-pool-01-query-prompt`
+
+Restore the existing Gold six-arm `dense-model-query-prompt-v1` path on the
+qualified CUDA FP16 and CPU ONNX FP32 runtimes. Preserve raw-query defaults,
+qualified representation and index identities, registered-prompt validation,
+complete-six-arm reviewability, and no-fallback behavior. Add a scoped P1
+query-contract amendment, production-adapter/factory/local-pooling regressions,
+and privacy-safe failure diagnostics. The consumed failed Quick Play operation
+is historical evidence and is not retried by this work.
+
+This authority does not permit campaign reruns, promotion, or Slice 17 work.
 
 ## 2. Historical queue snapshot
 

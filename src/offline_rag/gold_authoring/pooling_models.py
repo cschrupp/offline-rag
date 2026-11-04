@@ -59,6 +59,29 @@ class PoolFailureReason(StrEnum):
     POOL_CONSTRUCTION_FAILED = "pool_construction_failed"
 
 
+class PoolFailureStage(StrEnum):
+    RETRIEVER_EXECUTION = "retriever_execution"
+    INDEX_PREFLIGHT = "index_preflight"
+    EMBEDDING_RUNTIME_INITIALIZATION = "embedding_runtime_initialization"
+    QUERY_EMBEDDING = "query_embedding"
+    VECTOR_SEARCH = "vector_search"
+    CANDIDATE_IDENTITY = "candidate_identity"
+    CANDIDATE_PROVENANCE = "candidate_provenance"
+    POOL_CONSTRUCTION = "pool_construction"
+    HYBRID_FUSION = "hybrid_fusion"
+    RERANK = "rerank"
+
+
+class PoolExceptionCategory(StrEnum):
+    EMBEDDING_ERROR = "embedding_error"
+    CUDA_MEMORY_EXHAUSTED = "cuda_memory_exhausted"
+    ARTIFACT_MISSING = "artifact_missing"
+    INVALID_CANDIDATE = "invalid_candidate"
+    STORAGE_ERROR = "storage_error"
+    INVALID_INPUT = "invalid_input"
+    UNEXPECTED_ERROR = "unexpected_error"
+
+
 class PoolCaseOutcome(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -67,6 +90,8 @@ class PoolCaseOutcome(BaseModel):
     failure_reason: PoolFailureReason | None = None
     candidate_count: NonNegativeInt = 0
     failed_retriever: str | None = None
+    failure_stage: PoolFailureStage | None = None
+    exception_category: PoolExceptionCategory | None = None
 
 
 class PoolingProvenance(BaseModel):

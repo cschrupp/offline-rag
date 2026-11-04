@@ -40,7 +40,9 @@ from offline_rag.gold_authoring.pooling_models import (
     PoolCandidate,
     PoolCaseOutcome,
     PoolCaseStatus,
+    PoolExceptionCategory,
     PoolFailureReason,
+    PoolFailureStage,
 )
 from offline_rag.ingestion.persistence import (
     corpus_state_path,
@@ -142,8 +144,10 @@ def _enrich_candidates(
         chunk = children.get(candidate.chunk_id)
         if chunk is None:
             raise ArmExecutionError(
-                f"chunk_id {candidate.chunk_id} not in historical ChunkSet children",
+                "candidate identity is absent from the historical ChunkSet",
                 reason=PoolFailureReason.CANDIDATE_IDENTITY_INVALID,
+                stage=PoolFailureStage.CANDIDATE_IDENTITY,
+                exception_category=PoolExceptionCategory.INVALID_CANDIDATE,
             )
         source_name = source_name_by_document_id.get(chunk.document_id)
         title: str | None = None
@@ -152,13 +156,17 @@ def _enrich_candidates(
                 title = resolve_document_title_v1(str(source_name))
             except DocumentMetadataError as exc:
                 raise ArmExecutionError(
-                    f"document title unavailable for {chunk.document_id}: {exc}",
+                    "candidate source title is invalid",
                     reason=PoolFailureReason.CANDIDATE_PROVENANCE_UNAVAILABLE,
+                    stage=PoolFailureStage.CANDIDATE_PROVENANCE,
+                    exception_category=PoolExceptionCategory.INVALID_CANDIDATE,
                 ) from exc
         else:
             raise ArmExecutionError(
-                f"authoritative source_name missing for document_id={chunk.document_id}",
+                "candidate source title is unavailable",
                 reason=PoolFailureReason.CANDIDATE_PROVENANCE_UNAVAILABLE,
+                stage=PoolFailureStage.CANDIDATE_PROVENANCE,
+                exception_category=PoolExceptionCategory.INVALID_CANDIDATE,
             )
         enriched.append(
             PoolCandidate(
@@ -208,6 +216,8 @@ def _pool_one_case(
             failure_reason=exc.reason,
             candidate_count=0,
             failed_retriever=exc.retriever,
+            failure_stage=exc.stage,
+            exception_category=exc.exception_category,
         )
     except Exception:  # noqa: BLE001
         return None, PoolCaseOutcome(
@@ -215,6 +225,8 @@ def _pool_one_case(
             status=PoolCaseStatus.FAILED,
             failure_reason=PoolFailureReason.RETRIEVER_ERROR,
             candidate_count=0,
+            failure_stage=PoolFailureStage.RETRIEVER_EXECUTION,
+            exception_category=PoolExceptionCategory.UNEXPECTED_ERROR,
         )
 
     missing_arms = [arm for arm in POOLING_RETRIEVER_IDS if arm not in hits_by_arm]
@@ -225,6 +237,8 @@ def _pool_one_case(
             failure_reason=PoolFailureReason.POOL_CONSTRUCTION_FAILED,
             candidate_count=0,
             failed_retriever=missing_arms[0],
+            failure_stage=PoolFailureStage.POOL_CONSTRUCTION,
+            exception_category=PoolExceptionCategory.INVALID_INPUT,
         )
 
     try:
@@ -250,6 +264,8 @@ def _pool_one_case(
             failure_reason=exc.reason,
             candidate_count=0,
             failed_retriever=exc.retriever,
+            failure_stage=exc.stage,
+            exception_category=exc.exception_category,
         )
     except Exception:  # noqa: BLE001
         return None, PoolCaseOutcome(
@@ -257,6 +273,8 @@ def _pool_one_case(
             status=PoolCaseStatus.FAILED,
             failure_reason=PoolFailureReason.POOL_CONSTRUCTION_FAILED,
             candidate_count=0,
+            failure_stage=PoolFailureStage.POOL_CONSTRUCTION,
+            exception_category=PoolExceptionCategory.UNEXPECTED_ERROR,
         )
 
     return candidates, PoolCaseOutcome(

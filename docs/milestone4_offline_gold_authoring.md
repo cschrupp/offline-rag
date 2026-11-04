@@ -42,7 +42,11 @@ Slice **9A** (contracts + privacy + doctor) is done — see [`slice9a_gold_autho
 - Slice **9G** **DEFERRED — PUBLICATION READINESS** (not a near-term engineering dependency).
 - Formal Slice **9H** **FROZEN** behind future 9G.
 - `GoldDataset v1`, deterministic retrieval metrics, serialized evaluation artifacts, and `offline-rag eval compare` are available.
-- `model-query-prompt-v1`, `exclude-heading-only-v1` / Arm H, and `prompt-grounded-provenance-v2` remain validated experimental candidates.
+- The BETA-GOLD-POOL-01 amendment authorizes qualified query-prompt execution
+  on the P1 CUDA FP16 and CPU ONNX FP32 runtimes. Its Gold pooling arm remains
+  a candidate generator, not a production retrieval default; implementation
+  review/acceptance is tracked separately. `exclude-heading-only-v1` / Arm H
+  and `prompt-grounded-provenance-v2` remain experimental candidates.
 - No experimental contracts are promoted to `base.yaml`.
 
 ---

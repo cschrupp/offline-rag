@@ -11,10 +11,15 @@ from pathlib import Path
 from typing import Any
 
 from offline_rag.core.ids import (
+    MODEL_QUERY_PROMPT_V1,
     RAW_QUERY_V1,
     SENTENCE_TRANSFORMERS_ADAPTER_CONTRACT,
 )
 from offline_rag.dense.embedding_artifacts import RepresentationInspection
+from offline_rag.dense.query_text import (
+    MODEL_QUERY_PROMPT_NAME,
+    require_registered_query_prompt,
+)
 from offline_rag.dense.st_onnx_runtime import (
     FROZEN_ONNX_PROVIDER,
     FROZEN_ORT_INTER_OP_THREADS,
@@ -57,9 +62,9 @@ class SentenceTransformersOnnxEmbedder:
             )
         if representation.instance_path is None:
             raise OnnxEmbedderError("onnx representation instance_path is required")
-        if query_text_contract != RAW_QUERY_V1:
+        if query_text_contract not in {RAW_QUERY_V1, MODEL_QUERY_PROMPT_V1}:
             raise OnnxEmbedderError(
-                f"P1 ONNX embedder only qualifies {RAW_QUERY_V1}; got "
+                "P1 ONNX embedder does not support query-text contract "
                 f"{query_text_contract}"
             )
         self.representation = representation
@@ -126,12 +131,23 @@ class SentenceTransformersOnnxEmbedder:
 
     def embed_query(self, text: str) -> list[float]:
         model = self.ensure_initialized()
+        prompt_name = None
+        if self.query_text_contract == MODEL_QUERY_PROMPT_V1:
+            try:
+                require_registered_query_prompt(model)
+            except (TypeError, ValueError) as exc:
+                raise OnnxEmbedderError(
+                    f"{MODEL_QUERY_PROMPT_V1} requires a non-empty registered "
+                    f"prompts[{MODEL_QUERY_PROMPT_NAME!r}]"
+                ) from exc
+            prompt_name = MODEL_QUERY_PROMPT_NAME
         try:
             return encode_query(
                 model,
                 text,
                 normalize=self.normalize,
                 dimension=self.dimension,
+                prompt_name=prompt_name,
             )
         except StOnnxRuntimeError as exc:
             raise OnnxEmbedderError(str(exc)) from exc

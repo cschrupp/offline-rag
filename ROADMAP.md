@@ -43,6 +43,10 @@ and supporting history.
   ACTIVE on `implementation/beta-game-01-quick-play`; implementation candidate
   pending independent review. Production play remains limited to Question Check
   and Rapid Fire.
+- [ ] **BETA-GOLD-POOL-01 — Qualified query-prompt support for Gold pooling** —
+  bounded implementation authorized and active on
+  `implementation/beta-gold-pool-01-query-prompt`; no live Quick Play retry or
+  promotion is authorized by this work.
 - [ ] Slice 17 design-open — **NOT AUTHORIZED**. This is distinct from
   original Slice 16G, which is complete.
 - [ ] End-to-end beta QA.
