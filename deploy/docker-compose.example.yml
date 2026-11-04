@@ -15,24 +15,35 @@ services:
       - "host.docker.internal:host-gateway"
     stop_grace_period: 45s
     environment:
-      OFFLINE_RAG_CONFIG: "/app/config/base.yaml"
-      OFFLINE_RAG_DATA_DIR: "/data"
-      OFFLINE_RAG_MODELS_DIR: "/models"
-      OFFLINE_RAG_STRICT_OFFLINE: "true"
-      OFFLINE_RAG_GENERATION_SETTINGS_MODE: "${OFFLINE_RAG_GENERATION_SETTINGS_MODE:-operator}"
-      OFFLINE_RAG_AUTHORING_SETTINGS_MODE: "${OFFLINE_RAG_AUTHORING_SETTINGS_MODE:-operator}"
-      OFFLINE_RAG_HTTP_HOST: "0.0.0.0"
-      OFFLINE_RAG_HTTP_PORT: "8080"
-      OFFLINE_RAG_ALLOW_NON_LOOPBACK: "true"
-      OFFLINE_RAG_SHUTDOWN_GRACE_SECONDS: "30"
-      OFFLINE_RAG_LLM_BASE_URL: "http://host.docker.internal:11434/v1"
-      OFFLINE_RAG_LLM_MODEL: "${OFFLINE_RAG_LLM_MODEL}"
-      OFFLINE_RAG_APPROVED_LLM_MODELS: "${OFFLINE_RAG_APPROVED_LLM_MODELS}"
-      OFFLINE_RAG_APPROVED_LLM_ENDPOINTS: "http://host.docker.internal:11434/v1"
+      # Pass only the supported authoring bootstrap fields from the root .env.
+      # Bare entries preserve absent versus explicitly empty API-key values.
+      - OFFLINE_RAG_AUTHORING_ENABLED
+      - OFFLINE_RAG_AUTHORING_BASE_URL
+      - OFFLINE_RAG_AUTHORING_MODEL
+      - OFFLINE_RAG_AUTHORING_APPROVED_ENDPOINTS
+      - OFFLINE_RAG_AUTHORING_APPROVED_MODELS
+      - OFFLINE_RAG_AUTHORING_TIMEOUT_SECONDS
+      - OFFLINE_RAG_AUTHORING_NETWORK_POLICY
+      - OFFLINE_RAG_AUTHORING_API_KEY
+      - OFFLINE_RAG_CONFIG=/app/config/base.yaml
+      - OFFLINE_RAG_DATA_DIR=/data
+      - OFFLINE_RAG_MODELS_DIR=/models
+      - OFFLINE_RAG_STRICT_OFFLINE=true
+      - OFFLINE_RAG_GENERATION_SETTINGS_MODE=${OFFLINE_RAG_GENERATION_SETTINGS_MODE:-operator}
+      - OFFLINE_RAG_AUTHORING_SETTINGS_MODE=${OFFLINE_RAG_AUTHORING_SETTINGS_MODE:-operator}
+      - OFFLINE_RAG_HTTP_HOST=0.0.0.0
+      - OFFLINE_RAG_HTTP_PORT=8080
+      - OFFLINE_RAG_ALLOW_NON_LOOPBACK=true
+      - OFFLINE_RAG_SHUTDOWN_GRACE_SECONDS=30
+      - OFFLINE_RAG_LLM_BASE_URL=http://host.docker.internal:11434/v1
+      - OFFLINE_RAG_LLM_MODEL=${OFFLINE_RAG_LLM_MODEL}
+      - OFFLINE_RAG_APPROVED_LLM_MODELS=${OFFLINE_RAG_APPROVED_LLM_MODELS}
+      - OFFLINE_RAG_APPROVED_LLM_ENDPOINTS=http://host.docker.internal:11434/v1
       # Optional; never bake secrets into the image.
-      OFFLINE_RAG_LLM_API_KEY: "${OFFLINE_RAG_LLM_API_KEY:-}"
-      HF_HUB_OFFLINE: "1"
-      TRANSFORMERS_OFFLINE: "1"
+      - OFFLINE_RAG_LLM_API_KEY=${OFFLINE_RAG_LLM_API_KEY:-}
+      - HF_TOKEN=
+      - HF_HUB_OFFLINE=1
+      - TRANSFORMERS_OFFLINE=1
     volumes:
       - ../data:/data
       - ../models:/models:ro

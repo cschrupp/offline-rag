@@ -473,7 +473,10 @@ def save_authoring_settings(
             resolved_key = existing_key
             manage_api_key = True
         else:
-            resolved_key = None
+            # Keep a bootstrap key available to the transient connection
+            # probe. The product-settings writer omits it when
+            # ``manage_api_key`` is false, so it remains unpersisted.
+            resolved_key = settings.authoring.api_key
             manage_api_key = False
     else:
         resolved_key = _resolve_api_key_for_write(

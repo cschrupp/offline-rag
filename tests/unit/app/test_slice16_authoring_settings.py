@@ -319,13 +319,22 @@ def test_authoring_user_mode_bootstrap_save_restart_and_key_actions(
     assert not any(authoring_field_locks(env).values())
 
     request = _settings_api_request(settings)
-    monkeypatch.setattr(
-        "offline_rag.api.authoring_settings._probe_models",
-        lambda **_kwargs: {
+
+    probed_keys: list[str | None] = []
+
+    def successful_probe(**kwargs: object) -> dict[str, object]:
+        api_key = kwargs.get("api_key")
+        assert api_key is None or isinstance(api_key, str)
+        probed_keys.append(api_key)
+        return {
             "ok": True,
             "reason": "ok",
             "available_models": [selected_model],
-        },
+        }
+
+    monkeypatch.setattr(
+        "offline_rag.api.authoring_settings._probe_models",
+        successful_probe,
     )
     initial = get_authoring_settings(request)
     assert initial["active"]["model"] == bootstrap_model
@@ -398,6 +407,8 @@ def test_authoring_user_mode_bootstrap_save_restart_and_key_actions(
         assert restarted.authoring.api_key == expected
         if key is not None:
             assert key not in json.dumps(get_authoring_settings(request))
+
+    assert probed_keys == [bootstrap_key, user_key, None]
 
 
 def test_authoring_user_mode_programmatic_overrides_lock_controls(

@@ -21,19 +21,27 @@ with a fake completion client; it makes no network request.
 
 ## Implementation handoff
 
-**Status:** Implementation candidate; independent review pending.
+**Status:** Corrective candidate; independent re-review pending.
 
 **Scope:** Configuration loading and validation, authoring field locks,
 explicit-override reporting, example environment/Compose configuration, and
-focused tests. No production model, network policy, or runtime lifecycle was
+focused tests. The IR-001 corrective preserves a bootstrap API key for the
+transient Save connection probe without persisting it, and forwards only the
+supported authoring bootstrap variables into Docker Compose. The Compose
+configuration preserves an omitted API key separately from an explicitly
+empty variable. No production model, network policy, or runtime lifecycle was
 changed.
 
-**Validation:** Ten focused Python tests passed, covering default/operator mode,
-user-mode bootstrap and save/reload, API-key keep/set/clear, explicit override
-locks, strict-offline policy, generation-mode regression, and a synthetic
-Gold Lab authoring-adapter completion using the saved endpoint/model. Ruff lint,
-Compose YAML parsing, and `git diff --check` passed. No live authoring endpoint
-or model was used.
+**Validation:** The original candidate's ten focused Python tests passed,
+covering default/operator mode, user-mode bootstrap and save/reload, API-key
+keep/set/clear, explicit override locks, strict-offline policy, generation-mode
+regression, and a synthetic Gold Lab authoring-adapter completion using the
+saved endpoint/model. The IR-001 corrective's focused Save/probe and Compose
+configuration tests passed, including first-start effective configuration and
+absent-versus-empty key handling. Ruff lint and `git diff --check` passed for
+the corrective. Ruff format checking still reports pre-existing formatting
+drift in touched legacy files; no broad reformat was applied. No live authoring
+endpoint or model was used, and no Docker container was started.
 
 The broader TestClient batch stalled during application startup and was
 interrupted; `TEST-STARTUP-01` remains separate. Ruff's format check still
