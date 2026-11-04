@@ -1,6 +1,7 @@
 # BETA-GAME-01 — Quick Play implementation memory
 
-**State:** IR-001 rework corrected; corrective candidate pending independent review.
+**State:** IR-002 accepted for `d7ea776`; snapshot-count cache corrective
+pending independent review. Human acceptance is pending.
 
 **Branch:** `implementation/beta-game-01-quick-play`
 
@@ -27,6 +28,9 @@ The proposal target is 20, capped at the count of eligible child chunks in the
 captured immutable chunk set. The effective count is part of the deterministic
 identity. If the population is empty, Quick Play returns `empty_population`
 without creating a project or requesting generation.
+Eligible counts are cached in a bounded process-local LRU keyed by data roots
+and the full corpus/snapshot/chunk-set identity, so routine state refreshes do
+not repeatedly load and parse the same immutable chunk artifacts.
 
 The additive `GET /v1/gold-lab/quick-play/workspaces/{workspace_id}` route is
 read-only. `POST .../prepare` accepts `start` or explicit `replenish` plus the

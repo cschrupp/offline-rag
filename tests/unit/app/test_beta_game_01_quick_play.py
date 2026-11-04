@@ -253,12 +253,16 @@ def test_quick_play_generation_count_is_bounded_by_population(
     import offline_rag.app.gold_lab.quick_play as quick_play_module
 
     runtime, workspace, _ = _runtime_fixture(tmp_path, with_baseline=False)
+    loaded_snapshots: list[str] = []
+
+    def load_chunks(*_args, **kwargs):
+        loaded_snapshots.append(kwargs.get("chunk_set_id", "fixture"))
+        return SimpleNamespace(chunks=[object() for _ in range(population_size)])
+
     monkeypatch.setattr(
         quick_play_module,
         "load_chunk_set_snapshot",
-        lambda *_args, **_kwargs: SimpleNamespace(
-            chunks=[object() for _ in range(population_size)]
-        ),
+        load_chunks,
     )
     monkeypatch.setattr(
         quick_play_module, "build_eligible_population", lambda chunks: chunks
@@ -290,6 +294,18 @@ def test_quick_play_generation_count_is_bounded_by_population(
 
     assert state["status"] == "generating"
     assert requested_counts == [expected_count]
+    assert len(loaded_snapshots) == 1
+
+    # A different immutable snapshot identity must not reuse the old count.
+    service._eligible_population_count(
+        workspace_id=workspace.workspace_id,
+        snapshot_id="snap_other_quick_play",
+        corpus_name=identity.corpus_name,
+        corpus_id=identity.corpus_id,
+        chunk_set_id=identity.chunk_set_id,
+        corpus_manifest_name="manifest_other_quick_play.json",
+    )
+    assert len(loaded_snapshots) == 2
 
 
 def test_quick_play_empty_eligible_population_has_clear_state(

@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import threading
 import time
+from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, ClassVar, Literal
 
 from offline_rag.app.errors import AppError, ErrorCode, SafeErrorDetails
 from offline_rag.app.gold_lab.application import (
@@ -53,6 +55,7 @@ QUICK_PLAY_PROPOSAL_COUNT = 20
 QUICK_PLAY_PRELABEL_ENABLED = False
 _SETUP_RECONCILE_SECONDS = 2.0
 _SETUP_RETRY_INTERVAL_SECONDS = 0.01
+_ELIGIBLE_POPULATION_CACHE_LIMIT = 32
 _NONTERMINAL = frozenset(
     {
         ManagedOperationStatus.PENDING,
@@ -79,6 +82,11 @@ class _QuickPlayIdentity:
 
 class QuickPlayService:
     """Resolve or create Quick Play projects and campaigns deterministically."""
+
+    _eligible_population_counts: ClassVar[OrderedDict[tuple[str, ...], int]] = (
+        OrderedDict()
+    )
+    _eligible_population_lock: ClassVar[threading.RLock] = threading.RLock()
 
     def __init__(self, runtime: ApplicationRuntime) -> None:
         self.runtime = runtime
@@ -326,24 +334,14 @@ class QuickPlayService:
             project_type=GoldProjectType.IMPROVEMENT,
             parameters=QUICK_PLAY_SELECTION_PARAMETERS,
         )
-        try:
-            chunk_snapshot = load_chunk_set_snapshot(
-                self.runtime.settings,
-                corpus_name=workspace.backing_corpus_name,
-                corpus_id=snapshot.identity.corpus_id,
-                chunk_set_id=snapshot.identity.chunk_set_id,
-                corpus_manifest_name=snapshot.identity.corpus_manifest,
-            )
-            eligible_chunk_count = len(build_eligible_population(chunk_snapshot.chunks))
-        except Exception as exc:
-            raise AppError(
-                ErrorCode.SNAPSHOT_UNAVAILABLE,
-                details=SafeErrorDetails(
-                    workspace_id=workspace_id,
-                    snapshot_id=workspace.current_snapshot_id,
-                    reason="quick_play_chunk_population_unavailable",
-                ),
-            ) from exc
+        eligible_chunk_count = self._eligible_population_count(
+            workspace_id=workspace_id,
+            snapshot_id=workspace.current_snapshot_id,
+            corpus_name=workspace.backing_corpus_name,
+            corpus_id=snapshot.identity.corpus_id,
+            chunk_set_id=snapshot.identity.chunk_set_id,
+            corpus_manifest_name=snapshot.identity.corpus_manifest,
+        )
         proposal_count = min(QUICK_PLAY_PROPOSAL_COUNT, eligible_chunk_count)
         identity_payload = {
             "schema": "quick-play-identity-v1",
@@ -375,6 +373,65 @@ class QuickPlayService:
             ),
             None,
         )
+
+    def _eligible_population_count(
+        self,
+        *,
+        workspace_id: str,
+        snapshot_id: str,
+        corpus_name: str,
+        corpus_id: str,
+        chunk_set_id: str,
+        corpus_manifest_name: str,
+    ) -> int:
+        """Return the eligible seed count, reusing immutable snapshot results."""
+        settings = self.runtime.settings
+        cache_key = (
+            str(settings.paths.chunk_manifests.resolve()),
+            str(settings.paths.chunks.resolve()),
+            corpus_name,
+            snapshot_id,
+            corpus_id,
+            chunk_set_id,
+            corpus_manifest_name,
+        )
+        with self._eligible_population_lock:
+            cached_count = self._eligible_population_counts.get(cache_key)
+            if cached_count is not None:
+                self._eligible_population_counts.move_to_end(cache_key)
+                return cached_count
+
+        try:
+            chunk_snapshot = load_chunk_set_snapshot(
+                settings,
+                corpus_name=corpus_name,
+                corpus_id=corpus_id,
+                chunk_set_id=chunk_set_id,
+                corpus_manifest_name=corpus_manifest_name,
+            )
+            eligible_count = len(build_eligible_population(chunk_snapshot.chunks))
+        except Exception as exc:
+            raise AppError(
+                ErrorCode.SNAPSHOT_UNAVAILABLE,
+                details=SafeErrorDetails(
+                    workspace_id=workspace_id,
+                    snapshot_id=snapshot_id,
+                    reason="quick_play_chunk_population_unavailable",
+                ),
+            ) from exc
+
+        with self._eligible_population_lock:
+            # Another request may have populated this key during the disk read.
+            cached_count = self._eligible_population_counts.get(cache_key)
+            if cached_count is not None:
+                self._eligible_population_counts.move_to_end(cache_key)
+                return cached_count
+            self._eligible_population_counts[cache_key] = eligible_count
+            while (
+                len(self._eligible_population_counts) > _ELIGIBLE_POPULATION_CACHE_LIMIT
+            ):
+                self._eligible_population_counts.popitem(last=False)
+        return eligible_count
 
     def _get_project(self, project_id: str) -> GoldProject | None:
         try:
