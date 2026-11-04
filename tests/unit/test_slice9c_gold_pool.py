@@ -844,7 +844,9 @@ def test_embedding_failure_category_unwraps_runtime_error_safely() -> None:
         try:
             raise EmbedderError("PRIVATE_QUERY and document text")
         except EmbedderError as cause:
-            raise QualifiedEmbeddingRuntimeError("backend initialization failed") from cause
+            raise QualifiedEmbeddingRuntimeError(
+                "backend initialization failed"
+            ) from cause
     except QualifiedEmbeddingRuntimeError as exc:
         category = _safe_exception_category(exc)
 
