@@ -61,9 +61,9 @@ and supporting history.
   live acceptance has not completed successfully and implementation promotion
   has not occurred. It is preserved on the locked
   `archive/beta-conv-01-deterministic-router` branch.
-- [ ] **CURRENT — BETA-CONV-01A — LLM Task Planning Architecture Amendment** —
-  IR-001 targeted design corrections complete / ready for independent
-  re-review;
+- [ ] **CURRENT — BETA-CONV-01A — LLM Task Planning** — design IR-002 accepted,
+  Human accepted, implementation authorized; evaluation, activation and
+  implementation promotion remain unauthorized;
   see [the principal development memory](docs/beta_conv_01a_llm_task_planning_amendment.md).
   Design branch starts from canonical `main` at
   `dfc045f4178db41f723feb0483e8f163a801bc40`, excluding unpromoted application

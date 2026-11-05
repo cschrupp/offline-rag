@@ -1,6 +1,6 @@
 # BETA-CONV-01A — LLM task planning architecture amendment
 
-**Status:** IR-001 TARGETED DESIGN CORRECTIONS COMPLETE / READY FOR INDEPENDENT RE-REVIEW
+**Status:** HUMAN-ACCEPTED DESIGN / IMPLEMENTATION AUTHORIZED
 
 **Authority:** Human-supplied BETA-CONV-01A architecture/evaluation handoff,
 2026-11-05; design, documentation, and archive creation only.
@@ -16,12 +16,24 @@
 BETA-CONV-01 implementation IR-005 ACCEPT — code review.
 
 **Planner implementation, model evaluation, activation, and promotion:**
-NOT AUTHORIZED. BETA-CONV-02 and Slice 17 remain unopened.
+Implementation is authorized by the Human acceptance below. Model evaluation,
+planner activation and implementation promotion are NOT AUTHORIZED. BETA-CONV-02
+and Slice 17 remain unopened.
 
 **IR-001 correction scope:** synchronous API shadow observation has been
 removed in favor of isolated sequential offline comparison; paired
 end-to-end latency gates are now quantitative and operation-specific. No
-implementation or evaluation authority is added.
+model-evaluation authority is added.
+
+**Human design acceptance:** ACCEPTED for exact design subject
+`e82974e47480eaa085c77ddcc04b4b8e71beb46b`, based on independent design
+review IR-002 (ACCEPT).
+
+**Implementation boundary:** Implement the accepted unified planner and
+deterministic validator behind the default `legacy` mode, integrate the
+preserved deterministic implementation according to §12, and add focused
+regression coverage. Do not execute planner/model evaluation, activate planner
+mode, or promote the implementation without separate authority.
 
 This is the single development memory and proposed evaluation specification
 for this amendment. Proposed contracts below require independent review and

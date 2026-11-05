@@ -29,8 +29,8 @@ BETA-GAME-02B — COMPLETE / HUMAN ACCEPTED / PROMOTED
 BETA-CONV-01 — DESIGN COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / PROMOTED
                IMPLEMENTATION IR-005 CODE-REVIEW ACCEPT / PRESERVED / UNPROMOTED
                LIVE ACCEPTANCE NOT SUCCESSFULLY COMPLETED
-BETA-CONV-01A — IR-001 TARGETED DESIGN CORRECTIONS COMPLETE / READY FOR INDEPENDENT RE-REVIEW
-                PLANNER IMPLEMENTATION / ACTIVATION NOT AUTHORIZED
+BETA-CONV-01A — DESIGN IR-002 ACCEPT / HUMAN ACCEPTED / IMPLEMENTATION AUTHORIZED
+                MODEL EVALUATION / ACTIVATION / IMPLEMENTATION PROMOTION NOT AUTHORIZED
 BETA-CONV-02 — DEFERRED / NOT AUTHORIZED
 Additional Gold Lab games — DEFERRED BEYOND CURRENT BETA
 ```
@@ -179,11 +179,13 @@ outside this design. The single design document is
 ### BETA-CONV-01A — LLM Task Planning Architecture Amendment
 
 **Priority:** P1 beta conversation capability
-**Status:** IR-001 TARGETED DESIGN CORRECTIONS COMPLETE / READY FOR INDEPENDENT RE-REVIEW
+**Status:** DESIGN IR-002 ACCEPT / HUMAN ACCEPTED / IMPLEMENTATION AUTHORIZED
 **Authority:** Human design/documentation and archive-creation handoff, 2026-11-05
 **Design branch:** `design/beta-conv-01a-llm-task-planning`, directly from
 `dfc045f4178db41f723feb0483e8f163a801bc40`
-**Planner implementation / evaluation execution / activation / promotion:** NOT AUTHORIZED
+**Implementation:** AUTHORIZED behind default `legacy`, including preserved-code
+integration and focused regression tests. **Model evaluation, activation and
+implementation promotion:** NOT AUTHORIZED.
 
 Propose one structured local-model interpretation call replacing deterministic
 intent interpretation plus contextual resolution, followed by deterministic
