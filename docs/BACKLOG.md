@@ -28,6 +28,7 @@ BETA-GAME-02 — COMPLETE / HUMAN ACCEPTED / PROMOTED
 BETA-GAME-02B — COMPLETE / HUMAN ACCEPTED / PROMOTED
 BETA-CONV-01 — DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED
 BETA-CONV-02 — DEFERRED / NOT AUTHORIZED
+Additional Gold Lab games — DEFERRED BEYOND CURRENT BETA
 ```
 
 16K-F functional acceptance is complete. Performance on the available
@@ -83,6 +84,10 @@ Question Check and Rapid Fire. Keep administrative project/campaign management
 available under Advanced Gold Lab. Do not change Gold scientific semantics,
 publication authority, relevance scale, or ledger guarantees. Slice 17 remains
 NOT AUTHORIZED.
+
+Additional Gold Lab games, including Evidence Sweep and Chunk Duel, are deferred
+beyond the current beta and are not production-approved. Question Check and
+Rapid Fire remain the only production-approved games.
 
 ### BETA-GOLD-POOL-01 — Qualified query-prompt support for Gold pooling
 
@@ -556,8 +561,8 @@ substantially complete/stable and publication-quality benchmarking is approachin
 The following are **not** active queue items merely because they remain open or
 historically unimplemented:
 
-- Evidence Sweep production eligibility — NOT APPROVED;
-- Chunk Duel production eligibility — NOT APPROVED;
+- Evidence Sweep — DEFERRED BEYOND CURRENT BETA / NOT PRODUCTION-APPROVED;
+- Chunk Duel — DEFERRED BEYOND CURRENT BETA / NOT PRODUCTION-APPROVED;
 - 320 px + 200% zoom observation — deferred/not required for accepted 16H;
 - legacy FakeGenerator supersession debt — deferred/not required;
 - 64/128 active-source envelope experiments — require separate contract/config

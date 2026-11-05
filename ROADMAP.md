@@ -51,6 +51,9 @@ and supporting history.
 - [x] **BETA-GAME-02B — Game identity, visual polish, and contribution rail** —
   Human accepted and promoted to canonical `main` at
   `76b168c7ffc1258cd744bc3b095759d7b059d175`.
+- Additional Gold Lab games, including Evidence Sweep and Chunk Duel, are
+  deferred beyond the current beta. Question Check and Rapid Fire remain the
+  only production-approved games.
 - [ ] **BETA-CONV-01 — Intent-aware Conversation Operations** — design open;
   implementation awaits independent design review and Human design acceptance.
 - [ ] **BETA-CONV-02 — Analytical Synthesis** — deferred; not authorized.

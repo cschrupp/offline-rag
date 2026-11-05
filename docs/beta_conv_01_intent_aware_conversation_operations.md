@@ -56,8 +56,11 @@ and remains unchanged.
 question. Its prompt and parser treat transcript text as untrusted data and
 fail closed to `clarification_required`. The UI builds prior turns from visible
 plain text and persists the active conversation only under the existing A2
-session-local policy. The configured `Generator` adapter already provides the
-offline/local generation boundary and common error handling.
+session-local policy. The API receives those turns from the client and can
+validate only their shape, order, and bounds; it cannot verify that the text
+originated in the active browser conversation or belongs to the requested
+workspace. The configured `Generator` adapter already provides the offline/
+local generation boundary and common error handling.
 
 The implementation must extend this orchestration rather than introduce a
 second retrieval path. For transforms it may call the existing generator
@@ -77,8 +80,18 @@ Retain the freeze:
 Add this narrow rule:
 
 - An explicit text transformation may use exact text supplied in the current
-  user message or exact visible text from an unambiguously identified turn in
-  the same active conversation as its **transformation input**.
+  user message or client-supplied text selected from the visible active
+  workspace conversation as its **transformation input**. The browser-managed
+  conversation/workspace relationship is a UI invariant, not server-verified
+  provenance.
+- `prior_turns` remain client-supplied, untrusted input. The server validates
+  structure, role sequence, and bounds, but cannot independently prove turn
+  origin, active-conversation membership, or workspace membership. The system
+  must not claim that it cryptographically or independently verified these
+  properties.
+- The UI must construct `prior_turns` only from its active workspace
+  conversation. No server-side conversation storage, new authentication, or
+  expanded history is introduced by this slice.
 - That input is not promoted to factual evidence. A transformed result is not
   independently verified and must be labeled as conversation-text output.
 - Previous assistant answers remain forbidden as evidence for factual answers.
@@ -88,9 +101,11 @@ Add this narrow rule:
   analysis of documents remains on the grounded path and requires fresh
   retrieval from the currently selected source scope.
 
-No other source of conversation memory is introduced. Cross-workspace,
-cross-conversation, hidden-session, account-level, and browser-history context
-remain forbidden.
+No other source of conversation memory is introduced. The UI must not include
+cross-workspace, cross-conversation, hidden-session, account-level, or unrelated
+browser-history context. Because `prior_turns` are client supplied, the backend
+does not claim it can independently verify that exclusion; it treats all
+received text as untrusted.
 
 ### A2-D05 / D05a — Add an intent branch above the existing grounded core
 
@@ -162,6 +177,20 @@ Source-oriented wording takes precedence over a superficial transform verb:
 sources,” and “compare documents A and B” remain grounded requests. Analytical
 comparison remains within current grounded behavior; comprehensive synthesis
 is deferred to BETA-CONV-02.
+
+Routing examples:
+
+| User request | Route and reason |
+| --- | --- |
+| “Summarize your previous answer in three bullets.” | Transform the uniquely named prior assistant turn; no retrieval. |
+| “Rewrite your last explanation for a beginner.” | Transform the uniquely named prior assistant turn; no retrieval. |
+| “Summarize what document X says about the pump.” | Grounded query; source facts require fresh retrieval and citations. |
+| “Explain that finding in more detail.” | Grounded contextual follow-up; resolve context and retrieve fresh evidence. |
+| “Translate this paragraph into Spanish: [delimited text].” | Transform the explicitly supplied text; no retrieval and no verification claim. |
+| “Translate the paragraph on page 4 of document X.” | Grounded path; the target must be obtained from a source and remains subject to citations. |
+| “Translate this.” with no uniquely identified text. | Clarification; target is missing. |
+| “Summarize that.” when several turns or source findings could be meant. | Clarification; target is ambiguous. |
+| “Summarize the document and identify whether its claims are true.” | Grounded query; factual evaluation is not a text-only transformation. |
 
 ### A2-D06 — Add deterministic transform-target resolution
 
@@ -262,10 +291,12 @@ conversation request
 Transform results are presented with an explicit label such as “Transformed
 conversation text — not verified against selected sources.” When the target
 was a previous assistant response, the UI should say it transformed that prior
-response, not that Seneca re-answered the underlying facts. The evidence pane
-is not opened and no citation markers are rendered for a transform. A grounded
-answer retains the existing Current/Historical snapshot badge and exact source
-citations.
+response, not that Seneca re-answered the underlying facts. For transform turns,
+the UI must suppress the source-scope label and Current/Historical snapshot
+badge because neither describes the basis of the transformed answer. It must
+not open the Evidence pane or render citation markers. Instead show the
+transformation-source label from the response. A grounded answer retains the
+existing source-scope and Current/Historical indicators with exact citations.
 
 The transform response may carry the admitted workspace/snapshot metadata for
 continuity of the existing conversation lifecycle, but that metadata must not
@@ -308,12 +339,30 @@ frontend history reader must continue to load existing session entries that
 predate `response_kind`, treating them as the existing grounded/clarification
 shapes only; it must never infer a transformed response from absent citations.
 
+History validation must accept a citation-free response only when it has the
+explicit `response_kind: conversation_transform` and the complete transform
+shape: `status: transformed`, non-empty `answer`, empty `answer_blocks` and
+`citations`, null `query_trace_id` and `retrieval_question`, and an allowlisted
+`transformation_source`. Missing or unknown `response_kind` must not weaken the
+existing grounded-answer citation requirements. Existing stored response
+shapes remain readable without retroactively labeling them as transforms.
+
 Update Ask rendering and export so the transform label and text are preserved,
 the empty citation set is accepted only for the explicit transform kind, and
 the Evidence pane is not offered for transform output. Future grounded turns
 may still include the visible transformed assistant text in `prior_turns` for
 linguistic context; the server continues to treat it as untrusted and
 non-authoritative.
+
+`assistantPresentationText()` must return the actual non-empty `answer` for an
+explicitly identified transformed response so the visible text can continue as
+linguistic context. This does not make it factual evidence. Markdown export
+must remove the blanket assertion that all assistant responses were generated
+from cited sources. Its global notice must accurately describe mixed grounded
+and transformed conversations, and each transform turn must be individually
+labeled as not source-verified, with no Sources section or fabricated citation.
+JSON export must retain `response_kind` and `transformation_source` so the
+distinction survives export.
 
 No new endpoint, database, persistent conversation storage, model provider,
 frontend state framework, or retrieval abstraction is introduced.
@@ -378,6 +427,17 @@ frontend state framework, or retrieval abstraction is introduced.
 - At least one real local-model test exercises representative summary,
   rewrite, and translation prompts against the configured local generator;
   deterministic fakes alone do not satisfy implementation acceptance.
+- Mixed-history UI/export tests verify that transforms suppress source/snapshot
+  indicators, `assistantPresentationText()` returns transformed text, and
+  citation-free history passes validation only for the explicit valid transform
+  shape. Markdown and JSON export tests verify the transform source label, no
+  Sources section for transforms, and accurate notices for mixed histories. A
+  recommended Markdown notice is:
+
+  > This conversation may contain source-grounded answers and transformations
+  > of conversation text. Only turns explicitly labeled as grounded and
+  > accompanied by citations were answered from selected sources. Transformed
+  > text was not independently verified.
 - No real-corpus benchmark or scientific qualification campaign is required.
   Any local-model result is functional acceptance evidence, not a new quality
   or latency SLO.
