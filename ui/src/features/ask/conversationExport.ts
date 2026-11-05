@@ -197,6 +197,7 @@ function completedTurnJson(entry: ConversationHistoryEntry) {
     response_kind: response.response_kind,
     transformation_source: response.transformation_source,
     abstention_reason: response.abstention_reason,
+    guidance_code: response.guidance_code,
     answer: response.answer,
     answer_blocks: response.answer_blocks,
     citations: response.citations,

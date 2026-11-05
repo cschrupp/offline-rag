@@ -1,5 +1,5 @@
 import type { ConversationTurnResponse } from "../../api/types";
-import { abstentionCopy } from "./abstentionCopy";
+import { abstentionCopy, conversationGuidanceCopy } from "./abstentionCopy";
 
 /**
  * Canonical visible plain text for an assistant conversation turn (A2-D05/D07).
@@ -8,7 +8,11 @@ import { abstentionCopy } from "./abstentionCopy";
 export function assistantPresentationText(
   response: Pick<
     ConversationTurnResponse,
-    "status" | "answer" | "abstention_reason" | "response_kind"
+    | "status"
+    | "answer"
+    | "abstention_reason"
+    | "response_kind"
+    | "guidance_code"
   >,
 ): string {
   if (
@@ -20,7 +24,10 @@ export function assistantPresentationText(
   if (response.status === "answered") {
     return typeof response.answer === "string" ? response.answer : "";
   }
-  return abstentionCopy(response.abstention_reason);
+  return (
+    conversationGuidanceCopy(response.guidance_code) ??
+    abstentionCopy(response.abstention_reason)
+  );
 }
 
 /** Unicode code-point length (matches Python ``len(str)`` / A2-D07). */

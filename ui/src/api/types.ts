@@ -471,6 +471,18 @@ export type ConversationResponseKind =
   | "conversation_transform"
   | "clarification";
 
+export type ConversationGuidanceCode =
+  | "conversation_summary_unavailable"
+  | "history_coverage_unavailable"
+  | "target_missing"
+  | "target_ambiguous"
+  | "target_unavailable"
+  | "source_reference_unavailable"
+  | "unsupported_transform_options"
+  | "planner_plan_invalid"
+  | "multi_stage_operation_unavailable"
+  | "operation_unavailable";
+
 export type ConversationPriorTurn = {
   role: "user" | "assistant";
   text: string;
@@ -493,6 +505,7 @@ export type ConversationTurnResponse = {
     | "prior_assistant_turn"
     | null;
   abstention_reason: AbstentionReason | null;
+  guidance_code?: ConversationGuidanceCode | null;
   question: string;
   retrieval_question: string | null;
   context_used: boolean;

@@ -22,14 +22,19 @@ def test_default_settings_validate() -> None:
 
 
 def test_load_base_yaml() -> None:
-    settings = load_settings(yaml_paths=[REPO_ROOT / "config" / "base.yaml"], environ={})
+    settings = load_settings(
+        yaml_paths=[REPO_ROOT / "config" / "base.yaml"], environ={}
+    )
     assert settings.paths.raw_data == Path("data/raw")
     assert settings.logging.structured is True
     assert settings.dense.top_k == 10
     assert settings.lexical.top_k == 30
     assert settings.lexical.bm25.k1 == 1.2
     assert settings.indexing.embedding.model_id == "Qwen/Qwen3-Embedding-0.6B"
-    assert settings.indexing.embedding.revision == "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3"
+    assert (
+        settings.indexing.embedding.revision
+        == "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3"
+    )
 
 
 def test_load_experiment_overlay() -> None:
@@ -67,6 +72,22 @@ def test_environment_overrides_yaml(tmp_path: Path) -> None:
     assert settings.generation.approved_models == ["a", "b"]
 
 
+def test_conversation_router_mode_is_opt_in_and_validated() -> None:
+    defaults = load_settings(yaml_paths=[], environ={})
+    planner = load_settings(
+        yaml_paths=[],
+        environ={"OFFLINE_RAG_CONVERSATION_ROUTER_MODE": "planner"},
+    )
+
+    assert defaults.conversation.router_mode == "legacy"
+    assert planner.conversation.router_mode == "planner"
+    with pytest.raises(ConfigError, match="invalid configuration"):
+        load_settings(
+            yaml_paths=[],
+            environ={"OFFLINE_RAG_CONVERSATION_ROUTER_MODE": "shadow"},
+        )
+
+
 def test_explicit_overrides_win() -> None:
     settings = load_settings(
         yaml_paths=[REPO_ROOT / "config" / "base.yaml"],
@@ -78,7 +99,9 @@ def test_explicit_overrides_win() -> None:
 
 def test_unknown_field_rejected(tmp_path: Path) -> None:
     bad = tmp_path / "bad.yaml"
-    bad.write_text("project:\n  name: offline-rag\n  unexpected: true\n", encoding="utf-8")
+    bad.write_text(
+        "project:\n  name: offline-rag\n  unexpected: true\n", encoding="utf-8"
+    )
     with pytest.raises(ConfigError, match="invalid configuration"):
         load_settings(yaml_paths=[bad], environ={})
 

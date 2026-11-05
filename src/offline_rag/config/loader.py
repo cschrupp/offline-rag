@@ -54,6 +54,7 @@ _AUTHORING_PRODUCT_SETTING_FIELDS = frozenset(_AUTHORING_OVERRIDE_LOCK_MAP)
 
 # Nested field paths for direct environment overrides.
 _ENV_FIELD_MAP: dict[str, tuple[str, ...]] = {
+    "CONVERSATION_ROUTER_MODE": ("conversation", "router_mode"),
     "STRICT_OFFLINE": ("project", "strict_offline"),
     "LLM_BASE_URL": ("generation", "base_url"),
     "LLM_MODEL": ("generation", "model"),

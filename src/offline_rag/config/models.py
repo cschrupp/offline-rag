@@ -484,6 +484,14 @@ class GenerationSettings(BaseModel):
         return stripped or None
 
 
+class ConversationSettings(BaseModel):
+    """Conversation interpretation mode, captured when the process starts."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    router_mode: Literal["legacy", "planner"] = "legacy"
+
+
 class AuthoringContractSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -793,6 +801,7 @@ class AppSettings(BaseModel):
     fusion: FusionSettings = Field(default_factory=FusionSettings)
     reranker: RerankerSettings = Field(default_factory=RerankerSettings)
     context: ContextSettings = Field(default_factory=ContextSettings)
+    conversation: ConversationSettings = Field(default_factory=ConversationSettings)
     generation: GenerationSettings = Field(default_factory=GenerationSettings)
     authoring: AuthoringSettings = Field(default_factory=AuthoringSettings)
     evaluation: EvaluationSettings = Field(default_factory=EvaluationSettings)

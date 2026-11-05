@@ -21,6 +21,8 @@ from offline_rag.ingestion.io import atomic_write_text
 
 CONVERSATION_TRACE_SCHEMA_VERSION = "offline-rag-conversation-trace-v2"
 LEGACY_CONVERSATION_TRACE_SCHEMA_VERSION = "offline-rag-conversation-trace-v1"
+PLANNER_CONVERSATION_TRACE_SCHEMA_VERSION = "offline-rag-conversation-trace-v3"
+PLANNER_TRACE_CONTRACT_ID = "seneca_conversation_task_plan_v1"
 MAX_RETAINED_CONVERSATION_TRACES = 1000
 MAX_TRACE_AGE = timedelta(days=7)
 
@@ -35,6 +37,25 @@ ConversationTerminalStatus = Literal[
     "model_abstain",
     "clarification_required",
     "transformed",
+    "failed",
+    "cancelled",
+]
+PlannerTraceReason = Literal[
+    "target_missing",
+    "target_ambiguous",
+    "target_unavailable",
+    "source_reference_unavailable",
+    "history_coverage_unavailable",
+    "unsupported_transform_options",
+    "planner_plan_invalid",
+    "conversation_summary_unavailable",
+    "multi_stage_operation_unavailable",
+    "operation_unavailable",
+    "planner_unavailable",
+    "planner_timeout",
+    "planner_context_limit",
+    "planner_transport_error",
+    "planner_cancelled",
 ]
 ConversationIntentKind = Literal[
     "grounded_query", "conversation_transform", "clarification_required"
@@ -86,6 +107,22 @@ class ConversationTraceRecord(BaseModel):
     transform_target_char_count: int | None = Field(default=None, ge=0)
     transform_output_sha256: str | None = None
     transform_output_char_count: int | None = Field(default=None, ge=0)
+    router_mode: Literal["legacy", "planner"] | None = None
+    planner_contract_id: str | None = None
+    planner_operation: (
+        Literal["grounded_query", "transform_text", "clarify", "unsupported_operation"]
+        | None
+    ) = None
+    planner_validation: (
+        Literal["valid", "rejected", "unavailable", "cancelled"] | None
+    ) = None
+    planner_reason_code: PlannerTraceReason | None = None
+    planner_model_call_count: int | None = Field(default=None, ge=0, le=1)
+    planner_duration_ms: int | None = Field(default=None, ge=0)
+    planner_input_char_count: int | None = Field(default=None, ge=0, le=20_000)
+    planner_output_char_count: int | None = Field(default=None, ge=0, le=10_000)
+    referenced_context_turn_count: int | None = Field(default=None, ge=0, le=12)
+    contextual_resolution_needed: bool | None = None
 
     @field_validator("schema_version")
     @classmethod
@@ -93,6 +130,7 @@ class ConversationTraceRecord(BaseModel):
         if value not in {
             CONVERSATION_TRACE_SCHEMA_VERSION,
             LEGACY_CONVERSATION_TRACE_SCHEMA_VERSION,
+            PLANNER_CONVERSATION_TRACE_SCHEMA_VERSION,
         }:
             raise ValueError("unsupported conversation trace schema version")
         return value
@@ -115,7 +153,13 @@ class ConversationTraceRecord(BaseModel):
 
     @model_validator(mode="after")
     def _validate_transform_trace(self) -> ConversationTraceRecord:
-        if self.schema_version == CONVERSATION_TRACE_SCHEMA_VERSION:
+        planner_trace = self.schema_version == PLANNER_CONVERSATION_TRACE_SCHEMA_VERSION
+        if not planner_trace and self.status in {"failed", "cancelled"}:
+            raise ValueError("failed and cancelled statuses require v3 traces")
+        if self.schema_version in {
+            CONVERSATION_TRACE_SCHEMA_VERSION,
+            PLANNER_CONVERSATION_TRACE_SCHEMA_VERSION,
+        }:
             if (
                 self.intent_kind == "conversation_transform"
                 and self.status != "transformed"
@@ -141,12 +185,94 @@ class ConversationTraceRecord(BaseModel):
                 )
             ):
                 raise ValueError("non-transform trace contains transform metadata")
+        if planner_trace:
+            if self.router_mode not in {"legacy", "planner"}:
+                raise ValueError("v3 trace requires a router mode")
+            if self.router_mode == "legacy":
+                if any(
+                    value is not None
+                    for value in (
+                        self.planner_contract_id,
+                        self.planner_operation,
+                        self.planner_validation,
+                        self.planner_reason_code,
+                        self.planner_model_call_count,
+                        self.planner_duration_ms,
+                        self.planner_input_char_count,
+                        self.planner_output_char_count,
+                        self.referenced_context_turn_count,
+                        self.contextual_resolution_needed,
+                    )
+                ):
+                    raise ValueError("legacy v3 trace contains planner metadata")
+            else:
+                if (
+                    self.planner_contract_id != PLANNER_TRACE_CONTRACT_ID
+                    or self.planner_validation is None
+                    or self.planner_model_call_count is None
+                    or self.planner_duration_ms is None
+                    or self.planner_input_char_count is None
+                    or self.planner_output_char_count is None
+                    or self.referenced_context_turn_count is None
+                    or self.contextual_resolution_needed is None
+                ):
+                    raise ValueError("planner v3 trace is missing required metadata")
+                if (
+                    self.planner_model_call_count == 0
+                    and self.planner_validation
+                    not in {
+                        "unavailable",
+                        "cancelled",
+                    }
+                ):
+                    raise ValueError("zero-call planner trace has invalid validation")
+            if self.status in {"failed", "cancelled"}:
+                if (
+                    self.router_mode != "planner"
+                    or self.intent_kind is not None
+                    or self.planner_operation is not None
+                    or self.query_trace_id is not None
+                    or self.transform_output_sha256 is not None
+                    or self.transform_output_char_count is not None
+                ):
+                    raise ValueError("invalid failed conversation trace")
+                expected_validation = (
+                    "cancelled" if self.status == "cancelled" else "unavailable"
+                )
+                if self.planner_validation != expected_validation:
+                    raise ValueError("failed trace has invalid planner validation")
+        elif any(
+            value is not None
+            for value in (
+                self.router_mode,
+                self.planner_contract_id,
+                self.planner_operation,
+                self.planner_validation,
+                self.planner_reason_code,
+                self.planner_model_call_count,
+                self.planner_duration_ms,
+                self.planner_input_char_count,
+                self.planner_output_char_count,
+                self.referenced_context_turn_count,
+                self.contextual_resolution_needed,
+            )
+        ):
+            raise ValueError("legacy trace contains v3 planner fields")
         if self.status != "transformed":
             return self
+        expected_router_contract = (
+            PLANNER_TRACE_CONTRACT_ID
+            if planner_trace
+            else "conversation_intent_router_v1"
+        )
         if (
-            self.schema_version != CONVERSATION_TRACE_SCHEMA_VERSION
+            self.schema_version
+            not in {
+                CONVERSATION_TRACE_SCHEMA_VERSION,
+                PLANNER_CONVERSATION_TRACE_SCHEMA_VERSION,
+            }
             or self.intent_kind != "conversation_transform"
-            or self.intent_router_contract_id != "conversation_intent_router_v1"
+            or self.intent_router_contract_id != expected_router_contract
             or self.transform_prompt_contract_id != "conversation_transform_v1"
             or self.transform_operation is None
             or self.transform_source_kind is None

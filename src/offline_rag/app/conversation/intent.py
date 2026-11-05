@@ -37,9 +37,20 @@ class ConversationRoute:
             "transform_target_missing",
             "transform_target_ambiguous",
             "transform_request_unsupported",
+            "target_missing",
+            "target_ambiguous",
+            "target_unavailable",
+            "history_coverage_unavailable",
+            "unsupported_transform_options",
+            "planner_plan_invalid",
+            "source_reference_unavailable",
+            "conversation_summary_unavailable",
+            "multi_stage_operation_unavailable",
+            "operation_unavailable",
         ]
         | None
     ) = None
+    guidance_code: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

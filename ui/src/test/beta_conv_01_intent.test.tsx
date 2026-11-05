@@ -12,6 +12,7 @@ import {
   type ConversationHistoryEntry,
 } from "../features/ask/conversationState";
 import { assistantPresentationText } from "../features/ask/assistantPresentation";
+import { conversationGuidanceCopy } from "../features/ask/abstentionCopy";
 import { AskPanel } from "../features/ask/AskPanel";
 
 afterEach(() => sessionStorage.clear());
@@ -124,6 +125,80 @@ describe("BETA-CONV-01 transformed conversation records", () => {
     expect(assistantPresentationText(transformed)).toBe(
       "A concise transformed answer.",
     );
+  });
+
+  it("retains application-owned planner guidance in history and exports", () => {
+    const clarification = response({
+      status: "clarification_required",
+      response_kind: "clarification",
+      transformation_source: null,
+      abstention_reason: "ambiguous_request",
+      guidance_code: "conversation_summary_unavailable",
+      question: "Summarize this conversation.",
+      context_used: false,
+      answer: null,
+    });
+    const historyEntry = entry(clarification);
+    sessionStorage.setItem(
+      "seneca.conversation.v1:ws_1",
+      JSON.stringify([
+        {
+          pairId: "planner-guidance",
+          askedAt: "2026-11-04T12:00:00Z",
+          question: clarification.question,
+          selectedSourceIds: [],
+          selectedSourceNames: [],
+          selectionMode: "all",
+          response: clarification,
+        },
+      ]),
+    );
+
+    const loaded = loadConversation("ws_1");
+    const loadedEntries: ConversationHistoryEntry[] = loaded.map((pair) => ({
+      entryId: pair.pairId,
+      askedAt: pair.askedAt,
+      question: pair.question,
+      selectedSourceIds: pair.selectedSourceIds,
+      selectedSourceNames: pair.selectedSourceNames,
+      selectionMode: pair.selectionMode,
+      response: pair.response,
+    }));
+    const markdown = serializeConversationMarkdown({
+      workspace: {
+        workspace_id: "ws_1",
+        title: "Research Desk",
+        revision: 3,
+        current_snapshot_id: "snap_2",
+      },
+      history: loadedEntries,
+      incompleteTurns: [],
+      exportedFromView: "normal",
+      exportedAt: "2026-11-04T12:00:00Z",
+    }).content;
+    const json = JSON.parse(
+      serializeConversationJson({
+        workspace: {
+          workspace_id: "ws_1",
+          title: "Research Desk",
+          revision: 3,
+          current_snapshot_id: "snap_2",
+        },
+        history: loadedEntries,
+        incompleteTurns: [],
+        exportedFromView: "normal",
+        exportedAt: "2026-11-04T12:00:00Z",
+      }).content,
+    );
+
+    const guidance = conversationGuidanceCopy("conversation_summary_unavailable");
+    expect(loaded).toHaveLength(1);
+    expect(assistantPresentationText(loaded[0].response)).toBe(guidance);
+    expect(markdown).toContain(guidance);
+    expect(json.turns[0].guidance_code).toBe("conversation_summary_unavailable");
+    expect(json.turns[0].citations).toEqual([]);
+    expect(json.turns[0].response_kind).toBe("clarification");
+    expect(historyEntry.response.guidance_code).toBe("conversation_summary_unavailable");
   });
 
   it("exports transformed turns with provenance and no fabricated sources", () => {

@@ -103,6 +103,18 @@ const MODEL_ABSTAIN_REASONS = new Set([
   "conflicting_evidence",
   "model_declined",
 ]);
+const CONVERSATION_GUIDANCE_CODES = new Set([
+  "conversation_summary_unavailable",
+  "history_coverage_unavailable",
+  "target_missing",
+  "target_ambiguous",
+  "target_unavailable",
+  "source_reference_unavailable",
+  "unsupported_transform_options",
+  "planner_plan_invalid",
+  "multi_stage_operation_unavailable",
+  "operation_unavailable",
+]);
 
 function storageKey(workspaceId: string): string {
   return `${KEY_PREFIX}${workspaceId}`;
@@ -232,6 +244,7 @@ function isTurnResponse(value: unknown): value is ConversationTurnResponse {
     !(row.query_trace_id === null || isNonEmptyString(row.query_trace_id)) ||
     typeof row.status !== "string" ||
     !VALID_STATUSES.has(row.status) ||
+    !(row.guidance_code === undefined || row.guidance_code === null || (typeof row.guidance_code === "string" && CONVERSATION_GUIDANCE_CODES.has(row.guidance_code))) ||
     typeof row.context_used !== "boolean" ||
     !isNonEmptyString(row.question) ||
     !(row.retrieval_question === null || typeof row.retrieval_question === "string") ||

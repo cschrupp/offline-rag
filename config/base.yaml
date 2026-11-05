@@ -158,6 +158,9 @@ context:
   max_context_tokens: 6000
   neighbor_window: 0
 
+conversation:
+  router_mode: legacy
+
 generation:
   enabled: true
   provider: openai_compatible
