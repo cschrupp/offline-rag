@@ -33,7 +33,7 @@ The prompts used only the following synthetic source text:
 
 ```text
 BETA_CONV_01_LOCAL_MODEL_RESULT={"rewrite": "The operator shut the red valve.", "summary": "The pump stopped at noon, restarted at 12:15, and ran for six hours.", "translation_es": "La bomba está lista."}
-1 passed in 8.55s
+1 passed in 7.81s (repeat after IR-002 router corrections)
 ```
 
 These checks establish functional behavior for the selected examples only. They

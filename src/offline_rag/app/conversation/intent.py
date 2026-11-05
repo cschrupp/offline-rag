@@ -63,6 +63,27 @@ _SOURCE_REQUEST_RE = re.compile(
     re.IGNORECASE,
 )
 _MARKDOWN_LINK_RE = re.compile(r"!?\[[^\]]+\]\([^\s)]+(?:\s+[^)]*)?\)")
+_INLINE_TEXT_LABEL_RE = re.compile(
+    r"\b(?:(?:the|a|an)\s+)?(?:this|that|following|provided|pasted|quoted|the)\s+"
+    r"(?:(?:the|a|an)\s+)?(?:report|manual|chapter|section|document|source|"
+    r"file|paragraph)?\s*(?:excerpt|passage|text|section|paragraph)\b",
+    re.IGNORECASE,
+)
+_LOCATED_SOURCE_REFERENCE_RE = re.compile(
+    r"\b(?:from|in|inside|according\s+to|based\s+on)\s+"
+    r"(?:(?:the|this|that|selected)\s+)?(?:[\w-]+\s+){0,3}"
+    r"(?:document|source|file|report|manual|chapter|section|page)\b|"
+    r"\b(?:page|section|chapter)\s+\d+\s+(?:of|in)\s+"
+    r"(?:(?:the|a)\s+)?(?:[\w-]+\s+){0,3}"
+    r"(?:document|source|file|report|manual)\b",
+    re.IGNORECASE,
+)
+_FACTUAL_SOURCE_REQUEST_RE = re.compile(
+    r"\b(?:true|accurate|supported)\b|\bcompare\b|\bverify\b|"
+    r"\bfact.?check\b|\bwhat\s+(?:does|do|did)\s+(?:the\s+)?"
+    r"(?:document|source|file|report|manual|chapter|section)\b",
+    re.IGNORECASE,
+)
 _PRIOR_ASSISTANT_RE = re.compile(
     r"\b(?:your|seneca's|the)\s+(?:previous|last|prior)\s+"
     r"(?:answer|response|explanation)\b|\bprevious answer\b",
@@ -74,14 +95,14 @@ _PRIOR_USER_RE = re.compile(
 )
 _FORMATTER_TARGET_RE = re.compile(
     r"^(?:(?:exactly\s+)?(?:one|two|three|four|five|six|seven|eight|nine|"
-    r"ten|eleven|twelve|\d{1,2})\s+)?"
+    r"ten|eleven|twelve|\d+)\s+)?"
     r"(?:bullets?|bullet\s+points?|sentences?|paragraphs?|words?|lines?|"
     r"characters?|poems?|tables?|json|yaml|csv|lists?|emails?|letters?)$",
     re.IGNORECASE,
 )
 _BULLET_COUNT_RE = re.compile(
     r"\b(?:in|as)\s+(one|two|three|four|five|six|seven|eight|nine|ten|"
-    r"eleven|twelve|\d{1,2})\s+bullet(?:s|\s+points?)?\b",
+    r"eleven|twelve|\d+)\s+bullet(?:s|\s+points?)?\b",
     re.IGNORECASE,
 )
 _AUDIENCE_RE = re.compile(r"\bfor\s+(?:a|an|the)?\s*([\w -]{2,60})", re.IGNORECASE)
@@ -95,13 +116,16 @@ _UNSUPPORTED_FORMAT_RE = re.compile(
     r"five|six|seven|eight|nine|ten|eleven|twelve)\s+"
     r"(?:sentences?|paragraphs?|words?|lines?|characters?)|"
     r"as\s+(?:a\s+)?(?:poem|table|json|yaml|list|email|letter)|"
+    r"as\s+(?:a\s+)?(?:bullet|numbered)\s+list|"
     r"in\s+(?:json|yaml|csv|a\s+table)|"
+    r"(?:in|as)\s+(?:a\s+|an\s+)?[\w-]+\s+"
+    r"(?:tone|style|voice|format)\b|"
     r"with\s+(?:headings|subheadings|a\s+title)|"
     r"(?:at\s+least|at\s+most|no\s+more\s+than|under|fewer\s+than)\s+"
     r"\d+\s+(?:words?|sentences?|paragraphs?|lines?|characters?)|"
-    r"(?:with|without|keep|preserve|include|exclude|avoid)\s+"
-    r"(?:a\s+|the\s+)?(?:friendly|formal|casual|technical|humorous|"
-    r"headings|subheadings|title|examples?|citations?|details?))\b",
+    r"(?:with|without|keep|preserve|include|exclude|avoid|maintain|use|make)\b|"
+    r"\b(?:a\s+|the\s+)?(?:friendly|formal|casual|technical|humorous)\s+"
+    r"(?:tone|style|voice)\b)",
     re.IGNORECASE,
 )
 
@@ -122,6 +146,16 @@ def _closing_quote(text: str, start: int, closing: str) -> int:
             return index
         index += 1
     return -1
+
+
+def _apostrophe_inside_word(text: str, index: int) -> bool:
+    return (
+        text[index] == "'"
+        and index > 0
+        and index + 1 < len(text)
+        and text[index - 1].isalnum()
+        and text[index + 1].isalnum()
+    )
 
 
 def _closing_bracket(text: str, start: int) -> int:
@@ -148,7 +182,8 @@ def _delimited_targets(question: str) -> tuple[_DelimitedTarget, ...]:
             content_start = index + 3 if opening_end < 0 else opening_end + 1
             closing = question.find("```", content_start)
             if closing < 0:
-                break
+                index += 3
+                continue
             value = question[content_start:closing].strip()
             if value:
                 targets.append(_DelimitedTarget(value, index, closing + 3))
@@ -158,7 +193,8 @@ def _delimited_targets(question: str) -> tuple[_DelimitedTarget, ...]:
         if question[index] == "`":
             closing = _closing_quote(question, index + 1, "`")
             if closing < 0:
-                break
+                index += 1
+                continue
             value = question[index + 1 : closing].strip()
             if value:
                 targets.append(_DelimitedTarget(value, index, closing + 1))
@@ -166,11 +202,15 @@ def _delimited_targets(question: str) -> tuple[_DelimitedTarget, ...]:
             continue
 
         quote_pairs = {"“": "”", "‘": "’", '"': '"', "'": "'"}
+        if _apostrophe_inside_word(question, index):
+            index += 1
+            continue
         closing_quote = quote_pairs.get(question[index])
         if closing_quote is not None:
             closing = _closing_quote(question, index + 1, closing_quote)
             if closing < 0:
-                break
+                index += 1
+                continue
             value = question[index + 1 : closing].strip()
             if value:
                 targets.append(_DelimitedTarget(value, index, closing + 1))
@@ -240,19 +280,22 @@ def _option_text(
     return " ".join(parts)
 
 
-def _source_request(question: str) -> bool:
+def _source_request(question: str, *, has_inline_target: bool) -> bool:
     """Prefer factual/source-oriented intent over a transform verb."""
     routing_text = _without_delimited_targets(question)
-    if _SOURCE_REQUEST_RE.search(routing_text) or _MARKDOWN_LINK_RE.search(question):
+    if _FACTUAL_SOURCE_REQUEST_RE.search(routing_text):
         return True
-    return bool(
-        re.search(
-            r"\bwhat\s+(?:does|do|did)\s+(?:the\s+)?"
-            r"(?:document|source|file)\b",
-            routing_text,
-            re.IGNORECASE,
-        )
-    )
+    if _MARKDOWN_LINK_RE.search(routing_text):
+        return True
+    if has_inline_target:
+        # A uniquely delimited current-message target is the explicit input.
+        # Supplied-text labels describe it; other source terms retain grounding.
+        if _LOCATED_SOURCE_REFERENCE_RE.search(routing_text):
+            return True
+        if _INLINE_TEXT_LABEL_RE.search(routing_text):
+            return False
+        return bool(_SOURCE_REQUEST_RE.search(routing_text))
+    return bool(_SOURCE_REQUEST_RE.search(routing_text))
 
 
 def _operation(question: str) -> TransformOperation | None:
@@ -305,9 +348,6 @@ def route_conversation_intent(
     question: str, prior_turns: tuple[PriorTurn, ...]
 ) -> ConversationRoute:
     """Route only high-precision text transformations away from grounding."""
-    if _source_request(question):
-        return ConversationRoute(kind="grounded_query")
-
     operation = _operation(question)
     if operation is None:
         return ConversationRoute(kind="grounded_query")
@@ -319,9 +359,19 @@ def route_conversation_intent(
     explicit_targets = tuple(
         target for target in all_targets if target not in formatting_targets
     )
+    if _source_request(question, has_inline_target=bool(explicit_targets)):
+        return ConversationRoute(kind="grounded_query")
     option_text = _option_text(question, explicit_targets, formatting_targets)
     operation_text = _without_delimited_targets(question)
     has_audience = bool(_AUDIENCE_RE.search(option_text))
+    has_bullet_count = bool(_BULLET_COUNT_RE.search(option_text))
+    has_language = bool(_LANGUAGE_RE.search(option_text))
+    if has_audience and operation not in {"rewrite", "simplify"}:
+        return _clarify("transform_request_unsupported")
+    if has_bullet_count and operation != "summarize":
+        return _clarify("transform_request_unsupported")
+    if has_language and operation != "translate":
+        return _clarify("transform_request_unsupported")
     has_prior_reference = bool(
         _PRIOR_ASSISTANT_RE.search(option_text) or _PRIOR_USER_RE.search(option_text)
     )

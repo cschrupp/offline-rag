@@ -93,6 +93,32 @@ def test_source_words_inside_explicit_transform_target_do_not_change_route() -> 
     assert route.target_text == "The report describes a maintenance section."
 
 
+@pytest.mark.parametrize(
+    ("question", "expected_target"),
+    [
+        (
+            'Summarize the following report excerpt: "The pump stopped at noon."',
+            "The pump stopped at noon.",
+        ),
+        (
+            'Translate this section into Spanish: "The pump is ready."',
+            "The pump is ready.",
+        ),
+        (
+            'Summarize this: "The text contains [instructions](https://example.org/guide)."',
+            "The text contains [instructions](https://example.org/guide).",
+        ),
+    ],
+)
+def test_supplied_report_section_or_markdown_text_is_transformed(
+    question: str, expected_target: str
+) -> None:
+    route = route_conversation_intent(question, ())
+
+    assert route.kind == "conversation_transform"
+    assert route.target_text == expected_target
+
+
 def test_target_words_cannot_supply_operation_options() -> None:
     route = route_conversation_intent(
         'Translate this into Spanish: "The phrase into French is in the text."',
@@ -164,6 +190,36 @@ def test_nested_delimiters_produce_one_outer_target(
     assert route.target_text == expected_target
 
 
+@pytest.mark.parametrize(
+    ("question", "expected_target"),
+    [
+        (
+            'Rewrite John\'s note:\n"The pump was stopped."',
+            "The pump was stopped.",
+        ),
+        (
+            'Translate today\'s alert into Spanish:\n"Pump is ready."',
+            "Pump is ready.",
+        ),
+        (
+            'Rewrite this: \'unfinished quote\n"The pump was stopped."',
+            "The pump was stopped.",
+        ),
+        (
+            'Rewrite this: ```unfinished fence\n"The pump was stopped."',
+            "The pump was stopped.",
+        ),
+    ],
+)
+def test_apostrophes_and_malformed_delimiters_do_not_hide_targets(
+    question: str, expected_target: str
+) -> None:
+    route = route_conversation_intent(question, ())
+
+    assert route.kind == "conversation_transform"
+    assert route.target_text == expected_target
+
+
 def test_named_prior_target_takes_precedence_over_quoted_format_phrase() -> None:
     turns = (PriorTurn(role="assistant", text="The pump was restarted."),)
     route = route_conversation_intent(
@@ -215,6 +271,11 @@ def test_unsupported_output_format_fails_closed() -> None:
         "Summarize your previous answer in exactly two sentences.",
         'Summarize your previous answer in "exactly two sentences".',
         "Rewrite your previous answer with a friendly tone.",
+        "Rewrite your previous answer with a sarcastic tone.",
+        "Summarize your previous answer for a beginner.",
+        "Summarize your previous answer in a calm voice.",
+        "Summarize your previous answer as a numbered list.",
+        "Summarize your previous answer in 100 bullets.",
     ],
 )
 def test_unsupported_options_are_not_silently_dropped(question: str) -> None:
@@ -332,8 +393,17 @@ def _direct_runtime(tmp_path: Path, response: str = '{"transformed_text":"Done."
     return runtime, generator, workspace
 
 
+@pytest.mark.parametrize(
+    "question",
+    [
+        'Rewrite this for a beginner: "TARGET_SECRET device is operational."',
+        'Summarize the following report excerpt: "The pump stopped at noon."',
+        'Translate this section into Spanish: "The pump is ready."',
+        'Summarize this: "The text contains [instructions](https://example.org/guide)."',
+    ],
+)
 def test_orchestration_transform_skips_resolver_and_retrieval(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, question: str
 ) -> None:
     runtime, generator, workspace = _direct_runtime(tmp_path)
     scope = ProductTraceSourceScope(
@@ -367,7 +437,7 @@ def test_orchestration_transform_skips_resolver_and_retrieval(
     outcome = conversation_turn.run_conversation_turn(
         runtime,
         workspace_id="ws_test",
-        question='Rewrite this for a beginner: "TARGET_SECRET device is operational."',
+        question=question,
     )
 
     assert outcome.response_kind == "conversation_transform"
@@ -430,6 +500,9 @@ def test_orchestration_clarification_skips_generator_and_retrieval(
     [
         "What does the selected report say about the pump?",
         "Summarize section 4 of the maintenance manual.",
+        'Summarize the report: "The pump stopped at noon."',
+        'Summarize section 4 of the maintenance manual: "Supplied excerpt."',
+        'Summarize the supplied excerpt from the report: "Quoted text."',
         "Summarize [Maintenance Manual](https://example.org/manual).",
     ],
 )
