@@ -103,6 +103,19 @@ def test_named_prior_turn_transform_wins_over_topic_source_words(
     )
 
 
+def test_grammar_correction_is_not_classified_as_factual_source_update() -> None:
+    turns = (
+        PriorTurn(role="user", text="What does the report say?"),
+        PriorTurn(role="assistant", text="The report describes maintenance."),
+    )
+    route = route_conversation_intent(
+        "Rewrite your previous answer about the report to correct its grammar.", turns
+    )
+
+    assert route.kind == "clarification_required"
+    assert route.clarification_reason == "transform_request_unsupported"
+
+
 def test_inline_translation_extracts_language_and_delimited_text() -> None:
     route = route_conversation_intent(
         "Translate this paragraph into Spanish: `The valve is closed.`", ()
@@ -606,6 +619,21 @@ def test_named_prior_transform_skips_resolver_and_retrieval(
         ("Summarize your previous answer and verify it against the report.", True),
         ("Summarize your previous answer based on the report.", True),
         ("Update your previous answer with facts from the report.", True),
+        (
+            "Summarize your previous answer using "
+            + "[Maintenance Manual](https://example.org/manual).",
+            True,
+        ),
+        (
+            "Summarize your previous answer based on "
+            + "[the report](https://example.org/report).",
+            True,
+        ),
+        (
+            "Summarize your previous answer from "
+            + "[the report](https://example.org/report).",
+            True,
+        ),
         ("Summarize section 4 of the maintenance manual.", False),
         ('Summarize the report: "The pump stopped at noon."', False),
         (

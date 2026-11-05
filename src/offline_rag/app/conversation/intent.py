@@ -70,7 +70,7 @@ _INLINE_TEXT_LABEL_RE = re.compile(
     re.IGNORECASE,
 )
 _LOCATED_SOURCE_REFERENCE_RE = re.compile(
-    r"\b(?:from|in|inside|using|according\s+to|based\s+on)\s+"
+    r"\b(?:from|in|inside|using|against|according\s+to|based\s+on)\s+"
     r"(?:(?:the|this|that|selected)\s+)?(?:[\w-]+\s+){0,3}"
     r"(?:document|source|file|report|manual|chapter|section|page)\b|"
     r"\b(?:page|section|chapter)\s+\d+\s+(?:of|in)\s+"
@@ -85,7 +85,8 @@ _FACTUAL_SOURCE_REQUEST_RE = re.compile(
     re.IGNORECASE,
 )
 _SOURCE_UPDATE_ACTION_RE = re.compile(
-    r"\b(?:update|re-?answer|answer\s+again|correct|refresh|add\s+facts?)\b",
+    r"\b(?:update|re-?answer|answer\s+again|refresh|add\s+facts?)\b|"
+    r"\bcorrect\s+(?:the\s+)?(?:facts?|factual\s+claims?|information|data)\b",
     re.IGNORECASE,
 )
 _PRIOR_ASSISTANT_RE = re.compile(
@@ -128,6 +129,7 @@ _UNSUPPORTED_FORMAT_RE = re.compile(
     r"(?:at\s+least|at\s+most|no\s+more\s+than|under|fewer\s+than)\s+"
     r"\d+\s+(?:words?|sentences?|paragraphs?|lines?|characters?)|"
     r"(?:with|without|keep|preserve|include|exclude|avoid|maintain|use|make)\b|"
+    r"\bcorrect\s+(?:its|the|their)\s+(?:grammar|wording|style|spelling)\b|"
     r"\b(?:a\s+|the\s+)?(?:friendly|formal|casual|technical|humorous)\s+"
     r"(?:tone|style|voice)\b)",
     re.IGNORECASE,
@@ -294,12 +296,12 @@ def _source_request(
         and _SOURCE_REQUEST_RE.search(routing_text)
     ):
         return True
+    if _MARKDOWN_LINK_RE.search(routing_text):
+        return True
     if has_prior_target:
         # Source terms may describe the topic of the explicitly named prior
         # turn. A located reference still asks for source material.
         return bool(_LOCATED_SOURCE_REFERENCE_RE.search(routing_text))
-    if _MARKDOWN_LINK_RE.search(routing_text):
-        return True
     if has_inline_target:
         # A uniquely delimited current-message target is the explicit input.
         # Supplied-text labels describe it; other source terms retain grounding.
