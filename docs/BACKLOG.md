@@ -62,7 +62,7 @@ and its linked sanitized `RUN_002_EVIDENCE_INDEX.md`.
     -> BETA-CONV-01 intent-aware conversation operations DESIGN COMPLETE /
        INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / PROMOTED at
        b61570f0815aaaa44d632d82c1fc50f63c673884;
-       implementation remains NOT AUTHORIZED
+       implementation AUTHORIZED / IN PROGRESS
     -> BETA-CONV-02 analytical synthesis DEFERRED / NOT AUTHORIZED
     -> Slice 17 design-open authority remains NOT AUTHORIZED
 ```

@@ -42,17 +42,27 @@ class ConversationRoute:
     ) = None
 
 
+@dataclass(frozen=True, slots=True)
+class _DelimitedTarget:
+    text: str
+    start: int
+    end: int
+
+
 _OPERATION_RE = re.compile(
     r"^\s*(summari[sz]e|summary|rewrite|rephrase|simplify|translate|explain)\b",
     re.IGNORECASE,
 )
 _SOURCE_REQUEST_RE = re.compile(
-    r"\b(document|documents|source|sources|file|files|page\s+\d+|"
-    r"selected sources|evidence|citation|citations)\b|"
+    r"\b(document|documents|source|sources|file|files|report|reports|"
+    r"manual|manuals|chapter|chapters|section|sections|article|articles|"
+    r"page\s+\d+|selected sources|evidence|citation|citations|"
+    r"source title|document title|file title)\b|"
     r"\b(?:true|accurate|supported)\b|"
     r"\bcompare\b|\bverify\b|\bfact.?check\b",
     re.IGNORECASE,
 )
+_MARKDOWN_LINK_RE = re.compile(r"!?\[[^\]]+\]\([^\s)]+(?:\s+[^)]*)?\)")
 _PRIOR_ASSISTANT_RE = re.compile(
     r"\b(?:your|seneca's|the)\s+(?:previous|last|prior)\s+"
     r"(?:answer|response|explanation)\b|\bprevious answer\b",
@@ -62,14 +72,12 @@ _PRIOR_USER_RE = re.compile(
     r"\b(?:my|the)\s+(?:previous|last|prior)\s+(?:question|prompt)\b",
     re.IGNORECASE,
 )
-_QUOTED_TARGETS = (
-    re.compile(r"```(?:text)?\s*(.*?)\s*```", re.IGNORECASE | re.DOTALL),
-    re.compile(r"“(.*?)”", re.DOTALL),
-    re.compile(r"‘(.*?)’", re.DOTALL),
-    re.compile(r'"([^"\n]+)"', re.DOTALL),
-    re.compile(r"'([^'\n]+)'", re.DOTALL),
-    re.compile(r"`([^`\n]+)`", re.DOTALL),
-    re.compile(r"\[([^\[\]]+)\]", re.DOTALL),
+_FORMATTER_TARGET_RE = re.compile(
+    r"^(?:(?:exactly\s+)?(?:one|two|three|four|five|six|seven|eight|nine|"
+    r"ten|eleven|twelve|\d{1,2})\s+)?"
+    r"(?:bullets?|bullet\s+points?|sentences?|paragraphs?|words?|lines?|"
+    r"characters?|poems?|tables?|json|yaml|csv|lists?|emails?|letters?)$",
+    re.IGNORECASE,
 )
 _BULLET_COUNT_RE = re.compile(
     r"\b(?:in|as)\s+(one|two|three|four|five|six|seven|eight|nine|ten|"
@@ -81,24 +89,161 @@ _LANGUAGE_RE = re.compile(
     r"\b(?:to|into)\s+([A-Za-z][A-Za-z -]{1,39}?)(?:\s*:|\s*[,.;]|$)", re.IGNORECASE
 )
 _UNSUPPORTED_FORMAT_RE = re.compile(
-    r"\b(?:exactly\s+\d+\s+words?|as\s+(?:a\s+)?(?:poem|table|json|yaml)|"
-    r"in\s+(?:json|yaml|csv|a\s+table)|as\s+(?:a\s+)?(?:list|email|letter)|"
-    r"with\s+(?:headings|subheadings|a\s+title))\b",
+    r"\b(?:exactly\s+(?:\d+|one|two|three|four|five|six|seven|eight|"
+    r"nine|ten|eleven|twelve)\s+(?:words?|sentences?|paragraphs?|lines?|"
+    r"characters?)|(?:in|as)\s+(?:exactly\s+)?(?:\d+|one|two|three|four|"
+    r"five|six|seven|eight|nine|ten|eleven|twelve)\s+"
+    r"(?:sentences?|paragraphs?|words?|lines?|characters?)|"
+    r"as\s+(?:a\s+)?(?:poem|table|json|yaml|list|email|letter)|"
+    r"in\s+(?:json|yaml|csv|a\s+table)|"
+    r"with\s+(?:headings|subheadings|a\s+title)|"
+    r"(?:at\s+least|at\s+most|no\s+more\s+than|under|fewer\s+than)\s+"
+    r"\d+\s+(?:words?|sentences?|paragraphs?|lines?|characters?)|"
+    r"(?:with|without|keep|preserve|include|exclude|avoid)\s+"
+    r"(?:a\s+|the\s+)?(?:friendly|formal|casual|technical|humorous|"
+    r"headings|subheadings|title|examples?|citations?|details?))\b",
     re.IGNORECASE,
 )
 
 
+def _closing_quote(text: str, start: int, closing: str) -> int:
+    index = start
+    while index < len(text):
+        if text[index] == closing and (index == 0 or text[index - 1] != "\\"):
+            if (
+                closing == "'"
+                and index > 0
+                and index + 1 < len(text)
+                and text[index - 1].isalnum()
+                and text[index + 1].isalnum()
+            ):
+                index += 1
+                continue
+            return index
+        index += 1
+    return -1
+
+
+def _closing_bracket(text: str, start: int) -> int:
+    depth = 1
+    index = start
+    while index < len(text):
+        if text[index] == "[":
+            depth += 1
+        elif text[index] == "]":
+            depth -= 1
+            if depth == 0:
+                return index
+        index += 1
+    return -1
+
+
+def _delimited_targets(question: str) -> tuple[_DelimitedTarget, ...]:
+    """Read non-overlapping explicit targets from supported delimiters."""
+    targets: list[_DelimitedTarget] = []
+    index = 0
+    while index < len(question):
+        if question.startswith("```", index):
+            opening_end = question.find("\n", index + 3)
+            content_start = index + 3 if opening_end < 0 else opening_end + 1
+            closing = question.find("```", content_start)
+            if closing < 0:
+                break
+            value = question[content_start:closing].strip()
+            if value:
+                targets.append(_DelimitedTarget(value, index, closing + 3))
+            index = closing + 3
+            continue
+
+        if question[index] == "`":
+            closing = _closing_quote(question, index + 1, "`")
+            if closing < 0:
+                break
+            value = question[index + 1 : closing].strip()
+            if value:
+                targets.append(_DelimitedTarget(value, index, closing + 1))
+            index = closing + 1
+            continue
+
+        quote_pairs = {"“": "”", "‘": "’", '"': '"', "'": "'"}
+        closing_quote = quote_pairs.get(question[index])
+        if closing_quote is not None:
+            closing = _closing_quote(question, index + 1, closing_quote)
+            if closing < 0:
+                break
+            value = question[index + 1 : closing].strip()
+            if value:
+                targets.append(_DelimitedTarget(value, index, closing + 1))
+            index = closing + 1
+            continue
+
+        if question[index] == "[":
+            closing = _closing_bracket(question, index + 1)
+            if closing < 0:
+                index += 1
+                continue
+            if closing + 1 < len(question) and question[closing + 1] == "(":
+                link_end = question.find(")", closing + 2)
+                index = len(question) if link_end < 0 else link_end + 1
+                continue
+            value = question[index + 1 : closing].strip()
+            if value:
+                targets.append(_DelimitedTarget(value, index, closing + 1))
+            index = closing + 1
+            continue
+
+        index += 1
+    return tuple(targets)
+
+
+def _is_formatting_target(target: _DelimitedTarget, question: str) -> bool:
+    prefix = question[: target.start].rstrip()
+    if not re.search(r"\b(?:in|as)$", prefix, re.IGNORECASE):
+        return False
+    value = target.text.strip().strip(".!?`*_\"'“”‘’")
+    return bool(_FORMATTER_TARGET_RE.fullmatch(value))
+
+
+def _remove_targets(question: str, targets: tuple[_DelimitedTarget, ...]) -> str:
+    parts: list[str] = []
+    previous_end = 0
+    for target in targets:
+        parts.extend((question[previous_end : target.start], " "))
+        previous_end = target.end
+    parts.append(question[previous_end:])
+    return " ".join(parts)
+
+
 def _without_delimited_targets(question: str) -> str:
-    routing_text = question
-    for pattern in _QUOTED_TARGETS:
-        routing_text = pattern.sub(" ", routing_text)
-    return routing_text
+    return _remove_targets(question, _delimited_targets(question))
+
+
+def _option_text(
+    question: str,
+    targets: tuple[_DelimitedTarget, ...],
+    formatting_targets: tuple[_DelimitedTarget, ...],
+) -> str:
+    """Keep formatter phrases visible while excluding actual target text."""
+    replacements = {
+        (target.start, target.end): target.text for target in formatting_targets
+    }
+    removed = {(target.start, target.end) for target in targets}
+    all_targets = sorted((*targets, *formatting_targets), key=lambda item: item.start)
+    parts: list[str] = []
+    previous_end = 0
+    for target in all_targets:
+        parts.append(question[previous_end : target.start])
+        span = (target.start, target.end)
+        parts.append(" " if span in removed else replacements[span])
+        previous_end = target.end
+    parts.append(question[previous_end:])
+    return " ".join(parts)
 
 
 def _source_request(question: str) -> bool:
     """Prefer factual/source-oriented intent over a transform verb."""
     routing_text = _without_delimited_targets(question)
-    if _SOURCE_REQUEST_RE.search(routing_text):
+    if _SOURCE_REQUEST_RE.search(routing_text) or _MARKDOWN_LINK_RE.search(question):
         return True
     return bool(
         re.search(
@@ -124,23 +269,6 @@ def _operation(question: str) -> TransformOperation | None:
     if value == "translate":
         return "translate"
     return None
-
-
-def _target(question: str) -> str | None:
-    matches: list[str] = []
-    for pattern in _QUOTED_TARGETS:
-        matches.extend(match.group(1) for match in pattern.finditer(question))
-    matches = [value for value in matches if value.strip()]
-    if len(matches) == 1:
-        return matches[0]
-    return None
-
-
-def _target_count(question: str) -> int:
-    matches: list[str] = []
-    for pattern in _QUOTED_TARGETS:
-        matches.extend(match.group(1).strip() for match in pattern.finditer(question))
-    return sum(bool(value) for value in matches)
 
 
 def _prior_target(
@@ -184,35 +312,54 @@ def route_conversation_intent(
     if operation is None:
         return ConversationRoute(kind="grounded_query")
 
+    all_targets = _delimited_targets(question)
+    formatting_targets = tuple(
+        target for target in all_targets if _is_formatting_target(target, question)
+    )
+    explicit_targets = tuple(
+        target for target in all_targets if target not in formatting_targets
+    )
+    option_text = _option_text(question, explicit_targets, formatting_targets)
     operation_text = _without_delimited_targets(question)
-    has_audience = bool(_AUDIENCE_RE.search(operation_text))
+    has_audience = bool(_AUDIENCE_RE.search(option_text))
+    has_prior_reference = bool(
+        _PRIOR_ASSISTANT_RE.search(option_text) or _PRIOR_USER_RE.search(option_text)
+    )
     leading_operation = _OPERATION_RE.match(question)
     is_explain = (
         leading_operation is not None
         and leading_operation.group(1).lower() == "explain"
     )
     if is_explain and not has_audience:
-        if _target(question) is None:
+        if not explicit_targets and not has_prior_reference:
             # Plain contextual explanations remain grounded follow-ups.
             return ConversationRoute(kind="grounded_query")
         return _clarify("transform_request_unsupported")
-    if operation == "simplify" and not has_audience and _target(question) is None:
+    if (
+        operation == "simplify"
+        and not has_audience
+        and not explicit_targets
+        and not has_prior_reference
+    ):
         # Plain contextual requests such as “explain that finding” stay grounded.
         return ConversationRoute(kind="grounded_query")
 
-    if _UNSUPPORTED_FORMAT_RE.search(operation_text):
+    if _UNSUPPORTED_FORMAT_RE.search(option_text):
         return _clarify("transform_request_unsupported")
 
-    target_text = _target(question)
+    if len(explicit_targets) > 1 or (explicit_targets and has_prior_reference):
+        return _clarify("transform_target_ambiguous")
+
+    target_text = explicit_targets[0].text if explicit_targets else None
     source: TransformSource = "current_message"
     source_role: TransformRole | None = "user"
     source_ordinal: int | None = None
     if target_text is None:
-        if _target_count(question) > 1:
-            return _clarify("transform_target_ambiguous")
-        prior = _prior_target(operation_text, prior_turns)
+        prior = _prior_target(option_text, prior_turns)
         if prior is not None:
             source, source_role, source_ordinal, target_text = prior
+        elif has_prior_reference:
+            return _clarify("transform_target_missing")
         elif re.search(r"\b(?:that|it|this)\b", operation_text, re.IGNORECASE):
             return _clarify("transform_target_ambiguous")
         else:
@@ -226,7 +373,7 @@ def route_conversation_intent(
 
     options: list[str] = []
     if operation == "summarize":
-        bullets = _BULLET_COUNT_RE.search(operation_text)
+        bullets = _BULLET_COUNT_RE.search(option_text)
         if bullets:
             count_text = bullets.group(1).lower()
             count = {
@@ -247,7 +394,7 @@ def route_conversation_intent(
                 return _clarify("transform_request_unsupported")
             options.append(f"in {count} bullets")
     if operation in {"rewrite", "simplify"}:
-        audience = _AUDIENCE_RE.search(operation_text)
+        audience = _AUDIENCE_RE.search(option_text)
         if audience:
             value = audience.group(1).strip().rstrip(".:;,")
             value = re.split(r"\b(?:using|with|from)\b", value, maxsplit=1)[0].strip()
@@ -255,7 +402,7 @@ def route_conversation_intent(
                 return _clarify("transform_request_unsupported")
             options.append(f"for {value}")
     if operation == "translate":
-        language = _LANGUAGE_RE.search(operation_text)
+        language = _LANGUAGE_RE.search(option_text)
         if language is None:
             return _clarify("transform_request_unsupported")
         options.append(f"into {language.group(1).strip()}")

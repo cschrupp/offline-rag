@@ -70,6 +70,29 @@ def test_inline_translation_extracts_language_and_delimited_text() -> None:
     assert route.target_text == "The valve is closed."
 
 
+@pytest.mark.parametrize(
+    "question",
+    [
+        "Summarize section 4 of the maintenance manual.",
+        "Summarize chapter 2 of the quarterly report.",
+        "Summarize the inspection report.",
+        "Summarize [Maintenance Manual](https://example.org/manual).",
+        "Summarize the title of the maintenance manual.",
+    ],
+)
+def test_source_titles_and_document_sections_remain_grounded(question: str) -> None:
+    assert route_conversation_intent(question, ()).kind == "grounded_query"
+
+
+def test_source_words_inside_explicit_transform_target_do_not_change_route() -> None:
+    route = route_conversation_intent(
+        'Summarize this: "The report describes a maintenance section."', ()
+    )
+
+    assert route.kind == "conversation_transform"
+    assert route.target_text == "The report describes a maintenance section."
+
+
 def test_target_words_cannot_supply_operation_options() -> None:
     route = route_conversation_intent(
         'Translate this into Spanish: "The phrase into French is in the text."',
@@ -117,6 +140,61 @@ def test_ambiguous_transform_does_not_guess_prior_target() -> None:
     assert route.clarification_reason == "transform_target_ambiguous"
 
 
+@pytest.mark.parametrize(
+    ("question", "expected_target"),
+    [
+        (
+            'Translate into Spanish:\n\n```text\nShe said "hello".\n```',
+            'She said "hello".',
+        ),
+        (
+            "Translate into Spanish:\n\n```text\nReturn [1, 2].\n```",
+            "Return [1, 2].",
+        ),
+        ('Translate into Spanish: `She said "hello".`', 'She said "hello".'),
+        ("Translate this into Spanish: `[1, 2]`", "[1, 2]"),
+    ],
+)
+def test_nested_delimiters_produce_one_outer_target(
+    question: str, expected_target: str
+) -> None:
+    route = route_conversation_intent(question, ())
+
+    assert route.kind == "conversation_transform"
+    assert route.target_text == expected_target
+
+
+def test_named_prior_target_takes_precedence_over_quoted_format_phrase() -> None:
+    turns = (PriorTurn(role="assistant", text="The pump was restarted."),)
+    route = route_conversation_intent(
+        'Summarize your previous answer in "three bullets".', turns
+    )
+
+    assert route.kind == "conversation_transform"
+    assert route.source == "prior_assistant_turn"
+    assert route.target_text == "The pump was restarted."
+    assert route.instruction == "summarize in 3 bullets"
+
+
+def test_explicit_target_conflicting_with_named_prior_turn_clarifies() -> None:
+    turns = (PriorTurn(role="assistant", text="The pump was restarted."),)
+    route = route_conversation_intent(
+        'Summarize your previous answer as "a different statement".', turns
+    )
+
+    assert route.kind == "clarification_required"
+    assert route.clarification_reason == "transform_target_ambiguous"
+
+
+def test_multiple_delimited_targets_clarify_instead_of_guessing() -> None:
+    route = route_conversation_intent(
+        'Summarize "the first statement" and "the second statement".', ()
+    )
+
+    assert route.kind == "clarification_required"
+    assert route.clarification_reason == "transform_target_ambiguous"
+
+
 def test_named_missing_prior_turn_clarifies_without_target() -> None:
     route = route_conversation_intent("Rewrite my previous question.", ())
 
@@ -126,6 +204,22 @@ def test_named_missing_prior_turn_clarifies_without_target() -> None:
 
 def test_unsupported_output_format_fails_closed() -> None:
     route = route_conversation_intent('Summarize this as a poem: "Exact text."', ())
+
+    assert route.kind == "clarification_required"
+    assert route.clarification_reason == "transform_request_unsupported"
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "Summarize your previous answer in exactly two sentences.",
+        'Summarize your previous answer in "exactly two sentences".',
+        "Rewrite your previous answer with a friendly tone.",
+    ],
+)
+def test_unsupported_options_are_not_silently_dropped(question: str) -> None:
+    turns = (PriorTurn(role="assistant", text="The pump was restarted."),)
+    route = route_conversation_intent(question, turns)
 
     assert route.kind == "clarification_required"
     assert route.clarification_reason == "transform_request_unsupported"
@@ -331,8 +425,16 @@ def test_orchestration_clarification_skips_generator_and_retrieval(
     assert generator.generate_calls == 0
 
 
-def test_ordinary_factual_request_stays_on_grounded_pipeline(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize(
+    "question",
+    [
+        "What does the selected report say about the pump?",
+        "Summarize section 4 of the maintenance manual.",
+        "Summarize [Maintenance Manual](https://example.org/manual).",
+    ],
+)
+def test_source_oriented_request_stays_on_grounded_pipeline(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, question: str
 ) -> None:
     runtime, _generator, workspace = _direct_runtime(tmp_path)
     scope = ProductTraceSourceScope(
@@ -343,12 +445,14 @@ def test_ordinary_factual_request_stays_on_grounded_pipeline(
         document_ids=[],
     )
     calls = {"resolver": 0, "query": 0}
+    observed = {"resolver_question": None}
 
-    def resolver(*_args, **_kwargs):
+    def resolver(_runtime, *, current_question, **_kwargs):
         calls["resolver"] += 1
+        observed["resolver_question"] = current_question
         return SimpleNamespace(
             outcome="resolved",
-            retrieval_question="What does the selected report say?",
+            retrieval_question=current_question,
             context_used=False,
             resolver_invoked=False,
         )
@@ -388,10 +492,11 @@ def test_ordinary_factual_request_stays_on_grounded_pipeline(
     outcome = conversation_turn.run_conversation_turn(
         runtime,
         workspace_id="ws_test",
-        question="What does the selected report say?",
+        question=question,
     )
 
     assert calls == {"resolver": 1, "query": 1}
+    assert observed["resolver_question"] == question
     assert outcome.status == "answered"
     assert outcome.response_kind == "grounded_answer"
     assert outcome.query_trace_id == "trace_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
