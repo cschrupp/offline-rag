@@ -26,7 +26,8 @@ BETA-GAME-01 — COMPLETE / HUMAN ACCEPTED / PROMOTED
 BETA-GOLD-POOL-01 — COMPLETE / INDEPENDENTLY ACCEPTED / PROMOTED
 BETA-GAME-02 — COMPLETE / HUMAN ACCEPTED / PROMOTED
 BETA-GAME-02B — COMPLETE / HUMAN ACCEPTED / PROMOTED
-BETA-CONV-01 — DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED
+BETA-CONV-01 — DESIGN COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / PROMOTED
+               IMPLEMENTATION NOT AUTHORIZED
 BETA-CONV-02 — DEFERRED / NOT AUTHORIZED
 Additional Gold Lab games — DEFERRED BEYOND CURRENT BETA
 ```
@@ -58,9 +59,10 @@ and its linked sanitized `RUN_002_EVIDENCE_INDEX.md`.
     -> BETA-GAME-02B game identity, visual polish and contribution rail
        COMPLETE / HUMAN ACCEPTED / PROMOTED at
        76b168c7ffc1258cd744bc3b095759d7b059d175
-    -> BETA-CONV-01 intent-aware conversation operations DESIGN OPEN;
-       implementation awaits independent design review and Human design
-       acceptance
+    -> BETA-CONV-01 intent-aware conversation operations DESIGN COMPLETE /
+       INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / PROMOTED at
+       b61570f0815aaaa44d632d82c1fc50f63c673884;
+       implementation remains NOT AUTHORIZED
     -> BETA-CONV-02 analytical synthesis DEFERRED / NOT AUTHORIZED
     -> Slice 17 design-open authority remains NOT AUTHORIZED
 ```
@@ -144,9 +146,11 @@ under `docs/beta_game_02b_visual_polish.md` and
 ### BETA-CONV-01 — Intent-aware Conversation Operations
 
 **Priority:** P1 beta capability
-**Status:** DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED
+**Status:** DESIGN COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / PROMOTED
+**Implementation:** NOT AUTHORIZED
 **Design base:** canonical `main` at
 `76b168c7ffc1258cd744bc3b095759d7b059d175`
+**Accepted design subject:** `b61570f0815aaaa44d632d82c1fc50f63c673884`
 
 Distinguish source-grounded questions and contextual follow-ups from explicit
 summarization, rewriting, simplification, and translation of clearly identified

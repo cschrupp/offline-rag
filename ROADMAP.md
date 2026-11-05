@@ -54,8 +54,9 @@ and supporting history.
 - Additional Gold Lab games, including Evidence Sweep and Chunk Duel, are
   deferred beyond the current beta. Question Check and Rapid Fire remain the
   only production-approved games.
-- [ ] **BETA-CONV-01 — Intent-aware Conversation Operations** — design open;
-  implementation awaits independent design review and Human design acceptance.
+- [x] **BETA-CONV-01 — Intent-aware Conversation Operations** — design
+  independently accepted, Human accepted, and promoted to canonical `main` at
+  `b61570f0815aaaa44d632d82c1fc50f63c673884`. Implementation is not authorized.
 - [ ] **BETA-CONV-02 — Analytical Synthesis** — deferred; not authorized.
 - [ ] Slice 17 design-open — **NOT AUTHORIZED**. This is distinct from
   original Slice 16G, which is complete.
