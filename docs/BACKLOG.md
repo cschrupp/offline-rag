@@ -2,7 +2,7 @@
 
 **Status:** LIVE PLANNING / NON-AUTHORIZING\
 **Canonical reference:** `main` (see Git for current tip)\
-**Updated:** 2026-11-04
+**Updated:** 2026-11-05
 
 This document is the live queue for work that remains after the Human-accepted
 Slice 16 closeout and the post-L6 parser-stack corrective.
@@ -14,7 +14,7 @@ backlog item exists.
 
 ## 1. Current disposition and active queue
 
-### Completed before the remaining beta gates
+### Tranche dispositions
 
 ```text
 S16K-R01 — CLOSED / HUMAN ACCEPTED
@@ -27,7 +27,10 @@ BETA-GOLD-POOL-01 — COMPLETE / INDEPENDENTLY ACCEPTED / PROMOTED
 BETA-GAME-02 — COMPLETE / HUMAN ACCEPTED / PROMOTED
 BETA-GAME-02B — COMPLETE / HUMAN ACCEPTED / PROMOTED
 BETA-CONV-01 — DESIGN COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / PROMOTED
-               IMPLEMENTATION NOT AUTHORIZED
+               IMPLEMENTATION IR-005 CODE-REVIEW ACCEPT / PRESERVED / UNPROMOTED
+               LIVE ACCEPTANCE NOT SUCCESSFULLY COMPLETED
+BETA-CONV-01A — DESIGN AND EVALUATION SPECIFICATION / READY FOR INDEPENDENT REVIEW
+                PLANNER IMPLEMENTATION / ACTIVATION NOT AUTHORIZED
 BETA-CONV-02 — DEFERRED / NOT AUTHORIZED
 Additional Gold Lab games — DEFERRED BEYOND CURRENT BETA
 ```
@@ -62,7 +65,11 @@ and its linked sanitized `RUN_002_EVIDENCE_INDEX.md`.
     -> BETA-CONV-01 intent-aware conversation operations DESIGN COMPLETE /
        INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / PROMOTED at
        b61570f0815aaaa44d632d82c1fc50f63c673884;
-       implementation remains NOT AUTHORIZED
+       deterministic implementation IR-005 code-review ACCEPT at
+       64b5883311338689f291f181e47686fc1a9e3906; live acceptance not completed
+       successfully; preserved on locked archive branch; unpromoted
+    -> BETA-CONV-01A LLM task planning amendment DESIGN REVIEW CURRENT;
+       planner implementation, evaluation execution and activation NOT AUTHORIZED
     -> BETA-CONV-02 analytical synthesis DEFERRED / NOT AUTHORIZED
     -> Slice 17 design-open authority remains NOT AUTHORIZED
 ```
@@ -147,15 +154,19 @@ under `docs/beta_game_02b_visual_polish.md` and
 
 **Priority:** P1 beta capability
 **Status:** DESIGN COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / PROMOTED
-**Implementation:** NOT AUTHORIZED
-**Design base:** canonical `main` at
-`76b168c7ffc1258cd744bc3b095759d7b059d175`
+**Implementation:** IR-005 CODE-REVIEW ACCEPT / PRESERVED / UNPROMOTED
+**Live acceptance:** NOT SUCCESSFULLY COMPLETED
+**Implementation subject:** `64b5883311338689f291f181e47686fc1a9e3906`
+**Preservation branch:** `archive/beta-conv-01-deterministic-router` (locked,
+administrator enforcement enabled, force pushes and deletion disabled)
+**Design promotion baseline:** canonical `main` at
+`dfc045f4178db41f723feb0483e8f163a801bc40`
 **Accepted design subject:** `b61570f0815aaaa44d632d82c1fc50f63c673884`
 
 Distinguish source-grounded questions and contextual follow-ups from explicit
 summarization, rewriting, simplification, and translation of clearly identified
-current-message or visible-conversation text. Proposed scoped amendment to
-accepted Amendment A2 preserves retrieved sources as factual authority; a
+current-message or visible-conversation text. The accepted scoped amendment to
+Amendment A2 preserves retrieved sources as factual authority; a
 conversation transform is labeled as not independently source-verified, has no
 citations, and performs no retrieval. Missing or ambiguous transform targets
 must clarify. Preserve `/query`, source scope, immutable snapshot binding,
@@ -163,6 +174,33 @@ strict-offline execution, conversation lifecycle, and all existing grounded
 answer/citation contracts. BETA-CONV-02 analytical synthesis and Slice 17 remain
 outside this design. The single design document is
 [`docs/beta_conv_01_intent_aware_conversation_operations.md`](beta_conv_01_intent_aware_conversation_operations.md).
+
+### BETA-CONV-01A — LLM Task Planning Architecture Amendment
+
+**Priority:** P1 beta conversation capability
+**Status:** DESIGN AND EVALUATION SPECIFICATION COMPLETE / READY FOR INDEPENDENT REVIEW
+**Authority:** Human design/documentation and archive-creation handoff, 2026-11-05
+**Design branch:** `design/beta-conv-01a-llm-task-planning`, directly from
+`dfc045f4178db41f723feb0483e8f163a801bc40`
+**Planner implementation / evaluation execution / activation / promotion:** NOT AUTHORIZED
+
+Propose one structured local-model interpretation call replacing deterministic
+intent interpretation plus contextual resolution, followed by deterministic
+reference/scope/option validation and the existing specialized executors.
+Preserve scientific grounding, strict-offline configuration, bounded client
+history, transformation provenance, trace readability, source selection and
+immutable snapshot binding. Whole-conversation summary is recognized but
+unsupported until a coverage contract is separately accepted. The observed
+live request “give me a summary of this conversation” and its structured-output
+failure do not establish which generation stage failed.
+
+The single [architecture amendment and development memory](beta_conv_01a_llm_task_planning_amendment.md)
+contains preservation/protection status, typed plan, comparative 300-request
+evaluation proposal, proposed safety/latency gates, explicit router modes,
+rollback and later merge-based integration. The design branch excludes the
+unpromoted application implementation. The baseline-reproduced API lifespan
+stall remains an incomplete verification item; it is not a PASS. Additional
+games remain deferred; BETA-CONV-02 and Slice 17 remain unopened.
 
 ## 2. Historical queue snapshot
 

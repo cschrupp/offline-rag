@@ -56,7 +56,19 @@ and supporting history.
   only production-approved games.
 - [x] **BETA-CONV-01 — Intent-aware Conversation Operations** — design
   independently accepted, Human accepted, and promoted to canonical `main` at
-  `b61570f0815aaaa44d632d82c1fc50f63c673884`. Implementation is not authorized.
+  `b61570f0815aaaa44d632d82c1fc50f63c673884`. The deterministic implementation
+  at `64b5883311338689f291f181e47686fc1a9e3906` has IR-005 code-review ACCEPT;
+  live acceptance has not completed successfully and implementation promotion
+  has not occurred. It is preserved on the locked
+  `archive/beta-conv-01-deterministic-router` branch.
+- [ ] **CURRENT — BETA-CONV-01A — LLM Task Planning Architecture Amendment** —
+  design and evaluation specification ready for independent design review;
+  see [the principal development memory](docs/beta_conv_01a_llm_task_planning_amendment.md).
+  Design branch starts from canonical `main` at
+  `dfc045f4178db41f723feb0483e8f163a801bc40`, excluding unpromoted application
+  changes. Planner implementation, evaluation execution, activation and
+  promotion remain unauthorized. The earlier deterministic design and review
+  history remain preserved.
 - [ ] **BETA-CONV-02 — Analytical Synthesis** — deferred; not authorized.
 - [ ] Slice 17 design-open — **NOT AUTHORIZED**. This is distinct from
   original Slice 16G, which is complete.
