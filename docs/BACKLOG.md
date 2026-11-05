@@ -25,7 +25,9 @@ S16K-R03 — CLOSED / NOT_REPRODUCED; historical root cause not established
 BETA-GAME-01 — COMPLETE / HUMAN ACCEPTED / PROMOTED
 BETA-GOLD-POOL-01 — COMPLETE / INDEPENDENTLY ACCEPTED / PROMOTED
 BETA-GAME-02 — COMPLETE / HUMAN ACCEPTED / PROMOTED
-BETA-GAME-02B — ACTIVE / BOUNDED FRONTEND IMPLEMENTATION AUTHORIZED
+BETA-GAME-02B — COMPLETE / HUMAN ACCEPTED / PROMOTED
+BETA-CONV-01 — DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED
+BETA-CONV-02 — DEFERRED / NOT AUTHORIZED
 ```
 
 16K-F functional acceptance is complete. Performance on the available
@@ -53,7 +55,12 @@ and its linked sanitized `RUN_002_EVIDENCE_INDEX.md`.
     -> BETA-GAME-02 contextual guidance and accessible game experience COMPLETE /
        HUMAN ACCEPTED / PROMOTED at 5518e37a190b573a4658c2374acea88b525bebe9
     -> BETA-GAME-02B game identity, visual polish and contribution rail
-       (authorized / implementation active)
+       COMPLETE / HUMAN ACCEPTED / PROMOTED at
+       76b168c7ffc1258cd744bc3b095759d7b059d175
+    -> BETA-CONV-01 intent-aware conversation operations DESIGN OPEN;
+       implementation awaits independent design review and Human design
+       acceptance
+    -> BETA-CONV-02 analytical synthesis DEFERRED / NOT AUTHORIZED
     -> Slice 17 design-open authority remains NOT AUTHORIZED
 ```
 
@@ -114,9 +121,10 @@ user-reported beta QA record at
 ### BETA-GAME-02B — Game identity, visual polish, and contribution rail
 
 **Priority:** P1 beta UX improvement
-**Status:** BOUNDED IMPLEMENTATION AUTHORIZED / ACTIVE
+**Status:** COMPLETE / HUMAN ACCEPTED / PROMOTED
 **Branch:** `implementation/beta-game-02b-visual-polish`
 **Base:** canonical `main` at `5518e37a190b573a4658c2374acea88b525bebe9`
+**Accepted subject:** `76b168c7ffc1258cd744bc3b095759d7b059d175`
 
 Improve Quick Play with distinctive Question Check and Rapid Fire activity
 cards, an independently collapsible contribution rail, and the accepted
@@ -127,6 +135,25 @@ or production eligibility. No new games, backend changes, or Slice 17 work.
 The scoped handoff is preserved in the implementation memory and result record
 under `docs/beta_game_02b_visual_polish.md` and
 `docs/evidence/beta_game_02b/IMPLEMENTATION_RESULT.md`.
+
+### BETA-CONV-01 — Intent-aware Conversation Operations
+
+**Priority:** P1 beta capability
+**Status:** DESIGN OPEN / IMPLEMENTATION NOT AUTHORIZED
+**Design base:** canonical `main` at
+`76b168c7ffc1258cd744bc3b095759d7b059d175`
+
+Distinguish source-grounded questions and contextual follow-ups from explicit
+summarization, rewriting, simplification, and translation of clearly identified
+current-message or visible-conversation text. Proposed scoped amendment to
+accepted Amendment A2 preserves retrieved sources as factual authority; a
+conversation transform is labeled as not independently source-verified, has no
+citations, and performs no retrieval. Missing or ambiguous transform targets
+must clarify. Preserve `/query`, source scope, immutable snapshot binding,
+strict-offline execution, conversation lifecycle, and all existing grounded
+answer/citation contracts. BETA-CONV-02 analytical synthesis and Slice 17 remain
+outside this design. The single design document is
+[`docs/beta_conv_01_intent_aware_conversation_operations.md`](beta_conv_01_intent_aware_conversation_operations.md).
 
 ## 2. Historical queue snapshot
 

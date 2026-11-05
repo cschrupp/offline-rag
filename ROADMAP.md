@@ -48,10 +48,12 @@ and supporting history.
 - [x] **BETA-GAME-02 — Game experience, contextual help, and accessible gameplay** —
   Human accepted and promoted to canonical `main` at
   `5518e37a190b573a4658c2374acea88b525bebe9`.
-- [ ] **BETA-GAME-02B — Game identity, visual polish, and contribution rail** —
-  bounded frontend implementation authorized / active on
-  `implementation/beta-game-02b-visual-polish`; no new games or scientific
-  changes.
+- [x] **BETA-GAME-02B — Game identity, visual polish, and contribution rail** —
+  Human accepted and promoted to canonical `main` at
+  `76b168c7ffc1258cd744bc3b095759d7b059d175`.
+- [ ] **BETA-CONV-01 — Intent-aware Conversation Operations** — design open;
+  implementation awaits independent design review and Human design acceptance.
+- [ ] **BETA-CONV-02 — Analytical Synthesis** — deferred; not authorized.
 - [ ] Slice 17 design-open — **NOT AUTHORIZED**. This is distinct from
   original Slice 16G, which is complete.
 - [ ] End-to-end beta QA.
