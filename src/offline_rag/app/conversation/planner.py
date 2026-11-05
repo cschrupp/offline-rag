@@ -251,8 +251,8 @@ def _span_text(
             raise TaskPlanValidationError("span_offset_invalid")
         if start < 0 or start >= end or end > len(question):
             raise TaskPlanValidationError("span_offset_invalid")
-        text = question[start:end].strip()
-        if not text:
+        text = question[start:end]
+        if not text.strip():
             raise TaskPlanValidationError("span_empty")
         values.append(text)
     return tuple(values)

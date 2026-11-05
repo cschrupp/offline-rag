@@ -23,6 +23,7 @@ CONVERSATION_TRACE_SCHEMA_VERSION = "offline-rag-conversation-trace-v2"
 LEGACY_CONVERSATION_TRACE_SCHEMA_VERSION = "offline-rag-conversation-trace-v1"
 PLANNER_CONVERSATION_TRACE_SCHEMA_VERSION = "offline-rag-conversation-trace-v3"
 PLANNER_TRACE_CONTRACT_ID = "seneca_conversation_task_plan_v1"
+MAX_PLANNER_TRACE_OUTPUT_CHARS = 10_000
 MAX_RETAINED_CONVERSATION_TRACES = 1000
 MAX_TRACE_AGE = timedelta(days=7)
 
@@ -120,7 +121,9 @@ class ConversationTraceRecord(BaseModel):
     planner_model_call_count: int | None = Field(default=None, ge=0, le=1)
     planner_duration_ms: int | None = Field(default=None, ge=0)
     planner_input_char_count: int | None = Field(default=None, ge=0, le=20_000)
-    planner_output_char_count: int | None = Field(default=None, ge=0, le=10_000)
+    planner_output_char_count: int | None = Field(
+        default=None, ge=0, le=MAX_PLANNER_TRACE_OUTPUT_CHARS
+    )
     referenced_context_turn_count: int | None = Field(default=None, ge=0, le=12)
     contextual_resolution_needed: bool | None = None
 

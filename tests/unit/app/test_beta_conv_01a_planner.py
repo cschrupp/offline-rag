@@ -118,8 +118,8 @@ def test_approved_local_adapter_receives_strict_structured_planner_request() -> 
 
 
 def test_planner_resolves_current_message_codepoint_span() -> None:
-    question = "Summarize: 🌋 Café is online."
-    selected = "Café is online."
+    question = "Summarize: 🌋  Café is online.  "
+    selected = "  Café is online.  "
     start = question.index(selected)
     plan = _parse(
         _wire_plan(
@@ -433,8 +433,8 @@ def test_planner_grounded_operation_uses_bound_query_without_old_resolver(
 def test_planner_transform_uses_sealed_transform_executor_only(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    question = "Summarize this: The valve is closed."
-    target = "The valve is closed."
+    question = "Summarize this:   The valve is closed.  Thanks."
+    target = "  The valve is closed.  "
     start = question.index(target)
     plan = _wire_plan(
         operation="transform_text",
@@ -518,12 +518,21 @@ def test_unselected_planner_source_mention_clarifies_without_query(
     trace = ConversationTraceStore(runtime.settings).get(outcome.conversation_trace_id)
     assert trace is not None
     assert trace.planner_reason_code == "source_reference_unavailable"
+    assert trace.planner_validation == "rejected"
+    assert trace.planner_operation is None
 
 
+@pytest.mark.parametrize(
+    ("planner_output", "expected_output_count"),
+    [("not json", len("not json")), ("x" * 10_001, 10_000)],
+)
 def test_invalid_planner_output_clarifies_without_downstream_execution(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    planner_output: str,
+    expected_output_count: int,
 ) -> None:
-    runtime, generator, workspace, scope = _planner_runtime(tmp_path, "not json")
+    runtime, generator, workspace, scope = _planner_runtime(tmp_path, planner_output)
     _admit_planner_runtime(monkeypatch, workspace, scope)
     monkeypatch.setattr(
         conversation_turn,
@@ -547,6 +556,7 @@ def test_invalid_planner_output_clarifies_without_downstream_execution(
     assert trace is not None
     assert trace.planner_validation == "rejected"
     assert trace.planner_reason_code == "planner_plan_invalid"
+    assert trace.planner_output_char_count == expected_output_count
     assert "PRIVATE malformed-plan question" not in trace.model_dump_json()
 
 

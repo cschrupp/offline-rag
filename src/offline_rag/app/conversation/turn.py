@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from time import perf_counter
 from typing import Any, Literal
@@ -31,6 +31,7 @@ from offline_rag.app.conversation.resolver import (
 )
 from offline_rag.app.conversation.traces import (
     CONVERSATION_TRACE_SCHEMA_VERSION,
+    MAX_PLANNER_TRACE_OUTPUT_CHARS,
     PLANNER_CONVERSATION_TRACE_SCHEMA_VERSION,
     ConversationTraceRecord,
     ConversationTraceStore,
@@ -221,7 +222,7 @@ def _invalid_task_plan(*, input_char_count: int, output_char_count: int) -> Task
         reason_code="planner_plan_invalid",
         planner_validation="rejected",
         input_char_count=input_char_count,
-        output_char_count=output_char_count,
+        output_char_count=min(output_char_count, MAX_PLANNER_TRACE_OUTPUT_CHARS),
     )
 
 
@@ -438,6 +439,11 @@ def run_conversation_turn(
             )
         ):
             planner_guidance_code = "source_reference_unavailable"
+            planner = replace(
+                planner,
+                planner_validation="rejected",
+                reason_code="source_reference_unavailable",
+            )
             route = ConversationRoute(
                 kind="clarification_required",
                 clarification_reason="source_reference_unavailable",
