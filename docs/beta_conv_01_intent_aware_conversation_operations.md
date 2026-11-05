@@ -1,9 +1,11 @@
 # BETA-CONV-01 — Intent-aware conversation operations
 
-**Status:** DESIGN OPEN / READY FOR INDEPENDENT DESIGN REVIEW
-**Design base:** canonical `main` at `76b168c7ffc1258cd744bc3b095759d7b059d175`
+**Status:** DESIGN COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / PROMOTED
+**Accepted design subject:** `b61570f0815aaaa44d632d82c1fc50f63c673884`
+**Design promotion tip:** canonical `main` at `dfc045f4178db41f723feb0483e8f163a801bc40`
 **Accepted A2 baseline:** `dce3456e519cb6c96570e20f5af800d00cafb5a7`
-**Implementation:** NOT AUTHORIZED
+**Implementation:** AUTHORIZED / IN PROGRESS
+**Implementation branch:** `implementation/beta-conv-01-intent-aware-operations`
 **Slice 17:** NOT OPENED
 
 ## 1. Objective and boundary
@@ -14,9 +16,8 @@ provenance contracts while allowing users to summarize, rewrite, simplify, or
 translate text that is explicitly supplied or unambiguously present in the
 visible conversation.
 
-This is a proposed, narrow amendment to accepted Slice 16 Amendment A2. It does
-not amend A2 until independently reviewed and Human accepted. All existing A2
-clauses remain authoritative except the specifically proposed changes in §3.
+This is the accepted narrow amendment to Slice 16 Amendment A2. All existing
+A2 clauses remain authoritative except the specifically scoped changes in §3.
 
 Included:
 
@@ -39,7 +40,7 @@ Excluded:
   changes, model-provider changes, and broad Ask UI redesign;
 - any weakening of retrieval, snapshot, citation, strict-offline, or evidence
   validation contracts;
-- implementation, scientific execution, promotion, or Slice 17 work.
+- scientific benchmark execution, promotion, or Slice 17 work.
 
 ## 2. Accepted architecture inspected
 
@@ -68,9 +69,9 @@ adapter directly with a new versioned transform prompt contract; it must not
 call retrieval, context assembly, the grounded answer generator, or citation
 projection.
 
-## 3. Proposed scoped amendment to accepted A2
+## 3. Accepted scoped amendment to A2
 
-### A2-D03 — Add a non-grounded text-operation exception
+### A2-D03 — Accepted non-grounded text-operation exception
 
 Retain the freeze:
 
@@ -107,7 +108,7 @@ browser-history context. Because `prior_turns` are client supplied, the backend
 does not claim it can independently verify that exclusion; it treats all
 received text as untrusted.
 
-### A2-D05 / D05a — Add an intent branch above the existing grounded core
+### A2-D05 / D05a — Accepted intent branch above the existing grounded core
 
 After existing request validation, workspace readiness, snapshot admission,
 and source-scope binding, apply deterministic intent routing:
@@ -192,7 +193,7 @@ Routing examples:
 | “Summarize that.” when several turns or source findings could be meant. | Clarification; target is ambiguous. |
 | “Summarize the document and identify whether its claims are true.” | Grounded query; factual evaluation is not a text-only transformation. |
 
-### A2-D06 — Add deterministic transform-target resolution
+### A2-D06 — Deterministic transform-target resolution
 
 Transform targets may be:
 
@@ -213,13 +214,13 @@ target clearly enough for deterministic extraction, ask the user to quote or
 mark the text. Preserve the A2-D07 bounds; do not increase the current question
 or prior-turn limits in this tranche.
 
-### A2-D12 / D14 — Keep grounded answer and transformation output distinct
+### A2-D12 / D14 — Grounded answer and transformation output remain distinct
 
 `grounded_answer_v2`, evidence handles, claim-level citations, citation
 validation, and public grounded-answer projection are unchanged and apply only
 to `grounded_query`.
 
-The transform call uses a new prompt contract ID, proposed as
+The transform call uses the prompt contract ID
 `conversation_transform_v1`, with a strict structured response containing one
 non-empty `transformed_text` string. The model receives the exact selected
 target and the current transformation instruction, not the full transcript.
@@ -315,7 +316,7 @@ Reuse the existing conversation-turn endpoint and request DTO. Preserve
 `/query`, `prior_turns`, workspace identity, source selection, existing
 conversation session-storage bounds, and new-conversation behavior.
 
-Extend the response with a discriminating `response_kind` (proposed values
+Extend the response with the discriminating `response_kind` values
 `grounded_answer`, `conversation_transform`, `clarification`) and add the
 `transformed` status. For `conversation_transform`:
 
@@ -452,10 +453,11 @@ BETA-GAME-02B:
   technical_subject: 76b168c7ffc1258cd744bc3b095759d7b059d175
 
 BETA-CONV-01:
-  phase: DESIGN OPEN
-  design_review: PENDING
-  human_design_acceptance: PENDING
-  implementation: NOT AUTHORIZED
+  phase: IMPLEMENTATION
+  design_review: IR-002 ACCEPT
+  human_design_acceptance: ACCEPTED
+  design_promotion: COMPLETE
+  implementation: AUTHORIZED / IN PROGRESS
   promotion: NOT AUTHORIZED
 
 BETA-CONV-02:
@@ -466,5 +468,5 @@ Slice_17:
   status: NOT OPENED / NOT AUTHORIZED
 ```
 
-Stop for independent design review. No implementation or promotion is
-authorized by this document.
+Implementation proceeds under the accepted design and its separate Human
+authorization. Stop for independent implementation review before any promotion.

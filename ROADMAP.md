@@ -56,7 +56,8 @@ and supporting history.
   only production-approved games.
 - [x] **BETA-CONV-01 — Intent-aware Conversation Operations** — design
   independently accepted, Human accepted, and promoted to canonical `main` at
-  `b61570f0815aaaa44d632d82c1fc50f63c673884`. Implementation is not authorized.
+  `b61570f0815aaaa44d632d82c1fc50f63c673884`. Implementation is authorized
+  and in progress on `implementation/beta-conv-01-intent-aware-operations`.
 - [ ] **BETA-CONV-02 — Analytical Synthesis** — deferred; not authorized.
 - [ ] Slice 17 design-open — **NOT AUTHORIZED**. This is distinct from
   original Slice 16G, which is complete.

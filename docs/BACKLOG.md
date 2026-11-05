@@ -27,7 +27,7 @@ BETA-GOLD-POOL-01 — COMPLETE / INDEPENDENTLY ACCEPTED / PROMOTED
 BETA-GAME-02 — COMPLETE / HUMAN ACCEPTED / PROMOTED
 BETA-GAME-02B — COMPLETE / HUMAN ACCEPTED / PROMOTED
 BETA-CONV-01 — DESIGN COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / PROMOTED
-               IMPLEMENTATION NOT AUTHORIZED
+               IMPLEMENTATION AUTHORIZED / IN PROGRESS
 BETA-CONV-02 — DEFERRED / NOT AUTHORIZED
 Additional Gold Lab games — DEFERRED BEYOND CURRENT BETA
 ```
@@ -147,15 +147,15 @@ under `docs/beta_game_02b_visual_polish.md` and
 
 **Priority:** P1 beta capability
 **Status:** DESIGN COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / PROMOTED
-**Implementation:** NOT AUTHORIZED
-**Design base:** canonical `main` at
-`76b168c7ffc1258cd744bc3b095759d7b059d175`
+**Implementation:** AUTHORIZED / IN PROGRESS
+**Design promotion tip:** canonical `main` at
+`dfc045f4178db41f723feb0483e8f163a801bc40`
 **Accepted design subject:** `b61570f0815aaaa44d632d82c1fc50f63c673884`
 
 Distinguish source-grounded questions and contextual follow-ups from explicit
 summarization, rewriting, simplification, and translation of clearly identified
-current-message or visible-conversation text. Proposed scoped amendment to
-accepted Amendment A2 preserves retrieved sources as factual authority; a
+current-message or visible-conversation text. The accepted scoped amendment to
+Amendment A2 preserves retrieved sources as factual authority; a
 conversation transform is labeled as not independently source-verified, has no
 citations, and performs no retrieval. Missing or ambiguous transform targets
 must clarify. Preserve `/query`, source scope, immutable snapshot binding,

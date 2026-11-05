@@ -67,6 +67,8 @@ function statusLabel(status: string): string {
       return "Abstained";
     case "clarification_required":
       return "Clarification needed";
+    case "transformed":
+      return "Transformed conversation text";
     default:
       return status;
   }
@@ -166,7 +168,10 @@ export function AskPanel({
       <p className="muted" style={{ margin: 0 }}>
         {trainingMode
           ? `Using ${selectedCount} of ${totalCount} sources. Training questions use the same grounded conversation path as Seneca.`
-          : `Using ${selectedCount} of ${totalCount} sources. Follow-ups use conversation context for wording only — answers still come from selected sources.`}
+          : activeEntry?.response.response_kind === "conversation_transform" &&
+              activeEntry.response.status === "transformed"
+            ? `Selected sources remain available for grounded questions. This transformed text is not checked against them.`
+            : `Using ${selectedCount} of ${totalCount} sources. Follow-ups use conversation context for wording only — answers still come from selected sources.`}
       </p>
 
       <div className="conversation-thread stack" aria-live="polite">
@@ -216,6 +221,9 @@ export function AskPanel({
           const active = activeEntry?.entryId === entry.entryId;
           const assistantText = assistantPresentationText(entry.response);
           const isAnswered = entry.response.status === "answered";
+          const isTransform =
+            entry.response.response_kind === "conversation_transform" &&
+            entry.response.status === "transformed";
           const mappedReveal = revealMap[entry.entryId];
           const reveal = trainingMode
             ? (mappedReveal ??
@@ -242,25 +250,34 @@ export function AskPanel({
                   <p className="conversation-role" style={{ margin: 0 }}>
                     Seneca
                   </p>
-                  <button
-                    type="button"
-                    className={
-                      badge === "current"
-                        ? "snapshot-badge snapshot-badge-current"
-                        : "snapshot-badge snapshot-badge-historical"
-                    }
-                    onClick={() => onSelectHistory(entry)}
-                    aria-pressed={active}
-                  >
-                    {badge === "current"
-                      ? "Current snapshot"
-                      : "Historical snapshot"}
-                  </button>
+                  {!isTransform ? (
+                    <button
+                      type="button"
+                      className={
+                        badge === "current"
+                          ? "snapshot-badge snapshot-badge-current"
+                          : "snapshot-badge snapshot-badge-historical"
+                      }
+                      onClick={() => onSelectHistory(entry)}
+                      aria-pressed={active}
+                    >
+                      {badge === "current"
+                        ? "Current snapshot"
+                        : "Historical snapshot"}
+                    </button>
+                  ) : null}
                 </div>
-                <p className="muted" style={{ margin: 0, fontSize: "0.875rem" }}>
-                  {statusLabel(String(entry.response.status))} ·{" "}
-                  {sourceScopeLabel(entry)}
-                </p>
+                {isTransform ? (
+                  <p className="muted" style={{ margin: 0, fontSize: "0.875rem" }}>
+                    Transformed conversation text — not verified against
+                    selected sources. Source: {entry.response.transformation_source?.replaceAll("_", " ")}.
+                  </p>
+                ) : (
+                  <p className="muted" style={{ margin: 0, fontSize: "0.875rem" }}>
+                    {statusLabel(String(entry.response.status))} ·{" "}
+                    {sourceScopeLabel(entry)}
+                  </p>
+                )}
 
                 {trainingMode && isAnswered ? (
                   <div
@@ -310,7 +327,11 @@ export function AskPanel({
                   </div>
                 ) : null}
 
-                {isAnswered ? (
+                {isTransform ? (
+                  <p className="answer-body conversation-transform-answer">
+                    {assistantText}
+                  </p>
+                ) : isAnswered ? (
                   trainingMode && !reveal.answer ? (
                     <div
                       id={`training-answer-${entry.entryId}`}

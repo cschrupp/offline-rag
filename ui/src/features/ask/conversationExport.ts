@@ -18,7 +18,7 @@ export const CONVERSATION_FORMAT = "seneca-conversation";
 export const CONVERSATION_VERSION = 1;
 
 export const DERIVED_CONVERSATION_WARNING =
-  "Derived Seneca conversation. Assistant responses in this document were generated from cited sources. This document is derived material and is not primary evidence.";
+  "This conversation may contain source-grounded answers and transformations of conversation text. Only turns explicitly labeled as grounded and accompanied by citations were answered from selected sources. Transformed text was not independently verified. This document is derived material and is not primary evidence.";
 
 export type ConversationExportWorkspace = {
   workspace_id: string;
@@ -103,6 +103,8 @@ function statusHeading(status: string): string {
       return "insufficient_evidence";
     case "model_abstain":
       return "model_abstain";
+    case "transformed":
+      return "transformed conversation text";
     default:
       return status;
   }
@@ -128,9 +130,7 @@ export function serializeConversationMarkdown(
     "",
     `Exported: ${exportedAt}`,
     "",
-    `> **Derived Seneca conversation.**`,
-    `> Assistant responses in this document were generated from cited sources.`,
-    `> This document is derived material and is not primary evidence.`,
+    `> **Derived Seneca conversation.** ${DERIVED_CONVERSATION_WARNING}`,
     "",
   ];
 
@@ -151,11 +151,22 @@ export function serializeConversationMarkdown(
     const response = entry.response;
     parts.push("### User", "", entry.question, "", "### Seneca", "");
 
-    if (response.status === "answered") {
+    if (response.response_kind === "conversation_transform") {
+      parts.push(
+        "**Transformed conversation text — not verified against selected sources.**",
+        "",
+      );
+      parts.push(
+        `**Transformation source:** ${response.transformation_source?.replaceAll("_", " ") ?? "conversation text"}`,
+        "",
+      );
+      parts.push(response.answer ?? "", "");
+    } else if (response.status === "answered") {
       const { answerMarkdown, sourcesMarkdown } = formatAnswerWithMarkers(
         response.answer_blocks,
         response.citations,
       );
+      parts.push("**Source-grounded answer with citations.**", "");
       parts.push(answerMarkdown || response.answer || "", "");
       if (sourcesMarkdown) {
         parts.push("### Sources", "", sourcesMarkdown, "");
@@ -183,6 +194,8 @@ function completedTurnJson(entry: ConversationHistoryEntry) {
     selected_source_ids: entry.selectedSourceIds,
     selected_source_names: entry.selectedSourceNames,
     status: response.status,
+    response_kind: response.response_kind,
+    transformation_source: response.transformation_source,
     abstention_reason: response.abstention_reason,
     answer: response.answer,
     answer_blocks: response.answer_blocks,

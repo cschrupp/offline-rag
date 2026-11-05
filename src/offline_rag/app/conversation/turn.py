@@ -7,15 +7,24 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Literal
 
+from offline_rag.app.conversation.intent import (
+    INTENT_ROUTER_CONTRACT_ID,
+    route_conversation_intent,
+)
 from offline_rag.app.conversation.prior_turns import PriorTurn, validate_prior_turns
 from offline_rag.app.conversation.resolver import (
     RESOLVER_PROMPT_CONTRACT_ID,
     resolve_conversation_context,
 )
 from offline_rag.app.conversation.traces import (
+    CONVERSATION_TRACE_SCHEMA_VERSION,
     ConversationTraceRecord,
     ConversationTraceStore,
     allocate_conversation_trace_id,
+)
+from offline_rag.app.conversation.transform import (
+    TRANSFORM_PROMPT_CONTRACT_ID,
+    transform_conversation_text,
 )
 from offline_rag.app.errors import AppError, ErrorCode, SafeErrorDetails
 from offline_rag.app.operations import OperationHandle
@@ -35,6 +44,10 @@ ConversationSuccessStatus = Literal[
     "insufficient_evidence",
     "model_abstain",
     "clarification_required",
+    "transformed",
+]
+ConversationResponseKind = Literal[
+    "grounded_answer", "conversation_transform", "clarification"
 ]
 
 
@@ -51,6 +64,10 @@ class ConversationTurnResponse:
     conversation_trace_id: str
     query_trace_id: str | None
     status: ConversationSuccessStatus
+    response_kind: ConversationResponseKind
+    transformation_source: (
+        Literal["current_message", "prior_user_turn", "prior_assistant_turn"] | None
+    )
     abstention_reason: str | None
     question: str
     retrieval_question: str | None
@@ -68,6 +85,8 @@ class ConversationTurnResponse:
             "conversation_trace_id": self.conversation_trace_id,
             "query_trace_id": self.query_trace_id,
             "status": self.status,
+            "response_kind": self.response_kind,
+            "transformation_source": self.transformation_source,
             "abstention_reason": self.abstention_reason,
             "question": self.question,
             "retrieval_question": self.retrieval_question,
@@ -85,7 +104,7 @@ def _commit_conversation_trace(
         store.commit(record)
     except AppError:
         raise AppError(ErrorCode.INTERNAL_ERROR)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise AppError(ErrorCode.INTERNAL_ERROR) from exc
 
 
@@ -115,7 +134,10 @@ def run_conversation_turn(
     # 3–4. Resolve + validate workspace.
     store = WorkspaceStore(runtime.settings)
     record = store.get(workspace_id)
-    if record.status is not WorkspaceStatus.ACTIVE or record.current_snapshot_id is None:
+    if (
+        record.status is not WorkspaceStatus.ACTIVE
+        or record.current_snapshot_id is None
+    ):
         raise AppError(
             ErrorCode.WORKSPACE_NOT_READY,
             details=SafeErrorDetails(
@@ -151,7 +173,123 @@ def run_conversation_turn(
     # Concurrent mutation may change current revision/snapshot; this turn keeps
     # the admitted binding (A2-D05b Historical semantics).
 
-    # 11. Resolver (after scientific state is bound).
+    # 11. Deterministic intent routing (after scientific state is bound).
+    route = route_conversation_intent(normalized_question, validated_prior)
+
+    if route.kind == "clarification_required":
+        _commit_conversation_trace(
+            cstore,
+            ConversationTraceRecord(
+                schema_version=CONVERSATION_TRACE_SCHEMA_VERSION,
+                conversation_trace_id=conversation_trace_id,
+                created_at=created_at,
+                workspace_id=workspace_id,
+                workspace_revision=int(admitted_revision),
+                snapshot_id=admitted_snapshot_id,
+                product_mode_id=PRODUCT_MODE_GROUNDED_V1,
+                source_scope=source_scope,
+                question_sha256=_sha256(normalized_question),
+                question_char_count=len(normalized_question),
+                prior_turn_count=len(validated_prior),
+                resolver_invoked=False,
+                resolver_prompt_contract_id=None,
+                resolver_outcome="bypassed",
+                retrieval_question_sha256=None,
+                retrieval_question_char_count=None,
+                context_used=False,
+                status="clarification_required",
+                query_trace_id=None,
+                intent_kind="clarification_required",
+                intent_router_contract_id=INTENT_ROUTER_CONTRACT_ID,
+            ),
+        )
+        return ConversationTurnResponse(
+            workspace_id=workspace_id,
+            workspace_revision=admitted_revision,
+            snapshot_id=admitted_snapshot_id,
+            product_mode_id=PRODUCT_MODE_GROUNDED_V1,
+            conversation_trace_id=conversation_trace_id,
+            query_trace_id=None,
+            status="clarification_required",
+            response_kind="clarification",
+            transformation_source=None,
+            abstention_reason="ambiguous_request",
+            question=normalized_question,
+            retrieval_question=None,
+            context_used=False,
+            answer=None,
+            answer_blocks=[],
+            citations=[],
+        )
+
+    if route.kind == "conversation_transform":
+        assert route.operation is not None
+        assert route.source is not None
+        assert route.instruction is not None
+        assert route.target_text is not None
+        if control is not None:
+            control.checkpoint("pre_transform")
+        transformed_text = transform_conversation_text(
+            runtime,
+            operation=route.operation,
+            instruction=route.instruction,
+            target_text=route.target_text,
+        )
+        _commit_conversation_trace(
+            cstore,
+            ConversationTraceRecord(
+                schema_version=CONVERSATION_TRACE_SCHEMA_VERSION,
+                conversation_trace_id=conversation_trace_id,
+                created_at=created_at,
+                workspace_id=workspace_id,
+                workspace_revision=int(admitted_revision),
+                snapshot_id=admitted_snapshot_id,
+                product_mode_id=PRODUCT_MODE_GROUNDED_V1,
+                source_scope=source_scope,
+                question_sha256=_sha256(normalized_question),
+                question_char_count=len(normalized_question),
+                prior_turn_count=len(validated_prior),
+                resolver_invoked=False,
+                resolver_prompt_contract_id=None,
+                resolver_outcome="bypassed",
+                retrieval_question_sha256=None,
+                retrieval_question_char_count=None,
+                context_used=route.source != "current_message",
+                status="transformed",
+                query_trace_id=None,
+                intent_kind="conversation_transform",
+                intent_router_contract_id=INTENT_ROUTER_CONTRACT_ID,
+                transform_prompt_contract_id=TRANSFORM_PROMPT_CONTRACT_ID,
+                transform_operation=route.operation,
+                transform_source_kind=route.source,
+                transform_source_role=route.source_role,
+                transform_source_turn_ordinal=route.source_turn_ordinal,
+                transform_target_sha256=_sha256(route.target_text),
+                transform_target_char_count=len(route.target_text),
+                transform_output_sha256=_sha256(transformed_text),
+                transform_output_char_count=len(transformed_text),
+            ),
+        )
+        return ConversationTurnResponse(
+            workspace_id=workspace_id,
+            workspace_revision=admitted_revision,
+            snapshot_id=admitted_snapshot_id,
+            product_mode_id=PRODUCT_MODE_GROUNDED_V1,
+            conversation_trace_id=conversation_trace_id,
+            query_trace_id=None,
+            status="transformed",
+            response_kind="conversation_transform",
+            transformation_source=route.source,
+            abstention_reason=None,
+            question=normalized_question,
+            retrieval_question=None,
+            context_used=route.source != "current_message",
+            answer=transformed_text,
+            answer_blocks=[],
+            citations=[],
+        )
+
+    # 12. Existing resolver (after scientific state is bound).
     if control is not None:
         control.checkpoint("pre_resolver")
     resolver = resolve_conversation_context(
@@ -164,6 +302,7 @@ def run_conversation_turn(
         _commit_conversation_trace(
             cstore,
             ConversationTraceRecord(
+                schema_version=CONVERSATION_TRACE_SCHEMA_VERSION,
                 conversation_trace_id=conversation_trace_id,
                 created_at=created_at,
                 workspace_id=workspace_id,
@@ -182,6 +321,8 @@ def run_conversation_turn(
                 context_used=resolver.context_used,
                 status="clarification_required",
                 query_trace_id=None,
+                intent_kind="grounded_query",
+                intent_router_contract_id=INTENT_ROUTER_CONTRACT_ID,
             ),
         )
         return ConversationTurnResponse(
@@ -192,6 +333,8 @@ def run_conversation_turn(
             conversation_trace_id=conversation_trace_id,
             query_trace_id=None,
             status="clarification_required",
+            response_kind="clarification",
+            transformation_source=None,
             abstention_reason="ambiguous_request",
             question=normalized_question,
             retrieval_question=None,
@@ -230,6 +373,7 @@ def run_conversation_turn(
     _commit_conversation_trace(
         cstore,
         ConversationTraceRecord(
+            schema_version=CONVERSATION_TRACE_SCHEMA_VERSION,
             conversation_trace_id=conversation_trace_id,
             created_at=created_at,
             workspace_id=workspace_id,
@@ -248,6 +392,8 @@ def run_conversation_turn(
             context_used=resolver.context_used,
             status=outcome.status,
             query_trace_id=outcome.trace_id,
+            intent_kind="grounded_query",
+            intent_router_contract_id=INTENT_ROUTER_CONTRACT_ID,
         ),
     )
 
@@ -259,6 +405,8 @@ def run_conversation_turn(
         conversation_trace_id=conversation_trace_id,
         query_trace_id=outcome.trace_id,
         status=outcome.status,
+        response_kind="grounded_answer",
+        transformation_source=None,
         abstention_reason=outcome.abstention_reason,
         question=normalized_question,
         retrieval_question=retrieval_question,

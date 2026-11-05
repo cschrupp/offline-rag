@@ -439,6 +439,69 @@ describe("Slice 16D-B3 conversation workspace UI", () => {
     mock.restore();
   });
 
+  it("hides snapshot and Evidence controls for transformed turns", async () => {
+    const user = userEvent.setup();
+    mockViewport(false);
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces/ws_1" && call.method === "GET") {
+        return jsonResponse(
+          workspace({
+            workspace_id: "ws_1",
+            title: "Ask Desk",
+            revision: 5,
+            source_count: 1,
+            status: "active",
+            current_snapshot_id: "snap_1",
+          }),
+        );
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources") {
+        return jsonResponse({
+          workspace_id: "ws_1",
+          revision: 5,
+          sources: [source({ source_id: "src_1", display_name: "Alpha.pdf" })],
+        });
+      }
+      if (
+        call.url === "/v1/workspaces/ws_1/conversation/turn" &&
+        call.method === "POST"
+      ) {
+        return jsonResponse(
+          turnResponse({
+            status: "transformed",
+            response_kind: "conversation_transform",
+            transformation_source: "current_message",
+            query_trace_id: null,
+            retrieval_question: null,
+            answer: "A transformed paragraph.",
+            answer_blocks: [],
+            citations: [],
+          }),
+        );
+      }
+      return errorResponse("not_found", "x", 404);
+    });
+
+    renderApp("/workspaces/ws_1");
+    await screen.findByRole("heading", { name: "Conversation" });
+    await user.type(
+      screen.getByLabelText("Ask a follow-up"),
+      'Rewrite this: "A paragraph."',
+    );
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    expect(await screen.findByText("A transformed paragraph.")).toBeInTheDocument();
+    expect(screen.getByText(/not verified against selected sources/i)).toBeInTheDocument();
+    expect(screen.queryByText("Current snapshot")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Evidence" })).not.toBeInTheDocument();
+    expect(
+      document.querySelector(".knowledge-layout"),
+    ).toHaveClass("evidence-hidden");
+    mock.restore();
+  });
+
   it("desktop layout exposes three knowledge columns and narrow drawers do not stack", async () => {
     const user = userEvent.setup();
     const viewport = mockViewport(false);

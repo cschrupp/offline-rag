@@ -662,6 +662,14 @@ a.btn:hover {
     var(--rail-collapsed-width) minmax(0, 1fr) var(--rail-collapsed-width);
 }
 
+.knowledge-layout.evidence-hidden {
+  grid-template-columns: var(--sources-track) minmax(0, 1fr);
+}
+
+.knowledge-layout.evidence-hidden.sources-collapsed {
+  grid-template-columns: var(--rail-collapsed-width) minmax(0, 1fr);
+}
+
 .knowledge-sources,
 .knowledge-evidence,
 .knowledge-ask,
@@ -1231,7 +1239,9 @@ button.snapshot-badge {
   .knowledge-layout,
   .knowledge-layout.sources-collapsed,
   .knowledge-layout.evidence-collapsed,
-  .knowledge-layout.sources-collapsed.evidence-collapsed {
+  .knowledge-layout.sources-collapsed.evidence-collapsed,
+  .knowledge-layout.evidence-hidden,
+  .knowledge-layout.evidence-hidden.sources-collapsed {
     grid-template-columns: 1fr;
     overflow: visible;
     height: auto;

@@ -463,7 +463,13 @@ export type WorkspaceQueryResponse = {
 
 export type ConversationTurnStatus =
   | WorkspaceQueryStatus
-  | "clarification_required";
+  | "clarification_required"
+  | "transformed";
+
+export type ConversationResponseKind =
+  | "grounded_answer"
+  | "conversation_transform"
+  | "clarification";
 
 export type ConversationPriorTurn = {
   role: "user" | "assistant";
@@ -479,6 +485,13 @@ export type ConversationTurnResponse = {
   conversation_trace_id: string;
   query_trace_id: string | null;
   status: ConversationTurnStatus | string;
+  /** Optional only for pre-BETA-CONV-01 session-local history entries. */
+  response_kind?: ConversationResponseKind;
+  transformation_source?:
+    | "current_message"
+    | "prior_user_turn"
+    | "prior_assistant_turn"
+    | null;
   abstention_reason: AbstentionReason | null;
   question: string;
   retrieval_question: string | null;
