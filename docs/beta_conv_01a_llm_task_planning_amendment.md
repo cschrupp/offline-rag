@@ -1,6 +1,6 @@
 # BETA-CONV-01A — LLM task planning architecture amendment
 
-**Status:** DESIGN COMPLETE / STOP FOR INDEPENDENT DESIGN REVIEW
+**Status:** IR-001 TARGETED DESIGN CORRECTIONS COMPLETE / READY FOR INDEPENDENT RE-REVIEW
 
 **Authority:** Human-supplied BETA-CONV-01A architecture/evaluation handoff,
 2026-11-05; design, documentation, and archive creation only.
@@ -17,6 +17,11 @@ BETA-CONV-01 implementation IR-005 ACCEPT — code review.
 
 **Planner implementation, model evaluation, activation, and promotion:**
 NOT AUTHORIZED. BETA-CONV-02 and Slice 17 remain unopened.
+
+**IR-001 correction scope:** synchronous API shadow observation has been
+removed in favor of isolated sequential offline comparison; paired
+end-to-end latency gates are now quantitative and operation-specific. No
+implementation or evaluation authority is added.
 
 This is the single development memory and proposed evaluation specification
 for this amendment. Proposed contracts below require independent review and
@@ -104,7 +109,7 @@ baseline. They are descriptions of existing code, not new implementation.
 
 | Component | Existing responsibility | Proposed integration |
 | --- | --- | --- |
-| `app/conversation/intent.py` | Versioned regex routing, target/options extraction | Preserve for legacy/shadow execution; planner mode bypasses its interpretation |
+| `app/conversation/intent.py` | Versioned regex routing, target/options extraction | Preserve for legacy execution and paired evaluation; planner mode bypasses its interpretation |
 | `app/conversation/resolver.py` | Local structured contextual resolver; first-turn bypass; deterministic fallback after invalid resolution | Unified planner supplies the standalone retrieval question; never call this resolver again in planner mode |
 | `app/conversation/turn.py` | Request validation, readiness, workspace admission, selected scope and immutable snapshot binding, then routing/execution/projection | Insert mode dispatch after admission; retain shared downstream projection |
 | `app/conversation/transform.py` | `conversation_transform_v1`, configured generator, exact nonempty JSON, no retrieval | Retain executor/output contract; construct its instruction only from validated subtype/options |
@@ -164,8 +169,6 @@ flowchart TD
     G --> O[Existing response, trace, history and export projection]
     T --> O
     H --> O
-    C -->|shadow opt-in| S[Legacy executes; planner is observation only]
-    S --> O
 ```
 
 All costs in this table are projections of call structure, not measurements.
@@ -508,10 +511,11 @@ clarification; they must not mistake it for a transformed or grounded answer.
 New conversation trace version: `offline-rag-conversation-trace-v3`. Preserve
 admitted scope, hashes/counts and query-trace linkage. v3 has a top-level
 `router_mode`; its typed planner block is null for legacy execution and required
-for shadow/planner. The proposed metadata is:
+for planner execution. Shadow comparisons are evaluation artifacts, not API
+conversation traces. The proposed metadata is:
 
 ```text
-router_mode: legacy | shadow | planner
+router_mode: legacy | planner
 planner_contract_id: seneca_conversation_task_plan_v1
 planner_operation: grounded_query | transform_text | clarify | unsupported_operation | null
 planner_validation: valid | rejected | unavailable | cancelled
@@ -521,7 +525,6 @@ planner_duration_ms: nonnegative integer
 planner_input_char_count / planner_output_char_count: bounded integers
 referenced_context_turn_count: integer 0..12
 contextual_resolution_needed: boolean
-shadow_disagreement: boolean | null
 ```
 
 Task output/target hashes use existing privacy-minimized transform fields.
@@ -529,8 +532,8 @@ Do not store raw task plans, prompts, target text, conversation text, sensitive
 source labels/excerpts, provider response objects, hidden reasoning, unrestricted
 exception strings, or credentials. A model identifier for reproducibility may
 be stored in evaluation artifacts under the existing nonsecret configuration
-policy; API keys/authorization headers are never captured. Shadow metadata
-cannot alter scientific query traces or be presented as the executed decision.
+policy; API keys/authorization headers are never captured. Evaluation metadata
+cannot alter scientific query traces or be presented as an executed decision.
 
 v3 distinguishes completed execution from an admitted planner failure. The
 internal failure variant has `status=failed|cancelled`, null query trace,
@@ -538,8 +541,7 @@ no transform-output metadata and a bounded planner failure code; the public
 API still returns the existing safe error/cancellation contract. This is an
 explicit v3 trace addition, not permission to loosen v1/v2 statuses. Successful
 planner transforms require a valid transform plan, no old resolver invocation
-and no query trace. Legacy/shadow executed fields retain their legacy meaning;
-shadow planner fields never overwrite the executed intent/status. Readers
+and no query trace. Legacy executed fields retain their legacy meaning. Readers
 dispatch by version and variant, rather than retrofitting old records.
 The inspected v2 transform validator requires
 `intent_router_contract_id=conversation_intent_router_v1` and v2 itself.
@@ -548,28 +550,43 @@ they must not impersonate that legacy router ID or weaken the v2 check.
 
 ## 9. Router modes, rollout, and rollback
 
-Proposed configuration: `conversation.router_mode = legacy|shadow|planner`,
+Proposed configuration: `conversation.router_mode = legacy|planner`,
 with `OFFLINE_RAG_CONVERSATION_ROUTER_MODE` as its environment override.
 Default `legacy`; invalid values fail configuration validation. Capture the
 mode at process start and restart to change it. Do not expose a per-request
 switch or silently change it on an individual model failure.
 
 - **Legacy:** preserve reviewed deterministic router/resolver behavior exactly.
-- **Shadow:** legacy executes once. When explicitly enabled, one planner call
-  is observed without downstream planner execution. Run serially on the same
-  configured adapter; at most one shadow planner call per sampled request,
-  maximum ten observations per process session. No always-on background queue,
-  concurrent model load, second answer, or publication. Log the executed legacy
-  result and shadow decision separately; failures cannot overwrite the legacy
-  response. Evaluate the added latency; disable via an explicit restart.
 - **Planner:** one validated plan controls exactly one executor. The old
   contextual resolver and its regex fallback are bypassed. Failures follow §6;
   mode remains planner until an operator explicitly changes configuration.
 
-Shadow is optional diagnosis, not a prerequisite for scoring the offline paired
-benchmark and not an excuse to double the user's work. Planner activation
-requires implementation review, accepted evaluation, completed API/UI/rollback
-gates, and explicit Human activation authority.
+There is no interactive API shadow mode in this synchronous architecture. An
+optional shadow comparison is confined to the offline paired-evaluation
+harness: it runs in an isolated evaluation process with no production user
+request being served, one configured local model instance, one request at a
+time, and legacy and planner arms executed sequentially on the same frozen
+case. It does not
+share an adapter with the live API, create a background task or queue, or delay,
+consume the deadline of, or change a user response. The evaluation process uses
+the candidate's configured request timeout and output cap; timeout, cancellation,
+invalid output or exception ends that arm, records a sanitized failure, and
+does not retry it or start a downstream executor for an invalid plan. A failed
+arm is an evaluation failure, never a legacy/planner fallback. The process stops
+after the bounded evaluation batch and releases its model resources. Offline
+paired evaluation is the primary comparison method; no noninterference claim is
+made for concurrent observation. Any future live diagnostic mode requires a
+separate design and authority.
+
+Acceptance tests for this boundary must demonstrate that the API router has no
+shadow branch or second planner call; paired evaluation calls the arms
+sequentially and at most once each per case; injected planner timeout,
+cancellation, invalid output or exception is recorded in that arm's separate,
+immutable result without overwriting the other arm's result or invoking an
+executor; and the evaluation harness is not
+attached to API request or lifespan processing. Planner activation requires
+implementation review, accepted evaluation, completed API/UI/rollback gates,
+and explicit Human activation authority.
 
 Rollback: select `legacy` and restart; confirm configured mode in the startup
 diagnostic and v3 conversation trace,
@@ -647,8 +664,9 @@ They test validation independently of the planner that produced a sample.
    fixtures, and scoring code before opening holdout. Treat inaccessible model
    build identity as a reproducibility limitation, not an inferred checksum.
 5. Run the same held-out requests/context/configuration for all selected arms.
-   Interleave arm order with a recorded seed to reduce thermal/cache/order
-   bias; serialize calls to avoid induced contention. Record provider cold
+   Interleave case and arm order with a recorded seed to reduce
+   thermal/cache/order bias; serialize calls to avoid induced contention and
+   use separate immutable evidence for each arm. Record provider cold
    startup separately from warm interactive latency; no hidden cache clearing.
 6. Repeat each held-out request three times per arm to measure variation;
    do not count 360 correlated repetitions as 360 independent requests. Use
@@ -685,7 +703,12 @@ recorded on the archive is limited prior evidence, not a planner benchmark.
 ### 10.3 Metrics and proposed acceptance gates
 
 These are **proposed engineering thresholds for independent approval before
-holdout execution**, not measurements or established service guarantees.
+holdout execution**, not measurements or established service guarantees. The
+reference beta hardware is the recorded NVIDIA GeForce RTX 2080 Super Max-Q
+class. Before development measurements, record the exact host CPU, RAM, OS,
+GPU/driver, configured local generator identity/revision and serving settings.
+All paired arms use that fixed host and configuration; results do not qualify
+other hardware or model configurations.
 
 | Metric | Definition and proposed gate |
 | --- | --- |
@@ -700,9 +723,23 @@ holdout execution**, not measurements or established service guarantees.
 | End-to-end completion | Correct supported task, correct provenance, valid cited grounding where required; >=90% on the predeclared executable subset |
 | Repeatability | Same valid operation and target across three runs for >=95% of cases; no critical violation in any run |
 | Inference count | A uses <=1 planner call; contextual grounded turns do not add a second resolver; no repair loop |
-| Interactive interpretation latency | On the intended beta host, warm planner P50 <=3s and P95 <=8s; report full-stage and first-turn added cost separately |
-| End-to-end latency | Report paired P50/P95 by operation and hardware; no retrospective SLO invented from the result |
+| Planner-stage latency | Warm planner-only P50 <=1.5s and P95 <=3s on the reference beta host; report cold startup separately. This diagnostic gate does not substitute for end-to-end gates. |
+| First-turn factual end-to-end regression | For matched warm cases, planner-mode P50 <= legacy P50 + 1.5s **and** <=1.25× legacy P50; planner-mode P95 <= legacy P95 + 3s **and** <=1.25× legacy P95. Measure from API request receipt through complete response delivery, including planning, retrieval, answer generation and serialization. |
+| Contextual grounded end-to-end regression | Apply the same paired P50 and P95 absolute and relative caps to matched contextual-grounded cases; include the complete planner/retrieval/generation path. |
+| Text-transformation end-to-end regression | Apply the same paired P50 and P95 absolute and relative caps to matched transformation cases; include planning, transformation generation and response delivery. |
+| Call counts | Report complete calls by operation and arm. First-turn factual A adds exactly one planner call before the existing grounded path; contextual turns replace rather than add to the old resolver; transforms use one planner plus the existing transform executor; no retries. |
 | Resource impact | Record provider/model memory, host RSS, device total/free and available provider GPU metrics; no OOM, extra model instance, or unbounded growth on frozen runs; unavailable telemetry is labeled unavailable |
+
+Before opening the held-out split, use development-only paired runs to verify
+measurement stability and whether these proposed numeric ceilings are
+measurable on the reference host. Freeze the accepted ceilings, host inventory,
+timing boundaries, scorer and analysis code in the execution authority and
+hashes before any held-out result is viewed. Development data may motivate a
+revised numerical proposal, but loosening any absolute or relative ceiling
+requires an explicit Human product decision and renewed independent review
+before holdout execution. Held-out results may never tune thresholds. If the
+ceilings are not met, planner mode does not activate by default, regardless of
+accuracy gains.
 
 For each rate report raw numerator/denominator and uncertainty intervals.
 Zero safety failures in a finite set does not prove zero population risk.
@@ -727,8 +764,9 @@ retain legacy and report the falsified superiority hypothesis.
   and exports cannot accept citation-free results as grounded answers.
 - Frontend response/history/export, refresh, transform Evidence suppression and
   useful unsupported conversation-summary guidance; real local-model smoke.
-- Explicit router-mode selection, shadow call/resource cap, no duplicate task
-  execution, restart rollback and archived-build deployment compatibility.
+- Explicit legacy/planner router-mode selection; no interactive shadow branch
+  or duplicate task; offline comparison is sequential and isolated; restart
+  rollback and archived-build deployment compatibility.
 
 ## 11. API startup verification gap
 
@@ -795,9 +833,10 @@ No data/index schema migration or new persistent conversation store is required.
 The design proposes concrete choices, not additional implementation authority:
 unified planner A; code-point span references; operation-derived execution;
 bounded options; zero plan repair; optional guidance metadata; v3 traces;
-default legacy with bounded opt-in shadow; one interpretation call; and the
-proposed dataset/safety/latency gates. Independent review should accept or
-revise these together before implementation. No new external dependency,
+default legacy with explicit planner mode; isolated offline paired comparison;
+one interpretation call; and the proposed dataset/safety/latency gates.
+Independent review should accept or revise these together before
+implementation. No new external dependency,
 model/provider, agent framework, retrieval service, or deployment model is
 proposed.
 
