@@ -59,6 +59,50 @@ def test_prior_assistant_transform_uses_exact_validated_turn() -> None:
     assert route.instruction == "summarize in 3 bullets"
 
 
+@pytest.mark.parametrize(
+    ("question", "expected_role", "expected_operation", "expected_instruction"),
+    [
+        (
+            "Summarize your previous answer about the report in three bullets.",
+            "assistant",
+            "summarize",
+            "summarize in 3 bullets",
+        ),
+        (
+            "Translate your previous answer about the maintenance manual into Spanish.",
+            "assistant",
+            "translate",
+            "translate into Spanish",
+        ),
+        (
+            "Rewrite my previous question about chapter 2 for a beginner.",
+            "user",
+            "rewrite",
+            "rewrite for beginner",
+        ),
+    ],
+)
+def test_named_prior_turn_transform_wins_over_topic_source_words(
+    question: str,
+    expected_role: str,
+    expected_operation: str,
+    expected_instruction: str,
+) -> None:
+    turns = (
+        PriorTurn(role="user", text="What does chapter 2 say?"),
+        PriorTurn(role="assistant", text="The report describes the maintenance plan."),
+    )
+    route = route_conversation_intent(question, turns)
+
+    assert route.kind == "conversation_transform"
+    assert route.source_role == expected_role
+    assert route.operation == expected_operation
+    assert route.instruction == expected_instruction
+    assert route.target_text == (
+        turns[0].text if expected_role == "user" else turns[1].text
+    )
+
+
 def test_inline_translation_extracts_language_and_delimited_text() -> None:
     route = route_conversation_intent(
         "Translate this paragraph into Spanish: `The valve is closed.`", ()
@@ -147,6 +191,10 @@ def test_explain_transform_requires_a_specified_audience() -> None:
     "question",
     [
         "Summarize what document A says about the pump.",
+        "Summarize what the report says about chapter 2.",
+        "Verify your previous answer against the report.",
+        "Summarize your previous answer and verify it against the report.",
+        "Update your previous answer with facts from the report.",
         "Explain that finding in more detail.",
         "Translate the paragraph on page 4 of document A into Spanish.",
     ],
@@ -495,19 +543,87 @@ def test_orchestration_clarification_skips_generator_and_retrieval(
     assert generator.generate_calls == 0
 
 
+def test_named_prior_transform_skips_resolver_and_retrieval(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runtime, generator, workspace = _direct_runtime(tmp_path)
+    scope = ProductTraceSourceScope(
+        workspace_id="ws_test",
+        workspace_revision=4,
+        mode="all_active",
+        source_ids=[],
+        document_ids=[],
+    )
+    monkeypatch.setattr(
+        conversation_turn.WorkspaceStore,
+        "get",
+        lambda _self, _workspace_id: workspace,
+    )
+    monkeypatch.setattr(
+        conversation_turn,
+        "_resolve_workspace_source_scope",
+        lambda *_args, **_kwargs: (scope, [], []),
+    )
+    monkeypatch.setattr(
+        conversation_turn,
+        "resolve_conversation_context",
+        lambda *_args, **_kwargs: pytest.fail("prior transform called the resolver"),
+    )
+    monkeypatch.setattr(
+        conversation_turn,
+        "run_bound_snapshot_query",
+        lambda *_args, **_kwargs: pytest.fail("prior transform called retrieval"),
+    )
+
+    outcome = conversation_turn.run_conversation_turn(
+        runtime,
+        workspace_id="ws_test",
+        question="Summarize your previous answer about the report in three bullets.",
+        prior_turns=[
+            {"role": "user", "text": "What happened to the pump?"},
+            {"role": "assistant", "text": "The report says the pump restarted."},
+        ],
+    )
+
+    assert outcome.response_kind == "conversation_transform"
+    assert outcome.status == "transformed"
+    assert outcome.transformation_source == "prior_assistant_turn"
+    assert outcome.query_trace_id is None
+    assert generator.generate_calls == 1
+    trace = ConversationTraceStore(runtime.settings).get(outcome.conversation_trace_id)
+    assert trace is not None
+    assert trace.transform_source_kind == "prior_assistant_turn"
+    assert trace.resolver_invoked is False
+    assert trace.query_trace_id is None
+
+
 @pytest.mark.parametrize(
-    "question",
+    ("question", "with_prior_history"),
     [
-        "What does the selected report say about the pump?",
-        "Summarize section 4 of the maintenance manual.",
-        'Summarize the report: "The pump stopped at noon."',
-        'Summarize section 4 of the maintenance manual: "Supplied excerpt."',
-        'Summarize the supplied excerpt from the report: "Quoted text."',
-        "Summarize [Maintenance Manual](https://example.org/manual).",
+        ("What does the selected report say about the pump?", False),
+        ("Summarize what the report says about chapter 2.", False),
+        ("Verify your previous answer against the report.", True),
+        ("Summarize your previous answer and verify it against the report.", True),
+        ("Summarize your previous answer based on the report.", True),
+        ("Update your previous answer with facts from the report.", True),
+        ("Summarize section 4 of the maintenance manual.", False),
+        ('Summarize the report: "The pump stopped at noon."', False),
+        (
+            'Summarize section 4 of the maintenance manual: "Supplied excerpt."',
+            False,
+        ),
+        (
+            'Summarize the supplied excerpt from the report: "Quoted text."',
+            False,
+        ),
+        ("Summarize [Maintenance Manual](https://example.org/manual).", False),
     ],
 )
 def test_source_oriented_request_stays_on_grounded_pipeline(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, question: str
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    question: str,
+    with_prior_history: bool,
 ) -> None:
     runtime, _generator, workspace = _direct_runtime(tmp_path)
     scope = ProductTraceSourceScope(
@@ -566,6 +682,14 @@ def test_source_oriented_request_stays_on_grounded_pipeline(
         runtime,
         workspace_id="ws_test",
         question=question,
+        prior_turns=(
+            [
+                {"role": "user", "text": "What happened to the pump?"},
+                {"role": "assistant", "text": "The report says it restarted."},
+            ]
+            if with_prior_history
+            else None
+        ),
     )
 
     assert calls == {"resolver": 1, "query": 1}

@@ -70,7 +70,7 @@ _INLINE_TEXT_LABEL_RE = re.compile(
     re.IGNORECASE,
 )
 _LOCATED_SOURCE_REFERENCE_RE = re.compile(
-    r"\b(?:from|in|inside|according\s+to|based\s+on)\s+"
+    r"\b(?:from|in|inside|using|according\s+to|based\s+on)\s+"
     r"(?:(?:the|this|that|selected)\s+)?(?:[\w-]+\s+){0,3}"
     r"(?:document|source|file|report|manual|chapter|section|page)\b|"
     r"\b(?:page|section|chapter)\s+\d+\s+(?:of|in)\s+"
@@ -82,6 +82,10 @@ _FACTUAL_SOURCE_REQUEST_RE = re.compile(
     r"\b(?:true|accurate|supported)\b|\bcompare\b|\bverify\b|"
     r"\bfact.?check\b|\bwhat\s+(?:does|do|did)\s+(?:the\s+)?"
     r"(?:document|source|file|report|manual|chapter|section)\b",
+    re.IGNORECASE,
+)
+_SOURCE_UPDATE_ACTION_RE = re.compile(
+    r"\b(?:update|re-?answer|answer\s+again|correct|refresh|add\s+facts?)\b",
     re.IGNORECASE,
 )
 _PRIOR_ASSISTANT_RE = re.compile(
@@ -280,11 +284,20 @@ def _option_text(
     return " ".join(parts)
 
 
-def _source_request(question: str, *, has_inline_target: bool) -> bool:
+def _source_request(
+    question: str, *, has_inline_target: bool, has_prior_target: bool
+) -> bool:
     """Prefer factual/source-oriented intent over a transform verb."""
     routing_text = _without_delimited_targets(question)
-    if _FACTUAL_SOURCE_REQUEST_RE.search(routing_text):
+    if _FACTUAL_SOURCE_REQUEST_RE.search(routing_text) or (
+        _SOURCE_UPDATE_ACTION_RE.search(routing_text)
+        and _SOURCE_REQUEST_RE.search(routing_text)
+    ):
         return True
+    if has_prior_target:
+        # Source terms may describe the topic of the explicitly named prior
+        # turn. A located reference still asks for source material.
+        return bool(_LOCATED_SOURCE_REFERENCE_RE.search(routing_text))
     if _MARKDOWN_LINK_RE.search(routing_text):
         return True
     if has_inline_target:
@@ -359,22 +372,28 @@ def route_conversation_intent(
     explicit_targets = tuple(
         target for target in all_targets if target not in formatting_targets
     )
-    if _source_request(question, has_inline_target=bool(explicit_targets)):
-        return ConversationRoute(kind="grounded_query")
     option_text = _option_text(question, explicit_targets, formatting_targets)
     operation_text = _without_delimited_targets(question)
     has_audience = bool(_AUDIENCE_RE.search(option_text))
     has_bullet_count = bool(_BULLET_COUNT_RE.search(option_text))
     has_language = bool(_LANGUAGE_RE.search(option_text))
+    has_prior_reference = bool(
+        _PRIOR_ASSISTANT_RE.search(option_text) or _PRIOR_USER_RE.search(option_text)
+    )
+    if explicit_targets and has_prior_reference:
+        return _clarify("transform_target_ambiguous")
+    if _source_request(
+        question,
+        has_inline_target=bool(explicit_targets),
+        has_prior_target=has_prior_reference,
+    ):
+        return ConversationRoute(kind="grounded_query")
     if has_audience and operation not in {"rewrite", "simplify"}:
         return _clarify("transform_request_unsupported")
     if has_bullet_count and operation != "summarize":
         return _clarify("transform_request_unsupported")
     if has_language and operation != "translate":
         return _clarify("transform_request_unsupported")
-    has_prior_reference = bool(
-        _PRIOR_ASSISTANT_RE.search(option_text) or _PRIOR_USER_RE.search(option_text)
-    )
     leading_operation = _OPERATION_RE.match(question)
     is_explain = (
         leading_operation is not None
