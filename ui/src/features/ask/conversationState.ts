@@ -91,6 +91,7 @@ const VALID_STATUSES = new Set([
   "insufficient_evidence",
   "model_abstain",
   "clarification_required",
+  "transformed",
 ]);
 
 const INSUFFICIENT_EVIDENCE_REASONS = new Set([
@@ -241,6 +242,42 @@ function isTurnResponse(value: unknown): value is ConversationTurnResponse {
     return false;
   }
   if (!(typeof row.answer === "string" || row.answer === null)) {
+    return false;
+  }
+
+  if (row.response_kind === "conversation_transform") {
+    return (
+      row.status === "transformed" &&
+      typeof row.answer === "string" &&
+      row.answer.trim().length > 0 &&
+      row.abstention_reason === null &&
+      row.query_trace_id === null &&
+      row.retrieval_question === null &&
+      row.answer_blocks.length === 0 &&
+      row.citations.length === 0 &&
+      ["current_message", "prior_user_turn", "prior_assistant_turn"].includes(
+        String(row.transformation_source),
+      )
+    );
+  }
+  if (row.status === "transformed") return false;
+  if (
+    row.response_kind !== undefined &&
+    row.response_kind !== "grounded_answer" &&
+    row.response_kind !== "clarification"
+  ) {
+    return false;
+  }
+  if (
+    row.response_kind === "grounded_answer" &&
+    row.status === "clarification_required"
+  ) {
+    return false;
+  }
+  if (
+    row.response_kind === "clarification" &&
+    row.status !== "clarification_required"
+  ) {
     return false;
   }
 

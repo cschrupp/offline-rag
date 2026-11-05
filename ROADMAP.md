@@ -62,14 +62,14 @@ and supporting history.
   has not occurred. It is preserved on the locked
   `archive/beta-conv-01-deterministic-router` branch.
 - [ ] **CURRENT — BETA-CONV-01A — LLM Task Planning** — design IR-002 accepted,
-  Human accepted, implementation authorized; evaluation, activation and
+  Human accepted, implementation authorized and in progress on
+  `implementation/beta-conv-01a-llm-task-planning`; evaluation, activation and
   implementation promotion remain unauthorized;
   see [the principal development memory](docs/beta_conv_01a_llm_task_planning_amendment.md).
-  Design branch starts from canonical `main` at
-  `dfc045f4178db41f723feb0483e8f163a801bc40`, excluding unpromoted application
-  changes. Planner implementation, evaluation execution, activation and
-  promotion remain unauthorized. The earlier deterministic design and review
-  history remain preserved.
+  Implementation starts from canonical `main` at
+  `51fc93a8867f85417b6522632879e7c4c62c8e55` and merges the exact preserved
+  implementation subject as a second parent. The earlier deterministic design
+  and review history remain preserved.
 - [ ] **BETA-CONV-02 — Analytical Synthesis** — deferred; not authorized.
 - [ ] Slice 17 design-open — **NOT AUTHORIZED**. This is distinct from
   original Slice 16G, which is complete.

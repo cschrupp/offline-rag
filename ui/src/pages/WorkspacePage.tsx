@@ -825,6 +825,12 @@ export function WorkspacePage() {
       setPairs(next);
       setActiveEntryId(pair.pairId);
       if (
+        response.response_kind === "conversation_transform" &&
+        response.status === "transformed"
+      ) {
+        setEvidenceDrawerOpen(false);
+      }
+      if (
         trainingModeRef.current &&
         String(response.status) === "answered"
       ) {
@@ -997,6 +1003,15 @@ export function WorkspacePage() {
     submitAddSourcesIntent(intent);
   }
 
+  const history: ConversationHistoryEntry[] = pairs.map(toHistoryEntry);
+  const activeEntry =
+    history.find((entry) => entry.entryId === activeEntryId) ??
+    history[0] ??
+    null;
+  const activeTransform =
+    activeEntry?.response.response_kind === "conversation_transform" &&
+    activeEntry.response.status === "transformed";
+
   if (workspaceQuery.isLoading) {
     return <p className="muted">Loading workspace…</p>;
   }
@@ -1044,12 +1059,6 @@ export function WorkspacePage() {
     busyForMutations || addCancelReconciling || !addSourcesAllowed;
   const existingMutationSubmitDisabled =
     busyForMutations || !existingSourceMutationsAllowed;
-
-  const history: ConversationHistoryEntry[] = pairs.map(toHistoryEntry);
-  const activeEntry =
-    history.find((entry) => entry.entryId === activeEntryId) ??
-    history[0] ??
-    null;
 
   const askDisabled =
     !askSourcesReady ||
@@ -1240,7 +1249,7 @@ export function WorkspacePage() {
     return { answer: true, citations: true, evidence: true };
   })();
 
-  const evidencePanel = (
+  const evidencePanel = activeTransform ? null : (
     <EvidencePanel
       previewTarget={previewTarget}
       activeEntry={activeEntry}
@@ -1349,23 +1358,29 @@ export function WorkspacePage() {
         >
           Sources
         </Button>
-        <Button
-          variant="secondary"
-          type="button"
-          onClick={() => {
-            setSourcesDrawerOpen(false);
-            setEvidenceDrawerOpen(true);
-          }}
-        >
-          Evidence
-        </Button>
+        {!activeTransform ? (
+          <Button
+            variant="secondary"
+            type="button"
+            onClick={() => {
+              setSourcesDrawerOpen(false);
+              setEvidenceDrawerOpen(true);
+            }}
+          >
+            Evidence
+          </Button>
+        ) : null}
       </div>
 
       <div
         className={[
           "knowledge-layout",
           sourcesRailExpanded ? "" : "sources-collapsed",
-          evidenceRailExpanded ? "" : "evidence-collapsed",
+          activeTransform
+            ? "evidence-hidden"
+            : evidenceRailExpanded
+              ? ""
+              : "evidence-collapsed",
         ]
           .filter(Boolean)
           .join(" ")}
@@ -1433,6 +1448,12 @@ export function WorkspacePage() {
               }}
               onSelectHistory={(entry) => {
                 setActiveEntryId(entry.entryId);
+                if (
+                  entry.response.response_kind === "conversation_transform" &&
+                  entry.response.status === "transformed"
+                ) {
+                  setEvidenceDrawerOpen(false);
+                }
                 const first = entry.response.citations[0] ?? null;
                 setSelectedCitation(first);
                 if (first) {
@@ -1484,41 +1505,43 @@ export function WorkspacePage() {
             />
           </div>
         </div>
-        <aside
-          id="workspace-evidence-rail"
-          className="knowledge-evidence knowledge-desktop-only"
-        >
-          {evidenceRailExpanded ? (
-            <div className="rail-shell">
-              <div className="rail-toolbar">
+        {!activeTransform ? (
+          <aside
+            id="workspace-evidence-rail"
+            className="knowledge-evidence knowledge-desktop-only"
+          >
+            {evidenceRailExpanded ? (
+              <div className="rail-shell">
+                <div className="rail-toolbar">
+                  <button
+                    type="button"
+                    className="rail-toggle"
+                    aria-expanded={true}
+                    aria-controls="workspace-evidence-rail"
+                    aria-label="Collapse Evidence"
+                    onClick={() => setEvidenceRailExpandedPersisted(false)}
+                  >
+                    »
+                  </button>
+                </div>
+                {evidencePanel}
+              </div>
+            ) : (
+              <div className="rail-shell rail-shell-collapsed">
                 <button
                   type="button"
-                  className="rail-toggle"
-                  aria-expanded={true}
+                  className="rail-toggle rail-toggle-collapsed"
+                  aria-expanded={false}
                   aria-controls="workspace-evidence-rail"
-                  aria-label="Collapse Evidence"
-                  onClick={() => setEvidenceRailExpandedPersisted(false)}
+                  aria-label="Expand Evidence"
+                  onClick={() => setEvidenceRailExpandedPersisted(true)}
                 >
-                  »
+                  Evidence
                 </button>
               </div>
-              {evidencePanel}
-            </div>
-          ) : (
-            <div className="rail-shell rail-shell-collapsed">
-              <button
-                type="button"
-                className="rail-toggle rail-toggle-collapsed"
-                aria-expanded={false}
-                aria-controls="workspace-evidence-rail"
-                aria-label="Expand Evidence"
-                onClick={() => setEvidenceRailExpandedPersisted(true)}
-              >
-                Evidence
-              </button>
-            </div>
-          )}
-        </aside>
+            )}
+          </aside>
+        ) : null}
       </div>
 
       {isNarrowLayout ? (
@@ -1532,7 +1555,7 @@ export function WorkspacePage() {
         </ResponsiveDrawer>
       ) : null}
 
-      {isNarrowLayout ? (
+      {isNarrowLayout && !activeTransform ? (
         <ResponsiveDrawer
           open={evidenceDrawerOpen}
           title="Evidence"

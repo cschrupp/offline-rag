@@ -30,6 +30,7 @@ BETA-CONV-01 — DESIGN COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / PRO
                IMPLEMENTATION IR-005 CODE-REVIEW ACCEPT / PRESERVED / UNPROMOTED
                LIVE ACCEPTANCE NOT SUCCESSFULLY COMPLETED
 BETA-CONV-01A — DESIGN IR-002 ACCEPT / HUMAN ACCEPTED / IMPLEMENTATION AUTHORIZED
+                IMPLEMENTATION IN PROGRESS ON NEW BRANCH
                 MODEL EVALUATION / ACTIVATION / IMPLEMENTATION PROMOTION NOT AUTHORIZED
 BETA-CONV-02 — DEFERRED / NOT AUTHORIZED
 Additional Gold Lab games — DEFERRED BEYOND CURRENT BETA
@@ -68,9 +69,9 @@ and its linked sanitized `RUN_002_EVIDENCE_INDEX.md`.
        deterministic implementation IR-005 code-review ACCEPT at
        64b5883311338689f291f181e47686fc1a9e3906; live acceptance not completed
        successfully; preserved on locked archive branch; unpromoted
-    -> BETA-CONV-01A LLM task planning amendment IR-001 TARGETED DESIGN
-       CORRECTIONS COMPLETE / READY FOR INDEPENDENT RE-REVIEW; planner
-       implementation, evaluation execution and activation NOT AUTHORIZED
+    -> BETA-CONV-01A LLM task planning amendment DESIGN IR-002 ACCEPT / HUMAN
+       ACCEPTED; implementation AUTHORIZED / IN PROGRESS; model evaluation,
+       activation and implementation promotion NOT AUTHORIZED
     -> BETA-CONV-02 analytical synthesis DEFERRED / NOT AUTHORIZED
     -> Slice 17 design-open authority remains NOT AUTHORIZED
 ```
@@ -179,13 +180,16 @@ outside this design. The single design document is
 ### BETA-CONV-01A — LLM Task Planning Architecture Amendment
 
 **Priority:** P1 beta conversation capability
-**Status:** DESIGN IR-002 ACCEPT / HUMAN ACCEPTED / IMPLEMENTATION AUTHORIZED
+**Status:** DESIGN IR-002 ACCEPT / HUMAN ACCEPTED / IMPLEMENTATION IN PROGRESS
 **Authority:** Human design/documentation and archive-creation handoff, 2026-11-05
 **Design branch:** `design/beta-conv-01a-llm-task-planning`, directly from
 `dfc045f4178db41f723feb0483e8f163a801bc40`
 **Implementation:** AUTHORIZED behind default `legacy`, including preserved-code
 integration and focused regression tests. **Model evaluation, activation and
 implementation promotion:** NOT AUTHORIZED.
+**Implementation branch:** `implementation/beta-conv-01a-llm-task-planning`,
+based on canonical `main` at `51fc93a8867f85417b6522632879e7c4c62c8e55` with
+the preserved deterministic implementation merged as a second parent.
 
 Propose one structured local-model interpretation call replacing deterministic
 intent interpretation plus contextual resolution, followed by deterministic
@@ -201,8 +205,7 @@ The single [architecture amendment and development memory](beta_conv_01a_llm_tas
 contains preservation/protection status, typed plan, comparative 300-request
 evaluation proposal, proposed safety/latency gates, explicit legacy/planner
 modes with offline-only paired shadow comparison,
-rollback and later merge-based integration. The design branch excludes the
-unpromoted application implementation. The baseline-reproduced API lifespan
+rollback and merge-based integration. The baseline-reproduced API lifespan
 stall remains an incomplete verification item; it is not a PASS. Additional
 games remain deferred; BETA-CONV-02 and Slice 17 remain unopened.
 

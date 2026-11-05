@@ -6,8 +6,17 @@ import { abstentionCopy } from "./abstentionCopy";
  * Used for both UI rendering and client prior_turns construction.
  */
 export function assistantPresentationText(
-  response: Pick<ConversationTurnResponse, "status" | "answer" | "abstention_reason">,
+  response: Pick<
+    ConversationTurnResponse,
+    "status" | "answer" | "abstention_reason" | "response_kind"
+  >,
 ): string {
+  if (
+    response.response_kind === "conversation_transform" &&
+    response.status === "transformed"
+  ) {
+    return typeof response.answer === "string" ? response.answer : "";
+  }
   if (response.status === "answered") {
     return typeof response.answer === "string" ? response.answer : "";
   }

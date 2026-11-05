@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from offline_rag.app.errors import AppError, ErrorCode
 from offline_rag.app.traces import (
@@ -19,7 +19,8 @@ from offline_rag.config.models import AppSettings
 from offline_rag.core.ids import CONVERSATION_CONTEXT_RESOLVER_V1
 from offline_rag.ingestion.io import atomic_write_text
 
-CONVERSATION_TRACE_SCHEMA_VERSION = "offline-rag-conversation-trace-v1"
+CONVERSATION_TRACE_SCHEMA_VERSION = "offline-rag-conversation-trace-v2"
+LEGACY_CONVERSATION_TRACE_SCHEMA_VERSION = "offline-rag-conversation-trace-v1"
 MAX_RETAINED_CONVERSATION_TRACES = 1000
 MAX_TRACE_AGE = timedelta(days=7)
 
@@ -33,6 +34,13 @@ ConversationTerminalStatus = Literal[
     "insufficient_evidence",
     "model_abstain",
     "clarification_required",
+    "transformed",
+]
+ConversationIntentKind = Literal[
+    "grounded_query", "conversation_transform", "clarification_required"
+]
+ConversationTransformSource = Literal[
+    "current_message", "prior_user_turn", "prior_assistant_turn"
 ]
 
 
@@ -58,13 +66,36 @@ class ConversationTraceRecord(BaseModel):
     question_char_count: int = Field(ge=0)
     prior_turn_count: int = Field(ge=0)
     resolver_invoked: bool
-    resolver_prompt_contract_id: str = CONVERSATION_CONTEXT_RESOLVER_V1
-    resolver_outcome: ResolverOutcomeStatus
+    resolver_prompt_contract_id: str | None = CONVERSATION_CONTEXT_RESOLVER_V1
+    resolver_outcome: ResolverOutcomeStatus | None
     retrieval_question_sha256: str | None = None
     retrieval_question_char_count: int | None = None
     context_used: bool
     status: ConversationTerminalStatus
     query_trace_id: str | None = None
+    intent_kind: ConversationIntentKind | None = None
+    intent_router_contract_id: str | None = None
+    transform_prompt_contract_id: str | None = None
+    transform_operation: (
+        Literal["summarize", "rewrite", "simplify", "translate"] | None
+    ) = None
+    transform_source_kind: ConversationTransformSource | None = None
+    transform_source_role: Literal["user", "assistant"] | None = None
+    transform_source_turn_ordinal: int | None = Field(default=None, ge=1, le=12)
+    transform_target_sha256: str | None = None
+    transform_target_char_count: int | None = Field(default=None, ge=0)
+    transform_output_sha256: str | None = None
+    transform_output_char_count: int | None = Field(default=None, ge=0)
+
+    @field_validator("schema_version")
+    @classmethod
+    def _validate_schema_version(cls, value: str) -> str:
+        if value not in {
+            CONVERSATION_TRACE_SCHEMA_VERSION,
+            LEGACY_CONVERSATION_TRACE_SCHEMA_VERSION,
+        }:
+            raise ValueError("unsupported conversation trace schema version")
+        return value
 
     @field_validator("conversation_trace_id")
     @classmethod
@@ -81,6 +112,73 @@ class ConversationTraceRecord(BaseModel):
         if not is_valid_trace_id(value):
             raise ValueError("invalid query_trace_id")
         return value
+
+    @model_validator(mode="after")
+    def _validate_transform_trace(self) -> ConversationTraceRecord:
+        if self.schema_version == CONVERSATION_TRACE_SCHEMA_VERSION:
+            if (
+                self.intent_kind == "conversation_transform"
+                and self.status != "transformed"
+            ):
+                raise ValueError("transform intent requires transformed status")
+            if (
+                self.intent_kind == "clarification_required"
+                and self.status != "clarification_required"
+            ):
+                raise ValueError("clarification intent requires clarification status")
+            if self.intent_kind != "conversation_transform" and any(
+                value is not None
+                for value in (
+                    self.transform_prompt_contract_id,
+                    self.transform_operation,
+                    self.transform_source_kind,
+                    self.transform_source_role,
+                    self.transform_source_turn_ordinal,
+                    self.transform_target_sha256,
+                    self.transform_target_char_count,
+                    self.transform_output_sha256,
+                    self.transform_output_char_count,
+                )
+            ):
+                raise ValueError("non-transform trace contains transform metadata")
+        if self.status != "transformed":
+            return self
+        if (
+            self.schema_version != CONVERSATION_TRACE_SCHEMA_VERSION
+            or self.intent_kind != "conversation_transform"
+            or self.intent_router_contract_id != "conversation_intent_router_v1"
+            or self.transform_prompt_contract_id != "conversation_transform_v1"
+            or self.transform_operation is None
+            or self.transform_source_kind is None
+            or self.transform_source_role is None
+            or self.transform_target_sha256 is None
+            or self.transform_target_char_count is None
+            or self.transform_output_sha256 is None
+            or self.transform_output_char_count is None
+            or self.resolver_invoked
+            or self.retrieval_question_sha256 is not None
+            or self.retrieval_question_char_count is not None
+            or self.query_trace_id is not None
+        ):
+            raise ValueError("invalid conversation transform trace")
+        if self.transform_source_kind == "current_message":
+            if (
+                self.transform_source_role != "user"
+                or self.transform_source_turn_ordinal is not None
+            ):
+                raise ValueError("current-message transform cannot name a prior turn")
+        else:
+            expected_role = (
+                "user"
+                if self.transform_source_kind == "prior_user_turn"
+                else "assistant"
+            )
+            if (
+                self.transform_source_role != expected_role
+                or self.transform_source_turn_ordinal is None
+            ):
+                raise ValueError("prior-turn transform provenance is inconsistent")
+        return self
 
 
 class ConversationTraceStore:
@@ -117,7 +215,7 @@ class ConversationTraceStore:
                 record = ConversationTraceRecord.model_validate_json(
                     path.read_text(encoding="utf-8")
                 )
-            except (OSError, ValueError):
+            except OSError, ValueError:
                 return None
             created = record.created_at
             if created.tzinfo is None:
@@ -140,7 +238,7 @@ class ConversationTraceStore:
                 record = ConversationTraceRecord.model_validate_json(
                     path.read_text(encoding="utf-8")
                 )
-            except (OSError, ValueError):
+            except OSError, ValueError:
                 path.unlink(missing_ok=True)
                 continue
             created = record.created_at
