@@ -16,6 +16,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from offline_rag.api.app import create_app
+from offline_rag.app.conversation.planner import PLANNER_CONTRACT_ID
 from offline_rag.app.conversation.prior_turns import (
     MAX_PRIOR_PAIRS,
     MAX_PRIOR_TEXT_CHARS,
@@ -29,7 +30,11 @@ from offline_rag.app.conversation.resolver import (
     resolve_conversation_context,
     try_deterministic_followup_resolve,
 )
-from offline_rag.app.conversation.traces import ConversationTraceStore
+from offline_rag.app.conversation.traces import (
+    PLANNER_CONVERSATION_TRACE_SCHEMA_VERSION,
+    ConversationTraceStore,
+)
+from offline_rag.app.conversation.transform import TRANSFORM_PROMPT_CONTRACT_ID
 from offline_rag.app.conversation.turn import run_conversation_turn
 from offline_rag.app.errors import AppError, ErrorCode
 from offline_rag.app.query import run_workspace_query
@@ -66,13 +71,14 @@ def _provision_query_assets(settings: AppSettings) -> None:
     shutil.copytree(TIKTOKEN_SRC, settings.paths.tokenizer_artifacts)
 
 
-def _query_settings(tmp_path: Path) -> AppSettings:
+def _query_settings(tmp_path: Path, *, router_mode: str = "legacy") -> AppSettings:
     settings = load_settings(
         yaml_paths=[],
         environ={
             "OFFLINE_RAG_DATA_DIR": str(tmp_path / "data"),
             "OFFLINE_RAG_MODELS_DIR": str(tmp_path / "models"),
             "OFFLINE_RAG_STRICT_OFFLINE": "false",
+            "OFFLINE_RAG_CONVERSATION_ROUTER_MODE": router_mode,
         },
     )
     generation = settings.generation.model_copy(
@@ -107,8 +113,10 @@ def _wait_op(client: TestClient, op_id: str, *, timeout: float = 60.0) -> dict:
 @contextmanager
 def _conversation_client(
     tmp_path: Path,
+    *,
+    router_mode: str = "legacy",
 ) -> Iterator[tuple[TestClient, ApplicationRuntime, dict[str, Any], FakeGenerator]]:
-    settings = _query_settings(tmp_path)
+    settings = _query_settings(tmp_path, router_mode=router_mode)
     captures: dict[str, Any] = {
         "generator_requests": [],
         "assemble_queries": [],
@@ -221,6 +229,45 @@ def _seed_workspace(client: TestClient) -> tuple[str, str, str, str]:
     sources = client.get(f"/v1/workspaces/{wid}/sources").json()["sources"]
     by_name = {row["display_name"]: row for row in sources}
     return wid, by_name["alpha.txt"]["source_id"], by_name["beta.txt"]["source_id"], by_name["alpha.txt"]["document_id"]
+
+
+def _task_plan(**updates: Any) -> dict[str, Any]:
+    plan: dict[str, Any] = {
+        "schema_version": PLANNER_CONTRACT_ID,
+        "operation": "grounded_query",
+        "transform_kind": None,
+        "target": None,
+        "retrieval_question": "What does the selected source say?",
+        "options": None,
+        "context_turn_ordinals": [],
+        "source_mentions": [],
+        "reason_code": None,
+    }
+    plan.update(updates)
+    return plan
+
+
+def _install_http_planner_responses(
+    generator: FakeGenerator,
+    captures: dict[str, Any],
+    *,
+    plan: dict[str, Any] | str,
+) -> None:
+    previous_response_fn = generator._response_fn
+    assert previous_response_fn is not None
+    plan_response = plan if isinstance(plan, str) else json.dumps(plan)
+
+    def respond(request):
+        contract = (request.metadata or {}).get("prompt_contract")
+        if contract == PLANNER_CONTRACT_ID:
+            captures["generator_requests"].append(request)
+            return plan_response
+        if contract == TRANSFORM_PROMPT_CONTRACT_ID:
+            captures["generator_requests"].append(request)
+            return json.dumps({"transformed_text": "The transformed text."})
+        return previous_response_fn(request)
+
+    generator._response_fn = respond
 
 
 # --- prior_turns validation (server) ---
@@ -555,7 +602,7 @@ def test_fabricated_assistant_instruction_stays_in_data_delimiters() -> None:
 
 
 def test_first_turn_resolver_bypass(tmp_path: Path) -> None:
-    with _conversation_client(tmp_path) as (client, runtime, captures, generator):
+    with _conversation_client(tmp_path) as (client, _runtime, captures, generator):
         wid, alpha_sid, _, _ = _seed_workspace(client)
         before = generator.generate_calls
         body = client.post(
@@ -581,6 +628,7 @@ def test_first_turn_resolver_bypass(tmp_path: Path) -> None:
 
 def test_context_dependent_follow_up_resolution(tmp_path: Path) -> None:
     with _conversation_client(tmp_path) as (client, runtime, captures, _gen):
+        assert runtime.settings.conversation.router_mode == "legacy"
         wid, alpha_sid, _, _ = _seed_workspace(client)
         resp = client.post(
             f"/v1/workspaces/{wid}/conversation/turn",
@@ -604,6 +652,275 @@ def test_context_dependent_follow_up_resolution(tmp_path: Path) -> None:
         assert data["query_trace_id"]
         assert captures["assemble_queries"]
         assert captures["assemble_queries"][-1] == data["retrieval_question"]
+        prompt_contracts = [
+            (request.metadata or {}).get("prompt_contract")
+            for request in captures["generator_requests"]
+        ]
+        assert prompt_contracts.count(CONVERSATION_CONTEXT_RESOLVER_V1) == 1
+        assert PLANNER_CONTRACT_ID not in prompt_contracts
+
+
+def test_planner_mode_http_grounded_request_uses_exact_selected_scope(
+    tmp_path: Path,
+) -> None:
+    with _conversation_client(tmp_path, router_mode="planner") as (
+        client,
+        runtime,
+        captures,
+        generator,
+    ):
+        wid, alpha_sid, _, alpha_doc = _seed_workspace(client)
+        question = f"Which methods are supervised in {ALPHA_SCOPE_MARKER}?"
+        plan = _task_plan(retrieval_question="supervised learning methods")
+        _install_http_planner_responses(generator, captures, plan=plan)
+        captures["generator_requests"].clear()
+        before = generator.generate_calls
+
+        response = client.post(
+            f"/v1/workspaces/{wid}/conversation/turn",
+            json={"question": question, "source_ids": [alpha_sid]},
+        )
+
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert data["status"] == "answered"
+        assert data["query_trace_id"]
+        assert data["conversation_trace_id"]
+        assert data["citations"]
+        assert all(
+            citation["source_id"] == alpha_sid
+            and citation["document_id"] == alpha_doc
+            for citation in data["citations"]
+        )
+        assert captures["assemble_queries"][-1] == "supervised learning methods"
+        assert generator.generate_calls == before + 2
+
+        prompt_contracts = [
+            (request.metadata or {}).get("prompt_contract")
+            for request in captures["generator_requests"]
+        ]
+        assert prompt_contracts.count(PLANNER_CONTRACT_ID) == 1
+        assert prompt_contracts.count(CONVERSATION_CONTEXT_RESOLVER_V1) == 0
+        assert prompt_contracts.count(GROUNDED_ANSWER_V2) == 1
+
+        conversation_trace = ConversationTraceStore(runtime.settings).get(
+            data["conversation_trace_id"]
+        )
+        assert conversation_trace is not None
+        assert (
+            conversation_trace.schema_version
+            == PLANNER_CONVERSATION_TRACE_SCHEMA_VERSION
+        )
+        assert conversation_trace.planner_model_call_count == 1
+        assert conversation_trace.query_trace_id == data["query_trace_id"]
+
+        query_trace = ProductTraceStore(runtime.settings).get(data["query_trace_id"])
+        assert query_trace is not None
+        assert query_trace.snapshot_id == data["snapshot_id"]
+        assert query_trace.request.source_scope is not None
+        assert query_trace.request.source_scope.mode == "selected"
+        assert query_trace.request.source_scope.source_ids == [alpha_sid]
+
+
+@pytest.mark.parametrize(
+    (
+        "question",
+        "prior_turns",
+        "transform_kind",
+        "target_kind",
+        "context_ordinals",
+        "expected_source",
+    ),
+    [
+        (
+            "Summarize exactly this:   Keep  spacing.  now",
+            [],
+            "summarize",
+            "current_message_span",
+            [],
+            "current_message",
+        ),
+        (
+            "Rewrite your previous answer in simpler words.",
+            [
+                {"role": "user", "text": "What was the status?"},
+                {"role": "assistant", "text": "Before:   Keep  spacing.  after."},
+            ],
+            "rewrite",
+            "prior_assistant_turn",
+            [2],
+            "prior_assistant_turn",
+        ),
+    ],
+)
+def test_planner_mode_http_transform_preserves_exact_current_or_prior_target(
+    tmp_path: Path,
+    question: str,
+    prior_turns: list[dict[str, str]],
+    transform_kind: str,
+    target_kind: str,
+    context_ordinals: list[int],
+    expected_source: str,
+) -> None:
+    with _conversation_client(tmp_path, router_mode="planner") as (
+        client,
+        _runtime,
+        captures,
+        generator,
+    ):
+        wid, _, _, _ = _seed_workspace(client)
+        if target_kind == "current_message_span":
+            target_text = "  Keep  spacing.  "
+            target = {
+                "kind": target_kind,
+                "start": question.index(target_text),
+                "end": question.index(target_text) + len(target_text),
+            }
+        else:
+            target_text = prior_turns[1]["text"]
+            target = {"kind": target_kind, "ordinal": 2}
+
+        options = {
+            "bullet_count": 2 if transform_kind == "summarize" else None,
+            "audience": None,
+            "target_language": None,
+        }
+        plan = _task_plan(
+            operation="transform_text",
+            transform_kind=transform_kind,
+            target=target,
+            retrieval_question=None,
+            options=options,
+            context_turn_ordinals=context_ordinals,
+        )
+        _install_http_planner_responses(generator, captures, plan=plan)
+        captures["generator_requests"].clear()
+
+        response = client.post(
+            f"/v1/workspaces/{wid}/conversation/turn",
+            json={"question": question, "prior_turns": prior_turns},
+        )
+
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert data["status"] == "transformed"
+        assert data["response_kind"] == "conversation_transform"
+        assert data["transformation_source"] == expected_source
+        assert data["query_trace_id"] is None
+        assert data["citations"] == []
+        assert data["answer"] == "The transformed text."
+        assert captures["assemble_queries"] == []
+        assert generator.generate_calls == 2
+
+        prompt_contracts = [
+            (request.metadata or {}).get("prompt_contract")
+            for request in captures["generator_requests"]
+        ]
+        assert prompt_contracts.count(PLANNER_CONTRACT_ID) == 1
+        assert prompt_contracts.count(TRANSFORM_PROMPT_CONTRACT_ID) == 1
+        assert CONVERSATION_CONTEXT_RESOLVER_V1 not in prompt_contracts
+        transform_request = next(
+            request
+            for request in captures["generator_requests"]
+            if (request.metadata or {}).get("prompt_contract")
+            == TRANSFORM_PROMPT_CONTRACT_ID
+        )
+        assert (
+            json.dumps(target_text, ensure_ascii=False)
+            in transform_request.messages[1].content
+        )
+
+
+def test_planner_mode_http_rejects_unselected_source_reference_without_retrieval(
+    tmp_path: Path,
+) -> None:
+    with _conversation_client(tmp_path, router_mode="planner") as (
+        client,
+        runtime,
+        captures,
+        generator,
+    ):
+        wid, alpha_sid, _, _ = _seed_workspace(client)
+        question = "What does beta.txt say about reinforcement learning?"
+        source_mention = "beta.txt"
+        mention_start = question.index(source_mention)
+        plan = _task_plan(
+            retrieval_question="What does beta.txt say about reinforcement learning?",
+            source_mentions=[
+                {
+                    "start": mention_start,
+                    "end": mention_start + len(source_mention),
+                }
+            ],
+        )
+        _install_http_planner_responses(generator, captures, plan=plan)
+        captures["generator_requests"].clear()
+
+        response = client.post(
+            f"/v1/workspaces/{wid}/conversation/turn",
+            json={"question": question, "source_ids": [alpha_sid]},
+        )
+
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert data["status"] == "clarification_required"
+        assert data["guidance_code"] == "source_reference_unavailable"
+        assert data["query_trace_id"] is None
+        assert data["citations"] == []
+        assert captures["assemble_queries"] == []
+        assert generator.generate_calls == 1
+        trace = ConversationTraceStore(runtime.settings).get(
+            data["conversation_trace_id"]
+        )
+        assert trace is not None
+        assert trace.planner_validation == "rejected"
+        assert trace.planner_reason_code == "source_reference_unavailable"
+
+
+def test_planner_mode_http_invalid_plan_clarifies_without_legacy_fallback(
+    tmp_path: Path,
+) -> None:
+    with _conversation_client(tmp_path, router_mode="planner") as (
+        client,
+        runtime,
+        captures,
+        generator,
+    ):
+        wid, alpha_sid, _, _ = _seed_workspace(client)
+        _install_http_planner_responses(generator, captures, plan="not json")
+        captures["generator_requests"].clear()
+
+        response = client.post(
+            f"/v1/workspaces/{wid}/conversation/turn",
+            json={
+                "question": "What does the selected source say?",
+                "source_ids": [alpha_sid],
+                "prior_turns": [
+                    {"role": "user", "text": "What was discussed?"},
+                    {"role": "assistant", "text": "A prior answer."},
+                ],
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert data["status"] == "clarification_required"
+        assert data["guidance_code"] == "planner_plan_invalid"
+        assert data["query_trace_id"] is None
+        assert data["citations"] == []
+        assert captures["assemble_queries"] == []
+        assert generator.generate_calls == 1
+        contracts = [
+            (request.metadata or {}).get("prompt_contract")
+            for request in captures["generator_requests"]
+        ]
+        assert contracts == [PLANNER_CONTRACT_ID]
+        trace = ConversationTraceStore(runtime.settings).get(
+            data["conversation_trace_id"]
+        )
+        assert trace is not None
+        assert trace.planner_validation == "rejected"
+        assert trace.planner_reason_code == "planner_plan_invalid"
 
 
 def test_malformed_prior_rejected_before_resolver(tmp_path: Path) -> None:
@@ -623,7 +940,7 @@ def test_malformed_prior_rejected_before_resolver(tmp_path: Path) -> None:
 
 
 def test_invalid_source_subset_rejected_before_resolver(tmp_path: Path) -> None:
-    with _conversation_client(tmp_path) as (client, _runtime, captures, generator):
+    with _conversation_client(tmp_path) as (client, _runtime, _captures, generator):
         wid, _, _, _ = _seed_workspace(client)
         before = generator.generate_calls
         resp = client.post(
@@ -757,7 +1074,7 @@ def test_binding_occurs_before_resolver(tmp_path: Path) -> None:
 
 def test_explicit_source_subset_remains_exact(tmp_path: Path) -> None:
     with _conversation_client(tmp_path) as (client, runtime, captures, _g):
-        wid, alpha_sid, beta_sid, alpha_doc = _seed_workspace(client)
+        wid, alpha_sid, beta_sid, _alpha_doc = _seed_workspace(client)
         beta_doc = (
             next(
                 s.document_id
@@ -782,7 +1099,7 @@ def test_explicit_source_subset_remains_exact(tmp_path: Path) -> None:
 
 
 def test_query_remains_independent_single_turn(tmp_path: Path) -> None:
-    with _conversation_client(tmp_path) as (client, runtime, captures, generator):
+    with _conversation_client(tmp_path) as (client, runtime, captures, _generator):
         wid, alpha_sid, _, _ = _seed_workspace(client)
         captures["generator_requests"].clear()
         outcome = run_workspace_query(

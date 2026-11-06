@@ -32,8 +32,8 @@ BETA-CONV-01 — DESIGN COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / PRO
 BETA-CONV-01A — DESIGN IR-002 ACCEPT / HUMAN ACCEPTED
                 IMPLEMENTATION IR-002 ACCEPT / HUMAN ACCEPTED
                 DETERMINISTIC VERIFICATION EXECUTED
-                API REGRESSION-COVERAGE GAP OPEN; CURRENT TEST ENVIRONMENT'S
-                TESTCLIENT/ANYIO CROSS-THREAD SCHEDULING STALL REPRODUCED
+                API VERIFY-01 HTTP ROUTE COVERAGE EXECUTED; TESTCLIENT PASSES
+                OUTSIDE SANDBOX; SANDBOX EVENT-LOOP WAKE RESTRICTION IDENTIFIED
                 MODEL EVALUATION NOT AUTHORIZED
                 PLANNER ACTIVATION / IMPLEMENTATION PROMOTION NOT AUTHORIZED
 BETA-CONV-02 — DEFERRED / NOT AUTHORIZED
@@ -74,11 +74,11 @@ and its linked sanitized `RUN_002_EVIDENCE_INDEX.md`.
        64b5883311338689f291f181e47686fc1a9e3906; live acceptance not completed
        successfully; preserved on locked archive branch; unpromoted
     -> BETA-CONV-01A LLM task planning amendment DESIGN IR-002 ACCEPT / HUMAN
-       ACCEPTED; implementation IR-002 ACCEPT / HUMAN ACCEPTED; deterministic
-       verification executed; API regression-coverage gap open (TestClient /
-       AnyIO cross-thread stall reproduced in current environment); model
-       evaluation execution, planner activation, and implementation promotion
-       not authorized
+       ACCEPTED; implementation IR-002 ACCEPT / HUMAN ACCEPTED; API VERIFY-01
+       HTTP regression coverage executed through canonical FastAPI app; the
+       prior TestClient stall was isolated to sandbox-denied cross-thread event
+       loop wakeups; model evaluation, planner activation, and implementation
+       promotion remain unauthorized
     -> BETA-CONV-02 analytical synthesis DEFERRED / NOT AUTHORIZED
     -> Slice 17 design-open authority remains NOT AUTHORIZED
 ```
@@ -550,6 +550,12 @@ issue does not currently block beta.
 Next action: diagnose the `TestClient` lifespan/startup wait and restore
 bounded automated coverage for managed-operation restart recovery. Do not
 reopen product recovery semantics unless new live evidence fails.
+
+> BETA-CONV-01A API VERIFY-01 separately established that this execution
+> sandbox denies asyncio cross-thread wake-socket writes (`EPERM`), while a
+> minimal TestClient app and Seneca's canonical HTTP test path pass outside the
+> sandbox. This does not diagnose or close the distinct managed-operation
+> recovery-test startup hang described above.
 
 ### ROBUST-01 — Native PDF parser process isolation
 

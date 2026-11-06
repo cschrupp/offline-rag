@@ -73,15 +73,17 @@ and supporting history.
   `51fc93a8867f85417b6522632879e7c4c62c8e55` and merges the exact preserved
   implementation subject as a second parent. The earlier deterministic design
   and review history remain preserved.
-- [x] BETA-CONV-01A deterministic verification-only tranche — 99 planner and
-  conversation Python tests and 21 conversation UI tests pass. The generic
-  `TestClient`/AnyIO cross-thread scheduling stall is reproduced in the current
-  environment; actual HTTP route/admission coverage remains open. See the
-  [verification result](docs/evidence/beta_conv_01a/VERIFICATION_ONLY_RESULT.md).
-- [ ] **BETA-CONV-01A API verification follow-up / offline model evaluation** —
-  API test-harness gap remains open; offline model-evaluation execution still
-  requires separate authorization and the accepted pre-holdout freeze/isolation
-  requirements.
+- [x] BETA-CONV-01A deterministic verification tranche — planner and
+  conversation Python/UI checks pass. The API verification follow-up now
+  exercises planner and legacy requests through the canonical FastAPI app. The
+  earlier TestClient stall was caused by sandbox-denied cross-thread event-loop
+  wakeups; the same TestClient path passes outside that sandbox. See the
+  [API verification result](docs/evidence/beta_conv_01a/API_VERIFY_01_RESULT.md)
+  and the [earlier verification result](docs/evidence/beta_conv_01a/VERIFICATION_ONLY_RESULT.md).
+- [ ] **BETA-CONV-01A offline model evaluation** — not executed; requires
+  separate authorization and the accepted pre-holdout freeze/isolation
+  requirements. Planner activation and implementation promotion remain
+  unauthorized.
 - [ ] **BETA-CONV-02 — Analytical Synthesis** — deferred; not authorized.
 - [ ] Slice 17 design-open — **NOT AUTHORIZED**. This is distinct from
   original Slice 16G, which is complete.
