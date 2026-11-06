@@ -64,17 +64,24 @@ and supporting history.
 - [x] **BETA-CONV-01A — LLM Task Planning implementation** — implementation
   subject `e243c4d34d8d784ea6b1b67ebfc8088fb129f988` independently accepted
   (IR-002) and Human accepted. The implementation remains unpromoted and the
-  planner remains inactive. The API regression-coverage gap is open; verification
-  and model-evaluation execution require a separate bounded authority. See the
+  planner remains inactive. Deterministic verification-only checks are complete;
+  the API regression-coverage gap remains open, and model evaluation requires a
+  separate bounded authority. See the
   [implementation result and next handoff](docs/evidence/beta_conv_01a/IMPLEMENTATION_RESULT_AND_NEXT_HANDOFF.md)
   and [principal development memory](docs/beta_conv_01a_llm_task_planning_amendment.md).
   Implementation starts from canonical `main` at
   `51fc93a8867f85417b6522632879e7c4c62c8e55` and merges the exact preserved
   implementation subject as a second parent. The earlier deterministic design
   and review history remain preserved.
-- [ ] **BETA-CONV-01A verification/evaluation** — handoff prepared; execution
-  authority not granted. Close the API coverage gap and satisfy the accepted
-  pre-holdout freeze/isolation requirements under a separate authority.
+- [x] BETA-CONV-01A deterministic verification-only tranche — 99 planner and
+  conversation Python tests and 21 conversation UI tests pass. The generic
+  `TestClient`/AnyIO cross-thread scheduling stall is reproduced in the current
+  environment; actual HTTP route/admission coverage remains open. See the
+  [verification result](docs/evidence/beta_conv_01a/VERIFICATION_ONLY_RESULT.md).
+- [ ] **BETA-CONV-01A API verification follow-up / offline model evaluation** —
+  API test-harness gap remains open; offline model-evaluation execution still
+  requires separate authorization and the accepted pre-holdout freeze/isolation
+  requirements.
 - [ ] **BETA-CONV-02 — Analytical Synthesis** — deferred; not authorized.
 - [ ] Slice 17 design-open — **NOT AUTHORIZED**. This is distinct from
   original Slice 16G, which is complete.

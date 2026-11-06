@@ -27,8 +27,12 @@ The implementation is complete at
 Implementation IR-002 and Human accepted. The default remains `legacy`; the
 planner has not been activated or promoted. The conversation API regression
 coverage gap remains open, and the separate verification/evaluation handoff is
-prepared but has no execution authority. See
-[`evidence/beta_conv_01a/IMPLEMENTATION_RESULT_AND_NEXT_HANDOFF.md`](evidence/beta_conv_01a/IMPLEMENTATION_RESULT_AND_NEXT_HANDOFF.md).
+now partially executed: deterministic tests ran, while actual HTTP route
+coverage remains open because TestClient/AnyIO cross-thread scheduling stalls
+in the current environment. Offline model-evaluation execution has no
+authority. See the
+[`evidence/beta_conv_01a/IMPLEMENTATION_RESULT_AND_NEXT_HANDOFF.md`](evidence/beta_conv_01a/IMPLEMENTATION_RESULT_AND_NEXT_HANDOFF.md)
+and [`evidence/beta_conv_01a/VERIFICATION_ONLY_RESULT.md`](evidence/beta_conv_01a/VERIFICATION_ONLY_RESULT.md).
 
 This current-state note does not rewrite the historical design authority or
 grant model calls, evaluation, activation, or promotion.
