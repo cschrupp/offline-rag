@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
+import re
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Mapping
 from typing import Any
@@ -52,6 +54,8 @@ def validate_observations(
     case_ids: set[str], observations: list[dict[str, Any]], *, arm: str, repeats: int
 ) -> None:
     """Require exactly one complete observation per case, arm, and repeat."""
+    if arm not in {"legacy", "planner"}:
+        raise ValueError(f"unsupported comparison arm: {arm}")
     if repeats < 1:
         raise ValueError("repeats must be positive")
     expected = {
@@ -65,8 +69,11 @@ def validate_observations(
         "arm",
         "repeat",
         "terminal_state",
+        "measurement_phase",
         "elapsed_ms",
+        "planner_elapsed_ms",
         "observed_operation",
+        "reason_code",
         "citation_source_ids",
         "citations_valid",
         "snapshot_consistent",
@@ -98,20 +105,35 @@ def validate_observations(
             raise ValueError(f"unexpected observation identity: {key}")
         if row["terminal_state"] not in TERMINAL_STATES:
             raise ValueError(f"invalid terminal_state: {row['terminal_state']}")
+        if row["measurement_phase"] not in {"cold_start", "warm_interactive"}:
+            raise ValueError(f"invalid measurement_phase: {row['measurement_phase']}")
         elapsed = row["elapsed_ms"]
         if (
             isinstance(elapsed, bool)
             or not isinstance(elapsed, (int, float))
+            or isinstance(elapsed, float)
+            and not math.isfinite(elapsed)
             or elapsed < 0
         ):
+            raise ValueError("elapsed_ms must be finite and nonnegative")
+        planner_elapsed = row["planner_elapsed_ms"]
+        if planner_elapsed is not None and (
+            isinstance(planner_elapsed, bool)
+            or not isinstance(planner_elapsed, (int, float))
+            or isinstance(planner_elapsed, float)
+            and not math.isfinite(planner_elapsed)
+            or planner_elapsed < 0
+        ):
             raise ValueError(
-                "elapsed_ms must be a nonnegative number for every attempt"
+                "planner_elapsed_ms must be null or finite and nonnegative"
             )
         if (
             row["observed_operation"] is not None
             and row["observed_operation"] not in OPERATIONS
         ):
             raise ValueError(f"invalid observed_operation: {row['observed_operation']}")
+        if row["reason_code"] is not None and not isinstance(row["reason_code"], str):
+            raise TypeError("reason_code must be a string or null")
         if row["planner_validation"] not in {
             None,
             "valid",
@@ -120,13 +142,13 @@ def validate_observations(
             "cancelled",
         }:
             raise ValueError(f"invalid planner_validation: {row['planner_validation']}")
-        for field in (
-            "citations_valid",
-            "snapshot_consistent",
-            "query_trace_present",
-        ):
+        for field in ("citations_valid", "query_trace_present"):
             if not isinstance(row[field], bool):
                 raise TypeError(f"{field} must be a boolean")
+        if row["snapshot_consistent"] is not None and not isinstance(
+            row["snapshot_consistent"], bool
+        ):
+            raise TypeError("snapshot_consistent must be boolean or null")
         if not isinstance(row["citation_source_ids"], list) or any(
             not isinstance(source_id, str) for source_id in row["citation_source_ids"]
         ):
@@ -151,6 +173,22 @@ def validate_observations(
                 "planner arm requires at most one planner call, no resolver, "
                 "and no retries"
             )
+        if arm == "planner" and row["planner_calls"] > 0 and planner_elapsed is None:
+            raise ValueError(
+                "planner_elapsed_ms required when planner_calls is positive"
+            )
+        if arm != "planner" and planner_elapsed is not None:
+            raise ValueError("planner_elapsed_ms must be unavailable for legacy arm")
+        if (
+            arm == "planner"
+            and row["planner_calls"] == 0
+            and planner_elapsed is not None
+        ):
+            raise ValueError("planner_elapsed_ms must be unavailable without a call")
+        if arm == "legacy" and (
+            row["planner_calls"] != 0 or row["planner_validation"] is not None
+        ):
+            raise ValueError("legacy arm must not execute or validate a planner")
         if isinstance(row["repeat"], bool) or not isinstance(row["repeat"], int):
             raise TypeError("repeat must be an integer")
         if not 1 <= row["repeat"] <= repeats:
@@ -178,10 +216,24 @@ def score_results(
     response and persisted trace. This function never calls a model or executor.
     """
     case_ids = {row["case_id"] for row in cases}
+    if len(case_ids) != len(cases):
+        raise ValueError("duplicate case identity in scored input")
     if set(labels) != case_ids:
         raise ValueError("labels must cover exactly the scored cases")
-    validate_observations(case_ids, observations, arm=arm, repeats=repeats)
     case_by_id = {row["case_id"]: row for row in cases}
+    for case_id, case in case_by_id.items():
+        request_json = json.dumps(
+            case["request"],
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        expected_request_hash = hashlib.sha256(request_json.encode("utf-8")).hexdigest()
+        if case.get("request_sha256") != expected_request_hash:
+            raise ValueError(f"case request hash mismatch: {case_id}")
+        if labels[case_id].get("request_sha256") != expected_request_hash:
+            raise ValueError(f"label is not bound to exact request bytes: {case_id}")
+    validate_observations(case_ids, observations, arm=arm, repeats=repeats)
     by_case: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in observations:
         by_case[row["case_id"]].append(row)
@@ -196,25 +248,126 @@ def score_results(
     excess_clarification_cases: set[str] = set()
     critical_grounding_violations = 0
     scope_identity_violations = 0
+    wrong_target_executions = 0
+    outcome_contract_violations = 0
     repeatability_passes = 0
-    latency_by_expected_operation: dict[str, list[float]] = defaultdict(list)
+    latency_by_operation_and_phase: dict[tuple[str, str], list[float]] = defaultdict(
+        list
+    )
     call_totals = Counter()
     validation_counts = Counter()
     supported_case_validity: dict[str, bool] = {}
+    planner_stage_times: dict[str, list[float]] = defaultdict(list)
 
     for case_id, label in labels.items():
         if label.get("expected_operation") not in OPERATIONS:
             raise ValueError(f"invalid expected operation for {case_id}")
         if not isinstance(label.get("required_source_ids"), list):
             raise TypeError(f"required_source_ids missing for {case_id}")
+        if any(
+            not isinstance(source_id, str) for source_id in label["required_source_ids"]
+        ):
+            raise TypeError(f"required_source_ids must contain strings: {case_id}")
         if not isinstance(label.get("requires_evidence"), bool):
             raise TypeError(f"requires_evidence missing for {case_id}")
         if not isinstance(label.get("should_clarify"), bool):
             raise TypeError(f"should_clarify missing for {case_id}")
+        if "expected_reason_code" not in label:
+            raise ValueError(f"expected_reason_code missing for {case_id}")
+        if label["expected_reason_code"] is not None and not isinstance(
+            label["expected_reason_code"], str
+        ):
+            raise TypeError(f"expected_reason_code must be string or null: {case_id}")
+        if not isinstance(label.get("allowed_safe_outcomes"), list):
+            raise TypeError(f"allowed_safe_outcomes missing for {case_id}")
+        allowed_outcomes: set[tuple[str, str | None]] = set()
+        for safe_outcome in label["allowed_safe_outcomes"]:
+            if (
+                not isinstance(safe_outcome, dict)
+                or set(safe_outcome) != {"operation", "reason_code"}
+                or safe_outcome.get("operation") not in OPERATIONS
+                or (
+                    safe_outcome.get("reason_code") is not None
+                    and not isinstance(safe_outcome.get("reason_code"), str)
+                )
+            ):
+                raise ValueError(f"invalid allowed safe outcome for {case_id}")
+            allowed_outcomes.add(
+                (safe_outcome["operation"], safe_outcome.get("reason_code"))
+            )
+        if not isinstance(label.get("mandatory_unsupported"), bool):
+            raise TypeError(f"mandatory_unsupported must be boolean: {case_id}")
+        if (
+            label["mandatory_unsupported"]
+            and label["expected_operation"] != "unsupported_operation"
+        ):
+            raise ValueError(
+                f"mandatory_unsupported must label a decline case: {case_id}"
+            )
         rows = sorted(by_case[case_id], key=lambda row: row["repeat"])
+        if case_by_id[case_id].get("language") not in {"en", "es"}:
+            raise ValueError(f"case language must be en or es: {case_id}")
         label_operation = label["expected_operation"]
+        expected_target = label.get("target")
+        if label_operation == "transform_text":
+            expected_target_fields = {
+                "kind",
+                "role",
+                "ordinal",
+                "sha256",
+                "char_count",
+                "transform_kind",
+                "options",
+            }
+            if (
+                not isinstance(expected_target, dict)
+                or set(expected_target) != expected_target_fields
+            ):
+                raise ValueError(
+                    f"transform target label has invalid schema: {case_id}"
+                )
+            if (
+                not isinstance(expected_target["kind"], str)
+                or not isinstance(expected_target["role"], str)
+                or (
+                    expected_target["ordinal"] is not None
+                    and (
+                        isinstance(expected_target["ordinal"], bool)
+                        or not isinstance(expected_target["ordinal"], int)
+                        or expected_target["ordinal"] < 1
+                    )
+                )
+                or not isinstance(expected_target["sha256"], str)
+                or re.fullmatch(r"[0-9a-f]{64}", expected_target["sha256"]) is None
+                or isinstance(expected_target["char_count"], bool)
+                or not isinstance(expected_target["char_count"], int)
+                or expected_target["char_count"] < 0
+                or not isinstance(expected_target["transform_kind"], str)
+                or not isinstance(expected_target["options"], dict)
+            ):
+                raise ValueError(
+                    f"transform target label values are invalid: {case_id}"
+                )
+        elif expected_target is not None:
+            raise ValueError(f"non-transform label must have null target: {case_id}")
         expected_sources = set(label["required_source_ids"])
-        selected_sources = set(case_by_id[case_id]["request"]["source_ids"])
+        selected_source_rows = case_by_id[case_id]["request"]["source_ids"]
+        available_source_rows = case_by_id[case_id]["available_source_ids"]
+        if (
+            not isinstance(selected_source_rows, list)
+            or any(not isinstance(source_id, str) for source_id in selected_source_rows)
+            or not isinstance(available_source_rows, list)
+            or any(
+                not isinstance(source_id, str) for source_id in available_source_rows
+            )
+        ):
+            raise TypeError(f"source identities must be string lists: {case_id}")
+        selected_sources = set(selected_source_rows)
+        available_sources = set(available_source_rows)
+        if not selected_sources <= available_sources:
+            raise ValueError(
+                f"request contains invalid selected source identity: {case_id}"
+            )
         if not expected_sources <= selected_sources:
             raise ValueError(f"label source scope escapes request selection: {case_id}")
 
@@ -223,29 +376,47 @@ def score_results(
         completed = True
         case_ops: set[str | None] = set()
         case_signatures: set[tuple[Any, ...]] = set()
-        successful_signatures: set[tuple[Any, ...]] = set()
-        successful_operations: set[str] = set()
         any_clarification = False
         all_plans_valid = True
         end_to_end_ok = True
-        expected_target = label.get("target")
         for row in rows:
             operation = row["observed_operation"]
+            observed_outcome = (operation, row["reason_code"])
+            expected_outcome = (label_operation, label["expected_reason_code"])
+            if (
+                row["terminal_state"] == "response"
+                and observed_outcome != expected_outcome
+                and observed_outcome not in allowed_outcomes
+            ):
+                outcome_contract_violations += 1
             case_ops.add(operation)
-            signature = (
-                operation,
-                row["target_kind"],
-                row["target_role"],
-                row["target_ordinal"],
-                row["target_sha256"],
-                row["target_char_count"],
-                row["transform_kind"],
-                _canonical_options(row["options"]),
-            )
+            signature: tuple[Any, ...] = (operation,)
+            if operation == "transform_text":
+                signature += (
+                    row["target_kind"],
+                    row["target_role"],
+                    row["target_ordinal"],
+                    row["target_sha256"],
+                    row["target_char_count"],
+                    row["transform_kind"],
+                    _canonical_options(row["options"]),
+                )
             case_signatures.add(signature)
-            if row["terminal_state"] == "response" and operation is not None:
-                successful_signatures.add(signature)
-                successful_operations.add(operation)
+            if row["terminal_state"] == "response" and operation == "transform_text":
+                if label_operation != "transform_text":
+                    wrong_target_executions += 1
+                else:
+                    observed_transform_target = {
+                        "kind": row["target_kind"],
+                        "role": row["target_role"],
+                        "ordinal": row["target_ordinal"],
+                        "sha256": row["target_sha256"],
+                        "char_count": row["target_char_count"],
+                        "transform_kind": row["transform_kind"],
+                        "options": row["options"],
+                    }
+                    if observed_transform_target != expected_target:
+                        wrong_target_executions += 1
             completed = completed and row["terminal_state"] == "response"
             op_ok = op_ok and (
                 row["terminal_state"] == "response" and operation == label_operation
@@ -254,7 +425,9 @@ def score_results(
                 row["terminal_state"] == "response" and operation == label_operation
             )
             any_clarification = any_clarification or operation == "clarify"
-            latency_by_expected_operation[label_operation].append(row["elapsed_ms"])
+            latency_by_operation_and_phase[
+                (label_operation, row["measurement_phase"])
+            ].append(row["elapsed_ms"])
             for field in (
                 "planner_calls",
                 "resolver_calls",
@@ -266,23 +439,35 @@ def score_results(
                 call_totals[field] += row[field]
             if row["planner_validation"] is not None:
                 validation_counts[row["planner_validation"]] += 1
-            if label_operation in {"grounded_query", "transform_text"}:
+            if row["planner_elapsed_ms"] is not None:
+                planner_stage_times[row["measurement_phase"]].append(
+                    row["planner_elapsed_ms"]
+                )
+            if arm == "planner" and label_operation in {
+                "grounded_query",
+                "transform_text",
+            }:
                 all_plans_valid = (
                     all_plans_valid and row["planner_validation"] == "valid"
                 )
 
             cited = set(row["citation_source_ids"])
-            if not cited <= selected_sources or not row["snapshot_consistent"]:
+            if not cited <= selected_sources or row["snapshot_consistent"] is False:
                 scope_identity_violations += 1
             if (
                 label["requires_evidence"]
                 and row["terminal_state"] == "response"
                 and (
-                    operation != "grounded_query"
-                    or not cited
-                    or not row["citations_valid"]
-                    or not row["snapshot_consistent"]
-                    or not row["query_trace_present"]
+                    operation == "transform_text"
+                    or (
+                        operation == "grounded_query"
+                        and (
+                            not cited
+                            or not row["citations_valid"]
+                            or not row["snapshot_consistent"]
+                            or not row["query_trace_present"]
+                        )
+                    )
                 )
             ):
                 critical_grounding_violations += 1
@@ -315,13 +500,14 @@ def score_results(
                 row_completion_ok = row_completion_ok and (
                     operation == "transform_text" and observed_target == expected_target
                 )
-            elif expected_target is not None:
-                raise ValueError(f"non-transform label has a target for {case_id}")
             end_to_end_ok = end_to_end_ok and row_completion_ok
 
-        if len(successful_operations) == 1 and len(successful_signatures) == 1:
+        if completed and len(case_signatures) == 1 and None not in case_ops:
             repeatability_passes += 1
-        if label_operation in {"grounded_query", "transform_text"}:
+        if arm == "planner" and label_operation in {
+            "grounded_query",
+            "transform_text",
+        }:
             supported_case_validity[case_id] = all_plans_valid
         if op_ok:
             operation_passes += 1
@@ -336,7 +522,10 @@ def score_results(
         if any_clarification:
             clarified_cases.add(case_id)
             clarification_truth[case_id] = bool(label.get("should_clarify"))
-            if label_operation in {"grounded_query", "transform_text"}:
+            if (
+                label_operation in {"grounded_query", "transform_text"}
+                and not label["should_clarify"]
+            ):
                 excess_clarification_cases.add(case_id)
 
     clarification_true_positives = sum(clarification_truth.values())
@@ -352,14 +541,16 @@ def score_results(
         if clarified_cases
         else {"numerator": 0, "denominator": 0, "rate": None, "wilson_95": None}
     )
-    percentiles = {
-        operation: {
-            "attempts_including_failures": len(values),
-            "p50_ms_nearest_rank": nearest_rank(values, 0.50),
-            "p95_ms_nearest_rank": nearest_rank(values, 0.95),
-        }
-        for operation, values in sorted(latency_by_expected_operation.items())
-    }
+    percentiles = {}
+    for operation in sorted({key[0] for key in latency_by_operation_and_phase}):
+        percentiles[operation] = {}
+        for phase in ("cold_start", "warm_interactive"):
+            values = latency_by_operation_and_phase.get((operation, phase), [])
+            percentiles[operation][phase] = {
+                "attempts_including_failures": len(values),
+                "p50_ms_nearest_rank": nearest_rank(values, 0.50) if values else None,
+                "p95_ms_nearest_rank": nearest_rank(values, 0.95) if values else None,
+            }
     per_repeat_operation_accuracy = {}
     clarification_by_repeat = {}
     for repeat in range(1, repeats + 1):
@@ -429,11 +620,70 @@ def score_results(
             "rate": passing / len(stratum_cases),
             "wilson_95": list(wilson_interval(passing, len(stratum_cases))),
         }
+    per_language = {}
+    for language in sorted({row["language"] for row in cases}):
+        language_cases = [row for row in cases if row["language"] == language]
+        language_ids = {row["case_id"] for row in language_cases}
+        passing = sum(
+            all(
+                row["terminal_state"] == "response"
+                and row["observed_operation"] == labels[case_id]["expected_operation"]
+                for row in by_case[case_id]
+            )
+            for case_id in language_ids
+        )
+        per_language[language] = {
+            "numerator": passing,
+            "denominator": len(language_cases),
+            "rate": passing / len(language_cases),
+            "wilson_95": list(wilson_interval(passing, len(language_cases))),
+        }
+    contract_strata = {
+        "factual": {
+            case_id
+            for case_id, label in labels.items()
+            if label["expected_operation"] == "grounded_query"
+        },
+        "transform": {
+            case_id
+            for case_id, label in labels.items()
+            if label["expected_operation"] == "transform_text"
+        },
+    }
+    operation_accuracy_by_contract_stratum = {}
+    for stratum, case_ids in contract_strata.items():
+        passing = sum(
+            all(
+                row["terminal_state"] == "response"
+                and row["observed_operation"] == labels[case_id]["expected_operation"]
+                for row in by_case[case_id]
+            )
+            for case_id in case_ids
+        )
+        operation_accuracy_by_contract_stratum[stratum] = {
+            "numerator": passing,
+            "denominator": len(case_ids),
+            "rate": passing / len(case_ids) if case_ids else None,
+            "wilson_95": list(wilson_interval(passing, len(case_ids)))
+            if case_ids
+            else None,
+        }
     unsupported_cases = [
         case_id
         for case_id, label in labels.items()
         if label["expected_operation"] == "unsupported_operation"
     ]
+    unsupported_passes_by_class = {"mandatory": 0, "other": 0}
+    unsupported_counts_by_class = {"mandatory": 0, "other": 0}
+    for case_id in unsupported_cases:
+        bucket = "mandatory" if labels[case_id]["mandatory_unsupported"] else "other"
+        unsupported_counts_by_class[bucket] += 1
+        passed = all(
+            row["terminal_state"] == "response"
+            and row["observed_operation"] == "unsupported_operation"
+            for row in by_case[case_id]
+        )
+        unsupported_passes_by_class[bucket] += int(passed)
     unsupported_passes = sum(
         all(
             row["terminal_state"] == "response"
@@ -452,6 +702,8 @@ def score_results(
             "wilson_95": list(wilson_interval(operation_passes, len(cases))),
         },
         "operation_accuracy_by_stratum": per_stratum,
+        "operation_accuracy_by_language": per_language,
+        "operation_accuracy_by_contract_stratum": operation_accuracy_by_contract_stratum,
         "operation_accuracy_by_repeat": per_repeat_operation_accuracy,
         "target_options_accuracy": {
             "numerator": target_option_passes,
@@ -459,11 +711,19 @@ def score_results(
             "rate": target_option_passes / target_option_cases
             if target_option_cases
             else None,
+            "wilson_95": list(
+                wilson_interval(target_option_passes, target_option_cases)
+            )
+            if target_option_cases
+            else None,
         },
         "end_to_end_completion": {
             "numerator": completion_passes,
             "denominator": completion_cases,
             "rate": completion_passes / completion_cases if completion_cases else None,
+            "wilson_95": list(wilson_interval(completion_passes, completion_cases))
+            if completion_cases
+            else None,
         },
         "clarification_precision": clarification_precision,
         "excess_clarification": {
@@ -473,10 +733,26 @@ def score_results(
                 and not label["should_clarify"]
                 for label in labels.values()
             ),
+            "rate": (
+                len(excess_clarification_cases)
+                / sum(
+                    label["expected_operation"] in {"grounded_query", "transform_text"}
+                    and not label["should_clarify"]
+                    for label in labels.values()
+                )
+                if any(
+                    label["expected_operation"] in {"grounded_query", "transform_text"}
+                    and not label["should_clarify"]
+                    for label in labels.values()
+                )
+                else None
+            ),
         },
         "clarification_by_repeat": clarification_by_repeat,
         "critical_grounding_violations": critical_grounding_violations,
         "scope_identity_violations": scope_identity_violations,
+        "wrong_target_executions": wrong_target_executions,
+        "outcome_contract_violations": outcome_contract_violations,
         "unsupported_operation_accuracy": {
             "numerator": unsupported_passes,
             "denominator": len(unsupported_cases),
@@ -484,9 +760,23 @@ def score_results(
             if unsupported_cases
             else None,
         },
+        "unsupported_operation_accuracy_by_class": {
+            bucket: {
+                "numerator": unsupported_passes_by_class[bucket],
+                "denominator": unsupported_counts_by_class[bucket],
+                "rate": (
+                    unsupported_passes_by_class[bucket]
+                    / unsupported_counts_by_class[bucket]
+                    if unsupported_counts_by_class[bucket]
+                    else None
+                ),
+            }
+            for bucket in ("mandatory", "other")
+        },
         "case_repeatability": {
             "numerator": repeatability_passes,
             "denominator": len(cases),
+            "wilson_95": list(wilson_interval(repeatability_passes, len(cases))),
         },
         "structured_plan_validity": {
             "numerator": sum(supported_case_validity.values()),
@@ -496,8 +786,31 @@ def score_results(
                 if supported_case_validity
                 else None
             ),
+            "wilson_95": list(
+                wilson_interval(
+                    sum(supported_case_validity.values()), len(supported_case_validity)
+                )
+            )
+            if supported_case_validity
+            else None,
         },
         "latency_by_expected_operation": percentiles,
+        "planner_stage_latency_ms": {
+            phase: {
+                "attempts_with_planner_call": len(planner_stage_times[phase]),
+                "p50_ms_nearest_rank": (
+                    nearest_rank(planner_stage_times[phase], 0.50)
+                    if planner_stage_times[phase]
+                    else None
+                ),
+                "p95_ms_nearest_rank": (
+                    nearest_rank(planner_stage_times[phase], 0.95)
+                    if planner_stage_times[phase]
+                    else None
+                ),
+            }
+            for phase in ("cold_start", "warm_interactive")
+        },
         "planner_validation_counts": dict(sorted(validation_counts.items())),
         "call_counts": dict(sorted(call_totals.items())),
     }
@@ -507,3 +820,140 @@ def _canonical_options(value: Any) -> str | None:
     if value is None:
         return None
     return json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+
+
+def score_paired_results(
+    cases: list[dict[str, Any]],
+    labels: Mapping[str, dict[str, Any]],
+    observations_by_arm: Mapping[str, list[dict[str, Any]]],
+    *,
+    repeats: int,
+) -> dict[str, Any]:
+    """Report accepted paired end-to-end latency gates for both arms.
+
+    This consumes already-normalized canonical HTTP/trace observations. It does
+    not execute the API, planner, or any downstream executor.
+    """
+    required_arms = {"legacy", "planner"}
+    if set(observations_by_arm) != required_arms:
+        raise ValueError("paired scoring requires exactly legacy and planner arms")
+
+    arm_reports = {
+        arm: score_results(
+            cases,
+            labels,
+            observations_by_arm[arm],
+            arm=arm,
+            repeats=repeats,
+        )
+        for arm in sorted(required_arms)
+    }
+    case_by_id = {row["case_id"]: row for row in cases}
+    categories = {
+        "first_turn_factual": {
+            case_id
+            for case_id, case in case_by_id.items()
+            if case["stratum"] == "factual_source"
+            and not case["request"].get("prior_turns")
+            and labels[case_id]["expected_operation"] == "grounded_query"
+        },
+        "contextual_grounded": {
+            case_id
+            for case_id, case in case_by_id.items()
+            if case["stratum"] == "contextual_grounded"
+            and labels[case_id]["expected_operation"] == "grounded_query"
+        },
+        "text_transformation": {
+            case_id
+            for case_id, label in labels.items()
+            if label["expected_operation"] == "transform_text"
+        },
+    }
+    rows_by_arm = {
+        arm: {(row["case_id"], row["repeat"]): row for row in observations_by_arm[arm]}
+        for arm in required_arms
+    }
+    threshold_config = {
+        "p50_absolute_addition_ms": 1500,
+        "p95_absolute_addition_ms": 3000,
+        "relative_multiplier": 1.25,
+    }
+    paired_latency = {}
+    for category, case_ids in categories.items():
+        candidate_keys = sorted(
+            (case_id, repeat)
+            for case_id in case_ids
+            for repeat in range(1, repeats + 1)
+        )
+        keys = [
+            key
+            for key in candidate_keys
+            if rows_by_arm["legacy"][key]["measurement_phase"] == "warm_interactive"
+            and rows_by_arm["planner"][key]["measurement_phase"] == "warm_interactive"
+        ]
+        legacy_values = [rows_by_arm["legacy"][key]["elapsed_ms"] for key in keys]
+        planner_values = [rows_by_arm["planner"][key]["elapsed_ms"] for key in keys]
+        if not keys:
+            paired_latency[category] = {
+                "status": "NOT_EVALUABLE",
+                "matched_case_repeats": 0,
+                "excluded_cold_pairs": len(candidate_keys),
+                "legacy": None,
+                "planner": None,
+                "thresholds": threshold_config,
+            }
+            continue
+
+        legacy_p50 = nearest_rank(legacy_values, 0.50)
+        legacy_p95 = nearest_rank(legacy_values, 0.95)
+        planner_p50 = nearest_rank(planner_values, 0.50)
+        planner_p95 = nearest_rank(planner_values, 0.95)
+        p50_pass = legacy_p50 > 0 and (
+            planner_p50 <= legacy_p50 + threshold_config["p50_absolute_addition_ms"]
+            and planner_p50 <= legacy_p50 * threshold_config["relative_multiplier"]
+        )
+        p95_pass = legacy_p95 > 0 and (
+            planner_p95 <= legacy_p95 + threshold_config["p95_absolute_addition_ms"]
+            and planner_p95 <= legacy_p95 * threshold_config["relative_multiplier"]
+        )
+        paired_latency[category] = {
+            "status": "PASS" if p50_pass and p95_pass else "FAIL",
+            "matched_case_repeats": len(keys),
+            "excluded_cold_pairs": len(candidate_keys) - len(keys),
+            "legacy": {
+                "p50_ms_nearest_rank": legacy_p50,
+                "p95_ms_nearest_rank": legacy_p95,
+            },
+            "planner": {
+                "p50_ms_nearest_rank": planner_p50,
+                "p95_ms_nearest_rank": planner_p95,
+            },
+            "gates": {
+                "p50_pass": p50_pass,
+                "p95_pass": p95_pass,
+            },
+            "thresholds": threshold_config,
+        }
+    planner_warm_latency = arm_reports["planner"]["planner_stage_latency_ms"][
+        "warm_interactive"
+    ]
+    planner_p50 = planner_warm_latency["p50_ms_nearest_rank"]
+    planner_p95 = planner_warm_latency["p95_ms_nearest_rank"]
+    planner_stage_gate = {
+        "status": (
+            "NOT_EVALUABLE"
+            if planner_p50 is None or planner_p95 is None
+            else "PASS"
+            if planner_p50 <= 1500 and planner_p95 <= 3000
+            else "FAIL"
+        ),
+        "p50_pass": planner_p50 is not None and planner_p50 <= 1500,
+        "p95_pass": planner_p95 is not None and planner_p95 <= 3000,
+        "thresholds_ms": {"p50_max": 1500, "p95_max": 3000},
+    }
+    return {
+        "arms": arm_reports,
+        "paired_end_to_end_latency": paired_latency,
+        "planner_stage_latency_gate": planner_stage_gate,
+        "planner_stage_latency_ms": arm_reports["planner"]["planner_stage_latency_ms"],
+    }

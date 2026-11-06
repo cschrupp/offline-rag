@@ -14,13 +14,16 @@ For each request, label:
 - `expected_operation`: `grounded_query`, `transform_text`, `clarify`, or
   `unsupported_operation`;
 - `expected_reason_code` where the safe outcome is clarification or refusal;
+- `mandatory_unsupported`, identifying conversation-summary and other required
+  multi-stage refusal cases from the independently reviewed challenge rubric;
 - exact target kind and role, one-based prior-turn ordinal, or zero-based
   half-open Unicode code-point span into the exact current question;
 - transform kind and every supported formatting option; mark unsupported
   requested constraints as requiring a safe clarification;
 - whether evidence is required and the required source scope, constrained to
   the source IDs selected in the request;
-- all permitted safe terminal outcomes and whether clarification is required;
+- all permitted safe terminal outcomes as exact `{operation, reason_code}` pairs
+  and whether clarification is required;
 - for grounded queries, a short intent-preservation rubric note. Do not require
   a single exact retrieval-question string when multiple phrasings preserve
   intent.

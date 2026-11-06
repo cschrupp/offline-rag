@@ -21,7 +21,9 @@ primary-stratum distribution:
 | Prompt injection/adversarial wording | 35 | 21 | 14 |
 | **Total** | **300** | **180** | **120** |
 
-Family groups are assigned wholly to one split. The candidate contains 90
+Stable semantic scenario families are created before deterministic, hash-ordered
+split assignment; their IDs do not contain the split name. All paraphrases in
+one scenario remain together. The candidate contains 90
 Spanish cases (54 development, 36 held out), at least 40 source-title/current
 quoted-text examples, 30 selected-scope conflicts, and 30 missing-context
 cases. Three small synthetic source fixtures provide deterministic local
@@ -42,8 +44,10 @@ process-frozen but source-visible set for this one evaluation, or require a
 replacement held-out set authored and held by an independent custodian.
 
 `historical_challenges_candidate.jsonl` contains 13 named prior failure/edge
-families drawn from the accepted amendment and existing regressions. It still
-requires independent mapping against all BETA-CONV-01 IR-001–IR-004 findings.
+families drawn from the accepted amendment and existing regressions. Three
+assistant-only histories were corrected to include the required preceding user
+turn. The roster still requires independent mapping against all BETA-CONV-01
+IR-001–IR-004 findings.
 `new_safety_family_slots.jsonl` reserves 40 slots, including 15 Spanish slots;
 the actual new family prompts must be authored by independent reviewers and
 are intentionally absent.
@@ -53,10 +57,16 @@ are intentionally absent.
 `scripts/beta_conv_01a_eval_scoring.py` accepts normalized evidence captured
 from the canonical HTTP route and its persisted traces. It validates complete
 case/arm/repeat coverage, retains failure attempts in denominators, and reports
-case-level operation, target/options, completion, clarification, grounding,
-scope, repeatability, call-count, and latency statistics. Proposed
-nearest-rank P50/P95 and Wilson intervals are implementation defaults for
-review, not frozen methodology. No scoring was run on planner output.
+case-level operation by stratum/language, target/options, completion,
+clarification, grounding, source/snapshot identity, wrong-target execution,
+outcome/reason-code, repeatability, structured-plan validity, call-count, and
+latency metrics. It validates finite elapsed times and complete repeats,
+separates cold-start from warm-interactive latency, and emits the accepted
+paired latency comparisons for the three end-to-end categories. Safe
+clarification/refusal is not counted as a grounding violation, but counts as an
+operation mismatch unless independently labeled as an allowed outcome.
+Nearest-rank P50/P95 and Wilson intervals remain candidates pending approval.
+No scoring was run on planner output.
 
 The HTTP execution harness and local-model checks are not run or qualified in
 this preparation step, and no HTTP execution harness is included in this
@@ -109,12 +119,15 @@ promotion: NOT_AUTHORIZED
 
 ## Preparation validation
 
-The candidate builder and scoring primitives have eight focused synthetic
-tests. They cover grouped split integrity, blank independent-label packets,
-private held-out placement, missing-attempt rejection, failure-inclusive
-latency, planner call/retry limits, transform target scoring, snapshot identity,
-and supported-case plan validity. The tests do not execute the API, invoke a
-model, or score planner output.
+The candidate builder and scoring primitives have 18 focused synthetic tests.
+They cover split-independent family identities and no cross-split families,
+valid historical turn ordering, blank independent-label packets, private
+held-out placement, missing-attempt rejection, failure-inclusive latency,
+non-finite timing rejection, planner call/retry limits, transform target
+scoring, wrong-target safety events, safe clarification outcomes, invalid source
+scope, snapshot identity, paired latency pass/fail decisions, supported-case
+plan validity, and exact annotation/request hash binding. The tests do not
+execute the API, invoke a model, or score planner output.
 
 Current readiness remains blocked on independent authorship/review and
 execution setup. In particular, the 40 new safety prompts are empty reviewer

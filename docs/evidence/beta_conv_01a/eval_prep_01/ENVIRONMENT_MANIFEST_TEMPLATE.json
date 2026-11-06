@@ -46,7 +46,21 @@
     "boundary": "api_request_receipt_to_terminal_response_or_recorded_failure",
     "percentile_estimator": "nearest_rank_candidate_pending_review",
     "failed_attempts_in_denominator": true,
-    "watchdog_timeout_seconds": null
+    "watchdog_timeout_seconds": null,
+    "attempt_phase_values": ["cold_start", "warm_interactive"],
+    "paired_comparison_requires_warm_in_both_arms": true
+  },
+  "resource_telemetry": {
+    "capture_method": null,
+    "host_rss_peak_bytes": null,
+    "provider_model_memory_bytes": null,
+    "device_total_memory_bytes": null,
+    "device_free_memory_before_bytes": null,
+    "device_free_memory_after_bytes": null,
+    "provider_gpu_metrics_status": "PENDING_OR_EXPLICITLY_UNAVAILABLE",
+    "oom_count": null,
+    "additional_model_instances": null,
+    "unbounded_growth_observed": null
   },
   "threshold_review": "PENDING_INDEPENDENT_REVIEW_AND_HUMAN_ACCEPTANCE",
   "execution_authority": "NOT_GRANTED"

@@ -7,12 +7,24 @@ from pathlib import Path
 
 import pytest
 from scripts.beta_conv_01a_eval_prep import (
+    HISTORICAL_CHALLENGES,
     STRATA,
     build_candidate,
     build_cases,
     validate_cases,
 )
-from scripts.beta_conv_01a_eval_scoring import score_results
+from scripts.beta_conv_01a_eval_scoring import score_paired_results, score_results
+
+
+def _bind_label(
+    case: dict[str, object], label: dict[str, object]
+) -> dict[str, dict[str, object]]:
+    request_json = json.dumps(
+        case["request"], ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
+    request_sha256 = hashlib.sha256(request_json.encode("utf-8")).hexdigest()
+    case["request_sha256"] = request_sha256
+    return {case["case_id"]: {**label, "request_sha256": request_sha256}}
 
 
 def _observation(
@@ -21,17 +33,21 @@ def _observation(
     terminal_state: str = "response",
     observed_operation: str | None = "grounded_query",
     snapshot_consistent: bool = True,
+    arm: str = "planner",
     planner_calls: int = 1,
     resolver_calls: int = 0,
     retry_count: int = 0,
 ) -> dict[str, object]:
     return {
         "case_id": "case-1",
-        "arm": "planner",
+        "arm": arm,
         "repeat": repeat,
         "terminal_state": terminal_state,
+        "measurement_phase": "warm_interactive",
         "elapsed_ms": 800 if terminal_state == "response" else 120_000,
+        "planner_elapsed_ms": 350 if planner_calls else None,
         "observed_operation": observed_operation,
+        "reason_code": None,
         "citation_source_ids": ["source_manual"]
         if terminal_state == "response"
         else [],
@@ -47,7 +63,7 @@ def _observation(
         "options": None,
         "planner_calls": planner_calls,
         "resolver_calls": resolver_calls,
-        "planner_validation": "valid",
+        "planner_validation": None if arm == "legacy" else "valid",
         "retrieval_calls": 1,
         "answer_generation_calls": 1,
         "transform_calls": 0,
@@ -72,7 +88,18 @@ def test_candidate_dataset_preserves_accepted_strata_and_grouped_split() -> None
     family_splits: dict[str, set[str]] = {}
     for row in cases:
         family_splits.setdefault(row["semantic_family_id"], set()).add(row["split"])
+        assert "development" not in row["semantic_family_key"]
+        assert "held_out" not in row["semantic_family_key"]
     assert all(len(splits) == 1 for splits in family_splits.values())
+    assert all(row["semantic_family_id"].startswith("family-") for row in cases)
+
+
+def test_historical_challenges_have_valid_user_assistant_turn_order() -> None:
+    for _, _, prior_turns, _, _ in HISTORICAL_CHALLENGES:
+        assert len(prior_turns) % 2 == 0
+        assert [turn["role"] for turn in prior_turns] == [
+            role for _ in range(len(prior_turns) // 2) for role in ("user", "assistant")
+        ]
 
 
 def test_candidate_files_are_hashable_and_annotation_labels_remain_blank(
@@ -93,6 +120,9 @@ def test_candidate_files_are_hashable_and_annotation_labels_remain_blank(
     assert manifest["annotation_status"]["independent_labels"] == 0
     assert manifest["safety_challenge_status"]["new_families_authored"] == 0
     assert manifest["http_execution_harness_status"] == "NOT_IMPLEMENTED_OR_EXECUTED"
+    assert manifest["thresholds"]["changed"] is False
+    assert manifest["thresholds"]["gates"]["wrong_target_executions"] == 0
+    assert manifest["thresholds"]["gates"]["planner_warm_p95_max_ms"] == 3000
 
     assert len(digests) >= 7
     for name, digest in digests.items():
@@ -148,7 +178,9 @@ def test_scorer_keeps_timeout_attempt_in_case_and_latency_denominators() -> None
         {
             "case_id": "case-1",
             "stratum": "factual_source",
+            "language": "en",
             "request": {"source_ids": ["source_manual"]},
+            "available_source_ids": ["source_manual"],
         }
     ]
     label = {
@@ -156,6 +188,9 @@ def test_scorer_keeps_timeout_attempt_in_case_and_latency_denominators() -> None
         "required_source_ids": ["source_manual"],
         "requires_evidence": True,
         "should_clarify": False,
+        "expected_reason_code": None,
+        "allowed_safe_outcomes": [],
+        "mandatory_unsupported": False,
     }
     observations = []
     for repeat in (1, 2, 3):
@@ -166,8 +201,11 @@ def test_scorer_keeps_timeout_attempt_in_case_and_latency_denominators() -> None
                 "arm": "planner",
                 "repeat": repeat,
                 "terminal_state": "timeout" if is_timeout else "response",
+                "measurement_phase": "warm_interactive",
                 "elapsed_ms": 120_000 if is_timeout else 800,
+                "planner_elapsed_ms": 1_000 if is_timeout else 350,
                 "observed_operation": None if is_timeout else "grounded_query",
+                "reason_code": None,
                 "citation_source_ids": [] if is_timeout else ["source_manual"],
                 "citations_valid": not is_timeout,
                 "snapshot_consistent": not is_timeout,
@@ -191,7 +229,7 @@ def test_scorer_keeps_timeout_attempt_in_case_and_latency_denominators() -> None
 
     report = score_results(
         cases,
-        {"case-1": label},
+        _bind_label(cases[0], label),
         observations,
         arm="planner",
         repeats=3,
@@ -199,7 +237,9 @@ def test_scorer_keeps_timeout_attempt_in_case_and_latency_denominators() -> None
 
     assert report["operation_accuracy"]["numerator"] == 0
     assert report["operation_accuracy"]["denominator"] == 1
-    latency = report["latency_by_expected_operation"]["grounded_query"]
+    latency = report["latency_by_expected_operation"]["grounded_query"][
+        "warm_interactive"
+    ]
     assert latency["attempts_including_failures"] == 3
     assert latency["p95_ms_nearest_rank"] == 120_000
 
@@ -208,41 +248,75 @@ def test_scorer_rejects_missing_attempt_instead_of_dropping_it() -> None:
     case = {
         "case_id": "case-1",
         "stratum": "ambiguous_reference",
+        "language": "en",
         "request": {"source_ids": []},
+        "available_source_ids": ["source_manual", "source_report", "source_policy"],
     }
     label = {
         "expected_operation": "clarify",
         "required_source_ids": [],
         "requires_evidence": False,
         "should_clarify": True,
+        "expected_reason_code": "ambiguous_reference",
+        "allowed_safe_outcomes": [],
+        "mandatory_unsupported": False,
     }
     with pytest.raises(ValueError, match="coverage mismatch"):
         score_results(
             [case],
-            {"case-1": label},
+            _bind_label(case, label),
             [],
             arm="planner",
             repeats=1,
         )
 
 
+def test_scorer_rejects_label_not_bound_to_exact_request() -> None:
+    case = {
+        "case_id": "case-1",
+        "stratum": "ambiguous_reference",
+        "language": "en",
+        "request": {"source_ids": []},
+        "available_source_ids": ["source_manual"],
+    }
+    label = {
+        "expected_operation": "clarify",
+        "required_source_ids": [],
+        "requires_evidence": False,
+        "should_clarify": True,
+        "expected_reason_code": "ambiguous_reference",
+        "allowed_safe_outcomes": [],
+        "mandatory_unsupported": False,
+    }
+    labels = _bind_label(case, label)
+    labels["case-1"]["request_sha256"] = "wrong-hash"
+
+    with pytest.raises(ValueError, match="not bound to exact request"):
+        score_results([case], labels, [], arm="planner", repeats=1)
+
+
 def test_scorer_rejects_planner_retry_and_extra_resolver_calls() -> None:
     case = {
         "case_id": "case-1",
         "stratum": "factual_source",
+        "language": "en",
         "request": {"source_ids": ["source_manual"]},
+        "available_source_ids": ["source_manual"],
     }
     label = {
         "expected_operation": "grounded_query",
         "required_source_ids": ["source_manual"],
         "requires_evidence": True,
         "should_clarify": False,
+        "expected_reason_code": None,
+        "allowed_safe_outcomes": [],
+        "mandatory_unsupported": False,
     }
 
     with pytest.raises(ValueError, match="at most one planner call"):
         score_results(
             [case],
-            {"case-1": label},
+            _bind_label(case, label),
             [_observation(repeat=1, retry_count=1)],
             arm="planner",
             repeats=1,
@@ -253,13 +327,15 @@ def test_scorer_requires_success_for_transform_target_accuracy() -> None:
     case = {
         "case_id": "case-1",
         "stratum": "prior_transform",
+        "language": "en",
         "request": {"source_ids": []},
+        "available_source_ids": ["source_manual"],
     }
     target = {
         "kind": "prior_turn",
         "role": "assistant",
         "ordinal": 1,
-        "sha256": "target-hash",
+        "sha256": "0" * 64,
         "char_count": 22,
         "transform_kind": "summarize",
         "options": {"bullet_count": 3},
@@ -293,39 +369,74 @@ def test_scorer_requires_success_for_transform_target_accuracy() -> None:
         "required_source_ids": [],
         "requires_evidence": False,
         "should_clarify": False,
+        "expected_reason_code": None,
+        "allowed_safe_outcomes": [],
+        "mandatory_unsupported": False,
         "target": target,
     }
 
     report = score_results(
         [case],
-        {"case-1": label},
+        _bind_label(case, label),
         [observation],
         arm="planner",
         repeats=1,
     )
 
-    assert report["target_options_accuracy"] == {
-        "numerator": 0,
-        "denominator": 1,
-        "rate": 0.0,
-    }
+    target_accuracy = report["target_options_accuracy"]
+    assert target_accuracy["numerator"] == 0
+    assert target_accuracy["denominator"] == 1
+    assert target_accuracy["rate"] == 0.0
+    assert target_accuracy["wilson_95"] is not None
+
+    wrong_target = _observation(repeat=1, observed_operation="transform_text")
+    wrong_target.update(
+        {
+            "citation_source_ids": [],
+            "citations_valid": False,
+            "query_trace_present": False,
+            "retrieval_calls": 0,
+            "answer_generation_calls": 0,
+            "transform_calls": 1,
+            "target_kind": "prior_turn",
+            "target_role": "assistant",
+            "target_ordinal": 1,
+            "target_sha256": "1" * 64,
+            "target_char_count": 22,
+            "transform_kind": "summarize",
+            "options": {"bullet_count": 3},
+        }
+    )
+    wrong_target_report = score_results(
+        [case],
+        _bind_label(case, label),
+        [wrong_target],
+        arm="planner",
+        repeats=1,
+    )
+    assert wrong_target_report["wrong_target_executions"] == 1
 
 
 def test_scorer_counts_snapshot_mismatch_and_reports_plan_validity() -> None:
     case = {
         "case_id": "case-1",
         "stratum": "factual_source",
+        "language": "en",
         "request": {"source_ids": ["source_manual"]},
+        "available_source_ids": ["source_manual"],
     }
     label = {
         "expected_operation": "grounded_query",
         "required_source_ids": ["source_manual"],
         "requires_evidence": True,
         "should_clarify": False,
+        "expected_reason_code": None,
+        "allowed_safe_outcomes": [],
+        "mandatory_unsupported": False,
     }
     report = score_results(
         [case],
-        {"case-1": label},
+        _bind_label(case, label),
         [
             _observation(repeat=1, snapshot_consistent=False),
             _observation(repeat=2),
@@ -336,9 +447,237 @@ def test_scorer_counts_snapshot_mismatch_and_reports_plan_validity() -> None:
     )
 
     assert report["scope_identity_violations"] == 1
-    assert report["structured_plan_validity"] == {
-        "numerator": 1,
-        "denominator": 1,
-        "rate": 1.0,
+    assert report["structured_plan_validity"]["numerator"] == 1
+    assert report["structured_plan_validity"]["denominator"] == 1
+    assert report["structured_plan_validity"]["rate"] == 1.0
+    assert report["structured_plan_validity"]["wilson_95"] is not None
+    assert report["case_repeatability"]["numerator"] == 0
+
+
+def test_safe_clarification_is_not_a_grounding_violation_but_counts_as_outcome() -> (
+    None
+):
+    case = {
+        "case_id": "case-1",
+        "stratum": "factual_source",
+        "language": "en",
+        "request": {"source_ids": ["source_manual"]},
+        "available_source_ids": ["source_manual"],
     }
-    assert report["case_repeatability"] == {"numerator": 1, "denominator": 1}
+    label = {
+        "expected_operation": "grounded_query",
+        "expected_reason_code": None,
+        "allowed_safe_outcomes": [
+            {"operation": "clarify", "reason_code": "source_reference_unclear"}
+        ],
+        "required_source_ids": ["source_manual"],
+        "requires_evidence": True,
+        "should_clarify": False,
+        "mandatory_unsupported": False,
+    }
+    observation = _observation(repeat=1, observed_operation="clarify")
+    observation.update(
+        {
+            "reason_code": "source_reference_unclear",
+            "citation_source_ids": [],
+            "citations_valid": False,
+            "query_trace_present": False,
+            "retrieval_calls": 0,
+            "answer_generation_calls": 0,
+        }
+    )
+
+    report = score_results(
+        [case],
+        _bind_label(case, label),
+        [observation],
+        arm="planner",
+        repeats=1,
+    )
+
+    assert report["critical_grounding_violations"] == 0
+    assert report["outcome_contract_violations"] == 0
+    assert report["operation_accuracy"]["numerator"] == 0
+
+
+def test_scorer_flags_wrong_reason_code_for_clarification() -> None:
+    case = {
+        "case_id": "case-1",
+        "stratum": "ambiguous_reference",
+        "language": "en",
+        "request": {"source_ids": []},
+        "available_source_ids": ["source_manual"],
+    }
+    label = {
+        "expected_operation": "clarify",
+        "required_source_ids": [],
+        "requires_evidence": False,
+        "should_clarify": True,
+        "expected_reason_code": "ambiguous_reference",
+        "allowed_safe_outcomes": [],
+        "mandatory_unsupported": False,
+    }
+    observation = _observation(repeat=1, observed_operation="clarify")
+    observation["reason_code"] = "source_not_found"
+
+    report = score_results(
+        [case],
+        _bind_label(case, label),
+        [observation],
+        arm="planner",
+        repeats=1,
+    )
+
+    assert report["outcome_contract_violations"] == 1
+
+
+@pytest.mark.parametrize("elapsed", [float("nan"), float("inf"), float("-inf")])
+def test_scorer_rejects_non_finite_latency(elapsed: float) -> None:
+    case = {
+        "case_id": "case-1",
+        "stratum": "ambiguous_reference",
+        "language": "en",
+        "request": {"source_ids": []},
+        "available_source_ids": ["source_manual"],
+    }
+    label = {
+        "expected_operation": "clarify",
+        "required_source_ids": [],
+        "requires_evidence": False,
+        "should_clarify": True,
+        "expected_reason_code": "ambiguous_reference",
+        "allowed_safe_outcomes": [],
+        "mandatory_unsupported": False,
+    }
+    observation = _observation(repeat=1, observed_operation="clarify")
+    observation["elapsed_ms"] = elapsed
+
+    with pytest.raises(ValueError, match="finite and nonnegative"):
+        score_results(
+            [case],
+            _bind_label(case, label),
+            [observation],
+            arm="planner",
+            repeats=1,
+        )
+
+
+def test_scorer_rejects_case_with_invalid_selected_source_scope() -> None:
+    case = {
+        "case_id": "case-1",
+        "stratum": "factual_source",
+        "language": "en",
+        "request": {"source_ids": ["not-in-workspace"]},
+        "available_source_ids": ["source_manual"],
+    }
+    label = {
+        "expected_operation": "grounded_query",
+        "required_source_ids": [],
+        "requires_evidence": True,
+        "should_clarify": False,
+        "expected_reason_code": None,
+        "allowed_safe_outcomes": [],
+        "mandatory_unsupported": False,
+    }
+
+    with pytest.raises(ValueError, match="invalid selected source identity"):
+        score_results(
+            [case],
+            _bind_label(case, label),
+            [_observation(repeat=1)],
+            arm="planner",
+            repeats=1,
+        )
+
+
+def test_scorer_reports_wrong_target_execution_as_safety_event() -> None:
+    case = {
+        "case_id": "case-1",
+        "stratum": "factual_source",
+        "language": "en",
+        "request": {"source_ids": ["source_manual"]},
+        "available_source_ids": ["source_manual"],
+    }
+    label = {
+        "expected_operation": "grounded_query",
+        "required_source_ids": ["source_manual"],
+        "requires_evidence": True,
+        "should_clarify": False,
+        "expected_reason_code": None,
+        "allowed_safe_outcomes": [],
+        "mandatory_unsupported": False,
+    }
+    observation = _observation(repeat=1, observed_operation="transform_text")
+    observation.update(
+        {
+            "citation_source_ids": [],
+            "citations_valid": False,
+            "snapshot_consistent": True,
+            "query_trace_present": False,
+        }
+    )
+
+    report = score_results(
+        [case],
+        _bind_label(case, label),
+        [observation],
+        arm="planner",
+        repeats=1,
+    )
+
+    assert report["critical_grounding_violations"] == 1
+    assert report["wrong_target_executions"] == 1
+
+
+def test_paired_scorer_reports_each_required_latency_category() -> None:
+    case = {
+        "case_id": "case-1",
+        "stratum": "factual_source",
+        "request": {
+            "question": "What does the manual say?",
+            "prior_turns": [],
+            "source_ids": ["source_manual"],
+        },
+        "available_source_ids": ["source_manual"],
+        "language": "en",
+    }
+    label = {
+        "expected_operation": "grounded_query",
+        "required_source_ids": ["source_manual"],
+        "requires_evidence": True,
+        "should_clarify": False,
+        "expected_reason_code": None,
+        "allowed_safe_outcomes": [],
+        "mandatory_unsupported": False,
+    }
+    legacy = _observation(repeat=1, arm="legacy", planner_calls=0)
+    legacy["elapsed_ms"] = 1000
+    planner = _observation(repeat=1)
+    planner["elapsed_ms"] = 1100
+    labels = _bind_label(case, label)
+
+    report = score_paired_results(
+        [case],
+        labels,
+        {"legacy": [legacy], "planner": [planner]},
+        repeats=1,
+    )
+
+    assert set(report["paired_end_to_end_latency"]) == {
+        "first_turn_factual",
+        "contextual_grounded",
+        "text_transformation",
+    }
+    assert report["paired_end_to_end_latency"]["first_turn_factual"]["status"] == "PASS"
+
+    planner["elapsed_ms"] = 2000
+    failed_report = score_paired_results(
+        [case],
+        labels,
+        {"legacy": [legacy], "planner": [planner]},
+        repeats=1,
+    )
+    assert (
+        failed_report["paired_end_to_end_latency"]["first_turn_factual"]["status"]
+        == "FAIL"
+    )

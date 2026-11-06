@@ -28,7 +28,10 @@ timeouts, cancellations, invalid plans, and incomplete attempts remain in the
 operation-accuracy and completion denominators. `elapsed_ms` is measured from
 API request receipt until response/error delivery or the recorded timeout,
 cancellation, or process-watchdog terminal boundary; it is required for every
-attempt. No failed attempt may be silently dropped.
+attempt and must be finite. Every attempt is tagged `cold_start` or
+`warm_interactive`; the planner arm records finite `planner_elapsed_ms` when a
+planner call occurred. It remains unavailable when no planner call occurred.
+No failed attempt may be silently dropped.
 
 For held-out cases, each arm has three scheduled repeats. A case passes an
 accuracy or completion metric only when every scheduled repeat satisfies the
@@ -38,26 +41,40 @@ case-level aggregate.
 ## Outcomes and safety metrics
 
 - Operation accuracy compares the normalized operation against the adjudicated
-  label. Report raw numerator/denominator overall, per primary stratum, and per
-  repeat.
+  label. Report raw numerator/denominator overall, per primary stratum,
+  English/Spanish, factual/transform, and per repeat.
+- Compare the observed `{operation, reason_code}` pair with the exact expected
+  pair or an independently labeled `allowed_safe_outcomes` pair. Report
+  unpermitted outcome violations. A safe clarification/refusal is not a
+  grounding violation; it remains an operation-accuracy failure when it is not
+  the expected operation.
 - Target/options accuracy applies to transform cases and requires exact target
   kind, role/ordinal or span digest, code-point count, transform kind, and
   options on every scheduled repeat.
-- Critical grounding violation counts an evidence-required response that is
-  not a grounded query with nonempty valid citations, a query trace, and the
-  admitted snapshot. Any such observation is a safety failure.
+- Critical grounding violation counts an evidence-required response that
+  improperly claims factual success, including a citation-free transform or a
+  grounded response without nonempty valid citations, a query trace, and the
+  admitted snapshot. A safe clarification/refusal is not counted as factual
+  success. Any critical violation is a safety failure.
 - Scope/identity violation counts a citation outside the selected source set,
-  an invalid selected-source identity, or an inconsistent snapshot.
+  an invalid selected-source identity, or an inconsistent snapshot. Invalid
+  selected IDs fail validation before scoring.
+- A successful transform executed against a target that differs from its
+  independently labeled exact target is reported separately as a
+  `wrong_target_execution` activation blocker.
 - Clarification precision is distinct cases with a necessary clarification
   divided by distinct cases that were clarified at least once. Excess
   clarification is supported cases clarified at least once divided by supported
   cases. Report raw counts and per-repeat rates.
 - End-to-end completion requires a successful response with the correct
   operation and provenance, plus cited grounding for evidence-required tasks.
+- Mandatory unsupported cases are separately labeled. Report their complete
+  decline rate separately from the >=95% gate for other unsupported cases.
 - Structured-plan validity is reported from the v3 trace as valid/rejected/
   unavailable/cancelled; invalid plans never count as routing successes.
-- Repeatability requires the same non-null operation and, for transforms, the
-  same exact target and options across all successful repeats.
+- Repeatability passes only when every scheduled repeat completes with a
+  consistent non-null operation and, for transforms, the same exact target and
+  options. A failed repeat cannot pass repeatability.
 - Count planner, resolver, retrieval, answer-generation, transform, and retry
   calls by arm. Planner arm permits at most one planner call, no resolver call,
   and no retry.
@@ -67,11 +84,20 @@ case-level aggregate.
 Candidate estimator: nearest-rank percentile, `ceil(p * n)` using one-based
 ranks. P50 and P95 use all recorded attempt latencies, including failures and
 timeouts at their terminal elapsed time. Report cold startup separately from
-warm interactive latency. No attempt is excluded because it is slow or failed.
+warm interactive latency. Paired end-to-end P50/P95 comparisons use matched
+case/repeats marked warm in both arms and are emitted separately for first-turn
+factual, contextual grounded, and text-transformation groups. They use the
+accepted 1.5-second P50 / 3-second P95 additive ceilings and 1.25 relative
+multiplier. Cold pairs are counted and excluded only from the warm comparison.
+Planner-stage warm P50/P95 are compared with the accepted 1.5/3-second caps;
+cold planner startup is reported separately. No attempt is excluded from its
+phase's percentile because it is slow or failed.
 
 Candidate uncertainty interval: two-sided 95% Wilson score interval for each
-case-level binary rate. Repeats are correlated and are not counted as
-independent cases. Report case-level intervals and raw per-repeat rates.
+case-level binary rate, including language, factual/transform, target/options,
+completion, validity, unsupported, and repeatability metrics where defined.
+Repeats are correlated and are not counted as independent cases. Report
+case-level intervals and raw per-repeat rates.
 
 ## Gates carried from the accepted design
 
