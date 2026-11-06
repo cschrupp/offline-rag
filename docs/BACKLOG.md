@@ -29,9 +29,11 @@ BETA-GAME-02B — COMPLETE / HUMAN ACCEPTED / PROMOTED
 BETA-CONV-01 — DESIGN COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / PROMOTED
                IMPLEMENTATION IR-005 CODE-REVIEW ACCEPT / PRESERVED / UNPROMOTED
                LIVE ACCEPTANCE NOT SUCCESSFULLY COMPLETED
-BETA-CONV-01A — DESIGN IR-002 ACCEPT / HUMAN ACCEPTED / IMPLEMENTATION AUTHORIZED
-                IMPLEMENTATION IN PROGRESS ON NEW BRANCH
-                MODEL EVALUATION / ACTIVATION / IMPLEMENTATION PROMOTION NOT AUTHORIZED
+BETA-CONV-01A — DESIGN IR-002 ACCEPT / HUMAN ACCEPTED
+                IMPLEMENTATION IR-002 ACCEPT / HUMAN ACCEPTED
+                VERIFICATION/EVALUATION HANDOFF PREPARED; EXECUTION NOT AUTHORIZED
+                API REGRESSION-COVERAGE GAP OPEN
+                PLANNER ACTIVATION / IMPLEMENTATION PROMOTION NOT AUTHORIZED
 BETA-CONV-02 — DEFERRED / NOT AUTHORIZED
 Additional Gold Lab games — DEFERRED BEYOND CURRENT BETA
 ```
@@ -70,8 +72,10 @@ and its linked sanitized `RUN_002_EVIDENCE_INDEX.md`.
        64b5883311338689f291f181e47686fc1a9e3906; live acceptance not completed
        successfully; preserved on locked archive branch; unpromoted
     -> BETA-CONV-01A LLM task planning amendment DESIGN IR-002 ACCEPT / HUMAN
-       ACCEPTED; implementation AUTHORIZED / IN PROGRESS; model evaluation,
-       activation and implementation promotion NOT AUTHORIZED
+       ACCEPTED; implementation IR-002 ACCEPT / HUMAN ACCEPTED; verification/
+       evaluation handoff prepared but execution not authorized; API regression-
+       coverage gap open; planner activation and implementation promotion not
+       authorized
     -> BETA-CONV-02 analytical synthesis DEFERRED / NOT AUTHORIZED
     -> Slice 17 design-open authority remains NOT AUTHORIZED
 ```
@@ -180,13 +184,17 @@ outside this design. The single design document is
 ### BETA-CONV-01A — LLM Task Planning Architecture Amendment
 
 **Priority:** P1 beta conversation capability
-**Status:** DESIGN IR-002 ACCEPT / HUMAN ACCEPTED / IMPLEMENTATION IN PROGRESS
+**Status:** DESIGN IR-002 ACCEPT / HUMAN ACCEPTED / IMPLEMENTATION IR-002 ACCEPT /
+HUMAN ACCEPTED; VERIFICATION/EVALUATION HANDOFF PREPARED, EXECUTION NOT AUTHORIZED
 **Authority:** Human design/documentation and archive-creation handoff, 2026-11-05
 **Design branch:** `design/beta-conv-01a-llm-task-planning`, directly from
 `dfc045f4178db41f723feb0483e8f163a801bc40`
-**Implementation:** AUTHORIZED behind default `legacy`, including preserved-code
-integration and focused regression tests. **Model evaluation, activation and
-implementation promotion:** NOT AUTHORIZED.
+**Implementation:** Complete behind default `legacy`, including preserved-code
+integration and focused regression tests; accepted at exact subject
+`e243c4d34d8d784ea6b1b67ebfc8088fb129f988` by implementation IR-002 and Human
+acceptance. **Verification/evaluation execution, planner activation and
+implementation promotion:** NOT AUTHORIZED. The API regression-coverage gap
+remains open; see the [implementation result and next handoff](evidence/beta_conv_01a/IMPLEMENTATION_RESULT_AND_NEXT_HANDOFF.md).
 **Implementation branch:** `implementation/beta-conv-01a-llm-task-planning`,
 based on canonical `main` at `51fc93a8867f85417b6522632879e7c4c62c8e55` with
 the preserved deterministic implementation merged as a second parent.

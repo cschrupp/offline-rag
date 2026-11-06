@@ -61,15 +61,20 @@ and supporting history.
   live acceptance has not completed successfully and implementation promotion
   has not occurred. It is preserved on the locked
   `archive/beta-conv-01-deterministic-router` branch.
-- [ ] **CURRENT — BETA-CONV-01A — LLM Task Planning** — design IR-002 accepted,
-  Human accepted, implementation authorized and in progress on
-  `implementation/beta-conv-01a-llm-task-planning`; evaluation, activation and
-  implementation promotion remain unauthorized;
-  see [the principal development memory](docs/beta_conv_01a_llm_task_planning_amendment.md).
+- [x] **BETA-CONV-01A — LLM Task Planning implementation** — implementation
+  subject `e243c4d34d8d784ea6b1b67ebfc8088fb129f988` independently accepted
+  (IR-002) and Human accepted. The implementation remains unpromoted and the
+  planner remains inactive. The API regression-coverage gap is open; verification
+  and model-evaluation execution require a separate bounded authority. See the
+  [implementation result and next handoff](docs/evidence/beta_conv_01a/IMPLEMENTATION_RESULT_AND_NEXT_HANDOFF.md)
+  and [principal development memory](docs/beta_conv_01a_llm_task_planning_amendment.md).
   Implementation starts from canonical `main` at
   `51fc93a8867f85417b6522632879e7c4c62c8e55` and merges the exact preserved
   implementation subject as a second parent. The earlier deterministic design
   and review history remain preserved.
+- [ ] **BETA-CONV-01A verification/evaluation** — handoff prepared; execution
+  authority not granted. Close the API coverage gap and satisfy the accepted
+  pre-holdout freeze/isolation requirements under a separate authority.
 - [ ] **BETA-CONV-02 — Analytical Synthesis** — deferred; not authorized.
 - [ ] Slice 17 design-open — **NOT AUTHORIZED**. This is distinct from
   original Slice 16G, which is complete.

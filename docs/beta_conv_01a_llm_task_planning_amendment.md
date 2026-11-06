@@ -20,6 +20,19 @@ Implementation is authorized by the Human acceptance below. Model evaluation,
 planner activation and implementation promotion are NOT AUTHORIZED. BETA-CONV-02
 and Slice 17 remain unopened.
 
+## Current implementation disposition — 2026-11-05
+
+The implementation is complete at
+`e243c4d34d8d784ea6b1b67ebfc8088fb129f988`, independently accepted by
+Implementation IR-002 and Human accepted. The default remains `legacy`; the
+planner has not been activated or promoted. The conversation API regression
+coverage gap remains open, and the separate verification/evaluation handoff is
+prepared but has no execution authority. See
+[`evidence/beta_conv_01a/IMPLEMENTATION_RESULT_AND_NEXT_HANDOFF.md`](evidence/beta_conv_01a/IMPLEMENTATION_RESULT_AND_NEXT_HANDOFF.md).
+
+This current-state note does not rewrite the historical design authority or
+grant model calls, evaluation, activation, or promotion.
+
 **IR-001 correction scope:** synchronous API shadow observation has been
 removed in favor of isolated sequential offline comparison; paired
 end-to-end latency gates are now quantitative and operation-specific. No
