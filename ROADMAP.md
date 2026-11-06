@@ -77,12 +77,15 @@ and supporting history.
   conversation Python/UI checks pass. The API verification follow-up now
   exercises planner and legacy requests through the canonical FastAPI app. The
   earlier TestClient stall was caused by sandbox-denied cross-thread event-loop
-  wakeups; the same TestClient path passes outside that sandbox. See the
+  wakeups; the same TestClient path passes outside that sandbox. API VERIFY-01
+  has IR-001 ACCEPT and Human acceptance. See the
   [API verification result](docs/evidence/beta_conv_01a/API_VERIFY_01_RESULT.md)
   and the [earlier verification result](docs/evidence/beta_conv_01a/VERIFICATION_ONLY_RESULT.md).
 - [ ] **BETA-CONV-01A offline model evaluation** — not executed; requires
   separate authorization and the accepted pre-holdout freeze/isolation
-  requirements. Planner activation and implementation promotion remain
+  requirements. The 300-case fixtures/split, independent labels, scorer, safety
+  challenge set, and execution-time host/model record are not yet frozen as
+  artifacts. Planner activation and implementation promotion remain
   unauthorized.
 - [ ] **BETA-CONV-02 — Analytical Synthesis** — deferred; not authorized.
 - [ ] Slice 17 design-open — **NOT AUTHORIZED**. This is distinct from

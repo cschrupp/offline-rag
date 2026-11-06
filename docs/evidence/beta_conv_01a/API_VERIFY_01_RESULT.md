@@ -1,6 +1,25 @@
 # BETA-CONV-01A API VERIFY-01 — Result
 
-**Disposition:** HTTP verification executed; stop for independent review.
+## Current disposition
+
+```yaml
+review: API_VERIFY_01_IR-001
+reviewed_subject: 5b165d4bc796a5d5a51a3fa6084d744a20903f50
+independent_review: ACCEPT
+human_acceptance: ACCEPTED
+api_verification: COMPLETE
+planner_model_evaluation: NOT_AUTHORIZED
+planner_activation: NOT_AUTHORIZED
+implementation_promotion: NOT_AUTHORIZED
+```
+
+The original execution handoff below remains as historical provenance. Human
+acceptance applies to API VERIFY-01 and does not authorize planner model
+evaluation, activation, or promotion.
+
+## Historical execution record
+
+**Execution disposition at handoff:** HTTP verification executed; stop for independent review.
 
 **Starting subject:** `170ccd4fd149b23755262fdd879a927676109666`
 

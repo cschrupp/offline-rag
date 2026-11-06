@@ -32,7 +32,8 @@ BETA-CONV-01 — DESIGN COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / PRO
 BETA-CONV-01A — DESIGN IR-002 ACCEPT / HUMAN ACCEPTED
                 IMPLEMENTATION IR-002 ACCEPT / HUMAN ACCEPTED
                 DETERMINISTIC VERIFICATION EXECUTED
-                API VERIFY-01 HTTP ROUTE COVERAGE EXECUTED; TESTCLIENT PASSES
+                API VERIFY-01 HTTP ROUTE COVERAGE COMPLETE; IR-001 ACCEPT;
+                HUMAN ACCEPTED; TESTCLIENT PASSES
                 OUTSIDE SANDBOX; SANDBOX EVENT-LOOP WAKE RESTRICTION IDENTIFIED
                 MODEL EVALUATION NOT AUTHORIZED
                 PLANNER ACTIVATION / IMPLEMENTATION PROMOTION NOT AUTHORIZED
@@ -188,8 +189,8 @@ outside this design. The single design document is
 
 **Priority:** P1 beta conversation capability
 **Status:** DESIGN IR-002 ACCEPT / HUMAN ACCEPTED / IMPLEMENTATION IR-002 ACCEPT /
-HUMAN ACCEPTED; DETERMINISTIC VERIFICATION EXECUTED; API COVERAGE GAP OPEN;
-MODEL EVALUATION NOT AUTHORIZED
+HUMAN ACCEPTED; DETERMINISTIC VERIFICATION EXECUTED; API VERIFY-01 IR-001
+ACCEPT / HUMAN ACCEPTED; MODEL EVALUATION NOT AUTHORIZED
 **Authority:** Human design/documentation and archive-creation handoff, 2026-11-05
 **Design branch:** `design/beta-conv-01a-llm-task-planning`, directly from
 `dfc045f4178db41f723feb0483e8f163a801bc40`
@@ -197,11 +198,15 @@ MODEL EVALUATION NOT AUTHORIZED
 integration and focused regression tests; accepted at exact subject
 `e243c4d34d8d784ea6b1b67ebfc8088fb129f988` by implementation IR-002 and Human
 acceptance. Deterministic verification was executed; API regression coverage
-remains open because the current environment stalls in generic TestClient/AnyIO
-cross-thread scheduling. **Offline model-evaluation execution, planner
-activation and implementation promotion:** NOT AUTHORIZED. See the
+is complete through the canonical FastAPI application. The earlier TestClient
+stall was reproduced inside the execution sandbox and traced to denied asyncio
+cross-thread wake-socket writes; TestClient passed outside that sandbox. The
+separate managed-operation recovery-test startup issue remains under
+TEST-STARTUP-01. **Offline model-evaluation execution, planner activation and
+implementation promotion:** NOT AUTHORIZED. See the
 [verification-only result](evidence/beta_conv_01a/VERIFICATION_ONLY_RESULT.md)
-and [implementation result and next handoff](evidence/beta_conv_01a/IMPLEMENTATION_RESULT_AND_NEXT_HANDOFF.md).
+and [API verification result](evidence/beta_conv_01a/API_VERIFY_01_RESULT.md),
+as well as the [implementation result and next handoff](evidence/beta_conv_01a/IMPLEMENTATION_RESULT_AND_NEXT_HANDOFF.md).
 **Implementation branch:** `implementation/beta-conv-01a-llm-task-planning`,
 based on canonical `main` at `51fc93a8867f85417b6522632879e7c4c62c8e55` with
 the preserved deterministic implementation merged as a second parent.
@@ -220,9 +225,12 @@ The single [architecture amendment and development memory](beta_conv_01a_llm_tas
 contains preservation/protection status, typed plan, comparative 300-request
 evaluation proposal, proposed safety/latency gates, explicit legacy/planner
 modes with offline-only paired shadow comparison,
-rollback and merge-based integration. The baseline-reproduced API lifespan
-stall remains an incomplete verification item; it is not a PASS. Additional
-games remain deferred; BETA-CONV-02 and Slice 17 remain unopened.
+rollback and merge-based integration. The evaluation proposal is not an
+execution-ready frozen package: the 300-case fixture/split, independent labels,
+scorer, safety challenge set, and execution-time host/model record are not yet
+frozen as artifacts. A separate execution authority and those frozen inputs
+are required before model calls. Additional games remain deferred;
+BETA-CONV-02 and Slice 17 remain unopened.
 
 ## 2. Historical queue snapshot
 
