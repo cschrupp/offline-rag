@@ -1,0 +1,53 @@
+{
+  "manifest_status": "TEMPLATE_PENDING_EXECUTION_AUTHORITY",
+  "accepted_implementation_subject": "e243c4d34d8d784ea6b1b67ebfc8088fb129f988",
+  "api_verification_subject": "5b165d4bc796a5d5a51a3fa6084d744a20903f50",
+  "conversation_planner_contract_id": "seneca_conversation_task_plan_v1",
+  "conversation_trace_schema": "offline-rag-conversation-trace-v3",
+  "prompt_contract_sha256": null,
+  "source_code_commit": "PENDING_FINAL_FREEZE_SUBJECT",
+  "host": {
+    "hostname_or_stable_alias": null,
+    "cpu_model": null,
+    "physical_memory_bytes": null,
+    "os_release": null,
+    "kernel": null,
+    "gpu_model": null,
+    "gpu_driver": null,
+    "gpu_memory_bytes": null
+  },
+  "generator": {
+    "endpoint_origin_redacted": null,
+    "model_id": null,
+    "model_revision_or_checksum": null,
+    "serving_configuration_sha256": null,
+    "temperature": 0,
+    "max_output_tokens": null,
+    "request_timeout_seconds": null,
+    "identity_reproducible": false
+  },
+  "software": {
+    "python": "3.14.5",
+    "fastapi": "0.142.2",
+    "starlette": "1.7.0",
+    "httpx": "0.28.1",
+    "anyio": "4.15.1",
+    "uv_lock_sha256": "df336f2100897aa753b252e926ee48cfd8b4dbaac656be9255d2d910f2c706df",
+    "ui_lock_sha256": "64ace6fb21913fe469b147e389c9fd49bd35746a7fd7daec15b35ba64f2cfd23"
+  },
+  "input_hashes": {
+    "development_cases_sha256": null,
+    "held_out_cases_sha256": null,
+    "independent_labels_sha256": null,
+    "safety_challenge_sha256": null,
+    "scorer_sha256": null
+  },
+  "latency_accounting": {
+    "boundary": "api_request_receipt_to_terminal_response_or_recorded_failure",
+    "percentile_estimator": "nearest_rank_candidate_pending_review",
+    "failed_attempts_in_denominator": true,
+    "watchdog_timeout_seconds": null
+  },
+  "threshold_review": "PENDING_INDEPENDENT_REVIEW_AND_HUMAN_ACCEPTANCE",
+  "execution_authority": "NOT_GRANTED"
+}
