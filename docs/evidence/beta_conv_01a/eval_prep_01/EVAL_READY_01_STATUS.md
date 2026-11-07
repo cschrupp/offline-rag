@@ -23,13 +23,15 @@ activation, or promotion.
   in normalized observations.
 - Added adapter tests for alias scope, source identity, timeout denominator
   retention, planner timing, and arm/configuration mismatch.
-- Added synthetic schedule candidates for the 120 held-out IDs only. The
+- Added a serialized schedule proposal for the 120 held-out IDs only. The
   ignored local artifact contains no request text or labels. It has a
   serialized alternative and a pair-interleaved alternative, each with 720
   `(case, arm, repeat)` attempts and 359 predeclared warm pairs. The first
   attempt per arm is labeled `cold_start`; all later attempts are
-  `warm_interactive`. Exactly one alternative must be selected before a future
-  freeze; the schedule is not frozen or authorized for execution.
+  `warm_interactive`. Serialized is selected for review because router mode is
+  fixed at app startup; the interleaved order is not executable without
+  repeated restarts or an unauthorized override. The schedule is not frozen or
+  authorized for execution.
 - Added a fail-closed readiness checker for annotation, safety, historical
   mapping, API qualification, environment, schedule, methodology, and custody
   gates. Its current candidate state correctly remains blocked.
@@ -46,10 +48,15 @@ unselected source references, wrong prior-turn roles, invalid Unicode span
 offsets, unsupported options, provider timeout, transport failure,
 pre-planner cancellation, and context-window exhaustion. These tests exercise
 the deterministic planner validation and turn failure boundaries with fake
-providers; they make no model request. The route-level adapter test additions
-use the accepted canonical app fixture, but execution of that test module
-stalled at `TestClient` startup in this environment. API route qualification is
-therefore still incomplete here.
+providers; they make no model request. The full conversation API regression
+module, including both route-level adapter tests, passed in the compatible
+unsandboxed test environment: 38 passed. The separate adapter/preparation suite
+passed 74 tests after adding the exact whole-conversation-summary contract
+regression. The sandbox-specific `TestClient` wake-socket stall therefore does
+not block deterministic route qualification; no startup or production
+architecture changes were needed. The existing intent-routing regression file
+also passed 70 tests and supplies the test references in the historical
+coverage candidate.
 
 ## Inputs that cannot be self-certified by Codex
 
@@ -63,12 +70,20 @@ therefore still incomplete here.
   authorship, including at least 15 Spanish families; generated variations
   would not satisfy this requirement.
 - The held-out candidate is reproducible from the committed builder and is
-  therefore not confidential. No independent custodian is assigned.
+  therefore not confidential. The Human accepted a source-visible exception
+  for this beta evaluation. It is a process-frozen within-domain evaluation,
+  not a blind benchmark; exact inputs, labels, scorer, thresholds, planner
+  configuration, schedule, and environment must be frozen before execution.
+  No tuning or case regeneration from held-out outcomes is permitted.
 - The current WSL2 preparation environment is not approved as the evaluation
   host, and no approved local model ID, revision/checksum, or serving settings
   were supplied.
-- The exact schedule alternative, operational watchdog/resource envelope,
-  methodology review, and freeze identities remain pending.
+- The schedule candidate is serialized: one canonical app runs the legacy arm,
+  stops, then the same canonical app starts in planner mode for the planner
+  arm. The candidate retains a fixed legacy-first order and documents temporal
+  drift as a limitation; methodology review must assess this before freeze.
+- Operational watchdog/resource envelope, independent methodology review, and
+  exact freeze identities remain pending.
 
 ## Proposed execution bounds (not approved or frozen)
 

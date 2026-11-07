@@ -16,7 +16,11 @@ The evidence adapter records only allowlisted normalized fields from the API
 response, conversation trace, query trace, and provider-call instrumentation.
 It must not store raw prompts, prior turns, provider response objects,
 credentials, or arbitrary exceptions. Target text is represented by its
-SHA-256 and code-point count. Grounded query text may be retained only in the
+SHA-256 and code-point count. Every observation carries the dataset
+`request_sha256`; the adapter verifies it against the exact canonical request
+before calling the API, and the scorer requires an exact match to that case.
+The API query-trace ID must also match the query-trace ID persisted in its
+conversation trace. Grounded query text may be retained only in the
 synthetic evaluation evidence under the accepted privacy rules.
 
 Synthetic source IDs are stable aliases, not IDs that may be sent to a live
@@ -50,6 +54,9 @@ cancellation, or process-watchdog terminal boundary; it is required for every
 attempt and must be finite. Every attempt is tagged `cold_start` or
 `warm_interactive`; the planner arm records finite `planner_elapsed_ms` when a
 planner call occurred. It remains unavailable when no planner call occurred.
+The `cold_start` tag describes the first measured request in an arm after that
+arm's canonical app has started; app/model process startup time is outside the
+API request latency boundary and must be reported separately if available.
 No failed attempt may be silently dropped.
 
 For held-out cases, each arm has three scheduled repeats. A case passes an
@@ -110,8 +117,9 @@ case-level aggregate.
 
 Candidate estimator: nearest-rank percentile, `ceil(p * n)` using one-based
 ranks. P50 and P95 use all recorded attempt latencies, including failures and
-timeouts at their terminal elapsed time. Report cold startup separately from
-warm interactive latency. Paired end-to-end P50/P95 comparisons use matched
+timeouts at their terminal elapsed time. Report first-request cold latency
+separately from warm interactive latency; do not label it as process/model
+startup latency. Paired end-to-end P50/P95 comparisons use matched
 case/repeats marked warm in both arms and are emitted separately for first-turn
 factual, contextual grounded, and text-transformation groups. They use the
 accepted 1.5-second P50 / 3-second P95 additive ceilings and 1.25 relative

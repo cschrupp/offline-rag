@@ -138,7 +138,7 @@ def validate_schedule(
 
 
 def build_schedule(case_ids: list[str], *, seed: str) -> dict[str, Any]:
-    """Build serialized and interleaved alternatives; neither is executed."""
+    """Build schedule candidates; serialized order is the executable proposal."""
     if len(case_ids) != CASE_COUNT or len(case_ids) != len(set(case_ids)):
         raise ValueError("schedule requires exactly 120 unique held-out IDs")
     ordered_ids = _ordered_case_ids(case_ids, seed)
@@ -154,6 +154,14 @@ def build_schedule(case_ids: list[str], *, seed: str) -> dict[str, Any]:
         "arms": list(ARM_NAMES),
         "repetitions_per_case_arm": REPETITIONS,
         "attempt_count_per_alternative": len(serialized),
+        "selected_for_review": "serialized",
+        "router_mode_execution": {
+            "one_canonical_app_at_a_time": True,
+            "arm_order": ["legacy", "planner"],
+            "controlled_restarts_between_arms": 1,
+            "per_request_router_override": False,
+            "interleaved_candidate_executable": False,
+        },
         "serialized": {
             "attempts": serialized,
             "predeclared_warm_pairs": _warm_pair_population(serialized),

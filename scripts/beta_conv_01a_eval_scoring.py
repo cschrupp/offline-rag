@@ -73,6 +73,7 @@ def validate_observations(
     observed_keys: set[tuple[str, str, int]] = set()
     required = {
         "case_id",
+        "request_sha256",
         "arm",
         "repeat",
         "terminal_state",
@@ -87,6 +88,7 @@ def validate_observations(
         "snapshot_consistent",
         "source_scope_consistent",
         "query_trace_present",
+        "query_trace_link_consistent",
         "target_kind",
         "target_role",
         "target_ordinal",
@@ -112,6 +114,10 @@ def validate_observations(
         observed_keys.add(key)
         if row["arm"] != arm or row["case_id"] not in case_ids:
             raise ValueError(f"unexpected observation identity: {key}")
+        if not isinstance(row["request_sha256"], str) or not re.fullmatch(
+            r"[0-9a-f]{64}", row["request_sha256"]
+        ):
+            raise ValueError("request_sha256 must be a lowercase SHA-256 digest")
         if row["terminal_state"] not in TERMINAL_STATES:
             raise ValueError(f"invalid terminal_state: {row['terminal_state']}")
         response_status = row["response_status"]
@@ -160,6 +166,14 @@ def validate_observations(
         for field in ("citations_valid", "query_trace_present"):
             if not isinstance(row[field], bool):
                 raise TypeError(f"{field} must be a boolean")
+        if row["query_trace_link_consistent"] is not None and not isinstance(
+            row["query_trace_link_consistent"], bool
+        ):
+            raise TypeError("query_trace_link_consistent must be boolean or null")
+        if row["terminal_state"] == "response" and not isinstance(
+            row["query_trace_link_consistent"], bool
+        ):
+            raise TypeError("response observations require query trace linkage")
         if row["snapshot_consistent"] is not None and not isinstance(
             row["snapshot_consistent"], bool
         ):
@@ -253,6 +267,15 @@ def score_results(
         if labels[case_id].get("request_sha256") != expected_request_hash:
             raise ValueError(f"label is not bound to exact request bytes: {case_id}")
     validate_observations(case_ids, observations, arm=arm, repeats=repeats)
+    expected_hashes = {
+        case_id: case["request_sha256"] for case_id, case in case_by_id.items()
+    }
+    for row in observations:
+        if row["request_sha256"] != expected_hashes[row["case_id"]]:
+            raise ValueError(
+                "observation request hash does not match dataset case: "
+                f"{row['case_id']}"
+            )
     by_case: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in observations:
         by_case[row["case_id"]].append(row)
@@ -498,6 +521,7 @@ def score_results(
                 not cited <= selected_sources
                 or row["snapshot_consistent"] is False
                 or row["source_scope_consistent"] is False
+                or row["query_trace_link_consistent"] is False
             )
             if scope_identity_violation:
                 scope_identity_violations += 1
@@ -528,6 +552,7 @@ def score_results(
                             or not row["citations_valid"]
                             or row["snapshot_consistent"] is not True
                             or not row["query_trace_present"]
+                            or not row["query_trace_link_consistent"]
                         )
                     )
                 )
@@ -543,6 +568,7 @@ def score_results(
                     and bool(row["snapshot_consistent"])
                     and bool(row["source_scope_consistent"])
                     and bool(row["query_trace_present"])
+                    and bool(row["query_trace_link_consistent"])
                 )
 
             if label_operation == "transform_text":

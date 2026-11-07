@@ -13,7 +13,34 @@ from scripts.beta_conv_01a_eval_prep import (
     build_cases,
     validate_cases,
 )
-from scripts.beta_conv_01a_eval_scoring import score_paired_results, score_results
+from scripts.beta_conv_01a_eval_scoring import (
+    score_paired_results,
+)
+from scripts.beta_conv_01a_eval_scoring import (
+    score_results as _score_results,
+)
+
+
+def score_results(
+    cases: list[dict[str, object]],
+    labels: dict[str, dict[str, object]],
+    observations: list[dict[str, object]],
+    *,
+    arm: str,
+    repeats: int,
+) -> dict[str, object]:
+    """Bind legacy synthetic observations to their explicit fixture identities."""
+    expected_hashes = {case["case_id"]: case["request_sha256"] for case in cases}
+    bound_observations = []
+    for observation in observations:
+        bound = dict(observation)
+        bound.setdefault("request_sha256", expected_hashes[bound["case_id"]])
+        bound.setdefault(
+            "query_trace_link_consistent",
+            True if bound.get("terminal_state") == "response" else None,
+        )
+        bound_observations.append(bound)
+    return _score_results(cases, labels, bound_observations, arm=arm, repeats=repeats)
 
 
 def _bind_label(
@@ -64,6 +91,7 @@ def _observation(
         "snapshot_consistent": snapshot_consistent,
         "source_scope_consistent": True,
         "query_trace_present": terminal_state == "response",
+        "query_trace_link_consistent": (True if terminal_state == "response" else None),
         "target_kind": None,
         "target_role": None,
         "target_ordinal": None,
@@ -159,10 +187,16 @@ def test_candidate_files_are_hashable_and_annotation_labels_remain_blank(
     assert manifest["annotation_status"]["independent_labels"] == 0
     assert manifest["safety_challenge_status"]["new_families_authored"] == 0
     assert manifest["http_execution_harness_status"] == (
-        "IMPLEMENTED; ROUTE_TEST_EXECUTION_INCOMPLETE"
+        "DETERMINISTIC_CANONICAL_ROUTE_QUALIFIED; NO_REAL_MODEL_CALLS"
     )
-    assert manifest["canonical_api_adapter"]["execution_qualified"] is False
+    assert manifest["canonical_api_adapter"]["execution_qualified"] is True
+    assert manifest["canonical_api_adapter"]["real_model_qualified"] is False
     assert manifest["canonical_api_adapter"]["real_model_calls"] == 0
+    assert manifest["held_out_custody"]["within_domain_only"] is True
+    assert (
+        manifest["held_out_custody"]["planner_tuning_from_held_out_prohibited"] is True
+    )
+    assert manifest["evaluation_schedule"]["arm_order"] == ["legacy", "planner"]
     assert manifest["evaluation_schedule"]["execution_choice"] == (
         "PENDING_SEPARATE_AUTHORITY"
     )
@@ -351,6 +385,60 @@ def test_scorer_rejects_label_not_bound_to_exact_request() -> None:
 
     with pytest.raises(ValueError, match="not bound to exact request"):
         score_results([case], labels, [], arm="planner", repeats=1)
+
+
+def test_scorer_rejects_observation_bound_to_another_request() -> None:
+    case = {
+        "case_id": "case-1",
+        "stratum": "factual_source",
+        "language": "en",
+        "request": {"question": "What does the manual say?", "source_ids": None},
+        "available_source_ids": ["source_manual"],
+    }
+    label = {
+        "expected_operation": "grounded_query",
+        "required_source_ids": ["source_manual"],
+        "requires_evidence": True,
+        "should_clarify": False,
+        "expected_reason_code": None,
+        "allowed_safe_outcomes": [],
+        "mandatory_unsupported": False,
+    }
+    labels = _bind_label(case, label)
+    observation = _observation(repeat=1)
+    observation["request_sha256"] = "0" * 64
+
+    with pytest.raises(ValueError, match="observation request hash"):
+        _score_results([case], labels, [observation], arm="planner", repeats=1)
+
+
+def test_scorer_counts_unlinked_query_trace_as_identity_and_grounding_failure() -> None:
+    case = {
+        "case_id": "case-1",
+        "stratum": "factual_source",
+        "language": "en",
+        "request": {"question": "What does the manual say?", "source_ids": None},
+        "available_source_ids": ["source_manual"],
+    }
+    label = {
+        "expected_operation": "grounded_query",
+        "required_source_ids": ["source_manual"],
+        "requires_evidence": True,
+        "should_clarify": False,
+        "expected_reason_code": None,
+        "allowed_safe_outcomes": [],
+        "mandatory_unsupported": False,
+    }
+    observation = _observation(repeat=1)
+    observation["query_trace_link_consistent"] = False
+
+    report = score_results(
+        [case], _bind_label(case, label), [observation], arm="planner", repeats=1
+    )
+
+    assert report["scope_identity_violations"] == 1
+    assert report["critical_grounding_violations"] == 1
+    assert report["end_to_end_completion"]["numerator"] == 0
 
 
 def test_scorer_rejects_planner_retry_and_extra_resolver_calls() -> None:
@@ -947,6 +1035,8 @@ def test_paired_scorer_reports_each_required_latency_category() -> None:
     planner = _observation(repeat=1)
     planner["elapsed_ms"] = 1100
     labels = _bind_label(case, label)
+    legacy["request_sha256"] = labels["case-1"]["request_sha256"]
+    planner["request_sha256"] = labels["case-1"]["request_sha256"]
     warm_population = {
         "first_turn_factual": {("case-1", 1)},
         "contextual_grounded": set(),
@@ -1014,6 +1104,8 @@ def test_paired_scorer_refuses_pass_with_incomplete_warm_population() -> None:
             planner_row["measurement_phase"] = "cold_start"
         legacy_rows.append(legacy_row)
         planner_rows.append(planner_row)
+        legacy_row["request_sha256"] = labels["case-1"]["request_sha256"]
+        planner_row["request_sha256"] = labels["case-1"]["request_sha256"]
     warm_population = {
         "first_turn_factual": {
             ("case-1", 1),

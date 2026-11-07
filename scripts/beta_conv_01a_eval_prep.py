@@ -1040,6 +1040,10 @@ def build_candidate(
         / "tests/unit/app/test_beta_conv_01a_eval_readiness.py",
         "tests/unit/app/test_beta_conv_01a_eval_prep.py": REPO_ROOT
         / "tests/unit/app/test_beta_conv_01a_eval_prep.py",
+        "tests/unit/app/test_beta_conv_01a_planner.py": REPO_ROOT
+        / "tests/unit/app/test_beta_conv_01a_planner.py",
+        "tests/unit/app/test_beta_conv_01_intent.py": REPO_ROOT
+        / "tests/unit/app/test_beta_conv_01_intent.py",
         "tests/unit/app/test_slice16d_b3_conversation.py": REPO_ROOT
         / "tests/unit/app/test_slice16d_b3_conversation.py",
         "docs/evidence/beta_conv_01a/eval_prep_01/SCORING_PROTOCOL.md": output_root
@@ -1052,6 +1056,10 @@ def build_candidate(
         / "PREP_CANDIDATE.md",
         "docs/evidence/beta_conv_01a/eval_prep_01/EVAL_READY_01_STATUS.md": output_root
         / "EVAL_READY_01_STATUS.md",
+        "docs/evidence/beta_conv_01a/eval_prep_01/EVAL_READY_01_CUSTODY_DECISION.md": output_root
+        / "EVAL_READY_01_CUSTODY_DECISION.md",
+        "docs/evidence/beta_conv_01a/eval_prep_01/EVAL_READY_01_API_ADAPTER_QUALIFICATION.md": output_root
+        / "EVAL_READY_01_API_ADAPTER_QUALIFICATION.md",
         "docs/evidence/beta_conv_01a/eval_prep_01/EVAL_READY_01_SCHEDULE_SPEC.md": output_root
         / "EVAL_READY_01_SCHEDULE_SPEC.md",
         "docs/evidence/beta_conv_01a/eval_prep_01/HISTORICAL_CHALLENGE_COVERAGE_CANDIDATE.md": output_root
@@ -1140,22 +1148,36 @@ def build_candidate(
             "new_spanish_families_required": 15,
             "new_spanish_families_authored": 0,
         },
-        "http_execution_harness_status": "IMPLEMENTED; ROUTE_TEST_EXECUTION_INCOMPLETE",
+        "http_execution_harness_status": "DETERMINISTIC_CANONICAL_ROUTE_QUALIFIED; NO_REAL_MODEL_CALLS",
         "canonical_api_adapter": {
             "implementation": "scripts/beta_conv_01a_eval_adapter.py",
             "source_hash": digests.get("scripts/beta_conv_01a_eval_adapter.py"),
-            "route_test": "PRESENT; TESTCLIENT_STARTUP_STALL_IN_CURRENT_ENVIRONMENT",
-            "execution_qualified": False,
+            "route_test": "38_CONVERSATION_API_REGRESSIONS_PASS_IN_COMPATIBLE_ENVIRONMENT",
+            "execution_qualified": True,
+            "real_model_qualified": False,
             "real_model_calls": 0,
         },
         "evaluation_schedule": {
-            "candidate_status": "TWO_ALTERNATIVES_PREPARED; NOT_FROZEN_OR_EXECUTED",
+            "candidate_status": "SERIALIZED_SELECTED_FOR_REVIEW; NOT_FROZEN_OR_EXECUTED",
             "private_candidate_sha256": digests.get(
                 "private/execution_schedule_candidate.json"
             ),
             "attempts_per_alternative": 720,
+            "router_mode_switches": 1,
+            "canonical_app_instances_concurrently": 1,
+            "arm_order": ["legacy", "planner"],
+            "temporal_drift_limitation": "legacy arm precedes planner arm; final methodology review required",
             "execution_choice": "PENDING_SEPARATE_AUTHORITY",
             "warm_pairs_per_alternative": 359,
+        },
+        "held_out_custody": {
+            "status": "SOURCE_VISIBLE_EXCEPTION_HUMAN_ACCEPTED; NOT_BLIND",
+            "evidence_path": "docs/evidence/beta_conv_01a/eval_prep_01/EVAL_READY_01_CUSTODY_DECISION.md",
+            "human_accepted": True,
+            "within_domain_only": True,
+            "planner_tuning_from_held_out_prohibited": True,
+            "case_regeneration_after_observation_prohibited": True,
+            "independent_annotations_and_safety_authorship_still_required": True,
         },
         "latency_accounting": {
             "boundary": "API request receipt to response or recorded terminal failure",
@@ -1219,10 +1241,9 @@ def build_candidate(
             "two_independent_annotator_labels",
             "40_independently_authored_safety_families_including_15_spanish",
             "historical_challenge_roster_completeness_review",
-            "independent_held_out_custody_or_human_acceptance_of_source_visible_process_freeze",
-            "canonical_api_execution_harness_and_offline_compatibility_validation",
-            "interleaved_arm_execution_with_one_active_app_qualification",
-            "source_alias_mapping_and_roundtrip_validation",
+            "freeze_exact_held_out_cases_labels_scorer_thresholds_planner_configuration_and_environment_before_execution",
+            "real_model_offline_compatibility_validation",
+            "serialized_arm_restart_boundary_and_temporal_drift_methodology_review",
             "human_acceptance_of_exact_freeze_manifest",
             "evaluation_execution_authority",
         ],

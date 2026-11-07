@@ -478,6 +478,51 @@ def test_planner_transform_uses_sealed_transform_executor_only(
     assert outcome.query_trace_id is None
 
 
+def test_whole_conversation_summary_uses_unsupported_operation_contract(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    unsupported = _wire_plan(
+        operation="unsupported_operation",
+        retrieval_question=None,
+        reason_code="conversation_summary_unavailable",
+    )
+    runtime, generator, workspace, scope = _planner_runtime(
+        tmp_path, json.dumps(unsupported)
+    )
+    _admit_planner_runtime(monkeypatch, workspace, scope)
+    monkeypatch.setattr(
+        conversation_turn,
+        "resolve_conversation_context",
+        lambda *_args, **_kwargs: pytest.fail("unsupported summary invoked resolver"),
+    )
+    monkeypatch.setattr(
+        conversation_turn,
+        "run_bound_snapshot_query",
+        lambda *_args, **_kwargs: pytest.fail("unsupported summary invoked retrieval"),
+    )
+    monkeypatch.setattr(
+        conversation_turn,
+        "transform_conversation_text",
+        lambda *_args, **_kwargs: pytest.fail("unsupported summary invoked transform"),
+    )
+
+    outcome = conversation_turn.run_conversation_turn(
+        runtime,
+        workspace_id="ws_test",
+        question="give me a summary of this conversation",
+    )
+
+    assert generator.generate_calls == 1
+    assert outcome.status == "clarification_required"
+    assert outcome.guidance_code == "conversation_summary_unavailable"
+    assert outcome.response_kind == "clarification"
+    trace = ConversationTraceStore(runtime.settings).get(outcome.conversation_trace_id)
+    assert trace is not None
+    assert trace.planner_operation == "unsupported_operation"
+    assert trace.planner_reason_code == "conversation_summary_unavailable"
+
+
 def test_unselected_planner_source_mention_clarifies_without_query(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

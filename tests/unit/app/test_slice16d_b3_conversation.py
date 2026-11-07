@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import shutil
@@ -43,6 +44,15 @@ from offline_rag.app.conversation.transform import TRANSFORM_PROMPT_CONTRACT_ID
 from offline_rag.app.conversation.turn import run_conversation_turn
 from offline_rag.app.errors import AppError, ErrorCode
 from offline_rag.app.query import run_workspace_query
+
+
+def _eval_request_sha256(request: dict[str, Any]) -> str:
+    canonical = json.dumps(
+        request, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
 from offline_rag.app.runtime import ApplicationRuntime, ResourceFactories
 from offline_rag.app.traces import ProductTraceStore
 from offline_rag.app.workspace.store import WorkspaceStore
@@ -777,14 +787,16 @@ def test_eval_adapter_uses_canonical_http_route_and_normalizes_citations(
                 source_aliases=aliases,
                 instrumentation=instrumentation,
             )
+            request = {
+                "question": f"Which methods are supervised in {ALPHA_SCOPE_MARKER}?",
+                "source_ids": ["source_manual"],
+                "prior_turns": [],
+            }
             observation = adapter.execute(
                 {
                     "case_id": "adapter-grounded-001",
-                    "request": {
-                        "question": f"Which methods are supervised in {ALPHA_SCOPE_MARKER}?",
-                        "source_ids": ["source_manual"],
-                        "prior_turns": [],
-                    },
+                    "request": request,
+                    "request_sha256": _eval_request_sha256(request),
                 },
                 arm="planner",
                 repeat=1,
@@ -801,6 +813,7 @@ def test_eval_adapter_uses_canonical_http_route_and_normalizes_citations(
         assert observation["snapshot_consistent"] is True
         assert observation["source_scope_consistent"] is True
         assert observation["query_trace_present"] is True
+        assert observation["query_trace_link_consistent"] is True
         assert observation["planner_calls"] == 1
         assert observation["resolver_calls"] == 0
         assert observation["retrieval_calls"] == 1
@@ -851,14 +864,16 @@ def test_eval_adapter_captures_executed_transform_target_and_options(
                 source_aliases=aliases,
                 instrumentation=instrumentation,
             )
+            request = {
+                "question": question,
+                "source_ids": None,
+                "prior_turns": prior_turns,
+            }
             observation = adapter.execute(
                 {
                     "case_id": "adapter-transform-001",
-                    "request": {
-                        "question": question,
-                        "source_ids": None,
-                        "prior_turns": prior_turns,
-                    },
+                    "request": request,
+                    "request_sha256": _eval_request_sha256(request),
                 },
                 arm="planner",
                 repeat=2,

@@ -14,15 +14,17 @@
       "evidence_sha256": null
     },
     "api_adapter": {
-      "status": "IMPLEMENTED_ROUTE_TEST_EXECUTION_INCOMPLETE",
-      "evidence_sha256": null
+      "status": "DETERMINISTIC_CANONICAL_ROUTE_QUALIFIED",
+      "evidence_sha256": "289dda4ef5e87301b1f9e521646cf62e3b2787201cd5816157d329e4d99085e7",
+      "evidence_location": "preparation",
+      "evidence_path": "EVAL_READY_01_API_ADAPTER_QUALIFICATION.md"
     },
     "evaluation_environment": {
       "status": "REFERENCE_HOST_AND_MODEL_PENDING",
       "evidence_sha256": null
     },
     "execution_schedule": {
-      "status": "CANDIDATE_ALTERNATIVES_PREPARED_NOT_FROZEN",
+      "status": "SERIALIZED_CANDIDATE_PREPARED_WITH_ROUTER_RESTART_BOUNDARY",
       "evidence_sha256": null
     },
     "scoring_methodology": {
@@ -31,8 +33,10 @@
     }
   },
   "held_out_custody": {
-    "status": "SOURCE_VISIBLE_RECONSTRUCTIBLE_CUSTODY_UNRESOLVED",
-    "evidence_sha256": null
+    "status": "SOURCE_VISIBLE_EXCEPTION_HUMAN_ACCEPTED",
+    "evidence_sha256": "8d7cac5717784b001c4d0ece3e4d02560421546c51663ee3368580674b703077",
+    "evidence_location": "preparation",
+    "evidence_path": "EVAL_READY_01_CUSTODY_DECISION.md"
   },
   "thresholds_changed": false,
   "held_out_scored": false,

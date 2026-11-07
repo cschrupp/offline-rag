@@ -37,6 +37,14 @@ from offline_rag.app.conversation.transform import TRANSFORM_PROMPT_CONTRACT_ID
 
 MAX_CASE_ID_CHARS = 128
 _SAFE_REASON_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
+_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+
+
+def _canonical_request_sha256(request: Mapping[str, Any]) -> str:
+    canonical = json.dumps(
+        request, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 class ResponseClient(Protocol):
@@ -359,9 +367,11 @@ def _empty_observation(
     planner_validation: str | None = None,
     adapter_error_category: str | None = None,
     source_alias_mapping_sha256: str | None = None,
+    request_sha256: str | None = None,
 ) -> dict[str, Any]:
     return {
         "case_id": case_id,
+        "request_sha256": request_sha256,
         "arm": arm,
         "repeat": repeat,
         "terminal_state": terminal_state,
@@ -378,6 +388,7 @@ def _empty_observation(
         "snapshot_consistent": None,
         "source_scope_consistent": None,
         "query_trace_present": False,
+        "query_trace_link_consistent": None,
         "target_kind": None,
         "target_role": None,
         "target_ordinal": None,
@@ -457,13 +468,22 @@ class ConversationApiEvidenceAdapter:
             raise ValueError("scheduled arm does not match application router mode")
         question = request.get("question")
         prior_turns = request.get("prior_turns", [])
+        request_sha256 = case.get("request_sha256")
         if (
             not isinstance(question, str)
             or not question.strip()
             or len(question.strip()) > MAX_QUESTION_CHARS
             or not isinstance(prior_turns, list)
+            or not isinstance(request_sha256, str)
+            or not _SHA256_RE.fullmatch(request_sha256)
         ):
             raise ValueError("evaluation request does not match conversation schema")
+        try:
+            actual_request_sha256 = _canonical_request_sha256(request)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("evaluation request is not canonical JSON data") from exc
+        if request_sha256 != actual_request_sha256:
+            raise ValueError("evaluation request hash does not match dataset record")
         translated_scope = self._source_aliases.translate_request_scope(
             request.get("source_ids")
         )
@@ -498,6 +518,7 @@ class ConversationApiEvidenceAdapter:
                     ),
                     planner_elapsed_ms=self._instrumentation.planner_elapsed_ms(),
                     source_alias_mapping_sha256=self._source_aliases.sha256,
+                    request_sha256=request_sha256,
                 )
             except httpx.HTTPError:
                 elapsed_ms = (time.perf_counter() - started) * 1000
@@ -515,6 +536,7 @@ class ConversationApiEvidenceAdapter:
                     adapter_error_category="transport_error",
                     source_alias_mapping_sha256=self._source_aliases.sha256,
                     planner_elapsed_ms=self._instrumentation.planner_elapsed_ms(),
+                    request_sha256=request_sha256,
                 )
             elapsed_ms = (time.perf_counter() - started) * 1000
             counts = _count_delta(before, self._instrumentation.snapshot_counts())
@@ -545,6 +567,7 @@ class ConversationApiEvidenceAdapter:
                         "unavailable" if counts["planner_calls"] else None
                     ),
                     source_alias_mapping_sha256=self._source_aliases.sha256,
+                    request_sha256=request_sha256,
                 )
 
             try:
@@ -562,6 +585,7 @@ class ConversationApiEvidenceAdapter:
                     planner_elapsed_ms=self._instrumentation.planner_elapsed_ms(),
                     adapter_error_category="invalid_api_response",
                     source_alias_mapping_sha256=self._source_aliases.sha256,
+                    request_sha256=request_sha256,
                 )
 
             return self._normalize_response(
@@ -574,6 +598,7 @@ class ConversationApiEvidenceAdapter:
                 counts=counts,
                 expected_live_scope=translated_scope,
                 measured_planner_elapsed_ms=self._instrumentation.planner_elapsed_ms(),
+                expected_request_sha256=request_sha256,
             )
 
     def _normalize_response(
@@ -588,6 +613,7 @@ class ConversationApiEvidenceAdapter:
         counts: Mapping[str, int],
         expected_live_scope: list[str] | None,
         measured_planner_elapsed_ms: float | None,
+        expected_request_sha256: str,
     ) -> dict[str, Any]:
         if not isinstance(payload, dict):
             return _empty_observation(
@@ -602,6 +628,7 @@ class ConversationApiEvidenceAdapter:
                 planner_elapsed_ms=measured_planner_elapsed_ms,
                 adapter_error_category="invalid_api_response",
                 source_alias_mapping_sha256=self._source_aliases.sha256,
+                request_sha256=expected_request_sha256,
             )
 
         conversation_trace_id = payload.get("conversation_trace_id")
@@ -645,6 +672,14 @@ class ConversationApiEvidenceAdapter:
             adapter_error_category = "citation_trace_mismatch"
 
         snapshot_id = payload.get("snapshot_id")
+        query_trace_link_consistent = bool(
+            conversation_trace is not None
+            and getattr(conversation_trace, "query_trace_id", None) == query_trace_id
+        )
+        if not query_trace_link_consistent:
+            adapter_error_category = (
+                adapter_error_category or "query_trace_link_mismatch"
+            )
         snapshot_consistent = bool(
             conversation_trace is not None
             and conversation_trace.snapshot_id == snapshot_id
@@ -703,6 +738,7 @@ class ConversationApiEvidenceAdapter:
                 planner_elapsed_ms=measured_planner_elapsed_ms,
                 adapter_error_category="invalid_api_response",
                 source_alias_mapping_sha256=self._source_aliases.sha256,
+                request_sha256=expected_request_sha256,
             )
 
         planner_elapsed_ms = getattr(conversation_trace, "planner_duration_ms", None)
@@ -735,6 +771,7 @@ class ConversationApiEvidenceAdapter:
 
         return {
             "case_id": case_id,
+            "request_sha256": expected_request_sha256,
             "arm": arm,
             "repeat": repeat,
             "terminal_state": "response",
@@ -757,6 +794,7 @@ class ConversationApiEvidenceAdapter:
             "snapshot_consistent": snapshot_consistent,
             "source_scope_consistent": source_scope_consistent,
             "query_trace_present": query_trace_present,
+            "query_trace_link_consistent": query_trace_link_consistent,
             "target_kind": target_kind,
             "target_role": getattr(conversation_trace, "transform_source_role", None),
             "target_ordinal": getattr(
