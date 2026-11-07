@@ -84,6 +84,36 @@ def _interleaved_schedule(case_ids: list[str]) -> list[dict[str, Any]]:
     return attempts
 
 
+def _counterbalanced_serialized_schedule(
+    case_ids: list[str],
+) -> list[dict[str, Any]]:
+    """Serialize one arm/repetition per app session in counterbalanced order."""
+    arm_order_by_repeat = (
+        ("legacy", "planner"),
+        ("planner", "legacy"),
+        ("legacy", "planner"),
+    )
+    attempts: list[dict[str, Any]] = []
+    session_order = 0
+    for repeat, arm_order in enumerate(arm_order_by_repeat, start=1):
+        for arm in arm_order:
+            session_order += 1
+            session_id = f"repeat-{repeat}-{arm}"
+            cold_seen: set[str] = set()
+            for case_id in case_ids:
+                attempt = _attempt(
+                    case_id,
+                    arm,
+                    repeat,
+                    len(attempts) + 1,
+                    cold_seen,
+                )
+                attempt["session_id"] = session_id
+                attempt["session_order"] = session_order
+                attempts.append(attempt)
+    return attempts
+
+
 def _warm_pair_population(
     attempts: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
@@ -137,14 +167,95 @@ def validate_schedule(
                 raise ValueError("interleaved pair must use both arms")
 
 
+def validate_counterbalanced_schedule(
+    case_ids: list[str], attempts: list[dict[str, Any]]
+) -> None:
+    """Validate six serialized sessions and the predeclared pairing contract."""
+    expected = {
+        (case_id, arm, repeat)
+        for case_id in case_ids
+        for arm in ARM_NAMES
+        for repeat in range(1, REPETITIONS + 1)
+    }
+    observed = [(row["case_id"], row["arm"], row["repeat"]) for row in attempts]
+    if len(attempts) != 720 or len(observed) != len(set(observed)):
+        raise ValueError("schedule has duplicate or missing attempt identities")
+    if set(observed) != expected:
+        raise ValueError("schedule identity set differs from accepted matrix")
+
+    expected_sessions = [
+        (1, "legacy"),
+        (1, "planner"),
+        (2, "planner"),
+        (2, "legacy"),
+        (3, "legacy"),
+        (3, "planner"),
+    ]
+    session_groups: dict[str, list[dict[str, Any]]] = {}
+    session_order: list[tuple[int, int, str]] = []
+    for row in attempts:
+        session_id = row.get("session_id")
+        if not isinstance(session_id, str) or not session_id:
+            raise ValueError("counterbalanced attempt lacks a session identity")
+        session_groups.setdefault(session_id, []).append(row)
+
+    if len(session_groups) != len(expected_sessions):
+        raise ValueError("counterbalanced schedule must contain six sessions")
+    for session_id, rows in session_groups.items():
+        rows.sort(key=lambda row: row["order"])
+        if len(rows) != CASE_COUNT:
+            raise ValueError("each counterbalanced session must contain 120 cases")
+        arms = {row["arm"] for row in rows}
+        repeats = {row["repeat"] for row in rows}
+        orders = {row.get("session_order") for row in rows}
+        if len(arms) != 1 or len(repeats) != 1 or len(orders) != 1:
+            raise ValueError("session mixes arm, repetition, or session order")
+        arm = next(iter(arms))
+        repeat = next(iter(repeats))
+        order = next(iter(orders))
+        if not isinstance(order, int):
+            raise TypeError("session order must be an integer")
+        if session_id != f"repeat-{repeat}-{arm}":
+            raise ValueError("session identity does not match its arm and repeat")
+        session_order.append((order, repeat, arm))
+        if rows[0]["measurement_phase"] != "cold_start":
+            raise ValueError("first attempt in every session must be cold")
+        if sum(row["measurement_phase"] == "cold_start" for row in rows) != 1:
+            raise ValueError("each session must contain exactly one cold attempt")
+        if any(row["measurement_phase"] != "warm_interactive" for row in rows[1:]):
+            raise ValueError("attempts after session start must be warm")
+
+    observed_session_order = [
+        (repeat, arm) for _order, repeat, arm in sorted(session_order)
+    ]
+    if observed_session_order != expected_sessions:
+        raise ValueError("counterbalanced session order differs from frozen proposal")
+
+    for repeat in range(1, REPETITIONS + 1):
+        legacy_cases = [
+            row["case_id"]
+            for row in attempts
+            if row["repeat"] == repeat and row["arm"] == "legacy"
+        ]
+        planner_cases = [
+            row["case_id"]
+            for row in attempts
+            if row["repeat"] == repeat and row["arm"] == "planner"
+        ]
+        if legacy_cases != planner_cases:
+            raise ValueError("matched arms must use identical case order per repeat")
+
+
 def build_schedule(case_ids: list[str], *, seed: str) -> dict[str, Any]:
-    """Build schedule candidates; serialized order is the executable proposal."""
+    """Build unexecuted schedule candidates for methodology review."""
     if len(case_ids) != CASE_COUNT or len(case_ids) != len(set(case_ids)):
         raise ValueError("schedule requires exactly 120 unique held-out IDs")
     ordered_ids = _ordered_case_ids(case_ids, seed)
     serialized = _serialized_schedule(ordered_ids)
+    counterbalanced = _counterbalanced_serialized_schedule(ordered_ids)
     interleaved = _interleaved_schedule(ordered_ids)
     validate_schedule(ordered_ids, serialized, interleaved=False)
+    validate_counterbalanced_schedule(ordered_ids, counterbalanced)
     validate_schedule(ordered_ids, interleaved, interleaved=True)
     return {
         "status": "CANDIDATE_NOT_FROZEN_NOT_EXECUTED",
@@ -154,17 +265,33 @@ def build_schedule(case_ids: list[str], *, seed: str) -> dict[str, Any]:
         "arms": list(ARM_NAMES),
         "repetitions_per_case_arm": REPETITIONS,
         "attempt_count_per_alternative": len(serialized),
-        "selected_for_review": "serialized",
+        "preferred_for_methodology_review": "counterbalanced_serialized",
         "router_mode_execution": {
             "one_canonical_app_at_a_time": True,
-            "arm_order": ["legacy", "planner"],
-            "controlled_restarts_between_arms": 1,
+            "counterbalanced_arm_order": [
+                ["legacy", "planner"],
+                ["planner", "legacy"],
+                ["legacy", "planner"],
+            ],
+            "counterbalanced_session_count": 6,
+            "counterbalanced_controlled_restarts": 5,
             "per_request_router_override": False,
             "interleaved_candidate_executable": False,
         },
         "serialized": {
             "attempts": serialized,
             "predeclared_warm_pairs": _warm_pair_population(serialized),
+        },
+        "counterbalanced_serialized": {
+            "attempts": counterbalanced,
+            "predeclared_warm_pairs": _warm_pair_population(counterbalanced),
+            "cold_observation_count": sum(
+                row["measurement_phase"] == "cold_start" for row in counterbalanced
+            ),
+            "temporal_drift_note": (
+                "counterbalancing reduces but does not eliminate drift; "
+                "within-block drift and unequal 2:1 arm-first order remain"
+            ),
         },
         "interleaved": {
             "attempts": interleaved,
@@ -210,6 +337,9 @@ def main() -> int:
                 ],
                 "serialized_warm_pairs": len(
                     schedule["serialized"]["predeclared_warm_pairs"]
+                ),
+                "counterbalanced_warm_pairs": len(
+                    schedule["counterbalanced_serialized"]["predeclared_warm_pairs"]
                 ),
                 "interleaved_warm_pairs": len(
                     schedule["interleaved"]["predeclared_warm_pairs"]

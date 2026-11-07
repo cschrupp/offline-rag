@@ -1159,26 +1159,32 @@ def build_candidate(
         },
         "evaluation_schedule": {
             "candidate_status": (
-                "FULL_ARM_SERIALIZED_BASELINE; NOT_SELECTED_FOR_LATENCY_GATE; "
+                "COUNTERBALANCED_SERIALIZED_PREFERRED_FOR_METHODOLOGY_REVIEW; "
                 "NOT_FROZEN_OR_EXECUTED"
             ),
             "private_candidate_sha256": digests.get(
                 "private/execution_schedule_candidate.json"
             ),
             "attempts_per_alternative": 720,
-            "router_mode_switches": 1,
+            "router_mode_switches": 5,
             "canonical_app_instances_concurrently": 1,
-            "arm_order": ["legacy", "planner"],
+            "session_count": 6,
+            "repetition_block_arm_order": [
+                ["legacy", "planner"],
+                ["planner", "legacy"],
+                ["legacy", "planner"],
+            ],
             "temporal_drift_limitation": (
-                "legacy arm precedes planner arm; arm and elapsed time are "
-                "perfectly associated; not drift-controlled; methodology "
-                "review required before latency conclusion"
-            ),
-            "counterbalanced_repetition_block_proposal": (
-                "PENDING_INDEPENDENT_METHODOLOGY_REVIEW"
+                "counterbalancing reduces but does not eliminate drift; "
+                "within-block drift and unequal 2:1 arm-first order remain; "
+                "not drift-controlled; independent methodology review pending"
             ),
             "execution_choice": "PENDING_SEPARATE_AUTHORITY",
-            "warm_pairs_per_alternative": 359,
+            "warm_pairs_by_alternative": {
+                "counterbalanced_serialized": 357,
+                "full_arm_serialized_baseline": 359,
+                "interleaved_diagnostic": 359,
+            },
         },
         "held_out_custody": {
             "status": "SOURCE_VISIBLE_EXCEPTION_HUMAN_ACCEPTED; NOT_BLIND",

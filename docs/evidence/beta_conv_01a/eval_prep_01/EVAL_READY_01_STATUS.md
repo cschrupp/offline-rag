@@ -23,16 +23,16 @@ activation, or promotion.
   in normalized observations.
 - Added adapter tests for alias scope, source identity, timeout denominator
   retention, planner timing, and arm/configuration mismatch.
-- Added a schedule proposal for the 120 held-out IDs only. The ignored local
-  artifact contains no request text or labels. Its original full-arm serialized
-  order and a pair-interleaved diagnostic each contain 720 `(case, arm,
-  repeat)` attempts. The full-arm order has 359 predeclared warm pairs, but
-  places every legacy observation before every planner observation. This
-  creates a material temporal-drift threat to latency comparisons and is not
-  drift-controlled. A counterbalanced serialized repetition-block schedule is
-  now proposed for independent methodology review; it would change cold/warm
-  accounting and is not yet represented as an executable or frozen schedule.
-  No schedule is frozen or authorized for execution.
+- Added three unexecuted schedule alternatives for the 120 held-out IDs only.
+  The private artifact contains no request text or labels. The preferred
+  methodology-review candidate serializes six 120-case repetition blocks in
+  the order legacy/planner, planner/legacy, legacy/planner. It uses one
+  canonical app and model instance at a time, with five restarts, six cold
+  observations, and 357 paired warm case/repetitions. The artifact also
+  preserves the original full-arm order (359 warm pairs) and request-level
+  interleaving as a diagnostic only. Counterbalancing reduces but does not
+  eliminate time drift; within-block drift and unequal 2:1 order balance
+  remain. No schedule is frozen or authorized for execution.
 - Added a fail-closed readiness checker for annotation, safety, historical
   mapping, API qualification, environment, schedule, methodology, and custody
   gates. Its current candidate state correctly remains blocked.
@@ -79,14 +79,15 @@ coverage candidate.
 - The current WSL2 preparation environment is not approved as the evaluation
   host, and no approved local model ID, revision/checksum, or serving settings
   were supplied.
-- The current executable schedule builder emits full-arm serialization, but
-  that fixed legacy-first order is not sufficient by itself to support the
-  planner latency gate: arm and elapsed time are perfectly associated. An
-  independent methodology reviewer must either accept the stationarity
-  assumption explicitly or review the counterbalanced serialized
-  repetition-block proposal. The proposal is not interleaved or drift-controlled
-  and changes cold/warm accounting. The selected schedule and scoring treatment
-  must be frozen before any held-out execution.
+- The preferred schedule candidate is counterbalanced serialized
+  repetition-block order. It is not interleaved or drift-controlled; within
+  120-request blocks, time drift remains possible, and the arm-first order is
+  unbalanced 2:1. An independent methodology reviewer must assess those limits,
+  startup overhead, and the revised cold/warm population before freeze. The
+  original full-arm legacy-first order is inadequate for the latency gate
+  unless a reviewer explicitly accepts its stationarity assumption. The
+  selected schedule and scoring treatment must be frozen before any held-out
+  execution.
 - Operational watchdog/resource envelope, independent methodology review, and
   exact freeze identities remain pending.
 

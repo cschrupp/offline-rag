@@ -196,22 +196,25 @@ def test_candidate_files_are_hashable_and_annotation_labels_remain_blank(
     assert (
         manifest["held_out_custody"]["planner_tuning_from_held_out_prohibited"] is True
     )
-    assert manifest["evaluation_schedule"]["arm_order"] == ["legacy", "planner"]
-    assert manifest["evaluation_schedule"]["candidate_status"] == (
-        "FULL_ARM_SERIALIZED_BASELINE; NOT_SELECTED_FOR_LATENCY_GATE; "
+    schedule = manifest["evaluation_schedule"]
+    assert schedule["candidate_status"] == (
+        "COUNTERBALANCED_SERIALIZED_PREFERRED_FOR_METHODOLOGY_REVIEW; "
         "NOT_FROZEN_OR_EXECUTED"
     )
-    assert (
-        "not drift-controlled"
-        in manifest["evaluation_schedule"]["temporal_drift_limitation"]
-    )
-    assert (
-        manifest["evaluation_schedule"]["counterbalanced_repetition_block_proposal"]
-        == "PENDING_INDEPENDENT_METHODOLOGY_REVIEW"
-    )
-    assert manifest["evaluation_schedule"]["execution_choice"] == (
-        "PENDING_SEPARATE_AUTHORITY"
-    )
+    assert schedule["session_count"] == 6
+    assert schedule["router_mode_switches"] == 5
+    assert schedule["repetition_block_arm_order"] == [
+        ["legacy", "planner"],
+        ["planner", "legacy"],
+        ["legacy", "planner"],
+    ]
+    assert "not drift-controlled" in schedule["temporal_drift_limitation"]
+    assert schedule["warm_pairs_by_alternative"] == {
+        "counterbalanced_serialized": 357,
+        "full_arm_serialized_baseline": 359,
+        "interleaved_diagnostic": 359,
+    }
+    assert schedule["execution_choice"] == "PENDING_SEPARATE_AUTHORITY"
     assert manifest["thresholds"]["changed"] is False
     assert manifest["thresholds"]["gates"]["wrong_target_executions"] == 0
     assert manifest["thresholds"]["gates"]["planner_warm_p95_max_ms"] == 3000
