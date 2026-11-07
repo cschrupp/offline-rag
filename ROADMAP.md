@@ -61,15 +61,14 @@ and supporting history.
   live acceptance has not completed successfully and implementation promotion
   has not occurred. It is preserved on the locked
   `archive/beta-conv-01-deterministic-router` branch.
-- [ ] **CURRENT — BETA-CONV-01A — LLM Task Planning** — design IR-002 accepted,
-  Human accepted, implementation authorized; evaluation, activation and
-  implementation promotion remain unauthorized;
-  see [the principal development memory](docs/beta_conv_01a_llm_task_planning_amendment.md).
-  Design branch starts from canonical `main` at
-  `dfc045f4178db41f723feb0483e8f163a801bc40`, excluding unpromoted application
-  changes. Planner implementation, evaluation execution, activation and
-  promotion remain unauthorized. The earlier deterministic design and review
-  history remain preserved.
+- [x] **BETA-CONV-01A — LLM Task Planning feasibility experiment** — archived
+  after a negative development-only pilot: 22/24 planner outputs were rejected
+  as invalid; the other two were valid prior-turn transformations. The
+  recommendation is to retain the legacy router and defer planner
+  qualification. The implementation and pilot record are preserved at tag
+  [`archive/beta-conv-01a-pilot-01`](https://github.com/cschrupp/offline-rag/blob/890a0bc810f13d02766dc859a999d56ebe53a59d/docs/evidence/beta_conv_01a/PILOT_01_RESULTS.md).
+  The exact validation cause was not established. No held-out evaluation,
+  planner activation, or promotion occurred.
 - [ ] **BETA-CONV-02 — Analytical Synthesis** — deferred; not authorized.
 - [ ] Slice 17 design-open — **NOT AUTHORIZED**. This is distinct from
   original Slice 16G, which is complete.
