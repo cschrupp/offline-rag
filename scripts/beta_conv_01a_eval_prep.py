@@ -1158,7 +1158,10 @@ def build_candidate(
             "real_model_calls": 0,
         },
         "evaluation_schedule": {
-            "candidate_status": "SERIALIZED_SELECTED_FOR_REVIEW; NOT_FROZEN_OR_EXECUTED",
+            "candidate_status": (
+                "FULL_ARM_SERIALIZED_BASELINE; NOT_SELECTED_FOR_LATENCY_GATE; "
+                "NOT_FROZEN_OR_EXECUTED"
+            ),
             "private_candidate_sha256": digests.get(
                 "private/execution_schedule_candidate.json"
             ),
@@ -1166,7 +1169,14 @@ def build_candidate(
             "router_mode_switches": 1,
             "canonical_app_instances_concurrently": 1,
             "arm_order": ["legacy", "planner"],
-            "temporal_drift_limitation": "legacy arm precedes planner arm; final methodology review required",
+            "temporal_drift_limitation": (
+                "legacy arm precedes planner arm; arm and elapsed time are "
+                "perfectly associated; not drift-controlled; methodology "
+                "review required before latency conclusion"
+            ),
+            "counterbalanced_repetition_block_proposal": (
+                "PENDING_INDEPENDENT_METHODOLOGY_REVIEW"
+            ),
             "execution_choice": "PENDING_SEPARATE_AUTHORITY",
             "warm_pairs_per_alternative": 359,
         },

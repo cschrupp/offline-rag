@@ -39,13 +39,39 @@ to the wrong arm. Only one canonical app/runtime and one model instance may be
 active at a time. No second app, per-request router override, or production
 router change is introduced.
 
-The serialized design has a known temporal-drift limitation: all legacy
-observations precede all planner observations. The schedule fixes the arm
-order, randomizes case order deterministically within each arm, and retains
-the predeclared matched warm population. The final methodology review must
-assess this limitation and freeze the order before held-out execution; results
-must be reported as a sequential comparison, not as drift-controlled
-interleaved evidence.
+### Temporal-drift assessment
+
+The selected full-arm serialized order has a material limitation: all legacy
+observations precede all planner observations. Because elapsed time and arm
+are perfectly associated, changes in host load, temperature, power state, or
+runtime state can appear as an arm latency difference. This weakens the
+intended paired P50/P95 latency comparison. It does not by itself invalidate
+operation-accuracy or safety counts, but those results still require the other
+frozen-input and annotation gates.
+
+Therefore the current `legacy`-then-`planner` schedule is not sufficient by
+itself to support a planner latency-gate conclusion unless an independent
+methodology reviewer explicitly accepts the stationarity assumption and its
+limitations.
+
+A practical candidate for review is **counterbalanced serialized
+repetition-block order**: run one complete 120-case repetition in one arm, stop
+that canonical app, start the other arm, then continue with the next repetition
+in the opposite arm order. Across three repetitions this uses six sequential
+single-arm app sessions and five controlled restarts, with never more than one
+app or model instance active. The same deterministic case order is used within
+each matched repetition. The first request of each session is tagged
+`cold_start`; remaining requests are `warm_interactive`. With the current
+120-case population and matching order, this yields six cold requests and 357
+paired warm case/repetitions. This is a counterbalanced block proposal, not
+request-level interleaving and not drift-controlled evidence; drift within a
+120-request block and the unequal 2:1 order balance remain.
+
+The alternative changes cold/warm accounting and is only a candidate for
+independent methodology review. Do not execute either schedule until that
+review, exact input freeze, and separate execution authorization. Whichever
+schedule is selected, report the actual arm order and temporal limitation; do
+not describe serialized evidence as interleaved or drift-controlled.
 
 The candidate watchdogs/resource stop rules are listed in
 `EVAL_READY_01_STATUS.md`; they are proposals, not frozen execution authority.

@@ -23,15 +23,16 @@ activation, or promotion.
   in normalized observations.
 - Added adapter tests for alias scope, source identity, timeout denominator
   retention, planner timing, and arm/configuration mismatch.
-- Added a serialized schedule proposal for the 120 held-out IDs only. The
-  ignored local artifact contains no request text or labels. It has a
-  serialized alternative and a pair-interleaved alternative, each with 720
-  `(case, arm, repeat)` attempts and 359 predeclared warm pairs. The first
-  attempt per arm is labeled `cold_start`; all later attempts are
-  `warm_interactive`. Serialized is selected for review because router mode is
-  fixed at app startup; the interleaved order is not executable without
-  repeated restarts or an unauthorized override. The schedule is not frozen or
-  authorized for execution.
+- Added a schedule proposal for the 120 held-out IDs only. The ignored local
+  artifact contains no request text or labels. Its original full-arm serialized
+  order and a pair-interleaved diagnostic each contain 720 `(case, arm,
+  repeat)` attempts. The full-arm order has 359 predeclared warm pairs, but
+  places every legacy observation before every planner observation. This
+  creates a material temporal-drift threat to latency comparisons and is not
+  drift-controlled. A counterbalanced serialized repetition-block schedule is
+  now proposed for independent methodology review; it would change cold/warm
+  accounting and is not yet represented as an executable or frozen schedule.
+  No schedule is frozen or authorized for execution.
 - Added a fail-closed readiness checker for annotation, safety, historical
   mapping, API qualification, environment, schedule, methodology, and custody
   gates. Its current candidate state correctly remains blocked.
@@ -78,10 +79,14 @@ coverage candidate.
 - The current WSL2 preparation environment is not approved as the evaluation
   host, and no approved local model ID, revision/checksum, or serving settings
   were supplied.
-- The schedule candidate is serialized: one canonical app runs the legacy arm,
-  stops, then the same canonical app starts in planner mode for the planner
-  arm. The candidate retains a fixed legacy-first order and documents temporal
-  drift as a limitation; methodology review must assess this before freeze.
+- The current executable schedule builder emits full-arm serialization, but
+  that fixed legacy-first order is not sufficient by itself to support the
+  planner latency gate: arm and elapsed time are perfectly associated. An
+  independent methodology reviewer must either accept the stationarity
+  assumption explicitly or review the counterbalanced serialized
+  repetition-block proposal. The proposal is not interleaved or drift-controlled
+  and changes cold/warm accounting. The selected schedule and scoring treatment
+  must be frozen before any held-out execution.
 - Operational watchdog/resource envelope, independent methodology review, and
   exact freeze identities remain pending.
 

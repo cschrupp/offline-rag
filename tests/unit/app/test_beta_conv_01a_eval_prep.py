@@ -197,6 +197,18 @@ def test_candidate_files_are_hashable_and_annotation_labels_remain_blank(
         manifest["held_out_custody"]["planner_tuning_from_held_out_prohibited"] is True
     )
     assert manifest["evaluation_schedule"]["arm_order"] == ["legacy", "planner"]
+    assert manifest["evaluation_schedule"]["candidate_status"] == (
+        "FULL_ARM_SERIALIZED_BASELINE; NOT_SELECTED_FOR_LATENCY_GATE; "
+        "NOT_FROZEN_OR_EXECUTED"
+    )
+    assert (
+        "not drift-controlled"
+        in manifest["evaluation_schedule"]["temporal_drift_limitation"]
+    )
+    assert (
+        manifest["evaluation_schedule"]["counterbalanced_repetition_block_proposal"]
+        == "PENDING_INDEPENDENT_METHODOLOGY_REVIEW"
+    )
     assert manifest["evaluation_schedule"]["execution_choice"] == (
         "PENDING_SEPARATE_AUTHORITY"
     )
