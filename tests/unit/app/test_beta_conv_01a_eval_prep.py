@@ -37,12 +37,21 @@ def _observation(
     planner_calls: int = 1,
     resolver_calls: int = 0,
     retry_count: int = 0,
+    response_status: str | None = None,
 ) -> dict[str, object]:
+    if response_status is None and terminal_state == "response":
+        response_status = {
+            "grounded_query": "answered",
+            "transform_text": "transformed",
+            "clarify": "clarification_required",
+            "unsupported_operation": "clarification_required",
+        }.get(observed_operation)
     return {
         "case_id": "case-1",
         "arm": arm,
         "repeat": repeat,
         "terminal_state": terminal_state,
+        "response_status": response_status,
         "measurement_phase": "warm_interactive",
         "elapsed_ms": 800 if terminal_state == "response" else 120_000,
         "planner_elapsed_ms": 350 if planner_calls else None,
@@ -86,17 +95,46 @@ def test_candidate_dataset_preserves_accepted_strata_and_grouped_split() -> None
     assert sum(row["language"] == "es" for row in cases) == 90
 
     family_splits: dict[str, set[str]] = {}
+    template_splits: dict[str, set[str]] = {}
+    context_template_splits: dict[str, set[str]] = {}
     for row in cases:
         family_splits.setdefault(row["semantic_family_id"], set()).add(row["split"])
+        template_splits.setdefault(row["prompt_template_id"], set()).add(row["split"])
+        if row["context_template_id"] is not None:
+            context_template_splits.setdefault(row["context_template_id"], set()).add(
+                row["split"]
+            )
         assert "development" not in row["semantic_family_key"]
         assert "held_out" not in row["semantic_family_key"]
+        assert row["request"].get("source_ids") != []
     assert all(len(splits) == 1 for splits in family_splits.values())
+    assert all(len(splits) == 1 for splits in template_splits.values())
+    assert all(len(splits) == 1 for splits in context_template_splits.values())
+    development_templates = {
+        row["prompt_template_id"] for row in cases if row["split"] == "development"
+    }
+    held_out_templates = {
+        row["prompt_template_id"] for row in cases if row["split"] == "held_out"
+    }
+    assert development_templates.isdisjoint(held_out_templates)
+    development_context_templates = {
+        row["context_template_id"]
+        for row in cases
+        if row["split"] == "development" and row["context_template_id"] is not None
+    }
+    held_out_context_templates = {
+        row["context_template_id"]
+        for row in cases
+        if row["split"] == "held_out" and row["context_template_id"] is not None
+    }
+    assert development_context_templates.isdisjoint(held_out_context_templates)
     assert all(row["semantic_family_id"].startswith("family-") for row in cases)
 
 
 def test_historical_challenges_have_valid_user_assistant_turn_order() -> None:
-    for _, _, prior_turns, _, _ in HISTORICAL_CHALLENGES:
+    for _, _, prior_turns, selected_sources, _ in HISTORICAL_CHALLENGES:
         assert len(prior_turns) % 2 == 0
+        assert selected_sources != []
         assert [turn["role"] for turn in prior_turns] == [
             role for _ in range(len(prior_turns) // 2) for role in ("user", "assistant")
         ]
@@ -123,6 +161,16 @@ def test_candidate_files_are_hashable_and_annotation_labels_remain_blank(
     assert manifest["thresholds"]["changed"] is False
     assert manifest["thresholds"]["gates"]["wrong_target_executions"] == 0
     assert manifest["thresholds"]["gates"]["planner_warm_p95_max_ms"] == 3000
+    assert manifest["request_source_scope_semantics"]["source_ids_null_or_omitted"] == (
+        "ALL_ACTIVE"
+    )
+    assert manifest["request_source_scope_semantics"]["source_ids_empty_list"] == (
+        "INVALID_REQUEST"
+    )
+    assert manifest["response_evidence"]["api_status_field"] == "response_status"
+    assert manifest["latency_accounting"]["incomplete_warm_pair_coverage"] == (
+        "NOT_EVALUABLE"
+    )
 
     assert len(digests) >= 7
     for name, digest in digests.items():
@@ -201,6 +249,7 @@ def test_scorer_keeps_timeout_attempt_in_case_and_latency_denominators() -> None
                 "arm": "planner",
                 "repeat": repeat,
                 "terminal_state": "timeout" if is_timeout else "response",
+                "response_status": None if is_timeout else "answered",
                 "measurement_phase": "warm_interactive",
                 "elapsed_ms": 120_000 if is_timeout else 800,
                 "planner_elapsed_ms": 1_000 if is_timeout else 350,
@@ -249,7 +298,7 @@ def test_scorer_rejects_missing_attempt_instead_of_dropping_it() -> None:
         "case_id": "case-1",
         "stratum": "ambiguous_reference",
         "language": "en",
-        "request": {"source_ids": []},
+        "request": {"source_ids": None},
         "available_source_ids": ["source_manual", "source_report", "source_policy"],
     }
     label = {
@@ -276,7 +325,7 @@ def test_scorer_rejects_label_not_bound_to_exact_request() -> None:
         "case_id": "case-1",
         "stratum": "ambiguous_reference",
         "language": "en",
-        "request": {"source_ids": []},
+        "request": {"source_ids": None},
         "available_source_ids": ["source_manual"],
     }
     label = {
@@ -328,7 +377,7 @@ def test_scorer_requires_success_for_transform_target_accuracy() -> None:
         "case_id": "case-1",
         "stratum": "prior_transform",
         "language": "en",
-        "request": {"source_ids": []},
+        "request": {"source_ids": None},
         "available_source_ids": ["source_manual"],
     }
     target = {
@@ -500,12 +549,90 @@ def test_safe_clarification_is_not_a_grounding_violation_but_counts_as_outcome()
     assert report["operation_accuracy"]["numerator"] == 0
 
 
+@pytest.mark.parametrize("response_status", ["insufficient_evidence", "model_abstain"])
+def test_grounded_abstention_is_not_a_critical_grounding_violation(
+    response_status: str,
+) -> None:
+    case = {
+        "case_id": "case-1",
+        "stratum": "factual_source",
+        "language": "en",
+        "request": {"source_ids": ["source_manual"]},
+        "available_source_ids": ["source_manual"],
+    }
+    label = {
+        "expected_operation": "grounded_query",
+        "required_source_ids": ["source_manual"],
+        "requires_evidence": True,
+        "should_clarify": False,
+        "expected_reason_code": None,
+        "allowed_safe_outcomes": [],
+        "mandatory_unsupported": False,
+    }
+    observation = _observation(repeat=1, response_status=response_status)
+    observation.update(
+        {
+            "citation_source_ids": [],
+            "citations_valid": False,
+            "query_trace_present": False,
+        }
+    )
+
+    report = score_results(
+        [case],
+        _bind_label(case, label),
+        [observation],
+        arm="planner",
+        repeats=1,
+    )
+
+    assert report["critical_grounding_violations"] == 0
+    assert report["end_to_end_completion"]["numerator"] == 0
+
+
+def test_citation_free_answered_response_is_a_critical_grounding_violation() -> None:
+    case = {
+        "case_id": "case-1",
+        "stratum": "factual_source",
+        "language": "en",
+        "request": {"source_ids": ["source_manual"]},
+        "available_source_ids": ["source_manual"],
+    }
+    label = {
+        "expected_operation": "grounded_query",
+        "required_source_ids": ["source_manual"],
+        "requires_evidence": True,
+        "should_clarify": False,
+        "expected_reason_code": None,
+        "allowed_safe_outcomes": [],
+        "mandatory_unsupported": False,
+    }
+    observation = _observation(repeat=1, response_status="answered")
+    observation.update(
+        {
+            "citation_source_ids": [],
+            "citations_valid": False,
+            "query_trace_present": False,
+        }
+    )
+
+    report = score_results(
+        [case],
+        _bind_label(case, label),
+        [observation],
+        arm="planner",
+        repeats=1,
+    )
+
+    assert report["critical_grounding_violations"] == 1
+
+
 def test_scorer_flags_wrong_reason_code_for_clarification() -> None:
     case = {
         "case_id": "case-1",
         "stratum": "ambiguous_reference",
         "language": "en",
-        "request": {"source_ids": []},
+        "request": {"source_ids": None},
         "available_source_ids": ["source_manual"],
     }
     label = {
@@ -537,7 +664,7 @@ def test_scorer_rejects_non_finite_latency(elapsed: float) -> None:
         "case_id": "case-1",
         "stratum": "ambiguous_reference",
         "language": "en",
-        "request": {"source_ids": []},
+        "request": {"source_ids": None},
         "available_source_ids": ["source_manual"],
     }
     label = {
@@ -581,6 +708,93 @@ def test_scorer_rejects_case_with_invalid_selected_source_scope() -> None:
     }
 
     with pytest.raises(ValueError, match="invalid selected source identity"):
+        score_results(
+            [case],
+            _bind_label(case, label),
+            [_observation(repeat=1)],
+            arm="planner",
+            repeats=1,
+        )
+
+
+def test_scorer_resolves_null_source_scope_to_all_available_aliases() -> None:
+    case = {
+        "case_id": "case-1",
+        "stratum": "factual_source",
+        "language": "en",
+        "request": {"source_ids": None},
+        "available_source_ids": ["source_manual", "source_report"],
+    }
+    label = {
+        "expected_operation": "grounded_query",
+        "required_source_ids": ["source_manual"],
+        "requires_evidence": True,
+        "should_clarify": False,
+        "expected_reason_code": None,
+        "allowed_safe_outcomes": [],
+        "mandatory_unsupported": False,
+    }
+    observation = _observation(repeat=1)
+
+    report = score_results(
+        [case],
+        _bind_label(case, label),
+        [observation],
+        arm="planner",
+        repeats=1,
+    )
+
+    assert report["scope_identity_violations"] == 0
+
+
+def test_scorer_resolves_omitted_source_scope_to_all_available_aliases() -> None:
+    case = {
+        "case_id": "case-1",
+        "stratum": "factual_source",
+        "language": "en",
+        "request": {},
+        "available_source_ids": ["source_manual", "source_report"],
+    }
+    label = {
+        "expected_operation": "grounded_query",
+        "required_source_ids": ["source_manual"],
+        "requires_evidence": True,
+        "should_clarify": False,
+        "expected_reason_code": None,
+        "allowed_safe_outcomes": [],
+        "mandatory_unsupported": False,
+    }
+
+    report = score_results(
+        [case],
+        _bind_label(case, label),
+        [_observation(repeat=1)],
+        arm="planner",
+        repeats=1,
+    )
+
+    assert report["scope_identity_violations"] == 0
+
+
+def test_scorer_rejects_empty_source_scope_list() -> None:
+    case = {
+        "case_id": "case-1",
+        "stratum": "factual_source",
+        "language": "en",
+        "request": {"source_ids": []},
+        "available_source_ids": ["source_manual"],
+    }
+    label = {
+        "expected_operation": "grounded_query",
+        "required_source_ids": ["source_manual"],
+        "requires_evidence": True,
+        "should_clarify": False,
+        "expected_reason_code": None,
+        "allowed_safe_outcomes": [],
+        "mandatory_unsupported": False,
+    }
+
+    with pytest.raises(ValueError, match="invalid empty source scope"):
         score_results(
             [case],
             _bind_label(case, label),
@@ -655,12 +869,18 @@ def test_paired_scorer_reports_each_required_latency_category() -> None:
     planner = _observation(repeat=1)
     planner["elapsed_ms"] = 1100
     labels = _bind_label(case, label)
+    warm_population = {
+        "first_turn_factual": {("case-1", 1)},
+        "contextual_grounded": set(),
+        "text_transformation": set(),
+    }
 
     report = score_paired_results(
         [case],
         labels,
         {"legacy": [legacy], "planner": [planner]},
         repeats=1,
+        warm_comparison_population=warm_population,
     )
 
     assert set(report["paired_end_to_end_latency"]) == {
@@ -676,8 +896,66 @@ def test_paired_scorer_reports_each_required_latency_category() -> None:
         labels,
         {"legacy": [legacy], "planner": [planner]},
         repeats=1,
+        warm_comparison_population=warm_population,
     )
     assert (
         failed_report["paired_end_to_end_latency"]["first_turn_factual"]["status"]
         == "FAIL"
     )
+
+
+def test_paired_scorer_refuses_pass_with_incomplete_warm_population() -> None:
+    case = {
+        "case_id": "case-1",
+        "stratum": "factual_source",
+        "request": {
+            "question": "What does the manual say?",
+            "prior_turns": [],
+            "source_ids": ["source_manual"],
+        },
+        "available_source_ids": ["source_manual"],
+        "language": "en",
+    }
+    label = {
+        "expected_operation": "grounded_query",
+        "required_source_ids": ["source_manual"],
+        "requires_evidence": True,
+        "should_clarify": False,
+        "expected_reason_code": None,
+        "allowed_safe_outcomes": [],
+        "mandatory_unsupported": False,
+    }
+    labels = _bind_label(case, label)
+    legacy_rows = []
+    planner_rows = []
+    for repeat in range(1, 4):
+        legacy_row = _observation(repeat=repeat, arm="legacy", planner_calls=0)
+        planner_row = _observation(repeat=repeat)
+        if repeat in {2, 3}:
+            legacy_row["measurement_phase"] = "cold_start"
+            planner_row["measurement_phase"] = "cold_start"
+        legacy_rows.append(legacy_row)
+        planner_rows.append(planner_row)
+    warm_population = {
+        "first_turn_factual": {
+            ("case-1", 1),
+            ("case-1", 2),
+            ("case-1", 3),
+        },
+        "contextual_grounded": set(),
+        "text_transformation": set(),
+    }
+
+    report = score_paired_results(
+        [case],
+        labels,
+        {"legacy": legacy_rows, "planner": planner_rows},
+        repeats=3,
+        warm_comparison_population=warm_population,
+    )
+
+    result = report["paired_end_to_end_latency"]["first_turn_factual"]
+    assert result["status"] == "NOT_EVALUABLE"
+    assert result["warm_coverage_complete"] is False
+    assert result["matched_case_repeats"] == 1
+    assert result["expected_warm_case_repeats"] == 3

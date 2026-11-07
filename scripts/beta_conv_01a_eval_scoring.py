@@ -17,6 +17,13 @@ OPERATIONS = {
     "clarify",
     "unsupported_operation",
 }
+RESPONSE_STATUSES = {
+    "answered",
+    "insufficient_evidence",
+    "model_abstain",
+    "clarification_required",
+    "transformed",
+}
 
 
 def nearest_rank(values: Iterable[float], percentile: float) -> float:
@@ -69,6 +76,7 @@ def validate_observations(
         "arm",
         "repeat",
         "terminal_state",
+        "response_status",
         "measurement_phase",
         "elapsed_ms",
         "planner_elapsed_ms",
@@ -105,6 +113,12 @@ def validate_observations(
             raise ValueError(f"unexpected observation identity: {key}")
         if row["terminal_state"] not in TERMINAL_STATES:
             raise ValueError(f"invalid terminal_state: {row['terminal_state']}")
+        response_status = row["response_status"]
+        if row["terminal_state"] == "response":
+            if response_status not in RESPONSE_STATUSES:
+                raise ValueError("response_status is required for a response")
+        elif response_status is not None:
+            raise ValueError("response_status must be null for a non-response")
         if row["measurement_phase"] not in {"cold_start", "warm_interactive"}:
             raise ValueError(f"invalid measurement_phase: {row['measurement_phase']}")
         elapsed = row["elapsed_ms"]
@@ -351,19 +365,37 @@ def score_results(
         elif expected_target is not None:
             raise ValueError(f"non-transform label must have null target: {case_id}")
         expected_sources = set(label["required_source_ids"])
-        selected_source_rows = case_by_id[case_id]["request"]["source_ids"]
+        selected_source_rows = case_by_id[case_id]["request"].get("source_ids")
         available_source_rows = case_by_id[case_id]["available_source_ids"]
+        if selected_source_rows == []:
+            raise ValueError(f"request uses invalid empty source scope: {case_id}")
         if (
-            not isinstance(selected_source_rows, list)
-            or any(not isinstance(source_id, str) for source_id in selected_source_rows)
+            (
+                selected_source_rows is not None
+                and (
+                    not isinstance(selected_source_rows, list)
+                    or any(
+                        not isinstance(source_id, str)
+                        for source_id in selected_source_rows
+                    )
+                )
+            )
             or not isinstance(available_source_rows, list)
             or any(
                 not isinstance(source_id, str) for source_id in available_source_rows
             )
+            or len(available_source_rows) != len(set(available_source_rows))
+            or (
+                isinstance(selected_source_rows, list)
+                and len(selected_source_rows) != len(set(selected_source_rows))
+            )
         ):
             raise TypeError(f"source identities must be string lists: {case_id}")
-        selected_sources = set(selected_source_rows)
         available_sources = set(available_source_rows)
+        if selected_source_rows is None:
+            selected_sources = available_sources
+        else:
+            selected_sources = set(selected_source_rows)
         if not selected_sources <= available_sources:
             raise ValueError(
                 f"request contains invalid selected source identity: {case_id}"
@@ -454,17 +486,19 @@ def score_results(
             cited = set(row["citation_source_ids"])
             if not cited <= selected_sources or row["snapshot_consistent"] is False:
                 scope_identity_violations += 1
+            factual_success = row["response_status"] == "answered"
             if (
                 label["requires_evidence"]
                 and row["terminal_state"] == "response"
                 and (
                     operation == "transform_text"
                     or (
-                        operation == "grounded_query"
+                        factual_success
                         and (
-                            not cited
+                            operation != "grounded_query"
+                            or not cited
                             or not row["citations_valid"]
-                            or not row["snapshot_consistent"]
+                            or row["snapshot_consistent"] is not True
                             or not row["query_trace_present"]
                         )
                     )
@@ -474,6 +508,7 @@ def score_results(
             if label["requires_evidence"]:
                 row_completion_ok = (
                     row_completion_ok
+                    and row["response_status"] == "answered"
                     and bool(cited)
                     and bool(row["citations_valid"])
                     and bool(row["snapshot_consistent"])
@@ -828,6 +863,7 @@ def score_paired_results(
     observations_by_arm: Mapping[str, list[dict[str, Any]]],
     *,
     repeats: int,
+    warm_comparison_population: Mapping[str, set[tuple[str, int]]],
 ) -> dict[str, Any]:
     """Report accepted paired end-to-end latency gates for both arms.
 
@@ -869,6 +905,10 @@ def score_paired_results(
             if label["expected_operation"] == "transform_text"
         },
     }
+    if set(warm_comparison_population) != set(categories):
+        raise ValueError(
+            "warm comparison population must define all three latency categories"
+        )
     rows_by_arm = {
         arm: {(row["case_id"], row["repeat"]): row for row in observations_by_arm[arm]}
         for arm in required_arms
@@ -885,19 +925,39 @@ def score_paired_results(
             for case_id in case_ids
             for repeat in range(1, repeats + 1)
         )
-        keys = [
-            key
-            for key in candidate_keys
-            if rows_by_arm["legacy"][key]["measurement_phase"] == "warm_interactive"
-            and rows_by_arm["planner"][key]["measurement_phase"] == "warm_interactive"
-        ]
+        expected_warm_keys = warm_comparison_population[category]
+        if not expected_warm_keys <= set(candidate_keys):
+            raise ValueError(f"warm comparison population escapes {category} category")
+        keys = sorted(expected_warm_keys)
+        warm_coverage_complete = bool(keys) and all(
+            rows_by_arm[arm][key]["measurement_phase"] == "warm_interactive"
+            for key in keys
+            for arm in required_arms
+        )
         legacy_values = [rows_by_arm["legacy"][key]["elapsed_ms"] for key in keys]
         planner_values = [rows_by_arm["planner"][key]["elapsed_ms"] for key in keys]
-        if not keys:
+        cold_pair_count = sum(
+            any(
+                rows_by_arm[arm][key]["measurement_phase"] != "warm_interactive"
+                for arm in required_arms
+            )
+            for key in candidate_keys
+        )
+        outside_predeclared_population = len(candidate_keys) - len(keys)
+        if not warm_coverage_complete:
             paired_latency[category] = {
                 "status": "NOT_EVALUABLE",
-                "matched_case_repeats": 0,
-                "excluded_cold_pairs": len(candidate_keys),
+                "matched_case_repeats": sum(
+                    all(
+                        rows_by_arm[arm][key]["measurement_phase"] == "warm_interactive"
+                        for arm in required_arms
+                    )
+                    for key in keys
+                ),
+                "expected_warm_case_repeats": len(keys),
+                "excluded_cold_pairs": cold_pair_count,
+                "outside_predeclared_warm_population": outside_predeclared_population,
+                "warm_coverage_complete": False,
                 "legacy": None,
                 "planner": None,
                 "thresholds": threshold_config,
@@ -919,7 +979,10 @@ def score_paired_results(
         paired_latency[category] = {
             "status": "PASS" if p50_pass and p95_pass else "FAIL",
             "matched_case_repeats": len(keys),
-            "excluded_cold_pairs": len(candidate_keys) - len(keys),
+            "expected_warm_case_repeats": len(keys),
+            "excluded_cold_pairs": cold_pair_count,
+            "outside_predeclared_warm_population": outside_predeclared_population,
+            "warm_coverage_complete": True,
             "legacy": {
                 "p50_ms_nearest_rank": legacy_p50,
                 "p95_ms_nearest_rank": legacy_p95,

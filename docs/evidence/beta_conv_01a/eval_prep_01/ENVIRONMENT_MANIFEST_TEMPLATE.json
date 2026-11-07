@@ -40,7 +40,14 @@
     "held_out_cases_sha256": null,
     "independent_labels_sha256": null,
     "safety_challenge_sha256": null,
+    "source_alias_mapping_sha256": null,
     "scorer_sha256": null
+  },
+  "source_identity_mapping": {
+    "policy": "one_to_one stable aliases mapped to created isolated-workspace source IDs; citations normalized back to aliases",
+    "unknown_or_duplicate_mapping": "FAIL_CLOSED",
+    "raw_live_source_ids_in_normalized_evidence": false,
+    "active_workspace_population": "MUST_EQUAL_MAPPED_SYNTHETIC_FIXTURES"
   },
   "latency_accounting": {
     "boundary": "api_request_receipt_to_terminal_response_or_recorded_failure",
@@ -48,7 +55,20 @@
     "failed_attempts_in_denominator": true,
     "watchdog_timeout_seconds": null,
     "attempt_phase_values": ["cold_start", "warm_interactive"],
-    "paired_comparison_requires_warm_in_both_arms": true
+    "paired_comparison_requires_warm_in_both_arms": true,
+    "warm_comparison_population": "PENDING_PREDECLARED_ACCEPTED_SCHEDULE"
+  },
+  "response_evidence": {
+    "api_status_field": "response_status",
+    "allowed_values": [
+      "answered",
+      "insufficient_evidence",
+      "model_abstain",
+      "clarification_required",
+      "transformed"
+    ],
+    "non_response_value": null,
+    "safe_grounded_abstention_is_not_factual_success": true
   },
   "resource_telemetry": {
     "capture_method": null,

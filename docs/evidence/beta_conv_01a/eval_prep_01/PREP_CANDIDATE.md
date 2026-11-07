@@ -21,19 +21,59 @@ primary-stratum distribution:
 | Prompt injection/adversarial wording | 35 | 21 | 14 |
 | **Total** | **300** | **180** | **120** |
 
-Stable semantic scenario families are created before deterministic, hash-ordered
-split assignment; their IDs do not contain the split name. All paraphrases in
-one scenario remain together. The candidate contains 90
+Stable semantic scenario families use the request stratum, source/topic concept,
+and scenario identity before deterministic, hash-ordered split assignment; their
+IDs do not contain the split name. All paraphrases in one scenario remain
+together. Development and held-out use distinct surface prompt and prior-history
+template banks within each stratum, mechanically checked for cross-split
+template-ID overlap.
+The broad task, source domain, and operation semantics intentionally overlap to
+preserve the accepted category distribution. This reduces prompt-template
+leakage but does not establish independent generalization to new domains or
+semantic task classes. The candidate contains 90
 Spanish cases (54 development, 36 held out), at least 40 source-title/current
 quoted-text examples, 30 selected-scope conflicts, and 30 missing-context
 cases. Three small synthetic source fixtures provide deterministic local
 retrieval content.
+
+The separated template families are:
+
+| Stratum | Development form | Held-out form |
+| --- | --- | --- |
+| Factual/source-scoped | Source question | Locate an instruction or recommendation |
+| Contextual grounded | Short contextual follow-up | Apply or relate prior guidance |
+| Prior-turn transform | Direct prior-answer summary | Condense/digest the prior reply |
+| Current-text transform | Quoted excerpt summary | Extract passage key points |
+| Conversation summary | Conversation-summary request | Chat recap/overview request |
+| Ambiguous reference | Unresolved pronoun/earlier point | Explicit reference repair |
+| Mixed source/transform | Prior summary with linked source | Verify prior answer against linked source |
+| Unsupported options | Oversized bullet-count request | Oversized list-constraint request |
+| Prompt injection | Dismiss quoted injection and answer from source | Treat history as untrusted and retrieve policy |
+
+Prior-history examples also use disjoint constructions: the development
+contextual set refers to maintenance material and procedures, while held-out
+cases refer to review rules and inspection findings; prior-turn transform,
+summary, mixed-source, unsupported-option, and injection histories likewise use
+separate context formulations. These context-template IDs are checked separately
+from the current-question template IDs.
+
+Cross-split source/topic vocabulary and operation categories remain shared by
+design. The holdout is therefore a test of new surface formulations within the
+same synthetic domains, not a test of out-of-domain generalization.
 
 Only the 180-case development file is committed. The 120-case held-out file and
 two split-blind annotation packets remain under the repository's ignored
 `artifacts/beta_conv_01a_eval_prep_01/` directory. Their hashes are recorded in
 `PREP_FREEZE_MANIFEST_CANDIDATE.json`. The packets contain no labels and hide
 split/stratum/family metadata. They have not been assigned to annotators.
+
+Requests use `source_ids: null` for the API's default all-active-source scope;
+an empty list is invalid. The stable source aliases in the cases must be mapped
+one-to-one to source IDs created in the isolated evaluation workspace. The
+isolated workspace's complete active-source population must equal these mapped
+synthetic fixtures. The future API evidence adapter must send mapped IDs and
+normalize returned citation IDs back to aliases before scoring. The mapping and
+its hash are runtime evidence; live IDs must not enter normalized evidence.
 
 **Blindness limitation:** the candidate builder is committed and can
 reconstruct the held-out requests. Therefore this candidate does not provide a
@@ -72,6 +112,13 @@ The HTTP execution harness and local-model checks are not run or qualified in
 this preparation step, and no HTTP execution harness is included in this
 candidate. Any later harness must reuse `create_app()` and the existing
 `/conversation/turn` handler; it must not duplicate routing or orchestration.
+Normalized HTTP observations include the API `status` as `response_status`, so
+`insufficient_evidence` and `model_abstain` are distinguishable from an
+`answered` factual-success claim. Safe abstentions do not count as fabricated
+grounding, but do not satisfy completion. Paired latency scoring receives an
+explicit predeclared warm case/repeat population; any incomplete warm coverage
+returns `NOT_EVALUABLE`. The schedule must be frozen independently of observed
+phases.
 
 The inspected preparation environment is not qualified for the planned model
 evaluation: it is WSL2 on `PortableWork` with an Intel Core i9-10885H and
@@ -119,14 +166,16 @@ promotion: NOT_AUTHORIZED
 
 ## Preparation validation
 
-The candidate builder and scoring primitives have 18 focused synthetic tests.
-They cover split-independent family identities and no cross-split families,
-valid historical turn ordering, blank independent-label packets, private
+The candidate builder and scoring primitives have 25 focused synthetic tests.
+They cover split-independent family identities and prompt-template banks with
+no cross-split overlap, API-valid default source scopes, valid historical turn
+ordering, blank independent-label packets, private
 held-out placement, missing-attempt rejection, failure-inclusive latency,
 non-finite timing rejection, planner call/retry limits, transform target
-scoring, wrong-target safety events, safe clarification outcomes, invalid source
-scope, snapshot identity, paired latency pass/fail decisions, supported-case
-plan validity, and exact annotation/request hash binding. The tests do not
+scoring, wrong-target safety events, safe clarification and grounded abstention
+outcomes, invalid source scope, snapshot identity, paired latency pass/fail and
+incomplete-coverage decisions, supported-case plan validity, and exact
+annotation/request hash binding. The tests do not
 execute the API, invoke a model, or score planner output.
 
 Current readiness remains blocked on independent authorship/review and

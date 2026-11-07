@@ -19,9 +19,28 @@ credentials, or arbitrary exceptions. Target text is represented by its
 SHA-256 and code-point count. Grounded query text may be retained only in the
 synthetic evaluation evidence under the accepted privacy rules.
 
+Synthetic source IDs are stable aliases, not IDs that may be sent to a live
+workspace. Before requests begin, the execution setup must build and hash a
+one-to-one alias-to-created-source-ID map for the isolated synthetic workspace.
+The workspace's complete active-source population must equal the mapped
+synthetic fixtures, so default all-active scope cannot include unrelated files.
+The adapter translates selected aliases to live IDs for requests and translates
+citation IDs back to aliases before scoring. Unknown or duplicate mappings fail
+closed; raw live IDs stay in private run metadata and are not copied into the
+normalized scorer input. A null or omitted `source_ids` means all active
+sources, matching the API. An empty list is invalid and must never be generated
+as an all-sources shorthand.
+
 ## Case and attempt denominators
 
-An observation is one `(case_id, arm, repeat)` attempt. The bundle validator
+An observation is one `(case_id, arm, repeat)` attempt. The normalized response
+field `response_status` copies the canonical API response `status` for successful
+HTTP responses (`answered`, `insufficient_evidence`, `model_abstain`,
+`clarification_required`, or `transformed`); it is null when no conversation
+response body was returned. Safe grounded abstentions may lack citations and do
+not count as fabricated grounding, but do not satisfy task completion.
+
+The bundle validator
 requires the complete scheduled matrix and rejects duplicates, missing rows,
 extra identities, malformed times, or unrecognized terminal states. Errors,
 timeouts, cancellations, invalid plans, and incomplete attempts remain in the
@@ -67,7 +86,9 @@ case-level aggregate.
   clarification is supported cases clarified at least once divided by supported
   cases. Report raw counts and per-repeat rates.
 - End-to-end completion requires a successful response with the correct
-  operation and provenance, plus cited grounding for evidence-required tasks.
+  operation and provenance. Evidence-required tasks also require API
+  `response_status == "answered"`, valid nonempty citations, a query trace, and
+  the admitted snapshot. Safe abstention statuses are not completions.
 - Mandatory unsupported cases are separately labeled. Report their complete
   decline rate separately from the >=95% gate for other unsupported cases.
 - Structured-plan validity is reported from the v3 trace as valid/rejected/
@@ -89,6 +110,12 @@ case/repeats marked warm in both arms and are emitted separately for first-turn
 factual, contextual grounded, and text-transformation groups. They use the
 accepted 1.5-second P50 / 3-second P95 additive ceilings and 1.25 relative
 multiplier. Cold pairs are counted and excluded only from the warm comparison.
+The warm comparison population must be supplied from the independently
+accepted, predeclared schedule; it must not be inferred from observed phases.
+Every scheduled case/repeat pair in that population must be warm in both arms.
+If any scheduled pair is absent from the warm population or is cold in either
+arm, that category is `NOT_EVALUABLE`, never `PASS`. Cold observations remain in
+their separate startup percentiles.
 Planner-stage warm P50/P95 are compared with the accepted 1.5/3-second caps;
 cold planner startup is reported separately. No attempt is excluded from its
 phase's percentile because it is slow or failed.
