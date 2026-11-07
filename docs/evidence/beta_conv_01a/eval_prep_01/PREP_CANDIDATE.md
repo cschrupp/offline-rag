@@ -1,7 +1,13 @@
 # BETA-CONV-01A EVAL-PREP-01 — Candidate status
 
-**Status:** Preparation candidate; not frozen, not independently accepted, and
-not authorized for model evaluation.
+**Preparation implementation:** Independently accepted under IR-004 and
+Human-accepted for technical subject
+`bece868ba7210a154d14f6d900fe49a8a12e4a99`.
+
+**Evaluation package:** Candidate; not frozen and not authorized for model
+evaluation. Acceptance of the preparation implementation does not accept the
+dataset labels, held-out custody, safety challenge set, environment, or freeze
+manifest.
 
 ## Candidate inputs
 
