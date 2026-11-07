@@ -36,10 +36,11 @@ response identifies:
 
 The effective application setting is strict-offline, with the selected model
 above and a 300-second request timeout. The existing adapter sent
-`chat_template_kwargs.enable_thinking=false`. Across M0, successful router
-observations, and executor samples, no `<think>` marker or separate
-`reasoning_content` field was observed. This is empirical evidence for these
-calls, not proof that every server path suppresses reasoning.
+`chat_template_kwargs.enable_thinking=false`. In the retained M0, p1, and
+executor records, no `<think>` marker or separate `reasoning_content` field
+was observed. The original p0 per-call records were lost, so this statement
+does not cover p0. This is empirical evidence for the retained calls, not
+proof that every server path suppresses reasoning.
 
 ## M0 — Existing v1 resolver
 
