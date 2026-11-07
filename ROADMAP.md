@@ -81,12 +81,11 @@ and supporting history.
   has IR-001 ACCEPT and Human acceptance. See the
   [API verification result](docs/evidence/beta_conv_01a/API_VERIFY_01_RESULT.md)
   and the [earlier verification result](docs/evidence/beta_conv_01a/VERIFICATION_ONLY_RESULT.md).
-- [ ] **BETA-CONV-01A offline model evaluation** — not executed; requires
-  separate authorization and the accepted pre-holdout freeze/isolation
-  requirements. The 300-case fixtures/split, independent labels, scorer, safety
-  challenge set, and execution-time host/model record are not yet frozen as
-  artifacts. Planner activation and implementation promotion remain
-  unauthorized.
+- [ ] **BETA-CONV-01A PILOT-01 — development-only real-model feasibility** —
+  authorized for 24 preselected development cases and at most 48 canonical API
+  attempts. No held-out inference/scoring, planner activation, or promotion.
+  See the [PILOT-01 pre-run record](docs/evidence/beta_conv_01a/PILOT_01_AUTHORITY_AND_CASES.md).
+  Formal 300-case evaluation remains separate and unauthorized.
 - [ ] **BETA-CONV-02 — Analytical Synthesis** — deferred; not authorized.
 - [ ] Slice 17 design-open — **NOT AUTHORIZED**. This is distinct from
   original Slice 16G, which is complete.

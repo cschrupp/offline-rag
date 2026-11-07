@@ -295,6 +295,87 @@ Use self-reference or a follow-up pin commit only when an accepted contract expl
 
 Prefer the minimum governance structure necessary to make authority, subject, evidence, and disposition unambiguous.
 
+## 8B. Outcome-first delivery and progressive qualification
+
+The primary objective is a functioning, testable Seneca beta, not maximum
+process completion.
+
+Each milestone must identify the next observable product or technical
+capability and the smallest evidence required to decide whether to pursue it.
+
+Prefer the following sequence whenever explicitly authorized and safe:
+
+1. Establish end-to-end feasibility using the canonical system and a small,
+   bounded development-only pilot.
+2. Inspect actual behavior, errors, resource use and practical product value.
+3. Correct demonstrated implementation defects.
+4. Invest in larger formal evaluations, independent annotation, statistical
+   qualification and release evidence after the approach demonstrates
+   feasibility.
+5. Require stronger verification before consequential activation or
+   promotion.
+
+An exploratory development pilot is not a formal acceptance benchmark.
+
+Exploratory pilots may use predeclared development examples and provisional
+qualitative assessment. They must disclose their limitations and cannot claim
+blind generalization, independent adjudication or production qualification.
+
+Formal holdout protection, independent labels, safety criteria and accepted
+numerical thresholds remain binding for formal evaluation.
+
+This policy does not itself authorize model execution, use of held-out data,
+external services, deployment or activities outside the active slice's
+authority.
+
+Before expanding evaluation infrastructure, adding a harness or creating
+another governance gate, determine:
+
+- What concrete uncertainty does this work resolve?
+- What is the smallest authorized experiment that would resolve it?
+- Is this a demonstrated present blocker or a possible future qualification
+  requirement?
+- Will the proposed work move the product closer to a usable result?
+
+If the work does not answer a current consequential question, defer it.
+
+Do not repeatedly optimize schedules, scoring infrastructure, manifests,
+custody procedures or acceptance records while the core capability remains
+untested and a smaller authorized experiment is available.
+
+Never introduce a second application, conversation engine, orchestration path
+or maintained test framework merely to make experimentation easier.
+
+When progress depends on unavailable hardware, model access, external
+annotators or independent evidence, report the actual dependency. Complete
+other useful authorized work, but do not build substitute governance machinery
+to disguise the blocker.
+
+## 8C. Human attention and escalation
+
+Human approval is warranted only when:
+
+1. The Human can meaningfully verify a working implementation or product
+   outcome.
+2. An unexpected material detour threatens the accepted architecture,
+   canonical workflow or objectives.
+3. A consequential scientific, safety, cost, scope, dependency, deployment or
+   difficult-to-reverse decision is required.
+
+Explicit existing authorization boundaries remain binding.
+
+Every escalation must identify the required decision, available evidence and
+consequences of proceeding without approval.
+
+Ordinary technical corrections, tests, documentation, commits and review
+findings do not require separate Human acceptance.
+
+Independent technical review should be grouped at meaningful milestone
+boundaries. Correct ordinary findings autonomously within the approved scope.
+
+Avoid creating acceptance-record commits, repeated review cycles or additional
+planning milestones solely for procedural completeness.
+
 ## 9. Deterministic machinery before LLM judgment
 
 Whenever practical:
