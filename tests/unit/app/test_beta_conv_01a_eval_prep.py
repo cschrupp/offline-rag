@@ -62,6 +62,7 @@ def _observation(
         else [],
         "citations_valid": terminal_state == "response",
         "snapshot_consistent": snapshot_consistent,
+        "source_scope_consistent": True,
         "query_trace_present": terminal_state == "response",
         "target_kind": None,
         "target_role": None,
@@ -157,7 +158,14 @@ def test_candidate_files_are_hashable_and_annotation_labels_remain_blank(
     )
     assert manifest["annotation_status"]["independent_labels"] == 0
     assert manifest["safety_challenge_status"]["new_families_authored"] == 0
-    assert manifest["http_execution_harness_status"] == "NOT_IMPLEMENTED_OR_EXECUTED"
+    assert manifest["http_execution_harness_status"] == (
+        "IMPLEMENTED; ROUTE_TEST_EXECUTION_INCOMPLETE"
+    )
+    assert manifest["canonical_api_adapter"]["execution_qualified"] is False
+    assert manifest["canonical_api_adapter"]["real_model_calls"] == 0
+    assert manifest["evaluation_schedule"]["execution_choice"] == (
+        "PENDING_SEPARATE_AUTHORITY"
+    )
     assert manifest["thresholds"]["changed"] is False
     assert manifest["thresholds"]["gates"]["wrong_target_executions"] == 0
     assert manifest["thresholds"]["gates"]["planner_warm_p95_max_ms"] == 3000
@@ -258,6 +266,7 @@ def test_scorer_keeps_timeout_attempt_in_case_and_latency_denominators() -> None
                 "citation_source_ids": [] if is_timeout else ["source_manual"],
                 "citations_valid": not is_timeout,
                 "snapshot_consistent": not is_timeout,
+                "source_scope_consistent": not is_timeout,
                 "query_trace_present": not is_timeout,
                 "target_kind": None,
                 "target_role": None,
@@ -748,7 +757,38 @@ def test_scorer_resolves_null_source_scope_to_all_available_aliases() -> None:
 
     assert report["scope_identity_violations"] == 0
     assert report["required_source_scope_violations"] == 0
-    assert report["end_to_end_completion"]["numerator"] == 1
+
+
+def test_scorer_rejects_inconsistent_api_source_scope_under_all_active_scope() -> None:
+    case = {
+        "case_id": "case-1",
+        "stratum": "factual_source",
+        "language": "en",
+        "request": {"source_ids": None},
+        "available_source_ids": ["source_manual", "source_report"],
+    }
+    label = {
+        "expected_operation": "grounded_query",
+        "required_source_ids": ["source_manual"],
+        "requires_evidence": True,
+        "should_clarify": False,
+        "expected_reason_code": None,
+        "allowed_safe_outcomes": [],
+        "mandatory_unsupported": False,
+    }
+    observation = _observation(repeat=1)
+    observation["source_scope_consistent"] = False
+
+    report = score_results(
+        [case],
+        _bind_label(case, label),
+        [observation],
+        arm="planner",
+        repeats=1,
+    )
+
+    assert report["scope_identity_violations"] == 1
+    assert report["end_to_end_completion"]["numerator"] == 0
 
 
 def test_answer_citation_must_match_independently_required_source_scope() -> None:

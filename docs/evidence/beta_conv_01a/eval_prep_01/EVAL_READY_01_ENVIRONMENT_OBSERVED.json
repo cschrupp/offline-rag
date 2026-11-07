@@ -1,0 +1,36 @@
+{
+  "record_type": "preparation_environment_observation_not_evaluation_host_approval",
+  "observed_date": "2026-11-06",
+  "stable_alias": "portablework-wsl2-preparation-environment",
+  "accepted_reference_host": false,
+  "host": {
+    "os": "Ubuntu 24.04.1 LTS under WSL2",
+    "kernel": "Linux 6.18.33.2-microsoft-standard-WSL2 x86_64",
+    "cpu_model": "Intel Core i9-10885H @ 2.40GHz",
+    "logical_cpu_count": 16,
+    "physical_memory_bytes": 33507913728
+  },
+  "gpu": {
+    "model": null,
+    "driver": null,
+    "memory_bytes": null,
+    "telemetry_status": "UNAVAILABLE_NVML_ACCESS_BLOCKED_BY_OPERATING_SYSTEM"
+  },
+  "software": {
+    "python": "3.14.5",
+    "fastapi": "0.142.2",
+    "starlette": "1.7.0",
+    "httpx": "0.28.1",
+    "anyio": "4.15.1",
+    "uv_lock_sha256": "df336f2100897aa753b252e926ee48cfd8b4dbaac656be9255d2d910f2c706df",
+    "ui_package_lock_sha256": "64ace6fb21913fe469b147e389c9fd49bd35746a7fd7daec15b35ba64f2cfd23"
+  },
+  "generator": {
+    "model_id": null,
+    "revision_or_checksum": null,
+    "serving_configuration_sha256": null,
+    "status": "NOT_CONFIGURED_OR_QUERIED_FOR_THIS_PREPARATION"
+  },
+  "host_selection": "PENDING_HUMAN_OR_OWNER_CONFIRMATION_OF_REFERENCE_CLASS_HOST",
+  "model_identity": "PENDING_APPROVED_LOCAL_MODEL_AND_CHECKSUM"
+}

@@ -1016,11 +1016,32 @@ def build_candidate(
             for name in private_file_names
         }
     )
+    private_schedule_path = private_root / "execution_schedule_candidate.json"
+    if private_schedule_path.is_file():
+        digests["private/execution_schedule_candidate.json"] = hashlib.sha256(
+            private_schedule_path.read_bytes()
+        ).hexdigest()
     identity_paths = {
         "scripts/beta_conv_01a_eval_prep.py": REPO_ROOT
         / "scripts/beta_conv_01a_eval_prep.py",
         "scripts/beta_conv_01a_eval_scoring.py": REPO_ROOT
         / "scripts/beta_conv_01a_eval_scoring.py",
+        "scripts/beta_conv_01a_eval_adapter.py": REPO_ROOT
+        / "scripts/beta_conv_01a_eval_adapter.py",
+        "scripts/beta_conv_01a_eval_schedule.py": REPO_ROOT
+        / "scripts/beta_conv_01a_eval_schedule.py",
+        "scripts/beta_conv_01a_eval_readiness.py": REPO_ROOT
+        / "scripts/beta_conv_01a_eval_readiness.py",
+        "tests/unit/app/test_beta_conv_01a_eval_adapter.py": REPO_ROOT
+        / "tests/unit/app/test_beta_conv_01a_eval_adapter.py",
+        "tests/unit/app/test_beta_conv_01a_eval_schedule.py": REPO_ROOT
+        / "tests/unit/app/test_beta_conv_01a_eval_schedule.py",
+        "tests/unit/app/test_beta_conv_01a_eval_readiness.py": REPO_ROOT
+        / "tests/unit/app/test_beta_conv_01a_eval_readiness.py",
+        "tests/unit/app/test_beta_conv_01a_eval_prep.py": REPO_ROOT
+        / "tests/unit/app/test_beta_conv_01a_eval_prep.py",
+        "tests/unit/app/test_slice16d_b3_conversation.py": REPO_ROOT
+        / "tests/unit/app/test_slice16d_b3_conversation.py",
         "docs/evidence/beta_conv_01a/eval_prep_01/SCORING_PROTOCOL.md": output_root
         / "SCORING_PROTOCOL.md",
         "docs/evidence/beta_conv_01a/eval_prep_01/ANNOTATION_GUIDE.md": output_root
@@ -1029,6 +1050,22 @@ def build_candidate(
         / "ENVIRONMENT_MANIFEST_TEMPLATE.json",
         "docs/evidence/beta_conv_01a/eval_prep_01/PREP_CANDIDATE.md": output_root
         / "PREP_CANDIDATE.md",
+        "docs/evidence/beta_conv_01a/eval_prep_01/EVAL_READY_01_STATUS.md": output_root
+        / "EVAL_READY_01_STATUS.md",
+        "docs/evidence/beta_conv_01a/eval_prep_01/EVAL_READY_01_SCHEDULE_SPEC.md": output_root
+        / "EVAL_READY_01_SCHEDULE_SPEC.md",
+        "docs/evidence/beta_conv_01a/eval_prep_01/HISTORICAL_CHALLENGE_COVERAGE_CANDIDATE.md": output_root
+        / "HISTORICAL_CHALLENGE_COVERAGE_CANDIDATE.md",
+        "docs/evidence/beta_conv_01a/eval_prep_01/INDEPENDENT_ANNOTATION_ASSIGNMENT.md": output_root
+        / "INDEPENDENT_ANNOTATION_ASSIGNMENT.md",
+        "docs/evidence/beta_conv_01a/eval_prep_01/INDEPENDENT_SAFETY_AUTHORSHIP_PROTOCOL.md": output_root
+        / "INDEPENDENT_SAFETY_AUTHORSHIP_PROTOCOL.md",
+        "docs/evidence/beta_conv_01a/eval_prep_01/EVAL_READY_01_READINESS_STATE_CANDIDATE.json": output_root
+        / "EVAL_READY_01_READINESS_STATE_CANDIDATE.json",
+        "docs/evidence/beta_conv_01a/eval_prep_01/EVAL_READY_01_ENVIRONMENT_OBSERVED.json": output_root
+        / "EVAL_READY_01_ENVIRONMENT_OBSERVED.json",
+        "docs/evidence/beta_conv_01a/EVAL_READY_01_GOVERNANCE_AMENDMENT.md": REPO_ROOT
+        / "docs/evidence/beta_conv_01a/EVAL_READY_01_GOVERNANCE_AMENDMENT.md",
         "docs/beta_conv_01a_llm_task_planning_amendment.md": REPO_ROOT
         / "docs/beta_conv_01a_llm_task_planning_amendment.md",
         "src/offline_rag/app/conversation/planner.py": REPO_ROOT
@@ -1103,7 +1140,23 @@ def build_candidate(
             "new_spanish_families_required": 15,
             "new_spanish_families_authored": 0,
         },
-        "http_execution_harness_status": "NOT_IMPLEMENTED_OR_EXECUTED",
+        "http_execution_harness_status": "IMPLEMENTED; ROUTE_TEST_EXECUTION_INCOMPLETE",
+        "canonical_api_adapter": {
+            "implementation": "scripts/beta_conv_01a_eval_adapter.py",
+            "source_hash": digests.get("scripts/beta_conv_01a_eval_adapter.py"),
+            "route_test": "PRESENT; TESTCLIENT_STARTUP_STALL_IN_CURRENT_ENVIRONMENT",
+            "execution_qualified": False,
+            "real_model_calls": 0,
+        },
+        "evaluation_schedule": {
+            "candidate_status": "TWO_ALTERNATIVES_PREPARED; NOT_FROZEN_OR_EXECUTED",
+            "private_candidate_sha256": digests.get(
+                "private/execution_schedule_candidate.json"
+            ),
+            "attempts_per_alternative": 720,
+            "execution_choice": "PENDING_SEPARATE_AUTHORITY",
+            "warm_pairs_per_alternative": 359,
+        },
         "latency_accounting": {
             "boundary": "API request receipt to response or recorded terminal failure",
             "failed_attempts_in_denominator": True,
@@ -1168,6 +1221,7 @@ def build_candidate(
             "historical_challenge_roster_completeness_review",
             "independent_held_out_custody_or_human_acceptance_of_source_visible_process_freeze",
             "canonical_api_execution_harness_and_offline_compatibility_validation",
+            "interleaved_arm_execution_with_one_active_app_qualification",
             "source_alias_mapping_and_roundtrip_validation",
             "human_acceptance_of_exact_freeze_manifest",
             "evaluation_execution_authority",

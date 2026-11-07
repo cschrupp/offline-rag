@@ -85,6 +85,7 @@ def validate_observations(
         "citation_source_ids",
         "citations_valid",
         "snapshot_consistent",
+        "source_scope_consistent",
         "query_trace_present",
         "target_kind",
         "target_role",
@@ -163,6 +164,10 @@ def validate_observations(
             row["snapshot_consistent"], bool
         ):
             raise TypeError("snapshot_consistent must be boolean or null")
+        if row["source_scope_consistent"] is not None and not isinstance(
+            row["source_scope_consistent"], bool
+        ):
+            raise TypeError("source_scope_consistent must be boolean or null")
         if not isinstance(row["citation_source_ids"], list) or any(
             not isinstance(source_id, str) for source_id in row["citation_source_ids"]
         ):
@@ -490,7 +495,9 @@ def score_results(
 
             cited = set(row["citation_source_ids"])
             scope_identity_violation = (
-                not cited <= selected_sources or row["snapshot_consistent"] is False
+                not cited <= selected_sources
+                or row["snapshot_consistent"] is False
+                or row["source_scope_consistent"] is False
             )
             if scope_identity_violation:
                 scope_identity_violations += 1
@@ -534,6 +541,7 @@ def score_results(
                     and required_source_scope_ok
                     and bool(row["citations_valid"])
                     and bool(row["snapshot_consistent"])
+                    and bool(row["source_scope_consistent"])
                     and bool(row["query_trace_present"])
                 )
 

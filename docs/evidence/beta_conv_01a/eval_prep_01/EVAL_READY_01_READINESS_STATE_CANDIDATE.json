@@ -1,0 +1,42 @@
+{
+  "status": "PREPARATION_CANDIDATE_NOT_FREEZE_READY",
+  "gates": {
+    "independent_annotations": {
+      "status": "PENDING_EXTERNAL_ANNOTATORS",
+      "evidence_sha256": null
+    },
+    "historical_challenges": {
+      "status": "PENDING_INDEPENDENT_MAPPING_REVIEW",
+      "evidence_sha256": null
+    },
+    "new_safety_families": {
+      "status": "0_OF_40_INDEPENDENTLY_AUTHORED",
+      "evidence_sha256": null
+    },
+    "api_adapter": {
+      "status": "IMPLEMENTED_ROUTE_TEST_EXECUTION_INCOMPLETE",
+      "evidence_sha256": null
+    },
+    "evaluation_environment": {
+      "status": "REFERENCE_HOST_AND_MODEL_PENDING",
+      "evidence_sha256": null
+    },
+    "execution_schedule": {
+      "status": "CANDIDATE_ALTERNATIVES_PREPARED_NOT_FROZEN",
+      "evidence_sha256": null
+    },
+    "scoring_methodology": {
+      "status": "PENDING_INDEPENDENT_REVIEW_AND_HUMAN_FREEZE_ACCEPTANCE",
+      "evidence_sha256": null
+    }
+  },
+  "held_out_custody": {
+    "status": "SOURCE_VISIBLE_RECONSTRUCTIBLE_CUSTODY_UNRESOLVED",
+    "evidence_sha256": null
+  },
+  "thresholds_changed": false,
+  "held_out_scored": false,
+  "real_model_execution_authorized": false,
+  "planner_activation_authorized": false,
+  "promotion_authorized": false
+}

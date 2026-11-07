@@ -14,6 +14,11 @@ from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
+from scripts.beta_conv_01a_eval_adapter import (
+    ConversationApiEvidenceAdapter,
+    EvaluationInstrumentation,
+    SourceAliasMap,
+)
 
 from offline_rag.api.app import create_app
 from offline_rag.app.conversation.planner import PLANNER_CONTRACT_ID
@@ -63,7 +68,9 @@ BETA_SCOPE_MARKER = "BETA_SCOPE_MARKER"
 def _provision_query_assets(settings: AppSettings) -> None:
     settings.paths.docling_artifacts.mkdir(parents=True, exist_ok=True)
     (settings.paths.docling_artifacts / "placeholder.bin").write_bytes(b"unit")
-    write_provisioning_manifest(settings.paths.docling_artifacts, docling_version="test")
+    write_provisioning_manifest(
+        settings.paths.docling_artifacts, docling_version="test"
+    )
     if not (TIKTOKEN_SRC / "offline-rag-tokenizer.json").exists():
         pytest.skip("tiktoken artifacts not provisioned")
     if settings.paths.tokenizer_artifacts.exists():
@@ -139,7 +146,10 @@ def _conversation_client(
         captures["generator_requests"].append(request)
         contract = (request.metadata or {}).get("prompt_contract")
         blob = "\n".join(message.content for message in request.messages)
-        if contract == CONVERSATION_CONTEXT_RESOLVER_V1 or "conversation-context resolver" in blob:
+        if (
+            contract == CONVERSATION_CONTEXT_RESOLVER_V1
+            or "conversation-context resolver" in blob
+        ):
             # Default: resolve to a clear standalone retrieval question.
             return json.dumps(
                 {
@@ -212,9 +222,7 @@ def _seed_workspace(client: TestClient) -> tuple[str, str, str, str]:
     alpha_bytes = (
         f"{ALPHA_SCOPE_MARKER} supervised learning and unsupervised clustering.\n"
     ).encode()
-    beta_bytes = (
-        f"{BETA_SCOPE_MARKER} reinforcement learning overview.\n"
-    ).encode()
+    beta_bytes = (f"{BETA_SCOPE_MARKER} reinforcement learning overview.\n").encode()
     add = client.post(
         f"/v1/workspaces/{wid}/sources",
         headers={"Idempotency-Key": "b3-add", "If-Match": '"1"'},
@@ -228,7 +236,12 @@ def _seed_workspace(client: TestClient) -> tuple[str, str, str, str]:
     assert terminal["status"] == "succeeded", terminal
     sources = client.get(f"/v1/workspaces/{wid}/sources").json()["sources"]
     by_name = {row["display_name"]: row for row in sources}
-    return wid, by_name["alpha.txt"]["source_id"], by_name["beta.txt"]["source_id"], by_name["alpha.txt"]["document_id"]
+    return (
+        wid,
+        by_name["alpha.txt"]["source_id"],
+        by_name["beta.txt"]["source_id"],
+        by_name["alpha.txt"]["document_id"],
+    )
 
 
 def _task_plan(**updates: Any) -> dict[str, Any]:
@@ -484,7 +497,10 @@ def test_summary_followup_model_empty_uses_deterministic_fallback(
                 "source_ids": [alpha_sid],
                 "prior_turns": [
                     {"role": "user", "text": "How do I fight the fire?"},
-                    {"role": "assistant", "text": "Coordinated hose lines and ventilation."},
+                    {
+                        "role": "assistant",
+                        "text": "Coordinated hose lines and ventilation.",
+                    },
                 ],
             },
         )
@@ -607,7 +623,10 @@ def test_first_turn_resolver_bypass(tmp_path: Path) -> None:
         before = generator.generate_calls
         body = client.post(
             f"/v1/workspaces/{wid}/conversation/turn",
-            json={"question": f"What mentions {ALPHA_SCOPE_MARKER}?", "source_ids": [alpha_sid]},
+            json={
+                "question": f"What mentions {ALPHA_SCOPE_MARKER}?",
+                "source_ids": [alpha_sid],
+            },
         )
         assert body.status_code == 200, body.text
         data = body.json()
@@ -620,7 +639,8 @@ def test_first_turn_resolver_bypass(tmp_path: Path) -> None:
         resolver_calls = [
             r
             for r in captures["generator_requests"]
-            if (r.metadata or {}).get("prompt_contract") == CONVERSATION_CONTEXT_RESOLVER_V1
+            if (r.metadata or {}).get("prompt_contract")
+            == CONVERSATION_CONTEXT_RESOLVER_V1
         ]
         assert resolver_calls == []
         assert generator.generate_calls >= before  # grounded may run
@@ -636,7 +656,10 @@ def test_context_dependent_follow_up_resolution(tmp_path: Path) -> None:
                 "question": "Which of those are supervised?",
                 "source_ids": [alpha_sid],
                 "prior_turns": [
-                    {"role": "user", "text": "What machine-learning methods are discussed?"},
+                    {
+                        "role": "user",
+                        "text": "What machine-learning methods are discussed?",
+                    },
                     {
                         "role": "assistant",
                         "text": "Supervised and unsupervised methods are discussed.",
@@ -688,8 +711,7 @@ def test_planner_mode_http_grounded_request_uses_exact_selected_scope(
         assert data["conversation_trace_id"]
         assert data["citations"]
         assert all(
-            citation["source_id"] == alpha_sid
-            and citation["document_id"] == alpha_doc
+            citation["source_id"] == alpha_sid and citation["document_id"] == alpha_doc
             for citation in data["citations"]
         )
         assert captures["assemble_queries"][-1] == "supervised learning methods"
@@ -720,6 +742,146 @@ def test_planner_mode_http_grounded_request_uses_exact_selected_scope(
         assert query_trace.request.source_scope is not None
         assert query_trace.request.source_scope.mode == "selected"
         assert query_trace.request.source_scope.source_ids == [alpha_sid]
+
+
+def test_eval_adapter_uses_canonical_http_route_and_normalizes_citations(
+    tmp_path: Path,
+) -> None:
+    with _conversation_client(tmp_path, router_mode="planner") as (
+        client,
+        runtime,
+        captures,
+        generator,
+    ):
+        workspace_id, manual_id, report_id, _ = _seed_workspace(client)
+        plan = _task_plan(retrieval_question="supervised learning methods")
+        _install_http_planner_responses(generator, captures, plan=plan)
+        sources = client.get(f"/v1/workspaces/{workspace_id}/sources").json()["sources"]
+        aliases = SourceAliasMap.from_active_sources(
+            {
+                "source_manual": "alpha.txt",
+                "source_report": "beta.txt",
+            },
+            sources,
+        )
+        assert aliases.alias_to_source_id == {
+            "source_manual": manual_id,
+            "source_report": report_id,
+        }
+
+        with EvaluationInstrumentation(runtime) as instrumentation:
+            adapter = ConversationApiEvidenceAdapter(
+                client=client,
+                runtime=runtime,
+                workspace_id=workspace_id,
+                source_aliases=aliases,
+                instrumentation=instrumentation,
+            )
+            observation = adapter.execute(
+                {
+                    "case_id": "adapter-grounded-001",
+                    "request": {
+                        "question": f"Which methods are supervised in {ALPHA_SCOPE_MARKER}?",
+                        "source_ids": ["source_manual"],
+                        "prior_turns": [],
+                    },
+                },
+                arm="planner",
+                repeat=1,
+                measurement_phase="warm_interactive",
+                timeout=10,
+            )
+
+        assert observation["case_id"] == "adapter-grounded-001"
+        assert observation["terminal_state"] == "response"
+        assert observation["response_status"] == "answered"
+        assert observation["observed_operation"] == "grounded_query"
+        assert observation["citation_source_ids"] == ["source_manual"]
+        assert observation["citations_valid"] is True
+        assert observation["snapshot_consistent"] is True
+        assert observation["source_scope_consistent"] is True
+        assert observation["query_trace_present"] is True
+        assert observation["planner_calls"] == 1
+        assert observation["resolver_calls"] == 0
+        assert observation["retrieval_calls"] == 1
+        assert observation["answer_generation_calls"] == 1
+        assert observation["source_alias_mapping_sha256"] == aliases.sha256
+
+
+def test_eval_adapter_captures_executed_transform_target_and_options(
+    tmp_path: Path,
+) -> None:
+    with _conversation_client(tmp_path, router_mode="planner") as (
+        client,
+        runtime,
+        captures,
+        generator,
+    ):
+        workspace_id, _, _, _ = _seed_workspace(client)
+        question = "Summarize your previous answer in three bullets."
+        prior_turns = [
+            {"role": "user", "text": "What did the report conclude?"},
+            {"role": "assistant", "text": "The pressure test passed."},
+        ]
+        target = {"kind": "prior_assistant_turn", "ordinal": 2}
+        plan = _task_plan(
+            operation="transform_text",
+            transform_kind="summarize",
+            target=target,
+            retrieval_question=None,
+            options={
+                "bullet_count": 3,
+                "audience": None,
+                "target_language": None,
+            },
+            context_turn_ordinals=[2],
+        )
+        _install_http_planner_responses(generator, captures, plan=plan)
+        sources = client.get(f"/v1/workspaces/{workspace_id}/sources").json()["sources"]
+        aliases = SourceAliasMap.from_active_sources(
+            {"source_manual": "alpha.txt", "source_report": "beta.txt"},
+            sources,
+        )
+
+        with EvaluationInstrumentation(runtime) as instrumentation:
+            adapter = ConversationApiEvidenceAdapter(
+                client=client,
+                runtime=runtime,
+                workspace_id=workspace_id,
+                source_aliases=aliases,
+                instrumentation=instrumentation,
+            )
+            observation = adapter.execute(
+                {
+                    "case_id": "adapter-transform-001",
+                    "request": {
+                        "question": question,
+                        "source_ids": None,
+                        "prior_turns": prior_turns,
+                    },
+                },
+                arm="planner",
+                repeat=2,
+                measurement_phase="warm_interactive",
+                timeout=10,
+            )
+
+        assert observation["response_status"] == "transformed"
+        assert observation["observed_operation"] == "transform_text"
+        assert observation["target_kind"] == "prior_turn"
+        assert observation["target_role"] == "assistant"
+        assert observation["target_ordinal"] == 2
+        assert observation["target_sha256"]
+        assert observation["target_char_count"] == len(prior_turns[1]["text"])
+        assert observation["transform_kind"] == "summarize"
+        assert observation["options"] == {
+            "bullet_count": 3,
+            "audience": None,
+            "target_language": None,
+        }
+        assert observation["query_trace_present"] is False
+        assert observation["retrieval_calls"] == 0
+        assert observation["transform_calls"] == 1
 
 
 @pytest.mark.parametrize(
@@ -988,7 +1150,9 @@ def test_clarification_required_no_query_trace(tmp_path: Path) -> None:
         assert data["answer_blocks"] == []
         assert data["citations"] == []
         assert captures["assemble_queries"] == []
-        ctrace = ConversationTraceStore(runtime.settings).get(data["conversation_trace_id"])
+        ctrace = ConversationTraceStore(runtime.settings).get(
+            data["conversation_trace_id"]
+        )
         assert ctrace is not None
         assert ctrace.query_trace_id is None
         assert ctrace.status == "clarification_required"
@@ -1075,12 +1239,10 @@ def test_binding_occurs_before_resolver(tmp_path: Path) -> None:
 def test_explicit_source_subset_remains_exact(tmp_path: Path) -> None:
     with _conversation_client(tmp_path) as (client, runtime, captures, _g):
         wid, alpha_sid, beta_sid, _alpha_doc = _seed_workspace(client)
-        beta_doc = (
-            next(
-                s.document_id
-                for s in WorkspaceStore(runtime.settings).get(wid).sources
-                if s.source_id == beta_sid
-            )
+        beta_doc = next(
+            s.document_id
+            for s in WorkspaceStore(runtime.settings).get(wid).sources
+            if s.source_id == beta_sid
         )
         captures["dense_docs"].clear()
         outcome = run_conversation_turn(
@@ -1111,12 +1273,15 @@ def test_query_remains_independent_single_turn(tmp_path: Path) -> None:
         assert outcome.trace_id
         # No conversation resolver on /query.
         for req in captures["generator_requests"]:
-            assert (req.metadata or {}).get("prompt_contract") != CONVERSATION_CONTEXT_RESOLVER_V1
+            assert (req.metadata or {}).get(
+                "prompt_contract"
+            ) != CONVERSATION_CONTEXT_RESOLVER_V1
             blob = "\n".join(m.content for m in req.messages)
             assert "<CONVERSATION_DATA>" not in blob
         # Dual args equal for /query path via single question.
         assert "CURRENT USER QUESTION" in "\n".join(
-            "\n".join(m.content for m in r.messages) for r in captures["generator_requests"]
+            "\n".join(m.content for m in r.messages)
+            for r in captures["generator_requests"]
         ) or outcome.status in {"answered", "insufficient_evidence", "model_abstain"}
 
 
@@ -1225,7 +1390,10 @@ def test_successful_context_turn_uses_fresh_retrieval(tmp_path: Path) -> None:
             workspace_id=wid,
             question="Which of those are supervised?",
             prior_turns=[
-                {"role": "user", "text": "What machine-learning methods are discussed?"},
+                {
+                    "role": "user",
+                    "text": "What machine-learning methods are discussed?",
+                },
                 {"role": "assistant", "text": "Supervised and unsupervised."},
             ],
             source_ids=[alpha_sid],
