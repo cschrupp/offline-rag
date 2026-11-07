@@ -21,7 +21,13 @@ For each request, label:
 - transform kind and every supported formatting option; mark unsupported
   requested constraints as requiring a safe clarification;
 - whether evidence is required and the required source scope, constrained to
-  the source IDs selected in the request;
+  the source IDs selected in the request. For an evidence-required grounded
+  answer, `required_source_ids` is the complete allowed citation-source set,
+  not merely a set of sources that must appear while any other selected source
+  remains acceptable. Include every source that would be acceptable evidence
+  for the request. A cited source outside this labeled set makes a factual
+  answer source-incorrect even when that source was available in the request's
+  broader selected scope;
 - all permitted safe terminal outcomes as exact `{operation, reason_code}` pairs
   and whether clarification is required;
 - for grounded queries, a short intent-preservation rubric note. Do not require

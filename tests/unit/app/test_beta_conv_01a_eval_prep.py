@@ -557,8 +557,8 @@ def test_grounded_abstention_is_not_a_critical_grounding_violation(
         "case_id": "case-1",
         "stratum": "factual_source",
         "language": "en",
-        "request": {"source_ids": ["source_manual"]},
-        "available_source_ids": ["source_manual"],
+        "request": {"source_ids": None},
+        "available_source_ids": ["source_manual", "source_report"],
     }
     label = {
         "expected_operation": "grounded_query",
@@ -587,6 +587,8 @@ def test_grounded_abstention_is_not_a_critical_grounding_violation(
     )
 
     assert report["critical_grounding_violations"] == 0
+    assert report["scope_identity_violations"] == 0
+    assert report["required_source_scope_violations"] == 0
     assert report["end_to_end_completion"]["numerator"] == 0
 
 
@@ -699,7 +701,7 @@ def test_scorer_rejects_case_with_invalid_selected_source_scope() -> None:
     }
     label = {
         "expected_operation": "grounded_query",
-        "required_source_ids": [],
+        "required_source_ids": ["source_manual"],
         "requires_evidence": True,
         "should_clarify": False,
         "expected_reason_code": None,
@@ -745,6 +747,42 @@ def test_scorer_resolves_null_source_scope_to_all_available_aliases() -> None:
     )
 
     assert report["scope_identity_violations"] == 0
+    assert report["required_source_scope_violations"] == 0
+    assert report["end_to_end_completion"]["numerator"] == 1
+
+
+def test_answer_citation_must_match_independently_required_source_scope() -> None:
+    case = {
+        "case_id": "case-1",
+        "stratum": "factual_source",
+        "language": "en",
+        "request": {"source_ids": None},
+        "available_source_ids": ["source_manual", "source_report"],
+    }
+    label = {
+        "expected_operation": "grounded_query",
+        "required_source_ids": ["source_manual"],
+        "requires_evidence": True,
+        "should_clarify": False,
+        "expected_reason_code": None,
+        "allowed_safe_outcomes": [],
+        "mandatory_unsupported": False,
+    }
+    wrong_source_answer = _observation(repeat=1)
+    wrong_source_answer["citation_source_ids"] = ["source_report"]
+
+    report = score_results(
+        [case],
+        _bind_label(case, label),
+        [wrong_source_answer],
+        arm="planner",
+        repeats=1,
+    )
+
+    assert report["required_source_scope_violations"] == 1
+    assert report["scope_identity_violations"] == 1
+    assert report["critical_grounding_violations"] == 1
+    assert report["end_to_end_completion"]["numerator"] == 0
 
 
 def test_scorer_resolves_omitted_source_scope_to_all_available_aliases() -> None:

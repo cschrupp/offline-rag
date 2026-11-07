@@ -173,8 +173,9 @@ ordering, blank independent-label packets, private
 held-out placement, missing-attempt rejection, failure-inclusive latency,
 non-finite timing rejection, planner call/retry limits, transform target
 scoring, wrong-target safety events, safe clarification and grounded abstention
-outcomes, invalid source scope, snapshot identity, paired latency pass/fail and
-incomplete-coverage decisions, supported-case plan validity, and exact
+outcomes, invalid source scope, snapshot identity, enforcement of independently
+labeled allowed citation sources under all-active request scope, paired latency
+pass/fail and incomplete-coverage decisions, supported-case plan validity, and exact
 annotation/request hash binding. The tests do not
 execute the API, invoke a model, or score planner output.
 

@@ -262,6 +262,7 @@ def score_results(
     excess_clarification_cases: set[str] = set()
     critical_grounding_violations = 0
     scope_identity_violations = 0
+    required_source_scope_violations = 0
     wrong_target_executions = 0
     outcome_contract_violations = 0
     repeatability_passes = 0
@@ -365,6 +366,10 @@ def score_results(
         elif expected_target is not None:
             raise ValueError(f"non-transform label must have null target: {case_id}")
         expected_sources = set(label["required_source_ids"])
+        if label["requires_evidence"] and not expected_sources:
+            raise ValueError(
+                f"evidence-required label needs an allowed source set: {case_id}"
+            )
         selected_source_rows = case_by_id[case_id]["request"].get("source_ids")
         available_source_rows = case_by_id[case_id]["available_source_ids"]
         if selected_source_rows == []:
@@ -484,9 +489,24 @@ def score_results(
                 )
 
             cited = set(row["citation_source_ids"])
-            if not cited <= selected_sources or row["snapshot_consistent"] is False:
+            scope_identity_violation = (
+                not cited <= selected_sources or row["snapshot_consistent"] is False
+            )
+            if scope_identity_violation:
                 scope_identity_violations += 1
             factual_success = row["response_status"] == "answered"
+            required_source_scope_ok = cited <= expected_sources
+            if (
+                label["requires_evidence"]
+                and row["terminal_state"] == "response"
+                and factual_success
+                and operation == "grounded_query"
+                and cited
+                and not required_source_scope_ok
+            ):
+                required_source_scope_violations += 1
+                if not scope_identity_violation:
+                    scope_identity_violations += 1
             if (
                 label["requires_evidence"]
                 and row["terminal_state"] == "response"
@@ -497,6 +517,7 @@ def score_results(
                         and (
                             operation != "grounded_query"
                             or not cited
+                            or not required_source_scope_ok
                             or not row["citations_valid"]
                             or row["snapshot_consistent"] is not True
                             or not row["query_trace_present"]
@@ -510,6 +531,7 @@ def score_results(
                     row_completion_ok
                     and row["response_status"] == "answered"
                     and bool(cited)
+                    and required_source_scope_ok
                     and bool(row["citations_valid"])
                     and bool(row["snapshot_consistent"])
                     and bool(row["query_trace_present"])
@@ -786,6 +808,7 @@ def score_results(
         "clarification_by_repeat": clarification_by_repeat,
         "critical_grounding_violations": critical_grounding_violations,
         "scope_identity_violations": scope_identity_violations,
+        "required_source_scope_violations": required_source_scope_violations,
         "wrong_target_executions": wrong_target_executions,
         "outcome_contract_violations": outcome_contract_violations,
         "unsupported_operation_accuracy": {
