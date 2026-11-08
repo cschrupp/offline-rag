@@ -584,6 +584,16 @@ regression CI, and portfolio release packaging (Slices 14–18).
 **Slice 14 design (LOCKED / ACCEPTED):** `89a395ae4df7aff23c2da2c8c44fd6fe405459a6`
 **Slice 14:** **COMPLETE / ACCEPTED**
 
+### REL-03 — Hosted Portfolio Demo Profile (planning registered)
+
+REL-03-P0 is the bounded near-term enabling seam for an operator-selected
+OpenRouter inference profile. Canonical Seneca remains local-first and
+strict-offline by default; hosted deployment belongs to Slice 18. Slice 17
+later owns mocked profile-isolation regression CI, and REL-01 later provides
+the preferred CPU release image. REL-03 is not an active beta release blocker.
+P0 implementation is authorized by its contract at
+[`docs/rel03_external_inference_demo_profile.md`](docs/rel03_external_inference_demo_profile.md).
+
 ```text
 POST-SLICE-15 ROADMAP
 

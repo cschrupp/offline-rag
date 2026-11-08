@@ -2,7 +2,7 @@
 
 **Status:** LIVE PLANNING / NON-AUTHORIZING\
 **Canonical reference:** `main` (see Git for current tip)\
-**Updated:** 2026-11-05
+**Updated:** 2026-11-08
 
 This document is the live queue for work that remains after the Human-accepted
 Slice 16 closeout and the post-L6 parser-stack corrective.
@@ -625,6 +625,39 @@ explicitly dispositioned before the portfolio release package is finalized.
 Includes `PORTFOLIO_DEMO.md`, polished public documentation, architecture/demo
 media, benchmark methodology, limitations, hardware/runtime profiles, and
 reproducible install/run guidance. Claims must remain backed by accepted evidence.
+
+### REL-03 — Hosted Portfolio Demo Profile
+
+**Priority:** P1 for Slice 18 portfolio release
+**Status:** PLANNING REGISTERED / REL-03-P0 IMPLEMENTATION AUTHORIZED
+
+Provide an explicitly operator-enabled hosted Seneca demonstration profile for
+portfolio/job-search use while preserving the canonical local, strict-offline
+product unchanged.
+
+**REL-03-P0 — External inference demo-profile seam** externalizes only model
+inference for grounded answer generation, explicit BETA-CONV-01C conversation
+actions, and Gold Lab authoring. Ingestion, Docling, tokenization, embeddings,
+lexical retrieval, Qdrant, fusion, reranking, context assembly, citation
+construction/validation, Gold human adjudication/truth, recovery rewriting,
+semantic judging, and evaluation metrics remain local and are not redirected.
+
+Dependency order:
+
+```text
+REL-03-P0 external-inference seam
+    ↓
+Slice 17 profile-isolation regression CI
+    ↓
+REL-01 CPU release image
+    ↓
+Slice 18 Cloud Run + Secret Manager + hosted demo
+```
+
+REL-03-P0 does not authorize Slice 17, REL-01 implementation, Slice 18,
+BETA-CONV-02, Cloud Run, or public production hosting. REL-03 is a portfolio
+release-profile concern, not an active beta release blocker. See
+[`docs/rel03_external_inference_demo_profile.md`](rel03_external_inference_demo_profile.md).
 
 ## 4. Registered later candidates
 
