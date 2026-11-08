@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import shutil
@@ -23,8 +24,14 @@ from offline_rag.app.conversation.prior_turns import (
     validate_prior_turns,
 )
 from offline_rag.app.conversation.resolver import (
-    RESOLVER_PROMPT_CONTRACT_ID,
+    CONVERSATION_EXECUTOR_PROMPT_CONTRACT_ID,
+    LANE_ROUTER_PROMPT_CONTRACT_ID,
+    ResolverResult,
+    build_conversation_executor_request,
+    build_lane_router_request,
     build_resolver_user_payload,
+    is_unsupported_mixed_operation,
+    parse_lane_router_content,
     parse_resolver_content,
     resolve_conversation_context,
     try_deterministic_followup_resolve,
@@ -39,7 +46,12 @@ from offline_rag.app.workspace.store import WorkspaceStore
 from offline_rag.config import load_settings
 from offline_rag.config.models import AppSettings
 from offline_rag.context.assemble import HybridRerankContextAssembler
-from offline_rag.core.ids import CONVERSATION_CONTEXT_RESOLVER_V1, GROUNDED_ANSWER_V2
+from offline_rag.core.ids import (
+    CONVERSATION_CONTEXT_RESOLVER_V1,
+    CONVERSATION_LANE_ROUTER_V2,
+    CONVERSATION_TEXT_EXECUTOR_V1,
+    GROUNDED_ANSWER_V2,
+)
 from offline_rag.dense.embedder import FakeEmbedder
 from offline_rag.dense.qdrant_local import QdrantLocalBackend
 from offline_rag.dense.retrieve import DenseRetriever
@@ -131,6 +143,19 @@ def _conversation_client(
         captures["generator_requests"].append(request)
         contract = (request.metadata or {}).get("prompt_contract")
         blob = "\n".join(message.content for message in request.messages)
+        if contract == CONVERSATION_LANE_ROUTER_V2:
+            return json.dumps(
+                {
+                    "lane": "sources",
+                    "retrieval_question": (
+                        "Which machine-learning techniques discussed previously "
+                        "are supervised learning methods?"
+                    ),
+                    "context_used": True,
+                }
+            )
+        if contract == CONVERSATION_TEXT_EXECUTOR_V1:
+            return "This is a transcript-only response."
         if contract == CONVERSATION_CONTEXT_RESOLVER_V1 or "conversation-context resolver" in blob:
             # Default: resolve to a clear standalone retrieval question.
             return json.dumps(
@@ -310,6 +335,91 @@ def test_resolver_exact_json_only_fail_closed() -> None:
         assert result.retrieval_question is None
 
 
+def test_lane_router_contract_is_frozen_and_strict() -> None:
+    prior = (
+        PriorTurn(role="user", text="What does the manual say?"),
+        PriorTurn(role="assistant", text="It discusses inspections."),
+    )
+    request = build_lane_router_request(
+        prior_turns=prior,
+        current_question="What was the inspection interval?",
+        model=APPROVED_MODEL,
+        max_output_tokens=512,
+    )
+    assert (request.metadata or {}).get(
+        "prompt_contract"
+    ) == LANE_ROUTER_PROMPT_CONTRACT_ID
+    assert hashlib.sha256(request.messages[0].content.encode()).hexdigest() == (
+        "3db1de4a952cb36d37bece9189221294e50185a9edd7732bc72430fe8aa68711"
+    )
+    assert request.response_format is not None
+    assert hashlib.sha256(
+        json.dumps(
+            request.response_format, sort_keys=True, separators=(",", ":")
+        ).encode()
+    ).hexdigest() == (
+        "cc4849bcf7ec165f17fc679b2c60e35f82f283acb54823d2e5b5063a86ddea32"
+    )
+    executor_request = build_conversation_executor_request(
+        prior_turns=prior,
+        current_question="Summarize your previous answer.",
+        model=APPROVED_MODEL,
+        max_output_tokens=512,
+    )
+    assert executor_request.response_format is None
+    assert hashlib.sha256(
+        executor_request.messages[0].content.encode()
+    ).hexdigest() == (
+        "5cbfa984715785c3f3610b56a21cd46f825976b82a56d1626ce69d9a09d47138"
+    )
+    properties = request.response_format["json_schema"]["schema"]["properties"]
+    assert list(properties) == ["lane", "retrieval_question", "context_used"]
+
+    valid_conversation = parse_lane_router_content(
+        json.dumps(
+            {
+                "lane": "conversation",
+                "retrieval_question": "",
+                "context_used": True,
+            }
+        )
+    )
+    assert valid_conversation.outcome == "resolved"
+    assert valid_conversation.lane == "conversation"
+    assert valid_conversation.retrieval_question is None
+
+    for invalid in (
+        '{"lane":"conversation","retrieval_question":"fact","context_used":true}',
+        '{"lane":"sources","retrieval_question":"","context_used":true}',
+        '{"lane":"conversation","retrieval_question":"","context_used":true,"tool":"x"}',
+        '{"lane":[],"retrieval_question":"","context_used":true}',
+    ):
+        parsed = parse_lane_router_content(invalid)
+        assert parsed.outcome == "clarification_required"
+        assert parsed.lane == "sources"
+
+    empty_sources = parse_lane_router_content(
+        '{"lane":"sources","retrieval_question":"","context_used":true}'
+    )
+    assert empty_sources.outcome == "clarification_required"
+    assert empty_sources.clarification_reason == "ambiguous_request"
+
+
+def test_unsupported_mixed_operation_boundary() -> None:
+    assert is_unsupported_mixed_operation(
+        "Rewrite your previous answer using the Maintenance Manual."
+    )
+    assert is_unsupported_mixed_operation(
+        "Reescribe tu respuesta anterior usando el Manual de mantenimiento."
+    )
+    assert not is_unsupported_mixed_operation(
+        "Translate what the Maintenance Manual says about inspection frequency."
+    )
+    assert not is_unsupported_mixed_operation(
+        "Recap our conversation, including which sources we mentioned."
+    )
+
+
 def test_deterministic_summary_followup_resolves_single_topic() -> None:
     prior = (
         PriorTurn(role="user", text="How do I fight the fire?"),
@@ -401,7 +511,7 @@ def test_deterministic_give_me_summary_of_this_talk_activates() -> None:
     assert "fight the fire" in (result.retrieval_question or "").lower()
 
 
-def test_summary_followup_model_empty_uses_deterministic_fallback(
+def test_invalid_lane_router_uses_deterministic_grounded_fallback(
     tmp_path: Path,
 ) -> None:
     with _conversation_client(tmp_path) as (client, runtime, captures, _gen):
@@ -410,8 +520,9 @@ def test_summary_followup_model_empty_uses_deterministic_fallback(
         def _empty_resolver(request):
             contract = (request.metadata or {}).get("prompt_contract")
             blob = "\n".join(message.content for message in request.messages)
-            if contract == CONVERSATION_CONTEXT_RESOLVER_V1:
-                return json.dumps({"retrieval_question": "", "context_used": True})
+            if contract == CONVERSATION_LANE_ROUTER_V2:
+                # Invalid v2 output exercises the existing deterministic fallback.
+                return "{}"
             handles = re.findall(r"\[EVIDENCE (E[1-9][0-9]*)\]", blob)
             unique = list(dict.fromkeys(handles))
             assert unique, "grounded generation requires evidence handles"
@@ -455,8 +566,8 @@ def test_ambiguous_summarize_that_still_clarifies(tmp_path: Path) -> None:
 
         def _empty_resolver(request):
             contract = (request.metadata or {}).get("prompt_contract")
-            if contract == CONVERSATION_CONTEXT_RESOLVER_V1:
-                return json.dumps({"retrieval_question": "", "context_used": True})
+            if contract == CONVERSATION_LANE_ROUTER_V2:
+                return "{}"
             raise AssertionError("grounded generator must not run")
 
         runtime.resources.generator_client._response_fn = _empty_resolver  # type: ignore[attr-defined]
@@ -479,6 +590,10 @@ def test_ambiguous_summarize_that_still_clarifies(tmp_path: Path) -> None:
         assert data["status"] == "clarification_required"
         assert data["abstention_reason"] == "ambiguous_request"
         assert captures["assemble_queries"] == []
+        assert len(captures["generator_requests"]) == 1
+        assert (captures["generator_requests"][0].metadata or {}).get(
+            "prompt_contract"
+        ) == CONVERSATION_LANE_ROUTER_V2
 
 
 def test_malformed_prior_against_unready_runtime_is_request_invalid(
@@ -555,7 +670,7 @@ def test_fabricated_assistant_instruction_stays_in_data_delimiters() -> None:
 
 
 def test_first_turn_resolver_bypass(tmp_path: Path) -> None:
-    with _conversation_client(tmp_path) as (client, runtime, captures, generator):
+    with _conversation_client(tmp_path) as (client, _runtime, captures, generator):
         wid, alpha_sid, _, _ = _seed_workspace(client)
         before = generator.generate_calls
         body = client.post(
@@ -579,8 +694,89 @@ def test_first_turn_resolver_bypass(tmp_path: Path) -> None:
         assert generator.generate_calls >= before  # grounded may run
 
 
+def test_conversation_lane_uses_transcript_only_executor(tmp_path: Path) -> None:
+    with _conversation_client(tmp_path) as (client, runtime, captures, _generator):
+        wid, alpha_sid, _, _ = _seed_workspace(client)
+        prior_turns = [
+            {"role": "user", "text": "What did the report conclude?"},
+            {"role": "assistant", "text": "It said the test passed."},
+        ]
+        captures["generator_requests"].clear()
+        with patch(
+            "offline_rag.app.conversation.turn.resolve_conversation_context",
+            return_value=ResolverResult(
+                outcome="resolved",
+                retrieval_question=None,
+                context_used=True,
+                resolver_invoked=True,
+                lane="conversation",
+            ),
+        ):
+            outcome = run_conversation_turn(
+                runtime,
+                workspace_id=wid,
+                question="Summarize your previous answer.",
+                prior_turns=prior_turns,
+                source_ids=[alpha_sid],
+            )
+
+        assert outcome.status == "answered"
+        assert outcome.answer_origin == "conversation"
+        assert outcome.answer == "This is a transcript-only response."
+        assert outcome.query_trace_id is None
+        assert outcome.retrieval_question is None
+        assert outcome.answer_blocks == []
+        assert outcome.citations == []
+        assert captures["assemble_queries"] == []
+        assert len(captures["generator_requests"]) == 1
+        request = captures["generator_requests"][0]
+        assert (request.metadata or {}).get("prompt_contract") == (
+            CONVERSATION_EXECUTOR_PROMPT_CONTRACT_ID
+        )
+        assert request.response_format is None
+        payload = "\n".join(message.content for message in request.messages)
+        assert "It said the test passed." in payload
+        assert "Summarize your previous answer." in payload
+        assert alpha_sid not in payload
+        trace = ConversationTraceStore(runtime.settings).get(
+            outcome.conversation_trace_id
+        )
+        assert trace is not None
+        assert trace.query_trace_id is None
+        assert trace.resolver_prompt_contract_id == LANE_ROUTER_PROMPT_CONTRACT_ID
+
+
+def test_mixed_source_transform_clarifies_before_grounded_retrieval(
+    tmp_path: Path,
+) -> None:
+    with _conversation_client(tmp_path) as (client, runtime, captures, _generator):
+        wid, alpha_sid, _, _ = _seed_workspace(client)
+        captures["generator_requests"].clear()
+        captures["assemble_queries"].clear()
+        outcome = run_conversation_turn(
+            runtime,
+            workspace_id=wid,
+            question="Reescribe tu respuesta anterior usando el Manual de mantenimiento.",
+            prior_turns=[
+                {"role": "user", "text": "¿Qué indicó el informe?"},
+                {"role": "assistant", "text": "Dije que la prueba terminó correctamente."},
+            ],
+            source_ids=[alpha_sid],
+        )
+        assert outcome.status == "clarification_required"
+        assert outcome.answer_origin == "sources"
+        assert outcome.abstention_reason == "unsupported_mixed_operation"
+        assert outcome.query_trace_id is None
+        assert outcome.citations == []
+        assert len(captures["generator_requests"]) == 1
+        assert (captures["generator_requests"][0].metadata or {}).get(
+            "prompt_contract"
+        ) == CONVERSATION_LANE_ROUTER_V2
+        assert captures["assemble_queries"] == []
+
+
 def test_context_dependent_follow_up_resolution(tmp_path: Path) -> None:
-    with _conversation_client(tmp_path) as (client, runtime, captures, _gen):
+    with _conversation_client(tmp_path) as (client, _runtime, captures, _gen):
         wid, alpha_sid, _, _ = _seed_workspace(client)
         resp = client.post(
             f"/v1/workspaces/{wid}/conversation/turn",
@@ -623,7 +819,7 @@ def test_malformed_prior_rejected_before_resolver(tmp_path: Path) -> None:
 
 
 def test_invalid_source_subset_rejected_before_resolver(tmp_path: Path) -> None:
-    with _conversation_client(tmp_path) as (client, _runtime, captures, generator):
+    with _conversation_client(tmp_path) as (client, _runtime, _captures, generator):
         wid, _, _, _ = _seed_workspace(client)
         before = generator.generate_calls
         resp = client.post(
@@ -643,8 +839,14 @@ def test_clarification_required_no_query_trace(tmp_path: Path) -> None:
 
         def _clarifying(request):
             contract = (request.metadata or {}).get("prompt_contract")
-            if contract == CONVERSATION_CONTEXT_RESOLVER_V1:
-                return json.dumps({"retrieval_question": "", "context_used": True})
+            if contract == CONVERSATION_LANE_ROUTER_V2:
+                return json.dumps(
+                    {
+                        "lane": "sources",
+                        "retrieval_question": "",
+                        "context_used": True,
+                    }
+                )
             raise AssertionError("grounded generator must not run")
 
         runtime.resources.generator_client._response_fn = _clarifying  # type: ignore[attr-defined]
@@ -670,6 +872,7 @@ def test_clarification_required_no_query_trace(tmp_path: Path) -> None:
         assert data["answer"] is None
         assert data["answer_blocks"] == []
         assert data["citations"] == []
+        assert len(captures["generator_requests"]) == 1
         assert captures["assemble_queries"] == []
         ctrace = ConversationTraceStore(runtime.settings).get(data["conversation_trace_id"])
         assert ctrace is not None
@@ -757,7 +960,7 @@ def test_binding_occurs_before_resolver(tmp_path: Path) -> None:
 
 def test_explicit_source_subset_remains_exact(tmp_path: Path) -> None:
     with _conversation_client(tmp_path) as (client, runtime, captures, _g):
-        wid, alpha_sid, beta_sid, alpha_doc = _seed_workspace(client)
+        wid, alpha_sid, beta_sid, _alpha_doc = _seed_workspace(client)
         beta_doc = (
             next(
                 s.document_id
@@ -782,7 +985,7 @@ def test_explicit_source_subset_remains_exact(tmp_path: Path) -> None:
 
 
 def test_query_remains_independent_single_turn(tmp_path: Path) -> None:
-    with _conversation_client(tmp_path) as (client, runtime, captures, generator):
+    with _conversation_client(tmp_path) as (client, runtime, captures, _generator):
         wid, alpha_sid, _, _ = _seed_workspace(client)
         captures["generator_requests"].clear()
         outcome = run_workspace_query(
@@ -824,8 +1027,8 @@ def test_conversation_trace_has_no_transcript(tmp_path: Path) -> None:
         dumped = ctrace.model_dump_json()
         assert secret not in dumped
         assert "What methods" not in dumped
-        assert ctrace.resolver_prompt_contract_id == RESOLVER_PROMPT_CONTRACT_ID
-        assert ctrace.resolver_prompt_contract_id == CONVERSATION_CONTEXT_RESOLVER_V1
+        assert ctrace.resolver_prompt_contract_id == LANE_ROUTER_PROMPT_CONTRACT_ID
+        assert ctrace.resolver_prompt_contract_id == CONVERSATION_LANE_ROUTER_V2
 
 
 def test_query_trace_scientific_authority(tmp_path: Path) -> None:

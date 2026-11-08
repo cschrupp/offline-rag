@@ -157,6 +157,42 @@ describe("Slice 16D-B3 conversation state helpers", () => {
     expect(loadConversation("ws_bound")).toHaveLength(CONVERSATION_PAIR_MAX);
   });
 
+  it("validates conversation-only responses without query or citation provenance", () => {
+    const valid = turnResponse({
+      query_trace_id: null,
+      answer_origin: "conversation",
+      retrieval_question: null,
+      answer: "The report said the test passed.",
+      answer_blocks: [],
+      citations: [],
+    });
+    const pair = {
+      pairId: "conversation_only",
+      askedAt: new Date().toISOString(),
+      question: "Summarize your previous answer.",
+      selectedSourceIds: ["src_1"],
+      selectedSourceNames: ["Alpha.pdf"],
+      selectionMode: "all" as const,
+      response: valid,
+    };
+    appendConversationPair("ws_conversation_only", pair);
+    expect(loadConversation("ws_conversation_only")).toHaveLength(1);
+
+    const invalid = {
+      ...pair,
+      pairId: "conversation_with_query_trace",
+      response: turnResponse({
+        answer_origin: "conversation",
+        retrieval_question: null,
+        answer: "The report said the test passed.",
+        answer_blocks: [],
+        citations: [],
+      }),
+    };
+    appendConversationPair("ws_invalid_conversation_only", invalid);
+    expect(loadConversation("ws_invalid_conversation_only")).toHaveLength(0);
+  });
+
   it("builds 6-pair / 12k client resolver window", () => {
     const pairs: Array<{
       pairId: string;
@@ -380,6 +416,64 @@ describe("Slice 16D-B3 conversation workspace UI", () => {
       ),
     );
     expect(await screen.findByText("Done.")).toBeInTheDocument();
+    mock.restore();
+  });
+
+  it("labels conversation-only answers and accepts their no-trace shape", async () => {
+    const user = userEvent.setup();
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces/ws_1" && call.method === "GET") {
+        return jsonResponse(
+          workspace({
+            workspace_id: "ws_1",
+            title: "Ask Desk",
+            revision: 5,
+            source_count: 1,
+            status: "active",
+            current_snapshot_id: "snap_1",
+          }),
+        );
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources") {
+        return jsonResponse({
+          workspace_id: "ws_1",
+          revision: 5,
+          sources: [source({ source_id: "src_1", display_name: "Alpha.pdf" })],
+        });
+      }
+      if (call.url === "/v1/workspaces/ws_1/conversation/turn" && call.method === "POST") {
+        return jsonResponse(
+          turnResponse({
+            query_trace_id: null,
+            status: "answered",
+            answer_origin: "conversation",
+            retrieval_question: null,
+            answer: "The report said the test passed.",
+            answer_blocks: [],
+            citations: [],
+          }),
+        );
+      }
+      return errorResponse("not_found", "x", 404);
+    });
+
+    renderApp("/workspaces/ws_1");
+    await screen.findByRole("heading", { name: "Conversation" });
+    await user.type(
+      screen.getByLabelText("Ask a follow-up"),
+      "Summarize your previous answer.",
+    );
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    expect(
+      await screen.findByText(
+        "From this conversation — not re-checked against your sources",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("The report said the test passed.")).toBeInTheDocument();
+    expect(loadConversation("ws_1")).toHaveLength(1);
     mock.restore();
   });
 

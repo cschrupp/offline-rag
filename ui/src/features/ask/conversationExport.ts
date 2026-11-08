@@ -18,7 +18,7 @@ export const CONVERSATION_FORMAT = "seneca-conversation";
 export const CONVERSATION_VERSION = 1;
 
 export const DERIVED_CONVERSATION_WARNING =
-  "Derived Seneca conversation. Assistant responses in this document were generated from cited sources. This document is derived material and is not primary evidence.";
+  "Derived Seneca conversation. Assistant responses may be generated from cited sources or transformed from prior conversation without source re-check. This document is derived material and is not primary evidence.";
 
 export type ConversationExportWorkspace = {
   workspace_id: string;
@@ -129,7 +129,7 @@ export function serializeConversationMarkdown(
     `Exported: ${exportedAt}`,
     "",
     `> **Derived Seneca conversation.**`,
-    `> Assistant responses in this document were generated from cited sources.`,
+    `> Assistant responses may be generated from cited sources or transformed from prior conversation without source re-check.`,
     `> This document is derived material and is not primary evidence.`,
     "",
   ];
@@ -152,6 +152,15 @@ export function serializeConversationMarkdown(
     parts.push("### User", "", entry.question, "", "### Seneca", "");
 
     if (response.status === "answered") {
+      if (response.answer_origin === "conversation") {
+        parts.push(
+          "**From this conversation — not re-checked against your sources**",
+          "",
+          response.answer || "",
+          "",
+        );
+        continue;
+      }
       const { answerMarkdown, sourcesMarkdown } = formatAnswerWithMarkers(
         response.answer_blocks,
         response.citations,
@@ -183,6 +192,7 @@ function completedTurnJson(entry: ConversationHistoryEntry) {
     selected_source_ids: entry.selectedSourceIds,
     selected_source_names: entry.selectedSourceNames,
     status: response.status,
+    answer_origin: response.answer_origin ?? "sources",
     abstention_reason: response.abstention_reason,
     answer: response.answer,
     answer_blocks: response.answer_blocks,

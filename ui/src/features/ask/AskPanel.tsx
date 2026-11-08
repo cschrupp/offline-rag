@@ -338,17 +338,28 @@ export function AskPanel({
                       }
                       className="answer-body"
                     >
-                      <ClaimAnswer
-                        blocks={entry.response.answer_blocks}
-                        citations={entry.response.citations}
-                        selectedEvidenceUnitId={
-                          active ? selectedEvidenceUnitId : null
-                        }
-                        citationsVisible={!trainingMode || reveal.citations}
-                        onSelectCitation={(citation) => {
-                          onSelectCitation(citation, entry);
-                        }}
-                      />
+                      {entry.response.answer_origin === "conversation" ? (
+                        <>
+                          <p className="conversation-origin-label">
+                            From this conversation — not re-checked against your sources
+                          </p>
+                          <p className="conversation-answer-text">
+                            {entry.response.answer}
+                          </p>
+                        </>
+                      ) : (
+                        <ClaimAnswer
+                          blocks={entry.response.answer_blocks}
+                          citations={entry.response.citations}
+                          selectedEvidenceUnitId={
+                            active ? selectedEvidenceUnitId : null
+                          }
+                          citationsVisible={!trainingMode || reveal.citations}
+                          onSelectCitation={(citation) => {
+                            onSelectCitation(citation, entry);
+                          }}
+                        />
+                      )}
                     </div>
                   )
                 ) : (

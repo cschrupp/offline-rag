@@ -479,6 +479,8 @@ export type ConversationTurnResponse = {
   conversation_trace_id: string;
   query_trace_id: string | null;
   status: ConversationTurnStatus | string;
+  /** Present on new responses; omitted only in older saved local history. */
+  answer_origin?: "sources" | "conversation";
   abstention_reason: AbstentionReason | null;
   question: string;
   retrieval_question: string | null;

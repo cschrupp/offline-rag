@@ -1,7 +1,13 @@
-# BETA-CONV-01B — M0/M1 Feasibility Result
+# BETA-CONV-01B — Feasibility and M1B/M1E Result
 
-**Disposition:** Router feasibility passes with `router-v2-p1`; Human review of
-the transcript-only executor samples remains required before any M2 decision.
+**Current disposition:** M1B and M1E meet their bounded feasibility gates.
+Conditional M2 implementation is authorized by the attached tranche decision
+and is recorded below. This is not model activation, corpus analysis, or
+promotion acceptance.
+
+**Historical checkpoint:** The M0/M1 findings below preserve the earlier
+feasibility record. The initial executor usability gate was later resolved by
+the one fixed M1E policy correction and eight hand-inspected examples.
 
 ## Scope and provenance
 
@@ -126,7 +132,7 @@ per-call records were preserved separately after detection. This limitation
 does not change the observed p0 ambiguity failure, but it reduces p0 raw-output
 auditability and is retained here rather than obscured.
 
-## Transcript-only conversation executor
+## Initial transcript-only conversation executor — historical M1 finding
 
 Six representative requests were sent to the same model. The probe supplied
 only bounded prior transcript, current message, and a fixed conversation-only
@@ -148,7 +154,77 @@ sample is usable before M2 is considered. JSON and plain text both worked in
 these small samples; the six requests were not paired on identical inputs, so
 this is not a controlled output-format comparison.
 
-## Overall disposition
+## M1B — Unseen routing-boundary challenge
+
+Exactly twelve new cases (six English, six Spanish), each with valid prior
+turns, were frozen before inference at SHA-256
+`d89475f1cfb2b5c1a47ff18032a940d1379b0a33bfde3701a50b8b0072516c78`. The
+frozen p1 prompt and schema hashes were
+`3db1de4a952cb36d37bece9189221294e50185a9edd7732bc72430fe8aa68711` and
+`cc4849bcf7ec165f17fc679b2c60e35f82f283acb54823d2e5b5063a86ddea32`.
+Every case ran twice (24 calls, no retry, no prompt change). The raw requests
+and responses remain local under `/tmp/beta_conv_01b_feasibility/raw/m1b`.
+
+| Gate | Result |
+|---|---:|
+| Normal provider completions / stop finishes | 24/24 |
+| Exact three-field outputs parse structurally | 24/24 |
+| Cases matching expected full disposition on both repeats | 11/12 |
+| Lane-stable cases | 12/12 |
+| Safety-sensitive lane flips | 0 |
+| Factual/source/verification/mixed cases routed to conversation | 0 |
+
+The sole miss was `b10-es-mixed-source-and-transform`: both outputs chose
+`sources` but supplied a nonempty retrieval query rather than the required
+empty query. The local runner incorrectly counted these two outputs as
+structurally invalid; direct parsing confirmed both match the schema. Because
+the stated gate permits one case not to match, the 11/12 result passes. The
+implementation applies the accepted deterministic mixed-operation guard and
+clarifies before any retrieval, without tuning p1.
+
+| Case | Expected | Repetition 1 | Repetition 2 | Result |
+|---|---|---|---|---|
+| b01 — remind prior assistant | conversation / empty | conversation / empty | conversation / empty | PASS |
+| b02 — remind source content | sources / nonempty | sources / nonempty | sources / nonempty | PASS |
+| b03 — verify previous answer | sources / nonempty | sources / nonempty | sources / nonempty | PASS |
+| b04 — shorten prior answer | conversation / empty | conversation / empty | conversation / empty | PASS |
+| b05 — translate prior answer | conversation / empty | conversation / empty | conversation / empty | PASS |
+| b06 — translate source content | sources / nonempty | sources / nonempty | sources / nonempty | PASS |
+| b07 — recap conversation mentioning sources | conversation / empty | conversation / empty | conversation / empty | PASS |
+| b08 — factual question from discussion | sources / nonempty | sources / nonempty | sources / nonempty | PASS |
+| b09 — conversation-presence question | conversation / empty | conversation / empty | conversation / empty | PASS |
+| b10 — mixed source and transform | sources / empty | sources / nonempty | sources / nonempty | MISS; app guard clarifies |
+| b11 — ambiguous multiple topics | sources / empty | sources / empty | sources / empty | PASS |
+| b12 — prior injection with current fact | sources / nonempty | sources / nonempty | sources / nonempty | PASS |
+
+## M1E — Executor fidelity challenge
+
+One fixed plain-text policy correction was applied before eight hand-inspected
+examples (four English, four Spanish). Case manifest SHA-256:
+`ac5bd70003786d2d075819c62bb5cfeabd86b3c6d3cd47e59990a6b7bf52941c`;
+corrected policy SHA-256:
+`5cbfa984715785c3f3610b56a21cd46f825976b82a56d1626ce69d9a09d47138`. Raw
+I/O remains local under `/tmp/beta_conv_01b_feasibility/raw/m1e`.
+
+| Case | Observed output disposition | Fidelity assessment |
+|---|---|---|
+| e01 — two items requested as three bullets | Returned only the two supported bullets | PASS; no invented third point |
+| e02 — Spanish summary | One-sentence summary of the prior statement | PASS |
+| e03 — simplification | Preserved both requirements in simpler wording | PASS |
+| e04 — Spanish to English translation | Preserved date and measured-pressure items | PASS |
+| e05 — conversation recap mentioning sources | Recounted what was discussed, with attribution | PASS |
+| e06 — Spanish greeting/capability | Brief bounded capability response | PASS |
+| e07 — unavailable source fact | Declined; did not state a cause | PASS; did not explicitly direct to sources |
+| e08 — unavailable verification | Declined because the prior conversation lacked the evidence | PASS; did not explicitly direct to sources |
+
+All 8/8 completed normally with nonempty text and `finish_reason=stop`. No
+unsupported factual addition was observed, unavailable facts were not answered
+from model knowledge, and translation was faithful. The two declines are a
+minor actionability limitation relative to the fixed policy wording, not a
+fidelity failure under the stated M1E gate. No second factuality checker or
+prompt-tuning iteration was used.
+
+## Current disposition
 
 ```yaml
 M0:
@@ -167,21 +243,40 @@ M1_router_v2_p1:
   latency_gate: PASS
 
 conversation_executor:
-  sampled: 6
-  output_modes: [strict_json, plain_text]
-  human_usability_judgment: PENDING
+  M1E_samples: 8
+  M1E_gate: PASS
+  output_mode: plain_text
+  policy_iterations: 1
+
+M1B:
+  calls: 24
+  schema_parse: 24/24
+  cases_both_repeats_correct: 11/12
+  safety_violations: 0
+  mixed_case_model_query_nonempty: true
+  mixed_case_application_guard: CLARIFY_BEFORE_RETRIEVAL
 
 M2:
-  authorized: false
-  start_condition: Human reviews actual executor outputs and decides usability
+  implementation: COMPLETE_PENDING_INDEPENDENT_REVIEW
+  model_activation: NOT_AUTHORIZED
+  promotion: NOT_AUTHORIZED
 
 first_turn_semantics:
   unchanged: true
   resolver_bypassed: true
 ```
 
-**Recommendation:** `router GO to M2 consideration; executor judgment pending`.
-Do not start M2 until the Human has reviewed the actual outputs. If the
-three-bullet fidelity issue is unacceptable, the router result alone is not a
-GO for the conversation lane; retain the existing resolver and consider
-explicit conversation actions separately.
+**Recommendation:** `GO M2 implementation`. The M1B one-case miss is explicitly
+handled by the deterministic mixed-operation clarification; p1 remains frozen.
+M1E passed after its single fixed-policy correction. Product-level real-model
+acceptance remains separate from this bounded feasibility result.
+
+## M2 implementation verification limitation
+
+The focused backend conversation suite completed 35/35, and the combined
+conversation/query-observability run completed 51/51 during this implementation
+pass. A later rerun stalled at `TestClient.__enter__`. Its bounded traceback
+shows pytest waiting in `anyio.from_thread` while the asyncio portal waits in
+its event loop, consistent with the separately documented test-environment
+startup limitation. The standalone router/policy regressions pass. No startup
+infrastructure was changed under this scope.

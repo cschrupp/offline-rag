@@ -631,6 +631,42 @@ describe("16D-C Rework 2 / A4 — Conversation export", () => {
     expect(JSON.stringify(doc)).not.toContain("revealMap");
   });
 
+  it("preserves the no-source-check label for conversation-only exports", () => {
+    const entry: ConversationHistoryEntry = {
+      ...answeredEntry(),
+      response: turnResponse({
+        query_trace_id: null,
+        answer_origin: "conversation",
+        retrieval_question: null,
+        answer: "The report said the test passed.",
+        answer_blocks: [],
+        citations: [],
+      }),
+    };
+    const input = {
+      workspace: workspaceMeta,
+      history: [entry],
+      incompleteTurns: [],
+      exportedFromView: "normal" as const,
+    };
+
+    const markdown = serializeConversationMarkdown(input);
+    expect(markdown.content).toContain(
+      "From this conversation — not re-checked against your sources",
+    );
+    expect(markdown.content).toContain("The report said the test passed.");
+    expect(markdown.content).not.toContain("### Sources");
+
+    const json = JSON.parse(serializeConversationJson(input).content) as {
+      turns: Array<Record<string, unknown>>;
+    };
+    expect(json.turns[0]).toMatchObject({
+      answer_origin: "conversation",
+      query_trace_id: null,
+      citations: [],
+    });
+  });
+
   it("exports abstention/clarification/failed turns without fabricating answers", () => {
     const clarification: ConversationHistoryEntry = {
       ...answeredEntry(),

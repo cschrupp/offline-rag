@@ -9,7 +9,8 @@ from typing import Any, Literal
 
 from offline_rag.app.conversation.prior_turns import PriorTurn, validate_prior_turns
 from offline_rag.app.conversation.resolver import (
-    RESOLVER_PROMPT_CONTRACT_ID,
+    LANE_ROUTER_PROMPT_CONTRACT_ID,
+    build_conversation_executor_request,
     resolve_conversation_context,
 )
 from offline_rag.app.conversation.traces import (
@@ -36,6 +37,7 @@ ConversationSuccessStatus = Literal[
     "model_abstain",
     "clarification_required",
 ]
+ConversationAnswerOrigin = Literal["sources", "conversation"]
 
 
 def _sha256(text: str) -> str:
@@ -51,6 +53,7 @@ class ConversationTurnResponse:
     conversation_trace_id: str
     query_trace_id: str | None
     status: ConversationSuccessStatus
+    answer_origin: ConversationAnswerOrigin
     abstention_reason: str | None
     question: str
     retrieval_question: str | None
@@ -68,6 +71,7 @@ class ConversationTurnResponse:
             "conversation_trace_id": self.conversation_trace_id,
             "query_trace_id": self.query_trace_id,
             "status": self.status,
+            "answer_origin": self.answer_origin,
             "abstention_reason": self.abstention_reason,
             "question": self.question,
             "retrieval_question": self.retrieval_question,
@@ -85,7 +89,7 @@ def _commit_conversation_trace(
         store.commit(record)
     except AppError:
         raise AppError(ErrorCode.INTERNAL_ERROR)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise AppError(ErrorCode.INTERNAL_ERROR) from exc
 
 
@@ -175,7 +179,7 @@ def run_conversation_turn(
                 question_char_count=len(normalized_question),
                 prior_turn_count=len(validated_prior),
                 resolver_invoked=resolver.resolver_invoked,
-                resolver_prompt_contract_id=RESOLVER_PROMPT_CONTRACT_ID,
+                resolver_prompt_contract_id=LANE_ROUTER_PROMPT_CONTRACT_ID,
                 resolver_outcome="clarification_required",
                 retrieval_question_sha256=None,
                 retrieval_question_char_count=None,
@@ -192,11 +196,82 @@ def run_conversation_turn(
             conversation_trace_id=conversation_trace_id,
             query_trace_id=None,
             status="clarification_required",
-            abstention_reason="ambiguous_request",
+            answer_origin="sources",
+            abstention_reason=resolver.clarification_reason or "ambiguous_request",
             question=normalized_question,
             retrieval_question=None,
             context_used=resolver.context_used,
             answer=None,
+            answer_blocks=[],
+            citations=[],
+        )
+
+    if resolver.lane == "conversation":
+        if runtime.resources is None or runtime.resources.generator_client is None:
+            raise AppError(ErrorCode.GENERATION_UNAVAILABLE)
+        request = build_conversation_executor_request(
+            prior_turns=validated_prior,
+            current_question=normalized_question,
+            model=runtime.settings.generation.model,
+            max_output_tokens=min(
+                512, int(runtime.settings.generation.max_output_tokens)
+            ),
+        )
+        try:
+            response = runtime.resources.generator_client.generate(request)
+        except AppError:
+            raise
+        except Exception as exc:
+            raise AppError(ErrorCode.GENERATION_FAILED) from exc
+
+        answer = response.content.strip()
+        if not answer:
+            status: ConversationSuccessStatus = "clarification_required"
+            abstention_reason = "conversation_response_unavailable"
+            answer = None
+        else:
+            status = "answered"
+            abstention_reason = None
+
+        _commit_conversation_trace(
+            cstore,
+            ConversationTraceRecord(
+                conversation_trace_id=conversation_trace_id,
+                created_at=created_at,
+                workspace_id=workspace_id,
+                workspace_revision=int(admitted_revision),
+                snapshot_id=admitted_snapshot_id,
+                product_mode_id=PRODUCT_MODE_GROUNDED_V1,
+                source_scope=source_scope,
+                question_sha256=_sha256(normalized_question),
+                question_char_count=len(normalized_question),
+                prior_turn_count=len(validated_prior),
+                resolver_invoked=True,
+                resolver_prompt_contract_id=LANE_ROUTER_PROMPT_CONTRACT_ID,
+                resolver_outcome=(
+                    "resolved" if status == "answered" else "clarification_required"
+                ),
+                retrieval_question_sha256=None,
+                retrieval_question_char_count=None,
+                context_used=resolver.context_used,
+                status=status,
+                query_trace_id=None,
+            ),
+        )
+        return ConversationTurnResponse(
+            workspace_id=workspace_id,
+            workspace_revision=admitted_revision,
+            snapshot_id=admitted_snapshot_id,
+            product_mode_id=PRODUCT_MODE_GROUNDED_V1,
+            conversation_trace_id=conversation_trace_id,
+            query_trace_id=None,
+            status=status,
+            answer_origin="conversation",
+            abstention_reason=abstention_reason,
+            question=normalized_question,
+            retrieval_question=None,
+            context_used=resolver.context_used,
+            answer=answer,
             answer_blocks=[],
             citations=[],
         )
@@ -241,7 +316,7 @@ def run_conversation_turn(
             question_char_count=len(normalized_question),
             prior_turn_count=len(validated_prior),
             resolver_invoked=resolver.resolver_invoked,
-            resolver_prompt_contract_id=RESOLVER_PROMPT_CONTRACT_ID,
+            resolver_prompt_contract_id=LANE_ROUTER_PROMPT_CONTRACT_ID,
             resolver_outcome=resolver_outcome_status,
             retrieval_question_sha256=_sha256(retrieval_question),
             retrieval_question_char_count=len(retrieval_question),
@@ -259,6 +334,7 @@ def run_conversation_turn(
         conversation_trace_id=conversation_trace_id,
         query_trace_id=outcome.trace_id,
         status=outcome.status,
+        answer_origin="sources",
         abstention_reason=outcome.abstention_reason,
         question=normalized_question,
         retrieval_question=retrieval_question,

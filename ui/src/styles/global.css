@@ -1075,6 +1075,18 @@ button.snapshot-badge {
   white-space: pre-wrap;
 }
 
+.conversation-origin-label {
+  margin: 0 0 var(--space-2);
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-style: italic;
+}
+
+.conversation-answer-text {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
 .provenance-disclosure {
   border-top: 1px solid var(--color-border);
   padding-top: var(--space-3);

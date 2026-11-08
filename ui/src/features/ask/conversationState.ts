@@ -206,7 +206,11 @@ function isValidAbstentionReason(
 ): reason is string {
   if (typeof reason !== "string") return false;
   if (status === "clarification_required") {
-    return reason === "ambiguous_request";
+    return (
+      reason === "ambiguous_request" ||
+      reason === "unsupported_mixed_operation" ||
+      reason === "conversation_response_unavailable"
+    );
   }
   if (reason === "ambiguous_request") return false;
   if (status === "insufficient_evidence") {
@@ -240,6 +244,13 @@ function isTurnResponse(value: unknown): value is ConversationTurnResponse {
   ) {
     return false;
   }
+  if (
+    row.answer_origin !== undefined &&
+    row.answer_origin !== "sources" &&
+    row.answer_origin !== "conversation"
+  ) {
+    return false;
+  }
   if (!(typeof row.answer === "string" || row.answer === null)) {
     return false;
   }
@@ -249,6 +260,14 @@ function isTurnResponse(value: unknown): value is ConversationTurnResponse {
       return false;
     }
     if (row.abstention_reason !== null) return false;
+    if (row.answer_origin === "conversation") {
+      return (
+        row.query_trace_id === null &&
+        row.retrieval_question === null &&
+        row.answer_blocks.length === 0 &&
+        row.citations.length === 0
+      );
+    }
     if (!isNonEmptyString(row.query_trace_id)) return false;
     if (!isNonEmptyString(row.retrieval_question)) return false;
     if (!row.answer_blocks.every(isAnswerBlock)) return false;
