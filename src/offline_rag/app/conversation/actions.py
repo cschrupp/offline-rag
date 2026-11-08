@@ -197,7 +197,6 @@ def run_conversation_action(
         )
 
     snapshot_id = record.current_snapshot_id
-    runtime.publication.resolve_snapshot(record.backing_corpus_name, snapshot_id)
     resources = runtime.resources
     if resources is None or resources.generator_client is None:
         raise AppError(ErrorCode.GENERATION_UNAVAILABLE)
@@ -208,7 +207,7 @@ def run_conversation_action(
         target_assistant_index=target_assistant_index,
         target_language=target_language,
         model=runtime.settings.generation.model,
-        max_output_tokens=int(runtime.settings.generation.max_output_tokens),
+        max_output_tokens=2 * int(runtime.settings.generation.max_output_tokens),
     )
     try:
         generated = resources.generator_client.generate(request)

@@ -280,20 +280,22 @@ export function AskPanel({
                   <p className="conversation-role" style={{ margin: 0 }}>
                     Seneca
                   </p>
-                  <button
-                    type="button"
-                    className={
-                      badge === "current"
-                        ? "snapshot-badge snapshot-badge-current"
-                        : "snapshot-badge snapshot-badge-historical"
-                    }
-                    onClick={() => onSelectHistory(entry)}
-                    aria-pressed={active}
-                  >
-                    {badge === "current"
-                      ? "Current snapshot"
-                      : "Historical snapshot"}
-                  </button>
+                  {!isConversationOrigin ? (
+                    <button
+                      type="button"
+                      className={
+                        badge === "current"
+                          ? "snapshot-badge snapshot-badge-current"
+                          : "snapshot-badge snapshot-badge-historical"
+                      }
+                      onClick={() => onSelectHistory(entry)}
+                      aria-pressed={active}
+                    >
+                      {badge === "current"
+                        ? "Current snapshot"
+                        : "Historical snapshot"}
+                    </button>
+                  ) : null}
                 </div>
                 <p className="muted" style={{ margin: 0, fontSize: "0.875rem" }}>
                   {statusLabel(String(entry.response.status))} ·{" "}

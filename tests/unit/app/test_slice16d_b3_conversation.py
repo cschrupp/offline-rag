@@ -34,10 +34,11 @@ from offline_rag.app.conversation.traces import (
     ConversationTraceStore,
 )
 from offline_rag.app.conversation.turn import run_conversation_turn
-from offline_rag.app.errors import AppError, ErrorCode
+from offline_rag.app.errors import AppError, ErrorCode, SafeErrorDetails
 from offline_rag.app.query import run_workspace_query
 from offline_rag.app.runtime import ApplicationRuntime, ResourceFactories
 from offline_rag.app.traces import ProductTraceStore
+from offline_rag.app.workspace.models import WorkspaceStatus
 from offline_rag.app.workspace.store import WorkspaceStore
 from offline_rag.config import load_settings
 from offline_rag.config.models import AppSettings
@@ -765,6 +766,44 @@ def test_binding_occurs_before_resolver(tmp_path: Path) -> None:
         assert order.index("snapshot") < order.index("resolver")
 
 
+def test_grounded_turn_rejects_stale_snapshot_before_resolver(
+    tmp_path: Path,
+) -> None:
+    with _conversation_client(tmp_path) as (client, runtime, captures, generator):
+        wid, alpha_sid, _, _ = _seed_workspace(client)
+        captures["generator_requests"].clear()
+        resolver = patch(
+            "offline_rag.app.conversation.turn.resolve_conversation_context"
+        )
+        with (
+            patch.object(
+                runtime.publication,
+                "resolve_snapshot",
+                side_effect=AppError(
+                    ErrorCode.WORKSPACE_CONFLICT,
+                    details=SafeErrorDetails(
+                        workspace_id=wid, reason="lexical_config_stale"
+                    ),
+                ),
+            ),
+            resolver as resolver_mock,
+            pytest.raises(AppError) as exc,
+        ):
+            run_conversation_turn(
+                runtime,
+                workspace_id=wid,
+                question="What does the source say?",
+                source_ids=[alpha_sid],
+            )
+
+        assert exc.value.code is ErrorCode.WORKSPACE_CONFLICT
+        assert exc.value.details is not None
+        assert exc.value.details.get("reason") == "lexical_config_stale"
+        resolver_mock.assert_not_called()
+        assert captures["generator_requests"] == []
+        assert generator.generate_calls == 0
+
+
 def test_explicit_source_subset_remains_exact(tmp_path: Path) -> None:
     with _conversation_client(tmp_path) as (client, runtime, captures, _g):
         wid, alpha_sid, beta_sid, alpha_doc = _seed_workspace(client)
@@ -859,6 +898,16 @@ def test_query_trace_scientific_authority(tmp_path: Path) -> None:
         # Retrieval question hash differs from raw user question when context used.
         assert outcome.context_used is True
         assert outcome.retrieval_question != outcome.question
+        grounded_requests = [
+            request
+            for request in captures["generator_requests"]
+            if (request.metadata or {}).get("prompt_contract") == GROUNDED_ANSWER_V2
+        ]
+        assert grounded_requests
+        assert all(
+            request.max_output_tokens == runtime.settings.generation.max_output_tokens
+            for request in grounded_requests
+        )
         from hashlib import sha256
 
         rq_hash = sha256(outcome.retrieval_question.encode()).hexdigest()
@@ -990,14 +1039,21 @@ def test_explicit_action_uses_exact_target_without_retrieval(tmp_path: Path) -> 
             {"role": "assistant", "text": "Exact selected answer."},
         ]
         before_query_count = len(captures["assemble_queries"])
-        response = client.post(
-            f"/v1/workspaces/{workspace_id}/conversation/action",
-            json={
-                "operation": "summarize_answer",
-                "prior_turns": prior_turns,
-                "target_assistant_index": 3,
-            },
-        )
+        with patch.object(
+            runtime.publication,
+            "resolve_snapshot",
+            side_effect=AssertionError(
+                "transcript actions must not validate scientific snapshots"
+            ),
+        ):
+            response = client.post(
+                f"/v1/workspaces/{workspace_id}/conversation/action",
+                json={
+                    "operation": "summarize_answer",
+                    "prior_turns": prior_turns,
+                    "target_assistant_index": 3,
+                },
+            )
 
         assert response.status_code == 200, response.text
         body = response.json()
@@ -1018,6 +1074,9 @@ def test_explicit_action_uses_exact_target_without_retrieval(tmp_path: Path) -> 
         assert "Exact selected answer." in action_payload
         assert "First answer must not be sent." not in action_payload
         assert action_request.metadata["operation"] == "summarize_answer"
+        assert action_request.max_output_tokens == (
+            2 * runtime.settings.generation.max_output_tokens
+        )
 
         trace = ConversationTraceStore(runtime.settings).get(
             body["conversation_trace_id"]
@@ -1048,6 +1107,94 @@ def test_explicit_action_rejects_non_assistant_target_before_generation(
         )
         assert response.status_code == 422
         assert response.json()["details"]["reason"] == "conversation_action_target_invalid"
+        assert generator.generate_calls == calls_before
+
+
+def test_explicit_action_requires_ready_runtime(tmp_path: Path) -> None:
+    with _conversation_client(tmp_path) as (client, runtime, _, generator):
+        workspace_id, _, _, _ = _seed_workspace(client)
+        calls_before = generator.generate_calls
+        with patch.object(
+            runtime,
+            "require_ready",
+            side_effect=AppError(ErrorCode.RUNTIME_NOT_READY),
+        ):
+            response = client.post(
+                f"/v1/workspaces/{workspace_id}/conversation/action",
+                json={
+                    "operation": "summarize_recent_conversation",
+                    "prior_turns": [
+                        {"role": "user", "text": "Question."},
+                        {"role": "assistant", "text": "Answer."},
+                    ],
+                },
+            )
+
+        assert response.status_code == 503
+        assert response.json()["error"]["code"] == ErrorCode.RUNTIME_NOT_READY.value
+        assert generator.generate_calls == calls_before
+
+
+def test_explicit_action_rejects_empty_workspace_without_snapshot(
+    tmp_path: Path,
+) -> None:
+    with _conversation_client(tmp_path) as (client, _, _, generator):
+        created = client.post(
+            "/v1/workspaces",
+            json={"title": "Empty Action Workspace"},
+            headers={"Idempotency-Key": "empty-action-workspace"},
+        )
+        assert created.status_code == 201, created.text
+        workspace_id = created.json()["workspace_id"]
+        calls_before = generator.generate_calls
+
+        response = client.post(
+            f"/v1/workspaces/{workspace_id}/conversation/action",
+            json={
+                "operation": "summarize_recent_conversation",
+                "prior_turns": [
+                    {"role": "user", "text": "Question."},
+                    {"role": "assistant", "text": "Answer."},
+                ],
+            },
+        )
+
+        assert response.status_code == 409
+        assert response.json()["details"]["reason"] == "workspace_empty"
+        assert generator.generate_calls == calls_before
+
+
+def test_explicit_action_requires_active_workspace_with_snapshot(
+    tmp_path: Path,
+) -> None:
+    with _conversation_client(tmp_path) as (client, runtime, _, generator):
+        workspace_id, _, _, _ = _seed_workspace(client)
+        store = WorkspaceStore(runtime.settings)
+        active_record = store.get(workspace_id)
+        assert active_record.current_snapshot_id is not None
+        inactive_record = active_record.model_copy(
+            update={"status": WorkspaceStatus.EMPTY}
+        )
+        calls_before = generator.generate_calls
+
+        with patch.object(
+            WorkspaceStore,
+            "get",
+            return_value=inactive_record,
+        ):
+            response = client.post(
+                f"/v1/workspaces/{workspace_id}/conversation/action",
+                json={
+                    "operation": "summarize_recent_conversation",
+                    "prior_turns": [
+                        {"role": "user", "text": "Question."},
+                        {"role": "assistant", "text": "Answer."},
+                    ],
+                },
+            )
+
+        assert response.status_code == 409
+        assert response.json()["details"]["reason"] == "workspace_empty"
         assert generator.generate_calls == calls_before
 
 

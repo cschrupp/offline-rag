@@ -495,6 +495,11 @@ describe("Slice 16D-B3 conversation workspace UI", () => {
     await user.type(screen.getByLabelText("Ask a follow-up"), "Initial question?");
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByText("Answer text.")).toBeInTheDocument();
+    const sourceRow = screen.getByText("Answer text.").closest("article");
+    expect(sourceRow).not.toBeNull();
+    expect(
+      within(sourceRow!).getByRole("button", { name: "Current snapshot" }),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Summarize" }));
     expect(await screen.findByText("Transformed 1.")).toBeInTheDocument();
@@ -506,6 +511,11 @@ describe("Slice 16D-B3 conversation workspace UI", () => {
       "From this conversation — not re-checked against your sources",
     );
     expect(within(transformedRow!).queryByText(/All active sources/)).toBeNull();
+    expect(
+      within(transformedRow!).queryByRole("button", {
+        name: /Current snapshot|Historical snapshot/,
+      }),
+    ).toBeNull();
     expect(actionBodies[0]).toMatchObject({
       operation: "summarize_answer",
       target_assistant_index: 1,
