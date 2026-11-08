@@ -69,6 +69,17 @@ and supporting history.
   [`archive/beta-conv-01a-pilot-01`](https://github.com/cschrupp/offline-rag/blob/890a0bc810f13d02766dc859a999d56ebe53a59d/docs/evidence/beta_conv_01a/PILOT_01_RESULTS.md).
   The exact validation cause was not established. No held-out evaluation,
   planner activation, or promotion occurred.
+- [x] **BETA-CONV-01B — Natural-language Conversation Lane** — closed
+  `NO-GO` after the frozen unseen-router safety gate. Candidate
+  `d8ae2c9074bdd928a6599ec25dd9d9d2eb98f2b8` is preserved at
+  `archive/beta-conv-01b-conversation-lane`; the Spanish mixed source-plus-
+  transformation request entered the conversation lane in both repetitions.
+  No canonical M2 API smoke, activation, or promotion occurred. See
+  [`BETA_CONV_01B_CLOSEOUT.md`](docs/evidence/beta_conv_01b/BETA_CONV_01B_CLOSEOUT.md).
+- [ ] **BETA-CONV-01C — Explicit Conversation Actions** — implementation
+  underway on `feature/beta-conv-01c-explicit-conversation-actions`. The
+  deterministic grounded free-text path remains unchanged; transformations
+  are initiated through explicit application-owned actions.
 - [ ] **BETA-CONV-02 — Analytical Synthesis** — deferred; not authorized.
 - [ ] Slice 17 design-open — **NOT AUTHORIZED**. This is distinct from
   original Slice 16G, which is complete.

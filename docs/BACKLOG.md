@@ -29,8 +29,10 @@ BETA-GAME-02B — COMPLETE / HUMAN ACCEPTED / PROMOTED
 BETA-CONV-01 — DESIGN COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / PROMOTED
                IMPLEMENTATION IR-005 CODE-REVIEW ACCEPT / PRESERVED / UNPROMOTED
                LIVE ACCEPTANCE NOT SUCCESSFULLY COMPLETED
-BETA-CONV-01A — DESIGN IR-002 ACCEPT / HUMAN ACCEPTED / IMPLEMENTATION AUTHORIZED
-                MODEL EVALUATION / ACTIVATION / IMPLEMENTATION PROMOTION NOT AUTHORIZED
+BETA-CONV-01A — ARCHIVED AFTER NEGATIVE DEVELOPMENT-ONLY FEASIBILITY PILOT
+                NO HELD-OUT EVALUATION / ACTIVATION / PROMOTION
+BETA-CONV-01B — CLOSED / NATURAL-LANGUAGE ROUTER NO-GO / ARCHIVED
+BETA-CONV-01C — IMPLEMENTATION UNDERWAY / EXPLICIT ACTIONS / NO FREE-TEXT ROUTER
 BETA-CONV-02 — DEFERRED / NOT AUTHORIZED
 Additional Gold Lab games — DEFERRED BEYOND CURRENT BETA
 ```
@@ -68,9 +70,13 @@ and its linked sanitized `RUN_002_EVIDENCE_INDEX.md`.
        deterministic implementation IR-005 code-review ACCEPT at
        64b5883311338689f291f181e47686fc1a9e3906; live acceptance not completed
        successfully; preserved on locked archive branch; unpromoted
-    -> BETA-CONV-01A LLM task planning amendment IR-001 TARGETED DESIGN
-       CORRECTIONS COMPLETE / READY FOR INDEPENDENT RE-REVIEW; planner
-       implementation, evaluation execution and activation NOT AUTHORIZED
+    -> BETA-CONV-01A LLM task planning archived after a negative feasibility
+       pilot; no held-out evaluation, activation, or promotion
+    -> BETA-CONV-01B natural-language router NO-GO after unseen Spanish mixed
+       source-plus-transformation safety failure; candidate archived and not
+       promoted; see `docs/evidence/beta_conv_01b/BETA_CONV_01B_CLOSEOUT.md`
+    -> BETA-CONV-01C explicit conversation actions, preserving the existing
+       deterministic grounded free-text path
     -> BETA-CONV-02 analytical synthesis DEFERRED / NOT AUTHORIZED
     -> Slice 17 design-open authority remains NOT AUTHORIZED
 ```
@@ -205,6 +211,36 @@ rollback and later merge-based integration. The design branch excludes the
 unpromoted application implementation. The baseline-reproduced API lifespan
 stall remains an incomplete verification item; it is not a PASS. Additional
 games remain deferred; BETA-CONV-02 and Slice 17 remain unopened.
+
+### BETA-CONV-01B — Natural-language Conversation Lane
+
+**Status:** CLOSED / NO-GO FOR BETA / ARCHIVED\
+**Candidate:** `d8ae2c9074bdd928a6599ec25dd9d9d2eb98f2b8`\
+**Archive branch:** `archive/beta-conv-01b-conversation-lane`
+
+The frozen unseen-router check routed one Spanish mixed source-plus-
+transformation request into the conversation-only lane in both repetitions.
+This violates the grounding safety boundary. No canonical M2 API smoke,
+activation, or promotion occurred. The candidate remains experimental reference
+code; do not merge it as dormant production code. The transcript-only executor
+showed bounded feasibility when the operation was known and fixed, but this did
+not qualify learned free-text intent routing. See
+[`BETA_CONV_01B_CLOSEOUT.md`](evidence/beta_conv_01b/BETA_CONV_01B_CLOSEOUT.md).
+
+### BETA-CONV-01C — Explicit Conversation Actions
+
+**Status:** IMPLEMENTATION UNDERWAY / NO FREE-TEXT ROUTER\
+**Branch:** `feature/beta-conv-01c-explicit-conversation-actions`\
+**Starting `main` SHA:** `7377871a5b96758129d2eb4e504a6b50c8d5162c`
+
+Expose application-owned summarize, simplify, and translate actions for
+completed assistant answers, plus a bounded recent-conversation summary. Keep
+typed free-text requests on the existing deterministic conversation resolver
+and grounded source pipeline. Transformations use exact bounded transcript
+targets, fixed operation/language instructions, synthetic user turns, no
+retrieval or citations, explicit conversation provenance, and fail-safe
+truncation handling. This tranche does not include learned routing,
+whole-corpus synthesis, citation-preserving transformation, or promotion.
 
 ## 2. Historical queue snapshot
 
