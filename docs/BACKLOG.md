@@ -32,7 +32,8 @@ BETA-CONV-01 — DESIGN COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / PRO
 BETA-CONV-01A — ARCHIVED AFTER NEGATIVE DEVELOPMENT-ONLY FEASIBILITY PILOT
                 NO HELD-OUT EVALUATION / ACTIVATION / PROMOTION
 BETA-CONV-01B — CLOSED / NATURAL-LANGUAGE ROUTER NO-GO / ARCHIVED
-BETA-CONV-01C — IMPLEMENTATION UNDERWAY / EXPLICIT ACTIONS / NO FREE-TEXT ROUTER
+BETA-CONV-01C — COMPLETE / HUMAN PRODUCT ACCEPTED / FAST-FORWARD PROMOTION AUTHORIZED
+                EXPLICIT ACTIONS / NO FREE-TEXT ROUTER
 BETA-CONV-02 — DEFERRED / NOT AUTHORIZED
 Additional Gold Lab games — DEFERRED BEYOND CURRENT BETA
 ```
@@ -229,7 +230,7 @@ not qualify learned free-text intent routing. See
 
 ### BETA-CONV-01C — Explicit Conversation Actions
 
-**Status:** IMPLEMENTATION UNDERWAY / NO FREE-TEXT ROUTER\
+**Status:** COMPLETE / HUMAN PRODUCT ACCEPTED / PROMOTION AUTHORIZED / NO FREE-TEXT ROUTER\
 **Branch:** `feature/beta-conv-01c-explicit-conversation-actions`\
 **Starting `main` SHA:** `7377871a5b96758129d2eb4e504a6b50c8d5162c`
 
@@ -239,8 +240,12 @@ typed free-text requests on the existing deterministic conversation resolver
 and grounded source pipeline. Transformations use exact bounded transcript
 targets, fixed operation/language instructions, synthetic user turns, no
 retrieval or citations, explicit conversation provenance, and fail-safe
-truncation handling. This tranche does not include learned routing,
-whole-corpus synthesis, citation-preserving transformation, or promotion.
+truncation handling. This tranche did not include learned routing,
+whole-corpus synthesis, or citation-preserving transformation. The accepted
+implementation preserves the known translation terminology limitation
+(`blue ledger` rendered as `libro azul` in the live Spanish sample); this is
+non-blocking and remains a translation-quality follow-up. The independent 01B
+closeout record is included in the promotion lineage.
 
 ## 2. Historical queue snapshot
 

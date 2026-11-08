@@ -164,5 +164,12 @@ correction, not an application or prompt correction. Sanitized step evidence
 was captured at `/tmp/beta-conv-01c-live-smoke.json` in the execution
 environment.
 
-Implementation review is requested after the candidate commit is pushed.
-Promotion, learned-router activation, and BETA-CONV-02 remain unauthorized.
+## Disposition at candidate handoff
+
+The statements above describing review as requested and promotion as
+unauthorized record the state when candidate `1103b1e9` was handed off. The
+candidate has since received independent implementation and product-smoke
+acceptance, followed by Human product acceptance. The accepted 01C branch has
+been combined with the independently reviewed 01B closeout documentation for
+the authorized fast-forward promotion. Learned-router activation and
+BETA-CONV-02 remain unauthorized.

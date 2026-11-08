@@ -76,10 +76,13 @@ and supporting history.
   transformation request entered the conversation lane in both repetitions.
   No canonical M2 API smoke, activation, or promotion occurred. See
   [`BETA_CONV_01B_CLOSEOUT.md`](docs/evidence/beta_conv_01b/BETA_CONV_01B_CLOSEOUT.md).
-- [ ] **BETA-CONV-01C — Explicit Conversation Actions** — implementation
-  underway on `feature/beta-conv-01c-explicit-conversation-actions`. The
-  deterministic grounded free-text path remains unchanged; transformations
-  are initiated through explicit application-owned actions.
+- [x] **BETA-CONV-01C — Explicit Conversation Actions** — implementation
+  independently reviewed and Human product-accepted. The dedicated real-model
+  smoke completed, including chained transformations and return to grounded
+  cited retrieval. The accepted implementation is on
+  `feature/beta-conv-01c-explicit-conversation-actions`; the branch also
+  carries the 01B closeout record. Fast-forward promotion to `main` is
+  authorized. The deterministic grounded free-text path remains unchanged.
 - [ ] **BETA-CONV-02 — Analytical Synthesis** — deferred; not authorized.
 - [ ] Slice 17 design-open — **NOT AUTHORIZED**. This is distinct from
   original Slice 16G, which is complete.
