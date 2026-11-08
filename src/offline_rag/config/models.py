@@ -760,6 +760,14 @@ class SecuritySettings(BaseModel):
     reject_unapproved_generation_model: bool = True
 
 
+class ConversationSettings(BaseModel):
+    """Feature controls for bounded conversation-only responses."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    lane_enabled: bool = False
+
+
 class ExperimentSection(BaseModel):
     """Optional experiment label section found in experiment YAML overlays."""
 
@@ -793,6 +801,7 @@ class AppSettings(BaseModel):
     fusion: FusionSettings = Field(default_factory=FusionSettings)
     reranker: RerankerSettings = Field(default_factory=RerankerSettings)
     context: ContextSettings = Field(default_factory=ContextSettings)
+    conversation: ConversationSettings = Field(default_factory=ConversationSettings)
     generation: GenerationSettings = Field(default_factory=GenerationSettings)
     authoring: AuthoringSettings = Field(default_factory=AuthoringSettings)
     evaluation: EvaluationSettings = Field(default_factory=EvaluationSettings)

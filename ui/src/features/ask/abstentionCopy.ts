@@ -14,6 +14,10 @@ export function abstentionCopy(reason: string | null | undefined): string {
       return "I can answer from sources or transform text from this conversation, but I cannot combine those operations in one request. Ask for one at a time.";
     case "conversation_response_unavailable":
       return "Seneca could not produce a conversation-only response. Please rephrase or ask a source-grounded question.";
+    case "conversation_response_truncated":
+      return "The conversation response was too long to complete. Try asking for a shorter transformation.";
+    case "conversation_lane_disabled":
+      return "Conversation-only replies are currently disabled. Ask a source-grounded question instead.";
     default:
       return "Seneca did not provide an answer from the available evidence.";
   }

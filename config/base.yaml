@@ -35,6 +35,10 @@ deployment:
   profile: standalone_ollama
   qdrant_mode: local
 
+conversation:
+  # Enable only after live M2 acceptance.
+  lane_enabled: false
+
 api:
   # Transport / resource safety (HTTP upload request envelope).
   max_files_per_ingest: 32

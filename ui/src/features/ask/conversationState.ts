@@ -209,7 +209,9 @@ function isValidAbstentionReason(
     return (
       reason === "ambiguous_request" ||
       reason === "unsupported_mixed_operation" ||
-      reason === "conversation_response_unavailable"
+      reason === "conversation_response_unavailable" ||
+      reason === "conversation_response_truncated" ||
+      reason === "conversation_lane_disabled"
     );
   }
   if (reason === "ambiguous_request") return false;
@@ -426,7 +428,11 @@ export function toHistoryEntry(pair: ConversationPair): ConversationHistoryEntry
 export function sourceScopeLabel(entry: {
   selectionMode: SourceSelectionMode;
   selectedSourceNames: string[];
+  response?: { answer_origin?: "sources" | "conversation" };
 }): string {
+  if (entry.response?.answer_origin === "conversation") {
+    return "Conversation only";
+  }
   const names = entry.selectedSourceNames.join(", ");
   if (entry.selectionMode === "all") {
     return names

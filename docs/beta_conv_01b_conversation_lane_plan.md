@@ -1,8 +1,12 @@
 # BETA-CONV-01B — Conversation Lane Plan
 
-**Status:** M0/M1 and M1B/M1E feasibility gates complete. M2 implementation is
-complete on `feature/beta-conv-01b-conversation-lane` and is awaiting
-independent review. Real-corpus analysis and BETA-CONV-02 remain out of scope.
+**Status:** M0/M1 and M1B/M1E feasibility gates complete. The IR-001/IR-002
+corrective is implemented on `feature/beta-conv-01b-conversation-lane`, but the
+new 16-call unseen router check failed its hard safety gate: both repetitions
+of one Spanish mixed source-plus-transformation case routed to `conversation`.
+Stop natural-language lane acceptance here. Do not run live canonical-API M2,
+tune the prompt, or enable the lane. Real-corpus analysis and BETA-CONV-02
+remain out of scope.
 
 ## Objective and boundary
 
@@ -12,7 +16,8 @@ conversation-only path. The experiment uses the existing local model and the
 existing resolver/generator seam. It does not create another API, application,
 model service, or orchestration framework.
 
-The proposed lane contract is:
+The lane contract uses `conversation.lane_enabled`, default `false` until live
+M2 acceptance. The proposed lane contract is:
 
 ```text
 admission
@@ -62,21 +67,21 @@ JSON and plain-text modes. One three-bullet answer added a generalized point
 not stated in the prior answer. M1E applies one fixed-policy correction and
 uses plain text only; it is not a prompt-tuning campaign.
 
-## Mixed-operation semantics
+## Mixed-operation semantics — IR-002 amendment
 
-A request requiring both fresh source evidence and transformation of prior
-conversation text is unsupported in this slice. For example, “Rewrite your
-previous answer using the Maintenance Manual” must not be silently reduced to
-ordinary grounded QA. Its required result is:
+The earlier M2 plan required every mixed source-plus-transformation request to
+clarify, including when the router returned a nonempty grounded query. IR-002
+supersedes that strict clarification requirement: a semantically incomplete
+mixed request may safely proceed through the existing grounded sources lane.
+The hard safety invariant is that no factual/source/mixed request may enter the
+conversation-only executor. A mixed request clarified by the router is useful;
+a mixed request safely answered through sources is also admissible, but its
+semantic completeness is recorded only as a soft observation.
 
-```yaml
-lane: sources
-retrieval_question: ""
-application_disposition: clarification / unsupported mixed operation
-```
-
-This preserves the grounding boundary while avoiding an answer that ignores
-one half of the request. M1B includes this boundary case.
+The deterministic mixed-intent regex previously added to M2 was removed. No
+language-specific production predicate overrides the v2 router. The router
+prompt/schema remain frozen; mixed-intent quality is not tuned in this
+corrective.
 
 ## M1B — unseen routing-boundary challenge
 
@@ -95,10 +100,9 @@ calls total). Record each observation independently. M1B passes only if all
 calls terminate normally and parse structurally, no factual/source/verification/
 mixed request routes to `conversation`, no safety-sensitive case changes lane,
 and at least 11 of 12 cases match their expected disposition on both repeats.
-The mixed-operation case should return `sources` plus an empty query so the
-application clarifies; it may not be treated as ordinary grounded QA. If the
-model emits a nonempty query for this unsupported mixed operation, the
-application must still fail closed with the same clarification.
+The original M1B protocol expected the mixed-operation case to return `sources`
+plus an empty query. IR-002 later superseded the requirement that a nonempty
+grounded query must clarify; see the current mixed-operation disposition above.
 
 ### M1B observed result
 
@@ -117,8 +121,9 @@ question. No factual/source/verification/mixed request selected
 changes occurred. The frozen prompt and schema hashes were respectively
 `3db1de4a952cb36d37bece9189221294e50185a9edd7732bc72430fe8aa68711` and
 `cc4849bcf7ec165f17fc679b2c60e35f82f283acb54823d2e5b5063a86ddea32`.
-This meets the stated 11/12 gate. M2 adds a deterministic mixed-operation
-guard so this miss clarifies before retrieval; p1 remains unchanged.
+This meets the stated 11/12 gate. M1B's Spanish mixed case selected `sources`
+with a nonempty query twice. Under the IR-002 amendment this remains a known
+semantic limitation, not a safety violation; p1 remains unchanged.
 
 ## M1E — transcript-fidelity qualification
 
@@ -178,7 +183,7 @@ Whole-corpus analytical synthesis remains out of scope for BETA-CONV-01B and is
 deferred to BETA-CONV-02. The archived BETA-CONV-01A experiment and its history
 remain separate and unchanged.
 
-## M2 implementation status
+## M2 implementation status — corrective state
 
 The implementation keeps the existing first-turn bypass and grounded source
 executor. Contextual turns use the frozen v2 lane router. A valid conversation
@@ -189,11 +194,49 @@ retrieval question, and empty answer blocks/citations. The UI displays the
 required provenance label. A valid `sources` route with an empty retrieval
 question clarifies directly. Malformed router output uses the existing
 deterministic fallback and then clarification; it never falls back into the
-conversation lane. The mixed-operation guard forces clarification before
-retrieval even when p1 returns a nonempty query.
+conversation lane. Mixed requests are governed by the router; there is no
+deterministic mixed-intent regex override.
 
-This is implementation status, not real-model product acceptance. The M1B/M1E
+The default-off kill switch routes a model-selected conversation lane through
+the existing deterministic follow-up resolver; a supported fallback enters
+the grounded path, while a miss clarifies without a second router call. When
+enabled, contextual turns may use the transcript-only executor. Durable traces
+have defaulted `answer_origin`, `executor_prompt_contract_id`, and categorical
+`router_parse_status` fields so historical records continue to load. The
+executor uses the configured generation output limit and discards any
+completion whose provider finish reason is `length`. The UI describes both
+origins, labels conversation-only answers without source-scope implication, and
+does not expose citation/evidence reveal controls for those answers.
+
+First-turn behavior is intentionally unchanged: greetings, capability
+questions, conversation-style messages, and pasted-text transformations with
+no prior turns still bypass the router and follow the existing grounded path.
+This is a known beta limitation, not a defect in M2.
+
+These are implementation changes, not real-model product acceptance. The M1B/M1E
 raw inputs and outputs remain local under `/tmp/beta_conv_01b_feasibility`.
+
+### IR-001/IR-002 corrective and unseen-router disposition
+
+The corrective removed the deterministic mixed-intent regex, added the
+default-off `conversation.lane_enabled` control, categorical router parse
+diagnostics, backward-compatible trace fields, configured executor token limit
+and length-finish handling, and corrected UI provenance/training controls.
+Focused regression coverage exercises those contracts.
+
+The required 8-case × 2 unseen router check ran against the configured local
+model after the corrective. All 16 responses were structurally valid and
+finished with `stop`; all eight case lanes were stable; source-only requests
+used `sources` with nonempty retrieval questions. However, both repetitions of
+`u03-es-mixed-policy` selected `conversation` for a mixed request that requires
+source authority. This violates the hard safety gate. The mixed clarification
+rate was 0/8 (0%); that soft measure does not mitigate the safety failure.
+
+Disposition: `STOP / NATURAL-LANGUAGE LANE NOT QUALIFIED`. The canonical API M2
+smoke was not run. Do not tune p1 or perform more model calls under this
+authority. The lane remains disabled by default. Private raw observations are
+preserved under `/tmp/beta_conv_01b_feasibility/raw/ir002_unseen`; the sanitized
+summary is recorded in the evidence result.
 
 ## Stop rules
 

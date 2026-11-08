@@ -34,6 +34,15 @@ ConversationTerminalStatus = Literal[
     "model_abstain",
     "clarification_required",
 ]
+ConversationAnswerOrigin = Literal["sources", "conversation"]
+RouterParseStatus = Literal[
+    "ok",
+    "json_invalid",
+    "schema_invalid",
+    "lane_invalid",
+    "conversation_with_query",
+    "empty_query",
+]
 
 
 def allocate_conversation_trace_id() -> str:
@@ -65,6 +74,9 @@ class ConversationTraceRecord(BaseModel):
     context_used: bool
     status: ConversationTerminalStatus
     query_trace_id: str | None = None
+    answer_origin: ConversationAnswerOrigin = "sources"
+    executor_prompt_contract_id: str | None = None
+    router_parse_status: RouterParseStatus | None = None
 
     @field_validator("conversation_trace_id")
     @classmethod

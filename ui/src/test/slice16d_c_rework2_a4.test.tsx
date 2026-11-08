@@ -747,6 +747,12 @@ describe("16D-C Rework 2 / A4 — Conversation export", () => {
       screen.getByRole("heading", { name: "Training conversation" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Answer hidden")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Reveal citations" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Reveal evidence" }),
+    ).toBeInTheDocument();
 
     const md = serializeConversationMarkdown({
       workspace: {

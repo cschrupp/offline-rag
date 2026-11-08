@@ -165,8 +165,8 @@ export function AskPanel({
       </div>
       <p className="muted" style={{ margin: 0 }}>
         {trainingMode
-          ? `Using ${selectedCount} of ${totalCount} sources. Training questions use the same grounded conversation path as Seneca.`
-          : `Using ${selectedCount} of ${totalCount} sources. Follow-ups use conversation context for wording only — answers still come from selected sources.`}
+          ? `Using ${selectedCount} of ${totalCount} sources. Grounded questions use selected sources; conversation-only replies are labelled when they are not re-checked against sources.`
+          : `Using ${selectedCount} of ${totalCount} sources. Grounded questions use your selected sources. Some follow-ups may use only the visible conversation and are labelled when they have not been re-checked against sources.`}
       </p>
 
       <div className="conversation-thread stack" aria-live="polite">
@@ -258,8 +258,9 @@ export function AskPanel({
                   </button>
                 </div>
                 <p className="muted" style={{ margin: 0, fontSize: "0.875rem" }}>
-                  {statusLabel(String(entry.response.status))} ·{" "}
-                  {sourceScopeLabel(entry)}
+                  {entry.response.answer_origin === "conversation"
+                    ? "Answered · Conversation only"
+                    : `${statusLabel(String(entry.response.status))} · ${sourceScopeLabel(entry)}`}
                 </p>
 
                 {trainingMode && isAnswered ? (
@@ -281,32 +282,36 @@ export function AskPanel({
                     >
                       {reveal.answer ? "Hide answer" : "Reveal answer"}
                     </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      aria-expanded={reveal.citations}
-                      onClick={() =>
-                        onRevealChange?.(entry.entryId, {
-                          citations: !reveal.citations,
-                        })
-                      }
-                    >
-                      {reveal.citations
-                        ? "Hide citations"
-                        : "Reveal citations"}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      aria-expanded={reveal.evidence}
-                      onClick={() =>
-                        onRevealChange?.(entry.entryId, {
-                          evidence: !reveal.evidence,
-                        })
-                      }
-                    >
-                      {reveal.evidence ? "Hide evidence" : "Reveal evidence"}
-                    </Button>
+                    {entry.response.answer_origin !== "conversation" ? (
+                      <>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          aria-expanded={reveal.citations}
+                          onClick={() =>
+                            onRevealChange?.(entry.entryId, {
+                              citations: !reveal.citations,
+                            })
+                          }
+                        >
+                          {reveal.citations
+                            ? "Hide citations"
+                            : "Reveal citations"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          aria-expanded={reveal.evidence}
+                          onClick={() =>
+                            onRevealChange?.(entry.entryId, {
+                              evidence: !reveal.evidence,
+                            })
+                          }
+                        >
+                          {reveal.evidence ? "Hide evidence" : "Reveal evidence"}
+                        </Button>
+                      </>
+                    ) : null}
                   </div>
                 ) : null}
 

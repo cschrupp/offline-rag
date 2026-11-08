@@ -225,7 +225,17 @@ class OpenAICompatibleGenerator:
             ) from exc
         content = _extract_message_content(payload)
         usage = payload.get("usage") if isinstance(payload.get("usage"), dict) else {}
-        return GeneratorResponse(content=content, usage=dict(usage), raw=payload)
+        choices = payload.get("choices")
+        finish_reason = None
+        if isinstance(choices, list) and choices and isinstance(choices[0], dict):
+            value = choices[0].get("finish_reason")
+            finish_reason = value if isinstance(value, str) else None
+        return GeneratorResponse(
+            content=content,
+            usage=dict(usage),
+            raw=payload,
+            finish_reason=finish_reason,
+        )
 
 
 def _auth_headers(api_key: str | None) -> dict[str, str]:

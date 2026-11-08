@@ -9,6 +9,7 @@ from typing import Any, Literal
 
 from offline_rag.app.conversation.prior_turns import PriorTurn, validate_prior_turns
 from offline_rag.app.conversation.resolver import (
+    CONVERSATION_EXECUTOR_PROMPT_CONTRACT_ID,
     LANE_ROUTER_PROMPT_CONTRACT_ID,
     build_conversation_executor_request,
     resolve_conversation_context,
@@ -186,6 +187,8 @@ def run_conversation_turn(
                 context_used=resolver.context_used,
                 status="clarification_required",
                 query_trace_id=None,
+                answer_origin="sources",
+                router_parse_status=resolver.router_parse_status,
             ),
         )
         return ConversationTurnResponse(
@@ -213,9 +216,7 @@ def run_conversation_turn(
             prior_turns=validated_prior,
             current_question=normalized_question,
             model=runtime.settings.generation.model,
-            max_output_tokens=min(
-                512, int(runtime.settings.generation.max_output_tokens)
-            ),
+            max_output_tokens=int(runtime.settings.generation.max_output_tokens),
         )
         try:
             response = runtime.resources.generator_client.generate(request)
@@ -225,7 +226,11 @@ def run_conversation_turn(
             raise AppError(ErrorCode.GENERATION_FAILED) from exc
 
         answer = response.content.strip()
-        if not answer:
+        if response.finish_reason == "length":
+            status: ConversationSuccessStatus = "clarification_required"
+            abstention_reason = "conversation_response_truncated"
+            answer = None
+        elif not answer:
             status: ConversationSuccessStatus = "clarification_required"
             abstention_reason = "conversation_response_unavailable"
             answer = None
@@ -256,6 +261,9 @@ def run_conversation_turn(
                 context_used=resolver.context_used,
                 status=status,
                 query_trace_id=None,
+                answer_origin="conversation",
+                executor_prompt_contract_id=CONVERSATION_EXECUTOR_PROMPT_CONTRACT_ID,
+                router_parse_status=resolver.router_parse_status,
             ),
         )
         return ConversationTurnResponse(
@@ -323,6 +331,8 @@ def run_conversation_turn(
             context_used=resolver.context_used,
             status=outcome.status,
             query_trace_id=outcome.trace_id,
+            answer_origin="sources",
+            router_parse_status=resolver.router_parse_status,
         ),
     )
 

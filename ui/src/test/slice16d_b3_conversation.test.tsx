@@ -358,6 +358,31 @@ describe("Slice 16D-B3 conversation state helpers", () => {
         selectedSourceNames: ["Alpha.pdf"],
       }),
     ).toBe("Selected sources · Alpha.pdf");
+    expect(
+      sourceScopeLabel({
+        selectionMode: "all",
+        selectedSourceNames: ["Alpha.pdf"],
+        response: { answer_origin: "conversation" },
+      }),
+    ).toBe("Conversation only");
+  });
+
+  it("explains when a conversation transformation was truncated", () => {
+    expect(
+      assistantPresentationText(
+        turnResponse({
+          status: "clarification_required",
+          abstention_reason: "conversation_response_truncated",
+          answer: null,
+          answer_blocks: [],
+          citations: [],
+          query_trace_id: null,
+          retrieval_question: null,
+        }),
+      ),
+    ).toBe(
+      "The conversation response was too long to complete. Try asking for a shorter transformation.",
+    );
   });
 });
 
@@ -399,6 +424,9 @@ describe("Slice 16D-B3 conversation workspace UI", () => {
 
     renderApp("/workspaces/ws_1");
     await screen.findByRole("heading", { name: "Conversation" });
+    expect(
+      screen.getByText(/Grounded questions use your selected sources/),
+    ).toBeInTheDocument();
     const composer = screen.getByLabelText("Ask a follow-up");
     await user.type(composer, "Immediate user turn?");
     await user.click(screen.getByRole("button", { name: "Send" }));
@@ -472,8 +500,21 @@ describe("Slice 16D-B3 conversation workspace UI", () => {
         "From this conversation — not re-checked against your sources",
       ),
     ).toBeInTheDocument();
+    expect(screen.getByText("Answered · Conversation only")).toBeInTheDocument();
     expect(screen.getByText("The report said the test passed.")).toBeInTheDocument();
     expect(loadConversation("ws_1")).toHaveLength(1);
+    await user.click(screen.getByRole("button", { name: "Training Mode" }));
+    expect(screen.queryByRole("button", { name: "Reveal citations" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Reveal evidence" })).toBeNull();
+    await user.click(screen.getAllByRole("button", { name: "Reveal answer" })[0]);
+    expect(
+      screen.getByText(
+        "From this conversation — not re-checked against your sources",
+      ),
+    ).toBeInTheDocument();
+    expect(abstentionCopy("conversation_response_truncated")).toBe(
+      "The conversation response was too long to complete. Try asking for a shorter transformation.",
+    );
     mock.restore();
   });
 

@@ -1,9 +1,11 @@
 # BETA-CONV-01B — Feasibility and M1B/M1E Result
 
-**Current disposition:** M1B and M1E meet their bounded feasibility gates.
-Conditional M2 implementation is authorized by the attached tranche decision
-and is recorded below. This is not model activation, corpus analysis, or
-promotion acceptance.
+**Current disposition:** M1B and M1E met their bounded feasibility gates.
+The IR-001/IR-002 corrective is implemented, but the new unseen-router hard
+safety gate failed: one mixed Spanish request entered the conversation lane in
+both repetitions. The canonical API M2 smoke was not run. The natural-language
+lane remains unqualified and disabled by default; this is not model activation,
+corpus analysis, or promotion acceptance.
 
 **Historical checkpoint:** The M0/M1 findings below preserve the earlier
 feasibility record. The initial executor usability gate was later resolved by
@@ -224,7 +226,7 @@ minor actionability limitation relative to the fixed policy wording, not a
 fidelity failure under the stated M1E gate. No second factuality checker or
 prompt-tuning iteration was used.
 
-## Current disposition
+## Historical disposition before IR-002 unseen-router check
 
 ```yaml
 M0:
@@ -266,10 +268,11 @@ first_turn_semantics:
   resolver_bypassed: true
 ```
 
-**Recommendation:** `GO M2 implementation`. The M1B one-case miss is explicitly
-handled by the deterministic mixed-operation clarification; p1 remains frozen.
-M1E passed after its single fixed-policy correction. Product-level real-model
-acceptance remains separate from this bounded feasibility result.
+This records the disposition at the end of M1E/M1B, before the later IR-002
+unseen-router check. It is retained as historical provenance and is superseded
+by the IR-002 result below. At that point, the recommendation was `GO M2
+implementation`; the M1B one-case miss was expected to be handled by a
+deterministic mixed-operation clarification, while p1 remained frozen.
 
 ## M2 implementation verification limitation
 
@@ -280,3 +283,53 @@ shows pytest waiting in `anyio.from_thread` while the asyncio portal waits in
 its event loop, consistent with the separately documented test-environment
 startup limitation. The standalone router/policy regressions pass. No startup
 infrastructure was changed under this scope.
+
+## IR-001 / IR-002 corrective and unseen-router result
+
+The bounded corrective added a default-off `conversation.lane_enabled` switch,
+categorical router parse statuses, defaulted provenance fields on durable
+conversation traces, provider `finish_reason` propagation, configured executor
+output bounds with partial `length` completions discarded, and truthful UI
+provenance/training presentation. The deterministic mixed-intent regex and
+unreachable v1 LLM resolver-generation functions were removed. First-turn
+behavior remains unchanged: without prior turns, greetings, capability
+questions, conversational messages, and pasted-text transformations still use
+the existing grounded path.
+
+### Unseen router check
+
+Eight newly authored cases were each executed twice with the frozen p1 router
+contract, the configured local model, temperature 0, and no retries. The case
+set SHA-256 is
+`2ca321cd4149ffe7dea94a81101cd6abe009b122ed30566d291e40efede9231c`; the
+prompt SHA-256 remains
+`3db1de4a952cb36d37bece9189221294e50185a9edd7732bc72430fe8aa68711`; the
+response-schema SHA-256 after replacing the probe-era schema name is
+`2582eb3db1fdd58780bdf1a9929378f43879a11d6b9afe7b7a46ed2b6243f452`.
+
+| Check | Result |
+|---|---:|
+| Provider calls completed | 16/16 |
+| Structurally valid outputs | 16/16 |
+| `finish_reason=stop` | 16/16 |
+| Stable lane across repeats | 8/8 cases |
+| Source-only cases: `sources` + nonempty query | 3/3 cases, both repeats |
+| Mixed clarification | 0/8 observations |
+| Factual/source/mixed request routed to conversation | 2/16 observations |
+| Hard gate | **FAIL** |
+
+Both repeats of `u03-es-mixed-policy` selected the conversation lane. This is a
+hard safety failure, even though the lane was stable and the parser output was
+valid. The clarification rate is a soft observation and does not offset it.
+Private raw request/response records remain outside Git under
+`/tmp/beta_conv_01b_feasibility/raw/ir002_unseen`; the local aggregate is
+`/tmp/beta_conv_01b_feasibility/ir002_unseen_summary.json`.
+
+### Stop disposition
+
+The authorized stop condition was met. No canonical-API M2 smoke was performed,
+no prompt tuning or additional model calls were made, and `conversation.lane_enabled`
+remains false by default. The natural-language lane is not qualified for live
+beta use. The code candidate should receive independent review as a bounded
+corrective with the failed router evidence attached; promotion and lane
+activation remain unauthorized.
