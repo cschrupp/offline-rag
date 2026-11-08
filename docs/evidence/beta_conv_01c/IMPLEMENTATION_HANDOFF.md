@@ -171,5 +171,6 @@ unauthorized record the state when candidate `1103b1e9` was handed off. The
 candidate has since received independent implementation and product-smoke
 acceptance, followed by Human product acceptance. The accepted 01C branch has
 been combined with the independently reviewed 01B closeout documentation for
-the authorized fast-forward promotion. Learned-router activation and
+the fast-forward promotion. Canonical `main` now includes the combined history
+at `711dc1cb02499124e56116ab7cac7b3ea6b109db`. Learned-router activation and
 BETA-CONV-02 remain unauthorized.

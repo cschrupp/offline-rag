@@ -81,8 +81,9 @@ and supporting history.
   smoke completed, including chained transformations and return to grounded
   cited retrieval. The accepted implementation is on
   `feature/beta-conv-01c-explicit-conversation-actions`; the branch also
-  carries the 01B closeout record. Fast-forward promotion to `main` is
-  authorized. The deterministic grounded free-text path remains unchanged.
+  carries the 01B closeout record. Promoted to canonical `main` by
+  fast-forward at `711dc1cb02499124e56116ab7cac7b3ea6b109db`. The deterministic
+  grounded free-text path remains unchanged.
 - [ ] **BETA-CONV-02 — Analytical Synthesis** — deferred; not authorized.
 - [ ] Slice 17 design-open — **NOT AUTHORIZED**. This is distinct from
   original Slice 16G, which is complete.
