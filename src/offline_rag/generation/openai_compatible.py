@@ -7,6 +7,10 @@ from urllib.parse import urlparse, urlunparse
 
 import httpx
 
+from offline_rag.config.deployment_profile import (
+    OPENROUTER_BASE_URL,
+    PORTFOLIO_OPENROUTER_PROFILE,
+)
 from offline_rag.config.models import AppSettings
 from offline_rag.core.ids import DIRECT_OUTPUT_V1
 from offline_rag.generation.contracts import (
@@ -104,6 +108,15 @@ class OpenAICompatibleGenerator:
 
     def _assert_authorized(self) -> None:
         gen = self.settings.generation
+        if self.settings.deployment.profile == PORTFOLIO_OPENROUTER_PROFILE and (
+            normalize_endpoint(gen.base_url) != OPENROUTER_BASE_URL
+            or list(gen.approved_endpoints) != [OPENROUTER_BASE_URL]
+            or list(gen.approved_models) != [gen.model]
+        ):
+            raise OpenAICompatibleGeneratorError(
+                "portfolio inference profile configuration is not exact",
+                failure_reason="provider_error",
+            )
         from offline_rag.app.endpoint_policy import (
             EndpointPolicyError,
             validate_endpoint_network_policy,
@@ -119,8 +132,9 @@ class OpenAICompatibleGenerator:
                 f"configured endpoint rejected by network policy: {exc.reason}",
                 failure_reason="provider_error",
             ) from exc
-        if self.settings.security.reject_unapproved_generation_endpoint and not endpoint_authorized(
-            gen.base_url, list(gen.approved_endpoints)
+        if (
+            self.settings.security.reject_unapproved_generation_endpoint
+            and not endpoint_authorized(gen.base_url, list(gen.approved_endpoints))
         ):
             raise OpenAICompatibleGeneratorError(
                 "configured endpoint is not approved",
@@ -148,7 +162,13 @@ class OpenAICompatibleGenerator:
         except httpx.TimeoutException:
             return GeneratorProbeResult(ok=False, reason="endpoint probe timed out")
         except httpx.HTTPError as exc:
-            return GeneratorProbeResult(ok=False, reason=f"endpoint unreachable: {exc}")
+            return GeneratorProbeResult(
+                ok=False,
+                reason=_redact_secret(
+                    f"endpoint unreachable: {exc}",
+                    self.settings.generation.api_key,
+                ),
+            )
         if response.status_code >= 400:
             return GeneratorProbeResult(
                 ok=False,
@@ -157,8 +177,16 @@ class OpenAICompatibleGenerator:
         try:
             payload = response.json()
         except ValueError:
-            return GeneratorProbeResult(ok=False, reason="endpoint probe returned non-JSON")
+            return GeneratorProbeResult(
+                ok=False, reason="endpoint probe returned non-JSON"
+            )
         models = _extract_model_ids(payload)
+        api_key = self.settings.generation.api_key
+        if api_key and any(api_key in model_id for model_id in models):
+            return GeneratorProbeResult(
+                ok=False,
+                reason="endpoint probe returned sensitive data",
+            )
         selected = self.settings.generation.model
         if selected not in models:
             return GeneratorProbeResult(
@@ -185,7 +213,10 @@ class OpenAICompatibleGenerator:
         }
         if request.response_format is not None:
             body["response_format"] = request.response_format
-        _apply_reasoning_contract(body)
+        _apply_reasoning_contract(
+            body,
+            deployment_profile=self.settings.deployment.profile,
+        )
         try:
             response = self._client.post(
                 self._chat_url(),
@@ -194,14 +225,20 @@ class OpenAICompatibleGenerator:
             )
         except httpx.TimeoutException as exc:
             raise OpenAICompatibleGeneratorError(
-                "generator request timed out",
+                _redact_secret(
+                    f"generator request timed out: {exc}",
+                    self.settings.generation.api_key,
+                ),
                 failure_reason="timeout",
-            ) from exc
+            ) from None
         except httpx.HTTPError as exc:
             raise OpenAICompatibleGeneratorError(
-                f"generator transport error: {exc}",
+                _redact_secret(
+                    f"generator transport error: {exc}",
+                    self.settings.generation.api_key,
+                ),
                 failure_reason="transport_error",
-            ) from exc
+            ) from None
         if response.status_code >= 400:
             if response.status_code in {401, 403}:
                 reason = "unavailable"
@@ -213,17 +250,26 @@ class OpenAICompatibleGenerator:
                 ):
                     reason = "context_window_exceeded"
             raise OpenAICompatibleGeneratorError(
-                f"generator HTTP {response.status_code}: {response.text[:300]}",
+                _redact_secret(
+                    f"generator HTTP {response.status_code}: {response.text[:300]}",
+                    self.settings.generation.api_key,
+                ),
                 failure_reason=reason,
             )
         try:
             payload = response.json()
-        except ValueError as exc:
+        except ValueError:
             raise OpenAICompatibleGeneratorError(
                 "generator returned non-JSON",
                 failure_reason="provider_error",
-            ) from exc
+            ) from None
         content = _extract_message_content(payload)
+        api_key = self.settings.generation.api_key
+        if api_key and api_key in content:
+            raise OpenAICompatibleGeneratorError(
+                "provider response contained configured credential",
+                failure_reason="provider_error",
+            )
         usage = payload.get("usage") if isinstance(payload.get("usage"), dict) else {}
         choices = payload.get("choices")
         finish_reason = None
@@ -232,9 +278,13 @@ class OpenAICompatibleGenerator:
             finish_reason = value if isinstance(value, str) else None
         return GeneratorResponse(
             content=content,
-            usage=dict(usage),
-            raw=payload,
-            finish_reason=finish_reason,
+            usage=_redact_payload(dict(usage), api_key),
+            raw=_redact_payload(payload, api_key),
+            finish_reason=(
+                _redact_secret(finish_reason, api_key)
+                if finish_reason is not None
+                else None
+            ),
         )
 
 
@@ -244,14 +294,37 @@ def _auth_headers(api_key: str | None) -> dict[str, str]:
     return {"Authorization": f"Bearer {api_key}"}
 
 
-def _apply_reasoning_contract(body: dict[str, Any]) -> None:
+def _apply_reasoning_contract(body: dict[str, Any], *, deployment_profile: str) -> None:
     """Map code-owned reasoning_contract onto provider request fields.
 
     Baseline ``direct-output-v1`` requests final/direct output with thinking
     disabled for adapters that expose chat_template_kwargs.enable_thinking.
     """
-    if REASONING_CONTRACT == DIRECT_OUTPUT_V1:
+    if (
+        deployment_profile != PORTFOLIO_OPENROUTER_PROFILE
+        and REASONING_CONTRACT == DIRECT_OUTPUT_V1
+    ):
         body["chat_template_kwargs"] = {"enable_thinking": False}
+
+
+def _redact_secret(message: str, api_key: str | None) -> str:
+    """Remove an active Bearer key from provider-controlled error text."""
+    if not api_key:
+        return message
+    return message.replace(api_key, "[redacted]")
+
+
+def _redact_payload(value: Any, api_key: str | None) -> Any:
+    """Return provider data with the configured credential removed recursively."""
+    if not api_key:
+        return value
+    if isinstance(value, str):
+        return _redact_secret(value, api_key)
+    if isinstance(value, list):
+        return [_redact_payload(item, api_key) for item in value]
+    if isinstance(value, dict):
+        return {key: _redact_payload(item, api_key) for key, item in value.items()}
+    return value
 
 
 def _extract_model_ids(payload: Any) -> list[str]:

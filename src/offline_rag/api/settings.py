@@ -43,6 +43,7 @@ def _generation_locks(settings: AppSettings) -> dict[str, bool]:
     return generation_field_locks(
         os.environ,
         programmatic_override_fields=settings._explicit_generation_override_fields,
+        deployment_profile=settings.deployment.profile,
     )
 
 
@@ -248,9 +249,7 @@ def _probe_approvals(
         else [normalized]
     )
     approved_models = (
-        list(settings.generation.approved_models)
-        if locks.get("model")
-        else [model]
+        list(settings.generation.approved_models) if locks.get("model") else [model]
     )
     return approved_endpoints, approved_models
 
@@ -313,7 +312,9 @@ def probe_generation_settings(
         resolved_key = _resolve_api_key_for_write(
             action=body.api_key_action,
             supplied=body.api_key,
-            existing=existing_key if product_key_managed else settings.generation.api_key,
+            existing=existing_key
+            if product_key_managed
+            else settings.generation.api_key,
         )
 
     approved_endpoints, approved_models = _probe_approvals(
@@ -439,7 +440,9 @@ def save_generation_settings(
 
     try:
         record = build_validated_product_record(
-            enabled=body.enabled if not locks.get("enabled") else bool(settings.generation.enabled),
+            enabled=body.enabled
+            if not locks.get("enabled")
+            else bool(settings.generation.enabled),
             base_url=persist_base_url,
             model=persist_model,
             timeout_seconds=(

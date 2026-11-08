@@ -9,6 +9,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
+from offline_rag.config.deployment_profile import (
+    OPENROUTER_BASE_URL,
+    PORTFOLIO_OPENROUTER_PROFILE,
+)
 from offline_rag.config.models import AppSettings, AuthoringSettings
 from offline_rag.core.network_policy import (
     NetworkPolicyError,
@@ -33,6 +37,8 @@ class AuthoringAuthReason(StrEnum):
     PUBLIC_ADDRESS_NOT_ALLOWED = NetworkPolicyReason.PUBLIC_ADDRESS_NOT_ALLOWED.value
     INVALID_ENDPOINT = NetworkPolicyReason.INVALID_ENDPOINT.value
     REDIRECT_NOT_ALLOWED = "redirect_not_allowed"
+    MODEL_NOT_APPROVED = "model_not_approved"
+    API_KEY_REQUIRED = "api_key_required"
 
 
 class AuthoringPrivacyError(RuntimeError):
@@ -77,10 +83,40 @@ def destination_satisfies_policy(
 
 def authorize_authoring_endpoint(
     settings: AppSettings | AuthoringSettings,
+    *,
+    deployment_profile: str | None = None,
 ) -> AuthorizedEndpoint:
     """Authorize the configured authoring endpoint under allowlist ∧ policy."""
     auth = settings.authoring if isinstance(settings, AppSettings) else settings
+    profile = (
+        settings.deployment.profile
+        if isinstance(settings, AppSettings)
+        else deployment_profile
+    )
     normalized = normalize_authoring_endpoint(auth.base_url)
+
+    if profile == PORTFOLIO_OPENROUTER_PROFILE:
+        if normalized != OPENROUTER_BASE_URL or list(auth.approved_endpoints) != [
+            OPENROUTER_BASE_URL
+        ]:
+            raise AuthoringPrivacyError(
+                "configured authoring endpoint is not approved",
+                reason=AuthoringAuthReason.ENDPOINT_NOT_APPROVED,
+            )
+        if not auth.model or list(auth.approved_models) != [auth.model]:
+            raise AuthoringPrivacyError(
+                "configured authoring model is not approved",
+                reason=AuthoringAuthReason.MODEL_NOT_APPROVED,
+            )
+        if not auth.api_key:
+            raise AuthoringPrivacyError(
+                "configured authoring API key is required",
+                reason=AuthoringAuthReason.API_KEY_REQUIRED,
+            )
+        return AuthorizedEndpoint(
+            endpoint=normalized,
+            network_policy=auth.network_policy,
+        )
 
     if not endpoint_in_allowlist(auth.base_url, list(auth.approved_endpoints)):
         raise AuthoringPrivacyError(

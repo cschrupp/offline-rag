@@ -23,6 +23,12 @@ from typing import Any
 import yaml
 from pydantic import ValidationError
 
+from offline_rag.config.deployment_profile import (
+    DEPLOYMENT_PROFILE_ENV,
+    PORTFOLIO_OPENROUTER_PROFILE,
+    DeploymentProfileError,
+    apply_deployment_profile_overlay,
+)
 from offline_rag.config.models import AppSettings
 from offline_rag.core.ids import canonical_config_hash
 from offline_rag.domain.evaluation import ExperimentConfig
@@ -55,6 +61,7 @@ _AUTHORING_PRODUCT_SETTING_FIELDS = frozenset(_AUTHORING_OVERRIDE_LOCK_MAP)
 # Nested field paths for direct environment overrides.
 _ENV_FIELD_MAP: dict[str, tuple[str, ...]] = {
     "STRICT_OFFLINE": ("project", "strict_offline"),
+    "DEPLOYMENT_PROFILE": ("deployment", "profile"),
     "LLM_BASE_URL": ("generation", "base_url"),
     "LLM_MODEL": ("generation", "model"),
     "LLM_TIMEOUT_SECONDS": ("generation", "timeout_seconds"),
@@ -353,6 +360,16 @@ def load_settings(
     if data_dir:
         _apply_data_dir(payload, data_dir)
 
+    deployment = payload.get("deployment")
+    deployment_profile = (
+        str(deployment.get("profile", "")) if isinstance(deployment, Mapping) else ""
+    )
+    if DEPLOYMENT_PROFILE_ENV in env:
+        deployment_profile = env[DEPLOYMENT_PROFILE_ENV].strip()
+    override_deployment = (overrides or {}).get("deployment")
+    if isinstance(override_deployment, Mapping) and "profile" in override_deployment:
+        deployment_profile = str(override_deployment["profile"]).strip()
+
     # Seneca product overlays sit between YAML and environment authority.
     # Resolve effective strict_offline (YAML then env) before validating the
     # product endpoint so tampered public endpoints fail closed under policy.
@@ -370,11 +387,15 @@ def load_settings(
     )
 
     try:
-        generation_mode = generation_settings_mode(env)
+        generation_mode = generation_settings_mode(
+            env, deployment_profile=deployment_profile
+        )
     except ValueError as exc:
         raise ConfigError(str(exc)) from exc
     try:
-        authoring_mode = authoring_settings_mode(env)
+        authoring_mode = authoring_settings_mode(
+            env, deployment_profile=deployment_profile
+        )
     except ValueError as exc:
         raise ConfigError(str(exc)) from exc
 
@@ -388,6 +409,12 @@ def load_settings(
         parsed_strict = _parse_env_value(env_strict)
         if isinstance(parsed_strict, bool):
             strict_offline = parsed_strict
+
+    if deployment_profile == PORTFOLIO_OPENROUTER_PROFILE:
+        # The profile overlay is applied last. This early effective policy is
+        # only used so lower-priority saved Settings values cannot reject or
+        # prevent the authoritative profile from loading.
+        strict_offline = False
 
     env_payload = env_overrides(env)
     _coerce_list_env_fields(env_payload)
@@ -452,6 +479,11 @@ def load_settings(
         override_payload = dict(overrides)
         _reject_legacy_sparse_config(override_payload)
         payload = _deep_merge(payload, override_payload)
+
+    try:
+        apply_deployment_profile_overlay(payload, environ=env)
+    except DeploymentProfileError as exc:
+        raise ConfigError(str(exc)) from exc
 
     try:
         settings = AppSettings.model_validate(payload)

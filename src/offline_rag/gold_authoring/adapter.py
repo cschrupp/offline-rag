@@ -6,6 +6,7 @@ from typing import Any
 
 import httpx
 
+from offline_rag.config.deployment_profile import PORTFOLIO_OPENROUTER_PROFILE
 from offline_rag.config.models import AppSettings
 from offline_rag.core.ids import DIRECT_OUTPUT_V1
 from offline_rag.gold_authoring.contracts import ADAPTER_CONTRACT
@@ -28,6 +29,13 @@ def _auth_headers(api_key: str | None) -> dict[str, str]:
     if not api_key:
         return {}
     return {"Authorization": f"Bearer {api_key}"}
+
+
+def _redact_secret(message: str, api_key: str | None) -> str:
+    """Remove the configured API key from provider-controlled error text."""
+    if not api_key:
+        return message
+    return message.replace(api_key, "[redacted]")
 
 
 class OpenAICompatibleAuthoringAdapter:
@@ -121,9 +129,10 @@ class OpenAICompatibleAuthoringAdapter:
             ],
             "response_format": {"type": "json_object"},
         }
-        # Explicit direct-output capability for the supported local stack.
-        body["chat_template_kwargs"] = {"enable_thinking": False}
-        _ = DIRECT_OUTPUT_V1  # documents alignment with direct-output-v1 semantics
+        if self.settings.deployment.profile != PORTFOLIO_OPENROUTER_PROFILE:
+            # Explicit direct-output capability for the supported local stack.
+            body["chat_template_kwargs"] = {"enable_thinking": False}
+            _ = DIRECT_OUTPUT_V1  # aligns with direct-output-v1 semantics
 
         headers = _auth_headers(auth.api_key)
         try:
@@ -134,14 +143,14 @@ class OpenAICompatibleAuthoringAdapter:
             )
         except httpx.TimeoutException as exc:
             raise AuthoringAdapterError(
-                f"authoring request timed out: {exc}",
+                _redact_secret(f"authoring request timed out: {exc}", auth.api_key),
                 failure_reason="timeout",
-            ) from exc
+            ) from None
         except httpx.HTTPError as exc:
             raise AuthoringAdapterError(
-                f"authoring transport error: {exc}",
+                _redact_secret(f"authoring transport error: {exc}", auth.api_key),
                 failure_reason="transport_error",
-            ) from exc
+            ) from None
 
         if response.is_redirect or response.status_code in {301, 302, 303, 307, 308}:
             raise AuthoringAdapterError(
@@ -160,12 +169,18 @@ class OpenAICompatibleAuthoringAdapter:
             )
         try:
             payload = response.json()
-        except ValueError as exc:
+        except ValueError:
             raise AuthoringAdapterError(
                 "authoring response was not JSON",
                 failure_reason="empty_response",
-            ) from exc
-        return _extract_message_content(payload)
+            ) from None
+        content = _extract_message_content(payload)
+        if auth.api_key and auth.api_key in content:
+            raise AuthoringAdapterError(
+                "authoring response contained configured credential",
+                failure_reason="provider_error",
+            )
+        return content
 
 
 def _extract_message_content(payload: Any) -> str:

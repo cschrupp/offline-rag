@@ -459,9 +459,9 @@ class GenerationSettings(BaseModel):
     temperature: Score = 0.0
     max_output_tokens: PositiveInt = 1200
     timeout_seconds: PositiveInt = 120
-    # Optional Bearer token for OpenAI-compatible servers that require auth
-    # (e.g. Unsloth Studio). Never hashed into gencfg_. Prefer env override.
-    api_key: str | None = None
+    # Optional Bearer token. Never appears in repr/serialization/hashes; prefer
+    # environment overrides so operator credentials do not enter product files.
+    api_key: str | None = Field(default=None, repr=False, exclude=True)
     approved_endpoints: list[NonEmptyStr] = Field(
         default_factory=lambda: ["http://127.0.0.1:11434/v1"]
     )
@@ -502,7 +502,7 @@ class AuthoringSettings(BaseModel):
     adapter_contract: NonEmptyStr = "openai-compatible-authoring-v1"
     base_url: NonEmptyStr = "http://127.0.0.1:11434/v1"
     model: str | None = None
-    api_key: str | None = None
+    api_key: str | None = Field(default=None, repr=False, exclude=True)
     network_policy: Literal["localhost_only", "private_network"] = "localhost_only"
     approved_endpoints: list[NonEmptyStr] = Field(default_factory=list)
     approved_models: list[str] = Field(default_factory=list)

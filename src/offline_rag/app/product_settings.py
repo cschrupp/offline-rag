@@ -23,6 +23,10 @@ from offline_rag.app.endpoint_policy import (
     EndpointPolicyError,
     validate_endpoint_network_policy,
 )
+from offline_rag.config.deployment_profile import (
+    DEPLOYMENT_PROFILE_ENV,
+    PORTFOLIO_OPENROUTER_PROFILE,
+)
 
 SCHEMA_VERSION = "seneca-generation-settings-v1"
 SETTINGS_FILENAME = "seneca-generation.json"
@@ -33,9 +37,14 @@ GenerationSettingsMode = Literal["operator", "user"]
 
 def generation_settings_mode(
     environ: Mapping[str, str] | None = None,
+    *,
+    deployment_profile: str | None = None,
 ) -> GenerationSettingsMode:
     """Return the generation settings ownership mode from deployment config."""
     env = environ if environ is not None else os.environ
+    effective_profile = deployment_profile or env.get(DEPLOYMENT_PROFILE_ENV)
+    if effective_profile == PORTFOLIO_OPENROUTER_PROFILE:
+        return "operator"
     raw_mode = env.get("OFFLINE_RAG_GENERATION_SETTINGS_MODE", "operator")
     mode = raw_mode.strip().lower()
     if mode not in {"operator", "user"}:
@@ -184,7 +193,7 @@ def product_api_key_is_managed(root: Path) -> bool:
         return False
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError, ValueError):
+    except OSError, json.JSONDecodeError, ValueError:
         return False
     if not isinstance(raw, dict):
         return False
@@ -288,10 +297,20 @@ def generation_field_locks(
     environ: Mapping[str, str] | None = None,
     *,
     programmatic_override_fields: set[str] | frozenset[str] = frozenset(),
+    deployment_profile: str | None = None,
 ) -> dict[str, bool]:
     """Return generation fields controlled by deployment or programmatic config."""
     env = environ if environ is not None else os.environ
-    if generation_settings_mode(env) == "user":
+    effective_profile = deployment_profile or env.get(DEPLOYMENT_PROFILE_ENV)
+    if effective_profile == PORTFOLIO_OPENROUTER_PROFILE:
+        locks = {
+            "enabled": True,
+            "base_url": True,
+            "model": True,
+            "timeout_seconds": True,
+            "api_key": True,
+        }
+    elif generation_settings_mode(env, deployment_profile=deployment_profile) == "user":
         locks = {
             "enabled": False,
             "base_url": False,

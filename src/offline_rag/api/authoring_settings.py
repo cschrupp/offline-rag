@@ -47,6 +47,7 @@ def _authoring_locks(settings: AppSettings) -> dict[str, bool]:
     return authoring_field_locks(
         os.environ,
         programmatic_override_fields=settings._explicit_authoring_override_fields,
+        deployment_profile=settings.deployment.profile,
     )
 
 
@@ -267,6 +268,7 @@ def _probe_models(
     network_policy: str,
     approved_endpoints: list[str],
     approved_models: list[str],
+    deployment_profile: str | None = None,
 ) -> dict[str, Any]:
     """Prospective /models probe with follow_redirects=False; no persistence."""
     prospective = AuthoringSettings(
@@ -280,7 +282,10 @@ def _probe_models(
         timeout_seconds=timeout_seconds,
     )
     try:
-        authorize_authoring_endpoint(prospective)
+        authorize_authoring_endpoint(
+            prospective,
+            deployment_profile=deployment_profile,
+        )
     except AuthoringPrivacyError as exc:
         return {
             "ok": False,
@@ -312,6 +317,12 @@ def _probe_models(
     except ValueError:
         return {"ok": False, "reason": "invalid_response", "available_models": []}
     models = _extract_model_ids(payload)
+    if api_key and any(api_key in model_id for model_id in models):
+        return {
+            "ok": False,
+            "reason": "invalid_response",
+            "available_models": [],
+        }
     if model not in models:
         return {
             "ok": False,
@@ -387,7 +398,9 @@ def probe_authoring_settings(
         resolved_key = _resolve_api_key_for_write(
             action=body.api_key_action,
             supplied=body.api_key,
-            existing=existing_key if product_key_managed else settings.authoring.api_key,
+            existing=existing_key
+            if product_key_managed
+            else settings.authoring.api_key,
         )
 
     approved_endpoints = (
@@ -396,9 +409,7 @@ def probe_authoring_settings(
         else [normalized]
     )
     approved_models = (
-        list(settings.authoring.approved_models)
-        if locks.get("model")
-        else [body.model]
+        list(settings.authoring.approved_models) if locks.get("model") else [body.model]
     )
 
     return _probe_models(
@@ -409,6 +420,7 @@ def probe_authoring_settings(
         network_policy=network_policy,
         approved_endpoints=approved_endpoints,
         approved_models=approved_models,
+        deployment_profile=settings.deployment.profile,
     )
 
 

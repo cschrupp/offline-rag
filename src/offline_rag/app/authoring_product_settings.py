@@ -23,6 +23,10 @@ from offline_rag.app.endpoint_policy import (
     validate_endpoint_network_policy,
 )
 from offline_rag.app.product_settings import resolve_product_settings_dir
+from offline_rag.config.deployment_profile import (
+    DEPLOYMENT_PROFILE_ENV,
+    PORTFOLIO_OPENROUTER_PROFILE,
+)
 from offline_rag.generation.openai_compatible import normalize_endpoint
 
 SCHEMA_VERSION = "seneca-authoring-settings-v1"
@@ -37,9 +41,14 @@ _LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1", "host.docker.inter
 
 def authoring_settings_mode(
     environ: Mapping[str, str] | None = None,
+    *,
+    deployment_profile: str | None = None,
 ) -> AuthoringSettingsMode:
     """Return the Gold Lab authoring settings ownership mode."""
     env = environ if environ is not None else os.environ
+    effective_profile = deployment_profile or env.get(DEPLOYMENT_PROFILE_ENV)
+    if effective_profile == PORTFOLIO_OPENROUTER_PROFILE:
+        return "operator"
     raw_mode = env.get("OFFLINE_RAG_AUTHORING_SETTINGS_MODE", "operator")
     mode = raw_mode.strip().lower()
     if mode not in {"operator", "user"}:
@@ -198,7 +207,7 @@ def authoring_api_key_is_managed(root: Path) -> bool:
         return False
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError, ValueError):
+    except OSError, json.JSONDecodeError, ValueError:
         return False
     if not isinstance(raw, dict):
         return False
@@ -289,6 +298,7 @@ def authoring_field_locks(
     environ: Mapping[str, str] | None = None,
     *,
     programmatic_override_fields: set[str] | frozenset[str] = frozenset(),
+    deployment_profile: str | None = None,
 ) -> dict[str, bool]:
     """Return authoring Settings fields controlled by deployment or overrides.
 
@@ -299,8 +309,17 @@ def authoring_field_locks(
     modes.
     """
     env = environ if environ is not None else os.environ
-    mode = authoring_settings_mode(env)
-    if mode == "user":
+    effective_profile = deployment_profile or env.get(DEPLOYMENT_PROFILE_ENV)
+    if effective_profile == PORTFOLIO_OPENROUTER_PROFILE:
+        locks = {
+            "enabled": True,
+            "base_url": True,
+            "model": True,
+            "timeout_seconds": True,
+            "api_key": True,
+            "network_policy": True,
+        }
+    elif authoring_settings_mode(env, deployment_profile=deployment_profile) == "user":
         locks = {
             "enabled": False,
             "base_url": False,
