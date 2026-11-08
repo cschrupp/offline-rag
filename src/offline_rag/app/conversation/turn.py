@@ -58,6 +58,7 @@ class ConversationTurnResponse:
     answer: str | None
     answer_blocks: list[dict[str, Any]]
     citations: list[dict[str, Any]]
+    answer_origin: Literal["sources", "conversation"] = "sources"
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -75,6 +76,7 @@ class ConversationTurnResponse:
             "answer": self.answer,
             "answer_blocks": self.answer_blocks,
             "citations": self.citations,
+            "answer_origin": self.answer_origin,
         }
 
 
@@ -85,7 +87,7 @@ def _commit_conversation_trace(
         store.commit(record)
     except AppError:
         raise AppError(ErrorCode.INTERNAL_ERROR)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise AppError(ErrorCode.INTERNAL_ERROR) from exc
 
 

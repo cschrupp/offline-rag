@@ -18,7 +18,7 @@ export const CONVERSATION_FORMAT = "seneca-conversation";
 export const CONVERSATION_VERSION = 1;
 
 export const DERIVED_CONVERSATION_WARNING =
-  "Derived Seneca conversation. Assistant responses in this document were generated from cited sources. This document is derived material and is not primary evidence.";
+  "Derived Seneca conversation. Grounded answers may include citations; conversation transformations use only visible conversation text and have not been re-checked against sources. This document is derived material and is not primary evidence.";
 
 export type ConversationExportWorkspace = {
   workspace_id: string;
@@ -129,7 +129,7 @@ export function serializeConversationMarkdown(
     `Exported: ${exportedAt}`,
     "",
     `> **Derived Seneca conversation.**`,
-    `> Assistant responses in this document were generated from cited sources.`,
+    `> Grounded answers may include citations; conversation transformations use only visible conversation text and have not been re-checked against sources.`,
     `> This document is derived material and is not primary evidence.`,
     "",
   ];
@@ -152,13 +152,22 @@ export function serializeConversationMarkdown(
     parts.push("### User", "", entry.question, "", "### Seneca", "");
 
     if (response.status === "answered") {
-      const { answerMarkdown, sourcesMarkdown } = formatAnswerWithMarkers(
-        response.answer_blocks,
-        response.citations,
-      );
-      parts.push(answerMarkdown || response.answer || "", "");
-      if (sourcesMarkdown) {
-        parts.push("### Sources", "", sourcesMarkdown, "");
+      if (response.answer_origin === "conversation") {
+        parts.push(
+          "**From this conversation — not re-checked against your sources.**",
+          "",
+          response.answer || "",
+          "",
+        );
+      } else {
+        const { answerMarkdown, sourcesMarkdown } = formatAnswerWithMarkers(
+          response.answer_blocks,
+          response.citations,
+        );
+        parts.push(answerMarkdown || response.answer || "", "");
+        if (sourcesMarkdown) {
+          parts.push("### Sources", "", sourcesMarkdown, "");
+        }
       }
     } else {
       parts.push(`**Status:** ${statusHeading(String(response.status))}`, "");
@@ -175,13 +184,14 @@ export function serializeConversationMarkdown(
 
 function completedTurnJson(entry: ConversationHistoryEntry) {
   const response: ConversationTurnResponse = entry.response;
+  const isConversationOrigin = response.answer_origin === "conversation";
   return {
     kind: "completed" as const,
     asked_at: entry.askedAt,
     question: entry.question,
-    selection_mode: entry.selectionMode,
-    selected_source_ids: entry.selectedSourceIds,
-    selected_source_names: entry.selectedSourceNames,
+    selection_mode: isConversationOrigin ? null : entry.selectionMode,
+    selected_source_ids: isConversationOrigin ? [] : entry.selectedSourceIds,
+    selected_source_names: isConversationOrigin ? [] : entry.selectedSourceNames,
     status: response.status,
     abstention_reason: response.abstention_reason,
     answer: response.answer,
@@ -193,6 +203,7 @@ function completedTurnJson(entry: ConversationHistoryEntry) {
     query_trace_id: response.query_trace_id,
     retrieval_question: response.retrieval_question,
     context_used: response.context_used,
+    answer_origin: response.answer_origin ?? "sources",
   };
 }
 

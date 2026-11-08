@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ConversationTurnResponse } from "../api/types";
@@ -12,6 +12,7 @@ import {
   RESOLVER_CHAR_MAX,
   RESOLVER_PAIR_MAX,
   appendConversationPair,
+  buildConversationActionWindow,
   buildConversationTimeline,
   buildResolverPriorTurns,
   chronologicalPairs,
@@ -220,6 +221,33 @@ describe("Slice 16D-B3 conversation state helpers", () => {
     expect(chronologicalPairs([...fat].reverse())[0]?.pairId).toBe("old");
   });
 
+  it("maps answer actions only to answered assistant turns inside the bounded window", () => {
+    const pairs = Array.from({ length: 8 }, (_, index) => `p${index}`).map((pairId) => ({
+      pairId,
+      askedAt: "2026-01-01T00:00:00Z",
+      question: `Question ${pairId}`,
+      selectedSourceIds: ["src_1"],
+      selectedSourceNames: ["Alpha.pdf"],
+      selectionMode: "all" as const,
+      response: turnResponse({ answer: `Answer ${pairId}` }),
+    }));
+    pairs[4]!.response = turnResponse({
+      status: "clarification_required",
+      answer: null,
+      answer_blocks: [],
+      citations: [],
+      query_trace_id: null,
+      retrieval_question: null,
+      abstention_reason: "ambiguous_request",
+    });
+    const window = buildConversationActionWindow(pairs);
+    expect(window.priorTurns).toHaveLength(12);
+    expect(window.assistantIndexByPairId.has("p1")).toBe(false);
+    expect(window.assistantIndexByPairId.has("p4")).toBe(false);
+    expect(window.assistantIndexByPairId.get("p2")).toBe(1);
+    expect(window.assistantIndexByPairId.get("p7")).toBe(11);
+  });
+
   it("uses visible assistant presentation text for prior_turns (R5)", () => {
     const reasons = [
       "no_evidence",
@@ -380,6 +408,249 @@ describe("Slice 16D-B3 conversation workspace UI", () => {
       ),
     );
     expect(await screen.findByText("Done.")).toBeInTheDocument();
+    mock.restore();
+  });
+
+  it("records explicit action turns, chains translations, and preserves typed follow-up history", async () => {
+    const user = userEvent.setup();
+    const actionBodies: Array<Record<string, unknown>> = [];
+    const turnBodies: Array<Record<string, unknown>> = [];
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces/ws_1" && call.method === "GET") {
+        return jsonResponse(
+          workspace({
+            workspace_id: "ws_1",
+            title: "Ask Desk",
+            revision: 5,
+            source_count: 1,
+            status: "active",
+            current_snapshot_id: "snap_1",
+          }),
+        );
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources") {
+        return jsonResponse({
+          workspace_id: "ws_1",
+          revision: 5,
+          sources: [source({ source_id: "src_1", display_name: "Alpha.pdf" })],
+        });
+      }
+      if (
+        call.url === "/v1/workspaces/ws_1/conversation/turn" &&
+        call.method === "POST"
+      ) {
+        const body = JSON.parse(String(call.body)) as Record<string, unknown>;
+        turnBodies.push(body);
+        const isInitialTurn = turnBodies.length === 1;
+        const answer = isInitialTurn ? "Answer text." : "Verified from sources.";
+        return jsonResponse(
+          turnResponse({
+            question: String(body.question),
+            answer,
+            answer_blocks: [
+              { text: answer, citation_refs: ["c1"] },
+            ],
+          }),
+        );
+      }
+      if (
+        call.url === "/v1/workspaces/ws_1/conversation/action" &&
+        call.method === "POST"
+      ) {
+        const body = JSON.parse(String(call.body)) as Record<string, unknown>;
+        actionBodies.push(body);
+        const operation = body.operation;
+        const language = body.target_language;
+        const syntheticQuestion =
+          operation === "summarize_answer"
+            ? "Summarize the answer above."
+            : operation === "simplify_answer"
+              ? "Simplify the answer above."
+            : operation === "translate_answer"
+              ? language === "es"
+                ? "Traduce la respuesta anterior al español."
+                : "Translate the answer above into English."
+              : "Summarize only the recent, bounded conversation window.";
+        const answer = `Transformed ${actionBodies.length}.`;
+        return jsonResponse(
+          turnResponse({
+            question: syntheticQuestion,
+            answer,
+            answer_origin: "conversation",
+            query_trace_id: null,
+            retrieval_question: null,
+            context_used: true,
+            answer_blocks: [],
+            citations: [],
+          }),
+        );
+      }
+      return errorResponse("not_found", "x", 404);
+    });
+
+    renderApp("/workspaces/ws_1");
+    await screen.findByRole("heading", { name: "Conversation" });
+    await user.type(screen.getByLabelText("Ask a follow-up"), "Initial question?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("Answer text.")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Summarize" }));
+    expect(await screen.findByText("Transformed 1.")).toBeInTheDocument();
+    const transformedRow = screen.getByText("Transformed 1.").closest("article");
+    expect(transformedRow).not.toBeNull();
+    expect(
+      transformedRow!.querySelector(".muted"),
+    ).toHaveTextContent(
+      "From this conversation — not re-checked against your sources",
+    );
+    expect(within(transformedRow!).queryByText(/All active sources/)).toBeNull();
+    expect(actionBodies[0]).toMatchObject({
+      operation: "summarize_answer",
+      target_assistant_index: 1,
+    });
+    const savedActionPair = loadConversation("ws_1")[0];
+    expect(savedActionPair?.selectedSourceIds).toEqual([]);
+    expect(savedActionPair?.selectedSourceNames).toEqual([]);
+
+    await user.click(
+      within(transformedRow!).getByRole("button", { name: "Simplify" }),
+    );
+    expect(await screen.findByText("Transformed 2.")).toBeInTheDocument();
+    expect(actionBodies[1]).toMatchObject({
+      operation: "simplify_answer",
+      target_assistant_index: 3,
+    });
+
+    const simplifiedRow = screen
+      .getByText("Transformed 2.")
+      .closest("article");
+    expect(simplifiedRow).not.toBeNull();
+    await user.selectOptions(
+      within(simplifiedRow!).getByLabelText(/Translate answer .* to/),
+      "es",
+    );
+    await user.click(
+      within(simplifiedRow!).getByRole("button", { name: "Translate" }),
+    );
+    expect(await screen.findByText("Transformed 3.")).toBeInTheDocument();
+    expect(actionBodies[2]).toMatchObject({
+      operation: "translate_answer",
+      target_assistant_index: 5,
+      target_language: "es",
+    });
+    expect(actionBodies[2]?.prior_turns).toEqual([
+      { role: "user", text: "Initial question?" },
+      { role: "assistant", text: "Answer text." },
+      { role: "user", text: "Summarize the answer above." },
+      { role: "assistant", text: "Transformed 1." },
+      { role: "user", text: "Simplify the answer above." },
+      { role: "assistant", text: "Transformed 2." },
+    ]);
+
+    const translatedRow = screen
+      .getByText("Transformed 3.")
+      .closest("article");
+    expect(translatedRow).not.toBeNull();
+    await user.selectOptions(
+      within(translatedRow!).getByLabelText(/Translate answer .* to/),
+      "en",
+    );
+    await user.click(
+      within(translatedRow!).getByRole("button", { name: "Translate" }),
+    );
+    expect(await screen.findByText("Transformed 4.")).toBeInTheDocument();
+    expect(actionBodies[3]).toMatchObject({
+      operation: "translate_answer",
+      target_assistant_index: 7,
+      target_language: "en",
+    });
+
+    await user.type(screen.getByLabelText("Ask a follow-up"), "Is that true?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("Verified from sources.")).toBeInTheDocument();
+    expect(turnBodies[1]?.prior_turns).toEqual([
+      { role: "user", text: "Initial question?" },
+      { role: "assistant", text: "Answer text." },
+      { role: "user", text: "Summarize the answer above." },
+      { role: "assistant", text: "Transformed 1." },
+      { role: "user", text: "Simplify the answer above." },
+      { role: "assistant", text: "Transformed 2." },
+      { role: "user", text: "Traduce la respuesta anterior al español." },
+      { role: "assistant", text: "Transformed 3." },
+      { role: "user", text: "Translate the answer above into English." },
+      { role: "assistant", text: "Transformed 4." },
+    ]);
+
+    const recentSummaryButton = screen.getByRole("button", {
+      name: "Summarize recent conversation",
+    });
+    expect(recentSummaryButton).toBeEnabled();
+    await user.click(recentSummaryButton);
+    await waitFor(() => expect(actionBodies).toHaveLength(5));
+    expect(
+      await screen.findByText(
+        "Summarize only the recent, bounded conversation window.",
+      ),
+    ).toBeInTheDocument();
+    expect(actionBodies[4]).toMatchObject({
+      operation: "summarize_recent_conversation",
+    });
+    expect(actionBodies[4]).not.toHaveProperty("target_assistant_index");
+    expect((actionBodies[4]?.prior_turns as unknown[]).length).toBe(12);
+    mock.restore();
+  });
+
+  it("does not expose transcript actions in Training Mode", async () => {
+    const user = userEvent.setup();
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces/ws_1" && call.method === "GET") {
+        return jsonResponse(
+          workspace({
+            workspace_id: "ws_1",
+            title: "Ask Desk",
+            revision: 5,
+            source_count: 1,
+            status: "active",
+            current_snapshot_id: "snap_1",
+          }),
+        );
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources") {
+        return jsonResponse({
+          workspace_id: "ws_1",
+          revision: 5,
+          sources: [source({ source_id: "src_1", display_name: "Alpha.pdf" })],
+        });
+      }
+      if (
+        call.url === "/v1/workspaces/ws_1/conversation/turn" &&
+        call.method === "POST"
+      ) {
+        return jsonResponse(turnResponse());
+      }
+      return errorResponse("not_found", "x", 404);
+    });
+
+    renderApp("/workspaces/ws_1");
+    await screen.findByRole("heading", { name: "Conversation" });
+    await user.type(screen.getByLabelText("Ask a follow-up"), "A question?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("Answer text.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Training Mode" }));
+
+    expect(
+      screen.queryByRole("button", { name: "Summarize" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Summarize recent conversation" }),
+    ).toBeDisabled();
+    expect(
+      screen.queryByText(/Recent summaries use only the latest/),
+    ).not.toBeInTheDocument();
     mock.restore();
   });
 

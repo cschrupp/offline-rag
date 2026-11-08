@@ -8,6 +8,7 @@ import type { FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   addSources,
+  conversationAction,
   conversationTurn,
   getCapabilities,
   getOperation,
@@ -26,7 +27,14 @@ import {
   fingerprintReplaceSource,
 } from "../api/idempotency";
 import { queryKeys } from "../api/queryKeys";
-import type { Operation, Source, WorkspaceCitation } from "../api/types";
+import type {
+  ConversationActionLanguage,
+  ConversationActionOperation,
+  ConversationPriorTurn,
+  Operation,
+  Source,
+  WorkspaceCitation,
+} from "../api/types";
 import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
@@ -54,6 +62,7 @@ import {
 } from "../features/workspaces/sourceLoadingState";
 import {
   appendConversationPair,
+  buildConversationActionWindow,
   buildResolverPriorTurns,
   chronologicalPairs,
   clearConversation,
@@ -97,6 +106,16 @@ type AskSubmit = {
   /** undefined = omit source_ids (all-active); [] would mean empty scope */
   sourceIds: string[] | undefined;
   priorTurns: ReturnType<typeof buildResolverPriorTurns>;
+};
+
+type ConversationActionSubmit = {
+  pairId: string;
+  askedAt: string;
+  targetEntryId: string | null;
+  operation: ConversationActionOperation;
+  targetLanguage?: ConversationActionLanguage;
+  targetAssistantIndex?: number;
+  priorTurns: ConversationPriorTurn[];
 };
 import {
   forgetActiveOperation,
@@ -253,6 +272,8 @@ export function WorkspacePage() {
   const [selectionSyncKey, setSelectionSyncKey] = useState("");
   const [question, setQuestion] = useState("");
   const [askError, setAskError] = useState<string | null>(null);
+  const [conversationActionError, setConversationActionError] =
+    useState<string | null>(null);
   const [conflictHint, setConflictHint] = useState<string | null>(null);
   const [settingsHint, setSettingsHint] = useState(false);
   const [pairs, setPairs] = useState<ConversationPair[]>(() =>
@@ -882,13 +903,87 @@ export function WorkspacePage() {
     },
   });
 
+  const conversationActionMutation = useMutation({
+    mutationFn: (submit: ConversationActionSubmit) =>
+      conversationAction({
+        workspaceId,
+        operation: submit.operation,
+        priorTurns: submit.priorTurns,
+        targetAssistantIndex: submit.targetAssistantIndex,
+        targetLanguage: submit.targetLanguage,
+      }),
+    retry: false,
+    onSuccess: (response, submit) => {
+      setConversationActionError(null);
+      const pair: ConversationPair = {
+        pairId: submit.pairId,
+        askedAt: submit.askedAt,
+        // The API supplies fixed application-owned synthetic user text.
+        question: response.question,
+        // Explicit conversation actions do not consume or cite selected sources.
+        selectedSourceIds: [],
+        selectedSourceNames: [],
+        selectionMode: "all",
+        response,
+      };
+      const next = appendConversationPair(workspaceId, pair);
+      setPairs(next);
+      setActiveEntryId(pair.pairId);
+      setSelectedCitation(null);
+      setPreviewTarget(null);
+      if (trainingModeRef.current && response.status === "answered") {
+        setRevealMap((prev) => ({
+          ...prev,
+          [pair.pairId]: { ...HIDDEN_REVEAL },
+        }));
+      }
+    },
+    onError: (error) => {
+      setConversationActionError(userFacingErrorMessage(error));
+    },
+  });
+
+  function submitConversationAction(
+    targetEntryId: string | null,
+    operation: ConversationActionOperation,
+    targetLanguage?: ConversationActionLanguage,
+  ) {
+    if (askMutation.isPending || conversationActionMutation.isPending) return;
+    const chronological = chronologicalPairs(pairs);
+    const actionWindow = buildConversationActionWindow(chronological);
+    let targetAssistantIndex: number | undefined;
+    if (targetEntryId !== null) {
+      targetAssistantIndex =
+        actionWindow.assistantIndexByPairId.get(targetEntryId);
+      if (targetAssistantIndex === undefined) return;
+    } else if (
+      operation !== "summarize_recent_conversation" ||
+      actionWindow.priorTurns.length === 0
+    ) {
+      return;
+    }
+
+    setConversationActionError(null);
+    setAskError(null);
+    conversationActionMutation.mutate({
+      pairId: newPairId(),
+      askedAt: new Date().toISOString(),
+      targetEntryId,
+      operation,
+      targetLanguage,
+      targetAssistantIndex,
+      priorTurns: actionWindow.priorTurns,
+    });
+  }
+
   function submitAsk() {
     const trimmed = question.trim();
     if (
       !askSourcesReady ||
       selectedSourceIds.length === 0 ||
       trimmed.length === 0 ||
-      askMutation.isPending
+      askMutation.isPending ||
+      conversationActionMutation.isPending
     ) {
       return;
     }
@@ -930,7 +1025,7 @@ export function WorkspacePage() {
   }
 
   function startNewConversation() {
-    if (askMutation.isPending) return;
+    if (askMutation.isPending || conversationActionMutation.isPending) return;
     clearConversation(workspaceId);
     setPairs([]);
     setActiveEntryId(null);
@@ -1046,6 +1141,12 @@ export function WorkspacePage() {
     busyForMutations || !existingSourceMutationsAllowed;
 
   const history: ConversationHistoryEntry[] = pairs.map(toHistoryEntry);
+  const conversationActionWindow = buildConversationActionWindow(
+    chronologicalPairs(pairs),
+  );
+  const actionableEntryIds = new Set(
+    conversationActionWindow.assistantIndexByPairId.keys(),
+  );
   const activeEntry =
     history.find((entry) => entry.entryId === activeEntryId) ??
     history[0] ??
@@ -1055,7 +1156,8 @@ export function WorkspacePage() {
     !askSourcesReady ||
     selectedSourceIds.length === 0 ||
     question.trim().length === 0 ||
-    askMutation.isPending;
+    askMutation.isPending ||
+    conversationActionMutation.isPending;
 
   const statusBadge = workspaceStatusBadge({
     workspaceStatus: workspace.status,
@@ -1414,9 +1516,29 @@ export function WorkspacePage() {
                 if (askDisabled) return;
                 submitAsk();
               }}
+              onConversationAction={(entryId, operation, targetLanguage) =>
+                submitConversationAction(entryId, operation, targetLanguage)
+              }
+              onSummarizeRecentConversation={() =>
+                submitConversationAction(null, "summarize_recent_conversation")
+              }
+              canSummarizeRecentConversation={
+                conversationActionWindow.priorTurns.length > 0
+              }
+              actionableEntryIds={actionableEntryIds}
+              actionPending={conversationActionMutation.isPending}
+              pendingActionEntryId={
+                conversationActionMutation.variables?.targetEntryId ?? null
+              }
+              pendingActionOperation={
+                conversationActionMutation.variables?.operation ?? null
+              }
+              actionError={conversationActionError}
               onNewConversation={startNewConversation}
               askDisabled={askDisabled}
-              askPending={askMutation.isPending}
+              askPending={
+                askMutation.isPending || conversationActionMutation.isPending
+              }
               selectedCount={selectedSourceIds.length}
               totalCount={sources.length}
               askError={askError}

@@ -67,6 +67,7 @@ GROUNDED_ANSWER_V1 = "grounded-answer-v1"
 GROUNDED_ANSWER_V2 = "grounded_answer_v2"
 # Product conversation-context resolver (A2-D06).
 CONVERSATION_CONTEXT_RESOLVER_V1 = "conversation_context_resolver_v1"
+CONVERSATION_ACTION_EXECUTOR_V1 = "conversation_action_executor_v1"
 NO_RETRY_V1 = "no-retry-v1"
 DIRECT_OUTPUT_V1 = "direct-output-v1"
 FAKE_GENERATOR_CONTRACT = "fake-generator-v1"

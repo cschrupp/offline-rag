@@ -29,7 +29,10 @@ from offline_rag.app.conversation.resolver import (
     resolve_conversation_context,
     try_deterministic_followup_resolve,
 )
-from offline_rag.app.conversation.traces import ConversationTraceStore
+from offline_rag.app.conversation.traces import (
+    ConversationTraceRecord,
+    ConversationTraceStore,
+)
 from offline_rag.app.conversation.turn import run_conversation_turn
 from offline_rag.app.errors import AppError, ErrorCode
 from offline_rag.app.query import run_workspace_query
@@ -39,11 +42,16 @@ from offline_rag.app.workspace.store import WorkspaceStore
 from offline_rag.config import load_settings
 from offline_rag.config.models import AppSettings
 from offline_rag.context.assemble import HybridRerankContextAssembler
-from offline_rag.core.ids import CONVERSATION_CONTEXT_RESOLVER_V1, GROUNDED_ANSWER_V2
+from offline_rag.core.ids import (
+    CONVERSATION_ACTION_EXECUTOR_V1,
+    CONVERSATION_CONTEXT_RESOLVER_V1,
+    GROUNDED_ANSWER_V2,
+)
 from offline_rag.dense.embedder import FakeEmbedder
 from offline_rag.dense.qdrant_local import QdrantLocalBackend
 from offline_rag.dense.retrieve import DenseRetriever
 from offline_rag.generation.fake import FakeGenerator
+from offline_rag.generation.protocol import GeneratorResponse
 from offline_rag.ingestion.docling_artifacts import write_provisioning_manifest
 from offline_rag.rerank.fake import FakeReranker
 
@@ -131,6 +139,8 @@ def _conversation_client(
         captures["generator_requests"].append(request)
         contract = (request.metadata or {}).get("prompt_contract")
         blob = "\n".join(message.content for message in request.messages)
+        if contract == CONVERSATION_ACTION_EXECUTOR_V1:
+            return "Transformed answer."
         if contract == CONVERSATION_CONTEXT_RESOLVER_V1 or "conversation-context resolver" in blob:
             # Default: resolve to a clear standalone retrieval question.
             return json.dumps(
@@ -933,3 +943,241 @@ def test_over_bound_pairs_http_rejected(tmp_path: Path) -> None:
         )
         assert resp.status_code == 422
         assert generator.generate_calls == before
+
+
+def test_historical_conversation_trace_defaults_new_provenance_fields() -> None:
+    legacy_record = {
+        "schema_version": "offline-rag-conversation-trace-v1",
+        "conversation_trace_id": "trace_11111111111111111111111111111111",
+        "created_at": "2026-10-31T00:00:00Z",
+        "workspace_id": "ws_historical",
+        "workspace_revision": 3,
+        "snapshot_id": "snap_historical",
+        "product_mode_id": "grounded_v1",
+        "source_scope": {
+            "workspace_id": "ws_historical",
+            "workspace_revision": 3,
+            "mode": "all_active",
+            "source_ids": [],
+            "document_ids": [],
+        },
+        "question_sha256": "a" * 64,
+        "question_char_count": 9,
+        "prior_turn_count": 0,
+        "resolver_invoked": True,
+        "resolver_outcome": "resolved",
+        "retrieval_question_sha256": "b" * 64,
+        "retrieval_question_char_count": 12,
+        "context_used": False,
+        "status": "answered",
+        "query_trace_id": "trace_22222222222222222222222222222222",
+    }
+
+    trace = ConversationTraceRecord.model_validate(legacy_record)
+
+    assert trace.answer_origin == "sources"
+    assert trace.executor_prompt_contract_id is None
+    assert trace.source_scope is not None
+
+
+def test_explicit_action_uses_exact_target_without_retrieval(tmp_path: Path) -> None:
+    with _conversation_client(tmp_path) as (client, runtime, captures, _generator):
+        workspace_id, _, _, _ = _seed_workspace(client)
+        prior_turns = [
+            {"role": "user", "text": "First request."},
+            {"role": "assistant", "text": "First answer must not be sent."},
+            {"role": "user", "text": "Second request."},
+            {"role": "assistant", "text": "Exact selected answer."},
+        ]
+        before_query_count = len(captures["assemble_queries"])
+        response = client.post(
+            f"/v1/workspaces/{workspace_id}/conversation/action",
+            json={
+                "operation": "summarize_answer",
+                "prior_turns": prior_turns,
+                "target_assistant_index": 3,
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["question"] == "Summarize the answer above."
+        assert body["status"] == "answered"
+        assert body["answer"] == "Transformed answer."
+        assert body["answer_origin"] == "conversation"
+        assert body["query_trace_id"] is None
+        assert body["retrieval_question"] is None
+        assert body["answer_blocks"] == []
+        assert body["citations"] == []
+        assert len(captures["assemble_queries"]) == before_query_count
+
+        action_request = captures["generator_requests"][-1]
+        action_payload = "\n".join(
+            message.content for message in action_request.messages
+        )
+        assert "Exact selected answer." in action_payload
+        assert "First answer must not be sent." not in action_payload
+        assert action_request.metadata["operation"] == "summarize_answer"
+
+        trace = ConversationTraceStore(runtime.settings).get(
+            body["conversation_trace_id"]
+        )
+        assert trace is not None
+        assert trace.answer_origin == "conversation"
+        assert trace.executor_prompt_contract_id == CONVERSATION_ACTION_EXECUTOR_V1
+        assert trace.query_trace_id is None
+        assert trace.source_scope is None
+
+
+def test_explicit_action_rejects_non_assistant_target_before_generation(
+    tmp_path: Path,
+) -> None:
+    with _conversation_client(tmp_path) as (client, _, _, generator):
+        workspace_id, _, _, _ = _seed_workspace(client)
+        calls_before = generator.generate_calls
+        response = client.post(
+            f"/v1/workspaces/{workspace_id}/conversation/action",
+            json={
+                "operation": "simplify_answer",
+                "prior_turns": [
+                    {"role": "user", "text": "Question."},
+                    {"role": "assistant", "text": "Answer."},
+                ],
+                "target_assistant_index": 0,
+            },
+        )
+        assert response.status_code == 422
+        assert response.json()["details"]["reason"] == "conversation_action_target_invalid"
+        assert generator.generate_calls == calls_before
+
+
+def test_recent_conversation_action_summarizes_only_submitted_window(
+    tmp_path: Path,
+) -> None:
+    with _conversation_client(tmp_path) as (client, runtime, captures, _generator):
+        workspace_id, _, _, _ = _seed_workspace(client)
+        prior_turns = [
+            {"role": "user", "text": "Earlier question."},
+            {"role": "assistant", "text": "Earlier answer."},
+            {"role": "user", "text": "Latest question."},
+            {"role": "assistant", "text": "Latest answer."},
+        ]
+        before_query_count = len(captures["assemble_queries"])
+        response = client.post(
+            f"/v1/workspaces/{workspace_id}/conversation/action",
+            json={
+                "operation": "summarize_recent_conversation",
+                "prior_turns": prior_turns,
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["question"] == (
+            "Summarize only the recent, bounded conversation window."
+        )
+        assert body["answer_origin"] == "conversation"
+        assert body["query_trace_id"] is None
+        assert body["citations"] == []
+        assert len(captures["assemble_queries"]) == before_query_count
+        request = captures["generator_requests"][-1]
+        payload = "\n".join(message.content for message in request.messages)
+        assert "Earlier question." in payload
+        assert "Earlier answer." in payload
+        assert "Latest question." in payload
+        assert "Latest answer." in payload
+        trace = ConversationTraceStore(runtime.settings).get(
+            body["conversation_trace_id"]
+        )
+        assert trace is not None
+        assert trace.answer_origin == "conversation"
+        assert trace.source_scope is None
+
+
+def test_explicit_action_rejects_invalid_operation_language_and_empty_summary(
+    tmp_path: Path,
+) -> None:
+    with _conversation_client(tmp_path) as (client, _, _, generator):
+        workspace_id, _, _, _ = _seed_workspace(client)
+        prior_turns = [
+            {"role": "user", "text": "Question."},
+            {"role": "assistant", "text": "Answer."},
+        ]
+        over_bound_turns = []
+        for index in range(7):
+            over_bound_turns.extend(
+                [
+                    {"role": "user", "text": f"Question {index}."},
+                    {"role": "assistant", "text": f"Answer {index}."},
+                ]
+            )
+        invalid_requests = [
+            {
+                "operation": "freeform_transform",
+                "prior_turns": prior_turns,
+                "target_assistant_index": 1,
+            },
+            {
+                "operation": "translate_answer",
+                "target_language": "fr",
+                "prior_turns": prior_turns,
+                "target_assistant_index": 1,
+            },
+            {
+                "operation": "summarize_answer",
+                "prior_turns": prior_turns,
+            },
+            {
+                "operation": "summarize_recent_conversation",
+                "prior_turns": [],
+            },
+            {
+                "operation": "summarize_answer",
+                "prior_turns": over_bound_turns,
+                "target_assistant_index": 13,
+            },
+        ]
+        calls_before = generator.generate_calls
+
+        for request in invalid_requests:
+            response = client.post(
+                f"/v1/workspaces/{workspace_id}/conversation/action",
+                json=request,
+            )
+            assert response.status_code == 422, response.text
+
+        assert generator.generate_calls == calls_before
+
+
+def test_conversation_action_discards_length_truncated_output(tmp_path: Path) -> None:
+    class TruncatedGenerator:
+        def generate(self, request: Any) -> GeneratorResponse:
+            return GeneratorResponse(content="partial text", finish_reason="length")
+
+        def probe(self) -> None:
+            raise AssertionError("action must not probe the generator")
+
+    with _conversation_client(tmp_path) as (client, runtime, _, _generator):
+        workspace_id, _, _, _ = _seed_workspace(client)
+        assert runtime.resources is not None
+        runtime.resources.generator_client = TruncatedGenerator()
+        response = client.post(
+            f"/v1/workspaces/{workspace_id}/conversation/action",
+            json={
+                "operation": "translate_answer",
+                "target_language": "es",
+                "prior_turns": [
+                    {"role": "user", "text": "Question."},
+                    {"role": "assistant", "text": "Long answer."},
+                ],
+                "target_assistant_index": 1,
+            },
+        )
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["question"] == "Traduce la respuesta anterior al español."
+        assert body["status"] == "clarification_required"
+        assert body["abstention_reason"] == "conversation_response_truncated"
+        assert body["answer"] is None
+        assert body["answer_blocks"] == []
+        assert body["citations"] == []

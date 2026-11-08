@@ -10,14 +10,28 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Header, Request, Response
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StrictInt,
+    field_validator,
+    model_validator,
+)
 
 from offline_rag.api.workspace_views import (
     operation_view,
     source_view,
     workspace_view,
 )
-from offline_rag.app.conversation import run_conversation_turn
+from offline_rag.app.conversation import (
+    run_conversation_action,
+    run_conversation_turn,
+)
+from offline_rag.app.conversation.actions import (
+    ConversationActionOperation,
+    TranslationLanguage,
+)
 from offline_rag.app.errors import (
     AppError,
     ErrorCode,
@@ -225,6 +239,30 @@ class ConversationTurnRequest(BaseModel):
                 raise ValueError("source_ids entries must be safe identity tokens")
             validated.append(item)
         return validated
+
+
+class ConversationActionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    operation: ConversationActionOperation
+    prior_turns: list[ConversationPriorTurnModel] = Field(default_factory=list)
+    target_assistant_index: StrictInt | None = Field(default=None, ge=0)
+    target_language: TranslationLanguage | None = None
+
+    @model_validator(mode="after")
+    def _validate_action_fields(self) -> ConversationActionRequest:
+        if self.operation == "translate_answer":
+            if self.target_language not in {"en", "es"}:
+                raise ValueError("translation actions require an approved language")
+        elif self.target_language is not None:
+            raise ValueError("target_language is only valid for translation")
+
+        if self.operation == "summarize_recent_conversation":
+            if self.target_assistant_index is not None:
+                raise ValueError("recent summary does not take an answer target")
+        elif self.target_assistant_index is None:
+            raise ValueError("answer actions require an assistant target index")
+        return self
 
 
 def _uploads_from_spool(spool: WorkspaceUploadSpool) -> list[SourceUpload]:
@@ -648,5 +686,21 @@ def workspace_conversation_turn(
         question=body.question,
         prior_turns=[turn.model_dump() for turn in body.prior_turns],
         source_ids=body.source_ids,
+    )
+    return result.as_dict()
+
+
+@router.post("/v1/workspaces/{workspace_id}/conversation/action")
+def workspace_conversation_action(
+    request: Request, workspace_id: str, body: ConversationActionRequest
+) -> dict[str, Any]:
+    runtime = _runtime(request)
+    result = run_conversation_action(
+        runtime,
+        workspace_id=workspace_id,
+        operation=body.operation,
+        prior_turns=[turn.model_dump() for turn in body.prior_turns],
+        target_assistant_index=body.target_assistant_index,
+        target_language=body.target_language,
     )
     return result.as_dict()

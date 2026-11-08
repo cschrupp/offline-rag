@@ -486,4 +486,14 @@ export type ConversationTurnResponse = {
   answer: string | null;
   citations: WorkspaceCitation[];
   answer_blocks: AnswerBlock[];
+  /** Missing in historical session entries; absence means source-origin. */
+  answer_origin?: "sources" | "conversation";
 };
+
+export type ConversationActionOperation =
+  | "summarize_answer"
+  | "simplify_answer"
+  | "translate_answer"
+  | "summarize_recent_conversation";
+
+export type ConversationActionLanguage = "en" | "es";

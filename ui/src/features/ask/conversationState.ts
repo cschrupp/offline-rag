@@ -240,6 +240,10 @@ function isTurnResponse(value: unknown): value is ConversationTurnResponse {
   ) {
     return false;
   }
+  const answerOrigin = row.answer_origin ?? "sources";
+  if (answerOrigin !== "sources" && answerOrigin !== "conversation") {
+    return false;
+  }
   if (!(typeof row.answer === "string" || row.answer === null)) {
     return false;
   }
@@ -249,6 +253,14 @@ function isTurnResponse(value: unknown): value is ConversationTurnResponse {
       return false;
     }
     if (row.abstention_reason !== null) return false;
+    if (answerOrigin === "conversation") {
+      return (
+        row.query_trace_id === null &&
+        row.retrieval_question === null &&
+        row.answer_blocks.length === 0 &&
+        row.citations.length === 0
+      );
+    }
     if (!isNonEmptyString(row.query_trace_id)) return false;
     if (!isNonEmptyString(row.retrieval_question)) return false;
     if (!row.answer_blocks.every(isAnswerBlock)) return false;
@@ -267,6 +279,12 @@ function isTurnResponse(value: unknown): value is ConversationTurnResponse {
     if (row.answer !== null) return false;
     if (row.answer_blocks.length !== 0) return false;
     if (row.citations.length !== 0) return false;
+    if (answerOrigin === "conversation") {
+      return (
+        row.abstention_reason === "conversation_response_truncated" ||
+        row.abstention_reason === "conversation_response_unavailable"
+      );
+    }
     return isValidAbstentionReason(row.status, row.abstention_reason);
   }
 
@@ -358,6 +376,18 @@ export function newPairId(): string {
 export function buildResolverPriorTurns(
   pairsChronologicalOldestFirst: ConversationPair[],
 ): ConversationPriorTurn[] {
+  return buildConversationActionWindow(pairsChronologicalOldestFirst).priorTurns;
+}
+
+export type ConversationActionWindow = {
+  priorTurns: ConversationPriorTurn[];
+  assistantIndexByPairId: Map<string, number>;
+};
+
+/** Build the exact shared six-pair / 12k-character action and resolver window. */
+export function buildConversationActionWindow(
+  pairsChronologicalOldestFirst: ConversationPair[],
+): ConversationActionWindow {
   const completed = pairsChronologicalOldestFirst.filter(
     (pair) =>
       typeof pair.question === "string" &&
@@ -374,15 +404,24 @@ export function buildResolverPriorTurns(
   while (window.length > 0 && totalChars() > RESOLVER_CHAR_MAX) {
     window = window.slice(1);
   }
-  const turns: ConversationPriorTurn[] = [];
+  const priorTurns: ConversationPriorTurn[] = [];
+  const assistantIndexByPairId = new Map<string, number>();
   for (const pair of window) {
-    turns.push({ role: "user", text: pair.question.trim() });
-    turns.push({
+    priorTurns.push({ role: "user", text: pair.question.trim() });
+    const assistantIndex = priorTurns.length;
+    priorTurns.push({
       role: "assistant",
       text: assistantPresentationText(pair.response),
     });
+    if (
+      pair.response.status === "answered" &&
+      typeof pair.response.answer === "string" &&
+      pair.response.answer.trim().length > 0
+    ) {
+      assistantIndexByPairId.set(pair.pairId, assistantIndex);
+    }
   }
-  return turns;
+  return { priorTurns, assistantIndexByPairId };
 }
 
 export function chronologicalPairs(

@@ -1,6 +1,15 @@
-import { useEffect, type FormEvent, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+} from "react";
 import { Link } from "react-router-dom";
-import type { WorkspaceCitation } from "../../api/types";
+import type {
+  ConversationActionLanguage,
+  ConversationActionOperation,
+  WorkspaceCitation,
+} from "../../api/types";
 import { Button } from "../../components/Button";
 import { TextArea } from "../../components/Field";
 import { QuestionBankPanel } from "../training/QuestionBankPanel";
@@ -25,6 +34,18 @@ type Props = {
   question: string;
   onQuestionChange: (value: string) => void;
   onAsk: () => void;
+  onConversationAction: (
+    entryId: string,
+    operation: ConversationActionOperation,
+    targetLanguage?: ConversationActionLanguage,
+  ) => void;
+  onSummarizeRecentConversation: () => void;
+  canSummarizeRecentConversation: boolean;
+  actionableEntryIds: ReadonlySet<string>;
+  actionPending: boolean;
+  pendingActionEntryId: string | null;
+  pendingActionOperation: ConversationActionOperation | null;
+  actionError: string | null;
   onNewConversation: () => void;
   askDisabled: boolean;
   askPending: boolean;
@@ -76,6 +97,14 @@ export function AskPanel({
   question,
   onQuestionChange,
   onAsk,
+  onConversationAction,
+  onSummarizeRecentConversation,
+  canSummarizeRecentConversation,
+  actionableEntryIds,
+  actionPending,
+  pendingActionEntryId,
+  pendingActionOperation,
+  actionError,
   onNewConversation,
   askDisabled,
   askPending,
@@ -104,6 +133,8 @@ export function AskPanel({
   onDeletePrompt,
   drawersOpen = false,
 }: Props) {
+  const [translationLanguage, setTranslationLanguage] =
+    useState<ConversationActionLanguage>("es");
   useEffect(() => {
     if (askPending) return;
     const el = document.getElementById("ask-question");
@@ -216,6 +247,13 @@ export function AskPanel({
           const active = activeEntry?.entryId === entry.entryId;
           const assistantText = assistantPresentationText(entry.response);
           const isAnswered = entry.response.status === "answered";
+          const isConversationOrigin =
+            entry.response.answer_origin === "conversation";
+          const hasConversationActions =
+            !trainingMode &&
+            isAnswered &&
+            actionableEntryIds.has(entry.entryId);
+          const pendingThisAction = pendingActionEntryId === entry.entryId;
           const mappedReveal = revealMap[entry.entryId];
           const reveal = trainingMode
             ? (mappedReveal ??
@@ -259,7 +297,9 @@ export function AskPanel({
                 </div>
                 <p className="muted" style={{ margin: 0, fontSize: "0.875rem" }}>
                   {statusLabel(String(entry.response.status))} ·{" "}
-                  {sourceScopeLabel(entry)}
+                  {isConversationOrigin
+                    ? "From this conversation — not re-checked against your sources"
+                    : sourceScopeLabel(entry)}
                 </p>
 
                 {trainingMode && isAnswered ? (
@@ -281,32 +321,36 @@ export function AskPanel({
                     >
                       {reveal.answer ? "Hide answer" : "Reveal answer"}
                     </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      aria-expanded={reveal.citations}
-                      onClick={() =>
-                        onRevealChange?.(entry.entryId, {
-                          citations: !reveal.citations,
-                        })
-                      }
-                    >
-                      {reveal.citations
-                        ? "Hide citations"
-                        : "Reveal citations"}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      aria-expanded={reveal.evidence}
-                      onClick={() =>
-                        onRevealChange?.(entry.entryId, {
-                          evidence: !reveal.evidence,
-                        })
-                      }
-                    >
-                      {reveal.evidence ? "Hide evidence" : "Reveal evidence"}
-                    </Button>
+                    {!isConversationOrigin ? (
+                      <>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          aria-expanded={reveal.citations}
+                          onClick={() =>
+                            onRevealChange?.(entry.entryId, {
+                              citations: !reveal.citations,
+                            })
+                          }
+                        >
+                          {reveal.citations
+                            ? "Hide citations"
+                            : "Reveal citations"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          aria-expanded={reveal.evidence}
+                          onClick={() =>
+                            onRevealChange?.(entry.entryId, {
+                              evidence: !reveal.evidence,
+                            })
+                          }
+                        >
+                          {reveal.evidence ? "Hide evidence" : "Reveal evidence"}
+                        </Button>
+                      </>
+                    ) : null}
                   </div>
                 ) : null}
 
@@ -338,17 +382,23 @@ export function AskPanel({
                       }
                       className="answer-body"
                     >
-                      <ClaimAnswer
-                        blocks={entry.response.answer_blocks}
-                        citations={entry.response.citations}
-                        selectedEvidenceUnitId={
-                          active ? selectedEvidenceUnitId : null
-                        }
-                        citationsVisible={!trainingMode || reveal.citations}
-                        onSelectCitation={(citation) => {
-                          onSelectCitation(citation, entry);
-                        }}
-                      />
+                      {isConversationOrigin ? (
+                        <p className="conversation-transform-answer">
+                          {entry.response.answer}
+                        </p>
+                      ) : (
+                        <ClaimAnswer
+                          blocks={entry.response.answer_blocks}
+                          citations={entry.response.citations}
+                          selectedEvidenceUnitId={
+                            active ? selectedEvidenceUnitId : null
+                          }
+                          citationsVisible={!trainingMode || reveal.citations}
+                          onSelectCitation={(citation) => {
+                            onSelectCitation(citation, entry);
+                          }}
+                        />
+                      )}
                     </div>
                   )
                 ) : (
@@ -356,6 +406,74 @@ export function AskPanel({
                     {assistantText}
                   </p>
                 )}
+                {pendingThisAction && pendingActionOperation ? (
+                  <p className="muted" role="status" aria-live="polite">
+                    {pendingActionOperation === "summarize_answer" ||
+                    pendingActionOperation === "summarize_recent_conversation"
+                      ? "Summarizing…"
+                      : pendingActionOperation === "simplify_answer"
+                        ? "Simplifying…"
+                        : "Translating…"}
+                  </p>
+                ) : null}
+                {hasConversationActions ? (
+                  <div
+                    className="conversation-explicit-actions row"
+                    role="group"
+                    aria-label={`Actions for answer ${entry.entryId}`}
+                  >
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={askPending || actionPending}
+                      onClick={() =>
+                        onConversationAction(entry.entryId, "summarize_answer")
+                      }
+                    >
+                      Summarize
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={askPending || actionPending}
+                      onClick={() =>
+                        onConversationAction(entry.entryId, "simplify_answer")
+                      }
+                    >
+                      Simplify
+                    </Button>
+                    <label>
+                      Translate to{" "}
+                      <select
+                        aria-label={`Translate answer ${entry.entryId} to`}
+                        value={translationLanguage}
+                        disabled={askPending || actionPending}
+                        onChange={(event) =>
+                          setTranslationLanguage(
+                            event.target.value as ConversationActionLanguage,
+                          )
+                        }
+                      >
+                        <option value="en">English</option>
+                        <option value="es">Spanish</option>
+                      </select>
+                    </label>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={askPending || actionPending}
+                      onClick={() =>
+                        onConversationAction(
+                          entry.entryId,
+                          "translate_answer",
+                          translationLanguage,
+                        )
+                      }
+                    >
+                      Translate
+                    </Button>
+                  </div>
+                ) : null}
               </div>
             </article>
           );
@@ -375,6 +493,19 @@ export function AskPanel({
         <div className="row conversation-composer-actions">
           <Button type="submit" disabled={askDisabled || askPending}>
             Send
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onSummarizeRecentConversation}
+            disabled={
+              askPending ||
+              actionPending ||
+              trainingMode ||
+              !canSummarizeRecentConversation
+            }
+          >
+            Summarize recent conversation
           </Button>
           {trainingMode ? (
             <>
@@ -399,6 +530,28 @@ export function AskPanel({
             </>
           ) : null}
         </div>
+        {!trainingMode ? (
+          <>
+            <p className="muted" style={{ margin: 0 }}>
+              To summarize, simplify or translate conversation content, use the
+              actions under an answer.
+            </p>
+            <p className="muted" style={{ margin: 0 }}>
+              Recent summaries use only the latest six completed exchanges, up
+              to 12,000 characters.
+            </p>
+          </>
+        ) : null}
+        {actionPending && pendingActionEntryId === null ? (
+          <p className="muted" role="status" aria-live="polite">
+            Summarizing…
+          </p>
+        ) : null}
+        {actionError ? (
+          <p className="error-box" role="alert">
+            {actionError}
+          </p>
+        ) : null}
       </form>
 
       {conflictHint ? (

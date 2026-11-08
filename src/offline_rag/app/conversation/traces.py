@@ -34,6 +34,7 @@ ConversationTerminalStatus = Literal[
     "model_abstain",
     "clarification_required",
 ]
+ConversationAnswerOrigin = Literal["sources", "conversation"]
 
 
 def allocate_conversation_trace_id() -> str:
@@ -53,7 +54,7 @@ class ConversationTraceRecord(BaseModel):
     workspace_revision: int = Field(ge=0)
     snapshot_id: str
     product_mode_id: str
-    source_scope: ProductTraceSourceScope
+    source_scope: ProductTraceSourceScope | None = None
     question_sha256: str = Field(min_length=1)
     question_char_count: int = Field(ge=0)
     prior_turn_count: int = Field(ge=0)
@@ -65,6 +66,8 @@ class ConversationTraceRecord(BaseModel):
     context_used: bool
     status: ConversationTerminalStatus
     query_trace_id: str | None = None
+    answer_origin: ConversationAnswerOrigin = "sources"
+    executor_prompt_contract_id: str | None = None
 
     @field_validator("conversation_trace_id")
     @classmethod

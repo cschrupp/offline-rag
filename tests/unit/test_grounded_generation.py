@@ -279,6 +279,34 @@ def test_direct_output_v1_disables_thinking_in_request_body() -> None:
     assert REASONING_CONTRACT == "direct-output-v1"
     # Adapter still extracts only message.content
     assert response.content == '{"abstain":true,"answer":null,"citation_ids":[]}'
+    assert response.finish_reason == "stop"
+
+
+def test_openai_generator_preserves_length_finish_reason() -> None:
+    settings = _settings()
+    client = MagicMock()
+    client.post.return_value.status_code = 200
+    client.post.return_value.json.return_value = {
+        "choices": [
+            {
+                "finish_reason": "length",
+                "message": {"role": "assistant", "content": "partial"},
+            }
+        ]
+    }
+    generator = OpenAICompatibleGenerator(settings, client=client)
+    request = build_prompt_grounded_v1(
+        query="q",
+        evidence_units=[_unit("ev_A", "t")],
+        model="test-model",
+        temperature=0.0,
+        max_output_tokens=10,
+    )
+
+    response = generator.generate(request)
+
+    assert response.content == "partial"
+    assert response.finish_reason == "length"
 
 
 def test_parse_grounded_answer_v1_valid_and_failures() -> None:

@@ -5,6 +5,8 @@ import type {
   AuthoringSettingsState,
   Capabilities,
   ConversationPriorTurn,
+  ConversationActionLanguage,
+  ConversationActionOperation,
   ConversationTurnResponse,
   GenerationProbeResult,
   ComputeSettingsState,
@@ -433,6 +435,39 @@ export function conversationTurn(params: {
   }
   return apiRequest<ConversationTurnResponse>(
     `/v1/workspaces/${params.workspaceId}/conversation/turn`,
+    {
+      method: "POST",
+      json: body,
+      signal: params.signal,
+    },
+  );
+}
+
+export function conversationAction(params: {
+  workspaceId: string;
+  operation: ConversationActionOperation;
+  priorTurns: ConversationPriorTurn[];
+  targetAssistantIndex?: number;
+  targetLanguage?: ConversationActionLanguage;
+  signal?: AbortSignal;
+}): Promise<ConversationTurnResponse> {
+  const body: {
+    operation: ConversationActionOperation;
+    prior_turns: ConversationPriorTurn[];
+    target_assistant_index?: number;
+    target_language?: ConversationActionLanguage;
+  } = {
+    operation: params.operation,
+    prior_turns: params.priorTurns,
+  };
+  if (params.targetAssistantIndex !== undefined) {
+    body.target_assistant_index = params.targetAssistantIndex;
+  }
+  if (params.targetLanguage !== undefined) {
+    body.target_language = params.targetLanguage;
+  }
+  return apiRequest<ConversationTurnResponse>(
+    `/v1/workspaces/${params.workspaceId}/conversation/action`,
     {
       method: "POST",
       json: body,

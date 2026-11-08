@@ -631,6 +631,51 @@ describe("16D-C Rework 2 / A4 — Conversation export", () => {
     expect(JSON.stringify(doc)).not.toContain("revealMap");
   });
 
+  it("exports explicit conversation transformations without implying citations", () => {
+    const entry: ConversationHistoryEntry = {
+      ...answeredEntry(),
+      entryId: "pair_transform",
+      question: "Summarize the answer above.",
+      response: turnResponse({
+        answer_origin: "conversation",
+        question: "Summarize the answer above.",
+        answer: "A concise summary.",
+        query_trace_id: null,
+        retrieval_question: null,
+        context_used: true,
+        answer_blocks: [],
+        citations: [],
+      }),
+    };
+    const input = {
+      workspace: workspaceMeta,
+      history: [entry],
+      incompleteTurns: [],
+      exportedFromView: "normal" as const,
+      exportedAt: "2026-10-07T20:00:00-04:00",
+    };
+
+    const markdown = serializeConversationMarkdown(input);
+    expect(markdown.content).toContain(
+      "From this conversation — not re-checked against your sources.",
+    );
+    expect(markdown.content).toContain("A concise summary.");
+    expect(markdown.content).not.toContain("### Sources");
+    expect(markdown.content).not.toContain("[1]");
+
+    const json = JSON.parse(
+      serializeConversationJson(input).content,
+    ) as { turns: Array<Record<string, unknown>> };
+    expect(json.turns[0]).toMatchObject({
+      answer_origin: "conversation",
+      query_trace_id: null,
+      citations: [],
+      selected_source_ids: [],
+      selected_source_names: [],
+      selection_mode: null,
+    });
+  });
+
   it("exports abstention/clarification/failed turns without fabricating answers", () => {
     const clarification: ConversationHistoryEntry = {
       ...answeredEntry(),
