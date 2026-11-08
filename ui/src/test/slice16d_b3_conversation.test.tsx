@@ -492,6 +492,11 @@ describe("Slice 16D-B3 conversation workspace UI", () => {
 
     renderApp("/workspaces/ws_1");
     await screen.findByRole("heading", { name: "Conversation" });
+    expect(
+      screen.getByText(
+        "To summarize, simplify or translate an answer, use its ⋯ menu.",
+      ),
+    ).toBeInTheDocument();
     await user.type(screen.getByLabelText("Ask a follow-up"), "Initial question?");
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByText("Answer text.")).toBeInTheDocument();
@@ -501,8 +506,63 @@ describe("Slice 16D-B3 conversation workspace UI", () => {
       within(sourceRow!).getByRole("button", { name: "Current snapshot" }),
     ).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Summarize" }));
+    const sourceActionTrigger = within(sourceRow!).getByRole("button", {
+      name: "Answer actions",
+    });
+    expect(sourceActionTrigger).toHaveAttribute("aria-haspopup", "menu");
+    expect(sourceActionTrigger).toHaveAttribute("aria-expanded", "false");
+    expect(
+      within(sourceRow!).queryByRole("button", { name: "Summarize" }),
+    ).toBeNull();
+    expect(
+      within(sourceRow!).queryByRole("button", { name: "Simplify" }),
+    ).toBeNull();
+
+    await user.click(sourceActionTrigger);
+    expect(sourceActionTrigger).toHaveAttribute("aria-expanded", "true");
+    const sourceMenu = within(sourceRow!).getByRole("menu", {
+      name: "Answer actions",
+    });
+    expect(
+      within(sourceMenu).getByRole("menuitem", { name: "Summarize" }),
+    ).toBeInTheDocument();
+    expect(
+      within(sourceMenu).getByRole("menuitem", { name: "Simplify" }),
+    ).toBeInTheDocument();
+    expect(
+      within(sourceMenu).getByRole("menuitem", {
+        name: "Translate to English",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(sourceMenu).getByRole("menuitem", {
+        name: "Translate to Spanish",
+      }),
+    ).toBeInTheDocument();
+
+    await user.click(document.body);
+    expect(sourceActionTrigger).toHaveAttribute("aria-expanded", "false");
+    expect(
+      within(sourceRow!).queryByRole("menu", { name: "Answer actions" }),
+    ).toBeNull();
+
+    await user.click(sourceActionTrigger);
+    await user.keyboard("{Escape}");
+    expect(sourceActionTrigger).toHaveFocus();
+    expect(sourceActionTrigger).toHaveAttribute("aria-expanded", "false");
+
+    await user.keyboard("{Enter}");
+    await user.keyboard("{ArrowDown}");
+    expect(
+      within(sourceRow!).getByRole("menuitem", { name: "Simplify" }),
+    ).toHaveFocus();
+    await user.keyboard("{ArrowUp}");
+    expect(
+      within(sourceRow!).getByRole("menuitem", { name: "Summarize" }),
+    ).toHaveFocus();
+    await user.keyboard("{Enter}");
     expect(await screen.findByText("Transformed 1.")).toBeInTheDocument();
+    expect(sourceActionTrigger).toHaveAttribute("aria-expanded", "false");
     const transformedRow = screen.getByText("Transformed 1.").closest("article");
     expect(transformedRow).not.toBeNull();
     expect(
@@ -525,7 +585,10 @@ describe("Slice 16D-B3 conversation workspace UI", () => {
     expect(savedActionPair?.selectedSourceNames).toEqual([]);
 
     await user.click(
-      within(transformedRow!).getByRole("button", { name: "Simplify" }),
+      within(transformedRow!).getByRole("button", { name: "Answer actions" }),
+    );
+    await user.click(
+      within(transformedRow!).getByRole("menuitem", { name: "Simplify" }),
     );
     expect(await screen.findByText("Transformed 2.")).toBeInTheDocument();
     expect(actionBodies[1]).toMatchObject({
@@ -537,12 +600,13 @@ describe("Slice 16D-B3 conversation workspace UI", () => {
       .getByText("Transformed 2.")
       .closest("article");
     expect(simplifiedRow).not.toBeNull();
-    await user.selectOptions(
-      within(simplifiedRow!).getByLabelText(/Translate answer .* to/),
-      "es",
+    await user.click(
+      within(simplifiedRow!).getByRole("button", { name: "Answer actions" }),
     );
     await user.click(
-      within(simplifiedRow!).getByRole("button", { name: "Translate" }),
+      within(simplifiedRow!).getByRole("menuitem", {
+        name: "Translate to Spanish",
+      }),
     );
     expect(await screen.findByText("Transformed 3.")).toBeInTheDocument();
     expect(actionBodies[2]).toMatchObject({
@@ -563,12 +627,13 @@ describe("Slice 16D-B3 conversation workspace UI", () => {
       .getByText("Transformed 3.")
       .closest("article");
     expect(translatedRow).not.toBeNull();
-    await user.selectOptions(
-      within(translatedRow!).getByLabelText(/Translate answer .* to/),
-      "en",
+    await user.click(
+      within(translatedRow!).getByRole("button", { name: "Answer actions" }),
     );
     await user.click(
-      within(translatedRow!).getByRole("button", { name: "Translate" }),
+      within(translatedRow!).getByRole("menuitem", {
+        name: "Translate to English",
+      }),
     );
     expect(await screen.findByText("Transformed 4.")).toBeInTheDocument();
     expect(actionBodies[3]).toMatchObject({
@@ -653,7 +718,7 @@ describe("Slice 16D-B3 conversation workspace UI", () => {
     await user.click(screen.getByRole("button", { name: "Training Mode" }));
 
     expect(
-      screen.queryByRole("button", { name: "Summarize" }),
+      screen.queryByRole("button", { name: "Answer actions" }),
     ).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Summarize recent conversation" }),
@@ -661,6 +726,106 @@ describe("Slice 16D-B3 conversation workspace UI", () => {
     expect(
       screen.queryByText(/Recent summaries use only the latest/),
     ).not.toBeInTheDocument();
+    mock.restore();
+  });
+
+  it("limits answer menus to the action window and blocks duplicate pending actions", async () => {
+    const user = userEvent.setup();
+    for (let index = 0; index < 7; index += 1) {
+      appendConversationPair("ws_1", {
+        pairId: `window-pair-${index}`,
+        askedAt: `2026-01-0${index + 1}T00:00:00Z`,
+        question: `Window question ${index}`,
+        selectedSourceIds: ["src_1"],
+        selectedSourceNames: ["Alpha.pdf"],
+        selectionMode: "all",
+        response: turnResponse({
+          conversation_trace_id: `ctr_window_${index}`,
+          query_trace_id: `tr_window_${index}`,
+          answer: `Window answer ${index}`,
+          answer_blocks: [
+            { text: `Window answer ${index}`, citation_refs: ["c1"] },
+          ],
+        }),
+      });
+    }
+
+    const actionBodies: Array<Record<string, unknown>> = [];
+    let resolveAction: ((response: Response) => void) | null = null;
+    const mock = installFetchMock(async (call) => {
+      if (call.url === "/v1/capabilities") return jsonResponse(capabilities());
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces/ws_1" && call.method === "GET") {
+        return jsonResponse(
+          workspace({
+            workspace_id: "ws_1",
+            title: "Ask Desk",
+            revision: 5,
+            source_count: 1,
+            status: "active",
+            current_snapshot_id: "snap_1",
+          }),
+        );
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources") {
+        return jsonResponse({
+          workspace_id: "ws_1",
+          revision: 5,
+          sources: [source({ source_id: "src_1", display_name: "Alpha.pdf" })],
+        });
+      }
+      if (
+        call.url === "/v1/workspaces/ws_1/conversation/action" &&
+        call.method === "POST"
+      ) {
+        actionBodies.push(JSON.parse(String(call.body)) as Record<string, unknown>);
+        return new Promise<Response>((resolve) => {
+          resolveAction = resolve;
+        });
+      }
+      return errorResponse("not_found", "x", 404);
+    });
+
+    renderApp("/workspaces/ws_1");
+    const oldestQuestion = await screen.findByText("Window question 0");
+    const oldestArticle = oldestQuestion.closest("article");
+    expect(oldestArticle).not.toBeNull();
+    expect(
+      within(oldestArticle!).queryByRole("button", { name: "Answer actions" }),
+    ).toBeNull();
+
+    const recentQuestion = await screen.findByText("Window question 6");
+    const recentArticle = recentQuestion.closest("article");
+    expect(recentArticle).not.toBeNull();
+    const trigger = within(recentArticle!).getByRole("button", {
+      name: "Answer actions",
+    });
+    await user.click(trigger);
+    await user.click(
+      within(recentArticle!).getByRole("menuitem", { name: "Summarize" }),
+    );
+    expect(await screen.findByText("Summarizing…")).toBeInTheDocument();
+    expect(trigger).toBeDisabled();
+    expect(actionBodies).toHaveLength(1);
+    await user.click(trigger);
+    expect(actionBodies).toHaveLength(1);
+
+    expect(resolveAction).not.toBeNull();
+    resolveAction!(
+      jsonResponse(
+        turnResponse({
+          question: "Summarize the answer above.",
+          answer: "Pending action result.",
+          answer_origin: "conversation",
+          query_trace_id: null,
+          retrieval_question: null,
+          context_used: true,
+          answer_blocks: [],
+          citations: [],
+        }),
+      ),
+    );
+    expect(await screen.findByText("Pending action result.")).toBeInTheDocument();
     mock.restore();
   });
 

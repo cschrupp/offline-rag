@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useRef,
   useState,
   type FormEvent,
   type KeyboardEvent,
@@ -29,6 +30,8 @@ import {
   type IncompleteUserTurn,
 } from "./conversationState";
 import { ExportConversationMenu } from "./ExportConversationMenu";
+
+const ANSWER_ACTION_MENU_ITEM_COUNT = 4;
 
 type Props = {
   question: string;
@@ -133,8 +136,15 @@ export function AskPanel({
   onDeletePrompt,
   drawersOpen = false,
 }: Props) {
-  const [translationLanguage, setTranslationLanguage] =
-    useState<ConversationActionLanguage>("es");
+  const [openAnswerActionsEntryId, setOpenAnswerActionsEntryId] = useState<
+    string | null
+  >(null);
+  const [activeAnswerActionIndex, setActiveAnswerActionIndex] = useState(0);
+  const answerActionTriggerRefs = useRef(
+    new Map<string, HTMLButtonElement>(),
+  );
+  const answerActionMenuRefs = useRef(new Map<string, HTMLDivElement>());
+
   useEffect(() => {
     if (askPending) return;
     const el = document.getElementById("ask-question");
@@ -143,8 +153,67 @@ export function AskPanel({
     }
   }, [askPending, history.length, incompleteTurns.length]);
 
+  useEffect(() => {
+    if (openAnswerActionsEntryId === null) return;
+    if (
+      askPending ||
+      actionPending ||
+      !actionableEntryIds.has(openAnswerActionsEntryId)
+    ) {
+      return;
+    }
+
+    function onPointerDown(event: PointerEvent) {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (
+        answerActionMenuRefs.current
+          .get(openAnswerActionsEntryId)
+          ?.contains(target) ||
+        answerActionTriggerRefs.current
+          .get(openAnswerActionsEntryId)
+          ?.contains(target)
+      ) {
+        return;
+      }
+      setOpenAnswerActionsEntryId(null);
+    }
+
+    function onDocumentKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setOpenAnswerActionsEntryId(null);
+      answerActionTriggerRefs.current
+        .get(openAnswerActionsEntryId)
+        ?.focus();
+    }
+
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onDocumentKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onDocumentKeyDown);
+    };
+  }, [
+    actionPending,
+    actionableEntryIds,
+    askPending,
+    openAnswerActionsEntryId,
+  ]);
+
+  useEffect(() => {
+    if (openAnswerActionsEntryId === null) return;
+    answerActionMenuRefs.current
+      .get(openAnswerActionsEntryId)
+      ?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')[
+        activeAnswerActionIndex
+      ]
+      ?.focus();
+  }, [activeAnswerActionIndex, openAnswerActionsEntryId]);
+
   function onSubmit(event: FormEvent) {
     event.preventDefault();
+    setOpenAnswerActionsEntryId(null);
     onAsk();
   }
 
@@ -155,8 +224,63 @@ export function AskPanel({
     }
   }
 
+  function onAnswerActionsMenuKeyDown(
+    event: KeyboardEvent<HTMLDivElement>,
+  ) {
+    if (
+      event.key !== "ArrowDown" &&
+      event.key !== "ArrowUp" &&
+      event.key !== "Home" &&
+      event.key !== "End"
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    if (event.key === "ArrowDown") {
+      setActiveAnswerActionIndex(
+        (index) => (index + 1) % ANSWER_ACTION_MENU_ITEM_COUNT,
+      );
+    } else if (event.key === "ArrowUp") {
+      setActiveAnswerActionIndex(
+        (index) =>
+          (index - 1 + ANSWER_ACTION_MENU_ITEM_COUNT) %
+          ANSWER_ACTION_MENU_ITEM_COUNT,
+      );
+    } else if (event.key === "Home") {
+      setActiveAnswerActionIndex(0);
+    } else if (event.key === "End") {
+      setActiveAnswerActionIndex(ANSWER_ACTION_MENU_ITEM_COUNT - 1);
+    }
+  }
+
+  function onAnswerActionsTriggerKeyDown(
+    event: KeyboardEvent<HTMLButtonElement>,
+    entryId: string,
+  ) {
+    if (event.key !== "ArrowDown") return;
+    event.preventDefault();
+    setActiveAnswerActionIndex(0);
+    setOpenAnswerActionsEntryId(entryId);
+  }
+
+  function runAnswerAction(
+    entryId: string,
+    operation: ConversationActionOperation,
+    targetLanguage?: ConversationActionLanguage,
+  ) {
+    setOpenAnswerActionsEntryId(null);
+    answerActionTriggerRefs.current.get(entryId)?.focus();
+    onConversationAction(entryId, operation, targetLanguage);
+  }
+
   const timeline = buildConversationTimeline(history, incompleteTurns);
   const hasThread = timeline.length > 0;
+  const answerActionsMenuOpen =
+    openAnswerActionsEntryId !== null &&
+    !askPending &&
+    !actionPending &&
+    actionableEntryIds.has(openAnswerActionsEntryId);
 
   return (
     <section
@@ -276,26 +400,148 @@ export function AskPanel({
                 <p className="conversation-user-text">{entry.question}</p>
               </div>
               <div className="conversation-assistant-turn stack">
-                <div className="row" style={{ justifyContent: "space-between" }}>
+                <div className="conversation-assistant-header">
                   <p className="conversation-role" style={{ margin: 0 }}>
                     Seneca
                   </p>
-                  {!isConversationOrigin ? (
-                    <button
-                      type="button"
-                      className={
-                        badge === "current"
-                          ? "snapshot-badge snapshot-badge-current"
-                          : "snapshot-badge snapshot-badge-historical"
-                      }
-                      onClick={() => onSelectHistory(entry)}
-                      aria-pressed={active}
-                    >
-                      {badge === "current"
-                        ? "Current snapshot"
-                        : "Historical snapshot"}
-                    </button>
-                  ) : null}
+                  <div className="conversation-assistant-header-actions">
+                    {!isConversationOrigin ? (
+                      <button
+                        type="button"
+                        className={
+                          badge === "current"
+                            ? "snapshot-badge snapshot-badge-current"
+                            : "snapshot-badge snapshot-badge-historical"
+                        }
+                        onClick={() => onSelectHistory(entry)}
+                        aria-pressed={active}
+                      >
+                        {badge === "current"
+                          ? "Current snapshot"
+                          : "Historical snapshot"}
+                      </button>
+                    ) : null}
+                    {hasConversationActions ? (
+                      <div className="conversation-answer-actions">
+                        <button
+                          ref={(node) => {
+                            if (node) {
+                              answerActionTriggerRefs.current.set(
+                                entry.entryId,
+                                node,
+                              );
+                            } else {
+                              answerActionTriggerRefs.current.delete(
+                                entry.entryId,
+                              );
+                            }
+                          }}
+                          type="button"
+                          className="conversation-answer-actions-trigger"
+                          aria-label="Answer actions"
+                          title="Answer actions"
+                          aria-haspopup="menu"
+                          aria-expanded={
+                            answerActionsMenuOpen &&
+                            openAnswerActionsEntryId === entry.entryId
+                          }
+                          aria-controls={`conversation-answer-actions-menu-${entry.entryId}`}
+                          disabled={askPending || actionPending}
+                          onKeyDown={(event) =>
+                            onAnswerActionsTriggerKeyDown(event, entry.entryId)
+                          }
+                          onClick={() => {
+                            setActiveAnswerActionIndex(0);
+                            setOpenAnswerActionsEntryId((current) =>
+                              current === entry.entryId ? null : entry.entryId,
+                            );
+                          }}
+                        >
+                          ⋯
+                        </button>
+                        <div
+                          ref={(node) => {
+                            if (node) {
+                              answerActionMenuRefs.current.set(
+                                entry.entryId,
+                                node,
+                              );
+                            } else {
+                              answerActionMenuRefs.current.delete(
+                                entry.entryId,
+                              );
+                            }
+                          }}
+                          id={`conversation-answer-actions-menu-${entry.entryId}`}
+                          role="menu"
+                          aria-label="Answer actions"
+                          className="conversation-answer-actions-menu"
+                          hidden={
+                            !answerActionsMenuOpen ||
+                            openAnswerActionsEntryId !== entry.entryId
+                          }
+                          onKeyDown={onAnswerActionsMenuKeyDown}
+                        >
+                          <button
+                            type="button"
+                            role="menuitem"
+                            tabIndex={activeAnswerActionIndex === 0 ? 0 : -1}
+                            disabled={askPending || actionPending}
+                            onClick={() =>
+                              runAnswerAction(entry.entryId, "summarize_answer")
+                            }
+                          >
+                            Summarize
+                          </button>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            tabIndex={activeAnswerActionIndex === 1 ? 0 : -1}
+                            disabled={askPending || actionPending}
+                            onClick={() =>
+                              runAnswerAction(entry.entryId, "simplify_answer")
+                            }
+                          >
+                            Simplify
+                          </button>
+                          <div
+                            className="conversation-answer-actions-divider"
+                            aria-hidden="true"
+                          />
+                          <button
+                            type="button"
+                            role="menuitem"
+                            tabIndex={activeAnswerActionIndex === 2 ? 0 : -1}
+                            disabled={askPending || actionPending}
+                            onClick={() =>
+                              runAnswerAction(
+                                entry.entryId,
+                                "translate_answer",
+                                "en",
+                              )
+                            }
+                          >
+                            Translate to English
+                          </button>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            tabIndex={activeAnswerActionIndex === 3 ? 0 : -1}
+                            disabled={askPending || actionPending}
+                            onClick={() =>
+                              runAnswerAction(
+                                entry.entryId,
+                                "translate_answer",
+                                "es",
+                              )
+                            }
+                          >
+                            Translate to Spanish
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
                 <p className="muted" style={{ margin: 0, fontSize: "0.875rem" }}>
                   {statusLabel(String(entry.response.status))} ·{" "}
@@ -418,64 +664,6 @@ export function AskPanel({
                         : "Translating…"}
                   </p>
                 ) : null}
-                {hasConversationActions ? (
-                  <div
-                    className="conversation-explicit-actions row"
-                    role="group"
-                    aria-label={`Actions for answer ${entry.entryId}`}
-                  >
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      disabled={askPending || actionPending}
-                      onClick={() =>
-                        onConversationAction(entry.entryId, "summarize_answer")
-                      }
-                    >
-                      Summarize
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      disabled={askPending || actionPending}
-                      onClick={() =>
-                        onConversationAction(entry.entryId, "simplify_answer")
-                      }
-                    >
-                      Simplify
-                    </Button>
-                    <label>
-                      Translate to{" "}
-                      <select
-                        aria-label={`Translate answer ${entry.entryId} to`}
-                        value={translationLanguage}
-                        disabled={askPending || actionPending}
-                        onChange={(event) =>
-                          setTranslationLanguage(
-                            event.target.value as ConversationActionLanguage,
-                          )
-                        }
-                      >
-                        <option value="en">English</option>
-                        <option value="es">Spanish</option>
-                      </select>
-                    </label>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      disabled={askPending || actionPending}
-                      onClick={() =>
-                        onConversationAction(
-                          entry.entryId,
-                          "translate_answer",
-                          translationLanguage,
-                        )
-                      }
-                    >
-                      Translate
-                    </Button>
-                  </div>
-                ) : null}
               </div>
             </article>
           );
@@ -535,8 +723,7 @@ export function AskPanel({
         {!trainingMode ? (
           <>
             <p className="muted" style={{ margin: 0 }}>
-              To summarize, simplify or translate conversation content, use the
-              actions under an answer.
+              To summarize, simplify or translate an answer, use its ⋯ menu.
             </p>
             <p className="muted" style={{ margin: 0 }}>
               Recent summaries use only the latest six completed exchanges, up
