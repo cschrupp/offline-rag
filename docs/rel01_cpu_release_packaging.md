@@ -1,6 +1,6 @@
 # REL-01 — CPU Release Packaging
 
-**Status:** ACTIVE / IMPLEMENTATION AUTHORIZED  
+**Status:** REL-01B/C IMPLEMENTATION COMPLETE / INDEPENDENT REVIEW PENDING
 **Starting canonical `main`:** `3fb65e34f5b45ddf695d82bfd0d9badd34b9ee2d`  
 **Branch:** `feature/rel-01-cpu-release-packaging`
 
@@ -34,8 +34,10 @@ CUDA-capable PyTorch and `cuda_fp16_v1`.
    environment, secret, and process contracts.
 4. **REL-01D — Container qualification:** measure the CPU-dependency
    intermediate and final image using the same host and Docker size metric;
-   qualify resolver/API/UI behavior, one embedding, one reranker operation,
-   health, filesystem, image contents, and the required regression lanes.
+   qualify dependency imports, resolver behavior, health/API/UI behavior, one
+  embedding, one reranker operation, filesystem, image contents, and the
+  required regression lanes. Any unavailable qualification step must remain
+  explicitly open in the evidence report.
 
 ## Dependency selection
 
@@ -100,6 +102,13 @@ selecting `cpu_onnx_fp32_v1`, successful production CPU embedding and reranker
 smokes, preserved container invariants and UI projection, no private/model/
 secret content, and passing required regression lanes. No arbitrary numerical
 image-size target is introduced.
+
+## Current qualification evidence
+
+REL-01B and REL-01C implementation results and their evidence limits are
+recorded in [the REL-01 qualification report](evidence/rel01/QUALIFICATION.md).
+The report keeps measured image-size improvements separate from runtime checks
+that have not been performed.
 
 ## Issue #1
 
