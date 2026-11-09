@@ -119,10 +119,11 @@ resulting virtual environment into the clean runtime stage.
 
 No model weights were downloaded. The live API and Compute API were exercised,
 but no browser interaction was performed. A local CPU embedding and BGE
-reranker inference was attempted as the next qualification step and blocked by
-automatic approval review, which identified a conflict with the earlier
-REL-01 no-inference boundary. No workaround was attempted. Consequently, real
-CPU embedding and reranking behavior remain unverified; library imports,
+reranker command was submitted as the next qualification step and rejected by
+automatic approval review before execution, which identified a conflict with
+the earlier REL-01 no-inference boundary. No inference call ran and no
+workaround was attempted. Consequently, real CPU embedding and reranking
+behavior remain unverified; library imports,
 resolver selection, API readiness, and CPU tensor arithmetic do not establish
 those behaviors. No external inference occurred.
 
