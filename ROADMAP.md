@@ -3334,9 +3334,8 @@ Slice 14 checklist:
 - Starting canonical `main`: `5a793766bb4ecd88278cd0bf3a892572ec30f67a`
 - Current branch: `feature/slice17-regression-ci`
 - Current tranche: IR-002 fixture correction has 209 passing / zero skipped
-  backend tests in a clean local clone; post-correction hosted CI is pending.
-  `TEST-STARTUP-01` passed supported hosted CI on the previous corrective head;
-  the updated lane is awaiting hosted recheck. Independent review remains
+  backend tests in a clean local clone and hosted PR run `42641164691`.
+  `TEST-STARTUP-01` passed on the corrected head. Independent re-review remains
   pending. See
   [`docs/evidence/slice17/IMPLEMENTATION_RESULT.md`](docs/evidence/slice17/IMPLEMENTATION_RESULT.md).
 - Required generic lanes: deterministic backend regressions, REL-03 mocked

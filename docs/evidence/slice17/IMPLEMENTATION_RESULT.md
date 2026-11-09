@@ -1,6 +1,6 @@
 # Slice 17 — Regression CI Implementation Result
 
-**Status:** IR-002 corrective locally qualified; post-correction hosted run pending
+**Status:** IR-002 corrective locally and hosted qualified; independent re-review pending
 **Branch:** `feature/slice17-regression-ci`
 **Canonical starting point:** `5a793766bb4ecd88278cd0bf3a892572ec30f67a`
 **Baseline inventory:** `415616b5c330352d02b85371edb68d89a87408fb`
@@ -99,12 +99,10 @@ Prior accepted API verification identified a sandbox cross-thread wake-socket
 sandbox behavior remains unexplained at the kernel level.
 
 The exact test passed in hosted PR run `42574304259`; that run reported 142
-passed and 67 skipped overall. Its explicit fake-tokenizer path could not take
-the tiktoken-artifact skip. IR-002 applies the same deterministic setup to the
-other tests in its required suites. The exact test also passed in the clean
-local corrected lane; fresh hosted confirmation for the corrected lane is
-pending. The sandbox-specific stall remains documented and no production
-runtime change was made.
+passed and 67 skipped overall. The corrected head passed again in hosted PR
+run `42641164691`; all 209 backend tests passed with zero skips, including this
+startup regression. The sandbox-specific stall remains documented and no
+production runtime change was made.
 
 The full backend baseline run is separately preserved in
 [`BASELINE_SUPPLEMENT_01.md`](BASELINE_SUPPLEMENT_01.md): 42 failures, 2,176
@@ -120,9 +118,10 @@ The first PR-triggered runs did not execute jobs. Runs `42571509744` and
 identified two defects: the nonexistent `astral-sh/setup-uv@v10` ref, and
 case-insensitive duplicate environment keys `NO_PROXY` / `no_proxy`. The
 workflow now pins the verified `v10.3.3` release and keeps only `NO_PROXY`.
-These runs are workflow-configuration failures, not test results. Hosted status
-for the prior candidate is **PASS** from run `42574304259`, where both jobs
-executed and passed. A fresh PR run is pending for the IR-002 corrective. If
+These runs are workflow-configuration failures, not test results. The IR-002
+corrective passed both hosted jobs in run `42641164691`: backend lint and 209
+tests with zero skips; frontend lint, typecheck, 49 test files / 459 tests,
+and build. The backend reported one Starlette/httpx deprecation warning. If
 future repository or account configuration prevents hosted execution, report
 `CI_EXECUTION_UNAVAILABLE` rather than a pass.
 
@@ -189,11 +188,12 @@ startup behavior remain active. None of these suites tests tokenizer
 provisioning or token identity.
 
 In a clean tracked clone with tokenizer artifacts absent, the exact required
-backend lane then reported **209 passed, 0 skipped**, with one
-Starlette/httpx deprecation warning in 37.67 seconds. This includes the exact
-managed-add startup regression. Targeted Ruff passed; focused REL-03 tests
-reported 20 passed. The post-IR-002 hosted run is still pending. No models or
-external inference were used.
+backend lane reported **209 passed, 0 skipped**, with one Starlette/httpx
+deprecation warning in 37.67 seconds. Hosted PR run `42641164691` independently
+reported 209 passed and zero skipped, with one deprecation warning. This
+includes the exact managed-add startup regression. Targeted Ruff passed;
+focused REL-03 tests reported 20 passed. No models or external inference were
+used.
 
 ## Candidate disposition
 
@@ -203,8 +203,8 @@ implementation: CANDIDATE_PREPARED
 local_backend_lane: PASS_209_ZERO_SKIPS_CLEAN_CLONE
 local_frontend_lane: PASS
 rel03_profile_isolation: MOCKED_AND_REQUIRED
-test_startup_01: PRIOR_HOSTED_PASS_CURRENT_HEAD_RECHECK_PENDING
-hosted_ci: PRIOR_HEAD_PASS_POST_IR002_PENDING
+test_startup_01: HOSTED_PASS_ON_IR002_HEAD
+hosted_ci: PASS_RUN_42641164691
 repository_wide_ruff: HISTORICAL_DEBT_REMAINS
 full_pytest_suite: BASELINE_FAILURES_DOCUMENTED
 human_acceptance: PENDING
