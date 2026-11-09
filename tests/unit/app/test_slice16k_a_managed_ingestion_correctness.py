@@ -72,7 +72,12 @@ APPROVED_MODEL = "local-test-model"
 APPROVED_ENDPOINT = "http://127.0.0.1:11434/v1"
 
 
-def _settings(tmp_path: Path, **api_overrides: object) -> AppSettings:
+def _settings(
+    tmp_path: Path,
+    *,
+    use_fake_tokenizer: bool = False,
+    **api_overrides: object,
+) -> AppSettings:
     environ = {
         "OFFLINE_RAG_DATA_DIR": str(tmp_path / "data"),
         "OFFLINE_RAG_MODELS_DIR": str(tmp_path / "models"),
@@ -99,23 +104,34 @@ def _settings(tmp_path: Path, **api_overrides: object) -> AppSettings:
             )
         }
     )
+    chunking = settings.chunking
+    if use_fake_tokenizer:
+        chunking = chunking.model_copy(
+            update={
+                "tokenizer": chunking.tokenizer.model_copy(
+                    update={"implementation": "fake"}
+                )
+            }
+        )
     settings = settings.model_copy(
         update={
             "generation": generation,
             "api": api,
             "reranker": reranker,
             "indexing": indexing,
+            "chunking": chunking,
         }
     )
     ensure_data_directories(settings)
     settings.paths.docling_artifacts.mkdir(parents=True, exist_ok=True)
     (settings.paths.docling_artifacts / "placeholder.bin").write_bytes(b"unit")
     write_provisioning_manifest(settings.paths.docling_artifacts, docling_version="test")
-    if not (TIKTOKEN_SRC / "offline-rag-tokenizer.json").exists():
-        pytest.skip("tiktoken artifacts not provisioned")
-    if settings.paths.tokenizer_artifacts.exists():
-        shutil.rmtree(settings.paths.tokenizer_artifacts)
-    shutil.copytree(TIKTOKEN_SRC, settings.paths.tokenizer_artifacts)
+    if not use_fake_tokenizer:
+        if not (TIKTOKEN_SRC / "offline-rag-tokenizer.json").exists():
+            pytest.skip("tiktoken artifacts not provisioned")
+        if settings.paths.tokenizer_artifacts.exists():
+            shutil.rmtree(settings.paths.tokenizer_artifacts)
+        shutil.copytree(TIKTOKEN_SRC, settings.paths.tokenizer_artifacts)
     return settings
 
 
@@ -140,8 +156,13 @@ def _runtime(settings: AppSettings) -> ApplicationRuntime:
 
 
 @contextmanager
-def _client(tmp_path: Path, **api: object) -> Iterator[tuple[TestClient, ApplicationRuntime]]:
-    settings = _settings(tmp_path, **api)
+def _client(
+    tmp_path: Path,
+    *,
+    use_fake_tokenizer: bool = False,
+    **api: object,
+) -> Iterator[tuple[TestClient, ApplicationRuntime]]:
+    settings = _settings(tmp_path, use_fake_tokenizer=use_fake_tokenizer, **api)
     runtime = _runtime(settings)
     app = create_app(runtime=runtime)
     with TestClient(app) as client:
@@ -286,9 +307,30 @@ def test_client_disconnect_never_cancels_managed_ingest(tmp_path: Path) -> None:
         runtime.shutdown()
 
 
-def test_managed_add_survives_simulated_deadline_and_publishes(tmp_path: Path) -> None:
+def test_managed_add_survives_simulated_deadline_and_publishes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Req 1: detached Add may exceed 1800s simulated and still publish."""
-    with _client(tmp_path, ingest_deadline_seconds=1800) as (client, runtime):
+    # This lifecycle case exercises TestClient startup and managed publication,
+    # not tokenizer provisioning. Keep the real startup validator and replace
+    # only its external tokenizer-artifact readiness check for this fake-tokenizer
+    # configuration. Other startup checks still run normally.
+    def fake_tokenizer_artifacts_ready(
+        artifacts_path: Path, *, encoding: str
+    ) -> tuple[bool, str]:
+        assert artifacts_path == tmp_path / "models" / "tokenizers" / "tiktoken"
+        assert encoding == "cl100k_base"
+        return True, "fake tokenizer is configured for this lifecycle test"
+
+    monkeypatch.setattr(
+        "offline_rag.app.startup_validation.validate_tiktoken_artifacts",
+        fake_tokenizer_artifacts_ready,
+    )
+    with _client(
+        tmp_path,
+        use_fake_tokenizer=True,
+        ingest_deadline_seconds=1800,
+    ) as (client, runtime):
         wid = _create(client, "k1")["workspace_id"]
         saw_past_deadline = {"ok": False}
 

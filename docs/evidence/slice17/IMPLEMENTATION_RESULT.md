@@ -48,7 +48,7 @@ tests/unit/test_rel03_external_inference_demo_profile.py
 ```
 
 Locally, targeted Ruff passed. The required test set passed: **209 passed in
-28.02 seconds**, with one Starlette/httpx deprecation warning. The tests were
+18.00 seconds**, with one Starlette/httpx deprecation warning. The tests were
 run in a compatible unsandboxed context because this restricted Codex sandbox
 can stall on a TestClient cross-thread wake path. No OpenRouter, Ollama, or
 other model calls occurred.
@@ -69,7 +69,7 @@ steps. Local checks passed:
 | --- | --- |
 | `npm run lint` | PASS |
 | `npm run typecheck` | PASS |
-| `npm test` | PASS — 49 files, 459 tests in 159.19 seconds |
+| `npm test` | PASS — 49 files, 459 tests in 173.58 seconds |
 | `npm run build` | PASS; Vite emitted its existing advisory for a JavaScript chunk over 500 kB |
 
 `npm ci` completed from the committed lockfile without changing dependency
@@ -87,13 +87,16 @@ documented rule suppressions.
 The exact test
 `tests/unit/app/test_slice16k_a_managed_ingestion_correctness.py::test_managed_add_survives_simulated_deadline_and_publishes`
 passed in a compatible unsandboxed run in 5.47 seconds and is included in the
-required CI backend lane. In the restricted Codex sandbox, the invocation can
-stall while the test thread waits for the AnyIO portal startup handshake; a
-thread dump locates the wait at `TestClient.__enter__`, while the portal thread
-is idle in selector polling. Prior accepted API verification identified a
-sandbox cross-thread wake-socket `EPERM`. The present dump is not itself a
-syscall trace, and the underlying sandbox behavior remains unexplained at the
-kernel level.
+required CI backend lane. The test selects the explicit fake tokenizer and
+replaces only the tiktoken-artifact readiness probe; the real FastAPI lifespan,
+Docling check, generation-config check, and remaining startup work still run.
+The exact test passed again locally in 1.89 seconds with this fixture. In the
+restricted Codex sandbox, the invocation can stall while the test thread waits
+for the AnyIO portal startup handshake; a thread dump locates the wait at
+`TestClient.__enter__`, while the portal thread is idle in selector polling.
+Prior accepted API verification identified a sandbox cross-thread wake-socket
+`EPERM`. The present dump is not itself a syscall trace, and the underlying
+sandbox behavior remains unexplained at the kernel level.
 
 Disposition: **PENDING HOSTED CONFIRMATION**. The exact test is green in the
 compatible unsandboxed execution environment and remains required in hosted
@@ -143,6 +146,26 @@ The first two hosted attempts exposed workflow-only setup defects. The
 corrective pins the valid setup-uv release and removes the duplicate
 case-insensitive proxy key. Runs `42571509744` and `42572040099` are not test
 results because GitHub created no jobs.
+
+The first parsed hosted run, `42572292895`, created both jobs. The backend
+lint/install steps passed; pytest reported 140 passed, 68 skipped, and one
+failure. The failure was
+`test_remote_ancestry_begins_at_15d_baseline`: the test requires historical
+commit `02544e3974da6e26ec512a83f856b1e8d864d86d`, which is absent from the
+default depth-1 checkout. The backend checkout now requests full history so
+that this required ancestry contract has its input. The exact
+`test_managed_add_survives_simulated_deadline_and_publishes` test was among the
+artifact-dependent skips: its shared fixture required a provisioned tiktoken
+cache even though this lifecycle check uses a fake embedder and does not test
+tokenizer behavior. That one test now selects the existing deterministic fake
+tokenizer explicitly and substitutes only the tiktoken-artifact readiness
+probe. The real FastAPI lifespan, Docling readiness check, generation
+configuration check, and remaining startup path still execute; other tests in
+the module retain their real-artifact requirement. The frontend job in run
+`42572292895` completed **PASS** across
+lint, typecheck, 49 files / 459 tests, and build. A new PR run is required to
+verify the full-history checkout and execute the previously skipped lifecycle
+test on hosted CI.
 
 The hosted pull-request run is the remaining verification gate for both CI
 jobs and `TEST-STARTUP-01`.
