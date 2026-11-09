@@ -567,7 +567,7 @@ Human acceptance, promotion, or authority for downstream beta work.
 ### TEST-STARTUP-01 — Diagnose managed-operation TestClient startup hang
 
 **Priority:** P2\
-**Status:** RESOLVED FOR CI EXECUTION / SANDBOX LIMITATION DOCUMENTED
+**Status:** PENDING HOSTED CONFIRMATION / SANDBOX LIMITATION DOCUMENTED
 
 Selected managed-operation recovery tests can wait indefinitely while entering
 `fastapi.testclient.TestClient`. A faulthandler trace shows the test thread
@@ -581,16 +581,17 @@ non-terminal source-add was interrupted during PDF parsing, startup marked it
 add succeeded in the recovered process. Therefore this test-infrastructure
 issue does not currently block beta.
 
-Slice 17E disposition: **RESOLVED** for supported CI execution. The exact
+The exact
 `test_managed_add_survives_simulated_deadline_and_publishes` test passed in a
-compatible unsandboxed run and is included in the required hosted backend CI
-lane. In the restricted Codex sandbox it can still stall at the AnyIO
+compatible unsandboxed run and remains included in the required hosted backend
+CI lane. Hosted confirmation is pending. In the restricted Codex sandbox it
+can still stall at the AnyIO
 cross-thread startup handshake; prior API verification identified a sandbox
 wake-socket `EPERM`, while the current thread dump locates the wait but is not
 itself a syscall trace. No production startup or recovery code was changed.
-This resolves the CI execution concern, not the sandbox's underlying syscall
-behavior. Reopen only if the test fails in the supported hosted CI environment
-or new product-recovery evidence fails.
+No product recovery defect was established and no production startup or
+recovery code changed. Update this status only after the hosted test result is
+known; reopen the investigation if that test fails in CI.
 
 ### ROBUST-01 — Native PDF parser process isolation
 
@@ -624,9 +625,12 @@ classification of intentional exclusions, and deterministic CI. Historical
 performance observations must not become new SLOs. The candidate workflow and
 bounded local qualification are recorded in
 [`Slice 17 implementation result`](evidence/slice17/IMPLEMENTATION_RESULT.md).
-Repository-wide Ruff and full-pytest baseline debt remains documented; the
-required CI lanes are intentionally bounded to accepted deterministic
-contracts.
+The full post-correction Ruff inventory contains 156 remaining diagnostics,
+listed by file, line, and rule in
+[`the Slice 17 Ruff inventory`](evidence/slice17/RUFF_REMAINING_DIAGNOSTICS.md).
+These are explicit baseline debt, not hidden exclusions; the required CI lint
+lane remains bounded to its selected paths. Full-pytest baseline failures are
+also documented in the implementation evidence.
 
 ### Slice 17 — Regression CI and Repository Baseline
 

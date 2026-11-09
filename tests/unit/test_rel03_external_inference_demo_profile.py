@@ -240,6 +240,74 @@ def test_profile_overlay_is_final_and_settings_are_operator_locked(
     assert all(API_KEY not in str(view) for view in public_views)
 
 
+def test_profile_does_not_redirect_independent_local_subsystems(
+    tmp_path: Path,
+) -> None:
+    yaml_path = tmp_path / "independent-subsystems.yaml"
+    yaml_path.write_text(
+        """
+evaluation:
+  generation_semantic_judge:
+    enabled: false
+    provider: openai_compatible
+    base_url: http://127.0.0.1:11436/v1
+    model: local-semantic-judge
+    network_policy: private_network
+    approved_endpoints:
+      - http://127.0.0.1:11436/v1
+    approved_models:
+      - local-semantic-judge
+retrieval_recovery:
+  enabled: false
+  max_retries: 1
+  rewriter:
+    provider: openai_compatible
+    base_url: http://127.0.0.1:11435/v1
+    model: local-recovery-rewriter
+    approved_endpoints:
+      - http://127.0.0.1:11435/v1
+    approved_models:
+      - local-recovery-rewriter
+    network_policy: private_network
+""",
+        encoding="utf-8",
+    )
+
+    settings = load_settings(
+        yaml_paths=[yaml_path],
+        environ={
+            "OFFLINE_RAG_DATA_DIR": str(tmp_path / "data"),
+            "OFFLINE_RAG_DEPLOYMENT_PROFILE": PORTFOLIO_OPENROUTER_PROFILE,
+            EXTERNAL_MODEL_ENV: MODEL,
+            EXTERNAL_API_KEY_ENV: API_KEY,
+        },
+    )
+
+    assert settings.generation.base_url == OPENROUTER_BASE_URL
+    assert settings.generation.model == MODEL
+    assert settings.authoring.base_url == OPENROUTER_BASE_URL
+    assert settings.authoring.model == MODEL
+
+    recovery = settings.retrieval_recovery
+    assert recovery.enabled is False
+    assert recovery.max_retries == 1
+    assert recovery.rewriter.base_url == "http://127.0.0.1:11435/v1"
+    assert recovery.rewriter.model == "local-recovery-rewriter"
+    assert recovery.rewriter.approved_endpoints == [
+        "http://127.0.0.1:11435/v1"
+    ]
+    assert recovery.rewriter.approved_models == ["local-recovery-rewriter"]
+    assert recovery.rewriter.network_policy == "private_network"
+
+    judge = settings.evaluation.generation_semantic_judge
+    assert judge.enabled is False
+    assert judge.base_url == "http://127.0.0.1:11436/v1"
+    assert judge.model == "local-semantic-judge"
+    assert judge.approved_endpoints == ["http://127.0.0.1:11436/v1"]
+    assert judge.approved_models == ["local-semantic-judge"]
+    assert judge.network_policy == "private_network"
+
+
 @pytest.mark.parametrize(
     ("profile", "model", "api_key", "extra"),
     [

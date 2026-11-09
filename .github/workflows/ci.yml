@@ -54,8 +54,6 @@ jobs:
 
       - name: Run required deterministic backend regressions
         env:
-          OPENROUTER_API_KEY: ""
-          OFFLINE_RAG_EXTERNAL_INFERENCE_API_KEY: ""
           HTTP_PROXY: http://127.0.0.1:9
           HTTPS_PROXY: http://127.0.0.1:9
           ALL_PROXY: http://127.0.0.1:9

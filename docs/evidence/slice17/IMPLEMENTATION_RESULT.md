@@ -1,6 +1,6 @@
 # Slice 17 — Regression CI Implementation Result
 
-**Status:** Candidate prepared; stop for independent review
+**Status:** Corrective candidate prepared; hosted run pending
 **Branch:** `feature/slice17-regression-ci`
 **Canonical starting point:** `5a793766bb4ecd88278cd0bf3a892572ec30f67a`
 **Baseline inventory:** `415616b5c330352d02b85371edb68d89a87408fb`
@@ -47,16 +47,18 @@ tests/unit/test_slice16k_r04_preflight.py
 tests/unit/test_rel03_external_inference_demo_profile.py
 ```
 
-Locally, targeted Ruff passed. The required test set passed: **208 passed in
-31.69 seconds**, with one Starlette/httpx deprecation warning. The tests were
+Locally, targeted Ruff passed. The required test set passed: **209 passed in
+28.02 seconds**, with one Starlette/httpx deprecation warning. The tests were
 run in a compatible unsandboxed context because this restricted Codex sandbox
 can stall on a TestClient cross-thread wake path. No OpenRouter, Ollama, or
 other model calls occurred.
 
-Repository-wide Ruff is not claimed green. The pre-correction baseline had
-165 repository-wide diagnostics; the required app/API/test paths were cleaned
-or checked narrowly to establish the lane. The full repository Ruff command
-was not rerun after those bounded changes.
+Repository-wide Ruff is not claimed green. After the bounded corrections,
+`uv run ruff check src tests` reported **156 remaining diagnostics**. The exact
+file, line, and rule for each is recorded in
+[`RUFF_REMAINING_DIAGNOSTICS.md`](RUFF_REMAINING_DIAGNOSTICS.md). The required
+app/API/test lane is intentionally narrower; the remaining repository debt is
+visible rather than silently treated as a pass or repaired wholesale.
 
 ## Required frontend lane
 
@@ -67,7 +69,7 @@ steps. Local checks passed:
 | --- | --- |
 | `npm run lint` | PASS |
 | `npm run typecheck` | PASS |
-| `npm test` | PASS — 49 files, 459 tests |
+| `npm test` | PASS — 49 files, 459 tests in 159.19 seconds |
 | `npm run build` | PASS; Vite emitted its existing advisory for a JavaScript chunk over 500 kB |
 
 `npm ci` completed from the committed lockfile without changing dependency
@@ -93,11 +95,13 @@ sandbox cross-thread wake-socket `EPERM`. The present dump is not itself a
 syscall trace, and the underlying sandbox behavior remains unexplained at the
 kernel level.
 
-Disposition: **RESOLVED** for supported CI execution. The exact test is green
-in the compatible execution environment and remains required in hosted CI; no
-production runtime change was necessary. The sandbox-specific stall is
-documented and does not establish a product recovery defect. Reopen if the
-test fails on the supported hosted runner or new live recovery evidence fails.
+Disposition: **PENDING HOSTED CONFIRMATION**. The exact test is green in the
+compatible unsandboxed execution environment and remains required in hosted
+CI. Hosted execution has not occurred yet. No production runtime change was
+made; the sandbox-specific stall is documented and does not establish a
+product recovery defect. If the test passes on the supported hosted runner,
+record `RESOLVED FOR SUPPORTED CI EXECUTION`; if it fails or stalls, reopen the
+investigation without weakening the lane.
 
 The full backend baseline run is separately preserved in
 [`BASELINE_SUPPLEMENT_01.md`](BASELINE_SUPPLEMENT_01.md): 42 failures, 2,176
@@ -118,6 +122,21 @@ corpora, large-corpus ingestion, physical capacity, and all performance
 benchmarks remain outside generic CI. The workflow does not create latency or
 performance SLOs.
 
+## Independent review corrective pass
+
+The bounded corrections requested for candidate
+`ddb015fe584fa32ce2c430c4ee943cf52f12d5c9` are handled as follows:
+
+| Finding | Disposition |
+| --- | --- |
+| F001 — Empty REL-03 inputs make the default CI environment invalid | Removed external inference key variables from the workflow. GitHub secrets are not injected into jobs unless explicitly configured. |
+| F002 — Independent rewriter/judge configuration was not asserted | Added a deterministic profile-overlay test using distinct local configurations; no HTTP calls. Focused REL-03 suite: 20 passed in 1.73 seconds. |
+| F003 — Startup status claimed resolution before hosted execution | Changed to `PENDING HOSTED CONFIRMATION`; the exact test remains in CI. No hosted run is claimed. |
+| F004 — Ruff exclusions lacked an exact inventory | Reran full Ruff after bounded corrections. The 156 remaining diagnostics are listed by file, line, and rule in the linked Ruff inventory. |
+
+The hosted pull-request run is the remaining verification gate for both CI
+jobs and `TEST-STARTUP-01`.
+
 ## Candidate disposition
 
 ```yaml
@@ -126,7 +145,7 @@ implementation: CANDIDATE_PREPARED
 local_backend_lane: PASS
 local_frontend_lane: PASS
 rel03_profile_isolation: MOCKED_AND_REQUIRED
-test_startup_01: RESOLVED
+test_startup_01: PENDING_HOSTED_CONFIRMATION
 hosted_ci: NOT_YET_EXECUTED
 repository_wide_ruff: HISTORICAL_DEBT_REMAINS
 full_pytest_suite: BASELINE_FAILURES_DOCUMENTED
