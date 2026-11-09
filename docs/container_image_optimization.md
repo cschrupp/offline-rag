@@ -1,10 +1,17 @@
-# Container image size optimization (deferred)
+# Container image optimization — REL-01
 
-**Status:** deferred technical debt — **not** a Slice 15 / 15H blocker
+**Status:** REL-01 active — CPU-oriented default release image
 **Tracking:** [#1 Optimize Docker image size with CPU/CUDA variants and multi-stage builds](https://github.com/cschrupp/offline-rag/issues/1)
 **Accepted 15G reference implementation:** `140350b8cc6eec6a2491c0a1696042e65b2d2b7e`
 **Accepted Slice 15 closeout (15H):** `1c1d94eada502523d44ec8e9c9a6e23b1f863d49`
 **Reference local test tags:** `offline-rag:15g-test`, `offline-rag:15h-test` (~10.3GB)
+
+REL-01 covers the default CPU-oriented release container, locked CPU PyTorch
+selection, Python builder/runtime packaging, and qualification through the
+existing autonomous compute resolver. A separate CUDA release artifact is
+deferred and is not required before Slice 18. Local/developer CUDA-capable
+installations and `cuda_fp16_v1` remain supported. GitHub issue #1 remains open
+because its current wording also includes the deferred CUDA variant.
 
 ## Current state
 

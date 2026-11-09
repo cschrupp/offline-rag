@@ -650,14 +650,19 @@ GPU/CUDA, private corpora, or empirical performance thresholds. See
 ### REL-01 — Container image size / CPU-CUDA release variants
 
 **Priority:** P1 before Slice 18 public release\
-**Status:** OPEN GITHUB ISSUE #1 / DEFERRED FROM CURRENT ACCEPTANCE
+**Status:** ACTIVE — CPU DEFAULT RELEASE IMAGE
 
-Current issue: approximately 10.3 GB reference image; investigate multi-stage
-build, CPU-oriented default release image, and separate CUDA variant while
-preserving accepted topology and `/data` / `/models` boundaries.
+The authorized REL-01 tranche measures the current image, establishes a locked
+CPU-only production dependency selection, adopts a Python builder/runtime
+image, and qualifies the packaged app using the existing compute resolver.
+The separate CUDA release artifact remains deferred; developer/local CUDA
+installs and the qualified CUDA profile remain supported.
 
-This is not a Slice-16 or 16K correctness blocker, but it should be resolved or
-explicitly dispositioned before the portfolio release package is finalized.
+The existing ~10.3 GB image measurement is historical context, not a directly
+comparable size gate. REL-01 records current baseline and candidate sizes using
+the same Docker image-size metric. The work preserves accepted topology and
+`/data` / `/models` boundaries. GitHub issue #1 remains open for its broader
+CPU/CUDA packaging wording; this tranche does not automatically close it.
 
 ### REL-02 — Portfolio release / public claims package
 

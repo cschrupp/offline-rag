@@ -89,11 +89,16 @@ should not override the current disposition here.
   fast-forward at `711dc1cb02499124e56116ab7cac7b3ea6b109db`. The deterministic
   grounded free-text path remains unchanged.
 - [ ] **BETA-CONV-02 — Analytical Synthesis** — deferred; not authorized.
-- [ ] **Slice 17 — Regression CI and Repository Baseline** — implementation
-  candidate prepared from canonical `5a793766bb4ecd88278cd0bf3a892572ec30f67a`;
-  bounded local backend/frontend lanes pass, with hosted CI pending independent
-  review and the first eligible GitHub run. Slice acceptance and promotion are
-  not claimed. This is distinct from original Slice 16G, which is complete.
+- [x] **Slice 17 — Regression CI and Repository Baseline** — Human accepted and
+  promoted to canonical `main` at
+  `3fb65e34f5b45ddf695d82bfd0d9badd34b9ee2d`; hosted backend and frontend CI
+  passed on the promoted head.
+- [ ] **REL-01 — CPU Release Packaging** — active from canonical
+  `main` at `3fb65e34f5b45ddf695d82bfd0d9badd34b9ee2d`. The default release
+  image is the scope; a separate CUDA release artifact is deferred. See
+  [`docs/rel01_cpu_release_packaging.md`](docs/rel01_cpu_release_packaging.md).
+- [ ] **Slice 18 — Portfolio Release Package** — planned; design not open and
+  not authorized.
 - [ ] End-to-end beta QA.
 - [ ] Fix release-blocking defects.
 - [ ] Human beta acceptance.
@@ -3330,21 +3335,20 @@ Slice 14 checklist:
   **COMPLETE / EXECUTED** at `feab2b2…`)
 - Product: **Seneca — Grounded knowledge workspace**
 
-**Slice 17 — Regression CI:** **DESIGN + IMPLEMENTATION AUTHORIZED / ACTIVE**
-- Starting canonical `main`: `5a793766bb4ecd88278cd0bf3a892572ec30f67a`
-- Current branch: `feature/slice17-regression-ci`
-- Current tranche: IR-002 fixture correction has 209 passing / zero skipped
-  backend tests in a clean local clone and hosted PR run `42641164691`.
-  `TEST-STARTUP-01` passed on the corrected head. Independent re-review remains
-  pending. See
-  [`docs/evidence/slice17/IMPLEMENTATION_RESULT.md`](docs/evidence/slice17/IMPLEMENTATION_RESULT.md).
-- Required generic lanes: deterministic backend regressions, REL-03 mocked
-  profile isolation, and frontend lint/typecheck/tests/build. The full
-  repository baseline and intentionally excluded qualification tests remain
-  documented in the baseline and implementation evidence.
-- CUDA, model services, private corpora, host capacity, and historical
-  performance measurements remain outside generic CI; no performance SLOs
-  were added.
+**Slice 17 — Regression CI:** **COMPLETE / HUMAN ACCEPTED / PROMOTED** at
+`3fb65e34f5b45ddf695d82bfd0d9badd34b9ee2d`. Final hosted run `42641831431`
+passed both jobs; the implementation result and baseline evidence remain in
+[`docs/evidence/slice17/`](docs/evidence/slice17/).
+
+**REL-01 — CPU Release Packaging:** **ACTIVE / IMPLEMENTATION AUTHORIZED**
+- Starting canonical `main`: `3fb65e34f5b45ddf695d82bfd0d9badd34b9ee2d`
+- Branch: `feature/rel-01-cpu-release-packaging`
+- Four bounded stages: current-image baseline; locked CPU dependency selection;
+  Python builder/runtime image; packaged application qualification.
+- Default release image is CPU-oriented. A separate CUDA release artifact is
+  deferred and is not required before Slice 18.
+- Slice 18 remains planned; design is not open and implementation is not
+  authorized.
 
 **Slice 18 — Portfolio Release Package:** **PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED**
 - Objective: reproducible public portfolio artifact backed by accepted evidence
