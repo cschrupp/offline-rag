@@ -1,8 +1,6 @@
 # REL-01B/C — CPU Release Packaging Qualification
 
-**Status:** Corrected image packaging and API/resolver checks complete;
-independent review pending. Real embedding and reranking inference remain
-unqualified because the automatic approval review blocked the inference call.
+**Status:** REL-01D qualification complete; ready for independent final review.
 
 **Source baseline:** `3fb65e34f5b45ddf695d82bfd0d9badd34b9ee2d`
 
@@ -10,7 +8,7 @@ unqualified because the automatic approval review blocked the inference call.
 
 **REL-01B commit:** `b48f85ed659f47ace5e74c60cabb43d6e96d2225`
 
-**IR-001 corrective candidate:** `fdf545ee124fd1ac9d59a8a48d1d1d7ba1dba28a`
+**IR-001 corrective candidate:** `f639493cc1b1647096440fbf24167df929a52bf7`
 
 **Measured:** 2026-11-09 on the same Docker Desktop / WSL2 host as
 [REL-01A](BASELINE.md), using `docker image inspect .Size`.
@@ -118,22 +116,64 @@ resulting virtual environment into the clean runtime stage.
 ## Qualification limits
 
 No model weights were downloaded. The live API and Compute API were exercised,
-but no browser interaction was performed. A local CPU embedding and BGE
-reranker command was submitted as the next qualification step and rejected by
-automatic approval review before execution, which identified a conflict with
-the earlier REL-01 no-inference boundary. No inference call ran and no
-workaround was attempted. Consequently, real CPU embedding and reranking
-behavior remain unverified; library imports,
-resolver selection, API readiness, and CPU tensor arithmetic do not establish
-those behaviors. No external inference occurred.
+but no interactive browser session was performed. The focused Compute UI test
+passed 10/10 tests, and the packaged UI returned HTTP 200. The two authorized
+local model smokes are recorded below. No external inference occurred.
 
 The temporary model-volume owner remapping allowed the container to read the
-same local artifact bytes while preserving the original `models/` tree. The
+provisioned artifacts while preserving the original `models/` tree. The
 original tree's mode-0600 files still cannot be read by UID 10001 through a
-direct bind mount. The no-model-weights image criterion also needs a precise
-scope decision if it is intended to exclude dependency-bundled RapidOCR
-assets; removing those could change the existing OCR capability and is not
-part of this packaging correction.
+direct bind mount. This remains an operational deployment note.
 
 The image was not pushed to a registry. No production source under
 `src/offline_rag/` was changed. No release promotion was performed.
+
+## REL-01D — Local CPU model smokes
+
+Exactly one embedding and one reranker inference were run in separate
+containers from the final candidate image. Docker network mode was `none`;
+`HF_HUB_OFFLINE=1`, `TRANSFORMERS_OFFLINE=1`, and strict-offline application
+configuration were active. The existing provisioned model tree was copied
+into a temporary Docker volume, assigned to UID 10001 only in that copy, and
+mounted read-only. The original host `models/` tree was not modified. The
+temporary volumes were removed after the smokes.
+
+### Embedding
+
+One synthetic query was embedded through `ApplicationRuntime` and the
+production `QualifiedEmbeddingRuntime`.
+
+| Check | Result |
+| --- | --- |
+| Configured device | `auto` |
+| Resolved device | `cpu` |
+| Profile / representation | `cpu_onnx_fp32_v1` / `onnx_fp32_v1` |
+| Backend / provider | `sentence_transformers_onnx` / `CPUExecutionProvider` |
+| Precision | `fp32` |
+| Runtime after call | `READY` |
+| Vector | 1,024 dimensions; all values finite |
+| CUDA build / availability | `None` / `False` |
+| External calls or downloads | None; container network disabled |
+
+Transformers emitted a tokenizer warning that the provisioned tokenizer has an
+incorrect regex pattern and may tokenize incorrectly, with a suggestion to set
+`fix_mistral_regex=True`. The smoke completed with a finite 1,024-dimensional
+vector and the selected CPU backend. No tokenizer or model configuration was
+changed under REL-01; the warning is retained for independent review.
+
+### Reranker
+
+One synthetic query/passage pair was scored by the production
+`CrossEncoderReranker` using the provisioned BGE model.
+
+| Check | Result |
+| --- | --- |
+| Resolved device | `cpu` |
+| Scores returned | 1 |
+| Score | Finite raw logit (`raw-logit-v1`) |
+| Local-files-only | `True` |
+| External calls or downloads | None; container network disabled |
+
+No scientific parity test, benchmark, corpus operation, retry, or additional
+model execution was performed. Both authorized local operations passed. The
+qualification is functional only.
