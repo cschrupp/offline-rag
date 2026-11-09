@@ -1,6 +1,11 @@
 # REL-03-P0 — External Inference Demo Profile
 
-**Status:** IMPLEMENTATION COMPLETE / INDEPENDENT REVIEW PENDING
+**Status:** IMPLEMENTED / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / LIVE
+QUALIFIED / PROMOTED
+
+**Implementation subject:** `ac55095fb9ded47123fa56d52b42502f5fd3a43e`
+**Qualification evidence:** `5a793766bb4ecd88278cd0bf3a892572ec30f67a` —
+[`REL03_P0_LIVE_SMOKE.md`](evidence/rel03_p0_live_smoke/REL03_P0_LIVE_SMOKE.md)
 
 **Parent:** REL-03 — Hosted Portfolio Demo Profile (Milestone 7)  
 **Profile:** `portfolio_openrouter`  
@@ -197,9 +202,12 @@ no operator key is present.
 
 ## Explicit exclusions and dependency order
 
-This P0 does not authorize UI changes, Cloud Run or Secret Manager setup,
-Dockerfile/deployment claims, Terraform, public hosting, Slice 17, REL-01
-implementation, Slice 18, BETA-CONV-02, or Slice 9G. No promotion is authorized.
+The original REL-03-P0 implementation authority did not authorize UI changes,
+Cloud Run or Secret Manager setup, Dockerfile/deployment claims, Terraform,
+public hosting, Slice 17, REL-01 implementation, Slice 18, BETA-CONV-02, Slice
+9G, or promotion. Subsequent separate authorities accepted and promoted the
+implementation and opened Slice 17. These actions do not authorize any of the
+remaining exclusions above.
 
 Dependency order:
 

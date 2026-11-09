@@ -364,8 +364,10 @@ cd ui && npm test && npm run lint && npm run typecheck && npm run build
 | BETA-SETTINGS-02 | **COMPLETE / INDEPENDENTLY ACCEPTED / PROMOTED** (`6ff2157…`) |
 | BETA-GAME-01 | **COMPLETE / HUMAN ACCEPTED / PROMOTED** — Quick Play and reusable activity decks (`2bca470…`) |
 | BETA-GOLD-POOL-01 | **COMPLETE / INDEPENDENTLY ACCEPTED / PROMOTED** — qualified query-prompt support (`4ea5c92…`); physical CUDA execution remains unverified |
-| BETA-GAME-02 | **ACTIVE / IMPLEMENTATION AUTHORIZED** — contextual guidance and accessible gameplay |
-| Slice 17 / 18 | **NOT AUTHORIZED** |
+| BETA-GAME-02 / 02B | **COMPLETE / HUMAN ACCEPTED / PROMOTED** |
+| REL-03-P0 | **IMPLEMENTED / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / LIVE QUALIFIED / PROMOTED** — bounded external inference profile; no hosted deployment claim |
+| Slice 17 | **DESIGN + IMPLEMENTATION AUTHORIZED / ACTIVE** — deterministic regression CI |
+| Slice 18 | **NOT AUTHORIZED** |
 | M7 closeout | **NOT AUTHORIZED** |
 
 Live post-closeout backlog: [`docs/BACKLOG.md`](docs/BACKLOG.md).
@@ -396,7 +398,9 @@ Still deferred / not authorized as product deliverables:
 - cloud inference in the strict-offline core
 - enterprise auth / RBAC
 - distributed Qdrant / GraphRAG / multi-agent swarms
-- 16K-G regression/CI handoff is complete and Human accepted; Slice 17 remains unopened and unauthorized. 16K-E and 16K-F are complete as scoped in [`docs/BACKLOG.md`](docs/BACKLOG.md)
+- 16K-G regression/CI handoff is complete and Human accepted. Slice 17 is now
+  active under separate authorization; 16K-E and 16K-F are complete as scoped
+  in [`docs/BACKLOG.md`](docs/BACKLOG.md).
 
 ## Scope boundaries
 

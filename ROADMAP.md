@@ -6,6 +6,10 @@ Optimize for reliable product delivery under the available development time
 and operating cost. [`docs/BACKLOG.md`](docs/BACKLOG.md) retains deferred work
 and supporting history.
 
+The current status is summarized in this opening section. Detailed historical
+roadmap snapshots below preserve the authority state recorded at their time and
+should not override the current disposition here.
+
 ### Beta delivery path
 
 - [x] R04 CUDA embedding corrective accepted and promoted; formal M0–M5
@@ -85,8 +89,10 @@ and supporting history.
   fast-forward at `711dc1cb02499124e56116ab7cac7b3ea6b109db`. The deterministic
   grounded free-text path remains unchanged.
 - [ ] **BETA-CONV-02 — Analytical Synthesis** — deferred; not authorized.
-- [ ] Slice 17 design-open — **NOT AUTHORIZED**. This is distinct from
-  original Slice 16G, which is complete.
+- [ ] **Slice 17 — Regression CI and Repository Baseline** —
+  **DESIGN + IMPLEMENTATION AUTHORIZED / ACTIVE** from canonical
+  `5a793766bb4ecd88278cd0bf3a892572ec30f67a`; this is distinct from original
+  Slice 16G, which is complete. No completion or promotion is claimed.
 - [ ] End-to-end beta QA.
 - [ ] Fix release-blocking defects.
 - [ ] Human beta acceptance.
@@ -584,12 +590,20 @@ regression CI, and portfolio release packaging (Slices 14–18).
 **Slice 14 design (LOCKED / ACCEPTED):** `89a395ae4df7aff23c2da2c8c44fd6fe405459a6`
 **Slice 14:** **COMPLETE / ACCEPTED**
 
-### REL-03 — Hosted Portfolio Demo Profile (planning registered)
+### REL-03 — Hosted Portfolio Demo Profile
+
+**REL-03-P0 status:** IMPLEMENTED / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED /
+LIVE QUALIFIED / PROMOTED. Implementation is at
+`ac55095fb9ded47123fa56d52b42502f5fd3a43e`; sanitized live qualification is
+at `5a793766bb4ecd88278cd0bf3a892572ec30f67a`. See
+[`REL03_P0_LIVE_SMOKE.md`](docs/evidence/rel03_p0_live_smoke/REL03_P0_LIVE_SMOKE.md).
+This records the completed P0 seam and bounded smoke, not hosted deployment or
+portfolio claims.
 
 REL-03-P0 is the bounded near-term enabling seam for an operator-selected
 OpenRouter inference profile. Canonical Seneca remains local-first and
-strict-offline by default; hosted deployment belongs to Slice 18. Slice 17
-later owns mocked profile-isolation regression CI, and REL-01 later provides
+strict-offline by default; hosted deployment belongs to Slice 18. Active Slice
+17 owns mocked profile-isolation regression CI, and REL-01 later provides
 the preferred CPU release image. REL-03 is not an active beta release blocker.
 P0 implementation is authorized by its contract at
 [`docs/rel03_external_inference_demo_profile.md`](docs/rel03_external_inference_demo_profile.md).
@@ -3315,7 +3329,11 @@ Slice 14 checklist:
   **COMPLETE / EXECUTED** at `feab2b2…`)
 - Product: **Seneca — Grounded knowledge workspace**
 
-**Slice 17 — Regression CI:** **PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED**
+**Slice 17 — Regression CI:** **DESIGN + IMPLEMENTATION AUTHORIZED / ACTIVE**
+- Starting canonical `main`: `5a793766bb4ecd88278cd0bf3a892572ec30f67a`
+- Current branch: `feature/slice17-regression-ci`
+- Current tranche: documentation/design opening; implementation evidence is
+  not yet available.
 - Objective: prevent accepted product/retrieval/generation contracts and
   measured quality from silently regressing after the portfolio surface exists
 - Candidate areas only (not locked / no thresholds defined here):
@@ -3357,7 +3375,7 @@ Later M7 checklist:
 - [x] `/data` + `/models` volume packaging contract (15G — **COMPLETE / ACCEPTED**)
 - [x] Slice 15 integration closeout (15H — **COMPLETE / ACCEPTED** at `1c1d94e…`)
 - [x] Portfolio Demo UI (Slice 16 — design **ACCEPTED / LOCKED** at `e2e7475…`; **16A COMPLETE / ACCEPTED** at `e73959be…`; **16B COMPLETE / ACCEPTED** at `eb8baef…`; **16C COMPLETE / ACCEPTED** at `936e414…`; **A1 ACCEPTED / LOCKED** at `5060e2ae…`; **A2 ACCEPTED / LOCKED / SEALED** at `dce3456e…`; **16D-A COMPLETE / ACCEPTED / SEALED** at `4f8962f…`; observed B1 `6b652400…` **ACCEPTANCE WITHHELD**; B1 upload remediation **ACCEPTED / SEALED** at `c68cc3f8…` / closeout `b5fa1e85…`; **16D-B2 COMPLETE / ACCEPTED / SEALED** at `baa16eba…`; **16D-B3 COMPLETE / ACCEPTED / SEALED** at `9c178ffb…`; **16D-C COMPLETE / ACCEPTED / SEALED** at `0381e046…`; A4 **ACCEPTED / LOCKED / SEALED**; **16E COMPLETE / ACCEPTED / SEALED** at Engineering `3e1ce4c9…` / remediation `9dd2b008…`; **16F COMPLETE / ACCEPTED / SEALED** at `f25f835…`; **16G-D0 ACCEPTED / FROZEN**; **16G-I1…I5 / GAP-16G-01 ACCEPTED**; **GAP-16G-02 CLOSEOUT ACCEPTED / PROMOTED TO MAIN** (`HA-001` / IR-002; subject `e5d116b8…`; main promotion **COMPLETE** at `f7fb999…`); **16G-I6 COMPLETE / ACCEPTED** (IR-002 **ACCEPT**; exact candidate `cc7ff520eb146fa555f2b48e1f7dcc89a7952729`); **16G IMPLEMENTATION COMPLETE / ACCEPTED**; **16H COMPLETE / ACCEPTED** (16H-IR-003 **ACCEPT**; 16H-HA-001 **ACCEPTED**; exact subject `01a4a984d438d5bb7c4e3d0fa2f5bb908e0b4a10`); **9G DEFERRED / NOT AUTHORIZED**; Slice 16 overall **COMPLETE / HUMAN ACCEPTED / CANONICAL**)
-- [ ] Regression CI (Slice 17 — **PLANNED / DESIGN NOT OPEN**)
+- [ ] Regression CI (Slice 17 — **DESIGN + IMPLEMENTATION AUTHORIZED / ACTIVE**)
 - [ ] Portfolio release package (Slice 18 — **PLANNED / DESIGN NOT OPEN**)
 - [ ] Milestone 7 closeout (**NOT AUTHORIZED**)
 - [ ] Container image size / CPU–CUDA variants ([issue #1](https://github.com/cschrupp/offline-rag/issues/1) — **DEFERRED**)
@@ -3376,8 +3394,8 @@ remains **IN PROGRESS** (Slice 15 through **15H** landed; Slice 16 design
 Amendment A1 **ACCEPTED / LOCKED**; Amendment A2 **ACCEPTED / LOCKED /
 SEALED**; B1 foundation remediation **ACCEPTED / SEALED**; **16D-B3
 COMPLETE / ACCEPTED / SEALED** at `9c178ffb033cde41849379fc914f321697ff8691`; **16D-C** COMPLETE / ACCEPTED / SEALED;
-**Slices 17–18**, and **M7 closeout** remain **NOT AUTHORIZED**). Performance
-optimization,
+Slice 17 is separately **AUTHORIZED / ACTIVE**; Slice 18 and M7 closeout remain
+**NOT AUTHORIZED**. Performance optimization,
 generator max-token change, reranker config change, `base.yaml` promotion,
 `PORTFOLIO_DEMO.md` update, 13C/13D, recovery enablement, LangGraph, and NeMo
 remain **NOT AUTHORIZED**.

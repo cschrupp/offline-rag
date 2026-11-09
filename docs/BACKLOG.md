@@ -2,7 +2,7 @@
 
 **Status:** LIVE PLANNING / NON-AUTHORIZING\
 **Canonical reference:** `main` (see Git for current tip)\
-**Updated:** 2026-11-08
+**Updated:** 2026-11-09
 
 This document is the live queue for work that remains after the Human-accepted
 Slice 16 closeout and the post-L6 parser-stack corrective.
@@ -35,8 +35,14 @@ BETA-CONV-01B — CLOSED / NATURAL-LANGUAGE ROUTER NO-GO / ARCHIVED
 BETA-CONV-01C — COMPLETE / HUMAN PRODUCT ACCEPTED / PROMOTED
                 EXPLICIT ACTIONS / NO FREE-TEXT ROUTER
 BETA-CONV-02 — DEFERRED / NOT AUTHORIZED
+Slice 17 — DESIGN + IMPLEMENTATION AUTHORIZED / ACTIVE
 Additional Gold Lab games — DEFERRED BEYOND CURRENT BETA
 ```
+
+Status statements in historical slice records below retain their original
+time-specific meaning. The separate Slice 17 authority opened the work on
+2026-11-09 from canonical `main` at
+`5a793766bb4ecd88278cd0bf3a892572ec30f67a`.
 
 16K-F functional acceptance is complete. Performance on the available
 replacement corpus is **EMPIRICALLY_CHARACTERIZED / ACCEPTED_DESCRIPTIVE**;
@@ -79,12 +85,15 @@ and its linked sanitized `RUN_002_EVIDENCE_INDEX.md`.
     -> BETA-CONV-01C explicit conversation actions, preserving the existing
        deterministic grounded free-text path
     -> BETA-CONV-02 analytical synthesis DEFERRED / NOT AUTHORIZED
-    -> Slice 17 design-open authority remains NOT AUTHORIZED
+    -> Slice 17 opened separately on 2026-11-09; DESIGN + IMPLEMENTATION
+       AUTHORIZED / ACTIVE
 ```
 
 Original Slice 16G is already accepted; 16K-G names the separate regression
-handoff and must not be confused with that completed slice. The 16K-F
-lineage is now promoted; this handoff does not authorize Slice 17.
+handoff and must not be confused with that completed slice. The 16K-G handoff
+itself did not authorize Slice 17; a separate authority opened Slice 17 on
+2026-11-09. Historical statements below describing the prior unopened state
+are retained as provenance.
 
 ### BETA-GAME-01 — Quick Play and reusable activity decks
 
@@ -375,8 +384,9 @@ The accepted implementation reuses the 16I / 16K-B operation architecture and
 delivers the bounded ingestion worklist, progress, metrics, terminal summary,
 and refresh/reconnect presentation. Historical planning notes describing
 pre-implementation gaps are superseded by the closure record. 16K-F has since
-closed as scoped beta acceptance and is promoted to `main`. 16K-G is the
-current separate regression-handoff tranche; Slice 17 remains unopened.
+closed as scoped beta acceptance and is promoted to `main`. At the time of
+16K-F closeout, 16K-G was the next regression-handoff tranche and Slice 17 had
+not yet opened. Separate authority opened Slice 17 on 2026-11-09.
 
 ### 16K-F — Real beta-corpus acceptance
 
@@ -420,8 +430,9 @@ idempotency, cache identity, and atomic publication.
 
 Real CUDA throughput is not automatically a generic CI gate.
 
-The handoff is independently reviewed and Human accepted. Slice 17 design-open
-remains a separate authorization gate; this closeout does not authorize it.
+The handoff is independently reviewed and Human accepted. The 16K-G closeout
+did not authorize Slice 17; separate authority opened it on 2026-11-09, as
+recorded in the current disposition above.
 
 ### BETA-SETTINGS-01 — User-editable generation configuration
 
@@ -556,7 +567,7 @@ Human acceptance, promotion, or authority for downstream beta work.
 ### TEST-STARTUP-01 — Diagnose managed-operation TestClient startup hang
 
 **Priority:** P2\
-**Status:** REGISTERED / NON-BLOCKING TO BETA
+**Status:** OPEN / NONBLOCKING / OWNED BY SLICE 17E
 
 Selected managed-operation recovery tests can wait indefinitely while entering
 `fastapi.testclient.TestClient`. A faulthandler trace shows the test thread
@@ -570,9 +581,9 @@ non-terminal source-add was interrupted during PDF parsing, startup marked it
 add succeeded in the recovered process. Therefore this test-infrastructure
 issue does not currently block beta.
 
-Next action: diagnose the `TestClient` lifespan/startup wait and restore
-bounded automated coverage for managed-operation restart recovery. Do not
-reopen product recovery semantics unless new live evidence fails.
+Next action: Slice 17E diagnoses the `TestClient` lifespan/startup wait and
+establishes one of the authorized explicit dispositions. Do not reopen product
+recovery semantics unless new live evidence fails.
 
 ### ROBUST-01 — Native PDF parser process isolation
 
@@ -598,12 +609,27 @@ Recommended timing: before public/release hardening, but it need not block
 ### CI-BASELINE-01 — Repository-wide green-baseline normalization
 
 **Priority:** P1\
-**Status:** DEFER TO SLICE 17 DESIGN
+**Status:** ACTIVE — SLICE 17 BASELINE INVENTORY / 17A
 
 Slice 16 explicitly did not claim a fully green repository baseline. Slice 17
-should inventory the pre-existing lint/full-suite debt, classify intentional
-exclusions, and establish deterministic CI without silently turning historical
-performance observations into new SLOs.
+is now authorized and owns inventory of the pre-existing lint/full-suite debt,
+classification of intentional exclusions, and deterministic CI. Historical
+performance observations must not become new SLOs.
+
+### Slice 17 — Regression CI and Repository Baseline
+
+**Status:** DESIGN + IMPLEMENTATION AUTHORIZED / ACTIVE\
+**Started from:** canonical `main` at
+`5a793766bb4ecd88278cd0bf3a892572ec30f67a`\
+**Branch:** `feature/slice17-regression-ci`
+
+Slice 17 proceeds in five bounded tranches: 17A baseline inventory, 17B
+deterministic backend CI, 17C frontend CI, 17D REL-03 profile-isolation
+regression, and 17E startup-hang disposition and closeout. The first commit is
+design/status documentation only. Inventory results must precede workflow or
+test changes. No generic CI lane may require models, external credentials,
+GPU/CUDA, private corpora, or empirical performance thresholds. See
+[`docs/slice17_regression_ci_design.md`](slice17_regression_ci_design.md).
 
 ### REL-01 — Container image size / CPU-CUDA release variants
 
@@ -629,7 +655,14 @@ reproducible install/run guidance. Claims must remain backed by accepted evidenc
 ### REL-03 — Hosted Portfolio Demo Profile
 
 **Priority:** P1 for Slice 18 portfolio release
-**Status:** PLANNING REGISTERED / REL-03-P0 IMPLEMENTATION AUTHORIZED
+**Status:** REL-03-P0 IMPLEMENTED / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED /
+LIVE QUALIFIED / PROMOTED
+
+The accepted implementation is `ac55095fb9ded47123fa56d52b42502f5fd3a43e`;
+the sanitized bounded qualification is
+`5a793766bb4ecd88278cd0bf3a892572ec30f67a`. See
+[`REL03_P0_LIVE_SMOKE.md`](evidence/rel03_p0_live_smoke/REL03_P0_LIVE_SMOKE.md).
+This does not claim hosted deployment or authorize Slice 18.
 
 Provide an explicitly operator-enabled hosted Seneca demonstration profile for
 portfolio/job-search use while preserving the canonical local, strict-offline
@@ -656,7 +689,9 @@ Slice 18 Cloud Run + Secret Manager + hosted demo
 
 REL-03-P0 does not authorize Slice 17, REL-01 implementation, Slice 18,
 BETA-CONV-02, Cloud Run, or public production hosting. REL-03 is a portfolio
-release-profile concern, not an active beta release blocker. See
+release-profile concern, not an active beta release blocker. Slice 17 is now
+authorized separately; this REL-03 contract does not itself grant that
+authority. See
 [`docs/rel03_external_inference_demo_profile.md`](rel03_external_inference_demo_profile.md).
 
 ## 4. Registered later candidates
@@ -706,15 +741,14 @@ its own design/authority.
 ```text
 16K-F scoped beta closeout accepted and promoted to main
         ->
-16K-G regression handoff (candidate ready for independent review)
+16K-G regression handoff COMPLETE / HUMAN ACCEPTED
         ->
-request Slice 17 design-open authority after 16K-G acceptance
-        ->
-Slice 17 — Regression CI (not authorized)
+Slice 17 — Regression CI ACTIVE (17A baseline inventory)
         ->
 Slice 18 — Portfolio Release Package
         ->
 Milestone 7 closeout
 ```
 
-Slice 17, Slice 18, and M7 closeout remain unauthorized until separately opened.
+Slice 17 is separately authorized and active. Slice 18 and M7 closeout remain
+unauthorized.
