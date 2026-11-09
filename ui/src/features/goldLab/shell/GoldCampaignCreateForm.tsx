@@ -34,7 +34,9 @@ export function GoldCampaignCreateForm({
 
   useEffect(() => {
     if (!preferredBaselineId) return;
-    if (baselines.some((b) => b.authoring_run_id === preferredBaselineId)) {
+    if (baselines.some((baseline) => baseline.authoring_run_id === preferredBaselineId)) {
+      // A bootstrap handoff initializes the editable campaign form.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setBaselineId(preferredBaselineId);
     }
   }, [preferredBaselineId, baselines]);

@@ -74,7 +74,7 @@ def validate_endpoint_network_policy(
     """
     try:
         normalized = normalize_endpoint(base_url)
-    except Exception as exc:  # noqa: BLE001 — surface as policy reject
+    except Exception as exc:
         raise EndpointPolicyError("malformed_endpoint") from exc
 
     parsed = urlparse(normalized)

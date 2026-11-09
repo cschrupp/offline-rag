@@ -305,7 +305,9 @@ describe("16G-I2 Rapid Fire / Question Check session (direct work session)", () 
 
     expect(await screen.findByText("What pressure?")).toBeInTheDocument();
     expect(screen.getByText(/Pump pressure must remain stable/)).toBeInTheDocument();
-    expect(screen.getByText(/0 — Irrelevant/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /0 — Irrelevant/ }),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/prelabel/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/model confidence/i)).not.toBeInTheDocument();
 

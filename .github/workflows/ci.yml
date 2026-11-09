@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  backend:
+    name: Backend deterministic regressions
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10
+        with:
+          version: "0.11.18"
+
+      - name: Install locked backend dependencies
+        run: uv sync --frozen
+
+      - name: Lint required backend code and tests
+        run: >-
+          uv run ruff check
+          src/offline_rag/app
+          src/offline_rag/api
+          tests/unit/app/test_slice16k_a_managed_ingestion_correctness.py
+          tests/unit/app/test_slice16b_publication_journal.py
+          tests/unit/app/test_slice15d_product_ingest.py
+          tests/unit/app/test_slice16k_b_ingestion_observability.py
+          tests/unit/app/test_slice16i_managed_operation_progress.py
+          tests/unit/app/test_slice16k_c_capacity_model.py
+          tests/unit/test_ingestion_pipeline.py
+          tests/unit/test_slice16k_f_corpus_preparation.py
+          tests/unit/test_large_source_capacity_l4_harness.py
+          tests/unit/test_slice16k_r04_preflight.py
+          tests/unit/test_rel03_external_inference_demo_profile.py
+
+      - name: Run required deterministic backend regressions
+        env:
+          OPENROUTER_API_KEY: ""
+          OFFLINE_RAG_EXTERNAL_INFERENCE_API_KEY: ""
+          HTTP_PROXY: http://127.0.0.1:9
+          HTTPS_PROXY: http://127.0.0.1:9
+          ALL_PROXY: http://127.0.0.1:9
+          NO_PROXY: localhost,127.0.0.1,::1
+          no_proxy: localhost,127.0.0.1,::1
+        run: >-
+          uv run pytest -q
+          tests/unit/app/test_slice16k_a_managed_ingestion_correctness.py
+          tests/unit/app/test_slice16b_publication_journal.py
+          tests/unit/app/test_slice15d_product_ingest.py
+          tests/unit/app/test_slice16k_b_ingestion_observability.py
+          tests/unit/app/test_slice16i_managed_operation_progress.py
+          tests/unit/app/test_slice16k_c_capacity_model.py
+          tests/unit/test_large_source_capacity_l4_harness.py
+          tests/unit/test_ingestion_pipeline.py
+          tests/unit/test_slice16k_f_corpus_preparation.py
+          tests/unit/test_slice16k_r04_preflight.py
+          tests/unit/test_rel03_external_inference_demo_profile.py
+
+  frontend:
+    name: Frontend deterministic checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+
+      - name: Install locked frontend dependencies
+        working-directory: ui
+        run: npm ci
+
+      - name: Lint
+        working-directory: ui
+        run: npm run lint
+
+      - name: Typecheck
+        working-directory: ui
+        run: npm run typecheck
+
+      - name: Test
+        working-directory: ui
+        run: npm test
+
+      - name: Build
+        working-directory: ui
+        run: npm run build

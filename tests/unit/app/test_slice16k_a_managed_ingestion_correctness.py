@@ -31,6 +31,10 @@ from offline_rag.app.operations import (
 from offline_rag.app.paths import ensure_data_directories
 from offline_rag.app.publication import current_pointer_path
 from offline_rag.app.runtime import ApplicationRuntime, ResourceFactories
+from offline_rag.app.workspace.journal import (
+    EmptyTransitionCoordinator,
+    EmptyTransitionPhase,
+)
 from offline_rag.app.workspace.leases import WorkspaceMutationLease
 from offline_rag.app.workspace.models import (
     ManagedOperationKind,
@@ -41,10 +45,6 @@ from offline_rag.app.workspace.models import (
     document_id_for_content,
     new_empty_workspace,
     new_source_id,
-)
-from offline_rag.app.workspace.journal import (
-    EmptyTransitionCoordinator,
-    EmptyTransitionPhase,
 )
 from offline_rag.app.workspace.mutation_ops import ManagedOperationStore
 from offline_rag.app.workspace.publication_journal import (
@@ -628,7 +628,7 @@ def test_recovery_b_succeeds(tmp_path: Path) -> None:
         journal = pub.load_journal(wid)
         assert journal is not None
         # Forward phase alone is enough for B; avoid fake snapshot pointer restore.
-        pub._save_journal(  # noqa: SLF001 — test forces committed phase
+        pub._save_journal(
             journal.model_copy(
                 update={
                     "phase": NonEmptyPublicationPhase.WORKSPACE_COMMITTED,
@@ -953,7 +953,7 @@ def test_empty_recovery_a_intent_and_committed_inconsistent(tmp_path: Path) -> N
         )
         journal = coord3.load_journal(wid)
         assert journal is not None
-        coord3._save_journal(  # noqa: SLF001
+        coord3._save_journal(
             journal.model_copy(update={"phase": EmptyTransitionPhase.COMMITTED})
         )
         with WorkspaceMutationLease(settings, wid) as lease:

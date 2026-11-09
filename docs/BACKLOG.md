@@ -567,7 +567,7 @@ Human acceptance, promotion, or authority for downstream beta work.
 ### TEST-STARTUP-01 — Diagnose managed-operation TestClient startup hang
 
 **Priority:** P2\
-**Status:** OPEN / NONBLOCKING / OWNED BY SLICE 17E
+**Status:** RESOLVED FOR CI EXECUTION / SANDBOX LIMITATION DOCUMENTED
 
 Selected managed-operation recovery tests can wait indefinitely while entering
 `fastapi.testclient.TestClient`. A faulthandler trace shows the test thread
@@ -581,9 +581,16 @@ non-terminal source-add was interrupted during PDF parsing, startup marked it
 add succeeded in the recovered process. Therefore this test-infrastructure
 issue does not currently block beta.
 
-Next action: Slice 17E diagnoses the `TestClient` lifespan/startup wait and
-establishes one of the authorized explicit dispositions. Do not reopen product
-recovery semantics unless new live evidence fails.
+Slice 17E disposition: **RESOLVED** for supported CI execution. The exact
+`test_managed_add_survives_simulated_deadline_and_publishes` test passed in a
+compatible unsandboxed run and is included in the required hosted backend CI
+lane. In the restricted Codex sandbox it can still stall at the AnyIO
+cross-thread startup handshake; prior API verification identified a sandbox
+wake-socket `EPERM`, while the current thread dump locates the wait but is not
+itself a syscall trace. No production startup or recovery code was changed.
+This resolves the CI execution concern, not the sandbox's underlying syscall
+behavior. Reopen only if the test fails in the supported hosted CI environment
+or new product-recovery evidence fails.
 
 ### ROBUST-01 — Native PDF parser process isolation
 
@@ -609,12 +616,17 @@ Recommended timing: before public/release hardening, but it need not block
 ### CI-BASELINE-01 — Repository-wide green-baseline normalization
 
 **Priority:** P1\
-**Status:** ACTIVE — SLICE 17 BASELINE INVENTORY / 17A
+**Status:** ACTIVE — SLICE 17 CANDIDATE READY FOR INDEPENDENT REVIEW
 
 Slice 16 explicitly did not claim a fully green repository baseline. Slice 17
 is now authorized and owns inventory of the pre-existing lint/full-suite debt,
 classification of intentional exclusions, and deterministic CI. Historical
-performance observations must not become new SLOs.
+performance observations must not become new SLOs. The candidate workflow and
+bounded local qualification are recorded in
+[`Slice 17 implementation result`](evidence/slice17/IMPLEMENTATION_RESULT.md).
+Repository-wide Ruff and full-pytest baseline debt remains documented; the
+required CI lanes are intentionally bounded to accepted deterministic
+contracts.
 
 ### Slice 17 — Regression CI and Repository Baseline
 

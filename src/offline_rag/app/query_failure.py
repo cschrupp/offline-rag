@@ -91,7 +91,7 @@ def _cuda_failure_from_exception(
     if "cuda" in module:
         if "outofmemory" in type_name.lower() or type_name == "OutOfMemoryError":
             return "out_of_memory"
-        if type_name.endswith("Error") or type_name.endswith("Exception"):
+        if type_name.endswith(("Error", "Exception")):
             return "unknown_cuda"
 
     # Bare MemoryError / host OOM is not CUDA evidence.

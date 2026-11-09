@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import socket
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Self
@@ -41,6 +42,30 @@ from offline_rag.gold_authoring.propose import run_gold_propose_on_snapshot
 
 MODEL = "~deepseek/deepseek-flash-latest"
 API_KEY = "sk-rel03-test-sentinel-do-not-leak"
+
+
+class _LiveOpenRouterResolutionBlocked(RuntimeError):
+    pass
+
+
+@pytest.fixture(autouse=True)
+def _block_live_openrouter_resolution(monkeypatch: pytest.MonkeyPatch) -> None:
+    original_getaddrinfo = socket.getaddrinfo
+
+    def guarded_getaddrinfo(host: object, *args: object, **kwargs: object):
+        hostname = str(host).rstrip(".").lower()
+        if hostname == "openrouter.ai" or hostname.endswith(".openrouter.ai"):
+            raise _LiveOpenRouterResolutionBlocked(
+                "REL-03 profile tests must use mocked HTTP transports"
+            )
+        return original_getaddrinfo(host, *args, **kwargs)
+
+    monkeypatch.setattr(socket, "getaddrinfo", guarded_getaddrinfo)
+
+
+def test_live_openrouter_dns_is_blocked_in_profile_suite() -> None:
+    with pytest.raises(_LiveOpenRouterResolutionBlocked):
+        socket.getaddrinfo("openrouter.ai", 443)
 
 
 def _profile_settings(**updates: object) -> AppSettings:

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { getCapabilities, getOperation } from "../../../api/client";
 import { queryKeys } from "../../../api/queryKeys";
@@ -40,10 +40,6 @@ export function GoldBaselineBootstrapForm({
   const [prelabelEnabled, setPrelabelEnabled] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [operationId, setOperationId] = useState<string | null>(null);
-  const [successSummary, setSuccessSummary] = useState<{
-    authoringRunId: string;
-    reviewableCaseCount: number;
-  } | null>(null);
   const idempotencyKeyRef = useRef(newIdempotencyKey());
   const lastIntentRef = useRef({ proposalCount: 20, prelabelEnabled: false });
 
@@ -74,27 +70,32 @@ export function GoldBaselineBootstrapForm({
     },
   });
 
+  const successSummary = useMemo(() => {
+    const operation = operationQuery.data as Operation | undefined;
+    if (!operation || operation.status !== "succeeded") return null;
+
+    const result = operation.result ?? {};
+    const authoringRunId =
+      typeof result.authoring_run_id === "string"
+        ? result.authoring_run_id
+        : "";
+    if (!authoringRunId) return null;
+
+    return {
+      authoringRunId,
+      reviewableCaseCount:
+        typeof result.reviewable_case_count === "number"
+          ? result.reviewable_case_count
+          : 0,
+    };
+  }, [operationQuery.data]);
+
   useEffect(() => {
     const operation = operationQuery.data as Operation | undefined;
     if (!operation || !isTerminalOperationStatus(String(operation.status))) {
       return;
     }
     if (operation.status === "succeeded") {
-      const result = operation.result ?? {};
-      const authoringRunId =
-        typeof result.authoring_run_id === "string"
-          ? result.authoring_run_id
-          : "";
-      const reviewable =
-        typeof result.reviewable_case_count === "number"
-          ? result.reviewable_case_count
-          : 0;
-      if (authoringRunId) {
-        setSuccessSummary({
-          authoringRunId,
-          reviewableCaseCount: reviewable,
-        });
-      }
       void queryClient.invalidateQueries({
         queryKey: goldLabQueryKeys.baselines(project.project_id),
       });
@@ -112,7 +113,6 @@ export function GoldBaselineBootstrapForm({
       }),
     onSuccess: (operation) => {
       setFormError(null);
-      setSuccessSummary(null);
       setOperationId(operation.operation_id);
       rememberActiveOperation({
         operation_id: operation.operation_id,
@@ -160,7 +160,6 @@ export function GoldBaselineBootstrapForm({
   }
 
   function onCreateAnother() {
-    setSuccessSummary(null);
     setOperationId(null);
     setFormError(null);
     idempotencyKeyRef.current = newIdempotencyKey();

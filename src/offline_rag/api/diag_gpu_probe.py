@@ -78,7 +78,6 @@ def _tensor_on_cuda(obj: Any) -> bool | None:
         return False
     model = obj._model
     try:
-        import torch
 
         if hasattr(model, "parameters"):
             param = next(model.parameters(), None)

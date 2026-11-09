@@ -89,10 +89,11 @@ should not override the current disposition here.
   fast-forward at `711dc1cb02499124e56116ab7cac7b3ea6b109db`. The deterministic
   grounded free-text path remains unchanged.
 - [ ] **BETA-CONV-02 — Analytical Synthesis** — deferred; not authorized.
-- [ ] **Slice 17 — Regression CI and Repository Baseline** —
-  **DESIGN + IMPLEMENTATION AUTHORIZED / ACTIVE** from canonical
-  `5a793766bb4ecd88278cd0bf3a892572ec30f67a`; this is distinct from original
-  Slice 16G, which is complete. No completion or promotion is claimed.
+- [ ] **Slice 17 — Regression CI and Repository Baseline** — implementation
+  candidate prepared from canonical `5a793766bb4ecd88278cd0bf3a892572ec30f67a`;
+  bounded local backend/frontend lanes pass, with hosted CI pending independent
+  review and the first eligible GitHub run. Slice acceptance and promotion are
+  not claimed. This is distinct from original Slice 16G, which is complete.
 - [ ] End-to-end beta QA.
 - [ ] Fix release-blocking defects.
 - [ ] Human beta acceptance.
@@ -3332,15 +3333,16 @@ Slice 14 checklist:
 **Slice 17 — Regression CI:** **DESIGN + IMPLEMENTATION AUTHORIZED / ACTIVE**
 - Starting canonical `main`: `5a793766bb4ecd88278cd0bf3a892572ec30f67a`
 - Current branch: `feature/slice17-regression-ci`
-- Current tranche: documentation/design opening; implementation evidence is
-  not yet available.
-- Objective: prevent accepted product/retrieval/generation contracts and
-  measured quality from silently regressing after the portfolio surface exists
-- Candidate areas only (not locked / no thresholds defined here):
-  deterministic unit/regression tests; CI-safe retrieval subset; citation-
-  contract checks; API contract checks; security deterministic checks where
-  appropriate; container build/smoke where feasible
-- Do **not** invent SLOs or convert historical performance runs into gates here
+- Current tranche: implementation candidate prepared; bounded local lanes pass.
+  Independent review and hosted CI execution remain pending. See
+  [`docs/evidence/slice17/IMPLEMENTATION_RESULT.md`](docs/evidence/slice17/IMPLEMENTATION_RESULT.md).
+- Required generic lanes: deterministic backend regressions, REL-03 mocked
+  profile isolation, and frontend lint/typecheck/tests/build. The full
+  repository baseline and intentionally excluded qualification tests remain
+  documented in the baseline and implementation evidence.
+- CUDA, model services, private corpora, host capacity, and historical
+  performance measurements remain outside generic CI; no performance SLOs
+  were added.
 
 **Slice 18 — Portfolio Release Package:** **PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED**
 - Objective: reproducible public portfolio artifact backed by accepted evidence

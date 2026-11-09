@@ -51,13 +51,18 @@ export function RapidFirePreviewSession({ campaignId }: Props) {
       ),
   });
 
-  const pending = tasksQuery.data?.tasks ?? [];
-
+  const pending = useMemo(() => tasksQuery.data?.tasks ?? [], [tasksQuery.data?.tasks]);
+  const pendingIds = useMemo(
+    () => pending.map((task) => task.task_id),
+    [pending],
+  );
   useEffect(() => {
     if (!tasksQuery.isSuccess || runIds !== null) return;
-    if (pending.length === 0) return;
-    setRunIds(pending.map((t) => t.task_id));
-  }, [tasksQuery.isSuccess, pending, runIds]);
+    if (pendingIds.length === 0) return;
+    // The preview intentionally freezes the first successful task set.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setRunIds(pendingIds);
+  }, [tasksQuery.isSuccess, pendingIds, runIds]);
 
   const snapshotIds = runIds ?? [];
   const activeTaskId =
@@ -101,7 +106,7 @@ export function RapidFirePreviewSession({ campaignId }: Props) {
     interaction.clearAll();
     setComplete(false);
     setCursor(0);
-    setRunIds(pending.map((t) => t.task_id));
+    setRunIds(pendingIds);
   }
 
   if (tasksQuery.isLoading) {
@@ -128,6 +133,10 @@ export function RapidFirePreviewSession({ campaignId }: Props) {
     );
   }
 
+  if (runIds === null) {
+    return <p className="muted">Preparing preview session…</p>;
+  }
+
   if (complete) {
     return (
       <div className="stack" data-testid="rf-preview-complete">
@@ -144,10 +153,6 @@ export function RapidFirePreviewSession({ campaignId }: Props) {
         </div>
       </div>
     );
-  }
-
-  if (runIds === null) {
-    return <p className="muted">Preparing preview session…</p>;
   }
 
   if (detailQuery.isLoading) {

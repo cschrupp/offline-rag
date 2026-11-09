@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 
-
 SEED_CONTRACT = "baseline-bootstrap-sampling-seed-v1"
 
 

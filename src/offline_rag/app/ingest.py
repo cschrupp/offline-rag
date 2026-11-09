@@ -147,7 +147,7 @@ def _run_stage(hooks: ProductIngestHooks | None, name: str, fn: Callable[[], obj
     if hooks is not None and hooks.after_stage_report is not None:
         try:
             hooks.after_stage_report(name, result)
-        except Exception:
+        except Exception:  # noqa: S110 - telemetry must not fail ingestion
             pass
     if hooks is not None and hooks.after_stage is not None:
         hooks.after_stage(name)

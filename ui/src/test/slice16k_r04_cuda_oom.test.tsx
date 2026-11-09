@@ -12,6 +12,7 @@ describe("16K-R04 CUDA memory recovery presentation", () => {
       <OperationProgress
         phase="operation"
         operation={operation({
+          operation_id: "op_cuda_adapt_16",
           status: "succeeded",
           metrics: {
             dense_execution: {
@@ -36,6 +37,7 @@ describe("16K-R04 CUDA memory recovery presentation", () => {
       <OperationProgress
         phase="operation"
         operation={operation({
+          operation_id: "op_cuda_adapt_32",
           status: "succeeded",
           metrics: {
             dense_execution: { device: "cuda", batch_size: 32 },
@@ -50,6 +52,7 @@ describe("16K-R04 CUDA memory recovery presentation", () => {
       <OperationProgress
         phase="operation"
         operation={operation({
+          operation_id: "op_cpu_adapt",
           status: "succeeded",
           metrics: {
             dense_execution: {
@@ -71,10 +74,12 @@ describe("16K-R04 CUDA memory recovery presentation", () => {
         <OperationProgress
           phase="operation"
           operation={operation({
+            operation_id: "op_cuda_oom",
             status: "failed",
             error: {
               code: "ingest_failed",
               message: "Operation failed.",
+              retryable: false,
               details: { stage: "dense", reason: "cuda_memory_exhausted" },
             },
           })}
@@ -96,10 +101,12 @@ describe("16K-R04 CUDA memory recovery presentation", () => {
         <OperationProgress
           phase="operation"
           operation={operation({
+            operation_id: "op_dense_failure",
             status: "failed",
             error: {
               code: "ingest_failed",
               message: "Operation failed.",
+              retryable: false,
               details: { stage: "dense", reason: "embedding_generation_failed" },
             },
           })}

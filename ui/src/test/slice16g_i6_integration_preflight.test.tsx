@@ -245,7 +245,7 @@ describe("16G-I6 A — keyboard / accessible interaction preflight", () => {
       user,
       (el) =>
         el instanceof HTMLButtonElement &&
-        /1 — Supporting evidence/i.test(el.textContent ?? ""),
+        /1 — Supporting evidence/i.test(el.getAttribute("aria-label") ?? ""),
       "Rapid Fire Supporting button",
     );
     expect(supporting).toHaveFocus();
@@ -1112,7 +1112,9 @@ describe("16G-I6 G — scientific semantic preservation", () => {
       />,
     );
     expect(screen.getByRole("heading", { name: "Rapid Fire" })).toBeTruthy();
-    expect(screen.getByText(/0 Irrelevant/)).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: /0 — Irrelevant/ }),
+    ).toBeTruthy();
     rf.unmount();
 
     const es = render(

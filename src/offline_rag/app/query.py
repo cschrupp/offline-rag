@@ -40,7 +40,7 @@ from offline_rag.app.workspace.models import (
     WorkspaceStatus,
 )
 from offline_rag.app.workspace.store import WorkspaceStore
-from offline_rag.domain.generation import GroundedAnswerResult, ResolvedCitation
+from offline_rag.domain.generation import GroundedAnswerResult
 from offline_rag.generation.config_hash import build_product_v2_generation_config_hash
 from offline_rag.generation.excerpts import build_citation_excerpt
 from offline_rag.generation.orchestrate import GroundedAnswerError
