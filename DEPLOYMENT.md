@@ -324,19 +324,46 @@ Do not introduce the server-backed topology until corpus scale or throughput ben
 Recommended release artifacts:
 
 - `offline-rag:<version>` application image built from `deploy/Dockerfile`
-  (Python 3.14, non-root `10001:10001`, no generator weights).
+  (Python 3.14, non-root `10001:10001`, CPU-only Torch, no generator or
+  embedding/reranker model weights).
+
+The REL-01 release-image candidate installs the locked
+`cpu-release` dependency selection (`torch==2.14.0+cpu`) and does not include
+NVIDIA Python distributions. The application configuration remains
+`embedding.device=auto`; the container does not force a CPU setting or add a
+second hardware-selection path. With CUDA unavailable and a qualified local
+ONNX representation provisioned under `/models`, the existing resolver
+selects `cpu_onnx_fp32_v1`.
+
+This is a packaging choice for the default release container, not a change to
+Seneca's compute architecture. CUDA-capable PyTorch and the qualified
+`cuda_fp16_v1` profile remain available to supported GPU-capable local and
+developer installations. No separate CUDA release image is introduced by
+REL-01. The CPU-oriented image candidate and its runtime qualification are
+under independent review; do not treat its measured size as a promoted release
+artifact until that review and the release gate are complete.
+
+The Python application is installed non-editably in the image's virtual
+environment. Runtime imports do not depend on a copied `/app/src` tree. The
+Python dependency builder and its uv tool are excluded from the final runtime
+image; the existing UI build stage remains unchanged.
 
 The generator's GPU stack remains outside the application image.
 
-**Technical debt (not a Slice 15G acceptance blocker):** the current application
-image is large (~10.3 GB) because the Python ML dependency graph may pull
-CUDA-capable PyTorch artifacts. The image is not bloated by bundled model
-weights or `/data` (the architectural requirement). After Slice 15 acceptance,
-investigate multi-stage builds plus CPU/CUDA image variants. See
+The dependency graph includes RapidOCR, which bundles its small OCR ONNX
+assets inside the Python package. Those dependency-provided OCR files are
+distinct from user-provisioned embedding/reranker model bundles, which remain
+external under `/models` and are not copied into the image.
+
+**Packaging evidence:** REL-01A measured the original image at
+10,436,722,883 bytes. The current CPU-oriented candidate measurement and its
+qualification limits are recorded in
+[`docs/evidence/rel01/QUALIFICATION.md`](docs/evidence/rel01/QUALIFICATION.md).
+The A→B comparison includes both the CPU-only dependency selection and the
+transition from unconstrained baseline `pip install .` resolution to the
+committed lock; it is not an isolated CUDA-removal measurement. See
 [`docs/container_image_optimization.md`](docs/container_image_optimization.md)
-and GitHub issue
-[#1](https://github.com/cschrupp/offline-rag/issues/1).
-Do not change the dependency architecture as an unreviewed packaging fix.
+and GitHub issue [#1](https://github.com/cschrupp/offline-rag/issues/1).
 
 ## 10. Portfolio phrasing
 

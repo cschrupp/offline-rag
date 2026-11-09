@@ -56,7 +56,7 @@ RUN --mount=type=secret,id=build_ca,required=false \
       export REQUESTS_CA_BUNDLE=/tmp/offlinerag-build-ca-bundle.pem; \
       export CURL_CA_BUNDLE=/tmp/offlinerag-build-ca-bundle.pem; \
     fi; \
-    uv sync --locked --no-dev --extra cpu-release --no-cache; \
+    uv sync --locked --no-dev --extra cpu-release --no-editable --no-cache; \
     rm -f /tmp/offlinerag-build-ca-bundle.pem; \
     ! ls /usr/local/share/ca-certificates/*.crt >/dev/null 2>&1
 
@@ -90,7 +90,6 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=python-builder --chown=10001:10001 /app/.venv /app/.venv
-COPY --from=python-builder --chown=10001:10001 /app/src /app/src
 COPY --from=python-builder --chown=10001:10001 /app/config /app/config
 COPY --from=ui-builder --chown=10001:10001 /ui/dist /app/ui
 
