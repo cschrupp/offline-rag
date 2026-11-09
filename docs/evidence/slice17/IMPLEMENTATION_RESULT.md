@@ -111,11 +111,16 @@ does not claim the entire repository test suite is green.
 
 ## Hosted status and limits
 
-No hosted GitHub Actions run was available during preparation. Hosted status is
-therefore **PENDING / NOT CLAIMED**. The first eligible pull-request or
-main-branch push event must establish hosted execution; if repository or
-account configuration prevents it, report `CI_EXECUTION_UNAVAILABLE` rather
-than a pass.
+The first PR-triggered runs did not execute jobs. GitHub run `42571509744`
+ended with workflow-level failure and zero jobs; `gh run view --verbose`
+reported that the run likely failed because of a workflow-file issue. The
+cause was the nonexistent `astral-sh/setup-uv@v10` ref. GitHub's repository
+API confirmed that the released `v10.3.3` ref exists at
+`68559e99cc807c1eb7e9238fd43a15bba460eec2`. The workflow now pins that exact
+release. This corrective commit should trigger the next PR run; hosted status
+remains **PENDING / NOT CLAIMED** until both jobs execute and pass. If
+repository or account configuration prevents hosted execution, report
+`CI_EXECUTION_UNAVAILABLE` rather than a pass.
 
 CUDA/device-memory behavior, real models and external services, private
 corpora, large-corpus ingestion, physical capacity, and all performance
@@ -131,8 +136,12 @@ The bounded corrections requested for candidate
 | --- | --- |
 | F001 — Empty REL-03 inputs make the default CI environment invalid | Removed external inference key variables from the workflow. GitHub secrets are not injected into jobs unless explicitly configured. |
 | F002 — Independent rewriter/judge configuration was not asserted | Added a deterministic profile-overlay test using distinct local configurations; no HTTP calls. Focused REL-03 suite: 20 passed in 1.73 seconds. |
-| F003 — Startup status claimed resolution before hosted execution | Changed to `PENDING HOSTED CONFIRMATION`; the exact test remains in CI. No hosted run is claimed. |
+| F003 — Startup status claimed resolution before hosted execution | Changed to `PENDING HOSTED CONFIRMATION`; the exact test remains in CI. No hosted test job has executed. |
 | F004 — Ruff exclusions lacked an exact inventory | Reran full Ruff after bounded corrections. The 156 remaining diagnostics are listed by file, line, and rule in the linked Ruff inventory. |
+
+The first hosted attempt identified the invalid setup-uv action ref; that
+workflow-only issue is corrected by pinning the verified `v10.3.3` release.
+Run `42571509744` was not a test result because GitHub created no jobs.
 
 The hosted pull-request run is the remaining verification gate for both CI
 jobs and `TEST-STARTUP-01`.
