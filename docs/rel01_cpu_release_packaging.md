@@ -37,6 +37,17 @@ CUDA-capable PyTorch and `cuda_fp16_v1`.
    qualify resolver/API/UI behavior, one embedding, one reranker operation,
    health, filesystem, image contents, and the required regression lanes.
 
+## Dependency selection
+
+The root project keeps its normal PyPI-backed Torch resolution for developer
+installs. `uv sync --locked` (including the default `dev` group) remains the
+ordinary developer path. The release image selects the mutually exclusive
+`cpu-release` extra with `uv sync --locked --no-dev --extra cpu-release`,
+which pins Torch and TorchVision to the explicit PyTorch CPU index. The
+`cuda-dev` extra names the existing PyPI-backed GPU-capable variant for
+developers who need to select it explicitly; it cannot be combined with
+`cpu-release`.
+
 The stages are parts of one tranche, not separate projects. Commit the
 documentation opening, baseline evidence, packaging implementation, and
 qualification closeout separately so pre-optimization measurements remain

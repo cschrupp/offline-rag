@@ -26,10 +26,15 @@ RUN --mount=type=secret,id=build_ca,required=false \
 COPY ui/ ./
 RUN npm run build
 
+FROM ghcr.io/astral-sh/uv:0.11.18 AS uv-bin
+
 FROM python:3.14-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
+    PATH="/app/.venv/bin:${PATH}" \
+    UV_PROJECT_ENVIRONMENT=/app/.venv \
+    UV_PYTHON_DOWNLOADS=0 \
     OFFLINE_RAG_CONFIG=/app/config/base.yaml \
     OFFLINE_RAG_DATA_DIR=/data \
     OFFLINE_RAG_MODELS_DIR=/models \
@@ -51,7 +56,7 @@ RUN groupadd --gid 10001 offlinerag \
 WORKDIR /app
 
 # Explicit inputs only — local data/, models/, .git, .env must stay out of context.
-COPY pyproject.toml README.md /app/
+COPY pyproject.toml uv.lock README.md /app/
 COPY src /app/src
 COPY config /app/config
 COPY --from=ui-builder /ui/dist /app/ui
@@ -63,6 +68,7 @@ RUN apt-get update \
 # Optional build_ca secret assists pip TLS only for this RUN. Bundle is written
 # under /tmp and removed before the layer commits; system trust store is untouched.
 RUN --mount=type=secret,id=build_ca,required=false \
+    --mount=from=uv-bin,source=/uv,target=/usr/local/bin/uv,ro \
     set -eu; \
     if [ -f /run/secrets/build_ca ]; then \
       cat /etc/ssl/certs/ca-certificates.crt /run/secrets/build_ca \
@@ -72,8 +78,7 @@ RUN --mount=type=secret,id=build_ca,required=false \
       export CURL_CA_BUNDLE=/tmp/offlinerag-build-ca-bundle.pem; \
       export PIP_CERT=/tmp/offlinerag-build-ca-bundle.pem; \
     fi; \
-    pip install --no-cache-dir --upgrade pip; \
-    pip install --no-cache-dir .; \
+    uv sync --locked --no-dev --extra cpu-release --no-cache; \
     rm -f /tmp/offlinerag-build-ca-bundle.pem; \
     # Prove no custom CA files were installed into the runtime trust store path.
     ! ls /usr/local/share/ca-certificates/*.crt >/dev/null 2>&1; \
