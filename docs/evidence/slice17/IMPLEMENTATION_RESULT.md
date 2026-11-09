@@ -1,13 +1,13 @@
 # Slice 17 — Regression CI Implementation Result
 
-**Status:** Corrective candidate validated; required hosted CI passed
+**Status:** IR-002 corrective locally qualified; post-correction hosted run pending
 **Branch:** `feature/slice17-regression-ci`
 **Canonical starting point:** `5a793766bb4ecd88278cd0bf3a892572ec30f67a`
 **Baseline inventory:** `415616b5c330352d02b85371edb68d89a87408fb`
 **Baseline supplement:** `18780a43c2a2b9c9099a92c7a0dc0846a89901c2`
 
-This record describes the bounded CI candidate and its local qualification. It
-does not claim a hosted GitHub Actions run, slice acceptance, or promotion.
+This record documents the bounded CI candidate, local qualification, and
+hosted GitHub Actions results. It does not claim slice acceptance or promotion.
 
 ## Workflow
 
@@ -23,10 +23,10 @@ The candidate adds one canonical workflow at
   corpora, or empirical performance measurements.
 
 The backend job runs targeted Ruff checks and the deterministic test-file set
-below. It sets external inference credentials to empty values, routes proxy
-traffic to a closed loopback port, and includes a test-level DNS guard for
-`openrouter.ai` in the REL-03 profile-isolation suite. REL-03 tests use mocks;
-no live inference was performed.
+below. REL-03 deployment-profile/model/key variables are absent from the job
+environment; proxy traffic is routed to a closed loopback port. The REL-03
+profile-isolation suite also guards against DNS access to `openrouter.ai` and
+uses mocks; no live inference was performed.
 
 ## Required backend lane
 
@@ -98,12 +98,13 @@ Prior accepted API verification identified a sandbox cross-thread wake-socket
 `EPERM`. The present dump is not itself a syscall trace, and the underlying
 sandbox behavior remains unexplained at the kernel level.
 
-Disposition: **RESOLVED FOR SUPPORTED CI EXECUTION**. In hosted PR run
-`42574304259`, the exact test ran in the backend lane and passed; the job
-reported 142 passed and 67 skipped overall. The test's explicit fake-tokenizer
-path cannot take the tiktoken-artifact skip. The sandbox-specific stall remains
-documented, does not occur on the supported hosted runner, and does not
-establish a product recovery defect. No production runtime change was made.
+The exact test passed in hosted PR run `42574304259`; that run reported 142
+passed and 67 skipped overall. Its explicit fake-tokenizer path could not take
+the tiktoken-artifact skip. IR-002 applies the same deterministic setup to the
+other tests in its required suites. The exact test also passed in the clean
+local corrected lane; fresh hosted confirmation for the corrected lane is
+pending. The sandbox-specific stall remains documented and no production
+runtime change was made.
 
 The full backend baseline run is separately preserved in
 [`BASELINE_SUPPLEMENT_01.md`](BASELINE_SUPPLEMENT_01.md): 42 failures, 2,176
@@ -120,9 +121,10 @@ identified two defects: the nonexistent `astral-sh/setup-uv@v10` ref, and
 case-insensitive duplicate environment keys `NO_PROXY` / `no_proxy`. The
 workflow now pins the verified `v10.3.3` release and keeps only `NO_PROXY`.
 These runs are workflow-configuration failures, not test results. Hosted status
-is **PASS** from run `42574304259`, where both required jobs executed and
-passed. If future repository or account configuration prevents hosted
-execution, report `CI_EXECUTION_UNAVAILABLE` rather than a pass.
+for the prior candidate is **PASS** from run `42574304259`, where both jobs
+executed and passed. A fresh PR run is pending for the IR-002 corrective. If
+future repository or account configuration prevents hosted execution, report
+`CI_EXECUTION_UNAVAILABLE` rather than a pass.
 
 CUDA/device-memory behavior, real models and external services, private
 corpora, large-corpus ingestion, physical capacity, and all performance
@@ -174,16 +176,35 @@ This run resolves the hosted-execution gate for this corrective. The current
 evidence-only update will trigger one final PR run to validate the recorded
 status and documentation.
 
+Independent re-review identified that the 67 skips were all shared-fixture
+guards for missing tiktoken artifacts in three required suites. The exact
+pre-correction node IDs and the shared skip reason are recorded in
+[`HOSTED_SKIP_INVENTORY_IR002.md`](HOSTED_SKIP_INVENTORY_IR002.md). The current
+corrective removes that accidental dependency without changing production
+startup policy. Each of the three modules selects the existing fake tokenizer
+for its generic request/publication/recovery/observability tests and narrowly
+replaces only startup's tokenizer-artifact readiness probe. Docling readiness,
+generation static validation, the FastAPI lifespan, and all other runtime
+startup behavior remain active. None of these suites tests tokenizer
+provisioning or token identity.
+
+In a clean tracked clone with tokenizer artifacts absent, the exact required
+backend lane then reported **209 passed, 0 skipped**, with one
+Starlette/httpx deprecation warning in 37.67 seconds. This includes the exact
+managed-add startup regression. Targeted Ruff passed; focused REL-03 tests
+reported 20 passed. The post-IR-002 hosted run is still pending. No models or
+external inference were used.
+
 ## Candidate disposition
 
 ```yaml
 slice: 17
 implementation: CANDIDATE_PREPARED
-local_backend_lane: PASS
+local_backend_lane: PASS_209_ZERO_SKIPS_CLEAN_CLONE
 local_frontend_lane: PASS
 rel03_profile_isolation: MOCKED_AND_REQUIRED
-test_startup_01: RESOLVED_FOR_SUPPORTED_CI_EXECUTION
-hosted_ci: PASS
+test_startup_01: PRIOR_HOSTED_PASS_CURRENT_HEAD_RECHECK_PENDING
+hosted_ci: PRIOR_HEAD_PASS_POST_IR002_PENDING
 repository_wide_ruff: HISTORICAL_DEBT_REMAINS
 full_pytest_suite: BASELINE_FAILURES_DOCUMENTED
 human_acceptance: PENDING

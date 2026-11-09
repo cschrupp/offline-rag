@@ -4,7 +4,7 @@
 **Disposition:** Inventory only; these diagnostics are not part of the targeted required CI lint lane.
 **Remaining diagnostics:** 156
 
-The list is generated from Ruff JSON output after the bounded Slice 17 lint corrections. No diagnostic was hidden or bulk-fixed. Paths are repository-relative; line numbers and rule codes are from this run.
+The list is generated from Ruff JSON output after the Slice 17 bounded corrections. No diagnostic was hidden or bulk-fixed. Paths are repository-relative; line numbers and rule codes are from this run.
 
 Rule totals: `B017` 6, `BLE001` 1, `F401` 10, `F541` 1, `I001` 41, `PIE807` 2, `PIE808` 1, `PLR0402` 1, `PLR1730` 1, `PYI034` 1, `RUF012` 5, `RUF022` 9, `RUF046` 3, `RUF059` 5, `RUF100` 10, `S110` 8, `SIM102` 4, `SIM103` 9, `SIM113` 1, `SIM114` 1, `SIM117` 12, `TRY004` 20, `UP035` 3, `UP047` 1
 

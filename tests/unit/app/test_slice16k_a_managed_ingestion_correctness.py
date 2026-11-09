@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import shutil
 import threading
 import time
 from collections.abc import Iterator
@@ -66,16 +65,30 @@ from offline_rag.generation.fake import FakeGenerator
 from offline_rag.ingestion.docling_artifacts import write_provisioning_manifest
 from offline_rag.rerank.fake import FakeReranker
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-TIKTOKEN_SRC = REPO_ROOT / "models" / "tokenizers" / "tiktoken"
 APPROVED_MODEL = "local-test-model"
 APPROVED_ENDPOINT = "http://127.0.0.1:11434/v1"
 
 
+@pytest.fixture(autouse=True)
+def _fake_tokenizer_startup_probe(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep managed-ingestion tests independent of tokenizer provisioning."""
+
+    def validate_fake_tokenizer(
+        artifacts_path: Path, *, encoding: str
+    ) -> tuple[bool, str]:
+        assert artifacts_path.name == "tiktoken"
+        assert artifacts_path.parent.name == "tokenizers"
+        assert encoding == "cl100k_base"
+        return True, "fake tokenizer selected for managed-ingestion test"
+
+    monkeypatch.setattr(
+        "offline_rag.app.startup_validation.validate_tiktoken_artifacts",
+        validate_fake_tokenizer,
+    )
+
+
 def _settings(
     tmp_path: Path,
-    *,
-    use_fake_tokenizer: bool = False,
     **api_overrides: object,
 ) -> AppSettings:
     environ = {
@@ -104,15 +117,13 @@ def _settings(
             )
         }
     )
-    chunking = settings.chunking
-    if use_fake_tokenizer:
-        chunking = chunking.model_copy(
-            update={
-                "tokenizer": chunking.tokenizer.model_copy(
-                    update={"implementation": "fake"}
-                )
-            }
-        )
+    chunking = settings.chunking.model_copy(
+        update={
+            "tokenizer": settings.chunking.tokenizer.model_copy(
+                update={"implementation": "fake"}
+            )
+        }
+    )
     settings = settings.model_copy(
         update={
             "generation": generation,
@@ -126,12 +137,6 @@ def _settings(
     settings.paths.docling_artifacts.mkdir(parents=True, exist_ok=True)
     (settings.paths.docling_artifacts / "placeholder.bin").write_bytes(b"unit")
     write_provisioning_manifest(settings.paths.docling_artifacts, docling_version="test")
-    if not use_fake_tokenizer:
-        if not (TIKTOKEN_SRC / "offline-rag-tokenizer.json").exists():
-            pytest.skip("tiktoken artifacts not provisioned")
-        if settings.paths.tokenizer_artifacts.exists():
-            shutil.rmtree(settings.paths.tokenizer_artifacts)
-        shutil.copytree(TIKTOKEN_SRC, settings.paths.tokenizer_artifacts)
     return settings
 
 
@@ -158,11 +163,9 @@ def _runtime(settings: AppSettings) -> ApplicationRuntime:
 @contextmanager
 def _client(
     tmp_path: Path,
-    *,
-    use_fake_tokenizer: bool = False,
     **api: object,
 ) -> Iterator[tuple[TestClient, ApplicationRuntime]]:
-    settings = _settings(tmp_path, use_fake_tokenizer=use_fake_tokenizer, **api)
+    settings = _settings(tmp_path, **api)
     runtime = _runtime(settings)
     app = create_app(runtime=runtime)
     with TestClient(app) as client:
@@ -308,27 +311,11 @@ def test_client_disconnect_never_cancels_managed_ingest(tmp_path: Path) -> None:
 
 
 def test_managed_add_survives_simulated_deadline_and_publishes(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
 ) -> None:
     """Req 1: detached Add may exceed 1800s simulated and still publish."""
-    # This lifecycle case exercises TestClient startup and managed publication,
-    # not tokenizer provisioning. Keep the real startup validator and replace
-    # only its external tokenizer-artifact readiness check for this fake-tokenizer
-    # configuration. Other startup checks still run normally.
-    def fake_tokenizer_artifacts_ready(
-        artifacts_path: Path, *, encoding: str
-    ) -> tuple[bool, str]:
-        assert artifacts_path == tmp_path / "models" / "tokenizers" / "tiktoken"
-        assert encoding == "cl100k_base"
-        return True, "fake tokenizer is configured for this lifecycle test"
-
-    monkeypatch.setattr(
-        "offline_rag.app.startup_validation.validate_tiktoken_artifacts",
-        fake_tokenizer_artifacts_ready,
-    )
     with _client(
         tmp_path,
-        use_fake_tokenizer=True,
         ingest_deadline_seconds=1800,
     ) as (client, runtime):
         wid = _create(client, "k1")["workspace_id"]

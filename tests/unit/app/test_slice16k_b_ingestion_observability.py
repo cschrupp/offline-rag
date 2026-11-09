@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import shutil
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -39,10 +38,26 @@ from offline_rag.ingestion.docling_artifacts import write_provisioning_manifest
 from offline_rag.ingestion.docling_parser import DoclingPdfParser
 from offline_rag.rerank.fake import FakeReranker
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-TIKTOKEN_SRC = REPO_ROOT / "models" / "tokenizers" / "tiktoken"
 APPROVED_MODEL = "local-test-model"
 APPROVED_ENDPOINT = "http://127.0.0.1:11434/v1"
+
+
+@pytest.fixture(autouse=True)
+def _fake_tokenizer_startup_probe(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep observability tests independent of tokenizer provisioning."""
+
+    def validate_fake_tokenizer(
+        artifacts_path: Path, *, encoding: str
+    ) -> tuple[bool, str]:
+        assert artifacts_path.name == "tiktoken"
+        assert artifacts_path.parent.name == "tokenizers"
+        assert encoding == "cl100k_base"
+        return True, "fake tokenizer selected for observability test"
+
+    monkeypatch.setattr(
+        "offline_rag.app.startup_validation.validate_tiktoken_artifacts",
+        validate_fake_tokenizer,
+    )
 
 
 def _settings(tmp_path: Path, **api_overrides: object) -> AppSettings:
@@ -65,6 +80,13 @@ def _settings(tmp_path: Path, **api_overrides: object) -> AppSettings:
     reranker = settings.reranker.model_copy(
         update={"enabled": True, "implementation": "fake"}
     )
+    chunking = settings.chunking.model_copy(
+        update={
+            "tokenizer": settings.chunking.tokenizer.model_copy(
+                update={"implementation": "fake"}
+            )
+        }
+    )
     indexing = settings.indexing.model_copy(
         update={
             "embedding": settings.indexing.embedding.model_copy(
@@ -78,17 +100,13 @@ def _settings(tmp_path: Path, **api_overrides: object) -> AppSettings:
             "api": api,
             "reranker": reranker,
             "indexing": indexing,
+            "chunking": chunking,
         }
     )
     ensure_data_directories(settings)
     settings.paths.docling_artifacts.mkdir(parents=True, exist_ok=True)
     (settings.paths.docling_artifacts / "placeholder.bin").write_bytes(b"unit")
     write_provisioning_manifest(settings.paths.docling_artifacts, docling_version="test")
-    if not (TIKTOKEN_SRC / "offline-rag-tokenizer.json").exists():
-        pytest.skip("tiktoken artifacts not provisioned")
-    if settings.paths.tokenizer_artifacts.exists():
-        shutil.rmtree(settings.paths.tokenizer_artifacts)
-    shutil.copytree(TIKTOKEN_SRC, settings.paths.tokenizer_artifacts)
     return settings
 
 

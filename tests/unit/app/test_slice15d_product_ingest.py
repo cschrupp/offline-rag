@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import shutil
 import subprocess
 import threading
 from collections.abc import AsyncIterator
@@ -28,7 +27,6 @@ from offline_rag.dense.qdrant_local import QdrantLocalBackend
 from offline_rag.ingestion.docling_artifacts import write_provisioning_manifest
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-TIKTOKEN_SRC = REPO_ROOT / "models" / "tokenizers" / "tiktoken"
 BASELINE_SHA = "02544e3974da6e26ec512a83f856b1e8d864d86d"
 APPROVED_MODEL = "local-test-model"
 APPROVED_ENDPOINT = "http://127.0.0.1:11434/v1"
@@ -43,11 +41,24 @@ def _provision_assets(settings: AppSettings) -> None:
     settings.paths.docling_artifacts.mkdir(parents=True, exist_ok=True)
     (settings.paths.docling_artifacts / "placeholder.bin").write_bytes(b"unit")
     write_provisioning_manifest(settings.paths.docling_artifacts, docling_version="test")
-    if not (TIKTOKEN_SRC / "offline-rag-tokenizer.json").exists():
-        pytest.skip("tiktoken artifacts not provisioned")
-    if settings.paths.tokenizer_artifacts.exists():
-        shutil.rmtree(settings.paths.tokenizer_artifacts)
-    shutil.copytree(TIKTOKEN_SRC, settings.paths.tokenizer_artifacts)
+
+
+@pytest.fixture(autouse=True)
+def _fake_tokenizer_startup_probe(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep generic ingest tests independent of provisioned tokenizer assets."""
+
+    def validate_fake_tokenizer(
+        artifacts_path: Path, *, encoding: str
+    ) -> tuple[bool, str]:
+        assert artifacts_path.name == "tiktoken"
+        assert artifacts_path.parent.name == "tokenizers"
+        assert encoding == "cl100k_base"
+        return True, "fake tokenizer selected for generic ingest test"
+
+    monkeypatch.setattr(
+        "offline_rag.app.startup_validation.validate_tiktoken_artifacts",
+        validate_fake_tokenizer,
+    )
 
 
 def _settings(tmp_path: Path, **api_overrides: object) -> AppSettings:
@@ -66,7 +77,16 @@ def _settings(tmp_path: Path, **api_overrides: object) -> AppSettings:
         }
     )
     api = settings.api.model_copy(update=api_overrides) if api_overrides else settings.api
-    settings = settings.model_copy(update={"generation": generation, "api": api})
+    chunking = settings.chunking.model_copy(
+        update={
+            "tokenizer": settings.chunking.tokenizer.model_copy(
+                update={"implementation": "fake"}
+            )
+        }
+    )
+    settings = settings.model_copy(
+        update={"generation": generation, "api": api, "chunking": chunking}
+    )
     _provision_assets(settings)
     return settings
 
