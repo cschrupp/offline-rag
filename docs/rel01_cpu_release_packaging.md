@@ -1,7 +1,7 @@
 # REL-01 — CPU Release Packaging
 
 **Status:** REL-01B/C IMPLEMENTATION COMPLETE / INDEPENDENT REVIEW PENDING
-**Starting canonical `main`:** `3fb65e34f5b45ddf695d82bfd0d9badd34b9ee2d`  
+**Starting canonical `main`:** `3fb65e34f5b45ddf695d82bfd0d9badd34b9ee2d`
 **Branch:** `feature/rel-01-cpu-release-packaging`
 
 ## Objective
