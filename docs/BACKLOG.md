@@ -567,7 +567,7 @@ Human acceptance, promotion, or authority for downstream beta work.
 ### TEST-STARTUP-01 — Diagnose managed-operation TestClient startup hang
 
 **Priority:** P2\
-**Status:** PENDING HOSTED CONFIRMATION / SANDBOX LIMITATION DOCUMENTED
+**Status:** RESOLVED FOR SUPPORTED CI EXECUTION / SANDBOX LIMITATION DOCUMENTED
 
 Selected managed-operation recovery tests can wait indefinitely while entering
 `fastapi.testclient.TestClient`. A faulthandler trace shows the test thread
@@ -582,16 +582,16 @@ add succeeded in the recovered process. Therefore this test-infrastructure
 issue does not currently block beta.
 
 The exact
-`test_managed_add_survives_simulated_deadline_and_publishes` test passed in a
-compatible unsandboxed run and remains included in the required hosted backend
-CI lane. Hosted confirmation is pending. In the restricted Codex sandbox it
-can still stall at the AnyIO
-cross-thread startup handshake; prior API verification identified a sandbox
-wake-socket `EPERM`, while the current thread dump locates the wait but is not
-itself a syscall trace. No production startup or recovery code was changed.
-No product recovery defect was established and no production startup or
-recovery code changed. Update this status only after the hosted test result is
-known; reopen the investigation if that test fails in CI.
+`test_managed_add_survives_simulated_deadline_and_publishes` test passed in
+hosted PR run `42574304259` and remains in the required backend CI lane. Its
+fixture uses a fake tokenizer and replaces only the tiktoken-artifact readiness
+probe; the real FastAPI lifespan and remaining startup checks run. In the
+restricted Codex sandbox it can still stall at the AnyIO cross-thread startup
+handshake; prior API verification identified a sandbox wake-socket `EPERM`,
+while the current thread dump locates the wait but is not itself a syscall
+trace. No production startup or recovery code changed. No product recovery
+defect was established. Reopen the investigation if this test fails in a
+future supported CI environment.
 
 ### ROBUST-01 — Native PDF parser process isolation
 

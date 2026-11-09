@@ -1,6 +1,6 @@
 # Slice 17 — Regression CI Implementation Result
 
-**Status:** Corrective candidate prepared; hosted run pending
+**Status:** Corrective candidate validated; required hosted CI passed
 **Branch:** `feature/slice17-regression-ci`
 **Canonical starting point:** `5a793766bb4ecd88278cd0bf3a892572ec30f67a`
 **Baseline inventory:** `415616b5c330352d02b85371edb68d89a87408fb`
@@ -98,13 +98,12 @@ Prior accepted API verification identified a sandbox cross-thread wake-socket
 `EPERM`. The present dump is not itself a syscall trace, and the underlying
 sandbox behavior remains unexplained at the kernel level.
 
-Disposition: **PENDING HOSTED CONFIRMATION**. The exact test is green in the
-compatible unsandboxed execution environment and remains required in hosted
-CI. Hosted execution has not occurred yet. No production runtime change was
-made; the sandbox-specific stall is documented and does not establish a
-product recovery defect. If the test passes on the supported hosted runner,
-record `RESOLVED FOR SUPPORTED CI EXECUTION`; if it fails or stalls, reopen the
-investigation without weakening the lane.
+Disposition: **RESOLVED FOR SUPPORTED CI EXECUTION**. In hosted PR run
+`42574304259`, the exact test ran in the backend lane and passed; the job
+reported 142 passed and 67 skipped overall. The test's explicit fake-tokenizer
+path cannot take the tiktoken-artifact skip. The sandbox-specific stall remains
+documented, does not occur on the supported hosted runner, and does not
+establish a product recovery defect. No production runtime change was made.
 
 The full backend baseline run is separately preserved in
 [`BASELINE_SUPPLEMENT_01.md`](BASELINE_SUPPLEMENT_01.md): 42 failures, 2,176
@@ -121,9 +120,9 @@ identified two defects: the nonexistent `astral-sh/setup-uv@v10` ref, and
 case-insensitive duplicate environment keys `NO_PROXY` / `no_proxy`. The
 workflow now pins the verified `v10.3.3` release and keeps only `NO_PROXY`.
 These runs are workflow-configuration failures, not test results. Hosted status
-remains **PENDING / NOT CLAIMED** until both jobs execute and pass. If
-repository or account configuration prevents hosted execution, report
-`CI_EXECUTION_UNAVAILABLE` rather than a pass.
+is **PASS** from run `42574304259`, where both required jobs executed and
+passed. If future repository or account configuration prevents hosted
+execution, report `CI_EXECUTION_UNAVAILABLE` rather than a pass.
 
 CUDA/device-memory behavior, real models and external services, private
 corpora, large-corpus ingestion, physical capacity, and all performance
@@ -138,8 +137,8 @@ The bounded corrections requested for candidate
 | Finding | Disposition |
 | --- | --- |
 | F001 — Empty REL-03 inputs make the default CI environment invalid | Removed external inference key variables from the workflow. GitHub secrets are not injected into jobs unless explicitly configured. |
-| F002 — Independent rewriter/judge configuration was not asserted | Added a deterministic profile-overlay test using distinct local configurations; no HTTP calls. Focused REL-03 suite: 20 passed in 1.73 seconds. |
-| F003 — Startup status claimed resolution before hosted execution | Changed to `PENDING HOSTED CONFIRMATION`; the exact test remains in CI. No hosted test job has executed. |
+| F002 — Independent rewriter/judge configuration was not asserted | Added a deterministic profile-overlay test using distinct local configurations; no HTTP calls. Focused REL-03 suite: 20 passed in 1.09 seconds on this candidate. |
+| F003 — Startup status claimed resolution before hosted execution | Interim status was `PENDING HOSTED CONFIRMATION`; after hosted run `42574304259` passed the exact test, it is now `RESOLVED FOR SUPPORTED CI EXECUTION`. |
 | F004 — Ruff exclusions lacked an exact inventory | Reran full Ruff after bounded corrections. The 156 remaining diagnostics are listed by file, line, and rule in the linked Ruff inventory. |
 
 The first two hosted attempts exposed workflow-only setup defects. The
@@ -163,12 +162,17 @@ probe. The real FastAPI lifespan, Docling readiness check, generation
 configuration check, and remaining startup path still execute; other tests in
 the module retain their real-artifact requirement. The frontend job in run
 `42572292895` completed **PASS** across
-lint, typecheck, 49 files / 459 tests, and build. A new PR run is required to
-verify the full-history checkout and execute the previously skipped lifecycle
-test on hosted CI.
+lint, typecheck, 49 files / 459 tests, and build. Its backend failures and
+skipped lifecycle test were resolved and verified in the subsequent run below.
 
-The hosted pull-request run is the remaining verification gate for both CI
-jobs and `TEST-STARTUP-01`.
+PR run `42574304259` completed both hosted jobs **PASS** on corrective commit
+`53e170cdd4f55c5c0a5cf6fe4f4c5257a740c4cb`. Backend setup, lint, and the
+required deterministic regressions passed (142 passed, 67 artifact-dependent
+skips, one deprecation warning); the exact managed-add startup test passed.
+Frontend dependency installation, lint, typecheck, tests, and build all passed.
+This run resolves the hosted-execution gate for this corrective. The current
+evidence-only update will trigger one final PR run to validate the recorded
+status and documentation.
 
 ## Candidate disposition
 
@@ -178,8 +182,8 @@ implementation: CANDIDATE_PREPARED
 local_backend_lane: PASS
 local_frontend_lane: PASS
 rel03_profile_isolation: MOCKED_AND_REQUIRED
-test_startup_01: PENDING_HOSTED_CONFIRMATION
-hosted_ci: NOT_YET_EXECUTED
+test_startup_01: RESOLVED_FOR_SUPPORTED_CI_EXECUTION
+hosted_ci: PASS
 repository_wide_ruff: HISTORICAL_DEBT_REMAINS
 full_pytest_suite: BASELINE_FAILURES_DOCUMENTED
 human_acceptance: PENDING
