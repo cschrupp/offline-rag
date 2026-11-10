@@ -56,15 +56,14 @@ export function EngineeringArchitecturePage() {
           title="Runtime portability"
           data-testid="runtime-portability-flow"
           layers={[
-            { title: "CPU release image", detail: "CPU-only locked Torch · no provisioned model bundles" },
-            { title: "AUTO resolver", detail: "unchanged application policy" },
-            { title: "CPU ONNX FP32", detail: "qualified local embedding runtime" },
-            { title: "CUDA FP16 runtime", detail: "separately qualified host/profile" },
-            { title: "External model assets", detail: "provisioned outside the image" },
+            { title: "Installation capability", detail: "CPU-only release image or CUDA-capable local/developer installation" },
+            { title: "AUTO resolver", detail: "the unchanged application policy selects a supported runtime for the installation" },
+            { title: "Selected runtime profile", detail: "CPU release → cpu_onnx_fp32_v1 / CPUExecutionProvider OR CUDA-capable install → cuda_fp16_v1 / torch_st_v1" },
+            { title: "Provisioned model assets", detail: "external to the application image and common to the supported runtime profiles" },
           ]}
           notes={[
             "REL-01 qualifies the CPU release artifact. CUDA runtime qualification does not mean a CUDA release image exists.",
-            "Runtime resolution remains AUTO; the application is not forced to CPU by presentation or packaging policy.",
+            "CPU ONNX and CUDA FP16 are alternatives selected by the existing AUTO policy; presentation does not force CPU or add a resolver.",
           ]}
         />
       </Card>
@@ -82,7 +81,7 @@ export function EngineeringArchitecturePage() {
           ]}
           notes={[
             "Default operation is standalone and strict-offline. Initial provisioning may require separately managed downloads.",
-            "REL-03 permits only the configured generation call to leave the installation; evidence selection and citation authority remain local.",
+            "REL-03's approved external inference seam covers grounded answer generation, explicit conversation transformations, and Gold authoring. Retrieval, embeddings, reranking, evidence selection, citation membership and provenance authority, and Gold truth remain local.",
           ]}
         />
       </Card>

@@ -538,8 +538,41 @@ def test_v2_current_evidence_records_and_bound_metrics() -> None:
         "current",
     ]
     capacity_facts = records["capacity.large-source-envelope"]["presentation"]["facts"]
+    assert [fact["currency"] for fact in capacity_facts] == [
+        "historical",
+        "historical",
+        "current",
+    ]
     cpu_bytes = capacity_facts[0]["metrics"][0]["metric"]["value"]
     assert cpu_bytes == 96_152_520
+    product_limit_metrics = {
+        metric["metric_id"]: metric["metric"]["value"]
+        for metric in capacity_facts[2]["metrics"]
+    }
+    assert product_limit_metrics == {
+        "pdf-limit": 94_371_840,
+        "large-pdf-path-threshold": 26_214_400,
+    }
+    assert (
+        "Only when the desired set contains a PDF over the ordinary 25 MiB threshold"
+        in capacity_facts[2]["claim"]
+    )
+
+    hosted_facts = records["release.verification"]["presentation"]["facts"]
+    assert [fact["currency"] for fact in hosted_facts] == [
+        "historical",
+        "current",
+    ]
+
+    config_facts = records["product.current-configuration"]["presentation"]["facts"]
+    rationale = next(
+        fact for fact in config_facts if fact["fact_id"] == "retrieval-rationale"
+    )
+    assert {"adr005", "adr006"} <= set(rationale["source_ref_ids"])
+    assert (
+        "not make Slice 9H-P or 14C configuration-promotion evidence"
+        in rationale["claim"]
+    )
 
 
 def test_level_c_approximate_and_unevaluable() -> None:

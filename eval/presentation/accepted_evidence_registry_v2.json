@@ -879,6 +879,44 @@
           "role": "current_settings_contract",
           "source_kind": "accepted_machine_readable",
           "expected_sha256": "5149ce174d0c8a29bded139bc39af55c29a45a6b11439ce5b709a5648e3ed346"
+        },
+        {
+          "source_ref_id": "adr005",
+          "path": "ARCHITECTURE_DECISIONS.md",
+          "role": "current_architecture_decision",
+          "source_kind": "accepted_markdown_projection",
+          "expected_sha256": "96793f9fb92f3efe98ff7495b4bfcbefb9480d66c2b5c5f05e3cd91a88fc87e3",
+          "source_locator": "ADR-005 — RRF as the first fusion method"
+        },
+        {
+          "source_ref_id": "adr006",
+          "path": "ARCHITECTURE_DECISIONS.md",
+          "role": "current_architecture_decision",
+          "source_kind": "accepted_markdown_projection",
+          "expected_sha256": "96793f9fb92f3efe98ff7495b4bfcbefb9480d66c2b5c5f05e3cd91a88fc87e3",
+          "source_locator": "ADR-006 — Reranking as a separate stage"
+        },
+        {
+          "source_ref_id": "retrieval-no-promotion",
+          "path": "docs/pilots/slice9h_p_results.md",
+          "role": "accepted_report",
+          "source_kind": "accepted_markdown_projection",
+          "source_locator": "§2 Six-arm aggregates — full-22; §3 Six-arm aggregates — human-16; §4 Full-22 vs human-16 sensitivity",
+          "expected_sha256": "5fc5688395ceea938ff85476bed99918a3f8aea4c119a6ff2c584950fd503c5e"
+        },
+        {
+          "source_ref_id": "perf-14c-no-promotion",
+          "path": "eval/results/performance_14/perfsuite_5248892df382995ac96ec2b09aea61bf27510673b93e0d816d6a255a2f4305ba/perfrun_deb7a58e49d0f64496553a16c3edc3a5b517deec5ec1c9ddd76831fee79627ca/aggregate.json",
+          "role": "accepted_machine_artifact",
+          "source_kind": "accepted_machine_readable",
+          "expected_sha256": "2b7083a58d61ca2b56d4bc5a1d5ebdcf4f399889eb918f99376ae2aa5a96f3a7"
+        },
+        {
+          "source_ref_id": "perf-14c-run-no-promotion",
+          "path": "eval/results/performance_14/perfsuite_5248892df382995ac96ec2b09aea61bf27510673b93e0d816d6a255a2f4305ba/perfrun_deb7a58e49d0f64496553a16c3edc3a5b517deec5ec1c9ddd76831fee79627ca/run_manifest.json",
+          "role": "accepted_machine_artifact",
+          "source_kind": "accepted_machine_readable",
+          "expected_sha256": "7e8a58e354e5b7e968843e1a725dfa27656e5bdeca5f5969bb67f7153d1c575e"
         }
       ],
       "provenance": {
@@ -923,6 +961,19 @@
               "generation-settings-mode"
             ],
             "metrics": []
+          },
+          {
+            "fact_id": "retrieval-rationale",
+            "title": "Why RRF and a separate reranker",
+            "claim": "RRF is the first fusion method because dense and lexical scores are not directly calibrated. Reranking remains separate so candidate retrieval and cross-encoder ranking can be measured independently. This architecture rationale does not make Slice 9H-P or 14C configuration-promotion evidence; neither established a retrieval winner.",
+            "source_ref_ids": [
+              "adr005",
+              "adr006",
+              "retrieval-no-promotion",
+              "perf-14c-no-promotion",
+              "perf-14c-run-no-promotion"
+            ],
+            "scope": "Architecture rationale and the explicitly non-promotional status of the cited descriptive retrieval/performance evidence."
           }
         ]
       }
@@ -1112,12 +1163,12 @@
       "evidence_id": "capacity.large-source-envelope",
       "evidence_family": "capacity",
       "title": "Large-source qualification and admission",
-      "summary": "Scientific qualification and product admission are distinct: the qualified Q100 fixture was 91.70 MiB, while current L6 PDF admission is limited to 90 MiB and applies profile, host-memory, available-memory, and disk gates.",
+      "summary": "Scientific qualification and product admission are distinct: the Q100 fixture was 91.70 MiB; current PDF admission allows up to 90 MiB, with the CPU profile and host/resource gates applying only when the desired set contains a PDF over the ordinary 25 MiB threshold.",
       "evidence_authority": "accepted",
       "promotion_status": "not_applicable",
       "currency": "current",
       "decision_effect": "Prevents qualification workload size from being mistaken for product policy.",
-      "claim_scope": "L5 CPU/CUDA observations and current L6 large-PDF admission.",
+      "claim_scope": "L5 CPU/CUDA observations and current L6 large-PDF admission path for desired sets containing a PDF over 25 MiB.",
       "caveats": [
         "CPU Q100 and confirmation passed; Q250 was invalid after host termination and Q512 was not run.",
         "CUDA Q100 passed on the qualified RTX 2080 Super host but did not promote CUDA into production admission.",
@@ -1168,7 +1219,8 @@
           "cpu_profile": "cpu_onnx_fp32_v1",
           "cuda_profile": "cuda_fp16_v1",
           "admission_profile": "cpu_onnx_fp32_v1",
-          "host_memory_gate": "MemTotal >= 32,000,000,000; MemAvailable >= 19,388,303,360; disk reserve per L6 policy"
+          "host_memory_gate": "MemTotal >= 32,000,000,000; MemAvailable >= 19,388,303,360; disk reserve per L6 policy",
+          "large_pdf_admission_predicate": "desired set contains a PDF > 25 MiB"
         }
       },
       "value_source": "curated",
@@ -1200,7 +1252,8 @@
                 }
               }
             ],
-            "scope": "L5 CPU Q100 and confirmation fixture; Q250 host termination and Q512 not-run disposition."
+            "scope": "L5 CPU Q100 and confirmation fixture; Q250 host termination and Q512 not-run disposition.",
+            "currency": "historical"
           },
           {
             "fact_id": "cuda-q100",
@@ -1227,12 +1280,13 @@
                 }
               }
             ],
-            "scope": "L5 CUDA Q100 and confirmation on the qualified RTX 2080 Super host."
+            "scope": "L5 CUDA Q100 and confirmation on the qualified RTX 2080 Super host.",
+            "currency": "historical"
           },
           {
             "fact_id": "product-limit",
             "title": "Current PDF admission",
-            "claim": "L6 limits an individual PDF to 90 MiB (94,371,840 bytes) and requires cpu_onnx_fp32_v1 plus host-memory, available-memory, and disk-reserve checks.",
+            "claim": "L6 permits an individual PDF up to 90 MiB (94,371,840 bytes). Only when the desired set contains a PDF over the ordinary 25 MiB threshold (26,214,400 bytes) does the large-PDF admission path require cpu_onnx_fp32_v1 plus the accepted host-memory, available-memory, and disk-reserve gates.",
             "source_ref_ids": [
               "l6-policy",
               "l6-result",
@@ -1257,9 +1311,28 @@
                   ],
                   "expected_value": 94371840
                 }
+              },
+              {
+                "metric_id": "large-pdf-path-threshold",
+                "label": "Large-PDF admission threshold",
+                "metric": {
+                  "availability": "measured",
+                  "value": 26214400,
+                  "unit": "bytes",
+                  "value_qualifier": "exact"
+                },
+                "source_binding": {
+                  "source_ref_id": "base-config",
+                  "format": "yaml_path",
+                  "locator": [
+                    "api",
+                    "max_bytes_per_document"
+                  ],
+                  "expected_value": 26214400
+                }
               }
             ],
-            "scope": "Current L6 PDF per-document admission default and its separate host/resource gates."
+            "scope": "Current L6 per-document PDF limit; large-PDF profile and resource gates apply only when the desired set contains a PDF larger than the 25 MiB ordinary per-source threshold."
           }
         ]
       }
@@ -1350,7 +1423,8 @@
                 }
               }
             ],
-            "scope": "Hosted Slice 17 run 42641831431 on its exact reviewed evidence head; bounded deterministic test scope."
+            "scope": "Hosted Slice 17 run 42641831431 on its exact reviewed evidence head; bounded deterministic test scope.",
+            "currency": "historical"
           },
           {
             "fact_id": "cpu-release",

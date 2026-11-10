@@ -15,7 +15,7 @@ existing routes remain `/engineering/evaluation` and
 `/engineering/architecture`.
 
 The active manifest is
-`engmanifest_f5d70597b8eb2b56385b24f7ac0c51f88118ecbb83fc199f89fdff4a112f68f4`.
+`engmanifest_64fae8b88b042800952b9868ef6f33b0ede026185f17893cada125f296ccebec`.
 The v2 registry adds exactly these six records approved by the audit:
 
 - `product.current-configuration`
@@ -32,16 +32,19 @@ were added. `evidence_authority` is limited to `accepted` or `authoritative`;
 product/configuration promotion, not Git promotion. Authority, currency,
 decision effect, and product/config promotion render as separate fields.
 Fact currency defaults to the record. Explicit mixed-currency overrides are
-used only for the recovery record (current operational recovery and disabled
-product recovery) and conversation decision history (historical 01A/01B,
-current 01C).
+used for recovery (current operational recovery and disabled product recovery),
+conversation decision history (historical 01A/01B, current 01C), large-source
+qualification (historical CPU/CUDA Q100 observations, current L6 admission),
+and release verification (historical hosted-run counts, current REL-01 image
+qualification).
 
 The generic `key_facts` presentation requires claim, explicit scope, currency,
-and one or more source references for every fact. New measured values require
-a source binding: JSON Pointer or YAML path
-extraction, or a numeric literal verified against the cited source. The six
-new records source-bind numeric claims including the Q100 fixture byte counts,
-90 MiB product PDF limit, REL-01 image size, and bounded hosted test totals.
+and one or more source references for every fact. Historical Q100 and hosted
+run facts are explicitly marked historical inside otherwise current records.
+New measured values require a source binding: JSON Pointer or YAML path
+extraction, or a numeric literal verified against the cited source. The six new records source-bind numeric claims including the Q100 fixture
+byte counts, 90 MiB product PDF limit, 25 MiB large-PDF threshold, REL-01 image
+size, and bounded hosted test totals.
 Historical curated values in the existing records remain hash-pinned; no
 retroactive bulk literal-validation project was added. Visible portfolio
 metrics use rounded precision while exact values remain in the static manifest
@@ -51,15 +54,36 @@ The Evaluation page now distinguishes current product/configuration facts from
 historical pilot results. It states that citation membership is checked
 against the current query's `EvidenceUnit[]` and provenance is resolved, while
 explicitly warning that membership validity does not prove semantic support.
-The current retrieval description is dense + BM25 → RRF → BGE reranker. Large
-source qualification is separate from the L6 90 MiB product admission policy.
-Slice 12C query/retrieval rewrite-and-retry recovery is distinguished from
-accepted operational crash/restart recovery.
+The current retrieval description is dense + BM25 → RRF → BGE reranker.
+ADR-005 explains RRF's use because dense and lexical scores are not directly
+calibrated; ADR-006 keeps reranking separate so candidate retrieval and
+cross-encoder ranking remain independently measurable. The descriptive Slice
+9H-P and 14C evidence did not promote a retrieval winner. Large-source
+qualification is separate from L6 product admission: PDFs are limited to 90
+MiB, and only a desired set containing a PDF over the ordinary 25 MiB threshold
+requires the qualified CPU profile and accepted host/resource gates. Slice 12C
+query/retrieval rewrite-and-retry recovery is distinguished from accepted
+operational crash/restart recovery.
 
 The Architecture route has exactly five diagrams: life of a question,
 snapshot/provenance, runtime portability, deployment/trust boundary, and the
-evidence publication chain. The conversation-action branch and REL-03 boundary
-are shown without adding routes or execution controls.
+evidence publication chain. Runtime portability shows CPU ONNX and CUDA FP16 as
+alternatives selected by the existing AUTO policy, with provisioned assets
+external to the image. The REL-03 trust note covers grounded answer generation,
+explicit conversation transformations, and Gold authoring; retrieval, embeddings,
+reranking, evidence selection, citation membership/provenance authority, and
+Gold truth remain local. No routes or execution controls were added.
+
+## IR-001 corrective summary
+
+The large-PDF claim now distinguishes the 90 MiB PDF maximum from the 25 MiB
+threshold that activates the CPU profile and host/resource gates; both values
+are source-bound. CPU and CUDA runtime profiles are presented as AUTO-selected
+alternatives. The current-configuration record cites ADR-005/006 for the RRF
+and separate-reranker rationale and explicitly preserves the non-promotion
+status of Slice 9H-P/14C. The REL-03 architecture note names grounded answers,
+explicit conversation transformations, and Gold authoring while retaining the
+local retrieval/evidence/citation authority boundary.
 
 ## Historical source preservation
 

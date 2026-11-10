@@ -143,6 +143,14 @@ describe("16E presentation tokens and architecture", () => {
     const product = screen.getByTestId("question-lifecycle-flow");
     expect(product.textContent ?? "").toMatch(/Membership validation does not prove semantic entailment/);
     expect(product.textContent ?? "").not.toMatch(/LangGraph/);
+    const portability = screen.getByTestId("runtime-portability-flow");
+    expect(portability.textContent ?? "").toMatch(/Installation capability/);
+    expect(portability.textContent ?? "").toMatch(/AUTO resolver/);
+    expect(portability.textContent ?? "").toMatch(/CPU release → cpu_onnx_fp32_v1.* OR CUDA-capable install → cuda_fp16_v1/);
+    expect(portability.querySelectorAll(".engineering-arch-card")).toHaveLength(4);
+    const deployment = screen.getByTestId("deployment-architecture-flow");
+    expect(deployment.textContent ?? "").toMatch(/grounded answer generation, explicit conversation transformations, and Gold authoring/);
+    expect(deployment.textContent ?? "").toMatch(/Retrieval, embeddings, reranking, evidence selection/);
     const deferred = screen
       .getByRole("heading", { name: "Deferred / not active" })
       .closest(".card");
@@ -163,8 +171,15 @@ describe("16E evaluation evidence UI", () => {
     expect(pageHeader?.textContent ?? "").toMatch(/No live benchmark execution/i);
     expect(pageHeader?.textContent ?? "").not.toMatch(/engmanifest_/i);
     expect(screen.getByRole("heading", { name: "Current product configuration" })).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/RRF is the first fusion method because dense and lexical scores are not directly calibrated/).length,
+    ).toBeGreaterThan(0);
     expect(screen.getByRole("heading", { name: "Compute portability" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Large-source qualification and admission" })).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/Only when the desired set contains a PDF over the ordinary 25 MiB threshold/).length,
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByText("Fact currency: historical").length).toBeGreaterThanOrEqual(3);
     expect(screen.getAllByText(/Decision effect\./i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Membership validity ≠ semantic support/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Evidence authority/).length).toBeGreaterThan(0);
