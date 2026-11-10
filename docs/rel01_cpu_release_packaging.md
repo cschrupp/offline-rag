@@ -1,6 +1,8 @@
 # REL-01 — CPU Release Packaging
 
-**Status:** REL-01B/C IMPLEMENTATION COMPLETE / INDEPENDENT REVIEW PENDING
+**Current status:** REL-01 COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED /
+PROMOTED with evidence closeout at `0a1b5a45`.
+**Historical implementation branch:** `feature/rel-01-cpu-release-packaging`
 **Starting canonical `main`:** `3fb65e34f5b45ddf695d82bfd0d9badd34b9ee2d`
 **Branch:** `feature/rel-01-cpu-release-packaging`
 
@@ -17,7 +19,7 @@ probe, qualified profile resolver/runtime, availability snapshot, Compute API,
 and UI remain authoritative. Developer installations continue to support
 CUDA-capable PyTorch and `cuda_fp16_v1`.
 
-## Bounded stages
+## Original bounded stages
 
 1. **REL-01A — Current packaging baseline:** build the exact starting
    `deploy/Dockerfile`; record Docker environment, image ID/digest, image size,
@@ -59,8 +61,10 @@ auditable.
 
 - Python `>=3.14,<3.15`; UID/GID `10001:10001`; `/data` writable and `/models`
   external/read-only.
-- One application process and ASGI worker; external generator; no model weights
-  or private data in the image.
+- One application process and ASGI worker; external generator; no
+  Seneca-provisioned model weights or private data in the image. Dependency-
+  bundled RapidOCR ONNX resources and package-owned test fixtures remain in
+  the installed environment as accepted dependency content.
 - `embedding.device=auto` remains the normal configuration. Do not add a
   Docker-specific CPU override or another hardware detector/resolver.
 - `cuda_fp16_v1` remains supported for local/GPU-capable installations.
@@ -69,19 +73,25 @@ auditable.
 - Keep Docling, embeddings, reranking, local retrieval, Qdrant Local, and
   accepted fail-closed startup behavior.
 
-## Excluded work
+## Excluded work under the original implementation authority
+
+The following exclusions describe the original implementation scope; they do
+not indicate that REL-01 remains active.
 
 No production Python architecture changes, new embedding/reranker backend,
 model selection changes, OCR/ONNX/OpenVINO campaign, CUDA release image, Cloud
 Run, Artifact Registry, Secret Manager, Qdrant server, multi-worker/replica
-topology, or generator-in-container work. Slice 18 remains unopened and
-unauthorized.
+topology, or generator-in-container work. Slice 18A-0 is now open for evidence
+audit/design only; 18B–18D remain unauthorized.
 
 Do not manually delete CUDA packages after installation. The CPU dependency
 graph itself must exclude `nvidia-*` distributions. Do not add an unpinned
 requirements file or resolve arbitrary latest dependencies in Docker.
 
-## Measurement and acceptance
+## Original measurement and acceptance criteria
+
+These criteria were the REL-01 acceptance contract and are satisfied by the
+qualification report and accepted closeout referenced above.
 
 Record three image sizes on the same Docker host using `docker image inspect
 .Size`:
@@ -103,16 +113,18 @@ smokes, preserved container invariants and UI projection, no private/model/
 secret content, and passing required regression lanes. No arbitrary numerical
 image-size target is introduced.
 
-## Current qualification evidence
+## Qualification evidence
 
 REL-01B and REL-01C implementation results and their evidence limits are
 recorded in [the REL-01 qualification report](evidence/rel01/QUALIFICATION.md).
-The report keeps measured image-size improvements separate from runtime checks
-that have not been performed.
+The accepted report separates measured image-size improvements from runtime
+and model-smoke checks, and retains the host permission limitation.
 
-## Issue #1
+## Current disposition and residual scope
 
-CPU/default release-image optimization is the current REL-01 objective. A
-separate CUDA release artifact is deferred and is not required before Slice 18.
-Issue #1 remains open because its existing wording covers both topics; do not
-close it automatically.
+The CPU/default release image objective is complete and accepted. A separate
+CUDA release artifact remains deferred. CUDA-capable developer installations
+and the qualified CUDA runtime profile are preserved. The original issue #1
+may remain open for its broader CPU/CUDA packaging wording; this documentation
+does not close it automatically. Slice 18A-0 is currently limited to evidence
+audit/design; 18B–18D remain unauthorized.

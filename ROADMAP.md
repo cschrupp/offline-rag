@@ -93,12 +93,14 @@ should not override the current disposition here.
   promoted to canonical `main` at
   `3fb65e34f5b45ddf695d82bfd0d9badd34b9ee2d`; hosted backend and frontend CI
   passed on the promoted head.
-- [ ] **REL-01 — CPU Release Packaging** — active from canonical
-  `main` at `3fb65e34f5b45ddf695d82bfd0d9badd34b9ee2d`. The default release
-  image is the scope; a separate CUDA release artifact is deferred. See
+- [x] **REL-01 — CPU Release Packaging** — independently reviewed, Human
+  accepted, and promoted with its evidence closeout to canonical `main` at
+  `0a1b5a45bff94ae12c8fe8d423c825572bc1c480`. The separate CUDA release image
+  remains deferred. See
   [`docs/rel01_cpu_release_packaging.md`](docs/rel01_cpu_release_packaging.md).
-- [ ] **Slice 18 — Portfolio Release Package** — planned; design not open and
-  not authorized.
+- [ ] **Slice 18A-0 — Engineering evidence audit and design freeze** — open on
+  `feature/slice18a-engineering-evidence-reconciliation`; documentation/audit
+  only. Slices 18B–18D remain unauthorized.
 - [ ] End-to-end beta QA.
 - [ ] Fix release-blocking defects.
 - [ ] Human beta acceptance.
@@ -608,9 +610,10 @@ portfolio claims.
 
 REL-03-P0 is the bounded near-term enabling seam for an operator-selected
 OpenRouter inference profile. Canonical Seneca remains local-first and
-strict-offline by default; hosted deployment belongs to Slice 18. Active Slice
-17 owns mocked profile-isolation regression CI, and REL-01 later provides
-the preferred CPU release image. REL-03 is not an active beta release blocker.
+strict-offline by default; hosted deployment belongs to later Slice 18 work.
+Slice 17 has completed its mocked profile-isolation regression CI, and REL-01
+has provided the preferred CPU release image. REL-03 is not an active beta
+release blocker.
 P0 implementation is authorized by its contract at
 [`docs/rel03_external_inference_demo_profile.md`](docs/rel03_external_inference_demo_profile.md).
 
@@ -3340,17 +3343,13 @@ Slice 14 checklist:
 passed both jobs; the implementation result and baseline evidence remain in
 [`docs/evidence/slice17/`](docs/evidence/slice17/).
 
-**REL-01 — CPU Release Packaging:** **ACTIVE / IMPLEMENTATION AUTHORIZED**
-- Starting canonical `main`: `3fb65e34f5b45ddf695d82bfd0d9badd34b9ee2d`
-- Branch: `feature/rel-01-cpu-release-packaging`
-- Four bounded stages: current-image baseline; locked CPU dependency selection;
-  Python builder/runtime image; packaged application qualification.
-- Default release image is CPU-oriented. A separate CUDA release artifact is
-  deferred and is not required before Slice 18.
-- Slice 18 remains planned; design is not open and implementation is not
-  authorized.
+**REL-01 — CPU Release Packaging:** **COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN
+ACCEPTED / PROMOTED** with evidence closeout at `0a1b5a45`. The default release
+image is CPU-oriented; a separate CUDA release artifact remains deferred.
 
-**Slice 18 — Portfolio Release Package:** **PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED**
+**Slice 18 — Portfolio Release Package:** **18A-0 OPEN — AUDIT/DESIGN ONLY**
+- 18A-0 is limited to evidence reconciliation and design freeze.
+- Slices 18B–18D remain **NOT AUTHORIZED**.
 - Objective: reproducible public portfolio artifact backed by accepted evidence
 - Candidate deliverables only (not locked): polished README; architecture
   diagram; public demo workflow; sample corpus instructions; benchmark
@@ -3383,8 +3382,9 @@ Later M7 checklist:
 - [x] `/data` + `/models` volume packaging contract (15G — **COMPLETE / ACCEPTED**)
 - [x] Slice 15 integration closeout (15H — **COMPLETE / ACCEPTED** at `1c1d94e…`)
 - [x] Portfolio Demo UI (Slice 16 — design **ACCEPTED / LOCKED** at `e2e7475…`; **16A COMPLETE / ACCEPTED** at `e73959be…`; **16B COMPLETE / ACCEPTED** at `eb8baef…`; **16C COMPLETE / ACCEPTED** at `936e414…`; **A1 ACCEPTED / LOCKED** at `5060e2ae…`; **A2 ACCEPTED / LOCKED / SEALED** at `dce3456e…`; **16D-A COMPLETE / ACCEPTED / SEALED** at `4f8962f…`; observed B1 `6b652400…` **ACCEPTANCE WITHHELD**; B1 upload remediation **ACCEPTED / SEALED** at `c68cc3f8…` / closeout `b5fa1e85…`; **16D-B2 COMPLETE / ACCEPTED / SEALED** at `baa16eba…`; **16D-B3 COMPLETE / ACCEPTED / SEALED** at `9c178ffb…`; **16D-C COMPLETE / ACCEPTED / SEALED** at `0381e046…`; A4 **ACCEPTED / LOCKED / SEALED**; **16E COMPLETE / ACCEPTED / SEALED** at Engineering `3e1ce4c9…` / remediation `9dd2b008…`; **16F COMPLETE / ACCEPTED / SEALED** at `f25f835…`; **16G-D0 ACCEPTED / FROZEN**; **16G-I1…I5 / GAP-16G-01 ACCEPTED**; **GAP-16G-02 CLOSEOUT ACCEPTED / PROMOTED TO MAIN** (`HA-001` / IR-002; subject `e5d116b8…`; main promotion **COMPLETE** at `f7fb999…`); **16G-I6 COMPLETE / ACCEPTED** (IR-002 **ACCEPT**; exact candidate `cc7ff520eb146fa555f2b48e1f7dcc89a7952729`); **16G IMPLEMENTATION COMPLETE / ACCEPTED**; **16H COMPLETE / ACCEPTED** (16H-IR-003 **ACCEPT**; 16H-HA-001 **ACCEPTED**; exact subject `01a4a984d438d5bb7c4e3d0fa2f5bb908e0b4a10`); **9G DEFERRED / NOT AUTHORIZED**; Slice 16 overall **COMPLETE / HUMAN ACCEPTED / CANONICAL**)
-- [ ] Regression CI (Slice 17 — **DESIGN + IMPLEMENTATION AUTHORIZED / ACTIVE**)
-- [ ] Portfolio release package (Slice 18 — **PLANNED / DESIGN NOT OPEN**)
+- [x] Regression CI (Slice 17 — **COMPLETE / HUMAN ACCEPTED / PROMOTED**)
+- [ ] Portfolio release package (Slice 18A-0 — **AUDIT/DESIGN ONLY / OPEN**;
+  18B–18D **NOT AUTHORIZED**)
 - [ ] Milestone 7 closeout (**NOT AUTHORIZED**)
 - [ ] Container image size / CPU–CUDA variants ([issue #1](https://github.com/cschrupp/offline-rag/issues/1) — **DEFERRED**)
 
@@ -3402,21 +3402,23 @@ remains **IN PROGRESS** (Slice 15 through **15H** landed; Slice 16 design
 Amendment A1 **ACCEPTED / LOCKED**; Amendment A2 **ACCEPTED / LOCKED /
 SEALED**; B1 foundation remediation **ACCEPTED / SEALED**; **16D-B3
 COMPLETE / ACCEPTED / SEALED** at `9c178ffb033cde41849379fc914f321697ff8691`; **16D-C** COMPLETE / ACCEPTED / SEALED;
-Slice 17 is separately **AUTHORIZED / ACTIVE**; Slice 18 and M7 closeout remain
-**NOT AUTHORIZED**. Performance optimization,
+Slice 17 is **COMPLETE / HUMAN ACCEPTED / PROMOTED**. Slice 18A-0 is separately
+open for audit/design only; 18B–18D and M7 closeout remain **NOT AUTHORIZED**.
+Performance optimization,
 generator max-token change, reranker config change, `base.yaml` promotion,
 `PORTFOLIO_DEMO.md` update, 13C/13D, recovery enablement, LangGraph, and NeMo
 remain **NOT AUTHORIZED**.
-Technical debt (post–Slice 15): investigate CPU-only PyTorch/retrieval
-dependency resolution and/or CPU/CUDA image variants — tracked in GitHub
-issue [#1](https://github.com/cschrupp/offline-rag/issues/1); not a 15G blocker.
+Historical post–Slice-15 technical-debt wording about CPU-only PyTorch and
+CPU/CUDA image variants is superseded by completed REL-01 for the CPU release
+image. The separate CUDA release artifact remains deferred; GitHub issue #1 may
+remain open for its broader wording.
 
 ## Milestone 8 — (historical stub; superseded by Slice 18 under M7)
 
 The checklist below is retained as a historical portfolio-release stub.
-Formal portfolio packaging work is now tracked as **Slice 18** under Milestone 7
-(**PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED**). Do not treat this section as a
-separately authorized milestone while Slice 18 remains unopened.
+Formal portfolio packaging work is tracked as **Slice 18** under Milestone 7.
+Only Slice 18A-0 evidence audit/design is currently open; this historical stub
+does not authorize implementation or slices 18B–18D.
 
 - [ ] public demo corpus instructions
 - [ ] benchmark methodology page

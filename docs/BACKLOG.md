@@ -2,7 +2,7 @@
 
 **Status:** LIVE PLANNING / NON-AUTHORIZING\
 **Canonical reference:** `main` (see Git for current tip)\
-**Updated:** 2026-11-09
+**Updated:** 2026-11-10
 
 This document is the live queue for work that remains after the Human-accepted
 Slice 16 closeout and the post-L6 parser-stack corrective.
@@ -35,14 +35,19 @@ BETA-CONV-01B — CLOSED / NATURAL-LANGUAGE ROUTER NO-GO / ARCHIVED
 BETA-CONV-01C — COMPLETE / HUMAN PRODUCT ACCEPTED / PROMOTED
                 EXPLICIT ACTIONS / NO FREE-TEXT ROUTER
 BETA-CONV-02 — DEFERRED / NOT AUTHORIZED
-Slice 17 — DESIGN + IMPLEMENTATION AUTHORIZED / ACTIVE
+Slice 17 — COMPLETE / HUMAN ACCEPTED / PROMOTED
+REL-01 — COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / PROMOTED
+         Separate CUDA release image DEFERRED
+Slice 18A-0 — OPEN / EVIDENCE AUDIT AND DESIGN FREEZE ONLY
+Slices 18B–18D — NOT AUTHORIZED
 Additional Gold Lab games — DEFERRED BEYOND CURRENT BETA
 ```
 
 Status statements in historical slice records below retain their original
-time-specific meaning. The separate Slice 17 authority opened the work on
-2026-11-09 from canonical `main` at
-`5a793766bb4ecd88278cd0bf3a892572ec30f67a`.
+time-specific meaning. Slice 17 opened on 2026-11-09 from canonical `main` at
+`5a793766bb4ecd88278cd0bf3a892572ec30f67a` and has since completed and been
+promoted. REL-01 has also completed; the present canonical reference is
+`0a1b5a45bff94ae12c8fe8d423c825572bc1c480`.
 
 16K-F functional acceptance is complete. Performance on the available
 replacement corpus is **EMPIRICALLY_CHARACTERIZED / ACCEPTED_DESCRIPTIVE**;
@@ -85,8 +90,11 @@ and its linked sanitized `RUN_002_EVIDENCE_INDEX.md`.
     -> BETA-CONV-01C explicit conversation actions, preserving the existing
        deterministic grounded free-text path
     -> BETA-CONV-02 analytical synthesis DEFERRED / NOT AUTHORIZED
-    -> Slice 17 opened separately on 2026-11-09; DESIGN + IMPLEMENTATION
-       AUTHORIZED / ACTIVE
+    -> Slice 17 COMPLETE / HUMAN ACCEPTED / PROMOTED at 3fb65e34
+    -> REL-01 COMPLETE / HUMAN ACCEPTED / PROMOTED with evidence at 0a1b5a45;
+       separate CUDA release image DEFERRED
+    -> Slice 18A-0 evidence audit / design freeze OPEN
+    -> Slices 18B–18D NOT AUTHORIZED
 ```
 
 Original Slice 16G is already accepted; 16K-G names the separate regression
@@ -220,7 +228,9 @@ modes with offline-only paired shadow comparison,
 rollback and later merge-based integration. The design branch excludes the
 unpromoted application implementation. The baseline-reproduced API lifespan
 stall remains an incomplete verification item; it is not a PASS. Additional
-games remain deferred; BETA-CONV-02 and Slice 17 remain unopened.
+games remain deferred and BETA-CONV-02 remains unauthorized. At the time this
+historical 01A record was written, Slice 17 had not opened; it has since
+completed and been promoted.
 
 ### BETA-CONV-01B — Natural-language Conversation Lane
 
@@ -617,13 +627,14 @@ Recommended timing: before public/release hardening, but it need not block
 ### CI-BASELINE-01 — Repository-wide green-baseline normalization
 
 **Priority:** P1\
-**Status:** ACTIVE — SLICE 17 CANDIDATE READY FOR INDEPENDENT REVIEW
+**Current status:** CLOSED / Slice 17 COMPLETE / HUMAN ACCEPTED / PROMOTED.
+The following records the historical CI-baseline concern and its disposition.
 
-Slice 16 explicitly did not claim a fully green repository baseline. Slice 17
-is now authorized and owns inventory of the pre-existing lint/full-suite debt,
-classification of intentional exclusions, and deterministic CI. Historical
-performance observations must not become new SLOs. The candidate workflow and
-bounded local qualification are recorded in
+Slice 16 explicitly did not claim a fully green repository baseline. The
+completed Slice 17 inventoried the pre-existing lint/full-suite debt,
+classified intentional exclusions, and established deterministic CI.
+Historical performance observations must not become new SLOs. The candidate
+workflow and bounded local qualification are recorded in
 [`Slice 17 implementation result`](evidence/slice17/IMPLEMENTATION_RESULT.md).
 The full post-correction Ruff inventory contains 156 remaining diagnostics,
 listed by file, line, and rule in
@@ -634,7 +645,9 @@ also documented in the implementation evidence.
 
 ### Slice 17 — Regression CI and Repository Baseline
 
-**Status:** DESIGN + IMPLEMENTATION AUTHORIZED / ACTIVE\
+**Current status:** COMPLETE / HUMAN ACCEPTED / PROMOTED at
+`3fb65e34f5b45ddf695d82bfd0d9badd34b9ee2d`. The material below records the
+historical implementation authority and result.\
 **Started from:** canonical `main` at
 `5a793766bb4ecd88278cd0bf3a892572ec30f67a`\
 **Branch:** `feature/slice17-regression-ci`
@@ -649,8 +662,11 @@ GPU/CUDA, private corpora, or empirical performance thresholds. See
 
 ### REL-01 — Container image size / CPU-CUDA release variants
 
-**Priority:** P1 before Slice 18 public release\
-**Status:** ACTIVE — CPU DEFAULT RELEASE IMAGE
+**Current status:** COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED /
+PROMOTED with qualification closeout at
+`0a1b5a45bff94ae12c8fe8d423c825572bc1c480`. A separate CUDA release image is
+deferred; CUDA-capable local/developer support is distinct. The material below
+records the completed scope and its original rationale.
 
 The authorized REL-01 tranche measures the current image, establishes a locked
 CPU-only production dependency selection, adopts a Python builder/runtime
@@ -667,7 +683,8 @@ CPU/CUDA packaging wording; this tranche does not automatically close it.
 ### REL-02 — Portfolio release / public claims package
 
 **Priority:** downstream\
-**Status:** SLICE 18 / DESIGN NOT OPEN / NOT AUTHORIZED
+**Status:** Slice 18A-0 evidence audit/design open; 18B–18D and public portfolio
+release implementation not authorized.
 
 Includes `PORTFOLIO_DEMO.md`, polished public documentation, architecture/demo
 media, benchmark methodology, limitations, hardware/runtime profiles, and
@@ -764,12 +781,15 @@ its own design/authority.
         ->
 16K-G regression handoff COMPLETE / HUMAN ACCEPTED
         ->
-Slice 17 — Regression CI ACTIVE (17A baseline inventory)
+Slice 17 — Regression CI COMPLETE / HUMAN ACCEPTED / PROMOTED
         ->
-Slice 18 — Portfolio Release Package
+REL-01 CPU release packaging COMPLETE / HUMAN ACCEPTED / PROMOTED
+        ->
+Slice 18A-0 — Engineering evidence audit / design freeze OPEN
         ->
 Milestone 7 closeout
 ```
 
-Slice 17 is separately authorized and active. Slice 18 and M7 closeout remain
+Slice 17 and REL-01 are complete and promoted. Slice 18A-0 is open for
+documentation-only evidence audit/design; 18B–18D and M7 closeout remain
 unauthorized.

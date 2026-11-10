@@ -1,6 +1,9 @@
 # REL-01B/C — CPU Release Packaging Qualification
 
-**Status:** REL-01D qualification complete; ready for independent final review.
+**Qualification handoff status at record creation:** REL-01D qualification
+complete; ready for independent final review.
+**Current tranche disposition:** REL-01 COMPLETE / INDEPENDENTLY ACCEPTED /
+HUMAN ACCEPTED / PROMOTED with evidence closeout at `0a1b5a45`.
 
 **Source baseline:** `3fb65e34f5b45ddf695d82bfd0d9badd34b9ee2d`
 
