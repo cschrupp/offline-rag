@@ -38,6 +38,12 @@ This file records the reasoning behind major decisions so future development doe
 
 **Reasoning:** The portfolio value comes from proving why hybrid retrieval is needed rather than simply claiming that it is best practice.
 
+**Status note (2026-11-10):** This decision and its measurement-first
+methodology remain valid. The title is not a description of current repository
+defaults: `config/base.yaml` now enables dense and BM25 retrieval, RRF fusion,
+and the BGE reranker. This note does not declare a retrieval winner or promote
+a configuration based on the descriptive pilots.
+
 ---
 
 ## ADR-005 — RRF as the first fusion method
