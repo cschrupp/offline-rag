@@ -5,7 +5,7 @@ function formatMeasured(metric: Metric): string {
   if (value === null) return "Unavailable";
   let text: string;
   if (metric.unit === "s") {
-    text = `${value} s`;
+    text = `${value.toFixed(2)} s`;
   } else if (metric.unit === "ms") {
     text = `${value} ms`;
   } else if (metric.unit === "bytes") {
@@ -14,8 +14,7 @@ function formatMeasured(metric: Metric): string {
   } else if (metric.unit) {
     text = `${value} ${metric.unit}`;
   } else if (typeof value === "number" && value >= 0 && value <= 1) {
-    // Rates presented as decimals in source stay decimal unless clearly percent.
-    text = String(value);
+    text = value.toFixed(3);
   } else {
     text = String(value);
   }

@@ -1,0 +1,1470 @@
+{
+  "contract": "seneca-engineering-evidence-registry-v2",
+  "version": 2,
+  "records": [
+    {
+      "evidence_id": "retrieval.slice9hp",
+      "evidence_family": "retrieval",
+      "title": "Slice 9H-P retrieval A/B pilot",
+      "summary": "Descriptive six-arm retrieval pilot on the frozen Slice 9 development population.",
+      "evidence_authority": "accepted",
+      "promotion_status": "non_promotional",
+      "claim_scope": "Descriptive retrieval A/B pilot on the frozen Slice 9 development population.",
+      "caveats": [
+        "PILOT / NON-PROMOTIONAL",
+        "Small descriptive populations (full-22 / human-16).",
+        "Does not authorize base.yaml promotion or a production retrieval winner.",
+        "C↔D nDCG@10 ordering changes between full-22 and human-16."
+      ],
+      "source_refs": [
+        {
+          "source_ref_id": "retrieval-report",
+          "path": "docs/pilots/slice9h_p_results.md",
+          "role": "accepted_report",
+          "source_kind": "accepted_markdown_projection",
+          "source_locator": "§2 Six-arm aggregates — full-22; §3 Six-arm aggregates — human-16; §4 Full-22 vs human-16 sensitivity",
+          "expected_sha256": "5fc5688395ceea938ff85476bed99918a3f8aea4c119a6ff2c584950fd503c5e"
+        }
+      ],
+      "provenance": {
+        "evidence_family": "retrieval_9hp",
+        "fields": {
+          "gold_dataset_id": "gold_d3fc157c7b3206f6983abee766e7ce7b939244a7dea04f0be256f3a533a46172",
+          "corpus_name": "ics_modules",
+          "plan_commit": "9509c81d78707609942f5d6ffbaa11e5c9ab234c",
+          "governance_state": "PILOT / NON-PROMOTIONAL"
+        }
+      },
+      "value_source": "curated",
+      "presentation": {
+        "kind": "retrieval_arms",
+        "default_population": "full-22",
+        "populations": {
+          "full-22": {
+            "label": "full-22",
+            "ndcg_order_note": "D > C > F > E > A > B (descriptive; no winner declared)",
+            "arms": [
+              {
+                "arm_id": "A",
+                "label": "dense baseline",
+                "metrics": {
+                  "ndcg_at_10": {
+                    "availability": "measured",
+                    "value": 0.7643,
+                    "value_qualifier": "exact"
+                  },
+                  "hit_at_1": {
+                    "availability": "measured",
+                    "value": 0.8636,
+                    "value_qualifier": "exact"
+                  },
+                  "mrr": {
+                    "availability": "measured",
+                    "value": 0.9242,
+                    "value_qualifier": "exact"
+                  },
+                  "recall_at_10": {
+                    "availability": "measured",
+                    "value": 0.7232,
+                    "value_qualifier": "exact"
+                  },
+                  "descriptive_latency": {
+                    "availability": "measured",
+                    "value": 6847,
+                    "value_qualifier": "exact",
+                    "unit": "ms"
+                  }
+                }
+              },
+              {
+                "arm_id": "B",
+                "label": "lexical baseline",
+                "metrics": {
+                  "ndcg_at_10": {
+                    "availability": "measured",
+                    "value": 0.7062,
+                    "value_qualifier": "exact"
+                  },
+                  "hit_at_1": {
+                    "availability": "measured",
+                    "value": 0.7273,
+                    "value_qualifier": "exact"
+                  },
+                  "mrr": {
+                    "availability": "measured",
+                    "value": 0.822,
+                    "value_qualifier": "exact"
+                  },
+                  "recall_at_10": {
+                    "availability": "measured",
+                    "value": 0.7013,
+                    "value_qualifier": "exact"
+                  },
+                  "descriptive_latency": {
+                    "availability": "measured",
+                    "value": 149,
+                    "value_qualifier": "exact",
+                    "unit": "ms"
+                  }
+                }
+              },
+              {
+                "arm_id": "C",
+                "label": "dense query-prompt",
+                "metrics": {
+                  "ndcg_at_10": {
+                    "availability": "measured",
+                    "value": 0.8573,
+                    "value_qualifier": "exact"
+                  },
+                  "hit_at_1": {
+                    "availability": "measured",
+                    "value": 1.0,
+                    "value_qualifier": "exact"
+                  },
+                  "mrr": {
+                    "availability": "measured",
+                    "value": 1.0,
+                    "value_qualifier": "exact"
+                  },
+                  "recall_at_10": {
+                    "availability": "measured",
+                    "value": 0.8243,
+                    "value_qualifier": "exact"
+                  },
+                  "descriptive_latency": {
+                    "availability": "measured",
+                    "value": 7138,
+                    "value_qualifier": "exact",
+                    "unit": "ms"
+                  }
+                }
+              },
+              {
+                "arm_id": "D",
+                "label": "dense Arm H",
+                "metrics": {
+                  "ndcg_at_10": {
+                    "availability": "measured",
+                    "value": 0.8596,
+                    "value_qualifier": "exact"
+                  },
+                  "hit_at_1": {
+                    "availability": "measured",
+                    "value": 1.0,
+                    "value_qualifier": "exact"
+                  },
+                  "mrr": {
+                    "availability": "measured",
+                    "value": 1.0,
+                    "value_qualifier": "exact"
+                  },
+                  "recall_at_10": {
+                    "availability": "measured",
+                    "value": 0.8224,
+                    "value_qualifier": "exact"
+                  },
+                  "descriptive_latency": {
+                    "availability": "measured",
+                    "value": 5060,
+                    "value_qualifier": "exact",
+                    "unit": "ms"
+                  }
+                }
+              },
+              {
+                "arm_id": "E",
+                "label": "hybrid RRF",
+                "metrics": {
+                  "ndcg_at_10": {
+                    "availability": "measured",
+                    "value": 0.7905,
+                    "value_qualifier": "exact"
+                  },
+                  "hit_at_1": {
+                    "availability": "measured",
+                    "value": 0.7727,
+                    "value_qualifier": "exact"
+                  },
+                  "mrr": {
+                    "availability": "measured",
+                    "value": 0.8864,
+                    "value_qualifier": "exact"
+                  },
+                  "recall_at_10": {
+                    "availability": "measured",
+                    "value": 0.807,
+                    "value_qualifier": "exact"
+                  },
+                  "descriptive_latency": {
+                    "availability": "measured",
+                    "value": 7023,
+                    "value_qualifier": "exact",
+                    "unit": "ms"
+                  }
+                }
+              },
+              {
+                "arm_id": "F",
+                "label": "hybrid + reranker",
+                "metrics": {
+                  "ndcg_at_10": {
+                    "availability": "measured",
+                    "value": 0.8422,
+                    "value_qualifier": "exact"
+                  },
+                  "hit_at_1": {
+                    "availability": "measured",
+                    "value": 0.8636,
+                    "value_qualifier": "exact"
+                  },
+                  "mrr": {
+                    "availability": "measured",
+                    "value": 0.9318,
+                    "value_qualifier": "exact"
+                  },
+                  "recall_at_10": {
+                    "availability": "measured",
+                    "value": 0.8136,
+                    "value_qualifier": "exact"
+                  },
+                  "descriptive_latency": {
+                    "availability": "measured",
+                    "value": 68771,
+                    "value_qualifier": "exact",
+                    "unit": "ms"
+                  }
+                }
+              }
+            ]
+          },
+          "human-16": {
+            "label": "human-16",
+            "ndcg_order_note": "C > D > F > E > A > B (descriptive; C↔D top-rank swap vs full-22)",
+            "arms": [
+              {
+                "arm_id": "A",
+                "label": "dense baseline",
+                "metrics": {
+                  "ndcg_at_10": {
+                    "availability": "measured",
+                    "value": 0.7477,
+                    "value_qualifier": "exact"
+                  },
+                  "hit_at_1": {
+                    "availability": "measured",
+                    "value": 0.8125,
+                    "value_qualifier": "exact"
+                  },
+                  "mrr": {
+                    "availability": "measured",
+                    "value": 0.8958,
+                    "value_qualifier": "exact"
+                  },
+                  "recall_at_10": {
+                    "availability": "measured",
+                    "value": 0.6808,
+                    "value_qualifier": "exact"
+                  },
+                  "descriptive_latency": {
+                    "availability": "measured",
+                    "value": 6932,
+                    "value_qualifier": "exact",
+                    "unit": "ms"
+                  }
+                }
+              },
+              {
+                "arm_id": "B",
+                "label": "lexical baseline",
+                "metrics": {
+                  "ndcg_at_10": {
+                    "availability": "measured",
+                    "value": 0.6641,
+                    "value_qualifier": "exact"
+                  },
+                  "hit_at_1": {
+                    "availability": "measured",
+                    "value": 0.6875,
+                    "value_qualifier": "exact"
+                  },
+                  "mrr": {
+                    "availability": "measured",
+                    "value": 0.7865,
+                    "value_qualifier": "exact"
+                  },
+                  "recall_at_10": {
+                    "availability": "measured",
+                    "value": 0.6695,
+                    "value_qualifier": "exact"
+                  },
+                  "descriptive_latency": {
+                    "availability": "measured",
+                    "value": 146,
+                    "value_qualifier": "exact",
+                    "unit": "ms"
+                  }
+                }
+              },
+              {
+                "arm_id": "C",
+                "label": "dense query-prompt",
+                "metrics": {
+                  "ndcg_at_10": {
+                    "availability": "measured",
+                    "value": 0.8457,
+                    "value_qualifier": "exact"
+                  },
+                  "hit_at_1": {
+                    "availability": "measured",
+                    "value": 1.0,
+                    "value_qualifier": "exact"
+                  },
+                  "mrr": {
+                    "availability": "measured",
+                    "value": 1.0,
+                    "value_qualifier": "exact"
+                  },
+                  "recall_at_10": {
+                    "availability": "measured",
+                    "value": 0.7741,
+                    "value_qualifier": "exact"
+                  },
+                  "descriptive_latency": {
+                    "availability": "measured",
+                    "value": 7246,
+                    "value_qualifier": "exact",
+                    "unit": "ms"
+                  }
+                }
+              },
+              {
+                "arm_id": "D",
+                "label": "dense Arm H",
+                "metrics": {
+                  "ndcg_at_10": {
+                    "availability": "measured",
+                    "value": 0.8411,
+                    "value_qualifier": "exact"
+                  },
+                  "hit_at_1": {
+                    "availability": "measured",
+                    "value": 1.0,
+                    "value_qualifier": "exact"
+                  },
+                  "mrr": {
+                    "availability": "measured",
+                    "value": 1.0,
+                    "value_qualifier": "exact"
+                  },
+                  "recall_at_10": {
+                    "availability": "measured",
+                    "value": 0.7715,
+                    "value_qualifier": "exact"
+                  },
+                  "descriptive_latency": {
+                    "availability": "measured",
+                    "value": 5104,
+                    "value_qualifier": "exact",
+                    "unit": "ms"
+                  }
+                }
+              },
+              {
+                "arm_id": "E",
+                "label": "hybrid RRF",
+                "metrics": {
+                  "ndcg_at_10": {
+                    "availability": "measured",
+                    "value": 0.7684,
+                    "value_qualifier": "exact"
+                  },
+                  "hit_at_1": {
+                    "availability": "measured",
+                    "value": 0.75,
+                    "value_qualifier": "exact"
+                  },
+                  "mrr": {
+                    "availability": "measured",
+                    "value": 0.875,
+                    "value_qualifier": "exact"
+                  },
+                  "recall_at_10": {
+                    "availability": "measured",
+                    "value": 0.7628,
+                    "value_qualifier": "exact"
+                  },
+                  "descriptive_latency": {
+                    "availability": "measured",
+                    "value": 7057,
+                    "value_qualifier": "exact",
+                    "unit": "ms"
+                  }
+                }
+              },
+              {
+                "arm_id": "F",
+                "label": "hybrid + reranker",
+                "metrics": {
+                  "ndcg_at_10": {
+                    "availability": "measured",
+                    "value": 0.8283,
+                    "value_qualifier": "exact"
+                  },
+                  "hit_at_1": {
+                    "availability": "measured",
+                    "value": 0.8125,
+                    "value_qualifier": "exact"
+                  },
+                  "mrr": {
+                    "availability": "measured",
+                    "value": 0.9062,
+                    "value_qualifier": "exact"
+                  },
+                  "recall_at_10": {
+                    "availability": "measured",
+                    "value": 0.7905,
+                    "value_qualifier": "exact"
+                  },
+                  "descriptive_latency": {
+                    "availability": "measured",
+                    "value": 73255,
+                    "value_qualifier": "exact",
+                    "unit": "ms"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "currency": "historical",
+      "decision_effect": "No retrieval configuration winner; preserve both populations and their ordering sensitivity."
+    },
+    {
+      "evidence_id": "generation.slice10e",
+      "evidence_family": "generation",
+      "title": "Slice 10E generation prompt A/B",
+      "summary": "Development-only controlled generation prompt comparison on frozen evidence.",
+      "evidence_authority": "accepted",
+      "promotion_status": "non_promotional",
+      "claim_scope": "Development-only controlled generation prompt comparison on frozen evidence.",
+      "caveats": [
+        "DEVELOPMENT / NON-PROMOTIONAL",
+        "Same-model self-judge limitation.",
+        "No prompt promotion.",
+        "No config/base.yaml promotion.",
+        "Development fixture only."
+      ],
+      "source_refs": [
+        {
+          "source_ref_id": "generation-report",
+          "path": "docs/pilots/slice10e_generation_prompt_ab.md",
+          "role": "accepted_report",
+          "source_kind": "accepted_markdown_projection",
+          "source_locator": "§3 Judge configuration / self-judge limitation; §7 Positive full-22 results",
+          "expected_sha256": "27220cfe69d35f38b6f0e952b262dd21901d0dabce564ae5fec82bd489997a15"
+        }
+      ],
+      "provenance": {
+        "evidence_family": "generation_10e",
+        "fields": {
+          "generator_model_id": "qwen3.6-35b-a3b",
+          "judge_model_id": "qwen3.6-35b-a3b",
+          "same_model_self_judge": true,
+          "gold_dataset_id": "gold_d3fc157c7b3206f6983abee766e7ce7b939244a7dea04f0be256f3a533a46172",
+          "governance_state": "DEVELOPMENT / NON-PROMOTIONAL"
+        }
+      },
+      "value_source": "curated",
+      "presentation": {
+        "kind": "generation_prompt_ab",
+        "population_label": "positive full-22",
+        "prompts": [
+          {
+            "prompt_id": "prompt-grounded-v1",
+            "label": "prompt-grounded-v1",
+            "metrics": {
+              "answer_rate": {
+                "availability": "measured",
+                "value": 0.909,
+                "value_qualifier": "exact"
+              },
+              "generation_failed_rate": {
+                "availability": "measured",
+                "value": 0.091,
+                "value_qualifier": "exact"
+              },
+              "citation_invalid_rate": {
+                "availability": "measured",
+                "value": 0.0,
+                "value_qualifier": "exact"
+              },
+              "mean_gold_citation_recall": {
+                "availability": "measured",
+                "value": 0.636,
+                "value_qualifier": "exact"
+              },
+              "grade2_citation_hit_rate": {
+                "availability": "measured",
+                "value": 0.944,
+                "value_qualifier": "exact"
+              },
+              "fully_correct_rate": {
+                "availability": "measured",
+                "value": 1.0,
+                "value_qualifier": "exact"
+              },
+              "fully_supported_rate": {
+                "availability": "measured",
+                "value": 1.0,
+                "value_qualifier": "exact"
+              },
+              "complete_answer_rate": {
+                "availability": "measured",
+                "value": 1.0,
+                "value_qualifier": "exact"
+              }
+            }
+          },
+          {
+            "prompt_id": "prompt-grounded-provenance-v2",
+            "label": "prompt-grounded-provenance-v2",
+            "metrics": {
+              "answer_rate": {
+                "availability": "measured",
+                "value": 0.909,
+                "value_qualifier": "exact"
+              },
+              "generation_failed_rate": {
+                "availability": "measured",
+                "value": 0.091,
+                "value_qualifier": "exact"
+              },
+              "citation_invalid_rate": {
+                "availability": "measured",
+                "value": 0.0,
+                "value_qualifier": "exact"
+              },
+              "mean_gold_citation_recall": {
+                "availability": "measured",
+                "value": 0.596,
+                "value_qualifier": "exact"
+              },
+              "grade2_citation_hit_rate": {
+                "availability": "measured",
+                "value": 0.889,
+                "value_qualifier": "exact"
+              },
+              "fully_correct_rate": {
+                "availability": "measured",
+                "value": 1.0,
+                "value_qualifier": "exact"
+              },
+              "fully_supported_rate": {
+                "availability": "measured",
+                "value": 1.0,
+                "value_qualifier": "exact"
+              },
+              "complete_answer_rate": {
+                "availability": "measured",
+                "value": 1.0,
+                "value_qualifier": "exact"
+              }
+            }
+          }
+        ],
+        "notes": [
+          "Same-model self-judge limitation: generator and judge used the same model.",
+          "No prompt promotion and no config/base.yaml promotion.",
+          "Development fixture only."
+        ]
+      },
+      "currency": "historical",
+      "decision_effect": "Development evidence only; no prompt or base configuration promotion."
+    },
+    {
+      "evidence_id": "recovery.slice12c",
+      "evidence_family": "recovery",
+      "title": "Slice 12 recovery disposition",
+      "summary": "Bounded recovery contracts were implemented and evaluated; product recovery remains disabled.",
+      "evidence_authority": "authoritative",
+      "promotion_status": "disabled",
+      "claim_scope": "Accepted recovery evaluation disposition; does not establish recovery efficacy.",
+      "caveats": [
+        "Bounded recovery contracts: IMPLEMENTED / EVALUATED",
+        "Promotion evidence: INSUFFICIENT",
+        "Product recovery: DISABLED",
+        "LangGraph: DEFERRED / NOT AUTHORIZED"
+      ],
+      "source_refs": [
+        {
+          "source_ref_id": "recovery-disposition",
+          "path": "docs/milestone6_agentic_recovery_security.md",
+          "role": "accepted_disposition",
+          "source_kind": "accepted_markdown_projection",
+          "source_locator": "Document header status block — Slice 12 recovery DISABLED; disposition insufficient_evidence_for_recovery_efficacy",
+          "expected_sha256": "73ef4ca45c5cc6fdae596b27a737b32b49064e0e7f6aae184322fdc922e8580b"
+        },
+        {
+          "source_ref_id": "operational-restart-recovery",
+          "path": "docs/evidence/beta_persistence_recovery/RESULT.md",
+          "role": "accepted_operational_recovery_evidence",
+          "source_kind": "accepted_markdown_projection",
+          "source_locator": "Live interrupted-operation sequence: INTERRUPTED state, prior published snapshot preserved, API readiness after restart, and subsequent source addition",
+          "expected_sha256": "6c913969aee20c5e4f16b7816f3b04ec5bed090442a9ea8f6861a8d526a78c39"
+        }
+      ],
+      "provenance": {
+        "evidence_family": "recovery_12c",
+        "fields": {
+          "slice_status": "COMPLETE / ACCEPTED",
+          "product_recovery": "DISABLED",
+          "disposition": "insufficient_evidence_for_recovery_efficacy",
+          "langgraph": "DEFERRED / NOT AUTHORIZED"
+        }
+      },
+      "value_source": "curated",
+      "presentation": {
+        "kind": "recovery_disposition",
+        "evaluation": "Complete",
+        "efficacy_evidence": "Insufficient",
+        "product_recovery": "Disabled",
+        "langgraph": "Deferred / not authorized",
+        "operational_recovery": "Accepted exercised scenario: interrupted operation recovered as INTERRUPTED; previously published snapshot preserved; API returned ready after restart; subsequent source addition succeeded."
+      },
+      "currency": "historical",
+      "decision_effect": "Query/retrieval recovery remains disabled because efficacy evidence was insufficient.",
+      "currency_overrides": {
+        "product_recovery": "current",
+        "operational_recovery": "current"
+      }
+    },
+    {
+      "evidence_id": "security.slice13b",
+      "evidence_family": "security",
+      "title": "Slice 13B query-path adversarial campaign",
+      "summary": "Authoritative query-path security campaign completed with fail-closed campaign outcome.",
+      "evidence_authority": "authoritative",
+      "promotion_status": "non_promotional",
+      "claim_scope": "Accepted Slice 13B query-path campaign result on the accepted measurement surface; does not establish security completeness.",
+      "caveats": [
+        "Campaign execution completed ≠ campaign PASS.",
+        "Campaign FAIL ≠ harness implementation failure.",
+        "Required invariant security_policy_immutable_v1 was UNEVALUABLE.",
+        "Does not imply 13C or NeMo coverage."
+      ],
+      "source_refs": [
+        {
+          "source_ref_id": "security-disposition",
+          "path": "docs/milestone6_agentic_recovery_security.md",
+          "role": "accepted_disposition",
+          "source_kind": "accepted_markdown_projection",
+          "source_locator": "Document header + authoritative narrative — 13B run_status=completed, campaign_outcome=fail; OD-13-1 fail-closed UNEVALUABLE semantics; adversarial 0 pass / 7 fail; benign FP=0",
+          "expected_sha256": "73ef4ca45c5cc6fdae596b27a737b32b49064e0e7f6aae184322fdc922e8580b"
+        }
+      ],
+      "provenance": {
+        "evidence_family": "security_13b",
+        "fields": {
+          "campaign_kind": "query-path adversarial campaign",
+          "execution_sha": "7baca2d0fd0d89b6358d04bd943c8c14ea6e742c",
+          "run_status": "completed",
+          "campaign_outcome": "fail",
+          "harness_status": "COMPLETE / ACCEPTED",
+          "decisive_invariant": "security_policy_immutable_v1",
+          "decisive_invariant_availability": "UNEVALUABLE",
+          "adversarial_pass": 0,
+          "adversarial_fail": 7,
+          "benign_pass": 0,
+          "benign_fail": 5,
+          "benign_false_positives": 0
+        }
+      },
+      "value_source": "curated",
+      "presentation": {
+        "kind": "security_13b",
+        "primary": {
+          "title": "Query-path adversarial campaign",
+          "execution": "Completed",
+          "campaign_outcome": "Fail — fail-closed",
+          "interpretation": "A required invariant was unevaluable on the accepted measurement surface, so the campaign fails closed by contract.",
+          "harness_implementation": "Accepted"
+        },
+        "cohort_detail": {
+          "adversarial": {
+            "pass": 0,
+            "fail": 7
+          },
+          "benign": {
+            "pass": 0,
+            "fail": 5,
+            "false_positives": 0
+          },
+          "note": "Cohort counts are evaluator outcomes, not “attacks blocked/succeeded” product claims."
+        }
+      },
+      "currency": "historical",
+      "decision_effect": "Fail-closed campaign outcome; does not establish security completeness."
+    },
+    {
+      "evidence_id": "performance.slice14c",
+      "evidence_family": "performance",
+      "title": "Slice 14C retrieval quality-vs-cost",
+      "summary": "Authoritative hybrid vs hybrid+reranker retrieval quality and latency comparison (generation excluded).",
+      "evidence_authority": "authoritative",
+      "promotion_status": "non_promotional",
+      "claim_scope": "Descriptive Slice 14C quality-vs-cost measurements on the frozen development population; no configuration promotion.",
+      "caveats": [
+        "Development/regression fixture — not publication-grade evidence.",
+        "No winner assignment.",
+        "Do not merge with Level-C end-to-end latency populations."
+      ],
+      "source_refs": [
+        {
+          "source_ref_id": "perf-14c-aggregate",
+          "path": "eval/results/performance_14/perfsuite_5248892df382995ac96ec2b09aea61bf27510673b93e0d816d6a255a2f4305ba/perfrun_deb7a58e49d0f64496553a16c3edc3a5b517deec5ec1c9ddd76831fee79627ca/aggregate.json",
+          "role": "accepted_machine_artifact",
+          "source_kind": "accepted_machine_readable",
+          "expected_sha256": "2b7083a58d61ca2b56d4bc5a1d5ebdcf4f399889eb918f99376ae2aa5a96f3a7"
+        },
+        {
+          "source_ref_id": "perf-14c-run-manifest",
+          "path": "eval/results/performance_14/perfsuite_5248892df382995ac96ec2b09aea61bf27510673b93e0d816d6a255a2f4305ba/perfrun_deb7a58e49d0f64496553a16c3edc3a5b517deec5ec1c9ddd76831fee79627ca/run_manifest.json",
+          "role": "accepted_machine_artifact",
+          "source_kind": "accepted_machine_readable",
+          "expected_sha256": "7e8a58e354e5b7e968843e1a725dfa27656e5bdeca5f5969bb67f7153d1c575e"
+        }
+      ],
+      "provenance": {
+        "evidence_family": "performance_14c",
+        "fields": {}
+      },
+      "value_source": "machine_extract",
+      "extraction": {
+        "aggregate_source_ref_id": "perf-14c-aggregate",
+        "run_manifest_source_ref_id": "perf-14c-run-manifest",
+        "variants": [
+          "hybrid",
+          "hybrid_rerank"
+        ],
+        "comparison_note": "higher observed ranking quality with higher observed retrieval latency"
+      },
+      "currency": "historical",
+      "decision_effect": "Descriptive development comparison; no configuration promotion and no equivalence to Level-C latency."
+    },
+    {
+      "evidence_id": "performance.slice14-level-c",
+      "evidence_family": "performance",
+      "title": "Slice 14 Level-C end-to-end generation path",
+      "summary": "Accepted Level-C end-to-end generation-path latency projection from committed Milestone 7 documentation.",
+      "evidence_authority": "authoritative",
+      "promotion_status": "non_promotional",
+      "claim_scope": "Descriptive Level-C end-to-end measurements recorded in accepted Milestone 7 documentation; separate population from 14C.",
+      "caveats": [
+        "Separate population from 14C retrieval-path latency.",
+        "TTFT / decode / tokens-sec remain UNEVALUABLE on the accepted non-streaming generator path.",
+        "Approximate presentation values from accepted documentation summary."
+      ],
+      "source_refs": [
+        {
+          "source_ref_id": "level-c-report",
+          "path": "docs/evidence/slice18a/source_snapshots/milestone7_performance_ui_0821d4fa.md",
+          "role": "immutable_source_snapshot",
+          "source_kind": "accepted_markdown_projection",
+          "source_locator": "Original accepted source bytes, SHA-256 0821d4fa; retained because the current mutable Milestone 7 projection has since changed.",
+          "expected_sha256": "0821d4fa117a003aab6a274af262104f17263673fd666acb9b685949a8422eac"
+        }
+      ],
+      "provenance": {
+        "evidence_family": "performance_14_level_c",
+        "fields": {
+          "run_id": "perfrun_211ebf1f9bcdef93d1f14421b754ef5ff387e2e091dc7f603f455dd083fdbf39",
+          "executing_sha": "30b5abb627e16e50b2b848b44676b89b2372c3d6",
+          "generator_model_id": "qwen3.6-35b-a3b",
+          "machine_profile_id": "perfhost_9e010ef916cc1f6dd5211c069316abca938ec26bd11693f9402a88d805e71a65",
+          "cases": 5,
+          "warmups": 5,
+          "measured": 25
+        }
+      },
+      "value_source": "curated",
+      "presentation": {
+        "kind": "performance_level_c",
+        "metrics": {
+          "end_to_end_p50": {
+            "availability": "measured",
+            "value": 50.83,
+            "value_qualifier": "approximate",
+            "unit": "s"
+          },
+          "end_to_end_p95": {
+            "availability": "measured",
+            "value": 144.59,
+            "value_qualifier": "approximate",
+            "unit": "s"
+          },
+          "generation_p50": {
+            "availability": "measured",
+            "value": 13.71,
+            "value_qualifier": "approximate",
+            "unit": "s"
+          },
+          "generation_p95": {
+            "availability": "measured",
+            "value": 64.06,
+            "value_qualifier": "approximate",
+            "unit": "s"
+          },
+          "ttft": {
+            "availability": "unevaluable",
+            "value": null,
+            "value_qualifier": null
+          },
+          "decode_latency": {
+            "availability": "unevaluable",
+            "value": null,
+            "value_qualifier": null
+          },
+          "tokens_per_sec": {
+            "availability": "unevaluable",
+            "value": null,
+            "value_qualifier": null
+          }
+        }
+      },
+      "currency": "historical",
+      "decision_effect": "Descriptive measurement on its recorded population; not a release latency guarantee."
+    },
+    {
+      "evidence_id": "product.current-configuration",
+      "evidence_family": "product",
+      "title": "Current product configuration",
+      "summary": "Committed defaults are strict-offline standalone; current retrieval is dense + BM25 → RRF → BGE reranker.",
+      "evidence_authority": "authoritative",
+      "promotion_status": "promoted",
+      "currency": "current",
+      "decision_effect": "Describes current committed defaults, not every installation override.",
+      "claim_scope": "Committed defaults and current retrieval architecture.",
+      "caveats": [
+        "The local generation endpoint is a replaceable placeholder.",
+        "Installation settings may override approved values."
+      ],
+      "source_refs": [
+        {
+          "source_ref_id": "base-config",
+          "path": "config/base.yaml",
+          "role": "configuration_default",
+          "source_kind": "accepted_machine_readable",
+          "expected_sha256": "dc45247f1c807237cf09e8570d26b2600e685f637f967b7f162ed84cf9db77f0"
+        },
+        {
+          "source_ref_id": "adr004",
+          "path": "ARCHITECTURE_DECISIONS.md",
+          "role": "current_architecture_decision",
+          "source_kind": "accepted_markdown_projection",
+          "expected_sha256": "96793f9fb92f3efe98ff7495b4bfcbefb9480d66c2b5c5f05e3cd91a88fc87e3",
+          "source_locator": "ADR-004 decision and its dated clarification"
+        },
+        {
+          "source_ref_id": "generation-settings-mode",
+          "path": "src/offline_rag/app/product_settings.py",
+          "role": "current_settings_contract",
+          "source_kind": "accepted_machine_readable",
+          "expected_sha256": "6d4504dcd8bbec799d82bcf9492f15edf935ac2c8a9d82e5688024c0f39a02e6"
+        },
+        {
+          "source_ref_id": "authoring-settings-mode",
+          "path": "src/offline_rag/app/authoring_product_settings.py",
+          "role": "current_settings_contract",
+          "source_kind": "accepted_machine_readable",
+          "expected_sha256": "5149ce174d0c8a29bded139bc39af55c29a45a6b11439ce5b709a5648e3ed346"
+        }
+      ],
+      "provenance": {
+        "evidence_family": "product",
+        "fields": {
+          "deployment_profile": "standalone_ollama",
+          "retrieval": "dense + BM25 → RRF → BGE reranker"
+        }
+      },
+      "value_source": "curated",
+      "presentation": {
+        "kind": "key_facts",
+        "facts": [
+          {
+            "fact_id": "defaults",
+            "title": "Committed defaults",
+            "claim": "Strict offline is the default and deployment profile is standalone_ollama. Retrieval combines dense and BM25 candidates using RRF, then applies the BGE reranker.",
+            "source_ref_ids": [
+              "base-config",
+              "adr004"
+            ],
+            "scope": "Committed config/base.yaml defaults; an installation may have approved overrides."
+          },
+          {
+            "fact_id": "settings",
+            "title": "Settings ownership",
+            "claim": "Generation and authoring ownership modes determine which supported values are user-editable; config/base.yaml remains the bootstrap baseline.",
+            "source_ref_ids": [
+              "base-config",
+              "generation-settings-mode",
+              "authoring-settings-mode"
+            ],
+            "scope": "Supported settings ownership modes, not every deployment-specific effective value."
+          },
+          {
+            "fact_id": "generation-default",
+            "title": "Generation defaults",
+            "claim": "The repository baseline uses the OpenAI-compatible adapter pointed at the local Ollama host, with a placeholder model and no API key. This describes the checked-in default; the REL-03 external profile is a separate explicit configuration.",
+            "scope": "Committed config/base.yaml baseline and current supported settings ownership; effective installation values may vary.",
+            "source_ref_ids": [
+              "base-config",
+              "generation-settings-mode"
+            ],
+            "metrics": []
+          }
+        ]
+      }
+    },
+    {
+      "evidence_id": "generation.grounding-and-external-boundary",
+      "evidence_family": "generation",
+      "title": "Grounding and external inference boundary",
+      "summary": "Citation IDs are checked against the current query evidence set and resolved to source provenance; this validates membership, not semantic entailment. Optional REL-03 changes generation destination only.",
+      "evidence_authority": "authoritative",
+      "promotion_status": "not_applicable",
+      "currency": "current",
+      "decision_effect": "Explains citation validation guarantees and the explicitly selected external inference boundary.",
+      "claim_scope": "Current citation validation and bounded REL-03 demonstration profile.",
+      "caveats": [
+        "Membership validity ≠ semantic support. Runtime membership validation does not prove semantic entailment or faithfulness.",
+        "Embeddings, retrieval, reranking, evidence selection, and citation authority remain local in REL-03."
+      ],
+      "source_refs": [
+        {
+          "source_ref_id": "citation-implementation",
+          "path": "src/offline_rag/generation/citations.py",
+          "role": "implementation_contract",
+          "source_kind": "accepted_machine_readable",
+          "expected_sha256": "6208020a9a8baddb594f024378f52ca75805f4934b533faf2d46be0043d177e2"
+        },
+        {
+          "source_ref_id": "grounding-contract",
+          "path": "docs/slice8_grounded_generation.md",
+          "role": "accepted_contract",
+          "source_kind": "accepted_markdown_projection",
+          "expected_sha256": "b03d6376685493bfbe148701f55e477d990ae327872bf3dfdaf91ce5cc953e2e",
+          "source_locator": "Citation membership validation and semantic-support limitation"
+        },
+        {
+          "source_ref_id": "rel03-profile",
+          "path": "docs/rel03_external_inference_demo_profile.md",
+          "role": "accepted_profile",
+          "source_kind": "accepted_markdown_projection",
+          "expected_sha256": "f94335cec0a9b25f1ffc18b92bfcc7bbf4f90e66d953ef57431cfdf284d1c6f3",
+          "source_locator": "Strict-offline default and bounded external generation profile"
+        },
+        {
+          "source_ref_id": "rel03-smoke",
+          "path": "docs/evidence/rel03_p0_live_smoke/REL03_P0_LIVE_SMOKE.md",
+          "role": "accepted_live_evidence",
+          "source_kind": "accepted_markdown_projection",
+          "expected_sha256": "83bfc85562d58a6af0a3f82da4c199863e52019e490faf11d3bd1c043f13121c",
+          "source_locator": "Observed external inference boundary and local authority"
+        }
+      ],
+      "provenance": {
+        "evidence_family": "generation",
+        "fields": {
+          "citation_membership": "current-query EvidenceUnit[]",
+          "semantic_entailment_runtime_checked": false,
+          "external_inference": "operator-selected generation only"
+        }
+      },
+      "value_source": "curated",
+      "presentation": {
+        "kind": "key_facts",
+        "facts": [
+          {
+            "fact_id": "membership",
+            "title": "Citation membership and provenance",
+            "claim": "The server checks returned citation IDs against the current-query EvidenceUnit[] and resolves valid IDs to source provenance. Membership validity ≠ semantic support; this does not runtime-prove entailment or faithfulness.",
+            "source_ref_ids": [
+              "citation-implementation",
+              "grounding-contract"
+            ],
+            "scope": "Current-query citation membership and provenance contract; no semantic-entailment evaluation."
+          },
+          {
+            "fact_id": "external-boundary",
+            "title": "Optional external generation",
+            "claim": "REL-03 qualified an operator-selected profile where generation may use the configured external endpoint while embeddings, retrieval, reranking, evidence selection, and citation authority remain local. The default is strict-offline standalone operation.",
+            "source_ref_ids": [
+              "rel03-profile",
+              "rel03-smoke"
+            ],
+            "scope": "The explicitly selected REL-03-P0 profile and its bounded live smoke."
+          }
+        ]
+      }
+    },
+    {
+      "evidence_id": "runtime.compute-portability",
+      "evidence_family": "runtime",
+      "title": "Compute portability",
+      "summary": "The released container is CPU-only; separately qualified runtime profiles include CPU ONNX and a host-scoped CUDA FP16 profile. Provisioned model bundles stay outside the image.",
+      "evidence_authority": "accepted",
+      "promotion_status": "not_applicable",
+      "currency": "current",
+      "decision_effect": "Distinguishes the CPU release artifact from runtime portability without implying a CUDA release image.",
+      "claim_scope": "REL-01 final CPU release and bounded CPU/CUDA runtime qualifications.",
+      "caveats": [
+        "CUDA qualification is host/profile-scoped and does not constitute a CUDA release artifact.",
+        "AUTO resolution remains unchanged; application config does not force CPU."
+      ],
+      "source_refs": [
+        {
+          "source_ref_id": "rel01-qualification",
+          "path": "docs/evidence/rel01/QUALIFICATION.md",
+          "role": "accepted_qualification",
+          "source_kind": "accepted_markdown_projection",
+          "expected_sha256": "5f67af09ba81e7d26221b57403544a0f41bdd92d3f904d5512ecd4b603ba2287",
+          "source_locator": "Final image, dependency, runtime, and local smoke results"
+        },
+        {
+          "source_ref_id": "l5-summary",
+          "path": "docs/evidence/large_source_capacity/l5/l5_campaign_summary.json",
+          "role": "accepted_machine_artifact",
+          "source_kind": "accepted_machine_readable",
+          "expected_sha256": "e89ce543152b43aaefdde9a0630808730409679fdf30718a4ee7ccd396c55292"
+        },
+        {
+          "source_ref_id": "cuda-summary",
+          "path": "docs/evidence/large_source_capacity/cuda_90m/cuda_90m_campaign_summary.json",
+          "role": "accepted_machine_artifact",
+          "source_kind": "accepted_machine_readable",
+          "expected_sha256": "450cd7a4a2d678cc691b08ee5747fa6d7f4d33abc58c0d4772feeb39d2f2bcd3"
+        }
+      ],
+      "provenance": {
+        "evidence_family": "runtime",
+        "fields": {
+          "cpu_release_torch": "2.14.0+cpu",
+          "cuda_release_artifact": "deferred",
+          "model_bundles": "external provisioned assets"
+        }
+      },
+      "value_source": "curated",
+      "presentation": {
+        "kind": "key_facts",
+        "facts": [
+          {
+            "fact_id": "cpu-image",
+            "title": "CPU release image",
+            "claim": "REL-01 qualified a non-editable CPU-only image without Seneca-provisioned embedding, reranker, or generator bundles.",
+            "source_ref_ids": [
+              "rel01-qualification"
+            ],
+            "scope": "REL-01 final CPU release image; no per-install model-bundle inventory."
+          },
+          {
+            "fact_id": "runtime-profiles",
+            "title": "Runtime profiles",
+            "claim": "CPU ONNX FP32 and CUDA FP16 have separate bounded runtime qualifications; the CUDA result did not change production large-PDF admission or create a CUDA image.",
+            "source_ref_ids": [
+              "l5-summary",
+              "cuda-summary"
+            ],
+            "scope": "Bounded L5 CPU and CUDA host/profile qualifications."
+          },
+          {
+            "fact_id": "image-size",
+            "title": "Final CPU image size",
+            "claim": "The final REL-01 image was measured at 2,346,582,188 bytes.",
+            "source_ref_ids": [
+              "rel01-qualification"
+            ],
+            "metrics": [
+              {
+                "metric_id": "image-bytes",
+                "label": "Image bytes",
+                "metric": {
+                  "availability": "measured",
+                  "value": 2346582188,
+                  "unit": "bytes",
+                  "value_qualifier": "exact"
+                },
+                "source_binding": {
+                  "source_ref_id": "rel01-qualification",
+                  "format": "literal",
+                  "expected_value": 2346582188,
+                  "expected_literal": "2,346,582,188"
+                }
+              }
+            ],
+            "scope": "The accepted REL-01 final image-size measurement."
+          }
+        ]
+      }
+    },
+    {
+      "evidence_id": "capacity.large-source-envelope",
+      "evidence_family": "capacity",
+      "title": "Large-source qualification and admission",
+      "summary": "Scientific qualification and product admission are distinct: the qualified Q100 fixture was 91.70 MiB, while current L6 PDF admission is limited to 90 MiB and applies profile, host-memory, available-memory, and disk gates.",
+      "evidence_authority": "accepted",
+      "promotion_status": "not_applicable",
+      "currency": "current",
+      "decision_effect": "Prevents qualification workload size from being mistaken for product policy.",
+      "claim_scope": "L5 CPU/CUDA observations and current L6 large-PDF admission.",
+      "caveats": [
+        "CPU Q100 and confirmation passed; Q250 was invalid after host termination and Q512 was not run.",
+        "CUDA Q100 passed on the qualified RTX 2080 Super host but did not promote CUDA into production admission.",
+        "The 91.70 MiB fixture exceeds the separate 90 MiB PDF product limit."
+      ],
+      "source_refs": [
+        {
+          "source_ref_id": "l5-summary",
+          "path": "docs/evidence/large_source_capacity/l5/l5_campaign_summary.json",
+          "role": "accepted_machine_artifact",
+          "source_kind": "accepted_machine_readable",
+          "expected_sha256": "e89ce543152b43aaefdde9a0630808730409679fdf30718a4ee7ccd396c55292"
+        },
+        {
+          "source_ref_id": "cuda-summary",
+          "path": "docs/evidence/large_source_capacity/cuda_90m/cuda_90m_campaign_summary.json",
+          "role": "accepted_machine_artifact",
+          "source_kind": "accepted_machine_readable",
+          "expected_sha256": "450cd7a4a2d678cc691b08ee5747fa6d7f4d33abc58c0d4772feeb39d2f2bcd3"
+        },
+        {
+          "source_ref_id": "l6-policy",
+          "path": "docs/design/large_source_capacity_l6_product_policy.md",
+          "role": "accepted_product_policy",
+          "source_kind": "accepted_markdown_projection",
+          "expected_sha256": "a711d97e3626d6550dc7a065af899232a0c71026a535a4ecea419b7c039fe989",
+          "source_locator": "90 MiB PDF admission and host/resource gates"
+        },
+        {
+          "source_ref_id": "l6-result",
+          "path": "docs/evidence/large_source_capacity/l6/L6_IMPLEMENTATION_RESULT.md",
+          "role": "accepted_implementation_result",
+          "source_kind": "accepted_markdown_projection",
+          "expected_sha256": "249f4ef2a934db0af62ec4885c3b2ef53976aa4d4d366e6df5143ed42a27373a",
+          "source_locator": "Large-PDF runtime admission checks"
+        },
+        {
+          "source_ref_id": "base-config",
+          "path": "config/base.yaml",
+          "role": "current_product_configuration",
+          "source_kind": "accepted_machine_readable",
+          "expected_sha256": "dc45247f1c807237cf09e8570d26b2600e685f637f967b7f162ed84cf9db77f0"
+        }
+      ],
+      "provenance": {
+        "evidence_family": "capacity",
+        "fields": {
+          "cpu_profile": "cpu_onnx_fp32_v1",
+          "cuda_profile": "cuda_fp16_v1",
+          "admission_profile": "cpu_onnx_fp32_v1",
+          "host_memory_gate": "MemTotal >= 32,000,000,000; MemAvailable >= 19,388,303,360; disk reserve per L6 policy"
+        }
+      },
+      "value_source": "curated",
+      "presentation": {
+        "kind": "key_facts",
+        "facts": [
+          {
+            "fact_id": "cpu-q100",
+            "title": "CPU Q100 qualification",
+            "claim": "CPU Q100 and fresh-tree confirmation passed on a 96,152,520-byte source. Q250 was invalid evidence because the host terminated without conclusive OOM forensics; Q512 was not run.",
+            "source_ref_ids": [
+              "l5-summary"
+            ],
+            "metrics": [
+              {
+                "metric_id": "cpu-q100-bytes",
+                "label": "CPU Q100 fixture bytes",
+                "metric": {
+                  "availability": "measured",
+                  "value": 96152520,
+                  "unit": "bytes",
+                  "value_qualifier": "exact"
+                },
+                "source_binding": {
+                  "source_ref_id": "l5-summary",
+                  "format": "json_pointer",
+                  "expected_value": 96152520,
+                  "locator": "/profiles/cpu_onnx_fp32_v1/Q100/active_source_bytes"
+                }
+              }
+            ],
+            "scope": "L5 CPU Q100 and confirmation fixture; Q250 host termination and Q512 not-run disposition."
+          },
+          {
+            "fact_id": "cuda-q100",
+            "title": "CUDA Q100 qualification",
+            "claim": "CUDA Q100 and its confirmation passed on the same 96,152,520-byte fixture using the qualified RTX 2080 Super host. This is runtime qualification, not CUDA product admission.",
+            "source_ref_ids": [
+              "cuda-summary"
+            ],
+            "metrics": [
+              {
+                "metric_id": "cuda-q100-bytes",
+                "label": "CUDA Q100 fixture bytes",
+                "metric": {
+                  "availability": "measured",
+                  "value": 96152520,
+                  "unit": "bytes",
+                  "value_qualifier": "exact"
+                },
+                "source_binding": {
+                  "source_ref_id": "cuda-summary",
+                  "format": "json_pointer",
+                  "expected_value": 96152520,
+                  "locator": "/cells/Q100/fixture_byte_size"
+                }
+              }
+            ],
+            "scope": "L5 CUDA Q100 and confirmation on the qualified RTX 2080 Super host."
+          },
+          {
+            "fact_id": "product-limit",
+            "title": "Current PDF admission",
+            "claim": "L6 limits an individual PDF to 90 MiB (94,371,840 bytes) and requires cpu_onnx_fp32_v1 plus host-memory, available-memory, and disk-reserve checks.",
+            "source_ref_ids": [
+              "l6-policy",
+              "l6-result",
+              "base-config"
+            ],
+            "metrics": [
+              {
+                "metric_id": "pdf-limit",
+                "label": "PDF product limit",
+                "metric": {
+                  "availability": "measured",
+                  "value": 94371840,
+                  "unit": "bytes",
+                  "value_qualifier": "exact"
+                },
+                "source_binding": {
+                  "source_ref_id": "base-config",
+                  "format": "yaml_path",
+                  "locator": [
+                    "api",
+                    "max_pdf_bytes_per_document"
+                  ],
+                  "expected_value": 94371840
+                }
+              }
+            ],
+            "scope": "Current L6 PDF per-document admission default and its separate host/resource gates."
+          }
+        ]
+      }
+    },
+    {
+      "evidence_id": "release.verification",
+      "evidence_family": "release",
+      "title": "Release and CI verification",
+      "summary": "Hosted deterministic regression lanes and the CPU release image were qualified within explicit boundaries; CI does not run private-corpus, GPU, or model-evaluation campaigns.",
+      "evidence_authority": "accepted",
+      "promotion_status": "not_applicable",
+      "currency": "current",
+      "decision_effect": "States the bounded release verification surface and prevents CI from being read as scientific or hardware qualification.",
+      "claim_scope": "Accepted Slice 17 hosted CI and REL-01 release qualification.",
+      "caveats": [
+        "REL-01 did not build a CUDA image.",
+        "Hosted regression scope excludes private-corpus, GPU, and model-evaluation campaigns.",
+        "Repository-wide Ruff debt is separately recorded."
+      ],
+      "source_refs": [
+        {
+          "source_ref_id": "slice17-result",
+          "path": "docs/evidence/slice17/IMPLEMENTATION_RESULT.md",
+          "role": "accepted_ci_evidence",
+          "source_kind": "accepted_markdown_projection",
+          "expected_sha256": "4714367dc3943bbc22e4cfc7bdcf108cd4c922264d46cd94b28da0567ec97799",
+          "source_locator": "Hosted regression run and coverage boundaries"
+        },
+        {
+          "source_ref_id": "rel01-qualification",
+          "path": "docs/evidence/rel01/QUALIFICATION.md",
+          "role": "accepted_release_qualification",
+          "source_kind": "accepted_markdown_projection",
+          "expected_sha256": "5f67af09ba81e7d26221b57403544a0f41bdd92d3f904d5512ecd4b603ba2287",
+          "source_locator": "REL-01 image build, size, and runtime qualification"
+        }
+      ],
+      "provenance": {
+        "evidence_family": "release",
+        "fields": {
+          "hosted_run_id": "42641831431",
+          "ci_scope": "bounded deterministic regressions",
+          "private_corpus_gpu_or_model_campaigns": false
+        }
+      },
+      "value_source": "curated",
+      "presentation": {
+        "kind": "key_facts",
+        "facts": [
+          {
+            "fact_id": "hosted-lanes",
+            "title": "Hosted regression lanes",
+            "claim": "The reviewed Slice 17 evidence records the exact hosted run and its bounded backend/frontend regression lanes.",
+            "source_ref_ids": [
+              "slice17-result"
+            ],
+            "metrics": [
+              {
+                "metric_id": "backend-tests",
+                "label": "Backend tests passed",
+                "metric": {
+                  "availability": "measured",
+                  "value": 209,
+                  "unit": "tests",
+                  "value_qualifier": "exact"
+                },
+                "source_binding": {
+                  "source_ref_id": "slice17-result",
+                  "format": "literal",
+                  "expected_value": 209,
+                  "expected_literal": "209 passed"
+                }
+              },
+              {
+                "metric_id": "frontend-tests",
+                "label": "Frontend tests",
+                "metric": {
+                  "availability": "measured",
+                  "value": 459,
+                  "unit": "tests",
+                  "value_qualifier": "exact"
+                },
+                "source_binding": {
+                  "source_ref_id": "slice17-result",
+                  "format": "literal",
+                  "expected_value": 459,
+                  "expected_literal": "459 tests"
+                }
+              }
+            ],
+            "scope": "Hosted Slice 17 run 42641831431 on its exact reviewed evidence head; bounded deterministic test scope."
+          },
+          {
+            "fact_id": "cpu-release",
+            "title": "CPU release image",
+            "claim": "REL-01 qualified the CPU-only multi-stage release image; its size and runtime evidence are separate from the hosted CI result.",
+            "source_ref_ids": [
+              "rel01-qualification"
+            ],
+            "metrics": [
+              {
+                "metric_id": "image-bytes",
+                "label": "Final image bytes",
+                "metric": {
+                  "availability": "measured",
+                  "value": 2346582188,
+                  "unit": "bytes",
+                  "value_qualifier": "exact"
+                },
+                "source_binding": {
+                  "source_ref_id": "rel01-qualification",
+                  "format": "literal",
+                  "expected_value": 2346582188,
+                  "expected_literal": "2,346,582,188"
+                }
+              }
+            ],
+            "scope": "REL-01 final CPU release image qualification, separate from the CI run."
+          }
+        ]
+      }
+    },
+    {
+      "evidence_id": "conversation.decision-history",
+      "evidence_family": "conversation",
+      "title": "Conversation capability decisions",
+      "summary": "Learned planner/router experiments did not replace deterministic factual routing. The accepted product uses explicit application-owned conversation actions while factual requests retain grounded retrieval.",
+      "evidence_authority": "authoritative",
+      "promotion_status": "promoted",
+      "currency": "current",
+      "decision_effect": "Explains the current conversation capability boundary and the decisions that led to it.",
+      "claim_scope": "01A feasibility disposition, 01B safety NO-GO, and 01C accepted/promoted behavior.",
+      "caveats": [
+        "01A and 01B are historical experiments, not active planner features.",
+        "Explicit transformations do not retrieve sources and are labeled as not re-checked."
+      ],
+      "source_refs": [
+        {
+          "source_ref_id": "01a-amendment",
+          "path": "docs/beta_conv_01a_llm_task_planning_amendment.md",
+          "role": "archived_experiment_disposition",
+          "source_kind": "accepted_markdown_projection",
+          "expected_sha256": "c26c845262aba2de6036ba8160ecd4569a783b480d920138903f09e64dc54b6b",
+          "source_locator": "BETA-CONV-01A experiment disposition and preserved baseline"
+        },
+        {
+          "source_ref_id": "01b-closeout",
+          "path": "docs/evidence/beta_conv_01b/BETA_CONV_01B_CLOSEOUT.md",
+          "role": "accepted_closeout",
+          "source_kind": "accepted_markdown_projection",
+          "expected_sha256": "ac694bcb7cc14091c76fc1830518e9a992d8823d2c2a1daaf1c39bb1ef893a6f",
+          "source_locator": "Feasibility result, Spanish mixed-intent safety failure, NO-GO"
+        },
+        {
+          "source_ref_id": "01c-handoff",
+          "path": "docs/evidence/beta_conv_01c/IMPLEMENTATION_HANDOFF.md",
+          "role": "accepted_product_contract",
+          "source_kind": "accepted_markdown_projection",
+          "expected_sha256": "8ea47df50c93d1d8e3934a4609a4ce385d1f16e70a7a36fb63cbb15d7abb2765",
+          "source_locator": "Current explicit-action contract and deterministic factual path"
+        }
+      ],
+      "provenance": {
+        "evidence_family": "conversation",
+        "fields": {
+          "current_factual_routing": "deterministic and grounded",
+          "current_actions": "application-owned explicit actions",
+          "planner_activation": false
+        }
+      },
+      "value_source": "curated",
+      "presentation": {
+        "kind": "key_facts",
+        "facts": [
+          {
+            "fact_id": "01a",
+            "title": "01A feasibility work",
+            "claim": "The LLM task-planning feasibility work was archived after a negative pilot; planner activation did not occur.",
+            "source_ref_ids": [
+              "01a-amendment"
+            ],
+            "currency": "historical",
+            "scope": "Archived BETA-CONV-01A feasibility experiment; no planner activation."
+          },
+          {
+            "fact_id": "01b",
+            "title": "01B learned router",
+            "claim": "The natural-language router closed NO-GO after an unseen Spanish mixed-intent request selected the conversation-only lane, violating the asymmetric grounding boundary.",
+            "source_ref_ids": [
+              "01b-closeout"
+            ],
+            "currency": "historical",
+            "scope": "BETA-CONV-01B unseen-router safety evaluation and NO-GO disposition."
+          },
+          {
+            "fact_id": "01c",
+            "title": "01C current behavior",
+            "claim": "The accepted product supports explicit application-owned transformations. Ordinary factual free text remains on deterministic grounded retrieval.",
+            "source_ref_ids": [
+              "01c-handoff"
+            ],
+            "scope": "Current accepted BETA-CONV-01C explicit-action contract and deterministic factual path."
+          }
+        ]
+      }
+    }
+  ]
+}

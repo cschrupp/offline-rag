@@ -11,8 +11,8 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "build_seneca_engineering_evidence.py"
-REGISTRY = REPO_ROOT / "eval" / "presentation" / "accepted_evidence_registry_v1.json"
-MANIFEST = REPO_ROOT / "ui" / "public" / "evidence" / "engineering-evidence-v1.json"
+REGISTRY = REPO_ROOT / "eval" / "presentation" / "accepted_evidence_registry_v2.json"
+MANIFEST = REPO_ROOT / "ui" / "public" / "evidence" / "engineering-evidence-v2.json"
 
 
 def _load_exporter():
@@ -46,7 +46,7 @@ def _base_registry(tmp_path: Path, records: list[dict]) -> Path:
                 ref.setdefault("source_locator", "§fixture")
     payload = {
         "contract": exp.REGISTRY_CONTRACT,
-        "version": 1,
+        "version": 2,
         "records": records,
     }
     path = tmp_path / "registry.json"
@@ -62,6 +62,9 @@ def _minimal_record(**overrides) -> dict:
         "summary": "Fixture summary",
         "evidence_authority": "accepted",
         "promotion_status": "non_promotional",
+        "currency": "historical",
+        "currency_overrides": {},
+        "decision_effect": "Fixture has no promotion effect.",
         "claim_scope": "Fixture claim scope.",
         "caveats": ["PILOT / NON-PROMOTIONAL"],
         "provenance": {"evidence_family": "retrieval_fixture", "fields": {}},
@@ -162,17 +165,176 @@ def test_unknown_family_fails(tmp_path: Path) -> None:
 
 
 def test_invalid_authority_fails(tmp_path: Path) -> None:
-    path = _base_registry(
-        tmp_path, [_minimal_record(evidence_authority="production")]
+    for authority in ("production", "historical"):
+        path = _base_registry(
+            tmp_path / authority, [_minimal_record(evidence_authority=authority)]
+        )
+        with pytest.raises(exp.ExporterError, match="invalid evidence_authority"):
+            exp.build_from_paths(registry_path=path, repo_root=tmp_path / authority)
+
+
+def test_key_facts_require_sources_and_source_bound_measured_values(
+    tmp_path: Path,
+) -> None:
+    record = _minimal_record(
+        presentation={
+            "kind": "key_facts",
+            "facts": [
+                {
+                    "fact_id": "fact-1",
+                    "title": "Fixture fact",
+                    "claim": "A source-backed claim.",
+                    "scope": "Bounded source fixture.",
+                    "source_ref_ids": ["src"],
+                    "metrics": [
+                        {
+                            "metric_id": "count",
+                            "label": "Count",
+                            "metric": {
+                                "availability": "measured",
+                                "value": 1,
+                                "unit": "items",
+                                "value_qualifier": "exact",
+                            },
+                            "source_binding": {
+                                "source_ref_id": "src",
+                                "format": "literal",
+                                "expected_value": 1,
+                                "expected_literal": "value = 1",
+                            },
+                        }
+                    ],
+                }
+            ],
+        }
     )
-    with pytest.raises(exp.ExporterError, match="invalid evidence_authority"):
+    path = _base_registry(tmp_path, [record])
+    manifest, _ = exp.build_from_paths(registry_path=path, repo_root=tmp_path)
+    assert (
+        manifest["records"][0]["presentation"]["facts"][0]["metrics"][0]["metric"][
+            "value"
+        ]
+        == 1
+    )
+
+    record["presentation"]["facts"][0]["metrics"][0]["source_binding"][
+        "expected_literal"
+    ] = "value = 2"
+    mismatch_path = _base_registry(tmp_path / "mismatch", [record])
+    with pytest.raises(exp.ExporterError, match="expected source literal not found"):
+        exp.build_from_paths(
+            registry_path=mismatch_path, repo_root=tmp_path / "mismatch"
+        )
+
+
+def test_key_facts_reject_unbound_measured_values_and_empty_source_scope(
+    tmp_path: Path,
+) -> None:
+    for source_ids, source_binding in ((["src"], None), ([], None)):
+        record = _minimal_record(
+            presentation={
+                "kind": "key_facts",
+                "facts": [
+                    {
+                        "fact_id": "fact-1",
+                        "title": "Fixture fact",
+                        "claim": "A source-backed claim.",
+                        "scope": "Bounded source fixture.",
+                        "source_ref_ids": source_ids,
+                        "metrics": [
+                            {
+                                "metric_id": "count",
+                                "label": "Count",
+                                "metric": {
+                                    "availability": "measured",
+                                    "value": 1,
+                                    "unit": "items",
+                                    "value_qualifier": "exact",
+                                },
+                                **(
+                                    {"source_binding": source_binding}
+                                    if source_binding
+                                    else {}
+                                ),
+                            }
+                        ],
+                    }
+                ],
+            }
+        )
+        path = _base_registry(tmp_path / str(len(source_ids)), [record])
+        expected = (
+            "measured key fact requires source_binding"
+            if source_ids
+            else "at least one source reference"
+        )
+        with pytest.raises(exp.ExporterError, match=expected):
+            exp.build_from_paths(
+                registry_path=path, repo_root=tmp_path / str(len(source_ids))
+            )
+
+
+def test_literal_source_binding_must_match_the_claimed_number(tmp_path: Path) -> None:
+    record = _minimal_record(
+        presentation={
+            "kind": "key_facts",
+            "facts": [
+                {
+                    "fact_id": "fact-1",
+                    "title": "Fixture fact",
+                    "claim": "A literal-bound metric.",
+                    "scope": "Bounded source fixture.",
+                    "source_ref_ids": ["src"],
+                    "metrics": [
+                        {
+                            "metric_id": "count",
+                            "label": "Count",
+                            "metric": {
+                                "availability": "measured",
+                                "value": 2,
+                                "unit": "items",
+                                "value_qualifier": "exact",
+                            },
+                            "source_binding": {
+                                "source_ref_id": "src",
+                                "format": "literal",
+                                "expected_value": 2,
+                                "expected_literal": "value = 1",
+                            },
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+    path = _base_registry(tmp_path, [record])
+    with pytest.raises(
+        exp.ExporterError, match="source literal numeric value mismatch"
+    ):
+        exp.build_from_paths(registry_path=path, repo_root=tmp_path)
+
+
+def test_key_facts_require_explicit_scope(tmp_path: Path) -> None:
+    record = _minimal_record(
+        presentation={
+            "kind": "key_facts",
+            "facts": [
+                {
+                    "fact_id": "fact-1",
+                    "title": "Fixture fact",
+                    "claim": "A source-backed claim.",
+                    "source_ref_ids": ["src"],
+                }
+            ],
+        }
+    )
+    path = _base_registry(tmp_path, [record])
+    with pytest.raises(exp.ExporterError, match="scope"):
         exp.build_from_paths(registry_path=path, repo_root=tmp_path)
 
 
 def test_invalid_promotion_fails(tmp_path: Path) -> None:
-    path = _base_registry(
-        tmp_path, [_minimal_record(promotion_status="winner")]
-    )
+    path = _base_registry(tmp_path, [_minimal_record(promotion_status="winner")])
     with pytest.raises(exp.ExporterError, match="invalid promotion_status"):
         exp.build_from_paths(registry_path=path, repo_root=tmp_path)
 
@@ -285,20 +447,23 @@ def test_14c_machine_extraction_from_committed_artifacts() -> None:
     assert variants["hybrid"]["latency"]["retrieval_p50"]["value"] == pytest.approx(
         5.617130434024148
     )
-    assert variants["hybrid_rerank"]["latency"]["retrieval_p95"]["value"] == pytest.approx(
-        13.53324203192023
-    )
+    assert variants["hybrid_rerank"]["latency"]["retrieval_p95"][
+        "value"
+    ] == pytest.approx(13.53324203192023)
     assert variants["hybrid"]["quality"]["ndcg_at_10"]["value_qualifier"] == "exact"
     assert row["provenance"]["fields"]["suite_id"].startswith("perfsuite_")
     assert row["provenance"]["fields"]["run_id"].startswith("perfrun_")
-    assert row["presentation"]["variants"][0]["resources"]["vram_availability"][
-        "availability"
-    ] == "unavailable"
+    assert (
+        row["presentation"]["variants"][0]["resources"]["vram_availability"][
+            "availability"
+        ]
+        == "unavailable"
+    )
 
 
 def test_check_mode_passes_and_detects_drift(tmp_path: Path) -> None:
     assert exp.main(["--check"]) == 0
-    drifted = tmp_path / "engineering-evidence-v1.json"
+    drifted = tmp_path / "engineering-evidence-v2.json"
     drifted.write_text("{}\n", encoding="utf-8")
     assert (
         exp.main(
@@ -336,7 +501,45 @@ def test_security_and_recovery_semantics_present_in_manifest() -> None:
         r for r in manifest["records"] if r["evidence_id"] == "recovery.slice12c"
     )
     assert recovery["promotion_status"] == "disabled"
+    assert recovery["currency"] == "historical"
+    assert recovery["currency_overrides"] == {
+        "product_recovery": "current",
+        "operational_recovery": "current",
+    }
     assert recovery["presentation"]["product_recovery"] == "Disabled"
+    assert "snapshot preserved" in recovery["presentation"]["operational_recovery"]
+
+
+def test_v2_current_evidence_records_and_bound_metrics() -> None:
+    manifest, _ = exp.build_from_paths(registry_path=REGISTRY, repo_root=REPO_ROOT)
+    records = {record["evidence_id"]: record for record in manifest["records"]}
+    expected = {
+        "product.current-configuration",
+        "generation.grounding-and-external-boundary",
+        "runtime.compute-portability",
+        "capacity.large-source-envelope",
+        "release.verification",
+        "conversation.decision-history",
+    }
+    assert expected <= records.keys()
+    assert all(
+        record["currency"] in {"current", "historical"} for record in records.values()
+    )
+    assert all(
+        record["evidence_authority"] in {"accepted", "authoritative"}
+        for record in records.values()
+    )
+    conversation_facts = records["conversation.decision-history"]["presentation"][
+        "facts"
+    ]
+    assert [fact["currency"] for fact in conversation_facts] == [
+        "historical",
+        "historical",
+        "current",
+    ]
+    capacity_facts = records["capacity.large-source-envelope"]["presentation"]["facts"]
+    cpu_bytes = capacity_facts[0]["metrics"][0]["metric"]["value"]
+    assert cpu_bytes == 96_152_520
 
 
 def test_level_c_approximate_and_unevaluable() -> None:

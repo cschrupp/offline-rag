@@ -14,16 +14,30 @@ import argparse
 import hashlib
 import json
 import math
+import re
 import sys
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
-REGISTRY_CONTRACT = "seneca-engineering-evidence-registry-v1"
-MANIFEST_CONTRACT = "seneca-engineering-evidence-manifest-v1"
+REGISTRY_CONTRACT = "seneca-engineering-evidence-registry-v2"
+MANIFEST_CONTRACT = "seneca-engineering-evidence-manifest-v2"
 ALLOWED_FAMILIES = frozenset(
-    {"retrieval", "generation", "recovery", "security", "performance"}
+    {
+        "retrieval",
+        "generation",
+        "recovery",
+        "security",
+        "performance",
+        "product",
+        "runtime",
+        "capacity",
+        "release",
+        "conversation",
+    }
 )
-ALLOWED_AUTHORITY = frozenset({"authoritative", "accepted", "historical"})
+ALLOWED_AUTHORITY = frozenset({"authoritative", "accepted"})
+ALLOWED_CURRENCY = frozenset({"current", "historical"})
 ALLOWED_PROMOTION = frozenset(
     {"promoted", "non_promotional", "disabled", "not_applicable"}
 )
@@ -33,9 +47,11 @@ ALLOWED_AVAILABILITY = frozenset(
 ALLOWED_QUALIFIER = frozenset({"exact", "approximate"})
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_REGISTRY = REPO_ROOT / "eval" / "presentation" / "accepted_evidence_registry_v1.json"
+DEFAULT_REGISTRY = (
+    REPO_ROOT / "eval" / "presentation" / "accepted_evidence_registry_v2.json"
+)
 DEFAULT_MANIFEST = (
-    REPO_ROOT / "ui" / "public" / "evidence" / "engineering-evidence-v1.json"
+    REPO_ROOT / "ui" / "public" / "evidence" / "engineering-evidence-v2.json"
 )
 
 
@@ -180,9 +196,7 @@ def validate_source_ref(ref: Any, *, label: str, repo_root: Path) -> dict[str, A
             raise ExporterError(
                 f"{label}.source_locator required for accepted_markdown_projection"
             )
-    elif locator is not None and (
-        not isinstance(locator, str) or not locator.strip()
-    ):
+    elif locator is not None and (not isinstance(locator, str) or not locator.strip()):
         raise ExporterError(f"{label}.source_locator malformed")
     resolved = resolve_repo_path(repo_root, path)
     actual = sha256_file(resolved)
@@ -210,6 +224,173 @@ def _lookup_source(
         if ref["source_ref_id"] == source_ref_id:
             return ref
     raise ExporterError(f"{label}: unknown source_ref_id {source_ref_id}")
+
+
+def _json_pointer(document: Any, pointer: str) -> Any:
+    if pointer == "":
+        return document
+    if not pointer.startswith("/"):
+        raise ExporterError("JSON source binding locator must be a JSON pointer")
+    value = document
+    for token in pointer[1:].split("/"):
+        token = token.replace("~1", "/").replace("~0", "~")
+        try:
+            value = value[int(token)] if isinstance(value, list) else value[token]
+        except (KeyError, IndexError, ValueError, TypeError) as exc:
+            raise ExporterError(f"source binding path not found: {pointer}") from exc
+    return value
+
+
+def validate_source_binding(
+    binding: Any,
+    *,
+    source_refs: list[dict[str, Any]],
+    repo_root: Path,
+    label: str,
+) -> None:
+    row = _require_mapping(binding, f"{label}.source_binding")
+    source_ref_id = _require_str(
+        row.get("source_ref_id"), f"{label}.source_binding.source_ref_id"
+    )
+    ref = _lookup_source(source_refs, source_ref_id, label=label)
+    path = resolve_repo_path(repo_root, ref["path"])
+    binding_format = _require_str(row.get("format"), f"{label}.source_binding.format")
+    expected = row.get("expected_value")
+    if binding_format == "json_pointer":
+        document = load_json(path)
+        actual = _json_pointer(
+            document,
+            _require_str(row.get("locator"), f"{label}.source_binding.locator"),
+        )
+    elif binding_format == "yaml_path":
+        try:
+            import yaml
+
+            document = yaml.safe_load(path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            raise ExporterError(f"could not load YAML source binding: {path}") from exc
+        actual = document
+        locator = _require_list(row.get("locator"), f"{label}.source_binding.locator")
+        for key in locator:
+            try:
+                actual = actual[key]
+            except (KeyError, IndexError, TypeError) as exc:
+                raise ExporterError(
+                    f"source binding path not found: {locator}"
+                ) from exc
+    elif binding_format == "literal":
+        literal = _require_str(
+            row.get("expected_literal"), f"{label}.source_binding.expected_literal"
+        )
+        if literal not in path.read_text(encoding="utf-8"):
+            raise ExporterError(f"expected source literal not found: {literal}")
+        match = re.search(r"[-+]?\d[\d,]*(?:\.\d+)?", literal)
+        if match is None:
+            raise ExporterError(f"source literal has no numeric value: {literal}")
+        try:
+            actual = Decimal(match.group(0).replace(",", ""))
+            expected_decimal = Decimal(str(expected))
+        except InvalidOperation as exc:
+            raise ExporterError(
+                f"invalid numeric source binding literal: {literal}"
+            ) from exc
+        if actual != expected_decimal:
+            raise ExporterError(
+                f"source literal numeric value mismatch for {label}: "
+                f"expected {expected_decimal}, got {actual}"
+            )
+    else:
+        raise ExporterError(f"{label}.source_binding.format invalid: {binding_format}")
+    if actual != expected:
+        raise ExporterError(
+            f"source-bound value mismatch for {label}: expected {expected!r}, got {actual!r}"
+        )
+
+
+def validate_key_facts(
+    presentation: dict[str, Any],
+    *,
+    evidence_id: str,
+    currency: str,
+    source_refs: list[dict[str, Any]],
+    repo_root: Path,
+) -> dict[str, Any]:
+    facts = _require_list(presentation.get("facts"), f"{evidence_id}.facts")
+    if not facts:
+        raise ExporterError(f"{evidence_id}: key_facts requires at least one fact")
+    seen: set[str] = set()
+    projected: list[dict[str, Any]] = []
+    for index, raw_fact in enumerate(facts):
+        label = f"{evidence_id}.facts[{index}]"
+        fact = _require_mapping(raw_fact, label)
+        fact_id = _require_str(fact.get("fact_id"), f"{label}.fact_id")
+        if fact_id in seen:
+            raise ExporterError(f"{evidence_id}: duplicate fact_id {fact_id}")
+        seen.add(fact_id)
+        source_ids = [
+            _require_str(value, f"{label}.source_ref_ids[]")
+            for value in _require_list(
+                fact.get("source_ref_ids"), f"{label}.source_ref_ids"
+            )
+        ]
+        if not source_ids:
+            raise ExporterError(f"{label}: at least one source reference required")
+        for source_id in source_ids:
+            _lookup_source(source_refs, source_id, label=label)
+        fact_currency = fact.get("currency", currency)
+        if fact_currency not in ALLOWED_CURRENCY:
+            raise ExporterError(f"{label}.currency must be current|historical")
+        if fact_currency != currency and "currency" not in fact:
+            raise ExporterError(f"{label}: currency override must be explicit")
+        out_fact: dict[str, Any] = {
+            "fact_id": fact_id,
+            "title": _require_str(fact.get("title"), f"{label}.title"),
+            "claim": _require_str(fact.get("claim"), f"{label}.claim"),
+            "scope": _require_str(fact.get("scope"), f"{label}.scope"),
+            "currency": fact_currency,
+            "source_ref_ids": source_ids,
+        }
+        metrics = _require_list(fact.get("metrics", []), f"{label}.metrics")
+        out_metrics = []
+        for metric_index, raw_metric in enumerate(metrics):
+            metric_label = f"{label}.metrics[{metric_index}]"
+            metric_row = _require_mapping(raw_metric, metric_label)
+            metric = validate_metric(
+                metric_row.get("metric"), label=f"{metric_label}.metric"
+            )
+            binding = metric_row.get("source_binding")
+            if metric["availability"] == "measured" and binding is None:
+                raise ExporterError(
+                    f"{metric_label}: measured key fact requires source_binding"
+                )
+            if binding is not None:
+                binding_row = _require_mapping(
+                    binding, f"{metric_label}.source_binding"
+                )
+                if binding_row.get("source_ref_id") not in source_ids:
+                    raise ExporterError(
+                        f"{metric_label}: source binding must use a fact source_ref_id"
+                    )
+                validate_source_binding(
+                    binding,
+                    source_refs=source_refs,
+                    repo_root=repo_root,
+                    label=metric_label,
+                )
+            out_metrics.append(
+                {
+                    "metric_id": _require_str(
+                        metric_row.get("metric_id"), f"{metric_label}.metric_id"
+                    ),
+                    "label": _require_str(
+                        metric_row.get("label"), f"{metric_label}.label"
+                    ),
+                    "metric": metric,
+                }
+            )
+        out_fact["metrics"] = out_metrics
+        projected.append(out_fact)
+    return {"kind": "key_facts", "facts": projected}
 
 
 def _metric_exact(value: float, *, unit: str | None = None) -> dict[str, Any]:
@@ -375,6 +556,20 @@ def project_record(
     if promotion not in ALLOWED_PROMOTION:
         raise ExporterError(f"invalid promotion_status: {promotion}")
     claim_scope = _require_str(r.get("claim_scope"), "claim_scope")
+    currency = _require_str(r.get("currency"), "currency")
+    if currency not in ALLOWED_CURRENCY:
+        raise ExporterError(f"invalid currency: {currency}")
+    decision_effect = _require_str(r.get("decision_effect"), "decision_effect")
+    currency_overrides = _require_mapping(
+        r.get("currency_overrides", {}), f"{evidence_id}.currency_overrides"
+    )
+    if any(
+        not isinstance(key, str) or value not in ALLOWED_CURRENCY or value == currency
+        for key, value in currency_overrides.items()
+    ):
+        raise ExporterError(
+            f"{evidence_id}.currency_overrides must explicitly differ from record currency"
+        )
     title = _require_str(r.get("title"), "title")
     summary = _require_str(r.get("summary"), "summary")
     caveats = [
@@ -388,7 +583,9 @@ def project_record(
         raise ExporterError("provenance.fields must be an object when present")
 
     source_refs = [
-        validate_source_ref(ref, label=f"{evidence_id}.source_refs[]", repo_root=repo_root)
+        validate_source_ref(
+            ref, label=f"{evidence_id}.source_refs[]", repo_root=repo_root
+        )
         for ref in _require_list(r.get("source_refs"), "source_refs")
     ]
     if not source_refs:
@@ -416,26 +613,42 @@ def project_record(
         )
         if not isinstance(presentation, dict):
             raise ExporterError(f"{evidence_id}.presentation must be an object")
+        if presentation.get("kind") == "key_facts":
+            presentation = validate_key_facts(
+                presentation,
+                evidence_id=evidence_id,
+                currency=currency,
+                source_refs=source_refs,
+                repo_root=repo_root,
+            )
         provenance_out = {
             "evidence_family": provenance["evidence_family"],
             "fields": fields or {},
         }
     else:
         raise ExporterError(f"{evidence_id}: unknown value_source {value_source}")
+    if any(key not in presentation for key in currency_overrides):
+        raise ExporterError(
+            f"{evidence_id}.currency_overrides references an absent presentation field"
+        )
 
-    return {
+    projected_record = {
         "evidence_id": evidence_id,
         "evidence_family": family,
         "title": title,
         "summary": summary,
         "evidence_authority": authority,
         "promotion_status": promotion,
+        "currency": currency,
+        "currency_overrides": currency_overrides,
+        "decision_effect": decision_effect,
         "claim_scope": claim_scope,
         "caveats": caveats,
         "source_refs": source_refs,
         "provenance": provenance_out,
         "presentation": presentation,
     }
+    return projected_record
 
 
 def build_manifest(
@@ -445,15 +658,17 @@ def build_manifest(
     if contract != REGISTRY_CONTRACT:
         raise ExporterError(f"unknown registry contract/version: {contract}")
     version = registry.get("version")
-    if version != 1:
+    if version != 2:
         raise ExporterError(f"unknown registry contract/version: {version}")
     records_in = _require_list(registry.get("records"), "registry.records")
     seen: set[str] = set()
-    records = [project_record(rec, repo_root=repo_root, seen_ids=seen) for rec in records_in]
+    records = [
+        project_record(rec, repo_root=repo_root, seen_ids=seen) for rec in records_in
+    ]
     records.sort(key=lambda row: row["evidence_id"])
     payload = {
         "contract": MANIFEST_CONTRACT,
-        "version": 1,
+        "version": 2,
         "records": records,
     }
     body = canonical_json_bytes(payload)
@@ -461,7 +676,7 @@ def build_manifest(
     manifest = {
         "contract": MANIFEST_CONTRACT,
         "manifest_id": manifest_id,
-        "version": 1,
+        "version": 2,
         "records": records,
     }
     return manifest, canonical_json_bytes(manifest)
@@ -492,7 +707,7 @@ def main(argv: list[str] | None = None) -> int:
         "--output",
         type=Path,
         default=DEFAULT_MANIFEST,
-        help="Path to write engineering-evidence-v1.json",
+        help="Path to write engineering-evidence-v2.json",
     )
     parser.add_argument(
         "--repo-root",

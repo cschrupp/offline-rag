@@ -38,7 +38,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const srcRoot = join(here, "..");
 const globalCss = readFileSync(join(srcRoot, "styles/global.css"), "utf8");
 const manifestText = readFileSync(
-  join(here, "../../public/evidence/engineering-evidence-v1.json"),
+  join(here, "../../public/evidence/engineering-evidence-v2.json"),
   "utf8",
 );
 
@@ -107,7 +107,7 @@ describe("16H-A/K — cross-surface shell integration", () => {
       if (call.url === "/v1/gold-lab/projects") {
         return jsonResponse({ projects: [goldProject({ project_id: "proj_1" })] });
       }
-      if (call.url === "/evidence/engineering-evidence-v1.json") {
+      if (call.url === "/evidence/engineering-evidence-v2.json") {
         return jsonResponse(JSON.parse(manifestText));
       }
       if (call.url.startsWith("/eval/")) {
@@ -467,7 +467,7 @@ describe("16H-I — portfolio evidence consistency", () => {
     const mock = installFetchMock(async (call) => {
       if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
       if (call.url === "/v1/workspaces") return jsonResponse([]);
-      if (call.url === "/evidence/engineering-evidence-v1.json") {
+      if (call.url === "/evidence/engineering-evidence-v2.json") {
         return jsonResponse(JSON.parse(manifestText));
       }
       if (call.url.includes("/eval")) {

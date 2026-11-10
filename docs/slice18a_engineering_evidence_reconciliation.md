@@ -1,15 +1,17 @@
 # Slice 18A-0 — Engineering Evidence Audit and Design Freeze
 
-**Status:** Evidence audit corrected per review; Slice 18A implementation
-scope is ready to proceed. Slices 18B–18D remain unauthorized.
+**Current status:** Audit/design is complete. The bounded Slice 18A
+implementation is complete and awaiting independent review. Slices 18B–18D
+remain unauthorized.
 
 **Audit baseline:** canonical `main` at
 `0a1b5a45bff94ae12c8fe8d423c825572bc1c480`
 
 **Branch:** `feature/slice18a-engineering-evidence-reconciliation`
 **Scope:** claim/evidence reconciliation for a future read-only Engineering
-surface. This document does not change the registry, exporter, generated
-manifest, or UI.
+surface. The original 18A-0 audit commit changed none of the registry,
+exporter, generated manifest, or UI; the separately authorized implementation
+is recorded in `docs/evidence/slice18a/IMPLEMENTATION_RESULT.md`.
 
 ## 1. Current project disposition
 
@@ -21,10 +23,11 @@ manifest, or UI.
   `0a1b5a45`. The default release image is CPU-only. A separate CUDA release
   image remains **DEFERRED**; CUDA-capable developer installs/profile support
   remain distinct from a CUDA release artifact.
-- Slice 18A: **OPEN — evidence audit/design corrected per review; implementation
-  may proceed only within the six-record, two-route scope recorded here**.
-- Slices 18B–18D: **NOT AUTHORIZED**. No registry, exporter, manifest, UI,
-  release workflow, or portfolio publication changes are included here.
+- Slice 18A-0 audit/design: **COMPLETE**. Slice 18A implementation is
+  **COMPLETE / READY FOR INDEPENDENT REVIEW**, within the six-record,
+  two-route scope recorded here.
+- Slices 18B–18D: **NOT AUTHORIZED**. No release workflow or broader portfolio
+  publication is included in Slice 18A.
 
 Historical roadmap and evidence documents retain their original status as of
 the event they recorded. Their historical wording must not be read as current

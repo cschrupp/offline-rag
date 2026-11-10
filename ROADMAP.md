@@ -98,9 +98,10 @@ should not override the current disposition here.
   `0a1b5a45bff94ae12c8fe8d423c825572bc1c480`. The separate CUDA release image
   remains deferred. See
   [`docs/rel01_cpu_release_packaging.md`](docs/rel01_cpu_release_packaging.md).
-- [ ] **Slice 18A-0 — Engineering evidence audit and design freeze** — open on
-  `feature/slice18a-engineering-evidence-reconciliation`; documentation/audit
-  only. Slices 18B–18D remain unauthorized.
+- [ ] **Slice 18A — Engineering evidence reconciliation** — implementation
+  complete on `feature/slice18a-engineering-evidence-reconciliation`; pending
+  independent review. The 18A-0 audit/design gate is complete. Slices 18B–18D
+  remain unauthorized.
 - [ ] End-to-end beta QA.
 - [ ] Fix release-blocking defects.
 - [ ] Human beta acceptance.
@@ -3347,8 +3348,10 @@ passed both jobs; the implementation result and baseline evidence remain in
 ACCEPTED / PROMOTED** with evidence closeout at `0a1b5a45`. The default release
 image is CPU-oriented; a separate CUDA release artifact remains deferred.
 
-**Slice 18 — Portfolio Release Package:** **18A-0 OPEN — AUDIT/DESIGN ONLY**
-- 18A-0 is limited to evidence reconciliation and design freeze.
+**Slice 18 — Portfolio Release Package:** **18A-0 AUDIT/DESIGN COMPLETE;
+18A IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW**
+- Slice 18A is limited to the reviewed six-record, two-route evidence
+  reconciliation and presentation implementation.
 - Slices 18B–18D remain **NOT AUTHORIZED**.
 - Objective: reproducible public portfolio artifact backed by accepted evidence
 - Candidate deliverables only (not locked): polished README; architecture
@@ -3383,8 +3386,8 @@ Later M7 checklist:
 - [x] Slice 15 integration closeout (15H — **COMPLETE / ACCEPTED** at `1c1d94e…`)
 - [x] Portfolio Demo UI (Slice 16 — design **ACCEPTED / LOCKED** at `e2e7475…`; **16A COMPLETE / ACCEPTED** at `e73959be…`; **16B COMPLETE / ACCEPTED** at `eb8baef…`; **16C COMPLETE / ACCEPTED** at `936e414…`; **A1 ACCEPTED / LOCKED** at `5060e2ae…`; **A2 ACCEPTED / LOCKED / SEALED** at `dce3456e…`; **16D-A COMPLETE / ACCEPTED / SEALED** at `4f8962f…`; observed B1 `6b652400…` **ACCEPTANCE WITHHELD**; B1 upload remediation **ACCEPTED / SEALED** at `c68cc3f8…` / closeout `b5fa1e85…`; **16D-B2 COMPLETE / ACCEPTED / SEALED** at `baa16eba…`; **16D-B3 COMPLETE / ACCEPTED / SEALED** at `9c178ffb…`; **16D-C COMPLETE / ACCEPTED / SEALED** at `0381e046…`; A4 **ACCEPTED / LOCKED / SEALED**; **16E COMPLETE / ACCEPTED / SEALED** at Engineering `3e1ce4c9…` / remediation `9dd2b008…`; **16F COMPLETE / ACCEPTED / SEALED** at `f25f835…`; **16G-D0 ACCEPTED / FROZEN**; **16G-I1…I5 / GAP-16G-01 ACCEPTED**; **GAP-16G-02 CLOSEOUT ACCEPTED / PROMOTED TO MAIN** (`HA-001` / IR-002; subject `e5d116b8…`; main promotion **COMPLETE** at `f7fb999…`); **16G-I6 COMPLETE / ACCEPTED** (IR-002 **ACCEPT**; exact candidate `cc7ff520eb146fa555f2b48e1f7dcc89a7952729`); **16G IMPLEMENTATION COMPLETE / ACCEPTED**; **16H COMPLETE / ACCEPTED** (16H-IR-003 **ACCEPT**; 16H-HA-001 **ACCEPTED**; exact subject `01a4a984d438d5bb7c4e3d0fa2f5bb908e0b4a10`); **9G DEFERRED / NOT AUTHORIZED**; Slice 16 overall **COMPLETE / HUMAN ACCEPTED / CANONICAL**)
 - [x] Regression CI (Slice 17 — **COMPLETE / HUMAN ACCEPTED / PROMOTED**)
-- [ ] Portfolio release package (Slice 18A-0 — **AUDIT/DESIGN ONLY / OPEN**;
-  18B–18D **NOT AUTHORIZED**)
+- [ ] Portfolio release package (Slice 18A — **IMPLEMENTATION COMPLETE / READY
+  FOR INDEPENDENT REVIEW**; 18B–18D **NOT AUTHORIZED**)
 - [ ] Milestone 7 closeout (**NOT AUTHORIZED**)
 - [ ] Container image size / CPU–CUDA variants ([issue #1](https://github.com/cschrupp/offline-rag/issues/1) — **DEFERRED**)
 
@@ -3402,8 +3405,9 @@ remains **IN PROGRESS** (Slice 15 through **15H** landed; Slice 16 design
 Amendment A1 **ACCEPTED / LOCKED**; Amendment A2 **ACCEPTED / LOCKED /
 SEALED**; B1 foundation remediation **ACCEPTED / SEALED**; **16D-B3
 COMPLETE / ACCEPTED / SEALED** at `9c178ffb033cde41849379fc914f321697ff8691`; **16D-C** COMPLETE / ACCEPTED / SEALED;
-Slice 17 is **COMPLETE / HUMAN ACCEPTED / PROMOTED**. Slice 18A-0 is separately
-open for audit/design only; 18B–18D and M7 closeout remain **NOT AUTHORIZED**.
+Slice 17 is **COMPLETE / HUMAN ACCEPTED / PROMOTED**. Slice 18A-0 audit/design
+is complete; its bounded evidence-registry/exporter/UI implementation is ready
+for independent review. Slices 18B–18D and M7 closeout remain **NOT AUTHORIZED**.
 Performance optimization,
 generator max-token change, reranker config change, `base.yaml` promotion,
 `PORTFOLIO_DEMO.md` update, 13C/13D, recovery enablement, LangGraph, and NeMo
@@ -3417,8 +3421,8 @@ remain open for its broader wording.
 
 The checklist below is retained as a historical portfolio-release stub.
 Formal portfolio packaging work is tracked as **Slice 18** under Milestone 7.
-Only Slice 18A-0 evidence audit/design is currently open; this historical stub
-does not authorize implementation or slices 18B–18D.
+Slice 18A implementation is complete and awaiting independent review. This
+historical stub does not authorize slices 18B–18D.
 
 - [ ] public demo corpus instructions
 - [ ] benchmark methodology page

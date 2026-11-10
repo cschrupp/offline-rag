@@ -1,7 +1,7 @@
 export const ENGINEERING_EVIDENCE_MANIFEST_PATH =
-  "/evidence/engineering-evidence-v1.json";
+  "/evidence/engineering-evidence-v2.json";
 
-export const MANIFEST_CONTRACT = "seneca-engineering-evidence-manifest-v1";
+export const MANIFEST_CONTRACT = "seneca-engineering-evidence-manifest-v2";
 
 export type MetricAvailability =
   | "measured"
@@ -33,6 +33,9 @@ export type EvidenceRecord = {
   summary: string;
   evidence_authority: string;
   promotion_status: string;
+  currency: "current" | "historical";
+  currency_overrides: Record<string, "current" | "historical">;
+  decision_effect: string;
   claim_scope: string;
   caveats: string[];
   source_refs: SourceRef[];
@@ -41,6 +44,20 @@ export type EvidenceRecord = {
     fields: Record<string, unknown>;
   };
   presentation: Record<string, unknown>;
+};
+
+export type KeyFact = {
+  fact_id: string;
+  title: string;
+  claim: string;
+  scope: string;
+  currency: "current" | "historical";
+  source_ref_ids: string[];
+  metrics: Array<{
+    metric_id: string;
+    label: string;
+    metric: Metric;
+  }>;
 };
 
 export type EngineeringEvidenceManifest = {

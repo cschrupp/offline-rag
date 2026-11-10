@@ -16,6 +16,7 @@ import { StatusFlow } from "../features/engineering/StatusFlow";
 import {
   isMetric,
   type EvidenceRecord,
+  type KeyFact,
   type Metric,
 } from "../features/engineering/evidenceTypes";
 
@@ -23,14 +24,71 @@ function asMetric(value: unknown): Metric | null {
   return isMetric(value) ? value : null;
 }
 
-function PromotionExplain({ badge }: { badge: string }) {
+function EvidenceDisposition({ record }: { record: EvidenceRecord }) {
   return (
-    <div className="row engineering-status-explain">
-      <Badge tone="empty" label={badge} />
-      <span>
-        Exploratory result; does not authorize a configuration change.
-      </span>
+    <div className="stack engineering-status-explain">
+      <div className="row">
+        <Badge tone="empty" label={`Authority: ${record.evidence_authority}`} />
+        <Badge tone="empty" label={`Currency: ${record.currency}`} />
+        <Badge
+          tone="empty"
+          label={`Product/config promotion: ${record.promotion_status}`}
+        />
+      </div>
+      <p style={{ margin: 0 }}><strong>Decision effect.</strong> {record.decision_effect}</p>
     </div>
+  );
+}
+
+function KeyFactsSection({
+  record,
+  manifestId,
+}: {
+  record: EvidenceRecord;
+  manifestId: string;
+}) {
+  const facts = record.presentation.facts as KeyFact[];
+  return (
+    <Card className="stack engineering-evidence-card" data-evidence-id={record.evidence_id}>
+      <header className="stack" style={{ gap: "0.5rem" }}>
+        <h2 style={{ margin: 0 }}>{record.title}</h2>
+        <EvidenceDisposition record={record} />
+        <p style={{ margin: 0 }}>{record.summary}</p>
+      </header>
+      <div className="stack">
+        {facts.map((fact) => (
+          <section className="stack engineering-arch-card" key={fact.fact_id}>
+            <h3 style={{ margin: 0 }}>{fact.title}</h3>
+            {fact.currency !== record.currency ? (
+              <Badge tone="empty" label={`Fact currency: ${fact.currency}`} />
+            ) : null}
+            <p style={{ margin: 0 }}>{fact.claim}</p>
+            <p className="muted" style={{ margin: 0 }}>
+              <strong>Scope.</strong> {fact.scope}
+            </p>
+            {fact.metrics.length > 0 ? (
+              <dl className="engineering-provenance-dl">
+                {fact.metrics.map((item) => (
+                  <div key={item.metric_id}>
+                    <dt>{item.label}</dt>
+                    <dd><EvidenceMetric metric={item.metric} /></dd>
+                  </div>
+                ))}
+              </dl>
+            ) : null}
+            <p className="muted" style={{ margin: 0 }}>
+              Evidence: {fact.source_ref_ids.join(", ")}
+            </p>
+          </section>
+        ))}
+      </div>
+      <details className="engineering-provenance">
+        <summary>Scope and caveats</summary>
+        <p>{record.claim_scope}</p>
+        <ul>{record.caveats.map((item) => <li key={item}>{item}</li>)}</ul>
+      </details>
+      <ProvenanceDetails record={record} manifestId={manifestId} />
+    </Card>
   );
 }
 
@@ -83,12 +141,8 @@ function RetrievalSection({
           <h2 style={{ margin: 0 }}>Retrieval quality</h2>
           <Badge tone="empty" label="Pilot" />
         </div>
-        <PromotionExplain badge="Non-promotional" />
+        <EvidenceDisposition record={record} />
         <p style={{ margin: 0 }}>{record.summary}</p>
-        <p className="engineering-result-limit" style={{ margin: 0 }}>
-          Exploratory result — does not authorize a configuration change. Small
-          descriptive populations only (Slice 9H-P pilot).
-        </p>
       </header>
 
       {populationIds.length > 1 ? (
@@ -218,14 +272,10 @@ function GenerationSection({
       <header className="stack" style={{ gap: "0.5rem" }}>
         <div className="row">
           <h2 style={{ margin: 0 }}>Generation &amp; citations</h2>
-          <Badge tone="empty" label="Development" />
+          <Badge tone="empty" label={`Evidence currency: ${record.currency}`} />
         </div>
-        <PromotionExplain badge="Non-promotional" />
+        <EvidenceDisposition record={record} />
         <p style={{ margin: 0 }}>{record.summary}</p>
-        <p className="engineering-result-limit" style={{ margin: 0 }}>
-          Development evidence with same-model self-judge limitation. No prompt
-          promotion.
-        </p>
       </header>
       {prompts ? (
         <div className="engineering-table-wrap">
@@ -318,12 +368,8 @@ function Performance14cSection({
     <Card className="stack engineering-evidence-card">
       <header className="stack" style={{ gap: "0.5rem" }}>
         <h2 style={{ margin: 0 }}>Performance — 14C retrieval quality-vs-cost</h2>
-        <PromotionExplain badge="Non-promotional" />
+        <EvidenceDisposition record={record} />
         <p style={{ margin: 0 }}>{record.summary}</p>
-        <p className="engineering-result-limit" style={{ margin: 0 }}>
-          Separate population from Slice 9H-P descriptive latency and Level-C
-          end-to-end measurements. No configuration promotion.
-        </p>
       </header>
       {variants ? (
         <>
@@ -507,12 +553,8 @@ function PerformanceLevelCSection({
     <Card className="stack engineering-evidence-card">
       <header className="stack" style={{ gap: "0.5rem" }}>
         <h2 style={{ margin: 0 }}>Performance — Level-C end-to-end</h2>
-        <PromotionExplain badge="Non-promotional" />
+        <EvidenceDisposition record={record} />
         <p style={{ margin: 0 }}>{record.summary}</p>
-        <p className="engineering-result-limit" style={{ margin: 0 }}>
-          Separate population from 14C retrieval-path latency. No derived
-          stage-overhead arithmetic.
-        </p>
       </header>
       {metrics ? (
         <div className="engineering-table-wrap">
@@ -565,6 +607,7 @@ function RecoverySection({
     <Card className="stack engineering-evidence-card">
       <header className="stack" style={{ gap: "0.5rem" }}>
         <h2 style={{ margin: 0 }}>Recovery</h2>
+        <EvidenceDisposition record={record} />
         <p style={{ margin: 0 }}>{record.summary}</p>
       </header>
       <StatusFlow
@@ -588,6 +631,15 @@ function RecoverySection({
         }}
         explanation="Product recovery remains disabled. This page does not offer a recovery control."
       />
+      <section className="stack engineering-arch-card" data-testid="operational-recovery-evidence">
+        <h3 style={{ margin: 0 }}>Operational crash/restart recovery</h3>
+        <Badge tone="empty" label="Currency: current" />
+        <p style={{ margin: 0 }}>{String(p.operational_recovery)}</p>
+        <p className="muted" style={{ margin: 0 }}>
+          This persistence behavior is separate from Slice 12C query/retrieval
+          rewrite and retry, which remains disabled for insufficient efficacy.
+        </p>
+      </section>
       <details className="engineering-provenance">
         <summary>Methodological caveats</summary>
         <ul className="engineering-caveats">
@@ -628,11 +680,8 @@ function SecuritySection({
     <Card className="stack engineering-evidence-card">
       <header className="stack" style={{ gap: "0.5rem" }}>
         <h2 style={{ margin: 0 }}>Security / robustness</h2>
+        <EvidenceDisposition record={record} />
         <p style={{ margin: 0 }}>{record.summary}</p>
-        <p className="engineering-result-limit" style={{ margin: 0 }}>
-          Campaign execution completed is not a campaign PASS. Campaign FAIL is
-          not a harness implementation failure.
-        </p>
       </header>
       {primary ? (
         <StatusFlow
@@ -720,8 +769,25 @@ export function EngineeringEvaluationPage() {
     const levelC = recordById(manifest, "performance.slice14-level-c");
     const recovery = recordById(manifest, "recovery.slice12c");
     const security = recordById(manifest, "security.slice13b");
+    const currentEvidence = [
+      "product.current-configuration",
+      "generation.grounding-and-external-boundary",
+      "runtime.compute-portability",
+      "capacity.large-source-envelope",
+      "release.verification",
+      "conversation.decision-history",
+    ].map((id) => recordById(manifest, id)).filter(
+      (record): record is EvidenceRecord => record !== undefined,
+    );
     return (
       <div className="stack">
+        {currentEvidence.map((record) => (
+          <KeyFactsSection
+            key={record.evidence_id}
+            record={record}
+            manifestId={manifest.manifest_id}
+          />
+        ))}
         {retrieval ? (
           <RetrievalSection
             record={retrieval}
@@ -767,8 +833,8 @@ export function EngineeringEvaluationPage() {
       <header className="stack engineering-page-header" style={{ gap: "0.5rem" }}>
         <h1>Engineering evidence</h1>
         <p style={{ margin: 0 }}>
-          Accepted project evaluation evidence for inspection and demo — not live
-          telemetry and not an experiment console.
+          A versioned, source-linked view of current product facts and accepted
+          historical evaluations — not live telemetry or an experiment console.
         </p>
         <ul className="engineering-page-limits">
           <li>Static accepted evidence</li>

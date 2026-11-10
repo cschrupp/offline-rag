@@ -36,10 +36,19 @@ export function ProvenanceDetails({ record, manifestId }: Props) {
             <strong>Manifest ID.</strong> <code>{manifestId}</code>
           </p>
         ) : null}
-        <p className="muted" style={{ margin: 0 }}>
-          Authority: {record.evidence_authority} · Promotion:{" "}
-          {record.promotion_status}
-        </p>
+        <dl className="engineering-provenance-dl">
+          <div><dt>Evidence authority</dt><dd>{record.evidence_authority}</dd></div>
+          <div><dt>Currency</dt><dd>{record.currency}</dd></div>
+          <div><dt>Product/config promotion</dt><dd>{record.promotion_status}</dd></div>
+          <div><dt>Decision effect</dt><dd>{record.decision_effect}</dd></div>
+        </dl>
+        {Object.keys(record.currency_overrides).length > 0 ? (
+          <dl className="engineering-provenance-dl">
+            {Object.entries(record.currency_overrides).map(([key, currency]) => (
+              <div key={key}><dt>{key} currency</dt><dd>{currency}</dd></div>
+            ))}
+          </dl>
+        ) : null}
         <p style={{ margin: 0 }}>
           <strong>Claim scope.</strong> {record.claim_scope}
         </p>
@@ -80,6 +89,12 @@ export function ProvenanceDetails({ record, manifestId }: Props) {
             ))}
           </ul>
         </div>
+        <details>
+          <summary>Exact presentation values</summary>
+          <pre className="engineering-exact-presentation">
+            {JSON.stringify(record.presentation, null, 2)}
+          </pre>
+        </details>
       </div>
     </details>
   );

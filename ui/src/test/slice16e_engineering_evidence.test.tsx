@@ -15,7 +15,7 @@ import { installFetchMock, jsonResponse } from "./mockApi";
 const here = dirname(fileURLToPath(import.meta.url));
 const globalCss = readFileSync(join(here, "../styles/global.css"), "utf8");
 const manifestText = readFileSync(
-  join(here, "../../public/evidence/engineering-evidence-v1.json"),
+  join(here, "../../public/evidence/engineering-evidence-v2.json"),
   "utf8",
 );
 const manifestJson = JSON.parse(manifestText) as EngineeringEvidenceManifest;
@@ -32,7 +32,7 @@ function installAppMocks(options?: {
   return installFetchMock(async ({ url, method }) => {
     if (url === "/health/ready") return jsonResponse({ status: "ready" });
     if (url === "/v1/workspaces") return jsonResponse([]);
-    if (url === "/evidence/engineering-evidence-v1.json") {
+    if (url === "/evidence/engineering-evidence-v2.json") {
       expect(method).toBe("GET");
       if (mode === "missing") {
         return new Response("missing", { status: 404 });
@@ -128,7 +128,7 @@ describe("16E presentation tokens and architecture", () => {
     const mock = installAppMocks();
     renderApp("/engineering/architecture");
     expect(
-      await screen.findByTestId("product-architecture-flow"),
+      await screen.findByTestId("question-lifecycle-flow"),
     ).toBeInTheDocument();
     expect(screen.getByTestId("snapshot-architecture-flow")).toBeInTheDocument();
     expect(screen.getByTestId("deployment-architecture-flow")).toBeInTheDocument();
@@ -136,7 +136,12 @@ describe("16E presentation tokens and architecture", () => {
     expect(
       screen.getByRole("heading", { name: "Deferred / not active" }),
     ).toBeInTheDocument();
-    const product = screen.getByTestId("product-architecture-flow");
+    const flows = document.querySelectorAll("[data-testid$='-flow']");
+    expect(flows).toHaveLength(5);
+    expect(screen.getByTestId("runtime-portability-flow")).toBeInTheDocument();
+    expect(screen.getByTestId("evidence-publication-flow")).toBeInTheDocument();
+    const product = screen.getByTestId("question-lifecycle-flow");
+    expect(product.textContent ?? "").toMatch(/Membership validation does not prove semantic entailment/);
     expect(product.textContent ?? "").not.toMatch(/LangGraph/);
     const deferred = screen
       .getByRole("heading", { name: "Deferred / not active" })
@@ -147,7 +152,7 @@ describe("16E presentation tokens and architecture", () => {
 });
 
 describe("16E evaluation evidence UI", () => {
-  it("renders evidence families with plain-language limits and no foreground manifest id", async () => {
+  it("renders source-backed current and historical evidence with separate status axes", async () => {
     const mock = installAppMocks();
     renderApp("/engineering/evaluation");
     expect(
@@ -157,10 +162,14 @@ describe("16E evaluation evidence UI", () => {
     expect(pageHeader?.textContent ?? "").toMatch(/Static accepted evidence/i);
     expect(pageHeader?.textContent ?? "").toMatch(/No live benchmark execution/i);
     expect(pageHeader?.textContent ?? "").not.toMatch(/engmanifest_/i);
-    expect(
-      screen.getAllByText(/does not authorize a configuration change/i).length,
-    ).toBeGreaterThan(0);
-    expect(screen.getByRole("heading", { name: /Generation/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Current product configuration" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Compute portability" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Large-source qualification and admission" })).toBeInTheDocument();
+    expect(screen.getAllByText(/Decision effect\./i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Membership validity ≠ semantic support/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Evidence authority/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Product\/config promotion/).length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: "Generation & citations" })).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: /Performance — 14C/i }),
     ).toBeInTheDocument();
@@ -196,12 +205,12 @@ describe("16E evaluation evidence UI", () => {
     await user.click(retrievalDetails);
     const table = await screen.findByTestId("retrieval-metrics-table");
     const firstNd = within(table).getAllByRole("row")[1];
-    expect(within(firstNd).getByRole("cell", { name: "0.7643" })).toBeInTheDocument();
-    expect(within(rows[0]).getByText("0.7643")).toBeInTheDocument();
+    expect(within(firstNd).getByRole("cell", { name: "0.764" })).toBeInTheDocument();
+    expect(within(rows[0]).getByText("0.764")).toBeInTheDocument();
 
     await user.selectOptions(screen.getByLabelText(/Population/i), "human-16");
     await waitFor(() => {
-      expect(within(screen.getByTestId("metric-bar-chart")).getByText("0.7477")).toBeInTheDocument();
+      expect(within(screen.getByTestId("metric-bar-chart")).getByText("0.748")).toBeInTheDocument();
     });
     const details = retrievalDetails.closest("details");
     if (details && !details.open) {
@@ -209,7 +218,7 @@ describe("16E evaluation evidence UI", () => {
     }
     await waitFor(() => {
       expect(
-        within(screen.getByTestId("retrieval-metrics-table")).getByText("0.7477"),
+        within(screen.getByTestId("retrieval-metrics-table")).getByText("0.748"),
       ).toBeInTheDocument();
     });
     mock.restore();
@@ -228,13 +237,13 @@ describe("16E evaluation evidence UI", () => {
     expect(panels.textContent ?? "").not.toMatch(/best configuration/i);
 
     const qualityPanel = screen.getByTestId("performance-14c-quality");
-    expect(within(qualityPanel).getByText(/0\.7905068212751879/)).toBeInTheDocument();
+    expect(within(qualityPanel).getByText(/0\.791/)).toBeInTheDocument();
     const latencyPanel = screen.getByTestId("performance-14c-latency");
-    expect(within(latencyPanel).getByText(/5\.617130434024148/)).toBeInTheDocument();
+    expect(within(latencyPanel).getByText(/5\.62 s/)).toBeInTheDocument();
 
     await user.click(screen.getAllByText("View detailed metrics")[1]);
     const qTable = await screen.findByTestId("performance-14c-quality-table");
-    expect(within(qTable).getByText(/0\.7905068212751879/)).toBeInTheDocument();
+    expect(within(qTable).getByText(/0\.791/)).toBeInTheDocument();
     mock.restore();
   });
 
@@ -267,6 +276,15 @@ describe("16E evaluation evidence UI", () => {
     expect(within(flow).getByText("Disabled")).toBeInTheDocument();
     expect(within(flow).getByText("Insufficient")).toBeInTheDocument();
     expect(within(flow).getByText(/Deferred \/ not authorized/i)).toBeInTheDocument();
+    expect(
+      screen.getByTestId("operational-recovery-evidence"),
+    ).toHaveTextContent(/previously published snapshot preserved/i);
+    expect(
+      screen.getByTestId("operational-recovery-evidence"),
+    ).toHaveTextContent(/subsequent source addition succeeded/i);
+    expect(
+      screen.getByTestId("operational-recovery-evidence"),
+    ).toHaveTextContent(/Currency: current/i);
     expect(screen.queryByRole("button", { name: /enable recovery/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /run benchmark/i })).toBeNull();
     mock.restore();
@@ -280,7 +298,12 @@ describe("16E evaluation evidence UI", () => {
     expect(screen.getAllByText("Unevaluable").length).toBeGreaterThanOrEqual(3);
     expect(screen.getAllByText("Unavailable").length).toBeGreaterThan(0);
 
-    const summary = screen.getAllByText("View provenance")[0].closest("summary");
+    const retrievalCard = screen
+      .getByRole("heading", { name: "Retrieval quality" })
+      .closest(".card");
+    const summary = within(retrievalCard as HTMLElement)
+      .getByText("View provenance")
+      .closest("summary");
     expect(summary).toBeTruthy();
     await user.click(summary!);
     const provenance = summary!.closest("details");
@@ -314,7 +337,7 @@ describe("16E evaluation evidence UI", () => {
       expect(mock.calls.some((call) => call.url.includes("/eval/"))).toBe(false);
     });
     expect(
-      mock.calls.some((call) => call.url === "/evidence/engineering-evidence-v1.json"),
+      mock.calls.some((call) => call.url === "/evidence/engineering-evidence-v2.json"),
     ).toBe(true);
     mock.restore();
   });
@@ -327,7 +350,7 @@ describe("16E metric rendering", () => {
         metric={{ availability: "measured", value: 0, value_qualifier: "exact" }}
       />,
     );
-    expect(zeroContainer.textContent).toBe("0");
+    expect(zeroContainer.textContent).toBe("0.000");
 
     const { container: unevalContainer } = renderWithProviders(
       <EvidenceMetric
@@ -357,7 +380,7 @@ describe("16E overview", () => {
 describe("16E manifest validation", () => {
   it("accepts the committed manifest contract", () => {
     const validated = validateEngineeringEvidenceManifest(manifestJson);
-    expect(validated.contract).toBe("seneca-engineering-evidence-manifest-v1");
-    expect(validated.records.length).toBe(6);
+    expect(validated.contract).toBe("seneca-engineering-evidence-manifest-v2");
+    expect(validated.records.length).toBe(12);
   });
 });

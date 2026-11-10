@@ -25,6 +25,13 @@ function validateRecord(raw: unknown, index: number): EvidenceRecord {
   }
   const row = raw as Record<string, unknown>;
   const evidenceId = requireString(row.evidence_id, `records[${index}].evidence_id`);
+  if (row.currency !== "current" && row.currency !== "historical") {
+    throw new EvidenceManifestError(`Invalid manifest: ${evidenceId}.currency`);
+  }
+  requireString(row.decision_effect, `${evidenceId}.decision_effect`);
+  if (!row.currency_overrides || typeof row.currency_overrides !== "object") {
+    throw new EvidenceManifestError(`Invalid manifest: ${evidenceId}.currency_overrides`);
+  }
   if (!Array.isArray(row.caveats) || !Array.isArray(row.source_refs)) {
     throw new EvidenceManifestError(`Invalid manifest: ${evidenceId} arrays`);
   }
@@ -47,7 +54,7 @@ export function validateEngineeringEvidenceManifest(
   if (obj.contract !== MANIFEST_CONTRACT) {
     throw new EvidenceManifestError("Invalid manifest: contract");
   }
-  if (obj.version !== 1) {
+  if (obj.version !== 2) {
     throw new EvidenceManifestError("Invalid manifest: version");
   }
   requireString(obj.manifest_id, "manifest_id");
@@ -57,7 +64,7 @@ export function validateEngineeringEvidenceManifest(
   const records = obj.records.map((row, index) => validateRecord(row, index));
   return {
     contract: MANIFEST_CONTRACT,
-    version: 1,
+    version: 2,
     manifest_id: String(obj.manifest_id),
     records,
   };

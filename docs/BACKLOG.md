@@ -38,7 +38,7 @@ BETA-CONV-02 — DEFERRED / NOT AUTHORIZED
 Slice 17 — COMPLETE / HUMAN ACCEPTED / PROMOTED
 REL-01 — COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / PROMOTED
          Separate CUDA release image DEFERRED
-Slice 18A-0 — OPEN / EVIDENCE AUDIT AND DESIGN FREEZE ONLY
+Slice 18A — IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
 Slices 18B–18D — NOT AUTHORIZED
 Additional Gold Lab games — DEFERRED BEYOND CURRENT BETA
 ```
@@ -93,7 +93,7 @@ and its linked sanitized `RUN_002_EVIDENCE_INDEX.md`.
     -> Slice 17 COMPLETE / HUMAN ACCEPTED / PROMOTED at 3fb65e34
     -> REL-01 COMPLETE / HUMAN ACCEPTED / PROMOTED with evidence at 0a1b5a45;
        separate CUDA release image DEFERRED
-    -> Slice 18A-0 evidence audit / design freeze OPEN
+    -> Slice 18A-0 audit/design COMPLETE; implementation READY FOR INDEPENDENT REVIEW
     -> Slices 18B–18D NOT AUTHORIZED
 ```
 
@@ -683,8 +683,8 @@ CPU/CUDA packaging wording; this tranche does not automatically close it.
 ### REL-02 — Portfolio release / public claims package
 
 **Priority:** downstream\
-**Status:** Slice 18A-0 evidence audit/design open; 18B–18D and public portfolio
-release implementation not authorized.
+**Status:** Slice 18A implementation complete / ready for independent review;
+18B–18D and public portfolio release implementation not authorized.
 
 Includes `PORTFOLIO_DEMO.md`, polished public documentation, architecture/demo
 media, benchmark methodology, limitations, hardware/runtime profiles, and
@@ -785,11 +785,13 @@ Slice 17 — Regression CI COMPLETE / HUMAN ACCEPTED / PROMOTED
         ->
 REL-01 CPU release packaging COMPLETE / HUMAN ACCEPTED / PROMOTED
         ->
-Slice 18A-0 — Engineering evidence audit / design freeze OPEN
+Slice 18A-0 — Engineering evidence audit / design freeze COMPLETE
+        ->
+Slice 18A implementation — READY FOR INDEPENDENT REVIEW
         ->
 Milestone 7 closeout
 ```
 
-Slice 17 and REL-01 are complete and promoted. Slice 18A-0 is open for
-documentation-only evidence audit/design; 18B–18D and M7 closeout remain
-unauthorized.
+Slice 17 and REL-01 are complete and promoted. Slice 18A-0 audit/design is
+complete and the bounded implementation is ready for independent review;
+18B–18D and M7 closeout remain unauthorized.
