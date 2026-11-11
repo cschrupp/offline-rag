@@ -376,3 +376,18 @@ Avoid:
 > Everything runs in one container.
 
 That would be inaccurate by design.
+
+## 11. Workstation profile (Slice 18B candidate)
+
+Slice 18B adds a separate non-Docker workstation profile for Linux x86-64 and
+Windows 11 + WSL2 x86-64. It reuses the same FastAPI application, static UI,
+configuration loader, model provisioners, and CPU release dependency lock.
+The existing AUTO resolver remains in use. Seneca and Ollama remain bound to
+loopback; Ollama runs in the same Linux environment as Seneca. Runtime is
+strict-offline after explicit provisioning.
+
+The implementation and installation procedure are documented in
+[`docs/slice18b_workstation_installation.md`](docs/slice18b_workstation_installation.md).
+This is an implementation candidate, not evidence of clean Linux/WSL
+qualification or a promoted workstation release. Native Windows is only a
+separate feasibility spike; CUDA workstation packaging remains deferred.

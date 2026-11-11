@@ -38,8 +38,9 @@ BETA-CONV-02 — DEFERRED / NOT AUTHORIZED
 Slice 17 — COMPLETE / HUMAN ACCEPTED / PROMOTED
 REL-01 — COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / PROMOTED
          Separate CUDA release image DEFERRED
-Slice 18A — IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
-Slices 18B–18D — NOT AUTHORIZED
+Slice 18A — COMPLETE / HUMAN ACCEPTED / PROMOTED at 8431c134
+Slice 18B — IMPLEMENTATION AUTHORIZED / IN PROGRESS; QUALIFICATION PENDING
+Slices 18C–18D — NOT AUTHORIZED
 Additional Gold Lab games — DEFERRED BEYOND CURRENT BETA
 ```
 
@@ -93,8 +94,10 @@ and its linked sanitized `RUN_002_EVIDENCE_INDEX.md`.
     -> Slice 17 COMPLETE / HUMAN ACCEPTED / PROMOTED at 3fb65e34
     -> REL-01 COMPLETE / HUMAN ACCEPTED / PROMOTED with evidence at 0a1b5a45;
        separate CUDA release image DEFERRED
-    -> Slice 18A-0 audit/design COMPLETE; implementation READY FOR INDEPENDENT REVIEW
-    -> Slices 18B–18D NOT AUTHORIZED
+    -> Slice 18A COMPLETE / HUMAN ACCEPTED / PROMOTED at 8431c134
+    -> Slice 18B workstation distribution IMPLEMENTATION AUTHORIZED / IN PROGRESS;
+       clean Linux and WSL2 qualification pending
+    -> Slices 18C–18D NOT AUTHORIZED
 ```
 
 Original Slice 16G is already accepted; 16K-G names the separate regression
@@ -683,8 +686,9 @@ CPU/CUDA packaging wording; this tranche does not automatically close it.
 ### REL-02 — Portfolio release / public claims package
 
 **Priority:** downstream\
-**Status:** Slice 18A implementation complete / ready for independent review;
-18B–18D and public portfolio release implementation not authorized.
+**Status:** Slice 18A complete / Human accepted / promoted; Slice 18B
+workstation-distribution implementation is authorized / in progress. 18C–18D
+and public portfolio release implementation remain unauthorized.
 
 Includes `PORTFOLIO_DEMO.md`, polished public documentation, architecture/demo
 media, benchmark methodology, limitations, hardware/runtime profiles, and
@@ -774,6 +778,27 @@ historically unimplemented:
 Reopen any of these only when new evidence or a new product objective justifies
 its own design/authority.
 
+### Slice 18B — Workstation Distribution
+
+**Status:** IMPLEMENTATION AUTHORIZED / IN PROGRESS; clean-machine qualification pending.
+
+**Branch:** `feature/slice18b-workstation-distribution`
+
+**Native-Windows spike:** `spike/slice18b-native-windows-portability`
+
+The accepted distribution targets Linux x86-64 and Windows 11 + WSL2 Ubuntu
+x86-64 with the locked CPU release dependency graph and existing AUTO compute
+resolver. It reuses the production API, configuration loader, model
+provisioners, and compiled UI. Mutable WSL state must remain on the Linux
+filesystem. The user-owned service contract is systemd user; no PID-file or
+`nohup` fallback is permitted. Runtime remains loopback-only and strict-offline
+after explicit provisioning.
+
+Implementation does not qualify the package. Both clean-machine qualification
+cells remain outstanding. Native Windows remains a separate feasibility spike
+without an installer or service. CUDA packaging, hosting, TLS/authentication,
+backup/restore, and Slices 18C–18D are outside scope.
+
 ## 6. Downstream roadmap after active residuals
 
 ```text
@@ -785,13 +810,14 @@ Slice 17 — Regression CI COMPLETE / HUMAN ACCEPTED / PROMOTED
         ->
 REL-01 CPU release packaging COMPLETE / HUMAN ACCEPTED / PROMOTED
         ->
-Slice 18A-0 — Engineering evidence audit / design freeze COMPLETE
+Slice 18A — COMPLETE / HUMAN ACCEPTED / PROMOTED
         ->
-Slice 18A implementation — READY FOR INDEPENDENT REVIEW
+Slice 18B — workstation distribution implementation in progress; qualification pending
         ->
-Milestone 7 closeout
+Slices 18C–18D and Milestone 7 closeout remain unauthorized
 ```
 
-Slice 17 and REL-01 are complete and promoted. Slice 18A-0 audit/design is
-complete and the bounded implementation is ready for independent review;
-18B–18D and M7 closeout remain unauthorized.
+Slice 17 and REL-01 are complete and promoted. Slice 18A is complete, Human
+accepted, and promoted. Slice 18B implementation is authorized and in progress;
+its clean-machine qualification remains pending. Slices 18C–18D and M7 closeout
+remain unauthorized.

@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/seneca/app"
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/seneca"
+ENV_FILE="$CONFIG_DIR/workstation.env"
+SERVICE="seneca.service"
+
+usage() {
+  cat <<'EOF'
+Usage: seneca {start|stop|restart|status|logs|doctor}
+
+  start    Start the per-user systemd service
+  stop     Stop the per-user systemd service
+  restart  Restart the per-user systemd service
+  status   Show service status
+  logs     Follow service journal (Ctrl-C to stop)
+  doctor   Run the installed offline-rag doctor command
+EOF
+}
+
+command_name="${1:-}"
+shift || true
+case "$command_name" in
+  start|stop|restart)
+    exec systemctl --user "$command_name" "$SERVICE" "$@"
+    ;;
+  status)
+    exec systemctl --user status --no-pager "$SERVICE" "$@"
+    ;;
+  logs)
+    exec journalctl --user --unit "$SERVICE" --follow --no-pager "$@"
+    ;;
+  doctor)
+    if [[ ! -r "$ENV_FILE" ]]; then
+      printf 'Seneca settings not found: %s\nRun the workstation installer first.\n' "$ENV_FILE" >&2
+      exit 1
+    fi
+    exec "$APP_DIR/.venv/bin/python" "$APP_DIR/scripts/workstation/configure.py" \
+      exec-env --path "$ENV_FILE" -- systemd-run --user --wait --pipe --collect \
+      --property="WorkingDirectory=$APP_DIR" \
+      "$APP_DIR/.venv/bin/offline-rag" doctor "$@"
+    ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
+esac

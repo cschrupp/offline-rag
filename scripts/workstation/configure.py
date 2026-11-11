@@ -1,0 +1,295 @@
+#!/usr/bin/env python3
+"""Write bounded workstation environment, service, and installation metadata."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import platform
+import shlex
+import subprocess
+import tempfile
+from collections.abc import Mapping
+from datetime import UTC, datetime
+from pathlib import Path
+
+
+def _atomic_write(path: Path, content: str, mode: int) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temp_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    temp_path = Path(temp_name)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as handle:
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.chmod(temp_path, mode)
+        os.replace(temp_path, path)
+    except BaseException:
+        temp_path.unlink(missing_ok=True)
+        raise
+
+
+def _env_quote(value: str) -> str:
+    if "\n" in value or "\r" in value:
+        raise ValueError("workstation environment values cannot contain newlines")
+    return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def _unit_quote(value: str) -> str:
+    if "\n" in value or "\r" in value:
+        raise ValueError("systemd unit values cannot contain newlines")
+    escaped = value.replace("%", "%%").replace("\\", "\\\\").replace('"', '\\"')
+    return '"' + escaped + '"'
+
+
+def environment_values(
+    *, app_dir: Path, data_dir: Path, models_dir: Path, model: str
+) -> dict[str, str]:
+    app = str(app_dir.expanduser().absolute())
+    data = str(data_dir.expanduser().absolute())
+    models = str(models_dir.expanduser().absolute())
+    return {
+        "OFFLINE_RAG_CONFIG": f"{app}/config/base.yaml",
+        "OFFLINE_RAG_DATA_DIR": data,
+        "OFFLINE_RAG_MODELS_DIR": models,
+        "OFFLINE_RAG_STRICT_OFFLINE": "true",
+        "OFFLINE_RAG_HTTP_HOST": "127.0.0.1",
+        "OFFLINE_RAG_HTTP_PORT": "8080",
+        "OFFLINE_RAG_ALLOW_NON_LOOPBACK": "false",
+        "OFFLINE_RAG_UI_DIR": f"{app}/ui",
+        "OFFLINE_RAG_LLM_BASE_URL": "http://127.0.0.1:11434/v1",
+        "OFFLINE_RAG_LLM_MODEL": model,
+        "OFFLINE_RAG_APPROVED_LLM_ENDPOINTS": "http://127.0.0.1:11434/v1",
+        "OFFLINE_RAG_APPROVED_LLM_MODELS": model,
+        "HF_HUB_OFFLINE": "1",
+        "TRANSFORMERS_OFFLINE": "1",
+    }
+
+
+def _read_env_file(path: Path) -> dict[str, str]:
+    values: dict[str, str] = {}
+    for number, raw_line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        key, sep, raw_value = line.partition("=")
+        if not sep or not key.replace("_", "").isalnum():
+            raise ValueError(f"invalid workstation.env entry on line {number}")
+        parsed = shlex.split(raw_value, posix=True)
+        if len(parsed) != 1:
+            raise ValueError(f"invalid workstation.env value on line {number}")
+        values[key] = parsed[0]
+    return values
+
+
+def _child_environment(path: Path, overrides: list[str]) -> dict[str, str]:
+    environment = os.environ.copy()
+    environment.update(_read_env_file(path))
+    for assignment in overrides:
+        key, separator, value = assignment.partition("=")
+        if not separator or not key.replace("_", "").isalnum():
+            raise ValueError("environment overrides must use KEY=VALUE syntax")
+        environment[key] = value
+    return environment
+
+
+def write_environment_file(
+    path: Path, *, app_dir: Path, data_dir: Path, models_dir: Path, model: str
+) -> None:
+    expected = environment_values(
+        app_dir=app_dir, data_dir=data_dir, models_dir=models_dir, model=model
+    )
+    if path.exists():
+        existing = _read_env_file(path)
+        mismatches = [
+            key for key, value in expected.items() if existing.get(key) != value
+        ]
+        if mismatches:
+            raise ValueError(
+                "existing workstation.env has different installation bindings "
+                f"({', '.join(mismatches)}); review and update it explicitly"
+            )
+        return
+    lines = [
+        "# Seneca workstation installation settings. Local edits are preserved by reinstall.",
+        *(f"{key}={_env_quote(value)}" for key, value in expected.items()),
+    ]
+    _atomic_write(path, "\n".join(lines) + "\n", 0o600)
+
+
+def write_user_service(path: Path, *, app_dir: Path, env_file: Path) -> None:
+    app = app_dir.expanduser().absolute()
+    python = app / ".venv" / "bin" / "python"
+    lines = [
+        "[Unit]",
+        "Description=Seneca local workstation service",
+        "After=default.target",
+        "",
+        "[Service]",
+        "Type=simple",
+        f"EnvironmentFile={_unit_quote(str(env_file.expanduser().absolute()))}",
+        f"WorkingDirectory={_unit_quote(str(app))}",
+        f"ExecStart={_unit_quote(str(python))} -m offline_rag.api.server",
+        "Restart=on-failure",
+        "RestartSec=3s",
+        "KillSignal=SIGTERM",
+        "TimeoutStopSec=45s",
+        "",
+        "[Install]",
+        "WantedBy=default.target",
+        "",
+    ]
+    _atomic_write(path, "\n".join(lines), 0o644)
+
+
+def _source_sha(source_root: Path) -> str | None:
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(source_root), "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except OSError:
+        return None
+    except subprocess.CalledProcessError:
+        return None
+    value = result.stdout.strip()
+    return value if len(value) == 40 else None
+
+
+def write_installation_metadata(
+    path: Path,
+    *,
+    source_root: Path,
+    target: str,
+    app_dir: Path,
+    data_dir: Path,
+    models_dir: Path,
+    ui_dir: Path,
+    uv_path: Path,
+    model: str,
+    visible_memory: Mapping[str, int] | None = None,
+) -> None:
+    uv_version = subprocess.run(
+        [str(uv_path), "--version"], capture_output=True, text=True, check=True
+    ).stdout.strip()
+    python_version = subprocess.run(
+        [
+            str(app_dir.expanduser().absolute() / ".venv" / "bin" / "python"),
+            "--version",
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+    payload = {
+        "schema_version": 1,
+        "source_sha": _source_sha(source_root),
+        "installed_at": datetime.now(tz=UTC).isoformat(),
+        "target": target,
+        "architecture": platform.machine(),
+        "python_version": python_version,
+        "uv_version": uv_version,
+        "application_root": str(app_dir.expanduser().absolute()),
+        "data_root": str(data_dir.expanduser().absolute()),
+        "models_root": str(models_dir.expanduser().absolute()),
+        "ui_root": str(ui_dir.expanduser().absolute()),
+        "service_mechanism": "systemd-user",
+        "generator_endpoint": "http://127.0.0.1:11434/v1",
+        "generator_model": model,
+        "wsl_visible_memory_bytes": dict(visible_memory) if target == "wsl2" else None,
+    }
+    _atomic_write(path, json.dumps(payload, indent=2, sort_keys=True) + "\n", 0o600)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    sub = parser.add_subparsers(dest="command", required=True)
+    env = sub.add_parser("write-env")
+    env.add_argument("--path", type=Path, required=True)
+    env.add_argument("--app-dir", type=Path, required=True)
+    env.add_argument("--data-dir", type=Path, required=True)
+    env.add_argument("--models-dir", type=Path, required=True)
+    env.add_argument("--model", required=True)
+    service = sub.add_parser("write-service")
+    service.add_argument("--path", type=Path, required=True)
+    service.add_argument("--app-dir", type=Path, required=True)
+    service.add_argument("--env-file", type=Path, required=True)
+    metadata = sub.add_parser("write-metadata")
+    metadata.add_argument("--path", type=Path, required=True)
+    metadata.add_argument("--source-root", type=Path, required=True)
+    metadata.add_argument("--target", choices=("linux", "wsl2"), required=True)
+    metadata.add_argument("--app-dir", type=Path, required=True)
+    metadata.add_argument("--data-dir", type=Path, required=True)
+    metadata.add_argument("--models-dir", type=Path, required=True)
+    metadata.add_argument("--ui-dir", type=Path, required=True)
+    metadata.add_argument("--uv-path", type=Path, required=True)
+    metadata.add_argument("--model", required=True)
+    metadata.add_argument("--mem-total", type=int)
+    metadata.add_argument("--mem-available", type=int)
+    exec_env = sub.add_parser(
+        "exec-env", help="Run a child with workstation.env applied"
+    )
+    exec_env.add_argument("--path", type=Path, required=True)
+    exec_env.add_argument("--set", action="append", default=[], metavar="KEY=VALUE")
+    exec_env.add_argument("exec_args", nargs=argparse.REMAINDER)
+    roots = sub.add_parser("read-root", help="Read a persisted Seneca data root")
+    roots.add_argument("--path", type=Path, required=True)
+    roots.add_argument("--name", choices=("data", "models"), required=True)
+    args = parser.parse_args()
+    if args.command == "write-env":
+        write_environment_file(
+            args.path,
+            app_dir=args.app_dir,
+            data_dir=args.data_dir,
+            models_dir=args.models_dir,
+            model=args.model,
+        )
+    elif args.command == "write-service":
+        write_user_service(args.path, app_dir=args.app_dir, env_file=args.env_file)
+    elif args.command == "write-metadata":
+        memory = None
+        if args.target == "wsl2":
+            if args.mem_total is None or args.mem_available is None:
+                parser.error("WSL metadata needs both visible memory values")
+            memory = {"MemTotal": args.mem_total, "MemAvailable": args.mem_available}
+        write_installation_metadata(
+            args.path,
+            source_root=args.source_root,
+            target=args.target,
+            app_dir=args.app_dir,
+            data_dir=args.data_dir,
+            models_dir=args.models_dir,
+            ui_dir=args.ui_dir,
+            uv_path=args.uv_path,
+            model=args.model,
+            visible_memory=memory,
+        )
+    elif args.command == "exec-env":
+        command = args.exec_args
+        if command and command[0] == "--":
+            command = command[1:]
+        if not command:
+            parser.error("exec-env requires a command after --")
+        try:
+            child_environment = _child_environment(args.path, args.set)
+        except ValueError as exc:
+            parser.error(str(exc))
+        os.execvpe(command[0], command, child_environment)
+    elif args.command == "read-root":
+        values = _read_env_file(args.path)
+        key = (
+            "OFFLINE_RAG_DATA_DIR" if args.name == "data" else "OFFLINE_RAG_MODELS_DIR"
+        )
+        value = values.get(key)
+        if not value or not Path(value).is_absolute():
+            parser.error(f"{key} must be an absolute path in workstation.env")
+        print(value)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
