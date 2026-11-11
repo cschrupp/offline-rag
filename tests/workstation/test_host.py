@@ -117,6 +117,7 @@ def test_preflight_reports_wsl_memory_warning_without_changing_policy(
     monkeypatch.setattr(host, "_mount_type", lambda path: "ext4")
     monkeypatch.setattr(host.shutil, "which", lambda command: f"/usr/bin/{command}")
     monkeypatch.setattr(host, "_ollama_model_available", lambda model: (True, "ready"))
+    monkeypatch.setattr(host, "_user_linger_enabled", lambda: True)
     monkeypatch.setattr(
         host.subprocess,
         "run",
@@ -151,6 +152,7 @@ def test_preflight_rejects_windows_mounted_wsl_data_before_install(
     )
     monkeypatch.setattr(host.shutil, "which", lambda command: f"/usr/bin/{command}")
     monkeypatch.setattr(host, "_ollama_model_available", lambda model: (True, "ready"))
+    monkeypatch.setattr(host, "_user_linger_enabled", lambda: True)
     monkeypatch.setattr(
         host.subprocess,
         "run",
@@ -163,3 +165,32 @@ def test_preflight_rejects_windows_mounted_wsl_data_before_install(
         model="qwen3.5:14b",
     )
     assert any("Windows-mounted filesystem" in error for error in result["errors"])
+
+
+def test_preflight_requires_user_manager_linger_for_shell_independent_service(
+    monkeypatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(host, "detect_target", lambda: ("linux", []))
+    monkeypatch.setattr(
+        host,
+        "read_meminfo",
+        lambda: {"MemTotal": 32_000_000_000, "MemAvailable": 20_000_000_000},
+    )
+    monkeypatch.setattr(host, "_mount_type", lambda path: "ext4")
+    monkeypatch.setattr(host.shutil, "which", lambda command: f"/usr/bin/{command}")
+    monkeypatch.setattr(host, "_ollama_model_available", lambda model: (True, "ready"))
+    monkeypatch.setattr(host, "_user_linger_enabled", lambda: False)
+    monkeypatch.setattr(
+        host.subprocess,
+        "run",
+        lambda *args, **kwargs: SimpleNamespace(returncode=0, stdout="", stderr=""),
+    )
+    roots = [tmp_path / name for name in ("app", "data", "models")]
+    result = host.collect_preflight(
+        app_dir=roots[0],
+        data_dir=roots[1],
+        models_dir=roots[2],
+        model="qwen3.5:14b",
+    )
+    assert result["user_manager_linger"] is False
+    assert any("enable-linger" in error for error in result["errors"])

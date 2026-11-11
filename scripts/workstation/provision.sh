@@ -38,17 +38,15 @@ ENV_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/seneca/workstation.env"
   exit 1
 }
 CONFIG_TOOL="$APP_DIR/scripts/workstation/configure.py"
-DATA_DIR="$("$APP_DIR/.venv/bin/python" "$CONFIG_TOOL" read-root --path "$ENV_FILE" --name data)"
 MODELS_DIR="$("$APP_DIR/.venv/bin/python" "$CONFIG_TOOL" read-root --path "$ENV_FILE" --name models)"
 
 run_provision() {
   local label="$1"
   shift
   printf '\n== %s ==\n' "$label"
-  "$APP_DIR/.venv/bin/python" "$APP_DIR/scripts/workstation/configure.py" \
+  "$APP_DIR/.venv/bin/python" "$CONFIG_TOOL" \
     exec-env --path "$ENV_FILE" --set HF_HUB_OFFLINE=0 \
-    --set TRANSFORMERS_OFFLINE=0 -- systemd-run --user --wait --pipe --collect \
-    --property="WorkingDirectory=$APP_DIR" "$@"
+    --set TRANSFORMERS_OFFLINE=0 -- "$@"
 }
 
 run_provision "Docling parser artifacts" \
@@ -59,9 +57,13 @@ run_provision "tiktoken cl100k_base cache" \
   --output "$MODELS_DIR/tokenizers/tiktoken"
 run_provision "qualified CPU ONNX embedding representation" \
   "$APP_DIR/.venv/bin/offline-rag" provision embedding \
+  --config "$APP_DIR/config/base.yaml" \
   --representation onnx_fp32_v1 --onnx-source "$ONNX_SOURCE"
 run_provision "pinned BGE reranker" \
-  "$APP_DIR/.venv/bin/offline-rag" provision reranker
-run_provision "post-provision doctor" "$APP_DIR/.venv/bin/offline-rag" doctor
+  "$APP_DIR/.venv/bin/offline-rag" provision reranker \
+  --config "$APP_DIR/config/base.yaml"
 
-printf '\nProvisioning completed. Runtime remains strict-offline; start Seneca with `seneca start`.\n'
+printf '\nProvisioned artifacts passed their existing provisioning checks.\n'
+printf 'Start Seneca once with `seneca start` so ApplicationRuntime creates durable data paths.\n'
+printf 'After startup, run `seneca doctor` for read-only installation diagnostics.\n'
+printf 'Runtime remains strict-offline.\n'

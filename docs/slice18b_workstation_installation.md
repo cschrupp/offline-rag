@@ -9,6 +9,10 @@ separate portability spike and has no installer or Windows service.
 - Ubuntu 24.04 x86-64 (native Linux or an Ubuntu 24.04 WSL2 distribution).
 - A functioning systemd user manager. WSL distributions must have systemd
   enabled and the distro restarted before installation.
+- systemd user-manager lingering enabled for the installing user, so the Seneca
+  service can outlive the launching shell while the Linux environment runs:
+  `sudo loginctl enable-linger "$USER"`. The installer checks this and fails
+  with the command if it is not enabled.
 - Ollama running in the same Linux environment on `127.0.0.1:11434`, with the
   chosen model already present. Pulling a model is an explicit operator action;
   Seneca never pulls it or falls back to a cloud endpoint.
@@ -41,15 +45,18 @@ On WSL2, each configured root must resolve to the distro's Linux filesystem.
 The application and configuration locations continue to follow their XDG
 defaults.
 
-The frontend uses the committed/prebuilt `ui/dist` when available. Otherwise,
-the installer requires Node.js 22 and runs `npm ci` and the production build in
-the staged application copy. It never runs Vite development mode as the
-installed UI.
+The installer always builds the UI from files tracked by the exact clean
+candidate commit. It requires Node.js 22 and runs `npm ci` and the production
+build in the new versioned release directory. It ignores any source-checkout
+`ui/dist`, which may be stale or gitignored. It never runs Vite development
+mode as the installed UI.
 
 The installer uses the locked CPU release dependency extra and a uv-managed
-Python 3.14 environment. It stages and validates an installed, non-editable
-package before replacing the prior application. Previous app versions are
-retained for recovery. Reinstallation does not remove Seneca data or models.
+Python 3.14 environment. It creates and validates an installed, non-editable
+package directly in a versioned release directory, then atomically switches
+the stable `app` link. It never relocates the virtual environment. Previous app
+versions are retained for recovery. Reinstallation does not remove Seneca data
+or models.
 Install from a clean, committed Git checkout so `installation.json` identifies
 the exact source revision. The installer rejects a dirty or non-Git source
 tree before it creates the installation roots.
@@ -91,9 +98,14 @@ seneca doctor
 ```
 
 The single systemd user service runs the existing API module with one worker,
-loopback binding, and the existing SIGTERM/runtime-drain behavior. If the user
-service manager is unavailable, installation fails with setup guidance; there
-is no `nohup`, PID-file, or custom-supervisor fallback. Open the UI at
+loopback binding, and the existing SIGTERM/runtime-drain behavior. It is
+independent of the launching shell while its systemd user manager and Linux
+environment remain running. On WSL, Windows/WSL may stop the distribution after
+the last terminal closes; reopening or restarting the distro starts its enabled
+Seneca service and restores availability from persistent state. Slice 18B does
+not install a Windows-side keepalive. If the user service manager is unavailable,
+installation fails with setup guidance; there is no `nohup`, PID-file, or
+custom-supervisor fallback. Open the UI at
 `http://127.0.0.1:8080` after the service reports ready.
 
 ## Explicit model/artifact provisioning
@@ -107,13 +119,16 @@ bash "${XDG_DATA_HOME:-$HOME/.local/share}/seneca/app/scripts/workstation/provis
 ```
 
 This invokes the existing Docling, tiktoken, embedding, and reranker
-provisioners, then runs `offline-rag doctor`. It does not download, convert,
-host, or place Ollama generator weights in Seneca's `/models` tree. The
+provisioners using the installed configuration. It does not use a transient
+systemd service, download, convert, host, or place Ollama generator weights in
+Seneca's `/models` tree. The
 existing provisioners validate configured model IDs, revisions, manifests,
 and representation contracts. Keep a record of the selected model IDs,
 revisions, and their applicable licenses with the local deployment records.
-After provisioning, ordinary application runtime is strict-offline and uses
-local-files-only model behavior.
+After provisioning, start Seneca once so `ApplicationRuntime.start()` creates
+the durable workspace directories. Then run `seneca doctor`; doctor remains
+read-only and does not create application state. Ordinary application runtime
+is strict-offline and uses local-files-only model behavior.
 
 The currently configured retrieval assets are:
 
@@ -167,8 +182,12 @@ Installing from a checkout is not the clean-machine 18B-1 qualification. The
 Ubuntu and Windows 11 + WSL2 qualification cells must use the same reviewed
 candidate on clean environments and record the required install, provisioning,
 Ollama, doctor, API/UI, ingestion, grounded-query, restart-persistence,
-terminal-independence, strict-offline, CPU-profile, WSL-path/memory, and
-descriptive latency observations. No latency SLO is introduced.
+shell independence while the Linux environment remains running, strict-offline,
+CPU-profile, WSL-path/memory, and descriptive latency observations. Verify
+shell independence while the distro is running, then separately verify
+persistence and enabled-service recovery after a distro restart. Do not require
+WSL itself to stay alive just because the Seneca user service is enabled. No
+latency SLO is introduced.
 
 ## Uninstall
 
@@ -180,7 +199,8 @@ systemctl --user disable --now seneca.service
 rm -f "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/seneca.service"
 systemctl --user daemon-reload
 rm -f "${XDG_BIN_HOME:-$HOME/.local/bin}/seneca"
-rm -rf "${XDG_DATA_HOME:-$HOME/.local/share}/seneca/app"
+rm -rf "${XDG_DATA_HOME:-$HOME/.local/share}/seneca/app" \
+  "${XDG_DATA_HOME:-$HOME/.local/share}/seneca/releases"
 ```
 
 This leaves `seneca/data` and `seneca/models` intact. It also leaves the

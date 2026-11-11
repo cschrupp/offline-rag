@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import getpass
 import json
 import os
 import platform
@@ -127,6 +128,25 @@ def _ollama_model_available(model: str) -> tuple[bool, str]:
     return True, "Ollama endpoint and selected local model are ready."
 
 
+def _user_linger_enabled() -> bool:
+    try:
+        result = subprocess.run(
+            [
+                "loginctl",
+                "show-user",
+                getpass.getuser(),
+                "--property=Linger",
+                "--value",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError:
+        return False
+    return result.returncode == 0 and result.stdout.strip().lower() == "yes"
+
+
 def collect_preflight(
     *,
     app_dir: Path,
@@ -205,7 +225,7 @@ def collect_preflight(
         "install",
         "mktemp",
         "systemctl",
-        "systemd-run",
+        "loginctl",
         "journalctl",
         "git",
     ]
@@ -231,6 +251,14 @@ def collect_preflight(
             result["errors"].append(
                 "systemd user manager is unavailable. Enable/start the distro's systemd user manager; "
                 "Seneca will not fall back to nohup or PID-file service handling."
+            )
+        linger = _user_linger_enabled()
+        result["user_manager_linger"] = linger
+        if not linger:
+            result["errors"].append(
+                "systemd user-manager lingering is not enabled. Enable it with "
+                f"`sudo loginctl enable-linger {getpass.getuser()}` so the "
+                "enabled Seneca service can outlive the installing shell."
             )
 
     if not model.strip():

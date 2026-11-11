@@ -8,6 +8,7 @@ import stat
 import subprocess
 import sys
 import tomllib
+import venv
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -76,10 +77,75 @@ def test_installer_selects_locked_cpu_release_without_cuda_extra() -> None:
 def test_install_rerun_only_replaces_application_and_keeps_persistent_roots() -> None:
     repository_root = Path(__file__).resolve().parents[2]
     installer = (repository_root / "scripts" / "workstation" / "install.sh").read_text()
-    assert 'mv -- "$APP_DIR" "$BACKUP"' in installer
-    assert 'mv -- "$STAGE" "$APP_DIR"' in installer
+    assert '"$UV_BIN" sync --project "$RELEASE_DIR"' in installer
+    assert 'UV_PROJECT_ENVIRONMENT="$RELEASE_DIR/.venv"' in installer
+    assert 'activate-release --app-link "$APP_DIR"' in installer
+    assert '"$APP_DIR/.venv/bin/offline-rag" --help' in installer
+    assert 'git -C "$SOURCE_ROOT" archive "$SOURCE_SHA" ui' in installer
+    assert "npm ci && npm run build" in installer
+    assert '"$SOURCE_ROOT/ui/dist"' not in installer
     assert 'rm -rf -- "$DATA_DIR"' not in installer
     assert 'rm -rf -- "$MODELS_DIR"' not in installer
+
+
+def test_activated_release_runs_its_final_path_venv_entrypoint(
+    tmp_path: Path,
+) -> None:
+    seneca_root = tmp_path / "seneca"
+    releases = seneca_root / "releases"
+    app_link = seneca_root / "app"
+
+    def create_release(name: str) -> Path:
+        release = releases / name
+        venv.EnvBuilder(with_pip=False).create(release / ".venv")
+        python = release / ".venv" / "bin" / "python"
+        executable = release / ".venv" / "bin" / "offline-rag"
+        executable.write_text(
+            f"#!{python}\nimport sys\nprint(sys.prefix)\n", encoding="utf-8"
+        )
+        executable.chmod(0o755)
+        return release
+
+    first = create_release("first")
+    configure.activate_release_link(app_link, first)
+    first_result = subprocess.run(
+        [str(app_link / ".venv" / "bin" / "offline-rag")],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert Path(first_result.stdout.strip()) == (first / ".venv").resolve()
+
+    second = create_release("second")
+    configure.activate_release_link(app_link, second)
+    second_result = subprocess.run(
+        [str(app_link / ".venv" / "bin" / "offline-rag")],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert Path(second_result.stdout.strip()) == (second / ".venv").resolve()
+    assert first.exists(), "previous releases remain available for recovery"
+
+
+def test_workstation_provisioning_uses_direct_configured_cli_and_defers_doctor() -> (
+    None
+):
+    repository_root = Path(__file__).resolve().parents[2]
+    provision = (
+        repository_root / "scripts" / "workstation" / "provision.sh"
+    ).read_text()
+    wrapper = (repository_root / "scripts" / "workstation" / "seneca").read_text()
+    assert "systemd-run" not in provision
+    assert '--config "$APP_DIR/config/base.yaml"' in provision
+    assert (
+        "systemd-run"
+        not in (repository_root / "scripts" / "workstation" / "host.py").read_text()
+    )
+    assert 'run_provision "post-provision doctor"' not in provision
+    assert "seneca start" in provision
+    assert '--config "$APP_DIR/config/base.yaml"' in wrapper
+    assert "systemd-run" not in wrapper
 
 
 def test_environment_file_is_private_and_rerun_preserves_exact_configuration(

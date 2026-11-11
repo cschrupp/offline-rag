@@ -16,3 +16,10 @@ API/UI acceptance run, or latency measurement is claimed here.
 Qualification evidence, when authorized and run on clean environments, belongs
 under this directory. It must be sanitized and must not contain user corpus or
 model bytes, secrets, prompts, source names/content, or unsanitized host logs.
+
+The workstation service is expected to outlive its launching shell only while
+the Linux environment remains running; systemd user-manager lingering is a
+preflight requirement. On WSL, the distribution may still stop under Windows/WSL
+lifecycle policy. Qualification separately verifies shell independence while
+the distro runs and persistent-state/service recovery after the distro is
+reopened or restarted. The service is not required to keep WSL alive.

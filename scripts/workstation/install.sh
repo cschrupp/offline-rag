@@ -59,6 +59,7 @@ CONFIG_HOME="$(python3 -c 'import pathlib,sys; print(pathlib.Path(sys.argv[1]).e
 BIN_HOME="$(python3 -c 'import pathlib,sys; print(pathlib.Path(sys.argv[1]).expanduser().absolute())' "$BIN_HOME")"
 SENECA_ROOT="$DATA_HOME/seneca"
 APP_DIR="$SENECA_ROOT/app"
+RELEASES_DIR="$SENECA_ROOT/releases"
 DATA_DIR="${CUSTOM_DATA_DIR:-$SENECA_ROOT/data}"
 MODELS_DIR="${CUSTOM_MODELS_DIR:-$SENECA_ROOT/models}"
 DATA_DIR="$(python3 -c 'import pathlib,sys; print(pathlib.Path(sys.argv[1]).expanduser().absolute())' "$DATA_DIR")"
@@ -68,6 +69,17 @@ ENV_FILE="$CONFIG_DIR/workstation.env"
 SERVICE_DIR="$CONFIG_HOME/systemd/user"
 SERVICE_FILE="$SERVICE_DIR/seneca.service"
 METADATA_FILE="$CONFIG_DIR/installation.json"
+UV_STAGE=""
+RELEASE_DIR=""
+PROMOTED=0
+
+cleanup() {
+  [[ -z "$UV_STAGE" ]] || rm -rf -- "$UV_STAGE"
+  if [[ -n "$RELEASE_DIR" && "$PROMOTED" == 0 ]]; then
+    rm -rf -- "$RELEASE_DIR"
+  fi
+}
+trap cleanup EXIT
 
 python3 "$HOST_TOOL" preflight \
   --app-dir "$APP_DIR" --data-dir "$DATA_DIR" --models-dir "$MODELS_DIR" \
@@ -85,19 +97,18 @@ if ! git -C "$SOURCE_ROOT" rev-parse --verify HEAD >/dev/null 2>&1 || \
   printf 'Install from a clean, committed Git checkout so the recorded source SHA is accurate.\n' >&2
   exit 1
 fi
+SOURCE_SHA="$(git -C "$SOURCE_ROOT" rev-parse HEAD)"
 
-if [[ ! -d "$SOURCE_ROOT/ui/dist" || ! -f "$SOURCE_ROOT/ui/dist/index.html" ]]; then
-  command -v node >/dev/null 2>&1 || {
-    printf 'Node.js 22 is required because this checkout has no compiled ui/dist.\n' >&2
-    exit 1
-  }
-  command -v npm >/dev/null 2>&1 || { printf 'npm is required to build the UI.\n' >&2; exit 1; }
-  NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
-  [[ "$NODE_MAJOR" == "22" ]] || {
-    printf 'UI build requires Node.js 22; found %s.\n' "$(node --version)" >&2
-    exit 1
-  }
-fi
+command -v node >/dev/null 2>&1 || {
+  printf 'Node.js 22 is required to build the UI from the tracked candidate source.\n' >&2
+  exit 1
+}
+command -v npm >/dev/null 2>&1 || { printf 'npm is required to build the UI.\n' >&2; exit 1; }
+NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
+[[ "$NODE_MAJOR" == "22" ]] || {
+  printf 'UI build requires Node.js 22; found %s.\n' "$(node --version)" >&2
+  exit 1
+}
 
 TARGET="$(python3 -c 'import platform; r=platform.release().lower(); print("wsl2" if "microsoft" in r else "linux")')"
 case "$(uname -m)" in
@@ -105,8 +116,17 @@ case "$(uname -m)" in
   *) printf 'Unsupported architecture: %s\n' "$(uname -m)" >&2; exit 1 ;;
 esac
 
-mkdir -p "$SENECA_ROOT" "$DATA_DIR" "$MODELS_DIR" "$CONFIG_DIR" "$SERVICE_DIR" "$BIN_HOME"
+mkdir -p "$SENECA_ROOT" "$RELEASES_DIR" "$DATA_DIR" "$MODELS_DIR" "$CONFIG_DIR" "$SERVICE_DIR" "$BIN_HOME"
 chmod 700 "$CONFIG_DIR"
+
+if [[ -L "$APP_DIR" && ! -e "$APP_DIR" ]]; then
+  printf 'The installed app link is broken; repair it before reinstalling.\n' >&2
+  exit 1
+fi
+if [[ -e "$APP_DIR" && ! -L "$APP_DIR" && ! -d "$APP_DIR" ]]; then
+  printf 'The installed app path is not a directory or release link.\n' >&2
+  exit 1
+fi
 
 UV_BIN=""
 if command -v uv >/dev/null 2>&1 && [[ "$(uv --version)" == "uv $UV_VERSION" ]]; then
@@ -116,7 +136,6 @@ else
   UV_BIN="$UV_DIR/bin/uv"
   if [[ ! -x "$UV_BIN" ]]; then
     UV_STAGE="$(mktemp -d "$SENECA_ROOT/.uv-install.XXXXXX")"
-    trap 'rm -rf -- "${UV_STAGE:-}" "${STAGE:-}"' EXIT
     curl --fail --location --silent --show-error \
       "https://github.com/astral-sh/uv/releases/download/$UV_VERSION/uv-x86_64-unknown-linux-gnu.tar.gz" \
       --output "$UV_STAGE/uv.tar.gz"
@@ -132,39 +151,34 @@ else
 fi
 
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-STAGE="$SENECA_ROOT/.app-staging.$STAMP.$$"
-BACKUP="$SENECA_ROOT/app.previous.$STAMP.$$"
-mkdir -m 0700 "$STAGE"
-trap 'rm -rf -- "${STAGE:-}"' EXIT
+RELEASE_DIR="$(mktemp -d "$RELEASES_DIR/$SOURCE_SHA-$STAMP-$$.XXXXXX")"
+LEGACY_BACKUP="$SENECA_ROOT/app.legacy.$STAMP.$$"
 
-cp "$SOURCE_ROOT/pyproject.toml" "$SOURCE_ROOT/uv.lock" "$SOURCE_ROOT/README.md" "$STAGE/"
-cp -a "$SOURCE_ROOT/src" "$SOURCE_ROOT/config" "$STAGE/"
-mkdir -p "$STAGE/scripts"
-cp "$SOURCE_ROOT/scripts/provision_docling.py" "$SOURCE_ROOT/scripts/provision_tiktoken.py" "$STAGE/scripts/"
-cp -a "$SOURCE_ROOT/scripts/workstation" "$STAGE/scripts/"
+cp "$SOURCE_ROOT/pyproject.toml" "$SOURCE_ROOT/uv.lock" "$SOURCE_ROOT/README.md" "$RELEASE_DIR/"
+cp -a "$SOURCE_ROOT/src" "$SOURCE_ROOT/config" "$RELEASE_DIR/"
+mkdir -p "$RELEASE_DIR/scripts"
+cp "$SOURCE_ROOT/scripts/provision_docling.py" "$SOURCE_ROOT/scripts/provision_tiktoken.py" "$RELEASE_DIR/scripts/"
+cp -a "$SOURCE_ROOT/scripts/workstation" "$RELEASE_DIR/scripts/"
 
-if [[ -d "$SOURCE_ROOT/ui/dist" && -f "$SOURCE_ROOT/ui/dist/index.html" ]]; then
-  mkdir -p "$STAGE/ui"
-  cp -a "$SOURCE_ROOT/ui/dist/." "$STAGE/ui/"
-else
-  command -v node >/dev/null 2>&1 || { printf 'Node.js 22 is required to build the UI.\n' >&2; exit 1; }
-  command -v npm >/dev/null 2>&1 || { printf 'npm is required to build the UI.\n' >&2; exit 1; }
-  NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
-  [[ "$NODE_MAJOR" == "22" ]] || { printf 'UI build requires Node.js 22; found %s.\n' "$(node --version)" >&2; exit 1; }
-  cp -a "$SOURCE_ROOT/ui" "$STAGE/ui"
-  rm -rf "$STAGE/ui/node_modules" "$STAGE/ui/dist"
-  (cd "$STAGE/ui" && npm ci && npm run build)
-fi
-[[ -f "$STAGE/ui/index.html" ]] || { printf 'Compiled UI is missing index.html.\n' >&2; exit 1; }
+# Build only files tracked by the exact clean candidate commit. Never trust a
+# gitignored or stale ui/dist found in the source checkout.
+git -C "$SOURCE_ROOT" archive "$SOURCE_SHA" ui | tar -x -C "$RELEASE_DIR"
+rm -rf -- "$RELEASE_DIR/ui/node_modules" "$RELEASE_DIR/ui/dist"
+(cd "$RELEASE_DIR/ui" && npm ci && npm run build)
+[[ -f "$RELEASE_DIR/ui/dist/index.html" ]] || { printf 'Candidate UI build is missing index.html.\n' >&2; exit 1; }
+mkdir -p "$RELEASE_DIR/ui"
+cp -a "$RELEASE_DIR/ui/dist/." "$RELEASE_DIR/ui/"
+rm -rf -- "$RELEASE_DIR/ui/dist"
 
 "$UV_BIN" python install 3.14
-"$UV_BIN" sync --project "$STAGE" --locked --no-dev --extra cpu-release --no-editable --python 3.14
-rm -rf -- "$STAGE/src"
+UV_PROJECT_ENVIRONMENT="$RELEASE_DIR/.venv" "$UV_BIN" sync --project "$RELEASE_DIR" \
+  --locked --no-dev --extra cpu-release --no-editable --python 3.14
+rm -rf -- "$RELEASE_DIR/src"
 
-STAGED_PYTHON="$STAGE/.venv/bin/python"
-STAGED_CLI="$STAGE/.venv/bin/offline-rag"
-[[ -x "$STAGED_PYTHON" && -x "$STAGED_CLI" ]] || { printf 'Staged Python environment or CLI is missing.\n' >&2; exit 1; }
-"$STAGED_PYTHON" - <<'PY'
+RELEASE_PYTHON="$RELEASE_DIR/.venv/bin/python"
+RELEASE_CLI="$RELEASE_DIR/.venv/bin/offline-rag"
+[[ -x "$RELEASE_PYTHON" && -x "$RELEASE_CLI" ]] || { printf 'Release Python environment or CLI is missing.\n' >&2; exit 1; }
+"$RELEASE_PYTHON" - <<'PY'
 import offline_rag
 from pathlib import Path
 
@@ -173,28 +187,74 @@ if "/src/" in str(module_path):
     raise SystemExit(f"application unexpectedly imports from source checkout: {module_path}")
 print(f"Installed package import: {module_path}")
 PY
-"$STAGED_CLI" --help >/dev/null
-[[ ! -e "$STAGE/src" ]] || {
+"$RELEASE_CLI" --help >/dev/null
+[[ ! -e "$RELEASE_DIR/src" ]] || {
   printf 'The staged runtime must not retain the application source tree.\n' >&2
   exit 1
 }
 
-if [[ -e "$APP_DIR" ]]; then
-  mv -- "$APP_DIR" "$BACKUP"
+PREVIOUS_APP_KIND="none"
+PREVIOUS_RELEASE=""
+if [[ -L "$APP_DIR" ]]; then
+  PREVIOUS_APP_KIND="release-link"
+  PREVIOUS_RELEASE="$(python3 -c 'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve(strict=True))' "$APP_DIR")"
+  python3 - "$PREVIOUS_RELEASE" "$RELEASES_DIR" <<'PY'
+from pathlib import Path
+import sys
+
+release = Path(sys.argv[1]).resolve(strict=True)
+releases_root = Path(sys.argv[2]).resolve(strict=True)
+if releases_root not in release.parents:
+    raise SystemExit("the current app link is not backed by a managed release")
+PY
+elif [[ -d "$APP_DIR" ]]; then
+  PREVIOUS_APP_KIND="legacy-directory"
+  mv -- "$APP_DIR" "$LEGACY_BACKUP"
 fi
-if ! mv -- "$STAGE" "$APP_DIR"; then
-  [[ ! -e "$BACKUP" ]] || mv -- "$BACKUP" "$APP_DIR"
-  printf 'Could not promote validated staged app; previous install restored.\n' >&2
+
+if ! python3 "$CONFIG_TOOL" activate-release --app-link "$APP_DIR" --release-dir "$RELEASE_DIR"; then
+  if [[ "$PREVIOUS_APP_KIND" == "legacy-directory" ]]; then
+    mv -- "$LEGACY_BACKUP" "$APP_DIR"
+  fi
+  printf 'Could not atomically activate the validated app release.\n' >&2
   exit 1
 fi
-STAGE=""
+PROMOTED=1
 
 rollback_app() {
-  if [[ -e "$BACKUP" ]]; then
-    rm -rf -- "$APP_DIR"
-    mv -- "$BACKUP" "$APP_DIR"
-  fi
+  case "$PREVIOUS_APP_KIND" in
+    release-link)
+      if ! python3 "$CONFIG_TOOL" activate-release --app-link "$APP_DIR" \
+        --release-dir "$PREVIOUS_RELEASE"; then
+        printf 'Could not restore the previous app release; retaining both releases.\n' >&2
+        return 1
+      fi
+      ;;
+    legacy-directory)
+      if ! rm -f -- "$APP_DIR" || ! mv -- "$LEGACY_BACKUP" "$APP_DIR"; then
+        printf 'Could not restore the previous app directory; retaining the new release.\n' >&2
+        return 1
+      fi
+      ;;
+    none)
+      if ! rm -f -- "$APP_DIR"; then
+        printf 'Could not remove the failed app link; retaining the new release.\n' >&2
+        return 1
+      fi
+      ;;
+  esac
+  PROMOTED=0
 }
+
+# Exercise the exact final-path entrypoint after the symlink is active. The
+# venv was created in its immutable release directory and was never moved.
+if ! "$APP_DIR/.venv/bin/offline-rag" --help >/dev/null || \
+  ! "$APP_DIR/.venv/bin/python" -c 'import offline_rag; print(offline_rag.__file__)'; then
+  rollback_app
+  printf 'Post-activation package/CLI smoke failed; previous app restored.\n' >&2
+  exit 1
+fi
+
 if ! python3 "$CONFIG_TOOL" write-env --path "$ENV_FILE" --app-dir "$APP_DIR" \
   --data-dir "$DATA_DIR" --models-dir "$MODELS_DIR" --model "$OLLAMA_MODEL"; then
   rollback_app
@@ -237,12 +297,21 @@ if ! python3 "$CONFIG_TOOL" "${metadata_args[@]}"; then
   exit 1
 fi
 
-install -m 0755 "$SOURCE_ROOT/scripts/workstation/seneca" "$BIN_HOME/seneca"
-systemctl --user daemon-reload
-systemctl --user enable seneca.service
+if ! install -m 0755 "$SOURCE_ROOT/scripts/workstation/seneca" "$BIN_HOME/seneca"; then
+  rollback_app
+  printf 'Could not install the Seneca command wrapper; previous app restored.\n' >&2
+  exit 1
+fi
+if ! systemctl --user daemon-reload || ! systemctl --user enable seneca.service; then
+  rollback_app
+  printf 'Could not enable the user service; previous app restored.\n' >&2
+  exit 1
+fi
 printf 'Seneca workstation package installed. Start it with: %s/seneca start\n' "$BIN_HOME"
 printf 'The app, data, and models are at %s, %s, and %s. Data and models were preserved.\n' \
   "$APP_DIR" "$DATA_DIR" "$MODELS_DIR"
-if [[ -e "$BACKUP" ]]; then
-  printf 'Previous application retained at %s\n' "$BACKUP"
+if [[ "$PREVIOUS_APP_KIND" == "legacy-directory" ]]; then
+  printf 'Previous directory-format app retained at %s\n' "$LEGACY_BACKUP"
+elif [[ "$PREVIOUS_APP_KIND" == "release-link" ]]; then
+  printf 'Previous release retained at %s\n' "$PREVIOUS_RELEASE"
 fi

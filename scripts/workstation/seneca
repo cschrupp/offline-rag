@@ -37,9 +37,9 @@ case "$command_name" in
       exit 1
     fi
     exec "$APP_DIR/.venv/bin/python" "$APP_DIR/scripts/workstation/configure.py" \
-      exec-env --path "$ENV_FILE" -- systemd-run --user --wait --pipe --collect \
-      --property="WorkingDirectory=$APP_DIR" \
-      "$APP_DIR/.venv/bin/offline-rag" doctor "$@"
+      exec-env --path "$ENV_FILE" -- \
+      "$APP_DIR/.venv/bin/offline-rag" doctor \
+      --config "$APP_DIR/config/base.yaml" "$@"
     ;;
   *)
     usage >&2

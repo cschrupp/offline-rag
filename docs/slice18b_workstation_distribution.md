@@ -55,7 +55,8 @@ Default roots follow XDG conventions:
 
 ```text
 ${XDG_DATA_HOME:-$HOME/.local/share}/seneca/
-├── app/       replaceable installed package, venv, config, UI, support files
+├── app -> releases/<release-id>  stable active-release link
+├── releases/                     immutable versioned app and venv releases
 ├── data/      durable Seneca state from OFFLINE_RAG_DATA_DIR
 └── models/    provisioned non-generator assets from OFFLINE_RAG_MODELS_DIR
 
@@ -66,11 +67,11 @@ ${XDG_CONFIG_HOME:-$HOME/.config}/seneca/
 ${XDG_BIN_HOME:-$HOME/.local/bin}/seneca
 ```
 
-An installer rerun may safely replace `app/`, but must preserve `data/` and
-`models/`. Build into a sibling staging directory, validate the staged venv,
-installed non-editable package, CLI, config and UI, then promote with a recovery
-path that never leaves an interrupted rerun without either the previous or
-newly validated app. Do not place credentials in repository-controlled files.
+An installer rerun creates a versioned release in its final location, validates
+the non-editable venv, package, CLI, config and UI there, then atomically
+switches the stable `app` link. It never moves a created virtual environment.
+Previous releases remain available for recovery, while `data/` and `models/`
+are preserved. Do not place credentials in repository-controlled files.
 
 On WSL2, mutable Seneca data must be on the distro's Linux filesystem. Reject
 Windows-mounted/drvfs data roots such as `/mnt/c`. Source files selected for
@@ -89,8 +90,10 @@ unavailable and that WSL memory can be changed outside Seneca.
 Install only the application runtime inputs (package source, `pyproject.toml`,
 `uv.lock`, `config/`, compiled UI, and required support files). The resulting
 package must be non-editable and import from its installed virtual environment.
-Prefer an existing `ui/dist`; if absent, require Node 22/npm and run `npm ci`
-then the production build. Vite dev mode is not a workstation runtime.
+Build the UI from files tracked by the exact candidate commit using Node.js 22,
+`npm ci`, and the production build. Never consume a source-checkout `ui/dist`;
+it may be ignored or stale and has no candidate-bound provenance. Vite dev mode
+is not a workstation runtime.
 
 Use the existing commands and validators for Docling, tiktoken, Qwen ONNX,
 and BGE reranker. Provision into `models/`; fail closed for missing, corrupt,
@@ -111,7 +114,12 @@ unavailable, fail the service-install step with clear setup guidance. Do not
 fall back to `nohup`, PID files, a Python supervisor, or another daemon.
 Provide `seneca start|stop|restart|status|logs|doctor ...` as a thin command
 wrapper. Preserve one worker, loopback binding, SIGTERM shutdown, and current
-runtime drain/grace semantics. No TLS/authentication changes are in scope.
+runtime drain/grace semantics. Require systemd user-manager lingering so the
+service outlives the installer/launching shell while its Linux environment is
+running. For WSL, the distro may still stop according to Windows/WSL lifecycle
+policy; reopening or restarting the distro and its enabled service restores
+availability. Do not add a Windows-side keepalive or lifecycle integration in
+Slice 18B. No TLS/authentication changes are in scope.
 
 `installation.json` is bounded support metadata only: schema, source SHA,
 install time, target/architecture, Python/uv versions, application/data/models/UI
@@ -142,9 +150,12 @@ Implementation is not qualification. The 18B-1 campaign uses one unchanged
 candidate on a clean Ubuntu x86-64 environment and a clean Windows 11 + WSL2
 Ubuntu x86-64 environment. Each cell records install, provisioning, Ollama,
 doctor, same-origin API/UI, real source ingestion, grounded cited query,
-restart persistence, terminal independence, strict-offline execution, selected
-CPU profile, WSL path/memory checks, and descriptive latency. No latency SLO is
-created. Evidence must be observed, sanitized, and stored under
+restart persistence, shell independence while the Linux environment remains
+running, strict-offline execution, selected CPU profile, WSL path/memory checks,
+and descriptive latency. The WSL cell separately verifies persistence and
+service recovery after distro restart; it does not require the systemd service
+to keep the distro alive. No latency SLO is created. Evidence must be observed,
+sanitized, and stored under
 `docs/evidence/slice18b_workstation/`; never commit user corpus/model bytes,
 secrets, or unsanitized machine logs.
 

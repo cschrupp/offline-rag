@@ -10,6 +10,7 @@ import platform
 import shlex
 import subprocess
 import tempfile
+import uuid
 from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
@@ -205,6 +206,28 @@ def write_installation_metadata(
     _atomic_write(path, json.dumps(payload, indent=2, sort_keys=True) + "\n", 0o600)
 
 
+def activate_release_link(app_link: Path, release_dir: Path) -> None:
+    """Atomically point the stable app path at a completed release directory."""
+    app_link = app_link.expanduser().absolute()
+    parent = app_link.parent.resolve()
+    release = release_dir.expanduser().resolve(strict=True)
+    releases_root = (parent / "releases").resolve()
+    if releases_root not in release.parents:
+        raise ValueError(
+            "release directory must be below the app root's releases directory"
+        )
+    if app_link.exists() and not app_link.is_symlink():
+        raise ValueError("app path exists and is not a release symlink")
+
+    temporary = parent / f".{app_link.name}.link-{uuid.uuid4().hex}"
+    relative_target = os.path.relpath(release, parent)
+    try:
+        os.symlink(relative_target, temporary)
+        os.replace(temporary, app_link)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -239,6 +262,11 @@ def main() -> int:
     roots = sub.add_parser("read-root", help="Read a persisted Seneca data root")
     roots.add_argument("--path", type=Path, required=True)
     roots.add_argument("--name", choices=("data", "models"), required=True)
+    activate = sub.add_parser(
+        "activate-release", help="Atomically update the installed app release link"
+    )
+    activate.add_argument("--app-link", type=Path, required=True)
+    activate.add_argument("--release-dir", type=Path, required=True)
     args = parser.parse_args()
     if args.command == "write-env":
         write_environment_file(
@@ -288,6 +316,11 @@ def main() -> int:
         if not value or not Path(value).is_absolute():
             parser.error(f"{key} must be an absolute path in workstation.env")
         print(value)
+    elif args.command == "activate-release":
+        try:
+            activate_release_link(args.app_link, args.release_dir)
+        except (OSError, ValueError) as exc:
+            parser.error(str(exc))
     return 0
 
 
