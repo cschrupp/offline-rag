@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "product": "Seneca",
+  "project": "offline-rag",
+  "project_version": "0.1.0",
+  "source_sha": "ab1c11c57118668dd6ac44beb0a69e4ef5f5f522",
+  "ui_source_sha": "ab1c11c57118668dd6ac44beb0a69e4ef5f5f522",
+  "target": "linux-x86_64",
+  "python": "3.14",
+  "uv_version": "0.11.18",
+  "dependency_profile": "cpu-release",
+  "artifact": {
+    "filename": "seneca-workstation-0.1.0-linux-x86_64-ab1c11c57118.tar.gz",
+    "size_bytes": 2491359,
+    "sha256": "6c28a62afe7173e7a44103d62b7295621c91327c552330026cd669b1c3227950",
+    "internal_manifest_file_count": 494
+  }
+}
