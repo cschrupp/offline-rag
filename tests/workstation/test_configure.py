@@ -12,6 +12,8 @@ import venv
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 from offline_rag.config import load_settings
 
 SCRIPT = (
@@ -77,13 +79,20 @@ def test_installer_selects_locked_cpu_release_without_cuda_extra() -> None:
 def test_install_rerun_only_replaces_application_and_keeps_persistent_roots() -> None:
     repository_root = Path(__file__).resolve().parents[2]
     installer = (repository_root / "scripts" / "workstation" / "install.sh").read_text()
+    builder = (
+        repository_root / "scripts" / "workstation" / "build_package.sh"
+    ).read_text()
     assert '"$UV_BIN" sync --project "$RELEASE_DIR"' in installer
     assert 'UV_PROJECT_ENVIRONMENT="$RELEASE_DIR/.venv"' in installer
     assert 'activate-release --app-link "$APP_DIR"' in installer
     assert '"$APP_DIR/.venv/bin/offline-rag" --help' in installer
-    assert 'git -C "$SOURCE_ROOT" archive "$SOURCE_SHA" ui' in installer
-    assert "npm ci && npm run build" in installer
-    assert '"$SOURCE_ROOT/ui/dist"' not in installer
+    assert "git archive" in builder
+    assert "npm ci && npm run build" in builder
+    assert "RELEASE.json" in builder
+    assert "sha256sum" in builder
+    assert "git " not in installer
+    assert "node" not in installer
+    assert "npm" not in installer
     assert 'rm -rf -- "$DATA_DIR"' not in installer
     assert 'rm -rf -- "$MODELS_DIR"' not in installer
 
@@ -161,6 +170,7 @@ def test_environment_file_is_private_and_rerun_preserves_exact_configuration(
     configure.write_environment_file(path, **arguments)
     original = path.read_text(encoding="utf-8")
     assert stat.S_IMODE(path.stat().st_mode) == 0o600
+
     configure.write_environment_file(path, **arguments)
     assert path.read_text(encoding="utf-8") == original
 
@@ -278,9 +288,20 @@ def test_installation_metadata_is_bounded_and_excludes_environment_dump(
         lambda *args, **kwargs: SimpleNamespace(stdout="uv 0.11.18\n"),
     )
     path = tmp_path / "installation.json"
+    release_json = tmp_path / "RELEASE.json"
+    source_sha = "a" * 40
+    release_json.write_text(
+        json.dumps(
+            {"schema_version": 1, "source_sha": source_sha, "project_version": "0.1.0"}
+        ),
+        encoding="utf-8",
+    )
     configure.write_installation_metadata(
         path,
-        source_root=tmp_path,
+        source_sha=source_sha,
+        project_version="0.1.0",
+        package_identity="seneca-workstation-test",
+        release_json=release_json,
         target="wsl2",
         app_dir=app,
         data_dir=tmp_path / "data",
@@ -292,7 +313,26 @@ def test_installation_metadata_is_bounded_and_excludes_environment_dump(
     )
     payload = json.loads(path.read_text(encoding="utf-8"))
     assert payload["service_mechanism"] == "systemd-user"
+    assert payload["source_sha"] == source_sha
+    assert payload["package_identity"] == "seneca-workstation-test"
     assert payload["wsl_visible_memory_bytes"]["MemAvailable"] == 20_000_000_000
     assert "environment" not in payload
     assert "api_key" not in json.dumps(payload).lower()
     assert stat.S_IMODE(path.stat().st_mode) == 0o600
+
+    with pytest.raises(ValueError, match="source SHA does not match RELEASE.json"):
+        configure.write_installation_metadata(
+            path,
+            source_sha="b" * 40,
+            project_version="0.1.0",
+            package_identity="seneca-workstation-test",
+            release_json=release_json,
+            target="wsl2",
+            app_dir=app,
+            data_dir=tmp_path / "data",
+            models_dir=tmp_path / "models",
+            ui_dir=app / "ui",
+            uv_path=uv,
+            model="qwen3.5:14b",
+            visible_memory=None,
+        )

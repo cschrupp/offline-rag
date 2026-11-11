@@ -1,6 +1,7 @@
 # Slice 18B — Workstation Distribution
 
 **Authority:** `S18B-WORKSTATION-DISTRIBUTION-IMPL-001`
+**Revision:** `S18B-WORKSTATION-DISTRIBUTION-REV2-001`
 **Starting point:** `8431c134d2f85e74afe80febd0ca75ac451f65f1`
 **Implementation branch:** `feature/slice18b-workstation-distribution`
 **Native-Windows spike branch:** `spike/slice18b-native-windows-portability`
@@ -21,6 +22,12 @@ compiled-UI static serving. It does not create another application, API,
 configuration model, persistence model, retrieval path, or runtime selector.
 
 ## Dependency and network contract
+
+The release builder creates a versioned workstation `.tar.gz` and detached
+SHA-256 file. Git and Node.js 22 are builder-only requirements. The end-user
+archive carries `RELEASE.json`, an internal `SHA256SUMS`, the locked Python
+payload, support scripts, and compiled UI. Installation requires no repository
+checkout or frontend build on the target host.
 
 Install the runtime with the existing locked CPU graph only:
 
@@ -146,16 +153,15 @@ service. This spike does not delay Linux/WSL delivery.
 
 ## Qualification and evidence
 
-Implementation is not qualification. The 18B-1 campaign uses one unchanged
-candidate on a clean Ubuntu x86-64 environment and a clean Windows 11 + WSL2
-Ubuntu x86-64 environment. Each cell records install, provisioning, Ollama,
-doctor, same-origin API/UI, real source ingestion, grounded cited query,
-restart persistence, shell independence while the Linux environment remains
-running, strict-offline execution, selected CPU profile, WSL path/memory checks,
-and descriptive latency. The WSL cell separately verifies persistence and
-service recovery after distro restart; it does not require the systemd service
-to keep the distro alive. No latency SLO is created. Evidence must be observed,
-sanitized, and stored under
+Qualification has two cells: **18B-R** uses the existing Docker release for
+runtime/API/UI, local model, ingestion/query, strict-offline, and persistence
+checks; **18B-P** builds and verifies the workstation archive, package contents,
+integrity checks, provenance, and installer semantics. The sandbox does not
+expose a systemd user manager, so dynamic service lifecycle testing is deferred
+to a real host. WSL distro lifecycle behavior is also deferred; no Windows-side
+keepalive is in scope. These limitations must be reported as deferred, not
+passed. No latency SLO is created. Evidence must be observed, sanitized, and
+stored under
 `docs/evidence/slice18b_workstation/`; never commit user corpus/model bytes,
 secrets, or unsanitized machine logs.
 

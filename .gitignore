@@ -82,6 +82,9 @@ Thumbs.db
 # Local JavaScript dependencies
 /node_modules/
 
+# Built workstation release archives are qualification outputs, not source.
+/dist/workstation/
+
 # Local build-host TLS interception CAs (never commit)
 deploy/certs/*.crt
 deploy/certs/*.pem

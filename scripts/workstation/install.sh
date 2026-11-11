@@ -6,7 +6,7 @@ readonly UV_ARCHIVE_SHA256="588f3e360f69ce02b6982aa99f2240e803933a6b7e176ac01617
 
 usage() {
   cat <<'EOF'
-Usage: scripts/workstation/install.sh --ollama-model MODEL [--data-dir PATH] [--models-dir PATH]
+Usage: ./install.sh --ollama-model MODEL [--data-dir PATH] [--models-dir PATH]
 
 Installs the locked CPU workstation application on Linux x86-64 or WSL2.
 The selected model must already be present in the local Ollama instance.
@@ -46,10 +46,45 @@ while (($#)); do
 done
 [[ -n "$OLLAMA_MODEL" ]] || { usage >&2; exit 2; }
 
-SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
-SOURCE_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd -P)"
-HOST_TOOL="$SOURCE_ROOT/scripts/workstation/host.py"
-CONFIG_TOOL="$SOURCE_ROOT/scripts/workstation/configure.py"
+PACKAGE_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+PAYLOAD="$PACKAGE_ROOT/payload"
+RELEASE_JSON="$PACKAGE_ROOT/RELEASE.json"
+HOST_TOOL="$PAYLOAD/scripts/workstation/host.py"
+CONFIG_TOOL="$PAYLOAD/scripts/workstation/configure.py"
+
+[[ -f "$RELEASE_JSON" && -f "$PACKAGE_ROOT/SHA256SUMS" ]] || {
+  printf 'This installer must run from a complete workstation package.\n' >&2
+  exit 1
+}
+(cd "$PACKAGE_ROOT" && sha256sum --check --status SHA256SUMS) || {
+  printf 'Package integrity verification failed; no installation state was changed.\n' >&2
+  exit 1
+}
+python3 - "$RELEASE_JSON" <<'PY'
+import json
+import re
+import sys
+from pathlib import Path
+
+release = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+required = {
+    "schema_version": 1,
+    "product": "Seneca",
+    "project": "offline-rag",
+    "target": "linux-x86_64",
+    "python": "3.14",
+    "uv_version": "0.11.18",
+    "dependency_profile": "cpu-release",
+}
+if any(release.get(key) != value for key, value in required.items()):
+    raise SystemExit("Unsupported or invalid workstation release metadata")
+if not re.fullmatch(r"[0-9a-f]{40}", str(release.get("source_sha", ""))):
+    raise SystemExit("Invalid package source SHA")
+if release.get("ui_source_sha") != release.get("source_sha"):
+    raise SystemExit("UI and package source identities differ")
+if not isinstance(release.get("project_version"), str) or not release["project_version"]:
+    raise SystemExit("Missing project version")
+PY
 
 DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
@@ -88,27 +123,11 @@ python3 "$HOST_TOOL" preflight \
     exit 1
   }
 
-[[ -f "$SOURCE_ROOT/pyproject.toml" && -f "$SOURCE_ROOT/uv.lock" ]] || {
-  printf 'Run this installer from a complete Seneca source checkout.\n' >&2
+[[ -f "$PAYLOAD/pyproject.toml" && -f "$PAYLOAD/uv.lock" && -d "$PAYLOAD/ui" ]] || {
+  printf 'Release package is missing required application inputs.\n' >&2
   exit 1
 }
-if ! git -C "$SOURCE_ROOT" rev-parse --verify HEAD >/dev/null 2>&1 || \
-  [[ -n "$(git -C "$SOURCE_ROOT" status --porcelain)" ]]; then
-  printf 'Install from a clean, committed Git checkout so the recorded source SHA is accurate.\n' >&2
-  exit 1
-fi
-SOURCE_SHA="$(git -C "$SOURCE_ROOT" rev-parse HEAD)"
-
-command -v node >/dev/null 2>&1 || {
-  printf 'Node.js 22 is required to build the UI from the tracked candidate source.\n' >&2
-  exit 1
-}
-command -v npm >/dev/null 2>&1 || { printf 'npm is required to build the UI.\n' >&2; exit 1; }
-NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
-[[ "$NODE_MAJOR" == "22" ]] || {
-  printf 'UI build requires Node.js 22; found %s.\n' "$(node --version)" >&2
-  exit 1
-}
+SOURCE_SHA="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["source_sha"])' "$RELEASE_JSON")"
 
 TARGET="$(python3 -c 'import platform; r=platform.release().lower(); print("wsl2" if "microsoft" in r else "linux")')"
 case "$(uname -m)" in
@@ -154,21 +173,9 @@ STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 RELEASE_DIR="$(mktemp -d "$RELEASES_DIR/$SOURCE_SHA-$STAMP-$$.XXXXXX")"
 LEGACY_BACKUP="$SENECA_ROOT/app.legacy.$STAMP.$$"
 
-cp "$SOURCE_ROOT/pyproject.toml" "$SOURCE_ROOT/uv.lock" "$SOURCE_ROOT/README.md" "$RELEASE_DIR/"
-cp -a "$SOURCE_ROOT/src" "$SOURCE_ROOT/config" "$RELEASE_DIR/"
-mkdir -p "$RELEASE_DIR/scripts"
-cp "$SOURCE_ROOT/scripts/provision_docling.py" "$SOURCE_ROOT/scripts/provision_tiktoken.py" "$RELEASE_DIR/scripts/"
-cp -a "$SOURCE_ROOT/scripts/workstation" "$RELEASE_DIR/scripts/"
-
-# Build only files tracked by the exact clean candidate commit. Never trust a
-# gitignored or stale ui/dist found in the source checkout.
-git -C "$SOURCE_ROOT" archive "$SOURCE_SHA" ui | tar -x -C "$RELEASE_DIR"
-rm -rf -- "$RELEASE_DIR/ui/node_modules" "$RELEASE_DIR/ui/dist"
-(cd "$RELEASE_DIR/ui" && npm ci && npm run build)
-[[ -f "$RELEASE_DIR/ui/dist/index.html" ]] || { printf 'Candidate UI build is missing index.html.\n' >&2; exit 1; }
-mkdir -p "$RELEASE_DIR/ui"
-cp -a "$RELEASE_DIR/ui/dist/." "$RELEASE_DIR/ui/"
-rm -rf -- "$RELEASE_DIR/ui/dist"
+cp "$PAYLOAD/pyproject.toml" "$PAYLOAD/uv.lock" "$PAYLOAD/README.md" "$RELEASE_DIR/"
+cp -a "$PAYLOAD/src" "$PAYLOAD/config" "$PAYLOAD/ui" "$RELEASE_DIR/"
+cp -a "$PAYLOAD/scripts" "$RELEASE_DIR/"
 
 "$UV_BIN" python install 3.14
 UV_PROJECT_ENVIRONMENT="$RELEASE_DIR/.venv" "$UV_BIN" sync --project "$RELEASE_DIR" \
@@ -285,7 +292,9 @@ PY
     exit 1
   fi
 fi
-metadata_args=(write-metadata --path "$METADATA_FILE" --source-root "$SOURCE_ROOT" \
+metadata_args=(write-metadata --path "$METADATA_FILE" --source-sha "$SOURCE_SHA" \
+  --project-version "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["project_version"])' "$RELEASE_JSON")" \
+  --package-identity "$(basename "$PACKAGE_ROOT")" --release-json "$RELEASE_JSON" \
   --target "$TARGET" --app-dir "$APP_DIR" --data-dir "$DATA_DIR" \
   --models-dir "$MODELS_DIR" --ui-dir "$APP_DIR/ui" --uv-path "$UV_BIN" \
   --model "$OLLAMA_MODEL")
@@ -297,7 +306,7 @@ if ! python3 "$CONFIG_TOOL" "${metadata_args[@]}"; then
   exit 1
 fi
 
-if ! install -m 0755 "$SOURCE_ROOT/scripts/workstation/seneca" "$BIN_HOME/seneca"; then
+if ! install -m 0755 "$PAYLOAD/scripts/workstation/seneca" "$BIN_HOME/seneca"; then
   rollback_app
   printf 'Could not install the Seneca command wrapper; previous app restored.\n' >&2
   exit 1

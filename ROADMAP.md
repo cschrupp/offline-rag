@@ -100,10 +100,11 @@ should not override the current disposition here.
   [`docs/rel01_cpu_release_packaging.md`](docs/rel01_cpu_release_packaging.md).
 - [x] **Slice 18A — Engineering evidence reconciliation** — Human accepted and
   promoted at `8431c134d2f85e74afe80febd0ca75ac451f65f1`.
-- [ ] **Slice 18B — Workstation Distribution** — implementation authorized and
-  underway on `feature/slice18b-workstation-distribution`. Linux x86-64 and
-  Windows 11 + WSL2 CPU workstation package are in scope; qualification is a
-  separate gate. Native Windows remains a separate feasibility spike.
+- [ ] **Slice 18B — Workstation Distribution, Revision 2** — implementation
+  authorized on `feature/slice18b-workstation-distribution`. Qualification is
+  split into the canonical Docker runtime cell (18B-R) and release archive /
+  installer cell (18B-P). Real-host systemd-user and WSL distro lifecycle
+  checks are explicitly deferred; native Windows remains a separate spike.
 - [ ] Slices 18C–18D and Milestone 7 closeout remain unauthorized.
 - [ ] End-to-end beta QA.
 - [ ] Fix release-blocking defects.
@@ -3352,11 +3353,13 @@ ACCEPTED / PROMOTED** with evidence closeout at `0a1b5a45`. The default release
 image is CPU-oriented; a separate CUDA release artifact remains deferred.
 
 **Slice 18 — Portfolio Release Package:** **18A COMPLETE / HUMAN ACCEPTED /
-PROMOTED; 18B IMPLEMENTATION AUTHORIZED / IN PROGRESS**
+PROMOTED; 18B REVISION 2 IMPLEMENTATION AUTHORIZED / IN PROGRESS**
 - Slice 18A delivered the reviewed six-record, two-route evidence reconciliation
   and presentation implementation.
 - Slice 18B covers the Linux x86-64 and Windows 11 + WSL2 CPU workstation
-  distribution; implementation and qualification evidence are separate gates.
+  release package. Qualification uses Docker for runtime behavior and a built
+  archive for package behavior; real-host service/WSL lifecycle checks are
+  deferred and are not represented as passed.
 - Slices 18C–18D remain **NOT AUTHORIZED**.
 - Objective: reproducible public portfolio artifact backed by accepted evidence
 - Candidate deliverables only (not locked): polished README; architecture
@@ -3414,8 +3417,9 @@ Amendment A1 **ACCEPTED / LOCKED**; Amendment A2 **ACCEPTED / LOCKED /
 SEALED**; B1 foundation remediation **ACCEPTED / SEALED**; **16D-B3
 COMPLETE / ACCEPTED / SEALED** at `9c178ffb033cde41849379fc914f321697ff8691`; **16D-C** COMPLETE / ACCEPTED / SEALED;
 Slice 17 is **COMPLETE / HUMAN ACCEPTED / PROMOTED**. Slice 18A is **COMPLETE /
-HUMAN ACCEPTED / PROMOTED**. Slice 18B implementation is authorized and in
-progress; clean-machine qualification remains pending. Slices 18C–18D and M7
+HUMAN ACCEPTED / PROMOTED**. Slice 18B Revision 2 implementation is authorized
+and in progress; Docker runtime and package qualification remain pending, while
+real-host systemd/WSL lifecycle validation is deferred. Slices 18C–18D and M7
 closeout remain **NOT AUTHORIZED**.
 Performance optimization,
 generator max-token change, reranker config change, `base.yaml` promotion,

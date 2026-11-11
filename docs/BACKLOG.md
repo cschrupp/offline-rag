@@ -39,7 +39,9 @@ Slice 17 — COMPLETE / HUMAN ACCEPTED / PROMOTED
 REL-01 — COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / PROMOTED
          Separate CUDA release image DEFERRED
 Slice 18A — COMPLETE / HUMAN ACCEPTED / PROMOTED at 8431c134
-Slice 18B — IMPLEMENTATION AUTHORIZED / IN PROGRESS; QUALIFICATION PENDING
+Slice 18B — REVISION 2 IMPLEMENTATION AUTHORIZED / IN PROGRESS;
+             DOCKER RUNTIME AND PACKAGE QUALIFICATION PENDING;
+             REAL-HOST SYSTEMD/WSL LIFECYCLE DEFERRED
 Slices 18C–18D — NOT AUTHORIZED
 Additional Gold Lab games — DEFERRED BEYOND CURRENT BETA
 ```
@@ -95,8 +97,9 @@ and its linked sanitized `RUN_002_EVIDENCE_INDEX.md`.
     -> REL-01 COMPLETE / HUMAN ACCEPTED / PROMOTED with evidence at 0a1b5a45;
        separate CUDA release image DEFERRED
     -> Slice 18A COMPLETE / HUMAN ACCEPTED / PROMOTED at 8431c134
-    -> Slice 18B workstation distribution IMPLEMENTATION AUTHORIZED / IN PROGRESS;
-       clean Linux and WSL2 qualification pending
+    -> Slice 18B workstation distribution Revision 2 IMPLEMENTATION AUTHORIZED /
+       IN PROGRESS; Docker runtime and package qualification pending;
+       real-host systemd/WSL lifecycle validation deferred
     -> Slices 18C–18D NOT AUTHORIZED
 ```
 
@@ -780,7 +783,7 @@ its own design/authority.
 
 ### Slice 18B — Workstation Distribution
 
-**Status:** IMPLEMENTATION AUTHORIZED / IN PROGRESS; clean-machine qualification pending.
+**Status:** REVISION 2 IMPLEMENTATION AUTHORIZED / IN PROGRESS; Docker runtime and package qualification pending; real-host systemd/WSL lifecycle deferred.
 
 **Branch:** `feature/slice18b-workstation-distribution`
 
@@ -794,10 +797,13 @@ filesystem. The user-owned service contract is systemd user; no PID-file or
 `nohup` fallback is permitted. Runtime remains loopback-only and strict-offline
 after explicit provisioning.
 
-Implementation does not qualify the package. Both clean-machine qualification
-cells remain outstanding. Native Windows remains a separate feasibility spike
-without an installer or service. CUDA packaging, hosting, TLS/authentication,
-backup/restore, and Slices 18C–18D are outside scope.
+Revision 2 qualifies runtime behavior through the existing Docker release
+(18B-R) and validates a built end-user archive and installer contract (18B-P).
+Real-host systemd-user and WSL distro lifecycle validation remain explicitly
+deferred; the sandbox limitation is not reported as a pass. Native Windows
+remains a separate feasibility spike without an installer or service. CUDA
+packaging, hosting, TLS/authentication, backup/restore, and Slices 18C–18D are
+outside scope.
 
 ## 6. Downstream roadmap after active residuals
 
@@ -812,12 +818,13 @@ REL-01 CPU release packaging COMPLETE / HUMAN ACCEPTED / PROMOTED
         ->
 Slice 18A — COMPLETE / HUMAN ACCEPTED / PROMOTED
         ->
-Slice 18B — workstation distribution implementation in progress; qualification pending
+Slice 18B — Revision 2 implementation in progress; Docker runtime and package qualification pending; real-host lifecycle deferred
         ->
 Slices 18C–18D and Milestone 7 closeout remain unauthorized
 ```
 
 Slice 17 and REL-01 are complete and promoted. Slice 18A is complete, Human
-accepted, and promoted. Slice 18B implementation is authorized and in progress;
-its clean-machine qualification remains pending. Slices 18C–18D and M7 closeout
-remain unauthorized.
+accepted, and promoted. Slice 18B Revision 2 implementation is authorized and
+in progress; Docker runtime and package qualification remain pending, while
+real-host systemd/WSL lifecycle validation is deferred. Slices 18C–18D and M7
+closeout remain unauthorized.

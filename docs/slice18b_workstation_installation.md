@@ -26,18 +26,22 @@ the Linux service, archive, hashing, and filesystem tools used by the bounded
 install. The install command verifies the pinned uv release archive before
 extracting or executing it.
 
-## Install from a source checkout
+## Install from a workstation release package
 
-From the Seneca repository root:
+Download the workstation archive and its adjacent `.sha256` file from the
+release source. Verify and extract it before running the installer:
 
 ```bash
-bash scripts/workstation/install.sh --ollama-model qwen3.5:14b
+sha256sum -c seneca-workstation-*.tar.gz.sha256
+tar -xzf seneca-workstation-*.tar.gz
+cd seneca-workstation-*
+./install.sh --ollama-model qwen3.5:14b
 ```
 
 Custom persistent roots may be supplied explicitly:
 
 ```bash
-bash scripts/workstation/install.sh --ollama-model qwen3.5:14b \
+./install.sh --ollama-model qwen3.5:14b \
   --data-dir "$HOME/seneca-state" --models-dir "$HOME/seneca-models"
 ```
 
@@ -45,11 +49,12 @@ On WSL2, each configured root must resolve to the distro's Linux filesystem.
 The application and configuration locations continue to follow their XDG
 defaults.
 
-The installer always builds the UI from files tracked by the exact clean
-candidate commit. It requires Node.js 22 and runs `npm ci` and the production
-build in the new versioned release directory. It ignores any source-checkout
-`ui/dist`, which may be stale or gitignored. It never runs Vite development
-mode as the installed UI.
+The workstation archive is built by release engineering from the exact clean
+candidate commit. The builder uses Node.js 22, `npm ci`, and the production UI
+build, then packages only the compiled UI with the application payload. The
+end-user workstation does not need Git, Node.js, npm, or a repository checkout.
+The installer validates the archive's internal `SHA256SUMS` before changing
+installation state and obtains provenance from `RELEASE.json`.
 
 The installer uses the locked CPU release dependency extra and a uv-managed
 Python 3.14 environment. It creates and validates an installed, non-editable
@@ -57,9 +62,8 @@ package directly in a versioned release directory, then atomically switches
 the stable `app` link. It never relocates the virtual environment. Previous app
 versions are retained for recovery. Reinstallation does not remove Seneca data
 or models.
-Install from a clean, committed Git checkout so `installation.json` identifies
-the exact source revision. The installer rejects a dirty or non-Git source
-tree before it creates the installation roots.
+The extracted package can be located anywhere. Installation does not inspect
+Git metadata or build frontend assets.
 
 ## State locations
 
@@ -178,16 +182,13 @@ restarting the distribution.
 
 ## Qualification status
 
-Installing from a checkout is not the clean-machine 18B-1 qualification. The
-Ubuntu and Windows 11 + WSL2 qualification cells must use the same reviewed
-candidate on clean environments and record the required install, provisioning,
-Ollama, doctor, API/UI, ingestion, grounded-query, restart-persistence,
-shell independence while the Linux environment remains running, strict-offline,
-CPU-profile, WSL-path/memory, and descriptive latency observations. Verify
-shell independence while the distro is running, then separately verify
-persistence and enabled-service recovery after a distro restart. Do not require
-WSL itself to stay alive just because the Seneca user service is enabled. No
-latency SLO is introduced.
+Slice 18B-R validates runtime behavior through the existing Docker release,
+including local model execution, API/UI readiness, a bounded ingestion/query
+path, and persistence. Slice 18B-P validates construction and integrity of the
+release archive, package contents, provenance, and installer semantics. A real
+host is still needed for dynamic systemd-user lifecycle and WSL distro restart
+checks; those are deferred and must not be reported as passed. No latency SLO
+is introduced.
 
 ## Uninstall
 

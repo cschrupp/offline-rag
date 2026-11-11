@@ -388,6 +388,8 @@ strict-offline after explicit provisioning.
 
 The implementation and installation procedure are documented in
 [`docs/slice18b_workstation_installation.md`](docs/slice18b_workstation_installation.md).
-This is an implementation candidate, not evidence of clean Linux/WSL
-qualification or a promoted workstation release. Native Windows is only a
-separate feasibility spike; CUDA workstation packaging remains deferred.
+The user installs a release `.tar.gz` after verifying its SHA-256; Git, Node.js,
+and npm are needed only by the release builder. Slice 18B-R Docker runtime and
+18B-P package qualification are distinct from real-host systemd/WSL lifecycle
+validation, which remains deferred. Native Windows is only a separate
+feasibility spike; CUDA workstation packaging remains deferred.

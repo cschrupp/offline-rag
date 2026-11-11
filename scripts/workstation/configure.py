@@ -145,26 +145,13 @@ def write_user_service(path: Path, *, app_dir: Path, env_file: Path) -> None:
     _atomic_write(path, "\n".join(lines), 0o644)
 
 
-def _source_sha(source_root: Path) -> str | None:
-    try:
-        result = subprocess.run(
-            ["git", "-C", str(source_root), "rev-parse", "HEAD"],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-    except OSError:
-        return None
-    except subprocess.CalledProcessError:
-        return None
-    value = result.stdout.strip()
-    return value if len(value) == 40 else None
-
-
 def write_installation_metadata(
     path: Path,
     *,
-    source_root: Path,
+    source_sha: str,
+    project_version: str,
+    package_identity: str,
+    release_json: Path,
     target: str,
     app_dir: Path,
     data_dir: Path,
@@ -174,6 +161,11 @@ def write_installation_metadata(
     model: str,
     visible_memory: Mapping[str, int] | None = None,
 ) -> None:
+    release = json.loads(release_json.read_text(encoding="utf-8"))
+    if release.get("source_sha") != source_sha:
+        raise ValueError("package source SHA does not match RELEASE.json")
+    if release.get("project_version") != project_version:
+        raise ValueError("project version does not match RELEASE.json")
     uv_version = subprocess.run(
         [str(uv_path), "--version"], capture_output=True, text=True, check=True
     ).stdout.strip()
@@ -188,7 +180,11 @@ def write_installation_metadata(
     ).stdout.strip()
     payload = {
         "schema_version": 1,
-        "source_sha": _source_sha(source_root),
+        "package_schema_version": release["schema_version"],
+        "project_version": project_version,
+        "package_identity": package_identity,
+        "package_source_sha": source_sha,
+        "source_sha": source_sha,
         "installed_at": datetime.now(tz=UTC).isoformat(),
         "target": target,
         "architecture": platform.machine(),
@@ -243,7 +239,10 @@ def main() -> int:
     service.add_argument("--env-file", type=Path, required=True)
     metadata = sub.add_parser("write-metadata")
     metadata.add_argument("--path", type=Path, required=True)
-    metadata.add_argument("--source-root", type=Path, required=True)
+    metadata.add_argument("--source-sha", required=True)
+    metadata.add_argument("--project-version", required=True)
+    metadata.add_argument("--package-identity", required=True)
+    metadata.add_argument("--release-json", type=Path, required=True)
     metadata.add_argument("--target", choices=("linux", "wsl2"), required=True)
     metadata.add_argument("--app-dir", type=Path, required=True)
     metadata.add_argument("--data-dir", type=Path, required=True)
@@ -286,7 +285,10 @@ def main() -> int:
             memory = {"MemTotal": args.mem_total, "MemAvailable": args.mem_available}
         write_installation_metadata(
             args.path,
-            source_root=args.source_root,
+            source_sha=args.source_sha,
+            project_version=args.project_version,
+            package_identity=args.package_identity,
+            release_json=args.release_json,
             target=args.target,
             app_dir=args.app_dir,
             data_dir=args.data_dir,
