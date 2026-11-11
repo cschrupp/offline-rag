@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import fcntl
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -16,6 +15,7 @@ from offline_rag.app.gold_lab.ids import (
     validate_project_id,
 )
 from offline_rag.config.models import AppSettings
+from offline_rag.core.platform_lock import acquire_exclusive, release_exclusive
 
 
 def gold_lab_project_lease_path(locks_root: Path, project_id: str) -> Path:
@@ -61,9 +61,8 @@ class GoldLabProjectLease:
             return
         self._path.parent.mkdir(parents=True, exist_ok=True)
         fd = os.open(self._path, os.O_RDWR | os.O_CREAT, 0o644)
-        flags = fcntl.LOCK_EX if blocking else fcntl.LOCK_EX | fcntl.LOCK_NB
         try:
-            fcntl.flock(fd, flags)
+            acquire_exclusive(fd, blocking=blocking)
         except BlockingIOError as exc:
             os.close(fd)
             raise GoldLabError(
@@ -77,7 +76,7 @@ class GoldLabProjectLease:
         if not self._held or self._fd is None:
             return
         try:
-            fcntl.flock(self._fd, fcntl.LOCK_UN)
+            release_exclusive(self._fd)
         finally:
             os.close(self._fd)
             self._fd = None
@@ -124,9 +123,8 @@ class GoldLabCampaignLease:
             return
         self._path.parent.mkdir(parents=True, exist_ok=True)
         fd = os.open(self._path, os.O_RDWR | os.O_CREAT, 0o644)
-        flags = fcntl.LOCK_EX if blocking else fcntl.LOCK_EX | fcntl.LOCK_NB
         try:
-            fcntl.flock(fd, flags)
+            acquire_exclusive(fd, blocking=blocking)
         except BlockingIOError as exc:
             os.close(fd)
             raise GoldLabError(
@@ -140,7 +138,7 @@ class GoldLabCampaignLease:
         if not self._held or self._fd is None:
             return
         try:
-            fcntl.flock(self._fd, fcntl.LOCK_UN)
+            release_exclusive(self._fd)
         finally:
             os.close(self._fd)
             self._fd = None
@@ -187,9 +185,8 @@ class GoldLabDatasetLease:
             return
         self._path.parent.mkdir(parents=True, exist_ok=True)
         fd = os.open(self._path, os.O_RDWR | os.O_CREAT, 0o644)
-        flags = fcntl.LOCK_EX if blocking else fcntl.LOCK_EX | fcntl.LOCK_NB
         try:
-            fcntl.flock(fd, flags)
+            acquire_exclusive(fd, blocking=blocking)
         except BlockingIOError as exc:
             os.close(fd)
             raise GoldLabError(
@@ -203,7 +200,7 @@ class GoldLabDatasetLease:
         if not self._held or self._fd is None:
             return
         try:
-            fcntl.flock(self._fd, fcntl.LOCK_UN)
+            release_exclusive(self._fd)
         finally:
             os.close(self._fd)
             self._fd = None

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-import resource
 from typing import Any
 
 
@@ -52,6 +51,8 @@ def capture_cpu_baseline_facts(
         pass
 
     try:
+        import resource
+
         usage = resource.getrusage(resource.RUSAGE_SELF)
         facts["process_cpu_time_s"] = float(usage.ru_utime) + float(usage.ru_stime)
         # ru_maxrss is kilobytes on Linux.

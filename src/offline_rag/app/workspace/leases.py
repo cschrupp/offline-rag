@@ -1,6 +1,6 @@
 """Workspace-scoped live-owner mutation leases (Slice 16A).
 
-Mechanism mirrors ``CorpusMutationLease``: OS advisory exclusive ``fcntl.flock``
+Mechanism mirrors ``CorpusMutationLease``: OS advisory exclusive file lock
 on ``/data/locks/workspace.<workspace_id>.lock``. Process death releases the
 flock automatically. A persistent lock *filename* alone does not imply busy.
 No PID records, no timeout theft.
@@ -14,7 +14,6 @@ Never acquire in the opposite order (avoids cross-resource deadlocks).
 
 from __future__ import annotations
 
-import fcntl
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -23,6 +22,7 @@ from typing import Self
 
 from offline_rag.app.errors import AppError, ErrorCode, SafeErrorDetails
 from offline_rag.config.models import AppSettings
+from offline_rag.core.platform_lock import acquire_exclusive, release_exclusive
 
 
 def workspace_lease_path(locks_root: Path, workspace_id: str) -> Path:
@@ -67,7 +67,7 @@ class WorkspaceMutationLease:
         Default is non-blocking fail-fast (``workspace_conflict`` /
         ``reason=lease_held``), matching ``CorpusMutationLease``.
 
-        ``blocking=True`` waits for the flock — used by managed-operation
+        ``blocking=True`` waits for the OS lock — used by managed-operation
         critical sections so concurrent ``begin`` / ``update_status`` serialize
         rather than racing fail-fast.
         """
@@ -75,9 +75,8 @@ class WorkspaceMutationLease:
             return
         self._path.parent.mkdir(parents=True, exist_ok=True)
         fd = os.open(self._path, os.O_RDWR | os.O_CREAT, 0o644)
-        flags = fcntl.LOCK_EX if blocking else fcntl.LOCK_EX | fcntl.LOCK_NB
         try:
-            fcntl.flock(fd, flags)
+            acquire_exclusive(fd, blocking=blocking)
         except BlockingIOError as exc:
             os.close(fd)
             raise AppError(
@@ -93,7 +92,7 @@ class WorkspaceMutationLease:
         if not self._held or self._fd is None:
             return
         try:
-            fcntl.flock(self._fd, fcntl.LOCK_UN)
+            release_exclusive(self._fd)
         finally:
             os.close(self._fd)
             self._fd = None

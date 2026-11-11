@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import hashlib
 import os
-import resource
 import statistics
 import subprocess
 import time
@@ -72,6 +71,8 @@ def batch_identity_digest(chunk_ids: list[str]) -> str:
 
 def _process_rusage_snapshot() -> dict[str, Any]:
     try:
+        import resource
+
         usage = resource.getrusage(resource.RUSAGE_SELF)
         return {
             "status": "observed",

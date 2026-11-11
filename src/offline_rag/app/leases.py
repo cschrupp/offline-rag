@@ -1,6 +1,6 @@
 """Storage-backed per-corpus mutation leases with live-owner semantics (D03/D15).
 
-Mechanism: OS advisory exclusive ``fcntl.flock`` on a lock file under
+Mechanism: OS advisory exclusive file lock on a lock file under
 ``/data/locks``. Process death releases the flock automatically, so a
 persistent lock *filename* does not mean busy. No PID records, no timeout
 theft, and no global corpus mutation lock.
@@ -8,7 +8,6 @@ theft, and no global corpus mutation lock.
 
 from __future__ import annotations
 
-import fcntl
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -18,6 +17,7 @@ from typing import Self
 from offline_rag.app.corpus import validate_product_corpus_name
 from offline_rag.app.errors import AppError, ErrorCode, SafeErrorDetails
 from offline_rag.config.models import AppSettings
+from offline_rag.core.platform_lock import acquire_exclusive, release_exclusive
 
 
 def corpus_lease_path(locks_root: Path, corpus_name: str) -> Path:
@@ -55,7 +55,7 @@ class CorpusMutationLease:
         self._path.parent.mkdir(parents=True, exist_ok=True)
         fd = os.open(self._path, os.O_RDWR | os.O_CREAT, 0o644)
         try:
-            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            acquire_exclusive(fd, blocking=False)
         except BlockingIOError as exc:
             os.close(fd)
             raise AppError(
@@ -69,7 +69,7 @@ class CorpusMutationLease:
         if not self._held or self._fd is None:
             return
         try:
-            fcntl.flock(self._fd, fcntl.LOCK_UN)
+            release_exclusive(self._fd)
         finally:
             os.close(self._fd)
             self._fd = None
