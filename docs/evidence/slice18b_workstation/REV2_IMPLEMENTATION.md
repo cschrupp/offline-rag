@@ -3,7 +3,8 @@
 - **Authority:** `S18B-WORKSTATION-DISTRIBUTION-REV2-001`
 - **Accepted foundation:** `b546e5ad44a7f40fcef1baafd8bfcf9828ad8050`
 - **Canonical base:** `8431c134d2f85e74afe80febd0ca75ac451f65f1`
-- **Candidate:** `ab1c11c57118668dd6ac44beb0a69e4ef5f5f522`
+- **Initial implementation:** `ab1c11c57118668dd6ac44beb0a69e4ef5f5f522`
+- **Integrity corrective candidate:** `7cc743a276587db45c971d035967a0f3b1133799`
 - **Branch:** `feature/slice18b-workstation-distribution`
 
 ## Result
@@ -23,7 +24,9 @@ retrieval behavior, embedding contract, or scientific configuration changed.
 
 ## Validation
 
-- Workstation tests: **21 passed**.
+- Initial workstation tests: **21 passed**.
+- Integrity corrective workstation tests: **25 passed**, including changed,
+  missing, extra-file and symlink cases.
 - Ruff check and format check for changed Python files: **passed**.
 - Shell syntax (`build_package.sh`, `install.sh`, `provision.sh`): **passed**.
 - UI tests: **49 files / 459 tests passed**.
@@ -32,6 +35,11 @@ retrieval behavior, embedding contract, or scientific configuration changed.
 - `git diff --check`: **passed**.
 - Dockerfile build check: **passed**.
 - Exact-candidate Docker image build: **passed**.
+
+The integrity corrective changes only the workstation installer and its test
+file. It changes no Docker inputs, application source, dependency metadata or
+runtime policy; the independently reviewed 18B-R evidence remains applicable
+without a Docker rerun.
 
 The UI test suite took 167.68 seconds in this run. Duplicate TanStack Query
 observer warnings appeared in the existing Slice 16G-I3 tests; the suite

@@ -2,16 +2,16 @@
 
 ## Artifact identity
 
-- Source SHA: `ab1c11c57118668dd6ac44beb0a69e4ef5f5f522`
+- Source SHA: `7cc743a276587db45c971d035967a0f3b1133799`
 - Version: `0.1.0`
 - Target: `linux-x86_64`
 - Python: `3.14`
 - uv: `0.11.18`
 - Dependency profile: `cpu-release`
-- Artifact: `seneca-workstation-0.1.0-linux-x86_64-ab1c11c57118.tar.gz`
-- Size: `2,491,359` bytes
-- SHA-256: `6c28a62afe7173e7a44103d62b7295621c91327c552330026cd669b1c3227950`
-- Payload files covered by internal `SHA256SUMS`: `494`
+- Artifact: `seneca-workstation-0.1.0-linux-x86_64-7cc743a27658.tar.gz`
+- Size: `2,492,331` bytes
+- SHA-256: `4beee79e359dfcd57996e3f58bf45145fcb094ee23e1fc295ba5c435723c3112`
+- Files covered by internal `SHA256SUMS`: `493`
 
 The archive and external `.sha256` file are generated under ignored
 `dist/workstation/`; they are not committed.
@@ -19,7 +19,10 @@ The archive and external `.sha256` file are generated under ignored
 ## Checks
 
 - External archive checksum: **PASS** (`sha256sum -c`).
-- Extracted package internal checksums: **PASS** (494 files).
+- Extracted package internal checksums: **PASS** (493 files).
+- Extracted file and directory set exactly matches the manifest; extra root
+  entries, added payload files, missing entries, symlinks, and unsupported file
+  objects are rejected before installation mutation.
 - Required installer, release metadata, lockfile, Python package, config,
   compiled UI and workstation/provisioning scripts: **present**.
 - `.git`, `node_modules`, `.env`, virtualenv, user data, and provisioned model
@@ -29,6 +32,9 @@ The archive and external `.sha256` file are generated under ignored
 - Automated package tests exercise tampered-payload rejection before
   installation-root mutation, operation outside a Git worktree, installed
   provenance, and no Git/Node/npm requirement for end-user installation.
+- Integrity regressions: pristine package reaches host preflight; changed or
+  missing listed files, added unlisted files, and added unlisted symlinks fail
+  before installation roots are created.
 
 ## Disposition
 

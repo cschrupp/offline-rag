@@ -1,8 +1,8 @@
 # Slice 18B Workstation Qualification Status
 
-**Implementation status:** Revision 2 candidate `ab1c11c57118668dd6ac44beb0a69e4ef5f5f522` built and recorded.
-**18B-R Docker runtime cell:** PASS — exact-candidate image, CPU runtime, API/UI readiness, local retrieval/reranking, synthetic ingestion, grounded citation provenance, and a successful query after container replacement with `/data` preserved were verified using local Windows Ollama.
-**18B-P workstation package cell:** PASS — release archive built from the exact candidate, external and internal hashes verified, package contents audited, and focused installer/package tests passed.
+**Implementation status:** Revision 2 corrective candidate `7cc743a276587db45c971d035967a0f3b1133799` built and recorded.
+**18B-R Docker runtime cell:** PASS — the reviewed `ab1c11c5` image passed CPU runtime, API/UI readiness, local retrieval/reranking, synthetic ingestion, citation provenance, and post-replacement query checks. The `7cc743a2` correction changes only the workstation installer and tests, not Docker inputs or application runtime.
+**18B-P workstation package cell:** PASS — exact file-set closure is enforced before content hashing; release archive built from the corrective candidate, external and internal hashes verified, package contents audited, and focused installer/package tests passed.
 **Slice 18B:** READY FOR INDEPENDENT REVIEW; Human acceptance and promotion have not occurred.
 **SYSTEMD_USER_RUNTIME:** `DEFERRED_REAL_HOST_VALIDATION`
 **WSL_DISTRO_LIFECYCLE:** `DEFERRED_REAL_HOST_VALIDATION`
