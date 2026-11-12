@@ -95,8 +95,9 @@ should not override the current disposition here.
   passed on the promoted head.
 - [x] **REL-01 — CPU Release Packaging** — independently reviewed, Human
   accepted, and promoted with its evidence closeout to canonical `main` at
-  `0a1b5a45bff94ae12c8fe8d423c825572bc1c480`. The separate CUDA release image
-  remains deferred. See
+  `0a1b5a45bff94ae12c8fe8d423c825572bc1c480`. The separate CUDA Docker image
+  remains deferred; a CUDA workstation archive is planned under 18C and is not
+  authorized yet. See
   [`docs/rel01_cpu_release_packaging.md`](docs/rel01_cpu_release_packaging.md).
 - [x] **Slice 18A — Engineering evidence reconciliation** — Human accepted and
   promoted at `8431c134d2f85e74afe80febd0ca75ac451f65f1`.
@@ -105,7 +106,18 @@ should not override the current disposition here.
   `f5eda171925b791f94589637eb690a0de125aefb`. 18B-R and 18B-P passed.
   Real-host systemd-user and WSL distro lifecycle checks remain explicitly
   deferred; native Windows remains a separate spike.
-- [ ] Slices 18C–18D and Milestone 7 closeout remain unauthorized.
+- [ ] **Slice 18C — Release Distribution Matrix** — PLANNED / NOT AUTHORIZED.
+  CPU and CUDA workstation release artifacts and public distribution contract.
+- [ ] **Slice 18D — Product Metrics Audit & Explainability** — PLANNED / NOT
+  AUTHORIZED. Audit every user-visible metric/status/score for correctness,
+  provenance, and explainability.
+- [ ] **Slice 18E — Canonical Documentation & Portfolio Narrative** — PLANNED /
+  NOT AUTHORIZED. Produce coherent public documentation from accepted behavior
+  and audited metric semantics.
+- [ ] **Slice 18F — Public Release & Demo Assembly** — PLANNED / NOT
+  AUTHORIZED. Assemble release artifacts, demo workflow/media, and final
+  evidence-backed public claims.
+- [ ] **Milestone 7 closeout** — NOT AUTHORIZED.
 - [ ] End-to-end beta QA.
 - [ ] Fix release-blocking defects.
 - [ ] Human beta acceptance.
@@ -3350,22 +3362,27 @@ passed both jobs; the implementation result and baseline evidence remain in
 
 **REL-01 — CPU Release Packaging:** **COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN
 ACCEPTED / PROMOTED** with evidence closeout at `0a1b5a45`. The default release
-image is CPU-oriented; a separate CUDA release artifact remains deferred.
+image is CPU-oriented; a separate CUDA Docker image remains deferred. A CUDA
+workstation archive is planned under 18C and is not yet authorized.
 
-**Slice 18 — Portfolio Release Package:** **18A and 18B REVISION 2 COMPLETE /
-HUMAN ACCEPTED / PROMOTED**
+**Slice 18 — Portfolio Release Program:** **18A and 18B REVISION 2 COMPLETE /
+HUMAN ACCEPTED / PROMOTED; 18C–18F PLANNED / NOT AUTHORIZED**
 - Slice 18A delivered the reviewed six-record, two-route evidence reconciliation
   and presentation implementation.
 - Slice 18B covers the Linux x86-64 and Windows 11 + WSL2 CPU workstation
   release package. Docker runtime and built-archive package qualification
   passed. Real-host systemd-user and WSL distro lifecycle checks remain
   deferred and are not represented as passed.
-- Slices 18C–18D remain **NOT AUTHORIZED**.
-- Objective: reproducible public portfolio artifact backed by accepted evidence
-- Candidate deliverables only (not locked): polished README; architecture
-  diagram; public demo workflow; sample corpus instructions; benchmark
-  methodology/results; ablation evidence; limitations; hardware/runtime
-  profiles; demo media; reproducible install/run path; interview talking points
+- Slice 18C plans CPU and CUDA public workstation artifacts and their
+  distribution contract.
+- Slice 18D audits user-visible metric correctness, provenance, and
+  explainability.
+- Slice 18E reconciles canonical public documentation using accepted behavior
+  and audited metric semantics.
+- Slice 18F assembles the public release, demo workflow/media, and final
+  evidence-backed claims.
+- The canonical planning definition is
+  [`docs/slice18_release_plan.md`](docs/slice18_release_plan.md).
 - Claims remain conservative; deferred scientific/publication-grade promotions
   stay unauthorized
 
@@ -3399,9 +3416,12 @@ Later M7 checklist:
 - [x] Workstation Distribution (Slice 18B — **COMPLETE / HUMAN ACCEPTED /
   PROMOTED** at evidence head `f5eda171925b791f94589637eb690a0de125aefb`;
   systemd-user and WSL distro lifecycle remain deferred)
-- [ ] Slices 18C–18D (**NOT AUTHORIZED**)
+- [ ] Slice 18C — Release Distribution Matrix (**PLANNED / NOT AUTHORIZED**)
+- [ ] Slice 18D — Product Metrics Audit & Explainability (**PLANNED / NOT AUTHORIZED**)
+- [ ] Slice 18E — Canonical Documentation & Portfolio Narrative (**PLANNED / NOT AUTHORIZED**)
+- [ ] Slice 18F — Public Release & Demo Assembly (**PLANNED / NOT AUTHORIZED**)
 - [ ] Milestone 7 closeout (**NOT AUTHORIZED**)
-- [ ] Container image size / CPU–CUDA variants ([issue #1](https://github.com/cschrupp/offline-rag/issues/1) — **DEFERRED**)
+- [ ] Broader container image-size optimization ([issue #1](https://github.com/cschrupp/offline-rag/issues/1) — **DEFERRED**); CPU/CUDA workstation artifacts are planned under 18C.
 
 **M7 release direction (not a Slice-15 exit criterion):** a reviewer can use the
 accepted product/API surface and, after Slice 16 implementation (16A/16B/16C
@@ -3420,16 +3440,19 @@ COMPLETE / ACCEPTED / SEALED** at `9c178ffb033cde41849379fc914f321697ff8691`; **
 Slice 17 is **COMPLETE / HUMAN ACCEPTED / PROMOTED**. Slice 18A is **COMPLETE /
 HUMAN ACCEPTED / PROMOTED**. Slice 18B Revision 2 is **COMPLETE / HUMAN
 ACCEPTED / PROMOTED**. Real-host systemd-user and WSL distro lifecycle
-validation remain deferred. Slices 18C–18D and M7 closeout remain **NOT
-AUTHORIZED**.
+validation remain deferred. Slices 18C–18F are **PLANNED / NOT AUTHORIZED**;
+Milestone 7 closeout remains **NOT AUTHORIZED**. See
+[`docs/slice18_release_plan.md`](docs/slice18_release_plan.md) for the canonical
+Slice 18 plan.
 Performance optimization,
 generator max-token change, reranker config change, `base.yaml` promotion,
 `PORTFOLIO_DEMO.md` update, 13C/13D, recovery enablement, LangGraph, and NeMo
 remain **NOT AUTHORIZED**.
 Historical post–Slice-15 technical-debt wording about CPU-only PyTorch and
 CPU/CUDA image variants is superseded by completed REL-01 for the CPU release
-image. The separate CUDA release artifact remains deferred; GitHub issue #1 may
-remain open for its broader wording.
+image. A separate CUDA Docker image remains deferred; CUDA workstation
+distribution is planned under 18C and is not yet authorized. GitHub issue #1
+may remain open for its broader image-size wording.
 
 ## Milestone 8 — (historical stub; superseded by Slice 18 under M7)
 
@@ -3438,7 +3461,7 @@ Formal portfolio packaging work is tracked as **Slice 18** under Milestone 7.
 Slice 18A is complete, Human accepted, and promoted. Slice 18B Revision 2 is
 complete, Human accepted, and promoted; real-host systemd-user and WSL lifecycle
 validation remain deferred. This historical stub does not authorize Slices
-18C–18D.
+18C–18F.
 
 - [ ] public demo corpus instructions
 - [ ] benchmark methodology page

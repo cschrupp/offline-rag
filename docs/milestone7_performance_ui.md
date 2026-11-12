@@ -121,8 +121,17 @@ SLICE 16: DESIGN INTERVIEW COMPLETE
   Authority: docs/slice16_design_authority.md
   Plan: docs/slice16_implementation_plan.md
   Historical pre-design frame: docs/slice16_portfolio_ui.md
-SLICE 17: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
-SLICE 18: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
+SLICE 17: COMPLETE / HUMAN ACCEPTED / PROMOTED
+SLICE 18:
+  18A: COMPLETE / HUMAN ACCEPTED / PROMOTED
+  18B REVISION 2: COMPLETE / HUMAN ACCEPTED / PROMOTED
+    SYSTEMD_USER_RUNTIME: DEFERRED_REAL_HOST_VALIDATION
+    WSL_DISTRO_LIFECYCLE: DEFERRED_REAL_HOST_VALIDATION
+  18C: PLANNED / NOT AUTHORIZED
+  18D: PLANNED / NOT AUTHORIZED
+  18E: PLANNED / NOT AUTHORIZED
+  18F: PLANNED / NOT AUTHORIZED
+  PLAN: docs/slice18_release_plan.md
 
 PORTFOLIO_DEMO.md UPDATE: NOT AUTHORIZED
 MILESTONE 7 CLOSEOUT: NOT AUTHORIZED
@@ -966,8 +975,17 @@ SLICE 16: DESIGN INTERVIEW COMPLETE
              post-L6 parser corrective promoted / closed on canonical main;
              16K-E→G remain not authorized; residual queue: docs/BACKLOG.md
              (oracle: ROADMAP.md)
-SLICE 17: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
-SLICE 18: PLANNED / DESIGN NOT OPEN / NOT AUTHORIZED
+SLICE 17: COMPLETE / HUMAN ACCEPTED / PROMOTED
+SLICE 18:
+  18A: COMPLETE / HUMAN ACCEPTED / PROMOTED
+  18B REVISION 2: COMPLETE / HUMAN ACCEPTED / PROMOTED
+    SYSTEMD_USER_RUNTIME: DEFERRED_REAL_HOST_VALIDATION
+    WSL_DISTRO_LIFECYCLE: DEFERRED_REAL_HOST_VALIDATION
+  18C: PLANNED / NOT AUTHORIZED
+  18D: PLANNED / NOT AUTHORIZED
+  18E: PLANNED / NOT AUTHORIZED
+  18F: PLANNED / NOT AUTHORIZED
+  PLAN: docs/slice18_release_plan.md
 
 MILESTONE 7: IN PROGRESS
 PORTFOLIO_DEMO.md UPDATE: NOT AUTHORIZED
@@ -979,24 +997,16 @@ M6 science: UNCHANGED
   NOT AUTHORIZED / UNCHANGED
 ```
 
-**Next governance sequence:** **16D-B2** and **16D-B3** are
-**COMPLETE / ACCEPTED / SEALED** (B3 at `9c178ffb033cde41849379fc914f321697ff8691`).
-**16D-C** and Amendment **A4** are **COMPLETE / ACCEPTED / SEALED** at
-`0381e0461f68c5fc09e7be2c7699d434e8b8a9cb` (closeout
-`docs/slice16d_c_a4_closeout.md`). **16E** is **COMPLETE / ACCEPTED / SEALED**
-(Engineering `3e1ce4c94fc511abb4e1d94bd194736d5497e64f`; Workspace
-source-loading remediation `9dd2b008ebf9feee279dc6d0e58fafb006288ee5`; tip
-`9cd5528ab6c6e22d2dca55aca221b65eac50269e`). **16F** is **COMPLETE /
-ACCEPTED / SEALED** at
-`f25f8358aead7fcfe161fff388012cec23b5a573` (closeout
-`docs/slice16f_closeout.md`). **16G** is **IMPLEMENTATION COMPLETE / ACCEPTED**;
-**16H** is **COMPLETE / ACCEPTED**. Slice 16 is **COMPLETE / HUMAN ACCEPTED /
-CANONICAL**. Slice 14 and Slice 15 are closed. Remaining Milestone-7 gates that
-are still **NOT AUTHORIZED**: Slice 17, Slice 18, and M7 closeout. 16K is a
-post-closeout program: A/B/C and dual-backend P1–P4 are at their recorded
-acceptance states; large-source L1–L6 and the parser corrective are closed;
-16K-E→G remain not authorized. Active residuals are tracked in
-`docs/BACKLOG.md` (oracle `ROADMAP.md`).
+**Current Slice 18 plan:** Slice 18A and Slice 18B Revision 2 are
+**COMPLETE / HUMAN ACCEPTED / PROMOTED**. Slice 18B's real-host systemd-user and
+WSL distro lifecycle validations remain deferred. Slices 18C–18F are
+**PLANNED / NOT AUTHORIZED**; Milestone 7 closeout remains **NOT AUTHORIZED**.
+The canonical scope and sequence are in
+[`docs/slice18_release_plan.md`](slice18_release_plan.md).
+
+Slice 16 is **COMPLETE / HUMAN ACCEPTED / CANONICAL**. Slice 14 and Slice 15
+are closed. 16K remains a post-closeout program with its recorded acceptance
+states and residuals tracked in `docs/BACKLOG.md` (oracle `ROADMAP.md`).
 Slice 16 design is **ACCEPTED / LOCKED**. Amendment A2 is **ACCEPTED / LOCKED /
 SEALED**. **16A**, **16B**, **16C**, **16D-A**, and **16D-B2** are **COMPLETE /
 ACCEPTED**. B1 foundation remediation is **ACCEPTED / SEALED** (implementation
@@ -1004,5 +1014,7 @@ ACCEPTED**. B1 foundation remediation is **ACCEPTED / SEALED** (implementation
 `b5fa1e8572ec79c0e68aa3fa6fc6c024d9e25d90`). Legacy B1 product UX remains
 **PRODUCT ACCEPTANCE WITHHELD**. **16D-B2** is **COMPLETE / ACCEPTED /
 SEALED** at `baa16eba36d1f9d0e8bbfdbdc8cb4b93a6e31149`. **16D-B3** is **COMPLETE / ACCEPTED / SEALED** at `9c178ffb033cde41849379fc914f321697ff8691`
-(A3 **ACCEPTED / LOCKED / SEALED**). Slice 17, Slice 18, and M7 closeout remain
-**NOT AUTHORIZED**.
+(A3 **ACCEPTED / LOCKED / SEALED**). Slice 17 is **COMPLETE / HUMAN ACCEPTED /
+PROMOTED**. Slice 18A and 18B Revision 2 are **COMPLETE / HUMAN ACCEPTED /
+PROMOTED**; 18C–18F are **PLANNED / NOT AUTHORIZED**. Milestone 7 closeout
+remains **NOT AUTHORIZED**. See [`docs/slice18_release_plan.md`](slice18_release_plan.md).

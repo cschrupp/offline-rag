@@ -2,7 +2,7 @@
 
 **Status:** LIVE PLANNING / NON-AUTHORIZING\
 **Canonical reference:** `main` (see Git for current tip)\
-**Updated:** 2026-11-10
+**Updated:** 2026-11-12
 
 This document is the live queue for work that remains after the Human-accepted
 Slice 16 closeout and the post-L6 parser-stack corrective.
@@ -37,13 +37,21 @@ BETA-CONV-01C — COMPLETE / HUMAN PRODUCT ACCEPTED / PROMOTED
 BETA-CONV-02 — DEFERRED / NOT AUTHORIZED
 Slice 17 — COMPLETE / HUMAN ACCEPTED / PROMOTED
 REL-01 — COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / PROMOTED
-         Separate CUDA release image DEFERRED
+         Separate CUDA Docker image DEFERRED; CUDA workstation archive assigned
+         to Slice 18C (PLANNED / NOT AUTHORIZED)
 Slice 18A — COMPLETE / HUMAN ACCEPTED / PROMOTED at 8431c134
 Slice 18B — REVISION 2 COMPLETE / HUMAN ACCEPTED / PROMOTED at f5eda171;
              REAL-HOST SYSTEMD-USER / WSL LIFECYCLE DEFERRED
-Slices 18C–18D — NOT AUTHORIZED
+Slice 18C — PLANNED / NOT AUTHORIZED
+Slice 18D — PLANNED / NOT AUTHORIZED
+Slice 18E — PLANNED / NOT AUTHORIZED
+Slice 18F — PLANNED / NOT AUTHORIZED
+Milestone 7 closeout — NOT AUTHORIZED
 Additional Gold Lab games — DEFERRED BEYOND CURRENT BETA
 ```
+
+See [`docs/slice18_release_plan.md`](slice18_release_plan.md) for the canonical
+remaining Slice 18 plan. Planning status does not authorize implementation.
 
 Status statements in historical slice records below retain their original
 time-specific meaning. Slice 17 opened on 2026-11-09 from canonical `main` at
@@ -94,13 +102,21 @@ and its linked sanitized `RUN_002_EVIDENCE_INDEX.md`.
     -> BETA-CONV-02 analytical synthesis DEFERRED / NOT AUTHORIZED
     -> Slice 17 COMPLETE / HUMAN ACCEPTED / PROMOTED at 3fb65e34
     -> REL-01 COMPLETE / HUMAN ACCEPTED / PROMOTED with evidence at 0a1b5a45;
-       separate CUDA release image DEFERRED
+       separate CUDA Docker image DEFERRED; CUDA workstation archive planned
+       under 18C / NOT AUTHORIZED
     -> Slice 18A COMPLETE / HUMAN ACCEPTED / PROMOTED at 8431c134
     -> Slice 18B workstation distribution Revision 2 COMPLETE / HUMAN ACCEPTED /
        PROMOTED at f5eda171; real-host systemd-user / WSL lifecycle validation
        deferred
-    -> Slices 18C–18D NOT AUTHORIZED
+    -> Slice 18C Release Distribution Matrix — PLANNED / NOT AUTHORIZED
+    -> Slice 18D Product Metrics Audit & Explainability — PLANNED / NOT AUTHORIZED
+    -> Slice 18E Canonical Documentation & Portfolio Narrative — PLANNED / NOT AUTHORIZED
+    -> Slice 18F Public Release & Demo Assembly — PLANNED / NOT AUTHORIZED
+    -> Milestone 7 closeout — NOT AUTHORIZED
 ```
+
+See [`docs/slice18_release_plan.md`](slice18_release_plan.md) for scope and
+sequencing. This roadmap does not authorize any of these slices.
 
 Original Slice 16G is already accepted; 16K-G names the separate regression
 handoff and must not be confused with that completed slice. The 16K-G handoff
@@ -688,13 +704,22 @@ CPU/CUDA packaging wording; this tranche does not automatically close it.
 ### REL-02 — Portfolio release / public claims package
 
 **Priority:** downstream\
-**Status:** Slice 18A and Slice 18B Revision 2 complete / Human accepted /
-promoted; real-host systemd-user and WSL lifecycle checks remain deferred.
-18C–18D and public portfolio release implementation remain unauthorized.
+**Status:** Slice 18A and Slice 18B Revision 2 COMPLETE / HUMAN ACCEPTED /
+PROMOTED. Slices 18C–18F are PLANNED / NOT AUTHORIZED. Milestone 7 closeout is
+NOT AUTHORIZED. Real-host systemd-user and WSL lifecycle checks remain deferred.
 
-Includes `PORTFOLIO_DEMO.md`, polished public documentation, architecture/demo
-media, benchmark methodology, limitations, hardware/runtime profiles, and
-reproducible install/run guidance. Claims must remain backed by accepted evidence.
+The remaining work is separated into:
+
+- **18C:** CPU/CUDA workstation distribution matrix; the separate CUDA public
+  workstation package is assigned here.
+- **18D:** audit metric correctness, provenance, and explainability.
+- **18E:** reconcile canonical public documentation from accepted behavior and
+  audited metric semantics.
+- **18F:** assemble the GitHub release/demo and final public claims.
+
+The 18B real-host systemd-user and WSL lifecycle checks remain deferred from
+18B. See [`docs/slice18_release_plan.md`](slice18_release_plan.md) for scope and
+sequencing. Claims must remain backed by accepted evidence.
 
 ### REL-03 — Hosted Portfolio Demo Profile
 
@@ -706,7 +731,8 @@ The accepted implementation is `ac55095fb9ded47123fa56d52b42502f5fd3a43e`;
 the sanitized bounded qualification is
 `5a793766bb4ecd88278cd0bf3a892572ec30f67a`. See
 [`REL03_P0_LIVE_SMOKE.md`](evidence/rel03_p0_live_smoke/REL03_P0_LIVE_SMOKE.md).
-This does not claim hosted deployment or authorize Slice 18.
+This does not claim hosted deployment or authorize deployment work under
+Slices 18C–18F.
 
 Provide an explicitly operator-enabled hosted Seneca demonstration profile for
 portfolio/job-search use while preserving the canonical local, strict-offline
@@ -803,8 +829,8 @@ Revision 2 qualifies runtime behavior through the existing Docker release
 Real-host systemd-user and WSL distro lifecycle validation remain explicitly
 deferred; the sandbox limitation is not reported as a pass. Native Windows
 remains a separate feasibility spike without an installer or service. CUDA
-packaging, hosting, TLS/authentication, backup/restore, and Slices 18C–18D are
-outside scope.
+packaging is planned under 18C; hosting, TLS/authentication, backup/restore,
+and Slices 18C–18F remain outside the accepted 18B scope.
 
 ## 6. Downstream roadmap after active residuals
 
@@ -822,9 +848,22 @@ Slice 18A — COMPLETE / HUMAN ACCEPTED / PROMOTED
 Slice 18B Revision 2 — COMPLETE / HUMAN ACCEPTED / PROMOTED
 Real-host systemd-user / WSL lifecycle — DEFERRED_REAL_HOST_VALIDATION
         ->
-Slices 18C–18D and Milestone 7 closeout remain unauthorized
+18C — Release Distribution Matrix — PLANNED / NOT AUTHORIZED
+        ->
+18D — Product Metrics Audit & Explainability — PLANNED / NOT AUTHORIZED
+        ->
+18E — Canonical Documentation & Portfolio Narrative — PLANNED / NOT AUTHORIZED
+        ->
+18F — Public Release & Demo Assembly — PLANNED / NOT AUTHORIZED
+        ->
+Milestone 7 closeout — NOT AUTHORIZED
+        ->
+End-to-end beta QA → release blockers → Human beta acceptance → RELEASE
 ```
 
 Slice 17, REL-01, Slice 18A, and Slice 18B Revision 2 are complete, Human
 accepted, and promoted. Slice 18B's real-host systemd-user and WSL lifecycle
-validation remain deferred. Slices 18C–18D and M7 closeout remain unauthorized.
+validation remain deferred. Slices 18C–18F are planned but unauthorized, and
+Milestone 7 closeout remains unauthorized. See
+[`docs/slice18_release_plan.md`](slice18_release_plan.md) for the canonical
+planning definition.
