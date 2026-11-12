@@ -41,10 +41,11 @@ completed successfully.
 
 This environment is sandboxed WSL2, not a clean Ubuntu or Windows/WSL
 qualification host. Dynamic systemd-user lifecycle and WSL distro lifecycle
-remain deferred to real-host validation. The local Ollama service was not
-available during the product query attempt; the request failed safely with
-`generation_unavailable`. Therefore, the complete grounded answer/citation
-path and query-after-container-replacement acceptance criteria remain open.
+remain deferred to real-host validation. An initial query attempt made before
+the Windows Ollama service was available failed safely with
+`generation_unavailable`; after the user reported Ollama was available, the
+bounded local product smoke completed successfully as recorded in
+`DOCKER_QUALIFICATION.md`.
 
-No real-host systemd/WSL claim, successful grounded-query claim, or overall
-18B-R PASS is made here. Promotion is not authorized by this record.
+No real-host systemd/WSL claim is made here. This evidence does not authorize
+promotion; the candidate remains for independent review.

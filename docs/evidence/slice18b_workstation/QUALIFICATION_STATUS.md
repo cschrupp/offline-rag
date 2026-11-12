@@ -1,8 +1,9 @@
 # Slice 18B Workstation Qualification Status
 
 **Implementation status:** Revision 2 candidate `ab1c11c57118668dd6ac44beb0a69e4ef5f5f522` built and recorded.
-**18B-R Docker runtime cell:** PARTIAL — exact-candidate image, CPU runtime, API/UI readiness, and container replacement persistence of a synthetic workspace were verified. The required grounded answer/citation and post-replacement query remain unverified because no local Ollama service was available.
+**18B-R Docker runtime cell:** PASS — exact-candidate image, CPU runtime, API/UI readiness, local retrieval/reranking, synthetic ingestion, grounded citation provenance, and a successful query after container replacement with `/data` preserved were verified using local Windows Ollama.
 **18B-P workstation package cell:** PASS — release archive built from the exact candidate, external and internal hashes verified, package contents audited, and focused installer/package tests passed.
+**Slice 18B:** READY FOR INDEPENDENT REVIEW; Human acceptance and promotion have not occurred.
 **SYSTEMD_USER_RUNTIME:** `DEFERRED_REAL_HOST_VALIDATION`
 **WSL_DISTRO_LIFECYCLE:** `DEFERRED_REAL_HOST_VALIDATION`
 **Native Windows spike:** Separate branch; not part of this qualification.
