@@ -1,9 +1,11 @@
 # Slice 18B Workstation Qualification Status
 
-**Implementation status:** Revision 2 corrective candidate `7cc743a276587db45c971d035967a0f3b1133799` built and recorded.
+**Slice status:** COMPLETE / HUMAN ACCEPTED / PROMOTED.
+**Accepted technical candidate:** `7cc743a276587db45c971d035967a0f3b1133799`.
+**Accepted evidence head promoted to main:** `f5eda171925b791f94589637eb690a0de125aefb`.
 **18B-R Docker runtime cell:** PASS — the reviewed `ab1c11c5` image passed CPU runtime, API/UI readiness, local retrieval/reranking, synthetic ingestion, citation provenance, and post-replacement query checks. The `7cc743a2` correction changes only the workstation installer and tests, not Docker inputs or application runtime.
 **18B-P workstation package cell:** PASS — exact file-set closure is enforced before content hashing; release archive built from the corrective candidate, external and internal hashes verified, package contents audited, and focused installer/package tests passed.
-**Slice 18B:** READY FOR INDEPENDENT REVIEW; Human acceptance and promotion have not occurred.
+**Slice 18B:** COMPLETE / HUMAN ACCEPTED / PROMOTED.
 **SYSTEMD_USER_RUNTIME:** `DEFERRED_REAL_HOST_VALIDATION`
 **WSL_DISTRO_LIFECYCLE:** `DEFERRED_REAL_HOST_VALIDATION`
 **Native Windows spike:** Separate branch; not part of this qualification.
@@ -22,8 +24,9 @@ names/content, or unsanitized host logs.
 
 See `REV2_IMPLEMENTATION.md`, `PACKAGE_RESULT.md`, `PACKAGE_MANIFEST.json`,
 and `DOCKER_QUALIFICATION.md` for the candidate, package identity, validation,
-and the exact runtime limitation. This status is not a Slice 18B acceptance or
-promotion record.
+and the qualification details. The deferred real-host checks remain open
+follow-up validation; they were not performed or implicitly qualified by
+promotion.
 
 The workstation service is expected to outlive its launching shell only while
 the Linux environment remains running; systemd user-manager lingering is a

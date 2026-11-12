@@ -39,9 +39,8 @@ Slice 17 — COMPLETE / HUMAN ACCEPTED / PROMOTED
 REL-01 — COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / PROMOTED
          Separate CUDA release image DEFERRED
 Slice 18A — COMPLETE / HUMAN ACCEPTED / PROMOTED at 8431c134
-Slice 18B — REVISION 2 IMPLEMENTATION AUTHORIZED / IN PROGRESS;
-             DOCKER RUNTIME AND PACKAGE QUALIFICATION PENDING;
-             REAL-HOST SYSTEMD/WSL LIFECYCLE DEFERRED
+Slice 18B — REVISION 2 COMPLETE / HUMAN ACCEPTED / PROMOTED at f5eda171;
+             REAL-HOST SYSTEMD-USER / WSL LIFECYCLE DEFERRED
 Slices 18C–18D — NOT AUTHORIZED
 Additional Gold Lab games — DEFERRED BEYOND CURRENT BETA
 ```
@@ -97,9 +96,9 @@ and its linked sanitized `RUN_002_EVIDENCE_INDEX.md`.
     -> REL-01 COMPLETE / HUMAN ACCEPTED / PROMOTED with evidence at 0a1b5a45;
        separate CUDA release image DEFERRED
     -> Slice 18A COMPLETE / HUMAN ACCEPTED / PROMOTED at 8431c134
-    -> Slice 18B workstation distribution Revision 2 IMPLEMENTATION AUTHORIZED /
-       IN PROGRESS; Docker runtime and package qualification pending;
-       real-host systemd/WSL lifecycle validation deferred
+    -> Slice 18B workstation distribution Revision 2 COMPLETE / HUMAN ACCEPTED /
+       PROMOTED at f5eda171; real-host systemd-user / WSL lifecycle validation
+       deferred
     -> Slices 18C–18D NOT AUTHORIZED
 ```
 
@@ -689,9 +688,9 @@ CPU/CUDA packaging wording; this tranche does not automatically close it.
 ### REL-02 — Portfolio release / public claims package
 
 **Priority:** downstream\
-**Status:** Slice 18A complete / Human accepted / promoted; Slice 18B
-workstation-distribution implementation is authorized / in progress. 18C–18D
-and public portfolio release implementation remain unauthorized.
+**Status:** Slice 18A and Slice 18B Revision 2 complete / Human accepted /
+promoted; real-host systemd-user and WSL lifecycle checks remain deferred.
+18C–18D and public portfolio release implementation remain unauthorized.
 
 Includes `PORTFOLIO_DEMO.md`, polished public documentation, architecture/demo
 media, benchmark methodology, limitations, hardware/runtime profiles, and
@@ -783,7 +782,9 @@ its own design/authority.
 
 ### Slice 18B — Workstation Distribution
 
-**Status:** REVISION 2 IMPLEMENTATION AUTHORIZED / IN PROGRESS; Docker runtime and package qualification pending; real-host systemd/WSL lifecycle deferred.
+**Status:** REVISION 2 COMPLETE / HUMAN ACCEPTED / PROMOTED at evidence head
+`f5eda171925b791f94589637eb690a0de125aefb`; real-host systemd-user and WSL
+lifecycle validation deferred.
 
 **Branch:** `feature/slice18b-workstation-distribution`
 
@@ -818,13 +819,12 @@ REL-01 CPU release packaging COMPLETE / HUMAN ACCEPTED / PROMOTED
         ->
 Slice 18A — COMPLETE / HUMAN ACCEPTED / PROMOTED
         ->
-Slice 18B — Revision 2 implementation in progress; Docker runtime and package qualification pending; real-host lifecycle deferred
+Slice 18B Revision 2 — COMPLETE / HUMAN ACCEPTED / PROMOTED
+Real-host systemd-user / WSL lifecycle — DEFERRED_REAL_HOST_VALIDATION
         ->
 Slices 18C–18D and Milestone 7 closeout remain unauthorized
 ```
 
-Slice 17 and REL-01 are complete and promoted. Slice 18A is complete, Human
-accepted, and promoted. Slice 18B Revision 2 implementation is authorized and
-in progress; Docker runtime and package qualification remain pending, while
-real-host systemd/WSL lifecycle validation is deferred. Slices 18C–18D and M7
-closeout remain unauthorized.
+Slice 17, REL-01, Slice 18A, and Slice 18B Revision 2 are complete, Human
+accepted, and promoted. Slice 18B's real-host systemd-user and WSL lifecycle
+validation remain deferred. Slices 18C–18D and M7 closeout remain unauthorized.

@@ -377,7 +377,7 @@ Avoid:
 
 That would be inaccurate by design.
 
-## 11. Workstation profile (Slice 18B candidate)
+## 11. Workstation profile (Slice 18B)
 
 Slice 18B adds a separate non-Docker workstation profile for Linux x86-64 and
 Windows 11 + WSL2 x86-64. It reuses the same FastAPI application, static UI,

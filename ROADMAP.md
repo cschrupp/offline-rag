@@ -100,11 +100,11 @@ should not override the current disposition here.
   [`docs/rel01_cpu_release_packaging.md`](docs/rel01_cpu_release_packaging.md).
 - [x] **Slice 18A — Engineering evidence reconciliation** — Human accepted and
   promoted at `8431c134d2f85e74afe80febd0ca75ac451f65f1`.
-- [ ] **Slice 18B — Workstation Distribution, Revision 2** — implementation
-  authorized on `feature/slice18b-workstation-distribution`. Qualification is
-  split into the canonical Docker runtime cell (18B-R) and release archive /
-  installer cell (18B-P). Real-host systemd-user and WSL distro lifecycle
-  checks are explicitly deferred; native Windows remains a separate spike.
+- [x] **Slice 18B — Workstation Distribution, Revision 2** — COMPLETE / HUMAN
+  ACCEPTED / PROMOTED to `main` at evidence head
+  `f5eda171925b791f94589637eb690a0de125aefb`. 18B-R and 18B-P passed.
+  Real-host systemd-user and WSL distro lifecycle checks remain explicitly
+  deferred; native Windows remains a separate spike.
 - [ ] Slices 18C–18D and Milestone 7 closeout remain unauthorized.
 - [ ] End-to-end beta QA.
 - [ ] Fix release-blocking defects.
@@ -3352,13 +3352,13 @@ passed both jobs; the implementation result and baseline evidence remain in
 ACCEPTED / PROMOTED** with evidence closeout at `0a1b5a45`. The default release
 image is CPU-oriented; a separate CUDA release artifact remains deferred.
 
-**Slice 18 — Portfolio Release Package:** **18A COMPLETE / HUMAN ACCEPTED /
-PROMOTED; 18B REVISION 2 IMPLEMENTATION AUTHORIZED / IN PROGRESS**
+**Slice 18 — Portfolio Release Package:** **18A and 18B REVISION 2 COMPLETE /
+HUMAN ACCEPTED / PROMOTED**
 - Slice 18A delivered the reviewed six-record, two-route evidence reconciliation
   and presentation implementation.
 - Slice 18B covers the Linux x86-64 and Windows 11 + WSL2 CPU workstation
-  release package. Qualification uses Docker for runtime behavior and a built
-  archive for package behavior; real-host service/WSL lifecycle checks are
+  release package. Docker runtime and built-archive package qualification
+  passed. Real-host systemd-user and WSL distro lifecycle checks remain
   deferred and are not represented as passed.
 - Slices 18C–18D remain **NOT AUTHORIZED**.
 - Objective: reproducible public portfolio artifact backed by accepted evidence
@@ -3396,8 +3396,9 @@ Later M7 checklist:
 - [x] Regression CI (Slice 17 — **COMPLETE / HUMAN ACCEPTED / PROMOTED**)
 - [x] Portfolio release package (Slice 18A — **COMPLETE / HUMAN ACCEPTED /
   PROMOTED**)
-- [ ] Workstation Distribution (Slice 18B — **IMPLEMENTATION AUTHORIZED / IN
-  PROGRESS**; qualification pending)
+- [x] Workstation Distribution (Slice 18B — **COMPLETE / HUMAN ACCEPTED /
+  PROMOTED** at evidence head `f5eda171925b791f94589637eb690a0de125aefb`;
+  systemd-user and WSL distro lifecycle remain deferred)
 - [ ] Slices 18C–18D (**NOT AUTHORIZED**)
 - [ ] Milestone 7 closeout (**NOT AUTHORIZED**)
 - [ ] Container image size / CPU–CUDA variants ([issue #1](https://github.com/cschrupp/offline-rag/issues/1) — **DEFERRED**)
@@ -3417,10 +3418,10 @@ Amendment A1 **ACCEPTED / LOCKED**; Amendment A2 **ACCEPTED / LOCKED /
 SEALED**; B1 foundation remediation **ACCEPTED / SEALED**; **16D-B3
 COMPLETE / ACCEPTED / SEALED** at `9c178ffb033cde41849379fc914f321697ff8691`; **16D-C** COMPLETE / ACCEPTED / SEALED;
 Slice 17 is **COMPLETE / HUMAN ACCEPTED / PROMOTED**. Slice 18A is **COMPLETE /
-HUMAN ACCEPTED / PROMOTED**. Slice 18B Revision 2 implementation is authorized
-and in progress; Docker runtime and package qualification remain pending, while
-real-host systemd/WSL lifecycle validation is deferred. Slices 18C–18D and M7
-closeout remain **NOT AUTHORIZED**.
+HUMAN ACCEPTED / PROMOTED**. Slice 18B Revision 2 is **COMPLETE / HUMAN
+ACCEPTED / PROMOTED**. Real-host systemd-user and WSL distro lifecycle
+validation remain deferred. Slices 18C–18D and M7 closeout remain **NOT
+AUTHORIZED**.
 Performance optimization,
 generator max-token change, reranker config change, `base.yaml` promotion,
 `PORTFOLIO_DEMO.md` update, 13C/13D, recovery enablement, LangGraph, and NeMo
@@ -3434,9 +3435,10 @@ remain open for its broader wording.
 
 The checklist below is retained as a historical portfolio-release stub.
 Formal portfolio packaging work is tracked as **Slice 18** under Milestone 7.
-Slice 18A is complete, Human accepted, and promoted. Current Slice 18B work is
-tracked in the active 18B entry above; this historical stub does not authorize
-Slices 18C–18D.
+Slice 18A is complete, Human accepted, and promoted. Slice 18B Revision 2 is
+complete, Human accepted, and promoted; real-host systemd-user and WSL lifecycle
+validation remain deferred. This historical stub does not authorize Slices
+18C–18D.
 
 - [ ] public demo corpus instructions
 - [ ] benchmark methodology page
