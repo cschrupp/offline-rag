@@ -56,6 +56,98 @@ CONFIG_TOOL="$PAYLOAD/scripts/workstation/configure.py"
   printf 'This installer must run from a complete workstation package.\n' >&2
   exit 1
 }
+if ! python3 - "$PACKAGE_ROOT" <<'PY'
+import os
+import re
+import sys
+from pathlib import Path, PurePosixPath
+
+root = Path(sys.argv[1])
+manifest = root / "SHA256SUMS"
+install_script = root / "install.sh"
+release_json = root / "RELEASE.json"
+payload = root / "payload"
+expected_root_entries = {"install.sh", "RELEASE.json", "SHA256SUMS", "payload"}
+
+
+def invalid_package() -> None:
+    raise SystemExit("package file set does not match SHA256SUMS")
+
+
+if manifest.is_symlink() or not manifest.is_file():
+    invalid_package()
+if {entry.name for entry in root.iterdir()} != expected_root_entries:
+    invalid_package()
+if install_script.is_symlink() or not install_script.is_file():
+    invalid_package()
+if release_json.is_symlink() or not release_json.is_file():
+    invalid_package()
+if payload.is_symlink() or not payload.is_dir():
+    invalid_package()
+
+# The manifest must close the extracted tree, not just hash the entries it lists.
+expected: set[str] = set()
+line_pattern = re.compile(r"^[0-9a-f]{64}  (.+)$")
+try:
+    lines = manifest.read_text(encoding="utf-8").splitlines()
+except (OSError, UnicodeError):
+    invalid_package()
+
+for line in lines:
+    match = line_pattern.fullmatch(line)
+    if match is None:
+        invalid_package()
+    relative_name = match.group(1)
+    relative_path = PurePosixPath(relative_name)
+    if (
+        "\\" in relative_name
+        or relative_path.is_absolute()
+        or ".." in relative_path.parts
+        or relative_path.as_posix() != relative_name
+        or not (
+            relative_name in {"install.sh", "RELEASE.json"}
+            or relative_name.startswith("payload/")
+        )
+        or relative_name in expected
+    ):
+        invalid_package()
+    expected.add(relative_name)
+
+if not {"install.sh", "RELEASE.json"}.issubset(expected):
+    invalid_package()
+if not any(name.startswith("payload/") for name in expected):
+    invalid_package()
+
+actual = {"install.sh", "RELEASE.json"}
+expected_directories = {"payload"}
+for name in expected:
+    parts = PurePosixPath(name).parts
+    for index in range(1, len(parts)):
+        directory = "/".join(parts[:index])
+        if directory == "payload" or directory.startswith("payload/"):
+            expected_directories.add(directory)
+
+actual_directories = {"payload"}
+for current, directories, files in os.walk(payload, followlinks=False):
+    current_path = Path(current)
+    for name in directories:
+        path = current_path / name
+        if path.is_symlink() or not path.is_dir():
+            invalid_package()
+        actual_directories.add(path.relative_to(root).as_posix())
+    for name in files:
+        path = current_path / name
+        if path.is_symlink() or not path.is_file():
+            invalid_package()
+        actual.add(path.relative_to(root).as_posix())
+
+if actual != expected or actual_directories != expected_directories:
+    invalid_package()
+PY
+then
+  printf 'Package integrity verification failed; no installation state was changed.\n' >&2
+  exit 1
+fi
 (cd "$PACKAGE_ROOT" && sha256sum --check --status SHA256SUMS) || {
   printf 'Package integrity verification failed; no installation state was changed.\n' >&2
   exit 1

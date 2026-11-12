@@ -26,6 +26,65 @@ def _run(command: list[str], *, cwd: Path, env: dict[str, str] | None = None):
     )
 
 
+def _create_integrity_fixture(package_root: Path) -> tuple[Path, dict[str, str]]:
+    """Create a small package whose host preflight stops before mutation."""
+    (package_root / "payload/config").mkdir(parents=True)
+    (package_root / "payload/scripts/workstation").mkdir(parents=True)
+    (package_root / "payload/src/offline_rag").mkdir(parents=True)
+    installer = package_root / "install.sh"
+    shutil.copy2(INSTALLER, installer)
+    release = {
+        "schema_version": 1,
+        "product": "Seneca",
+        "project": "offline-rag",
+        "project_version": "0.1.0",
+        "source_sha": "a" * 40,
+        "target": "linux-x86_64",
+        "python": "3.14",
+        "uv_version": "0.11.18",
+        "dependency_profile": "cpu-release",
+        "ui_source_sha": "a" * 40,
+    }
+    (package_root / "RELEASE.json").write_text(json.dumps(release))
+    config = package_root / "payload/config/base.yaml"
+    config.write_text("original: true\n")
+    (package_root / "payload/src/offline_rag/__init__.py").write_text("\n")
+    host_tool = package_root / "payload/scripts/workstation/host.py"
+    host_tool.write_text("raise SystemExit(1)\n")
+
+    files = [installer, package_root / "RELEASE.json"]
+    files.extend(
+        path for path in (package_root / "payload").rglob("*") if path.is_file()
+    )
+    manifest = "".join(
+        f"{hashlib.sha256(path.read_bytes()).hexdigest()}  "
+        f"{path.relative_to(package_root).as_posix()}\n"
+        for path in sorted(files)
+    )
+    (package_root / "SHA256SUMS").write_text(manifest)
+
+    home = package_root.parent / "home"
+    env = {
+        **os.environ,
+        "HOME": str(home),
+        "XDG_DATA_HOME": str(home / ".local/share"),
+        "XDG_CONFIG_HOME": str(home / ".config"),
+        "XDG_BIN_HOME": str(home / ".local/bin"),
+    }
+    return config, env
+
+
+def _run_installer(package_root: Path, env: dict[str, str]):
+    return subprocess.run(
+        ["bash", str(package_root / "install.sh"), "--ollama-model", "fixture"],
+        cwd=package_root,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
 def _create_builder_fixture(root: Path) -> tuple[Path, Path]:
     """Create a tiny committed project and fake only the UI build tools."""
     (root / "scripts/workstation").mkdir(parents=True)
@@ -131,61 +190,78 @@ def test_builder_creates_provenance_bound_integrity_checked_archive(
 
 def test_tampered_package_fails_before_installation_mutation(tmp_path: Path) -> None:
     package_root = tmp_path / "package"
-    payload = package_root / "payload/config"
-    payload.mkdir(parents=True)
-    shutil.copy2(INSTALLER, package_root / "install.sh")
-    (package_root / "RELEASE.json").write_text(
-        json.dumps(
-            {
-                "schema_version": 1,
-                "product": "Seneca",
-                "project": "offline-rag",
-                "project_version": "0.1.0",
-                "source_sha": "a" * 40,
-                "target": "linux-x86_64",
-                "python": "3.14",
-                "uv_version": "0.11.18",
-                "dependency_profile": "cpu-release",
-                "ui_source_sha": "a" * 40,
-            }
-        )
-    )
-    config = payload / "base.yaml"
-    config.write_text("original: true\n")
-    checksummed = [package_root / "install.sh", package_root / "RELEASE.json", config]
-    (package_root / "SHA256SUMS").write_text(
-        "".join(
-            f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.relative_to(package_root)}\n"
-            for path in checksummed
-        )
-    )
+    config, env = _create_integrity_fixture(package_root)
     config.write_text("tampered: true\n")
-    help_result = subprocess.run(
-        ["bash", str(package_root / "install.sh"), "--help"],
-        cwd=tmp_path,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert help_result.returncode == 0
-
-    home = tmp_path / "home"
-    env = {
-        **os.environ,
-        "HOME": str(home),
-        "XDG_DATA_HOME": str(home / ".local/share"),
-        "XDG_CONFIG_HOME": str(home / ".config"),
-        "XDG_BIN_HOME": str(home / ".local/bin"),
-    }
-    result = subprocess.run(
-        ["bash", str(package_root / "install.sh"), "--ollama-model", "fixture"],
-        cwd=package_root,
-        env=env,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    result = _run_installer(package_root, env)
     assert result.returncode != 0
     assert "Package integrity verification failed" in result.stderr
+    home = Path(env["HOME"])
+    assert not (home / ".local/share/seneca").exists()
+    assert not (home / ".config/seneca").exists()
+
+
+def test_added_unlisted_file_fails_before_installation_mutation(
+    tmp_path: Path,
+) -> None:
+    package_root = tmp_path / "package"
+    _, env = _create_integrity_fixture(package_root)
+    (package_root / "payload/src/offline_rag/extra_file.py").write_text(
+        "unexpected = True\n"
+    )
+
+    result = _run_installer(package_root, env)
+
+    assert result.returncode != 0
+    assert "Package integrity verification failed" in result.stderr
+    home = Path(env["HOME"])
+    assert not (home / ".local/share/seneca").exists()
+    assert not (home / ".config/seneca").exists()
+
+
+def test_added_unlisted_symlink_fails_before_installation_mutation(
+    tmp_path: Path,
+) -> None:
+    package_root = tmp_path / "package"
+    _, env = _create_integrity_fixture(package_root)
+    link = package_root / "payload/src/offline_rag/extra_link.py"
+    link.symlink_to("../../config/base.yaml")
+
+    result = _run_installer(package_root, env)
+
+    assert result.returncode != 0
+    assert "Package integrity verification failed" in result.stderr
+    home = Path(env["HOME"])
+    assert not (home / ".local/share/seneca").exists()
+    assert not (home / ".config/seneca").exists()
+
+
+def test_missing_manifest_file_fails_before_installation_mutation(
+    tmp_path: Path,
+) -> None:
+    package_root = tmp_path / "package"
+    config, env = _create_integrity_fixture(package_root)
+    config.unlink()
+
+    result = _run_installer(package_root, env)
+
+    assert result.returncode != 0
+    assert "Package integrity verification failed" in result.stderr
+    home = Path(env["HOME"])
+    assert not (home / ".local/share/seneca").exists()
+    assert not (home / ".config/seneca").exists()
+
+
+def test_pristine_package_passes_integrity_before_host_preflight(
+    tmp_path: Path,
+) -> None:
+    package_root = tmp_path / "package"
+    _, env = _create_integrity_fixture(package_root)
+
+    result = _run_installer(package_root, env)
+
+    assert result.returncode != 0
+    assert "Package integrity verification failed" not in result.stderr
+    assert "Preflight failed" in result.stderr
+    home = Path(env["HOME"])
     assert not (home / ".local/share/seneca").exists()
     assert not (home / ".config/seneca").exists()
