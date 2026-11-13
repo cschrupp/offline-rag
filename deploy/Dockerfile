@@ -98,6 +98,9 @@ WORKDIR /app
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates \
+    && if [ "$SENECA_DEPENDENCY_PROFILE" = cuda-dev ]; then \
+         apt-get install -y --no-install-recommends gcc; \
+       fi \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=python-builder --chown=10001:10001 /app/.venv /app/.venv
