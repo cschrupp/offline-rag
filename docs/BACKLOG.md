@@ -38,11 +38,13 @@ BETA-CONV-02 — DEFERRED / NOT AUTHORIZED
 Slice 17 — COMPLETE / HUMAN ACCEPTED / PROMOTED
 REL-01 — COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / PROMOTED
          REL-01 delivered CPU image only; public CPU/CUDA container split and
-         universal workstation distribution now authorized / IN PROGRESS under 18C
+         universal workstation distribution authorized under 18C; implementation
+         complete at 2bae0a23 / INDEPENDENT REVIEW PENDING
 Slice 18A — COMPLETE / HUMAN ACCEPTED / PROMOTED at 8431c134
 Slice 18B — REVISION 2 COMPLETE / HUMAN ACCEPTED / PROMOTED at f5eda171;
              REAL-HOST SYSTEMD-USER / WSL LIFECYCLE DEFERRED
-Slice 18C — AUTHORIZED / IMPLEMENTATION IN PROGRESS from e98fc147
+Slice 18C — AUTHORIZED / IMPLEMENTATION COMPLETE / INDEPENDENT REVIEW PENDING
+             at 2bae0a23
 Slice 18D — PLANNED / NOT AUTHORIZED
 Slice 18E — PLANNED / NOT AUTHORIZED
 Slice 18F — PLANNED / NOT AUTHORIZED
@@ -108,7 +110,7 @@ and its linked sanitized `RUN_002_EVIDENCE_INDEX.md`.
     -> Slice 18B workstation distribution Revision 2 COMPLETE / HUMAN ACCEPTED /
        PROMOTED at f5eda171; real-host systemd-user / WSL lifecycle validation
        deferred
-    -> Slice 18C Universal Workstation Distribution & Release Optimization — AUTHORIZED / IMPLEMENTATION IN PROGRESS from e98fc147
+    -> Slice 18C Universal Workstation Distribution & Release Optimization — IMPLEMENTATION COMPLETE / INDEPENDENT REVIEW PENDING at 2bae0a23
     -> Slice 18D Product Metrics Audit & Explainability — PLANNED / NOT AUTHORIZED
     -> Slice 18E Canonical Documentation & Portfolio Narrative — PLANNED / NOT AUTHORIZED
     -> Slice 18F Public Release & Demo Assembly — PLANNED / NOT AUTHORIZED
@@ -708,7 +710,8 @@ CPU/CUDA packaging wording; this tranche does not automatically close it.
 
 **Priority:** downstream\
 **Status:** Slice 18A and Slice 18B Revision 2 COMPLETE / HUMAN ACCEPTED /
-PROMOTED. Slice 18C is AUTHORIZED / IMPLEMENTATION IN PROGRESS. Slices 18D–18F
+PROMOTED. Slice 18C implementation is COMPLETE / INDEPENDENT REVIEW PENDING.
+Slices 18D–18F
 are PLANNED / NOT AUTHORIZED. Milestone 7 closeout is NOT AUTHORIZED. Real-host
 systemd-user and WSL lifecycle checks remain deferred.
 
@@ -854,7 +857,7 @@ Slice 18A — COMPLETE / HUMAN ACCEPTED / PROMOTED
 Slice 18B Revision 2 — COMPLETE / HUMAN ACCEPTED / PROMOTED
 Real-host systemd-user / WSL lifecycle — DEFERRED_REAL_HOST_VALIDATION
         ->
-18C — Universal Workstation Distribution & Release Optimization — AUTHORIZED / IMPLEMENTATION IN PROGRESS from e98fc147
+18C — Universal Workstation Distribution & Release Optimization — IMPLEMENTATION COMPLETE / INDEPENDENT REVIEW PENDING at 2bae0a23
         ->
 18D — Product Metrics Audit & Explainability — PLANNED / NOT AUTHORIZED
         ->
@@ -869,7 +872,8 @@ End-to-end beta QA → release blockers → Human beta acceptance → RELEASE
 
 Slice 17, REL-01, Slice 18A, and Slice 18B Revision 2 are complete, Human
 accepted, and promoted. Slice 18B's real-host systemd-user and WSL lifecycle
-validation remain deferred. Slice 18C is authorized and in progress; Slices
+validation remain deferred. Slice 18C implementation is complete and awaiting
+independent review; Slices
 18D–18F are planned but unauthorized, and Milestone 7 closeout remains
 unauthorized. See
 [`docs/slice18_release_plan.md`](slice18_release_plan.md) for the canonical

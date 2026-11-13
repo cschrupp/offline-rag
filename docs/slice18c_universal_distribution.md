@@ -3,7 +3,8 @@
 **Authority:** `S18C-UNIVERSAL-DISTRIBUTION-IMPL-001`  
 **Canonical base:** `e98fc147fe754936152024aa6630a17c43aa15da`  
 **Implementation branch:** `feature/slice18c-universal-distribution`  
-**Current state:** AUTHORIZED / IMPLEMENTATION IN PROGRESS
+**Current state:** IMPLEMENTATION COMPLETE / QUALIFICATION RECORDED / READY FOR INDEPENDENT REVIEW
+**Implementation candidate:** `2bae0a23aa9051bc0ca2b9276b421d2293423d51`
 
 Slice 18C is bounded release engineering. It delivers one CPU-first universal
 workstation package with explicit, transactional CUDA enablement, and two
@@ -71,19 +72,38 @@ has been made as part of the dependency feasibility check.
 6. Report unavailable host/service/image cells as unavailable; do not infer GPU
    qualification from package installation.
 
+## Candidate result
+
+The 18C implementation candidate is `2bae0a23aa9051bc0ca2b9276b421d2293423d51`.
+The workstation archive and both container variants were built from that exact
+commit. The workstation package and local image identities, sizes, runtime
+smokes, test results, and remaining limitations are recorded in
+[`docs/evidence/slice18c_universal_distribution/QUALIFICATION.md`](evidence/slice18c_universal_distribution/QUALIFICATION.md).
+
+The CPU container build and CUDA container build both completed. Runtime checks
+confirmed CPU-only Torch and zero NVIDIA distributions in the CPU image, and
+CUDA-capable Torch with the expected NVIDIA distributions in the CUDA image.
+Both images passed installed-CLI/import and empty `/data`/`/models` checks as
+UID/GID `10001:10001`. Neither image was given a GPU. The container build is
+therefore package qualification, not CUDA execution qualification.
+
 ## Environment qualification limits
 
 - The host `nvidia-smi` capability probe currently fails; no automatic CUDA
   offer is justified from that probe result.
-- Docker CLI exists, but this environment cannot access `/var/run/docker.sock`.
-  Local CPU/CUDA image builds and image runtime checks are currently
-  unavailable; no registry or cloud action is authorized.
-- Linux GPU PyTorch capability is observed in the isolated `cuda-dev` venv, but
-  the workstation CUDA transition and actual embedding/reranker execution have
-  not yet been qualified.
+- Docker Desktop access was granted for local builds. The CPU and CUDA images
+  are built and inspected; their tags and image IDs are in the qualification
+  record. No registry or cloud action was performed.
+- The isolated `cuda-dev` environment reported CUDA available, but the host
+  NVIDIA probe reports that NVML GPU access is blocked by the operating system.
+  The CUDA image was run without a GPU and therefore also reports CUDA
+  unavailable. The workstation CUDA transition and actual embedding/reranker
+  execution remain unqualified.
+- The workstation archive was built and hash-verified, but its installer was
+  not run against this host's persistent application/data/service roots.
 
 These are execution-environment limits, not changes to the distribution
-contract. The final evidence must preserve each cell's actual disposition.
+contract. The qualification record preserves each cell's actual disposition.
 
 ## Explicit exclusions
 
