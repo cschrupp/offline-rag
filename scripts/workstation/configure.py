@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 import platform
+import re
 import shlex
 import subprocess
 import tempfile
@@ -159,6 +160,11 @@ def write_installation_metadata(
     ui_dir: Path,
     uv_path: Path,
     model: str,
+    active_profile: str = "cpu-release",
+    active_release_identity: str = "",
+    cpu_release_identity: str = "",
+    cuda_release_identity: str | None = None,
+    seed_manifest_sha256: str = "",
     visible_memory: Mapping[str, int] | None = None,
 ) -> None:
     release = json.loads(release_json.read_text(encoding="utf-8"))
@@ -166,6 +172,17 @@ def write_installation_metadata(
         raise ValueError("package source SHA does not match RELEASE.json")
     if release.get("project_version") != project_version:
         raise ValueError("project version does not match RELEASE.json")
+    if active_profile not in {"cpu-release", "cuda-dev"}:
+        raise ValueError("unsupported active workstation dependency profile")
+    if not active_release_identity or not cpu_release_identity:
+        raise ValueError("active and CPU release identities are required")
+    if (
+        active_profile == "cpu-release"
+        and active_release_identity != cpu_release_identity
+    ):
+        raise ValueError("CPU installation must activate its CPU release identity")
+    if not re.fullmatch(r"[0-9a-f]{64}", seed_manifest_sha256):
+        raise ValueError("invalid package seed manifest SHA-256")
     uv_version = subprocess.run(
         [str(uv_path), "--version"], capture_output=True, text=True, check=True
     ).stdout.strip()
@@ -190,11 +207,19 @@ def write_installation_metadata(
         "architecture": platform.machine(),
         "python_version": python_version,
         "uv_version": uv_version,
+        "uv_path": str(uv_path.expanduser().resolve()),
         "application_root": str(app_dir.expanduser().absolute()),
         "data_root": str(data_dir.expanduser().absolute()),
         "models_root": str(models_dir.expanduser().absolute()),
         "ui_root": str(ui_dir.expanduser().absolute()),
         "service_mechanism": "systemd-user",
+        "active_dependency_profile": active_profile,
+        "active_release_identity": active_release_identity,
+        "cpu_release_identity": cpu_release_identity,
+        "cuda_release_identity": cuda_release_identity,
+        "cuda_enabled": active_profile == "cuda-dev",
+        "package_seed_identity": source_sha,
+        "package_seed_manifest_sha256": seed_manifest_sha256,
         "generator_endpoint": "http://127.0.0.1:11434/v1",
         "generator_model": model,
         "wsl_visible_memory_bytes": dict(visible_memory) if target == "wsl2" else None,
@@ -250,6 +275,12 @@ def main() -> int:
     metadata.add_argument("--ui-dir", type=Path, required=True)
     metadata.add_argument("--uv-path", type=Path, required=True)
     metadata.add_argument("--model", required=True)
+    metadata.add_argument(
+        "--active-profile", choices=("cpu-release", "cuda-dev"), default="cpu-release"
+    )
+    metadata.add_argument("--active-release-identity", required=True)
+    metadata.add_argument("--cpu-release-identity", required=True)
+    metadata.add_argument("--seed-manifest-sha256", required=True)
     metadata.add_argument("--mem-total", type=int)
     metadata.add_argument("--mem-available", type=int)
     exec_env = sub.add_parser(
@@ -296,6 +327,10 @@ def main() -> int:
             ui_dir=args.ui_dir,
             uv_path=args.uv_path,
             model=args.model,
+            active_profile=args.active_profile,
+            active_release_identity=args.active_release_identity,
+            cpu_release_identity=args.cpu_release_identity,
+            seed_manifest_sha256=args.seed_manifest_sha256,
             visible_memory=memory,
         )
     elif args.command == "exec-env":

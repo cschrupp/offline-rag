@@ -219,6 +219,10 @@ python3 "$HOST_TOOL" preflight \
   printf 'Release package is missing required application inputs.\n' >&2
   exit 1
 }
+[[ -f "$PAYLOAD/scripts/workstation/runtime.py" ]] || {
+  printf 'Release package is missing the trusted workstation runtime helper.\n' >&2
+  exit 1
+}
 SOURCE_SHA="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["source_sha"])' "$RELEASE_JSON")"
 
 TARGET="$(python3 -c 'import platform; r=platform.release().lower(); print("wsl2" if "microsoft" in r else "linux")')"
@@ -229,6 +233,12 @@ esac
 
 mkdir -p "$SENECA_ROOT" "$RELEASES_DIR" "$DATA_DIR" "$MODELS_DIR" "$CONFIG_DIR" "$SERVICE_DIR" "$BIN_HOME"
 chmod 700 "$CONFIG_DIR"
+
+PACKAGE_SEED="$SENECA_ROOT/packages/$SOURCE_SHA"
+python3 "$PAYLOAD/scripts/workstation/runtime.py" create-seed \
+  --package-root "$PACKAGE_ROOT" --seed-root "$PACKAGE_SEED" \
+  --package-identity "$(basename "$PACKAGE_ROOT")" --source-sha "$SOURCE_SHA"
+SEED_MANIFEST_SHA256="$(sha256sum "$PACKAGE_SEED/SEED_SHA256SUMS" | cut -d' ' -f1)"
 
 if [[ -L "$APP_DIR" && ! -e "$APP_DIR" ]]; then
   printf 'The installed app link is broken; repair it before reinstalling.\n' >&2
@@ -268,6 +278,11 @@ LEGACY_BACKUP="$SENECA_ROOT/app.legacy.$STAMP.$$"
 cp "$PAYLOAD/pyproject.toml" "$PAYLOAD/uv.lock" "$PAYLOAD/README.md" "$RELEASE_DIR/"
 cp -a "$PAYLOAD/src" "$PAYLOAD/config" "$PAYLOAD/ui" "$RELEASE_DIR/"
 cp -a "$PAYLOAD/scripts" "$RELEASE_DIR/"
+
+python3 "$RELEASE_DIR/scripts/workstation/runtime.py" record-release \
+  --path "$RELEASE_DIR/.seneca-release.json" --source-sha "$SOURCE_SHA" \
+  --project-version "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["project_version"])' "$RELEASE_JSON")" \
+  --dependency-profile cpu-release
 
 "$UV_BIN" python install 3.14
 UV_PROJECT_ENVIRONMENT="$RELEASE_DIR/.venv" "$UV_BIN" sync --project "$RELEASE_DIR" \
@@ -389,6 +404,9 @@ metadata_args=(write-metadata --path "$METADATA_FILE" --source-sha "$SOURCE_SHA"
   --package-identity "$(basename "$PACKAGE_ROOT")" --release-json "$RELEASE_JSON" \
   --target "$TARGET" --app-dir "$APP_DIR" --data-dir "$DATA_DIR" \
   --models-dir "$MODELS_DIR" --ui-dir "$APP_DIR/ui" --uv-path "$UV_BIN" \
+  --active-profile cpu-release --active-release-identity "$(basename "$RELEASE_DIR")" \
+  --cpu-release-identity "$(basename "$RELEASE_DIR")" \
+  --seed-manifest-sha256 "$SEED_MANIFEST_SHA256" \
   --model "$OLLAMA_MODEL")
 if [[ "$TARGET" == wsl2 ]]; then
   metadata_args+=(--mem-total "$MEM_TOTAL" --mem-available "$MEM_AVAILABLE")
@@ -411,6 +429,23 @@ fi
 printf 'Seneca workstation package installed. Start it with: %s/seneca start\n' "$BIN_HOME"
 printf 'The app, data, and models are at %s, %s, and %s. Data and models were preserved.\n' \
   "$APP_DIR" "$DATA_DIR" "$MODELS_DIR"
+
+if [[ -t 0 && -t 1 ]]; then
+  NVIDIA_STATUS="$(python3 "$PAYLOAD/scripts/workstation/host.py" probe-nvidia --json \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])')"
+  if [[ "$NVIDIA_STATUS" == "observed" ]]; then
+    printf '\nNVIDIA GPU support appears available. Enable optional CUDA acceleration? [y/N] '
+    read -r ENABLE_CUDA || ENABLE_CUDA=""
+    case "${ENABLE_CUDA,,}" in
+      y|yes)
+        if ! "$BIN_HOME/seneca" enable-cuda --yes; then
+          printf 'CUDA enablement did not complete; the CPU installation remains active.\n' >&2
+        fi
+        ;;
+      *) printf 'Keeping the CPU installation. Enable CUDA later with: seneca enable-cuda\n' ;;
+    esac
+  fi
+fi
 if [[ "$PREVIOUS_APP_KIND" == "legacy-directory" ]]; then
   printf 'Previous directory-format app retained at %s\n' "$LEGACY_BACKUP"
 elif [[ "$PREVIOUS_APP_KIND" == "release-link" ]]; then

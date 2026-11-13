@@ -35,7 +35,8 @@ mkdir -p "$ROOT/payload/ui" "$ROOT/payload/scripts/workstation"
 cp -a "$SOURCE/ui/dist/." "$ROOT/payload/ui/"
 cp "$SOURCE/scripts/provision_docling.py" "$SOURCE/scripts/provision_tiktoken.py" "$ROOT/payload/scripts/"
 cp "$SOURCE/scripts/workstation/configure.py" "$SOURCE/scripts/workstation/host.py" \
-  "$SOURCE/scripts/workstation/provision.sh" "$SOURCE/scripts/workstation/seneca" \
+  "$SOURCE/scripts/workstation/provision.sh" "$SOURCE/scripts/workstation/runtime.py" \
+  "$SOURCE/scripts/workstation/seneca" \
   "$ROOT/payload/scripts/workstation/"
 cp "$SOURCE/scripts/workstation/install.sh" "$ROOT/install.sh"
 chmod 0755 "$ROOT/install.sh" "$ROOT/payload/scripts/workstation/"*.sh "$ROOT/payload/scripts/workstation/seneca"

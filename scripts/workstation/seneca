@@ -8,7 +8,7 @@ SERVICE="seneca.service"
 
 usage() {
   cat <<'EOF'
-Usage: seneca {start|stop|restart|status|logs|doctor}
+Usage: seneca {start|stop|restart|status|logs|doctor|enable-cuda|disable-cuda}
 
   start    Start the per-user systemd service
   stop     Stop the per-user systemd service
@@ -16,6 +16,8 @@ Usage: seneca {start|stop|restart|status|logs|doctor}
   status   Show service status
   logs     Follow service journal (Ctrl-C to stop)
   doctor   Run the installed offline-rag doctor command
+  enable-cuda  Build and validate an optional CUDA release (explicit consent)
+  disable-cuda Restore the retained CPU release without deleting model assets
 EOF
 }
 
@@ -40,6 +42,10 @@ case "$command_name" in
       exec-env --path "$ENV_FILE" -- \
       "$APP_DIR/.venv/bin/offline-rag" doctor \
       --config "$APP_DIR/config/base.yaml" "$@"
+    ;;
+  enable-cuda|disable-cuda)
+    exec "$APP_DIR/.venv/bin/python" "$APP_DIR/scripts/workstation/runtime.py" \
+      "$command_name" "$@"
     ;;
   *)
     usage >&2

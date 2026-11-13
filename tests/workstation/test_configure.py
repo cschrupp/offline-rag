@@ -309,12 +309,21 @@ def test_installation_metadata_is_bounded_and_excludes_environment_dump(
         ui_dir=app / "ui",
         uv_path=uv,
         model="qwen3.5:14b",
+        active_profile="cpu-release",
+        active_release_identity="release-cpu-test",
+        cpu_release_identity="release-cpu-test",
+        seed_manifest_sha256="b" * 64,
         visible_memory={"MemTotal": 30_000_000_000, "MemAvailable": 20_000_000_000},
     )
     payload = json.loads(path.read_text(encoding="utf-8"))
     assert payload["service_mechanism"] == "systemd-user"
     assert payload["source_sha"] == source_sha
     assert payload["package_identity"] == "seneca-workstation-test"
+    assert payload["active_dependency_profile"] == "cpu-release"
+    assert payload["cpu_release_identity"] == "release-cpu-test"
+    assert payload["cuda_enabled"] is False
+    assert payload["package_seed_manifest_sha256"] == "b" * 64
+    assert payload["uv_path"] == str(uv.resolve())
     assert payload["wsl_visible_memory_bytes"]["MemAvailable"] == 20_000_000_000
     assert "environment" not in payload
     assert "api_key" not in json.dumps(payload).lower()
@@ -334,5 +343,9 @@ def test_installation_metadata_is_bounded_and_excludes_environment_dump(
             ui_dir=app / "ui",
             uv_path=uv,
             model="qwen3.5:14b",
+            active_profile="cpu-release",
+            active_release_identity="release-cpu-test",
+            cpu_release_identity="release-cpu-test",
+            seed_manifest_sha256="b" * 64,
             visible_memory=None,
         )

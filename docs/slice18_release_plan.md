@@ -11,7 +11,7 @@ slice remains subject to its own authorization and review.
 - **18B Revision 2 — Workstation Distribution:** COMPLETE / HUMAN ACCEPTED /
   PROMOTED.
 - **18C — Universal Workstation Distribution & Release Optimization:**
-  PLANNED / NOT AUTHORIZED.
+  AUTHORIZED / IMPLEMENTATION IN PROGRESS from `e98fc147`.
 - **18D — Product Metrics Audit and Explainability:** PLANNED / NOT AUTHORIZED.
 - **18E — Canonical Documentation and Portfolio Narrative:** PLANNED /
   NOT AUTHORIZED.
@@ -315,6 +315,8 @@ Human beta acceptance
 RELEASE
 ```
 
-Slices 18C–18F and Milestone 7 closeout are **PLANNED / NOT AUTHORIZED**. This
-planning document authorizes no implementation, evaluation, deployment, or
-release activity.
+Slice 18C implementation and local qualification are **AUTHORIZED / IN
+PROGRESS** under `S18C-UNIVERSAL-DISTRIBUTION-IMPL-001`. This does not authorize
+promotion, registry publication, GitHub Release publication, cloud deployment,
+or work on Slices 18D–18F. Slices 18D–18F and Milestone 7 closeout remain
+**PLANNED / NOT AUTHORIZED**.

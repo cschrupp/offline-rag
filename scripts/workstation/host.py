@@ -20,6 +20,42 @@ LARGE_PDF_AVAILABLE_BYTES = 19_388_303_360
 OLLAMA_URL = "http://127.0.0.1:11434/api/tags"
 
 
+def probe_nvidia_capability(
+    *,
+    which=shutil.which,
+    run=subprocess.run,
+    timeout_seconds: float = 3.0,
+) -> dict[str, Any]:
+    """Observe host NVIDIA capability for an optional installer offer only.
+
+    This deliberately does not select or qualify Seneca's embedding backend.
+    The installed CUDA PyTorch runtime and existing profile resolver do that.
+    """
+    command = which("nvidia-smi")
+    if command is None:
+        return {"status": "probe_unavailable", "gpu_count": None}
+    try:
+        result = run(
+            [
+                command,
+                "--query-gpu=name,driver_version",
+                "--format=csv,noheader",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=timeout_seconds,
+        )
+    except OSError, subprocess.TimeoutExpired:
+        return {"status": "probe_failed", "gpu_count": None}
+    if result.returncode != 0:
+        return {"status": "probe_failed", "gpu_count": None}
+    rows = [line for line in result.stdout.splitlines() if line.strip()]
+    if not rows:
+        return {"status": "not_observed", "gpu_count": 0}
+    return {"status": "observed", "gpu_count": len(rows)}
+
+
 def detect_target(
     *, system: str | None = None, machine: str | None = None, release: str | None = None
 ) -> tuple[str | None, list[str]]:
@@ -287,17 +323,24 @@ def main() -> int:
     preflight.add_argument("--ollama-model", required=True)
     preflight.add_argument("--skip-service-check", action="store_true")
     preflight.add_argument("--json", action="store_true")
-    args = parser.parse_args()
-    if args.command != "preflight":
-        parser.error("unknown command")
-    result = collect_preflight(
-        app_dir=args.app_dir,
-        data_dir=args.data_dir,
-        models_dir=args.models_dir,
-        model=args.ollama_model,
-        check_services=not args.skip_service_check,
+    nvidia_probe = subparsers.add_parser(
+        "probe-nvidia", help="Non-mutating host capability check for CUDA offer"
     )
+    nvidia_probe.add_argument("--json", action="store_true")
+    args = parser.parse_args()
+    if args.command == "probe-nvidia":
+        result = probe_nvidia_capability()
+    else:
+        result = collect_preflight(
+            app_dir=args.app_dir,
+            data_dir=args.data_dir,
+            models_dir=args.models_dir,
+            model=args.ollama_model,
+            check_services=not args.skip_service_check,
+        )
     print(json.dumps(result, indent=2, sort_keys=True))
+    if args.command == "probe-nvidia":
+        return 0
     return 1 if result["errors"] else 0
 
 

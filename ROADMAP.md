@@ -97,7 +97,7 @@ should not override the current disposition here.
   accepted, and promoted with its evidence closeout to canonical `main` at
   `0a1b5a45bff94ae12c8fe8d423c825572bc1c480`. REL-01 delivered the CPU image
   only. The bounded CPU/CUDA public container split and universal workstation
-  distribution are planned under 18C and are not authorized yet. See
+  distribution are now authorized and in progress under 18C. See
   [`docs/rel01_cpu_release_packaging.md`](docs/rel01_cpu_release_packaging.md).
 - [x] **Slice 18A — Engineering evidence reconciliation** — Human accepted and
   promoted at `8431c134d2f85e74afe80febd0ca75ac451f65f1`.
@@ -107,7 +107,7 @@ should not override the current disposition here.
   Real-host systemd-user and WSL distro lifecycle checks remain explicitly
   deferred; native Windows remains a separate spike.
 - [ ] **Slice 18C — Universal Workstation Distribution & Release Optimization**
-  — PLANNED / NOT AUTHORIZED. Provide one CPU-first universal workstation
+  — AUTHORIZED / IMPLEMENTATION IN PROGRESS from `e98fc147`. Provide one CPU-first universal workstation
   distribution with optional explicit CUDA enablement, plus lean immutable
   CPU/CUDA container variants from the same Seneca runtime.
 - [ ] **Slice 18D — Product Metrics Audit & Explainability** — PLANNED / NOT
@@ -3365,18 +3365,19 @@ passed both jobs; the implementation result and baseline evidence remain in
 **REL-01 — CPU Release Packaging:** **COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN
 ACCEPTED / PROMOTED** with evidence closeout at `0a1b5a45`. REL-01 delivered
 the CPU release image only. The bounded CPU/CUDA public container split and
-universal workstation distribution are planned under 18C and are not yet
-authorized.
+universal workstation distribution are now authorized and in progress under
+18C.
 
 **Slice 18 — Portfolio Release Program:** **18A and 18B REVISION 2 COMPLETE /
-HUMAN ACCEPTED / PROMOTED; 18C–18F PLANNED / NOT AUTHORIZED**
+HUMAN ACCEPTED / PROMOTED; 18C AUTHORIZED / IN PROGRESS; 18D–18F PLANNED /
+NOT AUTHORIZED**
 - Slice 18A delivered the reviewed six-record, two-route evidence reconciliation
   and presentation implementation.
 - Slice 18B covers the Linux x86-64 and Windows 11 + WSL2 CPU workstation
   release package. Docker runtime and built-archive package qualification
   passed. Real-host systemd-user and WSL distro lifecycle checks remain
   deferred and are not represented as passed.
-- Slice 18C plans one CPU-first universal workstation package with optional
+- Slice 18C implements one CPU-first universal workstation package with optional
   explicit transactional CUDA enablement, plus immutable CPU/CUDA containers.
 - Slice 18D audits user-visible metric correctness, provenance, and
   explainability.
@@ -3444,7 +3445,8 @@ COMPLETE / ACCEPTED / SEALED** at `9c178ffb033cde41849379fc914f321697ff8691`; **
 Slice 17 is **COMPLETE / HUMAN ACCEPTED / PROMOTED**. Slice 18A is **COMPLETE /
 HUMAN ACCEPTED / PROMOTED**. Slice 18B Revision 2 is **COMPLETE / HUMAN
 ACCEPTED / PROMOTED**. Real-host systemd-user and WSL distro lifecycle
-validation remain deferred. Slices 18C–18F are **PLANNED / NOT AUTHORIZED**;
+validation remain deferred. Slice 18C is **AUTHORIZED / IN PROGRESS**; Slices
+18D–18F are **PLANNED / NOT AUTHORIZED**;
 Milestone 7 closeout remains **NOT AUTHORIZED**. See
 [`docs/slice18_release_plan.md`](docs/slice18_release_plan.md) for the canonical
 Slice 18 plan.
@@ -3454,9 +3456,9 @@ generator max-token change, reranker config change, `base.yaml` promotion,
 remain **NOT AUTHORIZED**.
 Historical post–Slice-15 technical-debt wording about CPU-only PyTorch and
 CPU/CUDA image variants is superseded by completed REL-01, which delivered the
-CPU release image only. Slice 18C plans the bounded public CPU/CUDA container
-split and universal CPU-first workstation distribution; it is not yet
-authorized. GitHub issue #1 may remain open for its broader image-size wording.
+CPU release image only. Slice 18C is implementing the bounded public CPU/CUDA
+container split and universal CPU-first workstation distribution. GitHub issue
+#1 may remain open for its broader image-size wording.
 
 ## Milestone 8 — (historical stub; superseded by Slice 18 under M7)
 

@@ -105,6 +105,41 @@ def test_reads_linux_memory_without_fabricating_missing_values(tmp_path: Path) -
         raise AssertionError("missing memory fields must remain unavailable")
 
 
+def test_nvidia_offer_probe_distinguishes_observed_absent_and_unavailable() -> None:
+    observed = host.probe_nvidia_capability(
+        which=lambda _: "/usr/bin/nvidia-smi",
+        run=lambda *args, **kwargs: SimpleNamespace(
+            returncode=0, stdout="GPU 0, 575.64\nGPU 1, 575.64\n"
+        ),
+    )
+    assert observed == {"status": "observed", "gpu_count": 2}
+
+    absent = host.probe_nvidia_capability(
+        which=lambda _: "/usr/bin/nvidia-smi",
+        run=lambda *args, **kwargs: SimpleNamespace(returncode=0, stdout=""),
+    )
+    assert absent == {"status": "not_observed", "gpu_count": 0}
+
+    unavailable = host.probe_nvidia_capability(which=lambda _: None)
+    assert unavailable == {"status": "probe_unavailable", "gpu_count": None}
+
+
+def test_nvidia_offer_probe_reports_tool_failures_without_claiming_no_gpu() -> None:
+    failed = host.probe_nvidia_capability(
+        which=lambda _: "/usr/bin/nvidia-smi",
+        run=lambda *args, **kwargs: SimpleNamespace(returncode=1, stdout=""),
+    )
+    assert failed == {"status": "probe_failed", "gpu_count": None}
+
+    timed_out = host.probe_nvidia_capability(
+        which=lambda _: "/usr/bin/nvidia-smi",
+        run=lambda *args, **kwargs: (_ for _ in ()).throw(
+            host.subprocess.TimeoutExpired("nvidia-smi", 3.0)
+        ),
+    )
+    assert timed_out == {"status": "probe_failed", "gpu_count": None}
+
+
 def test_preflight_reports_wsl_memory_warning_without_changing_policy(
     monkeypatch, tmp_path: Path
 ) -> None:

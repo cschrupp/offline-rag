@@ -32,6 +32,9 @@ FROM python:3.14-slim AS python-base
 
 FROM python-base AS python-builder
 
+ARG SENECA_DEPENDENCY_PROFILE=cpu-release
+ARG SENECA_SOURCE_SHA=unknown
+
 ENV UV_PROJECT_ENVIRONMENT=/app/.venv \
     UV_PYTHON_DOWNLOADS=0
 
@@ -49,6 +52,8 @@ RUN apt-get update \
 RUN --mount=type=secret,id=build_ca,required=false \
     --mount=from=uv-bin,source=/uv,target=/usr/local/bin/uv,ro \
     set -eu; \
+    case "$SENECA_DEPENDENCY_PROFILE" in cpu-release|cuda-dev) ;; *) \
+      echo "unsupported dependency profile" >&2; exit 2 ;; esac; \
     if [ -f /run/secrets/build_ca ]; then \
       cat /etc/ssl/certs/ca-certificates.crt /run/secrets/build_ca \
         > /tmp/offlinerag-build-ca-bundle.pem; \
@@ -56,11 +61,17 @@ RUN --mount=type=secret,id=build_ca,required=false \
       export REQUESTS_CA_BUNDLE=/tmp/offlinerag-build-ca-bundle.pem; \
       export CURL_CA_BUNDLE=/tmp/offlinerag-build-ca-bundle.pem; \
     fi; \
-    uv sync --locked --no-dev --extra cpu-release --no-editable --no-cache; \
+    uv sync --locked --no-dev --extra "$SENECA_DEPENDENCY_PROFILE" --no-editable --no-cache; \
     rm -f /tmp/offlinerag-build-ca-bundle.pem; \
     ! ls /usr/local/share/ca-certificates/*.crt >/dev/null 2>&1
 
 FROM python-base AS runtime
+
+ARG SENECA_DEPENDENCY_PROFILE=cpu-release
+ARG SENECA_SOURCE_SHA=unknown
+
+LABEL org.opencontainers.image.revision="$SENECA_SOURCE_SHA" \
+      io.seneca.dependency-profile="$SENECA_DEPENDENCY_PROFILE"
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

@@ -51,6 +51,7 @@ def _create_integrity_fixture(package_root: Path) -> tuple[Path, dict[str, str]]
     (package_root / "payload/src/offline_rag/__init__.py").write_text("\n")
     host_tool = package_root / "payload/scripts/workstation/host.py"
     host_tool.write_text("raise SystemExit(1)\n")
+    (package_root / "payload/scripts/workstation/runtime.py").write_text("support\n")
 
     files = [installer, package_root / "RELEASE.json"]
     files.extend(
@@ -91,7 +92,7 @@ def _create_builder_fixture(root: Path) -> tuple[Path, Path]:
     (root / "scripts").mkdir(exist_ok=True)
     shutil.copy2(BUILDER, root / "scripts/workstation/build_package.sh")
     shutil.copy2(INSTALLER, root / "scripts/workstation/install.sh")
-    for name in ("configure.py", "host.py", "provision.sh", "seneca"):
+    for name in ("configure.py", "host.py", "provision.sh", "runtime.py", "seneca"):
         (root / "scripts/workstation" / name).write_text("support\n")
     for name in ("provision_docling.py", "provision_tiktoken.py"):
         (root / "scripts" / name).write_text("support\n")
@@ -177,6 +178,7 @@ def test_builder_creates_provenance_bound_integrity_checked_archive(
     assert (package_root / "payload/ui/index.html").is_file()
     assert (package_root / "payload/src/offline_rag/__init__.py").is_file()
     assert (package_root / "payload/uv.lock").is_file()
+    assert (package_root / "payload/scripts/workstation/runtime.py").is_file()
     assert not any(
         path.name in {".git", "node_modules"} for path in package_root.rglob("*")
     )
