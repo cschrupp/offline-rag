@@ -37,8 +37,8 @@ BETA-CONV-01C — COMPLETE / HUMAN PRODUCT ACCEPTED / PROMOTED
 BETA-CONV-02 — DEFERRED / NOT AUTHORIZED
 Slice 17 — COMPLETE / HUMAN ACCEPTED / PROMOTED
 REL-01 — COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED / PROMOTED
-         Separate CUDA Docker image DEFERRED; CUDA workstation archive assigned
-         to Slice 18C (PLANNED / NOT AUTHORIZED)
+         REL-01 delivered CPU image only; public CPU/CUDA container split and
+         universal workstation distribution planned under 18C / NOT AUTHORIZED
 Slice 18A — COMPLETE / HUMAN ACCEPTED / PROMOTED at 8431c134
 Slice 18B — REVISION 2 COMPLETE / HUMAN ACCEPTED / PROMOTED at f5eda171;
              REAL-HOST SYSTEMD-USER / WSL LIFECYCLE DEFERRED
@@ -102,13 +102,13 @@ and its linked sanitized `RUN_002_EVIDENCE_INDEX.md`.
     -> BETA-CONV-02 analytical synthesis DEFERRED / NOT AUTHORIZED
     -> Slice 17 COMPLETE / HUMAN ACCEPTED / PROMOTED at 3fb65e34
     -> REL-01 COMPLETE / HUMAN ACCEPTED / PROMOTED with evidence at 0a1b5a45;
-       separate CUDA Docker image DEFERRED; CUDA workstation archive planned
-       under 18C / NOT AUTHORIZED
+       REL-01 delivered CPU image only; planned public CPU/CUDA containers and
+       universal workstation distribution assigned to 18C / NOT AUTHORIZED
     -> Slice 18A COMPLETE / HUMAN ACCEPTED / PROMOTED at 8431c134
     -> Slice 18B workstation distribution Revision 2 COMPLETE / HUMAN ACCEPTED /
        PROMOTED at f5eda171; real-host systemd-user / WSL lifecycle validation
        deferred
-    -> Slice 18C Release Distribution Matrix — PLANNED / NOT AUTHORIZED
+    -> Slice 18C Universal Workstation Distribution & Release Optimization — PLANNED / NOT AUTHORIZED
     -> Slice 18D Product Metrics Audit & Explainability — PLANNED / NOT AUTHORIZED
     -> Slice 18E Canonical Documentation & Portfolio Narrative — PLANNED / NOT AUTHORIZED
     -> Slice 18F Public Release & Demo Assembly — PLANNED / NOT AUTHORIZED
@@ -685,15 +685,18 @@ GPU/CUDA, private corpora, or empirical performance thresholds. See
 
 **Current status:** COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN ACCEPTED /
 PROMOTED with qualification closeout at
-`0a1b5a45bff94ae12c8fe8d423c825572bc1c480`. A separate CUDA release image is
-deferred; CUDA-capable local/developer support is distinct. The material below
-records the completed scope and its original rationale.
+`0a1b5a45bff94ae12c8fe8d423c825572bc1c480`. REL-01 delivered the CPU release
+image only; its original scope did not include a CUDA image. The bounded public
+CPU/CUDA container split and universal workstation distribution are assigned
+to 18C (PLANNED / NOT AUTHORIZED). The material below records REL-01's
+completed scope and original rationale.
 
 The authorized REL-01 tranche measures the current image, establishes a locked
 CPU-only production dependency selection, adopts a Python builder/runtime
 image, and qualifies the packaged app using the existing compute resolver.
-The separate CUDA release artifact remains deferred; developer/local CUDA
-installs and the qualified CUDA profile remain supported.
+REL-01 did not deliver the planned public CUDA artifacts; developer/local CUDA
+installs and the qualified CUDA profile remain supported. The public CPU/CUDA
+container split and universal workstation package are planned under 18C.
 
 The existing ~10.3 GB image measurement is historical context, not a directly
 comparable size gate. REL-01 records current baseline and candidate sizes using
@@ -710,8 +713,9 @@ NOT AUTHORIZED. Real-host systemd-user and WSL lifecycle checks remain deferred.
 
 The remaining work is separated into:
 
-- **18C:** CPU/CUDA workstation distribution matrix; the separate CUDA public
-  workstation package is assigned here.
+- **18C:** one universal CPU-first workstation distribution with optional
+  transactional CUDA enablement, plus immutable CPU and CUDA container
+  artifacts. Measure bounded distribution-size optimization.
 - **18D:** audit metric correctness, provenance, and explainability.
 - **18E:** reconcile canonical public documentation from accepted behavior and
   audited metric semantics.
@@ -829,8 +833,9 @@ Revision 2 qualifies runtime behavior through the existing Docker release
 Real-host systemd-user and WSL distro lifecycle validation remain explicitly
 deferred; the sandbox limitation is not reported as a pass. Native Windows
 remains a separate feasibility spike without an installer or service. CUDA
-packaging is planned under 18C; hosting, TLS/authentication, backup/restore,
-and Slices 18C–18F remain outside the accepted 18B scope.
+workstation/container distribution is planned under 18C; hosting,
+TLS/authentication, backup/restore, and Slices 18C–18F remain outside the
+accepted 18B scope.
 
 ## 6. Downstream roadmap after active residuals
 
@@ -848,7 +853,7 @@ Slice 18A — COMPLETE / HUMAN ACCEPTED / PROMOTED
 Slice 18B Revision 2 — COMPLETE / HUMAN ACCEPTED / PROMOTED
 Real-host systemd-user / WSL lifecycle — DEFERRED_REAL_HOST_VALIDATION
         ->
-18C — Release Distribution Matrix — PLANNED / NOT AUTHORIZED
+18C — Universal Workstation Distribution & Release Optimization — PLANNED / NOT AUTHORIZED
         ->
 18D — Product Metrics Audit & Explainability — PLANNED / NOT AUTHORIZED
         ->

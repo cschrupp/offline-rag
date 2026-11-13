@@ -10,7 +10,8 @@ slice remains subject to its own authorization and review.
   PROMOTED.
 - **18B Revision 2 — Workstation Distribution:** COMPLETE / HUMAN ACCEPTED /
   PROMOTED.
-- **18C — Release Distribution Matrix:** PLANNED / NOT AUTHORIZED.
+- **18C — Universal Workstation Distribution & Release Optimization:**
+  PLANNED / NOT AUTHORIZED.
 - **18D — Product Metrics Audit and Explainability:** PLANNED / NOT AUTHORIZED.
 - **18E — Canonical Documentation and Portfolio Narrative:** PLANNED /
   NOT AUTHORIZED.
@@ -25,58 +26,115 @@ Slice 18B's deferred real-host checks remain:
 They are not implementation gates for Slices 18C–18F unless later evidence or
 authority explicitly makes them so.
 
-## 18C — Release Distribution Matrix
+## 18C — Universal Workstation Distribution & Release Optimization
 
 ### Objective
 
-Provide clear, user-consumable Seneca distributions for the supported
-workstation compute profiles. GitHub Releases is the intended first public
-distribution channel.
+Provide one clear, user-consumable workstation distribution that installs a
+lean CPU baseline and can optionally enable CUDA with explicit user approval.
+Also publish immutable CPU and CUDA container variants. GitHub Releases is the
+intended first public distribution channel for workstation artifacts.
 
-Intended public workstation artifact names:
+The intended public workstation artifact is one universal package:
 
 ```text
-seneca-workstation-<version>-linux-x86_64-cpu-<sha>.tar.gz
-seneca-workstation-<version>-linux-x86_64-cuda-<sha>.tar.gz
+seneca-workstation-<version>-linux-x86_64-<sha>.tar.gz
 ```
 
-### CPU profile
+CPU and CUDA are not separate Seneca products. The workstation package is one
+application distribution; CUDA is an optional runtime/dependency extension.
+Containers remain immutable dependency-specific artifacts.
 
-Preserve the accepted 18B CPU architecture:
+### Universal workstation lifecycle
+
+The baseline install must be fully functional on CPU, contain no unnecessary
+CUDA/NVIDIA dependency payload, preserve the qualified CPU/ONNX path, and allow
+later explicit CUDA enablement when compatible hardware is available.
+
+Use the existing Seneca hardware/runtime probe and compute resolver. The
+installer/upgrader must not implement a second hardware-selection system.
+`embedding.device = auto | cpu | cuda` remains authoritative:
 
 ```text
-embedding AUTO
+AUTO + usable CUDA
+  → cuda_fp16_v1
+  → torch_st_v1
+  → PyTorch / SentenceTransformers
+  → CUDA FP16
+
+AUTO + CUDA unavailable
   → cpu_onnx_fp32_v1
   → onnx_fp32_v1
   → ONNX Runtime
   → CPUExecutionProvider
 ```
 
-### CUDA profile
+Explicit CPU/CUDA selection and existing fail-closed unsupported combinations
+remain unchanged.
 
-Use the already-qualified development/local CUDA architecture:
+When a compatible NVIDIA GPU is detected, the workstation may offer CUDA
+enablement. Activation requires explicit user consent, transactional
+preparation of a CUDA-capable environment (including provisioning `torch_st_v1`
+if required), validation before activation, and restart/activation through
+the existing versioned release/environment model. A failed CUDA enablement
+must leave the working CPU installation usable. Do not download CUDA
+dependencies merely because a GPU is present. The CUDA extension is optional
+and must not be downloaded by CPU-only users.
+
+Future controls may be CLI or UI operations conceptually like
+`seneca enable-cuda` and `seneca disable-cuda`; this planning amendment does
+not lock their exact interface.
+
+### Immutable container variants
+
+Containers remain dependency-specific and immutable:
 
 ```text
-embedding AUTO
-  → cuda_fp16_v1
-  → PyTorch / SentenceTransformers
-  → CUDA FP16
+seneca:<version>-cpu
+seneca:<version>-cuda
 ```
 
-Do not invent an ONNX-CUDA backend merely for packaging uniformity.
+The CPU container is the default/general-purpose artifact for CPU-only
+deployments, CI/reproducible CPU execution, ordinary cloud CPU deployments,
+and Google Cloud portfolio/demo deployment when no GPU is provisioned. It
+must not contain unnecessary CUDA/NVIDIA runtime dependency weight.
+
+The CUDA container is for intentional deployment on compatible NVIDIA hosts.
+Both images contain the same Seneca application semantics and existing
+compute resolver; only dependency/runtime payload differs.
+
+### Qualification boundary
+
+18C packages the already-qualified dual-backend architecture; it does not
+redesign or requalify `cpu_onnx_fp32_v1`, `cuda_fp16_v1`, AUTO selection
+semantics, CPU/CUDA scientific validity, embedding algorithms, reranking,
+retrieval, Gold truth, generation behavior, or UI product semantics. A
+demonstrated packaging blocker may be corrected within 18C, but it does not
+reopen those contracts by itself.
 
 ### User-facing requirements
 
-- Users can select CPU or CUDA without needing to understand internal
-  dependency extras.
 - CPU guidance states that a compatible NVIDIA GPU is not required.
-- CUDA guidance states the supported NVIDIA/CUDA prerequisites and fails
-  clearly when they are unavailable or incompatible.
+- CUDA guidance states supported NVIDIA/CUDA prerequisites and fails clearly
+  when they are unavailable or incompatible.
+- Users should not need to understand dependency extras or internal runtime
+  package names to install or enable the supported profile.
+
+### Distribution-size objective
+
+- CPU-only workstation users download only the CPU baseline.
+- Workstation CUDA dependencies are downloaded only after explicit enablement.
+- CPU cloud/container deployments do not carry CUDA dependency weight.
+- NVIDIA container deployments use the CUDA image.
+- Seneca application behavior is not forked.
+
+Do not define arbitrary size thresholds in this plan. Authorized 18C work
+measures actual artifact/image sizes and dependency composition.
 
 ### Distribution principles
 
 End users should not need to clone the Git repository, build the React
-frontend, understand `cpu-release` versus `cuda-dev`, or install application
+frontend, understand internal dependency profiles, or install application
 source manually.
 
 Do not bundle NVIDIA drivers, system CUDA drivers/toolkits unless separately
@@ -179,7 +237,8 @@ documentation into the public portfolio release.
 Candidate deliverables include:
 
 - GitHub Release;
-- CPU and CUDA workstation archives and checksums;
+- universal CPU-first workstation archive and checksum;
+- immutable CPU and CUDA container artifacts;
 - release notes;
 - Docker and workstation instructions;
 - demo/sample-corpus instructions and reproducible demo workflow;
@@ -232,8 +291,9 @@ claims, broken links, and obsolete setup instructions.
 18B Workstation Distribution Revision 2
     COMPLETE / ACCEPTED / PROMOTED
         ↓
-18C Release Distribution Matrix
-    CPU + CUDA public workstation artifacts
+18C Universal Workstation Distribution & Release Optimization
+    CPU-first universal workstation + optional CUDA extension
+    immutable CPU/CUDA containers
         ↓
 18D Product Metrics Audit and Explainability
     every user-visible metric correct and defensible
