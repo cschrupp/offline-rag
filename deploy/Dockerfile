@@ -99,7 +99,7 @@ WORKDIR /app
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates \
     && if [ "$SENECA_DEPENDENCY_PROFILE" = cuda-dev ]; then \
-         apt-get install -y --no-install-recommends gcc; \
+         apt-get install -y --no-install-recommends gcc libc6-dev; \
        fi \
     && rm -rf /var/lib/apt/lists/*
 

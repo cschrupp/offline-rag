@@ -17,7 +17,7 @@ def test_dockerfile_uses_one_runtime_path_with_locked_profile_argument() -> None
     assert 'org.opencontainers.image.revision="$SENECA_SOURCE_SHA"' in dockerfile
     assert 'io.seneca.dependency-profile="$SENECA_DEPENDENCY_PROFILE"' in dockerfile
     assert 'if [ "$SENECA_DEPENDENCY_PROFILE" = cuda-dev ]; then' in dockerfile
-    assert "apt-get install -y --no-install-recommends gcc" in dockerfile
+    assert "apt-get install -y --no-install-recommends gcc libc6-dev" in dockerfile
     assert dockerfile.count("COPY --from=ui-builder") == 1
     assert 'CMD ["python", "-m", "offline_rag.api.server"]' in dockerfile
 
