@@ -3,8 +3,9 @@
 **Authority:** `S18C-UNIVERSAL-DISTRIBUTION-IMPL-001`  
 **Canonical base:** `e98fc147fe754936152024aa6630a17c43aa15da`  
 **Implementation branch:** `feature/slice18c-universal-distribution`  
-**Current state:** IMPLEMENTATION COMPLETE / QUALIFICATION RECORDED / READY FOR INDEPENDENT REVIEW
-**Implementation candidate:** `2bae0a23aa9051bc0ca2b9276b421d2293423d51`
+**Current state:** CORRECTIVE IMPLEMENTATION COMPLETE / CUDA CONTAINER QUALIFICATION PASS / WORKSTATION ROUND-TRIP UNAVAILABLE
+**Initial implementation candidate:** `2bae0a23aa9051bc0ca2b9276b421d2293423d51`
+**Current corrective candidate:** `8541f8af3ce7a4b906a36f252cb1b2f0a4dbc778`
 
 Slice 18C is bounded release engineering. It delivers one CPU-first universal
 workstation package with explicit, transactional CUDA enablement, and two
@@ -72,20 +73,17 @@ has been made as part of the dependency feasibility check.
 6. Report unavailable host/service/image cells as unavailable; do not infer GPU
    qualification from package installation.
 
-## Candidate result
+## Historical initial-candidate result — `2bae0a23`
 
-The 18C implementation candidate is `2bae0a23aa9051bc0ca2b9276b421d2293423d51`.
+The initial 18C implementation candidate is `2bae0a23aa9051bc0ca2b9276b421d2293423d51`.
 The workstation archive and both container variants were built from that exact
 commit. The workstation package and local image identities, sizes, runtime
 smokes, test results, and remaining limitations are recorded in
 [`docs/evidence/slice18c_universal_distribution/QUALIFICATION.md`](evidence/slice18c_universal_distribution/QUALIFICATION.md).
 
-The CPU container build and CUDA container build both completed. Runtime checks
-confirmed CPU-only Torch and zero NVIDIA distributions in the CPU image, and
-CUDA-capable Torch with the expected NVIDIA distributions in the CUDA image.
-Both images passed installed-CLI/import and empty `/data`/`/models` checks as
-UID/GID `10001:10001`. Neither image was given a GPU. The container build is
-therefore package qualification, not CUDA execution qualification.
+The initial CPU and CUDA image builds and package/runtime checks are recorded
+here as historical evidence for `2bae0a23`. The later corrective and dynamic
+qualification state is recorded in the qualification evidence file below.
 
 ## Environment qualification limits
 
@@ -94,16 +92,27 @@ therefore package qualification, not CUDA execution qualification.
 - Docker Desktop access was granted for local builds. The CPU and CUDA images
   are built and inspected; their tags and image IDs are in the qualification
   record. No registry or cloud action was performed.
-- The isolated `cuda-dev` environment reported CUDA available, but the host
-  NVIDIA probe reports that NVML GPU access is blocked by the operating system.
-  The CUDA image was run without a GPU and therefore also reports CUDA
-  unavailable. The workstation CUDA transition and actual embedding/reranker
-  execution remain unqualified.
+- The initial `2bae0a23` candidate was not given a GPU and had no actual
+  embedding/reranker execution. This was superseded by the GPU-backed
+  container qualification recorded for `8541f8af`.
 - The workstation archive was built and hash-verified, but its installer was
   not run against this host's persistent application/data/service roots.
 
 These are execution-environment limits, not changes to the distribution
 contract. The qualification record preserves each cell's actual disposition.
+
+## Current corrective qualification — `8541f8af`
+
+The CUDA runtime image now includes GCC and C development headers only in the
+`cuda-dev` variant, as required by the observed Triton JIT compiler path. The
+final image passed CUDA embedding, reranker, resolver, API, and Compute checks
+with GPU passthrough. The CPU image remained CPU-only on the same GPU host.
+The exact-candidate workstation package was rebuilt, but no workstation state
+was changed: Windows PowerShell saw the existing local Ollama model, while
+WSL could not reach its API on loopback or through the host gateway. Therefore
+the live CPU→CUDA→CPU installer transaction remains unavailable and Slice 18C
+is not complete. See the detailed cell-by-cell results and exact artifact
+identities in [`QUALIFICATION.md`](evidence/slice18c_universal_distribution/QUALIFICATION.md).
 
 ## Explicit exclusions
 

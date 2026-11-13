@@ -2,10 +2,14 @@
 
 **Authority:** `S18C-UNIVERSAL-DISTRIBUTION-IMPL-001`  
 **Canonical base:** `e98fc147fe754936152024aa6630a17c43aa15da`  
-**Implementation candidate:** `2bae0a23aa9051bc0ca2b9276b421d2293423d51`  
+**Initial implementation candidate:** `2bae0a23aa9051bc0ca2b9276b421d2293423d51`
+**Current corrective candidate:** `8541f8af3ce7a4b906a36f252cb1b2f0a4dbc778`
 **Branch:** `feature/slice18c-universal-distribution`  
-**Disposition:** implementation and available local build checks complete; ready
-for independent review. This is not Human acceptance or promotion.
+**Current disposition:** CUDA container qualification passed; workstation
+round-trip remains unavailable because WSL cannot reach the existing Windows
+Ollama endpoint. Slice 18C is not complete or Human accepted.
+
+## Historical qualification record — initial candidate `2bae0a23`
 
 ## Workstation package
 
@@ -112,3 +116,115 @@ Accordingly, these results establish the dependency profiles, build
 reproducibility for the exact candidate, package/image structure, and
 non-model local runtime boundaries. They do not establish workstation
 installer lifecycle qualification or physical CUDA execution.
+
+## Corrective runtime qualification — candidate `8541f8af`
+
+The first real CUDA embedding smoke on `2bae0a23` reached the qualified
+PyTorch/Triton execution path but failed because the runtime image lacked a C
+compiler. Corrective commit `7cc0a26c` added GCC only to the CUDA runtime image;
+the follow-up smoke then established that Triton's helper compile also requires
+the standard C headers (`stdlib.h`). Final corrective candidate `8541f8af`
+adds `libc6-dev` alongside GCC, still only for `cuda-dev`. The CPU image remains
+without GCC. No application source, dependency lock, model identity, execution
+profile, or resolver behavior changed.
+
+Both images and the workstation package were rebuilt from `8541f8af`. The
+locked Python dependency graph and CUDA versions are unchanged. The package is
+an ignored local build artifact; it was not installed or published.
+
+| Artifact | Final identity |
+| --- | --- |
+| Workstation package | `seneca-workstation-0.1.0-linux-x86_64-8541f8af3ce7.tar.gz` |
+| Package size | 2,498,998 bytes |
+| Package SHA-256 | `95726605b639d6c4019c453358831a1b6115c85ee0c183d3cc60116afb49eb6f` |
+| Package and UI source SHA | `8541f8af3ce7a4b906a36f252cb1b2f0a4dbc778` |
+| CPU image ID / size | `sha256:831b7b91c8ae0fb7cd095687795f2ea3aadf7cf59e07c4c570a497a3e6297b69` / 2,346,639,310 bytes |
+| CUDA image ID / size | `sha256:d05883c63674d22a73c2997370a786518947c5198668eac307f9f56475ad743c` / 10,232,401,533 bytes |
+
+Both images carry the `8541f8af` source-revision label. Runtime inspection found
+GCC and `/usr/include/stdlib.h` in the CUDA image and no GCC executable in the
+CPU image. Image size remains descriptive; no CUDA dependency pruning was
+performed.
+
+### Docker and CUDA-container cells
+
+Docker GPU passthrough exposed one `NVIDIA GeForce RTX 2080 Super with Max-Q
+Design` to the CUDA image. The final-image resolver contrast on that same host
+was:
+
+| Cell | Result | Observed result |
+| --- | --- | --- |
+| `DOCKER_GPU_PASSTHROUGH` | PASS | PyTorch CUDA initialized; one GPU identity returned |
+| `CPU_IMAGE_ON_GPU_HOST` | PASS | Torch `2.14.0+cpu`; CUDA build `None`; `cuda_available=False`; resolver selected `cpu_onnx_fp32_v1` / `onnx_fp32_v1` / `sentence_transformers_onnx` / CPU / FP32 / `CPUExecutionProvider` |
+| `CUDA_IMAGE_ON_GPU_HOST` | PASS | Torch `2.14.0+cu130`; CUDA build `13.0`; `cuda_available=True`; one GPU |
+| `CUDA_CONTAINER_RESOLVER` | PASS | Resolver selected `cuda_fp16_v1` / `torch_st_v1` / `sentence_transformers_torch` / CUDA / FP16 |
+| `CUDA_CONTAINER_EMBEDDING` | PASS | Production factory/runtime, `configured_device=auto`, CUDA available, runtime `READY`, 1,024 finite values, resolved device CUDA, FP16; no fallback |
+| `CUDA_CONTAINER_RERANKER` | PASS | One finite score from the local BGE reranker, resolved device CUDA, `raw-logit-v1`, `local_files_only=True` |
+| `CUDA_CONTAINER_COMPUTE_API` | PASS | With GPU, read-only models, empty disposable data, and `--network none`: `/health`, `/health/live`, `/health/ready`, `/v1/settings/compute`, `/v1/capabilities`, and `/` returned 200. API projection reported CUDA available, profile `cuda_fp16_v1`, representation `torch_st_v1`, backend `sentence_transformers_torch`, active device CUDA, FP16. |
+
+The CUDA embedding and reranker calls used only synthetic text and the existing
+qualified local model assets. The model tree was mounted read-only; the
+container had no network. The API container's generation model/approval values
+were set to the already-present local Ollama model solely to pass static
+startup validation. The API check made no generation request and had no network
+access. The API projection correctly reported `embedding_state=UNLOADED` in
+that server process; the separate production-runtime smoke above performed the
+actual embedding.
+
+The first two CUDA smoke attempts are preserved as implementation diagnostics:
+the initial runtime lacked a compiler; the GCC-only attempt lacked C headers.
+The final `8541f8af` image passed both smokes. These failures do not get
+rewritten as passes for their earlier images.
+
+### Universal workstation transition
+
+The workstation preflight found these normal user paths absent:
+`~/.local/share/seneca`, `~/.config/seneca`, and `~/.local/bin/seneca`; there
+was no `seneca.service` under the user's systemd scope. No workstation
+installation or persistent data/model/service state was changed.
+
+Windows PowerShell confirmed that the local Ollama service has the model
+`qwen3.6:35b-a3b`. However, its API was not reachable from WSL at either
+`127.0.0.1:11434` or the WSL host gateway `172.22.144.1:11434`. The installer
+requires the existing model to be reachable from its execution environment.
+No host binding, firewall, Windows service, or lifecycle setting was changed.
+The live workstation installer correctly remained unrun.
+
+| Cell | Result | Reason |
+| --- | --- | --- |
+| `WORKSTATION_CPU_INSTALL` | UNAVAILABLE | Required existing local Ollama API/model cannot be reached from WSL; package was built and identity-checked but not installed. |
+| `WORKSTATION_CPU_INFERENCE` | UNAVAILABLE | CPU release was not installed; no workstation inference call was made. |
+| `WORKSTATION_CUDA_ENABLE` | UNAVAILABLE | CPU baseline prerequisite was not installed. |
+| `WORKSTATION_CUDA_INFERENCE` | UNAVAILABLE | CUDA release was not activated. |
+| `WORKSTATION_CPU_RESTORE` | UNAVAILABLE | No CUDA transition was run. |
+| `WORKSTATION_POST_RESTORE_INFERENCE` | UNAVAILABLE | CPU restoration was not run. |
+| `DATA_PRESERVATION` | UNAVAILABLE | No workstation transition occurred; no preservation claim is made. |
+| `MODEL_PRESERVATION` | UNAVAILABLE | No workstation transition occurred; the repository's original `models/` was left untouched and the temporary copy was removed. |
+| `SOURCE_IDENTITY_PRESERVATION` | UNAVAILABLE | No workstation transition occurred. |
+
+The exact-candidate workstation archive's `RELEASE.json` binds both package
+and UI source identity to `8541f8af`; the archive SHA-256 was recorded above.
+Those package checks do not substitute for installation or CPU→CUDA→CPU
+qualification.
+
+### Corrective validation and current disposition
+
+| Check | Result |
+| --- | --- |
+| `./.venv/bin/pytest -q tests/workstation` | 42 passed on final corrective candidate |
+| Container-profile static regression | 2 passed on final corrective candidate |
+| Ruff check and format check for changed test | Passed |
+| `git diff --check` | Passed before evidence update; rerun after commit preparation |
+| Dense profile/provision/runtime tests | 55 passed on the original implementation candidate; not rerun because no Python application or dependency metadata changed |
+
+The existing unrelated `test_no_mid_run_cpu_fallback` failure at
+`src/offline_rag/dense/embedder.py:525` remains previously observed and was not
+changed. `npm ci` also retains the previously reported 13 audit advisories and
+the Vite large-chunk advisory; no dependency updates were made.
+
+**Current result:** CUDA container distribution and runtime qualification
+cells PASS. The CPU→CUDA→CPU workstation qualification is **UNAVAILABLE** due
+the WSL-to-Windows Ollama API boundary. Slice 18C is therefore **not
+qualification-complete**, not Human accepted, and not promoted. The original
+candidate's earlier package/image measurements and failure state above remain
+historical evidence.
