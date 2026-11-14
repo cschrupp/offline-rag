@@ -3422,7 +3422,7 @@ Later M7 checklist:
   systemd-user and WSL distro lifecycle remain deferred)
 - [ ] Slice 18C — Universal Workstation Distribution & Release Optimization
   (**COMPLETE / HUMAN ACCEPTED / PROMOTED at `c296e21a`**)
-- [ ] Slice 18D — Product Metrics Audit & Explainability (**IMPLEMENTATION COMPLETE / INDEPENDENT REVIEW PENDING at `1e0720ed`**)
+- [ ] Slice 18D — Product Metrics Audit & Explainability (**IMPLEMENTATION COMPLETE / INDEPENDENT REVIEW PENDING at `e42bc97d540bca129eab6d2c693e563bf7d4afa9`**)
 - [ ] Slice 18E — Canonical Documentation & Portfolio Narrative (**PLANNED / NOT AUTHORIZED**)
 - [ ] Slice 18F — Public Release & Demo Assembly (**PLANNED / NOT AUTHORIZED**)
 - [ ] Milestone 7 closeout (**NOT AUTHORIZED**)
@@ -3446,7 +3446,7 @@ Slice 17 is **COMPLETE / HUMAN ACCEPTED / PROMOTED**. Slice 18A is **COMPLETE /
 HUMAN ACCEPTED / PROMOTED**. Slice 18B Revision 2 is **COMPLETE / HUMAN
 ACCEPTED / PROMOTED**. Real-host systemd-user and WSL distro lifecycle
 validation remain deferred. Slice 18C is **COMPLETE / HUMAN ACCEPTED / PROMOTED** at `c296e21a`. Slice 18D implementation is
-**COMPLETE / INDEPENDENT REVIEW PENDING** at `1e0720ed`; 18E/18F are **PLANNED / NOT AUTHORIZED**;
+**COMPLETE / INDEPENDENT REVIEW PENDING** at `e42bc97d540bca129eab6d2c693e563bf7d4afa9`; 18E/18F are **PLANNED / NOT AUTHORIZED**;
 Milestone 7 closeout remains **NOT AUTHORIZED**. See
 [`docs/slice18_release_plan.md`](docs/slice18_release_plan.md) for the canonical
 Slice 18 plan.

@@ -138,3 +138,13 @@ Focused revalidation after the corrective:
   parent implementation before this narrow formatter/catalog change. The
   corrective then ran the focused UI suite and exporter/value-preservation
   checks; no full rerun was necessary for this isolated behavior.
+
+## IR-002 status-only closeout
+
+The narrow status rework updates the live REL-02 summary, execution-order
+narrative, later M7 checklist, roadmap status, and canonical Slice 18 release
+plan. Current status: 18C COMPLETE / HUMAN ACCEPTED / PROMOTED at `c296e21a`;
+18D DESIGN HUMAN ACCEPTED / IMPLEMENTATION COMPLETE / INDEPENDENT REVIEW
+PENDING at evidence head `e42bc97d540bca129eab6d2c693e563bf7d4afa9`;
+18E/18F and M7 closeout remain unauthorized. Historical 18B scope wording is
+retained where it records the authority that applied at that time.

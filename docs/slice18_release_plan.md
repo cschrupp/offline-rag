@@ -13,7 +13,7 @@ slice remains subject to its own authorization and review.
 - **18C — Universal Workstation Distribution & Release Optimization:**
   COMPLETE / HUMAN ACCEPTED / PROMOTED at `c296e21a`.
 - **18D — Product Metrics Audit and Explainability:** DESIGN HUMAN ACCEPTED /
-  IMPLEMENTATION COMPLETE / INDEPENDENT REVIEW PENDING at `1e0720ed`; see `slice18d_metrics_audit.md`
+  IMPLEMENTATION COMPLETE / INDEPENDENT REVIEW PENDING at `e42bc97d540bca129eab6d2c693e563bf7d4afa9`; see `slice18d_metrics_audit.md`
   and `docs/evidence/slice18d_metrics/IMPLEMENTATION_RESULT.md`.
 - **18E — Canonical Documentation and Portfolio Narrative:** PLANNED /
   NOT AUTHORIZED.
@@ -319,8 +319,8 @@ RELEASE
 
 Slice 18C is **COMPLETE / HUMAN ACCEPTED / PROMOTED** at
 `c296e21afa740aa8fa7199d88ffda68c59d1be03`. Slice 18D implementation is
-**COMPLETE / INDEPENDENT REVIEW PENDING** at `1e0720ed`.
+**COMPLETE / INDEPENDENT REVIEW PENDING** at `e42bc97d540bca129eab6d2c693e563bf7d4afa9`.
 This does not authorize promotion, registry publication, GitHub Release
-publication, cloud deployment, or work on Slices 18D–18F. Slices 18D–18F and
+publication, cloud deployment, or work on Slices 18E–18F. Slices 18E–18F and
 Milestone 7 closeout remain
 **PLANNED / NOT AUTHORIZED**.
