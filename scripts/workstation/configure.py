@@ -46,6 +46,12 @@ def _unit_quote(value: str) -> str:
     return '"' + escaped + '"'
 
 
+def _unit_path(value: str) -> str:
+    if "\n" in value or "\r" in value:
+        raise ValueError("systemd unit paths cannot contain newlines")
+    return value.replace("\\", "\\\\").replace("%", "%%").replace(" ", "\\x20")
+
+
 def environment_values(
     *, app_dir: Path, data_dir: Path, models_dir: Path, model: str
 ) -> dict[str, str]:
@@ -131,8 +137,8 @@ def write_user_service(path: Path, *, app_dir: Path, env_file: Path) -> None:
         "",
         "[Service]",
         "Type=simple",
-        f"EnvironmentFile={_unit_quote(str(env_file.expanduser().absolute()))}",
-        f"WorkingDirectory={_unit_quote(str(app))}",
+        f"EnvironmentFile={_unit_path(str(env_file.expanduser().absolute()))}",
+        f"WorkingDirectory={_unit_path(str(app))}",
         f"ExecStart={_unit_quote(str(python))} -m offline_rag.api.server",
         "Restart=on-failure",
         "RestartSec=3s",

@@ -259,12 +259,20 @@ def test_user_service_uses_installed_entrypoint_and_preserves_shutdown_contract(
     configure.write_user_service(
         path,
         app_dir=tmp_path / "seneca app",
-        env_file=tmp_path / "config" / "workstation.env",
+        env_file=tmp_path / "config with space" / "workstation.env",
     )
     unit = path.read_text(encoding="utf-8")
     assert "Type=simple" in unit
-    assert f'EnvironmentFile="{tmp_path / "config" / "workstation.env"}"' in unit
-    assert str(tmp_path / "seneca app" / ".venv" / "bin" / "python") in unit
+    env_path = str(tmp_path / "config with space" / "workstation.env").replace(
+        " ", "\\x20"
+    )
+    app_path = str(tmp_path / "seneca app").replace(" ", "\\x20")
+    assert f"EnvironmentFile={env_path}" in unit
+    assert f"WorkingDirectory={app_path}" in unit
+    assert (
+        f'ExecStart="{tmp_path / "seneca app" / ".venv" / "bin" / "python"}" '
+        "-m offline_rag.api.server"
+    ) in unit
     assert "-m offline_rag.api.server" in unit
     assert unit.count("ExecStart=") == 1
     assert "Restart=on-failure" in unit
