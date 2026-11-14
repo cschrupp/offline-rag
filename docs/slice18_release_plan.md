@@ -11,8 +11,8 @@ slice remains subject to its own authorization and review.
 - **18B Revision 2 — Workstation Distribution:** COMPLETE / HUMAN ACCEPTED /
   PROMOTED.
 - **18C — Universal Workstation Distribution & Release Optimization:**
-  AUTHORIZED / IMPLEMENTATION COMPLETE / INDEPENDENT REVIEW PENDING at
-  `2bae0a23`.
+  AUTHORIZED / IMPLEMENTATION AND QUALIFICATION COMPLETE / INDEPENDENT REVIEW
+  PENDING at `9e2cf563737cf4c9a927753c7768f5e4897b1a7f`.
 - **18D — Product Metrics Audit and Explainability:** PLANNED / NOT AUTHORIZED.
 - **18E — Canonical Documentation and Portfolio Narrative:** PLANNED /
   NOT AUTHORIZED.
@@ -318,6 +318,11 @@ RELEASE
 
 Slice 18C implementation and available local qualification are **COMPLETE /
 READY FOR INDEPENDENT REVIEW** under `S18C-UNIVERSAL-DISTRIBUTION-IMPL-001`.
+The current implementation candidate is
+`9e2cf563737cf4c9a927753c7768f5e4897b1a7f`; the workstation doctor corrective
+was installed and tested through the exact packaged wrapper without repeating
+CPU/CUDA qualification because it changes only diagnostic working-directory
+handling.
 This does not authorize promotion, registry publication, GitHub Release
 publication, cloud deployment, or work on Slices 18D–18F. Slices 18D–18F and
 Milestone 7 closeout remain

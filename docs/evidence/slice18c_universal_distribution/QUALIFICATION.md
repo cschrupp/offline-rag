@@ -3,7 +3,7 @@
 **Authority:** `S18C-UNIVERSAL-DISTRIBUTION-IMPL-001`  
 **Canonical base:** `e98fc147fe754936152024aa6630a17c43aa15da`  
 **Initial implementation candidate:** `2bae0a23aa9051bc0ca2b9276b421d2293423d51`
-**Current corrective candidate:** `86db251e6e75253674ec9ac233a358028a71fe4e`
+**Current corrective candidate:** `9e2cf563737cf4c9a927753c7768f5e4897b1a7f`
 **Branch:** `feature/slice18c-universal-distribution`  
 **Current disposition:** CUDA container qualification, the WSL CPU→CUDA→CPU
 workstation round-trip, and post-restart service recovery passed. Slice 18C is
@@ -303,13 +303,53 @@ and `/v1/settings/compute` reported `embedding_device=auto`, resolved CPU,
 marker hash also matched its pre-restart value. This establishes recovery after
 the user-reported distro restart; no model inference was run after restart.
 
+### Doctor working-directory corrective — `9e2cf563`
+
+The review reproduced a diagnostic mismatch when the installed `seneca doctor`
+wrapper was invoked from the repository checkout: the CLI's general dotenv
+loader reads `.env` from its current working directory, which selected that
+checkout's `portfolio_openrouter` configuration and displayed a DeepSeek model
+and configured API key. The systemd service and installed workstation
+environment remained configured for local Qwen with no generation key.
+
+The workstation `seneca doctor` wrapper now changes to the installed app
+directory before invoking the CLI, preventing a caller's repository `.env`
+from contaminating the workstation diagnostic. A regression checks that the
+wrapper changes directory before launching the doctor. No application config
+loader, generation architecture, or running-service configuration changed.
+
+Candidate package
+`seneca-workstation-0.1.0-linux-x86_64-9e2cf563737c.tar.gz` was built from
+`9e2cf563737cf4c9a927753c7768f5e4897b1a7f`, size 2,499,085 bytes, SHA-256
+`6c0246602b8eb42a006bfd3d82ccd00e6c86076804c76b1e7e30d40f90e12554`.
+The package was installed using cached dependencies only (`UV_OFFLINE=1`),
+over the retained `86db251e` CPU release. The active release is now
+`9e2cf563737cf4c9a927753c7768f5e4897b1a7f-20261114T165416Z-33464.KLHtBm`.
+The installed `seneca` wrapper was then invoked from the repository checkout:
+exit code 0, model `qwen3.6:35b-a3b`, API key `not set`, and `doctor: OK`.
+Generation status was `NOT_READY` because the default corpus is not initialized;
+the overall configuration and local-path diagnostic passed. No inference or
+external call occurred.
+
+After installation and service restart, `seneca.service` remained enabled and
+active, `/health/ready` returned ready, and `/v1/settings/compute` still
+reported AUTO → `cpu_onnx_fp32_v1` / `onnx_fp32_v1` / `CPUExecutionProvider`,
+with CUDA unavailable. Installation metadata records the new source SHA and
+CPU release, `cuda_enabled=false`, and unchanged data/model roots. The data
+marker hash remained
+`d0fe5d7d791592e19771e975eae4edb1313f061c9089baf745e9ebae4a2e54a1`; all 257
+model files remained present. The earlier DeepSeek/key result is retained as
+evidence of the invocation-context defect, not as current workstation
+configuration.
+
 ### Corrective validation and current disposition
 
 | Check | Result |
 | --- | --- |
 | `./.venv/bin/pytest -q tests/workstation` | 43 passed on final corrective candidate |
+| `./.venv/bin/pytest -q tests/workstation/test_configure.py` | 12 passed after the doctor wrapper corrective |
 | Container-profile static regression | 2 passed on final corrective candidate |
-| Ruff check and format check for changed test | Passed |
+| `bash -n scripts/workstation/seneca`; targeted Ruff check/format | Passed |
 | `git diff --check` | Passed after final evidence update |
 | Dense profile/provision/runtime tests | 55 passed on the original implementation candidate; not rerun because no Python application or dependency metadata changed |
 
@@ -318,13 +358,19 @@ The existing unrelated `test_no_mid_run_cpu_fallback` failure at
 changed. `npm ci` also retains the previously reported 13 audit advisories and
 the Vite large-chunk advisory; no dependency updates were made.
 
-**Current result:** CUDA container distribution and CPU→CUDA→CPU workstation
-qualification PASS for the supported Windows 11 + WSL2 topology using
+**Current result:** Candidate `9e2cf563737cf4c9a927753c7768f5e4897b1a7f` contains
+the workstation doctor invocation correction; the original CPU→CUDA→CPU
+workstation qualification was performed on its parent runtime candidate
+`86db251e6e75253674ec9ac233a358028a71fe4e`. CUDA container distribution and
+CPU→CUDA→CPU workstation qualification PASS for the supported Windows 11 +
+WSL2 topology using
 Windows-native Ollama through loopback interoperability. Post-restart service
 recovery and CPU-profile restoration also PASS based on the user's reported
 Ubuntu distro restart and independently checked service/API/installation state.
-No external generation calls were made. The doctor display discrepancy and
-absence of a post-restart file-level model comparison are recorded limitations.
+No external generation calls were made. The doctor display mismatch is resolved
+in `9e2cf563`; the default corpus remains uninitialized, so the diagnostic's
+generation readiness is `NOT_READY` while the overall doctor check is OK. The
+absence of a post-restart file-level model comparison is a recorded limitation.
 Slice 18C is ready for independent review; Human acceptance and promotion remain
 pending. Historical package/image measurements and earlier failures above
 remain preserved as observations of their exact candidates.

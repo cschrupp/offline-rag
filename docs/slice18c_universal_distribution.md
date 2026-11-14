@@ -3,9 +3,9 @@
 **Authority:** `S18C-UNIVERSAL-DISTRIBUTION-IMPL-001`  
 **Canonical base:** `e98fc147fe754936152024aa6630a17c43aa15da`  
 **Implementation branch:** `feature/slice18c-universal-distribution`  
-**Current state:** CORRECTIVE IMPLEMENTATION COMPLETE / CUDA CONTAINER QUALIFICATION PASS / WORKSTATION ROUND-TRIP NOT YET EXECUTED
+**Current state:** IMPLEMENTATION AND QUALIFICATION COMPLETE / INDEPENDENT REVIEW PENDING
 **Initial implementation candidate:** `2bae0a23aa9051bc0ca2b9276b421d2293423d51`
-**Current corrective candidate:** `8541f8af3ce7a4b906a36f252cb1b2f0a4dbc778`
+**Current implementation candidate:** `9e2cf563737cf4c9a927753c7768f5e4897b1a7f`
 
 Slice 18C is bounded release engineering. It delivers one CPU-first universal
 workstation package with explicit, transactional CUDA enablement, and two
@@ -101,19 +101,44 @@ qualification state is recorded in the qualification evidence file below.
 These are execution-environment limits, not changes to the distribution
 contract. The qualification record preserves each cell's actual disposition.
 
-## Current corrective qualification — `8541f8af`
+## CUDA container corrective qualification — `8541f8af` (historical)
 
 The CUDA runtime image now includes GCC and C development headers only in the
 `cuda-dev` variant, as required by the observed Triton JIT compiler path. The
 final image passed CUDA embedding, reranker, resolver, API, and Compute checks
 with GPU passthrough. The CPU image remained CPU-only on the same GPU host.
-The exact-candidate workstation package was rebuilt. WSL-local Ollama was not
-present. The earlier WSL-to-Windows Ollama reachability probe tested an
-out-of-scope topology and does not establish supported-topology unavailability.
-The supported WSL-local Ollama setup and CPU→CUDA→CPU installer transaction
-remain **not yet executed**; no workstation state was changed. See the detailed
-cell-by-cell results and exact artifact identities in
+At this historical evidence point, WSL-local Ollama was not present. The
+earlier WSL-to-Windows Ollama reachability probe tested an out-of-scope topology
+and did not establish supported-topology unavailability. The supported
+workstation transaction had not yet executed at that time. Subsequent
+qualification is recorded in
 [`QUALIFICATION.md`](evidence/slice18c_universal_distribution/QUALIFICATION.md).
+
+## Final workstation qualification — `86db251e` and doctor corrective — `9e2cf563`
+
+The supported Windows 11 + WSL2 workstation completed CPU → CUDA → CPU using
+Windows-native Ollama through loopback interoperability. CPU and CUDA
+embedding/reranker smokes passed; CUDA enablement selected `cuda_fp16_v1`, and
+disablement restored the original CPU release. After a user-performed WSL
+distro restart, the enabled service returned ready on the CPU ONNX profile and
+the data sentinel remained unchanged.
+
+Independent review found stale current-status references and a doctor
+configuration mismatch when invoked from a repository checkout. The current
+candidate `9e2cf563737cf4c9a927753c7768f5e4897b1a7f` confines the workstation
+doctor to the installed app directory so a caller's `.env` cannot override the
+workstation profile. The exact package was installed and its doctor wrapper
+was run from the problematic checkout directory; it reported the configured
+local Qwen model, no API key, and doctor OK. Full cell-by-cell evidence and
+exact package hashes are in
+[`QUALIFICATION.md`](evidence/slice18c_universal_distribution/QUALIFICATION.md).
+
+18C implementation and qualification are complete and awaiting independent
+review. Human acceptance, promotion, registry publication, GitHub Release
+publication, Google Cloud deployment, native Windows packaging, M7 closeout,
+and Slices 18D–18F remain unauthorized. The historical `8541f8af` workstation
+non-execution result above remains a time-specific record, not the current
+qualification disposition.
 
 ## Explicit exclusions
 
