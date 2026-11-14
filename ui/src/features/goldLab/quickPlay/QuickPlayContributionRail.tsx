@@ -86,7 +86,7 @@ export function QuickPlayContributionRail({ workspaceTitle, campaignId }: Props)
             </div>
           </dl>
           <p className="quick-play-contribution-note">
-            Current campaign contribution
+            Current campaign contribution points; activity credit, not accuracy, competence, model quality, or ranking.
           </p>
         </>
       ) : null}

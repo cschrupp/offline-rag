@@ -1,0 +1,1285 @@
+{
+  "contract": "seneca-indicator-catalog-v1",
+  "version": 1,
+  "definitions": [
+    {
+      "definition_id": "capacity.byte_limit",
+      "definition_revision": 1,
+      "indicator_class": "product_indicator",
+      "display_name": "byte limit",
+      "authority_class": "product_policy",
+      "canonical_unit": "bytes",
+      "display_kind": "byte_quantity",
+      "formula_description": "Effective limit from server capabilities.",
+      "population_contract": "Applicable file/request/workspace constraint.",
+      "aggregation": "As supplied by the named producer or explicit derivation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Effective limit from server capabilities.",
+      "does_not_imply": [
+        "whole-operation completion",
+        "quality or competence",
+        "performance guarantee"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "capacity.cpu-q100-bytes",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "cpu-q100-bytes",
+      "authority_class": "accepted_evidence",
+      "canonical_unit": "bytes",
+      "display_kind": "byte_quantity",
+      "formula_description": "Frozen source observation for capacity.cpu-q100-bytes",
+      "population_contract": "L5 CPU/CUDA observations and current L6 large-PDF admission path for desired sets containing a PDF over 25 MiB.",
+      "aggregation": "As reported by the frozen authoritative source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Frozen source observation for capacity.cpu-q100-bytes",
+      "does_not_imply": [
+        "performance guarantee",
+        "production promotion"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "capacity.cuda-q100-bytes",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "cuda-q100-bytes",
+      "authority_class": "accepted_evidence",
+      "canonical_unit": "bytes",
+      "display_kind": "byte_quantity",
+      "formula_description": "Frozen source observation for capacity.cuda-q100-bytes",
+      "population_contract": "L5 CPU/CUDA observations and current L6 large-PDF admission path for desired sets containing a PDF over 25 MiB.",
+      "aggregation": "As reported by the frozen authoritative source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Frozen source observation for capacity.cuda-q100-bytes",
+      "does_not_imply": [
+        "performance guarantee",
+        "production promotion"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "capacity.large-pdf-path-threshold",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "large-pdf-path-threshold",
+      "authority_class": "accepted_evidence",
+      "canonical_unit": "bytes",
+      "display_kind": "byte_quantity",
+      "formula_description": "Frozen source observation for capacity.large-pdf-path-threshold",
+      "population_contract": "L5 CPU/CUDA observations and current L6 large-PDF admission path for desired sets containing a PDF over 25 MiB.",
+      "aggregation": "As reported by the frozen authoritative source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Frozen source observation for capacity.large-pdf-path-threshold",
+      "does_not_imply": [
+        "performance guarantee",
+        "production promotion"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "capacity.pdf-limit",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "pdf-limit",
+      "authority_class": "accepted_evidence",
+      "canonical_unit": "bytes",
+      "display_kind": "byte_quantity",
+      "formula_description": "Frozen source observation for capacity.pdf-limit",
+      "population_contract": "L5 CPU/CUDA observations and current L6 large-PDF admission path for desired sets containing a PDF over 25 MiB.",
+      "aggregation": "As reported by the frozen authoritative source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Frozen source observation for capacity.pdf-limit",
+      "does_not_imply": [
+        "performance guarantee",
+        "production promotion"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "generation.answer_rate",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "answer rate",
+      "authority_class": "scientific_evaluator",
+      "canonical_unit": "fraction",
+      "display_kind": "proportion",
+      "formula_description": "Answered cases divided by all cohort cases.",
+      "population_contract": "All cohort cases.",
+      "aggregation": "As reported by the frozen authoritative source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Answered cases divided by all cohort cases.",
+      "does_not_imply": [
+        "semantic answer correctness",
+        "production promotion",
+        "generalization beyond the recorded population"
+      ],
+      "precision": 1,
+      "range": {
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    {
+      "definition_id": "generation.citation_invalid_rate",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "citation invalid rate",
+      "authority_class": "scientific_evaluator",
+      "canonical_unit": "fraction",
+      "display_kind": "proportion",
+      "formula_description": "Citation-invalid cases divided by all cohort cases.",
+      "population_contract": "All cohort cases.",
+      "aggregation": "As reported by the frozen authoritative source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Citation-invalid cases divided by all cohort cases.",
+      "does_not_imply": [
+        "semantic answer correctness",
+        "production promotion",
+        "generalization beyond the recorded population"
+      ],
+      "precision": 1,
+      "range": {
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    {
+      "definition_id": "generation.complete_answer_rate",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "complete answer rate",
+      "authority_class": "scientific_evaluator",
+      "canonical_unit": "fraction",
+      "display_kind": "proportion",
+      "formula_description": "Complete judgments divided by successful semantic judgments.",
+      "population_contract": "Judge-succeeded answered cases.",
+      "aggregation": "As reported by the frozen authoritative source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Complete judgments divided by successful semantic judgments.",
+      "does_not_imply": [
+        "semantic answer correctness",
+        "production promotion",
+        "generalization beyond the recorded population"
+      ],
+      "precision": 1,
+      "range": {
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    {
+      "definition_id": "generation.fully_correct_rate",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "fully correct rate",
+      "authority_class": "scientific_evaluator",
+      "canonical_unit": "fraction",
+      "display_kind": "proportion",
+      "formula_description": "Fully-correct judgments divided by successful semantic judgments.",
+      "population_contract": "Judge-succeeded answered cases.",
+      "aggregation": "As reported by the frozen authoritative source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Fully-correct judgments divided by successful semantic judgments.",
+      "does_not_imply": [
+        "semantic answer correctness",
+        "production promotion",
+        "generalization beyond the recorded population"
+      ],
+      "precision": 1,
+      "range": {
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    {
+      "definition_id": "generation.fully_supported_rate",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "fully supported rate",
+      "authority_class": "scientific_evaluator",
+      "canonical_unit": "fraction",
+      "display_kind": "proportion",
+      "formula_description": "Fully-supported judgments divided by successful semantic judgments.",
+      "population_contract": "Judge-succeeded answered cases.",
+      "aggregation": "As reported by the frozen authoritative source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Fully-supported judgments divided by successful semantic judgments.",
+      "does_not_imply": [
+        "semantic answer correctness",
+        "production promotion",
+        "generalization beyond the recorded population"
+      ],
+      "precision": 1,
+      "range": {
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    {
+      "definition_id": "generation.generation_failed_rate",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "generation failed rate",
+      "authority_class": "scientific_evaluator",
+      "canonical_unit": "fraction",
+      "display_kind": "proportion",
+      "formula_description": "Generation-failed cases divided by all cohort cases.",
+      "population_contract": "All cohort cases.",
+      "aggregation": "As reported by the frozen authoritative source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Generation-failed cases divided by all cohort cases.",
+      "does_not_imply": [
+        "semantic answer correctness",
+        "production promotion",
+        "generalization beyond the recorded population"
+      ],
+      "precision": 1,
+      "range": {
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    {
+      "definition_id": "generation.grade2_citation_hit_rate",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "grade2 citation hit rate",
+      "authority_class": "scientific_evaluator",
+      "canonical_unit": "fraction",
+      "display_kind": "proportion",
+      "formula_description": "Fraction of applicable answered cases citing grade-2 evidence.",
+      "population_contract": "Answered cases with non-null grade-2 citation hit.",
+      "aggregation": "As reported by the frozen authoritative source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Fraction of applicable answered cases citing grade-2 evidence.",
+      "does_not_imply": [
+        "semantic answer correctness",
+        "production promotion",
+        "generalization beyond the recorded population"
+      ],
+      "precision": 1,
+      "range": {
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    {
+      "definition_id": "generation.mean_gold_citation_recall",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "mean gold citation recall",
+      "authority_class": "scientific_evaluator",
+      "canonical_unit": "fraction",
+      "display_kind": "proportion",
+      "formula_description": "Mean gold citation recall among answered cases with available recall.",
+      "population_contract": "Answered cases with non-null gold citation recall.",
+      "aggregation": "As reported by the frozen authoritative source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Mean gold citation recall among answered cases with available recall.",
+      "does_not_imply": [
+        "semantic answer correctness",
+        "production promotion",
+        "generalization beyond the recorded population"
+      ],
+      "precision": 1,
+      "range": {
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    {
+      "definition_id": "gold.contribution_points",
+      "definition_revision": 1,
+      "indicator_class": "product_indicator",
+      "display_name": "contribution points",
+      "authority_class": "gold_server",
+      "canonical_unit": "points",
+      "display_kind": "points",
+      "formula_description": "expert judgments + 5*questions reviewed + 10*cases completed + 15*Gold finalized + 5*hard calls resolved.",
+      "population_contract": "Current campaign; server gold-contribution-v1.",
+      "aggregation": "As supplied by the named producer or explicit derivation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "expert judgments + 5*questions reviewed + 10*cases completed + 15*Gold finalized + 5*hard calls resolved.",
+      "does_not_imply": [
+        "whole-operation completion",
+        "quality or competence",
+        "performance guarantee"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "gold.relevance_task_coverage",
+      "definition_revision": 1,
+      "indicator_class": "product_indicator",
+      "display_name": "relevance task coverage",
+      "authority_class": "gold_server",
+      "canonical_unit": "fraction",
+      "display_kind": "proportion",
+      "formula_description": "completed_active_absolute_tasks / total_active_absolute_tasks.",
+      "population_contract": "Active absolute-relevance tasks in the campaign; null when no denominator.",
+      "aggregation": "As supplied by the named producer or explicit derivation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "completed_active_absolute_tasks / total_active_absolute_tasks.",
+      "does_not_imply": [
+        "whole-operation completion",
+        "quality or competence",
+        "performance guarantee"
+      ],
+      "precision": 1
+    },
+    {
+      "definition_id": "gold.task_count",
+      "definition_revision": 1,
+      "indicator_class": "product_indicator",
+      "display_name": "task count",
+      "authority_class": "gold_server",
+      "canonical_unit": "tasks",
+      "display_kind": "count",
+      "formula_description": "Server-reported task/judgment count for the named category.",
+      "population_contract": "Current campaign/session/training scenario.",
+      "aggregation": "As supplied by the named producer or explicit derivation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Server-reported task/judgment count for the named category.",
+      "does_not_imply": [
+        "whole-operation completion",
+        "quality or competence",
+        "performance guarantee"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "operation.current_step_progress",
+      "definition_revision": 1,
+      "indicator_class": "product_indicator",
+      "display_name": "current step progress",
+      "authority_class": "presentation_derivation",
+      "canonical_unit": "fraction",
+      "display_kind": "proportion",
+      "formula_description": "clamp(floor(current * 100 / total), 0, 100) / 100; displayed as current-step percent.",
+      "population_contract": "Current reported step only; unavailable for nonpositive or absent total.",
+      "aggregation": "As supplied by the named producer or explicit derivation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "floor(current * 100 / total), bounded to [0,100], displayed as current-step percent.",
+      "does_not_imply": [
+        "whole-operation completion",
+        "quality or competence",
+        "performance guarantee"
+      ],
+      "precision": 0
+    },
+    {
+      "definition_id": "operation.embedding_generation_throughput",
+      "definition_revision": 1,
+      "indicator_class": "product_indicator",
+      "display_name": "embedding generation throughput",
+      "authority_class": "runtime_api",
+      "canonical_unit": "embeddings/s",
+      "display_kind": "throughput",
+      "formula_description": "embeddings_generated / (dense_generation_ms / 1000).",
+      "population_contract": "Generated embeddings during dense generation; excludes reused embeddings.",
+      "aggregation": "As supplied by the named producer or explicit derivation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "embeddings_generated / (dense_generation_ms / 1000).",
+      "does_not_imply": [
+        "whole-operation completion",
+        "quality or competence",
+        "performance guarantee"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "operation.model_input_throughput",
+      "definition_revision": 1,
+      "indicator_class": "product_indicator",
+      "display_name": "model input throughput",
+      "authority_class": "runtime_api",
+      "canonical_unit": "tokens/s",
+      "display_kind": "throughput",
+      "formula_description": "Model-input token throughput supplied by dense profiling.",
+      "population_contract": "Model encode interval recorded by the producer.",
+      "aggregation": "As supplied by the named producer or explicit derivation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Model-input token throughput supplied by dense profiling.",
+      "does_not_imply": [
+        "whole-operation completion",
+        "quality or competence",
+        "performance guarantee"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "operation.stage_duration",
+      "definition_revision": 1,
+      "indicator_class": "product_indicator",
+      "display_name": "stage duration",
+      "authority_class": "runtime_api",
+      "canonical_unit": "ms",
+      "display_kind": "duration",
+      "formula_description": "Producer-reported duration of the named stage.",
+      "population_contract": "Named stage in one managed operation.",
+      "aggregation": "As supplied by the named producer or explicit derivation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Producer-reported duration of the named stage.",
+      "does_not_imply": [
+        "whole-operation completion",
+        "quality or competence",
+        "performance guarantee"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "operation.work_count",
+      "definition_revision": 1,
+      "indicator_class": "product_indicator",
+      "display_name": "work count",
+      "authority_class": "runtime_api",
+      "canonical_unit": "items",
+      "display_kind": "count",
+      "formula_description": "Producer-reported generated/reused/failed/completed/remaining count.",
+      "population_contract": "Named item kind and current operation/worklist.",
+      "aggregation": "As supplied by the named producer or explicit derivation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Producer-reported generated/reused/failed/completed/remaining count.",
+      "does_not_imply": [
+        "whole-operation completion",
+        "quality or competence",
+        "performance guarantee"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "performance.decode_latency",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "decode latency",
+      "authority_class": "accepted_evidence",
+      "canonical_unit": "s",
+      "display_kind": "duration",
+      "formula_description": "Frozen source observation for performance.decode_latency",
+      "population_contract": "Population identified by the observation and immutable evidence record.",
+      "aggregation": "As reported by the frozen authoritative source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Frozen source observation for performance.decode_latency",
+      "does_not_imply": [
+        "performance guarantee",
+        "production promotion"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "performance.end_to_end_p50",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "end to end p50",
+      "authority_class": "accepted_evidence",
+      "canonical_unit": "s",
+      "display_kind": "duration",
+      "formula_description": "Frozen source observation for performance.end_to_end_p50",
+      "population_contract": "Population identified by the observation and immutable evidence record.",
+      "aggregation": "As reported by the frozen authoritative source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Frozen source observation for performance.end_to_end_p50",
+      "does_not_imply": [
+        "performance guarantee",
+        "production promotion"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "performance.end_to_end_p95",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "end to end p95",
+      "authority_class": "accepted_evidence",
+      "canonical_unit": "s",
+      "display_kind": "duration",
+      "formula_description": "Frozen source observation for performance.end_to_end_p95",
+      "population_contract": "Population identified by the observation and immutable evidence record.",
+      "aggregation": "As reported by the frozen authoritative source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Frozen source observation for performance.end_to_end_p95",
+      "does_not_imply": [
+        "performance guarantee",
+        "production promotion"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "performance.generation_p50",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "generation p50",
+      "authority_class": "accepted_evidence",
+      "canonical_unit": "s",
+      "display_kind": "duration",
+      "formula_description": "Frozen source observation for performance.generation_p50",
+      "population_contract": "Population identified by the observation and immutable evidence record.",
+      "aggregation": "As reported by the frozen authoritative source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Frozen source observation for performance.generation_p50",
+      "does_not_imply": [
+        "performance guarantee",
+        "production promotion"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "performance.generation_p95",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "generation p95",
+      "authority_class": "accepted_evidence",
+      "canonical_unit": "s",
+      "display_kind": "duration",
+      "formula_description": "Frozen source observation for performance.generation_p95",
+      "population_contract": "Population identified by the observation and immutable evidence record.",
+      "aggregation": "As reported by the frozen authoritative source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Frozen source observation for performance.generation_p95",
+      "does_not_imply": [
+        "performance guarantee",
+        "production promotion"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "performance.ram_rss_bytes_p50",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "ram rss bytes p50",
+      "authority_class": "accepted_evidence",
+      "canonical_unit": "bytes",
+      "display_kind": "byte_quantity",
+      "formula_description": "Frozen source observation for performance.ram_rss_bytes_p50",
+      "population_contract": "Population identified by the observation and immutable evidence record.",
+      "aggregation": "As reported by the frozen authoritative source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Frozen source observation for performance.ram_rss_bytes_p50",
+      "does_not_imply": [
+        "performance guarantee",
+        "production promotion"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "performance.retrieval_p50",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "retrieval p50",
+      "authority_class": "accepted_evidence",
+      "canonical_unit": "s",
+      "display_kind": "duration",
+      "formula_description": "Frozen source observation for performance.retrieval_p50",
+      "population_contract": "Population identified by the observation and immutable evidence record.",
+      "aggregation": "As reported by the frozen authoritative source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Frozen source observation for performance.retrieval_p50",
+      "does_not_imply": [
+        "performance guarantee",
+        "production promotion"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "performance.retrieval_p95",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "retrieval p95",
+      "authority_class": "accepted_evidence",
+      "canonical_unit": "s",
+      "display_kind": "duration",
+      "formula_description": "Frozen source observation for performance.retrieval_p95",
+      "population_contract": "Population identified by the observation and immutable evidence record.",
+      "aggregation": "As reported by the frozen authoritative source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Frozen source observation for performance.retrieval_p95",
+      "does_not_imply": [
+        "performance guarantee",
+        "production promotion"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "performance.tokens_per_sec",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "tokens per sec",
+      "authority_class": "accepted_evidence",
+      "canonical_unit": "tokens/s",
+      "display_kind": "throughput",
+      "formula_description": "Frozen source observation for performance.tokens_per_sec",
+      "population_contract": "Population identified by the observation and immutable evidence record.",
+      "aggregation": "As reported by the frozen authoritative source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Frozen source observation for performance.tokens_per_sec",
+      "does_not_imply": [
+        "performance guarantee",
+        "production promotion"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "performance.ttft",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "ttft",
+      "authority_class": "accepted_evidence",
+      "canonical_unit": "s",
+      "display_kind": "duration",
+      "formula_description": "Frozen source observation for performance.ttft",
+      "population_contract": "Population identified by the observation and immutable evidence record.",
+      "aggregation": "As reported by the frozen authoritative source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Frozen source observation for performance.ttft",
+      "does_not_imply": [
+        "performance guarantee",
+        "production promotion"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "performance.vram_availability",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "vram availability",
+      "authority_class": "accepted_evidence",
+      "canonical_unit": "status",
+      "display_kind": "status",
+      "formula_description": "Frozen source observation for performance.vram_availability",
+      "population_contract": "Population identified by the observation and immutable evidence record.",
+      "aggregation": "As reported by the frozen authoritative source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Frozen source observation for performance.vram_availability",
+      "does_not_imply": [
+        "performance guarantee",
+        "production promotion"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "presentation.percentage_point_delta",
+      "definition_revision": 1,
+      "indicator_class": "product_indicator",
+      "display_name": "percentage point delta",
+      "authority_class": "presentation_derivation",
+      "canonical_unit": "fraction_difference",
+      "display_kind": "percentage_point_delta",
+      "formula_description": "Difference of two compatible proportions; display multiplied by 100 in pp.",
+      "population_contract": "Same metric definition and comparable populations.",
+      "aggregation": "As supplied by the named producer or explicit derivation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Difference of two compatible proportions; display multiplied by 100 in pp.",
+      "does_not_imply": [
+        "whole-operation completion",
+        "quality or competence",
+        "performance guarantee"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "presentation.ratio",
+      "definition_revision": 1,
+      "indicator_class": "product_indicator",
+      "display_name": "ratio",
+      "authority_class": "presentation_derivation",
+      "canonical_unit": "ratio",
+      "display_kind": "ratio",
+      "formula_description": "Ratio explicitly provided by the authoritative producer.",
+      "population_contract": "Population and baseline named by the surface.",
+      "aggregation": "As supplied by the named producer or explicit derivation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Ratio explicitly provided by the authoritative producer.",
+      "does_not_imply": [
+        "whole-operation completion",
+        "quality or competence",
+        "performance guarantee"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "presentation.relative_percent_delta",
+      "definition_revision": 1,
+      "indicator_class": "product_indicator",
+      "display_name": "relative percent delta",
+      "authority_class": "presentation_derivation",
+      "canonical_unit": "relative_fraction",
+      "display_kind": "relative_percent_delta",
+      "formula_description": "(new-old)/old; unavailable for zero baseline.",
+      "population_contract": "Same metric definition and comparable populations.",
+      "aggregation": "As supplied by the named producer or explicit derivation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "(new-old)/old; unavailable for zero baseline.",
+      "does_not_imply": [
+        "whole-operation completion",
+        "quality or competence",
+        "performance guarantee"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "presentation.scalar",
+      "definition_revision": 1,
+      "indicator_class": "product_indicator",
+      "display_name": "scalar",
+      "authority_class": "runtime_api",
+      "canonical_unit": "scalar",
+      "display_kind": "scalar",
+      "formula_description": "Scalar value provided by the authoritative producer.",
+      "population_contract": "Population named by the surface.",
+      "aggregation": "As supplied by the named producer or explicit derivation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Scalar value provided by the authoritative producer.",
+      "does_not_imply": [
+        "whole-operation completion",
+        "quality or competence",
+        "performance guarantee"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "product.domain_state",
+      "definition_revision": 1,
+      "indicator_class": "product_indicator",
+      "display_name": "domain state",
+      "authority_class": "runtime_api",
+      "canonical_unit": "status",
+      "display_kind": "status",
+      "formula_description": "Domain state returned by its authoritative API.",
+      "population_contract": "Bound workspace, operation, session or installation.",
+      "aggregation": "As supplied by the named producer or explicit derivation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Domain state returned by its authoritative API.",
+      "does_not_imply": [
+        "whole-operation completion",
+        "quality or competence",
+        "performance guarantee"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "product.effective_settings",
+      "definition_revision": 1,
+      "indicator_class": "product_indicator",
+      "display_name": "effective settings",
+      "authority_class": "runtime_api",
+      "canonical_unit": "status",
+      "display_kind": "status",
+      "formula_description": "Effective/pending fields and locks returned by Settings API.",
+      "population_contract": "Current process and persisted restart configuration.",
+      "aggregation": "As supplied by the named producer or explicit derivation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Effective/pending fields and locks returned by Settings API.",
+      "does_not_imply": [
+        "whole-operation completion",
+        "quality or competence",
+        "performance guarantee"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "release.backend-tests",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "backend-tests",
+      "authority_class": "accepted_evidence",
+      "canonical_unit": "tests",
+      "display_kind": "count",
+      "formula_description": "Frozen source observation for release.backend-tests",
+      "population_contract": "Population identified by the observation and immutable evidence record.",
+      "aggregation": "As reported by the frozen authoritative source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Frozen source observation for release.backend-tests",
+      "does_not_imply": [
+        "performance guarantee",
+        "production promotion"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "release.frontend-tests",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "frontend-tests",
+      "authority_class": "accepted_evidence",
+      "canonical_unit": "tests",
+      "display_kind": "count",
+      "formula_description": "Frozen source observation for release.frontend-tests",
+      "population_contract": "Population identified by the observation and immutable evidence record.",
+      "aggregation": "As reported by the frozen authoritative source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Frozen source observation for release.frontend-tests",
+      "does_not_imply": [
+        "performance guarantee",
+        "production promotion"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "release.image-bytes",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "image-bytes",
+      "authority_class": "accepted_evidence",
+      "canonical_unit": "bytes",
+      "display_kind": "byte_quantity",
+      "formula_description": "Frozen source observation for release.image-bytes",
+      "population_contract": "Population identified by the observation and immutable evidence record.",
+      "aggregation": "As reported by the frozen authoritative source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Frozen source observation for release.image-bytes",
+      "does_not_imply": [
+        "performance guarantee",
+        "production promotion"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "retrieval.descriptive_latency_ms",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "descriptive latency ms",
+      "authority_class": "accepted_evidence",
+      "canonical_unit": "ms",
+      "display_kind": "duration",
+      "formula_description": "Frozen source observation for retrieval.descriptive_latency_ms",
+      "population_contract": "Population identified by the observation and immutable evidence record.",
+      "aggregation": "As reported by the frozen authoritative source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Frozen source observation for retrieval.descriptive_latency_ms",
+      "does_not_imply": [
+        "performance guarantee",
+        "production promotion"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "retrieval.hit_at_1",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "hit at 1",
+      "authority_class": "scientific_evaluator",
+      "canonical_unit": "fraction",
+      "display_kind": "proportion",
+      "formula_description": "Fraction of queries with a relevant first result.",
+      "population_contract": "Queries in the named evaluation population.",
+      "aggregation": "As reported by the frozen authoritative source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Fraction of queries with a relevant first result.",
+      "does_not_imply": [
+        "semantic answer correctness",
+        "production promotion",
+        "generalization beyond the recorded population"
+      ],
+      "precision": 1,
+      "range": {
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    {
+      "definition_id": "retrieval.mrr",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "mrr",
+      "authority_class": "scientific_evaluator",
+      "canonical_unit": "score",
+      "display_kind": "ranking_score_0_1",
+      "formula_description": "Mean reciprocal rank of the first relevant result.",
+      "population_contract": "Queries in the named evaluation population.",
+      "aggregation": "As reported by the frozen authoritative source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Mean reciprocal rank of the first relevant result.",
+      "does_not_imply": [
+        "semantic answer correctness",
+        "production promotion",
+        "generalization beyond the recorded population"
+      ],
+      "precision": 3,
+      "range": {
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    {
+      "definition_id": "retrieval.ndcg_at_10",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "ndcg at 10",
+      "authority_class": "scientific_evaluator",
+      "canonical_unit": "score",
+      "display_kind": "ranking_score_0_1",
+      "formula_description": "Mean normalized discounted cumulative gain at rank 10.",
+      "population_contract": "Queries in the named evaluation population.",
+      "aggregation": "As reported by the frozen authoritative source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Mean normalized discounted cumulative gain at rank 10.",
+      "does_not_imply": [
+        "semantic answer correctness",
+        "production promotion",
+        "generalization beyond the recorded population"
+      ],
+      "precision": 3,
+      "range": {
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    {
+      "definition_id": "retrieval.recall_at_10",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "recall at 10",
+      "authority_class": "scientific_evaluator",
+      "canonical_unit": "fraction",
+      "display_kind": "proportion",
+      "formula_description": "Mean recall of relevant evidence at rank 10.",
+      "population_contract": "Queries in the named evaluation population.",
+      "aggregation": "As reported by the frozen authoritative source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Mean recall of relevant evidence at rank 10.",
+      "does_not_imply": [
+        "semantic answer correctness",
+        "production promotion",
+        "generalization beyond the recorded population"
+      ],
+      "precision": 1,
+      "range": {
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    {
+      "definition_id": "runtime.compute_state",
+      "definition_revision": 1,
+      "indicator_class": "product_indicator",
+      "display_name": "compute state",
+      "authority_class": "runtime_api",
+      "canonical_unit": "status",
+      "display_kind": "status",
+      "formula_description": "Authoritative configured/resolved device, profile, backend, provider and lifecycle state.",
+      "population_contract": "Current installation and runtime.",
+      "aggregation": "As supplied by the named producer or explicit derivation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Authoritative configured/resolved device, profile, backend, provider and lifecycle state.",
+      "does_not_imply": [
+        "whole-operation completion",
+        "quality or competence",
+        "performance guarantee"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "runtime.image-bytes",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "image-bytes",
+      "authority_class": "accepted_evidence",
+      "canonical_unit": "bytes",
+      "display_kind": "byte_quantity",
+      "formula_description": "Frozen source observation for runtime.image-bytes",
+      "population_contract": "Population identified by the observation and immutable evidence record.",
+      "aggregation": "As reported by the frozen authoritative source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Frozen source observation for runtime.image-bytes",
+      "does_not_imply": [
+        "performance guarantee",
+        "production promotion"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "workspace.active_source_bytes",
+      "definition_revision": 1,
+      "indicator_class": "product_indicator",
+      "display_name": "active source bytes",
+      "authority_class": "presentation_derivation",
+      "canonical_unit": "bytes",
+      "display_kind": "byte_quantity",
+      "formula_description": "Sum of byte_size for active sources returned for the workspace.",
+      "population_contract": "Active sources in the current workspace.",
+      "aggregation": "As supplied by the named producer or explicit derivation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Sum of byte_size for active sources returned for the workspace.",
+      "does_not_imply": [
+        "whole-operation completion",
+        "quality or competence",
+        "performance guarantee"
+      ],
+      "precision": 3
+    },
+    {
+      "definition_id": "workspace.source_count",
+      "definition_revision": 1,
+      "indicator_class": "product_indicator",
+      "display_name": "source count",
+      "authority_class": "runtime_api",
+      "canonical_unit": "sources",
+      "display_kind": "count",
+      "formula_description": "Count of active sources returned for the workspace.",
+      "population_contract": "Current workspace.",
+      "aggregation": "As supplied by the named producer or explicit derivation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Count of active sources returned for the workspace.",
+      "does_not_imply": [
+        "whole-operation completion",
+        "quality or competence",
+        "performance guarantee"
+      ],
+      "precision": 3
+    }
+  ],
+  "catalog_id": "indicatorcatalog_ebff8403baafe162cd4dbb2984971e1437363ed59df2a64ba053d1b52775125c"
+}

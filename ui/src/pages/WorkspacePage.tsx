@@ -1,3 +1,4 @@
+import { formatDefinedIndicator } from "../features/indicators/catalog";
 import {
   useMutation,
   useQuery,
@@ -1174,14 +1175,14 @@ export function WorkspacePage() {
     if (sourcePhase === "ready" && limits) {
       return (
         <>
-          {countLabel} · {formatMiB(usedBytes)} MiB stored
+          {countLabel} · {formatDefinedIndicator("workspace.active_source_bytes", usedBytes)} active source data
         </>
       );
     }
     if (sourcePhase === "empty" && limits) {
       return (
         <>
-          {countLabel} · 0.0 MiB stored
+          {countLabel} · 0 B active source data
         </>
       );
     }

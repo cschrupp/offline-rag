@@ -173,7 +173,7 @@ describe("BETA-GAME-02B Quick Play presentation", () => {
     const user = userEvent.setup();
 
     expect(await contributionRail().findByText("42")).toBeInTheDocument();
-    expect(contributionRail().getByText("Current campaign contribution")).toBeInTheDocument();
+    expect(contributionRail().getByText(/Current campaign contribution points;/)).toBeInTheDocument();
     expect(contributionRail().getByText("Evidence judgments completed")).toBeInTheDocument();
 
     await user.selectOptions(

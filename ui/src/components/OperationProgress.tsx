@@ -322,7 +322,7 @@ export function OperationProgress({
   const reused = metrics?.embeddings_reused;
   const compactEmbeddingCounts =
     generated != null || reused != null
-      ? `Generated ${generated == null ? "—" : formatCount(generated)} · Reused ${reused == null ? "—" : formatCount(reused)} embeddings`
+      ? `Generated ${generated == null ? "Unavailable" : formatCount(generated)} · Reused ${reused == null ? "Unavailable" : formatCount(reused)} embeddings`
       : null;
   const throughput = metrics?.generated_chunks_per_sec;
   const sourceSummary = successfulSourceSummary(operation);
@@ -382,7 +382,7 @@ export function OperationProgress({
             {progressUnitLabel(progress.unit)
               ? ` ${progressUnitLabel(progress.unit)}`
               : ""}{" "}
-            · {percent}%
+            · {percent}% of current step
           </p>
           <progress
             value={progress.current}
@@ -413,7 +413,7 @@ export function OperationProgress({
       ) : null}
       {!terminal && throughput != null && Number.isFinite(throughput) && throughput > 0 ? (
         <p className="muted" data-testid="operation-throughput">
-          {formatRate(throughput)} new passages/s
+          {formatRate(throughput)} embeddings generated/s during dense generation
         </p>
       ) : null}
       {operation.status === "failed" &&

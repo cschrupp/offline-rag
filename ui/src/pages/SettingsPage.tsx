@@ -806,21 +806,21 @@ function ComputeSettingsForm({ state }: ComputeFormProps) {
               <strong>Runtime details</strong>
             </p>
             <p className="muted" style={{ margin: 0 }}>
-              Profile: {state.runtime.profile_id ?? "—"}
+              Profile: {state.runtime.profile_id ?? "Unavailable"}
               {" · "}
-              Representation: {state.runtime.representation_id ?? "—"}
+              Representation: {state.runtime.representation_id ?? "Unavailable"}
             </p>
             <p className="muted" style={{ margin: 0 }}>
-              Backend: {state.runtime.backend ?? "—"}
+              Backend: {state.runtime.backend ?? "Unavailable"}
               {" · "}
-              Provider: {state.runtime.provider ?? "—"}
+              Provider: {state.runtime.provider ?? "Unavailable"}
               {" · "}
-              Precision: {state.runtime.resolved_precision ?? "—"}
+              Precision: {state.runtime.resolved_precision ?? "Unavailable"}
             </p>
             <p className="muted" style={{ margin: 0 }}>
-              Model revision: {state.runtime.model_revision ?? "—"}
+              Model revision: {state.runtime.model_revision ?? "Unavailable"}
               {" · "}
-              Selection: {state.runtime.selection_reason ?? "—"}
+              Selection: {state.runtime.selection_reason ?? "Unavailable"}
             </p>
           </div>
         )}

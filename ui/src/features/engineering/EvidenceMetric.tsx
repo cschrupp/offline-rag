@@ -1,22 +1,20 @@
 import type { Metric } from "./evidenceTypes";
 
+import { formatIndicatorValue } from "../indicators/format";
+
 function formatMeasured(metric: Metric): string {
   const value = metric.value;
   if (value === null) return "Unavailable";
   let text: string;
-  if (metric.unit === "s") {
-    text = `${value.toFixed(2)} s`;
-  } else if (metric.unit === "ms") {
-    text = `${value} ms`;
-  } else if (metric.unit === "bytes") {
-    const gib = value / (1024 ** 3);
-    text = `${gib.toFixed(2)} GiB`;
-  } else if (metric.unit) {
-    text = `${value} ${metric.unit}`;
-  } else if (typeof value === "number" && value >= 0 && value <= 1) {
-    text = value.toFixed(3);
+  if (metric.display_kind) {
+    text = formatIndicatorValue(
+      value,
+      metric.display_kind,
+      metric.unit,
+      metric.precision,
+    );
   } else {
-    text = String(value);
+    return "Unavailable (missing indicator definition)";
   }
   if (metric.value_qualifier === "approximate") {
     return `≈ ${text}`;

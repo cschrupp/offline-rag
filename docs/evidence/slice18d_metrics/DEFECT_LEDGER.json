@@ -1,0 +1,65 @@
+{
+  "contract": "seneca-indicator-defects-v1",
+  "defects": [
+    {
+      "defect_id": "18D-001",
+      "problem": "Range-based Engineering formatting",
+      "resolution": "RESOLVED",
+      "remedy": "Explicit display kinds and stable observation definition refs"
+    },
+    {
+      "defect_id": "18D-002",
+      "problem": "Engineering byte units always GiB",
+      "resolution": "RESOLVED",
+      "remedy": "Adaptive binary byte formatter"
+    },
+    {
+      "defect_id": "18D-003",
+      "problem": "Workspace bytes labeled stored",
+      "resolution": "RESOLVED",
+      "remedy": "Active source data including zero state"
+    },
+    {
+      "defect_id": "18D-004",
+      "problem": "Progress percent ambiguous",
+      "resolution": "RESOLVED",
+      "remedy": "Explicit current-step wording; no ETA"
+    },
+    {
+      "defect_id": "18D-005",
+      "problem": "Embedding speed numerator ambiguous",
+      "resolution": "RESOLVED",
+      "remedy": "Embeddings generated per second during dense generation"
+    },
+    {
+      "defect_id": "18D-006",
+      "problem": "Contribution score interpretation",
+      "resolution": "RESOLVED",
+      "remedy": "Contribution points, weights and non-quality explanation"
+    },
+    {
+      "defect_id": "18D-007",
+      "problem": "Evidence coverage ambiguous",
+      "resolution": "RESOLVED",
+      "remedy": "Active absolute-relevance task denominator explained"
+    },
+    {
+      "defect_id": "18D-008",
+      "problem": "Unknown compute/count values rendered as dash",
+      "resolution": "RESOLVED",
+      "remedy": "Unavailable measurement label distinct from runtime state"
+    },
+    {
+      "defect_id": "18D-009",
+      "problem": "Definitions not bound to frozen observations",
+      "resolution": "RESOLVED",
+      "remedy": "Versioned catalog identity, population and definition references; preserve old values"
+    },
+    {
+      "defect_id": "18D-010",
+      "problem": "REL-01-only runtime packaging record marked current after 18C distribution promotion",
+      "resolution": "RESOLVED",
+      "remedy": "Historical currency and explicit 18C evolution caveat; accepted historical observation values unchanged."
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+import { formatDefinedIndicator } from "../indicators/catalog";
 import type { Source } from "../../api/types";
 import { Button } from "../../components/Button";
 import { EmptyState } from "../../components/EmptyState";
@@ -5,7 +6,6 @@ import { SourceActionsMenu } from "../../components/SourceActionsMenu";
 import { userFacingErrorMessage } from "../../api/errors";
 import {
   formatBytes,
-  formatMiB,
   type SourceCapacityLimits,
 } from "../workspaces/format";
 import type { SourceListPhase } from "../workspaces/sourceLoadingState";
@@ -77,7 +77,7 @@ export function SourceRail({
                 ? `${sources.length} / ${limits.maxActiveSources}`
                 : `${sources.length} sources`}
               <br />
-              {formatMiB(usedBytes)} MiB stored
+              {formatDefinedIndicator("workspace.active_source_bytes", usedBytes)} active source data
             </>
           ) : sourcePhase === "ready" ? (
             <>
@@ -95,7 +95,7 @@ export function SourceRail({
                 ? `0 / ${limits.maxActiveSources}`
                 : "0 sources"}
               <br />
-              0.0 MiB stored
+              0 B active source data
             </>
           ) : (
             <>

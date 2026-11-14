@@ -15,7 +15,7 @@ import { installFetchMock, jsonResponse } from "./mockApi";
 const here = dirname(fileURLToPath(import.meta.url));
 const globalCss = readFileSync(join(here, "../styles/global.css"), "utf8");
 const manifestText = readFileSync(
-  join(here, "../../public/evidence/engineering-evidence-v2.json"),
+  join(here, "../../public/evidence/engineering-evidence-v3.json"),
   "utf8",
 );
 const manifestJson = JSON.parse(manifestText) as EngineeringEvidenceManifest;
@@ -32,7 +32,7 @@ function installAppMocks(options?: {
   return installFetchMock(async ({ url, method }) => {
     if (url === "/health/ready") return jsonResponse({ status: "ready" });
     if (url === "/v1/workspaces") return jsonResponse([]);
-    if (url === "/evidence/engineering-evidence-v2.json") {
+    if (url === "/evidence/engineering-evidence-v3.json") {
       expect(method).toBe("GET");
       if (mode === "missing") {
         return new Response("missing", { status: 404 });
@@ -352,7 +352,7 @@ describe("16E evaluation evidence UI", () => {
       expect(mock.calls.some((call) => call.url.includes("/eval/"))).toBe(false);
     });
     expect(
-      mock.calls.some((call) => call.url === "/evidence/engineering-evidence-v2.json"),
+      mock.calls.some((call) => call.url === "/evidence/engineering-evidence-v3.json"),
     ).toBe(true);
     mock.restore();
   });
@@ -362,7 +362,7 @@ describe("16E metric rendering", () => {
   it("keeps measured zero numeric and never zeros unevaluable", () => {
     const { container: zeroContainer } = renderWithProviders(
       <EvidenceMetric
-        metric={{ availability: "measured", value: 0, value_qualifier: "exact" }}
+        metric={{ availability: "measured", value: 0, display_kind: "ranking_score_0_1", value_qualifier: "exact" }}
       />,
     );
     expect(zeroContainer.textContent).toBe("0.000");
@@ -395,7 +395,7 @@ describe("16E overview", () => {
 describe("16E manifest validation", () => {
   it("accepts the committed manifest contract", () => {
     const validated = validateEngineeringEvidenceManifest(manifestJson);
-    expect(validated.contract).toBe("seneca-engineering-evidence-manifest-v2");
+    expect(validated.contract).toBe("seneca-engineering-evidence-manifest-v3");
     expect(validated.records.length).toBe(12);
   });
 });

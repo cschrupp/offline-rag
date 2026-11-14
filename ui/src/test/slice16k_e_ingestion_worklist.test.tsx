@@ -331,7 +331,7 @@ describe("16K-E durable operation presentation", () => {
       "Generated 16 · Reused 4 embeddings",
     );
     expect(screen.getByTestId("operation-throughput")).toHaveTextContent(
-      "8.4 new passages/s",
+      "8.4 embeddings generated/s during dense generation",
     );
     expect(screen.getByTestId("operation-execution-device")).toHaveTextContent("CUDA");
     expect(screen.getByRole("progressbar")).toBeInTheDocument();

@@ -1,24 +1,21 @@
+import { formatDefinedIndicator } from "../../indicators/catalog";
 import type { GoldContribution } from "../types";
 
 type Props = {
   contribution: GoldContribution;
 };
 
-function formatCoverage(fraction: number | null): string | null {
-  if (fraction === null) return null;
-  return `${Math.round(fraction * 1000) / 10}%`;
-}
-
 export function ContributionDashboard({ contribution }: Props) {
-  const coveragePct = formatCoverage(contribution.coverage_fraction);
+  const coveragePct = contribution.coverage_fraction === null ? null : formatDefinedIndicator("gold.relevance_task_coverage", contribution.coverage_fraction);
 
   return (
     <div className="stack gold-lab-contribution">
       <header className="stack" style={{ gap: "0.35rem" }}>
         <h1 style={{ margin: 0 }}>Gold Contribution</h1>
         <p className="muted" style={{ margin: 0 }}>
-          Personal scientific work progress for this campaign. Scores come from
-          the server contribution contract only.
+          Personal scientific work progress for this campaign. Contribution
+          points come from the server contract and do not measure judgment
+          accuracy, expert competence, model quality, or competitive ranking.
         </p>
       </header>
 
@@ -26,7 +23,7 @@ export function ContributionDashboard({ contribution }: Props) {
         className="gold-lab-contribution-score"
         aria-labelledby="gold-contribution-score-heading"
       >
-        <h2 id="gold-contribution-score-heading">Total score</h2>
+        <h2 id="gold-contribution-score-heading">Contribution points</h2>
         <p
           className="gold-lab-contribution-total"
           data-testid="contribution-total-score"
@@ -34,6 +31,10 @@ export function ContributionDashboard({ contribution }: Props) {
           {contribution.total_score}
         </p>
       </section>
+      <details>
+        <summary>How contribution points are weighted</summary>
+        <p>Expert judgment +1; question reviewed +5; case completed +10; Gold finalized +15; hard call resolved +5.</p>
+      </details>
 
       <dl className="gold-lab-meta gold-lab-contribution-metrics">
         <div>
@@ -69,7 +70,8 @@ export function ContributionDashboard({ contribution }: Props) {
       </dl>
 
       <section aria-labelledby="gold-contribution-coverage-heading">
-        <h2 id="gold-contribution-coverage-heading">Evidence coverage</h2>
+        <h2 id="gold-contribution-coverage-heading">Relevance-task coverage</h2>
+        <p>Completed active absolute-relevance tasks out of all active absolute-relevance tasks.</p>
         <p data-testid="contribution-coverage-counts">
           {contribution.completed_active_absolute_tasks} /{" "}
           {contribution.total_active_absolute_tasks}
@@ -78,7 +80,9 @@ export function ContributionDashboard({ contribution }: Props) {
               {" "}
               <span data-testid="contribution-coverage-pct">({coveragePct})</span>
             </>
-          ) : null}
+          ) : (
+            <span> · Not applicable: no active relevance tasks</span>
+          )}
         </p>
       </section>
 

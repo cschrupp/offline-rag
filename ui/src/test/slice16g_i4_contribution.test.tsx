@@ -61,20 +61,22 @@ describe("16G-I4 contribution dashboard", () => {
       "3 / 6",
     );
     expect(screen.getByTestId("contribution-coverage-pct")).toHaveTextContent(
-      "50%",
+      "50.0%",
     );
     expect(screen.getByTestId("contribution-question-progress")).toHaveTextContent(
       "2 / 4",
     );
 
+    expect(screen.getByRole("heading", { name: "Contribution points" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Relevance-task coverage" })).toBeInTheDocument();
+    expect(screen.getByText(/do not measure judgment accuracy/)).toBeInTheDocument();
+    expect(screen.getByText(/Expert judgment \+1; question reviewed \+5/)).toBeInTheDocument();
     const body = document.body.textContent ?? "";
     for (const forbidden of [
       "leaderboard",
-      "rank",
       "streak",
       "speed score",
       "model agreement",
-      "competitive",
     ]) {
       expect(body.toLowerCase()).not.toContain(forbidden);
     }

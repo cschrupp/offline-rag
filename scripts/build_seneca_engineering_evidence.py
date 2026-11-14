@@ -48,10 +48,10 @@ ALLOWED_QUALIFIER = frozenset({"exact", "approximate"})
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_REGISTRY = (
-    REPO_ROOT / "eval" / "presentation" / "accepted_evidence_registry_v2.json"
+    REPO_ROOT / "eval" / "presentation" / "accepted_evidence_registry_v3.json"
 )
 DEFAULT_MANIFEST = (
-    REPO_ROOT / "ui" / "public" / "evidence" / "engineering-evidence-v2.json"
+    REPO_ROOT / "ui" / "public" / "evidence" / "engineering-evidence-v3.json"
 )
 
 
@@ -651,34 +651,187 @@ def project_record(
     return projected_record
 
 
+def bind_catalog(
+    registry: dict[str, Any], records: list[dict[str, Any]], repo_root: Path
+) -> dict[str, Any]:
+    """Validate explicit observation bindings without deriving scientific values."""
+    catalog = load_json(repo_root / "eval/presentation/indicator_catalog_v1.json")
+    content = {key: value for key, value in catalog.items() if key != "catalog_id"}
+    identity = "indicatorcatalog_" + sha256_bytes(canonical_json_bytes(content))
+    if (
+        catalog.get("contract") != "seneca-indicator-catalog-v1"
+        or catalog.get("version") != 1
+    ):
+        raise ExporterError("invalid indicator catalog contract")
+    if catalog.get("catalog_id") != identity or registry.get("catalog_id") != identity:
+        raise ExporterError("indicator catalog identity mismatch")
+    definitions = {}
+    kinds = {
+        "proportion",
+        "ranking_score_0_1",
+        "count",
+        "points",
+        "duration",
+        "byte_quantity",
+        "throughput",
+        "ratio",
+        "scalar",
+        "percentage_point_delta",
+        "relative_percent_delta",
+        "status",
+    }
+    authorities = {
+        "scientific_evaluator",
+        "accepted_evidence",
+        "runtime_api",
+        "product_policy",
+        "gold_server",
+        "presentation_derivation",
+        "human_governance",
+    }
+    for definition in catalog["definitions"]:
+        for field in (
+            "definition_id",
+            "display_name",
+            "canonical_unit",
+            "formula_description",
+            "population_contract",
+            "aggregation",
+            "interpretation",
+        ):
+            _require_str(definition.get(field), "definition." + field)
+        if (
+            type(definition.get("definition_revision")) is not int
+            or definition["definition_revision"] < 1
+        ):
+            raise ExporterError("invalid definition revision")
+        if (
+            definition.get("display_kind") not in kinds
+            or definition.get("authority_class") not in authorities
+        ):
+            raise ExporterError("invalid definition display kind or authority")
+        if (
+            type(definition.get("precision")) is not int
+            or not 0 <= definition["precision"] <= 10
+        ):
+            raise ExporterError("invalid definition precision")
+        if not definition.get("does_not_imply") or not set(
+            definition.get("availability", [])
+        ).issubset(ALLOWED_AVAILABILITY):
+            raise ExporterError("invalid definition interpretation/availability")
+        key = (definition["definition_id"], definition["definition_revision"])
+        if key in definitions:
+            raise ExporterError("duplicate definition revision")
+        definitions[key] = definition
+    for raw, record in zip(registry["records"], records, strict=True):
+        bindings = raw.get("observation_bindings", {})
+        visited = set()
+
+        def walk(
+            node: Any,
+            path: str = "",
+            bindings: dict[str, Any] = bindings,
+            visited: set[str] = visited,
+        ) -> None:
+            if isinstance(node, dict):
+                if "availability" in node and "value" in node:
+                    binding = bindings.get(path)
+                    if not isinstance(binding, dict):
+                        raise ExporterError(f"missing observation binding: {path}")
+                    if set(binding) - {
+                        "definition_ref",
+                        "population",
+                        "precision_qualifier",
+                        "applicable_count",
+                        "availability_reason",
+                    }:
+                        raise ExporterError(
+                            "observation binding cannot override evidence"
+                        )
+                    ref = binding.get("definition_ref", {})
+                    key = (ref.get("definition_id"), ref.get("definition_revision"))
+                    if key not in definitions:
+                        raise ExporterError(f"unknown definition revision: {key}")
+                    definition = definitions[key]
+                    if node["availability"] not in definition["availability"]:
+                        raise ExporterError("incompatible availability")
+                    if (
+                        node.get("unit")
+                        and node["unit"] != definition["canonical_unit"]
+                    ):
+                        raise ExporterError("incompatible observation unit")
+                    population = binding.get("population")
+                    if (
+                        not isinstance(population, dict)
+                        or not isinstance(population.get("label"), str)
+                        or not population["label"].strip()
+                    ):
+                        raise ExporterError("observation population required")
+                    for field in ("total_count", "applicable_count"):
+                        count = population.get(field)
+                        if count is not None and (type(count) is not int or count < 0):
+                            raise ExporterError("invalid population count")
+                    value = node["value"]
+                    bounds = definition.get("range", {})
+                    if value is not None and (
+                        value < bounds.get("minimum", -math.inf)
+                        or value > bounds.get("maximum", math.inf)
+                    ):
+                        raise ExporterError("observation outside definition range")
+                    node.update(binding)
+                    node["display_kind"] = definition["display_kind"]
+                    node["precision"] = definition["precision"]
+                    visited.add(path)
+                else:
+                    for key, value in node.items():
+                        walk(value, path + "/" + key)
+            elif isinstance(node, list):
+                for index, value in enumerate(node):
+                    walk(value, path + "/" + str(index))
+
+        walk(record["presentation"])
+        if visited != set(bindings):
+            raise ExporterError("unused observation binding")
+    return catalog
+
+
 def build_manifest(
     registry: dict[str, Any], *, repo_root: Path
 ) -> tuple[dict[str, Any], bytes]:
     contract = _require_str(registry.get("contract"), "registry.contract")
-    if contract != REGISTRY_CONTRACT:
+    if contract not in (REGISTRY_CONTRACT, "seneca-engineering-evidence-registry-v3"):
         raise ExporterError(f"unknown registry contract/version: {contract}")
     version = registry.get("version")
-    if version != 2:
+    if (
+        version not in (2, 3)
+        or contract != f"seneca-engineering-evidence-registry-v{version}"
+    ):
         raise ExporterError(f"unknown registry contract/version: {version}")
     records_in = _require_list(registry.get("records"), "registry.records")
     seen: set[str] = set()
     records = [
         project_record(rec, repo_root=repo_root, seen_ids=seen) for rec in records_in
     ]
+    catalog = bind_catalog(registry, records, repo_root) if version == 3 else None
     records.sort(key=lambda row: row["evidence_id"])
+    manifest_contract = f"seneca-engineering-evidence-manifest-v{version}"
     payload = {
-        "contract": MANIFEST_CONTRACT,
-        "version": 2,
+        "contract": manifest_contract,
+        "version": version,
         "records": records,
     }
+    if catalog is not None:
+        payload["metric_catalog"] = catalog
     body = canonical_json_bytes(payload)
     manifest_id = f"engmanifest_{sha256_bytes(body)}"
     manifest = {
-        "contract": MANIFEST_CONTRACT,
+        "contract": manifest_contract,
         "manifest_id": manifest_id,
-        "version": 2,
+        "version": version,
         "records": records,
     }
+    if catalog is not None:
+        manifest["metric_catalog"] = catalog
     return manifest, canonical_json_bytes(manifest)
 
 
@@ -707,7 +860,7 @@ def main(argv: list[str] | None = None) -> int:
         "--output",
         type=Path,
         default=DEFAULT_MANIFEST,
-        help="Path to write engineering-evidence-v2.json",
+        help="Path to write engineering-evidence-v3.json",
     )
     parser.add_argument(
         "--repo-root",

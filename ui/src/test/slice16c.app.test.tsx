@@ -412,7 +412,8 @@ describe("source management", () => {
 
     renderApp("/workspaces/ws_1");
     expect(await screen.findByRole("button", { name: "sops.pdf" })).toBeInTheDocument();
-    expect(screen.getByText(/2\.0 KiB|2048 B|2 KiB/)).toBeInTheDocument();
+    expect(screen.getAllByText(/2\.0 KiB|2048 B|2 KiB/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/2 KiB active source data/).length).toBeGreaterThan(0);
     expect(screen.getByText(/Version 1/)).toBeInTheDocument();
     expect(screen.queryByText(/vault/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/corpus/i)).not.toBeInTheDocument();

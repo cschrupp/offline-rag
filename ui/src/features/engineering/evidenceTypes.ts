@@ -1,7 +1,7 @@
 export const ENGINEERING_EVIDENCE_MANIFEST_PATH =
-  "/evidence/engineering-evidence-v2.json";
+  "/evidence/engineering-evidence-v3.json";
 
-export const MANIFEST_CONTRACT = "seneca-engineering-evidence-manifest-v2";
+export const MANIFEST_CONTRACT = "seneca-engineering-evidence-manifest-v3";
 
 export type MetricAvailability =
   | "measured"
@@ -12,6 +12,8 @@ export type MetricAvailability =
 export type Metric = {
   availability: MetricAvailability;
   value: number | null;
+  display_kind?: "proportion" | "ranking_score_0_1" | "count" | "points" | "duration" | "byte_quantity" | "throughput" | "ratio" | "scalar" | "percentage_point_delta" | "relative_percent_delta" | "status";
+  precision?: number;
   unit?: string;
   value_qualifier?: "exact" | "approximate" | null;
 };
