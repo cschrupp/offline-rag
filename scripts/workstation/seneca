@@ -38,6 +38,10 @@ case "$command_name" in
       printf 'Seneca settings not found: %s\nRun the workstation installer first.\n' "$ENV_FILE" >&2
       exit 1
     fi
+    # The CLI loads a .env from its current directory. Use the installed
+    # release so an unrelated project checkout cannot override workstation
+    # diagnostics with its development environment.
+    cd "$APP_DIR"
     exec "$APP_DIR/.venv/bin/python" "$APP_DIR/scripts/workstation/configure.py" \
       exec-env --path "$ENV_FILE" -- \
       "$APP_DIR/.venv/bin/offline-rag" doctor \

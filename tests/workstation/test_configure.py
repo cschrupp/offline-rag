@@ -154,6 +154,7 @@ def test_workstation_provisioning_uses_direct_configured_cli_and_defers_doctor()
     assert 'run_provision "post-provision doctor"' not in provision
     assert "seneca start" in provision
     assert '--config "$APP_DIR/config/base.yaml"' in wrapper
+    assert 'cd "$APP_DIR"\n    exec "$APP_DIR/.venv/bin/python"' in wrapper
     assert "systemd-run" not in wrapper
 
 
