@@ -103,16 +103,15 @@ and its linked sanitized `RUN_002_EVIDENCE_INDEX.md`.
     -> BETA-CONV-02 analytical synthesis DEFERRED / NOT AUTHORIZED
     -> Slice 17 COMPLETE / HUMAN ACCEPTED / PROMOTED at 3fb65e34
     -> REL-01 COMPLETE / HUMAN ACCEPTED / PROMOTED with evidence at 0a1b5a45;
-       REL-01 delivered CPU image only; planned public CPU/CUDA containers and
-       universal workstation distribution assigned to 18C / NOT AUTHORIZED
+       REL-01 delivered CPU image only; public CPU/CUDA containers and universal
+       workstation distribution were later completed under Slice 18C
     -> Slice 18A COMPLETE / HUMAN ACCEPTED / PROMOTED at 8431c134
     -> Slice 18B workstation distribution Revision 2 COMPLETE / HUMAN ACCEPTED /
        PROMOTED at f5eda171; real-host systemd-user / WSL lifecycle validation
        deferred
     -> Slice 18C Universal Workstation Distribution & Release Optimization —
-       IMPLEMENTATION AND QUALIFICATION COMPLETE / INDEPENDENT REVIEW PENDING
-       at 9e2cf563737cf4c9a927753c7768f5e4897b1a7f
-    -> Slice 18D Product Metrics Audit & Explainability — PLANNED / NOT AUTHORIZED
+       COMPLETE / HUMAN ACCEPTED / PROMOTED at c296e21afa740aa8fa7199d88ffda68c59d1be03
+    -> Slice 18D Product Metrics Audit & Explainability — IMPLEMENTATION COMPLETE / INDEPENDENT REVIEW PENDING at 1e0720ed
     -> Slice 18E Canonical Documentation & Portfolio Narrative — PLANNED / NOT AUTHORIZED
     -> Slice 18F Public Release & Demo Assembly — PLANNED / NOT AUTHORIZED
     -> Milestone 7 closeout — NOT AUTHORIZED
@@ -691,9 +690,9 @@ PROMOTED with qualification closeout at
 `0a1b5a45bff94ae12c8fe8d423c825572bc1c480`. REL-01 delivered the CPU release
 image only; its original scope did not include a CUDA image. At REL-01 closeout,
 the bounded public CPU/CUDA container split and universal workstation
-distribution were assigned to 18C (then PLANNED / NOT AUTHORIZED). 18C is now
-authorized, implemented, and qualified pending independent review. The material
-below records REL-01's completed scope and original rationale.
+distribution were assigned to 18C (then PLANNED / NOT AUTHORIZED) and are now
+COMPLETE / HUMAN ACCEPTED / PROMOTED at `c296e21a`. The material below records
+REL-01's completed scope and original rationale.
 
 The authorized REL-01 tranche measures the current image, establishes a locked
 CPU-only production dependency selection, adopts a Python builder/runtime
@@ -861,11 +860,9 @@ Slice 18A — COMPLETE / HUMAN ACCEPTED / PROMOTED
 Slice 18B Revision 2 — COMPLETE / HUMAN ACCEPTED / PROMOTED
 Real-host systemd-user / WSL lifecycle — DEFERRED_REAL_HOST_VALIDATION
         ->
-18C — Universal Workstation Distribution & Release Optimization —
-IMPLEMENTATION AND QUALIFICATION COMPLETE / INDEPENDENT REVIEW PENDING at
-9e2cf563737cf4c9a927753c7768f5e4897b1a7f
+18C — Universal Workstation Distribution & Release Optimization — COMPLETE / HUMAN ACCEPTED / PROMOTED at c296e21a
         ->
-18D — Product Metrics Audit & Explainability — PLANNED / NOT AUTHORIZED
+18D — Product Metrics Audit & Explainability — IMPLEMENTATION COMPLETE / INDEPENDENT REVIEW PENDING at 1e0720ed
         ->
 18E — Canonical Documentation & Portfolio Narrative — PLANNED / NOT AUTHORIZED
         ->

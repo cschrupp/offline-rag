@@ -3365,13 +3365,12 @@ passed both jobs; the implementation result and baseline evidence remain in
 **REL-01 — CPU Release Packaging:** **COMPLETE / INDEPENDENTLY ACCEPTED / HUMAN
 ACCEPTED / PROMOTED** with evidence closeout at `0a1b5a45`. REL-01 delivered
 the CPU release image only. The bounded CPU/CUDA public container split and
-universal workstation distribution are authorized under 18C; implementation
-and qualification are complete, awaiting independent review at
-`9e2cf563737cf4c9a927753c7768f5e4897b1a7f`.
+universal workstation distribution are complete / Human accepted / promoted
+under 18C at `c296e21afa740aa8fa7199d88ffda68c59d1be03`.
 
-**Slice 18 — Portfolio Release Program:** **18A and 18B REVISION 2 COMPLETE /
-HUMAN ACCEPTED / PROMOTED; 18C IMPLEMENTATION AND QUALIFICATION COMPLETE /
-INDEPENDENT REVIEW PENDING; 18D–18F PLANNED / NOT AUTHORIZED**
+**Slice 18 — Portfolio Release Program:** **18A–18C COMPLETE / HUMAN
+ACCEPTED / PROMOTED; 18D DESIGN HUMAN ACCEPTED / IMPLEMENTATION COMPLETE /
+INDEPENDENT REVIEW PENDING; 18E–18F PLANNED / NOT AUTHORIZED**
 - Slice 18A delivered the reviewed six-record, two-route evidence reconciliation
   and presentation implementation.
 - Slice 18B covers the Linux x86-64 and Windows 11 + WSL2 CPU workstation
@@ -3422,9 +3421,8 @@ Later M7 checklist:
   PROMOTED** at evidence head `f5eda171925b791f94589637eb690a0de125aefb`;
   systemd-user and WSL distro lifecycle remain deferred)
 - [ ] Slice 18C — Universal Workstation Distribution & Release Optimization
-  (**AUTHORIZED / IMPLEMENTATION AND QUALIFICATION COMPLETE; INDEPENDENT REVIEW
-  PENDING at `9e2cf563737cf4c9a927753c7768f5e4897b1a7f`**)
-- [ ] Slice 18D — Product Metrics Audit & Explainability (**PLANNED / NOT AUTHORIZED**)
+  (**COMPLETE / HUMAN ACCEPTED / PROMOTED at `c296e21a`**)
+- [ ] Slice 18D — Product Metrics Audit & Explainability (**IMPLEMENTATION COMPLETE / INDEPENDENT REVIEW PENDING at `1e0720ed`**)
 - [ ] Slice 18E — Canonical Documentation & Portfolio Narrative (**PLANNED / NOT AUTHORIZED**)
 - [ ] Slice 18F — Public Release & Demo Assembly (**PLANNED / NOT AUTHORIZED**)
 - [ ] Milestone 7 closeout (**NOT AUTHORIZED**)
@@ -3447,10 +3445,8 @@ COMPLETE / ACCEPTED / SEALED** at `9c178ffb033cde41849379fc914f321697ff8691`; **
 Slice 17 is **COMPLETE / HUMAN ACCEPTED / PROMOTED**. Slice 18A is **COMPLETE /
 HUMAN ACCEPTED / PROMOTED**. Slice 18B Revision 2 is **COMPLETE / HUMAN
 ACCEPTED / PROMOTED**. Real-host systemd-user and WSL distro lifecycle
-validation remain deferred. Slice 18C implementation and qualification are
-**COMPLETE / READY FOR INDEPENDENT REVIEW** at
-`9e2cf563737cf4c9a927753c7768f5e4897b1a7f`; Slices
-18D–18F are **PLANNED / NOT AUTHORIZED**;
+validation remain deferred. Slice 18C is **COMPLETE / HUMAN ACCEPTED / PROMOTED** at `c296e21a`. Slice 18D implementation is
+**COMPLETE / INDEPENDENT REVIEW PENDING** at `1e0720ed`; 18E/18F are **PLANNED / NOT AUTHORIZED**;
 Milestone 7 closeout remains **NOT AUTHORIZED**. See
 [`docs/slice18_release_plan.md`](docs/slice18_release_plan.md) for the canonical
 Slice 18 plan.

@@ -109,3 +109,32 @@ ui/src/test/slice16g_i4_contribution.test.tsx
 ui/src/test/slice16h_integration_acceptance.test.tsx
 ui/src/test/slice16k_e_ingestion_worklist.test.tsx
 ui/src/test/slice18d_indicator_semantics.test.tsx
+
+## Independent review corrective
+
+IR-001 requested catalog duration precision consistency and current-status
+reconciliation. Corrective implementation commit:
+`8f9a7ef10aceabbef05a29deb7482561ec29ee12`.
+
+All duration definitions now declare precision 2 and the renderer uses the
+precision passed from the catalog. Regression covers catalog-style `2` and a
+`3` precision override. Catalog identity is now
+`indicatorcatalog_5dbaa39fb4ef3c7386f218c2c7db71fd5cc13c81ccff89f3ea0f6568b615cd5f`;
+v3 manifest is
+`engmanifest_72ec47330086d8452cf00a982cf628f26b85b50cc688d030ccb5de983cfe2dee`.
+A direct recursive comparison reports zero differences in all 107 v2/v3
+`(availability, value, unit, value_qualifier)` observations.
+
+Focused revalidation after the corrective:
+
+- 36 Python catalog/exporter tests passed.
+- 5 indicator semantic UI tests passed.
+- Exporter regeneration check passed.
+- `git diff --check` passed.
+- Live planning summaries now record 18C COMPLETE / HUMAN ACCEPTED / PROMOTED
+  and 18D DESIGN HUMAN ACCEPTED / IMPLEMENTATION COMPLETE / INDEPENDENT REVIEW
+  PENDING; 18E/18F and M7 remain unauthorized.
+- Full UI suite (50 files / 463 tests), typecheck, lint and build passed on the
+  parent implementation before this narrow formatter/catalog change. The
+  corrective then ran the focused UI suite and exporter/value-preservation
+  checks; no full rerun was necessary for this isolated behavior.
