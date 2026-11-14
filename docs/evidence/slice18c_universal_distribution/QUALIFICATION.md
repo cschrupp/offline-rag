@@ -3,7 +3,7 @@
 **Authority:** `S18C-UNIVERSAL-DISTRIBUTION-IMPL-001`  
 **Canonical base:** `e98fc147fe754936152024aa6630a17c43aa15da`  
 **Initial implementation candidate:** `2bae0a23aa9051bc0ca2b9276b421d2293423d51`
-**Current corrective candidate:** `8541f8af3ce7a4b906a36f252cb1b2f0a4dbc778`
+**Current corrective candidate:** `70b5fb04813851a27332f369d290c14da0cf8fb5`
 **Branch:** `feature/slice18c-universal-distribution`  
 **Current disposition:** CUDA container qualification passed; the workstation
 round-trip has not yet been executed against the supported WSL-local Ollama
@@ -184,11 +184,13 @@ was no `seneca.service` under the user's systemd scope. WSL-local `ollama` and
 `~/.ollama` were also absent. No Seneca installation or persistent data/model/
 service state was changed.
 
-Windows PowerShell had previously confirmed a Windows Ollama model, but testing
-WSL-to-Windows API reachability used an out-of-scope topology. Its connection
-failure does not establish that the supported workstation qualification is
-unavailable. The supported topology—Seneca and Ollama in the same WSL Linux
-environment using `127.0.0.1:11434`—has not yet been prepared or tested.
+Windows PowerShell had previously confirmed a Windows Ollama model. At the
+time of this historical attempt, the workstation qualification was treated as
+requiring Seneca and Ollama in the same WSL Linux environment. The earlier
+WSL-to-Windows API reachability check failed under that then-assumed scope.
+The Human authority clarification below supersedes that topology restriction
+for current 18C qualification; this historical result is retained without
+rewriting what was tested.
 
 To prepare it without changing global services, the official Ollama v0.40.16
 Linux runtime was inspected for temporary installation under `/tmp`. The
@@ -216,6 +218,31 @@ and UI source identity to `8541f8af`; the archive SHA-256 was recorded above.
 Those package checks do not substitute for installation or CPU→CUDA→CPU
 qualification.
 
+### Current 18C Windows Ollama topology clarification
+
+Human authority for current 18C qualification permits Windows-native Ollama
+when WSL2 Seneca can reach it through localhost interoperability. The supported
+configuration is `OFFLINE_RAG_LLM_BASE_URL=http://127.0.0.1:11434/v1` and
+`OFFLINE_RAG_LLM_MODEL=qwen3.6:35b-a3b`. No Linux Ollama executable, service,
+or model store is required in WSL. Do not install a duplicate runtime/model
+or probe LAN addresses. The endpoint must remain local/private, the selected
+model must exist, and no cloud fallback is permitted. This 18C extension does
+not rewrite the narrower historical 18B workstation scope.
+
+On corrective package candidate `70b5fb04813851a27332f369d290c14da0cf8fb5`,
+the workstation tools initially failed to parse because two exception clauses
+used invalid Python syntax. Commit `70b5fb04` fixes those clauses and adds a
+readiness-retry regression. The exact-candidate package was rebuilt as
+`seneca-workstation-0.1.0-linux-x86_64-70b5fb048138.tar.gz` (SHA-256
+`536cb0a55fc45a43140b489c2f3ab090c29a7f1a03861366392648680655ab8c`,
+2,498,409 bytes). The
+package's host tool compiles, and preflight confirms the WSL2/ext4 paths,
+available memory, systemd user manager, and approved Ollama endpoint/model.
+Preflight currently blocks installation because systemd user lingering is
+disabled. Enabling it requires interactive sudo credentials, which were not
+available to the qualification process. No Seneca installation or user data,
+model, or service state has been modified.
+
 ### Corrective validation and current disposition
 
 | Check | Result |
@@ -232,10 +259,11 @@ changed. `npm ci` also retains the previously reported 13 audit advisories and
 the Vite large-chunk advisory; no dependency updates were made.
 
 **Current result:** CUDA container distribution and runtime qualification
-cells PASS. The CPU→CUDA→CPU workstation qualification is **NOT YET EXECUTED**
-against the supported WSL-local Ollama topology. Slice 18C is therefore **not
-qualification-complete**, not Human accepted, and not promoted. The earlier
-WSL-to-Windows reachability check is retained as an observation of an
-out-of-scope topology, not as the reason the supported qualification is
-unexecuted. The original candidate's earlier package/image measurements and
+cells PASS. The approved Windows-native Ollama endpoint/model is reachable
+from WSL at `127.0.0.1:11434`; no LAN probe or WSL-local Ollama installation
+was performed. The CPU→CUDA→CPU workstation qualification is **NOT YET
+EXECUTED** because installer preflight requires systemd user lingering and
+the qualification process cannot provide sudo credentials. Slice 18C is
+therefore **not qualification-complete**, not Human accepted, and not
+promoted. The original candidate's earlier package/image measurements and
 failure state above remain historical evidence.
