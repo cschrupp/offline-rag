@@ -5,9 +5,9 @@
 **Initial implementation candidate:** `2bae0a23aa9051bc0ca2b9276b421d2293423d51`
 **Current corrective candidate:** `8541f8af3ce7a4b906a36f252cb1b2f0a4dbc778`
 **Branch:** `feature/slice18c-universal-distribution`  
-**Current disposition:** CUDA container qualification passed; workstation
-round-trip remains unavailable because WSL cannot reach the existing Windows
-Ollama endpoint. Slice 18C is not complete or Human accepted.
+**Current disposition:** CUDA container qualification passed; the workstation
+round-trip has not yet been executed against the supported WSL-local Ollama
+topology. Slice 18C is not complete or Human accepted.
 
 ## Historical qualification record — initial candidate `2bae0a23`
 
@@ -180,27 +180,36 @@ rewritten as passes for their earlier images.
 
 The workstation preflight found these normal user paths absent:
 `~/.local/share/seneca`, `~/.config/seneca`, and `~/.local/bin/seneca`; there
-was no `seneca.service` under the user's systemd scope. No workstation
-installation or persistent data/model/service state was changed.
+was no `seneca.service` under the user's systemd scope. WSL-local `ollama` and
+`~/.ollama` were also absent. No Seneca installation or persistent data/model/
+service state was changed.
 
-Windows PowerShell confirmed that the local Ollama service has the model
-`qwen3.6:35b-a3b`. However, its API was not reachable from WSL at either
-`127.0.0.1:11434` or the WSL host gateway `172.22.144.1:11434`. The installer
-requires the existing model to be reachable from its execution environment.
-No host binding, firewall, Windows service, or lifecycle setting was changed.
-The live workstation installer correctly remained unrun.
+Windows PowerShell had previously confirmed a Windows Ollama model, but testing
+WSL-to-Windows API reachability used an out-of-scope topology. Its connection
+failure does not establish that the supported workstation qualification is
+unavailable. The supported topology—Seneca and Ollama in the same WSL Linux
+environment using `127.0.0.1:11434`—has not yet been prepared or tested.
+
+To prepare it without changing global services, the official Ollama v0.40.16
+Linux runtime was inspected for temporary installation under `/tmp`. The
+published archive is 1,545,767,640 bytes. A 4 MiB ranged transfer took 43
+seconds; a parallel 128 MiB transfer completed, but the full archive transfer
+then stalled, completing only one additional 8 MiB chunk in over a minute.
+The transfer was stopped before model download or installation. All partial
+download files were removed. No Ollama binary, model, or service was installed
+system-wide or in the user's home directory.
 
 | Cell | Result | Reason |
 | --- | --- | --- |
-| `WORKSTATION_CPU_INSTALL` | UNAVAILABLE | Required existing local Ollama API/model cannot be reached from WSL; package was built and identity-checked but not installed. |
-| `WORKSTATION_CPU_INFERENCE` | UNAVAILABLE | CPU release was not installed; no workstation inference call was made. |
-| `WORKSTATION_CUDA_ENABLE` | UNAVAILABLE | CPU baseline prerequisite was not installed. |
-| `WORKSTATION_CUDA_INFERENCE` | UNAVAILABLE | CUDA release was not activated. |
-| `WORKSTATION_CPU_RESTORE` | UNAVAILABLE | No CUDA transition was run. |
-| `WORKSTATION_POST_RESTORE_INFERENCE` | UNAVAILABLE | CPU restoration was not run. |
-| `DATA_PRESERVATION` | UNAVAILABLE | No workstation transition occurred; no preservation claim is made. |
-| `MODEL_PRESERVATION` | UNAVAILABLE | No workstation transition occurred; the repository's original `models/` was left untouched and the temporary copy was removed. |
-| `SOURCE_IDENTITY_PRESERVATION` | UNAVAILABLE | No workstation transition occurred. |
+| `WORKSTATION_CPU_INSTALL` | NOT EXECUTED | The supported WSL-local Ollama topology was not prepared; the archive was built and identity-checked but not installed. |
+| `WORKSTATION_CPU_INFERENCE` | NOT EXECUTED | CPU release was not installed; no workstation inference call was made. |
+| `WORKSTATION_CUDA_ENABLE` | NOT EXECUTED | CPU baseline prerequisite was not installed. |
+| `WORKSTATION_CUDA_INFERENCE` | NOT EXECUTED | CUDA release was not activated. |
+| `WORKSTATION_CPU_RESTORE` | NOT EXECUTED | No CUDA transition was run. |
+| `WORKSTATION_POST_RESTORE_INFERENCE` | NOT EXECUTED | CPU restoration was not run. |
+| `DATA_PRESERVATION` | NOT EXECUTED | No workstation transition occurred; no preservation claim is made. |
+| `MODEL_PRESERVATION` | NOT EXECUTED | No workstation transition occurred; the repository's original `models/` was left untouched and the temporary model copy was removed. |
+| `SOURCE_IDENTITY_PRESERVATION` | NOT EXECUTED | No workstation transition occurred. |
 
 The exact-candidate workstation archive's `RELEASE.json` binds both package
 and UI source identity to `8541f8af`; the archive SHA-256 was recorded above.
@@ -223,8 +232,10 @@ changed. `npm ci` also retains the previously reported 13 audit advisories and
 the Vite large-chunk advisory; no dependency updates were made.
 
 **Current result:** CUDA container distribution and runtime qualification
-cells PASS. The CPU→CUDA→CPU workstation qualification is **UNAVAILABLE** due
-the WSL-to-Windows Ollama API boundary. Slice 18C is therefore **not
-qualification-complete**, not Human accepted, and not promoted. The original
-candidate's earlier package/image measurements and failure state above remain
-historical evidence.
+cells PASS. The CPU→CUDA→CPU workstation qualification is **NOT YET EXECUTED**
+against the supported WSL-local Ollama topology. Slice 18C is therefore **not
+qualification-complete**, not Human accepted, and not promoted. The earlier
+WSL-to-Windows reachability check is retained as an observation of an
+out-of-scope topology, not as the reason the supported qualification is
+unexecuted. The original candidate's earlier package/image measurements and
+failure state above remain historical evidence.

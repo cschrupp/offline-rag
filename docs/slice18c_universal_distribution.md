@@ -3,7 +3,7 @@
 **Authority:** `S18C-UNIVERSAL-DISTRIBUTION-IMPL-001`  
 **Canonical base:** `e98fc147fe754936152024aa6630a17c43aa15da`  
 **Implementation branch:** `feature/slice18c-universal-distribution`  
-**Current state:** CORRECTIVE IMPLEMENTATION COMPLETE / CUDA CONTAINER QUALIFICATION PASS / WORKSTATION ROUND-TRIP UNAVAILABLE
+**Current state:** CORRECTIVE IMPLEMENTATION COMPLETE / CUDA CONTAINER QUALIFICATION PASS / WORKSTATION ROUND-TRIP NOT YET EXECUTED
 **Initial implementation candidate:** `2bae0a23aa9051bc0ca2b9276b421d2293423d51`
 **Current corrective candidate:** `8541f8af3ce7a4b906a36f252cb1b2f0a4dbc778`
 
@@ -107,12 +107,13 @@ The CUDA runtime image now includes GCC and C development headers only in the
 `cuda-dev` variant, as required by the observed Triton JIT compiler path. The
 final image passed CUDA embedding, reranker, resolver, API, and Compute checks
 with GPU passthrough. The CPU image remained CPU-only on the same GPU host.
-The exact-candidate workstation package was rebuilt, but no workstation state
-was changed: Windows PowerShell saw the existing local Ollama model, while
-WSL could not reach its API on loopback or through the host gateway. Therefore
-the live CPU→CUDA→CPU installer transaction remains unavailable and Slice 18C
-is not complete. See the detailed cell-by-cell results and exact artifact
-identities in [`QUALIFICATION.md`](evidence/slice18c_universal_distribution/QUALIFICATION.md).
+The exact-candidate workstation package was rebuilt. WSL-local Ollama was not
+present. The earlier WSL-to-Windows Ollama reachability probe tested an
+out-of-scope topology and does not establish supported-topology unavailability.
+The supported WSL-local Ollama setup and CPU→CUDA→CPU installer transaction
+remain **not yet executed**; no workstation state was changed. See the detailed
+cell-by-cell results and exact artifact identities in
+[`QUALIFICATION.md`](evidence/slice18c_universal_distribution/QUALIFICATION.md).
 
 ## Explicit exclusions
 
