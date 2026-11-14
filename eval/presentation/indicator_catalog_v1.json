@@ -528,7 +528,7 @@
         "quality or competence",
         "performance guarantee"
       ],
-      "precision": 3
+      "precision": 2
     },
     {
       "definition_id": "operation.work_count",
@@ -577,7 +577,7 @@
         "performance guarantee",
         "production promotion"
       ],
-      "precision": 3
+      "precision": 2
     },
     {
       "definition_id": "performance.end_to_end_p50",
@@ -601,7 +601,7 @@
         "performance guarantee",
         "production promotion"
       ],
-      "precision": 3
+      "precision": 2
     },
     {
       "definition_id": "performance.end_to_end_p95",
@@ -625,7 +625,7 @@
         "performance guarantee",
         "production promotion"
       ],
-      "precision": 3
+      "precision": 2
     },
     {
       "definition_id": "performance.generation_p50",
@@ -649,7 +649,7 @@
         "performance guarantee",
         "production promotion"
       ],
-      "precision": 3
+      "precision": 2
     },
     {
       "definition_id": "performance.generation_p95",
@@ -673,7 +673,7 @@
         "performance guarantee",
         "production promotion"
       ],
-      "precision": 3
+      "precision": 2
     },
     {
       "definition_id": "performance.ram_rss_bytes_p50",
@@ -721,7 +721,7 @@
         "performance guarantee",
         "production promotion"
       ],
-      "precision": 3
+      "precision": 2
     },
     {
       "definition_id": "performance.retrieval_p95",
@@ -745,7 +745,7 @@
         "performance guarantee",
         "production promotion"
       ],
-      "precision": 3
+      "precision": 2
     },
     {
       "definition_id": "performance.tokens_per_sec",
@@ -793,7 +793,7 @@
         "performance guarantee",
         "production promotion"
       ],
-      "precision": 3
+      "precision": 2
     },
     {
       "definition_id": "performance.vram_availability",
@@ -1063,7 +1063,7 @@
         "performance guarantee",
         "production promotion"
       ],
-      "precision": 3
+      "precision": 2
     },
     {
       "definition_id": "retrieval.hit_at_1",
@@ -1281,5 +1281,5 @@
       "precision": 3
     }
   ],
-  "catalog_id": "indicatorcatalog_ebff8403baafe162cd4dbb2984971e1437363ed59df2a64ba053d1b52775125c"
+  "catalog_id": "indicatorcatalog_5dbaa39fb4ef3c7386f218c2c7db71fd5cc13c81ccff89f3ea0f6568b615cd5f"
 }

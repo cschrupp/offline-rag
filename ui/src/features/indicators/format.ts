@@ -32,8 +32,8 @@ export function formatIndicatorValue(
       return `${new Intl.NumberFormat("en").format(value)} points`;
     case "duration":
       return unit === "ms"
-        ? `${(value / 1000).toFixed(2)} s`
-        : `${value.toFixed(2)} s`;
+        ? `${(value / 1000).toFixed(precision)} s`
+        : `${value.toFixed(precision)} s`;
     case "byte_quantity": {
       if (Math.abs(value) < 1024) return `${value} B`;
       const units = ["KiB", "MiB", "GiB", "TiB"];

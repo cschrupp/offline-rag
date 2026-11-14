@@ -18,6 +18,11 @@ describe("18D explicit indicator semantics", () => {
     expect(formatIndicatorValue(0.042, "percentage_point_delta", undefined, 1)).toBe("+4.2 pp");
     expect(formatIndicatorValue(0.053, "relative_percent_delta", undefined, 1)).toBe("+5.3%");
   });
+  it("uses the catalog precision for durations", () => {
+    expect(formatIndicatorValue(5617.13, "duration", "ms", 2)).toBe("5.62 s");
+    expect(formatIndicatorValue(5617.13, "duration", "ms", 1)).toBe("5.6 s");
+    expect(formatIndicatorValue(5.61713, "duration", "s", 3)).toBe("5.617 s");
+  });
   it("uses binary byte units and explicit throughput units", () => {
     expect(formatIndicatorValue(94371840, "byte_quantity")).toBe("90 MiB");
     expect(formatIndicatorValue(512, "byte_quantity")).toBe("512 B");
