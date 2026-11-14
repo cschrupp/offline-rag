@@ -107,15 +107,12 @@ should not override the current disposition here.
   `f5eda171925b791f94589637eb690a0de125aefb`. 18B-R and 18B-P passed.
   Real-host systemd-user and WSL distro lifecycle checks remain explicitly
   deferred; native Windows remains a separate spike.
-- [ ] **Slice 18C — Universal Workstation Distribution & Release Optimization**
-  — AUTHORIZED / IMPLEMENTATION AND QUALIFICATION COMPLETE; INDEPENDENT REVIEW
-  PENDING at `9e2cf563737cf4c9a927753c7768f5e4897b1a7f`. Provide one CPU-first
-  universal workstation distribution with optional explicit CUDA enablement,
-  plus lean immutable
-  CPU/CUDA container variants from the same Seneca runtime.
-- [ ] **Slice 18D — Product Metrics Audit & Explainability** — PLANNED / NOT
-  AUTHORIZED. Audit every user-visible metric/status/score for correctness,
-  provenance, and explainability.
+- [x] **Slice 18C — Universal Workstation Distribution & Release Optimization**
+  — COMPLETE / HUMAN ACCEPTED / PROMOTED at `c296e21a`.
+- [ ] **Slice 18D — Product Metrics Audit & Explainability** — DESIGN HUMAN
+  ACCEPTED / IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW. Catalog, evidence v3 and product metric
+  audit candidate; see `docs/slice18d_metrics_audit.md` and
+  `docs/evidence/slice18d_metrics/IMPLEMENTATION_RESULT.md`.
 - [ ] **Slice 18E — Canonical Documentation & Portfolio Narrative** — PLANNED /
   NOT AUTHORIZED. Produce coherent public documentation from accepted behavior
   and audited metric semantics.

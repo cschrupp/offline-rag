@@ -11,9 +11,9 @@ slice remains subject to its own authorization and review.
 - **18B Revision 2 — Workstation Distribution:** COMPLETE / HUMAN ACCEPTED /
   PROMOTED.
 - **18C — Universal Workstation Distribution & Release Optimization:**
-  AUTHORIZED / IMPLEMENTATION AND QUALIFICATION COMPLETE / INDEPENDENT REVIEW
-  PENDING at `9e2cf563737cf4c9a927753c7768f5e4897b1a7f`.
-- **18D — Product Metrics Audit and Explainability:** PLANNED / NOT AUTHORIZED.
+  COMPLETE / HUMAN ACCEPTED / PROMOTED at `c296e21a`.
+- **18D — Product Metrics Audit and Explainability:** DESIGN HUMAN ACCEPTED /
+  IMPLEMENTATION AUTHORIZED; see `slice18d_metrics_audit.md`.
 - **18E — Canonical Documentation and Portfolio Narrative:** PLANNED /
   NOT AUTHORIZED.
 - **18F — Public Release and Demo Assembly:** PLANNED / NOT AUTHORIZED.
