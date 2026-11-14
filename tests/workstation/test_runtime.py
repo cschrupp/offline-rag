@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import sys
+import urllib.error
 from pathlib import Path
 
 import pytest
@@ -126,6 +127,33 @@ def _activate(layout, release: Path) -> None:
     temporary.unlink(missing_ok=True)
     temporary.symlink_to(release.relative_to(layout.app_link.parent))
     temporary.replace(layout.app_link)
+
+
+def test_wait_ready_retries_transient_url_error(monkeypatch) -> None:
+    attempts = iter((urllib.error.URLError("not ready"), None))
+
+    def open_url(*args, **kwargs):
+        error = next(attempts)
+        if error is not None:
+            raise error
+
+        return SimpleResponse()
+
+    class SimpleResponse:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    times = iter((0.0, 0.0, 0.0))
+    monkeypatch.setattr(runtime.urllib.request, "urlopen", open_url)
+    monkeypatch.setattr(runtime.time, "monotonic", lambda: next(times))
+    monkeypatch.setattr(runtime.time, "sleep", lambda _: None)
+
+    runtime._wait_ready(timeout_seconds=5)
 
 
 def test_seed_is_closed_source_bound_and_detects_payload_mutation(

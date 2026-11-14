@@ -46,7 +46,7 @@ def probe_nvidia_capability(
             text=True,
             timeout=timeout_seconds,
         )
-    except OSError, subprocess.TimeoutExpired:
+    except (OSError, subprocess.TimeoutExpired):
         return {"status": "probe_failed", "gpu_count": None}
     if result.returncode != 0:
         return {"status": "probe_failed", "gpu_count": None}

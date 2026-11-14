@@ -508,7 +508,7 @@ def _wait_ready(timeout_seconds: int = 75) -> None:
             with urllib.request.urlopen(HEALTH_URL, timeout=2.0) as response:
                 if response.status == 200:
                     return
-        except OSError, urllib.error.URLError, TimeoutError:
+        except (OSError, urllib.error.URLError, TimeoutError):
             time.sleep(1.0)
     raise RuntimeError("Seneca readiness check did not pass after service restart")
 
