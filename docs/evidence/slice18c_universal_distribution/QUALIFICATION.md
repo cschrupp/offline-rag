@@ -3,11 +3,11 @@
 **Authority:** `S18C-UNIVERSAL-DISTRIBUTION-IMPL-001`  
 **Canonical base:** `e98fc147fe754936152024aa6630a17c43aa15da`  
 **Initial implementation candidate:** `2bae0a23aa9051bc0ca2b9276b421d2293423d51`
-**Current corrective candidate:** `70b5fb04813851a27332f369d290c14da0cf8fb5`
+**Current corrective candidate:** `86db251e6e75253674ec9ac233a358028a71fe4e`
 **Branch:** `feature/slice18c-universal-distribution`  
-**Current disposition:** CUDA container qualification passed; the workstation
-round-trip has not yet been executed against the supported WSL-local Ollama
-topology. Slice 18C is not complete or Human accepted.
+**Current disposition:** CUDA container qualification, the WSL CPU→CUDA→CPU
+workstation round-trip, and post-restart service recovery passed. Slice 18C is
+ready for independent review; it is not Human accepted or promoted.
 
 ## Historical qualification record — initial candidate `2bae0a23`
 
@@ -229,28 +229,88 @@ or probe LAN addresses. The endpoint must remain local/private, the selected
 model must exist, and no cloud fallback is permitted. This 18C extension does
 not rewrite the narrower historical 18B workstation scope.
 
-On corrective package candidate `70b5fb04813851a27332f369d290c14da0cf8fb5`,
-the workstation tools initially failed to parse because two exception clauses
-used invalid Python syntax. Commit `70b5fb04` fixes those clauses and adds a
-readiness-retry regression. The exact-candidate package was rebuilt as
-`seneca-workstation-0.1.0-linux-x86_64-70b5fb048138.tar.gz` (SHA-256
-`536cb0a55fc45a43140b489c2f3ab090c29a7f1a03861366392648680655ab8c`,
-2,498,409 bytes). The
-package's host tool compiles, and preflight confirms the WSL2/ext4 paths,
-available memory, systemd user manager, and approved Ollama endpoint/model.
-Preflight currently blocks installation because systemd user lingering is
-disabled. Enabling it requires interactive sudo credentials, which were not
-available to the qualification process. No Seneca installation or user data,
-model, or service state has been modified.
+Two workstation defects were found and corrected during real qualification.
+Commit `70b5fb04` corrected invalid Python exception syntax in `host.py` and
+`runtime.py`, with a readiness-retry regression. The next service start found
+that systemd rejected quoted `EnvironmentFile` and `WorkingDirectory` paths.
+Commit `86db251e` now writes systemd path escapes while retaining quoted
+`ExecStart`, and its regression covers paths containing spaces. The focused
+service-writer tests passed.
+
+Human enabled systemd user lingering for this qualification. Current 18C
+preflight passed on WSL2 with ext4 application/data/model paths, 33.5 GB
+visible memory (29.6 GB available at preflight), large-PDF memory disposition
+available, the systemd user manager active, and the approved Windows-native
+Ollama endpoint/model reachable at `127.0.0.1:11434`. No WSL Ollama runtime or
+model was installed, and no LAN endpoint was probed.
+
+The corrected package is
+`seneca-workstation-0.1.0-linux-x86_64-86db251e6e75.tar.gz`, 2,499,100 bytes,
+SHA-256 `810b49e0e09b1bab3284eac8d0d92d30ca606cb73b0aaf658f0a8c8ad82c93a7`.
+Its release metadata binds source and UI identity to
+`86db251e6e75253674ec9ac233a358028a71fe4e`. Installation succeeded, the
+non-editable package imports from the versioned `.venv`, `/app/src` is absent,
+and the installed CLI works. The generated systemd unit passed
+`systemd-analyze verify` and the service reached `/health/ready` after install
+and after each profile transition. `seneca doctor` returned an OK result in an
+earlier check, but its displayed generation model/key status conflicted with
+the effective local-only config and API state. Direct configuration loading
+and the live API confirmed the approved loopback Ollama endpoint/model,
+`strict_offline=true`, and no generation API key; the doctor discrepancy is
+unresolved and is not treated as authoritative effective configuration.
+
+The initial CPU release reported Torch `2.14.0+cpu`, `torch.version.cuda=None`,
+`torch.cuda.is_available()=False`, and zero `nvidia-*` distributions. Under
+`embedding.device=auto`, the CPU profile was `cpu_onnx_fp32_v1`,
+`onnx_fp32_v1`, `sentence_transformers_onnx`, `CPUExecutionProvider`, FP32.
+One synthetic query produced 1,024 finite values and the embedding runtime
+reached `READY`. One local CPU reranker score was finite and retained
+`raw-logit-v1` with `local_files_only=True`.
+
+After `seneca enable-cuda --yes`, the user service restarted and the compute
+projection reported Torch CUDA build `13.0`, CUDA available, and AUTO selecting
+`cuda_fp16_v1` / `torch_st_v1` / `sentence_transformers_torch` / CUDA / FP16.
+One synthetic query produced 1,024 finite values with runtime state `READY`;
+one local CUDA reranker score was finite under the same raw-logit contract.
+The observed GPU was `NVIDIA GeForce RTX 2080 Super with Max-Q Design`.
+
+After `seneca disable-cuda`, the retained CPU release was restored and the
+service again became ready. The final CPU embedding and reranker smokes passed
+with the same results as the initial CPU cell. Across both transitions,
+installation metadata returned to the original CPU release/source identity
+`86db251e6e75253674ec9ac233a358028a71fe4e`, with `cuda_enabled=false`.
+Before the distro restart, the 257-file installed model tree matched the
+qualification source inventory (recorded manifest SHA-256
+`2ade5cc1e0177884098d24cd974a9da796bff7c507db381b1114dc7d69e65304`), and a
+synthetic data marker remained unchanged (SHA-256
+`d0fe5d7d791592e19771e975eae4edb1313f061c9089baf745e9ebae4a2e54a1`). After
+restart, 257 model files remained present. The temporary file-level manifest
+used for the earlier comparison was not retained across the distro restart,
+so no new byte-for-byte model comparison is claimed.
+
+All three runtime smoke scripts verified `strict_offline=true`, the approved
+loopback Ollama endpoint/model, no generation API key, and zero generator calls.
+The service remained active and ready after its launching command exited while
+the WSL distro remained running. Human then restarted the `Ubuntu-24.04` WSL
+distro and restarted the Codex session. After reconnection, the enabled
+`seneca.service` was active, `/health/ready` returned `{"status":"ready"}`,
+and `/v1/settings/compute` reported `embedding_device=auto`, resolved CPU,
+`cpu_onnx_fp32_v1` / `onnx_fp32_v1`, `CPUExecutionProvider`, Torch CUDA build
+`null`, and CUDA unavailable. The installation metadata at
+`~/.config/seneca/installation.json` retained the expected source SHA
+`86db251e6e75253674ec9ac233a358028a71fe4e`, active CPU release identity,
+`cuda_enabled=false`, and the expected data/model roots. The synthetic data
+marker hash also matched its pre-restart value. This establishes recovery after
+the user-reported distro restart; no model inference was run after restart.
 
 ### Corrective validation and current disposition
 
 | Check | Result |
 | --- | --- |
-| `./.venv/bin/pytest -q tests/workstation` | 42 passed on final corrective candidate |
+| `./.venv/bin/pytest -q tests/workstation` | 43 passed on final corrective candidate |
 | Container-profile static regression | 2 passed on final corrective candidate |
 | Ruff check and format check for changed test | Passed |
-| `git diff --check` | Passed before evidence update; rerun after commit preparation |
+| `git diff --check` | Passed after final evidence update |
 | Dense profile/provision/runtime tests | 55 passed on the original implementation candidate; not rerun because no Python application or dependency metadata changed |
 
 The existing unrelated `test_no_mid_run_cpu_fallback` failure at
@@ -258,12 +318,13 @@ The existing unrelated `test_no_mid_run_cpu_fallback` failure at
 changed. `npm ci` also retains the previously reported 13 audit advisories and
 the Vite large-chunk advisory; no dependency updates were made.
 
-**Current result:** CUDA container distribution and runtime qualification
-cells PASS. The approved Windows-native Ollama endpoint/model is reachable
-from WSL at `127.0.0.1:11434`; no LAN probe or WSL-local Ollama installation
-was performed. The CPU→CUDA→CPU workstation qualification is **NOT YET
-EXECUTED** because installer preflight requires systemd user lingering and
-the qualification process cannot provide sudo credentials. Slice 18C is
-therefore **not qualification-complete**, not Human accepted, and not
-promoted. The original candidate's earlier package/image measurements and
-failure state above remain historical evidence.
+**Current result:** CUDA container distribution and CPU→CUDA→CPU workstation
+qualification PASS for the supported Windows 11 + WSL2 topology using
+Windows-native Ollama through loopback interoperability. Post-restart service
+recovery and CPU-profile restoration also PASS based on the user's reported
+Ubuntu distro restart and independently checked service/API/installation state.
+No external generation calls were made. The doctor display discrepancy and
+absence of a post-restart file-level model comparison are recorded limitations.
+Slice 18C is ready for independent review; Human acceptance and promotion remain
+pending. Historical package/image measurements and earlier failures above
+remain preserved as observations of their exact candidates.
