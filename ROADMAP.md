@@ -97,8 +97,8 @@ should not override the current disposition here.
   accepted, and promoted with its evidence closeout to canonical `main` at
   `0a1b5a45bff94ae12c8fe8d423c825572bc1c480`. REL-01 delivered the CPU image
   only. The bounded CPU/CUDA public container split and universal workstation
-  distribution are authorized under 18C; its implementation candidate is
-  complete and awaiting independent review. See
+  distribution are COMPLETE / HUMAN ACCEPTED / PROMOTED under 18C at
+  `c296e21a`. See
   [`docs/rel01_cpu_release_packaging.md`](docs/rel01_cpu_release_packaging.md).
 - [x] **Slice 18A — Engineering evidence reconciliation** — Human accepted and
   promoted at `8431c134d2f85e74afe80febd0ca75ac451f65f1`.
@@ -3458,9 +3458,9 @@ Historical post–Slice-15 technical-debt wording about CPU-only PyTorch and
 CPU/CUDA image variants is superseded by completed REL-01, which delivered the
 CPU release image only. Slice 18C has implemented and qualified the bounded
 public CPU/CUDA container split and universal CPU-first workstation
-distribution; independent review is pending on
-`9e2cf563737cf4c9a927753c7768f5e4897b1a7f`. GitHub issue
-#1 may remain open for its broader image-size wording.
+distribution are COMPLETE / HUMAN ACCEPTED / PROMOTED at `c296e21a`. The pre-acceptance implementation candidate was
+`9e2cf563737cf4c9a927753c7768f5e4897b1a7f`. GitHub issue #1 may remain open
+for its broader image-size wording.
 
 ## Milestone 8 — (historical stub; superseded by Slice 18 under M7)
 
